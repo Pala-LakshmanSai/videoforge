@@ -6,11 +6,13 @@ import {
   Check,
   Download,
   FileAudio,
+  ImagePlus,
   Images,
   RefreshCw,
   ShieldCheck,
   Trash2,
   Upload,
+  UserPlus,
   UsersRound,
   X,
 } from "lucide-react";
@@ -28,6 +30,7 @@ import {
   ProgressBar,
 } from "../components/ui";
 import { PresetImage } from "../features/presets/PresetImage";
+import { VisualPresetSelect } from "../features/project-create/VisualPresetSelect";
 import type { NormalizedStyleReference } from "../lib/media-validation";
 import { isHostedBetaMode } from "./provider-mode";
 
@@ -725,6 +728,21 @@ function formatUsd(value: number | null | undefined): string {
     : "Not reported";
 }
 
+export function hostedPreflightEstimateText(
+  estimate: HostedPreflightResponse["estimate"],
+  dispatchAvailable: boolean,
+  fallbackCapUsd: number,
+): string {
+  const cap = estimate?.cap_usd ?? fallbackCapUsd;
+  if (!dispatchAvailable) {
+    return `No paid video generation in this beta · maximum ${formatUsd(cap)}`;
+  }
+  if (typeof estimate?.projected_usd === "number" && Number.isFinite(estimate.projected_usd)) {
+    return `Estimated variable cost ${formatUsd(estimate.projected_usd)} · maximum ${formatUsd(cap)}`;
+  }
+  return `Estimate pending · maximum ${formatUsd(cap)}`;
+}
+
 function formatMilliseconds(value: number | null | undefined): string {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return "Not reported";
   const seconds = Math.round(value / 1_000);
@@ -771,10 +789,10 @@ function attemptLabel(kind: HostedAttempt["kind"]): string {
   return "Render final video";
 }
 
-function preflightBlockers(value: HostedPreflightResponse | null): readonly string[] {
-  return (value?.blockers ?? []).map((blocker) =>
-    blocker.code ? `${blocker.code}: ${blocker.message}` : blocker.message,
-  );
+export function preflightBlockers(value: HostedPreflightResponse | null): readonly string[] {
+  return (value?.blockers ?? [])
+    .filter((blocker) => blocker.severity !== "ADVISORY")
+    .map((blocker) => blocker.message);
 }
 
 async function imageDimensions(file: File): Promise<{ width: number; height: number }> {
@@ -921,6 +939,22 @@ export function HostedCreateProjectScreen() {
   const cap = Number(spendCapUsd);
   const capValid = Number.isFinite(cap) && cap >= 0.1 && cap <= 2;
   const keywordsValid = extraPromptKeywords.length <= 500;
+  const workerOnline = catalog.data?.media_worker_state === "ONLINE";
+  const inputChecklist = [
+    { label: "Video title", complete: Boolean(title.trim()) },
+    { label: "Voiceover", complete: Boolean(voiceover) },
+    { label: "Avatar", complete: Boolean(avatarVersionId) },
+    { label: "Image style", complete: Boolean(styleVersionId) },
+  ];
+  useEffect(() => {
+    if (!catalog.data) return;
+    if (!avatarVersionId && catalog.data.avatars.length === 1) {
+      setAvatarVersionId(catalog.data.avatars[0]!.version_id);
+    }
+    if (!styleVersionId && catalog.data.styles.length === 1) {
+      setStyleVersionId(catalog.data.styles[0]!.version_id);
+    }
+  }, [avatarVersionId, catalog.data, styleVersionId]);
   const canPreflight = Boolean(
     title.trim() && avatarVersionId && styleVersionId && voiceover && capValid && keywordsValid,
   );
@@ -1081,128 +1115,222 @@ export function HostedCreateProjectScreen() {
   return (
     <>
       <PageHeader
-        eyebrow="Private hosted generation"
-        title="Create Project"
-        description="Review the exact inputs, cap, and measured readiness before generating once."
+        title="New project"
+        description="Add your finished voiceover, choose the look, and review the cost before starting."
       />
-      {catalog.data.media_worker_state !== "ONLINE" ? (
-        <div className="notice" role="status">
-          <strong>Waiting for your computer.</strong> Install and connect the worker in Settings
-          before generating.
-        </div>
-      ) : null}
-      <div className="grid grid-2">
-        <Panel eyebrow="Project" heading="Inputs">
-          <label className="field">
-            <span>Title</span>
-            <input
-              value={title}
-              maxLength={240}
-              onChange={(event) => {
-                setTitle(event.target.value);
-                setPreflightResult(null);
-              }}
-            />
-          </label>
-          <label className="field">
-            <span>Final English voiceover</span>
-            <input
-              aria-label="Final English voiceover"
-              type="file"
-              accept="audio/wav,.wav"
-              onChange={(event) => {
-                const selected = event.target.files?.[0] ?? null;
-                setPreflightResult(null);
-                setVoiceoverMeta(null);
-                if (!selected) {
-                  setVoiceover(null);
-                  setError(FILE_ACCESS_HINT);
-                  return;
-                }
-                if (selected.size > MAX_VOICEOVER_BYTES) {
-                  setVoiceover(null);
-                  setError("Voiceover must be at most 1 GB.");
-                  return;
-                }
-                setVoiceover(selected);
-                setError(null);
-              }}
-            />
-            <small>
-              WAV, MP3, M4A/AAC, or FLAC · 10 seconds–60 minutes · at most 1 GB
-              {voiceover ? ` · ${(voiceover.size / 1_000_000).toFixed(1)} MB selected` : ""}
-            </small>
-          </label>
-          <label className="field">
-            <span>Avatar Profile</span>
-            <select
-              value={avatarVersionId}
-              onChange={(event) => {
-                setAvatarVersionId(event.target.value);
-                setPreflightResult(null);
-              }}
-            >
-              <option value="">Choose a ready avatar</option>
-              {catalog.data.avatars.map((avatar) => (
-                <option key={avatar.version_id} value={avatar.version_id}>
-                  {avatar.name} · v{avatar.version_number}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Image Style</span>
-            <select
-              value={styleVersionId}
-              onChange={(event) => {
-                setStyleVersionId(event.target.value);
-                setPreflightResult(null);
-              }}
-            >
-              <option value="">Choose a published style</option>
-              {catalog.data.styles.map((style) => (
-                <option key={style.version_id} value={style.version_id}>
-                  {style.name} · v{style.version_number}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="toggle-row">
+      <div className="layout-main hosted-project-layout">
+        <Panel className="create-config-panel hosted-project-form">
+          <section className="create-section" aria-labelledby="hosted-project-video">
+            <header className="create-section-header">
+              <span className="create-section-index">01</span>
+              <div>
+                <h3 id="hosted-project-video">Video</h3>
+                <p>Name the project and add the finished narration.</p>
+              </div>
+            </header>
+            <div className="create-section-grid">
+              <div className="field field-wide">
+                <label htmlFor="hosted-project-title">Video title</label>
+                <input
+                  id="hosted-project-title"
+                  className="input"
+                  value={title}
+                  maxLength={240}
+                  placeholder="Give your video a clear title"
+                  onChange={(event) => {
+                    setTitle(event.target.value);
+                    setPreflightResult(null);
+                  }}
+                />
+              </div>
+              <div className="field field-wide">
+                <span className="field-label">Final voiceover</span>
+                <label className="dropzone hosted-voiceover-dropzone">
+                  <input
+                    aria-label="Final voiceover"
+                    type="file"
+                    accept="audio/wav,.wav"
+                    disabled={preflightMutation.isPending || submit.isPending}
+                    onChange={(event) => {
+                      const selected = event.target.files?.[0] ?? null;
+                      setPreflightResult(null);
+                      setVoiceoverMeta(null);
+                      if (!selected) {
+                        setVoiceover(null);
+                        setError(FILE_ACCESS_HINT);
+                        return;
+                      }
+                      if (selected.size > MAX_VOICEOVER_BYTES) {
+                        setVoiceover(null);
+                        setError("Voiceover must be at most 1 GB.");
+                        return;
+                      }
+                      setVoiceover(selected);
+                      setError(null);
+                    }}
+                  />
+                  <FileAudio size={28} />
+                  <span>
+                    <strong>{voiceover?.name ?? "Choose your final voiceover"}</strong>
+                    {voiceover
+                      ? `${(voiceover.size / 1_000_000).toFixed(1)} MB · ready to check`
+                      : "WAV · 10 seconds to 60 minutes · max 1 GB"}
+                  </span>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section className="create-section" aria-labelledby="hosted-project-look">
+            <header className="create-section-header">
+              <span className="create-section-index">02</span>
+              <div>
+                <h3 id="hosted-project-look">Look</h3>
+                <p>Choose the presenter and visual style for this video.</p>
+              </div>
+            </header>
+            <div className="create-section-grid">
+              <div className="field preset-field">
+                <VisualPresetSelect
+                  id="hosted-avatar-select"
+                  label="Avatar"
+                  options={catalog.data.avatars.map((avatar) => ({
+                    id: avatar.version_id,
+                    imageUrl: avatar.thumbnail_url ?? "",
+                    meta: `Version ${avatar.version_number}`,
+                    name: avatar.name,
+                  }))}
+                  selectedId={avatarVersionId}
+                  onChange={(value) => {
+                    setAvatarVersionId(value);
+                    setPreflightResult(null);
+                  }}
+                />
+                <div className="preset-select-actions">
+                  <Link
+                    className="button button-secondary"
+                    to="/avatars/new"
+                    search={{ returnTo: "/projects/new" } as never}
+                  >
+                    <UserPlus size={15} /> New avatar
+                  </Link>
+                </div>
+              </div>
+              <div className="field preset-field">
+                <VisualPresetSelect
+                  id="hosted-style-select"
+                  label="Image style"
+                  options={catalog.data.styles.map((style) => ({
+                    id: style.version_id,
+                    imageUrl: style.cover_url ?? "",
+                    meta: `Version ${style.version_number}`,
+                    name: style.name,
+                  }))}
+                  selectedId={styleVersionId}
+                  onChange={(value) => {
+                    setStyleVersionId(value);
+                    setPreflightResult(null);
+                  }}
+                />
+                <div className="preset-select-actions">
+                  <Link
+                    className="button button-secondary"
+                    to="/styles/new"
+                    search={{ returnTo: "/projects/new" } as never}
+                  >
+                    <ImagePlus size={15} /> New style
+                  </Link>
+                </div>
+              </div>
+              <Disclosure className="field field-wide create-options" summary="Optional settings">
+                <div className="stack">
+                  <label className="toggle-row">
+                    <span>
+                      <strong>Add image keywords</strong>
+                      <small>Use a few extra words to guide generated scene images.</small>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={applyExtraPromptKeywords}
+                      onChange={(event) => {
+                        setApplyExtraPromptKeywords(event.target.checked);
+                        setPreflightResult(null);
+                      }}
+                    />
+                  </label>
+                  {applyExtraPromptKeywords ? (
+                    <div className="field">
+                      <label htmlFor="hosted-image-keywords">Image keywords</label>
+                      <textarea
+                        id="hosted-image-keywords"
+                        className="textarea"
+                        value={extraPromptKeywords}
+                        maxLength={500}
+                        rows={3}
+                        onChange={(event) => {
+                          setExtraPromptKeywords(event.target.value);
+                          setPreflightResult(null);
+                        }}
+                        placeholder="natural light, tactile materials"
+                      />
+                      <small>{extraPromptKeywords.length}/500 characters</small>
+                    </div>
+                  ) : null}
+                  <div className="field">
+                    <label htmlFor="hosted-user-seed">Variation number (optional)</label>
+                    <input
+                      id="hosted-user-seed"
+                      className="input"
+                      inputMode="numeric"
+                      type="number"
+                      value={userSeed}
+                      onChange={(event) => {
+                        setUserSeed(event.target.value);
+                        setPreflightResult(null);
+                      }}
+                      placeholder="Leave blank for automatic"
+                    />
+                  </div>
+                </div>
+              </Disclosure>
+            </div>
+          </section>
+        </Panel>
+
+        <Panel className="create-run-panel hosted-project-summary" heading="Cost & readiness">
+          <div className={`run-readiness ${workerOnline ? "ready" : "blocked"}`} role="status">
+            {workerOnline ? <Check size={18} /> : <AlertTriangle size={18} />}
             <span>
-              <strong>Use extra image-prompt keywords</strong>
+              <strong>{workerOnline ? "Your computer is connected" : "Connect your computer"}</strong>
               <small>
-                Applied to image prompts only; the exact toggle is pinned into the revision.
+                {workerOnline
+                  ? "Connected; ready when the project inputs are complete."
+                  : "Open Settings and connect the personal media worker before starting."}
               </small>
             </span>
-            <input
-              type="checkbox"
-              checked={applyExtraPromptKeywords}
-              onChange={(event) => {
-                setApplyExtraPromptKeywords(event.target.checked);
-                setPreflightResult(null);
-              }}
-            />
-          </label>
-          {applyExtraPromptKeywords ? (
-            <label className="field">
-              <span>Extra prompt keywords</span>
-              <textarea
-                value={extraPromptKeywords}
-                maxLength={500}
-                rows={3}
-                onChange={(event) => {
-                  setExtraPromptKeywords(event.target.value);
-                  setPreflightResult(null);
-                }}
-                placeholder="natural light, tactile materials"
-              />
-              <small>{extraPromptKeywords.length}/500 characters</small>
-            </label>
+          </div>
+          {!workerOnline ? (
+            <Link className="button button-secondary" to="/settings">
+              Open Settings
+            </Link>
           ) : null}
-          <div className="grid grid-2">
-            <label className="field">
-              <span>Spend cap (USD)</span>
+
+          <div className="hosted-project-checklist" aria-label="Project requirements">
+            {inputChecklist.map((item) => (
+              <span className={item.complete ? "complete" : ""} key={item.label}>
+                {item.complete ? <Check size={16} /> : <span aria-hidden="true">○</span>}
+                {item.label}
+              </span>
+            ))}
+          </div>
+
+          <div className="field">
+            <label htmlFor="hosted-spend-cap">Maximum spend</label>
+            <div className="hosted-money-input">
+              <span>$</span>
               <input
+                id="hosted-spend-cap"
+                className="input"
                 inputMode="decimal"
                 type="number"
                 min="0.1"
@@ -1214,53 +1342,10 @@ export function HostedCreateProjectScreen() {
                   setPreflightResult(null);
                 }}
               />
-              <small>Finite cap reserved before provider dispatch.</small>
-            </label>
-            <label className="field">
-              <span>User seed (optional)</span>
-              <input
-                inputMode="numeric"
-                type="number"
-                value={userSeed}
-                onChange={(event) => {
-                  setUserSeed(event.target.value);
-                  setPreflightResult(null);
-                }}
-                placeholder="Deterministic variation"
-              />
-              <small>Leave blank for the workspace default.</small>
-            </label>
-          </div>
-        </Panel>
-        <Panel eyebrow="Readiness" heading="Generation check">
-          <p>
-            <Check size={16} /> Tenant-private Neon and R2 lineage
-          </p>
-          <p>
-            <Check size={16} /> Personal CPU compute: $0 provider charge
-          </p>
-          <p>
-            <Check size={16} /> GPU transport: {catalog.data.gpu_readiness.gpu_transport}
-          </p>
-          {catalog.data.gpu_readiness.lanes.map((lane) => (
-            <div key={lane.lane}>
-              <p>
-                <AlertTriangle size={16} /> {lane.checkpoint} {lane.lane}: {lane.qualification}
-              </p>
-              {lane.visual_approval === "APPROVED_EXACT_FULL_AND_SPLIT" ? (
-                <p>Crop: APPROVED_EXACT_FULL_AND_SPLIT</p>
-              ) : null}
-              <p>Missing gates: {lane.missing_gates.join(", ")}</p>
             </div>
-          ))}
-          {catalog.data.avatars.length === 0 ? (
-            <p className="validation validation-danger">
-              Create and approve an Avatar Profile first.
-            </p>
-          ) : null}
-          {catalog.data.styles.length === 0 ? (
-            <p className="validation validation-danger">Publish an Image Style first.</p>
-          ) : null}
+            <small>This is a hard limit, not an expected charge.</small>
+          </div>
+
           {preflightResult ? (
             <div
               className={
@@ -1270,20 +1355,16 @@ export function HostedCreateProjectScreen() {
               }
             >
               <strong>
-                {preflightReady(preflightResult) ? "Ready to generate" : "Generation blocked"}
+                {preflightReady(preflightResult) ? "Ready to create" : "Not ready yet"}
               </strong>
-              {preflightResult.estimate ? (
-                <span>
-                  {" "}
-                  Projected {formatUsd(preflightResult.estimate.projected_usd)}
-                  {preflightResult.estimate.minimum_usd !== undefined ||
-                  preflightResult.estimate.maximum_usd !== undefined
-                    ? ` · range ${formatUsd(preflightResult.estimate.minimum_usd)}–${formatUsd(preflightResult.estimate.maximum_usd)}`
-                    : ""}
-                </span>
-              ) : (
-                <span> Estimate not reported.</span>
-              )}
+              <span>
+                {" "}
+                {hostedPreflightEstimateText(
+                  preflightResult.estimate,
+                  catalog.data.gpu_readiness.dispatch_available,
+                  cap,
+                )}
+              </span>
             </div>
           ) : null}
           {preflightBlockers(preflightResult).length > 0 ? (
@@ -1308,8 +1389,13 @@ export function HostedCreateProjectScreen() {
           ) : null}
           {voiceoverMeta ? (
             <p className="helper">
-              Verified locally: {formatMilliseconds(voiceoverMeta.durationMs)} ·{" "}
-              {voiceoverMeta.contentType} · {voiceoverMeta.checksumSha256}
+              Voiceover checked: {formatMilliseconds(voiceoverMeta.durationMs)}
+            </p>
+          ) : null}
+          {!catalog.data.gpu_readiness.dispatch_available ? (
+            <p className="helper hosted-beta-note" role="note">
+              This beta can create and transcribe your project. Final video generation is not yet
+              available, and no paid GPU work will start.
             </p>
           ) : null}
           <Button
@@ -1327,10 +1413,8 @@ export function HostedCreateProjectScreen() {
           >
             {preflightReady(preflightResult) ? <FileAudio size={16} /> : <Check size={16} />}
             {preflightReady(preflightResult)
-              ? "Generate video"
-              : catalog.data.media_worker_state === "ONLINE"
-                ? "Check estimate & readiness"
-                : "Create and transcribe"}
+              ? "Create project & transcribe"
+              : "Check cost & readiness"}
           </Button>
         </Panel>
       </div>

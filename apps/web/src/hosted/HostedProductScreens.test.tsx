@@ -18,9 +18,11 @@ import {
   HOSTED_SHA256_CHUNK_BYTES,
   audioDurationMs,
   hostedFileSha256,
+  hostedPreflightEstimateText,
   isFailClosedGpuReadiness,
   normalizeHostedReturnTo,
   parseWavDurationMs,
+  preflightBlockers,
 } from "./HostedProductScreens";
 
 function renderHosted(node: ReactNode) {
@@ -128,6 +130,36 @@ describe("hosted browser security boundaries", () => {
 });
 
 describe("hosted product journey", () => {
+  it("keeps cost and blocker diagnostics user-facing", () => {
+    expect(
+      hostedPreflightEstimateText(
+        {
+          projected_usd: null,
+          cap_usd: 1,
+          detail: "GPU_TRANSPORT_DISABLED_UNQUALIFIED internal lane detail",
+        },
+        true,
+        1,
+      ),
+    ).toBe("Estimate pending · maximum $1.00");
+    expect(
+      preflightBlockers({
+        blockers: [
+          {
+            code: "MEDIA_WORKER_OFFLINE",
+            severity: "BLOCKING",
+            message: "Connect your personal media worker before generating.",
+          },
+          {
+            code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED",
+            severity: "ADVISORY",
+            message: "Internal GPU advisory.",
+          },
+        ],
+      }),
+    ).toEqual(["Connect your personal media worker before generating."]);
+  });
+
   it("accepts only the exact closed-world hosted GPU readiness payload", () => {
     expect(isFailClosedGpuReadiness(gpuReadiness)).toBe(true);
     expect(
@@ -247,7 +279,7 @@ describe("hosted product journey", () => {
     );
     renderHosted(<HostedCreateProjectScreen />);
 
-    const input = await screen.findByLabelText("Final English voiceover");
+    const input = await screen.findByLabelText("Final voiceover");
     fireEvent.change(input, { target: { files: [] } });
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -567,15 +599,28 @@ describe("hosted product journey", () => {
     );
     renderHosted(<HostedCreateProjectScreen />);
 
-    expect(await screen.findByText("Waiting for your computer.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create and transcribe" })).toBeDisabled();
-    expect(screen.getByText(/GPU transport: DISABLED_UNQUALIFIED/u)).toBeInTheDocument();
-    expect(screen.getByText(/V2-07 MAGE_IMAGE: NOT_QUALIFIED/u)).toBeInTheDocument();
-    expect(screen.getByText(/V2-08 SOULX_AVATAR: NOT_QUALIFIED/u)).toBeInTheDocument();
-    expect(screen.getByText(/Crop: APPROVED_EXACT_FULL_AND_SPLIT/u)).toBeInTheDocument();
+    expect(await screen.findByText("Connect your computer")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Check cost & readiness" })).toBeDisabled();
+    expect(screen.getByLabelText("Video title")).toHaveClass("input");
+    expect(screen.getByLabelText("Final voiceover")).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Avatar options" })).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Image style options" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("radio", { name: /Owner/u })).toHaveAttribute("aria-checked", "true"),
+    );
+    expect(screen.getByRole("radio", { name: /Documentary/u })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByLabelText("Maximum spend")).toHaveClass("input");
+    expect(screen.getByLabelText("Maximum spend")).toHaveValue(1);
+    expect(screen.getByText(/no paid GPU work will start/u)).toBeInTheDocument();
     expect(
-      screen.getByText(/identity_output, cancellation_timeout, max2_concurrency/u),
-    ).toBeInTheDocument();
+      screen.queryByText(
+        /Tenant-private Neon|GPU transport|DISABLED_UNQUALIFIED|V2-07|V2-08|MAGE_IMAGE|SOULX_AVATAR|Missing gates|APPROVED_EXACT|identity_output|cancellation_timeout|sha256:/u,
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("fails closed when authenticated catalog readiness is absent", async () => {

@@ -620,3 +620,125 @@
   text-decoration-color: rgba(240, 208, 158, 0.34);
   text-underline-offset: 4px;
 }
+
+.hosted-project-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 380px);
+  align-items: start;
+  gap: 18px;
+}
+
+.hosted-project-form {
+  display: grid;
+  gap: 16px;
+}
+
+.hosted-project-form .create-section {
+  grid-column: auto;
+}
+
+.hosted-voiceover-dropzone {
+  min-height: 132px;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.hosted-voiceover-dropzone > svg {
+  flex: 0 0 auto;
+  color: #c4b9ff;
+}
+
+.hosted-voiceover-dropzone > span {
+  min-width: 0;
+}
+
+.hosted-voiceover-dropzone strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hosted-project-summary {
+  gap: 16px;
+}
+
+.hosted-project-summary > .button-secondary {
+  width: 100%;
+}
+
+.hosted-project-checklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.hosted-project-checklist > span {
+  display: flex;
+  min-width: 0;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 0.86rem;
+}
+
+.hosted-project-checklist > span > span {
+  color: rgba(211, 214, 229, 0.62);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.hosted-project-checklist > span.complete {
+  border-color: rgba(72, 214, 146, 0.24);
+  color: #9ce9c3;
+  background: rgba(56, 190, 126, 0.06);
+}
+
+.hosted-money-input {
+  position: relative;
+}
+
+.hosted-money-input > span {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  z-index: 1;
+  color: var(--muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.hosted-money-input > .input {
+  padding-left: 30px;
+}
+
+.hosted-beta-note {
+  padding: 11px 12px;
+  border: 1px solid rgba(141, 120, 232, 0.25);
+  border-radius: 12px;
+  background: rgba(74, 59, 154, 0.07);
+}
+
+@media (max-width: 900px) {
+  .hosted-project-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hosted-project-summary {
+    position: static;
+  }
+}
+
+@media (max-width: 620px) {
+  .hosted-project-form .create-section-grid,
+  .hosted-project-checklist {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hosted-project-form .create-section {
+    padding: 15px;
+  }
+}
