@@ -71,9 +71,9 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_STEP_1_AUTH_REPAIR_DEPLOYED_AWAITING_FRESH_ACCOUNT_WALKTHROUGH
-  implementation_commit: "79423f8c6fe92b7faaa45a07f7f72f62b1b602d4"
-  deployment_candidate: CONSUMED_BY_DEPLOYMENT
+  status: LIVE_STEP_2_PRESET_HUB_UI_REPAIR_AWAITING_FRESH_EXACT_DEPLOYMENT_APPROVAL
+  implementation_commit: "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
+  deployment_candidate: PENDING_FRESH_EXACT_USER_APPROVAL
   deployed_source_commit: "93c575e99d9d4fbe9183596633b77eb6d9eed78f"
   cloudflare_worker_version_id: "faf18fb8-66b2-42a5-ba99-8c2a2e9a33f5"
   deployed_config_sha256: "sha256:34fef4b01af336b84e301a00ef314848b8c843b9de0a8bcf99ea7f70fb2867b8"
@@ -101,9 +101,9 @@ hosted_beta_user_walkthrough:
     - "Neon now has pgcrypto and the exact 49-row migration chain; deployment verification excludes provider-owned pgcrypto extension functions while still requiring an exact application-function allowlist and zero PUBLIC application functions."
     - "Hosted staging now aliases only the hosted API, excludes the fixture public directory, and removes fixture-only AppShell, Library, and Review branches at compile time; its deployable client passes the production fixture quarantine."
     - "Live staging now clears stale VideoForge sessions before Google account selection, validates tenant responses, unmounts private screens during focus/visibility revalidation, and keeps uninvited authenticated identities outside tenant scope. Existing admitted accounts and data remain intact."
-  current_step: SIGN_IN_AND_INVITE_REDEMPTION
+    - "The pending hosted preset-hub repair reuses the approved fixture card, search, media, and details UI; removes raw hashes, IDs, staging jargon, and redundant engineering panels; prefers the real avatar thumbnail; and uses a deliberate style cover when a published style has no references. It is provider-free source only until separately deployed."
+  current_step: AVATAR_CREATION_AND_APPROVAL
   remaining_steps:
-    - SIGN_IN_AND_INVITE_REDEMPTION
     - AVATAR_CREATION_AND_APPROVAL
     - IMAGE_STYLE_CREATION_AND_PUBLISHING
     - PROJECT_CREATION_AND_COST_PREFLIGHT
@@ -114,7 +114,7 @@ hosted_beta_user_walkthrough:
     - ACCOUNT_ISOLATION_DELETION_AND_LOGOUT
   release_boundary: "This is a private hosted-beta deployment only. Production activation, V2-07 through V2-13 live qualification, provider calls, RunPod operations, GPU use, and C1/C2 resealing remain blocked."
   validations:
-    hosted_preset_focused_unit: "PASS_54_OF_54"
+    hosted_preset_focused_unit: "PASS_52_OF_52_UI_AND_SERVER"
     hosted_web_typecheck: PASS
     hosted_changed_file_eslint: PASS
     staging_build: PASS
