@@ -4,7 +4,7 @@ updated_at: "2026-08-30"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_13_successor_proposal_pending_fresh_exact_user_approval
+current_milestone: private_hosted_beta_style_draft_upload_recovery_pending_fresh_exact_deployment_approval
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Failed source 3f41a3c9 was rolled back after its unfinished-preset catalog hit an intentionally ungranted analysis-ledger read. Last-working source de5d7f65 is restored. Provider-free repair 5f56f322 is green and requires fresh exact deployment approval. No style analysis ran, and no RunPod, GPU, production activation, V2-07 through V2-13 provider execution, or resealing is authorized."
+  provider_free_product_action: "Source a066653a is live and authenticated Chrome proves the saved will carter draft is visible with seven reference rows. Repair 9fe7319f makes DRAFT avatar/style recovery verify the existing private-R2 uploads before approval or analysis; a failed verification remains removable with a friendly error. Focused checks are green. The repair requires fresh exact deployment approval. No style analysis ran, and no RunPod, GPU, production activation, V2-07 through V2-13 provider execution, or resealing is authorized."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LAST_WORKING_DEPLOYMENT_RESTORED_STEP_3_RUNTIME_GRANT_REPAIR_AWAITING_APPROVAL
+  status: LIVE_DRAFT_VISIBLE_UPLOAD_RECOVERY_REPAIR_AWAITING_FRESH_EXACT_DEPLOYMENT_APPROVAL
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -86,11 +86,12 @@ hosted_beta_user_walkthrough:
     - "57a45925900d61178a68bf54d226b7fc47bfb1cf"
     - "824d77da405146d4617fbd93fb27d771baa11fb5"
     - "5f56f3226eab13bf59b8b60692596a6ec7781cfc"
-  deployment_candidate: RUNTIME_GRANT_SAFE_DRAFT_CATALOG_REPAIR_GREEN_AWAITING_FRESH_EXACT_APPROVAL
-  deployed_source_commit: "de5d7f65dd861408e5d637a0e7c1c9b12cb648f3"
-  cloudflare_worker_version_id: "9ffecf79-c5b8-4c61-9aed-1c7cf7bae523"
-  deployed_config_sha256: "sha256:c9df5c5fa3b7e513a9a98b93c28de57d17cd4945e47da7f634f5bfe67dd9e08b"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA de5d7f65dd861408e5d637a0e7c1c9b12cb648f3 CAP USD 3"
+    - "9fe7319f0417ef603262bcfbbde0e6b18f2709fc"
+  deployment_candidate: DRAFT_UPLOAD_VERIFICATION_RECOVERY_GREEN_AWAITING_FRESH_EXACT_APPROVAL
+  deployed_source_commit: "a066653af77bb4803a66e96e2c87d73b0f6b8699"
+  cloudflare_worker_version_id: "fd4b4f1d-ff3b-4b51-a706-a43376579bb5"
+  deployed_config_sha256: "sha256:9902d95265805b938b5c234e15d771588e7c08c06a74ed04c7eddcf9b0526736"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA a066653af77bb4803a66e96e2c87d73b0f6b8699 CAP USD 3"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -107,7 +108,7 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_AUTHENTICATED_AVATAR_AND_STYLE_CATALOGS_SIMPLE_HUB_LAYOUT_REAL_512X512_AVATAR_PREVIEW_NO_ACTIVE_BADGE_PAGE_REMAINS_MOUNTED_DURING_REVALIDATION_READABLE_AVATAR_AND_STYLE_INPUTS_REMOVE_ACTIONS_VISIBLE"
+  live_browser_verification: "PASS_AUTHENTICATED_AVATAR_AND_STYLE_CATALOGS_UNFINISHED_WILL_CARTER_VISIBLE_WITH_SEVEN_REFERENCE_ROWS_READY_AVATARS_VISIBLE"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
@@ -129,6 +130,7 @@ hosted_beta_user_walkthrough:
     - "Source 824d77da fixes the hidden-name-reservation trap in both Avatar Hub and Image Styles: every active workspace-owned unfinished preset is shown separately from project-ready presets, safe drafts can continue from persisted state, incomplete/failed/in-progress drafts remain visible with remove/recovery guidance, and duplicate conflicts point back to the Hub. The exact live will carter draft remains intact with seven references. Focused UI/server tests pass 71/71; typecheck, changed-file lint, staging build/quarantine, and diff checks pass. It is not deployed and requires fresh exact source-bound approval."
     - "Approved source 3f41a3c9 deployed as Worker c41811df, but authenticated Chrome found the new catalog queried hosted_style_analysis_runs, which is intentionally absent from the runtime SELECT grants; the Hub failed closed with HTTP 500. Repair 5f56f322 removes that unnecessary cost lookup and adds a regression assertion that the catalog never touches the analysis ledger. Focused tests remain 71/71 with typecheck/lint/diff checks passing. The deployed source remains fail-closed until this repair receives fresh approval and is deployed; no analysis/provider request or spend occurred."
     - "The failed 3f41a3c9 Worker was immediately rolled back to last-working source de5d7f65 / Worker 9ffecf79. Cache-bypassed status and authenticated Chrome confirm the Image Styles Hub is usable again, while the unfinished draft remains hidden under the old behavior. No database, secret, R2, provider, GPU, or spend mutation occurred."
+    - "Approved source a066653a is deployed as Worker fd4b4f1d. Authenticated Chrome confirms the will carter reservation is now visible under Unfinished styles with all seven reference rows, and Avatar Hub remains usable. The rows are not yet storage-verified, so source 9fe7319f adds a recovery action that commits/verifies the saved private-R2 objects before the one user-triggered analysis; verification failure cannot dispatch analysis and gives remove/re-upload guidance. Focused tests pass 72/72 with typecheck, lint, diff check, and staging build green. No provider call or spend occurred."
   current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
     - IMAGE_STYLE_CREATION_AND_PUBLISHING
@@ -168,10 +170,15 @@ hosted_beta_user_walkthrough:
     hosted_unfinished_preset_hubs_typecheck: PASS
     hosted_unfinished_preset_hubs_changed_file_eslint: PASS
     hosted_unfinished_preset_hubs_staging_build: PASS_FIXTURE_QUARANTINE
-    hosted_unfinished_preset_hubs_deployment: PENDING_FRESH_EXACT_APPROVAL
+    hosted_unfinished_preset_hubs_deployment: "PASS_COMMIT_A066653A_WORKER_FD4B4F1D_DRAFT_VISIBLE"
     hosted_unfinished_preset_hubs_first_deploy: "FAIL_CLOSED_HTTP_500_RUNTIME_ROLE_DENIED_HOSTED_STYLE_ANALYSIS_RUNS"
     hosted_unfinished_preset_hubs_runtime_grant_repair: "PASS_NO_ANALYSIS_LEDGER_QUERY_AWAITING_DEPLOYMENT"
     hosted_unfinished_preset_hubs_rollback: "PASS_DE5D7F65_WORKER_9FFECF79_HUB_USABLE"
+    hosted_unfinished_preset_upload_recovery: "PASS_72_OF_72_COMMIT_BEFORE_ANALYZE"
+    hosted_unfinished_preset_upload_recovery_typecheck: PASS
+    hosted_unfinished_preset_upload_recovery_eslint: PASS
+    hosted_unfinished_preset_upload_recovery_staging_build: PASS_FIXTURE_QUARANTINE
+    hosted_unfinished_preset_upload_recovery_deployment: PENDING_FRESH_EXACT_APPROVAL
     hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
     hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
     hosted_preset_archive_live_migration: "PASS_51_OF_51_FORCE_RLS_EXACT_GRANTS"
@@ -4723,18 +4730,18 @@ provider_authority: *v2_07_provider_authority_attempt64
 
 recommended_next_task:
   task_id: VF-10-13
-  checkpoint: V2-13
-  milestone: v2_13_successor_proposal_pending_fresh_exact_user_approval
-  status: full_live_successor_sealed_pending_fresh_exact_user_approval
+  checkpoint: V2-06
+  milestone: private_hosted_beta_style_draft_upload_recovery_pending_fresh_exact_deployment_approval
+  status: draft_upload_recovery_green_pending_fresh_exact_deployment_approval
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: no_current_full_live_authority_consumed_credential_authorities_non_reusable
+  authorization_status: no_current_source_bound_deployment_authority
   task_stage: provider_free_product_execution
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Obtain fresh exact approval for v5 proposal sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444 after its independent proposal-record audit. Authority v2-13-full-live-20260830-021108z-d3bfbb40 and failed SoulX run 33287914248 are terminal and cannot be retried or redispatched; Mage remains readback-only."
+  goal: "Obtain fresh exact approval for the clean context-bound private hosted-beta source containing repair 9fe7319f, deploy it, and use authenticated Chrome to prove the will carter draft offers Continue. Do not click the analysis action; the user triggers the single provider call after upload verification. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
