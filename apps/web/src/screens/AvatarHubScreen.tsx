@@ -173,7 +173,7 @@ export function AvatarHubScreen() {
                   </div>
                   <DetailsSheet
                     title={avatar.name}
-                    description={`Version ${avatar.version} · ${avatar.compatibility === "UNTESTED" ? "fixture-ready" : avatar.compatibility.toLowerCase()}`}
+                    description={`Version ${avatar.version}`}
                     trigger={
                       <button className="entity-details-trigger" type="button">
                         <strong>Details</strong>
@@ -200,44 +200,28 @@ export function AvatarHubScreen() {
                     {fixtureMode ? (
                       <div className="detail-section avatar-compatibility-detail" role="status">
                         <div className="detail-section-heading">
-                          <strong>Live provider compatibility</strong>
-                          <Badge tone="warning">Unavailable</Badge>
+                          <strong>Optional live test</strong>
+                          <Badge tone="neutral">Not required</Badge>
                         </div>
                         <p>
                           {avatar.compatibility === "UNTESTED"
-                            ? "This profile is fixture-ready, but live compatibility is untested because no provider authority is active. It is safe to select for the $0 walkthrough; no provider call or spend occurred."
-                            : `The ${avatar.compatibility.toLowerCase()} state is fixture evidence only. Live provider compatibility is unavailable without authority, and no provider call or spend occurred.`}
+                            ? "Checks this portrait with the production avatar model before a paid video. It is skipped in this $0 walkthrough, so no model, GPU, provider call, or spend occurs."
+                            : `Recorded status: ${avatarCompatibilityLabel(avatar.compatibility)}. This $0 walkthrough does not run or repeat live model checks.`}
                         </p>
                       </div>
                     ) : null}
                     <div className="detail-facts">
                       <span>
-                        <small>Source</small>
-                        <strong>{avatar.dimensions}</strong>
+                        <small>Ready to use</small>
+                        <strong>
+                          {avatar.status === "READY" ? "Ready" : humanize(avatar.status)}
+                        </strong>
                       </span>
                       <span>
-                        <small>Compatibility</small>
-                        <strong>{avatar.compatibility}</strong>
-                      </span>
-                      <span>
-                        <small>Rights</small>
-                        <strong>{avatar.rightsStatus ?? "ATTESTED"}</strong>
-                      </span>
-                      <span>
-                        <small>Preparation</small>
-                        <strong>{avatar.preparationProfile ?? "avatar-source-prep-v1"}</strong>
-                      </span>
-                      <span>
-                        <small>Validation</small>
-                        <strong>{avatar.validationProfile ?? "avatar-source-validation-v1"}</strong>
-                      </span>
-                      <span>
-                        <small>Version ID</small>
-                        <strong>{avatar.versionId}</strong>
-                      </span>
-                      <span className="detail-fact-wide">
-                        <small>Profile hash</small>
-                        <strong>{avatar.profileHash}</strong>
+                        <small>Rights & consent</small>
+                        <strong>
+                          {avatar.rightsStatus === "ATTESTED" ? "Attested" : avatar.rightsStatus}
+                        </strong>
                       </span>
                     </div>
                   </DetailsSheet>

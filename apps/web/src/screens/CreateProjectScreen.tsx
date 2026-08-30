@@ -444,7 +444,9 @@ function FixtureCreateProjectScreen() {
                       meta:
                         avatar.compatibility === "PASSED"
                           ? undefined
-                          : avatarCompatibilityLabel(avatar.compatibility),
+                          : providerMode === "fixture" && avatar.compatibility === "UNTESTED"
+                            ? "Fixture ready"
+                            : avatarCompatibilityLabel(avatar.compatibility),
                       name: avatar.name,
                     }))}
                     selectedId={draft.avatarProfileVersionId}

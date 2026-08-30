@@ -586,8 +586,15 @@ test("Avatar Hub shows the preset image and keeps technical detail collapsed", a
   await expectFocusWithin(detailsSheet);
   await page.keyboard.press("Tab");
   await expectFocusWithin(detailsSheet);
-  await expect(detailsSheet.getByText("Profile hash", { exact: true })).toBeVisible();
-  await expect(detailsSheet.getByText("avatar_profile_version_fixture_001")).toBeVisible();
+  await expect(detailsSheet.getByText("Optional live test", { exact: true })).toBeVisible();
+  await expect(detailsSheet.getByText("Not required", { exact: true })).toBeVisible();
+  await expect(detailsSheet.getByText("Rights & consent", { exact: true })).toBeVisible();
+  await expect(detailsSheet.getByText("Ready to use", { exact: true })).toBeVisible();
+  await expect(detailsSheet.getByText("Profile hash", { exact: true })).toHaveCount(0);
+  await expect(detailsSheet.getByText("Version ID", { exact: true })).toHaveCount(0);
+  await expect(detailsSheet.getByText("Source", { exact: true })).toHaveCount(0);
+  await expect(detailsSheet.getByText("Preparation", { exact: true })).toHaveCount(0);
+  await expect(detailsSheet.getByText("Validation", { exact: true })).toHaveCount(0);
   await expectImagesLoaded(detailsSheet.getByRole("img", { name: /avatar crop$/ }));
 
   await page.keyboard.press("Escape");
