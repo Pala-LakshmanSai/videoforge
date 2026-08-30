@@ -377,16 +377,16 @@ function validateLaunchInputMetadata({
     JSON.stringify([...SOURCE_INPUT_NAMES].sort())
   )
     fail("INPUT_SOURCE_SET");
-  for (const [name, path] of Object.entries(controlPaths))
-    exactFile(
-      absoluteInputPath(path, `INPUT_PATH_${name.toUpperCase()}`),
-      `INPUT_${name.toUpperCase()}`,
-    );
-  for (const [name, path] of Object.entries(sourceFiles ?? {}))
-    exactFile(
-      absoluteInputPath(path, `SOURCE_PATH_${name.toUpperCase()}`),
-      `SOURCE_${name.toUpperCase()}`,
-    );
+  for (const [name, path] of Object.entries(controlPaths)) {
+    const absolute = absoluteInputPath(path, `INPUT_PATH_${name.toUpperCase()}`);
+    rejectArchivePath(absolute, "INPUT_ARCHIVE_PATH");
+    exactFile(absolute, `INPUT_${name.toUpperCase()}`);
+  }
+  for (const [name, path] of Object.entries(sourceFiles ?? {})) {
+    const absolute = absoluteInputPath(path, `SOURCE_PATH_${name.toUpperCase()}`);
+    rejectArchivePath(absolute, "INPUT_ARCHIVE_PATH");
+    exactFile(absolute, `SOURCE_${name.toUpperCase()}`);
+  }
   return Object.freeze({ controlPaths: Object.freeze(controlPaths), sourceFiles });
 }
 

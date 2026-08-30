@@ -97,6 +97,43 @@ test("missing RunPod input fails metadata preflight before any attempt directory
   }
 });
 
+test("archived RunPod sources are rejected before metadata acceptance", () => {
+  const fixture = makeFixture();
+  try {
+    const archive = join(fixture.directory, "history");
+    mkdirSync(archive, { mode: 0o700 });
+    const archivedRunpod = join(archive, "RUNPOD_API_KEY");
+    writeFileSync(archivedRunpod, "archived-secret", { mode: 0o600, flag: "wx" });
+    const sourceFiles = { ...fixture.files.sourceFiles, runpodApiKey: archivedRunpod };
+    assert.throws(
+      () => validateLaunchInputMetadata({ ...controlArgs(fixture.files), sourceFiles }),
+      /V2_13_FULL_LIVE_LAUNCH_INPUT_ARCHIVE_PATH/u,
+    );
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("archived control inputs are rejected before metadata acceptance", () => {
+  const fixture = makeFixture();
+  try {
+    const archive = join(fixture.directory, "archive");
+    mkdirSync(archive, { mode: 0o700 });
+    const archivedProposal = join(archive, "proposal.json");
+    writeFileSync(archivedProposal, "archived-proposal", { mode: 0o600, flag: "wx" });
+    assert.throws(
+      () =>
+        validateLaunchInputMetadata({
+          ...controlArgs(fixture.files),
+          proposalFile: archivedProposal,
+        }),
+      /V2_13_FULL_LIVE_LAUNCH_INPUT_ARCHIVE_PATH/u,
+    );
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
 test("pre-existing attempt/output state is rejected as stale and cannot be reused", () => {
   const fixture = makeFixture();
   try {
