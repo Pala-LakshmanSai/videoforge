@@ -2588,7 +2588,12 @@ async function catalog(
       const styles = await transaction.query(
         `SELECT style.id AS style_id, version.id AS version_id, style.name,
                 version.version_number, version.state, style.status,
-                version.style_profile_hash, style.scope_kind
+                version.style_profile_hash, style.scope_kind,
+                (SELECT count(*)
+                   FROM image_style_references AS reference
+                  WHERE reference.account_id = version.account_id
+                    AND reference.workspace_id = version.workspace_id
+                    AND reference.version_id = version.id) AS reference_count
            FROM image_styles AS style
            JOIN image_style_versions AS version
              ON version.account_id = style.account_id
@@ -2620,9 +2625,12 @@ async function catalog(
     }));
     const styleRows = (data.styles as Record<string, unknown>[]).map((row) => ({
       ...row,
-      cover_url: `/api/v2/hosted/styles/${rowString(row, "version_id")}/preview`,
+      cover_url:
+        Number(row.reference_count ?? 0) > 0
+          ? `/api/v2/hosted/styles/${rowString(row, "version_id")}/preview`
+          : null,
       profile_hash: row.style_profile_hash ?? null,
-      reference_count: 0,
+      reference_count: Number(row.reference_count ?? 0),
     }));
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
     return response({
@@ -2669,13 +2677,14 @@ async function hostedPresetPreview(
                JOIN avatar_profile_assets AS link
                  ON link.account_id = version.account_id
                 AND link.workspace_id = version.workspace_id
-                AND link.version_id = version.id AND link.role = 'ORIGINAL'
+                AND link.version_id = version.id AND link.role IN ('THUMBNAIL','ORIGINAL')
                JOIN assets AS asset
                  ON asset.account_id = link.account_id
                 AND asset.workspace_id = link.workspace_id AND asset.id = link.asset_id
               WHERE version.id = $3 AND version.state = 'READY'
                 AND ((version.account_id = $1 AND version.workspace_id = $2)
                      OR version.scope_kind = 'SYSTEM')
+              ORDER BY CASE link.role WHEN 'THUMBNAIL' THEN 0 ELSE 1 END
               LIMIT 1`
           : `SELECT asset.object_key, asset.content_type
                FROM image_style_versions AS version

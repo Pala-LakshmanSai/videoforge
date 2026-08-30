@@ -19,6 +19,7 @@ import { PageHeader } from "../components/PageHeader";
 import {
   Badge,
   Button,
+  DetailsSheet,
   Disclosure,
   EmptyState,
   Metric,
@@ -1343,6 +1344,7 @@ type HostedPresetHubKind = "avatars" | "styles";
 
 /** The invited release exposes only immutable presets that are already ready. */
 function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
+  const [search, setSearch] = useState("");
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
     queryFn: readHostedCatalog,
@@ -1353,13 +1355,16 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const itemLabel = isAvatar ? "avatar" : "style";
   const Icon = isAvatar ? UsersRound : Images;
   const betaCreation = isHostedBetaMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE);
+  const visibleItems = items.filter((item) =>
+    item.name.toLowerCase().includes(search.trim().toLowerCase()),
+  );
 
   if (catalog.isPending) {
     return (
-      <Panel eyebrow="Private hosted staging" heading={`Loading ${title}`}>
+      <Panel heading={`Loading ${title}`}>
         <div className="empty-state" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
-          <p>Loading tenant-owned {itemLabel}s…</p>
+          <p>Loading your {itemLabel}s…</p>
         </div>
       </Panel>
     );
@@ -1369,7 +1374,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
       <EmptyState
         icon={<AlertTriangle />}
         title={`${title} unavailable`}
-        body="The hosted tenant catalog could not be loaded. No fixture catalog was substituted."
+        body={`Your ${itemLabel} library could not be loaded.`}
         action={
           <Button variant="secondary" onClick={() => void catalog.refetch()}>
             Retry load
@@ -1382,9 +1387,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   return (
     <>
       <PageHeader
-        eyebrow="Private hosted staging"
         title={title}
-        description={`Only ${itemLabel}s owned by this account can be used for generation.`}
         actions={
           betaCreation ? (
             <Link className="button button-primary" to={isAvatar ? "/avatars/new" : "/styles/new"}>
@@ -1394,72 +1397,150 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
           ) : undefined
         }
       />
-      <div className="notice" role="status">
-        {betaCreation ? (
-          <>
-            <strong>Private beta preset creation is enabled.</strong> Files use the hosted Neon and
-            private R2 path; provider and GPU calls remain disabled.
-          </>
-        ) : (
-          <>
-            <strong>Built-ins and already-ready tenant presets only.</strong> New custom {itemLabel}
-            creation is not qualified in this invited release.
-          </>
-        )}
+      <div className="hub-toolbar">
+        <label className="search-field">
+          <span className="sr-only">Search {isAvatar ? "avatars" : "image styles"}</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={isAvatar ? "Search avatars" : "Search styles"}
+          />
+        </label>
       </div>
-      <Panel eyebrow="Tenant-private catalog" heading={`Ready ${itemLabel}s`}>
+      <Panel className="hub-panel">
         {items.length === 0 ? (
           <EmptyState
             icon={<Icon />}
             title={`No ready ${itemLabel}s yet`}
-            body={`This account has no ready ${itemLabel} yet. An activation owner must provision an immutable built-in or already-validated tenant preset before generation.`}
+            body={`Create your first ${itemLabel} before starting a project.`}
             action={
-              <Link className="button button-secondary" to="/settings">
-                Open Settings
-              </Link>
+              betaCreation ? (
+                <Link
+                  className="button button-primary"
+                  to={isAvatar ? "/avatars/new" : "/styles/new"}
+                >
+                  Create your first {itemLabel}
+                </Link>
+              ) : undefined
             }
           />
+        ) : visibleItems.length === 0 ? (
+          <EmptyState
+            icon={<Icon />}
+            title={`No matching ${itemLabel}s`}
+            body="Clear or change the search to see your library."
+          />
         ) : (
-          <div className="entity-list">
-            {items.map((item) => (
-              <article className="entity-row" key={item.version_id}>
-                {isAvatar && "thumbnail_url" in item && item.thumbnail_url ? (
-                  <div className="hosted-preset-thumb">
-                    <PresetImage src={item.thumbnail_url} alt={`${item.name} portrait`} />
+          <div className={`card-grid ${isAvatar ? "avatar-card-grid" : "style-card-grid"}`}>
+            {visibleItems.map((item) => {
+              const state = presetState(item);
+              const healthy = isAvatar ? state === "READY" : state === "PUBLISHED";
+              const imageUrl =
+                isAvatar && "thumbnail_url" in item
+                  ? item.thumbnail_url
+                  : !isAvatar && "cover_url" in item
+                    ? item.cover_url
+                    : null;
+              const referenceCount =
+                !isAvatar && "reference_count" in item ? (item.reference_count ?? 0) : 0;
+              return (
+                <article
+                  className={`entity-card ${isAvatar ? "avatar-card" : "style-card"}`}
+                  key={item.version_id}
+                >
+                  <div className={isAvatar ? "avatar-card-media" : "style-card-media"}>
+                    {imageUrl ? (
+                      <PresetImage
+                        src={imageUrl}
+                        alt={`${item.name} ${isAvatar ? "presenter" : "cover"}`}
+                      />
+                    ) : (
+                      <span
+                        className={`preset-image-fallback ${isAvatar ? "hosted-avatar-placeholder" : "hosted-style-placeholder"}`}
+                        role="img"
+                        aria-label={`${item.name} ${isAvatar ? "presenter" : "cover"} unavailable`}
+                      >
+                        <Icon aria-hidden="true" />
+                      </span>
+                    )}
+                    {!healthy ? (
+                      <Badge tone={statusTone(state)}>{normalizedStatus(state)}</Badge>
+                    ) : null}
                   </div>
-                ) : !isAvatar && "cover_url" in item && item.cover_url ? (
-                  <div className="hosted-preset-thumb">
-                    <PresetImage src={item.cover_url} alt={`${item.name} cover`} />
+                  <div className="entity-card-body">
+                    <div className="entity-title-row">
+                      <h3>{item.name}</h3>
+                    </div>
                   </div>
-                ) : null}
-                <div>
-                  <strong>{item.name}</strong>
-                  <small>
-                    Tenant-owned · version {item.version_number} · {item.version_id}
-                  </small>
-                  {item.profile_hash ? <small>Profile hash · {item.profile_hash}</small> : null}
-                </div>
-                <div className="cluster">
-                  <Badge tone={statusTone(presetState(item))}>
-                    {normalizedStatus(presetState(item))}
-                  </Badge>
-                </div>
-              </article>
-            ))}
+                  <DetailsSheet
+                    title={item.name}
+                    description={
+                      isAvatar
+                        ? "Ready to use"
+                        : referenceCount > 0
+                          ? `Published · ${referenceCount} references`
+                          : "Published"
+                    }
+                    trigger={
+                      <button className="entity-details-trigger" type="button">
+                        <strong>
+                          {isAvatar || referenceCount === 0
+                            ? "Details"
+                            : `References (${referenceCount})`}
+                        </strong>
+                        <ArrowRight size={18} aria-hidden="true" />
+                      </button>
+                    }
+                  >
+                    {isAvatar ? (
+                      <>
+                        {imageUrl ? (
+                          <div className="avatar-crop-grid">
+                            <figure>
+                              <PresetImage src={imageUrl} alt={`${item.name} full avatar crop`} />
+                              <figcaption>Full frame</figcaption>
+                            </figure>
+                            <figure className="split-crop">
+                              <PresetImage src={imageUrl} alt={`${item.name} split avatar crop`} />
+                              <figcaption>Split crop</figcaption>
+                            </figure>
+                          </div>
+                        ) : null}
+                        <div className="detail-facts">
+                          <span>
+                            <small>Ready to use</small>
+                            <strong>{healthy ? "Ready" : normalizedStatus(state)}</strong>
+                          </span>
+                          <span>
+                            <small>Rights &amp; consent</small>
+                            <strong>
+                              {"rights_status" in item && item.rights_status === "ATTESTED"
+                                ? "Attested"
+                                : "Included"}
+                            </strong>
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="detail-facts">
+                        <span>
+                          <small>Status</small>
+                          <strong>{healthy ? "Published" : normalizedStatus(state)}</strong>
+                        </span>
+                        <span>
+                          <small>Reference images</small>
+                          <strong>{referenceCount}</strong>
+                        </span>
+                      </div>
+                    )}
+                  </DetailsSheet>
+                </article>
+              );
+            })}
           </div>
         )}
       </Panel>
-      {items.length > 0 ? (
-        <Panel eyebrow="Next step" heading="Use this catalog in a project">
-          <p>
-            Select the exact {itemLabel} version on Create Project. Personal-worker compute stays at
-            $0 provider CPU cost; GPU transport remains disabled until qualification.
-          </p>
-          <Link className="button button-primary" to="/projects/new">
-            Create Project
-          </Link>
-        </Panel>
-      ) : null}
     </>
   );
 }

@@ -262,8 +262,30 @@ describe("hosted product journey", () => {
         throw new Error(`Unexpected hosted request: ${String(input)}`);
       }
       return Response.json({
-        avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
-        styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+        avatars: [
+          {
+            profile_id: "p1",
+            version_id: "a1",
+            name: "Owner",
+            version_number: 1,
+            state: "READY",
+            thumbnail_url: "/api/v2/hosted/avatars/a1/preview",
+            profile_hash: "sha256:private-avatar-hash",
+            rights_status: "ATTESTED",
+          },
+        ],
+        styles: [
+          {
+            style_id: "s1",
+            version_id: "sv1",
+            name: "Documentary",
+            version_number: 1,
+            state: "PUBLISHED",
+            cover_url: "/api/v2/hosted/styles/sv1/preview",
+            profile_hash: "sha256:private-style-hash",
+            reference_count: 3,
+          },
+        ],
         media_worker_state: "ONLINE",
         gpu_transport: "DISABLED_UNQUALIFIED",
         gpu_readiness: gpuReadiness,
@@ -279,6 +301,22 @@ describe("hosted product journey", () => {
 
     expect(await screen.findByText("Owner")).toBeInTheDocument();
     expect(await screen.findByText("Documentary")).toBeInTheDocument();
+    expect(screen.getByAltText("Owner presenter")).toHaveAttribute(
+      "src",
+      "/api/v2/hosted/avatars/a1/preview",
+    );
+    expect(screen.getByAltText("Documentary cover")).toHaveAttribute(
+      "src",
+      "/api/v2/hosted/styles/sv1/preview",
+    );
+    expect(screen.getByRole("button", { name: /Details/u })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /References \(3\)/u })).toBeInTheDocument();
+    expect(screen.getAllByRole("searchbox")).toHaveLength(2);
+    expect(screen.queryByText(/Private hosted staging/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tenant-private catalog/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Use this catalog in a project/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sha256:private/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/a1|sv1/u)).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(
       fetchMock.mock.calls.every(([input]) =>
@@ -303,8 +341,44 @@ describe("hosted product journey", () => {
     renderHosted(<HostedAvatarHubScreen />);
 
     expect(await screen.findByText("No ready avatars yet")).toBeInTheDocument();
-    expect(screen.getByText(/activation owner must provision/u)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open Settings" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Create your first avatar before starting a project/u),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Create your first avatar" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses a deliberate cover and plain Details action when a published style has no references", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          avatars: [],
+          styles: [
+            {
+              style_id: "s1",
+              version_id: "sv1",
+              name: "Documentary",
+              version_number: 1,
+              state: "PUBLISHED",
+              cover_url: null,
+              reference_count: 0,
+            },
+          ],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        }),
+      ),
+    );
+    renderHosted(<HostedStylesHubScreen />);
+
+    expect(await screen.findByRole("img", { name: "Documentary cover unavailable" })).toHaveClass(
+      "hosted-style-placeholder",
+    );
+    expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument();
+    expect(screen.queryByText(/References \(0\)/u)).not.toBeInTheDocument();
   });
 
   it("does not expose fixture-only preset mutation screens in hosted staging", () => {
