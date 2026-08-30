@@ -4,13 +4,13 @@
 
 ### New-chat launch point — 2026-08-29
 
-- Fresh full-live successor proposal `sha256:5fadf002ec22ea070725564efa851f8020ed59ae3cd1bbd392d312d8d1cd7e9a`
+- Fresh full-live successor proposal `sha256:5cc634155dfab9966d4e2fc9488f81a12c95a5cf35579873e2066be13858ea3c`
   is sealed against execution-control evidence commit
-  `e882af586446e81f6d85f00ac6bf28b582e8d823` and immutable release source
+  `a2b58c6c1e8c3c0e70fc7188904b425f505199cf` and immutable release source
   `15af5e20ce3c80eb61d5d1e807a87e8840ed9685`. The source-readiness audit binds application source
-  commit `9c6923c1fc8cb3e21ab8a16dac6866a9534620c1`, audit
-  `sha256:d165750b4eb622da71df17e75377939eb5b8cb3059c0b5ed79c222b87195fa8e`, and materialization
-  facts `sha256:479f7c5f15e93d7a0c07fcc2e3ee1f5d41c96199fc93a1b892c7c7e18f078588`. The V4 control
+  commit `639fb78319f18c02eea9ea36e0988099be0cfc4c`, audit
+  `sha256:fbae7441432a9e572bac4fbfb92fb43fc6dda2272765bd8002cf1e38eecd4311`, and materialization
+  facts `sha256:9d83875ee17bf45d33c520f904e7f124ce7ff0581e456d52bab6de4e32917f18`. The V4 control
   commit binds the 49-row runtime migration manifest and all 22 exact execution-control components
   while preserving the immutable 45-row V3 payload. It preserves the exact closed 26-operation graph
   and all caps, performs predecessor-bound Mage readback with no redispatch, and binds repaired GitHub
@@ -71,9 +71,9 @@
   `protected-inputs/v2-13/history/v2-13-full-live-20260828-133545z-14116dc6/full-live-state.json`.
   The current reseal binds materialization facts at
   `project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json` with
-  `sha256:479f7c5f15e93d7a0c07fcc2e3ee1f5d41c96199fc93a1b892c7c7e18f078588` and UUID
+  `sha256:9d83875ee17bf45d33c520f904e7f124ce7ff0581e456d52bab6de4e32917f18` and UUID
   `a03edc8f-817f-4579-8bce-28b3447ce30f`, plus protected static descriptor self-hash
-  `sha256:cbe9265d1c69f2ad1d75a60fda10b1f0c308f0cac0dba8db44451053389b2877`.
+  `sha256:7e0d8492534eb5962feb9cd8b093296399da011831761dff556023c8085194c7`.
 - Credential bootstrap and the one corrective rotation/normalization are complete. Preserve the exact
   protected files and secret-free receipt `sha256:35caf042a18f6f4b42f264d96e52926856bcc387890c4925f512f2bf2c6c1eab`.
   Both credential authorities are consumed and non-reusable; no further credential or R2 mutation is
