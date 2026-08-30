@@ -76,10 +76,12 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<HostedStatus | null>(null);
   const refreshRequest = useRef(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (preserveAdmittedView = false) => {
     const requestId = ++refreshRequest.current;
-    setLoading(true);
-    setAccess(null);
+    if (!preserveAdmittedView) {
+      setLoading(true);
+      setAccess(null);
+    }
     try {
       const nextAccess = await tenantAccess();
       if (requestId === refreshRequest.current) setAccess(nextAccess);
@@ -89,7 +91,7 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
         setMessage("Hosted staging is unavailable. No local fallback was used.");
       }
     } finally {
-      if (requestId === refreshRequest.current) setLoading(false);
+      if (requestId === refreshRequest.current && !preserveAdmittedView) setLoading(false);
     }
   }, []);
 
@@ -106,7 +108,9 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const revalidate = () => {
-      if (access?.state === "ADMITTED") void refresh();
+      if (document.visibilityState === "visible" && access?.state === "ADMITTED") {
+        void refresh(true);
+      }
     };
     window.addEventListener("focus", revalidate);
     document.addEventListener("visibilitychange", revalidate);

@@ -183,6 +183,51 @@ describe("hosted staging access boundary", () => {
     expect(screen.queryByLabelText("Invitation code")).not.toBeInTheDocument();
   });
 
+  it("keeps the current product page visible while focus revalidation is pending", async () => {
+    let tenantChecks = 0;
+    let finishRevalidation: ((response: Response) => void) | undefined;
+    const pendingRevalidation = new Promise<Response>((resolve) => {
+      finishRevalidation = resolve;
+    });
+    const admittedTenant = {
+      schema_version: "videoforge-hosted-tenant/v1",
+      account_id: "11111111-1111-4111-8111-111111111111",
+      workspace_id: "22222222-2222-4222-8222-222222222222",
+      workspace_name: "Private workspace",
+      user: {
+        id: "33333333-3333-4333-8333-333333333333",
+        email: "owner@example.test",
+        name: "Owner",
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input) === "/api/v2/tenant") {
+          tenantChecks += 1;
+          return tenantChecks === 1 ? Response.json(admittedTenant) : pendingRevalidation;
+        }
+        return Response.json({ authentication: ["GOOGLE"] });
+      }),
+    );
+
+    render(
+      <HostedStagingApp>
+        <div>Private product data</div>
+      </HostedStagingApp>,
+    );
+
+    expect(await screen.findByText("Private product data")).toBeInTheDocument();
+    fireEvent.focus(window);
+    await waitFor(() => expect(tenantChecks).toBe(2));
+
+    expect(screen.getByText("Private product data")).toBeInTheDocument();
+    expect(screen.queryByText("Checking private hosted access…")).not.toBeInTheDocument();
+
+    finishRevalidation?.(Response.json(admittedTenant));
+    await waitFor(() => expect(screen.getByText("Private product data")).toBeInTheDocument());
+  });
+
   it("unmounts private product children when focus revalidation returns 403", async () => {
     let tenantChecks = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
