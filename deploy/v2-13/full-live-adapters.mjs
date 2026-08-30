@@ -177,7 +177,7 @@ const BRIDGE_LOADER_SOURCE_SHA256 =
   "sha256:0b1c5b86192772fe9257710e739959cee5947c11ae1f93b61abfaa9b80c6def1";
 const BRIDGE_TRANSPORT_PATH = "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts";
 const BRIDGE_CLI_SOURCE_SHA256 =
-  "sha256:63a93988fc68346d6da7167f24c8f7adf3238ea47e98114396625e5d7a6742af";
+  "sha256:9298c774d939dcd9a53f565b08f673c27fff7576360a3c69eea00dcf1473b3c0";
 const PREQUALIFICATION_MIGRATION_MANIFEST_PATH = "packages/control-plane/migrations/manifest.json";
 const PREQUALIFICATION_OPERATOR_GRANTS_PATH = "deploy/v2-13/neon-full-live-operator-grants.sql";
 const PREQUALIFICATION_MIGRATION_MANIFEST_SHA256 = sha256(
