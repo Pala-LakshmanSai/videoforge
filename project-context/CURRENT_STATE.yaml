@@ -4,7 +4,7 @@ updated_at: "2026-08-30"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: private_hosted_beta_style_reference_reselection_repair_pending_exact_deployment_approval
+current_milestone: private_hosted_beta_style_reference_reselection_live_awaiting_user_reupload
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "The user triggered verification on live source 54cc211a; the seven old database rows had no verifiable private-R2 objects, so commit failed before Gemini and no provider spend occurred. Repair 9533cc04 keeps will carter, routes Continue to a clear 3–8 image reselection flow, atomically abandons only the failed version, creates a replacement DRAFT under the same style parent/name, uploads and commits it, then leaves analysis as a separate click. Focused checks are green and fresh exact deployment approval is required. No RunPod, GPU, production activation, V2-07 through V2-13 provider execution, or resealing is authorized."
+  provider_free_product_action: "Approved source 6098ffa4 is live as Worker 3da5b371. It keeps will carter, routes Continue to a clear 3–8 image reselection flow, atomically abandons only the failed version, creates an idempotent replacement DRAFT under the same style parent/name, uploads and commits it, then leaves analysis as a separate click. Cache-bypassed status reports the exact commit and DISABLED_UNQUALIFIED. Chrome control disconnected before authenticated UI readback, so the next user action is one refresh and reference reselection. No Gemini call or provider spend occurred. No RunPod, GPU, production activation, V2-07 through V2-13 provider execution, or resealing is authorized."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_VERIFICATION_FAILED_SAFE_RESELECTION_REPAIR_AWAITING_EXACT_APPROVAL
+  status: LIVE_RESELECTION_REPAIR_AWAITING_USER_REUPLOAD
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -87,11 +87,11 @@ hosted_beta_user_walkthrough:
     - "824d77da405146d4617fbd93fb27d771baa11fb5"
     - "5f56f3226eab13bf59b8b60692596a6ec7781cfc"
     - "9fe7319f0417ef603262bcfbbde0e6b18f2709fc"
-  deployment_candidate: STYLE_REFERENCE_RESELECTION_REPAIR_GREEN_AWAITING_FRESH_EXACT_APPROVAL
-  deployed_source_commit: "54cc211a9c046dacfd1a61db34e0a13ecd183f57"
-  cloudflare_worker_version_id: "c381ba93-cdce-495d-a771-0a50d0999ce5"
-  deployed_config_sha256: "sha256:7cfcab88f6d11389cddce270b4ab242a645d7ff55b3d00ddc0933e4cd625f743"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 54cc211a9c046dacfd1a61db34e0a13ecd183f57 CAP USD 3"
+  deployment_candidate: DEPLOYED_STYLE_REFERENCE_RESELECTION_REPAIR
+  deployed_source_commit: "6098ffa4f3a98ba959d134ae9af154b364e95bca"
+  cloudflare_worker_version_id: "3da5b371-77a4-4f15-b14c-d1f9f37955bd"
+  deployed_config_sha256: "sha256:199e471d232aed95c3c00470271df579326753c3bc9fc4a60f04fd34e55dbf2e"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 6098ffa4f3a98ba959d134ae9af154b364e95bca CAP USD 3"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -133,6 +133,7 @@ hosted_beta_user_walkthrough:
     - "Approved source a066653a is deployed as Worker fd4b4f1d. Authenticated Chrome confirms the will carter reservation is now visible under Unfinished styles with all seven reference rows, and Avatar Hub remains usable. The rows are not yet storage-verified, so source 9fe7319f adds a recovery action that commits/verifies the saved private-R2 objects before the one user-triggered analysis; verification failure cannot dispatch analysis and gives remove/re-upload guidance. Focused tests pass 72/72 with typecheck, lint, diff check, and staging build green. No provider call or spend occurred."
     - "Approved source 54cc211a is deployed as Worker c381ba93 with config sha256:7cfcab88. Cache-bypassed status reports the exact commit and GPU transport DISABLED_UNQUALIFIED. Authenticated Chrome confirms will carter is visible with seven references, Continue resumes step 3, and Verify uploads and analyze once is present. The button was not clicked, so no Gemini request or provider spend occurred."
     - "The user's verification click proved the seven legacy reference rows have no matching verifiable private-R2 objects; the commit stopped before Gemini, so no provider call or spend occurred. Repair 9533cc04 preserves the style name and history, presents an in-draft 3–8 image reselection flow, atomically abandons only the failed version, creates a replacement DRAFT under the same tenant-owned parent, supports idempotent upload retry, commits the replacement, and keeps analysis as a separate user click. Focused UI/server tests pass 76/76 with typecheck, lint, staging build/quarantine, deployment validation, and diff checks green."
+    - "Approved source 6098ffa4 is deployed as Worker 3da5b371 with config sha256:199e471d. Cache-bypassed status reports the exact source and DISABLED_UNQUALIFIED. No database migration, secret mutation, Gemini request, GPU work, or provider spend occurred. Chrome control disconnected before authenticated UI readback; the user must refresh the existing style route once to load the new reselection UI."
   current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
     - IMAGE_STYLE_CREATION_AND_PUBLISHING
@@ -187,7 +188,8 @@ hosted_beta_user_walkthrough:
     hosted_style_reference_reselection_eslint: PASS
     hosted_style_reference_reselection_staging_build: PASS_FIXTURE_QUARANTINE
     hosted_style_reference_reselection_deployment_validation: PASS
-    hosted_style_reference_reselection_deployment: PENDING_FRESH_EXACT_APPROVAL
+    hosted_style_reference_reselection_deployment: "PASS_COMMIT_6098FFA4_WORKER_3DA5B371"
+    hosted_style_reference_reselection_live_chrome: PENDING_USER_REFRESH_CHROME_CONTROL_DISCONNECTED
     hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
     hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
     hosted_preset_archive_live_migration: "PASS_51_OF_51_FORCE_RLS_EXACT_GRANTS"
@@ -4740,17 +4742,17 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_style_reference_reselection_repair_pending_exact_deployment_approval
-  status: reselection_repair_green_pending_fresh_exact_deployment_approval
+  milestone: private_hosted_beta_style_reference_reselection_live_awaiting_user_reupload
+  status: live_reselection_repair_awaiting_user_reupload
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: no_current_source_bound_deployment_authority
+  authorization_status: private_beta_6098ffa4_deployed_user_analysis_within_cap_authorized
   task_stage: provider_free_product_execution
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Obtain fresh exact approval for the clean context-bound source containing repair 9533cc04, deploy it, and have the user reselect 3–8 references for will carter. Verify and commit the replacement before a separate user-triggered Gemini analysis. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
+  goal: "Have the user refresh the existing will carter recovery route once, reselect 3–8 references, review them, and verify the replacement upload. Then let the user trigger the separate bounded Gemini analysis. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
