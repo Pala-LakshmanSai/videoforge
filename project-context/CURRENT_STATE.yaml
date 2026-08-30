@@ -18,7 +18,7 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: two_track_provider_free_product_active_credential_bootstrap_stopped_live_certification_blocked
+  mode: two_track_provider_free_product_active_private_beta_authority_recorded_live_certification_blocked
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "The exact rotation/normalization authority was consumed once and completed. It added one same-client Google secret, secured and hash-read it before disabling only the exposed old secret, and normalized only the two local R2 files. Preserve the exact resources/files and secret-free receipt; the authority is non-reusable. No further credential, provider, R2, RunPod, GPU, spend, retry, or redispatch action is authorized under this boundary."
-  note: "The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5. Mage remains bound to successful predecessor run 33236590768 at source 15af5e20ce3c80eb61d5d1e807a87e8840ed9685 with no redispatch. Failed SoulX run 33287914248 and authority v2-13-full-live-20260830-021108z-d3bfbb40 are terminal and non-reusable. Fresh exact approval is required before tag creation or any live action."
+  provider_free_product_action: "Private hosted-beta authority is active only for approved source de5d7f65, exact Runware Gemini style analysis, and the cumulative USD 3 ceiling. Migration 0052, the Runware secret, and Worker deployment are complete; one real-user style analysis remains. No RunPod, GPU, production activation, V2-07 through V2-13 provider execution, or resealing is authorized."
+  note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
   status: SUPERSEDED_BY_PRIVATE_HOSTED_BETA
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: SOURCE_STEP_3_RUNWARE_GEMINI_STYLE_ANALYSIS_GREEN_AWAITING_DEPLOY_APPROVAL
+  status: DEPLOYED_STEP_3_RUNWARE_GEMINI_STYLE_ANALYSIS_AWAITING_REAL_USER_PROOF
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -84,22 +84,22 @@ hosted_beta_user_walkthrough:
     - "c2365701cfa94abb1e70a75d4a5b7e23688c215f"
     - "95ebb6ace81dd96d7ef5caecf8f07d63ba727192"
     - "57a45925900d61178a68bf54d226b7fc47bfb1cf"
-  deployment_candidate: AWAITING_FRESH_EXACT_APPROVAL
-  deployed_source_commit: "afbcefda26e2bd76955980d4ae3d5e96dc939cb8"
-  cloudflare_worker_version_id: "b15c9377-af64-4976-8edc-540f60fe1748"
-  deployed_config_sha256: "sha256:160c4d9b03710b16c0b29871c6047a1fc6d9110238b7f9f3f95d36cbc5fc72da"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA afbcefda26e2bd76955980d4ae3d5e96dc939cb8 CAP USD 3"
+  deployment_candidate: DEPLOYED_PRIVATE_HOSTED_BETA
+  deployed_source_commit: "de5d7f65dd861408e5d637a0e7c1c9b12cb648f3"
+  cloudflare_worker_version_id: "9ffecf79-c5b8-4c61-9aed-1c7cf7bae523"
+  deployed_config_sha256: "sha256:c9df5c5fa3b7e513a9a98b93c28de57d17cd4945e47da7f634f5bfe67dd9e08b"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA de5d7f65dd861408e5d637a0e7c1c9b12cb648f3 CAP USD 3"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
   gpu_transport: DISABLED_UNQUALIFIED
-  provider_analysis: DEPLOYED_PROVIDER_FREE_DETERMINISTIC_SOURCE_RUNWARE_GEMINI_3_1_FLASH_LITE_READY_NOT_DEPLOYED
-  provider_calls_authorized: false
+  provider_analysis: DEPLOYED_RUNWARE_GEMINI_3_1_FLASH_LITE_AWAITING_FIRST_REAL_USER_ANALYSIS
+  provider_calls_authorized: true
   gpu_use_authorized: false
-  external_spend_authorized_usd: 0
-  remote_mutation_authorized: false
-  database_preflight: "LIVE_LEDGER_50_OF_50_PGCRYPTO_PRESENT_RLS_AND_APPLICATION_GRANTS_VERIFIED"
-  pending_database_migration: "0052_hosted_style_analysis_spend_guard.sql"
+  external_spend_authorized_usd: 3
+  remote_mutation_authorized: true
+  database_preflight: "LIVE_LEDGER_52_OF_52_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
+  pending_database_migration: null
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
@@ -123,6 +123,7 @@ hosted_beta_user_walkthrough:
     - "Source 4612f4b6 replaces the hosted project debug form with a guided Video/Look/Cost flow, styled voiceover upload and inputs, visual preset selectors, automatic selection of sole eligible presets, actionable worker recovery, truthful beta/cost wording, and user-facing blockers while retaining fail-closed readiness validation. Wide and compact Chrome previews have no raw GPU/gate/hash diagnostics or horizontal overflow."
     - "Source 95ebb6ac replaces hosted simulated style analysis with direct deepseek-v4-flash-vision-exp analysis of browser-normalized WebP copies only; originals remain private. It adds strict returned-profile validation, safe duplicate-name recovery, readable errors, explicit processing/retention consent, actual charge display, one durable no-redispatch reservation per style, a fixed $3 global beta ceiling, migration 0052 least-privilege functions, and fail-closed UNKNOWN receipts for every post-dispatch ambiguity. No provider call, secret access, remote mutation, migration, or spend occurred while preparing this source."
     - "Source 57a45925 supersedes the direct-DeepSeek style analyzer with Runware google:gemini@3.1-flash-lite for explicit reference-image analysis only. It sends normalized WebP copies in one strict-schema request, records provider-reported usage and actual cost, preserves the durable $3 no-redispatch guard, and reconciles every post-dispatch persistence failure as UNKNOWN. Runware DeepSeek V4 Flash remains the cheaper text-only scene-prompt writer. No provider call, secret access, remote mutation, migration, deployment, or spend occurred while preparing this source."
+    - "Approved source de5d7f65 is deployed as Worker 9ffecf79-c5b8-4c61-9aed-1c7cf7bae523 with config sha256:c9df5c5f. Neon migration/grants verify at 52/52, the Worker secret list is the exact nine-name allowlist including RUNWARE_API_KEY, the one-time local key handoff file was removed, an encrypted post-migration backup was created, and cache-bypassed status reports the exact deployed commit with GPU transport still DISABLED_UNQUALIFIED. No Runware analysis request or provider spend occurred during deployment."
   current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
     - IMAGE_STYLE_CREATION_AND_PUBLISHING
@@ -154,6 +155,10 @@ hosted_beta_user_walkthrough:
     hosted_runware_gemini_style_migration_and_deployment: "PASS_12_OF_12"
     hosted_runware_gemini_style_typecheck: PASS
     hosted_runware_gemini_style_changed_file_eslint: PASS
+    hosted_runware_gemini_live_migration: "PASS_52_OF_52_FORCE_RLS_EXACT_GRANTS"
+    hosted_runware_gemini_secret_allowlist: "PASS_EXACT_9_NAMES"
+    hosted_runware_gemini_deployed_status: "PASS_COMMIT_DE5D7F65_WORKER_9FFECF79"
+    hosted_runware_gemini_provider_call: PENDING_REAL_USER_STYLE_ANALYSIS
     hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
     hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
     hosted_preset_archive_live_migration: "PASS_51_OF_51_FORCE_RLS_EXACT_GRANTS"
