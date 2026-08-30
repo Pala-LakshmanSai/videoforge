@@ -76,7 +76,7 @@ if (Object.keys(wrangler.vars ?? {}).some((key) => key.startsWith("GCP_")))
 const expectedSecrets = [
   "BETTER_AUTH_SECRET",
   "DATABASE_URL",
-  "DEEPSEEK_API_KEY",
+  "RUNWARE_API_KEY",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
   "MEDIA_WORKER_TOKEN_SECRET",

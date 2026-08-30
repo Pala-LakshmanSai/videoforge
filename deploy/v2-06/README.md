@@ -116,14 +116,14 @@ mode_of() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"; }
 for name in \
   DATABASE_URL BETTER_AUTH_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
   R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY WORKFLOW_CALLBACK_SECRET MEDIA_WORKER_TOKEN_SECRET \
-  DEEPSEEK_API_KEY; do
+  RUNWARE_API_KEY; do
   file="$SECRET_DIR/$name"
   test -f "$file" && test ! -L "$file" && test -s "$file" && test "$(mode_of "$file")" = 600
 done
 for file in "$SECRET_DIR"/*; do
   test -e "$file" || continue
   case "/$(basename "$file")/" in
-    /DATABASE_URL/|/BETTER_AUTH_SECRET/|/GOOGLE_CLIENT_ID/|/GOOGLE_CLIENT_SECRET/|/R2_ACCESS_KEY_ID/|/R2_SECRET_ACCESS_KEY/|/WORKFLOW_CALLBACK_SECRET/|/MEDIA_WORKER_TOKEN_SECRET/|/DEEPSEEK_API_KEY/) ;;
+    /DATABASE_URL/|/BETTER_AUTH_SECRET/|/GOOGLE_CLIENT_ID/|/GOOGLE_CLIENT_SECRET/|/R2_ACCESS_KEY_ID/|/R2_SECRET_ACCESS_KEY/|/WORKFLOW_CALLBACK_SECRET/|/MEDIA_WORKER_TOKEN_SECRET/|/RUNWARE_API_KEY/) ;;
     *) echo "unexpected secret file: $file" >&2; exit 2 ;;
   esac
 done
@@ -143,7 +143,7 @@ for entry in \
   R2_SECRET_ACCESS_KEY:"$SECRET_DIR/R2_SECRET_ACCESS_KEY" \
   WORKFLOW_CALLBACK_SECRET:"$SECRET_DIR/WORKFLOW_CALLBACK_SECRET" \
   MEDIA_WORKER_TOKEN_SECRET:"$SECRET_DIR/MEDIA_WORKER_TOKEN_SECRET" \
-  DEEPSEEK_API_KEY:"$SECRET_DIR/DEEPSEEK_API_KEY"; do
+  RUNWARE_API_KEY:"$SECRET_DIR/RUNWARE_API_KEY"; do
   name=${entry%%:*}; file=${entry#*:}
   pnpm --filter @videoforge/web exec wrangler secret put "$name" --config "$CONFIG" <"$file"
 done
@@ -154,6 +154,7 @@ const fs = require("node:fs");
 const expected = new Set([
   "DATABASE_URL", "BETTER_AUTH_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
   "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "WORKFLOW_CALLBACK_SECRET", "MEDIA_WORKER_TOKEN_SECRET",
+  "RUNWARE_API_KEY",
 ]);
 const actual = new Set(JSON.parse(fs.readFileSync(process.argv[3], "utf8")).map((entry) => entry.name));
 if (actual.size !== expected.size || [...expected].some((name) => !actual.has(name))) process.exit(2);

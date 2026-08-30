@@ -1,4 +1,4 @@
--- Durable, tenant-bound dispatch guard for the private-beta DeepSeek style analyzer.
+-- Durable, tenant-bound dispatch guard for the private-beta Runware Gemini style analyzer.
 -- Every possible provider call reserves two cents before dispatch. Reservations are never reused,
 -- so crashes and ambiguous provider outcomes cannot silently redispatch or exceed the $3 beta cap.
 
@@ -9,7 +9,7 @@ CREATE TABLE public.hosted_style_analysis_runs (
   style_version_id uuid NOT NULL,
   request_hash text NOT NULL CHECK (request_hash ~ '^sha256:[0-9a-f]{64}$'),
   state text NOT NULL CHECK (state IN ('RESERVED', 'SUCCEEDED', 'FAILED', 'UNKNOWN')),
-  model text NOT NULL CHECK (model = 'deepseek-v4-flash-vision-exp'),
+  model text NOT NULL CHECK (model = 'google:gemini@3.1-flash-lite'),
   reserved_cost_micro_usd bigint NOT NULL CHECK (reserved_cost_micro_usd = 20000),
   reported_cost_micro_usd bigint CHECK (
     reported_cost_micro_usd IS NULL OR
@@ -107,7 +107,7 @@ BEGIN
   SELECT COALESCE(sum(run.reserved_cost_micro_usd), 0) INTO total_reserved
     FROM public.hosted_style_analysis_runs AS run;
   IF total_reserved + 20000 > 3000000 THEN
-    RAISE EXCEPTION 'private beta DeepSeek analysis cap exhausted' USING ERRCODE = '54000';
+    RAISE EXCEPTION 'private beta style analysis cap exhausted' USING ERRCODE = '54000';
   END IF;
 
   INSERT INTO public.hosted_style_analysis_runs (
@@ -115,7 +115,7 @@ BEGIN
     reserved_cost_micro_usd
   ) VALUES (
     supplied_run_id, current_account_id, target_workspace_id, supplied_style_version_id,
-    supplied_request_hash, 'RESERVED', 'deepseek-v4-flash-vision-exp', 20000
+    supplied_request_hash, 'RESERVED', 'google:gemini@3.1-flash-lite', 20000
   );
   run_id := supplied_run_id;
   run_state := 'RESERVED';
@@ -163,7 +163,7 @@ END;
 $$;
 
 COMMENT ON TABLE public.hosted_style_analysis_runs IS
-  'Append-once dispatch reservations and terminal receipts for bounded private-beta DeepSeek style analysis.';
+  'Append-once dispatch reservations and terminal receipts for bounded private-beta Runware Gemini style analysis.';
 REVOKE ALL ON TABLE public.hosted_style_analysis_runs FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.videoforge_reserve_hosted_style_analysis(uuid, text, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.videoforge_finish_hosted_style_analysis(uuid, text, text, text, bigint, bigint, bigint) FROM PUBLIC;

@@ -2,7 +2,6 @@ const entries = [
   { name: "BETTER_AUTH_SECRET", credentialBearing: true },
   { name: "CLOUDFLARE_API_TOKEN", credentialBearing: true },
   { name: "DATABASE_URL", credentialBearing: true },
-  { name: "DEEPSEEK_API_KEY", credentialBearing: true },
   { name: "GOOGLE_CLIENT_ID", credentialBearing: false },
   { name: "GOOGLE_CLIENT_SECRET", credentialBearing: true },
   { name: "NEON_DATABASE_URL", credentialBearing: true },

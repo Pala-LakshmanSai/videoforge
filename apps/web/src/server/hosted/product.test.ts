@@ -437,4 +437,17 @@ describe("hosted product route contract", () => {
       expect(block).toMatch(/status = 'ACTIVE'/u);
     }
   });
+
+  it("reconciles every post-dispatch style-analysis persistence failure without redispatch", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("async function styleAnalyze(");
+    const end = source.indexOf("async function stylePublish(", start);
+    const block = source.slice(start, end);
+    const completion = block.slice(block.indexOf("const analyzed ="));
+    expect(completion).toContain(
+      'if (!analyzed) throw new RunwareGeminiStyleAnalysisError("AMBIGUOUS")',
+    );
+    expect(completion).not.toContain('code: "STYLE_NOT_FOUND"');
+    expect(block).toContain('ambiguous ? "UNKNOWN" : "FAILED"');
+  });
 });

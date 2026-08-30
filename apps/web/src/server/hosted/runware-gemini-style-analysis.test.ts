@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { buildStyleAnalyzerRequest, DeterministicFixtureStyleAnalyzer } from "@videoforge/pipeline";
 
 import {
-  analyzeStyleWithDeepSeek,
-  deepSeekStylePeakCostMicroUsd,
-  DEEPSEEK_STYLE_MODEL,
-  DeepSeekStyleAnalysisError,
-} from "./deepseek-style-analysis";
+  analyzeStyleWithRunwareGemini,
+  runwareGeminiStyleActualCostMicroUsd,
+  RUNWARE_GEMINI_STYLE_MODEL,
+  RunwareGeminiStyleAnalysisError,
+} from "./runware-gemini-style-analysis";
 
 function webp(width: number, height: number): Uint8Array {
   const bytes = new Uint8Array(30);
@@ -44,62 +44,81 @@ async function output() {
   );
 }
 
-describe("direct DeepSeek hosted style analysis", () => {
+describe("Runware Gemini hosted style analysis", () => {
   it("sends normalized derivatives to the pinned vision model and validates the profile", async () => {
+    const taskUUID = "11111111-1111-4111-8111-111111111111";
     const fetcher = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
       expect(init?.headers).toMatchObject({ authorization: "Bearer test-secret" });
-      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-      expect(body.model).toBe(DEEPSEEK_STYLE_MODEL);
-      expect(body).not.toHaveProperty("tenant_id");
+      expect(_url).toBe("https://api.runware.ai/v1");
+      const body = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
+      expect(body).toHaveLength(1);
+      expect(body[0]?.model).toBe(RUNWARE_GEMINI_STYLE_MODEL);
+      expect(body[0]?.outputFormat).toBe("JSON");
+      expect(body[0]?.includeCost).toBe(true);
+      expect(body[0]?.includeUsage).toBe(true);
+      expect(body[0]?.jsonSchema).toMatchObject({ strict: true });
+      expect(body[0]).not.toHaveProperty("tenant_id");
+      expect(body[0]?.inputs).toMatchObject({
+        images: expect.arrayContaining([expect.stringMatching(/^data:image\/webp;base64,/u)]),
+      });
       expect(String(init?.body)).not.toContain("test-secret");
       expect(String(init?.body).match(/data:image\/webp;base64,/gu)).toHaveLength(3);
       return Response.json({
-        id: "provider-request-1",
-        model: DEEPSEEK_STYLE_MODEL,
-        choices: [{ message: { content: JSON.stringify(await output()) } }],
-        usage: { prompt_tokens: 100, completion_tokens: 200, total_tokens: 300 },
+        data: [
+          {
+            taskUUID,
+            taskType: "textInference",
+            model: RUNWARE_GEMINI_STYLE_MODEL,
+            text: JSON.stringify(await output()),
+            usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+            cost: 0.000308,
+            finishReason: "stop",
+          },
+        ],
       });
     });
 
-    const result = await analyzeStyleWithDeepSeek({
+    const result = await analyzeStyleWithRunwareGemini({
       apiKey: "test-secret",
-      baseUrl: "https://api.deepseek.com",
+      baseUrl: "https://api.runware.ai/v1",
       images,
+      taskUUID,
       fetcher,
     });
 
-    expect(result.model).toBe(DEEPSEEK_STYLE_MODEL);
+    expect(result.model).toBe(RUNWARE_GEMINI_STYLE_MODEL);
     expect(result.trusted.profile.analysis.analysis_kind).toBe("VISION_ANALYSIS");
     expect(result.usage.totalTokens).toBe(300);
-    expect(deepSeekStylePeakCostMicroUsd(result.usage)).toBe(308);
+    expect(result.costUsd).toBe(0.000308);
+    expect(runwareGeminiStyleActualCostMicroUsd(result.costUsd)).toBe(308);
     expect(result.responseSha256).toMatch(/^sha256:[0-9a-f]{64}$/u);
     expect(fetcher).toHaveBeenCalledOnce();
   });
 
   it("fails closed on a malformed successful response", async () => {
     await expect(
-      analyzeStyleWithDeepSeek({
+      analyzeStyleWithRunwareGemini({
         apiKey: "test-secret",
-        baseUrl: "https://api.deepseek.com",
+        baseUrl: "https://api.runware.ai/v1",
         images,
         fetcher: async () => Response.json({ choices: [] }),
       }),
-    ).rejects.toMatchObject({ code: "INVALID_RESPONSE" } satisfies Partial<DeepSeekStyleAnalysisError>);
+    ).rejects.toMatchObject({ code: "INVALID_RESPONSE" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
   });
 
   it("rejects reference sets above the bounded payload before fetch", async () => {
     const fetcher = vi.fn();
     await expect(
-      analyzeStyleWithDeepSeek({
+      analyzeStyleWithRunwareGemini({
         apiKey: "test-secret",
-        baseUrl: "https://api.deepseek.com",
+        baseUrl: "https://api.runware.ai/v1",
         images: images.map((image) => ({
           ...image,
           bytes: new Uint8Array(11 * 1024 * 1024),
         })),
         fetcher,
       }),
-    ).rejects.toMatchObject({ code: "REJECTED" } satisfies Partial<DeepSeekStyleAnalysisError>);
+    ).rejects.toMatchObject({ code: "REJECTED" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
     expect(fetcher).not.toHaveBeenCalled();
   });
 
@@ -109,13 +128,13 @@ describe("direct DeepSeek hosted style analysis", () => {
     ["provider failure", async () => new Response(null, { status: 503 })],
   ])("marks %s as ambiguous so callers cannot redispatch", async (_label, fetcher) => {
     await expect(
-      analyzeStyleWithDeepSeek({
+      analyzeStyleWithRunwareGemini({
         apiKey: "test-secret",
-        baseUrl: "https://api.deepseek.com",
+        baseUrl: "https://api.runware.ai/v1",
         images,
         fetcher,
       }),
-    ).rejects.toMatchObject({ code: "AMBIGUOUS" } satisfies Partial<DeepSeekStyleAnalysisError>);
+    ).rejects.toMatchObject({ code: "AMBIGUOUS" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
   });
 
   it("rejects a normalized container carrying metadata before provider dispatch", async () => {
@@ -123,13 +142,13 @@ describe("direct DeepSeek hosted style analysis", () => {
     unsafe.set(new TextEncoder().encode("EXIF"), 12);
     const fetcher = vi.fn();
     await expect(
-      analyzeStyleWithDeepSeek({
+      analyzeStyleWithRunwareGemini({
         apiKey: "test-secret",
-        baseUrl: "https://api.deepseek.com",
+        baseUrl: "https://api.runware.ai/v1",
         images: [{ ...images[0]!, bytes: unsafe }, images[1]!, images[2]!],
         fetcher,
       }),
-    ).rejects.toMatchObject({ code: "REJECTED" } satisfies Partial<DeepSeekStyleAnalysisError>);
+    ).rejects.toMatchObject({ code: "REJECTED" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
     expect(fetcher).not.toHaveBeenCalled();
   });
 });

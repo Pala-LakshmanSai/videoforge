@@ -12,12 +12,12 @@ import {
 } from "./generation-persistence";
 import { sha256, sha256Bytes } from "./crypto";
 import {
-  analyzeStyleWithDeepSeek,
-  deepSeekStylePeakCostMicroUsd,
-  DEEPSEEK_STYLE_MAX_INPUT_BYTES,
-  DeepSeekStyleAnalysisError,
-  type DeepSeekStyleImage,
-} from "./deepseek-style-analysis";
+  analyzeStyleWithRunwareGemini,
+  runwareGeminiStyleActualCostMicroUsd,
+  RUNWARE_GEMINI_STYLE_MAX_INPUT_BYTES,
+  RunwareGeminiStyleAnalysisError,
+  type RunwareGeminiStyleImage,
+} from "./runware-gemini-style-analysis";
 import {
   HostedAudioValidationError,
   hostedVoiceoverArtifactProbe,
@@ -591,7 +591,7 @@ function parseStyleCreate(value: unknown): HostedStyleCreateInput | null {
   if (order.some((value, index) => value !== index)) return null;
   if (
     references.reduce((total, reference) => total + reference.normalizedContentLength, 0) >
-    DEEPSEEK_STYLE_MAX_INPUT_BYTES
+    RUNWARE_GEMINI_STYLE_MAX_INPUT_BYTES
   )
     return null;
   return {
@@ -2268,7 +2268,7 @@ async function styleAnalyze(
       { error: { code: "STYLE_ANALYSIS_REJECTED", message: "Confirm the analysis disclosure." } },
       400,
     );
-  if (!config.deepseek)
+  if (!config.styleAnalysis)
     return response(
       {
         error: {
@@ -2369,7 +2369,7 @@ async function styleAnalyze(
           scope.workspace_id,
           rowString(target, "version_id"),
           requestHash,
-          "deepseek-v4-flash-vision-exp",
+          "google:gemini@3.1-flash-lite",
           scope.user_id,
         ],
       );
@@ -2408,14 +2408,14 @@ async function styleAnalyze(
     }
     preparedRunId = rowString(preparedRow, "analysis_run_id");
 
-    const images: DeepSeekStyleImage[] = [];
+    const images: RunwareGeminiStyleImage[] = [];
     const referenceRows = preparedRow.references as unknown[];
     const aggregateBytes = referenceRows.reduce<number>((total, rawReference) => {
       const reference = plainRecord(rawReference);
       return total + (reference ? Number(reference.byte_size) : Number.NaN);
     }, 0);
-    if (!Number.isSafeInteger(aggregateBytes) || aggregateBytes > DEEPSEEK_STYLE_MAX_INPUT_BYTES)
-      throw new DeepSeekStyleAnalysisError("REJECTED");
+    if (!Number.isSafeInteger(aggregateBytes) || aggregateBytes > RUNWARE_GEMINI_STYLE_MAX_INPUT_BYTES)
+      throw new RunwareGeminiStyleAnalysisError("REJECTED");
     for (const [index, rawReference] of referenceRows.entries()) {
       const reference = plainRecord(rawReference);
       if (!reference) throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
@@ -2425,26 +2425,30 @@ async function styleAnalyze(
       const expected = rowString(reference, "checksum_sha256");
       const width = Number(reference.width);
       const height = Number(reference.height);
-      if (bytes.byteLength !== Number(reference.byte_size) || (await sha256Bytes(bytes)) !== expected)
+      if (
+        rowString(reference, "content_type") !== "image/webp" ||
+        bytes.byteLength !== Number(reference.byte_size) ||
+        (await sha256Bytes(bytes)) !== expected
+      )
         throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
       if (!Number.isSafeInteger(width) || width <= 0 || !Number.isSafeInteger(height) || height <= 0)
         throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
       images.push({
         alias: `ref_${String(index + 1).padStart(2, "0")}`,
-        mimeType: rowString(reference, "content_type") as DeepSeekStyleImage["mimeType"],
-        sha256: expected as DeepSeekStyleImage["sha256"],
+        mimeType: "image/webp",
+        sha256: expected as RunwareGeminiStyleImage["sha256"],
         width,
         height,
         bytes,
       });
     }
     providerMayHaveCharged = true;
-    const providerResult = await analyzeStyleWithDeepSeek({
-      apiKey: config.deepseek.apiKey,
-      baseUrl: config.deepseek.baseUrl,
+    const providerResult = await analyzeStyleWithRunwareGemini({
+      apiKey: config.styleAnalysis.apiKey,
+      baseUrl: config.styleAnalysis.baseUrl,
       images,
     });
-    const reportedCostMicroUsd = deepSeekStylePeakCostMicroUsd(providerResult.usage);
+    const reportedCostMicroUsd = runwareGeminiStyleActualCostMicroUsd(providerResult.costUsd);
     const analyzed = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
@@ -2488,16 +2492,9 @@ async function styleAnalyze(
       if (receipt.rows[0]?.finished !== true) throw new Error("STYLE_ANALYSIS_RECEIPT_REJECTED");
       return saved;
     });
-    if (!analyzed)
-      return response(
-        {
-          error: {
-            code: "STYLE_NOT_FOUND",
-            message: "This style changed before the analysis could be saved. Return to Image Styles and try again.",
-          },
-        },
-        404,
-      );
+    // The provider has already run. Route every post-dispatch persistence failure through the
+    // reconciliation path so the durable reservation becomes UNKNOWN and can never redispatch.
+    if (!analyzed) throw new RunwareGeminiStyleAnalysisError("AMBIGUOUS");
     const profile = providerResult.trusted.profile as unknown as Record<string, unknown>;
     return response({
       schema_version: "videoforge-hosted-style-analysis-response/v1",
@@ -2516,7 +2513,7 @@ async function styleAnalyze(
     });
   } catch (error) {
     const definitiveProviderRejection =
-      error instanceof DeepSeekStyleAnalysisError &&
+      error instanceof RunwareGeminiStyleAnalysisError &&
       (error.code === "REJECTED" || error.code === "UNAVAILABLE");
     const ambiguous = providerMayHaveCharged && !definitiveProviderRejection;
     if (preparedRunId) {
@@ -2563,7 +2560,7 @@ async function styleAnalyze(
         // Preserve the original failure as the user-facing error; recovery remains retryable.
       }
     }
-    if (error instanceof DeepSeekStyleAnalysisError) {
+    if (error instanceof RunwareGeminiStyleAnalysisError) {
       if (error.code === "AMBIGUOUS" || error.code === "INVALID_RESPONSE")
         return response(
           {
@@ -2577,7 +2574,7 @@ async function styleAnalyze(
       const message =
         error.code === "REJECTED"
           ? "These references could not be analyzed. Use 3–8 JPEG, PNG, or WebP images under 30 MB total."
-          : "DeepSeek image analysis is temporarily unavailable. Try again.";
+          : "Gemini image analysis is temporarily unavailable. Try again.";
       return response({ error: { code: `STYLE_ANALYSIS_${error.code}`, message } }, 502);
     }
     if (error instanceof Error && error.message === "STYLE_ANALYSIS_IN_PROGRESS")

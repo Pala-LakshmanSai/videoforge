@@ -2340,10 +2340,10 @@ export function HostedPresetCreationScreen({
           <div className="stack">
             <div className={!fixtureBackend ? "notice notice-warning" : "notice"}>
               <strong>
-                {!fixtureBackend ? "DeepSeek image analysis" : "Local fixture analysis"}
+                {!fixtureBackend ? "Gemini image analysis" : "Local fixture analysis"}
               </strong>{" "}
               {!fixtureBackend
-                ? "Your normalized references will be sent to DeepSeek once to extract reusable visual traits. They are not sent again during video generation. This bounded analysis may incur a small provider charge within the private beta’s $3 total ceiling."
+                ? "Your normalized references will be sent through Runware to Gemini 3.1 Flash Lite once to extract reusable visual traits. They are not sent again during video generation. This bounded analysis may incur a small provider charge within the private beta’s $3 total ceiling."
                 : "This walkthrough uses a simulated profile and makes no external AI request."}
             </div>
             {!fixtureBackend ? (
@@ -2352,7 +2352,7 @@ export function HostedPresetCreationScreen({
                   <strong>Keep private originals</strong>
                   <small>
                     Keep the original uploads and normalized copies until I remove this style.
-                    Originals are never sent to DeepSeek.
+                    Originals are never sent to Runware or Gemini.
                   </small>
                 </span>
                 <input
@@ -2381,7 +2381,7 @@ export function HostedPresetCreationScreen({
                 <small>
                   {fixtureBackend
                     ? "I understand normalized references are processed locally to derive this style profile."
-                    : "I understand normalized references are sent to DeepSeek to derive this style profile, and provider-side retention follows DeepSeek’s terms."}
+                    : "I understand normalized references are sent through Runware to Gemini to derive this style profile, and provider-side retention follows Runware and Google’s terms."}
                 </small>
               </span>
               <input
@@ -2414,12 +2414,12 @@ export function HostedPresetCreationScreen({
               <Check size={16} />
               {fixtureBackend
                 ? "Local fixture profile returned for workflow review."
-                : "DeepSeek analyzed this exact reference set. Review the extracted style before publishing."}
+                : "Gemini analyzed this exact reference set. Review the extracted style before publishing."}
             </div>
             <p>{profileSummary}</p>
             {!fixtureBackend && typeof created?.analysis_cost_usd === "number" ? (
               <p className="helper">
-                DeepSeek analysis charge: ${created.analysis_cost_usd.toFixed(6)} · protected by
+                Gemini analysis charge: ${created.analysis_cost_usd.toFixed(6)} · protected by
                 the private beta spend ceiling.
               </p>
             ) : null}

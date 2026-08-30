@@ -8,44 +8,53 @@ import {
 } from "@videoforge/pipeline";
 import { parseJsonStrict } from "@videoforge/contracts";
 
-export const DEEPSEEK_STYLE_MODEL = "deepseek-v4-flash-vision-exp" as const;
-export const DEEPSEEK_STYLE_MAX_OUTPUT_TOKENS = 6_000 as const;
-// Inline base64 expands by 4/3; keep the full JSON body safely below DeepSeek's 48 MiB limit.
-export const DEEPSEEK_STYLE_MAX_INPUT_BYTES = 30 * 1024 * 1024;
-export const DEEPSEEK_STYLE_RESERVATION_MICRO_USD = 20_000 as const;
+export const RUNWARE_GEMINI_STYLE_MODEL = "google:gemini@3.1-flash-lite" as const;
+export const RUNWARE_GEMINI_STYLE_MAX_OUTPUT_TOKENS = 6_000 as const;
+// Inline base64 expands by 4/3; keep the full JSON body safely below Runware's request limit.
+export const RUNWARE_GEMINI_STYLE_MAX_INPUT_BYTES = 30 * 1024 * 1024;
+export const RUNWARE_GEMINI_STYLE_RESERVATION_MICRO_USD = 20_000 as const;
+export const RUNWARE_GEMINI_STYLE_RESERVATION_USD =
+  RUNWARE_GEMINI_STYLE_RESERVATION_MICRO_USD / 1_000_000;
 
-export interface DeepSeekStyleImage {
+export interface RunwareGeminiStyleImage {
   readonly alias: string;
-  readonly mimeType: "image/jpeg" | "image/png" | "image/webp";
+  readonly mimeType: "image/webp";
   readonly sha256: `sha256:${string}`;
   readonly width: number;
   readonly height: number;
   readonly bytes: Uint8Array;
 }
 
-export interface DeepSeekStyleUsage {
+export interface RunwareGeminiStyleUsage {
   readonly promptTokens: number;
   readonly completionTokens: number;
   readonly totalTokens: number;
 }
 
-export interface DeepSeekStyleAnalysisResult {
+export interface RunwareGeminiStyleAnalysisResult {
   readonly trusted: TrustedStyleProfile;
   readonly responseSha256: string;
-  readonly usage: DeepSeekStyleUsage;
+  readonly usage: RunwareGeminiStyleUsage;
   readonly providerRequestId: string | null;
-  readonly model: typeof DEEPSEEK_STYLE_MODEL;
+  readonly costUsd: number;
+  readonly latencyMs: number;
+  readonly model: typeof RUNWARE_GEMINI_STYLE_MODEL;
 }
 
-export function deepSeekStylePeakCostMicroUsd(usage: DeepSeekStyleUsage): number {
-  // Peak pricing on 2026-08-30: $0.44/M uncached input and $1.32/M output.
-  return Math.ceil((usage.promptTokens * 44) / 100) + Math.ceil((usage.completionTokens * 132) / 100);
+export function runwareGeminiStyleActualCostMicroUsd(costUsd: number): number {
+  if (
+    !Number.isFinite(costUsd) ||
+    costUsd < 0 ||
+    costUsd > RUNWARE_GEMINI_STYLE_RESERVATION_USD
+  )
+    throw new RangeError("Runware style analysis cost exceeds its reservation.");
+  return Math.ceil(costUsd * 1_000_000);
 }
 
-export class DeepSeekStyleAnalysisError extends Error {
+export class RunwareGeminiStyleAnalysisError extends Error {
   constructor(readonly code: "UNAVAILABLE" | "REJECTED" | "INVALID_RESPONSE" | "AMBIGUOUS") {
     super(code);
-    this.name = "DeepSeekStyleAnalysisError";
+    this.name = "RunwareGeminiStyleAnalysisError";
   }
 }
 
@@ -125,12 +134,12 @@ export function inspectNormalizedWebp(bytes: Uint8Array): { width: number; heigh
   return offset === bytes.length && imagePayloadFound ? dimensions : null;
 }
 
-function exactUsage(value: unknown): DeepSeekStyleUsage | null {
+function exactUsage(value: unknown): RunwareGeminiStyleUsage | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
-  const promptTokens = safeToken(record.prompt_tokens);
-  const completionTokens = safeToken(record.completion_tokens);
-  const totalTokens = safeToken(record.total_tokens);
+  const promptTokens = safeToken(record.promptTokens);
+  const completionTokens = safeToken(record.completionTokens);
+  const totalTokens = safeToken(record.totalTokens);
   if (
     promptTokens === null ||
     completionTokens === null ||
@@ -148,16 +157,18 @@ async function sha256(value: string): Promise<string> {
     .join("")}`;
 }
 
-export async function analyzeStyleWithDeepSeek(input: {
+export async function analyzeStyleWithRunwareGemini(input: {
   readonly apiKey: string;
-  readonly baseUrl: "https://api.deepseek.com";
-  readonly images: readonly DeepSeekStyleImage[];
+  readonly baseUrl: "https://api.runware.ai/v1";
+  readonly images: readonly RunwareGeminiStyleImage[];
+  readonly taskUUID?: string;
   readonly fetcher?: typeof fetch;
-}): Promise<DeepSeekStyleAnalysisResult> {
-  if (input.apiKey.trim().length === 0) throw new DeepSeekStyleAnalysisError("UNAVAILABLE");
+}): Promise<RunwareGeminiStyleAnalysisResult> {
+  if (input.apiKey.trim().length === 0)
+    throw new RunwareGeminiStyleAnalysisError("UNAVAILABLE");
   const totalBytes = input.images.reduce((sum, image) => sum + image.bytes.byteLength, 0);
-  if (totalBytes > DEEPSEEK_STYLE_MAX_INPUT_BYTES)
-    throw new DeepSeekStyleAnalysisError("REJECTED");
+  if (totalBytes > RUNWARE_GEMINI_STYLE_MAX_INPUT_BYTES)
+    throw new RunwareGeminiStyleAnalysisError("REJECTED");
 
   const references: readonly StyleReferenceBinding[] = input.images.map((image, index) => ({
     alias: `ref_${String(index + 1).padStart(2, "0")}`,
@@ -171,51 +182,63 @@ export async function analyzeStyleWithDeepSeek(input: {
     input.images.some(
       (image, index) =>
         image.alias !== references[index]!.alias ||
+        image.mimeType !== "image/webp" ||
         !Number.isSafeInteger(image.width) ||
         image.width <= 0 ||
         !Number.isSafeInteger(image.height) ||
         image.height <= 0,
     )
   )
-    throw new DeepSeekStyleAnalysisError("REJECTED");
+    throw new RunwareGeminiStyleAnalysisError("REJECTED");
   for (const image of input.images) {
     const dimensions = inspectNormalizedWebp(image.bytes);
     if (!dimensions || dimensions.width !== image.width || dimensions.height !== image.height)
-      throw new DeepSeekStyleAnalysisError("REJECTED");
+      throw new RunwareGeminiStyleAnalysisError("REJECTED");
   }
   const request = buildStyleAnalyzerRequest(references);
   const schema = JSON.stringify(RUNWARE_GEMINI_STYLE_PROVIDER_SCHEMA);
   const aliasText = references.map((reference) => reference.alias).join(", ");
-  const body = JSON.stringify({
-    model: DEEPSEEK_STYLE_MODEL,
-    stream: false,
-    thinking: { type: "disabled" },
-    temperature: 0.1,
-    max_tokens: DEEPSEEK_STYLE_MAX_OUTPUT_TOKENS,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: IMAGE_STYLE_ANALYZER_SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: `Analyze these references in exact order as ${aliasText}. Return one JSON object matching this schema exactly: ${schema}`,
-          },
-          ...input.images.map((image) => ({
-            type: "image_url",
-            image_url: {
-              url: `data:${image.mimeType};base64,${base64(image.bytes)}`,
-            },
-          })),
-        ],
+  const taskUUID = input.taskUUID ?? crypto.randomUUID();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(taskUUID))
+    throw new RunwareGeminiStyleAnalysisError("REJECTED");
+  const body = JSON.stringify([
+    {
+      taskType: "textInference",
+      taskUUID,
+      model: RUNWARE_GEMINI_STYLE_MODEL,
+      outputFormat: "JSON",
+      deliveryMethod: "sync",
+      includeCost: true,
+      includeUsage: true,
+      jsonSchema: {
+        name: "videoforge_image_style_analyzer",
+        strict: true,
+        schema: RUNWARE_GEMINI_STYLE_PROVIDER_SCHEMA,
       },
-    ],
-  });
+      settings: {
+        systemPrompt: IMAGE_STYLE_ANALYZER_SYSTEM_PROMPT,
+        thinkingLevel: "low",
+        temperature: 0.1,
+        topP: 0.9,
+        maxTokens: RUNWARE_GEMINI_STYLE_MAX_OUTPUT_TOKENS,
+      },
+      providerSettings: { google: { mediaResolution: "medium" } },
+      inputs: {
+        images: input.images.map((image) => `data:image/webp;base64,${base64(image.bytes)}`),
+      },
+      messages: [
+        {
+          role: "user",
+          content: `Analyze these references in exact order as ${aliasText}. Return one JSON object matching this schema exactly: ${schema}`,
+        },
+      ],
+    },
+  ]);
 
   let response: Response;
+  const started = performance.now();
   try {
-    response = await (input.fetcher ?? fetch)(`${input.baseUrl}/chat/completions`, {
+    response = await (input.fetcher ?? fetch)(input.baseUrl, {
       method: "POST",
       headers: {
         accept: "application/json",
@@ -223,51 +246,77 @@ export async function analyzeStyleWithDeepSeek(input: {
         "content-type": "application/json",
       },
       body,
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(120_000),
     });
   } catch {
-    throw new DeepSeekStyleAnalysisError("AMBIGUOUS");
+    throw new RunwareGeminiStyleAnalysisError("AMBIGUOUS");
   }
   if (!response.ok) {
     if (response.status === 401 || response.status === 403)
-      throw new DeepSeekStyleAnalysisError("UNAVAILABLE");
+      throw new RunwareGeminiStyleAnalysisError("UNAVAILABLE");
     if (response.status === 408 || response.status === 429 || response.status >= 500)
-      throw new DeepSeekStyleAnalysisError("AMBIGUOUS");
-    throw new DeepSeekStyleAnalysisError("REJECTED");
+      throw new RunwareGeminiStyleAnalysisError("AMBIGUOUS");
+    throw new RunwareGeminiStyleAnalysisError("REJECTED");
   }
   const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-  const choice = Array.isArray(payload?.choices) ? payload.choices[0] : null;
-  const message =
-    choice && typeof choice === "object" && !Array.isArray(choice)
-      ? (choice as Record<string, unknown>).message
-      : null;
+  if (!payload || Array.isArray(payload) || Array.isArray(payload.errors))
+    throw new RunwareGeminiStyleAnalysisError("REJECTED");
+  const data = Array.isArray(payload.data) ? payload.data : [];
+  const item = data.find(
+    (candidate) =>
+      candidate &&
+      typeof candidate === "object" &&
+      !Array.isArray(candidate) &&
+      (candidate as Record<string, unknown>).taskUUID === taskUUID,
+  );
+  if (!item || typeof item !== "object" || Array.isArray(item))
+    throw new RunwareGeminiStyleAnalysisError("INVALID_RESPONSE");
+  const record = item as Record<string, unknown>;
+  const rawText = record.text;
   const content =
-    message && typeof message === "object" && !Array.isArray(message)
-      ? (message as Record<string, unknown>).content
-      : null;
-  const usage = exactUsage(payload?.usage);
-  if (typeof content !== "string" || content.length === 0 || content.length > 2_000_000 || !usage)
-    throw new DeepSeekStyleAnalysisError("INVALID_RESPONSE");
+    typeof rawText === "string"
+      ? rawText
+      : rawText && typeof rawText === "object" && !Array.isArray(rawText)
+        ? JSON.stringify(rawText)
+        : null;
+  const usage = exactUsage(record.usage);
+  const costUsd = typeof record.cost === "number" ? record.cost : Number(record.cost);
+  const taskType = record.taskType;
+  const finishReason = record.finishReason;
+  const returnedModel = record.model;
+  if (
+    typeof content !== "string" ||
+    content.length === 0 ||
+    content.length > 2_000_000 ||
+    !usage ||
+    !Number.isFinite(costUsd) ||
+    costUsd < 0 ||
+    costUsd > RUNWARE_GEMINI_STYLE_RESERVATION_USD ||
+    taskType !== "textInference" ||
+    finishReason !== "stop" ||
+    (returnedModel !== undefined && returnedModel !== RUNWARE_GEMINI_STYLE_MODEL)
+  )
+    throw new RunwareGeminiStyleAnalysisError("INVALID_RESPONSE");
   let candidate: unknown;
   try {
     candidate = parseJsonStrict(content);
   } catch {
-    throw new DeepSeekStyleAnalysisError("INVALID_RESPONSE");
+    throw new RunwareGeminiStyleAnalysisError("INVALID_RESPONSE");
   }
   let trusted: TrustedStyleProfile;
   try {
     trusted = await validateAndAssembleStyleProfile(request, candidate);
   } catch {
-    throw new DeepSeekStyleAnalysisError("INVALID_RESPONSE");
+    throw new RunwareGeminiStyleAnalysisError("INVALID_RESPONSE");
   }
-  const responseModel = payload?.model;
-  if (responseModel !== DEEPSEEK_STYLE_MODEL)
-    throw new DeepSeekStyleAnalysisError("INVALID_RESPONSE");
+  const latencyMs = Math.max(0, Math.round(performance.now() - started));
   return Object.freeze({
     trusted,
     responseSha256: await sha256(content),
     usage,
-    providerRequestId: typeof payload?.id === "string" ? payload.id : null,
-    model: DEEPSEEK_STYLE_MODEL,
+    providerRequestId: taskUUID,
+    costUsd,
+    latencyMs,
+    model: RUNWARE_GEMINI_STYLE_MODEL,
   });
 }

@@ -1,6 +1,6 @@
 # Image Styles Hub
 
-Status: direct DeepSeek Vision hosted analyzer selected; activation and paid live proof remain open
+Status: Runware Gemini 3.1 Flash Lite hosted analyzer selected; activation and paid live proof remain open
 Read when: implementing reusable image styles, reference analysis, prompt compilation, preset
 privacy, or optional Mage previews.
 
@@ -26,18 +26,18 @@ required slow image zoom.
 
 | Model | When it runs | Role |
 |---|---|---|
-| DeepSeek V4 Flash Vision Exp (direct API) | Only when the user explicitly analyzes a new private draft version | Extract reusable visual treatment from several normalized references into strict schema |
+| Runware Gemini 3.1 Flash Lite | Only when the user explicitly analyzes a new private draft version | Extract reusable visual treatment from several normalized references into strict schema |
 | Runware DeepSeek V4 Flash 0731 | In prompt batches for an admitted project | Write literal narration-related scene content cores |
 | Mage INT8 ConvRot | For admitted video image batches or an explicitly requested bounded style preview | Generate images from the compiled prompt |
 
-A ready style causes zero vision calls in ordinary video generation. Direct DeepSeek Vision inspects
-only the bounded normalized WebP derivatives during the explicit Analyze action. The separate
+A ready style causes zero vision calls in ordinary video generation. Runware Gemini inspects only
+the bounded normalized WebP derivatives during the explicit Analyze action. The separate
 Runware text model never receives references, and no model chooses timeline layout or timing.
 
-The hosted analyzer target is `deepseek-v4-flash-vision-exp` at the direct DeepSeek API, with
-thinking disabled, temperature `0.1`, JSON output, at most 6,000 output tokens, and strict local
+The hosted analyzer target is `google:gemini@3.1-flash-lite` at the Runware API, with minimal
+thinking, temperature `0.1`, strict JSON-schema output, at most 6,000 output tokens, and strict local
 schema plus semantic validation against `image-style-analyzer-output/v1`. Earlier Gemini evidence
-is historical only and does not qualify this changed provider/model path.
+for a different model/profile is historical only and does not qualify this changed model path.
 
 ## Analyzer rules
 
@@ -72,7 +72,7 @@ vision analysis; unknown/duplicate/missing traits fail; and output guardrails/le
 flowchart LR
     A["New private style"] --> B["Name and upload references"]
     B --> C["Validate, orient, strip EXIF, reserve tenant R2"]
-    C --> D["Explicit DeepSeek Vision analysis"]
+    C --> D["Explicit Runware Gemini analysis"]
     D --> E["Schema and semantic validation"]
     E --> F["User review or edit"]
     F --> G{"Optional Mage preview?"}
@@ -90,8 +90,8 @@ Detailed rules:
 3. Validate magic bytes, raster decode, dimensions, file size, decompression limits, and checksum.
    Honor orientation, create bounded sRGB analysis derivatives, and strip EXIF/GPS before upload.
 4. Record owned/licensed/public-domain/other rights basis and explicit original-retention choice.
-5. Before Analyze, disclose that normalized copies go directly to DeepSeek and provider retention
-   follows DeepSeek terms; require consent. Originals, tenant IDs, database IDs, and hashes are not
+5. Before Analyze, disclose that normalized copies go through Runware to Gemini and provider retention
+   follows Runware and Google terms; require consent. Originals, tenant IDs, database IDs, and hashes are not
    included in the provider request.
 6. Persist analysis outbox/idempotency/cost before the external call, reconcile ambiguous responses,
    validate exact schema/semantics, and store immutable accepted evidence.
@@ -257,8 +257,8 @@ References are private tenant data. Never expose their existence/hash/bytes to a
 publicly. Signed URLs are short-lived and exact-object scoped. Never log pixels, URL query strings,
 EXIF, or full provider payloads.
 
-Direct DeepSeek processing must not be described as confidential or zero-retention. `Delete from VideoForge` removes
-VideoForge/R2 copies only; provider-side retention follows current DeepSeek terms/process. Original
+Runware Gemini processing must not be described as confidential or zero-retention. `Delete from VideoForge` removes
+VideoForge/R2 copies only; provider-side retention follows current Runware and Google terms/process. Original
 retention is explicit. If removed, retain minimum lawful hashes/rights/derived provenance and require
 new upload for reanalysis.
 
@@ -267,9 +267,9 @@ model volume, use unique scratch, and upload to this tenant prefix.
 
 ## Cost and acceptance
 
-As of 2026-08-30, DeepSeek lists peak cache-miss input at `$0.44/M` tokens and peak output at
-`$1.32/M` tokens; each image is bounded to 384 input tokens. The hosted request disables thinking,
-caps output at 6,000 tokens, and permits no automatic retry. Refresh official pricing and bind a
+As of 2026-08-30, Runware lists Gemini 3.1 Flash Lite input at `$0.25/M` tokens and output at
+`$1.50/M` tokens. The hosted request uses minimal thinking, caps output at 6,000 tokens, asks Runware
+to return exact usage and cost, and permits no automatic retry. Refresh official pricing and bind a
 finite analysis budget before activation. A ready style has no further vision-analysis charge.
 
 An optional three-image Mage preview has its own Serverless cold/warm cost and must be estimated from

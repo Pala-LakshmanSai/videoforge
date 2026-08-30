@@ -7,7 +7,7 @@ import { expectDatabaseError, sha256, withMigratedDatabase } from "./support/pgl
 
 const RUN_ID = "00000000-0000-4000-8000-000000980001";
 
-test("0052 reserves one bounded DeepSeek dispatch and durably finishes it", async () => {
+test("0052 reserves one bounded Runware Gemini dispatch and durably finishes it", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     await seedLockedProjects(executor);
     await executor.query(`SELECT set_config($1, $2, false)`, [
@@ -21,7 +21,7 @@ test("0052 reserves one bounded DeepSeek dispatch and durably finishes it", asyn
        ) VALUES ($1,$2,$3,$4,2,'DRAFT','WORKSPACE',$5)`,
       [IDS.styleDraftA, IDS.accountA, IDS.workspaceA, IDS.styleA, IDS.userA],
     );
-    const requestHash = sha256("deepseek-style-request");
+    const requestHash = sha256("runware-gemini-style-request");
     const reserved = await executor.query(
       `SELECT * FROM public.videoforge_reserve_hosted_style_analysis($1,$2,$3)`,
       [IDS.styleDraftA, requestHash, RUN_ID],
