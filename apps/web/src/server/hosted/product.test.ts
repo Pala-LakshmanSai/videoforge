@@ -96,6 +96,22 @@ async function errorCode(result: Response | null): Promise<string | null> {
 }
 
 describe("hosted product route contract", () => {
+  it("loads the preset catalog without requiring private style-reference table access", async () => {
+    testState.query.mockClear();
+
+    const result = await handleHostedProductRequest(
+      request("/api/v2/hosted/project-catalog", "GET"),
+      environment,
+      stagingConfig,
+      executionContext,
+    );
+
+    expect(result?.status).toBe(200);
+    expect(
+      testState.query.mock.calls.some(([sql]) => String(sql).includes("image_style_references")),
+    ).toBe(false);
+  });
+
   it("reports qualified work as dispatch-ready without inventing a GPU estimate", () => {
     expect(hostedGpuProductState({ dispatch_available: true })).toStrictEqual({
       projectedUsd: null,
