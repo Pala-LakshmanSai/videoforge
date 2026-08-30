@@ -31,7 +31,8 @@ test("V2-06 backup and restore scripts use protected PostgreSQL services, not DS
   assert.match(restore, /videoforge_v2_06_disposable_drill/u);
   assert.match(restore, /public_relation_count/u);
   assert.match(restore, /apply-migrations-and-grants\.mjs/u);
-  assert.match(restore, /--verify-only --apply-grants/u);
+  assert.match(restore, /apply-migrations-and-grants\.mjs" --apply-grants/u);
+  assert.doesNotMatch(restore, /apply-migrations-and-grants\.mjs" --verify-only --apply-grants/u);
   assert.match(
     restore,
     /rm -f "\$decrypted_ciphertext"\s+node "\$script_dir\/backup-envelope\.mjs" unpack/u,

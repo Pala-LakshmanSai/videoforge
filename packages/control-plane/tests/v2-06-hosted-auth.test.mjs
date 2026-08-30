@@ -50,18 +50,43 @@ async function insertSession(executor, id, userId, token) {
   );
 }
 
-test("hosted auth rejects uninvited, expired, and unverified identities before session", async () => {
+test("hosted auth permits authentication before invite but withholds tenant scope", async () => {
   await withMigratedDatabase(async ({ executor }) => {
-    await expectDatabaseError(
-      insertHostedUser(executor, "hosted-user-uninvited-0001", "uninvited@example.test"),
-      "42501",
+    await insertHostedUser(executor, "hosted-user-uninvited-0001", "uninvited@example.test");
+    await insertGoogleAccount(
+      executor,
+      "hosted-account-uninvited-0001",
+      "hosted-user-uninvited-0001",
     );
+    await insertSession(
+      executor,
+      "hosted-session-uninvited-0001",
+      "hosted-user-uninvited-0001",
+      "uninvited-session-token-0000000000000000000001",
+    );
+    const uninvitedScope = await executor.query(
+      "SELECT * FROM videoforge_hosted_session_scope($1)",
+      ["uninvited-session-token-0000000000000000000001"],
+    );
+    assert.equal(uninvitedScope.rows.length, 0);
 
     await seedInvite(executor, 1, "expired@example.test", EARLIER);
-    await expectDatabaseError(
-      insertHostedUser(executor, "hosted-user-expired-000001", "expired@example.test"),
-      "42501",
+    await insertHostedUser(executor, "hosted-user-expired-000001", "expired@example.test");
+    await insertGoogleAccount(
+      executor,
+      "hosted-account-expired-000001",
+      "hosted-user-expired-000001",
     );
+    await insertSession(
+      executor,
+      "hosted-session-expired-000001",
+      "hosted-user-expired-000001",
+      "expired-session-token-000000000000000000000001",
+    );
+    const expiredScope = await executor.query("SELECT * FROM videoforge_hosted_session_scope($1)", [
+      "expired-session-token-000000000000000000000001",
+    ]);
+    assert.equal(expiredScope.rows.length, 0);
 
     await seedInvite(executor, 2, "pending@example.test");
     await insertHostedUser(executor, "hosted-user-pending-000001", "pending@example.test", false);

@@ -1,11 +1,12 @@
 import { createAuthClient } from "better-auth/react";
-import { useEffect, useState, type PropsWithChildren } from "react";
+import { useCallback, useEffect, useRef, useState, type PropsWithChildren } from "react";
 
 interface Tenant {
+  readonly schema_version: "videoforge-hosted-tenant/v1";
   readonly account_id: string;
   readonly workspace_id: string;
   readonly workspace_name: string;
-  readonly user: { readonly email: string; readonly name: string };
+  readonly user: { readonly id: string; readonly email: string; readonly name: string };
 }
 
 interface HostedStatus {
@@ -23,12 +24,45 @@ type HostedAccess =
 
 const authClient = createAuthClient({ baseURL: window.location.origin, basePath: "/api/auth" });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function parseTenant(value: unknown): Tenant {
+  if (!isRecord(value) || value.schema_version !== "videoforge-hosted-tenant/v1") {
+    throw new Error("Hosted tenant response invalid.");
+  }
+  const user = value.user;
+  if (
+    !isNonEmptyString(value.account_id) ||
+    !isNonEmptyString(value.workspace_id) ||
+    !isNonEmptyString(value.workspace_name) ||
+    !isRecord(user) ||
+    !isNonEmptyString(user.id) ||
+    !isNonEmptyString(user.email) ||
+    !isNonEmptyString(user.name)
+  ) {
+    throw new Error("Hosted tenant response invalid.");
+  }
+  return {
+    schema_version: "videoforge-hosted-tenant/v1",
+    account_id: value.account_id,
+    workspace_id: value.workspace_id,
+    workspace_name: value.workspace_name,
+    user: { id: user.id, email: user.email, name: user.name },
+  };
+}
+
 async function tenantAccess(): Promise<HostedAccess> {
   const response = await fetch("/api/v2/tenant", { headers: { accept: "application/json" } });
   if (response.status === 401) return { state: "SIGNED_OUT" };
   if (response.status === 403) return { state: "INVITE_REQUIRED" };
   if (!response.ok) throw new Error("Hosted tenant check failed.");
-  return { state: "ADMITTED", tenant: (await response.json()) as Tenant };
+  return { state: "ADMITTED", tenant: parseTenant(await response.json()) };
 }
 
 export function HostedStagingApp({ children }: PropsWithChildren) {
@@ -40,17 +74,24 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
   const [redeemingInvite, setRedeemingInvite] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [status, setStatus] = useState<HostedStatus | null>(null);
+  const refreshRequest = useRef(0);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
+    const requestId = ++refreshRequest.current;
     setLoading(true);
+    setAccess(null);
     try {
-      setAccess(await tenantAccess());
+      const nextAccess = await tenantAccess();
+      if (requestId === refreshRequest.current) setAccess(nextAccess);
     } catch {
-      setMessage("Hosted staging is unavailable. No local fallback was used.");
+      if (requestId === refreshRequest.current) {
+        setAccess(null);
+        setMessage("Hosted staging is unavailable. No local fallback was used.");
+      }
     } finally {
-      setLoading(false);
+      if (requestId === refreshRequest.current) setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void refresh();
@@ -61,7 +102,19 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
       })
       .then(setStatus)
       .catch(() => setMessage("Hosted staging is unavailable. No local fallback was used."));
-  }, []);
+  }, [refresh]);
+
+  useEffect(() => {
+    const revalidate = () => {
+      if (access?.state === "ADMITTED") void refresh();
+    };
+    window.addEventListener("focus", revalidate);
+    document.addEventListener("visibilitychange", revalidate);
+    return () => {
+      window.removeEventListener("focus", revalidate);
+      document.removeEventListener("visibilitychange", revalidate);
+    };
+  }, [access?.state, refresh]);
 
   async function signIn() {
     setMessage(null);
@@ -95,15 +148,52 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
 
   async function signOut() {
     setMessage(null);
+    refreshRequest.current += 1;
+    setAccess(null);
+    setLoading(true);
     try {
       const result = await authClient.signOut();
       if (result.error) {
         setMessage("Sign-out failed. Please try again.");
+        setLoading(false);
         return;
       }
       await refresh();
     } catch {
       setMessage("Sign-out failed. Please try again.");
+      setLoading(false);
+    }
+  }
+
+  async function startGoogleSignIn() {
+    setMessage(null);
+    refreshRequest.current += 1;
+    setAccess(null);
+    setLoading(true);
+
+    try {
+      const signOutResult = await authClient.signOut();
+      if (signOutResult.error) {
+        setMessage("Could not clear the previous session. Please try again.");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setMessage("Could not clear the previous session. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: window.location.origin,
+      });
+      if (result.error) setMessage(result.error.message ?? "Google sign-in failed.");
+    } catch {
+      setMessage("Google sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -206,15 +296,7 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
         <h1>Enter VideoForge</h1>
         <p>Only pre-invited, verified accounts are admitted.</p>
         <div>
-          <button
-            type="button"
-            onClick={() =>
-              void authClient.signIn.social({
-                provider: "google",
-                callbackURL: window.location.origin,
-              })
-            }
-          >
+          <button type="button" onClick={() => void startGoogleSignIn()}>
             Continue with Google
           </button>
         </div>

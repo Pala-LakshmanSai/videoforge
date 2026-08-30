@@ -422,7 +422,8 @@ if (
   !restoreScript.includes("videoforge_v2_06_disposable_drill") ||
   !restoreScript.includes("public_relation_count") ||
   !restoreScript.includes("apply-migrations-and-grants.mjs") ||
-  !restoreScript.includes("--verify-only --apply-grants") ||
+  !restoreScript.includes('apply-migrations-and-grants.mjs" --apply-grants') ||
+  restoreScript.includes('apply-migrations-and-grants.mjs" --verify-only --apply-grants') ||
   !backupScript.includes("openssl enc -aes-256-cbc -pbkdf2") ||
   !backupScript.includes("refusing to overwrite") ||
   !restoreScript.includes("RESTORE_DRILL_CONFIRM") ||

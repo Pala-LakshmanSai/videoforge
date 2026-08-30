@@ -294,6 +294,12 @@
       "name": "hosted_full_live_promotion_lineage",
       "filename": "0049_hosted_full_live_promotion_lineage.sql",
       "sha256": "sha256:e29c4beeff16c40acb2d598e22d1393d1193abd80cd990805900234c15986e31"
+    },
+    {
+      "version": 50,
+      "name": "hosted_authentication_before_invite",
+      "filename": "0050_hosted_authentication_before_invite.sql",
+      "sha256": "sha256:027550e364f6d4bc4c58416156d74165eccf0a2a883cdb6b327cbb5b4665f352"
     }
   ]
 }
