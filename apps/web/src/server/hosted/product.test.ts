@@ -62,6 +62,11 @@ const config = {
   publicOrigin: ORIGIN,
   neon: { databaseUrl: "postgresql://fixture" },
 } as HostedRuntimeConfiguration;
+const stagingConfig = {
+  ...config,
+  environment: "staging",
+  gpuTransport: "DISABLED_UNQUALIFIED",
+} as HostedRuntimeConfiguration;
 const environment = {} as HostedRuntimeEnvironment;
 const executionContext = { waitUntil: vi.fn() };
 
@@ -150,6 +155,21 @@ describe("hosted product route contract", () => {
       expect(testState.query).not.toHaveBeenCalled();
     },
   );
+
+  it("opens preset mutations in staging while keeping provider and GPU transport disabled", async () => {
+    testState.query.mockClear();
+    const result = await handleHostedProductRequest(
+      request("/api/v2/hosted/styles", "POST", { unexpected: true }, true, {
+        "idempotency-key": "hosted-style-create-0001",
+      }),
+      environment,
+      stagingConfig,
+      executionContext,
+    );
+    expect(result?.status).toBe(400);
+    await expect(errorCode(result)).resolves.toBe("STYLE_CREATE_REJECTED");
+    expect(testState.query).not.toHaveBeenCalled();
+  });
 
   it("fails closed at the tenant admission seam", async () => {
     testState.scopeRows.length = 0;

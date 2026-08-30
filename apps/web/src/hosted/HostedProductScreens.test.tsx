@@ -10,6 +10,7 @@ vi.mock("@tanstack/react-router", () => ({
 import {
   HostedAvatarHubScreen,
   HostedCreateProjectScreen,
+  HostedPresetCreationScreen,
   HostedPresetCreationUnavailableScreen,
   HostedProjectScreen,
   HostedStylesHubScreen,
@@ -30,6 +31,7 @@ function renderHosted(node: ReactNode) {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
@@ -311,6 +313,19 @@ describe("hosted product journey", () => {
     expect(screen.getByText("Image Styles creation unavailable")).toBeInTheDocument();
     expect(screen.getByText("Read-only hosted catalog")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Image Styles" })).toBeInTheDocument();
+  });
+
+  it("exposes the provider-free hosted style workflow only in private beta staging", () => {
+    vi.stubEnv("VITE_VIDEOFORGE_PROVIDER_MODE", "staging");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ styles: [], avatars: [] })),
+    );
+
+    renderHosted(<HostedPresetCreationScreen kind="styles" />);
+
+    expect(screen.getByRole("heading", { name: "New image style" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Upload style references")).toBeInTheDocument();
   });
 
   it("blocks generation until the account-owned personal worker is online", async () => {

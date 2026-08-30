@@ -6,6 +6,19 @@ import { PresetImage } from "./PresetImage";
 afterEach(cleanup);
 
 describe("PresetImage", () => {
+  it("allows tenant-authenticated hosted preset preview routes", () => {
+    render(
+      <PresetImage
+        src="/api/v2/hosted/avatars/44444444-4444-4444-8444-444444444444/preview"
+        alt="Hosted presenter"
+      />,
+    );
+    expect(screen.getByRole("img", { name: "Hosted presenter" })).toHaveAttribute(
+      "src",
+      "/api/v2/hosted/avatars/44444444-4444-4444-8444-444444444444/preview",
+    );
+  });
+
   it("renders a tenant-checked avatar preview URL", () => {
     render(
       <PresetImage

@@ -30,11 +30,14 @@ const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const MAX_SPEND_CAP_USD = 2;
 const MAX_EXTRA_PROMPT_KEYWORDS = 500;
 const MAX_OPTIONAL_SCRIPT = 100_000;
-const HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED = false;
 const HOSTED_TARGETED_RETRY_QUALIFIED = false;
 // Migration 0002 requires every revision budget to be at least $0.10. This is only the
 // persisted revision ceiling; V2-06 personal-worker execution remains provider-free at $0.
 const PERSONAL_WORKER_MINIMUM_COST_MICRO_USD = 100_000;
+
+function hostedProviderFreePresetCreationEnabled(config: HostedRuntimeConfiguration): boolean {
+  return config.environment === "staging" && config.gpuTransport === "DISABLED_UNQUALIFIED";
+}
 
 function validFilename(value: string): boolean {
   return (
@@ -1295,7 +1298,7 @@ async function avatarCreate(
 ): Promise<Response> {
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+  if (!hostedProviderFreePresetCreationEnabled(config))
     return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const idempotencyKey = request.headers.get("idempotency-key") ?? "";
   if (!IDEMPOTENCY.test(idempotencyKey))
@@ -1476,7 +1479,7 @@ async function avatarCommit(
   if (!UUID.test(profileOrVersionId)) return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+  if (!hostedProviderFreePresetCreationEnabled(config))
     return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "AVATAR_COMMIT_REJECTED");
   if (raw instanceof Response) return raw;
@@ -1575,7 +1578,7 @@ async function avatarApprove(
   if (!UUID.test(profileOrVersionId)) return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+  if (!hostedProviderFreePresetCreationEnabled(config))
     return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "AVATAR_APPROVAL_REJECTED");
   if (raw instanceof Response) return raw;
@@ -1689,7 +1692,7 @@ async function styleCreate(
 ): Promise<Response> {
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+  if (!hostedProviderFreePresetCreationEnabled(config))
     return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const idempotencyKey = request.headers.get("idempotency-key") ?? "";
   if (!IDEMPOTENCY.test(idempotencyKey))
@@ -1930,7 +1933,7 @@ async function styleCommit(
   if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+  if (!hostedProviderFreePresetCreationEnabled(config))
     return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "STYLE_COMMIT_REJECTED");
   if (raw instanceof Response) return raw;
@@ -2061,7 +2064,7 @@ async function styleAnalyze(
   if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+  if (!hostedProviderFreePresetCreationEnabled(config))
     return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "STYLE_ANALYSIS_REJECTED");
   if (raw instanceof Response) return raw;
@@ -2167,7 +2170,7 @@ async function stylePublish(
   if (!UUID.test(styleOrVersionId)) return response({ error: { code: "STYLE_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  if (!HOSTED_CUSTOM_PRESET_CREATION_QUALIFIED)
+  if (!hostedProviderFreePresetCreationEnabled(config))
     return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
   const raw = await parseHostedJson(request, "STYLE_PUBLISH_REJECTED");
   if (raw instanceof Response) return raw;
@@ -2611,13 +2614,13 @@ async function catalog(
     });
     const avatarRows = (data.avatars as Record<string, unknown>[]).map((row) => ({
       ...row,
-      thumbnail_url: null,
+      thumbnail_url: `/api/v2/hosted/avatars/${rowString(row, "version_id")}/preview`,
       profile_hash: row.profile_hash ?? null,
       rights_status: row.scope_kind === "SYSTEM" ? "SYSTEM_OWNED" : "ATTESTED",
     }));
     const styleRows = (data.styles as Record<string, unknown>[]).map((row) => ({
       ...row,
-      cover_url: null,
+      cover_url: `/api/v2/hosted/styles/${rowString(row, "version_id")}/preview`,
       profile_hash: row.style_profile_hash ?? null,
       reference_count: 0,
     }));
@@ -2629,6 +2632,87 @@ async function catalog(
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
+    });
+  } finally {
+    await pool.end();
+  }
+}
+
+async function hostedPresetPreview(
+  request: Request,
+  kind: "avatar" | "style",
+  versionId: string,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(versionId)) return response({ error: { code: "PRESET_NOT_FOUND" } }, 404);
+  const bucket = environment.PRIVATE_ARTIFACTS;
+  if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const target = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const sql =
+        kind === "avatar"
+          ? `SELECT asset.object_key, asset.content_type
+               FROM avatar_profile_versions AS version
+               JOIN avatar_profiles AS profile
+                 ON profile.account_id = version.account_id
+                AND profile.workspace_id = version.workspace_id
+                AND profile.id = version.profile_id
+               JOIN avatar_profile_assets AS link
+                 ON link.account_id = version.account_id
+                AND link.workspace_id = version.workspace_id
+                AND link.version_id = version.id AND link.role = 'ORIGINAL'
+               JOIN assets AS asset
+                 ON asset.account_id = link.account_id
+                AND asset.workspace_id = link.workspace_id AND asset.id = link.asset_id
+              WHERE version.id = $3 AND version.state = 'READY'
+                AND ((version.account_id = $1 AND version.workspace_id = $2)
+                     OR version.scope_kind = 'SYSTEM')
+              LIMIT 1`
+          : `SELECT asset.object_key, asset.content_type
+               FROM image_style_versions AS version
+               JOIN image_styles AS style
+                 ON style.account_id = version.account_id
+                AND style.workspace_id = version.workspace_id
+                AND style.id = version.style_id
+               JOIN image_style_references AS reference
+                 ON reference.account_id = version.account_id
+                AND reference.workspace_id = version.workspace_id
+                AND reference.version_id = version.id
+               JOIN assets AS asset
+                 ON asset.account_id = reference.account_id
+                AND asset.workspace_id = reference.workspace_id
+                AND asset.id = reference.normalized_asset_id
+              WHERE version.id = $3 AND version.state = 'PUBLISHED'
+                AND ((version.account_id = $1 AND version.workspace_id = $2)
+                     OR version.scope_kind = 'SYSTEM')
+              ORDER BY reference.reference_order
+              LIMIT 1`;
+      const result = await transaction.query<HostedPresetRow>(sql, [
+        scope.account_id,
+        scope.workspace_id,
+        versionId,
+      ]);
+      return result.rows[0] ?? null;
+    });
+    if (!target) return response({ error: { code: "PRESET_NOT_FOUND" } }, 404);
+    const object = await bucket.get(rowString(target, "object_key"));
+    if (!object) return response({ error: { code: "PRESET_IMAGE_NOT_FOUND" } }, 404);
+    return new Response(await object.arrayBuffer(), {
+      status: 200,
+      headers: {
+        "cache-control": "private, no-store",
+        "content-type": rowString(target, "content_type"),
+        "x-content-type-options": "nosniff",
+      },
     });
   } finally {
     await pool.end();
@@ -4289,6 +4373,28 @@ export async function handleHostedProductRequest(
   const url = new URL(request.url);
   if (request.method === "GET" && url.pathname === "/api/v2/hosted/project-catalog")
     return catalog(request, config, executionContext);
+  const avatarPreviewPath = /^\/api\/v2\/hosted\/avatars\/([0-9a-f-]+)\/preview$/u.exec(
+    url.pathname,
+  );
+  if (request.method === "GET" && avatarPreviewPath)
+    return hostedPresetPreview(
+      request,
+      "avatar",
+      avatarPreviewPath[1]!,
+      environment,
+      config,
+      executionContext,
+    );
+  const stylePreviewPath = /^\/api\/v2\/hosted\/styles\/([0-9a-f-]+)\/preview$/u.exec(url.pathname);
+  if (request.method === "GET" && stylePreviewPath)
+    return hostedPresetPreview(
+      request,
+      "style",
+      stylePreviewPath[1]!,
+      environment,
+      config,
+      executionContext,
+    );
   if (request.method === "POST" && url.pathname === "/api/v2/hosted/avatars")
     return avatarCreate(request, environment, config, executionContext);
   const avatarCommitPath = /^\/api\/v2\/hosted\/avatars\/([0-9a-f-]+)\/commit$/u.exec(url.pathname);

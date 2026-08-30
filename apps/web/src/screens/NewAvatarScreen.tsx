@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
-import { HostedPresetCreationUnavailableScreen } from "../hosted/HostedProductScreens";
-import { isHostedProviderMode } from "../hosted/provider-mode";
+import {
+  HostedPresetCreationScreen,
+  HostedPresetCreationUnavailableScreen,
+} from "../hosted/HostedProductScreens";
+import { isHostedBetaMode, isHostedProviderMode } from "../hosted/provider-mode";
 import { PageHeader } from "../components/PageHeader";
 import { Button, Disclosure, Panel } from "../components/ui";
 import { ActionToast } from "../features/shared/FixtureFeedback";
@@ -13,6 +16,9 @@ import { validateImageFile, type VerifiedImage } from "../lib/media-validation";
 import { currentScenario, withScenario } from "../lib/scenario";
 
 export function NewAvatarScreen() {
+  if (isHostedBetaMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE)) {
+    return <HostedPresetCreationScreen kind="avatars" />;
+  }
   if (isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE)) {
     return <HostedPresetCreationUnavailableScreen kind="avatars" />;
   }

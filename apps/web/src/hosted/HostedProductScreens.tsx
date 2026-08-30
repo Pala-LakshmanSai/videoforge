@@ -25,7 +25,9 @@ import {
   Panel,
   ProgressBar,
 } from "../components/ui";
+import { PresetImage } from "../features/presets/PresetImage";
 import type { NormalizedStyleReference } from "../lib/media-validation";
+import { isHostedBetaMode } from "./provider-mode";
 
 const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const MAX_AVATAR_BYTES = 20 * 1024 * 1024;
@@ -1350,6 +1352,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const title = isAvatar ? "Avatar Hub" : "Image Styles";
   const itemLabel = isAvatar ? "avatar" : "style";
   const Icon = isAvatar ? UsersRound : Images;
+  const betaCreation = isHostedBetaMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE);
 
   if (catalog.isPending) {
     return (
@@ -1382,10 +1385,27 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
         eyebrow="Private hosted staging"
         title={title}
         description={`Only ${itemLabel}s owned by this account can be used for generation.`}
+        actions={
+          betaCreation ? (
+            <Link className="button button-primary" to={isAvatar ? "/avatars/new" : "/styles/new"}>
+              {isAvatar ? <UsersRound size={16} /> : <Images size={16} />}
+              New {itemLabel}
+            </Link>
+          ) : undefined
+        }
       />
       <div className="notice" role="status">
-        <strong>Built-ins and already-ready tenant presets only.</strong> New custom {itemLabel}
-        creation is not qualified in this invited release.
+        {betaCreation ? (
+          <>
+            <strong>Private beta preset creation is enabled.</strong> Files use the hosted Neon and
+            private R2 path; provider and GPU calls remain disabled.
+          </>
+        ) : (
+          <>
+            <strong>Built-ins and already-ready tenant presets only.</strong> New custom {itemLabel}
+            creation is not qualified in this invited release.
+          </>
+        )}
       </div>
       <Panel eyebrow="Tenant-private catalog" heading={`Ready ${itemLabel}s`}>
         {items.length === 0 ? (
@@ -1403,6 +1423,15 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
           <div className="entity-list">
             {items.map((item) => (
               <article className="entity-row" key={item.version_id}>
+                {isAvatar && "thumbnail_url" in item && item.thumbnail_url ? (
+                  <div className="hosted-preset-thumb">
+                    <PresetImage src={item.thumbnail_url} alt={`${item.name} portrait`} />
+                  </div>
+                ) : !isAvatar && "cover_url" in item && item.cover_url ? (
+                  <div className="hosted-preset-thumb">
+                    <PresetImage src={item.cover_url} alt={`${item.name} cover`} />
+                  </div>
+                ) : null}
                 <div>
                   <strong>{item.name}</strong>
                   <small>
@@ -1482,6 +1511,8 @@ export function HostedPresetCreationScreen({
 }) {
   const isAvatar = kind === "avatars";
   const fixtureBackend = Boolean(fixtureStyleAdapter);
+  const hostedBeta =
+    !fixtureBackend && isHostedBetaMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE);
   const title = isAvatar ? "New avatar" : "New image style";
   const itemLabel = isAvatar ? "avatar" : "style";
   const params = new URLSearchParams(window.location.search);
@@ -1991,9 +2022,15 @@ export function HostedPresetCreationScreen({
         ) : null}
         {step === 3 && !isAvatar ? (
           <div className="stack">
-            <div className="notice">
-              <strong>References are uploaded privately before analysis.</strong> Analysis runs once
-              for this immutable draft version and never during ordinary video generation.
+            <div className={hostedBeta ? "notice notice-warning" : "notice"}>
+              <strong>
+                {hostedBeta
+                  ? "Private beta uses provider-free analysis."
+                  : "References are uploaded privately before analysis."}
+              </strong>{" "}
+              {hostedBeta
+                ? "References use the hosted Neon/R2 path, but no Gemini, DeepSeek, or other provider request is made. The extracted profile is simulated for workflow testing."
+                : "Analysis runs once for this immutable draft version and never during ordinary video generation."}
             </div>
             <label className="toggle-row">
               <span>
@@ -2042,7 +2079,10 @@ export function HostedPresetCreationScreen({
         {step === 4 && !isAvatar ? (
           <div className="stack">
             <div className="validation validation-success">
-              <Check size={16} /> Exact draft analysis returned for review.
+              <Check size={16} />
+              {hostedBeta
+                ? "Provider-free beta profile returned for workflow review."
+                : "Exact draft analysis returned for review."}
             </div>
             <p>{profileSummary}</p>
             {created?.profile_hash ? <small>Profile hash · {created.profile_hash}</small> : null}

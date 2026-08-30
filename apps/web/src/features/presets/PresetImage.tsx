@@ -11,13 +11,18 @@ const SAFE_STYLE_PREVIEW = new RegExp(
   `^/api/v1/image-styles/${SAFE_ID}/versions/${SAFE_ID}/references/${SAFE_ID}/preview$`,
   "u",
 );
+const SAFE_HOSTED_PRESET_PREVIEW = new RegExp(
+  `^/api/v2/hosted/(?:avatars|styles)/${SAFE_ID}/preview$`,
+  "u",
+);
 
 export function isSafePresetImageSource(src: string): boolean {
   const normalized = src.trim();
   return (
     SAFE_FIXTURE_IMAGE.test(normalized) ||
     SAFE_AVATAR_PREVIEW.test(normalized) ||
-    SAFE_STYLE_PREVIEW.test(normalized)
+    SAFE_STYLE_PREVIEW.test(normalized) ||
+    SAFE_HOSTED_PRESET_PREVIEW.test(normalized)
   );
 }
 
