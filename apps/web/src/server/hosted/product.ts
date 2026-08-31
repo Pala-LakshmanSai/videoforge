@@ -5292,8 +5292,9 @@ async function projectDetail(
         [scope.account_id, scope.workspace_id, projectId],
       );
       const zeroWorkers = await transaction.query(
-        `SELECT count(*) AS evidence_count, max(observed_at) AS observed_at,
-                max(generation_request_id) AS generation_request_id
+        `SELECT count(*) AS evidence_count, max(zero.observed_at) AS observed_at,
+                (array_agg(zero.generation_request_id ORDER BY zero.observed_at DESC))[1]
+                  AS generation_request_id
            FROM hosted_pair_zero_worker_observations AS zero
            JOIN generation_requests AS request
              ON request.account_id = zero.account_id
