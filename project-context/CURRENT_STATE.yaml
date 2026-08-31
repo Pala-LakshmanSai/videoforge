@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Source 95567052 adds MP3 to the hosted project voiceover path alongside WAV: the chooser and API accept audio/mpeg, the hosted edge verifies matching MP3 magic plus two consistent Layer III frames, and the existing personal worker remains responsible for authoritative ffprobe/ffmpeg decode and duration verification before transcription. Focused UI/server/audio tests pass 102/102; typecheck, lint, staging build/quarantine, deployment validation, context validation, and diff checks pass. Deployed source remains c9beae23 / Worker 31cbc013 until fresh exact approval. No database/secret mutation, provider call, GPU work, production activation, or spend occurred."
+  provider_free_product_action: "Approved source 95567052 is live as Worker e00be197. Cache-bypassed status reports the exact commit and GPU DISABLED_UNQUALIFIED. Authenticated Chrome confirms the Create Project chooser says WAV or MP3 and its live accept contract includes audio/mpeg and .mp3. The edge verifies matching MP3 magic plus two consistent Layer III frames, while the personal worker performs authoritative ffprobe/ffmpeg decode and duration verification before transcription. No database/secret mutation, provider call, GPU work, production activation, or spend occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: IMAGE_STYLE_REFERENCE_CAROUSEL_LIVE_ACCEPTED
+  status: MP3_VOICEOVER_LIVE_ACCEPTED
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -87,11 +87,12 @@ hosted_beta_user_walkthrough:
     - "824d77da405146d4617fbd93fb27d771baa11fb5"
     - "5f56f3226eab13bf59b8b60692596a6ec7781cfc"
     - "9fe7319f0417ef603262bcfbbde0e6b18f2709fc"
-  deployment_candidate: DEPLOYED_STYLE_REFERENCE_CAROUSEL
-  deployed_source_commit: "c9beae23300b6bf114f5cc833c420ccf3e55dc94"
-  cloudflare_worker_version_id: "31cbc013-1e8a-421d-b670-cec81f81b65d"
-  deployed_config_sha256: "sha256:502fe176320d0dae0237f3ec2cb324fa0d5ef516ba1cdd5b9542672e7e19641d"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA c9beae23300b6bf114f5cc833c420ccf3e55dc94 CAP USD 3"
+    - "955670528e46622bb24ce27d10d9f2c965e58e3a"
+  deployment_candidate: DEPLOYED_MP3_VOICEOVER
+  deployed_source_commit: "955670528e46622bb24ce27d10d9f2c965e58e3a"
+  cloudflare_worker_version_id: "e00be197-74d7-471a-8a10-4fb2b75fd8d0"
+  deployed_config_sha256: "sha256:2df17a861e15a4bcad08933482b4e197418fd4f1164923dc270861e06dbe8518"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 955670528e46622bb24ce27d10d9f2c965e58e3a CAP USD 3"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -142,7 +143,7 @@ hosted_beta_user_walkthrough:
     - "The published-style catalog incorrectly hardcoded every reference count to zero and discarded the saved Gemini profile and existing authenticated preview. The current source repair returns the real tenant-scoped non-deleted reference count, cover URL, and trusted published profile, and formats the response as a readable summary, visual traits, palette, generation rules, and optional prompt guidance without exposing hashes, UUIDs, raw provider fields, or analysis-ledger rows."
     - "Approved source f6d94db7 is deployed as Worker f20840d6 with config sha256:0058f0c0. The first activation attempt failed before version creation on Cloudflare startup CPU validation; one bounded identical retry succeeded. Exact live status reports the approved commit and DISABLED_UNQUALIFIED. Authenticated Chrome proves the will carter cover, References (4), full formatted Gemini analysis, palette, and generation rules are live."
     - "Approved source c9beae23 is deployed as Worker 31cbc013 with config sha256:502fe176. The published style card says Details and exposes every saved normalized reference through tenant-authenticated numbered preview URLs. Authenticated Chrome confirms visible previous/next edge arrows, distinct images 1 through 4, position text, and wraparound from 4 to 1."
-    - "Source 95567052 accepts MP3 voiceovers throughout hosted project creation while retaining WAV: browser metadata and the API use audio/mpeg, the edge verifies a real Layer III frame sequence under bounded reads, and the personal media worker performs the final ffprobe/ffmpeg decode and duration check before transcription. Focused tests pass 102/102; typecheck, lint, staging build/quarantine, deployment validation, context validation, and diff checks pass. It awaits fresh exact deployment approval."
+    - "Approved source 95567052 is deployed as Worker e00be197 with config sha256:2df17a86. Cache-bypassed status reports the exact commit and GPU DISABLED_UNQUALIFIED. Authenticated Chrome confirms Create Project says WAV or MP3 and the file input accepts audio/wav, audio/mpeg, .wav, and .mp3. The edge verifies Layer III frame structure and the personal worker retains final ffprobe/ffmpeg decode and duration authority."
   current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
   remaining_steps:
     - PROJECT_CREATION_AND_COST_PREFLIGHT
@@ -180,7 +181,8 @@ hosted_beta_user_walkthrough:
     hosted_mp3_voiceover_eslint: PASS
     hosted_mp3_voiceover_staging_build: PASS_FIXTURE_QUARANTINE
     hosted_mp3_voiceover_deployment_validation: PASS
-    hosted_mp3_voiceover_deployment: PENDING_FRESH_EXACT_APPROVAL
+    hosted_mp3_voiceover_deployment: "PASS_COMMIT_95567052_WORKER_E00BE197"
+    hosted_mp3_voiceover_live_chrome: "PASS_WAV_OR_MP3_COPY_AND_AUDIO_MPEG_DOT_MP3_ACCEPT_CONTRACT"
     hosted_preset_archive_migration: "PASS_4_OF_4"
     hosted_preset_runtime_grants: "PASS_1_OF_1_NO_DELETE"
     hosted_preset_remove_staging_build: PASS
