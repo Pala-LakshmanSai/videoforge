@@ -1,10 +1,10 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-30"
+updated_at: "2026-08-31"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: private_hosted_beta_style_reference_reselection_live_awaiting_user_reupload
+current_milestone: private_hosted_beta_style_analysis_request_repair_awaiting_deployment_approval
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source 6098ffa4 is live as Worker 3da5b371. It keeps will carter, routes Continue to a clear 3–8 image reselection flow, atomically abandons only the failed version, creates an idempotent replacement DRAFT under the same style parent/name, uploads and commits it, then leaves analysis as a separate click. Cache-bypassed status reports the exact commit and DISABLED_UNQUALIFIED. Chrome control disconnected before authenticated UI readback, so the next user action is one refresh and reference reselection. No Gemini call or provider spend occurred. No RunPod, GPU, production activation, V2-07 through V2-13 provider execution, or resealing is authorized."
+  provider_free_product_action: "Approved source 6098ffa4 is live as Worker 3da5b371. The user's replacement references uploaded and verified, then the explicit analysis attempt failed with the generic rejected-input message. Source 649357b3 removes an undocumented Runware providerSettings block, separates local-input rejection from provider-request rejection, and permits an explicit retry only by cloning a definitively FAILED analysis onto a new immutable style version; UNKNOWN or possibly charged ambiguous attempts remain non-retriable. Focused tests pass 86/86 with typecheck, lint, and diff checks green. This repair is not deployed and requires fresh exact source-bound approval. No RunPod, GPU, production activation, V2-07 through V2-13 provider execution, or resealing is authorized."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_RESELECTION_REPAIR_AWAITING_USER_REUPLOAD
+  status: ANALYSIS_REQUEST_REPAIR_AWAITING_DEPLOYMENT_APPROVAL
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -96,7 +96,7 @@ hosted_beta_user_walkthrough:
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
   gpu_transport: DISABLED_UNQUALIFIED
-  provider_analysis: DEPLOYED_RUNWARE_GEMINI_3_1_FLASH_LITE_AWAITING_FIRST_REAL_USER_ANALYSIS
+  provider_analysis: FIRST_REAL_USER_ATTEMPT_FAILED_REPAIR_649357B3_NOT_DEPLOYED
   provider_calls_authorized: true
   gpu_use_authorized: false
   external_spend_authorized_usd: 3
@@ -108,7 +108,7 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "FAIL_SAFE_OLD_REFERENCE_OBJECTS_NOT_VERIFIED_NO_GEMINI_DISPATCH_REPAIR_PENDING"
+  live_browser_verification: "PASS_REPLACEMENT_UPLOAD_AND_COMMIT_THEN_ANALYSIS_REJECTED"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
@@ -134,6 +134,7 @@ hosted_beta_user_walkthrough:
     - "Approved source 54cc211a is deployed as Worker c381ba93 with config sha256:7cfcab88. Cache-bypassed status reports the exact commit and GPU transport DISABLED_UNQUALIFIED. Authenticated Chrome confirms will carter is visible with seven references, Continue resumes step 3, and Verify uploads and analyze once is present. The button was not clicked, so no Gemini request or provider spend occurred."
     - "The user's verification click proved the seven legacy reference rows have no matching verifiable private-R2 objects; the commit stopped before Gemini, so no provider call or spend occurred. Repair 9533cc04 preserves the style name and history, presents an in-draft 3–8 image reselection flow, atomically abandons only the failed version, creates a replacement DRAFT under the same tenant-owned parent, supports idempotent upload retry, commits the replacement, and keeps analysis as a separate user click. Focused UI/server tests pass 76/76 with typecheck, lint, staging build/quarantine, deployment validation, and diff checks green."
     - "Approved source 6098ffa4 is deployed as Worker 3da5b371 with config sha256:199e471d. Cache-bypassed status reports the exact source and DISABLED_UNQUALIFIED. No database migration, secret mutation, Gemini request, GPU work, or provider spend occurred. Chrome control disconnected before authenticated UI readback; the user must refresh the existing style route once to load the new reselection UI."
+    - "The user's replacement references uploaded and committed successfully, proving the private-R2 repair. The explicit analysis attempt then failed behind an over-broad rejected-input message. Source 649357b3 aligns the request with Runware's documented Gemini 3.1 Flash Lite contract by removing the unsupported providerSettings block, distinguishes local image validation from provider rejection, keeps FAILED drafts visible, and retries only a durable FAILED attempt on a new immutable version while UNKNOWN attempts remain blocked. Focused tests pass 86/86; typecheck, changed-file lint, and diff checks pass. The repair is not deployed."
   current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
     - IMAGE_STYLE_CREATION_AND_PUBLISHING
@@ -190,6 +191,10 @@ hosted_beta_user_walkthrough:
     hosted_style_reference_reselection_deployment_validation: PASS
     hosted_style_reference_reselection_deployment: "PASS_COMMIT_6098FFA4_WORKER_3DA5B371"
     hosted_style_reference_reselection_live_chrome: PENDING_USER_REFRESH_CHROME_CONTROL_DISCONNECTED
+    hosted_style_analysis_request_repair: "PASS_86_OF_86_UI_SERVER_AND_PROVIDER_CONTRACT"
+    hosted_style_analysis_request_repair_typecheck: PASS
+    hosted_style_analysis_request_repair_eslint: PASS
+    hosted_style_analysis_request_repair_deployment: PENDING_FRESH_EXACT_APPROVAL
     hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
     hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
     hosted_preset_archive_live_migration: "PASS_51_OF_51_FORCE_RLS_EXACT_GRANTS"
@@ -4742,17 +4747,17 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_style_reference_reselection_live_awaiting_user_reupload
-  status: live_reselection_repair_awaiting_user_reupload
+  milestone: private_hosted_beta_style_analysis_request_repair_awaiting_deployment_approval
+  status: source_649357b3_green_awaiting_exact_deployment_approval
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: private_beta_6098ffa4_deployed_user_analysis_within_cap_authorized
+  authorization_status: deployed_6098ffa4_authority_not_reusable_for_source_649357b3
   task_stage: provider_free_product_execution
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Have the user refresh the existing will carter recovery route once, reselect 3–8 references, review them, and verify the replacement upload. Then let the user trigger the separate bounded Gemini analysis. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
+  goal: "Obtain fresh exact source-bound private-beta approval for current clean HEAD, deploy the request-contract and definitive-failure retry repair without database or secret changes, verify exact live source, then have the user resume will carter and explicitly retry its saved analysis once. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
