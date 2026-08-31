@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source 643e9c82 is live as Worker 1ba229a4. Neon runtime SELECT grants for hosted progress tables are active. Cache-bypassed status reports the exact source and GPU DISABLED_UNQUALIFIED. Authenticated Chrome shows a stable nine-stage live progress dashboard polling every two seconds; the existing demo job truthfully reports 17 percent and transcription needs attention instead of toggling between loading and an unavailable fixture error. No provider call, GPU work, production activation, or spend occurred."
+  provider_free_product_action: "Approved source 643e9c82 remains live as Worker 1ba229a4. Provider-free repair f5c212e9 adds a hosted Progress dock action immediately after New Project, bounded explicit ASR retry, and worker 0.1.12 timestamp-overhang repair after exact diagnosis of the saved MP3. The repair is source-only and requires fresh exact approval before GitHub release publication, staging manifest mutation, Worker deployment, installation, or retry. No provider call, GPU work, production activation, remote mutation, or spend occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: LIVE_PROGRESS_DASHBOARD_ACCEPTED
+  status: TRANSCRIPTION_REPAIR_AWAITING_EXACT_DEPLOYMENT_APPROVAL
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -94,6 +94,10 @@ hosted_beta_user_walkthrough:
   deployment_candidate: DEPLOYED_LIVE_PROGRESS_DASHBOARD
   deployed_source_commit: "643e9c82f5ede0ac831c2d18cdefc0e637d0a815"
   cloudflare_worker_version_id: "1ba229a4-ca26-41a9-92b2-e4cf102334c7"
+  pending_source_candidate: "f5c212e9b2f48fa2eed384bb80efede1545f171f"
+  pending_worker_release: "0.1.12"
+  pending_release_boundary: "Publish a new immutable signed/notarized 0.1.12 worker, update the staging release manifest, deploy the exact source candidate, install/reconnect 0.1.12, and submit one explicit ASR retry only after fresh exact USD 0 approval."
+  pending_validations: "PASS_WEB_84_OF_84_FOCUSED; PASS_TRANSCRIBE_32_OF_32; PASS_MEDIA_LOCAL_40_OF_40; PASS_WEB_TYPECHECK; PASS_CHANGED_FILE_ESLINT_RUFF_FORMAT_DIFF"
   deployed_config_sha256: null
   deployment_approval: "APPROVE PRIVATE HOSTED BETA 643e9c82f5ede0ac831c2d18cdefc0e637d0a815 CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
