@@ -126,19 +126,31 @@ export function MediaWorkerSetup() {
     }
   }
 
-  async function revoke(id: string) {
-    if (!window.confirm("Remove this computer from VideoForge? Any active local job will stop."))
-      return;
+  async function remove(device: WorkerDevice) {
+    const warning =
+      device.status === "REVOKED"
+        ? "Remove this old computer entry from the list? Its security history will be retained."
+        : "Remove this computer from VideoForge? Any active local job will stop.";
+    if (!window.confirm(warning)) return;
     setBusy(true);
     try {
       await responseJson(
-        await fetch(`/api/v2/media-workers/${id}/revoke`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: "{}",
-        }),
+        await fetch(
+          device.status === "REVOKED"
+            ? `/api/v2/media-workers/${device.id}`
+            : `/api/v2/media-workers/${device.id}/revoke`,
+          {
+            method: device.status === "REVOKED" ? "DELETE" : "POST",
+            headers: { "content-type": "application/json" },
+            ...(device.status === "REVOKED" ? {} : { body: "{}" }),
+          },
+        ),
       );
-      setMessage("Computer removed. Open its worker again to reconnect it.");
+      setMessage(
+        device.status === "REVOKED"
+          ? "Old computer entry removed."
+          : "Computer removed. Open its worker again to reconnect it.",
+      );
       await refresh();
     } catch {
       setMessage("The computer could not be removed right now.");
@@ -244,11 +256,9 @@ export function MediaWorkerSetup() {
                     : lastSeen(device.last_seen_at)}
               </small>
             </div>
-            {device.status !== "REVOKED" ? (
-              <button type="button" disabled={busy} onClick={() => void revoke(device.id)}>
-                Remove
-              </button>
-            ) : null}
+            <button type="button" disabled={busy} onClick={() => void remove(device)}>
+              Remove
+            </button>
           </article>
         ))}
       </div>

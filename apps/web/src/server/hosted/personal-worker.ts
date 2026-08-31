@@ -317,7 +317,8 @@ async function approveEnrollment(
               SET enrollment_id = $2, display_name = $3, platform = $4, architecture = $5,
                   worker_version = $6, protocol_version = $7, execution_bundle_sha256 = $8,
                   credential_token_sha256 = $9,
-                  status = 'OFFLINE', revoked_at = NULL, last_seen_at = NULL, updated_at = now()
+                  status = 'OFFLINE', revoked_at = NULL, removed_at = NULL,
+                  last_seen_at = NULL, updated_at = now()
             WHERE id = $1`,
           [
             deviceId,
@@ -502,6 +503,7 @@ async function listDevices(
           AND lease.device_id = device.id AND lease.state IN ('CLAIMED', 'RUNNING', 'COMPLETING')
           AND lease.lease_expires_at > now()
         WHERE device.account_id = $1 AND device.workspace_id = $2
+          AND device.removed_at IS NULL
         ORDER BY device.created_at`,
       [scope.accountId, scope.workspaceId, config.mediaWorkerRelease.minimumProtocolVersion],
     );
@@ -535,8 +537,9 @@ async function revokeDevice(
       ]);
       const result = await transaction.query(
         `UPDATE media_worker_devices
-            SET status = 'REVOKED', revoked_at = now(), updated_at = now()
-          WHERE id = $1 AND account_id = $2 AND workspace_id = $3 AND status <> 'REVOKED'
+            SET status = 'REVOKED', revoked_at = now(), removed_at = now(), updated_at = now()
+          WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+            AND status <> 'REVOKED' AND removed_at IS NULL
         RETURNING id`,
         [deviceId, scope.accountId, scope.workspaceId],
       );
@@ -614,6 +617,39 @@ async function revokeDevice(
     });
     return changed
       ? json({ schema_version: "videoforge-media-worker-revoked/v1", id: deviceId })
+      : json({ error: { code: "MEDIA_WORKER_NOT_FOUND" } }, 404);
+  } finally {
+    await pool.end();
+  }
+}
+
+async function hideRevokedDevice(
+  request: Request,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+  deviceId: string,
+) {
+  if (!sameOriginBrowserWrite(request, config)) {
+    return json({ error: { code: "MEDIA_WORKER_BROWSER_ORIGIN_REJECTED" } }, 403);
+  }
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (!scope) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
+    await pool.query("SELECT set_config($1, $2, false)", [
+      "videoforge.account_id",
+      scope.accountId,
+    ]);
+    const hidden = await pool.query(
+      `UPDATE media_worker_devices
+          SET removed_at = now(), updated_at = now()
+        WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+          AND status = 'REVOKED' AND removed_at IS NULL
+      RETURNING id`,
+      [deviceId, scope.accountId, scope.workspaceId],
+    );
+    return hidden.rows[0]
+      ? json({ schema_version: "videoforge-media-worker-removed/v1", id: deviceId })
       : json({ error: { code: "MEDIA_WORKER_NOT_FOUND" } }, 404);
   } finally {
     await pool.end();
@@ -1645,6 +1681,10 @@ export async function handlePersonalWorkerRequest(
   const revoke = /^\/api\/v2\/media-workers\/([0-9a-f-]+)\/revoke$/u.exec(url.pathname);
   if (request.method === "POST" && revoke && UUID.test(revoke[1]!)) {
     return revokeDevice(request, config, executionContext, revoke[1]!);
+  }
+  const remove = /^\/api\/v2\/media-workers\/([0-9a-f-]+)$/u.exec(url.pathname);
+  if (request.method === "DELETE" && remove && UUID.test(remove[1]!)) {
+    return hideRevokedDevice(request, config, executionContext, remove[1]!);
   }
   if (request.method === "POST" && url.pathname === "/api/v2/media-worker/heartbeat") {
     return heartbeat(request, config);

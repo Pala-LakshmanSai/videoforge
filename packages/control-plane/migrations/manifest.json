@@ -312,6 +312,12 @@
       "name": "hosted_style_analysis_spend_guard",
       "filename": "0052_hosted_style_analysis_spend_guard.sql",
       "sha256": "sha256:3ef175f09f39be8c70d2108d74cc30f13f663094a7d09fc80d8862821600c90a"
+    },
+    {
+      "version": 53,
+      "name": "media_worker_device_visibility",
+      "filename": "0053_media_worker_device_visibility.sql",
+      "sha256": "sha256:d73b290a68a380c21a8243b11b39e9f828f8d5f4a9a876a061a7eea6b92e864a"
     }
   ]
 }

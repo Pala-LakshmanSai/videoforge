@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MediaWorkerSetup } from "./MediaWorkerSetup";
@@ -45,6 +45,7 @@ describe("personal worker onboarding", () => {
   });
 
   afterEach(() => {
+    cleanup();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -121,5 +122,50 @@ describe("personal worker onboarding", () => {
     expect(
       await screen.findByText("Update the Windows beta above, then open it again."),
     ).toBeInTheDocument();
+  });
+
+  it("shows Remove for every computer and hides a revoked entry without deleting its history", async () => {
+    const revoked = {
+      ...workerList.devices[0],
+      id: "22222222-2222-4222-8222-222222222222",
+      display_name: "Old Mac",
+      platform: "MACOS" as const,
+      status: "REVOKED" as const,
+    };
+    let removed = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/v2/media-workers" && (!init?.method || init.method === "GET")) {
+        return Response.json({
+          ...workerList,
+          devices: removed ? workerList.devices : [...workerList.devices, revoked],
+        });
+      }
+      if (url === `/api/v2/media-workers/${revoked.id}` && init?.method === "DELETE") {
+        removed = true;
+        return Response.json({
+          schema_version: "videoforge-media-worker-removed/v1",
+          id: revoked.id,
+        });
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<MediaWorkerSetup />);
+
+    expect(await screen.findAllByRole("button", { name: "Remove" })).toHaveLength(
+      workerList.devices.length + 1,
+    );
+    const oldComputer = screen.getByText("Old Mac").closest("article");
+    expect(oldComputer).not.toBeNull();
+    fireEvent.click(within(oldComputer!).getByRole("button", { name: "Remove" }));
+
+    await waitFor(() => expect(screen.queryByText("Old Mac")).not.toBeInTheDocument());
+    expect(screen.getByRole("status")).toHaveTextContent("Old computer entry removed.");
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v2/media-workers/${revoked.id}`,
+      expect.objectContaining({ method: "DELETE" }),
+    );
   });
 });
