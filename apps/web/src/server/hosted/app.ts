@@ -11,7 +11,6 @@ import {
 import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { handlePersonalWorkerRequest } from "./personal-worker";
-import { handleHostedProductRequest } from "./product";
 import {
   commitAndScheduleV209ShortPair,
   observeV209ShortAdmission,
@@ -1198,6 +1197,7 @@ export async function handleHostedRequest(
     config,
   );
   if (personalWorkerResponse) return personalWorkerResponse;
+  const { handleHostedProductRequest } = await import("./product");
   const productResponse = await handleHostedProductRequest(
     request,
     environment,
