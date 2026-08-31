@@ -31,7 +31,7 @@ import { canonicalJson } from "./submission";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const IDEMPOTENCY = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,159}$/u;
-const VOICEOVER_TYPES = new Set(["audio/wav"]);
+const VOICEOVER_TYPES = new Set(["audio/mpeg", "audio/wav"]);
 const GENERATION_MODES = new Set(["LOWEST_COST", "BALANCED", "FASTER"]);
 const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const MAX_SPEND_CAP_USD = 2;
@@ -3921,8 +3921,7 @@ async function catalog(
         state: rowString(row, "state"),
         status: rowString(row, "status"),
         scope_kind: rowString(row, "scope_kind"),
-        cover_url:
-          referenceCount > 0 ? `/api/v2/hosted/styles/${versionId}/preview` : null,
+        cover_url: referenceCount > 0 ? `/api/v2/hosted/styles/${versionId}/preview` : null,
         reference_urls: referenceOrders.map(
           (order) => `/api/v2/hosted/styles/${versionId}/preview?reference=${order}`,
         ),

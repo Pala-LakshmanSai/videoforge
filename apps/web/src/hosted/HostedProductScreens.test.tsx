@@ -995,7 +995,9 @@ describe("hosted product journey", () => {
     expect(await screen.findByText("Workspace style")).toBeInTheDocument();
     // The destructive action is available on the card without opening Details.
     const removeStyle = screen.getByRole("button", { name: "Remove style" });
-    const workspaceCard = screen.getByRole("heading", { name: "Workspace style" }).closest("article");
+    const workspaceCard = screen
+      .getByRole("heading", { name: "Workspace style" })
+      .closest("article");
     expect(workspaceCard).not.toBeNull();
     expect(within(workspaceCard!).getByRole("button", { name: "Details" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove built-in style" })).not.toBeInTheDocument();
@@ -1074,7 +1076,13 @@ describe("hosted product journey", () => {
     expect(screen.getByRole("link", { name: "Open Settings" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Check cost & readiness" })).toBeDisabled();
     expect(screen.getByLabelText("Video title")).toHaveClass("input");
-    expect(screen.getByLabelText("Final voiceover")).toBeInTheDocument();
+    expect(screen.getByLabelText("Final voiceover")).toHaveAttribute(
+      "accept",
+      "audio/wav,audio/mpeg,.wav,.mp3",
+    );
+    expect(
+      screen.getByText("WAV or MP3 · 10 seconds to 60 minutes · max 1 GB"),
+    ).toBeInTheDocument();
     expect(screen.getByRole("radiogroup", { name: "Avatar options" })).toBeInTheDocument();
     expect(screen.getByRole("radiogroup", { name: "Image style options" })).toBeInTheDocument();
     await waitFor(() =>

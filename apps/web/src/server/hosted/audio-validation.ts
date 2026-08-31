@@ -14,12 +14,16 @@ const EXTENSIBLE_GUID_TAIL = new Uint8Array([
 export type HostedAudioContainer = "AAC" | "FLAC" | "M4A" | "MP3" | "WAV";
 export type HostedWavCodec = "IEEE_FLOAT" | "PCM";
 
-export const HOSTED_AUTHORITATIVE_VOICEOVER_CONTENT_TYPES = Object.freeze(["audio/wav"] as const);
+export const HOSTED_AUTHORITATIVE_VOICEOVER_CONTENT_TYPES = Object.freeze([
+  "audio/wav",
+  "audio/mpeg",
+] as const);
 export const HOSTED_AUTHORITATIVE_VOICEOVER_CONTRACT = Object.freeze({
   schema_version: "videoforge-hosted-authoritative-voiceover-contract/v1" as const,
   accepted_content_types: HOSTED_AUTHORITATIVE_VOICEOVER_CONTENT_TYPES,
-  accepted_containers: Object.freeze(["WAV"] as const),
-  accepted_codecs: Object.freeze(["PCM", "IEEE_FLOAT"] as const),
+  accepted_containers: Object.freeze(["WAV", "MP3"] as const),
+  accepted_codecs: Object.freeze(["PCM", "IEEE_FLOAT", "MPEG_LAYER_III"] as const),
+  compressed_audio_decode_validation: "PERSONAL_MEDIA_WORKER_FFPROBE_AND_FFMPEG" as const,
   minimum_duration_seconds: MIN_DURATION_SECONDS,
   maximum_duration_seconds: MAX_DURATION_SECONDS,
   minimum_sample_rate_hz: MIN_SAMPLE_RATE_HZ,
@@ -43,6 +47,7 @@ export type HostedAudioValidationErrorCode =
   | "VOICEOVER_DURATION_MISMATCH"
   | "VOICEOVER_MAGIC_INVALID"
   | "VOICEOVER_MIME_MAGIC_MISMATCH"
+  | "VOICEOVER_MP3_INVALID"
   | "VOICEOVER_READ_FAILED"
   | "VOICEOVER_SERVER_CODEC_UNAVAILABLE"
   | "VOICEOVER_WAV_INVALID";
@@ -69,7 +74,7 @@ export interface HostedVoiceoverValidationInput {
   readonly reader: HostedAudioRangeReader;
 }
 
-export interface HostedVoiceoverValidationReceipt {
+export interface HostedWavValidationReceipt {
   readonly schema_version: "videoforge-hosted-voiceover-validation/v1";
   readonly validation: "AUTHORITATIVE_BOUNDED_RANGES";
   readonly container: "WAV";
@@ -84,6 +89,25 @@ export interface HostedVoiceoverValidationReceipt {
   readonly range_reads: number;
   readonly bytes_read: number;
 }
+
+export interface HostedMp3ValidationReceipt {
+  readonly schema_version: "videoforge-hosted-voiceover-validation/v1";
+  readonly validation: "AUTHORITATIVE_CONTAINER_WORKER_DECODE_REQUIRED";
+  readonly container: "MP3";
+  readonly codec: "MPEG_LAYER_III";
+  readonly content_length: number;
+  readonly duration_ms: number;
+  readonly channels: 1 | 2;
+  readonly sample_rate_hz: number;
+  readonly first_frame_offset: number;
+  readonly first_frame_bytes: number;
+  readonly range_reads: number;
+  readonly bytes_read: number;
+}
+
+export type HostedVoiceoverValidationReceipt =
+  | HostedMp3ValidationReceipt
+  | HostedWavValidationReceipt;
 
 export interface HostedVoiceoverArtifactProbe {
   readonly source: "HOSTED_AUTHORITATIVE_AUDIO_VALIDATION";
@@ -216,7 +240,7 @@ function supportedBits(codec: HostedWavCodec, bitsPerSample: number): boolean {
 async function validateWav(
   input: HostedVoiceoverValidationInput,
   accounting: ReadAccounting,
-): Promise<HostedVoiceoverValidationReceipt> {
+): Promise<HostedWavValidationReceipt> {
   const { reader } = input;
   const riff = await readExact(reader, accounting, 0, 12);
   if (uint32(riff, 4) + 8 !== reader.size) {
@@ -335,6 +359,122 @@ async function validateWav(
   });
 }
 
+interface Mp3Frame {
+  readonly channels: 1 | 2;
+  readonly frameBytes: number;
+  readonly sampleRateHz: number;
+}
+
+function parseMp3Frame(header: Uint8Array): Mp3Frame | null {
+  if (header.byteLength < 4) return null;
+  const bits = new DataView(header.buffer, header.byteOffset, 4).getUint32(0, false);
+  if (bits >>> 21 !== 0x7ff) return null;
+  const versionBits = (bits >>> 19) & 0x3;
+  const layerBits = (bits >>> 17) & 0x3;
+  const bitrateIndex = (bits >>> 12) & 0xf;
+  const sampleRateIndex = (bits >>> 10) & 0x3;
+  if (
+    versionBits === 1 ||
+    layerBits !== 1 ||
+    bitrateIndex === 0 ||
+    bitrateIndex === 15 ||
+    sampleRateIndex === 3
+  ) {
+    return null;
+  }
+  const mpeg1 = versionBits === 3;
+  const sampleRates =
+    versionBits === 3
+      ? [44_100, 48_000, 32_000]
+      : versionBits === 2
+        ? [22_050, 24_000, 16_000]
+        : [11_025, 12_000, 8_000];
+  const bitratesKbps = mpeg1
+    ? [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320]
+    : [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
+  const sampleRateHz = sampleRates[sampleRateIndex];
+  const bitrateKbps = bitratesKbps[bitrateIndex];
+  if (!sampleRateHz || !bitrateKbps) return null;
+  const padding = (bits >>> 9) & 1;
+  const frameBytes =
+    Math.floor(((mpeg1 ? 144 : 72) * bitrateKbps * 1_000) / sampleRateHz) + padding;
+  if (frameBytes < 4) return null;
+  return {
+    channels: ((bits >>> 6) & 0x3) === 3 ? 1 : 2,
+    frameBytes,
+    sampleRateHz,
+  };
+}
+
+function id3PayloadBytes(header: Uint8Array): number | null {
+  if (header.byteLength < 10 || ascii(header, 0, 3) !== "ID3") return 0;
+  if (
+    [header[6], header[7], header[8], header[9]].some(
+      (value) => value === undefined || value > 0x7f,
+    )
+  )
+    return null;
+  return (
+    ((header[6] ?? 0) << 21) | ((header[7] ?? 0) << 14) | ((header[8] ?? 0) << 7) | (header[9] ?? 0)
+  );
+}
+
+async function validateMp3(
+  input: HostedVoiceoverValidationInput,
+  accounting: ReadAccounting,
+  initialHeader: Uint8Array,
+): Promise<HostedMp3ValidationReceipt> {
+  const id3Bytes = id3PayloadBytes(initialHeader);
+  if (id3Bytes === null) fail("VOICEOVER_MP3_INVALID", "MP3 ID3 metadata is malformed.");
+  const hasId3 = ascii(initialHeader, 0, 3) === "ID3";
+  const footerBytes = hasId3 && ((initialHeader[5] ?? 0) & 0x10) !== 0 ? 10 : 0;
+  const firstFrameOffset = hasId3 ? 10 + id3Bytes + footerBytes : 0;
+  if (firstFrameOffset + 4 > input.reader.size) {
+    fail("VOICEOVER_MP3_INVALID", "MP3 audio frames are missing.");
+  }
+  const firstHeader =
+    firstFrameOffset === 0
+      ? initialHeader.subarray(0, 4)
+      : await readExact(input.reader, accounting, firstFrameOffset, 4);
+  const firstFrame = parseMp3Frame(firstHeader);
+  if (!firstFrame || firstFrameOffset + firstFrame.frameBytes + 4 > input.reader.size) {
+    fail("VOICEOVER_MP3_INVALID", "MP3 audio frame metadata is invalid.");
+  }
+  const secondHeader = await readExact(
+    input.reader,
+    accounting,
+    firstFrameOffset + firstFrame.frameBytes,
+    4,
+  );
+  const secondFrame = parseMp3Frame(secondHeader);
+  if (!secondFrame || secondFrame.sampleRateHz !== firstFrame.sampleRateHz) {
+    fail("VOICEOVER_MP3_INVALID", "MP3 audio frames are incomplete or inconsistent.");
+  }
+  if (
+    input.declaredDurationMs < MIN_DURATION_SECONDS * 1_000 ||
+    input.declaredDurationMs > MAX_DURATION_SECONDS * 1_000
+  ) {
+    fail(
+      "VOICEOVER_DURATION_INVALID",
+      "Voiceover duration must be between 10 seconds and 60 minutes.",
+    );
+  }
+  return Object.freeze({
+    schema_version: "videoforge-hosted-voiceover-validation/v1",
+    validation: "AUTHORITATIVE_CONTAINER_WORKER_DECODE_REQUIRED",
+    container: "MP3",
+    codec: "MPEG_LAYER_III",
+    content_length: input.reader.size,
+    duration_ms: input.declaredDurationMs,
+    channels: firstFrame.channels,
+    sample_rate_hz: firstFrame.sampleRateHz,
+    first_frame_offset: firstFrameOffset,
+    first_frame_bytes: firstFrame.frameBytes,
+    range_reads: accounting.rangeReads,
+    bytes_read: accounting.bytesRead,
+  });
+}
+
 export async function validateHostedVoiceover(
   input: HostedVoiceoverValidationInput,
 ): Promise<HostedVoiceoverValidationReceipt> {
@@ -350,10 +490,7 @@ export async function validateHostedVoiceover(
       "Voiceover content length is invalid or does not match the uploaded object.",
     );
   }
-  if (
-    !contentTypeMatches("WAV", input.declaredContentType) &&
-    !["audio/aac", "audio/flac", "audio/mp4", "audio/mpeg"].includes(input.declaredContentType)
-  ) {
+  if (!isAuthoritativelySupportedHostedVoiceoverContentType(input.declaredContentType)) {
     fail("VOICEOVER_DECLARATION_INVALID", "Voiceover declared content type is unsupported.");
   }
   if (!Number.isSafeInteger(input.declaredDurationMs) || input.declaredDurationMs < 1) {
@@ -375,11 +512,7 @@ export async function validateHostedVoiceover(
       "Voiceover MIME type does not match its content signature.",
     );
   }
-  if (container !== "WAV") {
-    fail(
-      "VOICEOVER_SERVER_CODEC_UNAVAILABLE",
-      `${container} cannot be authoritatively decoded by the hosted edge runtime.`,
-    );
-  }
-  return validateWav(input, accounting);
+  if (container === "WAV") return validateWav(input, accounting);
+  if (container === "MP3") return validateMp3(input, accounting, header);
+  fail("VOICEOVER_DECLARATION_INVALID", "Voiceover declared content type is unsupported.");
 }

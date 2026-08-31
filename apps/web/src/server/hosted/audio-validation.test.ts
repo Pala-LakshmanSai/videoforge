@@ -74,18 +74,33 @@ function byteReader(bytes: Uint8Array): HostedAudioRangeReader {
   };
 }
 
+function syntheticMp3({ withId3 = true }: { readonly withId3?: boolean } = {}) {
+  const firstFrameOffset = withId3 ? 10 : 0;
+  const frameBytes = 417;
+  const bytes = new Uint8Array(firstFrameOffset + frameBytes * 2);
+  if (withId3) {
+    writeAscii(bytes, 0, "ID3");
+    bytes[3] = 4;
+  }
+  const frameHeader = new Uint8Array([0xff, 0xfb, 0x90, 0x64]);
+  bytes.set(frameHeader, firstFrameOffset);
+  bytes.set(frameHeader, firstFrameOffset + frameBytes);
+  return { bytes, firstFrameOffset, frameBytes };
+}
+
 async function expectCode(promise: Promise<unknown>, code: HostedAudioValidationError["code"]) {
   await expect(promise).rejects.toMatchObject({ code, name: "HostedAudioValidationError" });
 }
 
 describe("authoritative hosted voiceover validation", () => {
   it("exports the exact fail-closed hosted edge codec contract", () => {
-    expect(HOSTED_AUTHORITATIVE_VOICEOVER_CONTENT_TYPES).toEqual(["audio/wav"]);
+    expect(HOSTED_AUTHORITATIVE_VOICEOVER_CONTENT_TYPES).toEqual(["audio/wav", "audio/mpeg"]);
     expect(HOSTED_AUTHORITATIVE_VOICEOVER_CONTRACT).toMatchObject({
       schema_version: "videoforge-hosted-authoritative-voiceover-contract/v1",
-      accepted_content_types: ["audio/wav"],
-      accepted_containers: ["WAV"],
-      accepted_codecs: ["PCM", "IEEE_FLOAT"],
+      accepted_content_types: ["audio/wav", "audio/mpeg"],
+      accepted_containers: ["WAV", "MP3"],
+      accepted_codecs: ["PCM", "IEEE_FLOAT", "MPEG_LAYER_III"],
+      compressed_audio_decode_validation: "PERSONAL_MEDIA_WORKER_FFPROBE_AND_FFMPEG",
       minimum_duration_seconds: 10,
       maximum_duration_seconds: 3_600,
       minimum_sample_rate_hz: 8_000,
@@ -96,7 +111,7 @@ describe("authoritative hosted voiceover validation", () => {
       maximum_validation_read_bytes: 65_536,
     });
     expect(isAuthoritativelySupportedHostedVoiceoverContentType("audio/wav")).toBe(true);
-    expect(isAuthoritativelySupportedHostedVoiceoverContentType("audio/mpeg")).toBe(false);
+    expect(isAuthoritativelySupportedHostedVoiceoverContentType("audio/mpeg")).toBe(true);
   });
 
   it("validates PCM WAV metadata without reading sample payload bytes", async () => {
@@ -140,6 +155,29 @@ describe("authoritative hosted voiceover validation", () => {
       }),
     ).resolves.toMatchObject({ codec: "IEEE_FLOAT", channels: 2, bits_per_sample: 32 });
   });
+
+  it.each([true, false])(
+    "accepts an MP3 with two valid Layer III frames (ID3=%s) for worker decode",
+    async (withId3) => {
+      const fixture = syntheticMp3({ withId3 });
+      const receipt = await validateHostedVoiceover({
+        declaredContentLength: fixture.bytes.byteLength,
+        declaredContentType: "audio/mpeg",
+        declaredDurationMs: 20_000,
+        reader: byteReader(fixture.bytes),
+      });
+      expect(receipt).toMatchObject({
+        validation: "AUTHORITATIVE_CONTAINER_WORKER_DECODE_REQUIRED",
+        container: "MP3",
+        codec: "MPEG_LAYER_III",
+        duration_ms: 20_000,
+        channels: 2,
+        sample_rate_hz: 44_100,
+        first_frame_offset: fixture.firstFrameOffset,
+        first_frame_bytes: fixture.frameBytes,
+      });
+    },
+  );
 
   it("rejects client duration drift from authoritative sample metadata", async () => {
     const fixture = syntheticWav();
@@ -200,27 +238,36 @@ describe("authoritative hosted voiceover validation", () => {
 
   it.each([
     ["FLAC", "audio/flac", new Uint8Array([0x66, 0x4c, 0x61, 0x43, 0, 0, 0, 0, 0, 0, 0, 0])],
-    ["MP3", "audio/mpeg", new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, 0, 0, 0, 0, 0, 0])],
     [
       "M4A",
       "audio/mp4",
       new Uint8Array([0, 0, 0, 12, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]),
     ],
     ["AAC", "audio/mp4", new Uint8Array([0xff, 0xf1, 0x50, 0x80, 0, 0, 0, 0, 0, 0, 0, 0])],
-  ] as const)(
-    "fails closed for %s without an authoritative edge decoder",
-    async (_, type, bytes) => {
-      await expectCode(
-        validateHostedVoiceover({
-          declaredContentLength: bytes.byteLength,
-          declaredContentType: type,
-          declaredDurationMs: 20_000,
-          reader: byteReader(bytes),
-        }),
-        "VOICEOVER_SERVER_CODEC_UNAVAILABLE",
-      );
-    },
-  );
+  ] as const)("fails closed for unsupported %s input", async (_, type, bytes) => {
+    await expectCode(
+      validateHostedVoiceover({
+        declaredContentLength: bytes.byteLength,
+        declaredContentType: type,
+        declaredDurationMs: 20_000,
+        reader: byteReader(bytes),
+      }),
+      "VOICEOVER_DECLARATION_INVALID",
+    );
+  });
+
+  it("rejects an MP3 without two consistent Layer III frames", async () => {
+    const bytes = new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0, 0, 0, 0, 0, 0, 0]);
+    await expectCode(
+      validateHostedVoiceover({
+        declaredContentLength: bytes.byteLength,
+        declaredContentType: "audio/mpeg",
+        declaredDurationMs: 20_000,
+        reader: byteReader(bytes),
+      }),
+      "VOICEOVER_MP3_INVALID",
+    );
+  });
 
   it("rejects a compressed codec inside a WAV container", async () => {
     const fixture = syntheticWav({ formatTag: 6 });

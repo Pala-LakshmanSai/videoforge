@@ -47,7 +47,7 @@ const MAX_STYLE_REFERENCES = 8;
 const MIN_STYLE_REFERENCES = 3;
 const DEFAULT_SPEND_CAP_USD = "1.00";
 const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v2";
-const VOICEOVER_TYPES = new Set(["audio/wav"]);
+const VOICEOVER_TYPES = new Set(["audio/mpeg", "audio/wav"]);
 export const HOSTED_SHA256_CHUNK_BYTES = 4 * 1024 * 1024;
 
 function base64ByteLength(value: string): number {
@@ -1325,7 +1325,8 @@ export function HostedCreateProjectScreen() {
   const [error, setError] = useState<string | null>(null);
   const contentTypeForVoiceover = (file: File): string => {
     if (/\.wav$/iu.test(file.name)) return "audio/wav";
-    return file.type === "audio/wav" ? file.type : "";
+    if (/\.mp3$/iu.test(file.name)) return "audio/mpeg";
+    return VOICEOVER_TYPES.has(file.type) ? file.type : "";
   };
   const cap = Number(spendCapUsd);
   const capValid = Number.isFinite(cap) && cap >= 0.1 && cap <= 2;
@@ -1354,12 +1355,12 @@ export function HostedCreateProjectScreen() {
       if (!voiceover) throw new Error("Choose a voiceover first.");
       const contentType = contentTypeForVoiceover(voiceover);
       if (!VOICEOVER_TYPES.has(contentType))
-        throw new Error("Use PCM or IEEE-float WAV audio for hosted generation.");
+        throw new Error("Use a WAV or MP3 voiceover for hosted generation.");
       if (voiceover.size > MAX_VOICEOVER_BYTES) throw new Error("Voiceover must be at most 1 GB.");
       const checksumSha256 = await hostedFileSha256(voiceover);
       const durationMs = await bounded(
         audioDurationMs(voiceover),
-        "Voiceover duration timed out. Choose a valid WAV file and retry.",
+        "Voiceover duration timed out. Choose a valid WAV or MP3 file and retry.",
         15_000,
       );
       const result = await bounded(
@@ -1540,7 +1541,7 @@ export function HostedCreateProjectScreen() {
                   <input
                     aria-label="Final voiceover"
                     type="file"
-                    accept="audio/wav,.wav"
+                    accept="audio/wav,audio/mpeg,.wav,.mp3"
                     disabled={preflightMutation.isPending || submit.isPending}
                     onChange={(event) => {
                       const selected = event.target.files?.[0] ?? null;
@@ -1565,7 +1566,7 @@ export function HostedCreateProjectScreen() {
                     <strong>{voiceover?.name ?? "Choose your final voiceover"}</strong>
                     {voiceover
                       ? `${(voiceover.size / 1_000_000).toFixed(1)} MB · ready to check`
-                      : "WAV · 10 seconds to 60 minutes · max 1 GB"}
+                      : "WAV or MP3 · 10 seconds to 60 minutes · max 1 GB"}
                   </span>
                 </label>
               </div>
@@ -2017,9 +2018,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
             }
             trigger={
               <button className="entity-details-trigger" type="button">
-                <strong>
-                  Details
-                </strong>
+                <strong>Details</strong>
                 <ArrowRight size={18} aria-hidden="true" />
               </button>
             }
