@@ -1224,7 +1224,7 @@ h4 {
   right: 10px;
   bottom: 10px;
   display: flex;
-  width: min(448px, calc(100vw - 20px));
+  width: min(620px, calc(100vw - 20px));
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--border-strong);

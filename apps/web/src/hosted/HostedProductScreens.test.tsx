@@ -11,28 +11,13 @@ vi.mock("../lib/media-validation", async () => {
   const actual =
     await vi.importActual<typeof import("../lib/media-validation")>("../lib/media-validation");
   const normalizedBytes = new Uint8Array([
-    0x52,
-    0x49,
-    0x46,
-    0x46,
-    0x04,
-    0x00,
-    0x00,
-    0x00,
-    0x57,
-    0x45,
-    0x42,
-    0x50,
+    0x52, 0x49, 0x46, 0x46, 0x04, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
   ]);
   const normalizedBytesBase64 = btoa(String.fromCharCode(...normalizedBytes));
   return {
     ...actual,
     normalizeImageStyleReference: vi.fn(async (file: File) => {
-      const marker = file.name.includes("one")
-        ? "1"
-        : file.name.includes("two")
-          ? "2"
-          : "3";
+      const marker = file.name.includes("one") ? "1" : file.name.includes("two") ? "2" : "3";
       return {
         bytesBase64: normalizedBytesBase64,
         checksum: "sha256:" + "a".repeat(64),
@@ -396,6 +381,34 @@ describe("hosted product journey", () => {
             cover_url: "/api/v2/hosted/styles/sv1/preview",
             profile_hash: "sha256:private-style-hash",
             reference_count: 3,
+            profile: {
+              schema_version: "image-style-profile/v1",
+              summary: "Clean commercial photography with tactile retail detail.",
+              visual_profile: {
+                medium_family: "commercial digital photography",
+                realism: "high fidelity and naturalistic",
+                subject_treatment: "polished but approachable",
+                camera_language: "eye-level observational framing",
+                image_framing: "balanced retail compositions",
+                lighting: "soft naturalistic retail light",
+                color: {
+                  descriptors: ["cool neutral", "restrained saturation"],
+                  approximate_hex: ["#D8D7D2", "#526174"],
+                },
+                contrast_and_exposure: "controlled highlights and open shadows",
+                depth_of_field: "moderate subject separation",
+                texture_and_grain: "sharp textile texture with minimal grain",
+                environment_and_material_detail: "tactile fabric and clean fixtures",
+                mood: ["polished", "approachable"],
+                must_include: ["tactile material detail"],
+                must_avoid: ["plastic-looking surfaces"],
+                flexible_properties: ["subject placement"],
+              },
+              prompt_profile: {
+                positive_suffix: "commercial realism, tactile textile detail",
+                negative_suffix: "plastic surfaces, oversaturated color",
+              },
+            },
           },
         ],
         media_worker_state: "ONLINE",
@@ -423,6 +436,17 @@ describe("hosted product journey", () => {
     );
     expect(screen.getByRole("button", { name: /Details/u })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /References \(3\)/u })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /References \(3\)/u }));
+    expect(screen.getByText("Gemini analysis")).toBeInTheDocument();
+    expect(
+      screen.getByText("Clean commercial photography with tactile retail detail."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Visual character")).toBeInTheDocument();
+    expect(screen.getByText("commercial digital photography")).toBeInTheDocument();
+    expect(screen.getByText("Generation rules")).toBeInTheDocument();
+    expect(screen.getByText("tactile material detail")).toBeInTheDocument();
+    expect(screen.queryByText(/sha256:private-style-hash/u)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close details" }));
     expect(screen.getAllByRole("searchbox")).toHaveLength(2);
     expect(screen.queryByText(/Private hosted staging/u)).not.toBeInTheDocument();
     expect(screen.queryByText(/Tenant-private catalog/u)).not.toBeInTheDocument();
@@ -589,7 +613,9 @@ describe("hosted product journey", () => {
         "7 references are saved. Continue to verify the uploads, then analyze and publish this style.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Analysis is in progress. We will update this style when it finishes.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Analysis is in progress. We will update this style when it finishes."),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         "The analysis request failed, but your verified references are saved. Continue setup to retry safely.",
@@ -602,7 +628,9 @@ describe("hosted product journey", () => {
       "href",
       "/styles/new?resumeVersionId=draft-style-version-id&returnTo=%2Fstyles",
     );
-    expect(screen.queryByText(/draft-(?:style|avatar)-(?:id|version-id)|sha256:/u)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/draft-(?:style|avatar)-(?:id|version-id)|sha256:/u),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Remove style" })[0]!);
     await waitFor(() => expect(screen.queryByText("Will Carter")).not.toBeInTheDocument());
@@ -655,7 +683,9 @@ describe("hosted product journey", () => {
     } else if (state === "FAILED") {
       expect(screen.getByRole("button", { name: "Retry saved analysis" })).toBeEnabled();
     } else {
-      expect(screen.getByRole("button", { name: "Publish immutable style version" })).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Publish immutable style version" }),
+      ).toBeDisabled();
     }
     window.history.replaceState({}, "", "/");
   });
@@ -864,7 +894,9 @@ describe("hosted product journey", () => {
     // The destructive action is available on the card without opening Details.
     const removeAvatar = screen.getByRole("button", { name: "Remove avatar" });
     expect(screen.getAllByRole("button", { name: "Details" })).toHaveLength(2);
-    expect(screen.queryByRole("button", { name: "Remove built-in avatar" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove built-in avatar" }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(removeAvatar);
     expect(confirm).toHaveBeenCalledWith(

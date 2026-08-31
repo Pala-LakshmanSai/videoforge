@@ -4,7 +4,7 @@ updated_at: "2026-08-31"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: private_hosted_beta_style_analysis_request_repair_awaiting_deployment_approval
+current_milestone: private_hosted_beta_published_style_details_awaiting_deployment_approval
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source 6098ffa4 is live as Worker 3da5b371. Live tailing of the user's six-reference attempt showed style creation HTTP 201 followed by analysis HTTP 502 after about 3.55 seconds, with no Worker exception; the deployed source exposed no safe provider-stage detail and incorrectly displayed the 3–8/30 MB input message. Sources 649357b3, dcc48f72, and d9b2cf8a remove the undocumented Runware providerSettings block, separate local-input rejection from provider-request rejection, permit explicit retry only on a new immutable version after definitive FAILED state, keep UNKNOWN/ambiguous attempts blocked, and add credential/image-free diagnostics for reference count, normalized bytes, encoded request bytes, provider HTTP status, code, type, and parameter. Source 9fb55f64 repairs the staging bundle verifier so a clean build checks the emitted staging Worker instead of passing through stale production artifacts. The retry uses no direct protected-ledger query and needs no grant or migration. Focused tests pass 86/86 with typecheck, lint, clean staging build/quarantine, deployment validation, and diff checks green. This repair is not deployed and requires fresh exact source-bound approval."
+  provider_free_product_action: "Approved source 4534c66b is live as Worker dfd9fe05. The monitored four-reference Gemini 3.1 Flash Lite analysis returned HTTP 200 in 13.5 seconds, persisted the trusted style profile, and advanced Chrome to review; reported cost was USD 0.004401. The published Style Details surface still hardcodes reference_count=0 and drops the stored profile. The current source repair returns the tenant-scoped non-deleted count, authenticated cover URL, and trusted profile, then presents summary, visual character, palette, generation rules, and expandable prompt guidance without hashes, UUIDs, raw provider data, or analysis-ledger access. Focused UI/server tests pass 79/79 with typecheck, lint, runtime-grant assertion, and diff checks green. This repair is not deployed and requires fresh exact source-bound approval."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: ANALYSIS_REQUEST_REPAIR_AWAITING_DEPLOYMENT_APPROVAL
+  status: PUBLISHED_STYLE_DETAILS_AWAITING_DEPLOYMENT_APPROVAL
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -88,15 +88,15 @@ hosted_beta_user_walkthrough:
     - "5f56f3226eab13bf59b8b60692596a6ec7781cfc"
     - "9fe7319f0417ef603262bcfbbde0e6b18f2709fc"
   deployment_candidate: DEPLOYED_STYLE_REFERENCE_RESELECTION_REPAIR
-  deployed_source_commit: "6098ffa4f3a98ba959d134ae9af154b364e95bca"
-  cloudflare_worker_version_id: "3da5b371-77a4-4f15-b14c-d1f9f37955bd"
-  deployed_config_sha256: "sha256:199e471d232aed95c3c00470271df579326753c3bc9fc4a60f04fd34e55dbf2e"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 6098ffa4f3a98ba959d134ae9af154b364e95bca CAP USD 3"
+  deployed_source_commit: "4534c66bef0cbd5ff7c0b16529b890aae932ef91"
+  cloudflare_worker_version_id: "dfd9fe05-579c-4a80-af64-eba973869fe7"
+  deployed_config_sha256: null
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 4534c66bef0cbd5ff7c0b16529b890aae932ef91 CAP USD 3"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
   gpu_transport: DISABLED_UNQUALIFIED
-  provider_analysis: FIRST_REAL_USER_ATTEMPT_FAILED_REPAIR_649357B3_NOT_DEPLOYED
+  provider_analysis: PASS_GEMINI_3_1_FLASH_LITE_FOUR_REFERENCE_HTTP_200_USD_0_004401
   provider_calls_authorized: true
   gpu_use_authorized: false
   external_spend_authorized_usd: 3
@@ -138,8 +138,11 @@ hosted_beta_user_walkthrough:
     - "Live safe diagnostics on b60eac0b proved the saved retry contained seven checksum-matched 1376x768 WebP derivatives totaling 880644 bytes and failed before Runware dispatch. Read-only inspection of one private-R2 derivative found a valid exact-length VP8X WebP containing ICCP plus VP8 chunks; the server incorrectly rejected all ICC color profiles together with EXIF/XMP. Source 7c218b47 now accepts standard browser ICC color profiles while continuing to reject EXIF and XMP source metadata. The focused analyzer suite passes 9/9, typecheck, changed-file lint, and diff checks pass; no provider dispatch or charge occurred for the failed retry."
     - "Approved source 4538d7ec is deployed as Worker c58fb3ee-625e-4f84-8785-8289e61b560d at 100 percent with exact cache-bypassed status and GPU transport DISABLED_UNQUALIFIED. The user's six-reference normalized WebP request dispatched once to google:gemini@3.1-flash-lite, returned HTTP 200 in about 19.5 seconds, persisted a SUCCEEDED receipt with 9102 prompt tokens, 1959 completion tokens, and reported cost USD 0.005213, then published will carter at HTTP 200. Durable readback confirms PUBLISHED with a profile hash. No GPU or production operation occurred."
     - "Source ccb13ab1 exposes the existing safe archive action directly on every workspace-owned published avatar and image-style card instead of hiding it in Details. Confirmation explains that existing projects retain pinned versions; successful archive refetches the catalog; immutable SYSTEM presets remain protected. Focused HostedProductScreens tests pass 39/39 with typecheck, changed-file lint, and diff checks green."
-  current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
+    - "Approved source 4534c66b is deployed as Worker dfd9fe05. The user's workspace-card Remove action archived the earlier published style without deleting pinned history or media. A new four-reference will carter draft then dispatched once to Gemini, returned HTTP 200 in 13.5 seconds, cost USD 0.004401, advanced Chrome to step 4, and published successfully. No GPU or production operation occurred."
+    - "The published-style catalog incorrectly hardcoded every reference count to zero and discarded the saved Gemini profile and existing authenticated preview. The current source repair returns the real tenant-scoped non-deleted reference count, cover URL, and trusted published profile, and formats the response as a readable summary, visual traits, palette, generation rules, and optional prompt guidance without exposing hashes, UUIDs, raw provider fields, or analysis-ledger rows."
+  current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
+    - IMAGE_STYLE_CREATION_AND_PUBLISHING
     - PROJECT_CREATION_AND_COST_PREFLIGHT
     - VOICEOVER_UPLOAD_AND_VALIDATION
     - PROJECT_SUBMISSION
@@ -156,6 +159,11 @@ hosted_beta_user_walkthrough:
     hosted_staging_bundle_quarantine: PASS_NO_FIXTURE_CODE_OR_ASSETS
     production_bundle_fixture_quarantine: PASS
     hosted_preset_remove_ui_and_api: "PASS_61_OF_61"
+    hosted_published_style_details_focused: "PASS_79_OF_79_UI_AND_SERVER"
+    hosted_published_style_details_typecheck: PASS
+    hosted_published_style_details_eslint: PASS
+    hosted_published_style_details_runtime_grants: PASS
+    hosted_published_style_details_deployment: PENDING_FRESH_EXACT_APPROVAL
     hosted_preset_archive_migration: "PASS_4_OF_4"
     hosted_preset_runtime_grants: "PASS_1_OF_1_NO_DELETE"
     hosted_preset_remove_staging_build: PASS

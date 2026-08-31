@@ -25,6 +25,7 @@ const testState = vi.hoisted(() => {
   } = { rows: [], error: null };
   const avatarDraftRows: Record<string, unknown>[] = [];
   const styleDraftRows: Record<string, unknown>[] = [];
+  const publishedStyleRows: Record<string, unknown>[] = [];
   const query = vi.fn(async (sql: string) => {
     if (sql.includes("videoforge_consume_hosted_rate_limit"))
       return { rows: rateLimitRows, affectedRows: 1 };
@@ -34,12 +35,17 @@ const testState = vi.hoisted(() => {
       if (archiveState.error) throw archiveState.error;
       return { rows: archiveState.rows, affectedRows: archiveState.rows.length };
     }
-    if (sql.includes("version.state NOT IN ('READY','ABANDONED')") || sql.includes("version.state NOT IN ('PUBLISHED','ABANDONED')")) {
+    if (
+      sql.includes("version.state NOT IN ('READY','ABANDONED')") ||
+      sql.includes("version.state NOT IN ('PUBLISHED','ABANDONED')")
+    ) {
       if (sql.includes("FROM avatar_profiles AS profile"))
         return { rows: avatarDraftRows, affectedRows: avatarDraftRows.length };
       if (sql.includes("FROM image_styles AS style"))
         return { rows: styleDraftRows, affectedRows: styleDraftRows.length };
     }
+    if (sql.includes("version.state = 'PUBLISHED'") && sql.includes("FROM image_styles AS style"))
+      return { rows: publishedStyleRows, affectedRows: publishedStyleRows.length };
     if (sql.includes("FROM projects AS project")) return { rows: projectRows, affectedRows: 1 };
     return { rows: [], affectedRows: 0 };
   });
@@ -55,6 +61,7 @@ const testState = vi.hoisted(() => {
     archiveState,
     avatarDraftRows,
     styleDraftRows,
+    publishedStyleRows,
     query,
     pool,
     executor,
@@ -167,6 +174,53 @@ describe("hosted product route contract", () => {
         String(sql).includes("hosted_style_analysis_runs"),
       ),
     ).toBe(false);
+  });
+
+  it("returns the saved Gemini profile and real reference count for a published style", async () => {
+    testState.publishedStyleRows.splice(0, testState.publishedStyleRows.length, {
+      style_id: "11111111-1111-4111-8111-111111111111",
+      version_id: "22222222-2222-4222-8222-222222222222",
+      name: "Retail documentary",
+      version_number: "1",
+      state: "PUBLISHED",
+      status: "ACTIVE",
+      scope_kind: "WORKSPACE",
+      style_profile_hash: "sha256:hidden",
+      reference_count: "4",
+      profile_payload: {
+        schema_version: "image-style-profile/v1",
+        summary: "Naturalistic retail photography.",
+        visual_profile: { medium_family: "commercial photography" },
+      },
+    });
+
+    const result = await handleHostedProductRequest(
+      request("/api/v2/hosted/project-catalog", "GET"),
+      environment,
+      stagingConfig,
+      executionContext,
+    );
+
+    expect(result?.status).toBe(200);
+    await expect(result?.json()).resolves.toMatchObject({
+      styles: [
+        {
+          name: "Retail documentary",
+          reference_count: 4,
+          cover_url: "/api/v2/hosted/styles/22222222-2222-4222-8222-222222222222/preview",
+          profile: {
+            summary: "Naturalistic retail photography.",
+            visual_profile: { medium_family: "commercial photography" },
+          },
+        },
+      ],
+    });
+    const publishedSql = testState.query.mock.calls
+      .map(([sql]) => String(sql))
+      .find((sql) => sql.includes("version.state = 'PUBLISHED'"));
+    expect(publishedSql).toContain("image_style_references");
+    expect(publishedSql).toContain("reference.deleted_at IS NULL");
+    testState.publishedStyleRows.length = 0;
   });
 
   it("returns active tenant drafts separately so they can be resumed without becoming project presets", async () => {
@@ -566,7 +620,7 @@ describe("hosted product route contract", () => {
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
     expect(replacement).toContain("lockActiveStyleParent");
-    expect(replacement).toContain("target.state !== \"DRAFT\"");
+    expect(replacement).toContain('target.state !== "DRAFT"');
     expect(replacement).toContain("SET state = 'ABANDONED'");
     expect(replacement).toContain("VALUES ($1,$2,$3,$4,$5,'DRAFT','WORKSPACE',$6)");
     expect(replacement).toContain("hosted_reference_replace_idempotency_key");
@@ -594,7 +648,7 @@ describe("hosted product route contract", () => {
     const start = source.indexOf("async function styleAnalyze(");
     const end = source.indexOf("async function stylePublish(", start);
     const block = source.slice(start, end);
-    expect(block).toContain("target.state === \"FAILED\"");
+    expect(block).toContain('target.state === "FAILED"');
     expect(block).toContain("AND version.state = 'FAILED'");
     expect(block).toContain("SET state = 'ABANDONED'");
     expect(block).toContain("hosted-style-analysis-retry:");

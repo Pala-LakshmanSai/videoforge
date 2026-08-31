@@ -93,6 +93,7 @@ export interface CatalogResponse {
     cover_url?: string | null;
     profile_hash?: string | null;
     reference_count?: number;
+    profile?: Record<string, unknown> | null;
     scope_kind?: "WORKSPACE" | "SYSTEM";
   }[];
   /** Workspace-owned style versions that are not published yet. */
@@ -155,6 +156,212 @@ interface HostedStyleDraft {
   readonly rights_attested?: boolean;
   readonly processing_disclosure_acknowledged?: boolean;
   readonly original_retention_policy?: string | null;
+}
+
+interface HostedStyleProfileView {
+  readonly summary: string | null;
+  readonly medium: string | null;
+  readonly realism: string | null;
+  readonly subjectTreatment: string | null;
+  readonly camera: string | null;
+  readonly framing: string | null;
+  readonly lighting: string | null;
+  readonly colorDescriptors: readonly string[];
+  readonly colorHex: readonly string[];
+  readonly contrast: string | null;
+  readonly depthOfField: string | null;
+  readonly texture: string | null;
+  readonly materials: string | null;
+  readonly mood: readonly string[];
+  readonly mustInclude: readonly string[];
+  readonly mustAvoid: readonly string[];
+  readonly flexible: readonly string[];
+  readonly positivePrompt: string | null;
+  readonly negativePrompt: string | null;
+}
+
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function profileText(record: Record<string, unknown> | null, key: string): string | null {
+  const value = record?.[key];
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function profileList(record: Record<string, unknown> | null, key: string): readonly string[] {
+  const value = record?.[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+}
+
+function hostedStyleProfileView(value: unknown): HostedStyleProfileView | null {
+  const profile = recordValue(value);
+  const visual = recordValue(profile?.visual_profile);
+  const color = recordValue(visual?.color);
+  const prompt = recordValue(profile?.prompt_profile);
+  if (!profile || !visual) return null;
+  return {
+    summary: profileText(profile, "summary"),
+    medium: profileText(visual, "medium_family"),
+    realism: profileText(visual, "realism"),
+    subjectTreatment: profileText(visual, "subject_treatment"),
+    camera: profileText(visual, "camera_language"),
+    framing: profileText(visual, "image_framing"),
+    lighting: profileText(visual, "lighting"),
+    colorDescriptors: profileList(color, "descriptors"),
+    colorHex: profileList(color, "approximate_hex").filter((item) => /^#[0-9a-f]{6}$/iu.test(item)),
+    contrast: profileText(visual, "contrast_and_exposure"),
+    depthOfField: profileText(visual, "depth_of_field"),
+    texture: profileText(visual, "texture_and_grain"),
+    materials: profileText(visual, "environment_and_material_detail"),
+    mood: profileList(visual, "mood"),
+    mustInclude: profileList(visual, "must_include"),
+    mustAvoid: profileList(visual, "must_avoid"),
+    flexible: profileList(visual, "flexible_properties"),
+    positivePrompt: profileText(prompt, "positive_suffix"),
+    negativePrompt: profileText(prompt, "negative_suffix"),
+  };
+}
+
+function StyleProfileFact({
+  label,
+  value,
+}: {
+  readonly label: string;
+  readonly value: string | null;
+}) {
+  if (!value) return null;
+  return (
+    <div className="style-profile-fact">
+      <small>{label}</small>
+      <p>{value}</p>
+    </div>
+  );
+}
+
+function StyleTraitList({
+  label,
+  values,
+  tone = "neutral",
+}: {
+  readonly label: string;
+  readonly values: readonly string[];
+  readonly tone?: "neutral" | "positive" | "negative";
+}) {
+  if (values.length === 0) return null;
+  return (
+    <section className="style-trait-group">
+      <h4>{label}</h4>
+      <ul className={`style-trait-list style-trait-list-${tone}`}>
+        {values.map((value) => (
+          <li key={value}>{value}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function StyleProfileDetails({
+  name,
+  imageUrl,
+  referenceCount,
+  profile,
+}: {
+  readonly name: string;
+  readonly imageUrl: string | null;
+  readonly referenceCount: number;
+  readonly profile: HostedStyleProfileView | null;
+}) {
+  return (
+    <div className="style-profile-details">
+      {imageUrl ? (
+        <div className="style-profile-cover">
+          <PresetImage src={imageUrl} alt={`${name} reference preview`} />
+        </div>
+      ) : null}
+      <div className="detail-facts">
+        <span>
+          <small>Status</small>
+          <strong>Published</strong>
+        </span>
+        <span>
+          <small>Reference images</small>
+          <strong>{referenceCount}</strong>
+        </span>
+      </div>
+      {profile ? (
+        <>
+          {profile.summary ? (
+            <section className="detail-section style-profile-summary">
+              <p className="eyebrow">Gemini analysis</p>
+              <h3>Style summary</h3>
+              <p>{profile.summary}</p>
+            </section>
+          ) : null}
+          <section className="detail-section">
+            <div className="detail-section-heading">
+              <h3>Visual character</h3>
+              <span>Reusable traits extracted from your references</span>
+            </div>
+            <div className="style-profile-facts">
+              <StyleProfileFact label="Medium" value={profile.medium} />
+              <StyleProfileFact label="Realism" value={profile.realism} />
+              <StyleProfileFact label="Subject treatment" value={profile.subjectTreatment} />
+              <StyleProfileFact label="Camera" value={profile.camera} />
+              <StyleProfileFact label="Framing" value={profile.framing} />
+              <StyleProfileFact label="Lighting" value={profile.lighting} />
+              <StyleProfileFact label="Contrast & exposure" value={profile.contrast} />
+              <StyleProfileFact label="Depth of field" value={profile.depthOfField} />
+              <StyleProfileFact label="Texture & grain" value={profile.texture} />
+              <StyleProfileFact label="Materials & environment" value={profile.materials} />
+            </div>
+            {profile.colorDescriptors.length > 0 || profile.colorHex.length > 0 ? (
+              <div className="style-color-profile">
+                <small>Color palette</small>
+                <div className="style-color-swatches" aria-label="Extracted color palette">
+                  {profile.colorHex.map((color) => (
+                    <span key={color} title={color} style={{ backgroundColor: color }} />
+                  ))}
+                </div>
+                {profile.colorDescriptors.length > 0 ? (
+                  <p>{profile.colorDescriptors.join(" · ")}</p>
+                ) : null}
+              </div>
+            ) : null}
+            <StyleTraitList label="Mood" values={profile.mood} />
+          </section>
+          <section className="detail-section">
+            <div className="detail-section-heading">
+              <h3>Generation rules</h3>
+              <span>How VideoForge will preserve this look</span>
+            </div>
+            <StyleTraitList label="Keep" values={profile.mustInclude} tone="positive" />
+            <StyleTraitList label="Avoid" values={profile.mustAvoid} tone="negative" />
+            <StyleTraitList label="Can vary" values={profile.flexible} />
+          </section>
+          {profile.positivePrompt || profile.negativePrompt ? (
+            <details className="detail-section style-prompt-details">
+              <summary>Prompt instructions used during generation</summary>
+              {profile.positivePrompt ? (
+                <StyleProfileFact label="Add to image prompts" value={profile.positivePrompt} />
+              ) : null}
+              {profile.negativePrompt ? (
+                <StyleProfileFact label="Avoid in image prompts" value={profile.negativePrompt} />
+              ) : null}
+            </details>
+          ) : null}
+        </>
+      ) : (
+        <div className="validation validation-warning">
+          The published style is ready to use, but its analysis summary is unavailable.
+        </div>
+      )}
+    </div>
+  );
 }
 
 const GPU_READINESS_KEYS = [
@@ -983,8 +1190,10 @@ function unfinishedPresetDescription(
   referencesVerified = true,
 ): string {
   if (kind === "avatars") {
-    if (state === "ANALYZING") return "Approval is being reconciled. We will update this avatar when it finishes.";
-    if (state === "FAILED") return "This avatar could not be completed. Remove it and start again with a new photo.";
+    if (state === "ANALYZING")
+      return "Approval is being reconciled. We will update this avatar when it finishes.";
+    if (state === "FAILED")
+      return "This avatar could not be completed. Remove it and start again with a new photo.";
     if (state === "DRAFT")
       return "Your avatar draft is saved. Continue to verify the photo upload, then approve it.";
     return state === "NEEDS_REVIEW"
@@ -1443,7 +1652,9 @@ export function HostedCreateProjectScreen() {
           <div className={`run-readiness ${workerOnline ? "ready" : "blocked"}`} role="status">
             {workerOnline ? <Check size={18} /> : <AlertTriangle size={18} />}
             <span>
-              <strong>{workerOnline ? "Your computer is connected" : "Connect your computer"}</strong>
+              <strong>
+                {workerOnline ? "Your computer is connected" : "Connect your computer"}
+              </strong>
               <small>
                 {workerOnline
                   ? "Connected; ready when the project inputs are complete."
@@ -1602,8 +1813,8 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
     : [];
   const draftItems: readonly HostedPresetCatalogItem[] = catalog.data
     ? isAvatar
-      ? catalog.data.avatar_drafts ?? []
-      : catalog.data.style_drafts ?? []
+      ? (catalog.data.avatar_drafts ?? [])
+      : (catalog.data.style_drafts ?? [])
     : [];
   const allItems: readonly HostedPresetHubItem[] = [
     ...publishedItems.map((item) => ({ item, draft: false as const })),
@@ -1655,6 +1866,8 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
           ? item.cover_url
           : null;
     const referenceCount = !isAvatar && "reference_count" in item ? (item.reference_count ?? 0) : 0;
+    const styleProfile =
+      !isAvatar && "profile" in item ? hostedStyleProfileView(item.profile) : null;
     const referencesVerified =
       isAvatar || !("references_verified" in item) ? true : item.references_verified === true;
     const requestRemoval = () => {
@@ -1669,10 +1882,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
     const media = (
       <div className={isAvatar ? "avatar-card-media" : "style-card-media"}>
         {imageUrl ? (
-          <PresetImage
-            src={imageUrl}
-            alt={`${item.name} ${isAvatar ? "presenter" : "cover"}`}
-          />
+          <PresetImage src={imageUrl} alt={`${item.name} ${isAvatar ? "presenter" : "cover"}`} />
         ) : (
           <span
             className={`preset-image-fallback ${isAvatar ? "hosted-avatar-placeholder" : "hosted-style-placeholder"}`}
@@ -1800,16 +2010,12 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
                 </div>
               </>
             ) : (
-              <div className="detail-facts">
-                <span>
-                  <small>Status</small>
-                  <strong>Published</strong>
-                </span>
-                <span>
-                  <small>Reference images</small>
-                  <strong>{referenceCount}</strong>
-                </span>
-              </div>
+              <StyleProfileDetails
+                name={item.name}
+                imageUrl={imageUrl ?? null}
+                referenceCount={referenceCount}
+                profile={styleProfile}
+              />
             )}
           </DetailsSheet>
           {!systemOwned ? (
@@ -2021,7 +2227,9 @@ export function HostedPresetCreationScreen({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const createRequest = useRef<{ readonly body: string; readonly key: string } | null>(null);
-  const referenceRetryRequest = useRef<{ readonly body: string; readonly key: string } | null>(null);
+  const referenceRetryRequest = useRef<{ readonly body: string; readonly key: string } | null>(
+    null,
+  );
   const [resumeInitialized, setResumeInitialized] = useState(false);
   const [repairingReferences, setRepairingReferences] = useState(false);
   const catalog = useQuery({
@@ -2035,8 +2243,8 @@ export function HostedPresetCreationScreen({
   const items = catalog.data ? (isAvatar ? catalog.data.avatars : catalog.data.styles) : [];
   const unfinishedItems = catalogValue
     ? isAvatar
-      ? catalogValue.avatar_drafts ?? []
-      : catalogValue.style_drafts ?? []
+      ? (catalogValue.avatar_drafts ?? [])
+      : (catalogValue.style_drafts ?? [])
     : [];
   const resumedDraft = resumeVersionId
     ? unfinishedItems.find((item) => item.version_id === resumeVersionId)
@@ -2064,20 +2272,20 @@ export function HostedPresetCreationScreen({
       ? "Replacement references are ready to verify."
       : `Reselect ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} images to repair this saved draft.`
     : matchingDraftName
-    ? matchingDraftResumable
-      ? `This unfinished ${itemLabel} is already in the Hub. Continue setup from there.`
-      : `This unfinished ${itemLabel} is already in the Hub. View it there or remove it before starting another.`
-    : duplicateReadyName
-      ? `Choose a different ${itemLabel} name.`
-    : !name.trim() && !hasRequiredSource
-      ? `Add a name and ${isAvatar ? "photo" : "reference images"} to continue.`
-      : !name.trim()
-        ? `Add a ${itemLabel} name to continue.`
-        : !hasRequiredSource
-          ? isAvatar
-            ? "Choose a photo to continue."
-            : `Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} reference images to continue.`
-          : "Ready to review."
+      ? matchingDraftResumable
+        ? `This unfinished ${itemLabel} is already in the Hub. Continue setup from there.`
+        : `This unfinished ${itemLabel} is already in the Hub. View it there or remove it before starting another.`
+      : duplicateReadyName
+        ? `Choose a different ${itemLabel} name.`
+        : !name.trim() && !hasRequiredSource
+          ? `Add a name and ${isAvatar ? "photo" : "reference images"} to continue.`
+          : !name.trim()
+            ? `Add a ${itemLabel} name to continue.`
+            : !hasRequiredSource
+              ? isAvatar
+                ? "Choose a photo to continue."
+                : `Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} reference images to continue.`
+              : "Ready to review.";
 
   useEffect(
     () => () => {
@@ -2267,7 +2475,9 @@ export function HostedPresetCreationScreen({
     setError(null);
     try {
       if (styleSources.length < MIN_STYLE_REFERENCES)
-        throw new Error(`Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} private references.`);
+        throw new Error(
+          `Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} private references.`,
+        );
       const body = {
         schema_version: "videoforge-hosted-style-reference-replace/v1",
         references: styleReferenceRequestBody().references,
@@ -2435,7 +2645,9 @@ export function HostedPresetCreationScreen({
         message === "That style name is already in use. Open Image Styles to continue or remove it."
       ) {
         setStep(1);
-        requestAnimationFrame(() => document.querySelector<HTMLInputElement>("#preset-name-styles")?.focus());
+        requestAnimationFrame(() =>
+          document.querySelector<HTMLInputElement>("#preset-name-styles")?.focus(),
+        );
       }
     } finally {
       setBusy(false);
@@ -2574,7 +2786,7 @@ export function HostedPresetCreationScreen({
                 ? "Rights and likeness approval"
                 : step === 3
                   ? "Analyze references"
-              : "Review and publish"
+                  : "Review and publish"
         }
       >
         {resumeVersionId && created ? (
@@ -2726,9 +2938,7 @@ export function HostedPresetCreationScreen({
             </Button>
             <Button
               disabled={busy}
-              onClick={() =>
-                repairingReferences ? void retryStyleReferences() : setStep(3)
-              }
+              onClick={() => (repairingReferences ? void retryStyleReferences() : setStep(3))}
             >
               {repairingReferences
                 ? "Verify replacement references"
@@ -2867,7 +3077,9 @@ export function HostedPresetCreationScreen({
               </Button>
             ) : (
               <Button busy={busy} onClick={() => void analyzeStyle()}>
-                {presetState(created) === "FAILED" ? "Retry saved analysis" : "Analyze this draft once"}{" "}
+                {presetState(created) === "FAILED"
+                  ? "Retry saved analysis"
+                  : "Analyze this draft once"}{" "}
                 <ArrowRight size={16} />
               </Button>
             )}
@@ -2884,8 +3096,8 @@ export function HostedPresetCreationScreen({
             <p>{profileSummary}</p>
             {!fixtureBackend && typeof created?.analysis_cost_usd === "number" ? (
               <p className="helper">
-                Gemini analysis charge: ${created.analysis_cost_usd.toFixed(6)} · protected by
-                the private beta spend ceiling.
+                Gemini analysis charge: ${created.analysis_cost_usd.toFixed(6)} · protected by the
+                private beta spend ceiling.
               </p>
             ) : null}
             <div className="field">

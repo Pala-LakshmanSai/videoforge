@@ -1856,7 +1856,12 @@ async function styleCreate(
     );
   if (!input.rightsAttested)
     return response(
-      { error: { code: "STYLE_RIGHTS_REQUIRED", message: "Confirm your right to use these images." } },
+      {
+        error: {
+          code: "STYLE_RIGHTS_REQUIRED",
+          message: "Confirm your right to use these images.",
+        },
+      },
       400,
     );
   if (!input.processingDisclosureAcknowledged)
@@ -1923,7 +1928,11 @@ async function styleCreate(
       const parent = await resolveParentStyle(transaction, scope, input.parentId);
       if (input.parentId && !parent) throw new Error("STYLE_PARENT_NOT_FOUND");
       const systemParent = parent?.system === true;
-      if (parent && !systemParent && !(await lockActiveStyleParent(transaction, scope, parent.styleId)))
+      if (
+        parent &&
+        !systemParent &&
+        !(await lockActiveStyleParent(transaction, scope, parent.styleId))
+      )
         throw new Error("STYLE_PARENT_NOT_FOUND");
       const styleId =
         parent && !systemParent
@@ -2125,7 +2134,8 @@ async function styleCreate(
         {
           error: {
             code: error.message,
-            message: "The selected style is no longer available. Return to Image Styles and try again.",
+            message:
+              "The selected style is no longer available. Return to Image Styles and try again.",
           },
         },
         404,
@@ -2468,7 +2478,8 @@ async function styleReferenceReplace(
         {
           error: {
             code: "STYLE_REFERENCE_REPLACE_REJECTED",
-            message: "Reference replacement could not be prepared. Return to Image Styles and try again.",
+            message:
+              "Reference replacement could not be prepared. Return to Image Styles and try again.",
           },
         },
         409,
@@ -2528,20 +2539,19 @@ async function styleReferenceReplace(
         {
           error: {
             code: error.message,
-            message: "This style is no longer waiting for uploads. Return to Image Styles and try again.",
+            message:
+              "This style is no longer waiting for uploads. Return to Image Styles and try again.",
           },
         },
         409,
       );
-    if (
-      error instanceof Error &&
-      error.message === "STYLE_REFERENCE_REPLACE_IDEMPOTENCY_CONFLICT"
-    )
+    if (error instanceof Error && error.message === "STYLE_REFERENCE_REPLACE_IDEMPOTENCY_CONFLICT")
       return response(
         {
           error: {
             code: error.message,
-            message: "This saved replacement no longer matches the selected images. Choose them again.",
+            message:
+              "This saved replacement no longer matches the selected images. Choose them again.",
           },
         },
         409,
@@ -2667,7 +2677,8 @@ async function styleCommit(
             {
               error: {
                 code: "STYLE_REFERENCE_NOT_VERIFIED",
-                message: "One or more original uploads could not be verified. Choose the images again.",
+                message:
+                  "One or more original uploads could not be verified. Choose the images again.",
               },
             },
             409,
@@ -2684,7 +2695,8 @@ async function styleCommit(
             {
               error: {
                 code: "STYLE_NORMALIZED_NOT_VERIFIED",
-                message: "One or more prepared references could not be verified. Choose the images again.",
+                message:
+                  "One or more prepared references could not be verified. Choose the images again.",
               },
             },
             409,
@@ -2932,9 +2944,7 @@ async function styleAnalyze(
       const references = Array.isArray(target.references) ? target.references : [];
       if (
         references.length < 3 ||
-        references.some(
-          (reference) => plainRecord(reference)?.asset_state !== "VERIFIED",
-        )
+        references.some((reference) => plainRecord(reference)?.asset_state !== "VERIFIED")
       )
         throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
       const requestHash = await sha256(
@@ -3011,7 +3021,10 @@ async function styleAnalyze(
       const reference = plainRecord(rawReference);
       return total + (reference ? Number(reference.byte_size) : Number.NaN);
     }, 0);
-    if (!Number.isSafeInteger(aggregateBytes) || aggregateBytes > RUNWARE_GEMINI_STYLE_MAX_INPUT_BYTES)
+    if (
+      !Number.isSafeInteger(aggregateBytes) ||
+      aggregateBytes > RUNWARE_GEMINI_STYLE_MAX_INPUT_BYTES
+    )
       throw new RunwareGeminiStyleAnalysisError("INPUT_REJECTED");
     for (const [index, rawReference] of referenceRows.entries()) {
       const reference = plainRecord(rawReference);
@@ -3028,7 +3041,12 @@ async function styleAnalyze(
         (await sha256Bytes(bytes)) !== expected
       )
         throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
-      if (!Number.isSafeInteger(width) || width <= 0 || !Number.isSafeInteger(height) || height <= 0)
+      if (
+        !Number.isSafeInteger(width) ||
+        width <= 0 ||
+        !Number.isSafeInteger(height) ||
+        height <= 0
+      )
         throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
       images.push({
         alias: `ref_${String(index + 1).padStart(2, "0")}`,
@@ -3193,7 +3211,8 @@ async function styleAnalyze(
         {
           error: {
             code: error.message,
-            message: "This draft cannot be analyzed in its current state. Return to Image Styles and try again.",
+            message:
+              "This draft cannot be analyzed in its current state. Return to Image Styles and try again.",
           },
         },
         409,
@@ -3203,7 +3222,8 @@ async function styleAnalyze(
         {
           error: {
             code: error.message,
-            message: "One or more reference uploads could not be verified. Choose the images again.",
+            message:
+              "One or more reference uploads could not be verified. Choose the images again.",
           },
         },
         409,
@@ -3213,7 +3233,8 @@ async function styleAnalyze(
         {
           error: {
             code: "STYLE_ANALYSIS_BETA_CAP_REACHED",
-            message: "The private beta analysis limit has been reached. No provider request was sent.",
+            message:
+              "The private beta analysis limit has been reached. No provider request was sent.",
           },
         },
         409,
@@ -3748,7 +3769,13 @@ async function catalog(
       const styles = await transaction.query(
         `SELECT style.id AS style_id, version.id AS version_id, style.name,
                 version.version_number, version.state, style.status,
-                version.style_profile_hash, style.scope_kind
+                version.style_profile_hash, version.profile_payload, style.scope_kind,
+                (SELECT count(*)::int
+                   FROM image_style_references AS reference
+                  WHERE reference.account_id = version.account_id
+                    AND reference.workspace_id = version.workspace_id
+                    AND reference.version_id = version.id
+                    AND reference.deleted_at IS NULL) AS reference_count
            FROM image_styles AS style
            JOIN image_style_versions AS version
              ON version.account_id = style.account_id
@@ -3871,12 +3898,25 @@ async function catalog(
       profile_hash: row.profile_hash ?? null,
       rights_status: row.scope_kind === "SYSTEM" ? "SYSTEM_OWNED" : "ATTESTED",
     }));
-    const styleRows = (data.styles as Record<string, unknown>[]).map((row) => ({
-      ...row,
-      cover_url: null,
-      profile_hash: row.style_profile_hash ?? null,
-      reference_count: 0,
-    }));
+    const styleRows = (data.styles as Record<string, unknown>[]).map((row) => {
+      const referenceCount = Number(row.reference_count ?? 0);
+      return {
+        style_id: rowString(row, "style_id"),
+        version_id: rowString(row, "version_id"),
+        name: rowString(row, "name"),
+        version_number: Number(row.version_number),
+        state: rowString(row, "state"),
+        status: rowString(row, "status"),
+        scope_kind: rowString(row, "scope_kind"),
+        cover_url:
+          referenceCount > 0
+            ? `/api/v2/hosted/styles/${rowString(row, "version_id")}/preview`
+            : null,
+        profile_hash: row.style_profile_hash ?? null,
+        reference_count: referenceCount,
+        profile: plainRecord(row.profile_payload),
+      };
+    });
     const avatarDraftRows = (data.avatar_drafts as Record<string, unknown>[]).map((row) => ({
       profile_id: rowString(row, "profile_id"),
       version_id: rowString(row, "version_id"),
@@ -3904,9 +3944,7 @@ async function catalog(
         processing_disclosure_acknowledged: row.processing_disclosure_acknowledged === true,
         references_verified: row.references_verified === true,
         original_retention_policy:
-          typeof row.original_retention_policy === "string"
-            ? row.original_retention_policy
-            : null,
+          typeof row.original_retention_policy === "string" ? row.original_retention_policy : null,
         profile: row.state === "NEEDS_REVIEW" ? profile : null,
         summary:
           row.state === "NEEDS_REVIEW" && typeof profile?.summary === "string"
@@ -5771,9 +5809,8 @@ export async function handleHostedProductRequest(
     return avatarApprove(request, avatarApprovePath[1]!, config, executionContext);
   if (request.method === "POST" && url.pathname === "/api/v2/hosted/styles")
     return styleCreate(request, environment, config, executionContext);
-  const styleReferenceReplacePath = /^\/api\/v2\/hosted\/styles\/([0-9a-f-]+)\/references\/retry$/u.exec(
-    url.pathname,
-  );
+  const styleReferenceReplacePath =
+    /^\/api\/v2\/hosted\/styles\/([0-9a-f-]+)\/references\/retry$/u.exec(url.pathname);
   if (request.method === "POST" && styleReferenceReplacePath)
     return styleReferenceReplace(
       request,
