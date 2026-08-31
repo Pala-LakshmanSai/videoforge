@@ -180,7 +180,19 @@ GRANT SELECT ON workspaces TO :"runtime_role";
 -- Render plans are immutable provenance.  The hosted runtime may read the exact tenant/revision
 -- plan but never receives direct INSERT, UPDATE, or DELETE; the append function above is its only
 -- narrowly scoped write capability.
-GRANT SELECT ON hosted_render_plans TO :"runtime_role";
+GRANT SELECT ON
+  hosted_render_plans,
+  timeline_plans,
+  generation_tasks,
+  generation_requests,
+  video_runtime_states,
+  video_runtime_lane_states,
+  serverless_attempts,
+  serverless_progress_events,
+  serverless_cost_ledgers,
+  serverless_output_receipts,
+  hosted_pair_zero_worker_observations
+TO :"runtime_role";
 
 GRANT SELECT, INSERT ON
   media_worker_input_objects,

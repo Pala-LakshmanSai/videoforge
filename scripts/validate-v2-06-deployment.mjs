@@ -112,7 +112,7 @@ if (!neonRuntimeGrants.includes("GRANT EXECUTE ON FUNCTION public.videoforge_cur
   fail("RLS tenant-principal function grant is missing");
 if (!neonRuntimeGrants.includes('GRANT SELECT ON workspaces TO :"runtime_role";'))
   fail("hosted tenant workspace read grant is missing");
-if (!neonRuntimeGrants.includes('GRANT SELECT ON hosted_render_plans TO :"runtime_role";'))
+if (!/GRANT SELECT ON[\s\S]*?\bhosted_render_plans\b[\s\S]*?TO :"runtime_role";/u.test(neonRuntimeGrants))
   fail("immutable hosted render-plan read grant is missing");
 if (
   !neonRuntimeGrants.includes(

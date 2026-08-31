@@ -30,6 +30,8 @@ import {
   Metric,
   Panel,
   ProgressBar,
+  ProgressRing,
+  StageTimeline,
 } from "../components/ui";
 import { PresetImage } from "../features/presets/PresetImage";
 import { VisualPresetSelect } from "../features/project-create/VisualPresetSelect";
@@ -38,6 +40,7 @@ import {
   type NormalizedStyleReference,
 } from "../lib/media-validation";
 import { isHostedBetaMode } from "./provider-mode";
+import type { ProjectStage } from "../lib/types";
 
 const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const MAX_AVATAR_BYTES = 20 * 1024 * 1024;
@@ -1288,18 +1291,58 @@ function fallbackHostedStages(
   return HUMAN_PIPELINE_STAGES.map((name) => ({
     name,
     status:
-      name === "Transcribe"
-        ? asrStatus
-        : name === "Plan"
-          ? planStatus
-          : name === "Review"
-            ? render?.state === "SUCCEEDED"
-              ? "REVIEW_REQUIRED"
-              : "WAITING"
-            : name === "Technical check" || name === "Assemble"
-              ? renderStatus
-              : "NOT_REPORTED",
+      name === "Prepare"
+        ? "COMPLETE"
+        : name === "Transcribe"
+          ? asrStatus
+          : name === "Plan"
+            ? planStatus
+            : name === "Review"
+              ? render?.state === "SUCCEEDED"
+                ? "REVIEW_REQUIRED"
+                : "WAITING"
+              : name === "Technical check" || name === "Assemble"
+                ? renderStatus
+                : "NOT_REPORTED",
     detail: "Durable stage detail was not returned by the hosted service.",
+  }));
+}
+
+function hostedStageStatus(status: string): ProjectStage["status"] {
+  const normalized = status.toUpperCase();
+  if (["COMPLETE", "SUCCEEDED", "APPROVED", "READY_FOR_REVIEW"].includes(normalized))
+    return "COMPLETE";
+  if (["RUNNING", "ACTIVE", "ADMITTED", "SUBMITTED", "OUTBOXED"].includes(normalized))
+    return "RUNNING";
+  if (["STARTING", "PREPARING", "RECONCILING"].includes(normalized)) return "STARTING";
+  if (["RETRYING", "RETRY_WAIT"].includes(normalized)) return "RETRYING";
+  if (["FAILED", "PERMANENT_FAILED", "RETRYABLE_FAILED"].includes(normalized)) return "FAILED";
+  if (["CANCEL_REQUESTED"].includes(normalized)) return "CANCEL_REQUESTED";
+  if (["CANCELLED"].includes(normalized)) return "CANCELLED";
+  if (
+    normalized.includes("QUALIFICATION") ||
+    normalized.includes("BLOCKED") ||
+    normalized.includes("UNAVAILABLE")
+  )
+    return "BLOCKED";
+  if (["QUEUED", "WAITING", "NOT_STARTED", "NOT_REPORTED"].includes(normalized)) return "PENDING";
+  return "PENDING";
+}
+
+function hostedProgressValue(stage: HostedStage): number {
+  if (typeof stage.progress_percent === "number")
+    return Math.max(0, Math.min(100, stage.progress_percent));
+  return hostedStageStatus(stage.status) === "COMPLETE" ? 100 : 0;
+}
+
+function hostedProjectStages(stages: readonly HostedStage[]): ProjectStage[] {
+  return stages.map((stage, index) => ({
+    id: stage.id ?? `stage-${index + 1}`,
+    label: stage.name,
+    status: hostedStageStatus(stage.status),
+    completed: Math.round(hostedProgressValue(stage)),
+    total: 100,
+    detail: stage.detail ?? "Waiting for an authoritative update.",
   }));
 }
 
@@ -3195,7 +3238,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const query = useQuery({
     queryKey: ["hosted-project", projectId],
     queryFn: () => readJson<ProjectDetailResponse>(`/api/v2/hosted/projects/${projectId}`),
-    refetchInterval: 5_000,
+    refetchInterval: 2_000,
+    placeholderData: (previousData) => previousData,
+    retry: false,
   });
   const asr = [...(query.data?.attempts ?? [])].reverse().find((attempt) => attempt.kind === "ASR");
   const render = [...(query.data?.attempts ?? [])]
@@ -3240,19 +3285,22 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   });
   if (query.isPending)
     return (
-      <Panel eyebrow="Hosted project" heading="Loading progress">
-        <p>Reading durable worker state…</p>
+      <Panel className="loading-panel" eyebrow="Hosted project" heading="Opening live progress">
+        <div className="empty-state" aria-busy="true">
+          <span className="spinner" aria-hidden="true" />
+          <p>Connecting to your project and personal media worker…</p>
+        </div>
       </Panel>
     );
   if (query.isError || !query.data)
     return (
       <EmptyState
         icon={<AlertTriangle />}
-        title="Project unavailable"
-        body="No fixture status was substituted."
+        title="Live progress is temporarily unavailable"
+        body="Your project is saved. VideoForge could not read its latest progress update yet."
         action={
           <Button variant="secondary" onClick={() => void query.refetch()}>
-            Retry
+            <RefreshCw size={15} /> Retry progress
           </Button>
         }
       />
@@ -3260,16 +3308,52 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const stages = query.data.stages?.length
     ? query.data.stages
     : fallbackHostedStages(asr, render, query.data.generation);
+  const uiStages = hostedProjectStages(stages);
   const timing = query.data.timing;
   const cost = query.data.cost;
   const queue = query.data.queue;
-  const scaleToZero = query.data.scale_to_zero;
+  const activeStageIndex = Math.max(
+    0,
+    uiStages.findIndex((stage) => stage.status !== "COMPLETE"),
+  );
+  const activeStage = uiStages[activeStageIndex];
+  const overallProgress = Math.round(
+    stages.reduce((total, stage) => total + hostedProgressValue(stage), 0) /
+      Math.max(1, stages.length),
+  );
+  const hasFailed = uiStages.some((stage) => stage.status === "FAILED");
+  const hasRunning = uiStages.some((stage) =>
+    ["STARTING", "RUNNING", "RETRYING", "CANCEL_REQUESTED"].includes(stage.status),
+  );
+  const allComplete = uiStages.every((stage) => stage.status === "COMPLETE");
+  const overallStatus = hasFailed
+    ? "Needs attention"
+    : allComplete
+      ? "Ready for review"
+      : hasRunning
+        ? "Running"
+        : "Waiting";
+  const statusToneValue = hasFailed
+    ? "danger"
+    : allComplete
+      ? "success"
+      : hasRunning
+        ? "info"
+        : "warning";
+  const latestArtifact =
+    render?.preview_url ??
+    query.data.review?.contact_sheet?.at(-1)?.image_url ??
+    query.data.contact_sheet?.at(-1)?.image_url ??
+    null;
+  const cancellableAttempts = query.data.attempts.filter((attempt) =>
+    ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
+  );
   return (
     <>
       <PageHeader
-        eyebrow={query.data.project.revision_state}
+        eyebrow="Live project"
         title={query.data.project.title}
-        description="Durable personal-worker progress"
+        description="Updates automatically from your personal media worker."
         actions={
           render?.state === "SUCCEEDED" ? (
             <Link
@@ -3282,220 +3366,140 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ) : undefined
         }
       />
-      <div className="grid grid-3 usage-grid">
-        <Metric label="CPU provider" value="$0.00" detail="your computer" tone="success" />
-        <Metric
-          label="Worker jobs"
-          value={String(query.data.attempts.length)}
-          detail="ASR and render"
+      <section className="progress-hero" aria-label="Live video progress">
+        <ProgressRing
+          value={overallProgress}
+          label="Overall video progress"
+          detail={overallStatus}
         />
-        <Metric
-          label="Queue position"
-          value={queue?.position ?? "Not reported"}
-          detail={
-            queue?.total ? `${queue.total} private entries` : "fair rotation detail unavailable"
-          }
-        />
-        <Metric
-          label="ETA"
-          value={formatMilliseconds(queue?.estimated_wait_ms)}
-          detail={queue?.fair_rotation ?? "durable estimate only"}
-        />
-        <Metric
-          label="Projected cost"
-          value={formatUsd(cost?.projected_usd)}
-          detail={cost?.cap_usd === undefined ? "not reported" : `cap ${formatUsd(cost.cap_usd)}`}
-        />
-        <Metric
-          label="Settled cost"
-          value={formatUsd(cost?.settled_usd)}
-          detail="provider receipt"
-        />
-        <Metric label="GPU" value="Disabled" detail="V2-06 firewall" />
-      </div>
-      <Panel eyebrow="Queue and cost truth" heading="Durable operating details">
-        <div className="detail-facts">
-          <span>
-            <small>Queue</small>
-            <strong>
-              {queue?.status ? normalizedStatus(queue.status) : "Not reported"}
-              {queue?.ahead !== undefined && queue.ahead !== null ? ` · ${queue.ahead} ahead` : ""}
-            </strong>
-          </span>
-          <span>
-            <small>Queue wait</small>
-            <strong>{formatMilliseconds(timing?.queue_wait_ms)}</strong>
-          </span>
-          <span>
-            <small>Initialization / model ready</small>
-            <strong>
-              {formatMilliseconds(timing?.initialization_ms)} /{" "}
-              {formatMilliseconds(timing?.model_ready_ms)}
-            </strong>
-          </span>
-          <span>
-            <small>Inference / upload</small>
-            <strong>
-              {formatMilliseconds(timing?.inference_ms)} / {formatMilliseconds(timing?.upload_ms)}
-            </strong>
-          </span>
-          <span>
-            <small>End to end</small>
-            <strong>{formatMilliseconds(timing?.end_to_end_ms)}</strong>
-          </span>
-          <span>
-            <small>Billed seconds</small>
-            <strong>
-              {cost?.billed_seconds === undefined || cost.billed_seconds === null
-                ? "Not reported"
-                : `${cost.billed_seconds}s`}
-            </strong>
-          </span>
-        </div>
-      </Panel>
-      <Panel eyebrow="Exact attempts" heading="Progress">
-        <div className="entity-list">
-          {query.data.attempts.map((attempt) => (
-            <article className="entity-row" key={attempt.id}>
-              <div>
-                <strong>{attemptLabel(attempt.kind)}</strong>
-                <small>{attempt.id}</small>
-                {attempt.error_message ? <small>{attempt.error_message}</small> : null}
-                {attempt.timing ? (
-                  <small>
-                    Queue {formatMilliseconds(attempt.timing.queue_wait_ms)} · end to end{" "}
-                    {formatMilliseconds(attempt.timing.end_to_end_ms)}
-                  </small>
-                ) : null}
-              </div>
-              <Badge
-                tone={
-                  attempt.state === "SUCCEEDED"
-                    ? "success"
-                    : attempt.state === "FAILED"
-                      ? "danger"
-                      : "info"
-                }
-              >
-                {attempt.state.replaceAll("_", " ")}
-              </Badge>
-              {["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(
-                attempt.state,
-              ) ? (
-                <Button
-                  variant="danger"
-                  busy={cancel.isPending && cancel.variables === attempt.id}
-                  onClick={() => cancel.mutate(attempt.id)}
-                >
-                  <X size={15} />
-                  {attempt.state === "CANCEL_REQUESTED" ? "Settle cancellation" : "Cancel"}
-                </Button>
-              ) : null}
-              {attempt.progress_percent !== undefined && attempt.progress_percent !== null ? (
-                <div className="attempt-progress">
-                  <ProgressBar
-                    value={attempt.progress_percent}
-                    label={`${attempt.kind} progress`}
-                  />
-                  <small>{Math.round(attempt.progress_percent)}%</small>
-                </div>
-              ) : null}
-            </article>
-          ))}
-        </div>
-      </Panel>
-      <Panel eyebrow="Hosted pipeline" heading="Generation stages">
-        <div className="entity-list">
-          {stages.map((stage) => (
-            <article className="entity-row" key={stage.id ?? stage.name}>
-              <div>
-                <strong>{stage.name}</strong>
-                <small>{stage.detail ?? "Durable stage detail was not returned."}</small>
-                {stage.started_at || stage.completed_at ? (
-                  <small>
-                    Started {formatTimestamp(stage.started_at)} · completed{" "}
-                    {formatTimestamp(stage.completed_at)}
-                  </small>
-                ) : null}
-                {stage.progress_percent !== undefined && stage.progress_percent !== null ? (
-                  <div className="attempt-progress">
-                    <ProgressBar value={stage.progress_percent} label={`${stage.name} progress`} />
-                    <small>{Math.round(stage.progress_percent)}%</small>
-                  </div>
-                ) : null}
-              </div>
-              <Badge tone={statusTone(stage.status)}>{normalizedStatus(stage.status)}</Badge>
-              {stage.eta_ms !== undefined && stage.eta_ms !== null ? (
-                <small>ETA {formatMilliseconds(stage.eta_ms)}</small>
-              ) : null}
-            </article>
-          ))}
-          {query.data.gpu_readiness.lanes.map((lane) => (
-            <article className="entity-row" key={lane.lane}>
-              <div>
-                <strong>{lane.lane === "MAGE_IMAGE" ? "Image GPU" : "Avatar GPU"}</strong>
-                <small>
-                  {lane.checkpoint} missing: {lane.missing_gates.join(", ")}
-                </small>
-              </div>
-              <Badge tone="info">{lane.qualification.replaceAll("_", " ")}</Badge>
-            </article>
-          ))}
-          <article className="entity-row">
+        <div className="progress-hero-body">
+          <div className="progress-hero-heading">
             <div>
-              <strong>Final render</strong>
-              <small>Starts only after both GPU lanes produce accepted private artifacts</small>
+              <p className="eyebrow">Happening now</p>
+              <h2>{activeStage?.label ?? "Preparing project"}</h2>
             </div>
-            <Badge tone="info">
-              {render
-                ? render.state.replaceAll("_", " ")
-                : !query.data.generation
-                  ? "WAITING FOR CANONICAL PLAN"
-                  : query.data.generation.stage === "FAILED"
-                    ? "BLOCKED BY FAILED GENERATION"
-                    : query.data.generation.stage === "READY_FOR_RENDER"
-                      ? "WAITING FOR RENDER WORKER"
-                      : "WAITING FOR GPU QUALIFICATION"}
-            </Badge>
-          </article>
-        </div>
-      </Panel>
-      <Panel eyebrow="Compute lifecycle" heading="Scale-to-zero evidence">
-        {scaleToZero ? (
-          <div className="detail-facts">
-            <span>
-              <small>State</small>
-              <strong>{normalizedStatus(scaleToZero.state)}</strong>
-            </span>
-            <span>
-              <small>Workers observed</small>
-              <strong>{scaleToZero.worker_count ?? "Not reported"}</strong>
-            </span>
-            <span>
-              <small>Observed at</small>
-              <strong>{formatTimestamp(scaleToZero.observed_at)}</strong>
-            </span>
-            <span>
-              <small>Evidence</small>
-              <strong>{scaleToZero.evidence_id ?? "Not reported"}</strong>
-            </span>
+            <Badge tone={statusToneValue}>{overallStatus}</Badge>
           </div>
-        ) : (
-          <p className="helper">
-            Scale-to-zero evidence will appear after the worker reports a durable terminal
-            observation. No worker count is inferred from a healthy process.
+          <div className="progress-metrics">
+            <Metric
+              label="Stage"
+              value={`${String(activeStageIndex + 1).padStart(2, "0")}/${String(uiStages.length).padStart(2, "0")}`}
+              detail={activeStage?.label ?? "Preparing"}
+              tone="info"
+            />
+            <Metric
+              label="Status"
+              value={overallStatus}
+              detail={activeStage?.detail ?? "Waiting for the next worker update"}
+              tone={statusToneValue}
+            />
+            <Metric
+              label="Estimated"
+              value={formatMilliseconds(
+                stages[activeStageIndex]?.eta_ms ?? queue?.estimated_wait_ms,
+              )}
+              detail="remaining when measurable"
+            />
+            <Metric
+              label="Cost"
+              value={
+                (cost?.projected_usd ?? 0) > 0
+                  ? formatUsd(cost?.projected_usd)
+                  : "No provider charge"
+              }
+              detail={
+                cost?.cap_usd == null ? "personal worker" : `${formatUsd(cost.cap_usd)} maximum`
+              }
+              tone="success"
+            />
+          </div>
+          <ProgressBar value={overallProgress} label="Overall video progress" />
+          <p className="helper live-progress-update" aria-live="polite">
+            <span className="live-progress-pulse" aria-hidden="true" />
+            Live updates every 2 seconds
           </p>
-        )}
-      </Panel>
+        </div>
+      </section>
+
+      <div className="progress-workspace">
+        <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
+          <StageTimeline stages={uiStages} />
+        </Panel>
+        <div className="progress-side">
+          <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
+            <div className="latest-artifact-frame">
+              {render?.preview_url ? (
+                <video
+                  className="media-artifact-video"
+                  controls
+                  preload="metadata"
+                  src={render.preview_url}
+                />
+              ) : latestArtifact ? (
+                <img src={latestArtifact} alt="Latest accepted project artifact" />
+              ) : (
+                <div className="live-preview-waiting">
+                  <Images size={30} aria-hidden="true" />
+                  <strong>Waiting for the first accepted visual</strong>
+                  <span>It will appear here automatically.</span>
+                </div>
+              )}
+            </div>
+            <div className="artifact-caption">
+              <span>
+                {latestArtifact ? "Latest accepted artifact" : "Worker is preparing assets"}
+              </span>
+              <Badge tone={latestArtifact ? "success" : "neutral"}>
+                {latestArtifact ? "Ready" : "Waiting"}
+              </Badge>
+            </div>
+          </Panel>
+          <Panel eyebrow="Activity" heading="Current run">
+            <div className="detail-facts">
+              <span>
+                <small>Queue</small>
+                <strong>
+                  {queue?.position ? `Position ${queue.position}` : "Direct personal worker"}
+                </strong>
+              </span>
+              <span>
+                <small>Elapsed</small>
+                <strong>{formatMilliseconds(timing?.end_to_end_ms)}</strong>
+              </span>
+              <span>
+                <small>Worker jobs</small>
+                <strong>{query.data.attempts.length || "Preparing"}</strong>
+              </span>
+              <span>
+                <small>Last update</small>
+                <strong>
+                  {formatTimestamp(
+                    query.data.attempts.at(-1)?.updated_at ?? query.data.project.created_at,
+                  )}
+                </strong>
+              </span>
+            </div>
+            {cancellableAttempts.map((attempt) => (
+              <Button
+                key={attempt.id}
+                variant="danger"
+                busy={cancel.isPending && cancel.variables === attempt.id}
+                onClick={() => cancel.mutate(attempt.id)}
+              >
+                <X size={15} />
+                {attempt.state === "CANCEL_REQUESTED"
+                  ? "Settle cancellation"
+                  : `Cancel ${attemptLabel(attempt.kind).toLowerCase()}`}
+              </Button>
+            ))}
+          </Panel>
+        </div>
+      </div>
       {!asr ? (
         <div className="notice" role="status">
-          <strong>Project is ready for durable transcription.</strong>
+          <strong>Your project is ready to start transcription.</strong>
           {asrHandoff.isError ? <span> {asrHandoff.error.message}</span> : null}
-          <Button
-            variant="secondary"
-            busy={asrHandoff.isPending}
-            onClick={() => asrHandoff.mutate()}
-          >
+          <Button variant="primary" busy={asrHandoff.isPending} onClick={() => asrHandoff.mutate()}>
             Start transcription
           </Button>
         </div>
@@ -3515,7 +3519,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       ) : null}
       <Button variant="secondary" onClick={() => void query.refetch()}>
-        <RefreshCw size={15} /> Refresh
+        <RefreshCw size={15} /> Refresh now
       </Button>
     </>
   );

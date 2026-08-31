@@ -6,7 +6,21 @@ const GRANTS = new URL("../../deploy/v2-06/neon-runtime-grants.sql", import.meta
 
 test("the hosted runtime can append through the exact function but has no direct render-plan writes", async () => {
   const source = await readFile(GRANTS, "utf8");
-  assert.match(source, /GRANT SELECT ON hosted_render_plans TO :"runtime_role";/u);
+  for (const table of [
+    "hosted_render_plans",
+    "timeline_plans",
+    "generation_tasks",
+    "generation_requests",
+    "video_runtime_states",
+    "video_runtime_lane_states",
+    "serverless_attempts",
+    "serverless_progress_events",
+    "serverless_cost_ledgers",
+    "serverless_output_receipts",
+    "hosted_pair_zero_worker_observations",
+  ]) {
+    assert.match(source, new RegExp(`GRANT SELECT ON[\\s\\S]*?\\b${table}\\b[\\s\\S]*?TO :"runtime_role";`, "u"));
+  }
   assert.match(source, /GRANT EXECUTE ON FUNCTION public\.videoforge_current_account_id\(\)/u);
   assert.match(
     source,

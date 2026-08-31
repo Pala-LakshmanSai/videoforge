@@ -1280,8 +1280,11 @@ describe("hosted product journey", () => {
     expect(
       await screen.findByText(/generation is waiting for GPU qualification/u),
     ).toBeInTheDocument();
-    expect(screen.getByText(/V2-07 missing: identity_output/u)).toBeInTheDocument();
-    expect(screen.getByText(/V2-08 missing: V2_07_MAGE_QUALIFICATION/u)).toBeInTheDocument();
+    expect(screen.getAllByRole("progressbar", { name: "Overall video progress" })).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "Video production stages" })).toBeInTheDocument();
+    expect(
+      screen.queryByText(/V2-07|V2-08|identity_output|MAGE_QUALIFICATION/u),
+    ).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render"))).toBe(true);
     expect(
       fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
