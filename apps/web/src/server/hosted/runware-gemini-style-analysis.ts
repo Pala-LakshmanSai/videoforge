@@ -78,6 +78,30 @@ function safeToken(value: unknown): number | null {
   return Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : null;
 }
 
+function diagnosticToken(value: unknown): string | null {
+  if (typeof value !== "string" || value.length === 0 || value.length > 160) return null;
+  return /^[a-z0-9_.:/@-]+$/iu.test(value) ? value : null;
+}
+
+function providerProblem(value: unknown): {
+  readonly code: string | null;
+  readonly parameter: string | null;
+  readonly type: string | null;
+} {
+  const payload = value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+  const first = payload && Array.isArray(payload.errors) ? payload.errors[0] : null;
+  const problem = first && typeof first === "object" && !Array.isArray(first)
+    ? (first as Record<string, unknown>)
+    : null;
+  return Object.freeze({
+    code: diagnosticToken(problem?.code),
+    parameter: diagnosticToken(problem?.parameter),
+    type: diagnosticToken(problem?.type),
+  });
+}
+
 function readUint24LE(bytes: Uint8Array, offset: number): number {
   return bytes[offset]! | (bytes[offset + 1]! << 8) | (bytes[offset + 2]! << 16);
 }
@@ -240,6 +264,12 @@ export async function analyzeStyleWithRunwareGemini(input: {
       ],
     },
   ]);
+  console.info("hosted_style_analysis_dispatch", {
+    model: RUNWARE_GEMINI_STYLE_MODEL,
+    reference_count: input.images.length,
+    normalized_input_bytes: totalBytes,
+    encoded_request_bytes: new TextEncoder().encode(body).byteLength,
+  });
 
   let response: Response;
   const started = performance.now();
@@ -258,6 +288,14 @@ export async function analyzeStyleWithRunwareGemini(input: {
     throw new RunwareGeminiStyleAnalysisError("AMBIGUOUS");
   }
   if (!response.ok) {
+    const problem = providerProblem(await response.clone().json().catch(() => null));
+    console.warn("hosted_style_analysis_provider_rejected", {
+      model: RUNWARE_GEMINI_STYLE_MODEL,
+      status: response.status,
+      provider_code: problem.code,
+      provider_parameter: problem.parameter,
+      provider_type: problem.type,
+    });
     if (response.status === 401 || response.status === 403)
       throw new RunwareGeminiStyleAnalysisError("UNAVAILABLE");
     if (response.status === 408 || response.status === 429 || response.status >= 500)
@@ -265,8 +303,17 @@ export async function analyzeStyleWithRunwareGemini(input: {
     throw new RunwareGeminiStyleAnalysisError("PROVIDER_REJECTED");
   }
   const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!payload || Array.isArray(payload) || Array.isArray(payload.errors))
+  if (!payload || Array.isArray(payload) || Array.isArray(payload.errors)) {
+    const problem = providerProblem(payload);
+    console.warn("hosted_style_analysis_provider_rejected", {
+      model: RUNWARE_GEMINI_STYLE_MODEL,
+      status: response.status,
+      provider_code: problem.code,
+      provider_parameter: problem.parameter,
+      provider_type: problem.type,
+    });
     throw new RunwareGeminiStyleAnalysisError("PROVIDER_REJECTED");
+  }
   const data = Array.isArray(payload.data) ? payload.data : [];
   const item = data.find(
     (candidate) =>

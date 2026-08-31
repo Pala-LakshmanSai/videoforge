@@ -154,15 +154,40 @@ describe("Runware Gemini hosted style analysis", () => {
   });
 
   it("distinguishes a provider request rejection from invalid image input", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     await expect(
       analyzeStyleWithRunwareGemini({
         apiKey: "test-secret",
         baseUrl: "https://api.runware.ai/v1",
         images,
-        fetcher: async () => Response.json({ errors: [{ message: "invalid request" }] }, { status: 400 }),
+        fetcher: async () =>
+          Response.json(
+            {
+              errors: [{
+                code: "invalid_value",
+                parameter: "generation_config.provider_settings",
+                type: "invalid_request_error",
+                message: "must never be logged",
+              }],
+            },
+            { status: 400 },
+          ),
       }),
     ).rejects.toMatchObject({
       code: "PROVIDER_REJECTED",
     } satisfies Partial<RunwareGeminiStyleAnalysisError>);
+    expect(info).toHaveBeenCalledWith(
+      "hosted_style_analysis_dispatch",
+      expect.objectContaining({ reference_count: 3, normalized_input_bytes: 90 }),
+    );
+    expect(warning).toHaveBeenCalledWith("hosted_style_analysis_provider_rejected", {
+      model: RUNWARE_GEMINI_STYLE_MODEL,
+      status: 400,
+      provider_code: "invalid_value",
+      provider_parameter: "generation_config.provider_settings",
+      provider_type: "invalid_request_error",
+    });
+    expect(JSON.stringify(warning.mock.calls)).not.toContain("must never be logged");
   });
 });
