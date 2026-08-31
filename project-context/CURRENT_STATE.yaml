@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source 6098ffa4 is live as Worker 3da5b371. Live tailing of the user's six-reference attempt showed style creation HTTP 201 followed by analysis HTTP 502 after about 3.55 seconds, with no Worker exception; the deployed source exposed no safe provider-stage detail and incorrectly displayed the 3–8/30 MB input message. Sources 649357b3, dcc48f72, and d9b2cf8a remove the undocumented Runware providerSettings block, separate local-input rejection from provider-request rejection, permit explicit retry only on a new immutable version after definitive FAILED state, keep UNKNOWN/ambiguous attempts blocked, and add credential/image-free diagnostics for reference count, normalized bytes, encoded request bytes, provider HTTP status, code, type, and parameter. The retry uses no direct protected-ledger query and needs no grant or migration. Focused tests pass 86/86 with typecheck, lint, and diff checks green. This repair is not deployed and requires fresh exact source-bound approval."
+  provider_free_product_action: "Approved source 6098ffa4 is live as Worker 3da5b371. Live tailing of the user's six-reference attempt showed style creation HTTP 201 followed by analysis HTTP 502 after about 3.55 seconds, with no Worker exception; the deployed source exposed no safe provider-stage detail and incorrectly displayed the 3–8/30 MB input message. Sources 649357b3, dcc48f72, and d9b2cf8a remove the undocumented Runware providerSettings block, separate local-input rejection from provider-request rejection, permit explicit retry only on a new immutable version after definitive FAILED state, keep UNKNOWN/ambiguous attempts blocked, and add credential/image-free diagnostics for reference count, normalized bytes, encoded request bytes, provider HTTP status, code, type, and parameter. Source 9fb55f64 repairs the staging bundle verifier so a clean build checks the emitted staging Worker instead of passing through stale production artifacts. The retry uses no direct protected-ledger query and needs no grant or migration. Focused tests pass 86/86 with typecheck, lint, clean staging build/quarantine, deployment validation, and diff checks green. This repair is not deployed and requires fresh exact source-bound approval."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -196,6 +196,7 @@ hosted_beta_user_walkthrough:
     hosted_style_analysis_request_repair_eslint: PASS
     hosted_style_analysis_live_tail: "PASS_CREATE_201_ANALYZE_502_3551MS_NO_WORKER_EXCEPTION"
     hosted_style_analysis_safe_diagnostics: "PASS_NO_IMAGE_PROMPT_COOKIE_KEY_OR_PROVIDER_MESSAGE_LOGGING"
+    hosted_style_analysis_clean_staging_build: PASS_EXACT_STAGING_WORKER_NO_STALE_PRODUCTION_ARTIFACT
     hosted_style_analysis_request_repair_deployment: PENDING_FRESH_EXACT_APPROVAL
     hosted_preset_creation_ui_desktop_chromium: "PASS_TYPED_TEXT_RGB_251_248_244_ON_RGBA_7_9_23_0_94"
     hosted_preset_creation_ui_compact_chromium: "PASS_STYLE_FORM_390X844"
@@ -4750,7 +4751,7 @@ recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
   milestone: private_hosted_beta_style_analysis_request_repair_awaiting_deployment_approval
-  status: sources_649357b3_dcc48f72_d9b2cf8a_green_awaiting_exact_deployment_approval
+  status: style_analysis_repair_and_clean_staging_build_green_awaiting_exact_deployment_approval
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: deployed_6098ffa4_authority_not_reusable_for_current_source
   task_stage: provider_free_product_execution
