@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Source 5b2dcea2 adds a confirmed Remove action to every visible computer row. Active devices are tenant-scoped revoked and hidden atomically; already-revoked rows are hidden while their security/job lineage remains retained; deliberate re-enrollment restores the existing installation row. Migration 0053, focused UI/PGlite/runtime-grant tests, typecheck, lint, staging build, and deployment validation pass. The source awaits fresh exact private-beta deployment approval; no database mutation, deployment, provider call, GPU work, production activation, or spend occurred."
+  provider_free_product_action: "Approved source 5b2dcea2 is live as Worker 35b64868 after additive migration 0053. Neon reports 53/53 with exact runtime grants and FORCE RLS. Cache-bypassed status reports the exact source and GPU DISABLED_UNQUALIFIED. Authenticated Chrome shows Remove on all six visible personal-computer rows; none was clicked during verification. Active removal revokes and hides atomically, old revoked entries are hidden without deleting lineage, and deliberate re-enrollment restores the retained installation row. No provider call, GPU work, production activation, or spend occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: COMPUTER_REMOVAL_SOURCE_GREEN_AWAITING_FRESH_EXACT_APPROVAL
+  status: COMPUTER_REMOVAL_LIVE_ACCEPTED
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -89,11 +89,11 @@ hosted_beta_user_walkthrough:
     - "9fe7319f0417ef603262bcfbbde0e6b18f2709fc"
     - "955670528e46622bb24ce27d10d9f2c965e58e3a"
     - "5b2dcea29264e6a8352f2a949f711fc0f430df62"
-  deployment_candidate: COMPUTER_REMOVAL_SOURCE_GREEN_AWAITING_FRESH_EXACT_APPROVAL
-  deployed_source_commit: "955670528e46622bb24ce27d10d9f2c965e58e3a"
-  cloudflare_worker_version_id: "e00be197-74d7-471a-8a10-4fb2b75fd8d0"
-  deployed_config_sha256: "sha256:2df17a861e15a4bcad08933482b4e197418fd4f1164923dc270861e06dbe8518"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 955670528e46622bb24ce27d10d9f2c965e58e3a CAP USD 3"
+  deployment_candidate: DEPLOYED_COMPUTER_REMOVAL
+  deployed_source_commit: "5b2dcea29264e6a8352f2a949f711fc0f430df62"
+  cloudflare_worker_version_id: "35b64868-cfc3-4754-9406-c9987108bbbf"
+  deployed_config_sha256: "sha256:3099d4f197168022410fe34d02afdef16eb5c7c957109d20435057f378793afd"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 5b2dcea29264e6a8352f2a949f711fc0f430df62 CAP USD 3"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -103,7 +103,7 @@ hosted_beta_user_walkthrough:
   gpu_use_authorized: false
   external_spend_authorized_usd: 3
   remote_mutation_authorized: true
-  database_preflight: "LIVE_LEDGER_52_OF_52_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
+  database_preflight: "LIVE_LEDGER_53_OF_53_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
   pending_database_migration: null
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
@@ -145,7 +145,8 @@ hosted_beta_user_walkthrough:
     - "Approved source f6d94db7 is deployed as Worker f20840d6 with config sha256:0058f0c0. The first activation attempt failed before version creation on Cloudflare startup CPU validation; one bounded identical retry succeeded. Exact live status reports the approved commit and DISABLED_UNQUALIFIED. Authenticated Chrome proves the will carter cover, References (4), full formatted Gemini analysis, palette, and generation rules are live."
     - "Approved source c9beae23 is deployed as Worker 31cbc013 with config sha256:502fe176. The published style card says Details and exposes every saved normalized reference through tenant-authenticated numbered preview URLs. Authenticated Chrome confirms visible previous/next edge arrows, distinct images 1 through 4, position text, and wraparound from 4 to 1."
     - "Approved source 95567052 is deployed as Worker e00be197 with config sha256:2df17a86. Cache-bypassed status reports the exact commit and GPU DISABLED_UNQUALIFIED. Authenticated Chrome confirms Create Project says WAV or MP3 and the file input accepts audio/wav, audio/mpeg, .wav, and .mp3. The edge verifies Layer III frame structure and the personal worker retains final ffprobe/ffmpeg decode and duration authority."
-    - "Source 5b2dcea2 gives every visible personal-computer row a confirmed Remove action. Active devices are revoked and hidden in one tenant-scoped transaction; old revoked entries are hidden without deleting security/job lineage; re-enrolling the same installation restores its retained row. Additive migration 0053, focused UI/PGlite/runtime-grant tests, typecheck, changed-file lint, staging build/quarantine, deployment validation, and diff checks pass. It is not deployed and no database, provider, GPU, production, or spend mutation occurred."
+    - "Source preparation at 5b2dcea2 gave every visible personal-computer row a confirmed Remove action. Active devices are revoked and hidden in one tenant-scoped transaction; old revoked entries are hidden without deleting security/job lineage; re-enrolling the same installation restores its retained row. Additive migration 0053, focused UI/PGlite/runtime-grant tests, typecheck, changed-file lint, staging build/quarantine, deployment validation, and diff checks passed before activation."
+    - "Approved source 5b2dcea2 is deployed as Worker 35b64868 with config sha256:3099d4f1 after additive migration 0053. Neon is 53/53 with exact runtime grants/FORCE RLS; cache-bypassed status reports the exact commit and DISABLED_UNQUALIFIED. Authenticated Chrome shows Remove on all six visible computer rows; no row was removed during verification. The exact-source worktree initially hit local ENOSPC before any remote mutation; clearing only the recoverable pnpm cache allowed migration/build/deploy to complete. No provider, GPU, production, or spend action occurred."
   current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
   remaining_steps:
     - PROJECT_CREATION_AND_COST_PREFLIGHT
@@ -191,8 +192,8 @@ hosted_beta_user_walkthrough:
     hosted_computer_removal_staging_build: PASS_FIXTURE_QUARANTINE
     hosted_computer_removal_runtime_grants: PASS
     hosted_computer_removal_deployment_validation: PASS
-    hosted_computer_removal_deployment: PENDING_FRESH_EXACT_APPROVAL
-    hosted_computer_removal_live_chrome: PENDING_DEPLOYMENT
+    hosted_computer_removal_deployment: "PASS_COMMIT_5B2DCEA2_WORKER_35B64868_MIGRATION_53_OF_53"
+    hosted_computer_removal_live_chrome: "PASS_REMOVE_VISIBLE_ON_ALL_6_ROWS_NO_DELETE_CLICKED"
     hosted_preset_archive_migration: "PASS_4_OF_4"
     hosted_preset_runtime_grants: "PASS_1_OF_1_NO_DELETE"
     hosted_preset_remove_staging_build: PASS
