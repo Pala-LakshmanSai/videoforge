@@ -180,7 +180,7 @@ export function MediaWorkerSetup() {
 
   return (
     <section className="worker-setup" aria-labelledby="worker-setup-title">
-      <p>Local compute · $0 provider CPU cost</p>
+      <p>Your computer · no processing charge</p>
       <h2 id="worker-setup-title">Connect your computer once</h2>
       <p>
         VideoForge uses your own Windows or Mac computer for transcription and final rendering. The
@@ -264,8 +264,8 @@ export function MediaWorkerSetup() {
       </div>
       {message ? <p role="status">{message}</p> : null}
       <p className="worker-privacy">
-        The worker accepts only jobs owned by this account. It receives short-lived file links and
-        never receives database, storage, Cloudflare, Google, or GPU-provider credentials.
+        This helper can only process your projects. It receives temporary file access and never
+        receives your account or service credentials.
       </p>
     </section>
   );

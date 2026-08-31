@@ -447,7 +447,7 @@
   .visual-preset-menu {
     max-height: min(256px, calc(100vh - 112px));
     padding: 6px;
-    border-radius: 0;
+    border-radius: 13px;
   }
 
   .visual-preset-option {

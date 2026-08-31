@@ -50,10 +50,10 @@ function HostedLibraryScreen() {
 
   if (query.isPending) {
     return (
-      <Panel eyebrow="Private R2 outputs" heading="Loading Library">
+      <Panel heading="Loading Library">
         <div className="empty-state" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
-          <p>Creating short-lived download links…</p>
+          <p>Loading your finished videos…</p>
         </div>
       </Panel>
     );
@@ -63,7 +63,7 @@ function HostedLibraryScreen() {
       <EmptyState
         icon={<AlertTriangle />}
         title="Library unavailable"
-        body="No fixture or public-storage fallback was used."
+        body="Your finished videos could not be loaded. Try again."
         action={
           <Button variant="secondary" onClick={() => void query.refetch()}>
             Retry load
@@ -88,14 +88,14 @@ function HostedLibraryScreen() {
             <Panel
               key={output.attempt_id}
               className="library-output"
-              eyebrow="Private R2 output"
+              eyebrow="Finished video"
               heading={output.title}
             >
               <video controls preload="metadata" src={output.download_url}>
                 Your browser does not support video playback.
               </video>
               <div className="entity-card-footer">
-                <Badge tone="success">READY</Badge>
+                <Badge tone="success">Ready</Badge>
                 <div className="cluster">
                   <a
                     className="button button-secondary"
@@ -123,7 +123,7 @@ function HostedLibraryScreen() {
                   </Button>
                 </div>
               </div>
-              <Disclosure summary="Storage and integrity">
+              <Disclosure summary="Storage details">
                 <div className="detail-facts">
                   <span>
                     <small>Retention</small>
@@ -132,10 +132,6 @@ function HostedLibraryScreen() {
                   <span>
                     <small>Size</small>
                     <strong>{Math.ceil(output.content_length / 1024 / 1024)} MB</strong>
-                  </span>
-                  <span className="detail-fact-wide">
-                    <small>SHA-256</small>
-                    <strong>{output.checksum_sha256}</strong>
                   </span>
                 </div>
               </Disclosure>

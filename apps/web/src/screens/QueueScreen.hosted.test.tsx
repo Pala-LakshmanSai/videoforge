@@ -61,7 +61,7 @@ describe("hosted queue", () => {
       );
 
       expect(await screen.findByText("My private render")).toBeInTheDocument();
-      expect(screen.getByText("ONLINE")).toBeInTheDocument();
+      expect(screen.getByText("Connected")).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
       await waitFor(() =>
         expect(fetchMock).toHaveBeenCalledWith(

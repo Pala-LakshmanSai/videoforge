@@ -2302,11 +2302,6 @@ export function HostedPresetCreationScreen({
       readonly normalized?: NormalizedStyleReference;
     }[]
   >([]);
-  const [rights, setRights] = useState(false);
-  const [likeness, setLikeness] = useState(false);
-  const [disclosure, setDisclosure] = useState(false);
-  const [retention, setRetention] = useState(false);
-  const [profileReviewed, setProfileReviewed] = useState(false);
   const [profileNotes, setProfileNotes] = useState("");
   const [created, setCreated] = useState<HostedPresetMutationResponse | null>(null);
   const [fixtureStyleVersion, setFixtureStyleVersion] =
@@ -2396,13 +2391,8 @@ export function HostedPresetCreationScreen({
     setCreated(hostedDraftResponse(resumedDraft));
     if (isAvatar && "profile_id" in resumedDraft) {
       setRepairingReferences(false);
-      setRights(resumedDraft.rights_attested === true);
-      setLikeness(resumedDraft.likeness_animation_consent === true);
-      setStep(3);
+      setStep(2);
     } else if (!isAvatar && "style_id" in resumedDraft) {
-      setRights(resumedDraft.rights_attested === true);
-      setDisclosure(resumedDraft.processing_disclosure_acknowledged === true);
-      setRetention(resumedDraft.original_retention_policy === "RETAIN");
       if (draftState === "DRAFT" && resumedDraft.references_verified !== true) {
         setRepairingReferences(true);
         setStep(1);
@@ -2651,8 +2641,8 @@ export function HostedPresetCreationScreen({
               width: avatarSource!.width,
               height: avatarSource!.height,
             },
-            rights_attested: rights,
-            likeness_animation_consent: likeness,
+            rights_attested: true,
+            likeness_animation_consent: true,
           }
         : {
             schema_version: "videoforge-hosted-style-create/v1",
@@ -2671,8 +2661,8 @@ export function HostedPresetCreationScreen({
               normalized_height: source.normalized!.normalized.height,
               order_index: index,
             })),
-            rights_attested: rights,
-            processing_disclosure_acknowledged: disclosure,
+            rights_attested: true,
+            processing_disclosure_acknowledged: true,
             original_retention_policy: "RETAIN",
           };
       const endpoint = isAvatar ? "/api/v2/hosted/avatars" : "/api/v2/hosted/styles";
@@ -2721,8 +2711,23 @@ export function HostedPresetCreationScreen({
         `${endpoint}/${encodeURIComponent(id)}/commit`,
         { method: "POST", body: "{}" },
       );
-      setCreated({ ...draft, ...committed });
-      setStep(3);
+      const saved = { ...draft, ...committed };
+      setCreated(saved);
+      if (isAvatar) {
+        const avatarId = resourceId(saved);
+        await readJson(`/api/v2/hosted/avatars/${encodeURIComponent(avatarId)}/approve`, {
+          method: "POST",
+          body: JSON.stringify({
+            schema_version: "videoforge-hosted-avatar-approval/v1",
+            rights_attested: true,
+            likeness_animation_consent: true,
+          }),
+        });
+        await catalog.refetch();
+        window.location.assign(returnTo);
+      } else {
+        setStep(3);
+      }
     } catch (value) {
       const message =
         value instanceof Error ? value.message : `Hosted ${itemLabel} could not be saved.`;
@@ -2758,8 +2763,8 @@ export function HostedPresetCreationScreen({
         method: "POST",
         body: JSON.stringify({
           schema_version: "videoforge-hosted-avatar-approval/v1",
-          rights_attested: rights,
-          likeness_animation_consent: likeness,
+          rights_attested: true,
+          likeness_animation_consent: true,
         }),
       });
       await catalog.refetch();
@@ -2825,8 +2830,8 @@ export function HostedPresetCreationScreen({
         method: "POST",
         body: JSON.stringify({
           schema_version: "videoforge-hosted-style-publish/v1",
-          rights_attested: rights,
-          processing_disclosure_acknowledged: disclosure,
+          rights_attested: true,
+          processing_disclosure_acknowledged: true,
           candidate_profile: candidateProfile,
         }),
       });
@@ -2847,7 +2852,7 @@ export function HostedPresetCreationScreen({
   return (
     <>
       <PageHeader
-        eyebrow={`${title} · step ${step} of ${isAvatar ? 3 : 4}`}
+        eyebrow={`${title} · step ${isAvatar ? Math.min(step, 2) : step === 4 ? 3 : step} of ${isAvatar ? 2 : 3}`}
         title={title}
         description={
           parentId
@@ -2870,7 +2875,7 @@ export function HostedPresetCreationScreen({
             : step === 2
               ? "Technical review"
               : isAvatar
-                ? "Rights and likeness approval"
+                ? "Review and add"
                 : step === 3
                   ? "Analyze references"
                   : "Review and publish"
@@ -3023,74 +3028,31 @@ export function HostedPresetCreationScreen({
             <Button variant="ghost" disabled={busy} onClick={() => setStep(1)}>
               Back
             </Button>
+            <div className="preset-action-disclosure">
+              {isAvatar
+                ? "By adding this avatar, you confirm you have the right to use and animate this likeness."
+                : "By preparing this style, you confirm you can use these images. Private originals are kept until you remove the style and are never sent to Runware or Gemini. Normalized copies are sent only when you explicitly analyze."}
+            </div>
             <Button
+              busy={busy}
               disabled={busy}
-              onClick={() => (repairingReferences ? void retryStyleReferences() : setStep(3))}
+              onClick={() =>
+                repairingReferences
+                  ? void retryStyleReferences()
+                  : isAvatar
+                    ? created
+                      ? void approveAvatar()
+                      : void createDraft()
+                    : void createDraft()
+              }
             >
               {repairingReferences
                 ? "Verify replacement references"
                 : isAvatar
-                  ? "Continue to approval"
-                  : "Continue to analysis"}{" "}
+                  ? "Add to Avatar Hub"
+                  : "Prepare analysis"}{" "}
               <ArrowRight size={16} />
             </Button>
-          </div>
-        ) : null}
-        {step === 3 && isAvatar ? (
-          <div className="stack">
-            <label className="toggle-row">
-              <span>
-                <strong>Image-use rights</strong>
-                <small>
-                  I own, license, or otherwise have a documented basis to use this source.
-                </small>
-              </span>
-              <input
-                type="checkbox"
-                checked={rights}
-                onChange={(event) => setRights(event.target.checked)}
-              />
-            </label>
-            <label className="toggle-row">
-              <span>
-                <strong>Likeness animation consent</strong>
-                <small>I have the right and consent to animate the depicted likeness.</small>
-              </span>
-              <input
-                type="checkbox"
-                checked={likeness}
-                onChange={(event) => setLikeness(event.target.checked)}
-              />
-            </label>
-            <Disclosure summary="What is saved">
-              <p className="helper">
-                Only the tenant-private source lineage, checksums, approved version, and
-                compatibility evidence are retained.
-              </p>
-            </Disclosure>
-            <Button
-              variant="ghost"
-              disabled={busy}
-              onClick={() => (resumedDraftActive ? cancel() : setStep(2))}
-            >
-              {resumedDraftActive ? `Back to ${isAvatar ? "Avatar Hub" : "Image Styles"}` : "Back"}
-            </Button>
-            {!created ? (
-              <Button
-                busy={busy}
-                disabled={!rights || !likeness}
-                onClick={() => void createDraft()}
-              >
-                Save and continue <ArrowRight size={16} />
-              </Button>
-            ) : (
-              <Button busy={busy} onClick={() => void approveAvatar()}>
-                <ShieldCheck size={16} />
-                {resumedDraft && presetState(resumedDraft) === "DRAFT"
-                  ? "Verify photo and approve"
-                  : "Approve and add to Avatar Hub"}
-              </Button>
-            )}
           </div>
         ) : null}
         {step === 3 && !isAvatar ? (
@@ -3103,50 +3065,11 @@ export function HostedPresetCreationScreen({
                 ? "Your normalized references will be sent through Runware to Gemini 3.1 Flash Lite once to extract reusable visual traits. They are not sent again during video generation. This bounded analysis may incur a small provider charge within the private beta’s $3 total ceiling."
                 : "This walkthrough uses a simulated profile and makes no external AI request."}
             </div>
-            {!fixtureBackend ? (
-              <label className="toggle-row">
-                <span>
-                  <strong>Keep private originals</strong>
-                  <small>
-                    Keep the original uploads and normalized copies until I remove this style.
-                    Originals are never sent to Runware or Gemini.
-                  </small>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={retention}
-                  onChange={(event) => setRetention(event.target.checked)}
-                />
-              </label>
-            ) : null}
-            <label className="toggle-row">
-              <span>
-                <strong>Image-use rights</strong>
-                <small>
-                  I own, license, or otherwise have a documented basis to use these references.
-                </small>
-              </span>
-              <input
-                type="checkbox"
-                checked={rights}
-                onChange={(event) => setRights(event.target.checked)}
-              />
-            </label>
-            <label className="toggle-row">
-              <span>
-                <strong>Processing disclosure</strong>
-                <small>
-                  {fixtureBackend
-                    ? "I understand normalized references are processed locally to derive this style profile."
-                    : "I understand normalized references are sent through Runware to Gemini to derive this style profile, and provider-side retention follows Runware and Google’s terms."}
-                </small>
-              </span>
-              <input
-                type="checkbox"
-                checked={disclosure}
-                onChange={(event) => setDisclosure(event.target.checked)}
-              />
-            </label>
+            <div className="preset-action-disclosure">
+              {fixtureBackend
+                ? "By analyzing, you confirm you can use these images. Normalized copies are processed locally for this walkthrough."
+                : "By analyzing, you confirm you can use these images. Normalized copies are sent once through Runware to Gemini; provider retention follows their terms. Private originals stay in your workspace until you remove the style."}
+            </div>
             <Button
               variant="ghost"
               disabled={busy}
@@ -3155,11 +3078,7 @@ export function HostedPresetCreationScreen({
               {resumedDraftActive ? "Back to Image Styles" : "Back"}
             </Button>
             {!created ? (
-              <Button
-                busy={busy}
-                disabled={!rights || !disclosure || (!fixtureBackend && !retention)}
-                onClick={() => void createDraft()}
-              >
+              <Button busy={busy} onClick={() => void createDraft()}>
                 Upload and prepare analysis <ArrowRight size={16} />
               </Button>
             ) : (
@@ -3200,25 +3119,14 @@ export function HostedPresetCreationScreen({
                 placeholder="Keep natural practical light and tactile material detail."
               />
             </div>
-            <label className="toggle-row">
-              <span>
-                <strong>Profile reviewed</strong>
-                <small>I reviewed this style profile and it matches the look I want.</small>
-              </span>
-              <input
-                type="checkbox"
-                checked={profileReviewed}
-                onChange={(event) => setProfileReviewed(event.target.checked)}
-              />
-            </label>
+            <div className="preset-action-disclosure">
+              Publishing confirms that this profile matches the look you want. Published versions
+              remain unchanged so existing projects stay reproducible.
+            </div>
             <Button variant="ghost" disabled={busy} onClick={() => setStep(3)}>
               Back
             </Button>
-            <Button
-              busy={busy}
-              disabled={!rights || !disclosure || !profileReviewed || !created?.profile}
-              onClick={() => void publishStyle()}
-            >
+            <Button busy={busy} disabled={!created?.profile} onClick={() => void publishStyle()}>
               <ShieldCheck size={16} /> Publish immutable style version
             </Button>
           </div>
@@ -3708,7 +3616,7 @@ export function HostedUsageScreen() {
       <EmptyState
         icon={<AlertTriangle />}
         title="Usage unavailable"
-        body="No estimated spend was substituted."
+        body="Usage could not be loaded. Try again."
         action={
           <Button variant="secondary" onClick={() => void query.refetch()}>
             Retry
@@ -3720,25 +3628,25 @@ export function HostedUsageScreen() {
     <>
       <PageHeader title="Usage" />
       <div className="grid grid-4 usage-grid">
-        <Metric label="CPU provider" value="$0.00" detail="personal worker" tone="success" />
-        <Metric label="GPU staging" value="$0.00" detail="disabled" />
+        <Metric label="Provider charges" value="$0.00" detail="this month" tone="success" />
+        <Metric label="Video generation" value="Not enabled" detail="private beta" />
         <Metric
-          label="Worker time"
-          value={`${query.data.personal_worker_seconds}s`}
-          detail="measured"
+          label="Computer work"
+          value={formatMilliseconds(query.data.personal_worker_seconds * 1_000)}
+          detail="measured time"
         />
         <Metric
-          label="Private R2"
+          label="Stored media"
           value={`${(query.data.retained_bytes / 1024 / 1024 / 1024).toFixed(3)} GB`}
           detail="until Delete"
         />
       </div>
       <div className="grid grid-3 usage-grid">
-        <Metric label="Attempts" value={String(query.data.attempts)} detail="this month" />
-        <Metric label="Succeeded" value={String(query.data.succeeded)} detail="durable" />
-        <Metric label="Failed" value={String(query.data.failed)} detail="no hidden estimate" />
+        <Metric label="Runs" value={String(query.data.attempts)} detail="this month" />
+        <Metric label="Completed" value={String(query.data.succeeded)} />
+        <Metric label="Needs attention" value={String(query.data.failed)} />
       </div>
-      <Panel eyebrow="Measured economics" heading="Project and lane detail">
+      <Panel heading="Usage details">
         {query.data.as_of ? (
           <p className="helper">As of {formatTimestamp(query.data.as_of)}.</p>
         ) : null}
@@ -3754,9 +3662,7 @@ export function HostedUsageScreen() {
               <article className="entity-row" key={project.project_id}>
                 <div>
                   <strong>{project.title}</strong>
-                  <small>
-                    {project.project_id} · {project.attempts ?? 0} attempts
-                  </small>
+                  <small>{project.attempts ?? 0} runs</small>
                 </div>
                 <span>
                   <small>Projected</small> {formatUsd(project.projected_usd)}
@@ -3772,7 +3678,7 @@ export function HostedUsageScreen() {
             ))}
           </div>
         ) : (
-          <p className="helper">Per-project timing and cost records were not returned.</p>
+          <p className="helper">Detailed timing will appear after a completed run.</p>
         )}
         {query.data.lanes?.length ? (
           <Disclosure summary="Lane breakdown">

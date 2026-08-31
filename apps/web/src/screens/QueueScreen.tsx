@@ -41,6 +41,16 @@ function hostedAttemptTone(state: string): "success" | "danger" | "warning" | "i
   return "neutral";
 }
 
+function hostedAttemptLabel(state: string): string {
+  if (state === "SUCCEEDED") return "Complete";
+  if (state === "FAILED" || state === "EXPIRED") return "Needs attention";
+  if (state === "CANCEL_REQUESTED") return "Stopping";
+  if (state === "CANCELLED") return "Cancelled";
+  if (state === "RUNNING") return "In progress";
+  if (state === "RECONCILING") return "Checking status";
+  return "Waiting";
+}
+
 function HostedQueueScreen() {
   const queue = useQuery({
     queryKey: ["hosted-queue"],
@@ -61,10 +71,10 @@ function HostedQueueScreen() {
 
   if (queue.isPending) {
     return (
-      <Panel heading="Loading your private queue">
+      <Panel heading="Loading projects">
         <div className="empty-state" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
-          <p>Reading tenant-owned jobs and worker status…</p>
+          <p>Checking your projects and connected computer…</p>
         </div>
       </Panel>
     );
@@ -74,7 +84,7 @@ function HostedQueueScreen() {
       <EmptyState
         icon={<AlertTriangle />}
         title="Queue unavailable"
-        body="No fixture or cross-account fallback was used."
+        body="Your projects could not be loaded. Try again."
         action={
           <Button variant="secondary" onClick={() => void queue.refetch()}>
             Retry load
@@ -92,19 +102,25 @@ function HostedQueueScreen() {
     <>
       <PageHeader title="Queue" />
       <div className="grid grid-4 queue-overview">
-        <Metric label="Active jobs" value={String(active)} tone={active ? "info" : "neutral"} />
-        <Metric label="Finished jobs" value={String(finished)} tone="success" />
-        <Metric label="Account limit" value="1" detail="active video" />
+        <Metric label="In progress" value={String(active)} tone={active ? "info" : "neutral"} />
+        <Metric label="Completed" value={String(finished)} tone="success" />
+        <Metric label="Your limit" value="1" detail="video at a time" />
         <Metric
-          label="Your worker"
-          value={queue.data.worker_state.replaceAll("_", " ")}
+          label="Your computer"
+          value={
+            queue.data.worker_state === "ONLINE"
+              ? "Connected"
+              : queue.data.worker_state === "BUSY"
+                ? "Working"
+                : "Not connected"
+          }
           tone={queue.data.worker_state === "ONLINE" ? "success" : "warning"}
         />
       </div>
-      <Panel eyebrow="Tenant-private execution" heading="Your local media jobs">
+      <Panel heading="Your projects">
         <div className="notice" role="status">
-          Transcription and rendering run only on a computer paired to this account. If it is
-          offline, work waits without using paid provider CPU.
+          Your computer handles transcription and final assembly. If it disconnects, work waits
+          safely until it reconnects.
         </div>
         {queue.data.attempts.length === 0 ? (
           <EmptyState
@@ -141,7 +157,9 @@ function HostedQueueScreen() {
                     </div>
                   </div>
                   <div className="queue-card__status">
-                    <Badge tone={hostedAttemptTone(attempt.state)}>{attempt.state}</Badge>
+                    <Badge tone={hostedAttemptTone(attempt.state)}>
+                      {hostedAttemptLabel(attempt.state)}
+                    </Badge>
                   </div>
                   <div className="queue-card__facts">
                     {cancellable ? (

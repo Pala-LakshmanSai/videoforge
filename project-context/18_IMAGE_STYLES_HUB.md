@@ -89,10 +89,12 @@ Detailed rules:
 2. Recommend 3–8 references, permit 1–2 with warning, and cap at 12.
 3. Validate magic bytes, raster decode, dimensions, file size, decompression limits, and checksum.
    Honor orientation, create bounded sRGB analysis derivatives, and strip EXIF/GPS before upload.
-4. Record owned/licensed/public-domain/other rights basis and explicit original-retention choice.
+4. The Analyze action carries a concise inline confirmation that the user has a documented basis to
+   use the references. Keep originals privately by default until the style is removed; disclose that
+   choice beside the action instead of adding a separate checkbox screen.
 5. Before Analyze, disclose that normalized copies go through Runware to Gemini and provider retention
-   follows Runware and Google terms; require consent. Originals, tenant IDs, database IDs, and hashes are not
-   included in the provider request.
+   follows Runware and Google terms. Clicking Analyze records acknowledgement; there is no standalone
+   consent step. Originals, tenant IDs, database IDs, and hashes are not included in the provider request.
 6. Persist analysis outbox/idempotency/cost before the external call, reconcile ambiguous responses,
    validate exact schema/semantics, and store immutable accepted evidence.
 7. Let the user review/edit the creative profile. Analyzer confidence remains attached only to the
@@ -196,7 +198,7 @@ analysis/rights/provenance/cost, lifecycle, and secondary actions are progressiv
 
 The built-in default can be viewed, used, tested, and duplicated; it cannot be edited, archived, or
 deleted. The wizard is resumable and shows upload/analysis/reconciliation/failure/retry/review states,
-consent, retention, exact charged amount, confidence, and outliers.
+the inline processing and retention disclosure, exact charged amount, confidence, and outliers.
 
 Create Project keeps its compact app-native visual Style dropdown, preselected to the built-in.
 Options contain system rows plus only this workspace's published non-archived versions. Selecting

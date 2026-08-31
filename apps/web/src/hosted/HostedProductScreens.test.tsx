@@ -703,9 +703,8 @@ describe("hosted product journey", () => {
     } else if (state === "FAILED") {
       expect(screen.getByRole("button", { name: "Retry saved analysis" })).toBeEnabled();
     } else {
-      expect(
-        screen.getByRole("button", { name: "Publish immutable style version" }),
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Publish immutable style version" })).toBeEnabled();
+      expect(screen.queryByLabelText("Profile reviewed")).not.toBeInTheDocument();
     }
     window.history.replaceState({}, "", "/");
   });
@@ -1083,15 +1082,12 @@ describe("hosted product journey", () => {
     expect(
       screen.getByText("WAV or MP3 · 10 seconds to 60 minutes · max 1 GB"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "Avatar options" })).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "Image style options" })).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.getByRole("radio", { name: /Owner/u })).toHaveAttribute("aria-checked", "true"),
-    );
-    expect(screen.getByRole("radio", { name: /Documentary/u })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    expect(screen.queryByRole("radiogroup", { name: "Avatar options" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("radiogroup", { name: "Image style options" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Owner")).toBeInTheDocument();
+    expect(screen.getByText("Documentary")).toBeInTheDocument();
     expect(screen.getByLabelText("Maximum spend")).toHaveClass("input");
     expect(screen.getByLabelText("Maximum spend")).toHaveValue(1);
     expect(screen.getByText(/no paid GPU work will start/u)).toBeInTheDocument();
@@ -1367,9 +1363,9 @@ describe("hosted product journey", () => {
     );
     renderHosted(<HostedUsageScreen />);
 
-    expect(await screen.findByText("125s")).toBeInTheDocument();
+    expect(await screen.findByText("2m 05s")).toBeInTheDocument();
     expect(screen.getByText("1.000 GB")).toBeInTheDocument();
-    expect(screen.getAllByText("$0.00")).toHaveLength(2);
+    expect(screen.getAllByText("$0.00")).toHaveLength(1);
     expect(screen.queryByText(/estimated/u)).not.toBeInTheDocument();
   });
 });

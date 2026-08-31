@@ -43,6 +43,31 @@ export function VisualPresetSelect({
     [],
   );
 
+  if (options.length <= 1) {
+    return (
+      <div className="visual-preset-select" id={id}>
+        <span className="field-label">{label}</span>
+        <div className="visual-preset-summary visual-preset-summary-static">
+          {selected ? (
+            <>
+              <PresetImage src={selected.imageUrl} alt={`${selected.name} selected preset`} />
+              <span className="visual-preset-copy">
+                <strong>{selected.name}</strong>
+                {selected.meta ? <small>{selected.meta}</small> : null}
+              </span>
+              <Check size={17} aria-label="Selected" />
+            </>
+          ) : (
+            <span className="visual-preset-copy">
+              <strong>No {label.toLowerCase()} available</strong>
+              <small>Create one to continue</small>
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   function closeAndFocus() {
     const details = detailsRef.current;
     if (!details) return;

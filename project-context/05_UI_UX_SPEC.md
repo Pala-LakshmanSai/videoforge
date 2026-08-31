@@ -136,8 +136,9 @@ the only persistent applied-state indicator.
 
 - Account-private named cards with real authorized thumbnail/name. Healthy version/date/compatibility
   metadata is in details; show a badge only for an actionable exception.
-- Flow: name -> one private source upload -> technical validation -> safe-area/centering and
-  rights/likeness review -> approve and add.
+- Flow: name and one private source upload -> visual/technical review -> add. The final action carries
+  one concise inline rights/likeness confirmation; there is no standalone consent page or checkbox
+  wall.
 - View, rename, new immutable version, optional test/retest, duplicate, archive. Only active ready
   versions are normal new-project choices; pinned prior versions remain attached to existing work.
 - The source is uploaded once to private R2 and never copied into each project. There is no global
@@ -150,13 +151,14 @@ the only persistent applied-state indicator.
 - Custom versions expose only their own account-authorized `References (N)` gallery. Global
   `documentary_stock_v1` has no uploaded runtime references and may label owned generated media only
   as `Examples (N)`; never show Ranga research frames.
-- Wizard: upload -> consent -> analyze -> review/edit -> optional separately estimated Mage test ->
-  explicit publish. Preview never auto-publishes.
+- Wizard: upload -> visual review with concise inline rights/processing/retention disclosure ->
+  explicit one-time analyze -> review/edit -> optional separately estimated Mage test -> explicit
+  publish. There is no standalone consent page or checkbox wall. Preview never auto-publishes.
 - Published v1 remains usable while v2 is draft/analyzing. Built-in default cannot be edited,
   deleted, or archived.
-- Plain consent states that normalized references go directly to DeepSeek once for explicit style
-  analysis and provider retention follows DeepSeek terms; distinguish VideoForge deletion from
-  provider retention.
+- Plain inline disclosure states that normalized references go through Runware to Gemini once for
+  explicit style analysis and provider retention follows their terms; distinguish VideoForge
+  deletion from provider retention. Clicking Analyze records the disclosure acknowledgement.
 
 ### 8. Library and Usage
 

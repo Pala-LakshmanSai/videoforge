@@ -399,7 +399,7 @@ export function AppShell({ children }: PropsWithChildren) {
                     ? "Private production"
                     : "Private staging"}
                 </span>
-                <strong>Personal media worker</strong>
+                <strong>Computer &amp; account</strong>
               </span>
               <span className="project-command-action">Settings</span>
             </Link>

@@ -27,6 +27,10 @@
   gap: 14px;
 }
 
+.settings-grid {
+  align-items: start;
+}
+
 .settings-grid .panel-header {
   margin-bottom: 0;
 }

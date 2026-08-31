@@ -144,8 +144,8 @@ h3 {
   --success: #50dda5;
   --warning: #f4bd68;
   --danger: #ff667b;
-  --control-radius: 15px;
-  --panel-radius: 24px;
+  --control-radius: 12px;
+  --panel-radius: 18px;
   --shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
 }
 

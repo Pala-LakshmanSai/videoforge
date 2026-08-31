@@ -307,7 +307,7 @@
 .top-command-bar-inner {
   display: grid;
   width: 100%;
-  grid-template-columns: max-content minmax(288px, 1fr) max-content;
+  grid-template-columns: max-content minmax(240px, 420px) minmax(0, 1fr);
   align-items: center;
   gap: 14px;
   min-height: 70px;
@@ -342,7 +342,7 @@
   position: relative;
   display: grid;
   width: 100%;
-  max-width: none;
+  max-width: 420px;
   min-width: 0;
   min-height: 50px;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -454,6 +454,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-self: end;
 }
 
 .top-health {

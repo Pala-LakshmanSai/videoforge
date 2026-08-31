@@ -17,7 +17,7 @@ interface HostedTenant {
   readonly user: { readonly email: string; readonly name: string };
 }
 
-function HostedSettingsScreen({ environment }: { environment: "staging" | "production" }) {
+function HostedSettingsScreen() {
   const tenant = useQuery({
     queryKey: ["hosted-tenant"],
     queryFn: async () => {
@@ -31,33 +31,30 @@ function HostedSettingsScreen({ environment }: { environment: "staging" | "produ
     <>
       <PageHeader title="Settings" />
       <div className="grid grid-2 settings-grid">
-        <Panel
-          eyebrow={`Private ${environment}`}
-          heading={tenant.data?.workspace_name ?? "Your workspace"}
-        >
+        <Panel eyebrow="Account" heading={tenant.data?.workspace_name ?? "Your workspace"}>
           <div className="settings-summary">
             <Badge tone={tenant.isError ? "danger" : "success"}>
-              {tenant.isError ? "UNAVAILABLE" : "TENANT ISOLATED"}
+              {tenant.isError ? "Unavailable" : "Private workspace"}
             </Badge>
             <strong>{tenant.data?.user.email ?? "Checking signed-in account…"}</strong>
           </div>
-          <Disclosure summary="Hosted boundaries">
+          <Disclosure summary="Privacy & security">
             <div className="detail-facts">
               <span>
-                <small>Database</small>
-                <strong>Neon · account-scoped RLS</strong>
+                <small>Workspace</small>
+                <strong>Only you can see your projects and media</strong>
               </span>
               <span>
-                <small>Artifacts</small>
-                <strong>Private R2 · short-lived signed access</strong>
+                <small>Files</small>
+                <strong>Private with short-lived download access</strong>
               </span>
               <span>
-                <small>GPU</small>
-                <strong>Disabled until exact transport qualification</strong>
+                <small>Video generation</small>
+                <strong>Not enabled in this beta</strong>
               </span>
               <span>
-                <small>CPU provider cost</small>
-                <strong>$0 · your paired computer</strong>
+                <small>Computer work</small>
+                <strong>Runs on your connected computer</strong>
               </span>
             </div>
           </Disclosure>
@@ -85,7 +82,7 @@ export function SettingsScreen() {
   });
   const mode = health.data?.mode;
 
-  if (hostedBrowser) return <HostedSettingsScreen environment={providerMode} />;
+  if (hostedBrowser) return <HostedSettingsScreen />;
 
   return (
     <>
