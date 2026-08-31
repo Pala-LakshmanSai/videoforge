@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source 643e9c82 remains live as Worker 1ba229a4. Cloudflare rejected source c9b3ec3f with startup validation 10021 before version creation. Provider-free repair 0c748d6e defers the 349.24 kB hosted product module out of startup, reducing the eager Worker chunk from 3,091.69 kB to 2,741.40 kB while focused web tests pass 94/94, typecheck/lint/build/quarantine pass, and manifest 0.1.11 remains unchanged. Fresh exact approval is required before pushing or deploying the repair. No database, secret, manifest, R2, provider, GPU, or spend mutation occurred."
+  provider_free_product_action: "Approved source 7d459a4a is live as Worker e1dc3b01. The startup split defers the 349.24 kB hosted product module and Cloudflare accepted the exact deployment at 894 ms startup time. Authenticated Chrome verifies Progress immediately after New Project and the latest tenant project dashboard with nine live stages. Manifest and downloadable signed worker remain 0.1.11; do not submit ASR Retry until signed/notarized 0.1.12 is published and installed. No database, secret, manifest, R2, provider, GPU, or spend mutation occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STARTUP_SPLIT_REPAIR_AWAITING_EXACT_DEPLOYMENT_APPROVAL
+  status: LIVE_PROGRESS_NAVIGATION_DEPLOYED_WORKER_0_1_12_PUBLICATION_BLOCKED
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -91,18 +91,23 @@ hosted_beta_user_walkthrough:
     - "5b2dcea29264e6a8352f2a949f711fc0f430df62"
     - "15b22470a6197d60b623554fdb1f3e4423747eaa"
     - "643e9c82f5ede0ac831c2d18cdefc0e637d0a815"
+    - "f5c212e9b2f48fa2eed384bb80efede1545f171f"
+    - "6ac2e49bccc73640960e5ea12d8a1355c6cde0fe"
+    - "c9b3ec3f33fd17cfc631425d036f49a6541d9fd6"
+    - "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
+    - "7d459a4ad0e345f393e7e86df054fc9d6b9ee2dc"
   deployment_candidate: DEPLOYED_LIVE_PROGRESS_DASHBOARD
-  deployed_source_commit: "643e9c82f5ede0ac831c2d18cdefc0e637d0a815"
-  cloudflare_worker_version_id: "1ba229a4-ca26-41a9-92b2-e4cf102334c7"
-  pending_source_candidate: "f5c212e9b2f48fa2eed384bb80efede1545f171f"
+  deployed_source_commit: "7d459a4ad0e345f393e7e86df054fc9d6b9ee2dc"
+  cloudflare_worker_version_id: "e1dc3b01-2632-4dd8-95c7-edac99e93cea"
+  pending_source_candidate: null
   pending_worker_release: "0.1.12"
   pending_release_boundary: "Publish a new immutable signed/notarized 0.1.12 worker, update the staging release manifest, deploy the exact source candidate, install/reconnect 0.1.12, and submit one explicit ASR retry only after fresh exact USD 0 approval."
   pending_validations: "PASS_WEB_84_OF_84_FOCUSED; PASS_TRANSCRIBE_32_OF_32; PASS_MEDIA_LOCAL_40_OF_40; PASS_WEB_TYPECHECK; PASS_CHANGED_FILE_ESLINT_RUFF_FORMAT_DIFF"
   failed_deployment_attempt: "Exact source 6ac2e49b was pushed. Signed worker 0.1.12 publication was not dispatched because the protected GitHub environment has zero signing/notarization secrets. Web-only staging deployment retained manifest 0.1.11 and config SHA-256 6285901b506886af41ac5631dcd74dc2b1c6f21ce47b9cf1f66d81b37ada05c9, but Cloudflare rejected both the initial upload and one bounded identical retry with startup validation code 10021. Fresh USD 0 approval bound c9b3ec3f and config SHA-256 977e7b344203a5b4dfef4ac6aecb05cb94d220028348b7533fdf0c3469455cfe; its single delayed upload failed with the same code. All failures occurred before version creation. Read-only version list and cache-bypassed status prove live Worker 1ba229a4 / source 643e9c82 remained active."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: null
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 643e9c82f5ede0ac831c2d18cdefc0e637d0a815 CAP USD 0"
+  deployed_config_sha256: "0f1c2a4c65f87785d5cfd6aceac10867fdcf93fe604ae7bb5d9ed208125554f8"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 7d459a4ad0e345f393e7e86df054fc9d6b9ee2dc CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -119,7 +124,7 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_STABLE_NINE_STAGE_PROGRESS_17_PERCENT_TRANSCRIPTION_NEEDS_ATTENTION"
+  live_browser_verification: "PASS_PROGRESS_NAV_AFTER_NEW_PROJECT_OPENS_LATEST_TENANT_PROJECT_STABLE_NINE_STAGE_PROGRESS_17_PERCENT_TRANSCRIPTION_NEEDS_ATTENTION"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
