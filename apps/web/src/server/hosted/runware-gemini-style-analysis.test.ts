@@ -3,6 +3,7 @@ import { buildStyleAnalyzerRequest, DeterministicFixtureStyleAnalyzer } from "@v
 
 import {
   analyzeStyleWithRunwareGemini,
+  inspectNormalizedWebp,
   runwareGeminiStyleActualCostMicroUsd,
   RUNWARE_GEMINI_STYLE_MODEL,
   RunwareGeminiStyleAnalysisError,
@@ -17,6 +18,35 @@ function webp(width: number, height: number): Uint8Array {
   bytes.set([10, 0, 0, 0], 16);
   bytes.set([0, 0, 0, 0x9d, 0x01, 0x2a], 20);
   bytes.set([width & 0xff, (width >> 8) & 0x3f, height & 0xff, (height >> 8) & 0x3f], 26);
+  return bytes;
+}
+
+function webpWithIccProfile(width: number, height: number): Uint8Array {
+  const bytes = new Uint8Array(60);
+  bytes.set(new TextEncoder().encode("RIFF"), 0);
+  bytes.set([52, 0, 0, 0], 4);
+  bytes.set(new TextEncoder().encode("WEBP"), 8);
+  bytes.set(new TextEncoder().encode("VP8X"), 12);
+  bytes.set([10, 0, 0, 0], 16);
+  bytes.set([0x20, 0, 0, 0], 20);
+  bytes.set(
+    [
+      (width - 1) & 0xff,
+      ((width - 1) >> 8) & 0xff,
+      ((width - 1) >> 16) & 0xff,
+      (height - 1) & 0xff,
+      ((height - 1) >> 8) & 0xff,
+      ((height - 1) >> 16) & 0xff,
+    ],
+    24,
+  );
+  bytes.set(new TextEncoder().encode("ICCP"), 30);
+  bytes.set([4, 0, 0, 0], 34);
+  bytes.set([1, 2, 3, 4], 38);
+  bytes.set(new TextEncoder().encode("VP8 "), 42);
+  bytes.set([10, 0, 0, 0], 46);
+  bytes.set([0, 0, 0, 0x9d, 0x01, 0x2a], 50);
+  bytes.set([width & 0xff, (width >> 8) & 0x3f, height & 0xff, (height >> 8) & 0x3f], 56);
   return bytes;
 }
 
@@ -45,6 +75,13 @@ async function output() {
 }
 
 describe("Runware Gemini hosted style analysis", () => {
+  it("accepts a browser-normalized WebP carrying an ICC color profile", () => {
+    expect(inspectNormalizedWebp(webpWithIccProfile(1376, 768))).toEqual({
+      width: 1376,
+      height: 768,
+    });
+  });
+
   it("sends normalized derivatives to the pinned vision model and validates the profile", async () => {
     const taskUUID = "11111111-1111-4111-8111-111111111111";
     const fetcher = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {

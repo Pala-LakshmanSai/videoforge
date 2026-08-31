@@ -132,7 +132,10 @@ export function inspectNormalizedWebp(bytes: Uint8Array): { width: number; heigh
     const size = readUint32LE(bytes, offset + 4);
     const payload = offset + 8;
     const end = payload + size;
-    if (end > bytes.length || ["EXIF", "XMP ", "ICCP"].includes(chunk)) return null;
+    // Browser-produced WebP derivatives may contain an ICC color profile. That profile is
+    // required for consistent sRGB color interpretation and carries no source EXIF/GPS data.
+    // Continue rejecting EXIF and XMP, which can retain private source metadata.
+    if (end > bytes.length || ["EXIF", "XMP "].includes(chunk)) return null;
     if (chunk === "VP8X" && size >= 10) {
       dimensions = {
         width: readUint24LE(bytes, payload + 4) + 1,
