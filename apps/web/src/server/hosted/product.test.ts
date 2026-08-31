@@ -595,11 +595,12 @@ describe("hosted product route contract", () => {
     const end = source.indexOf("async function stylePublish(", start);
     const block = source.slice(start, end);
     expect(block).toContain("target.state === \"FAILED\"");
-    expect(block).toContain("AND state = 'FAILED'");
+    expect(block).toContain("AND version.state = 'FAILED'");
     expect(block).toContain("SET state = 'ABANDONED'");
     expect(block).toContain("hosted-style-analysis-retry:");
     expect(block).toContain("hosted-style-analysis-retry-reference:");
     expect(block).toContain("VALUES ($1,$2,$3,$4,$5,'DRAFT','WORKSPACE',$6)");
+    expect(block).not.toContain("FROM hosted_style_analysis_runs");
     expect(block).not.toContain("state = 'UNKNOWN' AND");
   });
 });

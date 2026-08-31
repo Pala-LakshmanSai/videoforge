@@ -2843,17 +2843,9 @@ async function styleAnalyze(
         return { ...target, already_analyzed: true };
       if (target.state === "ANALYZING") throw new Error("STYLE_ANALYSIS_IN_PROGRESS");
       if (target.state === "FAILED") {
-        const failedRun = await transaction.query<HostedPresetRow>(
-          `SELECT id, state FROM hosted_style_analysis_runs
-            WHERE account_id = $1 AND workspace_id = $2 AND style_version_id = $3
-              AND state = 'FAILED'`,
-          [scope.account_id, scope.workspace_id, rowString(target, "version_id")],
-        );
-        const priorRun = failedRun.rows[0];
-        if (!priorRun) throw new Error("STYLE_NOT_ANALYZABLE");
         const failedVersionId = rowString(target, "version_id");
         const retryVersionId = await stableHostedUuid(
-          `hosted-style-analysis-retry:${scope.account_id}:${failedVersionId}:${rowString(priorRun, "id")}`,
+          `hosted-style-analysis-retry:${scope.account_id}:${failedVersionId}`,
         );
         const retryVersionNumber = Number(target.version_number) + 1;
         const abandoned = await transaction.query(
