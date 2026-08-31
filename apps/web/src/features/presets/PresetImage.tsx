@@ -12,7 +12,7 @@ const SAFE_STYLE_PREVIEW = new RegExp(
   "u",
 );
 const SAFE_HOSTED_PRESET_PREVIEW = new RegExp(
-  `^/api/v2/hosted/(?:avatars|styles)/${SAFE_ID}/preview$`,
+  `^/api/v2/hosted/(?:avatars|styles)/${SAFE_ID}/preview(?:\\?reference=[1-8])?$`,
   "u",
 );
 

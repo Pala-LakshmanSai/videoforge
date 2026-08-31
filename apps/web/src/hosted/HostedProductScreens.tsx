@@ -4,6 +4,8 @@ import {
   AlertTriangle,
   ArrowRight,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Download,
   FileAudio,
   ImagePlus,
@@ -93,6 +95,7 @@ export interface CatalogResponse {
     cover_url?: string | null;
     profile_hash?: string | null;
     reference_count?: number;
+    reference_urls?: readonly string[];
     profile?: Record<string, unknown> | null;
     scope_kind?: "WORKSPACE" | "SYSTEM";
   }[];
@@ -268,19 +271,56 @@ function StyleTraitList({
 function StyleProfileDetails({
   name,
   imageUrl,
+  referenceUrls,
   referenceCount,
   profile,
 }: {
   readonly name: string;
   readonly imageUrl: string | null;
+  readonly referenceUrls: readonly string[];
   readonly referenceCount: number;
   readonly profile: HostedStyleProfileView | null;
 }) {
+  const images = referenceUrls.length > 0 ? referenceUrls : imageUrl ? [imageUrl] : [];
+  const [referenceIndex, setReferenceIndex] = useState(0);
+  useEffect(() => setReferenceIndex(0), [referenceUrls]);
+  const currentImage = images[referenceIndex] ?? images[0] ?? null;
+  const showCarouselControls = images.length > 1;
+  const previousReference = () =>
+    setReferenceIndex((index) => (index - 1 + images.length) % images.length);
+  const nextReference = () => setReferenceIndex((index) => (index + 1) % images.length);
   return (
     <div className="style-profile-details">
-      {imageUrl ? (
-        <div className="style-profile-cover">
-          <PresetImage src={imageUrl} alt={`${name} reference preview`} />
+      {currentImage ? (
+        <div className="style-reference-carousel" aria-label={`${name} reference images`}>
+          <PresetImage
+            key={currentImage}
+            src={currentImage}
+            alt={`${name} reference ${referenceIndex + 1} of ${images.length}`}
+          />
+          {showCarouselControls ? (
+            <>
+              <button
+                className="style-reference-arrow style-reference-arrow-previous"
+                type="button"
+                aria-label="Previous reference image"
+                onClick={previousReference}
+              >
+                <ChevronLeft aria-hidden="true" />
+              </button>
+              <button
+                className="style-reference-arrow style-reference-arrow-next"
+                type="button"
+                aria-label="Next reference image"
+                onClick={nextReference}
+              >
+                <ChevronRight aria-hidden="true" />
+              </button>
+            </>
+          ) : null}
+          <span className="style-reference-position">
+            {referenceIndex + 1} of {images.length}
+          </span>
         </div>
       ) : null}
       <div className="detail-facts">
@@ -1866,6 +1906,10 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
           ? item.cover_url
           : null;
     const referenceCount = !isAvatar && "reference_count" in item ? (item.reference_count ?? 0) : 0;
+    const referenceUrls =
+      !isAvatar && "reference_urls" in item && Array.isArray(item.reference_urls)
+        ? item.reference_urls
+        : [];
     const styleProfile =
       !isAvatar && "profile" in item ? hostedStyleProfileView(item.profile) : null;
     const referencesVerified =
@@ -1974,7 +2018,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
             trigger={
               <button className="entity-details-trigger" type="button">
                 <strong>
-                  {isAvatar || referenceCount === 0 ? "Details" : `References (${referenceCount})`}
+                  Details
                 </strong>
                 <ArrowRight size={18} aria-hidden="true" />
               </button>
@@ -2013,6 +2057,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
               <StyleProfileDetails
                 name={item.name}
                 imageUrl={imageUrl ?? null}
+                referenceUrls={referenceUrls}
                 referenceCount={referenceCount}
                 profile={styleProfile}
               />

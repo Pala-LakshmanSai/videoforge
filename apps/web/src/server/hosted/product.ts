@@ -3775,7 +3775,13 @@ async function catalog(
                   WHERE reference.account_id = version.account_id
                     AND reference.workspace_id = version.workspace_id
                     AND reference.version_id = version.id
-                    AND reference.deleted_at IS NULL) AS reference_count
+                    AND reference.deleted_at IS NULL) AS reference_count,
+                (SELECT COALESCE(jsonb_agg(reference.reference_order ORDER BY reference.reference_order), '[]'::jsonb)
+                   FROM image_style_references AS reference
+                  WHERE reference.account_id = version.account_id
+                    AND reference.workspace_id = version.workspace_id
+                    AND reference.version_id = version.id
+                    AND reference.deleted_at IS NULL) AS reference_orders
            FROM image_styles AS style
            JOIN image_style_versions AS version
              ON version.account_id = style.account_id
@@ -3900,18 +3906,26 @@ async function catalog(
     }));
     const styleRows = (data.styles as Record<string, unknown>[]).map((row) => {
       const referenceCount = Number(row.reference_count ?? 0);
+      const referenceOrders = Array.isArray(row.reference_orders)
+        ? row.reference_orders.filter(
+            (order): order is number =>
+              typeof order === "number" && Number.isSafeInteger(order) && order > 0 && order <= 8,
+          )
+        : [];
+      const versionId = rowString(row, "version_id");
       return {
         style_id: rowString(row, "style_id"),
-        version_id: rowString(row, "version_id"),
+        version_id: versionId,
         name: rowString(row, "name"),
         version_number: Number(row.version_number),
         state: rowString(row, "state"),
         status: rowString(row, "status"),
         scope_kind: rowString(row, "scope_kind"),
         cover_url:
-          referenceCount > 0
-            ? `/api/v2/hosted/styles/${rowString(row, "version_id")}/preview`
-            : null,
+          referenceCount > 0 ? `/api/v2/hosted/styles/${versionId}/preview` : null,
+        reference_urls: referenceOrders.map(
+          (order) => `/api/v2/hosted/styles/${versionId}/preview?reference=${order}`,
+        ),
         profile_hash: row.style_profile_hash ?? null,
         reference_count: referenceCount,
         profile: plainRecord(row.profile_payload),
@@ -3988,6 +4002,12 @@ async function hostedPresetPreview(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      const requestedReference = new URL(request.url).searchParams.get("reference");
+      const referenceOrder =
+        kind === "style" && requestedReference !== null && /^[1-8]$/u.test(requestedReference)
+          ? Number(requestedReference)
+          : null;
+      if (kind === "style" && requestedReference !== null && referenceOrder === null) return null;
       const sql =
         kind === "avatar"
           ? `SELECT asset.object_key, asset.content_type
@@ -4022,12 +4042,14 @@ async function hostedPresetPreview(
               WHERE version.id = $3 AND version.state = 'PUBLISHED'
                 AND ((version.account_id = $1 AND version.workspace_id = $2)
                      OR version.scope_kind = 'SYSTEM')
+                AND ($4::int IS NULL OR reference.reference_order = $4)
               ORDER BY reference.reference_order
               LIMIT 1`;
       const result = await transaction.query<HostedPresetRow>(sql, [
         scope.account_id,
         scope.workspace_id,
         versionId,
+        ...(kind === "style" ? [referenceOrder] : []),
       ]);
       return result.rows[0] ?? null;
     });

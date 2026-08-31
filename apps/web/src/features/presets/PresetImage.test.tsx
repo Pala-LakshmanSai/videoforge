@@ -19,6 +19,29 @@ describe("PresetImage", () => {
     );
   });
 
+  it("allows a bounded hosted style reference preview route", () => {
+    render(
+      <PresetImage
+        src="/api/v2/hosted/styles/44444444-4444-4444-8444-444444444444/preview?reference=4"
+        alt="Fourth style reference"
+      />,
+    );
+    expect(screen.getByRole("img", { name: "Fourth style reference" })).toHaveAttribute(
+      "src",
+      "/api/v2/hosted/styles/44444444-4444-4444-8444-444444444444/preview?reference=4",
+    );
+  });
+
+  it("rejects out-of-range hosted style reference previews", () => {
+    render(
+      <PresetImage
+        src="/api/v2/hosted/styles/44444444-4444-4444-8444-444444444444/preview?reference=9"
+        alt="Invalid style reference"
+      />,
+    );
+    expect(screen.getByRole("img", { name: "Invalid style reference unavailable" })).toBeVisible();
+  });
+
   it("renders a tenant-checked avatar preview URL", () => {
     render(
       <PresetImage

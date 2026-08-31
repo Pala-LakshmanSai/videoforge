@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -381,6 +381,11 @@ describe("hosted product journey", () => {
             cover_url: "/api/v2/hosted/styles/sv1/preview",
             profile_hash: "sha256:private-style-hash",
             reference_count: 3,
+            reference_urls: [
+              "/api/v2/hosted/styles/sv1/preview?reference=1",
+              "/api/v2/hosted/styles/sv1/preview?reference=2",
+              "/api/v2/hosted/styles/sv1/preview?reference=3",
+            ],
             profile: {
               schema_version: "image-style-profile/v1",
               summary: "Clean commercial photography with tactile retail detail.",
@@ -434,9 +439,24 @@ describe("hosted product journey", () => {
       "src",
       "/api/v2/hosted/styles/sv1/preview",
     );
-    expect(screen.getByRole("button", { name: /Details/u })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /References \(3\)/u })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /References \(3\)/u }));
+    const styleCard = screen.getByRole("heading", { name: "Documentary" }).closest("article");
+    expect(styleCard).not.toBeNull();
+    fireEvent.click(within(styleCard!).getByRole("button", { name: "Details" }));
+    expect(screen.getByAltText("Documentary reference 1 of 3")).toHaveAttribute(
+      "src",
+      "/api/v2/hosted/styles/sv1/preview?reference=1",
+    );
+    expect(screen.getByText("1 of 3")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next reference image" }));
+    expect(screen.getByAltText("Documentary reference 2 of 3")).toHaveAttribute(
+      "src",
+      "/api/v2/hosted/styles/sv1/preview?reference=2",
+    );
+    expect(screen.getByText("2 of 3")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Previous reference image" }));
+    expect(screen.getByAltText("Documentary reference 1 of 3")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Previous reference image" }));
+    expect(screen.getByAltText("Documentary reference 3 of 3")).toBeInTheDocument();
     expect(screen.getByText("Gemini analysis")).toBeInTheDocument();
     expect(
       screen.getByText("Clean commercial photography with tactile retail detail."),
@@ -973,9 +993,11 @@ describe("hosted product journey", () => {
     renderHosted(<HostedStylesHubScreen />);
 
     expect(await screen.findByText("Workspace style")).toBeInTheDocument();
-    // The destructive action is available on the card without opening References/Details.
+    // The destructive action is available on the card without opening Details.
     const removeStyle = screen.getByRole("button", { name: "Remove style" });
-    expect(screen.getByRole("button", { name: "References (3)" })).toBeInTheDocument();
+    const workspaceCard = screen.getByRole("heading", { name: "Workspace style" }).closest("article");
+    expect(workspaceCard).not.toBeNull();
+    expect(within(workspaceCard!).getByRole("button", { name: "Details" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove built-in style" })).not.toBeInTheDocument();
 
     fireEvent.click(removeStyle);

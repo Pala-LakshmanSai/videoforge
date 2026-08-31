@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source f6d94db7 is live as Worker f20840d6. Authenticated Chrome confirms the will carter card now shows its real private-R2 cover and References (4); Details renders the saved trusted Gemini summary, visual character, palette, mood, generation rules, and expandable prompt guidance without hashes, UUIDs, raw provider fields, or analysis-ledger access. The first Cloudflare activation attempt failed before version creation on transient startup CPU validation; one bounded identical retry activated successfully. Exact live status reports f6d94db7 with GPU DISABLED_UNQUALIFIED. The walkthrough can continue at project creation and cost preflight."
+  provider_free_product_action: "Approved source f6d94db7 remains live as Worker f20840d6. The current provider-free follow-up changes the published style card action to Details and adds an authenticated, wraparound reference-image carousel with left/right edge controls and a position indicator. Focused UI/server/security tests pass 85/85; typecheck, changed-file lint, staging build/quarantine, runtime-grant assertion, deployment validation, and diff checks pass. This follow-up is not deployed and requires fresh exact source-bound approval; no provider call, GPU work, remote mutation, or spend occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: IMAGE_STYLE_DETAILS_LIVE_ACCEPTED
+  status: IMAGE_STYLE_REFERENCE_CAROUSEL_AWAITING_DEPLOYMENT_APPROVAL
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -87,7 +87,7 @@ hosted_beta_user_walkthrough:
     - "824d77da405146d4617fbd93fb27d771baa11fb5"
     - "5f56f3226eab13bf59b8b60692596a6ec7781cfc"
     - "9fe7319f0417ef603262bcfbbde0e6b18f2709fc"
-  deployment_candidate: DEPLOYED_STYLE_REFERENCE_RESELECTION_REPAIR
+  deployment_candidate: STYLE_REFERENCE_CAROUSEL_AWAITING_DEPLOYMENT_APPROVAL
   deployed_source_commit: "f6d94db70b6cebd915f7af772f9385e3e18522e0"
   cloudflare_worker_version_id: "f20840d6-b651-4f0c-bb11-438a38a16b16"
   deployed_config_sha256: "sha256:0058f0c0d26f692bdf079289b97fbabe03483cbf2e983e24485059025670223e"
@@ -141,8 +141,10 @@ hosted_beta_user_walkthrough:
     - "Approved source 4534c66b is deployed as Worker dfd9fe05. The user's workspace-card Remove action archived the earlier published style without deleting pinned history or media. A new four-reference will carter draft then dispatched once to Gemini, returned HTTP 200 in 13.5 seconds, cost USD 0.004401, advanced Chrome to step 4, and published successfully. No GPU or production operation occurred."
     - "The published-style catalog incorrectly hardcoded every reference count to zero and discarded the saved Gemini profile and existing authenticated preview. The current source repair returns the real tenant-scoped non-deleted reference count, cover URL, and trusted published profile, and formats the response as a readable summary, visual traits, palette, generation rules, and optional prompt guidance without exposing hashes, UUIDs, raw provider fields, or analysis-ledger rows."
     - "Approved source f6d94db7 is deployed as Worker f20840d6 with config sha256:0058f0c0. The first activation attempt failed before version creation on Cloudflare startup CPU validation; one bounded identical retry succeeded. Exact live status reports the approved commit and DISABLED_UNQUALIFIED. Authenticated Chrome proves the will carter cover, References (4), full formatted Gemini analysis, palette, and generation rules are live."
-  current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
+    - "The current source follow-up replaces References (N) with Details and exposes every saved normalized reference through tenant-authenticated numbered preview URLs. The Details image has visible previous/next edge arrows, wraparound navigation, and an N of M indicator. Focused tests pass 85/85 with typecheck, lint, build/quarantine, grant/deployment validation, and diff checks green; deployment remains pending fresh approval."
+  current_step: IMAGE_STYLE_CREATION_AND_PUBLISHING
   remaining_steps:
+    - IMAGE_STYLE_CREATION_AND_PUBLISHING
     - PROJECT_CREATION_AND_COST_PREFLIGHT
     - VOICEOVER_UPLOAD_AND_VALIDATION
     - PROJECT_SUBMISSION
@@ -165,6 +167,13 @@ hosted_beta_user_walkthrough:
     hosted_published_style_details_runtime_grants: PASS
     hosted_published_style_details_deployment: "PASS_COMMIT_F6D94DB7_WORKER_F20840D6"
     hosted_published_style_details_live_chrome: "PASS_COVER_REFERENCE_COUNT_4_SUMMARY_TRAITS_PALETTE_AND_RULES"
+    hosted_style_reference_carousel_focused: "PASS_85_OF_85_UI_SERVER_AND_PREVIEW_SECURITY"
+    hosted_style_reference_carousel_typecheck: PASS
+    hosted_style_reference_carousel_eslint: PASS
+    hosted_style_reference_carousel_staging_build: PASS_FIXTURE_QUARANTINE
+    hosted_style_reference_carousel_runtime_grants: PASS
+    hosted_style_reference_carousel_deployment_validation: PASS
+    hosted_style_reference_carousel_deployment: PENDING_FRESH_EXACT_APPROVAL
     hosted_preset_archive_migration: "PASS_4_OF_4"
     hosted_preset_runtime_grants: "PASS_1_OF_1_NO_DELETE"
     hosted_preset_remove_staging_build: PASS
@@ -4761,17 +4770,17 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_style_analysis_request_repair_awaiting_deployment_approval
-  status: style_analysis_repair_and_clean_staging_build_green_awaiting_exact_deployment_approval
+  milestone: private_hosted_beta_project_creation_walkthrough_active
+  status: style_reference_carousel_green_awaiting_exact_deployment_approval
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: deployed_6098ffa4_authority_not_reusable_for_current_source
+  authorization_status: deployed_f6d94db7_authority_not_reusable_for_current_source
   task_stage: provider_free_product_execution
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Obtain fresh exact source-bound private-beta approval for current clean HEAD, deploy the request-contract and definitive-failure retry repair without database or secret changes, verify exact live source, then have the user resume will carter and explicitly retry its saved analysis once. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
+  goal: "Obtain fresh exact source-bound private-beta approval for the green style-reference carousel, deploy without database or secret changes, verify exact live source, then confirm Details and left/right reference navigation in authenticated Chrome. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

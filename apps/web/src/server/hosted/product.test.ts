@@ -26,7 +26,8 @@ const testState = vi.hoisted(() => {
   const avatarDraftRows: Record<string, unknown>[] = [];
   const styleDraftRows: Record<string, unknown>[] = [];
   const publishedStyleRows: Record<string, unknown>[] = [];
-  const query = vi.fn(async (sql: string) => {
+  const query = vi.fn(async (sql: string, params?: readonly unknown[]) => {
+    void params;
     if (sql.includes("videoforge_consume_hosted_rate_limit"))
       return { rows: rateLimitRows, affectedRows: 1 };
     if (sql.includes("videoforge_hosted_session_scope"))
@@ -187,6 +188,7 @@ describe("hosted product route contract", () => {
       scope_kind: "WORKSPACE",
       style_profile_hash: "sha256:hidden",
       reference_count: "4",
+      reference_orders: [1, 2, 3, 4],
       profile_payload: {
         schema_version: "image-style-profile/v1",
         summary: "Naturalistic retail photography.",
@@ -208,6 +210,12 @@ describe("hosted product route contract", () => {
           name: "Retail documentary",
           reference_count: 4,
           cover_url: "/api/v2/hosted/styles/22222222-2222-4222-8222-222222222222/preview",
+          reference_urls: [
+            "/api/v2/hosted/styles/22222222-2222-4222-8222-222222222222/preview?reference=1",
+            "/api/v2/hosted/styles/22222222-2222-4222-8222-222222222222/preview?reference=2",
+            "/api/v2/hosted/styles/22222222-2222-4222-8222-222222222222/preview?reference=3",
+            "/api/v2/hosted/styles/22222222-2222-4222-8222-222222222222/preview?reference=4",
+          ],
           profile: {
             summary: "Naturalistic retail photography.",
             visual_profile: { medium_family: "commercial photography" },
@@ -321,6 +329,31 @@ describe("hosted product route contract", () => {
     expect(
       testState.query.mock.calls.some(([sql]) => String(sql).includes("avatar_profile_assets")),
     ).toBe(false);
+  });
+
+  it("selects an exact published style reference for carousel previews", async () => {
+    testState.query.mockClear();
+    const previewEnvironment = {
+      PRIVATE_ARTIFACTS: { get: vi.fn() },
+    } as unknown as HostedRuntimeEnvironment;
+
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/styles/${PRESET_ID}/preview?reference=2`, "GET"),
+      previewEnvironment,
+      stagingConfig,
+      executionContext,
+    );
+
+    expect(result?.status).toBe(404);
+    const stylePreviewCall = testState.query.mock.calls.find(([sql]) =>
+      String(sql).includes("reference.reference_order = $4"),
+    );
+    expect(stylePreviewCall?.[1]).toEqual([
+      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      PRESET_ID,
+      2,
+    ]);
   });
 
   it("reports qualified work as dispatch-ready without inventing a GPU estimate", () => {
