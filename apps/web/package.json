@@ -6,7 +6,7 @@
   "scripts": {
     "build": "pnpm build:web && pnpm build:cloudflare",
     "build:cloudflare": "vite build --config vite.cloudflare.config.ts --outDir dist-cloudflare && node ../../scripts/verify-v2-05-production-bundle.mjs",
-    "build:staging": "VITE_VIDEOFORGE_PROVIDER_MODE=staging vite build --config vite.cloudflare.config.ts --outDir dist-staging && VIDEOFORGE_BUNDLE_DIR=dist-staging node ../../scripts/verify-v2-05-production-bundle.mjs",
+    "build:staging": "VITE_VIDEOFORGE_PROVIDER_MODE=staging vite build --config vite.cloudflare.config.ts --outDir dist-staging && VIDEOFORGE_BUNDLE_DIR=dist-staging VIDEOFORGE_WRANGLER_CONFIG=wrangler.staging.jsonc node ../../scripts/verify-v2-05-production-bundle.mjs",
     "build:web": "vite build",
     "dev:cloudflare:raw": "vite --config vite.cloudflare.config.ts --host 127.0.0.1 --port 4173 --strictPort",
     "dev:raw": "concurrently -k -s first -n web,api -c magenta,cyan \"vite --host 127.0.0.1 --port 4173 --strictPort\" \"tsx watch src/server.ts\"",

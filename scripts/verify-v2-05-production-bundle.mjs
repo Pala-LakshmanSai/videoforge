@@ -6,7 +6,10 @@ const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const bundleDirectory = process.env.VIDEOFORGE_BUNDLE_DIR ?? "dist-cloudflare";
 if (!/^dist-[a-z0-9-]+$/u.test(bundleDirectory)) throw new Error("Invalid bundle directory.");
 const root = path.join(repositoryRoot, "apps/web", bundleDirectory);
-const productionConfigPath = path.join(repositoryRoot, "apps/web/wrangler.production.jsonc");
+const wranglerConfig = process.env.VIDEOFORGE_WRANGLER_CONFIG ?? "wrangler.production.jsonc";
+if (!new Set(["wrangler.production.jsonc", "wrangler.staging.jsonc"]).has(wranglerConfig))
+  throw new Error("Invalid Wrangler bundle-verification config.");
+const productionConfigPath = path.join(repositoryRoot, "apps/web", wranglerConfig);
 const productionEntryPath = path.join(repositoryRoot, "apps/web/worker/production-index.ts");
 const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.ts");
 const workerForbidden = [
