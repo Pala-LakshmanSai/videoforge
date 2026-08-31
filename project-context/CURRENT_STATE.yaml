@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source c9beae23 is live as Worker 31cbc013. Authenticated Chrome confirms the published will carter card says Details; its panel has left/right edge arrows, exposes distinct authenticated references 1 through 4, shows position, and wraps Next from 4 back to 1. Exact status reports c9beae23 with GPU DISABLED_UNQUALIFIED. No database/secret mutation, provider call, Gemini redispatch, GPU work, production activation, or spend occurred. The walkthrough can continue at project creation and cost preflight."
+  provider_free_product_action: "Source 95567052 adds MP3 to the hosted project voiceover path alongside WAV: the chooser and API accept audio/mpeg, the hosted edge verifies matching MP3 magic plus two consistent Layer III frames, and the existing personal worker remains responsible for authoritative ffprobe/ffmpeg decode and duration verification before transcription. Focused UI/server/audio tests pass 102/102; typecheck, lint, staging build/quarantine, deployment validation, context validation, and diff checks pass. Deployed source remains c9beae23 / Worker 31cbc013 until fresh exact approval. No database/secret mutation, provider call, GPU work, production activation, or spend occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -142,6 +142,7 @@ hosted_beta_user_walkthrough:
     - "The published-style catalog incorrectly hardcoded every reference count to zero and discarded the saved Gemini profile and existing authenticated preview. The current source repair returns the real tenant-scoped non-deleted reference count, cover URL, and trusted published profile, and formats the response as a readable summary, visual traits, palette, generation rules, and optional prompt guidance without exposing hashes, UUIDs, raw provider fields, or analysis-ledger rows."
     - "Approved source f6d94db7 is deployed as Worker f20840d6 with config sha256:0058f0c0. The first activation attempt failed before version creation on Cloudflare startup CPU validation; one bounded identical retry succeeded. Exact live status reports the approved commit and DISABLED_UNQUALIFIED. Authenticated Chrome proves the will carter cover, References (4), full formatted Gemini analysis, palette, and generation rules are live."
     - "Approved source c9beae23 is deployed as Worker 31cbc013 with config sha256:502fe176. The published style card says Details and exposes every saved normalized reference through tenant-authenticated numbered preview URLs. Authenticated Chrome confirms visible previous/next edge arrows, distinct images 1 through 4, position text, and wraparound from 4 to 1."
+    - "Source 95567052 accepts MP3 voiceovers throughout hosted project creation while retaining WAV: browser metadata and the API use audio/mpeg, the edge verifies a real Layer III frame sequence under bounded reads, and the personal media worker performs the final ffprobe/ffmpeg decode and duration check before transcription. Focused tests pass 102/102; typecheck, lint, staging build/quarantine, deployment validation, context validation, and diff checks pass. It awaits fresh exact deployment approval."
   current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
   remaining_steps:
     - PROJECT_CREATION_AND_COST_PREFLIGHT
@@ -174,6 +175,12 @@ hosted_beta_user_walkthrough:
     hosted_style_reference_carousel_deployment_validation: PASS
     hosted_style_reference_carousel_deployment: "PASS_COMMIT_C9BEAE23_WORKER_31CBC013"
     hosted_style_reference_carousel_live_chrome: "PASS_DETAILS_ARROWS_DISTINCT_REFERENCES_1_TO_4_AND_WRAPAROUND"
+    hosted_mp3_voiceover_focused: "PASS_102_OF_102_UI_API_AND_EDGE_AUDIO"
+    hosted_mp3_voiceover_typecheck: PASS
+    hosted_mp3_voiceover_eslint: PASS
+    hosted_mp3_voiceover_staging_build: PASS_FIXTURE_QUARANTINE
+    hosted_mp3_voiceover_deployment_validation: PASS
+    hosted_mp3_voiceover_deployment: PENDING_FRESH_EXACT_APPROVAL
     hosted_preset_archive_migration: "PASS_4_OF_4"
     hosted_preset_runtime_grants: "PASS_1_OF_1_NO_DELETE"
     hosted_preset_remove_staging_build: PASS
