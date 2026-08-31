@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source 5b2dcea2 is live as Worker 35b64868 after additive migration 0053. Neon reports 53/53 with exact runtime grants and FORCE RLS. Cache-bypassed status reports the exact source and GPU DISABLED_UNQUALIFIED. Authenticated Chrome shows Remove on all six visible personal-computer rows; none was clicked during verification. Active removal revokes and hides atomically, old revoked entries are hidden without deleting lineage, and deliberate re-enrollment restores the retained installation row. No provider call, GPU work, production activation, or spend occurred."
+  provider_free_product_action: "Approved source 643e9c82 is live as Worker 1ba229a4. Neon runtime SELECT grants for hosted progress tables are active. Cache-bypassed status reports the exact source and GPU DISABLED_UNQUALIFIED. Authenticated Chrome shows a stable nine-stage live progress dashboard polling every two seconds; the existing demo job truthfully reports 17 percent and transcription needs attention instead of toggling between loading and an unavailable fixture error. No provider call, GPU work, production activation, or spend occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: COMPUTER_REMOVAL_LIVE_ACCEPTED
+  status: LIVE_PROGRESS_DASHBOARD_ACCEPTED
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -89,19 +89,21 @@ hosted_beta_user_walkthrough:
     - "9fe7319f0417ef603262bcfbbde0e6b18f2709fc"
     - "955670528e46622bb24ce27d10d9f2c965e58e3a"
     - "5b2dcea29264e6a8352f2a949f711fc0f430df62"
-  deployment_candidate: DEPLOYED_COMPUTER_REMOVAL
-  deployed_source_commit: "5b2dcea29264e6a8352f2a949f711fc0f430df62"
-  cloudflare_worker_version_id: "35b64868-cfc3-4754-9406-c9987108bbbf"
-  deployed_config_sha256: "sha256:3099d4f197168022410fe34d02afdef16eb5c7c957109d20435057f378793afd"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 5b2dcea29264e6a8352f2a949f711fc0f430df62 CAP USD 3"
+    - "15b22470a6197d60b623554fdb1f3e4423747eaa"
+    - "643e9c82f5ede0ac831c2d18cdefc0e637d0a815"
+  deployment_candidate: DEPLOYED_LIVE_PROGRESS_DASHBOARD
+  deployed_source_commit: "643e9c82f5ede0ac831c2d18cdefc0e637d0a815"
+  cloudflare_worker_version_id: "1ba229a4-ca26-41a9-92b2-e4cf102334c7"
+  deployed_config_sha256: null
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 643e9c82f5ede0ac831c2d18cdefc0e637d0a815 CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
   gpu_transport: DISABLED_UNQUALIFIED
   provider_analysis: PASS_GEMINI_3_1_FLASH_LITE_FOUR_REFERENCE_HTTP_200_USD_0_004401
-  provider_calls_authorized: true
+  provider_calls_authorized: false
   gpu_use_authorized: false
-  external_spend_authorized_usd: 3
+  external_spend_authorized_usd: 0
   remote_mutation_authorized: true
   database_preflight: "LIVE_LEDGER_53_OF_53_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
   pending_database_migration: null
@@ -110,7 +112,7 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_REPLACEMENT_UPLOAD_AND_COMMIT_THEN_ANALYSIS_REJECTED"
+  live_browser_verification: "PASS_STABLE_NINE_STAGE_PROGRESS_17_PERCENT_TRANSCRIPTION_NEEDS_ATTENTION"
   fixed_blockers:
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
@@ -194,6 +196,14 @@ hosted_beta_user_walkthrough:
     hosted_computer_removal_deployment_validation: PASS
     hosted_computer_removal_deployment: "PASS_COMMIT_5B2DCEA2_WORKER_35B64868_MIGRATION_53_OF_53"
     hosted_computer_removal_live_chrome: "PASS_REMOVE_VISIBLE_ON_ALL_6_ROWS_NO_DELETE_CLICKED"
+    hosted_live_progress_focused: "PASS_81_OF_81_UI_AND_SERVER"
+    hosted_live_progress_typecheck: PASS
+    hosted_live_progress_eslint: PASS
+    hosted_live_progress_staging_build: PASS_FIXTURE_QUARANTINE
+    hosted_live_progress_runtime_grants: PASS_LIVE_NEON_SELECT_GRANTS
+    hosted_live_progress_deployment_validation: PASS
+    hosted_live_progress_deployment: "PASS_COMMIT_643E9C82_WORKER_1BA229A4"
+    hosted_live_progress_live_chrome: "PASS_STABLE_NINE_STAGE_DASHBOARD_NO_LOADING_OR_UNAVAILABLE_TOGGLE"
     hosted_preset_archive_migration: "PASS_4_OF_4"
     hosted_preset_runtime_grants: "PASS_1_OF_1_NO_DELETE"
     hosted_preset_remove_staging_build: PASS
