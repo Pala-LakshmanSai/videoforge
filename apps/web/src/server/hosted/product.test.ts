@@ -100,6 +100,7 @@ const PRESET_ID = "44444444-4444-4444-8444-444444444444";
 const config = {
   publicOrigin: ORIGIN,
   neon: { databaseUrl: "postgresql://fixture" },
+  mediaWorkerRelease: { whisperModelSha256: `sha256:${"b".repeat(64)}` },
 } as HostedRuntimeConfiguration;
 const stagingConfig = {
   ...config,
@@ -175,6 +176,35 @@ describe("hosted product route contract", () => {
         String(sql).includes("hosted_style_analysis_runs"),
       ),
     ).toBe(false);
+  });
+
+  it("creates a fresh bounded ASR submission after an explicit failed attempt", async () => {
+    const previousProject = testState.projectRows[0];
+    testState.projectRows[0] = {
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      voiceover_asset_id: "33333333-3333-4333-8333-333333333333",
+      checksum_sha256: `sha256:${"a".repeat(64)}`,
+      content_type: "audio/mpeg",
+      duration_ms: 159_216,
+      receipt_id: "44444444-4444-4444-8444-444444444444",
+      asr_attempt_count: 1,
+      latest_asr_state: "FAILED",
+    };
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(202);
+      const body = (await result?.json()) as {
+        cpu_submission: { idempotency_key: string };
+      };
+      expect(body.cpu_submission.idempotency_key).toBe(`project-${PROJECT_ID}-asr-v2`);
+    } finally {
+      testState.projectRows[0] = previousProject!;
+    }
   });
 
   it("returns the saved Gemini profile and real reference count for a published style", async () => {

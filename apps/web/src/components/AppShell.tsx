@@ -166,6 +166,20 @@ export function AppShell({ children }: PropsWithChildren) {
     refetchInterval: 10_000,
     enabled: hostedBrowser,
   });
+  const hostedProgress = useQuery({
+    queryKey: ["hosted-progress-navigation"],
+    queryFn: async () => {
+      const response = await fetch("/api/v2/hosted/projects", {
+        headers: { accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("Hosted projects are unavailable.");
+      return response.json() as Promise<{
+        readonly projects: readonly { readonly id: string }[];
+      }>;
+    },
+    refetchInterval: 10_000,
+    enabled: hostedBrowser,
+  });
   const fixturePickerProps = {
     enabled: fixtureControlsEnabled,
     scenario,
@@ -331,6 +345,9 @@ export function AppShell({ children }: PropsWithChildren) {
   const projects = bootstrap.data?.projects ?? [];
   const activeProject =
     projects.find((project) => !terminalProjectStatuses.has(project.status)) ?? projects[0];
+  const progressProjectId = hostedBrowser
+    ? hostedProgress.data?.projects[0]?.id
+    : activeProject?.id;
   const healthDegraded = hostedBrowser ? hostedHealth.isError : health.isError;
   const routeSearch = (hostedBrowser ? {} : { fixture: scenario }) as never;
   const renderNavItem = (item: (typeof nav)[number]) => {
@@ -504,10 +521,10 @@ export function AppShell({ children }: PropsWithChildren) {
 
       <nav ref={dockRef} className="bottom-nav-dock" aria-label="Primary navigation">
         {nav.slice(0, 2).map(renderNavItem)}
-        {activeProject ? (
+        {progressProjectId ? (
           <Link
             to="/projects/$projectId"
-            params={{ projectId: activeProject.id }}
+            params={{ projectId: progressProjectId }}
             search={routeSearch}
             className={`bottom-nav-item ${path.startsWith("/projects/") && path !== "/projects/new" ? "bottom-nav-item-active" : ""}`}
             aria-current={

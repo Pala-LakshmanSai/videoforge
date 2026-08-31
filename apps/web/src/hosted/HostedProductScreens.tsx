@@ -3504,6 +3504,19 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </Button>
         </div>
       ) : null}
+      {asr?.kind === "ASR" && asr.state === "FAILED" ? (
+        <div className="notice notice-danger" role="alert">
+          <strong>Transcription stopped before the transcript could be saved.</strong>
+          <span>
+            Your project and voiceover are safe. Retry after updating and reconnecting your personal
+            media worker.
+          </span>
+          {asrHandoff.isError ? <span>{asrHandoff.error.message}</span> : null}
+          <Button variant="primary" busy={asrHandoff.isPending} onClick={() => asrHandoff.mutate()}>
+            <RefreshCw size={15} /> Retry transcription
+          </Button>
+        </div>
+      ) : null}
       {asr?.state === "SUCCEEDED" && !render ? (
         <div className="notice" role="status">
           <strong>

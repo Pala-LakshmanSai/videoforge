@@ -1166,6 +1166,64 @@ describe("hosted product journey", () => {
     );
   });
 
+  it("offers a safe explicit retry when personal-worker transcription fails", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-08-17T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [
+        {
+          id: "33333333-3333-4333-8333-333333333333",
+          kind: "ASR" as const,
+          state: "FAILED",
+          version: 2,
+          created_at: "2026-08-17T10:00:00.000Z",
+          updated_at: "2026-08-17T10:01:00.000Z",
+          terminal_at: "2026-08-17T10:01:00.000Z",
+          output_checksum_sha256: null,
+          approved_at: null,
+          preview_url: null,
+        },
+      ],
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
+      gpu_readiness: gpuReadiness,
+      generation: null,
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith(`/projects/${projectId}/asr`)) {
+        expect(init).toMatchObject({ method: "POST", body: "{}" });
+        return Response.json(
+          { cpu_submission: { schema_version: "videoforge-hosted-cpu-submission/v1" } },
+          { status: 202 },
+        );
+      }
+      if (path.endsWith("/api/v2/cpu-attempts")) {
+        expect(init?.method).toBe("POST");
+        return Response.json({ state: "OUTBOXED" }, { status: 202 });
+      }
+      return Response.json(detail);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(
+      await screen.findByText("Transcription stopped before the transcript could be saved."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/ASR_OUTPUT_INVALID/u)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry transcription" }));
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
+      ).toBe(true),
+    );
+  });
+
   it("fails closed when ASR succeeds without an exact render plan", async () => {
     const detail = {
       project: {

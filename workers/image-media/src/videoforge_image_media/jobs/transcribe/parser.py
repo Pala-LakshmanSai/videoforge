@@ -69,6 +69,53 @@ def _words_from_segment(segment: dict[str, Any], segment_index: int) -> list[_Wo
     return [_WordCandidate(text, start_ms, end_ms)]
 
 
+def _repair_terminal_timestamp_overhang(
+    candidates: list[_WordCandidate], source_duration_ms: int
+) -> list[_WordCandidate]:
+    first_after_source = next(
+        (
+            index
+            for index, candidate in enumerate(candidates)
+            if candidate.start_ms >= source_duration_ms
+        ),
+        None,
+    )
+    if first_after_source is None:
+        return candidates
+    if candidates[-1].end_ms > source_duration_ms + CHUNK_TRAILING_TOLERANCE_MS:
+        return candidates
+
+    repair_start = first_after_source
+    while repair_start > 0 and candidates[repair_start - 1].end_ms > source_duration_ms:
+        repair_start -= 1
+    previous_end = candidates[repair_start - 1].end_ms if repair_start else 0
+    terminal = candidates[repair_start:]
+    available_ms = source_duration_ms - previous_end
+    if available_ms < len(terminal) * 10:
+        return candidates
+
+    weights = [max(1, candidate.end_ms - candidate.start_ms) for candidate in terminal]
+    remaining_ms = available_ms
+    remaining_weight = sum(weights)
+    cursor = previous_end
+    repaired = list(candidates[:repair_start])
+    for index, (candidate, weight) in enumerate(zip(terminal, weights, strict=True)):
+        remaining_words = len(terminal) - index - 1
+        duration_ms = (
+            remaining_ms
+            if remaining_words == 0
+            else min(
+                remaining_ms - remaining_words * 10,
+                max(10, round(remaining_ms * weight / remaining_weight)),
+            )
+        )
+        repaired.append(_WordCandidate(candidate.text, cursor, cursor + duration_ms))
+        cursor += duration_ms
+        remaining_ms -= duration_ms
+        remaining_weight -= weight
+    return repaired
+
+
 def _canonical_words(
     transcription: list[object],
     source_duration_ms: int,
@@ -82,6 +129,7 @@ def _canonical_words(
         candidates.extend(_words_from_segment(segment, segment_index))
     if not candidates:
         raise WhisperOutputError("whisper output contains no words")
+    candidates = _repair_terminal_timestamp_overhang(candidates, source_duration_ms)
 
     words: list[dict[str, object]] = []
     previous_end = 0

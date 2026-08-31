@@ -496,6 +496,22 @@ class TranscriptionJobTest(unittest.TestCase):
         result, _, _, _ = self._run(process=FakeProcessRunner(raw_document=raw_document))
         self.assert_error(result, "ASR_OUTPUT_INVALID")
 
+    def test_terminal_whisper_timestamp_overhang_is_bounded_to_the_audio(self) -> None:
+        raw_document = _whisper_output()
+        last = raw_document["transcription"][-1]
+        last["offsets"] = {"from": 11600, "to": 12074}
+        raw_document["transcription"].append(
+            {"offsets": {"from": 12074, "to": 13864}, "text": " year."}
+        )
+
+        result, _, _, _ = self._run(process=FakeProcessRunner(raw_document=raw_document))
+
+        self.assertEqual(result["status"], "SUCCEEDED")
+        words = result["transcript"]["words"]
+        self.assertEqual(words[-1]["text"], "year.")
+        self.assertLess(words[-1]["start_ms"], words[-1]["end_ms"])
+        self.assertEqual(words[-1]["end_ms"], 12000)
+
     def test_phrase_boundaries_are_deterministic_bounded_and_cover_every_word(self) -> None:
         texts = [
             "Fresh",

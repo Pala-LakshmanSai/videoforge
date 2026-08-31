@@ -4775,11 +4775,26 @@ async function asrHandoff(
         content_type: string;
         duration_ms: number | string;
         receipt_id: string;
+        asr_attempt_count: number | string;
+        latest_asr_state: string | null;
       }>(
         `SELECT revision.id::text AS revision_id,
                 revision.voiceover_asset_id::text AS voiceover_asset_id,
                 receipt.checksum_sha256, receipt.content_type,
-                asset.duration_ms, receipt.id::text AS receipt_id
+                asset.duration_ms, receipt.id::text AS receipt_id,
+                (SELECT count(*) FROM hosted_cpu_job_attempts AS attempt
+                  WHERE attempt.account_id = project.account_id
+                    AND attempt.workspace_id = project.workspace_id
+                    AND attempt.project_id = project.id
+                    AND attempt.project_revision_id = revision.id
+                    AND attempt.kind = 'ASR') AS asr_attempt_count,
+                (SELECT attempt.state FROM hosted_cpu_job_attempts AS attempt
+                  WHERE attempt.account_id = project.account_id
+                    AND attempt.workspace_id = project.workspace_id
+                    AND attempt.project_id = project.id
+                    AND attempt.project_revision_id = revision.id
+                    AND attempt.kind = 'ASR'
+                  ORDER BY attempt.created_at DESC, attempt.id DESC LIMIT 1) AS latest_asr_state
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
@@ -4812,6 +4827,31 @@ async function asrHandoff(
       return result.rows[0] ?? null;
     });
     if (!state) return response({ error: { code: "HOSTED_ASR_HANDOFF_NOT_READY" } }, 409);
+    const asrAttemptCount = Number(state.asr_attempt_count);
+    if (!Number.isSafeInteger(asrAttemptCount) || asrAttemptCount < 0)
+      return response({ error: { code: "HOSTED_ASR_HANDOFF_NOT_READY" } }, 409);
+    if (asrAttemptCount > 0 && state.latest_asr_state !== "FAILED")
+      return response(
+        {
+          error: {
+            code: "HOSTED_ASR_ALREADY_STARTED",
+            message: "Transcription has already started. Open Progress for its latest status.",
+          },
+        },
+        409,
+      );
+    if (asrAttemptCount >= 3)
+      return response(
+        {
+          error: {
+            code: "HOSTED_ASR_RETRY_LIMIT_REACHED",
+            message:
+              "Transcription still needs attention. Keep the project saved and contact support.",
+          },
+        },
+        409,
+      );
+    const asrAttemptOrdinal = asrAttemptCount + 1;
     const extension = voiceoverExtension(state.content_type);
     const uri = `vf-local://objects/sha256/${state.checksum_sha256.slice(7, 9)}/${state.checksum_sha256.slice(7)}.${extension}`;
     return response(
@@ -4821,7 +4861,7 @@ async function asrHandoff(
         project_revision_id: state.revision_id,
         cpu_submission: {
           schema_version: "videoforge-hosted-cpu-submission/v1",
-          idempotency_key: `project-${projectId}-asr-v1`,
+          idempotency_key: `project-${projectId}-asr-v${asrAttemptOrdinal}`,
           project_id: projectId,
           project_revision_id: state.revision_id,
           kind: "ASR",
