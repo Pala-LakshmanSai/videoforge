@@ -1657,6 +1657,15 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
     const referenceCount = !isAvatar && "reference_count" in item ? (item.reference_count ?? 0) : 0;
     const referencesVerified =
       isAvatar || !("references_verified" in item) ? true : item.references_verified === true;
+    const requestRemoval = () => {
+      if (
+        !window.confirm(
+          `Remove this ${itemLabel} from your ${isAvatar ? "Avatar Hub" : "Image Styles"}? Existing projects will keep their pinned version.`,
+        )
+      )
+        return;
+      deletePreset.mutate({ kind, id: resourceId });
+    };
     const media = (
       <div className={isAvatar ? "avatar-card-media" : "style-card-media"}>
         {imageUrl ? (
@@ -1710,15 +1719,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
                   variant="danger"
                   busy={deletePreset.isPending && deletePreset.variables?.id === resourceId}
                   disabled={deletePreset.isPending}
-                  onClick={() => {
-                    if (
-                      !window.confirm(
-                        `Remove this ${itemLabel} from your ${isAvatar ? "Avatar Hub" : "Image Styles"}? Existing projects will keep their pinned version.`,
-                      )
-                    )
-                      return;
-                    deletePreset.mutate({ kind, id: resourceId });
-                  }}
+                  onClick={requestRemoval}
                 >
                   <Trash2 size={16} aria-hidden="true" />
                   {deletePreset.isPending && deletePreset.variables?.id === resourceId
@@ -1750,97 +1751,89 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
             <h3>{item.name}</h3>
           </div>
         </div>
-        <DetailsSheet
-          title={item.name}
-          description={
-            isAvatar
-              ? "Ready to use"
-              : referenceCount > 0
-                ? `Published · ${referenceCount} references`
-                : "Published"
-          }
-          trigger={
-            <button className="entity-details-trigger" type="button">
-              <strong>
-                {isAvatar || referenceCount === 0 ? "Details" : `References (${referenceCount})`}
-              </strong>
-              <ArrowRight size={18} aria-hidden="true" />
-            </button>
-          }
-        >
-          {isAvatar ? (
-            <>
-              {imageUrl ? (
-                <div className="avatar-crop-grid">
-                  <figure>
-                    <PresetImage src={imageUrl} alt={`${item.name} full avatar crop`} />
-                    <figcaption>Full frame</figcaption>
-                  </figure>
-                  <figure className="split-crop">
-                    <PresetImage src={imageUrl} alt={`${item.name} split avatar crop`} />
-                    <figcaption>Split crop</figcaption>
-                  </figure>
+        <div className="preset-card-actions">
+          <DetailsSheet
+            title={item.name}
+            description={
+              isAvatar
+                ? "Ready to use"
+                : referenceCount > 0
+                  ? `Published · ${referenceCount} references`
+                  : "Published"
+            }
+            trigger={
+              <button className="entity-details-trigger" type="button">
+                <strong>
+                  {isAvatar || referenceCount === 0 ? "Details" : `References (${referenceCount})`}
+                </strong>
+                <ArrowRight size={18} aria-hidden="true" />
+              </button>
+            }
+          >
+            {isAvatar ? (
+              <>
+                {imageUrl ? (
+                  <div className="avatar-crop-grid">
+                    <figure>
+                      <PresetImage src={imageUrl} alt={`${item.name} full avatar crop`} />
+                      <figcaption>Full frame</figcaption>
+                    </figure>
+                    <figure className="split-crop">
+                      <PresetImage src={imageUrl} alt={`${item.name} split avatar crop`} />
+                      <figcaption>Split crop</figcaption>
+                    </figure>
+                  </div>
+                ) : null}
+                <div className="detail-facts">
+                  <span>
+                    <small>Ready to use</small>
+                    <strong>Ready</strong>
+                  </span>
+                  <span>
+                    <small>Rights &amp; consent</small>
+                    <strong>
+                      {"rights_status" in item && item.rights_status === "ATTESTED"
+                        ? "Attested"
+                        : "Included"}
+                    </strong>
+                  </span>
                 </div>
-              ) : null}
+              </>
+            ) : (
               <div className="detail-facts">
                 <span>
-                  <small>Ready to use</small>
-                  <strong>Ready</strong>
+                  <small>Status</small>
+                  <strong>Published</strong>
                 </span>
                 <span>
-                  <small>Rights &amp; consent</small>
-                  <strong>
-                    {"rights_status" in item && item.rights_status === "ATTESTED"
-                      ? "Attested"
-                      : "Included"}
-                  </strong>
+                  <small>Reference images</small>
+                  <strong>{referenceCount}</strong>
                 </span>
               </div>
-            </>
-          ) : (
-            <div className="detail-facts">
-              <span>
-                <small>Status</small>
-                <strong>Published</strong>
-              </span>
-              <span>
-                <small>Reference images</small>
-                <strong>{referenceCount}</strong>
-              </span>
-            </div>
-          )}
+            )}
+          </DetailsSheet>
           {!systemOwned ? (
-            <div className="preset-detail-actions">
-              <Button
-                className="preset-remove-button"
-                variant="danger"
-                busy={deletePreset.isPending && deletePreset.variables?.id === resourceId}
-                disabled={deletePreset.isPending}
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      `Remove this ${itemLabel} from your ${isAvatar ? "Avatar Hub" : "Image Styles"}? Existing projects will keep their pinned version.`,
-                    )
-                  )
-                    return;
-                  deletePreset.mutate({ kind, id: resourceId });
-                }}
-              >
-                <Trash2 size={16} aria-hidden="true" />
-                {deletePreset.isPending && deletePreset.variables?.id === resourceId
-                  ? `Removing ${itemLabel}…`
-                  : `Remove ${itemLabel}`}
-              </Button>
-              {deletePreset.isError && deletePreset.variables?.id === resourceId ? (
-                <div className="validation validation-danger" role="alert">
-                  {deletePreset.error instanceof Error
-                    ? deletePreset.error.message
-                    : `This ${itemLabel} could not be removed right now.`}
-                </div>
-              ) : null}
-            </div>
+            <Button
+              className="preset-remove-button"
+              variant="danger"
+              busy={deletePreset.isPending && deletePreset.variables?.id === resourceId}
+              disabled={deletePreset.isPending}
+              onClick={requestRemoval}
+            >
+              <Trash2 size={16} aria-hidden="true" />
+              {deletePreset.isPending && deletePreset.variables?.id === resourceId
+                ? `Removing ${itemLabel}…`
+                : `Remove ${itemLabel}`}
+            </Button>
           ) : null}
-        </DetailsSheet>
+        </div>
+        {deletePreset.isError && deletePreset.variables?.id === resourceId ? (
+          <div className="validation validation-danger preset-card-delete-error" role="alert">
+            {deletePreset.error instanceof Error
+              ? deletePreset.error.message
+              : `This ${itemLabel} could not be removed right now.`}
+          </div>
+        ) : null}
       </article>
     );
   }

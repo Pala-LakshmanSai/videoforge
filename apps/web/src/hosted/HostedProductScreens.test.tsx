@@ -803,18 +803,26 @@ describe("hosted product journey", () => {
     window.history.replaceState({}, "", "/");
   });
 
-  it("confirms removal for workspace avatars and hides it for system avatars", async () => {
+  it("deletes a workspace avatar from its card while protecting system avatars", async () => {
     let removed = false;
-    let resolveDelete: (response: Response) => void = () => undefined;
-    const pendingDelete = new Promise<Response>((resolve) => {
-      resolveDelete = resolve;
-    });
+    let catalogLoads = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
       if (path.endsWith("/api/v2/hosted/project-catalog")) {
+        catalogLoads += 1;
         return Response.json({
           avatars: removed
-            ? []
+            ? [
+                {
+                  profile_id: "system-profile",
+                  version_id: "system-version",
+                  name: "Built-in presenter",
+                  version_number: 1,
+                  state: "READY",
+                  scope_kind: "SYSTEM",
+                  rights_status: "SYSTEM_OWNED",
+                },
+              ]
             : [
                 {
                   profile_id: "workspace-profile",
@@ -844,7 +852,7 @@ describe("hosted product journey", () => {
       if (init?.method === "DELETE") {
         expect(path).toBe("/api/v2/hosted/avatars/workspace-profile");
         removed = true;
-        return pendingDelete;
+        return Response.json({ state: "ARCHIVED" });
       }
       throw new Error(`Unexpected hosted request: ${path}`);
     });
@@ -853,51 +861,69 @@ describe("hosted product journey", () => {
     renderHosted(<HostedAvatarHubScreen />);
 
     expect(await screen.findByText("Workspace presenter")).toBeInTheDocument();
-    const details = screen.getAllByRole("button", { name: "Details" });
-    expect(details).toHaveLength(2);
-    fireEvent.click(details[0]!);
-    const remove = await screen.findByRole("button", { name: "Remove avatar" });
+    // The destructive action is available on the card without opening Details.
+    const removeAvatar = screen.getByRole("button", { name: "Remove avatar" });
+    expect(screen.getAllByRole("button", { name: "Details" })).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "Remove built-in avatar" })).not.toBeInTheDocument();
 
-    fireEvent.click(remove);
-    expect(confirm).toHaveBeenCalledTimes(1);
+    fireEvent.click(removeAvatar);
+    expect(confirm).toHaveBeenCalledWith(
+      "Remove this avatar from your Avatar Hub? Existing projects will keep their pinned version.",
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     confirm.mockReturnValue(true);
-    fireEvent.click(remove);
-    expect(await screen.findByRole("button", { name: /Removing avatar/u })).toHaveAttribute(
-      "aria-busy",
-      "true",
-    );
-    resolveDelete(new Response(null, { status: 204 }));
+    fireEvent.click(removeAvatar);
     await waitFor(() => expect(screen.queryByText("Workspace presenter")).not.toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/v2/hosted/avatars/workspace-profile",
-      expect.objectContaining({ method: "DELETE" }),
+      expect.objectContaining({ method: "DELETE", body: "{}" }),
     );
+    expect(catalogLoads).toBe(2);
+    expect(screen.getByText("Built-in presenter")).toBeInTheDocument();
   });
 
-  it("keeps the style details open with an actionable error when removal fails", async () => {
-    let rejectDelete: (reason?: unknown) => void = () => undefined;
-    const pendingDelete = new Promise<Response>((_, reject) => {
-      rejectDelete = reject;
-    });
+  it("deletes a workspace style from its card while protecting system styles", async () => {
+    let removed = false;
+    let catalogLoads = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
       if (path.endsWith("/api/v2/hosted/project-catalog")) {
+        catalogLoads += 1;
         return Response.json({
           avatars: [],
-          styles: [
-            {
-              style_id: "workspace-style",
-              version_id: "workspace-style-version",
-              name: "Workspace style",
-              version_number: 1,
-              state: "PUBLISHED",
-              scope_kind: "WORKSPACE",
-              reference_count: 3,
-            },
-          ],
+          styles: removed
+            ? [
+                {
+                  style_id: "system-style",
+                  version_id: "system-style-version",
+                  name: "Built-in style",
+                  version_number: 1,
+                  state: "PUBLISHED",
+                  scope_kind: "SYSTEM",
+                  reference_count: 0,
+                },
+              ]
+            : [
+                {
+                  style_id: "workspace-style",
+                  version_id: "workspace-style-version",
+                  name: "Workspace style",
+                  version_number: 1,
+                  state: "PUBLISHED",
+                  scope_kind: "WORKSPACE",
+                  reference_count: 3,
+                },
+                {
+                  style_id: "system-style",
+                  version_id: "system-style-version",
+                  name: "Built-in style",
+                  version_number: 1,
+                  state: "PUBLISHED",
+                  scope_kind: "SYSTEM",
+                  reference_count: 0,
+                },
+              ],
           media_worker_state: "ONLINE",
           gpu_transport: "DISABLED_UNQUALIFIED",
           gpu_readiness: gpuReadiness,
@@ -905,28 +931,32 @@ describe("hosted product journey", () => {
       }
       if (init?.method === "DELETE") {
         expect(path).toBe("/api/v2/hosted/styles/workspace-style");
-        return pendingDelete;
+        removed = true;
+        return Response.json({ state: "ARCHIVED" });
       }
       throw new Error(`Unexpected hosted request: ${path}`);
     });
     vi.stubGlobal("fetch", fetchMock);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     renderHosted(<HostedStylesHubScreen />);
 
     expect(await screen.findByText("Workspace style")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "References (3)" }));
-    const remove = await screen.findByRole("button", { name: "Remove style" });
-    fireEvent.click(remove);
-    expect(await screen.findByRole("button", { name: /Removing style/u })).toHaveAttribute(
-      "aria-busy",
-      "true",
-    );
+    // The destructive action is available on the card without opening References/Details.
+    const removeStyle = screen.getByRole("button", { name: "Remove style" });
+    expect(screen.getByRole("button", { name: "References (3)" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove built-in style" })).not.toBeInTheDocument();
 
-    rejectDelete(new Error("Preset is currently used by a project."));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Preset is currently used by a project.",
+    fireEvent.click(removeStyle);
+    expect(confirm).toHaveBeenCalledWith(
+      "Remove this style from your Image Styles? Existing projects will keep their pinned version.",
     );
-    expect(screen.getByRole("button", { name: "Remove style" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Workspace style")).not.toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v2/hosted/styles/workspace-style",
+      expect.objectContaining({ method: "DELETE", body: "{}" }),
+    );
+    expect(catalogLoads).toBe(2);
+    expect(screen.getByText("Built-in style")).toBeInTheDocument();
   });
 
   it("does not expose fixture-only preset mutation screens in hosted staging", () => {
