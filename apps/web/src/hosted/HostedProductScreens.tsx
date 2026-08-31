@@ -498,7 +498,7 @@ function hostedDraftIsResumable(
   },
 ): boolean {
   const state = presetState(draft);
-  return state === "NEEDS_REVIEW" || state === "DRAFT";
+  return state === "NEEDS_REVIEW" || state === "DRAFT" || state === "FAILED";
 }
 
 export interface FixtureStyleCreationAdapter {
@@ -998,7 +998,7 @@ function unfinishedPresetDescription(
     return "Analysis is in progress. We will update this style when it finishes.";
   }
   if (state === "FAILED") {
-    return "This style could not be completed. Remove it and start again with new references.";
+    return "The analysis request failed, but your verified references are saved. Continue setup to retry safely.";
   }
   if (state === "DRAFT" && !referencesVerified)
     return "Some saved references could not be verified. Reselect 3–8 images to repair this saved draft.";
@@ -2874,7 +2874,7 @@ export function HostedPresetCreationScreen({
               </Button>
             ) : (
               <Button busy={busy} onClick={() => void analyzeStyle()}>
-                Analyze this draft once{" "}
+                {presetState(created) === "FAILED" ? "Retry saved analysis" : "Analyze this draft once"}{" "}
                 <ArrowRight size={16} />
               </Button>
             )}

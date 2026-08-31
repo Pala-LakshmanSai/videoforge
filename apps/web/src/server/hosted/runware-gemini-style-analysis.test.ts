@@ -57,6 +57,7 @@ describe("Runware Gemini hosted style analysis", () => {
       expect(body[0]?.includeCost).toBe(true);
       expect(body[0]?.includeUsage).toBe(true);
       expect(body[0]?.jsonSchema).toMatchObject({ strict: true });
+      expect(body[0]).not.toHaveProperty("providerSettings");
       expect(body[0]).not.toHaveProperty("tenant_id");
       expect(body[0]?.inputs).toMatchObject({
         images: expect.arrayContaining([expect.stringMatching(/^data:image\/webp;base64,/u)]),
@@ -118,7 +119,7 @@ describe("Runware Gemini hosted style analysis", () => {
         })),
         fetcher,
       }),
-    ).rejects.toMatchObject({ code: "REJECTED" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
+    ).rejects.toMatchObject({ code: "INPUT_REJECTED" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
     expect(fetcher).not.toHaveBeenCalled();
   });
 
@@ -148,7 +149,20 @@ describe("Runware Gemini hosted style analysis", () => {
         images: [{ ...images[0]!, bytes: unsafe }, images[1]!, images[2]!],
         fetcher,
       }),
-    ).rejects.toMatchObject({ code: "REJECTED" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
+    ).rejects.toMatchObject({ code: "INPUT_REJECTED" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("distinguishes a provider request rejection from invalid image input", async () => {
+    await expect(
+      analyzeStyleWithRunwareGemini({
+        apiKey: "test-secret",
+        baseUrl: "https://api.runware.ai/v1",
+        images,
+        fetcher: async () => Response.json({ errors: [{ message: "invalid request" }] }, { status: 400 }),
+      }),
+    ).rejects.toMatchObject({
+      code: "PROVIDER_REJECTED",
+    } satisfies Partial<RunwareGeminiStyleAnalysisError>);
   });
 });

@@ -2806,7 +2806,7 @@ async function styleAnalyze(
       if (!(await lockActiveStyleParent(transaction, scope, styleOrVersionId))) return null;
       const result = await transaction.query<HostedPresetRow>(
         `SELECT style.id AS style_id, style.name AS style_name, version.id AS version_id,
-                version.state, version.profile_payload, version.style_profile_hash,
+                version.version_number, version.state, version.profile_payload, version.style_profile_hash,
                 version.analyzer_model_snapshot,
                 COALESCE(jsonb_agg(jsonb_build_object(
                   'order_index', reference.reference_order,
@@ -2837,11 +2837,105 @@ async function styleAnalyze(
           ORDER BY version.version_number DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, styleOrVersionId],
       );
-      const target = result.rows[0];
+      let target = result.rows[0];
       if (!target) return null;
       if (target.state === "NEEDS_REVIEW" || target.state === "PUBLISHED")
         return { ...target, already_analyzed: true };
       if (target.state === "ANALYZING") throw new Error("STYLE_ANALYSIS_IN_PROGRESS");
+      if (target.state === "FAILED") {
+        const failedRun = await transaction.query<HostedPresetRow>(
+          `SELECT id, state FROM hosted_style_analysis_runs
+            WHERE account_id = $1 AND workspace_id = $2 AND style_version_id = $3
+              AND state = 'FAILED'`,
+          [scope.account_id, scope.workspace_id, rowString(target, "version_id")],
+        );
+        const priorRun = failedRun.rows[0];
+        if (!priorRun) throw new Error("STYLE_NOT_ANALYZABLE");
+        const failedVersionId = rowString(target, "version_id");
+        const retryVersionId = await stableHostedUuid(
+          `hosted-style-analysis-retry:${scope.account_id}:${failedVersionId}:${rowString(priorRun, "id")}`,
+        );
+        const retryVersionNumber = Number(target.version_number) + 1;
+        const abandoned = await transaction.query(
+          `UPDATE image_style_versions AS version
+              SET state = 'ABANDONED', abandoned_at = now(), updated_at = now()
+             FROM image_styles AS style
+            WHERE version.account_id = $1 AND version.workspace_id = $2 AND version.id = $3
+              AND version.state = 'FAILED'
+              AND style.account_id = version.account_id
+              AND style.workspace_id = version.workspace_id AND style.id = version.style_id
+              AND style.scope_kind = 'WORKSPACE' AND style.status = 'ACTIVE'
+          RETURNING version.id`,
+          [scope.account_id, scope.workspace_id, failedVersionId],
+        );
+        if (!abandoned.rows[0]) throw new Error("STYLE_ANALYSIS_IN_PROGRESS");
+        await transaction.query(
+          `INSERT INTO image_style_versions (
+             id, account_id, workspace_id, style_id, version_number, state, scope_kind,
+             disclosure_attested_by_user_id
+           ) VALUES ($1,$2,$3,$4,$5,'DRAFT','WORKSPACE',$6)`,
+          [
+            retryVersionId,
+            scope.account_id,
+            scope.workspace_id,
+            rowString(target, "style_id"),
+            retryVersionNumber,
+            scope.user_id,
+          ],
+        );
+        const sourceReferences = await transaction.query<HostedPresetRow>(
+          `SELECT reference_order, normalized_asset_id, original_asset_id,
+                  rights_attested_by_user_id, rights_basis, rights_basis_note,
+                  rights_attested_at, original_retention_policy, confidence,
+                  is_outlier, retention_state
+             FROM image_style_references
+            WHERE account_id = $1 AND workspace_id = $2 AND version_id = $3
+              AND deleted_at IS NULL
+            ORDER BY reference_order`,
+          [scope.account_id, scope.workspace_id, failedVersionId],
+        );
+        for (const source of sourceReferences.rows) {
+          const order = Number(source.reference_order);
+          await transaction.query(
+            `INSERT INTO image_style_references (
+               id, account_id, workspace_id, style_id, version_id,
+               normalized_asset_id, original_asset_id, reference_order,
+               rights_attested_by_user_id, rights_basis, rights_basis_note,
+               rights_attested_at, original_retention_policy, confidence,
+               is_outlier, retention_state
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+            [
+              await stableHostedUuid(
+                `hosted-style-analysis-retry-reference:${scope.account_id}:${retryVersionId}:${order}`,
+              ),
+              scope.account_id,
+              scope.workspace_id,
+              rowString(target, "style_id"),
+              retryVersionId,
+              rowString(source, "normalized_asset_id"),
+              rowString(source, "original_asset_id"),
+              order,
+              rowString(source, "rights_attested_by_user_id"),
+              rowString(source, "rights_basis"),
+              sqlValue(source.rights_basis_note),
+              sqlValue(source.rights_attested_at),
+              rowString(source, "original_retention_policy"),
+              sqlValue(source.confidence),
+              source.is_outlier === true,
+              rowString(source, "retention_state"),
+            ],
+          );
+        }
+        target = {
+          ...target,
+          version_id: retryVersionId,
+          version_number: retryVersionNumber,
+          state: "DRAFT",
+          profile_payload: null,
+          style_profile_hash: null,
+          analyzer_model_snapshot: null,
+        };
+      }
       if (target.state !== "DRAFT") throw new Error("STYLE_NOT_ANALYZABLE");
       const references = Array.isArray(target.references) ? target.references : [];
       if (
@@ -2926,7 +3020,7 @@ async function styleAnalyze(
       return total + (reference ? Number(reference.byte_size) : Number.NaN);
     }, 0);
     if (!Number.isSafeInteger(aggregateBytes) || aggregateBytes > RUNWARE_GEMINI_STYLE_MAX_INPUT_BYTES)
-      throw new RunwareGeminiStyleAnalysisError("REJECTED");
+      throw new RunwareGeminiStyleAnalysisError("INPUT_REJECTED");
     for (const [index, rawReference] of referenceRows.entries()) {
       const reference = plainRecord(rawReference);
       if (!reference) throw new Error("STYLE_REFERENCES_NOT_COMMITTED");
@@ -3025,7 +3119,9 @@ async function styleAnalyze(
   } catch (error) {
     const definitiveProviderRejection =
       error instanceof RunwareGeminiStyleAnalysisError &&
-      (error.code === "REJECTED" || error.code === "UNAVAILABLE");
+      (error.code === "INPUT_REJECTED" ||
+        error.code === "PROVIDER_REJECTED" ||
+        error.code === "UNAVAILABLE");
     const ambiguous = providerMayHaveCharged && !definitiveProviderRejection;
     if (preparedRunId) {
       try {
@@ -3083,9 +3179,11 @@ async function styleAnalyze(
           503,
         );
       const message =
-        error.code === "REJECTED"
-          ? "These references could not be analyzed. Use 3–8 JPEG, PNG, or WebP images under 30 MB total."
-          : "Gemini image analysis is temporarily unavailable. Try again.";
+        error.code === "INPUT_REJECTED"
+          ? "The prepared images did not pass analysis validation. Your draft is saved; choose the references again."
+          : error.code === "PROVIDER_REJECTED"
+            ? "Gemini could not accept this analysis request. Your draft is saved and can be retried after the service is corrected."
+            : "Gemini image analysis is temporarily unavailable. Try again.";
       return response({ error: { code: `STYLE_ANALYSIS_${error.code}`, message } }, 502);
     }
     if (error instanceof Error && error.message === "STYLE_ANALYSIS_IN_PROGRESS")

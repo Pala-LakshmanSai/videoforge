@@ -588,4 +588,18 @@ describe("hosted product route contract", () => {
     expect(completion).not.toContain('code: "STYLE_NOT_FOUND"');
     expect(block).toContain('ambiguous ? "UNKNOWN" : "FAILED"');
   });
+
+  it("retries only a definitively failed style analysis on a new immutable version", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("async function styleAnalyze(");
+    const end = source.indexOf("async function stylePublish(", start);
+    const block = source.slice(start, end);
+    expect(block).toContain("target.state === \"FAILED\"");
+    expect(block).toContain("AND state = 'FAILED'");
+    expect(block).toContain("SET state = 'ABANDONED'");
+    expect(block).toContain("hosted-style-analysis-retry:");
+    expect(block).toContain("hosted-style-analysis-retry-reference:");
+    expect(block).toContain("VALUES ($1,$2,$3,$4,$5,'DRAFT','WORKSPACE',$6)");
+    expect(block).not.toContain("state = 'UNKNOWN' AND");
+  });
 });

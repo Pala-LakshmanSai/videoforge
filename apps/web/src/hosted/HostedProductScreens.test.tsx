@@ -578,7 +578,7 @@ describe("hosted product journey", () => {
     expect(await screen.findByText("Will Carter")).toBeInTheDocument();
     expect(screen.getByText("Unfinished avatars")).toBeInTheDocument();
     expect(screen.getByText("Unfinished styles")).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Continue setup" })).toHaveLength(3);
+    expect(screen.getAllByRole("link", { name: "Continue setup" })).toHaveLength(4);
     expect(
       screen.getByText(
         "Your avatar draft is saved. Continue to verify the photo upload, then approve it.",
@@ -590,7 +590,11 @@ describe("hosted product journey", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Analysis is in progress. We will update this style when it finishes.")).toBeInTheDocument();
-    expect(screen.getByText("This style could not be completed. Remove it and start again with new references.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The analysis request failed, but your verified references are saved. Continue setup to retry safely.",
+      ),
+    ).toBeInTheDocument();
     const styleResumeLink = screen
       .getAllByRole("link", { name: "Continue setup" })
       .find((link) => link.getAttribute("href")?.startsWith("/styles/new"));
@@ -606,6 +610,7 @@ describe("hosted product journey", () => {
 
   it.each([
     ["DRAFT", "Analyze references"],
+    ["FAILED", "Analyze references"],
     ["NEEDS_REVIEW", "Review and publish"],
   ] as const)("resumes a saved style in the correct wizard step (%s)", async (state, heading) => {
     window.history.replaceState({}, "", `/styles/new?resumeVersionId=resume-style-version`);
@@ -647,6 +652,8 @@ describe("hosted product journey", () => {
     expect(screen.queryByLabelText("Upload style references")).not.toBeInTheDocument();
     if (state === "DRAFT") {
       expect(screen.getByRole("button", { name: "Analyze this draft once" })).toBeEnabled();
+    } else if (state === "FAILED") {
+      expect(screen.getByRole("button", { name: "Retry saved analysis" })).toBeEnabled();
     } else {
       expect(screen.getByRole("button", { name: "Publish immutable style version" })).toBeDisabled();
     }

@@ -52,7 +52,14 @@ export function runwareGeminiStyleActualCostMicroUsd(costUsd: number): number {
 }
 
 export class RunwareGeminiStyleAnalysisError extends Error {
-  constructor(readonly code: "UNAVAILABLE" | "REJECTED" | "INVALID_RESPONSE" | "AMBIGUOUS") {
+  constructor(
+    readonly code:
+      | "UNAVAILABLE"
+      | "INPUT_REJECTED"
+      | "PROVIDER_REJECTED"
+      | "INVALID_RESPONSE"
+      | "AMBIGUOUS",
+  ) {
     super(code);
     this.name = "RunwareGeminiStyleAnalysisError";
   }
@@ -168,7 +175,7 @@ export async function analyzeStyleWithRunwareGemini(input: {
     throw new RunwareGeminiStyleAnalysisError("UNAVAILABLE");
   const totalBytes = input.images.reduce((sum, image) => sum + image.bytes.byteLength, 0);
   if (totalBytes > RUNWARE_GEMINI_STYLE_MAX_INPUT_BYTES)
-    throw new RunwareGeminiStyleAnalysisError("REJECTED");
+    throw new RunwareGeminiStyleAnalysisError("INPUT_REJECTED");
 
   const references: readonly StyleReferenceBinding[] = input.images.map((image, index) => ({
     alias: `ref_${String(index + 1).padStart(2, "0")}`,
@@ -189,18 +196,18 @@ export async function analyzeStyleWithRunwareGemini(input: {
         image.height <= 0,
     )
   )
-    throw new RunwareGeminiStyleAnalysisError("REJECTED");
+    throw new RunwareGeminiStyleAnalysisError("INPUT_REJECTED");
   for (const image of input.images) {
     const dimensions = inspectNormalizedWebp(image.bytes);
     if (!dimensions || dimensions.width !== image.width || dimensions.height !== image.height)
-      throw new RunwareGeminiStyleAnalysisError("REJECTED");
+      throw new RunwareGeminiStyleAnalysisError("INPUT_REJECTED");
   }
   const request = buildStyleAnalyzerRequest(references);
   const schema = JSON.stringify(RUNWARE_GEMINI_STYLE_PROVIDER_SCHEMA);
   const aliasText = references.map((reference) => reference.alias).join(", ");
   const taskUUID = input.taskUUID ?? crypto.randomUUID();
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(taskUUID))
-    throw new RunwareGeminiStyleAnalysisError("REJECTED");
+    throw new RunwareGeminiStyleAnalysisError("INPUT_REJECTED");
   const body = JSON.stringify([
     {
       taskType: "textInference",
@@ -222,7 +229,6 @@ export async function analyzeStyleWithRunwareGemini(input: {
         topP: 0.9,
         maxTokens: RUNWARE_GEMINI_STYLE_MAX_OUTPUT_TOKENS,
       },
-      providerSettings: { google: { mediaResolution: "medium" } },
       inputs: {
         images: input.images.map((image) => `data:image/webp;base64,${base64(image.bytes)}`),
       },
@@ -256,11 +262,11 @@ export async function analyzeStyleWithRunwareGemini(input: {
       throw new RunwareGeminiStyleAnalysisError("UNAVAILABLE");
     if (response.status === 408 || response.status === 429 || response.status >= 500)
       throw new RunwareGeminiStyleAnalysisError("AMBIGUOUS");
-    throw new RunwareGeminiStyleAnalysisError("REJECTED");
+    throw new RunwareGeminiStyleAnalysisError("PROVIDER_REJECTED");
   }
   const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
   if (!payload || Array.isArray(payload) || Array.isArray(payload.errors))
-    throw new RunwareGeminiStyleAnalysisError("REJECTED");
+    throw new RunwareGeminiStyleAnalysisError("PROVIDER_REJECTED");
   const data = Array.isArray(payload.data) ? payload.data : [];
   const item = data.find(
     (candidate) =>
