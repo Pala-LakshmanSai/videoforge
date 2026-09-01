@@ -10,7 +10,7 @@ test("DeepSeek qualification covers 40 exact scenes and five style batches", () 
   for (let index = 0; index < 5; index += 1) {
     const request = buildRequest(index);
     assert.equal(request.model, "deepseek:v4@flash");
-    assert.equal(request.outputFormat, "JSON");
+    assert.equal(request.outputFormat, "json");
     assert.equal(request.settings.thinkingLevel, "off");
     assert.equal(request.messages[0].content.match(/Project title:/gu)?.length, 1);
     assert.match(request.messages[0].content, /copy every required_terms string verbatim/u);

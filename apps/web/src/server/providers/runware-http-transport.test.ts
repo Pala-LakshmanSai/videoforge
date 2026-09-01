@@ -177,7 +177,9 @@ describe("Runware server HTTP transport", () => {
         originalRequestBytes,
         originalRequestSha256,
         fetch: async () =>
-          new Response(JSON.stringify({ data: [], errors: [{ code: "taskNotFound", taskUUID }] })),
+          new Response(JSON.stringify({ data: [], errors: [{ code: "taskNotFound", taskUUID }] }), {
+            status: 404,
+          }),
       }),
     ).rejects.toMatchObject({ code: "RUNWARE_TASK_NOT_FOUND" });
   });

@@ -156,7 +156,7 @@ export async function prepareHostedVoiceoverContextRequest(input: {
     taskType: "textInference",
     taskUUID,
     model: MODEL,
-    outputFormat: "JSON",
+    outputFormat: "json",
     deliveryMethod: "sync",
     includeCost: true,
     includeUsage: true,
@@ -210,6 +210,7 @@ export async function extractHostedVoiceoverContext(input: {
     requestSha256: input.prepared.requestHash,
     retryOfRequestSha256: null,
   });
+  if (result.status === "failed") throw new Error("VOICEOVER_CONTEXT_PROVIDER_REJECTED");
   if (result.status !== "succeeded" || result.finishReason !== "stop")
     throw new Error("VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN");
   if (result.costUsd > HOSTED_CONTEXT_RESERVATION_USD)

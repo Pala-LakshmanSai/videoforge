@@ -778,7 +778,8 @@ describe("hosted product route contract", () => {
       block.indexOf("extractHostedVoiceoverContext"),
     );
     expect(block).toContain("output_asset_id: crypto.randomUUID()");
-    expect(block).toContain('"UNKNOWN", problemCode, true');
+    expect(block).toContain('definiteProviderRejection ? "FAILED" : "UNKNOWN"');
+    expect(block).toContain("!definiteProviderRejection");
     const planning = source.slice(
       source.indexOf("async function renderHandoff("),
       source.indexOf("async function writeProjectPrompts("),
@@ -804,6 +805,7 @@ describe("hosted product route contract", () => {
     expect(block).toContain("RUNWARE_TASK_NOT_FOUND");
     expect(block).toContain("RUNWARE_TASK_DETAILS_UNAVAILABLE");
     expect(block).toContain("RUNWARE_IDEMPOTENCY_CONFLICT");
+    expect(block).toContain("RUNWARE_AUTH_INVALID");
     expect(block).not.toContain("JOIN attempts AS execution_attempt");
     expect(block).toContain("const outputAssetId = crypto.randomUUID()");
     expect(source).toContain("/reconcile-context$/u.exec(");

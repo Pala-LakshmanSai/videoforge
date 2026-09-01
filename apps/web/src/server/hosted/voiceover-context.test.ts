@@ -33,7 +33,7 @@ describe("hosted voiceover context extraction", () => {
     const request = prepared.request as unknown as Record<string, unknown>;
     expect(prepared.requestHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
     expect(prepared.requestBytes).toContain("complete VideoForge voiceover transcript");
-    expect(request).toMatchObject({ model: "deepseek:v4@flash" });
+    expect(request).toMatchObject({ model: "deepseek:v4@flash", outputFormat: "json" });
     expect((request.settings as Record<string, unknown>).maxTokens).toBe(1_600);
   });
 
@@ -82,6 +82,21 @@ describe("hosted voiceover context extraction", () => {
         },
       }),
     ).rejects.toThrow("VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN");
+  });
+
+  it("distinguishes a definite provider rejection from an ambiguous dispatch", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "A complete transcript.",
+      transcriptHash: HASH,
+    });
+    await expect(
+      extractHostedVoiceoverContext({
+        prepared,
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        fetcher: async () =>
+          new Response(JSON.stringify({ errors: [{ code: "invalidValue" }] }), { status: 400 }),
+      }),
+    ).rejects.toThrow("VOICEOVER_CONTEXT_PROVIDER_REJECTED");
   });
 
   it("reconciles an uncertain dispatch through task details without textInference redispatch", async () => {

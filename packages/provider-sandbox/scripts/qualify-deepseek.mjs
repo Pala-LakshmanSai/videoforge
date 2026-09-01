@@ -85,7 +85,7 @@ export function buildRequest(batchIndex, previousContinuity = "none") {
     taskType: "textInference",
     taskUUID: randomUUID(),
     model: MODEL,
-    outputFormat: "JSON",
+    outputFormat: "json",
     deliveryMethod: "sync",
     includeCost: true,
     includeUsage: true,

@@ -208,12 +208,28 @@ export async function retrieveRunwareTextTaskDetails(
     throw new RunwareTransportError("RUNWARE_TASK_DETAILS_UNAVAILABLE");
   }
   if (!response.ok) {
+    let providerCode: string | null = null;
+    let providerParameter: string | null = null;
+    try {
+      const errorBody = record(JSON.parse(await response.text()));
+      const first = Array.isArray(errorBody?.errors)
+        ? errorBody.errors.map(record).find(Boolean)
+        : null;
+      providerCode = typeof first?.code === "string" ? first.code.slice(0, 80) : null;
+      providerParameter =
+        typeof first?.parameter === "string" ? first.parameter.slice(0, 80) : null;
+    } catch {
+      // Provider messages and response bodies are intentionally discarded.
+    }
     options.onDiagnostic?.({
       stage: "http",
       httpStatus: response.status,
-      providerCode: null,
-      providerParameter: null,
+      providerCode,
+      providerParameter,
     });
+    if (providerCode === "taskNotFound") throw new RunwareTransportError("RUNWARE_TASK_NOT_FOUND");
+    if (response.status === 401 || response.status === 403)
+      throw new RunwareTransportError("RUNWARE_AUTH_INVALID");
     throw new RunwareTransportError("RUNWARE_TASK_DETAILS_UNAVAILABLE");
   }
 

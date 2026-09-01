@@ -5222,6 +5222,7 @@ async function createVoiceoverContext(
         error instanceof Error && /^[A-Z0-9_]{3,80}$/u.test(error.message)
           ? error.message
           : "HOSTED_CONTEXT_EXECUTION_UNKNOWN";
+      const definiteProviderRejection = problemCode === "VOICEOVER_CONTEXT_PROVIDER_REJECTED";
       await createNeonExecutor(pool)
         .transaction(async (transaction) => {
           await transaction.query("SELECT set_config($1, $2, true)", [
@@ -5230,7 +5231,12 @@ async function createVoiceoverContext(
           ]);
           await transaction.query(
             "SELECT public.videoforge_fail_hosted_voiceover_context($1,$2,$3,$4)",
-            [contextId, "UNKNOWN", problemCode, true],
+            [
+              contextId,
+              definiteProviderRejection ? "FAILED" : "UNKNOWN",
+              problemCode,
+              !definiteProviderRejection,
+            ],
           );
         })
         .catch(() => undefined);
@@ -5379,7 +5385,9 @@ async function reconcileVoiceoverContext(
             ? "Runware task details are temporarily unavailable. No new inference request was submitted."
             : providerCode === "RUNWARE_IDEMPOTENCY_CONFLICT"
               ? "Runware returned an original request that did not match the saved task identity. No new inference request was submitted."
-              : "Runware returned original task details that could not be accepted safely. No new inference request was submitted.";
+              : providerCode === "RUNWARE_AUTH_INVALID"
+                ? "Runware rejected the configured recovery credential. No new inference request was submitted."
+                : "Runware returned original task details that could not be accepted safely. No new inference request was submitted.";
       return response(
         {
           error: {

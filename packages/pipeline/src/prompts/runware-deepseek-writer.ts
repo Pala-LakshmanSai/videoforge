@@ -51,7 +51,7 @@ export interface RunwareDeepSeekApiRequest {
   readonly taskType: "textInference";
   readonly taskUUID: string;
   readonly model: typeof RUNWARE_DEEPSEEK_PROMPT_MODEL;
-  readonly outputFormat: "JSON";
+  readonly outputFormat: "json";
   readonly deliveryMethod: "sync";
   readonly includeCost: true;
   readonly includeUsage: true;
@@ -310,7 +310,7 @@ export function buildRunwareDeepSeekPromptRequest(
     taskType: "textInference",
     taskUUID,
     model: RUNWARE_DEEPSEEK_PROMPT_MODEL,
-    outputFormat: "JSON",
+    outputFormat: "json",
     deliveryMethod: "sync",
     includeCost: true,
     includeUsage: true,
