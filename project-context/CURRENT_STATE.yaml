@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: CONTEXT_RECONCILED_LIVE_UI_STATUS_REPAIR_GREEN_AWAITING_EXACT_DEPLOYMENT_AUTHORITY
+  status: CONTEXT_RECONCILED_LIVE_NEEDS_ATTENTION_AWAITING_USER_DECISION
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -216,6 +216,7 @@ hosted_beta_user_walkthrough:
     - "Approved source 5b2dcea2 is deployed as Worker 35b64868 with config sha256:3099d4f1 after additive migration 0053. Neon is 53/53 with exact runtime grants/FORCE RLS; cache-bypassed status reports the exact commit and DISABLED_UNQUALIFIED. Authenticated Chrome shows Remove on all six visible computer rows; no row was removed during verification. The exact-source worktree initially hit local ENOSPC before any remote mutation; clearing only the recoverable pnpm cache allowed migration/build/deploy to complete. No provider, GPU, production, or spend action occurred."
     - "Source 2185ca5c repairs the live Stage 3 hang root cause: migration 0056's UNKNOWN failure handlers violated the durable attempt constraint, so their safety write failed and left DISPATCHING forever. Additive migration 0058 writes the required AMBIGUOUS/unresolved attempt shape, safely reconciles context and prompt claims older than three minutes to UNKNOWN without releasing uncertain cost or redispatching, and the hosted UI changes to Needs attention with receipt/cost review guidance. Durable/replay and runtime-grant tests pass 3/3; hosted UI/server tests pass 91/91; typecheck, changed-file ESLint, deployment validation, staging build/quarantine, and diff checks pass. The user's first context request remains a potentially charged uncertain result and must not be retried. Migration/deployment remain unapplied pending fresh exact source-bound approval."
     - "Approved source 05b51b21 applied migration 0058 and exact grants at 58/58, then deployed as Worker 7a92d9aa with config sha256:2e850b32. Eight exact-source status reads pass. Authenticated Chrome triggered the approved stale reconciliation once; durable readback is context UNKNOWN/HOSTED_CONTEXT_DISPATCH_TIMEOUT, task FAILED, attempt UNKNOWN/AMBIGUOUS with no attempt finish time, one RESERVED $0.01 event, no reported cost, and no redispatch. Chrome then exposed one presentation-only gap: UNKNOWN normalized to PENDING/Waiting even though the review notice and no-retry guard were correct. Source 41462ed5 maps UNKNOWN to FAILED/Needs attention; hosted UI/server 91/91, typecheck, lint, staging build/quarantine, deployment validation, and diff checks pass. Deploying this successor requires fresh exact $0 authority."
+    - "Approved successor 1f223268 is deployed as Worker 9d71559d with config sha256:6434ba13. Eight exact-source status reads pass. Authenticated Chrome now shows Needs attention in the overall ring, hero badge, and status metric; Stage 3 is FAILED with the safe-deadline explanation; the review notice says no automatic provider request; and no retry control is present. No database migration, provider request, GPU work, production action, or spend occurred during this presentation-only deployment."
   current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
   remaining_steps:
     - PROJECT_CREATION_AND_COST_PREFLIGHT
@@ -266,7 +267,7 @@ hosted_beta_user_walkthrough:
     hosted_context_stale_claim_live: "PARTIAL_LIVE_05B51B21_WORKER_7A92D9AA_MIGRATION_58_OF_58_RECONCILED_UNKNOWN_UI_WAITING"
     hosted_context_unknown_ui_repair_commit: "41462ed5"
     hosted_context_unknown_ui_repair_focused: "PASS_HOSTED_91_OF_91_TYPECHECK_ESLINT_BUILD_DEPLOYMENT_DIFF"
-    hosted_context_unknown_ui_repair_live: PENDING_FRESH_EXACT_SOURCE_BOUND_APPROVAL
+    hosted_context_unknown_ui_repair_live: "PASS_LIVE_1F223268_WORKER_9D71559D_STATUS_8_OF_8_AUTHENTICATED_CHROME_NEEDS_ATTENTION"
     hosted_preset_focused_unit: "PASS_66_OF_66_UI_ACCESS_AND_SERVER"
     hosted_focus_revalidation_unit: "PASS_12_OF_12"
     hosted_web_typecheck: PASS
