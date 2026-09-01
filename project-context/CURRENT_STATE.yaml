@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Live source c48ada9e still reports Stage 4 Write image prompts COMPLETE even though durable readback found zero prompt_executions and zero prompt_scene_results. Source e9f3cd42 fixes that false completion without fabricating prompt data: it derives Stage 4 from the latest PROMPT generation task, reports WAITING with explicit no-durable-prompts copy when none exists, and keeps image generation blocked. Focused hosted tests pass 85/85; web typecheck, changed-file ESLint, formatting, diff checks, and scheduler 8/8 pass. The saved 35-scene plan is valid against the locked Ranga/Elias editing grammar: 21-22 percent avatar coverage and near-even alternating full/split are enforced before persistence, average scene length is 4.549 seconds against the measured 4.0-4.8 target, and hard cuts remain locked. The 159.216-second source narration repeats substantially, so content repetition remains a user-input quality warning rather than a scheduler failure. e9f3cd42 is source proof only and awaits fresh exact USD 0 staging deployment approval; provider calls, prompt-writer dispatch, GPU work, production action, and spend remain unauthorized."
+  provider_free_product_action: "Approved source e9f3cd42 is deployed to private staging as Worker version 9dc4ccc5 with rendered config SHA-256 94e12854. Cache-bypassed status reports the exact source, staging, DISABLED_UNQUALIFIED, and provider CPU spend USD 0. Authenticated Chrome proves truthful progress for helen video: Stage 3 Plan scenes COMPLETE 100/100, Stage 4 Write image prompts PENDING 0/100, active state WAITING, and explicit copy that no durable accepted image prompts exist. The saved 35-scene plan remains valid against the locked Ranga/Elias editing grammar: 21-22 percent avatar coverage and near-even alternating full/split are enforced before persistence, average scene length is 4.549 seconds against the measured 4.0-4.8 target, and hard cuts remain locked. The 159.216-second source narration repeats substantially, so content repetition remains a user-input quality warning rather than a scheduler failure. The exact approval is consumed; provider calls, prompt-writer dispatch, planning retry, GPU work, production action, and spend remain unauthorized."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: PROMPT_STAGE_TRUTH_REPAIR_SOURCE_GREEN_AWAITING_DEPLOYMENT
+  status: PROMPT_STAGE_TRUTH_REPAIR_DEPLOYED_LIVE_VERIFIED
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -109,20 +109,21 @@ hosted_beta_user_walkthrough:
     - "da4134360e530e8e6a2f4babbedf0af059e07653"
     - "a4c444bb254c857a4a5fabcbd9092f05d7fa1e2e"
     - "c48ada9eee50e29cd0952787ee6b8af2ddb700a8"
-  deployment_candidate: SOURCE_E9F3CD42_TRUTHFUL_PROMPT_STAGE_AWAITING_APPROVAL
-  deployed_source_commit: "c48ada9eee50e29cd0952787ee6b8af2ddb700a8"
-  cloudflare_worker_version_id: "8cb41564-a214-4d50-8e2a-d983ba2c0473"
-  pending_source_candidate: "e9f3cd421f09483b3c8029ce109593cf77b9a350"
+    - "e9f3cd421f09483b3c8029ce109593cf77b9a350"
+  deployment_candidate: LIVE_E9F3CD42_TRUTHFUL_PROMPT_STAGE
+  deployed_source_commit: "e9f3cd421f09483b3c8029ce109593cf77b9a350"
+  cloudflare_worker_version_id: "9dc4ccc5-d82c-498f-9c67-e404a5add7a0"
+  pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "Deploy exact source e9f3cd42 to private hosted staging only after fresh exact USD 0 approval. This deployment must not invoke the prompt writer, retry planning, call a provider, create GPU work, activate production, or spend. After deployment, authenticated Chrome must show Stage 3 COMPLETE and Stage 4 WAITING with no durable prompts."
-  pending_validations: "PASS_FOCUSED_HOSTED_85_OF_85; PASS_WEB_TYPECHECK; PASS_CHANGED_FILE_ESLINT; PASS_PRETTIER; PASS_DIFF_CHECK; PASS_SCHEDULER_8_OF_8; LIVE_DEPLOYMENT_AND_CHROME_READBACK_PENDING_FRESH_EXACT_APPROVAL"
+  pending_release_boundary: "The zero-spend approval for exact source e9f3cd42 was consumed by one staging deployment. Any prompt-writing execution, provider request, planning retry, GPU work, production action, or successor deployment requires fresh exact authority."
+  pending_validations: "NONE_FOR_TRUTHFUL_STAGE_DEPLOYMENT; NEXT_PRODUCT_BLOCKER_IS_PROMPT_WRITER_EXECUTION_AUTHORITY"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "8dad7441b96f9f0dc3c5c63dd035a6c721110157726b3788e938104b863f9713"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA c48ada9eee50e29cd0952787ee6b8af2ddb700a8 CAP USD 0"
+  deployed_config_sha256: "94e128547c8fe7678f3ec766e50a08bfe658f2f7e4cf7839846e7047455c4e75"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA e9f3cd421f09483b3c8029ce109593cf77b9a350 CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -139,9 +140,9 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "CURRENT_LIVE_C48ADA9E_WORKER_8CB41564_HEALTHY_BUT_STAGE_4_FALSE_COMPLETE; DURABLE_PROMPT_EXECUTIONS_ZERO; DURABLE_PROMPT_SCENE_RESULTS_ZERO; SOURCE_E9F3CD42_FIX_AWAITING_DEPLOYMENT; SERVERLESS_OUTBOX_AUTHORITY_COST_PAID_CLAIM_ROWS_ZERO; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
+  live_browser_verification: "PASS_CURRENT_LIVE_E9F3CD42_WORKER_9DC4CCC5_API_HEALTHY_STAGE_3_COMPLETE_100_STAGE_4_PENDING_0_ACTIVE_WAITING_EXPLICIT_NO_DURABLE_ACCEPTED_PROMPTS; DURABLE_PROMPT_EXECUTIONS_ZERO; DURABLE_PROMPT_SCENE_RESULTS_ZERO; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
   fixed_blockers:
-    - "Source e9f3cd42 fixes the false Stage 4 completion by reading the latest PROMPT task state instead of treating any timeline as prompt completion. With the current zero-prompt plan it reports WAITING, 0/100, and explicit no-durable-prompts copy; the page no longer claims generation is waiting on GPU while prompts are absent. Focused hosted tests pass 85/85, scheduler 8/8, web typecheck, changed-file ESLint, formatting, and diff checks pass. The source is not deployed and requires fresh exact USD 0 staging approval; no prompt writer, provider, GPU, production, or spend action occurred."
+    - "Approved source e9f3cd42 deployed once as Worker 9dc4ccc5 with config SHA-256 94e12854. Exact status reports staging, DISABLED_UNQUALIFIED, and provider CPU USD 0. Authenticated Chrome shows Stage 3 COMPLETE 100/100 and Stage 4 PENDING 0/100 with active WAITING and explicit no-durable-accepted-prompts copy. The approval is consumed; no planning retry, prompt writer, provider, GPU, production, or spend action occurred."
     - "Approved source c48ada9e applied migration 0055 and deployed as Worker 8cb41564 with config SHA-256 8dad7441. Exact status and 8/8 Chrome reads pass. Its one planning retry returned HTTP OK and durably completed Stage 3. The live UI also marked Stage 4 complete, but later durable inspection proved that claim false: prompt execution and scene-result rows are both zero. Neon has one 475-word transcript, one 35-segment timeline, 39 image/avatar generation tasks, and one canonical bridge; all serverless/outbox/authority/cost/paid-claim counts remain zero."
     - "Approved source a4c444bb applied migration 0054 and deployed as Worker e5f207f5 with config SHA-256 1af818c9. Exact status and 8/8 Chrome reads pass. Its one planning retry passed both deferred timing validators, then the remaining generation-task accepted-result constraint trigger failed because the restored runtime could not execute videoforge_assert_task_accepted_result. Source c48ada9e adds migration 0055 so only the read-only trigger validator executes as owner, retains no direct runtime timing/task grants or helper grant, and passes focused bridge/upgrade 5/5, migration 6/6, build/typecheck/lint/diff checks. It is source proof pending fresh exact USD 0 migration/deployment/retry authority."
     - "Approved source da413436 deployed as Worker 96cb64ad with config SHA-256 baa72a8a. Exact status reports staging, DISABLED_UNQUALIFIED, and provider CPU $0. Its one planning retry proved the exact timestamp repair and reached the atomic append, then PostgreSQL denied transcript_words to the runtime when deferred constraint triggers fired at commit. Source a4c444bb adds migration 0054 so only the two read-only deferred validators execute as owner, retains no direct runtime timing-table grants, and passes focused bridge/upgrade 5/5, migration/visibility 7/7, runtime-grant 1/1, build/typecheck/lint/diff checks. It is source proof pending fresh exact USD 0 migration/deployment/retry authority."
