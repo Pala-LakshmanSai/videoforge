@@ -4933,7 +4933,7 @@ async function renderHandoff(
       const result = await transaction.query<{
         revision_id: string;
         revision_state: string;
-        revision_config_payload: unknown;
+        revision_config_payload: string;
         revision_config_hash: string;
         asr_attempt_id: string | null;
         asr_terminal_at: string | null;
@@ -4946,7 +4946,8 @@ async function renderHandoff(
         asr_output_sha256: string | null;
       }>(
         `SELECT revision.id AS revision_id, revision.status AS revision_state,
-                revision.revision_config_payload, revision.revision_config_hash,
+                revision.revision_config_payload::text AS revision_config_payload,
+                revision.revision_config_hash,
                 asr.id AS asr_attempt_id, asr.terminal_at AS asr_terminal_at,
                 asr.job_spec_object_key AS asr_input_object_key,
                 asr.job_spec_content_length AS asr_input_content_length,
@@ -5033,7 +5034,7 @@ async function renderHandoff(
         asrOutputContentLength: Number(state.asr_output_content_length),
         asrOutputSha256: state.asr_output_sha256,
         expectedWhisperModelSha256: config.mediaWorkerRelease.whisperModelSha256,
-        revisionConfig: state.revision_config_payload as never,
+        revisionConfig: state.revision_config_payload,
         revisionConfigSha256: state.revision_config_hash,
       },
       asrInputBytes,
