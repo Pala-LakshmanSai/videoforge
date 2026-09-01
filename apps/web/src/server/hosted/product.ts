@@ -26,6 +26,17 @@ import { hostedGpuReadinessForConfiguration, type HostedGpuReadiness } from "./g
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { HostedR2Signer } from "./r2";
 import { canonicalJson } from "./submission";
+import {
+  hostedPromptAuthority,
+  runHostedPromptExecution,
+  type HostedPromptIdentity,
+} from "./hosted-prompt-run";
+import { HOSTED_PROMPT_RESERVATION_MICRO_USD } from "./runware-prompt-execution";
+import {
+  extractHostedVoiceoverContext,
+  HOSTED_CONTEXT_RESERVATION_MICRO_USD,
+  prepareHostedVoiceoverContextRequest,
+} from "./voiceover-context";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -4934,6 +4945,244 @@ async function asrHandoff(
   }
 }
 
+function hostedTranscriptText(document: unknown, expectedAttemptId: string): string | null {
+  const root = plainRecord(document);
+  const transcript = plainRecord(root?.transcript);
+  const text = transcript?.text;
+  return root?.status === "SUCCEEDED" &&
+    root?.attempt_id === expectedAttemptId &&
+    typeof text === "string" &&
+    text.trim().length > 0 &&
+    text.length <= MAX_OPTIONAL_SCRIPT
+    ? text
+    : null;
+}
+
+async function createVoiceoverContext(
+  request: Request,
+  projectId: string,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!config.styleAnalysis)
+    return response({ error: { code: "HOSTED_CONTEXT_PROVIDER_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  let contextId: string | null = null;
+  let accountId: string | null = null;
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    accountId = scope.account_id;
+    const body = await parseHostedJson(request, "HOSTED_CONTEXT_REQUEST_REJECTED", 4_096);
+    if (body instanceof Response) return body;
+    const requested = plainRecord(body);
+    if (requested?.maximum_context_spend_micro_usd !== HOSTED_CONTEXT_RESERVATION_MICRO_USD)
+      return response({ error: { code: "HOSTED_CONTEXT_SPEND_CONFIRMATION_REQUIRED" } }, 400);
+    const asrAttemptId = requested.asr_attempt_id;
+    if (typeof asrAttemptId !== "string" || !UUID.test(asrAttemptId))
+      return response({ error: { code: "HOSTED_CONTEXT_REQUEST_REJECTED" } }, 400);
+
+    const state = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<{
+        revision_id: string;
+        asr_attempt_id: string;
+        output_object_key: string;
+        output_content_type: string;
+        output_content_length: number | string;
+        output_sha256: string;
+        existing_state: string | null;
+      }>(
+        `SELECT revision.id::text AS revision_id, attempt.id::text AS asr_attempt_id,
+                attempt.result_object_key AS output_object_key,
+                attempt.result_content_type AS output_content_type,
+                attempt.result_content_length AS output_content_length,
+                attempt.result_checksum_sha256 AS output_sha256,
+                context.state AS existing_state
+           FROM projects AS project
+           JOIN project_revisions AS revision
+             ON revision.account_id=project.account_id AND revision.workspace_id=project.workspace_id
+            AND revision.project_id=project.id AND revision.status='LOCKED'
+           JOIN hosted_cpu_job_attempts AS attempt
+             ON attempt.account_id=revision.account_id AND attempt.workspace_id=revision.workspace_id
+            AND attempt.project_id=revision.project_id AND attempt.project_revision_id=revision.id
+            AND attempt.id=$4 AND attempt.kind='ASR' AND attempt.state='SUCCEEDED'
+           LEFT JOIN hosted_voiceover_contexts AS context
+             ON context.account_id=revision.account_id AND context.workspace_id=revision.workspace_id
+            AND context.project_revision_id=revision.id
+          WHERE project.account_id=$1 AND project.workspace_id=$2 AND project.id=$3 LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId, asrAttemptId],
+      );
+      return result.rows[0] ?? null;
+    });
+    if (!state) return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_READY" } }, 409);
+    if (state.existing_state === "SUCCEEDED")
+      return response({
+        schema_version: "videoforge-hosted-context-response/v1",
+        state: "COMPLETE",
+        replayed: true,
+      });
+    if (state.existing_state !== null)
+      return response(
+        {
+          error: {
+            code: "HOSTED_CONTEXT_ALREADY_CLAIMED",
+            message: "The context request has already been claimed and cannot be redispatched.",
+          },
+        },
+        409,
+      );
+    const bucket = environment.PRIVATE_ARTIFACTS;
+    if (
+      !bucket ||
+      state.output_content_type !== "application/json" ||
+      !SHA256.test(state.output_sha256)
+    )
+      return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_READY" } }, 409);
+    const object = await bucket.get(state.output_object_key);
+    if (
+      !object ||
+      object.size !== Number(state.output_content_length) ||
+      object.httpMetadata?.contentType !== "application/json"
+    )
+      return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_VERIFIED" } }, 409);
+    const bytes = await object.arrayBuffer();
+    if ((await sha256Bytes(bytes)) !== state.output_sha256)
+      return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_VERIFIED" } }, 409);
+    let document: unknown;
+    try {
+      document = JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_VERIFIED" } }, 409);
+    }
+    const validators = (await import(
+      "@videoforge/contracts/precompiled-contract-validators"
+    )) as unknown as Record<string, ((value: unknown) => boolean) | undefined>;
+    if (!validators.asrJobResult?.(document))
+      return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_VERIFIED" } }, 409);
+    const transcript = hostedTranscriptText(document, asrAttemptId);
+    if (!transcript) return response({ error: { code: "HOSTED_CONTEXT_TRANSCRIPT_INVALID" } }, 409);
+    const transcriptHash = await sha256(transcript);
+    const preparedRequest = await prepareHostedVoiceoverContextRequest({
+      transcript,
+      transcriptHash,
+    });
+    const identity = {
+      contextId: crypto.randomUUID(),
+      taskId: crypto.randomUUID(),
+      attemptId: crypto.randomUUID(),
+      outboxId: crypto.randomUUID(),
+      executionProfileId: crypto.randomUUID(),
+      reservationCostEventId: crypto.randomUUID(),
+      claimTokenHash: await sha256(`hosted-context-claim:${crypto.randomUUID()}:${projectId}`),
+    };
+    const claimed = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<{ prepared: unknown }>(
+        "SELECT public.videoforge_prepare_hosted_voiceover_context($1::jsonb) AS prepared",
+        [
+          JSON.stringify({
+            account_id: scope.account_id,
+            workspace_id: scope.workspace_id,
+            user_id: scope.user_id,
+            project_id: projectId,
+            revision_id: state.revision_id,
+            asr_attempt_id: asrAttemptId,
+            context_id: identity.contextId,
+            task_id: identity.taskId,
+            attempt_id: identity.attemptId,
+            outbox_id: identity.outboxId,
+            execution_profile_id: identity.executionProfileId,
+            reservation_cost_event_id: identity.reservationCostEventId,
+            claim_token_hash: identity.claimTokenHash,
+            transcript_hash: transcriptHash,
+            request_hash: preparedRequest.requestHash,
+            reserved_cost_micro_usd: HOSTED_CONTEXT_RESERVATION_MICRO_USD,
+          }),
+        ],
+      );
+      return plainRecord(result.rows[0]?.prepared);
+    });
+    if (!claimed || claimed.created !== true)
+      return response({ error: { code: "HOSTED_CONTEXT_ALREADY_CLAIMED" } }, 409);
+    contextId = identity.contextId;
+    const result = await extractHostedVoiceoverContext({
+      prepared: preparedRequest,
+      apiKey: config.styleAnalysis.apiKey,
+    });
+    const completed = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const accepted = await transaction.query<{ completed: boolean }>(
+        "SELECT public.videoforge_complete_hosted_voiceover_context($1::jsonb) AS completed",
+        [
+          JSON.stringify({
+            context_id: identity.contextId,
+            output_asset_id: crypto.randomUUID(),
+            context_bytes: result.contextBytes,
+            context_hash: result.contextHash,
+            response_bytes: result.responseBytes,
+            response_hash: result.responseHash,
+            reported_cost_micro_usd: result.reportedCostMicroUsd,
+          }),
+        ],
+      );
+      return accepted.rows[0]?.completed === true;
+    });
+    if (!completed) throw new Error("HOSTED_CONTEXT_ACCEPTANCE_REJECTED");
+    return response({
+      schema_version: "videoforge-hosted-context-response/v1",
+      state: "COMPLETE",
+      replayed: false,
+      context_cost_usd: result.reportedCostMicroUsd / 1_000_000,
+    });
+  } catch (error) {
+    if (contextId && accountId) {
+      const problemCode =
+        error instanceof Error && /^[A-Z0-9_]{3,80}$/u.test(error.message)
+          ? error.message
+          : "HOSTED_CONTEXT_EXECUTION_UNKNOWN";
+      await createNeonExecutor(pool)
+        .transaction(async (transaction) => {
+          await transaction.query("SELECT set_config($1, $2, true)", [
+            "videoforge.account_id",
+            accountId,
+          ]);
+          await transaction.query(
+            "SELECT public.videoforge_fail_hosted_voiceover_context($1,$2,$3,$4)",
+            [contextId, "UNKNOWN", problemCode, true],
+          );
+        })
+        .catch(() => undefined);
+      return response(
+        {
+          error: {
+            code: "HOSTED_CONTEXT_EXECUTION_UNCERTAIN",
+            message:
+              "Context extraction did not return a durable accepted result and will not retry automatically.",
+          },
+        },
+        502,
+      );
+    }
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
 async function renderHandoff(
   request: Request,
   projectId: string,
@@ -4972,6 +5221,7 @@ async function renderHandoff(
         asr_output_content_type: string | null;
         asr_output_content_length: number | string | null;
         asr_output_sha256: string | null;
+        context_state: string | null;
       }>(
         `SELECT revision.id AS revision_id, revision.status AS revision_state,
                 revision.revision_config_payload::text AS revision_config_payload,
@@ -4983,7 +5233,8 @@ async function renderHandoff(
                 authority.object_key AS asr_output_object_key,
                 authority.content_type AS asr_output_content_type,
                 authority.issued_content_length AS asr_output_content_length,
-                authority.issued_checksum_sha256 AS asr_output_sha256
+                authority.issued_checksum_sha256 AS asr_output_sha256,
+                context.state AS context_state
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
@@ -5003,6 +5254,9 @@ async function renderHandoff(
             AND authority.attempt_id = asr.id
             AND authority.source = 'RESULT_DOCUMENT'
             AND authority.issued_at IS NOT NULL
+           LEFT JOIN hosted_voiceover_contexts AS context
+             ON context.account_id=revision.account_id AND context.workspace_id=revision.workspace_id
+            AND context.project_revision_id=revision.id
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, asrAttemptId],
@@ -5014,6 +5268,8 @@ async function renderHandoff(
       return response({ error: { code: "HOSTED_PROJECT_NOT_READY" } }, 409);
     if (!state.asr_attempt_id)
       return response({ error: { code: "HOSTED_ASR_NOT_SUCCEEDED" } }, 409);
+    if (state.context_state !== "SUCCEEDED")
+      return response({ error: { code: "HOSTED_VOICEOVER_CONTEXT_NOT_READY" } }, 409);
     const bucket = environment.PRIVATE_ARTIFACTS;
     if (
       !bucket ||
@@ -5093,6 +5349,186 @@ async function renderHandoff(
       );
     }
     throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
+async function writeProjectPrompts(
+  request: Request,
+  projectId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!config.styleAnalysis)
+    return response({ error: { code: "HOSTED_PROMPT_PROVIDER_UNAVAILABLE" } }, 503);
+  const promptApiKey = config.styleAnalysis.apiKey;
+  const pool = createNeonPool(config.neon.databaseUrl);
+  let runId: string | null = null;
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const body = await parseHostedJson(request, "HOSTED_PROMPT_REQUEST_REJECTED", 4_096);
+    if (body instanceof Response) return body;
+    if (plainRecord(body)?.maximum_prompt_spend_micro_usd !== HOSTED_PROMPT_RESERVATION_MICRO_USD)
+      return response({ error: { code: "HOSTED_PROMPT_SPEND_CONFIRMATION_REQUIRED" } }, 400);
+    const plan = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const loaded = await transaction.query<{ plan: unknown }>(
+        "SELECT public.videoforge_load_hosted_prompt_plan($1,$2,$3,$4) AS plan",
+        [scope.account_id, scope.workspace_id, scope.user_id, projectId],
+      );
+      return loaded.rows[0]?.plan ?? null;
+    });
+    const planRecord = plainRecord(plan);
+    if (!planRecord) return response({ error: { code: "HOSTED_PROMPT_PLAN_NOT_READY" } }, 409);
+    const existingState = planRecord.existing_run_state;
+    if (existingState === "SUCCEEDED")
+      return response({
+        schema_version: "videoforge-hosted-prompt-response/v1",
+        state: "COMPLETE",
+        replayed: true,
+      });
+    if (existingState !== null)
+      return response(
+        {
+          error: {
+            code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED",
+            message:
+              "The prompt request already has a durable terminal or in-flight claim and cannot be redispatched.",
+          },
+        },
+        409,
+      );
+    const identity: HostedPromptIdentity = {
+      runId: crypto.randomUUID(),
+      taskId: crypto.randomUUID(),
+      attemptId: crypto.randomUUID(),
+      outboxId: crypto.randomUUID(),
+      executionProfileId: crypto.randomUUID(),
+      reservationCostEventId: crypto.randomUUID(),
+      claimTokenHash: await sha256(`hosted-prompt-claim:${crypto.randomUUID()}:${projectId}`),
+    };
+    const authority = hostedPromptAuthority({
+      plan,
+      identity,
+      reservedCostMicroUsd: HOSTED_PROMPT_RESERVATION_MICRO_USD,
+    });
+    const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<{ prepared: unknown }>(
+        "SELECT public.videoforge_prepare_hosted_prompt_run($1::jsonb) AS prepared",
+        [
+          JSON.stringify({
+            account_id: scope.account_id,
+            workspace_id: scope.workspace_id,
+            user_id: scope.user_id,
+            project_id: projectId,
+            revision_id: authority.revisionId,
+            timeline_id: authority.timelineId,
+            timeline_hash: authority.timelineHash,
+            run_id: identity.runId,
+            task_id: identity.taskId,
+            attempt_id: identity.attemptId,
+            outbox_id: identity.outboxId,
+            execution_profile_id: identity.executionProfileId,
+            reservation_cost_event_id: identity.reservationCostEventId,
+            input_hash: authority.recordedInputHash,
+            claim_token_hash: identity.claimTokenHash,
+            reserved_cost_micro_usd: HOSTED_PROMPT_RESERVATION_MICRO_USD,
+          }),
+        ],
+      );
+      return plainRecord(result.rows[0]?.prepared);
+    });
+    if (!prepared || prepared.created !== true)
+      return response({ error: { code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED" } }, 409);
+    runId = identity.runId;
+    const accepted = await runHostedPromptExecution({
+      scope: { workspaceId: scope.workspace_id, actorUserId: scope.user_id },
+      authority,
+      command: {
+        projectId,
+        revisionId: authority.revisionId,
+        timelineId: authority.timelineId,
+        taskId: identity.taskId,
+        attemptId: identity.attemptId,
+        outboxId: identity.outboxId,
+        presentedClaimTokenHash: identity.claimTokenHash,
+      },
+      apiKey: promptApiKey,
+      persist: async (acceptance) => {
+        const completed = await createNeonExecutor(pool).transaction(async (transaction) => {
+          await transaction.query("SELECT set_config($1, $2, true)", [
+            "videoforge.account_id",
+            scope.account_id,
+          ]);
+          const result = await transaction.query<{ completed: boolean }>(
+            "SELECT public.videoforge_complete_hosted_prompt_run($1::jsonb) AS completed",
+            [
+              JSON.stringify({
+                run_id: identity.runId,
+                output_asset_id: crypto.randomUUID(),
+                prompt_execution_id: crypto.randomUUID(),
+                acceptance,
+              }),
+            ],
+          );
+          return result.rows[0]?.completed === true;
+        });
+        if (!completed) throw new Error("HOSTED_PROMPT_ACCEPTANCE_REJECTED");
+      },
+    });
+    return response(
+      {
+        schema_version: "videoforge-hosted-prompt-response/v1",
+        state: "COMPLETE",
+        replayed: false,
+        scene_count: accepted.compiledPrompts.length,
+        prompt_cost_usd: accepted.reportedCostMicroUsd / 1_000_000,
+      },
+      202,
+    );
+  } catch (error) {
+    if (runId) {
+      try {
+        const scope = await sessionScope(request, config, pool, executionContext);
+        if (!(scope instanceof Response)) {
+          await createNeonExecutor(pool).transaction(async (transaction) => {
+            await transaction.query("SELECT set_config($1, $2, true)", [
+              "videoforge.account_id",
+              scope.account_id,
+            ]);
+            await transaction.query(
+              "SELECT public.videoforge_fail_hosted_prompt_run($1,'UNKNOWN',$2,true)",
+              [runId, "PROMPT_EXECUTION_UNCERTAIN"],
+            );
+          });
+        }
+      } catch {
+        // The durable DISPATCHING claim still prevents a blind provider redispatch.
+      }
+    }
+    console.error("hosted_prompt_execution_failed", error instanceof Error ? error.name : "Error");
+    return response(
+      {
+        error: {
+          code: "HOSTED_PROMPT_WRITING_FAILED",
+          message:
+            "Image prompt writing stopped without a durable accepted result. The request will not be automatically repeated.",
+        },
+      },
+      409,
+    );
   } finally {
     await pool.end();
   }
@@ -5258,6 +5694,16 @@ async function projectDetail(
           ORDER BY attempt.created_at`,
         [scope.account_id, scope.workspace_id, projectId],
       );
+      const voiceoverContext = await transaction.query(
+        `SELECT context.id, context.state, context.transcript_hash, context.context_hash,
+                context.context_document, context.reserved_cost_micro_usd,
+                context.reported_cost_micro_usd, context.problem_code,
+                context.provider_may_have_charged, context.started_at, context.finished_at
+           FROM hosted_voiceover_contexts AS context
+          WHERE context.account_id=$1 AND context.workspace_id=$2 AND context.project_id=$3
+          ORDER BY context.created_at DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
       const generation = await transaction.query(
         `SELECT plan.id, plan.canonical_document_hash AS timeline_plan_sha256,
                 count(task.id) FILTER (WHERE task.lane IN ('IMAGE', 'AVATAR')) AS planned_tasks,
@@ -5268,7 +5714,8 @@ async function projectDetail(
                   WHERE task.lane IN ('IMAGE', 'AVATAR') AND task.state = 'FAILED'
                 ) AS failed_tasks,
                 (array_agg(task.state ORDER BY task.created_at DESC, task.id DESC)
-                  FILTER (WHERE task.lane = 'PROMPT'))[1] AS prompt_task_state
+                  FILTER (WHERE task.lane = 'PROMPT'
+                    AND task.task_key LIKE 'prompt:scene-batch:%'))[1] AS prompt_task_state
            FROM project_revisions AS revision
            JOIN timeline_plans AS plan
              ON plan.workspace_id = revision.workspace_id
@@ -5280,6 +5727,33 @@ async function projectDetail(
             AND revision.project_id = $3
           GROUP BY plan.id, plan.canonical_document_hash, plan.plan_sequence
           ORDER BY plan.plan_sequence DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      const prompts = await transaction.query(
+        `SELECT result.scene_ordinal, result.scene_id, segment.narration,
+                segment.in_image_shot_role, segment.timeline_composition,
+                result.compiled_prompt->>'positivePrompt' AS positive_prompt,
+                result.compiled_prompt->>'negativePrompt' AS negative_prompt,
+                execution.image_style_version_id, execution.style_profile_hash,
+                style.name AS style_name
+           FROM prompt_executions AS execution
+           JOIN prompt_scene_results AS result
+             ON result.account_id = execution.account_id
+            AND result.workspace_id = execution.workspace_id
+            AND result.prompt_execution_id = execution.id
+           JOIN timeline_segments AS segment
+             ON segment.account_id = execution.account_id
+            AND segment.workspace_id = execution.workspace_id
+            AND segment.project_revision_id = execution.project_revision_id
+            AND segment.timeline_plan_id = execution.timeline_plan_id
+            AND segment.segment_key = result.scene_id
+           JOIN image_styles AS style
+             ON style.account_id = execution.account_id
+            AND style.workspace_id = execution.workspace_id
+            AND style.id = execution.image_style_id
+          WHERE execution.account_id = $1 AND execution.workspace_id = $2
+            AND execution.project_id = $3
+          ORDER BY result.scene_ordinal`,
         [scope.account_id, scope.workspace_id, projectId],
       );
       const queue = await transaction.query(
@@ -5368,7 +5842,29 @@ async function projectDetail(
                 COALESCE(sum(ledger.reserved_usd), 0) AS reserved_usd,
                 COALESCE(sum(ledger.reported_usd), 0) AS reported_usd,
                 COALESCE(sum(ledger.settled_usd), 0) AS settled_usd,
-                COALESCE(sum(ledger.possible_duplicate_usd), 0) AS possible_duplicate_usd
+                COALESCE(sum(ledger.possible_duplicate_usd), 0) AS possible_duplicate_usd,
+                COALESCE((SELECT sum(event.amount_micro_usd)::numeric / 1000000
+                  FROM cost_events event JOIN generation_tasks task
+                    ON task.account_id=event.account_id AND task.workspace_id=event.workspace_id
+                   AND task.id=event.task_id
+                 WHERE event.account_id=revision.account_id
+                   AND event.workspace_id=revision.workspace_id
+                   AND event.owner_id=revision.id AND task.lane='PROMPT'
+                   AND event.event_type='RESERVED'
+                   AND NOT EXISTS (SELECT 1 FROM cost_events terminal
+                     WHERE terminal.account_id=event.account_id
+                       AND terminal.workspace_id=event.workspace_id
+                       AND terminal.task_id=event.task_id
+                       AND terminal.attempt_id=event.attempt_id
+                       AND terminal.event_type IN ('SETTLED','RELEASED'))),0) AS prompt_reserved_usd,
+                COALESCE((SELECT sum(event.amount_micro_usd)::numeric / 1000000
+                  FROM cost_events event JOIN generation_tasks task
+                    ON task.account_id=event.account_id AND task.workspace_id=event.workspace_id
+                   AND task.id=event.task_id
+                 WHERE event.account_id=revision.account_id
+                   AND event.workspace_id=revision.workspace_id
+                   AND event.owner_id=revision.id AND task.lane='PROMPT'
+                   AND event.event_type='SETTLED'),0) AS prompt_settled_usd
            FROM project_revisions AS revision
            LEFT JOIN serverless_attempts AS attempt
              ON attempt.account_id = revision.account_id
@@ -5380,7 +5876,7 @@ async function projectDetail(
             AND ledger.attempt_id = attempt.id
           WHERE revision.account_id = $1 AND revision.workspace_id = $2
             AND revision.project_id = $3
-          GROUP BY revision.maximum_cost_micro_usd`,
+          GROUP BY revision.id, revision.maximum_cost_micro_usd`,
         [scope.account_id, scope.workspace_id, projectId],
       );
       const zeroWorkers = await transaction.query(
@@ -5417,7 +5913,9 @@ async function projectDetail(
       return {
         project: project.rows[0],
         attempts: attempts.rows,
+        voiceoverContext: voiceoverContext.rows[0] ?? null,
         generation: generation.rows[0] ?? null,
+        prompts: prompts.rows,
         queue: queue.rows[0] ?? null,
         runtime: runtime.rows[0] ?? null,
         serverlessAttempts: serverlessAttempts.rows,
@@ -5541,6 +6039,14 @@ async function projectDetail(
       (detail.generation as Record<string, unknown> | null)?.prompt_task_state,
       detail.generation !== null,
     );
+    const voiceoverContext = detail.voiceoverContext as Record<string, unknown> | null;
+    const contextState = String(voiceoverContext?.state ?? "WAITING");
+    const contextStageStatus =
+      contextState === "SUCCEEDED"
+        ? "COMPLETE"
+        : contextState === "DISPATCHING"
+          ? "RUNNING"
+          : contextState;
     const stages = [
       {
         id: "prepare",
@@ -5560,6 +6066,21 @@ async function projectDetail(
         started_at: timestampOrNull(asr?.submitted_at),
         completed_at: timestampOrNull(asr?.terminal_at),
         detail: "Your connected computer is converting the voiceover into timed speech.",
+        eta_ms: null,
+      },
+      {
+        id: "voiceover-context",
+        name: "Understand voiceover context",
+        status: contextStageStatus,
+        progress_percent: contextState === "SUCCEEDED" ? 100 : 0,
+        started_at: timestampOrNull(voiceoverContext?.started_at),
+        completed_at: timestampOrNull(voiceoverContext?.finished_at),
+        detail:
+          contextState === "SUCCEEDED"
+            ? "Compact whole-script facts are saved for scene planning and prompt relevance."
+            : contextState === "UNKNOWN"
+              ? "The provider result is uncertain and will not be dispatched again automatically."
+              : "The complete transcript is summarized once into bounded story context.",
         eta_ms: null,
       },
       {
@@ -5655,9 +6176,14 @@ async function projectDetail(
           numberOrNull(costRow.estimated_usd) ?? 0,
           numberOrNull(costRow.reserved_usd) ?? 0,
           numberOrNull(costRow.reported_usd) ?? 0,
-        ) + (numberOrNull(costRow.possible_duplicate_usd) ?? 0)
+        ) +
+        (numberOrNull(costRow.possible_duplicate_usd) ?? 0) +
+        (numberOrNull(costRow.prompt_reserved_usd) ?? 0) +
+        (numberOrNull(costRow.prompt_settled_usd) ?? 0)
       : 0;
-    const settledCost = costRow ? (numberOrNull(costRow.settled_usd) ?? 0) : 0;
+    const settledCost = costRow
+      ? (numberOrNull(costRow.settled_usd) ?? 0) + (numberOrNull(costRow.prompt_settled_usd) ?? 0)
+      : 0;
     const capCost = costRow
       ? (numberOrNull(costRow.maximum_cost_micro_usd) ?? 0) / 1_000_000
       : null;
@@ -5771,6 +6297,8 @@ async function projectDetail(
                     ? "READY_FOR_RENDER"
                     : gpuPendingState,
             },
+      prompts: detail.prompts,
+      voiceover_context: voiceoverContext,
       queue,
       stages,
       timing,
@@ -5779,7 +6307,12 @@ async function projectDetail(
         settled_usd: settledCost,
         cap_usd: capCost,
         billed_seconds: null,
-        provider: serverlessAttempts.length > 0 ? "runpod" : "personal-worker",
+        provider:
+          serverlessAttempts.length > 0
+            ? "runpod"
+            : voiceoverContext || detail.prompts.length > 0
+              ? "runware"
+              : "personal-worker",
       },
       scale_to_zero: scaleToZero,
       review: {
@@ -6005,6 +6538,12 @@ export async function handleHostedProductRequest(
   const render = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/render$/u.exec(url.pathname);
   if (request.method === "POST" && render)
     return renderHandoff(request, render[1]!, environment, config, executionContext);
+  const context = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/context$/u.exec(url.pathname);
+  if (request.method === "POST" && context)
+    return createVoiceoverContext(request, context[1]!, environment, config, executionContext);
+  const prompts = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/prompts$/u.exec(url.pathname);
+  if (request.method === "POST" && prompts)
+    return writeProjectPrompts(request, prompts[1]!, config, executionContext);
   const asr = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/asr$/u.exec(url.pathname);
   if (request.method === "POST" && asr)
     return asrHandoff(request, asr[1]!, config, executionContext);

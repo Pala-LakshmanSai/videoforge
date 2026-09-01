@@ -47,6 +47,7 @@ function scenes(count = 25) {
       Object.freeze({
         sceneId: `scene_${String(index + 1).padStart(3, "0")}`,
         phrase: `Literal narration phrase ${index + 1}`,
+        sentenceContext: `Literal narration phrase ${index + 1}.`,
         priorContext: index === 0 ? null : `Prior phrase ${index}`,
         nextContext: index + 1 === count ? null : `Next phrase ${index + 2}`,
         inImageShotRole: roles[index % roles.length],
@@ -70,6 +71,7 @@ function authority(overrides = {}) {
     styleProfileHash: hash("style"),
     styleState: "PUBLISHED",
     plannerGuidance: "Use literal observational documentary evidence.",
+    storyContext: "Compact literal documentary story context",
     style: {
       positiveSuffix: "authentic observational documentary photography",
       negativeSuffix: "illustration, CGI, visible text",

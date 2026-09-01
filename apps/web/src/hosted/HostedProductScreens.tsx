@@ -628,6 +628,27 @@ interface ProjectDetailResponse {
       | "READY_FOR_RENDER"
       | "FAILED";
   };
+  readonly prompts?: readonly {
+    readonly scene_ordinal: number | string;
+    readonly scene_id: string;
+    readonly narration: string;
+    readonly in_image_shot_role: string;
+    readonly timeline_composition: string;
+    readonly positive_prompt: string;
+    readonly negative_prompt: string;
+    readonly image_style_version_id: string;
+    readonly style_profile_hash: string;
+    readonly style_name: string;
+  }[];
+  readonly voiceover_context?: null | {
+    readonly state: "DISPATCHING" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
+    readonly transcript_hash: string;
+    readonly context_hash?: string | null;
+    readonly context_document?: Readonly<Record<string, unknown>> | null;
+    readonly reserved_cost_micro_usd: number | string;
+    readonly reported_cost_micro_usd?: number | string | null;
+    readonly problem_code?: string | null;
+  };
   readonly queue?: HostedQueueSnapshot | null;
   readonly stages?: readonly HostedStage[];
   readonly timing?: HostedTiming | null;
@@ -1266,6 +1287,7 @@ function unfinishedPresetDescription(
 const HUMAN_PIPELINE_STAGES = [
   "Prepare",
   "Transcribe",
+  "Understand context",
   "Plan",
   "Write image prompts",
   "Generate images",
@@ -1279,6 +1301,7 @@ function fallbackHostedStages(
   asr: HostedAttempt | undefined,
   render: HostedAttempt | undefined,
   generation: ProjectDetailResponse["generation"],
+  voiceoverContext: ProjectDetailResponse["voiceover_context"],
 ): readonly HostedStage[] {
   const asrStatus = asr?.state === "SUCCEEDED" ? "COMPLETE" : asr ? asr.state : "NOT_STARTED";
   const planStatus = generation
@@ -1295,15 +1318,19 @@ function fallbackHostedStages(
         ? "COMPLETE"
         : name === "Transcribe"
           ? asrStatus
-          : name === "Plan"
-            ? planStatus
-            : name === "Review"
-              ? render?.state === "SUCCEEDED"
-                ? "REVIEW_REQUIRED"
-                : "WAITING"
-              : name === "Technical check" || name === "Assemble"
-                ? renderStatus
-                : "NOT_REPORTED",
+          : name === "Understand context"
+            ? voiceoverContext?.state === "SUCCEEDED"
+              ? "COMPLETE"
+              : (voiceoverContext?.state ?? "WAITING")
+            : name === "Plan"
+              ? planStatus
+              : name === "Review"
+                ? render?.state === "SUCCEEDED"
+                  ? "REVIEW_REQUIRED"
+                  : "WAITING"
+                : name === "Technical check" || name === "Assemble"
+                  ? renderStatus
+                  : "NOT_REPORTED",
     detail: "Durable stage detail was not returned by the hosted service.",
   }));
 }
@@ -3179,13 +3206,43 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
+  const contextExtraction = useMutation({
+    mutationFn: (asrAttemptId: string) =>
+      readJson<{ state: "COMPLETE"; context_cost_usd?: number }>(
+        `/api/v2/hosted/projects/${projectId}/context`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            asr_attempt_id: asrAttemptId,
+            maximum_context_spend_micro_usd: 10_000,
+          }),
+        },
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
+  const promptWriting = useMutation({
+    mutationFn: () =>
+      readJson<{ state: "COMPLETE"; prompt_cost_usd?: number }>(
+        `/api/v2/hosted/projects/${projectId}/prompts`,
+        {
+          method: "POST",
+          body: JSON.stringify({ maximum_prompt_spend_micro_usd: 40_000 }),
+        },
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
   useEffect(() => {
-    if (asr?.state !== "SUCCEEDED" || render || renderHandoffAttempt.current === asr.id) {
+    if (
+      asr?.state !== "SUCCEEDED" ||
+      query.data?.voiceover_context?.state !== "SUCCEEDED" ||
+      render ||
+      renderHandoffAttempt.current === asr.id
+    ) {
       return;
     }
     renderHandoffAttempt.current = asr.id;
     renderHandoff.mutate(asr.id);
-  }, [asr?.id, asr?.state, render?.id, renderHandoff]);
+  }, [asr?.id, asr?.state, query.data?.voiceover_context?.state, render?.id, renderHandoff]);
   const cancel = useMutation({
     mutationFn: (attemptId: string) =>
       readJson(`/api/v2/cpu-attempts/${attemptId}`, { method: "POST", body: "{}" }),
@@ -3215,9 +3272,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     );
   const stages = query.data.stages?.length
     ? query.data.stages
-    : fallbackHostedStages(asr, render, query.data.generation);
+    : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context);
   const uiStages = hostedProjectStages(stages);
   const promptStage = uiStages.find((stage) => stage.id === "prompt-writing");
+  const contextStage = uiStages.find((stage) => stage.id === "voiceover-context");
+  const contextComplete = query.data.voiceover_context?.state === "SUCCEEDED";
   const timing = query.data.timing;
   const cost = query.data.cost;
   const queue = query.data.queue;
@@ -3404,6 +3463,44 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </Panel>
         </div>
       </div>
+      {query.data.voiceover_context?.state === "SUCCEEDED" ? (
+        <Panel eyebrow="Context" heading="Whole-voiceover understanding">
+          <p className="helper">
+            Saved once from the complete transcript, then reused with each exact scene and its
+            neighboring narration. This keeps prompt input bounded while preserving story context.
+          </p>
+          <details className="notice">
+            <summary>Inspect saved context</summary>
+            <pre>{JSON.stringify(query.data.voiceover_context.context_document, null, 2)}</pre>
+          </details>
+        </Panel>
+      ) : null}
+      {(query.data.prompts?.length ?? 0) > 0 ? (
+        <Panel eyebrow="Prompts" heading="Voiceover-to-image plan">
+          <p className="helper">
+            Each accepted prompt is bound to its exact narration scene and immutable image style.
+          </p>
+          <div className="stack">
+            {query.data.prompts?.map((prompt) => (
+              <details className="notice" key={prompt.scene_id}>
+                <summary>
+                  Scene {Number(prompt.scene_ordinal) + 1} · {prompt.in_image_shot_role}
+                </summary>
+                <p>
+                  <strong>Voiceover:</strong> {prompt.narration}
+                </p>
+                <p>
+                  <strong>Image prompt:</strong> {prompt.positive_prompt}
+                </p>
+                <p>
+                  <strong>Avoid:</strong> {prompt.negative_prompt}
+                </p>
+                <p className="helper">Style: {prompt.style_name} · immutable published version</p>
+              </details>
+            ))}
+          </div>
+        </Panel>
+      ) : null}
       {!asr ? (
         <div className="notice" role="status">
           <strong>Your project is ready to start transcription.</strong>
@@ -3426,7 +3523,38 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </Button>
         </div>
       ) : null}
-      {asr?.state === "SUCCEEDED" && !render ? (
+      {asr?.state === "SUCCEEDED" && !contextComplete ? (
+        <div className="notice" role="status">
+          <strong>Transcription complete; whole-voiceover context is ready to extract.</strong>
+          <span>
+            DeepSeek reads the complete transcript once and saves only compact story facts. Maximum
+            charge: $0.01 within your project limit. This is a single dispatch and will not repeat
+            automatically after an uncertain provider result.
+          </span>
+          {contextExtraction.isError ? <span>{contextExtraction.error.message}</span> : null}
+          {contextStage?.status === "FAILED" ||
+          query.data.voiceover_context?.state === "UNKNOWN" ? (
+            <span>The durable claim needs review before another provider request can be made.</span>
+          ) : (
+            <Button
+              variant="primary"
+              busy={
+                contextExtraction.isPending ||
+                contextStage?.status === "RUNNING" ||
+                query.data.voiceover_context?.state === "DISPATCHING"
+              }
+              disabled={
+                contextStage?.status === "RUNNING" ||
+                query.data.voiceover_context?.state === "DISPATCHING"
+              }
+              onClick={() => contextExtraction.mutate(asr.id)}
+            >
+              Extract voiceover context
+            </Button>
+          )}
+        </div>
+      ) : null}
+      {asr?.state === "SUCCEEDED" && contextComplete && !render ? (
         <div className="notice" role="status">
           <strong>
             {renderHandoff.isError
@@ -3449,6 +3577,24 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 onClick={() => renderHandoff.mutate(asr.id)}
               >
                 <RefreshCw size={15} /> Retry planning
+              </Button>
+            </>
+          ) : null}
+          {!renderHandoff.isError && query.data.generation && promptStage?.status !== "COMPLETE" ? (
+            <>
+              <span>
+                DeepSeek writes and validates the scene prompts. Maximum prompt-writing charge:
+                $0.04 within your project limit. This request is single-dispatch and will not repeat
+                automatically after an uncertain provider result.
+              </span>
+              {promptWriting.isError ? <span>{promptWriting.error.message}</span> : null}
+              <Button
+                variant="primary"
+                busy={promptWriting.isPending}
+                disabled={promptStage?.status === "FAILED"}
+                onClick={() => promptWriting.mutate()}
+              >
+                Write image prompts
               </Button>
             </>
           ) : null}

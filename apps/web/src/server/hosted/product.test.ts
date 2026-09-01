@@ -703,8 +703,30 @@ describe("hosted product route contract", () => {
     expect(promptStage).toContain("status: promptStage.status");
     expect(promptStage).toContain("progress_percent: promptStage.progressPercent");
     expect(promptStage).not.toContain('detail.generation ? "COMPLETE"');
-    expect(source).toContain("FILTER (WHERE task.lane = 'PROMPT')");
+    expect(source).toContain("task.task_key LIKE 'prompt:scene-batch:%'");
     expect(source).toContain("no durable accepted image prompts have been written yet");
+  });
+
+  it("claims and bounds whole-voiceover context before planning or provider dispatch", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("async function createVoiceoverContext(");
+    const end = source.indexOf("async function renderHandoff(", start);
+    const block = source.slice(start, end);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    expect(block).toContain("maximum_context_spend_micro_usd");
+    expect(block).toContain("HOSTED_CONTEXT_RESERVATION_MICRO_USD");
+    expect(block.indexOf("videoforge_prepare_hosted_voiceover_context")).toBeLessThan(
+      block.indexOf("extractHostedVoiceoverContext"),
+    );
+    expect(block).toContain("output_asset_id: crypto.randomUUID()");
+    expect(block).toContain('"UNKNOWN", problemCode, true');
+    const planning = source.slice(
+      source.indexOf("async function renderHandoff("),
+      source.indexOf("async function writeProjectPrompts("),
+    );
+    expect(planning).toContain('state.context_state !== "SUCCEEDED"');
+    expect(source).toContain("/context$/u.exec(url.pathname)");
   });
 
   it("rechecks and locks active preset parents before hosted preset mutations", () => {

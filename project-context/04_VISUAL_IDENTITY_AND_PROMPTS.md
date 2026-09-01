@@ -19,6 +19,29 @@ The Image Styles Hub lifecycle, schema, UI, privacy, and versioning are owned by
 
 ## Prompt-planning boundary
 
+### Post-transcription story context
+
+After transcription and before scene planning, Runware DeepSeek V4 Flash receives the complete
+ordered voiceover exactly once and returns one compact structured story-context document. It may
+contain only transcript-supported topic, people, places, era/time, recurring objects, processes,
+cause/effect, chronology, continuity facts, and resolved pronoun/callback references. Persist and
+hash this document. Do not infer visual style, camera direction, graphics, branding, or facts absent
+from the transcript.
+
+The prompt-writing request does not resend the complete transcript. It sends the compact bounded
+story context once per 25–50-scene batch, where it is available while writing every scene. Each scene
+item sends the exact timed fragment, its complete containing sentence, the previous complete
+sentence, the next complete sentence, and the deterministic shot role/layout. Sentence windows are
+derived deterministically from the ordered transcript and capped; arbitrary adjacent scene chunks
+must not stand in for sentence context. Precedence is exact fragment, containing sentence, adjacent
+complete sentences, global story context, then soft style traits.
+
+Token and cost bounds are part of acceptance: one context extraction with a 1,600-token output
+ceiling and a $0.01 reservation, followed by one prompt batch with an 8,000-token output ceiling and
+a $0.04 reservation including at most one unresolved-item retry. Do not duplicate the same global
+context inside every scene item. Prompt cores stay concise and concrete; trusted code adds crop,
+style, optional keywords, and permanent guardrails exactly once.
+
 Runware DeepSeek V4 Flash 0731 writes scene-content prompts only. Code already knows:
 
 - The sanitized project title as global topic context.

@@ -1224,7 +1224,7 @@ export async function handleHostedRequest(
       orchestration: "CLOUDFLARE_WORKFLOW_REQUIRED",
       cpu_jobs: "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED",
       supported_worker_platforms: ["WINDOWS", "MACOS"],
-      provider_cpu_spend: "$0",
+      provider_cpu_billing: "PROJECT_LEDGER_ENFORCED",
       authentication: ["GOOGLE"],
     });
   }

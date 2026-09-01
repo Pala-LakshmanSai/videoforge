@@ -13,7 +13,7 @@ import {
 
 const promptRequest = (hashCharacter = "a"): RunwarePromptTransportRequest =>
   ({
-    requestVersion: "runware-deepseek-prompt-request-v1",
+    requestVersion: "runware-deepseek-prompt-request-v2",
     attemptIndex: 1,
     requestedSceneIds: ["scene_001"],
     request: { taskUUID: "11111111-1111-8111-8111-111111111111" },

@@ -20,14 +20,20 @@ import type {
 
 export const RUNWARE_DEEPSEEK_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-prompt-request-v1" as const;
+  "runware-deepseek-prompt-request-v2" as const;
+export const RUNWARE_DEEPSEEK_MAX_OUTPUT_TOKENS = 8_000 as const;
+export const RUNWARE_DEEPSEEK_OUTPUT_TOKENS_PER_SCENE = 150 as const;
 
 export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Write concise literal still-image scene cores for VideoForge.",
   "Return every requested scene ID exactly once and echo its in-image shot role unchanged.",
   "Copy each required_literal_anchor verbatim into that scene's prompt_core.",
   "Use adjacent context only to disambiguate; it may never override the exact phrase.",
+  "Use the compact story context to resolve people, places, pronouns, callbacks, era, and continuity; it may never override the exact phrase or containing sentence.",
+  "Choose concrete visible evidence of the exact phrase, never a generic mood image merely related to the overall topic.",
   "Use planner guidance as visual treatment, never as subject matter.",
+  "Keep each prompt_core under 600 characters: one concrete, descriptive still-image sentence with only details that improve literal relevance.",
+  "Do not pad, editorialize, or repeat subject, action, environment, lighting, or continuity details inside prompt_core.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, captions, titles, logos, watermarks, UI, graphics, diagrams, borders, branded products, motion graphics, or decorative transitions.",
   "Never choose duration, layout, shot role, avatar placement, model, GPU, retry, or fallback.",
@@ -59,7 +65,7 @@ export interface RunwareDeepSeekApiRequest {
     readonly thinkingLevel: "off";
     readonly temperature: 0.2;
     readonly topP: 0.9;
-    readonly maxTokens: 8_000;
+    readonly maxTokens: number;
   };
   readonly messages: readonly [
     {
@@ -212,9 +218,9 @@ const responseSchema = (
           ],
           properties: {
             scene_id: { type: "string", enum: scenes.map((scene) => scene.sceneId) },
-            literal_subject: { type: "string", minLength: 1, maxLength: 600 },
-            action: { type: "string", minLength: 1, maxLength: 600 },
-            environment: { type: "string", minLength: 1, maxLength: 600 },
+            literal_subject: { type: "string", minLength: 1, maxLength: 240 },
+            action: { type: "string", minLength: 1, maxLength: 240 },
+            environment: { type: "string", minLength: 1, maxLength: 240 },
             in_image_shot_role: {
               type: "string",
               enum: [
@@ -226,14 +232,14 @@ const responseSchema = (
                 "REACTION_RESULT",
               ],
             },
-            lighting_context: { type: "string", minLength: 1, maxLength: 300 },
+            lighting_context: { type: "string", minLength: 1, maxLength: 120 },
             continuity_tags: {
               type: "array",
-              maxItems: 40,
+              maxItems: 12,
               uniqueItems: true,
               items: { type: "string", minLength: 1, maxLength: 80 },
             },
-            prompt_core: { type: "string", minLength: 1, maxLength: 1_200 },
+            prompt_core: { type: "string", minLength: 1, maxLength: 600 },
           },
         },
       },
@@ -278,10 +284,13 @@ export function buildRunwareDeepSeekPromptRequest(
     image_style_version_id: batch.imageStyleVersionId,
     style_profile_hash: batch.styleProfileHash,
     planner_guidance: batch.plannerGuidance,
+    story_context: batch.storyContext,
     continuity_tags: batch.continuityTags,
     scenes: scenes.map((scene) => ({
       scene_id: scene.sceneId,
       exact_phrase: scene.phrase,
+      exact_phrase_sha256: hash(scene.phrase),
+      containing_sentence: scene.sentenceContext,
       required_literal_anchor: literalAnchor(scene.phrase),
       prior_context: scene.priorContext,
       next_context: scene.nextContext,
@@ -315,7 +324,10 @@ export function buildRunwareDeepSeekPromptRequest(
       thinkingLevel: "off",
       temperature: 0.2,
       topP: 0.9,
-      maxTokens: 8_000,
+      maxTokens: Math.min(
+        RUNWARE_DEEPSEEK_MAX_OUTPUT_TOKENS,
+        Math.max(512, scenes.length * RUNWARE_DEEPSEEK_OUTPUT_TOKENS_PER_SCENE),
+      ),
     }),
     messages: Object.freeze([
       Object.freeze({ role: "user", content: canonicalizeJson(payload) }),

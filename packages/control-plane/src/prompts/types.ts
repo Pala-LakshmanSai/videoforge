@@ -36,6 +36,7 @@ export interface PromptExecutionAuthority {
   readonly styleProfileHash: Sha256Digest;
   readonly styleState: "PUBLISHED" | "STALE";
   readonly plannerGuidance: string;
+  readonly storyContext: string;
   readonly style: PromptStyleComponents;
   readonly extraPromptKeywords: string | null;
   readonly applyExtraPromptKeywords: boolean;
@@ -75,7 +76,7 @@ export interface DurablePromptWriterResult {
 }
 
 export interface DurablePromptWriterPort {
-  readonly operation: "fixture.write" | "qualified_fake.write";
+  readonly operation: "fixture.write" | "qualified_fake.write" | "runware.write";
   write(batch: import("@videoforge/pipeline").PromptBatch): Promise<DurablePromptWriterResult>;
 }
 

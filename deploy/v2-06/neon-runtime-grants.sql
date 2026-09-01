@@ -88,6 +88,23 @@ GRANT EXECUTE ON FUNCTION public.videoforge_append_hosted_canonical_timing(
   uuid, uuid, uuid, uuid, uuid, uuid, jsonb
 )
 TO :"runtime_role";
+-- Migration 0056 first extracts one cost-capped story context, then writes one cost-capped prompt
+-- batch. Runtime gets only the exact lifecycle functions, no direct DML, and cannot blind-retry an
+-- ambiguous provider result.
+GRANT EXECUTE ON FUNCTION public.videoforge_prepare_hosted_voiceover_context(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_complete_hosted_voiceover_context(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_fail_hosted_voiceover_context(uuid,text,text,boolean)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_prompt_plan(uuid,uuid,uuid,uuid)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_prepare_hosted_prompt_run(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_complete_hosted_prompt_run(jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_fail_hosted_prompt_run(uuid,text,text,boolean)
+TO :"runtime_role";
 -- Migration 0040's direct claim stays owner-only. Runtime access would allow an approval to be
 -- consumed outside the atomic 0042 pair and is therefore intentionally absent.
 -- Migration 0041 atomically appends the exact provider-inert two-lane batches. Qualification,

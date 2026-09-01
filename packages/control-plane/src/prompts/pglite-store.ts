@@ -236,6 +236,7 @@ async function loadAuthority(
       Object.freeze({
         sceneId: text(segment.segment_key, "timeline_segments.segment_key"),
         phrase: text(segment.narration, "timeline_segments.narration"),
+        sentenceContext: text(segment.narration, "timeline_segments.narration"),
         priorContext:
           index === 0 ? null : text(allSegments[index - 1]!.narration, "prior narration"),
         nextContext:
@@ -268,6 +269,9 @@ async function loadAuthority(
         ? "PUBLISHED"
         : "STALE",
     plannerGuidance: profile.plannerGuidance,
+    storyContext: JSON.stringify({
+      summary: "Fixture story context derived from the ordered transcript.",
+    }),
     style: Object.freeze({
       positiveSuffix: profile.positiveSuffix,
       negativeSuffix: profile.negativeSuffix,

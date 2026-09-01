@@ -28,6 +28,7 @@ const scenes = Array.from({ length: 25 }, (_, index) => {
   return {
     sceneId: `scene_${ordinal}`,
     phrase: `A craftsperson carefully inspects wooden part ${ordinal} on a clean workshop bench.`,
+    sentenceContext: `A craftsperson carefully inspects wooden part ${ordinal} on a clean workshop bench.`,
     priorContext: index === 0 ? null : "The workshop inspection continues.",
     nextContext: index === 24 ? null : "The next wooden part is inspected.",
     inImageShotRole: index % 2 === 0 ? ("HANDS_ACTION" as const) : ("OBJECT_EVIDENCE" as const),
@@ -40,6 +41,7 @@ const batch = buildPromptBatch({
   imageStyleVersionId: "documentary_stock_v1",
   styleProfileHash: `sha256:${"1".repeat(64)}`,
   plannerGuidance: "Literal documentary stock photography, natural light, realistic materials.",
+  storyContext: JSON.stringify({ summary: "A craftsperson inspects wooden parts in one workshop." }),
   continuityTags: ["same clean workshop", "same craftsperson"],
   scenes,
 });

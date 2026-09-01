@@ -15,6 +15,7 @@ export type ImagePromptLayout = "IMAGE_FULL" | "SPLIT_RIGHT_IMAGE";
 export interface PromptSceneInput {
   readonly sceneId: string;
   readonly phrase: string;
+  readonly sentenceContext: string;
   readonly priorContext: string | null;
   readonly nextContext: string | null;
   readonly inImageShotRole: InImageShotRole;
@@ -27,6 +28,7 @@ export interface PromptBatchInput {
   readonly imageStyleVersionId: string;
   readonly styleProfileHash: Sha256Digest;
   readonly plannerGuidance: string;
+  readonly storyContext: string;
   readonly continuityTags: readonly string[];
   readonly scenes: readonly PromptSceneInput[];
 }
@@ -58,6 +60,7 @@ export interface PromptBatch {
   readonly imageStyleVersionId: string;
   readonly styleProfileHash: Sha256Digest;
   readonly plannerGuidance: string;
+  readonly storyContext: string;
   readonly continuityTags: readonly string[];
   readonly scenes: readonly PromptSceneInput[];
 }

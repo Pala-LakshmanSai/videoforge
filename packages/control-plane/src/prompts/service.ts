@@ -86,6 +86,7 @@ const inputDocument = (authority: PromptExecutionAuthority): unknown => ({
   image_style_version_id: authority.imageStyleVersionId,
   style_profile_hash: authority.styleProfileHash,
   planner_guidance: authority.plannerGuidance,
+  story_context: authority.storyContext,
   style: authority.style,
   extra_prompt_keywords: authority.extraPromptKeywords,
   apply_extra_prompt_keywords: authority.applyExtraPromptKeywords,
@@ -151,6 +152,7 @@ const buildBatch = (authority: PromptExecutionAuthority): PromptBatch =>
     imageStyleVersionId: authority.imageStyleVersionId,
     styleProfileHash: authority.styleProfileHash,
     plannerGuidance: authority.plannerGuidance,
+    storyContext: authority.storyContext,
     continuityTags: authority.continuityTags,
     scenes: authority.scenes,
   });

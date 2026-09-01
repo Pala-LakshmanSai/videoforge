@@ -32,6 +32,7 @@ const compiled = compileImagePrompt({
   expectedScene: {
     sceneId: "scene_001",
     phrase: "Families loaded groceries.",
+    sentenceContext: "Families loaded groceries.",
     priorContext: null,
     nextContext: null,
     inImageShotRole: "ENVIRONMENTAL_WIDE",

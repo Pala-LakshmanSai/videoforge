@@ -127,8 +127,18 @@ function normalizeExtra(raw: string | null, enabled: boolean): string | null {
   return value;
 }
 
-const join = (parts: readonly (string | null)[]): string =>
-  parts.filter((part): part is string => part !== null && part.length > 0).join(", ");
+const join = (parts: readonly (string | null)[]): string => {
+  const seen = new Set<string>();
+  return parts
+    .filter((part): part is string => part !== null && part.length > 0)
+    .filter((part) => {
+      const key = part.toLocaleLowerCase("en-US");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .join(", ");
+};
 
 export function compileImagePrompt(request: CompilePromptRequest): CompiledImagePrompt {
   const output = request.writerOutput;
@@ -143,11 +153,11 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
   const style = validatePromptStyleComponents(request.style);
   const extra = normalizeExtra(request.extraPromptKeywords, request.applyExtraPromptKeywords);
   const literalContent = join([
-    normalize(output.literal_subject, 600, "Literal subject", ["writerOutput", "literal_subject"]),
-    normalize(output.action, 600, "Action", ["writerOutput", "action"]),
-    normalize(output.environment, 600, "Environment", ["writerOutput", "environment"]),
-    normalize(output.lighting_context, 300, "Lighting", ["writerOutput", "lighting_context"]),
-    normalize(output.prompt_core, 1_200, "Prompt core", ["writerOutput", "prompt_core"]),
+    normalize(output.literal_subject, 240, "Literal subject", ["writerOutput", "literal_subject"]),
+    normalize(output.action, 240, "Action", ["writerOutput", "action"]),
+    normalize(output.environment, 240, "Environment", ["writerOutput", "environment"]),
+    normalize(output.lighting_context, 120, "Lighting", ["writerOutput", "lighting_context"]),
+    normalize(output.prompt_core, 600, "Prompt core", ["writerOutput", "prompt_core"]),
   ]);
   assertNoHardPromptConflict(literalContent, ["writerOutput"]);
   const continuityAndShotRole = join([
@@ -180,6 +190,10 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     components.styleNegativeSuffix,
     components.permanentNegativeGuardrail,
   ]);
+  if (positivePrompt.length > 6_500 || negativePrompt.length > 3_000)
+    fail("PROMPT_INPUT_INVALID", "Compiled prompt exceeds the bounded image-model prompt budget.", [
+      "writerOutput",
+    ]);
   return Object.freeze({
     promptCompilerVersion: "prompt-compiler-v1",
     scenePromptWriterVersion: "scene-prompt-writer-v1",

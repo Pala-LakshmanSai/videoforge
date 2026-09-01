@@ -12,6 +12,8 @@ import {
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
+export const MAX_PROMPT_STORY_CONTEXT_CHARS = 6_000 as const;
+export const MAX_PROMPT_LOCAL_CONTEXT_CHARS = 80_000 as const;
 const stripControls = (value: string): string =>
   Array.from(value, (character) => {
     const codePoint = character.codePointAt(0)!;
@@ -94,7 +96,12 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
       fail("PROMPT_INPUT_INVALID", "Image layout is invalid.", ["scenes", index, "layout"]);
     return Object.freeze({
       sceneId: scene.sceneId,
-      phrase: normalized(scene.phrase, 4_000, "Scene phrase", ["scenes", index, "phrase"]),
+      phrase: normalized(scene.phrase, 1_000, "Scene phrase", ["scenes", index, "phrase"]),
+      sentenceContext: normalized(scene.sentenceContext, 2_000, "Containing sentence", [
+        "scenes",
+        index,
+        "sentenceContext",
+      ]),
       priorContext:
         scene.priorContext === null
           ? null
@@ -111,6 +118,21 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
       layout: scene.layout,
     });
   });
+  const localContextCharacters = scenes.reduce(
+    (total, scene) =>
+      total +
+      scene.phrase.length +
+      scene.sentenceContext.length +
+      (scene.priorContext?.length ?? 0) +
+      (scene.nextContext?.length ?? 0),
+    0,
+  );
+  if (localContextCharacters > MAX_PROMPT_LOCAL_CONTEXT_CHARS)
+    fail(
+      "PROMPT_INPUT_INVALID",
+      `Combined scene context must contain at most ${MAX_PROMPT_LOCAL_CONTEXT_CHARS} characters.`,
+      ["scenes"],
+    );
 
   const tags = input.continuityTags.map((tag, index) =>
     normalized(tag, 80, "Continuity tag", ["continuityTags", index]),
@@ -129,6 +151,12 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
     plannerGuidance: normalized(input.plannerGuidance, 2_000, "Planner guidance", [
       "plannerGuidance",
     ]),
+    storyContext: normalized(
+      input.storyContext,
+      MAX_PROMPT_STORY_CONTEXT_CHARS,
+      "Story context",
+      ["storyContext"],
+    ),
     continuityTags: Object.freeze(tags),
     scenes: Object.freeze(scenes),
   });
@@ -220,7 +248,7 @@ export function validatePromptWriterOutput(
         index,
         "in_image_shot_role",
       ]);
-    if (!Array.isArray(scene.continuity_tags) || scene.continuity_tags.length > 40)
+    if (!Array.isArray(scene.continuity_tags) || scene.continuity_tags.length > 12)
       return fail("PROMPT_OUTPUT_INVALID", "Continuity tags are invalid.", [
         "scenes",
         index,
@@ -249,13 +277,13 @@ export function validatePromptWriterOutput(
       ]);
     return Object.freeze({
       scene_id: sceneId,
-      literal_subject: readString(scene, "literal_subject", 600, ["scenes", index]),
-      action: readString(scene, "action", 600, ["scenes", index]),
-      environment: readString(scene, "environment", 600, ["scenes", index]),
+      literal_subject: readString(scene, "literal_subject", 240, ["scenes", index]),
+      action: readString(scene, "action", 240, ["scenes", index]),
+      environment: readString(scene, "environment", 240, ["scenes", index]),
       in_image_shot_role: expectedScene.inImageShotRole,
-      lighting_context: readString(scene, "lighting_context", 300, ["scenes", index]),
+      lighting_context: readString(scene, "lighting_context", 120, ["scenes", index]),
       continuity_tags: Object.freeze(continuityTags),
-      prompt_core: readString(scene, "prompt_core", 1_200, ["scenes", index]),
+      prompt_core: readString(scene, "prompt_core", 600, ["scenes", index]),
     });
   });
   if (scenes.length !== expected.size || seen.size !== expected.size)

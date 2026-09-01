@@ -330,6 +330,12 @@
       "name": "deferred_accepted_result_validation_privilege",
       "filename": "0055_deferred_accepted_result_validation_privilege.sql",
       "sha256": "sha256:636a02026d2a529d4eeb319d09759816ac87681a7e7baf227c0b6c549c3b9b2d"
+    },
+    {
+      "version": 56,
+      "name": "hosted_prompt_execution",
+      "filename": "0056_hosted_prompt_execution.sql",
+      "sha256": "sha256:12794e13d9866dc7348995977e08ed0e63abe4cfa52a39190eeb4740772a9b45"
     }
   ]
 }

@@ -1220,6 +1220,60 @@ describe("hosted product journey", () => {
     );
   });
 
+  it("requires an explicit bounded context action before generation planning", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const asrId = "33333333-3333-4333-8333-333333333333";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-08-17T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [
+        {
+          id: asrId,
+          kind: "ASR" as const,
+          state: "SUCCEEDED",
+          version: 3,
+          created_at: "2026-08-17T10:00:00.000Z",
+          updated_at: "2026-08-17T10:01:00.000Z",
+          terminal_at: "2026-08-17T10:01:00.000Z",
+          output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+          approved_at: null,
+          preview_url: null,
+        },
+      ],
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
+      gpu_readiness: gpuReadiness,
+      generation: null,
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith(`/projects/${projectId}/context`)) {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({
+            asr_attempt_id: asrId,
+            maximum_context_spend_micro_usd: 10_000,
+          }),
+        });
+        return Response.json({ state: "COMPLETE", context_cost_usd: 0.001 });
+      }
+      return Response.json(detail);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(await screen.findByText(/Maximum charge: \$0\.01/u)).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render"))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Extract voiceover context" }));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith(`/context`))).toBe(true),
+    );
+  });
+
   it("fails closed when ASR succeeds without an exact render plan", async () => {
     const detail = {
       project: {
@@ -1245,6 +1299,14 @@ describe("hosted product journey", () => {
       ],
       gpu_transport: "DISABLED_UNQUALIFIED" as const,
       gpu_readiness: gpuReadiness,
+      voiceover_context: {
+        state: "SUCCEEDED" as const,
+        transcript_hash: `sha256:${"b".repeat(64)}`,
+        context_hash: `sha256:${"c".repeat(64)}`,
+        context_document: { primary_topic: "Private project" },
+        reserved_cost_micro_usd: 10_000,
+        reported_cost_micro_usd: 1_000,
+      },
       generation: null,
     };
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -1311,6 +1373,14 @@ describe("hosted product journey", () => {
       ],
       gpu_transport: "DISABLED_UNQUALIFIED" as const,
       gpu_readiness: gpuReadiness,
+      voiceover_context: {
+        state: "SUCCEEDED" as const,
+        transcript_hash: `sha256:${"b".repeat(64)}`,
+        context_hash: `sha256:${"c".repeat(64)}`,
+        context_document: { primary_topic: "Private project" },
+        reserved_cost_micro_usd: 10_000,
+        reported_cost_micro_usd: 1_000,
+      },
       generation: planned
         ? {
             id: "55555555-5555-4555-8555-555555555555",

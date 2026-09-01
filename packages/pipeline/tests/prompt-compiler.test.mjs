@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   DeterministicFixturePromptWriter,
   IN_IMAGE_SHOT_ROLES,
+  MAX_PROMPT_LOCAL_CONTEXT_CHARS,
+  MAX_PROMPT_STORY_CONTEXT_CHARS,
   PipelineDomainError,
   buildPromptBatch,
   compileImagePrompt,
@@ -18,6 +20,7 @@ function scenes(count) {
   return Array.from({ length: count }, (_, index) => ({
     sceneId: `scene_${String(index + 1).padStart(3, "0")}`,
     phrase: `Hands demonstrate irrigation valve step ${index + 1}`,
+    sentenceContext: `Hands demonstrate irrigation valve step ${index + 1}.`,
     priorContext: index === 0 ? null : `Prior step ${index}`,
     nextContext: index + 1 === count ? null : `Next step ${index + 2}`,
     inImageShotRole: IN_IMAGE_SHOT_ROLES[index % IN_IMAGE_SHOT_ROLES.length],
@@ -32,6 +35,7 @@ function batch(count = 40) {
     imageStyleVersionId: "style_version_1",
     styleProfileHash: digest,
     plannerGuidance: "Natural documentary treatment",
+    storyContext: "Compact irrigation story context",
     continuityTags: ["same_farmer", "dry_season"],
     scenes: scenes(count),
   });
@@ -90,6 +94,25 @@ test("batch validation rejects underflow, overflow, duplicate IDs, invalid roles
   blank[0] = { ...blank[0], phrase: "\u0000\t" };
   expectCode("PROMPT_INPUT_INVALID", () =>
     buildPromptBatch({ ...batch(25), projectTitle: "Title", scenes: blank }),
+  );
+});
+
+test("batch bounds compact global context once and caps aggregate local context", () => {
+  assert.equal(batch(25).storyContext, "Compact irrigation story context");
+  expectCode("PROMPT_INPUT_INVALID", () =>
+    buildPromptBatch({
+      ...batch(25),
+      projectTitle: "Title",
+      storyContext: "x".repeat(MAX_PROMPT_STORY_CONTEXT_CHARS + 1),
+    }),
+  );
+  const verbose = scenes(50).map((scene) => ({
+    ...scene,
+    sentenceContext: "s".repeat(2_000),
+  }));
+  assert.ok(verbose.length * 2_000 > MAX_PROMPT_LOCAL_CONTEXT_CHARS);
+  expectCode("PROMPT_INPUT_INVALID", () =>
+    buildPromptBatch({ ...batch(50), projectTitle: "Title", scenes: verbose }),
   );
 });
 
@@ -227,6 +250,31 @@ test("enabled extras normalize once, support negative refinements, and count Uni
     compiled.positivePromptUtf8Bytes,
     Buffer.byteLength(compiled.positivePrompt, "utf8"),
   );
+});
+
+test("compiler caps verbose outputs and removes exact duplicate prompt components", () => {
+  const input = batch(25);
+  const repeated = "Farmer opens an irrigation valve";
+  const compiled = compileImagePrompt({
+    writerOutput: {
+      scene_id: input.scenes[0].sceneId,
+      literal_subject: repeated,
+      action: repeated,
+      environment: repeated,
+      in_image_shot_role: input.scenes[0].inImageShotRole,
+      lighting_context: repeated,
+      continuity_tags: [],
+      prompt_core: repeated,
+    },
+    expectedScene: input.scenes[0],
+    style: style(),
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  assert.equal(compiled.components.literalContent, repeated);
+  assert.equal(compiled.positivePrompt.match(/Farmer opens an irrigation valve/gu)?.length, 1);
+  assert.ok(compiled.positivePrompt.length <= 6_500);
+  assert.ok(compiled.negativePrompt.length <= 3_000);
 });
 
 test("compiler rejects enabled blank, oversized, control-only, forbidden extras, and conflicting style clauses", async () => {

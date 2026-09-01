@@ -175,6 +175,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "workflow_instances",
   "workflow_events",
   "outbox",
+  "hosted_voiceover_contexts",
+  "hosted_prompt_runs",
   "prompt_executions",
   "prompt_writer_attempts",
   "prompt_scene_results",

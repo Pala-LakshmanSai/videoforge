@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import {
   IN_IMAGE_SHOT_ROLES,
   PipelineDomainError,
+  RUNWARE_DEEPSEEK_MAX_OUTPUT_TOKENS,
+  RUNWARE_DEEPSEEK_OUTPUT_TOKENS_PER_SCENE,
   RUNWARE_DEEPSEEK_PROMPT_MODEL,
+  RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION,
   RunwareDeepSeekPromptWriter,
   buildPromptBatch,
 } from "../dist/src/index.js";
@@ -26,10 +30,12 @@ function makeBatch(count = 25, styleIndex = 0) {
     imageStyleVersionId: `style_version_${styleIndex + 1}`,
     styleProfileHash: `sha256:${hashCharacter.repeat(64)}`,
     plannerGuidance: styleGuidance[styleIndex],
+    storyContext: `Compact story context for style ${styleIndex}`,
     continuityTags: ["same_farmer", "dry_season"],
     scenes: Array.from({ length: count }, (_, index) => ({
       sceneId: `scene_${String(index + 1).padStart(3, "0")}`,
       phrase: `Hands demonstrate irrigation valve step ${index + 1}`,
+      sentenceContext: `Hands demonstrate irrigation valve step ${index + 1}.`,
       priorContext: index === 0 ? null : `Prior step ${index}`,
       nextContext: index + 1 === count ? null : `Next step ${index + 2}`,
       inImageShotRole: IN_IMAGE_SHOT_ROLES[index % IN_IMAGE_SHOT_ROLES.length],
@@ -127,17 +133,74 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
     );
     assert.equal(request.request.settings.thinkingLevel, "off");
+    assert.equal(request.requestVersion, RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION);
+    assert.equal(
+      request.request.settings.maxTokens,
+      Math.min(
+        RUNWARE_DEEPSEEK_MAX_OUTPUT_TOKENS,
+        count * RUNWARE_DEEPSEEK_OUTPUT_TOKENS_PER_SCENE,
+      ),
+    );
     assert.equal(request.request.jsonSchema.strict, true);
     assert.equal(request.request.jsonSchema.schema.properties.scenes.minItems, count);
     assert.equal(request.request.jsonSchema.schema.properties.scenes.maxItems, count);
     assert.equal(request.requestSha256, second.transport.requests[0].requestSha256);
     assert.equal(request.requestBytes, second.transport.requests[0].requestBytes);
     assert.equal(payload(request).planner_guidance, styleGuidance[styleIndex]);
+    assert.equal(payload(request).story_context, `Compact story context for style ${styleIndex}`);
+    assert.equal(
+      request.request.messages[0].content.match(
+        new RegExp(`Compact story context for style ${styleIndex}`, "gu"),
+      )?.length,
+      1,
+    );
+    assert.equal(Object.hasOwn(payload(request).scenes[0], "story_context"), false);
+    assert.deepEqual(
+      Object.keys(payload(request).scenes[1]).sort(),
+      [
+        "containing_sentence",
+        "exact_phrase",
+        "exact_phrase_sha256",
+        "fixed_layout",
+        "in_image_shot_role",
+        "next_context",
+        "prior_context",
+        "required_literal_anchor",
+        "scene_id",
+      ].sort(),
+    );
+    assert.equal(payload(request).scenes[1].containing_sentence, "Hands demonstrate irrigation valve step 2.");
+    assert.equal(payload(request).scenes[1].prior_context, "Prior step 1");
+    assert.equal(payload(request).scenes[1].next_context, "Next step 3");
+    assert.equal(
+      payload(request).scenes[1].exact_phrase_sha256,
+      `sha256:${createHash("sha256").update(payload(request).scenes[1].exact_phrase).digest("hex")}`,
+    );
+    assert.equal(payload(request).style_profile_hash, makeBatch(count, styleIndex).styleProfileHash);
     assert.equal(
       request.request.messages[0].content.match(/Harvest Water Without Pumps/gu)?.length,
       1,
     );
   }
+});
+
+test("rejects verbose prompt cores above the token-conscious output contract", async () => {
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].prompt_core = `${payload(request).scenes[0].required_literal_anchor} ${"detail ".repeat(100)}`;
+          return rows;
+        },
+      }),
+    (request) => success(request),
+  ]);
+  const result = await setup.value.write(makeBatch(25));
+  assert.equal(setup.transport.requests.length, 2);
+  assert.deepEqual(payload(setup.transport.requests[1]).scenes.map((scene) => scene.scene_id), [
+    "scene_001",
+  ]);
+  assert.ok(result.scenes[0].prompt_core.length <= 600);
 });
 
 test("accepts reordered output but restores original scene order", async () => {

@@ -19,7 +19,10 @@ test("the hosted runtime can append through the exact function but has no direct
     "serverless_output_receipts",
     "hosted_pair_zero_worker_observations",
   ]) {
-    assert.match(source, new RegExp(`GRANT SELECT ON[\\s\\S]*?\\b${table}\\b[\\s\\S]*?TO :"runtime_role";`, "u"));
+    assert.match(
+      source,
+      new RegExp(`GRANT SELECT ON[\\s\\S]*?\\b${table}\\b[\\s\\S]*?TO :"runtime_role";`, "u"),
+    );
   }
   assert.match(source, /GRANT EXECUTE ON FUNCTION public\.videoforge_current_account_id\(\)/u);
   assert.match(
@@ -54,6 +57,17 @@ test("the hosted runtime can append through the exact function but has no direct
     source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_append_hosted_canonical_timing\([\s\S]*?uuid, uuid, uuid, uuid, uuid, uuid, jsonb[\s\S]*?TO :"runtime_role";/u,
   );
+  for (const pattern of [
+    /videoforge_prepare_hosted_voiceover_context\(jsonb\)/u,
+    /videoforge_complete_hosted_voiceover_context\(jsonb\)/u,
+    /videoforge_fail_hosted_voiceover_context\(uuid,text,text,boolean\)/u,
+    /videoforge_load_hosted_prompt_plan\(uuid,uuid,uuid,uuid\)/u,
+    /videoforge_prepare_hosted_prompt_run\(jsonb\)/u,
+    /videoforge_complete_hosted_prompt_run\(jsonb\)/u,
+    /videoforge_fail_hosted_prompt_run\(uuid,text,text,boolean\)/u,
+  ]) {
+    assert.match(source, pattern);
+  }
   assert.doesNotMatch(
     source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_claim_hosted_paid_dispatch\([\s\S]*?numeric, numeric, timestamptz[\s\S]*?TO :"runtime_role";/u,
@@ -89,6 +103,10 @@ test("the hosted runtime can append through the exact function but has no direct
   assert.doesNotMatch(
     source,
     /GRANT\s+[^;\n]*DELETE[^;\n]*\bON\s+(?:avatar_profiles|avatar_profile_versions|avatar_profile_assets|image_styles|image_style_versions|image_style_references)\b/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+(?:hosted_voiceover_contexts|hosted_prompt_runs|prompt_executions|prompt_writer_attempts|prompt_scene_results|generation_tasks|attempts|outbox|cost_events)\b/iu,
   );
   assert.match(source, /REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"runtime_role";/u);
   assert.match(
