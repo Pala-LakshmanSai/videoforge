@@ -354,6 +354,12 @@
       "name": "project_kind_visibility",
       "filename": "0059_project_kind_visibility.sql",
       "sha256": "sha256:9d26a9e4f5152f1a981f0dde9b59cf02b211cba4812a9ada66fa1bc50b3a8602"
+    },
+    {
+      "version": 60,
+      "name": "hosted_prompt_profile_reuse",
+      "filename": "0060_hosted_prompt_profile_reuse.sql",
+      "sha256": "sha256:f24e13ff02ec7f761f66b97bccde469945c242fb1d0637b55c3b5574bf0cdf16"
     }
   ]
 }

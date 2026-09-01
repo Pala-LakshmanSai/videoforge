@@ -61,7 +61,10 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0059_project_kind_visibility.sql");
+    const projectKindIndex = sources.findIndex(
+      (source) => source.filename === "0059_project_kind_visibility.sql",
+    );
+    assert.equal(projectKindIndex, 58);
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -71,7 +74,7 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
          applied_at timestamptz NOT NULL DEFAULT now()
        )`,
     );
-    for (const migration of sources.slice(0, -1)) {
+    for (const migration of sources.slice(0, projectKindIndex)) {
       await executor.execute(migration.sql);
       await executor.query(
         `INSERT INTO videoforge_schema_migrations (version, name, filename, sha256)
@@ -93,8 +96,7 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
       ],
     );
 
-    const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [59]);
+    await executor.execute(sources[projectKindIndex].sql);
     const projects = await executor.query(
       `SELECT id::text AS id, project_kind FROM projects ORDER BY id`,
     );
@@ -102,6 +104,47 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
       { id: IDS.projectA, project_kind: "ACCEPTANCE_FIXTURE" },
       { id: IDS.projectB, project_kind: "USER" },
     ]);
+  } finally {
+    await database.close();
+  }
+});
+
+test("hosted prompt profile reuse upgrades the exact 0059 chain to 0060", async () => {
+  const database = new PGlite();
+  try {
+    const executor = new PGliteExecutor(database);
+    const sources = await loadMigrationSources();
+    assert.equal(sources.at(-1)?.filename, "0060_hosted_prompt_profile_reuse.sql");
+    await executor.execute(
+      `CREATE TABLE public.videoforge_schema_migrations (
+         version integer PRIMARY KEY CHECK (version > 0),
+         name text NOT NULL CHECK (name ~ '^[a-z0-9_]+$'),
+         filename text NOT NULL UNIQUE,
+         sha256 text NOT NULL CHECK (sha256 ~ '^sha256:[0-9a-f]{64}$'),
+         applied_at timestamptz NOT NULL DEFAULT now()
+       )`,
+    );
+    for (const migration of sources.slice(0, -1)) {
+      await executor.execute(migration.sql);
+      await executor.query(
+        `INSERT INTO videoforge_schema_migrations (version, name, filename, sha256)
+         VALUES ($1, $2, $3, $4)`,
+        [migration.version, migration.name, migration.filename, migration.sha256],
+      );
+    }
+
+    const upgraded = await applyMigrations(executor, sources);
+    assert.deepEqual(upgraded.appliedVersions, [60]);
+    const definitions = await executor.query(
+      `SELECT proname, pg_get_functiondef(oid) AS definition
+         FROM pg_proc
+        WHERE pronamespace='public'::regnamespace
+          AND proname IN ('videoforge_prepare_hosted_voiceover_context',
+                          'videoforge_prepare_hosted_prompt_run')
+        ORDER BY proname`,
+    );
+    assert.equal(definitions.rows.length, 2);
+    assert.ok(definitions.rows.every((row) => row.definition.includes("ON CONFLICT")));
   } finally {
     await database.close();
   }
