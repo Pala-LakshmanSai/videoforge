@@ -801,6 +801,9 @@ describe("hosted product route contract", () => {
     expect(block).not.toContain("extractHostedVoiceoverContext");
     expect(block).toContain("videoforge_reconcile_unknown_hosted_voiceover_context");
     expect(block).toContain("No new inference request was submitted.");
+    expect(block).toContain("RUNWARE_TASK_NOT_FOUND");
+    expect(block).toContain("RUNWARE_TASK_DETAILS_UNAVAILABLE");
+    expect(block).toContain("RUNWARE_IDEMPOTENCY_CONFLICT");
     expect(source).toContain("/reconcile-context$/u.exec(");
   });
 

@@ -32,6 +32,7 @@ import {
   type HostedPromptIdentity,
 } from "./hosted-prompt-run";
 import { HOSTED_PROMPT_RESERVATION_MICRO_USD } from "./runware-prompt-execution";
+import { RunwareTransportError } from "../providers/runware-http-transport";
 import {
   extractHostedVoiceoverContext,
   HOSTED_CONTEXT_RESERVATION_MICRO_USD,
@@ -5373,13 +5374,22 @@ async function reconcileVoiceoverContext(
         prepared: preparedRequest,
         apiKey: config.styleAnalysis.apiKey,
       });
-    } catch {
+    } catch (error) {
+      const providerCode =
+        error instanceof RunwareTransportError ? error.code : "RUNWARE_RESPONSE_INVALID";
+      const message =
+        providerCode === "RUNWARE_TASK_NOT_FOUND"
+          ? "Runware could not find the original task in this workspace. No new inference request was submitted."
+          : providerCode === "RUNWARE_TASK_DETAILS_UNAVAILABLE"
+            ? "Runware task details are temporarily unavailable. No new inference request was submitted."
+            : providerCode === "RUNWARE_IDEMPOTENCY_CONFLICT"
+              ? "Runware returned an original request that did not match the saved task identity. No new inference request was submitted."
+              : "Runware returned original task details that could not be accepted safely. No new inference request was submitted.";
       return response(
         {
           error: {
-            code: "HOSTED_CONTEXT_RECONCILIATION_INCOMPLETE",
-            message:
-              "The original provider result is not available yet. No new inference request was submitted.",
+            code: `HOSTED_CONTEXT_RECONCILIATION_${providerCode}`,
+            message,
           },
         },
         409,
