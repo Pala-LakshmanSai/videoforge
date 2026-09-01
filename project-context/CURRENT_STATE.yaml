@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-08-31"
+updated_at: "2026-09-01"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: UI_CONSISTENCY_CANDIDATE_PROVIDER_FREE_GREEN_AWAITING_EXACT_DEPLOYMENT_APPROVAL
+  status: UI_CONSISTENCY_CANDIDATE_PROVIDER_FREE_GREEN_DEPLOYMENT_FAILED_CLOSED
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -96,14 +96,16 @@ hosted_beta_user_walkthrough:
     - "c9b3ec3f33fd17cfc631425d036f49a6541d9fd6"
     - "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
     - "7d459a4ad0e345f393e7e86df054fc9d6b9ee2dc"
-  deployment_candidate: DEPLOYED_LIVE_PROGRESS_DASHBOARD
+    - "b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef"
+  deployment_candidate: UI_CONSISTENCY_CANDIDATE_FAILED_CLOUDFLARE_STARTUP_VALIDATION
   deployed_source_commit: "7d459a4ad0e345f393e7e86df054fc9d6b9ee2dc"
   cloudflare_worker_version_id: "e1dc3b01-2632-4dd8-95c7-edac99e93cea"
-  pending_source_candidate: "UI consistency and simplified preset creation candidate; bind the exact commit after this record is committed."
+  pending_source_candidate: "b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef"
   pending_worker_release: "0.1.12"
   pending_release_boundary: "Publish a new immutable signed/notarized 0.1.12 worker, update the staging release manifest, deploy the exact source candidate, install/reconnect 0.1.12, and submit one explicit ASR retry only after fresh exact USD 0 approval."
   pending_validations: "PASS_UI_FOCUSED_54_OF_54; PASS_WEB_TYPECHECK; PASS_CHANGED_FILE_ESLINT; PASS_WEB_AND_CLOUDFLARE_BUILD; PASS_CONTEXT_VALIDATE; PASS_FORMAT_DIFF"
-  failed_deployment_attempt: "Exact source 6ac2e49b was pushed. Signed worker 0.1.12 publication was not dispatched because the protected GitHub environment has zero signing/notarization secrets. Web-only staging deployment retained manifest 0.1.11 and config SHA-256 6285901b506886af41ac5631dcd74dc2b1c6f21ce47b9cf1f66d81b37ada05c9, but Cloudflare rejected both the initial upload and one bounded identical retry with startup validation code 10021. Fresh USD 0 approval bound c9b3ec3f and config SHA-256 977e7b344203a5b4dfef4ac6aecb05cb94d220028348b7533fdf0c3469455cfe; its single delayed upload failed with the same code. All failures occurred before version creation. Read-only version list and cache-bypassed status prove live Worker 1ba229a4 / source 643e9c82 remained active."
+  failed_deployment_attempt: "Exact USD 0 approval bound source b51c6e0d and config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42. Its single authorized Cloudflare upload stored content-addressed assets but failed startup validation code 10021 before Worker version creation; it was not retried. Read-only deployment status and cache-bypassed hosted status prove live Worker e1dc3b01 / source 7d459a4a remains active. No database, secret, R2 object, provider, GPU, production, or spend action occurred. Earlier failed startup-validation history remains in Git."
+  failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
   deployed_config_sha256: "0f1c2a4c65f87785d5cfd6aceac10867fdcf93fe604ae7bb5d9ed208125554f8"
@@ -116,7 +118,7 @@ hosted_beta_user_walkthrough:
   provider_calls_authorized: false
   gpu_use_authorized: false
   external_spend_authorized_usd: 0
-  remote_mutation_authorized: true
+  remote_mutation_authorized: false
   database_preflight: "LIVE_LEDGER_53_OF_53_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
   pending_database_migration: null
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
