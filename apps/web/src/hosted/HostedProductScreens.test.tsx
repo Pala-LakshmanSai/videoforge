@@ -3,8 +3,11 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const routerState = vi.hoisted(() => ({ navigate: vi.fn() }));
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="#hosted-route">{children}</a>,
+  useNavigate: () => routerState.navigate,
 }));
 
 vi.mock("../lib/media-validation", async () => {
@@ -75,6 +78,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  routerState.navigate.mockReset();
 });
 
 const gpuReadiness = {
@@ -1160,6 +1164,47 @@ describe("hosted product journey", () => {
         expect.objectContaining({ method: "POST", body: "{}" }),
       ),
     );
+  });
+
+  it("requires confirmation and archives a hosted project before returning home", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const confirm = vi.fn(() => true);
+    vi.stubGlobal("confirm", confirm);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "DELETE") {
+        return Response.json({
+          schema_version: "videoforge-hosted-project-archive-response/v1",
+          project_id: projectId,
+          state: "ARCHIVED",
+          lineage_retention: "PRESERVED",
+        });
+      }
+      return Response.json({
+        project: {
+          id: projectId,
+          title: "Private project",
+          created_at: "2026-08-17T10:00:00.000Z",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
+        },
+        attempts: [],
+        gpu_transport: "DISABLED_UNQUALIFIED" as const,
+        gpu_readiness: gpuReadiness,
+        generation: null,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Delete project" }));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Billing and security history"));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/v2/hosted/projects/${projectId}`,
+        expect.objectContaining({ method: "DELETE", body: "{}" }),
+      ),
+    );
+    await waitFor(() => expect(routerState.navigate).toHaveBeenCalledWith({ to: "/" }));
   });
 
   it("offers a safe explicit retry when personal-worker transcription fails", async () => {

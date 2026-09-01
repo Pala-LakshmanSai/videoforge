@@ -336,6 +336,12 @@
       "name": "hosted_prompt_execution",
       "filename": "0056_hosted_prompt_execution.sql",
       "sha256": "sha256:12794e13d9866dc7348995977e08ed0e63abe4cfa52a39190eeb4740772a9b45"
+    },
+    {
+      "version": 57,
+      "name": "hosted_project_archive",
+      "filename": "0057_hosted_project_archive.sql",
+      "sha256": "sha256:73318f34179905dbfaf7e4809f2bba38b211515d6af60377f49a9333af8abf4e"
     }
   ]
 }

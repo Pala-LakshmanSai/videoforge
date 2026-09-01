@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
   ArrowRight,
@@ -3170,6 +3170,7 @@ export function HostedPresetCreationScreen({
 
 export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const query = useQuery({
     queryKey: ["hosted-project", projectId],
     queryFn: () => readJson<ProjectDetailResponse>(`/api/v2/hosted/projects/${projectId}`),
@@ -3247,6 +3248,19 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     mutationFn: (attemptId: string) =>
       readJson(`/api/v2/cpu-attempts/${attemptId}`, { method: "POST", body: "{}" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
+  const deleteProject = useMutation({
+    mutationFn: () =>
+      readJson<{
+        state: "ARCHIVED";
+        lineage_retention: "PRESERVED";
+      }>(`/api/v2/hosted/projects/${projectId}`, { method: "DELETE", body: "{}" }),
+    onSuccess: async () => {
+      await queryClient.cancelQueries({ queryKey: ["hosted-project", projectId] });
+      queryClient.removeQueries({ queryKey: ["hosted-project", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["hosted-projects"] });
+      await navigate({ to: "/" });
+    },
   });
   if (query.isPending)
     return (
@@ -3603,6 +3617,32 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       <Button variant="secondary" onClick={() => void query.refetch()}>
         <RefreshCw size={15} /> Refresh now
       </Button>
+      <Panel eyebrow="Project" heading="Delete project">
+        <p className="helper">
+          Removes this project from Queue and Progress and prevents any new work. Billing and
+          security history stays preserved.
+        </p>
+        <Button
+          variant="danger"
+          busy={deleteProject.isPending}
+          disabled={deleteProject.isPending}
+          onClick={() => {
+            if (
+              window.confirm(
+                `Delete “${query.data.project.title}”? This removes it from your workspace. Billing and security history will be retained.`,
+              )
+            )
+              deleteProject.mutate();
+          }}
+        >
+          <Trash2 size={16} aria-hidden="true" /> Delete project
+        </Button>
+        {deleteProject.isError ? (
+          <div className="validation validation-danger" role="alert">
+            {deleteProject.error.message}
+          </div>
+        ) : null}
+      </Panel>
     </>
   );
 }

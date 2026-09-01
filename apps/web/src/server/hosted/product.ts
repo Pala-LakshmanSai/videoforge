@@ -3556,6 +3556,7 @@ async function projectManifest(
             AND authority.workspace_id = attempt.workspace_id AND authority.attempt_id = attempt.id
             AND authority.source = 'PRIMARY_RESULT_OUTPUT' AND authority.issued_at IS NOT NULL
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
+            AND project.status = 'ACTIVE'
           ORDER BY revision.revision_number DESC, review.approved_at DESC NULLS LAST
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId],
@@ -4140,6 +4141,62 @@ async function archiveHostedPreset(
   }
 }
 
+async function archiveHostedProject(
+  request: Request,
+  projectId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const archived = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<HostedPresetRow>(
+        `SELECT project_id, state, retained_attempt_count
+           FROM public.videoforge_archive_hosted_project($1, $2, $3)`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      return result.rows[0] ?? null;
+    });
+
+    if (!archived) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+    const retainedAttempts = Number(archived.retained_attempt_count ?? 0);
+    return response({
+      schema_version: "videoforge-hosted-project-archive-response/v1",
+      project_id: rowString(archived, "project_id"),
+      state: rowString(archived, "state"),
+      retained_attempt_count: Number.isFinite(retainedAttempts) ? retainedAttempts : 0,
+      lineage_retention: "PRESERVED",
+      provider_calls_authorized: false,
+    });
+  } catch (error) {
+    if (postgresCode(error) === "55000")
+      return response(
+        {
+          error: {
+            code: "PROJECT_HAS_ACTIVE_WORK",
+            message: "Cancel the active project work before deleting this project.",
+          },
+        },
+        409,
+      );
+    if (postgresCode(error) === "42501")
+      return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
 type HostedPreflightBlocker = {
   readonly code: string;
   readonly message: string;
@@ -4347,6 +4404,11 @@ async function createProject(
                 reservation.content_length, reservation.checksum_sha256,
                 reservation.expires_at
            FROM hosted_project_create_requests AS request
+           JOIN projects AS project
+             ON project.account_id = request.account_id
+            AND project.workspace_id = request.workspace_id
+            AND project.id = request.project_id
+            AND project.status = 'ACTIVE'
            JOIN artifact_reservations AS reservation
              ON reservation.account_id = request.account_id
             AND reservation.workspace_id = request.workspace_id
@@ -4862,6 +4924,7 @@ async function asrHandoff(
             AND receipt.deleted_at IS NULL
             AND receipt.checksum_sha256 = asset.binary_sha256
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
+            AND project.status = 'ACTIVE'
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId],
       );
@@ -5017,7 +5080,8 @@ async function createVoiceoverContext(
            LEFT JOIN hosted_voiceover_contexts AS context
              ON context.account_id=revision.account_id AND context.workspace_id=revision.workspace_id
             AND context.project_revision_id=revision.id
-          WHERE project.account_id=$1 AND project.workspace_id=$2 AND project.id=$3 LIMIT 1`,
+          WHERE project.account_id=$1 AND project.workspace_id=$2 AND project.id=$3
+            AND project.status='ACTIVE' LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, asrAttemptId],
       );
       return result.rows[0] ?? null;
@@ -5258,6 +5322,7 @@ async function renderHandoff(
              ON context.account_id=revision.account_id AND context.workspace_id=revision.workspace_id
             AND context.project_revision_id=revision.id
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
+            AND project.status = 'ACTIVE'
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, asrAttemptId],
       );
@@ -5560,6 +5625,7 @@ async function projects(
             AND revision.workspace_id = project.workspace_id
             AND revision.project_id = project.id
           WHERE project.account_id = $1 AND project.workspace_id = $2
+            AND project.status = 'ACTIVE'
           ORDER BY project.created_at DESC`,
         [scope.account_id, scope.workspace_id],
       );
@@ -5667,7 +5733,8 @@ async function projectDetail(
              ON revision.account_id = project.account_id
             AND revision.workspace_id = project.workspace_id
             AND revision.project_id = project.id
-          WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3`,
+          WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
+            AND project.status = 'ACTIVE'`,
         [scope.account_id, scope.workspace_id, projectId],
       );
       const attempts = await transaction.query(
@@ -6557,6 +6624,8 @@ export async function handleHostedProductRequest(
   if (request.method === "GET" && manifest)
     return projectManifest(request, manifest[1]!, config, executionContext);
   const detail = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)$/u.exec(url.pathname);
+  if (request.method === "DELETE" && detail)
+    return archiveHostedProject(request, detail[1]!, config, executionContext);
   if (request.method === "GET" && detail)
     return projectDetail(request, detail[1]!, environment, config, executionContext);
   return null;

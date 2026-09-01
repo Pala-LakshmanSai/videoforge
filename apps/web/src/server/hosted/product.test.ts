@@ -23,6 +23,10 @@ const testState = vi.hoisted(() => {
     rows: Record<string, unknown>[];
     error: unknown;
   } = { rows: [], error: null };
+  const projectArchiveState: {
+    rows: Record<string, unknown>[];
+    error: unknown;
+  } = { rows: [], error: null };
   const avatarDraftRows: Record<string, unknown>[] = [];
   const styleDraftRows: Record<string, unknown>[] = [];
   const publishedStyleRows: Record<string, unknown>[] = [];
@@ -35,6 +39,10 @@ const testState = vi.hoisted(() => {
     if (sql.includes("videoforge_archive_hosted_preset")) {
       if (archiveState.error) throw archiveState.error;
       return { rows: archiveState.rows, affectedRows: archiveState.rows.length };
+    }
+    if (sql.includes("videoforge_archive_hosted_project")) {
+      if (projectArchiveState.error) throw projectArchiveState.error;
+      return { rows: projectArchiveState.rows, affectedRows: projectArchiveState.rows.length };
     }
     if (
       sql.includes("version.state NOT IN ('READY','ABANDONED')") ||
@@ -60,6 +68,7 @@ const testState = vi.hoisted(() => {
     projectRows,
     rateLimitRows,
     archiveState,
+    projectArchiveState,
     avatarDraftRows,
     styleDraftRows,
     publishedStyleRows,
@@ -506,6 +515,55 @@ describe("hosted product route contract", () => {
       testState.query.mock.calls.some(([sql]) => /UPDATE\s+avatar_profiles/iu.test(String(sql))),
     ).toBe(false);
     testState.archiveState.rows.length = 0;
+  });
+
+  it("archives a tenant project through the exact function and preserves its lineage", async () => {
+    testState.query.mockClear();
+    testState.projectArchiveState.rows.splice(0, testState.projectArchiveState.rows.length, {
+      project_id: PROJECT_ID,
+      state: "ARCHIVED",
+      retained_attempt_count: "2",
+    });
+    testState.projectArchiveState.error = null;
+
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/projects/${PROJECT_ID}`, "DELETE"),
+      environment,
+      config,
+      executionContext,
+    );
+
+    expect(result?.status).toBe(200);
+    await expect(result?.json()).resolves.toMatchObject({
+      project_id: PROJECT_ID,
+      state: "ARCHIVED",
+      retained_attempt_count: 2,
+      lineage_retention: "PRESERVED",
+      provider_calls_authorized: false,
+    });
+    expect(
+      testState.query.mock.calls.some(([sql]) =>
+        String(sql).includes("videoforge_archive_hosted_project"),
+      ),
+    ).toBe(true);
+    expect(
+      testState.query.mock.calls.some(([sql]) => /UPDATE\s+projects/iu.test(String(sql))),
+    ).toBe(false);
+    testState.projectArchiveState.rows.length = 0;
+  });
+
+  it("refuses project deletion while project work is still active", async () => {
+    testState.projectArchiveState.rows.length = 0;
+    testState.projectArchiveState.error = { code: "55000" };
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/projects/${PROJECT_ID}`, "DELETE"),
+      environment,
+      config,
+      executionContext,
+    );
+    expect(result?.status).toBe(409);
+    await expect(errorCode(result)).resolves.toBe("PROJECT_HAS_ACTIVE_WORK");
+    testState.projectArchiveState.error = null;
   });
 
   it("returns a kind-specific not-found when the archive capability resolves no row", async () => {
