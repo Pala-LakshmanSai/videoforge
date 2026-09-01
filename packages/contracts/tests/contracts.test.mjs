@@ -3,6 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import Ajv2020 from "ajv/dist/2020.js";
 
 import {
   assertContract,
@@ -28,6 +29,21 @@ const fixtureCases = canonicalContractRegistry.contracts.flatMap(({ name, fixtur
 
 const loadFixture = async (filename) =>
   JSON.parse(await readFile(path.join(fixtureRoot, filename), "utf8"));
+
+test("contract validators defer Ajv registration until first use", async () => {
+  const originalAddSchema = Ajv2020.prototype.addSchema;
+  let registrations = 0;
+  Ajv2020.prototype.addSchema = function (...args) {
+    registrations += 1;
+    return originalAddSchema.apply(this, args);
+  };
+  try {
+    await import(`../dist/src/ajv.js?lazy-startup=${Date.now()}`);
+    assert.equal(registrations, 0);
+  } finally {
+    Ajv2020.prototype.addSchema = originalAddSchema;
+  }
+});
 
 test("all canonical schemas compile and expose stable IDs", () => {
   assert.equal(contractNames.length, 39);

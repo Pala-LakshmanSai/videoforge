@@ -51,17 +51,30 @@ export function createContractAjv(): Ajv2020 {
   return ajv;
 }
 
-const ajv = createContractAjv();
+let contractAjv: Ajv2020 | undefined;
+const compiledValidators = new Map<ContractName, ValidateFunction>();
 
-export const contractValidators = Object.freeze(
-  Object.fromEntries(
-    contractNames.map((contractName) => {
-      const validator = ajv.getSchema(contractSchemaIds[contractName]);
-      if (!validator) throw new Error(`Ajv did not register ${contractSchemaIds[contractName]}.`);
-      return [contractName, validator];
-    }),
-  ) as Record<ContractName, ValidateFunction>,
-);
+const validatorFor = (contractName: ContractName): ValidateFunction => {
+  const cached = compiledValidators.get(contractName);
+  if (cached) return cached;
+
+  contractAjv ??= createContractAjv();
+  const validator = contractAjv.getSchema(contractSchemaIds[contractName]);
+  if (!validator) throw new Error(`Ajv did not register ${contractSchemaIds[contractName]}.`);
+  compiledValidators.set(contractName, validator);
+  return validator;
+};
+
+const lazyContractValidators = {} as Record<ContractName, ValidateFunction>;
+for (const contractName of contractNames) {
+  Object.defineProperty(lazyContractValidators, contractName, {
+    enumerable: true,
+    configurable: false,
+    get: () => validatorFor(contractName),
+  });
+}
+
+export const contractValidators = Object.freeze(lazyContractValidators);
 
 const normalizeIssues = (
   errors: ErrorObject[] | null | undefined,
@@ -748,7 +761,7 @@ export function validateContract(
   contractName: ContractName,
   value: unknown,
 ): ContractValidationResult<ContractDocument<ContractName>> {
-  const validator = contractValidators[contractName];
+  const validator = validatorFor(contractName);
   if (validator(value)) {
     const data = value as ContractDocument<ContractName>;
     const issues = semanticContractIssues(contractName, data);
