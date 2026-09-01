@@ -1253,7 +1253,8 @@ describe("hosted product journey", () => {
           {
             error: {
               code: "HOSTED_PROJECT_PLANNING_FAILED",
-              message: "Video planning could not finish. Your transcript is saved; try planning again.",
+              message:
+                "Video planning could not finish. Your transcript is saved; try planning again.",
             },
           },
           { status: 409 },
@@ -1320,6 +1321,29 @@ describe("hosted product journey", () => {
             stage: "WAITING_FOR_GPU_QUALIFICATION" as const,
           }
         : null,
+      stages: planned
+        ? [
+            {
+              id: "planning",
+              name: "Plan scenes",
+              status: "COMPLETE",
+              progress_percent: 100,
+            },
+            {
+              id: "prompt-writing",
+              name: "Write image prompts",
+              status: "WAITING",
+              progress_percent: 0,
+              detail: "No durable accepted image prompts have been written yet.",
+            },
+            {
+              id: "image-generation",
+              name: "Generate images",
+              status: "WAITING_FOR_GPU_QUALIFICATION",
+              progress_percent: 0,
+            },
+          ]
+        : undefined,
     });
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const path = String(input);
@@ -1347,9 +1371,7 @@ describe("hosted product journey", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
-    expect(
-      await screen.findByText(/generation is waiting for GPU qualification/u),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/image prompts have not been written yet/u)).toBeInTheDocument();
     expect(screen.getAllByRole("progressbar", { name: "Overall video progress" })).toHaveLength(2);
     expect(screen.getByRole("heading", { name: "Video production stages" })).toBeInTheDocument();
     expect(

@@ -90,6 +90,7 @@ import {
   handleHostedProductRequest,
   hostedAvatarConflictProblem,
   hostedGpuProductState,
+  hostedPromptWritingState,
   hostedStyleConflictProblem,
 } from "./product";
 
@@ -681,6 +682,29 @@ describe("hosted product route contract", () => {
     const planning = source.slice(planningStart, planningEnd);
     expect(planning).toContain("asr.terminal_at::text AS asr_terminal_at");
     expect(planning).not.toContain("asr.terminal_at AS asr_terminal_at");
+  });
+
+  it("does not report image prompts complete merely because a timeline exists", () => {
+    expect(hostedPromptWritingState(null, true)).toEqual({
+      status: "WAITING",
+      progressPercent: 0,
+      detail:
+        "The scene plan is ready, but no durable accepted image prompts have been written yet.",
+    });
+    expect(hostedPromptWritingState("COMPLETE", true)).toEqual({
+      status: "COMPLETE",
+      progressPercent: 100,
+      detail: "Durable accepted scene prompts are ready for image generation.",
+    });
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf('id: "prompt-writing"');
+    const end = source.indexOf('id: "image-generation"', start);
+    const promptStage = source.slice(start, end);
+    expect(promptStage).toContain("status: promptStage.status");
+    expect(promptStage).toContain("progress_percent: promptStage.progressPercent");
+    expect(promptStage).not.toContain('detail.generation ? "COMPLETE"');
+    expect(source).toContain("FILTER (WHERE task.lane = 'PROMPT')");
+    expect(source).toContain("no durable accepted image prompts have been written yet");
   });
 
   it("rechecks and locks active preset parents before hosted preset mutations", () => {

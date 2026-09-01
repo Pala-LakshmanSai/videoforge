@@ -4155,6 +4155,37 @@ export function hostedGpuProductState(readiness: Pick<HostedGpuReadiness, "dispa
       };
 }
 
+export function hostedPromptWritingState(
+  promptTaskState: unknown,
+  planExists: boolean,
+): {
+  readonly status: "COMPLETE" | "FAILED" | "BLOCKED" | "RETRY_WAIT" | "RUNNING" | "WAITING";
+  readonly progressPercent: 0 | 100;
+  readonly detail: string;
+} {
+  const taskState = typeof promptTaskState === "string" ? promptTaskState : "";
+  const status =
+    taskState === "COMPLETE"
+      ? "COMPLETE"
+      : ((["FAILED", "BLOCKED", "RETRY_WAIT", "RUNNING"] as const).find(
+          (candidate) => candidate === taskState,
+        ) ?? "WAITING");
+  return {
+    status,
+    progressPercent: status === "COMPLETE" ? 100 : 0,
+    detail:
+      status === "COMPLETE"
+        ? "Durable accepted scene prompts are ready for image generation."
+        : status === "FAILED"
+          ? "Image prompt writing failed before a durable accepted prompt set was saved."
+          : status === "RUNNING" || status === "RETRY_WAIT"
+            ? "Image prompts are being written and verified against the approved style."
+            : planExists
+              ? "The scene plan is ready, but no durable accepted image prompts have been written yet."
+              : "Image prompt writing starts after the scene plan is saved.",
+  };
+}
+
 async function projectPreflight(
   request: Request,
   config: HostedRuntimeConfiguration,
@@ -5054,7 +5085,8 @@ async function renderHandoff(
         {
           error: {
             code: "HOSTED_PROJECT_PLANNING_FAILED",
-            message: "Video planning could not finish. Your transcript is saved; try planning again.",
+            message:
+              "Video planning could not finish. Your transcript is saved; try planning again.",
           },
         },
         409,
@@ -5234,7 +5266,9 @@ async function projectDetail(
                 ) AS completed_tasks,
                 count(task.id) FILTER (
                   WHERE task.lane IN ('IMAGE', 'AVATAR') AND task.state = 'FAILED'
-                ) AS failed_tasks
+                ) AS failed_tasks,
+                (array_agg(task.state ORDER BY task.created_at DESC, task.id DESC)
+                  FILTER (WHERE task.lane = 'PROMPT'))[1] AS prompt_task_state
            FROM project_revisions AS revision
            JOIN timeline_plans AS plan
              ON plan.workspace_id = revision.workspace_id
@@ -5503,6 +5537,10 @@ async function projectDetail(
     );
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
     const gpuPendingState = hostedGpuProductState(gpuReadiness).pendingState;
+    const promptStage = hostedPromptWritingState(
+      (detail.generation as Record<string, unknown> | null)?.prompt_task_state,
+      detail.generation !== null,
+    );
     const stages = [
       {
         id: "prepare",
@@ -5537,11 +5575,11 @@ async function projectDetail(
       {
         id: "prompt-writing",
         name: "Write image prompts",
-        status: detail.generation ? "COMPLETE" : "WAITING",
-        progress_percent: detail.generation ? 100 : 0,
+        status: promptStage.status,
+        progress_percent: promptStage.progressPercent,
         started_at: null,
         completed_at: null,
-        detail: "Scene prompts are written from the approved image style and transcript.",
+        detail: promptStage.detail,
         eta_ms: null,
       },
       {

@@ -3217,6 +3217,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     ? query.data.stages
     : fallbackHostedStages(asr, render, query.data.generation);
   const uiStages = hostedProjectStages(stages);
+  const promptStage = uiStages.find((stage) => stage.id === "prompt-writing");
   const timing = query.data.timing;
   const cost = query.data.cost;
   const queue = query.data.queue;
@@ -3433,7 +3434,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               : renderHandoff.isPending
                 ? "Transcription complete; persisting the deterministic generation plan."
                 : query.data.generation
-                  ? "Planning complete; generation is waiting for GPU qualification."
+                  ? promptStage?.status === "COMPLETE"
+                    ? "Prompts complete; generation is waiting for GPU qualification."
+                    : "Scene planning is complete; image prompts have not been written yet."
                   : "Transcription complete; generation planning is starting."}
           </strong>
           {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
