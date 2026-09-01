@@ -241,13 +241,12 @@ export async function coordinateHostedGeneration(input: {
 }): Promise<HostedGenerationCoordinatorResult> {
   const { snapshot } = input;
   if (
-    ![snapshot.accountId, snapshot.workspaceId].every((value) => DATABASE_UUID.test(value)) ||
-    ![
-      snapshot.userId,
-      snapshot.projectId,
-      snapshot.projectRevisionId,
-      snapshot.asrAttemptId,
-    ].every((value) => UUID.test(value)) ||
+    ![snapshot.accountId, snapshot.workspaceId, snapshot.userId].every((value) =>
+      DATABASE_UUID.test(value),
+    ) ||
+    ![snapshot.projectId, snapshot.projectRevisionId, snapshot.asrAttemptId].every((value) =>
+      UUID.test(value),
+    ) ||
     snapshot.asrState !== "SUCCEEDED" ||
     Number.isNaN(Date.parse(snapshot.asrFinishedAt)) ||
     !Number.isSafeInteger(snapshot.asrInputContentLength) ||
