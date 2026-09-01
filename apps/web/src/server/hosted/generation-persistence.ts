@@ -35,7 +35,10 @@ async function putCanonicalExact(
   const uploadBytes = Uint8Array.from(bytes).buffer;
   try {
     await bucket.put(key, uploadBytes, {
-      onlyIf: { etagDoesNotMatch: "*" },
+      // Cloudflare documents wildcard create-if-absent through the standard conditional header.
+      // The structured etag form is for a concrete object etag; passing "*" there can reject a
+      // first write. A failed concurrent create remains safe because exact readback is mandatory.
+      onlyIf: new Headers({ "If-None-Match": "*" }),
       httpMetadata: { contentType: "application/json" },
     });
   } catch {

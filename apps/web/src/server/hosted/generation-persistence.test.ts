@@ -78,7 +78,9 @@ describe("hosted canonical timing persistence", () => {
     const prepared = await fixture();
     const objects = new Map<string, ArrayBuffer>();
     const put = vi.fn(async (key: string, value: ArrayBuffer, options: unknown) => {
-      expect(options).toMatchObject({ onlyIf: { etagDoesNotMatch: "*" } });
+      const onlyIf = (options as { onlyIf?: unknown }).onlyIf;
+      expect(onlyIf).toBeInstanceOf(Headers);
+      expect((onlyIf as Headers).get("if-none-match")).toBe("*");
       if (objects.has(key)) throw new Error("precondition");
       objects.set(key, value);
     });
