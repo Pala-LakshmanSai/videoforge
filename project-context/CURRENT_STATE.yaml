@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source 4aeeabec deployed as Worker db0c5236 with rendered config SHA-256 ba7e368c. Cache-bypassed status reports exact source, staging, DISABLED_UNQUALIFIED, and provider CPU $0; authenticated Chrome progress polling stayed healthy 8/8. Its one authorized planning-only retry passed validation/scheduling but failed safely at canonical database persistence with the transcript retained and no second click. Cloudflare logged `hosted canonical timing payload lineage is inconsistent`. Read-only Neon truth shows terminal_at has microsecond precision `...55.238585Z`, while the exact product Pool returns a JavaScript Date truncated to `...55.238Z`; the 585-microsecond lineage loss explains the fail-closed rejection. Source da413436 selects terminal_at::text so the exact PostgreSQL timestamp reaches the canonical append. Focused product/coordinator tests pass 56/56, web/Worker typechecks, changed-file lint, staging build/quarantine, deployment validation, and diff checks pass. Fresh exact USD 0 deployment plus one planning-only retry authority is required. GPU, provider generation, production, and spend remain disabled/zero."
+  provider_free_product_action: "Approved source da413436 deployed as Worker 96cb64ad with rendered config SHA-256 baa72a8a. Cache-bypassed status reports exact source, staging, DISABLED_UNQUALIFIED, and provider CPU $0. Its one planning-only retry proved the exact terminal timestamp repair and reached the canonical append, then failed safely when deferred constraint triggers ran after SECURITY DEFINER returned and the runtime role lacked direct SELECT on transcript_words. Source a4c444bb adds migration 0054 so only the two read-only deferred validators execute as their owner; direct runtime timing-table access remains absent. Focused bridge/upgrade tests pass 5/5, migration/visibility tests 7/7, runtime-grant test 1/1, and control-plane/web/Worker checks pass. Fresh exact USD 0 authority must include additive Neon migration 0054, exact-source staging deployment, and one planning-only retry. GPU, provider generation, production, and spend remain disabled/zero."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: EXACT_ASR_TERMINAL_TIMESTAMP_REPAIR_AWAITING_FRESH_AUTHORITY
+  status: DEFERRED_TIMING_VALIDATOR_PRIVILEGE_REPAIR_AWAITING_FRESH_AUTHORITY
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -107,20 +107,21 @@ hosted_beta_user_walkthrough:
     - "a031a5091c70428d371e92ac15e75dd3f7539acc"
     - "4aeeabec37f2da0ef844fca723d99b7c1db2c9aa"
     - "da4134360e530e8e6a2f4babbedf0af059e07653"
-  deployment_candidate: SOURCE_DA413436_EXACT_ASR_TERMINAL_TIMESTAMP_REPAIR_AWAITING_FRESH_AUTHORITY
-  deployed_source_commit: "4aeeabec37f2da0ef844fca723d99b7c1db2c9aa"
-  cloudflare_worker_version_id: "db0c5236-dc93-49b3-8da5-454acdd46287"
-  pending_source_candidate: "da4134360e530e8e6a2f4babbedf0af059e07653"
+    - "a4c444bb254c857a4a5fabcbd9092f05d7fa1e2e"
+  deployment_candidate: SOURCE_A4C444BB_DEFERRED_TIMING_VALIDATOR_PRIVILEGE_REPAIR_AWAITING_FRESH_AUTHORITY
+  deployed_source_commit: "da4134360e530e8e6a2f4babbedf0af059e07653"
+  cloudflare_worker_version_id: "96cb64ad-abda-4d6b-a3fe-d6a3e1fd63a8"
+  pending_source_candidate: "a4c444bb254c857a4a5fabcbd9092f05d7fa1e2e"
   pending_worker_release: null
-  pending_release_boundary: "The new project's successful 2m39s transcript is retained. Approved 4aeeabec passed validation/scheduling live, then failed at canonical persistence because Neon Pool truncated terminal_at from microseconds to milliseconds. Source da413436 selects terminal_at::text and pins the exact SQL form in a regression test. Do not click Retry planning or deploy again until fresh exact USD 0 source-bound authority is recorded."
-  pending_validations: "PASS_PRODUCT_44_OF_44_AND_GENERATION_COORDINATOR_12_OF_12; PASS_WEB_AND_WORKER_TYPECHECK; PASS_CHANGED_FILE_ESLINT; PASS_STAGING_BUILD_AND_BUNDLE_QUARANTINE_WITH_VALIDATORS_DYNAMIC_ONLY; PASS_V2_06_DEPLOYMENT_VALIDATION; PASS_DIFF_CHECK"
+  pending_release_boundary: "The new project's successful 2m39s transcript is retained. Approved da413436 proved exact microsecond lineage and reached the canonical append, then the commit-time validators failed under the restricted runtime role. Source a4c444bb254c857a4a5fabcbd9092f05d7fa1e2e adds additive migration 0054, making only those two read-only deferred trigger functions SECURITY DEFINER with fixed search paths and PUBLIC execute revoked. Do not apply migration 0054, deploy, or click Retry planning until fresh exact USD 0 authority explicitly covers all three actions."
+  pending_validations: "PASS_BRIDGE_AND_UPGRADE_5_OF_5; PASS_MIGRATION_AND_VISIBILITY_7_OF_7; PASS_RUNTIME_GRANT_1_OF_1; PASS_CONTROL_PLANE_BUILD_TYPECHECK_ESLINT; PASS_WEB_AND_WORKER_TYPECHECK; PASS_DIFF_CHECK"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "ba7e368c1c98d2797615f0fa9ce708a9ebcf982b86591ebc2100fdafe5407b75"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 4aeeabec37f2da0ef844fca723d99b7c1db2c9aa CAP USD 0"
+  deployed_config_sha256: "baa72a8a9fffb254723a0bab49f0731c6be9a3d431f95b74e834770e5320d603"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA da4134360e530e8e6a2f4babbedf0af059e07653 CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -130,15 +131,16 @@ hosted_beta_user_walkthrough:
   gpu_use_authorized: false
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
-  database_preflight: "LIVE_LEDGER_53_OF_53_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
-  pending_database_migration: null
+  database_preflight: "LIVE_LEDGER_53_OF_53_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED; MIGRATION_0054_SOURCE_GREEN_NOT_APPLIED"
+  pending_database_migration: "0054_deferred_timing_validation_privilege.sql"
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_4AEEABEC_WORKER_DB0C5236_STATUS_EXACT_AND_AUTHENTICATED_PROGRESS_POLLING_8_OF_8_NO_CPU_FAILURE; FAIL_SINGLE_PLANNING_ONLY_RETRY_CANONICAL_TIMING_PAYLOAD_LINEAGE_INCONSISTENT_DUE_TERMINAL_TIMESTAMP_MICROSECOND_TRUNCATION_NO_SECOND_CLICK; TRANSCRIPT_RETAINED; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
+  live_browser_verification: "PASS_DA413436_WORKER_96CB64AD_STATUS_EXACT; TRANSIENT_PROGRESS_READ_RECOVERED_WITHOUT_PLANNING_ACTION; FAIL_SINGLE_PLANNING_ONLY_RETRY_PERMISSION_DENIED_TRANSCRIPT_WORDS_AT_DEFERRED_COMMIT_VALIDATION_NO_SECOND_CLICK; TRANSCRIPT_RETAINED; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
   fixed_blockers:
+    - "Approved source da413436 deployed as Worker 96cb64ad with config SHA-256 baa72a8a. Exact status reports staging, DISABLED_UNQUALIFIED, and provider CPU $0. Its one planning retry proved the exact timestamp repair and reached the atomic append, then PostgreSQL denied transcript_words to the runtime when deferred constraint triggers fired at commit. Source a4c444bb adds migration 0054 so only the two read-only deferred validators execute as owner, retains no direct runtime timing-table grants, and passes focused bridge/upgrade 5/5, migration/visibility 7/7, runtime-grant 1/1, build/typecheck/lint/diff checks. It is source proof pending fresh exact USD 0 migration/deployment/retry authority."
     - "Approved source 4aeeabec deployed as Worker db0c5236 with config SHA-256 ba7e368c. Exact status and 8/8 authenticated progress polls pass. Its one planning retry passed the precompiled validation/scheduling path, then PostgreSQL rejected canonical persistence because the product Pool truncated terminal_at from microseconds to milliseconds. Read-only truth compares exact `...55.238585Z` with Pool `...55.238Z`. Source da413436 selects terminal_at::text and adds a regression assertion; focused tests pass 56/56. It is source proof only pending fresh exact USD 0 authority."
     - "Approved source a031a509 deployed as Worker 556017fa with config SHA-256 5b912a0d. Cache-bypassed status reports exact source/staging/DISABLED_UNQUALIFIED/$0, and authenticated progress polling remained healthy 16/16 over 30 seconds. The recurring ordinary progress/list/queue CPU-limit blocker is closed live. Its one planning retry then failed safely because durable transcription/timeline preparation still invoked request-time Ajv code generation. Source 4aeeabec injects the precompiled authority through those hidden validation layers; the complete coordinator succeeds with global Function construction forbidden. It is source proof only pending fresh exact USD 0 authority."
     - "The new real-user hosted project completed transcription and saved its transcript, then stopped at Plan scenes on a4179091. Source 12c8bca9 separates revision JSON, schema, and canonicalization/hash failures without logging payloads or weakening validation. That diagnostic change is included in successor a031a509. Retry planning remains untouched pending fresh exact USD 0 authority."
