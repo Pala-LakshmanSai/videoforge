@@ -787,6 +787,18 @@ describe("hosted product route contract", () => {
     expect(source).toContain("/context$/u.exec(url.pathname)");
   });
 
+  it("reconciles abandoned context and prompt claims before reporting project progress", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("async function projectDetail(");
+    const end = source.indexOf("async function projectManifest(", start);
+    const block = source.slice(start, end);
+    expect(block).toContain("videoforge_reconcile_stale_hosted_prompt_dispatches");
+    expect(block.indexOf("videoforge_reconcile_stale_hosted_prompt_dispatches")).toBeLessThan(
+      block.indexOf("FROM hosted_voiceover_contexts AS context"),
+    );
+    expect(block).toContain("exceeded its safe deadline");
+  });
+
   it("rechecks and locks active preset parents before hosted preset mutations", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
     const blocks = [

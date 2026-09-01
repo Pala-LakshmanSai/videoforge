@@ -110,6 +110,10 @@ GRANT EXECUTE ON FUNCTION public.videoforge_complete_hosted_prompt_run(jsonb)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_fail_hosted_prompt_run(uuid,text,text,boolean)
 TO :"runtime_role";
+-- Migration 0058 gives progress reads one bounded recovery action: stale paid claims become
+-- UNKNOWN after three minutes. It cannot release cost or redispatch provider work.
+GRANT EXECUTE ON FUNCTION public.videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)
+TO :"runtime_role";
 -- Migration 0040's direct claim stays owner-only. Runtime access would allow an approval to be
 -- consumed outside the atomic 0042 pair and is therefore intentionally absent.
 -- Migration 0041 atomically appends the exact provider-inert two-lane batches. Qualification,

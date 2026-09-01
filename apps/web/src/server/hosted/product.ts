@@ -5725,6 +5725,10 @@ async function projectDetail(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      await transaction.query(
+        "SELECT public.videoforge_reconcile_stale_hosted_prompt_dispatches($1)",
+        [projectId],
+      );
       const project = await transaction.query(
         `SELECT project.id, project.name AS title, project.created_at, revision.id AS revision_id,
                 revision.status AS revision_state
@@ -6148,7 +6152,7 @@ async function projectDetail(
           contextState === "SUCCEEDED"
             ? "Compact whole-script facts are saved for scene planning and prompt relevance."
             : contextState === "UNKNOWN"
-              ? "The provider result is uncertain and will not be dispatched again automatically."
+              ? "The request exceeded its safe deadline. Its result is uncertain and will not be dispatched again automatically."
               : contextStageStatus === "ACTION_REQUIRED"
                 ? "Action required: resume context extraction to continue. Maximum charge: $0.01."
                 : "The complete transcript is summarized once into bounded story context.",

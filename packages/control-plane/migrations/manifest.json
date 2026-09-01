@@ -342,6 +342,12 @@
       "name": "hosted_project_archive",
       "filename": "0057_hosted_project_archive.sql",
       "sha256": "sha256:73318f34179905dbfaf7e4809f2bba38b211515d6af60377f49a9333af8abf4e"
+    },
+    {
+      "version": 58,
+      "name": "hosted_prompt_stale_reconciliation",
+      "filename": "0058_hosted_prompt_stale_reconciliation.sql",
+      "sha256": "sha256:ab2fa026bc1734211cbc82e90f930a9ad7c0323a7187ca01195a7669f319406d"
     }
   ]
 }

@@ -3296,6 +3296,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       ? asr.id
       : null;
   const contextActionRequired = contextActionAsrId !== null;
+  const contextNeedsReview =
+    contextStage?.status === "FAILED" ||
+    query.data.voiceover_context?.state === "UNKNOWN" ||
+    query.data.voiceover_context?.state === "FAILED";
   const timing = query.data.timing;
   const cost = query.data.cost;
   const queue = query.data.queue;
@@ -3576,17 +3580,22 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       ) : null}
       {asr?.state === "SUCCEEDED" && !contextComplete ? (
-        <div className="notice" role="status">
-          <strong>Action required to resume after transcription.</strong>
+        <div className={`notice${contextNeedsReview ? " notice-danger" : ""}`} role="status">
+          <strong>
+            {contextNeedsReview
+              ? "Context extraction needs review."
+              : "Action required to resume after transcription."}
+          </strong>
           <span>
-            DeepSeek reads the complete transcript once and saves only compact story facts. Maximum
-            charge: $0.01 within your project limit. This is a single dispatch and will not repeat
-            automatically after an uncertain provider result.
+            {contextNeedsReview
+              ? "The first request ended without a durable accepted result. VideoForge has stopped it safely and will not send another provider request automatically."
+              : "DeepSeek reads the complete transcript once and saves only compact story facts. Maximum charge: $0.01 within your project limit. This is a single dispatch and will not repeat automatically after an uncertain provider result."}
           </span>
           {contextExtraction.isError ? <span>{contextExtraction.error.message}</span> : null}
-          {contextStage?.status === "FAILED" ||
-          query.data.voiceover_context?.state === "UNKNOWN" ? (
-            <span>The durable claim needs review before another provider request can be made.</span>
+          {contextNeedsReview ? (
+            <span>
+              Review the provider receipt and recorded cost before deciding whether to retry.
+            </span>
           ) : (
             <Button
               variant="primary"

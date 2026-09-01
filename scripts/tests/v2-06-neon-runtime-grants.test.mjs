@@ -43,7 +43,9 @@ test("the hosted runtime can append through the exact function but has no direct
     source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_archive_hosted_project\(uuid, uuid, uuid\)\s+TO :"runtime_role";/u,
   );
-  assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes("videoforge_archive_hosted_project(uuid,uuid,uuid)"));
+  assert.ok(
+    EXPECTED_RUNTIME_FUNCTIONS.includes("videoforge_archive_hosted_project(uuid,uuid,uuid)"),
+  );
   assert.match(
     source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_reserve_hosted_style_analysis\(uuid, text, uuid\)\s+TO :"runtime_role";/u,
@@ -80,6 +82,7 @@ test("the hosted runtime can append through the exact function but has no direct
     /videoforge_prepare_hosted_prompt_run\(jsonb\)/u,
     /videoforge_complete_hosted_prompt_run\(jsonb\)/u,
     /videoforge_fail_hosted_prompt_run\(uuid,text,text,boolean\)/u,
+    /videoforge_reconcile_stale_hosted_prompt_dispatches\(uuid\)/u,
   ]) {
     assert.match(source, pattern);
   }
@@ -91,6 +94,7 @@ test("the hosted runtime can append through the exact function but has no direct
     "videoforge_prepare_hosted_prompt_run(jsonb)",
     "videoforge_complete_hosted_prompt_run(jsonb)",
     "videoforge_fail_hosted_prompt_run(uuid,text,text,boolean)",
+    "videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)",
   ]) {
     assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature));
   }
@@ -130,10 +134,7 @@ test("the hosted runtime can append through the exact function but has no direct
     source,
     /GRANT\s+[^;\n]*DELETE[^;\n]*\bON\s+(?:avatar_profiles|avatar_profile_versions|avatar_profile_assets|image_styles|image_style_versions|image_style_references)\b/iu,
   );
-  assert.doesNotMatch(
-    source,
-    /GRANT\s+[^;\n]*(?:UPDATE|DELETE)[^;\n]*\bON\s+projects\b/iu,
-  );
+  assert.doesNotMatch(source, /GRANT\s+[^;\n]*(?:UPDATE|DELETE)[^;\n]*\bON\s+projects\b/iu);
   assert.doesNotMatch(
     source,
     /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+(?:hosted_voiceover_contexts|hosted_prompt_runs|prompt_executions|prompt_writer_attempts|prompt_scene_results|generation_tasks|attempts|outbox|cost_events)\b/iu,
