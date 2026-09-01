@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: EXHAUSTIVE_PROJECT_DETAIL_READ_REPAIR_LIVE_AWAITING_CONTEXT_DISPATCH_AUTHORITY
+  status: PROJECT_DELETE_SOURCE_GREEN_AWAITING_EXACT_USD_0_DEPLOYMENT_AUTHORITY
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -114,13 +114,14 @@ hosted_beta_user_walkthrough:
     - "32482bea37b946962b4f7e0c1cfaa4b887eaded7"
     - "e9d01b867b84bc21f9314a8ee2295701d033cdae"
     - "43d8f036ebe19cd8f1ab5473396535fda36ae563"
-  deployment_candidate: LIVE_43D8F036_EXHAUSTIVE_PROJECT_DETAIL_READS
+    - "236aeb242cd191640b9a4c3eba7c57eb45d10b4b"
+  deployment_candidate: SOURCE_236AEB24_HOSTED_PROJECT_ARCHIVE
   deployed_source_commit: "43d8f036ebe19cd8f1ab5473396535fda36ae563"
   cloudflare_worker_version_id: "dff2377b-3847-49c8-a02f-02166317fb06"
-  pending_source_candidate: null
+  pending_source_candidate: "236aeb242cd191640b9a4c3eba7c57eb45d10b4b"
   pending_worker_release: null
-  pending_release_boundary: "Exact source 43d8f036 is live with exhaustive project-detail SELECT coverage. Authenticated Chrome shows helen video at 30 percent, transcription and planning complete, context pending, and an explicit one-dispatch Extract voiceover context action capped at USD 0.01. Context extraction remains uncalled and requires separate exact authority; prompt writing remains uncalled and later requires cap USD 0.04. GPU and production remain blocked."
-  pending_validations: "USER_CONTEXT_DISPATCH_REQUIRES_SEPARATE_FINITE_USD_0_01_APPROVAL; THEN_PROMPT_DISPATCH_REQUIRES_SEPARATE_FINITE_USD_0_04_APPROVAL"
+  pending_release_boundary: "Source 236aeb24 adds confirmed hosted project deletion through tenant-scoped archive migration 0057. Inactive projects disappear from Queue/Progress and reject later project reads/work while immutable revisions, attempts, artifacts, and billing/security lineage remain retained. Active CPU, context, prompt, or serverless work blocks deletion. The live Worker remains 43d8f036 until fresh exact USD 0 migration/deployment authority."
+  pending_validations: "FRESH_EXACT_SOURCE_BOUND_USD_0_MIGRATION_AND_STAGING_DEPLOYMENT_APPROVAL; THEN_AUTHENTICATED_CHROME_DELETE_UI_ACCEPTANCE_BY_USER"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
@@ -146,6 +147,7 @@ hosted_beta_user_walkthrough:
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
   live_browser_verification: "PASS_LIVE_43D8F036_WORKER_DFF2377B_STATUS_EXACT_HTTP_200_4_OF_4; AUTHENTICATED_CHROME_HELEN_VIDEO_30_PERCENT_TRANSCRIPTION_AND_PLANNING_COMPLETE_CONTEXT_PENDING_EXTRACT_ACTION_VISIBLE_MAX_USD_0_01; CONTEXT_AND_PROMPT_DISPATCHES_NOT_TRIGGERED; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
   fixed_blockers:
+    - "Source 236aeb24 adds the missing hosted Delete project control, confirmation/loading/error states, same-origin tenant API, and migration 0057 archive-only function. Archived projects are excluded from project list/detail and work-entry queries; active CPU, context, prompt, or serverless work fails closed. Immutable revisions, attempts, artifacts, cost, and security lineage remain preserved. Hosted API/UI tests pass 90/90; migration/schema tests pass 8/8; deployment/grant tests pass 19/19; web/control-plane typecheck and changed-file lint pass. No live migration, deployment, deletion, provider call, GPU work, production action, or spend occurred."
     - "Approved 43d8f036 applied SELECT-only cost_events and deployed as Worker dff2377b with config SHA-256 deb4510b. Exact status passes 4/4. Authenticated Chrome project detail now loads automatically: helen video is 30 percent, Prepare/Transcribe/Plan scenes are complete, Understand voiceover context is pending, Write image prompts remains truthfully pending, and the explicit one-dispatch Extract voiceover context button states maximum USD 0.01. The structural 12/12 grant test covers every projectDetail FROM/JOIN relation. No context/prompt dispatch, provider call, GPU work, production action, or spend occurred."
     - "Approved e9d01b86 applied SELECT-only prompt_executions, prompt_scene_results, and timeline_segments grants and deployed as Worker a6343d50 with config SHA-256 14829126. Exact status passes 4/4. Authenticated Chrome then reached the final missing project-detail relation, cost_events. Repair 43d8f036 adds SELECT-only cost_events and a structural regression test that enumerates every FROM/JOIN relation in projectDetail and checks the exact SELECT allowlist. Deployment/grant tests pass 12/12 and hosted product/UI tests pass 87/87. No context/prompt dispatch, provider call, GPU work, production action, or spend occurred."
     - "Approved 32482bea applied SELECT-only grants for hosted_voiceover_contexts and hosted_prompt_runs and deployed as Worker 58c509f6 with config SHA-256 09b303ce. Exact status passes 4/4. Authenticated Chrome Retry progress then reached the next denied table, prompt_executions. Full project-detail SQL audit identified all remaining direct reads: prompt_executions, prompt_scene_results, and timeline_segments. Repair e9d01b86 grants SELECT only on those three under existing RLS and adds exact verifier coverage; deployment/grant tests pass 11/11 and hosted product/UI tests pass 87/87. No context/prompt dispatch, provider call, GPU work, production action, or spend occurred."
@@ -236,6 +238,11 @@ hosted_beta_user_walkthrough:
     hosted_context_prompt_exhaustive_project_detail_repair_commit: "43d8f036ebe19cd8f1ab5473396535fda36ae563"
     hosted_context_prompt_exhaustive_project_detail_repair_focused: "PASS_DEPLOYMENT_12_OF_12_AND_HOSTED_87_OF_87"
     hosted_context_prompt_exhaustive_project_detail_repair_live: "PASS_LIVE_43D8F036_WORKER_DFF2377B_AUTHENTICATED_PROGRESS_RECOVERED"
+    hosted_project_archive_source_commit: "236aeb242cd191640b9a4c3eba7c57eb45d10b4b"
+    hosted_project_archive_ui_and_api: "PASS_90_OF_90"
+    hosted_project_archive_migration_and_schema: "PASS_8_OF_8"
+    hosted_project_archive_deployment_and_grants: "PASS_19_OF_19"
+    hosted_project_archive_typecheck_and_changed_file_eslint: PASS
     hosted_preset_focused_unit: "PASS_66_OF_66_UI_ACCESS_AND_SERVER"
     hosted_focus_revalidation_unit: "PASS_12_OF_12"
     hosted_web_typecheck: PASS
