@@ -33,7 +33,7 @@ describe("hosted voiceover context extraction", () => {
     const request = prepared.request as unknown as Record<string, unknown>;
     expect(prepared.requestHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
     expect(prepared.requestBytes).toContain("complete VideoForge voiceover transcript");
-    expect(request).toMatchObject({ model: "deepseek:v4@flash", outputFormat: "json" });
+    expect(request).toMatchObject({ model: "deepseek:v4@flash", outputFormat: "JSON" });
     expect((request.settings as Record<string, unknown>).maxTokens).toBe(1_600);
   });
 

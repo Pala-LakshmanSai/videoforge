@@ -11,7 +11,7 @@ import {
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
 const MODEL = "deepseek:v4@flash" as const;
-const REQUEST_CONTRACT_VERSION = "runware-deepseek-context-request-v2" as const;
+const REQUEST_CONTRACT_VERSION = "runware-deepseek-context-request-v3" as const;
 
 const SYSTEM_PROMPT = [
   "Extract durable story context from the complete VideoForge voiceover transcript.",
@@ -170,7 +170,7 @@ export async function prepareHostedVoiceoverContextRequest(input: {
   const requestWithoutTaskUUID = Object.freeze({
     taskType: "textInference",
     model: MODEL,
-    outputFormat: "json",
+    outputFormat: "JSON",
     deliveryMethod: "sync",
     includeCost: true,
     includeUsage: true,
