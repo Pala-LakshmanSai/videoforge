@@ -175,7 +175,7 @@ test("live provider config is pinned to the approved staging resources", () => {
   );
 });
 
-fixture("source path, migration 0049 chain, and activation caps are hard-pinned", async () => {
+fixture("source path, current migration chain, and activation caps are hard-pinned", async () => {
   assert.doesNotThrow(() => assertApprovedSourceLocation(fixtureRoot, "attempt_render_local_004"));
   assert.throws(
     () =>
@@ -185,12 +185,9 @@ fixture("source path, migration 0049 chain, and activation caps are hard-pinned"
       ),
     /exact approved pinned V2-06 owned local-slice path/u,
   );
-  assert.equal(COMMITTED_MIGRATIONS.length, 49);
-  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.version, 49);
-  assert.equal(
-    COMMITTED_MIGRATIONS.at(-1)?.filename,
-    "0049_hosted_full_live_promotion_lineage.sql",
-  );
+  assert.equal(COMMITTED_MIGRATIONS.length, 59);
+  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.version, 59);
+  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.filename, "0059_project_kind_visibility.sql");
   assertMigrationLedgerRows(COMMITTED_MIGRATIONS);
   const fixture = await verifyLocalFixture();
   const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");

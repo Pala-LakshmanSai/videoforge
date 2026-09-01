@@ -111,6 +111,7 @@ describe("hosted queue", () => {
     );
 
     expect(await screen.findByText("Context recovery")).toBeInTheDocument();
+    expect(screen.getByText("Action needed")).toBeInTheDocument();
     expect(screen.getByText("Voiceover context")).toBeInTheDocument();
     expect(screen.getByText("Needs attention", { selector: ".badge" })).toBeInTheDocument();
     expect(screen.queryByText("Completed")).not.toBeInTheDocument();

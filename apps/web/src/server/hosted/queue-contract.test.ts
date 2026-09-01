@@ -14,6 +14,7 @@ describe("hosted queue contract", () => {
     expect(queue).toContain('schema_version: "videoforge-hosted-queue/v2"');
     expect(queue).toContain("FROM projects AS project");
     expect(queue).toContain("project.status='ACTIVE'");
+    expect(queue).toContain("project.project_kind='USER'");
     expect(queue).toContain("completed_render.kind='RENDER'");
     expect(queue).toContain("completed_render.state='SUCCEEDED'");
     expect(queue).toContain("projects: result.projects.map");

@@ -197,6 +197,7 @@ async function handleHostedQueue(
            ) AS prompt_task ON true
           WHERE project.account_id=$1 AND project.workspace_id=$2
             AND project.status='ACTIVE'
+            AND project.project_kind='USER'
             AND NOT EXISTS (
               SELECT 1 FROM hosted_cpu_job_attempts AS completed_render
                WHERE completed_render.account_id=project.account_id
@@ -278,6 +279,7 @@ async function handleHostedLibrary(
              ON project.account_id = attempt.account_id
             AND project.workspace_id = attempt.workspace_id
             AND project.id = attempt.project_id
+            AND project.project_kind = 'USER'
            JOIN hosted_cpu_upload_authorities AS authority
              ON authority.account_id = attempt.account_id
             AND authority.workspace_id = attempt.workspace_id

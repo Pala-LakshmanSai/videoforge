@@ -56,6 +56,57 @@ test("a fresh PGlite database applies the committed migration chain idempotently
   }
 });
 
+test("project-kind migration hides only receipt-proven acceptance fixtures", async () => {
+  const database = new PGlite();
+  try {
+    const executor = new PGliteExecutor(database);
+    const sources = await loadMigrationSources();
+    assert.equal(sources.at(-1)?.filename, "0059_project_kind_visibility.sql");
+    await executor.execute(
+      `CREATE TABLE public.videoforge_schema_migrations (
+         version integer PRIMARY KEY CHECK (version > 0),
+         name text NOT NULL CHECK (name ~ '^[a-z0-9_]+$'),
+         filename text NOT NULL UNIQUE,
+         sha256 text NOT NULL CHECK (sha256 ~ '^sha256:[0-9a-f]{64}$'),
+         applied_at timestamptz NOT NULL DEFAULT now()
+       )`,
+    );
+    for (const migration of sources.slice(0, -1)) {
+      await executor.execute(migration.sql);
+      await executor.query(
+        `INSERT INTO videoforge_schema_migrations (version, name, filename, sha256)
+         VALUES ($1, $2, $3, $4)`,
+        [migration.version, migration.name, migration.filename, migration.sha256],
+      );
+    }
+    await seedLockedProjects(executor);
+    await executor.query(
+      `INSERT INTO repository_mutation_receipts (
+         workspace_id, idempotency_key, operation, input_hash,
+         result_codec, result_payload, result_hash
+       ) VALUES ($1,'fixture-visibility','fixture_provision',$2,'repository-result/v1',$3::jsonb,$4)`,
+      [
+        IDS.workspaceA,
+        sha256("fixture-visibility-input"),
+        JSON.stringify({ fixture_non_production: true, project_id: IDS.projectA }),
+        sha256("fixture-visibility-result"),
+      ],
+    );
+
+    const upgraded = await applyMigrations(executor, sources);
+    assert.deepEqual(upgraded.appliedVersions, [59]);
+    const projects = await executor.query(
+      `SELECT id::text AS id, project_kind FROM projects ORDER BY id`,
+    );
+    assert.deepEqual(projects.rows, [
+      { id: IDS.projectA, project_kind: "ACCEPTANCE_FIXTURE" },
+      { id: IDS.projectB, project_kind: "USER" },
+    ]);
+  } finally {
+    await database.close();
+  }
+});
+
 test("global-session vNext upgrades the complete legacy chain without rewriting legacy rows", async () => {
   const database = new PGlite();
   try {

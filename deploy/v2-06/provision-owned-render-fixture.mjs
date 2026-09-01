@@ -1238,8 +1238,8 @@ async function ensureProject(client, plan) {
   await client.query(
     `INSERT INTO projects (
        id, account_id, workspace_id, owner_user_id, name, normalized_name,
-       status, version, created_at, updated_at
-     ) VALUES ($1,$2,$3,$4,$5,lower($5),'ACTIVE',1,$6,$6)
+       status, project_kind, version, created_at, updated_at
+     ) VALUES ($1,$2,$3,$4,$5,lower($5),'ACTIVE','ACCEPTANCE_FIXTURE',1,$6,$6)
      ON CONFLICT (id) DO NOTHING`,
     [
       plan.projectId,
@@ -1252,7 +1252,8 @@ async function ensureProject(client, plan) {
   );
   const result = await client.query(
     `SELECT id::text AS id, account_id::text AS account_id, workspace_id::text AS workspace_id,
-            owner_user_id::text AS owner_user_id, name, normalized_name, status, version,
+            owner_user_id::text AS owner_user_id, name, normalized_name, status, project_kind,
+            version,
             created_at, updated_at, archived_at
        FROM projects WHERE id = $1`,
     [plan.projectId],
@@ -1266,6 +1267,7 @@ async function ensureProject(client, plan) {
     row.name !== PROJECT_NAME ||
     row.normalized_name !== PROJECT_NAME.toLowerCase() ||
     row.status !== "ACTIVE" ||
+    row.project_kind !== "ACCEPTANCE_FIXTURE" ||
     Number(row.version) !== 1 ||
     row.archived_at !== null
   )

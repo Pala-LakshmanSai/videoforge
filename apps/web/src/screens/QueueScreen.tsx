@@ -103,7 +103,7 @@ function HostedQueueScreen() {
       <div className="grid grid-4 queue-overview">
         <Metric label="In progress" value={String(active)} tone={active ? "info" : "neutral"} />
         <Metric
-          label="Needs attention"
+          label="Action needed"
           value={String(attention)}
           tone={attention ? "warning" : "neutral"}
         />

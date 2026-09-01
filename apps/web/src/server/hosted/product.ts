@@ -3557,6 +3557,7 @@ async function projectManifest(
             AND authority.source = 'PRIMARY_RESULT_OUTPUT' AND authority.issued_at IS NOT NULL
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
             AND project.status = 'ACTIVE'
+            AND project.project_kind = 'USER'
           ORDER BY revision.revision_number DESC, review.approved_at DESC NULLS LAST
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId],
@@ -4468,8 +4469,9 @@ async function createProject(
       });
       const revisionHash = await sha256(canonicalJson(revisionPayload));
       await transaction.query(
-        `INSERT INTO projects (id, workspace_id, owner_user_id, name, normalized_name)
-         VALUES ($1,$2,$3,$4,lower($4))`,
+        `INSERT INTO projects (
+           id, workspace_id, owner_user_id, name, normalized_name, project_kind
+         ) VALUES ($1,$2,$3,$4,lower($4),'USER')`,
         [projectId, scope.workspace_id, scope.user_id, input.title],
       );
       await transaction.query(
@@ -5626,6 +5628,7 @@ async function projects(
             AND revision.project_id = project.id
           WHERE project.account_id = $1 AND project.workspace_id = $2
             AND project.status = 'ACTIVE'
+            AND project.project_kind = 'USER'
           ORDER BY project.created_at DESC`,
         [scope.account_id, scope.workspace_id],
       );
@@ -5738,7 +5741,8 @@ async function projectDetail(
             AND revision.workspace_id = project.workspace_id
             AND revision.project_id = project.id
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
-            AND project.status = 'ACTIVE'`,
+            AND project.status = 'ACTIVE'
+            AND project.project_kind = 'USER'`,
         [scope.account_id, scope.workspace_id, projectId],
       );
       const attempts = await transaction.query(
