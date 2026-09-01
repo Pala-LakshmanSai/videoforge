@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: CONTEXT_RESUME_UI_REPAIR_LIVE_AWAITING_USER_RESUME_ACTION
+  status: CONTEXT_STALE_CLAIM_REPAIR_SOURCE_GREEN_AWAITING_EXACT_DEPLOYMENT_AUTHORITY
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -214,6 +214,7 @@ hosted_beta_user_walkthrough:
     - "Approved source 95567052 is deployed as Worker e00be197 with config sha256:2df17a86. Cache-bypassed status reports the exact commit and GPU DISABLED_UNQUALIFIED. Authenticated Chrome confirms Create Project says WAV or MP3 and the file input accepts audio/wav, audio/mpeg, .wav, and .mp3. The edge verifies Layer III frame structure and the personal worker retains final ffprobe/ffmpeg decode and duration authority."
     - "Source preparation at 5b2dcea2 gave every visible personal-computer row a confirmed Remove action. Active devices are revoked and hidden in one tenant-scoped transaction; old revoked entries are hidden without deleting security/job lineage; re-enrolling the same installation restores its retained row. Additive migration 0053, focused UI/PGlite/runtime-grant tests, typecheck, changed-file lint, staging build/quarantine, deployment validation, and diff checks passed before activation."
     - "Approved source 5b2dcea2 is deployed as Worker 35b64868 with config sha256:3099d4f1 after additive migration 0053. Neon is 53/53 with exact runtime grants/FORCE RLS; cache-bypassed status reports the exact commit and DISABLED_UNQUALIFIED. Authenticated Chrome shows Remove on all six visible computer rows; no row was removed during verification. The exact-source worktree initially hit local ENOSPC before any remote mutation; clearing only the recoverable pnpm cache allowed migration/build/deploy to complete. No provider, GPU, production, or spend action occurred."
+    - "Source 2185ca5c repairs the live Stage 3 hang root cause: migration 0056's UNKNOWN failure handlers violated the durable attempt constraint, so their safety write failed and left DISPATCHING forever. Additive migration 0058 writes the required AMBIGUOUS/unresolved attempt shape, safely reconciles context and prompt claims older than three minutes to UNKNOWN without releasing uncertain cost or redispatching, and the hosted UI changes to Needs attention with receipt/cost review guidance. Durable/replay and runtime-grant tests pass 3/3; hosted UI/server tests pass 91/91; typecheck, changed-file ESLint, deployment validation, staging build/quarantine, and diff checks pass. The user's first context request remains a potentially charged uncertain result and must not be retried. Migration/deployment remain unapplied pending fresh exact source-bound approval."
   current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
   remaining_steps:
     - PROJECT_CREATION_AND_COST_PREFLIGHT
@@ -257,6 +258,11 @@ hosted_beta_user_walkthrough:
     hosted_context_resume_ui_source_commit: "7bd59b12611bf35d5b44863cb00ab45357c176fe"
     hosted_context_resume_ui_focused: "PASS_HOSTED_UI_AND_SERVER_90_OF_90_TYPECHECK_ESLINT_FORMAT_BUILD_QUARANTINE_DIFF"
     hosted_context_resume_ui_live: "PASS_LIVE_092C5C74_WORKER_03BDEB81_STATUS_8_OF_8_AFTER_CONVERGENCE_AUTHENTICATED_CHROME"
+    hosted_context_stale_claim_repair_commit: "2185ca5c"
+    hosted_context_stale_claim_durable_and_grants: "PASS_3_OF_3"
+    hosted_context_stale_claim_ui_and_server: "PASS_91_OF_91"
+    hosted_context_stale_claim_typecheck_eslint_deployment_build_diff: PASS
+    hosted_context_stale_claim_live: PENDING_FRESH_EXACT_SOURCE_BOUND_APPROVAL
     hosted_preset_focused_unit: "PASS_66_OF_66_UI_ACCESS_AND_SERVER"
     hosted_focus_revalidation_unit: "PASS_12_OF_12"
     hosted_web_typecheck: PASS
