@@ -797,6 +797,8 @@ describe("hosted product route contract", () => {
       block.indexOf("FROM hosted_voiceover_contexts AS context"),
     );
     expect(block).toContain("exceeded its safe deadline");
+    expect(block).toContain('contextState === "UNKNOWN"');
+    expect(block).toContain('? "FAILED"');
   });
 
   it("rechecks and locks active preset parents before hosted preset mutations", () => {

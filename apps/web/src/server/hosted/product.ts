@@ -6115,11 +6115,13 @@ async function projectDetail(
     const contextStageStatus =
       contextState === "SUCCEEDED"
         ? "COMPLETE"
-        : contextState === "DISPATCHING"
-          ? "RUNNING"
-          : !voiceoverContext && asr?.state === "SUCCEEDED"
-            ? "ACTION_REQUIRED"
-            : contextState;
+        : contextState === "UNKNOWN"
+          ? "FAILED"
+          : contextState === "DISPATCHING"
+            ? "RUNNING"
+            : !voiceoverContext && asr?.state === "SUCCEEDED"
+              ? "ACTION_REQUIRED"
+              : contextState;
     const stages = [
       {
         id: "prepare",
