@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: CURRENT_RUN_ACTION_UI_REPAIR_GREEN_AWAITING_EXACT_USD_0_DEPLOYMENT_AUTHORITY
+  status: CURRENT_RUN_ACTION_UI_REPAIR_LIVE_AWAITING_USER_WALKTHROUGH
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -116,20 +116,21 @@ hosted_beta_user_walkthrough:
     - "43d8f036ebe19cd8f1ab5473396535fda36ae563"
     - "236aeb242cd191640b9a4c3eba7c57eb45d10b4b"
     - "97152ab190efbce1c166a43639e081fc5c4dd7a6"
-  deployment_candidate: SOURCE_97152AB1_CURRENT_RUN_ACTION_LAYOUT
-  deployed_source_commit: "b16fdf58014e6fd59e044d71210fc153e7e53ac6"
-  cloudflare_worker_version_id: "78f824dd-f022-4f7c-842f-4e559fa4d867"
-  pending_source_candidate: "97152ab190efbce1c166a43639e081fc5c4dd7a6"
+    - "006a5e58a45c0d8a0b2de973e11d6d0677f626f9"
+  deployment_candidate: SOURCE_006A5E58_CURRENT_RUN_ACTION_LAYOUT_LIVE
+  deployed_source_commit: "006a5e58a45c0d8a0b2de973e11d6d0677f626f9"
+  cloudflare_worker_version_id: "4fae64b0-b958-4156-9714-f73d073ceab2"
+  pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "Source 97152ab1 repairs the compact Current run card: stop/cancellation actions now occupy a dedicated spaced responsive row, mobile actions fill the card safely, and the active ASR label is the shorter Stop transcription. Live staging remains b16fdf58 until fresh exact USD 0 deployment authority."
-  pending_validations: "FRESH_EXACT_SOURCE_BOUND_USD_0_STAGING_DEPLOYMENT_APPROVAL; THEN_AUTHENTICATED_CHROME_COMPACT_CARD_ACCEPTANCE"
+  pending_release_boundary: null
+  pending_validations: "USER_COMPACT_VIEWPORT_WALKTHROUGH_ACCEPTANCE"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "1dc27f18cecb8e13a87b31781681f0af4e6c32bd0f716d03d9ca19f16fc1862c"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA b16fdf58014e6fd59e044d71210fc153e7e53ac6 CAP USD 0"
+  deployed_config_sha256: "b823a8f2c7f4265ea6b238e2a4125b3ba8f2238ffaed11cde407414c4141a75f"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 006a5e58a45c0d8a0b2de973e11d6d0677f626f9 CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -146,9 +147,9 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_LIVE_B16FDF58_WORKER_78F824DD_STATUS_EXACT_HTTP_200_5_OF_5; AUTHENTICATED_CHROME_HELEN_VIDEO_DELETE_PROJECT_BUTTON_AND_RETENTION_COPY_VISIBLE_AFTER_HARD_NAVIGATION; PROJECT_UNTOUCHED; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
+  live_browser_verification: "PASS_LIVE_006A5E58_WORKER_4FAE64B0_STATUS_EXACT_HTTP_200_5_OF_5; AUTHENTICATED_CHROME_HELEN_VIDEO_2_PROGRESS_AND_CURRENT_RUN_ACTION_VISIBLE_AFTER_RELOAD; NO_ACTION_CLICKED; PROJECT_UNTOUCHED; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
   fixed_blockers:
-    - "Source 97152ab1 fixes the reported compact Current run UI collision by separating run actions from the facts grid with a 14 px responsive action row, full-width mobile controls, and concise Stop transcription / Finish stopping transcription labels. Hosted UI tests pass 42/42; web typecheck, changed-file ESLint, Prettier, and diff checks pass. No deployment, project mutation, provider call, GPU work, production action, or spend occurred."
+    - "Approved deployable HEAD 006a5e58, containing source 97152ab1, is live as Worker 4fae64b0 with config SHA-256 b823a8f2. It fixes the compact Current run collision by separating actions from the facts grid with a 14 px responsive row, full-width mobile controls, and concise Stop transcription / Finish stopping transcription labels. Exact-source status passes 5/5 and authenticated Chrome loads helen video 2 progress with the Current run action after reload. No action was clicked; no project mutation, provider call, GPU work, production action, or spend occurred."
     - "Approved deployable HEAD b16fdf58 applied migration 0057 and its exact archive-only runtime grant, then deployed once as Worker 78f824dd with config SHA-256 1dc27f18. Neon verifies 57/57 with FORCE RLS and exact grants; Cloudflare secret names, exact-origin R2 CORS, private bucket state, and five cache-bypassed exact-source status reads pass. The project was not deleted. No provider call, GPU work, production action, or spend occurred."
     - "Source 236aeb24 adds the missing hosted Delete project control, confirmation/loading/error states, same-origin tenant API, and migration 0057 archive-only function. Archived projects are excluded from project list/detail and work-entry queries; active CPU, context, prompt, or serverless work fails closed. Immutable revisions, attempts, artifacts, cost, and security lineage remain preserved. Hosted API/UI tests pass 90/90; migration/schema tests pass 8/8; deployment/grant tests pass 19/19; web/control-plane typecheck and changed-file lint pass. No live migration, deployment, deletion, provider call, GPU work, production action, or spend occurred."
     - "Approved 43d8f036 applied SELECT-only cost_events and deployed as Worker dff2377b with config SHA-256 deb4510b. Exact status passes 4/4. Authenticated Chrome project detail now loads automatically: helen video is 30 percent, Prepare/Transcribe/Plan scenes are complete, Understand voiceover context is pending, Write image prompts remains truthfully pending, and the explicit one-dispatch Extract voiceover context button states maximum USD 0.01. The structural 12/12 grant test covers every projectDetail FROM/JOIN relation. No context/prompt dispatch, provider call, GPU work, production action, or spend occurred."
@@ -250,6 +251,7 @@ hosted_beta_user_walkthrough:
     hosted_project_archive_live_chrome: "PASS_DELETE_PROJECT_BUTTON_VISIBLE_PROJECT_UNTOUCHED"
     hosted_current_run_action_ui_source_commit: "97152ab190efbce1c166a43639e081fc5c4dd7a6"
     hosted_current_run_action_ui_focused: "PASS_UI_42_OF_42_TYPECHECK_ESLINT_FORMAT_DIFF"
+    hosted_current_run_action_ui_live: "PASS_LIVE_006A5E58_WORKER_4FAE64B0_STATUS_5_OF_5_AUTHENTICATED_CHROME"
     hosted_preset_focused_unit: "PASS_66_OF_66_UI_ACCESS_AND_SERVER"
     hosted_focus_revalidation_unit: "PASS_12_OF_12"
     hosted_web_typecheck: PASS
