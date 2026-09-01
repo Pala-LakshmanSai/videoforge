@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: ACCEPTANCE_FIXTURE_VISIBILITY_REPAIR_GREEN_AWAITING_EXACT_ZERO_DOLLAR_MIGRATION_AND_DEPLOYMENT_APPROVAL
+  status: ACCEPTANCE_FIXTURE_VISIBILITY_REPAIR_LIVE_VERIFIED_READY_FOR_NEW_VOICEOVER
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -121,20 +121,21 @@ hosted_beta_user_walkthrough:
     - "dc0ad4966b401cc79618bf1b30f3014a350b0380"
     - "9abfcf2f94c876b98c13c2e6149abdee2be0c76a"
     - "3fc6ff7366ad93201ac753c33cb0035bfd78cc2c"
-  deployment_candidate: SOURCE_3FC6FF73_ACCEPTANCE_FIXTURE_VISIBILITY_READY
-  deployed_source_commit: "9abfcf2f94c876b98c13c2e6149abdee2be0c76a"
-  cloudflare_worker_version_id: "05f17fc5-4533-49c9-a7ce-d80f1a2139ba"
-  pending_source_candidate: "3fc6ff7366ad93201ac753c33cb0035bfd78cc2c"
+    - "0c8c1bc73f4d13940ce7a31d405ca33b88b66109"
+  deployment_candidate: LIVE_SOURCE_0C8C1BC7_ACCEPTANCE_FIXTURE_VISIBILITY_VERIFIED
+  deployed_source_commit: "0c8c1bc73f4d13940ce7a31d405ca33b88b66109"
+  cloudflare_worker_version_id: "338d1e68-6bf8-4e10-b573-6e42c85aa66a"
+  pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "EXACT_SOURCE_BOUND_PRIVATE_HOSTED_BETA_MIGRATION_0059_AND_DEPLOYMENT_APPROVAL_CAP_USD_0"
-  pending_validations: "LIVE_LEDGER_59_OF_59; LIVE_EXACT_SOURCE_STATUS; AUTHENTICATED_CHROME_QUEUE_ONLY_USER_PROJECTS"
+  pending_release_boundary: null
+  pending_validations: null
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "aa02373f3a34974eb102bbe41474313a7a32842eef51c0472fa01f2ece60b58b"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 9abfcf2f94c876b98c13c2e6149abdee2be0c76a CAP USD 0"
+  deployed_config_sha256: "e3aacaab5ab132a872e371be9d5f07144a646caa5d00bc06ca1bfb83bdd829ab"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 0c8c1bc73f4d13940ce7a31d405ca33b88b66109 CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -144,16 +145,16 @@ hosted_beta_user_walkthrough:
   gpu_use_authorized: false
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
-  database_preflight: "LIVE_LEDGER_58_OF_58_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
-  pending_database_migration: "0059_project_kind_visibility.sql"
+  database_preflight: "LIVE_LEDGER_59_OF_59_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
+  pending_database_migration: null
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_LIVE_9ABFCF2F_WORKER_05F17FC5_STATUS_EXACT_HTTP_200_8_OF_8; AUTHENTICATED_CHROME_QUEUE_SCHEMA_V2_SHOWS_ONE_ROW_PER_ACTIVE_PROJECT; ARCHIVED_HELEN_VIDEO_AND_HELEN_VIDEO_2_ABSENT; NO_COMPLETED_TRANSCRIPTION_METRIC; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
+  live_browser_verification: "PASS_LIVE_0C8C1BC7_WORKER_338D1E68_STATUS_EXACT_HTTP_200_8_OF_8; AUTHENTICATED_CHROME_QUEUE_SHOWS_IN_PROGRESS_0_ACTION_NEEDED_1_AND_ONLY_DEMO_VIDEO1; ACCEPTANCE_FIXTURES_AND_ARCHIVED_HELEN_PROJECTS_ABSENT; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
   fixed_blockers:
-    - "Source 3fc6ff73 adds an explicit USER versus ACCEPTANCE_FIXTURE project kind. Additive migration 0059 backfills receipt-proven non-production fixtures plus the exact authenticated-Chrome historical fixture IDs; it does not use title matching and deletes nothing. Queue, Library, project list/detail, and provenance surfaces become USER-only; future hosted creates are explicit USER and the acceptance provisioner is explicit ACCEPTANCE_FIXTURE. The aggregate metric is renamed Action needed. Hosted UI/server tests pass 97/97, migration smoke/backfill 7/7, V2-06 fixture/deployment/grant tests 32/32, web/control-plane typechecks, changed-file lint, staging build/quarantine, deployment validation, formatting, and diff checks pass. Migration/deployment have not occurred and require fresh exact USD 0 approval."
+    - "Approved HEAD 0c8c1bc7, containing source 3fc6ff73, applied additive migration 0059 and exact grants at 59/59, then deployed once as Worker 338d1e68 with config SHA-256 e3aacaab. The migration classifies 11 receipt-proven or exact historically observed acceptance fixtures as ACCEPTANCE_FIXTURE, retains all audit lineage, and deletes nothing; the one USER project remains demo video1. Eight cache-bypassed status reads report the exact source, staging, DISABLED_UNQUALIFIED, and project-ledger-enforced provider billing. Authenticated Chrome shows In progress 0, Action needed 1, and only demo video1. No provider call, GPU work, production action, or spend occurred."
     - "Approved HEAD 9abfcf2f, containing Queue implementation dc0ad496, is live as Worker 05f17fc5 with config SHA-256 aa02373f. Eight cache-bypassed exact-source reads pass. Authenticated Chrome shows the project-level Queue with In progress and Needs attention metrics, one row per active project, no Completed-transcription metric, and both archived helen video projects absent. Historical active fixtures remain visible because they have not been archived; immutable attempts and billing/security lineage remain retained outside the active Queue. No database migration, provider call, GPU work, production action, or spend occurred."
     - "Source dc0ad496 replaces attempt-level Queue rows with one row per ACTIVE project, excludes archived projects immediately and successful final renders owned by Library, derives explicit In progress/Action required/Needs attention/Cancelled/Waiting states, and invalidates Queue/Progress caches after project archival. It removes the misleading Completed-transcription metric. Focused UI/product/contract tests pass 46/46; web typecheck, changed-file ESLint, staging build/quarantine, deployment validation, formatting, and diff checks pass. No deployment, database mutation, provider call, GPU work, production action, or spend occurred; fresh exact USD 0 deployment approval is required."
     - "Approved deployable HEAD 092c5c74, containing source 7bd59b12, is live as Worker 03bdeb81 with config SHA-256 8f4328a0. Stage 3 is now ACTION_REQUIRED rather than PENDING, the hero and stage detail state the required action, the cost tile shows Up to USD 0.01 only after resume, and a responsive Resume: extract context control appears above the pipeline while retaining the single-dispatch/uncertain-result guard. Eight consecutive exact-source status reads pass after edge convergence; authenticated Chrome verifies the complete action UI on helen video 2. No action was clicked; no context dispatch, provider call, project mutation, GPU work, production action, or spend occurred."
@@ -223,7 +224,7 @@ hosted_beta_user_walkthrough:
     - "Source 2185ca5c repairs the live Stage 3 hang root cause: migration 0056's UNKNOWN failure handlers violated the durable attempt constraint, so their safety write failed and left DISPATCHING forever. Additive migration 0058 writes the required AMBIGUOUS/unresolved attempt shape, safely reconciles context and prompt claims older than three minutes to UNKNOWN without releasing uncertain cost or redispatching, and the hosted UI changes to Needs attention with receipt/cost review guidance. Durable/replay and runtime-grant tests pass 3/3; hosted UI/server tests pass 91/91; typecheck, changed-file ESLint, deployment validation, staging build/quarantine, and diff checks pass. The user's first context request remains a potentially charged uncertain result and must not be retried. Migration/deployment remain unapplied pending fresh exact source-bound approval."
     - "Approved source 05b51b21 applied migration 0058 and exact grants at 58/58, then deployed as Worker 7a92d9aa with config sha256:2e850b32. Eight exact-source status reads pass. Authenticated Chrome triggered the approved stale reconciliation once; durable readback is context UNKNOWN/HOSTED_CONTEXT_DISPATCH_TIMEOUT, task FAILED, attempt UNKNOWN/AMBIGUOUS with no attempt finish time, one RESERVED $0.01 event, no reported cost, and no redispatch. Chrome then exposed one presentation-only gap: UNKNOWN normalized to PENDING/Waiting even though the review notice and no-retry guard were correct. Source 41462ed5 maps UNKNOWN to FAILED/Needs attention; hosted UI/server 91/91, typecheck, lint, staging build/quarantine, deployment validation, and diff checks pass. Deploying this successor requires fresh exact $0 authority."
     - "Approved successor 1f223268 is deployed as Worker 9d71559d with config sha256:6434ba13. Eight exact-source status reads pass. Authenticated Chrome now shows Needs attention in the overall ring, hero badge, and status metric; Stage 3 is FAILED with the safe-deadline explanation; the review notice says no automatic provider request; and no retry control is present. No database migration, provider request, GPU work, production action, or spend occurred during this presentation-only deployment."
-  current_step: PROGRESS_QUEUE_ETA_AND_COSTS
+  current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
   remaining_steps:
     - PROJECT_CREATION_AND_COST_PREFLIGHT
     - VOICEOVER_UPLOAD_AND_VALIDATION
