@@ -5279,7 +5279,6 @@ async function reconcileVoiceoverContext(
         transcript_hash: string;
         request_hash: string;
         provider_may_have_charged: boolean;
-        output_asset_id: string | null;
         asr_attempt_id: string;
         output_object_key: string;
         output_content_type: string;
@@ -5288,7 +5287,7 @@ async function reconcileVoiceoverContext(
       }>(
         `SELECT revision.id::text AS revision_id, context.id::text AS context_id,
                 context.state AS context_state, context.transcript_hash, context.request_hash,
-                context.provider_may_have_charged, execution_attempt.output_asset_id::text,
+                context.provider_may_have_charged,
                 asr.id::text AS asr_attempt_id, asr.result_object_key AS output_object_key,
                 asr.result_content_type AS output_content_type,
                 asr.result_content_length AS output_content_length,
@@ -5303,10 +5302,6 @@ async function reconcileVoiceoverContext(
            JOIN hosted_cpu_job_attempts AS asr
              ON asr.account_id=context.account_id AND asr.workspace_id=context.workspace_id
             AND asr.id=context.asr_attempt_id AND asr.kind='ASR' AND asr.state='SUCCEEDED'
-           JOIN attempts AS execution_attempt
-             ON execution_attempt.account_id=context.account_id
-            AND execution_attempt.workspace_id=context.workspace_id
-            AND execution_attempt.task_id=context.task_id AND execution_attempt.id=context.attempt_id
           WHERE project.account_id=$1 AND project.workspace_id=$2 AND project.id=$3
             AND project.status='ACTIVE' LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId],
@@ -5395,7 +5390,7 @@ async function reconcileVoiceoverContext(
         409,
       );
     }
-    const outputAssetId = state.output_asset_id ?? crypto.randomUUID();
+    const outputAssetId = crypto.randomUUID();
     const reconciled = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",

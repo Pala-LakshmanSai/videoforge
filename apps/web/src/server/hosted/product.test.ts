@@ -804,6 +804,8 @@ describe("hosted product route contract", () => {
     expect(block).toContain("RUNWARE_TASK_NOT_FOUND");
     expect(block).toContain("RUNWARE_TASK_DETAILS_UNAVAILABLE");
     expect(block).toContain("RUNWARE_IDEMPOTENCY_CONFLICT");
+    expect(block).not.toContain("JOIN attempts AS execution_attempt");
+    expect(block).toContain("const outputAssetId = crypto.randomUUID()");
     expect(source).toContain("/reconcile-context$/u.exec(");
   });
 
