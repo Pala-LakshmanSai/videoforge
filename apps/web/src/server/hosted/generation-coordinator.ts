@@ -1,4 +1,5 @@
 import {
+  assertContract,
   sha256CanonicalJson,
   validateAndHashContractDocument,
   type ProjectRevisionConfigDocument,
@@ -106,7 +107,15 @@ function storedRevisionConfig(value: ProjectRevisionConfigDocument | string): un
   try {
     return JSON.parse(value);
   } catch {
-    reject("HOSTED_GENERATION_PROJECT_REVISION_INVALID");
+    reject("HOSTED_GENERATION_PROJECT_REVISION_JSON_INVALID");
+  }
+}
+
+function assertStoredRevisionSchema(value: unknown): void {
+  try {
+    assertContract("projectRevisionConfig", value);
+  } catch {
+    reject("HOSTED_GENERATION_PROJECT_REVISION_SCHEMA_INVALID");
   }
 }
 
@@ -293,10 +302,12 @@ export async function coordinateHostedGeneration(input: {
   } catch {
     reject("HOSTED_GENERATION_ASR_OUTPUT_INVALID");
   }
+  const storedRevision = storedRevisionConfig(snapshot.revisionConfig);
+  assertStoredRevisionSchema(storedRevision);
   const revision = await validateAndHashContractDocument(
     "projectRevisionConfig",
-    storedRevisionConfig(snapshot.revisionConfig),
-  ).catch(() => reject("HOSTED_GENERATION_PROJECT_REVISION_INVALID"));
+    storedRevision,
+  ).catch(() => reject("HOSTED_GENERATION_PROJECT_REVISION_CANONICALIZATION_FAILED"));
   const asrResult = await validateAndHashContractDocument("asrJobResult", rawResult).catch(() =>
     reject("HOSTED_GENERATION_ASR_RESULT_DOCUMENT_INVALID"),
   );

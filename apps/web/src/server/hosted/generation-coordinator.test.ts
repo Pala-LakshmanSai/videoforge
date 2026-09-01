@@ -274,7 +274,23 @@ describe("hosted generation coordinator", () => {
         asrOutputBytes: fixture.bytes,
         persistence: fixture.persistence,
       }),
-    ).rejects.toMatchObject({ code: "HOSTED_GENERATION_PROJECT_REVISION_INVALID" });
+    ).rejects.toMatchObject({ code: "HOSTED_GENERATION_PROJECT_REVISION_JSON_INVALID" });
+    expect(fixture.persist).not.toHaveBeenCalled();
+  });
+
+  it("separates a stored revision schema failure from JSON decoding", async () => {
+    const fixture = await setup();
+    await expect(
+      coordinateHostedGeneration({
+        snapshot: {
+          ...fixture.snapshot,
+          revisionConfig: JSON.stringify({ schema_version: "project-revision-config/v1" }),
+        },
+        asrInputBytes: fixture.inputBytes,
+        asrOutputBytes: fixture.bytes,
+        persistence: fixture.persistence,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_GENERATION_PROJECT_REVISION_SCHEMA_INVALID" });
     expect(fixture.persist).not.toHaveBeenCalled();
   });
 
