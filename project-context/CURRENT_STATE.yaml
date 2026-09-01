@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STAGE_3_NATIVE_FETCH_RECEIVER_ROOT_CAUSE_REPAIRED_AWAITING_EXACT_DEPLOYMENT_APPROVAL
+  status: STAGE_3_NATIVE_FETCH_RECEIVER_REPAIR_LIVE_AWAITING_NEW_PROJECT_USER_TEST
   implementation_commit: "43878f9b787cb0cd89d14055b2e506680093ea2a"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -130,20 +130,20 @@ hosted_beta_user_walkthrough:
     - "23b0f77f01765e33a1ae95ea6c375b836878f559"
     - "4d9e490005fc0ce2088a1146d26b3cb52a36485f"
     - "ba51e854ce58c1d5a719bf28d109e00e16e99376"
-  deployment_candidate: "43878f9b787cb0cd89d14055b2e506680093ea2a"
-  deployed_source_commit: "186a1f42113dac945b14e318eb698e2a0b578b48"
-  cloudflare_worker_version_id: "04356091-4450-4ec0-b182-1022572126b2"
-  pending_source_candidate: "43878f9b787cb0cd89d14055b2e506680093ea2a"
+  deployment_candidate: null
+  deployed_source_commit: "23fc8e093e99c86ebac0e44f85a7e09587510e28"
+  cloudflare_worker_version_id: "4bba9386-fe97-4d12-97b4-7ecf4d374b96"
+  pending_source_candidate: null
   pending_worker_release: null
   pending_release_boundary: null
-  pending_validations: "EXACT_SOURCE_STAGING_DEPLOYMENT; NEW_PROJECT_STAGE_3_DEEPSEEK_CONTEXT; AUTOMATIC_SCENE_PLAN_AND_STAGE_5_PROMPTS"
+  pending_validations: "NEW_PROJECT_STAGE_3_DEEPSEEK_CONTEXT; AUTOMATIC_SCENE_PLAN_AND_STAGE_5_PROMPTS"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "84eddefb8a61d5c5aadce7738fd60df4381d02eecbeb083fd96eac258e83798c"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 186a1f42113dac945b14e318eb698e2a0b578b48 CAP USD 0.05"
+  deployed_config_sha256: "f954b52810ce88220d4187ac096ee97acc7b467f4def3099d393c63c7b6aaf4f"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 23fc8e093e99c86ebac0e44f85a7e09587510e28 CAP USD 0.05"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -160,8 +160,9 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_LIVE_186A1F42_WORKER_04356091_CACHE_BYPASSED_STATUS_EXACT_4_OF_4; AUTHENTICATED_CHROME_HELLEN1_RETAINED_AND_FALSE_DEADLINE_COPY_REMOVED; OLD_UNKNOWN_NOT_RETRIED; NEW_PROJECT_REQUIRED; GPU_AND_PRODUCTION_ZERO"
+  live_browser_verification: "PASS_LIVE_23FC8E09_WORKER_4BBA9386_CACHE_BYPASSED_STATUS_EXACT_4_OF_4; AUTHENTICATED_CHROME_OLD_UNKNOWN_RETAINED_WITHOUT_RETRY; NEW_PROJECT_REQUIRED; GPU_AND_PRODUCTION_ZERO"
   fixed_blockers:
+    - "Exact approval deployed clean HEAD 23fc8e09 once as Worker 4bba9386 with config SHA-256 f954b528. Four cache-bypassed status reads report the exact source and GPU transport DISABLED_UNQUALIFIED. Authenticated Chrome reload retained the failed project without redispatch. No migration, database mutation, provider inference during deployment, GPU/RunPod work, production action, or deployment-time provider spend occurred. Next proof is a new project through Stage 3 context, Stage 4 planning, and Stage 5 prompts."
     - "Live monitoring of new project 57973385 proved transcription completed and Stage 3 immediately persisted VOICEOVER_CONTEXT_NETWORK_UNCERTAIN without redispatch. The initial transport stored Cloudflare's native fetch as a class property and invoked it as this.fetch(...), supplying the Runware client as the native function receiver; the retrieval path invokes fetch directly and has already reached Runware, ruling out credentials, DNS, and general Worker egress. Source 43878f9b calls the stored port receiver-free and adds a receiver-sensitive regression. Focused transport/context/product tests pass 65/65; both web TypeScript builds and diff checks pass. Source only; live remains 186a1f42 / Worker 04356091 and the consumed approval cannot be reused."
     - "Exact approval deployed clean HEAD 186a1f42 once as Worker 04356091 with config SHA-256 84eddefb. Four cache-bypassed status reads report exact staging source with GPU transport DISABLED_UNQUALIFIED. Authenticated Chrome reload preserves the full hellen1 project and now says the provider result is uncertain rather than falsely claiming a deadline. The historical UNKNOWN task remains non-retriable and no provider inference was sent during deployment. No migration, database mutation, GPU/RunPod work, production action, or deployment-time provider spend occurred. Next proof is a new project through automatic Stage 3 context, Stage 4 planning, and Stage 5 prompts."
     - "Read-only Neon and retained Cloudflare logs isolate hellen1 Stage 3 as an immediate ambiguous provider response, not a safe-deadline timeout: its durable attempt became UNKNOWN in about 158 ms, the Worker returned HTTP 502 in 984 ms, and the one retrieval-only reconciliation returned HTTP 409 without redispatch. The ledger contains one USD 0.01 reservation, USD 0 reported/settled cost, zero prompt runs, and no GPU/RunPod work. Source 9d2008cb accepts valid successful Runware envelopes containing errors=[], preserves bounded network/HTTP/response diagnostics in logs and durable problem codes, and shows accurate UI copy instead of falsely claiming every UNKNOWN result exceeded a deadline. Focused hosted tests pass 56/56; both web TypeScript builds and diff checks pass. Source only; live staging remains 967f3c9d / Worker 8d7bd2ce pending fresh exact deployment approval."
