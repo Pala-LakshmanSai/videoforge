@@ -21,6 +21,9 @@ test("the hosted runtime can append through the exact function but has no direct
     "hosted_pair_zero_worker_observations",
     "hosted_voiceover_contexts",
     "hosted_prompt_runs",
+    "prompt_executions",
+    "prompt_scene_results",
+    "timeline_segments",
   ]) {
     assert.match(
       source,

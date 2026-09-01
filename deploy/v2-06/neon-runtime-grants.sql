@@ -210,7 +210,10 @@ GRANT SELECT ON
   serverless_output_receipts,
   hosted_pair_zero_worker_observations,
   hosted_voiceover_contexts,
-  hosted_prompt_runs
+  hosted_prompt_runs,
+  prompt_executions,
+  prompt_scene_results,
+  timeline_segments
 TO :"runtime_role";
 
 GRANT SELECT, INSERT ON
