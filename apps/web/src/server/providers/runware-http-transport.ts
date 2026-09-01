@@ -261,9 +261,12 @@ export async function retrieveRunwareTextTaskDetails(
     throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
 
   const originalResponse = record(details.response);
+  const originalErrors = Array.isArray(originalResponse?.errors)
+    ? originalResponse.errors.map(record).filter(Boolean)
+    : [];
   if (
     !originalResponse ||
-    originalResponse.errors !== undefined ||
+    originalErrors.length > 0 ||
     !Array.isArray(originalResponse.data)
   )
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");

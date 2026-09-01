@@ -11,6 +11,7 @@ import {
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
 const MODEL = "deepseek:v4@flash" as const;
+const REQUEST_CONTRACT_VERSION = "runware-deepseek-context-request-v2" as const;
 
 const SYSTEM_PROMPT = [
   "Extract durable story context from the complete VideoForge voiceover transcript.",
@@ -166,11 +167,8 @@ export async function prepareHostedVoiceoverContextRequest(input: {
 }): Promise<HostedVoiceoverContextRequest> {
   if (input.transcript.trim().length === 0 || input.transcript.length > 100_000)
     throw new Error("VOICEOVER_TRANSCRIPT_INVALID");
-  const taskSeed = await sha256(`voiceover-context:${input.transcriptHash}`);
-  const taskUUID = uuidFromHash(taskSeed);
-  const request = Object.freeze({
+  const requestWithoutTaskUUID = Object.freeze({
     taskType: "textInference",
-    taskUUID,
     model: MODEL,
     outputFormat: "json",
     deliveryMethod: "sync",
@@ -185,6 +183,21 @@ export async function prepareHostedVoiceoverContextRequest(input: {
       maxTokens: 1_600,
     },
     messages: [{ role: "user", content: canonicalizeJson({ transcript: input.transcript }) }],
+  });
+  // Runware task UUIDs are account-global idempotency keys. Bind the UUID to the
+  // entire immutable request contract, not only the transcript hash, so a prompt,
+  // schema, model, or settings change can never resolve to an older archived task.
+  const taskSeed = await sha256(
+    canonicalizeJson({
+      requestVersion: REQUEST_CONTRACT_VERSION,
+      transcriptHash: input.transcriptHash,
+      request: requestWithoutTaskUUID,
+    }),
+  );
+  const taskUUID = uuidFromHash(taskSeed);
+  const request = Object.freeze({
+    ...requestWithoutTaskUUID,
+    taskUUID,
   }) as unknown as RunwarePromptTransportRequest["request"];
   const requestBytes = canonicalizeJson([request]);
   return Object.freeze({
@@ -222,7 +235,7 @@ export async function extractHostedVoiceoverContext(input: {
   });
   const result = await transport.dispatch({
     requestVersion:
-      "runware-deepseek-context-request-v1" as unknown as RunwarePromptTransportRequest["requestVersion"],
+      REQUEST_CONTRACT_VERSION as unknown as RunwarePromptTransportRequest["requestVersion"],
     attemptIndex: 1,
     requestedSceneIds: ["voiceover_context"],
     request: input.prepared.request,

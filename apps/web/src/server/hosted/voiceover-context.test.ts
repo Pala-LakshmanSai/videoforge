@@ -37,6 +37,23 @@ describe("hosted voiceover context extraction", () => {
     expect((request.settings as Record<string, unknown>).maxTokens).toBe(1_600);
   });
 
+  it("binds the provider task UUID to the full request instead of the transcript hash alone", async () => {
+    const first = await prepareHostedVoiceoverContextRequest({
+      transcript: "The first immutable request body.",
+      transcriptHash: HASH,
+    });
+    const replay = await prepareHostedVoiceoverContextRequest({
+      transcript: "The first immutable request body.",
+      transcriptHash: HASH,
+    });
+    const changedRequest = await prepareHostedVoiceoverContextRequest({
+      transcript: "The changed immutable request body.",
+      transcriptHash: HASH,
+    });
+    expect(replay.request.taskUUID).toBe(first.request.taskUUID);
+    expect(changedRequest.request.taskUUID).not.toBe(first.request.taskUUID);
+  });
+
   it("accepts strict compact context under the one-cent cap with fake transport only", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "Inspect the fruit. Then tap it and listen for a hollow sound.",
@@ -174,6 +191,7 @@ describe("hosted voiceover context extraction", () => {
             taskUUID: prepared.request.taskUUID,
             request: JSON.parse(prepared.requestBytes),
             response: {
+              errors: [],
               data: [
                 {
                   taskType: "textInference",
