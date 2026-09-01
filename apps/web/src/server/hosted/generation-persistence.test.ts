@@ -74,14 +74,11 @@ async function fixture() {
 }
 
 describe("hosted canonical timing persistence", () => {
-  it("conditionally writes tenant-prefixed canonical bytes, rehashes readback, then invokes only the append function", async () => {
+  it("idempotently writes tenant-prefixed canonical bytes, rehashes readback, then invokes only the append function", async () => {
     const prepared = await fixture();
     const objects = new Map<string, ArrayBuffer>();
     const put = vi.fn(async (key: string, value: ArrayBuffer, options: unknown) => {
-      const onlyIf = (options as { onlyIf?: unknown }).onlyIf;
-      expect(onlyIf).toBeInstanceOf(Headers);
-      expect((onlyIf as Headers).get("if-none-match")).toBe("*");
-      if (objects.has(key)) throw new Error("precondition");
+      expect(options).toEqual({ httpMetadata: { contentType: "application/json" } });
       objects.set(key, value);
     });
     let appendCalls = 0;
@@ -138,7 +135,7 @@ describe("hosted canonical timing persistence", () => {
     expect(sql).toContain("videoforge_append_hosted_canonical_timing");
     expect(sql).not.toMatch(/generation_requests|outbox|authority|serverless_attempts/iu);
     expect(appendCalls).toBe(2);
-    expect(put).toHaveBeenCalledTimes(4);
+    expect(put).toHaveBeenCalledTimes(2);
   });
 
   it("fails before the database when an existing canonical key contains foreign bytes", async () => {
@@ -146,10 +143,9 @@ describe("hosted canonical timing persistence", () => {
     const foreign = new TextEncoder().encode('{"foreign":true}').buffer;
     const query = vi.fn();
     const pool = { query, connect: vi.fn() };
+    const put = vi.fn();
     const bucket = {
-      async put() {
-        throw new Error("precondition");
-      },
+      put,
       async get() {
         return {
           size: foreign.byteLength,
@@ -181,5 +177,6 @@ describe("hosted canonical timing persistence", () => {
       code: "HOSTED_CANONICAL_TIMING_OBJECT_READBACK_MISMATCH",
     });
     expect(pool.connect).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
   });
 });

@@ -32,28 +32,38 @@ async function putCanonicalExact(
   bytes: Uint8Array,
   sha256: string,
 ): Promise<void> {
+  const inspectStored = async (): Promise<"ABSENT" | "EXACT" | "MISMATCH"> => {
+    const stored = await bucket.get(key);
+    if (!stored) return "ABSENT";
+    if (
+      stored.size !== bytes.byteLength ||
+      stored.httpMetadata?.contentType !== "application/json"
+    ) {
+      return "MISMATCH";
+    }
+    const readback = await stored.arrayBuffer();
+    return readback.byteLength === bytes.byteLength && (await sha256Bytes(readback)) === sha256
+      ? "EXACT"
+      : "MISMATCH";
+  };
+
+  // Canonical keys include the exact document hash. Replays therefore need no write, and concurrent
+  // writers can safely put the same canonical bytes without an R2 precondition. Live staging proved
+  // both attempted conditional forms could leave a first write absent, so correctness is enforced by
+  // the content-addressed key plus mandatory exact readback instead of conditional-create behavior.
+  const existing = await inspectStored();
+  if (existing === "EXACT") return;
+  if (existing === "MISMATCH") fail("HOSTED_CANONICAL_TIMING_OBJECT_READBACK_MISMATCH");
+
   const uploadBytes = Uint8Array.from(bytes).buffer;
   try {
     await bucket.put(key, uploadBytes, {
-      // Cloudflare documents wildcard create-if-absent through the standard conditional header.
-      // The structured etag form is for a concrete object etag; passing "*" there can reject a
-      // first write. A failed concurrent create remains safe because exact readback is mandatory.
-      onlyIf: new Headers({ "If-None-Match": "*" }),
       httpMetadata: { contentType: "application/json" },
     });
   } catch {
-    // Concurrent exact creation is safe only after exact private readback below.
+    // A concurrent exact writer is safe only after exact private readback below.
   }
-  const stored = await bucket.get(key);
-  if (
-    !stored ||
-    stored.size !== bytes.byteLength ||
-    stored.httpMetadata?.contentType !== "application/json"
-  ) {
-    fail("HOSTED_CANONICAL_TIMING_OBJECT_READBACK_MISMATCH");
-  }
-  const readback = await stored.arrayBuffer();
-  if (readback.byteLength !== bytes.byteLength || (await sha256Bytes(readback)) !== sha256) {
+  if ((await inspectStored()) !== "EXACT") {
     fail("HOSTED_CANONICAL_TIMING_OBJECT_READBACK_MISMATCH");
   }
 }
