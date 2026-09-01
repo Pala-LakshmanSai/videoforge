@@ -674,6 +674,15 @@ describe("hosted product route contract", () => {
     expect(retry).not.toContain("task.state IN ('FAILED','RETRY_WAIT')");
   });
 
+  it("preserves the exact PostgreSQL ASR terminal timestamp for canonical lineage", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const planningStart = source.indexOf("async function renderHandoff(");
+    const planningEnd = source.indexOf("async function projects(", planningStart);
+    const planning = source.slice(planningStart, planningEnd);
+    expect(planning).toContain("asr.terminal_at::text AS asr_terminal_at");
+    expect(planning).not.toContain("asr.terminal_at AS asr_terminal_at");
+  });
+
   it("rechecks and locks active preset parents before hosted preset mutations", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
     const blocks = [

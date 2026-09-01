@@ -4945,7 +4945,7 @@ async function renderHandoff(
         `SELECT revision.id AS revision_id, revision.status AS revision_state,
                 revision.revision_config_payload::text AS revision_config_payload,
                 revision.revision_config_hash,
-                asr.id AS asr_attempt_id, asr.terminal_at AS asr_terminal_at,
+                asr.id AS asr_attempt_id, asr.terminal_at::text AS asr_terminal_at,
                 asr.job_spec_object_key AS asr_input_object_key,
                 asr.job_spec_content_length AS asr_input_content_length,
                 asr.job_spec_checksum_sha256 AS asr_input_sha256,
