@@ -3,6 +3,7 @@ import type { RunwarePromptTransportRequest } from "@videoforge/pipeline";
 
 import {
   RunwarePromptHttpTransport,
+  type RunwareSafeDiagnostic,
   RunwareSpendLedger,
   retrieveRunwareTextTaskDetails,
 } from "../providers/runware-http-transport";
@@ -93,6 +94,21 @@ export type HostedVoiceoverContextRequest = Readonly<{
   requestBytes: string;
   requestHash: `sha256:${string}`;
 }>;
+
+export class HostedVoiceoverContextProviderError extends Error {
+  constructor(
+    readonly code:
+      | "VOICEOVER_CONTEXT_PROVIDER_REJECTED"
+      | "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN"
+      | "VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE"
+      | "VOICEOVER_CONTEXT_RESPONSE_UNCERTAIN"
+      | "VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN",
+    readonly diagnostic: RunwareSafeDiagnostic | null,
+  ) {
+    super(code);
+    this.name = "HostedVoiceoverContextProviderError";
+  }
+}
 
 function uuidFromHash(hash: string): string {
   const hex = hash.slice(7, 39).split("");
@@ -194,11 +210,15 @@ export async function extractHostedVoiceoverContext(input: {
   readonly responseHash: `sha256:${string}`;
   readonly reportedCostMicroUsd: number;
 }> {
+  const diagnosticState: { current: RunwareSafeDiagnostic | null } = { current: null };
   const transport = new RunwarePromptHttpTransport({
     apiKey: input.apiKey,
     ledger: new RunwareSpendLedger(HOSTED_CONTEXT_RESERVATION_USD),
     maximumRequestCostUsd: HOSTED_CONTEXT_RESERVATION_USD,
     fetch: input.fetcher,
+    onDiagnostic: (value) => {
+      diagnosticState.current = value;
+    },
   });
   const result = await transport.dispatch({
     requestVersion:
@@ -210,9 +230,23 @@ export async function extractHostedVoiceoverContext(input: {
     requestSha256: input.prepared.requestHash,
     retryOfRequestSha256: null,
   });
-  if (result.status === "failed") throw new Error("VOICEOVER_CONTEXT_PROVIDER_REJECTED");
-  if (result.status !== "succeeded" || result.finishReason !== "stop")
-    throw new Error("VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN");
+  if (result.status === "failed")
+    throw new HostedVoiceoverContextProviderError(
+      "VOICEOVER_CONTEXT_PROVIDER_REJECTED",
+      diagnosticState.current,
+    );
+  if (result.status !== "succeeded" || result.finishReason !== "stop") {
+    const diagnostic = diagnosticState.current;
+    const problemCode =
+      diagnostic?.stage === "network"
+        ? "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN"
+        : diagnostic?.stage === "http"
+          ? "VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE"
+          : diagnostic?.stage === "response"
+            ? "VOICEOVER_CONTEXT_RESPONSE_UNCERTAIN"
+            : "VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN";
+    throw new HostedVoiceoverContextProviderError(problemCode, diagnostic);
+  }
   if (result.costUsd > HOSTED_CONTEXT_RESERVATION_USD)
     throw new Error("VOICEOVER_CONTEXT_COST_EXCEEDED");
   return finalizeHostedVoiceoverContext(input.prepared, result.outputText, result.costUsd);

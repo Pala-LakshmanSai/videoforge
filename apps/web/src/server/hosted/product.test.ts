@@ -820,7 +820,9 @@ describe("hosted product route contract", () => {
     expect(block.indexOf("videoforge_reconcile_stale_hosted_prompt_dispatches")).toBeLessThan(
       block.indexOf("FROM hosted_voiceover_contexts AS context"),
     );
-    expect(block).toContain("exceeded its safe deadline");
+    expect(block).toContain("HOSTED_CONTEXT_DISPATCH_TIMEOUT");
+    expect(block).toContain("VOICEOVER_CONTEXT_NETWORK_UNCERTAIN");
+    expect(block).toContain("Runware could not be reached");
     expect(block).toContain('contextState === "UNKNOWN"');
     expect(block).toContain('? "FAILED"');
   });

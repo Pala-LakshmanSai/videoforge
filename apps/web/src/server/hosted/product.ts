@@ -36,6 +36,7 @@ import { RunwareTransportError } from "../providers/runware-http-transport";
 import {
   extractHostedVoiceoverContext,
   HOSTED_CONTEXT_RESERVATION_MICRO_USD,
+  HostedVoiceoverContextProviderError,
   prepareHostedVoiceoverContextRequest,
   reconcileHostedVoiceoverContext,
 } from "./voiceover-context";
@@ -5223,6 +5224,15 @@ async function createVoiceoverContext(
           ? error.message
           : "HOSTED_CONTEXT_EXECUTION_UNKNOWN";
       const definiteProviderRejection = problemCode === "VOICEOVER_CONTEXT_PROVIDER_REJECTED";
+      if (error instanceof HostedVoiceoverContextProviderError) {
+        console.error("HOSTED_CONTEXT_PROVIDER_FAILURE", {
+          problem_code: error.code,
+          stage: error.diagnostic?.stage ?? null,
+          http_status: error.diagnostic?.httpStatus ?? null,
+          provider_code: error.diagnostic?.providerCode ?? null,
+          provider_parameter: error.diagnostic?.providerParameter ?? null,
+        });
+      }
       await createNeonExecutor(pool)
         .transaction(async (transaction) => {
           await transaction.query("SELECT set_config($1, $2, true)", [
@@ -5243,12 +5253,13 @@ async function createVoiceoverContext(
       return response(
         {
           error: {
-            code: "HOSTED_CONTEXT_EXECUTION_UNCERTAIN",
-            message:
-              "Context extraction did not return a durable accepted result and will not retry automatically.",
+            code: problemCode,
+            message: definiteProviderRejection
+              ? "Runware rejected the context request before VideoForge accepted a result."
+              : "Context extraction did not return a durable accepted result and will not retry automatically.",
           },
         },
-        502,
+        definiteProviderRejection ? 422 : 502,
       );
     }
     throw error;
@@ -6306,6 +6317,7 @@ async function projectDetail(
     );
     const voiceoverContext = detail.voiceoverContext as Record<string, unknown> | null;
     const contextState = String(voiceoverContext?.state ?? "WAITING");
+    const contextProblemCode = String(voiceoverContext?.problem_code ?? "");
     const contextStageStatus =
       contextState === "SUCCEEDED"
         ? "COMPLETE"
@@ -6348,7 +6360,18 @@ async function projectDetail(
           contextState === "SUCCEEDED"
             ? "Compact whole-script facts are saved for scene planning and prompt relevance."
             : contextState === "UNKNOWN"
-              ? "The request exceeded its safe deadline. Its result is uncertain and will not be dispatched again automatically."
+              ? contextProblemCode === "HOSTED_CONTEXT_DISPATCH_TIMEOUT"
+                ? "The request exceeded its safe deadline. Its result is uncertain and will not be dispatched again automatically."
+                : contextProblemCode === "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN"
+                  ? "Runware could not be reached before an accepted task was confirmed. No automatic redispatch occurred."
+                  : contextProblemCode === "VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE"
+                    ? "Runware returned a temporary server failure before an accepted result was confirmed. No automatic redispatch occurred."
+                    : contextProblemCode === "VOICEOVER_CONTEXT_RESPONSE_UNCERTAIN"
+                      ? "Runware responded, but no durable accepted result could be verified. No automatic redispatch occurred."
+                      : "The provider result is uncertain and will not be dispatched again automatically."
+              : contextState === "FAILED" &&
+                  contextProblemCode === "VOICEOVER_CONTEXT_PROVIDER_REJECTED"
+                ? "Runware rejected the request before VideoForge accepted a result."
               : !voiceoverContext && asr?.state === "SUCCEEDED"
                 ? "VideoForge is starting voiceover context automatically within the project limit."
                 : "The complete transcript is summarized once into bounded story context.",

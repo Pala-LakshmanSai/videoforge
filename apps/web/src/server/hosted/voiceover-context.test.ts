@@ -81,7 +81,33 @@ describe("hosted voiceover context extraction", () => {
           throw new DOMException("timed out", "TimeoutError");
         },
       }),
-    ).rejects.toThrow("VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN");
+    ).rejects.toThrow("VOICEOVER_CONTEXT_NETWORK_UNCERTAIN");
+  });
+
+  it("accepts a successful envelope that includes an empty errors array", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it.",
+      transcriptHash: HASH,
+    });
+    const result = await extractHostedVoiceoverContext({
+      prepared,
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      fetcher: async () =>
+        Response.json({
+          errors: [],
+          data: [
+            {
+              taskUUID: prepared.request.taskUUID,
+              taskType: "textInference",
+              text: JSON.stringify(contextDocument()),
+              cost: 0.001,
+              finishReason: "stop",
+              usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+            },
+          ],
+        }),
+    });
+    expect(result.context).toEqual(contextDocument());
   });
 
   it("distinguishes a definite provider rejection from an ambiguous dispatch", async () => {

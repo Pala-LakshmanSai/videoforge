@@ -425,7 +425,7 @@ class RunwareHttpClient {
     }
     const data = Array.isArray(body?.data) ? body.data.map(record).filter(Boolean) : [];
     const item = data.find((candidate) => candidate?.taskUUID === taskUUID) ?? null;
-    if (!item || body?.errors !== undefined) return { disposition: "ambiguous", item: null };
+    if (!item) return { disposition: "ambiguous", item: null };
     const cost = finiteNonnegative(item.cost);
     if (cost === null) return { disposition: "ambiguous", item: null };
     this.options.ledger.settle(reservationUsd, cost);
