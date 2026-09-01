@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: ACCEPTANCE_FIXTURE_VISIBILITY_REPAIR_LIVE_VERIFIED_READY_FOR_NEW_VOICEOVER
+  status: AUTOMATIC_CONTEXT_AND_PROMPT_CONTINUATION_GREEN_AWAITING_EXACT_ZERO_DOLLAR_DEPLOYMENT_APPROVAL
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -122,13 +122,14 @@ hosted_beta_user_walkthrough:
     - "9abfcf2f94c876b98c13c2e6149abdee2be0c76a"
     - "3fc6ff7366ad93201ac753c33cb0035bfd78cc2c"
     - "0c8c1bc73f4d13940ce7a31d405ca33b88b66109"
-  deployment_candidate: LIVE_SOURCE_0C8C1BC7_ACCEPTANCE_FIXTURE_VISIBILITY_VERIFIED
+    - "eb9c3b5ef1c1fed9abd9ab367d37b50821f1e156"
+  deployment_candidate: SOURCE_EB9C3B5E_AUTOMATIC_CONTEXT_AND_PROMPT_CONTINUATION_READY
   deployed_source_commit: "0c8c1bc73f4d13940ce7a31d405ca33b88b66109"
   cloudflare_worker_version_id: "338d1e68-6bf8-4e10-b573-6e42c85aa66a"
-  pending_source_candidate: null
+  pending_source_candidate: "eb9c3b5ef1c1fed9abd9ab367d37b50821f1e156"
   pending_worker_release: null
-  pending_release_boundary: null
-  pending_validations: null
+  pending_release_boundary: "EXACT_SOURCE_BOUND_PRIVATE_HOSTED_BETA_DEPLOYMENT_APPROVAL_CAP_USD_0"
+  pending_validations: "LIVE_EXACT_SOURCE_STATUS; AUTHENTICATED_CHROME_AUTOMATIC_CONTEXT_DISPATCH_AND_NO_MANUAL_STAGE_GATE"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
@@ -154,6 +155,7 @@ hosted_beta_user_walkthrough:
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
   live_browser_verification: "PASS_LIVE_0C8C1BC7_WORKER_338D1E68_STATUS_EXACT_HTTP_200_8_OF_8; AUTHENTICATED_CHROME_QUEUE_SHOWS_IN_PROGRESS_0_ACTION_NEEDED_1_AND_ONLY_DEMO_VIDEO1; ACCEPTANCE_FIXTURES_AND_ARCHIVED_HELEN_PROJECTS_ABSENT; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
   fixed_blockers:
+    - "Source eb9c3b5e removes the duplicate Stage 3 and prompt-writing approval buttons. The project creation CTA now starts the bounded automatic sequence: personal-worker transcription, one durable context extraction, deterministic scene planning, and one durable prompt-writing run. Existing database single-claim/no-redispatch guards and the project-level maximum remain authoritative; uncertain results still stop safely. The current project will continue automatically when its progress page loads after deployment. Focused hosted UI/server/context/prompt tests pass 97/97; web typecheck, changed-file lint, staging build/quarantine, deployment validation, formatting, and diff checks pass. No provider request, deployment, GPU work, production action, or spend occurred while preparing this source."
     - "Approved HEAD 0c8c1bc7, containing source 3fc6ff73, applied additive migration 0059 and exact grants at 59/59, then deployed once as Worker 338d1e68 with config SHA-256 e3aacaab. The migration classifies 11 receipt-proven or exact historically observed acceptance fixtures as ACCEPTANCE_FIXTURE, retains all audit lineage, and deletes nothing; the one USER project remains demo video1. Eight cache-bypassed status reads report the exact source, staging, DISABLED_UNQUALIFIED, and project-ledger-enforced provider billing. Authenticated Chrome shows In progress 0, Action needed 1, and only demo video1. No provider call, GPU work, production action, or spend occurred."
     - "Approved HEAD 9abfcf2f, containing Queue implementation dc0ad496, is live as Worker 05f17fc5 with config SHA-256 aa02373f. Eight cache-bypassed exact-source reads pass. Authenticated Chrome shows the project-level Queue with In progress and Needs attention metrics, one row per active project, no Completed-transcription metric, and both archived helen video projects absent. Historical active fixtures remain visible because they have not been archived; immutable attempts and billing/security lineage remain retained outside the active Queue. No database migration, provider call, GPU work, production action, or spend occurred."
     - "Source dc0ad496 replaces attempt-level Queue rows with one row per ACTIVE project, excludes archived projects immediately and successful final renders owned by Library, derives explicit In progress/Action required/Needs attention/Cancelled/Waiting states, and invalidates Queue/Progress caches after project archival. It removes the misleading Completed-transcription metric. Focused UI/product/contract tests pass 46/46; web typecheck, changed-file ESLint, staging build/quarantine, deployment validation, formatting, and diff checks pass. No deployment, database mutation, provider call, GPU work, production action, or spend occurred; fresh exact USD 0 deployment approval is required."
@@ -224,7 +226,7 @@ hosted_beta_user_walkthrough:
     - "Source 2185ca5c repairs the live Stage 3 hang root cause: migration 0056's UNKNOWN failure handlers violated the durable attempt constraint, so their safety write failed and left DISPATCHING forever. Additive migration 0058 writes the required AMBIGUOUS/unresolved attempt shape, safely reconciles context and prompt claims older than three minutes to UNKNOWN without releasing uncertain cost or redispatching, and the hosted UI changes to Needs attention with receipt/cost review guidance. Durable/replay and runtime-grant tests pass 3/3; hosted UI/server tests pass 91/91; typecheck, changed-file ESLint, deployment validation, staging build/quarantine, and diff checks pass. The user's first context request remains a potentially charged uncertain result and must not be retried. Migration/deployment remain unapplied pending fresh exact source-bound approval."
     - "Approved source 05b51b21 applied migration 0058 and exact grants at 58/58, then deployed as Worker 7a92d9aa with config sha256:2e850b32. Eight exact-source status reads pass. Authenticated Chrome triggered the approved stale reconciliation once; durable readback is context UNKNOWN/HOSTED_CONTEXT_DISPATCH_TIMEOUT, task FAILED, attempt UNKNOWN/AMBIGUOUS with no attempt finish time, one RESERVED $0.01 event, no reported cost, and no redispatch. Chrome then exposed one presentation-only gap: UNKNOWN normalized to PENDING/Waiting even though the review notice and no-retry guard were correct. Source 41462ed5 maps UNKNOWN to FAILED/Needs attention; hosted UI/server 91/91, typecheck, lint, staging build/quarantine, deployment validation, and diff checks pass. Deploying this successor requires fresh exact $0 authority."
     - "Approved successor 1f223268 is deployed as Worker 9d71559d with config sha256:6434ba13. Eight exact-source status reads pass. Authenticated Chrome now shows Needs attention in the overall ring, hero badge, and status metric; Stage 3 is FAILED with the safe-deadline explanation; the review notice says no automatic provider request; and no retry control is present. No database migration, provider request, GPU work, production action, or spend occurred during this presentation-only deployment."
-  current_step: PROJECT_CREATION_AND_COST_PREFLIGHT
+  current_step: PROGRESS_QUEUE_ETA_AND_COSTS
   remaining_steps:
     - PROJECT_CREATION_AND_COST_PREFLIGHT
     - VOICEOVER_UPLOAD_AND_VALIDATION
