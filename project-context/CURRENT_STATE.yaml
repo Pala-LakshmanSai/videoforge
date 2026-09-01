@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: CONTEXT_AND_PROMPT_STAGES_LIVE_AWAITING_CONTEXT_DISPATCH_AUTHORITY
+  status: LIVE_PROGRESS_READ_GRANT_REPAIR_GREEN_AWAITING_FRESH_ZERO_DOLLAR_AUTHORITY
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -114,10 +114,10 @@ hosted_beta_user_walkthrough:
   deployment_candidate: LIVE_539AAB64_CONTEXT_AND_PROMPT_STAGES
   deployed_source_commit: "539aab641277fea9e93c96a26226d2d2ebd40c4a"
   cloudflare_worker_version_id: "8582a916-2f42-4598-8157-a3c97c73afef"
-  pending_source_candidate: null
+  pending_source_candidate: "32482bea37b946962b4f7e0c1cfaa4b887eaded7"
   pending_worker_release: null
-  pending_release_boundary: "Exact source 539aab64 is live after migration 0056 and USD 0 deployment verification. Context extraction remains uncalled and requires separate exact one-dispatch cap USD 0.01; scene-prompt writing remains uncalled and requires a later separate exact one-dispatch cap USD 0.04. GPU and production remain blocked."
-  pending_validations: "USER_CONTEXT_DISPATCH_REQUIRES_SEPARATE_FINITE_USD_0_01_APPROVAL; THEN_PROMPT_DISPATCH_REQUIRES_SEPARATE_FINITE_USD_0_04_APPROVAL"
+  pending_release_boundary: "Live 539aab64 project reads fail because the runtime has no SELECT on the new tenant-RLS context/status tables. Repair 32482bea adds SELECT-only grants and the exact verifier/test expectations. Applying those grants and deploying the exact repair requires fresh USD 0 authority. Context extraction remains uncalled and separately requires cap USD 0.01; prompt writing remains uncalled and later requires cap USD 0.04. GPU and production remain blocked."
+  pending_validations: "APPLY_SELECT_ONLY_STATUS_GRANTS_AND_DEPLOY_32482BEA_PENDING_FRESH_EXACT_USD_0_AUTHORITY; THEN_CONTEXT_AND_PROMPT_DISPATCHES_REQUIRE_SEPARATE_FINITE_APPROVAL"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
@@ -143,6 +143,7 @@ hosted_beta_user_walkthrough:
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
   live_browser_verification: "PASS_LIVE_539AAB64_WORKER_8582A916_STATUS_HTTP_200_8_OF_8_EXACT_COMMIT_STAGING_DISABLED_UNQUALIFIED_PROJECT_LEDGER_ENFORCED; CONTEXT_AND_PROMPT_DISPATCHES_NOT_TRIGGERED; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
   fixed_blockers:
+    - "Authenticated Chrome and a single Retry progress read on live 539aab64 reproduced HTTP 500. Cloudflare Worker 8582a916 logs identify the exact root cause: permission denied for hosted_voiceover_contexts. Repair 32482bea grants runtime SELECT only on hosted_voiceover_contexts and hosted_prompt_runs under their existing FORCE RLS policies, retains zero direct INSERT/UPDATE/DELETE, and updates the exact grant verifier. Focused deployment/grant tests pass 11/11 and hosted product/UI tests pass 87/87. No grant mutation, deployment, context/prompt dispatch, provider call, GPU work, production action, or spend occurred while preparing the repair."
     - "Approved repair 539aab64 deployed once as Worker 8582a916 with config SHA-256 579d4c58 and 100 percent traffic after the exact-source staging build passed. Eight cache-bypassed status reads plus the version header report the exact commit, staging, DISABLED_UNQUALIFIED, and project-ledger-enforced provider billing. Neon re-verifies 56/56 with exact grants and FORCE RLS. No context/prompt dispatch, provider call, GPU work, production action, or spend occurred."
     - "Approved source 8bd28bf4 applied migration 0056, but the release guard stopped before Worker deployment because EXPECTED_RUNTIME_FUNCTIONS omitted the seven exact context/prompt functions that neon-runtime-grants.sql had correctly granted. Repair 539aab64 adds the seven signatures plus regression assertions. Focused deployment/grant tests pass 11/11; live read-only verification passes migration 56/56, exact table/function grants, FORCE RLS, and read-only render-plan capability. No Worker deployment, provider call, GPU work, production action, or spend occurred; fresh exact USD 0 deployment authority is required."
     - "Source 8bd28bf4 closes the missing hosted context/prompt orchestration in provider-free source. Context extraction and prompt writing are separate durable PROMPT tasks with exact claims, outbox lineage, central cost events, tenant RLS, canonical accepted assets, UNKNOWN no-redispatch handling, and prompt dependency on accepted context. The UI adds Understand voiceover context after transcription, shows bounded $0.01 and $0.04 actions, keeps context completion distinct from scene-prompt completion by task key, and exposes readable saved context and exact final prompts without raw hashes/UUIDs. Pipeline 40/40, hosted 101/101, durable/migration 20/20, typecheck, lint, staging build, bundle quarantine, and diff checks pass. No provider call, remote mutation, deployment, GPU work, or spend occurred."
@@ -220,6 +221,9 @@ hosted_beta_user_walkthrough:
     hosted_context_prompt_release_guard_repair_commit: "539aab641277fea9e93c96a26226d2d2ebd40c4a"
     hosted_context_prompt_release_guard_focused: "PASS_11_OF_11"
     hosted_context_prompt_deployment: "PASS_LIVE_539AAB64_WORKER_8582A916_100_PERCENT_HTTP_200_8_OF_8"
+    hosted_context_prompt_progress_read_repair_commit: "32482bea37b946962b4f7e0c1cfaa4b887eaded7"
+    hosted_context_prompt_progress_read_repair_focused: "PASS_DEPLOYMENT_11_OF_11_AND_HOSTED_87_OF_87"
+    hosted_context_prompt_progress_read_repair_live: PENDING_FRESH_EXACT_USD_0_AUTHORITY
     hosted_preset_focused_unit: "PASS_66_OF_66_UI_ACCESS_AND_SERVER"
     hosted_focus_revalidation_unit: "PASS_12_OF_12"
     hosted_web_typecheck: PASS
