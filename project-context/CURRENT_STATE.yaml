@@ -71,9 +71,10 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STAGE_3_NATIVE_FETCH_RECEIVER_REPAIR_LIVE_AWAITING_NEW_PROJECT_USER_TEST
-  implementation_commit: "43878f9b787cb0cd89d14055b2e506680093ea2a"
+  status: STAGE_3_VERSIONED_RUNWARE_TASK_IDENTITY_REPAIR_LIVE_AWAITING_NEW_PROJECT_USER_TEST
+  implementation_commit: "378f1e450afdb6ebcf0706b0a8a36d1f80ddf4fe"
   deployment_candidate_commits:
+    - "632db9942f40c640ae8df71f324a408c9cb7520a"
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
     - "f43d5af80cdb0185620038b68fe70bc6ad2cf004"
     - "6fb8a8a55850b157a7fb99dd86e4a74d7ffa6ce1"
@@ -131,19 +132,19 @@ hosted_beta_user_walkthrough:
     - "4d9e490005fc0ce2088a1146d26b3cb52a36485f"
     - "ba51e854ce58c1d5a719bf28d109e00e16e99376"
   deployment_candidate: null
-  deployed_source_commit: "23fc8e093e99c86ebac0e44f85a7e09587510e28"
-  cloudflare_worker_version_id: "4bba9386-fe97-4d12-97b4-7ecf4d374b96"
-  pending_source_candidate: "378f1e450afdb6ebcf0706b0a8a36d1f80ddf4fe"
+  deployed_source_commit: "632db9942f40c640ae8df71f324a408c9cb7520a"
+  cloudflare_worker_version_id: "94ce4ff6-de79-4063-bbd6-f944c05f78d3"
+  pending_source_candidate: null
   pending_worker_release: null
   pending_release_boundary: null
-  pending_validations: "DEPLOY_SOURCE_378F1E45_AFTER_FRESH_EXACT_APPROVAL; NEW_PROJECT_STAGE_3_DEEPSEEK_CONTEXT; AUTOMATIC_SCENE_PLAN_AND_STAGE_5_PROMPTS"
+  pending_validations: "NEW_PROJECT_STAGE_3_DEEPSEEK_CONTEXT; AUTOMATIC_SCENE_PLAN_AND_STAGE_5_PROMPTS"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "f954b52810ce88220d4187ac096ee97acc7b467f4def3099d393c63c7b6aaf4f"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 23fc8e093e99c86ebac0e44f85a7e09587510e28 CAP USD 0.05"
+  deployed_config_sha256: "cea7787da9f45987ce0c74436aaf291a96b0c904bd76de5ae905924ec14388a7"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 632db9942f40c640ae8df71f324a408c9cb7520a CAP USD 0.05"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -160,8 +161,9 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_LIVE_23FC8E09_WORKER_4BBA9386_CACHE_BYPASSED_STATUS_EXACT_4_OF_4; AUTHENTICATED_CHROME_DEMO11_TRANSCRIPTION_COMPLETE_STAGE_3_FAILED_CROSS_CONTRACT_TASK_UUID_COLLISION_WITHOUT_REDISPATCH; SOURCE_378F1E45_PENDING_DEPLOYMENT; GPU_AND_PRODUCTION_ZERO"
+  live_browser_verification: "PASS_LIVE_632DB994_WORKER_94CE4FF6_CACHE_BYPASSED_STATUS_EXACT_4_OF_4; AUTHENTICATED_CHROME_DEMO11_REMAINS_TERMINAL_AND_RELOAD_PERFORMED_RETRIEVAL_ONLY_WITHOUT_INFERENCE; NEW_PROJECT_REQUIRED; GPU_AND_PRODUCTION_ZERO"
   fixed_blockers:
+    - "Exact approval deployed clean HEAD 632db994 once as Worker 94ce4ff6 with config SHA-256 cea7787d. The exact nine-secret allowlist, private Standard R2 with public dev URL disabled and multipart-abort-only lifecycle, and four cache-bypassed exact-source status reads pass; GPU remains DISABLED_UNQUALIFIED. Authenticated Chrome retained demo11 as terminal and its automatic check performed retrieval only, then failed locally with HOSTED_CONTEXT_REQUEST_IDENTITY_INVALID because that historical row belongs to the superseded request identity; no new inference was submitted. No migration, database mutation, provider inference during deployment, GPU/RunPod work, production action, or deployment-time provider spend occurred. Approval is consumed; a new project is required for Stage 3-5 proof."
     - "Authenticated Chrome monitoring of demo11 proved the receiver repair reached Runware, but Stage 3 safely rejected the archived request as RUNWARE_IDEMPOTENCY_CONFLICT and did not redispatch. Root cause: the provider task UUID was derived only from transcript_hash, so the reused voiceover resolved to an older task created under a different request contract. Source 378f1e45 derives the UUID from the versioned complete immutable request contract plus transcript hash, preserving exact replay while preventing prompt/schema/model/settings collisions; retrieval also accepts a successful archived envelope with errors=[]. Official Runware task-details documentation confirms the archived request is the original exact array. Focused provider/context/product tests pass 66/66; both web TypeScript builds, context validation, and diff checks pass. Source only; live remains 23fc8e09 / Worker 4bba9386 and requires fresh exact deployment approval."
     - "Exact approval deployed clean HEAD 23fc8e09 once as Worker 4bba9386 with config SHA-256 f954b528. Four cache-bypassed status reads report the exact source and GPU transport DISABLED_UNQUALIFIED. Authenticated Chrome reload retained the failed project without redispatch. No migration, database mutation, provider inference during deployment, GPU/RunPod work, production action, or deployment-time provider spend occurred. Next proof is a new project through Stage 3 context, Stage 4 planning, and Stage 5 prompts."
     - "Live monitoring of new project 57973385 proved transcription completed and Stage 3 immediately persisted VOICEOVER_CONTEXT_NETWORK_UNCERTAIN without redispatch. The initial transport stored Cloudflare's native fetch as a class property and invoked it as this.fetch(...), supplying the Runware client as the native function receiver; the retrieval path invokes fetch directly and has already reached Runware, ruling out credentials, DNS, and general Worker egress. Source 43878f9b calls the stored port receiver-free and adds a receiver-sensitive regression. Focused transport/context/product tests pass 65/65; both web TypeScript builds and diff checks pass. Source only; live remains 186a1f42 / Worker 04356091 and the consumed approval cannot be reused."
