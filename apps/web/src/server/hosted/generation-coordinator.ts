@@ -39,7 +39,7 @@ export interface HostedGenerationSnapshot {
   readonly asrOutputContentLength: number;
   readonly asrOutputSha256: string;
   readonly expectedWhisperModelSha256: string;
-  readonly revisionConfig: ProjectRevisionConfigDocument;
+  readonly revisionConfig: ProjectRevisionConfigDocument | string;
   readonly revisionConfigSha256: string;
 }
 
@@ -99,6 +99,15 @@ export class HostedGenerationCoordinationError extends Error {
 
 function reject(code: string): never {
   throw new HostedGenerationCoordinationError(code);
+}
+
+function storedRevisionConfig(value: ProjectRevisionConfigDocument | string): unknown {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    reject("HOSTED_GENERATION_PROJECT_REVISION_INVALID");
+  }
 }
 
 function exactHostedAsrJobTemplate(
@@ -284,10 +293,13 @@ export async function coordinateHostedGeneration(input: {
   } catch {
     reject("HOSTED_GENERATION_ASR_OUTPUT_INVALID");
   }
-  const [revision, asrResult] = await Promise.all([
-    validateAndHashContractDocument("projectRevisionConfig", snapshot.revisionConfig),
-    validateAndHashContractDocument("asrJobResult", rawResult),
-  ]).catch(() => reject("HOSTED_GENERATION_DOCUMENT_INVALID"));
+  const revision = await validateAndHashContractDocument(
+    "projectRevisionConfig",
+    storedRevisionConfig(snapshot.revisionConfig),
+  ).catch(() => reject("HOSTED_GENERATION_PROJECT_REVISION_INVALID"));
+  const asrResult = await validateAndHashContractDocument("asrJobResult", rawResult).catch(() =>
+    reject("HOSTED_GENERATION_ASR_RESULT_DOCUMENT_INVALID"),
+  );
   const asrTemplate = exactHostedAsrJobTemplate(rawJobTemplate, snapshot);
   if (
     asrResult.value.status !== "SUCCEEDED" ||
@@ -301,7 +313,7 @@ export async function coordinateHostedGeneration(input: {
   const transcript = await validateAndHashContractDocument(
     "transcriptTiming",
     asrResult.value.transcript,
-  ).catch(() => reject("HOSTED_GENERATION_DOCUMENT_INVALID"));
+  ).catch(() => reject("HOSTED_GENERATION_TRANSCRIPT_DOCUMENT_INVALID"));
   const scope = trustedTenantActorScope(
     trustedTenantScope(snapshot.accountId, snapshot.workspaceId),
     snapshot.userId,

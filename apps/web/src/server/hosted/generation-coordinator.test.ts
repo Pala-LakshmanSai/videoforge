@@ -241,7 +241,40 @@ describe("hosted generation coordinator", () => {
         asrOutputBytes: bytes,
         persistence: fixture.persistence,
       }),
-    ).rejects.toMatchObject({ code: "HOSTED_GENERATION_DOCUMENT_INVALID" });
+    ).rejects.toMatchObject({ code: "HOSTED_GENERATION_ASR_RESULT_DOCUMENT_INVALID" });
+    expect(fixture.persist).not.toHaveBeenCalled();
+  });
+
+  it("accepts a JSON-encoded revision document returned by the hosted database driver", async () => {
+    const fixture = await setup();
+    await expect(
+      coordinateHostedGeneration({
+        snapshot: {
+          ...fixture.snapshot,
+          revisionConfig: JSON.stringify(fixture.snapshot.revisionConfig),
+        },
+        asrInputBytes: fixture.inputBytes,
+        asrOutputBytes: fixture.bytes,
+        persistence: fixture.persistence,
+      }),
+    ).resolves.toMatchObject({
+      state: "WAITING_FOR_GPU_QUALIFICATION",
+      serverless_attempt_count: 0,
+      provider_call_count: 0,
+      spend_usd: 0,
+    });
+  });
+
+  it("rejects malformed stored revision JSON before persistence", async () => {
+    const fixture = await setup();
+    await expect(
+      coordinateHostedGeneration({
+        snapshot: { ...fixture.snapshot, revisionConfig: "{" },
+        asrInputBytes: fixture.inputBytes,
+        asrOutputBytes: fixture.bytes,
+        persistence: fixture.persistence,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_GENERATION_PROJECT_REVISION_INVALID" });
     expect(fixture.persist).not.toHaveBeenCalled();
   });
 
