@@ -318,6 +318,12 @@
       "name": "media_worker_device_visibility",
       "filename": "0053_media_worker_device_visibility.sql",
       "sha256": "sha256:d73b290a68a380c21a8243b11b39e9f828f8d5f4a9a876a061a7eea6b92e864a"
+    },
+    {
+      "version": 54,
+      "name": "deferred_timing_validation_privilege",
+      "filename": "0054_deferred_timing_validation_privilege.sql",
+      "sha256": "sha256:3faacf0a963ec79a787be05ac97ea6129455e605a9e0e784184877ec91cd20ea"
     }
   ]
 }

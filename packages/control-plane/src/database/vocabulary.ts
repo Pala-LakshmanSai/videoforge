@@ -18,6 +18,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "image_styles",
   "image_style_versions",
   "image_style_references",
+  "hosted_style_analysis_runs",
   "image_style_analysis_attempts",
   "image_style_profile_artifacts",
   "image_style_profile_edits",

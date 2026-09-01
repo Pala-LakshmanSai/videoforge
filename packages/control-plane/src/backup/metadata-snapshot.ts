@@ -70,6 +70,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "image_styles",
   "image_style_versions",
   "image_style_references",
+  "hosted_style_analysis_runs",
   "image_style_previews",
   "projects",
   "project_inputs",

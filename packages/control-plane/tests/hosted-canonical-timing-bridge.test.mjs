@@ -266,6 +266,31 @@ test("migration 0039 exposes one least-privilege atomic hosted timing append", a
     );
     assert.deepEqual(privilege.rows, [{ public_execute: false }]);
 
+    const deferredValidators = await executor.query(
+      `SELECT proname, prosecdef, proconfig,
+              has_function_privilege('public', oid, 'EXECUTE') AS public_execute
+         FROM pg_catalog.pg_proc
+        WHERE proname IN (
+          'videoforge_enforce_transcript_completeness',
+          'videoforge_validate_timeline_plan'
+        )
+        ORDER BY proname`,
+    );
+    assert.deepEqual(deferredValidators.rows, [
+      {
+        proname: "videoforge_enforce_transcript_completeness",
+        prosecdef: true,
+        proconfig: ["search_path=pg_catalog, public"],
+        public_execute: false,
+      },
+      {
+        proname: "videoforge_validate_timeline_plan",
+        prosecdef: true,
+        proconfig: ["search_path=pg_catalog, public"],
+        public_execute: false,
+      },
+    ]);
+
     const columns = await executor.query(
       `SELECT column_name FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'hosted_canonical_timing_bridges'

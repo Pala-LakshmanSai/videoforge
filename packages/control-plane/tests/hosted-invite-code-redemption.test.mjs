@@ -219,13 +219,13 @@ test("0047 rejects invalid, mismatched, expired, revoked, consumed, and unauthen
   });
 });
 
-test("an exact retained 0046 ledger upgrades through 0053 and preserves admitted sessions", async () => {
+test("an exact retained 0046 ledger upgrades through 0054 and preserves admitted sessions", async () => {
   const database = new PGlite({ extensions: { pgcrypto } });
   try {
     await database.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.version, 53);
+    assert.equal(sources.at(-1)?.version, 54);
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations(
          version integer PRIMARY KEY CHECK(version>0),name text NOT NULL,
@@ -257,7 +257,7 @@ test("an exact retained 0046 ledger upgrades through 0053 and preserves admitted
     const pending = await seedHostedIdentity(executor, 21, pendingEmail, false);
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [47, 48, 49, 50, 51, 52, 53]);
+    assert.deepEqual(upgraded.appliedVersions, [47, 48, 49, 50, 51, 52, 53, 54]);
     assert.deepEqual(
       upgraded.alreadyAppliedVersions,
       Array.from({ length: 46 }, (_, index) => index + 1),
