@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
+import { EXPECTED_RUNTIME_FUNCTIONS } from "../../deploy/v2-06/apply-migrations-and-grants.mjs";
 
 const GRANTS = new URL("../../deploy/v2-06/neon-runtime-grants.sql", import.meta.url);
 
@@ -67,6 +68,17 @@ test("the hosted runtime can append through the exact function but has no direct
     /videoforge_fail_hosted_prompt_run\(uuid,text,text,boolean\)/u,
   ]) {
     assert.match(source, pattern);
+  }
+  for (const signature of [
+    "videoforge_prepare_hosted_voiceover_context(jsonb)",
+    "videoforge_complete_hosted_voiceover_context(jsonb)",
+    "videoforge_fail_hosted_voiceover_context(uuid,text,text,boolean)",
+    "videoforge_load_hosted_prompt_plan(uuid,uuid,uuid,uuid)",
+    "videoforge_prepare_hosted_prompt_run(jsonb)",
+    "videoforge_complete_hosted_prompt_run(jsonb)",
+    "videoforge_fail_hosted_prompt_run(uuid,text,text,boolean)",
+  ]) {
+    assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature));
   }
   assert.doesNotMatch(
     source,
