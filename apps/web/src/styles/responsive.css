@@ -562,6 +562,9 @@
   .detail-fact-wide {
     grid-column: auto;
   }
+  .current-run-actions .button {
+    width: 100%;
+  }
   .reference-mosaic {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

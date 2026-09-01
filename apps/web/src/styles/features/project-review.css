@@ -457,6 +457,17 @@
   grid-column: 1 / -1;
 }
 
+.current-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.current-run-actions .button {
+  min-width: 0;
+}
+
 .activity-list {
   margin-top: 18px;
 }

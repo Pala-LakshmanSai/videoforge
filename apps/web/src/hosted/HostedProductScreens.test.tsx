@@ -1157,7 +1157,11 @@ describe("hosted product journey", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Settle cancellation" }));
+    const stopButton = await screen.findByRole("button", {
+      name: "Finish stopping transcription",
+    });
+    expect(stopButton.parentElement).toHaveClass("current-run-actions");
+    fireEvent.click(stopButton);
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         `/api/v2/cpu-attempts/${attemptId}`,

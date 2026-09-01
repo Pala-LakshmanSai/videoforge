@@ -1145,13 +1145,6 @@ function preflightReady(value: HostedPreflightResponse | null): boolean {
   return value?.ready === true && value?.ok === true;
 }
 
-function attemptLabel(kind: HostedAttempt["kind"]): string {
-  if (kind === "ASR") return "Transcribe voiceover";
-  if (kind === "MAGE_IMAGE") return "Generate scene image";
-  if (kind === "SOULX_AVATAR") return "Generate avatar segment";
-  return "Render final video";
-}
-
 export function preflightBlockers(value: HostedPreflightResponse | null): readonly string[] {
   return (value?.blockers ?? [])
     .filter((blocker) => blocker.severity !== "ADVISORY")
@@ -3461,19 +3454,23 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 </strong>
               </span>
             </div>
-            {cancellableAttempts.map((attempt) => (
-              <Button
-                key={attempt.id}
-                variant="danger"
-                busy={cancel.isPending && cancel.variables === attempt.id}
-                onClick={() => cancel.mutate(attempt.id)}
-              >
-                <X size={15} />
-                {attempt.state === "CANCEL_REQUESTED"
-                  ? "Settle cancellation"
-                  : `Cancel ${attemptLabel(attempt.kind).toLowerCase()}`}
-              </Button>
-            ))}
+            {cancellableAttempts.length > 0 ? (
+              <div className="current-run-actions">
+                {cancellableAttempts.map((attempt) => (
+                  <Button
+                    key={attempt.id}
+                    variant="danger"
+                    busy={cancel.isPending && cancel.variables === attempt.id}
+                    onClick={() => cancel.mutate(attempt.id)}
+                  >
+                    <X size={15} />
+                    {attempt.state === "CANCEL_REQUESTED"
+                      ? `Finish stopping ${attempt.kind === "ASR" ? "transcription" : "assembly"}`
+                      : `Stop ${attempt.kind === "ASR" ? "transcription" : "assembly"}`}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
           </Panel>
         </div>
       </div>
