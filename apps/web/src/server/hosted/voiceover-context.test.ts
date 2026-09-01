@@ -110,6 +110,40 @@ describe("hosted voiceover context extraction", () => {
     expect(result.context).toEqual(contextDocument());
   });
 
+  it("invokes the fetch port without changing its receiver", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it.",
+      transcriptHash: HASH,
+    });
+    async function receiverSensitiveFetcher(
+      this: void,
+      _input: RequestInfo | URL,
+      init?: RequestInit,
+    ): Promise<Response> {
+      expect(this).toBeUndefined();
+      const request = JSON.parse(String(init?.body)) as { taskUUID: string }[];
+      return Response.json({
+        data: [
+          {
+            taskUUID: request[0]!.taskUUID,
+            taskType: "textInference",
+            text: JSON.stringify(contextDocument()),
+            cost: 0.001,
+            finishReason: "stop",
+            usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+          },
+        ],
+      });
+    }
+    await expect(
+      extractHostedVoiceoverContext({
+        prepared,
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        fetcher: receiverSensitiveFetcher,
+      }),
+    ).resolves.toMatchObject({ context: contextDocument() });
+  });
+
   it("distinguishes a definite provider rejection from an ambiguous dispatch", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "A complete transcript.",

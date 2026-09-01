@@ -357,7 +357,11 @@ class RunwareHttpClient {
     this.options.ledger.reserve(reservationUsd);
     let response: Response;
     try {
-      response = await this.fetch(this.endpoint, {
+      // Native Worker fetch must be called as a function. Calling the stored port as
+      // `this.fetch(...)` supplies the Runware client as its receiver and Cloudflare
+      // rejects the invocation before any HTTP response exists.
+      const fetcher = this.fetch;
+      response = await fetcher(this.endpoint, {
         method: "POST",
         headers: {
           authorization: `Bearer ${this.options.apiKey}`,
