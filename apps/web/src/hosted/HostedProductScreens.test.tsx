@@ -1269,7 +1269,7 @@ describe("hosted product journey", () => {
     );
   });
 
-  it("requires an explicit bounded context action before generation planning", async () => {
+  it("continues automatically into bounded context extraction after transcription", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const asrId = "33333333-3333-4333-8333-333333333333";
     const detail = {
@@ -1315,14 +1315,12 @@ describe("hosted product journey", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
-    expect((await screen.findAllByText("Action required")).length).toBeGreaterThan(0);
-    expect(screen.getByText("Up to $0.01")).toBeInTheDocument();
-    expect(screen.getAllByText(/Maximum charge: \$0\.01/u).length).toBeGreaterThan(0);
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render"))).toBe(false);
-    fireEvent.click(screen.getAllByRole("button", { name: "Resume: extract context" })[0]!);
     await waitFor(() =>
       expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith(`/context`))).toBe(true),
     );
+    expect(screen.queryByRole("button", { name: /extract context/u })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Maximum charge: \$0\.01/u)).not.toBeInTheDocument();
   });
 
   it("fails closed when ASR succeeds without an exact render plan", async () => {
@@ -1466,7 +1464,7 @@ describe("hosted product journey", () => {
           ]
         : undefined,
     });
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
       if (path.endsWith("/render")) {
         planned = true;
@@ -1487,18 +1485,31 @@ describe("hosted product journey", () => {
           { status: 202 },
         );
       }
+      if (path.endsWith("/prompts")) {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({ maximum_prompt_spend_micro_usd: 40_000 }),
+        });
+        return Response.json({ state: "COMPLETE", prompt_cost_usd: 0.004 }, { status: 202 });
+      }
       return Response.json(detail());
     });
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
-    expect(await screen.findByText(/image prompts have not been written yet/u)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/image prompts are starting automatically/u),
+    ).toBeInTheDocument();
     expect(screen.getAllByRole("progressbar", { name: "Overall video progress" })).toHaveLength(2);
     expect(screen.getByRole("heading", { name: "Video production stages" })).toBeInTheDocument();
     expect(
       screen.queryByText(/V2-07|V2-08|identity_output|MAGE_QUALIFICATION/u),
     ).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render"))).toBe(true);
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(true),
+    );
+    expect(screen.queryByRole("button", { name: "Write image prompts" })).not.toBeInTheDocument();
     expect(
       fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
     ).toBe(false);

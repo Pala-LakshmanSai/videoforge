@@ -1853,8 +1853,9 @@ export function HostedCreateProjectScreen() {
           ) : null}
           {!catalog.data.gpu_readiness.dispatch_available ? (
             <p className="helper hosted-beta-note" role="note">
-              This beta can create and transcribe your project. Final video generation is not yet
-              available, and no paid GPU work will start.
+              After creation, VideoForge automatically transcribes, understands the voiceover, plans
+              scenes, and writes image prompts within your project maximum. Final video generation
+              is not yet available, and no paid GPU work will start.
             </p>
           ) : null}
           <Button
@@ -1871,9 +1872,7 @@ export function HostedCreateProjectScreen() {
             }}
           >
             {preflightReady(preflightResult) ? <FileAudio size={16} /> : <Check size={16} />}
-            {preflightReady(preflightResult)
-              ? "Create project & transcribe"
-              : "Check cost & readiness"}
+            {preflightReady(preflightResult) ? "Create project & start" : "Check cost & readiness"}
           </Button>
         </Panel>
       </div>
@@ -3177,6 +3176,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const render = [...(query.data?.attempts ?? [])]
     .reverse()
     .find((attempt) => attempt.kind === "RENDER");
+  const automaticContextAttempt = useRef<string | null>(null);
+  const automaticPromptAttempt = useRef<string | null>(null);
   const renderHandoffAttempt = useRef<string | null>(null);
   const asrHandoff = useMutation({
     mutationFn: async () => {
@@ -3214,7 +3215,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           }),
         },
       ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
   const promptWriting = useMutation({
     mutationFn: () =>
@@ -3225,8 +3226,19 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           body: JSON.stringify({ maximum_prompt_spend_micro_usd: 40_000 }),
         },
       ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
+  useEffect(() => {
+    if (
+      asr?.state !== "SUCCEEDED" ||
+      (query.data?.voiceover_context !== null && query.data?.voiceover_context !== undefined) ||
+      automaticContextAttempt.current === asr.id
+    ) {
+      return;
+    }
+    automaticContextAttempt.current = asr.id;
+    contextExtraction.mutate(asr.id);
+  }, [asr?.id, asr?.state, contextExtraction, query.data?.voiceover_context]);
   useEffect(() => {
     if (
       asr?.state !== "SUCCEEDED" ||
@@ -3239,6 +3251,27 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     renderHandoffAttempt.current = asr.id;
     renderHandoff.mutate(asr.id);
   }, [asr?.id, asr?.state, query.data?.voiceover_context?.state, render?.id, renderHandoff]);
+  useEffect(() => {
+    const generationId = query.data?.generation?.id;
+    const promptStageState = query.data?.stages?.find(
+      (stage) => stage.id === "prompt-writing",
+    )?.status;
+    if (
+      !generationId ||
+      query.data?.voiceover_context?.state !== "SUCCEEDED" ||
+      promptStageState !== "WAITING" ||
+      automaticPromptAttempt.current === generationId
+    ) {
+      return;
+    }
+    automaticPromptAttempt.current = generationId;
+    promptWriting.mutate();
+  }, [
+    promptWriting,
+    query.data?.generation?.id,
+    query.data?.stages,
+    query.data?.voiceover_context?.state,
+  ]);
   const cancel = useMutation({
     mutationFn: (attemptId: string) =>
       readJson(`/api/v2/cpu-attempts/${attemptId}`, { method: "POST", body: "{}" }),
@@ -3295,15 +3328,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       stage.label === "Understand voiceover context",
   );
   const contextComplete = query.data.voiceover_context?.state === "SUCCEEDED";
-  const contextActionAsrId =
-    asr?.state === "SUCCEEDED" && !contextComplete && contextStage?.status === "ACTION_REQUIRED"
-      ? asr.id
-      : null;
-  const contextActionRequired = contextActionAsrId !== null;
   const contextNeedsReview =
     contextStage?.status === "FAILED" ||
     query.data.voiceover_context?.state === "UNKNOWN" ||
     query.data.voiceover_context?.state === "FAILED";
+  const contextAutoStartError = contextExtraction.isError && query.data.voiceover_context == null;
+  const promptAutoStartError = promptWriting.isError && promptStage?.status === "PENDING";
   const timing = query.data.timing;
   const cost = query.data.cost;
   const queue = query.data.queue;
@@ -3403,20 +3433,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             <Metric
               label="Cost"
               value={
-                contextActionRequired
-                  ? "Up to $0.01"
-                  : (cost?.projected_usd ?? 0) > 0
-                    ? formatUsd(cost?.projected_usd)
-                    : "No provider charge"
+                (cost?.projected_usd ?? 0) > 0
+                  ? formatUsd(cost?.projected_usd)
+                  : "No provider charge"
               }
               detail={
-                contextActionRequired
-                  ? "only after you resume"
-                  : cost?.cap_usd == null
-                    ? "personal worker"
-                    : `${formatUsd(cost.cap_usd)} maximum`
+                cost?.cap_usd == null ? "personal worker" : `${formatUsd(cost.cap_usd)} maximum`
               }
-              tone={contextActionRequired ? "warning" : "success"}
+              tone="success"
             />
           </div>
           <ProgressBar value={overallProgress} label="Overall video progress" />
@@ -3429,24 +3453,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
 
       <div className="progress-workspace">
         <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
-          {contextActionRequired ? (
-            <div className="pipeline-resume-action notice notice-warning" role="status">
-              <div>
-                <strong>Action required to continue Stage 3.</strong>
-                <span>
-                  DeepSeek will read the transcript once and save compact story context. Maximum
-                  charge: $0.01.
-                </span>
-              </div>
-              <Button
-                busy={contextExtraction.isPending}
-                disabled={contextExtraction.isPending}
-                onClick={() => contextExtraction.mutate(contextActionAsrId)}
-              >
-                Resume: extract context
-              </Button>
-            </div>
-          ) : null}
           <StageTimeline stages={uiStages} />
         </Panel>
         <div className="progress-side">
@@ -3588,35 +3594,29 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           <strong>
             {contextNeedsReview
               ? "Context extraction needs review."
-              : "Action required to resume after transcription."}
+              : contextAutoStartError
+                ? "Automatic context extraction could not start."
+                : "Continuing automatically after transcription."}
           </strong>
           <span>
             {contextNeedsReview
               ? "The first request ended without a durable accepted result. VideoForge has stopped it safely and will not send another provider request automatically."
-              : "DeepSeek reads the complete transcript once and saves only compact story facts. Maximum charge: $0.01 within your project limit. This is a single dispatch and will not repeat automatically after an uncertain provider result."}
+              : "VideoForge reads the complete transcript once, saves compact story facts, and continues to scene planning within your project limit."}
           </span>
-          {contextExtraction.isError ? <span>{contextExtraction.error.message}</span> : null}
+          {contextAutoStartError ? <span>{contextExtraction.error.message}</span> : null}
           {contextNeedsReview ? (
             <span>
               Review the provider receipt and recorded cost before deciding whether to retry.
             </span>
-          ) : (
+          ) : contextAutoStartError ? (
             <Button
               variant="primary"
-              busy={
-                contextExtraction.isPending ||
-                contextStage?.status === "RUNNING" ||
-                query.data.voiceover_context?.state === "DISPATCHING"
-              }
-              disabled={
-                contextStage?.status === "RUNNING" ||
-                query.data.voiceover_context?.state === "DISPATCHING"
-              }
+              busy={contextExtraction.isPending}
               onClick={() => contextExtraction.mutate(asr.id)}
             >
-              Resume: extract context
+              <RefreshCw size={15} /> Retry automatic continuation
             </Button>
-          )}
+          ) : null}
         </div>
       ) : null}
       {asr?.state === "SUCCEEDED" && contextComplete && !render ? (
@@ -3629,7 +3629,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 : query.data.generation
                   ? promptStage?.status === "COMPLETE"
                     ? "Prompts complete; generation is waiting for GPU qualification."
-                    : "Scene planning is complete; image prompts have not been written yet."
+                    : promptAutoStartError
+                      ? "Automatic image prompt writing could not start."
+                      : "Scene planning is complete; image prompts are starting automatically."
                   : "Transcription complete; generation planning is starting."}
           </strong>
           {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
@@ -3648,19 +3650,19 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           {!renderHandoff.isError && query.data.generation && promptStage?.status !== "COMPLETE" ? (
             <>
               <span>
-                DeepSeek writes and validates the scene prompts. Maximum prompt-writing charge:
-                $0.04 within your project limit. This request is single-dispatch and will not repeat
-                automatically after an uncertain provider result.
+                VideoForge writes and validates the scene prompts automatically within your project
+                limit. An uncertain provider result still stops safely without redispatch.
               </span>
-              {promptWriting.isError ? <span>{promptWriting.error.message}</span> : null}
-              <Button
-                variant="primary"
-                busy={promptWriting.isPending}
-                disabled={promptStage?.status === "FAILED"}
-                onClick={() => promptWriting.mutate()}
-              >
-                Write image prompts
-              </Button>
+              {promptAutoStartError ? <span>{promptWriting.error.message}</span> : null}
+              {promptAutoStartError ? (
+                <Button
+                  variant="primary"
+                  busy={promptWriting.isPending}
+                  onClick={() => promptWriting.mutate()}
+                >
+                  <RefreshCw size={15} /> Retry automatic prompt writing
+                </Button>
+              ) : null}
             </>
           ) : null}
         </div>

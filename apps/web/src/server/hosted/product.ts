@@ -6124,7 +6124,7 @@ async function projectDetail(
           : contextState === "DISPATCHING"
             ? "RUNNING"
             : !voiceoverContext && asr?.state === "SUCCEEDED"
-              ? "ACTION_REQUIRED"
+              ? "RUNNING"
               : contextState;
     const stages = [
       {
@@ -6159,8 +6159,8 @@ async function projectDetail(
             ? "Compact whole-script facts are saved for scene planning and prompt relevance."
             : contextState === "UNKNOWN"
               ? "The request exceeded its safe deadline. Its result is uncertain and will not be dispatched again automatically."
-              : contextStageStatus === "ACTION_REQUIRED"
-                ? "Action required: resume context extraction to continue. Maximum charge: $0.01."
+              : !voiceoverContext && asr?.state === "SUCCEEDED"
+                ? "VideoForge is starting voiceover context automatically within the project limit."
                 : "The complete transcript is summarized once into bounded story context.",
         eta_ms: null,
       },
