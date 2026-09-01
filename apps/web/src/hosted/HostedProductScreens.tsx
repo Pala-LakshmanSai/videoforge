@@ -3253,7 +3253,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     onSuccess: async () => {
       await queryClient.cancelQueries({ queryKey: ["hosted-project", projectId] });
       queryClient.removeQueries({ queryKey: ["hosted-project", projectId] });
-      await queryClient.invalidateQueries({ queryKey: ["hosted-projects"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["hosted-projects"] }),
+        queryClient.invalidateQueries({ queryKey: ["hosted-queue"] }),
+        queryClient.invalidateQueries({ queryKey: ["hosted-progress-navigation"] }),
+      ]);
       await navigate({ to: "/" });
     },
   });

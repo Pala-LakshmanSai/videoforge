@@ -9,20 +9,20 @@ import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 import { videoStageLabel } from "../features/shared/status";
 
-interface HostedQueueAttempt {
-  readonly id: string;
+interface HostedQueueProject {
   readonly project_id: string;
   readonly title: string;
-  readonly kind: "ASR" | "RENDER";
-  readonly state: string;
+  readonly state: "IN_PROGRESS" | "ACTION_REQUIRED" | "NEEDS_ATTENTION" | "CANCELLED" | "WAITING";
+  readonly stage: string;
+  readonly cancellable_attempt_id: string | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
 
 interface HostedQueueResponse {
-  readonly schema_version: "videoforge-hosted-queue/v1";
+  readonly schema_version: "videoforge-hosted-queue/v2";
   readonly worker_state: "ONLINE" | "BUSY" | "WAITING_FOR_YOUR_COMPUTER";
-  readonly attempts: readonly HostedQueueAttempt[];
+  readonly projects: readonly HostedQueueProject[];
 }
 
 async function hostedQueue(): Promise<HostedQueueResponse> {
@@ -33,21 +33,20 @@ async function hostedQueue(): Promise<HostedQueueResponse> {
   return response.json() as Promise<HostedQueueResponse>;
 }
 
-function hostedAttemptTone(state: string): "success" | "danger" | "warning" | "info" | "neutral" {
-  if (state === "SUCCEEDED") return "success";
-  if (state === "FAILED" || state === "EXPIRED") return "danger";
-  if (state === "CANCEL_REQUESTED" || state === "CANCELLED") return "warning";
-  if (state === "RUNNING" || state === "RECONCILING") return "info";
+function hostedProjectTone(
+  state: HostedQueueProject["state"],
+): "danger" | "warning" | "info" | "neutral" {
+  if (state === "NEEDS_ATTENTION") return "danger";
+  if (state === "ACTION_REQUIRED" || state === "CANCELLED") return "warning";
+  if (state === "IN_PROGRESS") return "info";
   return "neutral";
 }
 
-function hostedAttemptLabel(state: string): string {
-  if (state === "SUCCEEDED") return "Complete";
-  if (state === "FAILED" || state === "EXPIRED") return "Needs attention";
-  if (state === "CANCEL_REQUESTED") return "Stopping";
+function hostedProjectLabel(state: HostedQueueProject["state"]): string {
+  if (state === "NEEDS_ATTENTION") return "Needs attention";
+  if (state === "ACTION_REQUIRED") return "Action required";
   if (state === "CANCELLED") return "Cancelled";
-  if (state === "RUNNING") return "In progress";
-  if (state === "RECONCILING") return "Checking status";
+  if (state === "IN_PROGRESS") return "In progress";
   return "Waiting";
 }
 
@@ -93,17 +92,21 @@ function HostedQueueScreen() {
       />
     );
   }
-  const active = queue.data.attempts.filter((attempt) =>
-    ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
+  const active = queue.data.projects.filter((project) => project.state === "IN_PROGRESS").length;
+  const attention = queue.data.projects.filter((project) =>
+    ["ACTION_REQUIRED", "NEEDS_ATTENTION"].includes(project.state),
   ).length;
-  const finished = queue.data.attempts.filter((attempt) => attempt.state === "SUCCEEDED").length;
 
   return (
     <>
       <PageHeader title="Queue" />
       <div className="grid grid-4 queue-overview">
         <Metric label="In progress" value={String(active)} tone={active ? "info" : "neutral"} />
-        <Metric label="Completed" value={String(finished)} tone="success" />
+        <Metric
+          label="Needs attention"
+          value={String(attention)}
+          tone={attention ? "warning" : "neutral"}
+        />
         <Metric label="Your limit" value="1" detail="video at a time" />
         <Metric
           label="Your computer"
@@ -122,7 +125,7 @@ function HostedQueueScreen() {
           Your computer handles transcription and final assembly. If it disconnects, work waits
           safely until it reconnects.
         </div>
-        {queue.data.attempts.length === 0 ? (
+        {queue.data.projects.length === 0 ? (
           <EmptyState
             icon={<Video />}
             title="No media jobs yet"
@@ -135,12 +138,10 @@ function HostedQueueScreen() {
           />
         ) : (
           <div className="queue-list">
-            {queue.data.attempts.map((attempt) => {
-              const cancellable = ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING"].includes(
-                attempt.state,
-              );
+            {queue.data.projects.map((project) => {
+              const cancellableAttemptId = project.cancellable_attempt_id;
               return (
-                <article className="queue-card" key={attempt.id}>
+                <article className="queue-card" key={project.project_id}>
                   <div className="queue-card__identity">
                     <span className="project-icon">
                       <Video size={18} />
@@ -148,25 +149,25 @@ function HostedQueueScreen() {
                     <div>
                       <Link
                         to="/projects/$projectId"
-                        params={{ projectId: attempt.project_id }}
-                        aria-label={`Open ${attempt.title}`}
+                        params={{ projectId: project.project_id }}
+                        aria-label={`Open ${project.title}`}
                       >
-                        <strong>{attempt.title}</strong>
+                        <strong>{project.title}</strong>
                       </Link>
-                      <small>{attempt.kind === "ASR" ? "Transcription" : "Final render"}</small>
+                      <small>{project.stage}</small>
                     </div>
                   </div>
                   <div className="queue-card__status">
-                    <Badge tone={hostedAttemptTone(attempt.state)}>
-                      {hostedAttemptLabel(attempt.state)}
+                    <Badge tone={hostedProjectTone(project.state)}>
+                      {hostedProjectLabel(project.state)}
                     </Badge>
                   </div>
                   <div className="queue-card__facts">
-                    {cancellable ? (
+                    {cancellableAttemptId ? (
                       <Button
                         variant="secondary"
-                        busy={cancel.isPending && cancel.variables === attempt.id}
-                        onClick={() => cancel.mutate(attempt.id)}
+                        busy={cancel.isPending && cancel.variables === cancellableAttemptId}
+                        onClick={() => cancel.mutate(cancellableAttemptId)}
                       >
                         Cancel
                       </Button>

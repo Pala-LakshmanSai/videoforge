@@ -88,11 +88,11 @@ interface HostedLibraryRow extends Record<string, unknown> {
 }
 
 interface HostedQueueRow extends Record<string, unknown> {
-  readonly id: string;
   readonly project_id: string;
   readonly title: string;
-  readonly kind: "ASR" | "RENDER";
   readonly state: string;
+  readonly stage: string;
+  readonly cancellable_attempt_id: string | null;
   readonly created_at: Date | string;
   readonly updated_at: Date | string;
 }
@@ -126,18 +126,86 @@ async function handleHostedQueue(
         "videoforge.account_id",
         accountId,
       ]);
-      const attempts = await transaction.query<HostedQueueRow>(
-        `SELECT attempt.id, attempt.project_id, project.name AS title, attempt.kind,
-                attempt.state, attempt.created_at, attempt.updated_at
-           FROM hosted_cpu_job_attempts AS attempt
-           JOIN projects AS project
-             ON project.account_id = attempt.account_id
-            AND project.workspace_id = attempt.workspace_id
-            AND project.id = attempt.project_id
-          WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
-            AND attempt.retention_deleted_at IS NULL
-          ORDER BY attempt.created_at DESC, attempt.id DESC
-          LIMIT 100`,
+      const projects = await transaction.query<HostedQueueRow>(
+        `SELECT project.id AS project_id, project.name AS title,
+                CASE
+                  WHEN active_attempt.id IS NOT NULL THEN 'IN_PROGRESS'
+                  WHEN context.state IN ('FAILED','UNKNOWN')
+                    OR prompt_task.state IN ('FAILED','BLOCKED')
+                    OR latest_attempt.state IN ('FAILED','EXPIRED') THEN 'NEEDS_ATTENTION'
+                  WHEN latest_attempt.kind='ASR' AND latest_attempt.state='SUCCEEDED'
+                    AND context.id IS NULL THEN 'ACTION_REQUIRED'
+                  WHEN latest_attempt.state='CANCELLED' THEN 'CANCELLED'
+                  ELSE 'WAITING'
+                END AS state,
+                CASE
+                  WHEN active_attempt.kind='ASR' OR (latest_attempt.kind='ASR'
+                    AND latest_attempt.state IN ('FAILED','EXPIRED','CANCELLED')) THEN 'Transcription'
+                  WHEN active_attempt.kind='RENDER' OR (latest_attempt.kind='RENDER'
+                    AND latest_attempt.state IN ('FAILED','EXPIRED','CANCELLED')) THEN 'Final assembly'
+                  WHEN context.state IN ('FAILED','UNKNOWN') OR (context.id IS NULL
+                    AND latest_attempt.kind='ASR' AND latest_attempt.state='SUCCEEDED')
+                    THEN 'Voiceover context'
+                  WHEN prompt_task.state IN ('FAILED','BLOCKED') THEN 'Image prompts'
+                  ELSE 'Project setup'
+                END AS stage,
+                active_attempt.id AS cancellable_attempt_id,
+                project.created_at,
+                GREATEST(project.created_at, COALESCE(latest_attempt.updated_at,project.created_at),
+                  COALESCE(context.finished_at,context.started_at,project.created_at)) AS updated_at
+           FROM projects AS project
+           LEFT JOIN LATERAL (
+             SELECT attempt.id,attempt.kind,attempt.state,attempt.updated_at
+               FROM hosted_cpu_job_attempts AS attempt
+              WHERE attempt.account_id=project.account_id
+                AND attempt.workspace_id=project.workspace_id
+                AND attempt.project_id=project.id
+                AND attempt.retention_deleted_at IS NULL
+                AND attempt.state IN ('OUTBOXED','SUBMITTED','RUNNING','RECONCILING','CANCEL_REQUESTED')
+              ORDER BY attempt.created_at DESC,attempt.id DESC LIMIT 1
+           ) AS active_attempt ON true
+           LEFT JOIN LATERAL (
+             SELECT attempt.kind,attempt.state,attempt.updated_at
+               FROM hosted_cpu_job_attempts AS attempt
+              WHERE attempt.account_id=project.account_id
+                AND attempt.workspace_id=project.workspace_id
+                AND attempt.project_id=project.id
+                AND attempt.retention_deleted_at IS NULL
+              ORDER BY attempt.created_at DESC,attempt.id DESC LIMIT 1
+           ) AS latest_attempt ON true
+           LEFT JOIN LATERAL (
+             SELECT context.id,context.state,context.started_at,context.finished_at
+               FROM hosted_voiceover_contexts AS context
+              WHERE context.account_id=project.account_id
+                AND context.workspace_id=project.workspace_id
+                AND context.project_id=project.id
+              ORDER BY context.created_at DESC LIMIT 1
+           ) AS context ON true
+           LEFT JOIN LATERAL (
+             SELECT task.state
+               FROM generation_tasks AS task
+              WHERE task.account_id=project.account_id
+                AND task.workspace_id=project.workspace_id
+                AND task.project_revision_id IN (
+                  SELECT revision.id FROM project_revisions AS revision
+                   WHERE revision.account_id=project.account_id
+                     AND revision.workspace_id=project.workspace_id
+                     AND revision.project_id=project.id
+                )
+                AND task.task_key LIKE 'prompt:scene-batch:%'
+              ORDER BY task.created_at DESC,task.id DESC LIMIT 1
+           ) AS prompt_task ON true
+          WHERE project.account_id=$1 AND project.workspace_id=$2
+            AND project.status='ACTIVE'
+            AND NOT EXISTS (
+              SELECT 1 FROM hosted_cpu_job_attempts AS completed_render
+               WHERE completed_render.account_id=project.account_id
+                 AND completed_render.workspace_id=project.workspace_id
+                 AND completed_render.project_id=project.id
+                 AND completed_render.kind='RENDER' AND completed_render.state='SUCCEEDED'
+                 AND completed_render.retention_deleted_at IS NULL
+            )
+          ORDER BY updated_at DESC,project.id DESC`,
         [accountId, workspaceId],
       );
       const devices = await transaction.query<{ status: string; count: string | number }>(
@@ -147,27 +215,27 @@ async function handleHostedQueue(
           GROUP BY status`,
         [accountId, workspaceId],
       );
-      return { attempts: attempts.rows, devices: devices.rows };
+      return { projects: projects.rows, devices: devices.rows };
     });
     const workers = Object.fromEntries(
       result.devices.map((row) => [String(row.status), Number(row.count)]),
     );
     return json({
-      schema_version: "videoforge-hosted-queue/v1",
+      schema_version: "videoforge-hosted-queue/v2",
       worker_state:
         (workers.ONLINE ?? 0) > 0
           ? "ONLINE"
           : (workers.BUSY ?? 0) > 0
             ? "BUSY"
             : "WAITING_FOR_YOUR_COMPUTER",
-      attempts: result.attempts.map((attempt) => ({
-        id: attempt.id,
-        project_id: attempt.project_id,
-        title: attempt.title,
-        kind: attempt.kind,
-        state: attempt.state,
-        created_at: new Date(attempt.created_at).toISOString(),
-        updated_at: new Date(attempt.updated_at).toISOString(),
+      projects: result.projects.map((project) => ({
+        project_id: project.project_id,
+        title: project.title,
+        state: project.state,
+        stage: project.stage,
+        cancellable_attempt_id: project.cancellable_attempt_id,
+        created_at: new Date(project.created_at).toISOString(),
+        updated_at: new Date(project.updated_at).toISOString(),
       })),
     });
   } finally {
