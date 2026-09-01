@@ -160,6 +160,54 @@ describe("Runware server HTTP transport", () => {
     }
   });
 
+  it("accepts provider-normalized archived request fields while preserving saved identity", async () => {
+    const taskUUID = "11111111-1111-4111-8111-111111111111";
+    const originalRequest = [
+      {
+        taskType: "textInference",
+        taskUUID,
+        model: "deepseek:v4@flash",
+        outputFormat: "JSON",
+        includeCost: true,
+      },
+    ];
+    const originalRequestBytes = canonicalizeJson(originalRequest);
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(originalRequestBytes),
+    );
+    const originalRequestSha256 = `sha256:${[...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("")}` as const;
+    await expect(
+      retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: taskUUID,
+        originalRequestBytes,
+        originalRequestSha256,
+        fetch: async () =>
+          jsonResponse({
+            taskType: "getTaskDetails",
+            taskUUID,
+            request: [{ taskType: "textInference", taskUUID, model: "deepseek:v4@flash" }],
+            response: {
+              data: [
+                {
+                  taskType: "textInference",
+                  taskUUID,
+                  model: "deepseek:v4@flash",
+                  text: '{"summary":"recovered"}',
+                  cost: 0.001,
+                  finishReason: "stop",
+                  usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+                },
+              ],
+            },
+          }),
+      }),
+    ).resolves.toMatchObject({ originalRequestBytes, originalRequestSha256 });
+  });
+
   it("reports archived task-not-found without attempting inference", async () => {
     const taskUUID = "11111111-1111-4111-8111-111111111111";
     const originalRequestBytes = canonicalizeJson([{ taskType: "textInference", taskUUID }]);

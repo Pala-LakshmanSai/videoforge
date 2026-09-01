@@ -253,10 +253,16 @@ export async function retrieveRunwareTextTaskDetails(
   );
   if (!details || detailsRows.length !== 1 || !Array.isArray(details.request))
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
-  const recoveredRequestBytes = canonicalizeJson(details.request as never);
+  const recoveredTasks = details.request.map(record).filter(Boolean);
+  const recoveredTask = recoveredTasks[0];
+  const expectedModel = typeof expectedTask.model === "string" ? expectedTask.model : null;
   if (
-    recoveredRequestBytes !== options.originalRequestBytes ||
-    (await sha256(recoveredRequestBytes)) !== options.originalRequestSha256
+    recoveredTasks.length !== 1 ||
+    recoveredTask?.taskType !== "textInference" ||
+    recoveredTask.taskUUID !== options.originalTaskUUID ||
+    (typeof recoveredTask.model === "string" &&
+      expectedModel !== null &&
+      recoveredTask.model !== expectedModel)
   )
     throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
 
@@ -264,11 +270,7 @@ export async function retrieveRunwareTextTaskDetails(
   const originalErrors = Array.isArray(originalResponse?.errors)
     ? originalResponse.errors.map(record).filter(Boolean)
     : [];
-  if (
-    !originalResponse ||
-    originalErrors.length > 0 ||
-    !Array.isArray(originalResponse.data)
-  )
+  if (!originalResponse || originalErrors.length > 0 || !Array.isArray(originalResponse.data))
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
   const originalRows = originalResponse.data.map(record).filter(Boolean);
   const result = originalRows.find(
@@ -296,7 +298,6 @@ export async function retrieveRunwareTextTaskDetails(
     result.finishReason !== "stop"
   )
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
-  const expectedModel = typeof expectedTask.model === "string" ? expectedTask.model : null;
   const providerModel = typeof result.model === "string" ? result.model : null;
   if (providerModel !== null && expectedModel !== null && providerModel !== expectedModel)
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
@@ -308,7 +309,7 @@ export async function retrieveRunwareTextTaskDetails(
     costUsd,
     finishReason: "stop",
     providerModel,
-    originalRequestBytes: recoveredRequestBytes,
+    originalRequestBytes: options.originalRequestBytes,
     originalRequestSha256: options.originalRequestSha256,
     originalResponseBytes,
     originalResponseSha256: await sha256(originalResponseBytes),

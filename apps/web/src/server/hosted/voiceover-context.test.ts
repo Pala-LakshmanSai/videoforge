@@ -85,6 +85,74 @@ describe("hosted voiceover context extraction", () => {
     expect(result.reportedCostMicroUsd).toBe(1_000);
   });
 
+  it("accepts only bounded whole-response structured wrappers", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it.",
+      transcriptHash: HASH,
+    });
+    for (const text of [
+      `\`\`\`json\n${JSON.stringify(contextDocument())}\n\`\`\``,
+      JSON.stringify(JSON.stringify(contextDocument())),
+    ]) {
+      await expect(
+        extractHostedVoiceoverContext({
+          prepared,
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          fetcher: async () =>
+            Response.json({
+              data: [
+                {
+                  taskUUID: prepared.request.taskUUID,
+                  taskType: "textInference",
+                  text,
+                  cost: 0.001,
+                  finishReason: "stop",
+                  usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+                },
+              ],
+            }),
+        }),
+      ).resolves.toMatchObject({ context: contextDocument() });
+    }
+  });
+
+  it("rejects prose-wrapped and duplicate-property output with safe typed codes", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it.",
+      transcriptHash: HASH,
+    });
+    for (const [text, code] of [
+      [
+        `Here is the result: ${JSON.stringify(contextDocument())}`,
+        "VOICEOVER_CONTEXT_JSON_INVALID",
+      ],
+      [
+        '{"primary_topic":"first","primary_topic":"second"}',
+        "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY",
+      ],
+    ] as const) {
+      await expect(
+        extractHostedVoiceoverContext({
+          prepared,
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          fetcher: async () =>
+            Response.json({
+              data: [
+                {
+                  taskUUID: prepared.request.taskUUID,
+                  taskType: "textInference",
+                  text,
+                  cost: 0.001,
+                  finishReason: "stop",
+                  usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+                },
+              ],
+            }),
+        }),
+      ).rejects.toThrow(code);
+    }
+  });
+
   it("fails closed when the provider response is ambiguous", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "A complete transcript.",

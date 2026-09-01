@@ -1,4 +1,9 @@
-import { canonicalizeJson, parseJsonStrict, type JsonValue } from "@videoforge/contracts";
+import {
+  canonicalizeJson,
+  parseJsonStrict,
+  StrictJsonParseError,
+  type JsonValue,
+} from "@videoforge/contracts";
 import type { RunwarePromptTransportRequest } from "@videoforge/pipeline";
 
 import {
@@ -161,6 +166,28 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
   return Object.freeze(record);
 }
 
+function parseContextOutput(outputText: string): JsonValue {
+  const trimmed = outputText.trim();
+  const fenced = /^```(?:json)?\s*\n([\s\S]*?)\n```$/iu.exec(trimmed);
+  const candidates = fenced ? [fenced[1]!] : [trimmed];
+  try {
+    const parsed = parseJsonStrict(candidates[0]!);
+    // Some text providers JSON-encode their structured result one additional
+    // time. Accept only that exact whole-response wrapper, never surrounding
+    // prose or a heuristic object substring.
+    return typeof parsed === "string" ? parseJsonStrict(parsed) : parsed;
+  } catch (error) {
+    if (error instanceof StrictJsonParseError) {
+      throw new Error(
+        error.code === "DUPLICATE_PROPERTY"
+          ? "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY"
+          : "VOICEOVER_CONTEXT_JSON_INVALID",
+      );
+    }
+    throw error;
+  }
+}
+
 export async function prepareHostedVoiceoverContextRequest(input: {
   readonly transcript: string;
   readonly transcriptHash: `sha256:${string}`;
@@ -280,7 +307,7 @@ async function finalizeHostedVoiceoverContext(
   readonly reportedCostMicroUsd: number;
 }> {
   if (costUsd > HOSTED_CONTEXT_RESERVATION_USD) throw new Error("VOICEOVER_CONTEXT_COST_EXCEEDED");
-  const context = validateContext(parseJsonStrict(outputText));
+  const context = validateContext(parseContextOutput(outputText));
   const contextBytes = canonicalizeJson(context);
   if (contextBytes.length > 6_000) throw new Error("VOICEOVER_CONTEXT_TOO_LARGE");
   return Object.freeze({
