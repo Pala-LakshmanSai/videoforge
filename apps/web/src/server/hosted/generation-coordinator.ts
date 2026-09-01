@@ -19,6 +19,7 @@ import { sha256Bytes } from "./crypto";
 import { hostedGpuReadiness, type HostedGpuReadiness } from "./gpu-readiness";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 
 export interface HostedGenerationSnapshot {
@@ -240,9 +241,8 @@ export async function coordinateHostedGeneration(input: {
 }): Promise<HostedGenerationCoordinatorResult> {
   const { snapshot } = input;
   if (
+    ![snapshot.accountId, snapshot.workspaceId].every((value) => DATABASE_UUID.test(value)) ||
     ![
-      snapshot.accountId,
-      snapshot.workspaceId,
       snapshot.userId,
       snapshot.projectId,
       snapshot.projectRevisionId,

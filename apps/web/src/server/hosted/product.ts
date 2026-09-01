@@ -5,7 +5,10 @@ import type {
   HostedRuntimeConfiguration,
   HostedRuntimeEnvironment,
 } from "./configuration";
-import { coordinateHostedGeneration } from "./generation-coordinator";
+import {
+  coordinateHostedGeneration,
+  HostedGenerationCoordinationError,
+} from "./generation-coordinator";
 import {
   HostedCanonicalTimingPersistence,
   HostedCanonicalTimingPersistenceError,
@@ -5039,8 +5042,20 @@ async function renderHandoff(
     });
     return response(result, 202);
   } catch (error) {
-    if (error instanceof HostedCanonicalTimingPersistenceError) {
-      return response({ error: { code: error.code } }, 409);
+    if (
+      error instanceof HostedGenerationCoordinationError ||
+      error instanceof HostedCanonicalTimingPersistenceError
+    ) {
+      console.error("hosted_generation_planning_failed", error.code);
+      return response(
+        {
+          error: {
+            code: "HOSTED_PROJECT_PLANNING_FAILED",
+            message: "Video planning could not finish. Your transcript is saved; try planning again.",
+          },
+        },
+        409,
+      );
     }
     throw error;
   } finally {

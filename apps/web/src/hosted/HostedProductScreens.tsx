@@ -3437,6 +3437,18 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   : "Transcription complete; generation planning is starting."}
           </strong>
           {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
+          {renderHandoff.isError ? (
+            <>
+              <span>Your transcript is saved. This will retry planning only.</span>
+              <Button
+                variant="primary"
+                busy={renderHandoff.isPending}
+                onClick={() => renderHandoff.mutate(asr.id)}
+              >
+                <RefreshCw size={15} /> Retry planning
+              </Button>
+            </>
+          ) : null}
         </div>
       ) : null}
       <Button variant="secondary" onClick={() => void query.refetch()}>

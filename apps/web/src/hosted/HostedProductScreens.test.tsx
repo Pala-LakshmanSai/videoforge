@@ -1249,7 +1249,15 @@ describe("hosted product journey", () => {
     };
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input).endsWith("/render"))
-        return Response.json({ error: { code: "HOSTED_RENDER_PLAN_NOT_READY" } }, { status: 409 });
+        return Response.json(
+          {
+            error: {
+              code: "HOSTED_PROJECT_PLANNING_FAILED",
+              message: "Video planning could not finish. Your transcript is saved; try planning again.",
+            },
+          },
+          { status: 409 },
+        );
       return Response.json(detail);
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -1258,7 +1266,15 @@ describe("hosted product journey", () => {
     expect(
       await screen.findByText(/generation planning could not be verified/u),
     ).toBeInTheDocument();
-    expect(screen.getByText(/HOSTED_RENDER_PLAN_NOT_READY/u)).toBeInTheDocument();
+    expect(screen.getByText(/Your transcript is saved; try planning again/u)).toBeInTheDocument();
+    expect(screen.queryByText(/HOSTED_/u)).not.toBeInTheDocument();
+    expect(screen.getByText(/This will retry planning only/u)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry planning" }));
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/render")),
+      ).toHaveLength(2),
+    );
     expect(
       fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
     ).toBe(false);
