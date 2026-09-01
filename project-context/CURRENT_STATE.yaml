@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source aff8d43a remains live as Worker 343d874f with config sha256:79729991. Its one planning-only retry failed safely with CPU attempts still 2, canonical rows and R2 objects absent, and serverless/cost rows zero. Source a789d40e removes conditional R2 creation from the content-addressed canonical path: exact existing objects replay without writing, absent objects use ordinary put, foreign objects fail before mutation, and every path requires exact type/size/SHA-256 readback before Neon. Focused persistence/coordinator tests pass 10/10; web typecheck, changed-file lint/format, staging build/quarantine, and diff checks pass. Do not click Retry planning or create another ASR attempt. Fresh exact USD 0 authority is required to deploy a789d40e and perform one planning-only retry. GPU, provider generation, production, and spend remain disabled/zero."
+  provider_free_product_action: "Approved source a789d40e is deployed as Worker 65590587 with config sha256:8f6170c3 and exact cache-bypassed status. Its one authorized planning-only retry failed safely; no second click occurred. CPU attempts remain exactly 2; canonical bridge/head/transcript/timeline/task rows remain 0; both expected canonical R2 keys remain absent; serverless attempts/outbox/authorities/cost events remain 0. The typed planning/persistence failure path was reached, disproving a789d40e as a complete repair. Stop condition is active: do not click Retry planning or create another ASR attempt. Next work is read-only historical Workers Logs inspection for the already-emitted internal error code, followed by a separately reviewed source repair and fresh authority. GPU, provider generation, production, and spend remain disabled/zero."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: GENERATION_LINEAGE_PERSISTENCE_REPAIR_GREEN_AWAITING_DEPLOYMENT
+  status: GENERATION_LINEAGE_PERSISTENCE_BLOCKED_REQUIRES_HISTORICAL_LOG_DIAGNOSIS
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -99,20 +99,20 @@ hosted_beta_user_walkthrough:
     - "b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef"
     - "6a1911eceb9b4d1bba31a45bfce94df85611f699"
     - "cd818eda9c46ea5e5dfceac4790d676d2c883c96"
-  deployment_candidate: CONTENT_ADDRESSED_CANONICAL_R2_WRITE_REPAIR_GREEN_AWAITING_DEPLOYMENT
-  deployed_source_commit: "aff8d43aa98ac25fb156b195f6e971935e290680"
-  cloudflare_worker_version_id: "343d874f-13fb-49ea-a487-d093f733a17a"
-  pending_source_candidate: "a789d40e101c7a66c7fe7546fc23277ed399f155"
+  deployment_candidate: LIVE_A789D40E_PERSISTENCE_FAILURE_REQUIRES_HISTORICAL_LOG_DIAGNOSIS
+  deployed_source_commit: "a789d40e101c7a66c7fe7546fc23277ed399f155"
+  cloudflare_worker_version_id: "65590587-2933-4e85-8e4b-017c729322b1"
+  pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "Worker 0.1.12 and the successful 475-word transcript are retained; CPU attempt count remains exactly two. Deploy exact source a789d40e only under fresh exact USD 0 authority, then invoke at most one planning-only retry. Do not create another ASR attempt. Stop on deployment mismatch, persistence failure, or any provider/GPU/spend path."
+  pending_release_boundary: "Worker 0.1.12 and the successful 475-word transcript are retained; CPU attempt count remains exactly two. The single a789d40e planning-only retry failed and the stop condition is active. Do not invoke Retry planning or create another ASR attempt. Query historical Cloudflare Workers Logs read-only for hosted_generation_planning_failed, then repair locally; any successor deployment/retry requires fresh exact USD 0 authority."
   pending_validations: "PASS_PERSISTENCE_AND_GENERATION_COORDINATOR_10_OF_10_CONTENT_ADDRESSED_IDEMPOTENT_R2_WRITE; PASS_WEB_TYPECHECK; PASS_CHANGED_FILE_ESLINT_AND_PRETTIER; PASS_STAGING_BUILD_AND_BUNDLE_QUARANTINE; PASS_DIFF_CHECK"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_EAGER_AJV_SCHEMA_CODE_GENERATION_AT_WORKER_STARTUP; REPAIR_6A1911EC_DEPLOYED_SUCCESSFULLY_WITH_WRANGLER_4_127_1"
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "797299915be6185c6b19693fa2a3f26f93a46ee396221cba0465003dc798db4f"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA aff8d43aa98ac25fb156b195f6e971935e290680 CAP USD 0"
+  deployed_config_sha256: "8f6170c38a1ca1552d4a206901f2b699822f46ad87fc5ad04be09a9b4baa6485"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA a789d40e101c7a66c7fe7546fc23277ed399f155 CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -129,8 +129,9 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "FAIL_AFF8D43A_SINGLE_PLANNING_ONLY_RETRY_STOPPED; TRANSCRIPT_RETAINED_CPU_ATTEMPTS_STILL_2; CANONICAL_DATABASE_ROWS_ZERO; CANONICAL_R2_OBJECTS_ABSENT; SERVERLESS_AND_COST_ROWS_ZERO"
+  live_browser_verification: "FAIL_A789D40E_SINGLE_PLANNING_ONLY_RETRY_STOPPED; TRANSCRIPT_RETAINED_CPU_ATTEMPTS_STILL_2; CANONICAL_DATABASE_ROWS_ZERO; EXPECTED_CANONICAL_R2_OBJECTS_ABSENT; SERVERLESS_AND_COST_ROWS_ZERO"
   fixed_blockers:
+    - "Approved source a789d40e deployed as Worker 65590587 with config sha256:8f6170c3. Cache-bypassed status reports exact source, staging, DISABLED_UNQUALIFIED, and provider CPU $0. Its one planning-only retry failed safely with no second click. CPU attempts remain two, canonical database rows and both expected R2 objects remain absent, and serverless/cost rows remain zero. The typed internal error was logged as hosted_generation_planning_failed; historical Workers Logs inspection is the next read-only diagnostic boundary."
     - "Source a789d40e removes conditional creation from canonical content-addressed R2 writes. Exact existing objects replay without mutation; absent objects use ordinary put; pre-existing foreign bytes fail before put; exact content type, size, and SHA-256 readback remains mandatory before Neon. Focused persistence/coordinator tests pass 10/10 plus web typecheck, lint/format, staging build/quarantine, and diff checks. It is source proof only and requires fresh exact USD 0 deployment/planning authority."
     - "Approved source aff8d43a deployed as Worker 343d874f with config sha256:79729991. Cache-bypassed status reports the exact commit, staging, DISABLED_UNQUALIFIED, and provider CPU $0. Its one authorized planning-only retry failed safely; no second click occurred. CPU attempts remain two, canonical database rows and both expected canonical R2 objects remain absent, and serverless attempts/outbox/authorities/cost events remain zero. The aff8d43a R2 conditional-header change is therefore not a complete live repair; stop and diagnose read-only before proposing any successor source."
     - "Approved source 70281663 deployed as Worker 89ce7a86 with config sha256:08c03d7d. Its one planning-only call failed before persistence with the transcript safe and CPU attempts still two. Exact private-R2 input/result reproduction passes the pure coordinator to WAITING_FOR_GPU_QUALIFICATION, while both expected canonical R2 keys remain absent. Cloudflare documents wildcard create-if-absent through If-None-Match; source aff8d43a replaces the invalid structured concrete-etag wildcard with that header and passes 10/10 plus typecheck/lint/diff checks. No provider, GPU, production, or spend action occurred."
