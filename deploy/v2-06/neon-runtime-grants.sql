@@ -213,7 +213,8 @@ GRANT SELECT ON
   hosted_prompt_runs,
   prompt_executions,
   prompt_scene_results,
-  timeline_segments
+  timeline_segments,
+  cost_events
 TO :"runtime_role";
 
 GRANT SELECT, INSERT ON

@@ -52,6 +52,7 @@ const EXPECTED_TABLE_PRIVILEGES = new Map([
   ["prompt_executions", ["SELECT"]],
   ["prompt_scene_results", ["SELECT"]],
   ["timeline_segments", ["SELECT"]],
+  ["cost_events", ["SELECT"]],
   ["media_worker_input_objects", ["INSERT", "SELECT"]],
   ["hosted_cpu_job_events", ["INSERT", "SELECT"]],
   ["media_worker_events", ["INSERT", "SELECT"]],

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { EXPECTED_RUNTIME_FUNCTIONS } from "../../deploy/v2-06/apply-migrations-and-grants.mjs";
+import {
+  EXPECTED_RUNTIME_FUNCTIONS,
+  EXPECTED_TABLE_PRIVILEGES,
+} from "../../deploy/v2-06/apply-migrations-and-grants.mjs";
 
 const GRANTS = new URL("../../deploy/v2-06/neon-runtime-grants.sql", import.meta.url);
 
@@ -24,6 +27,7 @@ test("the hosted runtime can append through the exact function but has no direct
     "prompt_executions",
     "prompt_scene_results",
     "timeline_segments",
+    "cost_events",
   ]) {
     assert.match(
       source,
@@ -130,4 +134,26 @@ test("the hosted runtime can append through the exact function but has no direct
     source,
     /never receives direct INSERT, UPDATE, or DELETE[\s\S]*only[\s\S]*write capability/u,
   );
+});
+
+test("every project-detail relation is covered by the runtime SELECT allowlist", async () => {
+  const product = await readFile(
+    new URL("../../apps/web/src/server/hosted/product.ts", import.meta.url),
+    "utf8",
+  );
+  const start = product.indexOf("async function projectDetail(");
+  const end = product.indexOf("\nasync function ", start + 1);
+  assert.ok(start >= 0 && end > start);
+  const relations = new Set(
+    [...product.slice(start, end).matchAll(/\b(?:FROM|JOIN)\s+([a-z][a-z0-9_]*)\b/gu)].map(
+      (match) => match[1],
+    ),
+  );
+  assert.ok(relations.size > 0);
+  for (const relation of relations) {
+    assert.ok(
+      EXPECTED_TABLE_PRIVILEGES.get(relation)?.includes("SELECT"),
+      `projectDetail relation ${relation} is missing runtime SELECT`,
+    );
+  }
 });
