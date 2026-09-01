@@ -231,7 +231,7 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
 - Rollback first selects the previously recorded Cloudflare Worker code version, then performs an
   ordinary deployment of the intended restored source/config so code and deployment metadata converge;
   rollback selection alone is not claimed atomic. The prior immutable desktop release manifest remains
-  available. Every migration in the committed manifest (currently through 0054) is additive and
+  available. Every migration in the committed manifest (currently through 0055) is additive and
   retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather

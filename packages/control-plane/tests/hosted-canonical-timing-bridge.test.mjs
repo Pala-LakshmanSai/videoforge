@@ -271,12 +271,19 @@ test("migration 0039 exposes one least-privilege atomic hosted timing append", a
               has_function_privilege('public', oid, 'EXECUTE') AS public_execute
          FROM pg_catalog.pg_proc
         WHERE proname IN (
+          'videoforge_enforce_task_accepted_result',
           'videoforge_enforce_transcript_completeness',
           'videoforge_validate_timeline_plan'
         )
         ORDER BY proname`,
     );
     assert.deepEqual(deferredValidators.rows, [
+      {
+        proname: "videoforge_enforce_task_accepted_result",
+        prosecdef: true,
+        proconfig: ["search_path=pg_catalog, public"],
+        public_execute: false,
+      },
       {
         proname: "videoforge_enforce_transcript_completeness",
         prosecdef: true,

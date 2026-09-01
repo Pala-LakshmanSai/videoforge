@@ -324,6 +324,12 @@
       "name": "deferred_timing_validation_privilege",
       "filename": "0054_deferred_timing_validation_privilege.sql",
       "sha256": "sha256:3faacf0a963ec79a787be05ac97ea6129455e605a9e0e784184877ec91cd20ea"
+    },
+    {
+      "version": 55,
+      "name": "deferred_accepted_result_validation_privilege",
+      "filename": "0055_deferred_accepted_result_validation_privilege.sql",
+      "sha256": "sha256:636a02026d2a529d4eeb319d09759816ac87681a7e7baf227c0b6c549c3b9b2d"
     }
   ]
 }
