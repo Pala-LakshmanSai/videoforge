@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: CONTEXT_AND_PROMPT_STAGE_SOURCE_GREEN_AWAITING_DEPLOYMENT_AUTHORITY
+  status: MIGRATION_0056_LIVE_SOURCE_REPAIRED_AWAITING_FRESH_DEPLOYMENT_AUTHORITY
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -113,10 +113,10 @@ hosted_beta_user_walkthrough:
   deployment_candidate: LIVE_E9F3CD42_TRUTHFUL_PROMPT_STAGE
   deployed_source_commit: "e9f3cd421f09483b3c8029ce109593cf77b9a350"
   cloudflare_worker_version_id: "9dc4ccc5-d82c-498f-9c67-e404a5add7a0"
-  pending_source_candidate: "8bd28bf40d6fb50b04331e939682c4cd5a59a4c4"
+  pending_source_candidate: "539aab641277fea9e93c96a26226d2d2ebd40c4a"
   pending_worker_release: null
-  pending_release_boundary: "Source 8bd28bf4 is provider-free proof only. Applying migration 0056 or deploying this exact source requires fresh exact USD 0 authority. After that deployment, context extraction requires a separate exact one-dispatch cap USD 0.01; scene-prompt writing requires a separate exact one-dispatch cap USD 0.04. GPU and production remain blocked."
-  pending_validations: "MIGRATION_0056_AND_EXACT_STAGING_DEPLOYMENT_PENDING_FRESH_USD_0_AUTHORITY; THEN_USER_CONTEXT_AND_PROMPT_DISPATCHES_REQUIRE_SEPARATE_FINITE_APPROVAL"
+  pending_release_boundary: "Approved source 8bd28bf4 applied migration 0056, then the exact runtime-grant verifier stopped before Worker deployment because its source allowlist omitted the seven newly granted narrow functions. Repair 539aab64 adds those exact signatures and regression coverage; deploying it requires fresh exact USD 0 authority because the approved source identity changed. After deployment, context extraction requires a separate exact one-dispatch cap USD 0.01; scene-prompt writing requires a separate exact one-dispatch cap USD 0.04. GPU and production remain blocked."
+  pending_validations: "EXACT_STAGING_DEPLOYMENT_OF_539AAB64_PENDING_FRESH_USD_0_AUTHORITY; THEN_USER_CONTEXT_AND_PROMPT_DISPATCHES_REQUIRE_SEPARATE_FINITE_APPROVAL"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
@@ -134,7 +134,7 @@ hosted_beta_user_walkthrough:
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
   database_preflight: "LIVE_LEDGER_55_OF_55_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED; CANONICAL_TRANSCRIPT_1_WORDS_475_TIMELINE_1_SEGMENTS_35_TASKS_39_BRIDGE_1"
-  pending_database_migration: "0056_hosted_prompt_execution.sql sha256:12794e13d9866dc7348995977e08ed0e63abe4cfa52a39190eeb4740772a9b45"
+  pending_database_migration: null
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
@@ -142,6 +142,7 @@ hosted_beta_user_walkthrough:
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
   live_browser_verification: "PASS_CURRENT_LIVE_E9F3CD42_WORKER_9DC4CCC5_API_HEALTHY_STAGE_3_COMPLETE_100_STAGE_4_PENDING_0_ACTIVE_WAITING_EXPLICIT_NO_DURABLE_ACCEPTED_PROMPTS; DURABLE_PROMPT_EXECUTIONS_ZERO; DURABLE_PROMPT_SCENE_RESULTS_ZERO; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
   fixed_blockers:
+    - "Approved source 8bd28bf4 applied migration 0056, but the release guard stopped before Worker deployment because EXPECTED_RUNTIME_FUNCTIONS omitted the seven exact context/prompt functions that neon-runtime-grants.sql had correctly granted. Repair 539aab64 adds the seven signatures plus regression assertions. Focused deployment/grant tests pass 11/11; live read-only verification passes migration 56/56, exact table/function grants, FORCE RLS, and read-only render-plan capability. No Worker deployment, provider call, GPU work, production action, or spend occurred; fresh exact USD 0 deployment authority is required."
     - "Source 8bd28bf4 closes the missing hosted context/prompt orchestration in provider-free source. Context extraction and prompt writing are separate durable PROMPT tasks with exact claims, outbox lineage, central cost events, tenant RLS, canonical accepted assets, UNKNOWN no-redispatch handling, and prompt dependency on accepted context. The UI adds Understand voiceover context after transcription, shows bounded $0.01 and $0.04 actions, keeps context completion distinct from scene-prompt completion by task key, and exposes readable saved context and exact final prompts without raw hashes/UUIDs. Pipeline 40/40, hosted 101/101, durable/migration 20/20, typecheck, lint, staging build, bundle quarantine, and diff checks pass. No provider call, remote mutation, deployment, GPU work, or spend occurred."
     - "Approved source e9f3cd42 deployed once as Worker 9dc4ccc5 with config SHA-256 94e12854. Exact status reports staging, DISABLED_UNQUALIFIED, and provider CPU USD 0. Authenticated Chrome shows Stage 3 COMPLETE 100/100 and Stage 4 PENDING 0/100 with active WAITING and explicit no-durable-accepted-prompts copy. The approval is consumed; no planning retry, prompt writer, provider, GPU, production, or spend action occurred."
     - "Approved source c48ada9e applied migration 0055 and deployed as Worker 8cb41564 with config SHA-256 8dad7441. Exact status and 8/8 Chrome reads pass. Its one planning retry returned HTTP OK and durably completed Stage 3. The live UI also marked Stage 4 complete, but later durable inspection proved that claim false: prompt execution and scene-result rows are both zero. Neon has one 475-word transcript, one 35-segment timeline, 39 image/avatar generation tasks, and one canonical bridge; all serverless/outbox/authority/cost/paid-claim counts remain zero."
@@ -213,7 +214,10 @@ hosted_beta_user_walkthrough:
     hosted_context_prompt_typecheck: PASS
     hosted_context_prompt_eslint: PASS
     hosted_context_prompt_staging_build: PASS_FIXTURE_QUARANTINE
-    hosted_context_prompt_deployment: PENDING_FRESH_EXACT_USD_0_AUTHORITY
+    hosted_context_prompt_live_migration: "PASS_56_OF_56_FORCE_RLS_EXACT_GRANTS"
+    hosted_context_prompt_release_guard_repair_commit: "539aab641277fea9e93c96a26226d2d2ebd40c4a"
+    hosted_context_prompt_release_guard_focused: "PASS_11_OF_11"
+    hosted_context_prompt_deployment: PENDING_FRESH_EXACT_USD_0_AUTHORITY_FOR_539AAB64
     hosted_preset_focused_unit: "PASS_66_OF_66_UI_ACCESS_AND_SERVER"
     hosted_focus_revalidation_unit: "PASS_12_OF_12"
     hosted_web_typecheck: PASS
