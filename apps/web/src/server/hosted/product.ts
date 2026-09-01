@@ -36,6 +36,7 @@ import {
   extractHostedVoiceoverContext,
   HOSTED_CONTEXT_RESERVATION_MICRO_USD,
   prepareHostedVoiceoverContextRequest,
+  reconcileHostedVoiceoverContext,
 } from "./voiceover-context";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -5249,6 +5250,182 @@ async function createVoiceoverContext(
   }
 }
 
+async function reconcileVoiceoverContext(
+  request: Request,
+  projectId: string,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!config.styleAnalysis)
+    return response({ error: { code: "HOSTED_CONTEXT_PROVIDER_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const state = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<{
+        revision_id: string;
+        context_id: string;
+        context_state: string;
+        transcript_hash: string;
+        request_hash: string;
+        provider_may_have_charged: boolean;
+        output_asset_id: string | null;
+        asr_attempt_id: string;
+        output_object_key: string;
+        output_content_type: string;
+        output_content_length: number | string;
+        output_sha256: string;
+      }>(
+        `SELECT revision.id::text AS revision_id, context.id::text AS context_id,
+                context.state AS context_state, context.transcript_hash, context.request_hash,
+                context.provider_may_have_charged, execution_attempt.output_asset_id::text,
+                asr.id::text AS asr_attempt_id, asr.result_object_key AS output_object_key,
+                asr.result_content_type AS output_content_type,
+                asr.result_content_length AS output_content_length,
+                asr.result_checksum_sha256 AS output_sha256
+           FROM projects AS project
+           JOIN project_revisions AS revision
+             ON revision.account_id=project.account_id AND revision.workspace_id=project.workspace_id
+            AND revision.project_id=project.id AND revision.status='LOCKED'
+           JOIN hosted_voiceover_contexts AS context
+             ON context.account_id=revision.account_id AND context.workspace_id=revision.workspace_id
+            AND context.project_revision_id=revision.id
+           JOIN hosted_cpu_job_attempts AS asr
+             ON asr.account_id=context.account_id AND asr.workspace_id=context.workspace_id
+            AND asr.id=context.asr_attempt_id AND asr.kind='ASR' AND asr.state='SUCCEEDED'
+           JOIN attempts AS execution_attempt
+             ON execution_attempt.account_id=context.account_id
+            AND execution_attempt.workspace_id=context.workspace_id
+            AND execution_attempt.task_id=context.task_id AND execution_attempt.id=context.attempt_id
+          WHERE project.account_id=$1 AND project.workspace_id=$2 AND project.id=$3
+            AND project.status='ACTIVE' LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      return result.rows[0] ?? null;
+    });
+    if (!state) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+    if (state.context_state === "SUCCEEDED")
+      return response({
+        schema_version: "videoforge-hosted-context-reconciliation-response/v1",
+        state: "COMPLETE",
+        replayed: true,
+      });
+    if (state.context_state !== "UNKNOWN" || !state.provider_may_have_charged)
+      return response(
+        {
+          error: {
+            code: "HOSTED_CONTEXT_NOT_RECONCILABLE",
+            message: "This context request does not have an uncertain provider result to check.",
+          },
+        },
+        409,
+      );
+    const bucket = environment.PRIVATE_ARTIFACTS;
+    if (
+      !bucket ||
+      state.output_content_type !== "application/json" ||
+      !SHA256.test(state.output_sha256)
+    )
+      return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_READY" } }, 409);
+    const object = await bucket.get(state.output_object_key);
+    if (
+      !object ||
+      object.size !== Number(state.output_content_length) ||
+      object.httpMetadata?.contentType !== "application/json"
+    )
+      return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_VERIFIED" } }, 409);
+    const bytes = await object.arrayBuffer();
+    if ((await sha256Bytes(bytes)) !== state.output_sha256)
+      return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_VERIFIED" } }, 409);
+    let document: unknown;
+    try {
+      document = JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_VERIFIED" } }, 409);
+    }
+    const validators = (await import(
+      "@videoforge/contracts/precompiled-contract-validators"
+    )) as unknown as Record<string, ((value: unknown) => boolean) | undefined>;
+    if (!validators.asrJobResult?.(document))
+      return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_VERIFIED" } }, 409);
+    const transcript = hostedTranscriptText(document, state.asr_attempt_id);
+    if (!transcript || (await sha256(transcript)) !== state.transcript_hash)
+      return response({ error: { code: "HOSTED_CONTEXT_TRANSCRIPT_INVALID" } }, 409);
+    const preparedRequest = await prepareHostedVoiceoverContextRequest({
+      transcript,
+      transcriptHash: state.transcript_hash as `sha256:${string}`,
+    });
+    if (preparedRequest.requestHash !== state.request_hash)
+      return response({ error: { code: "HOSTED_CONTEXT_REQUEST_IDENTITY_INVALID" } }, 409);
+
+    let recovered: Awaited<ReturnType<typeof reconcileHostedVoiceoverContext>>;
+    try {
+      recovered = await reconcileHostedVoiceoverContext({
+        prepared: preparedRequest,
+        apiKey: config.styleAnalysis.apiKey,
+      });
+    } catch {
+      return response(
+        {
+          error: {
+            code: "HOSTED_CONTEXT_RECONCILIATION_INCOMPLETE",
+            message:
+              "The original provider result is not available yet. No new inference request was submitted.",
+          },
+        },
+        409,
+      );
+    }
+    const outputAssetId = state.output_asset_id ?? crypto.randomUUID();
+    const reconciled = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<{ reconciled: unknown }>(
+        "SELECT public.videoforge_reconcile_unknown_hosted_voiceover_context($1::jsonb) AS reconciled",
+        [
+          JSON.stringify({
+            account_id: scope.account_id,
+            workspace_id: scope.workspace_id,
+            user_id: scope.user_id,
+            project_id: projectId,
+            revision_id: state.revision_id,
+            context_id: state.context_id,
+            output_asset_id: outputAssetId,
+            transcript_hash: state.transcript_hash,
+            request_hash: state.request_hash,
+            response_bytes: recovered.responseBytes,
+            response_hash: recovered.responseHash,
+            context_bytes: recovered.contextBytes,
+            context_hash: recovered.contextHash,
+            reported_cost_micro_usd: recovered.reportedCostMicroUsd,
+          }),
+        ],
+      );
+      return plainRecord(result.rows[0]?.reconciled);
+    });
+    if (!reconciled) throw new Error("HOSTED_CONTEXT_RECONCILIATION_REJECTED");
+    return response({
+      schema_version: "videoforge-hosted-context-reconciliation-response/v1",
+      state: "COMPLETE",
+      replayed: reconciled.replayed === true,
+      context_cost_usd: recovered.reportedCostMicroUsd / 1_000_000,
+    });
+  } finally {
+    await pool.end();
+  }
+}
+
 async function renderHandoff(
   request: Request,
   projectId: string,
@@ -6622,6 +6799,17 @@ export async function handleHostedProductRequest(
   const context = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/context$/u.exec(url.pathname);
   if (request.method === "POST" && context)
     return createVoiceoverContext(request, context[1]!, environment, config, executionContext);
+  const reconcileContext = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/reconcile-context$/u.exec(
+    url.pathname,
+  );
+  if (request.method === "POST" && reconcileContext)
+    return reconcileVoiceoverContext(
+      request,
+      reconcileContext[1]!,
+      environment,
+      config,
+      executionContext,
+    );
   const prompts = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/prompts$/u.exec(url.pathname);
   if (request.method === "POST" && prompts)
     return writeProjectPrompts(request, prompts[1]!, config, executionContext);

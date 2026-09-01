@@ -4,6 +4,7 @@ import type { RunwarePromptTransportRequest } from "@videoforge/pipeline";
 import {
   RunwarePromptHttpTransport,
   RunwareSpendLedger,
+  retrieveRunwareTextTaskDetails,
 } from "../providers/runware-http-transport";
 
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
@@ -213,17 +214,51 @@ export async function extractHostedVoiceoverContext(input: {
     throw new Error("VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN");
   if (result.costUsd > HOSTED_CONTEXT_RESERVATION_USD)
     throw new Error("VOICEOVER_CONTEXT_COST_EXCEEDED");
-  const context = validateContext(parseJsonStrict(result.outputText));
+  return finalizeHostedVoiceoverContext(input.prepared, result.outputText, result.costUsd);
+}
+
+async function finalizeHostedVoiceoverContext(
+  prepared: HostedVoiceoverContextRequest,
+  outputText: string,
+  costUsd: number,
+): Promise<{
+  readonly context: Readonly<Record<string, JsonValue>>;
+  readonly contextBytes: string;
+  readonly contextHash: `sha256:${string}`;
+  readonly requestBytes: string;
+  readonly requestHash: `sha256:${string}`;
+  readonly responseBytes: string;
+  readonly responseHash: `sha256:${string}`;
+  readonly reportedCostMicroUsd: number;
+}> {
+  if (costUsd > HOSTED_CONTEXT_RESERVATION_USD) throw new Error("VOICEOVER_CONTEXT_COST_EXCEEDED");
+  const context = validateContext(parseJsonStrict(outputText));
   const contextBytes = canonicalizeJson(context);
   if (contextBytes.length > 6_000) throw new Error("VOICEOVER_CONTEXT_TOO_LARGE");
   return Object.freeze({
     context,
     contextBytes,
     contextHash: await sha256(contextBytes),
-    requestBytes: input.prepared.requestBytes,
-    requestHash: input.prepared.requestHash,
-    responseBytes: result.outputText,
-    responseHash: await sha256(result.outputText),
-    reportedCostMicroUsd: Math.ceil(result.costUsd * 1_000_000),
+    requestBytes: prepared.requestBytes,
+    requestHash: prepared.requestHash,
+    responseBytes: outputText,
+    responseHash: await sha256(outputText),
+    reportedCostMicroUsd: Math.ceil(costUsd * 1_000_000),
   });
+}
+
+/** Recover one previously dispatched context result through getTaskDetails. */
+export async function reconcileHostedVoiceoverContext(input: {
+  readonly prepared: HostedVoiceoverContextRequest;
+  readonly apiKey: string;
+  readonly fetcher?: typeof fetch;
+}): Promise<Awaited<ReturnType<typeof finalizeHostedVoiceoverContext>>> {
+  const recovered = await retrieveRunwareTextTaskDetails({
+    apiKey: input.apiKey,
+    originalTaskUUID: input.prepared.request.taskUUID,
+    originalRequestBytes: input.prepared.requestBytes,
+    originalRequestSha256: input.prepared.requestHash,
+    fetch: input.fetcher,
+  });
+  return finalizeHostedVoiceoverContext(input.prepared, recovered.outputText, recovered.costUsd);
 }

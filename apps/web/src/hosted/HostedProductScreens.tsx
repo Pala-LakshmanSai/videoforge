@@ -641,6 +641,7 @@ interface ProjectDetailResponse {
     readonly style_name: string;
   }[];
   readonly voiceover_context?: null | {
+    readonly id: string;
     readonly state: "DISPATCHING" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
     readonly transcript_hash: string;
     readonly context_hash?: string | null;
@@ -3177,6 +3178,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     .reverse()
     .find((attempt) => attempt.kind === "RENDER");
   const automaticContextAttempt = useRef<string | null>(null);
+  const automaticContextReconciliationAttempt = useRef<string | null>(null);
   const automaticPromptAttempt = useRef<string | null>(null);
   const renderHandoffAttempt = useRef<string | null>(null);
   const asrHandoff = useMutation({
@@ -3217,6 +3219,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       ),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
+  const contextReconciliation = useMutation({
+    mutationFn: () =>
+      readJson<{ state: "COMPLETE" | "UNKNOWN" }>(
+        `/api/v2/hosted/projects/${projectId}/reconcile-context`,
+        { method: "POST", body: "{}" },
+      ),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
   const promptWriting = useMutation({
     mutationFn: () =>
       readJson<{ state: "COMPLETE"; prompt_cost_usd?: number }>(
@@ -3239,6 +3249,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     automaticContextAttempt.current = asr.id;
     contextExtraction.mutate(asr.id);
   }, [asr?.id, asr?.state, contextExtraction, query.data?.voiceover_context]);
+  useEffect(() => {
+    const context = query.data?.voiceover_context;
+    if (
+      context?.state !== "UNKNOWN" ||
+      automaticContextReconciliationAttempt.current === context.id
+    ) {
+      return;
+    }
+    automaticContextReconciliationAttempt.current = context.id;
+    contextReconciliation.mutate();
+  }, [contextReconciliation, query.data?.voiceover_context]);
   useEffect(() => {
     if (
       asr?.state !== "SUCCEEDED" ||
@@ -3328,11 +3349,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       stage.label === "Understand voiceover context",
   );
   const contextComplete = query.data.voiceover_context?.state === "SUCCEEDED";
+  const contextUnknown = query.data.voiceover_context?.state === "UNKNOWN";
   const contextNeedsReview =
     contextStage?.status === "FAILED" ||
     query.data.voiceover_context?.state === "UNKNOWN" ||
     query.data.voiceover_context?.state === "FAILED";
   const contextAutoStartError = contextExtraction.isError && query.data.voiceover_context == null;
+  const contextReconciliationCouldNotFinish =
+    contextUnknown &&
+    automaticContextReconciliationAttempt.current === query.data.voiceover_context?.id &&
+    !contextReconciliation.isPending &&
+    (contextReconciliation.isError || contextReconciliation.data?.state === "UNKNOWN");
   const promptAutoStartError = promptWriting.isError && promptStage?.status === "PENDING";
   const timing = query.data.timing;
   const cost = query.data.cost;
@@ -3592,22 +3619,39 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       {asr?.state === "SUCCEEDED" && !contextComplete ? (
         <div className={`notice${contextNeedsReview ? " notice-danger" : ""}`} role="status">
           <strong>
-            {contextNeedsReview
-              ? "Context extraction needs review."
-              : contextAutoStartError
-                ? "Automatic context extraction could not start."
-                : "Continuing automatically after transcription."}
+            {contextUnknown
+              ? contextReconciliation.isPending
+                ? "Checking the original provider result."
+                : "Provider result needs confirmation."
+              : contextNeedsReview
+                ? "Context extraction needs review."
+                : contextAutoStartError
+                  ? "Automatic context extraction could not start."
+                  : "Continuing automatically after transcription."}
           </strong>
           <span>
-            {contextNeedsReview
-              ? "The first request ended without a durable accepted result. VideoForge has stopped it safely and will not send another provider request automatically."
-              : "VideoForge reads the complete transcript once, saves compact story facts, and continues to scene planning within your project limit."}
+            {contextUnknown
+              ? contextReconciliation.isPending
+                ? "VideoForge is checking the original provider task without submitting another inference request."
+                : "The original provider result could not be confirmed yet. No new inference request was submitted."
+              : contextNeedsReview
+                ? "The first request ended without a durable accepted result. VideoForge has stopped it safely and will not send another provider request automatically."
+                : "VideoForge reads the complete transcript once, saves compact story facts, and continues to scene planning within your project limit."}
           </span>
           {contextAutoStartError ? <span>{contextExtraction.error.message}</span> : null}
-          {contextNeedsReview ? (
-            <span>
-              Review the provider receipt and recorded cost before deciding whether to retry.
-            </span>
+          {contextReconciliation.isError && contextUnknown ? (
+            <span>{contextReconciliation.error.message}</span>
+          ) : null}
+          {contextReconciliationCouldNotFinish ? (
+            <Button
+              variant="primary"
+              busy={contextReconciliation.isPending}
+              onClick={() => contextReconciliation.mutate()}
+            >
+              <RefreshCw size={15} /> Check provider result
+            </Button>
+          ) : contextNeedsReview && !contextUnknown ? (
+            <span>The provider returned a definite failure. No context result was accepted.</span>
           ) : contextAutoStartError ? (
             <Button
               variant="primary"

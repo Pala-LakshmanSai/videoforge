@@ -14,6 +14,8 @@ export type RunwareTransportFailureCode =
   | "RUNWARE_AUTH_INVALID"
   | "RUNWARE_CAP_EXHAUSTED"
   | "RUNWARE_IDEMPOTENCY_CONFLICT"
+  | "RUNWARE_TASK_DETAILS_UNAVAILABLE"
+  | "RUNWARE_TASK_NOT_FOUND"
   | "RUNWARE_RESPONSE_INVALID";
 
 export class RunwareTransportError extends Error {
@@ -118,6 +120,180 @@ function outputText(value: unknown): string | null {
   if (typeof value === "string") return value;
   if (record(value)) return canonicalizeJson(value as never);
   return null;
+}
+
+async function sha256(value: string): Promise<`sha256:${string}`> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return `sha256:${[...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+export interface RunwareRecoveredTextTask {
+  readonly taskUUID: string;
+  readonly outputText: string;
+  readonly usage: {
+    readonly inputTokens: number;
+    readonly outputTokens: number;
+    readonly totalTokens: number;
+    readonly cachedInputTokens: number;
+  };
+  readonly costUsd: number;
+  readonly finishReason: "stop";
+  readonly providerModel: string | null;
+  readonly originalRequestBytes: string;
+  readonly originalRequestSha256: `sha256:${string}`;
+  readonly originalResponseBytes: string;
+  readonly originalResponseSha256: `sha256:${string}`;
+}
+
+export interface RetrieveRunwareTextTaskDetailsOptions {
+  readonly apiKey: string;
+  readonly originalTaskUUID: string;
+  readonly originalRequestBytes: string;
+  readonly originalRequestSha256: `sha256:${string}`;
+  readonly fetch?: FetchPort;
+  readonly endpoint?: string;
+  readonly timeoutMs?: number;
+  readonly onDiagnostic?: (diagnostic: RunwareSafeDiagnostic) => void;
+}
+
+/**
+ * Reads Runware's archived task details for an already-dispatched text task.
+ * This sends only getTaskDetails and can never redispatch text inference.
+ */
+export async function retrieveRunwareTextTaskDetails(
+  options: RetrieveRunwareTextTaskDetailsOptions,
+): Promise<RunwareRecoveredTextTask> {
+  if (options.apiKey.trim() !== options.apiKey || options.apiKey.length < 20)
+    throw new RunwareTransportError("RUNWARE_AUTH_INVALID");
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1)
+    throw new RangeError("Runware timeout must be a positive integer.");
+  if ((await sha256(options.originalRequestBytes)) !== options.originalRequestSha256)
+    throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
+  let expectedRequest: unknown;
+  try {
+    expectedRequest = JSON.parse(options.originalRequestBytes);
+  } catch {
+    throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
+  }
+  if (!Array.isArray(expectedRequest) || expectedRequest.length !== 1)
+    throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
+  const expectedTask = record(expectedRequest[0]);
+  if (
+    expectedTask?.taskType !== "textInference" ||
+    expectedTask.taskUUID !== options.originalTaskUUID
+  )
+    throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
+
+  let response: Response;
+  try {
+    response = await (options.fetch ?? fetch)(options.endpoint ?? DEFAULT_ENDPOINT, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${options.apiKey}`,
+        "content-type": "application/json",
+      },
+      body: canonicalizeJson([{ taskType: "getTaskDetails", taskUUID: options.originalTaskUUID }]),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    options.onDiagnostic?.({
+      stage: "network",
+      httpStatus: null,
+      providerCode: null,
+      providerParameter: null,
+    });
+    throw new RunwareTransportError("RUNWARE_TASK_DETAILS_UNAVAILABLE");
+  }
+  if (!response.ok) {
+    options.onDiagnostic?.({
+      stage: "http",
+      httpStatus: response.status,
+      providerCode: null,
+      providerParameter: null,
+    });
+    throw new RunwareTransportError("RUNWARE_TASK_DETAILS_UNAVAILABLE");
+  }
+
+  let envelope: NativeData | null;
+  try {
+    envelope = record(JSON.parse(await response.text()));
+  } catch {
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  }
+  const topErrors = Array.isArray(envelope?.errors)
+    ? envelope.errors.map(record).filter(Boolean)
+    : [];
+  if (topErrors.some((error) => error?.code === "taskNotFound"))
+    throw new RunwareTransportError("RUNWARE_TASK_NOT_FOUND");
+  if (topErrors.length > 0 || !Array.isArray(envelope?.data))
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  const detailsRows = envelope.data.map(record).filter(Boolean);
+  const details = detailsRows.find(
+    (candidate) =>
+      candidate?.taskType === "getTaskDetails" && candidate.taskUUID === options.originalTaskUUID,
+  );
+  if (!details || detailsRows.length !== 1 || !Array.isArray(details.request))
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  const recoveredRequestBytes = canonicalizeJson(details.request as never);
+  if (
+    recoveredRequestBytes !== options.originalRequestBytes ||
+    (await sha256(recoveredRequestBytes)) !== options.originalRequestSha256
+  )
+    throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
+
+  const originalResponse = record(details.response);
+  if (
+    !originalResponse ||
+    originalResponse.errors !== undefined ||
+    !Array.isArray(originalResponse.data)
+  )
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  const originalRows = originalResponse.data.map(record).filter(Boolean);
+  const result = originalRows.find(
+    (candidate) =>
+      candidate?.taskType === "textInference" && candidate.taskUUID === options.originalTaskUUID,
+  );
+  if (!result || originalRows.length !== 1)
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  const usage = record(result.usage);
+  const inputTokens = safeInteger(usage?.promptTokens);
+  const outputTokens = safeInteger(usage?.completionTokens);
+  const totalTokens = safeInteger(usage?.totalTokens);
+  const cachedInputTokens = safeInteger(usage?.cachedInputTokens ?? 0);
+  const text = outputText(result.text);
+  const costUsd = finiteNonnegative(result.cost);
+  if (
+    inputTokens === null ||
+    outputTokens === null ||
+    totalTokens === null ||
+    cachedInputTokens === null ||
+    totalTokens < inputTokens + outputTokens ||
+    cachedInputTokens > inputTokens ||
+    text === null ||
+    costUsd === null ||
+    result.finishReason !== "stop"
+  )
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  const expectedModel = typeof expectedTask.model === "string" ? expectedTask.model : null;
+  const providerModel = typeof result.model === "string" ? result.model : null;
+  if (providerModel !== null && expectedModel !== null && providerModel !== expectedModel)
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  const originalResponseBytes = canonicalizeJson(originalResponse as never);
+  return Object.freeze({
+    taskUUID: options.originalTaskUUID,
+    outputText: text,
+    usage: Object.freeze({ inputTokens, outputTokens, totalTokens, cachedInputTokens }),
+    costUsd,
+    finishReason: "stop",
+    providerModel,
+    originalRequestBytes: recoveredRequestBytes,
+    originalRequestSha256: options.originalRequestSha256,
+    originalResponseBytes,
+    originalResponseSha256: await sha256(originalResponseBytes),
+  });
 }
 
 class RunwareHttpClient {

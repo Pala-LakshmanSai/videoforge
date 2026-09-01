@@ -114,6 +114,10 @@ TO :"runtime_role";
 -- UNKNOWN after three minutes. It cannot release cost or redispatch provider work.
 GRANT EXECUTE ON FUNCTION public.videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)
 TO :"runtime_role";
+-- Migration 0061 can only reconcile the original result into an existing UNKNOWN context claim.
+-- It creates no replacement claim, reservation, outbox row, or provider dispatch.
+GRANT EXECUTE ON FUNCTION public.videoforge_reconcile_unknown_hosted_voiceover_context(jsonb)
+TO :"runtime_role";
 -- Migration 0040's direct claim stays owner-only. Runtime access would allow an approval to be
 -- consumed outside the atomic 0042 pair and is therefore intentionally absent.
 -- Migration 0041 atomically appends the exact provider-inert two-lane batches. Qualification,

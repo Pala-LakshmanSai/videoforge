@@ -185,9 +185,12 @@ fixture("source path, current migration chain, and activation caps are hard-pinn
       ),
     /exact approved pinned V2-06 owned local-slice path/u,
   );
-  assert.equal(COMMITTED_MIGRATIONS.length, 60);
-  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.version, 60);
-  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.filename, "0060_hosted_prompt_profile_reuse.sql");
+  assert.equal(COMMITTED_MIGRATIONS.length, 61);
+  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.version, 61);
+  assert.equal(
+    COMMITTED_MIGRATIONS.at(-1)?.filename,
+    "0061_hosted_voiceover_context_reconciliation.sql",
+  );
   assertMigrationLedgerRows(COMMITTED_MIGRATIONS);
   const fixture = await verifyLocalFixture();
   const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");

@@ -109,12 +109,12 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
   }
 });
 
-test("hosted prompt profile reuse upgrades the exact 0059 chain to 0060", async () => {
+test("hosted prompt profile reuse and reconciliation upgrade the exact 0059 chain to 0061", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0060_hosted_prompt_profile_reuse.sql");
+    assert.equal(sources.at(-1)?.filename, "0061_hosted_voiceover_context_reconciliation.sql");
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -124,7 +124,7 @@ test("hosted prompt profile reuse upgrades the exact 0059 chain to 0060", async 
          applied_at timestamptz NOT NULL DEFAULT now()
        )`,
     );
-    for (const migration of sources.slice(0, -1)) {
+    for (const migration of sources.slice(0, -2)) {
       await executor.execute(migration.sql);
       await executor.query(
         `INSERT INTO videoforge_schema_migrations (version, name, filename, sha256)
@@ -134,7 +134,7 @@ test("hosted prompt profile reuse upgrades the exact 0059 chain to 0060", async 
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [60]);
+    assert.deepEqual(upgraded.appliedVersions, [60, 61]);
     const definitions = await executor.query(
       `SELECT proname, pg_get_functiondef(oid) AS definition
          FROM pg_proc

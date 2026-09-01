@@ -87,6 +87,7 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_complete_hosted_prompt_run(jsonb)",
   "videoforge_fail_hosted_prompt_run(uuid,text,text,boolean)",
   "videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)",
+  "videoforge_reconcile_unknown_hosted_voiceover_context(jsonb)",
   "videoforge_begin_hosted_pair_send(uuid,uuid,uuid,text,uuid,text)",
   "videoforge_commit_hosted_atomic_pair_predispatch(uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamp with time zone,jsonb,jsonb)",
   "videoforge_finish_hosted_pair_send(uuid,uuid,uuid,text,text,text,uuid,text)",

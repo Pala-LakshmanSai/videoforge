@@ -83,6 +83,7 @@ test("the hosted runtime can append through the exact function but has no direct
     /videoforge_complete_hosted_prompt_run\(jsonb\)/u,
     /videoforge_fail_hosted_prompt_run\(uuid,text,text,boolean\)/u,
     /videoforge_reconcile_stale_hosted_prompt_dispatches\(uuid\)/u,
+    /videoforge_reconcile_unknown_hosted_voiceover_context\(jsonb\)/u,
   ]) {
     assert.match(source, pattern);
   }
@@ -95,6 +96,7 @@ test("the hosted runtime can append through the exact function but has no direct
     "videoforge_complete_hosted_prompt_run(jsonb)",
     "videoforge_fail_hosted_prompt_run(uuid,text,text,boolean)",
     "videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)",
+    "videoforge_reconcile_unknown_hosted_voiceover_context(jsonb)",
   ]) {
     assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature));
   }

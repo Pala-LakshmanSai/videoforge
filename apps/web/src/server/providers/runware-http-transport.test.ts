@@ -2,6 +2,7 @@ import type {
   RunwarePromptTransportRequest,
   RunwareStyleTransportRequest,
 } from "@videoforge/pipeline";
+import { canonicalizeJson } from "@videoforge/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -9,6 +10,7 @@ import {
   RunwareSpendLedger,
   RunwareStyleHttpTransport,
   RunwareTransportError,
+  retrieveRunwareTextTaskDetails,
 } from "./runware-http-transport";
 
 const promptRequest = (hashCharacter = "a"): RunwarePromptTransportRequest =>
@@ -43,6 +45,143 @@ const jsonResponse = (item: Record<string, unknown>, status = 200) =>
   });
 
 describe("Runware server HTTP transport", () => {
+  it("retrieves one exact archived text result without redispatching inference", async () => {
+    const originalRequest = [
+      {
+        taskType: "textInference",
+        taskUUID: "11111111-1111-4111-8111-111111111111",
+        model: "deepseek:v4@flash",
+        includeCost: true,
+        includeUsage: true,
+      },
+    ];
+    const originalRequestBytes = canonicalizeJson(originalRequest);
+    const originalRequestSha256 = `sha256:${await crypto.subtle
+      .digest("SHA-256", new TextEncoder().encode(originalRequestBytes))
+      .then((digest) =>
+        [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""),
+      )}` as const;
+    const fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(JSON.parse(String(init?.body))).toEqual([
+        {
+          taskType: "getTaskDetails",
+          taskUUID: "11111111-1111-4111-8111-111111111111",
+        },
+      ]);
+      return jsonResponse({
+        taskType: "getTaskDetails",
+        taskUUID: "11111111-1111-4111-8111-111111111111",
+        request: originalRequest,
+        response: {
+          data: [
+            {
+              taskType: "textInference",
+              taskUUID: "11111111-1111-4111-8111-111111111111",
+              model: "deepseek:v4@flash",
+              text: '{"summary":"recovered"}',
+              cost: 0.001,
+              finishReason: "stop",
+              usage: {
+                promptTokens: 10,
+                completionTokens: 20,
+                totalTokens: 30,
+                cachedInputTokens: 2,
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    await expect(
+      retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: "11111111-1111-4111-8111-111111111111",
+        originalRequestBytes,
+        originalRequestSha256,
+        fetch,
+      }),
+    ).resolves.toMatchObject({
+      taskUUID: "11111111-1111-4111-8111-111111111111",
+      outputText: '{"summary":"recovered"}',
+      costUsd: 0.001,
+      finishReason: "stop",
+      usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, cachedInputTokens: 2 },
+      originalRequestBytes,
+      originalRequestSha256,
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed when archived task identity, request, or successful response drifts", async () => {
+    const taskUUID = "11111111-1111-4111-8111-111111111111";
+    const originalRequestBytes = canonicalizeJson([{ taskType: "textInference", taskUUID }]);
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(originalRequestBytes),
+    );
+    const originalRequestSha256 = `sha256:${[...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("")}` as const;
+    for (const details of [
+      {
+        taskType: "getTaskDetails",
+        taskUUID,
+        request: [{ taskType: "textInference", taskUUID, changed: true }],
+        response: { data: [] },
+      },
+      {
+        taskType: "getTaskDetails",
+        taskUUID,
+        request: JSON.parse(originalRequestBytes),
+        response: {
+          data: [
+            {
+              taskType: "textInference",
+              taskUUID,
+              text: "{}",
+              cost: 0,
+              finishReason: "length",
+              usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+            },
+          ],
+        },
+      },
+    ]) {
+      await expect(
+        retrieveRunwareTextTaskDetails({
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          originalTaskUUID: taskUUID,
+          originalRequestBytes,
+          originalRequestSha256,
+          fetch: async () => jsonResponse(details),
+        }),
+      ).rejects.toBeInstanceOf(RunwareTransportError);
+    }
+  });
+
+  it("reports archived task-not-found without attempting inference", async () => {
+    const taskUUID = "11111111-1111-4111-8111-111111111111";
+    const originalRequestBytes = canonicalizeJson([{ taskType: "textInference", taskUUID }]);
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(originalRequestBytes),
+    );
+    const originalRequestSha256 = `sha256:${[...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("")}` as const;
+    await expect(
+      retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: taskUUID,
+        originalRequestBytes,
+        originalRequestSha256,
+        fetch: async () =>
+          new Response(JSON.stringify({ data: [], errors: [{ code: "taskNotFound", taskUUID }] })),
+      }),
+    ).rejects.toMatchObject({ code: "RUNWARE_TASK_NOT_FOUND" });
+  });
+
   it("maps prompt usage/cost and replays an exact request without a second charge", async () => {
     const ledger = new RunwareSpendLedger(0.2);
     const fetch = vi.fn(async () =>

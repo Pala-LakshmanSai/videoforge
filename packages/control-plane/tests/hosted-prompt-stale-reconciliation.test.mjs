@@ -3,9 +3,14 @@ import test from "node:test";
 
 import { TENANT_PRINCIPAL_SETTING } from "../dist/src/index.js";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
-import { sha256, uuid, withPgcryptoMigratedDatabase } from "./support/pglite.mjs";
+import {
+  expectDatabaseError,
+  sha256,
+  uuid,
+  withPgcryptoMigratedDatabase,
+} from "./support/pglite.mjs";
 
-test("0058 converts an abandoned context claim to UNKNOWN without releasing cost or redispatching", async () => {
+test("0058 preserves an UNKNOWN context claim and 0061 reconciles its original result exactly once", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     await seedLockedProjects(executor);
     await executor.query(`SELECT set_config($1, $2, false)`, [
@@ -122,5 +127,142 @@ test("0058 converts an abandoned context claim to UNKNOWN without releasing cost
       prompt_reconciled: 0,
       redispatched: false,
     });
+
+    const durableCountsBefore = await executor.query(
+      `SELECT
+         (SELECT count(*) FROM generation_tasks WHERE project_revision_id=$1) AS tasks,
+         (SELECT count(*) FROM attempts WHERE task_id=$2) AS attempts,
+         (SELECT count(*) FROM outbox WHERE task_id=$2) AS outbox,
+         (SELECT count(*) FROM cost_events WHERE task_id=$2 AND event_type='RESERVED') AS reservations`,
+      [IDS.revisionA, taskId],
+    );
+    const contextBytes = JSON.stringify({
+      primary_topic: "Recovered original context",
+      summary: "The original provider result recovered after an ambiguous edge timeout.",
+    });
+    const responseBytes = JSON.stringify(JSON.parse(contextBytes));
+    const outputAssetId = uuid(958_008);
+    const reconciliationPayload = {
+      account_id: IDS.accountA,
+      workspace_id: IDS.workspaceA,
+      user_id: IDS.userA,
+      project_id: IDS.projectA,
+      revision_id: IDS.revisionA,
+      context_id: contextId,
+      output_asset_id: outputAssetId,
+      transcript_hash: sha256("context-transcript"),
+      request_hash: sha256("context-provider-request"),
+      response_bytes: responseBytes,
+      response_hash: sha256(responseBytes),
+      context_bytes: contextBytes,
+      context_hash: sha256(contextBytes),
+      reported_cost_micro_usd: 321,
+    };
+    await executor.query(`SELECT set_config($1, $2, false)`, [
+      TENANT_PRINCIPAL_SETTING,
+      IDS.accountB,
+    ]);
+    await expectDatabaseError(
+      () =>
+        executor.query(
+          `SELECT public.videoforge_reconcile_unknown_hosted_voiceover_context($1::jsonb)`,
+          [JSON.stringify(reconciliationPayload)],
+        ),
+      "42501",
+    );
+    await executor.query(`SELECT set_config($1, $2, false)`, [
+      TENANT_PRINCIPAL_SETTING,
+      IDS.accountA,
+    ]);
+    const accepted = await executor.query(
+      `SELECT public.videoforge_reconcile_unknown_hosted_voiceover_context($1::jsonb) AS result`,
+      [JSON.stringify(reconciliationPayload)],
+    );
+    assert.deepEqual(accepted.rows[0].result, {
+      reconciled: true,
+      replayed: false,
+      context_id: contextId,
+      task_id: taskId,
+      attempt_id: attemptId,
+      output_asset_id: outputAssetId,
+    });
+    const durableCountsAfter = await executor.query(
+      `SELECT
+         (SELECT count(*) FROM generation_tasks WHERE project_revision_id=$1) AS tasks,
+         (SELECT count(*) FROM attempts WHERE task_id=$2) AS attempts,
+         (SELECT count(*) FROM outbox WHERE task_id=$2) AS outbox,
+         (SELECT count(*) FROM cost_events WHERE task_id=$2 AND event_type='RESERVED') AS reservations`,
+      [IDS.revisionA, taskId],
+    );
+    assert.deepEqual(durableCountsAfter.rows, durableCountsBefore.rows);
+    assert.deepEqual(
+      (
+        await executor.query(
+          `SELECT state,provider_may_have_charged,problem_code,context_hash,response_hash,
+                  reported_cost_micro_usd
+             FROM hosted_voiceover_contexts WHERE id=$1`,
+          [contextId],
+        )
+      ).rows[0],
+      {
+        state: "SUCCEEDED",
+        provider_may_have_charged: false,
+        problem_code: null,
+        context_hash: sha256(contextBytes),
+        response_hash: sha256(responseBytes),
+        reported_cost_micro_usd: 321,
+      },
+    );
+    assert.deepEqual(
+      (
+        await executor.query(
+          `SELECT state,dispatch_state,result_disposition,output_asset_id,problem_code
+             FROM attempts WHERE id=$1`,
+          [attemptId],
+        )
+      ).rows[0],
+      {
+        state: "SUCCEEDED",
+        dispatch_state: "RECONCILED",
+        result_disposition: "ACCEPTED",
+        output_asset_id: outputAssetId,
+        problem_code: null,
+      },
+    );
+    assert.deepEqual(
+      (
+        await executor.query(
+          `SELECT event_type,amount_micro_usd FROM cost_events
+            WHERE attempt_id=$1 ORDER BY sequence`,
+          [attemptId],
+        )
+      ).rows,
+      [
+        { event_type: "RESERVED", amount_micro_usd: 10_000 },
+        { event_type: "REPORTED", amount_micro_usd: 321 },
+        { event_type: "SETTLED", amount_micro_usd: 321 },
+      ],
+    );
+
+    const acceptedReplay = await executor.query(
+      `SELECT public.videoforge_reconcile_unknown_hosted_voiceover_context($1::jsonb) AS result`,
+      [JSON.stringify(reconciliationPayload)],
+    );
+    assert.equal(acceptedReplay.rows[0].result.reconciled, false);
+    assert.equal(acceptedReplay.rows[0].result.replayed, true);
+    await expectDatabaseError(
+      () =>
+        executor.query(
+          `SELECT public.videoforge_reconcile_unknown_hosted_voiceover_context($1::jsonb)`,
+          [
+            JSON.stringify({
+              ...reconciliationPayload,
+              context_bytes: JSON.stringify({ primary_topic: "drift" }),
+              context_hash: sha256(JSON.stringify({ primary_topic: "drift" })),
+            }),
+          ],
+        ),
+      "23514",
+    );
   });
 });

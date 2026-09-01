@@ -360,6 +360,12 @@
       "name": "hosted_prompt_profile_reuse",
       "filename": "0060_hosted_prompt_profile_reuse.sql",
       "sha256": "sha256:f24e13ff02ec7f761f66b97bccde469945c242fb1d0637b55c3b5574bf0cdf16"
+    },
+    {
+      "version": 61,
+      "name": "hosted_voiceover_context_reconciliation",
+      "filename": "0061_hosted_voiceover_context_reconciliation.sql",
+      "sha256": "sha256:803162f05a0b0b17834be178b8d9b76caf74c85b81a02475eea3f032510540d5"
     }
   ]
 }

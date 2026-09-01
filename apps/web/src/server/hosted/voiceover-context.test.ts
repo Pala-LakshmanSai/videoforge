@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   extractHostedVoiceoverContext,
   prepareHostedVoiceoverContextRequest,
+  reconcileHostedVoiceoverContext,
 } from "./voiceover-context";
 
 const HASH = `sha256:${"a".repeat(64)}` as const;
@@ -81,5 +82,47 @@ describe("hosted voiceover context extraction", () => {
         },
       }),
     ).rejects.toThrow("VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN");
+  });
+
+  it("reconciles an uncertain dispatch through task details without textInference redispatch", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it and listen for a hollow sound.",
+      transcriptHash: HASH,
+    });
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const lookup = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
+      expect(lookup).toEqual([{ taskType: "getTaskDetails", taskUUID: prepared.request.taskUUID }]);
+      return Response.json({
+        data: [
+          {
+            taskType: "getTaskDetails",
+            taskUUID: prepared.request.taskUUID,
+            request: JSON.parse(prepared.requestBytes),
+            response: {
+              data: [
+                {
+                  taskType: "textInference",
+                  taskUUID: prepared.request.taskUUID,
+                  model: "deepseek:v4@flash",
+                  text: JSON.stringify(contextDocument()),
+                  cost: 0.001,
+                  finishReason: "stop",
+                  usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+                },
+              ],
+            },
+          },
+        ],
+      });
+    });
+    const recovered = await reconcileHostedVoiceoverContext({
+      prepared,
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      fetcher,
+    });
+    expect(recovered.context).toEqual(contextDocument());
+    expect(recovered.requestHash).toBe(prepared.requestHash);
+    expect(recovered.reportedCostMicroUsd).toBe(1_000);
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

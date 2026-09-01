@@ -787,6 +787,23 @@ describe("hosted product route contract", () => {
     expect(source).toContain("/context$/u.exec(url.pathname)");
   });
 
+  it("reconciles UNKNOWN context only through the original provider task identity", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("async function reconcileVoiceoverContext(");
+    const end = source.indexOf("async function renderHandoff(", start);
+    const block = source.slice(start, end);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    expect(block).toContain('state.context_state !== "UNKNOWN"');
+    expect(block).toContain("prepareHostedVoiceoverContextRequest");
+    expect(block).toContain("preparedRequest.requestHash !== state.request_hash");
+    expect(block).toContain("reconcileHostedVoiceoverContext");
+    expect(block).not.toContain("extractHostedVoiceoverContext");
+    expect(block).toContain("videoforge_reconcile_unknown_hosted_voiceover_context");
+    expect(block).toContain("No new inference request was submitted.");
+    expect(source).toContain("/reconcile-context$/u.exec(");
+  });
+
   it("reconciles abandoned context and prompt claims before reporting project progress", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
     const start = source.indexOf("async function projectDetail(");
