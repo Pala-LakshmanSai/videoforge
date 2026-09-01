@@ -13,6 +13,7 @@ import {
   contractSchemaIds,
   contractValidators,
   createProjectRequestSchema,
+  hashPrevalidatedContractDocument,
   sha256CanonicalJson,
   validateAndHashContractDocument,
   validateOutputRuleKeywords,
@@ -99,6 +100,12 @@ test("validated documents are schema-checked and hashed by the TypeScript JCS au
     validated.value.words[0].text = "mutated";
   }, TypeError);
   assert.equal(await sha256CanonicalJson(validated.value), validated.sha256);
+
+  const prevalidated = await hashPrevalidatedContractDocument("transcriptTiming", fixture);
+  assert.equal(prevalidated.contractName, validated.contractName);
+  assert.deepEqual(prevalidated.value, validated.value);
+  assert.equal(prevalidated.sha256, validated.sha256);
+  assert.equal(Object.isFrozen(prevalidated.value.words[0]), true);
 
   await assert.rejects(
     validateAndHashContractDocument("transcriptTiming", { ...fixture, duration_ms: 1 }),

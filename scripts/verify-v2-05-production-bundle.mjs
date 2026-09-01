@@ -172,6 +172,43 @@ for (const file of emittedFiles) {
   }
 }
 
+const workerManifestPath = path.join(
+  root,
+  emittedWorkerDirectory,
+  ".vite/manifest.json",
+);
+try {
+  const workerManifest = JSON.parse(await readFile(workerManifestPath, "utf8"));
+  const staticEntryKeys = Object.entries(workerManifest)
+    .filter(([, value]) => value.isEntry === true)
+    .map(([key]) => key);
+  const staticallyReachable = new Set();
+  const pending = [...staticEntryKeys];
+  while (pending.length > 0) {
+    const key = pending.pop();
+    if (typeof key !== "string" || staticallyReachable.has(key)) continue;
+    staticallyReachable.add(key);
+    for (const importedKey of workerManifest[key]?.imports ?? []) pending.push(importedKey);
+  }
+  const eagerValidatorKeys = [...staticallyReachable].filter((key) =>
+    /contract-validators/iu.test(`${key} ${workerManifest[key]?.file ?? ""}`),
+  );
+  if (eagerValidatorKeys.length > 0) {
+    failures.push("precompiled contract validators are statically reachable from the Worker entry");
+  }
+  const validatorKey = Object.keys(workerManifest).find((key) =>
+    /contract-validators/iu.test(`${key} ${workerManifest[key]?.file ?? ""}`),
+  );
+  const coordinatorEntry = Object.values(workerManifest).find((value) =>
+    /generation-coordinator/iu.test(value.file ?? ""),
+  );
+  if (!validatorKey || !coordinatorEntry?.dynamicImports?.includes(validatorKey)) {
+    failures.push("planning does not dynamically import the precompiled contract validators");
+  }
+} catch {
+  failures.push(`${workerManifestPath} is not a readable Worker manifest`);
+}
+
 if (workerCodeFiles === 0) {
   failures.push(`${root} contained no production Worker emitted code`);
 }

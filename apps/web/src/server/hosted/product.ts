@@ -6,10 +6,6 @@ import type {
   HostedRuntimeEnvironment,
 } from "./configuration";
 import {
-  coordinateHostedGeneration,
-  HostedGenerationCoordinationError,
-} from "./generation-coordinator";
-import {
   HostedCanonicalTimingPersistence,
   HostedCanonicalTimingPersistenceError,
 } from "./generation-persistence";
@@ -4918,6 +4914,7 @@ async function renderHandoff(
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
   const pool = createNeonPool(config.neon.databaseUrl);
+  let generationCoordinator: typeof import("./generation-coordinator") | null = null;
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
@@ -5016,7 +5013,11 @@ async function renderHandoff(
     }
     const asrInputBytes = await asrInputObject.arrayBuffer();
     const asrOutputBytes = await asrObject.arrayBuffer();
-    const result = await coordinateHostedGeneration({
+    // The precompiled contract validators are intentionally large. Load them only for the explicit
+    // planning request so progress, queue, catalog, and worker-heartbeat reads stay below the
+    // Cloudflare request CPU limit.
+    generationCoordinator = await import("./generation-coordinator");
+    const result = await generationCoordinator.coordinateHostedGeneration({
       snapshot: {
         accountId: scope.account_id,
         workspaceId: scope.workspace_id,
@@ -5044,7 +5045,8 @@ async function renderHandoff(
     return response(result, 202);
   } catch (error) {
     if (
-      error instanceof HostedGenerationCoordinationError ||
+      (generationCoordinator !== null &&
+        error instanceof generationCoordinator.HostedGenerationCoordinationError) ||
       error instanceof HostedCanonicalTimingPersistenceError
     ) {
       console.error("hosted_generation_planning_failed", error.code);

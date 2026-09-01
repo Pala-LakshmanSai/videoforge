@@ -19,13 +19,13 @@ export interface ValidatedContractDocument<Name extends ContractName> {
   readonly [validatedContractDocumentBrand]: true;
 }
 
-export async function validateAndHashContractDocument<Name extends ContractName>(
+/** Canonicalize, freeze, hash, and brand a document already validated by an equivalent authority. */
+export async function hashPrevalidatedContractDocument<Name extends ContractName>(
   contractName: Name,
-  value: unknown,
+  value: ContractDocument<Name>,
 ): Promise<ValidatedContractDocument<Name>> {
-  const validated = assertContract(contractName, value) as ContractDocument<Name> & JsonValue;
   const immutableSnapshot = deepFreezeJson(
-    JSON.parse(canonicalizeJson(validated)) as JsonValue,
+    JSON.parse(canonicalizeJson(value)) as JsonValue,
   ) as ContractDocument<Name> & JsonValue;
   const sha256 = await sha256CanonicalJson(immutableSnapshot);
   return Object.freeze({
@@ -33,4 +33,12 @@ export async function validateAndHashContractDocument<Name extends ContractName>
     value: immutableSnapshot,
     sha256,
   }) as ValidatedContractDocument<Name>;
+}
+
+export async function validateAndHashContractDocument<Name extends ContractName>(
+  contractName: Name,
+  value: unknown,
+): Promise<ValidatedContractDocument<Name>> {
+  const validated = assertContract(contractName, value) as ContractDocument<Name> & JsonValue;
+  return hashPrevalidatedContractDocument(contractName, validated);
 }

@@ -1,8 +1,8 @@
-import type { ErrorObject, ValidateFunction } from "ajv";
-
-import * as generatedContractValidators from "../generated/contract-validators.js";
+import Ajv2020 from "ajv/dist/2020.js";
+import type { AnySchemaObject, ErrorObject, ValidateFunction } from "ajv";
 
 import {
+  canonicalSchemaDocuments,
   contractNames,
   contractSchemaIds,
   type ContractDocument,
@@ -43,11 +43,25 @@ export class ContractValidationError extends Error {
   }
 }
 
+export function createContractAjv(): Ajv2020 {
+  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  for (const contractName of contractNames) {
+    ajv.addSchema(canonicalSchemaDocuments[contractName] as unknown as AnySchemaObject);
+  }
+  return ajv;
+}
+
+let contractAjv: Ajv2020 | undefined;
+const compiledValidators = new Map<ContractName, ValidateFunction>();
+
 const validatorFor = (contractName: ContractName): ValidateFunction => {
-  const validator = (
-    generatedContractValidators as unknown as Record<string, ValidateFunction>
-  )[contractName];
+  const cached = compiledValidators.get(contractName);
+  if (cached) return cached;
+
+  contractAjv ??= createContractAjv();
+  const validator = contractAjv.getSchema(contractSchemaIds[contractName]);
   if (!validator) throw new Error(`Ajv did not register ${contractSchemaIds[contractName]}.`);
+  compiledValidators.set(contractName, validator);
   return validator;
 };
 
@@ -143,7 +157,7 @@ const transcriptTimingIssues = (
   return issues;
 };
 
-const semanticContractIssues = <Name extends ContractName>(
+export const semanticContractIssues = <Name extends ContractName>(
   contractName: Name,
   value: ContractDocument<Name>,
 ): readonly ContractValidationIssue[] => {

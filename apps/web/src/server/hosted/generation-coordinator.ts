@@ -1,7 +1,9 @@
 import {
-  assertContract,
+  hashPrevalidatedContractDocument,
+  semanticContractIssues,
   sha256CanonicalJson,
-  validateAndHashContractDocument,
+  type ContractDocument,
+  type ContractName,
   type ProjectRevisionConfigDocument,
   type TimelinePlanDocument,
   type ValidatedContractDocument,
@@ -102,20 +104,46 @@ function reject(code: string): never {
   throw new HostedGenerationCoordinationError(code);
 }
 
+type PrecompiledValidator = ((value: unknown) => boolean) & { errors?: unknown };
+
+class PrecompiledContractValidationError extends Error {
+  constructor(readonly phase: "SCHEMA" | "CANONICALIZATION") {
+    super(phase);
+    this.name = "PrecompiledContractValidationError";
+  }
+}
+
+let precompiledValidatorsPromise:
+  | Promise<Record<string, PrecompiledValidator>>
+  | undefined;
+
+async function validateAndHashPrecompiledContractDocument<Name extends ContractName>(
+  contractName: Name,
+  value: unknown,
+): Promise<ValidatedContractDocument<Name>> {
+  precompiledValidatorsPromise ??= import(
+    "@videoforge/contracts/precompiled-contract-validators"
+  ).then((module) => module as unknown as Record<string, PrecompiledValidator>);
+  const validators = await precompiledValidatorsPromise;
+  const validator = validators[contractName];
+  if (!validator || !validator(value)) throw new PrecompiledContractValidationError("SCHEMA");
+  const typedValue = value as ContractDocument<Name>;
+  if (semanticContractIssues(contractName, typedValue).length > 0) {
+    throw new PrecompiledContractValidationError("SCHEMA");
+  }
+  try {
+    return await hashPrevalidatedContractDocument(contractName, typedValue);
+  } catch {
+    throw new PrecompiledContractValidationError("CANONICALIZATION");
+  }
+}
+
 function storedRevisionConfig(value: ProjectRevisionConfigDocument | string): unknown {
   if (typeof value !== "string") return value;
   try {
     return JSON.parse(value);
   } catch {
     reject("HOSTED_GENERATION_PROJECT_REVISION_JSON_INVALID");
-  }
-}
-
-function assertStoredRevisionSchema(value: unknown): void {
-  try {
-    assertContract("projectRevisionConfig", value);
-  } catch {
-    reject("HOSTED_GENERATION_PROJECT_REVISION_SCHEMA_INVALID");
   }
 }
 
@@ -303,12 +331,19 @@ export async function coordinateHostedGeneration(input: {
     reject("HOSTED_GENERATION_ASR_OUTPUT_INVALID");
   }
   const storedRevision = storedRevisionConfig(snapshot.revisionConfig);
-  assertStoredRevisionSchema(storedRevision);
-  const revision = await validateAndHashContractDocument(
-    "projectRevisionConfig",
-    storedRevision,
-  ).catch(() => reject("HOSTED_GENERATION_PROJECT_REVISION_CANONICALIZATION_FAILED"));
-  const asrResult = await validateAndHashContractDocument("asrJobResult", rawResult).catch(() =>
+  let revision: Awaited<ReturnType<typeof validateAndHashPrecompiledContractDocument<"projectRevisionConfig">>>;
+  try {
+    revision = await validateAndHashPrecompiledContractDocument(
+      "projectRevisionConfig",
+      storedRevision,
+    );
+  } catch (error) {
+    if (error instanceof PrecompiledContractValidationError && error.phase === "SCHEMA") {
+      reject("HOSTED_GENERATION_PROJECT_REVISION_SCHEMA_INVALID");
+    }
+    reject("HOSTED_GENERATION_PROJECT_REVISION_CANONICALIZATION_FAILED");
+  }
+  const asrResult = await validateAndHashPrecompiledContractDocument("asrJobResult", rawResult).catch(() =>
     reject("HOSTED_GENERATION_ASR_RESULT_DOCUMENT_INVALID"),
   );
   const asrTemplate = exactHostedAsrJobTemplate(rawJobTemplate, snapshot);
@@ -321,7 +356,7 @@ export async function coordinateHostedGeneration(input: {
   ) {
     reject("HOSTED_GENERATION_ASR_RESULT_MISMATCH");
   }
-  const transcript = await validateAndHashContractDocument(
+  const transcript = await validateAndHashPrecompiledContractDocument(
     "transcriptTiming",
     asrResult.value.transcript,
   ).catch(() => reject("HOSTED_GENERATION_TRANSCRIPT_DOCUMENT_INVALID"));
@@ -372,7 +407,7 @@ export async function coordinateHostedGeneration(input: {
     transcript: transcript.value,
     createdAt: snapshot.asrFinishedAt,
   }).catch(() => reject("HOSTED_GENERATION_SCHEDULING_FAILED"));
-  const timeline = await validateAndHashContractDocument(
+  const timeline = await validateAndHashPrecompiledContractDocument(
     "timelinePlan",
     preparedTimeline.timelinePersistence.canonicalDocument.payload,
   ).catch(() => reject("HOSTED_GENERATION_SCHEDULING_FAILED"));
