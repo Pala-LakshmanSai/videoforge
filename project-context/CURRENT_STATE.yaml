@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: CONTEXT_RESUME_UI_REPAIR_GREEN_AWAITING_EXACT_USD_0_DEPLOYMENT_AUTHORITY
+  status: CONTEXT_RESUME_UI_REPAIR_LIVE_AWAITING_USER_RESUME_ACTION
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -118,20 +118,20 @@ hosted_beta_user_walkthrough:
     - "97152ab190efbce1c166a43639e081fc5c4dd7a6"
     - "006a5e58a45c0d8a0b2de973e11d6d0677f626f9"
     - "7bd59b12611bf35d5b44863cb00ab45357c176fe"
-  deployment_candidate: SOURCE_7BD59B12_CONTEXT_RESUME_ACTION
-  deployed_source_commit: "006a5e58a45c0d8a0b2de973e11d6d0677f626f9"
-  cloudflare_worker_version_id: "4fae64b0-b958-4156-9714-f73d073ceab2"
-  pending_source_candidate: "7bd59b12611bf35d5b44863cb00ab45357c176fe"
+  deployment_candidate: SOURCE_092C5C74_CONTEXT_RESUME_ACTION_LIVE
+  deployed_source_commit: "092c5c74d0a163a03338c1f638d234ef4b89d400"
+  cloudflare_worker_version_id: "03bdeb81-4bfa-4371-b376-8cf8cec94af4"
+  pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "Source 7bd59b12 makes the post-transcription stop explicit: Stage 3 and the progress hero say Action required, the projected cost says Up to USD 0.01 only after resume, and a responsive Resume: extract context action sits directly above the pipeline. Live staging remains 006a5e58 until fresh exact USD 0 deployment authority."
-  pending_validations: "FRESH_EXACT_SOURCE_BOUND_USD_0_STAGING_DEPLOYMENT_APPROVAL; THEN_AUTHENTICATED_CHROME_ACTION_REQUIRED_AND_RESUME_UI_ACCEPTANCE"
+  pending_release_boundary: null
+  pending_validations: "USER_RESUME_CONTEXT_ACTION; SEPARATE_MAXIMUM_USD_0_01_PROVIDER_BOUNDARY"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "b823a8f2c7f4265ea6b238e2a4125b3ba8f2238ffaed11cde407414c4141a75f"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 006a5e58a45c0d8a0b2de973e11d6d0677f626f9 CAP USD 0"
+  deployed_config_sha256: "8f4328a06bb30903b0f9b32926ffd57c765e6c6ef5e6caa9060b20779981d1bc"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 092c5c74d0a163a03338c1f638d234ef4b89d400 CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -148,9 +148,9 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_LIVE_006A5E58_WORKER_4FAE64B0_STATUS_EXACT_HTTP_200_5_OF_5; AUTHENTICATED_CHROME_HELEN_VIDEO_2_PROGRESS_AND_CURRENT_RUN_ACTION_VISIBLE_AFTER_RELOAD; NO_ACTION_CLICKED; PROJECT_UNTOUCHED; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
+  live_browser_verification: "PASS_LIVE_092C5C74_WORKER_03BDEB81_STATUS_EXACT_HTTP_200_8_OF_8_AFTER_EDGE_CONVERGENCE; AUTHENTICATED_CHROME_HELEN_VIDEO_2_ACTION_REQUIRED_UP_TO_USD_0_01_AND_RESUME_EXTRACT_CONTEXT_VISIBLE_AFTER_RELOAD; NO_ACTION_CLICKED; PROJECT_UNTOUCHED; GPU_PROVIDER_GENERATION_PRODUCTION_AND_SPEND_DISABLED_ZERO"
   fixed_blockers:
-    - "Source 7bd59b12 fixes the unclear post-transcription pause. Stage 3 is now ACTION_REQUIRED rather than PENDING, the hero and stage detail state the required action, the cost tile shows Up to USD 0.01 only after resume, and a responsive Resume: extract context control appears above the pipeline while retaining the single-dispatch/uncertain-result guard. Focused hosted UI/server tests pass 90/90; web typecheck, changed-file ESLint, Prettier, staging build/quarantine, and diff checks pass. No deployment, context dispatch, provider call, project mutation, GPU work, production action, or spend occurred."
+    - "Approved deployable HEAD 092c5c74, containing source 7bd59b12, is live as Worker 03bdeb81 with config SHA-256 8f4328a0. Stage 3 is now ACTION_REQUIRED rather than PENDING, the hero and stage detail state the required action, the cost tile shows Up to USD 0.01 only after resume, and a responsive Resume: extract context control appears above the pipeline while retaining the single-dispatch/uncertain-result guard. Eight consecutive exact-source status reads pass after edge convergence; authenticated Chrome verifies the complete action UI on helen video 2. No action was clicked; no context dispatch, provider call, project mutation, GPU work, production action, or spend occurred."
     - "Approved deployable HEAD 006a5e58, containing source 97152ab1, is live as Worker 4fae64b0 with config SHA-256 b823a8f2. It fixes the compact Current run collision by separating actions from the facts grid with a 14 px responsive row, full-width mobile controls, and concise Stop transcription / Finish stopping transcription labels. Exact-source status passes 5/5 and authenticated Chrome loads helen video 2 progress with the Current run action after reload. No action was clicked; no project mutation, provider call, GPU work, production action, or spend occurred."
     - "Approved deployable HEAD b16fdf58 applied migration 0057 and its exact archive-only runtime grant, then deployed once as Worker 78f824dd with config SHA-256 1dc27f18. Neon verifies 57/57 with FORCE RLS and exact grants; Cloudflare secret names, exact-origin R2 CORS, private bucket state, and five cache-bypassed exact-source status reads pass. The project was not deleted. No provider call, GPU work, production action, or spend occurred."
     - "Source 236aeb24 adds the missing hosted Delete project control, confirmation/loading/error states, same-origin tenant API, and migration 0057 archive-only function. Archived projects are excluded from project list/detail and work-entry queries; active CPU, context, prompt, or serverless work fails closed. Immutable revisions, attempts, artifacts, cost, and security lineage remain preserved. Hosted API/UI tests pass 90/90; migration/schema tests pass 8/8; deployment/grant tests pass 19/19; web/control-plane typecheck and changed-file lint pass. No live migration, deployment, deletion, provider call, GPU work, production action, or spend occurred."
@@ -256,6 +256,7 @@ hosted_beta_user_walkthrough:
     hosted_current_run_action_ui_live: "PASS_LIVE_006A5E58_WORKER_4FAE64B0_STATUS_5_OF_5_AUTHENTICATED_CHROME"
     hosted_context_resume_ui_source_commit: "7bd59b12611bf35d5b44863cb00ab45357c176fe"
     hosted_context_resume_ui_focused: "PASS_HOSTED_UI_AND_SERVER_90_OF_90_TYPECHECK_ESLINT_FORMAT_BUILD_QUARANTINE_DIFF"
+    hosted_context_resume_ui_live: "PASS_LIVE_092C5C74_WORKER_03BDEB81_STATUS_8_OF_8_AFTER_CONVERGENCE_AUTHENTICATED_CHROME"
     hosted_preset_focused_unit: "PASS_66_OF_66_UI_ACCESS_AND_SERVER"
     hosted_focus_revalidation_unit: "PASS_12_OF_12"
     hosted_web_typecheck: PASS
