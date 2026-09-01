@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source 6a1911ec is live as Worker ac99ccb0 with 97 ms startup. Manifest and downloadable worker remain 0.1.11; do not submit ASR Retry until immutable ad-hoc Mac/unsigned Windows beta 0.1.12 is published, activated in staging, and installed. Paid signing and notarization are optional upgrades, not beta blockers. No database, secret, manifest, R2, provider, GPU, or spend mutation occurred."
+  provider_free_product_action: "Approved source cd818eda is live as Worker 85fcca8d with immutable ad-hoc Mac/unsigned Windows beta 0.1.12. The Mac worker is installed and ONLINE. The one authorized ASR retry succeeded with exact bundle sha256:71069b1a, 475 words, and zero provider charge, then generation planning stopped fail-closed at HOSTED_GENERATION_LINEAGE_INVALID because tenant/workspace UUID-like identifiers do not satisfy the coordinator's RFC-version UUID regex. Do not retry again; repair and redeploy require a new exact source and fresh authority. GPU, provider generation, production, and spend remain disabled/zero."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: HOSTED_UI_CONSISTENCY_AND_STARTUP_SCHEMA_REPAIR_DEPLOYED
+  status: WORKER_0_1_12_LIVE_ASR_SUCCEEDED_GENERATION_LINEAGE_BLOCKED
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -98,20 +98,21 @@ hosted_beta_user_walkthrough:
     - "7d459a4ad0e345f393e7e86df054fc9d6b9ee2dc"
     - "b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef"
     - "6a1911eceb9b4d1bba31a45bfce94df85611f699"
-  deployment_candidate: DEPLOYED_UI_CONSISTENCY_AND_STARTUP_SCHEMA_REPAIR
-  deployed_source_commit: "6a1911eceb9b4d1bba31a45bfce94df85611f699"
-  cloudflare_worker_version_id: "ac99ccb0-e1f0-4163-b926-21b8ad570579"
+    - "cd818eda9c46ea5e5dfceac4790d676d2c883c96"
+  deployment_candidate: DEPLOYED_WORKER_0_1_12_ASR_ACCEPTANCE
+  deployed_source_commit: "cd818eda9c46ea5e5dfceac4790d676d2c883c96"
+  cloudflare_worker_version_id: "85fcca8d-1b07-4126-a129-1f3a6f1a5680"
   pending_source_candidate: null
-  pending_worker_release: "0.1.12"
-  pending_release_boundary: "The hosted UI source is deployed. Separately publish the approved immutable ad-hoc Mac/unsigned Windows beta 0.1.12 worker, update the staging release manifest, install/reconnect 0.1.12, and submit one explicit ASR retry only after fresh exact USD 0 approval. Paid signing/notarization is optional and not a beta blocker."
-  pending_validations: "PASS_UI_FOCUSED_54_OF_54; PASS_CONTRACTS_113_OF_113; PASS_CONTRACTS_TYPECHECK_ESLINT_FORMAT; PASS_WEB_AND_CLOUDFLARE_BUILD; PASS_WRANGLER_4_127_1_STARTUP_PROFILE_NO_SCHEMA_COMPILATION; PASS_EXACT_SOURCE_DEPLOYMENT_WORKER_AC99CCB0; PASS_CACHE_BYPASSED_STATUS_EXACT_6A1911EC; PASS_CONTEXT_VALIDATE; PASS_FORMAT_DIFF"
+  pending_worker_release: null
+  pending_release_boundary: "Worker 0.1.12 publication, activation, installation, connection, and the single approved ASR retry are complete. ASR persisted a valid 475-word result, but the automatic provider-inert planning handoff failed closed at HOSTED_GENERATION_LINEAGE_INVALID: account/workspace UUID-like IDs have non-RFC version nibbles while the coordinator requires RFC UUID versions 1-5. No second retry is authorized. Repair locally, independently audit, deploy under fresh exact USD 0 authority, then perform one new bounded planning/retry acceptance."
+  pending_validations: "PASS_RELEASE_WORKFLOW_RUN_33466994368; PASS_IMMUTABLE_RELEASE_0_1_12; PASS_PUBLIC_HASH_AND_DMG_VERIFY; PASS_EXACT_SOURCE_DEPLOYMENT_WORKER_85FCCA8D; PASS_CACHE_BYPASSED_STATUS_EXACT_CD818EDA; PASS_MAC_WORKER_0_1_12_ONLINE; PASS_SINGLE_ASR_ATTEMPT_SUCCEEDED_475_WORDS; BLOCKED_GENERATION_HOSTED_GENERATION_LINEAGE_INVALID"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_EAGER_AJV_SCHEMA_CODE_GENERATION_AT_WORKER_STARTUP; REPAIR_6A1911EC_DEPLOYED_SUCCESSFULLY_WITH_WRANGLER_4_127_1"
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "a702824b5528dae84add31d0ac4d268616e6a79646d83de15ba3335df0219b19"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 6a1911eceb9b4d1bba31a45bfce94df85611f699 CAP USD 0"
+  deployed_config_sha256: "b29c146df4706e335845ef50ed44db87368c454104b8f38a0d7c0d5a0c3cf942"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA cd818eda9c46ea5e5dfceac4790d676d2c883c96 CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
