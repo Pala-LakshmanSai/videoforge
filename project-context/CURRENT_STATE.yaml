@@ -71,8 +71,8 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: DEEPSEEK_REQUEST_AND_DEFINITE_FAILURE_REPAIR_LIVE_AWAITING_NEW_PROJECT_USER_TEST
-  implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
+  status: STAGE_3_IMMEDIATE_FAILURE_DIAGNOSED_SOURCE_REPAIRED_AWAITING_EXACT_DEPLOYMENT_APPROVAL
+  implementation_commit: "9d2008cb57ba621b86d017c55215c5e4fbcdb79d"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
     - "f43d5af80cdb0185620038b68fe70bc6ad2cf004"
@@ -130,13 +130,13 @@ hosted_beta_user_walkthrough:
     - "23b0f77f01765e33a1ae95ea6c375b836878f559"
     - "4d9e490005fc0ce2088a1146d26b3cb52a36485f"
     - "ba51e854ce58c1d5a719bf28d109e00e16e99376"
-  deployment_candidate: null
+  deployment_candidate: "9d2008cb57ba621b86d017c55215c5e4fbcdb79d"
   deployed_source_commit: "967f3c9dba330463424c18e8897d34dee684a2a4"
   cloudflare_worker_version_id: "8d7bd2ce-1e75-490a-809a-84e72170b7a6"
-  pending_source_candidate: null
+  pending_source_candidate: "9d2008cb57ba621b86d017c55215c5e4fbcdb79d"
   pending_worker_release: null
   pending_release_boundary: null
-  pending_validations: "USER_DELETE_HISTORICAL_UNKNOWN_PROJECT; NEW_PROJECT_STAGE_3_DEEPSEEK_CONTEXT; AUTOMATIC_SCENE_PLAN_AND_STAGE_5_PROMPTS"
+  pending_validations: "EXACT_SOURCE_STAGING_DEPLOYMENT; NEW_PROJECT_STAGE_3_DEEPSEEK_CONTEXT_WITH_SAFE_DIAGNOSTIC; AUTOMATIC_SCENE_PLAN_AND_STAGE_5_PROMPTS"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
@@ -162,6 +162,7 @@ hosted_beta_user_walkthrough:
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
   live_browser_verification: "PASS_LIVE_967F3C9D_WORKER_8D7BD2CE_CACHE_BYPASSED_STATUS_EXACT_4_OF_4; HISTORICAL_DEMO1_NOT_RELOADED_OR_RETRIED; USER_MUST_DELETE_OLD_UNKNOWN_PROJECT_AND_CREATE_NEW_PROJECT; GPU_AND_PRODUCTION_ZERO"
   fixed_blockers:
+    - "Read-only Neon and retained Cloudflare logs isolate hellen1 Stage 3 as an immediate ambiguous provider response, not a safe-deadline timeout: its durable attempt became UNKNOWN in about 158 ms, the Worker returned HTTP 502 in 984 ms, and the one retrieval-only reconciliation returned HTTP 409 without redispatch. The ledger contains one USD 0.01 reservation, USD 0 reported/settled cost, zero prompt runs, and no GPU/RunPod work. Source 9d2008cb accepts valid successful Runware envelopes containing errors=[], preserves bounded network/HTTP/response diagnostics in logs and durable problem codes, and shows accurate UI copy instead of falsely claiming every UNKNOWN result exceeded a deadline. Focused hosted tests pass 56/56; both web TypeScript builds and diff checks pass. Source only; live staging remains 967f3c9d / Worker 8d7bd2ce pending fresh exact deployment approval."
     - "Approved HEAD 967f3c9d deployed once as Worker 8d7bd2ce with config SHA-256 849072e5. Four cache-bypassed status reads report the exact source. No migration, provider request, inference dispatch, GPU work, or production action occurred during deployment. The historical UNKNOWN project was intentionally not reloaded or retried; the next validation is a new user-created project using lowercase DeepSeek JSON requests."
     - "Source 047ed808 follows Runware's current official DeepSeek structured-output request contract by sending lowercase outputFormat=json in both whole-voiceover context extraction and scene-prompt writing. It also distinguishes definite HTTP/provider rejection from ambiguous dispatch, persists future definite rejection as FAILED/provider-may-have-charged=false, parses bounded non-2xx getTaskDetails errors including taskNotFound/auth rejection, and never exposes provider messages or payloads. Focused web/provider/server tests pass 63/63; pipeline/provider-sandbox tests pass 31/31; web/pipeline/provider-sandbox typechecks, targeted lint/format, and diff checks pass. Fresh exact deployment approval is required."
     - "Approved HEAD ba51e854 deployed once as Worker 021a6bf7 with config SHA-256 7c33e45a. Exact status passes. Authenticated Chrome proved the database lookup repair reaches Runware, but the automatic retrieval and one manual read-only retry both returned RUNWARE_TASK_DETAILS_UNAVAILABLE. No inference was resubmitted. Read-only Neon confirms the original UNKNOWN context, USD 0.01 reservation, no reported cost, and zero prompt runs. Official Runware DeepSeek examples use lowercase outputFormat=json while the live request used uppercase JSON; source 047ed808 repairs the request plus definite-failure bookkeeping for the next project."
