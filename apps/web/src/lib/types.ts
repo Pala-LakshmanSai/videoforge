@@ -111,6 +111,7 @@ export interface ProjectStage {
     | "STARTING"
     | "RUNNING"
     | "RETRYING"
+    | "ACTION_REQUIRED"
     | "BLOCKED"
     | "FAILED"
     | "CANCEL_REQUESTED"

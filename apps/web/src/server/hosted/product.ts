@@ -6113,7 +6113,9 @@ async function projectDetail(
         ? "COMPLETE"
         : contextState === "DISPATCHING"
           ? "RUNNING"
-          : contextState;
+          : !voiceoverContext && asr?.state === "SUCCEEDED"
+            ? "ACTION_REQUIRED"
+            : contextState;
     const stages = [
       {
         id: "prepare",
@@ -6147,7 +6149,9 @@ async function projectDetail(
             ? "Compact whole-script facts are saved for scene planning and prompt relevance."
             : contextState === "UNKNOWN"
               ? "The provider result is uncertain and will not be dispatched again automatically."
-              : "The complete transcript is summarized once into bounded story context.",
+              : contextStageStatus === "ACTION_REQUIRED"
+                ? "Action required: resume context extraction to continue. Maximum charge: $0.01."
+                : "The complete transcript is summarized once into bounded story context.",
         eta_ms: null,
       },
       {

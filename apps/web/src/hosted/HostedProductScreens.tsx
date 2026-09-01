@@ -1314,7 +1314,8 @@ function fallbackHostedStages(
           : name === "Understand context"
             ? voiceoverContext?.state === "SUCCEEDED"
               ? "COMPLETE"
-              : (voiceoverContext?.state ?? "WAITING")
+              : (voiceoverContext?.state ??
+                (asr?.state === "SUCCEEDED" ? "ACTION_REQUIRED" : "WAITING"))
             : name === "Plan"
               ? planStatus
               : name === "Review"
@@ -1336,6 +1337,7 @@ function hostedStageStatus(status: string): ProjectStage["status"] {
     return "RUNNING";
   if (["STARTING", "PREPARING", "RECONCILING"].includes(normalized)) return "STARTING";
   if (["RETRYING", "RETRY_WAIT"].includes(normalized)) return "RETRYING";
+  if (["ACTION_REQUIRED"].includes(normalized)) return "ACTION_REQUIRED";
   if (["FAILED", "PERMANENT_FAILED", "RETRYABLE_FAILED"].includes(normalized)) return "FAILED";
   if (["CANCEL_REQUESTED"].includes(normalized)) return "CANCEL_REQUESTED";
   if (["CANCELLED"].includes(normalized)) return "CANCELLED";
@@ -3282,8 +3284,18 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context);
   const uiStages = hostedProjectStages(stages);
   const promptStage = uiStages.find((stage) => stage.id === "prompt-writing");
-  const contextStage = uiStages.find((stage) => stage.id === "voiceover-context");
+  const contextStage = uiStages.find(
+    (stage) =>
+      stage.id === "voiceover-context" ||
+      stage.label === "Understand context" ||
+      stage.label === "Understand voiceover context",
+  );
   const contextComplete = query.data.voiceover_context?.state === "SUCCEEDED";
+  const contextActionAsrId =
+    asr?.state === "SUCCEEDED" && !contextComplete && contextStage?.status === "ACTION_REQUIRED"
+      ? asr.id
+      : null;
+  const contextActionRequired = contextActionAsrId !== null;
   const timing = query.data.timing;
   const cost = query.data.cost;
   const queue = query.data.queue;
@@ -3297,24 +3309,29 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       Math.max(1, stages.length),
   );
   const hasFailed = uiStages.some((stage) => stage.status === "FAILED");
+  const hasActionRequired = uiStages.some((stage) => stage.status === "ACTION_REQUIRED");
   const hasRunning = uiStages.some((stage) =>
     ["STARTING", "RUNNING", "RETRYING", "CANCEL_REQUESTED"].includes(stage.status),
   );
   const allComplete = uiStages.every((stage) => stage.status === "COMPLETE");
   const overallStatus = hasFailed
     ? "Needs attention"
-    : allComplete
-      ? "Ready for review"
-      : hasRunning
-        ? "Running"
-        : "Waiting";
+    : hasActionRequired
+      ? "Action required"
+      : allComplete
+        ? "Ready for review"
+        : hasRunning
+          ? "Running"
+          : "Waiting";
   const statusToneValue = hasFailed
     ? "danger"
-    : allComplete
-      ? "success"
-      : hasRunning
-        ? "info"
-        : "warning";
+    : hasActionRequired
+      ? "warning"
+      : allComplete
+        ? "success"
+        : hasRunning
+          ? "info"
+          : "warning";
   const latestArtifact =
     render?.preview_url ??
     query.data.review?.contact_sheet?.at(-1)?.image_url ??
@@ -3378,14 +3395,20 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             <Metric
               label="Cost"
               value={
-                (cost?.projected_usd ?? 0) > 0
-                  ? formatUsd(cost?.projected_usd)
-                  : "No provider charge"
+                contextActionRequired
+                  ? "Up to $0.01"
+                  : (cost?.projected_usd ?? 0) > 0
+                    ? formatUsd(cost?.projected_usd)
+                    : "No provider charge"
               }
               detail={
-                cost?.cap_usd == null ? "personal worker" : `${formatUsd(cost.cap_usd)} maximum`
+                contextActionRequired
+                  ? "only after you resume"
+                  : cost?.cap_usd == null
+                    ? "personal worker"
+                    : `${formatUsd(cost.cap_usd)} maximum`
               }
-              tone="success"
+              tone={contextActionRequired ? "warning" : "success"}
             />
           </div>
           <ProgressBar value={overallProgress} label="Overall video progress" />
@@ -3398,6 +3421,24 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
 
       <div className="progress-workspace">
         <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
+          {contextActionRequired ? (
+            <div className="pipeline-resume-action notice notice-warning" role="status">
+              <div>
+                <strong>Action required to continue Stage 3.</strong>
+                <span>
+                  DeepSeek will read the transcript once and save compact story context. Maximum
+                  charge: $0.01.
+                </span>
+              </div>
+              <Button
+                busy={contextExtraction.isPending}
+                disabled={contextExtraction.isPending}
+                onClick={() => contextExtraction.mutate(contextActionAsrId)}
+              >
+                Resume: extract context
+              </Button>
+            </div>
+          ) : null}
           <StageTimeline stages={uiStages} />
         </Panel>
         <div className="progress-side">
@@ -3536,7 +3577,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       ) : null}
       {asr?.state === "SUCCEEDED" && !contextComplete ? (
         <div className="notice" role="status">
-          <strong>Transcription complete; whole-voiceover context is ready to extract.</strong>
+          <strong>Action required to resume after transcription.</strong>
           <span>
             DeepSeek reads the complete transcript once and saves only compact story facts. Maximum
             charge: $0.01 within your project limit. This is a single dispatch and will not repeat
@@ -3560,7 +3601,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               }
               onClick={() => contextExtraction.mutate(asr.id)}
             >
-              Extract voiceover context
+              Resume: extract context
             </Button>
           )}
         </div>

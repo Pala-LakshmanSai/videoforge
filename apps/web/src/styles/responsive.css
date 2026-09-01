@@ -161,6 +161,15 @@
   .pipeline-panel {
     min-height: 0;
   }
+
+  .pipeline-resume-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pipeline-resume-action .button {
+    width: 100%;
+  }
   .progress-hero {
     grid-template-columns: 148px minmax(0, 1fr);
     gap: 16px;

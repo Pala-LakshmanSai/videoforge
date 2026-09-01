@@ -193,6 +193,24 @@
   min-height: 496px;
 }
 
+.pipeline-resume-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.pipeline-resume-action > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.pipeline-resume-action .button {
+  flex: 0 0 auto;
+}
+
 .stage-list {
   position: relative;
   display: flex;

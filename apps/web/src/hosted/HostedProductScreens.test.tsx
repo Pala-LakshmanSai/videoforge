@@ -1315,9 +1315,11 @@ describe("hosted product journey", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
-    expect(await screen.findByText(/Maximum charge: \$0\.01/u)).toBeInTheDocument();
+    expect((await screen.findAllByText("Action required")).length).toBeGreaterThan(0);
+    expect(screen.getByText("Up to $0.01")).toBeInTheDocument();
+    expect(screen.getAllByText(/Maximum charge: \$0\.01/u).length).toBeGreaterThan(0);
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render"))).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: "Extract voiceover context" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Resume: extract context" })[0]!);
     await waitFor(() =>
       expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith(`/context`))).toBe(true),
     );
