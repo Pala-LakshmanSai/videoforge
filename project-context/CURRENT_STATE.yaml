@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source cd818eda is live as Worker 85fcca8d with immutable ad-hoc Mac/unsigned Windows beta 0.1.12. The Mac worker is installed and ONLINE. The one authorized ASR retry succeeded with exact bundle sha256:71069b1a, 475 words, and zero provider charge, then generation planning stopped fail-closed at HOSTED_GENERATION_LINEAGE_INVALID because tenant/workspace UUID-like identifiers do not satisfy the coordinator's RFC-version UUID regex. Do not retry again; repair and redeploy require a new exact source and fresh authority. GPU, provider generation, production, and spend remain disabled/zero."
+  provider_free_product_action: "Source e93d87e7 repairs every reproduced post-ASR blocker without rerunning transcription: generation planning accepts database UUID-shaped tenant IDs while retaining strict RFC checks for generated lineage, planning errors return friendly copy without raw codes, and Progress offers an idempotent Retry planning action that never creates a CPU attempt. Focused web/coordinator/product tests pass 91/91; typecheck, lint, staging build/quarantine, deployment validation, context validation, and diff checks pass. Live staging remains cd818eda / Worker 85fcca8d with worker 0.1.12 ONLINE and the valid 475-word transcript retained. Deployment plus one provider-inert planning call require fresh exact USD 0 authority; no ASR retry is needed. GPU, provider generation, production, and spend remain disabled/zero."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: WORKER_0_1_12_LIVE_ASR_SUCCEEDED_GENERATION_LINEAGE_BLOCKED
+  status: GENERATION_LINEAGE_REPAIR_GREEN_AWAITING_DEPLOYMENT
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -99,13 +99,13 @@ hosted_beta_user_walkthrough:
     - "b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef"
     - "6a1911eceb9b4d1bba31a45bfce94df85611f699"
     - "cd818eda9c46ea5e5dfceac4790d676d2c883c96"
-  deployment_candidate: DEPLOYED_WORKER_0_1_12_ASR_ACCEPTANCE
+  deployment_candidate: GENERATION_LINEAGE_REPAIR_GREEN_AWAITING_DEPLOYMENT
   deployed_source_commit: "cd818eda9c46ea5e5dfceac4790d676d2c883c96"
   cloudflare_worker_version_id: "85fcca8d-1b07-4126-a129-1f3a6f1a5680"
-  pending_source_candidate: null
+  pending_source_candidate: "e93d87e7056e40bfb0a5059f01290dc7fd5d0880"
   pending_worker_release: null
-  pending_release_boundary: "Worker 0.1.12 publication, activation, installation, connection, and the single approved ASR retry are complete. ASR persisted a valid 475-word result, but the automatic provider-inert planning handoff failed closed at HOSTED_GENERATION_LINEAGE_INVALID: account/workspace UUID-like IDs have non-RFC version nibbles while the coordinator requires RFC UUID versions 1-5. No second retry is authorized. Repair locally, independently audit, deploy under fresh exact USD 0 authority, then perform one new bounded planning/retry acceptance."
-  pending_validations: "PASS_RELEASE_WORKFLOW_RUN_33466994368; PASS_IMMUTABLE_RELEASE_0_1_12; PASS_PUBLIC_HASH_AND_DMG_VERIFY; PASS_EXACT_SOURCE_DEPLOYMENT_WORKER_85FCCA8D; PASS_CACHE_BYPASSED_STATUS_EXACT_CD818EDA; PASS_MAC_WORKER_0_1_12_ONLINE; PASS_SINGLE_ASR_ATTEMPT_SUCCEEDED_475_WORDS; BLOCKED_GENERATION_HOSTED_GENERATION_LINEAGE_INVALID"
+  pending_release_boundary: "Worker 0.1.12 and the successful 475-word transcript are retained. Deploy exact source e93d87e7 under fresh exact USD 0 authority, then invoke only the idempotent provider-inert planning handoff from the existing transcript. Do not create another ASR attempt. Stop on deployment mismatch, persistence failure, or any unexpected provider/GPU/spend path."
+  pending_validations: "PASS_GENERATION_COORDINATOR_8_OF_8_DATABASE_UUID_REGRESSION; PASS_HOSTED_UI_40_OF_40_PLANNING_ONLY_RETRY_NO_RAW_CODE; PASS_PRODUCT_SERVER_43_OF_43; PASS_WEB_TYPECHECK; PASS_CHANGED_FILE_ESLINT; PASS_STAGING_BUILD_AND_QUARANTINE; PASS_V2_06_DEPLOYMENT_VALIDATION; PASS_CONTEXT_VALIDATE; PASS_DIFF_CHECK"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_EAGER_AJV_SCHEMA_CODE_GENERATION_AT_WORKER_STARTUP; REPAIR_6A1911EC_DEPLOYED_SUCCESSFULLY_WITH_WRANGLER_4_127_1"
@@ -131,6 +131,7 @@ hosted_beta_user_walkthrough:
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
   live_browser_verification: "PASS_PROGRESS_NAV_AFTER_NEW_PROJECT_OPENS_LATEST_TENANT_PROJECT_STABLE_NINE_STAGE_PROGRESS_17_PERCENT_TRANSCRIPTION_NEEDS_ATTENTION"
   fixed_blockers:
+    - "Source e93d87e7 fixes the reproduced post-ASR planning stop by validating persisted account/workspace IDs as database UUIDs while keeping strict RFC validation for generated lineage. Planning failures now return safe copy and an explicit planning-only retry that cannot enqueue another transcription. The retained successful ASR result remains authoritative; no second CPU attempt is required."
     - "Hosted staging can create avatars and image styles through the real session, Neon transaction, tenant RLS, and private R2 paths while provider/GPU generation remains disabled."
     - "Hosted Avatar and Style hubs now render tenant-scoped previews through authenticated same-origin private-R2 routes."
     - "Image-style analysis is clearly labeled provider-free simulation so the walkthrough cannot mistake it for a Gemini, DeepSeek, or GPU provider result."
