@@ -3303,7 +3303,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       </Panel>
     );
-  if (query.isError || !query.data)
+  if (!query.data)
     return (
       <EmptyState
         icon={<AlertTriangle />}

@@ -1323,6 +1323,87 @@ describe("hosted product journey", () => {
     expect(screen.queryByText(/Maximum charge: \$0\.01/u)).not.toBeInTheDocument();
   });
 
+  it("keeps saved progress visible when context start and its background refetch fail", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const asrId = "33333333-3333-4333-8333-333333333333";
+    let projectReads = 0;
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-08-17T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [
+        {
+          id: asrId,
+          kind: "ASR" as const,
+          state: "SUCCEEDED",
+          version: 3,
+          created_at: "2026-08-17T10:00:00.000Z",
+          updated_at: "2026-08-17T10:01:00.000Z",
+          terminal_at: "2026-08-17T10:01:00.000Z",
+          output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+          approved_at: null,
+          preview_url: null,
+        },
+      ],
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
+      gpu_readiness: gpuReadiness,
+      voiceover_context: null,
+      generation: null,
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith(`/projects/${projectId}/context`)) {
+        return Response.json(
+          { error: { message: "Automatic context extraction could not start safely." } },
+          { status: 500 },
+        );
+      }
+      projectReads += 1;
+      return projectReads === 1
+        ? Response.json(detail)
+        : Response.json(
+            { error: { message: "Latest progress read is temporarily unavailable." } },
+            { status: 500 },
+          );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(
+      await screen.findByText("Automatic context extraction could not start."),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(projectReads).toBeGreaterThanOrEqual(2));
+    expect(screen.getByRole("heading", { name: "Private project" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Video production stages" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Automatic context extraction could not start safely."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Retry automatic continuation" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Live progress is temporarily unavailable")).not.toBeInTheDocument();
+  });
+
+  it("keeps the full-page recovery state for an initial project read failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          { error: { message: "Latest progress read is temporarily unavailable." } },
+          { status: 500 },
+        ),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />);
+
+    expect(await screen.findByText("Live progress is temporarily unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry progress" })).toBeInTheDocument();
+  });
+
   it("fails closed when ASR succeeds without an exact render plan", async () => {
     const detail = {
       project: {
