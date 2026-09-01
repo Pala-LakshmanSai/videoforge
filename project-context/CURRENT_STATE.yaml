@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: CONTEXT_RECONCILIATION_LOOKUP_REPAIR_GREEN_AWAITING_EXACT_DEPLOYMENT_APPROVAL
+  status: DEEPSEEK_REQUEST_AND_DEFINITE_FAILURE_REPAIR_GREEN_AWAITING_EXACT_DEPLOYMENT_APPROVAL
   implementation_commit: "57a45925900d61178a68bf54d226b7fc47bfb1cf"
   deployment_candidate_commits:
     - "e24fbf128bfed8363aa81b480f27eed6fbbcd5d0"
@@ -129,10 +129,11 @@ hosted_beta_user_walkthrough:
     - "55798e74e1734126becd62bce5828f30d6eb53f8"
     - "23b0f77f01765e33a1ae95ea6c375b836878f559"
     - "4d9e490005fc0ce2088a1146d26b3cb52a36485f"
-  deployment_candidate: SOURCE_A452042E_CONTEXT_RECONCILIATION_RUNTIME_LOOKUP_READY
-  deployed_source_commit: "4d9e490005fc0ce2088a1146d26b3cb52a36485f"
-  cloudflare_worker_version_id: "3706e833-2c43-4929-8c7f-a6c1bd2f9117"
-  pending_source_candidate: "a452042e"
+    - "ba51e854ce58c1d5a719bf28d109e00e16e99376"
+  deployment_candidate: SOURCE_047ED808_DEEPSEEK_JSON_AND_DEFINITE_REJECTION_REPAIR_READY
+  deployed_source_commit: "ba51e854ce58c1d5a719bf28d109e00e16e99376"
+  cloudflare_worker_version_id: "021a6bf7-b121-452a-9351-54380cc81bf3"
+  pending_source_candidate: "047ed808"
   pending_worker_release: null
   pending_release_boundary: "EXACT_SOURCE_BOUND_PRIVATE_HOSTED_BETA_MIGRATION_AND_DEPLOYMENT_APPROVAL_CAP_USD_0_05"
   pending_validations: "LIVE_EXACT_SOURCE_STATUS; AUTHENTICATED_CHROME_BOUNDED_ORIGINAL_CONTEXT_TASK_DIAGNOSTIC; NO_REDISPATCH_READBACK"
@@ -141,8 +142,8 @@ hosted_beta_user_walkthrough:
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "e37bb2a387fdb3dd9fe4a524cef84ff5c067fc5771a0470f1f19dbba3331a45f"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 4d9e490005fc0ce2088a1146d26b3cb52a36485f CAP USD 0.05"
+  deployed_config_sha256: "7c33e45a7e101b0e307541cb7853d6bb31102aae11e0fc39ccc4e4b61f26a368"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA ba51e854ce58c1d5a719bf28d109e00e16e99376 CAP USD 0.05"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -159,8 +160,10 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_LIVE_4D9E4900_WORKER_3706E833_STATUS_EXACT_HTTP_200; AUTHENTICATED_CHROME_DEMO1_RECONCILIATION_RETAINED_CACHED_PROJECT_BUT_WORKER_TRACE_PROVED_PERMISSION_DENIED_FOR_ATTEMPTS_BEFORE_RUNWARE; NO_PROVIDER_RETRIEVAL_OR_INFERENCE_DISPATCH; ORIGINAL_CONTEXT_REMAINS_UNKNOWN_AND_RESERVED_USD_0_01; GPU_AND_PRODUCTION_ZERO"
+  live_browser_verification: "PASS_LIVE_BA51E854_WORKER_021A6BF7_STATUS_EXACT_HTTP_200; AUTHENTICATED_CHROME_DEMO1_RECONCILIATION_REACHED_RUNWARE_AND_REPEATED_RUNWARE_TASK_DETAILS_UNAVAILABLE_ON_ONE_AUTOMATIC_AND_ONE_MANUAL_READ_ONLY_LOOKUP; ORIGINAL_CONTEXT_REMAINS_UNKNOWN_RESERVED_USD_0_01_PROMPT_RUNS_0; NO_INFERENCE_REDISPATCH; GPU_AND_PRODUCTION_ZERO"
   fixed_blockers:
+    - "Source 047ed808 follows Runware's current official DeepSeek structured-output request contract by sending lowercase outputFormat=json in both whole-voiceover context extraction and scene-prompt writing. It also distinguishes definite HTTP/provider rejection from ambiguous dispatch, persists future definite rejection as FAILED/provider-may-have-charged=false, parses bounded non-2xx getTaskDetails errors including taskNotFound/auth rejection, and never exposes provider messages or payloads. Focused web/provider/server tests pass 63/63; pipeline/provider-sandbox tests pass 31/31; web/pipeline/provider-sandbox typechecks, targeted lint/format, and diff checks pass. Fresh exact deployment approval is required."
+    - "Approved HEAD ba51e854 deployed once as Worker 021a6bf7 with config SHA-256 7c33e45a. Exact status passes. Authenticated Chrome proved the database lookup repair reaches Runware, but the automatic retrieval and one manual read-only retry both returned RUNWARE_TASK_DETAILS_UNAVAILABLE. No inference was resubmitted. Read-only Neon confirms the original UNKNOWN context, USD 0.01 reservation, no reported cost, and zero prompt runs. Official Runware DeepSeek examples use lowercase outputFormat=json while the live request used uppercase JSON; source 047ed808 repairs the request plus definite-failure bookkeeping for the next project."
     - "Source a452042e removes the reconciliation route's unnecessary direct JOIN to the ungranted legacy attempts table. The UNKNOWN context row already has an enforced foreign key to the exact task/attempt, and the SECURITY DEFINER reconciliation function remains the sole authority that locks and validates that attempt before accepting recovered output. The route now generates the new output asset identity only after safe provider recovery. Focused provider/server tests pass 58/58; web typecheck, targeted lint/format, and diff checks pass. Fresh exact deployment approval is required."
     - "Approved HEAD 4d9e4900 deployed once as Worker 3706e833 with config SHA-256 e37bb2a3. Exact status reports the deployed commit. Authenticated Chrome kept the full DEMO1 project visible, but a bounded Worker trace proved the reconciliation request failed before Runware with Neon permission denied for table attempts. The request performed no provider retrieval, no inference dispatch, and no additional charge. Source a452042e removes that unnecessary ungranted read without broadening runtime table privileges."
     - "Source 479c2e65 preserves no-redispatch reconciliation and stops collapsing every safe Runware retrieval outcome into the same generic hosted error. It exposes only bounded codes and messages for task-not-found, task-details unavailable, saved-task identity conflict, or unsafe recovered response, with no provider payload, credential, or narration disclosure. Focused hosted UI/server tests pass 96/96; web typecheck, targeted lint/format, and diff checks pass. Source only; fresh exact deployment approval is required."
