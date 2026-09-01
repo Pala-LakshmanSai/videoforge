@@ -227,6 +227,30 @@ describe("hosted generation coordinator", () => {
     ).resolves.toMatchObject({ idempotent_replay: true, serverless_attempt_count: 0 });
   });
 
+  it("uses only the precompiled contract authority throughout hosted planning", async () => {
+    const fixture = await setup();
+    const originalFunction = globalThis.Function;
+    globalThis.Function = (() => {
+      throw new Error("RUNTIME_CODE_GENERATION_FORBIDDEN");
+    }) as unknown as FunctionConstructor;
+    try {
+      await expect(
+        coordinateHostedGeneration({
+          snapshot: fixture.snapshot,
+          asrInputBytes: fixture.inputBytes,
+          asrOutputBytes: fixture.bytes,
+          persistence: fixture.persistence,
+        }),
+      ).resolves.toMatchObject({
+        state: "WAITING_FOR_GPU_QUALIFICATION",
+        provider_call_count: 0,
+        spend_usd: 0,
+      });
+    } finally {
+      globalThis.Function = originalFunction;
+    }
+  });
+
   it("rejects a valid transcript presented without its canonical ASR result envelope", async () => {
     const fixture = await setup();
     const bytes = new TextEncoder().encode(JSON.stringify(transcriptValue())).buffer as ArrayBuffer;

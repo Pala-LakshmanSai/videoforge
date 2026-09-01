@@ -810,7 +810,12 @@ export async function scheduleTimeline(
   if (semanticFailure !== null) return pipelineFailure(semanticFailure);
 
   try {
-    return pipelineSuccess(await validateAndHashContractDocument("timelinePlan", plan));
+    return pipelineSuccess(
+      await (request.contractDocumentAuthority?.validateAndHash(
+        "timelinePlan",
+        plan,
+      ) ?? validateAndHashContractDocument("timelinePlan", plan)),
+    );
   } catch (error) {
     return pipelineFailure(
       fail(

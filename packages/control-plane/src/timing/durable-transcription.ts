@@ -6,6 +6,7 @@ import {
   validateAndHashContractDocument,
 } from "@videoforge/contracts";
 import type { JsonValue, Sha256Digest } from "@videoforge/contracts";
+import type { ContractDocumentValidationAuthority } from "@videoforge/contracts";
 
 import type { ArtifactMetadata } from "../repositories/artifacts.js";
 import type { AcceptedAttemptResult } from "../repositories/execution.js";
@@ -248,9 +249,13 @@ function deriveSentenceAndPhraseRecords(
 export async function prepareDurableLocalTranscription(
   scope: WorkspaceActorScope,
   command: AcceptLocalTranscriptionCommand,
+  contractDocumentAuthority?: ContractDocumentValidationAuthority,
 ): Promise<PreparedLocalTranscription> {
-  const input = await validateAndHashContractDocument("asrJobInput", command.asrInput);
-  const result = await validateAndHashContractDocument("asrJobResult", command.asrResult);
+  const validateAndHash = contractDocumentAuthority?.validateAndHash.bind(
+    contractDocumentAuthority,
+  ) ?? validateAndHashContractDocument;
+  const input = await validateAndHash("asrJobInput", command.asrInput);
+  const result = await validateAndHash("asrJobResult", command.asrResult);
   const inputValue = objectValue(input.value, "ASR input");
   const resultValue = objectValue(result.value, "ASR result");
   const inputVoiceover = objectValue(inputValue.voiceover, "ASR input voiceover");
@@ -273,7 +278,7 @@ export async function prepareDurableLocalTranscription(
     );
   }
 
-  const transcriptDocument = await validateAndHashContractDocument(
+  const transcriptDocument = await validateAndHash(
     "transcriptTiming",
     resultValue.transcript,
   );

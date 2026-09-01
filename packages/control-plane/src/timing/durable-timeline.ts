@@ -6,6 +6,7 @@ import {
   validateAndHashContractDocument,
 } from "@videoforge/contracts";
 import type { JsonValue, Sha256Digest } from "@videoforge/contracts";
+import type { ContractDocumentValidationAuthority } from "@videoforge/contracts";
 import {
   scheduleTimeline,
   SUPPORTED_SCHEDULER_CONFIG,
@@ -153,10 +154,14 @@ function avatarSpanTaskKey(segment: {
 export async function prepareDurableDeterministicTimeline(
   scope: WorkspaceActorScope,
   command: PersistDeterministicTimelineCommand,
+  contractDocumentAuthority?: ContractDocumentValidationAuthority,
 ): Promise<PreparedDeterministicTimeline> {
+  const validateAndHash = contractDocumentAuthority?.validateAndHash.bind(
+    contractDocumentAuthority,
+  ) ?? validateAndHashContractDocument;
   const [revision, transcript] = await Promise.all([
-    validateAndHashContractDocument("projectRevisionConfig", command.revision),
-    validateAndHashContractDocument("transcriptTiming", command.transcript),
+    validateAndHash("projectRevisionConfig", command.revision),
+    validateAndHash("transcriptTiming", command.transcript),
   ]);
   if (
     revision.value.project_id !== command.projectId ||
@@ -185,6 +190,7 @@ export async function prepareDurableDeterministicTimeline(
         },
       }),
     }),
+    contractDocumentAuthority,
   });
   if (!scheduled.ok) {
     throw new DurableTimelineError(

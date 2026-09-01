@@ -1,4 +1,5 @@
 import type { ProjectRevisionDocumentRef } from "../documents.js";
+import type { ContractDocumentValidationAuthority } from "@videoforge/contracts";
 import type { DeterminismPorts } from "../determinism.js";
 import type { PipelineResult } from "../errors.js";
 import type { TimelinePlanDocumentRef } from "../documents.js";
@@ -8,6 +9,7 @@ export interface SchedulerRequest {
   readonly revision: ProjectRevisionDocumentRef;
   readonly transcript: TranscriptDocumentRef;
   readonly determinism: DeterminismPorts;
+  readonly contractDocumentAuthority?: ContractDocumentValidationAuthority;
 }
 
 /** Pure deterministic timeline compiler boundary. */

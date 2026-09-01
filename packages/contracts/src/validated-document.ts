@@ -19,6 +19,14 @@ export interface ValidatedContractDocument<Name extends ContractName> {
   readonly [validatedContractDocumentBrand]: true;
 }
 
+/** Swappable validation boundary for runtimes that require a precompiled contract authority. */
+export interface ContractDocumentValidationAuthority {
+  validateAndHash<Name extends ContractName>(
+    contractName: Name,
+    value: unknown,
+  ): Promise<ValidatedContractDocument<Name>>;
+}
+
 /** Canonicalize, freeze, hash, and brand a document already validated by an equivalent authority. */
 export async function hashPrevalidatedContractDocument<Name extends ContractName>(
   contractName: Name,

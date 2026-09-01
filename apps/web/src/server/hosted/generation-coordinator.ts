@@ -138,6 +138,10 @@ async function validateAndHashPrecompiledContractDocument<Name extends ContractN
   }
 }
 
+const precompiledContractDocumentAuthority = Object.freeze({
+  validateAndHash: validateAndHashPrecompiledContractDocument,
+});
+
 function storedRevisionConfig(value: ProjectRevisionConfigDocument | string): unknown {
   if (typeof value !== "string") return value;
   try {
@@ -378,7 +382,9 @@ export async function coordinateHostedGeneration(input: {
     asrInput: asrTemplate.inputDocument,
     asrResult: rawResult,
     finishedAt: snapshot.asrFinishedAt,
-  }).catch(() => reject("HOSTED_GENERATION_ASR_LINEAGE_MISMATCH"));
+  }, precompiledContractDocumentAuthority).catch(() =>
+    reject("HOSTED_GENERATION_ASR_LINEAGE_MISMATCH"),
+  );
   if (
     revision.sha256 !== snapshot.revisionConfigSha256 ||
     revision.value.project_id !== snapshot.projectId ||
@@ -406,7 +412,9 @@ export async function coordinateHostedGeneration(input: {
     revision: revision.value,
     transcript: transcript.value,
     createdAt: snapshot.asrFinishedAt,
-  }).catch(() => reject("HOSTED_GENERATION_SCHEDULING_FAILED"));
+  }, precompiledContractDocumentAuthority).catch(() =>
+    reject("HOSTED_GENERATION_SCHEDULING_FAILED"),
+  );
   const timeline = await validateAndHashPrecompiledContractDocument(
     "timelinePlan",
     preparedTimeline.timelinePersistence.canonicalDocument.payload,
