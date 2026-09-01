@@ -47,6 +47,8 @@ const EXPECTED_TABLE_PRIVILEGES = new Map([
   ["serverless_cost_ledgers", ["SELECT"]],
   ["serverless_output_receipts", ["SELECT"]],
   ["hosted_pair_zero_worker_observations", ["SELECT"]],
+  ["hosted_voiceover_contexts", ["SELECT"]],
+  ["hosted_prompt_runs", ["SELECT"]],
   ["media_worker_input_objects", ["INSERT", "SELECT"]],
   ["hosted_cpu_job_events", ["INSERT", "SELECT"]],
   ["media_worker_events", ["INSERT", "SELECT"]],

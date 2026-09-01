@@ -19,6 +19,8 @@ test("the hosted runtime can append through the exact function but has no direct
     "serverless_cost_ledgers",
     "serverless_output_receipts",
     "hosted_pair_zero_worker_observations",
+    "hosted_voiceover_contexts",
+    "hosted_prompt_runs",
   ]) {
     assert.match(
       source,

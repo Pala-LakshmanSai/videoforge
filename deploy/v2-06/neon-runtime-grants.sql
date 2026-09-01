@@ -208,7 +208,9 @@ GRANT SELECT ON
   serverless_progress_events,
   serverless_cost_ledgers,
   serverless_output_receipts,
-  hosted_pair_zero_worker_observations
+  hosted_pair_zero_worker_observations,
+  hosted_voiceover_contexts,
+  hosted_prompt_runs
 TO :"runtime_role";
 
 GRANT SELECT, INSERT ON
