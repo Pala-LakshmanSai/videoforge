@@ -29,7 +29,7 @@ class CreateProjectRequest(BaseModel):
     apply_extra_prompt_keywords: bool
     generation_mode: GenerationMode
     execution_profile_overrides: ExecutionProfileOverrides | None = None
-    spend_cap_usd: float = Field(ge=0.1, le=2)
+    spend_cap_usd: float = Field(ge=0.05, le=2)
     user_seed: int | None = Field(default=None, ge=0, le=4_294_967_295)
 
     @model_validator(mode="before")

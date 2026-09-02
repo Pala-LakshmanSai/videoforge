@@ -126,7 +126,7 @@
         "avatar_quality_profile_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 160}
       }
     },
-    "spend_cap_usd": {"type": "number", "minimum": 0.1, "maximum": 2},
+    "spend_cap_usd": {"type": "number", "minimum": 0.05, "maximum": 2},
     "scheduler_version": {"type": "string", "minLength": 1, "maxLength": 160},
     "scheduler_seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
     "prompt_writer_version": {"type": "string", "minLength": 1, "maxLength": 160},

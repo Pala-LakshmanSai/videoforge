@@ -690,6 +690,29 @@ describe("hosted product route contract", () => {
     });
   });
 
+  it("accepts the exact bounded Stage 1-5 spend cap in hosted project preflight", async () => {
+    const result = await handleHostedProductRequest(
+      request("/api/v2/hosted/projects/preflight", "POST", {
+        schema_version: "videoforge-hosted-project-preflight/v1",
+        title: "Five-stage capped project",
+        avatar_profile_version_id: "22222222-2222-4222-8222-222222222222",
+        image_style_version_id: "33333333-3333-4333-8333-333333333333",
+        spend_cap_usd: 0.05,
+        voiceover: {
+          filename: "voiceover.mp3",
+          content_type: "audio/mpeg",
+          content_length: 320_000,
+          checksum_sha256: `sha256:${"a".repeat(64)}`,
+          duration_ms: 20_000,
+        },
+      }),
+      environment,
+      stagingConfig,
+      executionContext,
+    );
+    expect(result?.status).toBe(200);
+  });
+
   it("keeps provenance manifest unavailable until an approved render exists", async () => {
     const result = await handleHostedProductRequest(
       request(`/api/v2/hosted/projects/${PROJECT_ID}/manifest`, "GET"),

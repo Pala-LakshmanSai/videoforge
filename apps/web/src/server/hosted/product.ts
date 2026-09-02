@@ -51,9 +51,9 @@ const MAX_SPEND_CAP_USD = 2;
 const MAX_EXTRA_PROMPT_KEYWORDS = 500;
 const MAX_OPTIONAL_SCRIPT = 100_000;
 const HOSTED_TARGETED_RETRY_QUALIFIED = false;
-// Migration 0002 requires every revision budget to be at least $0.10. This is only the
-// persisted revision ceiling; V2-06 personal-worker execution remains provider-free at $0.
-const PERSONAL_WORKER_MINIMUM_COST_MICRO_USD = 100_000;
+// Stages 3 and 5 reserve $0.01 and $0.04 respectively, so the persisted project ceiling must
+// accept their exact combined bounded cap without authorizing later GPU work.
+const PERSONAL_WORKER_MINIMUM_COST_MICRO_USD = 50_000;
 
 function hostedProviderFreePresetCreationEnabled(config: HostedRuntimeConfiguration): boolean {
   return config.environment === "staging" && config.gpuTransport === "DISABLED_UNQUALIFIED";

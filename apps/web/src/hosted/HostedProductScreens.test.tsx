@@ -1094,6 +1094,11 @@ describe("hosted product journey", () => {
     expect(screen.getByText("Documentary")).toBeInTheDocument();
     expect(screen.getByLabelText("Maximum spend")).toHaveClass("input");
     expect(screen.getByLabelText("Maximum spend")).toHaveValue(1);
+    fireEvent.change(screen.getByLabelText("Maximum spend"), { target: { value: "0.05" } });
+    expect(screen.getByLabelText("Maximum spend")).toHaveValue(0.05);
+    expect(screen.queryByText(/finite spend cap/u)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Maximum spend"), { target: { value: "0.04" } });
+    expect(screen.getByText("Enter a finite spend cap of at least $0.05.")).toBeInTheDocument();
     expect(screen.getByText(/no paid GPU work will start/u)).toBeInTheDocument();
     expect(
       screen.queryByText(

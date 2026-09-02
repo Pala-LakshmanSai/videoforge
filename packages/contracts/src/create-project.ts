@@ -30,7 +30,7 @@ export const createProjectRequestSchema = z
     apply_extra_prompt_keywords: z.boolean(),
     generation_mode: generationModeSchema,
     execution_profile_overrides: executionProfileOverridesSchema.nullable().optional(),
-    spend_cap_usd: z.number().min(0.1).max(2),
+    spend_cap_usd: z.number().min(0.05).max(2),
     user_seed: z.number().int().min(0).max(4_294_967_295).nullable().optional(),
   })
   .strict()

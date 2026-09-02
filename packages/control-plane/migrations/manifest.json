@@ -366,6 +366,12 @@
       "name": "hosted_voiceover_context_reconciliation",
       "filename": "0061_hosted_voiceover_context_reconciliation.sql",
       "sha256": "sha256:803162f05a0b0b17834be178b8d9b76caf74c85b81a02475eea3f032510540d5"
+    },
+    {
+      "version": 62,
+      "name": "hosted_stage_five_minimum_spend",
+      "filename": "0062_hosted_stage_five_minimum_spend.sql",
+      "sha256": "sha256:789404f23671518edb738cf4f5e0f5b5ce5ed25eaad6cc8033b089351d309404"
     }
   ]
 }

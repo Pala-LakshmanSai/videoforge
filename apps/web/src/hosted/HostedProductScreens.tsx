@@ -1395,7 +1395,7 @@ export function HostedCreateProjectScreen() {
     return VOICEOVER_TYPES.has(file.type) ? file.type : "";
   };
   const cap = Number(spendCapUsd);
-  const capValid = Number.isFinite(cap) && cap >= 0.1 && cap <= 2;
+  const capValid = Number.isFinite(cap) && cap >= 0.05 && cap <= 2;
   const keywordsValid = extraPromptKeywords.length <= 500;
   const workerOnline = catalog.data?.media_worker_state === "ONLINE";
   const inputChecklist = [
@@ -1793,7 +1793,7 @@ export function HostedCreateProjectScreen() {
                 className="input"
                 inputMode="decimal"
                 type="number"
-                min="0.1"
+                min="0.05"
                 max="2"
                 step="0.01"
                 value={spendCapUsd}
@@ -1839,7 +1839,7 @@ export function HostedCreateProjectScreen() {
           ) : null}
           {!capValid ? (
             <p className="validation validation-danger">
-              Enter a finite spend cap of at least $0.10.
+              Enter a finite spend cap of at least $0.05.
             </p>
           ) : null}
           {!keywordsValid ? (

@@ -4069,7 +4069,7 @@ export const canonicalSchemaDocuments = {
       },
       "spend_cap_usd": {
         "type": "number",
-        "minimum": 0.1,
+        "minimum": 0.05,
         "maximum": 2
       },
       "user_seed": {
@@ -6665,7 +6665,7 @@ export const canonicalSchemaDocuments = {
       },
       "spend_cap_usd": {
         "type": "number",
-        "minimum": 0.1,
+        "minimum": 0.05,
         "maximum": 2
       },
       "scheduler_version": {
