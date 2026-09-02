@@ -18,8 +18,8 @@ import type {
   PromptWriterSceneOutput,
 } from "./types.js";
 
-export const RUNWARE_PROMPT_MODEL = "openai:gpt@5-nano" as const;
-export const RUNWARE_PROMPT_REQUEST_VERSION = "runware-gpt5-nano-prompt-request-v1" as const;
+export const RUNWARE_PROMPT_MODEL = "openai-gpt-5-nano" as const;
+export const RUNWARE_PROMPT_REQUEST_VERSION = "runware-gpt5-nano-prompt-request-v2" as const;
 export const RUNWARE_PROMPT_MAX_OUTPUT_TOKENS = 8_000 as const;
 export const RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE = 150 as const;
 

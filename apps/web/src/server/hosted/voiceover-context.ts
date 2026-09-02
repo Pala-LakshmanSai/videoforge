@@ -15,8 +15,8 @@ import {
 
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
-const MODEL = "openai:gpt@5-nano" as const;
-const REQUEST_CONTRACT_VERSION = "runware-gpt5-nano-context-request-v1" as const;
+const MODEL = "openai-gpt-5-nano" as const;
+const REQUEST_CONTRACT_VERSION = "runware-gpt5-nano-context-request-v2" as const;
 
 const SYSTEM_PROMPT = [
   "Extract durable story context from the complete VideoForge voiceover transcript.",

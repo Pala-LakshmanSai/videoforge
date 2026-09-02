@@ -147,7 +147,7 @@ describe("hosted Runware prompt writer", () => {
             },
             cost: 0.001,
             finishReason: "stop",
-            model: "openai:gpt@5-nano",
+            model: "openai-gpt-5-nano",
           },
         ],
       });
