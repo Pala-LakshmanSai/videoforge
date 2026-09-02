@@ -408,6 +408,52 @@ def _terminate_process(process: subprocess.Popen[bytes]) -> None:
         return
 
 
+def _run_media_subprocess(
+    command: list[str],
+    monitor: _CancellationMonitor,
+    *,
+    retry_once: bool,
+    before_retry: Callable[[], None],
+) -> tuple[int, bytes]:
+    """Run one claimed job, replacing only an abnormal local child-process exit once."""
+
+    attempts = 2 if retry_once else 1
+    final_return_code = -1
+    final_stdout = b""
+    for ordinal in range(attempts):
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=os.name != "nt",
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
+        )
+        monitor.attach(process)
+        try:
+            stdout, _stderr = process.communicate(timeout=86_400)
+        except subprocess.TimeoutExpired:
+            _terminate_process(process)
+            process.communicate()
+            raise
+        final_return_code = int(process.returncode or 0)
+        final_stdout = stdout
+        if monitor.is_cancelled() or final_return_code == 0 or ordinal + 1 >= attempts:
+            break
+        before_retry()
+    return final_return_code, final_stdout
+
+
+def _clear_asr_retry_state(scratch: Path, input_document: dict[str, Any]) -> None:
+    output = input_document.get("output")
+    result_uri = output.get("result_uri") if isinstance(output, dict) else None
+    if not isinstance(result_uri, str) or not result_uri.startswith("vf-local-run://"):
+        raise ValueError("Personal worker ASR retry output is invalid")
+    result_path = _local_path(scratch, result_uri)
+    result_path.unlink(missing_ok=True)
+    result_path.with_name("asr-work-receipt.json").unlink(missing_ok=True)
+    shutil.rmtree(result_path.with_name("asr-work"), ignore_errors=True)
+
+
 class _SleepAssertion:
     def __init__(self) -> None:
         self._process: subprocess.Popen[bytes] | None = None
@@ -568,27 +614,18 @@ def execute_personal_job(
                     job.tooling["ffprobe_version"],
                 ]
             )
-        creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
         with _SleepAssertion():
-            process = subprocess.Popen(
+            return_code, stdout = _run_media_subprocess(
                 command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                start_new_session=os.name != "nt",
-                creationflags=creation_flags,
+                monitor,
+                retry_once=job.kind == "ASR",
+                before_retry=lambda: _clear_asr_retry_state(scratch, job.input_document),
             )
-            monitor.attach(process)
-            try:
-                stdout, _stderr = process.communicate(timeout=86_400)
-            except subprocess.TimeoutExpired:
-                _terminate_process(process)
-                stdout, _stderr = process.communicate()
-                raise
         if monitor.is_cancelled():
             status = "CANCELLED"
             failure_code = None
-        elif process.returncode != 0:
-            pass
+        elif return_code != 0:
+            failure_code = "MEDIA_EXECUTION_SUBPROCESS_FAILED"
         else:
             if len(stdout) > int(job.result["max_bytes"]):
                 raise ValueError("Personal worker result document exceeded its bound")

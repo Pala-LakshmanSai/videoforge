@@ -5971,11 +5971,20 @@ async function projectDetail(
                 attempt.result_checksum_sha256, attempt.result_content_length,
                 attempt.result_object_key, attempt.result_content_type,
                 attempt.replay_count,
+                lease.failure_code AS error_code,
                 authority.object_key, authority.content_type,
                 authority.issued_content_length AS content_length,
                 authority.issued_checksum_sha256 AS output_checksum_sha256,
                 review.approved_at
            FROM hosted_cpu_job_attempts AS attempt
+           LEFT JOIN LATERAL (
+             SELECT worker_lease.failure_code
+               FROM media_worker_leases AS worker_lease
+              WHERE worker_lease.account_id = attempt.account_id
+                AND worker_lease.workspace_id = attempt.workspace_id
+                AND worker_lease.attempt_id = attempt.id
+              ORDER BY worker_lease.created_at DESC LIMIT 1
+           ) AS lease ON true
            LEFT JOIN hosted_cpu_upload_authorities AS authority
              ON authority.account_id = attempt.account_id
             AND authority.workspace_id = attempt.workspace_id

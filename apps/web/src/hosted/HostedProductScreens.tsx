@@ -531,6 +531,16 @@ interface HostedAttempt {
   readonly cost?: HostedCost | null;
 }
 
+function transcriptionFailureMessage(code: string | null | undefined): string {
+  if (code === "MEDIA_EXECUTION_SUBPROCESS_FAILED") {
+    return "Your computer's local transcription process stopped unexpectedly after one bounded recovery attempt. Update the personal media worker before retrying.";
+  }
+  if (code === "MEDIA_EXECUTION_FAILED") {
+    return "Your computer's local transcription process stopped unexpectedly. Update the personal media worker before retrying.";
+  }
+  return "Your project and voiceover are safe. Update the personal media worker before retrying.";
+}
+
 interface HostedTiming {
   readonly queue_wait_ms?: number | null;
   readonly initialization_ms?: number | null;
@@ -3606,10 +3616,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       {asr?.kind === "ASR" && asr.state === "FAILED" ? (
         <div className="notice notice-danger" role="alert">
           <strong>Transcription stopped before the transcript could be saved.</strong>
-          <span>
-            Your project and voiceover are safe. Retry after updating and reconnecting your personal
-            media worker.
-          </span>
+          <span>{transcriptionFailureMessage(asr.error_code)}</span>
           {asrHandoff.isError ? <span>{asrHandoff.error.message}</span> : null}
           <Button variant="primary" busy={asrHandoff.isPending} onClick={() => asrHandoff.mutate()}>
             <RefreshCw size={15} /> Retry transcription

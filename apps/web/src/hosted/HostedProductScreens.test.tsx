@@ -1238,6 +1238,7 @@ describe("hosted product journey", () => {
           output_checksum_sha256: null,
           approved_at: null,
           preview_url: null,
+          error_code: "MEDIA_EXECUTION_FAILED",
         },
       ],
       gpu_transport: "DISABLED_UNQUALIFIED" as const,
@@ -1264,6 +1265,9 @@ describe("hosted product journey", () => {
 
     expect(
       await screen.findByText("Transcription stopped before the transcript could be saved."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/local transcription process stopped unexpectedly/u),
     ).toBeInTheDocument();
     expect(screen.queryByText(/ASR_OUTPUT_INVALID/u)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Retry transcription" }));

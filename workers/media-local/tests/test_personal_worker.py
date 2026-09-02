@@ -20,6 +20,7 @@ from videoforge_media_local.personal_execution import (
     _asr_primary_path,
     _completion_is_acknowledged,
     _is_valid_https_url,
+    _run_media_subprocess,
     _stream_put,
     parse_personal_job,
 )
@@ -88,6 +89,48 @@ def job() -> dict[str, object]:
 
 
 class PersonalWorkerContractTests(unittest.TestCase):
+    def test_asr_replaces_one_abnormally_exited_local_subprocess(self) -> None:
+        first = Mock(returncode=9)
+        first.communicate.return_value = (b"", b"private crash detail")
+        second = Mock(returncode=0)
+        second.communicate.return_value = (b'{"status":"SUCCEEDED"}', b"")
+        monitor = Mock()
+        monitor.is_cancelled.return_value = False
+        reset = Mock()
+        with patch(
+            "videoforge_media_local.personal_execution.subprocess.Popen",
+            side_effect=[first, second],
+        ) as popen:
+            result = _run_media_subprocess(
+                ["worker", "--execute-media"],
+                monitor,
+                retry_once=True,
+                before_retry=reset,
+            )
+        self.assertEqual(result, (0, b'{"status":"SUCCEEDED"}'))
+        self.assertEqual(popen.call_count, 2)
+        self.assertEqual(monitor.attach.call_count, 2)
+        reset.assert_called_once_with()
+
+    def test_render_does_not_replace_an_abnormally_exited_local_subprocess(self) -> None:
+        process = Mock(returncode=7)
+        process.communicate.return_value = (b"", b"private crash detail")
+        monitor = Mock()
+        monitor.is_cancelled.return_value = False
+        reset = Mock()
+        with patch(
+            "videoforge_media_local.personal_execution.subprocess.Popen", return_value=process
+        ) as popen:
+            result = _run_media_subprocess(
+                ["worker", "--execute-media"],
+                monitor,
+                retry_once=False,
+                before_retry=reset,
+            )
+        self.assertEqual(result, (7, b""))
+        popen.assert_called_once()
+        reset.assert_not_called()
+
     def test_https_context_uses_bundled_certificate_authorities(self) -> None:
         context = https_context()
         self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
