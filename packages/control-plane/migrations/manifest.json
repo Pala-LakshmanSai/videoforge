@@ -372,6 +372,12 @@
       "name": "hosted_stage_five_minimum_spend",
       "filename": "0062_hosted_stage_five_minimum_spend.sql",
       "sha256": "sha256:789404f23671518edb738cf4f5e0f5b5ce5ed25eaad6cc8033b089351d309404"
+    },
+    {
+      "version": 63,
+      "name": "hosted_context_gpt5_profile",
+      "filename": "0063_hosted_context_gpt5_profile.sql",
+      "sha256": "sha256:16d06fd8855a433354124ed57300c9dbfab6853ddd156c8a8504db4e595b5aee"
     }
   ]
 }

@@ -145,7 +145,9 @@ describe("hosted product errors", () => {
       ),
     );
 
-    await expect(readJson("/api/v2/hosted/projects", { method: "POST", body: "{}" })).rejects.toThrow(
+    await expect(
+      readJson("/api/v2/hosted/projects", { method: "POST", body: "{}" }),
+    ).rejects.toThrow(
       "Another active project already uses this title. Open Progress to continue that project or delete it, or choose a different title.",
     );
   });
@@ -1528,7 +1530,12 @@ describe("hosted product journey", () => {
               state: "SUCCEEDED",
               transcript_hash: `sha256:${"b".repeat(64)}`,
               context_hash: `sha256:${"c".repeat(64)}`,
-              context_document: { primary_topic: "Private project" },
+              context_document: {
+                primary_topic: "Private project",
+                summary: "A concise whole-voiceover summary.",
+                people: ["Presenter"],
+                places: ["Workshop"],
+              },
               reserved_cost_micro_usd: 10_000,
             }
           : {
@@ -1542,7 +1549,11 @@ describe("hosted product journey", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
-    expect(await screen.findByText("Whole-voiceover understanding")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Extracted context" })).toBeInTheDocument();
+    expect(screen.getByText("A concise whole-voiceover summary.")).toBeInTheDocument();
+    expect(screen.getByText("Presenter")).toBeInTheDocument();
+    expect(screen.getByText("Workshop")).toBeInTheDocument();
+    expect(screen.queryByText("Inspect saved context")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Check provider result" })).not.toBeInTheDocument();
     expect(
       fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/reconcile-context")),

@@ -33,6 +33,8 @@ describe("hosted voiceover context extraction", () => {
     const request = prepared.request as unknown as Record<string, unknown>;
     expect(prepared.requestHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
     expect(prepared.requestBytes).toContain("complete VideoForge voiceover transcript");
+    expect(prepared.requestBytes).toContain("primary_topic between 1 and 140 characters");
+    expect(prepared.requestBytes).toContain("Never emit an empty string");
     expect(request).toMatchObject({ model: "openai-gpt-5-nano", outputFormat: "JSON" });
     expect(request.settings).toMatchObject({ thinkingLevel: "medium", maxTokens: 3_000 });
     expect(Object.keys(request.settings as Record<string, unknown>).sort()).toEqual([
@@ -44,12 +46,29 @@ describe("hosted voiceover context extraction", () => {
     expect(JSON.stringify(request.jsonSchema)).toContain('"maxItems"');
   });
 
-  it("keeps exact string limits in local acceptance after removing unsupported wire constraints", async () => {
+  it("binds local-only string limits into the immutable provider prompt", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "Inspect the fruit. Then tap it.",
       transcriptHash: HASH,
     });
-    const overlong = { ...contextDocument(), primary_topic: "x".repeat(141) };
+    const request = prepared.request as unknown as Record<string, unknown>;
+    const settings = request.settings as Record<string, unknown>;
+    expect(settings.systemPrompt).toContain("summary between 1 and 500 characters");
+    expect(settings.systemPrompt).toContain(
+      "processes and cause_and_effect item between 1 and 100",
+    );
+  });
+
+  it("normalizes provider strings to the exact local limits after wire-schema acceptance", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it.",
+      transcriptHash: HASH,
+    });
+    const overlong = {
+      ...contextDocument(),
+      primary_topic: `  ${"x".repeat(141)}  `,
+      people: ["shopper", "   ", "y".repeat(81)],
+    };
     await expect(
       extractHostedVoiceoverContext({
         prepared,
@@ -61,6 +80,37 @@ describe("hosted voiceover context extraction", () => {
                 taskUUID: prepared.request.taskUUID,
                 taskType: "textInference",
                 text: JSON.stringify(overlong),
+                cost: 0.001,
+                finishReason: "stop",
+                usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+              },
+            ],
+          }),
+      }),
+    ).resolves.toMatchObject({
+      context: {
+        primary_topic: "x".repeat(140),
+        people: ["shopper", "y".repeat(80)],
+      },
+    });
+  });
+
+  it("still rejects an empty required topic after safe normalization", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it.",
+      transcriptHash: HASH,
+    });
+    await expect(
+      extractHostedVoiceoverContext({
+        prepared,
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        fetcher: async () =>
+          Response.json({
+            data: [
+              {
+                taskUUID: prepared.request.taskUUID,
+                taskType: "textInference",
+                text: JSON.stringify({ ...contextDocument(), primary_topic: "   " }),
                 cost: 0.001,
                 finishReason: "stop",
                 usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },

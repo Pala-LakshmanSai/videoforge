@@ -109,12 +109,12 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
   }
 });
 
-test("hosted prompt profile reuse and reconciliation upgrade the exact 0059 chain to 0061", async () => {
+test("hosted prompt profile reuse and reconciliation upgrade the exact 0059 chain to 0063", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0061_hosted_voiceover_context_reconciliation.sql");
+    assert.equal(sources.at(-1)?.filename, "0063_hosted_context_gpt5_profile.sql");
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -124,7 +124,9 @@ test("hosted prompt profile reuse and reconciliation upgrade the exact 0059 chai
          applied_at timestamptz NOT NULL DEFAULT now()
        )`,
     );
-    for (const migration of sources.slice(0, -2)) {
+    const version60Index = sources.findIndex((migration) => migration.version === 60);
+    assert.ok(version60Index > 0);
+    for (const migration of sources.slice(0, version60Index)) {
       await executor.execute(migration.sql);
       await executor.query(
         `INSERT INTO videoforge_schema_migrations (version, name, filename, sha256)
@@ -134,7 +136,7 @@ test("hosted prompt profile reuse and reconciliation upgrade the exact 0059 chai
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [60, 61]);
+    assert.deepEqual(upgraded.appliedVersions, [60, 61, 62, 63]);
     const definitions = await executor.query(
       `SELECT proname, pg_get_functiondef(oid) AS definition
          FROM pg_proc
@@ -145,6 +147,11 @@ test("hosted prompt profile reuse and reconciliation upgrade the exact 0059 chai
     );
     assert.equal(definitions.rows.length, 2);
     assert.ok(definitions.rows.every((row) => row.definition.includes("ON CONFLICT")));
+    const context = definitions.rows.find(
+      (row) => row.proname === "videoforge_prepare_hosted_voiceover_context",
+    );
+    assert.match(context.definition, /openai-gpt-5-nano/u);
+    assert.match(context.definition, /revision\s*=\s*2|revision=2/u);
   } finally {
     await database.close();
   }

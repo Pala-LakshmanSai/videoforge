@@ -16,13 +16,17 @@ import {
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
 const MODEL = "openai-gpt-5-nano" as const;
-const REQUEST_CONTRACT_VERSION = "runware-gpt5-nano-context-request-v3" as const;
+const REQUEST_CONTRACT_VERSION = "runware-gpt5-nano-context-request-v4" as const;
 
 const SYSTEM_PROMPT = [
   "Extract durable story context from the complete VideoForge voiceover transcript.",
   "Return only the requested strict JSON.",
   "Record concrete facts useful for literal image selection: people, places, era, chronology, recurring objects, processes, causes, effects, and continuity.",
   "Resolve pronouns and callbacks only when the transcript supports the resolution.",
+  "Keep primary_topic between 1 and 140 characters and summary between 1 and 500 characters.",
+  "Keep every people, places, era_and_time, recurring_objects, continuity_facts, and resolved_references item between 1 and 80 characters.",
+  "Keep every processes and cause_and_effect item between 1 and 100 characters, and every chronology item between 1 and 100 characters.",
+  "Never emit an empty string; omit unsupported array details by returning an empty array.",
   "Do not invent facts, visual style, camera directions, captions, logos, graphics, or branded products.",
   "Use empty arrays for details not supported by the transcript.",
 ].join(" ");
@@ -135,14 +139,15 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
   const actual = Object.keys(record).sort();
   if (actual.length !== required.length || actual.some((key, index) => key !== required[index]))
     throw new Error("VOICEOVER_CONTEXT_INVALID");
+  const normalized: Record<string, JsonValue> = {};
+  const boundedText = (text: string, maximum: number) =>
+    Array.from(text.trim()).slice(0, maximum).join("");
   const scalarLimits = { primary_topic: 140, summary: 500 } as const;
-  for (const [key, maximum] of Object.entries(scalarLimits))
-    if (
-      typeof record[key] !== "string" ||
-      record[key].trim().length === 0 ||
-      record[key].length > maximum
-    )
+  for (const [key, maximum] of Object.entries(scalarLimits)) {
+    if (typeof record[key] !== "string" || record[key].trim().length === 0)
       throw new Error("VOICEOVER_CONTEXT_INVALID");
+    normalized[key] = boundedText(record[key], maximum);
+  }
   const arrayLimits = {
     people: [6, 80],
     places: [6, 80],
@@ -159,14 +164,14 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
     if (
       !Array.isArray(items) ||
       items.length > maximumItems ||
-      items.some(
-        (item) =>
-          typeof item !== "string" || item.trim().length === 0 || item.length > maximumLength,
-      )
+      items.some((item) => typeof item !== "string")
     )
       throw new Error("VOICEOVER_CONTEXT_INVALID");
+    normalized[key] = items
+      .map((item) => boundedText(item as string, maximumLength))
+      .filter((item) => item.length > 0);
   }
-  return Object.freeze(record);
+  return Object.freeze(normalized);
 }
 
 function parseContextOutput(outputText: string): Readonly<Record<string, JsonValue>> {

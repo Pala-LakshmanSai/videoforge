@@ -3363,6 +3363,23 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       stage.label === "Understand voiceover context",
   );
   const contextComplete = query.data.voiceover_context?.state === "SUCCEEDED";
+  const contextDocument = query.data.voiceover_context?.context_document;
+  const contextTopic =
+    typeof contextDocument?.primary_topic === "string" ? contextDocument.primary_topic : null;
+  const contextSummary =
+    typeof contextDocument?.summary === "string" ? contextDocument.summary : null;
+  const contextFactGroups = contextDocument
+    ? Object.entries(contextDocument)
+        .filter(([key]) => key !== "primary_topic" && key !== "summary")
+        .map(([key, value]) => ({
+          key,
+          label: key.replaceAll("_", " "),
+          items: Array.isArray(value)
+            ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
+            : [],
+        }))
+        .filter((group) => group.items.length > 0)
+    : [];
   const contextUnknown = query.data.voiceover_context?.state === "UNKNOWN";
   const contextNeedsReview =
     contextStage?.status === "FAILED" ||
@@ -3525,6 +3542,34 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               </Badge>
             </div>
           </Panel>
+          {contextComplete && contextDocument ? (
+            <Panel
+              className="extracted-context-panel"
+              eyebrow="Stage 3 result"
+              heading="Extracted context"
+            >
+              {contextTopic ? (
+                <strong className="extracted-context-topic">{contextTopic}</strong>
+              ) : null}
+              {contextSummary ? (
+                <p className="extracted-context-summary">{contextSummary}</p>
+              ) : null}
+              {contextFactGroups.length > 0 ? (
+                <div className="extracted-context-groups" aria-label="Extracted context facts">
+                  {contextFactGroups.map((group) => (
+                    <section key={group.key}>
+                      <h3>{group.label}</h3>
+                      <ul>
+                        {group.items.map((item, index) => (
+                          <li key={`${group.key}-${index}`}>{item}</li>
+                        ))}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              ) : null}
+            </Panel>
+          ) : null}
           <Panel eyebrow="Activity" heading="Current run">
             <div className="detail-facts">
               <span>
@@ -3570,18 +3615,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </Panel>
         </div>
       </div>
-      {query.data.voiceover_context?.state === "SUCCEEDED" ? (
-        <Panel eyebrow="Context" heading="Whole-voiceover understanding">
-          <p className="helper">
-            Saved once from the complete transcript, then reused with each exact scene and its
-            neighboring narration. This keeps prompt input bounded while preserving story context.
-          </p>
-          <details className="notice">
-            <summary>Inspect saved context</summary>
-            <pre>{JSON.stringify(query.data.voiceover_context.context_document, null, 2)}</pre>
-          </details>
-        </Panel>
-      ) : null}
       {(query.data.prompts?.length ?? 0) > 0 ? (
         <Panel eyebrow="Prompts" heading="Voiceover-to-image plan">
           <p className="helper">
