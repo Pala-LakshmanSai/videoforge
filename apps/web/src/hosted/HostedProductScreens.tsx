@@ -830,7 +830,11 @@ export async function readJson<T>(path: string, init?: RequestInit): Promise<T> 
   if (!result.ok) {
     const error =
       payload && typeof payload === "object" && "error" in payload ? payload.error : null;
-    throw new Error(error?.message ?? error?.code ?? "VideoForge hosted request failed.");
+    const fallback =
+      error?.code === "PROJECT_TITLE_CONFLICT"
+        ? "Another active project already uses this title. Open Progress to continue that project or delete it, or choose a different title."
+        : error?.code;
+    throw new Error(error?.message ?? fallback ?? "VideoForge hosted request failed.");
   }
   return payload as T;
 }

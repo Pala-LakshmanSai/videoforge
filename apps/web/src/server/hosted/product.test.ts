@@ -99,6 +99,7 @@ import {
   handleHostedProductRequest,
   hostedAvatarConflictProblem,
   hostedGpuProductState,
+  hostedProjectConflictProblem,
   hostedPromptWritingState,
   hostedStyleConflictProblem,
 } from "./product";
@@ -119,6 +120,19 @@ const stagingConfig = {
 } as HostedRuntimeConfiguration;
 const environment = {} as HostedRuntimeEnvironment;
 const executionContext = { waitUntil: vi.fn() };
+
+describe("hosted project title conflicts", () => {
+  it("maps only the active-project title constraint to a user-facing conflict", () => {
+    expect(hostedProjectConflictProblem("projects_active_name_uq", "helen")).toEqual({
+      code: "PROJECT_TITLE_CONFLICT",
+      message:
+        "Another active project is still named “helen”. Open Progress to continue that project or delete it, or choose a different title.",
+    });
+    expect(hostedProjectConflictProblem("hosted_project_create_requests_idempotency_key_key", "helen"))
+      .toBeNull();
+    expect(hostedProjectConflictProblem(null, "helen")).toBeNull();
+  });
+});
 
 function request(
   path: string,

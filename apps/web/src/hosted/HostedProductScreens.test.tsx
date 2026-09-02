@@ -136,6 +136,19 @@ describe("hosted product errors", () => {
       "That style name is already in use. Choose a different name.",
     );
   });
+
+  it("turns a legacy project-title conflict code into an actionable message", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({ error: { code: "PROJECT_TITLE_CONFLICT" } }, { status: 409 }),
+      ),
+    );
+
+    await expect(readJson("/api/v2/hosted/projects", { method: "POST", body: "{}" })).rejects.toThrow(
+      "Another active project already uses this title. Open Progress to continue that project or delete it, or choose a different title.",
+    );
+  });
 });
 
 describe("hosted browser security boundaries", () => {

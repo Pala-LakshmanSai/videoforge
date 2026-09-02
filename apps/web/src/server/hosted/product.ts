@@ -3684,6 +3684,17 @@ export function hostedStyleConflictProblem(constraint: string | null): {
   };
 }
 
+export function hostedProjectConflictProblem(
+  constraint: string | null,
+  title: string,
+): { readonly code: string; readonly message: string } | null {
+  if (constraint !== "projects_active_name_uq") return null;
+  return {
+    code: "PROJECT_TITLE_CONFLICT",
+    message: `Another active project is still named “${title}”. Open Progress to continue that project or delete it, or choose a different title.`,
+  };
+}
+
 export function hostedAvatarConflictProblem(constraint: string | null): {
   readonly code: string;
   readonly message: string;
@@ -4388,6 +4399,7 @@ async function createProject(
   const bucket = environment.PRIVATE_ARTIFACTS;
   if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
   const pool = createNeonPool(config.neon.databaseUrl);
+  let requestedTitle = "this title";
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
@@ -4395,6 +4407,7 @@ async function createProject(
     if (raw instanceof Response) return raw;
     const input = parseCreate(raw);
     if (!input) return response({ error: { code: "PROJECT_CREATE_REJECTED" } }, 400);
+    requestedTitle = input.title;
     const requestSha256 = await sha256(canonicalJson(raw));
     const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
@@ -4642,8 +4655,11 @@ async function createProject(
       return response({ error: { code: error.message } }, 409);
     if (error instanceof Error && error.message === "PROJECT_PRESET_NOT_READY")
       return response({ error: { code: error.message } }, 409);
-    if (postgresCode(error) === "23505")
-      return response({ error: { code: "PROJECT_TITLE_CONFLICT" } }, 409);
+    const conflict =
+      postgresCode(error) === "23505"
+        ? hostedProjectConflictProblem(postgresConstraint(error), requestedTitle)
+        : null;
+    if (conflict) return response({ error: conflict }, 409);
     throw error;
   } finally {
     await pool.end();
