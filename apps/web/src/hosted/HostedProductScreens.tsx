@@ -671,6 +671,26 @@ interface ProjectDetailResponse {
   readonly manifest_url?: string | null;
 }
 
+export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
+  if (!data) return 2_000;
+  const terminalStage = data.stages?.some((stage) =>
+    ["FAILED", "ACTION_REQUIRED"].includes(stage.status),
+  );
+  const activeAttempt = data.attempts.some((attempt) =>
+    ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
+  );
+  const terminalAttempt =
+    !activeAttempt &&
+    data.attempts.some((attempt) => ["FAILED", "CANCELLED"].includes(attempt.state));
+  const terminalContext = data.voiceover_context?.state === "FAILED";
+  const complete =
+    Boolean(data.stages?.length) &&
+    data.stages!.every((stage) =>
+      ["COMPLETE", "SUCCEEDED", "APPROVED", "READY_FOR_REVIEW"].includes(stage.status),
+    );
+  return terminalStage || terminalAttempt || terminalContext || complete ? false : 2_000;
+}
+
 interface HostedUsageResponse {
   readonly current_month_provider_cpu_usd: 0;
   readonly current_month_gpu_usd: 0;
@@ -3183,7 +3203,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const query = useQuery({
     queryKey: ["hosted-project", projectId],
     queryFn: () => readJson<ProjectDetailResponse>(`/api/v2/hosted/projects/${projectId}`),
-    refetchInterval: 2_000,
+    refetchInterval: (currentQuery) =>
+      hostedProjectPollInterval(currentQuery.state.data as ProjectDetailResponse | undefined),
     placeholderData: (previousData) => previousData,
     retry: false,
   });

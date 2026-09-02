@@ -60,6 +60,7 @@ import {
   HOSTED_SHA256_CHUNK_BYTES,
   audioDurationMs,
   hostedFileSha256,
+  hostedProjectPollInterval,
   hostedPreflightEstimateText,
   isFailClosedGpuReadiness,
   normalizeHostedReturnTo,
@@ -67,6 +68,62 @@ import {
   preflightBlockers,
   readJson,
 } from "./HostedProductScreens";
+
+describe("hosted project polling", () => {
+  const detail = (overrides: Partial<ProjectDetailResponseForPolling> = {}) => ({
+    project: {
+      id: "11111111-1111-4111-8111-111111111111",
+      title: "Private project",
+      created_at: "2026-09-02T10:00:00.000Z",
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_state: "LOCKED",
+    },
+    attempts: [],
+    gpu_transport: "DISABLED_UNQUALIFIED" as const,
+    gpu_readiness: gpuReadiness,
+    generation: null,
+    ...overrides,
+  });
+
+  type ProjectDetailResponseForPolling = Parameters<typeof hostedProjectPollInterval>[0] extends
+    | infer T
+    | undefined
+    ? NonNullable<T>
+    : never;
+
+  it("stops background reads after a terminal Stage 3 provider failure", () => {
+    expect(
+      hostedProjectPollInterval(
+        detail({
+          voiceover_context: {
+            id: "44444444-4444-4444-8444-444444444444",
+            state: "FAILED",
+            transcript_hash: `sha256:${"b".repeat(64)}`,
+            reserved_cost_micro_usd: 10_000,
+            problem_code: "VOICEOVER_CONTEXT_PROVIDER_REJECTED",
+          },
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps polling while a nonterminal hosted stage is running", () => {
+    expect(
+      hostedProjectPollInterval(
+        detail({
+          stages: [
+            {
+              id: "voiceover-context",
+              name: "Understand voiceover context",
+              status: "RUNNING",
+              progress_percent: 50,
+            },
+          ],
+        }),
+      ),
+    ).toBe(2_000);
+  });
+});
 
 function renderHosted(node: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
