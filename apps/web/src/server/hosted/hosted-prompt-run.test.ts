@@ -147,7 +147,7 @@ describe("hosted Runware prompt writer", () => {
             },
             cost: 0.001,
             finishReason: "stop",
-            model: "deepseek:v4@flash",
+            model: "openai:gpt@5-nano",
           },
         ],
       });

@@ -18,11 +18,10 @@ import type {
   PromptWriterSceneOutput,
 } from "./types.js";
 
-export const RUNWARE_DEEPSEEK_PROMPT_MODEL = "deepseek:v4@flash" as const;
-export const RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-prompt-request-v2" as const;
-export const RUNWARE_DEEPSEEK_MAX_OUTPUT_TOKENS = 8_000 as const;
-export const RUNWARE_DEEPSEEK_OUTPUT_TOKENS_PER_SCENE = 150 as const;
+export const RUNWARE_PROMPT_MODEL = "openai:gpt@5-nano" as const;
+export const RUNWARE_PROMPT_REQUEST_VERSION = "runware-gpt5-nano-prompt-request-v1" as const;
+export const RUNWARE_PROMPT_MAX_OUTPUT_TOKENS = 8_000 as const;
+export const RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE = 150 as const;
 
 export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Write concise literal still-image scene cores for VideoForge.",
@@ -47,11 +46,11 @@ export interface RunwarePromptUsage {
   readonly cachedInputTokens: number;
 }
 
-export interface RunwareDeepSeekApiRequest {
+export interface RunwarePromptApiRequest {
   readonly taskType: "textInference";
   readonly taskUUID: string;
-  readonly model: typeof RUNWARE_DEEPSEEK_PROMPT_MODEL;
-  readonly outputFormat: "json";
+  readonly model: typeof RUNWARE_PROMPT_MODEL;
+  readonly outputFormat: "JSON";
   readonly deliveryMethod: "sync";
   readonly includeCost: true;
   readonly includeUsage: true;
@@ -62,7 +61,7 @@ export interface RunwareDeepSeekApiRequest {
   };
   readonly settings: {
     readonly systemPrompt: typeof SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
-    readonly thinkingLevel: "off";
+    readonly thinkingLevel: "medium";
     readonly temperature: 0.2;
     readonly topP: 0.9;
     readonly maxTokens: number;
@@ -76,10 +75,10 @@ export interface RunwareDeepSeekApiRequest {
 }
 
 export interface RunwarePromptTransportRequest {
-  readonly requestVersion: typeof RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION;
+  readonly requestVersion: typeof RUNWARE_PROMPT_REQUEST_VERSION;
   readonly attemptIndex: 1 | 2;
   readonly requestedSceneIds: readonly string[];
-  readonly request: RunwareDeepSeekApiRequest;
+  readonly request: RunwarePromptApiRequest;
   /** Exact canonical UTF-8 HTTP body: a one-element Runware task array. */
   readonly requestBytes: string;
   readonly requestSha256: Sha256Digest;
@@ -110,8 +109,8 @@ export type RunwarePromptValidationDisposition = "accepted" | "partial_retry" | 
 
 export interface RunwarePromptAttemptEvidence {
   readonly schemaVersion: "videoforge.runware-prompt-attempt-evidence/v1";
-  readonly requestVersion: typeof RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION;
-  readonly model: typeof RUNWARE_DEEPSEEK_PROMPT_MODEL;
+  readonly requestVersion: typeof RUNWARE_PROMPT_REQUEST_VERSION;
+  readonly model: typeof RUNWARE_PROMPT_MODEL;
   readonly scenePromptWriterVersion: "scene-prompt-writer-v1";
   readonly batchId: string;
   readonly attemptIndex: 1 | 2;
@@ -133,7 +132,7 @@ export interface RunwarePromptAttemptEvidenceSink {
   record(evidence: RunwarePromptAttemptEvidence): void | Promise<void>;
 }
 
-export interface RunwareDeepSeekPromptWriterOptions {
+export interface RunwarePromptWriterOptions {
   readonly transport: RunwarePromptTransport;
   readonly evidenceSink: RunwarePromptAttemptEvidenceSink;
   /** Caller-owned reservation ceiling across the first attempt and one partial retry. */
@@ -246,7 +245,7 @@ const responseSchema = (
     },
   });
 
-export function buildRunwareDeepSeekPromptRequest(
+export function buildRunwarePromptRequest(
   batch: PromptBatch,
   scenes: readonly PromptSceneInput[],
   attemptIndex: 1 | 2,
@@ -299,18 +298,18 @@ export function buildRunwareDeepSeekPromptRequest(
     })),
   });
   const taskUUID = deterministicUuid({
-    requestVersion: RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION,
+    requestVersion: RUNWARE_PROMPT_REQUEST_VERSION,
     batchId: batch.batchId,
     styleProfileHash: batch.styleProfileHash,
     attemptIndex,
     retryOfRequestSha256,
     sceneIds: requestedSceneIds,
   });
-  const request: RunwareDeepSeekApiRequest = Object.freeze({
+  const request: RunwarePromptApiRequest = Object.freeze({
     taskType: "textInference",
     taskUUID,
-    model: RUNWARE_DEEPSEEK_PROMPT_MODEL,
-    outputFormat: "json",
+    model: RUNWARE_PROMPT_MODEL,
+    outputFormat: "JSON",
     deliveryMethod: "sync",
     includeCost: true,
     includeUsage: true,
@@ -321,21 +320,21 @@ export function buildRunwareDeepSeekPromptRequest(
     }),
     settings: Object.freeze({
       systemPrompt: SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-      thinkingLevel: "off",
+      thinkingLevel: "medium",
       temperature: 0.2,
       topP: 0.9,
       maxTokens: Math.min(
-        RUNWARE_DEEPSEEK_MAX_OUTPUT_TOKENS,
-        Math.max(512, scenes.length * RUNWARE_DEEPSEEK_OUTPUT_TOKENS_PER_SCENE),
+        RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
+        Math.max(512, scenes.length * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE),
       ),
     }),
     messages: Object.freeze([
       Object.freeze({ role: "user", content: canonicalizeJson(payload) }),
-    ]) as unknown as RunwareDeepSeekApiRequest["messages"],
+    ]) as unknown as RunwarePromptApiRequest["messages"],
   });
   const requestBytes = canonicalizeJson([request]);
   return Object.freeze({
-    requestVersion: RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION,
+    requestVersion: RUNWARE_PROMPT_REQUEST_VERSION,
     attemptIndex,
     requestedSceneIds: Object.freeze(requestedSceneIds),
     request,
@@ -458,8 +457,8 @@ const evidence = (
 ): RunwarePromptAttemptEvidence =>
   Object.freeze({
     schemaVersion: "videoforge.runware-prompt-attempt-evidence/v1",
-    requestVersion: RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION,
-    model: RUNWARE_DEEPSEEK_PROMPT_MODEL,
+    requestVersion: RUNWARE_PROMPT_REQUEST_VERSION,
+    model: RUNWARE_PROMPT_MODEL,
     scenePromptWriterVersion: batch.scenePromptWriterVersion,
     batchId: batch.batchId,
     attemptIndex: request.attemptIndex,
@@ -469,12 +468,12 @@ const evidence = (
     ...values,
   });
 
-export class RunwareDeepSeekPromptWriter implements PromptWriterPort {
+export class RunwarePromptWriter implements PromptWriterPort {
   readonly #transport: RunwarePromptTransport;
   readonly #evidenceSink: RunwarePromptAttemptEvidenceSink;
   readonly #maximumBatchCostUsd: number;
 
-  constructor(options: RunwareDeepSeekPromptWriterOptions) {
+  constructor(options: RunwarePromptWriterOptions) {
     if (!Number.isFinite(options.maximumBatchCostUsd) || options.maximumBatchCostUsd < 0)
       throw new TypeError("maximumBatchCostUsd must be a finite non-negative number.");
     this.#transport = options.transport;
@@ -497,12 +496,7 @@ export class RunwareDeepSeekPromptWriter implements PromptWriterPort {
     retryOfRequestSha256: Sha256Digest | null,
     priorCostUsd: number,
   ): Promise<AttemptEvaluation> {
-    const request = buildRunwareDeepSeekPromptRequest(
-      batch,
-      scenes,
-      attemptIndex,
-      retryOfRequestSha256,
-    );
+    const request = buildRunwarePromptRequest(batch, scenes, attemptIndex, retryOfRequestSha256);
     let result: RunwarePromptTransportResult;
     try {
       result = await this.#transport.dispatch(request);
@@ -549,7 +543,7 @@ export class RunwareDeepSeekPromptWriter implements PromptWriterPort {
       costValid &&
       priorCostUsd + result.costUsd <= this.#maximumBatchCostUsd &&
       result.finishReason === "stop" &&
-      (result.providerModel === null || result.providerModel === RUNWARE_DEEPSEEK_PROMPT_MODEL);
+      (result.providerModel === null || result.providerModel === RUNWARE_PROMPT_MODEL);
     if (!metadataValid) {
       await this.#record(
         evidence(batch, request, {

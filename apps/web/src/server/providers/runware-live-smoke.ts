@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 
 import {
   buildPromptBatch,
-  buildRunwareDeepSeekPromptRequest,
+  buildRunwarePromptRequest,
+  RUNWARE_PROMPT_MODEL,
   type RunwarePromptAttemptEvidence,
 } from "@videoforge/pipeline";
 
@@ -41,18 +42,20 @@ const batch = buildPromptBatch({
   imageStyleVersionId: "documentary_stock_v1",
   styleProfileHash: `sha256:${"1".repeat(64)}`,
   plannerGuidance: "Literal documentary stock photography, natural light, realistic materials.",
-  storyContext: JSON.stringify({ summary: "A craftsperson inspects wooden parts in one workshop." }),
+  storyContext: JSON.stringify({
+    summary: "A craftsperson inspects wooden parts in one workshop.",
+  }),
   continuityTags: ["same clean workshop", "same craftsperson"],
   scenes,
 });
 const transportResult = await runtime.promptTransport.dispatch(
-  buildRunwareDeepSeekPromptRequest(batch, batch.scenes, 1),
+  buildRunwarePromptRequest(batch, batch.scenes, 1),
 );
 if (transportResult.status !== "succeeded") {
   process.stdout.write(
     `${JSON.stringify({
       schemaVersion: "videoforge.runware-live-smoke/v1",
-      model: "deepseek:v4@flash",
+      model: RUNWARE_PROMPT_MODEL,
       transportResult,
       diagnostics: runtime.diagnostics,
       spend: runtime.ledger.snapshot(),
@@ -65,7 +68,7 @@ if (transportResult.status !== "succeeded") {
   process.stdout.write(
     `${JSON.stringify({
       schemaVersion: "videoforge.runware-live-smoke/v1",
-      model: "deepseek:v4@flash",
+      model: RUNWARE_PROMPT_MODEL,
       batchId: batch.batchId,
       outputSceneCount:
         typeof output === "object" &&

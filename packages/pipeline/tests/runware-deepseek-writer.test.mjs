@@ -5,11 +5,11 @@ import test from "node:test";
 import {
   IN_IMAGE_SHOT_ROLES,
   PipelineDomainError,
-  RUNWARE_DEEPSEEK_MAX_OUTPUT_TOKENS,
-  RUNWARE_DEEPSEEK_OUTPUT_TOKENS_PER_SCENE,
-  RUNWARE_DEEPSEEK_PROMPT_MODEL,
-  RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION,
-  RunwareDeepSeekPromptWriter,
+  RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
+  RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE,
+  RUNWARE_PROMPT_MODEL,
+  RUNWARE_PROMPT_REQUEST_VERSION,
+  RunwarePromptWriter,
   buildPromptBatch,
 } from "../dist/src/index.js";
 
@@ -99,7 +99,7 @@ function writer(steps, maximumBatchCostUsd = 0.01) {
   return {
     transport,
     evidence,
-    value: new RunwareDeepSeekPromptWriter({
+    value: new RunwarePromptWriter({
       transport,
       evidenceSink: { record: (item) => evidence.push(item) },
       maximumBatchCostUsd,
@@ -127,19 +127,17 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
     assert.deepEqual(firstOutput, secondOutput);
     assert.equal(firstOutput.scenes.length, count);
     const request = first.transport.requests[0];
-    assert.equal(request.request.model, RUNWARE_DEEPSEEK_PROMPT_MODEL);
+    assert.equal(request.request.model, RUNWARE_PROMPT_MODEL);
+    assert.equal(request.request.outputFormat, "JSON");
     assert.match(
       request.request.taskUUID,
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
     );
-    assert.equal(request.request.settings.thinkingLevel, "off");
-    assert.equal(request.requestVersion, RUNWARE_DEEPSEEK_PROMPT_REQUEST_VERSION);
+    assert.equal(request.request.settings.thinkingLevel, "medium");
+    assert.equal(request.requestVersion, RUNWARE_PROMPT_REQUEST_VERSION);
     assert.equal(
       request.request.settings.maxTokens,
-      Math.min(
-        RUNWARE_DEEPSEEK_MAX_OUTPUT_TOKENS,
-        count * RUNWARE_DEEPSEEK_OUTPUT_TOKENS_PER_SCENE,
-      ),
+      Math.min(RUNWARE_PROMPT_MAX_OUTPUT_TOKENS, count * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE),
     );
     assert.equal(request.request.jsonSchema.strict, true);
     assert.equal(request.request.jsonSchema.schema.properties.scenes.minItems, count);
@@ -169,14 +167,20 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
         "scene_id",
       ].sort(),
     );
-    assert.equal(payload(request).scenes[1].containing_sentence, "Hands demonstrate irrigation valve step 2.");
+    assert.equal(
+      payload(request).scenes[1].containing_sentence,
+      "Hands demonstrate irrigation valve step 2.",
+    );
     assert.equal(payload(request).scenes[1].prior_context, "Prior step 1");
     assert.equal(payload(request).scenes[1].next_context, "Next step 3");
     assert.equal(
       payload(request).scenes[1].exact_phrase_sha256,
       `sha256:${createHash("sha256").update(payload(request).scenes[1].exact_phrase).digest("hex")}`,
     );
-    assert.equal(payload(request).style_profile_hash, makeBatch(count, styleIndex).styleProfileHash);
+    assert.equal(
+      payload(request).style_profile_hash,
+      makeBatch(count, styleIndex).styleProfileHash,
+    );
     assert.equal(
       request.request.messages[0].content.match(/Harvest Water Without Pumps/gu)?.length,
       1,
@@ -197,9 +201,10 @@ test("rejects verbose prompt cores above the token-conscious output contract", a
   ]);
   const result = await setup.value.write(makeBatch(25));
   assert.equal(setup.transport.requests.length, 2);
-  assert.deepEqual(payload(setup.transport.requests[1]).scenes.map((scene) => scene.scene_id), [
-    "scene_001",
-  ]);
+  assert.deepEqual(
+    payload(setup.transport.requests[1]).scenes.map((scene) => scene.scene_id),
+    ["scene_001"],
+  );
   assert.ok(result.scenes[0].prompt_core.length <= 600);
 });
 
@@ -386,7 +391,7 @@ test("attempt evidence is hash-only/redacted and sink failure blocks output", as
   assert.match(setup.evidence[0].responseSha256, /^sha256:[0-9a-f]{64}$/u);
 
   const transport = new ScriptedTransport([(request) => success(request)]);
-  const blocked = new RunwareDeepSeekPromptWriter({
+  const blocked = new RunwarePromptWriter({
     transport,
     evidenceSink: {
       record: () => {
@@ -403,7 +408,7 @@ test("constructor rejects missing finite cost authority", () => {
   for (const maximumBatchCostUsd of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
     assert.throws(
       () =>
-        new RunwareDeepSeekPromptWriter({
+        new RunwarePromptWriter({
           transport,
           evidenceSink: { record: () => undefined },
           maximumBatchCostUsd,

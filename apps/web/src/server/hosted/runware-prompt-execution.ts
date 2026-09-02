@@ -5,7 +5,7 @@ import type {
   PromptWriterAttemptFact,
 } from "@videoforge/control-plane";
 import {
-  RunwareDeepSeekPromptWriter,
+  RunwarePromptWriter,
   validatePromptWriterOutput,
   type PromptBatch,
   type RunwarePromptAttemptEvidence,
@@ -70,7 +70,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
         return result;
       },
     };
-    const writer = new RunwareDeepSeekPromptWriter({
+    const writer = new RunwarePromptWriter({
       transport,
       evidenceSink: {
         record(evidence) {

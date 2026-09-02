@@ -1,5 +1,5 @@
 import {
-  RunwareDeepSeekPromptWriter,
+  RunwarePromptWriter,
   RunwareGeminiStyleAnalyzer,
   type RunwareGeminiStyleAnalyzerOptions,
   type RunwarePromptAttemptEvidenceSink,
@@ -28,7 +28,7 @@ export interface RunwareRuntime {
   readonly ledger: RunwareSpendLedger;
   readonly diagnostics: readonly RunwareSafeDiagnostic[];
   readonly promptTransport: RunwarePromptTransport;
-  readonly promptWriter: RunwareDeepSeekPromptWriter;
+  readonly promptWriter: RunwarePromptWriter;
   createStyleAnalyzer(
     options: Omit<RunwareGeminiStyleAnalyzerOptions, "transport">,
   ): RunwareGeminiStyleAnalyzer;
@@ -77,7 +77,7 @@ export async function createRunwareRuntime(
     get diagnostics(): readonly RunwareSafeDiagnostic[] {
       return Object.freeze([...diagnostics]);
     },
-    promptWriter: new RunwareDeepSeekPromptWriter({
+    promptWriter: new RunwarePromptWriter({
       transport: promptTransport,
       evidenceSink: promptEvidenceSink,
       maximumBatchCostUsd: RUNWARE_PROMPT_REQUEST_CAP_USD * 2,
