@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-09-01"
+updated_at: "2026-09-02"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STAGE_3_DOCUMENTED_STRUCTURED_OUTPUT_PROFILE_LIVE_AWAITING_NEW_PROJECT
+  status: GPT5_NANO_EXACT_SETTINGS_LIVE_AWAITING_ONE_APPROVED_NEW_PROJECT
   implementation_commit: "df4d75bded837222585f444236072324464afa43"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
@@ -132,29 +132,30 @@ hosted_beta_user_walkthrough:
     - "23b0f77f01765e33a1ae95ea6c375b836878f559"
     - "4d9e490005fc0ce2088a1146d26b3cb52a36485f"
     - "ba51e854ce58c1d5a719bf28d109e00e16e99376"
+    - "2d7183ff7f8afa8f50d6ef707827a19357ccc953"
   deployment_candidate: "2d7183ff"
-  deployed_source_commit: "4f7b7416de254c46a2408bd21da4c30aed457164"
-  cloudflare_worker_version_id: "0ea8b839-4970-4346-bff9-c4f34a8a315f"
-  pending_source_candidate: "2d7183ff7f8afa8f50d6ef707827a19357ccc953"
+  deployed_source_commit: "2d7183ff7f8afa8f50d6ef707827a19357ccc953"
+  cloudflare_worker_version_id: "4a99105c-962c-45af-9ef2-badfdec9d389"
+  pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "FRESH_EXACT_PRIVATE_HOSTED_BETA_APPROVAL_FOR_ONE_STAGING_DEPLOYMENT_AND_ONE_NEW_STAGE_1_TO_5_ACCEPTANCE_RUN_CAP_USD_0_05"
+  pending_release_boundary: "DEPLOYMENT_CONSUMED_ONE_NEW_STAGE_1_TO_5_ACCEPTANCE_RUN_APPROVED_CAP_USD_0_05"
   pending_validations: "GPT5_NANO_EXACT_SETTINGS_KEYS_MUST_PASS_STAGE_3_AND_RETURN_ONE_SCHEMA_VALID_CONTEXT_OBJECT; AUTOMATIC_STAGE_4_SCENE_PLAN; GPT5_NANO_STAGE_5_MUST_PERSIST_INSPECTABLE_STYLE_BOUND_PROMPTS"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "07810ef3aa69de46a78731a7c6524c1d7789696d829beb244885ab1a2bf9b9c8"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 4f7b7416de254c46a2408bd21da4c30aed457164 CAP USD 0.05"
+  deployed_config_sha256: "a5bb41112f940c6e108e21c61e436cb4da9798bfd9bfe9114299695bf6c803f3"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA 2d7183ff7f8afa8f50d6ef707827a19357ccc953 CAP USD 0.05"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
   gpu_transport: DISABLED_UNQUALIFIED
   provider_analysis: PASS_GEMINI_3_1_FLASH_LITE_FOUR_REFERENCE_HTTP_200_USD_0_004401
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   gpu_use_authorized: false
-  external_spend_authorized_usd: 0
-  remote_mutation_authorized: false
+  external_spend_authorized_usd: 0.05
+  remote_mutation_authorized: true
   database_preflight: "LIVE_LEDGER_61_OF_61_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
   pending_database_migration: null
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
@@ -162,8 +163,9 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_9_SECRETS_AND_R2_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_LIVE_4F7B7416_WORKER_0EA8B839_CACHE_BYPASSED_STATUS_EXACT_4_OF_4; PROJECT_07C8E9BA_STAGE_1_AND_STAGE_2_COMPLETE_STAGE_3_DEFINITE_REJECTION_NO_PROVIDER_CHARGE; GPU_AND_PRODUCTION_ZERO"
+  live_browser_verification: "PASS_LIVE_2D7183FF_WORKER_4A99105C_CACHE_BYPASSED_STATUS_EXACT_4_OF_4; AUTHENTICATED_CHROME_CONNECTED_ON_HISTORICAL_TERMINAL_PROJECT_AWAITING_ONE_NEW_PROJECT; GPU_AND_PRODUCTION_ZERO"
   fixed_blockers:
+    - "Exact approval deployed clean source 2d7183ff once as Worker 4a99105c with rendered config SHA-256 a5bb4111. The exact nine-secret allowlist and four cache-bypassed exact-source reads pass; GPU remains DISABLED_UNQUALIFIED. Deployment caused no provider inference, database migration, GPU/RunPod work, production action, or spend. Authenticated Chrome and a redacted live Worker tail are attached. One fresh Stage 1-5 acceptance project remains approved under the cumulative USD 0.05 cap; stop at the first terminal failure or after Stage 5 completes, and never retry the historical failed project."
     - "Exact approval deployed clean HEAD 4f7b7416 once as Worker 0ea8b839 with rendered config SHA-256 07810ef3. The exact nine-secret allowlist, private Standard R2 state, and four cache-bypassed exact-source status reads pass; GPU remains DISABLED_UNQUALIFIED. Authenticated Chrome created project 07c8e9ba with the approved sample voiceover, Helen avatar, and Will Carter style. Stage 1 and personal-worker Stage 2 completed; Stage 3 failed definitively before any accepted result, released its reservation, reported no provider charge, and did not redispatch. Runware's current official GPT-5 Nano OpenAPI schema proves the exact cause: settings is closed and accepts only systemPrompt, maxTokens, and thinkingLevel, while source 48a1f816 also sent unsupported temperature and topP. Source 2d7183ff removes those two fields from both Stage 3 and Stage 5 and adds exact-settings-key regressions. Pipeline tests pass 30/30; focused web tests pass 72/72; both typechecks, lint/format, secret scan, staging build/quarantine, and diff checks pass. The 4f7b7416 approval is consumed; the failed project is terminal and must not be retried. Fresh exact authority is required for the successor deployment and one new Stage 1-5 run."
     - "Source 48a1f816 replaces the repeatedly schema-invalid DeepSeek v4 Stage 3 and Stage 5 requests with Runware GPT-5 Nano using exact AIR openai:gpt@5-nano, uppercase JSON, strict jsonSchema, medium reasoning, and new immutable request-contract identities. Stage 3 remains one complete-transcript request with a 3,000-token generation ceiling, 6,000-character accepted-context bound, USD 0.01 reservation, deterministic full-request UUID, and no blind redispatch. Stage 5 retains the global story context once per batch plus exact narration phrase/hash, containing sentence, previous/next narration, immutable image style, fixed shot role/layout, concise <=600-character prompt cores, one partial retry only, and the existing USD 0.04 ceiling. Pipeline tests pass 30/30; focused web tests pass 72/72; both typechecks, changed-file lint/format, secret scan, staging build/quarantine, deployment validation, context validation, and diff checks pass. The cancelled test project was deleted in authenticated Chrome and a fresh sample form is prepared but not created. No deployment, provider request, database migration, GPU/RunPod work, production action, or spend occurred; one exact deployment plus one new Stage 1-5 acceptance run requires fresh source-bound authority capped at USD 0.05."
     - "Exact approval deployed clean HEAD 492db7c6 once as Worker b2f40c71 with rendered config SHA-256 8bbf226c. The exact nine-secret allowlist and four cache-bypassed exact-source status reads pass; GPU remains DISABLED_UNQUALIFIED. Deployment made no provider inference, database mutation, GPU/RunPod request, or production action. The v4 Stage 3 request profile is live with Runware's documented high-reasoning/5,000-token structured-output settings, the strict schema, accepted-context 6,000-character cap, USD 0.01 request ceiling, and no-blind-redispatch guard. The old frozen project cannot advance; create a new project for automatic Stage 3, Stage 4 planning, and Stage 5 prompt proof."
