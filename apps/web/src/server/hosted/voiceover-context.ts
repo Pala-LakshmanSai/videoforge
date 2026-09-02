@@ -263,8 +263,6 @@ export async function prepareHostedVoiceoverContextRequest(input: {
       // enough for bounded fact extraction while the accepted context remains
       // independently capped to 6,000 characters and USD 0.01 below.
       thinkingLevel: "medium",
-      temperature: 0.1,
-      topP: 0.8,
       maxTokens: 3_000,
     },
     messages: [{ role: "user", content: canonicalizeJson({ transcript: input.transcript }) }],

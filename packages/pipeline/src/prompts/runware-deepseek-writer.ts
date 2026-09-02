@@ -62,8 +62,6 @@ export interface RunwarePromptApiRequest {
   readonly settings: {
     readonly systemPrompt: typeof SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
     readonly thinkingLevel: "medium";
-    readonly temperature: 0.2;
-    readonly topP: 0.9;
     readonly maxTokens: number;
   };
   readonly messages: readonly [
@@ -321,8 +319,6 @@ export function buildRunwarePromptRequest(
     settings: Object.freeze({
       systemPrompt: SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
       thinkingLevel: "medium",
-      temperature: 0.2,
-      topP: 0.9,
       maxTokens: Math.min(
         RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
         Math.max(512, scenes.length * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE),
