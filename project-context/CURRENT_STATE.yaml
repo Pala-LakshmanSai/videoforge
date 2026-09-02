@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STAGE_3_UNIQUE_VALID_OBJECT_RECOVERY_READY_AWAITING_FRESH_APPROVAL
+  status: STAGE_3_DOCUMENTED_STRUCTURED_OUTPUT_PROFILE_READY_AWAITING_FRESH_APPROVAL
   implementation_commit: "df4d75bded837222585f444236072324464afa43"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
@@ -133,9 +133,9 @@ hosted_beta_user_walkthrough:
     - "4d9e490005fc0ce2088a1146d26b3cb52a36485f"
     - "ba51e854ce58c1d5a719bf28d109e00e16e99376"
   deployment_candidate: null
-  deployed_source_commit: "1fd0992c653c603bef4c74ed4a846e17847b2d32"
-  cloudflare_worker_version_id: "94bb4956-552f-4dd0-a5ce-20cde0bf238e"
-  pending_source_candidate: "a2edc6ed71e498c5ef297b8b7c52abc24c91d160"
+  deployed_source_commit: "ebfefcec9ab9e4944d33ac297b78c4fc2ebe5a2b"
+  cloudflare_worker_version_id: "1c0b753d-b23c-4947-bedf-72841ecef3b8"
+  pending_source_candidate: "fe5202ddf2ffb50b7f3fd7421720183c8fc0f3e6"
   pending_worker_release: null
   pending_release_boundary: null
   pending_validations: "NEW_INFERENCE_STAGE_3_MUST_RETURN_ONE_SCHEMA_VALID_CONTEXT_OBJECT; AUTOMATIC_SCENE_PLAN_AND_STAGE_5_PROMPTS"
@@ -144,8 +144,8 @@ hosted_beta_user_walkthrough:
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "497a07c8649a56542550a44e37bfa4b885d1c069f28b402acf2afe88841b9a9f"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA 1fd0992c653c603bef4c74ed4a846e17847b2d32 CAP USD 0.05"
+  deployed_config_sha256: "9137cbdce2ece11ebb5114089b45cbccbd201cb9950ab2534c0a688ac833fa58"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA ebfefcec9ab9e4944d33ac297b78c4fc2ebe5a2b CAP USD 0.05"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -162,8 +162,9 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_8_SECRETS_R2_CORS_AND_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_LIVE_1FD0992C_WORKER_94BB4956_CACHE_BYPASSED_STATUS_EXACT_4_OF_4; AUTHENTICATED_CHROME_ONE_RETRIEVAL_ONLY_CHECK_RETURNED_TYPED_VOICEOVER_CONTEXT_JSON_INVALID_WITHOUT_INFERENCE_REDISPATCH; GPU_AND_PRODUCTION_ZERO"
+  live_browser_verification: "PASS_LIVE_EBFEFCEC_WORKER_1C0B753D_CACHE_BYPASSED_STATUS_EXACT_4_OF_4; AUTHENTICATED_CHROME_ONE_RETRIEVAL_ONLY_CHECK_PROVED_FROZEN_OUTPUT_CONTAINS_NO_SCHEMA_VALID_CONTEXT_OBJECT; GPU_AND_PRODUCTION_ZERO"
   fixed_blockers:
+    - "Exact approval deployed clean HEAD ebfefcec once as Worker 1c0b753d with rendered config SHA-256 9137cbdc. The exact nine-secret allowlist and four cache-bypassed exact-source status reads pass; GPU remains DISABLED_UNQUALIFIED. One authenticated retrieval-only check on frozen project f2f0e79f still returned VOICEOVER_CONTEXT_JSON_INVALID, proving the archived output contains no schema-valid context object at all; no inference redispatch occurred. Current official Runware DeepSeek V4 structured-output documentation confirms JSON Schema support but its structured examples use thinkingLevel=high and a 4,096-5,000-token ceiling, while VideoForge used reasoning off and 1,600 tokens. Source fe5202dd advances the immutable request contract to v4 and aligns those settings to high/5,000 while retaining the strict schema, accepted-context 6,000-character bound, USD 0.01 cost ceiling, deterministic request identity, and no blind redispatch. Focused provider/context/product tests pass 73/73; typechecks, lint/format, staging build/quarantine, deployment validation, and diff checks pass. A new project/inference under fresh exact authority is required; the frozen invalid result cannot advance."
     - "Source a2edc6ed hardens Stage 3 parsing for the exact frozen-result class now proven live: quotes in provider prose cannot hide the following object, malformed draft objects may coexist with one final schema-valid object, and VideoForge accepts only the unique schema-valid candidate. Two valid objects, duplicate properties, wrong fields, invalid JSON, oversize output, and over-cap cost remain rejected. Focused provider/context/product tests pass 73/73; both web typechecks, changed-file ESLint/Prettier, staging build/quarantine, deployment/context validation, and diff checks pass. No provider call, database mutation, deployment, GPU/RunPod work, production action, or spend occurred while preparing this source. Fresh exact approval is required for deployment and one retrieval-only check of the same frozen task."
     - "Exact approval deployed clean HEAD 1fd0992c once as Worker 94bb4956 with rendered config SHA-256 497a07c8. The exact nine-secret allowlist and four cache-bypassed exact-source status reads pass; GPU remains DISABLED_UNQUALIFIED. One authenticated Check provider result performed retrieval only on frozen project f2f0e79f and the repaired error path now reports the exact safe failure VOICEOVER_CONTEXT_JSON_INVALID: the archived Runware result does not contain exactly one valid context JSON object. No new inference was submitted. Read-only Neon proof remains one UNKNOWN context claim, one USD 0.01 reservation with no reported/settled cost, provider-may-have-charged=true, and zero prompt runs. The historical result cannot advance; the next source repair must improve first-pass structured-output reliability and safe diagnostics, then a fresh exact approval is required for a new inference."
     - "Exact approval deployed clean HEAD 113671d2 once as Worker 553af90f with rendered config SHA-256 dcff42bd. The exact nine-secret allowlist and four cache-bypassed exact-source status reads pass; GPU remains DISABLED_UNQUALIFIED. One authenticated Check provider result performed retrieval only and still returned the generic safe invalid-response message with no inference redispatch. Code-path proof isolates the remaining mask: retrieveRunwareTextTaskDetails now shares the live text validator, then reconcileHostedVoiceoverContext can throw a typed context JSON/schema error, but reconcileVoiceoverContext converted every non-RunwareTransportError back to RUNWARE_RESPONSE_INVALID. Source 8ab0a974 preserves those bounded context codes, gives safe exact UI copy, and accepts exactly one balanced JSON object from provider wrapping while retaining strict duplicate detection, the full immutable context-field validator, size/cost caps, and rejection of multiple objects. Focused provider/context/product tests pass 71/71; web typecheck, lint/format, staging build/quarantine, deployment/context validation, and diff checks pass. No second retrieval, new inference, database mutation, GPU/RunPod work, production action, or additional provider spend occurred. Fresh exact deployment authority is required."
