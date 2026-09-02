@@ -4,7 +4,7 @@ updated_at: "2026-09-02"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: false
-current_milestone: private_hosted_beta_stage_3_completion_binding_repair_ready
+current_milestone: private_hosted_beta_stage_3_fixed_live_stage_5_preclaim_failure
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Exact authority applied migration 0067, deployed source ba3ca944 as Worker a99108e6, and created only project ba392398 capped at USD 2. Stages 1-2 completed; Stage 3 reached DeepSeek V4 Flash and stopped UNKNOWN after 8.422 seconds with generic HOSTED_CONTEXT_EXECUTION_UNKNOWN, one USD 0.01 reservation, no reported or settled cost, and no persisted response/context. No retry, retrieval, or Stage 4-5 occurred. Source diagnosis found ambiguous output_asset_id, context_hash, and response_hash variable/column references in the durable completion function. Source aa07db72 adds migration 0068 with unambiguous bindings and a prepare-to-complete regression proving accepted asset, task, attempt, context, and cost settlement. Fresh exact migration/deployment/one-project authority is required."
+  provider_free_product_action: "Exact authority applied migration 0068, deployed clean source a34f2b0d as Worker 420fd2d4, and created only project 83bfe7bd capped at USD 2. Stages 1-4 completed. Stage 3 persisted one schema-valid transcript-wide context in 13.292 seconds and settled USD 0.000154 against its USD 0.01 reservation. Stage 4 produced 53 timeline segments. Stage 5 then stopped at its first terminal pre-claim failure before any durable prompt run, scene result, reservation, provider dispatch, or reported cost. No retry or retrieval occurred. The approved authority is consumed; Stage 3 is fixed live."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STAGE_3_COMPLETION_BINDING_REPAIR_READY_AWAITING_FRESH_EXACT_AUTHORITY
+  status: STAGE_3_FIXED_LIVE_STAGE_5_PRECLAIM_FAILURE_AUTHORITY_CONSUMED
   implementation_commit: "df4d75bded837222585f444236072324464afa43"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
@@ -145,20 +145,21 @@ hosted_beta_user_walkthrough:
     - "e7302578c9d5b8e0b09fdc2bb2e97fc30dbc67cb"
     - "ba3ca9441d6f816e40b5d176ea723a286f6c2cb6"
     - "aa07db72da6dfe35faf467c955e676f4634eb32d"
-  deployment_candidate: "ba3ca944"
-  deployed_source_commit: "ba3ca9441d6f816e40b5d176ea723a286f6c2cb6"
-  cloudflare_worker_version_id: "a99108e6-3e9e-425a-80b7-97584d1acade"
-  pending_source_candidate: "aa07db72da6dfe35faf467c955e676f4634eb32d"
+    - "a34f2b0da37a7e33d1109e84cfb153c7645a13f4"
+  deployment_candidate: "a34f2b0d"
+  deployed_source_commit: "a34f2b0da37a7e33d1109e84cfb153c7645a13f4"
+  cloudflare_worker_version_id: "420fd2d4-882c-477d-b2bd-2c2648150731"
+  pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "LIVE_SOURCE_BA3CA944_WORKER_A99108E6_APPLIED_MIGRATION_0067_AND_PROJECT_BA392398_STOPPED_AT_STAGE_3_COMPLETION_UNKNOWN. SOURCE_AA07DB72_ADDS_PENDING_MIGRATION_0068_TO_REMOVE_AMBIGUOUS_COMPLETION_BINDINGS. FRESH_EXACT_MIGRATION_DEPLOYMENT_AND_ONE_SUCCESSOR_PROJECT_AUTHORITY_REQUIRED; NEVER_RETRY_OR_RETRIEVE_BA392398."
-  pending_validations: "CANONICAL_DEEPSEEK_V4_FLASH_MUST_PASS_STAGE_3_AND_RETURN_ONE_SCHEMA_VALID_CONTEXT_OBJECT; AUTOMATIC_STAGE_4_SCENE_PLAN; CANONICAL_DEEPSEEK_V4_FLASH_STAGE_5_MUST_PERSIST_INSPECTABLE_STYLE_BOUND_PROMPTS"
+  pending_release_boundary: "LIVE_SOURCE_A34F2B0D_WORKER_420FD2D4_APPLIED_MIGRATION_0068_AND_ONLY_PROJECT_83BFE7BD_PROVED_STAGE_3_DURABLE_CONTEXT_COMPLETION_AND_STAGE_4_TIMELINE. STAGE_5_STOPPED_AT_THE_FIRST_PRECLAIM_TERMINAL_FAILURE_WITH_NO_PROMPT_PROVIDER_DISPATCH_OR_COST. AUTHORITY_CONSUMED; NEVER_RETRY_PROJECT_83BFE7BD."
+  pending_validations: "PROVIDER_FREE_DIAGNOSIS_AND_REPAIR_OF_STAGE_5_PRECLAIM_START_FAILURE; ANY_SUCCESSOR_LIVE_PROJECT_REQUIRES_FRESH_EXACT_AUTHORITY"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "2b7094bdf2e24ff0f03134f25a4328fef3b8b7ed56735312be3d3479e0ef8c1f"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA SOURCE ba3ca9441d6f816e40b5d176ea723a286f6c2cb6 MIGRATION 0067 SHA256 6ad89b0630de5e34c3ce5c413ab42d5bb98113754940147db5cc9ba75ae67517 WORKER 0.1.13 DEPLOY STAGING AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT CAP USD 2; STOP AT FIRST TERMINAL FAILURE OR AFTER STAGE 5; NO RETRIES; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
+  deployed_config_sha256: "5f38da69007da53a8314355d29edf8bc7b761b381cb0f56413f52ff8c28a5393"
+  deployment_approval: "APPROVE PRIVATE HOSTED BETA SOURCE a34f2b0da37a7e33d1109e84cfb153c7645a13f4 MIGRATION 0068 SHA256 e97130419c299cffae599bfec52a7348460b0d49d9dae5c2761259a26a690689 WORKER 0.1.13 DEPLOY STAGING AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT CAP USD 2; STOP AT FIRST TERMINAL FAILURE OR AFTER STAGE 5; NO RETRIES; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -168,15 +169,16 @@ hosted_beta_user_walkthrough:
   gpu_use_authorized: false
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
-  database_preflight: "LIVE_LEDGER_67_OF_67_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
-  pending_database_migration: "0068_hosted_context_completion_binding.sql"
+  database_preflight: "LIVE_LEDGER_68_OF_68_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
+  pending_database_migration: null
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_9_SECRETS_AND_R2_PRIVATE_STATE_PASS"
-  live_browser_verification: "SOURCE_BA3CA944_WORKER_A99108E6_PROJECT_BA392398_STAGE_1_2_COMPLETE_STAGE_3_V8_FAILED_UNKNOWN_AFTER_8_422_SECONDS; COMPLETION_TRANSACTION_REJECTED_BY_AMBIGUOUS_PLPGSQL_BINDINGS; ONE_USD_0_01_RESERVATION_OUTSTANDING; PROVIDER_MAY_HAVE_CHARGED_TRUE; NO_PERSISTED_RESPONSE_OR_CONTEXT; NO_REPORTED_OR_SETTLED_COST; NO_RETRY_OR_RETRIEVAL; STAGES_4_5_NOT_STARTED; TERMINAL_BACKGROUND_POLLING_STOPPED; GPU_DISABLED_UNQUALIFIED"
+  live_browser_verification: "SOURCE_A34F2B0D_WORKER_420FD2D4_PROJECT_83BFE7BD_STAGE_1_2_COMPLETE_STAGE_3_COMPLETE_WITH_SCHEMA_VALID_CONTEXT_AND_USD_0_000154_SETTLED_COST_STAGE_4_COMPLETE_WITH_53_SEGMENTS; STAGE_5_TERMINAL_PRECLAIM_START_FAILURE_WITH_ZERO_PROMPT_RUNS_ZERO_SCENE_RESULTS_ZERO_RESERVATION_AND_ZERO_PROVIDER_DISPATCH; NO_RETRY_OR_RETRIEVAL; GPU_DISABLED_UNQUALIFIED"
   fixed_blockers:
+    - "Exact USD 2 authority applied migration 0068 and reverified the complete 68/68 ledger, FORCE RLS, and exact runtime grants, then deployed clean source a34f2b0d once as Worker 420fd2d4 with config SHA-256 5f38da69. Eight consecutive cache-bypassed exact-source status reads passed. Authenticated Chrome created exactly one project 83bfe7bd capped at USD 2 with Helen v1, Will Carter v1, and the 4m01s voiceover. Stages 1-2 completed. Stage 3 completed durably in 13.292 seconds with context a2046ccb, one schema-valid 11-key transcript-wide context document, response/context hashes, and USD 0.000154 reported and settled against its USD 0.01 reservation. Stage 4 completed with 53 timeline segments. Stage 5 stopped at its first terminal pre-claim start failure: zero durable prompt runs, zero prompt scene results, zero prompt execution count, no reservation, no provider dispatch, and no prompt cost. No retry or retrieval occurred. No GPU, RunPod, production, or retained-volume mutation occurred. Stage 3 is fixed live; the exact authority is consumed."
     - "Exact USD 2 authority applied migration 0067, reverified 67/67 migration rows, FORCE RLS, and exact runtime grants, then deployed source ba3ca944 once as Worker a99108e6 with config SHA-256 2b7094bd. Eight exact-source status reads passed. Authenticated Chrome created exactly one project ba392398 capped at USD 2 with Helen v1, Will Carter v1, and the 4m01s voiceover. Stages 1-2 completed; Stage 3 reached DeepSeek V4 Flash then stopped UNKNOWN after 8.422 seconds. Durable state has one USD 0.01 reservation, provider_may_have_charged=true, no response/context hash or document, no reported/settled cost, zero prompt runs, and no Stage 4-5. No retry or retrieval occurred. Source aa07db72 fixes the completion function's ambiguous variable/column bindings in migration 0068. The new database regression executes prepare through completion and proves the canonical asset, context, attempt, task, and RESERVED/REPORTED/SETTLED lineage. Focused tests pass 11/11 and scoped build/typecheck/lint/deployment/context/secret/diff checks pass. The historical full control-plane suite retains six unrelated stale migration-count/old-cap failures. Fresh exact authority is required; never retry or retrieve ba392398."
     - "Source 83e8b1f6 supersedes the unactivated Gemini candidate and repairs the remaining Stage 3 provider path exposed by project fe1f0706 with Runware DeepSeek V4 Flash. Current official rates are USD 0.076 per 1M input tokens and USD 0.153 per 1M output tokens, materially below Gemini 3.1 Flash Lite at USD 0.25 input and USD 1.50 output. DeepSeek supports a 1M-token context and native strict JSON Schema. Stage 3 request v8 uses thinking off, temperature 0.1, topP 0.9, and a 3,000-token ceiling while preserving one whole-transcript request, strict schema/local validation, deterministic full-request task identity, the USD 0.01 reservation, and no blind redispatch. Migration 0067 selects immutable profile revision 6 and fails before claim/reservation on drift. Focused hosted tests pass 78/78; migration/profile tests pass 10/10; control-plane build, web typecheck, lint/format, staging build/quarantine, deployment/context validation, secret scan, migration hash, and diff checks pass. The exact source 54c91ce2 approval was not exercised: no migration, deployment, provider call, project creation, or spend occurred. Fresh exact authority is required for source 83e8b1f6 and the changed migration hash."
     - "Exact USD 2 authority applied migration 0066, reverified the complete 66/66 migration ledger, FORCE RLS, and exact runtime grants, then deployed source e7302578 as Worker bbaf827e with config SHA-256 873ae1f9. Eight consecutive cache-bypassed status reads passed and the exact nine-secret allowlist remained intact. Authenticated Chrome created exactly one project fe1f0706 capped at USD 2 with Helen v1, Will Carter v1, and the 4m01s voiceover. Stages 1-2 completed; Stage 3 v7 stopped terminally after 9.629 seconds because the original Runware result did not contain exactly one valid context JSON object. Durable state is UNKNOWN with provider_may_have_charged=true, one USD 0.01 reservation, and no reported or settled cost. No retry occurred and Stages 4-5 did not start. The terminal Stage screen stopped background polling, retained its explicit retrieval-only control, and remained stable. No GPU, RunPod, production, retained-volume, secret, or CORS mutation occurred. The exact authority is consumed."
@@ -4992,8 +4994,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_stage_3_completion_binding_repair_ready
-  status: stage_3_completion_binding_repair_awaiting_fresh_exact_migration_deployment_and_one_project_authority
+  milestone: private_hosted_beta_stage_3_fixed_live_stage_5_preclaim_failure
+  status: stage_3_fixed_live_stage_5_preclaim_failure_requires_provider_free_diagnosis
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: release_and_deployment_authority_consumed_non_reusable
   task_stage: provider_free_product_execution
@@ -5002,7 +5004,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Under fresh exact authority, apply migration 0068, deploy the Stage 3 durable completion binding repair, and create exactly one new source-bound Stage 1-5 project capped at USD 2. Never retry or retrieve project ba392398. Stop at the first terminal failure or after Stage 5. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
+  goal: "Stage 3 is fixed and proven live. Diagnose and repair the Stage 5 pre-claim automatic prompt-start failure provider-free. Never retry or retrieve project 83bfe7bd. Any successor live project requires fresh exact source-bound authority. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -5023,7 +5025,7 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "The exact source ba3ca944 / migration 0067 authority was consumed at project ba392398's first terminal Stage 3 failure. No retry or retrieval occurred. Source aa07db72 plus migration 0068 is provider-free only. Fresh exact authority is required. No provider call, remote mutation, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized."
+  authority_note: "The exact source a34f2b0d / migration 0068 authority was consumed after project 83bfe7bd completed Stages 1-4 and stopped at Stage 5's first terminal pre-claim failure. No retry or retrieval occurred. Stage 3 succeeded durably at USD 0.000154. Fresh exact authority is required for any successor live project. No provider call, remote mutation, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444"
@@ -5032,8 +5034,8 @@ recommended_next_task:
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: stage_3_v8_terminal_completion_failure_authority_consumed_migration_0068_source_green_undeployed
-  execution_blocker: stage_3_completion_binding_repair_requires_fresh_exact_migration_deployment_and_one_project_approval
+  execution_status: stage_3_fixed_live_stage_5_preclaim_failure_authority_consumed
+  execution_blocker: stage_5_preclaim_failure_requires_provider_free_diagnosis_before_any_fresh_authority
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean
