@@ -4,7 +4,7 @@ updated_at: "2026-09-02"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: false
-current_milestone: private_hosted_beta_compact_stage_3_context_live_green
+current_milestone: private_hosted_beta_stage_5_prompt_repair_source_green
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Compact Stage 3 is proven live on exact source dbf9dd98 / Worker 38236d66 / migration 0069 through project 7a18102a. The long VideoForge filename normalized successfully, Stages 1-2 completed, and Stage 3 durably accepted exactly subject, three visual facts, two continuity anchors, and an empty remote-reference list in 210 serialized JSON characters; the UI/downstream text is 177 characters with no chronology or paragraph. DeepSeek V4 Flash reported and settled USD 0.000074 against its USD 0.01 reservation. Stage 4 completed. The run stopped without retry at the first Stage 5 terminal automatic-start failure before prompt claim, reservation, dispatch, or cost. Read-only plan/code evidence isolates a separate pre-provider defect: the plan correctly returns extra_prompt_keywords as an empty string with apply_extra_prompt_keywords=false, but hostedPromptAuthority calls the nonempty-string validator anyway and throws before preparing hosted_prompt_runs. Repair Stage 5 provider-free only; any deployment or successor project requires fresh exact authority."
+  provider_free_product_action: "Source 471f8ead repairs the isolated Stage 5 pre-claim failure: hostedPromptAuthority now preserves an empty extra_prompt_keywords value when apply_extra_prompt_keywords=false, while enabled-empty still fails before durable preparation. The Runware DeepSeek scene-writing request advances to v4 and explicitly requires one relatable, camera-capturable, physically plausible moment per scene, ordinary credible settings and behavior, literal evidence for abstract narration, pinned-style treatment without reference-content copying, and believable photographic anatomy/materials/optics/light when the selected style is photographic. Pipeline prompt/compiler tests pass 41/41; hosted prompt tests pass 8/8; focused hosted screen/server tests pass 110/110; pipeline/web typechecks, changed-file ESLint/format, staging build/quarantine, contracts, context, deployment validation, secret scan, and diff checks pass. This is provider-free source proof only. Live remains dbf9dd98 / Worker 38236d66 / migration 0069; never retry project 7a18102a. Any deployment or successor project requires fresh exact authority."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: COMPACT_STAGE_3_CONTEXT_LIVE_PASS_STAGE_5_PRECLAIM_FAILURE
+  status: STAGE_5_PROMPT_REPAIR_SOURCE_GREEN_AWAITING_FRESH_EXACT_AUTHORITY
   implementation_commit: "df4d75bded837222585f444236072324464afa43"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
@@ -150,13 +150,14 @@ hosted_beta_user_walkthrough:
     - "fcdbe35efedd14fe58d656aa0173d01b70f7be59"
     - "4b6795204c676a1910425585a040839e23090306"
     - "dbf9dd9874dd8227552d739ae9ea79ed5a10f5e2"
-  deployment_candidate: "dbf9dd98"
+    - "471f8ead76b14a815f2121df98083d83c37d439a"
+  deployment_candidate: "471f8ead"
   deployed_source_commit: "dbf9dd9874dd8227552d739ae9ea79ed5a10f5e2"
   cloudflare_worker_version_id: "38236d66-ac79-44f6-99cc-5daa90926a76"
-  pending_source_candidate: null
+  pending_source_candidate: "471f8ead76b14a815f2121df98083d83c37d439a"
   pending_worker_release: null
-  pending_release_boundary: "LIVE_IS_EXACT_SOURCE_DBF9DD98_WORKER_38236D66_WITH_MIGRATION_0069_VERIFIED_69_OF_69. THE_ONE_PROJECT_AUTHORITY_IS_CONSUMED_AT_STAGE_5_TERMINAL_FAILURE. DO_NOT_RETRY_PROJECT_7A18102A. ANY_STAGE_5_REPAIR_DEPLOYMENT_OR_SUCCESSOR_PROJECT_REQUIRES_FRESH_EXACT_AUTHORITY."
-  pending_validations: "REPAIR_STAGE_5_PROVIDER_FREE_SO_EMPTY_EXTRA_PROMPT_KEYWORDS_ARE_VALID_WHEN_APPLY_EXTRA_PROMPT_KEYWORDS_IS_FALSE; THEN_REQUIRE_FRESH_EXACT_DEPLOYMENT_AND_ONE_PROJECT_AUTHORITY. COMPACT_STAGE_3_NEEDS_NO_FURTHER_REPAIR."
+  pending_release_boundary: "SOURCE_471F8EAD_IS_PROVIDER_FREE_GREEN_ONLY. LIVE_REMAINS_EXACT_SOURCE_DBF9DD98_WORKER_38236D66_WITH_MIGRATION_0069_VERIFIED_69_OF_69. THE_PRIOR_AUTHORITY_IS_CONSUMED. DO_NOT_RETRY_PROJECT_7A18102A. DEPLOYMENT_OR_ANY_SUCCESSOR_PROJECT_REQUIRES_FRESH_EXACT_AUTHORITY."
+  pending_validations: "FRESH_EXACT_SOURCE_BOUND_DEPLOYMENT_AND_ONE_NEW_STAGE_5_PROJECT_ARE_REQUIRED_TO_PROVE_THE_REPAIR_LIVE. COMPACT_STAGE_3_NEEDS_NO_FURTHER_REPAIR."
   failed_deployment_attempt: "Exact authority verified migration 0069 read-only at 69/69, built clean source 4b679520, verified the exact nine-secret allowlist and private R2/CORS state, and deployed it once as Worker feb110de with config SHA-256 5abbd67f. Eight cache-bypassed status reads passed. In a fresh authenticated Chrome tab, one USD 2 project attempt with Helen v1, Will Carter v1, and the 159.216-second MP3 stopped at PROJECT_PREFLIGHT_REJECTED before project creation. The selected VideoForge-downloaded filename was 234 characters while the server contract allows 160; the browser sent it without validating or normalizing. Read-only Neon proves zero projects with the attempted title. No voiceover bytes, project, provider request, or cost was created. Source dbf9dd98 deterministically maps only unsafe or overlong names to voiceover-{16 checksum hex}.mp3 or .wav and uses the same name at preflight/create while preserving ordinary filenames."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA SOURCE 4b6795204c676a1910425585a040839e23090306 MIGRATION 0069 ALREADY APPLIED SHA256 718046630b67bbe3ae40371d742959c22436ab1f638b5c421d031618f574b00c DO NOT REAPPLY WORKER 0.1.13 DEPLOY STAGING AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT CAP USD 2; STOP AT FIRST TERMINAL FAILURE OR AFTER STAGE 5; NO RETRIES; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
   latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA SOURCE dbf9dd9874dd8227552d739ae9ea79ed5a10f5e2 MIGRATION 0069 ALREADY APPLIED SHA256 718046630b67bbe3ae40371d742959c22436ab1f638b5c421d031618f574b00c DO NOT REAPPLY WORKER 0.1.13 DEPLOY STAGING AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT CAP USD 2; STOP AT FIRST TERMINAL FAILURE OR AFTER STAGE 5; NO RETRIES; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
@@ -184,6 +185,7 @@ hosted_beta_user_walkthrough:
   cloudflare_preflight: "READ_ONLY_EXACT_9_SECRETS_AND_R2_PRIVATE_STATE_PASS"
   live_browser_verification: "SOURCE_DBF9DD98_WORKER_38236D66_AT_100_PERCENT; FRESH_AUTHENTICATED_CHROME_PROJECT_7A18102A_COUNT_EXACTLY_ONE_CAP_USD_2; LONG_FILENAME_NORMALIZATION_PASS; STAGES_1_2_3_4_COMPLETE; STAGE_3_COMPACT_CONTEXT_210_JSON_CHARS_177_UI_CHARS_COST_USD_0_000074; STAGE_5_TERMINAL_PRECLAIM_START_FAILURE; NO_RETRY; NO_STAGE_5_RESERVATION_DISPATCH_OR_COST; GPU_DISABLED_UNQUALIFIED"
   fixed_blockers:
+    - "Source 471f8ead repairs the Stage 5 empty-disabled-keyword contract before durable preparation and advances the DeepSeek scene-prompt request to v4. The writer now requires a relatable camera-capturable physical moment, credible everyday setting and behavior, direct literal evidence, style traits without copied reference content, and photographic physical realism when applicable. Pipeline prompt/compiler tests pass 41/41; hosted prompt tests pass 8/8; focused hosted UI/server tests pass 110/110; pipeline/web typechecks, changed-file ESLint/format, staging build/quarantine, contracts, context, deployment validation, secret scan, and diff checks pass. No deployment, project, provider call, credential access, GPU/RunPod action, production mutation, or spend occurred."
     - "Exact authority verified migration 0069 read-only at 69/69 without replay, built clean source dbf9dd98, passed the exact nine-secret and private R2/CORS checks, and deployed once as Worker 38236d66 at 100% with config SHA-256 7b0297d6. Authenticated Chrome created exactly one project 7a18102a capped at USD 2 using Helen v1, Will Carter v1, worker 0.1.13, and the 159.216-second long-filename MP3. Filename normalization passed; Stages 1-2 completed. Stage 3 durably succeeded with subject hydrogen peroxide, visual facts brown bottle / medicine cabinet / kitchen sink, continuity brown bottle of hydrogen peroxide / medicine cabinet setting, and no resolved references. Serialized JSON is 210 characters; the UI/downstream compact text is 177 characters with no chronology or paragraph. DeepSeek V4 Flash reported and settled USD 0.000074. Stage 4 completed. Stage 5 stopped at the first terminal automatic-start failure with zero hosted prompt runs, prompt reservations, dispatches, or prompt cost; no retry occurred. Read-only plan/code evidence isolates empty extra_prompt_keywords rejected by a nonempty validator despite apply_extra_prompt_keywords=false. No GPU, RunPod, production, or volume mutation occurred."
     - "Exact authority deployed source 4b679520 once as Worker feb110de with config SHA-256 5abbd67f after read-only migration 69/69 verification and exact Cloudflare/R2 preflight. Eight cache-bypassed identity reads passed. One authenticated Chrome USD 2 project attempt stopped at PROJECT_PREFLIGHT_REJECTED before creation because the selected VideoForge-generated 234-character MP3 filename exceeded the server's 160-character contract and the client did not normalize it. Read-only Neon proves zero matching projects; source order proves no byte upload can occur before project creation. No retry, project, provider call, spend, GPU, RunPod, production, or volume mutation followed. Source dbf9dd98 deterministically converts only unsafe or overlong voiceover names to a checksum-bound 31-character .mp3/.wav name and reuses it for preflight and create. Focused UI tests pass 50/50; typecheck, web/staging builds, bundle quarantine, ESLint, deployment/context/schema validation, secret scan, and diff checks pass. Fresh exact authority is required; migration 0069 must not be reapplied."
     - "Exact source fcdbe35e authority applied migration 0069 and verified the live 69/69 ledger, FORCE RLS, exact runtime grants, and hosted render-plan write denial. Its isolated build passed, but deployment stopped at the first terminal failure before Cloudflare: the source renderer required a stale USD 3 finite cap and rejected the user's exact USD 2 activation record. No Worker deployment, fresh project, provider request, spend, GPU, RunPod, production, or volume mutation occurred. Source 4b679520 changes only the renderer, secret-input validator, and deployment fixture to the exact USD 2 cap. Focused deployment/activation tests pass 17/17, ESLint and deployment validation pass, and the repaired clean source successfully renders a USD 2 config. Repository-wide format check remains red on 11 pre-existing files unrelated to this three-line repair. Fresh exact source approval is required to deploy 4b679520 and create the one project; migration 0069 must not be reapplied."
@@ -5004,8 +5006,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_compact_stage_3_context_live_green
-  status: stage_5_empty_optional_keywords_provider_free_repair_required
+  milestone: private_hosted_beta_stage_5_prompt_repair_source_green
+  status: stage_5_prompt_repair_awaiting_fresh_exact_live_authority
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: release_and_deployment_authority_consumed_non_reusable
   task_stage: provider_free_product_execution
@@ -5014,7 +5016,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Keep compact Stage 3 as live-proven. Repair Stage 5 provider-free so an empty extra_prompt_keywords value is accepted when apply_extra_prompt_keywords is false, with focused regression coverage proving hostedPromptAuthority reaches durable preparation. Never retry project 7a18102a. Any deployment or successor project requires fresh exact authority. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
+  goal: "Keep compact Stage 3 as live-proven. Deploy exact source 471f8ead only after fresh exact authority, then create exactly one new bounded project to verify Stage 5 durable preparation and prompt acceptance. Never retry project 7a18102a. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -5044,8 +5046,8 @@ recommended_next_task:
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: compact_stage_3_context_source_green_undeployed
-  execution_blocker: compact_context_live_proof_requires_fresh_exact_migration_deployment_and_one_project_authority
+  execution_status: stage_5_prompt_repair_source_green_undeployed
+  execution_blocker: stage_5_live_proof_requires_fresh_exact_source_bound_deployment_and_one_project_authority
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean
