@@ -10,6 +10,7 @@ import {
   RUNWARE_PROMPT_MODEL,
   RUNWARE_PROMPT_REQUEST_VERSION,
   RunwarePromptWriter,
+  SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
   buildPromptBatch,
 } from "../dist/src/index.js";
 
@@ -195,6 +196,16 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
       1,
     );
   }
+});
+
+test("writer contract requires relatable physical evidence and applies style as treatment only", () => {
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /one camera-capturable moment/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /physically plausible visible action/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /familiar human behavior, ordinary locations/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /never substitute symbolism or metaphor/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /pinned style's visual treatment/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /without importing people, places, objects/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /believable anatomy, materials, scale/u);
 });
 
 test("rejects verbose prompt cores above the token-conscious output contract", async () => {

@@ -19,7 +19,8 @@ import type {
 } from "./types.js";
 
 export const RUNWARE_PROMPT_MODEL = "deepseek-v4-flash" as const;
-export const RUNWARE_PROMPT_REQUEST_VERSION = "runware-deepseek-v4-flash-prompt-request-v3" as const;
+export const RUNWARE_PROMPT_REQUEST_VERSION =
+  "runware-deepseek-v4-flash-prompt-request-v4" as const;
 export const RUNWARE_PROMPT_MAX_OUTPUT_TOKENS = 8_000 as const;
 export const RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE = 150 as const;
 
@@ -30,7 +31,11 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Use adjacent context only to disambiguate; it may never override the exact phrase.",
   "Use the compact story context to resolve people, places, pronouns, callbacks, era, and continuity; it may never override the exact phrase or containing sentence.",
   "Choose concrete visible evidence of the exact phrase, never a generic mood image merely related to the overall topic.",
-  "Use planner guidance as visual treatment, never as subject matter.",
+  "Design one camera-capturable moment per scene: a specific subject doing a physically plausible visible action in a specific real-world environment.",
+  "Prefer familiar human behavior, ordinary locations, credible objects, contextual clutter, and natural imperfection when the narration supports them; never manufacture spectacle or a staged advertising pose.",
+  "For abstract narration, show the most direct transcript-supported person, object, process, place, or consequence; never substitute symbolism or metaphor when literal evidence exists.",
+  "Use planner guidance only as the pinned style's visual treatment: honor its medium, palette, lighting, texture, camera language, and imperfection without importing people, places, objects, logos, or other content from style references.",
+  "For photographic styles, require believable anatomy, materials, scale, perspective, optics, light, and everyday wear rather than glossy synthetic perfection.",
   "Keep each prompt_core under 600 characters: one concrete, descriptive still-image sentence with only details that improve literal relevance.",
   "Do not pad, editorialize, or repeat subject, action, environment, lighting, or continuity details inside prompt_core.",
   "Do not repeat a full style suffix or invent continuity facts.",

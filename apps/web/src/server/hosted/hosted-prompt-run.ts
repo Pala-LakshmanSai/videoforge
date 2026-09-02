@@ -35,8 +35,13 @@ function string(value: unknown, label: string): string {
   return value;
 }
 
-function nullableString(value: unknown, label: string): string | null {
-  return value === null ? null : string(value, label);
+function extraPromptKeywords(value: unknown, enabled: boolean): string | null {
+  if (!enabled) {
+    if (value === null) return null;
+    if (typeof value !== "string") throw new TypeError("extra prompt keywords are invalid.");
+    return value;
+  }
+  return string(value, "enabled extra prompt keywords");
 }
 
 function compactStoryContext(value: unknown): string {
@@ -190,6 +195,7 @@ export function hostedPromptAuthority(input: {
   const timelineHash = string(plan.timeline_hash, "timeline hash");
   const styleVersionId = string(plan.image_style_version_id, "style version id");
   const styleHash = string(plan.style_profile_hash, "style profile hash");
+  const applyExtraPromptKeywords = plan.apply_extra_prompt_keywords === true;
   for (const id of [
     workspaceId,
     projectId,
@@ -232,8 +238,11 @@ export function hostedPromptAuthority(input: {
       fullImageGuidance: string(prompt.full_image_guidance, "full image guidance"),
       splitImageGuidance: string(prompt.split_image_guidance, "split image guidance"),
     }),
-    extraPromptKeywords: nullableString(plan.extra_prompt_keywords, "extra prompt keywords"),
-    applyExtraPromptKeywords: plan.apply_extra_prompt_keywords === true,
+    // Disabled keywords are preserved as revision data but are intentionally not
+    // required to be non-empty or interpreted. The compiler ignores them unless
+    // the explicit apply toggle is true.
+    extraPromptKeywords: extraPromptKeywords(plan.extra_prompt_keywords, applyExtraPromptKeywords),
+    applyExtraPromptKeywords,
     continuityTags: Object.freeze([]),
     scenes: parseScenes(plan.scenes, windows),
     taskId: input.identity.taskId,

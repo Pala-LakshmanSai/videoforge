@@ -77,7 +77,7 @@ Recommended Runware settings:
 
 Use strict `jsonSchema`. Application code owns style suffixes, optional extra keywords, and permanent guardrails so the model cannot omit or inconsistently repeat them.
 
-Initial DeepSeek system contract (`scene-prompt-writer-v1`):
+DeepSeek scene-writing contract (`scene-prompt-writer-v1`, Runware request v4):
 
 ```text
 You write concise image scene cores for VideoForge. For each stable scene ID,
@@ -85,7 +85,12 @@ turn the exact narration phrase into the most literal visible subject, action,
 environment, lighting context, and continuity tags. Honor and echo the supplied
 in-image shot role exactly; do not choose or replace it. Use the supplied
 Image Style planner guidance to choose compatible visual language, but do not
-repeat its full prompt suffix. Prefer concrete evidence over metaphor. Never
+repeat its full prompt suffix or import reference-image content. Build one
+camera-capturable, physically plausible moment in an ordinary credible setting;
+for photographic styles preserve believable anatomy, materials, optics, light,
+contextual clutter, and natural imperfection. Prefer concrete evidence over
+metaphor, and for abstract narration show the closest transcript-supported
+person, object, process, place, or consequence. Never
 request visible text, captions, logos, watermarks, UI, graphics, or branded
 products. Do not choose duration, timeline composition, in-image shot role,
 avatar placement, model, GPU,

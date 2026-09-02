@@ -132,6 +132,27 @@ describe("hosted prompt authority", () => {
     expect(authority.storyContext).toBe("Subject: Canada thistle regrowth");
   });
 
+  it("accepts empty preserved extra keywords when their explicit apply toggle is off", () => {
+    const authority = hostedPromptAuthority({
+      plan: plan({ extra_prompt_keywords: "", apply_extra_prompt_keywords: false }),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+    expect(authority.extraPromptKeywords).toBe("");
+    expect(authority.applyExtraPromptKeywords).toBe(false);
+    expect(authority.recordedInputHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
+  });
+
+  it("rejects empty extra keywords before preparation when their apply toggle is on", () => {
+    expect(() =>
+      hostedPromptAuthority({
+        plan: plan({ extra_prompt_keywords: "", apply_extra_prompt_keywords: true }),
+        identity,
+        reservedCostMicroUsd: 40_000,
+      }),
+    ).toThrow("enabled extra prompt keywords is invalid");
+  });
+
   it("rejects duplicate or oversized global attributes before prompt dispatch", () => {
     for (const context of [
       {
