@@ -4,7 +4,7 @@ updated_at: "2026-09-02"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: private_hosted_beta_stage_3_model_id_repair_ready
+current_milestone: private_hosted_beta_split_text_models_ready
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: GPT5_NANO_CANONICAL_MODEL_ID_REPAIR_READY_AWAITING_FRESH_EXACT_AUTHORITY
+  status: GPT5_NANO_CONTEXT_DEEPSEEK_V4_FLASH_PROMPTS_READY_AWAITING_FRESH_EXACT_AUTHORITY
   implementation_commit: "df4d75bded837222585f444236072324464afa43"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
@@ -134,13 +134,14 @@ hosted_beta_user_walkthrough:
     - "ba51e854ce58c1d5a719bf28d109e00e16e99376"
     - "2d7183ff7f8afa8f50d6ef707827a19357ccc953"
     - "5df6e19404a099ccf209a9ee292d5d75fc22fc59"
-  deployment_candidate: "5df6e194"
+    - "d917bcf3ec1ac4f2ff7d57158fd468e579b7c1bd"
+  deployment_candidate: "d917bcf3"
   deployed_source_commit: "2d7183ff7f8afa8f50d6ef707827a19357ccc953"
   cloudflare_worker_version_id: "034bd0ef-0555-45ec-9616-0e17ee35cfd8"
-  pending_source_candidate: "5df6e19404a099ccf209a9ee292d5d75fc22fc59"
+  pending_source_candidate: "d917bcf3ec1ac4f2ff7d57158fd468e579b7c1bd"
   pending_worker_release: null
-  pending_release_boundary: "THE_APPROVED_ONE_NEW_STAGE_1_TO_5_RUN_STOPPED_AT_PROJECT_87F629C0_STAGE_3_TERMINAL_FAILURE_AND_IS_CONSUMED; DEPLOY_5DF6E194_AND_CREATE_ANY_SUCCESSOR_PROJECT_ONLY_UNDER_FRESH_EXACT_AUTHORITY"
-  pending_validations: "CANONICAL_RUNWARE_MODEL_ID_OPENAI_GPT_5_NANO_MUST_PASS_STAGE_3_AND_RETURN_ONE_SCHEMA_VALID_CONTEXT_OBJECT; AUTOMATIC_STAGE_4_SCENE_PLAN; STAGE_5_MUST_PERSIST_INSPECTABLE_STYLE_BOUND_PROMPTS"
+  pending_release_boundary: "THE_APPROVED ONE_NEW_STAGE_1_TO_5_RUN_STOPPED_AT_PROJECT_87F629C0_STAGE_3_TERMINAL_FAILURE_AND_IS_CONSUMED; SOURCE_D917BCF3_SUPERSEDES_THE_UNDEPLOYED_5DF6E194_PROPOSAL; DEPLOY_D917BCF3_AND_CREATE_ANY_SUCCESSOR_PROJECT_ONLY_UNDER_FRESH_EXACT_AUTHORITY"
+  pending_validations: "CANONICAL_GPT5_NANO_MUST_PASS_STAGE_3_AND_RETURN_ONE_SCHEMA_VALID_CONTEXT_OBJECT; AUTOMATIC_STAGE_4_SCENE_PLAN; CANONICAL_DEEPSEEK_V4_FLASH_STAGE_5_MUST_PERSIST_INSPECTABLE_STYLE_BOUND_PROMPTS"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
@@ -166,6 +167,7 @@ hosted_beta_user_walkthrough:
   cloudflare_preflight: "READ_ONLY_EXACT_9_SECRETS_AND_R2_PRIVATE_STATE_PASS"
   live_browser_verification: "PROJECT_87F629C0_STAGE_1_AND_PERSONAL_WORKER_STAGE_2_COMPLETE; STAGE_3_DEFINITE_RUNWARE_REJECTION_WITH_NO_PROVIDER_CHARGE_AND_NO_REDISPATCH; STAGES_4_AND_5_PENDING; GPU_STAGES_BLOCKED; MEDIA_WORKER_0_1_12_REMAINS_ONLINE; APPROVED_RUN_CONSUMED_AT_FIRST_TERMINAL_FAILURE"
   fixed_blockers:
+    - "User-selected model routing is source-green: Stage 3 remains canonical Runware openai-gpt-5-nano for strict whole-voiceover context extraction, while Stage 5 now uses canonical deepseek-v4-flash for cost-efficient scene-prompt reasoning. The DeepSeek request uses strict JSON, temperature 0.2, topP 0.9, high thinking, the existing bounded dynamic output ceiling, and new immutable request identity runware-deepseek-v4-flash-prompt-request-v3 so historical DeepSeek/GPT task IDs cannot collide. Source d917bcf3 supersedes the undeployed 5df6e194 proposal. Pipeline tests pass 124/124; focused hosted context/prompt tests pass 16/16; both typechecks, changed-file lint, staging build/quarantine, and diff checks pass. No deployment, provider call, project mutation, GPU/RunPod work, production action, or spend occurred."
     - "Authenticated Chrome created project 87f629c0 under the approved one-new-project Stage 1-5 authority. Stage 1 and personal-worker Stage 2 completed, then Stage 3 failed definitively before an accepted result; the USD 0.01 reservation was released, the UI reports no provider charge, no automatic retry exists, and Stages 4-5 remain pending. The live request used retired AIR alias openai:gpt@5-nano. Runware's current official GPT-5 Nano contract requires canonical model ID openai-gpt-5-nano while confirming the remaining outputFormat, jsonSchema, messages, and settings fields. Source 5df6e194 updates both Stage 3 and Stage 5 to the canonical model ID and advances both immutable request contracts to v2. Focused hosted tests pass 16/16, pipeline passes 124/124, both typechecks, changed-file lint, staging build/quarantine, and diff checks pass. The failed project and its authority are terminal; deploy or create a successor project only under fresh exact source-bound authority. GPU/RunPod and production remain disabled."
     - "Fresh exact USD 0 corrective authority redeployed source 2d7183ff as Worker 034bd0ef with config SHA-256 84448caf and preserved immutable media-worker 0.1.12 manifest SHA-256 cb1238ee. Four exact-source reads pass, authenticated Settings advertises 0.1.12, Computer Use launched the existing installed worker, and Chrome shows it ONLINE with no browser errors. The correction caused no provider inference, database migration, GPU/RunPod work, production action, or spend. The original one-new-project Stage 1-5 authority remains unused under its USD 0.05 cap."
     - "The 2d7183ff deployment used the stale protected 0.1.11 media-worker manifest instead of preserving the live 0.1.12 release identity from the prior 4f7b7416 config. Exact source checks pass, but authenticated Settings advertises 0.1.11 while the installed 0.1.12 worker exits cleanly on UPDATE_REQUIRED, leaving the computer OFFLINE. No project or provider request was created and the USD 0.05 run cap is unused. Corrected config 84448caf preserves source 2d7183ff plus the prior immutable 0.1.12 manifest SHA-256 cb1238ee; deploying it requires fresh exact USD 0 authority."
@@ -4962,7 +4964,7 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_stage_3_model_id_repair_ready
+  milestone: private_hosted_beta_split_text_models_ready
   status: style_reference_carousel_live_accepted_continue_project_creation
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: deployed_c9beae23_authority_consumed_non_reusable
