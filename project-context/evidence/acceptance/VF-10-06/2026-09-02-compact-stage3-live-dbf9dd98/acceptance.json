@@ -1,0 +1,82 @@
+{
+  "schema_version": "videoforge-private-hosted-beta-acceptance/v1",
+  "recorded_at": "2026-09-02T16:31:00Z",
+  "checkpoint": "V2-06",
+  "result": "STAGE_3_PASS_STAGE_4_PASS_STAGE_5_PRECLAIM_TERMINAL_FAILURE",
+  "authority": {
+    "source_commit": "dbf9dd9874dd8227552d739ae9ea79ed5a10f5e2",
+    "migration": "0069",
+    "migration_sha256": "718046630b67bbe3ae40371d742959c22436ab1f638b5c421d031618f574b00c",
+    "migration_action": "READ_ONLY_VERIFIED_69_OF_69_NOT_REAPPLIED",
+    "media_worker_version": "0.1.13",
+    "maximum_project_spend_usd": 2,
+    "project_limit": 1,
+    "retry_limit": 0,
+    "consumed": true
+  },
+  "deployment": {
+    "target": "videoforge-v2-06-staging",
+    "deployment_count": 1,
+    "worker_version_id": "38236d66-ac79-44f6-99cc-5daa90926a76",
+    "traffic_percentage": 100,
+    "rendered_config_sha256": "7b0297d6d523cd9068fa0c89d219596cff2580979acec1fe5752e47c2c0aa6fe",
+    "secret_allowlist_count": 9,
+    "r2_private_state": "PASS",
+    "r2_cors": "PASS",
+    "gpu_transport": "DISABLED_UNQUALIFIED"
+  },
+  "project": {
+    "id": "7a18102a-8ec6-4d72-9e2a-3bff35f950b0",
+    "revision_id": "59acbbad-3db1-46da-b9d5-081f3a5d9a6d",
+    "title": "stage3 compact context dbf9dd98 1623z",
+    "exact_title_count": 1,
+    "maximum_cost_micro_usd": 2000000,
+    "voiceover_duration_seconds": 159.216,
+    "voiceover_binary_sha256": "sha256:f2ee953aa3f8e4acab643aa6e9c128f8a47c50be204ff31650c80f0b045aed5b",
+    "long_filename_normalization": "PASS",
+    "avatar": "Helen v1",
+    "image_style": "Will Carter v1"
+  },
+  "stages": {
+    "1": "COMPLETE",
+    "2": "COMPLETE",
+    "3": "COMPLETE",
+    "4": "COMPLETE",
+    "5": "TERMINAL_PRECLAIM_START_FAILURE"
+  },
+  "stage_3": {
+    "context_id": "a3f946e9-d862-4542-a8ec-7dcb66564909",
+    "state": "SUCCEEDED",
+    "provider": "runware",
+    "model": "deepseek:v4@flash",
+    "provider_may_have_charged": false,
+    "reserved_cost_micro_usd": 10000,
+    "reported_and_settled_cost_micro_usd": 74,
+    "context_hash": "sha256:0fd14aa02fb1b6151c255643385ef346a395efa4e9988443e80be97ba4fb96e7",
+    "serialized_json_characters": 210,
+    "ui_and_downstream_characters": 177,
+    "context_document": {
+      "subject": "hydrogen peroxide",
+      "visual_facts": ["brown bottle", "medicine cabinet", "kitchen sink"],
+      "continuity": ["brown bottle of hydrogen peroxide", "medicine cabinet setting"],
+      "resolved_references": []
+    },
+    "chronology_present": false,
+    "paragraph_present": false
+  },
+  "stage_5_failure": {
+    "hosted_prompt_runs": 0,
+    "prompt_reservations": 0,
+    "prompt_provider_dispatches": 0,
+    "prompt_cost_micro_usd": 0,
+    "retry_performed": false,
+    "diagnosis": "The loaded plan returns extra_prompt_keywords as an empty string with apply_extra_prompt_keywords=false. hostedPromptAuthority passes the empty value to nullableString, which delegates non-null values to the nonempty string validator and throws before videoforge_prepare_hosted_prompt_run.",
+    "repair_boundary": "PROVIDER_FREE_SOURCE_REPAIR_REQUIRED_BEFORE_FRESH_EXACT_DEPLOYMENT_AND_SUCCESSOR_PROJECT_AUTHORITY"
+  },
+  "prohibited_actions": {
+    "runpod_calls": 0,
+    "gpu_jobs": 0,
+    "production_mutation": false,
+    "volume_mutation": false
+  }
+}
