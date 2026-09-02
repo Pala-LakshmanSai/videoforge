@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-08-27"
 source_of_truth: project-context
 
-current_selected_profile: v2_13_release_operations
-current_selected_brief: tasks/VF-10-13.md
+current_selected_profile: v2_06_hosted_staging
+current_selected_brief: tasks/VF-10-06.md
 
 mandatory_read:
   - 00_START_HERE.md

@@ -4,7 +4,7 @@ updated_at: "2026-09-02"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: false
-current_milestone: private_hosted_beta_stage_3_fixed_live_stage_5_preclaim_failure
+current_milestone: private_hosted_beta_compact_stage_3_context_source_green
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Exact authority applied migration 0068, deployed clean source a34f2b0d as Worker 420fd2d4, and created only project 83bfe7bd capped at USD 2. Stages 1-4 completed. Stage 3 persisted one schema-valid transcript-wide context in 13.292 seconds and settled USD 0.000154 against its USD 0.01 reservation. Stage 4 produced 53 timeline segments. Stage 5 then stopped at its first terminal pre-claim failure before any durable prompt run, scene result, reservation, provider dispatch, or reported cost. No retry or retrieval occurred. The approved authority is consumed; Stage 3 is fixed live."
+  provider_free_product_action: "Stage 3 remains proven live on source a34f2b0d / Worker 420fd2d4 / migration 0068 through project 83bfe7bd. Provider-free source 97949dad replaces the repeated 11-field global context with strict request v9: one to four useful visual-grounding sentences, at most 160 characters each and 480 characters combined. Chronology, scene order, transcript summary, local actions, headings, tags, and redundant details are excluded because Stage 5 already receives the exact phrase, containing sentence, previous sentence, next sentence, and transcript order. JSON is used only at the Stage 3 provider/durable validation boundary; Stage 5 receives normalized plain text. Output ceiling falls from 3,000 to 350 tokens and the downstream context cap from 6,000 to 480 characters. Migration 0069 selects immutable profile revision 7. Focused web tests pass 71/71, database tests 11/11, the compact pipeline bound test passes, and builds, typechecks, lint, context/schema/deployment validation, staging build/quarantine, secret scan, and diff checks pass. A real-browser source check remains unclaimed because the preserved local fixture database rejected historical migration metadata at chain position 50; it was not reset or mutated. No provider call, migration, deployment, project mutation, GPU/RunPod/production action, or spend occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STAGE_3_FIXED_LIVE_STAGE_5_PRECLAIM_FAILURE_AUTHORITY_CONSUMED
+  status: COMPACT_STAGE_3_CONTEXT_SOURCE_GREEN_UNDEPLOYED
   implementation_commit: "df4d75bded837222585f444236072324464afa43"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
@@ -146,13 +146,14 @@ hosted_beta_user_walkthrough:
     - "ba3ca9441d6f816e40b5d176ea723a286f6c2cb6"
     - "aa07db72da6dfe35faf467c955e676f4634eb32d"
     - "a34f2b0da37a7e33d1109e84cfb153c7645a13f4"
-  deployment_candidate: "a34f2b0d"
+    - "97949dad4d0cdd0caf4265cd4d4e53c8e1e1feff"
+  deployment_candidate: "97949dad"
   deployed_source_commit: "a34f2b0da37a7e33d1109e84cfb153c7645a13f4"
   cloudflare_worker_version_id: "420fd2d4-882c-477d-b2bd-2c2648150731"
-  pending_source_candidate: null
+  pending_source_candidate: "97949dad4d0cdd0caf4265cd4d4e53c8e1e1feff"
   pending_worker_release: null
-  pending_release_boundary: "LIVE_SOURCE_A34F2B0D_WORKER_420FD2D4_APPLIED_MIGRATION_0068_AND_ONLY_PROJECT_83BFE7BD_PROVED_STAGE_3_DURABLE_CONTEXT_COMPLETION_AND_STAGE_4_TIMELINE. STAGE_5_STOPPED_AT_THE_FIRST_PRECLAIM_TERMINAL_FAILURE_WITH_NO_PROMPT_PROVIDER_DISPATCH_OR_COST. AUTHORITY_CONSUMED; NEVER_RETRY_PROJECT_83BFE7BD."
-  pending_validations: "PROVIDER_FREE_DIAGNOSIS_AND_REPAIR_OF_STAGE_5_PRECLAIM_START_FAILURE; ANY_SUCCESSOR_LIVE_PROJECT_REQUIRES_FRESH_EXACT_AUTHORITY"
+  pending_release_boundary: "LIVE_REMAINS_SOURCE_A34F2B0D_WORKER_420FD2D4_MIGRATION_0068. SOURCE_97949DAD_AND_PENDING_MIGRATION_0069_ARE_PROVIDER_FREE_ONLY. FRESH_EXACT_AUTHORITY_IS_REQUIRED_FOR_MIGRATION_DEPLOYMENT_OR_ANY_SUCCESSOR_PROJECT; NEVER_RETRY_PROJECT_83BFE7BD."
+  pending_validations: "REPAIR_OR_RECREATE_THE_LOCAL_FIXTURE_DATABASE_ONLY_WITH_EXPLICIT_SAFE_SCOPE_FOR_REAL_CHROME_SOURCE_QA; LIVE_STAGE_3_MUST_RETURN_ONE_TO_FOUR_USEFUL_GLOBAL_VISUAL_SENTENCES_WITHOUT_CHRONOLOGY_AND_STAGE_5_MUST_RECEIVE_ONLY_THE_NORMALIZED_PLAIN_TEXT; STAGE_5_PRECLAIM_START_FAILURE_REMAINS_SEPARATE"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
@@ -170,7 +171,7 @@ hosted_beta_user_walkthrough:
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
   database_preflight: "LIVE_LEDGER_68_OF_68_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
-  pending_database_migration: null
+  pending_database_migration: "0069_hosted_context_compact_profile.sql"
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
@@ -178,6 +179,7 @@ hosted_beta_user_walkthrough:
   cloudflare_preflight: "READ_ONLY_EXACT_9_SECRETS_AND_R2_PRIVATE_STATE_PASS"
   live_browser_verification: "SOURCE_A34F2B0D_WORKER_420FD2D4_PROJECT_83BFE7BD_STAGE_1_2_COMPLETE_STAGE_3_COMPLETE_WITH_SCHEMA_VALID_CONTEXT_AND_USD_0_000154_SETTLED_COST_STAGE_4_COMPLETE_WITH_53_SEGMENTS; STAGE_5_TERMINAL_PRECLAIM_START_FAILURE_WITH_ZERO_PROMPT_RUNS_ZERO_SCENE_RESULTS_ZERO_RESERVATION_AND_ZERO_PROVIDER_DISPATCH; NO_RETRY_OR_RETRIEVAL; GPU_DISABLED_UNQUALIFIED"
   fixed_blockers:
+    - "Source 97949dad makes Stage 3 context serve only downstream footage relevance and continuity. Strict request v9 returns one to four useful global visual-grounding sentences, each at most 160 characters and 480 characters combined; one sentence is valid when more would be filler. It explicitly excludes chronology, scene order, thesis summary, local actions, examples, headings, tags, and facts already recoverable from the exact phrase plus containing/previous/next sentences. The provider and durable boundary remains strict JSON with only a sentences array; the Stage 5 authority flattens it to normalized plain text and rejects legacy verbose or malformed context. The Stage 3 output ceiling is 350 tokens instead of 3,000 and the prompt-batch context cap is 480 characters instead of 6,000. The UI shows only the short text. Additive migration 0069 selects immutable profile revision 7 and has SHA-256 9b4fd0519a756c78547ea2976a421299dfe4c3b8b51ba94cacff8be6961796f2. Focused web tests pass 71/71, database tests 11/11, the compact pipeline test passes, and builds, typechecks, lint, context/schema/deployment validation, staging build/quarantine, secret scan, and diff checks pass. Real-Chrome source QA remains unclaimed because the preserved local fixture database rejected historical migration metadata at chain position 50; no reset was performed. No remote action or spend occurred."
     - "Exact USD 2 authority applied migration 0068 and reverified the complete 68/68 ledger, FORCE RLS, and exact runtime grants, then deployed clean source a34f2b0d once as Worker 420fd2d4 with config SHA-256 5f38da69. Eight consecutive cache-bypassed exact-source status reads passed. Authenticated Chrome created exactly one project 83bfe7bd capped at USD 2 with Helen v1, Will Carter v1, and the 4m01s voiceover. Stages 1-2 completed. Stage 3 completed durably in 13.292 seconds with context a2046ccb, one schema-valid 11-key transcript-wide context document, response/context hashes, and USD 0.000154 reported and settled against its USD 0.01 reservation. Stage 4 completed with 53 timeline segments. Stage 5 stopped at its first terminal pre-claim start failure: zero durable prompt runs, zero prompt scene results, zero prompt execution count, no reservation, no provider dispatch, and no prompt cost. No retry or retrieval occurred. No GPU, RunPod, production, or retained-volume mutation occurred. Stage 3 is fixed live; the exact authority is consumed."
     - "Exact USD 2 authority applied migration 0067, reverified 67/67 migration rows, FORCE RLS, and exact runtime grants, then deployed source ba3ca944 once as Worker a99108e6 with config SHA-256 2b7094bd. Eight exact-source status reads passed. Authenticated Chrome created exactly one project ba392398 capped at USD 2 with Helen v1, Will Carter v1, and the 4m01s voiceover. Stages 1-2 completed; Stage 3 reached DeepSeek V4 Flash then stopped UNKNOWN after 8.422 seconds. Durable state has one USD 0.01 reservation, provider_may_have_charged=true, no response/context hash or document, no reported/settled cost, zero prompt runs, and no Stage 4-5. No retry or retrieval occurred. Source aa07db72 fixes the completion function's ambiguous variable/column bindings in migration 0068. The new database regression executes prepare through completion and proves the canonical asset, context, attempt, task, and RESERVED/REPORTED/SETTLED lineage. Focused tests pass 11/11 and scoped build/typecheck/lint/deployment/context/secret/diff checks pass. The historical full control-plane suite retains six unrelated stale migration-count/old-cap failures. Fresh exact authority is required; never retry or retrieve ba392398."
     - "Source 83e8b1f6 supersedes the unactivated Gemini candidate and repairs the remaining Stage 3 provider path exposed by project fe1f0706 with Runware DeepSeek V4 Flash. Current official rates are USD 0.076 per 1M input tokens and USD 0.153 per 1M output tokens, materially below Gemini 3.1 Flash Lite at USD 0.25 input and USD 1.50 output. DeepSeek supports a 1M-token context and native strict JSON Schema. Stage 3 request v8 uses thinking off, temperature 0.1, topP 0.9, and a 3,000-token ceiling while preserving one whole-transcript request, strict schema/local validation, deterministic full-request task identity, the USD 0.01 reservation, and no blind redispatch. Migration 0067 selects immutable profile revision 6 and fails before claim/reservation on drift. Focused hosted tests pass 78/78; migration/profile tests pass 10/10; control-plane build, web typecheck, lint/format, staging build/quarantine, deployment/context validation, secret scan, migration hash, and diff checks pass. The exact source 54c91ce2 approval was not exercised: no migration, deployment, provider call, project creation, or spend occurred. Fresh exact authority is required for source 83e8b1f6 and the changed migration hash."
@@ -4994,17 +4996,17 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_stage_3_fixed_live_stage_5_preclaim_failure
-  status: stage_3_fixed_live_stage_5_preclaim_failure_requires_provider_free_diagnosis
+  milestone: private_hosted_beta_compact_stage_3_context_source_green
+  status: compact_stage_3_context_awaiting_fresh_exact_migration_deployment_and_project_authority
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: release_and_deployment_authority_consumed_non_reusable
   task_stage: provider_free_product_execution
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
-  read_profile: v2_13_release_operations
-  task_brief: tasks/VF-10-13.md
-  goal: "Stage 3 is fixed and proven live. Diagnose and repair the Stage 5 pre-claim automatic prompt-start failure provider-free. Never retry or retrieve project 83bfe7bd. Any successor live project requires fresh exact source-bound authority. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
+  read_profile: v2_06_hosted_staging
+  task_brief: tasks/VF-10-06.md
+  goal: "Under fresh exact authority only, apply migration 0069, deploy compact-context source 97949dad, and prove that one new Stage 3 result contains only useful global visual grounding and is passed to Stage 5 as normalized plain text without chronology. Never retry project 83bfe7bd. The separate Stage 5 pre-claim start failure remains unresolved. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -5025,7 +5027,7 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "The exact source a34f2b0d / migration 0068 authority was consumed after project 83bfe7bd completed Stages 1-4 and stopped at Stage 5's first terminal pre-claim failure. No retry or retrieval occurred. Stage 3 succeeded durably at USD 0.000154. Fresh exact authority is required for any successor live project. No provider call, remote mutation, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized."
+  authority_note: "The exact source a34f2b0d / migration 0068 authority remains consumed. Compact-context source 97949dad and migration 0069 are undeployed provider-free work only. Fresh exact authority is required for migration, deployment, or any successor live project. No provider call, remote mutation, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444"
@@ -5034,8 +5036,8 @@ recommended_next_task:
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: stage_3_fixed_live_stage_5_preclaim_failure_authority_consumed
-  execution_blocker: stage_5_preclaim_failure_requires_provider_free_diagnosis_before_any_fresh_authority
+  execution_status: compact_stage_3_context_source_green_undeployed
+  execution_blocker: compact_context_live_proof_requires_fresh_exact_migration_deployment_and_one_project_authority
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean
