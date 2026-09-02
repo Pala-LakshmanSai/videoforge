@@ -4,7 +4,7 @@ updated_at: "2026-09-02"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: private_hosted_beta_transcription_recovery_release_ready
+current_milestone: private_hosted_beta_transcription_recovery_live
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -135,20 +135,20 @@ hosted_beta_user_walkthrough:
     - "2d7183ff7f8afa8f50d6ef707827a19357ccc953"
     - "5df6e19404a099ccf209a9ee292d5d75fc22fc59"
     - "d917bcf3ec1ac4f2ff7d57158fd468e579b7c1bd"
-  deployment_candidate: "c9c9ee9c"
-  deployed_source_commit: "c9c9ee9c947b4e83b81f269a9e9bc31490ab375a"
-  cloudflare_worker_version_id: "48adde33-366e-454b-816e-904e2c0096b2"
-  pending_source_candidate: "e3d832807d48d7ca9949ae43fe7c854eec75deeb"
-  pending_worker_release: "0.1.13"
-  pending_release_boundary: "SOURCE_C9C9EE9C_IS_LIVE_AS_WORKER_48ADDE33_WITH_CONFIG_86304812_AND_MEDIA_WORKER_0_1_12. PROJECT_9CE28F56_COMPLETED_STAGE_1_THEN_STOPPED_TERMINALLY_AT_STAGE_2_WHEN_THE_LOCAL_TRANSCRIPTION_CHILD_EXITED_ABNORMALLY_AFTER_ABOUT_8_3_SECONDS. THE WORKER REMAINED_ONLINE; THE EXACT_PRIVATE_AUDIO_IS_VALID_AND AN EXACT LOCAL REPLAY SUCCEEDED WITH_475_TIMED_WORDS. SOURCE_E3D83280_ADDS_ONE_BOUNDED_ASR_ONLY_CHILD_REPLACEMENT_AND_SAFE_FAILURE_DIAGNOSTICS; EXECUTION_BUNDLE_SHA256_IS_4CD3B65E. THE_CURRENT_PROJECT_HAS_A_USER_SELECTED_USD_1_CAP_OUTSIDE_THE_APPROVED_USD_0_05_AUTHORITY_AND_MUST_NOT_BE_RETRIED. WORKER_RELEASE_PUBLICATION_DEPLOYMENT_OR_A_SUCCESSOR_PROJECT_REQUIRES_FRESH_EXACT_AUTHORITY."
+  deployment_candidate: "c1b80b36"
+  deployed_source_commit: "c1b80b3642453a93a3ef94e49b057344c7ea2f60"
+  cloudflare_worker_version_id: "25e72e87-0825-461e-a56c-476b33ceb005"
+  pending_source_candidate: null
+  pending_worker_release: null
+  pending_release_boundary: "SOURCE_C1B80B36_IS_LIVE_AS_WORKER_25E72E87_WITH_CONFIG_5E1E6378_AND_IMMUTABLE_MEDIA_WORKER_0_1_13. THE_INSTALLED_MAC_WORKER_IS_ONLINE_WITH_EXACT_EXECUTION_BUNDLE_B3A7686E; AUTHENTICATED_CHROME_ADVERTISES_0_1_13_AND_SHOWS_THE_DEVICE_ONLINE. PROJECT_9CE28F56_REMAINS_TERMINAL_WITH_ITS_USER_SELECTED_USD_1_CAP_AND_MUST_NOT_BE_RETRIED. ONE_SUCCESSOR_PROJECT_REQUIRES_FRESH_EXACT_SOURCE_BOUND_AUTHORITY_AND_AN_EXACT_USD_0_05_PROJECT_MAXIMUM."
   pending_validations: "CANONICAL_GPT5_NANO_MUST_PASS_STAGE_3_AND_RETURN_ONE_SCHEMA_VALID_CONTEXT_OBJECT; AUTOMATIC_STAGE_4_SCENE_PLAN; CANONICAL_DEEPSEEK_V4_FLASH_STAGE_5_MUST_PERSIST_INSPECTABLE_STYLE_BOUND_PROMPTS"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
   deployment_tooling_diagnosis: "ROOT_CAUSE_AJV_DYNAMIC_CODE_GENERATION_IN_CLOUDFLARE: eager compilation first broke startup; request-lazy compilation moved the same forbidden `new Function` call to the first contract validation. Source e7ee8c1e generates static validators at build time and removes runtime code generation."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "86304812e348238e01048adcd29a8670fd1d1d94175d39873c24582193ffbc2c"
-  deployment_approval: "APPROVE PRIVATE HOSTED BETA c5b14a2f7e2c2d6be19a22d1154030dd2fda0c8e MIGRATION 0062 789404f23671518edb738cf4f5e0f5b5ce5ed25eaad6cc8033b089351d309404 CONFIG 3e7b4f105bae16ed9b4796ef5c9a62d98d713b81031c34bddec00f92de21f0c7 WORKER 0.1.12 ONE NEW STAGE 1-5 PROJECT CAP USD 0.05"
+  deployed_config_sha256: "5e1e6378b7c5c29530325aa56f1a3ce7cb96fafd2ff527ebe9bec0be61b6dcf4"
+  deployment_approval: "APPROVE CORRECTIVE PRIVATE HOSTED BETA c1b80b3642453a93a3ef94e49b057344c7ea2f60 RELEASE media-worker-v0.1.13 BUNDLE b3a7686ecc84b9bbae754dd66ce756b69ea2a92e35807cbc7329fe43c5a4bfc4 WORKER 0.1.13 DEPLOY STAGING CAP USD 0"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -165,9 +165,10 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_9_SECRETS_AND_R2_PRIVATE_STATE_PASS"
-  live_browser_verification: "SOURCE_C9C9EE9C_WORKER_48ADDE33_IS_LIVE; MEDIA_WORKER_0_1_12_REMAINED_ONLINE; PROJECT_9CE28F56_HHELEN_COMPLETED_STAGE_1_AND_FAILED_STAGE_2_BEFORE_A_DURABLE_TRANSCRIPT; EXACT_AUDIO_REPLAY_SUCCEEDED_LOCALLY; STAGES_3_TO_5_NEVER_STARTED; NO_PROVIDER_CHARGE; NO_RETRY; SOURCE_E3D83280_AND_WORKER_0_1_13_AWAIT_FRESH_EXACT_RELEASE_AND_DEPLOYMENT_AUTHORITY"
+  live_browser_verification: "SOURCE_C1B80B36_WORKER_25E72E87_IS_LIVE; FOUR_CACHE_BYPASSED_STATUS_READS_PASS; IMMUTABLE_RELEASE_MEDIA_WORKER_V0_1_13_TARGETS_EXACT_SOURCE_AND_BUNDLE_B3A7686E; MAC_APP_SIGNATURE_AND_DMG_HASH_PASS; NEON_AND_AUTHENTICATED_CHROME_SHOW_MEDIA_WORKER_0_1_13_ONLINE; THE_FAILURE_COPY_NO_LONGER_FALSELY_REQUESTS_RECONNECTION; PROJECT_9CE28F56_WAS_NOT_RETRIED; GPU_DISABLED_UNQUALIFIED; NO_PROVIDER_CALL_DATABASE_MIGRATION_OR_SPEND"
   fixed_blockers:
-    - "Authenticated Chrome created project 9ce28f56, but the user-selected USD 1 project maximum exceeded the approved USD 0.05 authority. Stage 1 completed; Stage 2 attempt db59d2dd failed in about 8.3 seconds with lease failure MEDIA_EXECUTION_FAILED before any transcript was saved, so Stages 3-5 never started and no provider charge occurred. The personal worker remained online. The exact 2,548,151-byte, 159.216-second MP3 is valid and decodes with the bundled FFmpeg; exact replay with the bundled whisper executable/model succeeded with 475 timed words in 15.6 seconds. The original worker discarded child stderr, so the finer transient exit cause is unrecoverable. Source e3d83280 adds one bounded ASR-only child replacement, preserves render non-retry behavior, surfaces safe MEDIA_EXECUTION_SUBPROCESS_FAILED diagnostics, and removes the false reconnect advice. Worker tests pass 66/66; focused hosted tests pass 97/97; web typecheck, Python lint/format, targeted release tests, and diff checks pass. Worker 0.1.13 execution bundle SHA-256 is 4cd3b65e6c9e1b2fa96f10314c0048bff6ef4289b815a9cadd47e8e7dd267144. No retry, worker publication, deployment, new provider request, GPU/RunPod work, production action, or spend occurred."
+    - "Corrective exact USD 0 authority published immutable release media-worker-v0.1.13 from source c1b80b36 through GitHub run 33609054728 after Windows and macOS builds, unit tests, universal2/signature, DMG, hash, and non-replaceable publication checks passed. Release manifest SHA-256 is 02a95664cfd7fa57c02316d3c84cfe798550a64eaa49c56de54f3675f5a8cb43 and execution bundle SHA-256 is b3a7686ecc84b9bbae754dd66ce756b69ea2a92e35807cbc7329fe43c5a4bfc4. The first run 33608344032 stopped before build/publication because the original proposal incorrectly bound c1b80b36 to predecessor bundle 4cd3b65e; no tag, asset, deployment, or spend resulted. Exact config 5e1e6378 deployed source c1b80b36 once as Worker 25e72e87. Four cache-bypassed status reads pass with GPU DISABLED_UNQUALIFIED. The verified Mac app replaced 0.1.12; Neon and authenticated Chrome show 0.1.13 ONLINE with the exact bundle, and Chrome shows the repaired failure copy. Project 9ce28f56 was not retried. No provider request, database migration, GPU/RunPod work, production action, or spend occurred."
+    - "Authenticated Chrome created project 9ce28f56, but the user-selected USD 1 project maximum exceeded the approved USD 0.05 authority. Stage 1 completed; Stage 2 attempt db59d2dd failed in about 8.3 seconds with lease failure MEDIA_EXECUTION_FAILED before any transcript was saved, so Stages 3-5 never started and no provider charge occurred. The personal worker remained online. The exact 2,548,151-byte, 159.216-second MP3 is valid and decodes with the bundled FFmpeg; exact replay with the bundled whisper executable/model succeeded with 475 timed words in 15.6 seconds. The original worker discarded child stderr, so the finer transient exit cause is unrecoverable. Source e3d83280 adds one bounded ASR-only child replacement, preserves render non-retry behavior, surfaces safe MEDIA_EXECUTION_SUBPROCESS_FAILED diagnostics, and removes the false reconnect advice. Worker tests pass 66/66; focused hosted tests pass 97/97; web typecheck, Python lint/format, targeted release tests, and diff checks pass. The released worker 0.1.13 execution bundle SHA-256 at exact release commit c1b80b36 is b3a7686ecc84b9bbae754dd66ce756b69ea2a92e35807cbc7329fe43c5a4bfc4."
     - "Authenticated Chrome created approved project 3a8238fa with Helen v1, Will Carter v1, a 2m39s voiceover, and the exact USD 0.05 project maximum. Stages 1-2 completed, then Stage 3 failed definitively at Runware with HTTP 400/providerError; the USD 0.01 reservation was released, the UI reports no provider charge, no retry occurred, and Stages 4-5 never started. Runware's official GPT-5 Nano schema confirms the outer request, while official OpenAI Structured Outputs documentation shows the strict schema subset does not support minLength/maxLength for strings. Source c9c9ee9c removes only those wire keywords, preserves maxItems and every exact local string/count/total-size acceptance check, advances the deterministic request contract to v3, and aligns the rollback runbook with migration 0062. Hosted tests pass 111/111; pipeline tests pass 124/124; both web typechecks, targeted lint/format, staging build/quarantine, deployment validation, context validation, secret scan, and diff checks pass. Rendered successor config SHA-256 is 86304812e348238e01048adcd29a8670fd1d1d94175d39873c24582193ffbc2c with worker 0.1.12 preserved. No deployment, new project, provider request, GPU/RunPod work, production action, or spend occurred while preparing the repair; fresh exact authority is required."
     - "Exact approval deployed source d917bcf3 once as Worker ac4c6572 with config SHA-256 93f8765c and preserved personal worker 0.1.12 ONLINE. Before project creation or provider dispatch, authenticated Chrome exposed a stale USD 0.10 minimum that rejected the exact approved USD 0.05 Stage 1-5 cap. Source c5b14a2f aligns the browser, hosted parser, canonical TypeScript/Python contracts, generated validators, and additive migration 0062 to USD 0.05 while retaining the USD 2 maximum and exact USD 0.01 plus USD 0.04 stage reservations. Focused UI/server tests pass 113/113; contract tests pass 209/209; migration-chain/hardening tests pass 17/17; web/control-plane/contracts typechecks, contract sync, changed-file lint, staging build/quarantine, and diff checks pass. No project, provider request, GPU/RunPod action, production action, or spend occurred. Migration and deployment require fresh exact authority."
     - "User-selected model routing is source-green: Stage 3 remains canonical Runware openai-gpt-5-nano for strict whole-voiceover context extraction, while Stage 5 now uses canonical deepseek-v4-flash for cost-efficient scene-prompt reasoning. The DeepSeek request uses strict JSON, temperature 0.2, topP 0.9, high thinking, the existing bounded dynamic output ceiling, and new immutable request identity runware-deepseek-v4-flash-prompt-request-v3 so historical DeepSeek/GPT task IDs cannot collide. Source d917bcf3 supersedes the undeployed 5df6e194 proposal. Pipeline tests pass 124/124; focused hosted context/prompt tests pass 16/16; both typechecks, changed-file lint, staging build/quarantine, and diff checks pass. No deployment, provider call, project mutation, GPU/RunPod work, production action, or spend occurred."
@@ -4967,17 +4968,17 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_transcription_recovery_release_ready
-  status: transcription_recovery_source_green_awaiting_exact_release_authority
+  milestone: private_hosted_beta_transcription_recovery_live
+  status: transcription_recovery_live_awaiting_one_fresh_project_authority
   dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: prior_project_authority_consumed_non_reusable
+  authorization_status: release_and_deployment_authority_consumed_non_reusable
   task_stage: provider_free_product_execution
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Publish and deploy the sealed 0.1.13 personal-worker transcription recovery only after fresh exact authority, then continue with one new USD 0.05-capped project. The terminal USD 1-capped project must not be retried. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
+  goal: "Continue only with one fresh source-bound Stage 1-5 project capped at exactly USD 0.05. The terminal USD 1-capped project must not be retried. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
