@@ -18,8 +18,8 @@ import type {
   PromptWriterSceneOutput,
 } from "./types.js";
 
-export const RUNWARE_PROMPT_MODEL = "openai-gpt-5-nano" as const;
-export const RUNWARE_PROMPT_REQUEST_VERSION = "runware-gpt5-nano-prompt-request-v2" as const;
+export const RUNWARE_PROMPT_MODEL = "deepseek-v4-flash" as const;
+export const RUNWARE_PROMPT_REQUEST_VERSION = "runware-deepseek-v4-flash-prompt-request-v3" as const;
 export const RUNWARE_PROMPT_MAX_OUTPUT_TOKENS = 8_000 as const;
 export const RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE = 150 as const;
 
@@ -61,7 +61,9 @@ export interface RunwarePromptApiRequest {
   };
   readonly settings: {
     readonly systemPrompt: typeof SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
-    readonly thinkingLevel: "medium";
+    readonly thinkingLevel: "high";
+    readonly temperature: 0.2;
+    readonly topP: 0.9;
     readonly maxTokens: number;
   };
   readonly messages: readonly [
@@ -318,7 +320,9 @@ export function buildRunwarePromptRequest(
     }),
     settings: Object.freeze({
       systemPrompt: SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-      thinkingLevel: "medium",
+      thinkingLevel: "high",
+      temperature: 0.2,
+      topP: 0.9,
       maxTokens: Math.min(
         RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
         Math.max(512, scenes.length * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE),
