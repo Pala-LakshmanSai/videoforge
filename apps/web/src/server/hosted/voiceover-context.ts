@@ -16,7 +16,7 @@ import {
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
 const MODEL = "deepseek:v4@flash" as const;
-const REQUEST_CONTRACT_VERSION = "runware-deepseek-context-request-v3" as const;
+const REQUEST_CONTRACT_VERSION = "runware-deepseek-context-request-v4" as const;
 
 const SYSTEM_PROMPT = [
   "Extract durable story context from the complete VideoForge voiceover transcript.",
@@ -259,10 +259,13 @@ export async function prepareHostedVoiceoverContextRequest(input: {
     jsonSchema: { name: "videoforge_voiceover_story_context", strict: true, schema },
     settings: {
       systemPrompt: SYSTEM_PROMPT,
-      thinkingLevel: "off",
+      // Runware's documented DeepSeek structured-output profile uses high
+      // reasoning and a 4K-5K generation ceiling. The accepted context remains
+      // independently bounded to 6,000 characters and USD 0.01 below.
+      thinkingLevel: "high",
       temperature: 0.1,
       topP: 0.8,
-      maxTokens: 1_600,
+      maxTokens: 5_000,
     },
     messages: [{ role: "user", content: canonicalizeJson({ transcript: input.transcript }) }],
   });

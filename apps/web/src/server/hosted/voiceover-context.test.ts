@@ -34,7 +34,7 @@ describe("hosted voiceover context extraction", () => {
     expect(prepared.requestHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
     expect(prepared.requestBytes).toContain("complete VideoForge voiceover transcript");
     expect(request).toMatchObject({ model: "deepseek:v4@flash", outputFormat: "JSON" });
-    expect((request.settings as Record<string, unknown>).maxTokens).toBe(1_600);
+    expect(request.settings).toMatchObject({ thinkingLevel: "high", maxTokens: 5_000 });
   });
 
   it("binds the provider task UUID to the full request instead of the transcript hash alone", async () => {
