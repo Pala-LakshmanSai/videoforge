@@ -16,7 +16,7 @@ import {
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
 const MODEL = "openai-gpt-5-nano" as const;
-const REQUEST_CONTRACT_VERSION = "runware-gpt5-nano-context-request-v2" as const;
+const REQUEST_CONTRACT_VERSION = "runware-gpt5-nano-context-request-v3" as const;
 
 const SYSTEM_PROMPT = [
   "Extract durable story context from the complete VideoForge voiceover transcript.",
@@ -44,44 +44,47 @@ const schema = Object.freeze({
     "resolved_references",
   ],
   properties: {
-    primary_topic: { type: "string", minLength: 1, maxLength: 140 },
-    summary: { type: "string", minLength: 1, maxLength: 500 },
-    people: { type: "array", maxItems: 6, items: { type: "string", minLength: 1, maxLength: 80 } },
-    places: { type: "array", maxItems: 6, items: { type: "string", minLength: 1, maxLength: 80 } },
+    // OpenAI Structured Outputs supports only a subset of JSON Schema and does
+    // not accept minLength/maxLength here. VideoForge enforces the exact string
+    // bounds again in validateContext after the provider returns the object.
+    primary_topic: { type: "string" },
+    summary: { type: "string" },
+    people: { type: "array", maxItems: 6, items: { type: "string" } },
+    places: { type: "array", maxItems: 6, items: { type: "string" } },
     era_and_time: {
       type: "array",
       maxItems: 5,
-      items: { type: "string", minLength: 1, maxLength: 80 },
+      items: { type: "string" },
     },
     recurring_objects: {
       type: "array",
       maxItems: 8,
-      items: { type: "string", minLength: 1, maxLength: 80 },
+      items: { type: "string" },
     },
     processes: {
       type: "array",
       maxItems: 6,
-      items: { type: "string", minLength: 1, maxLength: 100 },
+      items: { type: "string" },
     },
     cause_and_effect: {
       type: "array",
       maxItems: 5,
-      items: { type: "string", minLength: 1, maxLength: 100 },
+      items: { type: "string" },
     },
     chronology: {
       type: "array",
       maxItems: 6,
-      items: { type: "string", minLength: 1, maxLength: 100 },
+      items: { type: "string" },
     },
     continuity_facts: {
       type: "array",
       maxItems: 6,
-      items: { type: "string", minLength: 1, maxLength: 100 },
+      items: { type: "string" },
     },
     resolved_references: {
       type: "array",
       maxItems: 6,
-      items: { type: "string", minLength: 1, maxLength: 100 },
+      items: { type: "string" },
     },
   },
 });

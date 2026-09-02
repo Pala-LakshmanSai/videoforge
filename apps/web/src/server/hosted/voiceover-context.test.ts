@@ -40,6 +40,35 @@ describe("hosted voiceover context extraction", () => {
       "systemPrompt",
       "thinkingLevel",
     ]);
+    expect(JSON.stringify(request.jsonSchema)).not.toMatch(/"(?:minLength|maxLength)"/u);
+    expect(JSON.stringify(request.jsonSchema)).toContain('"maxItems"');
+  });
+
+  it("keeps exact string limits in local acceptance after removing unsupported wire constraints", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it.",
+      transcriptHash: HASH,
+    });
+    const overlong = { ...contextDocument(), primary_topic: "x".repeat(141) };
+    await expect(
+      extractHostedVoiceoverContext({
+        prepared,
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        fetcher: async () =>
+          Response.json({
+            data: [
+              {
+                taskUUID: prepared.request.taskUUID,
+                taskType: "textInference",
+                text: JSON.stringify(overlong),
+                cost: 0.001,
+                finishReason: "stop",
+                usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+              },
+            ],
+          }),
+      }),
+    ).rejects.toThrow("VOICEOVER_CONTEXT_INVALID");
   });
 
   it("binds the provider task UUID to the full request instead of the transcript hash alone", async () => {
