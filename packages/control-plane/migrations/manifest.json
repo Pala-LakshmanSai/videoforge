@@ -396,6 +396,12 @@
       "name": "hosted_context_compatible_profile",
       "filename": "0066_hosted_context_compatible_profile.sql",
       "sha256": "sha256:5564d62a3128d8850dfdd60cbf68cd4476d8585dcc04126a0cd1e0ad254317e5"
+    },
+    {
+      "version": 67,
+      "name": "hosted_context_gemini_profile",
+      "filename": "0067_hosted_context_gemini_profile.sql",
+      "sha256": "sha256:213e2a564e79ac497a9a284da0289c68eb45b68bf44f53dcccbe344d02815b7e"
     }
   ]
 }

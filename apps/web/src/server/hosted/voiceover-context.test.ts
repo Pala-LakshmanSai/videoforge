@@ -35,12 +35,22 @@ describe("hosted voiceover context extraction", () => {
     expect(prepared.requestBytes).toContain("complete VideoForge voiceover transcript");
     expect(prepared.requestBytes).toContain("primary_topic between 1 and 140 characters");
     expect(prepared.requestBytes).toContain("Never emit an empty string");
-    expect(request).toMatchObject({ model: "openai-gpt-5-nano", outputFormat: "JSON" });
-    expect(request.settings).toMatchObject({ thinkingLevel: "low", maxTokens: 3_000 });
+    expect(request).toMatchObject({
+      model: "google:gemini@3.1-flash-lite",
+      outputFormat: "JSON",
+    });
+    expect(request.settings).toMatchObject({
+      thinkingLevel: "low",
+      temperature: 0.1,
+      topP: 0.9,
+      maxTokens: 3_000,
+    });
     expect(Object.keys(request.settings as Record<string, unknown>).sort()).toEqual([
       "maxTokens",
       "systemPrompt",
+      "temperature",
       "thinkingLevel",
+      "topP",
     ]);
     expect(JSON.stringify(request.jsonSchema)).not.toMatch(/"(?:minLength|maxLength)"/u);
     expect(JSON.stringify(request.jsonSchema)).toContain('"maxItems"');
@@ -424,7 +434,7 @@ describe("hosted voiceover context extraction", () => {
                 {
                   taskType: "textInference",
                   taskUUID: prepared.request.taskUUID,
-                  model: "openai-gpt-5-nano",
+                  model: "google:gemini@3.1-flash-lite",
                   text: JSON.stringify(contextDocument()),
                   cost: 0.001,
                   finishReason: "stop",
