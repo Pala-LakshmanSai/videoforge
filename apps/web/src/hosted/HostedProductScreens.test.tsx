@@ -60,6 +60,7 @@ import {
   HOSTED_SHA256_CHUNK_BYTES,
   audioDurationMs,
   hostedFileSha256,
+  hostedVoiceoverFilename,
   hostedProjectPollInterval,
   hostedPreflightEstimateText,
   isFailClosedGpuReadiness,
@@ -238,6 +239,14 @@ describe("hosted browser security boundaries", () => {
     await expect(
       hostedFileSha256(new File(["abc"], "voiceover.mp3", { type: "audio/mpeg" })),
     ).resolves.toBe("sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  });
+
+  it("maps an overlong local voiceover name to one stable server-safe filename", () => {
+    const checksum = `sha256:${"a".repeat(64)}`;
+    expect(
+      hostedVoiceoverFilename(`${"long-export-name-".repeat(15)}.mp3`, "audio/mpeg", checksum),
+    ).toBe("voiceover-aaaaaaaaaaaaaaaa.mp3");
+    expect(hostedVoiceoverFilename("voiceover.wav", "audio/wav", checksum)).toBe("voiceover.wav");
   });
 
   it("bounds a declared 1 GiB file read to one fixed-size slice when cancelled", async () => {

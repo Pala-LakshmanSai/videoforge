@@ -51,7 +51,24 @@ const MIN_STYLE_REFERENCES = 3;
 const DEFAULT_SPEND_CAP_USD = "1.00";
 const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v2";
 const VOICEOVER_TYPES = new Set(["audio/mpeg", "audio/wav"]);
+const MAX_HOSTED_VOICEOVER_FILENAME = 160;
 export const HOSTED_SHA256_CHUNK_BYTES = 4 * 1024 * 1024;
+
+export function hostedVoiceoverFilename(
+  filename: string,
+  contentType: string,
+  checksumSha256: string,
+): string {
+  const serverSafe =
+    filename.length >= 1 &&
+    filename.length <= MAX_HOSTED_VOICEOVER_FILENAME &&
+    !filename.includes("/") &&
+    !filename.includes("\\") &&
+    [...filename].every((character) => character.charCodeAt(0) >= 32);
+  if (serverSafe) return filename;
+  const extension = contentType === "audio/wav" ? "wav" : "mp3";
+  return `voiceover-${checksumSha256.slice("sha256:".length, "sha256:".length + 16)}.${extension}`;
+}
 
 function base64ByteLength(value: string): number {
   const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
@@ -1417,6 +1434,7 @@ export function HostedCreateProjectScreen() {
   const [userSeed, setUserSeed] = useState("");
   const [spendCapUsd, setSpendCapUsd] = useState(DEFAULT_SPEND_CAP_USD);
   const [voiceoverMeta, setVoiceoverMeta] = useState<{
+    readonly filename: string;
     readonly contentType: string;
     readonly checksumSha256: string;
     readonly durationMs: number;
@@ -1458,6 +1476,7 @@ export function HostedCreateProjectScreen() {
         throw new Error("Use a WAV or MP3 voiceover for hosted generation.");
       if (voiceover.size > MAX_VOICEOVER_BYTES) throw new Error("Voiceover must be at most 1 GB.");
       const checksumSha256 = await hostedFileSha256(voiceover);
+      const filename = hostedVoiceoverFilename(voiceover.name, contentType, checksumSha256);
       const durationMs = await bounded(
         audioDurationMs(voiceover),
         "Voiceover duration timed out. Choose a valid WAV or MP3 file and retry.",
@@ -1476,7 +1495,7 @@ export function HostedCreateProjectScreen() {
             user_seed: userSeed.trim() ? Number(userSeed) : null,
             spend_cap_usd: cap,
             voiceover: {
-              filename: voiceover.name,
+              filename,
               content_type: contentType,
               content_length: voiceover.size,
               checksum_sha256: checksumSha256,
@@ -1486,10 +1505,10 @@ export function HostedCreateProjectScreen() {
         }),
         "Hosted preflight timed out. Retry the readiness check.",
       );
-      return { result, contentType, checksumSha256, durationMs };
+      return { result, filename, contentType, checksumSha256, durationMs };
     },
-    onSuccess: ({ result, contentType, checksumSha256, durationMs }) => {
-      setVoiceoverMeta({ contentType, checksumSha256, durationMs });
+    onSuccess: ({ result, filename, contentType, checksumSha256, durationMs }) => {
+      setVoiceoverMeta({ filename, contentType, checksumSha256, durationMs });
       setPreflightResult(result);
       setError(null);
     },
@@ -1531,7 +1550,7 @@ export function HostedCreateProjectScreen() {
             user_seed: userSeed.trim() ? Number(userSeed) : null,
             spend_cap_usd: cap,
             voiceover: {
-              filename: voiceover.name,
+              filename: metadata.filename,
               content_type: metadata.contentType,
               content_length: voiceover.size,
               checksum_sha256: metadata.checksumSha256,
