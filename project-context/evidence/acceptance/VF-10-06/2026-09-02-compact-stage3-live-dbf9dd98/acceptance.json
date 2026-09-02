@@ -76,6 +76,8 @@
   "prohibited_actions": {
     "runpod_calls": 0,
     "gpu_jobs": 0,
+    "active_provider_workload_leases": 0,
+    "active_serverless_attempts": 0,
     "production_mutation": false,
     "volume_mutation": false
   }
