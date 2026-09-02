@@ -114,7 +114,7 @@ writeFileSync(
       checkpoint: "V2-06",
       authority: {
         mode: "APPROVED",
-        maximum_cumulative_finite_external_spend_usd: 3,
+        maximum_cumulative_finite_external_spend_usd: 2,
         cloudflare_r2_recurring_ceiling_usd_per_month: 2,
         approved_at: "2026-08-17T00:00:00.000Z",
         non_transferable: true,

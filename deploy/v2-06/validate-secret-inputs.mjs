@@ -29,7 +29,7 @@ if (
   activation.schema_version !== "videoforge-v2-06-activation/v1" ||
   activation.checkpoint !== "V2-06" ||
   activation.authority?.mode !== "APPROVED" ||
-  activation.authority?.maximum_cumulative_finite_external_spend_usd !== 3 ||
+  activation.authority?.maximum_cumulative_finite_external_spend_usd !== 2 ||
   activation.authority?.cloudflare_r2_recurring_ceiling_usd_per_month !== 2 ||
   activation.authority?.non_transferable !== true ||
   activation.authority?.email_provider !== "NONE" ||

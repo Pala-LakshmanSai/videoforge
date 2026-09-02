@@ -16,7 +16,7 @@ const APPROVED_NEON_DATABASE = "neondb";
 const APPROVED_NEON_RUNTIME_ROLE = "videoforge_v2_06_runtime";
 const APPROVED_GOOGLE_PROJECT_ID = "videoforge-v2-06-staging-0817";
 const APPROVED_R2_RECURRING_CEILING_USD = 2;
-const APPROVED_FINITE_SPEND_CAP_USD = 3;
+const APPROVED_FINITE_SPEND_CAP_USD = 2;
 const APPROVED_RETENTION = "UNTIL_EXPLICIT_AUTHENTICATED_USER_DELETE";
 const fail = (message) => {
   throw new Error(`V2-06 staging config renderer: ${message}`);
