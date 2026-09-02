@@ -384,6 +384,12 @@
       "name": "hosted_context_low_latency_profile",
       "filename": "0064_hosted_context_low_latency_profile.sql",
       "sha256": "sha256:8a7822ac9418044b3d8db948aae6c8298894b411e9248137f10b681371b4af14"
+    },
+    {
+      "version": 65,
+      "name": "hosted_context_no_reasoning_profile",
+      "filename": "0065_hosted_context_no_reasoning_profile.sql",
+      "sha256": "sha256:216c15dc379a93ec597eb8b0d325323b5d7a8c8091a1955cdffae951e360efea"
     }
   ]
 }

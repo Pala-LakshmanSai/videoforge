@@ -16,7 +16,7 @@ import {
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
 const MODEL = "openai-gpt-5-nano" as const;
-const REQUEST_CONTRACT_VERSION = "runware-gpt5-nano-context-request-v5" as const;
+const REQUEST_CONTRACT_VERSION = "runware-gpt5-nano-context-request-v6" as const;
 
 const SYSTEM_PROMPT = [
   "Extract durable story context from the complete VideoForge voiceover transcript.",
@@ -267,11 +267,12 @@ export async function prepareHostedVoiceoverContextRequest(input: {
     jsonSchema: { name: "videoforge_voiceover_story_context", strict: true, schema },
     settings: {
       systemPrompt: SYSTEM_PROMPT,
-      // This is bounded extraction, not open-ended reasoning. Keep the request
-      // below the provider's observed ~30 second failure edge while the strict
-      // schema and local validator remain the acceptance authority.
-      thinkingLevel: "low",
-      maxTokens: 1_600,
+      // The live v5 request returned in about eight seconds but did not contain
+      // one complete valid object. Disable reasoning for this mechanical
+      // extraction and leave the full bounded JSON enough output space without
+      // returning to the medium-reasoning profile's observed ~30 second edge.
+      thinkingLevel: "none",
+      maxTokens: 3_000,
     },
     messages: [{ role: "user", content: canonicalizeJson({ transcript: input.transcript }) }],
   });

@@ -109,12 +109,12 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
   }
 });
 
-test("hosted prompt profile reuse and reconciliation upgrade the exact 0059 chain to 0064", async () => {
+test("hosted prompt profile reuse and reconciliation upgrade the exact 0059 chain to 0065", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0064_hosted_context_low_latency_profile.sql");
+    assert.equal(sources.at(-1)?.filename, "0065_hosted_context_no_reasoning_profile.sql");
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -136,7 +136,7 @@ test("hosted prompt profile reuse and reconciliation upgrade the exact 0059 chai
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [60, 61, 62, 63, 64]);
+    assert.deepEqual(upgraded.appliedVersions, [60, 61, 62, 63, 64, 65]);
     const definitions = await executor.query(
       `SELECT proname, pg_get_functiondef(oid) AS definition
          FROM pg_proc
@@ -151,7 +151,7 @@ test("hosted prompt profile reuse and reconciliation upgrade the exact 0059 chai
       (row) => row.proname === "videoforge_prepare_hosted_voiceover_context",
     );
     assert.match(context.definition, /openai-gpt-5-nano/u);
-    assert.match(context.definition, /revision\s*=\s*3|revision=3/u);
+    assert.match(context.definition, /revision\s*=\s*4|revision=4/u);
   } finally {
     await database.close();
   }
