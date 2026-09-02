@@ -5057,6 +5057,7 @@ async function createVoiceoverContext(
   const pool = createNeonPool(config.neon.databaseUrl);
   let contextId: string | null = null;
   let accountId: string | null = null;
+  let providerTaskUuid: string | null = null;
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
@@ -5159,6 +5160,7 @@ async function createVoiceoverContext(
       transcript,
       transcriptHash,
     });
+    providerTaskUuid = preparedRequest.request.taskUUID;
     const identity = {
       contextId: crypto.randomUUID(),
       taskId: crypto.randomUUID(),
@@ -5243,6 +5245,7 @@ async function createVoiceoverContext(
       if (error instanceof HostedVoiceoverContextProviderError) {
         console.error("HOSTED_CONTEXT_PROVIDER_FAILURE", {
           problem_code: error.code,
+          provider_task_uuid: providerTaskUuid,
           stage: error.diagnostic?.stage ?? null,
           http_status: error.diagnostic?.httpStatus ?? null,
           provider_code: error.diagnostic?.providerCode ?? null,

@@ -68,7 +68,7 @@ function contextClaim(asrAttemptId, serial) {
   };
 }
 
-async function insertContextProfile(executor, { id, operation = "voiceover-context-v4" }) {
+async function insertContextProfile(executor, { id, operation = "voiceover-context-v5" }) {
   const configuration = {
     model: "openai-gpt-5-nano",
     operation,
@@ -79,7 +79,7 @@ async function insertContextProfile(executor, { id, operation = "voiceover-conte
        id, account_id, workspace_id, name, revision, lane, state, dispatch_target,
        configuration, configuration_hash, maximum_rate_micro_usd, checked_at
      ) VALUES (
-       $1,$2,$3,'Hosted Runware voiceover context',2,'PROMPT','TESTED','RUNWARE',
+       $1,$2,$3,'Hosted Runware voiceover context',3,'PROMPT','TESTED','RUNWARE',
        $4::jsonb,'sha256:'||encode(digest(convert_to(($4::jsonb)::text,'UTF8'),'sha256'),'hex'),
        10000,clock_timestamp()
      )`,
@@ -87,7 +87,7 @@ async function insertContextProfile(executor, { id, operation = "voiceover-conte
   );
 }
 
-test("0063 reuses the workspace GPT-5 Nano context profile for a new project claim", async () => {
+test("0064 reuses the workspace low-latency GPT-5 Nano profile for a new project claim", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     await seedLockedProjects(executor);
     await executor.query(`SELECT set_config($1, $2, false)`, [
@@ -112,14 +112,14 @@ test("0063 reuses the workspace GPT-5 Nano context profile for a new project cla
     assert.deepEqual(attempts.rows, [{ execution_profile_id: existingProfileId }]);
     const profiles = await executor.query(
       `SELECT id::text AS id FROM execution_profiles
-        WHERE workspace_id=$1 AND name='Hosted Runware voiceover context' AND revision=2`,
+        WHERE workspace_id=$1 AND name='Hosted Runware voiceover context' AND revision=3`,
       [IDS.workspaceA],
     );
     assert.deepEqual(profiles.rows, [{ id: existingProfileId }]);
   });
 });
 
-test("0063 fails before claim or reservation when the workspace GPT-5 context profile drifted", async () => {
+test("0064 fails before claim or reservation when the low-latency profile drifted", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     await seedLockedProjects(executor);
     await executor.query(`SELECT set_config($1, $2, false)`, [

@@ -378,6 +378,12 @@
       "name": "hosted_context_gpt5_profile",
       "filename": "0063_hosted_context_gpt5_profile.sql",
       "sha256": "sha256:16d06fd8855a433354124ed57300c9dbfab6853ddd156c8a8504db4e595b5aee"
+    },
+    {
+      "version": 64,
+      "name": "hosted_context_low_latency_profile",
+      "filename": "0064_hosted_context_low_latency_profile.sql",
+      "sha256": "sha256:8a7822ac9418044b3d8db948aae6c8298894b411e9248137f10b681371b4af14"
     }
   ]
 }

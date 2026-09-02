@@ -128,8 +128,9 @@ describe("hosted project title conflicts", () => {
       message:
         "Another active project is still named “helen”. Open Progress to continue that project or delete it, or choose a different title.",
     });
-    expect(hostedProjectConflictProblem("hosted_project_create_requests_idempotency_key_key", "helen"))
-      .toBeNull();
+    expect(
+      hostedProjectConflictProblem("hosted_project_create_requests_idempotency_key_key", "helen"),
+    ).toBeNull();
     expect(hostedProjectConflictProblem(null, "helen")).toBeNull();
   });
 });
@@ -817,6 +818,8 @@ describe("hosted product route contract", () => {
     expect(block).toContain("output_asset_id: crypto.randomUUID()");
     expect(block).toContain('definiteProviderRejection ? "FAILED" : "UNKNOWN"');
     expect(block).toContain("!definiteProviderRejection");
+    expect(block).toContain("providerTaskUuid = preparedRequest.request.taskUUID");
+    expect(block).toContain("provider_task_uuid: providerTaskUuid");
     const planning = source.slice(
       source.indexOf("async function renderHandoff("),
       source.indexOf("async function writeProjectPrompts("),

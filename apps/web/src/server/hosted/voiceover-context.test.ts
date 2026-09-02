@@ -36,7 +36,7 @@ describe("hosted voiceover context extraction", () => {
     expect(prepared.requestBytes).toContain("primary_topic between 1 and 140 characters");
     expect(prepared.requestBytes).toContain("Never emit an empty string");
     expect(request).toMatchObject({ model: "openai-gpt-5-nano", outputFormat: "JSON" });
-    expect(request.settings).toMatchObject({ thinkingLevel: "medium", maxTokens: 3_000 });
+    expect(request.settings).toMatchObject({ thinkingLevel: "low", maxTokens: 1_600 });
     expect(Object.keys(request.settings as Record<string, unknown>).sort()).toEqual([
       "maxTokens",
       "systemPrompt",
