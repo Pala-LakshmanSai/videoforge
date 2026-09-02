@@ -4,7 +4,7 @@ updated_at: "2026-09-02"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: false
-current_milestone: private_hosted_beta_stage_5_qualified_deepseek_air_repair_source_green
+current_milestone: private_hosted_beta_stage_5_deepseek_air_repair_live_unreached_after_stage_2_terminal
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Source 0d6593cd repairs the request-contract drift exposed by live project 39b8636d. Both the successful Stage 3 request and the accepted 40-scene/five-style qualification pin canonical immutable AIR deepseek:v4@flash with thinking off, while Stage 5 incorrectly sent the public search alias deepseek-v4-flash with unqualified high thinking. Stage 5 now reuses the proven canonical AIR/settings contract, retains its scene-writing schema and realistic/relatable/style-bound v4 prompt instructions, and advances to request v5 so the failed task UUID cannot replay. Pipeline prompt tests pass 31/31, focused hosted server/UI tests pass 111/111, the DeepSeek qualification regression passes, and pipeline/web typechecks, changed-file ESLint/format, staging build/quarantine, context/deployment validation, secret scan, and diff checks pass. Live remains d8ab990e / Worker e09e3849 / migration 0069. Never retry or retrieve project 39b8636d. Any successor deployment or project requires fresh exact authority."
+  provider_free_product_action: "Exact approval deployed source b9045509 once as Worker 6722893b after read-only migration 0069 verification at 69/69, exact remote nine-secret allowlist, CORS, and private-R2 checks. Eight exact-source hosted reads passed with GPU DISABLED_UNQUALIFIED. Computer Use created exactly one USD 2 project 2879b760 using Helen v1, Will Carter v1, and the approved 159.216-second MP3. The user's follow-up raised the hard provider-spend cap from USD 0.05 to USD 1 before creation. Stage 2 stopped terminal after 5.207 seconds with ASR_OUTPUT_INVALID. The Mac data volume was at 100 percent and Wrangler independently recorded ENOSPC 15 seconds later; the worker maps local result/work-path write or parse OSError to ASR_OUTPUT_INVALID, making local disk exhaustion the high-confidence underlying cause. Stage 3 and Stage 5 were never prepared or dispatched: zero hosted context rows, prompt runs, prompt executions, prompt scene results, and project cost events. No retry or provider retrieval. The canonical DeepSeek V4 Flash Stage 5 repair remains live but unqualified because the run never reached it. Any successor project requires fresh exact authority after restoring local free space."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STAGE_5_QUALIFIED_DEEPSEEK_AIR_REPAIR_SOURCE_GREEN_AWAITING_FRESH_EXACT_AUTHORITY
+  status: STAGE_2_TERMINAL_ASR_OUTPUT_INVALID_LOCAL_DISK_FULL_NO_PROVIDER_DISPATCH
   implementation_commit: "df4d75bded837222585f444236072324464afa43"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
@@ -155,22 +155,23 @@ hosted_beta_user_walkthrough:
     - "04019c807c17a49089c23fb1bf3d0a2f87c673e9"
     - "d8ab990ea257fe2a2706b6920c2d88854f2e9c2a"
     - "0d6593cd5688699a0fc14e96766dc6e47ccabff6"
+    - "b90455095ee7d15a1c2bc54c95f96e4a999b9e29"
   deployment_candidate: "0d6593cd"
-  deployed_source_commit: "d8ab990ea257fe2a2706b6920c2d88854f2e9c2a"
-  cloudflare_worker_version_id: "e09e3849-d7ef-47ce-8b0d-21b10cc702f1"
+  deployed_source_commit: "b90455095ee7d15a1c2bc54c95f96e4a999b9e29"
+  cloudflare_worker_version_id: "6722893b-08a6-4a63-b6a6-77f87efd0ebc"
   pending_source_candidate: "0d6593cd5688699a0fc14e96766dc6e47ccabff6"
   pending_worker_release: null
-  pending_release_boundary: "SOURCE_0D6593CD_IS_PROVIDER_FREE_GREEN_ONLY. LIVE_REMAINS_EXACT_SOURCE_D8AB990E_WORKER_E09E3849_WITH_MIGRATION_0069_VERIFIED_69_OF_69. THE_PRIOR_AUTHORITY_IS_CONSUMED. DO_NOT_RETRY_OR_RETRIEVE_PROJECT_39B8636D. DEPLOYMENT_OR_ANY_SUCCESSOR_PROJECT_REQUIRES_FRESH_EXACT_AUTHORITY."
-  pending_validations: "FRESH_EXACT_SOURCE_BOUND_DEPLOYMENT_AND_ONE_NEW_STAGE_5_PROJECT_ARE_REQUIRED_TO_PROVE_THE_CANONICAL_DEEPSEEK_AIR_REPAIR_AND_ACTUAL_GENERATED_PROMPT_QUALITY_LIVE. COMPACT_STAGE_3_NEEDS_NO_FURTHER_REPAIR."
+  pending_release_boundary: "SOURCE_B9045509_IS_LIVE_AS_WORKER_6722893B. PROJECT_2879B760_STOPPED_TERMINAL_AT_STAGE_2_ASR_OUTPUT_INVALID_WITH_LOCAL_DISK_EXHAUSTION_EVIDENCE. DO_NOT_RETRY_OR_RETRIEVE_IT. RESTORE_SAFE_LOCAL_FREE_SPACE, THEN REQUIRE_FRESH_EXACT_AUTHORITY_FOR_ANY_SUCCESSOR_PROJECT."
+  pending_validations: "ONE_NEW_STAGE_1_TO_5_PROJECT_IS_STILL_REQUIRED_TO_PROVE_THE_LIVE_CANONICAL_DEEPSEEK_AIR_STAGE_5_REPAIR_AND_ACTUAL_GENERATED_PROMPT_QUALITY. THE_CURRENT_APPROVAL_IS_CONSUMED_AND_THE_TERMINAL_PROJECT_IS_NON_RETRIABLE."
   failed_deployment_attempt: "Exact authority verified migration 0069 read-only at 69/69, built clean source 4b679520, verified the exact nine-secret allowlist and private R2/CORS state, and deployed it once as Worker feb110de with config SHA-256 5abbd67f. Eight cache-bypassed status reads passed. In a fresh authenticated Chrome tab, one USD 2 project attempt with Helen v1, Will Carter v1, and the 159.216-second MP3 stopped at PROJECT_PREFLIGHT_REJECTED before project creation. The selected VideoForge-downloaded filename was 234 characters while the server contract allows 160; the browser sent it without validating or normalizing. Read-only Neon proves zero projects with the attempted title. No voiceover bytes, project, provider request, or cost was created. Source dbf9dd98 deterministically maps only unsafe or overlong names to voiceover-{16 checksum hex}.mp3 or .wav and uses the same name at preflight/create while preserving ordinary filenames."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA SOURCE 4b6795204c676a1910425585a040839e23090306 MIGRATION 0069 ALREADY APPLIED SHA256 718046630b67bbe3ae40371d742959c22436ab1f638b5c421d031618f574b00c DO NOT REAPPLY WORKER 0.1.13 DEPLOY STAGING AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT CAP USD 2; STOP AT FIRST TERMINAL FAILURE OR AFTER STAGE 5; NO RETRIES; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
-  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA SOURCE d8ab990ea257fe2a2706b6920c2d88854f2e9c2a MIGRATION 0069 ALREADY APPLIED DO NOT REAPPLY WORKER 0.1.13 DEPLOY STAGING AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 0.05; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
-  latest_live_run: "Exact authority deployed source d8ab990e once as Worker e09e3849 with config SHA-256 e40c19bc after ledger 69/69, exact nine-secret, CORS, and private-R2 preflight. Eight exact-source reads passed. Computer Use created exactly one project 39b8636d-5f1b-4834-94c2-947f2ab79b54 capped at USD 2 using Helen v1, Will Carter v1, and the verified 159.216-second MP3. Stages 1-4 completed; Stage 3 DeepSeek V4 Flash context settled USD 0.000072. Stage 5 reached its durable USD 0.04 reservation, then stopped UNKNOWN after 326 ms with provider_may_have_charged=true, no reported cost, prompt execution, or scene result. No retry or retrieval. Source/code/qualification comparison isolates request drift: Stage 5 sent public alias deepseek-v4-flash and high thinking instead of the proven canonical AIR deepseek:v4@flash and thinking off used by Stage 3 and GATE_LLM_001. Source 0d6593cd aligns that contract and advances request identity to v5."
+  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA SOURCE b90455095ee7d15a1c2bc54c95f96e4a999b9e29 MIGRATION 0069 ALREADY APPLIED DO NOT REAPPLY WORKER 0.1.13 DEPLOY STAGING AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 0.05; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION. FOLLOW-UP BEFORE PROJECT CREATION: HARD PROVIDER SPEND CAP RAISED TO USD 1; CREATE PROJECT AND START."
+  latest_live_run: "Exact authority deployed source b9045509 once as Worker 6722893b with config SHA-256 b42912ba after migration 0069 verified read-only at 69/69 and exact remote secret/CORS/private-R2 checks. Eight exact-source status reads passed with GPU DISABLED_UNQUALIFIED. Computer Use created exactly one project 2879b760-b351-46f7-9241-b203248111e6 capped at USD 2 using Helen v1, Will Carter v1, worker 0.1.13, and the approved 159.216-second MP3. The user raised the hard provider-spend cap to USD 1 before creation. Stage 2 terminally failed after 5.207 seconds with ASR_OUTPUT_INVALID. The Mac Data volume was 100 percent full; Wrangler independently recorded ENOSPC 15 seconds later, and the worker maps local result/work-path OSError to ASR_OUTPUT_INVALID. Five inactive PyInstaller temp extractions were removed, freeing about 1.5 GiB while preserving the active VideoForge Worker extraction. Stage 3 and Stage 5 were never prepared or dispatched: zero context rows, prompt runs, prompt executions, prompt scene results, and project cost events. No retry or provider retrieval."
   deployment_tooling_diagnosis: "ROOT_CAUSE_LONG_VOICEOVER_FILENAME_PREFLIGHT_DRIFT: Chrome accepted a 234-character MP3 filename, but parseCreate rejects names over 160. Source dbf9dd98 closes the client/server seam with deterministic checksum-bound filename normalization before the first request."
   startup_split_candidate: "0c748d6ecf5e38056ec4f60d524bd0ebe169ffe6"
   startup_split_evidence: "Dynamic import moves product-Dlutw8HK.js 349.24 kB out of the eager Worker chunk; eager index falls from 3,091.69 kB to 2,741.40 kB. Focused web tests PASS 94/94; typecheck, changed-file ESLint, staging build, bundle quarantine, and diff check PASS."
-  deployed_config_sha256: "e40c19bc98d75839cfdd392d2c048edc4361edb6c76495480c37f13c4c6df335"
-  deployment_approval: "CONSUMED_AT_STAGE_5_UNKNOWN_SOURCE_D8AB990E_WORKER_E09E3849_PROJECT_39B8636D_NO_RETRY_OR_RETRIEVAL"
+  deployed_config_sha256: "b42912ba46717900cc47b076268e0405ee964c436db1d4d37d771caa24c7ae4f"
+  deployment_approval: "CONSUMED_AT_STAGE_2_TERMINAL_SOURCE_B9045509_WORKER_6722893B_PROJECT_2879B760_NO_RETRY_OR_PROVIDER_RETRIEVAL"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -187,7 +188,7 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_9_SECRETS_AND_R2_PRIVATE_STATE_PASS"
-  live_browser_verification: "SOURCE_D8AB990E_WORKER_E09E3849_AT_100_PERCENT; FRESH_AUTHENTICATED_CHROME_PROJECT_39B8636D_COUNT_EXACTLY_ONE_CAP_USD_2; STAGES_1_2_3_4_COMPLETE; STAGE_3_DEEPSEEK_CONTEXT_SETTLED_USD_0_000072; STAGE_5_UNKNOWN_326_MS_AFTER_USD_0_04_RESERVATION_WITH_PROVIDER_MAY_HAVE_CHARGED_TRUE_AND_NO_REPORTED_COST_OR_ACCEPTED_PROMPTS; NO_RETRY_OR_RETRIEVAL; GPU_DISABLED_UNQUALIFIED"
+  live_browser_verification: "SOURCE_B9045509_WORKER_6722893B_AT_100_PERCENT; FRESH_AUTHENTICATED_CHROME_PROJECT_2879B760_COUNT_EXACTLY_ONE_CAP_USD_2; STAGE_2_TERMINAL_ASR_OUTPUT_INVALID_AFTER_5207_MS_WITH_LOCAL_DATA_VOLUME_FULL_AND_INDEPENDENT_ENOSPC; ZERO_STAGE_3_OR_STAGE_5_ROWS_AND_ZERO_PROJECT_COST_EVENTS; NO_RETRY_OR_PROVIDER_RETRIEVAL; GPU_DISABLED_UNQUALIFIED"
   fixed_blockers:
     - "Exact authority deployed clean source d8ab990e once as Worker e09e3849 with config SHA-256 e40c19bc after migration 69/69 was verified without replay and exact secret/R2 preflight passed. Eight exact-source reads passed. Computer Use created exactly one USD 2 project 39b8636d with Helen v1, Will Carter v1, and the verified 159.216-second MP3. Stages 1-4 completed; Stage 3 DeepSeek context settled USD 0.000072. Stage 5 created one USD 0.04 reservation then stopped UNKNOWN after 326 ms with provider_may_have_charged=true, no reported cost, prompt execution, or scene result. No retry or retrieval occurred. Repository provider truth and the user's Stage 3 reuse hint exposed the drift: successful Stage 3 and accepted GATE_LLM_001 qualification use canonical AIR deepseek:v4@flash with thinking off, while Stage 5 used the public search alias deepseek-v4-flash with unqualified high thinking. Source 0d6593cd aligns Stage 5 to the proven AIR/settings and advances immutable request identity to v5. Pipeline prompt tests pass 31/31, focused hosted UI/server tests pass 111/111, the qualification regression passes, and typecheck, lint/format, staging build/quarantine, context/deployment validation, secret scan, and diff checks pass. No GPU, RunPod, production, or volume mutation occurred. Fresh exact authority is required for another deployment and new project."
     - "Exact authority deployed clean source 81133ee3 once as Worker 38c5804a with config SHA-256 c6483849 after read-only migration 69/69 and exact Cloudflare/R2 preflight. Eight consecutive exact-source reads passed. Authenticated Chrome created exactly one USD 2 project d2421f40 with Helen v1, Will Carter v1, and the verified 159.216-second MP3. Stages 1-4 completed. Stage 5 stopped at its first terminal automatic-start TypeError before durable preparation. Cloudflare tail and read-only Neon/code evidence isolate strict RFC validation of the persisted historical workspace ID; zero hosted prompt rows, reservations, dispatches, or Stage 5 cost exist. No retry occurred. Source 04019c80 accepts PostgreSQL UUID-shaped persisted workspace IDs but retains strict RFC validation for generated project/revision/timeline/style IDs. Focused hosted tests pass 111/111; web typecheck, changed-file ESLint/format, staging build/quarantine, context/deployment validation, secret scan, and diff checks pass. No GPU, RunPod, production, or volume mutation occurred. Fresh exact authority is required to deploy and test actual prompt output quality."
@@ -5012,8 +5013,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_stage_5_qualified_deepseek_air_repair_source_green
-  status: stage_5_qualified_deepseek_air_repair_awaiting_fresh_exact_live_authority
+  milestone: private_hosted_beta_stage_5_deepseek_air_repair_live_unreached_after_stage_2_terminal
+  status: stage_2_terminal_local_disk_exhaustion_cleanup_complete_awaiting_fresh_exact_project_authority
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: release_and_deployment_authority_consumed_non_reusable
   task_stage: provider_free_product_execution
@@ -5022,7 +5023,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Keep compact Stage 3 as live-proven. Deploy exact source 0d6593cd only after fresh exact authority, then create exactly one new bounded project to verify Stage 5 canonical DeepSeek AIR dispatch, durable prompt acceptance, and actual prompt quality. Never retry or retrieve project 39b8636d. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
+  goal: "Keep live source b9045509 / Worker 6722893b and compact Stage 3 as proven. Maintain safe local disk headroom beyond the 1.6 GiB recovered from stale temp extraction cleanup, verify worker readiness, then obtain fresh exact authority for exactly one new bounded project to verify Stage 5 canonical DeepSeek AIR dispatch, durable prompt acceptance, and actual prompt quality. Never retry or retrieve terminal projects 39b8636d or 2879b760. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
