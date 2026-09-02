@@ -1,7 +1,7 @@
--- Stage 3 now emits only one to four compact global visual-grounding sentences. Preserve immutable
--- revisions 1 through 6 and select revision 7 for request v9. Chronology and scene-local context are
--- intentionally excluded because Stage 5 already receives ordered exact, containing, previous, and
--- next narration for every scene.
+-- Stage 3 now emits only a compact subject, global visual facts, continuity facts, and remote
+-- reference mappings. Preserve immutable revisions 1 through 6 and select revision 7 for request
+-- v9. Summaries, chronology, processes, and scene-local facts are excluded because Stage 5 already
+-- receives ordered exact, containing, previous, and next narration for every scene.
 
 CREATE OR REPLACE FUNCTION public.videoforge_prepare_hosted_voiceover_context(supplied jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER

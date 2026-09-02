@@ -3385,13 +3385,21 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   );
   const contextComplete = query.data.voiceover_context?.state === "SUCCEEDED";
   const contextDocument = query.data.voiceover_context?.context_document;
-  const contextText = Array.isArray(contextDocument?.sentences)
-    ? contextDocument.sentences
-        .filter((sentence): sentence is string => typeof sentence === "string")
-        .join(" ")
-    : typeof contextDocument?.summary === "string"
-      ? contextDocument.summary
-      : null;
+  const contextText = (() => {
+    if (typeof contextDocument?.subject !== "string")
+      return typeof contextDocument?.summary === "string" ? contextDocument.summary : null;
+    const compactParts = [`Subject: ${contextDocument.subject}`];
+    for (const [label, candidate] of [
+      ["Visual facts", contextDocument.visual_facts],
+      ["Continuity", contextDocument.continuity],
+      ["Resolve", contextDocument.resolved_references],
+    ] as const) {
+      if (!Array.isArray(candidate)) continue;
+      const values = candidate.filter((item): item is string => typeof item === "string");
+      if (values.length > 0) compactParts.push(`${label}: ${values.join("; ")}`);
+    }
+    return compactParts.join(" | ");
+  })();
   const contextUnknown = query.data.voiceover_context?.state === "UNKNOWN";
   const contextNeedsReview =
     contextStage?.status === "FAILED" ||

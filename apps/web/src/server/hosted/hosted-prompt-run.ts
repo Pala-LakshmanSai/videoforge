@@ -48,25 +48,41 @@ function compactStoryContext(value: unknown): string {
     throw new TypeError("Hosted story context is invalid.");
   }
   const context = record(parsed, "hosted story context");
-  const sentences = context.sentences;
-  if (
-    Object.keys(context).length !== 1 ||
-    !Array.isArray(sentences) ||
-    sentences.length < 1 ||
-    sentences.length > 4 ||
-    sentences.some((sentence) => typeof sentence !== "string")
-  )
+  const keys = ["continuity", "resolved_references", "subject", "visual_facts"];
+  const actualKeys = Object.keys(context).sort();
+  if (actualKeys.length !== keys.length || actualKeys.some((key, index) => key !== keys[index]))
     throw new TypeError("Hosted story context is invalid.");
-  const normalizedSentences = sentences.map((sentence) =>
-    (sentence as string).normalize("NFKC").replace(/\s+/gu, " ").trim(),
-  );
-  const result = normalizedSentences.join(" ");
-  if (
-    normalizedSentences.some((sentence) => sentence.length === 0 || sentence.length > 160) ||
-    new Set(normalizedSentences).size !== normalizedSentences.length ||
-    result.length > 480
-  )
+  const normalized = (candidate: unknown, maximum: number) => {
+    if (typeof candidate !== "string") throw new TypeError("Hosted story context is invalid.");
+    const result = candidate.normalize("NFKC").replace(/\s+/gu, " ").trim();
+    if (result.length === 0 || Array.from(result).length > maximum)
+      throw new TypeError("Hosted story context is invalid.");
+    return result;
+  };
+  const normalizedList = (candidate: unknown, maximumItems: number, maximumChars: number) => {
+    if (!Array.isArray(candidate) || candidate.length > maximumItems)
+      throw new TypeError("Hosted story context is invalid.");
+    const result = candidate.map((item) => normalized(item, maximumChars));
+    if (new Set(result).size !== result.length)
+      throw new TypeError("Hosted story context is invalid.");
+    return result;
+  };
+  const subject = normalized(context.subject, 90);
+  const visualFacts = normalizedList(context.visual_facts, 3, 70);
+  const continuity = normalizedList(context.continuity, 2, 70);
+  const references = normalizedList(context.resolved_references, 2, 70);
+  const reusableFacts = [...visualFacts, ...continuity, ...references];
+  if (new Set(reusableFacts).size !== reusableFacts.length)
     throw new TypeError("Hosted story context is invalid.");
+  const result = [
+    `Subject: ${subject}`,
+    visualFacts.length > 0 ? `Visual facts: ${visualFacts.join("; ")}` : null,
+    continuity.length > 0 ? `Continuity: ${continuity.join("; ")}` : null,
+    references.length > 0 ? `Resolve: ${references.join("; ")}` : null,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" | ");
+  if (result.length > 360) throw new TypeError("Hosted story context is invalid.");
   return result;
 }
 

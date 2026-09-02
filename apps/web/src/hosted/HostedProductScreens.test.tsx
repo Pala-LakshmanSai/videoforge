@@ -1588,10 +1588,10 @@ describe("hosted product journey", () => {
               transcript_hash: `sha256:${"b".repeat(64)}`,
               context_hash: `sha256:${"c".repeat(64)}`,
               context_document: {
-                sentences: [
-                  "The same presenter remains in the workshop.",
-                  "The demonstration uses the same physical object throughout.",
-                ],
+                subject: "workshop object demonstration",
+                visual_facts: ["same presenter", "same physical object", "workshop"],
+                continuity: ["same presenter and object across demonstrations"],
+                resolved_references: [],
               },
               reserved_cost_micro_usd: 10_000,
             }
@@ -1609,7 +1609,7 @@ describe("hosted product journey", () => {
     expect(await screen.findByRole("heading", { name: "Extracted context" })).toBeInTheDocument();
     expect(
       screen.getByText(
-        "The same presenter remains in the workshop. The demonstration uses the same physical object throughout.",
+        "Subject: workshop object demonstration | Visual facts: same presenter; same physical object; workshop | Continuity: same presenter and object across demonstrations",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Inspect saved context")).not.toBeInTheDocument();

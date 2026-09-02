@@ -17,35 +17,51 @@ export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
 const MODEL = "deepseek:v4@flash" as const;
 const REQUEST_CONTRACT_VERSION = "runware-deepseek-v4-flash-context-request-v9" as const;
-const MIN_CONTEXT_SENTENCES = 1 as const;
-const MAX_CONTEXT_SENTENCES = 4 as const;
-const MAX_CONTEXT_SENTENCE_CHARS = 160 as const;
-export const MAX_HOSTED_CONTEXT_CHARS = 480 as const;
+const MAX_SUBJECT_CHARS = 90 as const;
+const MAX_VISUAL_FACTS = 3 as const;
+const MAX_VISUAL_FACT_CHARS = 70 as const;
+const MAX_CONTINUITY_FACTS = 2 as const;
+const MAX_CONTINUITY_FACT_CHARS = 70 as const;
+const MAX_RESOLVED_REFERENCES = 2 as const;
+const MAX_RESOLVED_REFERENCE_CHARS = 70 as const;
+export const MAX_HOSTED_CONTEXT_CHARS = 360 as const;
 
 const SYSTEM_PROMPT = [
   "Extract only compact global visual context from the complete VideoForge voiceover transcript.",
   "Return only the requested strict JSON.",
-  "Return 1 to 4 short factual sentences and no headings, labels, bullets, or lists.",
   "The downstream writer already receives the exact phrase, containing sentence, previous sentence, next sentence, and transcript order for every scene.",
-  "Do not repeat chronology, scene order, local actions, examples, or details recoverable from those scene inputs.",
-  "Include a fact only when it is reused across separated parts of the transcript, resolves an identity or reference outside the local window, or establishes a persistent subject, place, era, or visual state.",
-  "Do not summarize the thesis. Omit causes, instructions, examples, and details that are already clear in their local narration window.",
-  "Never add filler to reach a sentence count; omit any detail that would not change footage choice, image relevance, or visual consistency.",
-  `Keep each sentence between 1 and ${MAX_CONTEXT_SENTENCE_CHARS} characters and the combined text at or below ${MAX_HOSTED_CONTEXT_CHARS} characters.`,
+  "Do not repeat chronology, scene order, local actions, examples, processes, or facts recoverable from those scene inputs.",
+  `subject: one precise noun phrase naming the central real-world subject, at most ${MAX_SUBJECT_CHARS} characters.`,
+  `visual_facts: zero to ${MAX_VISUAL_FACTS} short recurring people, settings, eras, objects, or physical relationships that materially improve footage choice across separated scenes; at most ${MAX_VISUAL_FACT_CHARS} characters each.`,
+  `continuity: zero to ${MAX_CONTINUITY_FACTS} stable identity, appearance, or physical-state facts that must remain consistent across separated scenes; at most ${MAX_CONTINUITY_FACT_CHARS} characters each.`,
+  `resolved_references: zero to ${MAX_RESOLVED_REFERENCES} remote alias, pronoun, or callback mappings that cannot be resolved from the local sentence window; at most ${MAX_RESOLVED_REFERENCE_CHARS} characters each.`,
+  "Use empty arrays when a category adds no value. Never add filler, a thesis summary, generic advice, visual style, or a fact that would not change footage choice, image relevance, reference resolution, or visual consistency.",
+  `Keep the final flattened context at or below ${MAX_HOSTED_CONTEXT_CHARS} characters.`,
   "Do not invent facts, visual style, camera directions, captions, logos, graphics, or branded products.",
 ].join(" ");
 
 const schema = Object.freeze({
   type: "object",
   additionalProperties: false,
-  required: ["sentences"],
+  required: ["subject", "visual_facts", "continuity", "resolved_references"],
   properties: {
     // OpenAI Structured Outputs supports only a subset of JSON Schema and does
     // not accept minLength/maxLength here. VideoForge enforces the exact string
     // bounds again in validateContext after the provider returns the object.
-    sentences: {
+    subject: { type: "string" },
+    visual_facts: {
       type: "array",
-      maxItems: MAX_CONTEXT_SENTENCES,
+      maxItems: MAX_VISUAL_FACTS,
+      items: { type: "string" },
+    },
+    continuity: {
+      type: "array",
+      maxItems: MAX_CONTINUITY_FACTS,
+      items: { type: "string" },
+    },
+    resolved_references: {
+      type: "array",
+      maxItems: MAX_RESOLVED_REFERENCES,
       items: { type: "string" },
     },
   },
@@ -99,24 +115,57 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
     throw new Error("VOICEOVER_CONTEXT_INVALID");
   const boundedText = (text: string, maximum: number) =>
     Array.from(text.normalize("NFKC").replace(/\s+/gu, " ").trim()).slice(0, maximum).join("");
-  const suppliedSentences = record.sentences;
-  if (
-    !Array.isArray(suppliedSentences) ||
-    suppliedSentences.length < MIN_CONTEXT_SENTENCES ||
-    suppliedSentences.length > MAX_CONTEXT_SENTENCES ||
-    suppliedSentences.some((sentence) => typeof sentence !== "string")
-  )
-    throw new Error("VOICEOVER_CONTEXT_INVALID");
-  const sentences = suppliedSentences.map((sentence) =>
-    boundedText(sentence as string, MAX_CONTEXT_SENTENCE_CHARS),
+  const subject =
+    typeof record.subject === "string" ? boundedText(record.subject, MAX_SUBJECT_CHARS) : "";
+  const boundedList = (
+    candidate: JsonValue | undefined,
+    maximumItems: number,
+    maximumChars: number,
+  ) => {
+    if (
+      !Array.isArray(candidate) ||
+      candidate.length > maximumItems ||
+      candidate.some((item) => typeof item !== "string")
+    )
+      throw new Error("VOICEOVER_CONTEXT_INVALID");
+    const normalized = candidate.map((item) => boundedText(item as string, maximumChars));
+    if (
+      normalized.some((item) => item.length === 0) ||
+      new Set(normalized).size !== normalized.length
+    )
+      throw new Error("VOICEOVER_CONTEXT_INVALID");
+    return Object.freeze(normalized);
+  };
+  if (subject.length === 0) throw new Error("VOICEOVER_CONTEXT_INVALID");
+  const visualFacts = boundedList(record.visual_facts, MAX_VISUAL_FACTS, MAX_VISUAL_FACT_CHARS);
+  const continuity = boundedList(
+    record.continuity,
+    MAX_CONTINUITY_FACTS,
+    MAX_CONTINUITY_FACT_CHARS,
   );
-  if (
-    sentences.some((sentence) => sentence.length === 0) ||
-    new Set(sentences).size !== sentences.length ||
-    sentences.join(" ").length > MAX_HOSTED_CONTEXT_CHARS
-  )
+  const resolvedReferences = boundedList(
+    record.resolved_references,
+    MAX_RESOLVED_REFERENCES,
+    MAX_RESOLVED_REFERENCE_CHARS,
+  );
+  const reusableFacts = [...visualFacts, ...continuity, ...resolvedReferences];
+  if (new Set(reusableFacts).size !== reusableFacts.length)
     throw new Error("VOICEOVER_CONTEXT_INVALID");
-  return Object.freeze({ sentences: Object.freeze(sentences) });
+  const flattened = [
+    `Subject: ${subject}`,
+    visualFacts.length > 0 ? `Visual facts: ${visualFacts.join("; ")}` : null,
+    continuity.length > 0 ? `Continuity: ${continuity.join("; ")}` : null,
+    resolvedReferences.length > 0 ? `Resolve: ${resolvedReferences.join("; ")}` : null,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(" | ");
+  if (flattened.length > MAX_HOSTED_CONTEXT_CHARS) throw new Error("VOICEOVER_CONTEXT_INVALID");
+  return Object.freeze({
+    subject,
+    visual_facts: visualFacts,
+    continuity,
+    resolved_references: resolvedReferences,
+  });
 }
 
 function parseContextOutput(outputText: string): Readonly<Record<string, JsonValue>> {
@@ -321,7 +370,7 @@ async function finalizeHostedVoiceoverContext(
   if (costUsd > HOSTED_CONTEXT_RESERVATION_USD) throw new Error("VOICEOVER_CONTEXT_COST_EXCEEDED");
   const context = parseContextOutput(outputText);
   const contextBytes = canonicalizeJson(context);
-  if (contextBytes.length > MAX_HOSTED_CONTEXT_CHARS + 80)
+  if (contextBytes.length > MAX_HOSTED_CONTEXT_CHARS + 220)
     throw new Error("VOICEOVER_CONTEXT_TOO_LARGE");
   return Object.freeze({
     context,

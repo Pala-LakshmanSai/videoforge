@@ -55,10 +55,10 @@ function plan(overrides: Record<string, unknown> = {}) {
       },
     },
     story_context: JSON.stringify({
-      sentences: [
-        "The same physical subject continues throughout the video.",
-        "No additional global visual fact is needed.",
-      ],
+      subject: "hydrogen peroxide household uses",
+      visual_facts: ["brown hydrogen peroxide bottle", "real household surfaces"],
+      continuity: ["same bottle across demonstrations"],
+      resolved_references: [],
     }),
     all_segments: scenes().map((scene, index) => ({
       scene_id: scene.scene_id,
@@ -96,7 +96,7 @@ describe("hosted prompt authority", () => {
     expect(authority.outboxState).toBe("ACKNOWLEDGED");
     expect(authority.reservedCostMicroUsd).toBe(40_000);
     expect(authority.storyContext).toBe(
-      "The same physical subject continues throughout the video. No additional global visual fact is needed.",
+      "Subject: hydrogen peroxide household uses | Visual facts: brown hydrogen peroxide bottle; real household surfaces | Continuity: same bottle across demonstrations",
     );
     expect(authority.recordedInputHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
   });
@@ -116,14 +116,46 @@ describe("hosted prompt authority", () => {
     ).toThrow("story context is invalid");
   });
 
-  it("rejects duplicate or oversized global sentences before prompt dispatch", () => {
-    for (const sentences of [
-      ["Same subject throughout.", "Same subject throughout."],
-      ["x".repeat(161)],
+  it("omits empty optional categories from the repeated Stage 5 context", () => {
+    const authority = hostedPromptAuthority({
+      plan: plan({
+        story_context: JSON.stringify({
+          subject: "Canada thistle regrowth",
+          visual_facts: [],
+          continuity: [],
+          resolved_references: [],
+        }),
+      }),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+    expect(authority.storyContext).toBe("Subject: Canada thistle regrowth");
+  });
+
+  it("rejects duplicate or oversized global attributes before prompt dispatch", () => {
+    for (const context of [
+      {
+        subject: "same subject",
+        visual_facts: ["same object", "same object"],
+        continuity: [],
+        resolved_references: [],
+      },
+      {
+        subject: "same subject",
+        visual_facts: ["same object"],
+        continuity: ["same object"],
+        resolved_references: [],
+      },
+      {
+        subject: "x".repeat(91),
+        visual_facts: [],
+        continuity: [],
+        resolved_references: [],
+      },
     ]) {
       expect(() =>
         hostedPromptAuthority({
-          plan: plan({ story_context: JSON.stringify({ sentences }) }),
+          plan: plan({ story_context: JSON.stringify(context) }),
           identity,
           reservedCostMicroUsd: 40_000,
         }),
@@ -198,7 +230,7 @@ describe("hosted Runware prompt writer", () => {
       styleProfileHash: digest,
       plannerGuidance: "Literal editorial collage treatment.",
       storyContext:
-        "The same physical subject continues throughout the video. No additional global visual fact is needed.",
+        "Subject: hydrogen peroxide household uses | Visual facts: brown hydrogen peroxide bottle; real household surfaces | Continuity: same bottle across demonstrations",
       continuityTags: [],
       scenes: scenes().map((scene) => ({
         sceneId: scene.scene_id,

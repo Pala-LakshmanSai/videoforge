@@ -10,10 +10,10 @@ const HASH = `sha256:${"a".repeat(64)}` as const;
 
 function contextDocument() {
   return {
-    sentences: [
-      "A shopper in a produce market checks the same watermelon for ripeness.",
-      "The pronoun it refers to that watermelon, and a hollow sound supports ripeness.",
-    ],
+    subject: "watermelon ripeness checks",
+    visual_facts: ["same shopper", "whole watermelon", "produce market"],
+    continuity: ["same shopper and watermelon across demonstrations"],
+    resolved_references: ['"it" = watermelon'],
   };
 }
 
@@ -26,7 +26,7 @@ describe("hosted voiceover context extraction", () => {
     const request = prepared.request as unknown as Record<string, unknown>;
     expect(prepared.requestHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
     expect(prepared.requestBytes).toContain("complete VideoForge voiceover transcript");
-    expect(prepared.requestBytes).toContain("Return 1 to 4 short factual sentences");
+    expect(prepared.requestBytes).toContain("one precise noun phrase");
     expect(prepared.requestBytes).toContain("Do not repeat chronology");
     expect(prepared.requestBytes).toContain("would not change footage choice");
     expect(request).toMatchObject({
@@ -47,6 +47,11 @@ describe("hosted voiceover context extraction", () => {
       "topP",
     ]);
     expect(JSON.stringify(request.jsonSchema)).not.toMatch(/"(?:minLength|maxLength)"/u);
+    expect(request.jsonSchema).toMatchObject({
+      schema: {
+        required: ["subject", "visual_facts", "continuity", "resolved_references"],
+      },
+    });
     expect(JSON.stringify(request.jsonSchema)).toContain('"maxItems"');
   });
 
@@ -60,7 +65,8 @@ describe("hosted voiceover context extraction", () => {
     expect(settings.systemPrompt).toContain(
       "previous sentence, next sentence, and transcript order",
     );
-    expect(settings.systemPrompt).toContain("combined text at or below 480 characters");
+    expect(settings.systemPrompt).toContain("final flattened context at or below 360 characters");
+    expect(settings.systemPrompt).toContain("Use empty arrays when a category adds no value");
     expect(settings.systemPrompt).not.toContain("recurring_objects");
   });
 
@@ -69,7 +75,12 @@ describe("hosted voiceover context extraction", () => {
       transcript: "Inspect the fruit. Then tap it.",
       transcriptHash: HASH,
     });
-    const overlong = { sentences: [`  ${"x".repeat(181)}  `, "  Same fruit throughout.  "] };
+    const overlong = {
+      subject: `  ${"x".repeat(121)}  `,
+      visual_facts: [`  ${"y".repeat(91)}  `, "  Same fruit throughout.  "],
+      continuity: [],
+      resolved_references: [],
+    };
     await expect(
       extractHostedVoiceoverContext({
         prepared,
@@ -90,12 +101,15 @@ describe("hosted voiceover context extraction", () => {
       }),
     ).resolves.toMatchObject({
       context: {
-        sentences: ["x".repeat(160), "Same fruit throughout."],
+        subject: "x".repeat(90),
+        visual_facts: ["y".repeat(70), "Same fruit throughout."],
+        continuity: [],
+        resolved_references: [],
       },
     });
   });
 
-  it("rejects an empty sentence after safe normalization", async () => {
+  it("rejects an empty populated attribute after safe normalization", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "Inspect the fruit. Then tap it.",
       transcriptHash: HASH,
@@ -110,7 +124,12 @@ describe("hosted voiceover context extraction", () => {
               {
                 taskUUID: prepared.request.taskUUID,
                 taskType: "textInference",
-                text: JSON.stringify({ sentences: ["   ", "Same fruit throughout."] }),
+                text: JSON.stringify({
+                  subject: "Watermelon ripeness",
+                  visual_facts: ["   "],
+                  continuity: [],
+                  resolved_references: [],
+                }),
                 cost: 0.001,
                 finishReason: "stop",
                 usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
@@ -169,7 +188,7 @@ describe("hosted voiceover context extraction", () => {
     expect(result.reportedCostMicroUsd).toBe(1_000);
   });
 
-  it("accepts one useful global sentence without requiring filler", async () => {
+  it("accepts only a subject without requiring filler in optional arrays", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "Elias demonstrates the same Canada thistle root throughout.",
       transcriptHash: HASH,
@@ -185,7 +204,10 @@ describe("hosted voiceover context extraction", () => {
                 taskUUID: prepared.request.taskUUID,
                 taskType: "textInference",
                 text: JSON.stringify({
-                  sentences: ["Elias demonstrates the same Canada thistle root throughout."],
+                  subject: "Canada thistle regrowth",
+                  visual_facts: [],
+                  continuity: [],
+                  resolved_references: [],
                 }),
                 cost: 0.001,
                 finishReason: "stop",
@@ -196,9 +218,43 @@ describe("hosted voiceover context extraction", () => {
       }),
     ).resolves.toMatchObject({
       context: {
-        sentences: ["Elias demonstrates the same Canada thistle root throughout."],
+        subject: "Canada thistle regrowth",
+        visual_facts: [],
+        continuity: [],
+        resolved_references: [],
       },
     });
+  });
+
+  it("rejects a populated document whose flattened context exceeds the aggregate cap", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "A complete transcript with many recurring details.",
+      transcriptHash: HASH,
+    });
+    await expect(
+      extractHostedVoiceoverContext({
+        prepared,
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        fetcher: async () =>
+          Response.json({
+            data: [
+              {
+                taskUUID: prepared.request.taskUUID,
+                taskType: "textInference",
+                text: JSON.stringify({
+                  subject: "s".repeat(90),
+                  visual_facts: ["a".repeat(70), "b".repeat(70), "c".repeat(70)],
+                  continuity: ["d".repeat(70), "e".repeat(70)],
+                  resolved_references: ["f".repeat(70), "g".repeat(70)],
+                }),
+                cost: 0.001,
+                finishReason: "stop",
+                usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+              },
+            ],
+          }),
+      }),
+    ).rejects.toThrow("VOICEOVER_CONTEXT_INVALID");
   });
 
   it("accepts only bounded whole-response structured wrappers", async () => {
@@ -292,7 +348,7 @@ describe("hosted voiceover context extraction", () => {
     for (const [text, code] of [
       ["{} {}", "VOICEOVER_CONTEXT_JSON_INVALID"],
       [
-        '{"sentences":["First fact.","Second fact."],"sentences":["Third fact.","Fourth fact."]}',
+        '{"subject":"First subject","subject":"Second subject","visual_facts":[],"continuity":[],"resolved_references":[]}',
         "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY",
       ],
     ] as const) {
