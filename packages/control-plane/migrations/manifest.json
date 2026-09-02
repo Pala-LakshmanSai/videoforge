@@ -402,6 +402,12 @@
       "name": "hosted_context_deepseek_profile",
       "filename": "0067_hosted_context_deepseek_profile.sql",
       "sha256": "sha256:6ad89b0630de5e34c3ce5c413ab42d5bb98113754940147db5cc9ba75ae67517"
+    },
+    {
+      "version": 68,
+      "name": "hosted_context_completion_binding",
+      "filename": "0068_hosted_context_completion_binding.sql",
+      "sha256": "sha256:e97130419c299cffae599bfec52a7348460b0d49d9dae5c2761259a26a690689"
     }
   ]
 }

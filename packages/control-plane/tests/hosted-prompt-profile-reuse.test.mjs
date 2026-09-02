@@ -151,3 +151,74 @@ test("0067 fails before claim or reservation when the compatible profile drifted
     assert.deepEqual(durableRows.rows, [{ contexts: 0, tasks: 0, costs: 0 }]);
   });
 });
+
+test("0068 commits a schema-valid Stage 3 result through the durable completion function", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    await seedLockedProjects(executor);
+    await executor.query(`SELECT set_config($1, $2, false)`, [
+      TENANT_PRINCIPAL_SETTING,
+      IDS.accountA,
+    ]);
+    const asrAttemptId = await seedSucceededAsr(executor, 960_210);
+    const supplied = contextClaim(asrAttemptId, 960_220);
+    const outputAssetId = uuid(960_230);
+    const responseBytes = JSON.stringify({ response: "accepted" });
+    const contextBytes = JSON.stringify({ story: "durable" });
+
+    const prepared = await executor.query(
+      `SELECT public.videoforge_prepare_hosted_voiceover_context($1::jsonb) AS prepared`,
+      [JSON.stringify(supplied)],
+    );
+    assert.equal(prepared.rows[0].prepared.created, true);
+    const completed = await executor.query(
+      `SELECT public.videoforge_complete_hosted_voiceover_context($1::jsonb) AS completed`,
+      [
+        JSON.stringify({
+          context_id: supplied.context_id,
+          output_asset_id: outputAssetId,
+          context_bytes: contextBytes,
+          context_hash: sha256(contextBytes),
+          response_bytes: responseBytes,
+          response_hash: sha256(responseBytes),
+          reported_cost_micro_usd: 321,
+        }),
+      ],
+    );
+    assert.deepEqual(completed.rows, [{ completed: true }]);
+
+    const durable = await executor.query(
+      `SELECT
+         context.state AS context_state,
+         context.context_hash,
+         attempt.state AS attempt_state,
+         attempt.result_disposition,
+         attempt.output_asset_id::text AS output_asset_id,
+         task.state AS task_state,
+         task.accepted_attempt_id::text AS accepted_attempt_id,
+         asset.state AS asset_state,
+         asset.canonical_contract_name,
+         (SELECT array_agg(event.event_type ORDER BY event.sequence)
+            FROM cost_events event WHERE event.attempt_id=attempt.id) AS cost_events
+       FROM hosted_voiceover_contexts context
+       JOIN attempts attempt ON attempt.id=context.attempt_id
+       JOIN generation_tasks task ON task.id=context.task_id
+       JOIN assets asset ON asset.id=attempt.output_asset_id
+      WHERE context.id=$1`,
+      [supplied.context_id],
+    );
+    assert.deepEqual(durable.rows, [
+      {
+        context_state: "SUCCEEDED",
+        context_hash: sha256(contextBytes),
+        attempt_state: "SUCCEEDED",
+        result_disposition: "ACCEPTED",
+        output_asset_id: outputAssetId,
+        task_state: "COMPLETE",
+        accepted_attempt_id: supplied.attempt_id,
+        asset_state: "ACCEPTED",
+        canonical_contract_name: "voiceover-story-context",
+        cost_events: ["RESERVED", "REPORTED", "SETTLED"],
+      },
+    ]);
+  });
+});

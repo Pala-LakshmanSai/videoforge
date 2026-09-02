@@ -63,7 +63,7 @@ guidance; it is not evidence that rollback has been exercised.
 4. Restore the previously recorded immutable desktop release manifest. A desktop downgrade is
    permitted only when its minimum protocol remains accepted; retain the prior Windows/macOS trust
    metadata and exact hashes.
-5. Keep every migration in the committed manifest (currently through 0067) applied. They are
+5. Keep every migration in the committed manifest (currently through 0068) applied. They are
    additive; do not down-migrate auth, tenant, device, lease, upload-authority, receipt, review,
    serverless-output, or render-plan rows. Apply only a separately reviewed forward repair.
 6. Retain the encrypted database backup and private R2 objects for the separately approved retention
