@@ -131,7 +131,33 @@ describe("hosted voiceover context extraction", () => {
               {
                 taskUUID: prepared.request.taskUUID,
                 taskType: "textInference",
-                text: `Here is the result: ${JSON.stringify(contextDocument())}`,
+                text: `The provider said "final answer follows": ${JSON.stringify(contextDocument())}`,
+                cost: 0.001,
+                finishReason: "stop",
+                usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+              },
+            ],
+          }),
+      }),
+    ).resolves.toMatchObject({ context: contextDocument() });
+  });
+
+  it("accepts the unique schema-valid object after a malformed provider draft", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it.",
+      transcriptHash: HASH,
+    });
+    await expect(
+      extractHostedVoiceoverContext({
+        prepared,
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        fetcher: async () =>
+          Response.json({
+            data: [
+              {
+                taskUUID: prepared.request.taskUUID,
+                taskType: "textInference",
+                text: `{not valid JSON}\nFinal: ${JSON.stringify(contextDocument())}`,
                 cost: 0.001,
                 finishReason: "stop",
                 usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
@@ -174,6 +200,33 @@ describe("hosted voiceover context extraction", () => {
         }),
       ).rejects.toThrow(code);
     }
+  });
+
+  it("rejects two schema-valid objects even when they are identical", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it.",
+      transcriptHash: HASH,
+    });
+    const document = JSON.stringify(contextDocument());
+    await expect(
+      extractHostedVoiceoverContext({
+        prepared,
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        fetcher: async () =>
+          Response.json({
+            data: [
+              {
+                taskUUID: prepared.request.taskUUID,
+                taskType: "textInference",
+                text: `${document}\n${document}`,
+                cost: 0.001,
+                finishReason: "stop",
+                usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+              },
+            ],
+          }),
+      }),
+    ).rejects.toThrow("VOICEOVER_CONTEXT_JSON_INVALID");
   });
 
   it("fails closed when the provider response is ambiguous", async () => {

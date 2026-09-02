@@ -166,17 +166,27 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
   return Object.freeze(record);
 }
 
-function parseContextOutput(outputText: string): JsonValue {
+function parseContextOutput(outputText: string): Readonly<Record<string, JsonValue>> {
   const trimmed = outputText.trim();
   const fenced = /^```(?:json)?\s*\n([\s\S]*?)\n```$/iu.exec(trimmed);
-  let singleObject: string | null = null;
+  const objectCandidates: string[] = [];
   let start = -1;
   let depth = 0;
   let inString = false;
   let escaped = false;
-  let completeObjects = 0;
   for (let index = 0; index < trimmed.length; index += 1) {
     const character = trimmed[index]!;
+    if (depth === 0) {
+      // Quotes in provider prose must not hide the structured object that
+      // follows. String escaping only matters after an object has started.
+      if (character === "{") {
+        start = index;
+        depth = 1;
+        inString = false;
+        escaped = false;
+      }
+      continue;
+    }
     if (inString) {
       if (escaped) escaped = false;
       else if (character === "\\") escaped = true;
@@ -188,34 +198,49 @@ function parseContextOutput(outputText: string): JsonValue {
       continue;
     }
     if (character === "{") {
-      if (depth === 0) start = index;
       depth += 1;
     } else if (character === "}" && depth > 0) {
       depth -= 1;
       if (depth === 0 && start >= 0) {
-        completeObjects += 1;
-        singleObject = trimmed.slice(start, index + 1);
+        objectCandidates.push(trimmed.slice(start, index + 1));
+        start = -1;
       }
     }
   }
-  if (depth !== 0 || completeObjects !== 1) singleObject = null;
-  const candidate = fenced?.[1] ?? singleObject ?? trimmed;
-  try {
-    const parsed = parseJsonStrict(candidate);
-    // Some text providers JSON-encode their structured result one additional
-    // time. Accept only that exact whole-response wrapper, never surrounding
-    // prose or a heuristic object substring.
-    return typeof parsed === "string" ? parseJsonStrict(parsed) : parsed;
-  } catch (error) {
-    if (error instanceof StrictJsonParseError) {
-      throw new Error(
-        error.code === "DUPLICATE_PROPERTY"
-          ? "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY"
-          : "VOICEOVER_CONTEXT_JSON_INVALID",
-      );
-    }
-    throw error;
+
+  const candidates = [...objectCandidates];
+  for (const wrapper of [fenced?.[1], trimmed]) {
+    if (wrapper && !objectCandidates.includes(wrapper)) candidates.push(wrapper);
   }
+  const valid: Readonly<Record<string, JsonValue>>[] = [];
+  let parsedCandidate = false;
+  let duplicateProperty = false;
+  for (const candidate of candidates) {
+    try {
+      const parsed = parseJsonStrict(candidate);
+      // Some text providers JSON-encode their structured result one additional
+      // time. Accept only that exact wrapper, not heuristic string rewriting.
+      const value = typeof parsed === "string" ? parseJsonStrict(parsed) : parsed;
+      parsedCandidate = true;
+      try {
+        valid.push(validateContext(value));
+      } catch {
+        // A provider may emit a malformed draft followed by one final object.
+        // Only the unique schema-valid object is eligible for acceptance.
+      }
+    } catch (error) {
+      if (error instanceof StrictJsonParseError && error.code === "DUPLICATE_PROPERTY") {
+        duplicateProperty = true;
+      }
+    }
+  }
+  if (valid.length === 1) return valid[0]!;
+  if (duplicateProperty && candidates.length === 1)
+    throw new Error("VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY");
+  if (objectCandidates.length > 1 || valid.length > 1)
+    throw new Error("VOICEOVER_CONTEXT_JSON_INVALID");
+  if (parsedCandidate) throw new Error("VOICEOVER_CONTEXT_INVALID");
+  throw new Error("VOICEOVER_CONTEXT_JSON_INVALID");
 }
 
 export async function prepareHostedVoiceoverContextRequest(input: {
@@ -337,7 +362,7 @@ async function finalizeHostedVoiceoverContext(
   readonly reportedCostMicroUsd: number;
 }> {
   if (costUsd > HOSTED_CONTEXT_RESERVATION_USD) throw new Error("VOICEOVER_CONTEXT_COST_EXCEEDED");
-  const context = validateContext(parseContextOutput(outputText));
+  const context = parseContextOutput(outputText);
   const contextBytes = canonicalizeJson(context);
   if (contextBytes.length > 6_000) throw new Error("VOICEOVER_CONTEXT_TOO_LARGE");
   return Object.freeze({
