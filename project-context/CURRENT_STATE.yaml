@@ -4,7 +4,7 @@ updated_at: "2026-09-02"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: private_hosted_beta_transcription_recovery_live
+current_milestone: private_hosted_beta_stage_3_low_latency_repair_ready
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Source 8bd28bf4 fixes the missing hosted Stage 4 composition and adds a durable post-transcription whole-voiceover context stage. The complete transcript is sent once with a $0.01/1,600-token ceiling; one compact <=6,000-character context is reused once per 25-50-scene batch. Every scene receives the exact phrase/hash, containing sentence, previous/next complete sentence, fixed shot role/layout, and pinned immutable style. Prompt writing has a separate $0.04/8,000-token ceiling, concise 600-character scene cores, deterministic style/crop/negative binding, inspectable accepted prompts, and no blind redispatch after uncertainty. Migration 0056, staging deployment, context dispatch, prompt dispatch, provider calls, GPU work, production action, and spend remain unauthorized and have not occurred. Live staging remains e9f3cd42 / Worker 9dc4ccc5 with the truthful prompt stage pending."
+  provider_free_product_action: "Authenticated Chrome and Cloudflare observability traced fresh project e2713454 to one terminal Stage 3 HTTP 400/providerError after 29.712 seconds on live source a8b10a5a / Worker 32cd2ff6. No accepted result or provider charge was reported, no retry occurred, and Stages 4-5 did not start. Source 4ac93d54 advances the GPT-5 Nano request to v5, reduces bounded context extraction from medium/3,000 to low/1,600, records immutable profile revision 3 through migration 0064, and logs only the safe provider task UUID needed for future correlation. Migration 0064, staging deployment, a fresh project, provider calls, GPU work, production action, and spend remain unauthorized and have not occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: GPT5_NANO_CONTEXT_DEEPSEEK_V4_FLASH_PROMPTS_READY_AWAITING_FRESH_EXACT_AUTHORITY
+  status: STAGE_3_LOW_LATENCY_REPAIR_READY_AWAITING_FRESH_EXACT_AUTHORITY
   implementation_commit: "df4d75bded837222585f444236072324464afa43"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
@@ -137,12 +137,13 @@ hosted_beta_user_walkthrough:
     - "d917bcf3ec1ac4f2ff7d57158fd468e579b7c1bd"
     - "8d9e9a939f71210a87a73f4b0ce40ca5c36cc315"
     - "a8b10a5a718214a7d1a41d4a83b2db6452ca105f"
+    - "4ac93d54ad2c90eb64e3498abb6309538ce51231"
   deployment_candidate: "a8b10a5a"
   deployed_source_commit: "a8b10a5a718214a7d1a41d4a83b2db6452ca105f"
   cloudflare_worker_version_id: "32cd2ff6-dd9d-4ccc-a38d-69f4da2e3c2f"
-  pending_source_candidate: null
+  pending_source_candidate: "4ac93d54ad2c90eb64e3498abb6309538ce51231"
   pending_worker_release: null
-  pending_release_boundary: "SOURCE_A8B10A5A_WITH_STAGE_3_REPAIR_AND_VISIBLE_EXTRACTED_CONTEXT_IS_LIVE_AS_WORKER_32CD2FF6_WITH_CONFIG_E2F43244; MIGRATION_0063_IS_APPLIED_AND_VERIFIED_63_OF_63; AUTHENTICATED_CHROME, API_HEALTH, AND_MEDIA_WORKER_0_1_13_ONLINE_CHECKS_PASS. A_NEW_PROJECT_REQUIRES_SEPARATE_EXACT_POSITIVE_SPEND_AUTHORITY. PROJECT_BF5EE8AB_IS_TERMINAL_UNKNOWN_AND_MUST_NOT_BE_RETRIED."
+  pending_release_boundary: "LIVE_SOURCE_A8B10A5A_WORKER_32CD2FF6_FAILED_FRESH_PROJECT_E2713454_AT_STAGE_3_WITH_HTTP_400_PROVIDERERROR_AFTER_29_712_SECONDS_NO_ACCEPTED_RESULT_NO_REPORTED_CHARGE_NO_RETRY. SOURCE_4AC93D54_REDUCES_GPT5_NANO_CONTEXT_REASONING_AND_OUTPUT_TO_LOW_1600_ADVANCES_REQUEST_V5_ADDS_PROFILE_REVISION_3_AND_SAFE_PROVIDER_TASK_UUID_LOGGING. MIGRATION_0064_DEPLOYMENT_AND_ONE_FRESH_EXACT_USD_0_05_PROJECT_REQUIRE_FRESH_EXACT_AUTHORITY."
   pending_validations: "CANONICAL_GPT5_NANO_MUST_PASS_STAGE_3_AND_RETURN_ONE_SCHEMA_VALID_CONTEXT_OBJECT; AUTOMATIC_STAGE_4_SCENE_PLAN; CANONICAL_DEEPSEEK_V4_FLASH_STAGE_5_MUST_PERSIST_INSPECTABLE_STYLE_BOUND_PROMPTS"
   failed_deployment_attempt: "Historical: three separately approved exact USD 0 uploads bound source b51c6e0d. Config SHA-256 519555c5cb789f9089acaa68c7c6672c44d56c3f17e05b1b0256367f49372a42 uploaded the changed content-addressed assets; config SHA-256 f1f5247f4a5d74cf98d06804faf51a558815f23c8880d5f01d7eb09f1e5ec30b reused them from an isolated exact-source worktree; config SHA-256 95b68445fc0e665210c65a87c562ea6a55f516f05eb6bae7d40d776d0598d967 used current Wrangler 4.127.1. Cloudflare rejected all three with startup validation code 10021 before Worker version creation; no authority was reused. The current-tool failure exposed eager Ajv JSON-schema code generation during Worker startup. Repaired source 6a1911ec defers Ajv construction and per-contract compilation until an actual validation request and is now deployed successfully as Worker ac99ccb0."
   failed_deployment_approval: "APPROVE PRIVATE HOSTED BETA b51c6e0d9ebefcd5ed925c8778bd04ef8a85e5ef CAP USD 0"
@@ -161,14 +162,15 @@ hosted_beta_user_walkthrough:
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
   database_preflight: "LIVE_LEDGER_63_OF_63_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED"
-  pending_database_migration: null
+  pending_database_migration: "0064_hosted_context_low_latency_profile.sql"
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_9_SECRETS_AND_R2_PRIVATE_STATE_PASS"
-  live_browser_verification: "PASS_SOURCE_A8B10A5A_WORKER_32CD2FF6_STATUS_4_OF_4_AUTHENTICATED_CHROME_API_HEALTHY_MEDIA_WORKER_0_1_13_ONLINE_NO_BROWSER_ERRORS; TERMINAL_PROJECT_BF5EE8AB_REMAINS_FAILED_AND_WAS_NOT_RETRIED; NO_PROJECT_CREATE_DELETE_PROVIDER_CALL_GPU_PRODUCTION_ACTION_OR_SPEND_OCCURRED"
+  live_browser_verification: "DIAGNOSED_SOURCE_A8B10A5A_WORKER_32CD2FF6_PROJECT_E2713454_STAGE_1_2_COMPLETE_STAGE_3_HTTP_400_PROVIDERERROR_AFTER_29_712_SECONDS_NO_ACCEPTED_RESULT_NO_REPORTED_CHARGE_NO_RETRY_STAGE_4_5_NOT_STARTED_NO_BROWSER_ERRORS; THIS_TURN_CREATED_DELETED_OR_RETRIED_NO_PROJECT_AND_SPENT_USD_0"
   fixed_blockers:
+    - "Authenticated Chrome showed fresh project e2713454 at Stage 3 FAILED after Stages 1-2 completed. Cloudflare observability correlated the exact request to live Worker 32cd2ff6: Runware returned HTTP 400/providerError after 29.712 seconds, VideoForge returned 422, no accepted result or provider charge was reported, no retry occurred, and Stages 4-5 did not start. The live structured-output request shape matches Runware's official GPT-5 Nano contract; the duration and generic upstream providerError make the medium-reasoning/3,000-token generation profile at the roughly 30-second edge the strongest available cause, not a proven schema rejection. Source 4ac93d54 advances the immutable request to v5, uses low reasoning and a 1,600-token maximum for bounded extraction, adds migration 0064 with immutable GPT-5 Nano profile revision 3, and records only the provider task UUID in safe failure logs. Web tests pass 68/68; migration/profile tests pass 10/10; web and control-plane builds/typecheck, targeted ESLint, staging build/quarantine, deployment/context validation, secret scan, and diff checks pass. No project was created, deleted, or retried in this turn; no remote mutation, provider request, GPU/production action, or spend occurred."
     - "New project bf5ee8ab completed transcription and reached Stage 3, then Runware returned a completed parseable JSON object that VideoForge rejected locally as VOICEOVER_CONTEXT_INVALID after about 23 seconds. The exact strict wire schema already guarantees keys, types, and array counts, isolating the rejection to local-only nonempty/per-string length rules that were never stated in the provider prompt; the invalid raw response was not persisted. The USD 0.01 reservation remains with provider_may_have_charged=true and no reported exact cost, so the project is terminal and must not be retried. Durable attempt/profile metadata also incorrectly recorded retired deepseek:v4@flash even though active HTTP source dispatched openai-gpt-5-nano. Source 8d9e9a93 advances the immutable GPT-5 Nano request to v4, states every local string bound, safely trims and bounds returned strings under the existing 6,000-character total ceiling instead of rejecting useful bounded output, and adds migration 0063 with immutable GPT-5 Nano profile revision 2 while preserving DeepSeek for Stage 5. The project page now shows a visible Extracted context card with topic, summary, and structured facts immediately after Stage 3 succeeds. Focused web tests pass 63/63; migration/profile/smoke/hardening tests pass 19/19; both web/control-plane typechecks, targeted lint, staging build/quarantine, deployment/context validation, migration hash, and diff checks pass. Exact USD 0 authority applied migration 0063 and verified the complete 63/63 ledger, FORCE RLS, and exact grants, then deployed handoff source a8b10a5a as Worker 32cd2ff6 with config SHA-256 e2f43244. Four cache-bypassed source reads pass with project-ledger-enforced billing and GPU disabled. No new project, provider call, GPU/production action, or spend occurred."
     - "Read-only Neon diagnosis of the reported PROJECT_TITLE_CONFLICT found two archived `helen` rows and a separate still-ACTIVE `helen` project `3a8238fa`; archive/delete therefore released the deleted rows correctly, while the active-name uniqueness rule truthfully rejected another active duplicate. Source 419cffad maps only the exact `projects_active_name_uq` constraint, returns actionable copy naming the active title, and adds a browser fallback so the raw internal code is never exposed. Focused hosted tests pass 99/99; both web typechecks, changed-file ESLint, staging build/quarantine, and diff checks pass. Exact USD 0 approval deployed clean handoff source 52a4cc9f once as Worker bbe5bf3b with config SHA-256 705826e6 and preserved media worker 0.1.13. Four cache-bypassed source reads pass; authenticated Chrome loads the new form, reports API healthy and the computer connected, and points Progress to the separate active `helen` project. No project create/delete/retry, database migration, provider call, GPU/production action, or spend occurred."
     - "Corrective exact USD 0 authority published immutable release media-worker-v0.1.13 from source c1b80b36 through GitHub run 33609054728 after Windows and macOS builds, unit tests, universal2/signature, DMG, hash, and non-replaceable publication checks passed. Release manifest SHA-256 is 02a95664cfd7fa57c02316d3c84cfe798550a64eaa49c56de54f3675f5a8cb43 and execution bundle SHA-256 is b3a7686ecc84b9bbae754dd66ce756b69ea2a92e35807cbc7329fe43c5a4bfc4. The first run 33608344032 stopped before build/publication because the original proposal incorrectly bound c1b80b36 to predecessor bundle 4cd3b65e; no tag, asset, deployment, or spend resulted. Exact config 5e1e6378 deployed source c1b80b36 once as Worker 25e72e87. Four cache-bypassed status reads pass with GPU DISABLED_UNQUALIFIED. The verified Mac app replaced 0.1.12; Neon and authenticated Chrome show 0.1.13 ONLINE with the exact bundle, and Chrome shows the repaired failure copy. Project 9ce28f56 was not retried. No provider request, database migration, GPU/RunPod work, production action, or spend occurred."
@@ -290,6 +292,10 @@ hosted_beta_user_walkthrough:
     - ACCOUNT_ISOLATION_DELETION_AND_LOGOUT
   release_boundary: "This is a private hosted-beta deployment only. Production activation, V2-07 through V2-13 live qualification, provider calls, RunPod operations, GPU use, and C1/C2 resealing remain blocked."
   validations:
+    hosted_context_low_latency_repair_commit: "4ac93d54ad2c90eb64e3498abb6309538ce51231"
+    hosted_context_low_latency_web: "PASS_68_OF_68"
+    hosted_context_low_latency_migration_profile: "PASS_10_OF_10"
+    hosted_context_low_latency_build_typecheck_eslint_staging_deployment_context_secret_diff: PASS
     hosted_context_prompt_source_commit: "8bd28bf4"
     hosted_context_prompt_pipeline: "PASS_40_OF_40"
     hosted_context_prompt_web: "PASS_101_OF_101"
@@ -4974,8 +4980,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_transcription_recovery_live
-  status: transcription_recovery_live_awaiting_one_fresh_project_authority
+  milestone: private_hosted_beta_stage_3_low_latency_repair_ready
+  status: stage_3_low_latency_repair_awaiting_migration_deployment_and_one_fresh_project_authority
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: release_and_deployment_authority_consumed_non_reusable
   task_stage: provider_free_product_execution
@@ -4984,7 +4990,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_13_release_operations
   task_brief: tasks/VF-10-13.md
-  goal: "Continue only with one fresh source-bound Stage 1-5 project capped at exactly USD 0.05. The terminal USD 1-capped project must not be retried. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
+  goal: "Under one fresh exact proposal, apply migration 0064, deploy the Stage 3 low-latency repair, then create exactly one fresh source-bound Stage 1-5 project capped at USD 0.05. Do not retry project e2713454 or any earlier terminal project. Stop at the first terminal failure or after Stage 5. Production, RunPod, GPU, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
