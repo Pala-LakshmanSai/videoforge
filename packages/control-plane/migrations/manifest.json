@@ -408,6 +408,12 @@
       "name": "hosted_context_completion_binding",
       "filename": "0068_hosted_context_completion_binding.sql",
       "sha256": "sha256:e97130419c299cffae599bfec52a7348460b0d49d9dae5c2761259a26a690689"
+    },
+    {
+      "version": 69,
+      "name": "hosted_context_compact_profile",
+      "filename": "0069_hosted_context_compact_profile.sql",
+      "sha256": "sha256:9b4fd0519a756c78547ea2976a421299dfe4c3b8b51ba94cacff8be6961796f2"
     }
   ]
 }

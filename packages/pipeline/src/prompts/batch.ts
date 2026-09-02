@@ -12,7 +12,7 @@ import {
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
-export const MAX_PROMPT_STORY_CONTEXT_CHARS = 6_000 as const;
+export const MAX_PROMPT_STORY_CONTEXT_CHARS = 480 as const;
 export const MAX_PROMPT_LOCAL_CONTEXT_CHARS = 80_000 as const;
 const stripControls = (value: string): string =>
   Array.from(value, (character) => {
@@ -151,12 +151,9 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
     plannerGuidance: normalized(input.plannerGuidance, 2_000, "Planner guidance", [
       "plannerGuidance",
     ]),
-    storyContext: normalized(
-      input.storyContext,
-      MAX_PROMPT_STORY_CONTEXT_CHARS,
-      "Story context",
-      ["storyContext"],
-    ),
+    storyContext: normalized(input.storyContext, MAX_PROMPT_STORY_CONTEXT_CHARS, "Story context", [
+      "storyContext",
+    ]),
     continuityTags: Object.freeze(tags),
     scenes: Object.freeze(scenes),
   });

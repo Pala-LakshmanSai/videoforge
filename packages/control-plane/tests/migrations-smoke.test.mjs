@@ -109,12 +109,12 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
   }
 });
 
-test("hosted prompt profile reuse and completion binding upgrade the exact 0059 chain to 0068", async () => {
+test("hosted prompt and compact-context profiles upgrade the exact 0059 chain to 0069", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0068_hosted_context_completion_binding.sql");
+    assert.equal(sources.at(-1)?.filename, "0069_hosted_context_compact_profile.sql");
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -136,7 +136,7 @@ test("hosted prompt profile reuse and completion binding upgrade the exact 0059 
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [60, 61, 62, 63, 64, 65, 66, 67, 68]);
+    assert.deepEqual(upgraded.appliedVersions, [60, 61, 62, 63, 64, 65, 66, 67, 68, 69]);
     const definitions = await executor.query(
       `SELECT proname, pg_get_functiondef(oid) AS definition
          FROM pg_proc
@@ -151,7 +151,8 @@ test("hosted prompt profile reuse and completion binding upgrade the exact 0059 
       (row) => row.proname === "videoforge_prepare_hosted_voiceover_context",
     );
     assert.match(context.definition, /deepseek:v4@flash/u);
-    assert.match(context.definition, /revision\s*=\s*6|revision=6/u);
+    assert.match(context.definition, /voiceover-context-v9/u);
+    assert.match(context.definition, /revision\s*=\s*7|revision=7/u);
   } finally {
     await database.close();
   }

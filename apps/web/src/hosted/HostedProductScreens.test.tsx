@@ -1588,10 +1588,10 @@ describe("hosted product journey", () => {
               transcript_hash: `sha256:${"b".repeat(64)}`,
               context_hash: `sha256:${"c".repeat(64)}`,
               context_document: {
-                primary_topic: "Private project",
-                summary: "A concise whole-voiceover summary.",
-                people: ["Presenter"],
-                places: ["Workshop"],
+                sentences: [
+                  "The same presenter remains in the workshop.",
+                  "The demonstration uses the same physical object throughout.",
+                ],
               },
               reserved_cost_micro_usd: 10_000,
             }
@@ -1607,9 +1607,11 @@ describe("hosted product journey", () => {
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
     expect(await screen.findByRole("heading", { name: "Extracted context" })).toBeInTheDocument();
-    expect(screen.getByText("A concise whole-voiceover summary.")).toBeInTheDocument();
-    expect(screen.getByText("Presenter")).toBeInTheDocument();
-    expect(screen.getByText("Workshop")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The same presenter remains in the workshop. The demonstration uses the same physical object throughout.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Inspect saved context")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Check provider result" })).not.toBeInTheDocument();
     expect(

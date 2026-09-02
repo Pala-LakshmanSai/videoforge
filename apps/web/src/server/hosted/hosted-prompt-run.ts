@@ -39,6 +39,37 @@ function nullableString(value: unknown, label: string): string | null {
   return value === null ? null : string(value, label);
 }
 
+function compactStoryContext(value: unknown): string {
+  const encoded = string(value, "story context");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(encoded);
+  } catch {
+    throw new TypeError("Hosted story context is invalid.");
+  }
+  const context = record(parsed, "hosted story context");
+  const sentences = context.sentences;
+  if (
+    Object.keys(context).length !== 1 ||
+    !Array.isArray(sentences) ||
+    sentences.length < 1 ||
+    sentences.length > 4 ||
+    sentences.some((sentence) => typeof sentence !== "string")
+  )
+    throw new TypeError("Hosted story context is invalid.");
+  const normalizedSentences = sentences.map((sentence) =>
+    (sentence as string).normalize("NFKC").replace(/\s+/gu, " ").trim(),
+  );
+  const result = normalizedSentences.join(" ");
+  if (
+    normalizedSentences.some((sentence) => sentence.length === 0 || sentence.length > 160) ||
+    new Set(normalizedSentences).size !== normalizedSentences.length ||
+    result.length > 480
+  )
+    throw new TypeError("Hosted story context is invalid.");
+  return result;
+}
+
 type SentenceWindow = {
   readonly sentence: string;
   readonly previous: string | null;
@@ -88,7 +119,10 @@ function sentenceWindows(value: unknown): ReadonlyMap<string, SentenceWindow> {
   return windows;
 }
 
-function parseScenes(value: unknown, windows: ReadonlyMap<string, SentenceWindow>): readonly PromptSceneInput[] {
+function parseScenes(
+  value: unknown,
+  windows: ReadonlyMap<string, SentenceWindow>,
+): readonly PromptSceneInput[] {
   if (!Array.isArray(value) || value.length < 25 || value.length > 50)
     throw new TypeError("Hosted prompt scene collection is invalid.");
   return Object.freeze(
@@ -175,7 +209,7 @@ export function hostedPromptAuthority(input: {
     styleProfileHash: styleHash as `sha256:${string}`,
     styleState: "PUBLISHED",
     plannerGuidance: string(prompt.planner_guidance, "planner guidance"),
-    storyContext: string(plan.story_context, "story context"),
+    storyContext: compactStoryContext(plan.story_context),
     style: Object.freeze({
       positiveSuffix: string(prompt.positive_suffix, "positive suffix"),
       negativeSuffix: string(prompt.negative_suffix, "negative suffix"),

@@ -3385,22 +3385,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   );
   const contextComplete = query.data.voiceover_context?.state === "SUCCEEDED";
   const contextDocument = query.data.voiceover_context?.context_document;
-  const contextTopic =
-    typeof contextDocument?.primary_topic === "string" ? contextDocument.primary_topic : null;
-  const contextSummary =
-    typeof contextDocument?.summary === "string" ? contextDocument.summary : null;
-  const contextFactGroups = contextDocument
-    ? Object.entries(contextDocument)
-        .filter(([key]) => key !== "primary_topic" && key !== "summary")
-        .map(([key, value]) => ({
-          key,
-          label: key.replaceAll("_", " "),
-          items: Array.isArray(value)
-            ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
-            : [],
-        }))
-        .filter((group) => group.items.length > 0)
-    : [];
+  const contextText = Array.isArray(contextDocument?.sentences)
+    ? contextDocument.sentences
+        .filter((sentence): sentence is string => typeof sentence === "string")
+        .join(" ")
+    : typeof contextDocument?.summary === "string"
+      ? contextDocument.summary
+      : null;
   const contextUnknown = query.data.voiceover_context?.state === "UNKNOWN";
   const contextNeedsReview =
     contextStage?.status === "FAILED" ||
@@ -3569,26 +3560,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               eyebrow="Stage 3 result"
               heading="Extracted context"
             >
-              {contextTopic ? (
-                <strong className="extracted-context-topic">{contextTopic}</strong>
-              ) : null}
-              {contextSummary ? (
-                <p className="extracted-context-summary">{contextSummary}</p>
-              ) : null}
-              {contextFactGroups.length > 0 ? (
-                <div className="extracted-context-groups" aria-label="Extracted context facts">
-                  {contextFactGroups.map((group) => (
-                    <section key={group.key}>
-                      <h3>{group.label}</h3>
-                      <ul>
-                        {group.items.map((item, index) => (
-                          <li key={`${group.key}-${index}`}>{item}</li>
-                        ))}
-                      </ul>
-                    </section>
-                  ))}
-                </div>
-              ) : null}
+              {contextText ? <p className="extracted-context-summary">{contextText}</p> : null}
             </Panel>
           ) : null}
           <Panel eyebrow="Activity" heading="Current run">

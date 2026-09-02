@@ -16,78 +16,36 @@ import {
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
 const MODEL = "deepseek:v4@flash" as const;
-const REQUEST_CONTRACT_VERSION = "runware-deepseek-v4-flash-context-request-v8" as const;
+const REQUEST_CONTRACT_VERSION = "runware-deepseek-v4-flash-context-request-v9" as const;
+const MIN_CONTEXT_SENTENCES = 1 as const;
+const MAX_CONTEXT_SENTENCES = 4 as const;
+const MAX_CONTEXT_SENTENCE_CHARS = 160 as const;
+export const MAX_HOSTED_CONTEXT_CHARS = 480 as const;
 
 const SYSTEM_PROMPT = [
-  "Extract durable story context from the complete VideoForge voiceover transcript.",
+  "Extract only compact global visual context from the complete VideoForge voiceover transcript.",
   "Return only the requested strict JSON.",
-  "Record concrete facts useful for literal image selection: people, places, era, chronology, recurring objects, processes, causes, effects, and continuity.",
-  "Resolve pronouns and callbacks only when the transcript supports the resolution.",
-  "Keep primary_topic between 1 and 140 characters and summary between 1 and 500 characters.",
-  "Keep every people, places, era_and_time, recurring_objects, continuity_facts, and resolved_references item between 1 and 80 characters.",
-  "Keep every processes and cause_and_effect item between 1 and 100 characters, and every chronology item between 1 and 100 characters.",
-  "Never emit an empty string; omit unsupported array details by returning an empty array.",
+  "Return 1 to 4 short factual sentences and no headings, labels, bullets, or lists.",
+  "The downstream writer already receives the exact phrase, containing sentence, previous sentence, next sentence, and transcript order for every scene.",
+  "Do not repeat chronology, scene order, local actions, examples, or details recoverable from those scene inputs.",
+  "Include a fact only when it is reused across separated parts of the transcript, resolves an identity or reference outside the local window, or establishes a persistent subject, place, era, or visual state.",
+  "Do not summarize the thesis. Omit causes, instructions, examples, and details that are already clear in their local narration window.",
+  "Never add filler to reach a sentence count; omit any detail that would not change footage choice, image relevance, or visual consistency.",
+  `Keep each sentence between 1 and ${MAX_CONTEXT_SENTENCE_CHARS} characters and the combined text at or below ${MAX_HOSTED_CONTEXT_CHARS} characters.`,
   "Do not invent facts, visual style, camera directions, captions, logos, graphics, or branded products.",
-  "Use empty arrays for details not supported by the transcript.",
 ].join(" ");
 
 const schema = Object.freeze({
   type: "object",
   additionalProperties: false,
-  required: [
-    "primary_topic",
-    "summary",
-    "people",
-    "places",
-    "era_and_time",
-    "recurring_objects",
-    "processes",
-    "cause_and_effect",
-    "chronology",
-    "continuity_facts",
-    "resolved_references",
-  ],
+  required: ["sentences"],
   properties: {
     // OpenAI Structured Outputs supports only a subset of JSON Schema and does
     // not accept minLength/maxLength here. VideoForge enforces the exact string
     // bounds again in validateContext after the provider returns the object.
-    primary_topic: { type: "string" },
-    summary: { type: "string" },
-    people: { type: "array", maxItems: 6, items: { type: "string" } },
-    places: { type: "array", maxItems: 6, items: { type: "string" } },
-    era_and_time: {
+    sentences: {
       type: "array",
-      maxItems: 5,
-      items: { type: "string" },
-    },
-    recurring_objects: {
-      type: "array",
-      maxItems: 8,
-      items: { type: "string" },
-    },
-    processes: {
-      type: "array",
-      maxItems: 6,
-      items: { type: "string" },
-    },
-    cause_and_effect: {
-      type: "array",
-      maxItems: 5,
-      items: { type: "string" },
-    },
-    chronology: {
-      type: "array",
-      maxItems: 6,
-      items: { type: "string" },
-    },
-    continuity_facts: {
-      type: "array",
-      maxItems: 6,
-      items: { type: "string" },
-    },
-    resolved_references: {
-      type: "array",
-      maxItems: 6,
+      maxItems: MAX_CONTEXT_SENTENCES,
       items: { type: "string" },
     },
   },
@@ -139,39 +97,26 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
   const actual = Object.keys(record).sort();
   if (actual.length !== required.length || actual.some((key, index) => key !== required[index]))
     throw new Error("VOICEOVER_CONTEXT_INVALID");
-  const normalized: Record<string, JsonValue> = {};
   const boundedText = (text: string, maximum: number) =>
-    Array.from(text.trim()).slice(0, maximum).join("");
-  const scalarLimits = { primary_topic: 140, summary: 500 } as const;
-  for (const [key, maximum] of Object.entries(scalarLimits)) {
-    if (typeof record[key] !== "string" || record[key].trim().length === 0)
-      throw new Error("VOICEOVER_CONTEXT_INVALID");
-    normalized[key] = boundedText(record[key], maximum);
-  }
-  const arrayLimits = {
-    people: [6, 80],
-    places: [6, 80],
-    era_and_time: [5, 80],
-    recurring_objects: [8, 80],
-    processes: [6, 100],
-    cause_and_effect: [5, 100],
-    chronology: [6, 100],
-    continuity_facts: [6, 100],
-    resolved_references: [6, 100],
-  } as const;
-  for (const [key, [maximumItems, maximumLength]] of Object.entries(arrayLimits)) {
-    const items = record[key];
-    if (
-      !Array.isArray(items) ||
-      items.length > maximumItems ||
-      items.some((item) => typeof item !== "string")
-    )
-      throw new Error("VOICEOVER_CONTEXT_INVALID");
-    normalized[key] = items
-      .map((item) => boundedText(item as string, maximumLength))
-      .filter((item) => item.length > 0);
-  }
-  return Object.freeze(normalized);
+    Array.from(text.normalize("NFKC").replace(/\s+/gu, " ").trim()).slice(0, maximum).join("");
+  const suppliedSentences = record.sentences;
+  if (
+    !Array.isArray(suppliedSentences) ||
+    suppliedSentences.length < MIN_CONTEXT_SENTENCES ||
+    suppliedSentences.length > MAX_CONTEXT_SENTENCES ||
+    suppliedSentences.some((sentence) => typeof sentence !== "string")
+  )
+    throw new Error("VOICEOVER_CONTEXT_INVALID");
+  const sentences = suppliedSentences.map((sentence) =>
+    boundedText(sentence as string, MAX_CONTEXT_SENTENCE_CHARS),
+  );
+  if (
+    sentences.some((sentence) => sentence.length === 0) ||
+    new Set(sentences).size !== sentences.length ||
+    sentences.join(" ").length > MAX_HOSTED_CONTEXT_CHARS
+  )
+    throw new Error("VOICEOVER_CONTEXT_INVALID");
+  return Object.freeze({ sentences: Object.freeze(sentences) });
 }
 
 function parseContextOutput(outputText: string): Readonly<Record<string, JsonValue>> {
@@ -274,7 +219,7 @@ export async function prepareHostedVoiceoverContextRequest(input: {
       thinkingLevel: "off",
       temperature: 0.1,
       topP: 0.9,
-      maxTokens: 3_000,
+      maxTokens: 350,
     },
     messages: [{ role: "user", content: canonicalizeJson({ transcript: input.transcript }) }],
   });
@@ -376,7 +321,8 @@ async function finalizeHostedVoiceoverContext(
   if (costUsd > HOSTED_CONTEXT_RESERVATION_USD) throw new Error("VOICEOVER_CONTEXT_COST_EXCEEDED");
   const context = parseContextOutput(outputText);
   const contextBytes = canonicalizeJson(context);
-  if (contextBytes.length > 6_000) throw new Error("VOICEOVER_CONTEXT_TOO_LARGE");
+  if (contextBytes.length > MAX_HOSTED_CONTEXT_CHARS + 80)
+    throw new Error("VOICEOVER_CONTEXT_TOO_LARGE");
   return Object.freeze({
     context,
     contextBytes,

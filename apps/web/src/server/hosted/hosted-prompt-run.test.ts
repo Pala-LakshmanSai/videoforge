@@ -54,7 +54,12 @@ function plan(overrides: Record<string, unknown> = {}) {
         split_image_guidance: "8:9 right panel with the primary evidence centered",
       },
     },
-    story_context: JSON.stringify({ summary: "A literal sequence of numbered scenes." }),
+    story_context: JSON.stringify({
+      sentences: [
+        "The same physical subject continues throughout the video.",
+        "No additional global visual fact is needed.",
+      ],
+    }),
     all_segments: scenes().map((scene, index) => ({
       scene_id: scene.scene_id,
       segment_index: index,
@@ -90,7 +95,40 @@ describe("hosted prompt authority", () => {
     expect(authority.taskState).toBe("RUNNING");
     expect(authority.outboxState).toBe("ACKNOWLEDGED");
     expect(authority.reservedCostMicroUsd).toBe(40_000);
+    expect(authority.storyContext).toBe(
+      "The same physical subject continues throughout the video. No additional global visual fact is needed.",
+    );
     expect(authority.recordedInputHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
+  });
+
+  it("rejects verbose legacy context instead of forwarding chronology to every scene", () => {
+    expect(() =>
+      hostedPromptAuthority({
+        plan: plan({
+          story_context: JSON.stringify({
+            summary: "Redundant summary.",
+            chronology: ["first", "second", "third"],
+          }),
+        }),
+        identity,
+        reservedCostMicroUsd: 40_000,
+      }),
+    ).toThrow("story context is invalid");
+  });
+
+  it("rejects duplicate or oversized global sentences before prompt dispatch", () => {
+    for (const sentences of [
+      ["Same subject throughout.", "Same subject throughout."],
+      ["x".repeat(161)],
+    ]) {
+      expect(() =>
+        hostedPromptAuthority({
+          plan: plan({ story_context: JSON.stringify({ sentences }) }),
+          identity,
+          reservedCostMicroUsd: 40_000,
+        }),
+      ).toThrow("story context is invalid");
+    }
   });
 
   it("rejects an already-claimed plan or insufficient project cap", () => {
@@ -159,7 +197,8 @@ describe("hosted Runware prompt writer", () => {
       imageStyleVersionId: ids.style,
       styleProfileHash: digest,
       plannerGuidance: "Literal editorial collage treatment.",
-      storyContext: JSON.stringify({ summary: "A literal sequence of numbered scenes." }),
+      storyContext:
+        "The same physical subject continues throughout the video. No additional global visual fact is needed.",
       continuityTags: [],
       scenes: scenes().map((scene) => ({
         sceneId: scene.scene_id,
