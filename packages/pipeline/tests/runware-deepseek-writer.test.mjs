@@ -141,7 +141,8 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
       request.request.taskUUID,
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
     );
-    assert.equal(request.request.settings.thinkingLevel, "high");
+    assert.equal(request.request.model, "deepseek:v4@flash");
+    assert.equal(request.request.settings.thinkingLevel, "off");
     assert.equal(request.request.settings.temperature, 0.2);
     assert.equal(request.request.settings.topP, 0.9);
     assert.equal(request.requestVersion, RUNWARE_PROMPT_REQUEST_VERSION);

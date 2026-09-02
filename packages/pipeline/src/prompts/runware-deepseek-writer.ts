@@ -18,9 +18,9 @@ import type {
   PromptWriterSceneOutput,
 } from "./types.js";
 
-export const RUNWARE_PROMPT_MODEL = "deepseek-v4-flash" as const;
+export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v4" as const;
+  "runware-deepseek-v4-flash-prompt-request-v5" as const;
 export const RUNWARE_PROMPT_MAX_OUTPUT_TOKENS = 8_000 as const;
 export const RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE = 150 as const;
 
@@ -66,7 +66,7 @@ export interface RunwarePromptApiRequest {
   };
   readonly settings: {
     readonly systemPrompt: typeof SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
-    readonly thinkingLevel: "high";
+    readonly thinkingLevel: "off";
     readonly temperature: 0.2;
     readonly topP: 0.9;
     readonly maxTokens: number;
@@ -325,7 +325,9 @@ export function buildRunwarePromptRequest(
     }),
     settings: Object.freeze({
       systemPrompt: SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-      thinkingLevel: "high",
+      // Match the exact canonical AIR/settings contract already qualified live
+      // and used by the successful Stage 3 DeepSeek transport.
+      thinkingLevel: "off",
       temperature: 0.2,
       topP: 0.9,
       maxTokens: Math.min(

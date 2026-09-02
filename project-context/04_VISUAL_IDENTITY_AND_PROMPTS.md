@@ -63,7 +63,7 @@ Recommended Runware settings:
 ```json
 {
   "taskType": "textInference",
-  "model": "deepseek-v4-flash",
+  "model": "deepseek:v4@flash",
   "outputFormat": "JSON",
   "includeUsage": true,
   "includeCost": true,
@@ -77,7 +77,7 @@ Recommended Runware settings:
 
 Use strict `jsonSchema`. Application code owns style suffixes, optional extra keywords, and permanent guardrails so the model cannot omit or inconsistently repeat them.
 
-DeepSeek scene-writing contract (`scene-prompt-writer-v1`, Runware request v4):
+DeepSeek scene-writing contract (`scene-prompt-writer-v1`, Runware request v5):
 
 ```text
 You write concise image scene cores for VideoForge. For each stable scene ID,

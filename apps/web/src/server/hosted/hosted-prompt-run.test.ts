@@ -254,7 +254,7 @@ describe("hosted Runware prompt writer", () => {
             },
             cost: 0.001,
             finishReason: "stop",
-            model: "deepseek-v4-flash",
+            model: "deepseek:v4@flash",
           },
         ],
       });
