@@ -1,6 +1,6 @@
 -- Stage 3 v7 returned quickly but its GPT-5 Nano result did not contain one schema-valid context
--- object. Preserve immutable revisions 1 through 5 and select revision 6 for request v8, using the
--- Runware Gemini 3.1 Flash Lite model already live-qualified with a larger strict JSON schema.
+-- object. Preserve immutable revisions 1 through 5 and select revision 6 for request v8, using
+-- Runware DeepSeek V4 Flash's native strict JSON-schema path for the text-only transcript task.
 
 CREATE OR REPLACE FUNCTION public.videoforge_prepare_hosted_voiceover_context(supplied jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER
@@ -27,7 +27,7 @@ DECLARE
   existing_profile public.execution_profiles%ROWTYPE;
   reservation_sequence integer;
   now_at timestamptz:=clock_timestamp();
-  profile_config jsonb:='{"model":"google:gemini@3.1-flash-lite","operation":"voiceover-context-v8","provider":"runware"}'::jsonb;
+  profile_config jsonb:='{"model":"deepseek:v4@flash","operation":"voiceover-context-v8","provider":"runware"}'::jsonb;
   profile_config_hash text:='sha256:'||encode(digest(convert_to(profile_config::text,'UTF8'),'sha256'),'hex');
   outbox_payload jsonb:='{"stage":"voiceover_context"}'::jsonb;
 BEGIN
@@ -92,7 +92,7 @@ BEGIN
     result_disposition,provider_details,created_at,claimed_at,started_at)
   VALUES(attempt_id,account_id,workspace_id,task_id,1,'hosted-voiceover-context:'||revision_id,
     'RUNNING','ACKNOWLEDGED','CLAIMED',profile_id,claim_hash,transcript_hash,'PENDING',
-    jsonb_build_object('provider','runware','model','google:gemini@3.1-flash-lite'),now_at,now_at,now_at);
+    jsonb_build_object('provider','runware','model','deepseek:v4@flash'),now_at,now_at,now_at);
   INSERT INTO public.outbox(id,account_id,workspace_id,task_id,attempt_id,kind,state,dedupe_key,
     payload_contract_name,payload_contract_version,payload_hash,payload,available_at,delivered_at,
     created_at,updated_at)
@@ -104,7 +104,7 @@ BEGIN
     sequence,event_type,amount_micro_usd,idempotency_key,details,occurred_at)
   VALUES(cost_id,account_id,workspace_id,'PROJECT_REVISION',revision_id,task_id,attempt_id,
     reservation_sequence,'RESERVED',10000,'hosted-voiceover-context:'||revision_id||':reserved',
-    jsonb_build_object('provider','runware','model','google:gemini@3.1-flash-lite'),now_at);
+    jsonb_build_object('provider','runware','model','deepseek:v4@flash'),now_at);
   INSERT INTO public.hosted_voiceover_contexts(id,account_id,workspace_id,project_id,
     project_revision_id,asr_attempt_id,task_id,attempt_id,outbox_id,execution_profile_id,state,
     transcript_hash,request_hash,claim_token_hash,reserved_cost_micro_usd,

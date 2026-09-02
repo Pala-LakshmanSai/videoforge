@@ -399,9 +399,9 @@
     },
     {
       "version": 67,
-      "name": "hosted_context_gemini_profile",
-      "filename": "0067_hosted_context_gemini_profile.sql",
-      "sha256": "sha256:213e2a564e79ac497a9a284da0289c68eb45b68bf44f53dcccbe344d02815b7e"
+      "name": "hosted_context_deepseek_profile",
+      "filename": "0067_hosted_context_deepseek_profile.sql",
+      "sha256": "sha256:6ad89b0630de5e34c3ce5c413ab42d5bb98113754940147db5cc9ba75ae67517"
     }
   ]
 }

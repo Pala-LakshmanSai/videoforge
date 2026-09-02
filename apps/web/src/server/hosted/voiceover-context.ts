@@ -15,8 +15,8 @@ import {
 
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
-const MODEL = "google:gemini@3.1-flash-lite" as const;
-const REQUEST_CONTRACT_VERSION = "runware-gemini31-flash-lite-context-request-v8" as const;
+const MODEL = "deepseek:v4@flash" as const;
+const REQUEST_CONTRACT_VERSION = "runware-deepseek-v4-flash-context-request-v8" as const;
 
 const SYSTEM_PROMPT = [
   "Extract durable story context from the complete VideoForge voiceover transcript.",
@@ -267,10 +267,11 @@ export async function prepareHostedVoiceoverContextRequest(input: {
     jsonSchema: { name: "videoforge_voiceover_story_context", strict: true, schema },
     settings: {
       systemPrompt: SYSTEM_PROMPT,
-      // This is the same Runware model/reasoning combination already live-qualified
-      // for VideoForge's larger strict style-analysis schema. GPT-5 Nano alternated
-      // between HTTP 400 and incomplete structured output across requests v3-v7.
-      thinkingLevel: "low",
+      // DeepSeek V4 Flash is the lower-cost text-only model already selected for
+      // VideoForge prompt work. Its Runware contract natively supports strict JSON
+      // Schema. GPT-5 Nano alternated between HTTP 400 and incomplete structured
+      // output across requests v3-v7.
+      thinkingLevel: "off",
       temperature: 0.1,
       topP: 0.9,
       maxTokens: 3_000,

@@ -70,7 +70,7 @@ function contextClaim(asrAttemptId, serial) {
 
 async function insertContextProfile(executor, { id, operation = "voiceover-context-v8" }) {
   const configuration = {
-    model: "google:gemini@3.1-flash-lite",
+    model: "deepseek:v4@flash",
     operation,
     provider: "runware",
   };
@@ -87,7 +87,7 @@ async function insertContextProfile(executor, { id, operation = "voiceover-conte
   );
 }
 
-test("0067 reuses the workspace compatible Gemini profile for a new project claim", async () => {
+test("0067 reuses the workspace compatible DeepSeek profile for a new project claim", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     await seedLockedProjects(executor);
     await executor.query(`SELECT set_config($1, $2, false)`, [

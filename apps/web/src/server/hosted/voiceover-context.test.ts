@@ -36,11 +36,11 @@ describe("hosted voiceover context extraction", () => {
     expect(prepared.requestBytes).toContain("primary_topic between 1 and 140 characters");
     expect(prepared.requestBytes).toContain("Never emit an empty string");
     expect(request).toMatchObject({
-      model: "google:gemini@3.1-flash-lite",
+      model: "deepseek:v4@flash",
       outputFormat: "JSON",
     });
     expect(request.settings).toMatchObject({
-      thinkingLevel: "low",
+      thinkingLevel: "off",
       temperature: 0.1,
       topP: 0.9,
       maxTokens: 3_000,
@@ -434,7 +434,7 @@ describe("hosted voiceover context extraction", () => {
                 {
                   taskType: "textInference",
                   taskUUID: prepared.request.taskUUID,
-                  model: "google:gemini@3.1-flash-lite",
+                  model: "deepseek:v4@flash",
                   text: JSON.stringify(contextDocument()),
                   cost: 0.001,
                   finishReason: "stop",
