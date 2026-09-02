@@ -208,6 +208,41 @@ describe("Runware server HTTP transport", () => {
     ).resolves.toMatchObject({ originalRequestBytes, originalRequestSha256 });
   });
 
+  it("uses the same text-result contract for live dispatch and archived recovery", async () => {
+    const taskUUID = "11111111-1111-4111-8111-111111111111";
+    const originalRequest = [{ taskType: "textInference", taskUUID }];
+    const originalRequestBytes = canonicalizeJson(originalRequest);
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(originalRequestBytes),
+    );
+    const originalRequestSha256 = `sha256:${[...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("")}` as const;
+    const result = {
+      taskUUID,
+      text: '{"summary":"recovered"}',
+      cost: 0.001,
+      finishReason: "stop",
+      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+    };
+    await expect(
+      retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: taskUUID,
+        originalRequestBytes,
+        originalRequestSha256,
+        fetch: async () =>
+          jsonResponse({
+            taskType: "getTaskDetails",
+            taskUUID,
+            request: originalRequest,
+            response: { data: [result] },
+          }),
+      }),
+    ).resolves.toMatchObject({ outputText: result.text, costUsd: result.cost });
+  });
+
   it("reports archived task-not-found without attempting inference", async () => {
     const taskUUID = "11111111-1111-4111-8111-111111111111";
     const originalRequestBytes = canonicalizeJson([{ taskType: "textInference", taskUUID }]);

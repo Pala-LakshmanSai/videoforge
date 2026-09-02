@@ -122,6 +122,39 @@ function outputText(value: unknown): string | null {
   return null;
 }
 
+function textResult(item: NativeData): {
+  readonly usage: RunwareRecoveredTextTask["usage"];
+  readonly outputText: string;
+  readonly costUsd: number;
+  readonly finishReason: string;
+  readonly providerModel: string | null;
+} {
+  const usage = record(item.usage);
+  const inputTokens = safeInteger(usage?.promptTokens);
+  const outputTokens = safeInteger(usage?.completionTokens);
+  const totalTokens = safeInteger(usage?.totalTokens);
+  const cachedInputTokens = safeInteger(usage?.cachedInputTokens ?? 0);
+  const text = outputText(item.text);
+  const costUsd = finiteNonnegative(item.cost);
+  if (
+    inputTokens === null ||
+    outputTokens === null ||
+    totalTokens === null ||
+    cachedInputTokens === null ||
+    text === null ||
+    costUsd === null ||
+    typeof item.finishReason !== "string"
+  )
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  return Object.freeze({
+    usage: Object.freeze({ inputTokens, outputTokens, totalTokens, cachedInputTokens }),
+    outputText: text,
+    costUsd,
+    finishReason: item.finishReason,
+    providerModel: typeof item.model === "string" ? item.model : null,
+  });
+}
+
 async function sha256(value: string): Promise<`sha256:${string}`> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return `sha256:${[...new Uint8Array(digest)]
@@ -273,42 +306,19 @@ export async function retrieveRunwareTextTaskDetails(
   if (!originalResponse || originalErrors.length > 0 || !Array.isArray(originalResponse.data))
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
   const originalRows = originalResponse.data.map(record).filter(Boolean);
-  const result = originalRows.find(
-    (candidate) =>
-      candidate?.taskType === "textInference" && candidate.taskUUID === options.originalTaskUUID,
-  );
+  const result = originalRows.find((candidate) => candidate?.taskUUID === options.originalTaskUUID);
   if (!result || originalRows.length !== 1)
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
-  const usage = record(result.usage);
-  const inputTokens = safeInteger(usage?.promptTokens);
-  const outputTokens = safeInteger(usage?.completionTokens);
-  const totalTokens = safeInteger(usage?.totalTokens);
-  const cachedInputTokens = safeInteger(usage?.cachedInputTokens ?? 0);
-  const text = outputText(result.text);
-  const costUsd = finiteNonnegative(result.cost);
-  if (
-    inputTokens === null ||
-    outputTokens === null ||
-    totalTokens === null ||
-    cachedInputTokens === null ||
-    totalTokens < inputTokens + outputTokens ||
-    cachedInputTokens > inputTokens ||
-    text === null ||
-    costUsd === null ||
-    result.finishReason !== "stop"
-  )
-    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
-  const providerModel = typeof result.model === "string" ? result.model : null;
-  if (providerModel !== null && expectedModel !== null && providerModel !== expectedModel)
-    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  const parsed = textResult(result);
+  if (parsed.finishReason !== "stop") throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
   const originalResponseBytes = canonicalizeJson(originalResponse as never);
   return Object.freeze({
     taskUUID: options.originalTaskUUID,
-    outputText: text,
-    usage: Object.freeze({ inputTokens, outputTokens, totalTokens, cachedInputTokens }),
-    costUsd,
+    outputText: parsed.outputText,
+    usage: parsed.usage,
+    costUsd: parsed.costUsd,
     finishReason: "stop",
-    providerModel,
+    providerModel: parsed.providerModel,
     originalRequestBytes: options.originalRequestBytes,
     originalRequestSha256: options.originalRequestSha256,
     originalResponseBytes,
@@ -463,33 +473,15 @@ export class RunwarePromptHttpTransport implements RunwarePromptTransport {
     if (result.disposition !== "succeeded") {
       return { status: result.disposition, latencyMs: Math.round(performance.now() - started) };
     }
-    const { item } = result;
-    const usage = record(item.usage);
-    const inputTokens = safeInteger(usage?.promptTokens);
-    const outputTokens = safeInteger(usage?.completionTokens);
-    const totalTokens = safeInteger(usage?.totalTokens);
-    const cachedInputTokens = safeInteger(usage?.cachedInputTokens ?? 0);
-    const text = outputText(item.text);
-    const costUsd = finiteNonnegative(item.cost);
-    if (
-      inputTokens === null ||
-      outputTokens === null ||
-      totalTokens === null ||
-      cachedInputTokens === null ||
-      text === null ||
-      costUsd === null ||
-      typeof item.finishReason !== "string"
-    ) {
-      throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
-    }
+    const parsed = textResult(result.item);
     return {
       status: "succeeded",
-      outputText: text,
+      outputText: parsed.outputText,
       latencyMs: Math.round(performance.now() - started),
-      usage: { inputTokens, outputTokens, totalTokens, cachedInputTokens },
-      costUsd,
-      finishReason: item.finishReason,
-      providerModel: typeof item.model === "string" ? item.model : null,
+      usage: parsed.usage,
+      costUsd: parsed.costUsd,
+      finishReason: parsed.finishReason,
+      providerModel: parsed.providerModel,
     };
   }
 }
