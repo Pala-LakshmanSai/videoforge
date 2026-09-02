@@ -806,6 +806,9 @@ describe("hosted product route contract", () => {
     expect(block).toContain("RUNWARE_TASK_DETAILS_UNAVAILABLE");
     expect(block).toContain("RUNWARE_IDEMPOTENCY_CONFLICT");
     expect(block).toContain("RUNWARE_AUTH_INVALID");
+    expect(block).toContain("VOICEOVER_CONTEXT_JSON_INVALID");
+    expect(block).toContain("VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY");
+    expect(block).toContain("VOICEOVER_CONTEXT_INVALID");
     expect(block).not.toContain("JOIN attempts AS execution_attempt");
     expect(block).toContain("const outputAssetId = crypto.randomUUID()");
     expect(source).toContain("/reconcile-context$/u.exec(");

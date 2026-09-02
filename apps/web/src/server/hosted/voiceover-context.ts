@@ -169,9 +169,39 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
 function parseContextOutput(outputText: string): JsonValue {
   const trimmed = outputText.trim();
   const fenced = /^```(?:json)?\s*\n([\s\S]*?)\n```$/iu.exec(trimmed);
-  const candidates = fenced ? [fenced[1]!] : [trimmed];
+  let singleObject: string | null = null;
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  let completeObjects = 0;
+  for (let index = 0; index < trimmed.length; index += 1) {
+    const character = trimmed[index]!;
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      continue;
+    }
+    if (character === "{") {
+      if (depth === 0) start = index;
+      depth += 1;
+    } else if (character === "}" && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        completeObjects += 1;
+        singleObject = trimmed.slice(start, index + 1);
+      }
+    }
+  }
+  if (depth !== 0 || completeObjects !== 1) singleObject = null;
+  const candidate = fenced?.[1] ?? singleObject ?? trimmed;
   try {
-    const parsed = parseJsonStrict(candidates[0]!);
+    const parsed = parseJsonStrict(candidate);
     // Some text providers JSON-encode their structured result one additional
     // time. Accept only that exact whole-response wrapper, never surrounding
     // prose or a heuristic object substring.

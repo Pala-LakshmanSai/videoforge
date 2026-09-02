@@ -116,16 +116,39 @@ describe("hosted voiceover context extraction", () => {
     }
   });
 
-  it("rejects prose-wrapped and duplicate-property output with safe typed codes", async () => {
+  it("accepts exactly one schema-valid JSON object inside provider prose", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "Inspect the fruit. Then tap it.",
+      transcriptHash: HASH,
+    });
+    await expect(
+      extractHostedVoiceoverContext({
+        prepared,
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        fetcher: async () =>
+          Response.json({
+            data: [
+              {
+                taskUUID: prepared.request.taskUUID,
+                taskType: "textInference",
+                text: `Here is the result: ${JSON.stringify(contextDocument())}`,
+                cost: 0.001,
+                finishReason: "stop",
+                usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+              },
+            ],
+          }),
+      }),
+    ).resolves.toMatchObject({ context: contextDocument() });
+  });
+
+  it("rejects multiple objects and duplicate properties with safe typed codes", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "Inspect the fruit. Then tap it.",
       transcriptHash: HASH,
     });
     for (const [text, code] of [
-      [
-        `Here is the result: ${JSON.stringify(contextDocument())}`,
-        "VOICEOVER_CONTEXT_JSON_INVALID",
-      ],
+      ["{} {}", "VOICEOVER_CONTEXT_JSON_INVALID"],
       [
         '{"primary_topic":"first","primary_topic":"second"}',
         "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY",

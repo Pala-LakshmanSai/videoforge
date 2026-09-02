@@ -5387,8 +5387,21 @@ async function reconcileVoiceoverContext(
         apiKey: config.styleAnalysis.apiKey,
       });
     } catch (error) {
+      const contextCode =
+        error instanceof Error &&
+        [
+          "VOICEOVER_CONTEXT_JSON_INVALID",
+          "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY",
+          "VOICEOVER_CONTEXT_INVALID",
+          "VOICEOVER_CONTEXT_TOO_LARGE",
+          "VOICEOVER_CONTEXT_COST_EXCEEDED",
+        ].includes(error.message)
+          ? error.message
+          : null;
       const providerCode =
-        error instanceof RunwareTransportError ? error.code : "RUNWARE_RESPONSE_INVALID";
+        error instanceof RunwareTransportError
+          ? error.code
+          : (contextCode ?? "RUNWARE_RESPONSE_INVALID");
       const message =
         providerCode === "RUNWARE_TASK_NOT_FOUND"
           ? "Runware could not find the original task in this workspace. No new inference request was submitted."
@@ -5398,7 +5411,13 @@ async function reconcileVoiceoverContext(
               ? "Runware returned an original request that did not match the saved task identity. No new inference request was submitted."
               : providerCode === "RUNWARE_AUTH_INVALID"
                 ? "Runware rejected the configured recovery credential. No new inference request was submitted."
-                : "Runware returned original task details that could not be accepted safely. No new inference request was submitted.";
+                : providerCode === "VOICEOVER_CONTEXT_JSON_INVALID"
+                  ? "The original provider result did not contain exactly one valid context JSON object. No new inference request was submitted."
+                  : providerCode === "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY"
+                    ? "The original provider result repeated a context property and was rejected safely. No new inference request was submitted."
+                    : providerCode === "VOICEOVER_CONTEXT_INVALID"
+                      ? "The original provider result did not match the required context fields. No new inference request was submitted."
+                      : "Runware returned original task details that could not be accepted safely. No new inference request was submitted.";
       return response(
         {
           error: {
@@ -6372,9 +6391,9 @@ async function projectDetail(
               : contextState === "FAILED" &&
                   contextProblemCode === "VOICEOVER_CONTEXT_PROVIDER_REJECTED"
                 ? "Runware rejected the request before VideoForge accepted a result."
-              : !voiceoverContext && asr?.state === "SUCCEEDED"
-                ? "VideoForge is starting voiceover context automatically within the project limit."
-                : "The complete transcript is summarized once into bounded story context.",
+                : !voiceoverContext && asr?.state === "SUCCEEDED"
+                  ? "VideoForge is starting voiceover context automatically within the project limit."
+                  : "The complete transcript is summarized once into bounded story context.",
         eta_ms: null,
       },
       {
