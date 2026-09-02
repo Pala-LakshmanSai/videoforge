@@ -143,6 +143,22 @@ describe("hosted prompt authority", () => {
     expect(authority.recordedInputHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
   });
 
+  it("accepts an existing PostgreSQL UUID-shaped workspace while generated identities stay strict", () => {
+    const authority = hostedPromptAuthority({
+      plan: plan({ workspace_id: "78c40d01-f7af-bae1-1922-6b458da10625" }),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+    expect(authority.workspaceId).toBe("78c40d01-f7af-bae1-1922-6b458da10625");
+    expect(() =>
+      hostedPromptAuthority({
+        plan: plan({ project_id: "78c40d01-f7af-bae1-1922-6b458da10625" }),
+        identity,
+        reservedCostMicroUsd: 40_000,
+      }),
+    ).toThrow("Hosted prompt identity is invalid");
+  });
+
   it("rejects empty extra keywords before preparation when their apply toggle is on", () => {
     expect(() =>
       hostedPromptAuthority({

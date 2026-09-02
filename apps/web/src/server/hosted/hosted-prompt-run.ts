@@ -15,6 +15,7 @@ type RecordValue = Record<string, unknown>;
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const ROLES = new Set([
   "ENVIRONMENTAL_WIDE",
   "HUMAN_MEDIUM",
@@ -196,8 +197,9 @@ export function hostedPromptAuthority(input: {
   const styleVersionId = string(plan.image_style_version_id, "style version id");
   const styleHash = string(plan.style_profile_hash, "style profile hash");
   const applyExtraPromptKeywords = plan.apply_extra_prompt_keywords === true;
+  if (!DATABASE_UUID.test(workspaceId))
+    throw new TypeError("Hosted workspace identity is invalid.");
   for (const id of [
-    workspaceId,
     projectId,
     revisionId,
     timelineId,
