@@ -33,7 +33,35 @@ _R2_KEY = __import__("re").compile(
     r"[A-Za-z0-9._:-]+/revision/[A-Za-z0-9._:-]+/lane/(?:input|render)/job/"
     r"[A-Za-z0-9._:-]+/artifact/[A-Za-z0-9._:-]+$"
 )
-_FAILURE_CODE = __import__("re").compile(r"^[A-Z][A-Z0-9_]{2,63}$")
+_ASR_FAILURE_CODES = frozenset(
+    {
+        "ASR_INPUT_INVALID",
+        "ASR_SOURCE_HASH_MISMATCH",
+        "ASR_SOURCE_DECODE_FAILED",
+        "ASR_TOOL_MISSING",
+        "ASR_MODEL_MISSING",
+        "ASR_MODEL_HASH_MISMATCH",
+        "ASR_PROCESS_FAILED",
+        "ASR_OUTPUT_INVALID",
+        "ASR_CANCELLED",
+    }
+)
+_RENDER_FAILURE_CODES = frozenset(
+    {
+        "RENDER_INPUT_INVALID",
+        "RENDER_MANIFEST_HASH_MISMATCH",
+        "RENDER_ASSET_MISSING",
+        "RENDER_ASSET_HASH_MISMATCH",
+        "RENDER_PATH_REJECTED",
+        "RENDER_TOOL_MISSING",
+        "RENDER_PROCESS_FAILED",
+        "RENDER_PROBE_FAILED",
+        "RENDER_OUTPUT_INVALID",
+        "RENDER_CANCELLED",
+    }
+)
+_MEDIA_EXECUTION_IO_FAILED = "MEDIA_EXECUTION_IO_FAILED"
+_MEDIA_EXECUTION_CONTRACT_INVALID = "MEDIA_EXECUTION_CONTRACT_INVALID"
 
 
 class _PersonalJobCancelled(Exception):
@@ -512,6 +540,47 @@ def _asr_primary_path(scratch: Path, input_document: dict[str, Any]) -> Path:
     return path
 
 
+def _child_result_failure_code(kind: str) -> str:
+    """Return a bounded code for a child that did not return a usable result."""
+
+    return "ASR_RESULT_INVALID" if kind == "ASR" else "RENDER_RESULT_INVALID"
+
+
+def _reject_json_constant(value: str) -> object:
+    raise ValueError(f"non-finite JSON constant {value}")
+
+
+def _reject_duplicate_json_properties(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON property")
+        result[key] = value
+    return result
+
+
+def _parse_child_result(
+    job: PersonalJob, stdout: bytes, maximum: int
+) -> tuple[dict[str, Any] | None, str, str | None]:
+    """Decode the child result without allowing child diagnostics across the worker boundary."""
+
+    invalid_code = _child_result_failure_code(job.kind)
+    try:
+        if len(stdout) > maximum:
+            raise ValueError("child result exceeded its bound")
+        result = json.loads(
+            stdout,
+            object_pairs_hook=_reject_duplicate_json_properties,
+            parse_constant=_reject_json_constant,
+        )
+        result_status, result_failure_code = _job_result_state(job, result)
+    except (TypeError, UnicodeError, ValueError, RecursionError):
+        return None, "FAILED", invalid_code
+    if result_status == "FAILED" and result_failure_code is None:
+        return result, "FAILED", invalid_code
+    return result, result_status, result_failure_code
+
+
 def _job_result_state(job: PersonalJob, result: object) -> tuple[str, str | None]:
     if not isinstance(result, dict):
         raise ValueError("Personal worker result is malformed")
@@ -530,7 +599,8 @@ def _job_result_state(job: PersonalJob, result: object) -> tuple[str, str | None
         raise ValueError("Personal worker result status is invalid")
     error = result.get("error")
     code = error.get("code") if isinstance(error, dict) else None
-    return "FAILED", str(code) if isinstance(code, str) and _FAILURE_CODE.fullmatch(code) else None
+    valid_codes = _ASR_FAILURE_CODES if job.kind == "ASR" else _RENDER_FAILURE_CODES
+    return "FAILED", str(code) if isinstance(code, str) and code in valid_codes else None
 
 
 def execute_personal_job(
@@ -627,15 +697,17 @@ def execute_personal_job(
         elif return_code != 0:
             failure_code = "MEDIA_EXECUTION_SUBPROCESS_FAILED"
         else:
-            if len(stdout) > int(job.result["max_bytes"]):
-                raise ValueError("Personal worker result document exceeded its bound")
-            result = json.loads(stdout)
-            result_status, result_failure_code = _job_result_state(job, result)
+            result, result_status, result_failure_code = _parse_child_result(
+                job, stdout, int(job.result["max_bytes"])
+            )
             if result_status == "CANCELLED":
                 raise _PersonalJobCancelled
             if result_status == "FAILED":
                 status = "FAILED"
-                failure_code = result_failure_code or "MEDIA_EXECUTION_FAILED"
+                failure_code = result_failure_code or _child_result_failure_code(job.kind)
+            elif result is None:
+                status = "FAILED"
+                failure_code = _child_result_failure_code(job.kind)
             else:
                 primary = (
                     _asr_primary_path(scratch, job.input_document)
@@ -702,6 +774,12 @@ def execute_personal_job(
     except subprocess.TimeoutExpired:
         status = "FAILED"
         failure_code = "MEDIA_EXECUTION_TIMEOUT"
+    except OSError:
+        status = "FAILED"
+        failure_code = _MEDIA_EXECUTION_IO_FAILED
+    except (KeyError, TypeError, ValueError, RecursionError):
+        status = "FAILED"
+        failure_code = _MEDIA_EXECUTION_CONTRACT_INVALID
     finally:
         monitor.close()
         completion = {

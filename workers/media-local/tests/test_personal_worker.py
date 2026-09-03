@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import plistlib
 import ssl
 import subprocess
@@ -10,7 +11,7 @@ import tempfile
 import unittest
 from types import SimpleNamespace
 from pathlib import Path, PurePosixPath
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import videoforge_media_local.personal_execution as personal_execution
 from videoforge_media_local.cloud_job import _local_path
@@ -18,10 +19,15 @@ from videoforge_media_local.personal_execution import (
     _CancellationMonitor,
     _SleepAssertion,
     _asr_primary_path,
+    _child_result_failure_code,
     _completion_is_acknowledged,
     _is_valid_https_url,
+    _job_result_state,
+    _parse_child_result,
     _run_media_subprocess,
     _stream_put,
+    ToolPaths,
+    execute_personal_job,
     parse_personal_job,
 )
 from videoforge_media_local.personal_worker import (
@@ -89,6 +95,154 @@ def job() -> dict[str, object]:
 
 
 class PersonalWorkerContractTests(unittest.TestCase):
+    def test_preserves_valid_asr_child_failure_codes(self) -> None:
+        asr = job()
+        asr["kind"] = "ASR"
+        parsed = parse_personal_job(asr)
+        result = {
+            "schema_version": "asr-job-result/v1",
+            "attempt_id": parsed.attempt_id,
+            "status": "FAILED",
+            "error": {"code": "ASR_PROCESS_FAILED"},
+        }
+        self.assertEqual(_job_result_state(parsed, result), ("FAILED", "ASR_PROCESS_FAILED"))
+        self.assertEqual(
+            _parse_child_result(parsed, json.dumps(result).encode("utf-8"), 1024),
+            (result, "FAILED", "ASR_PROCESS_FAILED"),
+        )
+
+    def test_maps_malformed_child_result_to_bounded_code_without_child_text(self) -> None:
+        asr = job()
+        asr["kind"] = "ASR"
+        parsed = parse_personal_job(asr)
+        private_child_output = b"Traceback: /private/token=secret path\n"
+        result, state, code = _parse_child_result(parsed, private_child_output, 1024)
+        self.assertIsNone(result)
+        self.assertEqual((state, code), ("FAILED", "ASR_RESULT_INVALID"))
+        self.assertNotIn(b"secret", json.dumps({"state": state, "code": code}).encode())
+
+    def test_maps_invalid_child_failure_code_to_bounded_code(self) -> None:
+        asr = job()
+        asr["kind"] = "ASR"
+        parsed = parse_personal_job(asr)
+        result = {
+            "schema_version": "asr-job-result/v1",
+            "attempt_id": parsed.attempt_id,
+            "status": "FAILED",
+            "error": {"code": "MEDIA_EXECUTION_FAILED"},
+        }
+        self.assertEqual(
+            _parse_child_result(parsed, json.dumps(result).encode("utf-8"), 1024)[1:],
+            ("FAILED", "ASR_RESULT_INVALID"),
+        )
+        self.assertEqual(_child_result_failure_code(parsed.kind), "ASR_RESULT_INVALID")
+
+    def test_malformed_child_result_completion_is_single_safe_failure(self) -> None:
+        asr = job()
+        asr["kind"] = "ASR"
+        asr["expires_at"] = "2099-01-01T00:00:00.000Z"
+        asr["objects"] = []
+        model_fd, model_name = tempfile.mkstemp()
+        os.close(model_fd)
+        model_path = Path(model_name)
+        try:
+            model_path.write_bytes(b"model")
+            model_sha256 = personal_execution._sha256_file(model_path)[0]
+            asr["input_document"] = {
+                "schema_version": "asr-job-input/v1",
+                "model": {"sha256": model_sha256},
+                "output": {"result_uri": "vf-local-run://revision-a/attempt-a/asr-result.json"},
+            }
+            parsed = parse_personal_job(asr)
+            monitor = MagicMock()
+            monitor.is_cancelled.return_value = False
+            sleep_assertion = MagicMock()
+            tools = ToolPaths(model_path, model_path, model_path, model_path)
+            with (
+                patch(
+                    "videoforge_media_local.personal_execution._CancellationMonitor",
+                    return_value=monitor,
+                ),
+                patch(
+                    "videoforge_media_local.personal_execution._SleepAssertion",
+                    return_value=sleep_assertion,
+                ),
+                patch(
+                    "videoforge_media_local.personal_execution._run_media_subprocess",
+                    return_value=(0, b"not-json"),
+                ),
+                patch(
+                    "videoforge_media_local.personal_execution._request_json",
+                    return_value=(
+                        200,
+                        {
+                            "schema_version": "videoforge-personal-worker-completion-accepted/v1",
+                            "state": "FAILED",
+                        },
+                    ),
+                ) as request_json,
+            ):
+                self.assertEqual(execute_personal_job(parsed, "device", "lease", tools), "FAILED")
+            request_json.assert_called_once()
+            completion = request_json.call_args.args[3]
+            self.assertEqual(completion["status"], "FAILED")
+            self.assertEqual(completion["failure_code"], "ASR_RESULT_INVALID")
+            self.assertNotIn(b"not-json", json.dumps(completion).encode("utf-8"))
+        finally:
+            model_path.unlink(missing_ok=True)
+
+    def test_outer_io_failure_is_bounded_and_completion_is_still_once(self) -> None:
+        asr = job()
+        asr["kind"] = "ASR"
+        asr["expires_at"] = "2099-01-01T00:00:00.000Z"
+        asr["objects"] = []
+        model_fd, model_name = tempfile.mkstemp()
+        os.close(model_fd)
+        model_path = Path(model_name)
+        try:
+            model_path.write_bytes(b"model")
+            asr["input_document"] = {
+                "schema_version": "asr-job-input/v1",
+                "model": {"sha256": personal_execution._sha256_file(model_path)[0]},
+                "output": {"result_uri": "vf-local-run://revision-a/attempt-a/asr-result.json"},
+            }
+            parsed = parse_personal_job(asr)
+            monitor = MagicMock()
+            monitor.is_cancelled.return_value = False
+            sleep_assertion = MagicMock()
+            tools = ToolPaths(model_path, model_path, model_path, model_path)
+            with (
+                patch(
+                    "videoforge_media_local.personal_execution._CancellationMonitor",
+                    return_value=monitor,
+                ),
+                patch(
+                    "videoforge_media_local.personal_execution._SleepAssertion",
+                    return_value=sleep_assertion,
+                ),
+                patch(
+                    "videoforge_media_local.personal_execution._run_media_subprocess",
+                    side_effect=OSError("/private/path/token=secret disk full"),
+                ),
+                patch(
+                    "videoforge_media_local.personal_execution._request_json",
+                    return_value=(
+                        200,
+                        {
+                            "schema_version": "videoforge-personal-worker-completion-accepted/v1",
+                            "state": "FAILED",
+                        },
+                    ),
+                ) as request_json,
+            ):
+                self.assertEqual(execute_personal_job(parsed, "device", "lease", tools), "FAILED")
+            request_json.assert_called_once()
+            completion = request_json.call_args.args[3]
+            self.assertEqual(completion["failure_code"], "MEDIA_EXECUTION_IO_FAILED")
+            self.assertNotIn(b"secret", json.dumps(completion).encode("utf-8"))
+        finally:
+            model_path.unlink(missing_ok=True)
+
     def test_asr_replaces_one_abnormally_exited_local_subprocess(self) -> None:
         first = Mock(returncode=9)
         first.communicate.return_value = (b"", b"private crash detail")
