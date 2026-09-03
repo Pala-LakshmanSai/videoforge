@@ -172,11 +172,7 @@ for (const file of emittedFiles) {
   }
 }
 
-const workerManifestPath = path.join(
-  root,
-  emittedWorkerDirectory,
-  ".vite/manifest.json",
-);
+const workerManifestPath = path.join(root, emittedWorkerDirectory, ".vite/manifest.json");
 try {
   const workerManifest = JSON.parse(await readFile(workerManifestPath, "utf8"));
   const staticEntryKeys = Object.entries(workerManifest)

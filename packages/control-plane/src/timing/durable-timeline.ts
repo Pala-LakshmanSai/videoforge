@@ -156,9 +156,9 @@ export async function prepareDurableDeterministicTimeline(
   command: PersistDeterministicTimelineCommand,
   contractDocumentAuthority?: ContractDocumentValidationAuthority,
 ): Promise<PreparedDeterministicTimeline> {
-  const validateAndHash = contractDocumentAuthority?.validateAndHash.bind(
-    contractDocumentAuthority,
-  ) ?? validateAndHashContractDocument;
+  const validateAndHash =
+    contractDocumentAuthority?.validateAndHash.bind(contractDocumentAuthority) ??
+    validateAndHashContractDocument;
   const [revision, transcript] = await Promise.all([
     validateAndHash("projectRevisionConfig", command.revision),
     validateAndHash("transcriptTiming", command.transcript),

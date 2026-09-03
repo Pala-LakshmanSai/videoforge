@@ -811,10 +811,8 @@ export async function scheduleTimeline(
 
   try {
     return pipelineSuccess(
-      await (request.contractDocumentAuthority?.validateAndHash(
-        "timelinePlan",
-        plan,
-      ) ?? validateAndHashContractDocument("timelinePlan", plan)),
+      await (request.contractDocumentAuthority?.validateAndHash("timelinePlan", plan) ??
+        validateAndHashContractDocument("timelinePlan", plan)),
     );
   } catch (error) {
     return pipelineFailure(

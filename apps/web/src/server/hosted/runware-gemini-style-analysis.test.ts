@@ -141,7 +141,9 @@ describe("Runware Gemini hosted style analysis", () => {
         images,
         fetcher: async () => Response.json({ choices: [] }),
       }),
-    ).rejects.toMatchObject({ code: "INVALID_RESPONSE" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
+    ).rejects.toMatchObject({
+      code: "INVALID_RESPONSE",
+    } satisfies Partial<RunwareGeminiStyleAnalysisError>);
   });
 
   it("rejects reference sets above the bounded payload before fetch", async () => {
@@ -156,7 +158,9 @@ describe("Runware Gemini hosted style analysis", () => {
         })),
         fetcher,
       }),
-    ).rejects.toMatchObject({ code: "INPUT_REJECTED" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
+    ).rejects.toMatchObject({
+      code: "INPUT_REJECTED",
+    } satisfies Partial<RunwareGeminiStyleAnalysisError>);
     expect(fetcher).not.toHaveBeenCalled();
   });
 
@@ -172,7 +176,9 @@ describe("Runware Gemini hosted style analysis", () => {
         images,
         fetcher,
       }),
-    ).rejects.toMatchObject({ code: "AMBIGUOUS" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
+    ).rejects.toMatchObject({
+      code: "AMBIGUOUS",
+    } satisfies Partial<RunwareGeminiStyleAnalysisError>);
   });
 
   it("rejects a normalized container carrying metadata before provider dispatch", async () => {
@@ -186,7 +192,9 @@ describe("Runware Gemini hosted style analysis", () => {
         images: [{ ...images[0]!, bytes: unsafe }, images[1]!, images[2]!],
         fetcher,
       }),
-    ).rejects.toMatchObject({ code: "INPUT_REJECTED" } satisfies Partial<RunwareGeminiStyleAnalysisError>);
+    ).rejects.toMatchObject({
+      code: "INPUT_REJECTED",
+    } satisfies Partial<RunwareGeminiStyleAnalysisError>);
     expect(fetcher).not.toHaveBeenCalled();
   });
 
@@ -201,12 +209,14 @@ describe("Runware Gemini hosted style analysis", () => {
         fetcher: async () =>
           Response.json(
             {
-              errors: [{
-                code: "invalid_value",
-                parameter: "generation_config.provider_settings",
-                type: "invalid_request_error",
-                message: "must never be logged",
-              }],
+              errors: [
+                {
+                  code: "invalid_value",
+                  parameter: "generation_config.provider_settings",
+                  type: "invalid_request_error",
+                  message: "must never be logged",
+                },
+              ],
             },
             { status: 400 },
           ),

@@ -113,9 +113,7 @@ class PrecompiledContractValidationError extends Error {
   }
 }
 
-let precompiledValidatorsPromise:
-  | Promise<Record<string, PrecompiledValidator>>
-  | undefined;
+let precompiledValidatorsPromise: Promise<Record<string, PrecompiledValidator>> | undefined;
 
 async function validateAndHashPrecompiledContractDocument<Name extends ContractName>(
   contractName: Name,
@@ -335,7 +333,9 @@ export async function coordinateHostedGeneration(input: {
     reject("HOSTED_GENERATION_ASR_OUTPUT_INVALID");
   }
   const storedRevision = storedRevisionConfig(snapshot.revisionConfig);
-  let revision: Awaited<ReturnType<typeof validateAndHashPrecompiledContractDocument<"projectRevisionConfig">>>;
+  let revision: Awaited<
+    ReturnType<typeof validateAndHashPrecompiledContractDocument<"projectRevisionConfig">>
+  >;
   try {
     revision = await validateAndHashPrecompiledContractDocument(
       "projectRevisionConfig",
@@ -347,9 +347,10 @@ export async function coordinateHostedGeneration(input: {
     }
     reject("HOSTED_GENERATION_PROJECT_REVISION_CANONICALIZATION_FAILED");
   }
-  const asrResult = await validateAndHashPrecompiledContractDocument("asrJobResult", rawResult).catch(() =>
-    reject("HOSTED_GENERATION_ASR_RESULT_DOCUMENT_INVALID"),
-  );
+  const asrResult = await validateAndHashPrecompiledContractDocument(
+    "asrJobResult",
+    rawResult,
+  ).catch(() => reject("HOSTED_GENERATION_ASR_RESULT_DOCUMENT_INVALID"));
   const asrTemplate = exactHostedAsrJobTemplate(rawJobTemplate, snapshot);
   if (
     asrResult.value.status !== "SUCCEEDED" ||
@@ -368,23 +369,25 @@ export async function coordinateHostedGeneration(input: {
     trustedTenantScope(snapshot.accountId, snapshot.workspaceId),
     snapshot.userId,
   );
-  const preparedTranscript = await prepareDurableLocalTranscription(scope, {
-    projectId: snapshot.projectId,
-    projectRevisionId: snapshot.projectRevisionId,
-    // The pure preparer requires these fields to validate the hosted ASR envelope. They are never
-    // persisted as generic generation-task/attempt lineage by the hosted bridge.
-    taskId: snapshot.asrAttemptId,
-    attemptId: snapshot.asrAttemptId,
-    expectedHeadVersion: 0,
-    lineageSequence: 1,
-    supersedesTranscriptId: null,
-    optionalScriptHash: null,
-    asrInput: asrTemplate.inputDocument,
-    asrResult: rawResult,
-    finishedAt: snapshot.asrFinishedAt,
-  }, precompiledContractDocumentAuthority).catch(() =>
-    reject("HOSTED_GENERATION_ASR_LINEAGE_MISMATCH"),
-  );
+  const preparedTranscript = await prepareDurableLocalTranscription(
+    scope,
+    {
+      projectId: snapshot.projectId,
+      projectRevisionId: snapshot.projectRevisionId,
+      // The pure preparer requires these fields to validate the hosted ASR envelope. They are never
+      // persisted as generic generation-task/attempt lineage by the hosted bridge.
+      taskId: snapshot.asrAttemptId,
+      attemptId: snapshot.asrAttemptId,
+      expectedHeadVersion: 0,
+      lineageSequence: 1,
+      supersedesTranscriptId: null,
+      optionalScriptHash: null,
+      asrInput: asrTemplate.inputDocument,
+      asrResult: rawResult,
+      finishedAt: snapshot.asrFinishedAt,
+    },
+    precompiledContractDocumentAuthority,
+  ).catch(() => reject("HOSTED_GENERATION_ASR_LINEAGE_MISMATCH"));
   if (
     revision.sha256 !== snapshot.revisionConfigSha256 ||
     revision.value.project_id !== snapshot.projectId ||
@@ -402,19 +405,21 @@ export async function coordinateHostedGeneration(input: {
   ) {
     reject("HOSTED_GENERATION_ASR_LINEAGE_MISMATCH");
   }
-  const preparedTimeline = await prepareDurableDeterministicTimeline(scope, {
-    projectId: snapshot.projectId,
-    projectRevisionId: snapshot.projectRevisionId,
-    transcriptId: preparedTranscript.transcriptId,
-    expectedHeadVersion: 1,
-    planSequence: 1,
-    supersedesTimelinePlanId: null,
-    revision: revision.value,
-    transcript: transcript.value,
-    createdAt: snapshot.asrFinishedAt,
-  }, precompiledContractDocumentAuthority).catch(() =>
-    reject("HOSTED_GENERATION_SCHEDULING_FAILED"),
-  );
+  const preparedTimeline = await prepareDurableDeterministicTimeline(
+    scope,
+    {
+      projectId: snapshot.projectId,
+      projectRevisionId: snapshot.projectRevisionId,
+      transcriptId: preparedTranscript.transcriptId,
+      expectedHeadVersion: 1,
+      planSequence: 1,
+      supersedesTimelinePlanId: null,
+      revision: revision.value,
+      transcript: transcript.value,
+      createdAt: snapshot.asrFinishedAt,
+    },
+    precompiledContractDocumentAuthority,
+  ).catch(() => reject("HOSTED_GENERATION_SCHEDULING_FAILED"));
   const timeline = await validateAndHashPrecompiledContractDocument(
     "timelinePlan",
     preparedTimeline.timelinePersistence.canonicalDocument.payload,

@@ -251,9 +251,9 @@ export async function prepareDurableLocalTranscription(
   command: AcceptLocalTranscriptionCommand,
   contractDocumentAuthority?: ContractDocumentValidationAuthority,
 ): Promise<PreparedLocalTranscription> {
-  const validateAndHash = contractDocumentAuthority?.validateAndHash.bind(
-    contractDocumentAuthority,
-  ) ?? validateAndHashContractDocument;
+  const validateAndHash =
+    contractDocumentAuthority?.validateAndHash.bind(contractDocumentAuthority) ??
+    validateAndHashContractDocument;
   const input = await validateAndHash("asrJobInput", command.asrInput);
   const result = await validateAndHash("asrJobResult", command.asrResult);
   const inputValue = objectValue(input.value, "ASR input");
@@ -278,10 +278,7 @@ export async function prepareDurableLocalTranscription(
     );
   }
 
-  const transcriptDocument = await validateAndHash(
-    "transcriptTiming",
-    resultValue.transcript,
-  );
+  const transcriptDocument = await validateAndHash("transcriptTiming", resultValue.transcript);
   const transcript = objectValue(transcriptDocument.value, "ASR transcript");
   const transcriptSource = objectValue(transcript.source, "transcript source");
   const transcriptEngine = objectValue(transcript.engine, "transcript engine");

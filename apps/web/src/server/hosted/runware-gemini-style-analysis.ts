@@ -42,11 +42,7 @@ export interface RunwareGeminiStyleAnalysisResult {
 }
 
 export function runwareGeminiStyleActualCostMicroUsd(costUsd: number): number {
-  if (
-    !Number.isFinite(costUsd) ||
-    costUsd < 0 ||
-    costUsd > RUNWARE_GEMINI_STYLE_RESERVATION_USD
-  )
+  if (!Number.isFinite(costUsd) || costUsd < 0 || costUsd > RUNWARE_GEMINI_STYLE_RESERVATION_USD)
     throw new RangeError("Runware style analysis cost exceeds its reservation.");
   return Math.ceil(costUsd * 1_000_000);
 }
@@ -88,13 +84,15 @@ function providerProblem(value: unknown): {
   readonly parameter: string | null;
   readonly type: string | null;
 } {
-  const payload = value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
+  const payload =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
   const first = payload && Array.isArray(payload.errors) ? payload.errors[0] : null;
-  const problem = first && typeof first === "object" && !Array.isArray(first)
-    ? (first as Record<string, unknown>)
-    : null;
+  const problem =
+    first && typeof first === "object" && !Array.isArray(first)
+      ? (first as Record<string, unknown>)
+      : null;
   return Object.freeze({
     code: diagnosticToken(problem?.code),
     parameter: diagnosticToken(problem?.parameter),
@@ -108,11 +106,12 @@ function readUint24LE(bytes: Uint8Array, offset: number): number {
 
 function readUint32LE(bytes: Uint8Array, offset: number): number {
   return (
-    bytes[offset]! |
-    (bytes[offset + 1]! << 8) |
-    (bytes[offset + 2]! << 16) |
-    (bytes[offset + 3]! << 24)
-  ) >>> 0;
+    (bytes[offset]! |
+      (bytes[offset + 1]! << 8) |
+      (bytes[offset + 2]! << 16) |
+      (bytes[offset + 3]! << 24)) >>>
+    0
+  );
 }
 
 export function inspectNormalizedWebp(bytes: Uint8Array): { width: number; height: number } | null {
@@ -160,7 +159,8 @@ export function inspectNormalizedWebp(bytes: Uint8Array): { width: number; heigh
         height:
           ((bytes[payload + 2]! >> 6) |
             (bytes[payload + 3]! << 2) |
-            ((bytes[payload + 4]! & 0x0f) << 10)) + 1,
+            ((bytes[payload + 4]! & 0x0f) << 10)) +
+          1,
       };
     }
     offset = end + (size % 2);
@@ -198,8 +198,7 @@ export async function analyzeStyleWithRunwareGemini(input: {
   readonly taskUUID?: string;
   readonly fetcher?: typeof fetch;
 }): Promise<RunwareGeminiStyleAnalysisResult> {
-  if (input.apiKey.trim().length === 0)
-    throw new RunwareGeminiStyleAnalysisError("UNAVAILABLE");
+  if (input.apiKey.trim().length === 0) throw new RunwareGeminiStyleAnalysisError("UNAVAILABLE");
   const totalBytes = input.images.reduce((sum, image) => sum + image.bytes.byteLength, 0);
   if (totalBytes > RUNWARE_GEMINI_STYLE_MAX_INPUT_BYTES)
     throw new RunwareGeminiStyleAnalysisError("INPUT_REJECTED");
@@ -291,7 +290,12 @@ export async function analyzeStyleWithRunwareGemini(input: {
     throw new RunwareGeminiStyleAnalysisError("AMBIGUOUS");
   }
   if (!response.ok) {
-    const problem = providerProblem(await response.clone().json().catch(() => null));
+    const problem = providerProblem(
+      await response
+        .clone()
+        .json()
+        .catch(() => null),
+    );
     console.warn("hosted_style_analysis_provider_rejected", {
       model: RUNWARE_GEMINI_STYLE_MODEL,
       status: response.status,

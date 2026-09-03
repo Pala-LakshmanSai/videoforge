@@ -31,7 +31,10 @@ const loadFixture = async (filename) =>
   JSON.parse(await readFile(path.join(fixtureRoot, filename), "utf8"));
 
 test("contract validators are precompiled without runtime code generation", async () => {
-  const source = await readFile(path.join(packageRoot, "dist/generated/contract-validators.js"), "utf8");
+  const source = await readFile(
+    path.join(packageRoot, "dist/generated/contract-validators.js"),
+    "utf8",
+  );
   assert.doesNotMatch(source, /new Function|require\(/u);
 });
 

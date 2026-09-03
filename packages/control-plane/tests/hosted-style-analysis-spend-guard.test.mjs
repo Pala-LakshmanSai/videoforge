@@ -64,10 +64,11 @@ test("0052 reserves one bounded Runware Gemini dispatch and durably finishes it"
     ]);
     await expectDatabaseError(
       () =>
-        executor.query(
-          `SELECT * FROM public.videoforge_reserve_hosted_style_analysis($1,$2,$3)`,
-          [IDS.styleDraftA, requestHash, "00000000-0000-4000-8000-000000980002"],
-        ),
+        executor.query(`SELECT * FROM public.videoforge_reserve_hosted_style_analysis($1,$2,$3)`, [
+          IDS.styleDraftA,
+          requestHash,
+          "00000000-0000-4000-8000-000000980002",
+        ]),
       "42501",
     );
   });

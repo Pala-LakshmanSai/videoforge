@@ -126,9 +126,7 @@ class SoulXServerlessImageDefinitionTests(unittest.TestCase):
             'cmp -s - "$pip_check_output"',
             self.source,
         )
-        self.assertIn(
-            "import decord; assert metadata.version(\"decord\") == \"0.6.0\"", self.source
-        )
+        self.assertIn('import decord; assert metadata.version("decord") == "0.6.0"', self.source)
         self.assertNotIn("decord", REQUIREMENTS.read_text(encoding="utf-8"))
 
     def test_decord_platform_diagnostic_exception_is_byte_exact(self) -> None:
