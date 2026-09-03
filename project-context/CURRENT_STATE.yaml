@@ -4,7 +4,7 @@ updated_at: "2026-09-03"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: false
-current_milestone: private_hosted_beta_stage_5_per_scene_source_green_migration_0070_pending
+current_milestone: private_hosted_beta_stage_5_schema_v7_repair_green_undeployed
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Exact authority deployed source 6d35183f once as Worker 662aa502 after read-only migration 69/69 verification, then Computer Use created exactly one USD 2 project 9987d1e2 with a hard USD 1 provider cap. Stages 1-4 completed; Stage 3 deepseek:v4@flash settled USD 0.000075. Stage 5 made the old whole-batch request once and stopped at the first definite HTTP 400 providerUnavailable rejection with no provider charge, accepted prompt, retry, or retrieval. Source 01dea638 replaces that architecture with one sequential deepseek:v4@flash request per narration scene, no retry, immediate validated per-scene persistence through pending migration 0070, and live scrollable accepted-prompt reads. It is locally green and undeployed. Fresh exact authority including migration 0070 is required for deployment and one successor quality run."
+  provider_free_product_action: "Exact authority applied migration 0070 once, deployed source 8e56e2b7 once as Worker 536a5aec, and used Computer Use to create exactly one USD 2 project 09f45139 with a hard USD 1 provider cap. Stages 1-4 completed; Stage 3 deepseek:v4@flash settled USD 0.000072. Stage 5 sent exactly one scene request and stopped at a definite HTTP 400 providerUnavailable rejection with zero Stage 5 charge, accepted prompt, retry, or retrieval. Bounded Cloudflare diagnostics and comparison with the successful Stage 3 request isolated high-risk wire-schema keywords absent from the working Stage 3 contract as the strongest request-contract cause. Source 3fe60150 removes minLength, maxLength, and uniqueItems only from the provider wire schema while retaining exact local validation; it is locally green and undeployed. Fresh exact source-bound authority is required for one deployment and one successor quality run; migrations 0069 and 0070 are already applied and must not be replayed."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,8 +71,8 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STAGE_5_PER_SCENE_IMPLEMENTED_GREEN_MIGRATION_0070_PENDING
-  implementation_commit: "01dea638"
+  status: STAGE_5_SCHEMA_V7_REPAIR_GREEN_UNDEPLOYED
+  implementation_commit: "3fe60150"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
     - "632db9942f40c640ae8df71f324a408c9cb7520a"
@@ -160,17 +160,19 @@ hosted_beta_user_walkthrough:
     - "9b2ae82d6def0125a92415332af539792a700f94"
     - "6d35183fccfcaec200da0da035afedb661e5de36"
     - "01dea638"
-  deployment_candidate: "01dea638"
-  deployed_source_commit: "6d35183fccfcaec200da0da035afedb661e5de36"
-  cloudflare_worker_version_id: "662aa502-6873-4143-8d5e-deae3b684392"
-  pending_source_candidate: "01dea638"
+    - "8e56e2b7aa2e7e9e95ee94d331d8bf9bc703f07e"
+    - "3fe60150"
+  deployment_candidate: "3fe60150"
+  deployed_source_commit: "8e56e2b7aa2e7e9e95ee94d331d8bf9bc703f07e"
+  cloudflare_worker_version_id: "536a5aec-6b1a-40e2-ab54-1b71bff51634"
+  pending_source_candidate: "3fe60150"
   pending_worker_release: null
-  pending_release_boundary: "SOURCE_6D35183F_IS_LIVE_AS_WORKER_662AA502. PROJECT_9987D1E2_STOPPED_TERMINAL_AT_STAGE_5_FAILED_PROVIDERUNAVAILABLE_AND_MUST_NOT_BE_RETRIED_OR_RETRIEVED. SOURCE_01DEA638_AND_MIGRATION_0070_IMPLEMENT_PER_SCENE_WRITES_AND_LIVE_ACCEPTED_PROMPTS; BOTH_ARE_UNDEPLOYED. REQUIRE_FRESH_EXACT_SOURCE_AND_MIGRATION_BOUND_AUTHORITY_FOR_ANY_DATABASE_MUTATION, DEPLOYMENT, OR SUCCESSOR_PROJECT."
-  pending_validations: "APPLY_MIGRATION_0070_AND_DEPLOY_THE_FINAL_EXACT_SOURCE_ONCE_UNDER_FRESH_AUTHORITY, THEN_CREATE_EXACTLY_ONE_NEW_STAGE_1_TO_5_PROJECT_TO_PROVE_SEQUENTIAL_PER_SCENE_DEEPSEEK_REQUESTS, ACTUAL_ACCEPTED_PROMPT_QUALITY, INCREMENTAL_DURABLE_ROWS, AND_SCROLLING_ACCEPTED_PROMPTS_IN_AUTHENTICATED_CHROME. THE_CURRENT_APPROVAL_IS_CONSUMED_AND_PROJECT_9987D1E2_IS_NON_RETRIABLE."
-  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 6d35183fccfcaec200da0da035afedb661e5de36 MIGRATION 0069 ALREADY APPLIED DO NOT REAPPLY MEDIA WORKER 0.1.13 DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 1; USE COMPUTER USE TO MONITOR THROUGH STAGE 5, INSPECT BOUNDED FAILURE DIAGNOSTICS, AND VERIFY ACCEPTED PROMPT QUALITY AND SCROLLABLE PROMPT VIEWER; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
-  latest_live_run: "Source 6d35183f deployed once as Worker 662aa502, deployment f3aa08af, config SHA-256 2c3d76ae, after migration 69/69 was verified without replay. Computer Use created exactly one project 9987d1e2-0aec-4225-a416-00415ca56cc0, capped at USD 2 with a hard USD 1 provider-spend cap, Helen v1, Will Carter v1, media worker 0.1.13, and the verified 159.216-second MP3. Stages 1-4 completed; Stage 3 deepseek:v4@flash reported/settled USD 0.000075. Stage 5 created run bd2ab9f4, task e64c4c68, and attempt 0c3ca8e0, then the old one-batch request received HTTP 400 providerUnavailable. It stopped FAILED/HOSTED_PROMPT_PROVIDER_REJECTED with provider_may_have_charged=false, released the USD 0.04 reservation, and produced zero prompt executions, writer attempts, or scene results. No retry or provider retrieval occurred. Zero active provider leases and zero nonterminal serverless attempts remained."
-  deployed_config_sha256: "2c3d76aeacb9e2122b9b06cc680f2a3eb22e25d184985cac039e9729bc99ad07"
-  deployment_approval: "CONSUMED_AT_STAGE_5_TERMINAL_SOURCE_6D35183F_WORKER_662AA502_PROJECT_9987D1E2_NO_RETRY_OR_PROVIDER_RETRIEVAL"
+  pending_release_boundary: "SOURCE_8E56E2B7_IS_LIVE_AS_WORKER_536A5AEC. MIGRATIONS_0069_AND_0070_ARE_APPLIED_AND_MUST_NOT_BE_REPLAYED. PROJECT_09F45139_STOPPED_TERMINAL_AT_THE_FIRST_STAGE_5_SCENE_REQUEST_AND_MUST_NOT_BE_RETRIED_OR_RETRIEVED. SOURCE_3FE60150_CONTAINS_THE_PROVIDER_SCHEMA_REPAIR_AND_IS_UNDEPLOYED. REQUIRE_FRESH_EXACT_SOURCE_BOUND_AUTHORITY_FOR_ONE_DEPLOYMENT_AND_ONE_SUCCESSOR_PROJECT."
+  pending_validations: "DEPLOY_THE_FINAL_EXACT_SOURCE_ONCE_UNDER_FRESH_AUTHORITY_WITHOUT_REAPPLYING_MIGRATIONS_0069_OR_0070, THEN_CREATE_EXACTLY_ONE_NEW_STAGE_1_TO_5_PROJECT_TO_PROVE_SEQUENTIAL_PER_SCENE_DEEPSEEK_REQUESTS, ACTUAL_ACCEPTED_PROMPT_QUALITY, INCREMENTAL_DURABLE_ROWS, AND_SCROLLING_ACCEPTED_PROMPTS_IN_AUTHENTICATED_CHROME. THE_CURRENT_APPROVAL_IS_CONSUMED_AND_PROJECT_09F45139_IS_NON_RETRIABLE."
+  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 8e56e2b7aa2e7e9e95ee94d331d8bf9bc703f07e MIGRATION 0069 ALREADY APPLIED DO NOT REAPPLY; APPLY MIGRATION 0070 ONCE SHA256 b67fc1108168772ddaa9f2b46387083f82cf602203dd83517ea894e2119a59d5; MEDIA WORKER 0.1.13 DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 1; USE COMPUTER USE TO VERIFY ONE DEEPSEEK V4 FLASH REQUEST PER NARRATION SCENE, ACCEPTED PROMPT QUALITY, DURABLE INCREMENTAL PROMPTS, AND THE SCROLLABLE PROMPT VIEWER; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
+  latest_live_run: "Migration 0070 was applied exactly once and verified at ledger 70/70; migration 0069 was not replayed. Source 8e56e2b7 deployed once as Worker 536a5aec with config SHA-256 b8fd2f58. Computer Use created exactly one project 09f45139-5d48-4823-9927-c43f32942f, capped at USD 2 with a hard USD 1 provider-spend cap, Helen v1, Will Carter v1, media worker 0.1.13, and the verified 159.216-second MP3. Stages 1-4 completed; Stage 3 deepseek:v4@flash reported/settled USD 0.000072. Stage 5 created run dfa2848c, task 76dde4e0, and attempt aca9f32a, sent exactly one scene request, then received HTTP 400 providerUnavailable. It stopped FAILED/HOSTED_PROMPT_PROVIDER_REJECTED with provider_may_have_charged=false, released the USD 0.04 reservation, and produced zero accepted scene-progress rows. No retry or provider retrieval occurred. Zero active provider leases and zero nonterminal serverless attempts remained."
+  deployed_config_sha256: "b8fd2f5892c4afa745dba60ad7e60aa0b111712ab062c14b8f0ef87e918208ce"
+  deployment_approval: "CONSUMED_AT_STAGE_5_TERMINAL_SOURCE_8E56E2B7_WORKER_536A5AEC_PROJECT_09F45139_NO_RETRY_OR_PROVIDER_RETRIEVAL"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -180,16 +182,17 @@ hosted_beta_user_walkthrough:
   gpu_use_authorized: false
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
-  database_preflight: "LIVE_LEDGER_69_OF_69_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_VERIFIED; MIGRATION_0070_LOCAL_PGLITE_GREEN_UNAPPLIED"
-  pending_database_migration: "0070_hosted_prompt_scene_progress.sql sha256:b67fc1108168772ddaa9f2b46387083f82cf602203dd83517ea894e2119a59d5"
+  database_preflight: "LIVE_LEDGER_70_OF_70_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_AND_APPEND_FUNCTION_CAPABILITY_VERIFIED; MIGRATIONS_0069_AND_0070_APPLIED_DO_NOT_REPLAY"
+  pending_database_migration: null
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_9_SECRETS_AND_R2_PRIVATE_STATE_PASS"
-  live_browser_verification: "SOURCE_6D35183F_WORKER_662AA502_AT_100_PERCENT; FRESH_AUTHENTICATED_CHROME_PROJECT_9987D1E2_COUNT_EXACTLY_ONE_CAP_USD_2_HARD_PROVIDER_CAP_USD_1; STAGES_1_TO_4_COMPLETE; STAGE_3_DEEPSEEK_V4_FLASH_SETTLED_USD_0_000075; OLD_STAGE_5_VIEWER_SHOWED_WRITING_AND_VALIDATING_THEN_TERMINAL_PROMPT_WRITING_STOPPED_WITH_ZERO_ACCEPTED_ROWS; HTTP_400_PROVIDERUNAVAILABLE_DEFINITE_NO_CHARGE; ACCEPTED_ROW_SCROLLING_NOT_YET_LIVE_VERIFIED; USD_0_04_RELEASED; NO_RETRY_OR_PROVIDER_RETRIEVAL; ZERO_ACTIVE_PROVIDER_LEASES_AND_ZERO_NONTERMINAL_SERVERLESS_ATTEMPTS; GPU_DISABLED_UNQUALIFIED"
+  live_browser_verification: "SOURCE_8E56E2B7_WORKER_536A5AEC_AT_100_PERCENT; FRESH_AUTHENTICATED_CHROME_PROJECT_09F45139_COUNT_EXACTLY_ONE_CAP_USD_2_HARD_PROVIDER_CAP_USD_1; STAGES_1_TO_4_COMPLETE; STAGE_3_DEEPSEEK_V4_FLASH_SETTLED_USD_0_000072; STAGE_5_SENT_EXACTLY_ONE_SCENE_REQUEST_THEN_VIEWER_SHOWED_PROMPT_WRITING_STOPPED_WITH_ZERO_ACCEPTED_ROWS; CLOUDFLARE_BOUNDED_DIAGNOSTIC_HTTP_400_PROVIDERUNAVAILABLE_DEFINITE_NO_CHARGE; ACCEPTED_PROMPT_QUALITY_DURABILITY_AND_SCROLLING_NOT_YET_LIVE_PROVEN; USD_0_04_RELEASED; NO_RETRY_OR_PROVIDER_RETRIEVAL; ZERO_ACTIVE_PROVIDER_LEASES_AND_ZERO_NONTERMINAL_SERVERLESS_ATTEMPTS; GPU_DISABLED_UNQUALIFIED"
   fixed_blockers:
-    - "Source 01dea638 implements the intended Stage 5 architecture: one sequential deepseek:v4@flash request per narration scene, each carrying the exact phrase, bounded containing and adjacent context, compact whole-script context, fixed shot role/layout, and pinned image-style guidance. Each response must pass strict JSON, literal-anchor, hard-restriction, camera-capturable realism, compiler, and hash checks before migration 0070 appends an immutable tenant-private progress row; the next request starts only after that save. The authenticated project detail reads those rows every two seconds into the existing 360 px scrollable viewer. No hosted scene retry is allowed; definite invalid responses settle known cost and release unused reservation, while network or persistence ambiguity remains UNKNOWN without redispatch. Focused web Stage 5/UI tests pass 119/119, pipeline prompt tests 31/31, migration/profile/grant tests 13/13, web/pipeline/control-plane typechecks and builds pass, staging bundle quarantine passes, and changed-file lint/format/diff checks pass. Computer Use also confirmed the prior live project remains terminal and non-retried; the provider-free local UI was clicked with zero external spend. Migration 0070 and this source remain unapplied/undeployed pending fresh exact authority."
+    - "The approved source 8e56e2b7 per-scene architecture reached Runware exactly once for narration scene 1 but received a definite HTTP 400 providerUnavailable rejection before any accepted prompt or Stage 5 charge. Computer Use inspection of the exact Cloudflare event showed stage=http, no provider parameter, provider_may_have_charged=false, and zero additional known cost. Stage 3 succeeded in the same project with deepseek:v4@flash, while its qualified provider schema deliberately omits string-length keywords and enforces them locally. Stage 5 still sent minLength, maxLength, and uniqueItems; this is the strongest isolated request-contract cause, although the provider did not name the offending keyword. Source 3fe60150 advances the request contract to v7 and removes those three provider-wire keywords while preserving all nonempty, length, control-character, uniqueness, realism, restriction, compiler, and hash checks locally. Pipeline 125/125, focused hosted web 119/119, pipeline/web typechecks and builds, changed-file ESLint/Prettier/diff checks, and a 1,990-file secret scan pass. It is source-only and undeployed; accepted prompt quality, durable incremental rows, and viewer scrolling still require one fresh authorized live project."
+    - "Source 01dea638 implemented the intended Stage 5 architecture: one sequential deepseek:v4@flash request per narration scene, each carrying the exact phrase, bounded containing and adjacent context, compact whole-script context, fixed shot role/layout, and pinned image-style guidance. Each response must pass strict JSON, literal-anchor, hard-restriction, camera-capturable realism, compiler, and hash checks before migration 0070 appends an immutable tenant-private progress row; the next request starts only after that save. The authenticated project detail reads those rows every two seconds into the existing 360 px scrollable viewer. No hosted scene retry is allowed; definite invalid responses settle known cost and release unused reservation, while network or persistence ambiguity remains UNKNOWN without redispatch. Focused web Stage 5/UI tests pass 119/119, pipeline prompt tests 31/31, migration/profile/grant tests 13/13, web/pipeline/control-plane typechecks and builds pass, staging bundle quarantine passes, and changed-file lint/format/diff checks pass. At that checkpoint, Computer Use confirmed the prior live project was terminal and non-retried and the provider-free local UI was clicked with zero external spend; migration 0070 and source 01dea638 were still unapplied/undeployed. Migration 0070 was later applied exactly once under a successor approval and must not be replayed."
     - "Live source 476afe21 collapsed every Stage 5 transport/provider failure into generic UNKNOWN/PROMPT_EXECUTION_UNCERTAIN and logged only PromptExecutionError, discarding the transport's existing bounded safe diagnostic. Source 9b2ae82d carries only stage, HTTP status, provider code, and provider parameter; records definite pre-dispatch or provider rejection as FAILED/no-charge; preserves network or unaccepted-response ambiguity as UNKNOWN/may-have-charged; and never redispatches or exposes provider messages/payloads. Focused hosted/provider/product tests pass 75/75, pipeline 125/125, web typecheck, changed-file ESLint, staging build, and diff checks pass. The broad control-plane suite retains the unrelated historical relational boundary failure at relational-hardening.test.mjs:241. Source only; no second deployment, project, provider call/retrieval, migration, GPU/RunPod, production, or volume mutation."
     - "Source 932de2e2 replaces the long full-width prompt dump with a compact 360 px scrollable Stage 5 panel beside the production stages. During the one synchronous deepseek:v4@flash request it shows Writing and validating; after atomic server validation, the next two-second project refresh reveals every exact final positive and negative prompt sent to image generation. Partial unvalidated provider rows are never exposed. Focused hosted UI 52/52, hosted prompt/server 63/63, pipeline 125/125, web typecheck, changed-file ESLint/format, staging build/quarantine, context validation, secret scan, and diff checks pass. The full web suite retains two unrelated pre-existing local-mode failures; 1471 tests pass and one is skipped. Source only; no deployment, provider call/retrieval, migration, GPU/RunPod, production, or volume mutation."
     - "Source b4c7db85 repairs project 31067cc2's pre-fetch Stage 5 failure: adjacent contexts are capped at 1000 characters with the previous tail and next head retained, containing sentences remain capped at 2000, and the canonical batch is validated before durable preparation. The regression reaches fake deepseek:v4@flash once and returns all scenes. Hosted 11/11, pipeline 125/125, web typecheck, lint/format, staging build/quarantine, and diff checks pass. Source only; no deployment, provider call/retrieval, migration, GPU/RunPod, production, or volume mutation."
@@ -5016,8 +5019,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_stage_5_per_scene_source_green_migration_0070_pending
-  status: stage_5_per_scene_repair_awaiting_fresh_exact_migration_deployment_and_project_authority
+  milestone: private_hosted_beta_stage_5_schema_v7_repair_green_undeployed
+  status: stage_5_schema_v7_repair_awaiting_fresh_exact_deployment_and_project_authority
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: release_and_deployment_authority_consumed_non_reusable
   task_stage: provider_free_product_execution
@@ -5026,7 +5029,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Keep live source 6d35183f / Worker 662aa502 and terminal project 9987d1e2 separate from green undeployed per-scene source 01dea638 and unapplied migration 0070. Obtain fresh exact source-and-migration-bound authority before applying 0070 once, deploying once, or creating exactly one successor project. Then verify one deepseek:v4@flash request per narration scene, accepted prompt quality, durable incremental rows, and the scrollable accepted-prompt viewer in authenticated Chrome. Never retry or retrieve terminal project 9987d1e2. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
+  goal: "Keep live source 8e56e2b7 / Worker 536a5aec and terminal project 09f45139 separate from green undeployed schema-v7 source 3fe60150. Migrations 0069 and 0070 are already applied and must not be replayed. Obtain fresh exact source-bound authority before deploying once or creating exactly one successor project. Then verify one deepseek:v4@flash request per narration scene, accepted prompt quality, durable incremental rows, and the scrollable accepted-prompt viewer in authenticated Chrome. Never retry or retrieve terminal project 09f45139. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -5047,7 +5050,7 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "The exact 6d35183f / Worker 662aa502 authority is consumed at terminal Stage 5 project 9987d1e2. Migration 0069 is already applied and must not be replayed. Source 01dea638 and migration 0070 contain the per-narration-scene DeepSeek writer, incremental durable prompt rows, bounded failure accounting, and live scrollable viewer; both are green locally and unapplied/undeployed. Fresh exact authority is required for migration 0070, deployment, or any successor live project. No provider call, retrieval, remote mutation, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized."
+  authority_note: "The exact 8e56e2b7 / Worker 536a5aec authority is consumed at terminal Stage 5 project 09f45139. Migrations 0069 and 0070 are already applied and must not be replayed. Source 3fe60150 aligns the per-narration-scene DeepSeek wire schema with the qualified Stage 3 subset while preserving strict local prompt acceptance; it is green locally and undeployed. Fresh exact authority is required for deployment or any successor live project. No provider call, retrieval, remote mutation, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444"
@@ -5056,8 +5059,8 @@ recommended_next_task:
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: stage_5_prompt_repair_and_viewer_source_green_undeployed
-  execution_blocker: stage_5_live_and_browser_proof_require_fresh_exact_source_bound_deployment_and_one_project_authority
+  execution_status: stage_5_schema_v7_repair_source_green_undeployed
+  execution_blocker: stage_5_accepted_quality_durability_and_viewer_proof_require_fresh_exact_source_bound_deployment_and_one_project_authority
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean
