@@ -11,7 +11,7 @@ import { z } from "zod";
 const AVATAR_FIXTURE_PATH = /^\/fixtures\/avatar\/[a-z0-9][a-z0-9._-]*\.svg$/u;
 const STYLE_FIXTURE_PATH = /^\/fixtures\/styles\/[a-z0-9][a-z0-9._-]*\.svg$/u;
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;
-const SAFE_FILENAME = /^(?!\.)(?!.*[\\/\u0000-\u001f\u007f])[\u0020-\u007e]{1,255}$/u;
+const SAFE_FILENAME = /^(?!\.)(?!.*[\\/])[\u0020-\u007e]{1,255}$/u;
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/u;
 
 export const avatarProfileSourceMetadataSchema = z

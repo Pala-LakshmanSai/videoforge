@@ -3,9 +3,12 @@ import { canonicalizeJson } from "@videoforge/contracts";
 import { PipelineDomainError } from "../errors.js";
 import {
   IN_IMAGE_SHOT_ROLES,
+  SCENE_PROMPT_WRITER_VERSION,
+  containsReferenceSpecificStyleContent,
   type PromptBatch,
   type PromptBatchInput,
   type PromptSceneInput,
+  type PromptStyleTreatment,
   type PromptWriterBatchOutput,
   type PromptWriterSceneOutput,
 } from "./types.js";
@@ -56,6 +59,197 @@ const normalizedOutput = (
   return result;
 };
 
+const STYLE_TREATMENT_KEYS = [
+  "camera_language",
+  "contrast_and_exposure",
+  "depth_of_field",
+  "environment_and_material_detail",
+  "human_rendering",
+  "image_framing",
+  "imperfection_profile",
+  "lighting",
+  "medium_family",
+  "mood",
+  "palette",
+  "realism",
+  "schema_version",
+  "shot_scale_preferences",
+  "subject_treatment",
+  "style_profile_hash",
+  "texture_and_grain",
+] as const;
+const STYLE_PALETTE_KEYS = ["approximate_hex", "descriptors"] as const;
+const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/u;
+
+const objectRecord = (value: unknown): Record<string, unknown> | null =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+const hasExactKeys = (value: Record<string, unknown>, expected: readonly string[]): boolean => {
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  return (
+    actual.length === sortedExpected.length &&
+    actual.every((key, index) => key === sortedExpected[index])
+  );
+};
+
+const styleText = (
+  value: unknown,
+  maximum: number,
+  label: string,
+  path: readonly (string | number)[],
+): string => {
+  if (typeof value !== "string")
+    return fail("PROMPT_INPUT_INVALID", `${label} must be a string.`, path);
+  const result = normalized(value, maximum, label, path);
+  if (containsReferenceSpecificStyleContent(result))
+    return fail("PROMPT_INPUT_INVALID", `${label} contains reference-specific content.`, path);
+  return result;
+};
+
+const styleList = (
+  value: unknown,
+  maximumItems: number,
+  maximumLength: number,
+  label: string,
+  path: readonly (string | number)[],
+  options: { readonly allowEmpty?: boolean } = {},
+): readonly string[] => {
+  if (!Array.isArray(value) || value.length > maximumItems)
+    return fail(
+      "PROMPT_INPUT_INVALID",
+      `${label} must contain at most ${maximumItems} strings.`,
+      path,
+    );
+  const values = value as unknown[];
+  if (!options.allowEmpty && values.length === 0)
+    return fail("PROMPT_INPUT_INVALID", `${label} must contain at least one string.`, path);
+  return Object.freeze(
+    values.map((item, index) => styleText(item, maximumLength, label, [...path, index])),
+  );
+};
+
+/**
+ * Validate and clone the semantic style projection at the prompt boundary.
+ * The exact-key check is the field-selection guard: reference/content-bearing
+ * profile fields cannot silently ride along in the provider input.
+ */
+const normalizedStyleTreatment = (
+  value: PromptStyleTreatment | null | undefined,
+  styleProfileHash: string,
+): PromptStyleTreatment | null => {
+  if (value === undefined || value === null) return null;
+  const candidate = objectRecord(value);
+  if (candidate === null)
+    return fail("PROMPT_INPUT_INVALID", "Style treatment must be an object.", ["styleTreatment"]);
+  if (!hasExactKeys(candidate, STYLE_TREATMENT_KEYS))
+    return fail(
+      "PROMPT_INPUT_INVALID",
+      "Style treatment contains unknown or missing semantic fields.",
+      ["styleTreatment"],
+    );
+  if (candidate.schema_version !== "image-style-treatment/v1")
+    return fail("PROMPT_INPUT_INVALID", "Style treatment version is invalid.", ["styleTreatment"]);
+  if (candidate.style_profile_hash !== styleProfileHash)
+    return fail("PROMPT_INPUT_INVALID", "Style treatment is not bound to the pinned style hash.", [
+      "styleTreatment",
+      "style_profile_hash",
+    ]);
+  const palette = objectRecord(candidate.palette);
+  if (palette === null)
+    return fail("PROMPT_INPUT_INVALID", "Style treatment palette must be an object.", [
+      "styleTreatment",
+      "palette",
+    ]);
+  if (!hasExactKeys(palette, STYLE_PALETTE_KEYS))
+    return fail("PROMPT_INPUT_INVALID", "Style treatment palette shape is invalid.", [
+      "styleTreatment",
+      "palette",
+    ]);
+  const approximateHex = palette.approximate_hex;
+  if (
+    !Array.isArray(approximateHex) ||
+    approximateHex.length > 12 ||
+    approximateHex.some((color) => typeof color !== "string" || !HEX_COLOR.test(color))
+  )
+    return fail("PROMPT_INPUT_INVALID", "Style treatment palette colors are invalid.", [
+      "styleTreatment",
+      "palette",
+      "approximate_hex",
+    ]);
+  return Object.freeze({
+    schema_version: "image-style-treatment/v1",
+    style_profile_hash: styleProfileHash as PromptStyleTreatment["style_profile_hash"],
+    medium_family: styleText(candidate.medium_family, 100, "Style medium", [
+      "styleTreatment",
+      "medium_family",
+    ]),
+    realism: styleText(candidate.realism, 600, "Style realism", ["styleTreatment", "realism"]),
+    subject_treatment: styleText(candidate.subject_treatment, 600, "Style subject treatment", [
+      "styleTreatment",
+      "subject_treatment",
+    ]),
+    camera_language: styleText(candidate.camera_language, 600, "Style camera language", [
+      "styleTreatment",
+      "camera_language",
+    ]),
+    image_framing: styleText(candidate.image_framing, 600, "Style image framing", [
+      "styleTreatment",
+      "image_framing",
+    ]),
+    shot_scale_preferences: styleList(
+      candidate.shot_scale_preferences,
+      20,
+      160,
+      "Style shot-scale preferences",
+      ["styleTreatment", "shot_scale_preferences"],
+    ),
+    lighting: styleText(candidate.lighting, 600, "Style lighting", ["styleTreatment", "lighting"]),
+    palette: Object.freeze({
+      descriptors: styleList(palette.descriptors, 20, 120, "Style palette descriptors", [
+        "styleTreatment",
+        "palette",
+        "descriptors",
+      ]),
+      approximate_hex: Object.freeze([...approximateHex]),
+    }),
+    contrast_and_exposure: styleText(
+      candidate.contrast_and_exposure,
+      600,
+      "Style contrast and exposure",
+      ["styleTreatment", "contrast_and_exposure"],
+    ),
+    depth_of_field: styleText(candidate.depth_of_field, 600, "Style depth of field", [
+      "styleTreatment",
+      "depth_of_field",
+    ]),
+    texture_and_grain: styleText(candidate.texture_and_grain, 600, "Style texture and grain", [
+      "styleTreatment",
+      "texture_and_grain",
+    ]),
+    human_rendering: styleText(candidate.human_rendering, 600, "Style human rendering", [
+      "styleTreatment",
+      "human_rendering",
+    ]),
+    environment_and_material_detail: styleText(
+      candidate.environment_and_material_detail,
+      600,
+      "Style environment and material detail",
+      ["styleTreatment", "environment_and_material_detail"],
+    ),
+    imperfection_profile: styleList(
+      candidate.imperfection_profile,
+      20,
+      160,
+      "Style imperfection profile",
+      ["styleTreatment", "imperfection_profile"],
+    ),
+    mood: styleList(candidate.mood, 20, 120, "Style mood", ["styleTreatment", "mood"]),
+  });
+};
+
 const snapshot = (value: unknown): unknown => {
   try {
     return JSON.parse(canonicalizeJson(value));
@@ -74,6 +268,7 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
     fail("PROMPT_INPUT_INVALID", "Image Style version ID is invalid.", ["imageStyleVersionId"]);
   if (!SHA256.test(input.styleProfileHash))
     fail("PROMPT_INPUT_INVALID", "Style profile hash is invalid.", ["styleProfileHash"]);
+  const styleTreatment = normalizedStyleTreatment(input.styleTreatment, input.styleProfileHash);
   // A batch is a transport unit, not a script-size contract. Stage 4 owns the
   // complete deterministic scene list; the adaptive planner chooses how many
   // contiguous scenes fit each provider request. Keeping this validator at a
@@ -148,11 +343,12 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
     ]);
 
   return Object.freeze({
-    scenePromptWriterVersion: "scene-prompt-writer-v1",
+    scenePromptWriterVersion: SCENE_PROMPT_WRITER_VERSION,
     batchId: input.batchId,
     sanitizedProjectTitle: normalized(input.projectTitle, 240, "Project title", ["projectTitle"]),
     imageStyleVersionId: input.imageStyleVersionId,
     styleProfileHash: input.styleProfileHash,
+    styleTreatment,
     plannerGuidance: normalized(input.plannerGuidance, 2_000, "Planner guidance", [
       "plannerGuidance",
     ]),

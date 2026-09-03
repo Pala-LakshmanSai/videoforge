@@ -11,6 +11,8 @@ import {
   RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE,
   buildPromptBatch,
   buildRunwarePromptRequest,
+  derivePromptStyleTreatment,
+  promptStyleTreatmentPositiveSuffix,
   planPromptBatches,
 } from "../dist/src/index.js";
 
@@ -31,12 +33,35 @@ function scenes(count, options = {}) {
   });
 }
 
+function styleTreatment(styleProfileHash = digest) {
+  return {
+    schema_version: "image-style-treatment/v1",
+    style_profile_hash: styleProfileHash,
+    medium_family: "documentary photography",
+    realism: "physically believable still image",
+    subject_treatment: "natural, unposed subject treatment with realistic proportions",
+    camera_language: "restrained observational camera",
+    image_framing: "crop-safe contextual framing",
+    shot_scale_preferences: ["environmental wide", "hands and action"],
+    lighting: "available practical light",
+    palette: { descriptors: ["true-to-life", "restrained saturation"], approximate_hex: [] },
+    contrast_and_exposure: "soft natural contrast",
+    depth_of_field: "natural lens depth",
+    texture_and_grain: "tactile texture with restrained grain",
+    human_rendering: "believable anatomy and materials",
+    environment_and_material_detail: "credible real-world surfaces and material response",
+    imperfection_profile: ["ordinary wear"],
+    mood: ["observational", "grounded"],
+  };
+}
+
 function planningInput(count, options = {}) {
   return {
     batchIdPrefix: "task_prompt",
     projectTitle: "A practical documentary",
     imageStyleVersionId: "style_version_1",
     styleProfileHash: digest,
+    styleTreatment: styleTreatment(),
     plannerGuidance: "Natural documentary photography with ordinary physical evidence",
     storyContext: "A compact story about a person demonstrating a practical process.",
     continuityTags: ["same_person", "same_place"],
@@ -78,6 +103,114 @@ test("buildPromptBatch accepts one scene and arbitrary counts without a script c
     (error) =>
       error instanceof PipelineDomainError && error.failure.code === "PROMPT_INPUT_INVALID",
   );
+});
+
+test("style treatment is a deterministic semantic projection, not reference content", () => {
+  const profile = {
+    visual_profile: {
+      medium_family: "analog photography",
+      realism: "true to life",
+      subject_treatment: "natural subject treatment with believable proportions",
+      camera_language: "eye-level lens",
+      image_framing: "wide contextual frame",
+      shot_scale_preferences: ["environmental wide"],
+      lighting: "soft window light",
+      color: { descriptors: ["muted ochre"], approximate_hex: ["#AA7733"] },
+      contrast_and_exposure: "soft contrast",
+      depth_of_field: "natural depth",
+      texture_and_grain: "fine grain",
+      human_rendering: "natural materials and anatomy",
+      environment_and_material_detail: "credible surfaces with tactile material response",
+      imperfection_profile: ["uneven exposure"],
+      mood: ["quiet"],
+      continuity_rules: ["same location"],
+      must_include: ["reference product"],
+      must_avoid: ["copied logo"],
+      flexible_properties: ["weather"],
+    },
+  };
+  const projected = derivePromptStyleTreatment(profile.visual_profile, digest);
+  assert.equal(projected.style_profile_hash, digest);
+  assert.equal(projected.image_framing, "wide contextual frame");
+  assert.deepEqual(projected.shot_scale_preferences, ["environmental wide"]);
+  assert.equal(
+    projected.subject_treatment,
+    "natural subject treatment with believable proportions",
+  );
+  assert.equal(
+    projected.environment_and_material_detail,
+    "credible surfaces with tactile material response",
+  );
+  assert.equal(Object.hasOwn(projected, "must_include"), false);
+  assert.equal(Object.hasOwn(projected, "continuity_rules"), false);
+  assert.equal(Object.hasOwn(projected, "planner_guidance"), false);
+});
+
+test("style treatment rejects reference-specific content from an already-published profile", () => {
+  const input = planningInput(1);
+  assert.throws(
+    () =>
+      planPromptBatches({
+        ...input,
+        styleTreatment: { ...input.styleTreatment, camera_language: "Portrait of John" },
+      }),
+    (error) =>
+      error instanceof PipelineDomainError &&
+      error.failure.code === "PROMPT_INPUT_INVALID" &&
+      /reference-specific content/u.test(error.failure.message),
+  );
+});
+
+test("style positive suffix stays bounded at a word boundary for a maximum profile", () => {
+  const maximum = styleTreatment();
+  maximum.medium_family = `MEDIUM_MARKER ${"photography ".repeat(20)}`;
+  maximum.realism = `REALISM_MARKER ${"physically believable still image ".repeat(40)}detail`;
+  maximum.subject_treatment = `SUBJECT_MARKER ${"unposed human treatment ".repeat(30)}`;
+  maximum.camera_language = `CAMERA_MARKER ${"observational lens language ".repeat(30)}`;
+  maximum.image_framing = `FRAMING_MARKER ${"balanced contextual frame ".repeat(30)}`;
+  maximum.shot_scale_preferences = [`SCALE_MARKER ${"environmental wide ".repeat(20)}`];
+  maximum.lighting = `LIGHT_MARKER ${"soft practical illumination ".repeat(30)}`;
+  maximum.palette.descriptors = Array.from(
+    { length: 20 },
+    (_, index) => `PALETTE_MARKER_${index} restrained natural color`,
+  );
+  maximum.palette.approximate_hex = ["#123456"];
+  maximum.contrast_and_exposure = `CONTRAST_MARKER ${"protected exposure ".repeat(30)}`;
+  maximum.depth_of_field = `DEPTH_MARKER ${"contextual lens depth ".repeat(30)}`;
+  maximum.texture_and_grain = `TEXTURE_MARKER ${"tactile restrained grain ".repeat(30)}`;
+  maximum.human_rendering = `HUMAN_MARKER ${"believable anatomy ".repeat(30)}`;
+  maximum.environment_and_material_detail = `MATERIAL_MARKER ${"credible surfaces ".repeat(30)}`;
+  maximum.imperfection_profile = Array.from(
+    { length: 20 },
+    (_, index) => `IMPERFECTION_MARKER_${index} ordinary material variation`,
+  );
+  maximum.mood = Array.from(
+    { length: 20 },
+    (_, index) => `MOOD_MARKER_${index} grounded observational mood`,
+  );
+  const suffix = promptStyleTreatmentPositiveSuffix(maximum);
+  assert.ok(suffix.length <= 2_400);
+  assert.equal(suffix, suffix.trim());
+  assert.equal(/\s$/u.test(suffix), false);
+  for (const marker of [
+    "MEDIUM_MARKER",
+    "REALISM_MARKER",
+    "SUBJECT_MARKER",
+    "CAMERA_MARKER",
+    "FRAMING_MARKER",
+    "SCALE_MARKER",
+    "LIGHT_MARKER",
+    "PALETTE_MARKER_0",
+    "#123456",
+    "CONTRAST_MARKER",
+    "DEPTH_MARKER",
+    "TEXTURE_MARKER",
+    "HUMAN_MARKER",
+    "MATERIAL_MARKER",
+    "IMPERFECTION_MARKER_0",
+    "MOOD_MARKER_0",
+  ])
+    assert.ok(suffix.includes(marker), `missing compacted style field ${marker}`);
 });
 
 test("planner is deterministic, contiguous, complete, and quality-bounds larger responses", () => {
@@ -182,6 +315,7 @@ test("request maxTokens includes fixed and per-scene headroom and allows short b
     projectTitle: "A practical documentary",
     imageStyleVersionId: "style_version_1",
     styleProfileHash: digest,
+    styleTreatment: styleTreatment(),
     plannerGuidance: "Natural documentary photography",
     storyContext: "A compact story.",
     continuityTags: [],
@@ -194,6 +328,6 @@ test("request maxTokens includes fixed and per-scene headroom and allows short b
       2 * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE +
       RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   );
-  assert.equal(request.requestVersion, "runware-deepseek-v4-flash-prompt-request-v9");
+  assert.equal(request.requestVersion, "runware-deepseek-v4-flash-prompt-request-v10");
   assert.equal(request.request.model, "deepseek:v4@flash");
 });

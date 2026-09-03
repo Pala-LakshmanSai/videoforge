@@ -8,13 +8,10 @@ import {
 
 import { PipelineDomainError } from "../errors.js";
 import { assertNoHardPromptConflict, validatePromptStyleComponents } from "../prompts/compiler.js";
+import { containsReferenceSpecificStyleContent } from "../prompts/types.js";
 import { buildStyleAnalyzerRequest } from "./request.js";
 import { STYLE_TRAITS, type StyleAnalyzerRequest, type TrustedStyleProfile } from "./types.js";
 
-const INSTRUCTION_INJECTION =
-  /\b(?:ignore|disregard|override)\s+(?:all\s+)?(?:previous|prior|system)\s+instructions?\b|\b(?:system|developer)\s+prompt\b|\bfollow\s+(?:the\s+)?(?:visible|embedded|image)\s+instructions?\b/iu;
-const REFERENCE_CONTENT_REQUIREMENT =
-  /\b(?:(?:copy|preserve|recreate|include|use|match)\s+(?:the\s+)?)?(?:same|exact|reference|recurring)(?:\s+(?:same|exact|reference|recurring))?\s+(?:person|identity|character|object|product|location|place|brand|logo|watermark|words?|text|layout|composition)\b|\bin the style of\b|\b(?:named|specific)\s+(?:living\s+)?artist\b/iu;
 const containsControl = (value: string): boolean =>
   Array.from(value).some((character) => {
     const codePoint = character.codePointAt(0)!;
@@ -56,10 +53,7 @@ function text(
   const result = value.normalize("NFKC").replace(/\s+/gu, " ").trim();
   if ((!options.optional && result.length === 0) || result.length > maximum)
     fail("STYLE_SEMANTIC_INVALID", "Style text is blank or oversized.", path);
-  if (
-    options.creative &&
-    (INSTRUCTION_INJECTION.test(result) || REFERENCE_CONTENT_REQUIREMENT.test(result))
-  )
+  if (options.creative && containsReferenceSpecificStyleContent(result))
     fail(
       "STYLE_CONTENT_LEAKAGE",
       "Style text contains instructions or reference content that cannot become a reusable trait.",

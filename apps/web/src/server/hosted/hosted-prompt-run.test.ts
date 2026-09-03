@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { buildPromptBatch, planPromptBatches, type PromptBatch } from "@videoforge/pipeline";
+import {
+  buildPromptBatch,
+  derivePromptStyleTreatment,
+  planPromptBatches,
+  SCENE_PROMPT_WRITER_VERSION,
+  type PromptBatch,
+} from "@videoforge/pipeline";
 
 import { hostedPromptAuthority, hostedPromptBatchPlan } from "./hosted-prompt-run";
 import { HostedPromptExecutionError, HostedRunwarePromptWriter } from "./runware-prompt-execution";
@@ -19,6 +25,28 @@ const ids = {
   reservation: "10000000-0000-4000-8000-000000000011",
 } as const;
 const digest = `sha256:${"a".repeat(64)}` as const;
+
+const visualProfile = {
+  medium_family: "documentary photography",
+  realism: "physically believable still image",
+  subject_treatment: "natural subject treatment with ordinary scale and materials",
+  camera_language: "restrained observational camera language",
+  image_framing: "crop-safe contextual framing",
+  shot_scale_preferences: ["environmental wide", "hands and action"],
+  lighting: "available practical light with natural shadow detail",
+  color: { descriptors: ["true-to-life", "restrained saturation"], approximate_hex: [] },
+  contrast_and_exposure: "soft natural contrast with recoverable highlights",
+  depth_of_field: "natural lens depth with enough environmental context",
+  texture_and_grain: "tactile material detail with restrained grain",
+  human_rendering: "believable anatomy and natural everyday imperfection",
+  environment_and_material_detail: "credible real-world surfaces and material response",
+  imperfection_profile: ["uneven exposure", "ordinary wear"],
+  mood: ["observational", "grounded"],
+  continuity_rules: ["preserve subject continuity"],
+  must_include: ["physically visible evidence"],
+  must_avoid: ["visible writing"],
+  flexible_properties: ["weather and background detail"],
+} as const;
 
 function scenes(count = 25) {
   return Array.from({ length: count }, (_, index) => ({
@@ -46,6 +74,7 @@ function plan(overrides: Record<string, unknown> = {}) {
     style_state: "PUBLISHED",
     style_profile_hash: digest,
     profile_payload: {
+      visual_profile: visualProfile,
       prompt_profile: {
         planner_guidance: "Literal editorial collage treatment.",
         positive_suffix: "tactile paper collage",
@@ -63,7 +92,7 @@ function plan(overrides: Record<string, unknown> = {}) {
     all_segments: scenes().map((scene, index) => ({
       scene_id: scene.scene_id,
       segment_index: index,
-      phrase: scene.sentence_context,
+      phrase: scene.phrase,
     })),
     extra_prompt_keywords: null,
     apply_extra_prompt_keywords: false,
@@ -104,7 +133,7 @@ function successfulPromptFetcher() {
           in_image_shot_role: scene.in_image_shot_role,
           lighting_context: "available daylight",
           continuity_tags: [],
-          prompt_core: "Natural documentary view of the narrated action as physical evidence",
+          prompt_core: `Natural documentary view of ${scene.exact_phrase}, with a household object demonstrating a practical action in a lived-in workspace for ${scene.scene_id}`,
         }))
         .reverse(),
     };
@@ -134,6 +163,7 @@ function adaptivePlan(batch: PromptBatch) {
     projectTitle: batch.sanitizedProjectTitle,
     imageStyleVersionId: batch.imageStyleVersionId,
     styleProfileHash: batch.styleProfileHash,
+    styleTreatment: batch.styleTreatment,
     plannerGuidance: batch.plannerGuidance,
     storyContext: batch.storyContext,
     continuityTags: batch.continuityTags,
@@ -216,7 +246,7 @@ describe("hosted prompt authority", () => {
         all_segments: longScenes.map((scene, index) => ({
           scene_id: scene.scene_id,
           segment_index: index,
-          phrase: scene.sentence_context,
+          phrase: scene.phrase,
         })),
       }),
       identity,
@@ -306,17 +336,83 @@ describe("hosted prompt authority", () => {
     ).toThrow("not executable");
   });
 
-  it("bounds adjacent sentence windows and reaches the fake provider transport", async () => {
-    const allSegments = scenes().map((scene, index) => ({
+  it("keeps punctuation-free Stage 4 fragments local without transcript-scale duplication", () => {
+    const fragmentScenes = scenes().map((scene, index) => ({
+      ...scene,
+      phrase: `deterministic narration fragment ${index + 1} without terminal punctuation`,
+    }));
+    const allSegments = fragmentScenes.map((scene, index) => ({
       scene_id: scene.scene_id,
       segment_index: index,
-      phrase:
-        index === 0
-          ? "First short sentence."
-          : index === 1
-            ? `${"hydrogen peroxide bottle beside a practical kitchen sink ".repeat(30)}next evidence.`
-            : `Literal scene ${index + 1} is visible.`,
+      phrase: scene.phrase,
     }));
+    const authority = hostedPromptAuthority({
+      plan: plan({ scenes: fragmentScenes, all_segments: allSegments }),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+
+    expect(authority.scenes.map((scene) => scene.sentenceContext)).toEqual(
+      fragmentScenes.map((scene) => scene.phrase),
+    );
+    expect(authority.scenes[0]).toMatchObject({
+      priorContext: null,
+      nextContext: fragmentScenes[1]!.phrase,
+    });
+    expect(authority.scenes[12]).toMatchObject({
+      priorContext: fragmentScenes[11]!.phrase,
+      nextContext: fragmentScenes[13]!.phrase,
+    });
+    expect(authority.scenes.at(-1)).toMatchObject({
+      priorContext: fragmentScenes.at(-2)!.phrase,
+      nextContext: null,
+    });
+    const completeTranscript = fragmentScenes.map((scene) => scene.phrase).join(" ");
+    expect(authority.scenes.every((scene) => scene.sentenceContext !== completeTranscript)).toBe(
+      true,
+    );
+  });
+
+  it("rejects a Stage 5 scene phrase that drifts from its Stage 4 transcript fragment", () => {
+    const driftedScenes = scenes().map((scene, index) =>
+      index === 4 ? { ...scene, phrase: "rewritten semantic claim" } : scene,
+    );
+    expect(() =>
+      hostedPromptAuthority({
+        plan: plan({ scenes: driftedScenes }),
+        identity,
+        reservedCostMicroUsd: 40_000,
+      }),
+    ).toThrow("Hosted prompt scene phrase does not match its transcript segment");
+  });
+
+  it("rejects reordered image scenes before provider planning", () => {
+    expect(() =>
+      hostedPromptAuthority({
+        plan: plan({ scenes: [...scenes()].reverse() }),
+        identity,
+        reservedCostMicroUsd: 40_000,
+      }),
+    ).toThrow("Hosted prompt scene order does not match its transcript segments");
+  });
+
+  it("bounds immediate adjacent fragments and reaches the fake provider transport", async () => {
+    const imageScenes = scenes();
+    const bridgePhrase = `${"hydrogen peroxide bottle beside a practical kitchen sink ".repeat(30)}next evidence.`;
+    const allSegments = [
+      {
+        scene_id: imageScenes[0]!.scene_id,
+        phrase: imageScenes[0]!.phrase,
+      },
+      {
+        scene_id: "avatar_bridge",
+        phrase: bridgePhrase,
+      },
+      ...imageScenes.slice(1).map((scene) => ({
+        scene_id: scene.scene_id,
+        phrase: scene.phrase,
+      })),
+    ].map((segment, index) => ({ ...segment, segment_index: index }));
     const authority = hostedPromptAuthority({
       plan: plan({ all_segments: allSegments }),
       identity,
@@ -327,17 +423,22 @@ describe("hosted prompt authority", () => {
       projectTitle: authority.projectTitle,
       imageStyleVersionId: authority.imageStyleVersionId,
       styleProfileHash: authority.styleProfileHash,
+      styleTreatment: authority.styleTreatment,
       plannerGuidance: authority.plannerGuidance,
       storyContext: authority.storyContext,
       continuityTags: authority.continuityTags,
       scenes: authority.scenes,
     });
 
+    expect(batch.scenes[0]?.sentenceContext).toBe("literal scene 1");
+    expect(batch.scenes[0]?.priorContext).toBeNull();
     expect(batch.scenes[0]?.nextContext?.length).toBeLessThanOrEqual(1_000);
-    expect(batch.scenes[1]?.sentenceContext.length).toBeLessThanOrEqual(2_000);
-    expect(batch.scenes[2]?.priorContext?.length).toBeLessThanOrEqual(1_000);
+    expect(batch.scenes[1]?.sentenceContext).toBe("literal scene 2");
+    expect(batch.scenes[1]?.priorContext?.length).toBeLessThanOrEqual(1_000);
+    expect(batch.scenes[1]?.nextContext).toBe("literal scene 3");
     expect(batch.scenes[0]?.nextContext).toMatch(/^hydrogen peroxide bottle/u);
-    expect(batch.scenes[2]?.priorContext).toMatch(/next evidence\.$/u);
+    expect(batch.scenes[1]?.priorContext).toMatch(/next evidence\.$/u);
+    expect(batch.scenes.at(-1)?.nextContext).toBeNull();
     const fetcher = successfulPromptFetcher();
     const planned = adaptivePlan(batch);
     const result = await new HostedRunwarePromptWriter(
@@ -372,7 +473,14 @@ describe("hosted prompt authority", () => {
     );
     expect(() =>
       hostedPromptAuthority({
-        plan: plan({ scenes: invalidScenes }),
+        plan: plan({
+          scenes: invalidScenes,
+          all_segments: invalidScenes.map((scene, index) => ({
+            scene_id: scene.scene_id,
+            segment_index: index,
+            phrase: scene.phrase,
+          })),
+        }),
         identity,
         reservedCostMicroUsd: 40_000,
       }),
@@ -384,11 +492,12 @@ describe("hosted Runware prompt writer", () => {
   it("captures exact provider request/response bytes, usage, and reported cost", async () => {
     const fetcher = successfulPromptFetcher();
     const batch: PromptBatch = {
-      scenePromptWriterVersion: "scene-prompt-writer-v1",
+      scenePromptWriterVersion: SCENE_PROMPT_WRITER_VERSION,
       batchId: `${ids.task}:batch:1`,
       sanitizedProjectTitle: "Hydrogen peroxide",
       imageStyleVersionId: ids.style,
       styleProfileHash: digest,
+      styleTreatment: derivePromptStyleTreatment(visualProfile, digest),
       plannerGuidance: "Literal editorial collage treatment.",
       storyContext:
         "Subject: hydrogen peroxide household uses | Visual facts: brown hydrogen peroxide bottle; real household surfaces | Continuity: same bottle across demonstrations",
@@ -424,24 +533,31 @@ describe("hosted Runware prompt writer", () => {
     const dispatchedPlan = JSON.parse(dispatched[0]!.messages[0]!.content) as {
       image_style_version_id: string;
       style_profile_hash: string;
-      planner_guidance: string;
+      style_treatment: Record<string, unknown>;
       story_context: string;
       scenes: Array<{
         exact_phrase: string;
-        prior_context: string | null;
-        next_context: string | null;
+        prior_scene_phrase: string | null;
+        next_scene_phrase: string | null;
       }>;
     };
     expect(dispatchedPlan.image_style_version_id).toBe(ids.style);
     expect(dispatchedPlan.style_profile_hash).toBe(digest);
-    expect(dispatchedPlan.planner_guidance).toBe(batch.plannerGuidance);
+    expect(dispatchedPlan.style_treatment).toEqual(
+      expect.objectContaining({
+        schema_version: "image-style-treatment/v1",
+        style_profile_hash: digest,
+        image_framing: "crop-safe contextual framing",
+        shot_scale_preferences: ["environmental wide", "hands and action"],
+      }),
+    );
     expect(dispatchedPlan.story_context).toBe(batch.storyContext);
     expect(dispatchedPlan.scenes.length).toBeGreaterThan(0);
     expect(dispatchedPlan.scenes[0]).toEqual(
       expect.objectContaining({
         exact_phrase: "literal scene 1",
-        prior_context: null,
-        next_context: "literal scene 2",
+        prior_scene_phrase: null,
+        next_scene_phrase: "literal scene 2",
       }),
     );
     expect(
@@ -462,6 +578,7 @@ describe("hosted Runware prompt writer", () => {
       projectTitle: authority.projectTitle,
       imageStyleVersionId: authority.imageStyleVersionId,
       styleProfileHash: authority.styleProfileHash,
+      styleTreatment: authority.styleTreatment,
       plannerGuidance: authority.plannerGuidance,
       storyContext: authority.storyContext,
       continuityTags: authority.continuityTags,
@@ -515,6 +632,7 @@ describe("hosted Runware prompt writer", () => {
       projectTitle: authority.projectTitle,
       imageStyleVersionId: authority.imageStyleVersionId,
       styleProfileHash: authority.styleProfileHash,
+      styleTreatment: authority.styleTreatment,
       plannerGuidance: authority.plannerGuidance,
       storyContext: authority.storyContext,
       continuityTags: authority.continuityTags,
@@ -536,13 +654,13 @@ describe("hosted Runware prompt writer", () => {
               batch_id: payload.batch_id,
               scenes: payload.scenes.map((scene, index) => ({
                 scene_id: scene.scene_id,
-                literal_subject: "generic object",
+                literal_subject: "a household bottle",
                 action: index === 0 ? "show a visible logo" : "shown as physical evidence",
-                environment: "generic room",
+                environment: "a lived-in kitchen workspace",
                 in_image_shot_role: scene.in_image_shot_role,
                 lighting_context: "daylight",
                 continuity_tags: [],
-                prompt_core: "Generic unrelated evidence in a room",
+                prompt_core: `A household bottle provides concrete practical evidence in a lived-in kitchen workspace for ${scene.scene_id}`,
               })),
             }),
             usage: {
@@ -590,6 +708,25 @@ describe("hosted Runware prompt writer", () => {
       projectTitle: "Hydrogen peroxide",
       imageStyleVersionId: ids.style,
       styleProfileHash: digest,
+      styleTreatment: {
+        schema_version: "image-style-treatment/v1",
+        style_profile_hash: digest,
+        medium_family: "documentary photography",
+        realism: "physically believable still image",
+        subject_treatment: "natural subject treatment with believable proportions",
+        camera_language: "restrained observational camera language",
+        image_framing: "crop-safe contextual framing",
+        shot_scale_preferences: ["environmental wide"],
+        lighting: "available practical light",
+        palette: { descriptors: ["true-to-life"], approximate_hex: [] },
+        contrast_and_exposure: "soft natural contrast",
+        depth_of_field: "natural lens depth",
+        texture_and_grain: "tactile material detail",
+        human_rendering: "believable anatomy and materials",
+        environment_and_material_detail: "credible real-world surfaces and material response",
+        imperfection_profile: ["ordinary wear"],
+        mood: ["observational"],
+      },
       plannerGuidance: "Literal editorial collage treatment.",
       storyContext: "A continuous practical household demonstration.",
       continuityTags: [],
@@ -631,7 +768,7 @@ describe("hosted Runware prompt writer", () => {
                 in_image_shot_role: scene.in_image_shot_role,
                 lighting_context: "available window light",
                 continuity_tags: [],
-                prompt_core: "Natural documentary view of the practical narrated action",
+                prompt_core: `Natural documentary view of a household object used for a practical physical action in a lived-in workspace for ${scene.scene_id}`,
               })),
             }),
             usage: {
@@ -670,6 +807,121 @@ describe("hosted Runware prompt writer", () => {
     );
   });
 
+  it("rejects a normalized prompt core reused by a later adaptive batch before persistence", async () => {
+    const batch = buildPromptBatch({
+      batchId: `${ids.task}:batch:cross-batch-duplicate`,
+      projectTitle: "Hydrogen peroxide",
+      imageStyleVersionId: ids.style,
+      styleProfileHash: digest,
+      styleTreatment: {
+        schema_version: "image-style-treatment/v1",
+        style_profile_hash: digest,
+        medium_family: "documentary photography",
+        realism: "physically believable still image",
+        subject_treatment: "natural subject treatment with believable proportions",
+        camera_language: "restrained observational camera language",
+        image_framing: "crop-safe contextual framing",
+        shot_scale_preferences: ["environmental wide"],
+        lighting: "available practical light",
+        palette: { descriptors: ["true-to-life"], approximate_hex: [] },
+        contrast_and_exposure: "soft natural contrast",
+        depth_of_field: "natural lens depth",
+        texture_and_grain: "tactile material detail",
+        human_rendering: "believable anatomy and materials",
+        environment_and_material_detail: "credible real-world surfaces and material response",
+        imperfection_profile: ["ordinary wear"],
+        mood: ["observational"],
+      },
+      plannerGuidance: "Literal editorial collage treatment.",
+      storyContext: "A continuous practical household demonstration.",
+      continuityTags: [],
+      scenes: scenes(31).map((scene) => ({
+        sceneId: scene.scene_id,
+        phrase: scene.phrase,
+        sentenceContext: scene.sentence_context,
+        priorContext: scene.prior_context,
+        nextContext: scene.next_context,
+        inImageShotRole: "OBJECT_EVIDENCE",
+        layout: scene.layout as "IMAGE_FULL" | "SPLIT_RIGHT_IMAGE",
+      })),
+    });
+    const planned = adaptivePlan(batch);
+    expect(planned.batchCount).toBe(2);
+    const firstPromptCore = `Natural documentary view of a household object used for a practical physical action in a lived-in workspace for ${planned.batches[0]!.sceneIds[0]}`;
+    const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
+      const task = request[0]!;
+      const messages = task.messages as Array<{ content: string }>;
+      const payload = JSON.parse(messages[0]!.content) as {
+        batch_id: string;
+        scenes: Array<{ scene_id: string; in_image_shot_role: string }>;
+      };
+      const secondBatch = fetcher.mock.calls.length === 2;
+      return Response.json({
+        data: [
+          {
+            taskUUID: task.taskUUID,
+            text: JSON.stringify({
+              batch_id: payload.batch_id,
+              scenes: payload.scenes.map((scene, index) => ({
+                scene_id: scene.scene_id,
+                literal_subject: "a practical household object",
+                action: "used in an ordinary physical demonstration",
+                environment: "a lived-in household workspace",
+                in_image_shot_role: scene.in_image_shot_role,
+                lighting_context: "available window light",
+                continuity_tags: [],
+                prompt_core:
+                  secondBatch && index === 0
+                    ? `  ${firstPromptCore.toLocaleUpperCase("en-US").replaceAll(" ", "   ")}  `
+                    : `Natural documentary view of a household object used for a practical physical action in a lived-in workspace for ${scene.scene_id}`,
+              })),
+            }),
+            usage: {
+              promptTokens: 100,
+              completionTokens: 200,
+              totalTokens: 300,
+              cachedInputTokens: 0,
+            },
+            cost: 0.00001,
+            finishReason: "stop",
+            model: "deepseek:v4@flash",
+          },
+        ],
+      });
+    });
+    const onBatchAccepted = vi.fn();
+
+    await expect(
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        planned,
+        fetcher,
+        onBatchAccepted,
+      ).write(batch),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        problemCode: "HOSTED_PROMPT_OUTPUT_INVALID",
+        terminalState: "FAILED",
+        providerMayHaveCharged: false,
+        additionalKnownCostMicroUsd: 10,
+        validationDiagnostic: {
+          category: "scene_quality",
+          reason: "duplicate_prompt_core",
+          requestedSceneCount: planned.batches[1]!.sceneIds.length,
+          returnedSceneCount: planned.batches[1]!.sceneIds.length,
+          locallyValidSceneCount: planned.batches[1]!.sceneIds.length,
+          unresolvedSceneCount: planned.batches[1]!.sceneIds.length,
+        },
+      } satisfies Partial<HostedPromptExecutionError>),
+    );
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(onBatchAccepted).toHaveBeenCalledTimes(1);
+    expect(onBatchAccepted.mock.calls[0]?.[0].scenes).toHaveLength(
+      planned.batches[0]!.sceneIds.length,
+    );
+  });
+
   it("keeps network ambiguity fail-closed without redispatching", async () => {
     const authority = hostedPromptAuthority({
       plan: plan(),
@@ -681,6 +933,7 @@ describe("hosted Runware prompt writer", () => {
       projectTitle: authority.projectTitle,
       imageStyleVersionId: authority.imageStyleVersionId,
       styleProfileHash: authority.styleProfileHash,
+      styleTreatment: authority.styleTreatment,
       plannerGuidance: authority.plannerGuidance,
       storyContext: authority.storyContext,
       continuityTags: authority.continuityTags,

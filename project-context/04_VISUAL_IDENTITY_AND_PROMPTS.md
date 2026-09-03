@@ -32,12 +32,11 @@ The prompt-writing request does not resend the complete transcript. Stage 5 cons
 complete ordered image-scene list and deterministically derives the minimum number of contiguous
 batches that fit the exact canonical request and conservative response budgets. It sends the compact
 bounded story context once per derived batch, where it is available while writing every scene. Each
-scene item sends the exact timed fragment, its complete containing sentence, the previous complete
-sentence, the next complete sentence, and the deterministic shot role/layout. Sentence windows are
-derived deterministically from the ordered transcript and capped; arbitrary adjacent scene chunks
-must not stand in for sentence context. Precedence is exact fragment, containing sentence, adjacent
-complete sentences, global story context, then soft style traits. There is no fixed scenes-per-batch
-rule and no project scene cap.
+scene item sends the exact Stage 4 timed phrase, the immediately preceding transcript fragment, the
+immediately following transcript fragment, and the deterministic shot role/layout. Adjacent fragments
+are derived from the ordered transcript and capped at 1,000 characters. Precedence is exact phrase,
+adjacent phrase context, global story context, then soft style treatment. There is no fixed
+scenes-per-batch rule and no project scene cap.
 
 Token and cost bounds are part of acceptance. The live hosted profile uses one bounded context
 extraction with a 350-token output ceiling and a 10,000 micro-USD reservation. Stage 5 plans against
@@ -64,14 +63,18 @@ Runware DeepSeek V4 Flash 0731 writes scene-content prompts only. Code already k
 The LLM must not select timeline composition, in-image shot role, duration, avatar placement, style version, model, GPU, retry, or fallback.
 
 Use stable scene IDs and keep Stage 4 order unchanged. Derive contiguous adaptive batches from the
-exact request bytes, conservative output shape, and natural sentence boundaries. Send the sanitized
-project title and selected style's compact `planner_guidance` once per batch—not repeated per scene.
-Each item receives the exact phrase, its code-assigned in-image shot role, and only useful preceding/
-following context. Carry a compact deterministic continuity state from the last accepted preceding
-batch rather than making another LLM call. The title and continuity context help disambiguate a
-phrase but may never override its literal words. Atomically persist each fully validated batch and
-its receipt/cost evidence before the next request. Stage 6 may dispatch only accepted durable prompts;
-Stage 5 never dispatches Mage and never retries a rejected or ambiguous provider response.
+exact request bytes, conservative output shape, and natural phrase boundaries. Send the sanitized
+project title, compact global story context, and a structured `style_treatment` derived from the
+pinned immutable style profile once per batch—not repeated per scene. The treatment carries the
+profile's medium, realism, subject treatment, camera language, framing, shot-scale preferences,
+lighting, palette and color values, contrast/exposure, depth, texture, human rendering,
+environment/material detail, imperfection, and mood. It excludes planner guidance, continuity rules,
+must-include/must-avoid content, flexible properties, and concrete reference-image people, places,
+objects, products, or brands. Each item receives the exact phrase, its code-assigned in-image shot
+role, and only useful preceding/following context. The global and adjacent context may disambiguate a
+phrase but may never override it. Atomically persist each fully validated batch and its receipt/cost
+evidence before the next request. Stage 6 may dispatch only accepted durable prompts; Stage 5 never
+dispatches Mage and never retries a rejected or ambiguous provider response.
 
 Recommended Runware settings:
 
@@ -92,24 +95,22 @@ Recommended Runware settings:
 
 Use strict `jsonSchema`. Application code owns style suffixes, optional extra keywords, and permanent guardrails so the model cannot omit or inconsistently repeat them.
 
-DeepSeek scene-writing contract (`scene-prompt-writer-v1`, Runware request v9):
+DeepSeek scene-writing contract (`scene-prompt-writer-v2`, Runware request v10):
 
 ```text
 You write concise image scene cores for VideoForge. For each stable scene ID,
-turn the exact narration phrase into the most literal visible subject, action,
-environment, lighting context, and continuity tags. Honor and echo the supplied
-in-image shot role exactly; do not choose or replace it. Use the supplied
-Image Style planner guidance to choose compatible visual language, but do not
-repeat its full prompt suffix or import reference-image content. Build one
-camera-capturable, physically plausible moment in an ordinary credible setting;
-for photographic styles preserve believable anatomy, materials, optics, light,
-contextual clutter, and natural imperfection. Prefer concrete evidence over
-metaphor, and for abstract narration show the closest transcript-supported
-person, object, process, place, or consequence. Never
-request visible text, captions, logos, watermarks, UI, graphics, or branded
-products. Do not choose duration, timeline composition, in-image shot role,
-avatar placement, model, GPU,
-retry, or fallback. Return only the strict requested JSON and every scene ID
+turn the exact narration phrase into one self-contained, concrete, camera-
+capturable subject/action/environment moment. Honor the supplied in-image shot
+role exactly. Use only the supplied structured style_treatment as reusable
+visual treatment and never import concrete reference-image content. Make the
+scene physically plausible, relatable, specific, and naturally imperfect;
+avoid generic placeholder people, actions, or locations. Prefer literal visible
+evidence over metaphor, and for abstract narration show the closest transcript-
+supported person, object, process, place, or consequence. Never request visible
+text, lettering, signs, labels, markings, captions, logos, watermarks, screens,
+UI, charts, graphics, branded products, or decorative transitions. Do not choose
+duration, timeline composition, in-image shot role, avatar placement, model,
+GPU, retry, or fallback. Return only the strict requested JSON and every scene ID
 exactly once.
 ```
 

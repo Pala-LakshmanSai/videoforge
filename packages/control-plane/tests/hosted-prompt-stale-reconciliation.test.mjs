@@ -241,8 +241,10 @@ test("0058 preserves an UNKNOWN context claim and 0061 reconciles its original r
         { event_type: "RESERVED", amount_micro_usd: 10_000 },
         { event_type: "REPORTED", amount_micro_usd: 321 },
         { event_type: "SETTLED", amount_micro_usd: 321 },
+        { event_type: "RELEASED", amount_micro_usd: 9_679 },
       ],
     );
+    assert.equal(321 + 9_679, 10_000);
 
     const acceptedReplay = await executor.query(
       `SELECT public.videoforge_reconcile_unknown_hosted_voiceover_context($1::jsonb) AS result`,

@@ -130,6 +130,37 @@ test("different-subject shared-style and same-subject different-style evidence n
       validateAndAssembleStyleProfile(request, hostile),
     );
   }
+
+  for (const [field, poisoned] of [
+    ["subject_treatment", "John Smith appears candidly in every scene"],
+    ["subject_treatment", "Rolex watch shown as the main object"],
+    ["environment_and_material_detail", "soft material detail in Paris"],
+    ["lighting", "soft natural light in Paris"],
+    ["lighting", "soft natural light in paris"],
+    ["camera_language", "portrait of John Smith"],
+    ["camera_language", "Portrait of John"],
+    ["medium_family", "John Smith documentary photography"],
+    ["medium_family", "Rolex"],
+    ["medium_family", "iPhone 15 documentary photography"],
+  ]) {
+    const hostile = structuredClone(output);
+    hostile.visual_profile[field] = poisoned;
+    await expectCodeAsync("STYLE_CONTENT_LEAKAGE", () =>
+      validateAndAssembleStyleProfile(request, hostile),
+    );
+  }
+
+  for (const [field, poisoned] of [
+    ["full_image_guidance", "John Smith centered in a 16:9 center-safe frame"],
+    ["full_image_guidance", "16:9 center-safe frame featuring Paris"],
+    ["split_image_guidance", "place the subject near Paris in the right panel"],
+  ]) {
+    const hostile = structuredClone(output);
+    hostile.prompt_profile[field] = poisoned;
+    await expectCodeAsync("STYLE_CONTENT_LEAKAGE", () =>
+      validateAndAssembleStyleProfile(request, hostile),
+    );
+  }
 });
 
 test("rejects missing, duplicate, unknown, unbound, and contradictory trait evidence", async () => {

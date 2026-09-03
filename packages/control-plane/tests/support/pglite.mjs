@@ -89,6 +89,38 @@ export async function withPgcryptoMigratedDatabase(work) {
   }
 }
 
+/** Run historical migration tests against their exact terminal ledger. */
+export async function withPgcryptoMigrationsThrough(version, work) {
+  assert.ok(Number.isSafeInteger(version) && version > 0);
+  const database = new PGlite({ extensions: { pgcrypto } });
+  try {
+    await database.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
+    const executor = new PGliteExecutor(database);
+    const allSources = await loadMigrationSources();
+    const sources = allSources.filter((entry) => entry.version <= version);
+    assert.equal(sources.at(-1)?.version, version, `migration ${version} is unavailable`);
+    await executor.execute(
+      `CREATE TABLE public.videoforge_schema_migrations(
+        version integer PRIMARY KEY CHECK(version>0),name text NOT NULL,
+        filename text NOT NULL UNIQUE,sha256 text NOT NULL,
+        applied_at timestamptz NOT NULL DEFAULT now())`,
+    );
+    await executor.transaction(async (transaction) => {
+      for (const migration of sources) {
+        await transaction.execute(migration.sql);
+        await transaction.query(
+          `INSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256)
+           VALUES($1,$2,$3,$4)`,
+          [migration.version, migration.name, migration.filename, migration.sha256],
+        );
+      }
+    });
+    return await work({ database, executor, sources });
+  } finally {
+    await database.close();
+  }
+}
+
 export async function expectDatabaseError(action, expectedCodes) {
   await assert.rejects(action, (error) => {
     assert.ok(error instanceof Error);

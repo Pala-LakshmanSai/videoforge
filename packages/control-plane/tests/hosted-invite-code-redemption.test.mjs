@@ -4,7 +4,7 @@ import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 
-import { applyMigrations, SharedAdmissionRepository } from "../dist/src/index.js";
+import { SharedAdmissionRepository } from "../dist/src/index.js";
 import {
   loadMigrationSources,
   PGliteExecutor,
@@ -225,7 +225,8 @@ test("an exact retained 0046 ledger upgrades through 0055 and preserves admitted
     await database.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.version, 55);
+    assert.ok(sources.length >= 55);
+    assert.equal(sources[54]?.version, 55);
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations(
          version integer PRIMARY KEY CHECK(version>0),name text NOT NULL,
@@ -256,11 +257,23 @@ test("an exact retained 0046 ledger upgrades through 0055 and preserves admitted
     await issue(repository, 21, pendingEmail, pendingCode);
     const pending = await seedHostedIdentity(executor, 21, pendingEmail, false);
 
-    const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [47, 48, 49, 50, 51, 52, 53, 54, 55]);
+    await executor.transaction(async (transaction) => {
+      for (const migration of sources.slice(46, 55)) {
+        await transaction.execute(migration.sql);
+        await transaction.query(
+          `INSERT INTO videoforge_schema_migrations(version,name,filename,sha256)
+           VALUES($1,$2,$3,$4)`,
+          [migration.version, migration.name, migration.filename, migration.sha256],
+        );
+      }
+    });
     assert.deepEqual(
-      upgraded.alreadyAppliedVersions,
-      Array.from({ length: 46 }, (_, index) => index + 1),
+      (
+        await executor.query(
+          "SELECT version FROM videoforge_schema_migrations WHERE version BETWEEN 47 AND 55 ORDER BY version",
+        )
+      ).rows.map((row) => row.version),
+      [47, 48, 49, 50, 51, 52, 53, 54, 55],
     );
 
     const returningSession = await addSession(executor, 20, retained.userId);

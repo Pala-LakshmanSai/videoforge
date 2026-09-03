@@ -25,13 +25,40 @@ const styleGuidance = [
   "low-contrast archival photography",
 ];
 
+function treatment(styleIndex, styleProfileHash) {
+  return {
+    schema_version: "image-style-treatment/v1",
+    style_profile_hash: styleProfileHash,
+    medium_family: styleGuidance[styleIndex],
+    realism: "physically believable still-image treatment",
+    subject_treatment: "natural, unposed subject treatment with realistic proportions",
+    camera_language: "restrained observational camera language",
+    image_framing: "useful crop-safe framing",
+    shot_scale_preferences: ["environmental wide", "hands and action"],
+    lighting: "available practical light with natural shadow detail",
+    palette: {
+      descriptors: ["true-to-life", "restrained saturation"],
+      approximate_hex: ["#345566", "#B6805E"],
+    },
+    contrast_and_exposure: "soft natural contrast with recoverable highlights",
+    depth_of_field: "natural lens depth with enough environmental context",
+    texture_and_grain: "tactile material detail with restrained grain",
+    human_rendering: "believable anatomy and natural everyday imperfection",
+    environment_and_material_detail: "credible real-world surfaces and material response",
+    imperfection_profile: ["uneven exposure", "worn materials"],
+    mood: ["observational", "grounded"],
+  };
+}
+
 function makeBatch(count = 25, styleIndex = 0) {
   const hashCharacter = "abcde"[styleIndex];
+  const styleProfileHash = `sha256:${hashCharacter.repeat(64)}`;
   return buildPromptBatch({
     batchId: `batch_${count}_${styleIndex}`,
     projectTitle: "Harvest Water Without Pumps",
     imageStyleVersionId: `style_version_${styleIndex + 1}`,
-    styleProfileHash: `sha256:${hashCharacter.repeat(64)}`,
+    styleProfileHash,
+    styleTreatment: treatment(styleIndex, styleProfileHash),
     plannerGuidance: styleGuidance[styleIndex],
     storyContext: `Compact story context for style ${styleIndex}`,
     continuityTags: ["same_farmer", "dry_season"],
@@ -61,7 +88,7 @@ function output(request, options = {}) {
     in_image_shot_role: scene.in_image_shot_role,
     lighting_context: "available practical daylight",
     continuity_tags: ["same_farmer", "dry_season"],
-    prompt_core: `Close documentary view of practical irrigation work in an ordinary farm setting, marker ${options.marker ?? request.attemptIndex}`,
+    prompt_core: `Close documentary view of ${scene.exact_phrase.toLowerCase()} in an ordinary farm setting, marker ${options.marker ?? request.attemptIndex}`,
   }));
   const changed = options.change ? options.change(rows, requestPayload) : rows;
   return JSON.stringify({ batch_id: requestPayload.batch_id, scenes: changed });
@@ -166,7 +193,8 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
     assert.equal(request.request.jsonSchema.schema.properties.scenes.maxItems, count);
     assert.equal(request.requestSha256, second.transport.requests[0].requestSha256);
     assert.equal(request.requestBytes, second.transport.requests[0].requestBytes);
-    assert.equal(payload(request).planner_guidance, styleGuidance[styleIndex]);
+    assert.equal(Object.hasOwn(payload(request), "planner_guidance"), false);
+    assert.deepEqual(payload(request).style_treatment, makeBatch(count, styleIndex).styleTreatment);
     assert.equal(payload(request).story_context, `Compact story context for style ${styleIndex}`);
     assert.equal(
       request.request.messages[0].content.match(
@@ -178,22 +206,22 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
     assert.deepEqual(
       Object.keys(payload(request).scenes[1]).sort(),
       [
-        "containing_sentence",
+        "next_scene_phrase",
+        "prior_scene_phrase",
+        "scene_phrase_context",
         "exact_phrase",
         "exact_phrase_sha256",
         "fixed_layout",
         "in_image_shot_role",
-        "next_context",
-        "prior_context",
         "scene_id",
       ].sort(),
     );
     assert.equal(
-      payload(request).scenes[1].containing_sentence,
+      payload(request).scenes[1].scene_phrase_context,
       "Hands demonstrate irrigation valve step 2.",
     );
-    assert.equal(payload(request).scenes[1].prior_context, "Prior step 1");
-    assert.equal(payload(request).scenes[1].next_context, "Next step 3");
+    assert.equal(payload(request).scenes[1].prior_scene_phrase, "Prior step 1");
+    assert.equal(payload(request).scenes[1].next_scene_phrase, "Next step 3");
     assert.equal(
       payload(request).scenes[1].exact_phrase_sha256,
       `sha256:${createHash("sha256").update(payload(request).scenes[1].exact_phrase).digest("hex")}`,
@@ -214,8 +242,11 @@ test("writer contract requires relatable physical evidence and applies style as 
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /physically plausible visible action/u);
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /familiar human behavior, ordinary locations/u);
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /never substitute symbolism or metaphor/u);
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /pinned style's visual treatment/u);
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /without importing people, places, objects/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /style_treatment object as visual treatment/u);
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /without importing concrete people, places, objects, products, logos/u,
+  );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /believable anatomy, materials, scale/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
@@ -255,15 +286,154 @@ test("accepts reordered output but restores original scene order", async () => {
   );
 });
 
-test("accepts concise visual paraphrases without requiring narration prose in prompt_core", async () => {
+test("accepts concise concrete visual descriptions", async () => {
   const setup = writer([(request) => success(request)]);
   const result = await setup.value.write(makeBatch(25));
   assert.equal(result.scenes.length, 25);
   assert.ok(
     result.scenes.every((scene) =>
-      scene.prompt_core.startsWith("Close documentary view of practical irrigation work"),
+      scene.prompt_core.startsWith("Close documentary view of hands demonstrate irrigation valve"),
     ),
   );
+});
+
+test("scene relevance accepts a concrete visual description", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "Farmers repair irrigation pumps",
+        sentenceContext: "Farmers repair irrigation pumps before sunrise.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A farmer beside an irrigation channel";
+          rows[0].action = "repairing a worn pump by hand";
+          rows[0].environment = "a cultivated field before sunrise";
+          rows[0].prompt_core =
+            "A farmer repairs a worn irrigation pump beside a cultivated field before sunrise.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance rejects one incidental generic overlap without retry", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle in a public park",
+        sentenceContext: "A woman repairs a bicycle in a public park.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A person";
+          rows[0].action = "standing still";
+          rows[0].environment = "a public setting";
+          rows[0].prompt_core = "A person stands still in a public setting.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+});
+
+test("scene relevance accepts synonym-based grounding without literal token copy", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A farmer repairs a broken irrigation pump",
+        sentenceContext: "A farmer repairs a broken irrigation pump before the next harvest.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "An agricultural worker";
+          rows[0].action = "fixing a damaged water machine";
+          rows[0].environment = "a cultivated field before the next harvest";
+          rows[0].prompt_core =
+            "An agricultural worker fixes a damaged water machine by hand in a cultivated field.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance accepts a concrete contextual rendering of an abstract phrase", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "This changed everything",
+        sentenceContext: "The village irrigation pump began working again.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "Village residents beside an irrigation pump";
+          rows[0].action = "watching water flow again";
+          rows[0].environment = "a village irrigation channel";
+          rows[0].prompt_core =
+            "Village residents watch water flow again from the repaired irrigation pump.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("rejects duplicate normalized prompt cores across scenes", async () => {
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[1].prompt_core = `  ${rows[0].prompt_core.replaceAll(" ", "   ")}  `;
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(makeBatch(25)));
+  assert.equal(setup.transport.requests.length, 1);
+  assert.deepEqual(setup.evidence[0].validationDiagnostic, {
+    category: "scene_quality",
+    reason: "duplicate_prompt_core",
+    requestedSceneCount: 25,
+    returnedSceneCount: 25,
+    locallyValidSceneCount: 25,
+    unresolvedSceneCount: 25,
+  });
 });
 
 test("does not retry invalid or missing rows", async () => {

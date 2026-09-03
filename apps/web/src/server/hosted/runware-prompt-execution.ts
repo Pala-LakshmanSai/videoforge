@@ -7,6 +7,7 @@ import type {
 } from "@videoforge/control-plane";
 import {
   RunwarePromptWriter,
+  RunwarePromptValidationError,
   runwarePromptValidationDiagnostic,
   validatePromptWriterOutput,
   type PromptBatch,
@@ -93,6 +94,10 @@ function actualCostMicroUsd(value: number): number {
   return Math.ceil(value * 1_000_000);
 }
 
+function normalizedPromptCore(value: string): string {
+  return value.normalize("NFKC").replace(/\s+/gu, " ").trim().toLocaleLowerCase("en-US");
+}
+
 export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
   public readonly operation = "runware.write" as const;
 
@@ -116,6 +121,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
     const ledger = new RunwareSpendLedger(HOSTED_PROMPT_RESERVATION_USD);
     const diagnosticState: { current: RunwareSafeDiagnostic | null } = { current: null };
     const acceptedScenes: PromptWriterSceneOutput[] = [];
+    const acceptedPromptCores = new Set<string>();
     const batchFacts: HostedAcceptedPromptBatch[] = [];
     const captured: CapturedAttempt[] = [];
     let currentDispatchStart = 0;
@@ -173,6 +179,22 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           evidence.unresolvedSceneIds.length !== 0
         )
           throw new Error("PROMPT_BATCH_EVIDENCE_MISMATCH");
+        const batchPromptCores = output.scenes.map((scene) =>
+          normalizedPromptCore(scene.prompt_core),
+        );
+        if (batchPromptCores.some((promptCore) => acceptedPromptCores.has(promptCore)))
+          throw new RunwarePromptValidationError(
+            Object.freeze({
+              category: "scene_quality",
+              reason: "duplicate_prompt_core",
+              requestedSceneCount: entry.sceneIds.length,
+              returnedSceneCount: output.scenes.length,
+              locallyValidSceneCount: output.scenes.length,
+              unresolvedSceneCount: output.scenes.length,
+            }),
+            "Prompt response reused a normalized prompt core accepted in an earlier batch.",
+            ["scenes"],
+          );
         const fact = Object.freeze({
           batchOrdinal: entry.ordinal - 1,
           firstSceneOrdinal: entry.sceneStartIndex,
@@ -196,6 +218,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
         persistenceStarted = true;
         await this.onBatchAccepted?.(fact);
         persistenceStarted = false;
+        batchPromptCores.forEach((promptCore) => acceptedPromptCores.add(promptCore));
         acceptedScenes.push(...output.scenes);
         batchFacts.push(fact);
       }

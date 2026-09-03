@@ -232,7 +232,7 @@ test("revision keyword, spend-cap, and seed boundaries match canonical contracts
     const invalidCases = [
       { extraPromptKeywords: "x".repeat(501) },
       { extraPromptKeywords: null, applyExtraPromptKeywords: true },
-      { maximumCostMicroUsd: 99_999 },
+      { maximumCostMicroUsd: 49_999 },
       { maximumCostMicroUsd: 2_000_001 },
       { seed: -1 },
       { seed: 4_294_967_296 },

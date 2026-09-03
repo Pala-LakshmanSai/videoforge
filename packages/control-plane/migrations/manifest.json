@@ -426,6 +426,18 @@
       "name": "hosted_prompt_adaptive_batches",
       "filename": "0071_hosted_prompt_adaptive_batches.sql",
       "sha256": "sha256:8dcf727566e118b5af86a10758545241985b8b1c4fa1b3e8a0f66f147deedc1d"
+    },
+    {
+      "version": 72,
+      "name": "hosted_context_release_accounting",
+      "filename": "0072_hosted_context_release_accounting.sql",
+      "sha256": "sha256:50abbcbaf46406a3cd07dd98f1d2bd27b8d0c3cf56096a78e021f82aa44f86ac"
+    },
+    {
+      "version": 73,
+      "name": "hosted_prompt_writer_v2_profile",
+      "filename": "0073_hosted_prompt_writer_v2_profile.sql",
+      "sha256": "sha256:59d6af63ba2d8eafc7c93eb4cc255d162253aa2cb433183ab251eb404dc6fd9e"
     }
   ]
 }

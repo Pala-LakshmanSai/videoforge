@@ -91,8 +91,14 @@ const finitePositiveInteger = (
 const batchIdFor = (prefix: string, ordinal: number): string =>
   `${prefix}:${String(ordinal).padStart(3, "0")}`;
 
-const sentenceBoundary = (left: PromptSceneInput, right: PromptSceneInput): boolean =>
-  left.sentenceContext !== right.sentenceContext || /[.!?]["')\]]*$/u.test(left.phrase.trim());
+const sentenceBoundary = (left: PromptSceneInput, right: PromptSceneInput): boolean => {
+  // Stage 4's sentenceContext is a local evidence window, not a sentence
+  // group identifier. Comparing adjacent windows would therefore label every
+  // cut as natural. Only terminal punctuation is evidence of a completed
+  // narration sentence; otherwise the cut stays neutral and deterministic.
+  void right;
+  return /[.!?]["')\]]*$/u.test(left.phrase.trim());
+};
 
 const normalizedGlobalInput = (
   input: PromptBatchPlanningInput,
@@ -106,6 +112,7 @@ const normalizedGlobalInput = (
     projectTitle: input.projectTitle,
     imageStyleVersionId: input.imageStyleVersionId,
     styleProfileHash: input.styleProfileHash,
+    styleTreatment: input.styleTreatment,
     plannerGuidance: input.plannerGuidance,
     storyContext: input.storyContext,
     continuityTags: input.continuityTags,
@@ -115,6 +122,7 @@ const normalizedGlobalInput = (
     projectTitle: first.sanitizedProjectTitle,
     imageStyleVersionId: first.imageStyleVersionId,
     styleProfileHash: first.styleProfileHash,
+    styleTreatment: first.styleTreatment,
     plannerGuidance: first.plannerGuidance,
     storyContext: first.storyContext,
     continuityTags: first.continuityTags,

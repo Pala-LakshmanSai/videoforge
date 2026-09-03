@@ -9,8 +9,10 @@ import {
   expectDatabaseError,
   sha256,
   uuid,
-  withPgcryptoMigratedDatabase,
+  withPgcryptoMigrationsThrough,
 } from "./support/pglite.mjs";
+
+const withPgcryptoMigratedDatabase = (work) => withPgcryptoMigrationsThrough(49, work);
 
 const authorityId = uuid(45001);
 const mageDeploymentId = uuid(45002);

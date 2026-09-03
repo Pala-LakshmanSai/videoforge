@@ -70,6 +70,7 @@ function authority(overrides = {}) {
     imageStyleVersionId: ids.style,
     styleProfileHash: hash("style"),
     styleState: "PUBLISHED",
+    styleTreatment: null,
     plannerGuidance: "Use literal observational documentary evidence.",
     storyContext: "Compact literal documentary story context",
     style: {

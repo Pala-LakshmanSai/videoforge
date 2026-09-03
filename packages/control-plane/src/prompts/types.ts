@@ -3,6 +3,7 @@ import type {
   CompiledImagePrompt,
   PromptSceneInput,
   PromptStyleComponents,
+  PromptStyleTreatment,
   PromptWriterBatchOutput,
 } from "@videoforge/pipeline";
 
@@ -35,6 +36,8 @@ export interface PromptExecutionAuthority {
   readonly imageStyleVersionId: string;
   readonly styleProfileHash: Sha256Digest;
   readonly styleState: "PUBLISHED" | "STALE";
+  /** Whitelisted immutable visual-profile treatment for the v10 writer. */
+  readonly styleTreatment: PromptStyleTreatment | null;
   readonly plannerGuidance: string;
   readonly storyContext: string;
   readonly style: PromptStyleComponents;

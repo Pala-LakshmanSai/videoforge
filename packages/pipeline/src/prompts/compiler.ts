@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { Sha256Digest } from "@videoforge/contracts";
 
 import { PipelineDomainError } from "../errors.js";
+import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type { CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents } from "./types.js";
 
 export const PERMANENT_POSITIVE_GUARDRAIL =
@@ -15,11 +16,79 @@ const stripControls = (value: string): string =>
     const codePoint = character.codePointAt(0)!;
     return codePoint <= 31 || (codePoint >= 127 && codePoint <= 159) ? " " : character;
   }).join("");
-const FORBIDDEN =
-  /\b(?:caption|title|text|logo|watermark|border|lower[- ]third|infographic|diagram|chart|motion graphics?|decorative transitions?|avatar on (?:the )?right|image on (?:the )?left)\b/iu;
-const POSITIVE_DIRECTIVE = /\b(?:add|show|include|display|render|create|draw|place|use|with)\b/iu;
-const NEGATIVE_CONTEXT =
-  /\b(?:no|without|avoid|exclude|remove|never|free of)\b|\b(?:text|logo|watermark)-free\b/iu;
+type ForbiddenMentionKind =
+  | "always"
+  | "writing"
+  | "label"
+  | "marking"
+  | "screen"
+  | "brand"
+  | "chart";
+
+/**
+ * These are output-content terms, not merely words that happen to be present
+ * in narration.  The compiler checks the writer-owned content before adding
+ * the permanent no-text guardrail, so a positive description cannot rely on a
+ * later negative clause to cancel a text-bearing object.
+ */
+const FORBIDDEN_MENTIONS: readonly {
+  readonly kind: ForbiddenMentionKind;
+  readonly pattern: RegExp;
+}[] = [
+  {
+    kind: "always",
+    pattern:
+      /\b(?:caption(?:s)?|subtitle(?:s)?|title(?:s)?|text|logo(?:s)?|watermark(?:s)?|border(?:s)?|lower[- ]third(?:s)?|infographic(?:s)?|ui|web ?page|arrow(?:s)?|graphic overlays?|motion graphics?|decorative transitions?|avatar on (?:the )?right|image on (?:the )?left)\b/giu,
+  },
+  {
+    kind: "writing",
+    pattern:
+      /\b(?:hand[- ]?written|writing|written|scribbl(?:e|ed|ing)|scrawl(?:ed|ing)|lettering|inscription(?:s)?|annotat(?:e|ed|ing|ion|ions)|doodl(?:e|ed|ing))\b/giu,
+  },
+  {
+    kind: "label",
+    pattern:
+      /\b(?:label(?:s|ed|ing)?|labelled|labelling|signage|signboard(?:s)?|placard(?:s)?|name[- ]?plate(?:s)?)\b/giu,
+  },
+  {
+    kind: "marking",
+    pattern:
+      /\b(?:mark(?:ing|ings)|marked|measurement(?:s)?|graduat(?:ed|ion|ions)|calibrat(?:ed|ion)|tick[- ]?marks?)\b/giu,
+  },
+  {
+    kind: "always",
+    pattern: /\b(?:serial(?:[- ]?number)?s?|barcode(?:s)?|qr[- ]?code(?:s)?)\b/giu,
+  },
+  {
+    kind: "screen",
+    pattern: /\b(?:screen(?:s)?)\b/giu,
+  },
+  {
+    kind: "brand",
+    pattern: /\b(?:brand(?:s|ed|ing)?|trademark(?:s)?)\b/giu,
+  },
+  {
+    kind: "chart",
+    pattern:
+      /\b(?:flow[- ]?chart(?:s|ing)?|chart(?:s|ing)?|graph(?:s|ing)?|diagram(?:s|ming)?|schematic(?:s)?|blueprint(?:s)?)\b/giu,
+  },
+];
+const NEGATIVE_CUE =
+  /\b(?:no|not|without|avoid(?:ing)?|exclude(?:ing)?|omit(?:ted|ting)?|remove(?:d|s)?|never|free\s+(?:of|from)|(?:do|does|did)\s+not)\b/giu;
+const NEGATED_MODIFIER_OR_VERB =
+  /^(?:[\s-]+(?:visible|readable|legible|any|the|a|an|all|added|extra|present|detectable|unwanted|decorative|printed|commercial|(?:add|show|include|display|render|create|draw|place|use|request)(?:s|ing)?))*[\s-]*$/iu;
+const NEGATION_REVERSAL =
+  /\b(?:avoid(?:ing)?|exclude(?:d|s|ing)?|omit(?:ted|s|ting)?|remove(?:d|s|ing)?)\b/iu;
+const NEGATIVE_LIST_TERM =
+  "(?:caption(?:s)?|subtitle(?:s)?|title(?:s)?|text|logo(?:s)?|watermark(?:s)?|border(?:s)?|lower[- ]third(?:s)?|infographic(?:s)?|ui|web ?page|arrow(?:s)?|hand[- ]?written|writing|written|labels?|signage|markings?|branding|screens?|charts?|graphs?|diagrams?|schematics?|blueprints?)";
+const NEGATIVE_LIST_BRIDGE = new RegExp(
+  `^(?:[\\s-]+(?:visible|readable|legible|any|the|a|an|all|added|extra|present|detectable|unwanted|decorative|printed))*[\\s-]*${NEGATIVE_LIST_TERM}[\\s]*(?:(?:,|and|or)[\\s]*${NEGATIVE_LIST_TERM}[\\s]*)*(?:,|and|or)?[\\s]*$`,
+  "iu",
+);
+const TEXTUAL_MARKING_CONTEXT =
+  /\b(?:measurement|measuring|graduat(?:ed|ion)|calibrat(?:ed|ion)|tick[- ]?marks?|serial|barcode|qr[- ]?code|printed|product|package|packaging|bottle|container|ruler|scale|thermometer|gauge|meter|cylinder|beaker|flask|volume|millilit(?:er|re)|lit(?:er|re)s?|ounces?|ml|oz|cm|mm|inch(?:es)?|initials?|name|letter(?:s)?|word(?:s)?)\b/iu;
+const NON_TEXT_SCREEN_CONTEXT =
+  /\b(?:screen(?:ed)?\s+(?:door|porch|window|mesh)|window\s+screen|screen\s+mesh)\b/iu;
 const FULL_GEOMETRY = /\b16\s*:\s*9\b/iu;
 const SPLIT_GEOMETRY = /\b8\s*:\s*9\b/iu;
 const CENTER_SAFE = /\b(?:cent(?:er|re)(?:ed)?|center-safe)\b/iu;
@@ -62,34 +131,107 @@ const normalizeOptional = (
 const hash = (value: string): Sha256Digest =>
   `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 
+function isNegatedMention(clause: string, start: number, end: number): boolean {
+  const prefixStart = Math.max(0, start - 160);
+  const prefix = clause.slice(prefixStart, start);
+  NEGATIVE_CUE.lastIndex = 0;
+  const cues = [...prefix.matchAll(NEGATIVE_CUE)];
+  const cue = cues.at(-1);
+  const suffix = clause.slice(end, Math.min(clause.length, end + 24));
+  if (/^[\s-]*free\b/iu.test(suffix) || /^\s*(?:absent|missing|omitted|removed)\b/iu.test(suffix))
+    return true;
+  if (cue === undefined || cue.index === undefined) return false;
+
+  const priorCue = cues.at(-2);
+  if (
+    priorCue?.index !== undefined &&
+    NEGATION_REVERSAL.test(cue[0]) &&
+    !/[.!?]|\b(?:but|however|despite|although|except|yet)\b/iu.test(
+      prefix.slice(priorCue.index + priorCue[0].length, cue.index),
+    )
+  )
+    return false;
+
+  const between = prefix.slice(cue.index + cue[0].length);
+  if (/[.!?]/u.test(between) || /\b(?:but|however|despite|although|except|yet)\b/iu.test(between))
+    return false;
+  // "do not remove the logo" and "without omitting labels" require the
+  // forbidden element to remain. A negative cue cannot make that double
+  // negative safe.
+  if (NEGATION_REVERSAL.test(between)) return false;
+  if (NEGATED_MODIFIER_OR_VERB.test(between)) return true;
+
+  // A negative list may continue across conjunctions or commas, but only when
+  // the next term is itself the list item. "no text, a label" must still be
+  // rejected because the article introduces a positively requested object.
+  if (NEGATIVE_LIST_BRIDGE.test(between)) {
+    const after = clause.slice(end);
+    return after.trim().length === 0 || /^(?:\s*(?:,|and|or)\b)/iu.test(after);
+  }
+  return false;
+}
+
+function isTextualMarkingContext(clause: string, start: number, end: number): boolean {
+  const context = `${clause.slice(Math.max(0, start - 96), start)} ${clause.slice(end, end + 96)}`;
+  return TEXTUAL_MARKING_CONTEXT.test(context);
+}
+
+function isNonTextMention(
+  kind: ForbiddenMentionKind,
+  clause: string,
+  start: number,
+  end: number,
+): boolean {
+  if (kind === "marking") return !isTextualMarkingContext(clause, start, end);
+  if (kind === "screen") {
+    const context = `${clause.slice(Math.max(0, start - 24), start)} ${clause.slice(start, end)} ${clause.slice(end, end + 24)}`;
+    return NON_TEXT_SCREEN_CONTEXT.test(context);
+  }
+  if (kind === "brand") return /^\s*(?:-|\u2011)?new\b/iu.test(clause.slice(end));
+  if (kind === "chart") {
+    return /^\s*(?:a|the)?\s*(?:course|route|path|direction|territory)\b/iu.test(clause.slice(end));
+  }
+  if (kind === "writing") {
+    return /^\s+(?:desk|table|instrument)\b/iu.test(clause.slice(end));
+  }
+  return false;
+}
+
 export function assertNoHardPromptConflict(value: string, path: readonly string[]): void {
   for (const clause of value
     .split(/[;,]/u)
     .map((part) => part.trim())
     .filter(Boolean)) {
-    if (
-      FORBIDDEN.test(clause) &&
-      (POSITIVE_DIRECTIVE.test(clause) || !NEGATIVE_CONTEXT.test(clause))
-    )
-      fail("PROMPT_CONFLICT", "Prompt clause requests a forbidden output or layout.", path);
+    for (const { kind, pattern } of FORBIDDEN_MENTIONS) {
+      pattern.lastIndex = 0;
+      for (const match of clause.matchAll(pattern)) {
+        const start = match.index;
+        const term = match[0];
+        if (start === undefined) continue;
+        const end = start + term.length;
+        if (isNonTextMention(kind, clause, start, end) || isNegatedMention(clause, start, end))
+          continue;
+        fail("PROMPT_CONFLICT", "Prompt clause requests a forbidden output or layout.", path);
+      }
+    }
   }
 }
 
 export function validatePromptStyleComponents(style: PromptStyleComponents): PromptStyleComponents {
   const result = {
-    positiveSuffix: normalize(style.positiveSuffix, 2_000, "Style positive suffix", [
+    positiveSuffix: normalize(style.positiveSuffix, 2_400, "Style positive suffix", [
       "style",
       "positiveSuffix",
     ]),
-    negativeSuffix: normalizeOptional(style.negativeSuffix, 2_000, "Style negative suffix", [
+    negativeSuffix: normalizeOptional(style.negativeSuffix, 2_400, "Style negative suffix", [
       "style",
       "negativeSuffix",
     ]),
-    fullImageGuidance: normalize(style.fullImageGuidance, 600, "Full-image guidance", [
+    fullImageGuidance: normalize(style.fullImageGuidance, 800, "Full-image guidance", [
       "style",
       "fullImageGuidance",
     ]),
-    splitImageGuidance: normalize(style.splitImageGuidance, 600, "Split-image guidance", [
+    splitImageGuidance: normalize(style.splitImageGuidance, 800, "Split-image guidance", [
       "style",
       "splitImageGuidance",
     ]),
@@ -140,6 +282,53 @@ const join = (parts: readonly (string | null)[]): string => {
     .join(", ");
 };
 
+const WORD = /[\p{L}\p{N}]+/gu;
+const NON_DISTINCTIVE_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "at",
+  "by",
+  "for",
+  "from",
+  "in",
+  "into",
+  "is",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "with",
+]);
+
+function distinctiveWords(value: string): ReadonlySet<string> {
+  return new Set(
+    (value.toLocaleLowerCase("en-US").match(WORD) ?? []).filter(
+      (word) => word.length >= 3 && !NON_DISTINCTIVE_WORDS.has(word),
+    ),
+  );
+}
+
+function assertPromptCoreConsolidatesScene(
+  promptCore: string,
+  sceneFields: readonly string[],
+): void {
+  const coreWords = distinctiveWords(promptCore);
+  const sceneWords = distinctiveWords(sceneFields.join(" "));
+  const requiredOverlap = Math.min(2, sceneWords.size);
+  let overlap = 0;
+  for (const word of coreWords) {
+    if (sceneWords.has(word)) overlap += 1;
+  }
+  if (promptCore.length < 32 || overlap < requiredOverlap)
+    fail(
+      "PROMPT_CONFLICT",
+      "Prompt core must be a self-contained visual scene grounded in its structured scene facts.",
+      ["writerOutput", "prompt_core"],
+    );
+}
+
 export function compileImagePrompt(request: CompilePromptRequest): CompiledImagePrompt {
   const output = request.writerOutput;
   const expected = request.expectedScene;
@@ -152,14 +341,28 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     ]);
   const style = validatePromptStyleComponents(request.style);
   const extra = normalizeExtra(request.extraPromptKeywords, request.applyExtraPromptKeywords);
-  const literalContent = join([
+  const sceneFields = [
     normalize(output.literal_subject, 240, "Literal subject", ["writerOutput", "literal_subject"]),
     normalize(output.action, 240, "Action", ["writerOutput", "action"]),
     normalize(output.environment, 240, "Environment", ["writerOutput", "environment"]),
     normalize(output.lighting_context, 120, "Lighting", ["writerOutput", "lighting_context"]),
-    normalize(output.prompt_core, 600, "Prompt core", ["writerOutput", "prompt_core"]),
+  ];
+  sceneFields.forEach((value, index) =>
+    assertNoHardPromptConflict(value, [
+      "writerOutput",
+      ["literal_subject", "action", "environment", "lighting_context"][index]!,
+    ]),
+  );
+  // The structured fields are validation metadata. The writer's prompt_core is
+  // the one consolidated scene description that reaches the image model. This
+  // prevents subject/action/environment/lighting from being repeated five
+  // times while retaining independently validated evidence fields.
+  const literalContent = normalize(output.prompt_core, 600, "Prompt core", [
+    "writerOutput",
+    "prompt_core",
   ]);
-  assertNoHardPromptConflict(literalContent, ["writerOutput"]);
+  assertNoHardPromptConflict(literalContent, ["writerOutput", "prompt_core"]);
+  assertPromptCoreConsolidatesScene(literalContent, sceneFields);
   const continuityAndShotRole = join([
     output.continuity_tags.length === 0
       ? "continuity: none"
@@ -196,7 +399,7 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     ]);
   return Object.freeze({
     promptCompilerVersion: "prompt-compiler-v1",
-    scenePromptWriterVersion: "scene-prompt-writer-v1",
+    scenePromptWriterVersion: SCENE_PROMPT_WRITER_VERSION,
     sceneId: expected.sceneId,
     components,
     positivePrompt,

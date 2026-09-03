@@ -49,6 +49,27 @@ const SCOPE = Object.freeze({
 });
 
 const STYLE_PROFILE = Object.freeze({
+  visual_profile: Object.freeze({
+    medium_family: "documentary photography",
+    realism: "physically believable still image",
+    subject_treatment: "natural subject treatment",
+    camera_language: "restrained observational camera language",
+    image_framing: "crop-safe contextual framing",
+    shot_scale_preferences: ["environmental wide", "hands and action"],
+    lighting: "available practical light",
+    color: Object.freeze({ descriptors: ["true-to-life"], approximate_hex: [] }),
+    contrast_and_exposure: "soft natural contrast",
+    depth_of_field: "natural lens depth",
+    texture_and_grain: "tactile material detail",
+    human_rendering: "believable anatomy and materials",
+    environment_and_material_detail: "credible real-world surfaces",
+    imperfection_profile: ["ordinary wear"],
+    mood: ["observational"],
+    continuity_rules: ["preserve subject continuity"],
+    must_include: ["physically visible evidence"],
+    must_avoid: ["visible writing"],
+    flexible_properties: ["weather and background detail"],
+  }),
   prompt_profile: Object.freeze({
     planner_guidance: "Write literal observational evidence.",
     positive_suffix: "authentic observational documentary photography",

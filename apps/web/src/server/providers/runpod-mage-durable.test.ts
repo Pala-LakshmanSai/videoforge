@@ -27,7 +27,8 @@ const compiled = compileImagePrompt({
     in_image_shot_role: "ENVIRONMENTAL_WIDE",
     lighting_context: "natural parking-lot lighting",
     continuity_tags: [],
-    prompt_core: "Authentic observational documentary photograph.",
+    prompt_core:
+      "Families place grocery bags into open car trunks in a warehouse supermarket parking lot at night.",
   },
   expectedScene: {
     sceneId: "scene_001",

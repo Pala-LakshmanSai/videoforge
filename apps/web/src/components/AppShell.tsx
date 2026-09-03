@@ -136,7 +136,8 @@ function ProjectCommandTrack({
 export function AppShell({ children }: PropsWithChildren) {
   const dockRef = useRef<HTMLElement>(null);
   const scenario = currentScenario();
-  const hostedBrowser = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE !== "fixture";
+  const providerMode = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE;
+  const hostedBrowser = providerMode === "staging" || providerMode === "production";
   const fixtureControlsEnabled = import.meta.env.DEV && !hostedBrowser;
   const path = useRouterState({ select: (state) => state.location.pathname });
   const health = useQuery({

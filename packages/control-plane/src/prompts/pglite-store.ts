@@ -1,7 +1,16 @@
 import { createHash } from "node:crypto";
 
-import { canonicalizeJson, type Sha256Digest } from "@videoforge/contracts";
-import { verifyCompiledImagePrompt, type PromptSceneInput } from "@videoforge/pipeline";
+import {
+  canonicalizeJson,
+  type ImageStyleProfileDocument,
+  type Sha256Digest,
+} from "@videoforge/contracts";
+import {
+  derivePromptStyleTreatment,
+  promptStyleTreatmentPositiveSuffix,
+  verifyCompiledImagePrompt,
+  type PromptSceneInput,
+} from "@videoforge/pipeline";
 
 import type { SqlExecutor, TransactionalSqlExecutor } from "../database/ports.js";
 import { PromptExecutionError, promptExecutionInputHash } from "./service.js";
@@ -76,21 +85,34 @@ function deterministicUuid(label: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function promptProfile(value: unknown): {
+function promptProfile(
+  value: unknown,
+  styleProfileHash: Sha256Digest,
+): {
   readonly plannerGuidance: string;
   readonly positiveSuffix: string;
   readonly negativeSuffix: string;
   readonly fullImageGuidance: string;
   readonly splitImageGuidance: string;
+  readonly styleTreatment: ReturnType<typeof derivePromptStyleTreatment>;
 } {
   const profile = object(value, "image_style_versions.profile_payload");
   const prompt = object(profile.prompt_profile, "image style prompt_profile");
+  const visual = object(
+    profile.visual_profile,
+    "image style visual_profile",
+  ) as unknown as ImageStyleProfileDocument["visual_profile"];
+  const styleTreatment = derivePromptStyleTreatment(visual, styleProfileHash);
   return Object.freeze({
     plannerGuidance: text(prompt.planner_guidance, "prompt_profile.planner_guidance"),
-    positiveSuffix: text(prompt.positive_suffix, "prompt_profile.positive_suffix"),
+    // Positive style text is compiled from the hash-bound visual treatment.
+    // The legacy prompt_profile positive_suffix is retained in stored profile
+    // bytes for compatibility, but is deliberately never trusted here.
+    positiveSuffix: promptStyleTreatmentPositiveSuffix(styleTreatment),
     negativeSuffix: text(prompt.negative_suffix, "prompt_profile.negative_suffix"),
     fullImageGuidance: text(prompt.full_image_guidance, "prompt_profile.full_image_guidance"),
     splitImageGuidance: text(prompt.split_image_guidance, "prompt_profile.split_image_guidance"),
+    styleTreatment,
   });
 }
 
@@ -248,7 +270,8 @@ async function loadAuthority(
       }),
     );
   }
-  const profile = promptProfile(row.profile_payload);
+  const styleProfileHash = text(row.style_profile_hash, "style_profile_hash") as Sha256Digest;
+  const profile = promptProfile(row.profile_payload, styleProfileHash);
   const accepted = row.acceptance_payload === null ? null : acceptedFromRow(row.acceptance_payload);
   const authority: PromptExecutionAuthority = Object.freeze({
     workspaceId: text(row.workspace_id, "workspace_id"),
@@ -261,7 +284,7 @@ async function loadAuthority(
     timelineHash: text(row.timeline_hash, "timeline_hash") as Sha256Digest,
     timelineState: "CURRENT",
     imageStyleVersionId: text(row.image_style_version_id, "image_style_version_id"),
-    styleProfileHash: text(row.style_profile_hash, "style_profile_hash") as Sha256Digest,
+    styleProfileHash,
     styleState:
       text(row.style_state, "image_style_versions.state") === "PUBLISHED" &&
       text(row.revision_style_profile_hash, "revision style hash") ===
@@ -269,6 +292,7 @@ async function loadAuthority(
         ? "PUBLISHED"
         : "STALE",
     plannerGuidance: profile.plannerGuidance,
+    styleTreatment: profile.styleTreatment,
     storyContext: JSON.stringify({
       summary: "Fixture story context derived from the ordered transcript.",
     }),

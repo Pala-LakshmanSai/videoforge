@@ -7,9 +7,12 @@ import {
   type PromptExecutionScope,
   type PromptExecutionStore,
 } from "@videoforge/control-plane";
+import { type ImageStyleProfileDocument, type Sha256Digest } from "@videoforge/contracts";
 import {
   compileImagePrompt,
+  derivePromptStyleTreatment,
   planPromptBatches,
+  promptStyleTreatmentPositiveSuffix,
   verifyCompiledImagePrompt,
   type CompiledImagePrompt,
   type PromptBatchPlan,
@@ -109,6 +112,11 @@ type SentenceWindow = {
   readonly next: string | null;
 };
 
+type TranscriptWindows = {
+  readonly windows: ReadonlyMap<string, SentenceWindow>;
+  readonly orderedSegmentIds: readonly string[];
+};
+
 const normalizedWindowText = (value: string): string =>
   value.normalize("NFKC").replace(/\s+/gu, " ").trim();
 
@@ -129,7 +137,7 @@ function boundedWindowText(
   return (boundary === -1 ? candidate : candidate.slice(0, boundary)).trim();
 }
 
-function sentenceWindows(value: unknown): ReadonlyMap<string, SentenceWindow> {
+function sentenceWindows(value: unknown): TranscriptWindows {
   if (!Array.isArray(value) || value.length === 0)
     throw new TypeError("Hosted transcript segment collection is invalid.");
   const segments = value.map((candidate) => {
@@ -142,35 +150,30 @@ function sentenceWindows(value: unknown): ReadonlyMap<string, SentenceWindow> {
   });
   if (
     segments.some((segment) => !Number.isSafeInteger(segment.index) || segment.index < 0) ||
-    new Set(segments.map((segment) => segment.id)).size !== segments.length
+    new Set(segments.map((segment) => segment.id)).size !== segments.length ||
+    new Set(segments.map((segment) => segment.index)).size !== segments.length
   )
     throw new TypeError("Hosted transcript segment order is invalid.");
   segments.sort((left, right) => left.index - right.index);
-  const groups: Array<{ ids: string[]; text: string }> = [];
-  let ids: string[] = [];
-  let parts: string[] = [];
-  for (const segment of segments) {
-    ids.push(segment.id);
-    parts.push(segment.phrase);
-    const text = normalizedWindowText(parts.join(" "));
-    if (/[.!?]["')\]]?$/u.test(segment.phrase.trim()) || text.length >= 1_200) {
-      groups.push({ ids, text });
-      ids = [];
-      parts = [];
-    }
-  }
-  if (ids.length > 0) groups.push({ ids, text: normalizedWindowText(parts.join(" ")) });
   const windows = new Map<string, SentenceWindow>();
-  groups.forEach((group, index) => {
-    for (const id of group.ids)
-      windows.set(id, {
-        sentence: boundedWindowText(group.text, 2_000),
-        previous: index === 0 ? null : boundedWindowText(groups[index - 1]!.text, 1_000, "end"),
-        next:
-          index + 1 === groups.length ? null : boundedWindowText(groups[index + 1]!.text, 1_000),
-      });
+  segments.forEach((segment, index) => {
+    const previous = segments[index - 1];
+    const next = segments[index + 1];
+    windows.set(segment.id, {
+      // Stage 4 already owns deterministic scene splitting. Reassembling those
+      // fragments by punctuation can accidentally reproduce most of the
+      // transcript for every scene when the fragments contain no terminal
+      // punctuation. Keep the exact current fragment authoritative and supply
+      // only its immediate narration neighbors for local disambiguation.
+      sentence: boundedWindowText(segment.phrase, 2_000),
+      previous: previous ? boundedWindowText(previous.phrase, 1_000, "end") : null,
+      next: next ? boundedWindowText(next.phrase, 1_000) : null,
+    });
   });
-  return windows;
+  return Object.freeze({
+    windows,
+    orderedSegmentIds: Object.freeze(segments.map((segment) => segment.id)),
+  });
 }
 
 function parseScenes(
@@ -185,13 +188,16 @@ function parseScenes(
       const role = string(scene.in_image_shot_role, "prompt scene role");
       const layout = string(scene.layout, "prompt scene layout");
       const sceneId = string(scene.scene_id, "prompt scene id");
+      const phrase = string(scene.phrase, "prompt scene phrase");
       const context = windows.get(sceneId);
       if (!ROLES.has(role) || !["IMAGE_FULL", "SPLIT_RIGHT_IMAGE"].includes(layout))
         throw new TypeError("Hosted prompt scene authority is invalid.");
       if (!context) throw new TypeError("Hosted prompt sentence context is missing.");
+      if (normalizedWindowText(phrase) !== context.sentence)
+        throw new TypeError("Hosted prompt scene phrase does not match its transcript segment.");
       return Object.freeze({
         sceneId,
-        phrase: string(scene.phrase, "prompt scene phrase"),
+        phrase,
         sentenceContext: context.sentence,
         priorContext: context.previous,
         nextContext: context.next,
@@ -220,7 +226,7 @@ export function hostedPromptAuthority(input: {
   const plan = record(input.plan, "hosted prompt plan");
   const profile = record(plan.profile_payload, "hosted style profile");
   const prompt = record(profile.prompt_profile, "hosted style prompt profile");
-  const windows = sentenceWindows(plan.all_segments);
+  const transcript = sentenceWindows(plan.all_segments);
   const workspaceId = string(plan.workspace_id, "workspace id");
   const projectId = string(plan.project_id, "project id");
   const revisionId = string(plan.revision_id, "revision id");
@@ -252,6 +258,21 @@ export function hostedPromptAuthority(input: {
     plan.spend_cap_usd < input.reservedCostMicroUsd / 1_000_000
   )
     throw new TypeError("Hosted prompt plan is not executable.");
+  const visualProfile = record(
+    profile.visual_profile,
+    "hosted style visual profile",
+  ) as unknown as ImageStyleProfileDocument["visual_profile"];
+  const styleTreatment = derivePromptStyleTreatment(visualProfile, styleHash as Sha256Digest);
+  const scenes = parseScenes(plan.scenes, transcript.windows);
+  const imageSceneIds = new Set(scenes.map((scene) => scene.sceneId));
+  const expectedSceneOrder = transcript.orderedSegmentIds.filter((sceneId) =>
+    imageSceneIds.has(sceneId),
+  );
+  if (
+    expectedSceneOrder.length !== scenes.length ||
+    expectedSceneOrder.some((sceneId, index) => sceneId !== scenes[index]?.sceneId)
+  )
+    throw new TypeError("Hosted prompt scene order does not match its transcript segments.");
   const base: PromptExecutionAuthority = Object.freeze({
     workspaceId,
     projectId,
@@ -265,9 +286,13 @@ export function hostedPromptAuthority(input: {
     styleProfileHash: styleHash as `sha256:${string}`,
     styleState: "PUBLISHED",
     plannerGuidance: string(prompt.planner_guidance, "planner guidance"),
+    styleTreatment,
     storyContext: compactStoryContext(plan.story_context),
     style: Object.freeze({
-      positiveSuffix: string(prompt.positive_suffix, "positive suffix"),
+      // The immutable visual profile is the sole source for positive style
+      // treatment. The legacy prompt_profile positive_suffix remains stored
+      // for compatibility/audit but cannot reach compilation.
+      positiveSuffix: promptStyleTreatmentPositiveSuffix(styleTreatment),
       negativeSuffix: string(prompt.negative_suffix, "negative suffix"),
       fullImageGuidance: string(prompt.full_image_guidance, "full image guidance"),
       splitImageGuidance: string(prompt.split_image_guidance, "split image guidance"),
@@ -278,7 +303,7 @@ export function hostedPromptAuthority(input: {
     extraPromptKeywords: extraPromptKeywords(plan.extra_prompt_keywords, applyExtraPromptKeywords),
     applyExtraPromptKeywords,
     continuityTags: Object.freeze([]),
-    scenes: parseScenes(plan.scenes, windows),
+    scenes,
     taskId: input.identity.taskId,
     taskState: "RUNNING",
     attemptId: input.identity.attemptId,
@@ -307,6 +332,7 @@ export function hostedPromptBatchPlan(authority: PromptExecutionAuthority): Prom
     projectTitle: authority.projectTitle,
     imageStyleVersionId: authority.imageStyleVersionId,
     styleProfileHash: authority.styleProfileHash,
+    styleTreatment: authority.styleTreatment,
     plannerGuidance: authority.plannerGuidance,
     storyContext: authority.storyContext,
     continuityTags: authority.continuityTags,

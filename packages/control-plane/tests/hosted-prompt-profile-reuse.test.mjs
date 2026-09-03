@@ -152,7 +152,7 @@ test("0069 fails before claim or reservation when the compact-context profile dr
   });
 });
 
-test("0068 commits a schema-valid Stage 3 result through the durable completion function", async () => {
+test("0072 commits a schema-valid Stage 3 result with exact reservation conservation", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     await seedLockedProjects(executor);
     await executor.query(`SELECT set_config($1, $2, false)`, [
@@ -197,8 +197,15 @@ test("0068 commits a schema-valid Stage 3 result through the durable completion 
          task.accepted_attempt_id::text AS accepted_attempt_id,
          asset.state AS asset_state,
          asset.canonical_contract_name,
-         (SELECT array_agg(event.event_type ORDER BY event.sequence)
-            FROM cost_events event WHERE event.attempt_id=attempt.id) AS cost_events
+         (SELECT jsonb_agg(jsonb_build_object(
+                    'event_type', event.event_type,
+                    'amount_micro_usd', event.amount_micro_usd
+                  ) ORDER BY event.sequence)
+            FROM cost_events event WHERE event.attempt_id=attempt.id) AS cost_events,
+         (SELECT (sum(event.amount_micro_usd) FILTER (WHERE event.event_type='SETTLED'))::integer
+            FROM cost_events event WHERE event.attempt_id=attempt.id) AS settled_micro_usd,
+         (SELECT (sum(event.amount_micro_usd) FILTER (WHERE event.event_type='RELEASED'))::integer
+            FROM cost_events event WHERE event.attempt_id=attempt.id) AS released_micro_usd
        FROM hosted_voiceover_contexts context
        JOIN attempts attempt ON attempt.id=context.attempt_id
        JOIN generation_tasks task ON task.id=context.task_id
@@ -217,8 +224,61 @@ test("0068 commits a schema-valid Stage 3 result through the durable completion 
         accepted_attempt_id: supplied.attempt_id,
         asset_state: "ACCEPTED",
         canonical_contract_name: "voiceover-story-context",
-        cost_events: ["RESERVED", "REPORTED", "SETTLED"],
+        cost_events: [
+          { event_type: "RESERVED", amount_micro_usd: 10_000 },
+          { event_type: "REPORTED", amount_micro_usd: 321 },
+          { event_type: "SETTLED", amount_micro_usd: 321 },
+          { event_type: "RELEASED", amount_micro_usd: 9_679 },
+        ],
+        settled_micro_usd: 321,
+        released_micro_usd: 9_679,
       },
+    ]);
+    assert.equal(321 + 9_679, 10_000);
+  });
+});
+
+test("0072 omits a zero RELEASED event when Stage 3 spends its full reservation", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    await seedLockedProjects(executor);
+    await executor.query(`SELECT set_config($1, $2, false)`, [
+      TENANT_PRINCIPAL_SETTING,
+      IDS.accountA,
+    ]);
+    const asrAttemptId = await seedSucceededAsr(executor, 960_310);
+    const supplied = contextClaim(asrAttemptId, 960_320);
+    const outputAssetId = uuid(960_330);
+    const responseBytes = JSON.stringify({ response: "accepted-full" });
+    const contextBytes = JSON.stringify({ story: "fully reserved" });
+
+    await executor.query(
+      `SELECT public.videoforge_prepare_hosted_voiceover_context($1::jsonb) AS prepared`,
+      [JSON.stringify(supplied)],
+    );
+    await executor.query(
+      `SELECT public.videoforge_complete_hosted_voiceover_context($1::jsonb) AS completed`,
+      [
+        JSON.stringify({
+          context_id: supplied.context_id,
+          output_asset_id: outputAssetId,
+          context_bytes: contextBytes,
+          context_hash: sha256(contextBytes),
+          response_bytes: responseBytes,
+          response_hash: sha256(responseBytes),
+          reported_cost_micro_usd: 10_000,
+        }),
+      ],
+    );
+
+    const costEvents = await executor.query(
+      `SELECT event_type, amount_micro_usd
+         FROM cost_events WHERE attempt_id=$1 ORDER BY sequence`,
+      [supplied.attempt_id],
+    );
+    assert.deepEqual(costEvents.rows, [
+      { event_type: "RESERVED", amount_micro_usd: 10_000 },
+      { event_type: "REPORTED", amount_micro_usd: 10_000 },
+      { event_type: "SETTLED", amount_micro_usd: 10_000 },
     ]);
   });
 });

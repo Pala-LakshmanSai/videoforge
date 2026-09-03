@@ -10,6 +10,7 @@ import {
 import { PipelineDomainError } from "../errors.js";
 import { validatePromptWriterOutput } from "./batch.js";
 import { assertNoHardPromptConflict } from "./compiler.js";
+import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type {
   PromptBatch,
   PromptSceneInput,
@@ -20,7 +21,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v9" as const;
+  "runware-deepseek-v4-flash-prompt-request-v10" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -37,23 +38,25 @@ export const RUNWARE_PROMPT_MAX_INPUT_TOKENS = 48_000 as const;
 export const RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN = 2 as const;
 
 export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
-  "Write concise literal still-image scene cores for VideoForge.",
+  "Write concise literal still-image scene cores for VideoForge using the scene-content contract scene-prompt-writer-v2.",
   "Return every requested scene ID exactly once and echo its in-image shot role unchanged.",
   "Treat each exact_phrase as semantic authority: translate its meaning into concrete visual evidence instead of copying narration prose into prompt_core.",
   "Use adjacent context only to disambiguate; it may never override the exact phrase.",
-  "Use the compact story context to resolve people, places, pronouns, callbacks, era, and continuity; it may never override the exact phrase or containing sentence.",
+  "Use the compact story context to resolve people, places, pronouns, callbacks, era, and continuity; it may never override the exact phrase or scene_phrase_context.",
   "Choose concrete visible evidence of the exact phrase, never a generic mood image merely related to the overall topic.",
   "Design one camera-capturable moment per scene: a specific subject doing a physically plausible visible action in a specific real-world environment.",
   "Prefer familiar human behavior, ordinary locations, credible objects, contextual clutter, and natural imperfection when the narration supports them; never manufacture spectacle or a staged advertising pose.",
   "For abstract narration, show the most direct transcript-supported person, object, process, place, or consequence; never substitute symbolism or metaphor when literal evidence exists.",
-  "Use planner guidance only as the pinned style's visual treatment: honor its medium, palette, lighting, texture, camera language, and imperfection without importing people, places, objects, logos, or other content from style references.",
+  "Express the exact phrase semantically; do not force narration wording into the image description merely to create lexical overlap.",
+  "Never use vague placeholders such as a person, someone, something, somewhere, a generic or public setting, standing still, or doing something unless that exact detail is narration-critical.",
+  "Use only the supplied style_treatment object as visual treatment derived from the pinned immutable style profile: honor its medium, realism, subject_treatment, environment_and_material_detail, palette, framing, shot-scale preferences, lighting, contrast, depth, texture, camera language, human rendering, mood, and imperfection as reusable treatment without importing concrete people, places, objects, products, logos, or other reference content.",
   "For photographic styles, require believable anatomy, materials, scale, perspective, optics, light, and everyday wear rather than glossy synthetic perfection.",
   "Every text field must be non-empty and contain no control characters. Keep literal_subject, action, and environment at 240 characters or fewer; lighting_context at 120 or fewer; and prompt_core at 600 or fewer.",
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
-  "Write prompt_core as one concrete, descriptive still-image sentence with only details that improve literal relevance.",
-  "Do not pad, editorialize, or repeat subject, action, environment, lighting, or continuity details inside prompt_core.",
+  "Write prompt_core as one self-contained concrete descriptive still-image sentence that consolidates the scene's literal subject, visible action, physical environment, lighting context, and useful continuity exactly once.",
+  "Treat literal_subject, action, environment, and lighting_context as independently checked QC metadata; prompt_core must carry the complete image description because it is the only scene-content field sent to the image compiler.",
   "Do not repeat a full style suffix or invent continuity facts.",
-  "Never request visible text, captions, titles, logos, watermarks, UI, graphics, diagrams, borders, branded products, motion graphics, or decorative transitions.",
+  "Never request visible text, writing, handwritten or printed words, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
   "Never choose duration, layout, shot role, avatar placement, model, GPU, retry, or fallback.",
   "Return only the strict requested JSON.",
 ].join(" ");
@@ -74,7 +77,7 @@ export interface RunwarePromptApiRequest {
   readonly includeCost: true;
   readonly includeUsage: true;
   readonly jsonSchema: {
-    readonly name: "videoforge_scene_prompt_batch";
+    readonly name: "videoforge_scene_prompt_batch_v2";
     readonly strict: true;
     readonly schema: Readonly<Record<string, unknown>>;
   };
@@ -153,7 +156,9 @@ export type RunwarePromptValidationReason =
   | "usage"
   | "cost"
   | "finish_reason"
-  | "provider_model";
+  | "provider_model"
+  | "duplicate_prompt_core"
+  | "scene_relevance";
 
 /**
  * Bounded diagnostics for a completed provider response. Counts are useful for
@@ -229,6 +234,8 @@ export function runwarePromptValidationDiagnostic(
     "cost",
     "finish_reason",
     "provider_model",
+    "duplicate_prompt_core",
+    "scene_relevance",
   ];
   const count = (key: string): number | null => {
     const countValue = row[key];
@@ -266,10 +273,10 @@ export function runwarePromptValidationDiagnostic(
 }
 
 export interface RunwarePromptAttemptEvidence {
-  readonly schemaVersion: "videoforge.runware-prompt-attempt-evidence/v2";
+  readonly schemaVersion: "videoforge.runware-prompt-attempt-evidence/v3";
   readonly requestVersion: typeof RUNWARE_PROMPT_REQUEST_VERSION;
   readonly model: typeof RUNWARE_PROMPT_MODEL;
-  readonly scenePromptWriterVersion: "scene-prompt-writer-v1";
+  readonly scenePromptWriterVersion: typeof SCENE_PROMPT_WRITER_VERSION;
   readonly batchId: string;
   readonly attemptIndex: 1 | 2;
   readonly requestedSceneIds: readonly string[];
@@ -513,8 +520,13 @@ export function buildRunwarePromptRequest(
 ): RunwarePromptTransportRequest {
   void minimumBatchScenes;
   if (scenes.length === 0) fail("Prompt attempt must contain at least one expected scene.");
-  if (batch.scenePromptWriterVersion !== "scene-prompt-writer-v1")
+  if (batch.scenePromptWriterVersion !== SCENE_PROMPT_WRITER_VERSION)
     fail("Prompt writer version is invalid.", ["scenePromptWriterVersion"]);
+  if (batch.styleTreatment === null)
+    fail(
+      "Prompt batch has no immutable structured style treatment; legacy planner guidance cannot reach Runware.",
+      ["styleTreatment"],
+    );
   if (
     (attemptIndex === 1 && retryOfRequestSha256 !== null) ||
     (attemptIndex === 2 && (retryOfRequestSha256 === null || !SHA256.test(retryOfRequestSha256)))
@@ -541,16 +553,16 @@ export function buildRunwarePromptRequest(
     project_title: batch.sanitizedProjectTitle,
     image_style_version_id: batch.imageStyleVersionId,
     style_profile_hash: batch.styleProfileHash,
-    planner_guidance: batch.plannerGuidance,
+    style_treatment: batch.styleTreatment,
     story_context: batch.storyContext,
     continuity_tags: batch.continuityTags,
     scenes: scenes.map((scene) => ({
       scene_id: scene.sceneId,
       exact_phrase: scene.phrase,
       exact_phrase_sha256: hash(scene.phrase),
-      containing_sentence: scene.sentenceContext,
-      prior_context: scene.priorContext,
-      next_context: scene.nextContext,
+      scene_phrase_context: scene.sentenceContext,
+      prior_scene_phrase: scene.priorContext,
+      next_scene_phrase: scene.nextContext,
       in_image_shot_role: scene.inImageShotRole,
       fixed_layout: scene.layout,
     })),
@@ -572,7 +584,7 @@ export function buildRunwarePromptRequest(
     includeCost: true,
     includeUsage: true,
     jsonSchema: Object.freeze({
-      name: "videoforge_scene_prompt_batch",
+      name: "videoforge_scene_prompt_batch_v2",
       strict: true,
       schema: responseSchema(batch.batchId, scenes),
     }),
@@ -715,6 +727,80 @@ const hasSceneOutputShape = (candidate: JsonValue): boolean => {
   );
 };
 
+const RELEVANCE_WORD = /[\p{L}\p{N}]+/gu;
+const RELEVANCE_STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "for",
+  "from",
+  "has",
+  "have",
+  "in",
+  "into",
+  "is",
+  "it",
+  "its",
+  "of",
+  "on",
+  "or",
+  "that",
+  "the",
+  "their",
+  "this",
+  "to",
+  "was",
+  "with",
+  // Writer boilerplate must not satisfy a content-relevance check.
+  "camera",
+  "evidence",
+  "image",
+  "literal",
+  "narrated",
+  "narration",
+  "physical",
+  "scene",
+  "still",
+  "view",
+  "visual",
+]);
+
+const distinctiveRelevanceWords = (value: string): ReadonlySet<string> =>
+  new Set(
+    (value.normalize("NFKC").toLocaleLowerCase("en-US").match(RELEVANCE_WORD) ?? []).filter(
+      (word) => word.length >= 3 && !RELEVANCE_STOPWORDS.has(word) && !/^\d+$/u.test(word),
+    ),
+  );
+
+const GENERIC_VISUAL_PLACEHOLDER =
+  /\b(?:a person|some person|someone|something|somewhere|generic (?:place|setting|scene)|public setting|ordinary scene|standing still|doing something|various objects?|general activity|unidentified subject)\b/iu;
+
+/**
+ * This bounded local gate rejects generic stock placeholders and incomplete
+ * scene descriptions without pretending lexical overlap is semantic
+ * relevance. The provider contract carries semantic grounding; exact scene
+ * IDs, phrase hashes, strict output shape and this specificity check make that
+ * contract auditable without rejecting valid synonym-based descriptions.
+ */
+const sceneOutputIsRelevant = (
+  _expectedScene: PromptSceneInput,
+  row: Record<string, JsonValue>,
+): boolean => {
+  const fields = [row.literal_subject, row.action, row.environment, row.prompt_core].filter(
+    (value): value is string => typeof value === "string",
+  );
+  if (fields.length !== 4) return false;
+  const normalized = fields.join(" ").normalize("NFKC").replace(/\s+/gu, " ").trim();
+  if (GENERIC_VISUAL_PLACEHOLDER.test(normalized)) return false;
+  if (fields.slice(0, 3).some((value) => distinctiveRelevanceWords(value).size === 0)) return false;
+  return distinctiveRelevanceWords(row.prompt_core as string).size >= 6;
+};
+
 const evaluateOutput = (
   batch: PromptBatch,
   requestedScenes: readonly PromptSceneInput[],
@@ -846,6 +932,17 @@ const evaluateOutput = (
         "Prompt response scene shape is invalid.",
         ["scenes"],
       );
+    if (!sceneOutputIsRelevant(expectedScene, row))
+      return validationFail(
+        "scene_quality",
+        "scene_relevance",
+        requestedSceneCount,
+        responseScenes.length,
+        accepted.size,
+        Math.max(0, requestedSceneCount - accepted.size),
+        "Prompt response scene content is not grounded in the exact narration fragment.",
+        ["scenes", sceneId],
+      );
     const valid = singleSceneValidation(batch, expectedScene, candidate);
     if (valid) accepted.set(sceneId, valid);
   }
@@ -860,6 +957,29 @@ const evaluateOutput = (
       "Prompt response did not resolve every expected scene.",
       ["scenes"],
     );
+  const promptCoreOwners = new Map<string, string>();
+  for (const expectedScene of requestedScenes) {
+    const acceptedScene = accepted.get(expectedScene.sceneId);
+    if (!acceptedScene) continue;
+    const normalizedCore = acceptedScene.prompt_core
+      .normalize("NFKC")
+      .replace(/\s+/gu, " ")
+      .trim()
+      .toLocaleLowerCase("en-US");
+    const previousSceneId = promptCoreOwners.get(normalizedCore);
+    if (previousSceneId !== undefined)
+      return validationFail(
+        "scene_quality",
+        "duplicate_prompt_core",
+        requestedSceneCount,
+        responseScenes.length,
+        accepted.size,
+        requestedSceneCount,
+        "Prompt response reused an identical normalized prompt core for multiple scenes.",
+        ["scenes", expectedScene.sceneId, "prompt_core"],
+      );
+    promptCoreOwners.set(normalizedCore, expectedScene.sceneId);
+  }
   return Object.freeze({
     accepted,
     unresolved: Object.freeze(requestedScenes.filter((scene) => !accepted.has(scene.sceneId))),
@@ -883,7 +1003,7 @@ const evidence = (
   >,
 ): RunwarePromptAttemptEvidence =>
   Object.freeze({
-    schemaVersion: "videoforge.runware-prompt-attempt-evidence/v2",
+    schemaVersion: "videoforge.runware-prompt-attempt-evidence/v3",
     requestVersion: RUNWARE_PROMPT_REQUEST_VERSION,
     model: RUNWARE_PROMPT_MODEL,
     scenePromptWriterVersion: batch.scenePromptWriterVersion,

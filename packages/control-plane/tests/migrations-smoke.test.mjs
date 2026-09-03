@@ -109,12 +109,12 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
   }
 });
 
-test("hosted prompt progress upgrades the exact 0059 chain to 0071", async () => {
+test("hosted prompt progress upgrades the exact 0059 chain to 0073", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0071_hosted_prompt_adaptive_batches.sql");
+    assert.equal(sources.at(-1)?.filename, "0073_hosted_prompt_writer_v2_profile.sql");
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -136,7 +136,10 @@ test("hosted prompt progress upgrades the exact 0059 chain to 0071", async () =>
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71]);
+    assert.deepEqual(
+      upgraded.appliedVersions,
+      [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73],
+    );
     const definitions = await executor.query(
       `SELECT proname, pg_get_functiondef(oid) AS definition
          FROM pg_proc
@@ -153,6 +156,11 @@ test("hosted prompt progress upgrades the exact 0059 chain to 0071", async () =>
     assert.match(context.definition, /deepseek:v4@flash/u);
     assert.match(context.definition, /voiceover-context-v9/u);
     assert.match(context.definition, /revision\s*=\s*7|revision=7/u);
+    const prompt = definitions.rows.find(
+      (row) => row.proname === "videoforge_prepare_hosted_prompt_run",
+    );
+    assert.match(prompt.definition, /scene-prompt-writer-v2/u);
+    assert.match(prompt.definition, /Hosted Runware scene prompts',2,'PROMPT/u);
     const progressSurface = await executor.query(
       `SELECT c.relrowsecurity, c.relforcerowsecurity,
               to_regprocedure('public.videoforge_record_hosted_prompt_scene(uuid,jsonb)') IS NOT NULL

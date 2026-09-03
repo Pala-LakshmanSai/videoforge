@@ -29,7 +29,10 @@ test("0071 selects the newest project revision and its authoritative timing head
   assert.match(loader, /FROM latest_revision revision/u);
 });
 
-async function seedAdaptivePromptRun(executor, { sceneCount = 60, plannedBatchCount = 2 } = {}) {
+async function seedAdaptivePromptRun(
+  executor,
+  { sceneCount = 60, plannedBatchCount = 2, materializeRun = true } = {},
+) {
   await seedLockedProjects(executor);
   await executor.query(`SELECT set_config($1, $2, false)`, [
     TENANT_PRINCIPAL_SETTING,
@@ -245,6 +248,22 @@ async function seedAdaptivePromptRun(executor, { sceneCount = 60, plannedBatchCo
     }
   });
 
+  if (!materializeRun) {
+    return {
+      sceneCount,
+      profileId,
+      taskId,
+      attemptId,
+      outboxId,
+      runId,
+      timelineId,
+      inputHash,
+      claimHash,
+      timelineHash,
+      batchPlanHash: sha256(`adaptive-batch-plan-${sceneCount}-${plannedBatchCount}`),
+    };
+  }
+
   const profileConfiguration = {
     model: "deepseek:v4@flash",
     operation: "scene-prompt-writer-v1",
@@ -341,6 +360,76 @@ async function seedAdaptivePromptRun(executor, { sceneCount = 60, plannedBatchCo
   };
 }
 
+async function seedSucceededVoiceoverContext(executor, base) {
+  const asrAttemptId = id(base + 1);
+  const artifactPrefix =
+    `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}` +
+    `/revision/${IDS.revisionA}/lane/input/job/${asrAttemptId}/artifact`;
+  await executor.query(
+    `INSERT INTO hosted_cpu_job_attempts (
+       id, account_id, workspace_id, project_id, project_revision_id, kind, state,
+       request_sha256, job_spec_object_key, job_spec_content_length,
+       job_spec_checksum_sha256, result_object_key, result_content_type, result_max_bytes,
+       image_digest, callback_token_sha256, result_receipt_sha256, result_content_length,
+       result_checksum_sha256, deadline_at, submitted_at, terminal_at, created_at, updated_at
+     ) VALUES (
+       $1,$2,$3,$4,$5,'ASR','SUCCEEDED',$6,$12,128,$7,
+       $13,'application/json',4096,$8,$9,$10,256,$11,
+       clock_timestamp()+interval '1 hour',clock_timestamp(),clock_timestamp(),
+       clock_timestamp(),clock_timestamp()
+     )`,
+    [
+      asrAttemptId,
+      IDS.accountA,
+      IDS.workspaceA,
+      IDS.projectA,
+      IDS.revisionA,
+      sha256(`prompt-v2-context-request-${base}`),
+      sha256(`prompt-v2-context-job-spec-${base}`),
+      sha256(`prompt-v2-context-image-${base}`),
+      sha256(`prompt-v2-context-callback-${base}`),
+      sha256(`prompt-v2-context-receipt-${base}`),
+      sha256(`prompt-v2-context-result-${base}`),
+      `${artifactPrefix}/job-spec`,
+      `${artifactPrefix}/result-document`,
+    ],
+  );
+  const supplied = {
+    account_id: IDS.accountA,
+    workspace_id: IDS.workspaceA,
+    user_id: IDS.userA,
+    project_id: IDS.projectA,
+    revision_id: IDS.revisionA,
+    asr_attempt_id: asrAttemptId,
+    context_id: id(base + 2),
+    task_id: id(base + 3),
+    attempt_id: id(base + 4),
+    outbox_id: id(base + 5),
+    execution_profile_id: id(base + 6),
+    reservation_cost_event_id: id(base + 7),
+    transcript_hash: sha256(`prompt-v2-context-transcript-${base}`),
+    request_hash: sha256(`prompt-v2-context-provider-request-${base}`),
+    claim_token_hash: sha256(`prompt-v2-context-claim-${base}`),
+    reserved_cost_micro_usd: 10_000,
+  };
+  await executor.query(`SELECT public.videoforge_prepare_hosted_voiceover_context($1::jsonb)`, [
+    JSON.stringify(supplied),
+  ]);
+  const contextBytes = JSON.stringify({ story: `prompt-v2-context-${base}` });
+  const responseBytes = JSON.stringify({ response: `prompt-v2-response-${base}` });
+  await executor.query(`SELECT public.videoforge_complete_hosted_voiceover_context($1::jsonb)`, [
+    JSON.stringify({
+      context_id: supplied.context_id,
+      output_asset_id: id(base + 8),
+      context_bytes: contextBytes,
+      context_hash: sha256(contextBytes),
+      response_bytes: responseBytes,
+      response_hash: sha256(responseBytes),
+      reported_cost_micro_usd: 321,
+    }),
+  ]);
+}
+
 function scenePayload(startOrdinal, count, { corruptAt = -1 } = {}) {
   return Array.from({ length: count }, (_, offset) => {
     const ordinal = startOrdinal + offset;
@@ -383,6 +472,160 @@ async function recordBatch(executor, runId, batchOrdinal, firstSceneOrdinal, cou
     ],
   );
 }
+
+test("0073 binds fresh adaptive prompt runs to the v2 profile and operation", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const authority = await seedAdaptivePromptRun(executor, {
+      sceneCount: 2,
+      plannedBatchCount: 1,
+      materializeRun: false,
+    });
+    await seedSucceededVoiceoverContext(executor, 974_000);
+    const supplied = {
+      account_id: IDS.accountA,
+      workspace_id: IDS.workspaceA,
+      user_id: IDS.userA,
+      project_id: IDS.projectA,
+      revision_id: IDS.revisionA,
+      timeline_id: authority.timelineId,
+      task_id: authority.taskId,
+      attempt_id: authority.attemptId,
+      outbox_id: authority.outboxId,
+      execution_profile_id: authority.profileId,
+      reservation_cost_event_id: id(971_009),
+      run_id: authority.runId,
+      input_hash: authority.inputHash,
+      claim_token_hash: authority.claimHash,
+      timeline_hash: authority.timelineHash,
+      batch_plan_hash: authority.batchPlanHash,
+      reserved_cost_micro_usd: 40_000,
+      planned_batch_count: 1,
+      planned_scene_count: 2,
+    };
+    const prepared = await executor.query(
+      `SELECT public.videoforge_prepare_hosted_prompt_run($1::jsonb) AS prepared`,
+      [JSON.stringify(supplied)],
+    );
+    assert.equal(prepared.rows[0].prepared.created, true);
+
+    const durable = await executor.query(
+      `SELECT profile.revision,
+              profile.configuration->>'model' AS profile_model,
+              profile.configuration->>'operation' AS profile_operation,
+              attempt.provider_details->>'operation' AS attempt_operation,
+              reservation.details->>'operation' AS reservation_operation
+         FROM hosted_prompt_runs run
+         JOIN execution_profiles profile ON profile.id=run.execution_profile_id
+         JOIN attempts attempt ON attempt.id=run.attempt_id
+         JOIN cost_events reservation ON reservation.account_id=run.account_id
+          AND reservation.workspace_id=run.workspace_id
+          AND reservation.task_id=run.task_id AND reservation.attempt_id=run.attempt_id
+          AND reservation.sequence=run.reservation_cost_sequence
+          AND reservation.event_type='RESERVED'
+        WHERE run.id=$1`,
+      [authority.runId],
+    );
+    assert.deepEqual(durable.rows, [
+      {
+        revision: 2,
+        profile_model: "deepseek:v4@flash",
+        profile_operation: "scene-prompt-writer-v2",
+        attempt_operation: "scene-prompt-writer-v2",
+        reservation_operation: "scene-prompt-writer-v2",
+      },
+    ]);
+
+    const replayed = await executor.query(
+      `SELECT public.videoforge_prepare_hosted_prompt_run($1::jsonb) AS prepared`,
+      [JSON.stringify({ ...supplied, execution_profile_id: id(971_099) })],
+    );
+    assert.deepEqual(replayed.rows, [
+      {
+        prepared: {
+          created: false,
+          state: "DISPATCHING",
+          run_id: authority.runId,
+          task_id: authority.taskId,
+          attempt_id: authority.attemptId,
+          outbox_id: authority.outboxId,
+          planned_batch_count: 1,
+          planned_scene_count: 2,
+          batch_plan_hash: authority.batchPlanHash,
+        },
+      },
+    ]);
+  });
+});
+
+test("0073 fails closed before task or reservation when the v2 profile drifts", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const authority = await seedAdaptivePromptRun(executor, {
+      sceneCount: 2,
+      plannedBatchCount: 1,
+      materializeRun: false,
+    });
+    await seedSucceededVoiceoverContext(executor, 975_000);
+    const driftedProfileId = id(975_010);
+    await executor.query(
+      `INSERT INTO execution_profiles (
+         id, account_id, workspace_id, name, revision, lane, state, dispatch_target,
+         configuration, configuration_hash, maximum_rate_micro_usd, checked_at, created_at
+       ) VALUES ($1,$2,$3,'Hosted Runware scene prompts',2,'PROMPT','TESTED','RUNWARE',
+         $4::jsonb,'sha256:'||encode(digest(convert_to(($4::jsonb)::text,'UTF8'),'sha256'), 'hex'),
+         40000,$5,$5)`,
+      [
+        driftedProfileId,
+        IDS.accountA,
+        IDS.workspaceA,
+        JSON.stringify({
+          model: "deepseek:v4@flash",
+          operation: "scene-prompt-writer-v1",
+          provider: "runware",
+        }),
+        FIXED_TIME,
+      ],
+    );
+    const supplied = {
+      account_id: IDS.accountA,
+      workspace_id: IDS.workspaceA,
+      user_id: IDS.userA,
+      project_id: IDS.projectA,
+      revision_id: IDS.revisionA,
+      timeline_id: authority.timelineId,
+      task_id: authority.taskId,
+      attempt_id: authority.attemptId,
+      outbox_id: authority.outboxId,
+      execution_profile_id: driftedProfileId,
+      reservation_cost_event_id: id(975_011),
+      run_id: authority.runId,
+      input_hash: authority.inputHash,
+      claim_token_hash: authority.claimHash,
+      timeline_hash: authority.timelineHash,
+      batch_plan_hash: authority.batchPlanHash,
+      reserved_cost_micro_usd: 40_000,
+      planned_batch_count: 1,
+      planned_scene_count: 2,
+    };
+    await expectDatabaseError(
+      () =>
+        executor.query(
+          `SELECT public.videoforge_prepare_hosted_prompt_run($1::jsonb) AS prepared`,
+          [JSON.stringify(supplied)],
+        ),
+      "23514",
+    );
+    const durable = await executor.query(
+      `SELECT
+         (SELECT count(*)::integer FROM generation_tasks WHERE id=$1) AS tasks,
+         (SELECT count(*)::integer FROM attempts WHERE id=$2) AS attempts,
+         (SELECT count(*)::integer FROM outbox WHERE id=$3) AS outbox,
+         (SELECT count(*)::integer FROM cost_events WHERE id=$4) AS costs,
+         (SELECT count(*)::integer FROM hosted_prompt_runs WHERE id=$5) AS runs`,
+      [authority.taskId, authority.attemptId, authority.outboxId, id(975_011), authority.runId],
+    );
+    assert.deepEqual(durable.rows, [{ tasks: 0, attempts: 0, outbox: 0, costs: 0, runs: 0 }]);
+  });
+});
 
 test("0071 records arbitrary ordered batches once and sums only batch transport costs", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {

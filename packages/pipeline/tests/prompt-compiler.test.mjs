@@ -253,29 +253,53 @@ test("enabled extras normalize once, support negative refinements, and count Uni
   );
 });
 
-test("compiler caps verbose outputs and removes exact duplicate prompt components", () => {
+test("compiler emits only the consolidated prompt core while retaining structured QC fields", () => {
   const input = batch(25);
-  const repeated = "Farmer opens an irrigation valve";
+  const promptCore =
+    "A farmer opens a weathered irrigation valve beside a dry field in soft morning light.";
   const compiled = compileImagePrompt({
     writerOutput: {
       scene_id: input.scenes[0].sceneId,
-      literal_subject: repeated,
-      action: repeated,
-      environment: repeated,
+      literal_subject: "farmer",
+      action: "opens a weathered irrigation valve",
+      environment: "dry field",
       in_image_shot_role: input.scenes[0].inImageShotRole,
-      lighting_context: repeated,
+      lighting_context: "soft morning light",
       continuity_tags: [],
-      prompt_core: repeated,
+      prompt_core: promptCore,
     },
     expectedScene: input.scenes[0],
     style: style(),
     extraPromptKeywords: null,
     applyExtraPromptKeywords: false,
   });
-  assert.equal(compiled.components.literalContent, repeated);
-  assert.equal(compiled.positivePrompt.match(/Farmer opens an irrigation valve/gu)?.length, 1);
+  assert.equal(compiled.components.literalContent, promptCore);
+  assert.equal(compiled.positivePrompt.match(/weathered irrigation valve/gu)?.length, 1);
+  assert.equal(compiled.positivePrompt.includes("farmer, opens"), false);
   assert.ok(compiled.positivePrompt.length <= 6_500);
   assert.ok(compiled.negativePrompt.length <= 3_000);
+});
+
+test("compiler rejects a generic prompt core disconnected from its structured scene facts", () => {
+  const input = batch(1);
+  expectCode("PROMPT_CONFLICT", () =>
+    compileImagePrompt({
+      writerOutput: {
+        scene_id: input.scenes[0].sceneId,
+        literal_subject: "farmer",
+        action: "opens an irrigation valve",
+        environment: "dry field",
+        in_image_shot_role: input.scenes[0].inImageShotRole,
+        lighting_context: "soft morning light",
+        continuity_tags: [],
+        prompt_core: "A beautiful cinematic image with a dramatic atmosphere.",
+      },
+      expectedScene: input.scenes[0],
+      style: style(),
+      extraPromptKeywords: null,
+      applyExtraPromptKeywords: false,
+    }),
+  );
 });
 
 test("compiler rejects enabled blank, oversized, control-only, forbidden extras, and conflicting style clauses", async () => {
@@ -297,6 +321,9 @@ test("compiler rejects enabled blank, oversized, control-only, forbidden extras,
     "with infographic",
     "place avatar on the right",
     "logo on a bottle",
+    "do not remove the logo",
+    "never omit labels",
+    "without removing product markings",
   ]) {
     expectCode("PROMPT_CONFLICT", () =>
       compileImagePrompt({ ...base, extraPromptKeywords, applyExtraPromptKeywords: true }),

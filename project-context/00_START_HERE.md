@@ -4,6 +4,26 @@
 
 ### Current new-chat launch point — 2026-09-03
 
+- The current provider-free Stage 5 repair supersedes the prompt-quality/accounting follow-ups in the
+  live handoff below. Future fresh projects use `scene-prompt-writer-v2` / Runware request v10 and a
+  structured treatment derived only from the pinned immutable Image Style. Exact Stage 4 phrases,
+  bounded adjacent phrase context, and compact global story context are explicit inputs; no hardcoded
+  photographic or reference-image content is allowed to replace the selected style.
+- Adaptive batching still has no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
+  per persisted planned batch, accepted batches are durable before the next request, and failure or
+  ambiguity never redispatches. Prompt-core validation now rejects generic placeholder scenes,
+  text/sign/label/marking conflicts, cross-batch duplicates, and reference-content leakage while
+  allowing non-verbatim semantic phrasing. Migration `0072` repairs Stage 3 reservation release
+  accounting; migration `0073` selects writer v2 for future fresh Stage 5 runs. Both are pending.
+- Provider-free evidence is green: pipeline 142/142, control plane 388/388, web 1,486/1,486 with one
+  intentional skip, focused hosted Stage 5/viewer/local-mode compatibility 78/78, package typechecks,
+  full web lint, staging build/quarantine, deployment/context validation, secret scan, formatting, and
+  diff checks. An independent final audit passed after reference-content leakage was blocked both at
+  style publication and again at the prompt-batch boundary. Computer Use also caught and verified the local header-mode repair: fixture pages now
+  report `API healthy` instead of falsely saying offline/private staging. No migration, deployment,
+  project, provider request or retrieval, GPU/RunPod, production, volume mutation, or spend occurred.
+  Fresh exact source/migration authority is required before one deployment and one new
+  Stage 1-5 live proof.
 - Repository HEAD contains the live Stage 5 qualification handoff. Source `ffcc89c2` was deployed
   exactly once to staging Worker `87c0a45f-0b03-4334-b36d-cc9f3a920426`; migrations `0069`–`0071`
   and the exact runtime grant set were already applied and must not be replayed.

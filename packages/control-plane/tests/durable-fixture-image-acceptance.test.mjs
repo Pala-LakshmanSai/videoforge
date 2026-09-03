@@ -64,11 +64,13 @@ const compiledPrompt = compileImagePrompt({
     in_image_shot_role: "HANDS_ACTION",
     lighting_context: "available daylight",
     continuity_tags: ["same_farm"],
-    prompt_core: "Documentary evidence of ordinary farm work.",
+    prompt_core:
+      "Weathered hands check a worn wooden farm tool handle in available daylight on a working farm.",
   },
   expectedScene: {
     sceneId: "scene-image-001",
     phrase: "The farmer checked the tool.",
+    sentenceContext: "The farmer checked the tool.",
     priorContext: null,
     nextContext: null,
     inImageShotRole: "HANDS_ACTION",
