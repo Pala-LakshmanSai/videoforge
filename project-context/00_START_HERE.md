@@ -39,6 +39,11 @@
   staging build/quarantine, deployment/context validators, secret scan, and diff checks. This repair
   is not deployed or live-qualified. Fresh exact clean-source authority is required before one
   staging deployment and exactly one fresh Stage 1–5 project.
+- The aggregate `CI=1 TURBO_FORCE=true pnpm verify` is not repository-wide green for reasons outside
+  this Stage 5 diff: historical V2-06/V2-13 script pins report 29 failures, and V2-08 worker image
+  hash pins report 3 failures. The affected scripts, workflow, worker, and contract files are byte-
+  unchanged from approved source `efd153ab`; do not misattribute or repair those unrelated sealed
+  artifact drifts as part of the Stage 5 qualification.
 - The selected next profile is `v2_07_mage_serverless` with brief `tasks/VF-10-07.md`. V2-07
   Attempt64 is closed `NOT_QUALIFIED` after `RUNPOD_ZERO_NOT_CONFIRMED`; cleanup is exact and repair
   `1283a23` passed independent audit. Attempt64 and every older proposal, authority, cap, and run are

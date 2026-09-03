@@ -5078,6 +5078,7 @@ recommended_next_task:
   superseded_authority_materialized: true
   execution_status: stage_5_v13_provider_free_repair_green_live_qualification_pending
   execution_blocker: stage_5_v13_repair_requires_fresh_exact_clean_source_deploy_one_project_authority
+  provider_free_validation_note: "Stage 5-relevant validation is green: pipeline 163/163, web 1496 passed with 1 intentional skip, pipeline/web typechecks, pipeline lint, changed-file format, staging build/quarantine, deployment/context validators, secret scan, and diff checks. Aggregate CI=1 TURBO_FORCE=true pnpm verify remains non-green only in unrelated historical sealed-artifact pins: 29 V2-06/V2-13 script failures and 3 V2-08 worker image-hash failures. The affected scripts, workflow, worker, and contract files are unchanged from approved source efd153ab; they are outside this Stage 5 repair scope."
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean
