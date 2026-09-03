@@ -63,6 +63,14 @@ _RENDER_FAILURE_CODES = frozenset(
 _MEDIA_EXECUTION_IO_FAILED = "MEDIA_EXECUTION_IO_FAILED"
 _MEDIA_EXECUTION_CONTRACT_INVALID = "MEDIA_EXECUTION_CONTRACT_INVALID"
 
+# A media job needs its downloaded inputs and a second working copy while the
+# bundled tools run. Keep a fixed amount of free space for runtime extraction,
+# ffmpeg/whisper scratch files, and bounded result/upload buffers. This is a
+# local safety gate only; the values are intentionally not exposed in worker
+# completions or diagnostics.
+_MEDIA_INPUT_WORKING_SET_MULTIPLIER = 2
+_MEDIA_RUNTIME_HEADROOM_BYTES = 2 * 1024**3
+
 
 class _PersonalJobCancelled(Exception):
     """The control plane fenced this attempt while the local process was active."""
@@ -276,6 +284,30 @@ def _download(
             out.write(chunk)
     if size != item["bytes"] or f"sha256:{digest.hexdigest()}" != item["sha256"]:
         raise ValueError("Personal worker download did not match durable facts")
+
+
+def _required_free_bytes(objects: tuple[dict[str, Any], ...]) -> int:
+    """Return the deterministic local free-space requirement for one job."""
+
+    input_bytes = 0
+    for item in objects:
+        size = item.get("bytes")
+        if type(size) is not int or size <= 0:
+            raise ValueError("Personal worker input size is invalid")
+        input_bytes += size
+    return input_bytes * _MEDIA_INPUT_WORKING_SET_MULTIPLIER + _MEDIA_RUNTIME_HEADROOM_BYTES
+
+
+def _preflight_disk_space(objects: tuple[dict[str, Any], ...], directory: Path) -> None:
+    """Fail closed when the local filesystem cannot safely host the job."""
+
+    required = _required_free_bytes(objects)
+    try:
+        available = shutil.disk_usage(directory).free
+    except (OSError, TypeError, ValueError) as error:
+        raise OSError("Personal worker local storage capacity is unknown") from error
+    if type(available) is not int or available < required:
+        raise OSError("Personal worker local storage capacity is insufficient")
 
 
 def _upload_port(
@@ -630,6 +662,7 @@ def execute_personal_job(
     )
     monitor.start()
     try:
+        _preflight_disk_space(job.objects, scratch)
         for item in job.objects:
             _download(item, _local_path(scratch, item["uri"]), monitor.is_cancelled)
         input_path = scratch / "job-input.json"

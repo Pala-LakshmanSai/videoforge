@@ -243,6 +243,69 @@ class PersonalWorkerContractTests(unittest.TestCase):
         finally:
             model_path.unlink(missing_ok=True)
 
+    def test_insufficient_disk_fails_before_download_or_subprocess(self) -> None:
+        asr = job()
+        asr["kind"] = "ASR"
+        asr["expires_at"] = "2099-01-01T00:00:00.000Z"
+        asr["input_document"] = {
+            "schema_version": "asr-job-input/v1",
+            "model": {"sha256": "sha256:" + "a" * 64},
+            "output": {"result_uri": "vf-local-run://revision-a/attempt-a/asr-result.json"},
+        }
+        parsed = parse_personal_job(asr)
+        monitor = MagicMock()
+        monitor.is_cancelled.return_value = False
+        required = personal_execution._required_free_bytes(parsed.objects)
+        completion_response = {
+            "schema_version": "videoforge-personal-worker-completion-accepted/v1",
+            "state": "FAILED",
+        }
+        with (
+            patch(
+                "videoforge_media_local.personal_execution._CancellationMonitor",
+                return_value=monitor,
+            ),
+            patch("videoforge_media_local.personal_execution._download") as download,
+            patch("videoforge_media_local.personal_execution._run_media_subprocess") as run_media,
+            patch.object(
+                personal_execution.shutil,
+                "disk_usage",
+                return_value=SimpleNamespace(free=required - 1),
+            ) as disk_usage,
+            patch(
+                "videoforge_media_local.personal_execution._request_json",
+                return_value=(200, completion_response),
+            ) as request_json,
+        ):
+            self.assertEqual(
+                execute_personal_job(
+                    parsed,
+                    "device",
+                    "lease",
+                    ToolPaths(Path("ffmpeg"), Path("ffprobe"), Path("whisper"), Path("model")),
+                ),
+                "FAILED",
+            )
+        disk_usage.assert_called_once()
+        download.assert_not_called()
+        run_media.assert_not_called()
+        request_json.assert_called_once()
+        self.assertEqual(
+            request_json.call_args.args[3]["failure_code"], "MEDIA_EXECUTION_IO_FAILED"
+        )
+
+    def test_disk_preflight_maps_capacity_syscall_failure_to_io_error(self) -> None:
+        parsed = parse_personal_job(job())
+        with patch.object(
+            personal_execution.shutil,
+            "disk_usage",
+            side_effect=OSError("private disk path secret"),
+        ) as disk_usage:
+            with self.assertRaisesRegex(OSError, "capacity is unknown") as raised:
+                personal_execution._preflight_disk_space(parsed.objects, Path("/tmp"))
+        disk_usage.assert_called_once()
+        self.assertNotIn("secret", str(raised.exception))
+
     def test_asr_replaces_one_abnormally_exited_local_subprocess(self) -> None:
         first = Mock(returncode=9)
         first.communicate.return_value = (b"", b"private crash detail")
