@@ -385,6 +385,103 @@ test("scene relevance accepts synonym-based grounding without literal token copy
   assert.equal(result.scenes.length, 1);
 });
 
+test("scene relevance rejects a detailed but unrelated fox and alpine lake", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle in a public park",
+        sentenceContext: "A woman repairs a bicycle in a public park before sunset.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A red fox";
+          rows[0].action = "watching quietly";
+          rows[0].environment = "beside an alpine lake in a rugged mountain valley";
+          rows[0].prompt_core =
+            "A red fox watches quietly beside an alpine lake in a rugged mountain valley at dawn.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.transport.requests.length, 1);
+  assert.deepEqual(setup.evidence[0].validationDiagnostic, {
+    category: "scene_quality",
+    reason: "scene_relevance",
+    requestedSceneCount: 1,
+    returnedSceneCount: 1,
+    locallyValidSceneCount: 0,
+    unresolvedSceneCount: 1,
+  });
+});
+
+test("scene relevance uses adjacent narration to ground a pronoun-only phrase", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "She does it there",
+        sentenceContext: "She does it there.",
+        priorContext: "A cyclist repairs a bicycle beside a public park service stand.",
+        nextContext: "The repaired bicycle is ready for the rider.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A cyclist";
+          rows[0].action = "adjusting a bicycle chain by hand";
+          rows[0].environment = "beside a public park service stand";
+          rows[0].prompt_core =
+            "A cyclist adjusts a bicycle chain by hand beside a public park service stand.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance rejects matching entities when the narrated action is wrong", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle in a public park",
+        sentenceContext: "A woman repairs a bicycle in a public park.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A woman with a bicycle";
+          rows[0].action = "riding through the park";
+          rows[0].environment = "a public park path with trees";
+          rows[0].prompt_core =
+            "A woman rides a bicycle through a public park path with trees in soft daylight.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+});
+
 test("scene relevance accepts a concrete contextual rendering of an abstract phrase", async () => {
   const base = makeBatch(1);
   const batch = {

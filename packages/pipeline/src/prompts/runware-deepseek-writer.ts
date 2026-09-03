@@ -741,54 +741,264 @@ const RELEVANCE_STOPWORDS = new Set([
   "from",
   "has",
   "have",
+  "he",
   "in",
   "into",
   "is",
   "it",
   "its",
+  "me",
   "of",
   "on",
   "or",
+  "our",
   "that",
   "the",
   "their",
   "this",
   "to",
   "was",
+  "we",
   "with",
+  "you",
+  // These words are common narration glue or writer scaffolding. They must
+  // not be allowed to make an otherwise unrelated image look grounded.
+  "again",
+  "action",
+  "after",
+  "before",
+  "began",
+  "changed",
+  "close",
+  "documentary",
+  "everything",
+  "first",
+  "image",
+  "literal",
+  "marker",
+  "next",
+  "ordinary",
+  "practical",
+  "real",
+  "same",
+  "second",
+  "setting",
+  "still",
+  "then",
+  "view",
+  "world",
+  "writing",
+  "one",
+  "two",
+  "three",
+  "there",
+  "here",
+  "does",
+  "did",
+  "do",
+  "she",
+  "they",
+  "them",
+  "his",
+  "her",
+  "your",
   // Writer boilerplate must not satisfy a content-relevance check.
   "camera",
   "evidence",
-  "image",
   "literal",
   "narrated",
   "narration",
   "physical",
   "scene",
-  "still",
-  "view",
   "visual",
 ]);
 
+/**
+ * This is intentionally a small, deterministic semantic vocabulary rather
+ * than a second model call. Prompt acceptance must remain provider-free and
+ * bounded, but simple morphology and a few high-confidence paraphrase groups
+ * keep the gate from demanding literal narration-token copying.
+ */
+const RELEVANCE_ALIAS_GROUPS = [
+  ["agricultural", "agriculture", "cultivator", "farmer", "grower"],
+  ["bicycle", "bike", "cycle"],
+  ["broken", "damaged", "faulty", "malfunctioning"],
+  ["demonstrate", "display", "illustrate", "show"],
+  ["fix", "maintain", "mend", "repair", "restore", "service"],
+  ["machine", "motor", "pump", "equipment"],
+  ["observe", "notice", "see", "watch"],
+  ["operate", "run", "use", "work"],
+  ["start", "begin", "commence"],
+  ["adjust", "align", "calibrate", "tune"],
+  ["assemble", "build", "construct", "install"],
+  ["carry", "bring", "hold", "lift", "take"],
+  ["check", "inspect", "examine", "test"],
+  ["clean", "scrub", "wash"],
+  ["cook", "bake", "fry", "prepare"],
+  ["cut", "chop", "slice", "trim"],
+  ["drink", "eat", "consume"],
+  ["drive", "steer", "travel"],
+  ["enter", "arrive", "reach"],
+  ["fill", "pour", "empty"],
+  ["grow", "harvest", "plant", "pick"],
+  ["move", "walk", "stroll", "climb"],
+  ["open", "unlock", "uncover"],
+  ["place", "put", "set"],
+  ["remove", "detach", "uninstall"],
+  ["ride", "rides", "riding"],
+  ["rotate", "turn", "twist"],
+  ["speak", "say", "talk"],
+];
+
+const RELEVANCE_ALIASES = new Map<string, string>();
+for (const group of RELEVANCE_ALIAS_GROUPS) {
+  const canonical = group[0];
+  if (canonical === undefined) continue;
+  for (const word of group) RELEVANCE_ALIASES.set(word, canonical);
+}
+
+const RELEVANCE_ACTIONS = new Set([
+  "adjust",
+  "assemble",
+  "begin",
+  "bring",
+  "build",
+  "carry",
+  "check",
+  "clean",
+  "climb",
+  "commence",
+  "consume",
+  "construct",
+  "cook",
+  "cut",
+  "demonstrate",
+  "display",
+  "detach",
+  "drink",
+  "drive",
+  "eat",
+  "empty",
+  "enter",
+  "examine",
+  "fill",
+  "fix",
+  "fry",
+  "grow",
+  "harvest",
+  "hold",
+  "illustrate",
+  "install",
+  "inspect",
+  "lift",
+  "maintain",
+  "mend",
+  "move",
+  "notice",
+  "observe",
+  "open",
+  "operate",
+  "pick",
+  "place",
+  "plant",
+  "pour",
+  "prepare",
+  "put",
+  "reach",
+  "remove",
+  "repair",
+  "ride",
+  "restore",
+  "run",
+  "see",
+  "service",
+  "show",
+  "start",
+  "scrub",
+  "say",
+  "set",
+  "slice",
+  "speak",
+  "steer",
+  "stroll",
+  "take",
+  "talk",
+  "test",
+  "travel",
+  "trim",
+  "turn",
+  "tune",
+  "unlock",
+  "uncover",
+  "uninstall",
+  "use",
+  "walk",
+  "wash",
+  "watch",
+  "work",
+]);
+
+const stemRelevanceWord = (word: string): string => {
+  if (word.length <= 4) return word;
+  if (word.endsWith("ies") && word.length > 5) return `${word.slice(0, -3)}y`;
+  if (word.endsWith("ing") && word.length > 5) {
+    const stem = word.slice(0, -3);
+    // running -> run, not runn. This is a deliberately light stemmer, not a
+    // general English morphological parser.
+    return stem.length > 3 && stem.at(-1) === stem.at(-2) ? stem.slice(0, -1) : stem;
+  }
+  if (word.endsWith("ed") && word.length > 4) return word.slice(0, -2);
+  if (word.endsWith("es") && word.length > 4) return word.slice(0, -2);
+  if (word.endsWith("s") && !word.endsWith("ss") && word.length > 4) return word.slice(0, -1);
+  return word;
+};
+
+const relevanceConcept = (word: string): string => {
+  const stem = stemRelevanceWord(word);
+  // Check both forms because suffix stripping intentionally does not attempt
+  // to normalize every irregular form (for example, damaged -> damag).
+  return RELEVANCE_ALIASES.get(stem) ?? RELEVANCE_ALIASES.get(word) ?? stem;
+};
+
 const distinctiveRelevanceWords = (value: string): ReadonlySet<string> =>
   new Set(
-    (value.normalize("NFKC").toLocaleLowerCase("en-US").match(RELEVANCE_WORD) ?? []).filter(
-      (word) => word.length >= 3 && !RELEVANCE_STOPWORDS.has(word) && !/^\d+$/u.test(word),
-    ),
+    (value.normalize("NFKC").toLocaleLowerCase("en-US").match(RELEVANCE_WORD) ?? [])
+      .filter(
+        (word) => word.length >= 3 && !RELEVANCE_STOPWORDS.has(word) && !/^\d+$/u.test(word),
+      )
+      .map(relevanceConcept),
   );
+
+const relevanceOverlap = (
+  expected: ReadonlySet<string>,
+  actual: ReadonlySet<string>,
+): number => {
+  let count = 0;
+  for (const concept of expected) if (actual.has(concept)) count += 1;
+  return count;
+};
+
+const relevanceActionConcepts = (value: string): ReadonlySet<string> =>
+  new Set([...distinctiveRelevanceWords(value)].filter((concept) => RELEVANCE_ACTIONS.has(concept)));
+
+const relevanceEntityConcepts = (value: string): ReadonlySet<string> =>
+  new Set([...distinctiveRelevanceWords(value)].filter((concept) => !RELEVANCE_ACTIONS.has(concept)));
 
 const GENERIC_VISUAL_PLACEHOLDER =
   /\b(?:a person|some person|someone|something|somewhere|generic (?:place|setting|scene)|public setting|ordinary scene|standing still|doing something|various objects?|general activity|unidentified subject)\b/iu;
 
 /**
- * This bounded local gate rejects generic stock placeholders and incomplete
- * scene descriptions without pretending lexical overlap is semantic
- * relevance. The provider contract carries semantic grounding; exact scene
- * IDs, phrase hashes, strict output shape and this specificity check make that
- * contract auditable without rejecting valid synonym-based descriptions.
+ * This bounded local gate rejects generic stock placeholders and descriptions
+ * about a different subject. It deliberately uses the expected phrase and
+ * containing sentence as the primary evidence, with adjacent phrases as a
+ * small continuity supplement. It is not intended to prove full semantic
+ * equivalence: the provider contract remains responsible for that. The local
+ * stem/alias overlap only prevents a plausible but unrelated image (for
+ * example, a fox beside an alpine lake for a bicycle-repair narration) from
+ * passing because it is detailed and photorealistic.
  */
 const sceneOutputIsRelevant = (
-  _expectedScene: PromptSceneInput,
+  expectedScene: PromptSceneInput,
   row: Record<string, JsonValue>,
 ): boolean => {
   const fields = [row.literal_subject, row.action, row.environment, row.prompt_core].filter(
@@ -798,7 +1008,71 @@ const sceneOutputIsRelevant = (
   const normalized = fields.join(" ").normalize("NFKC").replace(/\s+/gu, " ").trim();
   if (GENERIC_VISUAL_PLACEHOLDER.test(normalized)) return false;
   if (fields.slice(0, 3).some((value) => distinctiveRelevanceWords(value).size === 0)) return false;
-  return distinctiveRelevanceWords(row.prompt_core as string).size >= 6;
+  if (distinctiveRelevanceWords(row.prompt_core as string).size < 6) return false;
+
+  // Cap each source window before tokenizing. Stage 4 already bounds these
+  // values, but this keeps acceptance cost and behavior stable for legacy or
+  // adversarial rows crossing the adapter boundary.
+  const primaryContext = [expectedScene.phrase, expectedScene.sentenceContext]
+    .map((value) => value.slice(0, 2_000))
+    .join(" ");
+  const nearbyContext = [expectedScene.priorContext, expectedScene.nextContext]
+    .filter((value): value is string => value !== null)
+    .map((value) => value.slice(0, 800))
+    .join(" ");
+  const outputContent = fields.join(" ");
+
+  const primaryExpected = distinctiveRelevanceWords(primaryContext);
+  const nearbyExpected = distinctiveRelevanceWords(nearbyContext);
+  const outputConcepts = distinctiveRelevanceWords(outputContent);
+  const phraseConcepts = distinctiveRelevanceWords(expectedScene.phrase);
+  const phraseOverlap = relevanceOverlap(phraseConcepts, outputConcepts);
+  const phraseEntities = relevanceEntityConcepts(expectedScene.phrase);
+  const outputEntities = relevanceEntityConcepts(outputContent);
+  const phraseEntityOverlap = relevanceOverlap(phraseEntities, outputEntities);
+  const primaryOverlap = relevanceOverlap(primaryExpected, outputConcepts);
+  const nearbyOverlap = relevanceOverlap(nearbyExpected, outputConcepts);
+  const expectedActions = relevanceActionConcepts(primaryContext);
+  // The dedicated action field is the independently validated action signal.
+  // Do not let boilerplate in prompt_core (for example, "close documentary
+  // view") satisfy an expected narration action.
+  const outputActions = relevanceActionConcepts(row.action as string);
+  const actionOverlap = relevanceOverlap(expectedActions, outputActions);
+
+  // A phrase containing a concrete subject should carry both an entity/anchor
+  // and an action through to the image. Requiring two primary concepts allows
+  // a conservative synonym paraphrase (farmer -> agricultural, repair -> fix)
+  // while rejecting an image that merely repeats one incidental word. Action
+  // mismatch is especially important for scenes such as "repair a bicycle":
+  // a woman riding a bicycle is still the wrong visual evidence.
+  const phraseActions = relevanceActionConcepts(expectedScene.phrase);
+  const phraseIsAbstract = phraseEntities.size === 0 && phraseActions.size <= 1;
+  if (!phraseIsAbstract) {
+    if (phraseOverlap === 0) return false;
+    // At least one expected entity or action must survive. Keeping this to a
+    // single concept preserves valid paraphrases whose wording changes most
+    // nouns, while the primary-overlap and action checks below still reject a
+    // wholly unrelated detailed image.
+    if (phraseEntityOverlap === 0 && actionOverlap === 0) return false;
+    const requiredPrimaryOverlap = phraseEntities.size >= 2 || phraseActions.size > 0 ? 2 : 1;
+    if (
+      primaryOverlap < requiredPrimaryOverlap &&
+      !(primaryOverlap >= 1 && actionOverlap >= 1)
+    )
+      return false;
+    if (expectedActions.size > 0 && actionOverlap === 0) return false;
+    return primaryOverlap >= 1 || nearbyOverlap >= 1;
+  }
+
+  // Pronouns/abstract claims ("this changed everything") need the local
+  // sentence or an adjacent continuity window to supply the concrete subject.
+  // They therefore require two anchors from the expected windows, rather than
+  // accepting any detailed image that shares a single generic verb.
+  const expectedWindowSize = primaryExpected.size + nearbyExpected.size;
+  if (expectedWindowSize === 0) return false;
+  const contextualOverlap = primaryOverlap + nearbyOverlap;
+  return contextualOverlap >= (expectedWindowSize >= 3 ? 2 : 1) &&
+    (primaryOverlap >= 1 || nearbyOverlap >= 2 || phraseConcepts.size === 0);
 };
 
 const evaluateOutput = (
