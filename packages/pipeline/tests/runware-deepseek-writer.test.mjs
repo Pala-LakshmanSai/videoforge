@@ -82,9 +82,9 @@ function output(request, options = {}) {
   const requestPayload = payload(request);
   const rows = requestPayload.scenes.map((scene) => ({
     scene_id: scene.scene_id,
-    literal_subject: "Hands holding an irrigation valve",
+    literal_subject: "Hands",
     action: `demonstrating literal action ${options.marker ?? request.attemptIndex}`,
-    environment: "around an irrigation valve in a farm work area",
+    environment: "irrigation valve step",
     in_image_shot_role: scene.in_image_shot_role,
     lighting_context: "available practical daylight",
     continuity_tags: ["same_farmer", "dry_season"],
@@ -315,7 +315,8 @@ test("scene relevance accepts a concrete visual description", async () => {
       {
         ...base.scenes[0],
         phrase: "Farmers repair irrigation pumps",
-        sentenceContext: "Farmers repair irrigation pumps before sunrise.",
+        sentenceContext:
+          "Farmers repair a worn irrigation pump by hand beside an irrigation channel in a cultivated field before sunrise.",
       },
     ],
   };
@@ -373,7 +374,8 @@ test("scene relevance accepts entity and environment paraphrase with an action a
       {
         ...base.scenes[0],
         phrase: "A farmer repairs a broken irrigation pump",
-        sentenceContext: "A farmer repairs a broken irrigation pump before the next harvest.",
+        sentenceContext:
+          "An agricultural worker repairs a damaged water machine at a cultivated field before the next harvest.",
       },
     ],
   };
@@ -441,7 +443,8 @@ test("scene relevance uses adjacent narration to ground a pronoun-only phrase", 
         ...base.scenes[0],
         phrase: "She does it there",
         sentenceContext: "She does it there.",
-        priorContext: "A cyclist repairs a bicycle beside a public park service stand.",
+        priorContext:
+          "A cyclist adjusts a bicycle chain by hand beside a public park service stand.",
         nextContext: "The repaired bicycle is ready for the rider.",
       },
     ],
@@ -582,6 +585,51 @@ test("scene relevance rejects an ungrounded environment", async () => {
   assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
 });
 
+test("scene relevance rejects direct and prepositional red fox or alpine lake injections in every authoritative field", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle in a public park",
+        sentenceContext: "A woman repairs a bicycle in a public park.",
+      },
+    ],
+  };
+  const injections = [
+    ["literal_subject", "A woman and a red fox"],
+    ["literal_subject", "A woman beside an alpine lake"],
+    ["action", "repairing a bicycle and a red fox"],
+    ["action", "repairing a bicycle beside an alpine lake"],
+    ["environment", "a public park and a red fox"],
+    ["environment", "in a public park beside an alpine lake"],
+  ];
+  for (const [field, value] of injections) {
+    const setup = writer([
+      (request) =>
+        success(request, {
+          change: (rows) => {
+            rows[0].literal_subject = "A woman";
+            rows[0].action = "repairing a bicycle";
+            rows[0].environment = "in a public park";
+            rows[0][field] = value;
+            rows[0].prompt_core =
+              "A woman repairs a bicycle in a public park under daylight with visible tools and ordinary wear.";
+            return rows;
+          },
+        }),
+    ]);
+    await expectInvalid(() => setup.value.write(batch));
+    assert.equal(setup.transport.requests.length, 1, `${field}: ${value}`);
+    assert.equal(
+      setup.evidence[0].validationDiagnostic.reason,
+      "scene_relevance",
+      `${field}: ${value}`,
+    );
+  }
+});
+
 test("scene relevance rejects an un-narrated coordinated second action", async () => {
   const base = makeBatch(1);
   const batch = {
@@ -651,8 +699,9 @@ test("scene relevance allows an and-list of objects without a second action", as
     scenes: [
       {
         ...base.scenes[0],
-        phrase: "A mechanic repairs a bicycle",
-        sentenceContext: "A mechanic repairs a bicycle in a neighborhood workshop.",
+        phrase: "A mechanic repairs a bicycle and a chain",
+        sentenceContext:
+          "A mechanic repairs a bicycle and a chain by hand in a neighborhood workshop.",
       },
     ],
   };
@@ -769,7 +818,7 @@ test("scene relevance accepts narration-grounded inflected action anchors", asyn
         {
           ...base.scenes[0],
           phrase: sceneCase.phrase,
-          sentenceContext: `${sceneCase.phrase} ${sceneCase.environment} in a realistic everyday moment.`,
+          sentenceContext: `${sceneCase.phrase} ${sceneCase.action} ${sceneCase.environment} in a realistic everyday moment.`,
         },
       ],
     };
@@ -853,8 +902,8 @@ test("scene relevance ignores a raw prompt core mismatch when structured facts a
           // literal content from it, so raw prompt_core may be a natural
           // compatibility paraphrase without controlling the image action.
           rows[0].literal_subject = "A woman";
-          rows[0].action = "repairing a bicycle by hand";
-          rows[0].environment = "a public park work area";
+          rows[0].action = "repairing a bicycle";
+          rows[0].environment = "in a public park";
           rows[0].prompt_core =
             "A woman rides a bicycle through a public park path with trees in soft daylight.";
           return rows;
@@ -904,7 +953,8 @@ test("scene relevance accepts a purchase action anchor with a raw prompt core pa
       {
         ...base.scenes[0],
         phrase: "A woman purchases groceries",
-        sentenceContext: "A woman purchases groceries at a neighborhood market.",
+        sentenceContext:
+          "A female shopper purchases groceries by paying for food at a grocery checkout in a neighborhood market.",
       },
     ],
   };
@@ -934,7 +984,8 @@ test("scene relevance accepts a concrete contextual rendering of an abstract phr
       {
         ...base.scenes[0],
         phrase: "This changed everything",
-        sentenceContext: "The village irrigation pump began working again.",
+        sentenceContext:
+          "Village residents watch water flow again through a village irrigation channel from the village irrigation pump.",
       },
     ],
   };

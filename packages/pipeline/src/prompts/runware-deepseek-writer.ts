@@ -56,7 +56,7 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
   "Write prompt_core as concise compatibility prose describing the scene's subject, visible action, physical environment, lighting context, and useful continuity; it may use natural semantic paraphrase.",
   "Treat literal_subject, action, environment, and lighting_context as the authoritative structured scene facts. The downstream compiler derives the final literal image description from those fields; prompt_core is retained only for provider compatibility and bounded quality checks.",
-  "Ensure literal_subject and environment each preserve at least one concrete source anchor from exact_phrase, sentenceContext, nearby narration, or story context while allowing additional visible detail that does not contradict those anchors.",
+  "Ground every distinctive noun, adjective, entity, location, object, and action in literal_subject, action, and environment in the bounded source context (exact_phrase, scene_phrase_context, prior_scene_phrase, next_scene_phrase, or story_context); only grammar, glue, aliases, and simple morphology may be added.",
   "Begin action with the first distinctive action word from exact_phrase, allowing only simple grammatical or morphological inflection, then add concrete visible detail; do not prefix it with a subject or substitute a synonym in the action field.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, writing, handwritten or printed words, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
@@ -735,17 +735,35 @@ const RELEVANCE_STOPWORDS = new Set([
   "a",
   "an",
   "and",
+  "above",
+  "about",
+  "across",
+  "against",
+  "along",
+  "amid",
+  "among",
+  "around",
   "are",
   "as",
   "at",
   "be",
+  "behind",
+  "below",
+  "beneath",
+  "beside",
+  "between",
+  "beyond",
   "by",
+  "can",
+  "could",
   "for",
   "from",
   "has",
   "have",
+  "had",
   "he",
   "in",
+  "inside",
   "into",
   "is",
   "it",
@@ -753,16 +771,35 @@ const RELEVANCE_STOPWORDS = new Set([
   "me",
   "of",
   "on",
+  "onto",
   "or",
   "our",
+  "outside",
+  "over",
+  "past",
   "that",
   "the",
   "their",
   "this",
   "to",
+  "toward",
+  "under",
+  "underneath",
+  "until",
+  "upon",
+  "up",
+  "via",
   "was",
   "we",
   "with",
+  "within",
+  "without",
+  "will",
+  "would",
+  "should",
+  "may",
+  "might",
+  "must",
   "you",
   // These words are common narration glue or writer scaffolding. They must
   // not be allowed to make an otherwise unrelated image look grounded.
@@ -1064,6 +1101,23 @@ const sceneOutputIsRelevant = (
   const actionAnchorGrounded =
     actionAnchor !== null && relevanceSetContains(primaryActionAnchors, actionAnchor);
 
+  // The compiler treats these three fields as authoritative image facts. A
+  // single source anchor is not enough: an otherwise valid row could smuggle
+  // in an unrelated animal, object, action, or location alongside one
+  // narrated noun. Require every distinctive field concept to occur in the
+  // bounded narration/story window after the same alias and morphology
+  // normalization used by the relevance gate.
+  const everyConceptIsSourceGrounded = (value: string): boolean =>
+    [...distinctiveRelevanceWords(value)].every((concept) =>
+      relevanceSetContains(sourceExpected, concept),
+    );
+  if (
+    !everyConceptIsSourceGrounded(row.literal_subject as string) ||
+    !everyConceptIsSourceGrounded(row.action as string) ||
+    !everyConceptIsSourceGrounded(row.environment as string)
+  )
+    return false;
+
   // Subject and environment are compiler inputs, not free-form decoration.
   // Require each to retain at least one source concept, while aliases and
   // one-step morphology keep ordinary paraphrases valid.
@@ -1287,6 +1341,8 @@ const evaluateOutput = (
         "Prompt response scene shape is invalid.",
         ["scenes"],
       );
+    const valid = singleSceneValidation(batch, expectedScene, candidate);
+    if (!valid) continue;
     if (!sceneOutputIsRelevant(expectedScene, row, batch.storyContext.slice(0, 4_000)))
       return validationFail(
         "scene_quality",
@@ -1298,8 +1354,7 @@ const evaluateOutput = (
         "Prompt response scene content is not grounded in the exact narration fragment.",
         ["scenes", sceneId],
       );
-    const valid = singleSceneValidation(batch, expectedScene, candidate);
-    if (valid) accepted.set(sceneId, valid);
+    accepted.set(sceneId, valid);
   }
   if (accepted.size !== requestedSceneCount)
     return validationFail(
