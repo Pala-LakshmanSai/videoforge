@@ -6158,7 +6158,8 @@ async function projectDetail(
           WHERE revision.account_id = $1 AND revision.workspace_id = $2
             AND revision.project_id = $3
             AND revision.id = $4
-          GROUP BY plan.id, plan.canonical_document_hash, plan.plan_sequence
+          GROUP BY revision.account_id, revision.workspace_id, revision.id,
+                   plan.id, plan.canonical_document_hash, plan.plan_sequence
           ORDER BY plan.plan_sequence DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
