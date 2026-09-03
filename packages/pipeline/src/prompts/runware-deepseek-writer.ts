@@ -21,7 +21,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v14" as const;
+  "runware-deepseek-v4-flash-prompt-request-v15" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -58,7 +58,7 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Treat literal_subject, action, environment, and lighting_context as the authoritative structured scene facts. The downstream compiler derives the final literal image description from those fields; prompt_core is retained only for provider compatibility and bounded quality checks.",
   "Ensure literal_subject preserves a meaningful source anchor from exact_phrase, scene_phrase_context, prior_scene_phrase, next_scene_phrase, or story_context.",
   "Add only ordinary camera-capturable physical detail needed to make the anchored moment specific, believable, and relatable. Such detail may clarify a compatible real-world setting, object condition, or human interaction, but it must never change or contradict the source meaning, introduce a new story event, or act as a hardcoded visual style.",
-  "Keep the narrated action as the first verb in action, allowing natural leading adverbs and simple grammatical or morphological inflection, then add concrete visible detail; do not prefix it with a subject or substitute an unrelated action.",
+  "When the exact phrase contains a camera-capturable action, preserve that action semantically in action and prefer beginning the field with its verb after optional natural modifiers. When the phrase is static, stative, or abstract, describe the nearest visible state or interaction supported by the supplied context without inventing a new story event. Never substitute a contradictory action.",
   "When narration names a location, preserve that location in environment. When it names none, infer one ordinary compatible physical environment from the supplied context instead of inventing a new story event.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, writing, handwritten or printed words, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
@@ -163,7 +163,11 @@ export type RunwarePromptValidationReason =
   | "finish_reason"
   | "provider_model"
   | "duplicate_prompt_core"
-  | "scene_relevance";
+  | "scene_relevance"
+  | "scene_relevance_structure"
+  | "scene_relevance_subject"
+  | "scene_relevance_action_conflict"
+  | "scene_relevance_context";
 
 /**
  * Bounded diagnostics for a completed provider response. Counts are useful for
@@ -241,6 +245,10 @@ export function runwarePromptValidationDiagnostic(
     "provider_model",
     "duplicate_prompt_core",
     "scene_relevance",
+    "scene_relevance_structure",
+    "scene_relevance_subject",
+    "scene_relevance_action_conflict",
+    "scene_relevance_context",
   ];
   const count = (key: string): number | null => {
     const countValue = row[key];
@@ -866,6 +874,8 @@ const RELEVANCE_ALIAS_GROUPS = [
   ["agricultural", "agriculture", "cultivator", "farmer", "grower"],
   ["bicycle", "bike", "cycle"],
   ["broken", "damaged", "faulty", "malfunctioning"],
+  ["bubble", "fizz", "foam", "froth"],
+  ["buy", "pay", "purchase"],
   ["demonstrate", "display", "illustrate", "show"],
   ["fix", "maintain", "mend", "repair", "restore", "service"],
   ["machine", "motor", "pump", "equipment"],
@@ -887,10 +897,12 @@ const RELEVANCE_ALIAS_GROUPS = [
   ["move", "walk", "stroll", "climb"],
   ["open", "unlock", "uncover"],
   ["place", "put", "set"],
+  ["keep", "position", "remain", "rest", "sit", "stand", "stay", "store", "tuck"],
   ["remove", "detach", "uninstall"],
   ["ride", "rides", "riding"],
   ["rotate", "turn", "twist"],
   ["speak", "say", "talk"],
+  ["steal", "rob"],
   ["woman", "female"],
 ];
 
@@ -900,6 +912,90 @@ for (const group of RELEVANCE_ALIAS_GROUPS) {
   if (canonical === undefined) continue;
   for (const word of group) RELEVANCE_ALIASES.set(word, canonical);
 }
+
+/**
+ * Action equivalence is deliberately narrower than general lexical relevance.
+ * Related but visibly different actions such as fill/empty, plant/harvest,
+ * eat/drink, and sit/stand must never collapse into one concept.
+ */
+const ACTION_ALIAS_GROUPS = [
+  ["adjust", "align", "calibrate", "tune"],
+  ["assemble", "build", "construct", "install"],
+  ["bubble", "fizz", "foam", "froth"],
+  ["buy", "pay", "purchase"],
+  ["check", "examine", "inspect", "test"],
+  ["clean", "scrub", "wash"],
+  ["demonstrate", "display", "illustrate", "show"],
+  ["destroy", "smash", "wreck"],
+  ["drive", "steer"],
+  ["fix", "maintain", "mend", "repair", "restore", "service"],
+  ["observe", "gaze", "look", "notice", "see", "watch"],
+  ["open", "uncover", "unlock"],
+  ["place", "put", "set"],
+  ["remove", "detach", "uninstall"],
+  ["rotate", "turn", "twist"],
+  ["speak", "say", "talk"],
+  ["start", "begin", "commence"],
+  ["steal", "rob"],
+] as const;
+
+const DISTINCT_ACTION_WORDS = [
+  "arrive",
+  "bake",
+  "bring",
+  "carry",
+  "chop",
+  "climb",
+  "consume",
+  "cook",
+  "cut",
+  "drink",
+  "eat",
+  "empty",
+  "enter",
+  "fill",
+  "fry",
+  "go",
+  "grow",
+  "harvest",
+  "hold",
+  "keep",
+  "lift",
+  "move",
+  "operate",
+  "pick",
+  "plant",
+  "position",
+  "pour",
+  "prepare",
+  "reach",
+  "remain",
+  "rest",
+  "ride",
+  "run",
+  "sit",
+  "slice",
+  "stand",
+  "stay",
+  "store",
+  "stroll",
+  "take",
+  "travel",
+  "trim",
+  "tuck",
+  "use",
+  "walk",
+  "work",
+] as const;
+
+const ACTION_ALIASES = new Map<string, string>();
+for (const group of ACTION_ALIAS_GROUPS) {
+  const canonical = group[0];
+  for (const word of group) ACTION_ALIASES.set(word, canonical);
+}
+for (const word of DISTINCT_ACTION_WORDS) ACTION_ALIASES.set(word, word);
+
+const RECOGNIZED_ACTION_CONCEPTS = new Set(ACTION_ALIASES.values());
 
 const stemRelevanceWord = (word: string): string => {
   const restoreDroppedE = (stem: string): string =>
@@ -947,8 +1043,23 @@ const stemRelevanceWord = (word: string): string => {
 const relevanceConcept = (word: string): string => {
   const stem = stemRelevanceWord(word);
   // Check both forms because suffix stripping intentionally does not attempt
-  // to normalize every irregular form (for example, damaged -> damag).
-  return RELEVANCE_ALIASES.get(stem) ?? RELEVANCE_ALIASES.get(word) ?? stem;
+  // to normalize every irregular form (for example, damaged -> damag). A
+  // single restored silent-e maps driving -> drive and bubbling -> bubble
+  // before later nouns can be mistaken for the scene's action.
+  return (
+    RELEVANCE_ALIASES.get(stem) ??
+    RELEVANCE_ALIASES.get(word) ??
+    RELEVANCE_ALIASES.get(`${stem}e`) ??
+    stem
+  );
+};
+
+const actionConcept = (word: string): string | null => {
+  if (word.length < 3 || RELEVANCE_STOPWORDS.has(word) || /^\d+$/u.test(word)) return null;
+  const stem = stemRelevanceWord(word);
+  return (
+    ACTION_ALIASES.get(stem) ?? ACTION_ALIASES.get(word) ?? ACTION_ALIASES.get(`${stem}e`) ?? null
+  );
 };
 
 interface RelevanceTerm {
@@ -965,33 +1076,12 @@ const distinctiveRelevanceWords = (value: string): ReadonlySet<string> =>
   new Set(relevanceTerms(value).map(({ concept }) => concept));
 
 /**
- * Return the first action anchor without synonym aliases. General relevance
- * overlap may accept high-confidence paraphrases, but the structured action
- * field must start with the narrated action itself (with only morphology
- * normalized) so an unseen action cannot be swapped for a different one.
- */
-const firstActionAnchor = (value: string): string | null => {
-  const first = relevanceTerms(value)[0];
-  return first === undefined ? null : stemRelevanceWord(first.raw);
-};
-
-const exactRelevanceConcepts = (value: string): ReadonlySet<string> =>
-  new Set(relevanceTerms(value).map(({ raw }) => stemRelevanceWord(raw)));
-
-/**
  * Treat a single dropped silent-e as morphology, not as a new action. This
  * covers forms such as drives/driving and rides/riding without enumerating
  * verbs or allowing arbitrary semantic substitutions.
  */
 const relevanceConceptsEquivalent = (left: string, right: string): boolean =>
   left === right || (left.length > 2 && (left === `${right}e` || `${left}e` === right));
-
-const relevanceSetContains = (expected: ReadonlySet<string>, actual: string): boolean => {
-  for (const concept of expected) {
-    if (relevanceConceptsEquivalent(concept, actual)) return true;
-  }
-  return false;
-};
 
 const ACTION_CHAIN_CONNECTOR = /\b(?:while|then|and|but)\b/iu;
 
@@ -1018,18 +1108,98 @@ const narratedActionChain = (value: string, connector: ActionChain["connector"])
   return match?.[1]?.trim() || null;
 };
 
-const firstInflectedActionAnchor = (value: string): string | null => {
-  const terms = relevanceTerms(value);
-  const inflected = terms.find(
-    ({ raw }) =>
-      (raw.endsWith("ing") && raw.length > 4) ||
-      (raw.endsWith("ed") && raw.length > 4) ||
-      (raw.endsWith("s") &&
-        !raw.endsWith("ss") &&
-        raw.length > 4 &&
-        !/(?:sses|ches|shes|xes|zes|oes)$/u.test(raw)),
-  );
-  return inflected === undefined ? null : stemRelevanceWord(inflected.raw);
+const outputActionConcepts = (value: string): ReadonlySet<string> => {
+  for (const { raw } of relevanceTerms(value)) {
+    const concept = actionConcept(raw);
+    if (concept !== null) return new Set([concept]);
+  }
+  return new Set();
+};
+
+const narratedActionConcepts = (value: string): ReadonlySet<string> => {
+  // A recognized word in narration may be a noun or adjective ("household
+  // uses", "cleaning products", "fresh cut"). Each candidate must therefore
+  // carry its own finite, progressive, infinitive/modal, plural-subject, or
+  // imperative evidence before it can participate in a hard contradiction.
+  const normalized = value.normalize("NFKC").toLocaleLowerCase("en-US");
+  const words = normalized.match(RELEVANCE_WORD) ?? [];
+  const stativeWords = new Set([
+    "are",
+    "contain",
+    "contains",
+    "had",
+    "has",
+    "have",
+    "include",
+    "includes",
+    "is",
+    "mean",
+    "means",
+    "seem",
+    "seems",
+    "was",
+    "were",
+  ]);
+  const connectorWords = new Set(["and", "but", "then", "while"]);
+  const modalWords = new Set(["can", "could", "may", "might", "must", "should", "will", "would"]);
+  const beWords = new Set(["am", "are", "is", "was", "were"]);
+  const haveWords = new Set(["had", "has", "have"]);
+  const concepts = new Set<string>();
+  for (const [index, raw] of words.entries()) {
+    const concept = actionConcept(raw);
+    if (concept === null) continue;
+    const previous = words[index - 1];
+    const previousPrevious = words[index - 2];
+    const precededByAdverb = previous?.endsWith("ly") === true;
+    const controlWord = precededByAdverb ? previousPrevious : previous;
+    if (controlWord === "to" || (controlWord !== undefined && modalWords.has(controlWord))) {
+      concepts.add(concept);
+      continue;
+    }
+    if (raw.endsWith("ing") && controlWord !== undefined && beWords.has(controlWord)) {
+      concepts.add(concept);
+      continue;
+    }
+    if (raw.endsWith("ed") && controlWord !== undefined && haveWords.has(controlWord)) {
+      concepts.add(concept);
+      continue;
+    }
+    let nearestStativeIndex = -1;
+    let nearestConnectorIndex = -1;
+    for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+      const priorWord = words[cursor];
+      if (priorWord === undefined) continue;
+      if (nearestConnectorIndex < 0 && connectorWords.has(priorWord))
+        nearestConnectorIndex = cursor;
+      if (stativeWords.has(priorWord)) {
+        nearestStativeIndex = cursor;
+        break;
+      }
+    }
+    const locallyBlockedByStative =
+      nearestStativeIndex >= 0 && nearestStativeIndex > nearestConnectorIndex;
+    if (/(?:ed|ies|oes|s)$/u.test(raw) && !raw.endsWith("ss") && !locallyBlockedByStative) {
+      concepts.add(concept);
+      continue;
+    }
+    let previousContentWord: string | undefined;
+    for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+      const priorWord = words[cursor];
+      if (priorWord === undefined || RELEVANCE_STOPWORDS.has(priorWord)) continue;
+      previousContentWord = priorWord;
+      break;
+    }
+    if (
+      previousContentWord !== undefined &&
+      previousContentWord.endsWith("s") &&
+      !raw.endsWith("ing")
+    ) {
+      concepts.add(concept);
+      continue;
+    }
+    if (index === 0) concepts.add(concept);
+  }
+  return concepts;
 };
 
 const relevanceOverlap = (expected: ReadonlySet<string>, actual: ReadonlySet<string>): number => {
@@ -1037,9 +1207,6 @@ const relevanceOverlap = (expected: ReadonlySet<string>, actual: ReadonlySet<str
   for (const concept of expected) if (actual.has(concept)) count += 1;
   return count;
 };
-
-const relevanceEntityConcepts = (value: string): ReadonlySet<string> =>
-  distinctiveRelevanceWords(value);
 
 const GENERIC_VISUAL_PLACEHOLDER =
   /\b(?:a person|some person|someone|something|somewhere|generic (?:place|setting|scene)|public setting|ordinary scene|standing still|doing something|various objects?|general activity|unidentified subject)\b/iu;
@@ -1054,21 +1221,29 @@ const GENERIC_VISUAL_PLACEHOLDER =
  * generically against narration, so natural leading adverbs remain valid but
  * an unseen action cannot be swapped for a plausible unrelated one.
  */
-const sceneOutputIsRelevant = (
+type SceneRelevanceFailureReason =
+  | "scene_relevance_structure"
+  | "scene_relevance_subject"
+  | "scene_relevance_action_conflict"
+  | "scene_relevance_context";
+
+const sceneOutputRelevanceFailure = (
   expectedScene: PromptSceneInput,
   row: Record<string, JsonValue>,
   boundedStoryContext: string,
-): boolean => {
+): SceneRelevanceFailureReason | null => {
   const structuredFields = [row.literal_subject, row.action, row.environment].filter(
     (value): value is string => typeof value === "string",
   );
   const promptCore = row.prompt_core;
-  if (structuredFields.length !== 3 || typeof promptCore !== "string") return false;
+  if (structuredFields.length !== 3 || typeof promptCore !== "string")
+    return "scene_relevance_structure";
   const fields = [...structuredFields, promptCore];
   const normalized = fields.join(" ").normalize("NFKC").replace(/\s+/gu, " ").trim();
-  if (GENERIC_VISUAL_PLACEHOLDER.test(normalized)) return false;
-  if (structuredFields.some((value) => distinctiveRelevanceWords(value).size === 0)) return false;
-  if (distinctiveRelevanceWords(promptCore).size < 6) return false;
+  if (GENERIC_VISUAL_PLACEHOLDER.test(normalized)) return "scene_relevance_structure";
+  if (structuredFields.some((value) => distinctiveRelevanceWords(value).size === 0))
+    return "scene_relevance_structure";
+  if (distinctiveRelevanceWords(promptCore).size < 6) return "scene_relevance_structure";
 
   // Cap each source window before tokenizing. Stage 4 already bounds these
   // values, but this keeps acceptance cost and behavior stable for legacy or
@@ -1090,21 +1265,51 @@ const sceneOutputIsRelevant = (
   const sourceExpected = distinctiveRelevanceWords(sourceContext);
   const outputConcepts = distinctiveRelevanceWords(structuredContent);
   const phraseConcepts = distinctiveRelevanceWords(expectedScene.phrase);
+  const phraseEntityConcepts = [...phraseConcepts].filter(
+    (concept) => !RECOGNIZED_ACTION_CONCEPTS.has(concept),
+  );
+  const normalizedPhrase = expectedScene.phrase
+    .normalize("NFKC")
+    .toLocaleLowerCase("en-US")
+    .replace(/\s+/gu, " ")
+    .trim();
+  const normalizedSentence = expectedScene.sentenceContext
+    .normalize("NFKC")
+    .toLocaleLowerCase("en-US")
+    .replace(/\s+/gu, " ")
+    .trim();
+  const phraseStartsInsideContainingSentence = normalizedSentence.indexOf(normalizedPhrase) > 0;
+  const phraseIsDependentOpener =
+    /^(?:after|although|as|at|because|before|beneath|beside|despite|during|from|in|inside|near|on|outside|over|through|under|when|while|with|without)\b/iu.test(
+      normalizedPhrase,
+    );
+  const phraseNeedsStoryResolution =
+    /\b(?:he|her|hers|him|his|it|its|she|that|their|theirs|them|these|they|this|those|which|who|whom|whose)\b/iu.test(
+      expectedScene.phrase,
+    ) ||
+    phraseEntityConcepts.length === 0 ||
+    phraseStartsInsideContainingSentence ||
+    phraseIsDependentOpener;
   const phraseOverlap = relevanceOverlap(phraseConcepts, outputConcepts);
-  const phraseEntities = relevanceEntityConcepts(expectedScene.phrase);
-  const outputEntities = relevanceEntityConcepts(structuredContent);
-  const phraseEntityOverlap = relevanceOverlap(phraseEntities, outputEntities);
   const primaryOverlap = relevanceOverlap(primaryExpected, outputConcepts);
-  const primaryActionAnchors = exactRelevanceConcepts(primaryContext);
-  const firstActionConcept = firstActionAnchor(row.action as string);
-  const firstVerbShapedActionConcept = firstInflectedActionAnchor(row.action as string);
-  const literalSubjectConcepts = exactRelevanceConcepts(row.literal_subject as string);
-  const actionStartsWithSubject =
-    firstActionConcept !== null && relevanceSetContains(literalSubjectConcepts, firstActionConcept);
-  if (actionStartsWithSubject) return false;
-  const actionAnchor = firstVerbShapedActionConcept ?? firstActionConcept;
-  const actionAnchorGrounded =
-    actionAnchor !== null && relevanceSetContains(primaryActionAnchors, actionAnchor);
+  const phraseActions = narratedActionConcepts(expectedScene.phrase);
+  const narratedActions =
+    phraseActions.size > 0
+      ? phraseActions
+      : phraseNeedsStoryResolution
+        ? narratedActionConcepts(expectedScene.sentenceContext)
+        : new Set<string>();
+  const outputActions = outputActionConcepts(row.action as string);
+  if (
+    narratedActions.size > 0 &&
+    outputActions.size > 0 &&
+    ![...narratedActions].some((narratedAction) =>
+      [...outputActions].some((outputAction) =>
+        relevanceConceptsEquivalent(narratedAction, outputAction),
+      ),
+    )
+  )
+    return "scene_relevance_action_conflict";
 
   // The subject must remain narration-grounded. An ordinary compatible
   // environment necessarily may introduce concrete words absent from the
@@ -1113,21 +1318,39 @@ const sceneOutputIsRelevant = (
   // request contract governs location fidelity; action and whole-row checks
   // below still reject an unrelated event or subject.
   const subjectConcepts = distinctiveRelevanceWords(row.literal_subject as string);
-  const subjectHasSourceAnchor = [...subjectConcepts].some((concept) =>
-    relevanceSetContains(sourceExpected, concept),
+  const subjectEntityConcepts = [...subjectConcepts].filter(
+    (concept) => !RECOGNIZED_ACTION_CONCEPTS.has(concept),
   );
-  if (!subjectHasSourceAnchor) return false;
+  const groundingSubjectConcepts =
+    subjectEntityConcepts.length > 0 ? subjectEntityConcepts : [...subjectConcepts];
+  const subjectHasPhraseAnchor = groundingSubjectConcepts.some((concept) =>
+    phraseConcepts.has(concept),
+  );
+  const subjectHasSourceAnchor =
+    subjectHasPhraseAnchor ||
+    (phraseNeedsStoryResolution &&
+      groundingSubjectConcepts.some((concept) => sourceExpected.has(concept)));
+  if (!subjectHasSourceAnchor) return "scene_relevance_subject";
 
-  // A coordinated field may add several visible details, but it must not
-  // smuggle in an ungrounded second subject or location. This catches rows
-  // such as "a woman and a red fox" without maintaining an entity taxonomy.
-  const hasUnanchoredCoordinatedConcept = (value: string): boolean => {
-    if (!/\b(?:and|but)\b/iu.test(value)) return false;
-    return [...distinctiveRelevanceWords(value)].some(
-      (concept) => !relevanceSetContains(sourceExpected, concept),
+  // A coordinated literal subject may include an ordinary visible prop, but
+  // an isolated ungrounded tail is still evidence of an invented second
+  // subject. Corroboration must come from the authoritative structured action
+  // or environment rather than prompt_core, which naturally repeats subjects.
+  const hasUnsupportedCoordinatedSubjectTail = (value: string): boolean => {
+    const tail = value.match(/\b(?:and|but)\b([\s\S]*)/iu)?.[1]?.trim();
+    if (!tail) return false;
+    const coreTail = tail.split(/\b(?:at|beside|by|holding|in|near|on|over|under|with)\b/iu, 1)[0];
+    const tailConcepts = distinctiveRelevanceWords(coreTail ?? tail);
+    if (tailConcepts.size === 0) return false;
+    const corroboratingConcepts = distinctiveRelevanceWords(
+      `${row.action as string} ${row.environment as string}`,
+    );
+    return ![...tailConcepts].some(
+      (concept) => sourceExpected.has(concept) || corroboratingConcepts.has(concept),
     );
   };
-  if (hasUnanchoredCoordinatedConcept(row.literal_subject as string)) return false;
+  if (hasUnsupportedCoordinatedSubjectTail(row.literal_subject as string))
+    return "scene_relevance_subject";
 
   // One generated scene must describe one capturable action. If the provider
   // adds a while/then/and/but clause with an action tail, narration must contain
@@ -1135,43 +1358,35 @@ const sceneOutputIsRelevant = (
   // those actions aligned. Bare and-lists of objects remain valid details.
   const outputChain = actionChain(row.action as string);
   if (outputChain !== null && ACTION_CHAIN_CONNECTOR.test(row.action as string)) {
-    const outputTailAnchor = firstInflectedActionAnchor(outputChain.tail);
-    const requiresActionChainMatch =
-      outputChain.connector === "while" ||
-      outputChain.connector === "then" ||
-      outputTailAnchor !== null;
-    if (requiresActionChainMatch) {
+    const outputTailActions = outputActionConcepts(outputChain.tail);
+    if (outputTailActions.size > 0) {
       const narratedTail = narratedActionChain(primaryContext, outputChain.connector);
-      if (narratedTail === null) return false;
-      const narratedTailAnchor = firstInflectedActionAnchor(narratedTail);
+      if (narratedTail === null) return "scene_relevance_action_conflict";
+      const narratedTailActions = narratedActionConcepts(narratedTail);
+      if (narratedTailActions.size === 0) return "scene_relevance_action_conflict";
       if (
-        outputTailAnchor !== null &&
-        narratedTailAnchor !== null &&
-        !relevanceConceptsEquivalent(outputTailAnchor, narratedTailAnchor)
+        ![...narratedTailActions].some((narratedTailAction) =>
+          [...outputTailActions].some((outputTailAction) =>
+            relevanceConceptsEquivalent(outputTailAction, narratedTailAction),
+          ),
+        )
       )
-        return false;
+        return "scene_relevance_action_conflict";
     }
   }
 
-  // A phrase containing a concrete subject should carry at least one
-  // narration anchor through the structured fields. The first action concept
-  // is checked separately so a shared noun cannot turn an unseen verb such as
-  // "purchase" into "steal" or "ride".
-  const phraseIsAbstract = phraseEntities.size === 0;
-  if (!phraseIsAbstract) {
-    if (phraseOverlap === 0) return false;
-    if (phraseEntityOverlap === 0 || !actionAnchorGrounded) return false;
-    // A semantically translated narration may share only one lexical anchor
-    // with the structured fields. The action anchor is the stronger semantic
-    // guarantee; the remaining overlap blocks a fully unrelated detailed row.
-    if (primaryOverlap < 1) return false;
-    return true;
-  }
+  // Exact-phrase grounding stays primary, but lexical matching is used only as
+  // coarse evidence. It must not pretend to prove semantic equivalence for a
+  // stative claim or paraphrased visible action.
+  if (
+    phraseConcepts.size > 0 &&
+    phraseOverlap === 0 &&
+    (!phraseNeedsStoryResolution || primaryOverlap < 2)
+  )
+    return "scene_relevance_context";
 
-  // Pronouns/abstract claims ("this changed everything") need the local
-  // sentence or an adjacent continuity window to supply the concrete subject.
-  // They therefore require two anchors from the expected windows, rather than
-  // accepting any detailed image that shares a single generic verb.
+  // Pronoun-only or otherwise token-light phrases need the containing sentence
+  // or adjacent continuity window to carry at least two useful anchors.
   const expectedWindowSize = primaryExpected.size + nearbyExpected.size;
   if (expectedWindowSize === 0) {
     // Some legacy Stage 4 fixtures contain only scaffolding words (for
@@ -1181,20 +1396,17 @@ const sceneOutputIsRelevant = (
     // pass a bicycle-repair narration because that narration has anchors.
     const phrase = expectedScene.phrase.normalize("NFKC").replace(/\s+/gu, " ").trim();
     const output = structuredContent.normalize("NFKC").replace(/\s+/gu, " ").trim();
-    return (
-      phrase.length > 0 &&
+    return phrase.length > 0 &&
       output.toLocaleLowerCase("en-US").includes(phrase.toLocaleLowerCase("en-US"))
-    );
+      ? null
+      : "scene_relevance_context";
   }
   const contextualOverlap =
     relevanceOverlap(primaryExpected, outputConcepts) +
     relevanceOverlap(nearbyExpected, outputConcepts);
-  return (
-    contextualOverlap >= (expectedWindowSize >= 3 ? 2 : 1) &&
-    (primaryOverlap >= 1 ||
-      relevanceOverlap(nearbyExpected, outputConcepts) >= 2 ||
-      phraseConcepts.size === 0)
-  );
+  if (phraseConcepts.size === 0 && contextualOverlap < (expectedWindowSize >= 3 ? 2 : 1))
+    return "scene_relevance_context";
+  return null;
 };
 
 const evaluateOutput = (
@@ -1330,10 +1542,15 @@ const evaluateOutput = (
       );
     const valid = singleSceneValidation(batch, expectedScene, candidate);
     if (!valid) continue;
-    if (!sceneOutputIsRelevant(expectedScene, row, batch.storyContext.slice(0, 4_000)))
+    const relevanceFailure = sceneOutputRelevanceFailure(
+      expectedScene,
+      row,
+      batch.storyContext.slice(0, 4_000),
+    );
+    if (relevanceFailure !== null)
       return validationFail(
         "scene_quality",
-        "scene_relevance",
+        relevanceFailure,
         requestedSceneCount,
         responseScenes.length,
         accepted.size,

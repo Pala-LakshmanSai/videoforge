@@ -273,15 +273,13 @@ test("writer contract requires relatable physical evidence and applies style as 
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
     /downstream compiler derives the final literal image description/u,
   );
-  assert.match(
-    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /Keep the narrated action as the first verb in action, allowing natural leading adverbs/u,
-  );
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /preserve that action semantically in action/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /static, stative, or abstract/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Never substitute a contradictory action/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
     /When narration names a location, preserve that location in environment/u,
   );
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /do not prefix it with a subject/u);
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /at most 12 unique continuity_tags/u);
   assert.doesNotMatch(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Copy each required_literal_anchor/u);
 });
@@ -383,7 +381,7 @@ test("scene relevance rejects one incidental generic overlap without retry", asy
   ]);
   await expectInvalid(() => setup.value.write(batch));
   assert.equal(setup.transport.requests.length, 1);
-  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_structure");
 });
 
 test("scene relevance accepts entity and environment paraphrase with an action anchor", async () => {
@@ -446,7 +444,7 @@ test("scene relevance rejects a detailed but unrelated fox and alpine lake", asy
   assert.equal(setup.transport.requests.length, 1);
   assert.deepEqual(setup.evidence[0].validationDiagnostic, {
     category: "scene_quality",
-    reason: "scene_relevance",
+    reason: "scene_relevance_action_conflict",
     requestedSceneCount: 1,
     returnedSceneCount: 1,
     locallyValidSceneCount: 0,
@@ -512,10 +510,10 @@ test("scene relevance rejects matching entities when the narrated action is wron
       }),
   ]);
   await expectInvalid(() => setup.value.write(batch));
-  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_action_conflict");
 });
 
-test("scene relevance rejects an action field prefixed by its subject", async () => {
+test("scene relevance accepts a matching action field prefixed by its subject", async () => {
   const base = makeBatch(1);
   const batch = {
     ...base,
@@ -532,17 +530,17 @@ test("scene relevance rejects an action field prefixed by its subject", async ()
       success(request, {
         change: (rows) => {
           rows[0].literal_subject = "A woman with a bicycle";
-          rows[0].action = "A woman rides through the park";
-          rows[0].environment = "a public park path with trees";
+          rows[0].action = "A woman repairing the bicycle by hand";
+          rows[0].environment = "a public park work area with trees";
           rows[0].prompt_core =
-            "A woman rides through a public park path with trees in soft daylight and ordinary wear.";
+            "A woman repairs a bicycle in a public park work area with trees, soft daylight, and ordinary wear.";
           return rows;
         },
       }),
   ]);
-  await expectInvalid(() => setup.value.write(batch));
+  const result = await setup.value.write(batch);
   assert.equal(setup.transport.requests.length, 1);
-  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+  assert.equal(result.scenes.length, 1);
 });
 
 test("scene relevance rejects an ungrounded second subject", async () => {
@@ -572,7 +570,7 @@ test("scene relevance rejects an ungrounded second subject", async () => {
   ]);
   await expectInvalid(() => setup.value.write(batch));
   assert.equal(setup.transport.requests.length, 1);
-  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_subject");
 });
 
 test("scene relevance accepts anchored ordinary physical detail that narration leaves implicit", async () => {
@@ -721,7 +719,11 @@ test("scene relevance keeps gross semantic corruptions outside the permissive bo
     ]);
     await expectInvalid(() => setup.value.write(batch));
     assert.equal(setup.transport.requests.length, 1, sceneCase.name);
-    assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance", sceneCase.name);
+    const expectedReason =
+      sceneCase.name === "invented second subject"
+        ? "scene_relevance_subject"
+        : "scene_relevance_action_conflict";
+    assert.equal(setup.evidence[0].validationDiagnostic.reason, expectedReason, sceneCase.name);
   }
 });
 
@@ -752,7 +754,7 @@ test("scene relevance rejects an un-narrated coordinated second action", async (
   ]);
   await expectInvalid(() => setup.value.write(batch));
   assert.equal(setup.transport.requests.length, 1);
-  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_action_conflict");
 });
 
 test("scene relevance rejects un-narrated and/but action tails", async () => {
@@ -783,7 +785,11 @@ test("scene relevance rejects un-narrated and/but action tails", async () => {
     ]);
     await expectInvalid(() => setup.value.write(batch));
     assert.equal(setup.transport.requests.length, 1, connector);
-    assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance", connector);
+    assert.equal(
+      setup.evidence[0].validationDiagnostic.reason,
+      "scene_relevance_action_conflict",
+      connector,
+    );
   }
 });
 
@@ -1037,7 +1043,7 @@ test("scene relevance rejects an unseen stealing action when nouns are shared", 
   ]);
   await expectInvalid(() => setup.value.write(batch));
   assert.equal(setup.transport.requests.length, 1);
-  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_action_conflict");
 });
 
 test("scene relevance accepts a purchase action anchor with a raw prompt core paraphrase", async () => {
@@ -1099,6 +1105,404 @@ test("scene relevance accepts a concrete contextual rendering of an abstract phr
   ]);
   const result = await setup.value.write(batch);
   assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance treats a cleaning-product modifier as stative, not as a cleaning action", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    storyContext:
+      "A household explainer about a brown hydrogen peroxide bottle stored in a medicine cabinet.",
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "Hydrogen peroxide is a common household cleaning product",
+        sentenceContext: "Hydrogen peroxide is a common household cleaning product.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A brown hydrogen peroxide bottle";
+          rows[0].action = "resting unopened on a medicine cabinet shelf";
+          rows[0].environment = "inside a lived-in home medicine cabinet";
+          rows[0].prompt_core =
+            "A brown hydrogen peroxide bottle rests unopened on a worn shelf inside a lived-in home medicine cabinet.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance keeps plural household uses and minor cuts out of action inference", async () => {
+  for (const phrase of [
+    "Hydrogen peroxide has many household uses",
+    "Hydrogen peroxide is a cleaning product for minor cuts",
+  ]) {
+    const base = makeBatch(1);
+    const batch = {
+      ...base,
+      storyContext:
+        "A household explainer about a brown hydrogen peroxide bottle stored in a medicine cabinet.",
+      scenes: [{ ...base.scenes[0], phrase, sentenceContext: `${phrase}.` }],
+    };
+    const setup = writer([
+      (request) =>
+        success(request, {
+          change: (rows) => {
+            rows[0].literal_subject = "A brown hydrogen peroxide bottle";
+            rows[0].action = "resting unopened on a medicine cabinet shelf";
+            rows[0].environment = "inside a lived-in home medicine cabinet";
+            rows[0].prompt_core =
+              "A brown hydrogen peroxide bottle rests unopened on a worn shelf inside a lived-in home medicine cabinet.";
+            return rows;
+          },
+        }),
+    ]);
+    const result = await setup.value.write(batch);
+    assert.equal(result.scenes.length, 1, phrase);
+  }
+});
+
+test("scene relevance preserves real actions after a local stative clause and in present perfect", async () => {
+  for (const phrase of [
+    "A mechanic has tools and repairs a bicycle",
+    "A mechanic has repaired a bicycle",
+  ]) {
+    const base = makeBatch(1);
+    const batch = {
+      ...base,
+      scenes: [{ ...base.scenes[0], phrase, sentenceContext: `${phrase}.` }],
+    };
+    const setup = writer([
+      (request) =>
+        success(request, {
+          change: (rows) => {
+            rows[0].literal_subject = "A mechanic with a bicycle";
+            rows[0].action = "riding the bicycle through the workshop";
+            rows[0].environment = "inside a neighborhood bicycle workshop";
+            rows[0].prompt_core =
+              "A mechanic rides a bicycle through a neighborhood workshop in practical daylight with visible tools.";
+            return rows;
+          },
+        }),
+    ]);
+    await expectInvalid(() => setup.value.write(batch));
+    assert.equal(
+      setup.evidence[0].validationDiagnostic.reason,
+      "scene_relevance_action_conflict",
+      phrase,
+    );
+  }
+});
+
+test("scene relevance finds the real action after a noun homonym", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A fresh cut starts to bubble when hydrogen peroxide touches it",
+        sentenceContext:
+          "A fresh cut starts to bubble when hydrogen peroxide touches it on a person's hand.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A hand with a small fresh cut";
+          rows[0].action = "visibly bubbling where hydrogen peroxide touches the cut";
+          rows[0].environment = "above a lived-in home bathroom counter";
+          rows[0].prompt_core =
+            "A small fresh cut on a hand visibly bubbles above a lived-in bathroom counter in practical daylight.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance keeps visibly different actions distinct", async () => {
+  const cases = [
+    ["A worker fills a container", "A worker", "emptying the container"],
+    ["A farmer plants seeds", "A farmer", "harvesting the seeds"],
+    ["A child eats breakfast", "A child", "drinking breakfast"],
+    ["A visitor stands beside a window", "A visitor", "sitting beside the window"],
+  ];
+  for (const [phrase, literalSubject, action] of cases) {
+    const base = makeBatch(1);
+    const batch = {
+      ...base,
+      scenes: [{ ...base.scenes[0], phrase, sentenceContext: `${phrase}.` }],
+    };
+    const setup = writer([
+      (request) =>
+        success(request, {
+          change: (rows) => {
+            rows[0].literal_subject = literalSubject;
+            rows[0].action = action;
+            rows[0].environment = "inside an ordinary lived-in work area";
+            rows[0].prompt_core = `${literalSubject} ${action} inside an ordinary lived-in work area with practical daylight and visible wear.`;
+            return rows;
+          },
+        }),
+    ]);
+    await expectInvalid(() => setup.value.write(batch));
+    assert.equal(
+      setup.evidence[0].validationDiagnostic.reason,
+      "scene_relevance_action_conflict",
+      phrase,
+    );
+  }
+});
+
+test("scene relevance does not treat a shared action word as subject grounding", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle",
+        sentenceContext: "A woman repairs a bicycle in a public park.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A repair tool";
+          rows[0].action = "repairing a damaged roof";
+          rows[0].environment = "at an urban construction site";
+          rows[0].prompt_core =
+            "A repair tool lies beside a damaged roof at an urban construction site in practical daylight.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_subject");
+});
+
+test("scene relevance uses the output predicate, not a later action-shaped noun", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle",
+        sentenceContext: "A woman repairs a bicycle beside a neighborhood repair shop.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A woman with a bicycle";
+          rows[0].action = "riding the bicycle toward a repair shop";
+          rows[0].environment = "on a neighborhood street";
+          rows[0].prompt_core =
+            "A woman rides a bicycle toward a neighborhood repair shop on an ordinary street in practical daylight.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_action_conflict");
+});
+
+test("scene relevance does not substitute a different clause from the containing sentence", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A brown bottle remains on the shelf",
+        sentenceContext:
+          "A brown bottle remains on the shelf while a woman repairs a bicycle beside it.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A woman";
+          rows[0].action = "repairing a bicycle by hand";
+          rows[0].environment = "beside a medicine cabinet shelf";
+          rows[0].prompt_core =
+            "A woman repairs a bicycle beside a medicine cabinet shelf in practical daylight with visible tools.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_action_conflict");
+});
+
+test("scene relevance lets a lowercase split fragment resolve its subject from the containing sentence", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "back of the medicine cabinet just waiting for a scrape",
+        sentenceContext:
+          "Most of us have a bottle of hydrogen peroxide tucked into the back of the medicine cabinet just waiting for a scrape.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A brown hydrogen peroxide bottle";
+          rows[0].action = "resting unopened at the back of the cabinet";
+          rows[0].environment = "inside a lived-in home medicine cabinet";
+          rows[0].prompt_core =
+            "A brown hydrogen peroxide bottle rests unopened at the back of a lived-in home medicine cabinet shelf.";
+          return rows;
+        },
+      }),
+  ]);
+  let result;
+  try {
+    result = await setup.value.write(batch);
+  } catch (error) {
+    throw new Error(JSON.stringify(setup.evidence[0]?.validationDiagnostic), { cause: error });
+  }
+  assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance does not treat a lowercase sentence start as a split fragment", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "the brown bottle near the shelf",
+        sentenceContext:
+          "The brown bottle near the shelf remains still while a woman repairs a bicycle.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A woman with a bicycle";
+          rows[0].action = "repairing the bicycle by hand";
+          rows[0].environment = "beside a household shelf";
+          rows[0].prompt_core =
+            "A woman repairs a bicycle beside a household shelf in practical daylight with visible tools and ordinary wear.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_subject");
+});
+
+test("scene relevance resolves a sentence-opening dependent fragment", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "After years of daily use",
+        sentenceContext:
+          "After years of daily use, the brown hydrogen peroxide bottle is tucked into the medicine cabinet.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A worn brown hydrogen peroxide bottle";
+          rows[0].action = "resting at the back of a medicine cabinet";
+          rows[0].environment = "inside a lived-in home medicine cabinet";
+          rows[0].prompt_core =
+            "A worn brown hydrogen peroxide bottle rests at the back of a lived-in home medicine cabinet shelf.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance rejects an action hidden in an un-narrated coordinated tail", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle and its chain",
+        sentenceContext: "A woman repairs a bicycle and its chain in a public park.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A woman";
+          rows[0].action = "repairing a bicycle and stealing its chain";
+          rows[0].environment = "inside a public park work area";
+          rows[0].prompt_core =
+            "A woman repairs a bicycle inside a public park work area with visible tools and ordinary wear.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_action_conflict");
+});
+
+test("scene relevance rejects a destructive action absent from repair narration", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A mechanic repairs a bicycle",
+        sentenceContext: "A mechanic repairs a bicycle inside a neighborhood workshop.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A mechanic with a bicycle";
+          rows[0].action = "smashing the bicycle frame";
+          rows[0].environment = "inside a neighborhood workshop";
+          rows[0].prompt_core =
+            "A mechanic smashes a bicycle frame inside a neighborhood workshop with visible tools and ordinary wear.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_action_conflict");
 });
 
 test("rejects duplicate normalized prompt cores across scenes", async () => {
