@@ -1,5 +1,5 @@
 import { PipelineDomainError } from "../errors.js";
-import { buildPromptBatch } from "./batch.js";
+import { buildPromptBatch, MAX_PROMPT_LOCAL_CONTEXT_CHARS } from "./batch.js";
 import {
   buildRunwarePromptRequest,
   estimatePromptWriterOutputTokens,
@@ -159,10 +159,21 @@ const candidateFor = (
   maxInputTokens: number,
   maxOutputTokens: number,
 ): Candidate | null => {
+  const candidateScenes = scenes.slice(start, end);
+  const localContextCharacters = candidateScenes.reduce(
+    (total, scene) =>
+      total +
+      scene.phrase.length +
+      scene.sentenceContext.length +
+      (scene.priorContext?.length ?? 0) +
+      (scene.nextContext?.length ?? 0),
+    0,
+  );
+  if (localContextCharacters > MAX_PROMPT_LOCAL_CONTEXT_CHARS) return null;
   const batch = buildPromptBatch({
     ...global,
     batchId: batchIdFor(batchIdPrefix, ordinal),
-    scenes: scenes.slice(start, end),
+    scenes: candidateScenes,
   });
   const estimatedOutputTokens = estimatePromptWriterOutputTokens(batch.batchId, batch.scenes);
   const requestedOutputTokens = Math.max(
@@ -224,8 +235,67 @@ export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchP
   const global = normalizedGlobalInput(input, firstBatchId);
   const scenes = normalizedScenes(input, global);
   const entries: PromptBatchPlanEntry[] = [];
+  const largestCandidateCache = new Map<string, Candidate | null>();
+  const minimumBatchCountCache = new Map<string, number>();
+
+  const largestCandidateFrom = (start: number, ordinal: number): Candidate | null => {
+    const key = `${start}:${ordinal}`;
+    const cached = largestCandidateCache.get(key);
+    if (cached !== undefined) return cached;
+    let largest: Candidate | null = null;
+    for (let end = start + 1; end <= scenes.length; end += 1) {
+      const candidate = candidateFor(
+        global,
+        scenes,
+        start,
+        end,
+        ordinal,
+        input.batchIdPrefix,
+        maxInputTokens,
+        maxOutputTokens,
+      );
+      if (!candidate) break;
+      largest = candidate;
+    }
+    largestCandidateCache.set(key, largest);
+    return largest;
+  };
+
+  // Greedy largest-fitting suffixes give the minimum request count because
+  // every candidate is a contiguous prefix of the same remaining scene list.
+  // Cache this count so a natural-boundary probe cannot accidentally add a
+  // request merely because it moved a cut a few scenes earlier.
+  const minimumBatchCountFrom = (start: number, ordinal: number): number => {
+    const key = `${start}:${ordinal}`;
+    const cached = minimumBatchCountCache.get(key);
+    if (cached !== undefined) return cached;
+    const initialKey = key;
+    let cursor = start;
+    let requestOrdinal = ordinal;
+    let count = 0;
+    while (cursor < scenes.length) {
+      const suffixKey = `${cursor}:${requestOrdinal}`;
+      const suffixCached = minimumBatchCountCache.get(suffixKey);
+      if (suffixCached !== undefined) {
+        count += suffixCached;
+        break;
+      }
+      const largest = largestCandidateFrom(cursor, requestOrdinal);
+      if (!largest) {
+        count = Number.POSITIVE_INFINITY;
+        break;
+      }
+      count += 1;
+      cursor = largest.end;
+      requestOrdinal += 1;
+    }
+    minimumBatchCountCache.set(initialKey, count);
+    return count;
+  };
+
   let start = 0;
   while (start < scenes.length) {
+    const ordinal = entries.length + 1;
     const candidates: Candidate[] = [];
     for (let end = start + 1; end <= scenes.length; end += 1) {
       const candidate = candidateFor(
@@ -259,11 +329,13 @@ export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchP
       start + Math.ceil(remainingSceneCount / minimumRemainingBatches),
     );
     let chosen: Candidate = candidates[targetEnd - start - 1] ?? largest;
+    const minimumRemainingBatchCount = 1 + minimumBatchCountFrom(largest.end, ordinal + 1);
     const naturalCandidates = candidates.filter(
       (candidate) =>
         candidate.end < scenes.length &&
         sentenceBoundary(scenes[candidate.end - 1]!, scenes[candidate.end]!) &&
-        Math.abs(candidate.end - targetEnd) <= lookback,
+        Math.abs(candidate.end - targetEnd) <= lookback &&
+        1 + minimumBatchCountFrom(candidate.end, ordinal + 1) === minimumRemainingBatchCount,
     );
     naturalCandidates.sort(
       (left: Candidate, right: Candidate) =>
@@ -272,7 +344,6 @@ export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchP
     const preferredNatural = naturalCandidates[0];
     if (preferredNatural && scenes.length - preferredNatural.end !== 1) chosen = preferredNatural;
 
-    const ordinal = entries.length + 1;
     const batch = chosen.batch;
     const entry = Object.freeze({
       ordinal,

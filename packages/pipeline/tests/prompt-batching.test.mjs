@@ -132,6 +132,30 @@ test("planner retains balanced contiguous remainder when a boundary would leave 
   );
 });
 
+test("planner treats the aggregate local-context ceiling as a batch boundary", () => {
+  const verboseScenes = scenes(80).map((scene) => ({
+    ...scene,
+    sentenceContext: `${scene.sentenceContext} ${"visible ordinary evidence ".repeat(55)}`,
+  }));
+  const result = planPromptBatches({ ...planningInput(80), scenes: verboseScenes });
+  assert.ok(result.batchCount > 1);
+  assert.deepEqual(
+    result.batches.flatMap((entry) => entry.sceneIds),
+    verboseScenes.map((scene) => scene.sceneId),
+  );
+});
+
+test("planner never trades a minimum request count for a nearby sentence boundary", () => {
+  const source = scenes(200).map((scene, index) => ({
+    ...scene,
+    phrase: `Action ${index}${index === 95 || index === 195 ? "." : ""}`,
+    sentenceContext: `sentence ${index < 96 ? 0 : index < 196 ? 1 : 2}`,
+  }));
+  const result = planPromptBatches({ ...planningInput(200), scenes: source });
+  assert.equal(result.batchCount, 2);
+  assert.ok(result.batches.every((entry) => entry.sceneIds.length > 1));
+});
+
 test("request maxTokens includes fixed and per-scene headroom and allows short batches", () => {
   const batch = buildPromptBatch({
     batchId: "batch_short",
