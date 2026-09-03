@@ -4,28 +4,31 @@
 
 ### Current new-chat launch point — 2026-09-03
 
-- Source `efd153ab6f2f595b3d754bc8b0c51d912bd42ac0` was deployed exactly once to staging Worker
-  `59b54e08-bfe0-4f77-beb6-18040a5354b4` with rendered-config SHA-256
-  `685e9463e5efa904fe6ff6668ef4b4a2d5cd15a6cf9655c32d72a8551513184f`. Migrations `0069`
+- Source `b2261a4a08096d177d01a037896ac6debb738478` was deployed exactly once to staging Worker
+  `9ca01102-ec0b-4899-b7af-a46cc91d7cbd` with rendered-config SHA-256
+  `e7a10ebb28dea9633d6e8947901d3dca8c21f2ab774e5d7cf1e3d09de5ab69b7`. Migrations `0069`
   through `0073` and the exact runtime grant set were already applied and were not replayed.
 - Computer Use and signed-in real Chrome created exactly one fresh project
-  `58c66338-43d2-42e5-ad46-37a426f1b5f6` after `5,187,067,904` free bytes passed the required
-  `2,152,579,950`-byte preflight. Stages 1–4 completed; Stage 4 saved 36 segments, 31 image scenes,
-  and 10 avatar segments. Stage 5 durably planned two adaptive batches, sent only the first 16-scene
-  DeepSeek V4 Flash request, received all 16 rows, then rejected all 16 locally as
-  `scene_relevance`. It stopped terminal with zero accepted or persisted prompts, so quality,
-  incremental durability, request-count equality, and the populated viewer remain unqualified.
+  `e80f6bf2-c3f4-43b7-ac28-cd88faa5b135` after `5,688,627,200` free bytes passed the required
+  `2,152,579,950`-byte preflight. Stages 1–4 completed; Stage 4 saved 38 segments, 33 image scenes,
+  and 10 avatar segments. Stage 5 durably planned two adaptive batches, sent only the first 17-scene
+  DeepSeek V4 Flash request, received all 17 requested rows, then stopped when the first evaluated
+  row failed `scene_relevance`. Because evaluation stops at the first invalid row, the diagnostic
+  does not prove the other 16 rows invalid. It stopped terminal with zero accepted or persisted
+  prompts, so quality, incremental durability, request-count equality, and the populated viewer
+  remain unqualified.
 - The bounded Cloudflare diagnostic records `HOSTED_PROMPT_OUTPUT_INVALID`, `scene_quality` /
-  `scene_relevance`, requested = returned = 16, locally valid = 0, unresolved = 16, known cost
-  871 micro-USD, and `provider_may_have_charged=false` (the completed cost is known rather than
+  `scene_relevance`, requested = returned = 17, locally valid = 0, unresolved = 17, known cost
+  931 micro-USD, and `provider_may_have_charged=false` (the completed cost is known rather than
   ambiguous). No second batch, retry, continuation, provider retrieval, GPU, RunPod, production, or
-  volume mutation occurred. Preserve `58c66338…` and every earlier stopped project as frozen
-  evidence; none may be retried, continued, or retrieved.
-- Root cause is source regression `8c82c0a6`: the local gate required every descriptive word to
-  already occur in narration, contradicting Stage 5's job of making an anchored narration moment
-  concrete and camera-capturable. Provider-free repair `373f8c37` advances DeepSeek V4 Flash to
-  Runware request v13, restores meaningful subject/action/environment anchors, permits only
-  compatible ordinary physical detail, and retains wrong-action, unrelated-scene, invented-second-
+  volume mutation occurred. Preserve `e80f6bf2…`, `58c66338…`, and every earlier stopped project as
+  frozen evidence; none may be retried, continued, or retrieved.
+- History bounds the regression to the post-working lexical relevance gate: `fa3810d1` treats the
+  first non-stopword as the action and rejects natural leading modifiers, while `1e5277d5` requires
+  inferred environment vocabulary to repeat narration. Provider-free repair `c1dfb0ec` advances
+  DeepSeek V4 Flash to Runware request v14, checks the first verb-shaped action after natural
+  modifiers, and allows compatible ordinary inferred environments while retaining wrong-action,
+  unrelated-scene, invented-second-
   subject, forbidden-content, duplicate, schema, cost, no-retry, and pinned-style boundaries. The
   pinned immutable Image Style remains the only visual-treatment source; no style traits are
   hardcoded.
@@ -34,7 +37,7 @@
   per persisted planned batch, accepted batches are durable before the next request, and failure or
   ambiguity never redispatches. The compiler derives final literal content from validated
   `literal_subject`, `action`, `environment`, and `lighting_context`, never raw `prompt_core`.
-- Relevant provider-free evidence for the v13 repair is green: pipeline 163/163, complete web suite
+- Relevant provider-free evidence for the v14 repair is green: pipeline 165/165, complete web suite
   1,496 passed with 1 intentional skip, pipeline/web typechecks, pipeline lint, changed-file format,
   staging build/quarantine, deployment/context validators, secret scan, and diff checks. This repair
   is not deployed or live-qualified. Fresh exact clean-source authority is required before one

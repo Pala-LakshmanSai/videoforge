@@ -630,8 +630,7 @@ test("scene relevance accepts an ordinary inferred environment when narration na
         change: (rows) => {
           rows[0].literal_subject = "A watchmaker holding an open wristwatch";
           rows[0].action = "repairing the wristwatch with a small hand tool";
-          rows[0].environment =
-            "at a scratched wooden workbench beneath an adjustable task lamp";
+          rows[0].environment = "at a scratched wooden workbench beneath an adjustable task lamp";
           rows[0].prompt_core =
             "A watchmaker repairs an open wristwatch with a small hand tool at a scratched wooden workbench beneath an adjustable task lamp.";
           return rows;
@@ -722,11 +721,7 @@ test("scene relevance keeps gross semantic corruptions outside the permissive bo
     ]);
     await expectInvalid(() => setup.value.write(batch));
     assert.equal(setup.transport.requests.length, 1, sceneCase.name);
-    assert.equal(
-      setup.evidence[0].validationDiagnostic.reason,
-      "scene_relevance",
-      sceneCase.name,
-    );
+    assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance", sceneCase.name);
   }
 });
 
