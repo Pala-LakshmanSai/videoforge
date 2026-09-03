@@ -39,13 +39,18 @@ reported separately.
 
 Repository truth at the 2026-09-03 handoff:
 
-- source `ffcc89c2` remains the historical accepted Stage 5 baseline. Current source `21d11528` /
-  Worker `426c9d0e…` contains v15 and is deployed. Fresh project `0cb767d9…` passed the immediate
-  disk gate, completed Stages 1–3, then stopped at Cloudflare HTTP 503 `exceededCpu` during Stage 4
-  before Stage 5. No retry or provider retrieval occurred; the project and authority are consumed.
-  Provider-free repair `ac0344d3` narrows the lazy planning validator chunk from 2,727,968 to
-  327,179 bytes with unchanged contracts and adds a 512 KiB bundle gate. It is not deployed; v15
-  remains live-unqualified;
+- source `ffcc89c2` remains the historical accepted Stage 5 baseline. Current source
+  `e3009a32b41c9249518e2754c47fe7acbd7e03a4` was deployed exactly once as Worker
+  `c0a78315-40b0-4f93-ab01-80b4eee89af3` with rendered-config SHA-256
+  `62c130ba4f556f2986ea4d13768befbed760fc22e4fcb7e6d624fcb34c931457`. Fresh project
+  `07f3235d-8f92-4de6-960b-86ebaf5d0ea8` passed the immediate `5,494,784,000`-byte local-space preflight and completed Stages 1–3, then
+  completed Stage 4 through a successful `POST /render`: 37 total timeline segments, 32 image slots,
+  and 9 avatar slots. Stage 5 then stopped terminal when `POST /prompts` returned Cloudflare HTTP
+  503 `exceededCpu` after 165 ms CPU and 626 ms wall time, before any accepted prompt. The UI showed
+  Stage 5 at 0/100 and `$0.00`; this is not an exact provider-spend claim. No retry or provider
+  retrieval occurred; the project and authority are consumed and frozen. Stage 4 is live-proven,
+  but v15 remains unqualified. Next, bound Stage 5 cold-path modules provider-free, then require
+  fresh exact source-bound authority for any deployment or new project;
 - V2-07 Attempt64 is closed `NOT_QUALIFIED` after `RUNPOD_ZERO_NOT_CONFIRMED`; exact cleanup and
   three stable reads prove zero compute/disposables with both retained volumes unchanged, and its
   proposal, authority, cap, and run are consumed and non-reusable;

@@ -4,49 +4,35 @@
 
 ### Current new-chat launch point — 2026-09-03
 
-- Clean source `21d1152875a28cdc9030fd9277d3b54bb10e5588`, containing provider-free Stage 5
-  request-v15 repair `fdbe8208`, was deployed exactly once to staging Worker
-  `426c9d0e-4f19-4132-a824-9aee11becfb5`. Rendered-config SHA-256 is
-  `e52027d70d4c2f84fc85ca811bd47c154276d5348544592d7a6d4a8b5eced78c`; the nine-secret
-  allowlist and private R2 state passed. Migrations `0069`–`0073` and the runtime grant were not
-  replayed; GPU transport remains `DISABLED_UNQUALIFIED`.
-- Signed-in real Chrome prepared one fresh project form with the verified 159.216-second voiceover,
-  Helen v1, Will Carter v1, and the exact USD 2 project cap. The form reached `Ready to create`.
-  Immediately before creation, the mandatory local-space check found only `761,171,968` available
-  bytes versus the required `2,152,579,950`, so the create button was not clicked.
-- The previously authorized Downloads `stock footages` folder was checked and was already empty.
-  After the user removed other files, a fresh read-only check found `3,390,021,632` available bytes,
-  now above the requirement. No fresh project, provider request, provider cost, retry, continuation,
-  retrieval, GPU, RunPod, production, or volume mutation occurred. The exact approval was consumed
-  by the completed one-time deployment and terminal pre-creation disk gate; do not reuse it.
-- After more cleanup, a fresh project-only approval passed the mandatory immediate disk check at
-  `3,421,179,904` available bytes and created exactly one new project,
-  `0cb767d9-f07e-4526-aade-25a98dc0d043`, in real signed-in Chrome. Stage 1 and personal-worker
-  Stage 2 completed; Stage 3 also completed and saved bounded hydrogen-peroxide context.
-- The run then stopped at its first terminal failure before Stage 5: Stage 4 planning remained
-  pending and the UI showed its generic non-JSON hosted-request fallback. Worker-specific Cloudflare
-  Observability later proved the exact cause: the render request returned HTTP 503 with outcome
-  `exceededCpu`, `1,765 ms` CPU, and `2,681 ms` wall time. This was not an application
-  `HOSTED_PROJECT_PLANNING_FAILED`, schema, grant, migration, or persistence rejection. The UI
-  displayed `$0.00`; no retry or provider retrieval occurred. Freeze this project.
-- Provider-free repair `ac0344d3` replaces Stage 4's request-time 2,727,968-byte all-contract
-  validator import with a generated 327,179-byte shard containing exactly the five required
-  contracts. Schemas, validation, hashes, IDs, scheduling, persistence, and provider-inert behavior
-  are unchanged. The bundle verifier enforces lazy loading and a 512 KiB ceiling. Focused tests pass
-  68/68, contract generation/build and lint pass, and the staging build/quarantine passes.
-- Request v15 remains live but is still not live-qualified because Stage 5 never began. Deploy and
-  test repair `ac0344d3` only under fresh exact source-bound authority using a fresh project; never
-  retry or retrieve `0cb767d9-f07e-4526-aade-25a98dc0d043`.
+- Clean source `e3009a32b41c9249518e2754c47fe7acbd7e03a4` was deployed exactly once to staging as
+  Worker `c0a78315-40b0-4f93-ab01-80b4eee89af3` with rendered-config SHA-256
+  `62c130ba4f556f2986ea4d13768befbed760fc22e4fcb7e6d624fcb34c931457`. It includes
+  Stage 5 request v15 and the bounded Stage 4 validator cold path. Migrations `0069`–`0073` and the
+  V2-06 runtime grant were already applied and were not replayed; GPU transport remains
+  `DISABLED_UNQUALIFIED`.
+- Signed-in real Chrome passed the immediate local-space preflight at `5,494,784,000` available
+  bytes and created exactly one fresh project, `07f3235d-8f92-4de6-960b-86ebaf5d0ea8`. Stages 1–3 completed. Stage
+  4 then completed successfully: `POST /render` succeeded and persisted a 37-segment plan containing
+  32 image slots and 9 avatar slots. This live run therefore qualifies the Stage 4 CPU repair.
+- Stage 5 started automatically but stopped at the first terminal failure. `POST /prompts` returned
+  Cloudflare HTTP 503 with outcome `exceededCpu` after `165 ms` CPU and `626 ms` wall time, before
+  any prompt was accepted. The UI remained at Stage 5 `0/100` and displayed `$0.00`. This is only
+  the UI cost observation; no exact provider-spend claim is made.
+- No retry or provider retrieval occurred. Project `07f3235d-8f92-4de6-960b-86ebaf5d0ea8` and its authority are consumed and
+  frozen; never retry, continue, or retrieve it.
+- Request v15 remains unqualified because Stage 5 accepted no prompt. The next work is provider-free:
+  bound Stage 5 cold-path modules and preserve its existing request-count, durable incremental-batch,
+  validation, no-redispatch, narration-grounding, pinned-style, and cost-conservation contracts.
+  Any deployment or fresh Stage 1–5 project requires new exact source-bound authority.
 - Future fresh projects still use `scene-prompt-writer-v2`, narration-grounded structured scene facts,
   and adaptive batching with no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
   per persisted planned batch, accepted batches are durable before the next request, and failure or
   ambiguity never redispatches. The compiler derives final literal content from validated
   `literal_subject`, `action`, `environment`, and `lighting_context`, never raw `prompt_core`.
-- Relevant provider-free evidence for v15 is green: focused writer 69/69, TypeScript build,
+- Relevant provider-free evidence for v15 remains green: focused writer 69/69, TypeScript build,
   formatting, and diff checks. The prior v15 iteration also passed pipeline 175/175, pipeline
   lint/typecheck, and web production/staging builds/typecheck before the final isolated
-  dependent-fragment regression. The repair is deployed but not live-qualified because project
-  creation stopped at the local-space preflight.
+  dependent-fragment regression. Stage 4 is now live-proven; Stage 5 remains unqualified.
 - The aggregate `CI=1 TURBO_FORCE=true pnpm verify` is not repository-wide green for reasons outside
   this Stage 5 diff: historical V2-06/V2-13 script pins report 29 failures, and V2-08 worker image
   hash pins report 3 failures. The affected scripts, workflow, worker, and contract files are byte-

@@ -4,7 +4,7 @@ updated_at: "2026-09-03"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: false
-current_milestone: private_hosted_beta_stage4_cpu_repaired_provider_free_awaiting_fresh_authority
+current_milestone: private_hosted_beta_stage4_live_proven_stage5_cpu_repair_required
 current_task: VF-10-07_MAGE_SERVERLESS_QUALIFICATION
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Clean source 21d11528 containing Stage 5 request-v15 repair fdbe8208 remains live as Worker 426c9d0e. Fresh project-only authority passed the immediate disk gate at 3421179904 available bytes and created exactly one project 0cb767d9-f07e-4526-aade-25a98dc0d043 in signed-in real Chrome with the verified 159.216-second voiceover, Helen v1, Will Carter v1, and USD 2 cap. Stages 1 and 2 completed and Stage 3 completed with bounded hydrogen-peroxide context. Stage 4 then remained pending when its render request ended HTTP 503 exceededCpu at 1765 ms CPU and 2681 ms wall time; Stage 5 never began. The UI displayed USD 0.00. No retry, provider retrieval, GPU, RunPod, production, or volume mutation occurred. Freeze the project. Provider-free repair ac0344d3 replaces the 2727968-byte all-contract Stage 4 validator import with an exact five-contract 327179-byte lazy shard and a 512 KiB bundle gate without changing validation or planning semantics. Fresh exact authority is required to deploy and test it; v15 remains live but unqualified."
+  provider_free_product_action: "Clean source e3009a32b41c9249518e2754c47fe7acbd7e03a4 was deployed exactly once as Worker c0a78315-40b0-4f93-ab01-80b4eee89af3 with rendered-config SHA-256 62c130ba4f556f2986ea4d13768befbed760fc22e4fcb7e6d624fcb34c931457. The immediate local-space preflight passed at 5494784000 available bytes and fresh project 07f3235d-8f92-4de6-960b-86ebaf5d0ea8 completed Stages 1-3, then Stage 4 completed through successful POST /render with 37 total timeline segments, 32 image slots, and 9 avatar slots. Stage 5 started automatically but POST /prompts returned terminal Cloudflare HTTP 503 exceededCpu after 165 ms CPU and 626 ms wall time before any prompt was accepted. The UI remained at Stage 5 0/100 and displayed USD 0.00; no exact provider-spend claim is made. No retry or provider retrieval occurred. Freeze project 07f3235d-8f92-4de6-960b-86ebaf5d0ea8 and its consumed authority. Next, bound Stage 5 cold-path modules provider-free while preserving request-count, durable incremental-batch, validation, no-redispatch, narration-grounding, pinned-style, and cost-conservation contracts. Fresh exact source-bound authority is required before any deployment or fresh project; v15 remains unqualified."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -178,17 +178,19 @@ hosted_beta_user_walkthrough:
     - "b49ef72111f27c214f11fbd01f1201ec58384769"
     - "fdbe8208aa791c6ae5ba2d4438ef3b61b735297b"
     - "21d1152875a28cdc9030fd9277d3b54bb10e5588"
-  deployment_candidate: "21d1152875a28cdc9030fd9277d3b54bb10e5588"
-  deployed_source_commit: "21d1152875a28cdc9030fd9277d3b54bb10e5588"
-  cloudflare_worker_version_id: "426c9d0e-4f19-4132-a824-9aee11becfb5"
-  pending_source_candidate: "ac0344d3c99b8dc7333713032af162e1b1a641a3"
+    - "ac0344d3c99b8dc7333713032af162e1b1a641a3"
+    - "e3009a32b41c9249518e2754c47fe7acbd7e03a4"
+  deployment_candidate: "e3009a32b41c9249518e2754c47fe7acbd7e03a4"
+  deployed_source_commit: "e3009a32b41c9249518e2754c47fe7acbd7e03a4"
+  cloudflare_worker_version_id: "c0a78315-40b0-4f93-ab01-80b4eee89af3"
+  pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "SOURCE_21D11528_IS_LIVE_AS_WORKER_426C9D0E_WITH_STAGE5_REQUEST_V15. PROJECT_0CB767D9_PASSED_DISK_AND_COMPLETED_STAGES_1_TO_3_THEN_STOPPED_AT_CLOUDFLARE_HTTP_503_EXCEEDED_CPU_WITH_STAGE4_PENDING_BEFORE_STAGE5. PROJECT_AND_AUTHORITY_CONSUMED; NO_RETRY_OR_PROVIDER_RETRIEVAL. REPAIR_AC0344D3_IS_PROVIDER_FREE_GREEN_AND_UNDEPLOYED; REQUIRE_FRESH_EXACT_AUTHORITY."
-  pending_validations: "DEPLOY_REPAIR_AC0344D3_ONLY_UNDER_FRESH_EXACT_AUTHORITY_AND_USE_ONE_FRESH_PROJECT_TO_VERIFY_STAGE4_THEN_STAGE5. DO_NOT_RETRY_CONTINUE_OR_RETRIEVE_PROJECT_0CB767D9_OR_ANY_PREDECESSOR."
-  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE EXISTING SOURCE 21d1152875a28cdc9030fd9277d3b54bb10e5588 CLOUDFLARE WORKER 426c9d0e-4f19-4132-a824-9aee11becfb5 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.13 DO NOT DEPLOY; CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; DO NOT RETRY CONTINUE OR RETRIEVE PROJECT 8dd28296-7f21-49ca-bafb-3e42e10968a1 OR ANY PREVIOUS FROZEN PROJECT; USE COMPUTER USE AND REAL CHROME ON THE LIVE STAGING URL TO VERIFY STAGE 2, PROVIDER REQUEST COUNT EQUALS PERSISTED ADAPTIVE BATCH COUNT, NARRATION-GROUNDED PROMPT QUALITY, PINNED IMAGE-STYLE FIDELITY WITHOUT HARDCODED STYLE ATTRIBUTES, DURABLE INCREMENTAL BATCHES, COST CONSERVATION, AND THE SCROLLABLE PROMPT VIEWER; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
-  latest_live_run: "Clean source 21d11528 containing Stage 5 request-v15 repair fdbe8208 remains live as Worker 426c9d0e-4f19-4132-a824-9aee11becfb5 with config SHA-256 e52027d70d4c2f84fc85ca811bd47c154276d5348544592d7a6d4a8b5eced78c. Fresh project-only authority passed the immediate disk gate at 3421179904 bytes and created exactly one project 0cb767d9-f07e-4526-aade-25a98dc0d043. Stage 1 and personal-worker Stage 2 completed; Stage 3 completed and displayed bounded hydrogen-peroxide context. Stage 4 remained pending when the render request returned Cloudflare HTTP 503 with outcome exceededCpu at 1765 ms CPU and 2681 ms wall time, before Stage 5 began. The UI displayed USD 0.00. No retry, provider retrieval, GPU, RunPod, production, or volume mutation occurred. The project and authority are consumed; v15 remains live but not qualified."
-  deployed_config_sha256: "e52027d70d4c2f84fc85ca811bd47c154276d5348544592d7a6d4a8b5eced78c"
-  deployment_approval: "LATEST_PROJECT_ONLY_AUTHORITY_CONSUMED_BY_PROJECT_0CB767D9_STAGE4_CLOUDFLARE_EXCEEDED_CPU_NO_RETRY_OR_PROVIDER_RETRIEVAL"
+  pending_release_boundary: "SOURCE_E3009A32_IS_LIVE_AS_WORKER_C0A78315_40B0_4F93_AB01_80B4EEE89AF3_WITH_STAGE5_REQUEST_V15_AND_LIVE_PROVEN_STAGE4. PROJECT_07F3235D_8F92_4DE6_960B_86EBAF5D0EA8_COMPLETED_STAGES_1_TO_4_THEN_STOPPED_TERMINAL_AT_STAGE5_POST_PROMPTS_HTTP_503_EXCEEDED_CPU_BEFORE_ANY_ACCEPTED_PROMPT. PROJECT_AND_AUTHORITY_CONSUMED; NO_RETRY_OR_PROVIDER_RETRIEVAL. BOUND_STAGE5_COLD_PATH_MODULES_PROVIDER_FREE_THEN_REQUIRE_FRESH_EXACT_AUTHORITY."
+  pending_validations: "BOUND_STAGE5_COLD_PATH_MODULES_PROVIDER_FREE, THEN UNDER_FRESH_EXACT_AUTHORITY DEPLOY_ONCE_AND_USE_ONE_FRESH_PROJECT_TO_VERIFY_STAGE5_REQUEST_COUNT, ACCEPTED_QUALITY, DURABLE_BATCHES, COST_CONSERVATION, AND_PROMPT_VIEWER. DO_NOT_RETRY_CONTINUE_OR_RETRIEVE_PROJECT_07F3235D_8F92_4DE6_960B_86EBAF5D0EA8_OR_ANY_PREDECESSOR."
+  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE e3009a32b41c9249518e2754c47fe7acbd7e03a4 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.13 DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; DO NOT RETRY CONTINUE OR RETRIEVE PROJECT 0cb767d9-f07e-4526-aade-25a98dc0d043 OR ANY PREVIOUS FROZEN PROJECT; USE REAL CHROME TO VERIFY STAGE 4 COMPLETES WITHOUT EXCEEDED CPU, THEN VERIFY STAGE 5 PROVIDER REQUEST COUNT, PROMPT QUALITY, PINNED STYLE FIDELITY, DURABLE BATCHES, COST CONSERVATION, AND SCROLLABLE PROMPT VIEWER; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
+  latest_live_run: "Clean source e3009a32 was deployed exactly once as Worker c0a78315-40b0-4f93-ab01-80b4eee89af3 with config SHA-256 62c130ba4f556f2986ea4d13768befbed760fc22e4fcb7e6d624fcb34c931457. The immediate local-space preflight passed at 5494784000 available bytes and fresh project 07f3235d-8f92-4de6-960b-86ebaf5d0ea8 completed Stages 1-3. Stage 4 completed through successful POST /render and persisted 37 total timeline segments, 32 image slots, and 9 avatar slots. Stage 5 then stopped terminal when POST /prompts returned Cloudflare HTTP 503 exceededCpu after 165 ms CPU and 626 ms wall time, before any accepted prompt. The UI remained at Stage 5 0/100 and displayed USD 0.00; this is not an exact provider-spend claim. No retry or provider retrieval occurred. Project 07f3235d-8f92-4de6-960b-86ebaf5d0ea8 and its authority are consumed and frozen; v15 remains unqualified."
+  deployed_config_sha256: "62c130ba4f556f2986ea4d13768befbed760fc22e4fcb7e6d624fcb34c931457"
+  deployment_approval: "LATEST_SOURCE_BOUND_AUTHORITY_CONSUMED_BY_SOURCE_E3009A32_WORKER_C0A78315_40B0_4F93_AB01_80B4EEE89AF3_PROJECT_07F3235D_8F92_4DE6_960B_86EBAF5D0EA8_STAGE5_EXCEEDED_CPU_NO_RETRY_OR_PROVIDER_RETRIEVAL"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -3652,10 +3654,10 @@ repository:
   branch: codex/serverless-v2-roadmap-v4
   branch_upstream: origin/codex/serverless-v2-roadmap-v4
   branch_published: false
-  current_source_head: "fdbe8208aa791c6ae5ba2d4438ef3b61b735297b"
-  current_source_head_semantics: latest_application_source_stage5_v15_grounded_semantic_acceptance_repair
+  current_source_head: "e3009a32b41c9249518e2754c47fe7acbd7e03a4"
+  current_source_head_semantics: deployed_stage4_bounded_validator_cold_path_with_stage5_v15
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Application source fdbe8208 contains the provider-free Stage 5 v15 grounded semantic acceptance repair after live source b49ef721 failed its first evaluated v14 row. It retains narration, pinned-style, schema, cost, and no-retry boundaries. The repair is not deployed or live-qualified; auditors resolve git rev-parse HEAD for the later documentation handoff."
+  current_source_head_note: "Application source e3009a32 was deployed once as Worker c0a78315-40b0-4f93-ab01-80b4eee89af3. Project 07f3235d-8f92-4de6-960b-86ebaf5d0ea8 proved Stage 4 through successful POST /render with 37 segments, 32 image slots, and 9 avatar slots. Stage 5 request v15 remains unqualified because POST /prompts ended terminal HTTP 503 exceededCpu before any accepted prompt. Auditors resolve git rev-parse HEAD for the later documentation handoff."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -5044,9 +5046,9 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
-  milestone: private_hosted_beta_stage4_cpu_repaired_provider_free_awaiting_fresh_authority
+  milestone: private_hosted_beta_stage4_live_proven_stage5_cpu_repair_required
   status: NOT_QUALIFIED_attempt64_closed_clean_provider_free_repair_complete_fresh_image_required
-  dependency_status: v2_06_complete_green_stage4_cpu_repair_undeployed_stage5_v15_live_unqualified
+  dependency_status: v2_06_complete_green_stage4_live_proven_stage5_v15_cpu_terminal_unqualified
   authorization_status: no_live_authority_latest_project_only_approval_consumed_non_reusable
   task_stage: provider_free_reconciliation_and_read_only_preflight
   current_goal_authority: null
@@ -5054,7 +5056,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Preserve deployed source 21d11528 / Worker 426c9d0e as the current request-v15 staging identity. Fresh project 0cb767d9 passed the disk gate and completed Stages 1-3, then its Stage 4 render request stopped at Cloudflare HTTP 503 exceededCpu before Stage 5. Freeze it without retry or provider retrieval. Provider-free repair ac0344d3 narrows the lazy Stage 4 validator chunk by 88 percent with identical contracts and is green but undeployed. Obtain fresh exact source-bound authority before one deployment and one fresh-project qualification; v15 remains live-unqualified. Preserve frozen project 8dd28296 and all predecessors. Then resume V2-07 reconciliation from closed Attempt64: authenticated-envelope changes invalidate the historical Mage image for activation, so prepare and validate a fresh immutable Mage image definition and the smallest atomic certification plan. No old attempt, proposal, authority, cap, image-bound qualification, or stopped project may be retried or reused. V2-08 live remains blocked until independent V2-07 PASS."
+  goal: "Preserve deployed source e3009a32 / Worker c0a78315-40b0-4f93-ab01-80b4eee89af3 as the current request-v15 staging identity. Fresh project 07f3235d-8f92-4de6-960b-86ebaf5d0ea8 completed Stages 1-3 and live-proved Stage 4 through successful POST /render with 37 segments, 32 image slots, and 9 avatar slots. Its Stage 5 POST /prompts then stopped terminal HTTP 503 exceededCpu at 165 ms CPU and 626 ms wall before any accepted prompt; the UI remained 0/100 and USD 0.00, without an exact provider-spend claim. Freeze it without retry or provider retrieval. Bound Stage 5 cold-path modules provider-free, then obtain fresh exact source-bound authority before one deployment and fresh-project qualification; v15 remains unqualified. Preserve all predecessor projects. Then resume V2-07 reconciliation from closed Attempt64: authenticated-envelope changes invalidate the historical Mage image for activation, so prepare and validate a fresh immutable Mage image definition and the smallest atomic certification plan. No old attempt, proposal, authority, cap, image-bound qualification, or stopped project may be retried or reused. V2-08 live remains blocked until independent V2-07 PASS."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -5075,7 +5077,7 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "Source 21d11528 / Worker 426c9d0e is live with request-v15 repair fdbe8208. Fresh project 0cb767d9 passed the disk gate and completed Stages 1-3, then its Stage 4 render request returned Cloudflare HTTP 503 exceededCpu before Stage 5. The project and project-only authority are consumed; do not retry, continue, or retrieve it. Project 8dd28296 and all predecessors also remain frozen. Provider-free repair ac0344d3 is green but undeployed. Migrations 0069 through 0073 and the runtime grant are already applied and must not be replayed. No redeployment, provider call, project mutation, retrieval, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized; fresh exact authority is required."
+  authority_note: "Source e3009a32 / Worker c0a78315-40b0-4f93-ab01-80b4eee89af3 is live with request-v15 and a live-proven Stage 4. Fresh project 07f3235d-8f92-4de6-960b-86ebaf5d0ea8 completed Stages 1-4, then Stage 5 POST /prompts returned terminal Cloudflare HTTP 503 exceededCpu before any accepted prompt. The project and authority are consumed; do not retry, continue, or retrieve it. All predecessors remain frozen. Migrations 0069 through 0073 and the runtime grant are already applied and must not be replayed. No redeployment, provider call, project mutation, retrieval, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized; first bound Stage 5 cold-path modules provider-free, then require fresh exact authority."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444"
@@ -5084,9 +5086,9 @@ recommended_next_task:
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: stage_4_cpu_repair_ac0344d3_provider_free_green_awaiting_fresh_authority
-  execution_blocker: stage_4_cpu_repair_requires_fresh_exact_source_bound_deploy_and_one_project_authority
-  provider_free_validation_note: "Repair ac0344d3 preserves the exact five Stage 4 schemas and narrows its lazy built validator chunk from 2727968 to 327179 bytes. Focused coordinator and persistence tests pass 14/14; focused product tests pass 54/54; contract generation/build and changed-file lint pass; staging build and bundle quarantine pass with a 512 KiB planning-shard guard. Current v15 evidence remains focused writer 69/69 plus its prior TypeScript, formatting, diff, and context validations. Aggregate CI=1 TURBO_FORCE=true pnpm verify remains non-green only in unrelated historical sealed-artifact pins outside this repair scope."
+  execution_status: stage_4_live_proven_stage_5_prompt_cold_path_exceeded_cpu_provider_free_repair_required
+  execution_blocker: stage_5_cold_path_modules_must_be_bounded_before_fresh_exact_deploy_and_project_authority
+  provider_free_validation_note: "Repair ac0344d3 preserves the exact five Stage 4 schemas and narrows its lazy built validator chunk from 2727968 to 327179 bytes. Focused coordinator and persistence tests pass 14/14; focused product tests pass 54/54; contract generation/build and changed-file lint pass; staging build and bundle quarantine pass with a 512 KiB planning-shard guard. Deployment source e3009a32 / Worker c0a78315-40b0-4f93-ab01-80b4eee89af3 and project 07f3235d-8f92-4de6-960b-86ebaf5d0ea8 now live-prove that Stage 4 repair. Current v15 provider-free evidence remains focused writer 69/69 plus its prior TypeScript, formatting, diff, and context validations, but Stage 5 live qualification failed at its cold-path HTTP 503 exceededCpu before any accepted prompt. Aggregate CI=1 TURBO_FORCE=true pnpm verify remains non-green only in unrelated historical sealed-artifact pins outside this repair scope."
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean
