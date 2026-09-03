@@ -963,26 +963,25 @@ const relevanceConcept = (word: string): string => {
 const distinctiveRelevanceWords = (value: string): ReadonlySet<string> =>
   new Set(
     (value.normalize("NFKC").toLocaleLowerCase("en-US").match(RELEVANCE_WORD) ?? [])
-      .filter(
-        (word) => word.length >= 3 && !RELEVANCE_STOPWORDS.has(word) && !/^\d+$/u.test(word),
-      )
+      .filter((word) => word.length >= 3 && !RELEVANCE_STOPWORDS.has(word) && !/^\d+$/u.test(word))
       .map(relevanceConcept),
   );
 
-const relevanceOverlap = (
-  expected: ReadonlySet<string>,
-  actual: ReadonlySet<string>,
-): number => {
+const relevanceOverlap = (expected: ReadonlySet<string>, actual: ReadonlySet<string>): number => {
   let count = 0;
   for (const concept of expected) if (actual.has(concept)) count += 1;
   return count;
 };
 
 const relevanceActionConcepts = (value: string): ReadonlySet<string> =>
-  new Set([...distinctiveRelevanceWords(value)].filter((concept) => RELEVANCE_ACTIONS.has(concept)));
+  new Set(
+    [...distinctiveRelevanceWords(value)].filter((concept) => RELEVANCE_ACTIONS.has(concept)),
+  );
 
 const relevanceEntityConcepts = (value: string): ReadonlySet<string> =>
-  new Set([...distinctiveRelevanceWords(value)].filter((concept) => !RELEVANCE_ACTIONS.has(concept)));
+  new Set(
+    [...distinctiveRelevanceWords(value)].filter((concept) => !RELEVANCE_ACTIONS.has(concept)),
+  );
 
 const GENERIC_VISUAL_PLACEHOLDER =
   /\b(?:a person|some person|someone|something|somewhere|generic (?:place|setting|scene)|public setting|ordinary scene|standing still|doing something|various objects?|general activity|unidentified subject)\b/iu;
@@ -1055,10 +1054,7 @@ const sceneOutputIsRelevant = (
     // wholly unrelated detailed image.
     if (phraseEntityOverlap === 0 && actionOverlap === 0) return false;
     const requiredPrimaryOverlap = phraseEntities.size >= 2 || phraseActions.size > 0 ? 2 : 1;
-    if (
-      primaryOverlap < requiredPrimaryOverlap &&
-      !(primaryOverlap >= 1 && actionOverlap >= 1)
-    )
+    if (primaryOverlap < requiredPrimaryOverlap && !(primaryOverlap >= 1 && actionOverlap >= 1))
       return false;
     if (expectedActions.size > 0 && actionOverlap === 0) return false;
     return primaryOverlap >= 1 || nearbyOverlap >= 1;
@@ -1077,11 +1073,16 @@ const sceneOutputIsRelevant = (
     // pass a bicycle-repair narration because that narration has anchors.
     const phrase = expectedScene.phrase.normalize("NFKC").replace(/\s+/gu, " ").trim();
     const output = outputContent.normalize("NFKC").replace(/\s+/gu, " ").trim();
-    return phrase.length > 0 && output.toLocaleLowerCase("en-US").includes(phrase.toLocaleLowerCase("en-US"));
+    return (
+      phrase.length > 0 &&
+      output.toLocaleLowerCase("en-US").includes(phrase.toLocaleLowerCase("en-US"))
+    );
   }
   const contextualOverlap = primaryOverlap + nearbyOverlap;
-  return contextualOverlap >= (expectedWindowSize >= 3 ? 2 : 1) &&
-    (primaryOverlap >= 1 || nearbyOverlap >= 2 || phraseConcepts.size === 0);
+  return (
+    contextualOverlap >= (expectedWindowSize >= 3 ? 2 : 1) &&
+    (primaryOverlap >= 1 || nearbyOverlap >= 2 || phraseConcepts.size === 0)
+  );
 };
 
 const evaluateOutput = (

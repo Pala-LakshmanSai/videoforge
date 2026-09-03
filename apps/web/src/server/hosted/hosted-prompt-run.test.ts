@@ -979,8 +979,7 @@ describe("hosted Runware prompt writer", () => {
     });
     const planned = adaptivePlan(batch);
     expect(planned.batchCount).toBe(2);
-    const firstPromptCore =
-      `Natural documentary view of the complete scene described by the sentence, with the subject demonstrating a practical household action in a lived-in workspace for ${planned.batches[0]!.sceneIds[0]}`;
+    const firstPromptCore = `Natural documentary view of the complete scene described by the sentence, with the subject demonstrating a practical household action in a lived-in workspace for ${planned.batches[0]!.sceneIds[0]}`;
     const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
       const task = request[0]!;
