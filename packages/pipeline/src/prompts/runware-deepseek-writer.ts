@@ -20,7 +20,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v6" as const;
+  "runware-deepseek-v4-flash-prompt-request-v7" as const;
 export const RUNWARE_PROMPT_MAX_OUTPUT_TOKENS = 8_000 as const;
 export const RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE = 150 as const;
 
@@ -226,9 +226,12 @@ const responseSchema = (
           ],
           properties: {
             scene_id: { type: "string", enum: scenes.map((scene) => scene.sceneId) },
-            literal_subject: { type: "string", minLength: 1, maxLength: 240 },
-            action: { type: "string", minLength: 1, maxLength: 240 },
-            environment: { type: "string", minLength: 1, maxLength: 240 },
+            // Keep the provider wire schema inside the same qualified Structured
+            // Outputs subset as Stage 3. Exact non-empty/length/uniqueness bounds
+            // remain mandatory in validatePromptWriterOutput after the response.
+            literal_subject: { type: "string" },
+            action: { type: "string" },
+            environment: { type: "string" },
             in_image_shot_role: {
               type: "string",
               enum: [
@@ -240,14 +243,13 @@ const responseSchema = (
                 "REACTION_RESULT",
               ],
             },
-            lighting_context: { type: "string", minLength: 1, maxLength: 120 },
+            lighting_context: { type: "string" },
             continuity_tags: {
               type: "array",
               maxItems: 12,
-              uniqueItems: true,
-              items: { type: "string", minLength: 1, maxLength: 80 },
+              items: { type: "string" },
             },
-            prompt_core: { type: "string", minLength: 1, maxLength: 600 },
+            prompt_core: { type: "string" },
           },
         },
       },

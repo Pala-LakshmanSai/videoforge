@@ -151,6 +151,10 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
       Math.min(RUNWARE_PROMPT_MAX_OUTPUT_TOKENS, count * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE),
     );
     assert.equal(request.request.jsonSchema.strict, true);
+    assert.doesNotMatch(
+      JSON.stringify(request.request.jsonSchema),
+      /"(?:minLength|maxLength|uniqueItems)"/u,
+    );
     assert.equal(request.request.jsonSchema.schema.properties.scenes.minItems, count);
     assert.equal(request.request.jsonSchema.schema.properties.scenes.maxItems, count);
     assert.equal(request.requestSha256, second.transport.requests[0].requestSha256);
