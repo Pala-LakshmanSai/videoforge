@@ -4,44 +4,40 @@
 
 ### Current new-chat launch point — 2026-09-03
 
-- Source `b2261a4a08096d177d01a037896ac6debb738478` was deployed exactly once to staging Worker
-  `9ca01102-ec0b-4899-b7af-a46cc91d7cbd` with rendered-config SHA-256
-  `e7a10ebb28dea9633d6e8947901d3dca8c21f2ab774e5d7cf1e3d09de5ab69b7`. Migrations `0069`
+- Source `b49ef72111f27c214f11fbd01f1201ec58384769` was deployed exactly once to staging Worker
+  `c5d3bd47-36f8-4a51-bda1-849240c1812f` with rendered-config SHA-256
+  `0099df031cdfa714ff05a8bc476d1311d62403f328c3fe60a621c89c719c336e`. Migrations `0069`
   through `0073` and the exact runtime grant set were already applied and were not replayed.
 - Computer Use and signed-in real Chrome created exactly one fresh project
-  `e80f6bf2-c3f4-43b7-ac28-cd88faa5b135` after `5,688,627,200` free bytes passed the required
-  `2,152,579,950`-byte preflight. Stages 1–4 completed; Stage 4 saved 38 segments, 33 image scenes,
-  and 10 avatar segments. Stage 5 durably planned two adaptive batches, sent only the first 17-scene
-  DeepSeek V4 Flash request, received all 17 requested rows, then stopped when the first evaluated
-  row failed `scene_relevance`. Because evaluation stops at the first invalid row, the diagnostic
-  does not prove the other 16 rows invalid. It stopped terminal with zero accepted or persisted
-  prompts, so quality, incremental durability, request-count equality, and the populated viewer
-  remain unqualified.
-- The bounded Cloudflare diagnostic records `HOSTED_PROMPT_OUTPUT_INVALID`, `scene_quality` /
-  `scene_relevance`, requested = returned = 17, locally valid = 0, unresolved = 17, known cost
-  931 micro-USD, and `provider_may_have_charged=false` (the completed cost is known rather than
-  ambiguous). No second batch, retry, continuation, provider retrieval, GPU, RunPod, production, or
-  volume mutation occurred. Preserve `e80f6bf2…`, `58c66338…`, and every earlier stopped project as
-  frozen evidence; none may be retried, continued, or retrieved.
-- History bounds the regression to the post-working lexical relevance gate: `fa3810d1` treats the
-  first non-stopword as the action and rejects natural leading modifiers, while `1e5277d5` requires
-  inferred environment vocabulary to repeat narration. Provider-free repair `c1dfb0ec` advances
-  DeepSeek V4 Flash to Runware request v14, checks the first verb-shaped action after natural
-  modifiers, and allows compatible ordinary inferred environments while retaining wrong-action,
-  unrelated-scene, invented-second-
-  subject, forbidden-content, duplicate, schema, cost, no-retry, and pinned-style boundaries. The
-  pinned immutable Image Style remains the only visual-treatment source; no style traits are
-  hardcoded.
+  `8dd28296-7f21-49ca-bafb-3e42e10968a1` after `3,962,105,856` free bytes passed the required
+  `2,152,579,950`-byte preflight. Stages 1–4 completed; Stage 4 saved 36 segments, 31 image scenes,
+  and 10 avatar segments. Stage 5 planned two adaptive batches, sent only the first 15-scene
+  DeepSeek V4 Flash request, and received all 15 requested rows. Evaluation stopped when the first
+  provider-ordered row failed `scene_quality/scene_relevance`; the remaining 14 rows were not
+  adjudicated. Zero prompts were accepted or persisted and the second batch was not sent.
+- The terminal run recorded `HOSTED_PROMPT_OUTPUT_INVALID`, known Stage 5 cost 808 micro-USD, and
+  `provider_may_have_charged=false`. No retry, continuation, provider retrieval, GPU, RunPod,
+  production, or volume mutation occurred. Project `8dd28296…` and every predecessor are frozen and
+  may not be retried, continued, or retrieved. Accepted prompt quality, style fidelity, incremental
+  durability, request-count equality, and the populated scrollable viewer remain live-unqualified.
+- Provider-free repair `fdbe8208` advances DeepSeek V4 Flash to request v15. It preserves exact-phrase
+  authority while allowing grounded static, stative, abstract, and mid-sentence-fragment renderings;
+  separates true action equivalence from visibly different actions; prevents noun/action homonym,
+  wrong-clause, invented-subject, and coordinated-tail false decisions; and emits bounded
+  reason-specific diagnostics without provider text. Schema, identity, bounds, forbidden content,
+  duplicate, cost, no-retry, and pinned-style controls remain. The pinned immutable Image Style is
+  still the only visual-treatment source; no style attributes are hardcoded.
 - Future fresh projects still use `scene-prompt-writer-v2`, narration-grounded structured scene facts,
   and adaptive batching with no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
   per persisted planned batch, accepted batches are durable before the next request, and failure or
   ambiguity never redispatches. The compiler derives final literal content from validated
   `literal_subject`, `action`, `environment`, and `lighting_context`, never raw `prompt_core`.
-- Relevant provider-free evidence for the v14 repair is green: pipeline 165/165, complete web suite
-  1,496 passed with 1 intentional skip, pipeline/web typechecks, pipeline lint, changed-file format,
-  staging build/quarantine, deployment/context validators, secret scan, and diff checks. This repair
-  is not deployed or live-qualified. Fresh exact clean-source authority is required before one
-  staging deployment and exactly one fresh Stage 1–5 project.
+- Relevant provider-free evidence for v15 is green: focused writer 69/69, TypeScript build,
+  formatting, and diff checks. The prior v15 iteration also passed pipeline 175/175, pipeline
+  lint/typecheck, and web production/staging builds/typecheck before the final isolated
+  dependent-fragment regression. This repair is not deployed or live-qualified. Fresh exact
+  clean-source authority is required before one staging deployment and exactly one fresh Stage 1–5
+  project.
 - The aggregate `CI=1 TURBO_FORCE=true pnpm verify` is not repository-wide green for reasons outside
   this Stage 5 diff: historical V2-06/V2-13 script pins report 29 failures, and V2-08 worker image
   hash pins report 3 failures. The affected scripts, workflow, worker, and contract files are byte-

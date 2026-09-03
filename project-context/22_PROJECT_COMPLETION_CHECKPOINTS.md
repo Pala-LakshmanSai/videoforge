@@ -39,9 +39,9 @@ reported separately.
 
 Repository truth at the 2026-09-03 handoff:
 
-- hosted Stages 1–5 are live-qualified at source `ffcc89c2` and Cloudflare Worker version
-  `87c0a45f-0b03-4334-b36d-cc9f3a920426`; frozen project `91afab6c…` is Stage 5 evidence, not an
-  authorized Stage 6 input;
+- source `ffcc89c2` remains the historical accepted Stage 5 baseline. Current deployed source
+  `b49ef721` / Worker `c5d3bd47…` completed Stages 1–4 but frozen project `8dd28296…` stopped on the
+  first evaluated Stage 5 v14 row; provider-free v15 repair `fdbe8208` is not deployed or live-qualified;
 - V2-07 Attempt64 is closed `NOT_QUALIFIED` after `RUNPOD_ZERO_NOT_CONFIRMED`; exact cleanup and
   three stable reads prove zero compute/disposables with both retained volumes unchanged, and its
   proposal, authority, cap, and run are consumed and non-reusable;
