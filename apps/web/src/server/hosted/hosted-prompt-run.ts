@@ -7,9 +7,19 @@ import {
   type PromptExecutionScope,
   type PromptExecutionStore,
 } from "@videoforge/control-plane";
-import { buildPromptBatch, type PromptSceneInput } from "@videoforge/pipeline";
+import {
+  buildPromptBatch,
+  compileImagePrompt,
+  verifyCompiledImagePrompt,
+  type CompiledImagePrompt,
+  type PromptSceneInput,
+  type PromptWriterSceneOutput,
+} from "@videoforge/pipeline";
 
-import { HostedRunwarePromptWriter } from "./runware-prompt-execution";
+import {
+  HostedRunwarePromptWriter,
+  type HostedAcceptedPromptScene,
+} from "./runware-prompt-execution";
 
 type RecordValue = Record<string, unknown>;
 
@@ -325,11 +335,50 @@ export async function runHostedPromptExecution(input: {
   readonly command: PromptExecutionCommand;
   readonly apiKey: string;
   readonly persist: (accepted: AcceptedPromptExecution) => Promise<void>;
+  readonly persistScene?: (scene: {
+    readonly sceneOrdinal: number;
+    readonly sceneId: string;
+    readonly writerOutput: PromptWriterSceneOutput;
+    readonly compiledPrompt: CompiledImagePrompt;
+    readonly requestBytes: string;
+    readonly requestHash: `sha256:${string}`;
+    readonly responseBytes: string;
+    readonly responseHash: `sha256:${string}`;
+    readonly inputTokens: number;
+    readonly outputTokens: number;
+    readonly reportedCostMicroUsd: number;
+  }) => Promise<void>;
   readonly fetcher?: typeof fetch;
 }): Promise<AcceptedPromptExecution> {
+  const persistScene = async (accepted: HostedAcceptedPromptScene) => {
+    const expectedScene = input.authority.scenes[accepted.sceneOrdinal];
+    if (!expectedScene || expectedScene.sceneId !== accepted.scene.sceneId)
+      throw new Error("HOSTED_PROMPT_SCENE_ORDER_INVALID");
+    const compiledPrompt = compileImagePrompt({
+      writerOutput: accepted.writerOutput,
+      expectedScene,
+      style: input.authority.style,
+      extraPromptKeywords: input.authority.extraPromptKeywords,
+      applyExtraPromptKeywords: input.authority.applyExtraPromptKeywords,
+    });
+    verifyCompiledImagePrompt(compiledPrompt);
+    await input.persistScene?.({
+      sceneOrdinal: accepted.sceneOrdinal,
+      sceneId: expectedScene.sceneId,
+      writerOutput: accepted.writerOutput,
+      compiledPrompt,
+      requestBytes: accepted.requestBytes,
+      requestHash: accepted.requestHash,
+      responseBytes: accepted.responseBytes,
+      responseHash: accepted.responseHash,
+      inputTokens: accepted.inputTokens,
+      outputTokens: accepted.outputTokens,
+      reportedCostMicroUsd: accepted.reportedCostMicroUsd,
+    });
+  };
   const result = await new DurablePromptExecutionService(
     new HostedPromptStore(input.authority, input.persist),
-    new HostedRunwarePromptWriter(input.apiKey, input.fetcher),
+    new HostedRunwarePromptWriter(input.apiKey, input.fetcher, persistScene),
     { record() {} },
     { now: () => new Date().toISOString() },
   ).execute(input.scope, input.command);

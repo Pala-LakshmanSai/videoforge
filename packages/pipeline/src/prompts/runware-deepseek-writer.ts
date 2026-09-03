@@ -20,7 +20,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v5" as const;
+  "runware-deepseek-v4-flash-prompt-request-v6" as const;
 export const RUNWARE_PROMPT_MAX_OUTPUT_TOKENS = 8_000 as const;
 export const RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE = 150 as const;
 
@@ -142,6 +142,10 @@ export interface RunwarePromptWriterOptions {
   readonly evidenceSink: RunwarePromptAttemptEvidenceSink;
   /** Caller-owned reservation ceiling across the first attempt and one partial retry. */
   readonly maximumBatchCostUsd: number;
+  /** Hosted per-scene execution disables redispatch; qualification keeps one bounded retry. */
+  readonly allowPartialRetry?: boolean;
+  /** Hosted orchestration explicitly opts into one-scene batches; all other callers retain 25-50. */
+  readonly minimumBatchScenes?: 1 | 25;
 }
 
 interface AttemptEvaluation {
@@ -255,12 +259,13 @@ export function buildRunwarePromptRequest(
   scenes: readonly PromptSceneInput[],
   attemptIndex: 1 | 2,
   retryOfRequestSha256: Sha256Digest | null = null,
+  minimumBatchScenes: 1 | 25 = 25,
 ): RunwarePromptTransportRequest {
   if (scenes.length === 0) fail("Prompt attempt must contain at least one expected scene.");
   if (batch.scenePromptWriterVersion !== "scene-prompt-writer-v1")
     fail("Prompt writer version is invalid.", ["scenePromptWriterVersion"]);
-  if (batch.scenes.length < 25 || batch.scenes.length > 50)
-    fail("Original prompt batch must contain 25-50 scenes.", ["scenes"]);
+  if (batch.scenes.length < minimumBatchScenes || batch.scenes.length > 50)
+    fail(`Prompt request must contain ${minimumBatchScenes}-50 scenes.`, ["scenes"]);
   if (
     (attemptIndex === 1 && retryOfRequestSha256 !== null) ||
     (attemptIndex === 2 && (retryOfRequestSha256 === null || !SHA256.test(retryOfRequestSha256)))
@@ -479,13 +484,19 @@ export class RunwarePromptWriter implements PromptWriterPort {
   readonly #transport: RunwarePromptTransport;
   readonly #evidenceSink: RunwarePromptAttemptEvidenceSink;
   readonly #maximumBatchCostUsd: number;
+  readonly #allowPartialRetry: boolean;
+  readonly #minimumBatchScenes: 1 | 25;
 
   constructor(options: RunwarePromptWriterOptions) {
     if (!Number.isFinite(options.maximumBatchCostUsd) || options.maximumBatchCostUsd < 0)
       throw new TypeError("maximumBatchCostUsd must be a finite non-negative number.");
+    if (options.minimumBatchScenes !== undefined && ![1, 25].includes(options.minimumBatchScenes))
+      throw new TypeError("minimumBatchScenes must be 1 or 25.");
     this.#transport = options.transport;
     this.#evidenceSink = options.evidenceSink;
     this.#maximumBatchCostUsd = options.maximumBatchCostUsd;
+    this.#allowPartialRetry = options.allowPartialRetry ?? true;
+    this.#minimumBatchScenes = options.minimumBatchScenes ?? 25;
   }
 
   async #record(value: RunwarePromptAttemptEvidence): Promise<void> {
@@ -503,7 +514,13 @@ export class RunwarePromptWriter implements PromptWriterPort {
     retryOfRequestSha256: Sha256Digest | null,
     priorCostUsd: number,
   ): Promise<AttemptEvaluation> {
-    const request = buildRunwarePromptRequest(batch, scenes, attemptIndex, retryOfRequestSha256);
+    const request = buildRunwarePromptRequest(
+      batch,
+      scenes,
+      attemptIndex,
+      retryOfRequestSha256,
+      this.#minimumBatchScenes,
+    );
     let result: RunwarePromptTransportResult;
     try {
       result = await this.#transport.dispatch(request);
@@ -622,6 +639,8 @@ export class RunwarePromptWriter implements PromptWriterPort {
     const first = await this.#attempt(batch, batch.scenes, 1, null, 0);
     const accepted = new Map(first.accepted);
     if (first.unresolved.length > 0) {
+      if (!this.#allowPartialRetry)
+        fail("Prompt response did not resolve the requested scene.", ["scenes"]);
       const retry = await this.#attempt(
         batch,
         first.unresolved,

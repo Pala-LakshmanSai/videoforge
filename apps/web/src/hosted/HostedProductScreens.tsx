@@ -3566,23 +3566,27 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               <div className="live-prompt-status" aria-live="polite">
                 <span
                   className={`live-prompt-status-dot${
-                    promptWritingActive
-                      ? " is-active"
-                      : prompts.length > 0
-                        ? " is-success"
-                        : promptWritingStopped
-                          ? " is-stopped"
+                    promptWritingStopped
+                      ? " is-stopped"
+                      : promptWritingActive
+                        ? " is-active"
+                        : prompts.length > 0
+                          ? " is-success"
                           : ""
                   }`}
                   aria-hidden="true"
                 />
                 <strong>
-                  {prompts.length > 0
-                    ? `${prompts.length} accepted prompts`
+                  {promptWritingStopped
+                    ? prompts.length > 0
+                      ? `${prompts.length} accepted before writing stopped`
+                      : "Prompt writing stopped"
                     : promptWritingActive
-                      ? "Writing and validating"
-                      : promptWritingStopped
-                        ? "Prompt writing stopped"
+                      ? prompts.length > 0
+                        ? `${prompts.length} accepted · writing next scene`
+                        : "Writing and validating"
+                      : prompts.length > 0
+                        ? `${prompts.length} accepted prompts`
                         : "Waiting to start"}
                 </strong>
               </div>
@@ -3616,7 +3620,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   {promptWritingActive ? <span className="spinner" aria-hidden="true" /> : null}
                   <p>
                     {promptWritingActive
-                      ? "DeepSeek V4 Flash is writing one validated scene batch. Prompts appear here immediately after the batch is accepted."
+                      ? "DeepSeek V4 Flash is writing the first narration scene. Each scene appears here after it is validated and saved."
                       : promptWritingStopped
                         ? "No accepted prompts were saved. VideoForge stopped without redispatching the request."
                         : "Prompt writing starts automatically after the scene plan is ready."}
@@ -3624,8 +3628,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 </div>
               )}
               <p className="helper live-prompt-helper">
-                This shows the exact final prompts sent to image generation. The provider returns
-                one batch, so partial unvalidated rows are never displayed.
+                DeepSeek V4 Flash receives one bounded narration scene at a time. Only locally
+                validated, saved prompts appear here; the list updates while Stage 5 continues.
               </p>
             </Panel>
           ) : null}

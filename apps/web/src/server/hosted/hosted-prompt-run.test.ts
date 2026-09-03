@@ -3,10 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { buildPromptBatch, type PromptBatch } from "@videoforge/pipeline";
 
 import { hostedPromptAuthority } from "./hosted-prompt-run";
-import {
-  HostedPromptExecutionError,
-  HostedRunwarePromptWriter,
-} from "./runware-prompt-execution";
+import { HostedPromptExecutionError, HostedRunwarePromptWriter } from "./runware-prompt-execution";
 
 const ids = {
   workspace: "10000000-0000-4000-8000-000000000001",
@@ -120,7 +117,7 @@ function successfulPromptFetcher() {
             totalTokens: 300,
             cachedInputTokens: 0,
           },
-          cost: 0.001,
+          cost: 0.00001,
           finishReason: "stop",
           model: "deepseek:v4@flash",
         },
@@ -298,8 +295,26 @@ describe("hosted prompt authority", () => {
     const result = await new HostedRunwarePromptWriter("configured-test-key-value", fetcher).write(
       batch,
     );
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(25);
     expect(result.output.scenes).toHaveLength(25);
+    for (const [index, call] of fetcher.mock.calls.entries()) {
+      const dispatched = JSON.parse(String(call[1]?.body)) as Array<{
+        messages: Array<{ content: string }>;
+        model: string;
+        settings: { maxTokens: number };
+      }>;
+      const dispatchedPlan = JSON.parse(dispatched[0]!.messages[0]!.content) as {
+        scenes: Array<{ scene_id: string }>;
+      };
+      expect(dispatched[0]?.model).toBe("deepseek:v4@flash");
+      expect(dispatched[0]?.settings.maxTokens).toBe(512);
+      expect(dispatchedPlan.scenes).toHaveLength(1);
+      expect(dispatchedPlan.scenes[0]).toEqual(
+        expect.objectContaining({
+          scene_id: `scene_${String(index + 1).padStart(2, "0")}`,
+        }),
+      );
+    }
   });
 
   it("rejects any remaining canonical prompt violation before durable preparation", () => {
@@ -339,13 +354,17 @@ describe("hosted Runware prompt writer", () => {
         layout: scene.layout as "IMAGE_FULL" | "SPLIT_RIGHT_IMAGE",
       })),
     };
-    const result = await new HostedRunwarePromptWriter("configured-test-key-value", fetcher).write(
-      batch,
-    );
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    const onSceneAccepted = vi.fn();
+    const result = await new HostedRunwarePromptWriter(
+      "configured-test-key-value",
+      fetcher,
+      onSceneAccepted,
+    ).write(batch);
+    expect(fetcher).toHaveBeenCalledTimes(25);
+    expect(onSceneAccepted).toHaveBeenCalledTimes(25);
     expect(result.output.scenes).toHaveLength(25);
     expect(result.attempts).toHaveLength(1);
-    expect(result.attempts[0]?.reportedCostMicroUsd).toBe(1_000);
+    expect(result.attempts[0]?.reportedCostMicroUsd).toBe(250);
     expect(result.attempts[0]?.requestHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
     expect(result.attempts[0]?.responseHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
     const dispatched = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body)) as Array<{
@@ -366,12 +385,16 @@ describe("hosted Runware prompt writer", () => {
     expect(dispatchedPlan.style_profile_hash).toBe(digest);
     expect(dispatchedPlan.planner_guidance).toBe(batch.plannerGuidance);
     expect(dispatchedPlan.story_context).toBe(batch.storyContext);
+    expect(dispatchedPlan.scenes).toHaveLength(1);
     expect(dispatchedPlan.scenes[0]).toEqual(
       expect.objectContaining({
         exact_phrase: "literal scene 1",
         prior_context: null,
         next_context: "literal scene 2",
       }),
+    );
+    expect(onSceneAccepted.mock.calls.map(([scene]) => scene.sceneOrdinal)).toEqual(
+      Array.from({ length: 25 }, (_, index) => index),
     );
   });
 
@@ -422,6 +445,77 @@ describe("hosted Runware prompt writer", () => {
         },
       } satisfies Partial<HostedPromptExecutionError>),
     );
+  });
+
+  it("stops after one locally rejected scene response without retry and reports its known cost", async () => {
+    const authority = hostedPromptAuthority({
+      plan: plan(),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+    const batch = buildPromptBatch({
+      batchId: `${authority.taskId}:batch:1`,
+      projectTitle: authority.projectTitle,
+      imageStyleVersionId: authority.imageStyleVersionId,
+      styleProfileHash: authority.styleProfileHash,
+      plannerGuidance: authority.plannerGuidance,
+      storyContext: authority.storyContext,
+      continuityTags: authority.continuityTags,
+      scenes: authority.scenes,
+    });
+    const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
+      const task = request[0]!;
+      const messages = task.messages as Array<{ content: string }>;
+      const payload = JSON.parse(messages[0]!.content) as {
+        batch_id: string;
+        scenes: Array<{ scene_id: string; in_image_shot_role: string }>;
+      };
+      const scene = payload.scenes[0]!;
+      return Response.json({
+        data: [
+          {
+            taskUUID: task.taskUUID,
+            text: JSON.stringify({
+              batch_id: payload.batch_id,
+              scenes: [
+                {
+                  scene_id: scene.scene_id,
+                  literal_subject: "generic object",
+                  action: "sitting still",
+                  environment: "generic room",
+                  in_image_shot_role: scene.in_image_shot_role,
+                  lighting_context: "daylight",
+                  continuity_tags: [],
+                  prompt_core: "Generic unrelated evidence in a room",
+                },
+              ],
+            }),
+            usage: {
+              promptTokens: 100,
+              completionTokens: 100,
+              totalTokens: 200,
+              cachedInputTokens: 0,
+            },
+            cost: 0.00001,
+            finishReason: "stop",
+            model: "deepseek:v4@flash",
+          },
+        ],
+      });
+    });
+
+    await expect(
+      new HostedRunwarePromptWriter("configured-test-key-value", fetcher).write(batch),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        problemCode: "HOSTED_PROMPT_INPUT_INVALID",
+        terminalState: "FAILED",
+        providerMayHaveCharged: false,
+        additionalKnownCostMicroUsd: 10,
+      } satisfies Partial<HostedPromptExecutionError>),
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
   it("keeps network ambiguity fail-closed without redispatching", async () => {

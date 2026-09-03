@@ -24,6 +24,7 @@ test("the hosted runtime can append through the exact function but has no direct
     "hosted_pair_zero_worker_observations",
     "hosted_voiceover_contexts",
     "hosted_prompt_runs",
+    "hosted_prompt_scene_progress",
     "prompt_executions",
     "prompt_scene_results",
     "timeline_segments",
@@ -81,7 +82,8 @@ test("the hosted runtime can append through the exact function but has no direct
     /videoforge_load_hosted_prompt_plan\(uuid,uuid,uuid,uuid\)/u,
     /videoforge_prepare_hosted_prompt_run\(jsonb\)/u,
     /videoforge_complete_hosted_prompt_run\(jsonb\)/u,
-    /videoforge_fail_hosted_prompt_run\(uuid,text,text,boolean\)/u,
+    /videoforge_record_hosted_prompt_scene\(uuid,jsonb\)/u,
+    /videoforge_fail_hosted_prompt_run\(uuid,text,text,boolean,bigint\)/u,
     /videoforge_reconcile_stale_hosted_prompt_dispatches\(uuid\)/u,
     /videoforge_reconcile_unknown_hosted_voiceover_context\(jsonb\)/u,
   ]) {
@@ -94,7 +96,8 @@ test("the hosted runtime can append through the exact function but has no direct
     "videoforge_load_hosted_prompt_plan(uuid,uuid,uuid,uuid)",
     "videoforge_prepare_hosted_prompt_run(jsonb)",
     "videoforge_complete_hosted_prompt_run(jsonb)",
-    "videoforge_fail_hosted_prompt_run(uuid,text,text,boolean)",
+    "videoforge_record_hosted_prompt_scene(uuid,jsonb)",
+    "videoforge_fail_hosted_prompt_run(uuid,text,text,boolean,bigint)",
     "videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)",
     "videoforge_reconcile_unknown_hosted_voiceover_context(jsonb)",
   ]) {
@@ -139,7 +142,7 @@ test("the hosted runtime can append through the exact function but has no direct
   assert.doesNotMatch(source, /GRANT\s+[^;\n]*(?:UPDATE|DELETE)[^;\n]*\bON\s+projects\b/iu);
   assert.doesNotMatch(
     source,
-    /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+(?:hosted_voiceover_contexts|hosted_prompt_runs|prompt_executions|prompt_writer_attempts|prompt_scene_results|generation_tasks|attempts|outbox|cost_events)\b/iu,
+    /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+(?:hosted_voiceover_contexts|hosted_prompt_runs|hosted_prompt_scene_progress|prompt_executions|prompt_writer_attempts|prompt_scene_results|generation_tasks|attempts|outbox|cost_events)\b/iu,
   );
   assert.match(source, /REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"runtime_role";/u);
   assert.match(
@@ -161,6 +164,12 @@ test("every project-detail relation is covered by the runtime SELECT allowlist",
       (match) => match[1],
     ),
   );
+  const commonTableExpressions = new Set(
+    [...product.slice(start, end).matchAll(/\b(?:WITH|,)\s+([a-z][a-z0-9_]*)\s+AS\s*\(/gu)].map(
+      (match) => match[1],
+    ),
+  );
+  for (const alias of commonTableExpressions) relations.delete(alias);
   assert.ok(relations.size > 0);
   for (const relation of relations) {
     assert.ok(

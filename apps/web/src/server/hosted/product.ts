@@ -5775,6 +5775,35 @@ async function writeProjectPrompts(
         presentedClaimTokenHash: identity.claimTokenHash,
       },
       apiKey: promptApiKey,
+      persistScene: async (scene) => {
+        const recorded = await createNeonExecutor(pool).transaction(async (transaction) => {
+          await transaction.query("SELECT set_config($1, $2, true)", [
+            "videoforge.account_id",
+            scope.account_id,
+          ]);
+          const result = await transaction.query<{ recorded: boolean }>(
+            "SELECT public.videoforge_record_hosted_prompt_scene($1,$2::jsonb) AS recorded",
+            [
+              identity.runId,
+              JSON.stringify({
+                scene_ordinal: scene.sceneOrdinal,
+                scene_id: scene.sceneId,
+                request_bytes: scene.requestBytes,
+                request_hash: scene.requestHash,
+                response_bytes: scene.responseBytes,
+                response_hash: scene.responseHash,
+                writer_output: scene.writerOutput,
+                compiled_prompt: scene.compiledPrompt,
+                input_tokens: scene.inputTokens,
+                output_tokens: scene.outputTokens,
+                reported_cost_micro_usd: scene.reportedCostMicroUsd,
+              }),
+            ],
+          );
+          return result.rows[0]?.recorded === true;
+        });
+        if (!recorded) throw new Error("HOSTED_PROMPT_SCENE_PROGRESS_REJECTED");
+      },
       persist: async (acceptance) => {
         const completed = await createNeonExecutor(pool).transaction(async (transaction) => {
           await transaction.query("SELECT set_config($1, $2, true)", [
@@ -5811,12 +5840,7 @@ async function writeProjectPrompts(
     const promptFailure =
       error instanceof HostedPromptExecutionError
         ? error
-        : new HostedPromptExecutionError(
-            "HOSTED_PROMPT_EXECUTION_UNKNOWN",
-            "UNKNOWN",
-            true,
-            null,
-          );
+        : new HostedPromptExecutionError("HOSTED_PROMPT_EXECUTION_UNKNOWN", "UNKNOWN", true, null);
     if (runId) {
       try {
         const scope = await sessionScope(request, config, pool, executionContext);
@@ -5827,12 +5851,13 @@ async function writeProjectPrompts(
               scope.account_id,
             ]);
             await transaction.query(
-              "SELECT public.videoforge_fail_hosted_prompt_run($1,$2,$3,$4)",
+              "SELECT public.videoforge_fail_hosted_prompt_run($1,$2,$3,$4,$5)",
               [
                 runId,
                 promptFailure.terminalState,
                 promptFailure.problemCode,
                 promptFailure.providerMayHaveCharged,
+                promptFailure.additionalKnownCostMicroUsd,
               ],
             );
           });
@@ -5846,6 +5871,7 @@ async function writeProjectPrompts(
       problem_code: promptFailure.problemCode,
       terminal_state: promptFailure.terminalState,
       provider_may_have_charged: promptFailure.providerMayHaveCharged,
+      additional_known_cost_micro_usd: promptFailure.additionalKnownCostMicroUsd,
       stage: promptFailure.diagnostic?.stage ?? null,
       http_status: promptFailure.diagnostic?.httpStatus ?? null,
       provider_code: promptFailure.diagnostic?.providerCode ?? null,
@@ -6081,29 +6107,59 @@ async function projectDetail(
         [scope.account_id, scope.workspace_id, projectId],
       );
       const prompts = await transaction.query(
-        `SELECT result.scene_ordinal, result.scene_id, segment.narration,
+        `WITH prompt_rows AS (
+          SELECT result.scene_ordinal, result.scene_id, execution.project_revision_id,
+                 execution.timeline_plan_id,
+                 result.compiled_prompt->>'positivePrompt' AS positive_prompt,
+                 result.compiled_prompt->>'negativePrompt' AS negative_prompt,
+                 execution.image_style_version_id, execution.style_profile_hash,
+                 execution.account_id, execution.workspace_id, true AS durable
+            FROM prompt_executions AS execution
+            JOIN prompt_scene_results AS result
+              ON result.account_id=execution.account_id
+             AND result.workspace_id=execution.workspace_id
+             AND result.prompt_execution_id=execution.id
+           WHERE execution.account_id=$1 AND execution.workspace_id=$2
+             AND execution.project_id=$3
+          UNION ALL
+          SELECT progress.scene_ordinal,progress.scene_id,run.project_revision_id,
+                 run.timeline_plan_id,
+                 progress.compiled_prompt->>'positivePrompt' AS positive_prompt,
+                 progress.compiled_prompt->>'negativePrompt' AS negative_prompt,
+                 revision.image_style_version_id,revision.style_profile_hash,
+                 progress.account_id,progress.workspace_id,false AS durable
+            FROM hosted_prompt_scene_progress AS progress
+            JOIN hosted_prompt_runs AS run
+              ON run.account_id=progress.account_id AND run.workspace_id=progress.workspace_id
+             AND run.id=progress.run_id
+            JOIN project_revisions AS revision
+              ON revision.account_id=run.account_id AND revision.workspace_id=run.workspace_id
+             AND revision.id=run.project_revision_id
+           WHERE run.account_id=$1 AND run.workspace_id=$2 AND run.project_id=$3
+             AND NOT EXISTS (SELECT 1 FROM prompt_executions execution
+               WHERE execution.account_id=run.account_id AND execution.workspace_id=run.workspace_id
+                 AND execution.task_id=run.task_id)
+        )
+        SELECT result.scene_ordinal, result.scene_id, segment.narration,
                 segment.in_image_shot_role, segment.timeline_composition,
-                result.compiled_prompt->>'positivePrompt' AS positive_prompt,
-                result.compiled_prompt->>'negativePrompt' AS negative_prompt,
-                execution.image_style_version_id, execution.style_profile_hash,
-                style.name AS style_name
-           FROM prompt_executions AS execution
-           JOIN prompt_scene_results AS result
-             ON result.account_id = execution.account_id
-            AND result.workspace_id = execution.workspace_id
-            AND result.prompt_execution_id = execution.id
+                result.positive_prompt,result.negative_prompt,
+                result.image_style_version_id,result.style_profile_hash,
+                style.name AS style_name,result.durable
+           FROM prompt_rows AS result
            JOIN timeline_segments AS segment
-             ON segment.account_id = execution.account_id
-            AND segment.workspace_id = execution.workspace_id
-            AND segment.project_revision_id = execution.project_revision_id
-            AND segment.timeline_plan_id = execution.timeline_plan_id
+             ON segment.account_id = result.account_id
+            AND segment.workspace_id = result.workspace_id
+            AND segment.project_revision_id = result.project_revision_id
+            AND segment.timeline_plan_id = result.timeline_plan_id
             AND segment.segment_key = result.scene_id
+           JOIN image_style_versions AS style_version
+             ON style_version.account_id=result.account_id
+            AND style_version.workspace_id=result.workspace_id
+            AND style_version.id=result.image_style_version_id
            JOIN image_styles AS style
-             ON style.account_id = execution.account_id
-            AND style.workspace_id = execution.workspace_id
-            AND style.id = execution.image_style_id
-          WHERE execution.account_id = $1 AND execution.workspace_id = $2
-            AND execution.project_id = $3
+             ON style.account_id = style_version.account_id
+            AND style.workspace_id = style_version.workspace_id
+            AND style.id = style_version.style_id
           ORDER BY result.scene_ordinal`,
         [scope.account_id, scope.workspace_id, projectId],
       );

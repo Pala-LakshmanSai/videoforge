@@ -414,6 +414,12 @@
       "name": "hosted_context_compact_profile",
       "filename": "0069_hosted_context_compact_profile.sql",
       "sha256": "sha256:718046630b67bbe3ae40371d742959c22436ab1f638b5c421d031618f574b00c"
+    },
+    {
+      "version": 70,
+      "name": "hosted_prompt_scene_progress",
+      "filename": "0070_hosted_prompt_scene_progress.sql",
+      "sha256": "sha256:b67fc1108168772ddaa9f2b46387083f82cf602203dd83517ea894e2119a59d5"
     }
   ]
 }

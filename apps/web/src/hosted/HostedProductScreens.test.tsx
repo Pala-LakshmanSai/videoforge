@@ -1884,9 +1884,74 @@ describe("hosted product journey", () => {
     expect(await screen.findByRole("heading", { name: "Image prompts" })).toBeInTheDocument();
     expect(screen.getByText("Writing and validating")).toBeInTheDocument();
     expect(
-      screen.getByText(/DeepSeek V4 Flash is writing one validated scene batch/u),
+      screen.getByText(/DeepSeek V4 Flash is writing the first narration scene/u),
     ).toBeInTheDocument();
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
+  });
+
+  it("shows each durably accepted prompt while Stage 5 writes the next scene", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      void input;
+      return Response.json({
+        project: {
+          id: projectId,
+          title: "Private project",
+          created_at: "2026-08-17T10:00:00.000Z",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
+        },
+        attempts: [],
+        gpu_transport: "DISABLED_UNQUALIFIED" as const,
+        gpu_readiness: gpuReadiness,
+        voiceover_context: {
+          id: "44444444-4444-4444-8444-444444444444",
+          state: "SUCCEEDED" as const,
+          transcript_hash: `sha256:${"b".repeat(64)}`,
+          context_hash: `sha256:${"c".repeat(64)}`,
+          context_document: { primary_topic: "Private project" },
+          reserved_cost_micro_usd: 10_000,
+        },
+        generation: {
+          id: "55555555-5555-4555-8555-555555555555",
+          timeline_plan_sha256: `sha256:${"f".repeat(64)}`,
+          planned_tasks: 25,
+          completed_tasks: 0,
+          failed_tasks: 0,
+          stage: "WAITING_FOR_GPU_QUALIFICATION" as const,
+        },
+        stages: [
+          {
+            id: "prompt-writing",
+            name: "Write image prompts",
+            status: "RUNNING",
+            progress_percent: 50,
+          },
+        ],
+        prompts: [
+          {
+            scene_ordinal: 0,
+            scene_id: "scene-one",
+            narration: "A maker checks the first prototype at a workbench.",
+            in_image_shot_role: "HUMAN_MEDIUM",
+            timeline_composition: "IMAGE_FULL",
+            positive_prompt:
+              "Natural documentary photograph of a maker checking a worn prototype at a cluttered workbench.",
+            negative_prompt: "text, captions, logos, motion graphics, staged advertising pose",
+            image_style_version_id: "style-version",
+            style_profile_hash: `sha256:${"d".repeat(64)}`,
+            style_name: "Documentary",
+          },
+        ],
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(await screen.findByText("1 accepted · writing next scene")).toBeInTheDocument();
+    const promptRegion = screen.getByRole("region", { name: "Accepted image prompts" });
+    expect(within(promptRegion).getByText(/maker checking a worn prototype/u)).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 

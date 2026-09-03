@@ -109,12 +109,12 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
   }
 });
 
-test("hosted prompt and compact-context profiles upgrade the exact 0059 chain to 0069", async () => {
+test("hosted prompt progress upgrades the exact 0059 chain to 0070", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0069_hosted_context_compact_profile.sql");
+    assert.equal(sources.at(-1)?.filename, "0070_hosted_prompt_scene_progress.sql");
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -136,7 +136,7 @@ test("hosted prompt and compact-context profiles upgrade the exact 0059 chain to
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [60, 61, 62, 63, 64, 65, 66, 67, 68, 69]);
+    assert.deepEqual(upgraded.appliedVersions, [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70]);
     const definitions = await executor.query(
       `SELECT proname, pg_get_functiondef(oid) AS definition
          FROM pg_proc
@@ -153,6 +153,26 @@ test("hosted prompt and compact-context profiles upgrade the exact 0059 chain to
     assert.match(context.definition, /deepseek:v4@flash/u);
     assert.match(context.definition, /voiceover-context-v9/u);
     assert.match(context.definition, /revision\s*=\s*7|revision=7/u);
+    const progressSurface = await executor.query(
+      `SELECT c.relrowsecurity, c.relforcerowsecurity,
+              to_regprocedure('public.videoforge_record_hosted_prompt_scene(uuid,jsonb)') IS NOT NULL
+                AS has_record,
+              to_regprocedure('public.videoforge_fail_hosted_prompt_run(uuid,text,text,boolean,bigint)') IS NOT NULL
+                AS has_bounded_failure,
+              to_regprocedure('public.videoforge_fail_hosted_prompt_run(uuid,text,text,boolean)') IS NULL
+                AS removed_legacy_failure
+         FROM pg_class c
+        WHERE c.oid='public.hosted_prompt_scene_progress'::regclass`,
+    );
+    assert.deepEqual(progressSurface.rows, [
+      {
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        has_record: true,
+        has_bounded_failure: true,
+        removed_legacy_failure: true,
+      },
+    ]);
   } finally {
     await database.close();
   }
