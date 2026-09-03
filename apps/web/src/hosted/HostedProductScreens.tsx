@@ -548,12 +548,18 @@ interface HostedAttempt {
   readonly cost?: HostedCost | null;
 }
 
-function transcriptionFailureMessage(code: string | null | undefined): string {
+export function transcriptionFailureMessage(code: string | null | undefined): string {
   if (code === "MEDIA_EXECUTION_SUBPROCESS_FAILED") {
     return "Your computer's local transcription process stopped unexpectedly after one bounded recovery attempt. Update the personal media worker before retrying.";
   }
   if (code === "MEDIA_EXECUTION_FAILED") {
     return "Your computer's local transcription process stopped unexpectedly. Update the personal media worker before retrying.";
+  }
+  if (code === "MEDIA_EXECUTION_IO_FAILED") {
+    return "The local media worker could not read or save the transcription data. Free disk space and update the personal media worker before retrying.";
+  }
+  if (code === "MEDIA_EXECUTION_CONTRACT_INVALID" || code === "ASR_RESULT_INVALID") {
+    return "The local media worker returned an invalid transcription result. Update the personal media worker before retrying.";
   }
   return "Your project and voiceover are safe. Update the personal media worker before retrying.";
 }
@@ -597,6 +603,66 @@ interface HostedStage {
 }
 
 type HostedCount = number | string | null | undefined;
+
+const HOSTED_ACTIVE_STAGE_STATUSES = new Set([
+  "QUEUED",
+  "STARTING",
+  "RUNNING",
+  "RETRYING",
+  "PREPARING",
+  "ACTIVE",
+  "ADMITTED",
+  "OUTBOXED",
+  "SUBMITTED",
+  "RECONCILING",
+  "CANCEL_REQUESTED",
+]);
+const HOSTED_ACTIVE_ATTEMPT_STATES = new Set([
+  "OUTBOXED",
+  "SUBMITTED",
+  "RUNNING",
+  "RECONCILING",
+  "CANCEL_REQUESTED",
+]);
+const HOSTED_TERMINAL_STAGE_STATUSES = new Set([
+  "FAILED",
+  "ACTION_REQUIRED",
+  "BLOCKED",
+  "CANCELLED",
+]);
+
+type HostedTerminalStageStatus = "FAILED" | "ACTION_REQUIRED" | "BLOCKED" | "CANCELLED" | null;
+
+function hostedHasActiveWork(
+  stages: readonly { readonly status: string }[] | undefined,
+  attempts: readonly { readonly state: string }[],
+): boolean {
+  return Boolean(
+    stages?.some((stage) => HOSTED_ACTIVE_STAGE_STATUSES.has(stage.status.toUpperCase())) ||
+      attempts.some((attempt) => HOSTED_ACTIVE_ATTEMPT_STATES.has(attempt.state.toUpperCase())),
+  );
+}
+
+function hostedTerminalStageStatus(
+  stages: readonly { readonly status: string }[] | undefined,
+  attempts: readonly { readonly state: string }[],
+): HostedTerminalStageStatus {
+  if (hostedHasActiveWork(stages, attempts)) return null;
+  for (const stage of stages ?? []) {
+    const status = stage.status.toUpperCase();
+    if (HOSTED_TERMINAL_STAGE_STATUSES.has(status))
+      return status as Exclude<HostedTerminalStageStatus, null>;
+    if (
+      status.includes("QUALIFICATION") ||
+      status.includes("BLOCKED") ||
+      status.includes("UNAVAILABLE") ||
+      status.includes("UNQUALIFIED")
+    ) {
+      return "BLOCKED";
+    }
+  }
+  return null;
+}
 
 interface HostedScaleToZero {
   readonly state: string;
@@ -704,16 +770,12 @@ interface ProjectDetailResponse {
 
 export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
   if (!data) return 2_000;
-  const terminalStage = data.stages?.some((stage) =>
-    ["FAILED", "ACTION_REQUIRED"].includes(stage.status),
-  );
-  const activeAttempt = data.attempts.some((attempt) =>
-    ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
-  );
+  const activeWork = hostedHasActiveWork(data.stages, data.attempts);
+  const terminalStage = hostedTerminalStageStatus(data.stages, data.attempts) !== null;
   const terminalAttempt =
-    !activeAttempt &&
-    data.attempts.some((attempt) => ["FAILED", "CANCELLED"].includes(attempt.state));
-  const terminalContext = data.voiceover_context?.state === "FAILED";
+    !activeWork &&
+    data.attempts.some((attempt) => ["FAILED", "CANCELLED"].includes(attempt.state.toUpperCase()));
+  const terminalContext = !activeWork && data.voiceover_context?.state === "FAILED";
   const complete =
     Boolean(data.stages?.length) &&
     data.stages!.every((stage) =>
@@ -3474,28 +3536,41 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   );
   const hasFailed = uiStages.some((stage) => stage.status === "FAILED");
   const hasActionRequired = uiStages.some((stage) => stage.status === "ACTION_REQUIRED");
-  const hasRunning = uiStages.some((stage) =>
-    ["STARTING", "RUNNING", "RETRYING", "CANCEL_REQUESTED"].includes(stage.status),
-  );
+  const hasRunning =
+    uiStages.some((stage) =>
+      ["STARTING", "RUNNING", "RETRYING", "CANCEL_REQUESTED"].includes(stage.status),
+    ) ||
+    query.data.attempts.some((attempt) =>
+      HOSTED_ACTIVE_ATTEMPT_STATES.has(attempt.state.toUpperCase()),
+    );
+  const terminalStageStatus = hostedTerminalStageStatus(stages, query.data.attempts);
+  const terminalBlocked = terminalStageStatus === "BLOCKED";
+  const terminalCancelled = terminalStageStatus === "CANCELLED";
   const allComplete = uiStages.every((stage) => stage.status === "COMPLETE");
   const overallStatus = hasFailed
     ? "Needs attention"
     : hasActionRequired
       ? "Action required"
-      : allComplete
-        ? "Ready for review"
-        : hasRunning
-          ? "Running"
-          : "Waiting";
+      : terminalBlocked
+        ? "Blocked"
+        : terminalCancelled
+          ? "Cancelled"
+          : allComplete
+            ? "Ready for review"
+            : hasRunning
+              ? "Running"
+              : "Waiting";
   const statusToneValue = hasFailed
     ? "danger"
     : hasActionRequired
       ? "warning"
-      : allComplete
-        ? "success"
-        : hasRunning
-          ? "info"
-          : "warning";
+      : terminalBlocked || terminalCancelled
+        ? "warning"
+        : allComplete
+          ? "success"
+          : hasRunning
+            ? "info"
+            : "warning";
   const latestArtifact =
     render?.preview_url ??
     query.data.review?.contact_sheet?.at(-1)?.image_url ??
@@ -3513,7 +3588,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const promptWritingActive =
     promptWriting.isPending ||
     ["STARTING", "RUNNING", "RETRYING"].includes(promptStage?.status ?? "");
-  const promptWritingStopped = ["FAILED", "ACTION_REQUIRED"].includes(promptStage?.status ?? "");
+  const promptWritingStopped = ["FAILED", "ACTION_REQUIRED", "BLOCKED", "CANCELLED"].includes(
+    promptStage?.status ?? "",
+  );
   const acceptedPromptCount =
     hostedCount(promptProgress?.accepted_scenes) ?? acceptedPrompts.length;
   const totalPromptCount = hostedCount(promptProgress?.total_scenes);

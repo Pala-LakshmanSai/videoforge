@@ -68,6 +68,7 @@ import {
   parseWavDurationMs,
   preflightBlockers,
   readJson,
+  transcriptionFailureMessage,
 } from "./HostedProductScreens";
 
 describe("hosted project polling", () => {
@@ -124,6 +125,77 @@ describe("hosted project polling", () => {
       ),
     ).toBe(2_000);
   });
+
+  it("stops background reads after a blocked hosted stage", () => {
+    expect(
+      hostedProjectPollInterval(
+        detail({
+          stages: [
+            {
+              id: "prompt-writing",
+              name: "Write image prompts",
+              status: "BLOCKED",
+              progress_percent: 0,
+            },
+          ],
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps polling when a downstream stage is blocked while an earlier stage runs", () => {
+    expect(
+      hostedProjectPollInterval(
+        detail({
+          stages: [
+            {
+              id: "prompt-writing",
+              name: "Write image prompts",
+              status: "RUNNING",
+              progress_percent: 50,
+            },
+            {
+              id: "image-generation",
+              name: "Generate images",
+              status: "BLOCKED",
+              progress_percent: 0,
+            },
+          ],
+        }),
+      ),
+    ).toBe(2_000);
+  });
+
+  it("keeps polling when a blocked stage has an active attempt", () => {
+    expect(
+      hostedProjectPollInterval(
+        detail({
+          stages: [
+            {
+              id: "prompt-writing",
+              name: "Write image prompts",
+              status: "BLOCKED",
+              progress_percent: 0,
+            },
+          ],
+          attempts: [
+            {
+              id: "33333333-3333-4333-8333-333333333333",
+              kind: "MAGE_IMAGE",
+              state: "RUNNING",
+              version: 1,
+              created_at: "2026-09-03T10:00:00.000Z",
+              updated_at: "2026-09-03T10:00:01.000Z",
+              terminal_at: null,
+              output_checksum_sha256: null,
+              approved_at: null,
+              preview_url: null,
+            },
+          ],
+        }),
+      ),
+    ).toBe(2_000);
+  });
 });
 
 function renderHosted(node: ReactNode) {
@@ -174,6 +246,25 @@ const gpuReadiness = {
 };
 
 describe("hosted product errors", () => {
+  it.each([
+    [
+      "MEDIA_EXECUTION_IO_FAILED",
+      "The local media worker could not read or save the transcription data. Free disk space and update the personal media worker before retrying.",
+    ],
+    [
+      "MEDIA_EXECUTION_CONTRACT_INVALID",
+      "The local media worker returned an invalid transcription result. Update the personal media worker before retrying.",
+    ],
+    [
+      "ASR_RESULT_INVALID",
+      "The local media worker returned an invalid transcription result. Update the personal media worker before retrying.",
+    ],
+  ])("maps %s to a bounded actionable transcription message", (code, message) => {
+    expect(transcriptionFailureMessage(code)).toBe(message);
+    expect(message).not.toContain(code);
+    expect(message.length).toBeLessThan(240);
+  });
+
   it("shows the safe duplicate-style message instead of its internal code", async () => {
     vi.stubGlobal(
       "fetch",
@@ -1204,6 +1295,52 @@ describe("hosted product journey", () => {
 
     expect(await screen.findByText("Create Project unavailable")).toBeInTheDocument();
     expect(screen.queryByText(/MAGE_IMAGE/u)).not.toBeInTheDocument();
+  });
+
+  it("keeps the overall status running while a downstream stage is blocked", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: "11111111-1111-4111-8111-111111111111",
+            title: "Private project",
+            created_at: "2026-08-17T10:00:00.000Z",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
+          },
+          attempts: [],
+          gpu_transport: "DISABLED_UNQUALIFIED" as const,
+          gpu_readiness: gpuReadiness,
+          generation: null,
+          stages: [
+            {
+              id: "prepare",
+              name: "Prepare",
+              status: "COMPLETE",
+              progress_percent: 100,
+            },
+            {
+              id: "prompt-writing",
+              name: "Write image prompts",
+              status: "RUNNING",
+              progress_percent: 50,
+            },
+            {
+              id: "image-generation",
+              name: "Generate images",
+              status: "BLOCKED",
+              progress_percent: 0,
+            },
+          ],
+        }),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />);
+
+    const progressHero = await screen.findByRole("region", { name: "Live video progress" });
+    expect(within(progressHero).getAllByText("Running").length).toBeGreaterThan(0);
+    expect(within(progressHero).queryByText("Blocked")).not.toBeInTheDocument();
   });
 
   it("offers an idempotent recovery action for a cancellation left pending", async () => {
