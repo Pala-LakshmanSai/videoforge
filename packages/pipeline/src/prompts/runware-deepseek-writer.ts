@@ -55,7 +55,7 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
   "Write prompt_core as concise compatibility prose describing the scene's subject, visible action, physical environment, lighting context, and useful continuity; it may use natural semantic paraphrase.",
   "Treat literal_subject, action, environment, and lighting_context as the authoritative structured scene facts. The downstream compiler derives the final literal image description from those fields; prompt_core is retained only for provider compatibility and bounded quality checks.",
-  "Begin action with the first distinctive action word from exact_phrase, allowing only simple grammatical or morphological inflection, then add concrete visible detail; do not substitute a synonym in the action field.",
+  "Begin action with the first distinctive action word from exact_phrase, allowing only simple grammatical or morphological inflection, then add concrete visible detail; do not prefix it with a subject or substitute a synonym in the action field.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, writing, handwritten or printed words, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
   "Never choose duration, layout, shot role, avatar placement, model, GPU, retry, or fallback.",
@@ -869,8 +869,8 @@ const stemRelevanceWord = (word: string): string => {
     return word.length === 4 && word.endsWith("s") && !word.endsWith("ss")
       ? word.slice(0, -1)
       : word;
-  if (word.endsWith("ies") && word.length > 5) return `${word.slice(0, -3)}y`;
-  if (word.endsWith("ing") && word.length > 5) {
+  if (word.endsWith("ies") && word.length > 4) return `${word.slice(0, -3)}y`;
+  if (word.endsWith("ing") && word.length > 4) {
     const stem = word.slice(0, -3);
     // running -> run, not runn. This is a deliberately light stemmer, not a
     // general English morphological parser.
@@ -935,6 +935,39 @@ const firstActionAnchor = (value: string): string | null => {
 const exactRelevanceConcepts = (value: string): ReadonlySet<string> =>
   new Set(relevanceTerms(value).map(({ raw }) => stemRelevanceWord(raw)));
 
+/**
+ * Treat a single dropped silent-e as morphology, not as a new action. This
+ * covers forms such as drives/driving and rides/riding without enumerating
+ * verbs or allowing arbitrary semantic substitutions.
+ */
+const relevanceConceptsEquivalent = (left: string, right: string): boolean =>
+  left === right || (left.length > 2 && (left === `${right}e` || `${left}e` === right));
+
+const relevanceSetContains = (expected: ReadonlySet<string>, actual: string): boolean => {
+  for (const concept of expected) {
+    if (relevanceConceptsEquivalent(concept, actual)) return true;
+  }
+  return false;
+};
+
+const ACTION_CHAIN_CONNECTOR = /\b(?:while|then)\b/iu;
+
+const actionChainTail = (value: string): string | null => {
+  const match = value.match(/\b(?:while|then)\b([\s\S]*)/iu);
+  return match?.[1]?.trim() || null;
+};
+
+const firstInflectedActionAnchor = (value: string): string | null => {
+  const terms = relevanceTerms(value);
+  const inflected = terms.find(
+    ({ raw }) =>
+      (raw.endsWith("ing") && raw.length > 4) ||
+      (raw.endsWith("ed") && raw.length > 4) ||
+      (raw.endsWith("s") && !raw.endsWith("ss") && raw.length > 4),
+  );
+  return inflected === undefined ? firstActionAnchor(value) : stemRelevanceWord(inflected.raw);
+};
+
 const relevanceOverlap = (expected: ReadonlySet<string>, actual: ReadonlySet<string>): number => {
   let count = 0;
   for (const concept of expected) if (actual.has(concept)) count += 1;
@@ -995,7 +1028,29 @@ const sceneOutputIsRelevant = (
   const primaryOverlap = relevanceOverlap(primaryExpected, outputConcepts);
   const primaryActionAnchors = exactRelevanceConcepts(primaryContext);
   const actionAnchor = firstActionAnchor(row.action as string);
-  const actionAnchorGrounded = actionAnchor !== null && primaryActionAnchors.has(actionAnchor);
+  const literalSubjectConcepts = exactRelevanceConcepts(row.literal_subject as string);
+  const actionStartsWithSubject =
+    actionAnchor !== null && relevanceSetContains(literalSubjectConcepts, actionAnchor);
+  if (actionStartsWithSubject) return false;
+  const actionAnchorGrounded =
+    actionAnchor !== null && relevanceSetContains(primaryActionAnchors, actionAnchor);
+
+  // One generated scene must describe one capturable action. If the provider
+  // adds a while/then clause, narration must contain that same coordination;
+  // when both tails expose an inflected action, keep those actions aligned.
+  const actionTail = actionChainTail(row.action as string);
+  if (actionTail !== null && ACTION_CHAIN_CONNECTOR.test(row.action as string)) {
+    const narratedTail = actionChainTail(primaryContext);
+    if (narratedTail === null) return false;
+    const outputTailAnchor = firstInflectedActionAnchor(actionTail);
+    const narratedTailAnchor = firstInflectedActionAnchor(narratedTail);
+    if (
+      outputTailAnchor !== null &&
+      narratedTailAnchor !== null &&
+      !relevanceConceptsEquivalent(outputTailAnchor, narratedTailAnchor)
+    )
+      return false;
+  }
 
   // A phrase containing a concrete subject should carry at least one
   // narration anchor through the structured fields. The first action concept
