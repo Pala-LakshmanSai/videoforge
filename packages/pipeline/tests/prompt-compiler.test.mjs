@@ -76,10 +76,11 @@ test("builds exact 25, 40, and 50 scene batches with sanitized global context", 
   }
 });
 
-test("batch validation rejects underflow, overflow, duplicate IDs, invalid roles, and blank phrases", () => {
-  for (const count of [24, 51]) {
-    expectCode("PROMPT_INPUT_INVALID", () => batch(count));
-  }
+test("batch validation rejects empty batches but permits arbitrary script scene counts", () => {
+  expectCode("PROMPT_INPUT_INVALID", () => batch(0));
+  assert.equal(batch(1).scenes.length, 1);
+  assert.equal(batch(24).scenes.length, 24);
+  assert.equal(batch(51).scenes.length, 51);
   const duplicate = scenes(25);
   duplicate[1] = { ...duplicate[1], sceneId: duplicate[0].sceneId };
   expectCode("PROMPT_INPUT_INVALID", () =>

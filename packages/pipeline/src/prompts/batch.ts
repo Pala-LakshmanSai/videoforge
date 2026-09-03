@@ -74,8 +74,13 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
     fail("PROMPT_INPUT_INVALID", "Image Style version ID is invalid.", ["imageStyleVersionId"]);
   if (!SHA256.test(input.styleProfileHash))
     fail("PROMPT_INPUT_INVALID", "Style profile hash is invalid.", ["styleProfileHash"]);
-  if (input.scenes.length < 25 || input.scenes.length > 50)
-    fail("PROMPT_INPUT_INVALID", "Prompt batch must contain 25-50 scenes.", ["scenes"]);
+  // A batch is a transport unit, not a script-size contract. Stage 4 owns the
+  // complete deterministic scene list; the adaptive planner chooses how many
+  // contiguous scenes fit each provider request. Keeping this validator at a
+  // one-scene minimum lets short scripts and the final remainder use the same
+  // immutable prompt contract without inventing a project-level scene cap.
+  if (input.scenes.length < 1)
+    fail("PROMPT_INPUT_INVALID", "Prompt batch must contain at least one scene.", ["scenes"]);
 
   const ids = new Set<string>();
   const scenes = input.scenes.map((scene, index): PromptSceneInput => {

@@ -6,6 +6,8 @@ import {
   IN_IMAGE_SHOT_ROLES,
   PipelineDomainError,
   RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
+  RUNWARE_PROMPT_OUTPUT_FIXED_TOKENS,
+  RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE,
   RUNWARE_PROMPT_MODEL,
   RUNWARE_PROMPT_REQUEST_VERSION,
@@ -148,7 +150,12 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
     assert.equal(request.requestVersion, RUNWARE_PROMPT_REQUEST_VERSION);
     assert.equal(
       request.request.settings.maxTokens,
-      Math.min(RUNWARE_PROMPT_MAX_OUTPUT_TOKENS, count * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE),
+      Math.min(
+        RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
+        RUNWARE_PROMPT_OUTPUT_FIXED_TOKENS +
+          count * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE +
+          RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
+      ),
     );
     assert.equal(request.request.jsonSchema.strict, true);
     assert.doesNotMatch(
@@ -213,7 +220,7 @@ test("writer contract requires relatable physical evidence and applies style as 
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /believable anatomy, materials, scale/u);
 });
 
-test("rejects verbose prompt cores above the token-conscious output contract", async () => {
+test("rejects verbose prompt cores without retrying the accepted batch", async () => {
   const setup = writer([
     (request) =>
       success(request, {
@@ -222,15 +229,11 @@ test("rejects verbose prompt cores above the token-conscious output contract", a
           return rows;
         },
       }),
-    (request) => success(request),
   ]);
-  const result = await setup.value.write(makeBatch(25));
-  assert.equal(setup.transport.requests.length, 2);
-  assert.deepEqual(
-    payload(setup.transport.requests[1]).scenes.map((scene) => scene.scene_id),
-    ["scene_001"],
-  );
-  assert.ok(result.scenes[0].prompt_core.length <= 600);
+  await expectInvalid(() => setup.value.write(makeBatch(25)));
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(setup.evidence[0].validationDisposition, "rejected");
+  assert.deepEqual(setup.evidence[0].acceptedSceneIds, []);
 });
 
 test("accepts reordered output but restores original scene order", async () => {
@@ -243,7 +246,7 @@ test("accepts reordered output but restores original scene order", async () => {
   assert.equal(setup.evidence[0].validationDisposition, "accepted");
 });
 
-test("retries only invalid/missing rows and never rewrites accepted first-attempt rows", async () => {
+test("does not retry invalid or missing rows", async () => {
   const setup = writer([
     (request) =>
       success(request, {
@@ -253,27 +256,17 @@ test("retries only invalid/missing rows and never rewrites accepted first-attemp
           return rows.filter((_, index) => index !== 3);
         },
       }),
-    (request) => success(request, { marker: "retry" }),
   ]);
-  const result = await setup.value.write(makeBatch(25));
-  assert.deepEqual(
-    payload(setup.transport.requests[1]).scenes.map((scene) => scene.scene_id),
-    ["scene_002", "scene_004"],
-  );
-  assert.match(result.scenes[0].prompt_core, /marker first/u);
-  assert.match(result.scenes[1].prompt_core, /marker retry/u);
-  assert.equal(
-    setup.transport.requests[1].retryOfRequestSha256,
-    setup.transport.requests[0].requestSha256,
-  );
+  await expectInvalid(() => setup.value.write(makeBatch(25)));
+  assert.equal(setup.transport.requests.length, 1);
   assert.deepEqual(
     setup.evidence.map((item) => item.validationDisposition),
-    ["partial_retry", "accepted"],
+    ["rejected"],
   );
 });
 
-test("multi-row anchor/forbidden failures recover once with byte-equivalent replay", async () => {
-  const steps = () => [
+test("multi-row anchor and forbidden failures stop after the single request", async () => {
+  const setup = writer([
     (request) =>
       success(request, {
         change: (rows) => {
@@ -282,20 +275,13 @@ test("multi-row anchor/forbidden failures recover once with byte-equivalent repl
           return rows;
         },
       }),
-    (request) => success(request),
-  ];
-  const first = writer(steps());
-  const second = writer(steps());
-  const firstResult = await first.value.write(makeBatch(25));
-  const secondResult = await second.value.write(makeBatch(25));
-  assert.deepEqual(firstResult, secondResult);
-  assert.deepEqual(
-    payload(first.transport.requests[1]).scenes.map((scene) => scene.scene_id),
-    ["scene_001", "scene_003"],
-  );
+  ]);
+  await expectInvalid(() => setup.value.write(makeBatch(25)));
+  assert.equal(setup.transport.requests.length, 1);
+  assert.deepEqual(setup.evidence[0].acceptedSceneIds, []);
 });
 
-test("retry exhaustion fails closed with no partial result", async () => {
+test("a failed batch has no partial result", async () => {
   const invalidateFirst = (request) =>
     success(request, {
       change: (rows) => {
@@ -303,12 +289,12 @@ test("retry exhaustion fails closed with no partial result", async () => {
         return rows;
       },
     });
-  const setup = writer([invalidateFirst, invalidateFirst]);
+  const setup = writer([invalidateFirst]);
   await expectInvalid(() => setup.value.write(makeBatch(25)));
-  assert.equal(setup.transport.requests.length, 2);
+  assert.equal(setup.transport.requests.length, 1);
   assert.deepEqual(
     setup.evidence.map((item) => item.validationDisposition),
-    ["partial_retry", "rejected"],
+    ["rejected"],
   );
 });
 
@@ -365,24 +351,24 @@ test("usage, cost, latency, finish, and returned-model drift fail closed", async
   }
 });
 
-test("cumulative retry cost cannot drift above the caller-owned batch ceiling", async () => {
+test("a single request cost cannot drift above the caller-owned batch ceiling", async () => {
   const setup = writer(
     [
       (request) =>
         success(request, {
-          costUsd: 0.006,
+          costUsd: 0.02,
           change: (rows) => {
             rows[0].action = "";
             return rows;
           },
         }),
-      (request) => success(request, { costUsd: 0.006 }),
     ],
     0.01,
   );
   await expectInvalid(() => setup.value.write(makeBatch(25)));
-  assert.equal(setup.evidence[1].costUsd, 0.006);
-  assert.equal(setup.evidence[1].validationDisposition, "rejected");
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(setup.evidence[0].costUsd, 0.02);
+  assert.equal(setup.evidence[0].validationDisposition, "rejected");
 });
 
 test("ambiguous, timeout, explicit failure, and transport exception never auto-retry", async (context) => {

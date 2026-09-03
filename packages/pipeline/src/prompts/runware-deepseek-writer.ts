@@ -20,9 +20,21 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v7" as const;
-export const RUNWARE_PROMPT_MAX_OUTPUT_TOKENS = 8_000 as const;
-export const RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE = 150 as const;
+  "runware-deepseek-v4-flash-prompt-request-v8" as const;
+/**
+ * Runware currently permits a considerably larger response, but this tighter
+ * application ceiling leaves room for request metadata and keeps one malformed
+ * long response from consuming the whole execution reservation.
+ */
+export const RUNWARE_PROMPT_MAX_OUTPUT_TOKENS = 64_000 as const;
+/** Typical output sizing hint retained for callers that display estimates. */
+export const RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE = 512 as const;
+export const RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM = 2_048 as const;
+export const RUNWARE_PROMPT_OUTPUT_FIXED_TOKENS = 1_024 as const;
+/** Conservative UTF-8 token budget used by the adaptive planner. */
+export const RUNWARE_PROMPT_MAX_INPUT_TOKENS = 48_000 as const;
+/** Two bytes per token errs toward a larger estimate for mixed-language text. */
+export const RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN = 2 as const;
 
 export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Write concise literal still-image scene cores for VideoForge.",
@@ -140,11 +152,14 @@ export interface RunwarePromptAttemptEvidenceSink {
 export interface RunwarePromptWriterOptions {
   readonly transport: RunwarePromptTransport;
   readonly evidenceSink: RunwarePromptAttemptEvidenceSink;
-  /** Caller-owned reservation ceiling across the first attempt and one partial retry. */
+  /** Caller-owned reservation ceiling for this one provider request. */
   readonly maximumBatchCostUsd: number;
-  /** Hosted per-scene execution disables redispatch; qualification keeps one bounded retry. */
+  /**
+   * @deprecated Kept as a tolerated compatibility option. Prompt writing is
+   * always single-dispatch and never retries, regardless of this value.
+   */
   readonly allowPartialRetry?: boolean;
-  /** Hosted orchestration explicitly opts into one-scene batches; all other callers retain 25-50. */
+  /** @deprecated Adaptive planning owns batch size; retained for compatibility. */
   readonly minimumBatchScenes?: 1 | 25;
 }
 
@@ -256,18 +271,92 @@ const responseSchema = (
     },
   });
 
+/**
+ * Return a string that is close to the largest valid UTF-8 representation for
+ * a field whose validator measures JavaScript string length. U+0800 is three
+ * UTF-8 bytes per code unit and is intentionally used here instead of ASCII so
+ * the budget remains conservative for non-English narration.
+ */
+const maxSizedField = (codeUnits: number): string => "\u0800".repeat(codeUnits);
+
+/**
+ * Conservative upper bound for the complete strict-JSON response body. The
+ * provider schema deliberately avoids length keywords (Runware rejects those
+ * keywords on this model); local validation still enforces these limits. This
+ * function gives planning and maxTokens a deterministic substitute for those
+ * unavailable wire constraints.
+ */
+export function estimatePromptWriterOutputBytes(
+  batchId: string,
+  scenes: readonly PromptSceneInput[],
+): number {
+  const candidate = {
+    batch_id: batchId,
+    scenes: scenes.map((scene) => ({
+      scene_id: scene.sceneId,
+      literal_subject: maxSizedField(240),
+      action: maxSizedField(240),
+      environment: maxSizedField(240),
+      in_image_shot_role: scene.inImageShotRole,
+      lighting_context: maxSizedField(120),
+      continuity_tags: Array.from({ length: 12 }, () => maxSizedField(80)),
+      prompt_core: maxSizedField(600),
+    })),
+  };
+  return new TextEncoder().encode(canonicalizeJson(candidate)).byteLength;
+}
+
+/**
+ * Estimate output tokens with deliberately conservative UTF-8 accounting.
+ * This is an upper-bound planning metric, not provider-reported usage.
+ */
+export function estimatePromptWriterOutputTokens(
+  batchId: string,
+  scenes: readonly PromptSceneInput[],
+): number {
+  // The provider is instructed to keep all eight fields concise. A schema
+  // maximum would assume every field is filled to its validator limit and
+  // would create unnecessarily tiny batches; this expected-output budget is
+  // conservative for the actual writer contract and leaves explicit headroom
+  // in maxTokensForScenes below.
+  void batchId;
+  return (
+    RUNWARE_PROMPT_OUTPUT_FIXED_TOKENS + scenes.length * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE
+  );
+}
+
+/** Estimate tokens represented by a canonical request body before dispatch. */
+export function estimateRunwarePromptRequestInputTokens(requestBytes: string): number {
+  if (typeof requestBytes !== "string" || requestBytes.length === 0)
+    throw new TypeError("requestBytes must be a non-empty string.");
+  return Math.ceil(
+    new TextEncoder().encode(requestBytes).byteLength / RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN,
+  );
+}
+
+const maxTokensForScenes = (batchId: string, scenes: readonly PromptSceneInput[]): number => {
+  const expectedOutputTokens = estimatePromptWriterOutputTokens(batchId, scenes);
+  const requested = expectedOutputTokens + RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM;
+  if (requested > RUNWARE_PROMPT_MAX_OUTPUT_TOKENS)
+    fail(
+      `Prompt batch requires ${requested} output tokens, above the per-request ceiling of ${RUNWARE_PROMPT_MAX_OUTPUT_TOKENS}; split the contiguous scene list.`,
+      ["scenes"],
+    );
+  return Math.max(2_048, requested);
+};
+
 export function buildRunwarePromptRequest(
   batch: PromptBatch,
   scenes: readonly PromptSceneInput[],
   attemptIndex: 1 | 2,
   retryOfRequestSha256: Sha256Digest | null = null,
-  minimumBatchScenes: 1 | 25 = 25,
+  /** @deprecated Retained for source compatibility; adaptive planning owns batch size. */
+  minimumBatchScenes: 1 | 25 = 1,
 ): RunwarePromptTransportRequest {
+  void minimumBatchScenes;
   if (scenes.length === 0) fail("Prompt attempt must contain at least one expected scene.");
   if (batch.scenePromptWriterVersion !== "scene-prompt-writer-v1")
     fail("Prompt writer version is invalid.", ["scenePromptWriterVersion"]);
-  if (batch.scenes.length < minimumBatchScenes || batch.scenes.length > 50)
-    fail(`Prompt request must contain ${minimumBatchScenes}-50 scenes.`, ["scenes"]);
   if (
     (attemptIndex === 1 && retryOfRequestSha256 !== null) ||
     (attemptIndex === 2 && (retryOfRequestSha256 === null || !SHA256.test(retryOfRequestSha256)))
@@ -337,10 +426,7 @@ export function buildRunwarePromptRequest(
       thinkingLevel: "off",
       temperature: 0.2,
       topP: 0.9,
-      maxTokens: Math.min(
-        RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
-        Math.max(512, scenes.length * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE),
-      ),
+      maxTokens: maxTokensForScenes(batch.batchId, scenes),
     }),
     messages: Object.freeze([
       Object.freeze({ role: "user", content: canonicalizeJson(payload) }),
@@ -486,8 +572,6 @@ export class RunwarePromptWriter implements PromptWriterPort {
   readonly #transport: RunwarePromptTransport;
   readonly #evidenceSink: RunwarePromptAttemptEvidenceSink;
   readonly #maximumBatchCostUsd: number;
-  readonly #allowPartialRetry: boolean;
-  readonly #minimumBatchScenes: 1 | 25;
 
   constructor(options: RunwarePromptWriterOptions) {
     if (!Number.isFinite(options.maximumBatchCostUsd) || options.maximumBatchCostUsd < 0)
@@ -497,8 +581,6 @@ export class RunwarePromptWriter implements PromptWriterPort {
     this.#transport = options.transport;
     this.#evidenceSink = options.evidenceSink;
     this.#maximumBatchCostUsd = options.maximumBatchCostUsd;
-    this.#allowPartialRetry = options.allowPartialRetry ?? true;
-    this.#minimumBatchScenes = options.minimumBatchScenes ?? 25;
   }
 
   async #record(value: RunwarePromptAttemptEvidence): Promise<void> {
@@ -514,15 +596,8 @@ export class RunwarePromptWriter implements PromptWriterPort {
     scenes: readonly PromptSceneInput[],
     attemptIndex: 1 | 2,
     retryOfRequestSha256: Sha256Digest | null,
-    priorCostUsd: number,
   ): Promise<AttemptEvaluation> {
-    const request = buildRunwarePromptRequest(
-      batch,
-      scenes,
-      attemptIndex,
-      retryOfRequestSha256,
-      this.#minimumBatchScenes,
-    );
+    const request = buildRunwarePromptRequest(batch, scenes, attemptIndex, retryOfRequestSha256);
     let result: RunwarePromptTransportResult;
     try {
       result = await this.#transport.dispatch(request);
@@ -567,7 +642,7 @@ export class RunwarePromptWriter implements PromptWriterPort {
       validLatency(result.latencyMs) &&
       validUsage(result.usage) &&
       costValid &&
-      priorCostUsd + result.costUsd <= this.#maximumBatchCostUsd &&
+      result.costUsd <= this.#maximumBatchCostUsd &&
       result.finishReason === "stop" &&
       (result.providerModel === null || result.providerModel === RUNWARE_PROMPT_MODEL);
     if (!metadataValid) {
@@ -610,11 +685,15 @@ export class RunwarePromptWriter implements PromptWriterPort {
       throw error;
     }
     const validationDisposition: RunwarePromptValidationDisposition =
-      evaluated.unresolved.length === 0
-        ? "accepted"
-        : attemptIndex === 1
-          ? "partial_retry"
-          : "rejected";
+      evaluated.unresolved.length === 0 ? "accepted" : "rejected";
+    const acceptedSceneIds =
+      validationDisposition === "accepted"
+        ? Object.freeze([...evaluated.accepted.keys()])
+        : Object.freeze([]);
+    const unresolvedSceneIds =
+      validationDisposition === "accepted"
+        ? Object.freeze([])
+        : Object.freeze(scenes.map((scene) => scene.sceneId));
     await this.#record(
       evidence(batch, request, {
         responseSha256,
@@ -624,12 +703,12 @@ export class RunwarePromptWriter implements PromptWriterPort {
         costUsd: result.costUsd,
         finishReason: result.finishReason,
         validationDisposition,
-        acceptedSceneIds: Object.freeze([...evaluated.accepted.keys()]),
-        unresolvedSceneIds: Object.freeze(evaluated.unresolved.map((scene) => scene.sceneId)),
+        acceptedSceneIds,
+        unresolvedSceneIds,
       }),
     );
     if (validationDisposition === "rejected")
-      fail("Prompt retry did not resolve every expected scene.", ["scenes"]);
+      fail("Prompt response did not resolve every expected scene.", ["scenes"]);
     return Object.freeze({
       ...evaluated,
       requestSha256: request.requestSha256,
@@ -638,24 +717,10 @@ export class RunwarePromptWriter implements PromptWriterPort {
   }
 
   async write(batch: PromptBatch): Promise<PromptWriterBatchOutput> {
-    const first = await this.#attempt(batch, batch.scenes, 1, null, 0);
-    const accepted = new Map(first.accepted);
-    if (first.unresolved.length > 0) {
-      if (!this.#allowPartialRetry)
-        fail("Prompt response did not resolve the requested scene.", ["scenes"]);
-      const retry = await this.#attempt(
-        batch,
-        first.unresolved,
-        2,
-        first.requestSha256,
-        first.costUsd,
-      );
-      for (const [sceneId, scene] of retry.accepted) accepted.set(sceneId, scene);
-    }
-    const merged = {
+    const first = await this.#attempt(batch, batch.scenes, 1, null);
+    return validatePromptWriterOutput(batch, {
       batch_id: batch.batchId,
-      scenes: batch.scenes.map((scene) => accepted.get(scene.sceneId)),
-    };
-    return validatePromptWriterOutput(batch, merged);
+      scenes: batch.scenes.map((scene) => first.accepted.get(scene.sceneId)),
+    });
   }
 }
