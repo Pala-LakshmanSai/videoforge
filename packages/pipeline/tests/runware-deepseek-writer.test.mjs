@@ -83,7 +83,7 @@ function output(request, options = {}) {
   const rows = requestPayload.scenes.map((scene) => ({
     scene_id: scene.scene_id,
     literal_subject: scene.exact_phrase,
-    action: `shows literal action ${options.marker ?? request.attemptIndex}`,
+    action: `demonstrating literal action ${options.marker ?? request.attemptIndex}`,
     environment: "an ordinary real-world farm setting",
     in_image_shot_role: scene.in_image_shot_role,
     lighting_context: "available practical daylight",
@@ -250,11 +250,16 @@ test("writer contract requires relatable physical evidence and applies style as 
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /believable anatomy, materials, scale/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /translate its meaning into concrete visual evidence/u,
+    /translate its meaning into .*concrete visual evidence/u,
+  );
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /authoritative structured scene facts/u);
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /downstream compiler derives the final literal image description/u,
   );
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /Build prompt_core from the validated literal_subject, action, and environment facts/u,
+    /Begin action with the first distinctive action word from exact_phrase/u,
   );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /at most 12 unique continuity_tags/u);
   assert.doesNotMatch(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Copy each required_literal_anchor/u);
@@ -359,7 +364,7 @@ test("scene relevance rejects one incidental generic overlap without retry", asy
   assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
 });
 
-test("scene relevance accepts synonym-based grounding without literal token copy", async () => {
+test("scene relevance accepts entity and environment paraphrase with an action anchor", async () => {
   const base = makeBatch(1);
   const batch = {
     ...base,
@@ -376,7 +381,7 @@ test("scene relevance accepts synonym-based grounding without literal token copy
       success(request, {
         change: (rows) => {
           rows[0].literal_subject = "An agricultural worker";
-          rows[0].action = "fixing a damaged water machine";
+          rows[0].action = "repairing a damaged water machine";
           rows[0].environment = "a cultivated field before the next harvest";
           rows[0].prompt_core =
             "An agricultural worker fixes a damaged water machine by hand in a cultivated field.";
@@ -486,7 +491,7 @@ test("scene relevance rejects matching entities when the narrated action is wron
   assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
 });
 
-test("scene relevance rejects a prompt core with the wrong action despite correct metadata", async () => {
+test("scene relevance ignores a raw prompt core mismatch when structured facts are grounded", async () => {
   const base = makeBatch(1);
   const batch = {
     ...base,
@@ -502,8 +507,9 @@ test("scene relevance rejects a prompt core with the wrong action despite correc
     (request) =>
       success(request, {
         change: (rows) => {
-          // The structured metadata is correct, but prompt_core is the
-          // compiler-facing field and depicts riding instead of repairing.
+          // The structured metadata is correct. The compiler now derives
+          // literal content from it, so raw prompt_core may be a natural
+          // compatibility paraphrase without controlling the image action.
           rows[0].literal_subject = "A woman";
           rows[0].action = "repairing a bicycle by hand";
           rows[0].environment = "a public park work area";
@@ -513,27 +519,20 @@ test("scene relevance rejects a prompt core with the wrong action despite correc
         },
       }),
   ]);
-  await expectInvalid(() => setup.value.write(batch));
+  const result = await setup.value.write(batch);
   assert.equal(setup.transport.requests.length, 1);
-  assert.deepEqual(setup.evidence[0].validationDiagnostic, {
-    category: "scene_quality",
-    reason: "scene_relevance",
-    requestedSceneCount: 1,
-    returnedSceneCount: 1,
-    locallyValidSceneCount: 0,
-    unresolvedSceneCount: 1,
-  });
+  assert.equal(result.scenes.length, 1);
 });
 
-test("scene relevance rejects buying a bicycle when prompt_core changes the action to riding", async () => {
+test("scene relevance rejects an unseen stealing action when nouns are shared", async () => {
   const base = makeBatch(1);
   const batch = {
     ...base,
     scenes: [
       {
         ...base.scenes[0],
-        phrase: "A woman buys a bicycle",
-        sentenceContext: "A woman buys a bicycle from a bicycle shop.",
+        phrase: "A woman purchases a bicycle",
+        sentenceContext: "A woman purchases a bicycle from a bicycle shop.",
       },
     ],
   };
@@ -542,10 +541,10 @@ test("scene relevance rejects buying a bicycle when prompt_core changes the acti
       success(request, {
         change: (rows) => {
           rows[0].literal_subject = "A woman";
-          rows[0].action = "buying a bicycle";
+          rows[0].action = "stealing a bicycle";
           rows[0].environment = "inside a bicycle shop aisle";
           rows[0].prompt_core =
-            "A woman rides a bicycle through a bicycle shop aisle in natural daylight with visible shelves.";
+            "A woman moves through a bicycle shop aisle in natural daylight with visible shelves and ordinary wear.";
           return rows;
         },
       }),
@@ -555,7 +554,7 @@ test("scene relevance rejects buying a bicycle when prompt_core changes the acti
   assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
 });
 
-test("scene relevance accepts a normal purchase paraphrase in structured fields and prompt_core", async () => {
+test("scene relevance accepts a purchase action anchor with a raw prompt core paraphrase", async () => {
   const base = makeBatch(1);
   const batch = {
     ...base,
@@ -572,10 +571,10 @@ test("scene relevance accepts a normal purchase paraphrase in structured fields 
       success(request, {
         change: (rows) => {
           rows[0].literal_subject = "A female shopper";
-          rows[0].action = "paying for food";
+          rows[0].action = "purchasing groceries by paying for food";
           rows[0].environment = "at a grocery checkout";
           rows[0].prompt_core =
-            "A female shopper pays for food at a grocery checkout under natural daylight with a reusable bag nearby.";
+            "An observational checkout moment shows a shopper beside a basket under natural daylight with realistic materials and ordinary wear.";
           return rows;
         },
       }),
@@ -660,7 +659,7 @@ test("a forbidden visual instruction stops after the single request", async () =
     (request) =>
       success(request, {
         change: (rows) => {
-          rows[2].action = "show a visible logo";
+          rows[2].action = "demonstrating a visible logo";
           return rows;
         },
       }),

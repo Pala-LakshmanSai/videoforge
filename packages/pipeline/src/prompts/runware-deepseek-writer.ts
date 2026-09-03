@@ -21,7 +21,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v10" as const;
+  "runware-deepseek-v4-flash-prompt-request-v11" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -40,7 +40,7 @@ export const RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN = 2 as const;
 export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Write concise literal still-image scene cores for VideoForge using the scene-content contract scene-prompt-writer-v2.",
   "Return every requested scene ID exactly once and echo its in-image shot role unchanged.",
-  "Treat each exact_phrase as semantic authority: translate its meaning into concrete visual evidence instead of copying narration prose into prompt_core.",
+  "Treat each exact_phrase as semantic authority: translate its meaning into the structured scene facts and concrete visual evidence instead of copying narration prose into prompt_core.",
   "Use adjacent context only to disambiguate; it may never override the exact phrase.",
   "Use the compact story context to resolve people, places, pronouns, callbacks, era, and continuity; it may never override the exact phrase or scene_phrase_context.",
   "Choose concrete visible evidence of the exact phrase, never a generic mood image merely related to the overall topic.",
@@ -53,9 +53,9 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "For photographic styles, require believable anatomy, materials, scale, perspective, optics, light, and everyday wear rather than glossy synthetic perfection.",
   "Every text field must be non-empty and contain no control characters. Keep literal_subject, action, and environment at 240 characters or fewer; lighting_context at 120 or fewer; and prompt_core at 600 or fewer.",
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
-  "Write prompt_core as one self-contained concrete descriptive still-image sentence that consolidates the scene's literal subject, visible action, physical environment, lighting context, and useful continuity exactly once.",
-  "Treat literal_subject, action, environment, and lighting_context as independently checked QC metadata; prompt_core must carry the complete image description because it is the only scene-content field sent to the image compiler.",
-  "Build prompt_core from the validated literal_subject, action, and environment facts: preserve each field's meaning and the visible action, allowing grammatical or morphological paraphrase but never replacing one action with another that shares the same subject or object.",
+  "Write prompt_core as concise compatibility prose describing the scene's subject, visible action, physical environment, lighting context, and useful continuity; it may use natural semantic paraphrase.",
+  "Treat literal_subject, action, environment, and lighting_context as the authoritative structured scene facts. The downstream compiler derives the final literal image description from those fields; prompt_core is retained only for provider compatibility and bounded quality checks.",
+  "Begin action with the first distinctive action word from exact_phrase, allowing only simple grammatical or morphological inflection, then add concrete visible detail; do not substitute a synonym in the action field.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, writing, handwritten or printed words, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
   "Never choose duration, layout, shot role, avatar placement, model, GPU, retry, or fallback.",
@@ -858,91 +858,13 @@ for (const group of RELEVANCE_ALIAS_GROUPS) {
   for (const word of group) RELEVANCE_ALIASES.set(word, canonical);
 }
 
-const RELEVANCE_ACTIONS = new Set([
-  "adjust",
-  "assemble",
-  "begin",
-  "bring",
-  "build",
-  "carry",
-  "check",
-  "clean",
-  "climb",
-  "commence",
-  "consume",
-  "construct",
-  "cook",
-  "cut",
-  "demonstrate",
-  "display",
-  "detach",
-  "drink",
-  "drive",
-  "eat",
-  "empty",
-  "enter",
-  "examine",
-  "fill",
-  "fix",
-  "fry",
-  "grow",
-  "harvest",
-  "hold",
-  "illustrate",
-  "install",
-  "inspect",
-  "lift",
-  "maintain",
-  "mend",
-  "move",
-  "notice",
-  "observe",
-  "open",
-  "operate",
-  "pick",
-  "place",
-  "plant",
-  "pour",
-  "prepare",
-  "put",
-  "reach",
-  "remove",
-  "repair",
-  "ride",
-  "restore",
-  "run",
-  "see",
-  "service",
-  "show",
-  "start",
-  "scrub",
-  "say",
-  "set",
-  "slice",
-  "speak",
-  "steer",
-  "stroll",
-  "take",
-  "talk",
-  "test",
-  "travel",
-  "trim",
-  "turn",
-  "tune",
-  "unlock",
-  "uncover",
-  "uninstall",
-  "use",
-  "walk",
-  "wash",
-  "watch",
-  "work",
-]);
-
 const stemRelevanceWord = (word: string): string => {
+  const restoreDroppedE = (stem: string): string =>
+    stem.endsWith("at") || stem.endsWith("as") || stem.endsWith("us") ? `${stem}e` : stem;
+
   // Keep short nouns intact, but normalize common four-letter present-tense
-  // forms (buys/pays/runs) so field-to-core grounding accepts morphology
-  // without maintaining a verb dictionary.
+  // forms (buys/pays/runs) so narration-to-action grounding accepts
+  // morphology without maintaining a verb dictionary.
   if (word.length <= 4)
     return word.length === 4 && word.endsWith("s") && !word.endsWith("ss")
       ? word.slice(0, -1)
@@ -955,11 +877,14 @@ const stemRelevanceWord = (word: string): string => {
     if (stem.length > 3 && stem.at(-1) === stem.at(-2)) return stem.slice(0, -1);
     // Preserve a silent-e base for the productive -ate/-ating pattern
     // (demonstrating/demonstrates -> demonstrate) without a verb list.
-    return stem.endsWith("at") ? `${stem}e` : stem;
+    // The same dropped-e spelling occurs in common -ase/-use bases (for
+    // example, purchasing/use -> purchase/use). This remains morphology-only;
+    // no finite action vocabulary is involved.
+    return restoreDroppedE(stem);
   }
   if (word.endsWith("ied") && word.length > 4) return `${word.slice(0, -3)}y`;
   if (word.endsWith("ated") && word.length > 5) return `${word.slice(0, -2)}e`;
-  if (word.endsWith("ed") && word.length > 4) return word.slice(0, -2);
+  if (word.endsWith("ed") && word.length > 4) return restoreDroppedE(word.slice(0, -2));
   if (word.endsWith("ates") && word.length > 5) return word.slice(0, -1);
   if (
     (word.endsWith("sses") ||
@@ -997,23 +922,18 @@ const distinctiveRelevanceWords = (value: string): ReadonlySet<string> =>
   new Set(relevanceTerms(value).map(({ concept }) => concept));
 
 /**
- * Find the predicate-like term in a structured action without a fixed action
- * vocabulary. Inflected forms are strong signals even when the subject is
- * written first ("a woman repairs ..."); otherwise the first content term is
- * the contract's action head. Morphology and the existing neutral concept
- * normalizer are the only semantics used here.
+ * Return the first action anchor without synonym aliases. General relevance
+ * overlap may accept high-confidence paraphrases, but the structured action
+ * field must start with the narrated action itself (with only morphology
+ * normalized) so an unseen action cannot be swapped for a different one.
  */
-const relevanceActionHeadConcepts = (value: string): ReadonlySet<string> => {
-  const terms = relevanceTerms(value);
-  if (terms.length === 0) return new Set();
-  const inflected = terms.find(
-    ({ raw }) =>
-      (raw.endsWith("ing") && raw.length > 5) ||
-      (raw.endsWith("ed") && raw.length > 4) ||
-      (raw.endsWith("s") && !raw.endsWith("ss") && raw.length > 4),
-  );
-  return new Set([(inflected ?? terms[0]!).concept]);
+const firstActionAnchor = (value: string): string | null => {
+  const first = relevanceTerms(value)[0];
+  return first === undefined ? null : stemRelevanceWord(first.raw);
 };
+
+const exactRelevanceConcepts = (value: string): ReadonlySet<string> =>
+  new Set(relevanceTerms(value).map(({ raw }) => stemRelevanceWord(raw)));
 
 const relevanceOverlap = (expected: ReadonlySet<string>, actual: ReadonlySet<string>): number => {
   let count = 0;
@@ -1021,63 +941,36 @@ const relevanceOverlap = (expected: ReadonlySet<string>, actual: ReadonlySet<str
   return count;
 };
 
-const relevanceActionConcepts = (value: string): ReadonlySet<string> =>
-  new Set(
-    [...distinctiveRelevanceWords(value)].filter((concept) => RELEVANCE_ACTIONS.has(concept)),
-  );
-
 const relevanceEntityConcepts = (value: string): ReadonlySet<string> =>
-  new Set(
-    [...distinctiveRelevanceWords(value)].filter((concept) => !RELEVANCE_ACTIONS.has(concept)),
-  );
-
-/**
- * The compiler receives only prompt_core. Keep the provider's useful prose,
- * but require it to retain each structured scene fact before it can cross the
- * writer boundary. Subject and environment need one stable concept. The
- * action additionally needs its predicate head, so a shared object cannot
- * turn "buying a bicycle" into "riding a bicycle". This intentionally does
- * not enumerate an action vocabulary; the field itself supplies the fact.
- */
-const structuredFieldIsGroundedInPromptCore = (
-  field: string,
-  promptCore: string,
-  role: "subject" | "action" | "environment",
-): boolean => {
-  const fieldConcepts = distinctiveRelevanceWords(field);
-  const coreConcepts = distinctiveRelevanceWords(promptCore);
-  const overlap = relevanceOverlap(fieldConcepts, coreConcepts);
-  if (overlap === 0) return false;
-  if (role !== "action") return true;
-  const actionHeads = relevanceActionHeadConcepts(field);
-  return relevanceOverlap(actionHeads, coreConcepts) > 0;
-};
+  distinctiveRelevanceWords(value);
 
 const GENERIC_VISUAL_PLACEHOLDER =
   /\b(?:a person|some person|someone|something|somewhere|generic (?:place|setting|scene)|public setting|ordinary scene|standing still|doing something|various objects?|general activity|unidentified subject)\b/iu;
 
 /**
- * This bounded local gate rejects generic stock placeholders and descriptions
- * about a different subject. It deliberately uses the expected phrase and
- * containing sentence as the primary evidence, with adjacent phrases as a
- * small continuity supplement. It is not intended to prove full semantic
- * equivalence: the provider contract remains responsible for that. The local
- * stem/alias overlap only prevents a plausible but unrelated image (for
- * example, a fox beside an alpine lake for a bicycle-repair narration) from
- * passing because it is detailed and photorealistic.
+ * This bounded local gate validates the structured scene facts. It deliberately
+ * uses the expected phrase and containing sentence as the primary evidence,
+ * with adjacent phrases as a small continuity supplement for pronouns and
+ * abstract claims. The raw prompt_core is retained for wire compatibility and
+ * detail/forbidden-content QC only; the compiler derives final image content
+ * from the structured fields. The action field's first concept is checked
+ * generically against narration, so unseen verbs cannot be replaced by a
+ * plausible but unrelated action without a finite action taxonomy.
  */
 const sceneOutputIsRelevant = (
   expectedScene: PromptSceneInput,
   row: Record<string, JsonValue>,
 ): boolean => {
-  const fields = [row.literal_subject, row.action, row.environment, row.prompt_core].filter(
+  const structuredFields = [row.literal_subject, row.action, row.environment].filter(
     (value): value is string => typeof value === "string",
   );
-  if (fields.length !== 4) return false;
+  const promptCore = row.prompt_core;
+  if (structuredFields.length !== 3 || typeof promptCore !== "string") return false;
+  const fields = [...structuredFields, promptCore];
   const normalized = fields.join(" ").normalize("NFKC").replace(/\s+/gu, " ").trim();
   if (GENERIC_VISUAL_PLACEHOLDER.test(normalized)) return false;
-  if (fields.slice(0, 3).some((value) => distinctiveRelevanceWords(value).size === 0)) return false;
-  if (distinctiveRelevanceWords(row.prompt_core as string).size < 6) return false;
+  if (structuredFields.some((value) => distinctiveRelevanceWords(value).size === 0)) return false;
+  if (distinctiveRelevanceWords(promptCore).size < 6) return false;
 
   // Cap each source window before tokenizing. Stage 4 already bounds these
   // values, but this keeps acceptance cost and behavior stable for legacy or
@@ -1089,73 +982,32 @@ const sceneOutputIsRelevant = (
     .filter((value): value is string => value !== null)
     .map((value) => value.slice(0, 800))
     .join(" ");
-  const outputContent = fields.join(" ");
+  const structuredContent = structuredFields.join(" ");
 
   const primaryExpected = distinctiveRelevanceWords(primaryContext);
   const nearbyExpected = distinctiveRelevanceWords(nearbyContext);
-  const outputConcepts = distinctiveRelevanceWords(outputContent);
+  const outputConcepts = distinctiveRelevanceWords(structuredContent);
   const phraseConcepts = distinctiveRelevanceWords(expectedScene.phrase);
   const phraseOverlap = relevanceOverlap(phraseConcepts, outputConcepts);
   const phraseEntities = relevanceEntityConcepts(expectedScene.phrase);
-  const outputEntities = relevanceEntityConcepts(outputContent);
+  const outputEntities = relevanceEntityConcepts(structuredContent);
   const phraseEntityOverlap = relevanceOverlap(phraseEntities, outputEntities);
-  // prompt_core is the only scene-content field sent onward to the image
-  // compiler. Validate it independently from the QC metadata so correct
-  // literal_subject/action fields cannot mask a mismatched generated image
-  // description.
-  const promptCore = row.prompt_core as string;
-  const promptCoreConcepts = distinctiveRelevanceWords(promptCore);
-  const promptCoreActions = relevanceActionConcepts(promptCore);
-  const structuredSubjectGrounded = structuredFieldIsGroundedInPromptCore(
-    row.literal_subject as string,
-    promptCore,
-    "subject",
-  );
-  const structuredActionGrounded = structuredFieldIsGroundedInPromptCore(
-    row.action as string,
-    promptCore,
-    "action",
-  );
-  const structuredEnvironmentGrounded = structuredFieldIsGroundedInPromptCore(
-    row.environment as string,
-    promptCore,
-    "environment",
-  );
-  if (!structuredSubjectGrounded || !structuredActionGrounded || !structuredEnvironmentGrounded)
-    return false;
   const primaryOverlap = relevanceOverlap(primaryExpected, outputConcepts);
-  const primaryCoreOverlap = relevanceOverlap(primaryExpected, promptCoreConcepts);
-  const nearbyCoreOverlap = relevanceOverlap(nearbyExpected, promptCoreConcepts);
-  const expectedActions = relevanceActionConcepts(primaryContext);
-  // The dedicated action field is the independently validated action signal.
-  // Do not let boilerplate in prompt_core (for example, "close documentary
-  // view") satisfy an expected narration action.
-  const outputActions = relevanceActionConcepts(row.action as string);
-  const actionOverlap = relevanceOverlap(expectedActions, outputActions);
-  const coreActionOverlap = relevanceOverlap(expectedActions, promptCoreActions);
+  const primaryActionAnchors = exactRelevanceConcepts(primaryContext);
+  const actionAnchor = firstActionAnchor(row.action as string);
+  const actionAnchorGrounded = actionAnchor !== null && primaryActionAnchors.has(actionAnchor);
 
-  // A phrase containing a concrete subject should carry both an entity/anchor
-  // and an action through to the image. Requiring two primary concepts allows
-  // a conservative synonym paraphrase (farmer -> agricultural, repair -> fix)
-  // while rejecting an image that merely repeats one incidental word. Action
-  // mismatch is especially important for scenes such as "repair a bicycle":
-  // a woman riding a bicycle is still the wrong visual evidence.
-  const phraseActions = relevanceActionConcepts(expectedScene.phrase);
-  const phraseIsAbstract = phraseEntities.size === 0 && phraseActions.size <= 1;
+  // A phrase containing a concrete subject should carry at least one
+  // narration anchor through the structured fields. The first action concept
+  // is checked separately so a shared noun cannot turn an unseen verb such as
+  // "purchase" into "steal" or "ride".
+  const phraseIsAbstract = phraseEntities.size === 0;
   if (!phraseIsAbstract) {
     if (phraseOverlap === 0) return false;
-    // At least one expected entity or action must survive. Keeping this to a
-    // single concept preserves valid paraphrases whose wording changes most
-    // nouns, while the primary-overlap and action checks below still reject a
-    // wholly unrelated detailed image.
-    if (phraseEntityOverlap === 0 && actionOverlap === 0) return false;
-    if (expectedActions.size > 0 && actionOverlap === 0) return false;
-    if (expectedActions.size > 0 && coreActionOverlap === 0) return false;
+    if (phraseEntityOverlap === 0 || !actionAnchorGrounded) return false;
     // A semantically translated narration may share only one lexical anchor
-    // with the structured fields (for example, "purchases groceries" ->
-    // "pays for food at a grocery checkout"). The structured-field binding
-    // above is the stronger compiler-facing guarantee; still require one
-    // narration anchor so a fully unrelated fox/lake scene cannot pass.
+    // with the structured fields. The action anchor is the stronger semantic
+    // guarantee; the remaining overlap blocks a fully unrelated detailed row.
     if (primaryOverlap < 1) return false;
     return true;
   }
@@ -1172,16 +1024,20 @@ const sceneOutputIsRelevant = (
     // to be present; this fallback cannot make a fox/alpine-lake response
     // pass a bicycle-repair narration because that narration has anchors.
     const phrase = expectedScene.phrase.normalize("NFKC").replace(/\s+/gu, " ").trim();
-    const output = promptCore.normalize("NFKC").replace(/\s+/gu, " ").trim();
+    const output = structuredContent.normalize("NFKC").replace(/\s+/gu, " ").trim();
     return (
       phrase.length > 0 &&
       output.toLocaleLowerCase("en-US").includes(phrase.toLocaleLowerCase("en-US"))
     );
   }
-  const contextualOverlap = primaryCoreOverlap + nearbyCoreOverlap;
+  const contextualOverlap =
+    relevanceOverlap(primaryExpected, outputConcepts) +
+    relevanceOverlap(nearbyExpected, outputConcepts);
   return (
     contextualOverlap >= (expectedWindowSize >= 3 ? 2 : 1) &&
-    (primaryCoreOverlap >= 1 || nearbyCoreOverlap >= 2 || phraseConcepts.size === 0)
+    (primaryOverlap >= 1 ||
+      relevanceOverlap(nearbyExpected, outputConcepts) >= 2 ||
+      phraseConcepts.size === 0)
   );
 };
 
