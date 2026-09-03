@@ -36,6 +36,7 @@ import {
 import {
   HOSTED_PROMPT_RESERVATION_MICRO_USD,
   HostedPromptExecutionError,
+  type HostedPromptBatchPlanBinding,
 } from "./runware-prompt-execution";
 import { RunwareTransportError } from "../providers/runware-http-transport";
 import {
@@ -5775,10 +5776,35 @@ async function writeProjectPrompts(
     if (!prepared || prepared.created !== true)
       return response({ error: { code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED" } }, 409);
     runId = identity.runId;
+    const preparedBatchCount = prepared.planned_batch_count;
+    const preparedSceneCount = prepared.planned_scene_count;
+    const preparedBatchPlanHash = prepared.batch_plan_hash;
+    if (
+      typeof preparedBatchCount !== "number" ||
+      !Number.isSafeInteger(preparedBatchCount) ||
+      preparedBatchCount < 1 ||
+      typeof preparedSceneCount !== "number" ||
+      !Number.isSafeInteger(preparedSceneCount) ||
+      preparedSceneCount < 1 ||
+      typeof preparedBatchPlanHash !== "string" ||
+      !SHA256.test(preparedBatchPlanHash) ||
+      !SHA256.test(batchPlanHash) ||
+      preparedBatchCount !== batchPlan.batchCount ||
+      preparedSceneCount !== batchPlan.totalScenes ||
+      preparedBatchPlanHash !== batchPlanHash
+    ) {
+      throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
+    }
+    const persistedBatchPlanBinding: HostedPromptBatchPlanBinding = {
+      plannedBatchCount: preparedBatchCount,
+      plannedSceneCount: preparedSceneCount,
+      batchPlanHash: preparedBatchPlanHash as HostedPromptBatchPlanBinding["batchPlanHash"],
+    };
     const accepted = await runHostedPromptExecution({
       scope: { workspaceId: scope.workspace_id, actorUserId: scope.user_id },
       authority,
       batchPlan,
+      persistedBatchPlanBinding,
       command: {
         projectId,
         revisionId: authority.revisionId,

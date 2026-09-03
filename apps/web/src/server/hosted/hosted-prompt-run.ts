@@ -21,8 +21,10 @@ import {
 } from "@videoforge/pipeline";
 
 import {
+  HostedPromptExecutionError,
   HostedRunwarePromptWriter,
   type HostedAcceptedPromptBatch,
+  type HostedPromptBatchPlanBinding,
 } from "./runware-prompt-execution";
 
 type RecordValue = Record<string, unknown>;
@@ -396,6 +398,8 @@ export async function runHostedPromptExecution(input: {
   readonly scope: PromptExecutionScope;
   readonly authority: PromptExecutionAuthority;
   readonly batchPlan: PromptBatchPlan;
+  /** Exact adaptive-plan metadata returned by hosted preparation. */
+  readonly persistedBatchPlanBinding?: HostedPromptBatchPlanBinding;
   readonly command: PromptExecutionCommand;
   readonly apiKey: string;
   readonly persist: (accepted: AcceptedPromptExecution) => Promise<void>;
@@ -418,6 +422,11 @@ export async function runHostedPromptExecution(input: {
   }) => Promise<void>;
   readonly fetcher?: typeof fetch;
 }): Promise<AcceptedPromptExecution> {
+  // The database preparation row is the authority for the provider request
+  // count. Do not allow a legacy caller to reach the writer without carrying
+  // that binding through this orchestration boundary.
+  if (input.persistedBatchPlanBinding === undefined)
+    throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
   const persistBatch = async (accepted: HostedAcceptedPromptBatch) => {
     if (accepted.firstSceneOrdinal !== accepted.scenes[0]?.sceneOrdinal)
       throw new Error("HOSTED_PROMPT_BATCH_ORDER_INVALID");
@@ -459,7 +468,13 @@ export async function runHostedPromptExecution(input: {
   };
   const result = await new DurablePromptExecutionService(
     new HostedPromptStore(input.authority, input.persist),
-    new HostedRunwarePromptWriter(input.apiKey, input.batchPlan, input.fetcher, persistBatch),
+    new HostedRunwarePromptWriter(
+      input.apiKey,
+      input.batchPlan,
+      input.fetcher,
+      persistBatch,
+      input.persistedBatchPlanBinding,
+    ),
     { record() {} },
     { now: () => new Date().toISOString() },
   ).execute(input.scope, input.command);

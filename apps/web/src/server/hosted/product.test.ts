@@ -828,6 +828,27 @@ describe("hosted product route contract", () => {
     expect(source).toContain("/context$/u.exec(url.pathname)");
   });
 
+  it("passes the preparation-owned adaptive plan binding before hosted prompt dispatch", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("async function writeProjectPrompts(");
+    const end = source.indexOf("async function projects(", start);
+    const block = source.slice(start, end);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    expect(block).toContain("const preparedBatchCount = prepared.planned_batch_count");
+    expect(block).toContain("const preparedSceneCount = prepared.planned_scene_count");
+    expect(block).toContain("const preparedBatchPlanHash = prepared.batch_plan_hash");
+    expect(block).toContain("preparedBatchCount !== batchPlan.batchCount");
+    expect(block).toContain("preparedSceneCount !== batchPlan.totalScenes");
+    expect(block).toContain("preparedBatchPlanHash !== batchPlanHash");
+    expect(block).toContain("const persistedBatchPlanBinding");
+    expect(block).toContain("persistedBatchPlanBinding,");
+    expect(
+      block.indexOf("preparedBatchPlanHash !== batchPlanHash") <
+        block.indexOf("const accepted = await runHostedPromptExecution"),
+    ).toBe(true);
+  });
+
   it("reconciles UNKNOWN context only through the original provider task identity", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
     const start = source.indexOf("async function reconcileVoiceoverContext(");

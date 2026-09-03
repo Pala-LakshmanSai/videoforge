@@ -8,7 +8,11 @@ import {
   type PromptBatch,
 } from "@videoforge/pipeline";
 
-import { hostedPromptAuthority, hostedPromptBatchPlan } from "./hosted-prompt-run";
+import {
+  hostedPromptAuthority,
+  hostedPromptBatchPlan,
+  runHostedPromptExecution,
+} from "./hosted-prompt-run";
 import {
   hostedPromptBatchPlanHash,
   HostedPromptExecutionError,
@@ -648,6 +652,44 @@ describe("hosted Runware prompt writer", () => {
       } satisfies Partial<HostedPromptExecutionError>),
     );
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("refuses to enter hosted prompt execution without preparation batch metadata", async () => {
+    const authority = hostedPromptAuthority({
+      plan: plan(),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+    const fetcher = vi.fn();
+    const persist = vi.fn(async () => undefined);
+
+    await expect(
+      runHostedPromptExecution({
+        scope: { workspaceId: authority.workspaceId, actorUserId: ids.workspace },
+        authority,
+        batchPlan: hostedPromptBatchPlan(authority),
+        command: {
+          projectId: authority.projectId,
+          revisionId: authority.revisionId,
+          timelineId: authority.timelineId,
+          taskId: authority.taskId,
+          attemptId: authority.attemptId,
+          outboxId: authority.outboxId,
+          presentedClaimTokenHash: authority.claimTokenHash,
+        },
+        apiKey: "configured-test-key-value",
+        persist,
+        fetcher,
+      }),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        problemCode: "HOSTED_PROMPT_INPUT_INVALID",
+        terminalState: "FAILED",
+        providerMayHaveCharged: false,
+      } satisfies Partial<HostedPromptExecutionError>),
+    );
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(persist).not.toHaveBeenCalled();
   });
 
   it("preserves bounded diagnostics for a definite provider rejection", async () => {
