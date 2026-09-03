@@ -31,7 +31,10 @@ import {
   runHostedPromptExecution,
   type HostedPromptIdentity,
 } from "./hosted-prompt-run";
-import { HOSTED_PROMPT_RESERVATION_MICRO_USD } from "./runware-prompt-execution";
+import {
+  HOSTED_PROMPT_RESERVATION_MICRO_USD,
+  HostedPromptExecutionError,
+} from "./runware-prompt-execution";
 import { RunwareTransportError } from "../providers/runware-http-transport";
 import {
   extractHostedVoiceoverContext,
@@ -5805,6 +5808,15 @@ async function writeProjectPrompts(
       202,
     );
   } catch (error) {
+    const promptFailure =
+      error instanceof HostedPromptExecutionError
+        ? error
+        : new HostedPromptExecutionError(
+            "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+            "UNKNOWN",
+            true,
+            null,
+          );
     if (runId) {
       try {
         const scope = await sessionScope(request, config, pool, executionContext);
@@ -5815,8 +5827,13 @@ async function writeProjectPrompts(
               scope.account_id,
             ]);
             await transaction.query(
-              "SELECT public.videoforge_fail_hosted_prompt_run($1,'UNKNOWN',$2,true)",
-              [runId, "PROMPT_EXECUTION_UNCERTAIN"],
+              "SELECT public.videoforge_fail_hosted_prompt_run($1,$2,$3,$4)",
+              [
+                runId,
+                promptFailure.terminalState,
+                promptFailure.problemCode,
+                promptFailure.providerMayHaveCharged,
+              ],
             );
           });
         }
@@ -5824,13 +5841,24 @@ async function writeProjectPrompts(
         // The durable DISPATCHING claim still prevents a blind provider redispatch.
       }
     }
-    console.error("hosted_prompt_execution_failed", error instanceof Error ? error.name : "Error");
+    console.error("HOSTED_PROMPT_EXECUTION_FAILURE", {
+      error_name: error instanceof Error ? error.name : "Error",
+      problem_code: promptFailure.problemCode,
+      terminal_state: promptFailure.terminalState,
+      provider_may_have_charged: promptFailure.providerMayHaveCharged,
+      stage: promptFailure.diagnostic?.stage ?? null,
+      http_status: promptFailure.diagnostic?.httpStatus ?? null,
+      provider_code: promptFailure.diagnostic?.providerCode ?? null,
+      provider_parameter: promptFailure.diagnostic?.providerParameter ?? null,
+    });
     return response(
       {
         error: {
-          code: "HOSTED_PROMPT_WRITING_FAILED",
+          code: promptFailure.problemCode,
           message:
-            "Image prompt writing stopped without a durable accepted result. The request will not be automatically repeated.",
+            promptFailure.terminalState === "FAILED"
+              ? "Image prompt writing was rejected before VideoForge accepted a result. The request will not be automatically repeated."
+              : "Image prompt writing stopped without a durable accepted result. The request will not be automatically repeated.",
         },
       },
       409,

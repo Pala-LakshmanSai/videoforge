@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { buildPromptBatch, type PromptBatch } from "@videoforge/pipeline";
 
 import { hostedPromptAuthority } from "./hosted-prompt-run";
-import { HostedRunwarePromptWriter } from "./runware-prompt-execution";
+import {
+  HostedPromptExecutionError,
+  HostedRunwarePromptWriter,
+} from "./runware-prompt-execution";
 
 const ids = {
   workspace: "10000000-0000-4000-8000-000000000001",
@@ -370,5 +373,92 @@ describe("hosted Runware prompt writer", () => {
         next_context: "literal scene 2",
       }),
     );
+  });
+
+  it("preserves bounded diagnostics for a definite provider rejection", async () => {
+    const authority = hostedPromptAuthority({
+      plan: plan(),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+    const batch = buildPromptBatch({
+      batchId: `${authority.taskId}:batch:1`,
+      projectTitle: authority.projectTitle,
+      imageStyleVersionId: authority.imageStyleVersionId,
+      styleProfileHash: authority.styleProfileHash,
+      plannerGuidance: authority.plannerGuidance,
+      storyContext: authority.storyContext,
+      continuityTags: authority.continuityTags,
+      scenes: authority.scenes,
+    });
+    const fetcher = vi.fn(async () =>
+      Response.json(
+        {
+          errors: [
+            {
+              code: "invalidParameter",
+              parameter: "settings.maxTokens",
+              message: "provider-private message must be discarded",
+            },
+          ],
+        },
+        { status: 400 },
+      ),
+    );
+
+    await expect(
+      new HostedRunwarePromptWriter("configured-test-key-value", fetcher).write(batch),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: "HostedPromptExecutionError",
+        problemCode: "HOSTED_PROMPT_PROVIDER_REJECTED",
+        terminalState: "FAILED",
+        providerMayHaveCharged: false,
+        diagnostic: {
+          stage: "http",
+          httpStatus: 400,
+          providerCode: "invalidParameter",
+          providerParameter: "settings.maxTokens",
+        },
+      } satisfies Partial<HostedPromptExecutionError>),
+    );
+  });
+
+  it("keeps network ambiguity fail-closed without redispatching", async () => {
+    const authority = hostedPromptAuthority({
+      plan: plan(),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+    const batch = buildPromptBatch({
+      batchId: `${authority.taskId}:batch:1`,
+      projectTitle: authority.projectTitle,
+      imageStyleVersionId: authority.imageStyleVersionId,
+      styleProfileHash: authority.styleProfileHash,
+      plannerGuidance: authority.plannerGuidance,
+      storyContext: authority.storyContext,
+      continuityTags: authority.continuityTags,
+      scenes: authority.scenes,
+    });
+    const fetcher = vi.fn(async () => {
+      throw new Error("opaque network failure");
+    });
+
+    await expect(
+      new HostedRunwarePromptWriter("configured-test-key-value", fetcher).write(batch),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        problemCode: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+        terminalState: "UNKNOWN",
+        providerMayHaveCharged: true,
+        diagnostic: {
+          stage: "network",
+          httpStatus: null,
+          providerCode: null,
+          providerParameter: null,
+        },
+      } satisfies Partial<HostedPromptExecutionError>),
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });
