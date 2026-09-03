@@ -9,7 +9,11 @@ import {
 } from "@videoforge/pipeline";
 
 import { hostedPromptAuthority, hostedPromptBatchPlan } from "./hosted-prompt-run";
-import { HostedPromptExecutionError, HostedRunwarePromptWriter } from "./runware-prompt-execution";
+import {
+  hostedPromptBatchPlanHash,
+  HostedPromptExecutionError,
+  HostedRunwarePromptWriter,
+} from "./runware-prompt-execution";
 
 const ids = {
   workspace: "10000000-0000-4000-8000-000000000001",
@@ -565,6 +569,85 @@ describe("hosted Runware prompt writer", () => {
         accepted.scenes.map((scene: { sceneOrdinal: number }) => scene.sceneOrdinal),
       ),
     ).toEqual(Array.from({ length: 25 }, (_, index) => index));
+  });
+
+  it("rejects tampered adaptive grouping before dispatch even when flattened scene IDs still match", async () => {
+    const sourceScenes = scenes(31);
+    const authority = hostedPromptAuthority({
+      plan: plan({
+        scenes: sourceScenes,
+        all_segments: sourceScenes.map((scene, index) => ({
+          scene_id: scene.scene_id,
+          segment_index: index,
+          phrase: scene.phrase,
+        })),
+      }),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+    const batch = buildPromptBatch({
+      batchId: `${authority.taskId}:batch:1`,
+      projectTitle: authority.projectTitle,
+      imageStyleVersionId: authority.imageStyleVersionId,
+      styleProfileHash: authority.styleProfileHash,
+      styleTreatment: authority.styleTreatment,
+      plannerGuidance: authority.plannerGuidance,
+      storyContext: authority.storyContext,
+      continuityTags: authority.continuityTags,
+      scenes: authority.scenes,
+    });
+    const planned = adaptivePlan(batch);
+    expect(planned.batchCount).toBeGreaterThan(1);
+    const first = planned.batches[0]!;
+    const second = planned.batches[1]!;
+    expect(first.batch.scenes.length).toBeGreaterThan(1);
+    expect(second.batch.scenes.length).toBeGreaterThan(0);
+
+    const rebuild = (source: PromptBatch, sceneRows: readonly PromptBatch["scenes"][number][]) =>
+      buildPromptBatch({
+        batchId: source.batchId,
+        projectTitle: source.sanitizedProjectTitle,
+        imageStyleVersionId: source.imageStyleVersionId,
+        styleProfileHash: source.styleProfileHash,
+        styleTreatment: source.styleTreatment,
+        plannerGuidance: source.plannerGuidance,
+        storyContext: source.storyContext,
+        continuityTags: source.continuityTags,
+        scenes: sceneRows,
+      });
+    const firstScenes = [...first.batch.scenes];
+    const secondScenes = [...second.batch.scenes];
+    const movedFromFirst = firstScenes.pop()!;
+    const movedFromSecond = secondScenes.shift()!;
+    const alteredFirst = rebuild(first.batch, [...firstScenes, movedFromSecond]);
+    const alteredSecond = rebuild(second.batch, [movedFromFirst, ...secondScenes]);
+    const tamperedPlan = {
+      ...planned,
+      batches: Object.freeze([
+        Object.freeze({ ...first, batch: alteredFirst }),
+        Object.freeze({ ...second, batch: alteredSecond }),
+        ...planned.batches.slice(2),
+      ]),
+    };
+    expect(tamperedPlan.batches.flatMap((entry) => entry.sceneIds)).toEqual(
+      planned.batches.flatMap((entry) => entry.sceneIds),
+    );
+
+    const fetcher = successfulPromptFetcher();
+    await expect(
+      new HostedRunwarePromptWriter("configured-test-key-value", tamperedPlan, fetcher, undefined, {
+        plannedBatchCount: planned.batchCount,
+        plannedSceneCount: planned.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(planned),
+      }).write(batch),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        problemCode: "HOSTED_PROMPT_INPUT_INVALID",
+        terminalState: "FAILED",
+        providerMayHaveCharged: false,
+      } satisfies Partial<HostedPromptExecutionError>),
+    );
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("preserves bounded diagnostics for a definite provider rejection", async () => {

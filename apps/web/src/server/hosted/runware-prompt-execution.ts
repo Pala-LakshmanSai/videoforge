@@ -8,6 +8,7 @@ import type {
 import {
   RunwarePromptWriter,
   RunwarePromptValidationError,
+  planPromptBatches,
   runwarePromptValidationDiagnostic,
   validatePromptWriterOutput,
   type PromptBatch,
@@ -29,6 +30,21 @@ import {
 
 export const HOSTED_PROMPT_RESERVATION_MICRO_USD = 40_000 as const;
 export const HOSTED_PROMPT_RESERVATION_USD = HOSTED_PROMPT_RESERVATION_MICRO_USD / 1_000_000;
+
+const SHA256 = /^sha256:[0-9a-f]{64}$/u;
+
+/**
+ * The three values copied from `videoforge_prepare_hosted_prompt_run`.
+ *
+ * The database binds these values before dispatch. Keeping the binding at the
+ * writer boundary means a caller cannot replace the in-memory grouping after
+ * preparation and still reach Runware.
+ */
+export interface HostedPromptBatchPlanBinding {
+  readonly plannedBatchCount: number;
+  readonly plannedSceneCount: number;
+  readonly batchPlanHash: Sha256Digest;
+}
 
 type CapturedAttempt = {
   request: RunwarePromptTransportRequest;
@@ -98,6 +114,126 @@ function normalizedPromptCore(value: string): string {
   return value.normalize("NFKC").replace(/\s+/gu, " ").trim().toLocaleLowerCase("en-US");
 }
 
+/**
+ * This projection must stay byte-for-byte compatible with the document hashed
+ * by `hostedPromptBatchPlanDocument` during preparation. It intentionally
+ * includes every grouping and sizing field, not only the flattened scene IDs.
+ */
+function hostedPromptBatchPlanDocument(plan: PromptBatchPlan): Record<string, unknown> {
+  return {
+    schema_version: "videoforge-hosted-prompt-batch-plan/v1",
+    planner_version: plan.planVersion,
+    batch_id_prefix: plan.batchIdPrefix,
+    total_scenes: plan.totalScenes,
+    batch_count: plan.batchCount,
+    max_input_tokens: plan.maxInputTokens,
+    max_output_tokens: plan.maxOutputTokens,
+    total_estimated_request_bytes: plan.totalEstimatedRequestBytes,
+    total_estimated_input_tokens: plan.totalEstimatedInputTokens,
+    total_estimated_output_tokens: plan.totalEstimatedOutputTokens,
+    batches: plan.batches.map((batch) => ({
+      ordinal: batch.ordinal - 1,
+      batch_id: batch.batchId,
+      first_scene_ordinal: batch.sceneStartIndex,
+      scene_end_ordinal_exclusive: batch.sceneEndIndexExclusive,
+      scene_ids: batch.sceneIds,
+      estimated_request_bytes: batch.estimatedRequestBytes,
+      estimated_input_tokens: batch.estimatedInputTokens,
+      estimated_output_tokens: batch.estimatedOutputTokens,
+      max_output_tokens: batch.maxOutputTokens,
+      ends_at_natural_boundary: batch.endsAtNaturalBoundary,
+    })),
+  };
+}
+
+/** Return the canonical adaptive plan hash persisted by hosted preparation. */
+export async function hostedPromptBatchPlanHash(plan: PromptBatchPlan): Promise<Sha256Digest> {
+  return sha256Utf8(canonicalizeJson(hostedPromptBatchPlanDocument(plan)));
+}
+
+function invalidPlanBinding(): HostedPromptExecutionError {
+  return new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
+}
+
+function validPositiveInteger(value: number): boolean {
+  return Number.isSafeInteger(value) && value > 0;
+}
+
+/**
+ * Rebuild the deterministic plan from the exact Stage 4 batch supplied to the
+ * durable prompt service, then compare it with both the plan object that will
+ * drive dispatch and the plan metadata sealed by preparation. This runs before
+ * constructing the HTTP transport, so every mismatch is provider-free.
+ */
+async function validatePlanBeforeDispatch(
+  batch: PromptBatch,
+  plan: PromptBatchPlan,
+  persistedBinding?: HostedPromptBatchPlanBinding,
+): Promise<void> {
+  try {
+    const recomputed = planPromptBatches({
+      batchIdPrefix: plan.batchIdPrefix,
+      projectTitle: batch.sanitizedProjectTitle,
+      imageStyleVersionId: batch.imageStyleVersionId,
+      styleProfileHash: batch.styleProfileHash,
+      styleTreatment: batch.styleTreatment,
+      plannerGuidance: batch.plannerGuidance,
+      storyContext: batch.storyContext,
+      continuityTags: batch.continuityTags,
+      scenes: batch.scenes,
+      options: {
+        maxInputTokens: plan.maxInputTokens,
+        maxOutputTokens: plan.maxOutputTokens,
+      },
+    });
+    const [recomputedHash, suppliedPlanHash] = await Promise.all([
+      hostedPromptBatchPlanHash(recomputed),
+      hostedPromptBatchPlanHash(plan),
+    ]);
+    const flattenedPlanSceneIds = plan.batches.flatMap((entry) => entry.sceneIds);
+    const batchSceneIds = batch.scenes.map((scene) => scene.sceneId);
+    const batchContentMatches =
+      plan.batches.length === recomputed.batches.length &&
+      plan.batches.every((entry, index) => {
+        const expected = recomputed.batches[index];
+        if (!expected) return false;
+        try {
+          return canonicalizeJson(entry.batch) === canonicalizeJson(expected.batch);
+        } catch {
+          return false;
+        }
+      });
+    if (
+      !validPositiveInteger(plan.totalScenes) ||
+      !validPositiveInteger(plan.batchCount) ||
+      plan.totalScenes !== batch.scenes.length ||
+      plan.batchCount !== plan.batches.length ||
+      flattenedPlanSceneIds.length !== batchSceneIds.length ||
+      flattenedPlanSceneIds.some((sceneId, index) => sceneId !== batchSceneIds[index]) ||
+      !batchContentMatches ||
+      suppliedPlanHash !== recomputedHash ||
+      plan.totalScenes !== recomputed.totalScenes ||
+      plan.batchCount !== recomputed.batchCount ||
+      plan.batchIdPrefix !== recomputed.batchIdPrefix
+    )
+      throw invalidPlanBinding();
+    if (persistedBinding !== undefined) {
+      if (
+        !validPositiveInteger(persistedBinding.plannedBatchCount) ||
+        !validPositiveInteger(persistedBinding.plannedSceneCount) ||
+        !SHA256.test(persistedBinding.batchPlanHash) ||
+        persistedBinding.plannedBatchCount !== recomputed.batchCount ||
+        persistedBinding.plannedSceneCount !== recomputed.totalScenes ||
+        persistedBinding.batchPlanHash !== recomputedHash
+      )
+        throw invalidPlanBinding();
+    }
+  } catch (error) {
+    if (error instanceof HostedPromptExecutionError) throw error;
+    throw invalidPlanBinding();
+  }
+}
+
 export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
   public readonly operation = "runware.write" as const;
 
@@ -106,18 +242,13 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
     private readonly plan: PromptBatchPlan,
     private readonly fetcher: typeof fetch = fetch,
     private readonly onBatchAccepted?: (batch: HostedAcceptedPromptBatch) => Promise<void> | void,
+    private readonly persistedBinding?: HostedPromptBatchPlanBinding,
   ) {
     if (apiKey.trim().length === 0) throw new TypeError("Runware API key is required.");
   }
 
   public async write(batch: PromptBatch): Promise<DurablePromptWriterResult> {
-    const plannedSceneIds = this.plan.batches.flatMap((entry) => entry.sceneIds);
-    if (
-      this.plan.totalScenes !== batch.scenes.length ||
-      plannedSceneIds.length !== batch.scenes.length ||
-      plannedSceneIds.some((sceneId, index) => sceneId !== batch.scenes[index]?.sceneId)
-    )
-      throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
+    await validatePlanBeforeDispatch(batch, this.plan, this.persistedBinding);
     const ledger = new RunwareSpendLedger(HOSTED_PROMPT_RESERVATION_USD);
     const diagnosticState: { current: RunwareSafeDiagnostic | null } = { current: null };
     const acceptedScenes: PromptWriterSceneOutput[] = [];
