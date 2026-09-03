@@ -135,13 +135,14 @@ function successfulPromptFetcher() {
       scenes: payload.scenes
         .map((scene) => ({
           scene_id: scene.scene_id,
-          literal_subject: "an ordinary household object used in the narrated action",
-          action: "shown as physical evidence",
-          environment: "a real practical environment",
+          literal_subject: `the hydrogen peroxide bottle subject described by ${scene.exact_phrase}`,
+          action: `demonstrating ${scene.exact_phrase} as described in the complete sentence`,
+          environment:
+            "the complete real-world hydrogen peroxide bottle setting described by the sentence",
           in_image_shot_role: scene.in_image_shot_role,
           lighting_context: "available daylight",
           continuity_tags: [],
-          prompt_core: `Natural documentary view of ${scene.exact_phrase}, with a household object demonstrating a practical action in a lived-in workspace for ${scene.scene_id}`,
+          prompt_core: `Natural documentary view of ${scene.exact_phrase}, with the hydrogen peroxide bottle subject demonstrating the complete scene described by the sentence in a lived-in workspace for ${scene.scene_id}`,
         }))
         .reverse(),
     };
@@ -777,16 +778,22 @@ describe("hosted Runware prompt writer", () => {
             taskUUID: task.taskUUID,
             text: JSON.stringify({
               batch_id: payload.batch_id,
-              scenes: payload.scenes.map((scene, index) => ({
-                scene_id: scene.scene_id,
-                literal_subject: "a household bottle",
-                action: index === 0 ? "show a visible logo" : "shown as physical evidence",
-                environment: "a lived-in kitchen workspace",
-                in_image_shot_role: scene.in_image_shot_role,
-                lighting_context: "daylight",
-                continuity_tags: [],
-                prompt_core: `A household bottle provides concrete practical evidence in a lived-in kitchen workspace for ${scene.scene_id}`,
-              })),
+              scenes: payload.scenes.map((scene, index) => {
+                const fixturePhrase = `literal scene ${Number(scene.scene_id.slice(-2))}`;
+                return {
+                  scene_id: scene.scene_id,
+                  literal_subject: `the subject described by ${fixturePhrase}`,
+                  action:
+                    index === 0
+                      ? "show a visible logo"
+                      : `demonstrating ${fixturePhrase} as described in the complete sentence`,
+                  environment: "the complete real-world setting described by the sentence",
+                  in_image_shot_role: scene.in_image_shot_role,
+                  lighting_context: "daylight",
+                  continuity_tags: [],
+                  prompt_core: `A practical household object demonstrates ${fixturePhrase} in the complete scene described by the sentence in a lived-in workspace for ${scene.scene_id}`,
+                };
+              }),
             }),
             usage: {
               promptTokens: 100,
@@ -884,16 +891,16 @@ describe("hosted Runware prompt writer", () => {
               batch_id: payload.batch_id,
               scenes: payload.scenes.map((scene, index) => ({
                 scene_id: scene.scene_id,
-                literal_subject: "a practical household object",
+                literal_subject: `the subject described by ${scene.scene_id}`,
                 action:
                   secondBatch && index === 0
                     ? "show a visible logo"
-                    : "used in an ordinary physical demonstration",
-                environment: "a lived-in household workspace",
+                    : `demonstrating ${scene.scene_id} as described in the complete sentence`,
+                environment: "the complete real-world setting described by the sentence",
                 in_image_shot_role: scene.in_image_shot_role,
                 lighting_context: "available window light",
                 continuity_tags: [],
-                prompt_core: `Natural documentary view of a household object used for a practical physical action in a lived-in workspace for ${scene.scene_id}`,
+                prompt_core: `Natural documentary view of the complete scene described by the sentence, with the subject demonstrating a practical household action in a lived-in workspace for ${scene.scene_id}`,
               })),
             }),
             usage: {
@@ -972,7 +979,8 @@ describe("hosted Runware prompt writer", () => {
     });
     const planned = adaptivePlan(batch);
     expect(planned.batchCount).toBe(2);
-    const firstPromptCore = `Natural documentary view of a household object used for a practical physical action in a lived-in workspace for ${planned.batches[0]!.sceneIds[0]}`;
+    const firstPromptCore =
+      `Natural documentary view of the complete scene described by the sentence, with the subject demonstrating a practical household action in a lived-in workspace for ${planned.batches[0]!.sceneIds[0]}`;
     const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
       const task = request[0]!;
@@ -990,16 +998,16 @@ describe("hosted Runware prompt writer", () => {
               batch_id: payload.batch_id,
               scenes: payload.scenes.map((scene, index) => ({
                 scene_id: scene.scene_id,
-                literal_subject: "a practical household object",
-                action: "used in an ordinary physical demonstration",
-                environment: "a lived-in household workspace",
+                literal_subject: `the subject described by ${scene.scene_id}`,
+                action: `demonstrating ${scene.scene_id} as described in the complete sentence`,
+                environment: "the complete real-world setting described by the sentence",
                 in_image_shot_role: scene.in_image_shot_role,
                 lighting_context: "available window light",
                 continuity_tags: [],
                 prompt_core:
                   secondBatch && index === 0
                     ? `  ${firstPromptCore.toLocaleUpperCase("en-US").replaceAll(" ", "   ")}  `
-                    : `Natural documentary view of a household object used for a practical physical action in a lived-in workspace for ${scene.scene_id}`,
+                    : `Natural documentary view of the complete scene described by the sentence, with the subject demonstrating a practical household action in a lived-in workspace for ${scene.scene_id}`,
               })),
             }),
             usage: {

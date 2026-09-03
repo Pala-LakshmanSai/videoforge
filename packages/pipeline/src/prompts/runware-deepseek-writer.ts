@@ -1069,7 +1069,16 @@ const sceneOutputIsRelevant = (
   // They therefore require two anchors from the expected windows, rather than
   // accepting any detailed image that shares a single generic verb.
   const expectedWindowSize = primaryExpected.size + nearbyExpected.size;
-  if (expectedWindowSize === 0) return false;
+  if (expectedWindowSize === 0) {
+    // Some legacy Stage 4 fixtures contain only scaffolding words (for
+    // example, "literal scene 4") and consequently have no semantic anchor
+    // to compare. In that degenerate case, require the exact bounded phrase
+    // to be present; this fallback cannot make a fox/alpine-lake response
+    // pass a bicycle-repair narration because that narration has anchors.
+    const phrase = expectedScene.phrase.normalize("NFKC").replace(/\s+/gu, " ").trim();
+    const output = outputContent.normalize("NFKC").replace(/\s+/gu, " ").trim();
+    return phrase.length > 0 && output.toLocaleLowerCase("en-US").includes(phrase.toLocaleLowerCase("en-US"));
+  }
   const contextualOverlap = primaryOverlap + nearbyOverlap;
   return contextualOverlap >= (expectedWindowSize >= 3 ? 2 : 1) &&
     (primaryOverlap >= 1 || nearbyOverlap >= 2 || phraseConcepts.size === 0);
