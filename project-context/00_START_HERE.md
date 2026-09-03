@@ -4,48 +4,33 @@
 
 ### Current new-chat launch point — 2026-09-03
 
-- The current provider-free Stage 5 repair supersedes the prompt-quality/accounting follow-ups in the
-  live handoff below. Future fresh projects use `scene-prompt-writer-v2` / Runware request v11 and a
-  structured treatment derived only from the pinned immutable Image Style. Each returned scene has
-  structured `literal_subject`, `action`, `environment`, and `lighting_context` facts plus continuity
-  tags: subject/action/environment must retain concrete anchors from the exact Stage 4 phrase, its
-  containing sentence, bounded adjacent phrases, or compact global story context. The action begins
-  with the exact phrase's first distinctive action, permitting morphology only; narrated coordination
-  is required for action chains. The compiler derives final literal image content from these validated
-  facts; `prompt_core` is retained only for provider compatibility and bounded quality checks. No
-  hardcoded photographic or reference-image content is allowed to replace the selected style.
-- Adaptive batching still has no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
+- Source `dec0d08c6b8398f1fbf7782f07616d9ae3832634` was deployed exactly once to staging Worker
+  `f9ecb74a-d19b-4263-8b1a-d24fdad6d94e`. Migrations `0069` through `0073` and the exact runtime
+  grant set were already applied and must not be replayed.
+- Computer Use and signed-in real Chrome created exactly one fresh project
+  `14183f42-af00-4813-aa51-dad4f58b0f12`. Stages 1–4 completed; Stage 4 saved 35 segments, 30 image
+  scenes, and 10 avatar segments. Stage 5 stopped before durable preparation or provider dispatch
+  because reference-content validation falsely rejected legitimate title-cased abstract traits from
+  the pinned Image Style. Durable Stage 5 truth is zero prompt runs, accepted batches, accepted
+  scenes, provider requests, and cost.
+- Stage 3 settled 74 micro-USD with exact conservation: 10,000 reserved = 74 settled + 9,926
+  released. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation
+  occurred. Preserve `14183f42…` as frozen evidence; it must not be retried, continued, or retrieved.
+- Provider-free repair `9f220f7e` advances the semantic style projection to
+  `image-style-treatment/v2` and the DeepSeek V4 Flash transport to Runware request v12. It accepts
+  title-cased abstract traits by explicit field semantics, excludes mixed subject/human/environment
+  fields so reference subject matter cannot become a global style suffix, and revalidates the exact
+  request-side treatment. The pinned immutable Image Style remains the only creative style source;
+  no hardcoded style attributes replace it.
+- Future fresh projects still use `scene-prompt-writer-v2`, narration-grounded structured scene facts,
+  and adaptive batching with no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
   per persisted planned batch, accepted batches are durable before the next request, and failure or
-  ambiguity never redispatches. Structured-fact validation rejects generic placeholder scenes,
-  ungrounded subjects/environments/actions, ungrounded action chains, text/sign/label/marking
-  conflicts, cross-batch duplicates, and reference-content leakage while allowing non-verbatim
-  semantic phrasing. Migration `0072` repairs Stage 3 reservation release
-  accounting; migration `0073` selects writer v2 for future fresh Stage 5 runs. Both are pending.
-- Provider-free evidence is green: pipeline 142/142, control plane 388/388, web 1,486/1,486 with one
-  intentional skip, focused hosted Stage 5/viewer/local-mode compatibility 78/78, package typechecks,
-  full web lint, staging build/quarantine, deployment/context validation, secret scan, formatting, and
-  diff checks. An independent final audit passed after reference-content leakage was blocked both at
-  style publication and again at the prompt-batch boundary. Computer Use also caught and verified the local header-mode repair: fixture pages now
-  report `API healthy` instead of falsely saying offline/private staging. No migration, deployment,
-  project, provider request or retrieval, GPU/RunPod, production, volume mutation, or spend occurred.
-  Fresh exact source/migration authority is required before one deployment and one new
-  Stage 1-5 live proof.
-- Repository HEAD contains the live Stage 5 qualification handoff. Source `ffcc89c2` was deployed
-  exactly once to staging Worker `87c0a45f-0b03-4334-b36d-cc9f3a920426`; migrations `0069`–`0071`
-  and the exact runtime grant set were already applied and must not be replayed.
-- Exactly one fresh project `91afab6c-ad32-49fc-abab-05957541362a` completed Stages 1–5. Stage 4
-  saved 33 segments, 28 image scenes, and 10 avatar segments. Stage 5 persisted two adaptive batches,
-  made exactly two DeepSeek V4 Flash requests, exposed 13 accepted prompts while batch 2 ran, and
-  completed 28/28 accepted prompts in the verified scrollable viewer.
-- Stage 5 cost conservation passes exactly: 40,000 micro-USD reserved = 2,187 settled + 37,813
-  released. Total Stage 3+5 settled cost was 2,259 micro-USD. Stage 3 separately omitted its unused
-  9,928 micro-USD `RELEASED` event, and Stage 5 positive-description validation should reject
-  text-bearing details such as handwritten lists, markings, or labels despite the compiled text ban.
-  Both are provider-free source/test follow-ups before another full project.
-- Preserve `91afab6c…` as frozen Stage 5 evidence. No retry, provider retrieval, or Stage 6
-  continuation is authorized; use a fresh quality-corrected project for the later real E2E. The
-  three earlier prohibited projects remain off limits. No active provider/media-worker lease,
-  nonterminal attempt, RunPod job, endpoint, worker, or disposable resource remains.
+  ambiguity never redispatches. The compiler derives final literal content from validated
+  `literal_subject`, `action`, `environment`, and `lighting_context`, never raw `prompt_core`.
+- Relevant provider-free evidence for the v2/v12 repair is green: pipeline 163/163, focused hosted
+  136/136, and hosted Chrome prompt-progress/viewer 2/2. This repair is not deployed or live-qualified.
+  Fresh exact source-bound authority is required before one staging deployment and exactly one fresh
+  Stage 1–5 project.
 - The selected next profile is `v2_07_mage_serverless` with brief `tasks/VF-10-07.md`. V2-07
   Attempt64 is closed `NOT_QUALIFIED` after `RUNPOD_ZERO_NOT_CONFIRMED`; cleanup is exact and repair
   `1283a23` passed independent audit. Attempt64 and every older proposal, authority, cap, and run are
