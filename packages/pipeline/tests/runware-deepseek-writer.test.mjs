@@ -482,6 +482,45 @@ test("scene relevance rejects matching entities when the narrated action is wron
   assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
 });
 
+test("scene relevance rejects a prompt core with the wrong action despite correct metadata", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle in a public park",
+        sentenceContext: "A woman repairs a bicycle in a public park.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          // The structured metadata is correct, but prompt_core is the
+          // compiler-facing field and depicts riding instead of repairing.
+          rows[0].literal_subject = "A woman";
+          rows[0].action = "repairing a bicycle by hand";
+          rows[0].environment = "a public park work area";
+          rows[0].prompt_core =
+            "A woman rides a bicycle through a public park path with trees in soft daylight.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.transport.requests.length, 1);
+  assert.deepEqual(setup.evidence[0].validationDiagnostic, {
+    category: "scene_quality",
+    reason: "scene_relevance",
+    requestedSceneCount: 1,
+    returnedSceneCount: 1,
+    locallyValidSceneCount: 0,
+    unresolvedSceneCount: 1,
+  });
+});
+
 test("scene relevance accepts a concrete contextual rendering of an abstract phrase", async () => {
   const base = makeBatch(1);
   const batch = {

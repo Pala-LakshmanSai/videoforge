@@ -1029,14 +1029,27 @@ const sceneOutputIsRelevant = (
   const phraseEntities = relevanceEntityConcepts(expectedScene.phrase);
   const outputEntities = relevanceEntityConcepts(outputContent);
   const phraseEntityOverlap = relevanceOverlap(phraseEntities, outputEntities);
+  // prompt_core is the only scene-content field sent onward to the image
+  // compiler. Validate it independently from the QC metadata so correct
+  // literal_subject/action fields cannot mask a mismatched generated image
+  // description.
+  const promptCore = row.prompt_core as string;
+  const promptCoreConcepts = distinctiveRelevanceWords(promptCore);
+  const promptCoreEntities = relevanceEntityConcepts(promptCore);
+  const promptCoreActions = relevanceActionConcepts(promptCore);
+  const phraseCoreOverlap = relevanceOverlap(phraseConcepts, promptCoreConcepts);
+  const phraseCoreEntityOverlap = relevanceOverlap(phraseEntities, promptCoreEntities);
   const primaryOverlap = relevanceOverlap(primaryExpected, outputConcepts);
   const nearbyOverlap = relevanceOverlap(nearbyExpected, outputConcepts);
+  const primaryCoreOverlap = relevanceOverlap(primaryExpected, promptCoreConcepts);
+  const nearbyCoreOverlap = relevanceOverlap(nearbyExpected, promptCoreConcepts);
   const expectedActions = relevanceActionConcepts(primaryContext);
   // The dedicated action field is the independently validated action signal.
   // Do not let boilerplate in prompt_core (for example, "close documentary
   // view") satisfy an expected narration action.
   const outputActions = relevanceActionConcepts(row.action as string);
   const actionOverlap = relevanceOverlap(expectedActions, outputActions);
+  const coreActionOverlap = relevanceOverlap(expectedActions, promptCoreActions);
 
   // A phrase containing a concrete subject should carry both an entity/anchor
   // and an action through to the image. Requiring two primary concepts allows
@@ -1057,6 +1070,14 @@ const sceneOutputIsRelevant = (
     if (primaryOverlap < requiredPrimaryOverlap && !(primaryOverlap >= 1 && actionOverlap >= 1))
       return false;
     if (expectedActions.size > 0 && actionOverlap === 0) return false;
+    if (phraseCoreOverlap === 0) return false;
+    if (phraseEntities.size > 0 && phraseCoreEntityOverlap === 0) return false;
+    if (expectedActions.size > 0 && coreActionOverlap === 0) return false;
+    if (
+      primaryCoreOverlap < requiredPrimaryOverlap &&
+      !(primaryCoreOverlap >= 1 && coreActionOverlap >= 1)
+    )
+      return false;
     return primaryOverlap >= 1 || nearbyOverlap >= 1;
   }
 
@@ -1072,16 +1093,16 @@ const sceneOutputIsRelevant = (
     // to be present; this fallback cannot make a fox/alpine-lake response
     // pass a bicycle-repair narration because that narration has anchors.
     const phrase = expectedScene.phrase.normalize("NFKC").replace(/\s+/gu, " ").trim();
-    const output = outputContent.normalize("NFKC").replace(/\s+/gu, " ").trim();
+    const output = promptCore.normalize("NFKC").replace(/\s+/gu, " ").trim();
     return (
       phrase.length > 0 &&
       output.toLocaleLowerCase("en-US").includes(phrase.toLocaleLowerCase("en-US"))
     );
   }
-  const contextualOverlap = primaryOverlap + nearbyOverlap;
+  const contextualOverlap = primaryCoreOverlap + nearbyCoreOverlap;
   return (
     contextualOverlap >= (expectedWindowSize >= 3 ? 2 : 1) &&
-    (primaryOverlap >= 1 || nearbyOverlap >= 2 || phraseConcepts.size === 0)
+    (primaryCoreOverlap >= 1 || nearbyCoreOverlap >= 2 || phraseConcepts.size === 0)
   );
 };
 
