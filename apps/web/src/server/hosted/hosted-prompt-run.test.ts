@@ -153,26 +153,33 @@ function groundedPromptFixtureScene(
   overrides: Partial<PromptFixtureSceneOutput> = {},
   storyContext = "",
 ): PromptFixtureSceneOutput {
+  const bounded = (value: string, maximum: number): string => {
+    const normalized = value.trim();
+    if (normalized.length <= maximum) return normalized;
+    return normalized.slice(0, maximum).replace(/\s+\S*$/u, "");
+  };
   const exactPhrase = scene.exact_phrase.trim();
-  const sentenceContext = scene.scene_phrase_context.trim().slice(0, 120);
+  const sentenceContext = bounded(scene.scene_phrase_context, 120);
   const sourceContext = [
     sentenceContext,
     scene.prior_scene_phrase?.trim().slice(-80),
     scene.next_scene_phrase?.trim().slice(0, 80),
-    storyContext.trim().slice(0, 120),
+    bounded(storyContext, 120),
   ]
     .filter((value): value is string => Boolean(value))
-    .join(" | ")
-    .slice(0, 120);
+    .join(" | ");
+  const boundedSourceContext = bounded(sourceContext, 180);
+  const groundedStoryContext = bounded(storyContext, 180);
+  const groundedFacts = `${boundedSourceContext} ${exactPhrase}`.trim();
   return {
     scene_id: scene.scene_id,
-    literal_subject: `the physical evidence described by ${sourceContext}, centered on ${exactPhrase}`,
-    action: `demonstrating ${exactPhrase} as described in the complete sentence`,
-    environment: `a lived-in household workspace matching ${sourceContext}`,
+    literal_subject: `${exactPhrase} household ${sentenceContext}`,
+    action: groundedStoryContext,
+    environment: groundedStoryContext,
     in_image_shot_role: scene.in_image_shot_role,
     lighting_context: "available daylight",
     continuity_tags: [],
-    prompt_core: `Natural documentary view of ${exactPhrase}, showing physical evidence from ${sourceContext} in a lived-in household workspace with available daylight`,
+    prompt_core: `${groundedFacts} ${groundedFacts}`,
     ...overrides,
   };
 }
