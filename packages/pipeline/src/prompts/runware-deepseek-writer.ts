@@ -45,6 +45,7 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Use the compact story context to resolve people, places, pronouns, callbacks, era, and continuity; it may never override the exact phrase or scene_phrase_context.",
   "Choose concrete visible evidence of the exact phrase, never a generic mood image merely related to the overall topic.",
   "Design one camera-capturable moment per scene: a specific subject doing a physically plausible visible action in a specific real-world environment.",
+  "Keep one visible action per scene. Do not chain actions with while, then, and, or but unless the same coordinated action is present in the supplied narration; an and-list of objects is allowed.",
   "Prefer familiar human behavior, ordinary locations, credible objects, contextual clutter, and natural imperfection when the narration supports them; never manufacture spectacle or a staged advertising pose.",
   "For abstract narration, show the most direct transcript-supported person, object, process, place, or consequence; never substitute symbolism or metaphor when literal evidence exists.",
   "Express the exact phrase semantically; do not force narration wording into the image description merely to create lexical overlap.",
@@ -55,6 +56,7 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
   "Write prompt_core as concise compatibility prose describing the scene's subject, visible action, physical environment, lighting context, and useful continuity; it may use natural semantic paraphrase.",
   "Treat literal_subject, action, environment, and lighting_context as the authoritative structured scene facts. The downstream compiler derives the final literal image description from those fields; prompt_core is retained only for provider compatibility and bounded quality checks.",
+  "Ensure literal_subject and environment each preserve at least one concrete source anchor from exact_phrase, sentenceContext, nearby narration, or story context while allowing additional visible detail that does not contradict those anchors.",
   "Begin action with the first distinctive action word from exact_phrase, allowing only simple grammatical or morphological inflection, then add concrete visible detail; do not prefix it with a subject or substitute a synonym in the action field.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, writing, handwritten or printed words, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
@@ -849,6 +851,7 @@ const RELEVANCE_ALIAS_GROUPS = [
   ["ride", "rides", "riding"],
   ["rotate", "turn", "twist"],
   ["speak", "say", "talk"],
+  ["woman", "female"],
 ];
 
 const RELEVANCE_ALIASES = new Map<string, string>();
@@ -950,10 +953,28 @@ const relevanceSetContains = (expected: ReadonlySet<string>, actual: string): bo
   return false;
 };
 
-const ACTION_CHAIN_CONNECTOR = /\b(?:while|then)\b/iu;
+const ACTION_CHAIN_CONNECTOR = /\b(?:while|then|and|but)\b/iu;
 
-const actionChainTail = (value: string): string | null => {
-  const match = value.match(/\b(?:while|then)\b([\s\S]*)/iu);
+interface ActionChain {
+  readonly connector: "while" | "then" | "and" | "but";
+  readonly tail: string;
+}
+
+const actionChain = (value: string): ActionChain | null => {
+  const match = value.match(/\b(while|then|and|but)\b([\s\S]*)/iu);
+  const connector = match?.[1]?.toLocaleLowerCase("en-US");
+  const tail = match?.[2]?.trim();
+  if (
+    (connector !== "while" && connector !== "then" && connector !== "and" && connector !== "but") ||
+    !tail
+  )
+    return null;
+  return Object.freeze({ connector, tail });
+};
+
+const narratedActionChain = (value: string, connector: ActionChain["connector"]): string | null => {
+  const escapedConnector = connector.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const match = value.match(new RegExp(`\\b${escapedConnector}\\b([\\s\\S]*)`, "iu"));
   return match?.[1]?.trim() || null;
 };
 
@@ -963,9 +984,12 @@ const firstInflectedActionAnchor = (value: string): string | null => {
     ({ raw }) =>
       (raw.endsWith("ing") && raw.length > 4) ||
       (raw.endsWith("ed") && raw.length > 4) ||
-      (raw.endsWith("s") && !raw.endsWith("ss") && raw.length > 4),
+      (raw.endsWith("s") &&
+        !raw.endsWith("ss") &&
+        raw.length > 4 &&
+        !/(?:sses|ches|shes|xes|zes|oes)$/u.test(raw)),
   );
-  return inflected === undefined ? firstActionAnchor(value) : stemRelevanceWord(inflected.raw);
+  return inflected === undefined ? null : stemRelevanceWord(inflected.raw);
 };
 
 const relevanceOverlap = (expected: ReadonlySet<string>, actual: ReadonlySet<string>): number => {
@@ -993,6 +1017,7 @@ const GENERIC_VISUAL_PLACEHOLDER =
 const sceneOutputIsRelevant = (
   expectedScene: PromptSceneInput,
   row: Record<string, JsonValue>,
+  boundedStoryContext: string,
 ): boolean => {
   const structuredFields = [row.literal_subject, row.action, row.environment].filter(
     (value): value is string => typeof value === "string",
@@ -1015,10 +1040,14 @@ const sceneOutputIsRelevant = (
     .filter((value): value is string => value !== null)
     .map((value) => value.slice(0, 800))
     .join(" ");
+  const sourceContext = [primaryContext, nearbyContext, boundedStoryContext.slice(0, 4_000)].join(
+    " ",
+  );
   const structuredContent = structuredFields.join(" ");
 
   const primaryExpected = distinctiveRelevanceWords(primaryContext);
   const nearbyExpected = distinctiveRelevanceWords(nearbyContext);
+  const sourceExpected = distinctiveRelevanceWords(sourceContext);
   const outputConcepts = distinctiveRelevanceWords(structuredContent);
   const phraseConcepts = distinctiveRelevanceWords(expectedScene.phrase);
   const phraseOverlap = relevanceOverlap(phraseConcepts, outputConcepts);
@@ -1035,21 +1064,52 @@ const sceneOutputIsRelevant = (
   const actionAnchorGrounded =
     actionAnchor !== null && relevanceSetContains(primaryActionAnchors, actionAnchor);
 
+  // Subject and environment are compiler inputs, not free-form decoration.
+  // Require each to retain at least one source concept, while aliases and
+  // one-step morphology keep ordinary paraphrases valid.
+  const subjectConcepts = distinctiveRelevanceWords(row.literal_subject as string);
+  const environmentConcepts = distinctiveRelevanceWords(row.environment as string);
+  const subjectHasSourceAnchor = [...subjectConcepts].some((concept) =>
+    relevanceSetContains(sourceExpected, concept),
+  );
+  const environmentHasSourceAnchor = [...environmentConcepts].some((concept) =>
+    relevanceSetContains(sourceExpected, concept),
+  );
+  if (!subjectHasSourceAnchor || !environmentHasSourceAnchor) return false;
+
+  // A coordinated field may add several visible details, but it must not
+  // smuggle in an ungrounded second subject or location. This catches rows
+  // such as "a woman and a red fox" without maintaining an entity taxonomy.
+  const hasUnanchoredCoordinatedConcept = (value: string): boolean => {
+    if (!/\b(?:and|but)\b/iu.test(value)) return false;
+    return [...distinctiveRelevanceWords(value)].some(
+      (concept) => !relevanceSetContains(sourceExpected, concept),
+    );
+  };
+  if (hasUnanchoredCoordinatedConcept(row.literal_subject as string)) return false;
+
   // One generated scene must describe one capturable action. If the provider
-  // adds a while/then clause, narration must contain that same coordination;
-  // when both tails expose an inflected action, keep those actions aligned.
-  const actionTail = actionChainTail(row.action as string);
-  if (actionTail !== null && ACTION_CHAIN_CONNECTOR.test(row.action as string)) {
-    const narratedTail = actionChainTail(primaryContext);
-    if (narratedTail === null) return false;
-    const outputTailAnchor = firstInflectedActionAnchor(actionTail);
-    const narratedTailAnchor = firstInflectedActionAnchor(narratedTail);
-    if (
-      outputTailAnchor !== null &&
-      narratedTailAnchor !== null &&
-      !relevanceConceptsEquivalent(outputTailAnchor, narratedTailAnchor)
-    )
-      return false;
+  // adds a while/then/and/but clause with an action tail, narration must contain
+  // that same coordination; when both tails expose an inflected action, keep
+  // those actions aligned. Bare and-lists of objects remain valid details.
+  const outputChain = actionChain(row.action as string);
+  if (outputChain !== null && ACTION_CHAIN_CONNECTOR.test(row.action as string)) {
+    const outputTailAnchor = firstInflectedActionAnchor(outputChain.tail);
+    const requiresActionChainMatch =
+      outputChain.connector === "while" ||
+      outputChain.connector === "then" ||
+      outputTailAnchor !== null;
+    if (requiresActionChainMatch) {
+      const narratedTail = narratedActionChain(primaryContext, outputChain.connector);
+      if (narratedTail === null) return false;
+      const narratedTailAnchor = firstInflectedActionAnchor(narratedTail);
+      if (
+        outputTailAnchor !== null &&
+        narratedTailAnchor !== null &&
+        !relevanceConceptsEquivalent(outputTailAnchor, narratedTailAnchor)
+      )
+        return false;
+    }
   }
 
   // A phrase containing a concrete subject should carry at least one
@@ -1227,7 +1287,7 @@ const evaluateOutput = (
         "Prompt response scene shape is invalid.",
         ["scenes"],
       );
-    if (!sceneOutputIsRelevant(expectedScene, row))
+    if (!sceneOutputIsRelevant(expectedScene, row, batch.storyContext.slice(0, 4_000)))
       return validationFail(
         "scene_quality",
         "scene_relevance",

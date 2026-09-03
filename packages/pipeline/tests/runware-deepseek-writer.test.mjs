@@ -84,7 +84,7 @@ function output(request, options = {}) {
     scene_id: scene.scene_id,
     literal_subject: "Hands holding an irrigation valve",
     action: `demonstrating literal action ${options.marker ?? request.attemptIndex}`,
-    environment: "an ordinary real-world farm setting",
+    environment: "around an irrigation valve in a farm work area",
     in_image_shot_role: scene.in_image_shot_role,
     lighting_context: "available practical daylight",
     continuity_tags: ["same_farmer", "dry_season"],
@@ -522,6 +522,66 @@ test("scene relevance rejects an action field prefixed by its subject", async ()
   assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
 });
 
+test("scene relevance rejects an ungrounded second subject", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle in a public park",
+        sentenceContext: "A woman repairs a bicycle in a public park.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A woman and a red fox";
+          rows[0].action = "repairing a bicycle by hand";
+          rows[0].environment = "in a public park work area";
+          rows[0].prompt_core =
+            "A woman repairs a bicycle in a public park work area under soft daylight with visible tools and ordinary wear.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+});
+
+test("scene relevance rejects an ungrounded environment", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle in a public park",
+        sentenceContext: "A woman repairs a bicycle in a public park.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A woman";
+          rows[0].action = "repairing a bicycle by hand";
+          rows[0].environment = "beside an alpine lake in a rugged mountain valley";
+          rows[0].prompt_core =
+            "A woman repairs a bicycle beside an alpine lake in a rugged mountain valley under soft daylight with visible tools and ordinary wear.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+});
+
 test("scene relevance rejects an un-narrated coordinated second action", async () => {
   const base = makeBatch(1);
   const batch = {
@@ -550,6 +610,97 @@ test("scene relevance rejects an un-narrated coordinated second action", async (
   await expectInvalid(() => setup.value.write(batch));
   assert.equal(setup.transport.requests.length, 1);
   assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+});
+
+test("scene relevance rejects un-narrated and/but action tails", async () => {
+  for (const connector of ["and", "but"]) {
+    const base = makeBatch(1);
+    const batch = {
+      ...base,
+      scenes: [
+        {
+          ...base.scenes[0],
+          phrase: "A woman repairs a bicycle in a public park",
+          sentenceContext: "A woman repairs a bicycle in a public park.",
+        },
+      ],
+    };
+    const setup = writer([
+      (request) =>
+        success(request, {
+          change: (rows) => {
+            rows[0].literal_subject = "A woman";
+            rows[0].action = `repairing a bicycle ${connector} riding through the park`;
+            rows[0].environment = "a public park work area with repair tools";
+            rows[0].prompt_core =
+              "A woman repairs a bicycle in a public park work area with visible tools, natural daylight, and ordinary wear.";
+            return rows;
+          },
+        }),
+    ]);
+    await expectInvalid(() => setup.value.write(batch));
+    assert.equal(setup.transport.requests.length, 1, connector);
+    assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance", connector);
+  }
+});
+
+test("scene relevance allows an and-list of objects without a second action", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A mechanic repairs a bicycle",
+        sentenceContext: "A mechanic repairs a bicycle in a neighborhood workshop.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A mechanic";
+          rows[0].action = "repairing a bicycle and a chain by hand";
+          rows[0].environment = "inside a neighborhood workshop";
+          rows[0].prompt_core =
+            "A mechanic repairs a bicycle and a chain by hand inside a neighborhood workshop under daylight with visible tools and ordinary wear.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance accepts a narrated and action chain", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle and talks with a neighbor",
+        sentenceContext:
+          "A woman repairs a bicycle and talks with a neighbor in a public park work area.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A woman beside a neighbor";
+          rows[0].action = "repairing a bicycle and talking with a neighbor";
+          rows[0].environment = "in a public park work area";
+          rows[0].prompt_core =
+            "A woman repairs a bicycle and talks with a neighbor in a public park work area under daylight with visible tools and ordinary wear.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(result.scenes.length, 1);
 });
 
 test("scene relevance accepts narration-grounded inflected action anchors", async () => {
@@ -618,7 +769,7 @@ test("scene relevance accepts narration-grounded inflected action anchors", asyn
         {
           ...base.scenes[0],
           phrase: sceneCase.phrase,
-          sentenceContext: `${sceneCase.phrase} in a realistic everyday moment.`,
+          sentenceContext: `${sceneCase.phrase} ${sceneCase.environment} in a realistic everyday moment.`,
         },
       ],
     };
@@ -655,7 +806,8 @@ test("scene relevance accepts a coordinated action when narration includes it", 
       {
         ...base.scenes[0],
         phrase: "A woman repairs a bicycle while talking with a neighbor",
-        sentenceContext: "A woman repairs a bicycle while talking with a neighbor.",
+        sentenceContext:
+          "A woman repairs a bicycle while talking with a neighbor in a public park work area.",
       },
     ],
   };
@@ -672,7 +824,12 @@ test("scene relevance accepts a coordinated action when narration includes it", 
         },
       }),
   ]);
-  const result = await setup.value.write(batch);
+  let result;
+  try {
+    result = await setup.value.write(batch);
+  } catch (error) {
+    throw new Error(JSON.stringify(setup.evidence[0]?.validationDiagnostic), { cause: error });
+  }
   assert.equal(result.scenes.length, 1);
 });
 
