@@ -388,6 +388,6 @@ test("request maxTokens includes fixed and per-scene headroom and allows short b
       2 * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE +
       RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   );
-  assert.equal(request.requestVersion, "runware-deepseek-v4-flash-prompt-request-v12");
+  assert.equal(request.requestVersion, "runware-deepseek-v4-flash-prompt-request-v13");
   assert.equal(request.request.model, "deepseek:v4@flash");
 });

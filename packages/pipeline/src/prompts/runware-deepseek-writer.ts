@@ -21,7 +21,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v12" as const;
+  "runware-deepseek-v4-flash-prompt-request-v13" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -56,7 +56,8 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
   "Write prompt_core as concise compatibility prose describing the scene's subject, visible action, physical environment, lighting context, and useful continuity; it may use natural semantic paraphrase.",
   "Treat literal_subject, action, environment, and lighting_context as the authoritative structured scene facts. The downstream compiler derives the final literal image description from those fields; prompt_core is retained only for provider compatibility and bounded quality checks.",
-  "Ground every distinctive noun, adjective, entity, location, object, and action in literal_subject, action, and environment in the bounded source context (exact_phrase, scene_phrase_context, prior_scene_phrase, next_scene_phrase, or story_context); only grammar, glue, aliases, and simple morphology may be added.",
+  "Ensure literal_subject, action, and environment each preserve a meaningful source anchor from exact_phrase, scene_phrase_context, prior_scene_phrase, next_scene_phrase, or story_context.",
+  "Add only ordinary camera-capturable physical detail needed to make the anchored moment specific, believable, and relatable. Such detail may clarify a compatible real-world setting, object condition, or human interaction, but it must never change or contradict the source meaning, introduce a new story event, or act as a hardcoded visual style.",
   "Begin action with the first distinctive action word from exact_phrase, allowing only simple grammatical or morphological inflection, then add concrete visible detail; do not prefix it with a subject or substitute a synonym in the action field.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, writing, handwritten or printed words, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
@@ -1102,26 +1103,12 @@ const sceneOutputIsRelevant = (
   const actionAnchorGrounded =
     actionAnchor !== null && relevanceSetContains(primaryActionAnchors, actionAnchor);
 
-  // The compiler treats these three fields as authoritative image facts. A
-  // single source anchor is not enough: an otherwise valid row could smuggle
-  // in an unrelated animal, object, action, or location alongside one
-  // narrated noun. Require every distinctive field concept to occur in the
-  // bounded narration/story window after the same alias and morphology
-  // normalization used by the relevance gate.
-  const everyConceptIsSourceGrounded = (value: string): boolean =>
-    [...distinctiveRelevanceWords(value)].every((concept) =>
-      relevanceSetContains(sourceExpected, concept),
-    );
-  if (
-    !everyConceptIsSourceGrounded(row.literal_subject as string) ||
-    !everyConceptIsSourceGrounded(row.action as string) ||
-    !everyConceptIsSourceGrounded(row.environment as string)
-  )
-    return false;
-
   // Subject and environment are compiler inputs, not free-form decoration.
-  // Require each to retain at least one source concept, while aliases and
-  // one-step morphology keep ordinary paraphrases valid.
+  // Require each to retain at least one source concept. Additional ordinary
+  // physical detail is allowed because converting narration into a usable
+  // still image necessarily requires concrete setting and object choices that
+  // prose may leave implicit. The action anchor and the checks below still
+  // reject a response that changes the narrated event or loses its subject.
   const subjectConcepts = distinctiveRelevanceWords(row.literal_subject as string);
   const environmentConcepts = distinctiveRelevanceWords(row.environment as string);
   const subjectHasSourceAnchor = [...subjectConcepts].some((concept) =>

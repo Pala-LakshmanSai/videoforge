@@ -601,49 +601,38 @@ test("scene relevance rejects an ungrounded environment", async () => {
   assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
 });
 
-test("scene relevance rejects direct and prepositional red fox or alpine lake injections in every authoritative field", async () => {
+test("scene relevance accepts anchored ordinary physical detail that narration leaves implicit", async () => {
   const base = makeBatch(1);
   const batch = {
     ...base,
+    storyContext:
+      "A household explainer about a brown hydrogen peroxide bottle kept in a medicine cabinet.",
     scenes: [
       {
         ...base.scenes[0],
-        phrase: "A woman repairs a bicycle in a public park",
-        sentenceContext: "A woman repairs a bicycle in a public park.",
+        phrase: "Hydrogen peroxide bubbles on contact with a fresh cut",
+        sentenceContext: "Hydrogen peroxide bubbles on contact with a fresh cut.",
       },
     ],
   };
-  const injections = [
-    ["literal_subject", "A woman and a red fox"],
-    ["literal_subject", "A woman beside an alpine lake"],
-    ["action", "repairing a bicycle and a red fox"],
-    ["action", "repairing a bicycle beside an alpine lake"],
-    ["environment", "a public park and a red fox"],
-    ["environment", "in a public park beside an alpine lake"],
-  ];
-  for (const [field, value] of injections) {
-    const setup = writer([
-      (request) =>
-        success(request, {
-          change: (rows) => {
-            rows[0].literal_subject = "A woman";
-            rows[0].action = "repairing a bicycle";
-            rows[0].environment = "in a public park";
-            rows[0][field] = value;
-            rows[0].prompt_core =
-              "A woman repairs a bicycle in a public park under daylight with visible tools and ordinary wear.";
-            return rows;
-          },
-        }),
-    ]);
-    await expectInvalid(() => setup.value.write(batch));
-    assert.equal(setup.transport.requests.length, 1, `${field}: ${value}`);
-    assert.equal(
-      setup.evidence[0].validationDiagnostic.reason,
-      "scene_relevance",
-      `${field}: ${value}`,
-    );
-  }
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject =
+            "A hand with a small superficial cut beside a brown hydrogen peroxide bottle";
+          rows[0].action = "bubbling on contact with the fresh cut";
+          rows[0].environment =
+            "a lived-in home bathroom counter below an open medicine cabinet, with a cotton pad nearby";
+          rows[0].prompt_core =
+            "Hydrogen peroxide bubbles on a small fresh cut beside its brown bottle on a lived-in bathroom counter below an open medicine cabinet.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(result.scenes.length, 1);
 });
 
 test("scene relevance rejects an un-narrated coordinated second action", async () => {
