@@ -46,14 +46,23 @@ function text(
   value: string,
   maximum: number,
   path: Path,
-  options: { readonly optional?: boolean; readonly creative?: boolean } = {},
+  options: {
+    readonly optional?: boolean;
+    readonly creative?: boolean;
+    readonly semanticKind?: "STYLE_CLAUSE" | "ABSTRACT_TRAIT";
+  } = {},
 ): string {
   if (containsControl(value))
     fail("STYLE_SEMANTIC_INVALID", "Style text contains control characters.", path);
   const result = value.normalize("NFKC").replace(/\s+/gu, " ").trim();
   if ((!options.optional && result.length === 0) || result.length > maximum)
     fail("STYLE_SEMANTIC_INVALID", "Style text is blank or oversized.", path);
-  if (options.creative && containsReferenceSpecificStyleContent(result))
+  if (
+    options.creative &&
+    containsReferenceSpecificStyleContent(result, {
+      semanticKind: options.semanticKind,
+    })
+  )
     fail(
       "STYLE_CONTENT_LEAKAGE",
       "Style text contains instructions or reference content that cannot become a reusable trait.",
@@ -67,7 +76,11 @@ function list(
   maximumItems: number,
   maximumText: number,
   path: Path,
-  options: { readonly optional?: boolean; readonly creative?: boolean } = {},
+  options: {
+    readonly optional?: boolean;
+    readonly creative?: boolean;
+    readonly semanticKind?: "STYLE_CLAUSE" | "ABSTRACT_TRAIT";
+  } = {},
 ): readonly string[] {
   if ((!options.optional && values.length === 0) || values.length > maximumItems)
     fail("STYLE_SEMANTIC_INVALID", "Style list is empty or oversized.", path);
@@ -75,6 +88,7 @@ function list(
     text(value, maximumText, [...path, index], {
       optional: false,
       creative: options.creative,
+      semanticKind: options.semanticKind,
     }),
   );
   if (new Set(normalized).size !== normalized.length)
@@ -93,8 +107,12 @@ function creativeList(
   maximumItems: number,
   maximumText: number,
   path: Path,
+  options: { readonly semanticKind?: "STYLE_CLAUSE" | "ABSTRACT_TRAIT" } = {},
 ): readonly string[] {
-  const result = list(values, maximumItems, maximumText, path, { creative: true });
+  const result = list(values, maximumItems, maximumText, path, {
+    creative: true,
+    semanticKind: options.semanticKind,
+  });
   result.forEach((value, index) => assertNoHardPromptConflict(value, [...path, index].map(String)));
   return result;
 }
@@ -196,17 +214,22 @@ function validateAnalyzerSemantics(
         "camera_language",
       ]),
       image_framing: creativeText(visual.image_framing, 600, ["visual_profile", "image_framing"]),
-      shot_scale_preferences: creativeList(visual.shot_scale_preferences, 20, 160, [
-        "visual_profile",
-        "shot_scale_preferences",
-      ]),
+      shot_scale_preferences: creativeList(
+        visual.shot_scale_preferences,
+        20,
+        160,
+        ["visual_profile", "shot_scale_preferences"],
+        { semanticKind: "ABSTRACT_TRAIT" },
+      ),
       lighting: creativeText(visual.lighting, 600, ["visual_profile", "lighting"]),
       color: Object.freeze({
-        descriptors: creativeList(visual.color.descriptors, 20, 120, [
-          "visual_profile",
-          "color",
-          "descriptors",
-        ]),
+        descriptors: creativeList(
+          visual.color.descriptors,
+          20,
+          120,
+          ["visual_profile", "color", "descriptors"],
+          { semanticKind: "ABSTRACT_TRAIT" },
+        ),
         approximate_hex: list(
           visual.color.approximate_hex,
           12,
@@ -235,11 +258,16 @@ function validateAnalyzerSemantics(
         "visual_profile",
         "environment_and_material_detail",
       ]),
-      imperfection_profile: creativeList(visual.imperfection_profile, 20, 160, [
-        "visual_profile",
-        "imperfection_profile",
-      ]),
-      mood: creativeList(visual.mood, 20, 120, ["visual_profile", "mood"]),
+      imperfection_profile: creativeList(
+        visual.imperfection_profile,
+        20,
+        160,
+        ["visual_profile", "imperfection_profile"],
+        { semanticKind: "ABSTRACT_TRAIT" },
+      ),
+      mood: creativeList(visual.mood, 20, 120, ["visual_profile", "mood"], {
+        semanticKind: "ABSTRACT_TRAIT",
+      }),
       continuity_rules: creativeList(visual.continuity_rules, 30, 240, [
         "visual_profile",
         "continuity_rules",

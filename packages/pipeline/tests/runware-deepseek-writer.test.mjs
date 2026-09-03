@@ -14,6 +14,7 @@ import {
   RunwarePromptWriter,
   SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
   buildPromptBatch,
+  buildRunwarePromptRequest,
 } from "../dist/src/index.js";
 
 const layouts = ["IMAGE_FULL", "SPLIT_RIGHT_IMAGE"];
@@ -27,11 +28,10 @@ const styleGuidance = [
 
 function treatment(styleIndex, styleProfileHash) {
   return {
-    schema_version: "image-style-treatment/v1",
+    schema_version: "image-style-treatment/v2",
     style_profile_hash: styleProfileHash,
     medium_family: styleGuidance[styleIndex],
     realism: "physically believable still-image treatment",
-    subject_treatment: "natural, unposed subject treatment with realistic proportions",
     camera_language: "restrained observational camera language",
     image_framing: "useful crop-safe framing",
     shot_scale_preferences: ["environmental wide", "hands and action"],
@@ -43,8 +43,6 @@ function treatment(styleIndex, styleProfileHash) {
     contrast_and_exposure: "soft natural contrast with recoverable highlights",
     depth_of_field: "natural lens depth with enough environmental context",
     texture_and_grain: "tactile material detail with restrained grain",
-    human_rendering: "believable anatomy and natural everyday imperfection",
-    environment_and_material_detail: "credible real-world surfaces and material response",
     imperfection_profile: ["uneven exposure", "worn materials"],
     mood: ["observational", "grounded"],
   };
@@ -122,6 +120,24 @@ class ScriptedTransport {
     return step(request);
   }
 }
+
+test("request construction revalidates the exact style-only v2 projection", () => {
+  const batch = makeBatch(1);
+  const forged = {
+    ...batch,
+    styleTreatment: {
+      ...batch.styleTreatment,
+      subject_treatment: "retail product display",
+    },
+  };
+  assert.throws(
+    () => buildRunwarePromptRequest(forged, forged.scenes, 1),
+    (error) =>
+      error instanceof PipelineDomainError &&
+      error.failure.code === "PROMPT_INPUT_INVALID" &&
+      /unknown or missing semantic fields/u.test(error.failure.message),
+  );
+});
 
 function writer(steps, maximumBatchCostUsd = 0.01) {
   const transport = new ScriptedTransport(steps);

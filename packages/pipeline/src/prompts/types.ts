@@ -1,10 +1,10 @@
 import type { ImageStyleProfileDocument, Sha256Digest } from "@videoforge/contracts";
 
-/** Version of the scene-content contract used by the v10 Runware request. */
+/** Version of the scene-content contract used by the v12 Runware request. */
 export const SCENE_PROMPT_WRITER_VERSION = "scene-prompt-writer-v2" as const;
 
 /** Version of the provider-facing, style-only treatment projection. */
-export const PROMPT_STYLE_TREATMENT_VERSION = "image-style-treatment/v1" as const;
+export const PROMPT_STYLE_TREATMENT_VERSION = "image-style-treatment/v2" as const;
 
 export const IN_IMAGE_SHOT_ROLES = [
   "ENVIRONMENTAL_WIDE",
@@ -22,9 +22,9 @@ export type ImagePromptLayout = "IMAGE_FULL" | "SPLIT_RIGHT_IMAGE";
  * The only style data DeepSeek needs while writing scene content.
  *
  * This is an explicit semantic projection of the pinned visual profile. It
- * includes reusable subject/material treatment traits, while deliberately
- * omitting continuity, must-include, and prompt-suffix fields. The analyzer
- * rejects reference-specific content before publication, and the profile hash
+ * includes reusable optical and aesthetic treatment traits, while deliberately
+ * omitting subject, person, environment/material, continuity, must-include,
+ * and prompt-suffix fields that can carry reference content. The profile hash
  * binds this projection to the immutable published profile.
  */
 export interface PromptStyleTreatment {
@@ -32,7 +32,6 @@ export interface PromptStyleTreatment {
   readonly style_profile_hash: Sha256Digest;
   readonly medium_family: string;
   readonly realism: string;
-  readonly subject_treatment: string;
   readonly camera_language: string;
   readonly image_framing: string;
   readonly shot_scale_preferences: readonly string[];
@@ -44,8 +43,6 @@ export interface PromptStyleTreatment {
   readonly contrast_and_exposure: string;
   readonly depth_of_field: string;
   readonly texture_and_grain: string;
-  readonly human_rendering: string;
-  readonly environment_and_material_detail: string;
   readonly imperfection_profile: readonly string[];
   readonly mood: readonly string[];
 }
@@ -95,7 +92,24 @@ const STYLE_SAFE_TERMINAL_CONTEXT = new Set([
   "white",
 ]);
 
-export function containsReferenceSpecificStyleContent(value: string): boolean {
+export interface StyleContentValidationOptions {
+  /**
+   * Color, mood, imperfection, and shot-scale lists are semantic trait
+   * fields. A published analyzer may use a title-cased one-word descriptor
+   * there (for example, `Neutral`, `Calm`, or `Close-up`); capitalization
+   * alone is not enough evidence that such a descriptor is a copied entity.
+   *
+   * This is deliberately tied to the profile field's semantics. Style clauses
+   * and content-bearing lists continue to reject capitalization-only entity
+   * signals by default.
+   */
+  readonly semanticKind?: "STYLE_CLAUSE" | "ABSTRACT_TRAIT";
+}
+
+export function containsReferenceSpecificStyleContent(
+  value: string,
+  options: StyleContentValidationOptions = {},
+): boolean {
   const normalized = value.normalize("NFKC").replace(/\s+/gu, " ").trim();
   if (
     STYLE_INSTRUCTION_INJECTION.test(normalized) ||
@@ -104,9 +118,10 @@ export function containsReferenceSpecificStyleContent(value: string): boolean {
     STYLE_NAMED_LOCATION_CONTEXT.test(normalized) ||
     STYLE_BRANDED_OBJECT.test(normalized) ||
     STYLE_CONTENT_INTRODUCTION.test(normalized) ||
-    STYLE_SINGLE_PROPER_ENTITY.test(normalized) ||
     STYLE_ENTITY_LIKE_TOKEN.test(normalized)
   )
+    return true;
+  if (STYLE_SINGLE_PROPER_ENTITY.test(normalized) && options.semanticKind !== "ABSTRACT_TRAIT")
     return true;
   const terminalContext = /\b(?:in|at|from|near|around)\s+([\p{L}'’-]{3,})\s*$/iu.exec(normalized);
   return (
@@ -118,9 +133,12 @@ const frozenStrings = (values: readonly string[]): readonly string[] => Object.f
 
 /**
  * Deterministically select style-treatment semantics from a pinned immutable
- * visual profile. Reference content is excluded by field semantics, not by a
- * brittle list of words. The source profile is expected to have already
- * passed the canonical image-style-profile validator.
+ * visual profile. Reference content is excluded by field semantics: only the
+ * reusable optical/aesthetic fields reach this projection, while subject,
+ * human, environment/material, and other content-bearing profile fields are
+ * omitted. Standalone title-cased terms are accepted only
+ * in the profile's explicitly abstract trait lists; scalar treatment fields
+ * and multi-word proper-name signals retain the stricter entity check.
  */
 export function derivePromptStyleTreatment(
   visualProfile: ImageStyleProfileDocument["visual_profile"],
@@ -128,31 +146,34 @@ export function derivePromptStyleTreatment(
 ): PromptStyleTreatment {
   if (!SHA256.test(styleProfileHash))
     throw new TypeError("styleProfileHash must be a SHA-256 digest");
-  const creativeStyleValues = [
+  const scalarStyleValues = [
     visualProfile.medium_family,
     visualProfile.realism,
-    visualProfile.subject_treatment,
     visualProfile.camera_language,
     visualProfile.image_framing,
-    ...visualProfile.shot_scale_preferences,
     visualProfile.lighting,
-    ...visualProfile.color.descriptors,
     visualProfile.contrast_and_exposure,
     visualProfile.depth_of_field,
     visualProfile.texture_and_grain,
-    visualProfile.human_rendering,
-    visualProfile.environment_and_material_detail,
+  ];
+  const abstractStyleLists = [
+    ...visualProfile.shot_scale_preferences,
+    ...visualProfile.color.descriptors,
     ...visualProfile.imperfection_profile,
     ...visualProfile.mood,
   ];
-  if (creativeStyleValues.some(containsReferenceSpecificStyleContent))
+  if (
+    scalarStyleValues.some((value) => containsReferenceSpecificStyleContent(value)) ||
+    abstractStyleLists.some((value) =>
+      containsReferenceSpecificStyleContent(value, { semanticKind: "ABSTRACT_TRAIT" }),
+    )
+  )
     throw new TypeError("Pinned style contains reference-specific content");
   return Object.freeze({
     schema_version: PROMPT_STYLE_TREATMENT_VERSION,
     style_profile_hash: styleProfileHash,
     medium_family: visualProfile.medium_family,
     realism: visualProfile.realism,
-    subject_treatment: visualProfile.subject_treatment,
     camera_language: visualProfile.camera_language,
     image_framing: visualProfile.image_framing,
     shot_scale_preferences: frozenStrings(visualProfile.shot_scale_preferences),
@@ -164,8 +185,6 @@ export function derivePromptStyleTreatment(
     contrast_and_exposure: visualProfile.contrast_and_exposure,
     depth_of_field: visualProfile.depth_of_field,
     texture_and_grain: visualProfile.texture_and_grain,
-    human_rendering: visualProfile.human_rendering,
-    environment_and_material_detail: visualProfile.environment_and_material_detail,
     imperfection_profile: frozenStrings(visualProfile.imperfection_profile),
     mood: frozenStrings(visualProfile.mood),
   });
@@ -191,7 +210,6 @@ export function promptStyleTreatmentPositiveSuffix(treatment: PromptStyleTreatme
   return [
     segment("medium", [treatment.medium_family]),
     segment("realism", [treatment.realism]),
-    segment("subjects", [treatment.subject_treatment]),
     segment("camera", [treatment.camera_language]),
     segment("framing", [treatment.image_framing]),
     segment("shot scales", treatment.shot_scale_preferences),
@@ -201,8 +219,6 @@ export function promptStyleTreatmentPositiveSuffix(treatment: PromptStyleTreatme
     segment("contrast", [treatment.contrast_and_exposure]),
     segment("depth", [treatment.depth_of_field]),
     segment("texture", [treatment.texture_and_grain]),
-    segment("people", [treatment.human_rendering]),
-    segment("materials", [treatment.environment_and_material_detail]),
     segment("imperfection", treatment.imperfection_profile),
     segment("mood", treatment.mood),
   ]

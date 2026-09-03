@@ -94,6 +94,51 @@ test("coherent fixture assembles one deterministic canonical VISION_ANALYSIS pro
   );
 });
 
+test("accepts title-cased abstract descriptors in reusable style trait lists", async () => {
+  const { request, output } = await fixture();
+  output.visual_profile.shot_scale_preferences = ["Medium shot", "Close-up"];
+  output.visual_profile.color.descriptors = ["Neutral", "Cool-toned", "Clean", "Professional"];
+  output.visual_profile.imperfection_profile = ["Minimal", "Clean digital aesthetic"];
+  output.visual_profile.mood = ["Professional", "Approachable", "Calm", "Organized"];
+
+  const accepted = await validateAndAssembleStyleProfile(request, output);
+  assert.deepEqual(accepted.profile.visual_profile.color.descriptors, [
+    "Neutral",
+    "Cool-toned",
+    "Clean",
+    "Professional",
+  ]);
+  assert.deepEqual(accepted.profile.visual_profile.mood, [
+    "Professional",
+    "Approachable",
+    "Calm",
+    "Organized",
+  ]);
+});
+
+test("abstract trait fields do not weaken concrete-content guards", async () => {
+  const { request, output } = await fixture();
+
+  const scalarBrand = structuredClone(output);
+  scalarBrand.visual_profile.medium_family = "Rolex";
+  await expectCodeAsync("STYLE_CONTENT_LEAKAGE", () =>
+    validateAndAssembleStyleProfile(request, scalarBrand),
+  );
+
+  for (const change of [
+    (value) => (value.visual_profile.mood = ["Rolex watch"]),
+    (value) => (value.visual_profile.color.descriptors = ["iPhone 15"]),
+    (value) => (value.visual_profile.mood = ["soft natural light in Paris"]),
+    (value) => (value.visual_profile.mood = ["John Smith"]),
+  ]) {
+    const hostile = structuredClone(output);
+    change(hostile);
+    await expectCodeAsync("STYLE_CONTENT_LEAKAGE", () =>
+      validateAndAssembleStyleProfile(request, hostile),
+    );
+  }
+});
+
 test("outlier and conflicting no-consensus evidence stays explicit and bounded", async () => {
   const { request, output } = await fixture(5);
   output.analysis.outlier_reference_aliases = ["ref_05"];

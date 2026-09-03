@@ -8,7 +8,7 @@ import {
 } from "@videoforge/contracts";
 
 import { PipelineDomainError } from "../errors.js";
-import { validatePromptWriterOutput } from "./batch.js";
+import { validatePromptStyleTreatment, validatePromptWriterOutput } from "./batch.js";
 import { assertNoHardPromptConflict } from "./compiler.js";
 import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type {
@@ -21,7 +21,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v11" as const;
+  "runware-deepseek-v4-flash-prompt-request-v12" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -50,7 +50,7 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "For abstract narration, show the most direct transcript-supported person, object, process, place, or consequence; never substitute symbolism or metaphor when literal evidence exists.",
   "Express the exact phrase semantically; do not force narration wording into the image description merely to create lexical overlap.",
   "Never use vague placeholders such as a person, someone, something, somewhere, a generic or public setting, standing still, or doing something unless that exact detail is narration-critical.",
-  "Use only the supplied style_treatment object as visual treatment derived from the pinned immutable style profile: honor its medium, realism, subject_treatment, environment_and_material_detail, palette, framing, shot-scale preferences, lighting, contrast, depth, texture, camera language, human rendering, mood, and imperfection as reusable treatment without importing concrete people, places, objects, products, logos, or other reference content.",
+  "Use only the supplied style_treatment object as visual treatment derived from the pinned immutable style profile: honor its medium, realism, palette, framing, shot-scale preferences, lighting, contrast, depth, texture, camera language, mood, and imperfection as reusable treatment without importing concrete people, places, objects, products, logos, or other reference content.",
   "For photographic styles, require believable anatomy, materials, scale, perspective, optics, light, and everyday wear rather than glossy synthetic perfection.",
   "Every text field must be non-empty and contain no control characters. Keep literal_subject, action, and environment at 240 characters or fewer; lighting_context at 120 or fewer; and prompt_core at 600 or fewer.",
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
@@ -525,7 +525,8 @@ export function buildRunwarePromptRequest(
   if (scenes.length === 0) fail("Prompt attempt must contain at least one expected scene.");
   if (batch.scenePromptWriterVersion !== SCENE_PROMPT_WRITER_VERSION)
     fail("Prompt writer version is invalid.", ["scenePromptWriterVersion"]);
-  if (batch.styleTreatment === null)
+  const styleTreatment = validatePromptStyleTreatment(batch.styleTreatment, batch.styleProfileHash);
+  if (styleTreatment === null)
     fail(
       "Prompt batch has no immutable structured style treatment; legacy planner guidance cannot reach Runware.",
       ["styleTreatment"],
@@ -556,7 +557,7 @@ export function buildRunwarePromptRequest(
     project_title: batch.sanitizedProjectTitle,
     image_style_version_id: batch.imageStyleVersionId,
     style_profile_hash: batch.styleProfileHash,
-    style_treatment: batch.styleTreatment,
+    style_treatment: styleTreatment,
     story_context: batch.storyContext,
     continuity_tags: batch.continuityTags,
     scenes: scenes.map((scene) => ({

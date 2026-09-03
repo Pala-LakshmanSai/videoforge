@@ -142,7 +142,7 @@ type PromptFixtureSceneOutput = {
 };
 
 /**
- * Keep fake provider rows grounded in the same v11 source anchors that the
+ * Keep fake provider rows grounded in the same v12 source anchors that the
  * real writer receives. These fixtures intentionally use the synthetic
  * narration in `scenes()`, while the tests below mutate only the behavior
  * they are meant to exercise (forbidden content, second-batch invalidity, or
@@ -608,7 +608,7 @@ describe("hosted Runware prompt writer", () => {
     expect(dispatchedPlan.style_profile_hash).toBe(digest);
     expect(dispatchedPlan.style_treatment).toEqual(
       expect.objectContaining({
-        schema_version: "image-style-treatment/v1",
+        schema_version: "image-style-treatment/v2",
         style_profile_hash: digest,
         image_framing: "crop-safe contextual framing",
         shot_scale_preferences: ["environmental wide", "hands and action"],
@@ -887,11 +887,10 @@ describe("hosted Runware prompt writer", () => {
       imageStyleVersionId: ids.style,
       styleProfileHash: digest,
       styleTreatment: {
-        schema_version: "image-style-treatment/v1",
+        schema_version: "image-style-treatment/v2",
         style_profile_hash: digest,
         medium_family: "documentary photography",
         realism: "physically believable still image",
-        subject_treatment: "natural subject treatment with believable proportions",
         camera_language: "restrained observational camera language",
         image_framing: "crop-safe contextual framing",
         shot_scale_preferences: ["environmental wide"],
@@ -900,8 +899,6 @@ describe("hosted Runware prompt writer", () => {
         contrast_and_exposure: "soft natural contrast",
         depth_of_field: "natural lens depth",
         texture_and_grain: "tactile material detail",
-        human_rendering: "believable anatomy and materials",
-        environment_and_material_detail: "credible real-world surfaces and material response",
         imperfection_profile: ["ordinary wear"],
         mood: ["observational"],
       },
@@ -987,11 +984,10 @@ describe("hosted Runware prompt writer", () => {
       imageStyleVersionId: ids.style,
       styleProfileHash: digest,
       styleTreatment: {
-        schema_version: "image-style-treatment/v1",
+        schema_version: "image-style-treatment/v2",
         style_profile_hash: digest,
         medium_family: "documentary photography",
         realism: "physically believable still image",
-        subject_treatment: "natural subject treatment with believable proportions",
         camera_language: "restrained observational camera language",
         image_framing: "crop-safe contextual framing",
         shot_scale_preferences: ["environmental wide"],
@@ -1000,8 +996,6 @@ describe("hosted Runware prompt writer", () => {
         contrast_and_exposure: "soft natural contrast",
         depth_of_field: "natural lens depth",
         texture_and_grain: "tactile material detail",
-        human_rendering: "believable anatomy and materials",
-        environment_and_material_detail: "credible real-world surfaces and material response",
         imperfection_profile: ["ordinary wear"],
         mood: ["observational"],
       },

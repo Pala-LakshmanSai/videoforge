@@ -35,11 +35,10 @@ function scenes(count, options = {}) {
 
 function styleTreatment(styleProfileHash = digest) {
   return {
-    schema_version: "image-style-treatment/v1",
+    schema_version: "image-style-treatment/v2",
     style_profile_hash: styleProfileHash,
     medium_family: "documentary photography",
     realism: "physically believable still image",
-    subject_treatment: "natural, unposed subject treatment with realistic proportions",
     camera_language: "restrained observational camera",
     image_framing: "crop-safe contextual framing",
     shot_scale_preferences: ["environmental wide", "hands and action"],
@@ -48,8 +47,6 @@ function styleTreatment(styleProfileHash = digest) {
     contrast_and_exposure: "soft natural contrast",
     depth_of_field: "natural lens depth",
     texture_and_grain: "tactile texture with restrained grain",
-    human_rendering: "believable anatomy and materials",
-    environment_and_material_detail: "credible real-world surfaces and material response",
     imperfection_profile: ["ordinary wear"],
     mood: ["observational", "grounded"],
   };
@@ -110,19 +107,23 @@ test("style treatment is a deterministic semantic projection, not reference cont
     visual_profile: {
       medium_family: "analog photography",
       realism: "true to life",
-      subject_treatment: "natural subject treatment with believable proportions",
+      subject_treatment: "Professional and focused on product interaction or retail display",
       camera_language: "eye-level lens",
       image_framing: "wide contextual frame",
-      shot_scale_preferences: ["environmental wide"],
+      shot_scale_preferences: ["Medium shot", "Close-up"],
       lighting: "soft window light",
-      color: { descriptors: ["muted ochre"], approximate_hex: ["#AA7733"] },
+      color: {
+        descriptors: ["Neutral", "Cool-toned", "Clean", "Professional"],
+        approximate_hex: ["#AA7733"],
+      },
       contrast_and_exposure: "soft contrast",
       depth_of_field: "natural depth",
       texture_and_grain: "fine grain",
-      human_rendering: "natural materials and anatomy",
-      environment_and_material_detail: "credible surfaces with tactile material response",
-      imperfection_profile: ["uneven exposure"],
-      mood: ["quiet"],
+      human_rendering: "Portrait of John in every frame",
+      environment_and_material_detail:
+        "Organized retail spaces with fabric textures and product presentation",
+      imperfection_profile: ["Minimal", "Clean digital aesthetic"],
+      mood: ["Professional", "Approachable", "Calm", "Organized"],
       continuity_rules: ["same location"],
       must_include: ["reference product"],
       must_avoid: ["copied logo"],
@@ -132,15 +133,19 @@ test("style treatment is a deterministic semantic projection, not reference cont
   const projected = derivePromptStyleTreatment(profile.visual_profile, digest);
   assert.equal(projected.style_profile_hash, digest);
   assert.equal(projected.image_framing, "wide contextual frame");
-  assert.deepEqual(projected.shot_scale_preferences, ["environmental wide"]);
-  assert.equal(
-    projected.subject_treatment,
-    "natural subject treatment with believable proportions",
-  );
-  assert.equal(
-    projected.environment_and_material_detail,
-    "credible surfaces with tactile material response",
-  );
+  assert.deepEqual(projected.shot_scale_preferences, ["Medium shot", "Close-up"]);
+  assert.deepEqual(projected.palette.descriptors, [
+    "Neutral",
+    "Cool-toned",
+    "Clean",
+    "Professional",
+  ]);
+  assert.deepEqual(projected.imperfection_profile, ["Minimal", "Clean digital aesthetic"]);
+  assert.deepEqual(projected.mood, ["Professional", "Approachable", "Calm", "Organized"]);
+  assert.equal(Object.hasOwn(projected, "subject_treatment"), false);
+  assert.equal(Object.hasOwn(projected, "human_rendering"), false);
+  assert.equal(Object.hasOwn(projected, "environment_and_material_detail"), false);
+  assert.doesNotMatch(promptStyleTreatmentPositiveSuffix(projected), /retail|product|John/iu);
   assert.equal(Object.hasOwn(projected, "must_include"), false);
   assert.equal(Object.hasOwn(projected, "continuity_rules"), false);
   assert.equal(Object.hasOwn(projected, "planner_guidance"), false);
@@ -148,6 +153,31 @@ test("style treatment is a deterministic semantic projection, not reference cont
 
 test("style treatment rejects reference-specific content from an already-published profile", () => {
   const input = planningInput(1);
+  const visualProfile = {
+    medium_family: "Portrait of John",
+    realism: input.styleTreatment.realism,
+    subject_treatment: "Portrait of John",
+    camera_language: input.styleTreatment.camera_language,
+    image_framing: input.styleTreatment.image_framing,
+    shot_scale_preferences: input.styleTreatment.shot_scale_preferences,
+    lighting: input.styleTreatment.lighting,
+    color: input.styleTreatment.palette,
+    contrast_and_exposure: input.styleTreatment.contrast_and_exposure,
+    depth_of_field: input.styleTreatment.depth_of_field,
+    texture_and_grain: input.styleTreatment.texture_and_grain,
+    human_rendering: "believable anatomy and materials",
+    environment_and_material_detail: "credible real-world surfaces and material response",
+    imperfection_profile: input.styleTreatment.imperfection_profile,
+    mood: input.styleTreatment.mood,
+    continuity_rules: [],
+    must_include: [],
+    must_avoid: [],
+    flexible_properties: [],
+  };
+  assert.throws(
+    () => derivePromptStyleTreatment(visualProfile, digest),
+    /Pinned style contains reference-specific content/u,
+  );
   assert.throws(
     () =>
       planPromptBatches({
@@ -161,11 +191,46 @@ test("style treatment rejects reference-specific content from an already-publish
   );
 });
 
+test("prompt batches preserve title-cased abstract style trait lists", () => {
+  const input = planningInput(1);
+  const treatment = {
+    ...input.styleTreatment,
+    shot_scale_preferences: ["Medium shot", "Close-up"],
+    palette: {
+      ...input.styleTreatment.palette,
+      descriptors: ["Neutral", "Cool-toned", "Clean", "Professional"],
+    },
+    imperfection_profile: ["Minimal", "Clean digital aesthetic"],
+    mood: ["Professional", "Approachable", "Calm", "Organized"],
+  };
+  const batch = buildPromptBatch({ ...input, styleTreatment: treatment });
+  assert.deepEqual(batch.styleTreatment?.shot_scale_preferences, ["Medium shot", "Close-up"]);
+  assert.deepEqual(batch.styleTreatment?.palette.descriptors, [
+    "Neutral",
+    "Cool-toned",
+    "Clean",
+    "Professional",
+  ]);
+  assert.deepEqual(batch.styleTreatment?.mood, [
+    "Professional",
+    "Approachable",
+    "Calm",
+    "Organized",
+  ]);
+
+  assert.throws(
+    () => buildPromptBatch({ ...input, styleTreatment: { ...treatment, medium_family: "Rolex" } }),
+    (error) =>
+      error instanceof PipelineDomainError &&
+      error.failure.code === "PROMPT_INPUT_INVALID" &&
+      /reference-specific content/u.test(error.failure.message),
+  );
+});
+
 test("style positive suffix stays bounded at a word boundary for a maximum profile", () => {
   const maximum = styleTreatment();
   maximum.medium_family = `MEDIUM_MARKER ${"photography ".repeat(20)}`;
   maximum.realism = `REALISM_MARKER ${"physically believable still image ".repeat(40)}detail`;
-  maximum.subject_treatment = `SUBJECT_MARKER ${"unposed human treatment ".repeat(30)}`;
   maximum.camera_language = `CAMERA_MARKER ${"observational lens language ".repeat(30)}`;
   maximum.image_framing = `FRAMING_MARKER ${"balanced contextual frame ".repeat(30)}`;
   maximum.shot_scale_preferences = [`SCALE_MARKER ${"environmental wide ".repeat(20)}`];
@@ -178,8 +243,6 @@ test("style positive suffix stays bounded at a word boundary for a maximum profi
   maximum.contrast_and_exposure = `CONTRAST_MARKER ${"protected exposure ".repeat(30)}`;
   maximum.depth_of_field = `DEPTH_MARKER ${"contextual lens depth ".repeat(30)}`;
   maximum.texture_and_grain = `TEXTURE_MARKER ${"tactile restrained grain ".repeat(30)}`;
-  maximum.human_rendering = `HUMAN_MARKER ${"believable anatomy ".repeat(30)}`;
-  maximum.environment_and_material_detail = `MATERIAL_MARKER ${"credible surfaces ".repeat(30)}`;
   maximum.imperfection_profile = Array.from(
     { length: 20 },
     (_, index) => `IMPERFECTION_MARKER_${index} ordinary material variation`,
@@ -195,7 +258,6 @@ test("style positive suffix stays bounded at a word boundary for a maximum profi
   for (const marker of [
     "MEDIUM_MARKER",
     "REALISM_MARKER",
-    "SUBJECT_MARKER",
     "CAMERA_MARKER",
     "FRAMING_MARKER",
     "SCALE_MARKER",
@@ -205,8 +267,6 @@ test("style positive suffix stays bounded at a word boundary for a maximum profi
     "CONTRAST_MARKER",
     "DEPTH_MARKER",
     "TEXTURE_MARKER",
-    "HUMAN_MARKER",
-    "MATERIAL_MARKER",
     "IMPERFECTION_MARKER_0",
     "MOOD_MARKER_0",
   ])
@@ -328,6 +388,6 @@ test("request maxTokens includes fixed and per-scene headroom and allows short b
       2 * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE +
       RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   );
-  assert.equal(request.requestVersion, "runware-deepseek-v4-flash-prompt-request-v11");
+  assert.equal(request.requestVersion, "runware-deepseek-v4-flash-prompt-request-v12");
   assert.equal(request.request.model, "deepseek:v4@flash");
 });

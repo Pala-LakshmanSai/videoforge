@@ -63,8 +63,6 @@ const STYLE_TREATMENT_KEYS = [
   "camera_language",
   "contrast_and_exposure",
   "depth_of_field",
-  "environment_and_material_detail",
-  "human_rendering",
   "image_framing",
   "imperfection_profile",
   "lighting",
@@ -74,7 +72,6 @@ const STYLE_TREATMENT_KEYS = [
   "realism",
   "schema_version",
   "shot_scale_preferences",
-  "subject_treatment",
   "style_profile_hash",
   "texture_and_grain",
 ] as const;
@@ -100,11 +97,16 @@ const styleText = (
   maximum: number,
   label: string,
   path: readonly (string | number)[],
+  options: { readonly semanticKind?: "STYLE_CLAUSE" | "ABSTRACT_TRAIT" } = {},
 ): string => {
   if (typeof value !== "string")
     return fail("PROMPT_INPUT_INVALID", `${label} must be a string.`, path);
   const result = normalized(value, maximum, label, path);
-  if (containsReferenceSpecificStyleContent(result))
+  if (
+    containsReferenceSpecificStyleContent(result, {
+      semanticKind: options.semanticKind,
+    })
+  )
     return fail("PROMPT_INPUT_INVALID", `${label} contains reference-specific content.`, path);
   return result;
 };
@@ -115,7 +117,10 @@ const styleList = (
   maximumLength: number,
   label: string,
   path: readonly (string | number)[],
-  options: { readonly allowEmpty?: boolean } = {},
+  options: {
+    readonly allowEmpty?: boolean;
+    readonly semanticKind?: "STYLE_CLAUSE" | "ABSTRACT_TRAIT";
+  } = {},
 ): readonly string[] => {
   if (!Array.isArray(value) || value.length > maximumItems)
     return fail(
@@ -127,7 +132,11 @@ const styleList = (
   if (!options.allowEmpty && values.length === 0)
     return fail("PROMPT_INPUT_INVALID", `${label} must contain at least one string.`, path);
   return Object.freeze(
-    values.map((item, index) => styleText(item, maximumLength, label, [...path, index])),
+    values.map((item, index) =>
+      styleText(item, maximumLength, label, [...path, index], {
+        semanticKind: options.semanticKind,
+      }),
+    ),
   );
 };
 
@@ -136,7 +145,7 @@ const styleList = (
  * The exact-key check is the field-selection guard: reference/content-bearing
  * profile fields cannot silently ride along in the provider input.
  */
-const normalizedStyleTreatment = (
+export const validatePromptStyleTreatment = (
   value: PromptStyleTreatment | null | undefined,
   styleProfileHash: string,
 ): PromptStyleTreatment | null => {
@@ -150,7 +159,7 @@ const normalizedStyleTreatment = (
       "Style treatment contains unknown or missing semantic fields.",
       ["styleTreatment"],
     );
-  if (candidate.schema_version !== "image-style-treatment/v1")
+  if (candidate.schema_version !== "image-style-treatment/v2")
     return fail("PROMPT_INPUT_INVALID", "Style treatment version is invalid.", ["styleTreatment"]);
   if (candidate.style_profile_hash !== styleProfileHash)
     return fail("PROMPT_INPUT_INVALID", "Style treatment is not bound to the pinned style hash.", [
@@ -180,17 +189,13 @@ const normalizedStyleTreatment = (
       "approximate_hex",
     ]);
   return Object.freeze({
-    schema_version: "image-style-treatment/v1",
+    schema_version: "image-style-treatment/v2",
     style_profile_hash: styleProfileHash as PromptStyleTreatment["style_profile_hash"],
     medium_family: styleText(candidate.medium_family, 100, "Style medium", [
       "styleTreatment",
       "medium_family",
     ]),
     realism: styleText(candidate.realism, 600, "Style realism", ["styleTreatment", "realism"]),
-    subject_treatment: styleText(candidate.subject_treatment, 600, "Style subject treatment", [
-      "styleTreatment",
-      "subject_treatment",
-    ]),
     camera_language: styleText(candidate.camera_language, 600, "Style camera language", [
       "styleTreatment",
       "camera_language",
@@ -205,14 +210,18 @@ const normalizedStyleTreatment = (
       160,
       "Style shot-scale preferences",
       ["styleTreatment", "shot_scale_preferences"],
+      { semanticKind: "ABSTRACT_TRAIT" },
     ),
     lighting: styleText(candidate.lighting, 600, "Style lighting", ["styleTreatment", "lighting"]),
     palette: Object.freeze({
-      descriptors: styleList(palette.descriptors, 20, 120, "Style palette descriptors", [
-        "styleTreatment",
-        "palette",
-        "descriptors",
-      ]),
+      descriptors: styleList(
+        palette.descriptors,
+        20,
+        120,
+        "Style palette descriptors",
+        ["styleTreatment", "palette", "descriptors"],
+        { semanticKind: "ABSTRACT_TRAIT" },
+      ),
       approximate_hex: Object.freeze([...approximateHex]),
     }),
     contrast_and_exposure: styleText(
@@ -229,24 +238,17 @@ const normalizedStyleTreatment = (
       "styleTreatment",
       "texture_and_grain",
     ]),
-    human_rendering: styleText(candidate.human_rendering, 600, "Style human rendering", [
-      "styleTreatment",
-      "human_rendering",
-    ]),
-    environment_and_material_detail: styleText(
-      candidate.environment_and_material_detail,
-      600,
-      "Style environment and material detail",
-      ["styleTreatment", "environment_and_material_detail"],
-    ),
     imperfection_profile: styleList(
       candidate.imperfection_profile,
       20,
       160,
       "Style imperfection profile",
       ["styleTreatment", "imperfection_profile"],
+      { semanticKind: "ABSTRACT_TRAIT" },
     ),
-    mood: styleList(candidate.mood, 20, 120, "Style mood", ["styleTreatment", "mood"]),
+    mood: styleList(candidate.mood, 20, 120, "Style mood", ["styleTreatment", "mood"], {
+      semanticKind: "ABSTRACT_TRAIT",
+    }),
   });
 };
 
@@ -268,7 +270,7 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
     fail("PROMPT_INPUT_INVALID", "Image Style version ID is invalid.", ["imageStyleVersionId"]);
   if (!SHA256.test(input.styleProfileHash))
     fail("PROMPT_INPUT_INVALID", "Style profile hash is invalid.", ["styleProfileHash"]);
-  const styleTreatment = normalizedStyleTreatment(input.styleTreatment, input.styleProfileHash);
+  const styleTreatment = validatePromptStyleTreatment(input.styleTreatment, input.styleProfileHash);
   // A batch is a transport unit, not a script-size contract. Stage 4 owns the
   // complete deterministic scene list; the adaptive planner chooses how many
   // contiguous scenes fit each provider request. Keeping this validator at a
