@@ -189,6 +189,119 @@
   gap: 16px;
 }
 
+.live-prompt-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.live-prompt-panel .panel-header {
+  margin-bottom: 0;
+}
+
+.live-prompt-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.live-prompt-status-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.live-prompt-status-dot.is-active {
+  background: var(--success);
+  box-shadow: 0 0 0 0 rgba(75, 229, 177, 0.42);
+  animation: live-progress-pulse 1.8s ease-out infinite;
+}
+
+.live-prompt-status-dot.is-success {
+  background: var(--success);
+}
+
+.live-prompt-status-dot.is-stopped {
+  background: var(--danger);
+}
+
+.live-prompt-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 5px;
+  scrollbar-gutter: stable;
+}
+
+.live-prompt-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.live-prompt-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.live-prompt-item {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-fill-soft);
+}
+
+.live-prompt-item-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.live-prompt-item-heading span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.045em;
+  text-transform: lowercase;
+}
+
+.live-prompt-item p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.live-prompt-narration,
+.live-prompt-negative,
+.live-prompt-helper {
+  color: var(--muted);
+}
+
+.live-prompt-empty {
+  display: flex;
+  min-height: 92px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.live-prompt-empty p,
+.live-prompt-helper {
+  margin: 0;
+}
+
 .extracted-context-panel {
   display: grid;
   gap: 12px;

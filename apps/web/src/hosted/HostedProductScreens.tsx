@@ -3475,6 +3475,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const cancellableAttempts = query.data.attempts.filter((attempt) =>
     ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
   );
+  const prompts = query.data.prompts ?? [];
+  const promptWritingActive =
+    promptWriting.isPending ||
+    ["STARTING", "RUNNING", "RETRYING"].includes(promptStage?.status ?? "");
+  const promptWritingStopped = ["FAILED", "ACTION_REQUIRED"].includes(promptStage?.status ?? "");
+  const showPromptFeed = Boolean(
+    query.data.generation || promptWritingActive || prompts.length > 0,
+  );
   return (
     <>
       <PageHeader
@@ -3553,6 +3561,74 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           <StageTimeline stages={uiStages} />
         </Panel>
         <div className="progress-side">
+          {showPromptFeed ? (
+            <Panel className="live-prompt-panel" eyebrow="Stage 5 · Live" heading="Image prompts">
+              <div className="live-prompt-status" aria-live="polite">
+                <span
+                  className={`live-prompt-status-dot${
+                    promptWritingActive
+                      ? " is-active"
+                      : prompts.length > 0
+                        ? " is-success"
+                        : promptWritingStopped
+                          ? " is-stopped"
+                          : ""
+                  }`}
+                  aria-hidden="true"
+                />
+                <strong>
+                  {prompts.length > 0
+                    ? `${prompts.length} accepted prompts`
+                    : promptWritingActive
+                      ? "Writing and validating"
+                      : promptWritingStopped
+                        ? "Prompt writing stopped"
+                        : "Waiting to start"}
+                </strong>
+              </div>
+              {prompts.length > 0 ? (
+                <div
+                  className="live-prompt-scroll"
+                  role="region"
+                  aria-label="Accepted image prompts"
+                  tabIndex={0}
+                >
+                  <ol className="live-prompt-list">
+                    {prompts.map((prompt) => (
+                      <li className="live-prompt-item" key={prompt.scene_id}>
+                        <div className="live-prompt-item-heading">
+                          <strong>Scene {Number(prompt.scene_ordinal) + 1}</strong>
+                          <span>{prompt.in_image_shot_role.replaceAll("_", " ")}</span>
+                        </div>
+                        <p className="live-prompt-narration">“{prompt.narration}”</p>
+                        <p>
+                          <strong>Prompt:</strong> {prompt.positive_prompt}
+                        </p>
+                        <p className="live-prompt-negative">
+                          <strong>Avoid:</strong> {prompt.negative_prompt}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : (
+                <div className="live-prompt-empty" aria-busy={promptWritingActive}>
+                  {promptWritingActive ? <span className="spinner" aria-hidden="true" /> : null}
+                  <p>
+                    {promptWritingActive
+                      ? "DeepSeek V4 Flash is writing one validated scene batch. Prompts appear here immediately after the batch is accepted."
+                      : promptWritingStopped
+                        ? "No accepted prompts were saved. VideoForge stopped without redispatching the request."
+                        : "Prompt writing starts automatically after the scene plan is ready."}
+                  </p>
+                </div>
+              )}
+              <p className="helper live-prompt-helper">
+                This shows the exact final prompts sent to image generation. The provider returns
+                one batch, so partial unvalidated rows are never displayed.
+              </p>
+            </Panel>
+          ) : null}
           <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
             <div className="latest-artifact-frame">
               {render?.preview_url ? (
@@ -3635,32 +3711,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </Panel>
         </div>
       </div>
-      {(query.data.prompts?.length ?? 0) > 0 ? (
-        <Panel eyebrow="Prompts" heading="Voiceover-to-image plan">
-          <p className="helper">
-            Each accepted prompt is bound to its exact narration scene and immutable image style.
-          </p>
-          <div className="stack">
-            {query.data.prompts?.map((prompt) => (
-              <details className="notice" key={prompt.scene_id}>
-                <summary>
-                  Scene {Number(prompt.scene_ordinal) + 1} · {prompt.in_image_shot_role}
-                </summary>
-                <p>
-                  <strong>Voiceover:</strong> {prompt.narration}
-                </p>
-                <p>
-                  <strong>Image prompt:</strong> {prompt.positive_prompt}
-                </p>
-                <p>
-                  <strong>Avoid:</strong> {prompt.negative_prompt}
-                </p>
-                <p className="helper">Style: {prompt.style_name} · immutable published version</p>
-              </details>
-            ))}
-          </div>
-        </Panel>
-      ) : null}
       {!asr ? (
         <div className="notice" role="status">
           <strong>Your project is ready to start transcription.</strong>
