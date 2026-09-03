@@ -1,6 +1,6 @@
 # VideoForge v2 fast completion checkpoints
 
-Status: authoritative completion roadmap from the exact 2026-08-24 repository state
+Status: authoritative completion roadmap reconciled to the exact 2026-09-03 repository state
 
 This file is the handoff map for new chats. V2-00 through V2-06 are accepted foundations and must
 not be reimplemented. From V2-07 onward, use the product and certification tracks below: make small
@@ -37,18 +37,22 @@ reported separately.
 
 ## Exact current state
 
-Repository truth at roadmap creation:
+Repository truth at the 2026-09-03 handoff:
 
-- local branch `codex/serverless-v2-roadmap` was clean at planning base `5c5bc32` and 73 commits
-  ahead of its upstream; the documentation handoff advances local HEAD and is not deployed automatically;
-- the independently accepted hosted V2-06 executable remains source `e673527` and Cloudflare Worker
-  version `32bfc4bf-4421-4703-9095-2afc3515fda3`;
-- V2-07 Attempt51 is the current provider-free Mage candidate. It has no authority, cap,
-  anchor-refresh permission, provider call, mutation, GPU use, or spend;
-- the fresh V2-07 read-only inventory has zero disposable Pods/endpoints/templates/workers, exactly
-  two retained 50 GB `EU-RO-1` volumes, RTX 4090 `LOW` availability, and a combined retained-volume
-  planning charge of `$7/month`;
-- no provider, cloud, credential, deploy, or paid operation is authorized by this roadmap.
+- hosted Stages 1–5 are live-qualified at source `ffcc89c2` and Cloudflare Worker version
+  `87c0a45f-0b03-4334-b36d-cc9f3a920426`; frozen project `91afab6c…` is Stage 5 evidence, not an
+  authorized Stage 6 input;
+- V2-07 Attempt64 is closed `NOT_QUALIFIED` after `RUNPOD_ZERO_NOT_CONFIRMED`; exact cleanup and
+  three stable reads prove zero compute/disposables with both retained volumes unchanged, and its
+  proposal, authority, cap, and run are consumed and non-reusable;
+- repair `1283a23` bounded-polls asynchronous cancellation shutdown and passed independent audit,
+  but later authenticated-envelope source `9ef6efa` changed the Mage handler/image bytes. Every
+  previous Mage image-bound qualification is therefore invalid for activation;
+- a fresh immutable Mage image build/publication record, sealed deployment snapshot, atomic live
+  qualification, and independent audit remain required; there is no current candidate, live
+  authority, cap, provider permission, GPU permission, or spend permission;
+- historical RunPod rates, capacity, billing, and the combined `$7/month` retained-volume planning
+  charge are not current execution truth. Refresh them read-only before any new exact proposal.
 
 ### Complete and reusable — do not rebuild
 
@@ -60,14 +64,14 @@ Repository truth at roadmap creation:
 | Word-level voiceover transcript with pinned `whisper.cpp 1.8.4 base.en` | Green, including chunk/reconcile/restart receipts | V2-09 integration only |
 | `scheduler-v2` voiceover splitting and all three compositions | Green; 30-minute fixture measured 21.05% avatar coverage | V2-09 integration only |
 | Prompt/style path and `documentary_stock_v1` | Green foundation | V2-09/V2-10 |
-| Mage exact model, image, sealed volume, Pod samples | Green foundation; Serverless gate open | V2-07 |
-| SoulX exact model, image, sealed volume, Pod native/full/split samples | Technically green foundation; visual/license/Serverless gates open | V2-08 |
+| Mage exact model bytes, sealed volume, and historical Pod samples | Preserved foundation; prior image invalid after envelope change | V2-07 fresh image and qualification |
+| SoulX exact model bytes, sealed volume, and Pod native/full/split samples | Preserved foundation; prior image candidate invalid after envelope change | V2-08 fresh image, visual/license, and qualification |
 | Direct FFmpeg renderer and account-owned macOS/Windows personal media worker | Hosted live accepted | V2-09 onward |
 | Current UI and visible feature set | Accepted; preserve it | Infrastructure truth only |
 
 ### Still missing
 
-- one exact accepted Mage Serverless qualification from current Attempt51 lineage;
+- one fresh immutable Mage image and exact accepted Serverless qualification after the authenticated-envelope change;
 - SoulX deployability record, user crop/visual approval, and Serverless handler/endpoint proof;
 - a real hosted adapter from tenant admission through transcript/scheduler/prompts to Mage/SoulX,
   durable asset barrier, render plan, personal-worker render, review, and download;
@@ -178,24 +182,29 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 ## V2-07 — close Mage Serverless qualification
 
-**Timebox:** 3–4 hours best case.
+**Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Starting point:** exact Attempt51 provider-free candidate and immutable published Mage image exist;
-the candidate is unapproved and `NOT_QUALIFIED`.
+**Starting point:** Attempt64 is closed clean and non-reusable. Its post-cancel repair is audited,
+but the later authenticated-envelope verifier changed the Mage handler/image bytes, so the prior
+published image and all image-bound qualification evidence are invalid for activation. V2-07 is
+`NOT_QUALIFIED` with no current candidate or live authority.
 
 **Work:**
 
-- reconcile current HEAD/context and run the exact Attempt51 candidate validator;
-- do not rebuild the image, redownload the model, mutate/cross-mount/delete either retained volume,
-  switch model/GPU/region, or create a parallel proposal unless current identities truly changed;
-- finish provider-free/read-only preflight, then stop once for an exact combined operations/rates/
-  estimate/cleanup proposal and a fresh user-supplied finite cap;
-- after exact approval, execute the bound max1 then already-prepared max2 sequence once;
+- reconcile current HEAD/context, the authenticated-envelope bytes, and the audited Attempt64
+  cancellation repair; never reuse an earlier attempt, proposal, authority, cap, or image digest;
+- prepare and audit a fresh immutable Mage image definition from current committed source without
+  redownloading/changing the model or writing, cross-mounting, or deleting either retained volume;
+- finish provider-free and narrowly scoped read-only inventory/rate preflight, then stop once for an
+  exact image-publication/deployment/atomic-qualification operations, rates, estimate, cleanup, and
+  stop-condition proposal with a fresh user-supplied finite cap;
+- after exact approval, execute only the bound atomic gate once, with no blind retry or redispatch;
 - accept only durable 1280×720 outputs, tenant artifact readbacks, signed v3 receipts, exact timing/
   VRAM/cost, unchanged Mage manifest, terminal jobs, zero total workers, and intended volumes only.
 
-**Essential proof:** candidate validator, any test directly touched by a repair, exact paid evidence,
-settled cost, and independent drain/inventory readback. Do not rerun hundreds of unchanged tests.
+**Essential proof:** fresh image digest and sealed-source readback, candidate validator, any test
+directly touched by a repair, exact paid evidence, settled cost, and independent drain/inventory
+readback. Do not rerun hundreds of unchanged tests.
 
 **Stop live work:** identity drift, cap risk, missing durable receipt, unexpected second dispatch,
 volume uncertainty, cleanup uncertainty, or a second unrelated failure. V2-08 live activation
@@ -205,9 +214,10 @@ remains blocked until Mage audit PASS; V2-08 through V2-13 provider-free product
 
 **Timebox:** 4–6 hours best case.
 
-**Starting point:** exact SoulX Pro BF16 bytes, sealed 50 GB volume, image, and owned native/full/
-split Pod samples exist. Provider-free handler/integration work is authorized; Serverless live
-activation, deployability record, user crop approval, and cost are open.
+**Starting point:** exact SoulX Pro BF16 bytes, sealed 50 GB volume, and owned native/full/split Pod
+samples exist. The former image candidate is historical and invalid for activation after the
+authenticated-envelope byte change. Provider-free handler/integration work and exact crop approval
+are preserved; a fresh image, Serverless live activation, deployability record, and cost are open.
 
 **Work:**
 

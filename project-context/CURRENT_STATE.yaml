@@ -4,11 +4,11 @@ updated_at: "2026-09-03"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: false
-current_milestone: private_hosted_beta_stage5_live_qualified
-current_task: VF-10-13_RELEASE_OPERATIONS
+current_milestone: private_hosted_beta_stage5_live_qualified_v2_07_mage_handoff
+current_task: VF-10-07_MAGE_SERVERLESS_QUALIFICATION
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_product_execution
+task_stage: provider_free_v2_07_reconciliation_and_preflight
 application_code_changes_authorized: false
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Stage 5 is live-qualified at source ffcc89c2 / Worker 87c0a45f. Exactly one project 91afab6c completed Stages 1-5: Stage 4 saved 33 segments with 28 image scenes and 10 avatar segments; Stage 5 planned two adaptive batches, made exactly two DeepSeek V4 Flash requests, durably exposed 13 accepted prompts before batch 2, then finished with 28/28 accepted prompts. Stage 5 cost conserved exactly at 40000 = 2187 settled + 37813 released micro-USD. Computer Use proved the 520 px prompt viewer scrolls locally. Stage 3 also succeeded for 72 micro-USD, but its older completion function did not emit the unused 9928 micro-USD release event; this separate project-wide accounting defect remains provider-free follow-up. No retry, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
+  provider_free_product_action: "Stage 5 is live-qualified at source ffcc89c2 / Worker 87c0a45f. Exactly one project 91afab6c completed Stages 1-5: Stage 4 saved 33 segments with 28 image scenes and 10 avatar segments; Stage 5 planned two adaptive batches, made exactly two DeepSeek V4 Flash requests, durably exposed 13 accepted prompts before batch 2, then finished with 28/28 accepted prompts. Stage 5 cost conserved exactly at 40000 = 2187 settled + 37813 released micro-USD. Computer Use proved the 520 px prompt viewer scrolls locally. Preserve project 91afab6c as frozen Stage 5 evidence: no retry, provider retrieval, or Stage 6 continuation is authorized, and the recommended quality path is a fresh project after the known prompt/accounting repairs and live-lane qualification. Stage 3 also succeeded for 72 micro-USD, but its older completion function did not emit the unused 9928 micro-USD release event; this separate project-wide accounting defect remains provider-free follow-up. No GPU, RunPod, production, or volume mutation occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -174,10 +174,10 @@ hosted_beta_user_walkthrough:
   cloudflare_worker_version_id: "87c0a45f-0b03-4334-b36d-cc9f3a920426"
   pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "SOURCE_FFCC89C2_IS_LIVE_AS_WORKER_87C0A45F. STAGE5_IS_QUALIFIED_ON_PROJECT_91AFAB6C_AND_MUST_NOT_BE_RETRIED_OR_CONTINUED. MIGRATIONS_0069_0070_AND_0071_AND_THE_RUNTIME_GRANT_SET_MUST_NOT_BE_REPLAYED. STAGE3_UNUSED_RESERVATION_RELEASE_ACCOUNTING_REMAINS_A_SEPARATE_PROVIDER_FREE_REPAIR."
-  pending_validations: "STAGE5_LIVE_ACCEPTANCE_IS_COMPLETE. REPAIR_AND_TEST_STAGE3_UNUSED_RESERVATION_RELEASE_PROVIDER_FREE_BEFORE_ANY_FUTURE LIVE ACTIVATION."
+  pending_release_boundary: "SOURCE_FFCC89C2_IS_LIVE_AS_WORKER_87C0A45F. PROJECT_91AFAB6C_IS_FROZEN_READ_ONLY_STAGE5_EVIDENCE; NO RETRY_PROVIDER_RETRIEVAL_OR_STAGE6_CONTINUATION_IS AUTHORIZED, AND THE RECOMMENDED E2E PATH USES A FRESH QUALITY_CORRECTED PROJECT. MIGRATIONS_0069_0070_AND_0071_AND_THE_RUNTIME_GRANT_SET_MUST_NOT_BE_REPLAYED."
+  pending_validations: "STAGE5_LIVE_ACCEPTANCE_IS_COMPLETE. REPAIR_AND_TEST_STAGE3_UNUSED_9928_MICRO_USD_RELEASE_AND_STAGE5_TEXT_BEARING_POSITIVE_DESCRIPTION_REJECTION_PROVIDER_FREE. THEN COMPLETE THE FRESH_IMAGE_V2_07_MAGE_GATE BEFORE V2_08_LIVE OR A NEW FULL_PROJECT."
   latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE ffcc89c2dbda93507c1d0f68dc254852bdc1931e MIGRATIONS 0069 0070 AND 0071 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.13 DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 1; DO NOT RETRY CONTINUE OR RETRIEVE PROJECTS 4263c24e-9c86-47e2-b280-8f2fa83a12e2 OR ae5a4a68-f26d-421f-ab02-8ce95aedcea2 OR 91154eae-b8c6-41c5-aa0c-10bb97deb37c; USE COMPUTER USE TO VERIFY PROVIDER REQUEST COUNT EQUALS PERSISTED ADAPTIVE BATCH COUNT, ACCEPTED PROMPT QUALITY, DURABLE INCREMENTAL BATCHES, COST CONSERVATION, AND THE SCROLLABLE PROMPT VIEWER; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
-  latest_live_run: "Live Neon was verified at ledger 71/71 and exact runtime grants without replay. Source ffcc89c2 deployed exactly once as Worker 87c0a45f with config SHA-256 e1fd7327. Computer Use and signed-in Chrome created exactly one fresh project 91afab6c-ad32-49fc-abab-05957541362a with the USD 2 project cap, hard USD 1 operator provider cap, Helen v1, Will Carter v1, media worker 0.1.13, and the 159-second MP3. Stage 4 saved 33 segments, 28 image scenes, and 10 avatar segments. Stage 5 persisted a two-batch adaptive plan, made two distinct DeepSeek V4 Flash requests, durably showed 13 accepted prompts after batch 1, and completed 28/28 prompts. Batch costs were 1019 and 1168 micro-USD; Stage 5 reservation conservation passes exactly at 40000 = 2187 settled + 37813 released. Total settled Stage 3+5 provider spend was 2259 micro-USD. The viewer is 520 px high, overflow-y auto, 13271 px scroll content, and changed scrollTop under Computer Use. All 28 compiled prompts are unique, scene-bound, styled, realistic, and carry the permanent visual restrictions; a few provider descriptions still mention a handwritten list, cup markings, or labels while the compiled ban says no visible text, which is a quality follow-up rather than a functional failure. Stage 3 succeeded for 72 micro-USD but did not emit the unused 9928 micro-USD release event, so project-wide reservation-event conservation remains a separate accounting defect. No retry, provider retrieval, GPU, RunPod, production, or volume mutation occurred; all downstream tasks are BLOCKED and active leases/attempts are zero."
+  latest_live_run: "Live Neon was verified at ledger 71/71 and exact runtime grants without replay. Source ffcc89c2 deployed exactly once as Worker 87c0a45f with config SHA-256 e1fd7327. Computer Use and signed-in Chrome created exactly one fresh project 91afab6c-ad32-49fc-abab-05957541362a with the USD 2 project cap, hard USD 1 operator provider cap, Helen v1, Will Carter v1, media worker 0.1.13, and the 159-second MP3. Stage 4 saved 33 segments, 28 image scenes, and 10 avatar segments. Stage 5 persisted a two-batch adaptive plan, made two distinct DeepSeek V4 Flash requests, durably showed 13 accepted prompts after batch 1, and completed 28/28 prompts. Batch costs were 1019 and 1168 micro-USD; Stage 5 reservation conservation passes exactly at 40000 = 2187 settled + 37813 released. Total settled Stage 3+5 provider spend was 2259 micro-USD. The viewer is 520 px high, overflow-y auto, 13271 px scroll content, and changed scrollTop under Computer Use. All 28 compiled prompts are unique, scene-bound, styled, realistic, and carry the permanent visual restrictions; a few provider descriptions still mention a handwritten list, cup markings, or labels while the compiled ban says no visible text, which is a quality follow-up rather than a functional failure. Stage 3 succeeded for 72 micro-USD but did not emit the unused 9928 micro-USD release event, so project-wide reservation-event conservation remains a separate accounting defect. No retry, provider retrieval, GPU, RunPod, production, or volume mutation occurred; all downstream live activation is BLOCKED and active leases/attempts are zero, while provider-free V2-08–V2-13 product work may continue."
   deployed_config_sha256: "e1fd7327758404b822f9a462ca967e3b92b0831363af40849c153516953fb8fa"
   deployment_approval: "CONSUMED_AFTER_SUCCESSFUL_STAGE5_SOURCE_FFCC89C2_WORKER_87C0A45F_PROJECT_91AFAB6C_NO_RETRY_CONTINUATION_OR_PROVIDER_RETRIEVAL"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
@@ -3637,14 +3637,14 @@ repository:
   branch: codex/serverless-v2-roadmap-v4
   branch_upstream: origin/codex/serverless-v2-roadmap-v4
   branch_published: false
-  current_source_head: "1283a23248c9b79832b6fb331b00474e1df70f81"
-  current_source_head_semantics: attempt64_post_cancel_bounded_zero_poll_repair
+  current_source_head: "84cb65d16c6c7367760f357ca7295c1cc66e524a"
+  current_source_head_semantics: latest_application_source_stage5_hardening_includes_v2_07_envelope_and_cancel_repairs
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Attempt64 remains closed NOT_QUALIFIED. Commit 1283a23248c9b79832b6fb331b00474e1df70f81 bounded-polls the first exact post-cancel health zero, then requires a separate second exact zero before settling cancellation liability; auditors resolve git rev-parse HEAD."
+  current_source_head_note: "Application source 84cb65d contains the live-qualified Stage 5 repair and inherits authenticated-envelope source 9ef6efa plus cancellation repair 1283a23. Attempt64 remains closed NOT_QUALIFIED, and no Mage image built before the envelope change is activation-valid. Auditors resolve git rev-parse HEAD for the later documentation handoff."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
-  working_tree_expected: clean_after_final_live_closure_handoff_commit
+  working_tree_expected: clean_after_stage5_to_v2_07_handoff_commit
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:
@@ -3973,7 +3973,7 @@ blocking_gates_for_production:
   - GATE_STYLE_002
 
 active_ownership: []
-in_progress_checkpoint: V2-08_PROVIDER_FREE_PRODUCT_TRACK
+in_progress_checkpoint: V2-07_MAGE_CERTIFICATION_PROVIDER_FREE_RECONCILIATION
 certification_checkpoint: V2-07_NOT_QUALIFIED
 
 provider_authority_closed: &v2_07_provider_authority_closed
@@ -5027,19 +5027,19 @@ provider_authority_attempt64: &v2_07_provider_authority_attempt64
 provider_authority: *v2_07_provider_authority_attempt64
 
 recommended_next_task:
-  task_id: VF-10-13
-  checkpoint: V2-06
-  milestone: private_hosted_beta_stage5_live_qualified
-  status: stage5_live_qualified_stage3_release_accounting_followup
-  dependency_status: v2_06_complete_green_independently_audited
-  authorization_status: release_and_deployment_authority_consumed_non_reusable
-  task_stage: provider_free_product_execution
+  task_id: VF-10-07
+  checkpoint: V2-07
+  milestone: private_hosted_beta_stage5_live_qualified_v2_07_mage_handoff
+  status: NOT_QUALIFIED_attempt64_closed_clean_provider_free_repair_complete_fresh_image_required
+  dependency_status: v2_06_complete_green_and_stage5_live_qualified
+  authorization_status: no_live_authority_attempt64_consumed_non_reusable
+  task_stage: provider_free_reconciliation_and_read_only_preflight
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt64
-  read_profile: v2_06_hosted_staging
-  task_brief: tasks/VF-10-06.md
-  goal: "Keep live-qualified Stage 5 source ffcc89c2 / Worker 87c0a45f and completed project 91afab6c immutable. Stage 5 passed request-count equality, adaptive incremental durability, prompt acceptance, exact Stage 5 cost conservation, and Computer Use viewer scrolling. Repair the separate Stage 3 unused-reservation release event provider-free and strengthen positive-prompt contradiction handling before proposing any new live activation. Never retry, continue, or provider-retrieve stopped projects. Migrations 0069-0071 and the runtime grant set must not be replayed. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
+  read_profile: v2_07_mage_serverless
+  task_brief: tasks/VF-10-07.md
+  goal: "Preserve live-qualified Stage 5 source ffcc89c2 / Worker 87c0a45f and frozen evidence project 91afab6c. First repair the Stage 3 missing 9928 micro-USD RELEASED event and strengthen Stage 5 positive-prompt contradiction rejection provider-free, with focused tests and an independent audit. Then reconcile V2-07 from closed Attempt64: authenticated-envelope changes invalidate the historical Mage image for activation, so prepare and validate a fresh immutable Mage image definition and the smallest atomic certification plan. No old attempt, proposal, authority, cap, image-bound qualification, or stopped project may be retried or reused. Narrow read-only provider inventory/rate refresh is allowed only when explicitly invoked under the checkpoint bootstrap; stop before image publication, deployment, provider mutation, GPU work, or spend for one exact source/config/operations/rates/estimate/cleanup proposal and fresh finite cap. V2-08 live remains blocked until independent V2-07 PASS."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -5086,22 +5086,24 @@ verification:
     findings_reconciled_in_repository: true
     fresh_independent_reaudit_required: false
   latest_live_check:
-    recorded_at_utc: "2026-08-25T10:22:16Z"
-    evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-63.json
-    evidence_sha256: "sha256:b2da710546ff14cb842a58e31b2caaa3797ec5aeb3a5cd95c120b03a8993ed13"
-    proposal: evidence/acceptance/VF-10-07/2026-08-24-attempt51-terminal-pod-namespace-repair-candidate/combined-live-proposal.json
-    proposal_sha256: "sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe"
-    authority: evidence/acceptance/VF-10-07/2026-08-24-attempt51-terminal-pod-namespace-repair-candidate/approved-authority.json
-    authority_sha256: "sha256:61e00a70cb64c1e467a2d2877f67a20597b5a17e19a1ffa7a9a767ef06f52ea9"
-    result: NOT_QUALIFIED_ATTEMPT51_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE_CLEAN
-    authority_mode: attempt51_consumed_non_reusable
+    recorded_at_utc: "2026-08-25T11:46:36.633Z"
+    evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-64.json
+    evidence_sha256: "sha256:2ae8967a21017a345fa375053988a388860f178edf19824e86515f59d7183ec7"
+    proposal: evidence/acceptance/VF-10-07/2026-08-25-attempt64-deadline-mode-candidate/combined-live-proposal.json
+    proposal_sha256: "sha256:12d9d7553f2a00f80b5c415676988d23a1bd874ed9e5d2a1b8bcc6fcad365909"
+    authority: evidence/acceptance/VF-10-07/2026-08-25-attempt64-deadline-mode-candidate/approved-authority.json
+    authority_sha256: "sha256:a9e8deb7b421831d5b1576f386f20c4fc0f02fb94d917b7d0a527cbb85f6fcf7"
+    result: NOT_QUALIFIED_ATTEMPT64_POST_CANCEL_ZERO_UNCONFIRMED_CLEAN
+    authority_mode: attempt64_consumed_non_reusable
     settled_incremental_spend_usd: 0
     provider_disposable_resources_absent: true
     workers_after_drain: 0
     retained_volume_count: 2
-    next_candidate: evidence/acceptance/VF-10-07/2026-08-24-attempt51-terminal-pod-namespace-repair-candidate/combined-live-proposal.json
-    next_candidate_sha256: "sha256:739aa53d398c223a690758e66f03fed437c5eaf51526ea52a33283fa1918c3fe"
+    next_candidate: null
+    next_candidate_sha256: null
     next_candidate_authority: null
+    image_bound_qualification_reusable: false
+    invalidation_reason: authenticated_envelope_handler_and_image_bytes_changed_after_publication
   historical_live_check_attempt48:
     recorded_at_utc: "2026-08-24T03:12:21.573Z"
     evidence: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-48.json
@@ -5615,12 +5617,12 @@ audit_evidence:
   v2_07_attempt28_control_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"
   v2_07_attempt28_candidate_max1_sha256: "sha256:acef5c48b6059fa2401b88bb40ed81e648c9ed795e5fcb3208e117d936f4196d"
   v2_07_attempt28_candidate_max2_sha256: "sha256:45d067e5d7e1b152d25c62eb7e185898bbedd30797d5d9aacc83bb9a48e41836"
-  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-08-24-attempt56-anchor-constant-rebind-candidate/combined-live-proposal.json
-  v2_07_current_proposal_sha256: "sha256:d3c10f7af00591dea0afe73d2960b316a788235bb2585decab6ca479b4ce9ab9"
-  v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-08-24-attempt56-anchor-constant-rebind-candidate/acceptance.json
-  v2_07_current_candidate_acceptance_sha256: "sha256:3ddaf8f9fde45f93de0a9c4a770a09bc117168ff27dbd2ec312e7516cf9c094d"
-  v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-08-24-attempt56-anchor-constant-rebind-candidate/approved-authority.json
-  v2_07_current_approved_authority_sha256: "sha256:6a82d8ae1bf7c3a987b941cd00153a7cc9a51c4d589aaa537aa88f854d5de5ac"
+  v2_07_current_proposal: null
+  v2_07_current_proposal_sha256: null
+  v2_07_current_candidate_acceptance: null
+  v2_07_current_candidate_acceptance_sha256: null
+  v2_07_current_approved_authority: null
+  v2_07_current_approved_authority_sha256: null
   v2_07_attempt56_approved_preexecution_authority_sha256: "sha256:c708d07d31cb832658de0e9a3ac0e9fecceffcf3f7571d690bdfd8605617bdf2"
   v2_07_attempt37_closed_authority: evidence/acceptance/VF-10-07/2026-08-23-attempt37-terminal-reader-result-recovery-candidate/approved-authority.json
   v2_07_attempt37_closed_authority_sha256: "sha256:812899db3d2225224ea231112d2eba150ffbbd254148e71f94c81a44de32cadf"
@@ -5730,12 +5732,15 @@ audit_evidence:
   v2_07_closed_diagnostic_proposal_sha256: "sha256:8c11e156df6544b2023eb843f3961ca948b755b4f3bf8a4b75e7c03df4bf2774"
   v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
   v2_07_closed_diagnostic_authority_sha256: "sha256:afa5a4ded8eb25cd6df6105d3e3f7813e01bfa7a13cd1d7eb3d4b3ba35b1bed2"
-  v2_07_current_immutable_image_definition: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/definition.json
-  v2_07_current_image_publication: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt40-image-publication.json
+  v2_07_current_immutable_image_definition: null
+  v2_07_current_image_publication: null
+  v2_07_last_pre_envelope_image_definition: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/definition.json
+  v2_07_last_pre_envelope_image_publication: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/attempt40-image-publication.json
   v2_07_historical_amended_proposal: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/amended-live-proposal.json
   v2_07_historical_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
   v2_07_historical_image_publication: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/image-publication.json
-  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-52.json
+  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-08-21-live-qualification/failed-attempt-64.json
+  v2_07_latest_live_attempt_sha256: "sha256:2ae8967a21017a345fa375053988a388860f178edf19824e86515f59d7183ec7"
   v2_07_latest_predispatch_safety_repair: evidence/acceptance/VF-10-07/2026-08-20-pre-dispatch-safety-repair/acceptance.json
   v2_07_historical_live_authority: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/authority.json
   v2_07_latest_provider_free_handoff: evidence/acceptance/VF-10-07/2026-08-20-provider-free-repair-handoff/acceptance.json
@@ -5747,6 +5752,6 @@ audit_evidence:
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: v2_07_attempt51_closed_provider_free_blocked_analysis
+  current_goal_scope: v2_07_attempt64_closed_fresh_image_provider_free_handoff
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_attempt51_process_replacement_identity_unavailable_clean
+  v2_07_status: NOT_QUALIFIED_attempt64_post_cancel_zero_unconfirmed_clean_fresh_image_required

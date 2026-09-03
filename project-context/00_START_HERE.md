@@ -2,7 +2,40 @@
 
 ## Active handoff — read this section first
 
-### New-chat launch point — 2026-08-30
+### Current new-chat launch point — 2026-09-03
+
+- Repository HEAD contains the live Stage 5 qualification handoff. Source `ffcc89c2` was deployed
+  exactly once to staging Worker `87c0a45f-0b03-4334-b36d-cc9f3a920426`; migrations `0069`–`0071`
+  and the exact runtime grant set were already applied and must not be replayed.
+- Exactly one fresh project `91afab6c-ad32-49fc-abab-05957541362a` completed Stages 1–5. Stage 4
+  saved 33 segments, 28 image scenes, and 10 avatar segments. Stage 5 persisted two adaptive batches,
+  made exactly two DeepSeek V4 Flash requests, exposed 13 accepted prompts while batch 2 ran, and
+  completed 28/28 accepted prompts in the verified scrollable viewer.
+- Stage 5 cost conservation passes exactly: 40,000 micro-USD reserved = 2,187 settled + 37,813
+  released. Total Stage 3+5 settled cost was 2,259 micro-USD. Stage 3 separately omitted its unused
+  9,928 micro-USD `RELEASED` event, and Stage 5 positive-description validation should reject
+  text-bearing details such as handwritten lists, markings, or labels despite the compiled text ban.
+  Both are provider-free source/test follow-ups before another full project.
+- Preserve `91afab6c…` as frozen Stage 5 evidence. No retry, provider retrieval, or Stage 6
+  continuation is authorized; use a fresh quality-corrected project for the later real E2E. The
+  three earlier prohibited projects remain off limits. No active provider/media-worker lease,
+  nonterminal attempt, RunPod job, endpoint, worker, or disposable resource remains.
+- The selected next profile is `v2_07_mage_serverless` with brief `tasks/VF-10-07.md`. V2-07
+  Attempt64 is closed `NOT_QUALIFIED` after `RUNPOD_ZERO_NOT_CONFIRMED`; cleanup is exact and repair
+  `1283a23` passed independent audit. Attempt64 and every older proposal, authority, cap, and run are
+  consumed and non-reusable.
+- Authenticated-envelope source `9ef6efa` changed the Mage handler/image bytes after the last Mage
+  publication. The previous Mage image and all image-bound qualification evidence are invalid for
+  activation. Prepare a fresh immutable image definition/provider-free evidence, then stop at the
+  first publication, deployment, provider mutation, GPU, credential, or spend boundary for one
+  current exact proposal and fresh finite cap. V2-08 live remains blocked until independent V2-07
+  PASS; provider-free V2-08–V2-13 work may proceed in parallel.
+- No provider call, read-only provider lookup, cloud mutation, deployment, credential access, GPU
+  use, image publication, model download, or spend is authorized by this handoff. Historical rates,
+  capacity, billing, and `$7/month` combined retained-volume planning cost must be refreshed before
+  a future exact proposal; retained volumes must remain sealed, isolated, and application-read-only.
+
+### Historical full-live launch point — 2026-08-30 (superseded by the handoff above)
 
 - Fresh full-live v5 successor proposal `sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444`
   is sealed against execution-control evidence commit
@@ -1070,7 +1103,11 @@ literal image relevance, per-avatar crop/lip/background review, authentic-feelin
 full-length acceptance. Ranga uses moving stock/UGC; stills plus zoom can match composition, cadence,
 and evidence selection, not source-footage motion.
 
-## Current handoff
+## Historical foundation and attempt narrative — do not treat as the current handoff
+
+The section below is retained only as compact foundation lineage. Attempt-specific authority,
+candidate, and status statements in it are historical and non-reusable. The current launch point at
+the top of this file, `CURRENT_STATE.yaml`, and the selected task brief govern all new work.
 
 V2-00 and its independent audit are green. V2-01 is complete and independently re-audited green: additive migration
 `0018_tenant_private_scope.sql` gives projects, revisions, assets, Avatar Profiles/versions, Image

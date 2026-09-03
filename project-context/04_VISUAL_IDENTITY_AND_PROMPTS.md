@@ -28,19 +28,26 @@ cause/effect, chronology, continuity facts, and resolved pronoun/callback refere
 hash this document. Do not infer visual style, camera direction, graphics, branding, or facts absent
 from the transcript.
 
-The prompt-writing request does not resend the complete transcript. It sends the compact bounded
-story context once per 25–50-scene batch, where it is available while writing every scene. Each scene
-item sends the exact timed fragment, its complete containing sentence, the previous complete
+The prompt-writing request does not resend the complete transcript. Stage 5 consumes Stage 4's
+complete ordered image-scene list and deterministically derives the minimum number of contiguous
+batches that fit the exact canonical request and conservative response budgets. It sends the compact
+bounded story context once per derived batch, where it is available while writing every scene. Each
+scene item sends the exact timed fragment, its complete containing sentence, the previous complete
 sentence, the next complete sentence, and the deterministic shot role/layout. Sentence windows are
 derived deterministically from the ordered transcript and capped; arbitrary adjacent scene chunks
 must not stand in for sentence context. Precedence is exact fragment, containing sentence, adjacent
-complete sentences, global story context, then soft style traits.
+complete sentences, global story context, then soft style traits. There is no fixed scenes-per-batch
+rule and no project scene cap.
 
-Token and cost bounds are part of acceptance: one context extraction with a 1,600-token output
-ceiling and a $0.01 reservation, followed by one prompt batch with an 8,000-token output ceiling and
-a $0.04 reservation including at most one unresolved-item retry. Do not duplicate the same global
-context inside every scene item. Prompt cores stay concise and concrete; trusted code adds crop,
-style, optional keywords, and permanent guardrails exactly once.
+Token and cost bounds are part of acceptance. The live hosted profile uses one bounded context
+extraction with a 350-token output ceiling and a 10,000 micro-USD reservation. Stage 5 plans against
+a 48,000-token input ceiling and a 16,384-token application output-quality budget per request under
+the 64,000-token technical output ceiling, with one 40,000 micro-USD project reservation. One
+provider request is allowed per persisted planned batch. The hosted path performs no prompt-provider
+retry: accepted batches persist before the next request, while definite or ambiguous failure stops
+without redispatch. Do not duplicate the same global context inside every scene item. Prompt cores
+stay concise and concrete; trusted code adds crop, style, optional keywords, and permanent guardrails
+exactly once.
 
 Runware DeepSeek V4 Flash 0731 writes scene-content prompts only. Code already knows:
 
@@ -56,7 +63,15 @@ Runware DeepSeek V4 Flash 0731 writes scene-content prompts only. Code already k
 
 The LLM must not select timeline composition, in-image shot role, duration, avatar placement, style version, model, GPU, retry, or fallback.
 
-Batch 25–50 scenes with stable scene IDs. Send the sanitized project title and the selected style's compact `planner_guidance` once per batch—not repeated per scene. Each item receives the exact phrase, its code-assigned in-image shot role, and only useful preceding/following context. Carry a compact deterministic continuity state from the last accepted preceding batch (stable people/location/era/season/tool tags), rather than making another LLM call. The title and continuity context help disambiguate a phrase but may never override its literal words. Dispatch a validated batch to Mage immediately; a failed item retries independently rather than repeating the whole project.
+Use stable scene IDs and keep Stage 4 order unchanged. Derive contiguous adaptive batches from the
+exact request bytes, conservative output shape, and natural sentence boundaries. Send the sanitized
+project title and selected style's compact `planner_guidance` once per batch—not repeated per scene.
+Each item receives the exact phrase, its code-assigned in-image shot role, and only useful preceding/
+following context. Carry a compact deterministic continuity state from the last accepted preceding
+batch rather than making another LLM call. The title and continuity context help disambiguate a
+phrase but may never override its literal words. Atomically persist each fully validated batch and
+its receipt/cost evidence before the next request. Stage 6 may dispatch only accepted durable prompts;
+Stage 5 never dispatches Mage and never retries a rejected or ambiguous provider response.
 
 Recommended Runware settings:
 
@@ -77,7 +92,7 @@ Recommended Runware settings:
 
 Use strict `jsonSchema`. Application code owns style suffixes, optional extra keywords, and permanent guardrails so the model cannot omit or inconsistently repeat them.
 
-DeepSeek scene-writing contract (`scene-prompt-writer-v1`, Runware request v5):
+DeepSeek scene-writing contract (`scene-prompt-writer-v1`, Runware request v9):
 
 ```text
 You write concise image scene cores for VideoForge. For each stable scene ID,
@@ -156,6 +171,13 @@ mixed media, or unrelated subject; clean original still image only
 ```
 
 Because Mage Turbo uses CFG 1, verify whether its implementation applies a separate negative prompt meaningfully. If not, express essential absence constraints in the positive prompt and use deterministic/human rejection. Never silently increase CFG away from the approved Turbo mode.
+
+The positive description must not contradict this guardrail. Deterministic validation must reject a
+scene core that positively depends on visible writing, printed labels, markings, signage, UI, charts,
+logos, or branded packaging even when a later suffix says `no visible text`. Rephrase the visible
+evidence around an unlabeled object or another literal physical action; if readable text or branding
+is the core meaning, exclude AI imagery for that scene and fail closed to the approved real-source
+media path.
 
 ## Built-in style: Authentic Documentary Stock
 
