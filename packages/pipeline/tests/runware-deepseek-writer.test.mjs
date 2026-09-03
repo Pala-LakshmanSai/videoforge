@@ -61,7 +61,7 @@ function output(request, options = {}) {
     in_image_shot_role: scene.in_image_shot_role,
     lighting_context: "available practical daylight",
     continuity_tags: ["same_farmer", "dry_season"],
-    prompt_core: `${scene.required_literal_anchor}, visibly demonstrated in an ordinary farm setting, marker ${options.marker ?? request.attemptIndex}`,
+    prompt_core: `Close documentary view of practical irrigation work in an ordinary farm setting, marker ${options.marker ?? request.attemptIndex}`,
   }));
   const changed = options.change ? options.change(rows, requestPayload) : rows;
   return JSON.stringify({ batch_id: requestPayload.batch_id, scenes: changed });
@@ -185,7 +185,6 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
         "in_image_shot_role",
         "next_context",
         "prior_context",
-        "required_literal_anchor",
         "scene_id",
       ].sort(),
     );
@@ -218,6 +217,12 @@ test("writer contract requires relatable physical evidence and applies style as 
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /pinned style's visual treatment/u);
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /without importing people, places, objects/u);
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /believable anatomy, materials, scale/u);
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /translate its meaning into concrete visual evidence/u,
+  );
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /at most 12 unique continuity_tags/u);
+  assert.doesNotMatch(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Copy each required_literal_anchor/u);
 });
 
 test("rejects verbose prompt cores without retrying the accepted batch", async () => {
@@ -225,7 +230,7 @@ test("rejects verbose prompt cores without retrying the accepted batch", async (
     (request) =>
       success(request, {
         change: (rows) => {
-          rows[0].prompt_core = `${payload(request).scenes[0].required_literal_anchor} ${"detail ".repeat(100)}`;
+          rows[0].prompt_core = `Concrete visual evidence ${"detail ".repeat(100)}`;
           return rows;
         },
       }),
@@ -244,6 +249,21 @@ test("accepts reordered output but restores original scene order", async () => {
     makeBatch(25).scenes.map((scene) => scene.sceneId),
   );
   assert.equal(setup.evidence[0].validationDisposition, "accepted");
+  assert.deepEqual(
+    setup.evidence[0].acceptedSceneIds,
+    makeBatch(25).scenes.map((scene) => scene.sceneId),
+  );
+});
+
+test("accepts concise visual paraphrases without requiring narration prose in prompt_core", async () => {
+  const setup = writer([(request) => success(request)]);
+  const result = await setup.value.write(makeBatch(25));
+  assert.equal(result.scenes.length, 25);
+  assert.ok(
+    result.scenes.every((scene) =>
+      scene.prompt_core.startsWith("Close documentary view of practical irrigation work"),
+    ),
+  );
 });
 
 test("does not retry invalid or missing rows", async () => {
@@ -265,12 +285,11 @@ test("does not retry invalid or missing rows", async () => {
   );
 });
 
-test("multi-row anchor and forbidden failures stop after the single request", async () => {
+test("a forbidden visual instruction stops after the single request", async () => {
   const setup = writer([
     (request) =>
       success(request, {
         change: (rows) => {
-          rows[0].prompt_core = "unrelated scenery";
           rows[2].action = "show a visible logo";
           return rows;
         },
@@ -279,6 +298,14 @@ test("multi-row anchor and forbidden failures stop after the single request", as
   await expectInvalid(() => setup.value.write(makeBatch(25)));
   assert.equal(setup.transport.requests.length, 1);
   assert.deepEqual(setup.evidence[0].acceptedSceneIds, []);
+  assert.deepEqual(setup.evidence[0].validationDiagnostic, {
+    category: "scene_quality",
+    reason: "scene_quality",
+    requestedSceneCount: 25,
+    returnedSceneCount: 25,
+    locallyValidSceneCount: 24,
+    unresolvedSceneCount: 1,
+  });
 });
 
 test("a failed batch has no partial result", async () => {

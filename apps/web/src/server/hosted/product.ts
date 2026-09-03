@@ -5894,6 +5894,12 @@ async function writeProjectPrompts(
       http_status: promptFailure.diagnostic?.httpStatus ?? null,
       provider_code: promptFailure.diagnostic?.providerCode ?? null,
       provider_parameter: promptFailure.diagnostic?.providerParameter ?? null,
+      validation_category: promptFailure.validationDiagnostic?.category ?? null,
+      validation_reason: promptFailure.validationDiagnostic?.reason ?? null,
+      requested_scene_count: promptFailure.validationDiagnostic?.requestedSceneCount ?? null,
+      returned_scene_count: promptFailure.validationDiagnostic?.returnedSceneCount ?? null,
+      locally_valid_scene_count: promptFailure.validationDiagnostic?.locallyValidSceneCount ?? null,
+      unresolved_scene_count: promptFailure.validationDiagnostic?.unresolvedSceneCount ?? null,
     });
     return response(
       {

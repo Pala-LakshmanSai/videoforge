@@ -20,7 +20,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v8" as const;
+  "runware-deepseek-v4-flash-prompt-request-v9" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -39,7 +39,7 @@ export const RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN = 2 as const;
 export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Write concise literal still-image scene cores for VideoForge.",
   "Return every requested scene ID exactly once and echo its in-image shot role unchanged.",
-  "Copy each required_literal_anchor verbatim into that scene's prompt_core.",
+  "Treat each exact_phrase as semantic authority: translate its meaning into concrete visual evidence instead of copying narration prose into prompt_core.",
   "Use adjacent context only to disambiguate; it may never override the exact phrase.",
   "Use the compact story context to resolve people, places, pronouns, callbacks, era, and continuity; it may never override the exact phrase or containing sentence.",
   "Choose concrete visible evidence of the exact phrase, never a generic mood image merely related to the overall topic.",
@@ -48,7 +48,9 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "For abstract narration, show the most direct transcript-supported person, object, process, place, or consequence; never substitute symbolism or metaphor when literal evidence exists.",
   "Use planner guidance only as the pinned style's visual treatment: honor its medium, palette, lighting, texture, camera language, and imperfection without importing people, places, objects, logos, or other content from style references.",
   "For photographic styles, require believable anatomy, materials, scale, perspective, optics, light, and everyday wear rather than glossy synthetic perfection.",
-  "Keep each prompt_core under 600 characters: one concrete, descriptive still-image sentence with only details that improve literal relevance.",
+  "Every text field must be non-empty and contain no control characters. Keep literal_subject, action, and environment at 240 characters or fewer; lighting_context at 120 or fewer; and prompt_core at 600 or fewer.",
+  "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
+  "Write prompt_core as one concrete, descriptive still-image sentence with only details that improve literal relevance.",
   "Do not pad, editorialize, or repeat subject, action, environment, lighting, or continuity details inside prompt_core.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, captions, titles, logos, watermarks, UI, graphics, diagrams, borders, branded products, motion graphics, or decorative transitions.",
@@ -124,8 +126,147 @@ export interface RunwarePromptTransport {
 
 export type RunwarePromptValidationDisposition = "accepted" | "partial_retry" | "rejected";
 
+/**
+ * Safe categories for a provider result that reached the local prompt contract.
+ * These values are intentionally coarse: no provider text, narration, prompt
+ * fields, scene IDs, or parser messages cross the adapter boundary.
+ */
+export type RunwarePromptValidationCategory =
+  | "malformed_json"
+  | "schema_identity"
+  | "scene_quality"
+  | "metadata";
+
+/** Stable subreasons make a terminal failure useful without exposing payload data. */
+export type RunwarePromptValidationReason =
+  | "output_empty_or_oversized"
+  | "json_parse"
+  | "top_level_schema"
+  | "batch_identity"
+  | "scene_collection"
+  | "scene_identity"
+  | "scene_schema"
+  | "shot_role"
+  | "scene_quality"
+  | "output_text"
+  | "latency"
+  | "usage"
+  | "cost"
+  | "finish_reason"
+  | "provider_model";
+
+/**
+ * Bounded diagnostics for a completed provider response. Counts are useful for
+ * deciding whether a response was structurally incomplete or semantically
+ * unresolved; the response itself is retained only by its hash in evidence.
+ */
+export interface RunwarePromptValidationDiagnostic {
+  readonly category: RunwarePromptValidationCategory;
+  readonly reason: RunwarePromptValidationReason;
+  readonly requestedSceneCount: number;
+  readonly returnedSceneCount: number | null;
+  /** Scenes that passed local validation before all-or-nothing batch acceptance. */
+  readonly locallyValidSceneCount: number;
+  readonly unresolvedSceneCount: number;
+}
+
+const RUNWARE_PROMPT_VALIDATION_DIAGNOSTIC_BRAND =
+  "videoforge.runware-prompt-validation-diagnostic/v1" as const;
+
+/**
+ * Typed local-output failure. The inherited message/path remain internal
+ * validation details; callers should use only `diagnostic` for safe reporting.
+ */
+export class RunwarePromptValidationError extends PipelineDomainError {
+  public override readonly name = "RunwarePromptValidationError";
+  public readonly diagnosticBrand = RUNWARE_PROMPT_VALIDATION_DIAGNOSTIC_BRAND;
+
+  public constructor(
+    public readonly diagnostic: RunwarePromptValidationDiagnostic,
+    message: string,
+    path: readonly (string | number)[] = [],
+  ) {
+    super({ code: "PROMPT_OUTPUT_INVALID", message, path });
+    this.diagnostic = Object.freeze({ ...diagnostic });
+  }
+}
+
+/**
+ * Extract only a structurally branded categorical diagnostic. This helper is
+ * deliberately defensive because errors may cross Worker/bundle realms.
+ */
+export function runwarePromptValidationDiagnostic(
+  value: unknown,
+): RunwarePromptValidationDiagnostic | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as {
+    readonly diagnosticBrand?: unknown;
+    readonly diagnostic?: unknown;
+  };
+  if (candidate.diagnosticBrand !== RUNWARE_PROMPT_VALIDATION_DIAGNOSTIC_BRAND) return null;
+  const diagnostic = candidate.diagnostic;
+  if (!diagnostic || typeof diagnostic !== "object" || Array.isArray(diagnostic)) return null;
+  const row = diagnostic as Record<string, unknown>;
+  const categories: readonly RunwarePromptValidationCategory[] = [
+    "malformed_json",
+    "schema_identity",
+    "scene_quality",
+    "metadata",
+  ];
+  const reasons: readonly RunwarePromptValidationReason[] = [
+    "output_empty_or_oversized",
+    "json_parse",
+    "top_level_schema",
+    "batch_identity",
+    "scene_collection",
+    "scene_identity",
+    "scene_schema",
+    "shot_role",
+    "scene_quality",
+    "output_text",
+    "latency",
+    "usage",
+    "cost",
+    "finish_reason",
+    "provider_model",
+  ];
+  const count = (key: string): number | null => {
+    const countValue = row[key];
+    return Number.isSafeInteger(countValue) && (countValue as number) >= 0
+      ? (countValue as number)
+      : null;
+  };
+  const requestedSceneCount = count("requestedSceneCount");
+  const returnedSceneCountValue = row.returnedSceneCount;
+  const returnedSceneCount =
+    returnedSceneCountValue === null
+      ? null
+      : Number.isSafeInteger(returnedSceneCountValue) && (returnedSceneCountValue as number) >= 0
+        ? (returnedSceneCountValue as number)
+        : null;
+  const locallyValidSceneCount = count("locallyValidSceneCount");
+  const unresolvedSceneCount = count("unresolvedSceneCount");
+  if (
+    !categories.includes(row.category as RunwarePromptValidationCategory) ||
+    !reasons.includes(row.reason as RunwarePromptValidationReason) ||
+    requestedSceneCount === null ||
+    locallyValidSceneCount === null ||
+    unresolvedSceneCount === null ||
+    (returnedSceneCountValue !== null && returnedSceneCount === null)
+  )
+    return null;
+  return Object.freeze({
+    category: row.category as RunwarePromptValidationCategory,
+    reason: row.reason as RunwarePromptValidationReason,
+    requestedSceneCount,
+    returnedSceneCount,
+    locallyValidSceneCount,
+    unresolvedSceneCount,
+  });
+}
+
 export interface RunwarePromptAttemptEvidence {
-  readonly schemaVersion: "videoforge.runware-prompt-attempt-evidence/v1";
+  readonly schemaVersion: "videoforge.runware-prompt-attempt-evidence/v2";
   readonly requestVersion: typeof RUNWARE_PROMPT_REQUEST_VERSION;
   readonly model: typeof RUNWARE_PROMPT_MODEL;
   readonly scenePromptWriterVersion: "scene-prompt-writer-v1";
@@ -141,6 +282,7 @@ export interface RunwarePromptAttemptEvidence {
   readonly costUsd: number | null;
   readonly finishReason: string | null;
   readonly validationDisposition: RunwarePromptValidationDisposition;
+  readonly validationDiagnostic: RunwarePromptValidationDiagnostic | null;
   readonly acceptedSceneIds: readonly string[];
   readonly unresolvedSceneIds: readonly string[];
 }
@@ -178,6 +320,30 @@ const fail = (message: string, path: readonly (string | number)[] = []): never =
   throw new PipelineDomainError({ code: "PROMPT_OUTPUT_INVALID", message, path });
 };
 
+const validationFail = (
+  category: RunwarePromptValidationCategory,
+  reason: RunwarePromptValidationReason,
+  requestedSceneCount: number,
+  returnedSceneCount: number | null,
+  locallyValidSceneCount: number,
+  unresolvedSceneCount: number,
+  message: string,
+  path: readonly (string | number)[] = [],
+): never => {
+  throw new RunwarePromptValidationError(
+    {
+      category,
+      reason,
+      requestedSceneCount,
+      returnedSceneCount,
+      locallyValidSceneCount,
+      unresolvedSceneCount,
+    },
+    message,
+    path,
+  );
+};
+
 const exactKeys = (value: Record<string, unknown>, expected: readonly string[]): boolean => {
   const actual = Object.keys(value).sort();
   const sortedExpected = [...expected].sort();
@@ -191,14 +357,6 @@ const asRecord = (value: JsonValue): Record<string, JsonValue> | null =>
   typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, JsonValue>)
     : null;
-
-const literalAnchor = (phrase: string): string => {
-  const characters = Array.from(phrase);
-  if (characters.length <= 160) return phrase;
-  const prefix = characters.slice(0, 160).join("");
-  const lastSpace = prefix.lastIndexOf(" ");
-  return (lastSpace >= 80 ? prefix.slice(0, lastSpace) : prefix).trim();
-};
 
 const deterministicUuid = (seed: unknown): string => {
   const bytes = Array.from(
@@ -391,7 +549,6 @@ export function buildRunwarePromptRequest(
       exact_phrase: scene.phrase,
       exact_phrase_sha256: hash(scene.phrase),
       containing_sentence: scene.sentenceContext,
-      required_literal_anchor: literalAnchor(scene.phrase),
       prior_context: scene.priorContext,
       next_context: scene.nextContext,
       in_image_shot_role: scene.inImageShotRole,
@@ -444,23 +601,55 @@ export function buildRunwarePromptRequest(
   });
 }
 
-const validUsage = (usage: RunwarePromptUsage): boolean =>
-  exactKeys(usage as unknown as Record<string, unknown>, [
+const validUsage = (usage: unknown): usage is RunwarePromptUsage =>
+  typeof usage === "object" &&
+  usage !== null &&
+  !Array.isArray(usage) &&
+  exactKeys(usage as Record<string, unknown>, [
     "cachedInputTokens",
     "inputTokens",
     "outputTokens",
     "totalTokens",
   ]) &&
-  [usage.inputTokens, usage.outputTokens, usage.totalTokens, usage.cachedInputTokens].every(
-    (value) => Number.isSafeInteger(value) && value >= 0,
-  ) &&
-  usage.cachedInputTokens <= usage.inputTokens &&
-  usage.totalTokens >= usage.inputTokens + usage.outputTokens;
+  [
+    (usage as RunwarePromptUsage).inputTokens,
+    (usage as RunwarePromptUsage).outputTokens,
+    (usage as RunwarePromptUsage).totalTokens,
+    (usage as RunwarePromptUsage).cachedInputTokens,
+  ].every((value) => Number.isSafeInteger(value) && value >= 0) &&
+  (usage as RunwarePromptUsage).cachedInputTokens <= (usage as RunwarePromptUsage).inputTokens &&
+  (usage as RunwarePromptUsage).totalTokens >=
+    (usage as RunwarePromptUsage).inputTokens + (usage as RunwarePromptUsage).outputTokens;
 
 const validLatency = (latencyMs: number | null): latencyMs is number =>
   latencyMs !== null && Number.isSafeInteger(latencyMs) && latencyMs >= 0;
 
 const freezeUsage = (usage: RunwarePromptUsage): RunwarePromptUsage => Object.freeze({ ...usage });
+
+const metadataDiagnostic = (
+  result: Extract<RunwarePromptTransportResult, { status: "succeeded" }>,
+  maximumBatchCostUsd: number,
+  requestedSceneCount: number,
+): RunwarePromptValidationDiagnostic | null => {
+  const diagnostic = (reason: RunwarePromptValidationReason): RunwarePromptValidationDiagnostic =>
+    Object.freeze({
+      category: "metadata",
+      reason,
+      requestedSceneCount,
+      returnedSceneCount: null,
+      locallyValidSceneCount: 0,
+      unresolvedSceneCount: requestedSceneCount,
+    });
+  if (typeof result.outputText !== "string") return diagnostic("output_text");
+  if (!validLatency(result.latencyMs)) return diagnostic("latency");
+  if (!validUsage(result.usage)) return diagnostic("usage");
+  const costValid = Number.isFinite(result.costUsd) && result.costUsd >= 0;
+  if (!costValid || result.costUsd > maximumBatchCostUsd) return diagnostic("cost");
+  if (result.finishReason !== "stop") return diagnostic("finish_reason");
+  if (result.providerModel !== null && result.providerModel !== RUNWARE_PROMPT_MODEL)
+    return diagnostic("provider_model");
+  return null;
+};
 
 const singleSceneValidation = (
   batch: PromptBatch,
@@ -474,8 +663,6 @@ const singleSceneValidation = (
     );
     const scene = validated.scenes[0];
     if (!scene) return null;
-    const anchor = literalAnchor(expected.phrase).toLocaleLowerCase("en-US");
-    if (!scene.prompt_core.toLocaleLowerCase("en-US").includes(anchor)) return null;
     assertNoHardPromptConflict(
       [
         scene.literal_subject,
@@ -493,25 +680,116 @@ const singleSceneValidation = (
   }
 };
 
+const PROMPT_SCENE_OUTPUT_KEYS = [
+  "scene_id",
+  "literal_subject",
+  "action",
+  "environment",
+  "in_image_shot_role",
+  "lighting_context",
+  "continuity_tags",
+  "prompt_core",
+] as const;
+
+/**
+ * Check only the provider-wire shape. Content bounds and
+ * hard prompt conflicts are intentionally left to the scene-quality check.
+ */
+const hasSceneOutputShape = (candidate: JsonValue): boolean => {
+  const row = asRecord(candidate);
+  if (!row || !exactKeys(row, PROMPT_SCENE_OUTPUT_KEYS)) return false;
+  if (
+    typeof row.scene_id !== "string" ||
+    typeof row.literal_subject !== "string" ||
+    typeof row.action !== "string" ||
+    typeof row.environment !== "string" ||
+    typeof row.in_image_shot_role !== "string" ||
+    typeof row.lighting_context !== "string" ||
+    typeof row.prompt_core !== "string"
+  )
+    return false;
+  return (
+    Array.isArray(row.continuity_tags) &&
+    row.continuity_tags.length <= 12 &&
+    row.continuity_tags.every((tag) => typeof tag === "string")
+  );
+};
+
 const evaluateOutput = (
   batch: PromptBatch,
   requestedScenes: readonly PromptSceneInput[],
   outputText: string,
 ): Omit<AttemptEvaluation, "requestSha256" | "costUsd"> => {
+  const requestedSceneCount = requestedScenes.length;
   if (outputText.length === 0 || outputText.length > 2_000_000)
-    fail("Prompt transport returned blank or oversized output.");
+    return validationFail(
+      "malformed_json",
+      "output_empty_or_oversized",
+      requestedSceneCount,
+      null,
+      0,
+      requestedSceneCount,
+      "Prompt transport returned blank or oversized output.",
+    );
   let parsed: JsonValue;
   try {
     parsed = parseJsonStrict(outputText);
   } catch {
-    return fail("Prompt transport returned malformed strict JSON.");
+    return validationFail(
+      "malformed_json",
+      "json_parse",
+      requestedSceneCount,
+      null,
+      0,
+      requestedSceneCount,
+      "Prompt transport returned malformed strict JSON.",
+    );
   }
   const record = asRecord(parsed);
   if (!record || !exactKeys(record, ["batch_id", "scenes"]))
-    return fail("Prompt response top-level schema is invalid.");
-  if (record.batch_id !== batch.batchId || !Array.isArray(record.scenes))
-    return fail("Prompt response batch identity or scene collection is invalid.");
+    return validationFail(
+      "schema_identity",
+      "top_level_schema",
+      requestedSceneCount,
+      null,
+      0,
+      requestedSceneCount,
+      "Prompt response top-level schema is invalid.",
+    );
+  if (record.batch_id !== batch.batchId)
+    return validationFail(
+      "schema_identity",
+      "batch_identity",
+      requestedSceneCount,
+      Array.isArray(record.scenes) ? record.scenes.length : null,
+      0,
+      requestedSceneCount,
+      "Prompt response batch identity is invalid.",
+      ["batch_id"],
+    );
+  if (!Array.isArray(record.scenes))
+    return validationFail(
+      "schema_identity",
+      "top_level_schema",
+      requestedSceneCount,
+      null,
+      0,
+      requestedSceneCount,
+      "Prompt response scene collection is invalid.",
+      ["scenes"],
+    );
   const responseScenes = record.scenes;
+  if (responseScenes.length !== requestedSceneCount)
+    return validationFail(
+      "schema_identity",
+      "scene_collection",
+      requestedSceneCount,
+      responseScenes.length,
+      0,
+      Math.max(0, requestedSceneCount - responseScenes.length),
+      "Prompt response scene collection is incomplete.",
+      ["scenes"],
+    );
 
   const expected = new Map(requestedScenes.map((scene) => [scene.sceneId, scene]));
   const seen = new Set<string>();
@@ -519,20 +797,69 @@ const evaluateOutput = (
   for (const candidate of responseScenes) {
     const row = asRecord(candidate);
     if (!row || typeof row.scene_id !== "string")
-      return fail("Prompt response contains a scene without a usable identity.", ["scenes"]);
+      return validationFail(
+        "schema_identity",
+        "scene_identity",
+        requestedSceneCount,
+        responseScenes.length,
+        accepted.size,
+        Math.max(0, requestedSceneCount - accepted.size),
+        "Prompt response contains a scene without a usable identity.",
+        ["scenes"],
+      );
     const sceneId = row.scene_id;
     const expectedScene = expected.get(sceneId);
     if (!expectedScene || seen.has(sceneId))
-      return fail("Prompt response contains an unknown or duplicated scene ID.", ["scenes"]);
+      return validationFail(
+        "schema_identity",
+        "scene_identity",
+        requestedSceneCount,
+        responseScenes.length,
+        accepted.size,
+        Math.max(0, requestedSceneCount - accepted.size),
+        "Prompt response contains an unknown or duplicated scene ID.",
+        ["scenes"],
+      );
     seen.add(sceneId);
     if (
       Object.hasOwn(row, "in_image_shot_role") &&
       row.in_image_shot_role !== expectedScene.inImageShotRole
     )
-      return fail("Prompt response changed a code-assigned shot role.", ["scenes", sceneId]);
+      return validationFail(
+        "schema_identity",
+        "shot_role",
+        requestedSceneCount,
+        responseScenes.length,
+        accepted.size,
+        Math.max(0, requestedSceneCount - accepted.size),
+        "Prompt response changed a code-assigned shot role.",
+        ["scenes", sceneId],
+      );
+    if (!hasSceneOutputShape(candidate))
+      return validationFail(
+        "schema_identity",
+        "scene_schema",
+        requestedSceneCount,
+        responseScenes.length,
+        accepted.size,
+        Math.max(0, requestedSceneCount - accepted.size),
+        "Prompt response scene shape is invalid.",
+        ["scenes"],
+      );
     const valid = singleSceneValidation(batch, expectedScene, candidate);
     if (valid) accepted.set(sceneId, valid);
   }
+  if (accepted.size !== requestedSceneCount)
+    return validationFail(
+      "scene_quality",
+      "scene_quality",
+      requestedSceneCount,
+      responseScenes.length,
+      accepted.size,
+      requestedSceneCount - accepted.size,
+      "Prompt response did not resolve every expected scene.",
+      ["scenes"],
+    );
   return Object.freeze({
     accepted,
     unresolved: Object.freeze(requestedScenes.filter((scene) => !accepted.has(scene.sceneId))),
@@ -556,7 +883,7 @@ const evidence = (
   >,
 ): RunwarePromptAttemptEvidence =>
   Object.freeze({
-    schemaVersion: "videoforge.runware-prompt-attempt-evidence/v1",
+    schemaVersion: "videoforge.runware-prompt-attempt-evidence/v2",
     requestVersion: RUNWARE_PROMPT_REQUEST_VERSION,
     model: RUNWARE_PROMPT_MODEL,
     scenePromptWriterVersion: batch.scenePromptWriterVersion,
@@ -611,6 +938,7 @@ export class RunwarePromptWriter implements PromptWriterPort {
           costUsd: null,
           finishReason: null,
           validationDisposition: "rejected",
+          validationDiagnostic: null,
           acceptedSceneIds: Object.freeze([]),
           unresolvedSceneIds: Object.freeze(scenes.map((scene) => scene.sceneId)),
         }),
@@ -628,6 +956,7 @@ export class RunwarePromptWriter implements PromptWriterPort {
           costUsd: null,
           finishReason: null,
           validationDisposition: "rejected",
+          validationDiagnostic: null,
           acceptedSceneIds: Object.freeze([]),
           unresolvedSceneIds: Object.freeze(scenes.map((scene) => scene.sceneId)),
         }),
@@ -636,16 +965,9 @@ export class RunwarePromptWriter implements PromptWriterPort {
     }
 
     const responseSha256 = typeof result.outputText === "string" ? hash(result.outputText) : null;
-    const costValid = Number.isFinite(result.costUsd) && result.costUsd >= 0;
-    const metadataValid =
-      typeof result.outputText === "string" &&
-      validLatency(result.latencyMs) &&
-      validUsage(result.usage) &&
-      costValid &&
-      result.costUsd <= this.#maximumBatchCostUsd &&
-      result.finishReason === "stop" &&
-      (result.providerModel === null || result.providerModel === RUNWARE_PROMPT_MODEL);
-    if (!metadataValid) {
+    const metadataFailure = metadataDiagnostic(result, this.#maximumBatchCostUsd, scenes.length);
+    if (metadataFailure !== null) {
+      const costValid = Number.isFinite(result.costUsd) && result.costUsd >= 0;
       await this.#record(
         evidence(batch, request, {
           responseSha256,
@@ -658,17 +980,27 @@ export class RunwarePromptWriter implements PromptWriterPort {
               ? result.finishReason
               : null,
           validationDisposition: "rejected",
+          validationDiagnostic: metadataFailure,
           acceptedSceneIds: Object.freeze([]),
           unresolvedSceneIds: Object.freeze(scenes.map((scene) => scene.sceneId)),
         }),
       );
-      return fail("Prompt response usage, cost, finish, latency, or model evidence is invalid.");
+      return validationFail(
+        "metadata",
+        metadataFailure.reason,
+        scenes.length,
+        null,
+        0,
+        scenes.length,
+        "Prompt response usage, cost, finish, latency, or model evidence is invalid.",
+      );
     }
 
     let evaluated: Omit<AttemptEvaluation, "requestSha256" | "costUsd">;
     try {
       evaluated = evaluateOutput(batch, scenes, result.outputText);
     } catch (error) {
+      const validationDiagnostic = runwarePromptValidationDiagnostic(error);
       await this.#record(
         evidence(batch, request, {
           responseSha256,
@@ -678,6 +1010,7 @@ export class RunwarePromptWriter implements PromptWriterPort {
           costUsd: result.costUsd,
           finishReason: result.finishReason,
           validationDisposition: "rejected",
+          validationDiagnostic,
           acceptedSceneIds: Object.freeze([]),
           unresolvedSceneIds: Object.freeze(scenes.map((scene) => scene.sceneId)),
         }),
@@ -688,12 +1021,27 @@ export class RunwarePromptWriter implements PromptWriterPort {
       evaluated.unresolved.length === 0 ? "accepted" : "rejected";
     const acceptedSceneIds =
       validationDisposition === "accepted"
-        ? Object.freeze([...evaluated.accepted.keys()])
+        ? Object.freeze(
+            scenes
+              .map((scene) => scene.sceneId)
+              .filter((sceneId) => evaluated.accepted.has(sceneId)),
+          )
         : Object.freeze([]);
     const unresolvedSceneIds =
       validationDisposition === "accepted"
         ? Object.freeze([])
         : Object.freeze(scenes.map((scene) => scene.sceneId));
+    const validationDiagnostic =
+      validationDisposition === "accepted"
+        ? null
+        : Object.freeze({
+            category: "scene_quality" as const,
+            reason: "scene_quality" as const,
+            requestedSceneCount: scenes.length,
+            returnedSceneCount: scenes.length,
+            locallyValidSceneCount: evaluated.accepted.size,
+            unresolvedSceneCount: evaluated.unresolved.length,
+          });
     await this.#record(
       evidence(batch, request, {
         responseSha256,
@@ -703,12 +1051,22 @@ export class RunwarePromptWriter implements PromptWriterPort {
         costUsd: result.costUsd,
         finishReason: result.finishReason,
         validationDisposition,
+        validationDiagnostic,
         acceptedSceneIds,
         unresolvedSceneIds,
       }),
     );
     if (validationDisposition === "rejected")
-      fail("Prompt response did not resolve every expected scene.", ["scenes"]);
+      return validationFail(
+        "scene_quality",
+        "scene_quality",
+        scenes.length,
+        scenes.length,
+        evaluated.accepted.size,
+        evaluated.unresolved.length,
+        "Prompt response did not resolve every expected scene.",
+        ["scenes"],
+      );
     return Object.freeze({
       ...evaluated,
       requestSha256: request.requestSha256,

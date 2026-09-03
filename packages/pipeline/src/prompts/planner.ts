@@ -12,8 +12,15 @@ import type { PromptBatch, PromptBatchInput, PromptSceneInput } from "./types.js
 
 /** Default request input budget for one DeepSeek prompt batch. */
 export const DEFAULT_PROMPT_BATCH_MAX_INPUT_TOKENS = RUNWARE_PROMPT_MAX_INPUT_TOKENS;
-/** Default provider output budget available to one planned batch. */
-export const DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS = RUNWARE_PROMPT_MAX_OUTPUT_TOKENS;
+/**
+ * Default application output-quality budget for one planned batch.
+ *
+ * This is deliberately below the provider's technical ceiling. It bounds the
+ * number of exact scene objects asked for in one all-or-nothing response while
+ * still deriving the actual batch size from the expected output shape. It is a
+ * per-request quality budget, never a project-level scene cap.
+ */
+export const DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 16_384 as const;
 /** Scene distance from the balanced target within which a sentence boundary wins. */
 export const DEFAULT_PROMPT_BATCH_BOUNDARY_LOOKBACK = 4 as const;
 

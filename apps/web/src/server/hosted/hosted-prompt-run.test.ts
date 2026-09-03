@@ -20,13 +20,13 @@ const ids = {
 } as const;
 const digest = `sha256:${"a".repeat(64)}` as const;
 
-function scenes() {
-  return Array.from({ length: 25 }, (_, index) => ({
+function scenes(count = 25) {
+  return Array.from({ length: count }, (_, index) => ({
     scene_id: `scene_${String(index + 1).padStart(2, "0")}`,
     phrase: `literal scene ${index + 1}`,
     sentence_context: `Literal scene ${index + 1} belongs to this complete sentence.`,
     prior_context: index === 0 ? null : `literal scene ${index}`,
-    next_context: index === 24 ? null : `literal scene ${index + 2}`,
+    next_context: index + 1 === count ? null : `literal scene ${index + 2}`,
     in_image_shot_role: "OBJECT_EVIDENCE",
     layout: index % 2 === 0 ? "IMAGE_FULL" : "SPLIT_RIGHT_IMAGE",
   }));
@@ -95,16 +95,18 @@ function successfulPromptFetcher() {
     };
     const output = {
       batch_id: payload.batch_id,
-      scenes: payload.scenes.map((scene) => ({
-        scene_id: scene.scene_id,
-        literal_subject: scene.exact_phrase,
-        action: "shown as physical evidence",
-        environment: "a real practical environment",
-        in_image_shot_role: scene.in_image_shot_role,
-        lighting_context: "available daylight",
-        continuity_tags: [],
-        prompt_core: `${scene.exact_phrase}, shown as literal physical evidence`,
-      })),
+      scenes: payload.scenes
+        .map((scene) => ({
+          scene_id: scene.scene_id,
+          literal_subject: "an ordinary household object used in the narrated action",
+          action: "shown as physical evidence",
+          environment: "a real practical environment",
+          in_image_shot_role: scene.in_image_shot_role,
+          lighting_context: "available daylight",
+          continuity_tags: [],
+          prompt_core: "Natural documentary view of the narrated action as physical evidence",
+        }))
+        .reverse(),
     };
     return Response.json({
       data: [
@@ -526,25 +528,22 @@ describe("hosted Runware prompt writer", () => {
         batch_id: string;
         scenes: Array<{ scene_id: string; in_image_shot_role: string }>;
       };
-      const scene = payload.scenes[0]!;
       return Response.json({
         data: [
           {
             taskUUID: task.taskUUID,
             text: JSON.stringify({
               batch_id: payload.batch_id,
-              scenes: [
-                {
-                  scene_id: scene.scene_id,
-                  literal_subject: "generic object",
-                  action: "sitting still",
-                  environment: "generic room",
-                  in_image_shot_role: scene.in_image_shot_role,
-                  lighting_context: "daylight",
-                  continuity_tags: [],
-                  prompt_core: "Generic unrelated evidence in a room",
-                },
-              ],
+              scenes: payload.scenes.map((scene, index) => ({
+                scene_id: scene.scene_id,
+                literal_subject: "generic object",
+                action: index === 0 ? "show a visible logo" : "shown as physical evidence",
+                environment: "generic room",
+                in_image_shot_role: scene.in_image_shot_role,
+                lighting_context: "daylight",
+                continuity_tags: [],
+                prompt_core: "Generic unrelated evidence in a room",
+              })),
             }),
             usage: {
               promptTokens: 100,
@@ -568,13 +567,107 @@ describe("hosted Runware prompt writer", () => {
       ).write(batch),
     ).rejects.toEqual(
       expect.objectContaining({
-        problemCode: "HOSTED_PROMPT_INPUT_INVALID",
+        problemCode: "HOSTED_PROMPT_OUTPUT_INVALID",
         terminalState: "FAILED",
         providerMayHaveCharged: false,
         additionalKnownCostMicroUsd: 10,
+        validationDiagnostic: {
+          category: "scene_quality",
+          reason: "scene_quality",
+          requestedSceneCount: 25,
+          returnedSceneCount: 25,
+          locallyValidSceneCount: 24,
+          unresolvedSceneCount: 1,
+        },
       } satisfies Partial<HostedPromptExecutionError>),
     );
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists an accepted first adaptive batch and stops once when the second output is invalid", async () => {
+    const batch = buildPromptBatch({
+      batchId: `${ids.task}:batch:multi`,
+      projectTitle: "Hydrogen peroxide",
+      imageStyleVersionId: ids.style,
+      styleProfileHash: digest,
+      plannerGuidance: "Literal editorial collage treatment.",
+      storyContext: "A continuous practical household demonstration.",
+      continuityTags: [],
+      scenes: scenes(31).map((scene) => ({
+        sceneId: scene.scene_id,
+        phrase: scene.phrase,
+        sentenceContext: scene.sentence_context,
+        priorContext: scene.prior_context,
+        nextContext: scene.next_context,
+        inImageShotRole: "OBJECT_EVIDENCE",
+        layout: scene.layout as "IMAGE_FULL" | "SPLIT_RIGHT_IMAGE",
+      })),
+    });
+    const planned = adaptivePlan(batch);
+    expect(planned.batchCount).toBe(2);
+    const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
+      const task = request[0]!;
+      const messages = task.messages as Array<{ content: string }>;
+      const payload = JSON.parse(messages[0]!.content) as {
+        batch_id: string;
+        scenes: Array<{ scene_id: string; in_image_shot_role: string }>;
+      };
+      const secondBatch = fetcher.mock.calls.length === 2;
+      return Response.json({
+        data: [
+          {
+            taskUUID: task.taskUUID,
+            text: JSON.stringify({
+              batch_id: payload.batch_id,
+              scenes: payload.scenes.map((scene, index) => ({
+                scene_id: scene.scene_id,
+                literal_subject: "a practical household object",
+                action:
+                  secondBatch && index === 0
+                    ? "show a visible logo"
+                    : "used in an ordinary physical demonstration",
+                environment: "a lived-in household workspace",
+                in_image_shot_role: scene.in_image_shot_role,
+                lighting_context: "available window light",
+                continuity_tags: [],
+                prompt_core: "Natural documentary view of the practical narrated action",
+              })),
+            }),
+            usage: {
+              promptTokens: 100,
+              completionTokens: 200,
+              totalTokens: 300,
+              cachedInputTokens: 0,
+            },
+            cost: 0.00001,
+            finishReason: "stop",
+            model: "deepseek:v4@flash",
+          },
+        ],
+      });
+    });
+    const onBatchAccepted = vi.fn();
+
+    await expect(
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        planned,
+        fetcher,
+        onBatchAccepted,
+      ).write(batch),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        problemCode: "HOSTED_PROMPT_OUTPUT_INVALID",
+        additionalKnownCostMicroUsd: 10,
+      } satisfies Partial<HostedPromptExecutionError>),
+    );
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(onBatchAccepted).toHaveBeenCalledTimes(1);
+    expect(onBatchAccepted.mock.calls[0]?.[0].reportedCostMicroUsd).toBe(10);
+    expect(onBatchAccepted.mock.calls[0]?.[0].scenes).toHaveLength(
+      planned.batches[0]!.sceneIds.length,
+    );
   });
 
   it("keeps network ambiguity fail-closed without redispatching", async () => {

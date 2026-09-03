@@ -7,12 +7,14 @@ import type {
 } from "@videoforge/control-plane";
 import {
   RunwarePromptWriter,
+  runwarePromptValidationDiagnostic,
   validatePromptWriterOutput,
   type PromptBatch,
   type PromptBatchPlan,
   type PromptSceneInput,
   type PromptWriterSceneOutput,
   type RunwarePromptAttemptEvidence,
+  type RunwarePromptValidationDiagnostic,
   type RunwarePromptTransport,
   type RunwarePromptTransportRequest,
   type RunwarePromptTransportResult,
@@ -54,6 +56,7 @@ export interface HostedAcceptedPromptBatch {
 export type HostedPromptFailureState = "FAILED" | "UNKNOWN";
 export type HostedPromptProblemCode =
   | "HOSTED_PROMPT_INPUT_INVALID"
+  | "HOSTED_PROMPT_OUTPUT_INVALID"
   | "HOSTED_PROMPT_PROVIDER_REJECTED"
   | "HOSTED_PROMPT_EXECUTION_UNKNOWN";
 
@@ -71,6 +74,7 @@ export class HostedPromptExecutionError extends PromptExecutionError {
     public readonly providerMayHaveCharged: boolean,
     public readonly diagnostic: RunwareSafeDiagnostic | null,
     public readonly additionalKnownCostMicroUsd: number = 0,
+    public readonly validationDiagnostic: RunwarePromptValidationDiagnostic | null = null,
   ) {
     super("OUTPUT_INVALID", problemCode);
   }
@@ -268,11 +272,12 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
       }
       if (current?.result?.status === "succeeded") {
         throw new HostedPromptExecutionError(
-          "HOSTED_PROMPT_INPUT_INVALID",
+          "HOSTED_PROMPT_OUTPUT_INVALID",
           "FAILED",
           false,
           diagnosticState.current,
           actualCostMicroUsd(current.result.costUsd),
+          runwarePromptValidationDiagnostic(error),
         );
       }
       throw new HostedPromptExecutionError(

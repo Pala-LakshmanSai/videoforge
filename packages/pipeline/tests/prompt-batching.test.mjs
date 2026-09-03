@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   IN_IMAGE_SHOT_ROLES,
   PipelineDomainError,
+  DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS,
+  RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
   RUNWARE_PROMPT_OUTPUT_FIXED_TOKENS,
   RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE,
@@ -78,18 +80,32 @@ test("buildPromptBatch accepts one scene and arbitrary counts without a script c
   );
 });
 
-test("planner is deterministic, contiguous, complete, and keeps normal context in one batch", () => {
-  const first = planPromptBatches(planningInput(51));
-  const second = planPromptBatches(planningInput(51));
+test("planner is deterministic, contiguous, complete, and quality-bounds larger responses", () => {
+  const small = planPromptBatches(planningInput(24));
+  assert.equal(small.batchCount, 1);
+  assert.equal(small.maxOutputTokens, DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS);
+
+  const first = planPromptBatches(planningInput(31));
+  const second = planPromptBatches(planningInput(31));
   assert.deepEqual(first, second);
-  assert.equal(first.totalScenes, 51);
-  assert.equal(first.batchCount, 1);
+  assert.equal(first.totalScenes, 31);
+  assert.equal(first.batchCount, 2);
+  assert.deepEqual(
+    first.batches.map((entry) => entry.sceneIds.length).sort((left, right) => left - right),
+    [15, 16],
+  );
+  assert.equal(first.maxOutputTokens, DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS);
   assert.deepEqual(
     first.batches.flatMap((entry) => entry.sceneIds),
-    scenes(51).map((scene) => scene.sceneId),
+    scenes(31).map((scene) => scene.sceneId),
   );
-  assert.ok(first.batches[0].estimatedInputTokens <= first.maxInputTokens);
-  assert.ok(first.batches[0].maxOutputTokens <= first.maxOutputTokens);
+  for (const entry of first.batches) {
+    assert.ok(entry.estimatedInputTokens <= first.maxInputTokens);
+    assert.ok(entry.maxOutputTokens <= first.maxOutputTokens);
+    assert.ok(
+      entry.estimatedOutputTokens + RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM <= first.maxOutputTokens,
+    );
+  }
 });
 
 test("planner splits long scripts by conservative input/output budgets without a script limit", () => {
@@ -151,7 +167,11 @@ test("planner never trades a minimum request count for a nearby sentence boundar
     phrase: `Action ${index}${index === 95 || index === 195 ? "." : ""}`,
     sentenceContext: `sentence ${index < 96 ? 0 : index < 196 ? 1 : 2}`,
   }));
-  const result = planPromptBatches({ ...planningInput(200), scenes: source });
+  const result = planPromptBatches({
+    ...planningInput(200),
+    scenes: source,
+    options: { maxOutputTokens: RUNWARE_PROMPT_MAX_OUTPUT_TOKENS },
+  });
   assert.equal(result.batchCount, 2);
   assert.ok(result.batches.every((entry) => entry.sceneIds.length > 1));
 });
@@ -174,6 +194,6 @@ test("request maxTokens includes fixed and per-scene headroom and allows short b
       2 * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE +
       RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   );
-  assert.equal(request.requestVersion, "runware-deepseek-v4-flash-prompt-request-v8");
+  assert.equal(request.requestVersion, "runware-deepseek-v4-flash-prompt-request-v9");
   assert.equal(request.request.model, "deepseek:v4@flash");
 });
