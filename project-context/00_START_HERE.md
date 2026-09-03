@@ -4,29 +4,24 @@
 
 ### Current new-chat launch point — 2026-09-03
 
-- Source `b49ef72111f27c214f11fbd01f1201ec58384769` was deployed exactly once to staging Worker
-  `c5d3bd47-36f8-4a51-bda1-849240c1812f` with rendered-config SHA-256
-  `0099df031cdfa714ff05a8bc476d1311d62403f328c3fe60a621c89c719c336e`. Migrations `0069`
-  through `0073` and the exact runtime grant set were already applied and were not replayed.
-- Computer Use and signed-in real Chrome created exactly one fresh project
-  `8dd28296-7f21-49ca-bafb-3e42e10968a1` after `3,962,105,856` free bytes passed the required
-  `2,152,579,950`-byte preflight. Stages 1–4 completed; Stage 4 saved 36 segments, 31 image scenes,
-  and 10 avatar segments. Stage 5 planned two adaptive batches, sent only the first 15-scene
-  DeepSeek V4 Flash request, and received all 15 requested rows. Evaluation stopped when the first
-  provider-ordered row failed `scene_quality/scene_relevance`; the remaining 14 rows were not
-  adjudicated. Zero prompts were accepted or persisted and the second batch was not sent.
-- The terminal run recorded `HOSTED_PROMPT_OUTPUT_INVALID`, known Stage 5 cost 808 micro-USD, and
-  `provider_may_have_charged=false`. No retry, continuation, provider retrieval, GPU, RunPod,
-  production, or volume mutation occurred. Project `8dd28296…` and every predecessor are frozen and
-  may not be retried, continued, or retrieved. Accepted prompt quality, style fidelity, incremental
-  durability, request-count equality, and the populated scrollable viewer remain live-unqualified.
-- Provider-free repair `fdbe8208` advances DeepSeek V4 Flash to request v15. It preserves exact-phrase
-  authority while allowing grounded static, stative, abstract, and mid-sentence-fragment renderings;
-  separates true action equivalence from visibly different actions; prevents noun/action homonym,
-  wrong-clause, invented-subject, and coordinated-tail false decisions; and emits bounded
-  reason-specific diagnostics without provider text. Schema, identity, bounds, forbidden content,
-  duplicate, cost, no-retry, and pinned-style controls remain. The pinned immutable Image Style is
-  still the only visual-treatment source; no style attributes are hardcoded.
+- Clean source `21d1152875a28cdc9030fd9277d3b54bb10e5588`, containing provider-free Stage 5
+  request-v15 repair `fdbe8208`, was deployed exactly once to staging Worker
+  `426c9d0e-4f19-4132-a824-9aee11becfb5`. Rendered-config SHA-256 is
+  `e52027d70d4c2f84fc85ca811bd47c154276d5348544592d7a6d4a8b5eced78c`; the nine-secret
+  allowlist and private R2 state passed. Migrations `0069`–`0073` and the runtime grant were not
+  replayed; GPU transport remains `DISABLED_UNQUALIFIED`.
+- Signed-in real Chrome prepared one fresh project form with the verified 159.216-second voiceover,
+  Helen v1, Will Carter v1, and the exact USD 2 project cap. The form reached `Ready to create`.
+  Immediately before creation, the mandatory local-space check found only `761,171,968` available
+  bytes versus the required `2,152,579,950`, so the create button was not clicked.
+- The previously authorized Downloads `stock footages` folder was checked and was already empty.
+  After the user removed other files, a fresh read-only check found `3,390,021,632` available bytes,
+  now above the requirement. No fresh project, provider request, provider cost, retry, continuation,
+  retrieval, GPU, RunPod, production, or volume mutation occurred. The exact approval was consumed
+  by the completed one-time deployment and terminal pre-creation disk gate; do not reuse it.
+- Request v15 remains live but its Stage 5 behavior is not yet live-qualified. Local space is now
+  sufficient; obtain fresh exact authority for exactly one project on the already-live source—no
+  redeployment or migration/grant replay is required.
 - Future fresh projects still use `scene-prompt-writer-v2`, narration-grounded structured scene facts,
   and adaptive batching with no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
   per persisted planned batch, accepted batches are durable before the next request, and failure or
@@ -35,9 +30,8 @@
 - Relevant provider-free evidence for v15 is green: focused writer 69/69, TypeScript build,
   formatting, and diff checks. The prior v15 iteration also passed pipeline 175/175, pipeline
   lint/typecheck, and web production/staging builds/typecheck before the final isolated
-  dependent-fragment regression. This repair is not deployed or live-qualified. Fresh exact
-  clean-source authority is required before one staging deployment and exactly one fresh Stage 1–5
-  project.
+  dependent-fragment regression. The repair is deployed but not live-qualified because project
+  creation stopped at the local-space preflight.
 - The aggregate `CI=1 TURBO_FORCE=true pnpm verify` is not repository-wide green for reasons outside
   this Stage 5 diff: historical V2-06/V2-13 script pins report 29 failures, and V2-08 worker image
   hash pins report 3 failures. The affected scripts, workflow, worker, and contract files are byte-
