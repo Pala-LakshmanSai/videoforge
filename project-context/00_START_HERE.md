@@ -19,8 +19,12 @@
   now above the requirement. No fresh project, provider request, provider cost, retry, continuation,
   retrieval, GPU, RunPod, production, or volume mutation occurred. The exact approval was consumed
   by the completed one-time deployment and terminal pre-creation disk gate; do not reuse it.
-- Request v15 remains live but its Stage 5 behavior is not yet live-qualified. Local space is now
-  sufficient; obtain fresh exact authority for exactly one project on the already-live source—no
+- A fresh project-only approval was then supplied. The mandatory check immediately before the
+  create click found `1,988,452,352` available bytes, below the same `2,152,579,950` requirement.
+  Create was not clicked; no project, provider request, or spend occurred. That single-use approval
+  stopped at its first terminal preflight failure and is consumed.
+- Request v15 remains live but its Stage 5 behavior is not yet live-qualified. Free additional local
+  space, then obtain fresh exact authority for exactly one project on the already-live source—no
   redeployment or migration/grant replay is required.
 - Future fresh projects still use `scene-prompt-writer-v2`, narration-grounded structured scene facts,
   and adaptive batching with no project scene cap. Exactly one DeepSeek V4 Flash request is allowed

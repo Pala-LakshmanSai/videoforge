@@ -40,10 +40,10 @@ reported separately.
 Repository truth at the 2026-09-03 handoff:
 
 - source `ffcc89c2` remains the historical accepted Stage 5 baseline. Current source `21d11528` /
-  Worker `426c9d0e…` contains v15 and is deployed, but its only approved project creation stopped
-  before creation because `761,171,968` free bytes were below the `2,152,579,950` requirement;
-  a later read-only recheck passed with `3,390,021,632` bytes, but v15 remains live-unqualified and
-  the consumed authority cannot be reused;
+  Worker `426c9d0e…` contains v15 and is deployed. A later project-only approval also stopped before
+  creation: the mandatory immediate check found `1,988,452,352` free bytes below the
+  `2,152,579,950` requirement. Create was not clicked, no project/provider request/spend occurred,
+  v15 remains live-unqualified, and the consumed authority cannot be reused;
 - V2-07 Attempt64 is closed `NOT_QUALIFIED` after `RUNPOD_ZERO_NOT_CONFIRMED`; exact cleanup and
   three stable reads prove zero compute/disposables with both retained volumes unchanged, and its
   proposal, authority, cap, and run are consumed and non-reusable;
