@@ -55,6 +55,7 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
   "Write prompt_core as one self-contained concrete descriptive still-image sentence that consolidates the scene's literal subject, visible action, physical environment, lighting context, and useful continuity exactly once.",
   "Treat literal_subject, action, environment, and lighting_context as independently checked QC metadata; prompt_core must carry the complete image description because it is the only scene-content field sent to the image compiler.",
+  "Build prompt_core from the validated literal_subject, action, and environment facts: preserve each field's meaning and the visible action, allowing grammatical or morphological paraphrase but never replacing one action with another that shares the same subject or object.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, writing, handwritten or printed words, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
   "Never choose duration, layout, shot role, avatar placement, model, GPU, retry, or fallback.",
@@ -939,16 +940,38 @@ const RELEVANCE_ACTIONS = new Set([
 ]);
 
 const stemRelevanceWord = (word: string): string => {
-  if (word.length <= 4) return word;
+  // Keep short nouns intact, but normalize common four-letter present-tense
+  // forms (buys/pays/runs) so field-to-core grounding accepts morphology
+  // without maintaining a verb dictionary.
+  if (word.length <= 4)
+    return word.length === 4 && word.endsWith("s") && !word.endsWith("ss")
+      ? word.slice(0, -1)
+      : word;
   if (word.endsWith("ies") && word.length > 5) return `${word.slice(0, -3)}y`;
   if (word.endsWith("ing") && word.length > 5) {
     const stem = word.slice(0, -3);
     // running -> run, not runn. This is a deliberately light stemmer, not a
     // general English morphological parser.
-    return stem.length > 3 && stem.at(-1) === stem.at(-2) ? stem.slice(0, -1) : stem;
+    if (stem.length > 3 && stem.at(-1) === stem.at(-2)) return stem.slice(0, -1);
+    // Preserve a silent-e base for the productive -ate/-ating pattern
+    // (demonstrating/demonstrates -> demonstrate) without a verb list.
+    return stem.endsWith("at") ? `${stem}e` : stem;
   }
+  if (word.endsWith("ied") && word.length > 4) return `${word.slice(0, -3)}y`;
+  if (word.endsWith("ated") && word.length > 5) return `${word.slice(0, -2)}e`;
   if (word.endsWith("ed") && word.length > 4) return word.slice(0, -2);
-  if (word.endsWith("es") && word.length > 4) return word.slice(0, -2);
+  if (word.endsWith("ates") && word.length > 5) return word.slice(0, -1);
+  if (
+    (word.endsWith("sses") ||
+      word.endsWith("ches") ||
+      word.endsWith("shes") ||
+      word.endsWith("xes") ||
+      word.endsWith("zes")) &&
+    word.length > 4
+  )
+    return word.slice(0, -2);
+  if (word.endsWith("oes") && word.length > 4) return word.slice(0, -2);
+  if (word.endsWith("es") && word.length > 4) return word.slice(0, -1);
   if (word.endsWith("s") && !word.endsWith("ss") && word.length > 4) return word.slice(0, -1);
   return word;
 };
@@ -960,12 +983,37 @@ const relevanceConcept = (word: string): string => {
   return RELEVANCE_ALIASES.get(stem) ?? RELEVANCE_ALIASES.get(word) ?? stem;
 };
 
+interface RelevanceTerm {
+  readonly raw: string;
+  readonly concept: string;
+}
+
+const relevanceTerms = (value: string): readonly RelevanceTerm[] =>
+  (value.normalize("NFKC").toLocaleLowerCase("en-US").match(RELEVANCE_WORD) ?? [])
+    .filter((word) => word.length >= 3 && !RELEVANCE_STOPWORDS.has(word) && !/^\d+$/u.test(word))
+    .map((raw) => Object.freeze({ raw, concept: relevanceConcept(raw) }));
+
 const distinctiveRelevanceWords = (value: string): ReadonlySet<string> =>
-  new Set(
-    (value.normalize("NFKC").toLocaleLowerCase("en-US").match(RELEVANCE_WORD) ?? [])
-      .filter((word) => word.length >= 3 && !RELEVANCE_STOPWORDS.has(word) && !/^\d+$/u.test(word))
-      .map(relevanceConcept),
+  new Set(relevanceTerms(value).map(({ concept }) => concept));
+
+/**
+ * Find the predicate-like term in a structured action without a fixed action
+ * vocabulary. Inflected forms are strong signals even when the subject is
+ * written first ("a woman repairs ..."); otherwise the first content term is
+ * the contract's action head. Morphology and the existing neutral concept
+ * normalizer are the only semantics used here.
+ */
+const relevanceActionHeadConcepts = (value: string): ReadonlySet<string> => {
+  const terms = relevanceTerms(value);
+  if (terms.length === 0) return new Set();
+  const inflected = terms.find(
+    ({ raw }) =>
+      (raw.endsWith("ing") && raw.length > 5) ||
+      (raw.endsWith("ed") && raw.length > 4) ||
+      (raw.endsWith("s") && !raw.endsWith("ss") && raw.length > 4),
   );
+  return new Set([(inflected ?? terms[0]!).concept]);
+};
 
 const relevanceOverlap = (expected: ReadonlySet<string>, actual: ReadonlySet<string>): number => {
   let count = 0;
@@ -982,6 +1030,28 @@ const relevanceEntityConcepts = (value: string): ReadonlySet<string> =>
   new Set(
     [...distinctiveRelevanceWords(value)].filter((concept) => !RELEVANCE_ACTIONS.has(concept)),
   );
+
+/**
+ * The compiler receives only prompt_core. Keep the provider's useful prose,
+ * but require it to retain each structured scene fact before it can cross the
+ * writer boundary. Subject and environment need one stable concept. The
+ * action additionally needs its predicate head, so a shared object cannot
+ * turn "buying a bicycle" into "riding a bicycle". This intentionally does
+ * not enumerate an action vocabulary; the field itself supplies the fact.
+ */
+const structuredFieldIsGroundedInPromptCore = (
+  field: string,
+  promptCore: string,
+  role: "subject" | "action" | "environment",
+): boolean => {
+  const fieldConcepts = distinctiveRelevanceWords(field);
+  const coreConcepts = distinctiveRelevanceWords(promptCore);
+  const overlap = relevanceOverlap(fieldConcepts, coreConcepts);
+  if (overlap === 0) return false;
+  if (role !== "action") return true;
+  const actionHeads = relevanceActionHeadConcepts(field);
+  return relevanceOverlap(actionHeads, coreConcepts) > 0;
+};
 
 const GENERIC_VISUAL_PLACEHOLDER =
   /\b(?:a person|some person|someone|something|somewhere|generic (?:place|setting|scene)|public setting|ordinary scene|standing still|doing something|various objects?|general activity|unidentified subject)\b/iu;
@@ -1035,12 +1105,25 @@ const sceneOutputIsRelevant = (
   // description.
   const promptCore = row.prompt_core as string;
   const promptCoreConcepts = distinctiveRelevanceWords(promptCore);
-  const promptCoreEntities = relevanceEntityConcepts(promptCore);
   const promptCoreActions = relevanceActionConcepts(promptCore);
-  const phraseCoreOverlap = relevanceOverlap(phraseConcepts, promptCoreConcepts);
-  const phraseCoreEntityOverlap = relevanceOverlap(phraseEntities, promptCoreEntities);
+  const structuredSubjectGrounded = structuredFieldIsGroundedInPromptCore(
+    row.literal_subject as string,
+    promptCore,
+    "subject",
+  );
+  const structuredActionGrounded = structuredFieldIsGroundedInPromptCore(
+    row.action as string,
+    promptCore,
+    "action",
+  );
+  const structuredEnvironmentGrounded = structuredFieldIsGroundedInPromptCore(
+    row.environment as string,
+    promptCore,
+    "environment",
+  );
+  if (!structuredSubjectGrounded || !structuredActionGrounded || !structuredEnvironmentGrounded)
+    return false;
   const primaryOverlap = relevanceOverlap(primaryExpected, outputConcepts);
-  const nearbyOverlap = relevanceOverlap(nearbyExpected, outputConcepts);
   const primaryCoreOverlap = relevanceOverlap(primaryExpected, promptCoreConcepts);
   const nearbyCoreOverlap = relevanceOverlap(nearbyExpected, promptCoreConcepts);
   const expectedActions = relevanceActionConcepts(primaryContext);
@@ -1066,19 +1149,15 @@ const sceneOutputIsRelevant = (
     // nouns, while the primary-overlap and action checks below still reject a
     // wholly unrelated detailed image.
     if (phraseEntityOverlap === 0 && actionOverlap === 0) return false;
-    const requiredPrimaryOverlap = phraseEntities.size >= 2 || phraseActions.size > 0 ? 2 : 1;
-    if (primaryOverlap < requiredPrimaryOverlap && !(primaryOverlap >= 1 && actionOverlap >= 1))
-      return false;
     if (expectedActions.size > 0 && actionOverlap === 0) return false;
-    if (phraseCoreOverlap === 0) return false;
-    if (phraseEntities.size > 0 && phraseCoreEntityOverlap === 0) return false;
     if (expectedActions.size > 0 && coreActionOverlap === 0) return false;
-    if (
-      primaryCoreOverlap < requiredPrimaryOverlap &&
-      !(primaryCoreOverlap >= 1 && coreActionOverlap >= 1)
-    )
-      return false;
-    return primaryOverlap >= 1 || nearbyOverlap >= 1;
+    // A semantically translated narration may share only one lexical anchor
+    // with the structured fields (for example, "purchases groceries" ->
+    // "pays for food at a grocery checkout"). The structured-field binding
+    // above is the stronger compiler-facing guarantee; still require one
+    // narration anchor so a fully unrelated fox/lake scene cannot pass.
+    if (primaryOverlap < 1) return false;
+    return true;
   }
 
   // Pronouns/abstract claims ("this changed everything") need the local

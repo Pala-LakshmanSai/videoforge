@@ -252,6 +252,10 @@ test("writer contract requires relatable physical evidence and applies style as 
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
     /translate its meaning into concrete visual evidence/u,
   );
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /Build prompt_core from the validated literal_subject, action, and environment facts/u,
+  );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /at most 12 unique continuity_tags/u);
   assert.doesNotMatch(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Copy each required_literal_anchor/u);
 });
@@ -519,6 +523,66 @@ test("scene relevance rejects a prompt core with the wrong action despite correc
     locallyValidSceneCount: 0,
     unresolvedSceneCount: 1,
   });
+});
+
+test("scene relevance rejects buying a bicycle when prompt_core changes the action to riding", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman buys a bicycle",
+        sentenceContext: "A woman buys a bicycle from a bicycle shop.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A woman";
+          rows[0].action = "buying a bicycle";
+          rows[0].environment = "inside a bicycle shop aisle";
+          rows[0].prompt_core =
+            "A woman rides a bicycle through a bicycle shop aisle in natural daylight with visible shelves.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
+});
+
+test("scene relevance accepts a normal purchase paraphrase in structured fields and prompt_core", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman purchases groceries",
+        sentenceContext: "A woman purchases groceries at a neighborhood market.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A female shopper";
+          rows[0].action = "paying for food";
+          rows[0].environment = "at a grocery checkout";
+          rows[0].prompt_core =
+            "A female shopper pays for food at a grocery checkout under natural daylight with a reusable bag nearby.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(result.scenes.length, 1);
 });
 
 test("scene relevance accepts a concrete contextual rendering of an abstract phrase", async () => {
