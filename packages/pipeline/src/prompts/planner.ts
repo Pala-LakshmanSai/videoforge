@@ -270,27 +270,36 @@ export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchP
     const cached = minimumBatchCountCache.get(key);
     if (cached !== undefined) return cached;
     const initialKey = key;
+    const path: Array<{ readonly key: string }> = [];
     let cursor = start;
     let requestOrdinal = ordinal;
-    let count = 0;
+    let suffixCount: number | undefined;
     while (cursor < scenes.length) {
       const suffixKey = `${cursor}:${requestOrdinal}`;
       const suffixCached = minimumBatchCountCache.get(suffixKey);
       if (suffixCached !== undefined) {
-        count += suffixCached;
+        suffixCount = suffixCached;
         break;
       }
+      path.push({ key: suffixKey });
       const largest = largestCandidateFrom(cursor, requestOrdinal);
       if (!largest) {
-        count = Number.POSITIVE_INFINITY;
+        suffixCount = Number.POSITIVE_INFINITY;
         break;
       }
-      count += 1;
       cursor = largest.end;
       requestOrdinal += 1;
     }
-    minimumBatchCountCache.set(initialKey, count);
-    return count;
+    suffixCount ??= 0;
+    for (let index = path.length - 1; index >= 0; index -= 1) {
+      suffixCount =
+        suffixCount === Number.POSITIVE_INFINITY ? Number.POSITIVE_INFINITY : suffixCount + 1;
+      minimumBatchCountCache.set(path[index]!.key, suffixCount);
+    }
+    // `path` may be empty when this state was already reduced to the end of
+    // the scene list. Keep the explicit initial binding for that case too.
+    minimumBatchCountCache.set(initialKey, suffixCount);
+    return suffixCount;
   };
 
   let start = 0;
@@ -329,19 +338,24 @@ export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchP
       start + Math.ceil(remainingSceneCount / minimumRemainingBatches),
     );
     let chosen: Candidate = candidates[targetEnd - start - 1] ?? largest;
-    const minimumRemainingBatchCount = 1 + minimumBatchCountFrom(largest.end, ordinal + 1);
     const naturalCandidates = candidates.filter(
       (candidate) =>
         candidate.end < scenes.length &&
         sentenceBoundary(scenes[candidate.end - 1]!, scenes[candidate.end]!) &&
-        Math.abs(candidate.end - targetEnd) <= lookback &&
-        1 + minimumBatchCountFrom(candidate.end, ordinal + 1) === minimumRemainingBatchCount,
+        Math.abs(candidate.end - targetEnd) <= lookback,
     );
     naturalCandidates.sort(
       (left: Candidate, right: Candidate) =>
         Math.abs(left.end - targetEnd) - Math.abs(right.end - targetEnd) || right.end - left.end,
     );
-    const preferredNatural = naturalCandidates[0];
+    const minimumRemainingBatchCount =
+      naturalCandidates.length > 0
+        ? 1 + minimumBatchCountFrom(largest.end, ordinal + 1)
+        : Number.POSITIVE_INFINITY;
+    const preferredNatural = naturalCandidates.find(
+      (candidate) =>
+        1 + minimumBatchCountFrom(candidate.end, ordinal + 1) === minimumRemainingBatchCount,
+    );
     if (preferredNatural && scenes.length - preferredNatural.end !== 1) chosen = preferredNatural;
 
     const batch = chosen.batch;
