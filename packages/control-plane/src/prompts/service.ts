@@ -5,7 +5,7 @@ import {
   validatePromptWriterOutput,
   verifyCompiledImagePrompt,
   type PromptBatch,
-} from "@videoforge/pipeline";
+} from "@videoforge/pipeline/prompts";
 
 import type { TelemetryEvent, TelemetryPort } from "../telemetry/telemetry.js";
 import { hashCanonical, hashUtf8 } from "./hashes.js";

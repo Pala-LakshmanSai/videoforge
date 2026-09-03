@@ -1267,6 +1267,14 @@ export async function handleHostedRequest(
     config,
   );
   if (personalWorkerResponse) return personalWorkerResponse;
+  if (
+    request.method === "POST" &&
+    /^\/api\/v2\/hosted\/projects\/[0-9a-f-]+\/prompts$/u.test(url.pathname)
+  ) {
+    const { handleHostedPromptRequest } = await import("./hosted-prompt-route");
+    const promptResponse = await handleHostedPromptRequest(request, config, executionContext);
+    if (promptResponse) return promptResponse;
+  }
   const { handleHostedProductRequest } = await import("./product");
   const productResponse = await handleHostedProductRequest(
     request,

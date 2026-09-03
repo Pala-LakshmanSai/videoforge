@@ -6,7 +6,7 @@ import {
   type PromptExecutionCommand,
   type PromptExecutionScope,
   type PromptExecutionStore,
-} from "@videoforge/control-plane";
+} from "@videoforge/control-plane/prompts";
 import { type ImageStyleProfileDocument, type Sha256Digest } from "@videoforge/contracts";
 import {
   compileImagePrompt,
@@ -18,7 +18,7 @@ import {
   type PromptBatchPlan,
   type PromptSceneInput,
   type PromptWriterSceneOutput,
-} from "@videoforge/pipeline";
+} from "@videoforge/pipeline/prompts";
 
 import {
   HostedPromptExecutionError,

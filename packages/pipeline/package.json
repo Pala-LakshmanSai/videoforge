@@ -9,6 +9,10 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
     },
+    "./prompts": {
+      "types": "./dist/src/prompts/runtime.d.ts",
+      "import": "./dist/src/prompts/runtime.js"
+    },
     "./legacy-replay": {
       "types": "./dist/src/legacy-replay/index.d.ts",
       "import": "./dist/src/legacy-replay/index.js"

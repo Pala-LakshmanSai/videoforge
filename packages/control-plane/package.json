@@ -9,6 +9,10 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
     },
+    "./prompts": {
+      "types": "./dist/src/prompts/runtime.d.ts",
+      "import": "./dist/src/prompts/runtime.js"
+    },
     "./database": {
       "types": "./dist/src/database/index.d.ts",
       "import": "./dist/src/database/index.js"

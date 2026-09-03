@@ -5,7 +5,7 @@ import type {
   PromptStyleComponents,
   PromptStyleTreatment,
   PromptWriterBatchOutput,
-} from "@videoforge/pipeline";
+} from "@videoforge/pipeline/prompts";
 
 export const DURABLE_PROMPT_EXECUTION_VERSION = "videoforge.durable-prompt-execution/v1" as const;
 
@@ -80,7 +80,9 @@ export interface DurablePromptWriterResult {
 
 export interface DurablePromptWriterPort {
   readonly operation: "fixture.write" | "qualified_fake.write" | "runware.write";
-  write(batch: import("@videoforge/pipeline").PromptBatch): Promise<DurablePromptWriterResult>;
+  write(
+    batch: import("@videoforge/pipeline/prompts").PromptBatch,
+  ): Promise<DurablePromptWriterResult>;
 }
 
 export interface AcceptedPromptExecution {

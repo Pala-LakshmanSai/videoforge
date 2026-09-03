@@ -302,17 +302,75 @@ test("validator rejects extras, forbidden modes, secrets, and unresolved activat
   );
 });
 
-async function productionBundle(workerSource, clientSource) {
+async function productionBundle(workerSource, clientSource, options = {}) {
   const directory = path.resolve(
     root,
     `apps/web/dist-v213-firewall-${randomBytes(8).toString("hex")}`,
   );
-  const workerDirectory = path.join(directory, "videoforge_production_runtime");
+  const workerDirectory = path.join(
+    directory,
+    options.wranglerConfig === "wrangler.staging.jsonc"
+      ? "videoforge_v2_06_staging"
+      : "videoforge_production_runtime",
+  );
   const clientDirectory = path.join(directory, "client");
   await mkdir(path.join(workerDirectory, ".vite"), { recursive: true });
   await mkdir(path.join(clientDirectory, ".vite"), { recursive: true });
   await writeFile(path.join(workerDirectory, "index.js"), workerSource);
-  await writeFile(path.join(workerDirectory, ".vite/manifest.json"), "{}\n");
+  const workerManifest = {
+    "_worker-common.js": {
+      file: "assets/worker-common.js",
+      dynamicImports: ["src/server/hosted/hosted-prompt-route.ts", "_product.js"],
+    },
+    "_product.js": {
+      file: "assets/product.js",
+      isDynamicEntry: true,
+      imports: ["_worker-common.js"],
+      dynamicImports: ["src/server/hosted/generation-coordinator.ts"],
+    },
+    "src/server/hosted/generation-coordinator.ts": {
+      file: "assets/generation-coordinator.js",
+      isDynamicEntry: true,
+      imports: ["_worker-common.js"],
+      dynamicImports: [
+        "../../packages/contracts/dist/generated/hosted-generation-contract-validators.js",
+      ],
+    },
+    "../../packages/contracts/dist/generated/hosted-generation-contract-validators.js": {
+      file: "assets/hosted-generation-contract-validators.js",
+      isDynamicEntry: true,
+      imports: ["_worker-common.js"],
+    },
+    "src/server/hosted/hosted-prompt-route.ts": {
+      file: "assets/hosted-prompt-route.js",
+      isDynamicEntry: true,
+      imports: ["_worker-common.js"],
+    },
+    "virtual:cloudflare/worker-entry": {
+      file: "index.js",
+      isEntry: true,
+      imports: ["_worker-common.js"],
+    },
+  };
+  options.mutateManifest?.(workerManifest);
+  const assets = {
+    "worker-common.js": options.workerCommonSource ?? "const common = true;\n",
+    "product.js": "const product = true;\n",
+    "generation-coordinator.js": "const coordinator = true;\n",
+    "hosted-generation-contract-validators.js": "const planningValidators = true;\n",
+    "hosted-prompt-route.js": options.promptRouteSource ?? "const promptRoute = true;\n",
+    ...(options.extraAssets ?? {}),
+  };
+  await mkdir(path.join(workerDirectory, "assets"), { recursive: true });
+  await Promise.all(
+    Object.entries(assets).map(([name, source]) =>
+      writeFile(path.join(workerDirectory, "assets", name), source),
+    ),
+  );
+  await writeFile(
+    path.join(workerDirectory, ".vite/manifest.json"),
+    `${JSON.stringify(workerManifest)}\n`,
+  );
   await writeFile(path.join(clientDirectory, "index.js"), clientSource);
   await writeFile(path.join(clientDirectory, "index.html"), "<!doctype html>\n");
   await writeFile(path.join(clientDirectory, ".vite/manifest.json"), "{}\n");
@@ -369,6 +427,127 @@ test("bundle firewall still rejects Worker GPU lifecycle controls", async () => 
     });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /contains startPod/u);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("bundle firewall rejects broad modules from the Stage 5 prompt closure", async () => {
+  for (const forbidden of [
+    { key: "_product.js", file: null },
+    {
+      key: "../../packages/contracts/dist/generated/contract-validators.js",
+      file: "contract-validators.js",
+    },
+    { key: "src/server/hosted/generation-coordinator.ts", file: null },
+    { key: "src/server/hosted/image-style.ts", file: "image-style.js" },
+    { key: "src/server/hosted/audio-runtime.ts", file: "audio-runtime.js" },
+    { key: "src/server/hosted/context-runtime.ts", file: "context-runtime.js" },
+  ]) {
+    const directory = await productionBundle("const worker = true;\n", "const client = true;\n", {
+      mutateManifest(manifest) {
+        manifest["src/server/hosted/hosted-prompt-route.ts"].imports.push(forbidden.key);
+        if (forbidden.file) manifest[forbidden.key] = { file: `assets/${forbidden.file}` };
+      },
+      extraAssets: forbidden.file ? { [forbidden.file]: "const forbidden = true;\n" } : {},
+    });
+    try {
+      const result = spawnSync(process.execPath, [bundleVerifier], {
+        cwd: root,
+        encoding: "utf8",
+        env: { ...process.env, VIDEOFORGE_BUNDLE_DIR: path.basename(directory) },
+      });
+      assert.notEqual(result.status, 0, forbidden.key);
+      assert.match(result.stderr, /Stage 5 prompt closure reaches forbidden broad modules/u);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+});
+
+test("bundle firewall cannot hide a forbidden prompt dependency in the static closure", async () => {
+  const directory = await productionBundle("const worker = true;\n", "const client = true;\n", {
+    mutateManifest(manifest) {
+      manifest["_worker-common.js"].imports = ["src/server/hosted/image-style.ts"];
+      manifest["src/server/hosted/image-style.ts"] = { file: "assets/image-style.js" };
+    },
+    extraAssets: { "image-style.js": "const forbiddenStaticStyle = true;\n" },
+  });
+  try {
+    const result = spawnSync(process.execPath, [bundleVerifier], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, VIDEOFORGE_BUNDLE_DIR: path.basename(directory) },
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Stage 5 prompt closure reaches forbidden broad modules/u);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("bundle firewall caps the Stage 5 incremental closure at 256 KiB", async () => {
+  const directory = await productionBundle("const worker = true;\n", "const client = true;\n", {
+    promptRouteSource: "x".repeat(256 * 1024 + 1),
+  });
+  try {
+    const result = spawnSync(process.execPath, [bundleVerifier], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, VIDEOFORGE_BUNDLE_DIR: path.basename(directory) },
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /incremental prompt closure exceeds the 256 KiB/u);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("bundle firewall rejects one byte of static Worker-entry growth above each target baseline", async () => {
+  const workerSource = "const worker = true;\n";
+  for (const { wranglerConfig, acceptedStaticBytes } of [
+    { wranglerConfig: "wrangler.production.jsonc", acceptedStaticBytes: 2_717_421 },
+    { wranglerConfig: "wrangler.staging.jsonc", acceptedStaticBytes: 2_746_603 },
+  ]) {
+    const directory = await productionBundle(workerSource, "const client = true;\n", {
+      wranglerConfig,
+      workerCommonSource: "x".repeat(acceptedStaticBytes - Buffer.byteLength(workerSource) + 1),
+    });
+    try {
+      const result = spawnSync(process.execPath, [bundleVerifier], {
+        cwd: root,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          VIDEOFORGE_BUNDLE_DIR: path.basename(directory),
+          VIDEOFORGE_WRANGLER_CONFIG: wranglerConfig,
+        },
+      });
+      assert.notEqual(result.status, 0, wranglerConfig);
+      assert.match(
+        result.stderr,
+        new RegExp(`accepted no-growth baseline of ${acceptedStaticBytes} bytes`, "u"),
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+});
+
+test("bundle firewall rejects an unknown config instead of selecting a looser baseline", async () => {
+  const directory = await productionBundle("const worker = true;\n", "const client = true;\n");
+  try {
+    const result = spawnSync(process.execPath, [bundleVerifier], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        VIDEOFORGE_BUNDLE_DIR: path.basename(directory),
+        VIDEOFORGE_WRANGLER_CONFIG: "wrangler.evasion.jsonc",
+      },
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Invalid Wrangler bundle-verification config/u);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

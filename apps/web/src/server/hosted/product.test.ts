@@ -103,6 +103,7 @@ import {
   hostedPromptWritingState,
   hostedStyleConflictProblem,
 } from "./product";
+import { handleHostedPromptRequest } from "./hosted-prompt-route";
 
 const ORIGIN = "https://hosted.example.test";
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
@@ -161,6 +162,21 @@ async function errorCode(result: Response | null): Promise<string | null> {
 }
 
 describe("hosted product route contract", () => {
+  it("keeps the prompt endpoint out of the broad product route", async () => {
+    const promptRequest = request(`/api/v2/hosted/projects/${PROJECT_ID}/prompts`);
+    expect(
+      await handleHostedProductRequest(promptRequest, environment, config, executionContext),
+    ).toBeNull();
+    expect(
+      await errorCode(await handleHostedPromptRequest(promptRequest, config, executionContext)),
+    ).toBe("HOSTED_PROMPT_PROVIDER_UNAVAILABLE");
+
+    const appSource = readFileSync(resolve(process.cwd(), "src/server/hosted/app.ts"), "utf8");
+    expect(appSource.indexOf('import("./hosted-prompt-route")')).toBeLessThan(
+      appSource.indexOf('import("./product")'),
+    );
+  });
+
   it("maps avatar uniqueness conflicts to safe Hub recovery", () => {
     expect(hostedAvatarConflictProblem("avatar_profiles_active_name_uq")).toEqual({
       code: "AVATAR_NAME_CONFLICT",
@@ -822,16 +838,19 @@ describe("hosted product route contract", () => {
     expect(block).toContain("provider_task_uuid: providerTaskUuid");
     const planning = source.slice(
       source.indexOf("async function renderHandoff("),
-      source.indexOf("async function writeProjectPrompts("),
+      source.indexOf("async function projects("),
     );
     expect(planning).toContain('state.context_state !== "SUCCEEDED"');
     expect(source).toContain("/context$/u.exec(url.pathname)");
   });
 
   it("passes the preparation-owned adaptive plan binding before hosted prompt dispatch", () => {
-    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const source = readFileSync(
+      resolve(process.cwd(), "src/server/hosted/hosted-prompt-route.ts"),
+      "utf8",
+    );
     const start = source.indexOf("async function writeProjectPrompts(");
-    const end = source.indexOf("async function projects(", start);
+    const end = source.indexOf("export async function handleHostedPromptRequest(", start);
     const block = source.slice(start, end);
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);

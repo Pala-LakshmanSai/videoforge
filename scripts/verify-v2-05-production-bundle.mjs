@@ -12,6 +12,13 @@ if (!new Set(["wrangler.production.jsonc", "wrangler.staging.jsonc"]).has(wrangl
 const productionConfigPath = path.join(repositoryRoot, "apps/web", wranglerConfig);
 const productionEntryPath = path.join(repositoryRoot, "apps/web/worker/production-index.ts");
 const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.ts");
+// Accepted provider-free route-split builds. Production is a 187-byte virtual entry plus its
+// 2,717,234-byte shared chunk; staging is the same entry plus its 2,746,416-byte shared chunk.
+// These are deliberately exact per-target no-growth ceilings, not platform limits.
+const staticWorkerEntryAcceptedBytes = Object.freeze({
+  "wrangler.production.jsonc": 2_717_421,
+  "wrangler.staging.jsonc": 2_746_603,
+})[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
   "packages/test-fixtures",
@@ -101,6 +108,10 @@ const expectedProductionImports = [
   "./hosted-pair-workflow",
 ];
 const hostedAppSource = await readFile(hostedAppPath, "utf8");
+const hostedPromptRouteImport = 'import("./hosted-prompt-route")';
+const hostedProductImport = 'import("./product")';
+const hostedPromptRouteImportOffset = hostedAppSource.indexOf(hostedPromptRouteImport);
+const hostedProductImportOffset = hostedAppSource.indexOf(hostedProductImport);
 const forbiddenProductionSource = [
   "shared-app-fixture",
   "src/server/local",
@@ -124,6 +135,15 @@ async function filesBelow(directory) {
 }
 
 const failures = [];
+if (
+  hostedPromptRouteImportOffset < 0 ||
+  hostedProductImportOffset < 0 ||
+  hostedPromptRouteImportOffset > hostedProductImportOffset
+) {
+  failures.push(
+    "production hosted route owner must dynamically route hosted-prompt-route before product",
+  );
+}
 if (
   JSON.stringify([...productionImports].sort()) !==
   JSON.stringify([...expectedProductionImports].sort())
@@ -192,10 +212,79 @@ try {
   if (eagerValidatorKeys.length > 0) {
     failures.push("precompiled contract validators are statically reachable from the Worker entry");
   }
+  const manifestFileBytes = async (key) => {
+    const file = workerManifest[key]?.file;
+    if (typeof file !== "string") return Number.POSITIVE_INFINITY;
+    return (await readFile(path.join(root, emittedWorkerDirectory, file))).byteLength;
+  };
+  const staticWorkerBytes = (
+    await Promise.all([...staticallyReachable].map((key) => manifestFileBytes(key)))
+  ).reduce((total, bytes) => total + bytes, 0);
+  if (
+    !Number.isSafeInteger(staticWorkerBytes) ||
+    staticWorkerBytes > staticWorkerEntryAcceptedBytes
+  ) {
+    failures.push(
+      `static Worker-entry closure exceeds the accepted no-growth baseline of ${staticWorkerEntryAcceptedBytes} bytes`,
+    );
+  }
+
+  const hostedPromptRouteKey = Object.keys(workerManifest).find((key) =>
+    /(?:^|\/)hosted-prompt-route\.ts$/u.test(key),
+  );
+  if (!hostedPromptRouteKey || workerManifest[hostedPromptRouteKey]?.isDynamicEntry !== true) {
+    failures.push("Stage 5 lacks its dedicated hosted-prompt-route dynamic entry");
+  } else {
+    // A dynamic route may statically share the Worker entry. Only modules newly loaded for the
+    // prompt request count toward its incremental closure; do not follow unrelated dynamic edges
+    // back out of a shared entry chunk.
+    const promptReachable = new Set();
+    const incrementalPromptClosure = new Set();
+    const promptPending = [hostedPromptRouteKey];
+    while (promptPending.length > 0) {
+      const key = promptPending.pop();
+      if (typeof key !== "string" || promptReachable.has(key)) continue;
+      promptReachable.add(key);
+      const isStatic = staticallyReachable.has(key);
+      if (!isStatic) incrementalPromptClosure.add(key);
+      // Shared static chunks can advertise unrelated route-level dynamic imports. Inspect the
+      // shared chunk and all of its eager imports for forbidden dependencies, but do not mistake
+      // its unrelated dynamic routes for dependencies of the prompt request.
+      const reachableImports = [
+        ...(workerManifest[key]?.imports ?? []),
+        ...(isStatic ? [] : (workerManifest[key]?.dynamicImports ?? [])),
+      ];
+      for (const importedKey of reachableImports) {
+        promptPending.push(importedKey);
+      }
+    }
+    const forbiddenPromptClosure = [...promptReachable].filter((key) => {
+      const identities = [key, workerManifest[key]?.file ?? ""];
+      return identities.some((identity) => {
+        const basename = path.posix.basename(identity);
+        const broadProduct =
+          basename === "product.ts" || /^_?product(?:-[A-Za-z0-9_-]+)?\.js$/iu.test(basename);
+        return (
+          broadProduct ||
+          /contract-validators|generation-coordinator/iu.test(identity) ||
+          /(?:^|[/_-])(?:style|audio|context)(?:[/_-]|\.)/iu.test(identity)
+        );
+      });
+    });
+    if (forbiddenPromptClosure.length > 0) {
+      failures.push(
+        `Stage 5 prompt closure reaches forbidden broad modules: ${forbiddenPromptClosure.join(", ")}`,
+      );
+    }
+    const incrementalPromptBytes = (
+      await Promise.all([...incrementalPromptClosure].map((key) => manifestFileBytes(key)))
+    ).reduce((total, bytes) => total + bytes, 0);
+    if (!Number.isSafeInteger(incrementalPromptBytes) || incrementalPromptBytes > 256 * 1024) {
+      failures.push("Stage 5 incremental prompt closure exceeds the 256 KiB CPU-safety bound");
+    }
+  }
   const hostedGenerationValidatorKey = Object.keys(workerManifest).find((key) =>
-    /hosted-generation-contract-validators/iu.test(
-      `${key} ${workerManifest[key]?.file ?? ""}`,
-    ),
+    /hosted-generation-contract-validators/iu.test(`${key} ${workerManifest[key]?.file ?? ""}`),
   );
   const coordinatorEntry = Object.values(workerManifest).find((value) =>
     /generation-coordinator/iu.test(value.file ?? ""),

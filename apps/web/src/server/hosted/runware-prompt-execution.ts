@@ -1,10 +1,10 @@
 import { canonicalizeJson, type Sha256Digest } from "@videoforge/contracts";
-import { PromptExecutionError } from "@videoforge/control-plane";
+import { PromptExecutionError } from "@videoforge/control-plane/prompts";
 import type {
   DurablePromptWriterPort,
   DurablePromptWriterResult,
   PromptWriterAttemptFact,
-} from "@videoforge/control-plane";
+} from "@videoforge/control-plane/prompts";
 import {
   RunwarePromptWriter,
   RunwarePromptValidationError,
@@ -20,7 +20,7 @@ import {
   type RunwarePromptTransport,
   type RunwarePromptTransportRequest,
   type RunwarePromptTransportResult,
-} from "@videoforge/pipeline";
+} from "@videoforge/pipeline/prompts";
 
 import {
   RunwarePromptHttpTransport,
