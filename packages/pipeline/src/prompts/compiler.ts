@@ -282,53 +282,6 @@ const join = (parts: readonly (string | null)[]): string => {
     .join(", ");
 };
 
-const WORD = /[\p{L}\p{N}]+/gu;
-const NON_DISTINCTIVE_WORDS = new Set([
-  "a",
-  "an",
-  "and",
-  "at",
-  "by",
-  "for",
-  "from",
-  "in",
-  "into",
-  "is",
-  "of",
-  "on",
-  "or",
-  "the",
-  "to",
-  "with",
-]);
-
-function distinctiveWords(value: string): ReadonlySet<string> {
-  return new Set(
-    (value.toLocaleLowerCase("en-US").match(WORD) ?? []).filter(
-      (word) => word.length >= 3 && !NON_DISTINCTIVE_WORDS.has(word),
-    ),
-  );
-}
-
-function assertPromptCoreConsolidatesScene(
-  promptCore: string,
-  sceneFields: readonly string[],
-): void {
-  const coreWords = distinctiveWords(promptCore);
-  const sceneWords = distinctiveWords(sceneFields.join(" "));
-  const requiredOverlap = Math.min(2, sceneWords.size);
-  let overlap = 0;
-  for (const word of coreWords) {
-    if (sceneWords.has(word)) overlap += 1;
-  }
-  if (promptCore.length < 32 || overlap < requiredOverlap)
-    fail(
-      "PROMPT_CONFLICT",
-      "Prompt core must be a self-contained visual scene grounded in its structured scene facts.",
-      ["writerOutput", "prompt_core"],
-    );
-}
-
 export function compileImagePrompt(request: CompilePromptRequest): CompiledImagePrompt {
   const output = request.writerOutput;
   const expected = request.expectedScene;
@@ -353,16 +306,18 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
       ["literal_subject", "action", "environment", "lighting_context"][index]!,
     ]),
   );
-  // The structured fields are validation metadata. The writer's prompt_core is
-  // the one consolidated scene description that reaches the image model. This
-  // prevents subject/action/environment/lighting from being repeated five
-  // times while retaining independently validated evidence fields.
-  const literalContent = normalize(output.prompt_core, 600, "Prompt core", [
-    "writerOutput",
-    "prompt_core",
-  ]);
-  assertNoHardPromptConflict(literalContent, ["writerOutput", "prompt_core"]);
-  assertPromptCoreConsolidatesScene(literalContent, sceneFields);
+  // The provider-authored prompt_core is retained in the durable writer shape
+  // for compatibility, but it is not trusted at the image-model boundary.
+  // Build the literal scene description only from the independently normalized
+  // and conflict-checked fields above. This makes a stale or mismatched raw
+  // core unable to change the subject, action, environment, or lighting that
+  // reaches the image model.
+  const literalContent = [
+    `subject: ${sceneFields[0]}`,
+    `action: ${sceneFields[1]}`,
+    `environment: ${sceneFields[2]}`,
+    `lighting: ${sceneFields[3]}`,
+  ].join(", ");
   const continuityAndShotRole = join([
     output.continuity_tags.length === 0
       ? "continuity: none"

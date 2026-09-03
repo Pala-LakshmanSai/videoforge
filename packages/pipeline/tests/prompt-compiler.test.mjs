@@ -253,10 +253,79 @@ test("enabled extras normalize once, support negative refinements, and count Uni
   );
 });
 
-test("compiler emits only the consolidated prompt core while retaining structured QC fields", () => {
+test("compiler derives literal content from structured fields and ignores raw prompt_core", () => {
   const input = batch(25);
-  const promptCore =
-    "A farmer opens a weathered irrigation valve beside a dry field in soft morning light.";
+  const writerOutput = {
+    scene_id: input.scenes[0].sceneId,
+    literal_subject: "a farmer",
+    action: "opens a weathered irrigation valve",
+    environment: "a dry field",
+    in_image_shot_role: input.scenes[0].inImageShotRole,
+    lighting_context: "soft morning light",
+    continuity_tags: [],
+    prompt_core: "A fox swims through an alpine lake beneath snowy mountains.",
+  };
+  const compiled = compileImagePrompt({
+    writerOutput,
+    expectedScene: input.scenes[0],
+    style: style(),
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  const sameFieldsDifferentCore = compileImagePrompt({
+    writerOutput: {
+      ...writerOutput,
+      prompt_core: "A person rides a bicycle through a city at night.",
+    },
+    expectedScene: input.scenes[0],
+    style: style(),
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  assert.equal(
+    compiled.components.literalContent,
+    "subject: a farmer, action: opens a weathered irrigation valve, environment: a dry field, lighting: soft morning light",
+  );
+  assert.equal(compiled.positivePrompt.includes("opens a weathered irrigation valve"), true);
+  assert.equal(compiled.positivePrompt.includes("rides a bicycle"), false);
+  assert.equal(compiled.positivePrompt.includes("fox swims"), false);
+  assert.deepEqual(sameFieldsDifferentCore, compiled);
+  assert.ok(compiled.positivePrompt.length <= 6_500);
+  assert.ok(compiled.negativePrompt.length <= 3_000);
+});
+
+test("compiler rejects forbidden content in structured scene facts", () => {
+  const input = batch(25);
+  const base = {
+    scene_id: input.scenes[0].sceneId,
+    literal_subject: "a farmer",
+    action: "opens a weathered irrigation valve",
+    environment: "a dry field",
+    in_image_shot_role: input.scenes[0].inImageShotRole,
+    lighting_context: "soft morning light",
+    continuity_tags: [],
+    prompt_core: "legacy provider prose is ignored by the compiler",
+  };
+  for (const field of [
+    { literal_subject: "a farmer holding a handwritten list" },
+    { action: "writes a label on a package" },
+    { environment: "a field with visible signage" },
+    { lighting_context: "a screen glow" },
+  ]) {
+    expectCode("PROMPT_CONFLICT", () =>
+      compileImagePrompt({
+        writerOutput: { ...base, ...field },
+        expectedScene: input.scenes[0],
+        style: style(),
+        extraPromptKeywords: null,
+        applyExtraPromptKeywords: false,
+      }),
+    );
+  }
+});
+
+test("compiler no longer requires prompt_core to overlap structured scene facts", () => {
+  const input = batch(25);
   const compiled = compileImagePrompt({
     writerOutput: {
       scene_id: input.scenes[0].sceneId,
@@ -266,40 +335,19 @@ test("compiler emits only the consolidated prompt core while retaining structure
       in_image_shot_role: input.scenes[0].inImageShotRole,
       lighting_context: "soft morning light",
       continuity_tags: [],
-      prompt_core: promptCore,
+      prompt_core: "unrelated legacy provider metadata",
     },
     expectedScene: input.scenes[0],
     style: style(),
     extraPromptKeywords: null,
     applyExtraPromptKeywords: false,
   });
-  assert.equal(compiled.components.literalContent, promptCore);
+  assert.match(compiled.components.literalContent, /subject: farmer/u);
+  assert.match(compiled.components.literalContent, /action: opens a weathered irrigation valve/u);
+  assert.equal(compiled.positivePrompt.includes("unrelated legacy provider metadata"), false);
   assert.equal(compiled.positivePrompt.match(/weathered irrigation valve/gu)?.length, 1);
-  assert.equal(compiled.positivePrompt.includes("farmer, opens"), false);
   assert.ok(compiled.positivePrompt.length <= 6_500);
   assert.ok(compiled.negativePrompt.length <= 3_000);
-});
-
-test("compiler rejects a generic prompt core disconnected from its structured scene facts", () => {
-  const input = batch(1);
-  expectCode("PROMPT_CONFLICT", () =>
-    compileImagePrompt({
-      writerOutput: {
-        scene_id: input.scenes[0].sceneId,
-        literal_subject: "farmer",
-        action: "opens an irrigation valve",
-        environment: "dry field",
-        in_image_shot_role: input.scenes[0].inImageShotRole,
-        lighting_context: "soft morning light",
-        continuity_tags: [],
-        prompt_core: "A beautiful cinematic image with a dramatic atmosphere.",
-      },
-      expectedScene: input.scenes[0],
-      style: style(),
-      extraPromptKeywords: null,
-      applyExtraPromptKeywords: false,
-    }),
-  );
 });
 
 test("compiler rejects enabled blank, oversized, control-only, forbidden extras, and conflicting style clauses", async () => {
