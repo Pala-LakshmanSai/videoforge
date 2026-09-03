@@ -120,7 +120,7 @@ async function validateAndHashPrecompiledContractDocument<Name extends ContractN
   value: unknown,
 ): Promise<ValidatedContractDocument<Name>> {
   precompiledValidatorsPromise ??= import(
-    "@videoforge/contracts/precompiled-contract-validators"
+    "@videoforge/contracts/hosted-generation-contract-validators"
   ).then((module) => module as unknown as Record<string, PrecompiledValidator>);
   const validators = await precompiledValidatorsPromise;
   const validator = validators[contractName];

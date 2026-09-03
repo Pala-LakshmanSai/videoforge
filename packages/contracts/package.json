@@ -36,6 +36,10 @@
       "types": "./dist/generated/contract-validators.d.ts",
       "import": "./dist/generated/contract-validators.js"
     },
+    "./hosted-generation-contract-validators": {
+      "types": "./dist/generated/hosted-generation-contract-validators.d.ts",
+      "import": "./dist/generated/hosted-generation-contract-validators.js"
+    },
     "./generated/*": "./generated/*"
   },
   "scripts": {

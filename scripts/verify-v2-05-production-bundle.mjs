@@ -192,14 +192,28 @@ try {
   if (eagerValidatorKeys.length > 0) {
     failures.push("precompiled contract validators are statically reachable from the Worker entry");
   }
-  const validatorKey = Object.keys(workerManifest).find((key) =>
-    /contract-validators/iu.test(`${key} ${workerManifest[key]?.file ?? ""}`),
+  const hostedGenerationValidatorKey = Object.keys(workerManifest).find((key) =>
+    /hosted-generation-contract-validators/iu.test(
+      `${key} ${workerManifest[key]?.file ?? ""}`,
+    ),
   );
   const coordinatorEntry = Object.values(workerManifest).find((value) =>
     /generation-coordinator/iu.test(value.file ?? ""),
   );
-  if (!validatorKey || !coordinatorEntry?.dynamicImports?.includes(validatorKey)) {
-    failures.push("planning does not dynamically import the precompiled contract validators");
+  if (
+    !hostedGenerationValidatorKey ||
+    !coordinatorEntry?.dynamicImports?.includes(hostedGenerationValidatorKey)
+  ) {
+    failures.push("planning does not dynamically import its bounded contract-validator shard");
+  } else {
+    const validatorAsset = workerManifest[hostedGenerationValidatorKey]?.file;
+    if (
+      typeof validatorAsset !== "string" ||
+      (await readFile(path.join(root, emittedWorkerDirectory, validatorAsset))).byteLength >
+        512 * 1024
+    ) {
+      failures.push("planning contract-validator shard exceeds the 512 KiB CPU-safety bound");
+    }
   }
 } catch {
   failures.push(`${workerManifestPath} is not a readable Worker manifest`);
