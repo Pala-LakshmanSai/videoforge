@@ -3106,7 +3106,7 @@ describe("V2-07 qualification harness", () => {
     const rejection = evidence.events.find(
       (event) => event.event === "finite_spend_headroom_insufficient",
     );
-    expect(rejection?.projected_spend_usd).toBeCloseTo(4.316, 3);
+    expect(rejection?.projected_spend_usd).toBeCloseTo(4.378874, 3);
     expect(evidence.newPaidWorkFenced).toBe(true);
   });
 

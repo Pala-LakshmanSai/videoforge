@@ -792,7 +792,7 @@ describe("V2-07 live qualification runner safety", () => {
     expect(() => assertV207FreshCatalogOffering([{ ...candidate, vramGb: 23 }])).toThrow(
       "V207_CATALOG_RATE_OR_VRAM_DRIFT",
     );
-    expect(V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR).toBe(1.1);
+    expect(V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR).toBe(1.116);
   });
 
   it("mounts the sealed volume at its fixed path and reads the CP-06 model subdirectory", () => {

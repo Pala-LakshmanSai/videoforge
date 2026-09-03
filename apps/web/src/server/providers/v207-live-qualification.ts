@@ -99,8 +99,8 @@ const BILLING_START = "2026-08-20T00:00:00.000Z";
 const IMAGE_CONFIG_DIGEST = V207_REPAIRED_IMAGE_CONFIG_DIGEST;
 const IMAGE_LAYER_DIGEST = V207_REPAIRED_IMAGE_LAYER_DIGEST;
 const IMAGE_BASE_DIGEST = V207_REPAIRED_IMAGE_BASE_DIGEST;
-/** The pinned RunPod Serverless Flex rate used by the V2-07 proposal. */
-export const V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR = 1.1 as const;
+/** Current RTX 4090 Flex reference: $0.00031/sec, or $1.116/GPU-hour. */
+export const V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR = 1.116 as const;
 /** The secure RTX 4090 catalog reference rate used by the V2-07 preflight. */
 export const V207_SECURE_REFERENCE_RATE_USD_PER_HOUR = 0.74 as const;
 let IMAGE: string = V207_REPAIRED_IMAGE;

@@ -44,8 +44,8 @@ const V207_RESUME_WORKSPACE = "workspace-a";
 const V207_RESUME_PROJECT = "project-a";
 const V207_RESUME_REVISION = "revision-a";
 const V207_PLAN_MANIFEST_SCHEMA = "videoforge-v207-plan-manifest/v1";
-/** Pinned approved RTX 4090 Flex rate for this qualification lineage. */
-export const V207_RUNPOD_GPU_HOURLY_RATE_USD = 1.1 as const;
+/** Current RTX 4090 Flex reference: $0.00031/sec, or $1.116/GPU-hour. */
+export const V207_RUNPOD_GPU_HOURLY_RATE_USD = 1.116 as const;
 /**
  * Provider billing is asynchronous. This is a conservative per-worker metering margin, not a
  * promise about when RunPod's account total will settle.
