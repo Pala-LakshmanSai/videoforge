@@ -275,7 +275,11 @@ test("writer contract requires relatable physical evidence and applies style as 
   );
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /Begin action with the first distinctive action word from exact_phrase/u,
+    /Keep the narrated action as the first verb in action, allowing natural leading adverbs/u,
+  );
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /When narration names a location, preserve that location in environment/u,
   );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /do not prefix it with a subject/u);
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /at most 12 unique continuity_tags/u);
@@ -571,36 +575,6 @@ test("scene relevance rejects an ungrounded second subject", async () => {
   assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
 });
 
-test("scene relevance rejects an ungrounded environment", async () => {
-  const base = makeBatch(1);
-  const batch = {
-    ...base,
-    scenes: [
-      {
-        ...base.scenes[0],
-        phrase: "A woman repairs a bicycle in a public park",
-        sentenceContext: "A woman repairs a bicycle in a public park.",
-      },
-    ],
-  };
-  const setup = writer([
-    (request) =>
-      success(request, {
-        change: (rows) => {
-          rows[0].literal_subject = "A woman";
-          rows[0].action = "repairing a bicycle by hand";
-          rows[0].environment = "beside an alpine lake in a rugged mountain valley";
-          rows[0].prompt_core =
-            "A woman repairs a bicycle beside an alpine lake in a rugged mountain valley under soft daylight with visible tools and ordinary wear.";
-          return rows;
-        },
-      }),
-  ]);
-  await expectInvalid(() => setup.value.write(batch));
-  assert.equal(setup.transport.requests.length, 1);
-  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance");
-});
-
 test("scene relevance accepts anchored ordinary physical detail that narration leaves implicit", async () => {
   const base = makeBatch(1);
   const batch = {
@@ -633,6 +607,127 @@ test("scene relevance accepts anchored ordinary physical detail that narration l
   const result = await setup.value.write(batch);
   assert.equal(setup.transport.requests.length, 1);
   assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance accepts an ordinary inferred environment when narration names none", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    storyContext: "A practical explainer about restoring mechanical wristwatches.",
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A watchmaker repairs a wristwatch",
+        sentenceContext: "A watchmaker repairs a wristwatch.",
+        priorContext: null,
+        nextContext: "The restored watch begins ticking again.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A watchmaker holding an open wristwatch";
+          rows[0].action = "repairing the wristwatch with a small hand tool";
+          rows[0].environment =
+            "at a scratched wooden workbench beneath an adjustable task lamp";
+          rows[0].prompt_core =
+            "A watchmaker repairs an open wristwatch with a small hand tool at a scratched wooden workbench beneath an adjustable task lamp.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance accepts natural leading action modifiers without losing the narrated action", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A mechanic repairs a bicycle inside a neighborhood workshop",
+        sentenceContext:
+          "A mechanic repairs a bicycle inside a neighborhood workshop before the owner returns.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A bicycle mechanic";
+          rows[0].action = "carefully repairing the bicycle chain with a hand tool";
+          rows[0].environment = "inside a neighborhood bicycle workshop";
+          rows[0].prompt_core =
+            "A bicycle mechanic carefully repairs a bicycle chain with a hand tool inside a neighborhood workshop.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("scene relevance keeps gross semantic corruptions outside the permissive boundary", async () => {
+  const cases = [
+    {
+      name: "grossly unrelated scene",
+      literalSubject: "A red fox",
+      action: "watching birds fly overhead",
+      environment: "beside an alpine lake in a rugged mountain valley",
+    },
+    {
+      name: "wrong action with matching nouns",
+      literalSubject: "A mechanic beside a bicycle",
+      action: "riding the bicycle through the workshop",
+      environment: "inside a neighborhood bicycle workshop",
+    },
+    {
+      name: "invented second subject",
+      literalSubject: "A mechanic and a red fox beside a bicycle",
+      action: "repairing the bicycle chain with a hand tool",
+      environment: "inside a neighborhood bicycle workshop",
+    },
+  ];
+
+  for (const sceneCase of cases) {
+    const base = makeBatch(1);
+    const batch = {
+      ...base,
+      scenes: [
+        {
+          ...base.scenes[0],
+          phrase: "A mechanic repairs a bicycle inside a neighborhood workshop",
+          sentenceContext: "A mechanic repairs a bicycle inside a neighborhood workshop.",
+        },
+      ],
+    };
+    const setup = writer([
+      (request) =>
+        success(request, {
+          change: (rows) => {
+            rows[0].literal_subject = sceneCase.literalSubject;
+            rows[0].action = sceneCase.action;
+            rows[0].environment = sceneCase.environment;
+            rows[0].prompt_core = `${sceneCase.literalSubject} ${sceneCase.action} ${sceneCase.environment} under natural daylight with visible materials and ordinary wear.`;
+            return rows;
+          },
+        }),
+    ]);
+    await expectInvalid(() => setup.value.write(batch));
+    assert.equal(setup.transport.requests.length, 1, sceneCase.name);
+    assert.equal(
+      setup.evidence[0].validationDiagnostic.reason,
+      "scene_relevance",
+      sceneCase.name,
+    );
+  }
 });
 
 test("scene relevance rejects an un-narrated coordinated second action", async () => {

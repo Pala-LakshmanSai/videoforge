@@ -21,7 +21,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v13" as const;
+  "runware-deepseek-v4-flash-prompt-request-v14" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -56,9 +56,10 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
   "Write prompt_core as concise compatibility prose describing the scene's subject, visible action, physical environment, lighting context, and useful continuity; it may use natural semantic paraphrase.",
   "Treat literal_subject, action, environment, and lighting_context as the authoritative structured scene facts. The downstream compiler derives the final literal image description from those fields; prompt_core is retained only for provider compatibility and bounded quality checks.",
-  "Ensure literal_subject, action, and environment each preserve a meaningful source anchor from exact_phrase, scene_phrase_context, prior_scene_phrase, next_scene_phrase, or story_context.",
+  "Ensure literal_subject preserves a meaningful source anchor from exact_phrase, scene_phrase_context, prior_scene_phrase, next_scene_phrase, or story_context.",
   "Add only ordinary camera-capturable physical detail needed to make the anchored moment specific, believable, and relatable. Such detail may clarify a compatible real-world setting, object condition, or human interaction, but it must never change or contradict the source meaning, introduce a new story event, or act as a hardcoded visual style.",
-  "Begin action with the first distinctive action word from exact_phrase, allowing only simple grammatical or morphological inflection, then add concrete visible detail; do not prefix it with a subject or substitute a synonym in the action field.",
+  "Keep the narrated action as the first verb in action, allowing natural leading adverbs and simple grammatical or morphological inflection, then add concrete visible detail; do not prefix it with a subject or substitute an unrelated action.",
+  "When narration names a location, preserve that location in environment. When it names none, infer one ordinary compatible physical environment from the supplied context instead of inventing a new story event.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, writing, handwritten or printed words, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
   "Never choose duration, layout, shot role, avatar placement, model, GPU, retry, or fallback.",
@@ -1049,9 +1050,9 @@ const GENERIC_VISUAL_PLACEHOLDER =
  * with adjacent phrases as a small continuity supplement for pronouns and
  * abstract claims. The raw prompt_core is retained for wire compatibility and
  * detail/forbidden-content QC only; the compiler derives final image content
- * from the structured fields. The action field's first concept is checked
- * generically against narration, so unseen verbs cannot be replaced by a
- * plausible but unrelated action without a finite action taxonomy.
+ * from the structured fields. The first verb-shaped action concept is checked
+ * generically against narration, so natural leading adverbs remain valid but
+ * an unseen action cannot be swapped for a plausible unrelated one.
  */
 const sceneOutputIsRelevant = (
   expectedScene: PromptSceneInput,
@@ -1095,29 +1096,27 @@ const sceneOutputIsRelevant = (
   const phraseEntityOverlap = relevanceOverlap(phraseEntities, outputEntities);
   const primaryOverlap = relevanceOverlap(primaryExpected, outputConcepts);
   const primaryActionAnchors = exactRelevanceConcepts(primaryContext);
-  const actionAnchor = firstActionAnchor(row.action as string);
+  const firstActionConcept = firstActionAnchor(row.action as string);
+  const firstVerbShapedActionConcept = firstInflectedActionAnchor(row.action as string);
   const literalSubjectConcepts = exactRelevanceConcepts(row.literal_subject as string);
   const actionStartsWithSubject =
-    actionAnchor !== null && relevanceSetContains(literalSubjectConcepts, actionAnchor);
+    firstActionConcept !== null && relevanceSetContains(literalSubjectConcepts, firstActionConcept);
   if (actionStartsWithSubject) return false;
+  const actionAnchor = firstVerbShapedActionConcept ?? firstActionConcept;
   const actionAnchorGrounded =
     actionAnchor !== null && relevanceSetContains(primaryActionAnchors, actionAnchor);
 
-  // Subject and environment are compiler inputs, not free-form decoration.
-  // Require each to retain at least one source concept. Additional ordinary
-  // physical detail is allowed because converting narration into a usable
-  // still image necessarily requires concrete setting and object choices that
-  // prose may leave implicit. The action anchor and the checks below still
-  // reject a response that changes the narrated event or loses its subject.
+  // The subject must remain narration-grounded. An ordinary compatible
+  // environment necessarily may introduce concrete words absent from the
+  // prose, so lexical overlap is not a sound environment-quality proxy (for
+  // example, "under pressure" and "in 2020" are not scene locations). The
+  // request contract governs location fidelity; action and whole-row checks
+  // below still reject an unrelated event or subject.
   const subjectConcepts = distinctiveRelevanceWords(row.literal_subject as string);
-  const environmentConcepts = distinctiveRelevanceWords(row.environment as string);
   const subjectHasSourceAnchor = [...subjectConcepts].some((concept) =>
     relevanceSetContains(sourceExpected, concept),
   );
-  const environmentHasSourceAnchor = [...environmentConcepts].some((concept) =>
-    relevanceSetContains(sourceExpected, concept),
-  );
-  if (!subjectHasSourceAnchor || !environmentHasSourceAnchor) return false;
+  if (!subjectHasSourceAnchor) return false;
 
   // A coordinated field may add several visible details, but it must not
   // smuggle in an ungrounded second subject or location. This catches rows
