@@ -24,6 +24,14 @@
   bound Stage 5 cold-path modules and preserve its existing request-count, durable incremental-batch,
   validation, no-redispatch, narration-grounding, pinned-style, and cost-conservation contracts.
   Any deployment or fresh Stage 1–5 project requires new exact source-bound authority.
+- Bundle inspection isolates the Stage 5 cold-path seam: `app.ts` currently imports the broad
+  496,769-byte `product` route before dispatching `/prompts`, and that chunk statically carries
+  unrelated style-analysis, audio, context, generation-persistence, R2, and GPU code. Give
+  `/prompts` its own dynamic route before the `product` import, backed only by narrow shared
+  request/auth/database helpers and prompt-specific package subpaths. Deployment quarantine should
+  require that dynamic entry, reject unrelated route/validator dependencies, cap its incremental
+  closure at 256 KiB, and keep the 2,746,065-byte shared entry on a no-growth guard. The shared entry
+  is a cold-start risk but is not independently proven to be this Stage 5-only terminal cause.
 - Future fresh projects still use `scene-prompt-writer-v2`, narration-grounded structured scene facts,
   and adaptive batching with no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
   per persisted planned batch, accepted batches are durable before the next request, and failure or
