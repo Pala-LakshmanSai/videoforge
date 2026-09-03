@@ -19,13 +19,15 @@
   now above the requirement. No fresh project, provider request, provider cost, retry, continuation,
   retrieval, GPU, RunPod, production, or volume mutation occurred. The exact approval was consumed
   by the completed one-time deployment and terminal pre-creation disk gate; do not reuse it.
-- A fresh project-only approval was then supplied. The mandatory check immediately before the
-  create click found `1,988,452,352` available bytes, below the same `2,152,579,950` requirement.
-  Create was not clicked; no project, provider request, or spend occurred. That single-use approval
-  stopped at its first terminal preflight failure and is consumed.
-- Request v15 remains live but its Stage 5 behavior is not yet live-qualified. Free additional local
-  space, then obtain fresh exact authority for exactly one project on the already-live source—no
-  redeployment or migration/grant replay is required.
+- After more cleanup, a fresh project-only approval passed the mandatory immediate disk check at
+  `3,421,179,904` available bytes and created exactly one new project,
+  `0cb767d9-f07e-4526-aade-25a98dc0d043`, in real signed-in Chrome. Stage 1 and personal-worker
+  Stage 2 completed; Stage 3 also completed and saved bounded hydrogen-peroxide context.
+- The run then stopped at its first terminal failure before Stage 5: Stage 4 planning remained
+  pending and the UI reported `HOSTED_PROJECT_PLANNING_FAILED` through its safe planning-failure
+  message. The UI displayed `$0.00`; no retry or provider retrieval occurred. Freeze this project.
+- Request v15 remains live but is still not live-qualified because Stage 5 never began. Diagnose and
+  repair the Stage 4 planning failure provider-free before seeking any fresh live authority.
 - Future fresh projects still use `scene-prompt-writer-v2`, narration-grounded structured scene facts,
   and adaptive batching with no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
   per persisted planned batch, accepted batches are durable before the next request, and failure or
