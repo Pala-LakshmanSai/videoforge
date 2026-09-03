@@ -12,6 +12,7 @@ test("the hosted runtime can append through the exact function but has no direct
   const source = await readFile(GRANTS, "utf8");
   for (const table of [
     "hosted_render_plans",
+    "revision_timing_heads",
     "timeline_plans",
     "generation_tasks",
     "generation_requests",

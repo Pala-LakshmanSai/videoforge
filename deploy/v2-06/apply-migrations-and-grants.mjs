@@ -37,6 +37,7 @@ const EXPECTED_TABLE_PRIVILEGES = new Map([
   ["image_style_references", ["INSERT", "SELECT"]],
   ["workspaces", ["SELECT"]],
   ["hosted_render_plans", ["SELECT"]],
+  ["revision_timing_heads", ["SELECT"]],
   ["timeline_plans", ["SELECT"]],
   ["generation_tasks", ["SELECT"]],
   ["generation_requests", ["SELECT"]],

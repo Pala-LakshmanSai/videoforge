@@ -216,6 +216,7 @@ GRANT SELECT ON workspaces TO :"runtime_role";
 -- narrowly scoped write capability.
 GRANT SELECT ON
   hosted_render_plans,
+  revision_timing_heads,
   timeline_plans,
   generation_tasks,
   generation_requests,
