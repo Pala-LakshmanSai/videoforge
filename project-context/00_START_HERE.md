@@ -2,7 +2,23 @@
 
 ## Active handoff — read this section first
 
-### Current new-chat launch point — 2026-09-03
+### Current new-chat launch point — 2026-09-04
+
+- Provider-free repair `2d5d00f3` isolates `POST /prompts` into a dedicated dynamic route before
+  the broad product import. Prompt-only pipeline/control-plane package subpaths keep unrelated
+  stores and root barrels out of the path. The emitted Stage 5 incremental closure is 171,722 bytes
+  (128.74 KiB route plus 42.98 KiB shared helpers), below an enforced 256 KiB ceiling; the former
+  496.77 KiB product chunk is now 326.93 KiB.
+- Deployment quarantine requires the prompt route, rejects product/validator/generation/style/audio/
+  context dependencies even if hidden in the static closure, and enforces exact no-growth static
+  totals of 2,717,421 production bytes and 2,746,603 staging bytes. Crossed or unknown configs fail
+  closed. Focused web prompt tests pass 77/77, package prompt tests 40/40, guard tests 15/15, both
+  Worker builds/quarantines, web typecheck, lint, formatting, and independent re-audit pass.
+- This repair is source-green and undeployed. The live identity remains source `e3009a32` / Worker
+  `c0a78315-40b0-4f93-ab01-80b4eee89af3`; project `07f3235d-8f92-4de6-960b-86ebaf5d0ea8`
+  remains frozen. Fresh exact source-bound authority is required before one deployment and one new
+  Stage 1–5 project. No provider call, retrieval, deployment, GPU, RunPod, production, volume
+  mutation, or spend occurred while preparing the repair.
 
 - Clean source `e3009a32b41c9249518e2754c47fe7acbd7e03a4` was deployed exactly once to staging as
   Worker `c0a78315-40b0-4f93-ab01-80b4eee89af3` with rendered-config SHA-256
@@ -20,17 +36,17 @@
   the UI cost observation; no exact provider-spend claim is made.
 - No retry or provider retrieval occurred. Project `07f3235d-8f92-4de6-960b-86ebaf5d0ea8` and its authority are consumed and
   frozen; never retry, continue, or retrieve it.
-- Request v15 remains unqualified because Stage 5 accepted no prompt. The next work is provider-free:
-  bound Stage 5 cold-path modules and preserve its existing request-count, durable incremental-batch,
-  validation, no-redispatch, narration-grounding, pinned-style, and cost-conservation contracts.
-  Any deployment or fresh Stage 1–5 project requires new exact source-bound authority.
-- Bundle inspection isolates the Stage 5 cold-path seam: `app.ts` currently imports the broad
+- Request v15 remains unqualified because Stage 5 accepted no prompt. Repair `2d5d00f3` preserves
+  its existing request-count, durable incremental-batch, validation, no-redispatch,
+  narration-grounding, pinned-style, and cost-conservation contracts. Any deployment or fresh Stage
+  1–5 project requires new exact source-bound authority.
+- The repaired Stage 5 cold-path seam was isolated because `app.ts` previously imported the broad
   496,769-byte `product` route before dispatching `/prompts`, and that chunk statically carries
   unrelated style-analysis, audio, context, generation-persistence, R2, and GPU code. Give
-  `/prompts` its own dynamic route before the `product` import, backed only by narrow shared
+  `/prompts` now has its own dynamic route before the `product` import, backed only by narrow shared
   request/auth/database helpers and prompt-specific package subpaths. Deployment quarantine should
   require that dynamic entry, reject unrelated route/validator dependencies, cap its incremental
-  closure at 256 KiB, and keep the 2,746,065-byte shared entry on a no-growth guard. The shared entry
+  closure at 256 KiB, and keep exact per-target shared-entry no-growth guards. The shared entry
   is a cold-start risk but is not independently proven to be this Stage 5-only terminal cause.
 - Future fresh projects still use `scene-prompt-writer-v2`, narration-grounded structured scene facts,
   and adaptive batching with no project scene cap. Exactly one DeepSeek V4 Flash request is allowed

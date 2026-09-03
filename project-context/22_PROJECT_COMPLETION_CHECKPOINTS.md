@@ -39,6 +39,11 @@ reported separately.
 
 Repository truth at the 2026-09-03 handoff:
 
+- provider-free repair `2d5d00f3` isolates Stage 5 into a dedicated dynamic route with prompt-only
+  package subpaths. Its emitted incremental closure is 171,722 bytes under a 256 KiB gate; exact
+  production/staging static no-growth totals are 2,717,421/2,746,603 bytes. Focused prompt and guard
+  suites, typecheck, lint, formatting, both builds/quarantines, and independent re-audit pass. It is
+  undeployed and requires fresh exact source-bound deployment/project authority;
 - source `ffcc89c2` remains the historical accepted Stage 5 baseline. Current source
   `e3009a32b41c9249518e2754c47fe7acbd7e03a4` was deployed exactly once as Worker
   `c0a78315-40b0-4f93-ab01-80b4eee89af3` with rendered-config SHA-256
