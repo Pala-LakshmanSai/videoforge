@@ -109,12 +109,12 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
   }
 });
 
-test("hosted prompt progress upgrades the exact 0059 chain to 0070", async () => {
+test("hosted prompt progress upgrades the exact 0059 chain to 0071", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0070_hosted_prompt_scene_progress.sql");
+    assert.equal(sources.at(-1)?.filename, "0071_hosted_prompt_adaptive_batches.sql");
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -136,7 +136,7 @@ test("hosted prompt progress upgrades the exact 0059 chain to 0070", async () =>
     }
 
     const upgraded = await applyMigrations(executor, sources);
-    assert.deepEqual(upgraded.appliedVersions, [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70]);
+    assert.deepEqual(upgraded.appliedVersions, [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71]);
     const definitions = await executor.query(
       `SELECT proname, pg_get_functiondef(oid) AS definition
          FROM pg_proc
@@ -157,6 +157,8 @@ test("hosted prompt progress upgrades the exact 0059 chain to 0070", async () =>
       `SELECT c.relrowsecurity, c.relforcerowsecurity,
               to_regprocedure('public.videoforge_record_hosted_prompt_scene(uuid,jsonb)') IS NOT NULL
                 AS has_record,
+              to_regprocedure('public.videoforge_record_hosted_prompt_batch(uuid,jsonb)') IS NOT NULL
+                AS has_batch_record,
               to_regprocedure('public.videoforge_fail_hosted_prompt_run(uuid,text,text,boolean,bigint)') IS NOT NULL
                 AS has_bounded_failure,
               to_regprocedure('public.videoforge_fail_hosted_prompt_run(uuid,text,text,boolean)') IS NULL
@@ -169,8 +171,26 @@ test("hosted prompt progress upgrades the exact 0059 chain to 0070", async () =>
         relrowsecurity: true,
         relforcerowsecurity: true,
         has_record: true,
+        has_batch_record: true,
         has_bounded_failure: true,
         removed_legacy_failure: true,
+      },
+    ]);
+    const batchSurface = await executor.query(
+      `SELECT c.relrowsecurity, c.relforcerowsecurity,
+              to_regclass('public.hosted_prompt_batch_progress') IS NOT NULL AS has_batch_table,
+              EXISTS (SELECT 1 FROM information_schema.columns
+                        WHERE table_schema='public' AND table_name='hosted_prompt_runs'
+                          AND column_name='planned_batch_count') AS has_plan_metadata
+         FROM pg_class c
+        WHERE c.oid='public.hosted_prompt_batch_progress'::regclass`,
+    );
+    assert.deepEqual(batchSurface.rows, [
+      {
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        has_batch_table: true,
+        has_plan_metadata: true,
       },
     ]);
   } finally {

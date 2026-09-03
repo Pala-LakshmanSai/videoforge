@@ -870,6 +870,23 @@ describe("hosted product route contract", () => {
     expect(block).toContain('? "FAILED"');
   });
 
+  it("keeps project progress, prompt rows, and batch progress on one latest revision", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("async function projectDetail(");
+    const end = source.indexOf("async function projectManifest(", start);
+    const block = source.slice(start, end);
+    expect(block).toContain("ORDER BY revision.revision_number DESC");
+    expect(block).toContain("const currentRevisionId =");
+    expect(block).toContain("const currentTimelineId =");
+    expect(block).toContain("AND context.project_revision_id=$4");
+    expect(block).toContain("AND revision.id = $4");
+    expect(block).toContain("AND plan.id = head.current_timeline_plan_id");
+    expect(block).toContain("AND execution.project_revision_id=$4");
+    expect(block).toContain("AND execution.timeline_plan_id=$5");
+    expect(block).toContain("AND run.project_revision_id=$4");
+    expect(block).toContain("AND run.timeline_plan_id=$5");
+  });
+
   it("rechecks and locks active preset parents before hosted preset mutations", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
     const blocks = [

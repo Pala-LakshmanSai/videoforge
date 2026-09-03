@@ -8,17 +8,18 @@ import {
   type PromptExecutionStore,
 } from "@videoforge/control-plane";
 import {
-  buildPromptBatch,
   compileImagePrompt,
+  planPromptBatches,
   verifyCompiledImagePrompt,
   type CompiledImagePrompt,
+  type PromptBatchPlan,
   type PromptSceneInput,
   type PromptWriterSceneOutput,
 } from "@videoforge/pipeline";
 
 import {
   HostedRunwarePromptWriter,
-  type HostedAcceptedPromptScene,
+  type HostedAcceptedPromptBatch,
 } from "./runware-prompt-execution";
 
 type RecordValue = Record<string, unknown>;
@@ -176,7 +177,7 @@ function parseScenes(
   value: unknown,
   windows: ReadonlyMap<string, SentenceWindow>,
 ): readonly PromptSceneInput[] {
-  if (!Array.isArray(value) || value.length < 25 || value.length > 50)
+  if (!Array.isArray(value) || value.length < 1)
     throw new TypeError("Hosted prompt scene collection is invalid.");
   return Object.freeze(
     value.map((candidate) => {
@@ -291,8 +292,18 @@ export function hostedPromptAuthority(input: {
     accepted: null,
   });
   const authority = Object.freeze({ ...base, recordedInputHash: promptExecutionInputHash(base) });
-  buildPromptBatch({
-    batchId: `${authority.taskId}:batch:${authority.attemptOrdinal}`,
+  hostedPromptBatchPlan(authority);
+  return authority;
+}
+
+/**
+ * Derive transport batches from the complete immutable Stage 4 image-scene list.
+ * The planner changes only request grouping; it never changes scene boundaries,
+ * scene order, or the prompt-execution input hash.
+ */
+export function hostedPromptBatchPlan(authority: PromptExecutionAuthority): PromptBatchPlan {
+  return planPromptBatches({
+    batchIdPrefix: `${authority.taskId}:adaptive`,
     projectTitle: authority.projectTitle,
     imageStyleVersionId: authority.imageStyleVersionId,
     styleProfileHash: authority.styleProfileHash,
@@ -301,7 +312,33 @@ export function hostedPromptAuthority(input: {
     continuityTags: authority.continuityTags,
     scenes: authority.scenes,
   });
-  return authority;
+}
+
+export function hostedPromptBatchPlanDocument(plan: PromptBatchPlan): Record<string, unknown> {
+  return {
+    schema_version: "videoforge-hosted-prompt-batch-plan/v1",
+    planner_version: plan.planVersion,
+    batch_id_prefix: plan.batchIdPrefix,
+    total_scenes: plan.totalScenes,
+    batch_count: plan.batchCount,
+    max_input_tokens: plan.maxInputTokens,
+    max_output_tokens: plan.maxOutputTokens,
+    total_estimated_request_bytes: plan.totalEstimatedRequestBytes,
+    total_estimated_input_tokens: plan.totalEstimatedInputTokens,
+    total_estimated_output_tokens: plan.totalEstimatedOutputTokens,
+    batches: plan.batches.map((batch) => ({
+      ordinal: batch.ordinal - 1,
+      batch_id: batch.batchId,
+      first_scene_ordinal: batch.sceneStartIndex,
+      scene_end_ordinal_exclusive: batch.sceneEndIndexExclusive,
+      scene_ids: batch.sceneIds,
+      estimated_request_bytes: batch.estimatedRequestBytes,
+      estimated_input_tokens: batch.estimatedInputTokens,
+      estimated_output_tokens: batch.estimatedOutputTokens,
+      max_output_tokens: batch.maxOutputTokens,
+      ends_at_natural_boundary: batch.endsAtNaturalBoundary,
+    })),
+  };
 }
 
 class HostedPromptStore implements PromptExecutionStore {
@@ -332,14 +369,19 @@ class HostedPromptStore implements PromptExecutionStore {
 export async function runHostedPromptExecution(input: {
   readonly scope: PromptExecutionScope;
   readonly authority: PromptExecutionAuthority;
+  readonly batchPlan: PromptBatchPlan;
   readonly command: PromptExecutionCommand;
   readonly apiKey: string;
   readonly persist: (accepted: AcceptedPromptExecution) => Promise<void>;
-  readonly persistScene?: (scene: {
-    readonly sceneOrdinal: number;
-    readonly sceneId: string;
-    readonly writerOutput: PromptWriterSceneOutput;
-    readonly compiledPrompt: CompiledImagePrompt;
+  readonly persistBatch?: (batch: {
+    readonly batchOrdinal: number;
+    readonly firstSceneOrdinal: number;
+    readonly scenes: readonly {
+      readonly sceneOrdinal: number;
+      readonly sceneId: string;
+      readonly writerOutput: PromptWriterSceneOutput;
+      readonly compiledPrompt: CompiledImagePrompt;
+    }[];
     readonly requestBytes: string;
     readonly requestHash: `sha256:${string}`;
     readonly responseBytes: string;
@@ -350,23 +392,36 @@ export async function runHostedPromptExecution(input: {
   }) => Promise<void>;
   readonly fetcher?: typeof fetch;
 }): Promise<AcceptedPromptExecution> {
-  const persistScene = async (accepted: HostedAcceptedPromptScene) => {
-    const expectedScene = input.authority.scenes[accepted.sceneOrdinal];
-    if (!expectedScene || expectedScene.sceneId !== accepted.scene.sceneId)
-      throw new Error("HOSTED_PROMPT_SCENE_ORDER_INVALID");
-    const compiledPrompt = compileImagePrompt({
-      writerOutput: accepted.writerOutput,
-      expectedScene,
-      style: input.authority.style,
-      extraPromptKeywords: input.authority.extraPromptKeywords,
-      applyExtraPromptKeywords: input.authority.applyExtraPromptKeywords,
+  const persistBatch = async (accepted: HostedAcceptedPromptBatch) => {
+    if (accepted.firstSceneOrdinal !== accepted.scenes[0]?.sceneOrdinal)
+      throw new Error("HOSTED_PROMPT_BATCH_ORDER_INVALID");
+    const scenes = accepted.scenes.map((scene, index) => {
+      const expectedScene = input.authority.scenes[accepted.firstSceneOrdinal + index];
+      if (
+        !expectedScene ||
+        scene.sceneOrdinal !== accepted.firstSceneOrdinal + index ||
+        expectedScene.sceneId !== scene.scene.sceneId
+      )
+        throw new Error("HOSTED_PROMPT_SCENE_ORDER_INVALID");
+      const compiledPrompt = compileImagePrompt({
+        writerOutput: scene.writerOutput,
+        expectedScene,
+        style: input.authority.style,
+        extraPromptKeywords: input.authority.extraPromptKeywords,
+        applyExtraPromptKeywords: input.authority.applyExtraPromptKeywords,
+      });
+      verifyCompiledImagePrompt(compiledPrompt);
+      return Object.freeze({
+        sceneOrdinal: scene.sceneOrdinal,
+        sceneId: expectedScene.sceneId,
+        writerOutput: scene.writerOutput,
+        compiledPrompt,
+      });
     });
-    verifyCompiledImagePrompt(compiledPrompt);
-    await input.persistScene?.({
-      sceneOrdinal: accepted.sceneOrdinal,
-      sceneId: expectedScene.sceneId,
-      writerOutput: accepted.writerOutput,
-      compiledPrompt,
+    await input.persistBatch?.({
+      batchOrdinal: accepted.batchOrdinal,
+      firstSceneOrdinal: accepted.firstSceneOrdinal,
+      scenes: Object.freeze(scenes),
       requestBytes: accepted.requestBytes,
       requestHash: accepted.requestHash,
       responseBytes: accepted.responseBytes,
@@ -378,7 +433,7 @@ export async function runHostedPromptExecution(input: {
   };
   const result = await new DurablePromptExecutionService(
     new HostedPromptStore(input.authority, input.persist),
-    new HostedRunwarePromptWriter(input.apiKey, input.fetcher, persistScene),
+    new HostedRunwarePromptWriter(input.apiKey, input.batchPlan, input.fetcher, persistBatch),
     { record() {} },
     { now: () => new Date().toISOString() },
   ).execute(input.scope, input.command);

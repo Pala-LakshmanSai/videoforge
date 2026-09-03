@@ -159,6 +159,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "hosted_project_reviews",
   "hosted_voiceover_contexts",
   "hosted_prompt_runs",
+  "hosted_prompt_batch_progress",
   "hosted_prompt_scene_progress",
   "media_worker_enrollments",
   "media_worker_devices",

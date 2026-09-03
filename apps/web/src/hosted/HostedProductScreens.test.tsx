@@ -1865,6 +1865,9 @@ describe("hosted product journey", () => {
           planned_tasks: 2,
           completed_tasks: 0,
           failed_tasks: 0,
+          total_segments: 8,
+          image_scene_count: 6,
+          avatar_segment_count: 2,
           stage: "WAITING_FOR_GPU_QUALIFICATION" as const,
         },
         stages: [
@@ -1876,21 +1879,33 @@ describe("hosted product journey", () => {
           },
         ],
         prompts: [],
+        prompt_progress: {
+          total_scenes: 6,
+          accepted_scenes: 0,
+          total_batches: 2,
+          accepted_batches: 0,
+          active_batch_ordinal: 1,
+        },
       });
     });
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
     expect(await screen.findByRole("heading", { name: "Image prompts" })).toBeInTheDocument();
-    expect(screen.getByText("Writing and validating")).toBeInTheDocument();
-    expect(
-      screen.getByText(/DeepSeek V4 Flash is writing the first narration scene/u),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Batch 1 of 2 · 0 / 6 prompts accepted")).toBeInTheDocument();
+    expect(screen.getByText(/Writing batch 1 of 2/u)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Plan scenes detail" })).toBeInTheDocument();
+    expect(screen.getByText("Total segments")).toBeInTheDocument();
+    expect(screen.getByText("Image scenes")).toBeInTheDocument();
+    expect(screen.getByText("Avatar segments")).toBeInTheDocument();
+    expect(screen.getByText("8")).toBeInTheDocument();
+    expect(screen.getByText("6")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 
-  it("shows each durably accepted prompt while Stage 5 writes the next scene", async () => {
+  it("shows final and batch-accepted prompts while Stage 5 writes the next batch", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       void input;
@@ -1942,16 +1957,40 @@ describe("hosted product journey", () => {
             image_style_version_id: "style-version",
             style_profile_hash: `sha256:${"d".repeat(64)}`,
             style_name: "Documentary",
+            durable: true,
+          },
+          {
+            scene_ordinal: 1,
+            scene_id: "scene-draft",
+            narration: "This row was saved with the accepted first batch.",
+            in_image_shot_role: "HUMAN_DETAIL",
+            timeline_composition: "IMAGE_FULL",
+            positive_prompt: "Batch-accepted practical prompt",
+            negative_prompt: "",
+            image_style_version_id: "style-version",
+            style_profile_hash: `sha256:${"d".repeat(64)}`,
+            style_name: "Documentary",
+            durable: false,
           },
         ],
+        prompt_progress: {
+          total_scenes: 4,
+          accepted_scenes: 2,
+          total_batches: 2,
+          accepted_batches: 1,
+          active_batch_ordinal: 2,
+        },
       });
     });
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
-    expect(await screen.findByText("1 accepted · writing next scene")).toBeInTheDocument();
+    expect(await screen.findByText("Batch 2 of 2 · 2 / 4 prompts accepted")).toBeInTheDocument();
+    expect(screen.getByText("2 / 4 prompts accepted")).toBeInTheDocument();
     const promptRegion = screen.getByRole("region", { name: "Accepted image prompts" });
+    expect(within(promptRegion).getAllByRole("listitem")).toHaveLength(2);
     expect(within(promptRegion).getByText(/maker checking a worn prototype/u)).toBeInTheDocument();
+    expect(within(promptRegion).getByText("Batch-accepted practical prompt")).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 

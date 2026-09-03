@@ -420,6 +420,12 @@
       "name": "hosted_prompt_scene_progress",
       "filename": "0070_hosted_prompt_scene_progress.sql",
       "sha256": "sha256:b67fc1108168772ddaa9f2b46387083f82cf602203dd83517ea894e2119a59d5"
+    },
+    {
+      "version": 71,
+      "name": "hosted_prompt_adaptive_batches",
+      "filename": "0071_hosted_prompt_adaptive_batches.sql",
+      "sha256": "sha256:8dcf727566e118b5af86a10758545241985b8b1c4fa1b3e8a0f66f147deedc1d"
     }
   ]
 }

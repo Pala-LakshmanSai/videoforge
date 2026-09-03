@@ -596,6 +596,8 @@ interface HostedStage {
   readonly eta_ms?: number | null;
 }
 
+type HostedCount = number | string | null | undefined;
+
 interface HostedScaleToZero {
   readonly state: string;
   readonly worker_count?: number | null;
@@ -649,6 +651,9 @@ interface ProjectDetailResponse {
     readonly planned_tasks: number | string;
     readonly completed_tasks: number | string;
     readonly failed_tasks: number | string;
+    readonly total_segments?: HostedCount;
+    readonly image_scene_count?: HostedCount;
+    readonly avatar_segment_count?: HostedCount;
     readonly stage:
       | "WAITING_FOR_GPU_QUALIFICATION"
       | "READY_FOR_GPU_DISPATCH"
@@ -666,7 +671,16 @@ interface ProjectDetailResponse {
     readonly image_style_version_id: string;
     readonly style_profile_hash: string;
     readonly style_name: string;
+    /** True after final acceptance; false rows are already batch-accepted progress. */
+    readonly durable?: boolean;
   }[];
+  readonly prompt_progress?: null | {
+    readonly total_scenes?: HostedCount;
+    readonly accepted_scenes?: HostedCount;
+    readonly total_batches?: HostedCount;
+    readonly accepted_batches?: HostedCount;
+    readonly active_batch_ordinal?: HostedCount;
+  };
   readonly voiceover_context?: null | {
     readonly id: string;
     readonly state: "DISPATCHING" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
@@ -1165,6 +1179,21 @@ function formatMilliseconds(value: number | null | undefined): string {
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
   return `${minutes}m ${String(remainder).padStart(2, "0")}s`;
+}
+
+function hostedCount(value: HostedCount): number | null {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim().length > 0
+        ? Number(value)
+        : Number.NaN;
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function hostedCountLabel(value: HostedCount): string {
+  const parsed = hostedCount(value);
+  return parsed === null ? "Not reported" : parsed.toLocaleString();
 }
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -3476,12 +3505,44 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
   );
   const prompts = query.data.prompts ?? [];
+  // The API exposes no raw/in-flight model output. Both final rows and
+  // `durable: false` progress rows have already passed local validation and an
+  // atomic batch-progress commit, so both belong in the live viewer.
+  const acceptedPrompts = prompts;
+  const promptProgress = query.data.prompt_progress;
   const promptWritingActive =
     promptWriting.isPending ||
     ["STARTING", "RUNNING", "RETRYING"].includes(promptStage?.status ?? "");
   const promptWritingStopped = ["FAILED", "ACTION_REQUIRED"].includes(promptStage?.status ?? "");
+  const acceptedPromptCount =
+    hostedCount(promptProgress?.accepted_scenes) ?? acceptedPrompts.length;
+  const totalPromptCount = hostedCount(promptProgress?.total_scenes);
+  const acceptedBatchCount = hostedCount(promptProgress?.accepted_batches);
+  const totalBatchCount = hostedCount(promptProgress?.total_batches);
+  const activeBatchOrdinal = hostedCount(promptProgress?.active_batch_ordinal);
+  const hasBatchProgress =
+    totalBatchCount !== null || acceptedBatchCount !== null || activeBatchOrdinal !== null;
+  const visibleBatchOrdinal =
+    activeBatchOrdinal ??
+    (promptWritingActive && totalBatchCount !== null && totalBatchCount > 0
+      ? Math.min(totalBatchCount, (acceptedBatchCount ?? 0) + 1)
+      : acceptedBatchCount !== null && acceptedBatchCount > 0
+        ? acceptedBatchCount
+        : null);
+  const acceptedPromptStatus =
+    totalPromptCount === null
+      ? `${acceptedPromptCount.toLocaleString()} accepted prompts`
+      : `${acceptedPromptCount.toLocaleString()} / ${totalPromptCount.toLocaleString()} prompts accepted`;
+  const promptBatchStatus =
+    visibleBatchOrdinal === null
+      ? totalBatchCount === null
+        ? "Batch progress pending"
+        : `Preparing batch of ${totalBatchCount.toLocaleString()}`
+      : totalBatchCount === null
+        ? `Batch ${visibleBatchOrdinal.toLocaleString()}`
+        : `Batch ${visibleBatchOrdinal.toLocaleString()} of ${totalBatchCount.toLocaleString()}`;
   const showPromptFeed = Boolean(
-    query.data.generation || promptWritingActive || prompts.length > 0,
+    query.data.generation || promptWritingActive || acceptedPrompts.length > 0,
   );
   return (
     <>
@@ -3559,6 +3620,38 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       <div className="progress-workspace">
         <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
           <StageTimeline stages={uiStages} />
+          {query.data.generation ? (
+            <section
+              className="generation-plan-summary"
+              aria-labelledby="generation-plan-summary-heading"
+            >
+              <div className="generation-plan-summary-heading">
+                <div>
+                  <p className="eyebrow">Stage 4 · deterministic timeline</p>
+                  <h3 id="generation-plan-summary-heading">Plan scenes detail</h3>
+                </div>
+                <Badge tone="success">Saved</Badge>
+              </div>
+              <div className="detail-facts generation-plan-facts">
+                <span>
+                  <small>Total segments</small>
+                  <strong>{hostedCountLabel(query.data.generation.total_segments)}</strong>
+                </span>
+                <span>
+                  <small>Image scenes</small>
+                  <strong>{hostedCountLabel(query.data.generation.image_scene_count)}</strong>
+                </span>
+                <span>
+                  <small>Avatar segments</small>
+                  <strong>{hostedCountLabel(query.data.generation.avatar_segment_count)}</strong>
+                </span>
+              </div>
+              <p className="helper generation-plan-summary-helper">
+                These counts come from the saved deterministic timeline. Stage 5 writes prompts only
+                for its image scenes and keeps the original scene boundaries for assembly.
+              </p>
+            </section>
+          ) : null}
         </Panel>
         <div className="progress-side">
           {showPromptFeed ? (
@@ -3570,7 +3663,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                       ? " is-stopped"
                       : promptWritingActive
                         ? " is-active"
-                        : prompts.length > 0
+                        : acceptedPromptCount > 0
                           ? " is-success"
                           : ""
                   }`}
@@ -3578,19 +3671,50 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 />
                 <strong>
                   {promptWritingStopped
-                    ? prompts.length > 0
-                      ? `${prompts.length} accepted before writing stopped`
+                    ? acceptedPromptCount > 0
+                      ? `${acceptedPromptStatus} before writing stopped`
                       : "Prompt writing stopped"
                     : promptWritingActive
-                      ? prompts.length > 0
-                        ? `${prompts.length} accepted · writing next scene`
-                        : "Writing and validating"
-                      : prompts.length > 0
-                        ? `${prompts.length} accepted prompts`
+                      ? hasBatchProgress
+                        ? `${promptBatchStatus} · ${acceptedPromptStatus}`
+                        : acceptedPromptCount > 0
+                          ? `${acceptedPromptStatus} · writing current batch`
+                          : "Writing prompt batches"
+                      : acceptedPromptCount > 0
+                        ? acceptedPromptStatus
                         : "Waiting to start"}
                 </strong>
               </div>
-              {prompts.length > 0 ? (
+              {hasBatchProgress ? (
+                <div className="live-prompt-progress" aria-label="Prompt batch progress">
+                  <span>
+                    <small>Batch progress</small>
+                    <strong>{promptBatchStatus}</strong>
+                  </span>
+                  <span>
+                    <small>Accepted prompts</small>
+                    <strong>{acceptedPromptStatus}</strong>
+                  </span>
+                </div>
+              ) : null}
+              <p
+                className={`live-prompt-activity${promptWritingActive ? " is-active" : ""}`}
+                aria-live="polite"
+              >
+                {promptWritingActive ? (
+                  <span className="live-prompt-activity-pulse" aria-hidden="true" />
+                ) : null}
+                {promptWritingActive
+                  ? hasBatchProgress
+                    ? `Writing ${promptBatchStatus.toLowerCase()}. Accepted rows appear after the batch is validated and saved.`
+                    : "DeepSeek V4 Flash is writing prompt batches. Accepted rows appear after each batch is validated and saved."
+                  : promptWritingStopped
+                    ? "No new prompt batch will be sent automatically."
+                    : acceptedPrompts.length > 0
+                      ? "All visible rows were validated and saved."
+                      : "Prompt writing starts automatically after the scene plan is ready."}
+              </p>
+              {acceptedPrompts.length > 0 ? (
                 <div
                   className="live-prompt-scroll"
                   role="region"
@@ -3598,7 +3722,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   tabIndex={0}
                 >
                   <ol className="live-prompt-list">
-                    {prompts.map((prompt) => (
+                    {acceptedPrompts.map((prompt) => (
                       <li className="live-prompt-item" key={prompt.scene_id}>
                         <div className="live-prompt-item-heading">
                           <strong>Scene {Number(prompt.scene_ordinal) + 1}</strong>
@@ -3620,7 +3744,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   {promptWritingActive ? <span className="spinner" aria-hidden="true" /> : null}
                   <p>
                     {promptWritingActive
-                      ? "DeepSeek V4 Flash is writing the first narration scene. Each scene appears here after it is validated and saved."
+                      ? "DeepSeek V4 Flash is writing prompt batches. Accepted rows will appear here after the current batch is validated and saved."
                       : promptWritingStopped
                         ? "No accepted prompts were saved. VideoForge stopped without redispatching the request."
                         : "Prompt writing starts automatically after the scene plan is ready."}
@@ -3628,8 +3752,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 </div>
               )}
               <p className="helper live-prompt-helper">
-                DeepSeek V4 Flash receives one bounded narration scene at a time. Only locally
-                validated, saved prompts appear here; the list updates while Stage 5 continues.
+                DeepSeek V4 Flash receives the image-scene plan in context-sized batches. Only
+                locally validated, durably saved prompts appear here.
               </p>
             </Panel>
           ) : null}

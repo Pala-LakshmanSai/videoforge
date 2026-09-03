@@ -28,6 +28,8 @@ import { HostedR2Signer } from "./r2";
 import { canonicalJson } from "./submission";
 import {
   hostedPromptAuthority,
+  hostedPromptBatchPlan,
+  hostedPromptBatchPlanDocument,
   runHostedPromptExecution,
   type HostedPromptIdentity,
 } from "./hosted-prompt-run";
@@ -4244,9 +4246,10 @@ export function hostedGpuProductState(readiness: Pick<HostedGpuReadiness, "dispa
 export function hostedPromptWritingState(
   promptTaskState: unknown,
   planExists: boolean,
+  progress?: { readonly acceptedScenes: number; readonly totalScenes: number },
 ): {
   readonly status: "COMPLETE" | "FAILED" | "BLOCKED" | "RETRY_WAIT" | "RUNNING" | "WAITING";
-  readonly progressPercent: 0 | 100;
+  readonly progressPercent: number;
   readonly detail: string;
 } {
   const taskState = typeof promptTaskState === "string" ? promptTaskState : "";
@@ -4258,7 +4261,12 @@ export function hostedPromptWritingState(
         ) ?? "WAITING");
   return {
     status,
-    progressPercent: status === "COMPLETE" ? 100 : 0,
+    progressPercent:
+      status === "COMPLETE"
+        ? 100
+        : progress && progress.totalScenes > 0
+          ? Math.min(99, Math.floor((progress.acceptedScenes / progress.totalScenes) * 100))
+          : 0,
     detail:
       status === "COMPLETE"
         ? "Durable accepted scene prompts are ready for image generation."
@@ -5729,6 +5737,8 @@ async function writeProjectPrompts(
       identity,
       reservedCostMicroUsd: HOSTED_PROMPT_RESERVATION_MICRO_USD,
     });
+    const batchPlan = hostedPromptBatchPlan(authority);
+    const batchPlanHash = await sha256(canonicalJson(hostedPromptBatchPlanDocument(batchPlan)));
     const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
@@ -5754,6 +5764,9 @@ async function writeProjectPrompts(
             input_hash: authority.recordedInputHash,
             claim_token_hash: identity.claimTokenHash,
             reserved_cost_micro_usd: HOSTED_PROMPT_RESERVATION_MICRO_USD,
+            planned_batch_count: batchPlan.batchCount,
+            planned_scene_count: batchPlan.totalScenes,
+            batch_plan_hash: batchPlanHash,
           }),
         ],
       );
@@ -5765,6 +5778,7 @@ async function writeProjectPrompts(
     const accepted = await runHostedPromptExecution({
       scope: { workspaceId: scope.workspace_id, actorUserId: scope.user_id },
       authority,
+      batchPlan,
       command: {
         projectId,
         revisionId: authority.revisionId,
@@ -5775,34 +5789,38 @@ async function writeProjectPrompts(
         presentedClaimTokenHash: identity.claimTokenHash,
       },
       apiKey: promptApiKey,
-      persistScene: async (scene) => {
+      persistBatch: async (batch) => {
         const recorded = await createNeonExecutor(pool).transaction(async (transaction) => {
           await transaction.query("SELECT set_config($1, $2, true)", [
             "videoforge.account_id",
             scope.account_id,
           ]);
           const result = await transaction.query<{ recorded: boolean }>(
-            "SELECT public.videoforge_record_hosted_prompt_scene($1,$2::jsonb) AS recorded",
+            "SELECT public.videoforge_record_hosted_prompt_batch($1,$2::jsonb) AS recorded",
             [
               identity.runId,
               JSON.stringify({
-                scene_ordinal: scene.sceneOrdinal,
-                scene_id: scene.sceneId,
-                request_bytes: scene.requestBytes,
-                request_hash: scene.requestHash,
-                response_bytes: scene.responseBytes,
-                response_hash: scene.responseHash,
-                writer_output: scene.writerOutput,
-                compiled_prompt: scene.compiledPrompt,
-                input_tokens: scene.inputTokens,
-                output_tokens: scene.outputTokens,
-                reported_cost_micro_usd: scene.reportedCostMicroUsd,
+                batch_ordinal: batch.batchOrdinal,
+                first_scene_ordinal: batch.firstSceneOrdinal,
+                request_bytes: batch.requestBytes,
+                request_hash: batch.requestHash,
+                response_bytes: batch.responseBytes,
+                response_hash: batch.responseHash,
+                input_tokens: batch.inputTokens,
+                output_tokens: batch.outputTokens,
+                reported_cost_micro_usd: batch.reportedCostMicroUsd,
+                scenes: batch.scenes.map((scene) => ({
+                  scene_ordinal: scene.sceneOrdinal,
+                  scene_id: scene.sceneId,
+                  writer_output: scene.writerOutput,
+                  compiled_prompt: scene.compiledPrompt,
+                })),
               }),
             ],
           );
           return result.rows[0]?.recorded === true;
         });
-        if (!recorded) throw new Error("HOSTED_PROMPT_SCENE_PROGRESS_REJECTED");
+        if (!recorded) throw new Error("HOSTED_PROMPT_BATCH_PROGRESS_REJECTED");
       },
       persist: async (acceptance) => {
         const completed = await createNeonExecutor(pool).transaction(async (transaction) => {
@@ -6035,9 +6053,17 @@ async function projectDetail(
             AND revision.project_id = project.id
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
             AND project.status = 'ACTIVE'
-            AND project.project_kind = 'USER'`,
+            AND project.project_kind = 'USER'
+          ORDER BY revision.revision_number DESC
+          LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId],
       );
+      const selectedRevisionId = (project.rows[0] as Record<string, unknown> | undefined)
+        ?.revision_id;
+      const currentRevisionId =
+        typeof selectedRevisionId === "string" && UUID.test(selectedRevisionId)
+          ? selectedRevisionId
+          : null;
       const attempts = await transaction.query(
         `SELECT attempt.id, attempt.kind, attempt.state, attempt.version, attempt.created_at,
                 attempt.updated_at, attempt.submitted_at, attempt.terminal_at,
@@ -6078,11 +6104,34 @@ async function projectDetail(
                 context.provider_may_have_charged, context.started_at, context.finished_at
            FROM hosted_voiceover_contexts AS context
           WHERE context.account_id=$1 AND context.workspace_id=$2 AND context.project_id=$3
+            AND context.project_revision_id=$4
           ORDER BY context.created_at DESC LIMIT 1`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const generation = await transaction.query(
         `SELECT plan.id, plan.canonical_document_hash AS timeline_plan_sha256,
+                (SELECT count(*)
+                   FROM timeline_segments AS segment
+                  WHERE segment.account_id = revision.account_id
+                    AND segment.workspace_id = revision.workspace_id
+                    AND segment.project_revision_id = revision.id
+                    AND segment.timeline_plan_id = plan.id) AS total_segments,
+                (SELECT count(*)
+                   FROM timeline_segments AS segment
+                  WHERE segment.account_id = revision.account_id
+                    AND segment.workspace_id = revision.workspace_id
+                    AND segment.project_revision_id = revision.id
+                    AND segment.timeline_plan_id = plan.id
+                    AND segment.timeline_composition IN ('IMAGE_FULL','AVATAR_SPLIT_IMAGE'))
+                  AS image_scene_count,
+                (SELECT count(*)
+                   FROM timeline_segments AS segment
+                  WHERE segment.account_id = revision.account_id
+                    AND segment.workspace_id = revision.workspace_id
+                    AND segment.project_revision_id = revision.id
+                    AND segment.timeline_plan_id = plan.id
+                    AND segment.timeline_composition IN ('AVATAR_FULL','AVATAR_SPLIT_IMAGE'))
+                  AS avatar_segment_count,
                 count(task.id) FILTER (WHERE task.lane IN ('IMAGE', 'AVATAR')) AS planned_tasks,
                 count(task.id) FILTER (
                   WHERE task.lane IN ('IMAGE', 'AVATAR') AND task.state = 'COMPLETE'
@@ -6094,18 +6143,30 @@ async function projectDetail(
                   FILTER (WHERE task.lane = 'PROMPT'
                     AND task.task_key LIKE 'prompt:scene-batch:%'))[1] AS prompt_task_state
            FROM project_revisions AS revision
+           JOIN revision_timing_heads AS head
+             ON head.account_id = revision.account_id
+            AND head.workspace_id = revision.workspace_id
+            AND head.project_revision_id = revision.id
            JOIN timeline_plans AS plan
-             ON plan.workspace_id = revision.workspace_id
-            AND plan.project_revision_id = revision.id
+             ON plan.account_id = head.account_id
+            AND plan.workspace_id = head.workspace_id
+            AND plan.project_revision_id = head.project_revision_id
+            AND plan.id = head.current_timeline_plan_id
            LEFT JOIN generation_tasks AS task
              ON task.workspace_id = revision.workspace_id
             AND task.project_revision_id = revision.id
           WHERE revision.account_id = $1 AND revision.workspace_id = $2
             AND revision.project_id = $3
+            AND revision.id = $4
           GROUP BY plan.id, plan.canonical_document_hash, plan.plan_sequence
           ORDER BY plan.plan_sequence DESC LIMIT 1`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
+      const selectedTimelineId = (generation.rows[0] as Record<string, unknown> | undefined)?.id;
+      const currentTimelineId =
+        typeof selectedTimelineId === "string" && UUID.test(selectedTimelineId)
+          ? selectedTimelineId
+          : null;
       const prompts = await transaction.query(
         `WITH prompt_rows AS (
           SELECT result.scene_ordinal, result.scene_id, execution.project_revision_id,
@@ -6121,6 +6182,8 @@ async function projectDetail(
              AND result.prompt_execution_id=execution.id
            WHERE execution.account_id=$1 AND execution.workspace_id=$2
              AND execution.project_id=$3
+             AND execution.project_revision_id=$4
+             AND execution.timeline_plan_id=$5
           UNION ALL
           SELECT progress.scene_ordinal,progress.scene_id,run.project_revision_id,
                  run.timeline_plan_id,
@@ -6136,6 +6199,8 @@ async function projectDetail(
               ON revision.account_id=run.account_id AND revision.workspace_id=run.workspace_id
              AND revision.id=run.project_revision_id
            WHERE run.account_id=$1 AND run.workspace_id=$2 AND run.project_id=$3
+             AND run.project_revision_id=$4
+             AND run.timeline_plan_id=$5
              AND NOT EXISTS (SELECT 1 FROM prompt_executions execution
                WHERE execution.account_id=run.account_id AND execution.workspace_id=run.workspace_id
                  AND execution.task_id=run.task_id)
@@ -6161,7 +6226,42 @@ async function projectDetail(
             AND style.workspace_id = style_version.workspace_id
             AND style.id = style_version.style_id
           ORDER BY result.scene_ordinal`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId, currentTimelineId],
+      );
+      const promptProgress = await transaction.query(
+        `SELECT run.state,
+                COALESCE(run.planned_scene_count, expected.scene_count) AS total_scenes,
+                count(DISTINCT scene.id) AS accepted_scenes,
+                run.planned_batch_count AS total_batches,
+                count(DISTINCT batch.id) AS accepted_batches,
+                CASE
+                  WHEN run.state = 'DISPATCHING' AND run.planned_batch_count IS NOT NULL
+                    THEN least(run.planned_batch_count, count(DISTINCT batch.id)::integer + 1)
+                  ELSE NULL
+                END AS active_batch_ordinal
+           FROM hosted_prompt_runs AS run
+           LEFT JOIN hosted_prompt_scene_progress AS scene
+             ON scene.account_id=run.account_id AND scene.workspace_id=run.workspace_id
+            AND scene.run_id=run.id
+           LEFT JOIN hosted_prompt_batch_progress AS batch
+             ON batch.account_id=run.account_id AND batch.workspace_id=run.workspace_id
+            AND batch.run_id=run.id
+           LEFT JOIN LATERAL (
+             SELECT count(*)::integer AS scene_count
+               FROM timeline_segments AS segment
+              WHERE segment.account_id=run.account_id
+                AND segment.workspace_id=run.workspace_id
+                AND segment.project_revision_id=run.project_revision_id
+                AND segment.timeline_plan_id=run.timeline_plan_id
+                AND segment.timeline_composition IN ('IMAGE_FULL','AVATAR_SPLIT_IMAGE')
+           ) AS expected ON true
+          WHERE run.account_id=$1 AND run.workspace_id=$2 AND run.project_id=$3
+            AND run.project_revision_id=$4
+            AND run.timeline_plan_id=$5
+          GROUP BY run.id, run.state, run.planned_scene_count, run.planned_batch_count,
+                   expected.scene_count, run.created_at
+          ORDER BY run.created_at DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId, currentTimelineId],
       );
       const queue = await transaction.query(
         `SELECT request.id, request.state, request.queue_order, request.available_at,
@@ -6323,6 +6423,7 @@ async function projectDetail(
         voiceoverContext: voiceoverContext.rows[0] ?? null,
         generation: generation.rows[0] ?? null,
         prompts: prompts.rows,
+        promptProgress: promptProgress.rows[0] ?? null,
         queue: queue.rows[0] ?? null,
         runtime: runtime.rows[0] ?? null,
         serverlessAttempts: serverlessAttempts.rows,
@@ -6442,9 +6543,13 @@ async function projectDetail(
     );
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
     const gpuPendingState = hostedGpuProductState(gpuReadiness).pendingState;
+    const promptProgress = detail.promptProgress as Record<string, unknown> | null;
+    const acceptedPromptScenes = numberOrNull(promptProgress?.accepted_scenes) ?? 0;
+    const totalPromptScenes = numberOrNull(promptProgress?.total_scenes) ?? 0;
     const promptStage = hostedPromptWritingState(
       (detail.generation as Record<string, unknown> | null)?.prompt_task_state,
       detail.generation !== null,
+      { acceptedScenes: acceptedPromptScenes, totalScenes: totalPromptScenes },
     );
     const voiceoverContext = detail.voiceoverContext as Record<string, unknown> | null;
     const contextState = String(voiceoverContext?.state ?? "WAITING");
@@ -6723,6 +6828,7 @@ async function projectDetail(
                     : gpuPendingState,
             },
       prompts: detail.prompts,
+      prompt_progress: promptProgress,
       voiceover_context: voiceoverContext,
       queue,
       stages,

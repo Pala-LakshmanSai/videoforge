@@ -647,6 +647,14 @@
 }
 
 @media (max-width: 680px) {
+  .live-prompt-progress {
+    grid-template-columns: 1fr;
+  }
+
+  .generation-plan-summary-heading {
+    flex-direction: column;
+  }
+
   .form-section-title:not(:first-child) {
     padding-top: 20px;
   }

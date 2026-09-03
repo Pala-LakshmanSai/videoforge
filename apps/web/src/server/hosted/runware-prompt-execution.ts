@@ -9,6 +9,7 @@ import {
   RunwarePromptWriter,
   validatePromptWriterOutput,
   type PromptBatch,
+  type PromptBatchPlan,
   type PromptSceneInput,
   type PromptWriterSceneOutput,
   type RunwarePromptAttemptEvidence,
@@ -25,7 +26,6 @@ import {
 
 export const HOSTED_PROMPT_RESERVATION_MICRO_USD = 40_000 as const;
 export const HOSTED_PROMPT_RESERVATION_USD = HOSTED_PROMPT_RESERVATION_MICRO_USD / 1_000_000;
-const PER_SCENE_CAP_USD = HOSTED_PROMPT_RESERVATION_USD / 50;
 
 type CapturedAttempt = {
   request: RunwarePromptTransportRequest;
@@ -33,10 +33,15 @@ type CapturedAttempt = {
   evidence: RunwarePromptAttemptEvidence | null;
 };
 
-export interface HostedAcceptedPromptScene {
-  readonly sceneOrdinal: number;
-  readonly scene: PromptSceneInput;
-  readonly writerOutput: PromptWriterSceneOutput;
+export interface HostedAcceptedPromptBatch {
+  /** Zero-based durable transport ordinal. */
+  readonly batchOrdinal: number;
+  readonly firstSceneOrdinal: number;
+  readonly scenes: readonly {
+    readonly sceneOrdinal: number;
+    readonly scene: PromptSceneInput;
+    readonly writerOutput: PromptWriterSceneOutput;
+  }[];
   readonly requestBytes: string;
   readonly requestHash: Sha256Digest;
   readonly responseBytes: string;
@@ -79,8 +84,8 @@ async function sha256Utf8(value: string): Promise<Sha256Digest> {
 }
 
 function actualCostMicroUsd(value: number): number {
-  if (!Number.isFinite(value) || value < 0 || value > PER_SCENE_CAP_USD)
-    throw new RangeError("Runware prompt cost exceeds its per-scene reservation.");
+  if (!Number.isFinite(value) || value < 0 || value > HOSTED_PROMPT_RESERVATION_USD)
+    throw new RangeError("Runware prompt cost exceeds the hosted prompt reservation.");
   return Math.ceil(value * 1_000_000);
 }
 
@@ -89,36 +94,44 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
 
   public constructor(
     private readonly apiKey: string,
+    private readonly plan: PromptBatchPlan,
     private readonly fetcher: typeof fetch = fetch,
-    private readonly onSceneAccepted?: (scene: HostedAcceptedPromptScene) => Promise<void> | void,
+    private readonly onBatchAccepted?: (batch: HostedAcceptedPromptBatch) => Promise<void> | void,
   ) {
     if (apiKey.trim().length === 0) throw new TypeError("Runware API key is required.");
   }
 
   public async write(batch: PromptBatch): Promise<DurablePromptWriterResult> {
+    const plannedSceneIds = this.plan.batches.flatMap((entry) => entry.sceneIds);
+    if (
+      this.plan.totalScenes !== batch.scenes.length ||
+      plannedSceneIds.length !== batch.scenes.length ||
+      plannedSceneIds.some((sceneId, index) => sceneId !== batch.scenes[index]?.sceneId)
+    )
+      throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
     const ledger = new RunwareSpendLedger(HOSTED_PROMPT_RESERVATION_USD);
     const diagnosticState: { current: RunwareSafeDiagnostic | null } = { current: null };
-    const base = new RunwarePromptHttpTransport({
-      apiKey: this.apiKey,
-      ledger,
-      maximumRequestCostUsd: PER_SCENE_CAP_USD,
-      fetch: this.fetcher,
-      onDiagnostic(diagnostic) {
-        diagnosticState.current = diagnostic;
-      },
-    });
     const acceptedScenes: PromptWriterSceneOutput[] = [];
-    const sceneFacts: HostedAcceptedPromptScene[] = [];
+    const batchFacts: HostedAcceptedPromptBatch[] = [];
     const captured: CapturedAttempt[] = [];
     let currentDispatchStart = 0;
+    let persistenceStarted = false;
     try {
-      for (const [sceneOrdinal, scene] of batch.scenes.entries()) {
-        const sceneBatch: PromptBatch = Object.freeze({
-          ...batch,
-          batchId: `${batch.batchId}:scene:${sceneOrdinal + 1}`,
-          scenes: Object.freeze([scene]),
+      for (const entry of this.plan.batches) {
+        const remainingReservationUsd = ledger.snapshot().remainingUsd;
+        if (remainingReservationUsd <= 0)
+          throw new RangeError("Runware prompt reservation is exhausted.");
+        const base = new RunwarePromptHttpTransport({
+          apiKey: this.apiKey,
+          ledger,
+          maximumRequestCostUsd: remainingReservationUsd,
+          fetch: this.fetcher,
+          onDiagnostic(diagnostic) {
+            diagnosticState.current = diagnostic;
+          },
         });
         currentDispatchStart = captured.length;
+        persistenceStarted = false;
         const transport: RunwarePromptTransport = {
           dispatch: async (request) => {
             const row: CapturedAttempt = { request, result: null, evidence: null };
@@ -137,30 +150,37 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
               row.evidence = evidence;
             },
           },
-          maximumBatchCostUsd: PER_SCENE_CAP_USD,
+          maximumBatchCostUsd: remainingReservationUsd,
           allowPartialRetry: false,
           minimumBatchScenes: 1,
         });
-        const output = validatePromptWriterOutput(sceneBatch, await writer.write(sceneBatch));
+        const output = validatePromptWriterOutput(entry.batch, await writer.write(entry.batch));
         const row = captured.at(-1);
         const result = row?.result;
         const evidence = row?.evidence;
-        const writerOutput = output.scenes[0];
-        if (!row || !result || result.status !== "succeeded" || !evidence || !writerOutput)
-          throw new Error("PROMPT_SCENE_NOT_DURABLY_REPORTABLE");
+        if (!row || !result || result.status !== "succeeded" || !evidence)
+          throw new Error("PROMPT_BATCH_NOT_DURABLY_REPORTABLE");
         const responseBytes = result.outputText;
         const responseHash = await sha256Utf8(responseBytes);
         if (
           responseHash !== evidence.responseSha256 ||
-          evidence.acceptedSceneIds.length !== 1 ||
-          evidence.acceptedSceneIds[0] !== scene.sceneId ||
+          evidence.acceptedSceneIds.length !== entry.sceneIds.length ||
+          evidence.acceptedSceneIds.some((sceneId, index) => sceneId !== entry.sceneIds[index]) ||
           evidence.unresolvedSceneIds.length !== 0
         )
-          throw new Error("PROMPT_SCENE_EVIDENCE_MISMATCH");
+          throw new Error("PROMPT_BATCH_EVIDENCE_MISMATCH");
         const fact = Object.freeze({
-          sceneOrdinal,
-          scene,
-          writerOutput,
+          batchOrdinal: entry.ordinal - 1,
+          firstSceneOrdinal: entry.sceneStartIndex,
+          scenes: Object.freeze(
+            entry.batch.scenes.map((scene, index) =>
+              Object.freeze({
+                sceneOrdinal: entry.sceneStartIndex + index,
+                scene,
+                writerOutput: output.scenes[index]!,
+              }),
+            ),
+          ),
           requestBytes: row.request.requestBytes,
           requestHash: row.request.requestSha256,
           responseBytes,
@@ -169,26 +189,30 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           outputTokens: result.usage.outputTokens,
           reportedCostMicroUsd: actualCostMicroUsd(result.costUsd),
         });
-        acceptedScenes.push(writerOutput);
-        sceneFacts.push(fact);
-        await this.onSceneAccepted?.(fact);
+        persistenceStarted = true;
+        await this.onBatchAccepted?.(fact);
+        persistenceStarted = false;
+        acceptedScenes.push(...output.scenes);
+        batchFacts.push(fact);
       }
       const output = validatePromptWriterOutput(batch, {
         batch_id: batch.batchId,
         scenes: acceptedScenes,
       });
       const requestBytes = canonicalizeJson({
-        schema_version: "videoforge.runware-per-scene-request-set/v1",
-        requests: sceneFacts.map((fact) => ({
-          scene_id: fact.scene.sceneId,
+        schema_version: "videoforge.runware-adaptive-batch-request-set/v1",
+        requests: batchFacts.map((fact) => ({
+          batch_ordinal: fact.batchOrdinal,
+          scene_ids: fact.scenes.map((scene) => scene.scene.sceneId),
           request_bytes: fact.requestBytes,
           request_hash: fact.requestHash,
         })),
       });
       const responseBytes = canonicalizeJson({
-        schema_version: "videoforge.runware-per-scene-response-set/v1",
-        responses: sceneFacts.map((fact) => ({
-          scene_id: fact.scene.sceneId,
+        schema_version: "videoforge.runware-adaptive-batch-response-set/v1",
+        responses: batchFacts.map((fact) => ({
+          batch_ordinal: fact.batchOrdinal,
+          scene_ids: fact.scenes.map((scene) => scene.scene.sceneId),
           response_bytes: fact.responseBytes,
           response_hash: fact.responseHash,
         })),
@@ -204,9 +228,9 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           retryOfRequestHash: null,
           acceptedSceneIds: Object.freeze(batch.scenes.map((scene) => scene.sceneId)),
           unresolvedSceneIds: Object.freeze([]),
-          inputTokens: sceneFacts.reduce((total, fact) => total + fact.inputTokens, 0),
-          outputTokens: sceneFacts.reduce((total, fact) => total + fact.outputTokens, 0),
-          reportedCostMicroUsd: sceneFacts.reduce(
+          inputTokens: batchFacts.reduce((total, fact) => total + fact.inputTokens, 0),
+          outputTokens: batchFacts.reduce((total, fact) => total + fact.outputTokens, 0),
+          reportedCostMicroUsd: batchFacts.reduce(
             (total, fact) => total + fact.reportedCostMicroUsd,
             0,
           ),
@@ -215,6 +239,14 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
       return Object.freeze({ output, attempts });
     } catch (error) {
       if (error instanceof HostedPromptExecutionError) throw error;
+      if (persistenceStarted) {
+        throw new HostedPromptExecutionError(
+          "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+          "UNKNOWN",
+          true,
+          diagnosticState.current,
+        );
+      }
       const current = captured.length > currentDispatchStart ? captured.at(-1) : null;
       const preDispatchFailure = current === null;
       const definiteProviderRejection = current?.result?.status === "failed";

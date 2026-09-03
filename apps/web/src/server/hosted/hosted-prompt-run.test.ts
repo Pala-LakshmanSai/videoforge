@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { buildPromptBatch, type PromptBatch } from "@videoforge/pipeline";
+import { buildPromptBatch, planPromptBatches, type PromptBatch } from "@videoforge/pipeline";
 
-import { hostedPromptAuthority } from "./hosted-prompt-run";
+import { hostedPromptAuthority, hostedPromptBatchPlan } from "./hosted-prompt-run";
 import { HostedPromptExecutionError, HostedRunwarePromptWriter } from "./runware-prompt-execution";
 
 const ids = {
@@ -126,6 +126,19 @@ function successfulPromptFetcher() {
   });
 }
 
+function adaptivePlan(batch: PromptBatch) {
+  return planPromptBatches({
+    batchIdPrefix: `${batch.batchId}:adaptive`,
+    projectTitle: batch.sanitizedProjectTitle,
+    imageStyleVersionId: batch.imageStyleVersionId,
+    styleProfileHash: batch.styleProfileHash,
+    plannerGuidance: batch.plannerGuidance,
+    storyContext: batch.storyContext,
+    continuityTags: batch.continuityTags,
+    scenes: batch.scenes,
+  });
+}
+
 describe("hosted prompt authority", () => {
   it("binds the exact current plan, published style, single claim, and 4-cent reservation", () => {
     const authority = hostedPromptAuthority({
@@ -183,6 +196,38 @@ describe("hosted prompt authority", () => {
     expect(authority.extraPromptKeywords).toBe("");
     expect(authority.applyExtraPromptKeywords).toBe(false);
     expect(authority.recordedInputHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
+  });
+
+  it("accepts an arbitrary long Stage 4 scene list and derives bounded contiguous batches", () => {
+    const longScenes = Array.from({ length: 140 }, (_, index) => ({
+      scene_id: `long_scene_${String(index + 1).padStart(3, "0")}`,
+      phrase: `literal long-form scene ${index + 1}`,
+      sentence_context: `Sentence ${Math.floor(index / 4) + 1} contains scene ${index + 1}.`,
+      prior_context: index === 0 ? null : `prior context ${index}`,
+      next_context: index + 1 === 140 ? null : `next context ${index + 2}`,
+      in_image_shot_role: "OBJECT_EVIDENCE",
+      layout: index % 2 === 0 ? "IMAGE_FULL" : "SPLIT_RIGHT_IMAGE",
+    }));
+    const authority = hostedPromptAuthority({
+      plan: plan({
+        scenes: longScenes,
+        all_segments: longScenes.map((scene, index) => ({
+          scene_id: scene.scene_id,
+          segment_index: index,
+          phrase: scene.sentence_context,
+        })),
+      }),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+    const planned = hostedPromptBatchPlan(authority);
+    expect(authority.scenes).toHaveLength(140);
+    expect(planned.batchCount).toBeGreaterThan(1);
+    expect(planned.batches.flatMap((batch) => batch.sceneIds)).toEqual(
+      authority.scenes.map((scene) => scene.sceneId),
+    );
+    expect(planned.batches.every((batch) => batch.maxOutputTokens <= 64_000)).toBe(true);
+    expect(planned.batches.every((batch) => batch.estimatedInputTokens <= 48_000)).toBe(true);
   });
 
   it("accepts an existing PostgreSQL UUID-shaped workspace while generated identities stay strict", () => {
@@ -292,12 +337,16 @@ describe("hosted prompt authority", () => {
     expect(batch.scenes[0]?.nextContext).toMatch(/^hydrogen peroxide bottle/u);
     expect(batch.scenes[2]?.priorContext).toMatch(/next evidence\.$/u);
     const fetcher = successfulPromptFetcher();
-    const result = await new HostedRunwarePromptWriter("configured-test-key-value", fetcher).write(
-      batch,
-    );
-    expect(fetcher).toHaveBeenCalledTimes(25);
+    const planned = adaptivePlan(batch);
+    const result = await new HostedRunwarePromptWriter(
+      "configured-test-key-value",
+      planned,
+      fetcher,
+    ).write(batch);
+    expect(fetcher).toHaveBeenCalledTimes(planned.batchCount);
     expect(result.output.scenes).toHaveLength(25);
-    for (const [index, call] of fetcher.mock.calls.entries()) {
+    const dispatchedSceneIds: string[] = [];
+    for (const call of fetcher.mock.calls) {
       const dispatched = JSON.parse(String(call[1]?.body)) as Array<{
         messages: Array<{ content: string }>;
         model: string;
@@ -307,14 +356,12 @@ describe("hosted prompt authority", () => {
         scenes: Array<{ scene_id: string }>;
       };
       expect(dispatched[0]?.model).toBe("deepseek:v4@flash");
-      expect(dispatched[0]?.settings.maxTokens).toBe(512);
-      expect(dispatchedPlan.scenes).toHaveLength(1);
-      expect(dispatchedPlan.scenes[0]).toEqual(
-        expect.objectContaining({
-          scene_id: `scene_${String(index + 1).padStart(2, "0")}`,
-        }),
-      );
+      expect(dispatched[0]?.settings.maxTokens).toBeGreaterThanOrEqual(2_048);
+      expect(dispatched[0]?.settings.maxTokens).toBeLessThanOrEqual(64_000);
+      expect(dispatchedPlan.scenes.length).toBeGreaterThan(0);
+      dispatchedSceneIds.push(...dispatchedPlan.scenes.map((scene) => scene.scene_id));
     }
+    expect(dispatchedSceneIds).toEqual(batch.scenes.map((scene) => scene.sceneId));
   });
 
   it("rejects any remaining canonical prompt violation before durable preparation", () => {
@@ -354,17 +401,19 @@ describe("hosted Runware prompt writer", () => {
         layout: scene.layout as "IMAGE_FULL" | "SPLIT_RIGHT_IMAGE",
       })),
     };
-    const onSceneAccepted = vi.fn();
+    const planned = adaptivePlan(batch);
+    const onBatchAccepted = vi.fn();
     const result = await new HostedRunwarePromptWriter(
       "configured-test-key-value",
+      planned,
       fetcher,
-      onSceneAccepted,
+      onBatchAccepted,
     ).write(batch);
-    expect(fetcher).toHaveBeenCalledTimes(25);
-    expect(onSceneAccepted).toHaveBeenCalledTimes(25);
+    expect(fetcher).toHaveBeenCalledTimes(planned.batchCount);
+    expect(onBatchAccepted).toHaveBeenCalledTimes(planned.batchCount);
     expect(result.output.scenes).toHaveLength(25);
     expect(result.attempts).toHaveLength(1);
-    expect(result.attempts[0]?.reportedCostMicroUsd).toBe(250);
+    expect(result.attempts[0]?.reportedCostMicroUsd).toBe(planned.batchCount * 10);
     expect(result.attempts[0]?.requestHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
     expect(result.attempts[0]?.responseHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
     const dispatched = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body)) as Array<{
@@ -385,7 +434,7 @@ describe("hosted Runware prompt writer", () => {
     expect(dispatchedPlan.style_profile_hash).toBe(digest);
     expect(dispatchedPlan.planner_guidance).toBe(batch.plannerGuidance);
     expect(dispatchedPlan.story_context).toBe(batch.storyContext);
-    expect(dispatchedPlan.scenes).toHaveLength(1);
+    expect(dispatchedPlan.scenes.length).toBeGreaterThan(0);
     expect(dispatchedPlan.scenes[0]).toEqual(
       expect.objectContaining({
         exact_phrase: "literal scene 1",
@@ -393,9 +442,11 @@ describe("hosted Runware prompt writer", () => {
         next_context: "literal scene 2",
       }),
     );
-    expect(onSceneAccepted.mock.calls.map(([scene]) => scene.sceneOrdinal)).toEqual(
-      Array.from({ length: 25 }, (_, index) => index),
-    );
+    expect(
+      onBatchAccepted.mock.calls.flatMap(([accepted]) =>
+        accepted.scenes.map((scene: { sceneOrdinal: number }) => scene.sceneOrdinal),
+      ),
+    ).toEqual(Array.from({ length: 25 }, (_, index) => index));
   });
 
   it("preserves bounded diagnostics for a definite provider rejection", async () => {
@@ -430,7 +481,11 @@ describe("hosted Runware prompt writer", () => {
     );
 
     await expect(
-      new HostedRunwarePromptWriter("configured-test-key-value", fetcher).write(batch),
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        adaptivePlan(batch),
+        fetcher,
+      ).write(batch),
     ).rejects.toEqual(
       expect.objectContaining({
         name: "HostedPromptExecutionError",
@@ -506,7 +561,11 @@ describe("hosted Runware prompt writer", () => {
     });
 
     await expect(
-      new HostedRunwarePromptWriter("configured-test-key-value", fetcher).write(batch),
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        adaptivePlan(batch),
+        fetcher,
+      ).write(batch),
     ).rejects.toEqual(
       expect.objectContaining({
         problemCode: "HOSTED_PROMPT_INPUT_INVALID",
@@ -539,7 +598,11 @@ describe("hosted Runware prompt writer", () => {
     });
 
     await expect(
-      new HostedRunwarePromptWriter("configured-test-key-value", fetcher).write(batch),
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        adaptivePlan(batch),
+        fetcher,
+      ).write(batch),
     ).rejects.toEqual(
       expect.objectContaining({
         problemCode: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
