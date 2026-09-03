@@ -4,7 +4,7 @@ updated_at: "2026-09-03"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: false
-current_milestone: private_hosted_beta_stage5_output_repair_green_undeployed
+current_milestone: private_hosted_beta_stage5_live_qualified
 current_task: VF-10-13_RELEASE_OPERATIONS
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "The exact V2-06 runtime grant set, including SELECT-only revision_timing_heads under FORCE RLS with no direct writes, is live. Source af65bbcc deployed once as Worker 11617d99. Exactly one new project 91154eae reached Stage 5, where one successful DeepSeek V4 Flash response was rejected by local output validation before any batch or prompt persisted; the run stopped terminal with no retry or provider retrieval. Source repair 84cb65d16c6c7367760f357ca7295c1cc66e524a is green and undeployed: it removes the brittle verbatim narration substring rule, canonicalizes provider response order, applies a 16384-token per-request quality budget with no project scene cap, classifies successful-but-invalid provider output correctly, and emits bounded redacted validation diagnostics. Migrations 0069, 0070, and 0071 and the exact runtime grant set are already applied and must not be replayed. Fresh exact source-bound authority is required for one deployment and one new Stage 1-5 live qualification."
+  provider_free_product_action: "Stage 5 is live-qualified at source ffcc89c2 / Worker 87c0a45f. Exactly one project 91afab6c completed Stages 1-5: Stage 4 saved 33 segments with 28 image scenes and 10 avatar segments; Stage 5 planned two adaptive batches, made exactly two DeepSeek V4 Flash requests, durably exposed 13 accepted prompts before batch 2, then finished with 28/28 accepted prompts. Stage 5 cost conserved exactly at 40000 = 2187 settled + 37813 released micro-USD. Computer Use proved the 520 px prompt viewer scrolls locally. Stage 3 also succeeded for 72 micro-USD, but its older completion function did not emit the unused 9928 micro-USD release event; this separate project-wide accounting defect remains provider-free follow-up. No retry, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STAGE5_OUTPUT_VALIDATION_REPAIR_GREEN_UNDEPLOYED
+  status: STAGE5_LIVE_QUALIFIED_STAGE3_RELEASE_ACCOUNTING_FOLLOWUP
   implementation_commit: "84cb65d16c6c7367760f357ca7295c1cc66e524a"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
@@ -169,17 +169,17 @@ hosted_beta_user_walkthrough:
     - "6e3771651217e7dfd1949df366722f76eafaad04"
     - "af65bbcc71f068d4e92d25d7df668a23c516200a"
     - "84cb65d16c6c7367760f357ca7295c1cc66e524a"
-  deployment_candidate: "84cb65d16c6c7367760f357ca7295c1cc66e524a"
-  deployed_source_commit: "af65bbcc71f068d4e92d25d7df668a23c516200a"
-  cloudflare_worker_version_id: "11617d99-a9b0-4b40-9d8c-470b5ce536e4"
-  pending_source_candidate: "84cb65d16c6c7367760f357ca7295c1cc66e524a"
+  deployment_candidate: "ffcc89c2dbda93507c1d0f68dc254852bdc1931e"
+  deployed_source_commit: "ffcc89c2dbda93507c1d0f68dc254852bdc1931e"
+  cloudflare_worker_version_id: "87c0a45f-0b03-4334-b36d-cc9f3a920426"
+  pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "SOURCE_AF65BBCC_IS_LIVE_AS_WORKER_11617D99. MIGRATIONS_0069_0070_AND_0071_AND_THE_EXACT_RUNTIME_GRANT_SET_ARE_APPLIED_AND_MUST_NOT_BE_REPLAYED. PROJECTS_4263C24E_AE5A4A68_AND_91154EAE_MUST_NOT_BE_RETRIED_CONTINUED_OR_PROVIDER_RETRIEVED. SOURCE_84CB65D1_CONTAINS_THE_STAGE5_OUTPUT_VALIDATION_AND_QUALITY_BATCHING_REPAIR_AND_IS_UNDEPLOYED. REQUIRE_FRESH_EXACT_SOURCE_BOUND_AUTHORITY_FOR_ONE_DEPLOYMENT_AND_ONE_NEW_PROJECT."
-  pending_validations: "UNDER_FRESH_EXACT_AUTHORITY_DEPLOY_SOURCE_84CB65D1_ONCE, THEN_CREATE_EXACTLY_ONE_NEW_STAGE_1_TO_5_PROJECT. PROVE_PROVIDER_REQUEST_COUNT_EQUALS_THE_PERSISTED_ADAPTIVE_BATCH_PLAN, DEEPSEEK_V4_FLASH_PROMPT_QUALITY, DURABLE_INCREMENTAL_BATCHES, COST_CONSERVATION, AND_AUTHENTICATED_SCROLLABLE_VIEWER. STOP_AFTER_STAGE_5_OR_FIRST_TERMINAL_OR_AMBIGUOUS_FAILURE; NO_RETRY_OR_PROVIDER_RETRIEVAL."
-  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE af65bbcc71f068d4e92d25d7df668a23c516200a MIGRATIONS 0069 0070 AND 0071 ALREADY APPLIED DO NOT REAPPLY; APPLY EXACT V2-06 RUNTIME GRANT SET ONCE TO ADD SELECT-ONLY public.revision_timing_heads WHILE RETAINING FORCE RLS AND NO DIRECT WRITES; MEDIA WORKER 0.1.13 DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 1; DO NOT RETRY CONTINUE OR RETRIEVE PROJECTS 4263c24e-9c86-47e2-b280-8f2fa83a12e2 OR ae5a4a68-f26d-421f-ab02-8ce95aedcea2; USE COMPUTER USE TO VERIFY PROVIDER REQUEST COUNT EQUALS PERSISTED ADAPTIVE BATCH COUNT, ACCEPTED PROMPT QUALITY, DURABLE INCREMENTAL BATCHES, COST CONSERVATION, AND THE SCROLLABLE PROMPT VIEWER; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
-  latest_live_run: "Live Neon was verified at ledger 71/71 without replaying migrations 0069, 0070, or 0071. The exact V2-06 runtime grant set was applied once and reverified: revision_timing_heads is SELECT-only under FORCE RLS and the runtime role retains no direct writes. Source af65bbcc deployed once as Worker 11617d99 with config SHA-256 ae067ddd. Computer Use with authenticated Chrome upload fallback created exactly one fresh project 91154eae-b8c6-41c5-aa0c-10bb97deb37c, capped at USD 2 with a hard USD 1 provider-spend cap, Helen v1, Will Carter v1, media worker 0.1.13, and the verified 159.216-second MP3. Stages 2, 3, and 4 completed; Stage 4 persisted 36 total segments, 31 image scenes, and 10 avatar segments. Stage 5 planned one adaptive batch and made exactly one DeepSeek V4 Flash request. Runware returned success with finishReason stop and known USD 0.002075 cost, but local output validation rejected the result before compiler or persistence. The run stopped terminal FAILED with HOSTED_PROMPT_INPUT_INVALID, zero accepted/persisted prompt batches, zero prompt scenes, zero retries, and no provider retrieval. Total provider spend including Stage 3 was USD 0.002149. The USD 0.04 reservation conserved exactly: 40000 = 2075 settled + 37925 released. Read-only Neon confirms zero active project tasks, provider workload leases, or nonterminal serverless attempts."
-  deployed_config_sha256: "ae067ddd9dd89339c3e77c9f32e12a2481fe1ba1ea2a9e9a3e9e1903038d5fc9"
-  deployment_approval: "CONSUMED_AT_FIRST_TERMINAL_STAGE5_FAILURE_SOURCE_AF65BBCC_WORKER_11617D99_PROJECT_91154EAE_NO_RETRY_CONTINUATION_OR_PROVIDER_RETRIEVAL"
+  pending_release_boundary: "SOURCE_FFCC89C2_IS_LIVE_AS_WORKER_87C0A45F. STAGE5_IS_QUALIFIED_ON_PROJECT_91AFAB6C_AND_MUST_NOT_BE_RETRIED_OR_CONTINUED. MIGRATIONS_0069_0070_AND_0071_AND_THE_RUNTIME_GRANT_SET_MUST_NOT_BE_REPLAYED. STAGE3_UNUSED_RESERVATION_RELEASE_ACCOUNTING_REMAINS_A_SEPARATE_PROVIDER_FREE_REPAIR."
+  pending_validations: "STAGE5_LIVE_ACCEPTANCE_IS_COMPLETE. REPAIR_AND_TEST_STAGE3_UNUSED_RESERVATION_RELEASE_PROVIDER_FREE_BEFORE_ANY_FUTURE LIVE ACTIVATION."
+  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE ffcc89c2dbda93507c1d0f68dc254852bdc1931e MIGRATIONS 0069 0070 AND 0071 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.13 DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 1; DO NOT RETRY CONTINUE OR RETRIEVE PROJECTS 4263c24e-9c86-47e2-b280-8f2fa83a12e2 OR ae5a4a68-f26d-421f-ab02-8ce95aedcea2 OR 91154eae-b8c6-41c5-aa0c-10bb97deb37c; USE COMPUTER USE TO VERIFY PROVIDER REQUEST COUNT EQUALS PERSISTED ADAPTIVE BATCH COUNT, ACCEPTED PROMPT QUALITY, DURABLE INCREMENTAL BATCHES, COST CONSERVATION, AND THE SCROLLABLE PROMPT VIEWER; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
+  latest_live_run: "Live Neon was verified at ledger 71/71 and exact runtime grants without replay. Source ffcc89c2 deployed exactly once as Worker 87c0a45f with config SHA-256 e1fd7327. Computer Use and signed-in Chrome created exactly one fresh project 91afab6c-ad32-49fc-abab-05957541362a with the USD 2 project cap, hard USD 1 operator provider cap, Helen v1, Will Carter v1, media worker 0.1.13, and the 159-second MP3. Stage 4 saved 33 segments, 28 image scenes, and 10 avatar segments. Stage 5 persisted a two-batch adaptive plan, made two distinct DeepSeek V4 Flash requests, durably showed 13 accepted prompts after batch 1, and completed 28/28 prompts. Batch costs were 1019 and 1168 micro-USD; Stage 5 reservation conservation passes exactly at 40000 = 2187 settled + 37813 released. Total settled Stage 3+5 provider spend was 2259 micro-USD. The viewer is 520 px high, overflow-y auto, 13271 px scroll content, and changed scrollTop under Computer Use. All 28 compiled prompts are unique, scene-bound, styled, realistic, and carry the permanent visual restrictions; a few provider descriptions still mention a handwritten list, cup markings, or labels while the compiled ban says no visible text, which is a quality follow-up rather than a functional failure. Stage 3 succeeded for 72 micro-USD but did not emit the unused 9928 micro-USD release event, so project-wide reservation-event conservation remains a separate accounting defect. No retry, provider retrieval, GPU, RunPod, production, or volume mutation occurred; all downstream tasks are BLOCKED and active leases/attempts are zero."
+  deployed_config_sha256: "e1fd7327758404b822f9a462ca967e3b92b0831363af40849c153516953fb8fa"
+  deployment_approval: "CONSUMED_AFTER_SUCCESSFUL_STAGE5_SOURCE_FFCC89C2_WORKER_87C0A45F_PROJECT_91AFAB6C_NO_RETRY_CONTINUATION_OR_PROVIDER_RETRIEVAL"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -196,7 +196,7 @@ hosted_beta_user_walkthrough:
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
   deployment_tooling_repairs: ["5f147c81", "3e327af1"]
   cloudflare_preflight: "READ_ONLY_EXACT_9_SECRETS_AND_R2_PRIVATE_STATE_PASS"
-  live_browser_verification: "LIVE_SOURCE_AF65BBCC_WORKER_11617D99_CREATED_EXACTLY_ONE_PROJECT_91154EAE. STAGES_2_3_AND_4_COMPLETED; STAGE_5_MADE_EXACTLY_ONE_DEEPSEEK_V4_FLASH_REQUEST_FOR_THE_ONE_PERSISTED_PLANNED_BATCH_THEN_STOPPED_TERMINAL_AFTER_LOCAL_OUTPUT_VALIDATION_REJECTED_THE_SUCCESSFUL_RESPONSE. ZERO_BATCHES_OR_PROMPTS_PERSISTED, SO_ACCEPTED_PROMPT_QUALITY_AND_SCROLLABLE_VIEWER_CONTENT_COULD_NOT_BE_LIVE_QUALIFIED. TOTAL_PROVIDER_SPEND_WAS_USD_0_002149; COST_CONSERVATION_AND_ZERO_ACTIVE_WORKLOADS_PASS. NO_RETRY_CONTINUATION_PROVIDER_RETRIEVAL_GPU_RUNPOD_PRODUCTION_OR_VOLUME_MUTATION_OCCURRED."
+  live_browser_verification: "PASS_SOURCE_FFCC89C2_WORKER_87C0A45F_PROJECT_91AFAB6C_STAGE5_COMPLETE_TWO_PLANNED_BATCHES_EQUALS_TWO_DEEPSEEK_V4_FLASH_REQUESTS_28_OF_28_ACCEPTED_AND_PERSISTED_FIRST_13_VISIBLE_BEFORE_SECOND_BATCH_VIEWER_520PX_SCROLLABLE_COMPUTER_USE_SCROLL_CONFIRMED_STAGE5_COST_40000_EQUALS_2187_SETTLED_PLUS_37813_RELEASED_TOTAL_SETTLED_STAGE3_AND_STAGE5_2259_MICRO_USD_NO_RETRY_PROVIDER_RETRIEVAL_GPU_RUNPOD_PRODUCTION_OR_VOLUME_MUTATION; STAGE3_9928_MICRO_USD_UNUSED_RESERVATION_RELEASE_EVENT_MISSING_AS_SEPARATE_ACCOUNTING_FOLLOWUP"
   fixed_blockers:
     - "Source repair 84cb65d16c6c7367760f357ca7295c1cc66e524a hardens Stage 5 after project 91154eae exposed a successful-provider/local-validation failure. DeepSeek V4 Flash request v9 treats exact narration as semantic authority instead of requiring a brittle verbatim substring in prompt_core, states every local field bound, preserves hard visual restrictions, and canonicalizes accepted evidence to Stage 4 order even when provider rows are shuffled. The adaptive planner now uses a 16,384-token per-request output-quality budget below the 64,000-token provider ceiling; 31 scenes deterministically plan as two balanced batches while arbitrary longer scripts remain supported with no project scene cap. Successful-but-invalid responses are classified HOSTED_PROMPT_OUTPUT_INVALID with bounded redacted validation category/reason/count logs, known cost, and no retry. A two-batch regression proves the first accepted batch is durably handed off before one terminal second-batch failure and that only the second known cost is carried by the error. Provider-free evidence: pipeline 133/133; focused hosted prompt 16/16; focused hosted product/UI 121/121; pipeline/web typecheck; pipeline and changed-file web lint; changed-file formatting; staging build/quarantine; deployment/context validation; secret scan; and diff checks. Source only and undeployed; no second grant application, migration, deployment, project, provider call/retrieval, GPU/RunPod, production, or volume mutation occurred."
     - "Approved source af65bbcc applied the exact V2-06 runtime grant set once and deployed once as Worker 11617d99. Exactly one fresh project 91154eae reached Stage 5 after Stages 2-4 completed. Its one planned batch caused exactly one DeepSeek V4 Flash request, which Runware completed normally for USD 0.002075; local post-response validation rejected it before compiler or persistence and the run stopped terminal. Persisted accepted batches/prompts are zero, so prompt quality and viewer content remain unqualified. Total Stage 3+5 provider spend was USD 0.002149; the Stage 5 reservation conserved 40000 micro USD as 2075 settled plus 37925 released. No retry, continuation, provider retrieval, GPU/RunPod production, or volume mutation occurred, and all active workload counts are zero."
@@ -5029,8 +5029,8 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-13
   checkpoint: V2-06
-  milestone: private_hosted_beta_stage5_output_repair_green_undeployed
-  status: stage5_output_repair_awaiting_fresh_exact_deployment_and_project_authority
+  milestone: private_hosted_beta_stage5_live_qualified
+  status: stage5_live_qualified_stage3_release_accounting_followup
   dependency_status: v2_06_complete_green_independently_audited
   authorization_status: release_and_deployment_authority_consumed_non_reusable
   task_stage: provider_free_product_execution
@@ -5039,7 +5039,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_06_hosted_staging
   task_brief: tasks/VF-10-06.md
-  goal: "Keep live source af65bbcc / Worker 11617d99 and stopped projects 4263c24e, ae5a4a68, and 91154eae separate from green undeployed Stage 5 repair 84cb65d1. Migrations 0069, 0070, and 0071 and the exact runtime grant set are already applied and must not be replayed. Under fresh exact authority, deploy the final exact source once and create exactly one new project to verify request count equals the persisted adaptive plan, accepted prompt quality, atomic incremental batches, cost conservation, and the scrollable accepted-prompt viewer in authenticated Chrome. Never retry, continue, or provider-retrieve any stopped project. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
+  goal: "Keep live-qualified Stage 5 source ffcc89c2 / Worker 87c0a45f and completed project 91afab6c immutable. Stage 5 passed request-count equality, adaptive incremental durability, prompt acceptance, exact Stage 5 cost conservation, and Computer Use viewer scrolling. Repair the separate Stage 3 unused-reservation release event provider-free and strengthen positive-prompt contradiction handling before proposing any new live activation. Never retry, continue, or provider-retrieve stopped projects. Migrations 0069-0071 and the runtime grant set must not be replayed. Production, RunPod, GPU, retained-volume mutation, V2-07 through V2-13 live work, and resealing remain blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -5060,7 +5060,7 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "The exact af65bbcc / Worker 11617d99 authority is consumed at terminal Stage 5 project 91154eae. Migrations 0069, 0070, and 0071 and the exact runtime grant set are already applied and must not be replayed. Source 84cb65d1 repairs the successful-provider/local-output-validation boundary and adaptive quality batching; it is green locally and undeployed. Fresh exact authority is required for deployment or any successor live project. No provider call, retrieval, remote mutation, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized."
+  authority_note: "The exact ffcc89c2 / Worker 87c0a45f authority is consumed after successful Stage 5 project 91afab6c. Migrations 0069, 0070, and 0071 and the exact runtime grant set are already applied and must not be replayed. Stage 5 is live-qualified; the remaining Stage 3 unused-reservation release accounting defect is provider-free follow-up. Fresh exact authority is required for any deployment or successor live project. No provider call, retrieval, remote mutation, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444"
@@ -5069,8 +5069,8 @@ recommended_next_task:
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: stage_5_output_validation_v9_repair_source_green_undeployed
-  execution_blocker: stage_5_accepted_quality_durability_and_viewer_proof_require_fresh_exact_source_bound_deployment_and_one_project_authority
+  execution_status: stage_5_live_qualified
+  execution_blocker: stage_3_unused_reservation_release_event_requires_provider_free_repair_before_future_live_activation
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean
