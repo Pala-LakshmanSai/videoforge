@@ -121,6 +121,62 @@ const identity = {
   claimTokenHash: digest,
 } as const;
 
+type PromptFixtureScene = {
+  scene_id: string;
+  exact_phrase: string;
+  scene_phrase_context: string;
+  prior_scene_phrase: string | null;
+  next_scene_phrase: string | null;
+  in_image_shot_role: string;
+};
+
+type PromptFixtureSceneOutput = {
+  scene_id: string;
+  literal_subject: string;
+  action: string;
+  environment: string;
+  in_image_shot_role: string;
+  lighting_context: string;
+  continuity_tags: string[];
+  prompt_core: string;
+};
+
+/**
+ * Keep fake provider rows grounded in the same v11 source anchors that the
+ * real writer receives. These fixtures intentionally use the synthetic
+ * narration in `scenes()`, while the tests below mutate only the behavior
+ * they are meant to exercise (forbidden content, second-batch invalidity, or
+ * a cross-batch duplicate core).
+ */
+function groundedPromptFixtureScene(
+  scene: PromptFixtureScene,
+  overrides: Partial<PromptFixtureSceneOutput> = {},
+  storyContext = "",
+): PromptFixtureSceneOutput {
+  const exactPhrase = scene.exact_phrase.trim();
+  const sentenceContext = scene.scene_phrase_context.trim().slice(0, 120);
+  const sourceContext = [
+    sentenceContext,
+    scene.prior_scene_phrase?.trim().slice(-80),
+    scene.next_scene_phrase?.trim().slice(0, 80),
+    storyContext.trim().slice(0, 120),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" | ")
+    .slice(0, 120);
+  return {
+    scene_id: scene.scene_id,
+    literal_subject: `the physical evidence described by ${sourceContext}, centered on ${exactPhrase}`,
+    action: `demonstrating ${exactPhrase} as described in the complete sentence`,
+    environment: `a lived-in household workspace matching ${sourceContext}`,
+    in_image_shot_role: scene.in_image_shot_role,
+    lighting_context: "available daylight",
+    continuity_tags: [],
+    prompt_core: `Natural documentary view of ${exactPhrase}, showing physical evidence from ${sourceContext} in a lived-in household workspace with available daylight`,
+    ...overrides,
+  };
+}
+
 function successfulPromptFetcher() {
   return vi.fn(async (_url: unknown, init?: RequestInit) => {
     const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
@@ -128,22 +184,13 @@ function successfulPromptFetcher() {
     const messages = task.messages as Array<{ content: string }>;
     const payload = JSON.parse(messages[0]!.content) as {
       batch_id: string;
-      scenes: Array<{ scene_id: string; exact_phrase: string; in_image_shot_role: string }>;
+      story_context: string;
+      scenes: PromptFixtureScene[];
     };
     const output = {
       batch_id: payload.batch_id,
       scenes: payload.scenes
-        .map((scene) => ({
-          scene_id: scene.scene_id,
-          literal_subject: `the hydrogen peroxide bottle subject described by ${scene.exact_phrase}`,
-          action: `demonstrating ${scene.exact_phrase} as described in the complete sentence`,
-          environment:
-            "the complete real-world hydrogen peroxide bottle setting described by the sentence",
-          in_image_shot_role: scene.in_image_shot_role,
-          lighting_context: "available daylight",
-          continuity_tags: [],
-          prompt_core: `Natural documentary view of ${scene.exact_phrase}, with the hydrogen peroxide bottle subject demonstrating the complete scene described by the sentence in a lived-in workspace for ${scene.scene_id}`,
-        }))
+        .map((scene) => groundedPromptFixtureScene(scene, {}, payload.story_context))
         .reverse(),
     };
     return Response.json({
@@ -770,7 +817,8 @@ describe("hosted Runware prompt writer", () => {
       const messages = task.messages as Array<{ content: string }>;
       const payload = JSON.parse(messages[0]!.content) as {
         batch_id: string;
-        scenes: Array<{ scene_id: string; in_image_shot_role: string }>;
+        story_context: string;
+        scenes: PromptFixtureScene[];
       };
       return Response.json({
         data: [
@@ -778,22 +826,13 @@ describe("hosted Runware prompt writer", () => {
             taskUUID: task.taskUUID,
             text: JSON.stringify({
               batch_id: payload.batch_id,
-              scenes: payload.scenes.map((scene, index) => {
-                const fixturePhrase = `literal scene ${Number(scene.scene_id.slice(-2))}`;
-                return {
-                  scene_id: scene.scene_id,
-                  literal_subject: `the subject described by ${fixturePhrase}`,
-                  action:
-                    index === 0
-                      ? "show a visible logo"
-                      : `demonstrating ${fixturePhrase} as described in the complete sentence`,
-                  environment: "the complete real-world setting described by the sentence",
-                  in_image_shot_role: scene.in_image_shot_role,
-                  lighting_context: "daylight",
-                  continuity_tags: [],
-                  prompt_core: `A practical household object demonstrates ${fixturePhrase} in the complete scene described by the sentence in a lived-in workspace for ${scene.scene_id}`,
-                };
-              }),
+              scenes: payload.scenes.map((scene, index) =>
+                groundedPromptFixtureScene(
+                  scene,
+                  index === 0 ? { action: "show a visible logo" } : {},
+                  payload.story_context,
+                ),
+              ),
             }),
             usage: {
               promptTokens: 100,
@@ -880,7 +919,8 @@ describe("hosted Runware prompt writer", () => {
       const messages = task.messages as Array<{ content: string }>;
       const payload = JSON.parse(messages[0]!.content) as {
         batch_id: string;
-        scenes: Array<{ scene_id: string; in_image_shot_role: string }>;
+        story_context: string;
+        scenes: PromptFixtureScene[];
       };
       const secondBatch = fetcher.mock.calls.length === 2;
       return Response.json({
@@ -889,19 +929,13 @@ describe("hosted Runware prompt writer", () => {
             taskUUID: task.taskUUID,
             text: JSON.stringify({
               batch_id: payload.batch_id,
-              scenes: payload.scenes.map((scene, index) => ({
-                scene_id: scene.scene_id,
-                literal_subject: `the subject described by ${scene.scene_id}`,
-                action:
-                  secondBatch && index === 0
-                    ? "show a visible logo"
-                    : `demonstrating ${scene.scene_id} as described in the complete sentence`,
-                environment: "the complete real-world setting described by the sentence",
-                in_image_shot_role: scene.in_image_shot_role,
-                lighting_context: "available window light",
-                continuity_tags: [],
-                prompt_core: `Natural documentary view of the complete scene described by the sentence, with the subject demonstrating a practical household action in a lived-in workspace for ${scene.scene_id}`,
-              })),
+              scenes: payload.scenes.map((scene, index) =>
+                groundedPromptFixtureScene(
+                  scene,
+                  secondBatch && index === 0 ? { action: "show a visible logo" } : {},
+                  payload.story_context,
+                ),
+              ),
             }),
             usage: {
               promptTokens: 100,
@@ -979,14 +1013,28 @@ describe("hosted Runware prompt writer", () => {
     });
     const planned = adaptivePlan(batch);
     expect(planned.batchCount).toBe(2);
-    const firstPromptCore = `Natural documentary view of the complete scene described by the sentence, with the subject demonstrating a practical household action in a lived-in workspace for ${planned.batches[0]!.sceneIds[0]}`;
+    const firstSceneId = planned.batches[0]!.sceneIds[0]!;
+    const firstSceneOrdinal = Number(firstSceneId.slice(-2));
+    const firstPromptCore = groundedPromptFixtureScene(
+      {
+        scene_id: firstSceneId,
+        exact_phrase: `literal scene ${firstSceneOrdinal}`,
+        scene_phrase_context: `Literal scene ${firstSceneOrdinal} belongs to this complete sentence.`,
+        prior_scene_phrase: null,
+        next_scene_phrase: `literal scene ${firstSceneOrdinal + 1}`,
+        in_image_shot_role: "OBJECT_EVIDENCE",
+      },
+      {},
+      "A continuous practical household demonstration.",
+    ).prompt_core;
     const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
       const task = request[0]!;
       const messages = task.messages as Array<{ content: string }>;
       const payload = JSON.parse(messages[0]!.content) as {
         batch_id: string;
-        scenes: Array<{ scene_id: string; in_image_shot_role: string }>;
+        story_context: string;
+        scenes: PromptFixtureScene[];
       };
       const secondBatch = fetcher.mock.calls.length === 2;
       return Response.json({
@@ -995,19 +1043,17 @@ describe("hosted Runware prompt writer", () => {
             taskUUID: task.taskUUID,
             text: JSON.stringify({
               batch_id: payload.batch_id,
-              scenes: payload.scenes.map((scene, index) => ({
-                scene_id: scene.scene_id,
-                literal_subject: `the subject described by ${scene.scene_id}`,
-                action: `demonstrating ${scene.scene_id} as described in the complete sentence`,
-                environment: "the complete real-world setting described by the sentence",
-                in_image_shot_role: scene.in_image_shot_role,
-                lighting_context: "available window light",
-                continuity_tags: [],
-                prompt_core:
+              scenes: payload.scenes.map((scene, index) =>
+                groundedPromptFixtureScene(
+                  scene,
                   secondBatch && index === 0
-                    ? `  ${firstPromptCore.toLocaleUpperCase("en-US").replaceAll(" ", "   ")}  `
-                    : `Natural documentary view of the complete scene described by the sentence, with the subject demonstrating a practical household action in a lived-in workspace for ${scene.scene_id}`,
-              })),
+                    ? {
+                        prompt_core: `  ${firstPromptCore.toLocaleUpperCase("en-US").replaceAll(" ", "   ")}  `,
+                      }
+                    : {},
+                  payload.story_context,
+                ),
+              ),
             }),
             usage: {
               promptTokens: 100,
