@@ -7,7 +7,7 @@ import {
   type PromptExecutionScope,
   type PromptExecutionStore,
 } from "@videoforge/control-plane";
-import type { PromptSceneInput } from "@videoforge/pipeline";
+import { buildPromptBatch, type PromptSceneInput } from "@videoforge/pipeline";
 
 import { HostedRunwarePromptWriter } from "./runware-prompt-execution";
 
@@ -98,6 +98,26 @@ type SentenceWindow = {
   readonly next: string | null;
 };
 
+const normalizedWindowText = (value: string): string =>
+  value.normalize("NFKC").replace(/\s+/gu, " ").trim();
+
+function boundedWindowText(
+  value: string,
+  maximum: number,
+  edge: "start" | "end" = "start",
+): string {
+  const normalized = normalizedWindowText(value);
+  if (normalized.length <= maximum) return normalized;
+  if (edge === "end") {
+    const candidate = normalized.slice(-maximum);
+    const boundary = candidate.indexOf(" ");
+    return (boundary === -1 ? candidate : candidate.slice(boundary + 1)).trim();
+  }
+  const candidate = normalized.slice(0, maximum);
+  const boundary = candidate.lastIndexOf(" ");
+  return (boundary === -1 ? candidate : candidate.slice(0, boundary)).trim();
+}
+
 function sentenceWindows(value: unknown): ReadonlyMap<string, SentenceWindow> {
   if (!Array.isArray(value) || value.length === 0)
     throw new TypeError("Hosted transcript segment collection is invalid.");
@@ -121,21 +141,22 @@ function sentenceWindows(value: unknown): ReadonlyMap<string, SentenceWindow> {
   for (const segment of segments) {
     ids.push(segment.id);
     parts.push(segment.phrase);
-    const text = parts.join(" ").replace(/\s+/gu, " ").trim();
+    const text = normalizedWindowText(parts.join(" "));
     if (/[.!?]["')\]]?$/u.test(segment.phrase.trim()) || text.length >= 1_200) {
-      groups.push({ ids, text: text.slice(0, 2_000) });
+      groups.push({ ids, text });
       ids = [];
       parts = [];
     }
   }
-  if (ids.length > 0) groups.push({ ids, text: parts.join(" ").replace(/\s+/gu, " ").trim() });
+  if (ids.length > 0) groups.push({ ids, text: normalizedWindowText(parts.join(" ")) });
   const windows = new Map<string, SentenceWindow>();
   groups.forEach((group, index) => {
     for (const id of group.ids)
       windows.set(id, {
-        sentence: group.text,
-        previous: index === 0 ? null : groups[index - 1]!.text,
-        next: index + 1 === groups.length ? null : groups[index + 1]!.text,
+        sentence: boundedWindowText(group.text, 2_000),
+        previous: index === 0 ? null : boundedWindowText(groups[index - 1]!.text, 1_000, "end"),
+        next:
+          index + 1 === groups.length ? null : boundedWindowText(groups[index + 1]!.text, 1_000),
       });
   });
   return windows;
@@ -259,7 +280,18 @@ export function hostedPromptAuthority(input: {
     reservedCostMicroUsd: input.reservedCostMicroUsd,
     accepted: null,
   });
-  return Object.freeze({ ...base, recordedInputHash: promptExecutionInputHash(base) });
+  const authority = Object.freeze({ ...base, recordedInputHash: promptExecutionInputHash(base) });
+  buildPromptBatch({
+    batchId: `${authority.taskId}:batch:${authority.attemptOrdinal}`,
+    projectTitle: authority.projectTitle,
+    imageStyleVersionId: authority.imageStyleVersionId,
+    styleProfileHash: authority.styleProfileHash,
+    plannerGuidance: authority.plannerGuidance,
+    storyContext: authority.storyContext,
+    continuityTags: authority.continuityTags,
+    scenes: authority.scenes,
+  });
+  return authority;
 }
 
 class HostedPromptStore implements PromptExecutionStore {

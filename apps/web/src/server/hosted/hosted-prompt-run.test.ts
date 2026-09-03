@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { PromptBatch } from "@videoforge/pipeline";
+import { buildPromptBatch, type PromptBatch } from "@videoforge/pipeline";
 
 import { hostedPromptAuthority } from "./hosted-prompt-run";
 import { HostedRunwarePromptWriter } from "./runware-prompt-execution";
@@ -83,6 +83,48 @@ const identity = {
   reservationCostEventId: ids.reservation,
   claimTokenHash: digest,
 } as const;
+
+function successfulPromptFetcher() {
+  return vi.fn(async (_url: unknown, init?: RequestInit) => {
+    const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
+    const task = request[0]!;
+    const messages = task.messages as Array<{ content: string }>;
+    const payload = JSON.parse(messages[0]!.content) as {
+      batch_id: string;
+      scenes: Array<{ scene_id: string; exact_phrase: string; in_image_shot_role: string }>;
+    };
+    const output = {
+      batch_id: payload.batch_id,
+      scenes: payload.scenes.map((scene) => ({
+        scene_id: scene.scene_id,
+        literal_subject: scene.exact_phrase,
+        action: "shown as physical evidence",
+        environment: "a real practical environment",
+        in_image_shot_role: scene.in_image_shot_role,
+        lighting_context: "available daylight",
+        continuity_tags: [],
+        prompt_core: `${scene.exact_phrase}, shown as literal physical evidence`,
+      })),
+    };
+    return Response.json({
+      data: [
+        {
+          taskUUID: task.taskUUID,
+          text: JSON.stringify(output),
+          usage: {
+            promptTokens: 100,
+            completionTokens: 200,
+            totalTokens: 300,
+            cachedInputTokens: 0,
+          },
+          cost: 0.001,
+          finishReason: "stop",
+          model: "deepseek:v4@flash",
+        },
+      ],
+    });
+  });
+}
 
 describe("hosted prompt authority", () => {
   it("binds the exact current plan, published style, single claim, and 4-cent reservation", () => {
@@ -216,49 +258,64 @@ describe("hosted prompt authority", () => {
       }),
     ).toThrow("not executable");
   });
+
+  it("bounds adjacent sentence windows and reaches the fake provider transport", async () => {
+    const allSegments = scenes().map((scene, index) => ({
+      scene_id: scene.scene_id,
+      segment_index: index,
+      phrase:
+        index === 0
+          ? "First short sentence."
+          : index === 1
+            ? `${"hydrogen peroxide bottle beside a practical kitchen sink ".repeat(30)}next evidence.`
+            : `Literal scene ${index + 1} is visible.`,
+    }));
+    const authority = hostedPromptAuthority({
+      plan: plan({ all_segments: allSegments }),
+      identity,
+      reservedCostMicroUsd: 40_000,
+    });
+    const batch = buildPromptBatch({
+      batchId: `${authority.taskId}:batch:1`,
+      projectTitle: authority.projectTitle,
+      imageStyleVersionId: authority.imageStyleVersionId,
+      styleProfileHash: authority.styleProfileHash,
+      plannerGuidance: authority.plannerGuidance,
+      storyContext: authority.storyContext,
+      continuityTags: authority.continuityTags,
+      scenes: authority.scenes,
+    });
+
+    expect(batch.scenes[0]?.nextContext?.length).toBeLessThanOrEqual(1_000);
+    expect(batch.scenes[1]?.sentenceContext.length).toBeLessThanOrEqual(2_000);
+    expect(batch.scenes[2]?.priorContext?.length).toBeLessThanOrEqual(1_000);
+    expect(batch.scenes[0]?.nextContext).toMatch(/^hydrogen peroxide bottle/u);
+    expect(batch.scenes[2]?.priorContext).toMatch(/next evidence\.$/u);
+    const fetcher = successfulPromptFetcher();
+    const result = await new HostedRunwarePromptWriter("configured-test-key-value", fetcher).write(
+      batch,
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(result.output.scenes).toHaveLength(25);
+  });
+
+  it("rejects any remaining canonical prompt violation before durable preparation", () => {
+    const invalidScenes = scenes().map((scene, index) =>
+      index === 0 ? { ...scene, phrase: "x".repeat(1_001) } : scene,
+    );
+    expect(() =>
+      hostedPromptAuthority({
+        plan: plan({ scenes: invalidScenes }),
+        identity,
+        reservedCostMicroUsd: 40_000,
+      }),
+    ).toThrow("Scene phrase must contain 1-1000 normalized characters");
+  });
 });
 
 describe("hosted Runware prompt writer", () => {
   it("captures exact provider request/response bytes, usage, and reported cost", async () => {
-    const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
-      const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
-      const task = request[0]!;
-      const messages = task.messages as Array<{ content: string }>;
-      const payload = JSON.parse(messages[0]!.content) as {
-        batch_id: string;
-        scenes: Array<{ scene_id: string; exact_phrase: string; in_image_shot_role: string }>;
-      };
-      const output = {
-        batch_id: payload.batch_id,
-        scenes: payload.scenes.map((scene) => ({
-          scene_id: scene.scene_id,
-          literal_subject: scene.exact_phrase,
-          action: "shown as physical evidence",
-          environment: "a real practical environment",
-          in_image_shot_role: scene.in_image_shot_role,
-          lighting_context: "available daylight",
-          continuity_tags: [],
-          prompt_core: `${scene.exact_phrase}, shown as literal physical evidence`,
-        })),
-      };
-      return Response.json({
-        data: [
-          {
-            taskUUID: task.taskUUID,
-            text: JSON.stringify(output),
-            usage: {
-              promptTokens: 100,
-              completionTokens: 200,
-              totalTokens: 300,
-              cachedInputTokens: 0,
-            },
-            cost: 0.001,
-            finishReason: "stop",
-            model: "deepseek:v4@flash",
-          },
-        ],
-      });
-    });
+    const fetcher = successfulPromptFetcher();
     const batch: PromptBatch = {
       scenePromptWriterVersion: "scene-prompt-writer-v1",
       batchId: `${ids.task}:batch:1`,
