@@ -56,6 +56,8 @@ Runware DeepSeek V4 Flash 0731 writes scene-content prompts only. Code already k
 - Whether it is a full image or a split-right image.
 - The deterministic `in_image_shot_role`.
 - Adjacent narration context and continuity tags.
+- The structured scene facts that must be grounded: literal subject, one visible action,
+  environment, and lighting context.
 - The selected `image_style_version_id` and immutable profile hash.
 - Whether project extra keywords are enabled.
 - Permanent output guardrails.
@@ -95,7 +97,7 @@ Recommended Runware settings:
 
 Use strict `jsonSchema`. Application code owns style suffixes, optional extra keywords, and permanent guardrails so the model cannot omit or inconsistently repeat them.
 
-DeepSeek scene-writing contract (`scene-prompt-writer-v2`, Runware request v10):
+DeepSeek scene-writing contract (`scene-prompt-writer-v2`, Runware request v11):
 
 ```text
 You write concise image scene cores for VideoForge. For each stable scene ID,
@@ -114,6 +116,15 @@ GPU, retry, or fallback. Return only the strict requested JSON and every scene I
 exactly once.
 ```
 
+Request v11 makes the structured fields explicit: `literal_subject`, `action`, `environment`, and
+`lighting_context` are the source-bound scene facts, with `continuity_tags` and a compatibility-only
+`prompt_core`. Subject, action, and environment must retain concrete anchors from the exact phrase,
+containing sentence, bounded previous/next narration, or compact global story context. The action
+starts with the exact phrase's first distinctive action, allowing morphology only; a while/then/and/but
+action chain is accepted only when that coordination is narrated. The compiler derives final literal
+image content from the validated structured facts, so `prompt_core` cannot change the subject, action,
+environment, or lighting that reaches the image model.
+
 ## Compact DeepSeek output
 
 ```json
@@ -129,19 +140,23 @@ exactly once.
 }
 ```
 
-The scheduler assigns `in_image_shot_role` from a versioned seeded rotation with simple lexical overrides. DeepSeek returns the exact enum unchanged. The selected style guidance may shape visual treatment, but the output still describes the narration's visible content rather than repeating boilerplate.
+The scheduler assigns `in_image_shot_role` from a versioned seeded rotation with simple lexical overrides. DeepSeek returns the exact enum unchanged. The selected style guidance may shape visual treatment, but the output still describes the narration's visible content rather than repeating boilerplate. Structured subject/action/environment/lighting fields are the source-bound compiler inputs; `prompt_core` is compatibility-only.
 
 ## Deterministic prompt compiler
 
 Positive construction order:
 
-1. Literal subject and visible action from DeepSeek.
-2. Exact physical setting and era/location facts.
+1. Validated literal subject, visible action, environment, and lighting facts from DeepSeek.
+2. Exact source anchors retained by those structured facts.
 3. Deterministic continuity and required in-image shot role/viewpoint.
 4. Full-image or split-image crop-safe guidance from the pinned style.
 5. Selected style positive suffix.
 6. `extra_prompt_keywords` exactly once, only when `apply_extra_prompt_keywords=true`.
 7. Permanent VideoForge guardrail.
+
+The provider-authored `prompt_core` is never used as final image content. It remains in the durable
+writer shape for provider compatibility and bounded quality checks, while the compiler constructs
+`literalContent` from the independently normalized and conflict-checked structured fields.
 
 Negative channel:
 

@@ -5,15 +5,21 @@
 ### Current new-chat launch point — 2026-09-03
 
 - The current provider-free Stage 5 repair supersedes the prompt-quality/accounting follow-ups in the
-  live handoff below. Future fresh projects use `scene-prompt-writer-v2` / Runware request v10 and a
-  structured treatment derived only from the pinned immutable Image Style. Exact Stage 4 phrases,
-  bounded adjacent phrase context, and compact global story context are explicit inputs; no hardcoded
-  photographic or reference-image content is allowed to replace the selected style.
+  live handoff below. Future fresh projects use `scene-prompt-writer-v2` / Runware request v11 and a
+  structured treatment derived only from the pinned immutable Image Style. Each returned scene has
+  structured `literal_subject`, `action`, `environment`, and `lighting_context` facts plus continuity
+  tags: subject/action/environment must retain concrete anchors from the exact Stage 4 phrase, its
+  containing sentence, bounded adjacent phrases, or compact global story context. The action begins
+  with the exact phrase's first distinctive action, permitting morphology only; narrated coordination
+  is required for action chains. The compiler derives final literal image content from these validated
+  facts; `prompt_core` is retained only for provider compatibility and bounded quality checks. No
+  hardcoded photographic or reference-image content is allowed to replace the selected style.
 - Adaptive batching still has no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
   per persisted planned batch, accepted batches are durable before the next request, and failure or
-  ambiguity never redispatches. Prompt-core validation now rejects generic placeholder scenes,
-  text/sign/label/marking conflicts, cross-batch duplicates, and reference-content leakage while
-  allowing non-verbatim semantic phrasing. Migration `0072` repairs Stage 3 reservation release
+  ambiguity never redispatches. Structured-fact validation rejects generic placeholder scenes,
+  ungrounded subjects/environments/actions, ungrounded action chains, text/sign/label/marking
+  conflicts, cross-batch duplicates, and reference-content leakage while allowing non-verbatim
+  semantic phrasing. Migration `0072` repairs Stage 3 reservation release
   accounting; migration `0073` selects writer v2 for future fresh Stage 5 runs. Both are pending.
 - Provider-free evidence is green: pipeline 142/142, control plane 388/388, web 1,486/1,486 with one
   intentional skip, focused hosted Stage 5/viewer/local-mode compatibility 78/78, package typechecks,

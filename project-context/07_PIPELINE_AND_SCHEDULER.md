@@ -145,8 +145,9 @@ the opening minute or a critical claim. Reject visible pseudo-text/logo/anatomy/
 Before provider dispatch, compile immutable JCS documents:
 
 - `generation-work-manifest/v1` binds tenant/workspace/project/revision/transcript/timeline/config
-  hashes; 25–50-scene prompt batches; every image slot/planned artifact; every short SoulX task and
-  its 16 kHz mono padded WAV/trim lineage; exact cost cardinalities; and
+  hashes; the complete Stage 4 image-scene list and its minimum contiguous adaptive prompt batches
+  (no fixed scenes-per-batch rule or project scene cap); every image slot/planned artifact; every
+  short SoulX task and its 16 kHz mono padded WAV/trim lineage; exact cost cardinalities; and
   `full_voiceover_dispatched=false`.
 - `render-work-manifest/v1` binds every exclusive frame interval to planned image/avatar assets,
   locks `HARD_CUTS_ONLY`, requires `SLOW_SMOOTH_CENTERED_ZOOM` for image-containing segments, and
@@ -157,13 +158,22 @@ hard failure. Planning manifests authorize no provider work by themselves.
 
 ## 6. Image prompt compilation
 
-- Batch 25–50 image scenes. DeepSeek receives the sanitized title once, each exact phrase/shot role
-  and concise context, plus the pinned style planner guidance once.
-- Preserve compact accepted continuity state between batches; no extra continuity LLM call.
-- Validate strict JSON and exact scene IDs. Retry only missing/invalid items once, then block or use an
-  explicitly defined deterministic prompt fallback.
-- Trusted code compiles scene core + crop guidance + immutable style suffix + enabled extra keywords
-  + permanent guardrails. Store components and exact submitted UTF-8/hash.
+- Stage 4 owns the deterministic voiceover split and exact ordered image-scene list. Stage 5 derives
+  the minimum contiguous adaptive batch count from request/context/output budgets; there is no fixed
+  scenes-per-batch rule and no project scene cap.
+- DeepSeek receives the sanitized title, compact global story context, and pinned immutable-style
+  treatment once per batch. Each scene item carries the exact phrase, containing sentence, bounded
+  previous/next narration, and code-assigned shot role/layout.
+- The provider returns structured literal subject, one visible action, environment, and lighting facts
+  plus continuity tags and compatibility-only `prompt_core`. Subject/action/environment are grounded
+  to exact/local/global source anchors; action morphology is allowed but ungrounded action chains are
+  rejected. Trusted code compiles final literal content from validated structured facts, never from
+  raw `prompt_core`.
+- Validate strict JSON, exact scene IDs, source relevance, hard visual restrictions, and immutable style
+  treatment. Persist each accepted batch and its receipt/cost evidence before the next request. Make
+  exactly one provider request per persisted planned batch; any definite or ambiguous failure stops
+  without retry, redispatch, or provider retrieval. The UI exposes durable accepted increments through
+  its bounded scrollable prompt viewer.
 - Never send disabled extra keywords, private style references, Ranga research frames, or another
   account's data.
 

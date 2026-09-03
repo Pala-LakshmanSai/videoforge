@@ -168,11 +168,14 @@ apply_extra_prompt_keywords: boolean, default false
 style_profile_hash: SHA-256 of RFC-8785-canonical profile bytes
 ```
 
-DeepSeek receives the sanitized title and `planner_guidance` once per bounded scene batch. It returns
-literal scene cores only. Trusted code compiles each Mage prompt:
+DeepSeek receives the sanitized title, compact global story context, and structured
+`style_treatment` derived only from the pinned immutable profile once per bounded adaptive scene
+batch. It returns source-grounded structured scene facts plus compatibility-only scene cores; it never
+receives concrete reference-image content or legacy planner guidance. Trusted code compiles each Mage
+prompt:
 
 ```text
-scene content core
+validated literal subject/action/environment/lighting facts
 + factual continuity
 + required full/split crop-safe guidance
 + style positive suffix
