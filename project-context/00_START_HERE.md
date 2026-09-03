@@ -24,10 +24,19 @@
   `0cb767d9-f07e-4526-aade-25a98dc0d043`, in real signed-in Chrome. Stage 1 and personal-worker
   Stage 2 completed; Stage 3 also completed and saved bounded hydrogen-peroxide context.
 - The run then stopped at its first terminal failure before Stage 5: Stage 4 planning remained
-  pending and the UI reported `HOSTED_PROJECT_PLANNING_FAILED` through its safe planning-failure
-  message. The UI displayed `$0.00`; no retry or provider retrieval occurred. Freeze this project.
-- Request v15 remains live but is still not live-qualified because Stage 5 never began. Diagnose and
-  repair the Stage 4 planning failure provider-free before seeking any fresh live authority.
+  pending and the UI showed its generic non-JSON hosted-request fallback. Worker-specific Cloudflare
+  Observability later proved the exact cause: the render request returned HTTP 503 with outcome
+  `exceededCpu`, `1,765 ms` CPU, and `2,681 ms` wall time. This was not an application
+  `HOSTED_PROJECT_PLANNING_FAILED`, schema, grant, migration, or persistence rejection. The UI
+  displayed `$0.00`; no retry or provider retrieval occurred. Freeze this project.
+- Provider-free repair `ac0344d3` replaces Stage 4's request-time 2,727,968-byte all-contract
+  validator import with a generated 327,179-byte shard containing exactly the five required
+  contracts. Schemas, validation, hashes, IDs, scheduling, persistence, and provider-inert behavior
+  are unchanged. The bundle verifier enforces lazy loading and a 512 KiB ceiling. Focused tests pass
+  68/68, contract generation/build and lint pass, and the staging build/quarantine passes.
+- Request v15 remains live but is still not live-qualified because Stage 5 never began. Deploy and
+  test repair `ac0344d3` only under fresh exact source-bound authority using a fresh project; never
+  retry or retrieve `0cb767d9-f07e-4526-aade-25a98dc0d043`.
 - Future fresh projects still use `scene-prompt-writer-v2`, narration-grounded structured scene facts,
   and adaptive batching with no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
   per persisted planned batch, accepted batches are durable before the next request, and failure or
