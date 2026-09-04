@@ -79,18 +79,16 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempt68 is approved once for the exact partial-output rollback repair,
-// cumulative finite cap, and refresh-disabled posture compiled below.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:637e1348c5507adb328077c78b71d2c877bdd3d83be216eacde24f0b3c457dfb";
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;
+// Attempt68 was consumed by a failed-clean pre-mutation admission check. A
+// successor must compile a fresh exact authority and cap.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
- * same compiled approval boundary as the proposal and finite cap. Attempt68
- * explicitly keeps refresh disabled; any future authority must bind its own decision in a
- * separate immutable activation commit.
+ * same compiled approval boundary as the proposal and finite cap. Any future
+ * authority must bind its own decision in a separate immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;

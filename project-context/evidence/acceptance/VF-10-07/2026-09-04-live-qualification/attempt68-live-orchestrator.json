@@ -1,0 +1,47 @@
+{
+  "schema_version": "videoforge-v207-live-orchestrator/v1",
+  "worker_name": "videoforge-v2-06-staging",
+  "route": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port",
+  "config_path": "/Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
+  "authority": {
+    "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+    "source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+    "proposal_sha256": "sha256:c271e70f4d1d0263810d01664f453ca97afee6aaf0d1220eb902ee99e08e7ac7",
+    "cap_usd": 4.5,
+    "anchor_refresh_authorized": false
+  },
+  "events": [
+    {
+      "event": "orchestration_started",
+      "at": "2026-09-04T08:56:09.929Z",
+      "detail": {
+        "local_disk_available_bytes": 2400403456
+      }
+    },
+    {
+      "event": "rollback_anchor_refresh_invocation_checked",
+      "at": "2026-09-04T08:56:09.930Z",
+      "detail": {
+        "activation": "disabled",
+        "authority_bound": false,
+        "environment_bound": false
+      }
+    },
+    {
+      "event": "orchestration_failed",
+      "at": "2026-09-04T08:56:15.664Z",
+      "detail": {
+        "code": "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED"
+      }
+    },
+    {
+      "event": "worker_rollback_skipped_no_mutation",
+      "at": "2026-09-04T08:56:15.665Z"
+    },
+    {
+      "event": "disabled_route_probe_skipped_no_mutation",
+      "at": "2026-09-04T08:56:15.665Z"
+    }
+  ],
+  "result": "FAILED"
+}

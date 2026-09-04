@@ -3,7 +3,7 @@
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
   "attempt": 68,
-  "status": "APPROVED_SEALED_AWAITING_EXECUTION",
+  "status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
   "qualification_status": "NOT_QUALIFIED",
   "proposal_sha256": "sha256:c271e70f4d1d0263810d01664f453ca97afee6aaf0d1220eb902ee99e08e7ac7",
   "control_source_commit": "12e3972169e2de8a3a86af39d79acf55873c91b2",
@@ -30,11 +30,21 @@
   },
   "authority": {
     "exact_approval_recorded": true,
-    "fresh_exact_approval_required": false,
-    "provider_mutations_authorized": true,
-    "gpu_use_authorized": true,
+    "fresh_exact_approval_required": true,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
     "maximum_cumulative_finite_spend_usd": 4.5,
     "anchor_refresh_authorized": false,
-    "v2_08_authorized": false
+    "v2_08_authorized": false,
+    "consumed": true,
+    "reusable": false
+  },
+  "execution": {
+    "result": "FAILED_CLEAN_PRE_MUTATION",
+    "failure_code": "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED",
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "incremental_spend_usd": 0,
+    "closure_evidence": "../2026-09-04-live-qualification/failed-attempt-68.json"
   }
 }
