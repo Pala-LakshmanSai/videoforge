@@ -59,6 +59,41 @@ test("0043 persists one-shot send ordering and fail-closed outcomes", async () =
   assert.doesNotMatch(sql, /SET state='READY_TO_DISPATCH'/u);
 });
 
+test("provider capacity is released only after the durable Stage 7 barrier", async () => {
+  const sql = await readFile(migrationUrl, "utf8");
+  const barrierCheck = sql.indexOf(
+    "FROM public.hosted_serverless_output_barrier_completions completion",
+  );
+  const acceptedUnits = sql.indexOf(
+    "INSERT INTO public.video_runtime_accepted_units",
+    barrierCheck,
+  );
+  const renderBarrier = sql.indexOf(
+    "UPDATE public.video_runtime_states SET stage=CASE WHEN all_completed THEN 'RENDERING'",
+    acceptedUnits,
+  );
+  const providerRelease = sql.indexOf(
+    "UPDATE public.provider_workload_leases SET state='RELEASED'",
+    renderBarrier,
+  );
+
+  assert.ok(barrierCheck >= 0, "cleanup must validate the signed output barrier first");
+  assert.ok(acceptedUnits > barrierCheck, "accepted output facts must follow barrier validation");
+  assert.ok(renderBarrier > acceptedUnits, "the CPU render barrier must follow accepted facts");
+  assert.ok(providerRelease > renderBarrier, "provider capacity must release after Stage 7");
+  assert.match(sql, /release_reason=CASE WHEN all_completed THEN 'HOSTED_PAIR_OUTPUTS_ACCEPTED'/u);
+  assert.match(
+    sql,
+    /all_completed AND EXISTS\(SELECT 1 FROM public\.generation_requests[\s\S]*?state<>'ACTIVE'/u,
+    "successful GPU settlement must leave the request active for CPU render",
+  );
+  assert.match(
+    sql,
+    /all_completed AND EXISTS\(SELECT 1 FROM public\.video_runtime_states[\s\S]*?stage<>'RENDERING'/u,
+    "successful GPU settlement must enter the render barrier",
+  );
+});
+
 test("0043 reuses the full 0042 authority and token recovery predicate", async () => {
   const sql = await readFile(migrationUrl, "utf8");
   assert.match(sql, /videoforge_recover_hosted_atomic_pair_tokens/u);
