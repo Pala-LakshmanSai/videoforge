@@ -200,18 +200,16 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt77 is `APPROVED_SINGLE_USE_UNCONSUMED` at control
-`20c1fb9eb34b76c860c404705cf7d582350daa17`. Proposal
-`sha256:a84068163041879cc8616052eaf67a668f1aa46e0b186b53395524b5a02e816a`, acceptance
-`sha256:dca919c3019e8c8506eb836c377fe22ab7f1d26b9cd27661ddb2c100cca3e7fa`, preapproval repair audit
-`sha256:430dbe267fef38524af94f43e67b6a7ca70e6f36de1cf8992b69b2d122b0ecc8`, post-approval authority
-audit `sha256:aab441ee9231c9bb2dcbd1b34f518edb59ff0c50932bf02c4d9e1becfdef6434`, and validator
-`sha256:90141e581da2521b8c6d9fef191673230ab122fddc29cd01b6b619ada029266d` pass with P0/P1/P2
-`0/0/0`. The exact diagnostic repair distinguishes
-prewrite-head, body-read, bucket-write, and postwrite-head failures without raw data, retry, or
-redispatch. Authority `sha256:ca86035ac8c8be8b1cdbe127f3154841f2cccc9007eaa29ae0fb27563dbcf7b1`
-is single-use and unconsumed for exactly the sealed `$4.50` sequence. V2-07 remains `NOT_QUALIFIED`;
-no fallback, anchor refresh, or V2-08 is authorized.
+**Current gate:** Attempt77 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. It failed closed at
+`V207_DISPOSABLE_ROUTE_INVALID` after active-version confirmation and before active-route
+confirmation, Python `urllib`, RunPod resources, or GPU. Closure
+`sha256:f87d3ab60c1efc07aa59963b790c6bfc2be2fd8b8fa5bc6f53378ddc94c96e43`, orchestrator
+`sha256:c9eaf439807aadeb1cca429087c9480524684a39ec17a130533310469ae45ad8`, and reconciliation
+`sha256:8a54c77082eb734f3d4e7ca56477055a069635ad9c174971009646c40fa1124b` prove cleanup, three
+Cloudflare absence reads, three RunPod zero-compute reads, unchanged retained volumes, zero RunPod
+jobs, and `$0` observed incremental spend. No provider, mutation, credential, GPU, spend, fallback,
+anchor-refresh, retained-volume mutation, image-republication, or V2-08 authority remains. V2-07 is
+`NOT_QUALIFIED`; next work is provider-free root-cause repair and a fresh audited successor proposal.
 
 **Starting point:** Attempt75 consumed its exact proposal and authority, published Mage image
 `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`,
@@ -225,15 +223,11 @@ input; no provider, mutation, GPU, spend, or V2-08 authority remains.
 
 **Work:**
 
-- preserve Attempt75 and Attempt76 closure, acceptance, orchestrator, reconciliation, approval, and
-  immutable image-publication evidence; never reuse either proposal, authority, or historical cap;
-- execute only approved Attempt77 proposal
-  `sha256:a84068163041879cc8616052eaf67a668f1aa46e0b186b53395524b5a02e816a`: reuse the
-  published image without republication; RTX 4090 EU-RO-1 at `$1.116/GPU-hour`; baseline
-  `2.266709277551854`; cumulative finite cap `$4.50`; `workersMin=0`, initial max one and temporary
-  max two; bounded route proof; exact Python `urllib` pre-GPU diagnostics; disposable output,
-  endpoint, template, Worker, and route cleanup; signal-safe cleanup; three final zero-compute
-  reads; continued `$7/month` volume retention; no fallback, anchor refresh, or V2-08;
+- preserve Attempt75 through Attempt77 closure, acceptance, orchestrator, reconciliation, approval,
+  and immutable image-publication evidence; never reuse any proposal, authority, or historical cap;
+- diagnose and repair `V207_DISPOSABLE_ROUTE_INVALID` provider-free, run only focused validation,
+  obtain an independent zero-finding audit, and seal a fresh successor proposal before requesting
+  exact new authority; the published image may be reused only under that fresh authority;
 - accept only durable 1280×720 outputs, tenant artifact readbacks, signed v3 receipts, exact timing/
   VRAM/cost, unchanged Mage manifest, terminal jobs, zero total workers, and intended volumes only.
 

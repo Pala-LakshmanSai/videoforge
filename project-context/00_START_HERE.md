@@ -4,37 +4,24 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt77 is `APPROVED_SINGLE_USE_UNCONSUMED` at control source
-  `20c1fb9eb34b76c860c404705cf7d582350daa17`. Proposal
-  `sha256:a84068163041879cc8616052eaf67a668f1aa46e0b186b53395524b5a02e816a`, acceptance
-  `sha256:dca919c3019e8c8506eb836c377fe22ab7f1d26b9cd27661ddb2c100cca3e7fa`, preapproval repair audit
-  `sha256:430dbe267fef38524af94f43e67b6a7ca70e6f36de1cf8992b69b2d122b0ecc8`, post-approval authority
-  audit `sha256:aab441ee9231c9bb2dcbd1b34f518edb59ff0c50932bf02c4d9e1becfdef6434`, and validator
-  `sha256:90141e581da2521b8c6d9fef191673230ab122fddc29cd01b6b619ada029266d` pass with P0/P1/P2
-  `0/0/0` and focused tests `66/66`.
-- The repair preserves bounded distinct-version route propagation and the exact pre-GPU Python
-  `urllib` upload/finalize/readback/delete probe, while classifying prewrite-head, body-read,
-  bucket-write, and postwrite-head failures through bounded exact-version/status/exit-bound codes.
-  It adds no retry or redispatch and retains signal-safe output/endpoint/template/Worker/route
-  cleanup plus three final zero-compute reads.
-- The approved single-use scope is the already published Mage image from source
-  `51d7de6cb3c0d88ddcb06df533864bf319a1210f` at
-  `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`,
-  RTX 4090 in EU-RO-1 at `$1.116/GPU-hour`, `workersMin=0`, initial max one and temporary max two,
-  baseline endpoint spend `2.266709277551854`, cumulative finite cap `$4.50`, and continued
-  retention of both exact 50 GB EU-RO-1 volumes at `$7/month` combined. There is no GPU fallback,
-  rollback-anchor refresh, retained-volume mutation, image republication, or V2-08 action.
-- Exact authority `sha256:ca86035ac8c8be8b1cdbe127f3154841f2cccc9007eaa29ae0fb27563dbcf7b1`
-  is single-use and unconsumed. Provider calls, mutations, credential access, GPU use, and spend are
-  authorized only for the sealed Attempt77 sequence and cumulative `$4.50` cap. No other provider,
-  fallback, anchor-refresh, retained-volume mutation, image republication, or V2-08 authority exists.
-- Attempt76 remains `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its closure, orchestrator, and
-  reconciliation hashes are respectively
-  `sha256:601134bc4f7eab8057f466d541ea561f50ac0b9dc0b1d39abe17d387142d9a98`,
-  `sha256:3f1ce9ae9c2d84f331cbc3f29db8efebfb98110c99e75981760703f4e2ad9fc3`, and
-  `sha256:90467c8e768c134382c3915240a8e8d669a6b7ad0255061e0c0bc2164812d0b1`; they prove failure
-  before RunPod/GPU, `$0` observed incremental spend, three Cloudflare absence reads, three RunPod
-  zero-compute reads, and unchanged retained volumes.
+- V2-07 Attempt77 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. After the disposable Worker and disabled
+  route were confirmed and the active version was published, execution failed closed at
+  `V207_DISPOSABLE_ROUTE_INVALID` before active-route confirmation, the Python `urllib` probe,
+  RunPod resource creation, or GPU dispatch.
+- Closure `sha256:f87d3ab60c1efc07aa59963b790c6bfc2be2fd8b8fa5bc6f53378ddc94c96e43`, orchestrator
+  `sha256:c9eaf439807aadeb1cca429087c9480524684a39ec17a130533310469ae45ad8`, and reconciliation
+  `sha256:8a54c77082eb734f3d4e7ca56477055a069635ad9c174971009646c40fa1124b` prove signal-safe cleanup,
+  three Cloudflare absence reads, three RunPod zero-compute reads, unchanged two-volume inventory,
+  zero RunPod jobs, and `$0` observed incremental spend.
+- Proposal `sha256:a84068163041879cc8616052eaf67a668f1aa46e0b186b53395524b5a02e816a` and authority
+  `sha256:ca86035ac8c8be8b1cdbe127f3154841f2cccc9007eaa29ae0fb27563dbcf7b1` cannot be reused. No
+  provider calls, remote mutations, credential access, GPU use, spend, fallback, anchor refresh,
+  retained-volume mutation, image republication, or V2-08 action is authorized.
+- The exact published Mage image from source `51d7de6cb3c0d88ddcb06df533864bf319a1210f` and digest
+  `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d` remains reusable only as
+  immutable input under a fresh successor authority. Both 50 GB EU-RO-1 volumes continue at
+  `$7/month` combined. Next: provider-free root-cause repair, focused validation, independent
+  audit, and a fresh exact successor proposal; V2-07 remains `NOT_QUALIFIED`.
 
 - V2-07 Attempt75 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its disposable Cloudflare Worker was
   deployed, the disabled route and active version were confirmed, then execution failed closed at
