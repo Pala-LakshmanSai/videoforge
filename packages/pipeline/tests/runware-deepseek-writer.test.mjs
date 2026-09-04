@@ -276,6 +276,10 @@ test("writer contract requires relatable physical evidence and applies style as 
   );
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /target at most 20 words each.*10 words.*45 words/u,
+  );
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
     /downstream compiler derives the final literal image description/u,
   );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /preserve that action semantically in action/u);

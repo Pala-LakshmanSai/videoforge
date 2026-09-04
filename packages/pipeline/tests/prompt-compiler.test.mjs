@@ -251,6 +251,23 @@ test("enabled extras normalize once, support negative refinements, and count Uni
     compiled.positivePromptUtf8Bytes,
     Buffer.byteLength(compiled.positivePrompt, "utf8"),
   );
+  const everyScene = output.scenes.map((writerOutput, index) =>
+    compileImagePrompt({
+      writerOutput,
+      expectedScene: input.scenes[index],
+      style: style(),
+      extraPromptKeywords: extra,
+      applyExtraPromptKeywords: true,
+    }),
+  );
+  assert.equal(everyScene.length, input.scenes.length);
+  assert.ok(
+    everyScene.every(
+      (scene) =>
+        scene.components.extraPromptKeywords === "café texture, no logo, no text, no AI look" &&
+        scene.positivePrompt.match(/café texture/gu)?.length === 1,
+    ),
+  );
 });
 
 test("compiler derives literal content from structured fields and ignores raw prompt_core", () => {

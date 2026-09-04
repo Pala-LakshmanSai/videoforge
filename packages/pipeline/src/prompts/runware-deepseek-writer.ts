@@ -21,7 +21,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v17" as const;
+  "runware-deepseek-v4-flash-prompt-request-v18" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -52,7 +52,7 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Never use vague placeholders such as a person, someone, something, somewhere, a generic or public setting, standing still, or doing something unless that exact detail is narration-critical.",
   "Use only the supplied style_treatment object as visual treatment derived from the pinned immutable style profile: honor its medium, realism, palette, framing, shot-scale preferences, lighting, contrast, depth, texture, camera language, mood, and imperfection as reusable treatment without importing concrete people, places, objects, products, logos, or other reference content.",
   "For photographic styles, require believable anatomy, materials, scale, perspective, optics, light, and everyday wear rather than glossy synthetic perfection.",
-  "Every text field must be non-empty and contain no control characters. Keep literal_subject, action, and environment at 240 characters or fewer; lighting_context at 120 or fewer; and prompt_core at 600 or fewer.",
+  "Every text field must be non-empty and contain no control characters. Be compact: target at most 20 words each for literal_subject, action, and environment; 10 words for lighting_context; and 45 words for prompt_core. The hard compatibility ceilings remain 240 characters for literal_subject, action, and environment, 120 for lighting_context, and 600 for prompt_core.",
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer.",
   "Write prompt_core as concise compatibility prose describing only the scene subject, visible action, and physical environment; do not echo palette descriptors, hex colors, lighting metadata, or any other style_treatment field in prompt_core or scene facts.",
   "Treat literal_subject, action, and environment as the authoritative structured scene facts. The downstream compiler derives the final literal image description from those fields. Keep lighting_context as concise audit metadata; pinned style lighting is the image-model authority. prompt_core is retained only for provider compatibility and bounded quality checks.",

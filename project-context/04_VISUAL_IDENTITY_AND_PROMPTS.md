@@ -97,7 +97,7 @@ Recommended Runware settings:
 
 Use strict `jsonSchema`. Application code owns style suffixes, optional extra keywords, and permanent guardrails so the model cannot omit or inconsistently repeat them.
 
-DeepSeek scene-writing contract (`scene-prompt-writer-v2`, Runware request v17):
+DeepSeek scene-writing contract (`scene-prompt-writer-v2`, Runware request v18):
 
 ```text
 You write concise image scene cores for VideoForge. For each stable scene ID,
@@ -116,21 +116,25 @@ GPU, retry, or fallback. Return only the strict requested JSON and every scene I
 exactly once.
 ```
 
-Request v17 keeps the structured fields explicit: `literal_subject`, `action`, `environment`, and
+Request v18 keeps the structured fields explicit: `literal_subject`, `action`, `environment`, and
 `lighting_context` are the source-bound scene facts, with `continuity_tags` and a compatibility-only
 `prompt_core`. Subject, action, and environment must retain concrete anchors from the exact phrase,
 containing sentence, bounded previous/next narration, or compact global story context. The system
 prompt tells DeepSeek to begin with the exact phrase's visible action and not invent coordinated
 actions. Hosted acceptance does not use lexical or action-equivalence heuristics as a terminal gate:
 subject, action, context, and duplicate-prose checks are advisory because natural paraphrases cannot
-be classified reliably by a bounded word matcher. Hosted v17 also repairs harmless provider
+be classified reliably by a bounded word matcher. Hosted v18 also repairs harmless provider
 formatting defects before strict persistence: it bounds or fills blank, oversized, or control-
 containing text; normalizes and deduplicates continuity tags; and replaces forbidden compiled fields
 with neutral narration-derived fallbacks rather than wasting the whole batch. Forbidden continuity
 tags are dropped; text-bearing price tags and receipts are explicitly excluded. The compiler still
 derives final literal image content from the repaired structured
 fields and independently rejects forbidden compiled content, so `prompt_core` cannot change the
-subject, action, environment, lighting, or restrictions that reach the image model. Deterministic
+subject, action, environment, or restrictions that reach the image model. Final prompts take only
+medium, realism, camera language, and lighting from the pinned style; palette descriptors and hex,
+framing, shot-scale preferences, contrast, depth, texture, imperfection, and mood are intentionally
+not repeated per scene. DeepSeek targets at most 20 words each for subject, action, and environment,
+10 for audit-only lighting context, and 45 for compatibility-only `prompt_core`. Deterministic
 schema, scene identity, completeness, provider-metadata, and spend-cap fences remain mandatory.
 
 ## Compact DeepSeek output
