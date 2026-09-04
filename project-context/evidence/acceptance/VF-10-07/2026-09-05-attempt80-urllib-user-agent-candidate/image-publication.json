@@ -1,0 +1,30 @@
+{
+  "schema_version": "videoforge.v2-07-attempt80-image-publication/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 80,
+  "published_at": "2026-09-04T19:50:25Z",
+  "publication_state": "PUBLISHED_NEW_DIGEST",
+  "repository": "pala-lakshmansai/videoforge-mage-v2-07",
+  "tag": "v2-07-lineage-d530320af723",
+  "source_commit": "d530320af723e33c6ce32552743fd00dc063eedc",
+  "manifest_digest": "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+  "config_digest": "sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2",
+  "overlay_layer_digest": "sha256:5c54508181bbdaf45691e7db0f4f907194ad7ff1cd38b0f86bfc0469bca0a334",
+  "direct_publication_without_github_actions_queue": true,
+  "anonymous_full_readback": {
+    "result": "PASS",
+    "manifest_verified": true,
+    "all_descriptors_verified": true,
+    "descriptor_count": 23,
+    "transport": "anonymous_parallel_bounded_range_stream_hash",
+    "range_bytes": 134217728,
+    "retained_blob_files": 0
+  },
+  "provider_state": {
+    "cloudflare_mutations": 0,
+    "runpod_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "observed_incremental_spend_usd": 0
+  }
+}

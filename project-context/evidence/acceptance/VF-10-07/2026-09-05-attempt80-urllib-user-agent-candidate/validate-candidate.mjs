@@ -16,7 +16,7 @@ const preapprovalAcceptanceHash =
   "sha256:0faf8ef24bec614df4281c99d9f1ca7d12380bc19ddb682d89ce4532d0cb68f6";
 const approvedAcceptanceBeforeAuthorityAuditHash =
   "sha256:4842af5514e885518e314093f5acaa4af1acbd1bc52f342f22de6ccb7bcf2b0e";
-const acceptanceHash = "sha256:48cc956d04a85de6727294223de4f9b05eaf5535435b6f5c3850fc6e6e09ce55";
+const acceptanceHash = "sha256:0b6806f7a03c09f9c907434964a669b1efa52c6ed7470b7675bb0b1122e3c216";
 const auditHash = "sha256:1177c5389749bbdaf355a125625d01b48ef4559c9e49393cbf4bf292cd561058";
 const authorityHash = "sha256:ad16101ee8d1dc33cc5237e6ff57ef7762a6b4b77b1b98e46e38a7fa53d4af7f";
 const authorityAuditHash =
@@ -241,7 +241,10 @@ assert(
 assert(
   acceptance.status === "APPROVED_SINGLE_USE_UNCONSUMED" &&
     acceptance.proposal_sha256 === proposalHash &&
-    acceptance.image_published === false &&
+    acceptance.image_published === true &&
+    acceptance.image_publication_required === false &&
+    acceptance.image_publication_sha256 ===
+      "sha256:21fa19443784d22e3cd5f75929fec8f4b94fe2921ce5dc2c7b16088c91ed27a2" &&
     acceptance.image_publication_authorized === true &&
     acceptance.authority_materialization?.preapproval_acceptance_sha256 ===
       preapprovalAcceptanceHash &&

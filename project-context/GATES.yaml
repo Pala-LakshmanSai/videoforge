@@ -180,7 +180,7 @@ gates:
     latest_provider_free_repair_source_sha256: "sha256:ec457d09ff9ea2f17b978fe51c575e0b32366d7942520665459ccabe4916fb3d"
     latest_provider_free_repair_test_sha256: "sha256:5c3db52f514dabf15311df513d0f123508c26e3f8bec048b3d2a635b871367a6"
     latest_provider_free_repair_validator: "evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/validate-candidate.mjs"
-    latest_provider_free_repair_validator_sha256: "sha256:1fd98bad85572531b229c9485c81028cc21a6a8350fd2553d883202ad34bab42"
+    latest_provider_free_repair_validator_sha256: "sha256:e506f46a573d4bf5abe95cab7d237c88cea5457afebac96588e4b542919c2c71"
     latest_closed_closure: "evidence/acceptance/VF-10-07/2026-09-04-live-qualification/failed-attempt-79.json"
     latest_closed_closure_sha256: "sha256:caf5b4b7858954f44aa51accfa2c893ec25dcbe91bb45d2cc35844246d863d45"
     latest_post_cancel_terminal_inventory_repair_commit: "8bb6583012569e595630deb3d7fe104a923dcc58"
@@ -188,7 +188,7 @@ gates:
     current_candidate: "evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/combined-live-proposal.json"
     current_candidate_sha256: "sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b"
     current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/acceptance.json"
-    current_candidate_acceptance_sha256: "sha256:48cc956d04a85de6727294223de4f9b05eaf5535435b6f5c3850fc6e6e09ce55"
+    current_candidate_acceptance_sha256: "sha256:0b6806f7a03c09f9c907434964a669b1efa52c6ed7470b7675bb0b1122e3c216"
     current_candidate_preapproval_acceptance_sha256: "sha256:0faf8ef24bec614df4281c99d9f1ca7d12380bc19ddb682d89ce4532d0cb68f6"
     current_candidate_independent_audit: "evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/independent-audit.json"
     current_candidate_independent_audit_sha256: "sha256:1177c5389749bbdaf355a125625d01b48ef4559c9e49393cbf4bf292cd561058"
@@ -366,7 +366,7 @@ gates:
     gpu_use_authorized: true
     v2_08_authorized: false
     authority_mode: attempt80_approved_single_use_unconsumed
-    result: "NOT_QUALIFIED_ATTEMPT80_APPROVED_SINGLE_USE_UNCONSUMED_IMAGE_UNPUBLISHED"
+    result: "NOT_QUALIFIED_ATTEMPT80_APPROVED_SINGLE_USE_UNCONSUMED_IMAGE_PUBLISHED_READBACK_PASS"
     attempt49_pre_activation_no_go: "evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/pre-activation-no-go.json"
     attempt49_pre_activation_no_go_sha256: "sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-09-04-live-qualification/failed-attempt-79.json"

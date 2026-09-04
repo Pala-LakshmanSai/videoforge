@@ -25,7 +25,7 @@ current_goal_boundary:
   credential_value_access: true
   paid_requests_or_spend: true
   runpod_mutation_or_gpu: true
-  v2_07_action: "Attempt80 proposal sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b is approved once under authority project-context/evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/approved-authority.json sha256:ad16101ee8d1dc33cc5237e6ff57ef7762a6b4b77b1b98e46e38a7fa53d4af7f, binding control/image source d530320af723e33c6ce32552743fd00dc063eedc and exact image sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62. Provider, credential, remote mutation, exact image publication, and GPU actions are authorized only within the proposal's bounded sequence and cumulative $4.50 cap. The exact image remains unpublished and Stage 6 remains NOT_QUALIFIED pending gate-first preflight and required cycles. No fallback, anchor refresh, retained-volume mutation, or V2-08 authority exists."
+  v2_07_action: "Attempt80 proposal sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b is approved once under authority project-context/evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/approved-authority.json sha256:ad16101ee8d1dc33cc5237e6ff57ef7762a6b4b77b1b98e46e38a7fa53d4af7f, binding control/image source d530320af723e33c6ce32552743fd00dc063eedc and exact image sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62. The exact image is published and all 23 descriptors passed anonymous full readback. Provider, credential, remote mutation, and GPU actions remain authorized only within the proposal's bounded sequence and cumulative $4.50 cap. Stage 6 remains NOT_QUALIFIED pending gate-first preflight and required cycles. No fallback, anchor refresh, retained-volume mutation, or V2-08 authority exists."
   provider_free_product_action: "Source 29667134 is live as Worker 50cfd256 with media worker 0.1.14 online. Exactly one project f7655814 completed Stages 1-5; Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 compact prompts, settled USD 0.001401, conserved its reservation, and exposed the 520px scrollable viewer. All 31 positive prompts contain the enabled bounded project keywords exactly once and only the pinned medium, realism, camera, and lighting style fields; removed style metadata has zero hits. Total Stage 3+5 variable external spend was USD 0.001473. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
@@ -4160,7 +4160,7 @@ model_runtime_evidence:
     latest_closed_result: urllib_version_missing_s4xx_cycle1_failed_clean_before_child_qualification_and_runpod
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62"
-    immutable_image_publication_state: EXPECTED_DETERMINISTIC_DIGEST_NOT_YET_PUBLISHED_ATTEMPT80
+    immutable_image_publication_state: PUBLISHED_IMMUTABLE_ANONYMOUS_FULL_READBACK_PASS_ATTEMPT80
     historical_published_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:bc662a182b2a874c6aeffb05f65cc3ffbdff6b5130c6a75c214618e86cf208b5"
     manifest_sha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b"
     selected_model_bytes: 13379919280
@@ -4233,7 +4233,7 @@ model_runtime_evidence:
     v2_07_attempt77_reconciliation: evidence/acceptance/VF-10-07/2026-09-04-live-qualification/attempt77-readonly-reconciliation.json
     v2_07_attempt77_reconciliation_sha256: "sha256:8a54c77082eb734f3d4e7ca56477055a069635ad9c174971009646c40fa1124b"
     v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/acceptance.json
-    v2_07_current_candidate_acceptance_sha256: "sha256:48cc956d04a85de6727294223de4f9b05eaf5535435b6f5c3850fc6e6e09ce55"
+    v2_07_current_candidate_acceptance_sha256: "sha256:0b6806f7a03c09f9c907434964a669b1efa52c6ed7470b7675bb0b1122e3c216"
     v2_07_current_candidate_independent_audit: evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/independent-audit.json
     v2_07_current_candidate_independent_audit_sha256: "sha256:1177c5389749bbdaf355a125625d01b48ef4559c9e49393cbf4bf292cd561058"
     v2_07_current_candidate_authority_independent_audit: evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/authority-independent-audit.json
@@ -6032,7 +6032,7 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compaction_qualified
-  status: ATTEMPT80_APPROVED_SINGLE_USE_UNCONSUMED_IMAGE_UNPUBLISHED
+  status: ATTEMPT80_APPROVED_SINGLE_USE_UNCONSUMED_IMAGE_PUBLISHED_READBACK_PASS
   dependency_status: v2_06_stage5_live_functional_prompt_v18_qualified
   authorization_status: attempt80_exact_approved_single_use_unconsumed
   task_stage: bounded_mutation
@@ -6841,4 +6841,4 @@ audit_evidence:
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
   current_goal_scope: v2_07_attempt80_approved_single_use_unconsumed_bounded_execution
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_ATTEMPT80_APPROVED_SINGLE_USE_UNCONSUMED_IMAGE_UNPUBLISHED
+  v2_07_status: NOT_QUALIFIED_ATTEMPT80_APPROVED_SINGLE_USE_UNCONSUMED_IMAGE_PUBLISHED_READBACK_PASS

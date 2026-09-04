@@ -13,7 +13,8 @@
 - The repair applies identified `VideoForge-Mage/V2-07` request framing to both the real Mage runtime
   and exact pre-GPU Python probe. Two deterministic image builds matched; focused tests and an
   independent audit pass with P0/P1/P2 `0/0/0`.
-- The image remains unpublished and Stage 6 remains `NOT_QUALIFIED`. The approved authority permits
+- The image is published and all 23 descriptors passed anonymous full readback; Stage 6 remains
+  `NOT_QUALIFIED`. The approved authority permits
   direct exact image publication, fresh preflight, three route fingerprints, three fully cleaned
   pre-GPU cycles, conditional Stage 6 qualification, and cleanup within the `$4.50` cumulative cap;
   continued `$7/month` volume retention remains approved. No fallback, anchor refresh, volume mutation,
