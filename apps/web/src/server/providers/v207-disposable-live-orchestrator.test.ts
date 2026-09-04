@@ -41,6 +41,7 @@ async function fixture(
     qualificationFails?: boolean;
     cleanupFails?: boolean;
     signal?: "SIGINT" | "SIGTERM";
+    absenceDiagnostic?: string;
   } = {},
 ) {
   const root = await mkdtemp("/tmp/v207-disposable-");
@@ -78,7 +79,11 @@ async function fixture(
     if (request.args.includes("deployments")) {
       return exists
         ? result(JSON.stringify({ versions: [{ version_id: VERSION_ID, percentage: 100 }] }))
-        : result("", 1, "Worker script does not exist [code: 10090]");
+        : result(
+            "",
+            1,
+            overrides.absenceDiagnostic ?? "Worker script does not exist [code: 10090]",
+          );
     }
     if (request.args.includes("deploy")) {
       exists = true;
@@ -193,6 +198,31 @@ describe("V2-07 disposable live orchestrator", () => {
     );
     expect(setup.state().exists).toBe(true);
     expect(setup.calls.some((call) => call.args.includes("delete"))).toBe(false);
+  });
+
+  it("accepts Cloudflare's current 10007 absent-Worker diagnostic", async () => {
+    const setup = await fixture({ absenceDiagnostic: "Cloudflare API error code: 10007" });
+    const completed = await runV207DisposableLiveOrchestration(setup.options);
+    expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
+  });
+
+  it("rejects an unrelated Cloudflare diagnostic before mutation and finalizes failed evidence", async () => {
+    const setup = await fixture({ absenceDiagnostic: "authentication failed [code: 10001]" });
+    await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
+      code: "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
+    });
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    expect(setup.calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(setup.calls.some((call) => call.args.includes("delete"))).toBe(false);
+    const evidence = JSON.parse(await readFile(join(setup.root, "evidence.json"), "utf8"));
+    expect(evidence).toMatchObject({ cleanup_required: false, result: "FAILED" });
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "initial_control_plane_absence_rejected_before_mutation",
+        code: "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
+      }),
+    );
   });
 
   it("deletes the disposable Worker when qualification fails", async () => {

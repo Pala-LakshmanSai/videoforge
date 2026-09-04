@@ -25,7 +25,7 @@ export const V207_DISPOSABLE_QUALIFICATION =
 const NONCE = /^[a-f0-9]{64}$/u;
 const SAFE_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
 const ABSENT_DIAGNOSTIC =
-  /(?:\b10090\b|worker(?: script)? [^\n]{0,120}(?:does not exist|not found)|no such worker)/iu;
+  /(?:\b(?:10007|10090)\b|worker(?: script)? [^\n]{0,120}(?:does not exist|not found)|no such worker)/iu;
 const FINAL_PROOF_READS = 3;
 
 type Environment = Readonly<Record<string, string | undefined>>;
@@ -402,7 +402,19 @@ export async function runV207DisposableLiveOrchestration(
   requireSuccess("V207_LIVE_PREFLIGHT", preflight);
   await record("preflight_completed");
 
-  await assertWorkerAbsent(run, cwd, configPath, environment);
+  try {
+    await assertWorkerAbsent(run, cwd, configPath, environment);
+  } catch (error) {
+    // This is still the read-only admission boundary. Persist a terminal result before
+    // returning the provider diagnostic so an absence-parser drift cannot leave evidence in
+    // RUNNING, and do not enter the mutation cleanup path for a Worker that was never created.
+    evidence.cleanup_required = false;
+    evidence.result = "FAILED";
+    await record("initial_control_plane_absence_rejected_before_mutation", {
+      code: safeCode(error),
+    });
+    throw error;
+  }
   await record("initial_control_plane_absence_confirmed");
 
   try {
