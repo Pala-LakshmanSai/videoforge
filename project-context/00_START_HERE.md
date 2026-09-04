@@ -11,7 +11,8 @@
 - Provider-free repair `71471bba` accepts only structured absent codes `10007`/`10090`, rejects unrelated
   diagnostics, and terminalizes pre-mutation failure evidence. Attempt70 proposal
   `sha256:eade126a…8a05` is sealed with the unchanged Mage image and prior cost/cleanup boundary.
-  It has no executable authority; fresh exact approval is required. V2-08 remains forbidden.
+  Exact authority `sha256:1a3ee5a6…f046f` and the `$4.50` cap are now compiled for one bounded
+  execution. V2-08 remains forbidden.
 
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the
