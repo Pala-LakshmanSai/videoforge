@@ -4,6 +4,25 @@
 
 ### Current new-chat launch point — 2026-09-04
 
+- V2-07 Attempt79 is `SEALED_AWAITING_FRESH_EXACT_APPROVAL` at control
+  `fb884fedf86c5ff5ec3e5bb4274c4a1e3db41fd6`. Proposal
+  `sha256:72f72a2de48841194233218c2f84d343c0c236ed36d5ff33a0c6dc682312d22a`, acceptance
+  `sha256:9a41b52f8b49dca410fc5a7219ff3a773b416253a976b975a2cae3f4a82aefff`, independent audit
+  `sha256:c98f3d3d2a4b2e37cff700b8e7b2e04d200e4b97731d2056da2871ffbac81987`, and validator
+  `sha256:b19d4ea3140748676e4aeaf05da330eb8436517b556cba8e327dfd3e8671b8b3` bind the provider-free
+  gate-first repair with P0/P1/P2 `0/0/0` and focused tests `86/86`.
+- The bounded sequence requires a fresh preflight, disposable output Worker, three exact active-route
+  fingerprints, then three distinct complete Python `urllib` PUT/finalize/GET/readback/delete cycles,
+  each cleaned before the next. RESERVE alone may retry at most three times with 250 ms waits only for
+  transport loss or a missing-version S5XX response. The existing bounded RunPod Stage 6 qualification
+  may begin only after all three cycles pass.
+- Proposed only: reuse unchanged image source `51d7de6cb3c0d88ddcb06df533864bf319a1210f` and digest
+  `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d` without republication;
+  RTX 4090 EU-RO-1 at `$1.116/GPU-hour`; baseline `2.266709277551854`; cumulative finite cap `$4.50`;
+  `workersMin=0`, temporary max two; disposable cleanup; three final zero reads; continued `$7/month`
+  volume retention. No executable authority, provider call, mutation, credential access, image reuse,
+  GPU, spend, fallback, anchor refresh, volume mutation, or V2-08 action exists before fresh exact
+  approval.
 - V2-07 Attempt78 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. The disposable Worker, disabled route,
   active version, and three-read active route were confirmed, then the pre-GPU output compatibility
   probe failed closed at `V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID` before child qualification,

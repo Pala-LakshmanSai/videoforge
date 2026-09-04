@@ -1,0 +1,64 @@
+{
+  "schema_version": "videoforge.v2-07-attempt79-gate-first-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 79,
+  "audit_scope": "provider-free accelerated pre-GPU output compatibility gate",
+  "control_source_commit": "fb884fedf86c5ff5ec3e5bb4274c4a1e3db41fd6",
+  "source_hashes": {
+    "disposable_orchestrator": "sha256:9d878abecee387cca7cc0f1c8906791559c9476d2769693d669bdef3551de52b",
+    "disposable_orchestrator_test": "sha256:310f3246069d8dbd412fb03acf9de1d2c6a14f1e983159bcfbf6c7765f1bac53"
+  },
+  "predecessor": {
+    "attempt": 78,
+    "result": "NOT_QUALIFIED_FAILED_CLEAN",
+    "failure_code": "V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID",
+    "closure": "../2026-09-04-live-qualification/failed-attempt-78.json",
+    "closure_sha256": "sha256:6ae6b03b0e3cdb309da4e123b1ca746745289e407341388b986e9818be5003"
+  },
+  "result": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "verified_contract": {
+    "reserve_replay_identity_is_deterministic": true,
+    "reserve_replay_only_for_transport_failure_or_version_missing_s5xx": true,
+    "reserve_replay_max_attempts": 3,
+    "reserve_replay_sleep_milliseconds": 250,
+    "all_other_stage_version_and_status_failures_terminal": true,
+    "probe_stage_diagnostics_are_fixed_and_redaction_safe": true,
+    "wrong_missing_and_malformed_worker_versions_are_stage_and_status_classified": true,
+    "invalid_version_response_bodies_are_cancelled": true,
+    "raw_body_headers_url_query_capability_status_text_and_exception_text_not_persisted": true,
+    "distinct_probe_object_keys": 3,
+    "each_cycle_delete_is_confirmed_before_next_cycle": true,
+    "completed_cycle_evidence_written_only_after_cleanup": true,
+    "gpu_qualification_starts_only_after_three_clean_cycles": true,
+    "probe_cleanup_uses_non_aborted_bounded_signal": true,
+    "whole_worker_signal_cleanup_remains_fail_closed": true,
+    "cleanup_uncertainty_remains_terminal": true,
+    "no_broad_retry_added": true,
+    "evidence_truth_matches_completed_work": true
+  },
+  "validation": {
+    "focused_disposable_orchestrator_tests": "86/86 PASS",
+    "web_dual_typecheck": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "provider_activity": {
+    "provider_calls": 0,
+    "provider_mutations": 0,
+    "credential_access": 0,
+    "image_publications": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "authority": {
+    "granted": false,
+    "approved_authority_exists": false,
+    "executable_finite_cap_usd": null,
+    "fresh_exact_approval_required": true
+  }
+}
