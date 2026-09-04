@@ -4,25 +4,31 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt75 is approved for one exact unconsumed execution at control/image source
-  `51d7de6cb3c0d88ddcb06df533864bf319a1210f`. It adds redaction-safe Mage upload failure
-  categories and an exact pre-GPU Python `urllib` PUT/finalize/readback/delete compatibility probe.
-  Cleanup is armed before reserve, uses independent bounded signals, and every probe response is
-  bound to the active disposable Worker version. Focused web tests pass 58/58, Mage tests pass
-  41/41, full image-media tests pass 180/180, and the independent re-audit has zero P0/P1/P2.
-- The sealed proposal is
-  `evidence/acceptance/VF-10-07/2026-09-04-attempt75-urllib-pregpu-candidate/combined-live-proposal.json`
-  (`sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533`).
-  It binds the now-published Mage image
-  `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`.
-  Exact single-use authority
-  `sha256:50f439adb627762b3ca7cc35bb5764266268fce5dbc702c9360c99bec10da883`
-  is compiled with the USD 4.50 cumulative finite cap. Post-publication acceptance is
-  `sha256:9bffb3d6a5b7cb14d8892187468c6bcedac957ef1c33c5c657131311368ccd5a`.
-  Workflow run `33888463324` published the exact image and passed anonymous manifest/config/layer
-  readback. The qualification authority remains unconsumed; execute only the exact pre-GPU probe,
-  qualification, and cleanup graph. No rollback-anchor
-  refresh, GPU fallback, retained-volume mutation, or V2-08 action is authorized.
+- V2-07 Attempt75 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its disposable Cloudflare Worker was
+  deployed, the disabled route and active version were confirmed, then execution failed closed at
+  `V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED` while proving the active route version. This was
+  before the Python `urllib` pre-GPU upload/finalize/readback/delete probe and before any RunPod
+  resource or GPU job. There were zero accepted outputs and no redispatch.
+- Signal-safe cleanup deleted the disposable Worker and temporary route. Three Cloudflare absence
+  reads and three RunPod zero-compute reads prove zero Pods, endpoints, private templates, active
+  Serverless workers, and running Pods. Both exact 50 GB EU-RO-1 volumes remain retained at the
+  continuing combined `$7/month` rate.
+- Billing moved from `2.214659276913153` to `2.266709277551854`, an observed
+  `$0.05205000063870102` window increment. Because Attempt75 created zero RunPod resources and
+  submitted zero GPU jobs, the increment is `UNATTRIBUTED_WINDOW_INCREMENT_ZERO_ATTEMPT75_GPU_JOBS`;
+  it remains within the historical USD 4.50 cap and must not be claimed as Attempt75 GPU spend.
+- Closure is `evidence/acceptance/VF-10-07/2026-09-04-live-qualification/failed-attempt-75.json`
+  (`sha256:d69c5e9ec60376e0718bc3e6d17a35a9f1754efab93b7ebb8c263b23e2c3414a`). Candidate acceptance,
+  orchestrator, and read-only reconciliation hashes are respectively
+  `sha256:08827ce65c98c2bd4aaaa4cf6051c00020c4d566e4b8c87d359dc648730ffffb`,
+  `sha256:2681888ec57c0a43f2e185990a0643dc2e178fd4babdc549598026faba78ddc6`, and
+  `sha256:4552919cd586f1df94c9f62697428cbf46f8e9bef251a9f9000aaf1064e80d2d`.
+- The exact Mage image
+  `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`
+  remains successfully published with anonymous manifest/config/layer readback PASS. Current
+  authority, executable cap, and rollback-anchor refresh authority are null. Next: repair route
+  propagation/version proof provider-free, independently audit and seal a fresh successor proposal,
+  then obtain fresh exact approval. No provider mutation, GPU use, or V2-08 action is authorized.
 
 - V2-07 Attempt74 consumed its exact single-use authority after one GPU job completed
   (`71315 ms` queue, `67163 ms` execution), then the first generated-output PUT failed at

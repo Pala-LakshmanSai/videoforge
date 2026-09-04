@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,7 +9,7 @@ const repoRoot = resolve(candidateDir, "../../../../..");
 
 const expected = Object.freeze({
   proposalSha256: "sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533",
-  acceptanceSha256: "sha256:9bffb3d6a5b7cb14d8892187468c6bcedac957ef1c33c5c657131311368ccd5a",
+  acceptanceSha256: "sha256:08827ce65c98c2bd4aaaa4cf6051c00020c4d566e4b8c87d359dc648730ffffb",
   publicationSha256: "sha256:02fb25196188fcaf9927ece504011d3f1e931d1f87053e88971b4e6b75126677",
   authoritySha256: "sha256:50f439adb627762b3ca7cc35bb5764266268fce5dbc702c9360c99bec10da883",
   auditSha256: "sha256:94da55ecbb8aba6b674fd4f5d5c8facad00a9d980b3d012dc70eaa62b8018e77",
@@ -47,6 +48,13 @@ function assert(condition, label) {
 
 function read(relativePath) {
   return readFileSync(resolve(repoRoot, relativePath));
+}
+
+function readAtCommit(commit, relativePath) {
+  return execFileSync("git", ["show", `${commit}:${relativePath}`], {
+    cwd: repoRoot,
+    encoding: null,
+  });
 }
 
 function sha256(bytes) {
@@ -99,7 +107,7 @@ assert(proposal.operation_contract?.run_pre_gpu_urllib_compatibility_probe === t
 assert(proposal.operation_contract?.v2_08_authorized === false, "PROPOSAL_V208_BOUNDARY");
 
 for (const [relativePath, digest] of Object.entries(expected.sourceHashes)) {
-  assert(sha256(read(relativePath)) === digest, `SOURCE_HASH_${relativePath}`);
+  assert(sha256(readAtCommit(expected.sourceCommit, relativePath)) === digest, `SOURCE_HASH_${relativePath}`);
 }
 const proposalSourcePaths = Object.freeze({
   disposable_orchestrator: "apps/web/src/server/providers/v207-disposable-live-orchestrator.ts",
@@ -115,15 +123,16 @@ for (const [proposalKey, relativePath] of Object.entries(proposalSourcePaths)) {
   assert(proposal.source_hashes?.[proposalKey] === expected.sourceHashes[relativePath], `PROPOSAL_SOURCE_HASH_${proposalKey}`);
 }
 
-assert(acceptance.status === "APPROVED_SINGLE_USE_UNCONSUMED", "ACCEPTANCE_STATUS");
+assert(acceptance.status === "CONSUMED_FAILED_CLEAN_NON_REUSABLE", "ACCEPTANCE_STATUS");
 assert(acceptance.proposal_sha256 === expected.proposalSha256, "ACCEPTANCE_PROPOSAL");
 assert(acceptance.control_source_commit === expected.sourceCommit, "ACCEPTANCE_CONTROL_SOURCE");
 assert(acceptance.image_source_commit === expected.sourceCommit, "ACCEPTANCE_IMAGE_SOURCE");
 assert(acceptance.image_published === true, "ACCEPTANCE_PUBLISHED");
 assert(acceptance.image_publication_sha256 === expected.publicationSha256, "ACCEPTANCE_PUBLICATION");
-assert(acceptance.authority?.maximum_cumulative_finite_spend_usd === 4.5, "ACCEPTANCE_CAP");
-assert(acceptance.authority?.provider_calls_authorized === true, "ACCEPTANCE_PROVIDER");
-assert(acceptance.authority?.gpu_use_authorized === true, "ACCEPTANCE_GPU");
+assert(acceptance.authority?.maximum_cumulative_finite_spend_usd === 0, "ACCEPTANCE_ZERO_CAP");
+assert(acceptance.authority?.provider_calls_authorized === false, "ACCEPTANCE_NO_PROVIDER");
+assert(acceptance.authority?.gpu_use_authorized === false, "ACCEPTANCE_NO_GPU");
+assert(acceptance.authority?.consumed === true, "ACCEPTANCE_CONSUMED");
 assert(acceptance.authority?.authority_sha256 === expected.authoritySha256, "ACCEPTANCE_AUTHORITY");
 
 assert(authority.status === "APPROVED_SINGLE_USE_UNCONSUMED", "AUTHORITY_STATUS");
@@ -156,10 +165,10 @@ assert(
   "ACTIVATION_CONTROL_SOURCE",
 );
 assert(
-  activation.includes(expected.authoritySha256) &&
-    activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;") &&
-    activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;"),
-  "ACTIVATION_APPROVED_AUTHORITY",
+  activation.includes("export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;") &&
+    activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = null;") &&
+    activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;"),
+  "ACTIVATION_NULL_AUTHORITY",
 );
 
 const currentState = read("project-context/CURRENT_STATE.yaml").toString("utf8");
@@ -169,8 +178,8 @@ for (const source of [currentState, gates]) {
     assert(source.includes(value), "CONTEXT_POINTER");
   }
 }
-assert(currentState.includes(expected.authoritySha256), "CURRENT_STATE_AUTHORITY");
-assert(gates.includes(expected.authoritySha256), "GATES_AUTHORITY");
-assert(gates.includes("current_candidate_executable_finite_cap_usd: 4.5"), "GATES_EXECUTABLE_CAP");
+assert(currentState.includes("current_goal_authority: null"), "CURRENT_STATE_NULL_AUTHORITY");
+assert(gates.includes("current_candidate_authority_sha256: null"), "GATES_NULL_AUTHORITY");
+assert(gates.includes("current_candidate_executable_finite_cap_usd: null"), "GATES_NULL_EXECUTABLE_CAP");
 
-console.log("PASS V2-07 Attempt75 approved single-use candidate");
+console.log("PASS V2-07 Attempt75 consumed failed-clean closure");

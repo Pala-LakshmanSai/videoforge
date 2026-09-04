@@ -1,0 +1,18 @@
+{
+  "schema_version": "videoforge-v207-disposable-live-orchestration/v1",
+  "worker_name": "videoforge-v207-output",
+  "route": "https://videoforge-v207-output.lakshmansai121.workers.dev/api/v2/v207/generated-output-port",
+  "cleanup_required": false,
+  "result": "FAILED",
+  "events": [
+    {"event":"clean_worktree_confirmed","at":"2026-09-04T15:23:38.348Z"},
+    {"event":"preflight_completed","at":"2026-09-04T15:23:45.936Z"},
+    {"event":"initial_control_plane_absence_confirmed","at":"2026-09-04T15:23:51.234Z"},
+    {"event":"cleanup_intent_persisted","at":"2026-09-04T15:23:51.235Z"},
+    {"event":"signer_disabled_worker_deployed","at":"2026-09-04T15:24:11.638Z"},
+    {"event":"disabled_route_confirmed","at":"2026-09-04T15:24:16.078Z","reads":3},
+    {"event":"active_version_confirmed","at":"2026-09-04T15:24:21.809Z","version_id_present":true},
+    {"event":"orchestration_failed","at":"2026-09-04T15:24:21.880Z","code":"V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED"},
+    {"event":"cleanup_confirmed","at":"2026-09-04T15:24:38.250Z","reads":3}
+  ]
+}

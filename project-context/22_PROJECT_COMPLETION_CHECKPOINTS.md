@@ -200,20 +200,22 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Starting point:** Attempt74 is closed clean and non-reusable after its first generated-output PUT
-failed. Attempt75 is provider-free sealed and independently audited PASS at source
-`51d7de6cb3c0d88ddcb06df533864bf319a1210f`, proposal
-`sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533`, and expected unpublished
-Mage image `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`.
-V2-07 remains `NOT_QUALIFIED`; executable authority/cap are null pending fresh exact approval.
+**Starting point:** Attempt75 consumed its exact proposal and authority, published Mage image
+`sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`,
+then failed clean at `V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED` after Cloudflare mutation but
+before the pre-GPU probe or any RunPod resource/job. Cleanup proved three Cloudflare absence reads,
+three RunPod zero-compute reads, and both exact retained volumes. The observed
+`$0.05205000063870102` billing-window increment is unattributed because Attempt75 submitted zero GPU
+jobs. V2-07 remains `NOT_QUALIFIED`; executable authority, cap, and anchor-refresh authority are null.
 
 **Work:**
 
-- validate the sealed Attempt75 candidate and never reuse an earlier attempt, proposal, authority,
-  cap, or image digest;
-- obtain fresh exact approval for the already sealed image-publication/deployment/qualification
-  operations, USD 4.50 cap, rates, cleanup, and stop conditions;
-- after exact approval, execute only the bound atomic gate once, with no blind retry or redispatch;
+- preserve Attempt75 closure, acceptance, orchestrator, reconciliation, and successful immutable
+  image-publication evidence; never reuse its proposal, authority, or historical cap;
+- repair the disposable route propagation/version proof provider-free and independently audit the
+  successor source and evidence;
+- seal a fresh exact proposal and obtain fresh exact approval before any provider mutation, GPU use,
+  or spend; reuse the already published image only if every sealed lineage field remains exact;
 - accept only durable 1280×720 outputs, tenant artifact readbacks, signed v3 receipts, exact timing/
   VRAM/cost, unchanged Mage manifest, terminal jobs, zero total workers, and intended volumes only.
 
