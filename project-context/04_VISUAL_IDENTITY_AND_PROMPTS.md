@@ -109,7 +109,7 @@ scene physically plausible, relatable, specific, and naturally imperfect;
 avoid generic placeholder people, actions, or locations. Prefer literal visible
 evidence over metaphor, and for abstract narration show the closest transcript-
 supported person, object, process, place, or consequence. Never request visible
-text, lettering, signs, labels, markings, captions, logos, watermarks, screens,
+text, lettering, signs, labels, price tags, receipts, markings, captions, logos, watermarks, screens,
 UI, charts, graphics, branded products, or decorative transitions. Do not choose
 duration, timeline composition, in-image shot role, avatar placement, model,
 GPU, retry, or fallback. Return only the strict requested JSON and every scene ID
@@ -127,7 +127,8 @@ be classified reliably by a bounded word matcher. Hosted v17 also repairs harmle
 formatting defects before strict persistence: it bounds or fills blank, oversized, or control-
 containing text; normalizes and deduplicates continuity tags; and replaces forbidden compiled fields
 with neutral narration-derived fallbacks rather than wasting the whole batch. Forbidden continuity
-tags are dropped. The compiler still derives final literal image content from the repaired structured
+tags are dropped; text-bearing price tags and receipts are explicitly excluded. The compiler still
+derives final literal image content from the repaired structured
 fields and independently rejects forbidden compiled content, so `prompt_core` cannot change the
 subject, action, environment, lighting, or restrictions that reach the image model. Deterministic
 schema, scene identity, completeness, provider-metadata, and spend-cap fences remain mandatory.

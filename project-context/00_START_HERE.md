@@ -17,7 +17,8 @@
   requested rows, but three rows hit the older local per-scene content gate, so the run stopped
   terminal with 15/30 saved prompts. The second response's exact known cost is 851 micro-USD. No
   retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred.
-- Provider-free repair `eb029d4677cff69abf16a7264a5633cf72a0c6ff` advances request v17 and makes
+- Provider-free repair `eb029d4677cff69abf16a7264a5633cf72a0c6ff`, completed by text-bearing-prop
+  guard `c651ad767d74010717936abe7d31a4667911d325`, advances request v17 and makes
   provider formatting defects non-terminal in hosted Stage 5. It bounds and repairs blank,
   oversized, or controlled text; drops blank, duplicate, or forbidden continuity tags; repairs
   forbidden compiled fields with neutral narration-derived fallbacks; and leaves the compatibility-
