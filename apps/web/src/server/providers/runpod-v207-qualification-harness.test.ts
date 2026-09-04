@@ -3293,6 +3293,83 @@ describe("V2-07 qualification harness", () => {
     );
   });
 
+  it("settles a null-time cancellation through exact terminal inventory when health stays stale", async () => {
+    const baseFetch = terminalScaleZeroFetch({
+      workerIds: ["worker_01", "worker_02"],
+      podIds: ["pod_01", "pod_02"],
+      healthWorkersBeforeDispatch: {
+        idle: 1,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 0,
+        unhealthy: 0,
+      },
+      healthWorkersAfterDispatch: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 2,
+        unhealthy: 0,
+      },
+      healthAfterFirstSnapshot: {
+        idle: 0,
+        running: 0,
+        initializing: 0,
+        ready: 0,
+        throttled: 2,
+        unhealthy: 0,
+      },
+    });
+    let cancellationRequested = false;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      const jobId = path.split("/").at(-1) ?? "job_01";
+      if (path.includes("/cancel/")) {
+        cancellationRequested = true;
+        return jsonResponse({ id: jobId, status: "CANCELLED" });
+      }
+      if (cancellationRequested && path.includes("/status/")) {
+        return jsonResponse({
+          id: jobId,
+          status: "CANCELLED",
+          executionTime: null,
+          delayTime: null,
+        });
+      }
+      return baseFetch(input, init);
+    });
+    const clock = vi.fn().mockReturnValueOnce(100).mockReturnValue(1_100);
+    const instance = makeHarness(fetch, async () => 0, 4, clock);
+    await instance.create();
+    const job = await instance.dispatchBatch(oneItemInput());
+    await instance.cancel(job.id);
+
+    await expect(instance.scaleDownToInitial()).resolves.toBeUndefined();
+
+    expect(
+      fetch.mock.calls.filter(([url]) => new URL(String(url)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+    const evidence = await instance.evidence();
+    expect(evidence.newPaidWorkFenced).toBe(false);
+    expect(evidence.activeWorstCaseLiabilityUsd).toBe(0);
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "cancel_liability_terminal_worker_scale_zero",
+        stable_terminal_snapshot_count: 2,
+        post_job_queue_proof_read_count: 4,
+      }),
+    );
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "cancel_liability_settled_after_stable_zero",
+        elapsed_through_stable_zero_ms: 1_000,
+        stable_zero_read_count: 2,
+      }),
+    );
+  });
+
   it("retains full cancel liability and fences paid work while health stays nonzero", async () => {
     const baseFetch = harnessFetch();
     let cancelled = false;
@@ -3333,9 +3410,11 @@ describe("V2-07 qualification harness", () => {
     const job = await instance.dispatchBatch(oneItemInput());
     await instance.cancel(job.id);
 
-    await expect(instance.scaleDownToInitial()).rejects.toThrow("RUNPOD_ZERO_NOT_CONFIRMED");
+    await expect(instance.scaleDownToInitial()).rejects.toThrow(
+      "RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED",
+    );
 
-    expect(postCancelHealthReads).toBe(30);
+    expect(postCancelHealthReads).toBeGreaterThanOrEqual(1);
     await expect(
       instance.dispatchBatch(oneItemInput("attempt_b", "reservation_b")),
     ).rejects.toThrow("RUNPOD_FINITE_SPEND_HEADROOM_INSUFFICIENT");

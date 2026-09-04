@@ -1,0 +1,20 @@
+{
+  "schema_version": "videoforge.v2-07-attempt80-cloudflare-cleanup/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 80,
+  "checked_at": "2026-09-04T20:24:41Z",
+  "result": "PASS",
+  "control_plane": {
+    "disposable_worker_absent": true,
+    "cloudflare_code": 10007
+  },
+  "data_plane": {
+    "status_only_reads": [404, 404, 404],
+    "absence_confirmed": true,
+    "response_bodies_retained": false,
+    "response_headers_retained": false,
+    "route_url_or_query_retained": false
+  },
+  "provider_mutations": 0
+}

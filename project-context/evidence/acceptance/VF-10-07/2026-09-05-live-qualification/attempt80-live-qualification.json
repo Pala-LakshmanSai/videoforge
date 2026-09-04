@@ -1,0 +1,54 @@
+{
+  "schema_version": "videoforge.v2-07-attempt80-live-qualification/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 80,
+  "success": false,
+  "phase": "cancel-terminal",
+  "failure_code": "RUNPOD_ZERO_NOT_CONFIRMED",
+  "proposal_sha256": "sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b",
+  "authority_sha256": "sha256:ad16101ee8d1dc33cc5237e6ff57ef7762a6b4b77b1b98e46e38a7fa53d4af7f",
+  "control_source_commit": "d530320af723e33c6ce32552743fd00dc063eedc",
+  "image_source_commit": "d530320af723e33c6ce32552743fd00dc063eedc",
+  "image_digest": "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+  "pre_gpu_output_compatibility_cycles_required": 3,
+  "pre_gpu_output_compatibility_cycles_passed": 3,
+  "batches": [
+    {
+      "kind": "cold",
+      "status": "COMPLETED",
+      "item_count": 32,
+      "durable_readback_count": 32,
+      "execution_time_ms": 226194,
+      "delay_time_ms": 5203
+    },
+    {
+      "kind": "warm",
+      "status": "COMPLETED",
+      "item_count": 32,
+      "durable_readback_count": 32,
+      "execution_time_ms": 205667,
+      "delay_time_ms": 8868
+    }
+  ],
+  "duplicate_delivery_same_job_no_redispatch": true,
+  "cancellation": {
+    "provider_status": "CANCELLED",
+    "execution_time_ms": null,
+    "output_cleanup": "CONFIRMED",
+    "stable_zero_liability_release": "UNCONFIRMED",
+    "retained_worst_case_liability_usd": 1.01215,
+    "new_paid_work_fenced": true
+  },
+  "generated_output_rollback": {
+    "result": "CONFIRMED",
+    "object_key_count": 96,
+    "confirmed_object_key_count": 96,
+    "failed_object_key_count": 0
+  },
+  "timeout_gate_started": false,
+  "max_two_gate_started": false,
+  "v2_07_qualified": false,
+  "v2_08_actions": 0,
+  "sensitive_material_retained": false
+}

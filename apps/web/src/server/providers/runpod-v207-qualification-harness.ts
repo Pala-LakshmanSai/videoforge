@@ -2638,18 +2638,30 @@ export class RunPodV207QualificationHarness {
     }
     if (this.#pendingCancelledLiabilities.size > 0) {
       try {
-        // A terminal CANCELLED status can precede actual worker shutdown. Require two separate,
-        // exact endpoint health reads with both queue and every worker counter at zero before
-        // using elapsed time to narrow its reservation.
-        // Cancellation is asynchronous: poll the first exact health-zero through the client's
-        // existing bounded drain window, then require a separately sampled zero before settling.
-        await this.#jobs!.confirmDrained();
         const stableReadSleep =
           this.#options.sleep ??
           ((milliseconds: number) =>
             new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
-        await stableReadSleep(100);
-        await this.#jobs!.confirmDrained(1);
+        try {
+          // Prefer two separately sampled exact health-zero reads. Do not spend the full bounded
+          // health window when RunPod retains stale FlashBoot worker counters after cancellation.
+          await this.#jobs!.confirmDrained(2);
+          await stableReadSleep(100);
+          await this.#jobs!.confirmDrained(1);
+        } catch {
+          // A terminal CANCELLED status can precede health-counter convergence. The existing
+          // post-job proof independently brackets two stable exact terminal endpoint/worker/Pod
+          // inventories with four queue-zero reads and rejects any still-owned job or identity
+          // drift, so it may safely prove scale zero without trusting stale worker counters.
+          const expectedPolicy = this.#concurrentReaderConfigHash
+            ? this.#options.concurrentReaderPolicy
+            : this.#options.initialPolicy;
+          await this.confirmTerminalScaleZeroBaseline(
+            expectedPolicy,
+            "cancel_liability_terminal_worker_scale_zero",
+            "post_job_queue_only",
+          );
+        }
         this.settleCancelledLiabilitiesAfterStableZero();
       } catch (error) {
         this.#newPaidWorkFenced = true;

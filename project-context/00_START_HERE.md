@@ -4,21 +4,19 @@
 
 ### Current new-chat launch point — 2026-09-05
 
-- V2-07 Attempt80 is `APPROVED_SINGLE_USE_UNCONSUMED` under authority
-  `evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/approved-authority.json`
-  (`sha256:ad16101ee8d1dc33cc5237e6ff57ef7762a6b4b77b1b98e46e38a7fa53d4af7f`), proposal
-  `sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b`, control/image source
-  `d530320af723e33c6ce32552743fd00dc063eedc`, and expected immutable image
-  `sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62`.
-- The repair applies identified `VideoForge-Mage/V2-07` request framing to both the real Mage runtime
-  and exact pre-GPU Python probe. Two deterministic image builds matched; focused tests and an
-  independent audit pass with P0/P1/P2 `0/0/0`.
-- The image is published and all 23 descriptors passed anonymous full readback; Stage 6 remains
-  `NOT_QUALIFIED`. The approved authority permits
-  direct exact image publication, fresh preflight, three route fingerprints, three fully cleaned
-  pre-GPU cycles, conditional Stage 6 qualification, and cleanup within the `$4.50` cumulative cap;
-  continued `$7/month` volume retention remains approved. No fallback, anchor refresh, volume mutation,
-  or V2-08.
+- V2-07 Attempt80 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. All three pre-GPU cycles and cold/warm
+  32-image batches passed. Cancellation reached provider `CANCELLED`, then failed closed at
+  `RUNPOD_ZERO_NOT_CONFIRMED` because stable-zero liability release did not accept terminal inventory;
+  timeout and max-two never ran. Generated output rollback removed 96/96 objects.
+- Exact standalone cleanup deleted the endpoint and template; Cloudflare control-plane absence plus
+  three route `404` reads passed. Three final RunPod reads prove zero pods, endpoints, templates,
+  active workers, and running Pods; billing stayed at USD `2.266709277551854`, within the `$4.50` cap.
+  Closure is `evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-80.json`
+  (`sha256:a3368ea58706c3f749505f7131997e6fe87a1824ea8812f089f8be2ddef021c9`).
+- Stage 6 remains `NOT_QUALIFIED`. Attempt80 cannot be retried. The published exact image remains
+  reusable only under fresh exact successor authority. Next work is provider-free post-cancel
+  stable-zero repair, focused validation, independent audit, and one fresh proposal. No provider,
+  mutation, credential, GPU, spend, retained-volume mutation, or V2-08 authority exists.
 
 - V2-07 Attempt79 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Cycle 1 of the pre-GPU compatibility
   gate failed closed at `V207_DISPOSABLE_PROBE_URLLIB_VERSION_MISSING_S4XX`; zero of three required

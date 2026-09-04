@@ -1,0 +1,17 @@
+{
+  "schema_version": "videoforge.v2-07-attempt80-runpod-cleanup/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 80,
+  "result": "PASS",
+  "cleanup_path": "standalone_exact_failed_cleanup_after_guard_repair",
+  "cleanup_guard_repair_commit": "bac5f46b",
+  "stable_terminal_snapshot_count": 2,
+  "endpoint_worker_record_count_before_delete": 1,
+  "terminal_pod_record_count_before_delete": 1,
+  "endpoint_deleted": true,
+  "template_deleted": true,
+  "final_disposable_resources_absent": true,
+  "retained_volume_mutated": false,
+  "gpu_jobs_submitted_by_cleanup": 0
+}
