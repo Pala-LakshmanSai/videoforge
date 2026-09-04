@@ -15,9 +15,10 @@
 - Provider-free repair `eef2c337ad8a33820e6136f2e8b74dfc1749f768` adds an abort-aware route propagation
   window capped at 60 seconds, 30 attempts, and two-second intervals while still requiring three
   consecutive exact fingerprints. Attempt73 proposal
-  `sha256:ebf37567b468afd2788b3ffe83a4b0bd8687040731ee5576dde3bf076e4a0b14` is sealed awaiting fresh
-  exact approval. Authority, cap, provider mutation, GPU use, and spend are null/false/zero. V2-07
-  remains `NOT_QUALIFIED`; do not execute V2-08.
+  `sha256:ebf37567b468afd2788b3ffe83a4b0bd8687040731ee5576dde3bf076e4a0b14` is approved once under
+  authority `sha256:0af41d4962429215721a30219b3ef5750c69fa4f6e05807c764905ee0c300d1e`
+  and the `$4.50` cap. Execute only its bounded graph; credential-value reads, GPU fallback,
+  rollback-anchor refresh, and V2-08 remain forbidden.
 
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the
