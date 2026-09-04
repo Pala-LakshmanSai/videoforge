@@ -21,7 +21,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v16" as const;
+  "runware-deepseek-v4-flash-prompt-request-v17" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -683,11 +683,161 @@ const metadataDiagnostic = (
   return null;
 };
 
-const singleSceneValidation = (
+const stripProviderControls = (value: string): string =>
+  Array.from(value, (character) => {
+    const codePoint = character.codePointAt(0)!;
+    return codePoint <= 31 || (codePoint >= 127 && codePoint <= 159) ? " " : character;
+  }).join("");
+
+const removeProviderControls = (value: string): string =>
+  Array.from(value)
+    .filter((character) => {
+      const codePoint = character.codePointAt(0)!;
+      return codePoint > 31 && (codePoint < 127 || codePoint > 159);
+    })
+    .join("");
+
+const boundedProviderText = (value: string, maximum: number, fallback: string): string => {
+  const normalized = stripProviderControls(value.normalize("NFKC")).replace(/\s+/gu, " ").trim();
+  const usable = normalized.length > 0 ? normalized : fallback;
+  if (usable.length <= maximum) return usable;
+  const bounded = usable
+    .slice(0, maximum)
+    .replace(/[\uD800-\uDBFF]$/u, "")
+    .trimEnd();
+  const lastSpace = bounded.lastIndexOf(" ");
+  return lastSpace >= Math.floor(maximum * 0.7) ? bounded.slice(0, lastSpace) : bounded;
+};
+
+const hasHardPromptConflict = (value: string): boolean => {
+  const normalized = value.normalize("NFKC");
+  const candidates = [stripProviderControls(normalized), removeProviderControls(normalized)];
+  try {
+    candidates.forEach((candidate) => assertNoHardPromptConflict(candidate, ["providerOutput"]));
+    return false;
+  } catch (error) {
+    if (error instanceof PipelineDomainError) return true;
+    throw error;
+  }
+};
+
+const safeBoundedProviderText = (
+  value: string,
+  maximum: number,
+  fallback: string,
+  safeFallback: string,
+): string => {
+  const source = value.normalize("NFKC").replace(/\s+/gu, " ").trim() || fallback;
+  return boundedProviderText(
+    hasHardPromptConflict(source) ? safeFallback : source,
+    maximum,
+    safeFallback,
+  );
+};
+
+const normalizeReturnedScene = (
   batch: PromptBatch,
   expected: PromptSceneInput,
   candidate: JsonValue,
 ): PromptWriterSceneOutput | null => {
+  const row = asRecord(candidate);
+  if (!row || !hasSceneOutputShape(candidate)) return null;
+
+  const phraseFallback = boundedProviderText(
+    expected.phrase,
+    240,
+    "the narration-supported physical subject",
+  );
+  const sentenceFallback = boundedProviderText(expected.sentenceContext, 240, phraseFallback);
+  const lightingFallback = boundedProviderText(
+    batch.styleTreatment?.lighting ?? "",
+    120,
+    "lighting consistent with the supplied scene context",
+  );
+  const literalSubject = safeBoundedProviderText(
+    row.literal_subject as string,
+    240,
+    phraseFallback,
+    "the narration-supported physical subject",
+  );
+  const action = safeBoundedProviderText(
+    row.action as string,
+    240,
+    phraseFallback,
+    "depicting the narration-supported visible moment",
+  );
+  const environment = safeBoundedProviderText(
+    row.environment as string,
+    240,
+    sentenceFallback,
+    "the narration-supported physical environment",
+  );
+  const lightingContext = safeBoundedProviderText(
+    row.lighting_context as string,
+    120,
+    lightingFallback,
+    "lighting consistent with the supplied scene context",
+  );
+  const continuityTags: string[] = [];
+  const seenTags = new Set<string>();
+  for (const rawTag of row.continuity_tags as string[]) {
+    if (hasHardPromptConflict(rawTag)) continue;
+    const tag = boundedProviderText(rawTag, 80, "");
+    if (tag.length === 0) continue;
+    const key = tag.toLocaleLowerCase("en-US");
+    if (seenTags.has(key)) continue;
+    seenTags.add(key);
+    continuityTags.push(tag);
+    if (continuityTags.length === 12) break;
+  }
+  const coreFallback = [literalSubject, action, environment, lightingContext].join(", ");
+  const promptCore = boundedProviderText(row.prompt_core as string, 600, coreFallback);
+
+  try {
+    const validated = validatePromptWriterOutput(
+      Object.freeze({ ...batch, scenes: Object.freeze([expected]) }),
+      {
+        batch_id: batch.batchId,
+        scenes: [
+          {
+            scene_id: expected.sceneId,
+            literal_subject: literalSubject,
+            action,
+            environment,
+            in_image_shot_role: expected.inImageShotRole,
+            lighting_context: lightingContext,
+            continuity_tags: continuityTags,
+            prompt_core: promptCore,
+          },
+        ],
+      },
+    );
+    const scene = validated.scenes[0];
+    if (!scene) return null;
+    assertNoHardPromptConflict(
+      [
+        scene.literal_subject,
+        scene.action,
+        scene.environment,
+        scene.lighting_context,
+        ...scene.continuity_tags,
+      ].join(", "),
+      ["scenes", expected.sceneId],
+    );
+    return scene;
+  } catch (error) {
+    if (error instanceof PipelineDomainError) return null;
+    throw error;
+  }
+};
+
+const singleSceneValidation = (
+  batch: PromptBatch,
+  expected: PromptSceneInput,
+  candidate: JsonValue,
+  semanticQualityMode: "advisory" | "enforce",
+): PromptWriterSceneOutput | null => {
+  if (semanticQualityMode === "advisory") return normalizeReturnedScene(batch, expected, candidate);
   try {
     const validated = validatePromptWriterOutput(
       Object.freeze({ ...batch, scenes: Object.freeze([expected]) }),
@@ -701,7 +851,7 @@ const singleSceneValidation = (
         scene.action,
         scene.environment,
         scene.lighting_context,
-        scene.prompt_core,
+        ...scene.continuity_tags,
       ].join(", "),
       ["scenes", expected.sceneId],
     );
@@ -1543,7 +1693,7 @@ const evaluateOutput = (
         "Prompt response scene shape is invalid.",
         ["scenes"],
       );
-    const valid = singleSceneValidation(batch, expectedScene, candidate);
+    const valid = singleSceneValidation(batch, expectedScene, candidate, semanticQualityMode);
     if (!valid) continue;
     const relevanceFailure = sceneOutputRelevanceFailure(
       expectedScene,

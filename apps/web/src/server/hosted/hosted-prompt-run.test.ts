@@ -801,7 +801,7 @@ describe("hosted Runware prompt writer", () => {
     );
   });
 
-  it("stops after one locally rejected scene response without retry and reports its known cost", async () => {
+  it("repairs a locally forbidden scene field without retry and reports its known cost", async () => {
     const authority = hostedPromptAuthority({
       plan: plan(),
       identity,
@@ -855,32 +855,20 @@ describe("hosted Runware prompt writer", () => {
       });
     });
 
-    await expect(
-      new HostedRunwarePromptWriter(
-        "configured-test-key-value",
-        adaptivePlan(batch),
-        fetcher,
-      ).write(batch),
-    ).rejects.toEqual(
-      expect.objectContaining({
-        problemCode: "HOSTED_PROMPT_OUTPUT_INVALID",
-        terminalState: "FAILED",
-        providerMayHaveCharged: false,
-        additionalKnownCostMicroUsd: 10,
-        validationDiagnostic: {
-          category: "scene_quality",
-          reason: "scene_quality",
-          requestedSceneCount: 25,
-          returnedSceneCount: 25,
-          locallyValidSceneCount: 24,
-          unresolvedSceneCount: 1,
-        },
-      } satisfies Partial<HostedPromptExecutionError>),
-    );
+    const result = await new HostedRunwarePromptWriter(
+      "configured-test-key-value",
+      adaptivePlan(batch),
+      fetcher,
+    ).write(batch);
     expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(result.output.scenes).toHaveLength(25);
+    expect(result.output.scenes[0]?.action).toBe(
+      "depicting the narration-supported visible moment",
+    );
+    expect(result.attempts[0]?.reportedCostMicroUsd).toBe(10);
   });
 
-  it("persists an accepted first adaptive batch and stops once when the second output is invalid", async () => {
+  it("persists both adaptive batches when the second output needs local repair", async () => {
     const batch = buildPromptBatch({
       batchId: `${ids.task}:batch:multi`,
       projectTitle: "Hydrogen peroxide",
@@ -956,25 +944,24 @@ describe("hosted Runware prompt writer", () => {
     });
     const onBatchAccepted = vi.fn();
 
-    await expect(
-      new HostedRunwarePromptWriter(
-        "configured-test-key-value",
-        planned,
-        fetcher,
-        onBatchAccepted,
-      ).write(batch),
-    ).rejects.toEqual(
-      expect.objectContaining({
-        problemCode: "HOSTED_PROMPT_OUTPUT_INVALID",
-        additionalKnownCostMicroUsd: 10,
-      } satisfies Partial<HostedPromptExecutionError>),
-    );
+    const result = await new HostedRunwarePromptWriter(
+      "configured-test-key-value",
+      planned,
+      fetcher,
+      onBatchAccepted,
+    ).write(batch);
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(onBatchAccepted).toHaveBeenCalledTimes(1);
+    expect(onBatchAccepted).toHaveBeenCalledTimes(2);
     expect(onBatchAccepted.mock.calls[0]?.[0].reportedCostMicroUsd).toBe(10);
     expect(onBatchAccepted.mock.calls[0]?.[0].scenes).toHaveLength(
       planned.batches[0]!.sceneIds.length,
     );
+    expect(onBatchAccepted.mock.calls[1]?.[0].reportedCostMicroUsd).toBe(10);
+    expect(onBatchAccepted.mock.calls[1]?.[0].scenes).toHaveLength(
+      planned.batches[1]!.sceneIds.length,
+    );
+    expect(result.output.scenes).toHaveLength(31);
+    expect(result.attempts[0]?.reportedCostMicroUsd).toBe(20);
   });
 
   it("accepts a normalized prompt core reused by a later adaptive batch", async () => {

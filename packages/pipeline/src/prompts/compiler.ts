@@ -318,10 +318,17 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     `environment: ${sceneFields[2]}`,
     `lighting: ${sceneFields[3]}`,
   ].join(", ");
+  const continuityTags = output.continuity_tags.map((tag, index) => {
+    const normalizedTag = normalize(tag, 80, "Continuity tag", [
+      "writerOutput",
+      "continuity_tags",
+      String(index),
+    ]);
+    assertNoHardPromptConflict(normalizedTag, ["writerOutput", "continuity_tags", String(index)]);
+    return normalizedTag;
+  });
   const continuityAndShotRole = join([
-    output.continuity_tags.length === 0
-      ? "continuity: none"
-      : `continuity: ${output.continuity_tags.map((tag) => normalize(tag, 80, "Continuity tag", ["writerOutput", "continuity_tags"])).join(" | ")}`,
+    continuityTags.length === 0 ? "continuity: none" : `continuity: ${continuityTags.join(" | ")}`,
     `required viewpoint: ${expected.inImageShotRole.toLowerCase().replaceAll("_", " ")}`,
   ]);
   const cropGuidance =

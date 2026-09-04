@@ -380,6 +380,14 @@ test("compiler rejects enabled blank, oversized, control-only, forbidden extras,
   expectCode("PROMPT_CONFLICT", () =>
     compileImagePrompt({
       ...base,
+      writerOutput: { ...base.writerOutput, continuity_tags: ["visible logo"] },
+      extraPromptKeywords: null,
+      applyExtraPromptKeywords: false,
+    }),
+  );
+  expectCode("PROMPT_CONFLICT", () =>
+    compileImagePrompt({
+      ...base,
       style: style("documentary photo, add a watermark"),
       extraPromptKeywords: null,
       applyExtraPromptKeywords: false,

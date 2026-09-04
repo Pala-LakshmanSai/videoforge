@@ -551,6 +551,93 @@ test("advisory scene relevance never rejects a contract-valid hosted response", 
   assert.deepEqual(setup.evidence[0].unresolvedSceneIds, []);
 });
 
+test("advisory hosted output repairs harmless field and continuity formatting defects", async () => {
+  const setup = writer(
+    [
+      (request) =>
+        success(request, {
+          change: (rows) => {
+            rows[0].literal_subject = " \u0000 ";
+            rows[0].action = `demonstrating ${"a".repeat(300)}`;
+            rows[0].environment = "ordinary\u0001 irrigation valve area";
+            rows[0].lighting_context = "";
+            rows[0].continuity_tags = [
+              " same farmer ",
+              "SAME FARMER",
+              "\u0000",
+              `detail ${"x".repeat(100)}`,
+            ];
+            rows[0].prompt_core = `provider compatibility prose ${"p".repeat(700)}`;
+            return rows;
+          },
+        }),
+    ],
+    0.01,
+    "advisory",
+  );
+
+  const result = await setup.value.write(makeBatch(1));
+  const scene = result.scenes[0];
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(setup.evidence[0].validationDisposition, "accepted");
+  assert.ok(scene.literal_subject.length > 0 && scene.literal_subject.length <= 240);
+  assert.ok(scene.action.length > 0 && scene.action.length <= 240);
+  assert.ok(scene.environment.length > 0 && scene.environment.length <= 240);
+  assert.ok(scene.lighting_context.length > 0 && scene.lighting_context.length <= 120);
+  assert.ok(scene.prompt_core.length > 0 && scene.prompt_core.length <= 600);
+  assert.deepEqual(
+    scene.continuity_tags.map((tag) => tag.toLowerCase()),
+    ["same farmer", `detail ${"x".repeat(73)}`],
+  );
+  assert.ok(
+    Array.from(JSON.stringify(scene)).every((character) => {
+      const codePoint = character.codePointAt(0);
+      return codePoint > 31 && (codePoint < 127 || codePoint > 159);
+    }),
+  );
+});
+
+test("advisory mode repairs forbidden provider prose before compiled prompt use", async () => {
+  const coreOnly = writer(
+    [
+      (request) =>
+        success(request, {
+          change: (rows) => {
+            rows[0].prompt_core = "Show a visible logo in compatibility-only prose";
+            return rows;
+          },
+        }),
+    ],
+    0.01,
+    "advisory",
+  );
+  const result = await coreOnly.value.write(makeBatch(1));
+  assert.equal(result.scenes.length, 1);
+  assert.equal(coreOnly.evidence[0].validationDisposition, "accepted");
+
+  const compiledFields = writer(
+    [
+      (request) =>
+        success(request, {
+          change: (rows) => {
+            rows[0].literal_subject = "bottle with a visible lo\u0000go";
+            rows[0].action = "showing a visible title";
+            rows[0].continuity_tags = ["visible logo"];
+            return rows;
+          },
+        }),
+    ],
+    0.01,
+    "advisory",
+  );
+  const repaired = await compiledFields.value.write(makeBatch(1));
+  assert.equal(compiledFields.transport.requests.length, 1);
+  assert.equal(compiledFields.evidence[0].validationDisposition, "accepted");
+  assert.equal(repaired.scenes[0].literal_subject, "the narration-supported physical subject");
+  assert.equal(repaired.scenes[0].action, "depicting the narration-supported visible moment");
+  assert.deepEqual(repaired.scenes[0].continuity_tags, []);
+});
+
 test("scene relevance accepts a matching action field prefixed by its subject", async () => {
   const base = makeBatch(1);
   const batch = {
