@@ -4,6 +4,13 @@
 
 ### Current new-chat launch point — 2026-09-04
 
+- V2-07 Attempt69 is sealed provider-free at proposal
+  `sha256:c8fe640f…80979`, control source `e8d5a563`, using a dedicated disposable output Worker
+  with direct private-R2 capability paths and atomic one-use reads. Focused tests pass 61/61;
+  typecheck, targeted lint, format, secret scan, diff check, and Wrangler dry-run pass. No provider
+  call, mutation, GPU job, or spend occurred. It has no executable authority and requires fresh
+  exact approval; V2-08 remains forbidden.
+
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the
   newest-seven rollback window; the no-refresh admission fence stopped before Worker mutation,

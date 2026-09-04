@@ -1,0 +1,59 @@
+{
+  "schema_version": "videoforge.v2-07-attempt69-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 69,
+  "status": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:c8fe640f0262384609646e22b42248b9cef8f05a69e5a70a19f70e3071b80979",
+  "control_source_commit": "e8d5a563ab4aea80e898bbd38559d0d9b3d177d2",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "source_hashes": {
+    "qualification": "sha256:13e7d1581358fa660726d36989355daca8b964a9c61fbc91ad18cb5ef580f121",
+    "harness": "sha256:39da9a77290aa9a61a109578edb285279a058e4d38ec1e55f599943052eaa18d",
+    "reconciliation": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
+    "disposable_output_ports": "sha256:21dcf1a85003466fde1fa243d4bba1bca40017ef5fc349f0231b3286183bfe15",
+    "disposable_orchestrator": "sha256:9d2b08c37c2bba1cd2419a52d3a0f0ba4cd986ae34dc6a65ad7cccb7c8a8f2a3",
+    "disposable_worker_entry": "sha256:264c4e08bcf8a413660f96144ecebbdcf6c0eaedf64e92755ae489ef50c162ba",
+    "disposable_wrangler_config": "sha256:22e1cf0318f683a4e56e836f8fcc446bf755416481f5b13b5aa4d52ca2f89084"
+  },
+  "repair": {
+    "shared_staging_worker_mutated": false,
+    "dedicated_disposable_output_worker": "videoforge-v207-output",
+    "direct_private_r2_binding": true,
+    "atomic_one_use_get_claim": true,
+    "whole_worker_and_route_deleted_after_terminal_outcome": true,
+    "rollback_anchor_refresh_required": false
+  },
+  "validation": {
+    "focused_tests": "61/61",
+    "activation_authority_tests": "25/25",
+    "signal_cleanup_tests": "2/2",
+    "typecheck": "PASS",
+    "targeted_lint": "PASS",
+    "format": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS",
+    "wrangler_dry_run": "PASS",
+    "provider_calls_during_repair": 0,
+    "external_spend_during_repair_usd": 0
+  },
+  "authority": {
+    "fresh_exact_approval_required": true,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "maximum_cumulative_finite_spend_usd": 0,
+    "anchor_refresh_authorized": false,
+    "v2_08_authorized": false,
+    "consumed": false,
+    "reusable": false
+  },
+  "execution": {
+    "started": false,
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "incremental_spend_usd": 0
+  }
+}

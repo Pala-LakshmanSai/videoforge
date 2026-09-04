@@ -1,0 +1,41 @@
+{
+  "schema_version": "videoforge.v2-07-attempt69-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 69,
+  "result": "PASS",
+  "audited_control_source_commit": "e8d5a563ab4aea80e898bbd38559d0d9b3d177d2",
+  "proposal_sha256": "sha256:c8fe640f0262384609646e22b42248b9cef8f05a69e5a70a19f70e3071b80979",
+  "acceptance_sha256": "sha256:f713b3b59bd36c0f32b0694534b61d2efeb00563fc1808eb1bd5c9698b2fd02e",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "verified": {
+    "all_seven_source_hashes_match": true,
+    "shared_staging_worker_mutation_absent": true,
+    "signal_safe_cleanup_sigint_sigterm": true,
+    "child_abort_propagation": true,
+    "cleanup_runs_unaborted": true,
+    "three_final_absence_reads": true,
+    "atomic_one_use_output_get": true,
+    "authority_and_cap_null_until_fresh_approval": true,
+    "gpu_fallback_forbidden": true,
+    "anchor_refresh_forbidden": true,
+    "v2_08_forbidden": true,
+    "context_consistent": true
+  },
+  "validation": {
+    "focused_tests": "88/88",
+    "typecheck": "PASS",
+    "targeted_lint": "PASS",
+    "context_validation": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "provider_calls": 0,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0
+}
