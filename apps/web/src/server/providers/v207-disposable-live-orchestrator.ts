@@ -1,7 +1,8 @@
-import { randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { chmod, mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { stripVTControlCharacters } from "node:util";
+import { deflateSync } from "node:zlib";
 
 import {
   parseV207ActivationAuthority,
@@ -31,6 +32,52 @@ const FINAL_PROOF_READS = 3;
 const ROUTE_PROPAGATION_MAX_ATTEMPTS = 30;
 const ROUTE_PROPAGATION_MAX_MILLISECONDS = 60_000;
 const ROUTE_PROPAGATION_RETRY_MILLISECONDS = 2_000;
+const VERSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+export const V207_ROUTE_VERSION_HEADER = "x-videoforge-worker-version" as const;
+const PROBE_ACCOUNT_ID = "account-a" as const;
+const PROBE_WORKSPACE_ID = "workspace-a" as const;
+const PROBE_PROJECT_ID = "project-a" as const;
+const PROBE_REVISION_ID = "revision-a" as const;
+const PROBE_LIFETIME_SECONDS = 60 as const;
+const PROBE_REQUEST_MAX_BYTES = 64 * 1024;
+const PROBE_TIMEOUT_MILLISECONDS = 15_000;
+const CAPABILITY_HANDLE = /^[a-f0-9]{64}$/u;
+const CHECKSUM = /^sha256:[0-9a-f]{64}$/u;
+const PROBE_REQUEST_SCHEMA = "videoforge-v207-generated-output-port-request/v1" as const;
+
+function pngCrc32(bytes: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type: string, body: Uint8Array): Buffer {
+  const typeBytes = Buffer.from(type, "ascii");
+  const chunk = Buffer.alloc(12 + body.byteLength);
+  chunk.writeUInt32BE(body.byteLength, 0);
+  typeBytes.copy(chunk, 4);
+  Buffer.from(body).copy(chunk, 8);
+  chunk.writeUInt32BE(pngCrc32(chunk.subarray(4, 8 + body.byteLength)), 8 + body.byteLength);
+  return chunk;
+}
+
+function qualificationProbePng(): Buffer {
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(1280, 0);
+  header.writeUInt32BE(720, 4);
+  header[8] = 8;
+  header[9] = 2;
+  const scanlines = Buffer.alloc((1 + 1280 * 3) * 720);
+  return Buffer.concat([
+    Buffer.from("89504e470d0a1a0a", "hex"),
+    pngChunk("IHDR", header),
+    pngChunk("IDAT", deflateSync(scanlines)),
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]);
+}
 
 type Environment = Readonly<Record<string, string | undefined>>;
 
@@ -74,6 +121,7 @@ interface Evidence {
 interface RouteFingerprint {
   readonly status: number;
   readonly code: string;
+  readonly workerVersionId?: string | null;
 }
 
 export class V207DisposableOrchestratorError extends Error {
@@ -258,6 +306,7 @@ async function readRoute(
   routeUrl: string,
   signal?: AbortSignal,
   timeoutMilliseconds = 15_000,
+  expectedWorkerVersionId?: string,
 ): Promise<RouteFingerprint> {
   let response: Response;
   try {
@@ -289,7 +338,14 @@ async function readRoute(
   if (typeof code !== "string" || !SAFE_CODE.test(code)) {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_INVALID");
   }
-  return { status: response.status, code };
+  const workerVersionId = response.headers.get(V207_ROUTE_VERSION_HEADER);
+  if (workerVersionId !== null && !VERSION_ID.test(workerVersionId)) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID");
+  }
+  if (expectedWorkerVersionId !== undefined && workerVersionId !== expectedWorkerVersionId) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED");
+  }
+  return { status: response.status, code, workerVersionId };
 }
 
 async function sleepWithSignal(
@@ -349,9 +405,13 @@ async function assertStableRoute(
         routeUrl,
         signal,
         Math.min(15_000, remainingMilliseconds),
+        expected.workerVersionId ?? undefined,
       );
       consecutiveMatches =
-        observed.status === expected.status && observed.code === expected.code
+        observed.status === expected.status &&
+        observed.code === expected.code &&
+        (expected.workerVersionId === undefined ||
+          observed.workerVersionId === expected.workerVersionId)
           ? consecutiveMatches + 1
           : 0;
     } catch (error) {
@@ -402,6 +462,236 @@ async function assertDataPlaneAbsent(
   if (response.status !== 404) {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_DATA_PLANE_ABSENCE_UNCONFIRMED");
   }
+}
+
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+async function probeRequest(
+  fetchImpl: typeof fetch,
+  input: string,
+  init: RequestInit,
+  signal?: AbortSignal,
+): Promise<Response> {
+  try {
+    const timeout = AbortSignal.timeout(PROBE_TIMEOUT_MILLISECONDS);
+    return await fetchImpl(input, {
+      ...init,
+      signal: signal === undefined ? timeout : AbortSignal.any([signal, timeout]),
+    });
+  } catch {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_TRANSPORT_FAILED");
+  }
+}
+
+async function probeJson(
+  fetchImpl: typeof fetch,
+  routeUrl: string,
+  nonce: string,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, unknown>> {
+  const encoded = JSON.stringify(body);
+  if (Buffer.byteLength(encoded) > PROBE_REQUEST_MAX_BYTES) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_REQUEST_INVALID");
+  }
+  const response = await probeRequest(
+    fetchImpl,
+    routeUrl,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-videoforge-v207-authority": nonce,
+      },
+      body: encoded,
+    },
+    signal,
+  );
+  let value: unknown;
+  try {
+    value = (await response.json()) as unknown;
+  } catch {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_RESPONSE_INVALID");
+  }
+  const record = recordValue(value);
+  if (!response.ok || record === null) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_RESPONSE_REJECTED");
+  }
+  return record;
+}
+
+const PYTHON_URLLIB_PUT = [
+  "import base64,json,sys,urllib.request",
+  "value=json.load(sys.stdin)",
+  "body=base64.b64decode(value['body_base64'], validate=True)",
+  "request=urllib.request.Request(value['url'], data=body, method='PUT', headers={'content-type':'image/png','content-length':str(len(body))})",
+  "try:",
+  "  with urllib.request.urlopen(request, timeout=60) as response: status=response.status",
+  "except Exception:",
+  "  raise SystemExit(2)",
+  "raise SystemExit(0 if status in (200,201,204) else 3)",
+].join("\n");
+
+async function runPythonUrllibPut(
+  run: V207CommandRunner,
+  cwd: string,
+  environment: Environment,
+  url: string,
+  body: Buffer,
+  signal?: AbortSignal,
+): Promise<void> {
+  const result = await run({
+    command: "python3",
+    args: ["-c", PYTHON_URLLIB_PUT],
+    cwd,
+    env: redactedEnvironment(environment),
+    stdin: JSON.stringify({ url, body_base64: body.toString("base64") }),
+    ...(signal === undefined ? {} : { signal }),
+  });
+  if (result.exitCode !== 0 || result.signal !== null) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_UPLOAD_REJECTED");
+  }
+}
+
+async function runOutputCompatibilityProbe(
+  fetchImpl: typeof fetch,
+  routeUrl: string,
+  nonce: string,
+  run: V207CommandRunner,
+  cwd: string,
+  environment: Environment,
+  signal?: AbortSignal,
+): Promise<void> {
+  const png = qualificationProbePng();
+  const objectKey =
+    `tenant/${PROBE_ACCOUNT_ID}/workspace/${PROBE_WORKSPACE_ID}/project/${PROBE_PROJECT_ID}` +
+    `/revision/${PROBE_REVISION_ID}/lane/mage-image/job/pregpu/artifact/probe.png`;
+  const scope = {
+    schema_version: PROBE_REQUEST_SCHEMA,
+    account_id: PROBE_ACCOUNT_ID,
+    workspace_id: PROBE_WORKSPACE_ID,
+    object_key: objectKey,
+    content_type: "image/png",
+  } as const;
+  let reservationCreated = false;
+  let primaryError: unknown;
+  let cleanupError: unknown;
+  try {
+    const port = await probeJson(
+      fetchImpl,
+      routeUrl,
+      nonce,
+      {
+        ...scope,
+        operation: "PUT",
+        max_content_length: png.byteLength,
+        lifetime_seconds: PROBE_LIFETIME_SECONDS,
+      },
+      signal,
+    );
+    reservationCreated = true;
+    const authority = recordValue(port.authority);
+    const putUrl = port.url;
+    const reservationId = authority?.reservation_id;
+    const finalizeCapability = authority?.capability_handle;
+    if (
+      port.operation !== "PUT" ||
+      port.method !== "PUT" ||
+      typeof putUrl !== "string" ||
+      !putUrl.startsWith(`${routeUrl}?`) ||
+      typeof reservationId !== "string" ||
+      typeof finalizeCapability !== "string" ||
+      !CAPABILITY_HANDLE.test(finalizeCapability)
+    ) {
+      throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_PORT_INVALID");
+    }
+    await runPythonUrllibPut(run, cwd, environment, putUrl, png, signal);
+    const checksum = `sha256:${createHash("sha256").update(png).digest("hex")}`;
+    if (!CHECKSUM.test(checksum)) {
+      throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_CHECKSUM_INVALID");
+    }
+    await probeJson(
+      fetchImpl,
+      routeUrl,
+      nonce,
+      {
+        ...scope,
+        operation: "FINALIZE",
+        reservation_id: reservationId,
+        callback_id: "pregpu-probe",
+        capability_handle: finalizeCapability,
+        content_length: png.byteLength,
+        checksum_sha256: checksum,
+      },
+      signal,
+    );
+    const getPort = await probeJson(
+      fetchImpl,
+      routeUrl,
+      nonce,
+      {
+        ...scope,
+        operation: "GET",
+        max_content_length: png.byteLength,
+        lifetime_seconds: PROBE_LIFETIME_SECONDS,
+        content_length: png.byteLength,
+        checksum_sha256: checksum,
+      },
+      signal,
+    );
+    if (
+      getPort.operation !== "GET" ||
+      getPort.method !== "GET" ||
+      typeof getPort.url !== "string"
+    ) {
+      throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_GET_PORT_INVALID");
+    }
+    const readback = await probeRequest(fetchImpl, getPort.url, { method: "GET" }, signal);
+    const readbackBytes = Buffer.from(await readback.arrayBuffer());
+    if (
+      readback.status !== 200 ||
+      readbackBytes.byteLength !== png.byteLength ||
+      !readbackBytes.equals(png)
+    ) {
+      throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_READBACK_MISMATCH");
+    }
+  } catch (error) {
+    primaryError = error;
+  } finally {
+    if (reservationCreated) {
+      try {
+        const deleted = await probeJson(
+          fetchImpl,
+          routeUrl,
+          nonce,
+          {
+            schema_version: PROBE_REQUEST_SCHEMA,
+            account_id: PROBE_ACCOUNT_ID,
+            workspace_id: PROBE_WORKSPACE_ID,
+            object_key: objectKey,
+            operation: "DELETE",
+            rollback_token: createHmac("sha256", nonce).update(objectKey).digest("hex"),
+          },
+          signal,
+        );
+        if (deleted.operation !== "DELETE" || deleted.deleted !== true) {
+          cleanupError = new V207DisposableOrchestratorError(
+            "V207_DISPOSABLE_PROBE_CLEANUP_UNCONFIRMED",
+          );
+        }
+      } catch {
+        cleanupError = new V207DisposableOrchestratorError(
+          "V207_DISPOSABLE_PROBE_CLEANUP_UNCONFIRMED",
+        );
+      }
+    }
+  }
+  if (cleanupError !== undefined) throw cleanupError;
+  if (primaryError !== undefined) throw primaryError;
 }
 
 async function atomicEvidence(path: string, evidence: Evidence): Promise<void> {
@@ -561,13 +851,24 @@ export async function runV207DisposableLiveOrchestration(
     await assertStableRoute(
       fetchImpl,
       routeUrl,
-      { status: 403, code: "V207_AUTHORITY_REJECTED" },
+      { status: 403, code: "V207_AUTHORITY_REJECTED", workerVersionId: versionId },
       FINAL_PROOF_READS,
       sleepImpl,
       "V207_DISPOSABLE_ACTIVE_ROUTE_UNCONFIRMED",
       abortController.signal,
     );
     await record("active_route_confirmed", { reads: FINAL_PROOF_READS });
+
+    await runOutputCompatibilityProbe(
+      fetchImpl,
+      routeUrl,
+      nonce,
+      run,
+      cwd,
+      environment,
+      abortController.signal,
+    );
+    await record("pre_gpu_output_compatibility_probe_completed");
 
     const qualification = await run({
       command: qualificationCommand,

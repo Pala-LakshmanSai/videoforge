@@ -1,8 +1,12 @@
 import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { DecompressionStream as NodeDecompressionStream } from "node:stream/web";
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+
+import type { HostedR2BucketBinding } from "../hosted/configuration";
+import { handleV207DisposableOutputPort } from "../hosted/v207-disposable-output-ports";
 
 import {
   runV207DisposableLiveOrchestration,
@@ -11,6 +15,7 @@ import {
   V207_DISPOSABLE_ROUTE,
   V207_DISPOSABLE_SECRET_NAME,
   V207_DISPOSABLE_WORKER_NAME,
+  V207_ROUTE_VERSION_HEADER,
   type V207DisposableOrchestratorOptions,
 } from "./v207-disposable-live-orchestrator";
 import type { V207CommandRequest, V207CommandResult } from "./v207-live-orchestrator";
@@ -18,6 +23,50 @@ import type { V207CommandRequest, V207CommandResult } from "./v207-live-orchestr
 const NONCE = "a".repeat(64);
 const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 const roots: string[] = [];
+
+beforeAll(() => vi.stubGlobal("DecompressionStream", NodeDecompressionStream));
+
+function memoryBucket(): HostedR2BucketBinding {
+  const objects = new Map<string, { bytes: Uint8Array; contentType?: string }>();
+  return {
+    async head(key) {
+      const value = objects.get(key);
+      return value
+        ? { size: value.bytes.byteLength, httpMetadata: { contentType: value.contentType } }
+        : null;
+    },
+    async get(key) {
+      const value = objects.get(key);
+      return value
+        ? {
+            size: value.bytes.byteLength,
+            httpMetadata: { contentType: value.contentType },
+            async arrayBuffer() {
+              return value.bytes.slice().buffer as ArrayBuffer;
+            },
+          }
+        : null;
+    },
+    async put(key, body, options) {
+      const bytes =
+        typeof body === "string"
+          ? new TextEncoder().encode(body)
+          : body instanceof ReadableStream
+            ? new Uint8Array(await new Response(body).arrayBuffer())
+            : new Uint8Array(body).slice();
+      const contentType = (options as { httpMetadata?: { contentType?: string } } | undefined)
+        ?.httpMetadata?.contentType;
+      objects.set(key, { bytes, contentType });
+      return {};
+    },
+    async list() {
+      throw new Error("broad list forbidden");
+    },
+    async delete(key) {
+      for (const item of typeof key === "string" ? [key] : key) objects.delete(item);
+    },
+  };
+}
 
 const result = (stdout = "", exitCode: number | null = 0, stderr = ""): V207CommandResult => ({
   exitCode,
@@ -41,6 +90,7 @@ async function fixture(
     preexisting?: boolean;
     qualificationFails?: boolean;
     cleanupFails?: boolean;
+    pythonPutFails?: boolean;
     signal?: "SIGINT" | "SIGTERM";
     absenceDiagnostic?: string;
   } = {},
@@ -51,6 +101,8 @@ async function fixture(
   let exists = overrides.preexisting ?? false;
   let secret = false;
   let childCalls = 0;
+  const bucket = memoryBucket();
+  const fetchRef: { current?: typeof fetch } = {};
   const signalTarget = new EventEmitter();
   const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
     calls.push(request);
@@ -69,6 +121,21 @@ async function fixture(
         return result("", null, `${overrides.signal} received`);
       }
       return overrides.qualificationFails ? result("", 1, "V207_PROVIDER_REJECTED") : result();
+    }
+    if (request.command === "python3") {
+      if (overrides.pythonPutFails) return result("", 2);
+      const value = JSON.parse(request.stdin ?? "null") as {
+        url?: unknown;
+        body_base64?: unknown;
+      } | null;
+      if (typeof value?.url !== "string" || typeof value.body_base64 !== "string")
+        return result("", 2);
+      const response = await fetchRef.current!(value.url, {
+        method: "PUT",
+        headers: { "content-type": "image/png" },
+        body: Buffer.from(value.body_base64, "base64"),
+      });
+      return [200, 201, 204].includes(response.status) ? result() : result("", 2);
     }
     expect(request.args.join(" ")).not.toContain("videoforge-v2-06-staging");
     if (request.args.includes("delete")) {
@@ -104,15 +171,23 @@ async function fixture(
     }
     throw new Error(`unexpected command: ${request.args.join(" ")}`);
   };
-  const fetchImpl: typeof fetch = async () => {
+  const fetchImpl: typeof fetch = async (input, init) => {
     if (!exists) return new Response("not found", { status: 404 });
-    return new Response(
-      JSON.stringify({
-        error: { code: secret ? "V207_AUTHORITY_REJECTED" : "V207_ROUTE_DISABLED" },
-      }),
-      { status: secret ? 403 : 404 },
-    );
+    const request = new Request(input, init);
+    const response = await handleV207DisposableOutputPort(request, {
+      PRIVATE_ARTIFACTS: bucket,
+      ...(secret ? { VIDEOFORGE_V207_AUTHORITY_NONCE: NONCE } : {}),
+    });
+    const resolved = response ?? new Response("not found", { status: 404 });
+    const headers = new Headers(resolved.headers);
+    headers.set(V207_ROUTE_VERSION_HEADER, VERSION_ID);
+    return new Response(resolved.body, {
+      status: resolved.status,
+      statusText: resolved.statusText,
+      headers,
+    });
   };
+  fetchRef.current = fetchImpl;
   const options: V207DisposableOrchestratorOptions = {
     environment: {
       V207_IMAGE: "fixture-image",
@@ -170,13 +245,15 @@ describe("V2-07 disposable live orchestrator", () => {
           ? call.env.V207_PREFLIGHT_ONLY === "1"
             ? "preflight"
             : "qualification"
-          : call.args.includes("deployments")
-            ? "status"
-            : call.args.includes("secret")
-              ? "secret"
-              : call.args.includes("delete")
-                ? "delete"
-                : "deploy",
+          : call.command === "python3"
+            ? "python-put"
+            : call.args.includes("deployments")
+              ? "status"
+              : call.args.includes("secret")
+                ? "secret"
+                : call.args.includes("delete")
+                  ? "delete"
+                  : "deploy",
     );
     expect(labels).toEqual([
       "git",
@@ -185,6 +262,7 @@ describe("V2-07 disposable live orchestrator", () => {
       "deploy",
       "secret",
       "status",
+      "python-put",
       "qualification",
       "delete",
       "status",
@@ -199,6 +277,36 @@ describe("V2-07 disposable live orchestrator", () => {
       result: "SUCCEEDED",
       worker_name: V207_DISPOSABLE_WORKER_NAME,
     });
+    expect(evidence).toContain("pre_gpu_output_compatibility_probe_completed");
+  });
+
+  it("stops before qualification when the active data-plane version differs", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const response = await normalFetch(input, init);
+          if (!setup.state().secret) return response;
+          const headers = new Headers(response.headers);
+          headers.set(V207_ROUTE_VERSION_HEADER, "22222222-2222-4222-8222-222222222222");
+          return new Response(response.body, { status: response.status, headers });
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED" });
+
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+  });
+
+  it("cleans up and never dispatches GPU qualification when the pre-GPU upload probe fails", async () => {
+    const setup = await fixture({ pythonPutFails: true });
+    await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
+      code: "V207_DISPOSABLE_PROBE_URLLIB_UPLOAD_REJECTED",
+    });
+
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    expect(setup.calls.filter((call) => call.args.includes("delete"))).toHaveLength(1);
   });
 
   it("waits through a transient non-JSON 404 and then requires three exact disabled fingerprints", async () => {
@@ -215,7 +323,7 @@ describe("V2-07 disposable live orchestrator", () => {
     });
 
     expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
-    expect(routeReads).toBe(10);
+    expect(routeReads).toBe(15);
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
   });
 
