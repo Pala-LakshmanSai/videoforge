@@ -32,7 +32,6 @@ import {
 } from "./runpod-control";
 export { V207_TIMEOUT_EXECUTION_TIMEOUT_MS, V207_TIMEOUT_TTL_MS } from "./runpod-control";
 import { V207_REPAIRED_IMAGE } from "./v207-activation-authority";
-import { assertV207MaxTwoWholeProjectPolicy } from "./runpod-adaptive-capacity";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const PORT_CAPABILITY = /^[A-Za-z0-9._:-]{32,512}$/u;
@@ -721,7 +720,6 @@ export class RunPodV207QualificationHarness {
     ) {
       throw new RunPodControlError("RUNPOD_QUALIFICATION_SCOPE_INVALID");
     }
-    assertV207MaxTwoWholeProjectPolicy(options.concurrentReaderPolicy);
     this.#options = options;
   }
 
