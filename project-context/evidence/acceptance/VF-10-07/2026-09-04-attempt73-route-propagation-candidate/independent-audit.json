@@ -1,0 +1,47 @@
+{
+  "schema_version": "videoforge.v2-07-attempt73-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 73,
+  "result": "PASS",
+  "audited_control_source_commit": "eef2c337ad8a33820e6136f2e8b74dfc1749f768",
+  "proposal_sha256": "sha256:ebf37567b468afd2788b3ffe83a4b0bd8687040731ee5576dde3bf076e4a0b14",
+  "acceptance_sha256": "sha256:0d1aba7c15623c54602c73f090448ac325b76ac4aefddfb666c2ad84e9f170b2",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "verified": {
+    "all_seven_source_hashes_match": true,
+    "attempt72_closure_hashes_match": true,
+    "attempt72_consumed_and_non_reusable": true,
+    "attempt72_cloudflare_deploy_and_delete_only": true,
+    "attempt72_zero_runpod_compute_and_zero_spend": true,
+    "attempt72_two_retained_volumes_unchanged": true,
+    "route_proof_max_attempts": 30,
+    "route_proof_hard_deadline_seconds": 60,
+    "retry_sleep_capped_by_remaining_deadline": true,
+    "three_consecutive_exact_fingerprints_required": true,
+    "transient_invalid_route_state_retries": true,
+    "persistent_invalid_route_state_fails_closed": true,
+    "signal_safe_cleanup_preserved": true,
+    "authority_cap_and_anchor_null_until_fresh_approval": true,
+    "gpu_fallback_forbidden": true,
+    "v2_08_forbidden": true,
+    "context_consistent": true
+  },
+  "validation": {
+    "focused_seal_tests": "152/152",
+    "independent_activation_and_orchestrator_tests": "43/43",
+    "full_web_tests_before_final_deadline_only_repair": "1553 passed, 1 skipped",
+    "typecheck": "PASS",
+    "context_validation": "PASS_WITH_PREEXISTING_PROFILE_WORD_BUDGET_WARNING",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "provider_calls": 0,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0
+}

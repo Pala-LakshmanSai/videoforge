@@ -1,12 +1,12 @@
 {
-  "schema_version": "videoforge.v2-07-attempt72-acceptance/v1",
+  "schema_version": "videoforge.v2-07-attempt73-acceptance/v1",
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
-  "attempt": 72,
-  "status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "attempt": 73,
+  "status": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
   "qualification_status": "NOT_QUALIFIED",
-  "proposal_sha256": "sha256:e1fd6996f4aa21c07b3b24e4db52683ebfb2999446d46066399b7b8cf0c7b1b9",
-  "control_source_commit": "183b8dab0cdeead0b8e1f6f2b4642cf982e3e50d",
+  "proposal_sha256": "sha256:ebf37567b468afd2788b3ffe83a4b0bd8687040731ee5576dde3bf076e4a0b14",
+  "control_source_commit": "eef2c337ad8a33820e6136f2e8b74dfc1749f768",
   "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
   "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
   "source_hashes": {
@@ -14,20 +14,22 @@
     "harness": "sha256:39da9a77290aa9a61a109578edb285279a058e4d38ec1e55f599943052eaa18d",
     "reconciliation": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
     "disposable_output_ports": "sha256:21dcf1a85003466fde1fa243d4bba1bca40017ef5fc349f0231b3286183bfe15",
-    "disposable_orchestrator": "sha256:3d3d71acf1b0d1a3f41c33b12ae2545e38ccbe089a89bb5a10ef8bc68ecf9b5e",
+    "disposable_orchestrator": "sha256:9536e6afddb60fdba55398fb8c8adaf2efb30b4571f3bbeb098f19a229e1ae7d",
     "disposable_worker_entry": "sha256:264c4e08bcf8a413660f96144ecebbdcf6c0eaedf64e92755ae489ef50c162ba",
     "disposable_wrangler_config": "sha256:22e1cf0318f683a4e56e836f8fcc446bf755416481f5b13b5aa4d52ca2f89084"
   },
   "repair": {
-    "relative_config_resolved_from_computed_repository_cwd": true,
-    "package_launch_cwd_regression": true,
-    "ansi_vt_control_bytes_stripped_before_exact_match": true,
-    "shared_staging_worker_mutated": false,
+    "bounded_route_propagation_window_seconds": 60,
+    "maximum_route_read_attempts": 30,
+    "retry_interval_seconds": 2,
+    "three_consecutive_exact_fingerprints_required": true,
+    "transient_invalid_responses_retry": true,
+    "persistent_invalid_state_fails_closed": true,
     "signal_safe_cleanup": true
   },
   "validation": {
-    "focused_orchestrator_tests": "14/14",
-    "focused_seal_tests": "94/94",
+    "focused_orchestrator_tests": "18/18",
+    "focused_seal_tests": "152/152",
     "typecheck": "PASS",
     "context_validation": "PASS",
     "secret_scan": "PASS",
@@ -43,16 +45,12 @@
     "maximum_cumulative_finite_spend_usd": 0,
     "anchor_refresh_authorized": false,
     "v2_08_authorized": false,
-    "consumed": true,
+    "consumed": false,
     "reusable": false
   },
-  "execution_closure": {
-    "path": "../2026-09-04-live-qualification/failed-attempt-72.json",
-    "sha256": "sha256:834fb6657e1d0de9a711a7847c033c7be6854edc3b569b68fa3f1d805f07014a"
-  },
   "predecessor": {
-    "attempt": 71,
-    "closure": "../2026-09-04-live-qualification/failed-attempt-71.json",
-    "closure_sha256": "sha256:ab7f3d444b19b85ec0fb27bf819380f4ff3633c1f4bc0cdd7570a4512657de1c"
+    "attempt": 72,
+    "closure": "../2026-09-04-live-qualification/failed-attempt-72.json",
+    "closure_sha256": "sha256:834fb6657e1d0de9a711a7847c033c7be6854edc3b569b68fa3f1d805f07014a"
   }
 }

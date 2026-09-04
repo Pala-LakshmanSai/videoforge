@@ -4,21 +4,20 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt71 consumed its exact single-use authority and stopped clean before mutation at
-  `V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED`. The disposable Wrangler config path was resolved
-  from the package process cwd `apps/web` instead of the computed repository cwd, producing
-  `ENOENT` before any Cloudflare API request. No Worker, signer, route, RunPod resource, GPU job, or
-  spend was created. Three stable final reads prove zero Pods/endpoints/templates/workers; both
-  exact 50 GB EU-RO-1 volumes remain retained at `$7/month` total, and observed incremental spend
-  was `$0`. Attempt71 authority and proposal are consumed, closed, and non-reusable.
-- Provider-free repair `183b8dab0cdeead0b8e1f6f2b4642cf982e3e50d` resolves the disposable config from
-  the computed repository cwd. Attempt72 proposal
-  `sha256:e1fd6996f4aa21c07b3b24e4db52683ebfb2999446d46066399b7b8cf0c7b1b9` is approved once under
-  authority `sha256:5e5a006a7a460981ed1d10d702c93a48d7ff60a0d51411a1ebc205fd51816e3a`. It retains the unchanged Mage image, `$4.50`
-  cumulative finite cap, RTX 4090 EU-RO-1 at `$1.116/GPU-hour`, workersMin zero and temporary max
-  two workers, disposable output/endpoint/template/worker/route deletion, signal-safe cleanup,
-  three final zero-compute reads, continued `$7/month` volume retention, no GPU fallback, and no
-  rollback-anchor refresh. Execute only this bounded graph; V2-07 remains `NOT_QUALIFIED`; do not execute V2-08.
+- V2-07 Attempt72 consumed its exact single-use authority after deploying only the disposable
+  Cloudflare Worker, then stopped at `V207_DISPOSABLE_ROUTE_INVALID`. The first disabled-route read
+  occurred 216 ms after deployment and returned a non-application response; the runner had no
+  bounded propagation retry. No secret/route activation, RunPod resource, GPU job, or V2-08 action
+  occurred. Signal-safe cleanup deleted the disposable Worker/route. Three stable final reads prove
+  zero Pods/endpoints/templates/workers, both exact 50 GB EU-RO-1 volumes remain retained at
+  `$7/month`, and billing stayed `2.214659276913153` for a `$0` increment. Attempt72 is consumed,
+  closed, and non-reusable.
+- Provider-free repair `eef2c337ad8a33820e6136f2e8b74dfc1749f768` adds an abort-aware route propagation
+  window capped at 60 seconds, 30 attempts, and two-second intervals while still requiring three
+  consecutive exact fingerprints. Attempt73 proposal
+  `sha256:ebf37567b468afd2788b3ffe83a4b0bd8687040731ee5576dde3bf076e4a0b14` is sealed awaiting fresh
+  exact approval. Authority, cap, provider mutation, GPU use, and spend are null/false/zero. V2-07
+  remains `NOT_QUALIFIED`; do not execute V2-08.
 
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the

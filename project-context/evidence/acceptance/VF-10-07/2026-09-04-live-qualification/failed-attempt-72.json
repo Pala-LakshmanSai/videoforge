@@ -1,0 +1,23 @@
+{
+  "schema_version":"videoforge.v2-07-attempt72-closure/v1",
+  "checkpoint":"V2-07",
+  "task_id":"VF-10-07",
+  "attempt":72,
+  "status":"CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "qualification_status":"NOT_QUALIFIED",
+  "failure_code":"V207_DISPOSABLE_ROUTE_INVALID",
+  "failure_phase":"post_deploy_disabled_route_proof",
+  "root_cause":"The first disabled-route read occurred 216 ms after deployment and returned a non-application response that could not be parsed as the exact JSON fingerprint; the runner had no bounded propagation retry.",
+  "proposal_sha256":"sha256:e1fd6996f4aa21c07b3b24e4db52683ebfb2999446d46066399b7b8cf0c7b1b9",
+  "control_source_commit":"183b8dab0cdeead0b8e1f6f2b4642cf982e3e50d",
+  "activation_commit":"8524da590092920c5f4f4c80ba7cf4e03d110e09",
+  "authority_sha256":"sha256:5e5a006a7a460981ed1d10d702c93a48d7ff60a0d51411a1ebc205fd51816e3a",
+  "image_source_commit":"095e1642562e4370c89425292428eb474ba190f1",
+  "image_digest":"sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "execution":{"preflight_completed":true,"absence_confirmed":true,"cloudflare_worker_deployed":true,"cloudflare_secret_activated":false,"runpod_resources_created":false,"gpu_jobs_submitted":0,"provider_mutations":2,"incremental_spend_usd":0,"v2_08_actions":0},
+  "cleanup":{"disposable_worker_absent":true,"route_absent":true,"pods":0,"endpoints":0,"private_templates":0,"active_serverless_workers":0,"running_pods":0,"retained_volume_count":2,"cloudflare_three_read_cleanup":true,"runpod_three_stable_reads":true},
+  "evidence":{"orchestrator":"attempt72-live-orchestrator.json","orchestrator_sha256":"sha256:a9b777030863e5a13d9758147ef7b680e9711a3038af1554411afa64cde0d9a6","reconciliation":"attempt72-reconciliation-observation.json","reconciliation_sha256":"sha256:869024bff092afc87d1a15ef764c026a8f2399c123d046a0a48db66f463e9cc9"},
+  "authority_consumed":true,
+  "authority_reusable":false,
+  "next_action":"Add finite abort-aware propagation retries while still requiring three consecutive exact route fingerprints, then reseal."
+}
