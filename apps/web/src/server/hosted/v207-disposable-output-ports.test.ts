@@ -61,16 +61,22 @@ function png1280x720(): Uint8Array {
   return output;
 }
 
-function memoryBucket(): {
+function memoryBucket(outputMetadata: "present" | "absent" | "wrong" = "present"): {
   bucket: HostedR2BucketBinding;
   objects: Map<string, { bytes: Uint8Array; contentType: string }>;
 } {
   const objects = new Map<string, { bytes: Uint8Array; contentType: string }>();
+  const metadataFor = (key: string, contentType: string) =>
+    key !== objectKey || outputMetadata === "present"
+      ? { contentType }
+      : outputMetadata === "absent"
+        ? undefined
+        : { contentType: "application/octet-stream" };
   const bucket: HostedR2BucketBinding = {
     async head(key) {
       const value = objects.get(key);
       return value
-        ? { size: value.bytes.byteLength, httpMetadata: { contentType: value.contentType } }
+        ? { size: value.bytes.byteLength, httpMetadata: metadataFor(key, value.contentType) }
         : null;
     },
     async get(key) {
@@ -78,7 +84,7 @@ function memoryBucket(): {
       return value
         ? {
             size: value.bytes.byteLength,
-            httpMetadata: { contentType: value.contentType },
+            httpMetadata: metadataFor(key, value.contentType),
             async arrayBuffer() {
               return value.bytes.slice().buffer as ArrayBuffer;
             },
@@ -122,6 +128,28 @@ function controlRequest(body: Record<string, unknown>, authority = nonce): Reque
     },
     body: JSON.stringify(body),
   });
+}
+
+async function generatedPutPort(runtime: ReturnType<typeof memoryBucket>, maximum = 1024) {
+  const environment = {
+    PRIVATE_ARTIFACTS: runtime.bucket,
+    VIDEOFORGE_V207_AUTHORITY_NONCE: nonce,
+  };
+  const response = await handleV207DisposableOutputPort(
+    controlRequest({
+      schema_version: "videoforge-v207-generated-output-port-request/v1",
+      operation: "PUT",
+      account_id: "account-a",
+      workspace_id: "workspace-a",
+      object_key: objectKey,
+      content_type: "image/png",
+      max_content_length: maximum,
+      lifetime_seconds: 300,
+    }),
+    environment,
+  );
+  const value = (await response?.json()) as { url: string };
+  return { url: value.url, environment };
 }
 
 describe("V2-07 disposable output Worker", () => {
@@ -273,6 +301,66 @@ describe("V2-07 disposable output Worker", () => {
     );
     expect(response?.status).toBe(400);
     expect(runtime.objects.has(objectKey)).toBe(false);
+  });
+
+  it("accepts a bounded generated PUT when ingress omits Content-Length", async () => {
+    const runtime = memoryBucket();
+    const { url, environment } = await generatedPutPort(runtime);
+    const response = await handleV207DisposableOutputPort(
+      new Request(url, {
+        method: "PUT",
+        headers: { "content-type": "image/png" },
+        body: new TextEncoder().encode("bounded-png-fixture"),
+      }),
+      environment,
+    );
+    expect(response?.status).toBe(201);
+    expect(runtime.objects.has(objectKey)).toBe(true);
+  });
+
+  it("rejects a present Content-Length that differs from the actual body", async () => {
+    const runtime = memoryBucket();
+    const { url, environment } = await generatedPutPort(runtime);
+    const response = await handleV207DisposableOutputPort(
+      new Request(url, {
+        method: "PUT",
+        headers: { "content-type": "image/png", "content-length": "20" },
+        body: new TextEncoder().encode("short"),
+      }),
+      environment,
+    );
+    expect(response?.status).toBe(400);
+    expect(runtime.objects.has(objectKey)).toBe(false);
+  });
+
+  it("accepts exact size confirmation when R2 omits optional HTTP metadata", async () => {
+    const runtime = memoryBucket("absent");
+    const { url, environment } = await generatedPutPort(runtime);
+    const bytes = new TextEncoder().encode("bounded-png-fixture");
+    const response = await handleV207DisposableOutputPort(
+      new Request(url, {
+        method: "PUT",
+        headers: { "content-type": "image/png", "content-length": String(bytes.byteLength) },
+        body: bytes,
+      }),
+      environment,
+    );
+    expect(response?.status).toBe(201);
+  });
+
+  it("rejects explicit conflicting R2 content-type metadata after write", async () => {
+    const runtime = memoryBucket("wrong");
+    const { url, environment } = await generatedPutPort(runtime);
+    const bytes = new TextEncoder().encode("bounded-png-fixture");
+    const response = await handleV207DisposableOutputPort(
+      new Request(url, {
+        method: "PUT",
+        headers: { "content-type": "image/png", "content-length": String(bytes.byteLength) },
+        body: bytes,
+      }),
+      environment,
+    );
+    expect(response?.status).toBe(503);
   });
 
   it("finalizes a real 1280x720 PNG idempotently with a checksum-bound receipt", async () => {

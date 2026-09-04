@@ -1059,19 +1059,33 @@ async function handleCapabilityTransfer(
     if (Date.parse(reservation.expires_at) <= Date.now()) {
       return errorResponse("V207_RESERVATION_EXPIRED", 409);
     }
-    const declared = request.headers.get("content-length") ?? "";
-    if (
-      !/^\d+$/u.test(declared) ||
-      request.headers.get("content-type") !== "image/png" ||
-      !lengthValid(Number(declared), reservation.max_content_length)
-    ) {
+    const declared = request.headers.get("content-length");
+    let declaredLength: number | null = null;
+    if (declared !== null) {
+      if (!/^[1-9][0-9]*$/u.test(declared)) {
+        return errorResponse("V207_OUTPUT_FACTS_MISMATCH", 400);
+      }
+      const parsed = Number(declared);
+      if (
+        !Number.isSafeInteger(parsed) ||
+        String(parsed) !== declared ||
+        !lengthValid(parsed, reservation.max_content_length)
+      ) {
+        return errorResponse("V207_OUTPUT_FACTS_MISMATCH", 400);
+      }
+      declaredLength = parsed;
+    }
+    if (request.headers.get("content-type") !== "image/png") {
       return errorResponse("V207_OUTPUT_FACTS_MISMATCH", 400);
     }
     if ((await bucket.head(reservation.object_key)) !== null) {
       return errorResponse("V207_OUTPUT_ALREADY_EXISTS", 409);
     }
     const bytes = await request.arrayBuffer();
-    if (bytes.byteLength !== Number(declared)) {
+    if (
+      !lengthValid(bytes.byteLength, reservation.max_content_length) ||
+      (declaredLength !== null && bytes.byteLength !== declaredLength)
+    ) {
       return errorResponse("V207_OUTPUT_FACTS_MISMATCH", 400);
     }
     await bucket.put(reservation.object_key, bytes, {
@@ -1081,7 +1095,8 @@ async function handleCapabilityTransfer(
     if (
       stored === null ||
       stored.size !== bytes.byteLength ||
-      stored.httpMetadata?.contentType !== "image/png"
+      (stored.httpMetadata?.contentType !== undefined &&
+        stored.httpMetadata.contentType !== "image/png")
     ) {
       return errorResponse("V207_OUTPUT_WRITE_UNCONFIRMED", 503);
     }
