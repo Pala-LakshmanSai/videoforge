@@ -4,7 +4,24 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- Superseding live state: exact source `b01eb29096f76c5f12036196b2ee58dc15c5ea86`
+- Current live qualification: exact source `29667134b17daa9723495d028ec22c4eeaee3ee3`
+  is live on staging as Cloudflare Worker `50cfd256-7119-4fe5-b198-3c88312bf9b6` with personal
+  media worker `0.1.14` already active. Exactly one fresh project
+  `f7655814-1b12-40c7-b0d5-993ad0c074e2` passed the required free-space gate with
+  `2,944,651,264` bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10
+  avatar segments. Stage 5 made exactly two DeepSeek V4 Flash requests matching two persisted
+  adaptive batches (18 + 13), durably accepted 31/31 prompts, and settled USD `0.001401`; total
+  Stage 3+5 variable external spend was USD `0.001473`. The reservation conserved exactly.
+- Real Chrome verified the completed 520px scrollable prompt viewer. All 31 positive prompts contain
+  the enabled bounded test value `tactile materials, candid household detail` exactly once; each
+  contains exactly one dynamic pinned `medium`, `realism`, `camera`, and `lighting` field. There were
+  zero palette, hex, framing, shot-scale, contrast, depth, texture, imperfection, or mood metadata
+  hits. Positive prompts measured 90-107 words, average 98. No retry, continuation, provider
+  retrieval, GPU, RunPod, production, or volume mutation occurred. Evidence:
+  `evidence/acceptance/VF-10-06/2026-09-04-compact-stage5-live-29667134/acceptance.json`.
+- The one-deployment and one-project authority is consumed. Source `29667134…` is the current live
+  Stage 5 baseline; any new deployment or paid project requires fresh exact authority.
+- Prior live baseline, superseded by the qualification above: exact source `b01eb29096f76c5f12036196b2ee58dc15c5ea86`
   is live on staging as Cloudflare Worker `86ef0439-ff50-4634-a5c9-415c4f5f25f0`, and personal
   media worker `0.1.14` is installed and online. Exactly one fresh project
   `20bfb375-5f58-4e69-9fc1-4125710b3e31` passed the required free-space gate and completed Stages

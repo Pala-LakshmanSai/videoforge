@@ -1,0 +1,50 @@
+{
+  "schema_version": "videoforge-stage5-live-acceptance/v1",
+  "observed_at": "2026-09-04T04:12:09.233Z",
+  "source_commit": "29667134b17daa9723495d028ec22c4eeaee3ee3",
+  "cloudflare_worker_version_id": "50cfd256-7119-4fe5-b198-3c88312bf9b6",
+  "rendered_config_sha256": "cf25f25a7829deba82a3d16b44ddf64cf3238577e409f25570921c8514bff858",
+  "media_worker_version": "0.1.14",
+  "project_id": "f7655814-1b12-40c7-b0d5-993ad0c074e2",
+  "local_free_space_bytes_before_creation": 2944651264,
+  "required_local_free_space_bytes": 2152579950,
+  "project_maximum_cost_micro_usd": 2000000,
+  "stage_4": {"total_segments": 36, "image_scenes": 31, "avatar_segments": 10},
+  "stage_5": {
+    "run_id": "0c55f4d1-7b0d-464e-b638-186e2d27096d",
+    "state": "SUCCEEDED",
+    "planned_adaptive_batches": 2,
+    "persisted_batches": 2,
+    "batch_scene_counts": [18, 13],
+    "planned_scenes": 31,
+    "persisted_scenes": 31,
+    "prompt_scene_results": 31,
+    "provider_input_tokens": 8224,
+    "provider_output_tokens": 5046,
+    "reserved_cost_micro_usd": 40000,
+    "settled_cost_micro_usd": 1401,
+    "released_cost_micro_usd": 38599
+  },
+  "total_new_variable_external_spend_micro_usd": 1473,
+  "prompt_audit": {
+    "positive_prompt_count": 31,
+    "positive_prompt_word_count_min": 90,
+    "positive_prompt_word_count_max": 107,
+    "positive_prompt_word_count_average": 98,
+    "enabled_image_keywords": "tactile materials, candid household detail",
+    "keywords_exactly_once_count": 31,
+    "style_labels_exactly_once": ["medium", "realism", "camera", "lighting"],
+    "removed_style_metadata_hits": 0,
+    "palette_or_hex_hits": 0,
+    "viewer_client_height_px": 520,
+    "viewer_scroll_height_px": 13965,
+    "viewer_overflow_y": "auto"
+  },
+  "stop_boundary": {
+    "stopped_after_stage_5": true,
+    "retry_or_continuation": false,
+    "provider_retrieval": false,
+    "gpu_or_runpod_action": false,
+    "production_or_volume_mutation": false
+  }
+}

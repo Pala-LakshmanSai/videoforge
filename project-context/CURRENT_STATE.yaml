@@ -4,7 +4,7 @@ updated_at: "2026-09-04"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: false
-current_milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compaction_source_green_awaiting_deploy_authority
+current_milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compaction_qualified
 current_task: VF-10-07_MAGE_SERVERLESS_QUALIFICATION
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Source b01eb290 is live as Worker 86ef0439 with media worker 0.1.14 online. Exactly one project 20bfb375 completed Stages 1-5; Stage 5 made two requests for two batches, durably accepted 31/31 prompts, settled USD 0.001612, conserved its reservation, and exposed the 520px scrollable viewer. Provider-free source 956e3afb / request v18 compacts each final prompt to dynamic pinned medium, realism, camera, and lighting only, removes duplicated provider lighting and low-value palette/framing/shot-scale/contrast/depth/texture/imperfection/mood repetition, adds concise word targets, and preserves enabled project image keywords once per prompt. Focused tests pass 96/96. It is undeployed and requires fresh exact deployment authority."
+  provider_free_product_action: "Source 29667134 is live as Worker 50cfd256 with media worker 0.1.14 online. Exactly one project f7655814 completed Stages 1-5; Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 compact prompts, settled USD 0.001401, conserved its reservation, and exposed the 520px scrollable viewer. All 31 positive prompts contain the enabled bounded project keywords exactly once and only the pinned medium, realism, camera, and lighting style fields; removed style metadata has zero hits. Total Stage 3+5 variable external spend was USD 0.001473. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -189,17 +189,18 @@ hosted_beta_user_walkthrough:
     - "c651ad767d74010717936abe7d31a4667911d325"
     - "b01eb29096f76c5f12036196b2ee58dc15c5ea86"
     - "956e3afb1e9d4aad16d35d13da636ebe5bdfe7ea"
-  deployment_candidate: "956e3afb1e9d4aad16d35d13da636ebe5bdfe7ea"
-  deployed_source_commit: "b01eb29096f76c5f12036196b2ee58dc15c5ea86"
-  cloudflare_worker_version_id: "86ef0439-ff50-4634-a5c9-415c4f5f25f0"
-  pending_source_candidate: "956e3afb1e9d4aad16d35d13da636ebe5bdfe7ea"
+    - "29667134b17daa9723495d028ec22c4eeaee3ee3"
+  deployment_candidate: null
+  deployed_source_commit: "29667134b17daa9723495d028ec22c4eeaee3ee3"
+  cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
+  pending_source_candidate: null
   pending_worker_release: "none; immutable media-worker-v0.1.14 is published, installed, and online"
-  pending_release_boundary: "SOURCE_956E3AFB_COMPACTS_STAGE5_PROMPTS_AND_ADVANCES_REQUEST_V18. LIVE_REMAINS_SOURCE_B01EB290_WORKER_86EF0439_WITH_MEDIA_WORKER_0_1_14. REQUIRE_FRESH_EXACT_AUTHORITY_BEFORE_ONE_STAGING_DEPLOYMENT."
-  pending_validations: "AFTER FRESH EXACT DEPLOYMENT AUTHORITY, DEPLOY SOURCE_956E3AFB ONCE. PROVIDER-FREE TESTS ALREADY PROVE COMPACT PINNED-STYLE OUTPUT AND ENABLED PROJECT KEYWORDS ON EVERY SCENE; EXISTING PERSISTED PROMPTS DO NOT CHANGE RETROACTIVELY."
-  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE RELEASE SOURCE b01eb29096f76c5f12036196b2ee58dc15c5ea86 MEDIA WORKER 0.1.14 EXECUTION BUNDLE SHA256 61ff767630bfc848e524cc3347626c169de05678a51829bc86b8a0cc3098f0be; PUBLISH EXACT IMMUTABLE TAG media-worker-v0.1.14 ONCE, VERIFY ITS RELEASE MANIFEST, AND MATERIALIZE THE EXACT LOCAL MODE-0600 PROTECTED ACTIVATION AND RELEASE INPUTS WITHOUT PRINTING SECRET VALUES; INSTALL AND ACTIVATE MEDIA WORKER 0.1.14 ON THIS MAC; MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; DEPLOY STAGING SOURCE b01eb29096f76c5f12036196b2ee58dc15c5ea86 ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD TOTAL NEW VARIABLE EXTERNAL SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; DO NOT RETRY CONTINUE OR RETRIEVE PROJECT ea8662a7-d44d-4b18-a1c2-785305bfa5d8 OR ANY PREVIOUS FROZEN PROJECT; USE REAL CHROME TO VERIFY STAGE 2 COMPLETION, TWO-CLICK CANCELLATION UX, REJECTION OF EMPTY OR MISMATCHED CANCEL POSTS, STAGE 5 COMPLETION, PROVIDER REQUEST COUNT EQUALS PERSISTED ADAPTIVE BATCH COUNT, NARRATION-GROUNDED PROMPT QUALITY, PINNED STYLE FIDELITY WITHOUT HARDCODED ATTRIBUTES, NO TEXT-BEARING PROPS, DURABLE INCREMENTAL BATCHES, COST CONSERVATION, AND THE SCROLLABLE PROMPT VIEWER; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
-  latest_live_run: "Approved source b01eb290 deployed once as Worker 86ef0439-ff50-4634-a5c9-415c4f5f25f0 with media worker 0.1.14 installed and online. Exactly one project 20bfb375-5f58-4e69-9fc1-4125710b3e31 passed the 2,152,579,950-byte free-space gate with 2,663,723,008 bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made two requests matching two persisted batches, durably accepted 31/31 prompts, settled USD 0.001612, and conserved the reservation. Real Chrome verified the 520px scrollable prompt viewer. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
-  deployed_config_sha256: "f9e9b5df62a9f2f7a35dc393699e1e1f6b0b844ae2911193125a9615a1d46836"
-  deployment_approval: "LATEST_SOURCE_BOUND_RELEASE_DEPLOY_AND_PROJECT_AUTHORITY_CONSUMED_BY_SOURCE_B01EB290_WORKER_86EF0439_PROJECT_20BFB375_COMPLETED_STAGE5_NO_RETRY_OR_RETRIEVAL"
+  pending_release_boundary: "SOURCE_29667134_IS_LIVE_AS_WORKER_50CFD256_AND_STAGE5_V18_IS_QUALIFIED. REQUIRE_FRESH_EXACT_AUTHORITY_BEFORE_ANY_SUCCESSOR_DEPLOYMENT_OR_PROJECT."
+  pending_validations: "NONE_FOR_STAGE5_V18; LIVE_QUALIFICATION_COMPLETE."
+  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 29667134b17daa9723495d028ec22c4eeaee3ee3 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.14 ALREADY PUBLISHED INSTALLED AND ACTIVE DO NOT REPUBLISH OR REINSTALL; DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD TOTAL NEW VARIABLE EXTERNAL SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; ENABLE IMAGE KEYWORDS WITH A BOUNDED TEST VALUE AND USE REAL CHROME TO VERIFY STAGE 5 COMPLETION, COMPACT PROMPTS, ONLY PINNED MEDIUM REALISM CAMERA AND LIGHTING STYLE CUES, NO PALETTE OR HEX OR OTHER REMOVED STYLE METADATA, AND THE ENABLED IMAGE KEYWORDS EXACTLY ONCE IN EVERY POSITIVE SCENE PROMPT; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
+  latest_live_run: "Approved source 29667134 deployed once as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6 with media worker 0.1.14 already active. Exactly one project f7655814-1b12-40c7-b0d5-993ad0c074e2 passed the 2,152,579,950-byte free-space gate with 2,944,651,264 bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 prompts, settled USD 0.001401, and conserved the reservation; total Stage 3+5 variable spend was USD 0.001473. Real Chrome verified the 520px scrollable prompt viewer, exact once-per-prompt enabled keywords, four pinned style fields, and zero removed style metadata hits. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
+  deployed_config_sha256: "cf25f25a7829deba82a3d16b44ddf64cf3238577e409f25570921c8514bff858"
+  deployment_approval: "LATEST_SOURCE_BOUND_DEPLOY_AND_PROJECT_AUTHORITY_CONSUMED_BY_SOURCE_29667134_WORKER_50CFD256_PROJECT_F7655814_COMPLETED_STAGE5_NO_RETRY_OR_RETRIEVAL"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -3667,10 +3668,10 @@ repository:
   branch: codex/serverless-v2-roadmap-v4
   branch_upstream: origin/codex/serverless-v2-roadmap-v4
   branch_published: false
-  current_source_head: "c651ad767d74010717936abe7d31a4667911d325"
-  current_source_head_semantics: provider_free_stage5_v17_provider_content_repair_green_undeployed
+  current_source_head: "956e3afb1e9d4aad16d35d13da636ebe5bdfe7ea"
+  current_source_head_semantics: stage5_v18_compact_prompt_application_source_live_qualified_at_deployment_source_29667134
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Application source a8e7c6d5 is live as Worker d71236a6-d075-440e-b51a-038637e5d1b3. Project d02997b4 proved Stage 4, durable incremental prompt persistence, pinned-style prompt output, and the scrollable viewer, then stopped after batch 2 returned 15/15 rows but three hit the remaining local content validator. Repairs eb029d46 plus c651ad76 advance request v17, repair provider formatting or forbidden compiled content locally, and explicitly exclude price tags and receipts so a structurally complete batch is not wasted. They are undeployed; auditors resolve git rev-parse HEAD for the later documentation handoff."
+  current_source_head_note: "Application source 956e3afb is deployed within exact source 29667134 as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6. Fresh project f7655814 completed Stages 1-5, including two persisted adaptive prompt batches and 31/31 compact durable prompts. Real Chrome and read-only database evidence verify exact keyword inclusion, four pinned style fields, removed-metadata absence, viewer scrolling, and cost conservation. Auditors resolve git rev-parse HEAD for the later evidence handoff."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -5059,9 +5060,9 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
-  milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compaction_source_green_awaiting_deploy_authority
-  status: NOT_QUALIFIED_attempt64_closed_stage5_live_functional_prompt_v18_deploy_required
-  dependency_status: v2_06_stage5_live_functional_prompt_v18_source_green_undeployed
+  milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compaction_qualified
+  status: READY_stage5_v18_live_qualified_v2_07_still_separate
+  dependency_status: v2_06_stage5_live_functional_prompt_v18_qualified
   authorization_status: no_live_authority_latest_project_only_approval_consumed_non_reusable
   task_stage: provider_free_reconciliation_and_read_only_preflight
   current_goal_authority: null
@@ -5069,7 +5070,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Preserve deployed source 2806dd6c / Worker 1d55ade7 and freeze terminal project ea8662a7 without retry, continuation, or provider retrieval. Provider-free repair b01eb290 requires deliberate two-click cancellation, an exact attempt-bound server confirmation, and truthful stale-lease failure classification in media worker 0.1.14. Obtain fresh exact authority before immutable 0.1.14 publication, installation, activation, or one staging deployment; use separate fresh-project authority for any new Stage 1-5 run. Stage 5 request v17 is live but remains unqualified. Preserve all predecessor projects. Then resume V2-07 reconciliation from closed Attempt64 without reusing old attempts, proposals, authority, caps, image evidence, or stopped projects. V2-08 live remains blocked until independent V2-07 PASS."
+  goal: "Preserve live-qualified Stage 5 v18 source 29667134 / Worker 50cfd256 and completed project f7655814 without retry, continuation, provider retrieval, or Stage 6 dispatch. Media worker 0.1.14 remains the installed active baseline. Preserve every predecessor project. Resume V2-07 reconciliation from closed Attempt64 without reusing old attempts, proposals, authority, caps, image evidence, or stopped projects. V2-08 live remains blocked until independent V2-07 PASS."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -5090,7 +5091,7 @@ recommended_next_task:
   authorized_operations: *v2_07_attempt64_authorized_operations
   allowed_operations: *v2_07_attempt64_authorized_operations
   rate_snapshot: *v2_07_attempt64_rate_snapshot
-  authority_note: "Source a8e7c6d5 / Worker d71236a6-d075-440e-b51a-038637e5d1b3 remains live with request v16 and a live-proven Stage 4 plus one durable Stage 5 batch. Project d02997b4-1d57-4f79-8abb-3ba76fdbffdd and its authority are consumed and frozen after batch 2 returned 15/15 rows but three hit the local content gate. Provider-free repairs eb029d46 plus c651ad76 / request v17 are green and undeployed. All predecessors remain frozen. Migrations 0069 through 0073 and the runtime grant are already applied and must not be replayed. No redeployment, provider call, project mutation, retrieval, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized; require fresh exact source-bound authority."
+  authority_note: "Source 29667134 / Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6 is live with request v18 and qualified Stage 5 through fresh project f7655814-1b12-40c7-b0d5-993ad0c074e2. The exact deployment/project authority is consumed. All predecessors remain frozen. Migrations 0069 through 0073 and the runtime grant are already applied and must not be replayed. No redeployment, provider call, project mutation, retrieval, credential access, GPU/RunPod/production action, retained-volume mutation, or spend is currently authorized; require fresh exact source-bound authority."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444"
@@ -5099,9 +5100,9 @@ recommended_next_task:
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: stage_5_live_functional_31_of_31_prompt_v18_compaction_source_green_undeployed
-  execution_blocker: fresh_exact_source_bound_deploy_and_project_authority_required_for_prompt_v18_live_qualification
-  provider_free_validation_note: "Live source b01eb290 / Worker 86ef0439 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact cost conservation, and the 520px scrollable viewer. Provider-free source 956e3afb advances request identity to v18, emits only pinned medium, realism, camera, and lighting in each final style suffix, omits low-value repeated style metadata and provider lighting duplication, adds concise model word targets, and proves enabled project image keywords appear once on every scene. Focused prompt tests pass 96/96 and the pipeline build passes. Auth, origin, rate limit, reservations, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged. Source 956e3afb is undeployed."
+  execution_status: stage_5_live_functional_31_of_31_prompt_v18_compaction_qualified
+  execution_blocker: none_for_stage5_v18; v2_07_requires_its_own_fresh_authority
+  provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_attempt64_failed_clean
