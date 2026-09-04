@@ -578,6 +578,40 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .media-review-heading {
+    flex-direction: column;
+  }
+  .media-review-private-note {
+    align-self: flex-start;
+  }
+  .media-review-actions {
+    grid-template-columns: 1fr;
+  }
+  .media-review-dialog {
+    width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
+    border-radius: 20px;
+  }
+  .media-review-dialog-header {
+    padding: 20px 18px 16px;
+  }
+  .media-review-dialog-tabs {
+    padding-inline: 18px;
+  }
+  .media-review-dialog-body {
+    padding: 16px 18px 24px;
+  }
+  .media-review-stage {
+    grid-template-columns: 1fr;
+  }
+  .media-review-thumbnails {
+    order: 2;
+  }
+  .media-review-thumbnail-grid {
+    max-height: none;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .review-footer {
     flex-direction: column;
   }
@@ -622,6 +656,33 @@
 
   .reference-lightbox > img {
     max-height: 58vh;
+  }
+
+  .media-review-dialog {
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+  }
+  .media-review-dialog-header {
+    padding: 20px 16px 15px;
+  }
+  .media-review-dialog-tabs {
+    overflow-x: auto;
+    padding-inline: 16px;
+  }
+  .media-review-dialog-body {
+    padding: 14px 16px calc(130px + env(safe-area-inset-bottom));
+  }
+  .media-review-main-frame,
+  .media-review-main-frame img,
+  .media-review-main-frame video {
+    min-height: min(52vh, 460px);
+  }
+  .media-review-thumbnail-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .reference-lightbox-meta {

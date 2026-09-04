@@ -5582,6 +5582,16 @@ type HostedContactSheetItem = {
   readonly shot_role: string;
 };
 
+type HostedAvatarFootageItem = {
+  readonly id: string;
+  readonly asset_id: string;
+  readonly video_url: string;
+  readonly label: string;
+  readonly content_type: string;
+  readonly content_length: number;
+  readonly checksum_sha256: string;
+};
+
 async function contactSheet(
   outputs: readonly Record<string, unknown>[],
   bucket: HostedRuntimeEnvironment["PRIVATE_ARTIFACTS"],
@@ -5636,6 +5646,66 @@ async function contactSheet(
         start_ms: null,
         end_ms: null,
         shot_role: String(output.lane ?? "IMAGE"),
+      });
+    }
+    if (items.length >= 96) break;
+  }
+  return items;
+}
+
+async function avatarFootage(
+  outputs: readonly Record<string, unknown>[],
+  bucket: HostedRuntimeEnvironment["PRIVATE_ARTIFACTS"],
+  signer: HostedR2Signer,
+): Promise<readonly HostedAvatarFootageItem[]> {
+  if (!bucket) return [];
+  const items: HostedAvatarFootageItem[] = [];
+  for (const output of outputs) {
+    if (output.lane !== "soulx_avatar" || !Array.isArray(output.artifacts)) continue;
+    for (const rawArtifact of output.artifacts) {
+      if (!rawArtifact || typeof rawArtifact !== "object" || items.length >= 96) continue;
+      const artifact = rawArtifact as Record<string, unknown>;
+      const objectKey = artifact.object_key;
+      const checksum = artifact.checksum_sha256;
+      const contentLength = numberOrNull(artifact.content_length);
+      const itemId = artifact.item_id;
+      if (
+        typeof objectKey !== "string" ||
+        typeof checksum !== "string" ||
+        !SHA256.test(checksum) ||
+        contentLength === null ||
+        !Number.isSafeInteger(contentLength) ||
+        contentLength < 1 ||
+        typeof itemId !== "string"
+      ) {
+        continue;
+      }
+      const object = await bucket.head(objectKey);
+      const contentType = object?.httpMetadata?.contentType;
+      if (
+        !object ||
+        object.size !== contentLength ||
+        contentType !== "video/mp4" ||
+        checksumFromR2(object.checksums?.sha256) !== checksum
+      ) {
+        continue;
+      }
+      const port = await signer.sign({
+        method: "GET",
+        objectKey,
+        contentType,
+        contentLength,
+        checksumSha256: checksum,
+        lifetimeSeconds: 300,
+      });
+      items.push({
+        id: itemId,
+        asset_id: itemId,
+        video_url: port.url,
+        label: `Avatar clip ${items.length + 1}`,
+        content_type: contentType,
+        content_length: contentLength,
+        checksum_sha256: checksum,
       });
     }
     if (items.length >= 96) break;
@@ -6395,11 +6465,18 @@ async function projectDetail(
           replacement_allowed: false,
         })),
     ];
-    const sheet = await contactSheet(
-      detail.serverlessOutputs as Record<string, unknown>[],
-      environment.PRIVATE_ARTIFACTS,
-      signer,
-    );
+    const [sheet, footage] = await Promise.all([
+      contactSheet(
+        detail.serverlessOutputs as Record<string, unknown>[],
+        environment.PRIVATE_ARTIFACTS,
+        signer,
+      ),
+      avatarFootage(
+        detail.serverlessOutputs as Record<string, unknown>[],
+        environment.PRIVATE_ARTIFACTS,
+        signer,
+      ),
+    ]);
     let downloadUrl: string | null = null;
     const reviewRow = detail.review as Record<string, unknown> | null;
     const manifestUrl = reviewRow ? `/api/v2/hosted/projects/${projectId}/manifest` : null;
@@ -6470,11 +6547,13 @@ async function projectDetail(
       scale_to_zero: scaleToZero,
       review: {
         contact_sheet: sheet,
+        avatar_footage: footage,
         quality_flags: qualityFlags,
         manifest_url: manifestUrl,
         download_url: downloadUrl,
       },
       contact_sheet: sheet,
+      avatar_footage: footage,
       quality_flags: qualityFlags,
       manifest_url: manifestUrl,
     });

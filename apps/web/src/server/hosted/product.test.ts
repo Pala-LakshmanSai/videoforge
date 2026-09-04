@@ -999,4 +999,18 @@ describe("hosted product route contract", () => {
     expect(block).not.toContain("FROM hosted_style_analysis_runs");
     expect(block).not.toContain("state = 'UNKNOWN' AND");
   });
+
+  it("signs only verified tenant-scoped SoulX MP4 outputs for project media review", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("async function avatarFootage(");
+    const end = source.indexOf("async function projectDetail(", start);
+    const block = source.slice(start, end);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(block).toContain('output.lane !== "soulx_avatar"');
+    expect(block).toContain('contentType !== "video/mp4"');
+    expect(block).toContain("object.size !== contentLength");
+    expect(block).toContain("checksumFromR2(object.checksums?.sha256) !== checksum");
+    expect(block).toContain("lifetimeSeconds: 300");
+    expect(block).not.toContain("account_id");
+  });
 });

@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ImageStyleHubVersionResponse } from "@videoforge/contracts/image-style-hub";
 import { PageHeader } from "../components/PageHeader";
+import { ProjectMediaReview, type ProjectMediaReviewItem } from "../components/ProjectMediaReview";
 import {
   Badge,
   Button,
@@ -694,8 +695,15 @@ interface HostedContactSheetItem {
   readonly shot_role?: string | null;
 }
 
+interface HostedAvatarFootageItem {
+  readonly id: string;
+  readonly video_url: string;
+  readonly label?: string | null;
+}
+
 interface HostedReviewSnapshot {
   readonly contact_sheet?: readonly HostedContactSheetItem[];
+  readonly avatar_footage?: readonly HostedAvatarFootageItem[];
   readonly quality_flags?: readonly HostedQualityFlag[];
   readonly manifest_url?: string | null;
   readonly download_url?: string | null;
@@ -765,6 +773,7 @@ interface ProjectDetailResponse {
   readonly scale_to_zero?: HostedScaleToZero | null;
   readonly review?: HostedReviewSnapshot | null;
   readonly contact_sheet?: readonly HostedContactSheetItem[];
+  readonly avatar_footage?: readonly HostedAvatarFootageItem[];
   readonly quality_flags?: readonly HostedQualityFlag[];
   readonly manifest_url?: string | null;
 }
@@ -3600,6 +3609,37 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     query.data.review?.contact_sheet?.at(-1)?.image_url ??
     query.data.contact_sheet?.at(-1)?.image_url ??
     null;
+  const contactSheet = query.data.review?.contact_sheet ?? query.data.contact_sheet ?? [];
+  const generatedImages: ProjectMediaReviewItem[] = contactSheet.map((item, index) => ({
+    id: item.id ?? item.asset_id ?? `generated-image-${index + 1}`,
+    url: item.image_url,
+    label: item.label ?? `Generated image ${index + 1}`,
+    detail:
+      item.start_ms !== null && item.start_ms !== undefined
+        ? `${formatMilliseconds(item.start_ms)}–${formatMilliseconds(item.end_ms)}`
+        : item.shot_role
+          ? item.shot_role.replaceAll("_", " ")
+          : "Accepted Stage 6 image",
+  }));
+  const avatarVideos: ProjectMediaReviewItem[] = (query.data.avatar_footage ?? []).map(
+    (item, index) => ({
+      id: item.id,
+      url: item.video_url,
+      label: item.label ?? `Avatar clip ${index + 1}`,
+      detail: "Accepted Stage 7 avatar footage",
+    }),
+  );
+  const mediaStageComplete = uiStages.some(
+    (stage) =>
+      stage.status === "COMPLETE" &&
+      (stage.id === "image-generation" ||
+        stage.id === "avatar-generation" ||
+        stage.label === "Generate images" ||
+        stage.label === "Generate avatar video" ||
+        stage.label === "Generate avatar"),
+  );
+  const showMediaReview =
+    mediaStageComplete || generatedImages.length > 0 || avatarVideos.length > 0;
   const cancellableAttempts = query.data.attempts.filter((attempt) =>
     ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
   );
@@ -3888,6 +3928,15 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               </Badge>
             </div>
           </Panel>
+          {showMediaReview ? (
+            <ProjectMediaReview
+              images={generatedImages}
+              avatarVideos={avatarVideos}
+              loading={query.isFetching && !query.data}
+              error={query.isError ? query.error.message : null}
+              onRetry={() => void query.refetch()}
+            />
+          ) : null}
           {contextComplete && contextDocument ? (
             <Panel
               className="extracted-context-panel"
