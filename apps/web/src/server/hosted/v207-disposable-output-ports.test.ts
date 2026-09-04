@@ -318,6 +318,21 @@ describe("V2-07 disposable output Worker", () => {
     expect(runtime.objects.has(objectKey)).toBe(true);
   });
 
+  it("stops an unframed generated PUT at the reservation byte ceiling", async () => {
+    const runtime = memoryBucket();
+    const { url, environment } = await generatedPutPort(runtime, 4);
+    const response = await handleV207DisposableOutputPort(
+      new Request(url, {
+        method: "PUT",
+        headers: { "content-type": "image/png" },
+        body: new Uint8Array(5),
+      }),
+      environment,
+    );
+    expect(response?.status).toBe(400);
+    expect(runtime.objects.has(objectKey)).toBe(false);
+  });
+
   it("rejects a present Content-Length that differs from the actual body", async () => {
     const runtime = memoryBucket();
     const { url, environment } = await generatedPutPort(runtime);
@@ -346,6 +361,81 @@ describe("V2-07 disposable output Worker", () => {
       environment,
     );
     expect(response?.status).toBe(201);
+  });
+
+  it("accepts absent optional R2 metadata through PUT, FINALIZE, and GET", async () => {
+    const runtime = memoryBucket("absent");
+    const environment = {
+      PRIVATE_ARTIFACTS: runtime.bucket,
+      VIDEOFORGE_V207_AUTHORITY_NONCE: nonce,
+    };
+    const putPort = await handleV207DisposableOutputPort(
+      controlRequest({
+        schema_version: "videoforge-v207-generated-output-port-request/v1",
+        operation: "PUT",
+        account_id: "account-a",
+        workspace_id: "workspace-a",
+        object_key: objectKey,
+        content_type: "image/png",
+        max_content_length: 4 * 1024 * 1024,
+        lifetime_seconds: 300,
+      }),
+      environment,
+    );
+    const port = (await putPort?.json()) as Record<string, any>;
+    const png = png1280x720();
+    const upload = await handleV207DisposableOutputPort(
+      new Request(port.url, {
+        method: "PUT",
+        headers: { "content-type": "image/png", "content-length": String(png.byteLength) },
+        body: png.slice().buffer as ArrayBuffer,
+      }),
+      environment,
+    );
+    expect(upload?.status).toBe(201);
+
+    const checksum = `sha256:${createHash("sha256").update(png).digest("hex")}`;
+    const finalized = await handleV207DisposableOutputPort(
+      controlRequest({
+        schema_version: "videoforge-v207-generated-output-port-request/v1",
+        operation: "FINALIZE",
+        account_id: "account-a",
+        workspace_id: "workspace-a",
+        object_key: objectKey,
+        content_type: "image/png",
+        content_length: png.byteLength,
+        checksum_sha256: checksum,
+        reservation_id: port.authority.reservation_id,
+        capability_handle: port.authority.capability_handle,
+        callback_id: "callback-attempt-a-absent-metadata",
+      }),
+      environment,
+    );
+    expect(finalized?.status).toBe(200);
+
+    const getPort = await handleV207DisposableOutputPort(
+      controlRequest({
+        schema_version: "videoforge-v207-generated-output-port-request/v1",
+        operation: "GET",
+        account_id: "account-a",
+        workspace_id: "workspace-a",
+        object_key: objectKey,
+        content_type: "image/png",
+        max_content_length: 4 * 1024 * 1024,
+        lifetime_seconds: 300,
+        content_length: png.byteLength,
+        checksum_sha256: checksum,
+      }),
+      environment,
+    );
+    expect(getPort?.status).toBe(200);
+    const getValue = (await getPort?.json()) as Record<string, any>;
+    const downloaded = await handleV207DisposableOutputPort(
+      new Request(getValue.url, { method: "GET" }),
+      environment,
+    );
+    expect(downloaded?.status).toBe(200);
+    expect(new Uint8Array(await downloaded!.arrayBuffer())).toEqual(png);
   });
 
   it("rejects explicit conflicting R2 content-type metadata after write", async () => {

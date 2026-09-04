@@ -570,6 +570,41 @@ async function readRequestJson(request: Request): Promise<unknown | null> {
   }
 }
 
+async function readBoundedBody(
+  request: Request,
+  maximumBytes: number,
+): Promise<ArrayBuffer | null> {
+  if (request.body === null) return new ArrayBuffer(0);
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maximumBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body.buffer;
+}
+
+function imageContentTypeMetadataValid(contentType: string | undefined): boolean {
+  return contentType === undefined || contentType === "image/png";
+}
+
 function requestScopeValid(value: Record<string, unknown>): boolean {
   return (
     value.schema_version === REQUEST_SCHEMA &&
@@ -815,7 +850,7 @@ async function handleGet(
   if (
     head === null ||
     head.size !== value.content_length ||
-    head.httpMetadata?.contentType !== "image/png"
+    !imageContentTypeMetadataValid(head.httpMetadata?.contentType)
   ) {
     return errorResponse("V207_OUTPUT_NOT_FOUND", 404);
   }
@@ -909,7 +944,7 @@ async function handleFinalize(
     object.size < 1 ||
     object.size > V207_DISPOSABLE_OUTPUT_MAX_BYTES ||
     object.size > reservation.max_content_length ||
-    object.httpMetadata?.contentType !== "image/png"
+    !imageContentTypeMetadataValid(object.httpMetadata?.contentType)
   ) {
     return errorResponse("V207_OUTPUT_FACTS_MISMATCH", 409);
   }
@@ -1081,8 +1116,9 @@ async function handleCapabilityTransfer(
     if ((await bucket.head(reservation.object_key)) !== null) {
       return errorResponse("V207_OUTPUT_ALREADY_EXISTS", 409);
     }
-    const bytes = await request.arrayBuffer();
+    const bytes = await readBoundedBody(request, reservation.max_content_length);
     if (
+      bytes === null ||
       !lengthValid(bytes.byteLength, reservation.max_content_length) ||
       (declaredLength !== null && bytes.byteLength !== declaredLength)
     ) {
@@ -1172,7 +1208,7 @@ async function handleCapabilityTransfer(
     if (
       object === null ||
       object.size !== Number(lengthText) ||
-      object.httpMetadata?.contentType !== "image/png"
+      !imageContentTypeMetadataValid(object.httpMetadata?.contentType)
     ) {
       return errorResponse("V207_OUTPUT_NOT_FOUND", 404);
     }
