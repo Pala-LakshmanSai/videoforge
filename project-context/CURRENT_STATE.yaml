@@ -579,6 +579,35 @@ two_track_execution:
   integration_cadence: one_bounded_green_product_commit_per_working_day
   verification: focused_changed_surface_then_canonical_at_v2_09_integration_and_v2_13_release
 
+concurrency_hardening_2026_09_04:
+  source_regression_commit: "384c99df4181a49afba19e5a9666617e263ded24"
+  rejected_adaptive_planner_revert_commit: "5d310a07"
+  source_status: PROVIDER_FREE_GREEN_AWAITING_EXTERNAL_QUALIFICATION_AUTHORITY
+  runware_stage3_stage5_behavior: "UNCHANGED: no shared dispatcher or cross-project gate was added; different projects retain direct concurrent provider requests."
+  personal_worker_boundary: "Existing claims and active leases remain account/workspace/device scoped with no named global worker lock. This is source-level regression evidence, not a live multi-device throughput claim."
+  provider_release_boundary: "Existing production SQL durably accepts the Stage 7 output barrier, enters RENDERING, then releases provider_workload_leases while local Stage 8-9 work continues. This is source-level regression evidence, not a fresh database execution claim."
+  runpod_max_two_boundary: "Existing trusted V2-07/V2-11 path remains workersMin=0, workersMax=2 only during the bounded concurrent-reader gate, one GPU/worker, REQUEST_COUNT=1, handler concurrency one, whole-project lane batches, exact max1 restore, and terminal zero-worker proof. No 4/6/10 activation contract was added."
+  independent_audit: "PASS after removal of an untrusted unused adaptive planner; commit 2281858b must not be used as qualification or activation evidence."
+  focused_validation:
+    control_plane_source_regressions: PASS_5_OF_5
+    runpod_control_and_v207_harness: PASS_182_OF_182
+    web_typecheck: PASS
+  computer_use_observation: "Authenticated staging project shows Stages 1-5 complete and Stages 6-7 BLOCKED under DISABLED_UNQUALIFIED transport; no new project or provider action was performed."
+  read_only_runpod_observation:
+    checked_at: "2026-09-04T05:28:02.661Z"
+    account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
+    pods: 0
+    endpoints: 0
+    private_templates: 0
+    active_serverless_workers: 0
+    retained_volumes: "two exact 50 GB EU-RO-1 volumes"
+    selected_gpu: "NVIDIA GeForce RTX 4090"
+    secure_catalog_availability: HIGH
+    secure_reference_rate_usd_per_hour: 0.74
+    serverless_flex_rate_usd_per_gpu_hour_source_pin: 1.116
+    external_spend_usd: 0
+    provider_mutations: 0
+  next_boundary: "Prepare a fresh exact proposal bound to clean source/image/volume/config lineage and a numeric finite cap; obtain explicit approval before image publication, endpoint mutation, GPU work, database/deployment mutation, or a new live project."
 provider_free_product_progress:
   v2_13_default_branch_repair_result_status: PASS_EXACT_SINGLE_MUTATION_RECONCILED
   v2_13_default_branch_repair_result_commit: "c24d37e164d3fcf93c04d53a1e8f06ab972c5d46"
