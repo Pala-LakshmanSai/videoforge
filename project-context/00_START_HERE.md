@@ -2,7 +2,19 @@
 
 ## Active handoff — read this section first
 
-### Current new-chat launch point — 2026-09-04
+### Current new-chat launch point — 2026-09-05
+
+- V2-07 Attempt80 is sealed at proposal
+  `sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b`, control/image source
+  `d530320af723e33c6ce32552743fd00dc063eedc`, and expected immutable image
+  `sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62`.
+- The repair applies identified `VideoForge-Mage/V2-07` request framing to both the real Mage runtime
+  and exact pre-GPU Python probe. Two deterministic image builds matched; focused tests and an
+  independent audit pass with P0/P1/P2 `0/0/0`.
+- The image is not published and no executable authority exists. Fresh exact approval must cover
+  direct exact image publication, fresh preflight, three route fingerprints, three fully cleaned
+  pre-GPU cycles, conditional Stage 6 qualification, cleanup, the `$4.50` cumulative cap, and
+  continued `$7/month` volume retention. No fallback, anchor refresh, volume mutation, or V2-08.
 
 - V2-07 Attempt79 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Cycle 1 of the pre-GPU compatibility
   gate failed closed at `V207_DISPOSABLE_PROBE_URLLIB_VERSION_MISSING_S4XX`; zero of three required

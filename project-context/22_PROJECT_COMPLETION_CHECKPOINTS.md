@@ -200,7 +200,15 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt79 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its first pre-GPU compatibility
+**Current gate:** Attempt80 is `SEALED_AWAITING_FRESH_EXACT_APPROVAL`. Proposal
+`sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b` binds control/image source
+`d530320af723e33c6ce32552743fd00dc063eedc` and unpublished deterministic image
+`sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62`. The real Mage runtime and
+exact pre-GPU probe use the same identified urllib request framing. Two image builds matched and the
+independent audit is P0/P1/P2 `0/0/0`. No executable authority exists; fresh exact approval is
+required for direct publication and the single gate-first conditional Stage 6 run.
+
+Attempt79 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its first pre-GPU compatibility
 cycle failed at `V207_DISPOSABLE_PROBE_URLLIB_VERSION_MISSING_S4XX`; zero of three cycles completed,
 and child qualification, RunPod resource creation, and GPU dispatch never started. Closure
 `sha256:caf5b4b7858954f44aa51accfa2c893ec25dcbe91bb45d2cc35844246d863d45`, orchestrator

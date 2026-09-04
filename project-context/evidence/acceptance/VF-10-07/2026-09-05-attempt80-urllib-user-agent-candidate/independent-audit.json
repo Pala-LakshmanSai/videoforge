@@ -1,0 +1,65 @@
+{
+  "schema_version": "videoforge.v2-07-attempt80-urllib-user-agent-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 80,
+  "audited_source_commit": "d530320af723e33c6ce32552743fd00dc063eedc",
+  "result": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "verified_contract": {
+    "real_mage_generated_and_legacy_put_user_agent": "VideoForge-Mage/V2-07",
+    "real_mage_put_accept": "application/json",
+    "real_mage_get_user_agent": "VideoForge-Mage/V2-07",
+    "real_mage_get_accept": "application/octet-stream",
+    "pre_gpu_python_put_matches_real_mage_put_framing": true,
+    "python_probe_is_loopback_integrated_against_real_output_handler": true,
+    "diagnostics_are_fixed_bounded_and_redaction_safe": true,
+    "response_limit_bytes": 4096,
+    "stderr_rejected": true,
+    "exact_status_version_exit_and_worker_code_binding": true,
+    "raw_url_body_headers_query_capability_status_text_and_exception_text_not_retained": true,
+    "three_fully_cleaned_pre_gpu_cycles_before_child_qualification": true,
+    "gpu_qualification_cannot_start_before_gate": true,
+    "workflow_pins_current_handler_sha256": "sha256:8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c",
+    "activation_authority_cap_and_anchor_are_null": true
+  },
+  "deterministic_image_audit": {
+    "two_independent_builds_byte_identical": true,
+    "dry_run_publisher": "PASS",
+    "exact_overlay_verifier": "PASS_LINUX_AMD64",
+    "manifest_digest": "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+    "config_digest": "sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2",
+    "layer_digest": "sha256:5c54508181bbdaf45691e7db0f4f907194ad7ff1cd38b0f86bfc0469bca0a334",
+    "layer_diff_id": "sha256:9f581bc2881547b77ff207720599b634386bd23b038124d38a7ab76442ff4770",
+    "local_identity_path": "local-image-identity.json",
+    "local_identity_sha256": "sha256:435dc655487986903c57a500c5f3a365ee5893bbb3ba47a3ec224aaef0d3c614",
+    "local_verification_path": "local-image-verification.json",
+    "local_verification_sha256": "sha256:f0d76e61167704cefbd26deca6067b68117b14741c2210762055654e1f0c8c3a"
+  },
+  "validation": {
+    "disposable_orchestrator_tests": "86/86 PASS",
+    "mage_serverless_tests": "42/42 PASS",
+    "mage_image_workflow_tests": "25/25 PASS",
+    "activation_tests": "29/29 PASS",
+    "combined_gate_tests": "100/100 PASS",
+    "focused_python_tests": "67/67 PASS",
+    "ruff": "PASS",
+    "eslint": "PASS",
+    "prettier": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "provider_activity": {
+    "anonymous_parent_manifest_and_config_reads": true,
+    "credential_access": 0,
+    "provider_mutations": 0,
+    "image_publications": 0,
+    "runpod_resources_created": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "remaining_gate": "Fresh exact authority is required to publish the exact immutable image and run the bounded pre-GPU gate plus conditional Stage 6 qualification."
+}

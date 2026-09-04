@@ -1,0 +1,37 @@
+{
+  "architecture": "amd64",
+  "config_digest": "sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2",
+  "config_size_bytes": 15924,
+  "created": "2026-09-04T18:54:41Z",
+  "created_by": "COPY workers/image-media/mage_serverless.py /opt/videoforge/mage_serverless.py; COPY workers/common/serverless_envelope.py /opt/videoforge/common/serverless_envelope.py; COPY packages/contracts/python/videoforge_contracts/_schema_documents.py /opt/videoforge/src/videoforge_contracts/_schema_documents.py",
+  "destination": "/opt/videoforge/mage_serverless.py",
+  "layer_diff_id": "sha256:9f581bc2881547b77ff207720599b634386bd23b038124d38a7ab76442ff4770",
+  "layer_digest": "sha256:5c54508181bbdaf45691e7db0f4f907194ad7ff1cd38b0f86bfc0469bca0a334",
+  "layer_size_bytes": 39062,
+  "layer_tar_size_bytes": 245760,
+  "manifest_digest": "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+  "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+  "os": "linux",
+  "overlay_kind": "source-only-overlay-v2",
+  "parent_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+  "schema_version": "videoforge.v2-07-deterministic-oci-overlay/v1",
+  "source_commit": "d530320af723e33c6ce32552743fd00dc063eedc",
+  "source_files": [
+    {
+      "destination": "/opt/videoforge/common/serverless_envelope.py",
+      "source_sha256": "sha256:34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0",
+      "source_size_bytes": 13544
+    },
+    {
+      "destination": "/opt/videoforge/mage_serverless.py",
+      "source_sha256": "sha256:8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c",
+      "source_size_bytes": 63481
+    },
+    {
+      "destination": "/opt/videoforge/src/videoforge_contracts/_schema_documents.py",
+      "source_sha256": "sha256:08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f",
+      "source_size_bytes": 164185
+    }
+  ],
+  "source_sha256": "sha256:8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c"
+}
