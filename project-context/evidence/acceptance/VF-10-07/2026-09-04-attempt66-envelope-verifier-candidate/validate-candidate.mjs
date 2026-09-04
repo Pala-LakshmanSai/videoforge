@@ -12,6 +12,7 @@ const files = [
   "staged-config-max2.json",
   "combined-live-proposal.json",
   "acceptance.json",
+  "approved-authority.json",
   "validate-candidate.mjs",
 ];
 const sha = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -20,7 +21,7 @@ const json = async (name) => JSON.parse(await bytes(name));
 const yes = (value, code) => {
   if (!value) throw new Error(code);
 };
-const [entries, publication, preflight, max1, max2, proposal, acceptance] = await Promise.all([
+const [entries, publication, preflight, max1, max2, proposal, acceptance, authority] = await Promise.all([
   readdir(dir),
   json("image-publication.json"),
   json("read-only-preflight.json"),
@@ -28,6 +29,7 @@ const [entries, publication, preflight, max1, max2, proposal, acceptance] = awai
   json("staged-config-max2.json"),
   json("combined-live-proposal.json"),
   json("acceptance.json"),
+  json("approved-authority.json"),
 ]);
 yes(JSON.stringify([...entries].sort()) === JSON.stringify([...files].sort()), "EXACT_FILE_SET");
 const image = "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247";
@@ -56,17 +58,26 @@ for (const [config, workers] of [[max1, 1], [max2, 2]]) {
 yes(max2.cleanup.restore_max_one === true && max2.anchor_refresh === false && max2.v2_08 === false, "MAX2_RESTORE_SCOPE");
 yes(proposal.attempt === 66 && proposal.authority_mode === "PENDING_FRESH_EXACT_APPROVAL" && proposal.placement_and_cost.maximum_cumulative_finite_spend_usd === 4.5 && proposal.placement_and_cost.serverless_flex_usd_per_gpu_hour === 1.116 && proposal.operation_contract.anchor_refresh_authorized === false && proposal.operation_contract.v2_08_authorized === false, "PROPOSAL_SCOPE");
 yes(proposal.control_lineage.control_head === control && JSON.stringify(proposal.control_lineage.runner_commits) === JSON.stringify(runners), "PROPOSAL_CONTROL");
-yes(acceptance.status === "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL" && acceptance.authority.fresh_exact_approval_required === true && acceptance.authority.provider_mutations_authorized === false && acceptance.authority.gpu_use_authorized === false && acceptance.authority.v2_08_authorized === false, "ACCEPTANCE_PENDING");
+yes(acceptance.status === "APPROVED_SEALED_AWAITING_EXECUTION" && acceptance.authority.exact_approval_recorded === true && acceptance.authority.fresh_exact_approval_required === false && acceptance.authority.provider_mutations_authorized === true && acceptance.authority.gpu_use_authorized === true && acceptance.authority.v2_08_authorized === false, "ACCEPTANCE_APPROVED");
 yes(acceptance.authority.requested_maximum_cumulative_finite_spend_usd === 4.5 && acceptance.authority.serverless_flex_usd_per_gpu_hour === 1.116 && acceptance.cleanup_contract.final_zero_compute_disposable_reconciliation_reads === 3, "ACCEPTANCE_COST_CLEANUP");
-const serialized = JSON.stringify({ publication, preflight, max1, max2, proposal, acceptance });
+yes(authority.attempt === 66 && authority.status === "APPROVED_SINGLE_USE_UNCONSUMED" && authority.control_source_commit === control && authority.image_source_commit === source && authority.image === image, "AUTHORITY_IDENTITY");
+yes(authority.proposal_sha256 === "sha256:a90c44b9b2cf37383c15c633f7de19dd2b6fbbe1b17abffd227d79a09a95c3f8" && authority.acceptance_sha256 === "sha256:a9cbaffbf7f46c4b56e231618b339c6c08386c5b28ba23d5a15bae112a023a73", "AUTHORITY_LINEAGE");
+yes(authority.maximum_cumulative_finite_spend_usd === 4.5 && authority.serverless_flex_usd_per_gpu_hour === 1.116 && authority.gpu === "NVIDIA GeForce RTX 4090" && authority.region === "EU-RO-1", "AUTHORITY_COST_PLACEMENT");
+yes(authority.workers_min === 0 && authority.workers_max_initial === 1 && authority.workers_max_temporary === 2 && authority.automatic_gpu_fallback_authorized === false, "AUTHORITY_WORKERS");
+yes(authority.anchor_refresh_authorized === false && authority.retained_volume_charge_usd_per_month === 7 && authority.retained_volume_mutation_authorized === false && authority.final_zero_compute_disposable_reconciliation_reads === 3 && authority.v2_08_authorized === false && authority.single_use === true, "AUTHORITY_SCOPE");
+yes(JSON.stringify(authority.success_cleanup_required) === JSON.stringify(["generated_outputs", "endpoint", "template", "signer", "temporary_route"]), "AUTHORITY_CLEANUP");
+const serialized = JSON.stringify({ publication, preflight, max1, max2, proposal, acceptance, authority });
 yes(!/(?:seed|resume|retained_disposable)/iu.test(serialized), "REMOVED_LEGACY_PATHS");
 const activation = await readFile(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8");
-yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null = null;/u.test(activation), "AUTHORITY_CLOSED");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation), "CAP_CLOSED");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation), "ANCHOR_CLOSED");
+yes(activation.includes("sha256:a90c44b9b2cf37383c15c633f7de19dd2b6fbbe1b17abffd227d79a09a95c3f8"), "PROPOSAL_BINDING");
+yes(activation.includes("sha256:6ec529ed633f28b54a8d5649d7aa2c68ca8f32b2bf5898db6de0261f917f39fd"), "AUTHORITY_BINDING");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = 4\.5;/u.test(activation), "CAP_BINDING");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = false;/u.test(activation), "ANCHOR_BINDING");
 for (const name of files.slice(0, -1)) yes((await bytes(name)).length > 0, `NONEMPTY_${name}`);
 yes(sha(await bytes("combined-live-proposal.json")) === acceptance.proposal_sha256, "PROPOSAL_HASH");
 yes(sha(await bytes("read-only-preflight.json")) === acceptance.preflight_sha256, "PREFLIGHT_HASH");
 yes(sha(await bytes("staged-config-max1.json")) === acceptance.max1_sha256, "MAX1_HASH");
 yes(sha(await bytes("staged-config-max2.json")) === acceptance.max2_sha256, "MAX2_HASH");
+yes(sha(await bytes("acceptance.json")) === authority.acceptance_sha256, "ACCEPTANCE_HASH");
+yes(sha(await bytes("approved-authority.json")) === "sha256:6ec529ed633f28b54a8d5649d7aa2c68ca8f32b2bf5898db6de0261f917f39fd", "AUTHORITY_HASH");
 process.stdout.write("PASS validate-v207-attempt66-envelope-verifier-candidate\n");

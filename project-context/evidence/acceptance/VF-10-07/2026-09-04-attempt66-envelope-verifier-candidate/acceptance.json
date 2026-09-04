@@ -3,7 +3,7 @@
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
   "attempt": 66,
-  "status": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "status": "APPROVED_SEALED_AWAITING_EXECUTION",
   "qualification_status": "NOT_QUALIFIED",
   "proposal_sha256": "sha256:a90c44b9b2cf37383c15c633f7de19dd2b6fbbe1b17abffd227d79a09a95c3f8",
   "preflight_sha256": "sha256:8a0e1f76bfa8e462d20aecce607afcd1c2f54f270c35640b9787bfc93c4a2cb5",
@@ -16,13 +16,13 @@
     "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247"
   },
   "authority": {
-    "exact_approval_recorded": false,
-    "fresh_exact_approval_required": true,
+    "exact_approval_recorded": true,
+    "fresh_exact_approval_required": false,
     "requested_maximum_cumulative_finite_spend_usd": 4.5,
     "serverless_flex_usd_per_gpu_hour": 1.116,
     "anchor_refresh_authorized": false,
-    "provider_mutations_authorized": false,
-    "gpu_use_authorized": false,
+    "provider_mutations_authorized": true,
+    "gpu_use_authorized": true,
     "v2_08_authorized": false
   },
   "cleanup_contract": {

@@ -21,7 +21,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:db48b22e53edc3206538558a07b9603fcb66a2b00b33ec3b6093858540594a0c" as const;
+  "sha256:a90c44b9b2cf37383c15c633f7de19dd2b6fbbe1b17abffd227d79a09a95c3f8" as const;
 export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
   "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
 export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
@@ -79,18 +79,19 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempt65 consumed its exact single-use authority and stopped clean after one
-// provider job. Keep its proposal pointer as immutable evidence while closing
-// every executable approval binding before a successor can be proposed.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+// Attempt66 is approved once for the exact repaired controller proposal, finite
+// cap, and refresh-disabled posture compiled below. Consumption must close all
+// executable bindings after this bounded orchestration attempt.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null =
+  "sha256:6ec529ed633f28b54a8d5649d7aa2c68ca8f32b2bf5898db6de0261f917f39fd";
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
  * same compiled approval boundary as the proposal and finite cap. Attempt65 is
  * consumed; any future authority must bind its own refresh decision in a
  * separate immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;
