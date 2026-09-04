@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -17,7 +18,7 @@ const NONCE = "a".repeat(64);
 const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 const roots: string[] = [];
 
-const result = (stdout = "", exitCode = 0, stderr = ""): V207CommandResult => ({
+const result = (stdout = "", exitCode: number | null = 0, stderr = ""): V207CommandResult => ({
   exitCode,
   signal: null,
   stdout,
@@ -39,6 +40,7 @@ async function fixture(
     preexisting?: boolean;
     qualificationFails?: boolean;
     cleanupFails?: boolean;
+    signal?: "SIGINT" | "SIGTERM";
   } = {},
 ) {
   const root = await mkdtemp("/tmp/v207-disposable-");
@@ -47,6 +49,7 @@ async function fixture(
   let exists = overrides.preexisting ?? false;
   let secret = false;
   let childCalls = 0;
+  const signalTarget = new EventEmitter();
   const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
     calls.push(request);
     if (request.command === "git") return result(overrides.dirty ? " M tracked.ts\n" : "");
@@ -58,6 +61,11 @@ async function fixture(
       }
       expect(request.env.V207_OUTPUT_PORT_ROUTE).toBe(V207_DISPOSABLE_ROUTE);
       expect(request.env.V207_AUTHORITY_NONCE).toBe(NONCE);
+      if (overrides.signal !== undefined) {
+        signalTarget.emit(overrides.signal);
+        expect(request.signal?.aborted).toBe(true);
+        return result("", null, `${overrides.signal} received`);
+      }
       return overrides.qualificationFails ? result("", 1, "V207_PROVIDER_REJECTED") : result();
     }
     expect(request.args.join(" ")).not.toContain("videoforge-v2-06-staging");
@@ -112,8 +120,10 @@ async function fixture(
     fetchImpl,
     nonceFactory: () => NONCE,
     sleepImpl: async () => undefined,
+    installSignalHandlers: overrides.signal !== undefined,
+    signalTarget: signalTarget as unknown as V207DisposableOrchestratorOptions["signalTarget"],
   };
-  return { root, calls, options, state: () => ({ exists, secret, childCalls }) };
+  return { root, calls, options, signalTarget, state: () => ({ exists, secret, childCalls }) };
 }
 
 afterEach(async () => {
@@ -193,6 +203,32 @@ describe("V2-07 disposable live orchestrator", () => {
     expect(setup.state().exists).toBe(false);
     expect(setup.calls.filter((call) => call.args.includes("delete"))).toHaveLength(1);
   });
+
+  it.each(["SIGINT", "SIGTERM"] as const)(
+    "cancels on %s, propagates abort to qualification, and cleans up before rejecting",
+    async (signal) => {
+      const setup = await fixture({ signal });
+      await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
+        code: "V207_OPERATOR_ABORT",
+      });
+      expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
+      expect(setup.signalTarget.listenerCount("SIGINT")).toBe(0);
+      expect(setup.signalTarget.listenerCount("SIGTERM")).toBe(0);
+      const qualification = setup.calls.find(
+        (call) => call.command.endsWith("/tsx") && call.env.V207_PREFLIGHT_ONLY !== "1",
+      );
+      expect(qualification?.signal?.aborted).toBe(true);
+      const evidence = JSON.parse(await readFile(join(setup.root, "evidence.json"), "utf8"));
+      expect(evidence).toMatchObject({ cleanup_required: false, result: "FAILED" });
+      expect(evidence.events).toContainEqual(
+        expect.objectContaining({
+          event: "orchestration_cancelled",
+          code: "V207_OPERATOR_ABORT",
+          signal,
+        }),
+      );
+    },
+  );
 
   it("fails closed as cleanup uncertain when whole-Worker deletion fails", async () => {
     const setup = await fixture({ cleanupFails: true });

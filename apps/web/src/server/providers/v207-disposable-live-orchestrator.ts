@@ -41,6 +41,9 @@ export interface V207DisposableOrchestratorOptions {
   readonly fetchImpl?: typeof fetch;
   readonly nonceFactory?: () => string;
   readonly sleepImpl?: (milliseconds: number) => Promise<void>;
+  /** Tests may disable process signal registration or provide an isolated signal target. */
+  readonly installSignalHandlers?: boolean;
+  readonly signalTarget?: Pick<NodeJS.Process, "on" | "off">;
 }
 
 export interface V207DisposableOrchestratorResult {
@@ -74,6 +77,30 @@ export class V207DisposableOrchestratorError extends Error {
     super(code);
     this.name = "V207DisposableOrchestratorError";
   }
+}
+
+type DisposableSignal = "SIGINT" | "SIGTERM";
+
+/**
+ * Install only while the disposable Worker may exist. Returning an idempotent remover keeps the
+ * CLI's process-global signal state unchanged after a successful run, a failed run, or cleanup.
+ */
+function installSignalHandlers(
+  target: Pick<NodeJS.Process, "on" | "off">,
+  onSignal: (signal: DisposableSignal) => void,
+): () => void {
+  const registrations: Array<readonly [DisposableSignal, () => void]> = [];
+  let removed = false;
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    const handler = (): void => onSignal(signal);
+    target.on(signal, handler);
+    registrations.push([signal, handler]);
+  }
+  return (): void => {
+    if (removed) return;
+    removed = true;
+    for (const [signal, handler] of registrations) target.off(signal, handler);
+  };
 }
 
 function safeCode(error: unknown): string {
@@ -127,6 +154,7 @@ async function runWrangler(
   environment: Environment,
   args: readonly string[],
   stdin?: string,
+  signal?: AbortSignal,
 ): Promise<V207CommandResult> {
   const request: V207CommandRequest = {
     command: "pnpm",
@@ -144,6 +172,7 @@ async function runWrangler(
     cwd,
     env: redactedEnvironment(environment),
     ...(stdin === undefined ? {} : { stdin }),
+    ...(signal === undefined ? {} : { signal }),
   };
   assertExplicitWorkerName(request);
   return run(request);
@@ -218,14 +247,19 @@ function activeVersionId(result: V207CommandResult): string {
   }
 }
 
-async function readRoute(fetchImpl: typeof fetch, routeUrl: string): Promise<RouteFingerprint> {
+async function readRoute(
+  fetchImpl: typeof fetch,
+  routeUrl: string,
+  signal?: AbortSignal,
+): Promise<RouteFingerprint> {
   let response: Response;
   try {
+    const timeout = AbortSignal.timeout(15_000);
     response = await fetchImpl(routeUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: "{}",
-      signal: AbortSignal.timeout(15_000),
+      signal: signal === undefined ? timeout : AbortSignal.any([signal, timeout]),
     });
   } catch {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_UNREACHABLE");
@@ -258,9 +292,10 @@ async function assertStableRoute(
   reads: number,
   sleepImpl: (milliseconds: number) => Promise<void>,
   errorCode: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   for (let index = 0; index < reads; index += 1) {
-    const observed = await readRoute(fetchImpl, routeUrl);
+    const observed = await readRoute(fetchImpl, routeUrl, signal);
     if (observed.status !== expected.status || observed.code !== expected.code) {
       throw new V207DisposableOrchestratorError(errorCode);
     }
@@ -268,14 +303,19 @@ async function assertStableRoute(
   }
 }
 
-async function assertDataPlaneAbsent(fetchImpl: typeof fetch, routeUrl: string): Promise<void> {
+async function assertDataPlaneAbsent(
+  fetchImpl: typeof fetch,
+  routeUrl: string,
+  signal?: AbortSignal,
+): Promise<void> {
   let response: Response;
   try {
+    const timeout = AbortSignal.timeout(15_000);
     response = await fetchImpl(routeUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: "{}",
-      signal: AbortSignal.timeout(15_000),
+      signal: signal === undefined ? timeout : AbortSignal.any([signal, timeout]),
     });
   } catch {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_DATA_PLANE_ABSENCE_UNCONFIRMED");
@@ -336,6 +376,10 @@ export async function runV207DisposableLiveOrchestration(
   let mutationAttempted = false;
   let primaryError: unknown;
   let cleanupUncertain = false;
+  const abortController = new AbortController();
+  let abortRequested = false;
+  let receivedSignal: DisposableSignal | undefined;
+  let removeSignalHandlers: (() => void) | undefined;
   const clean = requireSuccess(
     "V207_GIT_STATUS_FAILED",
     await run({
@@ -362,12 +406,30 @@ export async function runV207DisposableLiveOrchestration(
   await record("initial_control_plane_absence_confirmed");
 
   try {
+    if (options.installSignalHandlers !== false) {
+      removeSignalHandlers = installSignalHandlers(options.signalTarget ?? process, (signal) => {
+        receivedSignal = signal;
+        abortRequested = true;
+        abortController.abort();
+      });
+    }
     evidence.cleanup_required = true;
-    await record("cleanup_intent_persisted");
+    // Treat the remote boundary as potentially mutated from this point onward. This is
+    // intentionally conservative: if the signal arrives while the durable intent is being
+    // written, finally still executes the bounded delete/proof sequence.
     mutationAttempted = true;
+    await record("cleanup_intent_persisted");
     requireSuccess(
       "V207_DISPOSABLE_DEPLOY_FAILED",
-      await runWrangler(run, cwd, configPath, environment, ["deploy"]),
+      await runWrangler(
+        run,
+        cwd,
+        configPath,
+        environment,
+        ["deploy"],
+        undefined,
+        abortController.signal,
+      ),
     );
     await record("signer_disabled_worker_deployed");
 
@@ -378,6 +440,7 @@ export async function runV207DisposableLiveOrchestration(
       FINAL_PROOF_READS,
       sleepImpl,
       "V207_DISPOSABLE_DISABLED_ROUTE_UNCONFIRMED",
+      abortController.signal,
     );
     await record("disabled_route_confirmed", { reads: FINAL_PROOF_READS });
 
@@ -390,10 +453,19 @@ export async function runV207DisposableLiveOrchestration(
         environment,
         ["secret", "put", V207_DISPOSABLE_SECRET_NAME],
         `${nonce}\n`,
+        abortController.signal,
       ),
     );
     const versionId = activeVersionId(
-      await runWrangler(run, cwd, configPath, environment, ["deployments", "status", "--json"]),
+      await runWrangler(
+        run,
+        cwd,
+        configPath,
+        environment,
+        ["deployments", "status", "--json"],
+        undefined,
+        abortController.signal,
+      ),
     );
     await record("active_version_confirmed", { version_id_present: versionId.length > 0 });
 
@@ -404,6 +476,7 @@ export async function runV207DisposableLiveOrchestration(
       FINAL_PROOF_READS,
       sleepImpl,
       "V207_DISPOSABLE_ACTIVE_ROUTE_UNCONFIRMED",
+      abortController.signal,
     );
     await record("active_route_confirmed", { reads: FINAL_PROOF_READS });
 
@@ -412,36 +485,61 @@ export async function runV207DisposableLiveOrchestration(
       args: [V207_DISPOSABLE_QUALIFICATION],
       cwd: qualificationCwd,
       env: childEnvironment(environment, nonce, configPath, false),
+      signal: abortController.signal,
     });
     requireSuccess("V207_LIVE_RUNNER_FAILED", qualification);
+    if (abortRequested) throw new V207DisposableOrchestratorError("V207_OPERATOR_ABORT");
     await record("qualification_completed", { exit_code: 0 });
   } catch (error) {
-    primaryError = error;
-    await record("orchestration_failed", { code: safeCode(error) });
+    primaryError = abortRequested
+      ? new V207DisposableOrchestratorError("V207_OPERATOR_ABORT")
+      : error;
+    await record(abortRequested ? "orchestration_cancelled" : "orchestration_failed", {
+      code: safeCode(primaryError),
+      ...(receivedSignal === undefined ? {} : { signal: receivedSignal }),
+    });
   } finally {
-    if (mutationAttempted) {
-      try {
-        requireSuccess(
-          "V207_DISPOSABLE_DELETE_FAILED",
-          await deleteDisposableWorker(run, cwd, configPath, environment),
-        );
-        for (let read = 1; read <= FINAL_PROOF_READS; read += 1) {
-          await assertWorkerAbsent(run, cwd, configPath, environment);
-          await assertDataPlaneAbsent(fetchImpl, routeUrl);
-          if (read < FINAL_PROOF_READS) await sleepImpl(2_000);
+    try {
+      if (mutationAttempted) {
+        try {
+          requireSuccess(
+            "V207_DISPOSABLE_DELETE_FAILED",
+            await deleteDisposableWorker(run, cwd, configPath, environment),
+          );
+          for (let read = 1; read <= FINAL_PROOF_READS; read += 1) {
+            await assertWorkerAbsent(run, cwd, configPath, environment);
+            await assertDataPlaneAbsent(fetchImpl, routeUrl);
+            if (read < FINAL_PROOF_READS) await sleepImpl(2_000);
+          }
+          evidence.cleanup_required = false;
+          await record("cleanup_confirmed", { reads: FINAL_PROOF_READS });
+        } catch (cleanupError) {
+          cleanupUncertain = true;
+          evidence.result = "CLEANUP_UNCERTAIN";
+          await record("cleanup_uncertain", { code: safeCode(cleanupError) });
         }
-        evidence.cleanup_required = false;
-        await record("cleanup_confirmed", { reads: FINAL_PROOF_READS });
-      } catch (cleanupError) {
-        cleanupUncertain = true;
-        evidence.result = "CLEANUP_UNCERTAIN";
-        await record("cleanup_uncertain", { code: safeCode(cleanupError) });
       }
+    } finally {
+      const remove = removeSignalHandlers;
+      removeSignalHandlers = undefined;
+      remove?.();
     }
   }
 
   if (cleanupUncertain) {
     throw new V207DisposableOrchestratorError("V207_CLEANUP_UNCERTAIN");
+  }
+
+  // A signal can arrive during the bounded cleanup reads, after the primary lifecycle has
+  // returned successfully. Keep that run cancelled rather than reporting success, while still
+  // letting the cleanup proof finish and the handlers be removed above.
+  if (abortRequested && primaryError === undefined) {
+    evidence.result = "FAILED";
+    await record("orchestration_cancelled", {
+      code: "V207_OPERATOR_ABORT",
+      ...(receivedSignal === undefined ? {} : { signal: receivedSignal }),
+    });
+    throw new V207DisposableOrchestratorError("V207_OPERATOR_ABORT");
   }
 
   if (primaryError !== undefined) {
