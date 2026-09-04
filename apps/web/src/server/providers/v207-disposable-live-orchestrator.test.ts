@@ -207,6 +207,28 @@ describe("V2-07 disposable live orchestrator", () => {
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
   });
 
+  it("rejects a request identifier that merely contains 10007", async () => {
+    const setup = await fixture({ absenceDiagnostic: "request id: 10007" });
+    await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
+      code: "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
+    });
+    expect(setup.calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(setup.calls.some((call) => call.args.includes("delete"))).toBe(false);
+    const evidence = JSON.parse(await readFile(join(setup.root, "evidence.json"), "utf8"));
+    expect(evidence).toMatchObject({ cleanup_required: false, result: "FAILED" });
+  });
+
+  it("rejects a suffixed absent code such as 10007x", async () => {
+    const setup = await fixture({ absenceDiagnostic: "[code: 10007x]" });
+    await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
+      code: "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
+    });
+    expect(setup.calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(setup.calls.some((call) => call.args.includes("delete"))).toBe(false);
+    const evidence = JSON.parse(await readFile(join(setup.root, "evidence.json"), "utf8"));
+    expect(evidence).toMatchObject({ cleanup_required: false, result: "FAILED" });
+  });
+
   it("rejects an unrelated Cloudflare diagnostic before mutation and finalizes failed evidence", async () => {
     const setup = await fixture({ absenceDiagnostic: "authentication failed [code: 10001]" });
     await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({

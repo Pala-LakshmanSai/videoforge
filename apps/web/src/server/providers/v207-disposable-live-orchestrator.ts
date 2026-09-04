@@ -25,7 +25,7 @@ export const V207_DISPOSABLE_QUALIFICATION =
 const NONCE = /^[a-f0-9]{64}$/u;
 const SAFE_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
 const ABSENT_DIAGNOSTIC =
-  /(?:\b(?:10007|10090)\b|worker(?: script)? [^\n]{0,120}(?:does not exist|not found)|no such worker)/iu;
+  /(?:(?:^|[^\w])(?:code|error\s+code)\s*[:=]\s*(?:10007|10090)(?![A-Za-z0-9_])|["'](?:code|errorCode)["']\s*:\s*(?:10007|10090)(?![A-Za-z0-9_])|\bworker(?:\s+script)?\s+(?:does\s+not\s+exist|not\s+found)\b|\bno\s+such\s+worker\b|\bworkers?\.api\.error\.script[_ -]?not[_ -]?found\b)/iu;
 const FINAL_PROOF_READS = 3;
 
 type Environment = Readonly<Record<string, string | undefined>>;
