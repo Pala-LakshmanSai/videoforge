@@ -4,25 +4,18 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt79 is `APPROVED_SINGLE_USE_UNCONSUMED` at control
-  `fb884fedf86c5ff5ec3e5bb4274c4a1e3db41fd6`. Proposal
-  `sha256:72f72a2de48841194233218c2f84d343c0c236ed36d5ff33a0c6dc682312d22a`, acceptance
-  `sha256:9fdbae3d5ccc68649c1545bb28a225acc25dbb40c029297d8cfa1d928cd52a99`, authority
-  `sha256:fe0ccd5c3165488bc206f6a159637ad34af9ab994f19dfbcf374ae53629090da`, independent audit
-  `sha256:c98f3d3d2a4b2e37cff700b8e7b2e04d200e4b97731d2056da2871ffbac81987`, and validator
-  `sha256:254abaf1c9a5ef8aa5d085f6525bfd77793873c13d93a48ecf15f47d779a38c6` bind the provider-free
-  gate-first repair with P0/P1/P2 `0/0/0` and focused tests `86/86`.
-- The bounded sequence requires a fresh preflight, disposable output Worker, three exact active-route
-  fingerprints, then three distinct complete Python `urllib` PUT/finalize/GET/readback/delete cycles,
-  each cleaned before the next. RESERVE alone may retry at most three times with 250 ms waits only for
-  transport loss or a missing-version S5XX response. The existing bounded RunPod Stage 6 qualification
-  may begin only after all three cycles pass.
-- The single-use authority permits reuse of unchanged image source `51d7de6cb3c0d88ddcb06df533864bf319a1210f` and digest
-  `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d` without republication;
-  RTX 4090 EU-RO-1 at `$1.116/GPU-hour`; baseline `2.266709277551854`; cumulative finite cap `$4.50`;
-  `workersMin=0`, temporary max two; disposable cleanup; three final zero reads; continued `$7/month`
-  volume retention. Fallback, anchor refresh, retained-volume mutation, image republication, and
-  V2-08 remain unauthorized.
+- V2-07 Attempt79 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Cycle 1 of the pre-GPU compatibility
+  gate failed closed at `V207_DISPOSABLE_PROBE_URLLIB_VERSION_MISSING_S4XX`; zero of three required
+  cycles completed, and child qualification, RunPod resources, and GPU never started.
+- Closure `sha256:caf5b4b7858954f44aa51accfa2c893ec25dcbe91bb45d2cc35844246d863d45`, orchestrator
+  `sha256:d828273bae69ce500263780790007d0afcee84feb3bbcc4b465ba2b62a0edb52`, and reconciliation
+  `sha256:4701808b276d617027d8046996a8c6cd3ebc5e49e0f4b2dd6d6d716fa4abea4b` prove three final
+  Cloudflare `404` reads, three RunPod zero-compute reads, unchanged two-volume inventory, zero jobs,
+  and `$0` observed incremental spend.
+- Attempt79 proposal and authority are consumed and cannot be reused. No provider calls, remote
+  mutations, credential access, image reuse, GPU use, spend, fallback, anchor refresh, retained-volume
+  mutation, or V2-08 action is authorized. Next work is provider-free diagnosis and repair, focused
+  validation, independent audit, and a fresh exact successor proposal.
 - V2-07 Attempt78 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. The disposable Worker, disabled route,
   active version, and three-read active route were confirmed, then the pre-GPU output compatibility
   probe failed closed at `V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID` before child qualification,

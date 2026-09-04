@@ -72,7 +72,7 @@ function activationSourceFixture({
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the approved single-use Attempt79 proposal and exact executable boundary", () => {
+  it("pins the consumed Attempt79 proposal with no executable authority", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d",
@@ -125,11 +125,9 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
-      "sha256:fe0ccd5c3165488bc206f6a159637ad34af9ab994f19dfbcf374ae53629090da",
-    );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4.5);
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false);
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
+    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
   });
 
   it("uses a fail-closed non-cyclic source binding for all approval constants", () => {
@@ -412,20 +410,17 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("accepts only the exact unconsumed Attempt79 authority and cap", () => {
+  it("rejects Attempt79 after its authority is consumed", () => {
     const exact = {
       V207_IMAGE: image,
       V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
       V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
     };
-    expect(parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5" })).toEqual({
-      image,
-      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
-      capUsd: 4.5,
-      anchorRefreshAuthorized: false,
-    });
+    expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5" })).toThrow(
+      "V207_FRESH_AUTHORITY_REQUIRED",
+    );
     expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4" })).toThrow(
-      "V207_FINITE_CAP_MISMATCH",
+      "V207_FRESH_AUTHORITY_REQUIRED",
     );
   });
 
