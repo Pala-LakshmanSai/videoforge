@@ -977,7 +977,7 @@ describe("hosted Runware prompt writer", () => {
     );
   });
 
-  it("rejects a normalized prompt core reused by a later adaptive batch before persistence", async () => {
+  it("accepts a normalized prompt core reused by a later adaptive batch", async () => {
     const batch = buildPromptBatch({
       batchId: `${ids.task}:batch:cross-batch-duplicate`,
       projectTitle: "Hydrogen peroxide",
@@ -1071,31 +1071,16 @@ describe("hosted Runware prompt writer", () => {
     });
     const onBatchAccepted = vi.fn();
 
-    await expect(
-      new HostedRunwarePromptWriter(
-        "configured-test-key-value",
-        planned,
-        fetcher,
-        onBatchAccepted,
-      ).write(batch),
-    ).rejects.toEqual(
-      expect.objectContaining({
-        problemCode: "HOSTED_PROMPT_OUTPUT_INVALID",
-        terminalState: "FAILED",
-        providerMayHaveCharged: false,
-        additionalKnownCostMicroUsd: 10,
-        validationDiagnostic: {
-          category: "scene_quality",
-          reason: "duplicate_prompt_core",
-          requestedSceneCount: planned.batches[1]!.sceneIds.length,
-          returnedSceneCount: planned.batches[1]!.sceneIds.length,
-          locallyValidSceneCount: planned.batches[1]!.sceneIds.length,
-          unresolvedSceneCount: planned.batches[1]!.sceneIds.length,
-        },
-      } satisfies Partial<HostedPromptExecutionError>),
-    );
+    const result = await new HostedRunwarePromptWriter(
+      "configured-test-key-value",
+      planned,
+      fetcher,
+      onBatchAccepted,
+    ).write(batch);
+
+    expect(result.output.scenes).toHaveLength(31);
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(onBatchAccepted).toHaveBeenCalledTimes(1);
+    expect(onBatchAccepted).toHaveBeenCalledTimes(2);
     expect(onBatchAccepted.mock.calls[0]?.[0].scenes).toHaveLength(
       planned.batches[0]!.sceneIds.length,
     );

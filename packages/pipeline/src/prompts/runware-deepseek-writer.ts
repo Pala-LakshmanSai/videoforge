@@ -317,6 +317,11 @@ export interface RunwarePromptWriterOptions {
   /** Caller-owned reservation ceiling for this one provider request. */
   readonly maximumBatchCostUsd: number;
   /**
+   * Hosted production uses advisory mode so language-based paraphrase checks
+   * cannot reject a complete, contract-valid provider response.
+   */
+  readonly semanticQualityMode?: "advisory" | "enforce";
+  /**
    * @deprecated Kept as a tolerated compatibility option. Prompt writing is
    * always single-dispatch and never retries, regardless of this value.
    */
@@ -328,6 +333,7 @@ export interface RunwarePromptWriterOptions {
 interface AttemptEvaluation {
   readonly accepted: ReadonlyMap<string, PromptWriterSceneOutput>;
   readonly unresolved: readonly PromptSceneInput[];
+  readonly qualityDiagnostic: RunwarePromptValidationDiagnostic | null;
   readonly requestSha256: Sha256Digest;
   readonly costUsd: number;
 }
@@ -1408,6 +1414,7 @@ const evaluateOutput = (
   batch: PromptBatch,
   requestedScenes: readonly PromptSceneInput[],
   outputText: string,
+  semanticQualityMode: "advisory" | "enforce",
 ): Omit<AttemptEvaluation, "requestSha256" | "costUsd"> => {
   const requestedSceneCount = requestedScenes.length;
   if (outputText.length === 0 || outputText.length > 2_000_000)
@@ -1483,6 +1490,7 @@ const evaluateOutput = (
   const expected = new Map(requestedScenes.map((scene) => [scene.sceneId, scene]));
   const seen = new Set<string>();
   const accepted = new Map<string, PromptWriterSceneOutput>();
+  let qualityDiagnostic: RunwarePromptValidationDiagnostic | null = null;
   for (const candidate of responseScenes) {
     const row = asRecord(candidate);
     if (!row || typeof row.scene_id !== "string")
@@ -1542,17 +1550,27 @@ const evaluateOutput = (
       row,
       batch.storyContext.slice(0, 4_000),
     );
-    if (relevanceFailure !== null)
-      return validationFail(
-        "scene_quality",
-        relevanceFailure,
+    if (relevanceFailure !== null) {
+      if (semanticQualityMode === "enforce")
+        return validationFail(
+          "scene_quality",
+          relevanceFailure,
+          requestedSceneCount,
+          responseScenes.length,
+          accepted.size,
+          Math.max(0, requestedSceneCount - accepted.size),
+          "Prompt response scene content is not grounded in the exact narration fragment.",
+          ["scenes", sceneId],
+        );
+      qualityDiagnostic ??= Object.freeze({
+        category: "scene_quality",
+        reason: relevanceFailure,
         requestedSceneCount,
-        responseScenes.length,
-        accepted.size,
-        Math.max(0, requestedSceneCount - accepted.size),
-        "Prompt response scene content is not grounded in the exact narration fragment.",
-        ["scenes", sceneId],
-      );
+        returnedSceneCount: responseScenes.length,
+        locallyValidSceneCount: requestedSceneCount,
+        unresolvedSceneCount: 0,
+      });
+    }
     accepted.set(sceneId, valid);
   }
   if (accepted.size !== requestedSceneCount)
@@ -1576,22 +1594,33 @@ const evaluateOutput = (
       .trim()
       .toLocaleLowerCase("en-US");
     const previousSceneId = promptCoreOwners.get(normalizedCore);
-    if (previousSceneId !== undefined)
-      return validationFail(
-        "scene_quality",
-        "duplicate_prompt_core",
+    if (previousSceneId !== undefined) {
+      if (semanticQualityMode === "enforce")
+        return validationFail(
+          "scene_quality",
+          "duplicate_prompt_core",
+          requestedSceneCount,
+          responseScenes.length,
+          accepted.size,
+          requestedSceneCount,
+          "Prompt response reused an identical normalized prompt core for multiple scenes.",
+          ["scenes", expectedScene.sceneId, "prompt_core"],
+        );
+      qualityDiagnostic ??= Object.freeze({
+        category: "scene_quality",
+        reason: "duplicate_prompt_core",
         requestedSceneCount,
-        responseScenes.length,
-        accepted.size,
-        requestedSceneCount,
-        "Prompt response reused an identical normalized prompt core for multiple scenes.",
-        ["scenes", expectedScene.sceneId, "prompt_core"],
-      );
+        returnedSceneCount: responseScenes.length,
+        locallyValidSceneCount: requestedSceneCount,
+        unresolvedSceneCount: 0,
+      });
+    }
     promptCoreOwners.set(normalizedCore, expectedScene.sceneId);
   }
   return Object.freeze({
     accepted,
     unresolved: Object.freeze(requestedScenes.filter((scene) => !accepted.has(scene.sceneId))),
+    qualityDiagnostic,
   });
 };
 
@@ -1628,6 +1657,7 @@ export class RunwarePromptWriter implements PromptWriterPort {
   readonly #transport: RunwarePromptTransport;
   readonly #evidenceSink: RunwarePromptAttemptEvidenceSink;
   readonly #maximumBatchCostUsd: number;
+  readonly #semanticQualityMode: "advisory" | "enforce";
 
   constructor(options: RunwarePromptWriterOptions) {
     if (!Number.isFinite(options.maximumBatchCostUsd) || options.maximumBatchCostUsd < 0)
@@ -1637,6 +1667,7 @@ export class RunwarePromptWriter implements PromptWriterPort {
     this.#transport = options.transport;
     this.#evidenceSink = options.evidenceSink;
     this.#maximumBatchCostUsd = options.maximumBatchCostUsd;
+    this.#semanticQualityMode = options.semanticQualityMode ?? "enforce";
   }
 
   async #record(value: RunwarePromptAttemptEvidence): Promise<void> {
@@ -1727,7 +1758,7 @@ export class RunwarePromptWriter implements PromptWriterPort {
 
     let evaluated: Omit<AttemptEvaluation, "requestSha256" | "costUsd">;
     try {
-      evaluated = evaluateOutput(batch, scenes, result.outputText);
+      evaluated = evaluateOutput(batch, scenes, result.outputText, this.#semanticQualityMode);
     } catch (error) {
       const validationDiagnostic = runwarePromptValidationDiagnostic(error);
       await this.#record(
@@ -1762,7 +1793,7 @@ export class RunwarePromptWriter implements PromptWriterPort {
         : Object.freeze(scenes.map((scene) => scene.sceneId));
     const validationDiagnostic =
       validationDisposition === "accepted"
-        ? null
+        ? evaluated.qualityDiagnostic
         : Object.freeze({
             category: "scene_quality" as const,
             reason: "scene_quality" as const,

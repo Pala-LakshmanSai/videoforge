@@ -139,7 +139,7 @@ test("request construction revalidates the exact style-only v2 projection", () =
   );
 });
 
-function writer(steps, maximumBatchCostUsd = 0.01) {
+function writer(steps, maximumBatchCostUsd = 0.01, semanticQualityMode = "enforce") {
   const transport = new ScriptedTransport(steps);
   const evidence = [];
   return {
@@ -149,6 +149,7 @@ function writer(steps, maximumBatchCostUsd = 0.01) {
       transport,
       evidenceSink: { record: (item) => evidence.push(item) },
       maximumBatchCostUsd,
+      semanticQualityMode,
     }),
   };
 }
@@ -511,6 +512,43 @@ test("scene relevance rejects matching entities when the narrated action is wron
   ]);
   await expectInvalid(() => setup.value.write(batch));
   assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_action_conflict");
+});
+
+test("advisory scene relevance never rejects a contract-valid hosted response", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A woman repairs a bicycle in a public park",
+        sentenceContext: "A woman repairs a bicycle in a public park.",
+      },
+    ],
+  };
+  const setup = writer(
+    [
+      (request) =>
+        success(request, {
+          change: (rows) => {
+            rows[0].literal_subject = "A woman with a bicycle";
+            rows[0].action = "riding through the park";
+            rows[0].environment = "a public park path with trees";
+            rows[0].prompt_core =
+              "A woman rides a bicycle through a public park path with trees in soft daylight.";
+            return rows;
+          },
+        }),
+    ],
+    0.01,
+    "advisory",
+  );
+
+  const result = await setup.value.write(batch);
+  assert.equal(result.scenes.length, 1);
+  assert.equal(setup.evidence[0].validationDisposition, "accepted");
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_action_conflict");
+  assert.deepEqual(setup.evidence[0].unresolvedSceneIds, []);
 });
 
 test("scene relevance accepts a matching action field prefixed by its subject", async () => {
