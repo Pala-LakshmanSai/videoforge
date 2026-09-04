@@ -1,0 +1,52 @@
+{
+  "schema_version": "videoforge.v2-07-attempt68-partial-output-rollback-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 68,
+  "qualification_status": "NOT_QUALIFIED",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL",
+  "control_source_commit": "12e3972169e2de8a3a86af39d79acf55873c91b2",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "source_hashes": {
+    "qualification": "sha256:ac339cee4a974fbfc122b39854e6bfc05ea9c09b352e9c6aa2254e520d3aa1cd",
+    "harness": "sha256:39da9a77290aa9a61a109578edb285279a058e4d38ec1e55f599943052eaa18d",
+    "reconciliation": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
+    "orchestrator": "sha256:20850aae064d955dbc097af630f30b7ac5c50fb61e628bc856d4f74a2d4e8414"
+  },
+  "repair": "record every exact output key in a shared ledger before PUT-port issuance; bounded-retry only ambiguous DELETE transport, 429, 503, and 5xx outcomes; inspect all keys; persist safe counts; never accept vacuous rollback; preserve the zero-dispatch fence",
+  "placement_and_cost": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "serverless_flex_usd_per_gpu_hour": 1.116,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "retained_volume_charge_usd_per_month": 7,
+    "retained_volume_charge_outside_finite_cap": true,
+    "gpu_fallback": false
+  },
+  "operation_contract": {
+    "workers_min": 0,
+    "workers_max_initial": 1,
+    "workers_max_temporary": 2,
+    "delete_generated_outputs": true,
+    "delete_disposable_endpoint": true,
+    "delete_disposable_template": true,
+    "delete_signer_and_temporary_route": true,
+    "three_final_zero_compute_disposable_reads": true,
+    "retain_two_sealed_volumes": true,
+    "anchor_refresh_authorized": false,
+    "v2_08_authorized": false
+  },
+  "preflight": {
+    "starting_read_path": "read-only-preflight.json",
+    "fresh_inventory_catalog_billing_read_required_before_mutation": true,
+    "provider_mutations_completed": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "stop_conditions": [
+    "any source, image, config, GPU, region, rate, volume, billing, capacity, or policy drift",
+    "any malformed, unexpected, version-mismatched, permanent 4xx, cleanup, reconciliation, or cap uncertainty",
+    "any GPU fallback, anchor refresh, volume mutation, or V2-08 action"
+  ]
+}

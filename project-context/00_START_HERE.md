@@ -4,6 +4,14 @@
 
 ### Current new-chat launch point — 2026-09-04
 
+- V2-07 Attempt67 is consumed and closed clean after `V207_BATCH_PORT_ROLLBACK_UNCERTAIN` during
+  generated-output port preparation, before any RunPod job dispatch. Final proof shows zero GPU
+  jobs/spend/compute/disposables, exact Cloudflare rollback with disabled route, and all 96 possible
+  output/reservation/receipt keys absent. V2-07 remains `NOT_QUALIFIED`; provider-free rollback
+  repair `12e39721` passes 49/49 focused tests. Attempt68 proposal `sha256:c271e70f…e7ac7` is
+  sealed but has no executable authority; fresh exact approval is required. V2-08 live execution
+  remains forbidden.
+
 - Current live qualification: exact source `29667134b17daa9723495d028ec22c4eeaee3ee3`
   is live on staging as Cloudflare Worker `50cfd256-7119-4fe5-b198-3c88312bf9b6` with personal
   media worker `0.1.14` already active. Exactly one fresh project

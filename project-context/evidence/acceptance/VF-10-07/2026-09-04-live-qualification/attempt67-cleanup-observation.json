@@ -1,0 +1,45 @@
+{
+  "schema_version": "videoforge.v2-07-attempt67-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 67,
+  "checked_at": "2026-09-04T08:29:00Z",
+  "cloudflare": {
+    "signer_secret_deleted": true,
+    "worker_rolled_back_to_captured_anchor": true,
+    "active_worker_version_id_sha256": "sha256:781ca0e65c35e7574754cda6c9a81cf08669ca62195510bce9ddfc1437e4e90a",
+    "restored_route_request": "POST application/json {}",
+    "restored_route_stable_read_count": 4,
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED"
+  },
+  "runpod": {
+    "provider_mutations_during_reconciliation": 0,
+    "gpu_jobs_submitted": 0,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "stable_read_count": 3,
+    "billing_baseline_usd": 2.214659276913153,
+    "billing_final_usd": 2.214659276913153,
+    "billing_incremental_usd": 0,
+    "retained_volume_count": 2,
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1"
+  },
+  "r2_exact_namespace_cleanup": {
+    "run_tag": "20260820-05f3a7d41b29",
+    "scene_count": 32,
+    "exact_output_keys_deleted": 32,
+    "exact_reservation_keys_deleted": 32,
+    "exact_receipt_keys_deleted": 32,
+    "exact_absence_reads": 96,
+    "absent": 96,
+    "present": 0,
+    "read_errors_after_bounded_retry": 0
+  },
+  "v2_08_started": false,
+  "result": "CLEAN_ZERO_COMPUTE_ZERO_EXACT_NAMESPACE_RESIDUE"
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": "videoforge.v2-07-attempt68-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 68,
+  "status": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:c271e70f4d1d0263810d01664f453ca97afee6aaf0d1220eb902ee99e08e7ac7",
+  "control_source_commit": "12e3972169e2de8a3a86af39d79acf55873c91b2",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "source_hashes": {
+    "qualification": "sha256:ac339cee4a974fbfc122b39854e6bfc05ea9c09b352e9c6aa2254e520d3aa1cd",
+    "harness": "sha256:39da9a77290aa9a61a109578edb285279a058e4d38ec1e55f599943052eaa18d",
+    "reconciliation": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
+    "orchestrator": "sha256:20850aae064d955dbc097af630f30b7ac5c50fb61e628bc856d4f74a2d4e8414"
+  },
+  "artifact_hashes": {
+    "read_only_preflight": "sha256:2c2f34deec3f4735d884f96952d3647e4bb398e01250c280fc761a551cf046a1",
+    "image_publication": "sha256:d5432b3f553f6b50a046df1d3978f3f8855ae3cd80e9056ea689369e6bc2ae26",
+    "staged_config_max1": "sha256:94cafa379c36dfa7fceaacff8ab62f6119c6ec9c7bbcded79c7386f8c87dc05f",
+    "staged_config_max2": "sha256:a816e3c05ccab85a46752b3494af12f16c90bcbcb67c8c647638fea953a5cb04"
+  },
+  "validation": {
+    "focused_tests": "74/74",
+    "worker_repair_tests": "49/49",
+    "typecheck": "PASS",
+    "context_validation": "PASS",
+    "provider_calls_during_repair": 0,
+    "external_spend_during_repair_usd": 0
+  },
+  "authority": {
+    "fresh_exact_approval_required": true,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "anchor_refresh_authorized": false,
+    "v2_08_authorized": false
+  }
+}

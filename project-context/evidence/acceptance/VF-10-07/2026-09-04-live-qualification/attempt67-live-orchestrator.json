@@ -1,0 +1,28 @@
+{
+  "schema_version": "videoforge-v207-live-orchestrator/v1",
+  "attempt": 67,
+  "started_at": "2026-09-04T08:07:53.804Z",
+  "finished_at": "2026-09-04T08:18:24.567Z",
+  "proposal_sha256": "sha256:5c98649b60a6ad07507a2f5fc01c5501a011aed14f662f1126eab8fa7da4465b",
+  "authority_sha256": "sha256:e89fbe293238d6e6719efac9c7c813e4be5ce484013487453a51e9efed2dd77d",
+  "control_source_commit": "f870d40af0992752ebc70d540f0f74ed7bf1c1c6",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "finite_cap_usd": 4.5,
+  "anchor_refresh_authorized": false,
+  "events": [
+    { "event": "rollback_anchor_retained", "version_id_sha256": "sha256:781ca0e65c35e7574754cda6c9a81cf08669ca62195510bce9ddfc1437e4e90a", "recent_version_index": 3, "recent_version_window": 10 },
+    { "event": "pre_mutation_route", "status": 404, "code": "V207_ROUTE_DISABLED" },
+    { "event": "read_only_capacity_admission_completed" },
+    { "event": "signer_disabled_source_deployed" },
+    { "event": "signer_secret_activated" },
+    { "event": "signer_route_activation_confirmed", "attempts": 16, "status": 403 },
+    { "event": "runpod_disposable_template_endpoint_created_and_scale_zero_confirmed" },
+    { "event": "qualification_failed", "code": "V207_BATCH_PORT_ROLLBACK_UNCERTAIN", "gpu_jobs_submitted": 0 },
+    { "event": "runpod_disposable_endpoint_template_deleted" },
+    { "event": "signer_secret_deleted" },
+    { "event": "worker_rollback_command_completed_but_initial_status_read_failed", "code": "V207_WRANGLER_STATUS_FAILED" }
+  ],
+  "initial_result": "CLEANUP_UNCERTAIN_PENDING_INDEPENDENT_RECONCILIATION",
+  "cleanup_observation": "attempt67-cleanup-observation.json"
+}

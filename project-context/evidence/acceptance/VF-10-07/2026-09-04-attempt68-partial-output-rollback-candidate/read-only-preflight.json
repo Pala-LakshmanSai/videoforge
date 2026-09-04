@@ -1,0 +1,20 @@
+{
+  "schema_version": "videoforge.v2-07-attempt68-read-only-preflight/v1",
+  "attempt": 68,
+  "source": "attempt67 final three-read reconciliation",
+  "checked_at": "2026-09-04T08:21:17.444Z",
+  "pods": 0,
+  "endpoints": 0,
+  "private_templates": 0,
+  "active_workers": 0,
+  "running_pods": 0,
+  "retained_volumes": 2,
+  "retained_volume_size_gb_each": 50,
+  "retained_volume_region": "EU-RO-1",
+  "billing_baseline_usd": 2.214659276913153,
+  "billing_final_usd": 2.214659276913153,
+  "billing_incremental_usd": 0,
+  "catalog_gpu_availability": "MEDIUM",
+  "serverless_flex_usd_per_gpu_hour": 1.116,
+  "fresh_inventory_catalog_billing_read_required_before_mutation": true
+}
