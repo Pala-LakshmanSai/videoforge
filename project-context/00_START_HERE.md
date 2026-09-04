@@ -4,23 +4,30 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt76 is `PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL` at control source
+- V2-07 Attempt76 is `APPROVED_SINGLE_USE_UNCONSUMED` at control source
   `6454405d817fe174b2add1d502a31b241b6a0234`. Proposal
   `sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6`
   reuses the unchanged published Mage image
   `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`
   without republication. Acceptance is
-  `sha256:5acf32e3e826e9d8764a3e18119e16c319ddfc6364baa4197eda8fefcb93d57a`;
-  independent audit is
-  `sha256:4b1c8a921c13079dcdb230c495887faa8d962c4123ee79158f7a162ea09a9c49`
+  `sha256:dc93d951a4179df28d97a35d55413d9866c05b9382e912783dd063560cab8735`;
+  exact single-use authority is
+  `sha256:900833b5b851b4031653f0a04e9899a39c4a08c6e5a2594dabbb2eaf9e922fdb`;
+  route-repair audit is
+  `sha256:4b1c8a921c13079dcdb230c495887faa8d962c4123ee79158f7a162ea09a9c49`;
+  post-approval authority audit is
+  `sha256:6f6f54f2c13031a5f3b0e4cad80f1298e9587a3053a6a215f66dae3643832cee`
   with P0/P1/P2 `0/0/0`.
 - The repair tolerates only a distinct valid-version `404 V207_ROUTE_DISABLED` predecessor before
   the first exact active response, then requires three consecutive exact active-version
   fingerprints within 30 reads/60 seconds. Every later mismatch is terminal; active-phase deadline
   and SIGTERM cleanup have direct coverage. Focused orchestrator tests pass 31/31.
-- No executable authority or cap exists. Fresh exact approval is required before any provider
-  mutation, GPU use, or spend. Image republication, fallback, rollback-anchor refresh, retained-
-  volume mutation, and V2-08 remain forbidden.
+- The exact bounded Attempt76 sequence is authorized once under the cumulative USD 4.50 cap:
+  disposable Cloudflare/RunPod resources, RTX 4090 EU-RO-1 at `$1.116/GPU-hour`, workersMin zero
+  and temporary max two, the exact pre-GPU Python `urllib` probe, signal-safe cleanup, and three
+  final zero-compute reads. Image publication/republication, GPU fallback, rollback-anchor refresh,
+  retained-volume mutation, and V2-08 remain forbidden; the existing two volumes remain retained
+  at `$7/month` combined.
 
 - V2-07 Attempt75 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its disposable Cloudflare Worker was
   deployed, the disabled route and active version were confirmed, then execution failed closed at

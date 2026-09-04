@@ -1,0 +1,59 @@
+{
+  "schema_version": "videoforge.v2-07-attempt76-authority-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 76,
+  "audited_at": "2026-09-04T16:05:32Z",
+  "result": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "audited_authority_sha256": "sha256:900833b5b851b4031653f0a04e9899a39c4a08c6e5a2594dabbb2eaf9e922fdb",
+  "audited_proposal_sha256": "sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6",
+  "audited_control_source_commit": "6454405d817fe174b2add1d502a31b241b6a0234",
+  "audited_image_source_commit": "51d7de6cb3c0d88ddcb06df533864bf319a1210f",
+  "audited_files": [
+    "approved-authority.json",
+    "acceptance.json",
+    "apps/web/src/server/providers/v207-activation-authority.ts",
+    "apps/web/src/server/providers/v207-activation-authority.test.ts",
+    "project-context/00_START_HERE.md",
+    "project-context/22_PROJECT_COMPLETION_CHECKPOINTS.md",
+    "project-context/CURRENT_STATE.yaml",
+    "project-context/GATES.yaml",
+    "project-context/tasks/VF-10-07.md"
+  ],
+  "verified_contract": {
+    "status": "APPROVED_SINGLE_USE_UNCONSUMED",
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "rate_usd_per_gpu_hour": 1.116,
+    "workers_min": 0,
+    "temporary_workers_max": 2,
+    "image_policy": "reuse exact immutable digest without republication",
+    "route_policy": "bounded distinct-version propagation followed by exact active-version proof",
+    "pre_gpu_probe": "exact Python urllib upload, finalize, readback, and delete probe",
+    "cleanup_policy": "disposable output, endpoint, template, worker, and route deletion with signal-safe cleanup",
+    "final_zero_compute_reads": 3,
+    "retained_volume_policy": "continue USD 7/month retention with no volume mutation",
+    "gpu_fallback_authorized": false,
+    "rollback_anchor_refresh_authorized": false,
+    "v2_08_authorized": false
+  },
+  "validation": {
+    "candidate_validator": "PASS",
+    "activation_authority_tests": "26/26 PASS",
+    "context_validation": "PASS",
+    "git_diff_check": "PASS",
+    "provider_calls": 0,
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "final_readback_at": "2026-09-04T16:10:28Z",
+  "evidence_reuse_boundary": "Only the exact immutable published Mage image and its publication evidence are reusable. Attempt75 qualification is not reusable; Attempt76 requires the full fresh qualification.",
+  "audit_note": "This post-approval audit is separate from independent-audit.json, which audits only the sealed route-propagation repair before authority activation."
+}

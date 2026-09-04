@@ -200,14 +200,17 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt76 is `PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL`. Control source
+**Current gate:** Attempt76 is `APPROVED_SINGLE_USE_UNCONSUMED`. Control source
 `6454405d817fe174b2add1d502a31b241b6a0234`, proposal
 `sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6`,
-acceptance `sha256:5acf32e3e826e9d8764a3e18119e16c319ddfc6364baa4197eda8fefcb93d57a`,
-and independent audit
-`sha256:4b1c8a921c13079dcdb230c495887faa8d962c4123ee79158f7a162ea09a9c49`
-are sealed with zero findings. It reuses the unchanged published Mage image. Authority and
-executable cap remain null; fresh exact approval is required before any live action.
+acceptance `sha256:dc93d951a4179df28d97a35d55413d9866c05b9382e912783dd063560cab8735`,
+authority `sha256:900833b5b851b4031653f0a04e9899a39c4a08c6e5a2594dabbb2eaf9e922fdb`,
+route-repair audit `sha256:4b1c8a921c13079dcdb230c495887faa8d962c4123ee79158f7a162ea09a9c49`,
+and post-approval authority audit
+`sha256:6f6f54f2c13031a5f3b0e4cad80f1298e9587a3053a6a215f66dae3643832cee`
+are separately bound with zero findings. It reuses the unchanged published Mage image without republication.
+The exact bounded qualification is authorized once with a USD 4.50 executable cap; no fallback,
+rollback-anchor refresh, retained-volume mutation, image publication, or V2-08 is authorized.
 
 **Starting point:** Attempt75 consumed its exact proposal and authority, published Mage image
 `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`,
@@ -215,14 +218,15 @@ then failed clean at `V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED` after Cloudf
 before the pre-GPU probe or any RunPod resource/job. Cleanup proved three Cloudflare absence reads,
 three RunPod zero-compute reads, and both exact retained volumes. The observed
 `$0.05205000063870102` billing-window increment is unattributed because Attempt75 submitted zero GPU
-jobs. V2-07 remains `NOT_QUALIFIED`; executable authority, cap, and anchor-refresh authority are null.
+jobs. V2-07 remains `NOT_QUALIFIED`. Attempt75 authority is consumed and null; Attempt76 now holds
+the exact single-use USD 4.50 executable authority described above, with anchor refresh forbidden.
 
 **Work:**
 
 - preserve Attempt75 closure, acceptance, orchestrator, reconciliation, and successful immutable
   image-publication evidence; never reuse its proposal, authority, or historical cap;
-- preserve the sealed Attempt76 source/evidence and obtain fresh exact approval before any provider
-  mutation, GPU use, or spend;
+- execute only the exact approved Attempt76 source/evidence and single-use authority, then consume
+  it on the first live action regardless of outcome;
 - accept only durable 1280×720 outputs, tenant artifact readbacks, signed v3 receipts, exact timing/
   VRAM/cost, unchanged Mage manifest, terminal jobs, zero total workers, and intended volumes only.
 

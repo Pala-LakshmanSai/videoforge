@@ -3,7 +3,7 @@
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
   "attempt": 76,
-  "status": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "status": "APPROVED_SINGLE_USE_UNCONSUMED",
   "qualification_status": "NOT_QUALIFIED",
   "proposal_sha256": "sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6",
   "control_source_commit": "6454405d817fe174b2add1d502a31b241b6a0234",
@@ -54,7 +54,7 @@
     "gpu_jobs_submitted_during_repair": 0,
     "external_spend_during_repair_usd": 0
   },
-  "independent_reaudit": {
+  "route_independent_reaudit": {
     "result": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
     "focused_orchestrator_tests": "31/31",
     "web_typecheck": "PASS",
@@ -64,6 +64,12 @@
     "artifact_path": "independent-audit.json",
     "artifact_sha256": "sha256:4b1c8a921c13079dcdb230c495887faa8d962c4123ee79158f7a162ea09a9c49",
     "materialization_pending": false
+  },
+  "authority_materialization_independent_audit": {
+    "result": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
+    "artifact_path": "authority-independent-audit.json",
+    "artifact_sha256": "sha256:6f6f54f2c13031a5f3b0e4cad80f1298e9587a3053a6a215f66dae3643832cee",
+    "route_repair_audit_reused": false
   },
   "predecessor": {
     "attempt": 75,
@@ -75,19 +81,21 @@
     "accepted_outputs": 0
   },
   "authority": {
-    "status": "NOT_MATERIALIZED",
-    "fresh_exact_approval_required": true,
-    "provider_calls_authorized": false,
-    "provider_mutations_authorized": false,
+    "status": "APPROVED_SINGLE_USE_UNCONSUMED",
+    "fresh_exact_approval_required": false,
+    "provider_calls_authorized": true,
+    "provider_mutations_authorized": true,
     "image_publication_authorized": false,
-    "gpu_use_authorized": false,
-    "maximum_cumulative_finite_spend_usd": 0,
+    "image_republication_authorized": false,
+    "reuse_published_image_authorized": true,
+    "gpu_use_authorized": true,
+    "maximum_cumulative_finite_spend_usd": 4.5,
     "anchor_refresh_authorized": false,
     "v2_08_authorized": false,
     "consumed": false,
     "reusable": false,
     "single_use": true,
-    "authority_path": null,
-    "authority_sha256": null
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:900833b5b851b4031653f0a04e9899a39c4a08c6e5a2594dabbb2eaf9e922fdb"
   }
 }

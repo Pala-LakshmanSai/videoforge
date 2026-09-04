@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9,7 +9,7 @@ const repoRoot = resolve(candidateDir, "../../../../..");
 
 const expected = Object.freeze({
   proposalSha256: "sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6",
-  acceptanceSha256: "sha256:5acf32e3e826e9d8764a3e18119e16c319ddfc6364baa4197eda8fefcb93d57a",
+  acceptanceSha256: "sha256:dc93d951a4179df28d97a35d55413d9866c05b9382e912783dd063560cab8735",
   controlSourceCommit: "6454405d817fe174b2add1d502a31b241b6a0234",
   imageSourceCommit: "51d7de6cb3c0d88ddcb06df533864bf319a1210f",
   imageDigest: "sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d",
@@ -20,6 +20,8 @@ const expected = Object.freeze({
   predecessorClosureSha256: "sha256:d69c5e9ec60376e0718bc3e6d17a35a9f1754efab93b7ebb8c263b23e2c3414a",
   reconciliationSha256: "sha256:4552919cd586f1df94c9f62697428cbf46f8e9bef251a9f9000aaf1064e80d2d",
   auditSha256: "sha256:4b1c8a921c13079dcdb230c495887faa8d962c4123ee79158f7a162ea09a9c49",
+  authorityAuditSha256: "sha256:6f6f54f2c13031a5f3b0e4cad80f1298e9587a3053a6a215f66dae3643832cee",
+  authoritySha256: "sha256:900833b5b851b4031653f0a04e9899a39c4a08c6e5a2594dabbb2eaf9e922fdb",
   sourceHashes: Object.freeze({
     disposable_orchestrator: Object.freeze({
       commit: "control",
@@ -85,6 +87,8 @@ const acceptancePath =
   "project-context/evidence/acceptance/VF-10-07/2026-09-04-attempt76-active-route-propagation-candidate/acceptance.json";
 const auditPath =
   "project-context/evidence/acceptance/VF-10-07/2026-09-04-attempt76-active-route-propagation-candidate/independent-audit.json";
+const authorityAuditPath =
+  "project-context/evidence/acceptance/VF-10-07/2026-09-04-attempt76-active-route-propagation-candidate/authority-independent-audit.json";
 const authorityPath =
   "project-context/evidence/acceptance/VF-10-07/2026-09-04-attempt76-active-route-propagation-candidate/approved-authority.json";
 const publicationPath =
@@ -124,6 +128,8 @@ function parseJson(relativePath) {
 assert(sha256(read(proposalPath)) === expected.proposalSha256, "PROPOSAL_HASH");
 assert(sha256(read(acceptancePath)) === expected.acceptanceSha256, "ACCEPTANCE_HASH");
 assert(sha256(read(auditPath)) === expected.auditSha256, "AUDIT_HASH");
+assert(sha256(read(authorityAuditPath)) === expected.authorityAuditSha256, "AUTHORITY_AUDIT_HASH");
+assert(sha256(read(authorityPath)) === expected.authoritySha256, "AUTHORITY_HASH");
 assert(
   sha256(readAtCommit(expected.controlSourceCommit, publicationPath)) === expected.publicationSha256,
   "PUBLICATION_HASH",
@@ -145,6 +151,7 @@ execFileSync("git", ["merge-base", "--is-ancestor", expected.imageSourceCommit, 
 const proposal = parseJson(proposalPath);
 const acceptance = parseJson(acceptancePath);
 const audit = parseJson(auditPath);
+const authority = parseJson(authorityPath);
 
 assert(proposal.attempt === 76 && proposal.checkpoint === "V2-07", "PROPOSAL_IDENTITY");
 assert(proposal.authority_mode === "PENDING_FRESH_EXACT_APPROVAL", "PROPOSAL_AUTHORITY_MODE");
@@ -243,7 +250,7 @@ assert(proposal.last_observed_provider_truth?.evidence_sha256 === expected.recon
 assert(proposal.last_observed_provider_truth?.baseline_endpoint_spend_usd === 2.266709277551854, "PROPOSAL_BASELINE");
 assert(proposal.predecessor?.closure_sha256 === expected.predecessorClosureSha256, "PROPOSAL_PREDECESSOR");
 
-assert(acceptance.status === "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL", "ACCEPTANCE_STATUS");
+assert(acceptance.status === "APPROVED_SINGLE_USE_UNCONSUMED", "ACCEPTANCE_STATUS");
 assert(acceptance.qualification_status === "NOT_QUALIFIED", "ACCEPTANCE_QUALIFICATION");
 assert(acceptance.proposal_sha256 === expected.proposalSha256, "ACCEPTANCE_PROPOSAL");
 assert(acceptance.control_source_commit === expected.controlSourceCommit, "ACCEPTANCE_CONTROL_SOURCE");
@@ -252,12 +259,19 @@ assert(acceptance.image_digest === expected.imageDigest, "ACCEPTANCE_IMAGE");
 assert(acceptance.image_published === true && acceptance.image_republication_required === false, "ACCEPTANCE_PUBLICATION");
 assert(acceptance.image_publication_sha256 === expected.publicationSha256, "ACCEPTANCE_PUBLICATION_HASH");
 assert(acceptance.validation?.focused_orchestrator_tests === "31/31", "ACCEPTANCE_TESTS");
-assert(acceptance.independent_reaudit?.result === "PASS_ZERO_P0_ZERO_P1_ZERO_P2", "ACCEPTANCE_AUDIT");
+assert(acceptance.route_independent_reaudit?.result === "PASS_ZERO_P0_ZERO_P1_ZERO_P2", "ACCEPTANCE_ROUTE_AUDIT");
 assert(
-  acceptance.independent_reaudit?.artifact_path === "independent-audit.json" &&
-    acceptance.independent_reaudit?.artifact_sha256 === expected.auditSha256 &&
-    acceptance.independent_reaudit?.materialization_pending === false,
-  "ACCEPTANCE_AUDIT_ARTIFACT",
+  acceptance.route_independent_reaudit?.artifact_path === "independent-audit.json" &&
+    acceptance.route_independent_reaudit?.artifact_sha256 === expected.auditSha256 &&
+    acceptance.route_independent_reaudit?.materialization_pending === false,
+  "ACCEPTANCE_ROUTE_AUDIT_ARTIFACT",
+);
+assert(
+  acceptance.authority_materialization_independent_audit?.result === "PASS_ZERO_P0_ZERO_P1_ZERO_P2" &&
+    acceptance.authority_materialization_independent_audit?.artifact_path === "authority-independent-audit.json" &&
+    acceptance.authority_materialization_independent_audit?.artifact_sha256 === expected.authorityAuditSha256 &&
+    acceptance.authority_materialization_independent_audit?.route_repair_audit_reused === false,
+  "ACCEPTANCE_AUTHORITY_AUDIT_ARTIFACT",
 );
 assert(audit.result === "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL", "AUDIT_RESULT");
 assert(audit.audited_control_source_commit === expected.controlSourceCommit, "AUDIT_CONTROL_SOURCE");
@@ -265,13 +279,38 @@ assert(
   audit.findings?.p0 === 0 && audit.findings?.p1 === 0 && audit.findings?.p2 === 0,
   "AUDIT_FINDINGS",
 );
-assert(acceptance.authority?.status === "NOT_MATERIALIZED", "ACCEPTANCE_AUTHORITY_STATUS");
-assert(acceptance.authority?.maximum_cumulative_finite_spend_usd === 0, "ACCEPTANCE_ZERO_CAP");
-assert(acceptance.authority?.provider_calls_authorized === false, "ACCEPTANCE_NO_PROVIDER");
-assert(acceptance.authority?.gpu_use_authorized === false, "ACCEPTANCE_NO_GPU");
+const authorityAudit = parseJson(authorityAuditPath);
+assert(authorityAudit.result === "PASS_ZERO_P0_ZERO_P1_ZERO_P2", "AUTHORITY_AUDIT_RESULT");
+assert(authorityAudit.audited_authority_sha256 === expected.authoritySha256, "AUTHORITY_AUDIT_AUTHORITY");
+assert(
+  authorityAudit.findings?.p0 === 0 && authorityAudit.findings?.p1 === 0 && authorityAudit.findings?.p2 === 0,
+  "AUTHORITY_AUDIT_FINDINGS",
+);
+assert(acceptance.authority?.status === "APPROVED_SINGLE_USE_UNCONSUMED", "ACCEPTANCE_AUTHORITY_STATUS");
+assert(acceptance.authority?.maximum_cumulative_finite_spend_usd === 4.5, "ACCEPTANCE_CAP");
+assert(acceptance.authority?.provider_calls_authorized === true, "ACCEPTANCE_PROVIDER");
+assert(acceptance.authority?.gpu_use_authorized === true, "ACCEPTANCE_GPU");
 assert(acceptance.authority?.consumed === false, "ACCEPTANCE_UNCONSUMED");
-assert(acceptance.authority?.authority_path === null && acceptance.authority?.authority_sha256 === null, "ACCEPTANCE_NULL_AUTHORITY");
-assert(!existsSync(resolve(repoRoot, authorityPath)), "AUTHORITY_FILE_MUST_NOT_EXIST");
+assert(
+  acceptance.authority?.authority_path === "approved-authority.json" &&
+    acceptance.authority?.authority_sha256 === expected.authoritySha256,
+  "ACCEPTANCE_AUTHORITY",
+);
+
+assert(authority.status === "APPROVED_SINGLE_USE_UNCONSUMED", "AUTHORITY_STATUS");
+assert(authority.proposal_sha256 === expected.proposalSha256, "AUTHORITY_PROPOSAL");
+assert(authority.control_source_commit === expected.controlSourceCommit, "AUTHORITY_CONTROL_SOURCE");
+assert(authority.image_source_commit === expected.imageSourceCommit, "AUTHORITY_IMAGE_SOURCE");
+assert(authority.maximum_cumulative_finite_spend_usd === 4.5, "AUTHORITY_CAP");
+assert(authority.pre_gpu_python_urllib_compatibility_probe_required === true, "AUTHORITY_PRE_GPU_PROBE");
+assert(authority.bounded_distinct_version_route_propagation_required === true, "AUTHORITY_ROUTE_PROPAGATION");
+assert(authority.image_republication_authorized === false, "AUTHORITY_NO_REPUBLICATION");
+assert(
+  authority.anchor_refresh_authorized === false &&
+    authority.automatic_gpu_fallback_authorized === false &&
+    authority.v2_08_authorized === false,
+  "AUTHORITY_BOUNDARY",
+);
 
 const activation = readAtCommit(
   expected.controlSourceCommit,
@@ -289,13 +328,13 @@ const currentActivation = read(
 ).toString("utf8");
 assert(currentActivation.includes(expected.proposalSha256), "CURRENT_ACTIVATION_PROPOSAL");
 assert(currentActivation.includes(expected.controlSourceCommit), "CURRENT_ACTIVATION_CONTROL_SOURCE");
+assert(currentActivation.includes(expected.authoritySha256), "CURRENT_ACTIVATION_AUTHORITY");
 assert(
-  currentActivation.includes("export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;") &&
-    currentActivation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = null;") &&
+  currentActivation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;") &&
     currentActivation.includes(
-      "export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;",
+      "export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;",
     ),
-  "CURRENT_ACTIVATION_NULL_AUTHORITY",
+  "CURRENT_ACTIVATION_BOUNDARY",
 );
 
 const currentState = read("project-context/CURRENT_STATE.yaml").toString("utf8");
@@ -305,8 +344,8 @@ for (const source of [currentState, gates]) {
     assert(source.includes(value), "CONTEXT_POINTER");
   }
 }
-assert(currentState.includes("current_goal_authority: null"), "CURRENT_STATE_NULL_AUTHORITY");
-assert(gates.includes("current_candidate_authority_sha256: null"), "GATES_NULL_AUTHORITY");
-assert(gates.includes("current_candidate_executable_finite_cap_usd: null"), "GATES_NULL_EXECUTABLE_CAP");
+assert(currentState.includes(expected.authoritySha256), "CURRENT_STATE_AUTHORITY");
+assert(gates.includes(expected.authoritySha256), "GATES_AUTHORITY");
+assert(gates.includes("current_candidate_executable_finite_cap_usd: 4.5"), "GATES_EXECUTABLE_CAP");
 
 console.log("PASS V2-07 Attempt76 sealed provider-free candidate");
