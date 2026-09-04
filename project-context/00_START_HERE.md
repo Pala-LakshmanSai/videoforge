@@ -4,24 +4,19 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt78 is `APPROVED_SINGLE_USE_UNCONSUMED` at control
-  `429ff015eb6502394e042e8c3623608726dce3c4`. Proposal
-  `sha256:2cb0188a05b033b1519101767654cbd2f94e8eed4a10fd353bfeb7483618d0a2`, acceptance
-  `sha256:de4aaf34f2d93c4f5f1727b1013f6d02f97ae723d6e62e8757a1f49b33dfbeac`, approved authority
-  `sha256:8b3b6259cfb6dab49fbc7ce0b07d92f51df5c647c72d7ebbbb29cf27b3788c8e`, independent audit
-  `sha256:8d03d9c9ea55dfd9d4a07fb0012d7e14835fe624b60a720fd20d791d2542585c`, and validator
-  `sha256:15cef77739cad3356dbf4acbf9b5d6846927229abb37d77d28373085b2f31249` pass with P0/P1/P2
-  `0/0/0` and focused tests `74/74`.
-- Its route reader accepts at most 4 KiB and records only fixed status/version/content/body-shape
-  classes. Before the first exact active fingerprint, the established structured `404
-  V207_ROUTE_DISABLED` with a distinct valid predecessor UUID may propagate, and only unreachable
-  transport or an exact-version `S5XX` response diagnostic may retry inside the existing
-  30-read/60-second/2-second bounds. No transient counts as a match; after the first exact match
-  every exception or mismatch is terminal.
-- The exact single-use authority permits only Attempt78 provider calls, credentials, bounded
-  Cloudflare/RunPod mutations, reuse of the existing image without republication, GPU use, and spend
-  up to the cumulative `$4.50` cap. It is unconsumed. Image publication, fallback, anchor refresh,
-  retained-volume mutation, and V2-08 remain unauthorized.
+- V2-07 Attempt78 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. The disposable Worker, disabled route,
+  active version, and three-read active route were confirmed, then the pre-GPU output compatibility
+  probe failed closed at `V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID` before child qualification,
+  RunPod resource creation, or GPU dispatch.
+- Closure `sha256:6ae6b03b0e3e3cdb309da4e123b1ca746745289e407341388b986e9818be5003`, orchestrator
+  `sha256:eeba93083e40c83552fc5d3b5204a464b33cb0eaa1042b40f8b6778a4ab0f500`, and reconciliation
+  `sha256:5e0134097e0552a53b748db28a1e44fbcace5e865297ae152c0c7ba4610f943e` prove signal-safe cleanup,
+  three Cloudflare absence reads, three RunPod zero-compute reads, unchanged two-volume inventory,
+  zero RunPod jobs, and `$0` observed incremental spend.
+- Proposal `sha256:2cb0188a05b033b1519101767654cbd2f94e8eed4a10fd353bfeb7483618d0a2` and authority
+  `sha256:8b3b6259cfb6dab49fbc7ce0b07d92f51df5c647c72d7ebbbb29cf27b3788c8e` cannot be reused. No
+  provider calls, remote mutations, credential access, GPU use, spend, fallback, anchor refresh,
+  retained-volume mutation, image republication, or V2-08 action is authorized.
 - Attempt77 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. It failed at
   `V207_DISPOSABLE_ROUTE_INVALID` before active-route confirmation, Python `urllib`, or RunPod.
 - Closure `sha256:f87d3ab60c1efc07aa59963b790c6bfc2be2fd8b8fa5bc6f53378ddc94c96e43`, orchestrator
@@ -36,8 +31,8 @@
 - The exact published Mage image from source `51d7de6cb3c0d88ddcb06df533864bf319a1210f` and digest
   `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d` remains reusable only as
   immutable input under a fresh successor authority. Both 50 GB EU-RO-1 volumes continue at
-  `$7/month` combined. Its reuse is authorized only inside the exact unconsumed Attempt78 scope;
-  V2-07 remains `NOT_QUALIFIED` until live qualification passes.
+  `$7/month` combined. Next: provider-free root-cause repair, focused validation, independent audit,
+  and a fresh exact successor proposal; V2-07 remains `NOT_QUALIFIED`.
 
 - V2-07 Attempt75 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its disposable Cloudflare Worker was
   deployed, the disabled route and active version were confirmed, then execution failed closed at
