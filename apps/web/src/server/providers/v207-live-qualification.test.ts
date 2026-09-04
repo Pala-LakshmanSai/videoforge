@@ -24,6 +24,8 @@ const {
   assertV207FreshCatalogOffering,
   buildV207TemplateEnvironment,
   createV207Cancellation,
+  deleteV207GeneratedObject,
+  deleteV207GeneratedObjects,
   extractV207EndpointReadbackMismatchCategory,
   extractV207OutputContractDiagnostics,
   extractV207ProviderJobErrorCode,
@@ -37,6 +39,7 @@ const {
   routePort,
   V207_SECURE_REFERENCE_RATE_USD_PER_HOUR,
   V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
+  V207GeneratedOutputRollbackError,
   V207OutputContractError,
 } = await import("./v207-live-qualification");
 const { RunPodControlError } = await import("./runpod-control");
@@ -109,6 +112,146 @@ describe("V2-07 live qualification runner safety", () => {
       }),
     ).rejects.toThrow("RUNPOD_ENDPOINT_BILLING_READ_AMBIGUOUS");
     expect(fetchImpl).toHaveBeenCalledTimes(4);
+  });
+
+  it("replays exact-key DELETE after lost success and transient service responses", async () => {
+    const sleeps: number[] = [];
+    let remotelyDeleted = false;
+    let attempts = 0;
+    const fetchImpl: typeof fetch = async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        remotelyDeleted = true;
+        throw new Error("success response lost after delete");
+      }
+      if (attempts === 2) {
+        return {
+          ok: true,
+          status: 200,
+          arrayBuffer: async () => {
+            throw new Error("success body lost after delete");
+          },
+        } as unknown as Response;
+      }
+      if (attempts === 3) return new Response("temporarily unavailable", { status: 503 });
+      return new Response(
+        JSON.stringify({
+          schema_version: "videoforge-v207-generated-output-delete/v1",
+          deleted: true,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+
+    await expect(
+      deleteV207GeneratedObject("exact-object", "b".repeat(64), {
+        fetchImpl,
+        sleepImpl: async (milliseconds) => {
+          sleeps.push(milliseconds);
+        },
+      }),
+    ).resolves.toBeUndefined();
+    expect(remotelyDeleted).toBe(true);
+    expect(attempts).toBe(4);
+    expect(sleeps).toEqual([250, 1_000, 2_000]);
+  });
+
+  it.each([429, 500, 502, 503])("retries transient DELETE HTTP %s only", async (status) => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("transient", { status }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            schema_version: "videoforge-v207-generated-output-delete/v1",
+            deleted: true,
+          }),
+          { status: 200 },
+        ),
+      );
+    await expect(
+      deleteV207GeneratedObject("exact-object", "b".repeat(64), {
+        fetchImpl,
+        sleepImpl: async () => undefined,
+      }),
+    ).resolves.toBeUndefined();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry rejected or malformed DELETE responses", async () => {
+    for (const response of [
+      new Response(JSON.stringify({ error: { code: "V207_REQUEST_INVALID" } }), {
+        status: 400,
+      }),
+      new Response(JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }), {
+        status: 403,
+      }),
+      new Response("not-json", { status: 200 }),
+      new Response(JSON.stringify({ deleted: true }), { status: 200 }),
+    ]) {
+      const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response);
+      await expect(
+        deleteV207GeneratedObject("exact-object", "b".repeat(64), {
+          fetchImpl,
+          sleepImpl: async () => undefined,
+        }),
+      ).rejects.toThrow(
+        response.status === 400
+          ? "V207_OUTPUT_DELETE_400"
+          : response.status === 403
+            ? "V207_OUTPUT_DELETE_403"
+            : "V207_OUTPUT_DELETE_RESPONSE_INVALID",
+      );
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("attempts every rollback key and reports only bounded counts", async () => {
+    const attempted: string[] = [];
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as TestRecord;
+      attempted.push(String(body.object_key));
+      if (body.object_key === "key-a") {
+        return new Response(JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }), {
+          status: 403,
+        });
+      }
+      return new Response(
+        JSON.stringify({
+          schema_version: "videoforge-v207-generated-output-delete/v1",
+          deleted: true,
+        }),
+        { status: 200 },
+      );
+    };
+    let thrown: unknown;
+    try {
+      await deleteV207GeneratedObjects(["key-b", "key-a", "key-b"], "b".repeat(64), {
+        fetchImpl,
+        sleepImpl: async () => undefined,
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(attempted).toEqual(["key-a", "key-b"]);
+    expect(thrown).toBeInstanceOf(V207GeneratedOutputRollbackError);
+    expect(
+      (
+        thrown as {
+          summary: {
+            objectKeyCount: number;
+            confirmedObjectKeyCount: number;
+            failedObjectKeyCount: number;
+          };
+        }
+      ).summary,
+    ).toEqual({
+      objectKeyCount: 2,
+      confirmedObjectKeyCount: 1,
+      failedObjectKeyCount: 1,
+    });
+    expect(JSON.stringify(thrown)).not.toContain("key-a");
+    expect(JSON.stringify(thrown)).not.toContain("key-b");
   });
 
   it("merges one durable seed with exactly 31 replacement units and rejects gaps", () => {
@@ -738,7 +881,7 @@ describe("V2-07 live qualification runner safety", () => {
   it("uses whole-project batches and does not run the obsolete seed/resume successor path", () => {
     const liveBatchCounts = [
       ...source.matchAll(
-        /(?:probe|cold|warm|readerA|readerB|cancel|timeout) = await createBatch\([\s\S]*?workerToken,\s+(\d+),/g,
+        /(?:probe|cold|warm|readerA|readerB|cancel|timeout) = await createBatch\([\s\S]*?workerToken,\s+generatedObjectKeys,\s+(\d+),/g,
       ),
     ].map((match) => match[1]);
     expect(liveBatchCounts).toEqual(["32", "32", "32", "32", "32", "32"]);
@@ -748,6 +891,22 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).not.toContain("const resumeBatch = await createBatch");
     expect(source).not.toContain("workerToken,\n        1,");
     expect(() => assertV207ItemCount(31)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
+  });
+
+  it("shares partial batch keys before PUT and never reports an empty rollback as confirmed", () => {
+    const createBatchStart = source.indexOf("async function createBatch(");
+    const ledgerAdd = source.indexOf("rollbackObjectKeys.add(objectKey)", createBatchStart);
+    const putPort = source.indexOf("const signed = await routePort(", createBatchStart);
+    const dispatch = source.indexOf("await harness.dispatchBatch(cold.input)", putPort);
+    expect(createBatchStart).toBeGreaterThan(-1);
+    expect(ledgerAdd).toBeGreaterThan(createBatchStart);
+    expect(putPort).toBeGreaterThan(ledgerAdd);
+    expect(dispatch).toBeGreaterThan(putPort);
+    expect(source).toContain("generatedObjectKeys.size === 0");
+    expect(source).toContain('evidence.generated_output_rollback = "NOT_REQUIRED"');
+    expect(source).not.toContain(
+      'await deleteGeneratedObjects(generatedObjectKeys, nonce);\n        evidence.generated_output_rollback = "CONFIRMED"',
+    );
   });
 
   it("uses unique attempt lineage, deletes disposables on success, and proves final zero inventory", () => {
@@ -865,7 +1024,7 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).not.toContain("resumeEvidence");
     expect(source).not.toContain("mergedResumeUnits");
     const drain = source.indexOf('persistCheckpoint("reader-drained")');
-    const outputCleanup = source.indexOf("deleteGeneratedObjects(generatedObjectKeys, nonce)");
+    const outputCleanup = source.indexOf("deleteV207GeneratedObjects(generatedObjectKeys, nonce)");
     const deleteDisposables = source.indexOf("cleanupSuccessfulQualification");
     const finalReconciliation = source.indexOf(
       "const finalReconciliation = await reconcileV207Readonly",

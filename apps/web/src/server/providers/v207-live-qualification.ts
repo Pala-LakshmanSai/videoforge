@@ -1043,38 +1043,153 @@ export async function readV207OutputReadback(
   }
 }
 
-async function deleteGeneratedObject(objectKey: string, nonce: string): Promise<void> {
-  const response = await fetch(ROUTE, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      connection: "close",
-      "x-videoforge-v207-authority": nonce,
-    },
-    body: JSON.stringify({
-      schema_version: "videoforge-v207-generated-output-port-request/v1",
-      operation: "DELETE",
-      account_id: ACCOUNT,
-      workspace_id: WORKSPACE,
-      object_key: objectKey,
-      rollback_token: createHmac("sha256", nonce).update(objectKey).digest("hex"),
-    }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) throw new Error(`V207_OUTPUT_DELETE_${response.status}`);
-  const value = (await response.json()) as AnyRecord;
-  if (
-    value.schema_version !== "videoforge-v207-generated-output-delete/v1" ||
-    value.deleted !== true
-  ) {
-    throw new Error("V207_OUTPUT_DELETE_UNCONFIRMED");
+const V207_OUTPUT_DELETE_RETRY_DELAYS_MS = [250, 1_000, 2_000] as const;
+
+export interface V207GeneratedOutputDeleteOptions {
+  readonly fetchImpl?: typeof fetch;
+  readonly sleepImpl?: (milliseconds: number) => Promise<void>;
+}
+
+export interface V207GeneratedOutputRollbackSummary {
+  readonly objectKeyCount: number;
+  readonly confirmedObjectKeyCount: number;
+  readonly failedObjectKeyCount: number;
+}
+
+export class V207GeneratedOutputRollbackError extends Error {
+  readonly summary: V207GeneratedOutputRollbackSummary;
+
+  constructor(summary: V207GeneratedOutputRollbackSummary) {
+    super("V207_GENERATED_OUTPUT_ROLLBACK_UNCERTAIN");
+    this.name = "V207GeneratedOutputRollbackError";
+    this.summary = summary;
   }
 }
 
-async function deleteGeneratedObjects(objectKeys: readonly string[], nonce: string): Promise<void> {
-  for (const objectKey of [...new Set(objectKeys)].sort()) {
-    await deleteGeneratedObject(objectKey, nonce);
+class V207BatchPortRollbackError extends Error {
+  readonly rollbackSummary: V207GeneratedOutputRollbackSummary;
+
+  constructor(rollbackSummary: V207GeneratedOutputRollbackSummary, cause: unknown) {
+    super("V207_BATCH_PORT_ROLLBACK_UNCERTAIN", { cause });
+    this.name = "V207BatchPortRollbackError";
+    this.rollbackSummary = rollbackSummary;
   }
+}
+
+function generatedOutputRollbackSummary(
+  objectKeyCount: number,
+  failedObjectKeyCount: number,
+): V207GeneratedOutputRollbackSummary {
+  return Object.freeze({
+    objectKeyCount,
+    confirmedObjectKeyCount: objectKeyCount - failedObjectKeyCount,
+    failedObjectKeyCount,
+  });
+}
+
+function extractV207BatchPortRollbackDiagnostic(error: unknown): AnyRecord | null {
+  if (!(error instanceof V207BatchPortRollbackError)) return null;
+  return {
+    object_key_count: error.rollbackSummary.objectKeyCount,
+    confirmed_object_key_count: error.rollbackSummary.confirmedObjectKeyCount,
+    failed_object_key_count: error.rollbackSummary.failedObjectKeyCount,
+  };
+}
+
+/**
+ * DELETE is exact-key scoped and idempotent: replaying it after a lost success response can only
+ * re-delete the same output, reservation, and receipt tuple. Retry only transport and transient
+ * service responses. Any client rejection or malformed success remains an immediate fail-closed
+ * result so authorization or response drift cannot be hidden.
+ */
+export async function deleteV207GeneratedObject(
+  objectKey: string,
+  nonce: string,
+  options: V207GeneratedOutputDeleteOptions = {},
+): Promise<void> {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const sleepImpl = options.sleepImpl ?? sleep;
+  for (let attempt = 0; attempt <= V207_OUTPUT_DELETE_RETRY_DELAYS_MS.length; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetchImpl(ROUTE, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          connection: "close",
+          "x-videoforge-v207-authority": nonce,
+        },
+        body: JSON.stringify({
+          schema_version: "videoforge-v207-generated-output-port-request/v1",
+          operation: "DELETE",
+          account_id: ACCOUNT,
+          workspace_id: WORKSPACE,
+          object_key: objectKey,
+          rollback_token: createHmac("sha256", nonce).update(objectKey).digest("hex"),
+        }),
+        signal: AbortSignal.timeout(V207_OUTPUT_PORT_REQUEST_TIMEOUT_MS),
+      });
+    } catch {
+      if (attempt === V207_OUTPUT_DELETE_RETRY_DELAYS_MS.length) {
+        throw new Error("V207_OUTPUT_DELETE_TRANSPORT_UNCERTAIN");
+      }
+      await sleepImpl(V207_OUTPUT_DELETE_RETRY_DELAYS_MS[attempt]!);
+      continue;
+    }
+    if (response.status === 429 || response.status === 503 || response.status >= 500) {
+      if (attempt === V207_OUTPUT_DELETE_RETRY_DELAYS_MS.length) {
+        throw new Error(`V207_OUTPUT_DELETE_${response.status}`);
+      }
+      await sleepImpl(V207_OUTPUT_DELETE_RETRY_DELAYS_MS[attempt]!);
+      continue;
+    }
+    if (!response.ok) throw new Error(`V207_OUTPUT_DELETE_${response.status}`);
+    let responseBody: ArrayBuffer;
+    try {
+      responseBody = await response.arrayBuffer();
+    } catch {
+      if (attempt === V207_OUTPUT_DELETE_RETRY_DELAYS_MS.length) {
+        throw new Error("V207_OUTPUT_DELETE_TRANSPORT_UNCERTAIN");
+      }
+      await sleepImpl(V207_OUTPUT_DELETE_RETRY_DELAYS_MS[attempt]!);
+      continue;
+    }
+    let value: unknown;
+    try {
+      value = JSON.parse(new TextDecoder().decode(responseBody));
+    } catch {
+      throw new Error("V207_OUTPUT_DELETE_RESPONSE_INVALID");
+    }
+    if (
+      !value ||
+      typeof value !== "object" ||
+      Array.isArray(value) ||
+      (value as AnyRecord).schema_version !== "videoforge-v207-generated-output-delete/v1" ||
+      (value as AnyRecord).deleted !== true
+    ) {
+      throw new Error("V207_OUTPUT_DELETE_RESPONSE_INVALID");
+    }
+    return;
+  }
+}
+
+export async function deleteV207GeneratedObjects(
+  objectKeys: Iterable<string>,
+  nonce: string,
+  options: V207GeneratedOutputDeleteOptions = {},
+): Promise<V207GeneratedOutputRollbackSummary> {
+  const uniqueObjectKeys = [...new Set(objectKeys)].sort();
+  let failedObjectKeyCount = 0;
+  for (const objectKey of uniqueObjectKeys) {
+    try {
+      await deleteV207GeneratedObject(objectKey, nonce, options);
+    } catch {
+      failedObjectKeyCount += 1;
+    }
+  }
+  const summary = generatedOutputRollbackSummary(uniqueObjectKeys.length, failedObjectKeyCount);
+  if (failedObjectKeyCount > 0) throw new V207GeneratedOutputRollbackError(summary);
+  return summary;
 }
 
 const V207_BILLING_READ_RETRY_DELAYS_MS = [250, 1_000, 2_000] as const;
@@ -1606,6 +1721,7 @@ async function createBatch(
   attemptId: string,
   nonce: string,
   workerToken: string,
+  rollbackObjectKeys: Set<string>,
   itemCount: number,
   abortCheck?: () => void,
   acceptedUnits?: readonly RunPodV207AcceptedUnitRecord[],
@@ -1658,6 +1774,9 @@ async function createBatch(
       abortCheck?.();
       const objectKey = `${outputPrefix}/artifact/${item.scene_id}`;
       objectKeys.push(objectKey);
+      // The outer owner must know the key before the remote reservation can commit. If this PUT
+      // response is lost, the shared ledger still drives a second exact-key cleanup pass.
+      rollbackObjectKeys.add(objectKey);
       const signed = await routePort(
         {
           schema_version: "videoforge-v207-generated-output-port-request/v1",
@@ -1691,9 +1810,13 @@ async function createBatch(
     }
   } catch (error) {
     try {
-      await deleteGeneratedObjects(objectKeys, nonce);
-    } catch {
-      throw new Error("V207_BATCH_PORT_ROLLBACK_UNCERTAIN", { cause: error });
+      await deleteV207GeneratedObjects(objectKeys, nonce);
+    } catch (rollbackError) {
+      const summary =
+        rollbackError instanceof V207GeneratedOutputRollbackError
+          ? rollbackError.summary
+          : generatedOutputRollbackSummary(objectKeys.length, objectKeys.length);
+      throw new V207BatchPortRollbackError(summary, error);
     }
     throw error;
   }
@@ -2433,7 +2556,7 @@ async function main(): Promise<void> {
       },
     });
     let success = false;
-    const generatedObjectKeys: string[] = [];
+    const generatedObjectKeys = new Set<string>();
     try {
       await persistCheckpoint("initialized");
       cancellation.throwIfRequested();
@@ -2450,10 +2573,10 @@ async function main(): Promise<void> {
         coldAttemptId,
         nonce,
         workerToken,
+        generatedObjectKeys,
         32,
         cancellation.throwIfRequested,
       );
-      generatedObjectKeys.push(...cold.objectKeys);
       console.error("v207:cold-ports-ready");
       await persistCheckpoint("cold-ports");
       cancellation.throwIfRequested();
@@ -2487,10 +2610,10 @@ async function main(): Promise<void> {
         warmAttemptId,
         nonce,
         workerToken,
+        generatedObjectKeys,
         32,
         cancellation.throwIfRequested,
       );
-      generatedObjectKeys.push(...warm.objectKeys);
       console.error("v207:warm-ports-ready");
       await persistCheckpoint("warm-ports");
       cancellation.throwIfRequested();
@@ -2519,10 +2642,10 @@ async function main(): Promise<void> {
         `v207-cancel-${runTag}`,
         nonce,
         workerToken,
+        generatedObjectKeys,
         32,
         cancellation.throwIfRequested,
       );
-      generatedObjectKeys.push(...cancel.objectKeys);
       await persistCheckpoint("cancel-ports");
       cancellation.throwIfRequested();
       const cancelJob = await harness.dispatchBatch(cancel.input);
@@ -2530,7 +2653,7 @@ async function main(): Promise<void> {
       const cancelled = await harness.cancel(cancelJob.id);
       if (cancelled.status !== "CANCELLED") throw new Error("V207_CANCEL_UNCONFIRMED");
       evidence.cancel_status = cancelled.status;
-      await deleteGeneratedObjects(cancel.objectKeys, nonce);
+      await deleteV207GeneratedObjects(cancel.objectKeys, nonce);
       evidence.cancel_output_cleanup = "CONFIRMED";
       await persistCheckpoint("cancel-terminal");
       await harness.scaleDownToInitial();
@@ -2543,10 +2666,10 @@ async function main(): Promise<void> {
         timeoutAttemptId,
         nonce,
         workerToken,
+        generatedObjectKeys,
         32,
         cancellation.throwIfRequested,
       );
-      generatedObjectKeys.push(...timeout.objectKeys);
       await persistCheckpoint("timeout-ports");
       cancellation.throwIfRequested();
       const timeoutJob = await harness.dispatchTimeoutBatch(timeout.input);
@@ -2561,7 +2684,7 @@ async function main(): Promise<void> {
       if (timeoutResult.status !== "TIMED_OUT") {
         throw new Error("V207_TIMEOUT_NOT_OBSERVED");
       }
-      await deleteGeneratedObjects(timeout.objectKeys, nonce);
+      await deleteV207GeneratedObjects(timeout.objectKeys, nonce);
       evidence.timeout_output_cleanup = "CONFIRMED";
       await persistCheckpoint("timeout-output-cleanup");
       await harness.scaleDownToInitial();
@@ -2581,18 +2704,18 @@ async function main(): Promise<void> {
         readerAAttemptId,
         nonce,
         workerToken,
+        generatedObjectKeys,
         32,
         cancellation.throwIfRequested,
       );
-      generatedObjectKeys.push(...readerA.objectKeys);
       const readerB = await createBatch(
         readerBAttemptId,
         nonce,
         workerToken,
+        generatedObjectKeys,
         32,
         cancellation.throwIfRequested,
       );
-      generatedObjectKeys.push(...readerB.objectKeys);
       await persistCheckpoint("reader-ports");
       const readerJobs = await harness.dispatchConcurrentReaders([readerA.input, readerB.input]);
       await persistCheckpoint("reader-dispatch");
@@ -2648,7 +2771,7 @@ async function main(): Promise<void> {
       cancellation.throwIfRequested();
       await harness.scaleDownToInitial();
       await persistCheckpoint("reader-drained");
-      await deleteGeneratedObjects(generatedObjectKeys, nonce);
+      await deleteV207GeneratedObjects(generatedObjectKeys, nonce);
       evidence.generated_output_cleanup = "CONFIRMED";
       await persistCheckpoint("generated-output-cleanup", {
         event: "generated_output_objects_deleted",
@@ -2684,15 +2807,36 @@ async function main(): Promise<void> {
     } catch (error) {
       const outputContractDiagnostics = extractV207OutputContractDiagnostics(error);
       if (outputContractDiagnostics) Object.assign(evidence, outputContractDiagnostics);
+      const batchPortRollbackDiagnostic = extractV207BatchPortRollbackDiagnostic(error);
+      if (batchPortRollbackDiagnostic) {
+        evidence.batch_port_rollback_diagnostic = batchPortRollbackDiagnostic;
+      }
       evidence.error = safeQualificationError(error);
       const errorCategory = extractV207EndpointReadbackMismatchCategory(error);
       if (errorCategory !== null) evidence.error_category = errorCategory;
-      try {
-        await deleteGeneratedObjects(generatedObjectKeys, nonce);
-        evidence.generated_output_rollback = "CONFIRMED";
-      } catch (rollbackError) {
-        evidence.generated_output_rollback = "UNCERTAIN";
-        evidence.generated_output_rollback_error = safeQualificationError(rollbackError);
+      evidence.generated_output_rollback_object_key_count = generatedObjectKeys.size;
+      if (generatedObjectKeys.size === 0) {
+        evidence.generated_output_rollback = "NOT_REQUIRED";
+        evidence.generated_output_rollback_confirmed_object_key_count = 0;
+        evidence.generated_output_rollback_failed_object_key_count = 0;
+      } else {
+        try {
+          const rollback = await deleteV207GeneratedObjects(generatedObjectKeys, nonce);
+          evidence.generated_output_rollback = "CONFIRMED";
+          evidence.generated_output_rollback_confirmed_object_key_count =
+            rollback.confirmedObjectKeyCount;
+          evidence.generated_output_rollback_failed_object_key_count =
+            rollback.failedObjectKeyCount;
+        } catch (rollbackError) {
+          evidence.generated_output_rollback = "UNCERTAIN";
+          evidence.generated_output_rollback_error = safeQualificationError(rollbackError);
+          if (rollbackError instanceof V207GeneratedOutputRollbackError) {
+            evidence.generated_output_rollback_confirmed_object_key_count =
+              rollbackError.summary.confirmedObjectKeyCount;
+            evidence.generated_output_rollback_failed_object_key_count =
+              rollbackError.summary.failedObjectKeyCount;
+          }
+        }
       }
       try {
         await harness.cleanup({ deleteIfFailed: true, failed: true });
