@@ -97,7 +97,7 @@ Recommended Runware settings:
 
 Use strict `jsonSchema`. Application code owns style suffixes, optional extra keywords, and permanent guardrails so the model cannot omit or inconsistently repeat them.
 
-DeepSeek scene-writing contract (`scene-prompt-writer-v2`, Runware request v11):
+DeepSeek scene-writing contract (`scene-prompt-writer-v2`, Runware request v16):
 
 ```text
 You write concise image scene cores for VideoForge. For each stable scene ID,
@@ -116,14 +116,18 @@ GPU, retry, or fallback. Return only the strict requested JSON and every scene I
 exactly once.
 ```
 
-Request v11 makes the structured fields explicit: `literal_subject`, `action`, `environment`, and
+Request v16 makes the structured fields explicit: `literal_subject`, `action`, `environment`, and
 `lighting_context` are the source-bound scene facts, with `continuity_tags` and a compatibility-only
 `prompt_core`. Subject, action, and environment must retain concrete anchors from the exact phrase,
 containing sentence, bounded previous/next narration, or compact global story context. The action
 starts with the exact phrase's first distinctive action, allowing morphology only; a while/then/and/but
 action chain is accepted only when that coordination is narrated. The compiler derives final literal
 image content from the validated structured facts, so `prompt_core` cannot change the subject, action,
-environment, or lighting that reaches the image model.
+environment, or lighting that reaches the image model. The bounded action gate treats only
+high-confidence semantic equivalents as the same visible predicate. Static placement wording such
+as keep/remain/rest/stay/store/tuck is equivalent, while sit/stand/position and genuinely different
+actions remain distinct. This vocabulary validates narration meaning only; it never adds style
+attributes to a prompt.
 
 ## Compact DeepSeek output
 

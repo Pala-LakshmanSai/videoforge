@@ -4,59 +4,42 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- Provider-free repair `2d5d00f3` isolates `POST /prompts` into a dedicated dynamic route before
-  the broad product import. Prompt-only pipeline/control-plane package subpaths keep unrelated
-  stores and root barrels out of the path. The emitted Stage 5 incremental closure is 171,722 bytes
-  (128.74 KiB route plus 42.98 KiB shared helpers), below an enforced 256 KiB ceiling; the former
-  496.77 KiB product chunk is now 326.93 KiB.
-- Deployment quarantine requires the prompt route, rejects product/validator/generation/style/audio/
-  context dependencies even if hidden in the static closure, and enforces exact no-growth static
-  totals of 2,717,421 production bytes and 2,746,603 staging bytes. Crossed or unknown configs fail
-  closed. Focused web prompt tests pass 77/77, package prompt tests 40/40, guard tests 15/15, both
-  Worker builds/quarantines, web typecheck, lint, formatting, and independent re-audit pass.
-- This repair is source-green and undeployed. The live identity remains source `e3009a32` / Worker
-  `c0a78315-40b0-4f93-ab01-80b4eee89af3`; project `07f3235d-8f92-4de6-960b-86ebaf5d0ea8`
-  remains frozen. Fresh exact source-bound authority is required before one deployment and one new
-  Stage 1–5 project. No provider call, retrieval, deployment, GPU, RunPod, production, volume
-  mutation, or spend occurred while preparing the repair.
-
-- Clean source `e3009a32b41c9249518e2754c47fe7acbd7e03a4` was deployed exactly once to staging as
-  Worker `c0a78315-40b0-4f93-ab01-80b4eee89af3` with rendered-config SHA-256
-  `62c130ba4f556f2986ea4d13768befbed760fc22e4fcb7e6d624fcb34c931457`. It includes
-  Stage 5 request v15 and the bounded Stage 4 validator cold path. Migrations `0069`–`0073` and the
+- Clean source `13cdea0b2556cc38d6a4d34747cb2bcf0970c012` was deployed exactly once to staging as
+  Worker `be21de25-a3a4-481f-ac24-5470ef28131e` with rendered-config SHA-256
+  `b16b896a405ddc3c7df4efe8f7d76a982d68803d6fb307d0e44a668a5f4cc84f`. It contains the
+  dedicated 171,722-byte Stage 5 dynamic closure from `2d5d00f3`. Migrations `0069`–`0073` and the
   V2-06 runtime grant were already applied and were not replayed; GPU transport remains
   `DISABLED_UNQUALIFIED`.
-- Signed-in real Chrome passed the immediate local-space preflight at `5,494,784,000` available
-  bytes and created exactly one fresh project, `07f3235d-8f92-4de6-960b-86ebaf5d0ea8`. Stages 1–3 completed. Stage
-  4 then completed successfully: `POST /render` succeeded and persisted a 37-segment plan containing
-  32 image slots and 9 avatar slots. This live run therefore qualifies the Stage 4 CPU repair.
-- Stage 5 started automatically but stopped at the first terminal failure. `POST /prompts` returned
-  Cloudflare HTTP 503 with outcome `exceededCpu` after `165 ms` CPU and `626 ms` wall time, before
-  any prompt was accepted. The UI remained at Stage 5 `0/100` and displayed `$0.00`. This is only
-  the UI cost observation; no exact provider-spend claim is made.
-- No retry or provider retrieval occurred. Project `07f3235d-8f92-4de6-960b-86ebaf5d0ea8` and its authority are consumed and
+- Signed-in real Chrome passed the immediate local-space preflight at `3,748,261,888` available
+  bytes and created exactly one fresh project, `28146202-1b64-481a-8878-a5961c48839e`. Stages 1–3
+  completed. Stage 4 completed with 36 total timeline segments, 31 image scenes, and 10 avatar
+  segments, reconfirming the Stage 4 CPU repair.
+- Stage 5 reached Runware successfully; this is not the earlier Worker CPU failure. Its first of two
+  persisted planned batches requested 16 scenes and DeepSeek V4 Flash returned all 16. Local
+  validation then stopped on the first provider-ordered row with `HOSTED_PROMPT_OUTPUT_INVALID`,
+  category `scene_quality`, reason `scene_relevance_action_conflict`. The short-circuit reports zero
+  locally valid and 16 unresolved rows; it does not prove all 16 outputs were invalid. No batch was
+  accepted or persisted and batch two was not dispatched.
+- The first request has exact known cost 964 micro-USD (`$0.000964`). The UI's `$0.00` was cent
+  rounding. The failure was definite (`provider_may_have_charged=false`), so accounting settles the
+  known cost and releases the unused reservation. No retry, continuation, or provider retrieval
+  occurred. Project `28146202-1b64-481a-8878-a5961c48839e` and its authority are consumed and
   frozen; never retry, continue, or retrieve it.
-- Request v15 remains unqualified because Stage 5 accepted no prompt. Repair `2d5d00f3` preserves
-  its existing request-count, durable incremental-batch, validation, no-redispatch,
-  narration-grounding, pinned-style, and cost-conservation contracts. Any deployment or fresh Stage
-  1–5 project requires new exact source-bound authority.
-- The repaired Stage 5 cold-path seam was isolated because `app.ts` previously imported the broad
-  496,769-byte `product` route before dispatching `/prompts`, and that chunk statically carries
-  unrelated style-analysis, audio, context, generation-persistence, R2, and GPU code. Give
-  `/prompts` now has its own dynamic route before the `product` import, backed only by narrow shared
-  request/auth/database helpers and prompt-specific package subpaths. Deployment quarantine should
-  require that dynamic entry, reject unrelated route/validator dependencies, cap its incremental
-  closure at 256 KiB, and keep exact per-target shared-entry no-growth guards. The shared entry
-  is a cold-start risk but is not independently proven to be this Stage 5-only terminal cause.
-- Future fresh projects still use `scene-prompt-writer-v2`, narration-grounded structured scene facts,
-  and adaptive batching with no project scene cap. Exactly one DeepSeek V4 Flash request is allowed
-  per persisted planned batch, accepted batches are durable before the next request, and failure or
-  ambiguity never redispatches. The compiler derives final literal content from validated
-  `literal_subject`, `action`, `environment`, and `lighting_context`, never raw `prompt_core`.
-- Relevant provider-free evidence for v15 remains green: focused writer 69/69, TypeScript build,
-  formatting, and diff checks. The prior v15 iteration also passed pipeline 175/175, pipeline
-  lint/typecheck, and web production/staging builds/typecheck before the final isolated
-  dependent-fragment regression. Stage 4 is now live-proven; Stage 5 remains unqualified.
+- Provider-free repair `614c49796ab94df3e51bd8325b640c9c3b0cda6f` advances the immutable DeepSeek
+  request identity to v16 and fixes the reproduced false rejection: a bottle narrated as `tucked`
+  in a medicine cabinet may be rendered as `resting` on its shelf. The narrow static-placement
+  equivalence covers keep/remain/rest/stay/store/tuck while sit, stand, position, fill/empty,
+  plant/harvest, eat/drink, stealing, destruction, and un-narrated coordinated actions remain
+  distinct or rejected. This is semantic narration validation, not a hardcoded visual style.
+- The terminal UI now says `Stopped · 0 / N batches accepted` instead of misleadingly saying that it
+  is preparing another batch; the no-redispatch behavior is unchanged. Provider-free verification
+  passes 81 prompt/planner tests, 93 hosted UI/route/transport tests, pipeline build/typecheck, both
+  production and staging Worker builds/quarantines, 15/15 deployment bundle guards, targeted lint,
+  formatting, and diff checks. The Stage 5 closure remains 171,722 bytes beneath the 256 KiB limit.
+- Request v16 is source-green but undeployed and live-unqualified. Fresh exact source-bound authority
+  is required before one deployment and one new Stage 1–5 project. Future fresh projects retain
+  deterministic adaptive batching with no project scene cap, one DeepSeek request per persisted
+  planned batch, durable acceptance before the next request, and no retry or redispatch on failure.
 - The aggregate `CI=1 TURBO_FORCE=true pnpm verify` is not repository-wide green for reasons outside
   this Stage 5 diff: historical V2-06/V2-13 script pins report 29 failures, and V2-08 worker image
   hash pins report 3 failures. The affected scripts, workflow, worker, and contract files are byte-

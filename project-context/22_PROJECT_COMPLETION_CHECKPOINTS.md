@@ -37,25 +37,27 @@ reported separately.
 
 ## Exact current state
 
-Repository truth at the 2026-09-03 handoff:
+Repository truth at the 2026-09-04 handoff:
 
-- provider-free repair `2d5d00f3` isolates Stage 5 into a dedicated dynamic route with prompt-only
-  package subpaths. Its emitted incremental closure is 171,722 bytes under a 256 KiB gate; exact
-  production/staging static no-growth totals are 2,717,421/2,746,603 bytes. Focused prompt and guard
-  suites, typecheck, lint, formatting, both builds/quarantines, and independent re-audit pass. It is
-  undeployed and requires fresh exact source-bound deployment/project authority;
-- source `ffcc89c2` remains the historical accepted Stage 5 baseline. Current source
-  `e3009a32b41c9249518e2754c47fe7acbd7e03a4` was deployed exactly once as Worker
-  `c0a78315-40b0-4f93-ab01-80b4eee89af3` with rendered-config SHA-256
-  `62c130ba4f556f2986ea4d13768befbed760fc22e4fcb7e6d624fcb34c931457`. Fresh project
-  `07f3235d-8f92-4de6-960b-86ebaf5d0ea8` passed the immediate `5,494,784,000`-byte local-space preflight and completed Stages 1–3, then
-  completed Stage 4 through a successful `POST /render`: 37 total timeline segments, 32 image slots,
-  and 9 avatar slots. Stage 5 then stopped terminal when `POST /prompts` returned Cloudflare HTTP
-  503 `exceededCpu` after 165 ms CPU and 626 ms wall time, before any accepted prompt. The UI showed
-  Stage 5 at 0/100 and `$0.00`; this is not an exact provider-spend claim. No retry or provider
-  retrieval occurred; the project and authority are consumed and frozen. Stage 4 is live-proven,
-  but v15 remains unqualified. Next, bound Stage 5 cold-path modules provider-free, then require
-  fresh exact source-bound authority for any deployment or new project;
+- clean source `13cdea0b2556cc38d6a4d34747cb2bcf0970c012`, including the dedicated
+  171,722-byte Stage 5 closure from `2d5d00f3`, was deployed exactly once as Worker
+  `be21de25-a3a4-481f-ac24-5470ef28131e`. Fresh project
+  `28146202-1b64-481a-8878-a5961c48839e` passed its 3,748,261,888-byte local-space preflight and
+  completed Stages 1–4 with 36 timeline segments, 31 image scenes, and 10 avatar segments;
+- Stage 5 reached Runware rather than exceeding Worker CPU. The first of two persisted planned
+  batches requested 16 scenes and returned all 16, then local validation stopped on the first row as
+  `scene_quality/scene_relevance_action_conflict`. No prompt was accepted or persisted and batch two
+  was not dispatched. Exact known Stage 5 cost is 964 micro-USD; the `$0.00` UI was cent rounding.
+  No retry, continuation, or provider retrieval occurred; the project and its authority are consumed
+  and frozen;
+- provider-free repair `614c49796ab94df3e51bd8325b640c9c3b0cda6f` advances request identity to
+  v16 and makes static placement predicates keep/remain/rest/stay/store/tuck equivalent. It fixes the
+  reproduced hydrogen-peroxide `tucked` to `resting` false rejection without hardcoding visual style
+  or collapsing sit/stand/position and genuinely conflicting actions. Terminal batch copy is also
+  truthful. Verification passes 81 prompt/planner tests, 93 hosted UI/route/transport tests,
+  pipeline build/typecheck, both Worker builds/quarantines, 15/15 bundle guards, targeted lint,
+  formatting, and diff checks. v16 is undeployed and requires fresh exact authority for any live
+  qualification;
 - V2-07 Attempt64 is closed `NOT_QUALIFIED` after `RUNPOD_ZERO_NOT_CONFIRMED`; exact cleanup and
   three stable reads prove zero compute/disposables with both retained volumes unchanged, and its
   proposal, authority, cap, and run are consumed and non-reusable;
