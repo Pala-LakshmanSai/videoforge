@@ -200,17 +200,13 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt76 is `APPROVED_SINGLE_USE_UNCONSUMED`. Control source
-`6454405d817fe174b2add1d502a31b241b6a0234`, proposal
-`sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6`,
-acceptance `sha256:dc93d951a4179df28d97a35d55413d9866c05b9382e912783dd063560cab8735`,
-authority `sha256:900833b5b851b4031653f0a04e9899a39c4a08c6e5a2594dabbb2eaf9e922fdb`,
-route-repair audit `sha256:4b1c8a921c13079dcdb230c495887faa8d962c4123ee79158f7a162ea09a9c49`,
-and post-approval authority audit
-`sha256:6f6f54f2c13031a5f3b0e4cad80f1298e9587a3053a6a215f66dae3643832cee`
-are separately bound with zero findings. It reuses the unchanged published Mage image without republication.
-The exact bounded qualification is authorized once with a USD 4.50 executable cap; no fallback,
-rollback-anchor refresh, retained-volume mutation, image publication, or V2-08 is authorized.
+**Current gate:** Attempt76 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its active disposable route
+was confirmed, then the Python `urllib` pre-GPU upload failed at
+`V207_DISPOSABLE_PROBE_URLLIB_UPLOAD_REJECTED` before any RunPod resource or GPU job. Cleanup and
+three Cloudflare plus three RunPod reads prove zero disposable compute; observed incremental spend
+was `$0`. V2-07 remains `NOT_QUALIFIED`; executable authority, cap, and anchor-refresh authority
+are null. The exact proposal, acceptance, authority, route audit, and authority audit remain
+historical evidence only.
 
 **Starting point:** Attempt75 consumed its exact proposal and authority, published Mage image
 `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`,
@@ -218,15 +214,16 @@ then failed clean at `V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED` after Cloudf
 before the pre-GPU probe or any RunPod resource/job. Cleanup proved three Cloudflare absence reads,
 three RunPod zero-compute reads, and both exact retained volumes. The observed
 `$0.05205000063870102` billing-window increment is unattributed because Attempt75 submitted zero GPU
-jobs. V2-07 remains `NOT_QUALIFIED`. Attempt75 authority is consumed and null; Attempt76 now holds
-the exact single-use USD 4.50 executable authority described above, with anchor refresh forbidden.
+jobs. Attempt76 later consumed its own exact authority and failed clean as described above. Both
+attempts are non-reusable. The exact published Mage image remains reusable only as immutable image
+input; no provider, mutation, GPU, spend, or V2-08 authority remains.
 
 **Work:**
 
-- preserve Attempt75 closure, acceptance, orchestrator, reconciliation, and successful immutable
-  image-publication evidence; never reuse its proposal, authority, or historical cap;
-- execute only the exact approved Attempt76 source/evidence and single-use authority, then consume
-  it on the first live action regardless of outcome;
+- preserve Attempt75 and Attempt76 closure, acceptance, orchestrator, reconciliation, approval, and
+  immutable image-publication evidence; never reuse either proposal, authority, or historical cap;
+- diagnose and repair the Python `urllib` upload rejection provider-free, independently audit the
+  successor source/evidence, then seal a fresh exact proposal and obtain fresh exact approval;
 - accept only durable 1280×720 outputs, tenant artifact readbacks, signed v3 receipts, exact timing/
   VRAM/cost, unchanged Mage manifest, terminal jobs, zero total workers, and intended volumes only.
 
