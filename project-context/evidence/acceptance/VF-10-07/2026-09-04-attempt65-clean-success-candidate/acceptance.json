@@ -1,0 +1,18 @@
+{
+  "schema_version": "videoforge.v2-07-attempt65-clean-success-acceptance/v1",
+  "checkpoint": "V2-07",
+  "attempt": 65,
+  "status": "APPROVED_SEALED_AWAITING_EXECUTION",
+  "control_source_commit": "0de8949a8345e75c6f423a9338e314a737b2a95d",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "proposal_sha256": "sha256:db48b22e53edc3206538558a07b9603fcb66a2b00b33ec3b6093858540594a0c",
+  "image_publication_sha256": "sha256:2f1d258b48b9bbae614dbbc5d9a4f83de62383316a181945f2dabd3ba4779ba1",
+  "preflight_sha256": "sha256:8b713d9d432f8e6cbef380172bd518e9374516fe6cf39c86f9461f8e6acf6eda",
+  "max1_sha256": "sha256:7eacc9aef1691f5cfaefe262b59718db454a1c735c1ee9face48aa8ee4c5b8ee",
+  "max2_sha256": "sha256:0012d6f8363ec19df035b7bc83925f22cdabf64439df6e4886c10c9014154a51",
+  "validation": "PASS_PROVIDER_FREE",
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "spend_usd": 0,
+  "v2_08_started": false
+}

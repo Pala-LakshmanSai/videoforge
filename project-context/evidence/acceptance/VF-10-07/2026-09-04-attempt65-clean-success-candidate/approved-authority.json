@@ -1,0 +1,23 @@
+{
+  "schema_version": "videoforge.v2-07-attempt65-clean-success-authority/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 65,
+  "status": "APPROVED_SINGLE_USE_UNCONSUMED",
+  "authorized_at": "2026-09-04T11:45:00+05:30",
+  "exact_user_approval": "I approve V2-07 control source 0de8949a8345e75c6f423a9338e314a737b2a95d, image source 095e1642562e4370c89425292428eb474ba190f1, the $4.50 cap, RTX 4090 EU-RO-1 at $1.116/GPU-hour, max two workers, disposable endpoint/template/output deletion, continued $7/month volume retention, and no V2-08 execution.",
+  "control_source_commit": "0de8949a8345e75c6f423a9338e314a737b2a95d",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "maximum_incremental_spend_usd": 4.5,
+  "serverless_flex_usd_per_gpu_hour": 1.116,
+  "workers_max": 2,
+  "anchor_refresh_authorized": false,
+  "automatic_gpu_fallback_authorized": false,
+  "retained_volume_charge_usd_per_month": 7,
+  "retained_volume_mutation_authorized": false,
+  "success_cleanup_required": ["generated_outputs","endpoint","template","signer","temporary_route"],
+  "v2_08_authorized": false,
+  "single_use": true,
+  "proposal_sha256": "sha256:db48b22e53edc3206538558a07b9603fcb66a2b00b33ec3b6093858540594a0c",
+  "acceptance_sha256": "sha256:d799a66c08db629435df0f8823aed6b541f7d95675a3014f51aba32e32129d56"
+}

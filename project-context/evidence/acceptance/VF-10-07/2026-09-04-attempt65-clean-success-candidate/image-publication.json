@@ -1,0 +1,18 @@
+{
+  "schema_version": "videoforge.v2-07-attempt65-image-publication/v1",
+  "workflow_run_id": 33841048200,
+  "workflow_result": "success",
+  "artifact_id": 9924975773,
+  "artifact_sha256": "sha256:c19d1b949e7cf15f474a4bf36434275eb0986384c643d84145438da982c31e04",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "config_digest": "sha256:af05d38128fc75d14aefc4856e661e28e7369f7df90c90beb2875c569605c436",
+  "final_layer_digest": "sha256:e28e45eee00f52ccd5d1d9ff8d5a432a757c91ad4fdd7687cd6defb9a62c9112",
+  "final_layer_diff_id": "sha256:885b0adf0c57ab1e27553e58297a8f261dab8f60db668acb6376d12b2d5848e2",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "handler_sha256": "sha256:e61786748d321124ab39267622ccb647f614e8fac0d560d2e72c6d2a158b528d",
+  "envelope_sha256": "sha256:34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0",
+  "schema_sha256": "sha256:08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f",
+  "anonymous_read_proof_sha256": "sha256:eb921ba1489ce04b7f802e0aad51e8c4d76bba54f36318bc559e7b97b8e904f1",
+  "publication_state": "PUBLISHED_NEW_DIGEST"
+}

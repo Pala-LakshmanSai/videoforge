@@ -1,0 +1,21 @@
+{
+  "schema_version": "videoforge.v2-07-attempt65-staged-config/v1",
+  "checkpoint": "V2-07",
+  "attempt": 65,
+  "stage": "temporary_max_two_reader_proof",
+  "control_source_commit": "0de8949a8345e75c6f423a9338e314a737b2a95d",
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "region": "EU-RO-1",
+  "gpu_count_per_worker": 1,
+  "workers_min": 0,
+  "workers_max": 2,
+  "handler_concurrency": 1,
+  "scaler": {"type":"REQUEST_COUNT","value":1},
+  "whole_project_batches": true,
+  "simultaneous_readers": 2,
+  "automatic_gpu_fallback": false,
+  "redispatch": false,
+  "restore_workers_max": 1,
+  "success_cleanup": ["generated_outputs","endpoint","template"],
+  "final_proof": {"stable_reads":3,"zero_compute":true,"zero_disposables":true,"volumes_unchanged":true,"billing_settled":true}
+}

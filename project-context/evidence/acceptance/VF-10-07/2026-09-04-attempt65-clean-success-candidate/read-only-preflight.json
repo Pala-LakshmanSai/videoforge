@@ -1,0 +1,23 @@
+{
+  "schema_version": "videoforge.v2-07-attempt65-read-only-preflight/v1",
+  "checkpoint": "V2-07",
+  "attempt": 65,
+  "last_observed_at": "2026-09-04T05:28:02.661Z",
+  "fresh_revalidation_required_before_first_mutation": true,
+  "last_observed": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "HIGH",
+    "serverless_flex_rate_usd_per_gpu_hour": 1.116,
+    "retained_volumes": [
+      {"id_sha256":"sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be","size_gb":50,"region":"EU-RO-1"},
+      {"id_sha256":"sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619","size_gb":50,"region":"EU-RO-1"}
+    ]
+  },
+  "mutation_or_spend_during_recording": false,
+  "stop_on_any_fresh_drift": true
+}
