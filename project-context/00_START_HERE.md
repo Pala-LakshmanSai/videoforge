@@ -4,6 +4,24 @@
 
 ### Current new-chat launch point — 2026-09-04
 
+- V2-07 Attempt74 consumed its exact single-use authority after one GPU job completed
+  (`71315 ms` queue, `67163 ms` execution), then the first generated-output PUT failed at
+  `MAGE_SERVERLESS_OUTPUT_UPLOAD_FAILED` before any receipt or finalization. The unchanged Mage
+  image collapses HTTP/TLS/timeout/DNS failures into that one code, so the exact transport sub-cause
+  is not observable and must not be guessed.
+- Signal-safe cleanup confirmed all 32 generated-output keys absent and deleted the disposable
+  endpoint, template, Worker, and route. Three stable reads prove zero Pods/endpoints/templates/
+  workers/running Pods; both exact 50 GB EU-RO-1 volumes remain retained. Billing stayed
+  `2.214659276913153`, so observed incremental spend was `$0`. Closure is
+  `evidence/acceptance/VF-10-07/2026-09-04-live-qualification/failed-attempt-74.json`
+  (`sha256:a468fdf4386018d1b02dd62bd917fc34f73704ae643e05b1266cd38e1d4ec3af`).
+  Attempt74 is consumed, closed, and non-reusable; compiled authority/cap are null and V2-08 remains
+  forbidden.
+- Next work is provider-free only: add bounded redaction-safe Mage uploader failure categories and
+  a pre-GPU disposable-route compatibility/source-identity probe, independently audit the exact
+  source, then seal a fresh successor proposal. If Mage source changes, publishing the new immutable
+  image is a separate external mutation that must be included in the fresh exact proposal.
+
 - V2-07 Attempt73 consumed its exact single-use authority after the first GPU job completed
   (`129325 ms` queue, `58714 ms` execution), then the first generated-output PUT failed at
   `MAGE_SERVERLESS_OUTPUT_UPLOAD_FAILED` before any receipt or finalization. The exact HTTP
@@ -21,14 +39,14 @@
   metadata is tolerated consistently through PUT/finalize/GET, and explicit conflicting metadata is
   rejected. Exact bytes/checksum/PNG probing and capability, expiry, replay, finalization, no-retry,
   and cleanup fences remain unchanged.
-- Attempt74 is `APPROVED_SINGLE_USE_UNCONSUMED` under proposal
+- Attempt74 was approved once and is now `CONSUMED_FAILED_CLEAN_NON_REUSABLE` under proposal
   `sha256:918453ff3d3f5bda704b422a1c9a47a47147d7b8a0b151a9a41a8a7d3b82aef6`; exact authority
   `sha256:f9367781761e641c83cc526daee7329af5ffe68f72e2db38b957c5b4f3491e60` and the USD 4.50
   cumulative cap are compiled once. Output-port source hash is
   `sha256:c83e805f71bacbc80e893b6db08e6df17fe8920fd203d248ededbcba6236cd40`. No provider,
   GPU, mutation, or spend occurred while sealing; no fallback, anchor refresh, or V2-08 action is
   allowed. Independent pre-execution audit `sha256:1b3919647a083388d2eae85a9ea6f95780d89a5f186af20f8e5ecf44315f3110`
-  passes with P0/P1/P2 all zero.
+  passed pre-execution with P0/P1/P2 all zero; it does not qualify the failed live run.
 
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the
