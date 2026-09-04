@@ -8,6 +8,7 @@ describe("ProjectMediaReview", () => {
   it("opens enlarged image and avatar viewers from two clear actions", () => {
     render(
       <ProjectMediaReview
+        launcher="images"
         images={[{ id: "scene-1", url: "https://media.test/scene.png", label: "Scene 1" }]}
         avatarVideos={[
           { id: "avatar-1", url: "https://media.test/avatar.mp4", label: "Avatar clip 1" },

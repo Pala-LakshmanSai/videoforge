@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowLeft, ArrowRight, Images, Play, Video, X } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface ProjectMediaReviewItem {
   readonly id: string;
@@ -17,6 +17,7 @@ export interface ProjectMediaReviewProps {
   readonly loading?: boolean;
   readonly error?: string | null;
   readonly onRetry?: () => void;
+  readonly launcher: MediaSection;
 }
 
 function countLabel(count: number, singular: string, plural: string): string {
@@ -78,8 +79,8 @@ export function ProjectMediaReview({
   loading = false,
   error = null,
   onRetry,
+  launcher,
 }: ProjectMediaReviewProps) {
-  const headingId = useId();
   const [activeSection, setActiveSection] = useState<MediaSection | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [failedAssetId, setFailedAssetId] = useState<string | null>(null);
@@ -118,22 +119,11 @@ export function ProjectMediaReview({
   }
 
   return (
-    <section className="media-review-panel" aria-labelledby={headingId}>
-      <header className="media-review-heading">
-        <div>
-          <p className="eyebrow">Stage 6 + 7 output</p>
-          <h2 id={headingId}>Review source media</h2>
-          <p>
-            Inspect accepted image generations and avatar footage before the final video review.
-          </p>
-        </div>
-        <span className="media-review-private-note">Private to this project</span>
-      </header>
-
-      <div className="media-review-actions">
+    <span className="media-review-stage-launcher">
+      {launcher === "images" ? (
         <button
           ref={imageTriggerRef}
-          className="media-review-launch"
+          className="button button-secondary stage-media-review-button"
           type="button"
           aria-haspopup="dialog"
           aria-label="View generated images"
@@ -154,9 +144,11 @@ export function ProjectMediaReview({
           </span>
           <ArrowRight size={19} aria-hidden="true" />
         </button>
+      ) : null}
+      {launcher === "avatar" ? (
         <button
           ref={avatarTriggerRef}
-          className="media-review-launch"
+          className="button button-secondary stage-media-review-button"
           type="button"
           aria-haspopup="dialog"
           aria-label="View avatar videos/footage"
@@ -180,7 +172,7 @@ export function ProjectMediaReview({
           </span>
           <ArrowRight size={19} aria-hidden="true" />
         </button>
-      </div>
+      ) : null}
 
       <Dialog.Root open={activeSection !== null} onOpenChange={(open) => !open && closeViewer()}>
         <Dialog.Portal>
@@ -349,6 +341,6 @@ export function ProjectMediaReview({
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-    </section>
+    </span>
   );
 }

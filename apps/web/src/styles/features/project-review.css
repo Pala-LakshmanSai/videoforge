@@ -1305,3 +1305,21 @@
   right: 16px;
   bottom: 16px;
 }
+.stage-row-action {
+  margin-top: 0.7rem;
+}
+
+.media-review-stage-launcher {
+  display: inline-flex;
+}
+
+.stage-media-review-button {
+  min-height: 36px;
+  gap: 0.45rem;
+  padding: 0.45rem 0.7rem;
+}
+
+.stage-media-review-button small {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}

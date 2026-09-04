@@ -418,7 +418,13 @@ function activeStageIndex(stages: ProjectStage[]): number {
   return stages.findIndex((stage) => stage.status === "QUEUED" || stage.status === "PENDING");
 }
 
-export function StageTimeline({ stages }: { stages: ProjectStage[] }) {
+export function StageTimeline({
+  stages,
+  actions,
+}: {
+  stages: ProjectStage[];
+  actions?: Readonly<Partial<Record<string, ReactNode>>>;
+}) {
   const activeIndex = activeStageIndex(stages);
   return (
     <ol className="stage-list" aria-label="Project stages">
@@ -443,6 +449,9 @@ export function StageTimeline({ stages }: { stages: ProjectStage[] }) {
                 <Badge tone={tone}>{stage.status.replaceAll("_", " ")}</Badge>
               </div>
               <p>{stage.detail}</p>
+              {actions?.[stage.id] ? (
+                <div className="stage-row-action">{actions[stage.id]}</div>
+              ) : null}
             </div>
             <span className="stage-count">
               {stage.completed}/{stage.total}

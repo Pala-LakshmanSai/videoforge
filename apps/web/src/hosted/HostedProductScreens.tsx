@@ -3629,17 +3629,45 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       detail: "Accepted Stage 7 avatar footage",
     }),
   );
-  const mediaStageComplete = uiStages.some(
-    (stage) =>
-      stage.status === "COMPLETE" &&
-      (stage.id === "image-generation" ||
-        stage.id === "avatar-generation" ||
-        stage.label === "Generate images" ||
-        stage.label === "Generate avatar video" ||
-        stage.label === "Generate avatar"),
+  const imageStage = uiStages.find(
+    (stage) => stage.id === "image-generation" || stage.label === "Generate images",
   );
-  const showMediaReview =
-    mediaStageComplete || generatedImages.length > 0 || avatarVideos.length > 0;
+  const avatarStage = uiStages.find(
+    (stage) =>
+      stage.id === "avatar-generation" ||
+      stage.label === "Generate avatar video" ||
+      stage.label === "Generate avatar",
+  );
+  const stageMediaActions = {
+    ...(imageStage?.status === "COMPLETE"
+      ? {
+          [imageStage.id]: (
+            <ProjectMediaReview
+              launcher="images"
+              images={generatedImages}
+              avatarVideos={avatarVideos}
+              loading={query.isFetching && !query.data}
+              error={query.isError ? query.error.message : null}
+              onRetry={() => void query.refetch()}
+            />
+          ),
+        }
+      : {}),
+    ...(avatarStage?.status === "COMPLETE"
+      ? {
+          [avatarStage.id]: (
+            <ProjectMediaReview
+              launcher="avatar"
+              images={generatedImages}
+              avatarVideos={avatarVideos}
+              loading={query.isFetching && !query.data}
+              error={query.isError ? query.error.message : null}
+              onRetry={() => void query.refetch()}
+            />
+          ),
+        }
+      : {}),
+  };
   const cancellableAttempts = query.data.attempts.filter((attempt) =>
     ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
   );
@@ -3762,7 +3790,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
 
       <div className="progress-workspace">
         <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
-          <StageTimeline stages={uiStages} />
+          <StageTimeline stages={uiStages} actions={stageMediaActions} />
           {query.data.generation ? (
             <section
               className="generation-plan-summary"
@@ -3928,15 +3956,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               </Badge>
             </div>
           </Panel>
-          {showMediaReview ? (
-            <ProjectMediaReview
-              images={generatedImages}
-              avatarVideos={avatarVideos}
-              loading={query.isFetching && !query.data}
-              error={query.isError ? query.error.message : null}
-              onRetry={() => void query.refetch()}
-            />
-          ) : null}
           {contextComplete && contextDocument ? (
             <Panel
               className="extracted-context-panel"
