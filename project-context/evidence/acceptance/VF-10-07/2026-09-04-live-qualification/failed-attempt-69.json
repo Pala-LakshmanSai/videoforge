@@ -1,0 +1,48 @@
+{
+  "schema_version": "videoforge.v2-07-attempt69-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 69,
+  "status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "qualification_status": "NOT_QUALIFIED",
+  "failure_code": "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
+  "failure_phase": "initial_control_plane_absence_proof",
+  "root_cause": "Cloudflare returned exact absent-worker code 10007, while the local fail-closed absence parser accepted historical code 10090 only.",
+  "proposal_sha256": "sha256:c8fe640f0262384609646e22b42248b9cef8f05a69e5a70a19f70e3071b80979",
+  "control_source_commit": "e8d5a563ab4aea80e898bbd38559d0d9b3d177d2",
+  "activation_commit": "76852158e89232de6b76d3b1084759bf8726f67e",
+  "authority_sha256": "sha256:d6847f32a21068c49824f118e6b8187636c72530de006041279875d24ac6f2cc",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "execution": {
+    "preflight_completed": true,
+    "cloudflare_worker_deployed": false,
+    "cloudflare_secret_or_route_activated": false,
+    "runpod_resources_created": false,
+    "gpu_jobs_submitted": 0,
+    "provider_mutations": 0,
+    "incremental_spend_usd": 0,
+    "v2_08_actions": 0
+  },
+  "cleanup": {
+    "disposable_worker_absent": true,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "three_stable_reads": true
+  },
+  "evidence": {
+    "orchestrator": "attempt69-live-orchestrator.json",
+    "orchestrator_sha256": "sha256:871bcc05a3ce7bbf868a4c42a62560d52206f21e034ee3ddb93c8c88043c9691",
+    "cloudflare_absence": "attempt69-cloudflare-absence-observation.json",
+    "cloudflare_absence_sha256": "sha256:5a62289caad227c7bd0cfd862e1f38da4b73932392fc654dd167688f8545b009",
+    "reconciliation": "attempt69-reconciliation-observation.json",
+    "reconciliation_sha256": "sha256:206fc2d16ca5df4acb360b41037e073639636e65eafe74abaada1e6851a01ef1"
+  },
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "next_action": "Provider-free accept exact Cloudflare absent-worker code 10007 and terminalize pre-mutation evidence, then reseal a fresh proposal and obtain fresh exact approval."
+}

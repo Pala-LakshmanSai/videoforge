@@ -1,0 +1,38 @@
+{
+  "schema_version": "videoforge.v2-07-attempt70-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 70,
+  "result": "PASS",
+  "audited_control_source_commit": "71471bba14f63305621f327a85c8e17be5aed28b",
+  "proposal_sha256": "sha256:eade126a85b683ed94343867450c0cd83aca31ead63e1a6beba3727676bc8a05",
+  "acceptance_sha256": "sha256:8942acaf33f7bc92b5caeed3382e056980fa8edc26496772a560c0da8362fffc",
+  "orchestrator_sha256": "sha256:4fa5db6f8d119c3085ddaeff9cdcb3724ab17ce461989f0c3851a7f83b464de7",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "verified": {
+    "structured_absent_code_matcher": true,
+    "request_id_10007_rejected": true,
+    "suffix_10007x_rejected": true,
+    "unrelated_10001_rejected": true,
+    "premutation_failure_evidence_terminal": true,
+    "attempt69_closure_hashes_match": true,
+    "authority_and_cap_null": true,
+    "v2_08_forbidden": true
+  },
+  "validation": {
+    "focused_tests": "90/90",
+    "typecheck": "PASS",
+    "targeted_lint": "PASS",
+    "context_validation": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "provider_calls_during_repair": 0,
+  "provider_mutations_during_repair": 0,
+  "gpu_jobs_submitted_during_repair": 0,
+  "external_spend_during_repair_usd": 0
+}

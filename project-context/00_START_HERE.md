@@ -4,13 +4,14 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt69 is approved single-use at proposal
-  `sha256:c8fe640f…80979`, control source `e8d5a563`, using a dedicated disposable output Worker
-  with direct private-R2 capability paths and atomic one-use reads. Focused tests pass 61/61;
-  typecheck, targeted lint, format, secret scan, diff check, and Wrangler dry-run pass. No provider
-  call, mutation, GPU job, or spend occurred while sealing. Exact authority
-  `sha256:d6847f32…6f2cc` and the `$4.50` cap are now compiled for one bounded execution; V2-08
-  remains forbidden.
+- V2-07 Attempt69 consumed exact authority `sha256:d6847f32…6f2cc` and stopped before mutation at
+  `V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED`. Cloudflare proved the fixed Worker absent with
+  current code `10007`; the local parser accepted historical `10090` only. Three RunPod reads prove
+  zero Pods/endpoints/templates/workers, both 50 GB volumes retained, and `$0` increment.
+- Provider-free repair `71471bba` accepts only structured absent codes `10007`/`10090`, rejects unrelated
+  diagnostics, and terminalizes pre-mutation failure evidence. Attempt70 proposal
+  `sha256:eade126a…8a05` is sealed with the unchanged Mage image and prior cost/cleanup boundary.
+  It has no executable authority; fresh exact approval is required. V2-08 remains forbidden.
 
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the

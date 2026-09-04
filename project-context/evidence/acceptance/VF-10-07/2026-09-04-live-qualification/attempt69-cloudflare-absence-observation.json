@@ -1,0 +1,10 @@
+{
+  "schema_version": "videoforge.v2-07-attempt69-cloudflare-absence-observation/v1",
+  "checked_at": "2026-09-04T11:06:10Z",
+  "worker_name": "videoforge-v207-output",
+  "operation": "deployments_status_read_only",
+  "http_result": "WORKER_DOES_NOT_EXIST",
+  "cloudflare_error_code": 10007,
+  "provider_mutations": 0,
+  "diagnosis": "The fixed disposable Worker is absent. The local absence parser accepted historical code 10090 but not current code 10007."
+}
