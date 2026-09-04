@@ -19,7 +19,7 @@
   but do not identify the initiator; do not guess whether the owner path or worker path initiated it.
   No provider request or spend occurred, and there was no retry, continuation, provider retrieval,
   GPU, RunPod, production, or volume mutation. Freeze this project and treat the approval as consumed.
-- Provider-free repair `b01eb290df2c92064f042a50d1ad51699f89ea02` closes both cancellation
+- Provider-free repair `b01eb29096f76c5f12036196b2ee58dc15c5ea86` closes both cancellation
   hazards found in source. Active project and queue screens now require a deliberate two-click stop,
   and the server rejects a per-attempt POST unless it carries an exact attempt-bound confirmation.
   Personal worker `0.1.14` distinguishes an explicit owner cancellation from a stale-lease fence:
