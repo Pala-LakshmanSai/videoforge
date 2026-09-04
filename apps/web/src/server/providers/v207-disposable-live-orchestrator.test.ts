@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   runV207DisposableLiveOrchestration,
+  V207_DISPOSABLE_CONFIG,
   V207_DISPOSABLE_QUALIFICATION,
   V207_DISPOSABLE_ROUTE,
   V207_DISPOSABLE_SECRET_NAME,
@@ -136,6 +137,25 @@ afterEach(async () => {
 });
 
 describe("V2-07 disposable live orchestrator", () => {
+  it("resolves the default config from the computed repository cwd", async () => {
+    const setup = await fixture();
+    const options = { ...setup.options, configPath: undefined };
+
+    await runV207DisposableLiveOrchestration(options);
+
+    const expectedConfigPath = join(setup.root, V207_DISPOSABLE_CONFIG);
+    const wranglerCalls = setup.calls.filter((call) => call.command === "pnpm");
+    expect(wranglerCalls.length).toBeGreaterThan(0);
+    for (const call of wranglerCalls) {
+      expect(call.args[call.args.indexOf("--config") + 1]).toBe(expectedConfigPath);
+    }
+    const qualificationCalls = setup.calls.filter((call) => call.command.endsWith("/tsx"));
+    expect(qualificationCalls).toHaveLength(2);
+    for (const call of qualificationCalls) {
+      expect(call.env.V207_WRANGLER_CONFIG).toBe(expectedConfigPath);
+    }
+  });
+
   it("runs the fixed disposable lifecycle in order and proves three-read deletion", async () => {
     const setup = await fixture();
     const completed = await runV207DisposableLiveOrchestration(setup.options);

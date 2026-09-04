@@ -349,7 +349,7 @@ export async function runV207DisposableLiveOrchestration(
   const environment = options.environment ?? process.env;
   (options.authorityParser ?? parseV207ActivationAuthority)(environment);
   const cwd = resolve(options.cwd ?? (process.cwd().endsWith("/apps/web") ? "../.." : "."));
-  const configPath = resolve(options.configPath ?? V207_DISPOSABLE_CONFIG);
+  const configPath = resolve(cwd, options.configPath ?? V207_DISPOSABLE_CONFIG);
   const routeUrl = options.routeUrl ?? V207_DISPOSABLE_ROUTE;
   if (routeUrl !== V207_DISPOSABLE_ROUTE) {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_MISMATCH");
