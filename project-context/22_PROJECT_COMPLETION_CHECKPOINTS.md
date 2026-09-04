@@ -200,18 +200,19 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt78 is sealed `SEALED_AWAITING_FRESH_EXACT_APPROVAL` at control
+**Current gate:** Attempt78 is `APPROVED_SINGLE_USE_UNCONSUMED` at control
 `429ff015eb6502394e042e8c3623608726dce3c4`. Proposal
 `sha256:2cb0188a05b033b1519101767654cbd2f94e8eed4a10fd353bfeb7483618d0a2`, acceptance
-`sha256:c6c4e764bcd85399a2006b243c20356f6ee2471a17cff5733fcf4720bc8ed1a4`, audit
+`sha256:de4aaf34f2d93c4f5f1727b1013f6d02f97ae723d6e62e8757a1f49b33dfbeac`, authority
+`sha256:8b3b6259cfb6dab49fbc7ce0b07d92f51df5c647c72d7ebbbb29cf27b3788c8e`, audit
 `sha256:8d03d9c9ea55dfd9d4a07fb0012d7e14835fe624b60a720fd20d791d2542585c`, and validator
-`sha256:2197960943820c76e79375babbb408df5d8c37bf2fa9d57ea216a0bf67314ce5` pass with P0/P1/P2
+`sha256:15cef77739cad3356dbf4acbf9b5d6846927229abb37d77d28373085b2f31249` pass with P0/P1/P2
 `0/0/0`. The repair classifies at most 4 KiB of route response into fixed redaction-safe classes.
 Before the first exact active fingerprint, the established structured `404 V207_ROUTE_DISABLED`
 with a distinct valid predecessor UUID may propagate; unreachable transport or an exact-version
 `S5XX` diagnostic may retry inside the existing 30-read/60-second/2-second bounds. No retry exists
-after the first exact match or for any other response-diagnostic status/version class. No executable authority or cap exists;
-fresh exact approval is required. V2-07 remains `NOT_QUALIFIED`.
+after the first exact match or for any other response-diagnostic status/version class. Its exact
+single-use `$4.50` authority is unconsumed. V2-07 remains `NOT_QUALIFIED` until live qualification passes.
 
 Attempt77 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its closure
 `sha256:f87d3ab60c1efc07aa59963b790c6bfc2be2fd8b8fa5bc6f53378ddc94c96e43`, orchestrator
@@ -234,7 +235,7 @@ input; no provider, mutation, GPU, spend, or V2-08 authority remains.
 
 - preserve Attempt75 through Attempt77 closure, acceptance, orchestrator, reconciliation, approval,
   and immutable image-publication evidence; never reuse any proposal, authority, or historical cap;
-- execute no Attempt78 provider action until fresh exact approval binds its proposal, finite cap,
+- execute Attempt78 only under its exact unconsumed authority binding the proposal, finite cap,
   placement, image reuse, bounded retry policy, cleanup, and retained-volume scope;
 - accept only durable 1280×720 outputs, tenant artifact readbacks, signed v3 receipts, exact timing/
   VRAM/cost, unchanged Mage manifest, terminal jobs, zero total workers, and intended volumes only.

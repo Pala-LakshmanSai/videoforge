@@ -3,7 +3,7 @@
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
   "attempt": 78,
-  "status": "SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "status": "APPROVED_SINGLE_USE_UNCONSUMED",
   "qualification_status": "NOT_QUALIFIED",
   "proposal_sha256": "sha256:2cb0188a05b033b1519101767654cbd2f94e8eed4a10fd353bfeb7483618d0a2",
   "control_source_commit": "429ff015eb6502394e042e8c3623608726dce3c4",
@@ -13,7 +13,7 @@
   "image_republication_required": false,
   "image_republication_authorized": false,
   "image_reuse_proposed": true,
-  "image_reuse_authorized": false,
+  "image_reuse_authorized": true,
   "image_publication": "../2026-09-04-attempt75-urllib-pregpu-candidate/image-publication.json",
   "image_publication_sha256": "sha256:02fb25196188fcaf9927ece504011d3f1e931d1f87053e88971b4e6b75126677",
   "source_hashes": {
@@ -72,6 +72,14 @@
     "artifact_sha256": "sha256:8d03d9c9ea55dfd9d4a07fb0012d7e14835fe624b60a720fd20d791d2542585c",
     "materialization_pending": false
   },
+  "authority_materialization": {
+    "status": "APPROVED_SINGLE_USE_UNCONSUMED",
+    "preapproval_acceptance_sha256": "sha256:c6c4e764bcd85399a2006b243c20356f6ee2471a17cff5733fcf4720bc8ed1a4",
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:8b3b6259cfb6dab49fbc7ce0b07d92f51df5c647c72d7ebbbb29cf27b3788c8e",
+    "activation_source_path": "../../../../../apps/web/src/server/providers/v207-activation-authority.ts",
+    "activation_source_canonical_sha256": "sha256:c77159105167a901c278a95ea5a5e6b657a8b88bb479b83a8c9d94121bdd6bf3"
+  },
   "predecessor": {
     "attempt": 77,
     "closure": "../2026-09-04-live-qualification/failed-attempt-77.json",
@@ -109,23 +117,23 @@
     "v2_08": false
   },
   "authority": {
-    "status": "NOT_GRANTED_AWAITING_FRESH_EXACT_APPROVAL",
-    "fresh_exact_approval_required": true,
-    "provider_calls_authorized": false,
-    "provider_mutations_authorized": false,
-    "credential_access_authorized": false,
+    "status": "APPROVED_SINGLE_USE_UNCONSUMED",
+    "fresh_exact_approval_required": false,
+    "provider_calls_authorized": true,
+    "provider_mutations_authorized": true,
+    "credential_access_authorized": true,
     "image_publication_authorized": false,
     "image_republication_authorized": false,
-    "reuse_published_image_authorized": false,
-    "gpu_use_authorized": false,
-    "maximum_cumulative_finite_spend_usd": 0,
-    "executable_finite_cap_usd": null,
+    "reuse_published_image_authorized": true,
+    "gpu_use_authorized": true,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "executable_finite_cap_usd": 4.5,
     "anchor_refresh_authorized": false,
     "v2_08_authorized": false,
     "consumed": false,
     "reusable": false,
-    "single_use": false,
-    "authority_path": null,
-    "authority_sha256": null
+    "single_use": true,
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:8b3b6259cfb6dab49fbc7ce0b07d92f51df5c647c72d7ebbbb29cf27b3788c8e"
   }
 }
