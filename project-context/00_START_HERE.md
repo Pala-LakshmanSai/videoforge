@@ -4,21 +4,30 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt72 consumed its exact single-use authority after deploying only the disposable
-  Cloudflare Worker, then stopped at `V207_DISPOSABLE_ROUTE_INVALID`. The first disabled-route read
-  occurred 216 ms after deployment and returned a non-application response; the runner had no
-  bounded propagation retry. No secret/route activation, RunPod resource, GPU job, or V2-08 action
-  occurred. Signal-safe cleanup deleted the disposable Worker/route. Three stable final reads prove
-  zero Pods/endpoints/templates/workers, both exact 50 GB EU-RO-1 volumes remain retained at
-  `$7/month`, and billing stayed `2.214659276913153` for a `$0` increment. Attempt72 is consumed,
-  closed, and non-reusable.
-- Provider-free repair `eef2c337ad8a33820e6136f2e8b74dfc1749f768` adds an abort-aware route propagation
-  window capped at 60 seconds, 30 attempts, and two-second intervals while still requiring three
-  consecutive exact fingerprints. Attempt73 proposal
-  `sha256:ebf37567b468afd2788b3ffe83a4b0bd8687040731ee5576dde3bf076e4a0b14` is approved once under
-  authority `sha256:0af41d4962429215721a30219b3ef5750c69fa4f6e05807c764905ee0c300d1e`
-  and the `$4.50` cap. Execute only its bounded graph; credential-value reads, GPU fallback,
-  rollback-anchor refresh, and V2-08 remain forbidden.
+- V2-07 Attempt73 consumed its exact single-use authority after the first GPU job completed
+  (`129325 ms` queue, `58714 ms` execution), then the first generated-output PUT failed at
+  `MAGE_SERVERLESS_OUTPUT_UPLOAD_FAILED` before any receipt or finalization. The exact HTTP
+  sub-cause was not recoverable from the bounded failure code. No redispatch occurred.
+- Signal-safe cleanup rolled back all 32 generated-output keys and deleted the disposable endpoint,
+  template, Worker, and route. Closure is
+  `evidence/acceptance/VF-10-07/2026-09-04-live-qualification/failed-attempt-73.json`
+  (`sha256:eafcd0ffcdaf72e8ccc61cb200b71ef57570734f21046c9a3ac91b47ea0a5c55`). Three stable
+  RunPod reads prove zero compute/disposables; both exact 50 GB EU-RO-1 volumes remain retained,
+  billing stayed `2.214659276913153`, and incremental spend was `$0`. Attempt73 is consumed,
+  closed, and non-reusable. V2-08 remains forbidden.
+- Provider-free Attempt74 repair `b3a69e06f8e5217cdc36988af7b0f5e32599064f` hardens the output
+  ingress contract: `Content-Length` is optional but strictly validated when present, actual body
+  length is stream-bounded and cancelled at the reservation ceiling, absent optional R2 content-type
+  metadata is tolerated consistently through PUT/finalize/GET, and explicit conflicting metadata is
+  rejected. Exact bytes/checksum/PNG probing and capability, expiry, replay, finalization, no-retry,
+  and cleanup fences remain unchanged.
+- Attempt74 is sealed `PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL` under proposal
+  `sha256:918453ff3d3f5bda704b422a1c9a47a47147d7b8a0b151a9a41a8a7d3b82aef6`; authority and cap
+  are null/zero until fresh exact approval. Output-port source hash is
+  `sha256:c83e805f71bacbc80e893b6db08e6df17fe8920fd203d248ededbcba6236cd40`. No provider,
+  GPU, mutation, or spend occurred while sealing; no fallback, anchor refresh, or V2-08 action is
+  allowed. Independent audit `sha256:1b3919647a083388d2eae85a9ea6f95780d89a5f186af20f8e5ecf44315f3110`
+  passes with P0/P1/P2 all zero.
 
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the

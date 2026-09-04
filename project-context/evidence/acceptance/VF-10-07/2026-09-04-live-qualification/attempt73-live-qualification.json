@@ -1,0 +1,442 @@
+{
+  "schema_version": "videoforge.v2-07-live-qualification/v1",
+  "started_at": "2026-09-04T13:01:13.889Z",
+  "approved_finite_spend_cap_usd": 4.5,
+  "runpod_account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+  "baseline_endpoint_spend_usd": 2.214659276913153,
+  "remaining_cumulative_cap_at_start_usd": 4.5,
+  "cumulative_billing_threshold_usd": 6.714659276913153,
+  "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+  "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "volume_id_hash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "image_attestation": {
+    "manifest_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+    "config_digest": "sha256:af05d38128fc75d14aefc4856e661e28e7369f7df90c90beb2875c569605c436",
+    "source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+    "base_digest": "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+    "os": "linux",
+    "architecture": "amd64",
+    "offline": true
+  },
+  "immediate_pre_mutation_inventory_checked_at": "2026-09-04T13:01:12.414Z",
+  "selected_catalog_offering": {
+    "offering_id": "[REDACTED]",
+    "region": "EU-RO-1",
+    "availability": "LOW",
+    "secure_reference_rate_usd_per_hour": 0.74,
+    "vram_gb": 24,
+    "serverless_flex_rate_usd_per_gpu_hour": 1.116,
+    "availability_threshold": "[REDACTED]"
+  },
+  "batches": [],
+  "run_tag": "20260820-b670b62b5196",
+  "phase": "status",
+  "checkpoint_events": [
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_QUEUE",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": null,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_PROGRESS",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": 129325,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_PROGRESS",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": 129325,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_PROGRESS",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": 129325,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "IN_PROGRESS",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": 129325,
+      "execution_time_ms": null
+    },
+    {
+      "phase": "status",
+      "event": "provider_status",
+      "status": "COMPLETED",
+      "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+      "delay_time_ms": 129325,
+      "execution_time_ms": 58714
+    }
+  ],
+  "harness": {
+    "schemaVersion": "[REDACTED]",
+    "templateIdHash": "sha256:e0c7474aecceae6c4bb3cb095d37e7bd883fe7e6595cafa89f8cbb5c11530d5a",
+    "endpointIdHash": "sha256:dedc152e7e436935bc4ebff88970aa47128db64ea6fe26a552aaf4b1341db8ff",
+    "initialConfigHash": "sha256:eed0cfab8614bdcd856bb42fe806172a02d24c6d90ff2f54cf7325e2b1397f4f",
+    "concurrentReaderConfigHash": null,
+    "retainedVolumeIdHash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+    "imageDigest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+    "events": [
+      {
+        "event": "retained_mage_volume_verified",
+        "retained_volume_id_hash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "retained_volume_size_gb": 50,
+        "retained_volume_region": "EU-RO-1"
+      },
+      {
+        "event": "template_created",
+        "template_id_hash": "sha256:e0c7474aecceae6c4bb3cb095d37e7bd883fe7e6595cafa89f8cbb5c11530d5a"
+      },
+      {
+        "event": "endpoint_identity_bound",
+        "endpoint_id_hash": "sha256:dedc152e7e436935bc4ebff88970aa47128db64ea6fe26a552aaf4b1341db8ff"
+      },
+      {
+        "event": "retained_mage_volume_verified",
+        "retained_volume_id_hash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "retained_volume_size_gb": 50,
+        "retained_volume_region": "EU-RO-1"
+      },
+      {
+        "event": "retained_mage_volume_verified",
+        "retained_volume_id_hash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "retained_volume_size_gb": 50,
+        "retained_volume_region": "EU-RO-1"
+      },
+      {
+        "event": "provider_terminal_worker_scale_zero_baseline",
+        "endpoint_id_hash": "sha256:dedc152e7e436935bc4ebff88970aa47128db64ea6fe26a552aaf4b1341db8ff",
+        "endpoint_worker_record_count": 1,
+        "terminal_pod_record_count": 1,
+        "stable_terminal_snapshot_count": 2,
+        "startup_health_proof": "[REDACTED]",
+        "startup_queue_proof_read_count": 4
+      },
+      {
+        "event": "endpoint_created_and_zero_confirmed",
+        "endpoint_id_hash": "sha256:dedc152e7e436935bc4ebff88970aa47128db64ea6fe26a552aaf4b1341db8ff",
+        "endpoint_config_sha256": "sha256:eed0cfab8614bdcd856bb42fe806172a02d24c6d90ff2f54cf7325e2b1397f4f"
+      },
+      {
+        "event": "job_dispatched",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "attempt_id": "[REDACTED]"
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_QUEUE",
+        "delay_time_ms": null,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_PROGRESS",
+        "delay_time_ms": 129325,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_PROGRESS",
+        "delay_time_ms": 129325,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_PROGRESS",
+        "delay_time_ms": 129325,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "IN_PROGRESS",
+        "delay_time_ms": 129325,
+        "execution_time_ms": null
+      },
+      {
+        "event": "job_status",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "COMPLETED",
+        "delay_time_ms": 129325,
+        "execution_time_ms": 58714
+      },
+      {
+        "event": "job_diagnostic",
+        "job_id_hash": "sha256:d16dae60b00953ae88747aeb4027e361ea4273a694339fa54783311159c895ae",
+        "status": "COMPLETED",
+        "code": null,
+        "message": null,
+        "reason": null
+      },
+      {
+        "event": "retained_mage_volume_verified",
+        "retained_volume_id_hash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "retained_volume_size_gb": 50,
+        "retained_volume_region": "EU-RO-1"
+      },
+      {
+        "event": "retained_mage_volume_verified",
+        "retained_volume_id_hash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "retained_volume_size_gb": 50,
+        "retained_volume_region": "EU-RO-1"
+      },
+      {
+        "event": "provider_terminal_worker_drain_confirmed",
+        "endpoint_id_hash": "sha256:dedc152e7e436935bc4ebff88970aa47128db64ea6fe26a552aaf4b1341db8ff",
+        "endpoint_worker_record_count": 3,
+        "terminal_pod_record_count": 3,
+        "stable_terminal_snapshot_count": 2,
+        "post_job_health_proof": "[REDACTED]",
+        "post_job_queue_proof_read_count": 4
+      },
+      {
+        "event": "workers_zero_confirmed"
+      },
+      {
+        "event": "disposable_endpoint_and_template_deleted"
+      }
+    ],
+    "measuredSpendUsd": 0,
+    "projectedSpendUsd": 0.28635134,
+    "activeWorstCaseLiabilityUsd": 0,
+    "newPaidWorkFenced": false,
+    "gpuHourlyRateUsd": 1.116,
+    "billingLagMarginSeconds": 60
+  },
+  "error": "MAGE_OUTPUT_NOT_SUCCEEDED",
+  "error_category": "output_contract",
+  "output_failure_stage": "top_level",
+  "output_status": "FAILED",
+  "output_failure_code": "MAGE_SERVERLESS_OUTPUT_UPLOAD_FAILED",
+  "output_shape_kind": "object",
+  "output_shape_keys": [
+    "failure_code",
+    "status"
+  ],
+  "generated_output_rollback_object_key_count": 32,
+  "generated_output_rollback": "CONFIRMED",
+  "generated_output_rollback_confirmed_object_key_count": 32,
+  "generated_output_rollback_failed_object_key_count": 0,
+  "failure_reconciliation": {
+    "schema_version": "videoforge.v2-07-readonly-reconciliation/v2",
+    "checked_at": "2026-09-04T13:11:27.880Z",
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "inventory": {
+      "pods": 0,
+      "endpoints": 0,
+      "private_templates": 0,
+      "active_serverless_workers": 0,
+      "running_pods": 0,
+      "retained_volumes": [
+        {
+          "idHash": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+          "sizeGb": 50,
+          "dataCenterId": "[REDACTED]"
+        },
+        {
+          "idHash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+          "sizeGb": 50,
+          "dataCenterId": "[REDACTED]"
+        }
+      ]
+    },
+    "billing": {
+      "baseline_endpoint_spend_usd": 2.214659276913153,
+      "final_endpoint_spend_usd": 2.214659276913153,
+      "incremental_spend_usd": 0,
+      "maximum_cumulative_finite_spend_usd": 4.5,
+      "within_approved_cap": true,
+      "settlement": "THREE_STABLE_READS"
+    }
+  },
+  "spend_usd": 0,
+  "cumulative_endpoint_spend_usd": 2.214659276913153,
+  "billing_settlement": "THREE_STABLE_READS",
+  "finished_at": "2026-09-04T13:11:30.349Z",
+  "success": false
+}

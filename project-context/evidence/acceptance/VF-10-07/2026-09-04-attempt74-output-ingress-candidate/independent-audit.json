@@ -1,0 +1,62 @@
+{
+  "schema_version": "videoforge.v2-07-attempt74-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 74,
+  "audited_at": "2026-09-04T13:32:05Z",
+  "result": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "proposal": {
+    "path": "combined-live-proposal.json",
+    "sha256": "sha256:918453ff3d3f5bda704b422a1c9a47a47147d7b8a0b151a9a41a8a7d3b82aef6",
+    "control_source_commit": "b3a69e06f8e5217cdc36988af7b0f5e32599064f",
+    "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+    "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247"
+  },
+  "acceptance": {
+    "path": "acceptance.json",
+    "sha256": "sha256:ad7a2c41a8b5691d5f81f168650a70bc1c2d472ab8eacb1604fe27e37a128b69"
+  },
+  "source_verification": {
+    "disposable_output_ports_sha256": "sha256:c83e805f71bacbc80e893b6db08e6df17fe8920fd203d248ededbcba6236cd40",
+    "all_seven_proposal_source_hashes_match_current_tree": true,
+    "content_length_absence_is_stream_bounded_at_reservation_ceiling": true,
+    "present_content_length_is_canonical_bounded_and_body_matched": true,
+    "optional_r2_metadata_policy_is_consistent_across_put_finalize_and_get": true,
+    "explicit_conflicting_r2_metadata_is_rejected": true,
+    "exact_bytes_checksum_png_probe_capability_expiry_replay_and_cleanup_fences_preserved": true
+  },
+  "predecessor_closure_verification": {
+    "closure_path": "../2026-09-04-live-qualification/failed-attempt-73.json",
+    "closure_sha256": "sha256:eafcd0ffcdaf72e8ccc61cb200b71ef57570734f21046c9a3ac91b47ea0a5c55",
+    "orchestrator_sha256": "sha256:0db13f1871ba55a2631fa569cc24ec841cdb0abdbe7ba16b73d5db638f70f49d",
+    "qualification_sha256": "sha256:77ac402848849e174b436d05993c163d82577d183a6dcb71ce129ae9b4e47881",
+    "one_gpu_job_completed": true,
+    "first_generated_output_put_failed": true,
+    "generated_output_keys_confirmed_absent": 32,
+    "disposable_compute_and_cloudflare_resources_deleted": true,
+    "three_stable_zero_compute_and_billing_reads": true,
+    "observed_incremental_spend_usd": 0,
+    "v2_08_actions": 0,
+    "attempt73_authority_consumed_and_non_reusable": true
+  },
+  "independent_validation": {
+    "focused_tests": "53/53",
+    "focused_test_files": 3,
+    "context_validation": "PASS_WITH_PREEXISTING_READ_PROFILE_WORD_BUDGET_WARNING",
+    "compiled_pending_proposal_matches_proposal": true,
+    "compiled_authority_cap_and_anchor_refresh": "NULL_NULL_NULL",
+    "provider_calls": 0,
+    "provider_mutations": 0,
+    "credential_value_reads": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0,
+    "v2_08_actions": 0
+  },
+  "boundary": "Fresh exact approval of the sealed Attempt74 proposal is required before any provider call, credential access, remote mutation, GPU use, or spend. V2-08 remains forbidden."
+}

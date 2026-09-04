@@ -1,0 +1,70 @@
+{
+  "schema_version": "videoforge.v2-07-attempt74-output-ingress-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 74,
+  "qualification_status": "NOT_QUALIFIED",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL",
+  "control_source_commit": "b3a69e06f8e5217cdc36988af7b0f5e32599064f",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "source_hashes": {
+    "qualification": "sha256:13e7d1581358fa660726d36989355daca8b964a9c61fbc91ad18cb5ef580f121",
+    "harness": "sha256:39da9a77290aa9a61a109578edb285279a058e4d38ec1e55f599943052eaa18d",
+    "reconciliation": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
+    "disposable_output_ports": "sha256:c83e805f71bacbc80e893b6db08e6df17fe8920fd203d248ededbcba6236cd40",
+    "disposable_orchestrator": "sha256:9536e6afddb60fdba55398fb8c8adaf2efb30b4571f3bbeb098f19a229e1ae7d",
+    "disposable_worker_entry": "sha256:264c4e08bcf8a413660f96144ecebbdcf6c0eaedf64e92755ae489ef50c162ba",
+    "disposable_wrangler_config": "sha256:22e1cf0318f683a4e56e836f8fcc446bf755416481f5b13b5aa4d52ca2f89084"
+  },
+  "repair": "treat incoming Content-Length as optional because Cloudflare ingress may normalize or remove it; reject any present noncanonical, over-limit, or body-mismatched length; stream and cancel an unframed body at the reservation ceiling; tolerate absent optional R2 HTTP metadata consistently across PUT confirmation, FINALIZE, GET issuance, and GET readback while rejecting explicit conflicting metadata; preserve exact-byte, checksum, PNG-probe, capability, expiry, replay, finalization, no-retry, and cleanup fences",
+  "placement_and_cost": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "serverless_flex_usd_per_gpu_hour": 1.116,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "retained_volume_charge_usd_per_month": 7,
+    "retained_volume_charge_outside_finite_cap": true,
+    "gpu_fallback": false
+  },
+  "operation_contract": {
+    "workers_min": 0,
+    "workers_max_initial": 1,
+    "workers_max_temporary": 2,
+    "create_fixed_disposable_output_worker_after_absence_proof": true,
+    "shared_staging_worker_mutation": false,
+    "delete_generated_outputs": true,
+    "delete_disposable_endpoint": true,
+    "delete_disposable_template": true,
+    "delete_disposable_output_worker_and_route": true,
+    "signal_safe_cleanup": true,
+    "three_final_zero_compute_disposable_reads": true,
+    "retain_two_sealed_volumes": true,
+    "anchor_refresh_authorized": false,
+    "v2_08_authorized": false
+  },
+  "last_observed_provider_truth": {
+    "evidence": "../2026-09-04-live-qualification/attempt73-live-qualification.json",
+    "checked_at": "2026-09-04T13:11:27.880Z",
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "baseline_endpoint_spend_usd": 2.214659276913153
+  },
+  "preflight": {
+    "fresh_inventory_catalog_billing_and_disposable_worker_absence_reads_required_before_mutation": true,
+    "provider_mutations_completed_during_repair": 0,
+    "gpu_jobs_submitted_during_repair": 0,
+    "external_spend_during_repair_usd": 0
+  },
+  "stop_conditions": [
+    "any source, image, config, GPU, region, rate, volume, billing, capacity, disposable-name, or policy drift",
+    "the fixed disposable output Worker name is present or its absence is not proven exactly",
+    "route state remains invalid after the bounded propagation window",
+    "any malformed, unrelated, version-mismatched, permanent 4xx, cleanup, reconciliation, or cap uncertainty",
+    "any shared staging Worker mutation, GPU fallback, anchor refresh, volume mutation, retry or redispatch, or V2-08 action"
+  ]
+}
