@@ -34,7 +34,7 @@ REPAIR_RUNTIME_FILES = (
     ),
 )
 REPAIR_SOURCE_HASHES = {
-    "workers/image-media/mage_serverless.py": "e61786748d321124ab39267622ccb647f614e8fac0d560d2e72c6d2a158b528d",
+    "workers/image-media/mage_serverless.py": "c4945aabfa9cdb9f18aa9b514d2ec1dfc533865857ac0ee280019cb643961e3c",
     "workers/common/serverless_envelope.py": "34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0",
     "packages/contracts/python/videoforge_contracts/_schema_documents.py": "08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f",
 }
