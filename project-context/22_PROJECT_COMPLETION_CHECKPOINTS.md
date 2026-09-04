@@ -200,6 +200,15 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
+**Current gate:** Attempt76 is `PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL`. Control source
+`6454405d817fe174b2add1d502a31b241b6a0234`, proposal
+`sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6`,
+acceptance `sha256:5acf32e3e826e9d8764a3e18119e16c319ddfc6364baa4197eda8fefcb93d57a`,
+and independent audit
+`sha256:4b1c8a921c13079dcdb230c495887faa8d962c4123ee79158f7a162ea09a9c49`
+are sealed with zero findings. It reuses the unchanged published Mage image. Authority and
+executable cap remain null; fresh exact approval is required before any live action.
+
 **Starting point:** Attempt75 consumed its exact proposal and authority, published Mage image
 `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`,
 then failed clean at `V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED` after Cloudflare mutation but
@@ -212,10 +221,8 @@ jobs. V2-07 remains `NOT_QUALIFIED`; executable authority, cap, and anchor-refre
 
 - preserve Attempt75 closure, acceptance, orchestrator, reconciliation, and successful immutable
   image-publication evidence; never reuse its proposal, authority, or historical cap;
-- repair the disposable route propagation/version proof provider-free and independently audit the
-  successor source and evidence;
-- seal a fresh exact proposal and obtain fresh exact approval before any provider mutation, GPU use,
-  or spend; reuse the already published image only if every sealed lineage field remains exact;
+- preserve the sealed Attempt76 source/evidence and obtain fresh exact approval before any provider
+  mutation, GPU use, or spend;
 - accept only durable 1280×720 outputs, tenant artifact readbacks, signed v3 receipts, exact timing/
   VRAM/cost, unchanged Mage manifest, terminal jobs, zero total workers, and intended volumes only.
 

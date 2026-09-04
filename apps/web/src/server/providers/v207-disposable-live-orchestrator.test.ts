@@ -8,6 +8,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { HostedR2BucketBinding } from "../hosted/configuration";
 import { handleV207DisposableOutputPort } from "../hosted/v207-disposable-output-ports";
 
+import { V207_PENDING_PROPOSAL_SHA256 } from "./v207-activation-authority";
 import {
   runV207DisposableLiveOrchestration,
   V207_DISPOSABLE_CONFIG,
@@ -78,8 +79,7 @@ const result = (stdout = "", exitCode: number | null = 0, stderr = ""): V207Comm
 
 const authorityParser = () => ({
   image: "fixture-image",
-  proposalSha256:
-    "sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533" as const,
+  proposalSha256: V207_PENDING_PROPOSAL_SHA256,
   capUsd: 4.5,
   anchorRefreshAuthorized: false,
 });

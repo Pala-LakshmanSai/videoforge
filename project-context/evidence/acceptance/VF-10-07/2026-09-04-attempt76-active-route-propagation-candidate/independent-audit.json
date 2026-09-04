@@ -1,0 +1,38 @@
+{
+  "schema_version": "videoforge.v2-07-attempt76-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 76,
+  "audited_at": "2026-09-04T15:47:05Z",
+  "audited_control_source_commit": "6454405d817fe174b2add1d502a31b241b6a0234",
+  "audited_files": [
+    "apps/web/src/server/providers/v207-disposable-live-orchestrator.ts",
+    "apps/web/src/server/providers/v207-disposable-live-orchestrator.test.ts"
+  ],
+  "result": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "verified_contract": {
+    "pre_first_active_tolerance": "only a 404 V207_ROUTE_DISABLED response carrying a valid UUID distinct from the expected active version",
+    "active_route_proof": "three consecutive 403 V207_AUTHORITY_REJECTED responses carrying the exact expected active version",
+    "post_first_active_policy": "every mismatch is terminal after the first exact active match",
+    "version_metadata_policy": "missing, malformed, or expected-active version on a disabled response is terminal",
+    "propagation_bound": "30 reads and 60 seconds with fetch and sleep capped by the remaining deadline",
+    "abort_policy": "operator abort remains terminal and cleanup uses the independent non-aborted path",
+    "later_version_binding": "pre-GPU compatibility probe and all later output-port responses remain exact-version-bound",
+    "authority_boundary": "no provider, image-publication, GPU, fallback, rollback-anchor, retained-volume, or V2-08 authority is activated"
+  },
+  "validation": {
+    "focused_orchestrator_tests": "31/31 PASS",
+    "web_typecheck": "PASS",
+    "git_diff_check": "PASS",
+    "worktree_at_audit": "CLEAN",
+    "provider_calls": 0,
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  }
+}

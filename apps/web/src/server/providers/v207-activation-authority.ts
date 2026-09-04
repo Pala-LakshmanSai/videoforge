@@ -21,7 +21,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533" as const;
+  "sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6" as const;
 export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
   "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
 export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
@@ -37,7 +37,7 @@ export const V207_ANCHOR_REFRESH_HELPER_SHA256 =
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "51d7de6cb3c0d88ddcb06df533864bf319a1210f" as const;
+  "6454405d817fe174b2add1d502a31b241b6a0234" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
@@ -79,8 +79,8 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempts69 through 75 were consumed. No executable authority or cap remains;
-// any successor requires a freshly sealed proposal and exact approval.
+// Attempts69 through 75 were consumed. Attempt76 is sealed but not approved.
+// No executable authority or cap remains until fresh exact approval is materialized.
 export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**

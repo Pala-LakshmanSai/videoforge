@@ -72,7 +72,7 @@ function activationSourceFixture({
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the consumed Attempt75 proposal with no executable authority", () => {
+  it("pins the sealed Attempt76 proposal with no executable authority", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d",
@@ -102,10 +102,10 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533",
+      "sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("51d7de6cb3c0d88ddcb06df533864bf319a1210f");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("6454405d817fe174b2add1d502a31b241b6a0234");
     expect(V207_ANCHOR_REFRESH_SOURCE_COMMIT).toBe("a6c7266e0c19fce07757c78fbd588dd442b7d24f");
     expect(V207_TYPED_ACTIVATION_AUTHORITY_COMMIT).toBe("e5571ed2478f0c526ebf508d0a4ce301bafa8203");
     expect(V207_ORCHESTRATOR_MARKER_LIFECYCLE_COMMIT).toBe(
