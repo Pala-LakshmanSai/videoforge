@@ -227,7 +227,7 @@ test("prompt batches preserve title-cased abstract style trait lists", () => {
   );
 });
 
-test("style positive suffix stays bounded at a word boundary for a maximum profile", () => {
+test("style positive suffix emits only bounded runtime-pinned high-value cues", () => {
   const maximum = styleTreatment();
   maximum.medium_family = `MEDIUM_MARKER ${"photography ".repeat(20)}`;
   maximum.realism = `REALISM_MARKER ${"physically believable still image ".repeat(40)}detail`;
@@ -252,16 +252,14 @@ test("style positive suffix stays bounded at a word boundary for a maximum profi
     (_, index) => `MOOD_MARKER_${index} grounded observational mood`,
   );
   const suffix = promptStyleTreatmentPositiveSuffix(maximum);
-  assert.ok(suffix.length <= 2_400);
+  assert.ok(suffix.length <= 500);
   assert.equal(suffix, suffix.trim());
   assert.equal(/\s$/u.test(suffix), false);
-  for (const marker of [
-    "MEDIUM_MARKER",
-    "REALISM_MARKER",
-    "CAMERA_MARKER",
+  for (const marker of ["MEDIUM_MARKER", "REALISM_MARKER", "CAMERA_MARKER", "LIGHT_MARKER"])
+    assert.ok(suffix.includes(marker), `missing compacted style field ${marker}`);
+  for (const omitted of [
     "FRAMING_MARKER",
     "SCALE_MARKER",
-    "LIGHT_MARKER",
     "PALETTE_MARKER_0",
     "#123456",
     "CONTRAST_MARKER",
@@ -270,7 +268,7 @@ test("style positive suffix stays bounded at a word boundary for a maximum profi
     "IMPERFECTION_MARKER_0",
     "MOOD_MARKER_0",
   ])
-    assert.ok(suffix.includes(marker), `missing compacted style field ${marker}`);
+    assert.equal(suffix.includes(omitted), false, `unexpected low-value style field ${omitted}`);
 });
 
 test("planner is deterministic, contiguous, complete, and quality-bounds larger responses", () => {

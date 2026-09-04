@@ -272,6 +272,10 @@ test("writer contract requires relatable physical evidence and applies style as 
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /authoritative structured scene facts/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /do not echo palette descriptors, hex colors, lighting metadata/u,
+  );
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
     /downstream compiler derives the final literal image description/u,
   );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /preserve that action semantically in action/u);

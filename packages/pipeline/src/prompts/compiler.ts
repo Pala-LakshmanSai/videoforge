@@ -310,13 +310,13 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
   // for compatibility, but it is not trusted at the image-model boundary.
   // Build the literal scene description only from the independently normalized
   // and conflict-checked fields above. This makes a stale or mismatched raw
-  // core unable to change the subject, action, environment, or lighting that
-  // reaches the image model.
+  // core unable to change the subject, action, or environment that reaches the
+  // image model. Provider lighting remains validated and durable audit data;
+  // the pinned style supplies the sole compiled lighting treatment.
   const literalContent = [
     `subject: ${sceneFields[0]}`,
     `action: ${sceneFields[1]}`,
     `environment: ${sceneFields[2]}`,
-    `lighting: ${sceneFields[3]}`,
   ].join(", ");
   const continuityTags = output.continuity_tags.map((tag, index) => {
     const normalizedTag = normalize(tag, 80, "Continuity tag", [

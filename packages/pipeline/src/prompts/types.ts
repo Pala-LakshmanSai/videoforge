@@ -192,8 +192,9 @@ export function derivePromptStyleTreatment(
 
 /**
  * Build the positive image-model style suffix from the same whitelisted
- * treatment projection used by DeepSeek. This excludes reference/content
- * fields and keeps compiler style text deterministic across call sites.
+ * treatment projection used by DeepSeek. The request retains the full
+ * hash-bound treatment, while the image-model prompt emits only the four
+ * highest-value dynamic cues to avoid repeating low-value style metadata.
  */
 export function promptStyleTreatmentPositiveSuffix(treatment: PromptStyleTreatment): string {
   const compact = (value: string, maximum = 112): string => {
@@ -205,22 +206,13 @@ export function promptStyleTreatmentPositiveSuffix(treatment: PromptStyleTreatme
   };
   const segment = (label: string, values: readonly string[]): string | null =>
     values.length === 0 ? null : `${label}: ${compact(values.join(", "))}`;
-  // Give every pinned visual trait a deterministic segment. Per-field
-  // compaction prevents a long early trait from deleting later style data.
+  // Per-field compaction prevents a long early trait from deleting a later
+  // high-value cue while preserving runtime derivation from the pinned style.
   return [
     segment("medium", [treatment.medium_family]),
     segment("realism", [treatment.realism]),
     segment("camera", [treatment.camera_language]),
-    segment("framing", [treatment.image_framing]),
-    segment("shot scales", treatment.shot_scale_preferences),
     segment("lighting", [treatment.lighting]),
-    segment("palette", treatment.palette.descriptors),
-    segment("palette colors", treatment.palette.approximate_hex),
-    segment("contrast", [treatment.contrast_and_exposure]),
-    segment("depth", [treatment.depth_of_field]),
-    segment("texture", [treatment.texture_and_grain]),
-    segment("imperfection", treatment.imperfection_profile),
-    segment("mood", treatment.mood),
   ]
     .filter((value): value is string => value !== null)
     .join("; ");

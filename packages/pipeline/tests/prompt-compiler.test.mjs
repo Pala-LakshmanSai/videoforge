@@ -265,10 +265,15 @@ test("compiler derives literal content from structured fields and ignores raw pr
     continuity_tags: [],
     prompt_core: "A fox swims through an alpine lake beneath snowy mountains.",
   };
+  const pinnedStyle = {
+    ...style(),
+    positiveSuffix:
+      "medium: photo; realism: natural; camera: candid; lighting: PINNED_LIGHT_MARKER",
+  };
   const compiled = compileImagePrompt({
     writerOutput,
     expectedScene: input.scenes[0],
-    style: style(),
+    style: pinnedStyle,
     extraPromptKeywords: null,
     applyExtraPromptKeywords: false,
   });
@@ -278,14 +283,16 @@ test("compiler derives literal content from structured fields and ignores raw pr
       prompt_core: "A person rides a bicycle through a city at night.",
     },
     expectedScene: input.scenes[0],
-    style: style(),
+    style: pinnedStyle,
     extraPromptKeywords: null,
     applyExtraPromptKeywords: false,
   });
   assert.equal(
     compiled.components.literalContent,
-    "subject: a farmer, action: opens a weathered irrigation valve, environment: a dry field, lighting: soft morning light",
+    "subject: a farmer, action: opens a weathered irrigation valve, environment: a dry field",
   );
+  assert.equal(compiled.positivePrompt.includes("soft morning light"), false);
+  assert.equal(compiled.positivePrompt.match(/PINNED_LIGHT_MARKER/gu)?.length, 1);
   assert.equal(compiled.positivePrompt.includes("opens a weathered irrigation valve"), true);
   assert.equal(compiled.positivePrompt.includes("rides a bicycle"), false);
   assert.equal(compiled.positivePrompt.includes("fox swims"), false);
