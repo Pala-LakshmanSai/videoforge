@@ -916,7 +916,7 @@ const PYTHON_URLLIB_PUT = [
   "  return 'UNKNOWN'",
   "value=json.load(sys.stdin)",
   "body=base64.b64decode(value['body_base64'], validate=True)",
-  "request=urllib.request.Request(value['url'], data=body, method='PUT', headers={'content-type':'image/png','content-length':str(len(body))})",
+  "request=urllib.request.Request(value['url'], data=body, method='PUT', headers={'accept':'application/json','user-agent':'VideoForge-Mage/V2-07','content-type':'image/png','content-length':str(len(body))})",
   "try:",
   "  with urllib.request.urlopen(request, timeout=60) as response:",
   "    status=response.status",

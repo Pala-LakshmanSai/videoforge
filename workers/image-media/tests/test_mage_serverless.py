@@ -611,6 +611,23 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         self.assertGreater(timestamp, 0)
         self.assertEqual(measured, checksum)
         request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("Accept"), "application/json")
+        self.assertEqual(request.get_header("User-agent"), mage_serverless._HTTP_USER_AGENT)
+        self.assertEqual(request.get_header("Content-length"), str(len(body)))
+        self.assertEqual(request.get_header("Content-type"), "image/png")
+
+    def test_exact_output_upload_identifies_mage_to_cloudflare(self) -> None:
+        body = b"png"
+        port = self._port()
+        port["content_length"] = len(body)
+        port["checksum_sha256"] = "sha256:" + hashlib.sha256(body).hexdigest()
+        with patch.object(mage_serverless, "urlopen") as urlopen:
+            response = urlopen.return_value.__enter__.return_value
+            response.status = 204
+            mage_serverless._put_output(port, "https://r2.example.test/presigned", body)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("Accept"), "application/json")
+        self.assertEqual(request.get_header("User-agent"), mage_serverless._HTTP_USER_AGENT)
         self.assertEqual(request.get_header("Content-length"), str(len(body)))
         self.assertEqual(request.get_header("Content-type"), "image/png")
 
@@ -866,6 +883,8 @@ print(json.dumps({"accepted": [unit["item_id"] for unit in units], "claimed": le
             self.assertFalse((Path(temporary) / "jobs" / "attempt-prior").exists())
             request = urlopen.call_args.args[0]
             self.assertEqual(request.get_method(), "GET")
+            self.assertEqual(request.get_header("Accept"), "application/octet-stream")
+            self.assertEqual(request.get_header("User-agent"), mage_serverless._HTTP_USER_AGENT)
 
     def test_resume_readback_rejects_wrong_bytes(self) -> None:
         unit = self._resume_unit()
@@ -1080,6 +1099,11 @@ print(json.dumps({"accepted": [unit["item_id"] for unit in units], "claimed": le
                     response.read.return_value = body
                     path = mage_serverless._download_input(
                         port, "https://r2.example.test/input", worker_io
+                    )
+                    request = urlopen.call_args.args[0]
+                    self.assertEqual(request.get_header("Accept"), "application/octet-stream")
+                    self.assertEqual(
+                        request.get_header("User-agent"), mage_serverless._HTTP_USER_AGENT
                     )
                 self.assertEqual(path.read_bytes(), body)
                 self.assertTrue(path.is_relative_to(worker_io.scratch.path))

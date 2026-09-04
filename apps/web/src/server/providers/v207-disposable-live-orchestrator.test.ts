@@ -266,6 +266,8 @@ describe("V2-07 Python urllib PUT probe", () => {
       method?: string;
       contentLength?: string;
       contentType?: string;
+      accept?: string;
+      userAgent?: string;
       expect?: string | null;
       bytes?: number;
     } = {};
@@ -284,6 +286,8 @@ describe("V2-07 Python urllib PUT probe", () => {
           received.method = request.method;
           received.contentLength = request.headers["content-length"];
           received.contentType = request.headers["content-type"];
+          received.accept = request.headers.accept;
+          received.userAgent = request.headers["user-agent"];
           received.expect = request.headers.expect ?? null;
           received.bytes = body.byteLength;
           const headers = new Headers();
@@ -355,6 +359,8 @@ describe("V2-07 Python urllib PUT probe", () => {
       method: "PUT",
       contentLength: String(body.byteLength),
       contentType: "image/png",
+      accept: "application/json",
+      userAgent: "VideoForge-Mage/V2-07",
       expect: null,
       bytes: body.byteLength,
     });

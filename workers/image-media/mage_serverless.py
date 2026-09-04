@@ -42,6 +42,7 @@ _runtime: MageRuntime | None = None
 _startup_lock = asyncio.Lock()
 _delivery_lock = asyncio.Lock()
 _claimed_deliveries: set[str] = set()
+_HTTP_USER_AGENT = "VideoForge-Mage/V2-07"
 
 _GENERATED_OUTPUT_SCHEMA = "artifact-generated-output-authority/v1"
 _GENERATED_OUTPUT_KEYS = frozenset(
@@ -290,7 +291,12 @@ def _put_output(port: dict[str, Any], url: str, body: bytes) -> int:
         url,
         data=body,
         method="PUT",
-        headers={"content-type": port["content_type"], "content-length": str(len(body))},
+        headers={
+            "accept": "application/json",
+            "user-agent": _HTTP_USER_AGENT,
+            "content-type": port["content_type"],
+            "content-length": str(len(body)),
+        },
     )
     try:
         with urlopen(request, timeout=60) as response:
@@ -322,6 +328,8 @@ def _put_generated_output(authority: dict[str, Any], url: str, body: bytes) -> t
             data=body,
             method="PUT",
             headers={
+                "accept": "application/json",
+                "user-agent": _HTTP_USER_AGENT,
                 "content-type": authority["content_type"],
                 "content-length": str(len(body)),
             },
@@ -367,7 +375,14 @@ def _download_input(port: dict[str, Any], url: object, worker_io: Any) -> Path:
     except ServerlessMageError as error:
         raise ServerlessMageError("MAGE_SERVERLESS_INPUT_URL_INVALID") from error
     expected_length = port["content_length"]
-    request = Request(str(url), method="GET")
+    request = Request(
+        str(url),
+        method="GET",
+        headers={
+            "accept": "application/octet-stream",
+            "user-agent": _HTTP_USER_AGENT,
+        },
+    )
     try:
         with urlopen(request, timeout=60) as response:
             if response.status != 200:
