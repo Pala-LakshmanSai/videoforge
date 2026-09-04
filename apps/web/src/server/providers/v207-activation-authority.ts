@@ -1,17 +1,17 @@
 import { createHash } from "node:crypto";
 
 export const V207_REPAIRED_IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d" as const;
+  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62" as const;
 
-export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "51d7de6cb3c0d88ddcb06df533864bf319a1210f";
+export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "d530320af723e33c6ce32552743fd00dc063eedc";
 export const V207_REPAIRED_IMAGE_CONFIG_DIGEST =
-  "sha256:316ebc9e5c7e1d3441e72f29d4edc51a33512d4ae157b7f38a84d1423b4269c7" as const;
+  "sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2" as const;
 export const V207_REPAIRED_IMAGE_LAYER_DIGEST =
-  "sha256:46d4cf6d25a5aedbc78da9ff80b536551172324bdcbf1c9df81519ef9d5fa075" as const;
+  "sha256:5c54508181bbdaf45691e7db0f4f907194ad7ff1cd38b0f86bfc0469bca0a334" as const;
 export const V207_REPAIRED_IMAGE_LAYER_DIFF_ID =
-  "sha256:20c726c4ca56883589f423efcc6b0def4495aee2a56ea07988895effbbbdb84f" as const;
+  "sha256:9f581bc2881547b77ff207720599b634386bd23b038124d38a7ab76442ff4770" as const;
 export const V207_REPAIRED_HANDLER_SHA256 =
-  "sha256:c4945aabfa9cdb9f18aa9b514d2ec1dfc533865857ac0ee280019cb643961e3c" as const;
+  "sha256:8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c" as const;
 export const V207_EXECUTION_SUBSET_SCHEMA_SHA256 =
   "sha256:08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f" as const;
 export const V207_REPAIRED_IMAGE_PARENT =
@@ -21,7 +21,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:72f72a2de48841194233218c2f84d343c0c236ed36d5ff33a0c6dc682312d22a" as const;
+  "sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b" as const;
 export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
   "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
 export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
@@ -37,7 +37,7 @@ export const V207_ANCHOR_REFRESH_HELPER_SHA256 =
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "fb884fedf86c5ff5ec3e5bb4274c4a1e3db41fd6" as const;
+  "d530320af723e33c6ce32552743fd00dc063eedc" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
@@ -79,16 +79,17 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempts69 through 79 were consumed. No executable authority or cap remains;
-// any successor requires a freshly sealed proposal and exact approval.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+// Attempts69 through 79 were consumed. Attempt80 is approved exactly once and
+// remains executable only until its bounded invocation begins.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null =
+  "sha256:ad16101ee8d1dc33cc5237e6ff57ef7762a6b4b77b1b98e46e38a7fa53d4af7f";
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
  * same compiled approval boundary as the proposal and finite cap. Any future
  * authority must bind its own decision in a separate immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;

@@ -12,8 +12,24 @@ const control = "d530320af723e33c6ce32552743fd00dc063eedc";
 const imageSource = control;
 const imageDigest = "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62";
 const proposalHash = "sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b";
-const acceptanceHash = "sha256:0faf8ef24bec614df4281c99d9f1ca7d12380bc19ddb682d89ce4532d0cb68f6";
+const preapprovalAcceptanceHash =
+  "sha256:0faf8ef24bec614df4281c99d9f1ca7d12380bc19ddb682d89ce4532d0cb68f6";
+const approvedAcceptanceBeforeAuthorityAuditHash =
+  "sha256:4842af5514e885518e314093f5acaa4af1acbd1bc52f342f22de6ccb7bcf2b0e";
+const acceptanceHash = "sha256:48cc956d04a85de6727294223de4f9b05eaf5535435b6f5c3850fc6e6e09ce55";
 const auditHash = "sha256:1177c5389749bbdaf355a125625d01b48ef4559c9e49393cbf4bf292cd561058";
+const authorityHash = "sha256:ad16101ee8d1dc33cc5237e6ff57ef7762a6b4b77b1b98e46e38a7fa53d4af7f";
+const authorityAuditHash =
+  "sha256:4bf581dc12ce48c43df5abbf186a6e5a8282a8aa29cfe4e24dec2d3af35a6e5d";
+const exactApprovalHash =
+  "sha256:898a6a6793c972295f23d2c8feab31ba54da0a03d1affb41f338ba06f018041e";
+const activationSourceHash =
+  "sha256:c1da826aa2765eefd31f23be0a130fcde78d8c6e09db30a777acf547fb6f4ac6";
+const activationTestHash =
+  "sha256:deaaa394c375fa8429366bba9d4c5cc8bc23a89ce551814c31a4cc24cbed97ac";
+const activationCanonicalHash =
+  "sha256:61a7c899c29a5eaf1cfe86112cf58d46e39e5733defb5d92a22904c220adf4d3";
+const authorizedAt = "2026-09-05T00:39:25+05:30";
 const identityHash = "sha256:435dc655487986903c57a500c5f3a365ee5893bbb3ba47a3ec224aaef0d3c614";
 const verificationHash = "sha256:f0d76e61167704cefbd26deca6067b68117b14741c2210762055654e1f0c8c3a";
 const sources = Object.freeze({
@@ -112,19 +128,29 @@ const auditPath = `${candidatePath}/independent-audit.json`;
 const identityPath = `${candidatePath}/local-image-identity.json`;
 const verificationPath = `${candidatePath}/local-image-verification.json`;
 const authorityPath = `${candidatePath}/approved-authority.json`;
+const authorityAuditPath = `${candidatePath}/authority-independent-audit.json`;
+const activationSourcePath = "apps/web/src/server/providers/v207-activation-authority.ts";
+const activationTestPath = "apps/web/src/server/providers/v207-activation-authority.test.ts";
 
 assert(sha256(read(proposalPath)) === proposalHash, "PROPOSAL_HASH");
 assert(sha256(read(acceptancePath)) === acceptanceHash, "ACCEPTANCE_HASH");
 assert(sha256(read(auditPath)) === auditHash, "AUDIT_HASH");
 assert(sha256(read(identityPath)) === identityHash, "IDENTITY_HASH");
 assert(sha256(read(verificationPath)) === verificationHash, "VERIFICATION_HASH");
-assert(!existsSync(resolve(repoRoot, authorityPath)), "APPROVED_AUTHORITY_FORBIDDEN");
+assert(existsSync(resolve(repoRoot, authorityPath)), "APPROVED_AUTHORITY_REQUIRED");
+assert(sha256(read(authorityPath)) === authorityHash, "AUTHORITY_HASH");
+assert(existsSync(resolve(repoRoot, authorityAuditPath)), "AUTHORITY_AUDIT_REQUIRED");
+assert(sha256(read(authorityAuditPath)) === authorityAuditHash, "AUTHORITY_AUDIT_HASH");
+assert(sha256(read(activationSourcePath)) === activationSourceHash, "ACTIVATION_SOURCE_HASH");
+assert(sha256(read(activationTestPath)) === activationTestHash, "ACTIVATION_TEST_HASH");
 
 const proposal = json(proposalPath);
 const acceptance = json(acceptancePath);
 const audit = json(auditPath);
 const identity = json(identityPath);
 const verification = json(verificationPath);
+const authority = json(authorityPath);
+const authorityAudit = json(authorityAuditPath);
 
 assert(
   proposal.attempt === 80 &&
@@ -213,18 +239,93 @@ assert(
   "COST_BOUNDARY",
 );
 assert(
-  acceptance.status === "SEALED_AWAITING_FRESH_EXACT_APPROVAL" &&
+  acceptance.status === "APPROVED_SINGLE_USE_UNCONSUMED" &&
     acceptance.proposal_sha256 === proposalHash &&
-    acceptance.authority?.status === "NOT_GRANTED_AWAITING_FRESH_EXACT_APPROVAL" &&
-    acceptance.authority?.provider_calls_authorized === false &&
-    acceptance.authority?.provider_mutations_authorized === false &&
-    acceptance.authority?.credential_access_authorized === false &&
-    acceptance.authority?.image_publication_authorized === false &&
-    acceptance.authority?.gpu_use_authorized === false &&
-    acceptance.authority?.maximum_cumulative_finite_spend_usd === 0 &&
-    acceptance.authority?.executable_finite_cap_usd === null &&
-    acceptance.authority?.v2_08_authorized === false,
-  "NO_EXECUTABLE_AUTHORITY",
+    acceptance.image_published === false &&
+    acceptance.image_publication_authorized === true &&
+    acceptance.authority_materialization?.preapproval_acceptance_sha256 ===
+      preapprovalAcceptanceHash &&
+    acceptance.authority_materialization?.authority_sha256 === authorityHash &&
+    acceptance.authority_materialization?.activation_source_canonical_sha256 ===
+      activationCanonicalHash &&
+    acceptance.authority_independent_audit?.artifact_sha256 === authorityAuditHash &&
+    acceptance.authority_independent_audit?.audited_approved_acceptance_sha256 ===
+      approvedAcceptanceBeforeAuthorityAuditHash &&
+    acceptance.authority?.status === "APPROVED_SINGLE_USE_UNCONSUMED" &&
+    acceptance.authority?.provider_calls_authorized === true &&
+    acceptance.authority?.provider_mutations_authorized === true &&
+    acceptance.authority?.credential_access_authorized === true &&
+    acceptance.authority?.image_publication_authorized === true &&
+    acceptance.authority?.gpu_use_authorized === true &&
+    acceptance.authority?.maximum_cumulative_finite_spend_usd === 4.5 &&
+    acceptance.authority?.executable_finite_cap_usd === 4.5 &&
+    acceptance.authority?.anchor_refresh_authorized === false &&
+    acceptance.authority?.retained_volume_mutation_authorized === false &&
+    acceptance.authority?.v2_08_authorized === false &&
+    acceptance.authority?.consumed === false &&
+    acceptance.authority?.reusable === false &&
+    acceptance.authority?.single_use === true &&
+    acceptance.authority?.authority_sha256 === authorityHash,
+  "APPROVED_ACCEPTANCE",
 );
 
-console.log("PASS V2-07 Attempt80 candidate awaiting exact approval");
+assert(
+  authority.status === "APPROVED_SINGLE_USE_UNCONSUMED" &&
+    authority.authorized_at === authorizedAt &&
+    authority.exact_user_approval_sha256 === exactApprovalHash &&
+    sha256(Buffer.from(authority.exact_user_approval)) === exactApprovalHash &&
+    authority.proposal_sha256 === proposalHash &&
+    authority.preapproval_acceptance_sha256 === preapprovalAcceptanceHash &&
+    authority.independent_audit_sha256 === auditHash &&
+    authority.control_source_commit === control &&
+    authority.image_source_commit === imageSource &&
+    authority.image.endsWith(`@${imageDigest}`) &&
+    authority.image_publication_authorized === true &&
+    authority.direct_publication_without_github_actions_queue_authorized === true &&
+    authority.anonymous_full_image_readback_required === true &&
+    authority.urllib_request_user_agent === "VideoForge-Mage/V2-07" &&
+    authority.active_route_exact_fingerprints_required === 3 &&
+    authority.pre_gpu_full_compatibility_cycles_required === 3 &&
+    authority.each_pre_gpu_cycle_cleanup_required_before_next === true &&
+    authority.reserve_retry_max_attempts === 3 &&
+    authority.reserve_retry_wait_milliseconds === 250 &&
+    authority.reserve_retry_transport_or_missing_version_s5xx_only === true &&
+    authority.other_probe_retry_authorized === false &&
+    authority.maximum_cumulative_finite_spend_usd === 4.5 &&
+    authority.serverless_flex_usd_per_gpu_hour === 1.116 &&
+    authority.gpu === "NVIDIA GeForce RTX 4090" &&
+    authority.region === "EU-RO-1" &&
+    authority.workers_min === 0 &&
+    authority.workers_max_initial === 1 &&
+    authority.workers_max_temporary === 2 &&
+    authority.anchor_refresh_authorized === false &&
+    authority.automatic_gpu_fallback_authorized === false &&
+    authority.retained_volume_charge_usd_per_month === 7 &&
+    authority.retained_volume_mutation_authorized === false &&
+    authority.final_zero_compute_disposable_reconciliation_reads === 3 &&
+    authority.v2_08_authorized === false &&
+    authority.single_use === true,
+  "AUTHORITY_SCOPE",
+);
+assert(
+  authorityAudit.result === "PASS_ZERO_P0_ZERO_P1_ZERO_P2" &&
+    authorityAudit.findings?.p0 === 0 &&
+    authorityAudit.findings?.p1 === 0 &&
+    authorityAudit.findings?.p2 === 0 &&
+    authorityAudit.audited_artifacts?.approved_acceptance_before_audit_binding_sha256 ===
+      approvedAcceptanceBeforeAuthorityAuditHash &&
+    authorityAudit.audited_artifacts?.approved_authority_sha256 === authorityHash &&
+    authorityAudit.audited_artifacts?.exact_user_approval_sha256 === exactApprovalHash &&
+    authorityAudit.audited_artifacts?.activation_source_sha256 === activationSourceHash &&
+    authorityAudit.audited_artifacts?.activation_test_sha256 === activationTestHash &&
+    authorityAudit.audited_artifacts?.canonical_activation_source_sha256 ===
+      activationCanonicalHash,
+  "AUTHORITY_AUDIT",
+);
+
+const activationSource = read(activationSourcePath).toString("utf8");
+for (const fragment of [proposalHash, control, authorityHash, "= 4.5;", "= false;"]) {
+  assert(activationSource.includes(fragment), "ACTIVATION_BINDING");
+}
+
+console.log("PASS V2-07 Attempt80 authority approved and unconsumed");

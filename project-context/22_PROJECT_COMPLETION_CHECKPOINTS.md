@@ -200,13 +200,16 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt80 is `SEALED_AWAITING_FRESH_EXACT_APPROVAL`. Proposal
+**Current gate:** Attempt80 is `APPROVED_SINGLE_USE_UNCONSUMED` under authority
+`evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/approved-authority.json`
+at `sha256:ad16101ee8d1dc33cc5237e6ff57ef7762a6b4b77b1b98e46e38a7fa53d4af7f`. Proposal
 `sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b` binds control/image source
 `d530320af723e33c6ce32552743fd00dc063eedc` and unpublished deterministic image
-`sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62`. The real Mage runtime and
-exact pre-GPU probe use the same identified urllib request framing. Two image builds matched and the
-independent audit is P0/P1/P2 `0/0/0`. No executable authority exists; fresh exact approval is
-required for direct publication and the single gate-first conditional Stage 6 run.
+`sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62`. Provider, credential,
+remote mutation, exact image publication, and GPU actions are authorized only within the proposal's
+bounded sequence and cumulative `$4.50` cap. The exact image remains unpublished and Stage 6 remains
+`NOT_QUALIFIED` pending the gate-first preflight and required cycles. No fallback, anchor refresh,
+retained-volume mutation, or V2-08 authority exists.
 
 Attempt79 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its first pre-GPU compatibility
 cycle failed at `V207_DISPOSABLE_PROBE_URLLIB_VERSION_MISSING_S4XX`; zero of three cycles completed,
