@@ -41,6 +41,8 @@ const PROBE_REVISION_ID = "revision-a" as const;
 const PROBE_LIFETIME_SECONDS = 60 as const;
 const PROBE_REQUEST_MAX_BYTES = 64 * 1024;
 const PROBE_TIMEOUT_MILLISECONDS = 15_000;
+const PROBE_CLEANUP_TIMEOUT_MILLISECONDS = 30_000;
+const CLEANUP_TIMEOUT_MILLISECONDS = 60_000;
 const CAPABILITY_HANDLE = /^[a-f0-9]{64}$/u;
 const CHECKSUM = /^sha256:[0-9a-f]{64}$/u;
 const PROBE_REQUEST_SCHEMA = "videoforge-v207-generated-output-port-request/v1" as const;
@@ -235,6 +237,7 @@ async function deleteDisposableWorker(
   cwd: string,
   configPath: string,
   environment: Environment,
+  signal?: AbortSignal,
 ): Promise<V207CommandResult> {
   const request: V207CommandRequest = {
     command: "pnpm",
@@ -251,6 +254,7 @@ async function deleteDisposableWorker(
     ],
     cwd,
     env: redactedEnvironment(environment),
+    ...(signal === undefined ? {} : { signal }),
   };
   if (request.args[5] !== V207_DISPOSABLE_WORKER_NAME) {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_DELETE_TARGET_UNBOUND");
@@ -271,12 +275,17 @@ async function assertWorkerAbsent(
   cwd: string,
   configPath: string,
   environment: Environment,
+  signal?: AbortSignal,
 ): Promise<void> {
-  const result = await runWrangler(run, cwd, configPath, environment, [
-    "deployments",
-    "status",
-    "--json",
-  ]);
+  const result = await runWrangler(
+    run,
+    cwd,
+    configPath,
+    environment,
+    ["deployments", "status", "--json"],
+    undefined,
+    signal,
+  );
   if (!provesWorkerAbsent(result)) {
     throw new V207DisposableOrchestratorError(
       result.exitCode === 0
@@ -301,6 +310,30 @@ function activeVersionId(result: V207CommandResult): string {
   }
 }
 
+function assertExpectedWorkerVersion(
+  workerVersionId: string | null,
+  expectedWorkerVersionId: string,
+): void {
+  if (workerVersionId === null || !VERSION_ID.test(workerVersionId)) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID");
+  }
+  if (workerVersionId !== expectedWorkerVersionId) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED");
+  }
+}
+
+function validateObservedWorkerVersion(
+  workerVersionId: string | null,
+  expectedWorkerVersionId?: string,
+): void {
+  if (workerVersionId !== null && !VERSION_ID.test(workerVersionId)) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID");
+  }
+  if (expectedWorkerVersionId !== undefined && workerVersionId !== expectedWorkerVersionId) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED");
+  }
+}
+
 async function readRoute(
   fetchImpl: typeof fetch,
   routeUrl: string,
@@ -320,6 +353,8 @@ async function readRoute(
   } catch {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_UNREACHABLE");
   }
+  const workerVersionId = response.headers.get(V207_ROUTE_VERSION_HEADER);
+  validateObservedWorkerVersion(workerVersionId, expectedWorkerVersionId);
   let value: unknown;
   try {
     value = (await response.json()) as unknown;
@@ -337,13 +372,6 @@ async function readRoute(
   const code = errorRecord?.code ?? "";
   if (typeof code !== "string" || !SAFE_CODE.test(code)) {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_INVALID");
-  }
-  const workerVersionId = response.headers.get(V207_ROUTE_VERSION_HEADER);
-  if (workerVersionId !== null && !VERSION_ID.test(workerVersionId)) {
-    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID");
-  }
-  if (expectedWorkerVersionId !== undefined && workerVersionId !== expectedWorkerVersionId) {
-    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED");
   }
   return { status: response.status, code, workerVersionId };
 }
@@ -474,17 +502,24 @@ async function probeRequest(
   fetchImpl: typeof fetch,
   input: string,
   init: RequestInit,
+  expectedWorkerVersionId: string,
   signal?: AbortSignal,
 ): Promise<Response> {
+  let response: Response;
   try {
     const timeout = AbortSignal.timeout(PROBE_TIMEOUT_MILLISECONDS);
-    return await fetchImpl(input, {
+    response = await fetchImpl(input, {
       ...init,
       signal: signal === undefined ? timeout : AbortSignal.any([signal, timeout]),
     });
   } catch {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_TRANSPORT_FAILED");
   }
+  assertExpectedWorkerVersion(
+    response.headers.get(V207_ROUTE_VERSION_HEADER),
+    expectedWorkerVersionId,
+  );
+  return response;
 }
 
 async function probeJson(
@@ -492,6 +527,7 @@ async function probeJson(
   routeUrl: string,
   nonce: string,
   body: Record<string, unknown>,
+  expectedWorkerVersionId: string,
   signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
   const encoded = JSON.stringify(body);
@@ -509,6 +545,7 @@ async function probeJson(
       },
       body: encoded,
     },
+    expectedWorkerVersionId,
     signal,
   );
   let value: unknown;
@@ -530,10 +567,13 @@ const PYTHON_URLLIB_PUT = [
   "body=base64.b64decode(value['body_base64'], validate=True)",
   "request=urllib.request.Request(value['url'], data=body, method='PUT', headers={'content-type':'image/png','content-length':str(len(body))})",
   "try:",
-  "  with urllib.request.urlopen(request, timeout=60) as response: status=response.status",
+  "  with urllib.request.urlopen(request, timeout=60) as response:",
+  "    status=response.status",
+  "    version=response.headers.get('x-videoforge-worker-version')",
   "except Exception:",
   "  raise SystemExit(2)",
-  "raise SystemExit(0 if status in (200,201,204) else 3)",
+  "if status not in (200,201,204): raise SystemExit(3)",
+  "print(json.dumps({'status':status,'worker_version_id':version}, separators=(',',':')))",
 ].join("\n");
 
 async function runPythonUrllibPut(
@@ -542,6 +582,7 @@ async function runPythonUrllibPut(
   environment: Environment,
   url: string,
   body: Buffer,
+  expectedWorkerVersionId: string,
   signal?: AbortSignal,
 ): Promise<void> {
   const result = await run({
@@ -555,6 +596,20 @@ async function runPythonUrllibPut(
   if (result.exitCode !== 0 || result.signal !== null) {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_UPLOAD_REJECTED");
   }
+  let value: unknown;
+  try {
+    value = JSON.parse(result.stdout.slice(0, 4_096)) as unknown;
+  } catch {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_RESPONSE_INVALID");
+  }
+  const record = recordValue(value);
+  if (record?.status !== 200 && record?.status !== 201 && record?.status !== 204) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_RESPONSE_INVALID");
+  }
+  assertExpectedWorkerVersion(
+    typeof record.worker_version_id === "string" ? record.worker_version_id : null,
+    expectedWorkerVersionId,
+  );
 }
 
 async function runOutputCompatibilityProbe(
@@ -564,6 +619,7 @@ async function runOutputCompatibilityProbe(
   run: V207CommandRunner,
   cwd: string,
   environment: Environment,
+  expectedWorkerVersionId: string,
   signal?: AbortSignal,
 ): Promise<void> {
   const png = qualificationProbePng();
@@ -577,10 +633,13 @@ async function runOutputCompatibilityProbe(
     object_key: objectKey,
     content_type: "image/png",
   } as const;
-  let reservationCreated = false;
+  let cleanupArmed = false;
   let primaryError: unknown;
   let cleanupError: unknown;
   try {
+    // The reservation key is deterministic. Arm DELETE before POST so an accepted request with a
+    // lost/invalid response is still rolled back.
+    cleanupArmed = true;
     const port = await probeJson(
       fetchImpl,
       routeUrl,
@@ -591,9 +650,9 @@ async function runOutputCompatibilityProbe(
         max_content_length: png.byteLength,
         lifetime_seconds: PROBE_LIFETIME_SECONDS,
       },
+      expectedWorkerVersionId,
       signal,
     );
-    reservationCreated = true;
     const authority = recordValue(port.authority);
     const putUrl = port.url;
     const reservationId = authority?.reservation_id;
@@ -609,7 +668,7 @@ async function runOutputCompatibilityProbe(
     ) {
       throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_PORT_INVALID");
     }
-    await runPythonUrllibPut(run, cwd, environment, putUrl, png, signal);
+    await runPythonUrllibPut(run, cwd, environment, putUrl, png, expectedWorkerVersionId, signal);
     const checksum = `sha256:${createHash("sha256").update(png).digest("hex")}`;
     if (!CHECKSUM.test(checksum)) {
       throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_CHECKSUM_INVALID");
@@ -627,6 +686,7 @@ async function runOutputCompatibilityProbe(
         content_length: png.byteLength,
         checksum_sha256: checksum,
       },
+      expectedWorkerVersionId,
       signal,
     );
     const getPort = await probeJson(
@@ -641,6 +701,7 @@ async function runOutputCompatibilityProbe(
         content_length: png.byteLength,
         checksum_sha256: checksum,
       },
+      expectedWorkerVersionId,
       signal,
     );
     if (
@@ -650,7 +711,13 @@ async function runOutputCompatibilityProbe(
     ) {
       throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_GET_PORT_INVALID");
     }
-    const readback = await probeRequest(fetchImpl, getPort.url, { method: "GET" }, signal);
+    const readback = await probeRequest(
+      fetchImpl,
+      getPort.url,
+      { method: "GET" },
+      expectedWorkerVersionId,
+      signal,
+    );
     const readbackBytes = Buffer.from(await readback.arrayBuffer());
     if (
       readback.status !== 200 ||
@@ -662,7 +729,8 @@ async function runOutputCompatibilityProbe(
   } catch (error) {
     primaryError = error;
   } finally {
-    if (reservationCreated) {
+    if (cleanupArmed) {
+      const cleanupSignal = AbortSignal.timeout(PROBE_CLEANUP_TIMEOUT_MILLISECONDS);
       try {
         const deleted = await probeJson(
           fetchImpl,
@@ -676,7 +744,8 @@ async function runOutputCompatibilityProbe(
             operation: "DELETE",
             rollback_token: createHmac("sha256", nonce).update(objectKey).digest("hex"),
           },
-          signal,
+          expectedWorkerVersionId,
+          cleanupSignal,
         );
         if (deleted.operation !== "DELETE" || deleted.deleted !== true) {
           cleanupError = new V207DisposableOrchestratorError(
@@ -866,6 +935,7 @@ export async function runV207DisposableLiveOrchestration(
       run,
       cwd,
       environment,
+      versionId,
       abortController.signal,
     );
     await record("pre_gpu_output_compatibility_probe_completed");
@@ -892,13 +962,14 @@ export async function runV207DisposableLiveOrchestration(
     try {
       if (mutationAttempted) {
         try {
+          const cleanupSignal = AbortSignal.timeout(CLEANUP_TIMEOUT_MILLISECONDS);
           requireSuccess(
             "V207_DISPOSABLE_DELETE_FAILED",
-            await deleteDisposableWorker(run, cwd, configPath, environment),
+            await deleteDisposableWorker(run, cwd, configPath, environment, cleanupSignal),
           );
           for (let read = 1; read <= FINAL_PROOF_READS; read += 1) {
-            await assertWorkerAbsent(run, cwd, configPath, environment);
-            await assertDataPlaneAbsent(fetchImpl, routeUrl);
+            await assertWorkerAbsent(run, cwd, configPath, environment, cleanupSignal);
+            await assertDataPlaneAbsent(fetchImpl, routeUrl, cleanupSignal);
             if (read < FINAL_PROOF_READS) await sleepImpl(2_000);
           }
           evidence.cleanup_required = false;

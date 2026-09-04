@@ -91,6 +91,7 @@ async function fixture(
     qualificationFails?: boolean;
     cleanupFails?: boolean;
     pythonPutFails?: boolean;
+    pythonPutSignal?: "SIGINT" | "SIGTERM";
     signal?: "SIGINT" | "SIGTERM";
     absenceDiagnostic?: string;
   } = {},
@@ -123,6 +124,7 @@ async function fixture(
       return overrides.qualificationFails ? result("", 1, "V207_PROVIDER_REJECTED") : result();
     }
     if (request.command === "python3") {
+      if (overrides.pythonPutSignal !== undefined) signalTarget.emit(overrides.pythonPutSignal);
       if (overrides.pythonPutFails) return result("", 2);
       const value = JSON.parse(request.stdin ?? "null") as {
         url?: unknown;
@@ -135,7 +137,14 @@ async function fixture(
         headers: { "content-type": "image/png" },
         body: Buffer.from(value.body_base64, "base64"),
       });
-      return [200, 201, 204].includes(response.status) ? result() : result("", 2);
+      return [200, 201, 204].includes(response.status)
+        ? result(
+            JSON.stringify({
+              status: response.status,
+              worker_version_id: response.headers.get(V207_ROUTE_VERSION_HEADER),
+            }),
+          )
+        : result("", 2);
     }
     expect(request.args.join(" ")).not.toContain("videoforge-v2-06-staging");
     if (request.args.includes("delete")) {
@@ -201,7 +210,8 @@ async function fixture(
     fetchImpl,
     nonceFactory: () => NONCE,
     sleepImpl: async () => undefined,
-    installSignalHandlers: overrides.signal !== undefined,
+    installSignalHandlers:
+      overrides.signal !== undefined || overrides.pythonPutSignal !== undefined,
     signalTarget: signalTarget as unknown as V207DisposableOrchestratorOptions["signalTarget"],
   };
   return { root, calls, options, signalTarget, state: () => ({ exists, secret, childCalls }) };
@@ -307,6 +317,71 @@ describe("V2-07 disposable live orchestrator", () => {
 
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
     expect(setup.calls.filter((call) => call.args.includes("delete"))).toHaveLength(1);
+  });
+
+  it("deletes the deterministic reservation when the committed reserve response is lost", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let intercepted = false;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          if (
+            !intercepted &&
+            request.method === "POST" &&
+            request.headers.has("x-videoforge-v207-authority")
+          ) {
+            const response = await normalFetch(input, init);
+            intercepted = true;
+            const headers = new Headers(response.headers);
+            return Response.json({}, { status: 200, headers });
+          }
+          return normalFetch(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_PROBE_PORT_INVALID" });
+
+    expect(intercepted).toBe(true);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+  });
+
+  it("uses a non-aborted cleanup path when SIGTERM arrives during the urllib probe", async () => {
+    const setup = await fixture({ pythonPutFails: true, pythonPutSignal: "SIGTERM" });
+    await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
+      code: "V207_OPERATOR_ABORT",
+    });
+
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    expect(setup.calls.filter((call) => call.args.includes("delete"))).toHaveLength(1);
+  });
+
+  it("rejects a mid-probe Worker version swap and cleans before qualification", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let changedFinalize = false;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          const response = await normalFetch(input, init);
+          if (request.method !== "POST" || !request.headers.has("x-videoforge-v207-authority")) {
+            return response;
+          }
+          const body = JSON.parse(await request.clone().text()) as { operation?: unknown };
+          if (body.operation !== "FINALIZE") return response;
+          changedFinalize = true;
+          const headers = new Headers(response.headers);
+          headers.set(V207_ROUTE_VERSION_HEADER, "22222222-2222-4222-8222-222222222222");
+          return new Response(response.body, { status: response.status, headers });
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED" });
+
+    expect(changedFinalize).toBe(true);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
   });
 
   it("waits through a transient non-JSON 404 and then requires three exact disabled fingerprints", async () => {
