@@ -79,16 +79,17 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempt68 was consumed. Attempt69 is sealed but has no executable authority;
-// fresh exact approval must compile its authority and cap.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+// Attempt68 was consumed. Attempt69 is approved once under the exact authority
+// record, proposal, finite cap, and refresh-disabled boundary below.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null =
+  "sha256:d6847f32a21068c49824f118e6b8187636c72530de006041279875d24ac6f2cc";
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
  * same compiled approval boundary as the proposal and finite cap. Any future
  * authority must bind its own decision in a separate immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;
