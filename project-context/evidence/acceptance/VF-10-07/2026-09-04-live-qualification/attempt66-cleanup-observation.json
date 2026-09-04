@@ -1,0 +1,32 @@
+{
+  "schema_version": "videoforge.v2-07-attempt66-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 66,
+  "checked_at": "2026-09-04T07:34:23.570Z",
+  "cloudflare": {
+    "signer_secret_deleted": true,
+    "worker_rolled_back_to_captured_anchor": true,
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED"
+  },
+  "runpod": {
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "stable_read_count": 3,
+    "billing_baseline_usd": 2.214659276913153,
+    "billing_final_usd": 2.214659276913153,
+    "billing_incremental_usd": 0,
+    "retained_volumes": [
+      {"id_sha256":"sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be","size_gb":50,"region":"EU-RO-1"},
+      {"id_sha256":"sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619","size_gb":50,"region":"EU-RO-1"}
+    ]
+  },
+  "v2_08_started": false,
+  "result": "CLEAN_ZERO_COMPUTE_THREE_STABLE_READS"
+}

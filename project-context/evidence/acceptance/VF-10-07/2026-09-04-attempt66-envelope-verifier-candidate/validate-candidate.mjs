@@ -70,9 +70,9 @@ const serialized = JSON.stringify({ publication, preflight, max1, max2, proposal
 yes(!/(?:seed|resume|retained_disposable)/iu.test(serialized), "REMOVED_LEGACY_PATHS");
 const activation = await readFile(path.join(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8");
 yes(activation.includes("sha256:a90c44b9b2cf37383c15c633f7de19dd2b6fbbe1b17abffd227d79a09a95c3f8"), "PROPOSAL_BINDING");
-yes(activation.includes("sha256:6ec529ed633f28b54a8d5649d7aa2c68ca8f32b2bf5898db6de0261f917f39fd"), "AUTHORITY_BINDING");
-yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = 4\.5;/u.test(activation), "CAP_BINDING");
-yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = false;/u.test(activation), "ANCHOR_BINDING");
+yes(/V207_APPROVED_AUTHORITY_SHA256: string \| null = null;/u.test(activation), "AUTHORITY_CLOSED");
+yes(/V207_APPROVED_FINITE_CAP_USD: number \| null = null;/u.test(activation), "CAP_CLOSED");
+yes(/V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean \| null = null;/u.test(activation), "ANCHOR_CLOSED");
 for (const name of files.slice(0, -1)) yes((await bytes(name)).length > 0, `NONEMPTY_${name}`);
 yes(sha(await bytes("combined-live-proposal.json")) === acceptance.proposal_sha256, "PROPOSAL_HASH");
 yes(sha(await bytes("read-only-preflight.json")) === acceptance.preflight_sha256, "PREFLIGHT_HASH");

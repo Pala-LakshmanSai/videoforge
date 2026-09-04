@@ -1,0 +1,29 @@
+{
+  "schema_version": "videoforge-v207-live-orchestrator/v1",
+  "worker_name": "videoforge-v2-06-staging",
+  "route": "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port",
+  "config_path": "/Users/lakshmansai/.config/videoforge/v2-06/wrangler-current-3d8d467.json",
+  "authority": {
+    "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+    "source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+    "proposal_sha256": "sha256:a90c44b9b2cf37383c15c633f7de19dd2b6fbbe1b17abffd227d79a09a95c3f8",
+    "cap_usd": 4.5,
+    "anchor_refresh_authorized": false
+  },
+  "events": [
+    {"event":"orchestration_started","at":"2026-09-04T07:29:04.433Z","detail":{"local_disk_available_bytes":3050889216}},
+    {"event":"rollback_anchor_refresh_invocation_checked","at":"2026-09-04T07:29:04.434Z","detail":{"activation":"disabled","authority_bound":false,"environment_bound":false}},
+    {"event":"captured_worker_version","at":"2026-09-04T07:29:10.055Z","detail":{"version_id_hash":"sha256:781ca0e65c35e7574754cda6c9a81cf08669ca62195510bce9ddfc1437e4e90a","rollback_anchor_sha256":"sha256:b22811e3e1f0950fd3fe5a060787f462eb548927e1f07492e25273ce463012bf","recent_version_index":6,"recent_version_window":10,"retained":true}},
+    {"event":"captured_pre_mutation_route","at":"2026-09-04T07:29:10.639Z","detail":{"status":404,"code":"V207_ROUTE_DISABLED"}},
+    {"event":"read_only_capacity_admission_completed","at":"2026-09-04T07:29:46.128Z","detail":{"exit_code":0}},
+    {"event":"staging_built_signer_disabled","at":"2026-09-04T07:29:52.136Z"},
+    {"event":"current_source_deployed_signer_disabled","at":"2026-09-04T07:30:25.334Z"},
+    {"event":"signer_secret_activated","at":"2026-09-04T07:30:31.094Z"},
+    {"event":"signer_active_worker_identity_confirmed","at":"2026-09-04T07:30:33.530Z","detail":{"version_id_hash":"sha256:6238de67d72adf501e7b493abd8637f54617b9356b6691140c2b388ec682b987","worker_record_sha256":"sha256:b047ab533e85284760e16726b2653464d91659f4f303a9e177c000a460ebcfea"}},
+    {"event":"orchestration_failed","at":"2026-09-04T07:30:57.250Z","detail":{"code":"V207_AUTHORITY_PROPAGATION_UNCONFIRMED"}},
+    {"event":"signer_secret_deleted","at":"2026-09-04T07:31:22.494Z"},
+    {"event":"worker_rolled_back","at":"2026-09-04T07:31:33.807Z","detail":{"version_id_hash":"sha256:781ca0e65c35e7574754cda6c9a81cf08669ca62195510bce9ddfc1437e4e90a","rollback_anchor_sha256":"sha256:b22811e3e1f0950fd3fe5a060787f462eb548927e1f07492e25273ce463012bf"}},
+    {"event":"restored_route_confirmed","at":"2026-09-04T07:32:19.143Z","detail":{"status":404,"code":"V207_ROUTE_DISABLED"}}
+  ],
+  "result": "FAILED"
+}
