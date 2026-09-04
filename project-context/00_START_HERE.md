@@ -19,6 +19,13 @@
   but do not identify the initiator; do not guess whether the owner path or worker path initiated it.
   No provider request or spend occurred, and there was no retry, continuation, provider retrieval,
   GPU, RunPod, production, or volume mutation. Freeze this project and treat the approval as consumed.
+- Provider-free repair `b01eb290df2c92064f042a50d1ad51699f89ea02` closes both cancellation
+  hazards found in source. Active project and queue screens now require a deliberate two-click stop,
+  and the server rejects a per-attempt POST unless it carries an exact attempt-bound confirmation.
+  Personal worker `0.1.14` distinguishes an explicit owner cancellation from a stale-lease fence:
+  both stop local work safely, but only the former reports `CANCELLED`; the latter reports bounded
+  `FAILED / MEDIA_EXECUTION_LEASE_STALE`. Its clean source-bound execution-bundle SHA-256 is
+  `61ff767630bfc848e524cc3347626c169de05678a51829bc86b8a0cc3098f0be`.
 - Authenticated Chrome created exactly one fresh project
   `d02997b4-1d57-4f79-8abb-3ba76fdbffdd` after the immediate free-space gate passed with
   `4,747,771,904` available bytes. Stages 1-4 completed; Stage 4 saved 35 segments, 30 image scenes,
@@ -38,8 +45,10 @@
   persistence and independently rechecked at the compiler boundary. DeepSeek still receives the
   exact phrase, containing sentence, bounded previous/next phrases, compact global context, title,
   pinned Image Style treatment, shot role, and permanent visual restrictions.
-- Provider-free verification passes focused pipeline 96/96, focused hosted prompt 22/22, pipeline/web typechecks,
-  pipeline lint/format, staging build/quarantine, and diff checks. Real Chrome mechanically proved
+- Provider-free verification passes focused cancellation UI/server 75/75, the new worker response
+  matrix and completion checks, all remaining focused worker checks 35/35, web typecheck, Python and
+  changed-file lint/format, both emitted bundle quarantines, release/deployment checks, and diff
+  checks. Real Chrome previously proved
   the accepted-prompt region has a 520px viewport over 9,973px of content and scrolls to its 9,453px
   maximum on the previous frozen project. The v17 repair is now deployed, but the fresh live run
   stopped at Stage 2 and therefore did not qualify Stage 4, Stage 5, accepted prompt quality,
@@ -48,11 +57,9 @@
 - Future fresh projects retain deterministic adaptive batching with no project scene cap, exactly one
   DeepSeek request per persisted planned batch, durable batch persistence before the next request,
   and no retry or redispatch on terminal or ambiguous failure.
-- The aggregate `CI=1 TURBO_FORCE=true pnpm verify` is not repository-wide green for reasons outside
-  this Stage 5 diff: historical V2-06/V2-13 script pins report 29 failures, and V2-08 worker image
-  hash pins report 3 failures. The affected scripts, workflow, worker, and contract files are byte-
-  unchanged from approved source `efd153ab`; do not misattribute or repair those unrelated sealed
-  artifact drifts as part of the Stage 5 qualification.
+- The broad aggregate was not rerun under the fast verification policy. Historical sealed-artifact
+  drifts outside the hosted cancellation and Stage 5 path remain separate and must not be repaired or
+  misattributed here.
 - The selected next profile is `v2_07_mage_serverless` with brief `tasks/VF-10-07.md`. V2-07
   Attempt64 is closed `NOT_QUALIFIED` after `RUNPOD_ZERO_NOT_CONFIRMED`; cleanup is exact and repair
   `1283a23` passed independent audit. Attempt64 and every older proposal, authority, cap, and run are
