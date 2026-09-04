@@ -22,6 +22,7 @@ import type { V207CommandRequest, V207CommandResult } from "./v207-live-orchestr
 
 const NONCE = "a".repeat(64);
 const VERSION_ID = "11111111-1111-4111-8111-111111111111";
+const PREDECESSOR_VERSION_ID = "22222222-2222-4222-8222-222222222222";
 const roots: string[] = [];
 
 beforeAll(() => vi.stubGlobal("DecompressionStream", NodeDecompressionStream));
@@ -300,12 +301,148 @@ describe("V2-07 disposable live orchestrator", () => {
           const response = await normalFetch(input, init);
           if (!setup.state().secret) return response;
           const headers = new Headers(response.headers);
-          headers.set(V207_ROUTE_VERSION_HEADER, "22222222-2222-4222-8222-222222222222");
+          headers.set(V207_ROUTE_VERSION_HEADER, PREDECESSOR_VERSION_ID);
           return new Response(response.body, { status: response.status, headers });
         },
       }),
     ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED" });
 
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+  });
+
+  it("allows a transient disabled predecessor before three exact active fingerprints", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let activeRouteReads = 0;
+    const completed = await runV207DisposableLiveOrchestration({
+      ...setup.options,
+      fetchImpl: async (input, init) => {
+        const request = new Request(input, init);
+        if (
+          setup.state().secret &&
+          request.method === "POST" &&
+          !request.headers.has("x-videoforge-v207-authority")
+        ) {
+          activeRouteReads += 1;
+          if (activeRouteReads === 1) {
+            return Response.json(
+              { error: { code: "V207_ROUTE_DISABLED" } },
+              {
+                status: 404,
+                headers: { [V207_ROUTE_VERSION_HEADER]: PREDECESSOR_VERSION_ID },
+              },
+            );
+          }
+        }
+        return normalFetch(input, init);
+      },
+    });
+
+    expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
+    expect(activeRouteReads).toBe(4);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
+  });
+
+  it("times out on a persistent disabled predecessor before qualification", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let activeRouteReads = 0;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          if (
+            setup.state().secret &&
+            request.method === "POST" &&
+            !request.headers.has("x-videoforge-v207-authority")
+          ) {
+            activeRouteReads += 1;
+            return Response.json(
+              { error: { code: "V207_ROUTE_DISABLED" } },
+              {
+                status: 404,
+                headers: { [V207_ROUTE_VERSION_HEADER]: PREDECESSOR_VERSION_ID },
+              },
+            );
+          }
+          return normalFetch(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ACTIVE_ROUTE_UNCONFIRMED" });
+
+    expect(activeRouteReads).toBe(30);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+  });
+
+  it("fails immediately when a disabled predecessor returns after the first exact active match", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let activeRouteReads = 0;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          if (
+            setup.state().secret &&
+            request.method === "POST" &&
+            !request.headers.has("x-videoforge-v207-authority")
+          ) {
+            activeRouteReads += 1;
+            if (activeRouteReads === 2) {
+              return Response.json(
+                { error: { code: "V207_ROUTE_DISABLED" } },
+                {
+                  status: 404,
+                  headers: { [V207_ROUTE_VERSION_HEADER]: PREDECESSOR_VERSION_ID },
+                },
+              );
+            }
+          }
+          return normalFetch(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ACTIVE_ROUTE_UNCONFIRMED" });
+
+    expect(activeRouteReads).toBe(2);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+  });
+
+  it.each([
+    ["missing", null],
+    ["malformed", "not-a-worker-version"],
+  ] as const)("fails immediately on %s predecessor version metadata", async (_label, versionId) => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let activeRouteReads = 0;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          if (
+            setup.state().secret &&
+            request.method === "POST" &&
+            !request.headers.has("x-videoforge-v207-authority")
+          ) {
+            activeRouteReads += 1;
+            return Response.json(
+              { error: { code: "V207_ROUTE_DISABLED" } },
+              {
+                status: 404,
+                ...(versionId === null
+                  ? {}
+                  : { headers: { [V207_ROUTE_VERSION_HEADER]: versionId } }),
+              },
+            );
+          }
+          return normalFetch(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID" });
+
+    expect(activeRouteReads).toBe(1);
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
   });
 

@@ -468,6 +468,61 @@ async function assertStableRoute(
   throw new V207DisposableOrchestratorError(errorCode);
 }
 
+async function assertStableActiveRoute(
+  fetchImpl: typeof fetch,
+  routeUrl: string,
+  expectedWorkerVersionId: string,
+  reads: number,
+  sleepImpl: (milliseconds: number) => Promise<void>,
+  errorCode: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const deadline = Date.now() + ROUTE_PROPAGATION_MAX_MILLISECONDS;
+  let consecutiveMatches = 0;
+  let firstExactMatchSeen = false;
+  for (let attempt = 1; attempt <= ROUTE_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
+    if (isAborted(signal)) {
+      throw new V207DisposableOrchestratorError("V207_OPERATOR_ABORT");
+    }
+    const remainingMilliseconds = deadline - Date.now();
+    if (remainingMilliseconds <= 0) break;
+    const observed = await readRoute(
+      fetchImpl,
+      routeUrl,
+      signal,
+      Math.min(15_000, remainingMilliseconds),
+    );
+    if (typeof observed.workerVersionId !== "string") {
+      throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID");
+    }
+    if (observed.status === 403 && observed.code === "V207_AUTHORITY_REJECTED") {
+      assertExpectedWorkerVersion(observed.workerVersionId, expectedWorkerVersionId);
+      firstExactMatchSeen = true;
+      consecutiveMatches += 1;
+      if (consecutiveMatches === reads) return;
+    } else if (
+      // An edge may briefly retain the exact disabled application predecessor after secret put.
+      // Once any edge serves the exact active version, regression or alternation is terminal.
+      !firstExactMatchSeen &&
+      observed.status === 404 &&
+      observed.code === "V207_ROUTE_DISABLED"
+    ) {
+      consecutiveMatches = 0;
+    } else {
+      throw new V207DisposableOrchestratorError(errorCode);
+    }
+    if (attempt < ROUTE_PROPAGATION_MAX_ATTEMPTS && Date.now() < deadline) {
+      const retryDelayMilliseconds = Math.min(
+        ROUTE_PROPAGATION_RETRY_MILLISECONDS,
+        Math.max(0, deadline - Date.now()),
+      );
+      if (retryDelayMilliseconds <= 0) break;
+      await sleepWithSignal(sleepImpl, retryDelayMilliseconds, signal);
+    }
+  }
+  throw new V207DisposableOrchestratorError(errorCode);
+}
+
 async function assertDataPlaneAbsent(
   fetchImpl: typeof fetch,
   routeUrl: string,
@@ -917,10 +972,10 @@ export async function runV207DisposableLiveOrchestration(
     );
     await record("active_version_confirmed", { version_id_present: versionId.length > 0 });
 
-    await assertStableRoute(
+    await assertStableActiveRoute(
       fetchImpl,
       routeUrl,
-      { status: 403, code: "V207_AUTHORITY_REJECTED", workerVersionId: versionId },
+      versionId,
       FINAL_PROOF_READS,
       sleepImpl,
       "V207_DISPOSABLE_ACTIVE_ROUTE_UNCONFIRMED",
