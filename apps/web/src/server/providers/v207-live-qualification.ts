@@ -90,6 +90,8 @@ const QUALIFICATION_SCENES = [
 ] as const;
 const ROUTE =
   "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port";
+export const V207_DISPOSABLE_OUTPUT_ROUTE =
+  "https://videoforge-v207-output.lakshmansai121.workers.dev/api/v2/v207/generated-output-port" as const;
 const RESULT_PATH = "/tmp/videoforge-v207-live-result.json";
 const V207_JOB_SCRATCH_ROOT = "/tmp/videoforge-jobs" as const;
 const V207_TEMPLATE_NAME = "videoforge_mage_v207_20260820" as const;
@@ -104,6 +106,7 @@ export const V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR = 1.116 as const;
 export const V207_SECURE_REFERENCE_RATE_USD_PER_HOUR = 0.74 as const;
 let IMAGE: string = V207_REPAIRED_IMAGE;
 let finiteCapUsd = 0;
+let outputPortRoute: string = ROUTE;
 
 type AnyRecord = Record<string, any>;
 
@@ -865,6 +868,14 @@ class V207OutputPortGetResponseError extends Error {
 export interface V207OutputPortTestOptions {
   readonly fetchImpl?: typeof fetch;
   readonly sleepImpl?: (milliseconds: number) => Promise<void>;
+  readonly routeUrl?: string;
+}
+
+export function parseV207OutputPortRoute(
+  value: string | undefined,
+): typeof V207_DISPOSABLE_OUTPUT_ROUTE {
+  if (value !== V207_DISPOSABLE_OUTPUT_ROUTE) throw new Error("V207_OUTPUT_PORT_ROUTE_INVALID");
+  return V207_DISPOSABLE_OUTPUT_ROUTE;
 }
 
 async function writeV207EvidenceCheckpoint(value: AnyRecord): Promise<void> {
@@ -904,7 +915,7 @@ export async function routePort(
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     let response: Response;
     try {
-      response = await fetchImpl(ROUTE, {
+      response = await fetchImpl(options.routeUrl ?? outputPortRoute, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -2420,6 +2431,7 @@ async function main(): Promise<void> {
       );
       return;
     }
+    outputPortRoute = parseV207OutputPortRoute(process.env.V207_OUTPUT_PORT_ROUTE);
     const apiKey = process.env.RUNPOD_KEY ?? (await loadSujalRunPodApiKeyFromKeychain());
     let nonce = process.env.V207_AUTHORITY_NONCE?.trim() ?? "";
     if (!nonce) {

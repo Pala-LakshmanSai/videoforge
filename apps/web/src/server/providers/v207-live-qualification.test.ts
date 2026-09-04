@@ -32,11 +32,13 @@ const {
   installV207SignalHandlers,
   isAllowedV207GhcrBlobRedirect,
   mergeV207AcceptedUnits,
+  parseV207OutputPortRoute,
   readV207EndpointBillingAmount,
   readV207OutputReadback,
   redactV207LiveEvidence,
   redactV207ProviderJobError,
   routePort,
+  V207_DISPOSABLE_OUTPUT_ROUTE,
   V207_SECURE_REFERENCE_RATE_USD_PER_HOUR,
   V207_SERVERLESS_FLEX_RATE_USD_PER_GPU_HOUR,
   V207GeneratedOutputRollbackError,
@@ -59,6 +61,18 @@ const source = await readFile(
 type TestRecord = Record<string, unknown>;
 
 describe("V2-07 live qualification runner safety", () => {
+  it("accepts only the fixed disposable output Worker route", () => {
+    expect(parseV207OutputPortRoute(V207_DISPOSABLE_OUTPUT_ROUTE)).toBe(
+      V207_DISPOSABLE_OUTPUT_ROUTE,
+    );
+    expect(() => parseV207OutputPortRoute(undefined)).toThrow("V207_OUTPUT_PORT_ROUTE_INVALID");
+    expect(() =>
+      parseV207OutputPortRoute(
+        "https://videoforge-v2-06-staging.lakshmansai121.workers.dev/api/v2/v207/generated-output-port",
+      ),
+    ).toThrow("V207_OUTPUT_PORT_ROUTE_INVALID");
+  });
+
   it("injects the exact envelope verifier material paired to the dispatch signer", () => {
     const workerToken = "cd".repeat(32);
     const environment = buildV207TemplateEnvironment(
