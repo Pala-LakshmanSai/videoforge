@@ -119,15 +119,14 @@ exactly once.
 Request v16 makes the structured fields explicit: `literal_subject`, `action`, `environment`, and
 `lighting_context` are the source-bound scene facts, with `continuity_tags` and a compatibility-only
 `prompt_core`. Subject, action, and environment must retain concrete anchors from the exact phrase,
-containing sentence, bounded previous/next narration, or compact global story context. The action
-starts with the exact phrase's first distinctive action, allowing morphology only; a while/then/and/but
-action chain is accepted only when that coordination is narrated. The compiler derives final literal
-image content from the validated structured facts, so `prompt_core` cannot change the subject, action,
-environment, or lighting that reaches the image model. The bounded action gate treats only
-high-confidence semantic equivalents as the same visible predicate. Static placement wording such
-as keep/remain/rest/stay/store/tuck is equivalent, while sit/stand/position and genuinely different
-actions remain distinct. This vocabulary validates narration meaning only; it never adds style
-attributes to a prompt.
+containing sentence, bounded previous/next narration, or compact global story context. The system
+prompt tells DeepSeek to begin with the exact phrase's visible action and not invent coordinated
+actions. Hosted acceptance does not use lexical or action-equivalence heuristics as a terminal gate:
+subject, action, context, and duplicate-prose checks are advisory because natural paraphrases cannot
+be classified reliably by a bounded word matcher. The compiler still derives final literal image
+content from the contract-valid structured fields, so `prompt_core` cannot change the subject, action,
+environment, or lighting that reaches the image model. Deterministic schema, scene identity,
+completeness, forbidden-content, provider-metadata, and spend-cap fences remain mandatory.
 
 ## Compact DeepSeek output
 
@@ -150,7 +149,7 @@ The scheduler assigns `in_image_shot_role` from a versioned seeded rotation with
 
 Positive construction order:
 
-1. Validated literal subject, visible action, environment, and lighting facts from DeepSeek.
+1. Contract-valid literal subject, visible action, environment, and lighting facts from DeepSeek.
 2. Exact source anchors retained by those structured facts.
 3. Deterministic continuity and required in-image shot role/viewpoint.
 4. Full-image or split-image crop-safe guidance from the pinned style.
@@ -159,7 +158,7 @@ Positive construction order:
 7. Permanent VideoForge guardrail.
 
 The provider-authored `prompt_core` is never used as final image content. It remains in the durable
-writer shape for provider compatibility and bounded quality checks, while the compiler constructs
+writer shape for provider compatibility and advisory quality diagnostics, while the compiler constructs
 `literalContent` from the independently normalized and conflict-checked structured fields.
 
 Negative channel:

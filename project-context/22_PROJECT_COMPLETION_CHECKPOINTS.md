@@ -39,25 +39,25 @@ reported separately.
 
 Repository truth at the 2026-09-04 handoff:
 
-- clean source `13cdea0b2556cc38d6a4d34747cb2bcf0970c012`, including the dedicated
-  171,722-byte Stage 5 closure from `2d5d00f3`, was deployed exactly once as Worker
-  `be21de25-a3a4-481f-ac24-5470ef28131e`. Fresh project
-  `28146202-1b64-481a-8878-a5961c48839e` passed its 3,748,261,888-byte local-space preflight and
-  completed Stages 1–4 with 36 timeline segments, 31 image scenes, and 10 avatar segments;
-- Stage 5 reached Runware rather than exceeding Worker CPU. The first of two persisted planned
-  batches requested 16 scenes and returned all 16, then local validation stopped on the first row as
-  `scene_quality/scene_relevance_action_conflict`. No prompt was accepted or persisted and batch two
-  was not dispatched. Exact known Stage 5 cost is 964 micro-USD; the `$0.00` UI was cent rounding.
-  No retry, continuation, or provider retrieval occurred; the project and its authority are consumed
-  and frozen;
-- provider-free repair `614c49796ab94df3e51bd8325b640c9c3b0cda6f` advances request identity to
-  v16 and makes static placement predicates keep/remain/rest/stay/store/tuck equivalent. It fixes the
-  reproduced hydrogen-peroxide `tucked` to `resting` false rejection without hardcoding visual style
-  or collapsing sit/stand/position and genuinely conflicting actions. Terminal batch copy is also
-  truthful. Verification passes 81 prompt/planner tests, 93 hosted UI/route/transport tests,
-  pipeline build/typecheck, both Worker builds/quarantines, 15/15 bundle guards, targeted lint,
-  formatting, and diff checks. v16 is undeployed and requires fresh exact authority for any live
+- clean source `656cef526af5ebceabf1e3f7d233aa36337abc4d` was deployed exactly once as Worker
+  `4bbebb21-996b-4dc1-afc7-e946eaff7c6b` with config SHA-256 `f0da8504...afe18` after exact
+  secret, private-R2, and CORS preflight. Public propagation stabilized at four consecutive
+  exact-source reads. Authenticated Chrome reached the live new-project form, but the user rejected
+  semantic heuristics as terminal Stage 5 gates before local-space preflight or Create. No fresh
+  project, provider call, or spend occurred; frozen project `28146202-1b64-481a-8878-a5961c48839e`
+  was not accessed;
+- provider-free source `85d010553b961a96fe05d11e91969a72de0e9b42` makes narration relevance,
+  action/subject/context paraphrase, and within-batch duplicate prompt checks advisory in hosted
+  Stage 5. Cross-batch duplicate prompt cores also no longer reject persistence. Deterministic JSON
+  decoding, schema/scene identity, completeness, hard prompt restrictions, provider metadata, and
+  spend-cap fences remain terminal. Pipeline tests pass 180/180, focused hosted prompt tests pass
+  22/22, pipeline/web typechecks, focused lint/format, staging build/quarantine, context validation,
+  and diff checks pass. This source is undeployed and requires fresh exact authority for one live
   qualification;
+- historical project `28146202-1b64-481a-8878-a5961c48839e` proved Stage 4 and the dedicated Stage 5
+  route: 31 image scenes planned as two batches, the first requested and returned all 16 rows, then
+  the former semantic gate falsely rejected `tucked` versus `resting`. Exact known Stage 5 cost was
+  964 micro-USD. No retry, continuation, or provider retrieval occurred; the project remains frozen;
 - V2-07 Attempt64 is closed `NOT_QUALIFIED` after `RUNPOD_ZERO_NOT_CONFIRMED`; exact cleanup and
   three stable reads prove zero compute/disposables with both retained volumes unchanged, and its
   proposal, authority, cap, and run are consumed and non-reusable;
