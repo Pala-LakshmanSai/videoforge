@@ -1113,10 +1113,21 @@ async function handleCapabilityTransfer(
     if (request.headers.get("content-type") !== "image/png") {
       return errorResponse("V207_OUTPUT_FACTS_MISMATCH", 400);
     }
-    if ((await bucket.head(reservation.object_key)) !== null) {
+    let existing: Awaited<ReturnType<HostedR2BucketBinding["head"]>>;
+    try {
+      existing = await bucket.head(reservation.object_key);
+    } catch {
+      return errorResponse("V207_OUTPUT_PREWRITE_HEAD_FAILED", 503);
+    }
+    if (existing !== null) {
       return errorResponse("V207_OUTPUT_ALREADY_EXISTS", 409);
     }
-    const bytes = await readBoundedBody(request, reservation.max_content_length);
+    let bytes: ArrayBuffer | null;
+    try {
+      bytes = await readBoundedBody(request, reservation.max_content_length);
+    } catch {
+      return errorResponse("V207_OUTPUT_BODY_READ_FAILED", 503);
+    }
     if (
       bytes === null ||
       !lengthValid(bytes.byteLength, reservation.max_content_length) ||
@@ -1124,10 +1135,19 @@ async function handleCapabilityTransfer(
     ) {
       return errorResponse("V207_OUTPUT_FACTS_MISMATCH", 400);
     }
-    await bucket.put(reservation.object_key, bytes, {
-      httpMetadata: { contentType: "image/png" },
-    });
-    const stored = await bucket.head(reservation.object_key);
+    try {
+      await bucket.put(reservation.object_key, bytes, {
+        httpMetadata: { contentType: "image/png" },
+      });
+    } catch {
+      return errorResponse("V207_OUTPUT_BUCKET_WRITE_FAILED", 503);
+    }
+    let stored: Awaited<ReturnType<HostedR2BucketBinding["head"]>>;
+    try {
+      stored = await bucket.head(reservation.object_key);
+    } catch {
+      return errorResponse("V207_OUTPUT_POSTWRITE_HEAD_FAILED", 503);
+    }
     if (
       stored === null ||
       stored.size !== bytes.byteLength ||

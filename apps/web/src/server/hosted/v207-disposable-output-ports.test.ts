@@ -61,7 +61,12 @@ function png1280x720(): Uint8Array {
   return output;
 }
 
-function memoryBucket(outputMetadata: "present" | "absent" | "wrong" = "present"): {
+type CapabilityPutFailureStage = "bucket_write" | "postwrite_head" | "prewrite_head";
+
+function memoryBucket(
+  outputMetadata: "present" | "absent" | "wrong" = "present",
+  failureStage?: CapabilityPutFailureStage,
+): {
   bucket: HostedR2BucketBinding;
   objects: Map<string, { bytes: Uint8Array; contentType: string }>;
 } {
@@ -75,6 +80,13 @@ function memoryBucket(outputMetadata: "present" | "absent" | "wrong" = "present"
   const bucket: HostedR2BucketBinding = {
     async head(key) {
       const value = objects.get(key);
+      if (
+        key === objectKey &&
+        (failureStage === "prewrite_head" ||
+          (failureStage === "postwrite_head" && value !== undefined))
+      ) {
+        throw new Error("private-r2-head-detail");
+      }
       return value
         ? { size: value.bytes.byteLength, httpMetadata: metadataFor(key, value.contentType) }
         : null;
@@ -92,6 +104,9 @@ function memoryBucket(outputMetadata: "present" | "absent" | "wrong" = "present"
         : null;
     },
     async put(key, body, options) {
+      if (key === objectKey && failureStage === "bucket_write") {
+        throw new Error("private-r2-write-detail");
+      }
       const putOptions = options as
         | {
             httpMetadata?: { contentType?: string };
@@ -345,6 +360,51 @@ describe("V2-07 disposable output Worker", () => {
       environment,
     );
     expect(response?.status).toBe(400);
+    expect(runtime.objects.has(objectKey)).toBe(false);
+  });
+
+  it.each([
+    ["prewrite_head", "V207_OUTPUT_PREWRITE_HEAD_FAILED"],
+    ["bucket_write", "V207_OUTPUT_BUCKET_WRITE_FAILED"],
+    ["postwrite_head", "V207_OUTPUT_POSTWRITE_HEAD_FAILED"],
+  ] as const)("returns a bounded 503 for capability PUT %s exceptions", async (stage, code) => {
+    const runtime = memoryBucket("present", stage);
+    const { url, environment } = await generatedPutPort(runtime);
+    const response = await handleV207DisposableOutputPort(
+      new Request(url, {
+        method: "PUT",
+        headers: { "content-type": "image/png" },
+        body: new TextEncoder().encode("bounded-png-fixture"),
+      }),
+      environment,
+    );
+
+    expect(response?.status).toBe(503);
+    expect(await response?.json()).toEqual({ error: { code } });
+  });
+
+  it("returns a bounded 503 when the capability PUT body stream throws", async () => {
+    const runtime = memoryBucket();
+    const { url, environment } = await generatedPutPort(runtime);
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.error(new Error("private-body-read-detail"));
+      },
+    });
+    const response = await handleV207DisposableOutputPort(
+      new Request(url, {
+        method: "PUT",
+        headers: { "content-type": "image/png" },
+        body,
+        duplex: "half",
+      } as RequestInit & { duplex: "half" }),
+      environment,
+    );
+
+    expect(response?.status).toBe(503);
+    expect(await response?.json()).toEqual({
+      error: { code: "V207_OUTPUT_BODY_READ_FAILED" },
+    });
     expect(runtime.objects.has(objectKey)).toBe(false);
   });
 

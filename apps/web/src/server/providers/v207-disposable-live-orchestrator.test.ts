@@ -36,11 +36,22 @@ const roots: string[] = [];
 
 beforeAll(() => vi.stubGlobal("DecompressionStream", NodeDecompressionStream));
 
-function memoryBucket(): HostedR2BucketBinding {
+type CapabilityPutFailureStage = "body_read" | "bucket_write" | "postwrite_head" | "prewrite_head";
+
+function memoryBucket(
+  failureStage?: Exclude<CapabilityPutFailureStage, "body_read">,
+): HostedR2BucketBinding {
   const objects = new Map<string, { bytes: Uint8Array; contentType?: string }>();
   return {
     async head(key) {
       const value = objects.get(key);
+      if (
+        key === PYTHON_OBJECT_KEY &&
+        (failureStage === "prewrite_head" ||
+          (failureStage === "postwrite_head" && value !== undefined))
+      ) {
+        throw new Error("private-r2-head-detail");
+      }
       return value
         ? { size: value.bytes.byteLength, httpMetadata: { contentType: value.contentType } }
         : null;
@@ -58,6 +69,9 @@ function memoryBucket(): HostedR2BucketBinding {
         : null;
     },
     async put(key, body, options) {
+      if (key === PYTHON_OBJECT_KEY && failureStage === "bucket_write") {
+        throw new Error("private-r2-write-detail");
+      }
       const bytes =
         typeof body === "string"
           ? new TextEncoder().encode(body)
@@ -392,6 +406,109 @@ describe("V2-07 Python urllib PUT probe", () => {
     expect(String(failure)).not.toContain(rawSecret);
     expect(JSON.stringify(failure)).not.toContain(rawSecret);
   });
+
+  it.each([
+    ["prewrite_head", "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_PREWRITE_HEAD_FAILED"],
+    ["body_read", "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_BODY_READ_FAILED"],
+    ["bucket_write", "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_BUCKET_WRITE_FAILED"],
+    ["postwrite_head", "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_POSTWRITE_HEAD_FAILED"],
+  ] as const)(
+    "classifies actual capability PUT %s exceptions through real python3 without raw diagnostics",
+    async (stage, expectedCode) => {
+      const bucket = memoryBucket(stage === "body_read" ? undefined : stage);
+      const environment = {
+        PRIVATE_ARTIFACTS: bucket,
+        VIDEOFORGE_V207_AUTHORITY_NONCE: NONCE,
+      };
+      let originUrl = "";
+      const server = createServer((request, response) => {
+        const chunks: Buffer[] = [];
+        request.on("data", (chunk: Buffer) => chunks.push(chunk));
+        request.on("end", () => {
+          void (async () => {
+            const incomingBody = Buffer.concat(chunks);
+            const headers = new Headers();
+            for (let index = 0; index < request.rawHeaders.length; index += 2) {
+              headers.append(request.rawHeaders[index]!, request.rawHeaders[index + 1]!);
+            }
+            const body =
+              stage === "body_read"
+                ? new ReadableStream<Uint8Array>({
+                    pull(controller) {
+                      controller.error(new Error("private-body-read-detail"));
+                    },
+                  })
+                : incomingBody;
+            const workerResponse = await handleV207DisposableOutputPort(
+              new Request(`${originUrl}${request.url ?? ""}`, {
+                method: request.method,
+                headers,
+                body,
+                duplex: "half",
+              } as RequestInit & { duplex: "half" }),
+              environment,
+            );
+            const resolved = workerResponse ?? new Response(null, { status: 404 });
+            response.statusCode = resolved.status;
+            for (const [name, value] of resolved.headers) response.setHeader(name, value);
+            response.setHeader(V207_ROUTE_VERSION_HEADER, VERSION_ID);
+            response.end(Buffer.from(await resolved.arrayBuffer()));
+          })().catch(() => {
+            response.statusCode = 500;
+            response.end();
+          });
+        });
+      });
+      server.listen(0, "127.0.0.1");
+      await once(server, "listening");
+      const address = server.address();
+      if (address === null || typeof address === "string") throw new Error("loopback unavailable");
+      originUrl = `http://127.0.0.1:${address.port}`;
+      const probeBody = Buffer.from("bounded-body");
+      const reservation = await handleV207DisposableOutputPort(
+        new Request(`${originUrl}/api/v2/v207/generated-output-port`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-videoforge-v207-authority": NONCE,
+          },
+          body: JSON.stringify({
+            schema_version: "videoforge-v207-generated-output-port-request/v1",
+            operation: "PUT",
+            account_id: "account-a",
+            workspace_id: "workspace-a",
+            object_key: PYTHON_OBJECT_KEY,
+            content_type: "image/png",
+            max_content_length: probeBody.byteLength,
+            lifetime_seconds: 60,
+          }),
+        }),
+        environment,
+      );
+      expect(reservation?.status).toBe(200);
+      const port = (await reservation!.json()) as { url: string };
+      let failure: unknown;
+      try {
+        await runV207PythonUrllibPutProbe(
+          spawnV207Command,
+          process.cwd(),
+          {},
+          port.url,
+          probeBody,
+          VERSION_ID,
+        );
+      } catch (error) {
+        failure = error;
+      } finally {
+        server.close();
+        await once(server, "close");
+      }
+
+      expect(failure).toMatchObject({ code: expectedCode });
+      expect(String(failure)).not.toContain("private-");
+      expect(JSON.stringify(failure)).not.toContain("private-");
+    },
+  );
 
   it.each([
     ["missing", null, "V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID"],
