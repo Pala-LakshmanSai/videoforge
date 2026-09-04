@@ -12,9 +12,13 @@
   approved `$7/month` total; observed incremental spend was `$0`.
 - Provider-free repair `e1bf464e8bae5615e63921ed5f551a7e554ab5b3` strips ANSI/VT control bytes before
   applying the unchanged exact structured absence matcher. Attempt71 proposal
-  `sha256:5aff2029ba534c34d50e35e6a404e1787572f767b788171e754d9a18a84ae967` is sealed awaiting
-  fresh exact approval. No provider authority or finite spend cap is active; Attempt70 is consumed
-  and non-reusable, V2-07 remains `NOT_QUALIFIED`, and V2-08 remains forbidden.
+  `sha256:5aff2029ba534c34d50e35e6a404e1787572f767b788171e754d9a18a84ae967` is approved once under
+  single-use, currently unconsumed authority
+  `sha256:94c4e0a7b803916cd16e96ad2b3dda2f6fd745c007d709c2b575db8d89bb4e24` and a `$4.50`
+  maximum cumulative finite cap. Execute only the bound Attempt71 qualification and signal-safe
+  disposable cleanup through three final zero-compute reads; retain the unchanged two volumes at
+  `$7/month`, with no GPU fallback, rollback-anchor refresh, or V2-08 execution. Attempt70 remains
+  consumed and non-reusable; V2-07 remains `NOT_QUALIFIED` pending live proof and independent audit.
 
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the
