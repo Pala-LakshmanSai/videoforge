@@ -1059,6 +1059,7 @@ const V207_OUTPUT_DELETE_RETRY_DELAYS_MS = [250, 1_000, 2_000] as const;
 export interface V207GeneratedOutputDeleteOptions {
   readonly fetchImpl?: typeof fetch;
   readonly sleepImpl?: (milliseconds: number) => Promise<void>;
+  readonly routeUrl?: string;
 }
 
 export interface V207GeneratedOutputRollbackSummary {
@@ -1123,7 +1124,7 @@ export async function deleteV207GeneratedObject(
   for (let attempt = 0; attempt <= V207_OUTPUT_DELETE_RETRY_DELAYS_MS.length; attempt += 1) {
     let response: Response;
     try {
-      response = await fetchImpl(ROUTE, {
+      response = await fetchImpl(options.routeUrl ?? outputPortRoute, {
         method: "POST",
         headers: {
           "content-type": "application/json",

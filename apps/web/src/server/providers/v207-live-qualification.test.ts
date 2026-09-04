@@ -73,6 +73,26 @@ describe("V2-07 live qualification runner safety", () => {
     ).toThrow("V207_OUTPUT_PORT_ROUTE_INVALID");
   });
 
+  it("sends exact-key rollback to the caller-bound disposable route", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          schema_version: "videoforge-v207-generated-output-delete/v1",
+          deleted: true,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    await deleteV207GeneratedObject("exact-object", "b".repeat(64), {
+      fetchImpl,
+      routeUrl: V207_DISPOSABLE_OUTPUT_ROUTE,
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      V207_DISPOSABLE_OUTPUT_ROUTE,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("injects the exact envelope verifier material paired to the dispatch signer", () => {
     const workerToken = "cd".repeat(32);
     const environment = buildV207TemplateEnvironment(
