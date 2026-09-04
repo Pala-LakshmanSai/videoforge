@@ -8,12 +8,15 @@ import hashlib
 import json
 import os
 import re
+import socket
+import ssl
 import time
 from contextlib import contextmanager
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
@@ -223,6 +226,59 @@ def _configured_image_digest() -> str:
     return configured
 
 
+_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX = "MAGE_SERVERLESS_OUTPUT_UPLOAD"
+
+
+def _generated_output_upload_http_failure_code(status: object) -> str:
+    """Return only a bounded HTTP class and status code for a failed upload.
+
+    HTTP response bodies and headers are deliberately not inspected.  A status outside the
+    ordinary three-digit HTTP range is represented by one fixed code rather than copied into
+    the worker result.
+    """
+    if (
+        isinstance(status, bool)
+        or not isinstance(status, int)
+        or status < 100
+        or status > 599
+    ):
+        return f"{_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX}_HTTP_STATUS_INVALID"
+    return f"{_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX}_HTTP_{status // 100}XX_{status}"
+
+
+def _classify_generated_output_upload_error(
+    error: BaseException, *, _seen: frozenset[int] = frozenset()
+) -> str:
+    """Map upload transport failures to bounded, redaction-safe diagnostic codes.
+
+    This function intentionally branches only on exception types and the numeric HTTP status.
+    It never reads exception text, URLs, request bodies, response bodies, headers, or credentials.
+    ``URLError.reason`` is followed only when it is another exception so timeout/TLS causes remain
+    useful without allowing arbitrary provider text to enter the result.  The recursion guard keeps
+    malformed exception graphs bounded.
+    """
+    if id(error) in _seen:
+        return f"{_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX}_DNS_NETWORK_URL"
+    seen = _seen | {id(error)}
+
+    if isinstance(error, HTTPError):
+        return _generated_output_upload_http_failure_code(getattr(error, "code", None))
+    if isinstance(error, (TimeoutError, socket.timeout)):
+        return f"{_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX}_TIMEOUT"
+    if isinstance(error, (ssl.SSLCertVerificationError, ssl.CertificateError, ssl.SSLError)):
+        return f"{_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX}_TLS_CERTIFICATE"
+    if isinstance(error, URLError):
+        reason = getattr(error, "reason", None)
+        if isinstance(reason, BaseException) and reason is not error:
+            nested = _classify_generated_output_upload_error(reason, _seen=seen)
+            if not nested.endswith("_DNS_NETWORK_URL"):
+                return nested
+        return f"{_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX}_DNS_NETWORK_URL"
+    if isinstance(error, (socket.gaierror, ConnectionError, OSError, ValueError)):
+        return f"{_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX}_DNS_NETWORK_URL"
+    return f"{_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX}_UNKNOWN"
+
+
 def _put_output(port: dict[str, Any], url: str, body: bytes) -> int:
     _validate_output_url(url)
     if len(body) != port["content_length"]:
@@ -259,23 +315,28 @@ def _put_generated_output(authority: dict[str, Any], url: str, body: bytes) -> t
     if len(body) < 1 or len(body) > authority["max_content_length"]:
         raise ServerlessMageError("MAGE_SERVERLESS_GENERATED_OUTPUT_LENGTH_INVALID")
     checksum = f"sha256:{hashlib.sha256(body).hexdigest()}"
-    request = Request(
-        url,
-        data=body,
-        method="PUT",
-        headers={
-            "content-type": authority["content_type"],
-            "content-length": str(len(body)),
-        },
-    )
+    failure_code: str | None = None
     try:
+        request = Request(
+            url,
+            data=body,
+            method="PUT",
+            headers={
+                "content-type": authority["content_type"],
+                "content-length": str(len(body)),
+            },
+        )
         with urlopen(request, timeout=60) as response:
             if response.status not in {200, 201, 204}:
-                raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_UPLOAD_FAILED")
+                failure_code = _generated_output_upload_http_failure_code(response.status)
     except ServerlessMageError:
         raise
     except Exception as error:
-        raise ServerlessMageError("MAGE_SERVERLESS_OUTPUT_UPLOAD_FAILED") from error
+        failure_code = _classify_generated_output_upload_error(error)
+    if failure_code is not None:
+        # Raise after leaving the transport exception handler.  The returned/serialized exception
+        # therefore contains only the stable code and cannot carry a URL, body, or provider text.
+        raise ServerlessMageError(failure_code)
     return round(time.monotonic() * 1000), checksum
 
 

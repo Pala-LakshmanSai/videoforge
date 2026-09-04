@@ -3,6 +3,8 @@ import base64
 import hashlib
 import hmac
 import json
+import socket
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -12,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+from urllib.error import HTTPError, URLError
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "src"), str(ROOT.parents[0] / "common")]
@@ -610,6 +613,99 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         request = urlopen.call_args.args[0]
         self.assertEqual(request.get_header("Content-length"), str(len(body)))
         self.assertEqual(request.get_header("Content-type"), "image/png")
+
+    def test_generated_output_upload_classifies_http_status_without_response_details(self) -> None:
+        body = b"png"
+        authority = self._generated_authority()
+        for status, expected in (
+            (400, "MAGE_SERVERLESS_OUTPUT_UPLOAD_HTTP_4XX_400"),
+            (503, "MAGE_SERVERLESS_OUTPUT_UPLOAD_HTTP_5XX_503"),
+        ):
+            with self.subTest(status=status), patch.object(mage_serverless, "urlopen") as urlopen:
+                response = urlopen.return_value.__enter__.return_value
+                response.status = status
+                with self.assertRaisesRegex(mage_serverless.ServerlessMageError, expected) as raised:
+                    mage_serverless._put_generated_output(
+                        authority, "https://r2.example.test/presigned", body
+                    )
+            self.assertEqual(urlopen.call_count, 1)
+            self.assertEqual(str(raised.exception), expected)
+            self.assertNotIn("https://r2.example.test", str(raised.exception))
+
+    def test_generated_output_upload_classifies_http_error_status_without_body_or_url(self) -> None:
+        body = b"png"
+        authority = self._generated_authority()
+        secret_url = "https://secret.example.test/presigned?token=do-not-leak"
+        secret_body = "provider-body-do-not-leak"
+        failure = HTTPError(secret_url, 403, secret_body, {"x-secret": "do-not-leak"}, None)
+        with patch.object(mage_serverless, "urlopen", side_effect=failure) as urlopen:
+            with self.assertRaisesRegex(
+                mage_serverless.ServerlessMageError,
+                "MAGE_SERVERLESS_OUTPUT_UPLOAD_HTTP_4XX_403",
+            ) as raised:
+                mage_serverless._put_generated_output(
+                    authority, "https://r2.example.test/presigned", body
+                )
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertEqual(
+            str(raised.exception), "MAGE_SERVERLESS_OUTPUT_UPLOAD_HTTP_4XX_403"
+        )
+        for secret in (secret_url, secret_body, "do-not-leak"):
+            self.assertNotIn(secret, str(raised.exception))
+
+    def test_generated_output_upload_classifies_timeout_tls_and_network_without_exception_text(self) -> None:
+        body = b"png"
+        authority = self._generated_authority()
+        secret = "https://secret.example.test/presigned?token=do-not-leak"
+        cases = (
+            (
+                TimeoutError(secret),
+                "MAGE_SERVERLESS_OUTPUT_UPLOAD_TIMEOUT",
+            ),
+            (
+                URLError(ssl.SSLCertVerificationError("certificate-do-not-leak")),
+                "MAGE_SERVERLESS_OUTPUT_UPLOAD_TLS_CERTIFICATE",
+            ),
+            (
+                socket.gaierror(-2, "dns-do-not-leak"),
+                "MAGE_SERVERLESS_OUTPUT_UPLOAD_DNS_NETWORK_URL",
+            ),
+            (
+                URLError(secret),
+                "MAGE_SERVERLESS_OUTPUT_UPLOAD_DNS_NETWORK_URL",
+            ),
+            (
+                ValueError(secret),
+                "MAGE_SERVERLESS_OUTPUT_UPLOAD_DNS_NETWORK_URL",
+            ),
+        )
+        for failure, expected in cases:
+            with self.subTest(expected=expected), patch.object(
+                mage_serverless, "urlopen", side_effect=failure
+            ) as urlopen:
+                with self.assertRaisesRegex(mage_serverless.ServerlessMageError, expected) as raised:
+                    mage_serverless._put_generated_output(
+                        authority, "https://r2.example.test/presigned", body
+                    )
+            self.assertEqual(urlopen.call_count, 1)
+            self.assertEqual(str(raised.exception), expected)
+            self.assertNotIn(secret, str(raised.exception))
+
+    def test_generated_output_upload_preserves_unknown_failure_as_bounded_code(self) -> None:
+        body = b"png"
+        authority = self._generated_authority()
+        failure = RuntimeError("unknown-provider-detail-do-not-leak")
+        with patch.object(mage_serverless, "urlopen", side_effect=failure) as urlopen:
+            with self.assertRaisesRegex(
+                mage_serverless.ServerlessMageError,
+                "MAGE_SERVERLESS_OUTPUT_UPLOAD_UNKNOWN",
+            ) as raised:
+                mage_serverless._put_generated_output(
+                    authority, "https://r2.example.test/presigned", body
+                )
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertEqual(str(raised.exception), "MAGE_SERVERLESS_OUTPUT_UPLOAD_UNKNOWN")
+        self.assertNotIn("unknown-provider-detail-do-not-leak", str(raised.exception))
 
     def test_resume_accepts_exact_carried_forward_readback_for_unresolved_batch(self) -> None:
         accepted = self._accepted()
