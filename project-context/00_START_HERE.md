@@ -13,12 +13,12 @@
   was `$0`. Attempt71 authority and proposal are consumed, closed, and non-reusable.
 - Provider-free repair `183b8dab0cdeead0b8e1f6f2b4642cf982e3e50d` resolves the disposable config from
   the computed repository cwd. Attempt72 proposal
-  `sha256:e1fd6996f4aa21c07b3b24e4db52683ebfb2999446d46066399b7b8cf0c7b1b9` is sealed and awaits
-  fresh exact approval; no provider authority exists. It retains the unchanged Mage image, `$4.50`
+  `sha256:e1fd6996f4aa21c07b3b24e4db52683ebfb2999446d46066399b7b8cf0c7b1b9` is approved once under
+  authority `sha256:5e5a006a7a460981ed1d10d702c93a48d7ff60a0d51411a1ebc205fd51816e3a`. It retains the unchanged Mage image, `$4.50`
   cumulative finite cap, RTX 4090 EU-RO-1 at `$1.116/GPU-hour`, workersMin zero and temporary max
   two workers, disposable output/endpoint/template/worker/route deletion, signal-safe cleanup,
   three final zero-compute reads, continued `$7/month` volume retention, no GPU fallback, and no
-  rollback-anchor refresh. V2-07 remains `NOT_QUALIFIED`; do not execute V2-08.
+  rollback-anchor refresh. Execute only this bounded graph; V2-07 remains `NOT_QUALIFIED`; do not execute V2-08.
 
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the
