@@ -1,0 +1,9 @@
+{
+  "schema_version": "videoforge.v2-07-attempt67-image-publication/v1",
+  "attempt": 67,
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "control_source_commit": "f870d40af0992752ebc70d540f0f74ed7bf1c1c6",
+  "publication_action_required": false,
+  "reuses_existing_immutable_image": true
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "videoforge.v2-07-attempt67-read-only-preflight/v1",
+  "attempt": 67,
+  "source": "attempt66 final three-read reconciliation",
+  "checked_at": "2026-09-04T07:34:23.570Z",
+  "pods": 0,
+  "endpoints": 0,
+  "private_templates": 0,
+  "active_workers": 0,
+  "running_pods": 0,
+  "retained_volumes": 2,
+  "retained_volume_size_gb_each": 50,
+  "retained_volume_region": "EU-RO-1",
+  "billing_baseline_usd": 2.214659276913153,
+  "billing_final_usd": 2.214659276913153,
+  "billing_incremental_usd": 0,
+  "fresh_inventory_catalog_billing_read_required_before_mutation": true
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": "videoforge.v2-07-attempt67-staged-config/v1",
+  "attempt": 67,
+  "workers_min": 0,
+  "workers_max": 1,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "region": "EU-RO-1",
+  "rate_usd_per_gpu_hour": 1.116,
+  "gpu_fallback": false,
+  "network_volume_mount": "/runpod-volume",
+  "delete_after_terminal": true
+}
