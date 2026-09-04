@@ -1,5 +1,6 @@
-import { EventEmitter } from "node:events";
+import { EventEmitter, once } from "node:events";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:http";
 import { join } from "node:path";
 import { DecompressionStream as NodeDecompressionStream } from "node:stream/web";
 
@@ -11,6 +12,7 @@ import { handleV207DisposableOutputPort } from "../hosted/v207-disposable-output
 import { V207_PENDING_PROPOSAL_SHA256 } from "./v207-activation-authority";
 import {
   runV207DisposableLiveOrchestration,
+  runV207PythonUrllibPutProbe,
   V207_DISPOSABLE_CONFIG,
   V207_DISPOSABLE_QUALIFICATION,
   V207_DISPOSABLE_ROUTE,
@@ -19,11 +21,17 @@ import {
   V207_ROUTE_VERSION_HEADER,
   type V207DisposableOrchestratorOptions,
 } from "./v207-disposable-live-orchestrator";
-import type { V207CommandRequest, V207CommandResult } from "./v207-live-orchestrator";
+import {
+  spawnV207Command,
+  type V207CommandRequest,
+  type V207CommandResult,
+} from "./v207-live-orchestrator";
 
 const NONCE = "a".repeat(64);
 const VERSION_ID = "11111111-1111-4111-8111-111111111111";
 const PREDECESSOR_VERSION_ID = "22222222-2222-4222-8222-222222222222";
+const PYTHON_OBJECT_KEY =
+  "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/mage-image/job/pregpu/artifact/probe.png";
 const roots: string[] = [];
 
 beforeAll(() => vi.stubGlobal("DecompressionStream", NodeDecompressionStream));
@@ -92,6 +100,8 @@ async function fixture(
     qualificationFails?: boolean;
     cleanupFails?: boolean;
     pythonPutFails?: boolean;
+    pythonPutStdout?: string;
+    pythonPutExitCode?: number;
     pythonPutSignal?: "SIGINT" | "SIGTERM";
     signal?: "SIGINT" | "SIGTERM";
     absenceDiagnostic?: string;
@@ -126,7 +136,9 @@ async function fixture(
     }
     if (request.command === "python3") {
       if (overrides.pythonPutSignal !== undefined) signalTarget.emit(overrides.pythonPutSignal);
-      if (overrides.pythonPutFails) return result("", 2);
+      if (overrides.pythonPutStdout !== undefined)
+        return result(overrides.pythonPutStdout, overrides.pythonPutExitCode ?? 2);
+      if (overrides.pythonPutFails) return result(JSON.stringify({ outcome: "UNKNOWN" }), 2);
       const value = JSON.parse(request.stdin ?? "null") as {
         url?: unknown;
         body_base64?: unknown;
@@ -141,6 +153,7 @@ async function fixture(
       return [200, 201, 204].includes(response.status)
         ? result(
             JSON.stringify({
+              outcome: "SUCCESS",
               status: response.status,
               worker_version_id: response.headers.get(V207_ROUTE_VERSION_HEADER),
             }),
@@ -221,6 +234,268 @@ async function fixture(
 afterEach(async () => {
   vi.restoreAllMocks();
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
+
+describe("V2-07 Python urllib PUT probe", () => {
+  const runDiagnostic = (value: unknown, exitCode: number | null = 2, stderr = ""): Promise<void> =>
+    runV207PythonUrllibPutProbe(
+      async () => result(JSON.stringify(value), exitCode, stderr),
+      process.cwd(),
+      {},
+      "https://output.example.invalid/upload?capability_handle=redacted",
+      Buffer.from("bounded-body"),
+      VERSION_ID,
+    );
+
+  it("executes real python3 against loopback with exact Mage framing and version binding", async () => {
+    const received: {
+      method?: string;
+      contentLength?: string;
+      contentType?: string;
+      expect?: string | null;
+      bytes?: number;
+    } = {};
+    const bucket = memoryBucket();
+    const environment = {
+      PRIVATE_ARTIFACTS: bucket,
+      VIDEOFORGE_V207_AUTHORITY_NONCE: NONCE,
+    };
+    let originUrl = "";
+    const server = createServer((request, response) => {
+      const chunks: Buffer[] = [];
+      request.on("data", (chunk: Buffer) => chunks.push(chunk));
+      request.on("end", () => {
+        void (async () => {
+          const body = Buffer.concat(chunks);
+          received.method = request.method;
+          received.contentLength = request.headers["content-length"];
+          received.contentType = request.headers["content-type"];
+          received.expect = request.headers.expect ?? null;
+          received.bytes = body.byteLength;
+          const headers = new Headers();
+          for (let index = 0; index < request.rawHeaders.length; index += 2) {
+            headers.append(request.rawHeaders[index]!, request.rawHeaders[index + 1]!);
+          }
+          const workerResponse = await handleV207DisposableOutputPort(
+            new Request(`${originUrl}${request.url ?? ""}`, {
+              method: request.method,
+              headers,
+              body: body.byteLength === 0 ? undefined : body,
+            }),
+            environment,
+          );
+          const resolved = workerResponse ?? new Response(null, { status: 404 });
+          response.statusCode = resolved.status;
+          for (const [name, value] of resolved.headers) response.setHeader(name, value);
+          response.setHeader(V207_ROUTE_VERSION_HEADER, VERSION_ID);
+          response.end(Buffer.from(await resolved.arrayBuffer()));
+        })().catch(() => {
+          response.statusCode = 500;
+          response.end();
+        });
+      });
+    });
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const address = server.address();
+    if (address === null || typeof address === "string") throw new Error("loopback unavailable");
+    originUrl = `http://127.0.0.1:${address.port}`;
+    const body = Buffer.alloc(2_759, 7);
+    try {
+      const reservation = await handleV207DisposableOutputPort(
+        new Request(`${originUrl}/api/v2/v207/generated-output-port`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-videoforge-v207-authority": NONCE,
+          },
+          body: JSON.stringify({
+            schema_version: "videoforge-v207-generated-output-port-request/v1",
+            operation: "PUT",
+            account_id: "account-a",
+            workspace_id: "workspace-a",
+            object_key: PYTHON_OBJECT_KEY,
+            content_type: "image/png",
+            max_content_length: body.byteLength,
+            lifetime_seconds: 60,
+          }),
+        }),
+        environment,
+      );
+      expect(reservation?.status).toBe(200);
+      const port = (await reservation!.json()) as { url: string };
+      await runV207PythonUrllibPutProbe(
+        spawnV207Command,
+        process.cwd(),
+        {},
+        port.url,
+        body,
+        VERSION_ID,
+      );
+    } finally {
+      server.close();
+      await once(server, "close");
+    }
+
+    expect(received).toEqual({
+      method: "PUT",
+      contentLength: String(body.byteLength),
+      contentType: "image/png",
+      expect: null,
+      bytes: body.byteLength,
+    });
+  });
+
+  it("maps a Worker HTTP failure to one bounded code without retaining response material", async () => {
+    const rawSecret = "must-not-survive-urllib-diagnostic";
+    const server = createServer((request, response) => {
+      request.resume();
+      response.writeHead(503, {
+        "content-type": "application/json",
+        [V207_ROUTE_VERSION_HEADER]: VERSION_ID,
+        "x-private-diagnostic": rawSecret,
+      });
+      response.end(
+        JSON.stringify({
+          error: {
+            code: "V207_OUTPUT_OPERATION_FAILED",
+            message: rawSecret,
+            url: `https://example.invalid/?capability=${rawSecret}`,
+          },
+        }),
+      );
+    });
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const address = server.address();
+    if (address === null || typeof address === "string") throw new Error("loopback unavailable");
+    let failure: unknown;
+    try {
+      await runV207PythonUrllibPutProbe(
+        spawnV207Command,
+        process.cwd(),
+        {},
+        `http://127.0.0.1:${address.port}/upload?capability_handle=${"c".repeat(64)}`,
+        Buffer.from("bounded-body"),
+        VERSION_ID,
+      );
+    } catch (error) {
+      failure = error;
+    } finally {
+      server.close();
+      await once(server, "close");
+    }
+
+    expect(failure).toMatchObject({
+      code: "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_OPERATION_FAILED",
+    });
+    expect(String(failure)).not.toContain(rawSecret);
+    expect(JSON.stringify(failure)).not.toContain(rawSecret);
+  });
+
+  it.each([
+    ["missing", null, "V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID"],
+    ["malformed", "not-a-version", "V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID"],
+    ["different", PREDECESSOR_VERSION_ID, "V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED"],
+  ] as const)(
+    "rejects %s Worker version metadata before classifying an HTTP error",
+    async (_name, workerVersionId, code) => {
+      await expect(
+        runDiagnostic({
+          outcome: "HTTP_ERROR",
+          status: 503,
+          worker_error_code: null,
+          worker_version_id: workerVersionId,
+        }),
+      ).rejects.toMatchObject({ code });
+    },
+  );
+
+  it("rejects a known Worker error paired with the wrong HTTP status", async () => {
+    await expect(
+      runDiagnostic({
+        outcome: "HTTP_ERROR",
+        status: 403,
+        worker_error_code: "V207_OUTPUT_OPERATION_FAILED",
+        worker_version_id: VERSION_ID,
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID" });
+  });
+
+  it("rejects an unrecognized Worker error code instead of persisting it", async () => {
+    await expect(
+      runDiagnostic({
+        outcome: "HTTP_ERROR",
+        status: 503,
+        worker_error_code: "V207_UNTRUSTED_RAW_ERROR",
+        worker_version_id: VERSION_ID,
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID" });
+  });
+
+  it.each([null, 1, 3] as const)(
+    "requires exact exit code 2 for a classified Python failure, not %s",
+    async (exitCode) => {
+      await expect(runDiagnostic({ outcome: "UNKNOWN" }, exitCode)).rejects.toMatchObject({
+        code: "V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID",
+      });
+    },
+  );
+
+  it("rejects any Python stderr instead of accepting a noisy success", async () => {
+    await expect(
+      runDiagnostic(
+        { outcome: "SUCCESS", status: 201, worker_version_id: VERSION_ID },
+        0,
+        "raw interpreter warning",
+      ),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID" });
+  });
+
+  it.each([
+    ["malformed", "{not-json", "not-json"],
+    [
+      "oversized",
+      JSON.stringify({ error: { code: "V207_OUTPUT_OPERATION_FAILED", raw: "x".repeat(5_000) } }),
+      "xxxxx",
+    ],
+  ])(
+    "reduces a %s HTTP error body to a version-bound HTTP class without retaining it",
+    async (_name, responseBody, forbidden) => {
+      const server = createServer((request, response) => {
+        request.resume();
+        response.writeHead(503, {
+          "content-type": "application/json",
+          [V207_ROUTE_VERSION_HEADER]: VERSION_ID,
+        });
+        response.end(responseBody);
+      });
+      server.listen(0, "127.0.0.1");
+      await once(server, "listening");
+      const address = server.address();
+      if (address === null || typeof address === "string") throw new Error("loopback unavailable");
+      let failure: unknown;
+      try {
+        await runV207PythonUrllibPutProbe(
+          spawnV207Command,
+          process.cwd(),
+          {},
+          `http://127.0.0.1:${address.port}/upload?capability_handle=${"d".repeat(64)}`,
+          Buffer.from("bounded-body"),
+          VERSION_ID,
+        );
+      } catch (error) {
+        failure = error;
+      } finally {
+        server.close();
+        await once(server, "close");
+      }
+
+      expect(failure).toMatchObject({ code: "V207_DISPOSABLE_PROBE_URLLIB_HTTP_5XX" });
+      expect(String(failure)).not.toContain(forbidden);
+      expect(JSON.stringify(failure)).not.toContain(forbidden);
+    },
+  );
 });
 
 describe("V2-07 disposable live orchestrator", () => {
@@ -536,15 +811,68 @@ describe("V2-07 disposable live orchestrator", () => {
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
   });
 
+  it("persists only the bounded parent code for a classified urllib HTTP failure", async () => {
+    const setup = await fixture({
+      pythonPutStdout: JSON.stringify({
+        outcome: "HTTP_ERROR",
+        status: 503,
+        worker_error_code: "V207_OUTPUT_OPERATION_FAILED",
+        worker_version_id: VERSION_ID,
+      }),
+    });
+    await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
+      code: "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_OPERATION_FAILED",
+    });
+
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    const evidence = await readFile(setup.options.evidencePath!, "utf8");
+    expect(evidence).toContain("V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_OPERATION_FAILED");
+    expect(evidence).not.toContain("worker_error_code");
+    expect(evidence).not.toContain("worker_version_id");
+  });
+
+  it("rejects extra raw diagnostic fields and persists none of their material", async () => {
+    const rawSecret = "must-not-survive-extra-diagnostic";
+    const setup = await fixture({
+      pythonPutStdout: JSON.stringify({ outcome: "UNKNOWN", raw_error: rawSecret }),
+    });
+    await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
+      code: "V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID",
+    });
+
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    const evidence = await readFile(setup.options.evidencePath!, "utf8");
+    expect(evidence).not.toContain(rawSecret);
+    expect(evidence).not.toContain("raw_error");
+  });
+
   it("cleans up and never dispatches GPU qualification when the pre-GPU upload probe fails", async () => {
     const setup = await fixture({ pythonPutFails: true });
     await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
-      code: "V207_DISPOSABLE_PROBE_URLLIB_UPLOAD_REJECTED",
+      code: "V207_DISPOSABLE_PROBE_URLLIB_UNKNOWN",
     });
 
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
     expect(setup.calls.filter((call) => call.args.includes("delete"))).toHaveLength(1);
   });
+
+  it.each([
+    ["malformed", "not-json"],
+    ["oversized", "x".repeat(4_097)],
+  ])(
+    "cleans up and never dispatches GPU qualification for %s urllib diagnostics",
+    async (_name, stdout) => {
+      const setup = await fixture({ pythonPutStdout: stdout });
+      await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
+        code: "V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID",
+      });
+
+      expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+      expect(setup.calls.filter((call) => call.args.includes("delete"))).toHaveLength(1);
+      const evidence = await readFile(setup.options.evidencePath!, "utf8");
+      expect(evidence).not.toContain(stdout.slice(0, 32));
+    },
+  );
 
   it("deletes the deterministic reservation when the committed reserve response is lost", async () => {
     const setup = await fixture();

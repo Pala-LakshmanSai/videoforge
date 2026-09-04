@@ -43,6 +43,7 @@ const PROBE_REQUEST_MAX_BYTES = 64 * 1024;
 const PROBE_TIMEOUT_MILLISECONDS = 15_000;
 const PROBE_CLEANUP_TIMEOUT_MILLISECONDS = 30_000;
 const CLEANUP_TIMEOUT_MILLISECONDS = 60_000;
+const PYTHON_DIAGNOSTIC_MAX_BYTES = 4_096;
 const CAPABILITY_HANDLE = /^[a-f0-9]{64}$/u;
 const CHECKSUM = /^sha256:[0-9a-f]{64}$/u;
 const PROBE_REQUEST_SCHEMA = "videoforge-v207-generated-output-port-request/v1" as const;
@@ -618,7 +619,19 @@ async function probeJson(
 }
 
 const PYTHON_URLLIB_PUT = [
-  "import base64,json,sys,urllib.request",
+  "import base64,json,socket,ssl,sys,urllib.error,urllib.request",
+  "allowed_codes={'V207_CAPABILITY_INVALID','V207_CAPABILITY_REJECTED','V207_OUTPUT_ALREADY_EXISTS','V207_OUTPUT_CONFIGURATION_UNAVAILABLE','V207_OUTPUT_FACTS_MISMATCH','V207_OUTPUT_OPERATION_FAILED','V207_OUTPUT_WRITE_UNCONFIRMED','V207_RESERVATION_EXPIRED','V207_ROUTE_DISABLED'}",
+  "def emit(value):",
+  "  print(json.dumps(value, separators=(',',':'), sort_keys=True))",
+  "def transport_kind(error, depth=0):",
+  "  if isinstance(error, (TimeoutError, socket.timeout)): return 'TIMEOUT'",
+  "  if isinstance(error, (ssl.SSLCertVerificationError, ssl.CertificateError, ssl.SSLError)): return 'TLS_CERTIFICATE'",
+  "  if isinstance(error, urllib.error.URLError):",
+  "    reason=getattr(error, 'reason', None)",
+  "    if depth < 2 and isinstance(reason, BaseException) and reason is not error: return transport_kind(reason, depth + 1)",
+  "    return 'DNS_NETWORK'",
+  "  if isinstance(error, (socket.gaierror, ConnectionError, OSError, ValueError)): return 'DNS_NETWORK'",
+  "  return 'UNKNOWN'",
   "value=json.load(sys.stdin)",
   "body=base64.b64decode(value['body_base64'], validate=True)",
   "request=urllib.request.Request(value['url'], data=body, method='PUT', headers={'content-type':'image/png','content-length':str(len(body))})",
@@ -626,13 +639,83 @@ const PYTHON_URLLIB_PUT = [
   "  with urllib.request.urlopen(request, timeout=60) as response:",
   "    status=response.status",
   "    version=response.headers.get('x-videoforge-worker-version')",
-  "except Exception:",
+  "except urllib.error.HTTPError as error:",
+  "  status=error.code if isinstance(error.code, int) and 100 <= error.code <= 599 else 0",
+  "  version=error.headers.get('x-videoforge-worker-version') if error.headers is not None else None",
+  "  worker_code=None",
+  "  try:",
+  "    raw=error.read(4097)",
+  "    if len(raw) <= 4096:",
+  "      parsed=json.loads(raw.decode('utf-8'))",
+  "      candidate=parsed.get('error',{}).get('code') if isinstance(parsed,dict) and isinstance(parsed.get('error'),dict) else None",
+  "      worker_code=candidate if candidate in allowed_codes else None",
+  "  except Exception:",
+  "    worker_code=None",
+  "  emit({'outcome':'HTTP_ERROR','status':status,'worker_error_code':worker_code,'worker_version_id':version})",
+  "  raise SystemExit(2)",
+  "except Exception as error:",
+  "  emit({'outcome':transport_kind(error)})",
   "  raise SystemExit(2)",
   "if status not in (200,201,204): raise SystemExit(3)",
-  "print(json.dumps({'status':status,'worker_version_id':version}, separators=(',',':')))",
+  "emit({'outcome':'SUCCESS','status':status,'worker_version_id':version})",
 ].join("\n");
 
-async function runPythonUrllibPut(
+const PYTHON_HTTP_WORKER_CODES: Readonly<
+  Record<string, { readonly status: number; readonly parentCode: string }>
+> = {
+  V207_CAPABILITY_INVALID: {
+    status: 400,
+    parentCode: "V207_DISPOSABLE_PROBE_URLLIB_CAPABILITY_INVALID",
+  },
+  V207_CAPABILITY_REJECTED: {
+    status: 403,
+    parentCode: "V207_DISPOSABLE_PROBE_URLLIB_CAPABILITY_REJECTED",
+  },
+  V207_OUTPUT_ALREADY_EXISTS: {
+    status: 409,
+    parentCode: "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_ALREADY_EXISTS",
+  },
+  V207_OUTPUT_CONFIGURATION_UNAVAILABLE: {
+    status: 503,
+    parentCode: "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_CONFIGURATION_UNAVAILABLE",
+  },
+  V207_OUTPUT_FACTS_MISMATCH: {
+    status: 400,
+    parentCode: "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_FACTS_MISMATCH",
+  },
+  V207_OUTPUT_OPERATION_FAILED: {
+    status: 503,
+    parentCode: "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_OPERATION_FAILED",
+  },
+  V207_OUTPUT_WRITE_UNCONFIRMED: {
+    status: 503,
+    parentCode: "V207_DISPOSABLE_PROBE_URLLIB_OUTPUT_WRITE_UNCONFIRMED",
+  },
+  V207_RESERVATION_EXPIRED: {
+    status: 409,
+    parentCode: "V207_DISPOSABLE_PROBE_URLLIB_RESERVATION_EXPIRED",
+  },
+  V207_ROUTE_DISABLED: {
+    status: 404,
+    parentCode: "V207_DISPOSABLE_PROBE_URLLIB_ROUTE_DISABLED",
+  },
+};
+
+function exactDiagnosticKeys(
+  record: Record<string, unknown>,
+  expected: readonly string[],
+): boolean {
+  return Object.keys(record).sort().join(",") === [...expected].sort().join(",");
+}
+
+function pythonHttpClassCode(status: number): string {
+  if (status >= 400 && status <= 499) return "V207_DISPOSABLE_PROBE_URLLIB_HTTP_4XX";
+  if (status >= 500 && status <= 599) return "V207_DISPOSABLE_PROBE_URLLIB_HTTP_5XX";
+  return "V207_DISPOSABLE_PROBE_URLLIB_HTTP_OTHER";
+}
+
+/** Execute the same urllib PUT used by the immutable Mage runtime without exposing transport data. */
+export async function runV207PythonUrllibPutProbe(
   run: V207CommandRunner,
   cwd: string,
   environment: Environment,
@@ -649,23 +732,98 @@ async function runPythonUrllibPut(
     stdin: JSON.stringify({ url, body_base64: body.toString("base64") }),
     ...(signal === undefined ? {} : { signal }),
   });
-  if (result.exitCode !== 0 || result.signal !== null) {
+  if (result.signal !== null) {
     throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_UPLOAD_REJECTED");
+  }
+  const stdout = result.stdout.trim();
+  if (
+    stdout.length === 0 ||
+    Buffer.byteLength(stdout) > PYTHON_DIAGNOSTIC_MAX_BYTES ||
+    Buffer.byteLength(result.stderr) !== 0
+  ) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
   }
   let value: unknown;
   try {
-    value = JSON.parse(result.stdout.slice(0, 4_096)) as unknown;
+    value = JSON.parse(stdout) as unknown;
   } catch {
-    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_RESPONSE_INVALID");
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
   }
   const record = recordValue(value);
-  if (record?.status !== 200 && record?.status !== 201 && record?.status !== 204) {
-    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_RESPONSE_INVALID");
+  if (record === null || typeof record.outcome !== "string") {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
   }
-  assertExpectedWorkerVersion(
-    typeof record.worker_version_id === "string" ? record.worker_version_id : null,
-    expectedWorkerVersionId,
-  );
+  if (record.outcome === "SUCCESS") {
+    if (
+      result.exitCode !== 0 ||
+      !exactDiagnosticKeys(record, ["outcome", "status", "worker_version_id"]) ||
+      (record.status !== 200 && record.status !== 201 && record.status !== 204)
+    ) {
+      throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
+    }
+    assertExpectedWorkerVersion(
+      typeof record.worker_version_id === "string" ? record.worker_version_id : null,
+      expectedWorkerVersionId,
+    );
+    return;
+  }
+  if (result.exitCode !== 2) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
+  }
+  if (record.outcome === "HTTP_ERROR") {
+    if (
+      !exactDiagnosticKeys(record, [
+        "outcome",
+        "status",
+        "worker_error_code",
+        "worker_version_id",
+      ]) ||
+      typeof record.status !== "number" ||
+      !Number.isSafeInteger(record.status) ||
+      record.status < 100 ||
+      record.status > 599 ||
+      (record.worker_error_code !== null && typeof record.worker_error_code !== "string")
+    ) {
+      throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
+    }
+    assertExpectedWorkerVersion(
+      typeof record.worker_version_id === "string" ? record.worker_version_id : null,
+      expectedWorkerVersionId,
+    );
+    const mapped =
+      typeof record.worker_error_code === "string"
+        ? PYTHON_HTTP_WORKER_CODES[record.worker_error_code]
+        : undefined;
+    if (mapped !== undefined) {
+      if (record.status !== mapped.status) {
+        throw new V207DisposableOrchestratorError(
+          "V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID",
+        );
+      }
+      throw new V207DisposableOrchestratorError(mapped.parentCode);
+    }
+    if (record.worker_error_code !== null) {
+      throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
+    }
+    throw new V207DisposableOrchestratorError(pythonHttpClassCode(record.status));
+  }
+  if (!exactDiagnosticKeys(record, ["outcome"])) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
+  }
+  const transportCode =
+    record.outcome === "TIMEOUT"
+      ? "V207_DISPOSABLE_PROBE_URLLIB_TIMEOUT"
+      : record.outcome === "TLS_CERTIFICATE"
+        ? "V207_DISPOSABLE_PROBE_URLLIB_TLS_CERTIFICATE"
+        : record.outcome === "DNS_NETWORK"
+          ? "V207_DISPOSABLE_PROBE_URLLIB_DNS_NETWORK"
+          : record.outcome === "UNKNOWN"
+            ? "V207_DISPOSABLE_PROBE_URLLIB_UNKNOWN"
+            : null;
+  if (transportCode === null) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
+  }
+  throw new V207DisposableOrchestratorError(transportCode);
 }
 
 async function runOutputCompatibilityProbe(
@@ -724,7 +882,15 @@ async function runOutputCompatibilityProbe(
     ) {
       throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_PORT_INVALID");
     }
-    await runPythonUrllibPut(run, cwd, environment, putUrl, png, expectedWorkerVersionId, signal);
+    await runV207PythonUrllibPutProbe(
+      run,
+      cwd,
+      environment,
+      putUrl,
+      png,
+      expectedWorkerVersionId,
+      signal,
+    );
     const checksum = `sha256:${createHash("sha256").update(png).digest("hex")}`;
     if (!CHECKSUM.test(checksum)) {
       throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_CHECKSUM_INVALID");
