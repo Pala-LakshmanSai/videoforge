@@ -200,6 +200,70 @@ describe("V2-07 disposable live orchestrator", () => {
     });
   });
 
+  it("waits through a transient non-JSON 404 and then requires three exact disabled fingerprints", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl;
+    let routeReads = 0;
+    const completed = await runV207DisposableLiveOrchestration({
+      ...setup.options,
+      fetchImpl: async (input, init) => {
+        routeReads += 1;
+        if (routeReads === 1) return new Response("route is propagating", { status: 404 });
+        return normalFetch!(input, init);
+      },
+    });
+
+    expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
+    expect(routeReads).toBe(10);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
+  });
+
+  it("fails closed after bounded persistent invalid route reads and still cleans up", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl;
+    let invalidRouteReads = 0;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          if (setup.state().exists) {
+            invalidRouteReads += 1;
+            return new Response("route is still propagating", { status: 404 });
+          }
+          return normalFetch!(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_DISABLED_ROUTE_UNCONFIRMED" });
+
+    expect(invalidRouteReads).toBe(30);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    expect(setup.calls.filter((call) => call.args.includes("delete"))).toHaveLength(1);
+  });
+
+  it("aborts during route propagation and still cleans up", async () => {
+    const setup = await fixture({ signal: "SIGTERM" });
+    let routeReads = 0;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async () => {
+          routeReads += 1;
+          return setup.state().exists
+            ? new Response("route is still propagating", { status: 404 })
+            : new Response("not found", { status: 404 });
+        },
+        sleepImpl: async () => {
+          setup.signalTarget.emit("SIGTERM");
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_OPERATOR_ABORT" });
+
+    expect(routeReads).toBe(4);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    expect(setup.signalTarget.listenerCount("SIGINT")).toBe(0);
+    expect(setup.signalTarget.listenerCount("SIGTERM")).toBe(0);
+  });
+
   it.each([
     ["dirty worktree", { dirty: true }, "V207_GIT_WORKTREE_DIRTY", 1],
     ["preflight rejection", { preflightFails: true }, "V207_LIVE_PREFLIGHT", 2],

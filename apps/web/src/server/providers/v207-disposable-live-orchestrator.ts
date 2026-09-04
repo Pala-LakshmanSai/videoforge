@@ -28,6 +28,9 @@ const SAFE_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
 const ABSENT_DIAGNOSTIC =
   /(?:(?:^|[^\w])(?:code|error\s+code)\s*[:=]\s*(?:10007|10090)(?![A-Za-z0-9_])|["'](?:code|errorCode)["']\s*:\s*(?:10007|10090)(?![A-Za-z0-9_])|\bworker(?:\s+script)?\s+(?:does\s+not\s+exist|not\s+found)\b|\bno\s+such\s+worker\b|\bworkers?\.api\.error\.script[_ -]?not[_ -]?found\b)/iu;
 const FINAL_PROOF_READS = 3;
+const ROUTE_PROPAGATION_MAX_ATTEMPTS = 30;
+const ROUTE_PROPAGATION_MAX_MILLISECONDS = 60_000;
+const ROUTE_PROPAGATION_RETRY_MILLISECONDS = 2_000;
 
 type Environment = Readonly<Record<string, string | undefined>>;
 
@@ -254,10 +257,11 @@ async function readRoute(
   fetchImpl: typeof fetch,
   routeUrl: string,
   signal?: AbortSignal,
+  timeoutMilliseconds = 15_000,
 ): Promise<RouteFingerprint> {
   let response: Response;
   try {
-    const timeout = AbortSignal.timeout(15_000);
+    const timeout = AbortSignal.timeout(Math.max(1, timeoutMilliseconds));
     response = await fetchImpl(routeUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -288,6 +292,40 @@ async function readRoute(
   return { status: response.status, code };
 }
 
+async function sleepWithSignal(
+  sleepImpl: (milliseconds: number) => Promise<void>,
+  milliseconds: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (signal?.aborted === true) {
+    throw new V207DisposableOrchestratorError("V207_OPERATOR_ABORT");
+  }
+  if (signal === undefined) {
+    await sleepImpl(milliseconds);
+    return;
+  }
+  await new Promise<void>((resolveSleep, rejectSleep) => {
+    const onAbort = (): void => {
+      rejectSleep(new V207DisposableOrchestratorError("V207_OPERATOR_ABORT"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    void sleepImpl(milliseconds).then(
+      () => {
+        signal.removeEventListener("abort", onAbort);
+        resolveSleep();
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        rejectSleep(error);
+      },
+    );
+  });
+}
+
+function isAborted(signal?: AbortSignal): boolean {
+  return signal?.aborted === true;
+}
+
 async function assertStableRoute(
   fetchImpl: typeof fetch,
   routeUrl: string,
@@ -297,13 +335,44 @@ async function assertStableRoute(
   errorCode: string,
   signal?: AbortSignal,
 ): Promise<void> {
-  for (let index = 0; index < reads; index += 1) {
-    const observed = await readRoute(fetchImpl, routeUrl, signal);
-    if (observed.status !== expected.status || observed.code !== expected.code) {
-      throw new V207DisposableOrchestratorError(errorCode);
+  const deadline = Date.now() + ROUTE_PROPAGATION_MAX_MILLISECONDS;
+  let consecutiveMatches = 0;
+  for (let attempt = 1; attempt <= ROUTE_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
+    if (isAborted(signal)) {
+      throw new V207DisposableOrchestratorError("V207_OPERATOR_ABORT");
     }
-    if (index + 1 < reads) await sleepImpl(2_000);
+    const remainingMilliseconds = deadline - Date.now();
+    if (remainingMilliseconds <= 0) break;
+    try {
+      const observed = await readRoute(
+        fetchImpl,
+        routeUrl,
+        signal,
+        Math.min(15_000, remainingMilliseconds),
+      );
+      consecutiveMatches =
+        observed.status === expected.status && observed.code === expected.code
+          ? consecutiveMatches + 1
+          : 0;
+    } catch (error) {
+      if (isAborted(signal)) {
+        throw new V207DisposableOrchestratorError("V207_OPERATOR_ABORT");
+      }
+      if (
+        !(error instanceof V207DisposableOrchestratorError) ||
+        (error.code !== "V207_DISPOSABLE_ROUTE_UNREACHABLE" &&
+          error.code !== "V207_DISPOSABLE_ROUTE_INVALID")
+      ) {
+        throw error;
+      }
+      consecutiveMatches = 0;
+    }
+    if (consecutiveMatches === reads) return;
+    if (attempt < ROUTE_PROPAGATION_MAX_ATTEMPTS && Date.now() < deadline) {
+      await sleepWithSignal(sleepImpl, ROUTE_PROPAGATION_RETRY_MILLISECONDS, signal);
+    }
   }
+  throw new V207DisposableOrchestratorError(errorCode);
 }
 
 async function assertDataPlaneAbsent(
