@@ -2042,6 +2042,73 @@ describe("hosted product journey", () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 
+  it("shows stopped batch progress when Stage 5 rejects the first batch", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      void input;
+      return Response.json({
+        project: {
+          id: projectId,
+          title: "Private project",
+          created_at: "2026-08-17T10:00:00.000Z",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
+        },
+        attempts: [],
+        gpu_transport: "DISABLED_UNQUALIFIED" as const,
+        gpu_readiness: gpuReadiness,
+        voiceover_context: {
+          id: "44444444-4444-4444-8444-444444444444",
+          state: "SUCCEEDED" as const,
+          transcript_hash: `sha256:${"b".repeat(64)}`,
+          context_hash: `sha256:${"c".repeat(64)}`,
+          context_document: { primary_topic: "Private project" },
+          reserved_cost_micro_usd: 10_000,
+        },
+        generation: {
+          id: "55555555-5555-4555-8555-555555555555",
+          timeline_plan_sha256: `sha256:${"f".repeat(64)}`,
+          planned_tasks: 1,
+          completed_tasks: 0,
+          failed_tasks: 1,
+          total_segments: 16,
+          image_scene_count: 16,
+          avatar_segment_count: 0,
+          stage: "FAILED" as const,
+        },
+        stages: [
+          {
+            id: "prompt-writing",
+            name: "Write image prompts",
+            status: "FAILED",
+            progress_percent: 0,
+          },
+        ],
+        prompts: [],
+        prompt_progress: {
+          total_scenes: 16,
+          accepted_scenes: 0,
+          total_batches: 1,
+          accepted_batches: 0,
+          active_batch_ordinal: null,
+        },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(await screen.findByRole("heading", { name: "Image prompts" })).toBeInTheDocument();
+    expect(screen.getByText("Prompt writing stopped")).toBeInTheDocument();
+    expect(screen.getByText("Stopped · 0 / 1 batches accepted")).toBeInTheDocument();
+    expect(screen.queryByText("Preparing batch of 1")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No accepted prompts were saved. VideoForge stopped without redispatching the request.",
+      ),
+    ).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
+  });
+
   it("shows final and batch-accepted prompts while Stage 5 writes the next batch", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

@@ -1168,6 +1168,38 @@ test("scene relevance keeps plural household uses and minor cuts out of action i
   }
 });
 
+test("scene relevance accepts a stored bottle rendered as resting in place", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    storyContext:
+      "A household explainer about a brown hydrogen peroxide bottle stored in a medicine cabinet.",
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "A bottle of hydrogen peroxide tucked into the back of the medicine cabinet",
+        sentenceContext:
+          "A bottle of hydrogen peroxide tucked into the back of the medicine cabinet.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A brown hydrogen peroxide bottle";
+          rows[0].action = "resting unopened on a cabinet shelf";
+          rows[0].environment = "inside a lived-in home medicine cabinet";
+          rows[0].prompt_core =
+            "A brown hydrogen peroxide bottle rests unopened on a worn shelf inside a lived-in home medicine cabinet.";
+          return rows;
+        },
+      }),
+  ]);
+  const result = await setup.value.write(batch);
+  assert.equal(result.scenes.length, 1);
+});
+
 test("scene relevance preserves real actions after a local stative clause and in present perfect", async () => {
   for (const phrase of [
     "A mechanic has tools and repairs a bicycle",

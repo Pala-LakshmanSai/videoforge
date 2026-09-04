@@ -3611,13 +3611,15 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       ? `${acceptedPromptCount.toLocaleString()} accepted prompts`
       : `${acceptedPromptCount.toLocaleString()} / ${totalPromptCount.toLocaleString()} prompts accepted`;
   const promptBatchStatus =
-    visibleBatchOrdinal === null
-      ? totalBatchCount === null
-        ? "Batch progress pending"
-        : `Preparing batch of ${totalBatchCount.toLocaleString()}`
-      : totalBatchCount === null
-        ? `Batch ${visibleBatchOrdinal.toLocaleString()}`
-        : `Batch ${visibleBatchOrdinal.toLocaleString()} of ${totalBatchCount.toLocaleString()}`;
+    promptWritingStopped && acceptedPromptCount === 0 && totalBatchCount !== null
+      ? `Stopped · 0 / ${totalBatchCount.toLocaleString()} batches accepted`
+      : visibleBatchOrdinal === null
+        ? totalBatchCount === null
+          ? "Batch progress pending"
+          : `Preparing batch of ${totalBatchCount.toLocaleString()}`
+        : totalBatchCount === null
+          ? `Batch ${visibleBatchOrdinal.toLocaleString()}`
+          : `Batch ${visibleBatchOrdinal.toLocaleString()} of ${totalBatchCount.toLocaleString()}`;
   const showPromptFeed = Boolean(
     query.data.generation || promptWritingActive || acceptedPrompts.length > 0,
   );

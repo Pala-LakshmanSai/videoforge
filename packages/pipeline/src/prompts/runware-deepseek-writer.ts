@@ -21,7 +21,7 @@ import type {
 
 export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v15" as const;
+  "runware-deepseek-v4-flash-prompt-request-v16" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -929,6 +929,7 @@ const ACTION_ALIAS_GROUPS = [
   ["destroy", "smash", "wreck"],
   ["drive", "steer"],
   ["fix", "maintain", "mend", "repair", "restore", "service"],
+  ["keep", "remain", "rest", "stay", "store", "tuck"],
   ["observe", "gaze", "look", "notice", "see", "watch"],
   ["open", "uncover", "unlock"],
   ["place", "put", "set"],
@@ -959,7 +960,6 @@ const DISTINCT_ACTION_WORDS = [
   "grow",
   "harvest",
   "hold",
-  "keep",
   "lift",
   "move",
   "operate",
@@ -969,20 +969,15 @@ const DISTINCT_ACTION_WORDS = [
   "pour",
   "prepare",
   "reach",
-  "remain",
-  "rest",
   "ride",
   "run",
   "sit",
   "slice",
   "stand",
-  "stay",
-  "store",
   "stroll",
   "take",
   "travel",
   "trim",
-  "tuck",
   "use",
   "walk",
   "work",
