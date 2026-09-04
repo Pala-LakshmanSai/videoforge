@@ -200,16 +200,17 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt79 is `SEALED_AWAITING_FRESH_EXACT_APPROVAL` at control
+**Current gate:** Attempt79 is `APPROVED_SINGLE_USE_UNCONSUMED` at control
 `fb884fedf86c5ff5ec3e5bb4274c4a1e3db41fd6`. Its audited gate-first proposal requires fresh
 preflight, three exact active-route fingerprints, and three distinct fully cleaned compatibility
 cycles before the existing bounded RunPod Stage 6 qualification may start. RESERVE retry is capped
 at three attempts and 250 ms waits, only for transport or missing-version S5XX. Proposal
 `sha256:72f72a2de48841194233218c2f84d343c0c236ed36d5ff33a0c6dc682312d22a`, acceptance
-`sha256:9a41b52f8b49dca410fc5a7219ff3a773b416253a976b975a2cae3f4a82aefff`, audit
+`sha256:9fdbae3d5ccc68649c1545bb28a225acc25dbb40c029297d8cfa1d928cd52a99`, authority
+`sha256:fe0ccd5c3165488bc206f6a159637ad34af9ab994f19dfbcf374ae53629090da`, audit
 `sha256:c98f3d3d2a4b2e37cff700b8e7b2e04d200e4b97731d2056da2871ffbac81987`, and validator
-`sha256:b19d4ea3140748676e4aeaf05da330eb8436517b556cba8e327dfd3e8671b8b3` are provider-free.
-No executable authority exists; requested scope is `$4.50`, RTX 4090 EU-RO-1 at `$1.116/hour`,
+`sha256:254abaf1c9a5ef8aa5d085f6525bfd77793873c13d93a48ecf15f47d779a38c6` are provider-free.
+The approved single-use scope is `$4.50`, RTX 4090 EU-RO-1 at `$1.116/hour`,
 min-zero/temp-max-two, unchanged image reuse without republication, disposable cleanup, retained
 volumes at `$7/month`, and no fallback, anchor refresh, volume mutation, or V2-08.
 
@@ -223,7 +224,7 @@ child qualification, RunPod resources, or GPU. Closure
 Cloudflare absence reads, three RunPod zero-compute reads, unchanged retained volumes, zero RunPod
 jobs, and `$0` observed incremental spend. No provider, mutation, credential, GPU, spend, fallback,
 anchor-refresh, retained-volume mutation, image-republication, or V2-08 authority remains. V2-07 is
-`NOT_QUALIFIED`; next live work requires fresh exact Attempt79 approval.
+`NOT_QUALIFIED`; Attempt79 may execute once within its exact authority.
 
 Attempt77 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its closure
 `sha256:f87d3ab60c1efc07aa59963b790c6bfc2be2fd8b8fa5bc6f53378ddc94c96e43`, orchestrator

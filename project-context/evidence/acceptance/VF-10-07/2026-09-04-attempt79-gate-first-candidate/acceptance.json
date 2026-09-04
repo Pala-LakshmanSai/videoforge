@@ -3,7 +3,7 @@
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
   "attempt": 79,
-  "status": "SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "status": "APPROVED_SINGLE_USE_UNCONSUMED",
   "qualification_status": "NOT_QUALIFIED",
   "proposal_sha256": "sha256:72f72a2de48841194233218c2f84d343c0c236ed36d5ff33a0c6dc682312d22a",
   "control_source_commit": "fb884fedf86c5ff5ec3e5bb4274c4a1e3db41fd6",
@@ -13,7 +13,7 @@
   "image_republication_required": false,
   "image_republication_authorized": false,
   "image_reuse_proposed": true,
-  "image_reuse_authorized": false,
+  "image_reuse_authorized": true,
   "image_publication": "../2026-09-04-attempt75-urllib-pregpu-candidate/image-publication.json",
   "image_publication_sha256": "sha256:02fb25196188fcaf9927ece504011d3f1e931d1f87053e88971b4e6b75126677",
   "source_hashes": {
@@ -70,6 +70,25 @@
     "artifact_sha256": "sha256:c98f3d3d2a4b2e37cff700b8e7b2e04d200e4b97731d2056da2871ffbac81987",
     "materialization_pending": false
   },
+  "authority_materialization": {
+    "status": "APPROVED_SINGLE_USE_UNCONSUMED",
+    "preapproval_acceptance_sha256": "sha256:9a41b52f8b49dca410fc5a7219ff3a773b416253a976b975a2cae3f4a82aefff",
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:fe0ccd5c3165488bc206f6a159637ad34af9ab994f19dfbcf374ae53629090da",
+    "activation_source_path": "../../../../../apps/web/src/server/providers/v207-activation-authority.ts",
+    "activation_source_canonical_sha256": "sha256:08423e8d254543893ef87a05790f0eb9ed252d55831d54edf20f70efe4c5005c"
+  },
+  "authority_independent_audit": {
+    "result": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
+    "artifact_path": "authority-independent-audit.json",
+    "artifact_sha256": "sha256:9bc27ff8ebc95d9aa80fd6790ffe59030a53da2d421fbbcf0fdb1049d1acf465",
+    "audited_approved_acceptance_sha256": "sha256:9fdbae3d5ccc68649c1545bb28a225acc25dbb40c029297d8cfa1d928cd52a99",
+    "provider_calls": 0,
+    "provider_mutations": 0,
+    "credential_access": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
   "predecessor": {
     "attempt": 78,
     "closure": "../2026-09-04-live-qualification/failed-attempt-78.json",
@@ -110,24 +129,24 @@
     "v2_08": false
   },
   "authority": {
-    "status": "NOT_GRANTED_AWAITING_FRESH_EXACT_APPROVAL",
-    "fresh_exact_approval_required": true,
-    "provider_calls_authorized": false,
-    "provider_mutations_authorized": false,
-    "credential_access_authorized": false,
+    "status": "APPROVED_SINGLE_USE_UNCONSUMED",
+    "fresh_exact_approval_required": false,
+    "provider_calls_authorized": true,
+    "provider_mutations_authorized": true,
+    "credential_access_authorized": true,
     "image_publication_authorized": false,
     "image_republication_authorized": false,
-    "reuse_published_image_authorized": false,
-    "gpu_use_authorized": false,
-    "maximum_cumulative_finite_spend_usd": 0,
-    "executable_finite_cap_usd": null,
+    "reuse_published_image_authorized": true,
+    "gpu_use_authorized": true,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "executable_finite_cap_usd": 4.5,
     "anchor_refresh_authorized": false,
     "retained_volume_mutation_authorized": false,
     "v2_08_authorized": false,
     "consumed": false,
     "reusable": false,
-    "single_use": false,
-    "authority_path": null,
-    "authority_sha256": null
+    "single_use": true,
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:fe0ccd5c3165488bc206f6a159637ad34af9ab994f19dfbcf374ae53629090da"
   }
 }
