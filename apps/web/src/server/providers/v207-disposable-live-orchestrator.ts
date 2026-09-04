@@ -505,7 +505,8 @@ async function assertStableActiveRoute(
       // Once any edge serves the exact active version, regression or alternation is terminal.
       !firstExactMatchSeen &&
       observed.status === 404 &&
-      observed.code === "V207_ROUTE_DISABLED"
+      observed.code === "V207_ROUTE_DISABLED" &&
+      observed.workerVersionId !== expectedWorkerVersionId
     ) {
       consecutiveMatches = 0;
     } else {

@@ -375,6 +375,96 @@ describe("V2-07 disposable live orchestrator", () => {
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
   });
 
+  it("caps active-route propagation at the 60-second deadline", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let now = 0;
+    const activeSleeps: number[] = [];
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          if (setup.state().secret) {
+            now += 59_000;
+            return Response.json(
+              { error: { code: "V207_ROUTE_DISABLED" } },
+              {
+                status: 404,
+                headers: { [V207_ROUTE_VERSION_HEADER]: PREDECESSOR_VERSION_ID },
+              },
+            );
+          }
+          return normalFetch(input, init);
+        },
+        sleepImpl: async (milliseconds) => {
+          if (setup.state().secret) activeSleeps.push(milliseconds);
+          if (setup.state().exists) now += milliseconds;
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ACTIVE_ROUTE_UNCONFIRMED" });
+
+    expect(activeSleeps).toEqual([1_000]);
+    expect(now).toBe(64_000);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+  });
+
+  it("aborts during active-route propagation and still cleans up", async () => {
+    const setup = await fixture({ signal: "SIGTERM" });
+    const normalFetch = setup.options.fetchImpl!;
+    let activeRouteReads = 0;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          if (setup.state().secret) {
+            activeRouteReads += 1;
+            return Response.json(
+              { error: { code: "V207_ROUTE_DISABLED" } },
+              {
+                status: 404,
+                headers: { [V207_ROUTE_VERSION_HEADER]: PREDECESSOR_VERSION_ID },
+              },
+            );
+          }
+          return normalFetch(input, init);
+        },
+        sleepImpl: async () => {
+          if (setup.state().secret) setup.signalTarget.emit("SIGTERM");
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_OPERATOR_ABORT" });
+
+    expect(activeRouteReads).toBe(1);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    expect(setup.signalTarget.listenerCount("SIGINT")).toBe(0);
+    expect(setup.signalTarget.listenerCount("SIGTERM")).toBe(0);
+  });
+
+  it("rejects a disabled fingerprint carrying the expected active version", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let activeRouteReads = 0;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          if (setup.state().secret) {
+            activeRouteReads += 1;
+            return Response.json(
+              { error: { code: "V207_ROUTE_DISABLED" } },
+              { status: 404, headers: { [V207_ROUTE_VERSION_HEADER]: VERSION_ID } },
+            );
+          }
+          return normalFetch(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ACTIVE_ROUTE_UNCONFIRMED" });
+
+    expect(activeRouteReads).toBe(1);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+  });
+
   it("fails immediately when a disabled predecessor returns after the first exact active match", async () => {
     const setup = await fixture();
     const normalFetch = setup.options.fetchImpl!;
