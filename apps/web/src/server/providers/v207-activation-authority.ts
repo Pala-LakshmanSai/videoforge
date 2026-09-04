@@ -1,17 +1,17 @@
 import { createHash } from "node:crypto";
 
 export const V207_REPAIRED_IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247" as const;
+  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d" as const;
 
-export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "095e1642562e4370c89425292428eb474ba190f1";
+export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "51d7de6cb3c0d88ddcb06df533864bf319a1210f";
 export const V207_REPAIRED_IMAGE_CONFIG_DIGEST =
-  "sha256:af05d38128fc75d14aefc4856e661e28e7369f7df90c90beb2875c569605c436" as const;
+  "sha256:316ebc9e5c7e1d3441e72f29d4edc51a33512d4ae157b7f38a84d1423b4269c7" as const;
 export const V207_REPAIRED_IMAGE_LAYER_DIGEST =
-  "sha256:e28e45eee00f52ccd5d1d9ff8d5a432a757c91ad4fdd7687cd6defb9a62c9112" as const;
+  "sha256:46d4cf6d25a5aedbc78da9ff80b536551172324bdcbf1c9df81519ef9d5fa075" as const;
 export const V207_REPAIRED_IMAGE_LAYER_DIFF_ID =
-  "sha256:885b0adf0c57ab1e27553e58297a8f261dab8f60db668acb6376d12b2d5848e2" as const;
+  "sha256:20c726c4ca56883589f423efcc6b0def4495aee2a56ea07988895effbbbdb84f" as const;
 export const V207_REPAIRED_HANDLER_SHA256 =
-  "sha256:e61786748d321124ab39267622ccb647f614e8fac0d560d2e72c6d2a158b528d" as const;
+  "sha256:c4945aabfa9cdb9f18aa9b514d2ec1dfc533865857ac0ee280019cb643961e3c" as const;
 export const V207_EXECUTION_SUBSET_SCHEMA_SHA256 =
   "sha256:08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f" as const;
 export const V207_REPAIRED_IMAGE_PARENT =
@@ -21,7 +21,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:918453ff3d3f5bda704b422a1c9a47a47147d7b8a0b151a9a41a8a7d3b82aef6" as const;
+  "sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533" as const;
 export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
   "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
 export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
@@ -37,7 +37,7 @@ export const V207_ANCHOR_REFRESH_HELPER_SHA256 =
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "42a5a522402e71aef1cee9b714e4cb54c571ceb3" as const;
+  "51d7de6cb3c0d88ddcb06df533864bf319a1210f" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
@@ -79,8 +79,8 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempts69 through 74 were consumed. No executable authority or cap is
-// compiled below; another live run requires a fresh sealed proposal and approval.
+// Attempts69 through 74 were consumed. Attempt75 is sealed but not approved. No executable
+// authority or cap is compiled below; publication or live execution requires fresh exact approval.
 export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
 export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**

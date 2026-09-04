@@ -200,20 +200,19 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Starting point:** Attempt64 is closed clean and non-reusable. Its post-cancel repair is audited,
-but the later authenticated-envelope verifier changed the Mage handler/image bytes, so the prior
-published image and all image-bound qualification evidence are invalid for activation. V2-07 is
-`NOT_QUALIFIED` with no current candidate or live authority.
+**Starting point:** Attempt74 is closed clean and non-reusable after its first generated-output PUT
+failed. Attempt75 is provider-free sealed and independently audited PASS at source
+`51d7de6cb3c0d88ddcb06df533864bf319a1210f`, proposal
+`sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533`, and expected unpublished
+Mage image `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`.
+V2-07 remains `NOT_QUALIFIED`; executable authority/cap are null pending fresh exact approval.
 
 **Work:**
 
-- reconcile current HEAD/context, the authenticated-envelope bytes, and the audited Attempt64
-  cancellation repair; never reuse an earlier attempt, proposal, authority, cap, or image digest;
-- prepare and audit a fresh immutable Mage image definition from current committed source without
-  redownloading/changing the model or writing, cross-mounting, or deleting either retained volume;
-- finish provider-free and narrowly scoped read-only inventory/rate preflight, then stop once for an
-  exact image-publication/deployment/atomic-qualification operations, rates, estimate, cleanup, and
-  stop-condition proposal with a fresh user-supplied finite cap;
+- validate the sealed Attempt75 candidate and never reuse an earlier attempt, proposal, authority,
+  cap, or image digest;
+- obtain fresh exact approval for the already sealed image-publication/deployment/qualification
+  operations, USD 4.50 cap, rates, cleanup, and stop conditions;
 - after exact approval, execute only the bound atomic gate once, with no blind retry or redispatch;
 - accept only durable 1280×720 outputs, tenant artifact readbacks, signed v3 receipts, exact timing/
   VRAM/cost, unchanged Mage manifest, terminal jobs, zero total workers, and intended volumes only.

@@ -1,0 +1,44 @@
+{
+  "schema_version": "videoforge.v2-07-attempt75-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 75,
+  "audited_source_head": "51d7de6cb3c0d88ddcb06df533864bf319a1210f",
+  "result": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "proposal": {
+    "path": "combined-live-proposal.json",
+    "sha256": "sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533",
+    "control_source_commit": "51d7de6cb3c0d88ddcb06df533864bf319a1210f",
+    "image_source_commit": "51d7de6cb3c0d88ddcb06df533864bf319a1210f",
+    "expected_image_digest": "sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d"
+  },
+  "source_verification": {
+    "mage_handler_sha256": "sha256:c4945aabfa9cdb9f18aa9b514d2ec1dfc533865857ac0ee280019cb643961e3c",
+    "disposable_orchestrator_sha256": "sha256:072d0f764e55e5a8cd15f78d9608d1fe1e2e6284531956f8fbd2dff6755ea6e1",
+    "cleanup_armed_before_ambiguous_reserve_response": true,
+    "probe_cleanup_uses_independent_bounded_signal": true,
+    "outer_worker_cleanup_uses_independent_bounded_signal": true,
+    "all_probe_responses_bound_to_exact_active_worker_version": true,
+    "python_urllib_upload_semantics_match_mage": true,
+    "mage_failure_diagnostics_bounded_and_redaction_safe": true,
+    "no_retry_or_redispatch": true
+  },
+  "validation": {
+    "focused_orchestrator_tests": "23/23",
+    "focused_mage_tests": "41/41",
+    "web_typecheck": "PASS",
+    "diff_check": "PASS",
+    "provider_calls": 0,
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0,
+    "v2_08_actions": 0
+  },
+  "boundary": "Fresh exact approval is required before the expected immutable Mage image is published or any provider mutation, GPU use, or spend occurs. V2-08 remains forbidden."
+}

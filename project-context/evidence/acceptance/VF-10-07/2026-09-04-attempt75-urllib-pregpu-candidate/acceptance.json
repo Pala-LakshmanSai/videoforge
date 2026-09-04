@@ -1,0 +1,54 @@
+{
+  "schema_version": "videoforge.v2-07-attempt75-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 75,
+  "status": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533",
+  "control_source_commit": "51d7de6cb3c0d88ddcb06df533864bf319a1210f",
+  "image_source_commit": "51d7de6cb3c0d88ddcb06df533864bf319a1210f",
+  "expected_image_digest": "sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d",
+  "image_published": false,
+  "repair": {
+    "bounded_mage_upload_failure_categories": true,
+    "credential_url_body_header_and_exception_text_redaction": true,
+    "exact_python_urllib_pre_gpu_put": true,
+    "finalize_get_byte_readback_and_delete_before_gpu": true,
+    "deterministic_cleanup_armed_before_reserve": true,
+    "independent_non_aborted_probe_and_worker_cleanup": true,
+    "every_probe_response_bound_to_active_worker_version": true,
+    "no_retry_or_redispatch": true
+  },
+  "validation": {
+    "focused_orchestrator_and_output_tests": "33/33",
+    "focused_mage_tests": "41/41",
+    "full_image_media_tests": "180/180",
+    "web_typecheck": "PASS",
+    "focused_lint": "PASS",
+    "context_validation": "PASS_WITH_PREEXISTING_PROFILE_WORD_WARNING",
+    "secret_scan": "PASS",
+    "diff_check": "PASS",
+    "deterministic_oci_overlay_verification": "PASS",
+    "independent_reaudit": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
+    "provider_calls_during_repair": 0,
+    "provider_mutations_during_repair": 0,
+    "gpu_jobs_submitted_during_repair": 0,
+    "external_spend_during_repair_usd": 0
+  },
+  "predecessor": {
+    "attempt": 74,
+    "closure": "../2026-09-04-live-qualification/failed-attempt-74.json",
+    "closure_sha256": "sha256:a468fdf4386018d1b02dd62bd917fc34f73704ae643e05b1266cd38e1d4ec3af"
+  },
+  "authority": {
+    "fresh_exact_approval_required": true,
+    "provider_calls_authorized": false,
+    "provider_mutations_authorized": false,
+    "image_publication_authorized": false,
+    "gpu_use_authorized": false,
+    "maximum_cumulative_finite_spend_usd": 0,
+    "anchor_refresh_authorized": false,
+    "v2_08_authorized": false
+  }
+}

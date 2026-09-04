@@ -4,6 +4,20 @@
 
 ### Current new-chat launch point — 2026-09-04
 
+- V2-07 Attempt75 is sealed and independently audited PASS at control/image source
+  `51d7de6cb3c0d88ddcb06df533864bf319a1210f`. It adds redaction-safe Mage upload failure
+  categories and an exact pre-GPU Python `urllib` PUT/finalize/readback/delete compatibility probe.
+  Cleanup is armed before reserve, uses independent bounded signals, and every probe response is
+  bound to the active disposable Worker version. Focused web tests pass 58/58, Mage tests pass
+  41/41, full image-media tests pass 180/180, and the independent re-audit has zero P0/P1/P2.
+- The sealed proposal is
+  `evidence/acceptance/VF-10-07/2026-09-04-attempt75-urllib-pregpu-candidate/combined-live-proposal.json`
+  (`sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533`).
+  It binds the expected unpublished Mage image
+  `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`.
+  Compiled authority/cap remain null. Fresh exact approval is required before image publication,
+  provider mutation, GPU use, or spend; V2-08 remains forbidden.
+
 - V2-07 Attempt74 consumed its exact single-use authority after one GPU job completed
   (`71315 ms` queue, `67163 ms` execution), then the first generated-output PUT failed at
   `MAGE_SERVERLESS_OUTPUT_UPLOAD_FAILED` before any receipt or finalization. The unchanged Mage
@@ -17,10 +31,8 @@
   (`sha256:a468fdf4386018d1b02dd62bd917fc34f73704ae643e05b1266cd38e1d4ec3af`).
   Attempt74 is consumed, closed, and non-reusable; compiled authority/cap are null and V2-08 remains
   forbidden.
-- Next work is provider-free only: add bounded redaction-safe Mage uploader failure categories and
-  a pre-GPU disposable-route compatibility/source-identity probe, independently audit the exact
-  source, then seal a fresh successor proposal. If Mage source changes, publishing the new immutable
-  image is a separate external mutation that must be included in the fresh exact proposal.
+- Historical diagnosis from Attempt74 led to the bounded uploader categories and pre-GPU
+  compatibility/source-identity probe now sealed in Attempt75 above.
 
 - V2-07 Attempt73 consumed its exact single-use authority after the first GPU job completed
   (`129325 ms` queue, `58714 ms` execution), then the first generated-output PUT failed at
