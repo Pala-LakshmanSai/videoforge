@@ -4,7 +4,7 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt75 is sealed and independently audited PASS at control/image source
+- V2-07 Attempt75 is approved for one exact unconsumed execution at control/image source
   `51d7de6cb3c0d88ddcb06df533864bf319a1210f`. It adds redaction-safe Mage upload failure
   categories and an exact pre-GPU Python `urllib` PUT/finalize/readback/delete compatibility probe.
   Cleanup is armed before reserve, uses independent bounded signals, and every probe response is
@@ -13,10 +13,16 @@
 - The sealed proposal is
   `evidence/acceptance/VF-10-07/2026-09-04-attempt75-urllib-pregpu-candidate/combined-live-proposal.json`
   (`sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533`).
-  It binds the expected unpublished Mage image
+  It binds the now-published Mage image
   `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`.
-  Compiled authority/cap remain null. Fresh exact approval is required before image publication,
-  provider mutation, GPU use, or spend; V2-08 remains forbidden.
+  Exact single-use authority
+  `sha256:50f439adb627762b3ca7cc35bb5764266268fce5dbc702c9360c99bec10da883`
+  is compiled with the USD 4.50 cumulative finite cap. Post-publication acceptance is
+  `sha256:9bffb3d6a5b7cb14d8892187468c6bcedac957ef1c33c5c657131311368ccd5a`.
+  Workflow run `33888463324` published the exact image and passed anonymous manifest/config/layer
+  readback. The qualification authority remains unconsumed; execute only the exact pre-GPU probe,
+  qualification, and cleanup graph. No rollback-anchor
+  refresh, GPU fallback, retained-volume mutation, or V2-08 action is authorized.
 
 - V2-07 Attempt74 consumed its exact single-use authority after one GPU job completed
   (`71315 ms` queue, `67163 ms` execution), then the first generated-output PUT failed at

@@ -3,13 +3,15 @@
   "checkpoint": "V2-07",
   "task_id": "VF-10-07",
   "attempt": 75,
-  "status": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "status": "APPROVED_SINGLE_USE_UNCONSUMED",
   "qualification_status": "NOT_QUALIFIED",
   "proposal_sha256": "sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533",
   "control_source_commit": "51d7de6cb3c0d88ddcb06df533864bf319a1210f",
   "image_source_commit": "51d7de6cb3c0d88ddcb06df533864bf319a1210f",
   "expected_image_digest": "sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d",
-  "image_published": false,
+  "image_published": true,
+  "image_publication": "image-publication.json",
+  "image_publication_sha256": "sha256:02fb25196188fcaf9927ece504011d3f1e931d1f87053e88971b4e6b75126677",
   "repair": {
     "bounded_mage_upload_failure_categories": true,
     "credential_url_body_header_and_exception_text_redaction": true,
@@ -42,13 +44,18 @@
     "closure_sha256": "sha256:a468fdf4386018d1b02dd62bd917fc34f73704ae643e05b1266cd38e1d4ec3af"
   },
   "authority": {
-    "fresh_exact_approval_required": true,
-    "provider_calls_authorized": false,
-    "provider_mutations_authorized": false,
-    "image_publication_authorized": false,
-    "gpu_use_authorized": false,
-    "maximum_cumulative_finite_spend_usd": 0,
+    "fresh_exact_approval_required": false,
+    "provider_calls_authorized": true,
+    "provider_mutations_authorized": true,
+    "image_publication_authorized": true,
+    "gpu_use_authorized": true,
+    "maximum_cumulative_finite_spend_usd": 4.5,
     "anchor_refresh_authorized": false,
-    "v2_08_authorized": false
+    "v2_08_authorized": false,
+    "consumed": false,
+    "reusable": false,
+    "single_use": true,
+    "authority_path": "approved-authority.json",
+    "authority_sha256": "sha256:50f439adb627762b3ca7cc35bb5764266268fce5dbc702c9360c99bec10da883"
   }
 }

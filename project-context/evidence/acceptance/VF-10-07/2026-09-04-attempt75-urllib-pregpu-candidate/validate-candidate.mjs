@@ -8,7 +8,9 @@ const repoRoot = resolve(candidateDir, "../../../../..");
 
 const expected = Object.freeze({
   proposalSha256: "sha256:dfb527133ad3bfdb20bbb8d9649ca56bcd63eff243e2108f8f32a4861593f533",
-  acceptanceSha256: "sha256:8b5f0b6635eff6f4c3e5c95c914d8d2d8d513f4abf62119d5560107ccbb7f123",
+  acceptanceSha256: "sha256:9bffb3d6a5b7cb14d8892187468c6bcedac957ef1c33c5c657131311368ccd5a",
+  publicationSha256: "sha256:02fb25196188fcaf9927ece504011d3f1e931d1f87053e88971b4e6b75126677",
+  authoritySha256: "sha256:50f439adb627762b3ca7cc35bb5764266268fce5dbc702c9360c99bec10da883",
   auditSha256: "sha256:94da55ecbb8aba6b674fd4f5d5c8facad00a9d980b3d012dc70eaa62b8018e77",
   sourceCommit: "51d7de6cb3c0d88ddcb06df533864bf319a1210f",
   imageDigest: "sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d",
@@ -61,14 +63,21 @@ const acceptancePath =
   "project-context/evidence/acceptance/VF-10-07/2026-09-04-attempt75-urllib-pregpu-candidate/acceptance.json";
 const auditPath =
   "project-context/evidence/acceptance/VF-10-07/2026-09-04-attempt75-urllib-pregpu-candidate/independent-audit.json";
+const authorityPath =
+  "project-context/evidence/acceptance/VF-10-07/2026-09-04-attempt75-urllib-pregpu-candidate/approved-authority.json";
+const publicationPath =
+  "project-context/evidence/acceptance/VF-10-07/2026-09-04-attempt75-urllib-pregpu-candidate/image-publication.json";
 
 assert(sha256(read(proposalPath)) === expected.proposalSha256, "PROPOSAL_HASH");
 assert(sha256(read(acceptancePath)) === expected.acceptanceSha256, "ACCEPTANCE_HASH");
 assert(sha256(read(auditPath)) === expected.auditSha256, "AUDIT_HASH");
+assert(sha256(read(authorityPath)) === expected.authoritySha256, "AUTHORITY_HASH");
+assert(sha256(read(publicationPath)) === expected.publicationSha256, "PUBLICATION_HASH");
 
 const proposal = parseJson(proposalPath);
 const acceptance = parseJson(acceptancePath);
 const audit = parseJson(auditPath);
+const authority = parseJson(authorityPath);
 
 assert(proposal.attempt === 75 && proposal.checkpoint === "V2-07", "PROPOSAL_IDENTITY");
 assert(proposal.authority_mode === "PENDING_FRESH_EXACT_APPROVAL", "PROPOSAL_AUTHORITY_MODE");
@@ -106,14 +115,24 @@ for (const [proposalKey, relativePath] of Object.entries(proposalSourcePaths)) {
   assert(proposal.source_hashes?.[proposalKey] === expected.sourceHashes[relativePath], `PROPOSAL_SOURCE_HASH_${proposalKey}`);
 }
 
-assert(acceptance.status === "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL", "ACCEPTANCE_STATUS");
+assert(acceptance.status === "APPROVED_SINGLE_USE_UNCONSUMED", "ACCEPTANCE_STATUS");
 assert(acceptance.proposal_sha256 === expected.proposalSha256, "ACCEPTANCE_PROPOSAL");
 assert(acceptance.control_source_commit === expected.sourceCommit, "ACCEPTANCE_CONTROL_SOURCE");
 assert(acceptance.image_source_commit === expected.sourceCommit, "ACCEPTANCE_IMAGE_SOURCE");
-assert(acceptance.image_published === false, "ACCEPTANCE_UNPUBLISHED");
-assert(acceptance.authority?.maximum_cumulative_finite_spend_usd === 0, "ACCEPTANCE_ZERO_CAP");
-assert(acceptance.authority?.provider_calls_authorized === false, "ACCEPTANCE_NO_PROVIDER");
-assert(acceptance.authority?.gpu_use_authorized === false, "ACCEPTANCE_NO_GPU");
+assert(acceptance.image_published === true, "ACCEPTANCE_PUBLISHED");
+assert(acceptance.image_publication_sha256 === expected.publicationSha256, "ACCEPTANCE_PUBLICATION");
+assert(acceptance.authority?.maximum_cumulative_finite_spend_usd === 4.5, "ACCEPTANCE_CAP");
+assert(acceptance.authority?.provider_calls_authorized === true, "ACCEPTANCE_PROVIDER");
+assert(acceptance.authority?.gpu_use_authorized === true, "ACCEPTANCE_GPU");
+assert(acceptance.authority?.authority_sha256 === expected.authoritySha256, "ACCEPTANCE_AUTHORITY");
+
+assert(authority.status === "APPROVED_SINGLE_USE_UNCONSUMED", "AUTHORITY_STATUS");
+assert(authority.proposal_sha256 === expected.proposalSha256, "AUTHORITY_PROPOSAL");
+assert(authority.control_source_commit === expected.sourceCommit, "AUTHORITY_CONTROL_SOURCE");
+assert(authority.image_source_commit === expected.sourceCommit, "AUTHORITY_IMAGE_SOURCE");
+assert(authority.maximum_cumulative_finite_spend_usd === 4.5, "AUTHORITY_CAP");
+assert(authority.pre_gpu_python_urllib_compatibility_probe_required === true, "AUTHORITY_PRE_GPU_PROBE");
+assert(authority.anchor_refresh_authorized === false && authority.v2_08_authorized === false, "AUTHORITY_BOUNDARY");
 
 assert(audit.result === "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL", "AUDIT_RESULT");
 assert(audit.audited_source_head === expected.sourceCommit, "AUDIT_SOURCE");
@@ -137,10 +156,10 @@ assert(
   "ACTIVATION_CONTROL_SOURCE",
 );
 assert(
-  activation.includes("export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;") &&
-    activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = null;") &&
-    activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;"),
-  "ACTIVATION_NULL_AUTHORITY",
+  activation.includes(expected.authoritySha256) &&
+    activation.includes("export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;") &&
+    activation.includes("export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;"),
+  "ACTIVATION_APPROVED_AUTHORITY",
 );
 
 const currentState = read("project-context/CURRENT_STATE.yaml").toString("utf8");
@@ -150,9 +169,8 @@ for (const source of [currentState, gates]) {
     assert(source.includes(value), "CONTEXT_POINTER");
   }
 }
-assert(currentState.includes("authority_sha256: null"), "CURRENT_STATE_NULL_AUTHORITY");
-assert(gates.includes("current_candidate_authority_sha256: null"), "GATES_NULL_AUTHORITY");
-assert(gates.includes("current_candidate_executable_finite_cap_usd: 0"), "GATES_ZERO_EXECUTABLE_CAP");
-assert(gates.includes("pending_authority_sha256: null"), "GATES_NULL_PENDING_AUTHORITY");
+assert(currentState.includes(expected.authoritySha256), "CURRENT_STATE_AUTHORITY");
+assert(gates.includes(expected.authoritySha256), "GATES_AUTHORITY");
+assert(gates.includes("current_candidate_executable_finite_cap_usd: 4.5"), "GATES_EXECUTABLE_CAP");
 
-console.log("PASS V2-07 Attempt75 sealed candidate");
+console.log("PASS V2-07 Attempt75 approved single-use candidate");
