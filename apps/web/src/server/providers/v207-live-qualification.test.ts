@@ -713,27 +713,28 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain("new V207OutputContractError");
   });
 
-  it("keeps the full 32-item plan while seeding exactly one durable resume unit", () => {
+  it("uses whole-project batches and does not run the obsolete seed/resume successor path", () => {
     const liveBatchCounts = [
       ...source.matchAll(
         /(?:probe|cold|warm|readerA|readerB|cancel|timeout) = await createBatch\([\s\S]*?workerToken,\s+(\d+),/g,
       ),
     ].map((match) => match[1]);
-    expect(liveBatchCounts).toEqual(["32", "32", "32", "32", "32", "32", "32"]);
-    expect(source).toContain('kind: "owned_probe"');
-    expect(source).toContain('["scene-01"]');
-    expect(source).toContain("V207_PROBE_DURABLE_UNITS_INCOMPLETE");
-    expect(source).toContain("mergedResumeUnits.length !== 32");
+    expect(liveBatchCounts).toEqual(["32", "32", "32", "32", "32", "32"]);
+    expect(source).not.toContain("prepareProcessReplacement");
+    expect(source).not.toContain("rotateEndpointForProcessReplacement");
+    expect(source).not.toContain("process_replacement_endpoint_rotation");
+    expect(source).not.toContain("const resumeBatch = await createBatch");
     expect(source).not.toContain("workerToken,\n        1,");
     expect(() => assertV207ItemCount(31)).toThrow("V207_BATCH_ITEM_COUNT_INVALID");
   });
 
-  it("uses unique attempt lineage, bounded reads, and account-wide final drain proof", () => {
+  it("uses unique attempt lineage, deletes disposables on success, and proves final zero inventory", () => {
     expect(source).toContain("randomBytes(6)");
     expect(source).toContain("AbortSignal.timeout(30_000)");
-    expect(source).toContain("reconcileV207SuccessReadonly");
+    expect(source).toContain("cleanupSuccessfulQualification");
+    expect(source).toContain("reconcileV207Readonly");
     expect(source).toContain("final_reconciliation");
-    expect(source).toContain("confirmQueueEmptyReadOnly");
+    expect(source).toContain("final_zero_disposable_reconciliation");
   });
 
   it("follows only the signed GHCR blob redirect without forwarding registry auth", () => {
@@ -835,65 +836,23 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain('evidence.timeout_output_cleanup = "CONFIRMED"');
   });
 
-  it("rotates the drained seed endpoint before one replacement and binds all later proof to it", () => {
-    const seedBoundaryPersisted = source.indexOf(
-      'persistCheckpoint("probe-process-replaced-boundary"',
-    );
-    const endpointRotation = source.indexOf("harness.rotateEndpointForProcessReplacement(");
-    const replacementAuthorities = source.indexOf("const resumeBatch = await createBatch(");
-    const replacementVerification = source.indexOf(
-      "const resumeEvidence = await verifyBatchWithDiagnostic",
-    );
-    const signedPodAssertion = source.indexOf("harness.assertProcessReplacementIdentity(");
+  it("does not rotate a seed endpoint or redispatch a 31-unit replacement", () => {
+    expect(source).not.toContain("processReplacementEndpointRotation");
+    expect(source).not.toContain("replacementEndpointIdHash");
+    expect(source).not.toContain("resumeEvidence");
+    expect(source).not.toContain("mergedResumeUnits");
+    const drain = source.indexOf('persistCheckpoint("reader-drained")');
+    const outputCleanup = source.indexOf("deleteGeneratedObjects(generatedObjectKeys, nonce)");
+    const deleteDisposables = source.indexOf("cleanupSuccessfulQualification");
     const finalReconciliation = source.indexOf(
-      "const finalReconciliation = await reconcileV207SuccessReadonly",
+      "const finalReconciliation = await reconcileV207Readonly",
     );
-
-    expect([
-      seedBoundaryPersisted,
-      endpointRotation,
-      replacementAuthorities,
-      replacementVerification,
-      signedPodAssertion,
-      finalReconciliation,
-    ]).toEqual(
-      [
-        seedBoundaryPersisted,
-        endpointRotation,
-        replacementAuthorities,
-        replacementVerification,
-        signedPodAssertion,
-        finalReconciliation,
-      ].sort((left, right) => left - right),
-    );
-    expect(seedBoundaryPersisted).toBeGreaterThan(-1);
-    expect(source).toContain(
-      "processReplacementEndpointRotation.previousEndpointIdHash !==\n          createdIdentity.endpointIdHash",
-    );
-    expect(source).toContain(
-      "processReplacementEndpointRotation.endpointIdHash === createdIdentity.endpointIdHash",
-    );
-    expect(source).toContain(
-      "const replacementEndpointIdHash = processReplacementEndpointRotation.endpointIdHash",
-    );
-    expect(source).toContain('event: "process_replacement_endpoint_rotated"');
-    expect(source).toContain("previous_endpoint_id_hash:");
-    expect(source).toContain("replacement_endpoint_id_hash: replacementEndpointIdHash");
-    expect(
-      source.match(/const resumeJob = await harness\.dispatchBatch\(resumeBatch\.input\)/g),
-    ).toHaveLength(1);
-    expect(source.slice(replacementVerification, finalReconciliation)).not.toContain(
-      "createdIdentity.endpointIdHash",
-    );
-    expect(source.slice(replacementVerification, finalReconciliation)).toContain(
-      "replacementEndpointIdHash",
-    );
-    expect(source.slice(signedPodAssertion, finalReconciliation)).not.toMatch(
-      /dispatchBatch\(resumeBatch\.input\)/,
-    );
-    expect(source.slice(finalReconciliation)).toContain(
-      "expectedEndpointIdHash: replacementEndpointIdHash",
-    );
+    expect(drain).toBeGreaterThan(-1);
+    expect(outputCleanup).toBeGreaterThan(drain);
+    expect(deleteDisposables).toBeGreaterThan(drain);
+    expect(deleteDisposables).toBeGreaterThan(outputCleanup);
+    expect(finalReconciliation).toBeGreaterThan(deleteDisposables);
+    expect(source).toContain('evidence.generated_output_cleanup = "CONFIRMED"');
   });
 
   it("uses both post-timeout reader receipts as the terminal sealed-model attestation", () => {
@@ -913,7 +872,7 @@ describe("V2-07 live qualification runner safety", () => {
     const readerDrain = source.indexOf("await harness.drain()", readerTerminal);
     const restoreMaxOne = source.indexOf("await harness.scaleDownToInitial()", readerDrain);
     const finalReconciliation = source.indexOf(
-      "const finalReconciliation = await reconcileV207SuccessReadonly",
+      "const finalReconciliation = await reconcileV207Readonly",
     );
     const success = source.indexOf("success = true", finalReconciliation);
     expect([

@@ -30,7 +30,6 @@ import {
 } from "./runpod-v207-qualification-harness";
 import {
   reconcileV207Readonly,
-  reconcileV207SuccessReadonly,
   v207IncrementalSpendFromBilling,
   v207IncrementalSpendThreshold,
 } from "./runpod-v207-readonly-reconciliation";
@@ -2426,162 +2425,6 @@ async function main(): Promise<void> {
         throw new Error("V207_CREATED_IDENTITY_MISSING");
       }
       await persistCheckpoint("create");
-      const probeAttemptId = `v207-probe-${runTag}`;
-      const probe = await createBatch(
-        probeAttemptId,
-        nonce,
-        workerToken,
-        32,
-        cancellation.throwIfRequested,
-        undefined,
-        ["scene-01"],
-      );
-      generatedObjectKeys.push(...probe.objectKeys);
-      console.error("v207:probe-ports-ready");
-      await persistCheckpoint("probe-ports");
-      cancellation.throwIfRequested();
-      const probeJob = await harness.dispatchBatch(probe.input);
-      console.error("v207:probe-dispatched");
-      await persistCheckpoint("probe-dispatch");
-      const probeResult = await harness.reconcile(probeJob.id);
-      console.error("v207:probe-terminal");
-      const probeEvidence = await verifyBatchWithDiagnostic(
-        harness,
-        probeResult,
-        probeAttemptId,
-        probe.objectKeys,
-        probe.input.outputAuthority.authorities as readonly AnyRecord[],
-        probe.planManifest,
-        probe.objectKeys.length,
-        createdIdentity.endpointIdHash,
-        nonce,
-        receiptKeyId,
-        receiptSecret,
-      );
-      (evidence.batches as AnyRecord[]).push({ kind: "owned_probe", ...probeEvidence });
-      await persistCheckpoint("probe-terminal");
-      const probeDurableUnits = probeEvidence.durable_accepted_units;
-      if (!Array.isArray(probeDurableUnits) || probeDurableUnits.length !== 1) {
-        throw new Error("V207_PROBE_DURABLE_UNITS_INCOMPLETE");
-      }
-      const probeWorkerProcessIdentity = probeEvidence.worker_process_identity as
-        | RunPodV207WorkerProcessIdentity
-        | undefined;
-      if (!probeWorkerProcessIdentity) {
-        throw new Error("V207_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
-      }
-      // A replacement is not admitted from warm-idle.  The one-item seed must first prove
-      // terminal status, empty queue, two stable terminal worker/Pod inventories, and the exact
-      // exact provider Pod identity that the signed receipt reported as RUNPOD_POD_ID.
-      const processReplacementBoundary = await harness.prepareProcessReplacement(
-        probeJob.id,
-        probeWorkerProcessIdentity,
-      );
-      await persistCheckpoint("probe-process-replaced-boundary", {
-        event: "process_replacement_seed_terminal_scale_zero",
-        process_replacement_boundary: processReplacementBoundary,
-      });
-      // A terminal seed on the same endpoint can be scheduled back onto the same retained
-      // FlashBoot process. Rotate the disposable endpoint before issuing any replacement
-      // authorities so the resume and every later batch are bound to a fresh endpoint identity.
-      const processReplacementEndpointRotation = await harness.rotateEndpointForProcessReplacement(
-        processReplacementBoundary,
-      );
-      if (
-        processReplacementEndpointRotation.previousEndpointIdHash !==
-          createdIdentity.endpointIdHash ||
-        processReplacementEndpointRotation.endpointIdHash === createdIdentity.endpointIdHash
-      ) {
-        throw new Error("V207_PROCESS_REPLACEMENT_ENDPOINT_ROTATION_INVALID");
-      }
-      const replacementEndpointIdHash = processReplacementEndpointRotation.endpointIdHash;
-      evidence.process_replacement_endpoint_rotation = {
-        schema_version: "videoforge-v207-process-replacement-endpoint-rotation/v1",
-        previous_endpoint_id_hash: processReplacementEndpointRotation.previousEndpointIdHash,
-        replacement_endpoint_id_hash: replacementEndpointIdHash,
-        template_id_hash: processReplacementEndpointRotation.templateIdHash,
-        previous_endpoint_matches_seed: true,
-        replacement_endpoint_differs_from_seed: true,
-      };
-      latestHarnessEvidence = (await harness.evidence()) as unknown as AnyRecord;
-      await persistCheckpoint("probe-process-replacement-endpoint-rotated", {
-        event: "process_replacement_endpoint_rotated",
-        previous_endpoint_id_hash: processReplacementEndpointRotation.previousEndpointIdHash,
-        replacement_endpoint_id_hash: replacementEndpointIdHash,
-        template_id_hash: processReplacementEndpointRotation.templateIdHash,
-        previous_endpoint_matches_seed: true,
-        replacement_endpoint_differs_from_seed: true,
-      });
-      // Exercise the real replacement path with one already committed unit.  The replacement
-      // envelope still carries all 32 plan items, while its signed item count and fresh PUT
-      // authorities cover only the remaining 31.  The worker must read the prior unit through its
-      // fresh one-use GET authority and generate exactly the unresolved set.
-      const resumeAttemptId = `v207-resume-${runTag}`;
-      const priorResumeUnits = probeDurableUnits as readonly RunPodV207AcceptedUnitRecord[];
-      const resumeBatch = await createBatch(
-        resumeAttemptId,
-        nonce,
-        workerToken,
-        32,
-        cancellation.throwIfRequested,
-        priorResumeUnits,
-      );
-      generatedObjectKeys.push(...resumeBatch.objectKeys);
-      await persistCheckpoint("resume-ports", {
-        event: "replacement_resume_authority_ready",
-        prior_unit_count: priorResumeUnits.length,
-        unresolved_unit_count: resumeBatch.objectKeys.length,
-        resume_manifest_sha256: (
-          (resumeBatch.input.input.envelope as AnyRecord).artifacts as AnyRecord
-        ).resume_manifest_sha256,
-      });
-      cancellation.throwIfRequested();
-      const resumeJob = await harness.dispatchBatch(resumeBatch.input);
-      await persistCheckpoint("resume-dispatch");
-      const resumeResult = await harness.reconcile(resumeJob.id);
-      const resumeEvidence = await verifyBatchWithDiagnostic(
-        harness,
-        resumeResult,
-        resumeAttemptId,
-        resumeBatch.objectKeys,
-        resumeBatch.input.outputAuthority.authorities as readonly AnyRecord[],
-        resumeBatch.planManifest,
-        resumeBatch.objectKeys.length,
-        replacementEndpointIdHash,
-        nonce,
-        receiptKeyId,
-        receiptSecret,
-      );
-      const resumeWorkerProcessIdentity = resumeEvidence.worker_process_identity as
-        | RunPodV207WorkerProcessIdentity
-        | undefined;
-      if (!resumeWorkerProcessIdentity) {
-        throw new Error("V207_PROCESS_REPLACEMENT_WORKER_IDENTITY_UNAVAILABLE");
-      }
-      harness.assertProcessReplacementIdentity(
-        processReplacementBoundary,
-        resumeWorkerProcessIdentity,
-      );
-      const mergedResumeUnits = mergeV207AcceptedUnits(
-        priorResumeUnits,
-        resumeEvidence.durable_accepted_units as readonly RunPodV207AcceptedUnitRecord[],
-        resumeBatch.planManifest,
-      );
-      if (mergedResumeUnits.length !== 32) throw new Error("V207_RESUME_MERGE_INCOMPLETE");
-      (evidence.batches as AnyRecord[]).push({
-        kind: "process_replacement_resume",
-        ...resumeEvidence,
-        prior_unit_count: priorResumeUnits.length,
-        new_unit_count: resumeEvidence.durable_accepted_units.length,
-        merged_unit_count: mergedResumeUnits.length,
-        process_replacement_boundary: processReplacementBoundary,
-        seed_worker_process_identity: probeWorkerProcessIdentity,
-        replacement_worker_process_identity: resumeWorkerProcessIdentity,
-        durable_units: mergedResumeUnits,
-      });
-      await persistCheckpoint("resume-terminal");
-      await harness.confirmWarmIdle();
-      await persistCheckpoint("probe-warm-idle");
       const coldAttemptId = `v207-cold-${runTag}`;
       const cold = await createBatch(
         coldAttemptId,
@@ -2607,7 +2450,7 @@ async function main(): Promise<void> {
         cold.input.outputAuthority.authorities as readonly AnyRecord[],
         cold.planManifest,
         32,
-        replacementEndpointIdHash,
+        createdIdentity.endpointIdHash,
         nonce,
         receiptKeyId,
         receiptSecret,
@@ -2643,7 +2486,7 @@ async function main(): Promise<void> {
         warm.input.outputAuthority.authorities as readonly AnyRecord[],
         warm.planManifest,
         32,
-        replacementEndpointIdHash,
+        createdIdentity.endpointIdHash,
         nonce,
         receiptKeyId,
         receiptSecret,
@@ -2745,7 +2588,7 @@ async function main(): Promise<void> {
         readerA.input.outputAuthority.authorities as readonly AnyRecord[],
         readerA.planManifest,
         32,
-        replacementEndpointIdHash,
+        createdIdentity.endpointIdHash,
         nonce,
         receiptKeyId,
         receiptSecret,
@@ -2758,7 +2601,7 @@ async function main(): Promise<void> {
         readerB.input.outputAuthority.authorities as readonly AnyRecord[],
         readerB.planManifest,
         32,
-        replacementEndpointIdHash,
+        createdIdentity.endpointIdHash,
         nonce,
         receiptKeyId,
         receiptSecret,
@@ -2785,31 +2628,27 @@ async function main(): Promise<void> {
       cancellation.throwIfRequested();
       await harness.scaleDownToInitial();
       await persistCheckpoint("reader-drained");
-      await harness.cleanup({ deleteIfFailed: false, failed: false });
-      // The success reconciler intentionally retains the exact endpoint/template and proves
-      // three stable inventory/resource/billing snapshots. Its zero-worker/terminal-Pod checks
-      // replace the former single finalInventory/V207_FINAL_INVENTORY_INVALID assertion.
-      const finalReconciliation = await reconcileV207SuccessReadonly({
+      await deleteGeneratedObjects(generatedObjectKeys, nonce);
+      evidence.generated_output_cleanup = "CONFIRMED";
+      await persistCheckpoint("generated-output-cleanup", {
+        event: "generated_output_objects_deleted",
+        output_cleanup: "CONFIRMED",
+      });
+      const successfulCleanup = await harness.cleanupSuccessfulQualification();
+      evidence.successful_disposable_cleanup = successfulCleanup;
+      await persistCheckpoint("disposable-resources-deleted", {
+        event: "disposable_endpoint_and_template_deleted",
+        endpoint_id_hash: successfulCleanup.endpoint_id_hash,
+        template_id_hash: successfulCleanup.template_id_hash,
+      });
+      // Successful qualification deletes its exact disposable endpoint/template. The final
+      // read-only reconciler therefore proves zero workers/jobs/disposables and retained volumes,
+      // rather than retaining the temporary qualification resources for inspection.
+      const finalReconciliation = await reconcileV207Readonly({
         accountIdHash: account.accountIdHash,
         baselineEndpointSpendUsd: baseline,
         maximumCumulativeFiniteSpendUsd: finiteCapUsd,
-        expectedEndpointIdHash: replacementEndpointIdHash,
-        expectedTemplateIdHash: processReplacementEndpointRotation.templateIdHash,
-        expectedConfiguration: {
-          endpointName: V207_ENDPOINT_NAME,
-          templateName: V207_TEMPLATE_NAME,
-          imageName: IMAGE,
-          containerDiskInGb: 120,
-          networkVolumeId: placement.networkVolumeId,
-          environment: {
-            LOG_LEVEL: "INFO",
-            ...templateEnvironment,
-            VIDEOFORGE_MAGE_ENDPOINT_ID_HASH: replacementEndpointIdHash,
-          },
-        },
         inventory: () => control.inventory(),
-        resources: () => control.inventoryDisposableResources(),
-        queueEmpty: () => harness.confirmQueueEmptyReadOnly(1, 100),
         billingAmount: () => billingAmount(apiKey),
         wait: sleep,
       });
@@ -2818,6 +2657,7 @@ async function main(): Promise<void> {
       evidence.spend_usd = finalReconciliation.billing.incremental_spend_usd;
       evidence.cumulative_endpoint_spend_usd = finalReconciliation.billing.final_endpoint_spend_usd;
       evidence.billing_settlement = finalReconciliation.billing.settlement;
+      evidence.final_zero_disposable_reconciliation = true;
       success = true;
     } catch (error) {
       const outputContractDiagnostics = extractV207OutputContractDiagnostics(error);

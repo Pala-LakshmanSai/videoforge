@@ -2467,6 +2467,109 @@ describe("V2-07 qualification harness", () => {
     );
   });
 
+  it("deletes exact disposable resources after successful drain without touching volumes", async () => {
+    const fetch = harnessFetch();
+    const instance = makeHarness(fetch);
+    await instance.create();
+
+    await expect(instance.cleanupSuccessfulQualification()).resolves.toEqual({
+      endpoint_id_hash: hashValue("endpoint_01"),
+      template_id_hash: hashValue("template_01"),
+    });
+
+    const calls = fetch.mock.calls.map(([input, init]) => ({
+      path: new URL(String(input)).pathname,
+      method: init?.method ?? "GET",
+    }));
+    const deletes = calls.filter(({ method }) => method === "DELETE").map(({ path }) => path);
+    expect(deletes).toEqual(["/endpoints/endpoint_01", "/templates/template_01"]);
+    expect(deletes.some((path) => path.includes("networkvolumes"))).toBe(false);
+    const evidence = await instance.evidence();
+    expect(evidence.endpointIdHash).toBeNull();
+    expect(evidence.templateIdHash).toBeNull();
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "successful_disposable_endpoint_and_template_deleted",
+        endpoint_id_hash: hashValue("endpoint_01"),
+        template_id_hash: hashValue("template_01"),
+        retained_volume_untouched: true,
+      }),
+    );
+  });
+
+  it("does not attempt template deletion when exact endpoint deletion fails", async () => {
+    const baseFetch = harnessFetch();
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints/endpoint_01" && init?.method === "DELETE") {
+        return new Response("endpoint delete failed", { status: 503 });
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+
+    await expect(instance.cleanupSuccessfulQualification()).rejects.toThrow(
+      "RUNPOD_SUCCESS_CLEANUP_UNCERTAIN",
+    );
+    const deletes = fetch.mock.calls
+      .filter(([, init]) => init?.method === "DELETE")
+      .map(([input]) => new URL(String(input)).pathname);
+    expect(deletes).toEqual(["/endpoints/endpoint_01"]);
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({ event: "successful_endpoint_cleanup_uncertain" }),
+    );
+  });
+
+  it("leaves an attributable template for fail-closed recovery after template delete ambiguity", async () => {
+    const baseFetch = harnessFetch();
+    let endpointDeleted = false;
+    let templateVisible = true;
+    let templateDeleteAttempts = 0;
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints/endpoint_01" && init?.method === "DELETE") {
+        endpointDeleted = true;
+        return new Response(null, { status: 204 });
+      }
+      if (path === "/templates/template_01" && init?.method === "DELETE") {
+        templateDeleteAttempts += 1;
+        if (templateDeleteAttempts === 1) {
+          return new Response("template delete ambiguous", { status: 503 });
+        }
+        templateVisible = false;
+        return new Response(null, { status: 204 });
+      }
+      if (path === "/endpoints" && init?.method === undefined && endpointDeleted) {
+        return jsonResponse([]);
+      }
+      if (path === "/templates" && init?.method === undefined && endpointDeleted) {
+        return jsonResponse(templateVisible ? [reconciledTemplate] : []);
+      }
+      return baseFetch(input, init);
+    });
+    const instance = makeHarness(fetch);
+    await instance.create();
+
+    await expect(instance.cleanupSuccessfulQualification()).rejects.toThrow(
+      "RUNPOD_SUCCESS_CLEANUP_UNCERTAIN",
+    );
+    await expect(instance.cleanup({ deleteIfFailed: true, failed: true })).resolves.toBeUndefined();
+
+    const deletes = fetch.mock.calls
+      .filter(([, init]) => init?.method === "DELETE")
+      .map(([input]) => new URL(String(input)).pathname);
+    expect(deletes).toEqual([
+      "/endpoints/endpoint_01",
+      "/templates/template_01",
+      "/templates/template_01",
+    ]);
+    expect(deletes.some((path) => path.includes("networkvolumes"))).toBe(false);
+    expect((await instance.evidence()).events).toContainEqual(
+      expect.objectContaining({ event: "rotation_orphan_template_deleted" }),
+    );
+  });
+
   it("promotes reader jobs observed terminal during cleanup without redispatch", async () => {
     const baseFetch = terminalScaleZeroFetch({
       healthWorkersAfterDispatch: {

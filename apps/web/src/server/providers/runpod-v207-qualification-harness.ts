@@ -2701,6 +2701,68 @@ export class RunPodV207QualificationHarness {
     this.mark("scaled_down_to_max_one");
   }
 
+  /**
+   * Close a successful disposable qualification run. The endpoint and template are intentionally
+   * deleted after the final max-one drain; the caller must then run the account-wide zero-resource
+   * reconciliation. Keeping this separate from cleanup({ deleteIfFailed, failed }) prevents a
+   * successful run from masquerading as a failed run just to reach its deletion branch.
+   */
+  async cleanupSuccessfulQualification(): Promise<{
+    readonly endpoint_id_hash: string;
+    readonly template_id_hash: string;
+  }> {
+    this.assertCreated();
+    this.checkAbort();
+    await this.drain();
+    await this.assertSpendWithinCap();
+
+    const endpoint = this.#endpoint;
+    const template = this.#template;
+    if (endpoint === null || template === null) {
+      throw new RunPodControlError("RUNPOD_SUCCESS_CLEANUP_UNCERTAIN");
+    }
+    try {
+      await this.#options.control.deleteEndpoint(endpoint.id, this.#guard);
+    } catch {
+      this.mark("successful_endpoint_cleanup_uncertain", {
+        endpoint_id_hash: endpoint.idHash,
+        template_id_hash: template.idHash,
+      });
+      throw new RunPodControlError("RUNPOD_SUCCESS_CLEANUP_UNCERTAIN");
+    }
+    // Preserve the exact template handle if the second deletion is ambiguous so the outer
+    // failure cleanup can reconcile and delete only this attributable orphan.
+    this.#processReplacementSeedEndpointDeleted = true;
+    this.#endpoint = null;
+    this.#jobs = null;
+    this.#endpointIdentityBound = false;
+    this.mark("successful_endpoint_deleted", {
+      endpoint_id_hash: endpoint.idHash,
+      template_id_hash: template.idHash,
+    });
+    this.checkAbort();
+    try {
+      await this.#options.control.deleteTemplate(template.id);
+    } catch {
+      this.mark("successful_template_cleanup_uncertain", {
+        endpoint_id_hash: endpoint.idHash,
+        template_id_hash: template.idHash,
+      });
+      throw new RunPodControlError("RUNPOD_SUCCESS_CLEANUP_UNCERTAIN");
+    }
+    this.#template = null;
+    this.#processReplacementSeedEndpointDeleted = false;
+    this.mark("successful_disposable_endpoint_and_template_deleted", {
+      endpoint_id_hash: endpoint.idHash,
+      template_id_hash: template.idHash,
+      retained_volume_untouched: true,
+    });
+    return Object.freeze({
+      endpoint_id_hash: endpoint.idHash,
+      template_id_hash: template.idHash,
+    });
+  }
+
   /** Retains endpoint/template/volumes by default; deletes only disposable resources on failure. */
   async cleanup(options: {
     readonly deleteIfFailed: boolean;
