@@ -4,6 +4,27 @@
 
 ### Current new-chat launch point — 2026-09-04
 
+- Superseding live state: exact source `b01eb29096f76c5f12036196b2ee58dc15c5ea86`
+  is live on staging as Cloudflare Worker `86ef0439-ff50-4634-a5c9-415c4f5f25f0`, and personal
+  media worker `0.1.14` is installed and online. Exactly one fresh project
+  `20bfb375-5f58-4e69-9fc1-4125710b3e31` passed the required free-space gate and completed Stages
+  1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made exactly two
+  DeepSeek V4 Flash requests for its two persisted adaptive batches and durably accepted 31/31
+  prompts. Stage 5 cost was USD `0.001612`; total Stage 3+5 provider spend was USD `0.001686`, with
+  exact reservation conservation. The 520px scrollable prompt viewer was verified in real Chrome.
+  No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred.
+- Prompt-size follow-up source `956e3afb1e9d4aad16d35d13da636ebe5bdfe7ea` advances the
+  DeepSeek request identity to v18 and is provider-free green but not deployed. Every final positive
+  scene prompt now keeps only medium, realism, camera language, and lighting from the project's
+  pinned Image Style. Palette descriptors/hex, framing, shot scale, contrast, depth, texture,
+  imperfection, mood, and duplicated provider lighting are no longer repeated. DeepSeek is asked to
+  target 20 words each for subject/action/environment, 10 for audit lighting, and 45 for its
+  compatibility core. Enabled project image keywords remain normalized and appended exactly once to
+  every final positive scene prompt; disabled keywords remain absent. Focused prompt tests pass
+  96/96. This source requires fresh exact deployment authority; the prior one-deployment authority
+  is consumed. Existing persisted prompts do not change retroactively.
+- The older live/candidate records below are retained as history and are superseded by the two
+  bullets above for current Stage 5 status.
 - Clean source `2806dd6c0567aaf71fbe0faee19da7cfd761be91` is live on staging as Worker
   `1d55ade7-26b9-451a-8b3f-7b6fbc4d9494` with rendered-config SHA-256
   `ba5ae18aa50cd4e016895942e8765efc1abc6d7c085d988f48de85465925d850`. Exact secret,
