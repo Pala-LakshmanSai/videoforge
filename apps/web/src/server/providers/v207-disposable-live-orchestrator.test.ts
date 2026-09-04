@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   runV207DisposableLiveOrchestration,
@@ -29,7 +29,7 @@ const result = (stdout = "", exitCode: number | null = 0, stderr = ""): V207Comm
 const authorityParser = () => ({
   image: "fixture-image",
   proposalSha256:
-    "sha256:e1fd6996f4aa21c07b3b24e4db52683ebfb2999446d46066399b7b8cf0c7b1b9" as const,
+    "sha256:bd360088b06c05d11523f89f47342a1298d416972cfadc1017ca4c0d619ab13a" as const,
   capUsd: 4.5,
   anchorRefreshAuthorized: false,
 });
@@ -238,6 +238,34 @@ describe("V2-07 disposable live orchestrator", () => {
     expect(invalidRouteReads).toBe(30);
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
     expect(setup.calls.filter((call) => call.args.includes("delete"))).toHaveLength(1);
+  });
+
+  it("caps the final propagation sleep at the remaining 60-second deadline", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl;
+    let now = 0;
+    const sleeps: number[] = [];
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          if (setup.state().exists) {
+            now += 59_000;
+            return new Response("route is still propagating", { status: 404 });
+          }
+          return normalFetch!(input, init);
+        },
+        sleepImpl: async (milliseconds) => {
+          sleeps.push(milliseconds);
+          now += milliseconds;
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_DISABLED_ROUTE_UNCONFIRMED" });
+
+    expect(sleeps).toEqual([1_000, 2_000, 2_000]);
+    expect(now).toBe(64_000);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
   });
 
   it("aborts during route propagation and still cleans up", async () => {

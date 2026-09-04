@@ -369,7 +369,12 @@ async function assertStableRoute(
     }
     if (consecutiveMatches === reads) return;
     if (attempt < ROUTE_PROPAGATION_MAX_ATTEMPTS && Date.now() < deadline) {
-      await sleepWithSignal(sleepImpl, ROUTE_PROPAGATION_RETRY_MILLISECONDS, signal);
+      const retryDelayMilliseconds = Math.min(
+        ROUTE_PROPAGATION_RETRY_MILLISECONDS,
+        Math.max(0, deadline - Date.now()),
+      );
+      if (retryDelayMilliseconds <= 0) break;
+      await sleepWithSignal(sleepImpl, retryDelayMilliseconds, signal);
     }
   }
   throw new V207DisposableOrchestratorError(errorCode);
