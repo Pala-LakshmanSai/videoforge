@@ -61,7 +61,7 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "When the exact phrase contains a camera-capturable action, preserve that action semantically in action and prefer beginning the field with its verb after optional natural modifiers. When the phrase is static, stative, or abstract, describe the nearest visible state or interaction supported by the supplied context without inventing a new story event. Never substitute a contradictory action.",
   "When narration names a location, preserve that location in environment. When it names none, infer one ordinary compatible physical environment from the supplied context instead of inventing a new story event.",
   "Do not repeat a full style suffix or invent continuity facts.",
-  "Never request visible text, writing, handwritten or printed words, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
+  "Never request visible text, writing, handwritten or printed words, price tags, receipts, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
   "Never choose duration, layout, shot role, avatar placement, model, GPU, retry, or fallback.",
   "Return only the strict requested JSON.",
 ].join(" ");

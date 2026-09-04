@@ -311,6 +311,8 @@ test("compiler rejects forbidden content in structured scene facts", () => {
     { action: "writes a label on a package" },
     { environment: "a field with visible signage" },
     { lighting_context: "a screen glow" },
+    { literal_subject: "two bottles beside a price tag" },
+    { environment: "a table covered with receipts" },
   ]) {
     expectCode("PROMPT_CONFLICT", () =>
       compileImagePrompt({

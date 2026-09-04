@@ -7,9 +7,9 @@ import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type { CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents } from "./types.js";
 
 export const PERMANENT_POSITIVE_GUARDRAIL =
-  "clean original still image only; no visible text, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, or decorative transition";
+  "clean original still image only; no visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, or decorative transition";
 export const PERMANENT_NEGATIVE_GUARDRAIL =
-  "visible text, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, decorative transition, malformed anatomy, duplicate limbs, nonsensical objects, accidental mixed media, unrelated subject";
+  "visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, decorative transition, malformed anatomy, duplicate limbs, nonsensical objects, accidental mixed media, unrelated subject";
 
 const stripControls = (value: string): string =>
   Array.from(value, (character) => {
@@ -38,7 +38,7 @@ const FORBIDDEN_MENTIONS: readonly {
   {
     kind: "always",
     pattern:
-      /\b(?:caption(?:s)?|subtitle(?:s)?|title(?:s)?|text|logo(?:s)?|watermark(?:s)?|border(?:s)?|lower[- ]third(?:s)?|infographic(?:s)?|ui|web ?page|arrow(?:s)?|graphic overlays?|motion graphics?|decorative transitions?|avatar on (?:the )?right|image on (?:the )?left)\b/giu,
+      /\b(?:caption(?:s)?|subtitle(?:s)?|title(?:s)?|text|price[- ]tags?|receipts?|logo(?:s)?|watermark(?:s)?|border(?:s)?|lower[- ]third(?:s)?|infographic(?:s)?|ui|web ?page|arrow(?:s)?|graphic overlays?|motion graphics?|decorative transitions?|avatar on (?:the )?right|image on (?:the )?left)\b/giu,
   },
   {
     kind: "writing",
@@ -80,7 +80,7 @@ const NEGATED_MODIFIER_OR_VERB =
 const NEGATION_REVERSAL =
   /\b(?:avoid(?:ing)?|exclude(?:d|s|ing)?|omit(?:ted|s|ting)?|remove(?:d|s|ing)?)\b/iu;
 const NEGATIVE_LIST_TERM =
-  "(?:caption(?:s)?|subtitle(?:s)?|title(?:s)?|text|logo(?:s)?|watermark(?:s)?|border(?:s)?|lower[- ]third(?:s)?|infographic(?:s)?|ui|web ?page|arrow(?:s)?|hand[- ]?written|writing|written|labels?|signage|markings?|branding|screens?|charts?|graphs?|diagrams?|schematics?|blueprints?)";
+  "(?:caption(?:s)?|subtitle(?:s)?|title(?:s)?|text|price[- ]tags?|receipts?|logo(?:s)?|watermark(?:s)?|border(?:s)?|lower[- ]third(?:s)?|infographic(?:s)?|ui|web ?page|arrow(?:s)?|hand[- ]?written|writing|written|labels?|signage|markings?|branding|screens?|charts?|graphs?|diagrams?|schematics?|blueprints?)";
 const NEGATIVE_LIST_BRIDGE = new RegExp(
   `^(?:[\\s-]+(?:visible|readable|legible|any|the|a|an|all|added|extra|present|detectable|unwanted|decorative|printed))*[\\s-]*${NEGATIVE_LIST_TERM}[\\s]*(?:(?:,|and|or)[\\s]*${NEGATIVE_LIST_TERM}[\\s]*)*(?:,|and|or)?[\\s]*$`,
   "iu",
