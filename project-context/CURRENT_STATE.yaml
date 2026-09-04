@@ -4,7 +4,7 @@ updated_at: "2026-09-04"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: false
-current_milestone: private_hosted_beta_stage5_provider_content_repair_v17_source_green_awaiting_fresh_authority
+current_milestone: private_hosted_beta_stage5_v17_live_unqualified_after_stage2_cancel
 current_task: VF-10-07_MAGE_SERVERLESS_QUALIFICATION
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Cancellation drain repair is complete and independently audited; any successor live attempt requires fresh admission truth and a new exact proposal/approval/cap. Keep V2-08 live activation blocked."
-  provider_free_product_action: "Approved source a8e7c6d5 deployed exactly once as Worker d71236a6 with config SHA-256 8b5b5531 after exact secret/R2 preflight and four exact-source reads. Exactly one fresh project d02997b4 passed the 4,747,771,904-byte local-space gate, completed Stages 1-4, and planned two Stage 5 batches for 30 image scenes. Batch 1 durably saved 15 prompts; batch 2 returned 15/15 rows but three hit the remaining local content gate, so the project stopped terminal with no retry/retrieval. Repairs eb029d46 plus c651ad76 / request v17 normalize harmless provider formatting, repair forbidden compiled fields or tags locally, and explicitly exclude price tags/receipts while keeping schema/identity/completeness, provider metadata, compiler restrictions, and spend fences. Focused pipeline 96/96, hosted prompt 22/22, pipeline/web typechecks, pipeline lint/format, staging build/quarantine, and diff checks pass. Repair is undeployed and requires fresh exact source-bound authority."
+  provider_free_product_action: "Approved source 2806dd6c, containing the v17 provider-content repair, deployed exactly once as Worker 1d55ade7 with config SHA-256 ba5ae18a after exact secret/R2/CORS preflight and four exact-source reads. Exactly one fresh project ea8662a7 passed the immediate 3,060,113,408-byte local-space gate, then stopped terminal CANCELLED during Stage 2. Stage 3-5 did not start, provider spend was zero, and no retry/retrieval occurred. Post-stop free space remained 2,977,787,904 bytes, above the 2,152,579,950-byte requirement, so this was not a low-storage failure. Bounded evidence does not identify the cancellation initiator. The v17 source is live but remains unqualified; fresh exact authority is required for a successor project."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -71,7 +71,7 @@ fixture_user_walkthrough:
     image_style_production_ui_chrome: "PASS_STEP_1_VISIBLE_NO_BROWSER_RUNTIME_ERROR"
 
 hosted_beta_user_walkthrough:
-  status: STAGE5_SEMANTIC_FAILURE_PATH_REMOVED_PROVIDER_FREE_AWAITING_FRESH_AUTHORITY
+  status: STAGE5_V17_DEPLOYED_LIVE_QUALIFICATION_STOPPED_STAGE2_CANCELLED
   implementation_commit: "373f8c37"
   deployment_candidate_commits:
     - "df4d75bded837222585f444236072324464afa43"
@@ -187,17 +187,17 @@ hosted_beta_user_walkthrough:
     - "a8e7c6d5764167ef96dc39d8abfafdb5cb9323cc"
     - "eb029d4677cff69abf16a7264a5633cf72a0c6ff"
     - "c651ad767d74010717936abe7d31a4667911d325"
-  deployment_candidate: "a8e7c6d5764167ef96dc39d8abfafdb5cb9323cc"
-  deployed_source_commit: "a8e7c6d5764167ef96dc39d8abfafdb5cb9323cc"
-  cloudflare_worker_version_id: "d71236a6-d075-440e-b51a-038637e5d1b3"
-  pending_source_candidate: "c651ad767d74010717936abe7d31a4667911d325"
+  deployment_candidate: "2806dd6c0567aaf71fbe0faee19da7cfd761be91"
+  deployed_source_commit: "2806dd6c0567aaf71fbe0faee19da7cfd761be91"
+  cloudflare_worker_version_id: "1d55ade7-26b9-451a-8b3f-7b6fbc4d9494"
+  pending_source_candidate: null
   pending_worker_release: null
-  pending_release_boundary: "REPAIR_C651AD76_INCLUDES_EB029D46_REQUEST_V17_PROVIDER_CONTENT_REPAIR_AND_EXPLICIT_PRICE_TAG_RECEIPT_EXCLUSION_WITHOUT_TERMINATING_A_STRUCTURALLY_COMPLETE_HOSTED_BATCH. SOURCE_A8E7C6D5_REMAINS_LIVE_AS_WORKER_D71236A6_D075_440E_B51A_038637E5D1B3. PROJECT_D02997B4_1D57_4F79_8ABB_3BA76FDBFFDD_IS_TERMINAL_AND_FROZEN. REQUIRE_FRESH_EXACT_SOURCE_BOUND_AUTHORITY_BEFORE_ONE_DEPLOYMENT_AND_ONE_FRESH_STAGE1_TO_5_PROJECT."
-  pending_validations: "UNDER_FRESH_EXACT_AUTHORITY DEPLOY_REPAIR_C651AD76_ONCE_AND_USE_ONE_FRESH_PROJECT_TO_VERIFY_STAGE4, STAGE5_REQUEST_COUNT_EQUALS_PERSISTED_BATCH_COUNT, STRUCTURALLY_COMPLETE_PROVIDER_CONTENT_CANNOT_FAIL_LOCAL_ACCEPTANCE, ACCEPTED_NARRATION_AND_STYLE_QUALITY_WITHOUT_TEXT_BEARING_PROPS, DURABLE_BATCHES, COST_CONSERVATION, AND_SCROLLABLE_PROMPT_VIEWER. DO_NOT_RETRY_CONTINUE_OR_RETRIEVE_PROJECT_D02997B4_1D57_4F79_8ABB_3BA76FDBFFDD_OR_ANY_PREDECESSOR."
-  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE a8e7c6d5764167ef96dc39d8abfafdb5cb9323cc MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.13 DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; DO NOT RETRY CONTINUE OR RETRIEVE PROJECT 28146202-1b64-481a-8878-a5961c48839e OR ANY PREVIOUS FROZEN PROJECT; USE REAL CHROME TO VERIFY STAGE 4, STAGE 5 PROVIDER REQUEST COUNT EQUALS PERSISTED ADAPTIVE BATCH COUNT, SEMANTIC QUALITY HEURISTICS CANNOT TERMINATE ACCEPTANCE, NARRATION-GROUNDED PROMPT QUALITY, PINNED IMAGE-STYLE FIDELITY WITHOUT HARDCODED STYLE ATTRIBUTES, DURABLE INCREMENTAL BATCHES, COST CONSERVATION, AND THE SCROLLABLE PROMPT VIEWER; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
-  latest_live_run: "Approved clean source a8e7c6d5 deployed exactly once as Worker d71236a6-d075-440e-b51a-038637e5d1b3 with config SHA-256 8b5b5531517083abdcb32dbe678181df1f5a8aba6388c4091249177464573b12 after exact secret/R2/CORS preflight. Four exact-source reads passed. Authenticated Chrome created exactly one project d02997b4 after 4,747,771,904 available bytes passed the local-space gate. Stages 1-4 completed with 35 segments, 30 image scenes, and 10 avatar segments. Stage 5 durably saved batch 1 with 15 prompts, then batch 2 returned 15/15 rows but only 12 passed the remaining local content gate; the terminal diagnostic was scene_quality/scene_quality and exact known second-response cost was 851 micro-USD. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred. Real Chrome proved the 15 accepted prompts use pinned style treatment and that the 520px viewer scrolls through 9,973px of content to its 9,453px maximum. Repairs eb029d46 plus c651ad76 / request v17 are green but undeployed."
-  deployed_config_sha256: "8b5b5531517083abdcb32dbe678181df1f5a8aba6388c4091249177464573b12"
-  deployment_approval: "LATEST_SOURCE_BOUND_AUTHORITY_CONSUMED_BY_SOURCE_A8E7C6D5_WORKER_D71236A6_D075_440E_B51A_038637E5D1B3_PROJECT_D02997B4_TERMINAL_AFTER_BATCH2_LOCAL_CONTENT_GATE_NO_RETRY_OR_RETRIEVAL"
+  pending_release_boundary: "SOURCE_2806DD6C_WITH_REQUEST_V17_IS_LIVE_AS_WORKER_1D55ADE7_26B9_451A_8B3F_7B6FBC4D9494. PROJECT_EA8662A7_D44D_4B18_A1C2_785305BFA5D8_STOPPED_TERMINAL_CANCELLED_AT_STAGE2_AND_IS_FROZEN. STAGE5_REMAINS_LIVE_UNQUALIFIED. REQUIRE_FRESH_EXACT_SOURCE_BOUND_AUTHORITY_BEFORE_ANY_SUCCESSOR PROJECT; DO_NOT_RETRY_OR_RETRIEVE THIS OR ANY PREDECESSOR."
+  pending_validations: "UNDER FRESH EXACT AUTHORITY, USE ONE NEW PROJECT TO VERIFY STAGE2 COMPLETION, STAGE4, STAGE5 REQUEST COUNT EQUALS PERSISTED BATCH COUNT, STRUCTURALLY COMPLETE PROVIDER CONTENT CANNOT FAIL LOCAL ACCEPTANCE, ACCEPTED NARRATION AND PINNED STYLE QUALITY WITHOUT TEXT-BEARING PROPS, DURABLE BATCHES, COST CONSERVATION, AND THE SCROLLABLE PROMPT VIEWER. FIRST IDENTIFY OR ELIMINATE THE STAGE2 CANCELLATION INITIATOR PROVIDER-FREE."
+  latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 2806dd6c0567aaf71fbe0faee19da7cfd761be91 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.13 DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD PROVIDER SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; DO NOT RETRY CONTINUE OR RETRIEVE PROJECT d02997b4-1d57-4f79-8abb-3ba76fdbffdd OR ANY PREVIOUS FROZEN PROJECT; USE REAL CHROME TO VERIFY STAGE 4, STAGE 5 COMPLETION, PROVIDER REQUEST COUNT EQUALS PERSISTED ADAPTIVE BATCH COUNT, PROVIDER CONTENT DEFECTS CANNOT TERMINATE ACCEPTANCE, NARRATION-GROUNDED QUALITY, PINNED STYLE FIDELITY, NO TEXT-BEARING PROPS, DURABLE BATCHES, COST CONSERVATION, AND THE SCROLLABLE PROMPT VIEWER; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
+  latest_live_run: "Approved clean source 2806dd6c deployed exactly once as Worker 1d55ade7-26b9-451a-8b3f-7b6fbc4d9494 with config SHA-256 ba5ae18aa50cd4e016895942e8765efc1abc6d7c085d988f48de85465925d850 after exact secret/R2/CORS preflight. Four exact-source reads passed. Authenticated real Chrome created exactly one project ea8662a7-d44d-4b18-a1c2-785305bfa5d8 after 3,060,113,408 available bytes passed the immediate local-space gate. Stage 1 completed; Stage 2 began on the connected personal worker and then became terminal CANCELLED. Stages 3-5 never started, so provider spend was zero and Stage 5 remains unqualified. A post-stop read showed 2,977,787,904 free bytes, excluding the configured low-storage gate as the cause. Bounded UI/macOS evidence does not identify the cancellation initiator. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
+  deployed_config_sha256: "ba5ae18aa50cd4e016895942e8765efc1abc6d7c085d988f48de85465925d850"
+  deployment_approval: "LATEST_SOURCE_BOUND_AUTHORITY_CONSUMED_BY_SOURCE_2806DD6C_WORKER_1D55ADE7_26B9_451A_8B3F_7B6FBC4D9494_PROJECT_EA8662A7_TERMINAL_STAGE2_CANCELLED_NO_RETRY_OR_RETRIEVAL"
   stable_url: "https://videoforge-v2-06-staging.lakshmansai121.workers.dev"
   provider_mode: staging
   hosted_surfaces: [CLOUDFLARE_WORKER, GOOGLE_AUTH, NEON, PRIVATE_R2, CLOUDFLARE_WORKFLOW]
@@ -5057,9 +5057,9 @@ provider_authority: *v2_07_provider_authority_attempt64
 recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
-  milestone: private_hosted_beta_stage5_provider_content_repair_v17_source_green_awaiting_fresh_authority
-  status: NOT_QUALIFIED_attempt64_closed_clean_provider_free_repair_complete_fresh_image_required
-  dependency_status: v2_06_complete_green_stage4_live_proven_stage5_v17_provider_content_repair_source_green_unqualified
+  milestone: private_hosted_beta_stage5_v17_live_unqualified_after_stage2_cancel
+  status: NOT_QUALIFIED_attempt64_closed_stage5_v17_live_stage2_cancelled_fresh_authority_required
+  dependency_status: v2_06_stage5_v17_deployed_stage2_cancelled_stage4_and_stage5_unqualified
   authorization_status: no_live_authority_latest_project_only_approval_consumed_non_reusable
   task_stage: provider_free_reconciliation_and_read_only_preflight
   current_goal_authority: null
@@ -5067,7 +5067,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt64
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Preserve deployed source a8e7c6d5 / Worker d71236a6-d075-440e-b51a-038637e5d1b3 and freeze terminal project d02997b4-1d57-4f79-8abb-3ba76fdbffdd without retry, continuation, or provider retrieval. Provider-free repairs eb029d46 plus c651ad76 advance Stage 5 request v17, locally repair provider content-format defects or forbidden compiled fields/tags, and explicitly exclude price tags/receipts without weakening schema, identity, completeness, style, cost, durable-batch, compiler restriction, or no-redispatch guards. Obtain fresh exact source-bound authority before one deployment and fresh-project Stage 1-5 qualification; v17 remains live-unqualified. Preserve all predecessor projects. Then resume V2-07 reconciliation from closed Attempt64: authenticated-envelope changes invalidate the historical Mage image for activation, so prepare and validate a fresh immutable Mage image definition and the smallest atomic certification plan. No old attempt, proposal, authority, cap, image-bound qualification, or stopped project may be retried or reused. V2-08 live remains blocked until independent V2-07 PASS."
+  goal: "Preserve deployed source 2806dd6c / Worker 1d55ade7-26b9-451a-8b3f-7b6fbc4d9494 and freeze terminal project ea8662a7-d44d-4b18-a1c2-785305bfa5d8 without retry, continuation, or provider retrieval. Its immediate disk gate passed, and remaining free space stayed above the configured minimum after the terminal Stage 2 cancellation; bounded evidence does not identify the initiator. Stage 5 request v17 is deployed but remains live-unqualified because Stages 3-5 never started. First investigate the Stage 2 cancellation path provider-free, then obtain fresh exact source-bound authority before one new Stage 1-5 qualification project. Preserve all predecessor projects. Then resume V2-07 reconciliation from closed Attempt64: authenticated-envelope changes invalidate the historical Mage image for activation, so prepare and validate a fresh immutable Mage image definition and the smallest atomic certification plan. No old attempt, proposal, authority, cap, image-bound qualification, or stopped project may be retried or reused. V2-08 live remains blocked until independent V2-07 PASS."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

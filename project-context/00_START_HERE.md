@@ -4,12 +4,21 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- Clean source `a8e7c6d5764167ef96dc39d8abfafdb5cb9323cc` is live on staging as Worker
-  `d71236a6-d075-440e-b51a-038637e5d1b3` with rendered-config SHA-256
-  `8b5b5531517083abdcb32dbe678181df1f5a8aba6388c4091249177464573b12`. Exact secret,
+- Clean source `2806dd6c0567aaf71fbe0faee19da7cfd761be91` is live on staging as Worker
+  `1d55ade7-26b9-451a-8b3f-7b6fbc4d9494` with rendered-config SHA-256
+  `ba5ae18aa50cd4e016895942e8765efc1abc6d7c085d988f48de85465925d850`. Exact secret,
   private-R2, and CORS preflight passed; four consecutive cache-bypassed status reads returned the
   exact source after propagation. Migrations `0069`–`0073` and the V2-06 runtime grant were already
   applied and must not be replayed; GPU transport remains `DISABLED_UNQUALIFIED`.
+- Authenticated real Chrome created exactly one fresh project
+  `ea8662a7-d44d-4b18-a1c2-785305bfa5d8` after the immediate free-space gate passed with
+  `3,060,113,408` available bytes against the required `2,152,579,950`. Stage 1 completed and Stage
+  2 started on the connected personal worker, then became terminal `CANCELLED`; Stages 3–5 never
+  started. A post-stop read still found `2,977,787,904` available bytes, so the observed terminal
+  state is not a low-storage failure. Bounded UI and macOS diagnostics expose cancellation semantics
+  but do not identify the initiator; do not guess whether the owner path or worker path initiated it.
+  No provider request or spend occurred, and there was no retry, continuation, provider retrieval,
+  GPU, RunPod, production, or volume mutation. Freeze this project and treat the approval as consumed.
 - Authenticated Chrome created exactly one fresh project
   `d02997b4-1d57-4f79-8abb-3ba76fdbffdd` after the immediate free-space gate passed with
   `4,747,771,904` available bytes. Stages 1-4 completed; Stage 4 saved 35 segments, 30 image scenes,
@@ -29,11 +38,13 @@
   persistence and independently rechecked at the compiler boundary. DeepSeek still receives the
   exact phrase, containing sentence, bounded previous/next phrases, compact global context, title,
   pinned Image Style treatment, shot role, and permanent visual restrictions.
-- Verification passes focused pipeline 96/96, focused hosted prompt 22/22, pipeline/web typechecks,
+- Provider-free verification passes focused pipeline 96/96, focused hosted prompt 22/22, pipeline/web typechecks,
   pipeline lint/format, staging build/quarantine, and diff checks. Real Chrome mechanically proved
   the accepted-prompt region has a 520px viewport over 9,973px of content and scrolls to its 9,453px
-  maximum. The v17 repair is undeployed and needs fresh exact source-bound authority for one new live
-  qualification project; never reuse the terminal project above.
+  maximum on the previous frozen project. The v17 repair is now deployed, but the fresh live run
+  stopped at Stage 2 and therefore did not qualify Stage 4, Stage 5, accepted prompt quality,
+  durability, accounting, or the viewer on the new source. Any successor live qualification requires
+  fresh exact source-bound authority; never reuse either terminal project above.
 - Future fresh projects retain deterministic adaptive batching with no project scene cap, exactly one
   DeepSeek request per persisted planned batch, durable batch persistence before the next request,
   and no retry or redispatch on terminal or ambiguous failure.
