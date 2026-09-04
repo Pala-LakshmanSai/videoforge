@@ -1,0 +1,33 @@
+{
+  "schema_version": "videoforge.v2-07-attempt68-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 68,
+  "audited_at": "2026-09-04T08:42:00Z",
+  "result": "PASS",
+  "proposal_sha256": "sha256:c271e70f4d1d0263810d01664f453ca97afee6aaf0d1220eb902ee99e08e7ac7",
+  "control_source_commit": "12e3972169e2de8a3a86af39d79acf55873c91b2",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "bindings": {
+    "gpu_rate_region": "PASS",
+    "cap": "PASS",
+    "workers_min_max": "PASS",
+    "cleanup_and_three_reads": "PASS",
+    "volume_retention": "PASS",
+    "no_fallback": "PASS",
+    "no_anchor_refresh": "PASS",
+    "no_v2_08": "PASS",
+    "attempt67_failed_clean_closure": "PASS",
+    "activation_authority_null": "PASS"
+  },
+  "validation": {
+    "full_web_suite": "1530 passed, 1 skipped",
+    "typecheck": "PASS",
+    "context_validation": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "provider_calls": 0,
+  "external_spend_usd": 0
+}

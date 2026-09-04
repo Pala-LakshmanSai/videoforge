@@ -5199,7 +5199,7 @@ recommended_next_task:
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
   execution_status: stage_5_live_functional_31_of_31_prompt_v18_compaction_qualified
-  execution_blocker: none_before_fresh_admission_revalidation
+  execution_blocker: fresh_exact_attempt68_proposal_approval_and_cap_required
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
@@ -5751,6 +5751,8 @@ audit_evidence:
   v2_07_current_proposal_sha256: "sha256:c271e70f4d1d0263810d01664f453ca97afee6aaf0d1220eb902ee99e08e7ac7"
   v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-09-04-attempt68-partial-output-rollback-candidate/acceptance.json
   v2_07_current_candidate_acceptance_sha256: "sha256:7528829ca6494e0991be657010948b872d78aa101b5bb2eaab0a064f2f12e334"
+  v2_07_current_candidate_independent_audit: evidence/acceptance/VF-10-07/2026-09-04-attempt68-partial-output-rollback-candidate/independent-audit.json
+  v2_07_current_candidate_independent_audit_sha256: "sha256:6e541faed37b1026821a6840d6b4890d4334799a7c3844a15689d8ce58bffd5d"
   v2_07_current_approved_authority: null
   v2_07_current_approved_authority_sha256: null
   v2_07_attempt67_closure: evidence/acceptance/VF-10-07/2026-09-04-live-qualification/failed-attempt-67.json
