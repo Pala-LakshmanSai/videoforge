@@ -1,0 +1,25 @@
+{
+  "schema_version": "videoforge.v2-07-attempt81-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 81,
+  "audited_source_commit": "9caea53785484be42a7bea210a0294addef1a3e0",
+  "result": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
+  "findings": {"p0": 0, "p1": 0, "p2": 0},
+  "verified_contract": {
+    "direct_path_requires_two_separately_sampled_exact_health_zero_reads": true,
+    "fallback_requires_four_queue_zero_reads": true,
+    "fallback_requires_two_identical_exact_terminal_inventory_snapshots": true,
+    "fallback_rejects_identity_resource_active_worker_running_pod_or_terminal_state_drift": true,
+    "liability_retained_and_paid_work_fenced_on_any_failure": true,
+    "redispatch_added": false
+  },
+  "validation": {
+    "qualification_harness_tests": "106/106 PASS",
+    "web_tests": "1638/1638 PASS_WITH_1_SKIPPED",
+    "web_typescript": "PASS",
+    "context_validation": "PASS_WITH_2_WORD_BUDGET_WARNINGS",
+    "git_diff_check": "PASS"
+  },
+  "provider_activity": {"credential_access": 0, "provider_mutations": 0, "gpu_jobs_submitted": 0, "external_spend_usd": 0}
+}

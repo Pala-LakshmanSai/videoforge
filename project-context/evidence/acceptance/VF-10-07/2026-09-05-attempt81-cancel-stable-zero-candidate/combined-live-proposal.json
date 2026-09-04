@@ -1,0 +1,92 @@
+{
+  "schema_version": "videoforge.v2-07-attempt81-cancel-stable-zero-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 81,
+  "qualification_status": "NOT_QUALIFIED",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL_NO_EXECUTABLE_AUTHORITY",
+  "control_source_commit": "9caea53785484be42a7bea210a0294addef1a3e0",
+  "image_source_commit": "d530320af723e33c6ce32552743fd00dc063eedc",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+  "image_publication_state": "PUBLISHED_FULL_ANONYMOUS_READBACK_PASS",
+  "image_publication_evidence": "../2026-09-05-attempt80-urllib-user-agent-candidate/image-publication.json",
+  "image_publication_evidence_sha256": "sha256:21fa19443784d22e3cd5f75929fec8f4b94fe2921ce5dc2c7b16088c91ed27a2",
+  "image_republication_authorized": false,
+  "source_hashes": {
+    "disposable_orchestrator": "sha256:ec457d09ff9ea2f17b978fe51c575e0b32366d7942520665459ccabe4916fb3d",
+    "disposable_orchestrator_test": "sha256:5c3db52f514dabf15311df513d0f123508c26e3f8bec048b3d2a635b871367a6",
+    "qualification_harness": "sha256:d64bd268eea5390d12f523be4ec8e39fc910adb99319a9fca97a47cfc76d2f40",
+    "qualification_harness_test": "sha256:75fbe1a8ec34e8da25f94931fdb90ebe9f67a1cf0d0d37ebe4234c9cbeb6205c",
+    "qualification": "sha256:13e7d1581358fa660726d36989355daca8b964a9c61fbc91ad18cb5ef580f121",
+    "reconciliation": "sha256:33f5ad2874bd6fb51591c40486ddff2ea7cc27157003c9b98f3fe45bb97b3f8b",
+    "disposable_output_ports": "sha256:fa4d9954af19a2ae14853185da44a94d00120f48edeb24568bac126326b901b5",
+    "disposable_output_ports_test": "sha256:720b6210c274fadef9232237b1b397428d8b9827d04428f77d36b27eeba5c853",
+    "disposable_wrangler_config": "sha256:22e1cf0318f683a4e56e836f8fcc446bf755416481f5b13b5aa4d52ca2f89084"
+  },
+  "repair": {
+    "attempt80_failure": "RUNPOD_ZERO_NOT_CONFIRMED after provider CANCELLED with null execution time and stale health worker counters",
+    "direct_health_zero_path": "two separately sampled exact health-zero observations",
+    "stale_health_fallback": "four queue-zero reads bracketing two identical exact terminal endpoint worker and Pod inventory snapshots",
+    "liability_release": "only after direct health-zero or exact terminal-inventory proof passes",
+    "failure_behavior": "retain worst-case liability, fence new paid work, and fail closed on any mismatch",
+    "redispatch_added": false,
+    "repeated_sixty_second_cancel_health_wait_removed": true
+  },
+  "placement_and_cost": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "serverless_flex_usd_per_gpu_hour": 1.116,
+    "baseline_endpoint_spend_usd": 2.266709277551854,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "retained_volume_charge_usd_per_month": 7,
+    "retained_volume_charge_outside_finite_cap": true,
+    "gpu_fallback": false
+  },
+  "operation_contract": {
+    "reuse_exact_published_image_without_republication": true,
+    "fresh_inventory_catalog_billing_rate_capacity_and_worker_absence_preflight": true,
+    "three_exact_active_route_fingerprints_required": true,
+    "three_distinct_fully_cleaned_pre_gpu_compatibility_cycles_required": true,
+    "run_bounded_runpod_stage6_qualification_only_after_gate": true,
+    "workers_min": 0,
+    "workers_max_initial": 1,
+    "workers_max_temporary": 2,
+    "shared_staging_worker_mutation": false,
+    "delete_generated_outputs": true,
+    "delete_disposable_endpoint": true,
+    "delete_disposable_template": true,
+    "delete_disposable_output_worker_and_route": true,
+    "signal_safe_cleanup": true,
+    "three_final_zero_compute_and_billing_reads": true,
+    "retain_two_sealed_volumes": true,
+    "volume_mutation_authorized": false,
+    "anchor_refresh_authorized": false,
+    "v2_08_authorized": false
+  },
+  "predecessor": {
+    "attempt": 80,
+    "closure": "../2026-09-05-live-qualification/failed-attempt-80.json",
+    "closure_sha256": "sha256:a3368ea58706c3f749505f7131997e6fe87a1824ea8812f089f8be2ddef021c9",
+    "authority_status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+    "final_disposable_resources_absent": true,
+    "final_endpoint_spend_usd": 2.266709277551854
+  },
+  "provider_free_validation": {
+    "qualification_harness_tests": "106/106 PASS",
+    "web_tests": "1638/1638 PASS_WITH_1_SKIPPED",
+    "web_typescript": "PASS",
+    "context_validation": "PASS_WITH_2_WORD_BUDGET_WARNINGS",
+    "git_diff_check": "PASS",
+    "independent_audit": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
+    "provider_mutations": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "stop_conditions": [
+    "any approved source, image digest, GPU, region, rate, retained volume, billing, capacity, disposable name, or policy drift",
+    "fresh preflight does not exactly confirm allowed inventory, rate, capacity, billing headroom, and disposable Worker absence",
+    "any active-route or pre-GPU cycle fails or cleanup is not confirmed before the next cycle",
+    "the cumulative finite spend could exceed $4.50 or output receipt, liability settlement, cleanup, or reconciliation becomes uncertain",
+    "any shared staging mutation, image republication, GPU fallback, rollback-anchor refresh, retained-volume mutation, redispatch, or V2-08 action"
+  ]
+}

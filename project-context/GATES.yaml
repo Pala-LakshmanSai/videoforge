@@ -185,15 +185,15 @@ gates:
     latest_closed_closure_sha256: "sha256:a3368ea58706c3f749505f7131997e6fe87a1824ea8812f089f8be2ddef021c9"
     latest_post_cancel_terminal_inventory_repair_commit: "8bb6583012569e595630deb3d7fe104a923dcc58"
     latest_post_cancel_terminal_inventory_repair_source_sha256: "sha256:7995f0519d61538633b005c529835b7c3864bb4378fd6a3aa010e1e67947b233"
-    current_candidate: null
-    current_candidate_sha256: null
-    current_candidate_acceptance: null
-    current_candidate_acceptance_sha256: null
+    current_candidate: "evidence/acceptance/VF-10-07/2026-09-05-attempt81-cancel-stable-zero-candidate/combined-live-proposal.json"
+    current_candidate_sha256: "sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087"
+    current_candidate_acceptance: "evidence/acceptance/VF-10-07/2026-09-05-attempt81-cancel-stable-zero-candidate/acceptance.json"
+    current_candidate_acceptance_sha256: "sha256:ddc4ef2e96be7529a60cf045a2b3adea25e9cd82661553ef98388143dba9c37f"
     current_candidate_preapproval_acceptance_sha256: "sha256:0faf8ef24bec614df4281c99d9f1ca7d12380bc19ddb682d89ce4532d0cb68f6"
-    current_candidate_independent_audit: "evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/independent-audit.json"
-    current_candidate_independent_audit_sha256: "sha256:1177c5389749bbdaf355a125625d01b48ef4559c9e49393cbf4bf292cd561058"
-    current_candidate_authority_independent_audit: "evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/authority-independent-audit.json"
-    current_candidate_authority_independent_audit_sha256: "sha256:4bf581dc12ce48c43df5abbf186a6e5a8282a8aa29cfe4e24dec2d3af35a6e5d"
+    current_candidate_independent_audit: "evidence/acceptance/VF-10-07/2026-09-05-attempt81-cancel-stable-zero-candidate/independent-audit.json"
+    current_candidate_independent_audit_sha256: "sha256:b224c84710615e90cb36a41bceeb21711ae837a510a2a7decca9e0a23fadc9c7"
+    current_candidate_authority_independent_audit: null
+    current_candidate_authority_independent_audit_sha256: null
     current_candidate_route_repair_audit: null
     current_candidate_route_repair_audit_sha256: null
     current_candidate_preflight: null
@@ -223,7 +223,7 @@ gates:
     current_candidate_gpu_use_occurred: true
     current_candidate_accepted_units: 64
     current_candidate_external_spend_usd: 0
-    current_candidate_control_source_commit: "d530320af723e33c6ce32552743fd00dc063eedc"
+    current_candidate_control_source_commit: "9caea53785484be42a7bea210a0294addef1a3e0"
     current_candidate_canonical_activation_source_sha256: null
     current_candidate_orchestrator_source_sha256: "sha256:ec457d09ff9ea2f17b978fe51c575e0b32366d7942520665459ccabe4916fb3d"
     current_candidate_output_ports_source_sha256: "sha256:fa4d9954af19a2ae14853185da44a94d00120f48edeb24568bac126326b901b5"
@@ -278,7 +278,7 @@ gates:
     current_candidate_output_readback_repair_commit: "61919013c74f71995cf1631ce6ac56e633708dce"
     current_candidate_anchor_rebind_commit: "9c9ca3476c976592ae73414e6a1e53cc0fcbb643"
     current_candidate_post_cancel_terminal_inventory_repair_commit: "8bb6583012569e595630deb3d7fe104a923dcc58"
-    current_candidate_post_cancel_terminal_inventory_source_sha256: "sha256:f910d46dcb5a0149515e52e8d7967733a251c5b7ea58bc68b5ead1e6a5e99205"
+    current_candidate_post_cancel_terminal_inventory_source_sha256: "sha256:d64bd268eea5390d12f523be4ec8e39fc910adb99319a9fca97a47cfc76d2f40"
     current_candidate_closure: "evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-80.json"
     current_candidate_closure_sha256: "sha256:a3368ea58706c3f749505f7131997e6fe87a1824ea8812f089f8be2ddef021c9"
     current_candidate_cleanup: "evidence/acceptance/VF-10-07/2026-09-05-live-qualification/attempt80-runpod-cleanup.json"
@@ -309,14 +309,14 @@ gates:
     latest_closed_billing_attribution: NO_INCREMENT_OBSERVED_BETWEEN_ATTEMPT80_BASELINE_AND_FINAL_THREE_STABLE_READS
     latest_closed_authority_mode: closed_consumed_attempt80_failed_clean_non_reusable
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
-    pending_proposal: null
-    pending_proposal_sha256: null
+    pending_proposal: "evidence/acceptance/VF-10-07/2026-09-05-attempt81-cancel-stable-zero-candidate/combined-live-proposal.json"
+    pending_proposal_sha256: "sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087"
     pending_authority: null
     pending_authority_sha256: null
-    pending_authority_state: NONE
-    pending_authority_mode: none
+    pending_authority_state: NOT_GRANTED
+    pending_authority_mode: awaiting_fresh_exact_approval
     pending_numeric_cap_usd: 0
-    pending_requested_numeric_cap_usd: 0
+    pending_requested_numeric_cap_usd: 4.5
     pending_anchor_refresh_authorized: null
     pending_exact_anchor_refresh_activation: null
     pending_cloudflare_mutation_authorized: false
@@ -325,9 +325,9 @@ gates:
     pending_gpu_use_authorized: false
     pending_image_publication_authorized: false
     pending_exact_bounded_sequence_only: false
-    pending_control_source_commit: null
-    pending_live_qualification_source_sha256: null
-    pending_qualification_harness_source_sha256: null
+    pending_control_source_commit: "9caea53785484be42a7bea210a0294addef1a3e0"
+    pending_live_qualification_source_sha256: "sha256:13e7d1581358fa660726d36989355daca8b964a9c61fbc91ad18cb5ef580f121"
+    pending_qualification_harness_source_sha256: "sha256:d64bd268eea5390d12f523be4ec8e39fc910adb99319a9fca97a47cfc76d2f40"
     current_provider_free_repair_commit: "d530320af723e33c6ce32552743fd00dc063eedc"
     current_provider_free_live_qualification_source_sha256: "sha256:13e7d1581358fa660726d36989355daca8b964a9c61fbc91ad18cb5ef580f121"
     current_provider_free_qualification_harness_source_sha256: "sha256:39da9a77290aa9a61a109578edb285279a058e4d38ec1e55f599943052eaa18d"
@@ -366,7 +366,7 @@ gates:
     gpu_use_authorized: false
     v2_08_authorized: false
     authority_mode: attempt80_consumed_failed_clean_non_reusable
-    result: "NOT_QUALIFIED_ATTEMPT80_POST_CANCEL_ZERO_NOT_CONFIRMED_FAILED_CLEAN"
+    result: "NOT_QUALIFIED_ATTEMPT81_SEALED_AWAITING_FRESH_EXACT_APPROVAL"
     attempt49_pre_activation_no_go: "evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/pre-activation-no-go.json"
     attempt49_pre_activation_no_go_sha256: "sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-80.json"
@@ -381,7 +381,7 @@ gates:
     canonicalization_repair_commit: "f945392"
     deploy_diagnostic_repair_commit: "7066520"
     deploy_diagnostic_repair_source_sha256: "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894"
-    next_boundary: "provider-free repair and independent audit of Attempt80 post-cancel stable-zero liability release, then one fresh exact successor proposal; no provider, GPU, retained-volume mutation, or V2-08 authority"
+    next_boundary: "fresh exact approval of sealed Attempt81 proposal; no provider, GPU, retained-volume mutation, or V2-08 authority exists before activation"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:

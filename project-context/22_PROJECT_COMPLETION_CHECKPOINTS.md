@@ -200,7 +200,12 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt80 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Three pre-GPU cycles and both
+**Current gate:** Attempt81 is sealed at proposal
+`sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087` with control
+`9caea53785484be42a7bea210a0294addef1a3e0`, unchanged image source `d530320af723e33c6ce32552743fd00dc063eedc`,
+and published image `sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62`.
+It passes independent audit with P0/P1/P2 `0/0/0`; fresh exact approval is required and no executable
+authority exists. Attempt80 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Three pre-GPU cycles and both
 32-image cold/warm batches passed. Provider cancellation reached `CANCELLED`, but post-cancel
 stable-zero liability release failed closed at `RUNPOD_ZERO_NOT_CONFIRMED`; timeout/max-two did not
 run. Rollback removed 96/96 generated objects. Exact cleanup and three final zero-compute/billing

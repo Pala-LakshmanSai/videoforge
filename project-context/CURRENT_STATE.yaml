@@ -8,7 +8,7 @@ current_milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compact
 current_task: VF-10-07
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: v2_07_attempt80_failed_clean_provider_free_repair
+task_stage: v2_07_attempt81_sealed_awaiting_fresh_exact_approval
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,14 +18,14 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: no_live_authority_attempt80_consumed_failed_clean
+  mode: attempt81_sealed_awaiting_fresh_exact_approval_no_live_authority
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: "Attempt80 is CONSUMED_FAILED_CLEAN_NON_REUSABLE. Three pre-GPU cycles and cold/warm 32-image batches passed; provider cancellation returned CANCELLED, but post-cancel stable-zero liability release failed closed with RUNPOD_ZERO_NOT_CONFIRMED before timeout/max-two. Rollback removed 96/96 generated objects. Exact cleanup deleted endpoint/template/Worker/route; three final RunPod reads prove zero compute and unchanged billing at USD 2.266709277551854. Stage 6 remains NOT_QUALIFIED. Next work is provider-free repair and a fresh audited proposal; no live, GPU, retained-volume, or V2-08 authority exists."
+  v2_07_action: "Attempt80 is CONSUMED_FAILED_CLEAN_NON_REUSABLE and fully cleaned. Attempt81 repairs post-cancel stable-zero liability release, passes 106/106 focused and 1638/1638 web tests plus independent P0/P1/P2 0/0/0, and is sealed at proposal sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087 with control 9caea53785484be42a7bea210a0294addef1a3e0. Fresh exact user approval is required. No live, GPU, retained-volume mutation, or V2-08 authority exists."
   provider_free_product_action: "Source 29667134 is live as Worker 50cfd256 with media worker 0.1.14 online. Exactly one project f7655814 completed Stages 1-5; Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 compact prompts, settled USD 0.001401, conserved its reservation, and exposed the 520px scrollable viewer. All 31 positive prompts contain the enabled bounded project keywords exactly once and only the pinned medium, realism, camera, and lighting style fields; removed style metadata has zero hits. Total Stage 3+5 variable external spend was USD 0.001473. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
@@ -6032,17 +6032,17 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compaction_qualified
-  status: ATTEMPT80_FAILED_CLEAN_PROVIDER_FREE_REPAIR
+  status: ATTEMPT81_SEALED_AWAITING_FRESH_EXACT_APPROVAL
   dependency_status: v2_06_stage5_live_functional_prompt_v18_qualified
-  authorization_status: no_live_authority_attempt80_consumed_failed_clean
-  task_stage: provider_free_repair
+  authorization_status: fresh_exact_approval_required_no_live_authority
+  task_stage: approval_boundary
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt80
   provider_mode: fixture
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Repair and independently audit post-cancel stable-zero liability release provider-free, then seal one fresh exact successor proposal; no live action or V2-08."
+  goal: "Await exact Attempt81 approval, then run the bounded Stage 6 qualification and mandatory cleanup; no V2-08."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -6061,7 +6061,7 @@ recommended_next_task:
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
   resources: [published_exact_mage_image_91ef608f_reusable_only_under_fresh_authority, retained_two_sealed_50gb_volumes]
   authorized_operations: []
-  allowed_operations: [provider_free_repair, focused_tests, independent_audit, fresh_exact_successor_proposal]
+  allowed_operations: []
   rate_snapshot: [runpod_serverless_flex_rtx4090_eu_ro_1_usd_1_116_per_gpu_hour, retained_volumes_usd_7_per_month_combined]
   authority_note: "Attempt80 authority is consumed and non-reusable. No provider, mutation, credential, GPU, spend, retained-volume mutation, or V2-08 authority remains."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
@@ -6072,8 +6072,8 @@ recommended_next_task:
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: attempt80_failed_clean_authority_consumed
-  execution_blocker: RUNPOD_ZERO_NOT_CONFIRMED
+  execution_status: attempt81_sealed_awaiting_fresh_exact_approval
+  execution_blocker: FRESH_EXACT_APPROVAL_REQUIRED
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
