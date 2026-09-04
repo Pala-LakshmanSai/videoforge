@@ -4,42 +4,31 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- Clean source `13cdea0b2556cc38d6a4d34747cb2bcf0970c012` was deployed exactly once to staging as
-  Worker `be21de25-a3a4-481f-ac24-5470ef28131e` with rendered-config SHA-256
-  `b16b896a405ddc3c7df4efe8f7d76a982d68803d6fb307d0e44a668a5f4cc84f`. It contains the
-  dedicated 171,722-byte Stage 5 dynamic closure from `2d5d00f3`. Migrations `0069`–`0073` and the
-  V2-06 runtime grant were already applied and were not replayed; GPU transport remains
-  `DISABLED_UNQUALIFIED`.
-- Signed-in real Chrome passed the immediate local-space preflight at `3,748,261,888` available
-  bytes and created exactly one fresh project, `28146202-1b64-481a-8878-a5961c48839e`. Stages 1–3
-  completed. Stage 4 completed with 36 total timeline segments, 31 image scenes, and 10 avatar
-  segments, reconfirming the Stage 4 CPU repair.
-- Stage 5 reached Runware successfully; this is not the earlier Worker CPU failure. Its first of two
-  persisted planned batches requested 16 scenes and DeepSeek V4 Flash returned all 16. Local
-  validation then stopped on the first provider-ordered row with `HOSTED_PROMPT_OUTPUT_INVALID`,
-  category `scene_quality`, reason `scene_relevance_action_conflict`. The short-circuit reports zero
-  locally valid and 16 unresolved rows; it does not prove all 16 outputs were invalid. No batch was
-  accepted or persisted and batch two was not dispatched.
-- The first request has exact known cost 964 micro-USD (`$0.000964`). The UI's `$0.00` was cent
-  rounding. The failure was definite (`provider_may_have_charged=false`), so accounting settles the
-  known cost and releases the unused reservation. No retry, continuation, or provider retrieval
-  occurred. Project `28146202-1b64-481a-8878-a5961c48839e` and its authority are consumed and
-  frozen; never retry, continue, or retrieve it.
-- Provider-free repair `614c49796ab94df3e51bd8325b640c9c3b0cda6f` advances the immutable DeepSeek
-  request identity to v16 and fixes the reproduced false rejection: a bottle narrated as `tucked`
-  in a medicine cabinet may be rendered as `resting` on its shelf. The narrow static-placement
-  equivalence covers keep/remain/rest/stay/store/tuck while sit, stand, position, fill/empty,
-  plant/harvest, eat/drink, stealing, destruction, and un-narrated coordinated actions remain
-  distinct or rejected. This is semantic narration validation, not a hardcoded visual style.
-- The terminal UI now says `Stopped · 0 / N batches accepted` instead of misleadingly saying that it
-  is preparing another batch; the no-redispatch behavior is unchanged. Provider-free verification
-  passes 81 prompt/planner tests, 93 hosted UI/route/transport tests, pipeline build/typecheck, both
-  production and staging Worker builds/quarantines, 15/15 deployment bundle guards, targeted lint,
-  formatting, and diff checks. The Stage 5 closure remains 171,722 bytes beneath the 256 KiB limit.
-- Request v16 is source-green but undeployed and live-unqualified. Fresh exact source-bound authority
-  is required before one deployment and one new Stage 1–5 project. Future fresh projects retain
-  deterministic adaptive batching with no project scene cap, one DeepSeek request per persisted
-  planned batch, durable acceptance before the next request, and no retry or redispatch on failure.
+- Clean source `656cef526af5ebceabf1e3f7d233aa36337abc4d` is live on staging as Worker
+  `4bbebb21-996b-4dc1-afc7-e946eaff7c6b` with rendered-config SHA-256
+  `f0da85041763e414ca2c543c33ff9cd19d8e0cce30024ad866364b0fa91afe18`. Exact secret,
+  private-R2, and CORS preflight passed; four consecutive cache-bypassed status reads returned the
+  exact source after propagation. Migrations `0069`–`0073` and the V2-06 runtime grant were already
+  applied and must not be replayed; GPU transport remains `DISABLED_UNQUALIFIED`.
+- Authenticated Chrome reached the live new-project form. The user then rejected semantic heuristics
+  as terminal Stage 5 gates, so execution stopped before the required local-space preflight or Create
+  click. No fresh project, provider request, or spend occurred. Historical project
+  `28146202-1b64-481a-8878-a5961c48839e` remains frozen and was not accessed.
+- Provider-free repair `85d010553b961a96fe05d11e91969a72de0e9b42` sets hosted narration relevance,
+  action/subject/context paraphrase, and within-batch duplicate checks to advisory. It also removes
+  cross-batch duplicate-prompt rejection. These heuristics may produce diagnostics but cannot stop
+  or roll back a contract-valid Stage 5 batch.
+- Deterministic JSON decoding, schema and scene identity, requested-scene completeness, hard prompt
+  restrictions, provider metadata, and spend-cap fences remain terminal. DeepSeek still receives the
+  exact phrase, containing sentence, bounded previous/next phrases, compact global context, title,
+  pinned Image Style treatment, shot role, and permanent visual restrictions.
+- Verification passes pipeline 180/180, focused hosted prompt 22/22, pipeline/web typechecks,
+  focused lint/format, staging build/quarantine, context validation, and diff checks. Handoff commit
+  `10486cc1bdb6090c3f8d9efc945d28270435dcc9` recorded the repaired policy; the active source must be
+  resealed after this derived-index reconciliation before any live deployment or new project.
+- Future fresh projects retain deterministic adaptive batching with no project scene cap, exactly one
+  DeepSeek request per persisted planned batch, durable batch persistence before the next request,
+  and no retry or redispatch on terminal or ambiguous failure.
 - The aggregate `CI=1 TURBO_FORCE=true pnpm verify` is not repository-wide green for reasons outside
   this Stage 5 diff: historical V2-06/V2-13 script pins report 29 failures, and V2-08 worker image
   hash pins report 3 failures. The affected scripts, workflow, worker, and contract files are byte-
