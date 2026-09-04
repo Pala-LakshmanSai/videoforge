@@ -1,0 +1,58 @@
+{
+  "schema_version": "videoforge.v2-07-attempt78-route-response-recovery-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 78,
+  "audit_scope": "provider-free route-response classification and narrowly bounded pre-first-match recovery",
+  "control_source_commit": "429ff015eb6502394e042e8c3623608726dce3c4",
+  "source_hashes": {
+    "disposable_orchestrator": "sha256:218820b794502d4c5267854139611974acf28d9edef2de6374bb2416c35cf702",
+    "disposable_orchestrator_test": "sha256:5c2f9ff259d7e5d08ba1f30a387799256b705726d7aac24e11a2ea2ed3186bdd"
+  },
+  "result": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "verified_contract": {
+    "route_response_body_max_bytes": 4096,
+    "fixed_status_version_content_and_body_shape_classes": true,
+    "raw_body_headers_url_query_capability_and_exception_text_not_persisted": true,
+    "retry_only_before_first_exact_active_match": true,
+    "retryable_unreachable_transport_only": true,
+    "retryable_response_diagnostic_requires_s5xx_and_exact_version_match": true,
+    "established_disabled_predecessor_allowance_requires_404_disabled_code_and_distinct_valid_uuid": true,
+    "existing_max_reads": 30,
+    "existing_max_milliseconds": 60000,
+    "existing_retry_sleep_milliseconds": 2000,
+    "transient_never_counts_as_match": true,
+    "all_post_first_match_failures_terminal": true,
+    "missing_malformed_wrong_version_terminal_except_established_structured_disabled_predecessor": true,
+    "s2xx_s3xx_s4xx_sother_diagnostics_terminal": true,
+    "python_urllib_and_r2_stage_diagnostics_unchanged": true,
+    "cleanup_and_no_python_or_gpu_terminal_paths_covered": true,
+    "no_tolerance_outside_explicit_scope": true
+  },
+  "validation": {
+    "focused_disposable_orchestrator_tests": "74/74 PASS",
+    "web_dual_typecheck": "PASS",
+    "changed_file_eslint": "PASS",
+    "changed_file_prettier": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "provider_activity": {
+    "provider_calls": 0,
+    "provider_mutations": 0,
+    "credential_access": 0,
+    "image_publications": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "authority": {
+    "granted": false,
+    "approved_authority_exists": false,
+    "executable_finite_cap_usd": null,
+    "fresh_exact_approval_required": true
+  }
+}
