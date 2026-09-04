@@ -734,7 +734,8 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain("cleanupSuccessfulQualification");
     expect(source).toContain("reconcileV207Readonly");
     expect(source).toContain("final_reconciliation");
-    expect(source).toContain("final_zero_disposable_reconciliation");
+    expect(source).toContain("pre_delete_queue_and_workers_zero");
+    expect(source).toContain("final_three_read_zero_compute_and_disposable_reconciliation");
   });
 
   it("follows only the signed GHCR blob redirect without forwarding registry auth", () => {

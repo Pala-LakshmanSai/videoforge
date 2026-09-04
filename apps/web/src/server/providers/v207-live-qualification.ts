@@ -2642,8 +2642,9 @@ async function main(): Promise<void> {
         template_id_hash: successfulCleanup.template_id_hash,
       });
       // Successful qualification deletes its exact disposable endpoint/template. The final
-      // read-only reconciler therefore proves zero workers/jobs/disposables and retained volumes,
-      // rather than retaining the temporary qualification resources for inspection.
+      // read-only reconciler proves three stable reads with zero compute/disposables, unchanged
+      // retained volumes, and settled billing. Queue/job emptiness was proved by the preceding
+      // drain while the endpoint still existed.
       const finalReconciliation = await reconcileV207Readonly({
         accountIdHash: account.accountIdHash,
         baselineEndpointSpendUsd: baseline,
@@ -2657,7 +2658,8 @@ async function main(): Promise<void> {
       evidence.spend_usd = finalReconciliation.billing.incremental_spend_usd;
       evidence.cumulative_endpoint_spend_usd = finalReconciliation.billing.final_endpoint_spend_usd;
       evidence.billing_settlement = finalReconciliation.billing.settlement;
-      evidence.final_zero_disposable_reconciliation = true;
+      evidence.pre_delete_queue_and_workers_zero = true;
+      evidence.final_three_read_zero_compute_and_disposable_reconciliation = true;
       success = true;
     } catch (error) {
       const outputContractDiagnostics = extractV207OutputContractDiagnostics(error);
