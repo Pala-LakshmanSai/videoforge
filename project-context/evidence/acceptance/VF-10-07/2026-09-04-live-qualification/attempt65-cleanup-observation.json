@@ -1,0 +1,45 @@
+{
+  "schema_version": "videoforge.v2-07-cleanup-observation/v1",
+  "checkpoint": "V2-07",
+  "attempt": 65,
+  "checked_at": "2026-09-04T06:44:00.894Z",
+  "stable_read_count": 3,
+  "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+  "provider_mutations_during_observation": 0,
+  "gpu_jobs_submitted_during_observation": 0,
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volumes": [
+      {
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ]
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 2.214659276913153,
+    "final_endpoint_spend_usd": 2.214659276913153,
+    "incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "cloudflare_cleanup": {
+    "signer_secret_deleted": true,
+    "exact_worker_rollback_confirmed": true,
+    "restored_route_status": 404,
+    "restored_route_code": "V207_ROUTE_DISABLED"
+  },
+  "volumes_deleted": 0,
+  "v2_08_started": false
+}

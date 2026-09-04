@@ -79,19 +79,18 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempt65 is approved once for the exact proposal, finite cap, and
-// refresh-disabled rollback posture compiled below. Consumption closes these
-// executable bindings after the bounded orchestration attempt.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:588aec6a8fd2297dde2019dc565aeb50411167090b6b499aa01504e9044882ea";
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;
+// Attempt65 consumed its exact single-use authority and stopped clean after one
+// provider job. Keep its proposal pointer as immutable evidence while closing
+// every executable approval binding before a successor can be proposed.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
- * same compiled approval boundary as the proposal and finite cap. Attempt65
- * explicitly keeps this false; any future authority must bind its own refresh
- * decision in a separate immutable activation commit.
+ * same compiled approval boundary as the proposal and finite cap. Attempt65 is
+ * consumed; any future authority must bind its own refresh decision in a
+ * separate immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;

@@ -22,6 +22,7 @@ process.env.V207_FINITE_CAP_USD = "4";
 const {
   assertV207ItemCount,
   assertV207FreshCatalogOffering,
+  buildV207TemplateEnvironment,
   createV207Cancellation,
   extractV207EndpointReadbackMismatchCategory,
   extractV207OutputContractDiagnostics,
@@ -55,6 +56,27 @@ const source = await readFile(
 type TestRecord = Record<string, unknown>;
 
 describe("V2-07 live qualification runner safety", () => {
+  it("injects the exact envelope verifier material paired to the dispatch signer", () => {
+    const workerToken = "cd".repeat(32);
+    const environment = buildV207TemplateEnvironment(
+      workerToken,
+      "receipt-key-v1",
+      Buffer.from("ab".repeat(32), "hex"),
+    );
+    expect(environment).toMatchObject({
+      VIDEOFORGE_MAGE_WORKER_TOKEN: workerToken,
+      VIDEOFORGE_ENVELOPE_KEY_ID: "worker-key-1",
+      VIDEOFORGE_ENVELOPE_KEY_SHA256:
+        "sha256:7969ec0fcb8b648dfde24b1d0ae24568d398dcc3a83b80a850f973238cdfd3d9",
+      VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: workerToken,
+      VIDEOFORGE_RECEIPT_KEY_ID: "receipt-key-v1",
+      VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: "ab".repeat(32),
+    });
+    expect(() => buildV207TemplateEnvironment("bad", "receipt-key-v1", Buffer.alloc(32))).toThrow(
+      "V207_TEMPLATE_SECRET_INVALID",
+    );
+  });
+
   it("retries transient billing transport and server failures before accepting a cap snapshot", async () => {
     const sleeps: number[] = [];
     const fetchImpl = vi

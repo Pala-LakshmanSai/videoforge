@@ -107,6 +107,36 @@ let finiteCapUsd = 0;
 
 type AnyRecord = Record<string, any>;
 
+export function buildV207TemplateEnvironment(
+  workerToken: string,
+  receiptKeyId: string,
+  receiptSecret: Buffer,
+): Readonly<Record<string, string>> {
+  if (!/^[a-f0-9]{64}$/u.test(workerToken) || receiptSecret.length !== 32) {
+    throw new Error("V207_TEMPLATE_SECRET_INVALID");
+  }
+  return {
+    MAGE_MODEL_ROOT: V207_RUNPOD_MODEL_ROOT,
+    HF_HUB_OFFLINE: "1",
+    TRANSFORMERS_OFFLINE: "1",
+    DIFFUSERS_OFFLINE: "1",
+    VIDEOFORGE_JOB_SCRATCH_ROOT: V207_JOB_SCRATCH_ROOT,
+    VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: IMAGE,
+    VIDEOFORGE_MAGE_MANIFEST_SHA256: MANIFEST,
+    VIDEOFORGE_MAGE_VOLUME_ID_HASH: VOLUME,
+    VIDEOFORGE_MAGE_WORKER_TOKEN: workerToken,
+    VIDEOFORGE_ENVELOPE_KEY_ID: "worker-key-1",
+    VIDEOFORGE_ENVELOPE_KEY_SHA256: `sha256:${createHash("sha256")
+      .update(Buffer.from(workerToken, "hex"))
+      .digest("hex")}`,
+    VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: workerToken,
+    VIDEOFORGE_MAGE_GPU_OFFERING_ID: V207_RUNPOD_GPU,
+    RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
+    VIDEOFORGE_RECEIPT_KEY_ID: receiptKeyId,
+    VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: receiptSecret.toString("hex"),
+  };
+}
+
 const V207_RESUME_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const validateV207ResumeUrl = (value: string): void => {
   let parsed: URL;
@@ -2358,21 +2388,11 @@ async function main(): Promise<void> {
       latestHarnessEvidence = (await harness.evidence()) as unknown as AnyRecord;
       await persistCheckpoint(phase);
     };
-    const templateEnvironment = {
-      MAGE_MODEL_ROOT: V207_RUNPOD_MODEL_ROOT,
-      HF_HUB_OFFLINE: "1",
-      TRANSFORMERS_OFFLINE: "1",
-      DIFFUSERS_OFFLINE: "1",
-      VIDEOFORGE_JOB_SCRATCH_ROOT: V207_JOB_SCRATCH_ROOT,
-      VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: IMAGE,
-      VIDEOFORGE_MAGE_MANIFEST_SHA256: MANIFEST,
-      VIDEOFORGE_MAGE_VOLUME_ID_HASH: VOLUME,
-      VIDEOFORGE_MAGE_WORKER_TOKEN: workerToken,
-      VIDEOFORGE_MAGE_GPU_OFFERING_ID: V207_RUNPOD_GPU,
-      RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
-      VIDEOFORGE_RECEIPT_KEY_ID: receiptKeyId,
-      VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: receiptSecret.toString("hex"),
-    } as const;
+    const templateEnvironment = buildV207TemplateEnvironment(
+      workerToken,
+      receiptKeyId,
+      receiptSecret,
+    );
     const harness = new RunPodV207QualificationHarness({
       control,
       apiKey,
