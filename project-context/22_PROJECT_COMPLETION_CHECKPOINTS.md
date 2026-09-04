@@ -200,13 +200,16 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt76 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its active disposable route
-was confirmed, then the Python `urllib` pre-GPU upload failed at
-`V207_DISPOSABLE_PROBE_URLLIB_UPLOAD_REJECTED` before any RunPod resource or GPU job. Cleanup and
-three Cloudflare plus three RunPod reads prove zero disposable compute; observed incremental spend
-was `$0`. V2-07 remains `NOT_QUALIFIED`; executable authority, cap, and anchor-refresh authority
-are null. The exact proposal, acceptance, authority, route audit, and authority audit remain
-historical evidence only.
+**Current gate:** Attempt77 is sealed `SEALED_AWAITING_FRESH_EXACT_APPROVAL` at control
+`20c1fb9eb34b76c860c404705cf7d582350daa17`. Proposal
+`sha256:a84068163041879cc8616052eaf67a668f1aa46e0b186b53395524b5a02e816a`, acceptance
+`sha256:d7008a7a85a91ccfa1f96e1dd5a9303c1d2bc96c1bfe57a9e11b384e82e0d2d0`, audit
+`sha256:430dbe267fef38524af94f43e67b6a7ca70e6f36de1cf8992b69b2d122b0ecc8`, and validator
+`sha256:00347f38109fd0d5e8000949067620a841c1366ef8a2e9da576c3a6fbc9c0f15` pass with P0/P1/P2
+`0/0/0`. The exact diagnostic repair distinguishes
+prewrite-head, body-read, bucket-write, and postwrite-head failures without raw data, retry, or
+redispatch. V2-07 remains `NOT_QUALIFIED`; executable authority, cap, and anchor-refresh authority
+are null/zero, and no approved-authority file exists.
 
 **Starting point:** Attempt75 consumed its exact proposal and authority, published Mage image
 `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`,
@@ -222,8 +225,13 @@ input; no provider, mutation, GPU, spend, or V2-08 authority remains.
 
 - preserve Attempt75 and Attempt76 closure, acceptance, orchestrator, reconciliation, approval, and
   immutable image-publication evidence; never reuse either proposal, authority, or historical cap;
-- diagnose and repair the Python `urllib` upload rejection provider-free, independently audit the
-  successor source/evidence, then seal a fresh exact proposal and obtain fresh exact approval;
+- obtain fresh exact approval only for Attempt77 proposal
+  `sha256:a84068163041879cc8616052eaf67a668f1aa46e0b186b53395524b5a02e816a`: reuse the
+  published image without republication; RTX 4090 EU-RO-1 at `$1.116/GPU-hour`; baseline
+  `2.266709277551854`; cumulative finite cap `$4.50`; `workersMin=0`, initial max one and temporary
+  max two; bounded route proof; exact Python `urllib` pre-GPU diagnostics; disposable output,
+  endpoint, template, Worker, and route cleanup; signal-safe cleanup; three final zero-compute
+  reads; continued `$7/month` volume retention; no fallback, anchor refresh, or V2-08;
 - accept only durable 1280×720 outputs, tenant artifact readbacks, signed v3 receipts, exact timing/
   VRAM/cost, unchanged Mage manifest, terminal jobs, zero total workers, and intended volumes only.
 

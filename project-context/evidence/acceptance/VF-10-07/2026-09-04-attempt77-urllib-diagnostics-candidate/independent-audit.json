@@ -1,0 +1,47 @@
+{
+  "schema_version": "videoforge.v2-07-attempt77-urllib-diagnostics-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 77,
+  "audited_at": "2026-09-04T16:34:43Z",
+  "audited_control_source_commit": "20c1fb9eb34b76c860c404705cf7d582350daa17",
+  "audited_files": [
+    "apps/web/src/server/hosted/v207-disposable-output-ports.ts",
+    "apps/web/src/server/hosted/v207-disposable-output-ports.test.ts",
+    "apps/web/src/server/providers/v207-disposable-live-orchestrator.ts",
+    "apps/web/src/server/providers/v207-disposable-live-orchestrator.test.ts"
+  ],
+  "result": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "verified_contract": {
+    "attempt76_failure_boundary": "the failed Python urllib upload produced no RunPod resource, GPU job, accepted output, redispatch, or observed incremental spend",
+    "diagnostic_envelope": "the Python subprocess emits only exact-key bounded JSON, accepts no stderr, requires exact failure exit code 2, and never emits a raw URL, query, capability, request body, response body, header, or exception string",
+    "http_body_bound": "HTTP error bodies are read through a 4097-byte sentinel and parsed only at 4096 bytes or fewer",
+    "worker_code_policy": "only allowlisted Worker codes paired with their exact fixed HTTP statuses are accepted",
+    "version_policy": "every HTTP error and success is bound to the exact active Cloudflare Worker version before classification",
+    "transport_policy": "timeout, TLS certificate, DNS or network, unknown, generic HTTP class, and invalid diagnostic outcomes remain distinct and bounded",
+    "capability_put_failure_policy": "prewrite head, body read, bucket write, postwrite head, and unconfirmed postwrite facts return distinct safe codes without raw diagnostics",
+    "integration_coverage": "real python3 urllib framing reaches a loopback HTTP adapter invoking the actual disposable output-port handler with an in-memory R2 binding",
+    "retry_policy": "the repair adds classification only and does not retry upload, qualification, GPU work, or dispatch",
+    "authority_boundary": "no provider, image-publication, image-republication, GPU, fallback, rollback-anchor, retained-volume, or V2-08 authority is activated"
+  },
+  "validation": {
+    "focused_output_port_and_orchestrator_tests": "66/66 PASS",
+    "output_port_tests": "14/14 PASS",
+    "disposable_orchestrator_tests": "52/52 PASS",
+    "web_dual_typecheck": "PASS",
+    "changed_file_eslint": "PASS",
+    "changed_file_prettier": "PASS",
+    "git_diff_check": "PASS",
+    "worktree_at_audit": "CLEAN_AT_CONTROL_SOURCE",
+    "provider_calls": 0,
+    "provider_mutations": 0,
+    "image_publications": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  }
+}

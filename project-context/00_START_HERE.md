@@ -4,30 +4,35 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt76 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its exact active Cloudflare route was
-  confirmed, then the pre-GPU Python `urllib` upload failed closed at
-  `V207_DISPOSABLE_PROBE_URLLIB_UPLOAD_REJECTED`. This was before any RunPod resource or GPU job;
-  no output was accepted and no redispatch occurred.
-- Signal-safe cleanup deleted the disposable Worker and temporary route. Three Cloudflare absence
-  reads and three RunPod zero-compute reads prove zero Pods, endpoints, private templates, active
-  Serverless workers, and running Pods. Endpoint spend remained exactly `2.266709277551854`, so
-  Attempt76 observed `$0` incremental spend. Both exact 50 GB EU-RO-1 volumes remain retained at
-  the continuing combined `$7/month` rate.
-- Proposal `sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6`,
-  acceptance `sha256:dc93d951a4179df28d97a35d55413d9866c05b9382e912783dd063560cab8735`,
-  exact authority `sha256:900833b5b851b4031653f0a04e9899a39c4a08c6e5a2594dabbb2eaf9e922fdb`,
-  route audit `sha256:4b1c8a921c13079dcdb230c495887faa8d962c4123ee79158f7a162ea09a9c49`,
-  and authority audit `sha256:6f6f54f2c13031a5f3b0e4cad80f1298e9587a3053a6a215f66dae3643832cee`
-  remain historical exact evidence. Closure, orchestrator, and reconciliation hashes are
+- V2-07 Attempt77 is sealed `SEALED_AWAITING_FRESH_EXACT_APPROVAL` at control source
+  `20c1fb9eb34b76c860c404705cf7d582350daa17`. Proposal
+  `sha256:a84068163041879cc8616052eaf67a668f1aa46e0b186b53395524b5a02e816a`, acceptance
+  `sha256:d7008a7a85a91ccfa1f96e1dd5a9303c1d2bc96c1bfe57a9e11b384e82e0d2d0`, independent audit
+  `sha256:430dbe267fef38524af94f43e67b6a7ca70e6f36de1cf8992b69b2d122b0ecc8`, and validator
+  `sha256:00347f38109fd0d5e8000949067620a841c1366ef8a2e9da576c3a6fbc9c0f15` pass with P0/P1/P2
+  `0/0/0` and focused tests `66/66`.
+- The repair preserves bounded distinct-version route propagation and the exact pre-GPU Python
+  `urllib` upload/finalize/readback/delete probe, while classifying prewrite-head, body-read,
+  bucket-write, and postwrite-head failures through bounded exact-version/status/exit-bound codes.
+  It adds no retry or redispatch and retains signal-safe output/endpoint/template/Worker/route
+  cleanup plus three final zero-compute reads.
+- The proposed single-use scope is the already published Mage image from source
+  `51d7de6cb3c0d88ddcb06df533864bf319a1210f` at
+  `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`,
+  RTX 4090 in EU-RO-1 at `$1.116/GPU-hour`, `workersMin=0`, initial max one and temporary max two,
+  baseline endpoint spend `2.266709277551854`, cumulative finite cap `$4.50`, and continued
+  retention of both exact 50 GB EU-RO-1 volumes at `$7/month` combined. There is no GPU fallback,
+  rollback-anchor refresh, retained-volume mutation, image republication, or V2-08 action.
+- No executable authority exists: provider calls, mutations, credential access, GPU use, and spend
+  remain unauthorized; executable cap is zero/null and no `approved-authority.json` exists. Fresh
+  exact approval of Attempt77 is required before any provider action.
+- Attempt76 remains `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its closure, orchestrator, and
+  reconciliation hashes are respectively
   `sha256:601134bc4f7eab8057f466d541ea561f50ac0b9dc0b1d39abe17d387142d9a98`,
   `sha256:3f1ce9ae9c2d84f331cbc3f29db8efebfb98110c99e75981760703f4e2ad9fc3`, and
-  `sha256:90467c8e768c134382c3915240a8e8d669a6b7ad0255061e0c0bc2164812d0b1`.
-- The exact published Mage image
-  `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`
-  remains reusable only as immutable image input. Current authority, executable cap, and
-  rollback-anchor refresh authority are null. A provider-free root-cause repair, fresh independent
-  audit, sealed successor proposal, and fresh exact approval are required before any provider
-  mutation, GPU use, or spend. V2-08 remains forbidden.
+  `sha256:90467c8e768c134382c3915240a8e8d669a6b7ad0255061e0c0bc2164812d0b1`; they prove failure
+  before RunPod/GPU, `$0` observed incremental spend, three Cloudflare absence reads, three RunPod
+  zero-compute reads, and unchanged retained volumes.
 
 - V2-07 Attempt75 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its disposable Cloudflare Worker was
   deployed, the disabled route and active version were confirmed, then execution failed closed at
