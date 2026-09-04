@@ -207,6 +207,16 @@ describe("V2-07 disposable live orchestrator", () => {
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
   });
 
+  it("normalizes Wrangler ANSI output before accepting a colored 10007 absence diagnostic", async () => {
+    const setup = await fixture({
+      absenceDiagnostic:
+        "\u001b[31mThis \u001b[1mWorker\u001b[22m \u001b[31mdoes not exist\u001b[39m ... [code: \u001b[33m10007\u001b[39m]\u001b[0m",
+    });
+    const completed = await runV207DisposableLiveOrchestration(setup.options);
+    expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
+  });
+
   it("rejects a request identifier that merely contains 10007", async () => {
     const setup = await fixture({ absenceDiagnostic: "request id: 10007" });
     await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({

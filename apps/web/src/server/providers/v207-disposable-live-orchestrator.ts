@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 import {
   parseV207ActivationAuthority,
@@ -208,7 +209,9 @@ async function deleteDisposableWorker(
 
 function provesWorkerAbsent(result: V207CommandResult): boolean {
   if (result.exitCode === 0 || result.signal !== null) return false;
-  const diagnostic = `${result.stdout.slice(0, 131_072)}\n${result.stderr.slice(0, 131_072)}`;
+  const diagnostic = stripVTControlCharacters(
+    `${result.stdout.slice(0, 131_072)}\n${result.stderr.slice(0, 131_072)}`,
+  );
   return ABSENT_DIAGNOSTIC.test(diagnostic);
 }
 
