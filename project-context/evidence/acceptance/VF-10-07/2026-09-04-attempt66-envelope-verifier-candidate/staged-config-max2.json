@@ -1,0 +1,38 @@
+{
+  "schema_version": "videoforge.v2-07-attempt66-staged-config/v1",
+  "checkpoint": "V2-07",
+  "attempt": 66,
+  "stage": "temporary-concurrent-reader-max-two-qualification",
+  "workers_min": 0,
+  "workers_max": 2,
+  "gpu_count": 1,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "region": "EU-RO-1",
+  "flashboot": true,
+  "scaler": {"type": "REQUEST_COUNT", "value": 1},
+  "handler_concurrency": 1,
+  "idle_timeout_seconds": 5,
+  "init_timeout_seconds": 800,
+  "execution_timeout_seconds": 2400,
+  "authority_ttl_seconds": 7200,
+  "restore_after_stage": "staged-config-max1.json",
+  "runtime_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "volume": {
+    "mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "size_gb": 50,
+    "region": "EU-RO-1",
+    "application_read_only": true
+  },
+  "source_control_head": "11a0eb6b07f6ab8584190d5d9a79a33b7cc21ba7",
+  "cleanup": {
+    "delete_generated_outputs": true,
+    "delete_endpoint": true,
+    "delete_template": true,
+    "restore_max_one": true,
+    "final_zero_compute_disposable_reads": 3
+  },
+  "gpu_fallback": false,
+  "anchor_refresh": false,
+  "v2_08": false
+}

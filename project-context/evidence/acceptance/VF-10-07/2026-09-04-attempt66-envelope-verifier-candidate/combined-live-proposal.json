@@ -1,0 +1,57 @@
+{
+  "schema_version": "videoforge.v2-07-attempt66-envelope-verifier-proposal/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 66,
+  "qualification_status": "NOT_QUALIFIED",
+  "authority_mode": "PENDING_FRESH_EXACT_APPROVAL",
+  "control_lineage": {
+    "control_head": "11a0eb6b07f6ab8584190d5d9a79a33b7cc21ba7",
+    "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+    "runner_commits": ["7b980ec5bfe7da7491340f20547dac4e9d542afb", "b22c2cd704f67be4900b4f4072de67700faa68b4"],
+    "repair": "bind worker-key-1, worker-token-byte SHA-256, and worker-token hex to the same workerToken"
+  },
+  "image": {
+    "immutable": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+    "config_sha256": "sha256:af05d38128fc75d14aefc4856e661e28e7369f7df90c90beb2875c569605c436",
+    "layer_sha256": "sha256:e28e45eee00f52ccd5d1d9ff8d5a432a757c91ad4fdd7687cd6defb9a62c9112",
+    "layer_diff_id": "sha256:885b0adf0c57ab1e27553e58297a8f261dab8f60db668acb6376d12b2d5848e2",
+    "handler_sha256": "sha256:e61786748d321124ab39267622ccb647f614e8fac0d560d2e72c6d2a158b528d",
+    "envelope_sha256": "sha256:34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0",
+    "schema_sha256": "sha256:08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f"
+  },
+  "placement_and_cost": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "serverless_flex_usd_per_gpu_hour": 1.116,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "retained_volume_charge_usd_per_month": 7,
+    "volume_charge_outside_finite_cap": true,
+    "gpu_fallback": false
+  },
+  "operation_contract": {
+    "workers_min": 0,
+    "workers_max_initial": 1,
+    "workers_max_temporary": 2,
+    "delete_generated_outputs": true,
+    "delete_disposable_endpoint": true,
+    "delete_disposable_template": true,
+    "delete_signer_and_temporary_route": true,
+    "three_final_zero_compute_disposable_reads": true,
+    "retain_two_sealed_volumes": true,
+    "anchor_refresh_authorized": false,
+    "v2_08_authorized": false
+  },
+  "preflight": {
+    "starting_read_path": "read-only-preflight.json",
+    "fresh_inventory_catalog_billing_read_required_before_mutation": true,
+    "provider_mutations_completed": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0
+  },
+  "stop_conditions": [
+    "any source, image, config, layer, envelope, schema, GPU, region, rate, volume, billing, capacity, or policy drift",
+    "any uncertain output, signer, route, endpoint, template, cleanup, three-read reconciliation, or cap state",
+    "any GPU fallback, anchor refresh, or V2-08 action"
+  ]
+}

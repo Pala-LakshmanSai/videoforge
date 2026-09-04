@@ -1,0 +1,42 @@
+{
+  "schema_version": "videoforge.v2-07-attempt66-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 66,
+  "status": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "qualification_status": "NOT_QUALIFIED",
+  "proposal_sha256": "sha256:a90c44b9b2cf37383c15c633f7de19dd2b6fbbe1b17abffd227d79a09a95c3f8",
+  "preflight_sha256": "sha256:8a0e1f76bfa8e462d20aecce607afcd1c2f54f270c35640b9787bfc93c4a2cb5",
+  "max1_sha256": "sha256:68d7cf5823440d12952a332e254ec42bc7d6c2716df2d5a8d807d4d4abef3d5e",
+  "max2_sha256": "sha256:cc52ba29c0f56bf3a76213f08f3f4c687b1819b38348f8579b9985718343ab67",
+  "lineage": {
+    "control_head": "11a0eb6b07f6ab8584190d5d9a79a33b7cc21ba7",
+    "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+    "runner_commits": ["7b980ec5bfe7da7491340f20547dac4e9d542afb", "b22c2cd704f67be4900b4f4072de67700faa68b4"],
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247"
+  },
+  "authority": {
+    "exact_approval_recorded": false,
+    "fresh_exact_approval_required": true,
+    "requested_maximum_cumulative_finite_spend_usd": 4.5,
+    "serverless_flex_usd_per_gpu_hour": 1.116,
+    "anchor_refresh_authorized": false,
+    "provider_mutations_authorized": false,
+    "gpu_use_authorized": false,
+    "v2_08_authorized": false
+  },
+  "cleanup_contract": {
+    "delete_generated_outputs": true,
+    "delete_endpoint": true,
+    "delete_template": true,
+    "delete_signer_and_temporary_route": true,
+    "final_zero_compute_disposable_reconciliation_reads": 3,
+    "retain_two_sealed_volumes": true,
+    "retained_volume_charge_usd_per_month": 7
+  },
+  "preflight_contract": {
+    "latest_read": "read-only-preflight.json",
+    "starting_zero_state_is_not_current_mutation_authority": true,
+    "fresh_revalidation_before_mutation": true
+  }
+}

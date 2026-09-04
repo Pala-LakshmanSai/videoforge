@@ -1,0 +1,47 @@
+{
+  "schema_version": "videoforge.v2-07-attempt66-staged-config/v1",
+  "checkpoint": "V2-07",
+  "attempt": 66,
+  "stage": "single-lane-max-one-qualification",
+  "workers_min": 0,
+  "workers_max": 1,
+  "gpu_count": 1,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "region": "EU-RO-1",
+  "flashboot": true,
+  "scaler": {"type": "REQUEST_COUNT", "value": 1},
+  "handler_concurrency": 1,
+  "idle_timeout_seconds": 5,
+  "init_timeout_seconds": 800,
+  "execution_timeout_seconds": 2400,
+  "authority_ttl_seconds": 7200,
+  "runtime": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+    "model": "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot",
+    "mount": "/runpod-volume",
+    "model_root": "/runpod-volume/mage-model",
+    "scratch_root": "/tmp/videoforge-jobs"
+  },
+  "source": {
+    "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+    "control_head": "11a0eb6b07f6ab8584190d5d9a79a33b7cc21ba7",
+    "runner_commits": ["7b980ec5bfe7da7491340f20547dac4e9d542afb", "b22c2cd704f67be4900b4f4072de67700faa68b4"],
+    "handler_sha256": "sha256:e61786748d321124ab39267622ccb647f614e8fac0d560d2e72c6d2a158b528d",
+    "envelope_sha256": "sha256:34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0",
+    "schema_sha256": "sha256:08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f"
+  },
+  "envelope_binding": {
+    "key_id": "worker-key-1",
+    "key_sha256_derived_from_worker_token_bytes": true,
+    "signing_key_hex_equals_worker_token": true,
+    "paired_with_worker_token": true
+  },
+  "cleanup": {
+    "delete_generated_outputs": true,
+    "delete_endpoint": true,
+    "delete_template": true,
+    "delete_signer_and_temporary_route": true,
+    "final_zero_compute_disposable_reads": 3,
+    "retain_sealed_volumes": true
+  }
+}

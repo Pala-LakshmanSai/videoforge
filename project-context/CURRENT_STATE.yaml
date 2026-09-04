@@ -8,7 +8,7 @@ current_milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compact
 current_task: VF-10-07
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_attempt65_root_cause_repair
+task_stage: provider_free_attempt66_candidate_sealed
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -25,7 +25,7 @@ current_goal_boundary:
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: "Attempt65 is consumed and closed NOT_QUALIFIED_FAILED_CLEAN after one job failed before model startup because the control template omitted the envelope verifier environment paired to workerToken. Source repair injects the exact key id, SHA-256, and signing-key hex. Provider-free validation may continue; any Attempt66 execution requires a fresh exact proposal, approval, and cap. Keep V2-08 blocked."
+  v2_07_action: "Attempt65 is consumed and closed NOT_QUALIFIED_FAILED_CLEAN after one job failed before model startup because the control template omitted the envelope verifier environment paired to workerToken. Repair 11a0eb6b injects the exact key id, SHA-256, and signing-key hex. Attempt66 proposal sha256:a90c44b9b2cf37383c15c633f7de19dd2b6fbbe1b17abffd227d79a09a95c3f8 is sealed awaiting fresh exact approval; keep V2-08 blocked."
   provider_free_product_action: "Source 29667134 is live as Worker 50cfd256 with media worker 0.1.14 online. Exactly one project f7655814 completed Stages 1-5; Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 compact prompts, settled USD 0.001401, conserved its reservation, and exposed the 520px scrollable viewer. All 31 positive prompts contain the enabled bounded project keywords exactly once and only the pinned medium, realism, camera, and lighting style fields; removed style metadata has zero hits. Total Stage 3+5 variable external spend was USD 0.001473. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
@@ -5086,7 +5086,7 @@ recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
   milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compaction_qualified
-  status: ATTEMPT65_FAILED_CLEAN_PROVIDER_FREE_REPAIR_ACTIVE
+  status: ATTEMPT66_SEALED_AWAITING_FRESH_EXACT_APPROVAL
   dependency_status: v2_06_stage5_live_functional_prompt_v18_qualified
   authorization_status: no_live_authority_attempt65_consumed_non_reusable
   task_stage: provider_free_repair
@@ -5095,7 +5095,7 @@ recommended_next_task:
   provider_authority: *v2_07_provider_authority_attempt65
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Close Attempt65 cleanly, retain its exact failure evidence, and validate the controller-only envelope verifier repair provider-free. Any Attempt66 mutation or GPU job requires fresh exact source-bound authority. Keep V2-08 blocked."
+  goal: "Preserve the clean Attempt65 closure and exact controller repair. Attempt66 is sealed provider-free; require fresh exact approval before any mutation or GPU job. Keep V2-08 blocked."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -5674,10 +5674,10 @@ audit_evidence:
   v2_07_attempt28_control_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"
   v2_07_attempt28_candidate_max1_sha256: "sha256:acef5c48b6059fa2401b88bb40ed81e648c9ed795e5fcb3208e117d936f4196d"
   v2_07_attempt28_candidate_max2_sha256: "sha256:45d067e5d7e1b152d25c62eb7e185898bbedd30797d5d9aacc83bb9a48e41836"
-  v2_07_current_proposal: null
-  v2_07_current_proposal_sha256: null
-  v2_07_current_candidate_acceptance: null
-  v2_07_current_candidate_acceptance_sha256: null
+  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-09-04-attempt66-envelope-verifier-candidate/combined-live-proposal.json
+  v2_07_current_proposal_sha256: "sha256:a90c44b9b2cf37383c15c633f7de19dd2b6fbbe1b17abffd227d79a09a95c3f8"
+  v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-09-04-attempt66-envelope-verifier-candidate/acceptance.json
+  v2_07_current_candidate_acceptance_sha256: "sha256:f0236e5c9479647b30dbd047ad0702ce771c1d50e8bd198cb711e8f430034dca"
   v2_07_current_approved_authority: null
   v2_07_current_approved_authority_sha256: null
   v2_07_attempt65_closed_proposal: evidence/acceptance/VF-10-07/2026-09-04-attempt65-clean-success-candidate/combined-live-proposal.json
@@ -5817,6 +5817,6 @@ audit_evidence:
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: v2_07_attempt65_closed_provider_free_controller_repair
+  current_goal_scope: v2_07_attempt66_sealed_awaiting_fresh_exact_approval
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_ATTEMPT65_FAILED_CLEAN_CONTROLLER_REPAIRED_PROVIDER_FREE
+  v2_07_status: NOT_QUALIFIED_ATTEMPT66_SEALED_AWAITING_FRESH_EXACT_APPROVAL
