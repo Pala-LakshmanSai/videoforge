@@ -511,9 +511,9 @@ describe("V2-07 Python urllib PUT probe", () => {
   );
 
   it.each([
-    ["missing", null, "V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID"],
-    ["malformed", "not-a-version", "V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID"],
-    ["different", PREDECESSOR_VERSION_ID, "V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED"],
+    ["missing", null, "V207_DISPOSABLE_PROBE_URLLIB_VERSION_MISSING_S5XX"],
+    ["malformed", "not-a-version", "V207_DISPOSABLE_PROBE_URLLIB_VERSION_MALFORMED_S5XX"],
+    ["different", PREDECESSOR_VERSION_ID, "V207_DISPOSABLE_PROBE_URLLIB_VERSION_WRONG_S5XX"],
   ] as const)(
     "rejects %s Worker version metadata before classifying an HTTP error",
     async (_name, workerVersionId, code) => {
@@ -524,6 +524,26 @@ describe("V2-07 Python urllib PUT probe", () => {
           worker_error_code: null,
           worker_version_id: workerVersionId,
         }),
+      ).rejects.toMatchObject({ code });
+    },
+  );
+
+  it.each([
+    ["missing", null, "V207_DISPOSABLE_PROBE_URLLIB_VERSION_MISSING_S2XX"],
+    ["malformed", 42, "V207_DISPOSABLE_PROBE_URLLIB_VERSION_MALFORMED_S2XX"],
+    ["different", PREDECESSOR_VERSION_ID, "V207_DISPOSABLE_PROBE_URLLIB_VERSION_WRONG_S2XX"],
+  ] as const)(
+    "classifies %s Worker version metadata on urllib success with a fixed status class",
+    async (_name, workerVersionId, code) => {
+      await expect(
+        runDiagnostic(
+          {
+            outcome: "SUCCESS",
+            status: 201,
+            worker_version_id: workerVersionId,
+          },
+          0,
+        ),
       ).rejects.toMatchObject({ code });
     },
   );
@@ -666,6 +686,8 @@ describe("V2-07 disposable live orchestrator", () => {
       "secret",
       "status",
       "python-put",
+      "python-put",
+      "python-put",
       "qualification",
       "delete",
       "status",
@@ -681,6 +703,58 @@ describe("V2-07 disposable live orchestrator", () => {
       worker_name: V207_DISPOSABLE_WORKER_NAME,
     });
     expect(evidence).toContain("pre_gpu_output_compatibility_probe_completed");
+  });
+
+  it("requires three distinct fully cleaned pre-GPU compatibility cycles before qualification", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    const reservedKeys: string[] = [];
+    const deletedKeys: string[] = [];
+    const completed = await runV207DisposableLiveOrchestration({
+      ...setup.options,
+      fetchImpl: async (input, init) => {
+        const request = new Request(input, init);
+        if (request.method === "POST" && request.headers.has("x-videoforge-v207-authority")) {
+          const body = (await request.clone().json()) as {
+            operation?: unknown;
+            object_key?: unknown;
+          };
+          if (body.operation === "PUT" && typeof body.object_key === "string") {
+            reservedKeys.push(body.object_key);
+          }
+          if (body.operation === "DELETE" && typeof body.object_key === "string") {
+            deletedKeys.push(body.object_key);
+          }
+        }
+        return normalFetch(input, init);
+      },
+    });
+
+    expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
+    expect(reservedKeys).toHaveLength(3);
+    expect(new Set(reservedKeys).size).toBe(3);
+    expect(reservedKeys).toEqual([
+      expect.stringContaining("/job/pregpu-cycle-1/artifact/probe.png"),
+      expect.stringContaining("/job/pregpu-cycle-2/artifact/probe.png"),
+      expect.stringContaining("/job/pregpu-cycle-3/artifact/probe.png"),
+    ]);
+    expect(deletedKeys).toEqual(reservedKeys);
+    expect(setup.calls.filter((call) => call.command === "python3")).toHaveLength(3);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
+    const evidence = JSON.parse(await readFile(completed.evidencePath, "utf8")) as {
+      events: Array<{ event: string; clean_cycles?: number; cycle?: number }>;
+    };
+    expect(
+      evidence.events
+        .filter((event) => event.event === "pre_gpu_output_compatibility_probe_cycle_completed")
+        .map((event) => event.cycle),
+    ).toEqual([1, 2, 3]);
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({
+        event: "pre_gpu_output_compatibility_probe_completed",
+        clean_cycles: 3,
+      }),
+    );
   });
 
   it("stops before qualification when the active data-plane version differs", async () => {
@@ -700,6 +774,175 @@ describe("V2-07 disposable live orchestrator", () => {
     ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED" });
 
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+  });
+
+  it.each([
+    {
+      label: "Cloudflare 429 JSON response",
+      status: 429,
+      contentType: "application/json",
+      rawBody: '{"error":"private-cloudflare-platform-429"}',
+      expectedCode: "V207_DISPOSABLE_PROBE_RESERVE_ROUTE_VERSION_MISSING_S4XX_CJSON_LMISSING",
+    },
+  ])(
+    "keeps a versionless $label terminal without retry or leakage",
+    async ({ status, contentType, rawBody, expectedCode }) => {
+      const setup = await fixture();
+      const normalFetch = setup.options.fetchImpl!;
+      let intercepted = false;
+      await expect(
+        runV207DisposableLiveOrchestration({
+          ...setup.options,
+          fetchImpl: async (input, init) => {
+            const request = new Request(input, init);
+            if (
+              !intercepted &&
+              setup.state().secret &&
+              request.method === "POST" &&
+              request.headers.has("x-videoforge-v207-authority")
+            ) {
+              intercepted = true;
+              return new Response(rawBody, {
+                status,
+                headers: { "content-type": contentType },
+              });
+            }
+            return normalFetch(input, init);
+          },
+        }),
+      ).rejects.toMatchObject({ code: expectedCode });
+
+      expect(intercepted).toBe(true);
+      expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+      expect(setup.calls.some((call) => call.command === "python3")).toBe(false);
+      const evidence = await readFile(setup.options.evidencePath!, "utf8");
+      expect(evidence).toContain(expectedCode);
+      expect(evidence).not.toContain(rawBody);
+    },
+  );
+
+  it.each(["lost transport response", "versionless S5XX response"] as const)(
+    "replays one exact deterministic RESERVE after a safe ambiguous %s",
+    async (failureKind) => {
+      const setup = await fixture();
+      const normalFetch = setup.options.fetchImpl!;
+      const reserveKeys: string[] = [];
+      let failedOnce = false;
+      const completed = await runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          if (
+            setup.state().secret &&
+            request.method === "POST" &&
+            request.headers.has("x-videoforge-v207-authority")
+          ) {
+            const body = (await request.clone().json()) as {
+              operation?: unknown;
+              object_key?: unknown;
+            };
+            if (body.operation === "PUT" && typeof body.object_key === "string") {
+              reserveKeys.push(body.object_key);
+              if (!failedOnce) {
+                failedOnce = true;
+                await normalFetch(input, init);
+                if (failureKind === "lost transport response") {
+                  throw new Error("private-lost-reserve-response");
+                }
+                return new Response("private-cloudflare-platform-503", {
+                  status: 503,
+                  headers: { "content-type": "text/html" },
+                });
+              }
+            }
+          }
+          return normalFetch(input, init);
+        },
+      });
+
+      expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
+      expect(reserveKeys).toHaveLength(4);
+      expect(reserveKeys[0]).toBe(reserveKeys[1]);
+      expect(new Set(reserveKeys).size).toBe(3);
+      expect(setup.calls.filter((call) => call.command === "python3")).toHaveLength(3);
+      expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
+      const evidence = await readFile(completed.evidencePath, "utf8");
+      expect(evidence).not.toContain("private-lost-reserve-response");
+      expect(evidence).not.toContain("private-cloudflare-platform-503");
+    },
+  );
+
+  it("bounds persistent versionless S5XX RESERVE responses at three exact attempts", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let reserveAttempts = 0;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          if (
+            setup.state().secret &&
+            request.method === "POST" &&
+            request.headers.has("x-videoforge-v207-authority")
+          ) {
+            const body = (await request.clone().json()) as { operation?: unknown };
+            if (body.operation === "PUT") {
+              reserveAttempts += 1;
+              return new Response("private-persistent-reserve-503", {
+                status: 503,
+                headers: { "content-type": "text/html" },
+              });
+            }
+          }
+          return normalFetch(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "V207_DISPOSABLE_PROBE_RESERVE_ROUTE_VERSION_MISSING_S5XX_COTHER_LMISSING",
+    });
+
+    expect(reserveAttempts).toBe(3);
+    expect(setup.calls.some((call) => call.command === "python3")).toBe(false);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    const evidence = await readFile(setup.options.evidencePath!, "utf8");
+    expect(evidence).not.toContain("private-persistent-reserve-503");
+  });
+
+  it("classifies malformed version metadata on the initial successful reserve response", async () => {
+    const rawVersion = "private-malformed-worker-version";
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let intercepted = false;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          if (
+            !intercepted &&
+            setup.state().secret &&
+            request.method === "POST" &&
+            request.headers.has("x-videoforge-v207-authority")
+          ) {
+            intercepted = true;
+            const response = await normalFetch(input, init);
+            const headers = new Headers(response.headers);
+            headers.set(V207_ROUTE_VERSION_HEADER, rawVersion);
+            return new Response(response.body, { status: response.status, headers });
+          }
+          return normalFetch(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "V207_DISPOSABLE_PROBE_RESERVE_ROUTE_VERSION_MALFORMED_S2XX_CJSON_LMISSING",
+    });
+
+    expect(intercepted).toBe(true);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    expect(setup.calls.some((call) => call.command === "python3")).toBe(false);
+    const evidence = await readFile(setup.options.evidencePath!, "utf8");
+    expect(evidence).not.toContain(rawVersion);
   });
 
   it("recovers from one pre-match unreachable read inside the existing propagation bounds", async () => {
@@ -1448,32 +1691,69 @@ describe("V2-07 disposable live orchestrator", () => {
     expect(setup.calls.filter((call) => call.args.includes("delete"))).toHaveLength(1);
   });
 
-  it("rejects a mid-probe Worker version swap and cleans before qualification", async () => {
-    const setup = await fixture();
-    const normalFetch = setup.options.fetchImpl!;
-    let changedFinalize = false;
-    await expect(
-      runV207DisposableLiveOrchestration({
-        ...setup.options,
-        fetchImpl: async (input, init) => {
-          const request = new Request(input, init);
-          const response = await normalFetch(input, init);
-          if (request.method !== "POST" || !request.headers.has("x-videoforge-v207-authority")) {
-            return response;
-          }
-          const body = JSON.parse(await request.clone().text()) as { operation?: unknown };
-          if (body.operation !== "FINALIZE") return response;
-          changedFinalize = true;
-          const headers = new Headers(response.headers);
-          headers.set(V207_ROUTE_VERSION_HEADER, "22222222-2222-4222-8222-222222222222");
-          return new Response(response.body, { status: response.status, headers });
-        },
-      }),
-    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ROUTE_VERSION_ID_UNCONFIRMED" });
+  it.each(["RESERVE", "FINALIZE", "GET_PORT", "READBACK"] as const)(
+    "stage-tags a wrong valid Worker version at %s, cancels its body, and cleans before qualification",
+    async (stage) => {
+      const setup = await fixture();
+      const normalFetch = setup.options.fetchImpl!;
+      let intercepted = false;
+      let responseBodyCancelled = false;
+      await expect(
+        runV207DisposableLiveOrchestration({
+          ...setup.options,
+          fetchImpl: async (input, init) => {
+            const request = new Request(input, init);
+            if (!intercepted && setup.state().secret) {
+              let requestStage: typeof stage | null = null;
+              if (request.method === "GET") {
+                requestStage = "READBACK";
+              } else if (
+                request.method === "POST" &&
+                request.headers.has("x-videoforge-v207-authority")
+              ) {
+                const body = (await request.clone().json()) as { operation?: unknown };
+                requestStage =
+                  body.operation === "PUT"
+                    ? "RESERVE"
+                    : body.operation === "FINALIZE"
+                      ? "FINALIZE"
+                      : body.operation === "GET"
+                        ? "GET_PORT"
+                        : null;
+              }
+              if (requestStage === stage) {
+                intercepted = true;
+                const body = new ReadableStream<Uint8Array>({
+                  cancel: () => {
+                    responseBodyCancelled = true;
+                  },
+                });
+                return new Response(body, {
+                  status: 200,
+                  headers: {
+                    "content-type": "application/json",
+                    [V207_ROUTE_VERSION_HEADER]: PREDECESSOR_VERSION_ID,
+                  },
+                });
+              }
+            }
+            return normalFetch(input, init);
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: `V207_DISPOSABLE_PROBE_${stage}_ROUTE_VERSION_WRONG_S2XX_CJSON_LMISSING`,
+      });
 
-    expect(changedFinalize).toBe(true);
-    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
-  });
+      expect(intercepted).toBe(true);
+      expect(responseBodyCancelled).toBe(true);
+      expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+      expect(
+        setup.calls.some(
+          (call) => call.command.endsWith("/tsx") && call.env.V207_PREFLIGHT_ONLY !== "1",
+        ),
+      ).toBe(false);
+    },
+  );
 
   it("waits through a transient non-JSON 404 and then requires three exact disabled fingerprints", async () => {
     const setup = await fixture();
@@ -1489,7 +1769,9 @@ describe("V2-07 disposable live orchestrator", () => {
     });
 
     expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
-    expect(routeReads).toBe(15);
+    // The transient activation read plus the three complete five-request compatibility cycles
+    // and the unchanged control-plane/cleanup reads must all finish before qualification.
+    expect(routeReads).toBe(25);
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
   });
 

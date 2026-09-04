@@ -43,6 +43,9 @@ const PROBE_LIFETIME_SECONDS = 60 as const;
 const PROBE_REQUEST_MAX_BYTES = 64 * 1024;
 const PROBE_TIMEOUT_MILLISECONDS = 15_000;
 const PROBE_CLEANUP_TIMEOUT_MILLISECONDS = 30_000;
+const PROBE_RESERVE_MAX_ATTEMPTS = 3;
+const PROBE_RESERVE_RETRY_MILLISECONDS = 250;
+const PROBE_CLEAN_CYCLES = 3;
 const CLEANUP_TIMEOUT_MILLISECONDS = 60_000;
 const PYTHON_DIAGNOSTIC_MAX_BYTES = 4_096;
 const CAPABILITY_HANDLE = /^[a-f0-9]{64}$/u;
@@ -132,6 +135,9 @@ type RouteStatusClass = "S2XX" | "S3XX" | "S4XX" | "S5XX" | "SOTHER";
 type RouteVersionState = "VMATCHED" | "VMISSING" | "VVALID";
 type RouteContentClass = "CJSON" | "CMISSING" | "COTHER";
 type RouteBodyClass = "BBOUNDED" | "BDECLARED_INVALID" | "BEMPTY" | "BMISMATCH" | "BOVERSIZED";
+type ProbeStage = "CLEANUP" | "FINALIZE" | "GET_PORT" | "READBACK" | "RESERVE";
+type ProbeLengthClass = "LBOUNDED" | "LEMPTY" | "LINVALID" | "LMISSING" | "LOVERSIZED";
+type ProbeVersionFailure = "MALFORMED" | "MISSING" | "WRONG";
 type RouteResponseFailure =
   | "BODY_LENGTH_INVALID"
   | "BODY_LENGTH_MISMATCH"
@@ -159,6 +165,18 @@ class V207RouteResponseError extends V207DisposableOrchestratorError {
   ) {
     super(code);
     this.name = "V207RouteResponseError";
+  }
+}
+
+class V207ProbeResponseError extends V207DisposableOrchestratorError {
+  constructor(
+    code: string,
+    readonly stage: ProbeStage,
+    readonly statusClass: RouteStatusClass,
+    readonly versionFailure: ProbeVersionFailure,
+  ) {
+    super(code);
+    this.name = "V207ProbeResponseError";
   }
 }
 
@@ -770,10 +788,46 @@ function recordValue(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+function probeLengthClass(response: Response): ProbeLengthClass {
+  const declaredLength = response.headers.get("content-length");
+  if (declaredLength === null) return "LMISSING";
+  if (!/^(?:0|[1-9][0-9]{0,9})$/u.test(declaredLength)) return "LINVALID";
+  const length = Number(declaredLength);
+  if (!Number.isSafeInteger(length)) return "LINVALID";
+  if (length === 0) return "LEMPTY";
+  return length <= ROUTE_RESPONSE_MAX_BYTES ? "LBOUNDED" : "LOVERSIZED";
+}
+
+function invalidProbeVersionError(
+  stage: ProbeStage,
+  response: Response,
+  versionFailure: ProbeVersionFailure,
+): V207ProbeResponseError {
+  const statusClass = routeStatusClass(response.status);
+  return new V207ProbeResponseError(
+    `V207_DISPOSABLE_PROBE_${stage}_ROUTE_VERSION_${versionFailure}_${statusClass}_${routeContentClass(response.headers.get("content-type"))}_${probeLengthClass(response)}`,
+    stage,
+    statusClass,
+    versionFailure,
+  );
+}
+
+function isRetryableReserveFailure(error: unknown): boolean {
+  return (
+    (error instanceof V207DisposableOrchestratorError &&
+      error.code === "V207_DISPOSABLE_PROBE_RESERVE_TRANSPORT_FAILED") ||
+    (error instanceof V207ProbeResponseError &&
+      error.stage === "RESERVE" &&
+      error.statusClass === "S5XX" &&
+      error.versionFailure === "MISSING")
+  );
+}
+
 async function probeRequest(
   fetchImpl: typeof fetch,
   input: string,
   init: RequestInit,
+  stage: ProbeStage,
   expectedWorkerVersionId: string,
   signal?: AbortSignal,
 ): Promise<Response> {
@@ -785,12 +839,23 @@ async function probeRequest(
       signal: signal === undefined ? timeout : AbortSignal.any([signal, timeout]),
     });
   } catch {
-    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_TRANSPORT_FAILED");
+    throw new V207DisposableOrchestratorError(`V207_DISPOSABLE_PROBE_${stage}_TRANSPORT_FAILED`);
   }
-  assertExpectedWorkerVersion(
-    response.headers.get(V207_ROUTE_VERSION_HEADER),
-    expectedWorkerVersionId,
-  );
+  const workerVersionId = response.headers.get(V207_ROUTE_VERSION_HEADER);
+  if (workerVersionId === null || !VERSION_ID.test(workerVersionId)) {
+    const error = invalidProbeVersionError(
+      stage,
+      response,
+      workerVersionId === null ? "MISSING" : "MALFORMED",
+    );
+    await response.body?.cancel().catch(() => undefined);
+    throw error;
+  }
+  if (workerVersionId !== expectedWorkerVersionId) {
+    const error = invalidProbeVersionError(stage, response, "WRONG");
+    await response.body?.cancel().catch(() => undefined);
+    throw error;
+  }
   return response;
 }
 
@@ -799,6 +864,7 @@ async function probeJson(
   routeUrl: string,
   nonce: string,
   body: Record<string, unknown>,
+  stage: Exclude<ProbeStage, "READBACK">,
   expectedWorkerVersionId: string,
   signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
@@ -817,6 +883,7 @@ async function probeJson(
       },
       body: encoded,
     },
+    stage,
     expectedWorkerVersionId,
     signal,
   );
@@ -945,6 +1012,29 @@ function pythonHttpClassCode(status: number): string {
   return "V207_DISPOSABLE_PROBE_URLLIB_HTTP_OTHER";
 }
 
+function assertExpectedPythonWorkerVersion(
+  workerVersionId: unknown,
+  expectedWorkerVersionId: string,
+  status: number,
+): void {
+  const statusClass = routeStatusClass(status);
+  if (workerVersionId === null) {
+    throw new V207DisposableOrchestratorError(
+      `V207_DISPOSABLE_PROBE_URLLIB_VERSION_MISSING_${statusClass}`,
+    );
+  }
+  if (typeof workerVersionId !== "string" || !VERSION_ID.test(workerVersionId)) {
+    throw new V207DisposableOrchestratorError(
+      `V207_DISPOSABLE_PROBE_URLLIB_VERSION_MALFORMED_${statusClass}`,
+    );
+  }
+  if (workerVersionId !== expectedWorkerVersionId) {
+    throw new V207DisposableOrchestratorError(
+      `V207_DISPOSABLE_PROBE_URLLIB_VERSION_WRONG_${statusClass}`,
+    );
+  }
+}
+
 /** Execute the same urllib PUT used by the immutable Mage runtime without exposing transport data. */
 export async function runV207PythonUrllibPutProbe(
   run: V207CommandRunner,
@@ -992,9 +1082,10 @@ export async function runV207PythonUrllibPutProbe(
     ) {
       throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
     }
-    assertExpectedWorkerVersion(
-      typeof record.worker_version_id === "string" ? record.worker_version_id : null,
+    assertExpectedPythonWorkerVersion(
+      record.worker_version_id,
       expectedWorkerVersionId,
+      record.status,
     );
     return;
   }
@@ -1017,9 +1108,10 @@ export async function runV207PythonUrllibPutProbe(
     ) {
       throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_URLLIB_DIAGNOSTIC_INVALID");
     }
-    assertExpectedWorkerVersion(
-      typeof record.worker_version_id === "string" ? record.worker_version_id : null,
+    assertExpectedPythonWorkerVersion(
+      record.worker_version_id,
       expectedWorkerVersionId,
+      record.status,
     );
     const mapped =
       typeof record.worker_error_code === "string"
@@ -1065,12 +1157,15 @@ async function runOutputCompatibilityProbe(
   cwd: string,
   environment: Environment,
   expectedWorkerVersionId: string,
+  cycle: 1 | 2 | 3,
+  sleepImpl: (milliseconds: number) => Promise<void>,
   signal?: AbortSignal,
 ): Promise<void> {
   const png = qualificationProbePng();
+  const jobId = `pregpu-cycle-${cycle}`;
   const objectKey =
     `tenant/${PROBE_ACCOUNT_ID}/workspace/${PROBE_WORKSPACE_ID}/project/${PROBE_PROJECT_ID}` +
-    `/revision/${PROBE_REVISION_ID}/lane/mage-image/job/pregpu/artifact/probe.png`;
+    `/revision/${PROBE_REVISION_ID}/lane/mage-image/job/${jobId}/artifact/probe.png`;
   const scope = {
     schema_version: PROBE_REQUEST_SCHEMA,
     account_id: PROBE_ACCOUNT_ID,
@@ -1085,19 +1180,37 @@ async function runOutputCompatibilityProbe(
     // The reservation key is deterministic. Arm DELETE before POST so an accepted request with a
     // lost/invalid response is still rolled back.
     cleanupArmed = true;
-    const port = await probeJson(
-      fetchImpl,
-      routeUrl,
-      nonce,
-      {
-        ...scope,
-        operation: "PUT",
-        max_content_length: png.byteLength,
-        lifetime_seconds: PROBE_LIFETIME_SECONDS,
-      },
-      expectedWorkerVersionId,
-      signal,
-    );
+    const reserveRequest = {
+      ...scope,
+      operation: "PUT",
+      max_content_length: png.byteLength,
+      lifetime_seconds: PROBE_LIFETIME_SECONDS,
+    } as const;
+    let port: Record<string, unknown> | undefined;
+    for (let attempt = 1; attempt <= PROBE_RESERVE_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        port = await probeJson(
+          fetchImpl,
+          routeUrl,
+          nonce,
+          reserveRequest,
+          "RESERVE",
+          expectedWorkerVersionId,
+          signal,
+        );
+        break;
+      } catch (error) {
+        if (attempt === PROBE_RESERVE_MAX_ATTEMPTS || !isRetryableReserveFailure(error)) {
+          throw error;
+        }
+        // PUT reservation identity is deterministic from nonce + exact object key, and the Worker
+        // accepts only an exact sameReservation replay. Cleanup was armed before the first request.
+        await sleepWithSignal(sleepImpl, PROBE_RESERVE_RETRY_MILLISECONDS, signal);
+      }
+    }
+    if (port === undefined) {
+      throw new V207DisposableOrchestratorError("V207_DISPOSABLE_PROBE_RESERVE_UNCONFIRMED");
+    }
     const authority = recordValue(port.authority);
     const putUrl = port.url;
     const reservationId = authority?.reservation_id;
@@ -1134,11 +1247,12 @@ async function runOutputCompatibilityProbe(
         ...scope,
         operation: "FINALIZE",
         reservation_id: reservationId,
-        callback_id: "pregpu-probe",
+        callback_id: `pregpu-probe-cycle-${cycle}`,
         capability_handle: finalizeCapability,
         content_length: png.byteLength,
         checksum_sha256: checksum,
       },
+      "FINALIZE",
       expectedWorkerVersionId,
       signal,
     );
@@ -1154,6 +1268,7 @@ async function runOutputCompatibilityProbe(
         content_length: png.byteLength,
         checksum_sha256: checksum,
       },
+      "GET_PORT",
       expectedWorkerVersionId,
       signal,
     );
@@ -1168,6 +1283,7 @@ async function runOutputCompatibilityProbe(
       fetchImpl,
       getPort.url,
       { method: "GET" },
+      "READBACK",
       expectedWorkerVersionId,
       signal,
     );
@@ -1197,6 +1313,7 @@ async function runOutputCompatibilityProbe(
             operation: "DELETE",
             rollback_token: createHmac("sha256", nonce).update(objectKey).digest("hex"),
           },
+          "CLEANUP",
           expectedWorkerVersionId,
           cleanupSignal,
         );
@@ -1381,17 +1498,24 @@ export async function runV207DisposableLiveOrchestration(
     );
     await record("active_route_confirmed", { reads: FINAL_PROOF_READS });
 
-    await runOutputCompatibilityProbe(
-      fetchImpl,
-      routeUrl,
-      nonce,
-      run,
-      cwd,
-      environment,
-      versionId,
-      abortController.signal,
-    );
-    await record("pre_gpu_output_compatibility_probe_completed");
+    for (const cycle of [1, 2, 3] as const) {
+      await runOutputCompatibilityProbe(
+        fetchImpl,
+        routeUrl,
+        nonce,
+        run,
+        cwd,
+        environment,
+        versionId,
+        cycle,
+        sleepImpl,
+        abortController.signal,
+      );
+      await record("pre_gpu_output_compatibility_probe_cycle_completed", { cycle });
+    }
+    await record("pre_gpu_output_compatibility_probe_completed", {
+      clean_cycles: PROBE_CLEAN_CYCLES,
+    });
 
     const qualification = await run({
       command: qualificationCommand,
