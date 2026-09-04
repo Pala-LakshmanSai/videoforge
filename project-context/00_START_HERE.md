@@ -4,28 +4,35 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- Clean source `656cef526af5ebceabf1e3f7d233aa36337abc4d` is live on staging as Worker
-  `4bbebb21-996b-4dc1-afc7-e946eaff7c6b` with rendered-config SHA-256
-  `f0da85041763e414ca2c543c33ff9cd19d8e0cce30024ad866364b0fa91afe18`. Exact secret,
+- Clean source `a8e7c6d5764167ef96dc39d8abfafdb5cb9323cc` is live on staging as Worker
+  `d71236a6-d075-440e-b51a-038637e5d1b3` with rendered-config SHA-256
+  `8b5b5531517083abdcb32dbe678181df1f5a8aba6388c4091249177464573b12`. Exact secret,
   private-R2, and CORS preflight passed; four consecutive cache-bypassed status reads returned the
   exact source after propagation. Migrations `0069`–`0073` and the V2-06 runtime grant were already
   applied and must not be replayed; GPU transport remains `DISABLED_UNQUALIFIED`.
-- Authenticated Chrome reached the live new-project form. The user then rejected semantic heuristics
-  as terminal Stage 5 gates, so execution stopped before the required local-space preflight or Create
-  click. No fresh project, provider request, or spend occurred. Historical project
-  `28146202-1b64-481a-8878-a5961c48839e` remains frozen and was not accessed.
-- Provider-free repair `85d010553b961a96fe05d11e91969a72de0e9b42` sets hosted narration relevance,
-  action/subject/context paraphrase, and within-batch duplicate checks to advisory. It also removes
-  cross-batch duplicate-prompt rejection. These heuristics may produce diagnostics but cannot stop
-  or roll back a contract-valid Stage 5 batch.
-- Deterministic JSON decoding, schema and scene identity, requested-scene completeness, hard prompt
-  restrictions, provider metadata, and spend-cap fences remain terminal. DeepSeek still receives the
+- Authenticated Chrome created exactly one fresh project
+  `d02997b4-1d57-4f79-8abb-3ba76fdbffdd` after the immediate free-space gate passed with
+  `4,747,771,904` available bytes. Stages 1-4 completed; Stage 4 saved 35 segments, 30 image scenes,
+  and 10 avatar segments. Stage 5 durably accepted batch 1 with 15 prompts. Batch 2 returned all 15
+  requested rows, but three rows hit the older local per-scene content gate, so the run stopped
+  terminal with 15/30 saved prompts. The second response's exact known cost is 851 micro-USD. No
+  retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred.
+- Provider-free repair `eb029d4677cff69abf16a7264a5633cf72a0c6ff` advances request v17 and makes
+  provider formatting defects non-terminal in hosted Stage 5. It bounds and repairs blank,
+  oversized, or controlled text; drops blank, duplicate, or forbidden continuity tags; repairs
+  forbidden compiled fields with neutral narration-derived fallbacks; and leaves the compatibility-
+  only `prompt_core` unable to fail or affect image generation. Semantic relevance and duplicate-
+  prose checks remain advisory.
+- Deterministic JSON decoding, schema and scene identity, requested-scene completeness, provider
+  metadata, and spend-cap fences remain terminal. Hard visual restrictions are repaired before
+  persistence and independently rechecked at the compiler boundary. DeepSeek still receives the
   exact phrase, containing sentence, bounded previous/next phrases, compact global context, title,
   pinned Image Style treatment, shot role, and permanent visual restrictions.
-- Verification passes pipeline 180/180, focused hosted prompt 22/22, pipeline/web typechecks,
-  focused lint/format, staging build/quarantine, context validation, and diff checks. Handoff commit
-  `10486cc1bdb6090c3f8d9efc945d28270435dcc9` recorded the repaired policy; the active source must be
-  resealed after this derived-index reconciliation before any live deployment or new project.
+- Verification passes focused pipeline 96/96, focused hosted prompt 22/22, pipeline/web typechecks,
+  pipeline lint/format, staging build/quarantine, and diff checks. Real Chrome mechanically proved
+  the accepted-prompt region has a 520px viewport over 9,973px of content and scrolls to its 9,453px
+  maximum. The v17 repair is undeployed and needs fresh exact source-bound authority for one new live
+  qualification project; never reuse the terminal project above.
 - Future fresh projects retain deterministic adaptive batching with no project scene cap, exactly one
   DeepSeek request per persisted planned batch, durable batch persistence before the next request,
   and no retry or redispatch on terminal or ambiguous failure.
