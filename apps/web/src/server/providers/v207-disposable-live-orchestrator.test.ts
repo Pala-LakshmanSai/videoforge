@@ -28,7 +28,7 @@ const result = (stdout = "", exitCode: number | null = 0, stderr = ""): V207Comm
 const authorityParser = () => ({
   image: "fixture-image",
   proposalSha256:
-    "sha256:eade126a85b683ed94343867450c0cd83aca31ead63e1a6beba3727676bc8a05" as const,
+    "sha256:5aff2029ba534c34d50e35e6a404e1787572f767b788171e754d9a18a84ae967" as const,
   capUsd: 4.5,
   anchorRefreshAuthorized: false,
 });

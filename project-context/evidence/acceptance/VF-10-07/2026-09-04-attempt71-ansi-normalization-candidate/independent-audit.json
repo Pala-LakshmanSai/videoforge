@@ -1,0 +1,42 @@
+{
+  "schema_version": "videoforge.v2-07-attempt71-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 71,
+  "result": "PASS",
+  "audited_control_source_commit": "e1bf464e8bae5615e63921ed5f551a7e554ab5b3",
+  "proposal_sha256": "sha256:5aff2029ba534c34d50e35e6a404e1787572f767b788171e754d9a18a84ae967",
+  "acceptance_sha256": "sha256:798353d9d150fd4280c1f0062525b94dc699e7277b972f9f046b1b46f19df9ab",
+  "findings": {
+    "p0": 0,
+    "p1": 0,
+    "p2": 0
+  },
+  "verified": {
+    "all_seven_source_hashes_match": true,
+    "ansi_vt_normalization_precedes_unchanged_exact_matcher": true,
+    "adversarial_negatives_rejected": true,
+    "shared_staging_worker_mutation_absent": true,
+    "signal_safe_cleanup_sigint_sigterm": true,
+    "direct_private_r2_atomic_one_use_get": true,
+    "three_final_absence_reads": true,
+    "attempt70_consumed_clean_zero_spend": true,
+    "authority_cap_and_anchor_null_until_fresh_approval": true,
+    "gpu_fallback_forbidden": true,
+    "v2_08_forbidden": true,
+    "context_consistent": true
+  },
+  "validation": {
+    "focused_seal_tests": "93/93",
+    "independent_focused_suites": "226/226",
+    "typecheck": "PASS",
+    "targeted_lint": "PASS",
+    "context_validation": "PASS_WITH_PREEXISTING_PROFILE_WORD_BUDGET_WARNING",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "provider_calls": 0,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0
+}

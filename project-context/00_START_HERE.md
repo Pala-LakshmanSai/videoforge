@@ -4,15 +4,17 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt69 consumed exact authority `sha256:d6847f32…6f2cc` and stopped before mutation at
-  `V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED`. Cloudflare proved the fixed Worker absent with
-  current code `10007`; the local parser accepted historical `10090` only. Three RunPod reads prove
-  zero Pods/endpoints/templates/workers, both 50 GB volumes retained, and `$0` increment.
-- Provider-free repair `71471bba` accepts only structured absent codes `10007`/`10090`, rejects unrelated
-  diagnostics, and terminalizes pre-mutation failure evidence. Attempt70 proposal
-  `sha256:eade126a…8a05` is sealed with the unchanged Mage image and prior cost/cleanup boundary.
-  Exact authority `sha256:1a3ee5a6…f046f` and the `$4.50` cap are now compiled for one bounded
-  execution. V2-08 remains forbidden.
+- V2-07 Attempt70 consumed its exact single-use authority and stopped before mutation at
+  `V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED`: ANSI/VT bytes in Wrangler's absent-Worker diagnostic
+  prevented the exact code-`10007` matcher from recognizing the otherwise valid response. No Worker,
+  signer, route, RunPod resource, GPU job, or spend was created. Three stable final reads prove zero
+  Pods/endpoints/templates/workers and both exact 50 GB EU-RO-1 volumes remain retained at the
+  approved `$7/month` total; observed incremental spend was `$0`.
+- Provider-free repair `e1bf464e8bae5615e63921ed5f551a7e554ab5b3` strips ANSI/VT control bytes before
+  applying the unchanged exact structured absence matcher. Attempt71 proposal
+  `sha256:5aff2029ba534c34d50e35e6a404e1787572f767b788171e754d9a18a84ae967` is sealed awaiting
+  fresh exact approval. No provider authority or finite spend cap is active; Attempt70 is consumed
+  and non-reusable, V2-07 remains `NOT_QUALIFIED`, and V2-08 remains forbidden.
 
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the
