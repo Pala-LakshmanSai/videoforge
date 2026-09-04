@@ -702,6 +702,425 @@ describe("V2-07 disposable live orchestrator", () => {
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
   });
 
+  it("recovers from one pre-match unreachable read inside the existing propagation bounds", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let activeRouteReads = 0;
+    const completed = await runV207DisposableLiveOrchestration({
+      ...setup.options,
+      fetchImpl: async (input, init) => {
+        const request = new Request(input, init);
+        if (
+          setup.state().secret &&
+          request.method === "POST" &&
+          !request.headers.has("x-videoforge-v207-authority")
+        ) {
+          activeRouteReads += 1;
+          if (activeRouteReads === 1) throw new Error("private-unreachable-detail");
+        }
+        return normalFetch(input, init);
+      },
+    });
+
+    expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
+    expect(activeRouteReads).toBe(4);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
+    const evidence = await readFile(completed.evidencePath, "utf8");
+    expect(evidence).not.toContain("private-unreachable-detail");
+  });
+
+  it("recovers from one exact-version pre-match S5XX response diagnostic", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let activeRouteReads = 0;
+    const completed = await runV207DisposableLiveOrchestration({
+      ...setup.options,
+      fetchImpl: async (input, init) => {
+        const request = new Request(input, init);
+        if (
+          setup.state().secret &&
+          request.method === "POST" &&
+          !request.headers.has("x-videoforge-v207-authority")
+        ) {
+          activeRouteReads += 1;
+          if (activeRouteReads === 1) {
+            return new Response("<html>private-transient-5xx</html>", {
+              status: 503,
+              headers: {
+                "content-type": "text/html",
+                [V207_ROUTE_VERSION_HEADER]: VERSION_ID,
+              },
+            });
+          }
+        }
+        return normalFetch(input, init);
+      },
+    });
+
+    expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
+    expect(activeRouteReads).toBe(4);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
+    const evidence = await readFile(completed.evidencePath, "utf8");
+    expect(evidence).not.toContain("private-transient-5xx");
+  });
+
+  it("bounds persistent exact-version pre-match S5XX diagnostics and never reaches Python or GPU", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    let activeRouteReads = 0;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          if (
+            setup.state().secret &&
+            request.method === "POST" &&
+            !request.headers.has("x-videoforge-v207-authority")
+          ) {
+            activeRouteReads += 1;
+            return new Response("<html>private-persistent-5xx</html>", {
+              status: 503,
+              headers: {
+                "content-type": "text/html",
+                [V207_ROUTE_VERSION_HEADER]: VERSION_ID,
+              },
+            });
+          }
+          return normalFetch(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ACTIVE_ROUTE_UNCONFIRMED" });
+
+    expect(activeRouteReads).toBe(30);
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    expect(setup.calls.some((call) => call.command === "python3")).toBe(false);
+    const evidence = await readFile(setup.options.evidencePath!, "utf8");
+    expect(evidence).toContain("V207_DISPOSABLE_ACTIVE_ROUTE_UNCONFIRMED");
+    expect(evidence).not.toContain("private-persistent-5xx");
+  });
+
+  it.each([
+    {
+      label: "unreachable transport",
+      expectedCode: "V207_DISPOSABLE_ROUTE_UNREACHABLE",
+      response: null,
+    },
+    {
+      label: "S5XX response diagnostic",
+      expectedCode: "V207_DISPOSABLE_ROUTE_RESPONSE_NON_JSON_S5XX_VMATCHED_COTHER_BBOUNDED",
+      response: new Response("<html>private-post-match-5xx</html>", {
+        status: 503,
+        headers: {
+          "content-type": "text/html",
+          [V207_ROUTE_VERSION_HEADER]: VERSION_ID,
+        },
+      }),
+    },
+  ])(
+    "keeps $label terminal after the first exact active match",
+    async ({ response, expectedCode }) => {
+      const setup = await fixture();
+      const normalFetch = setup.options.fetchImpl!;
+      let activeRouteReads = 0;
+      await expect(
+        runV207DisposableLiveOrchestration({
+          ...setup.options,
+          fetchImpl: async (input, init) => {
+            const request = new Request(input, init);
+            if (
+              setup.state().secret &&
+              request.method === "POST" &&
+              !request.headers.has("x-videoforge-v207-authority")
+            ) {
+              activeRouteReads += 1;
+              if (activeRouteReads === 2) {
+                if (response === null) throw new Error("private-post-match-unreachable");
+                return response.clone();
+              }
+            }
+            return normalFetch(input, init);
+          },
+        }),
+      ).rejects.toMatchObject({ code: expectedCode });
+
+      expect(activeRouteReads).toBe(2);
+      expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+      expect(setup.calls.some((call) => call.command === "python3")).toBe(false);
+      const evidence = await readFile(setup.options.evidencePath!, "utf8");
+      expect(evidence).not.toContain("private-post-match-unreachable");
+      expect(evidence).not.toContain("private-post-match-5xx");
+    },
+  );
+
+  it.each([
+    [200, "S2XX"],
+    [302, "S3XX"],
+    [429, "S4XX"],
+  ] as const)(
+    "keeps a pre-match %s response diagnostic immediately terminal",
+    async (status, statusClass) => {
+      const setup = await fixture();
+      const normalFetch = setup.options.fetchImpl!;
+      let activeRouteReads = 0;
+      const code = `V207_DISPOSABLE_ROUTE_RESPONSE_NON_JSON_${statusClass}_VMATCHED_COTHER_BBOUNDED`;
+      await expect(
+        runV207DisposableLiveOrchestration({
+          ...setup.options,
+          fetchImpl: async (input, init) => {
+            const request = new Request(input, init);
+            if (
+              setup.state().secret &&
+              request.method === "POST" &&
+              !request.headers.has("x-videoforge-v207-authority")
+            ) {
+              activeRouteReads += 1;
+              return new Response("private-non-retryable-status", {
+                status,
+                headers: {
+                  "content-type": "text/plain",
+                  [V207_ROUTE_VERSION_HEADER]: VERSION_ID,
+                },
+              });
+            }
+            return normalFetch(input, init);
+          },
+        }),
+      ).rejects.toMatchObject({ code });
+
+      expect(activeRouteReads).toBe(1);
+      expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+      expect(setup.calls.some((call) => call.command === "python3")).toBe(false);
+    },
+  );
+
+  it.each([
+    ["missing", null, "VMISSING"],
+    ["wrong", PREDECESSOR_VERSION_ID, "VVALID"],
+  ] as const)(
+    "keeps a pre-match S5XX diagnostic with %s version metadata immediately terminal",
+    async (_label, versionId, versionState) => {
+      const setup = await fixture();
+      const normalFetch = setup.options.fetchImpl!;
+      let activeRouteReads = 0;
+      const code = `V207_DISPOSABLE_ROUTE_RESPONSE_NON_JSON_S5XX_${versionState}_COTHER_BBOUNDED`;
+      await expect(
+        runV207DisposableLiveOrchestration({
+          ...setup.options,
+          fetchImpl: async (input, init) => {
+            const request = new Request(input, init);
+            if (
+              setup.state().secret &&
+              request.method === "POST" &&
+              !request.headers.has("x-videoforge-v207-authority")
+            ) {
+              activeRouteReads += 1;
+              return new Response("private-non-retryable-version", {
+                status: 503,
+                headers: {
+                  "content-type": "text/plain",
+                  ...(versionId === null ? {} : { [V207_ROUTE_VERSION_HEADER]: versionId }),
+                },
+              });
+            }
+            return normalFetch(input, init);
+          },
+        }),
+      ).rejects.toMatchObject({ code });
+
+      expect(activeRouteReads).toBe(1);
+      expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+      expect(setup.calls.some((call) => call.command === "python3")).toBe(false);
+    },
+  );
+
+  it.each([
+    {
+      label: "Cloudflare HTML rate-limit response",
+      status: 429,
+      body: "<html>private-edge-detail</html>",
+      headers: { "content-type": "text/html", "cf-ray": "private-edge-detail" },
+      code: "V207_DISPOSABLE_ROUTE_RESPONSE_NON_JSON_S4XX_VMATCHED_COTHER_BBOUNDED",
+    },
+    {
+      label: "malformed JSON",
+      status: 429,
+      body: "{private-json-detail",
+      headers: { "content-type": "application/json" },
+      code: "V207_DISPOSABLE_ROUTE_RESPONSE_JSON_INVALID_S4XX_VMATCHED_CJSON_BBOUNDED",
+    },
+    {
+      label: "non-object JSON shape",
+      status: 403,
+      body: "[]",
+      headers: { "content-type": "application/problem+json; charset=utf-8" },
+      code: "V207_DISPOSABLE_ROUTE_RESPONSE_SHAPE_INVALID_S4XX_VMATCHED_CJSON_BBOUNDED",
+    },
+    {
+      label: "missing error code",
+      status: 403,
+      body: JSON.stringify({ error: {} }),
+      headers: { "content-type": "application/json" },
+      code: "V207_DISPOSABLE_ROUTE_RESPONSE_CODE_MISSING_S4XX_VMATCHED_CJSON_BBOUNDED",
+    },
+    {
+      label: "invalid error code",
+      status: 403,
+      body: JSON.stringify({ error: { code: "private invalid code" } }),
+      headers: { "content-type": "application/json" },
+      code: "V207_DISPOSABLE_ROUTE_RESPONSE_CODE_INVALID_S4XX_VMATCHED_CJSON_BBOUNDED",
+    },
+    {
+      label: "missing content type",
+      status: 403,
+      body: new TextEncoder().encode(
+        JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }),
+      ),
+      headers: {},
+      code: "V207_DISPOSABLE_ROUTE_RESPONSE_CONTENT_TYPE_MISSING_S4XX_VMATCHED_CMISSING_BBOUNDED",
+    },
+    {
+      label: "invalid declared body length",
+      status: 403,
+      body: JSON.stringify({ error: { code: "V207_AUTHORITY_REJECTED" } }),
+      headers: { "content-type": "application/json", "content-length": "invalid" },
+      code: "V207_DISPOSABLE_ROUTE_RESPONSE_BODY_LENGTH_INVALID_S4XX_VMATCHED_CJSON_BDECLARED_INVALID",
+    },
+    {
+      label: "oversized declared body",
+      status: 403,
+      body: "{}",
+      headers: { "content-type": "application/json", "content-length": "4097" },
+      code: "V207_DISPOSABLE_ROUTE_RESPONSE_BODY_TOO_LARGE_S4XX_VMATCHED_CJSON_BOVERSIZED",
+    },
+    {
+      label: "declared body length mismatch",
+      status: 403,
+      body: "{}",
+      headers: { "content-type": "application/json", "content-length": "100" },
+      code: "V207_DISPOSABLE_ROUTE_RESPONSE_BODY_LENGTH_MISMATCH_S4XX_VMATCHED_CJSON_BMISMATCH",
+    },
+    {
+      label: "streamed oversized body",
+      status: 429,
+      body: "x".repeat(4_097),
+      headers: { "content-type": "application/json" },
+      code: "V207_DISPOSABLE_ROUTE_RESPONSE_BODY_TOO_LARGE_S4XX_VMATCHED_CJSON_BOVERSIZED",
+    },
+  ])(
+    "classifies $label without persisting response material",
+    async ({ status, body, headers, code }) => {
+      const setup = await fixture();
+      const normalFetch = setup.options.fetchImpl!;
+      await expect(
+        runV207DisposableLiveOrchestration({
+          ...setup.options,
+          fetchImpl: async (input, init) => {
+            const request = new Request(input, init);
+            if (
+              setup.state().secret &&
+              request.method === "POST" &&
+              !request.headers.has("x-videoforge-v207-authority")
+            ) {
+              const responseHeaders = new Headers();
+              for (const [name, value] of Object.entries(headers)) {
+                if (value !== undefined) responseHeaders.set(name, value);
+              }
+              responseHeaders.set(V207_ROUTE_VERSION_HEADER, VERSION_ID);
+              return new Response(body, {
+                status,
+                headers: responseHeaders,
+              });
+            }
+            return normalFetch(input, init);
+          },
+        }),
+      ).rejects.toMatchObject({ code });
+
+      expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+      expect(setup.calls.some((call) => call.command === "python3")).toBe(false);
+      const evidence = await readFile(setup.options.evidencePath!, "utf8");
+      expect(evidence).toContain(code);
+      expect(evidence).not.toContain("private-edge-detail");
+      expect(evidence).not.toContain("private-json-detail");
+      expect(evidence).not.toContain("private invalid code");
+    },
+  );
+
+  it("classifies a route body read failure without retaining the exception", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    const rawFailure = "private-route-stream-failure";
+    const code = "V207_DISPOSABLE_ROUTE_RESPONSE_BODY_READ_FAILED_S4XX_VMATCHED_CJSON_BEMPTY";
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          if (
+            setup.state().secret &&
+            request.method === "POST" &&
+            !request.headers.has("x-videoforge-v207-authority")
+          ) {
+            return new Response(
+              new ReadableStream({
+                start(controller) {
+                  controller.error(new Error(rawFailure));
+                },
+              }),
+              {
+                status: 429,
+                headers: {
+                  "content-type": "application/json",
+                  [V207_ROUTE_VERSION_HEADER]: VERSION_ID,
+                },
+              },
+            );
+          }
+          return normalFetch(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({ code });
+
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    expect(setup.calls.some((call) => call.command === "python3")).toBe(false);
+    const evidence = await readFile(setup.options.evidencePath!, "utf8");
+    expect(evidence).toContain(code);
+    expect(evidence).not.toContain(rawFailure);
+  });
+
+  it("checks route version before classifying an invalid response body", async () => {
+    const setup = await fixture();
+    const normalFetch = setup.options.fetchImpl!;
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        fetchImpl: async (input, init) => {
+          const request = new Request(input, init);
+          if (
+            setup.state().secret &&
+            request.method === "POST" &&
+            !request.headers.has("x-videoforge-v207-authority")
+          ) {
+            return new Response("<html>private-version-body</html>", {
+              status: 502,
+              headers: {
+                "content-type": "text/html",
+                [V207_ROUTE_VERSION_HEADER]: "not-a-version",
+              },
+            });
+          }
+          return normalFetch(input, init);
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID" });
+
+    expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
+    expect(setup.calls.some((call) => call.command === "python3")).toBe(false);
+    const evidence = await readFile(setup.options.evidencePath!, "utf8");
+    expect(evidence).not.toContain("private-version-body");
+  });
+
   it("allows a transient disabled predecessor before three exact active fingerprints", async () => {
     const setup = await fixture();
     const normalFetch = setup.options.fetchImpl!;

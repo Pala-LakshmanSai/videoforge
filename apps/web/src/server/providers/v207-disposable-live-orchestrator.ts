@@ -32,6 +32,7 @@ const FINAL_PROOF_READS = 3;
 const ROUTE_PROPAGATION_MAX_ATTEMPTS = 30;
 const ROUTE_PROPAGATION_MAX_MILLISECONDS = 60_000;
 const ROUTE_PROPAGATION_RETRY_MILLISECONDS = 2_000;
+const ROUTE_RESPONSE_MAX_BYTES = 4_096;
 const VERSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 export const V207_ROUTE_VERSION_HEADER = "x-videoforge-worker-version" as const;
 const PROBE_ACCOUNT_ID = "account-a" as const;
@@ -127,10 +128,37 @@ interface RouteFingerprint {
   readonly workerVersionId?: string | null;
 }
 
+type RouteStatusClass = "S2XX" | "S3XX" | "S4XX" | "S5XX" | "SOTHER";
+type RouteVersionState = "VMATCHED" | "VMISSING" | "VVALID";
+type RouteContentClass = "CJSON" | "CMISSING" | "COTHER";
+type RouteBodyClass = "BBOUNDED" | "BDECLARED_INVALID" | "BEMPTY" | "BMISMATCH" | "BOVERSIZED";
+type RouteResponseFailure =
+  | "BODY_LENGTH_INVALID"
+  | "BODY_LENGTH_MISMATCH"
+  | "BODY_READ_FAILED"
+  | "BODY_TOO_LARGE"
+  | "CODE_INVALID"
+  | "CODE_MISSING"
+  | "CONTENT_TYPE_MISSING"
+  | "JSON_INVALID"
+  | "NON_JSON"
+  | "SHAPE_INVALID";
+
 export class V207DisposableOrchestratorError extends Error {
   constructor(readonly code: string) {
     super(code);
     this.name = "V207DisposableOrchestratorError";
+  }
+}
+
+class V207RouteResponseError extends V207DisposableOrchestratorError {
+  constructor(
+    code: string,
+    readonly statusClass: RouteStatusClass,
+    readonly versionState: RouteVersionState,
+  ) {
+    super(code);
+    this.name = "V207RouteResponseError";
   }
 }
 
@@ -335,12 +363,158 @@ function validateObservedWorkerVersion(
   }
 }
 
+function routeStatusClass(status: number): RouteStatusClass {
+  if (status >= 200 && status <= 299) return "S2XX";
+  if (status >= 300 && status <= 399) return "S3XX";
+  if (status >= 400 && status <= 499) return "S4XX";
+  if (status >= 500 && status <= 599) return "S5XX";
+  return "SOTHER";
+}
+
+function routeVersionState(
+  workerVersionId: string | null,
+  expectedWorkerVersionId?: string,
+): RouteVersionState {
+  if (workerVersionId === null) return "VMISSING";
+  return expectedWorkerVersionId === workerVersionId ? "VMATCHED" : "VVALID";
+}
+
+function routeContentClass(contentType: string | null): RouteContentClass {
+  if (contentType === null || contentType.trim() === "") return "CMISSING";
+  const mediaType = contentType.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+  return mediaType === "application/json" ||
+    /^application\/[a-z0-9!#$&^_.+-]+\+json$/u.test(mediaType)
+    ? "CJSON"
+    : "COTHER";
+}
+
+function routeResponseError(
+  failure: RouteResponseFailure,
+  statusClass: RouteStatusClass,
+  versionState: RouteVersionState,
+  contentClass: RouteContentClass,
+  bodyClass: RouteBodyClass,
+): V207DisposableOrchestratorError {
+  return new V207RouteResponseError(
+    `V207_DISPOSABLE_ROUTE_RESPONSE_${failure}_${statusClass}_${versionState}_${contentClass}_${bodyClass}`,
+    statusClass,
+    versionState,
+  );
+}
+
+async function readBoundedRouteBody(
+  response: Response,
+  statusClass: RouteStatusClass,
+  versionState: RouteVersionState,
+  contentClass: RouteContentClass,
+): Promise<{ readonly bytes: Uint8Array; readonly bodyClass: "BBOUNDED" | "BEMPTY" }> {
+  const declaredLength = response.headers.get("content-length");
+  let expectedLength: number | undefined;
+  if (declaredLength !== null) {
+    if (!/^(?:0|[1-9][0-9]{0,9})$/u.test(declaredLength)) {
+      await response.body?.cancel().catch(() => undefined);
+      throw routeResponseError(
+        "BODY_LENGTH_INVALID",
+        statusClass,
+        versionState,
+        contentClass,
+        "BDECLARED_INVALID",
+      );
+    }
+    expectedLength = Number(declaredLength);
+    if (!Number.isSafeInteger(expectedLength) || expectedLength > ROUTE_RESPONSE_MAX_BYTES) {
+      await response.body?.cancel().catch(() => undefined);
+      throw routeResponseError(
+        "BODY_TOO_LARGE",
+        statusClass,
+        versionState,
+        contentClass,
+        "BOVERSIZED",
+      );
+    }
+  }
+
+  const reader = response.body?.getReader();
+  if (reader === undefined) {
+    if (expectedLength !== undefined && expectedLength !== 0) {
+      throw routeResponseError(
+        "BODY_LENGTH_MISMATCH",
+        statusClass,
+        versionState,
+        contentClass,
+        "BMISMATCH",
+      );
+    }
+    return { bytes: new Uint8Array(), bodyClass: "BEMPTY" };
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const item = await reader.read();
+      if (item.done) break;
+      total += item.value.byteLength;
+      if (total > ROUTE_RESPONSE_MAX_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        throw routeResponseError(
+          "BODY_TOO_LARGE",
+          statusClass,
+          versionState,
+          contentClass,
+          "BOVERSIZED",
+        );
+      }
+      chunks.push(item.value);
+    }
+  } catch (error) {
+    if (error instanceof V207DisposableOrchestratorError) throw error;
+    throw routeResponseError(
+      "BODY_READ_FAILED",
+      statusClass,
+      versionState,
+      contentClass,
+      total === 0 ? "BEMPTY" : "BBOUNDED",
+    );
+  }
+  if (expectedLength !== undefined && expectedLength !== total) {
+    throw routeResponseError(
+      "BODY_LENGTH_MISMATCH",
+      statusClass,
+      versionState,
+      contentClass,
+      "BMISMATCH",
+    );
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { bytes, bodyClass: total === 0 ? "BEMPTY" : "BBOUNDED" };
+}
+
+function isRouteResponseDiagnostic(error: V207DisposableOrchestratorError): boolean {
+  return error instanceof V207RouteResponseError;
+}
+
+function isRetryableActiveRoutePreMatch(error: unknown): boolean {
+  return (
+    error instanceof V207DisposableOrchestratorError &&
+    (error.code === "V207_DISPOSABLE_ROUTE_UNREACHABLE" ||
+      (error instanceof V207RouteResponseError &&
+        error.statusClass === "S5XX" &&
+        error.versionState === "VMATCHED"))
+  );
+}
+
 async function readRoute(
   fetchImpl: typeof fetch,
   routeUrl: string,
   signal?: AbortSignal,
   timeoutMilliseconds = 15_000,
   expectedWorkerVersionId?: string,
+  diagnosticWorkerVersionId?: string,
 ): Promise<RouteFingerprint> {
   let response: Response;
   try {
@@ -356,24 +530,53 @@ async function readRoute(
   }
   const workerVersionId = response.headers.get(V207_ROUTE_VERSION_HEADER);
   validateObservedWorkerVersion(workerVersionId, expectedWorkerVersionId);
+  const statusClass = routeStatusClass(response.status);
+  const versionState = routeVersionState(
+    workerVersionId,
+    diagnosticWorkerVersionId ?? expectedWorkerVersionId,
+  );
+  const contentClass = routeContentClass(response.headers.get("content-type"));
+  const { bytes, bodyClass } = await readBoundedRouteBody(
+    response,
+    statusClass,
+    versionState,
+    contentClass,
+  );
+  if (contentClass === "CMISSING") {
+    throw routeResponseError(
+      "CONTENT_TYPE_MISSING",
+      statusClass,
+      versionState,
+      contentClass,
+      bodyClass,
+    );
+  }
+  if (contentClass !== "CJSON") {
+    throw routeResponseError("NON_JSON", statusClass, versionState, contentClass, bodyClass);
+  }
   let value: unknown;
   try {
-    value = (await response.json()) as unknown;
+    value = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes),
+    ) as unknown;
   } catch {
-    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_INVALID");
+    throw routeResponseError("JSON_INVALID", statusClass, versionState, contentClass, bodyClass);
   }
   const valueRecord =
     typeof value === "object" && value !== null && !Array.isArray(value)
       ? (value as Record<string, unknown>)
       : null;
-  const errorRecord =
-    typeof valueRecord?.error === "object" && valueRecord.error !== null
-      ? (valueRecord.error as Record<string, unknown>)
-      : null;
-  const code = errorRecord?.code ?? "";
-  if (typeof code !== "string" || !SAFE_CODE.test(code)) {
-    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_INVALID");
-  }
+  if (valueRecord === null || Array.isArray(valueRecord.error))
+    throw routeResponseError("SHAPE_INVALID", statusClass, versionState, contentClass, bodyClass);
+  const errorValue = valueRecord.error;
+  if (typeof errorValue !== "object" || errorValue === null)
+    throw routeResponseError("SHAPE_INVALID", statusClass, versionState, contentClass, bodyClass);
+  const errorRecord = errorValue as Record<string, unknown>;
+  if (!("code" in errorRecord))
+    throw routeResponseError("CODE_MISSING", statusClass, versionState, contentClass, bodyClass);
+  const code = errorRecord.code;
+  if (typeof code !== "string" || !SAFE_CODE.test(code))
+    throw routeResponseError("CODE_INVALID", statusClass, versionState, contentClass, bodyClass);
   return { status: response.status, code, workerVersionId };
 }
 
@@ -449,8 +652,7 @@ async function assertStableRoute(
       }
       if (
         !(error instanceof V207DisposableOrchestratorError) ||
-        (error.code !== "V207_DISPOSABLE_ROUTE_UNREACHABLE" &&
-          error.code !== "V207_DISPOSABLE_ROUTE_INVALID")
+        (error.code !== "V207_DISPOSABLE_ROUTE_UNREACHABLE" && !isRouteResponseDiagnostic(error))
       ) {
         throw error;
       }
@@ -487,31 +689,44 @@ async function assertStableActiveRoute(
     }
     const remainingMilliseconds = deadline - Date.now();
     if (remainingMilliseconds <= 0) break;
-    const observed = await readRoute(
-      fetchImpl,
-      routeUrl,
-      signal,
-      Math.min(15_000, remainingMilliseconds),
-    );
-    if (typeof observed.workerVersionId !== "string") {
-      throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID");
-    }
-    if (observed.status === 403 && observed.code === "V207_AUTHORITY_REJECTED") {
-      assertExpectedWorkerVersion(observed.workerVersionId, expectedWorkerVersionId);
-      firstExactMatchSeen = true;
-      consecutiveMatches += 1;
-      if (consecutiveMatches === reads) return;
-    } else if (
-      // An edge may briefly retain the exact disabled application predecessor after secret put.
-      // Once any edge serves the exact active version, regression or alternation is terminal.
-      !firstExactMatchSeen &&
-      observed.status === 404 &&
-      observed.code === "V207_ROUTE_DISABLED" &&
-      observed.workerVersionId !== expectedWorkerVersionId
-    ) {
+    let observed: RouteFingerprint | undefined;
+    try {
+      observed = await readRoute(
+        fetchImpl,
+        routeUrl,
+        signal,
+        Math.min(15_000, remainingMilliseconds),
+        undefined,
+        expectedWorkerVersionId,
+      );
+    } catch (error) {
+      if (isAborted(signal)) {
+        throw new V207DisposableOrchestratorError("V207_OPERATOR_ABORT");
+      }
+      if (firstExactMatchSeen || !isRetryableActiveRoutePreMatch(error)) throw error;
       consecutiveMatches = 0;
-    } else {
-      throw new V207DisposableOrchestratorError(errorCode);
+    }
+    if (observed !== undefined) {
+      if (typeof observed.workerVersionId !== "string") {
+        throw new V207DisposableOrchestratorError("V207_DISPOSABLE_ROUTE_VERSION_ID_INVALID");
+      }
+      if (observed.status === 403 && observed.code === "V207_AUTHORITY_REJECTED") {
+        assertExpectedWorkerVersion(observed.workerVersionId, expectedWorkerVersionId);
+        firstExactMatchSeen = true;
+        consecutiveMatches += 1;
+        if (consecutiveMatches === reads) return;
+      } else if (
+        // An edge may briefly retain the exact disabled application predecessor after secret put.
+        // Once any edge serves the exact active version, regression or alternation is terminal.
+        !firstExactMatchSeen &&
+        observed.status === 404 &&
+        observed.code === "V207_ROUTE_DISABLED" &&
+        observed.workerVersionId !== expectedWorkerVersionId
+      ) {
+        consecutiveMatches = 0;
+      } else {
+        throw new V207DisposableOrchestratorError(errorCode);
+      }
     }
     if (attempt < ROUTE_PROPAGATION_MAX_ATTEMPTS && Date.now() < deadline) {
       const retryDelayMilliseconds = Math.min(
