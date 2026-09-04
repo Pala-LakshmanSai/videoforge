@@ -200,16 +200,18 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt77 is sealed `SEALED_AWAITING_FRESH_EXACT_APPROVAL` at control
+**Current gate:** Attempt77 is `APPROVED_SINGLE_USE_UNCONSUMED` at control
 `20c1fb9eb34b76c860c404705cf7d582350daa17`. Proposal
 `sha256:a84068163041879cc8616052eaf67a668f1aa46e0b186b53395524b5a02e816a`, acceptance
-`sha256:d7008a7a85a91ccfa1f96e1dd5a9303c1d2bc96c1bfe57a9e11b384e82e0d2d0`, audit
-`sha256:430dbe267fef38524af94f43e67b6a7ca70e6f36de1cf8992b69b2d122b0ecc8`, and validator
-`sha256:00347f38109fd0d5e8000949067620a841c1366ef8a2e9da576c3a6fbc9c0f15` pass with P0/P1/P2
+`sha256:dca919c3019e8c8506eb836c377fe22ab7f1d26b9cd27661ddb2c100cca3e7fa`, preapproval repair audit
+`sha256:430dbe267fef38524af94f43e67b6a7ca70e6f36de1cf8992b69b2d122b0ecc8`, post-approval authority
+audit `sha256:aab441ee9231c9bb2dcbd1b34f518edb59ff0c50932bf02c4d9e1becfdef6434`, and validator
+`sha256:90141e581da2521b8c6d9fef191673230ab122fddc29cd01b6b619ada029266d` pass with P0/P1/P2
 `0/0/0`. The exact diagnostic repair distinguishes
 prewrite-head, body-read, bucket-write, and postwrite-head failures without raw data, retry, or
-redispatch. V2-07 remains `NOT_QUALIFIED`; executable authority, cap, and anchor-refresh authority
-are null/zero, and no approved-authority file exists.
+redispatch. Authority `sha256:ca86035ac8c8be8b1cdbe127f3154841f2cccc9007eaa29ae0fb27563dbcf7b1`
+is single-use and unconsumed for exactly the sealed `$4.50` sequence. V2-07 remains `NOT_QUALIFIED`;
+no fallback, anchor refresh, or V2-08 is authorized.
 
 **Starting point:** Attempt75 consumed its exact proposal and authority, published Mage image
 `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`,
@@ -225,7 +227,7 @@ input; no provider, mutation, GPU, spend, or V2-08 authority remains.
 
 - preserve Attempt75 and Attempt76 closure, acceptance, orchestrator, reconciliation, approval, and
   immutable image-publication evidence; never reuse either proposal, authority, or historical cap;
-- obtain fresh exact approval only for Attempt77 proposal
+- execute only approved Attempt77 proposal
   `sha256:a84068163041879cc8616052eaf67a668f1aa46e0b186b53395524b5a02e816a`: reuse the
   published image without republication; RTX 4090 EU-RO-1 at `$1.116/GPU-hour`; baseline
   `2.266709277551854`; cumulative finite cap `$4.50`; `workersMin=0`, initial max one and temporary

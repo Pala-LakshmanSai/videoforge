@@ -4,28 +4,30 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt77 is sealed `SEALED_AWAITING_FRESH_EXACT_APPROVAL` at control source
+- V2-07 Attempt77 is `APPROVED_SINGLE_USE_UNCONSUMED` at control source
   `20c1fb9eb34b76c860c404705cf7d582350daa17`. Proposal
   `sha256:a84068163041879cc8616052eaf67a668f1aa46e0b186b53395524b5a02e816a`, acceptance
-  `sha256:d7008a7a85a91ccfa1f96e1dd5a9303c1d2bc96c1bfe57a9e11b384e82e0d2d0`, independent audit
-  `sha256:430dbe267fef38524af94f43e67b6a7ca70e6f36de1cf8992b69b2d122b0ecc8`, and validator
-  `sha256:00347f38109fd0d5e8000949067620a841c1366ef8a2e9da576c3a6fbc9c0f15` pass with P0/P1/P2
+  `sha256:dca919c3019e8c8506eb836c377fe22ab7f1d26b9cd27661ddb2c100cca3e7fa`, preapproval repair audit
+  `sha256:430dbe267fef38524af94f43e67b6a7ca70e6f36de1cf8992b69b2d122b0ecc8`, post-approval authority
+  audit `sha256:aab441ee9231c9bb2dcbd1b34f518edb59ff0c50932bf02c4d9e1becfdef6434`, and validator
+  `sha256:90141e581da2521b8c6d9fef191673230ab122fddc29cd01b6b619ada029266d` pass with P0/P1/P2
   `0/0/0` and focused tests `66/66`.
 - The repair preserves bounded distinct-version route propagation and the exact pre-GPU Python
   `urllib` upload/finalize/readback/delete probe, while classifying prewrite-head, body-read,
   bucket-write, and postwrite-head failures through bounded exact-version/status/exit-bound codes.
   It adds no retry or redispatch and retains signal-safe output/endpoint/template/Worker/route
   cleanup plus three final zero-compute reads.
-- The proposed single-use scope is the already published Mage image from source
+- The approved single-use scope is the already published Mage image from source
   `51d7de6cb3c0d88ddcb06df533864bf319a1210f` at
   `sha256:8d29829130b3efcc1eb1c5daf189f6caeeb65236eeb263cf643d3c692f01e37d`,
   RTX 4090 in EU-RO-1 at `$1.116/GPU-hour`, `workersMin=0`, initial max one and temporary max two,
   baseline endpoint spend `2.266709277551854`, cumulative finite cap `$4.50`, and continued
   retention of both exact 50 GB EU-RO-1 volumes at `$7/month` combined. There is no GPU fallback,
   rollback-anchor refresh, retained-volume mutation, image republication, or V2-08 action.
-- No executable authority exists: provider calls, mutations, credential access, GPU use, and spend
-  remain unauthorized; executable cap is zero/null and no `approved-authority.json` exists. Fresh
-  exact approval of Attempt77 is required before any provider action.
+- Exact authority `sha256:ca86035ac8c8be8b1cdbe127f3154841f2cccc9007eaa29ae0fb27563dbcf7b1`
+  is single-use and unconsumed. Provider calls, mutations, credential access, GPU use, and spend are
+  authorized only for the sealed Attempt77 sequence and cumulative `$4.50` cap. No other provider,
+  fallback, anchor-refresh, retained-volume mutation, image republication, or V2-08 authority exists.
 - Attempt76 remains `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its closure, orchestrator, and
   reconciliation hashes are respectively
   `sha256:601134bc4f7eab8057f466d541ea561f50ac0b9dc0b1d39abe17d387142d9a98`,
