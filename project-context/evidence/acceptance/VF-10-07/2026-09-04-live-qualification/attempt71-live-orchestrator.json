@@ -1,0 +1,22 @@
+{
+  "schema_version": "videoforge-v207-disposable-live-orchestration/v1",
+  "worker_name": "videoforge-v207-output",
+  "route": "https://videoforge-v207-output.lakshmansai121.workers.dev/api/v2/v207/generated-output-port",
+  "cleanup_required": false,
+  "result": "FAILED",
+  "events": [
+    {
+      "event": "clean_worktree_confirmed",
+      "at": "2026-09-04T11:57:50.048Z"
+    },
+    {
+      "event": "preflight_completed",
+      "at": "2026-09-04T11:57:56.983Z"
+    },
+    {
+      "event": "initial_control_plane_absence_rejected_before_mutation",
+      "at": "2026-09-04T11:57:58.207Z",
+      "code": "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED"
+    }
+  ]
+}

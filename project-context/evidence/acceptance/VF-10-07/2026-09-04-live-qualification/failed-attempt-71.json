@@ -1,0 +1,54 @@
+{
+  "schema_version": "videoforge.v2-07-attempt71-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 71,
+  "status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "qualification_status": "NOT_QUALIFIED",
+  "failure_code": "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
+  "failure_phase": "initial_control_plane_absence_proof",
+  "root_cause": "The disposable Wrangler config path was resolved from the package process cwd apps/web instead of the computed repository cwd, producing an ENOENT before any Cloudflare API request.",
+  "proposal_sha256": "sha256:5aff2029ba534c34d50e35e6a404e1787572f767b788171e754d9a18a84ae967",
+  "control_source_commit": "e1bf464e8bae5615e63921ed5f551a7e554ab5b3",
+  "activation_commit": "d609accd718cc33cc8a1feb45fee9716718dd31e",
+  "authority_sha256": "sha256:94c4e0a7b803916cd16e96ad2b3dda2f6fd745c007d709c2b575db8d89bb4e24",
+  "image_source_commit": "095e1642562e4370c89425292428eb474ba190f1",
+  "image_digest": "sha256:8a92e4345c111d60fc197cbc0fd3adf7d907a64d49547507fe68a089d5ed2247",
+  "execution": {
+    "preflight_completed": true,
+    "cloudflare_api_request_reached": false,
+    "cloudflare_worker_deployed": false,
+    "cloudflare_secret_or_route_activated": false,
+    "runpod_resources_created": false,
+    "gpu_jobs_submitted": 0,
+    "provider_mutations": 0,
+    "incremental_spend_usd": 0,
+    "v2_08_actions": 0
+  },
+  "cleanup": {
+    "disposable_worker_absent": true,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "three_stable_reads": true
+  },
+  "local_diagnostic": {
+    "wrangler_log_time_utc": "2026-09-04T11:57:57.753Z",
+    "error_type": "ParseError",
+    "error_message": "Could not read file",
+    "attempted_config_path": "/Users/lakshmansai/Documents/videoforge/apps/web/deploy/v2-07/v207-disposable-output.wrangler.jsonc",
+    "cause": "ENOENT"
+  },
+  "evidence": {
+    "orchestrator": "attempt71-live-orchestrator.json",
+    "orchestrator_sha256": "sha256:cbef49057f1aeadca348ff0d570f6a502049d4cd1322e23389b8934838e9db6b",
+    "reconciliation": "attempt71-reconciliation-observation.json",
+    "reconciliation_sha256": "sha256:2d3b29eb99b010bf8ca4dfbaea0cc345faa84d9525777bc92415d144e9f6e00d"
+  },
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "next_action": "Resolve the default config path against the computed repository cwd, reseal, and obtain fresh exact approval."
+}

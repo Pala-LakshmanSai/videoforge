@@ -4,21 +4,21 @@
 
 ### Current new-chat launch point — 2026-09-04
 
-- V2-07 Attempt70 consumed its exact single-use authority and stopped before mutation at
-  `V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED`: ANSI/VT bytes in Wrangler's absent-Worker diagnostic
-  prevented the exact code-`10007` matcher from recognizing the otherwise valid response. No Worker,
-  signer, route, RunPod resource, GPU job, or spend was created. Three stable final reads prove zero
-  Pods/endpoints/templates/workers and both exact 50 GB EU-RO-1 volumes remain retained at the
-  approved `$7/month` total; observed incremental spend was `$0`.
-- Provider-free repair `e1bf464e8bae5615e63921ed5f551a7e554ab5b3` strips ANSI/VT control bytes before
-  applying the unchanged exact structured absence matcher. Attempt71 proposal
-  `sha256:5aff2029ba534c34d50e35e6a404e1787572f767b788171e754d9a18a84ae967` is approved once under
-  single-use, currently unconsumed authority
-  `sha256:94c4e0a7b803916cd16e96ad2b3dda2f6fd745c007d709c2b575db8d89bb4e24` and a `$4.50`
-  maximum cumulative finite cap. Execute only the bound Attempt71 qualification and signal-safe
-  disposable cleanup through three final zero-compute reads; retain the unchanged two volumes at
-  `$7/month`, with no GPU fallback, rollback-anchor refresh, or V2-08 execution. Attempt70 remains
-  consumed and non-reusable; V2-07 remains `NOT_QUALIFIED` pending live proof and independent audit.
+- V2-07 Attempt71 consumed its exact single-use authority and stopped clean before mutation at
+  `V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED`. The disposable Wrangler config path was resolved
+  from the package process cwd `apps/web` instead of the computed repository cwd, producing
+  `ENOENT` before any Cloudflare API request. No Worker, signer, route, RunPod resource, GPU job, or
+  spend was created. Three stable final reads prove zero Pods/endpoints/templates/workers; both
+  exact 50 GB EU-RO-1 volumes remain retained at `$7/month` total, and observed incremental spend
+  was `$0`. Attempt71 authority and proposal are consumed, closed, and non-reusable.
+- Provider-free repair `183b8dab0cdeead0b8e1f6f2b4642cf982e3e50d` resolves the disposable config from
+  the computed repository cwd. Attempt72 proposal
+  `sha256:e1fd6996f4aa21c07b3b24e4db52683ebfb2999446d46066399b7b8cf0c7b1b9` is sealed and awaits
+  fresh exact approval; no provider authority exists. It retains the unchanged Mage image, `$4.50`
+  cumulative finite cap, RTX 4090 EU-RO-1 at `$1.116/GPU-hour`, workersMin zero and temporary max
+  two workers, disposable output/endpoint/template/worker/route deletion, signal-safe cleanup,
+  three final zero-compute reads, continued `$7/month` volume retention, no GPU fallback, and no
+  rollback-anchor refresh. V2-07 remains `NOT_QUALIFIED`; do not execute V2-08.
 
 - V2-07 Attempt68 is consumed and closed clean after
   `V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED`. The active shared staging Worker was outside the
