@@ -2424,17 +2424,20 @@ describe("V2-07 live orchestrator", () => {
       },
       forbiddenBody: "V207_UNEXPECTED_SIGNER_RESPONSE",
     },
-  ])("fails closed on $name before the first exact signer 403", async ({ probe, forbiddenBody }) => {
-    const outcome = await runSignerActivationFixture([probe]);
+  ])(
+    "fails closed on $name before the first exact signer 403",
+    async ({ probe, forbiddenBody }) => {
+      const outcome = await runSignerActivationFixture([probe]);
 
-    expect(outcome.error).toMatchObject({ code: "V207_AUTHORITY_PROPAGATION_UNCONFIRMED" });
-    expect(outcome.liveRunnerCalls).toBe(0);
-    expect(outcome.signerSecretPresent).toBe(false);
-    expect(outcome.rollbackSeen).toBe(true);
-    const evidence = await readFile(outcome.files.evidencePath, "utf8");
-    expect(evidence).not.toContain('"event": "signer_route_activation_transport_gap"');
-    expect(evidence).not.toContain(forbiddenBody);
-  });
+      expect(outcome.error).toMatchObject({ code: "V207_AUTHORITY_PROPAGATION_UNCONFIRMED" });
+      expect(outcome.liveRunnerCalls).toBe(0);
+      expect(outcome.signerSecretPresent).toBe(false);
+      expect(outcome.rollbackSeen).toBe(true);
+      const evidence = await readFile(outcome.files.evidencePath, "utf8");
+      expect(evidence).not.toContain('"event": "signer_route_activation_transport_gap"');
+      expect(evidence).not.toContain(forbiddenBody);
+    },
+  );
 
   it("fails closed on a pre-403 signer version mismatch", async () => {
     const outcome = await runSignerActivationFixture([
