@@ -77,6 +77,9 @@ const expectedTemplateEnvironmentKeys = [
   "MAGE_MODEL_ROOT",
   "RUNPOD_INIT_TIMEOUT",
   "TRANSFORMERS_OFFLINE",
+  "VIDEOFORGE_ENVELOPE_KEY_ID",
+  "VIDEOFORGE_ENVELOPE_KEY_SHA256",
+  "VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX",
   "VIDEOFORGE_JOB_SCRATCH_ROOT",
   "VIDEOFORGE_MAGE_GPU_OFFERING_ID",
   "VIDEOFORGE_MAGE_MANIFEST_SHA256",
@@ -131,6 +134,7 @@ function validateTemplate(resource: RunPodNamedResource, endpointId?: string): s
     MAGE_MODEL_ROOT: "/runpod-volume/mage-model",
     RUNPOD_INIT_TIMEOUT: String(V207_RUNPOD_INIT_TIMEOUT_SECONDS),
     TRANSFORMERS_OFFLINE: "1",
+    VIDEOFORGE_ENVELOPE_KEY_ID: "worker-key-1",
     VIDEOFORGE_JOB_SCRATCH_ROOT: "/tmp/videoforge-jobs",
     VIDEOFORGE_MAGE_GPU_OFFERING_ID: V207_RUNPOD_GPU,
     VIDEOFORGE_MAGE_MANIFEST_SHA256: V207_FAILED_CLEANUP_MANIFEST_SHA256,
@@ -145,6 +149,12 @@ function validateTemplate(resource: RunPodNamedResource, endpointId?: string): s
   if (
     typeof validatedEnvironment.VIDEOFORGE_MAGE_WORKER_TOKEN !== "string" ||
     !HEX_64.test(validatedEnvironment.VIDEOFORGE_MAGE_WORKER_TOKEN) ||
+    validatedEnvironment.VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX !==
+      validatedEnvironment.VIDEOFORGE_MAGE_WORKER_TOKEN ||
+    validatedEnvironment.VIDEOFORGE_ENVELOPE_KEY_SHA256 !==
+      `sha256:${createHash("sha256")
+        .update(Buffer.from(validatedEnvironment.VIDEOFORGE_MAGE_WORKER_TOKEN, "hex"))
+        .digest("hex")}` ||
     typeof validatedEnvironment.VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX !== "string" ||
     !HEX_64.test(validatedEnvironment.VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX)
   ) {

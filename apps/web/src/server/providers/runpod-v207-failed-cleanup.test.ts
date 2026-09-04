@@ -18,6 +18,7 @@ import { V207_REPAIRED_IMAGE } from "./v207-activation-authority";
 const apiKey = "runpod-test-key-at-least-twenty-characters";
 const controlBaseUrl = "http://127.0.0.1:43123";
 const endpointIdHash = `sha256:${createHash("sha256").update("endpoint_10").digest("hex")}`;
+const workerToken = "a".repeat(64);
 const jsonResponse = (value: unknown, status = 200): Response =>
   new Response(JSON.stringify(value), {
     status,
@@ -31,12 +32,17 @@ const templateEnvironment = {
   MAGE_MODEL_ROOT: "/runpod-volume/mage-model",
   RUNPOD_INIT_TIMEOUT: "800",
   TRANSFORMERS_OFFLINE: "1",
+  VIDEOFORGE_ENVELOPE_KEY_ID: "worker-key-1",
+  VIDEOFORGE_ENVELOPE_KEY_SHA256: `sha256:${createHash("sha256")
+    .update(Buffer.from(workerToken, "hex"))
+    .digest("hex")}`,
+  VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: workerToken,
   VIDEOFORGE_JOB_SCRATCH_ROOT: "/tmp/videoforge-jobs",
   VIDEOFORGE_MAGE_GPU_OFFERING_ID: "NVIDIA GeForce RTX 4090",
   VIDEOFORGE_MAGE_MANIFEST_SHA256: V207_FAILED_CLEANUP_MANIFEST_SHA256,
   VIDEOFORGE_MAGE_VOLUME_ID_HASH: V207_FAILED_CLEANUP_VOLUME_ID_HASH,
   VIDEOFORGE_MAGE_WORKER_IMAGE_DIGEST: V207_REPAIRED_IMAGE,
-  VIDEOFORGE_MAGE_WORKER_TOKEN: "a".repeat(64),
+  VIDEOFORGE_MAGE_WORKER_TOKEN: workerToken,
   VIDEOFORGE_RECEIPT_KEY_ID: V207_FAILED_CLEANUP_RECEIPT_KEY_ID,
   VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX: "b".repeat(64),
 };
