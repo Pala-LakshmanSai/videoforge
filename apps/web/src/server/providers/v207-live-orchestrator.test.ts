@@ -118,6 +118,118 @@ async function enableRollbackAnchorRefresh(configPath: string): Promise<void> {
   expect(result.sha256).not.toBe(V207_ANCHOR_REFRESH_BASELINE_SHA256);
 }
 
+type SignerActivationProbe =
+  | Readonly<{ kind: "transport"; message: string }>
+  | Readonly<{
+      kind: "response";
+      status: number;
+      code: string;
+      versionId?: string | null;
+      body?: string;
+    }>;
+
+/**
+ * Run only the ordinary signer activation path with deterministic command/route adapters.  The
+ * route starts at the captured 503 baseline, then consumes the supplied signer probes, and keeps
+ * cleanup on that same baseline after the signer is deleted and the captured Worker is restored.
+ */
+async function runSignerActivationFixture(probes: readonly SignerActivationProbe[]) {
+  const files = await fixture();
+  const calls: V207CommandRequest[] = [];
+  let signerSecretPresent = false;
+  let rollbackSeen = false;
+  let probeIndex = 0;
+  let liveRunnerCalls = 0;
+  const commandRunner = async (request: V207CommandRequest): Promise<V207CommandResult> => {
+    calls.push(request);
+    if (request.command === "git") return result();
+    if (request.args.includes("versions") && request.args.includes("list")) {
+      return result(RECENT_VERSION_LIST);
+    }
+    if (request.args.includes("deployments")) {
+      return result(
+        JSON.stringify({
+          id: DEPLOYMENT_ID,
+          versions: [
+            {
+              version_id: signerSecretPresent ? SIGNER_VERSION_ID : VERSION_ID,
+              percentage: 100,
+            },
+          ],
+        }),
+      );
+    }
+    if (request.args.includes("secret") && request.args.includes("list")) {
+      return result(
+        JSON.stringify(signerSecretPresent ? [{ name: V207_ORCHESTRATOR_SECRET_NAME }] : []),
+      );
+    }
+    if (request.args.includes("secret") && request.args.includes("put")) {
+      signerSecretPresent = true;
+      return result();
+    }
+    if (request.args.includes("secret") && request.args.includes("delete")) {
+      signerSecretPresent = false;
+      return result();
+    }
+    if (request.args.some((argument) => argument.endsWith("v207-live-qualification.ts"))) {
+      if (request.env.V207_PREFLIGHT_ONLY !== "1") liveRunnerCalls += 1;
+      return result();
+    }
+    if (request.args.includes("rollback")) {
+      rollbackSeen = true;
+      return result();
+    }
+    return result();
+  };
+  const fetchImpl: typeof fetch = async () => {
+    if (!signerSecretPresent) {
+      return new Response(JSON.stringify({ error: { code: "HOSTED_ROUTE_NOT_COMPOSED" } }), {
+        status: 503,
+      });
+    }
+    const probe = probes[Math.min(probeIndex++, Math.max(0, probes.length - 1))];
+    if (probe?.kind === "transport") throw new Error(probe.message);
+    if (probe === undefined) throw new Error("missing signer activation probe");
+    return new Response(probe.body ?? JSON.stringify({ error: { code: probe.code } }), {
+      status: probe.status,
+      ...(probe.versionId === null
+        ? {}
+        : {
+            headers: {
+              "x-videoforge-worker-version": probe.versionId ?? SIGNER_VERSION_ID,
+            },
+          }),
+    });
+  };
+  let error: unknown;
+  try {
+    await runV207LiveOrchestration({
+      authorityParser: parseFixtureAuthority,
+      environment: files.environment,
+      cwd: resolve(process.cwd(), "../.."),
+      configPath: files.configPath,
+      evidencePath: files.evidencePath,
+      diskAvailableBytes: V207_ORCHESTRATOR_MIN_FREE_BYTES,
+      commandRunner,
+      fetchImpl,
+      nonceFactory: () => NONCE,
+      sleepImpl: async () => undefined,
+      installSignalHandlers: false,
+    });
+  } catch (caught) {
+    error = caught;
+  }
+  return {
+    files,
+    calls,
+    error,
+    liveRunnerCalls,
+    signerSecretPresent,
+    rollbackSeen,
+  };
+}
+
 type RefreshVersionIdentityFailure = "missing" | "stale" | "alternating";
 type RefreshVersionIdentityBoundary = "pre-route" | "disabled-route" | "restored-route";
 
@@ -857,7 +969,7 @@ describe("V2-07 live orchestrator", () => {
       responses: [
         { status: 404, code: "V207_ROUTE_DISABLED", versionId: SIGNER_VERSION_ID },
         { status: 403, code: "V207_AUTHORITY_REJECTED", versionId: SIGNER_VERSION_ID },
-        { status: 400, code: "V207_REQUEST_INVALID", versionId: VERSION_ID },
+        { status: 400, code: "V207_REQUEST_INVALID", versionId: SIGNER_VERSION_ID },
       ],
     },
     {
@@ -2234,6 +2346,141 @@ describe("V2-07 live orchestrator", () => {
     expect(evidence).not.toContain("secret-body");
     expect(evidence).not.toContain("RUNPOD_SECONDARY_CODE");
     expect(evidence).not.toContain(NONCE);
+  });
+
+  it("tolerates a pre-403 transport gap, then runs after exact signer propagation", async () => {
+    const transportBody = "signer-transport-response-body-must-not-escape";
+    const validSigner403 = {
+      kind: "response" as const,
+      status: 403,
+      code: "V207_AUTHORITY_REJECTED",
+      versionId: SIGNER_VERSION_ID,
+    };
+    const outcome = await runSignerActivationFixture([
+      { kind: "transport", message: transportBody },
+      ...Array.from({ length: 16 }, () => validSigner403),
+    ]);
+
+    expect(outcome.error).toBeUndefined();
+    expect(outcome.liveRunnerCalls).toBe(1);
+    expect(outcome.signerSecretPresent).toBe(false);
+    expect(outcome.rollbackSeen).toBe(true);
+    const evidence = await readFile(outcome.files.evidencePath, "utf8");
+    expect(evidence).toContain('"event": "signer_route_activation_transport_gap"');
+    expect(evidence).toContain('"count": 1');
+    expect(evidence).toContain('"event": "signer_route_activation_confirmed"');
+    expect(evidence).not.toContain(transportBody);
+    const gapEvent = (
+      JSON.parse(evidence) as {
+        readonly events: ReadonlyArray<{
+          readonly event: string;
+          readonly detail?: Readonly<Record<string, unknown>>;
+        }>;
+      }
+    ).events.find((event) => event.event === "signer_route_activation_transport_gap");
+    expect(gapEvent?.detail).toEqual({ count: 1 });
+  });
+
+  it("fails immediately on a transport gap after the first exact signer 403", async () => {
+    const transportBody = "post-403-secret-response-body-must-not-escape";
+    const outcome = await runSignerActivationFixture([
+      {
+        kind: "response",
+        status: 403,
+        code: "V207_AUTHORITY_REJECTED",
+        versionId: SIGNER_VERSION_ID,
+      },
+      { kind: "transport", message: transportBody },
+    ]);
+
+    expect(outcome.error).toMatchObject({ code: "V207_AUTHORITY_PROPAGATION_UNCONFIRMED" });
+    expect(outcome.liveRunnerCalls).toBe(0);
+    expect(outcome.signerSecretPresent).toBe(false);
+    expect(outcome.rollbackSeen).toBe(true);
+    const evidence = await readFile(outcome.files.evidencePath, "utf8");
+    expect(evidence).not.toContain('"event": "signer_route_activation_transport_gap"');
+    expect(evidence).not.toContain(transportBody);
+  });
+
+  it.each([
+    {
+      name: "malformed response",
+      probe: {
+        kind: "response" as const,
+        status: 403,
+        code: "V207_AUTHORITY_REJECTED",
+        versionId: SIGNER_VERSION_ID,
+        body: "malformed-signer-response-body-must-not-escape",
+      },
+      forbiddenBody: "malformed-signer-response-body-must-not-escape",
+    },
+    {
+      name: "unexpected response",
+      probe: {
+        kind: "response" as const,
+        status: 500,
+        code: "V207_UNEXPECTED_SIGNER_RESPONSE",
+        versionId: SIGNER_VERSION_ID,
+      },
+      forbiddenBody: "V207_UNEXPECTED_SIGNER_RESPONSE",
+    },
+  ])("fails closed on $name before the first exact signer 403", async ({ probe, forbiddenBody }) => {
+    const outcome = await runSignerActivationFixture([probe]);
+
+    expect(outcome.error).toMatchObject({ code: "V207_AUTHORITY_PROPAGATION_UNCONFIRMED" });
+    expect(outcome.liveRunnerCalls).toBe(0);
+    expect(outcome.signerSecretPresent).toBe(false);
+    expect(outcome.rollbackSeen).toBe(true);
+    const evidence = await readFile(outcome.files.evidencePath, "utf8");
+    expect(evidence).not.toContain('"event": "signer_route_activation_transport_gap"');
+    expect(evidence).not.toContain(forbiddenBody);
+  });
+
+  it("fails closed on a pre-403 signer version mismatch", async () => {
+    const outcome = await runSignerActivationFixture([
+      {
+        kind: "response",
+        status: 404,
+        code: "V207_ROUTE_DISABLED",
+        versionId: CHANGED_VERSION_ID,
+      },
+    ]);
+
+    expect(outcome.error).toMatchObject({ code: "V207_AUTHORITY_VERSION_ID_UNCONFIRMED" });
+    expect(outcome.liveRunnerCalls).toBe(0);
+    expect(outcome.signerSecretPresent).toBe(false);
+    expect(outcome.rollbackSeen).toBe(true);
+    const evidence = await readFile(outcome.files.evidencePath, "utf8");
+    expect(evidence).not.toContain('"event": "signer_route_activation_transport_gap"');
+  });
+
+  it("exhausts bounded pre-403 transport gaps without invoking qualification", async () => {
+    const transportBody = "exhausted-signer-transport-body-must-not-escape";
+    const outcome = await runSignerActivationFixture(
+      Array.from({ length: 30 }, () => ({
+        kind: "transport" as const,
+        message: transportBody,
+      })),
+    );
+
+    expect(outcome.error).toMatchObject({ code: "V207_AUTHORITY_PROPAGATION_UNCONFIRMED" });
+    expect(outcome.liveRunnerCalls).toBe(0);
+    expect(outcome.signerSecretPresent).toBe(false);
+    expect(outcome.rollbackSeen).toBe(true);
+    const evidence = JSON.parse(await readFile(outcome.files.evidencePath, "utf8")) as {
+      readonly events: ReadonlyArray<{
+        readonly event: string;
+        readonly detail?: Readonly<Record<string, unknown>>;
+      }>;
+    };
+    const gapEvents = evidence.events.filter(
+      (event) => event.event === "signer_route_activation_transport_gap",
+    );
+    expect(gapEvents).toHaveLength(30);
+    expect(gapEvents.at(-1)?.detail).toEqual({ count: 30 });
+    expect(JSON.stringify(gapEvents)).not.toContain(transportBody);
+    expect(JSON.stringify(gapEvents)).not.toContain("status");
+    expect(JSON.stringify(gapEvents)).not.toContain("body");
   });
 
   it("fails closed when the signer route never propagates beyond the disabled response", async () => {

@@ -1058,12 +1058,14 @@ async function waitForSignerRouteActivation(
   sleepImpl: (milliseconds: number) => Promise<void>,
   signal?: AbortSignal,
   expectedWorkerVersionId?: string,
+  onTransportGap?: (count: number) => Promise<void>,
 ): Promise<{ readonly attempts: number; readonly status: 403 }> {
   const deadline = AbortSignal.timeout(ACTIVATION_PROPAGATION_WINDOW_MS);
   const pollSignal = signal === undefined ? deadline : AbortSignal.any([signal, deadline]);
   let consecutiveMatches = 0;
+  let transportGapCount = 0;
   for (let attempt = 1; attempt <= ACTIVATION_PROPAGATION_MAX_ATTEMPTS; attempt += 1) {
-    let observed: RouteFingerprint;
+    let observed: RouteFingerprint | undefined;
     try {
       observed = await readRouteFingerprint(fetchImpl, routeUrl, pollSignal, true);
     } catch (error) {
@@ -1074,9 +1076,40 @@ async function waitForSignerRouteActivation(
       ) {
         throw error;
       }
-      // Only the exact transient disabled response is retryable. A network,
-      // malformed, or unexpected response fails closed without persisting it.
-      throw new V207LiveOrchestratorError("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
+      // A route transport gap can occur while the newly activated secret is still propagating,
+      // but it is retryable only before the first valid exact signer response. Once an exact 403
+      // has appeared, a gap proves an unbounded edge split and must fail closed immediately.
+      if (
+        consecutiveMatches === 0 &&
+        !pollSignal.aborted &&
+        error instanceof V207LiveOrchestratorError &&
+        error.code === "V207_ROUTE_PROBE_FAILED"
+      ) {
+        transportGapCount += 1;
+        await onTransportGap?.(transportGapCount);
+      } else {
+        // Malformed, unexpected, or version-invalid responses are never transient. Do not persist
+        // their body/status; only the bounded orchestrator code crosses the evidence boundary.
+        throw new V207LiveOrchestratorError("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
+      }
+    }
+    if (observed === undefined) {
+      if (attempt < ACTIVATION_PROPAGATION_MAX_ATTEMPTS) {
+        await Promise.race([
+          sleepImpl(ACTIVATION_PROPAGATION_DELAY_MS),
+          new Promise<void>((resolveAbort) => {
+            if (pollSignal.aborted) resolveAbort();
+            else pollSignal.addEventListener("abort", () => resolveAbort(), { once: true });
+          }),
+        ]);
+      }
+      continue;
+    }
+    if (
+      expectedWorkerVersionId !== undefined &&
+      observed.workerVersionId !== expectedWorkerVersionId
+    ) {
+      throw new V207LiveOrchestratorError("V207_AUTHORITY_VERSION_ID_UNCONFIRMED");
     }
     if (observed.status === 403 && observed.code === "V207_AUTHORITY_REJECTED") {
       if (
@@ -1105,6 +1138,9 @@ async function waitForSignerRouteActivation(
       await sleepImpl(ACTIVATION_PROPAGATION_DELAY_MS);
     }
   }
+  // Keep the public failure contract stable while making the bounded gap policy explicit in
+  // control flow: exhausting the existing attempt/window never admits the qualification child.
+  void transportGapCount;
   throw new V207LiveOrchestratorError("V207_AUTHORITY_PROPAGATION_UNCONFIRMED");
 }
 
@@ -1814,6 +1850,9 @@ export async function runV207LiveOrchestration(
       sleepImpl,
       abortController.signal,
       activeSignerVersionId,
+      async (count) => {
+        await record("signer_route_activation_transport_gap", { count });
+      },
     );
     await record("signer_route_activation_confirmed", {
       attempts: activation.attempts,
