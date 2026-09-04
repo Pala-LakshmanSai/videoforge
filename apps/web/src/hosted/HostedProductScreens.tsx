@@ -624,6 +624,7 @@ const HOSTED_ACTIVE_ATTEMPT_STATES = new Set([
   "RECONCILING",
   "CANCEL_REQUESTED",
 ]);
+const CPU_CANCEL_CONFIRMATION_MS = 5_000;
 const HOSTED_TERMINAL_STAGE_STATUSES = new Set([
   "FAILED",
   "ACTION_REQUIRED",
@@ -3326,6 +3327,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const automaticContextReconciliationAttempt = useRef<string | null>(null);
   const automaticPromptAttempt = useRef<string | null>(null);
   const renderHandoffAttempt = useRef<string | null>(null);
+  const [armedCancellation, setArmedCancellation] = useState<{
+    readonly attemptId: string;
+    readonly attemptState: string;
+  } | null>(null);
   const asrHandoff = useMutation({
     mutationFn: async () => {
       const handoff = await readJson<{ cpu_submission: unknown }>(
@@ -3440,9 +3445,28 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   ]);
   const cancel = useMutation({
     mutationFn: (attemptId: string) =>
-      readJson(`/api/v2/cpu-attempts/${attemptId}`, { method: "POST", body: "{}" }),
+      readJson(`/api/v2/cpu-attempts/${attemptId}`, {
+        method: "POST",
+        body: JSON.stringify({
+          schema_version: "videoforge-hosted-cpu-cancellation/v1",
+          attempt_id: attemptId,
+          confirmation: "STOP",
+        }),
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
+  const armedAttemptCurrentState = armedCancellation
+    ? query.data?.attempts.find((attempt) => attempt.id === armedCancellation.attemptId)?.state
+    : null;
+  useEffect(() => {
+    if (!armedCancellation) return;
+    if (armedAttemptCurrentState !== armedCancellation.attemptState) {
+      setArmedCancellation(null);
+      return;
+    }
+    const timeout = window.setTimeout(() => setArmedCancellation(null), CPU_CANCEL_CONFIRMATION_MS);
+    return () => window.clearTimeout(timeout);
+  }, [armedAttemptCurrentState, armedCancellation]);
   const deleteProject = useMutation({
     mutationFn: () =>
       readJson<{
@@ -3905,12 +3929,29 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                     key={attempt.id}
                     variant="danger"
                     busy={cancel.isPending && cancel.variables === attempt.id}
-                    onClick={() => cancel.mutate(attempt.id)}
+                    onClick={() => {
+                      if (
+                        attempt.state === "CANCEL_REQUESTED" ||
+                        (armedCancellation?.attemptId === attempt.id &&
+                          armedCancellation.attemptState === attempt.state)
+                      ) {
+                        setArmedCancellation(null);
+                        cancel.mutate(attempt.id);
+                        return;
+                      }
+                      setArmedCancellation({
+                        attemptId: attempt.id,
+                        attemptState: attempt.state,
+                      });
+                    }}
                   >
                     <X size={15} />
                     {attempt.state === "CANCEL_REQUESTED"
                       ? `Finish stopping ${attempt.kind === "ASR" ? "transcription" : "assembly"}`
-                      : `Stop ${attempt.kind === "ASR" ? "transcription" : "assembly"}`}
+                      : armedCancellation?.attemptId === attempt.id &&
+                          armedCancellation.attemptState === attempt.state
+                        ? `Confirm stop ${attempt.kind === "ASR" ? "transcription" : "assembly"}`
+                        : `Stop ${attempt.kind === "ASR" ? "transcription" : "assembly"}`}
                   </Button>
                 ))}
               </div>

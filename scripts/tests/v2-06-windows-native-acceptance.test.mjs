@@ -41,7 +41,7 @@ test("default Windows acceptance path is provider-free and has no direct network
 
 test("desktop documentation exposes the one-run Windows handoff", () => {
   assert.match(desktopReadme, /windows-native-acceptance\.ps1/u);
-  assert.match(desktopReadme, /media-worker-v0\.1\.13/u);
+  assert.match(desktopReadme, /media-worker-v0\.1\.14/u);
   assert.match(desktopReadme, /-RunHostedPairing/u);
   assert.match(desktopReadme, /PreviousReleaseManifestPath/u);
   assert.match(desktopReadme, /SmartScreen/u);

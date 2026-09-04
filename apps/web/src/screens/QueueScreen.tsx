@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowDown, ArrowUp, Plus, Trash2, Video } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { PageHeader } from "../components/PageHeader";
 import { isHostedProviderMode } from "../hosted/provider-mode";
@@ -24,6 +25,8 @@ interface HostedQueueResponse {
   readonly worker_state: "ONLINE" | "BUSY" | "WAITING_FOR_YOUR_COMPUTER";
   readonly projects: readonly HostedQueueProject[];
 }
+
+const CANCEL_CONFIRMATION_WINDOW_MS = 6_000;
 
 async function hostedQueue(): Promise<HostedQueueResponse> {
   const response = await fetch("/api/v2/hosted/queue", {
@@ -51,6 +54,7 @@ function hostedProjectLabel(state: HostedQueueProject["state"]): string {
 }
 
 function HostedQueueScreen() {
+  const [armedCancellationAttemptId, setArmedCancellationAttemptId] = useState<string | null>(null);
   const queue = useQuery({
     queryKey: ["hosted-queue"],
     queryFn: hostedQueue,
@@ -61,12 +65,43 @@ function HostedQueueScreen() {
       const response = await fetch(`/api/v2/cpu-attempts/${attemptId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({
+          schema_version: "videoforge-hosted-cpu-cancellation/v1",
+          attempt_id: attemptId,
+          confirmation: "STOP",
+        }),
       });
       if (!response.ok) throw new Error("The job could not be cancelled.");
     },
     onSuccess: () => queue.refetch(),
   });
+  useEffect(() => {
+    if (!armedCancellationAttemptId) return;
+    const timeout = window.setTimeout(
+      () => setArmedCancellationAttemptId(null),
+      CANCEL_CONFIRMATION_WINDOW_MS,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [armedCancellationAttemptId]);
+  useEffect(() => {
+    if (
+      armedCancellationAttemptId &&
+      !queue.data?.projects.some(
+        (project) => project.cancellable_attempt_id === armedCancellationAttemptId,
+      )
+    ) {
+      setArmedCancellationAttemptId(null);
+    }
+  }, [armedCancellationAttemptId, queue.data?.projects]);
+
+  const requestCancellation = (attemptId: string) => {
+    if (armedCancellationAttemptId !== attemptId) {
+      setArmedCancellationAttemptId(attemptId);
+      return;
+    }
+    setArmedCancellationAttemptId(null);
+    cancel.mutate(attemptId);
+  };
 
   if (queue.isPending) {
     return (
@@ -167,9 +202,11 @@ function HostedQueueScreen() {
                       <Button
                         variant="secondary"
                         busy={cancel.isPending && cancel.variables === cancellableAttemptId}
-                        onClick={() => cancel.mutate(cancellableAttemptId)}
+                        onClick={() => requestCancellation(cancellableAttemptId)}
                       >
-                        Cancel
+                        {armedCancellationAttemptId === cancellableAttemptId
+                          ? "Confirm cancel"
+                          : "Cancel"}
                       </Button>
                     ) : null}
                   </div>

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -12,6 +12,7 @@ import { QueueScreen } from "./QueueScreen";
 
 describe("hosted queue", () => {
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -19,7 +20,7 @@ describe("hosted queue", () => {
   });
 
   it.each(["staging", "production"] as const)(
-    "shows one project-level job and sends an explicit cancellation in %s mode",
+    "requires deliberate confirmation before cancelling one project-level job in %s mode",
     async (providerMode) => {
       vi.stubEnv("VITE_VIDEOFORGE_PROVIDER_MODE", providerMode);
       const attemptId = "11111111-1111-4111-8111-111111111111";
@@ -42,7 +43,14 @@ describe("hosted queue", () => {
           });
         }
         if (String(input) === `/api/v2/cpu-attempts/${attemptId}`) {
-          expect(init).toMatchObject({ method: "POST", body: "{}" });
+          expect(init).toMatchObject({
+            method: "POST",
+            body: JSON.stringify({
+              schema_version: "videoforge-hosted-cpu-cancellation/v1",
+              attempt_id: attemptId,
+              confirmation: "STOP",
+            }),
+          });
           return Response.json({ id: attemptId, state: "CANCEL_REQUESTED" }, { status: 202 });
         }
         throw new Error(`Unexpected request ${String(input)}`);
@@ -66,6 +74,12 @@ describe("hosted queue", () => {
       expect(screen.getByText("In progress", { selector: ".badge" })).toBeInTheDocument();
       expect(screen.getByText("Connected")).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.getByRole("button", { name: "Confirm cancel" })).toBeInTheDocument();
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        `/api/v2/cpu-attempts/${attemptId}`,
+        expect.anything(),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Confirm cancel" }));
       await waitFor(() =>
         expect(fetchMock).toHaveBeenCalledWith(
           `/api/v2/cpu-attempts/${attemptId}`,
@@ -74,6 +88,94 @@ describe("hosted queue", () => {
       );
     },
   );
+
+  it("auto-disarms cancellation confirmation after the bounded window", async () => {
+    vi.stubEnv("VITE_VIDEOFORGE_PROVIDER_MODE", "staging");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          schema_version: "videoforge-hosted-queue/v2",
+          worker_state: "ONLINE",
+          projects: [
+            {
+              project_id: "22222222-2222-4222-8222-222222222222",
+              title: "Timed confirmation",
+              state: "IN_PROGRESS",
+              stage: "Transcription",
+              cancellable_attempt_id: "11111111-1111-4111-8111-111111111111",
+              created_at: "2026-08-17T10:00:00.000Z",
+              updated_at: "2026-08-17T10:01:00.000Z",
+            },
+          ],
+        }),
+      ),
+    );
+    const rootRoute = createRootRoute({ component: QueueScreen });
+    const router = createRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Timed confirmation")).toBeInTheDocument();
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Confirm cancel" })).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(6_001));
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("disarms confirmation when the active attempt disappears", async () => {
+    vi.stubEnv("VITE_VIDEOFORGE_PROVIDER_MODE", "staging");
+    let active = true;
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        schema_version: "videoforge-hosted-queue/v2",
+        worker_state: "ONLINE",
+        projects: [
+          {
+            project_id: "22222222-2222-4222-8222-222222222222",
+            title: "Settling job",
+            state: active ? "IN_PROGRESS" : "CANCELLED",
+            stage: "Transcription",
+            cancellable_attempt_id: active ? "11111111-1111-4111-8111-111111111111" : null,
+            created_at: "2026-08-17T10:00:00.000Z",
+            updated_at: "2026-08-17T10:01:00.000Z",
+          },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const rootRoute = createRootRoute({ component: QueueScreen });
+    const router = createRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Settling job")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Confirm cancel" })).toBeInTheDocument();
+    active = false;
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["hosted-queue"] });
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Confirm cancel" })).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+  });
 
   it("shows an actionable project failure without presenting completed attempts", async () => {
     vi.stubEnv("VITE_VIDEOFORGE_PROVIDER_MODE", "staging");

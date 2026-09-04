@@ -44,6 +44,7 @@ import {
 } from "./v213-resolved-render-manifest-route";
 import { createV213WorkerLiveAcceptanceExecute } from "./v213-worker-live-execution";
 import { handleHostedInviteRedemption, HOSTED_INVITE_REDEMPTION_PATH } from "./invite-redemption";
+import { exactHostedCpuCancellationConfirmation } from "./hosted-cpu-cancellation";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -775,6 +776,15 @@ async function handleCpuAttemptApi(
     if (request.method === "POST") {
       if (!sameOriginBrowserWrite(request, config)) {
         return json({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+      }
+      let cancellationConfirmation: unknown;
+      try {
+        cancellationConfirmation = await request.json();
+      } catch {
+        return json({ error: { code: "CPU_CANCELLATION_CONFIRMATION_REQUIRED" } }, 400);
+      }
+      if (!exactHostedCpuCancellationConfirmation(cancellationConfirmation, attemptId)) {
+        return json({ error: { code: "CPU_CANCELLATION_CONFIRMATION_REQUIRED" } }, 400);
       }
       const row = await createNeonExecutor(pool).transaction(async (transaction) => {
         await transaction.query("SELECT set_config($1, $2, true)", [

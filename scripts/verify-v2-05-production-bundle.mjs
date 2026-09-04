@@ -12,12 +12,13 @@ if (!new Set(["wrangler.production.jsonc", "wrangler.staging.jsonc"]).has(wrangl
 const productionConfigPath = path.join(repositoryRoot, "apps/web", wranglerConfig);
 const productionEntryPath = path.join(repositoryRoot, "apps/web/worker/production-index.ts");
 const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.ts");
-// Accepted provider-free route-split builds. Production is a 187-byte virtual entry plus its
-// 2,717,234-byte shared chunk; staging is the same entry plus its 2,746,416-byte shared chunk.
+// Accepted provider-free route-split builds after the exact attempt-bound cancellation contract.
+// Production is a 187-byte virtual entry plus its 2,718,086-byte shared chunk; staging is the same
+// entry plus its 2,747,272-byte shared chunk.
 // These are deliberately exact per-target no-growth ceilings, not platform limits.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_717_421,
-  "wrangler.staging.jsonc": 2_746_603,
+  "wrangler.production.jsonc": 2_718_273,
+  "wrangler.staging.jsonc": 2_747_459,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

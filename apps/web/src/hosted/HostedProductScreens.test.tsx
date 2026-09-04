@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -205,6 +205,7 @@ function renderHosted(node: ReactNode) {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -1343,11 +1344,174 @@ describe("hosted product journey", () => {
     expect(within(progressHero).queryByText("Blocked")).not.toBeInTheDocument();
   });
 
+  it("requires a second deliberate click before stopping active transcription", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const attemptId = "33333333-3333-4333-8333-333333333333";
+    let cancellationRequests = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith(`/api/v2/cpu-attempts/${attemptId}`)) {
+        cancellationRequests += 1;
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({
+            schema_version: "videoforge-hosted-cpu-cancellation/v1",
+            attempt_id: attemptId,
+            confirmation: "STOP",
+          }),
+        });
+        return Response.json({ id: attemptId, state: "CANCEL_REQUESTED" }, { status: 202 });
+      }
+      return Response.json({
+        project: {
+          id: projectId,
+          title: "Private project",
+          created_at: "2026-08-17T10:00:00.000Z",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
+        },
+        attempts: [
+          {
+            id: attemptId,
+            kind: "ASR" as const,
+            state: "RUNNING",
+            version: 1,
+            created_at: "2026-08-17T10:00:00.000Z",
+            updated_at: "2026-08-17T10:01:00.000Z",
+            terminal_at: null,
+            output_checksum_sha256: null,
+            approved_at: null,
+            preview_url: null,
+          },
+        ],
+        gpu_transport: "DISABLED_UNQUALIFIED" as const,
+        gpu_readiness: gpuReadiness,
+        generation: null,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Stop transcription" }));
+    expect(cancellationRequests).toBe(0);
+    const confirmation = screen.getByRole("button", { name: "Confirm stop transcription" });
+    fireEvent.click(confirmation);
+
+    await waitFor(() => expect(cancellationRequests).toBe(1));
+  });
+
+  it("disarms stop confirmation after its bounded timeout", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const attemptId = "33333333-3333-4333-8333-333333333333";
+    let cancellationRequests = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith(`/api/v2/cpu-attempts/${attemptId}`)) {
+          cancellationRequests += 1;
+        }
+        return Response.json({
+          project: {
+            id: projectId,
+            title: "Private project",
+            created_at: "2026-08-17T10:00:00.000Z",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
+          },
+          attempts: [
+            {
+              id: attemptId,
+              kind: "ASR" as const,
+              state: "SUBMITTED",
+              version: 1,
+              created_at: "2026-08-17T10:00:00.000Z",
+              updated_at: "2026-08-17T10:01:00.000Z",
+              terminal_at: null,
+              output_checksum_sha256: null,
+              approved_at: null,
+              preview_url: null,
+            },
+          ],
+          gpu_transport: "DISABLED_UNQUALIFIED" as const,
+          gpu_readiness: gpuReadiness,
+          generation: null,
+        });
+      }),
+    );
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    const stop = await screen.findByRole("button", { name: "Stop transcription" });
+    vi.useFakeTimers();
+    fireEvent.click(stop);
+    expect(screen.getByRole("button", { name: "Confirm stop transcription" })).toBeInTheDocument();
+    await act(async () => vi.advanceTimersByTime(5_001));
+    vi.useRealTimers();
+
+    expect(screen.getByRole("button", { name: "Stop transcription" })).toBeInTheDocument();
+    expect(cancellationRequests).toBe(0);
+  });
+
+  it("disarms stop confirmation when the attempt state changes", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const attemptId = "33333333-3333-4333-8333-333333333333";
+    let attemptState = "SUBMITTED";
+    let cancellationRequests = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith(`/api/v2/cpu-attempts/${attemptId}`)) {
+          cancellationRequests += 1;
+        }
+        return Response.json({
+          project: {
+            id: projectId,
+            title: "Private project",
+            created_at: "2026-08-17T10:00:00.000Z",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
+          },
+          attempts: [
+            {
+              id: attemptId,
+              kind: "ASR" as const,
+              state: attemptState,
+              version: attemptState === "SUBMITTED" ? 1 : 2,
+              created_at: "2026-08-17T10:00:00.000Z",
+              updated_at: "2026-08-17T10:01:00.000Z",
+              terminal_at: null,
+              output_checksum_sha256: null,
+              approved_at: null,
+              preview_url: null,
+            },
+          ],
+          gpu_transport: "DISABLED_UNQUALIFIED" as const,
+          gpu_readiness: gpuReadiness,
+          generation: null,
+        });
+      }),
+    );
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Stop transcription" }));
+    expect(screen.getByRole("button", { name: "Confirm stop transcription" })).toBeInTheDocument();
+    attemptState = "RUNNING";
+    fireEvent.click(screen.getByRole("button", { name: "Refresh now" }));
+
+    await screen.findByRole("button", { name: "Stop transcription" });
+    expect(cancellationRequests).toBe(0);
+  });
+
   it("offers an idempotent recovery action for a cancellation left pending", async () => {
     const attemptId = "33333333-3333-4333-8333-333333333333";
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input).endsWith(`/api/v2/cpu-attempts/${attemptId}`)) {
-        expect(init).toMatchObject({ method: "POST", body: "{}" });
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({
+            schema_version: "videoforge-hosted-cpu-cancellation/v1",
+            attempt_id: attemptId,
+            confirmation: "STOP",
+          }),
+        });
         return Response.json({ id: attemptId, state: "CANCEL_REQUESTED" }, { status: 202 });
       }
       return Response.json({
@@ -1388,7 +1552,14 @@ describe("hosted product journey", () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         `/api/v2/cpu-attempts/${attemptId}`,
-        expect.objectContaining({ method: "POST", body: "{}" }),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            schema_version: "videoforge-hosted-cpu-cancellation/v1",
+            attempt_id: attemptId,
+            confirmation: "STOP",
+          }),
+        }),
       ),
     );
   });

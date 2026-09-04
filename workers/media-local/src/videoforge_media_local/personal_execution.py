@@ -62,6 +62,9 @@ _RENDER_FAILURE_CODES = frozenset(
 )
 _MEDIA_EXECUTION_IO_FAILED = "MEDIA_EXECUTION_IO_FAILED"
 _MEDIA_EXECUTION_CONTRACT_INVALID = "MEDIA_EXECUTION_CONTRACT_INVALID"
+_MEDIA_EXECUTION_LEASE_STALE = "MEDIA_EXECUTION_LEASE_STALE"
+_OWNER_CANCEL_REQUESTED = "OWNER_CANCEL_REQUESTED"
+_LEASE_STALE_FENCE = "LEASE_STALE_FENCE"
 
 # A media job needs its downloaded inputs and a second working copy while the
 # bundled tools run. Keep a fixed amount of free space for runtime extraction,
@@ -407,6 +410,7 @@ class _CancellationMonitor:
         self._marker = marker
         self._process = process
         self._process_lock = threading.Lock()
+        self._stop_reason: str | None = None
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
@@ -424,11 +428,18 @@ class _CancellationMonitor:
     def is_cancelled(self) -> bool:
         return self._marker.is_file()
 
-    def _terminate(self) -> None:
+    def stop_reason(self) -> str | None:
+        with self._process_lock:
+            return self._stop_reason
+
+    def _terminate(self, reason: str) -> None:
+        with self._process_lock:
+            if self._stop_reason is not None:
+                return
+            self._stop_reason = reason
+            process = self._process
         self._marker.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self._marker.write_bytes(b"cancelled")
-        with self._process_lock:
-            process = self._process
         if process is not None:
             _terminate_process(process)
 
@@ -436,15 +447,28 @@ class _CancellationMonitor:
         while not self._stop.wait(10):
             try:
                 status, value = _request_json(self._url, "POST", self._headers, {}, timeout=5)
-                if status == 409 or (
-                    status == 200
-                    and isinstance(value, dict)
-                    and value.get("cancel_requested") is True
-                ):
-                    self._terminate()
+                reason = _heartbeat_stop_reason(status, value)
+                if reason is not None:
+                    self._terminate(reason)
                     return
             except (OSError, ValueError, json.JSONDecodeError):
                 continue
+
+
+def _heartbeat_stop_reason(status: int, value: object) -> str | None:
+    if status == 409:
+        return _LEASE_STALE_FENCE
+    if (
+        status != 200
+        or not isinstance(value, dict)
+        or set(value) != {"schema_version", "cancel_requested", "lease_expires_in_seconds"}
+        or value.get("schema_version") != "videoforge-personal-worker-lease-heartbeat/v1"
+        or type(value.get("cancel_requested")) is not bool
+        or type(value.get("lease_expires_in_seconds")) is not int
+        or not 1 <= value["lease_expires_in_seconds"] <= 3600
+    ):
+        return None
+    return _OWNER_CANCEL_REQUESTED if value["cancel_requested"] else None
 
 
 def _terminate_process(process: subprocess.Popen[bytes]) -> None:
@@ -635,6 +659,12 @@ def _job_result_state(job: PersonalJob, result: object) -> tuple[str, str | None
     return "FAILED", str(code) if isinstance(code, str) and code in valid_codes else None
 
 
+def _stopped_completion(monitor: _CancellationMonitor) -> tuple[str, str | None]:
+    if monitor.stop_reason() == _LEASE_STALE_FENCE:
+        return "FAILED", _MEDIA_EXECUTION_LEASE_STALE
+    return "CANCELLED", None
+
+
 def execute_personal_job(
     job: PersonalJob,
     device_token: str,
@@ -725,8 +755,7 @@ def execute_personal_job(
                 before_retry=lambda: _clear_asr_retry_state(scratch, job.input_document),
             )
         if monitor.is_cancelled():
-            status = "CANCELLED"
-            failure_code = None
+            status, failure_code = _stopped_completion(monitor)
         elif return_code != 0:
             failure_code = "MEDIA_EXECUTION_SUBPROCESS_FAILED"
         else:
@@ -797,8 +826,7 @@ def execute_personal_job(
                     "result_checksum_sha256": result_checksum,
                 }
     except _PersonalJobCancelled:
-        status = "CANCELLED"
-        failure_code = None
+        status, failure_code = _stopped_completion(monitor)
         result_facts = {
             "result_object_key": None,
             "result_content_length": None,

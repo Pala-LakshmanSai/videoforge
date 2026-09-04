@@ -240,7 +240,7 @@ function Verify-Installer {
     }
     $signature = Get-AuthenticodeSignature -FilePath $Path
     if ([string]$signature.Status -ne "NotSigned") {
-        throw "0.1.13 Windows artifact trust drifted: expected NotSigned, got $($signature.Status)"
+        throw "0.1.14 Windows artifact trust drifted: expected NotSigned, got $($signature.Status)"
     }
     return [ordered]@{
         file_name = $name
@@ -591,7 +591,7 @@ try {
     $currentManifestPath = Resolve-InputFile $ReleaseManifestPath "Windows release manifest"
     $currentManifest = $null
     Add-Phase "immutable-release-inputs" {
-        $script:currentManifest = Read-ReleaseManifest $currentManifestPath "0.1.13"
+        $script:currentManifest = Read-ReleaseManifest $currentManifestPath "0.1.14"
         $artifact = Verify-Installer $script:currentManifest $currentInstaller
         [ordered]@{
             version = $script:currentManifest.version
@@ -618,7 +618,7 @@ try {
         Add-Phase "previous-release-inputs" {
             $script:previousManifest = Read-ReleaseManifest $previousManifestPath ""
             if ([version]$script:previousManifest.version -ge [version]$script:currentManifest.version) {
-                throw "previous release must have a lower version than 0.1.13"
+                throw "previous release must have a lower version than 0.1.14"
             }
             $artifact = Verify-Installer $script:previousManifest $previousInstaller
             [ordered]@{
@@ -645,7 +645,7 @@ try {
         } | Out-Null
     }
     else {
-        Add-Phase "clean-install-0.1.13" {
+        Add-Phase "clean-install-0.1.14" {
             Invoke-Installer $currentInstaller $installRoot
             $workerPath = Join-Path $installRoot "VideoForge Worker.exe"
             Assert-StartupShortcut $workerPath
@@ -667,12 +667,12 @@ try {
     }
 
     if ($hasPrevious) {
-        Add-Phase "replace-with-0.1.13" {
+        Add-Phase "replace-with-0.1.14" {
             $workerPath = Join-Path $installRoot "VideoForge Worker.exe"
             Invoke-Installer $currentInstaller $installRoot
             $currentInstalledWorkerSha256 = (Get-FileHash -LiteralPath $workerPath -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($currentInstalledWorkerSha256 -eq $script:previousInstalledWorkerSha256) {
-                throw "0.1.13 installer did not replace the previous worker executable"
+                throw "0.1.14 installer did not replace the previous worker executable"
             }
             Assert-StartupShortcut $workerPath
             [ordered]@{

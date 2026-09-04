@@ -21,6 +21,7 @@ from videoforge_media_local.personal_execution import (
     _asr_primary_path,
     _child_result_failure_code,
     _completion_is_acknowledged,
+    _heartbeat_stop_reason,
     _is_valid_https_url,
     _job_result_state,
     _parse_child_result,
@@ -242,6 +243,67 @@ class PersonalWorkerContractTests(unittest.TestCase):
             self.assertNotIn(b"secret", json.dumps(completion).encode("utf-8"))
         finally:
             model_path.unlink(missing_ok=True)
+
+    def test_owner_cancel_and_stale_lease_have_distinct_terminal_completions(self) -> None:
+        for reason, expected_status, expected_code in (
+            ("OWNER_CANCEL_REQUESTED", "CANCELLED", None),
+            ("LEASE_STALE_FENCE", "FAILED", "MEDIA_EXECUTION_LEASE_STALE"),
+        ):
+            with self.subTest(reason=reason):
+                asr = job()
+                asr["kind"] = "ASR"
+                asr["expires_at"] = "2099-01-01T00:00:00.000Z"
+                asr["objects"] = []
+                model_fd, model_name = tempfile.mkstemp()
+                os.close(model_fd)
+                model_path = Path(model_name)
+                try:
+                    model_path.write_bytes(b"model")
+                    asr["input_document"] = {
+                        "schema_version": "asr-job-input/v1",
+                        "model": {"sha256": personal_execution._sha256_file(model_path)[0]},
+                        "output": {
+                            "result_uri": "vf-local-run://revision-a/attempt-a/asr-result.json"
+                        },
+                    }
+                    parsed = parse_personal_job(asr)
+                    monitor = MagicMock()
+                    monitor.is_cancelled.return_value = True
+                    monitor.stop_reason.return_value = reason
+                    completion_response = {
+                        "schema_version": "videoforge-personal-worker-completion-accepted/v1",
+                        "state": expected_status,
+                    }
+                    with (
+                        patch(
+                            "videoforge_media_local.personal_execution._CancellationMonitor",
+                            return_value=monitor,
+                        ),
+                        patch("videoforge_media_local.personal_execution._preflight_disk_space"),
+                        patch(
+                            "videoforge_media_local.personal_execution._run_media_subprocess"
+                        ) as run_media,
+                        patch(
+                            "videoforge_media_local.personal_execution._request_json",
+                            return_value=(200, completion_response),
+                        ) as request_json,
+                    ):
+                        self.assertEqual(
+                            execute_personal_job(
+                                parsed,
+                                "device",
+                                "lease",
+                                ToolPaths(model_path, model_path, model_path, model_path),
+                            ),
+                            expected_status,
+                        )
+                    run_media.assert_not_called()
+                    completion = request_json.call_args.args[3]
+                    self.assertEqual(completion["status"], expected_status)
+                    self.assertEqual(completion["failure_code"], expected_code)
+                    self.assertIsNone(completion["result_object_key"])
+                finally:
+                    model_path.unlink(missing_ok=True)
 
     def test_insufficient_disk_fails_before_download_or_subprocess(self) -> None:
         asr = job()
@@ -648,8 +710,55 @@ class PersonalWorkerContractTests(unittest.TestCase):
             remove_autostart.assert_called_once_with()
             self.assertFalse(root.exists())
 
-    def test_cancellation_monitor_has_a_runnable_poll_loop(self) -> None:
-        self.assertTrue(callable(getattr(_CancellationMonitor, "_run", None)))
+    def test_cancellation_heartbeat_response_matrix_distinguishes_owner_from_stale_lease(
+        self,
+    ) -> None:
+        heartbeat = {
+            "schema_version": "videoforge-personal-worker-lease-heartbeat/v1",
+            "cancel_requested": False,
+            "lease_expires_in_seconds": 300,
+        }
+        self.assertIsNone(_heartbeat_stop_reason(200, heartbeat))
+        self.assertEqual(
+            _heartbeat_stop_reason(200, {**heartbeat, "cancel_requested": True}),
+            "OWNER_CANCEL_REQUESTED",
+        )
+        self.assertEqual(
+            _heartbeat_stop_reason(409, {"error": {"code": "MEDIA_WORKER_LEASE_STALE"}}),
+            "LEASE_STALE_FENCE",
+        )
+        self.assertIsNone(_heartbeat_stop_reason(200, {"cancel_requested": True}))
+        self.assertIsNone(_heartbeat_stop_reason(503, heartbeat))
+
+    def test_owner_cancel_and_stale_lease_both_create_the_local_stop_fence(self) -> None:
+        responses = (
+            (
+                200,
+                {
+                    "schema_version": "videoforge-personal-worker-lease-heartbeat/v1",
+                    "cancel_requested": True,
+                    "lease_expires_in_seconds": 300,
+                },
+                "OWNER_CANCEL_REQUESTED",
+            ),
+            (409, {"error": {"code": "MEDIA_WORKER_LEASE_STALE"}}, "LEASE_STALE_FENCE"),
+        )
+        for status, response, reason in responses:
+            with self.subTest(reason=reason), tempfile.TemporaryDirectory() as directory:
+                marker = Path(directory) / "cancelled"
+                monitor = _CancellationMonitor(
+                    "https://app.example.test/heartbeat", "device", "lease", marker, None
+                )
+                with (
+                    patch(
+                        "videoforge_media_local.personal_execution._request_json",
+                        return_value=(status, response),
+                    ),
+                    patch.object(monitor._stop, "wait", return_value=False),
+                ):
+                    monitor._run()
+                self.assertTrue(marker.is_file())
+                self.assertEqual(monitor.stop_reason(), reason)
 
     def test_accepts_only_exact_outbound_https_job_authority(self) -> None:
         parsed = parse_personal_job(job())
