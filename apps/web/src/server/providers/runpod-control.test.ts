@@ -269,6 +269,67 @@ describe("RunPod scale-zero control", () => {
     expect(guard.snapshot()).toBe("active");
   });
 
+  it("arms exactly one V2-08 dispatch after a strict empty startup queue proof", async () => {
+    const guard = new RunPodDrainGuard();
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/health")) {
+        return response({ workers: { throttled: "ignored" }, jobs: { inQueue: 0, inProgress: 0 } });
+      }
+      if (path.endsWith("/run")) return response({ id: "job_v208_startup", status: "IN_QUEUE" });
+      throw new Error("unexpected request");
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+
+    await client.confirmV208StartupQueueEmpty();
+    expect(guard.snapshot()).toBe("v208_startup_queue_empty");
+    expect(() => client.dispatch("attempt_ordinary_blocked", {})).toThrow(
+      "RUNPOD_DISPATCH_BLOCKED",
+    );
+    await expect(
+      client.dispatchWithV208Policy(
+        "attempt_v208_startup",
+        { value: "v208" },
+        { executionTimeout: 60_000, ttl: V207_TIMEOUT_TTL_MS },
+      ),
+    ).resolves.toMatchObject({ id: "job_v208_startup", status: "IN_QUEUE" });
+    expect(guard.snapshot()).toBe("active");
+    expect(
+      fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith("/run")),
+    ).toHaveLength(1);
+  });
+
+  it.each([
+    ["queued", { inQueue: 1, inProgress: 0 }],
+    ["in progress", { inQueue: 0, inProgress: 1 }],
+    ["missing", { inProgress: 0 }],
+  ] as const)("does not arm V2-08 dispatch for %s startup state", async (_label, jobs) => {
+    const guard = new RunPodDrainGuard();
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch: async () => response({ workers: {}, jobs }),
+      baseUrl: "http://127.0.0.1:43123",
+    });
+
+    await expect(client.confirmV208StartupQueueEmpty()).rejects.toThrow();
+    expect(guard.snapshot()).toBe("unknown");
+    expect(() =>
+      client.dispatchWithV208Policy(
+        "attempt_v208_blocked",
+        {},
+        { executionTimeout: 60_000, ttl: V207_TIMEOUT_TTL_MS },
+      ),
+    ).toThrow("RUNPOD_DISPATCH_BLOCKED");
+  });
+
   it("proves post-job queue emptiness without trusting stale worker counters", async () => {
     const guard = new RunPodDrainGuard();
     guard.invalidate();

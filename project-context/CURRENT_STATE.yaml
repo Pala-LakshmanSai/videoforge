@@ -4,29 +4,29 @@ updated_at: "2026-09-05"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_08_startup_health_repair_authorized
+current_milestone: v2_08_dispatch_guard_repair_green_awaiting_fresh_exact_approval
 current_task: VF-10-08
 current_wave: v2_08_soulx_serial_certification_after_v2_07_pass
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: approval_boundary
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: true
-credential_access_authorized: true
-gpu_use_authorized: true
-maximum_external_spend_usd: 1.8
+remote_or_cloud_mutations_authorized: false
+credential_access_authorized: false
+gpu_use_authorized: false
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_08_single_use_startup_health_repair_authority_materialized_pending_audit
-  live_provider_calls: "One exact five-job V2-08 SoulX qualification after independent authority-diff audit; no V2-09."
-  remote_mutation: true
-  deployment_or_publication: "Reuse the existing immutable SoulX image without republication; one disposable max1 RunPod qualification lane is authorized."
-  credential_value_access: "Authorized only through the sealed launcher/CLI path; never print or persist credential values."
-  paid_requests_or_spend: "Authorized up to USD 1.80 incremental above baseline USD 2.7231514439627063, cumulative stop USD 4.523151443962706."
-  runpod_mutation_or_gpu: "Authorized after independent audit for exact RTX 4090 EU-RO-1 max1 qualification at LOW-or-better availability."
+  mode: v2_08_dispatch_guard_repair_green_pending_fresh_exact_approval
+  live_provider_calls: "None until a fresh exact source-bound V2-08 proposal is approved; no V2-09."
+  remote_mutation: false
+  deployment_or_publication: "Existing immutable SoulX image remains reusable without republication only after fresh exact approval."
+  credential_value_access: "Not authorized at this boundary."
+  paid_requests_or_spend: "None currently authorized. The next proposal may request the unchanged USD 1.80 incremental cap above baseline USD 2.7231514439627063."
+  runpod_mutation_or_gpu: "Not authorized until fresh exact approval."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "Exact startup-health repair proposal sha256:a4ff77b26f8656d0863a1c93491248f462efaba9a852fcc860b16accabfce7e7 at control source 89d83e568c825047374ab9a12aa8c13e843a326b is approved; one allowlisted authority successor is materialized pending independent diff audit and anonymous image verification."
+  provider_free_product_action: "The a4ff authority is consumed. V2-08-only dispatch-guard repair is green at 130/130 focused tests plus web typecheck; ordinary and Stage 6 admission remain unchanged. Fresh proposal sha256:8cf7ca34105cef7f031f71c3f623967c7f9516792bcc9ba9947b8b56652ee29a awaits a clean control-source commit, push, and exact approval."
   v2_08_prior_publication_attempt: "Workflow run 33961641686 failed before authentication/publication because TMPDIR_DIRECTORY_ABSENT; no immutable digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Its approval is consumed/non-reusable and invalidated by source drift. A second approved run 33962783745 at source 67af7d9a built only a local image, then failed before authentication/publication because LITERAL_BACKSLASH_IN_SINGLE_QUOTED_DOCKER_GO_TEMPLATE; no registry digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Both approvals are consumed/non-reusable; the fresh 4f2c5cb3 successor repairs only workflow quoting and requires separate exact approval."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 

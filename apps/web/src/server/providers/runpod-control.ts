@@ -500,6 +500,7 @@ export class RunPodDrainGuard {
     | "quiescent"
     | "draining"
     | "queue_empty"
+    | "v208_startup_queue_empty"
     | "zero" = "unknown";
 
   markActive(): void {
@@ -604,8 +605,31 @@ export class RunPodDrainGuard {
     this.state = "queue_empty";
   }
 
+  /**
+   * Arms exactly one V2-08 dispatch after a new disposable endpoint has proved that it owns no
+   * queued or in-progress jobs. This is deliberately separate from the normal drain transition:
+   * Stage 6 and ordinary warm/zero dispatch admission remain unchanged.
+   */
+  confirmV208StartupQueueEmpty(queuedJobCount: number): void {
+    if (this.state !== "unknown" || !Number.isSafeInteger(queuedJobCount) || queuedJobCount !== 0) {
+      this.state = "unknown";
+      throw new RunPodControlError("RUNPOD_V208_STARTUP_QUEUE_NOT_CONFIRMED");
+    }
+    this.state = "v208_startup_queue_empty";
+  }
+
   assertDispatchAllowed(): void {
     if (this.state !== "zero" && this.state !== "warm_idle") {
+      throw new RunPodControlError("RUNPOD_DISPATCH_BLOCKED");
+    }
+  }
+
+  assertV208DispatchAllowed(): void {
+    if (
+      this.state !== "zero" &&
+      this.state !== "warm_idle" &&
+      this.state !== "v208_startup_queue_empty"
+    ) {
       throw new RunPodControlError("RUNPOD_DISPATCH_BLOCKED");
     }
   }
@@ -1606,7 +1630,11 @@ export class RunPodServerlessJobClient {
     }
   }
 
-  private dispatchRequest(requestKey: string, request: JsonValue): Promise<RunPodJobResult> {
+  private dispatchRequest(
+    requestKey: string,
+    request: JsonValue,
+    admission: "ordinary" | "v208" = "ordinary",
+  ): Promise<RunPodJobResult> {
     if (!ID.test(requestKey)) throw new RunPodControlError("RUNPOD_REQUEST_KEY_INVALID");
     const requestBytes = canonicalizeJson(request);
     if (Buffer.byteLength(requestBytes, "utf8") > 10 * 1024 * 1024) {
@@ -1620,7 +1648,8 @@ export class RunPodServerlessJobClient {
       }
       return replay.promise;
     }
-    this.options.guard.assertDispatchAllowed();
+    if (admission === "v208") this.options.guard.assertV208DispatchAllowed();
+    else this.options.guard.assertDispatchAllowed();
     this.options.guard.markActive();
     const pending = this.request("POST", "/run", requestBytes).then(jobResult);
     this.replays.set(requestKey, { inputHash, promise: pending });
@@ -1669,10 +1698,14 @@ export class RunPodServerlessJobClient {
     const inputRecord = record(input);
     if (inputRecord && Object.hasOwn(inputRecord, "policy"))
       throw new RunPodControlError("RUNPOD_V208_DISPATCH_POLICY_INVALID");
-    return this.dispatchRequest(requestKey, {
-      input,
-      policy: { executionTimeout: policy.executionTimeout, ttl: V207_TIMEOUT_TTL_MS },
-    });
+    return this.dispatchRequest(
+      requestKey,
+      {
+        input,
+        policy: { executionTimeout: policy.executionTimeout, ttl: V207_TIMEOUT_TTL_MS },
+      },
+      "v208",
+    );
   }
 
   async status(jobId: string): Promise<RunPodJobResult> {
@@ -1902,6 +1935,15 @@ export class RunPodServerlessJobClient {
     if (inQueue !== 0 || inProgress !== 0) {
       throw new RunPodControlError("RUNPOD_STARTUP_QUEUE_NOT_CONFIRMED");
     }
+  }
+
+  /** V2-08-only startup proof that also arms the disposable endpoint's first dispatch. */
+  async confirmV208StartupQueueEmpty(): Promise<void> {
+    const value = await this.request("GET", "/health");
+    const jobs = record(value.jobs);
+    const inQueue = strictCounter(jobs, "inQueue");
+    const inProgress = strictCounter(jobs, "inProgress");
+    this.options.guard.confirmV208StartupQueueEmpty(inQueue + inProgress);
   }
 
   /**

@@ -7,6 +7,7 @@ import {
   V213_QUALIFICATION_CASE_DESCRIPTORS,
   type V213DualLaneInput,
 } from "./v213-dual-lane-live.js";
+import { RunPodControlError } from "./runpod-control.js";
 
 const sha = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}`;
 const idSha = (value: string) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
@@ -77,6 +78,7 @@ function fixture(
     queueNonEmptyOnCheck?: number;
     startupHealthReadFailures?: number;
     startupHealthFailureCode?: string;
+    v208DispatchFailureCode?: string;
   } = {},
 ) {
   const model = input();
@@ -211,18 +213,20 @@ function fixture(
     }),
   };
   let queueChecks = 0;
+  const checkStartupQueueEmpty = async () => {
+    queueChecks += 1;
+    if (options.queueNonEmpty || options.queueNonEmptyOnCheck === queueChecks)
+      throw new Error("V213_STARTUP_QUEUE_NOT_CONFIRMED");
+    if (queueChecks <= (options.startupHealthReadFailures ?? 0)) {
+      const code = options.startupHealthFailureCode ?? "RUNPOD_READ_FAILED";
+      const error = new Error(code) as Error & { code: string };
+      error.code = code;
+      throw error;
+    }
+  };
   const client = {
-    confirmStartupQueueEmpty: vi.fn(async () => {
-      queueChecks += 1;
-      if (options.queueNonEmpty || options.queueNonEmptyOnCheck === queueChecks)
-        throw new Error("V213_STARTUP_QUEUE_NOT_CONFIRMED");
-      if (queueChecks <= (options.startupHealthReadFailures ?? 0)) {
-        const code = options.startupHealthFailureCode ?? "RUNPOD_READ_FAILED";
-        const error = new Error(code) as Error & { code: string };
-        error.code = code;
-        throw error;
-      }
-    }),
+    confirmStartupQueueEmpty: vi.fn(checkStartupQueueEmpty),
+    confirmV208StartupQueueEmpty: vi.fn(checkStartupQueueEmpty),
     dispatch: vi.fn(async (requestKey: string) => {
       if (options.dispatchAmbiguous) throw new Error("lost");
       const job = {
@@ -239,6 +243,8 @@ function fixture(
       return { ...job, idHash: sha("3"), executionTimeMs: 1, delayTimeMs: 1 };
     }),
     dispatchWithV208Policy: vi.fn(async (requestKey: string) => {
+      if (options.v208DispatchFailureCode)
+        throw new RunPodControlError(options.v208DispatchFailureCode);
       if (options.dispatchAmbiguous) throw new Error("lost");
       const job = { id: `job_${requestKey}`, status: "COMPLETED", output: {} };
       jobs.set(job.id, job);
@@ -596,7 +602,8 @@ describe("V213 concrete RunPod dual-lane transport", () => {
         policy: { executionTimeoutMs: 60_000, ttlMs: 7_200_000 },
       }),
     ).resolves.toMatchObject({ kind: "ACK", jobId: "job_v213-soulx-startup-health-retry" });
-    expect(client.confirmStartupQueueEmpty).toHaveBeenCalledTimes(3);
+    expect(client.confirmV208StartupQueueEmpty).toHaveBeenCalledTimes(3);
+    expect(client.confirmStartupQueueEmpty).not.toHaveBeenCalled();
     expect(sleep).toHaveBeenCalledTimes(2);
     expect(sleep.mock.calls.map(([milliseconds]) => milliseconds)).toEqual([2_000, 2_000]);
     expect(client.dispatchWithV208Policy).toHaveBeenCalledOnce();
@@ -621,11 +628,63 @@ describe("V213 concrete RunPod dual-lane transport", () => {
         policy: { executionTimeoutMs: 60_000, ttlMs: 7_200_000 },
       }),
     ).rejects.toThrow("RUNPOD_READ_FAILED");
-    expect(client.confirmStartupQueueEmpty).toHaveBeenCalledTimes(12);
+    expect(client.confirmV208StartupQueueEmpty).toHaveBeenCalledTimes(12);
+    expect(client.confirmStartupQueueEmpty).not.toHaveBeenCalled();
     expect(sleep).toHaveBeenCalledTimes(11);
     expect(sleep.mock.calls.every(([milliseconds]) => milliseconds === 2_000)).toBe(true);
     expect(client.dispatchWithV208Policy).not.toHaveBeenCalled();
   });
+
+  it.each([
+    "RUNPOD_DISPATCH_BLOCKED",
+    "RUNPOD_AUTH_REJECTED",
+    "RUNPOD_V208_DISPATCH_POLICY_INVALID",
+  ])("preserves exact pre-POST V2-08 error %s instead of claiming ACK_UNKNOWN", async (code) => {
+    const { transport, client, model } = fixture({ v208DispatchFailureCode: code });
+    const created = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "qualification",
+      resourceKey: `stage:soulx:exact-${code.toLowerCase()}`,
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    await expect(
+      transport.dispatch({
+        deployment: created.deployment,
+        requestKey: `v208-soulx-${code.toLowerCase()}`,
+        envelope: {},
+        policy: { executionTimeoutMs: 60_000, ttlMs: 7_200_000 },
+      }),
+    ).rejects.toThrow(code);
+    expect(client.dispatchWithV208Policy).toHaveBeenCalledOnce();
+    expect(client.dispatch).not.toHaveBeenCalled();
+  });
+
+  it.each(["RUNPOD_MUTATION_AMBIGUOUS", "RUNPOD_RESPONSE_INVALID"])(
+    "maps only ambiguous V2-08 POST outcome %s to ACK_UNKNOWN",
+    async (code) => {
+      const { transport, client, model } = fixture({ v208DispatchFailureCode: code });
+      const created = await transport.createLane({
+        sealed: model.soulx,
+        purpose: "qualification",
+        resourceKey: `stage:soulx:ambiguous-${code.toLowerCase()}`,
+        workersMin: 0,
+        workersMax: 1,
+      });
+      if (created.kind !== "ACK") throw new Error("fixture");
+      await expect(
+        transport.dispatch({
+          deployment: created.deployment,
+          requestKey: `v208-soulx-${code.toLowerCase()}`,
+          envelope: {},
+          policy: { executionTimeoutMs: 60_000, ttlMs: 7_200_000 },
+        }),
+      ).resolves.toEqual({ kind: "ACK_UNKNOWN" });
+      expect(client.dispatchWithV208Policy).toHaveBeenCalledOnce();
+      expect(client.dispatch).not.toHaveBeenCalled();
+    },
+  );
 
   it("does not extend ordinary dispatch startup health retries", async () => {
     const { transport, client, sleep, model } = fixture({ startupHealthReadFailures: 1 });

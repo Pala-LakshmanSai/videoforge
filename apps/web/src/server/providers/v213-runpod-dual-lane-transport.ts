@@ -12,7 +12,10 @@ import type {
   RunPodServerlessJobClient,
   RunPodV208DispatchPolicy,
 } from "./runpod-control.js";
-import { RunPodDrainGuard as ConcreteDrainGuard } from "./runpod-control.js";
+import {
+  RunPodControlError,
+  RunPodDrainGuard as ConcreteDrainGuard,
+} from "./runpod-control.js";
 import type {
   V213AdmissionRead,
   V213DispatchAck,
@@ -94,7 +97,12 @@ export interface V213RunPodControlPort {
 
 type JobPort = Pick<
   RunPodServerlessJobClient,
-  "dispatch" | "dispatchWithV208Policy" | "status" | "cancel" | "confirmStartupQueueEmpty"
+  | "dispatch"
+  | "dispatchWithV208Policy"
+  | "status"
+  | "cancel"
+  | "confirmStartupQueueEmpty"
+  | "confirmV208StartupQueueEmpty"
 >;
 
 export interface V213RunPodDualLaneOptions {
@@ -1050,7 +1058,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
         try {
           // Keep this read-only gate outside the POST try/catch. A health/read failure must remain
           // a pre-dispatch error; only an ambiguous POST becomes ACK_UNKNOWN.
-          await client.confirmStartupQueueEmpty();
+          await client.confirmV208StartupQueueEmpty();
           break;
         } catch (error) {
           if (!isRetryableStartupHealthError(error) || attempt + 1 >= STARTUP_HEALTH_MAX_ATTEMPTS)
@@ -1068,7 +1076,16 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
         : await client.dispatch(input.requestKey, input.envelope);
       this.jobs.set(job.id, { endpointId: input.deployment.endpointId, client });
       return { kind: "ACK", jobId: job.id };
-    } catch {
+    } catch (error) {
+      if (
+        input.policy !== undefined &&
+        !(
+          error instanceof RunPodControlError &&
+          (error.code === "RUNPOD_MUTATION_AMBIGUOUS" || error.code === "RUNPOD_RESPONSE_INVALID")
+        )
+      ) {
+        throw error;
+      }
       return { kind: "ACK_UNKNOWN" };
     }
   }
