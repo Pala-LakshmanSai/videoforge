@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -318,5 +318,54 @@ describe("V208FileDurableStageStore", () => {
     });
     unlinkSync(lockPath);
     expect(existsSync(lockPath)).toBe(false);
+  });
+
+  it("reclaims a complete stale lock and publishes no partial lock files", async () => {
+    const journalDirectory = root();
+    const store = createV208FileDurableStageStore(options(journalDirectory));
+    const lockPath = join(journalDirectory, V208_FILE_DURABLE_LOCK_FILENAME);
+    writeFileSync(
+      lockPath,
+      `${canonicalizeJson({ pid: 2_147_483_647, token: randomUUID() })}\n`,
+      { mode: V208_FILE_DURABLE_FILE_MODE },
+    );
+    chmodSync(lockPath, V208_FILE_DURABLE_FILE_MODE);
+
+    await expect(
+      store.issueStageAuthority({
+        stage: "soulx",
+        inputSha256: manifest.planSha256,
+        predecessorHandoffSha256,
+      }),
+    ).resolves.toMatchObject({ stage: "soulx" });
+    expect(existsSync(lockPath)).toBe(false);
+    expect(readdirSync(journalDirectory).some((name) => name.includes("v208-lock"))).toBe(false);
+  });
+
+  it("never releases a replacement lock with a different token or inode", async () => {
+    const journalDirectory = root();
+    const lockPath = join(journalDirectory, V208_FILE_DURABLE_LOCK_FILENAME);
+    let replacement = "";
+    const store = createV208FileDurableStageStore(
+      options(journalDirectory, {
+        signAuthority: () => {
+          unlinkSync(lockPath);
+          replacement = `${canonicalizeJson({ pid: process.pid, token: randomUUID() })}\n`;
+          writeFileSync(lockPath, replacement, { mode: V208_FILE_DURABLE_FILE_MODE });
+          chmodSync(lockPath, V208_FILE_DURABLE_FILE_MODE);
+          return "A".repeat(88);
+        },
+      }),
+    );
+
+    await expect(
+      store.issueStageAuthority({
+        stage: "soulx",
+        inputSha256: manifest.planSha256,
+        predecessorHandoffSha256,
+      }),
+    ).rejects.toMatchObject({ code: "V208_FILE_DURABLE_LOCK_RELEASE_OWNERSHIP_INVALID" });
+    expect(readFileSync(lockPath, "utf8")).toBe(replacement);
+    unlinkSync(lockPath);
   });
 });

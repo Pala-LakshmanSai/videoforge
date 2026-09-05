@@ -160,6 +160,15 @@ type StoredMaterializationStateCore = Omit<V208FileMaterializationSnapshot, "sta
 
 interface LockHandle {
   readonly path: string;
+  readonly pid: number;
+  readonly token: string;
+  readonly device: number;
+  readonly inode: number;
+}
+
+interface LockObservation extends LockHandle {
+  readonly size: number;
+  readonly modifiedAtMs: number;
 }
 
 interface MaterializationIdentity {
@@ -918,74 +927,139 @@ function initialMaterializationSnapshot(
   });
 }
 
-function lockIsLive(path: string): boolean {
+function readLockObservation(path: string): LockObservation | null {
   try {
     assertPrivateFile(path, "V208_FILE_DURABLE_LOCK");
-    const text = readFileSync(path, "utf8");
-    const parsed = JSON.parse(text) as { readonly pid?: unknown };
+    const before = lstatSync(path);
+    const bytes = readFileSync(path);
+    const after = lstatSync(path);
     if (
-      !parsed ||
-      typeof parsed.pid !== "number" ||
-      !Number.isSafeInteger(parsed.pid) ||
-      parsed.pid < 1
+      before.dev !== after.dev ||
+      before.ino !== after.ino ||
+      before.size !== after.size ||
+      before.mtimeMs !== after.mtimeMs
     )
-      return true;
-    try {
-      process.kill(parsed.pid, 0);
-      return true;
-    } catch (error) {
-      return (error as NodeJS.ErrnoException).code !== "ESRCH";
-    }
+      return null;
+    const parsed = JSON.parse(bytes.toString("utf8")) as unknown;
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      !exactKeys(parsed, ["pid", "token"]) ||
+      typeof (parsed as { readonly pid?: unknown }).pid !== "number" ||
+      !Number.isSafeInteger((parsed as { readonly pid: number }).pid) ||
+      (parsed as { readonly pid: number }).pid < 1 ||
+      typeof (parsed as { readonly token?: unknown }).token !== "string" ||
+      !UUID.test((parsed as { readonly token: string }).token) ||
+      !bytes.equals(canonicalBytes(parsed))
+    )
+      return null;
+    return {
+      path,
+      pid: (parsed as { readonly pid: number }).pid,
+      token: (parsed as { readonly token: string }).token,
+      device: after.dev,
+      inode: after.ino,
+      size: after.size,
+      modifiedAtMs: after.mtimeMs,
+    };
   } catch {
+    return null;
+  }
+}
+
+function sameLock(left: LockHandle, right: LockObservation | null): right is LockObservation {
+  return (
+    right !== null &&
+    left.path === right.path &&
+    left.pid === right.pid &&
+    left.token === right.token &&
+    left.device === right.device &&
+    left.inode === right.inode
+  );
+}
+
+function lockIsLive(observed: LockObservation | null): boolean {
+  if (observed === null) return true;
+  try {
+    process.kill(observed.pid, 0);
     return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== "ESRCH";
+  }
+}
+
+/** Publish a fully written lock inode with create-only link semantics. A crash can leave only an
+ * unreferenced temporary inode or a complete canonical final lock, never a partial final lock. */
+function tryPublishLock(path: string): LockObservation | null {
+  const token = randomUUID();
+  const payload = canonicalBytes({ pid: process.pid, token });
+  const temporary = temporaryPath(path, "v208-lock");
+  let descriptor: number | undefined;
+  let published = false;
+  try {
+    const flags =
+      fsConstants.O_WRONLY |
+      fsConstants.O_CREAT |
+      fsConstants.O_EXCL |
+      (fsConstants.O_NOFOLLOW ?? 0);
+    descriptor = openSync(temporary, flags, V208_FILE_DURABLE_FILE_MODE);
+    writeFileSync(descriptor, payload);
+    fsyncSync(descriptor);
+    closeSync(descriptor);
+    descriptor = undefined;
+    chmodSync(temporary, V208_FILE_DURABLE_FILE_MODE);
+    try {
+      linkSync(temporary, path);
+      published = true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") return null;
+      throw error;
+    }
+    syncDirectory(dirname(path), "V208_FILE_DURABLE_LOCK_DIRECTORY_SYNC_FAILED");
+    const observed = readLockObservation(path);
+    if (
+      observed === null ||
+      observed.pid !== process.pid ||
+      observed.token !== token ||
+      !readFileSync(path).equals(payload)
+    )
+      fail("V208_FILE_DURABLE_LOCK_READBACK_INVALID");
+    return observed;
+  } finally {
+    if (descriptor !== undefined) {
+      try {
+        closeSync(descriptor);
+      } catch {
+        // Preserve the primary acquisition error.
+      }
+    }
+    try {
+      unlinkSync(temporary);
+      syncDirectory(dirname(path), "V208_FILE_DURABLE_LOCK_TEMP_SYNC_FAILED");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT" && published)
+        fail("V208_FILE_DURABLE_LOCK_TEMP_CLEANUP_FAILED");
+    }
   }
 }
 
 function acquireLock(directory: string): LockHandle {
   const path = join(directory, V208_FILE_DURABLE_LOCK_FILENAME);
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    let descriptor: number | undefined;
     try {
-      const flags =
-        fsConstants.O_WRONLY |
-        fsConstants.O_CREAT |
-        fsConstants.O_EXCL |
-        (fsConstants.O_NOFOLLOW ?? 0);
-      descriptor = openSync(path, flags, V208_FILE_DURABLE_FILE_MODE);
-      const payload = canonicalBytes({
-        pid: process.pid,
-        token: randomUUID(),
-      });
-      writeFileSync(descriptor, payload);
-      fsyncSync(descriptor);
-      closeSync(descriptor);
-      descriptor = undefined;
-      chmodSync(path, V208_FILE_DURABLE_FILE_MODE);
-      syncDirectory(directory, "V208_FILE_DURABLE_LOCK_DIRECTORY_SYNC_FAILED");
-      return { path };
+      const created = tryPublishLock(path);
+      if (created !== null) return created;
+      const observed = readLockObservation(path);
+      if (attempt !== 0 || lockIsLive(observed)) fail("V208_FILE_DURABLE_LOCKED");
+      // Re-read the complete identity immediately before unlinking. This prevents a stale
+      // observation from deleting a successor lock published by another process.
+      const current = readLockObservation(path);
+      if (!sameLock(observed!, current)) fail("V208_FILE_DURABLE_LOCKED");
+      unlinkSync(path);
+      syncDirectory(directory, "V208_FILE_DURABLE_STALE_LOCK_SYNC_FAILED");
     } catch (error) {
-      if (descriptor !== undefined) {
-        try {
-          closeSync(descriptor);
-        } catch {
-          // Preserve the lock acquisition error.
-        }
-      }
-      if (
-        (error as NodeJS.ErrnoException).code === "EEXIST" &&
-        attempt === 0 &&
-        !lockIsLive(path)
-      ) {
-        try {
-          unlinkSync(path);
-          syncDirectory(directory, "V208_FILE_DURABLE_STALE_LOCK_SYNC_FAILED");
-          continue;
-        } catch {
-          fail("V208_FILE_DURABLE_LOCKED");
-        }
-      }
       if (error instanceof V208FileDurableStageStoreError) throw error;
-      if ((error as NodeJS.ErrnoException).code === "EEXIST") fail("V208_FILE_DURABLE_LOCKED");
       fail("V208_FILE_DURABLE_LOCK_ACQUIRE_FAILED");
     }
   }
@@ -994,10 +1068,12 @@ function acquireLock(directory: string): LockHandle {
 
 function releaseLock(lock: LockHandle): void {
   try {
-    assertPrivateFile(lock.path, "V208_FILE_DURABLE_LOCK");
+    const observed = readLockObservation(lock.path);
+    if (!sameLock(lock, observed)) fail("V208_FILE_DURABLE_LOCK_RELEASE_OWNERSHIP_INVALID");
     unlinkSync(lock.path);
     syncDirectory(dirname(lock.path), "V208_FILE_DURABLE_LOCK_RELEASE_SYNC_FAILED");
-  } catch {
+  } catch (error) {
+    if (error instanceof V208FileDurableStageStoreError) throw error;
     fail("V208_FILE_DURABLE_LOCK_RELEASE_FAILED");
   }
 }
