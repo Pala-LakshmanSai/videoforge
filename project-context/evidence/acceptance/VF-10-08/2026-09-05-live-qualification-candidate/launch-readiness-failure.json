@@ -1,0 +1,26 @@
+{
+  "schema_version": "videoforge.v2-08-live-qualification-launch-readiness-failure/v1",
+  "checkpoint": "V2-08",
+  "stage": 7,
+  "recorded_at": "2026-09-05T12:19:57Z",
+  "proposal_sha256": "sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8",
+  "authority_sha256": "sha256:40e9984bdc194fca055f14e92c88020231cf5edad3bd047e049ad6f703246804",
+  "materialization_commit": "6e5bafc49f5a022feca56ca35fd8db59065d9395",
+  "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3",
+  "result": "FAIL_PRE_RUNPOD",
+  "failure_code": "V208_STANDALONE_DURABLE_LAUNCH_PATH_ABSENT",
+  "failure_detail": "The direct V2-08 CLI had no supported standalone launcher and still required an unexpired V2-13 outer authority, prior Mage stage row, and SQL-backed qualification materialization store. No reusable V2-13 authority or matching prior-stage row existed.",
+  "scope": {
+    "runpod_mutation_performed": false,
+    "runpod_job_dispatched": false,
+    "gpu_seconds": 0,
+    "observed_incremental_spend_usd": 0,
+    "cloudflare_mutation_performed": false,
+    "r2_mutation_performed": false,
+    "retained_volume_mutation_performed": false,
+    "stage_6_rerun_performed": false,
+    "v2_09_execution_performed": false
+  },
+  "authority_status": "CONSUMED_NON_REUSABLE",
+  "repair_boundary": "Provider-free standalone V2-08 durable journal and protected launcher only; fresh source-bound exact approval is required before any later RunPod mutation."
+}
