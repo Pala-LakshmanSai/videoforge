@@ -23,6 +23,7 @@ const {
   assertV207ItemCount,
   assertV207FreshCatalogOffering,
   buildV207TemplateEnvironment,
+  buildV207TimeoutTerminalCheckpoint,
   classifyV207TimeoutTerminal,
   createV207Cancellation,
   deleteV207GeneratedObject,
@@ -1064,12 +1065,13 @@ describe("V2-07 live qualification runner safety", () => {
         { status: "FAILED", error: { code: "RUNPOD_EXECUTION_TIMEOUT" } },
         policy,
       ),
-    ).toBe("execution_timeout_failed");
+    ).toBe(null);
     expect(
-      classifyV207TimeoutTerminal({ status: "FAILED", error: "opaque provider failure" }, policy, {
-        message: "Execution timeout.",
-      }),
-    ).toBe("execution_timeout_failed");
+      classifyV207TimeoutTerminal(
+        { status: "FAILED", error: { message: "Job execution timed out" } },
+        policy,
+      ),
+    ).toBe(null);
   });
 
   it("rejects generic failures, timing-shaped failures, and timeout-policy drift", () => {
@@ -1100,6 +1102,41 @@ describe("V2-07 live qualification runner safety", () => {
     ).toBe(null);
     expect(classifyV207TimeoutTerminal({ status: "COMPLETED" }, policy)).toBe(null);
     expect(classifyV207TimeoutTerminal({ status: "CANCELLED" }, policy)).toBe(null);
+  });
+
+  it("never coerces or serializes hostile timeout diagnostics", () => {
+    const policy = { executionTimeout: 5_000, ttl: 7_200_000 };
+    const hostile: Record<string, unknown> = {
+      message: "Job execution timed out",
+      secret: "do-not-persist",
+      url: "https://secret.invalid/?token=do-not-persist",
+    };
+    const toJSON = vi.fn(() => "Job execution timed out");
+    const toString = vi.fn(() => "Job execution timed out");
+    hostile.toJSON = toJSON;
+    hostile.toString = toString;
+    hostile.self = hostile;
+
+    expect(classifyV207TimeoutTerminal({ status: "FAILED", error: hostile }, policy)).toBe(null);
+    expect(toJSON).not.toHaveBeenCalled();
+    expect(toString).not.toHaveBeenCalled();
+
+    const serialized = JSON.stringify(
+      buildV207TimeoutTerminalCheckpoint(
+        {
+          status: "FAILED secret-body https://secret.invalid/?token=do-not-persist",
+          idHash: "sha256:safe-job-hash",
+          error: hostile,
+        },
+        null,
+      ),
+    );
+    expect(serialized).toContain('"status":"OTHER"');
+    expect(serialized).not.toContain("do-not-persist");
+    expect(serialized).not.toContain("secret.invalid");
+    expect(serialized).not.toContain("Job execution timed out");
+    expect(toJSON).not.toHaveBeenCalled();
+    expect(toString).not.toHaveBeenCalled();
   });
 
   it("does not rotate a seed endpoint or redispatch a 31-unit replacement", () => {
