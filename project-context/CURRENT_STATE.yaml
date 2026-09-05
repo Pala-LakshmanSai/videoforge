@@ -26,8 +26,8 @@ current_goal_boundary:
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "V2-08 SoulX provider-free implementation source 67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd is sealed and independently audited PASS with P0/P1/P2 0/0/0. Read-only preflight is complete and exact proposal sha256:e8565950779ce9a5b508974fb7e064777450d271568079408756df4a9a801855 is sealed. No publication, RunPod mutation, GPU use, spend, or production deployment is authorized until fresh exact approval is received."
-  v2_08_prior_publication_attempt: "Workflow run 33961641686 failed before authentication/publication because TMPDIR_DIRECTORY_ABSENT; no immutable digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Its approval is consumed/non-reusable and invalidated by source drift; the fresh 67af7d9a successor requires separate exact approval."
+  provider_free_product_action: "V2-08 SoulX provider-free implementation source 4f2c5cb3c602ffb48db4a1dc7143477259202896 is sealed and independently audited PASS with P0/P1/P2 0/0/0. Read-only preflight is complete and exact proposal sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8 is sealed. No publication, RunPod mutation, GPU use, spend, or production deployment is authorized until fresh exact approval is received."
+  v2_08_prior_publication_attempt: "Workflow run 33961641686 failed before authentication/publication because TMPDIR_DIRECTORY_ABSENT; no immutable digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Its approval is consumed/non-reusable and invalidated by source drift. A second approved run 33962783745 at source 67af7d9a built only a local image, then failed before authentication/publication because LITERAL_BACKSLASH_IN_SINGLE_QUOTED_DOCKER_GO_TEMPLATE; no registry digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Both approvals are consumed/non-reusable; the fresh 4f2c5cb3 successor repairs only workflow quoting and requires separate exact approval."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -4340,8 +4340,8 @@ last_known_provider_resource_truth:
   ongoing_retained_volume_usd_per_month_total: 7.0
   cumulative_endpoint_spend_usd: 2.7231514439627063
   v2_08_proposal: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
-  v2_08_proposal_sha256: "sha256:e8565950779ce9a5b508974fb7e064777450d271568079408756df4a9a801855"
-  v2_08_acceptance_sha256: "sha256:990f0df8b3d0671cc60f255ac5f9333acaf279f524a2f2acd5f0d004db34abf0"
+  v2_08_proposal_sha256: "sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8"
+  v2_08_acceptance_sha256: "sha256:8a717076f71ec9d1e20088d6b0e7a4860a9c64d4a21fa2a306cd25c00f874208"
   note: "Three stable V2-08 read-only preflight reads prove zero Pods, running Pods, endpoints, private templates, and active serverless workers; both retained 50 GB EU-RO-1 volumes remain unchanged. Exact proposal is sealed but unapproved, so no current provider authority exists."
 
 blocking_gates_for_production:
@@ -6002,7 +6002,7 @@ provider_authority: &v2_08_pending_approval_authority
   non_transferable: true
   source: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
   authorized_by_user_at: null
-  proposal_sha256: "sha256:e8565950779ce9a5b508974fb7e064777450d271568079408756df4a9a801855"
+  proposal_sha256: "sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8"
   resources: []
   authorized_operations: []
   allowed_operations: []
@@ -6023,7 +6023,7 @@ recommended_next_task:
   provider_mode: fixture
   read_profile: v2_08_soulx_serverless
   task_brief: tasks/VF-10-08.md
-  goal: "Obtain fresh exact approval for sealed V2-08 proposal sha256:e8565950779ce9a5b508974fb7e064777450d271568079408756df4a9a801855 before any SoulX publication or live qualification."
+  goal: "Obtain fresh exact approval for sealed V2-08 proposal sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8 before any SoulX publication or live qualification."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -6047,7 +6047,7 @@ recommended_next_task:
   authority_note: "Read-only V2-08 preflight completed with zero disposable compute, RTX 4090 EU-RO-1 HIGH availability, USD 1.116/GPU-hour serverless rate, and billing baseline USD 2.7231514439627063. Exact proposal is sealed but unapproved; no provider calls, mutation, GPU, spend, or executable V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
-  successor_proposal_sha256: "sha256:e8565950779ce9a5b508974fb7e064777450d271568079408756df4a9a801855"
+  successor_proposal_sha256: "sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8"
   superseded_proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
   superseded_proposal_record_commit: 4b8a6ef83772fea44701129154ae4d69833498eb
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842

@@ -391,20 +391,27 @@ gates:
     owner: V2-08
     last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/acceptance.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:e8565950779ce9a5b508974fb7e064777450d271568079408756df4a9a801855"
-    current_candidate_acceptance_sha256: "sha256:990f0df8b3d0671cc60f255ac5f9333acaf279f524a2f2acd5f0d004db34abf0"
-    current_candidate_approval_sentence_sha256: "sha256:2fe49a2bcd7c67e013d6ea29f2fb6d5eea79fdffd1a13eebb1017093f597df8a"
+    current_candidate_proposal_sha256: "sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8"
+    current_candidate_acceptance_sha256: "sha256:8a717076f71ec9d1e20088d6b0e7a4860a9c64d4a21fa2a306cd25c00f874208"
+    current_candidate_approval_sentence_sha256: "sha256:6e3a005b3347cd069547ff6b07f9c4ee4204be71a49662c56442b235dd1f5c4d"
     current_candidate_validator: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/validate-candidate.mjs"
-    current_candidate_validator_sha256: "sha256:0e1cc33c991658dcf5a079ab30cfd5340312fd2508ea8d81ccb2456157762270"
-    current_candidate_source_commit: "67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd"
+    current_candidate_validator_sha256: "sha256:4c9ad4264c20ba565fe9ae72f93c5086a10db0ad76c8318c82f0e8bd75ac4ea7"
+    current_candidate_source_commit: "4f2c5cb3c602ffb48db4a1dc7143477259202896"
     current_candidate_dockerfile_sha256: "sha256:d1b4039f44147acb4b9e08e72700156cc239b3bc4dfddb0bb92518c22c2bfc3a"
-    current_candidate_publication_workflow_sha256: "sha256:12080a4e0ca9d97302fb56ae1931b188f229a0085538faf3b9f242fb7936502d"
+    current_candidate_publication_workflow_sha256: "sha256:49e68adcd592029deb77f2360d0a063157209b209892dfe36a2e1b0faaf36e3f"
     prior_publication_workflow_run_id: 33961641686
     prior_publication_result: failed_before_authentication_or_publication
     prior_publication_failure: TMPDIR_DIRECTORY_ABSENT
     prior_publication_digest_or_artifact: none
     prior_publication_runpod_gpu_spend: none
     prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
+    second_prior_publication_workflow_run_id: 33962783745
+    second_prior_publication_source_commit: "67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd"
+    second_prior_publication_result: failed_before_authentication_or_publication
+    second_prior_publication_failure: LITERAL_BACKSLASH_IN_SINGLE_QUOTED_DOCKER_GO_TEMPLATE
+    second_prior_publication_digest_or_artifact: none
+    second_prior_publication_runpod_gpu_spend: none
+    second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
     result: open_provider_free_candidate_sealed_exact_max1_live_cold_warm_fault_and_cleanup_proof_pending_approval_and_execution
 
   GATE_SOULX_LICENSE_001:
