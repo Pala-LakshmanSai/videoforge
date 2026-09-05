@@ -98,6 +98,14 @@ class SoulXServerlessImageDefinitionTests(unittest.TestCase):
             self.assertNotIn(forbidden, run_lines)
         self.assertNotIn("SOULX_MODE=prepare", self.source)
         self.assertNotIn("COPY prepare_soulx_volume.py", self.source)
+        self.assertLess(
+            self.source.index('install -d -m 1777 "$TMPDIR"'),
+            self.source.index("python -m pip install"),
+        )
+        self.assertLess(
+            self.source.index('install -d -m 1777 "$TMPDIR"'),
+            self.source.index('pip_check_output="$(mktemp)"'),
+        )
         for removed in ("soulx_prepare_service.py", "prepare_soulx_volume.py"):
             self.assertIn(f"test ! -e /opt/videoforge/{removed}", self.source)
 

@@ -51,7 +51,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
           test "$(sha256sum workers/avatar-primary/Dockerfile.serverless | awk '{print $1}')" = \
-            "4490efbafd1d8f9db5e951e9a74744751b57f6af75f3d45ba6e78bfc5aa8cc87"
+            "d1b4039f44147acb4b9e08e72700156cc239b3bc4dfddb0bb92518c22c2bfc3a"
           test "$(sha256sum workers/avatar-primary/requirements.serverless.txt | awk '{print $1}')" = \
             "938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
           expected_sources=(
@@ -499,7 +499,7 @@ jobs:
               "config_digest": anonymous_proof["config"]["digest"] if published else None,
               "anonymous_publication_proof": anonymous_proof,
               "dockerfile_sha256": (
-                  "sha256:4490efbafd1d8f9db5e951e9a74744751b57f6af75f3d45ba6e78bfc5aa8cc87"
+                  "sha256:d1b4039f44147acb4b9e08e72700156cc239b3bc4dfddb0bb92518c22c2bfc3a"
               ),
               "requirements_sha256": (
                   "sha256:938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"

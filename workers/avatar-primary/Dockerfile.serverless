@@ -40,7 +40,8 @@ ENV SOULX_MODEL_ROOT=/runpod-volume/soulx-flashhead-pro \
 WORKDIR /opt/videoforge
 
 COPY workers/avatar-primary/requirements.serverless.txt ./requirements.serverless.txt
-RUN python -m pip install --no-cache-dir --requirement requirements.serverless.txt \
+RUN install -d -m 1777 "$TMPDIR" \
+    && python -m pip install --no-cache-dir --requirement requirements.serverless.txt \
     && pip_check_output="$(mktemp)" \
     && if python -m pip check >"$pip_check_output" 2>&1; then \
       :; \
