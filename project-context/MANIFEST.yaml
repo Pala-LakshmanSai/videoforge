@@ -276,7 +276,6 @@ open_gates:
   GATE_IMAGE_002: mage_terms_ambiguity
   GATE_RANGA_001: real_human_editorial_quality
   GATE_SECURITY_001: production_security_release_operations
-  GATE_SERVERLESS_MAGE_001: exact_mage_endpoint
   GATE_SERVERLESS_SOULX_001: exact_soulx_endpoint_and_crop_review
   GATE_SOULX_LICENSE_001: soulx_deployability_terms
   GATE_STYLE_002: enabled_style_real_sample_adherence
@@ -286,6 +285,7 @@ closed_gates:
   GATE_LLM_001: runware_deepseek_pass
   GATE_QUEUE_001: fair_durable_admission_pass
   GATE_SERVERLESS_CONTRACT_001: provider_free_v3_transport_pass
+  GATE_SERVERLESS_MAGE_001: exact_mage_endpoint_pass
   GATE_STORAGE_001: private_r2_and_scratch_pass
   GATE_STYLE_001: runware_gemini_style_analysis_pass
   GATE_TENANCY_001: account_workspace_privacy_pass

@@ -1,0 +1,58 @@
+{
+  "schema_version": "videoforge.v2-07-attempt85-success-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 85,
+  "result": "QUALIFIED_PASS_CLEAN",
+  "proposal_sha256": "sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540",
+  "authority_sha256": "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858",
+  "authority_status": "CONSUMED_NON_REUSABLE",
+  "control_source_commit": "2fccf2ed7257613f4a12017562243a8aeb889138",
+  "image_source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "image_digest": "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+  "qualification": {
+    "batches_completed": 4,
+    "images_per_batch": 32,
+    "durable_images_verified": 128,
+    "duplicate_replay_same_job": true,
+    "cancellation_status": "CANCELLED",
+    "cancellation_output_cleanup": "CONFIRMED",
+    "timeout_status": "FAILED",
+    "timeout_terminal_category": "execution_timeout_failed",
+    "timeout_output_cleanup": "CONFIRMED",
+    "max_two_workers": "PASS",
+    "generated_output_cleanup": "CONFIRMED",
+    "terminal_sealed_model_attestation": "CONFIRMED"
+  },
+  "cleanup": {
+    "disposable_worker_and_route_deleted": true,
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "final_zero_compute_reads": 3,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "retained_volume_size_gb_each": 50,
+    "retained_volumes_unchanged": true
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 2.507309638109291,
+    "final_endpoint_spend_usd": 2.507309638109291,
+    "incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "evidence": {
+    "live_result": "attempt85-live-result.json",
+    "live_result_sha256": "sha256:aa1dc5c2c82d36b32992750fad77d4776c1d92e337f539124670b310201f28f8",
+    "disposable_orchestrator": "attempt85-disposable-orchestrator.json",
+    "disposable_orchestrator_sha256": "sha256:cf2a185c566014a263f52169ac52ccfeb67c1f8fa5ac7363a44652022b2873fa"
+  },
+  "v2_07_qualified": true,
+  "v2_08_actions": 0,
+  "next_boundary": "V2-07 is qualified. Attempt85 authority is consumed; no further V2-07 provider action is authorized. V2-08 remains untouched and requires its own authority."
+}

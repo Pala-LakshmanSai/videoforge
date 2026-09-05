@@ -1,0 +1,80 @@
+{
+  "schema_version": "videoforge-v207-disposable-live-orchestration/v1",
+  "worker_name": "videoforge-v207-output",
+  "route": "https://videoforge-v207-output.lakshmansai121.workers.dev/api/v2/v207/generated-output-port",
+  "cleanup_required": false,
+  "result": "SUCCEEDED",
+  "events": [
+    {
+      "event": "clean_worktree_confirmed",
+      "at": "2026-09-05T05:19:59.373Z"
+    },
+    {
+      "event": "preflight_completed",
+      "at": "2026-09-05T05:20:05.554Z"
+    },
+    {
+      "event": "initial_control_plane_absence_confirmed",
+      "at": "2026-09-05T05:20:17.781Z",
+      "reads": 3
+    },
+    {
+      "event": "cleanup_intent_persisted",
+      "at": "2026-09-05T05:20:17.782Z"
+    },
+    {
+      "event": "signer_disabled_worker_deployed",
+      "at": "2026-09-05T05:20:35.475Z"
+    },
+    {
+      "event": "disabled_route_confirmed",
+      "at": "2026-09-05T05:20:39.716Z",
+      "reads": 3
+    },
+    {
+      "event": "active_version_confirmed",
+      "at": "2026-09-05T05:20:45.679Z",
+      "version_id_present": true
+    },
+    {
+      "event": "active_route_confirmed",
+      "at": "2026-09-05T05:20:49.859Z",
+      "reads": 3
+    },
+    {
+      "event": "pre_gpu_output_compatibility_probe_cycle_completed",
+      "at": "2026-09-05T05:20:58.084Z",
+      "cycle": 1
+    },
+    {
+      "event": "pre_gpu_output_compatibility_probe_cycle_completed",
+      "at": "2026-09-05T05:21:05.382Z",
+      "cycle": 2
+    },
+    {
+      "event": "pre_gpu_output_compatibility_probe_cycle_completed",
+      "at": "2026-09-05T05:21:12.786Z",
+      "cycle": 3
+    },
+    {
+      "event": "pre_gpu_output_compatibility_probe_completed",
+      "at": "2026-09-05T05:21:12.788Z",
+      "clean_cycles": 3
+    },
+    {
+      "event": "qualification_completed",
+      "at": "2026-09-05T06:04:36.085Z",
+      "exit_code": 0
+    },
+    {
+      "event": "cleanup_confirmed",
+      "at": "2026-09-05T06:04:56.676Z",
+      "reads": 3
+    },
+    {
+      "event": "orchestration_complete",
+      "at": "2026-09-05T06:04:56.677Z",
+      "cleaned_up": true
+    }
+  ]
+}

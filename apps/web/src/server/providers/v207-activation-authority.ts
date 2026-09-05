@@ -80,16 +80,15 @@ export const V207_APPROVED_EXECUTION_ENTRYPOINT = "disposable-live-orchestrator-
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempts69 through 84 were consumed. Attempt85 is approved once and remains unconsumed.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858";
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;
+// Attempts69 through 85 were consumed. No executable V2-07 authority remains.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
  * same compiled approval boundary as the proposal and finite cap. Any future
  * authority must bind its own decision in a separate immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;

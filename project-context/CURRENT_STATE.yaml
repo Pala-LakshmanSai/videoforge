@@ -4,28 +4,28 @@ updated_at: "2026-09-05"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compaction_qualified
+current_milestone: v2_07_mage_serverless_qualified_pass_clean
 current_task: VF-10-07
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: v2_07_attempt85_approved_single_use_unconsumed
+task_stage: v2_07_qualified_attempt85_consumed_success_clean
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: true
-credential_access_authorized: true
-gpu_use_authorized: true
-maximum_external_spend_usd: 4.5
+remote_or_cloud_mutations_authorized: false
+credential_access_authorized: false
+gpu_use_authorized: false
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: attempt85_approved_single_use_unconsumed
-  live_provider_calls: true
-  remote_mutation: true
+  mode: v2_07_qualified_attempt85_consumed_no_executable_authority
+  live_provider_calls: false
+  remote_mutation: false
   deployment_or_publication: false
-  credential_value_access: true
-  paid_requests_or_spend: true
-  runpod_mutation_or_gpu: true
-  v2_07_action: "Attempt85 is approved once under authority sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858 for proposal sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540. It binds control 2fccf2ed, exact published image reuse, three consecutive absence reads within six attempts, absolute cumulative cap USD 4.50, remaining allowance USD 1.992690361890709, disposable entrypoint only, and mandatory cleanup. No image republication, legacy staging, redispatch, fallback, anchor refresh, retained-volume mutation, or V2-08 is authorized."
+  credential_value_access: false
+  paid_requests_or_spend: false
+  runpod_mutation_or_gpu: false
+  v2_07_action: "V2-07 is qualified by Attempt85 under consumed authority sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858. Four batches produced 128 durable images; replay, cancellation, signed timeout, and max-two passed. Cleanup and three final reads prove zero compute, unchanged retained volumes, and cumulative billing USD 2.507309638109291 with zero increment. No executable authority remains and no V2-08 action occurred."
   provider_free_product_action: "Source 29667134 is live as Worker 50cfd256 with media worker 0.1.14 online. Exactly one project f7655814 completed Stages 1-5; Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 compact prompts, settled USD 0.001401, conserved its reservation, and exposed the 520px scrollable viewer. All 31 positive prompts contain the enabled bounded project keywords exactly once and only the pinned medium, realism, camera, and lighting style fields; removed style metadata has zero hits. Total Stage 3+5 variable external spend was USD 0.001473. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
@@ -3981,7 +3981,7 @@ historical_v2_06_final_live_closure_authority:
   actual_spend_usd: 0
   new_recurring_resources_created: 0
 
-credential_value_read_authorized: true
+credential_value_read_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
@@ -3992,15 +3992,15 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_fresh_successor_inventory_or_mutation
-  current_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
-  current_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
-  latest_closed_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt84-absolute-cap-candidate/approved-authority.json
-  latest_closed_authority_sha256: "sha256:db7dc441474c744af9885cf57087ce873632d6aa4f2631d76ef038d8b1e861f8"
-  mutation_authorized: true
-  mutation_authorization_scope: attempt85_disposable_only_single_use
-  gpu_use_authorized: true
-  gpu_authorization_scope: attempt85_after_all_pre_gpu_gates_only
-  spend_authorized_usd: 4.5
+  current_authority: null
+  current_authority_sha256: null
+  latest_closed_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
+  latest_closed_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
+  mutation_authorized: false
+  mutation_authorization_scope: none_attempt85_consumed_success
+  gpu_use_authorized: false
+  gpu_authorization_scope: none_attempt85_consumed_success
+  spend_authorized_usd: 0
 
 repository:
   initialized: true
@@ -4029,10 +4029,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: staging
-  provider_calls_authorized: true
-  authorized_spend_usd: 4.5
-  provider_authority_scope: attempt85_disposable_only_single_use
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: none_attempt85_consumed_success
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -4101,7 +4101,7 @@ roadmap_state:
   V2-04: complete_green_repaired_same_chat_reaudit_provider_free
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
-  V2-07: NOT_QUALIFIED_attempt85_approved_single_use_unconsumed
+  V2-07: complete_green_live_qualified_attempt85_cleanup_zero_compute
   V2-08: provider_free_in_progress_live_blocked_on_V2-07
   V2-09: provider_free_authorized_live_blocked_on_V2-07_and_V2-08
   V2-10: provider_free_authorized_live_blocked_on_V2-09
@@ -4148,7 +4148,7 @@ reusable_foundations:
 
 model_runtime_evidence:
   mage:
-    status: attempt85_approved_single_use_unconsumed
+    status: qualified_attempt85_consumed_success_clean
     current_candidate: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/combined-live-proposal.json
     current_candidate_sha256: "sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540"
     deadline_mode_admission_commit: "aa0524f2d340cab1a4c4693584dc626e117f7d2c"
@@ -4156,8 +4156,8 @@ model_runtime_evidence:
     post_cancel_zero_poll_repair_commit: "1283a23"
     post_cancel_zero_poll_repair_audit: PASS_zero_p0_zero_p1
     anchor_rebind_commit: "9c9ca3476c976592ae73414e6a1e53cc0fcbb643"
-    latest_closed_attempt: 84
-    latest_closed_result: worker_absence_unconfirmed_stopped_before_mutation_direct_absence_followup_passed
+    latest_closed_attempt: 85
+    latest_closed_result: qualified_pass_clean_128_durable_images_all_gates_passed_zero_compute
     exact_model: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot"
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb"
     immutable_image_publication_state: PUBLISHED_IMMUTABLE_ANONYMOUS_FULL_READBACK_PASS_ATTEMPT82
@@ -4194,13 +4194,13 @@ model_runtime_evidence:
     v2_07_current_candidate_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
     v2_07_current_candidate_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
     v2_07_current_candidate_approved_preexecution_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
-    v2_07_current_candidate_cap_usd: 4.5
+    v2_07_current_candidate_cap_usd: 0
     v2_07_current_candidate_requested_cap_usd: 4.5
-    v2_07_current_candidate_authority_state: APPROVED_SINGLE_USE_UNCONSUMED
-    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt84-absolute-cap-candidate/approved-authority.json
-    v2_07_latest_closed_authority_sha256: "sha256:db7dc441474c744af9885cf57087ce873632d6aa4f2631d76ef038d8b1e861f8"
-    v2_07_latest_closed_closure: evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-84.json
-    v2_07_latest_closed_closure_sha256: "sha256:c572a05a5c1fdc30fe3ff77fdfad1bcfa729d0d2296df2cad3a33ff9e4c73b54"
+    v2_07_current_candidate_authority_state: CONSUMED_SUCCESS_CLEAN_NON_REUSABLE
+    v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
+    v2_07_latest_closed_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
+    v2_07_latest_closed_closure: evidence/acceptance/VF-10-07/2026-09-05-attempt85-live-qualification/success-attempt-85.json
+    v2_07_latest_closed_closure_sha256: "sha256:aeef45f237fd07e0937cdd51eaaf545ac0d8bb4c90eb105708f1681da787cc79"
     v2_07_current_candidate_post_cancel_terminal_inventory_repair_commit: "8bb6583012569e595630deb3d7fe104a923dcc58"
     v2_07_current_candidate_post_cancel_terminal_inventory_source_sha256: "sha256:7995f0519d61538633b005c529835b7c3864bb4378fd6a3aa010e1e67947b233"
     v2_07_attempt64_post_cancel_zero_poll_repair_commit: "1283a23"
@@ -4218,8 +4218,8 @@ model_runtime_evidence:
     v2_07_closed_diagnostic_authority: evidence/acceptance/VF-10-07/2026-08-20-diagnostic-endpoint-bound-candidate/approved-authority.json
     v2_07_historical_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
     v2_07_historical_closed_proposal_sha256: "sha256:56f82ee2c32df36e1db3693c12002b008e17b34fed1998863a0ec020be6aac55"
-    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-09-04-live-qualification/failed-attempt-79.json
-    v2_07_latest_live_attempt_sha256: "sha256:caf5b4b7858954f44aa51accfa2c893ec25dcbe91bb45d2cc35844246d863d45"
+    v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-09-05-attempt85-live-qualification/attempt85-live-result.json
+    v2_07_latest_live_attempt_sha256: "sha256:aa1dc5c2c82d36b32992750fad77d4776c1d92e337f539124670b310201f28f8"
     v2_07_attempt79_orchestrator: evidence/acceptance/VF-10-07/2026-09-04-live-qualification/attempt79-live-orchestrator.json
     v2_07_attempt79_orchestrator_sha256: "sha256:d828273bae69ce500263780790007d0afcee84feb3bbcc4b465ba2b62a0edb52"
     v2_07_attempt79_reconciliation: evidence/acceptance/VF-10-07/2026-09-04-live-qualification/attempt79-readonly-reconciliation.json
@@ -4355,7 +4355,6 @@ last_known_provider_resource_truth:
   note: "Attempt64 closure reconciliation proves zero Pods/endpoints/private templates/workers/running Pods after exact disposable cleanup, both retained 50 GB EU-RO-1 volumes, cumulative billing USD 2.095889555552276 with USD 0 observed increment subject to provider lag, absent signer, protected config mode 0600, refreshed anchor hashes, and three exact version-bound POST 404 V207_ROUTE_DISABLED reads. Attempt64 authority is consumed; V2-08 live activation remains forbidden, while DEC_DELIVERY_002 permits provider-free V2-08 product work."
 
 blocking_gates_for_production:
-  - GATE_SERVERLESS_MAGE_001
   - GATE_SERVERLESS_SOULX_001
   - GATE_SOULX_LICENSE_001
   - GATE_E2E_001
@@ -6007,19 +6006,22 @@ provider_authority_attempt78: &v2_07_provider_authority_attempt78
       checked_at: "2026-09-04T23:14:00+05:30"
 
 provider_authority: &v2_07_provider_authority_attempt85
-  mode: paid
-  provider: cloudflare_and_runpod
-  cap_usd: 4.5
+  mode: none
+  provider: null
+  cap_usd: 0
   approved_maximum_cumulative_finite_spend_usd: 4.5
   non_transferable: true
   source: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
   authorized_by_user_at: "2026-09-05T10:42:28+05:30"
-  consumed: false
+  consumed: true
   baseline_cumulative_endpoint_spend_usd: 2.507309638109291
   remaining_allowance_usd: 1.992690361890709
-  resources: [published_mage_image, disposable_output_worker_route, disposable_runpod_endpoint, disposable_runpod_template, retained_two_sealed_50gb_volumes]
-  authorized_operations: [fresh_preflight_and_stable_absence, three_route_fingerprints, three_pre_gpu_cycles, bounded_stage6_qualification, mandatory_cleanup_and_three_zero_reads]
-  allowed_operations: [fresh_preflight_and_stable_absence, three_route_fingerprints, three_pre_gpu_cycles, bounded_stage6_qualification, mandatory_cleanup_and_three_zero_reads]
+  final_cumulative_endpoint_spend_usd: 2.507309638109291
+  actual_incremental_spend_usd: 0
+  closure: evidence/acceptance/VF-10-07/2026-09-05-attempt85-live-qualification/success-attempt-85.json
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1
@@ -6034,39 +6036,39 @@ provider_authority: &v2_07_provider_authority_attempt85
 recommended_next_task:
   task_id: VF-10-07
   checkpoint: V2-07
-  milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compaction_qualified
-  status: ATTEMPT85_APPROVED_SINGLE_USE_UNCONSUMED
+  milestone: v2_07_mage_serverless_qualified_pass_clean
+  status: V2_07_QUALIFIED_ATTEMPT85_CONSUMED_SUCCESS_CLEAN
   dependency_status: v2_06_stage5_live_functional_prompt_v18_qualified
-  authorization_status: attempt85_exact_approved_single_use_unconsumed
-  task_stage: bounded_mutation
-  current_goal_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
-  current_goal_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
+  authorization_status: no_executable_authority_attempt85_consumed_success
+  task_stage: v2_07_complete_handoff
+  current_goal_authority: null
+  current_goal_authority_sha256: null
   provider_authority: *v2_07_provider_authority_attempt85
-  provider_mode: staging
+  provider_mode: fixture
   read_profile: v2_07_mage_serverless
   task_brief: tasks/VF-10-07.md
-  goal: "Run only the approved Attempt85 disposable Stage 6 path, then mandatory cleanup and reconciliation; no V2-08."
-  provider_calls_authorized: true
+  goal: "Preserve the qualified V2-07 closure; do not execute V2-08 without its own authority."
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 4.5
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  credential_value_read_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: true
+  gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
-  resources: [published_mage_image, disposable_output_worker_route, disposable_runpod_endpoint, disposable_runpod_template, retained_two_sealed_50gb_volumes]
-  authorized_operations: [fresh_preflight_and_stable_absence, three_route_fingerprints, three_pre_gpu_cycles, bounded_stage6_qualification, mandatory_cleanup_and_three_zero_reads]
-  allowed_operations: [fresh_preflight_and_stable_absence, three_route_fingerprints, three_pre_gpu_cycles, bounded_stage6_qualification, mandatory_cleanup_and_three_zero_reads]
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
   rate_snapshot: [runpod_serverless_flex_rtx4090_eu_ro_1_usd_1_116_per_gpu_hour, retained_volumes_usd_7_per_month_combined]
-  authority_note: "Attempt85 exact authority is approved once with absolute cumulative cap USD 4.50 and remaining allowance USD 1.992690361890709. No image republication, legacy launcher, redispatch, fallback, anchor refresh, retained-volume mutation, or V2-08."
+  authority_note: "Attempt85 authority is consumed after successful V2-07 qualification and cleanup. No provider, mutation, GPU, spend, or V2-08 authority remains."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444"
@@ -6075,12 +6077,12 @@ recommended_next_task:
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: attempt85_approved_single_use_unconsumed
-  execution_blocker: null
+  execution_status: v2_07_qualified_attempt85_consumed_success_clean
+  execution_blocker: v2_08_not_authorized
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
-  state: v2_06_complete_green_independently_audited_v2_07_attempt85_approved_single_use_unconsumed
+  state: v2_06_complete_green_independently_audited_v2_07_attempt85_live_qualified_pass_clean
   verified_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   verified_commit_note: "Deployed executable source e673527 and Worker version 32bfc4bf-4421-4703-9095-2afc3515fda3 are accepted by the final independent audit at repository HEAD 99e4739. Positive and negative tenancy, ASR/render/Chrome, durable delete and R2 inventory, cleanup, migration 0036/FORCE RLS, recovery, backup/restore, rollback, native lifecycle, zero new spend, and RunPod zero compute are recorded."
   predecessor_verified_commit: "710131374789ad888e348cff6cbf3ca969780790"
@@ -6627,22 +6629,22 @@ audit_evidence:
   v2_07_attempt28_control_commit: "0084f6a13fdaa5a6d4b704e32e8b6cc22cecce14"
   v2_07_attempt28_candidate_max1_sha256: "sha256:acef5c48b6059fa2401b88bb40ed81e648c9ed795e5fcb3208e117d936f4196d"
   v2_07_attempt28_candidate_max2_sha256: "sha256:45d067e5d7e1b152d25c62eb7e185898bbedd30797d5d9aacc83bb9a48e41836"
-  v2_07_current_candidate_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
-  v2_07_current_proposal: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/combined-live-proposal.json
-  v2_07_current_proposal_sha256: "sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540"
-  v2_07_current_candidate_acceptance: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/acceptance.json
-  v2_07_current_candidate_acceptance_sha256: "sha256:cc6e5c34ad9d38211af222966b30e5e3cee455ef9b1d848a575113a9cc4b6df8"
-  v2_07_current_candidate_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
-  v2_07_current_candidate_independent_audit: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/independent-audit.json
-  v2_07_current_candidate_independent_audit_sha256: "sha256:65baf3d750b868f41e0d11157fef0541440ab061fe94a8a706e88c48cfe9df85"
-  v2_07_current_authority_independent_audit: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/authority-independent-audit.json
-  v2_07_current_authority_independent_audit_sha256: "sha256:bc58b0f9e33e80c3093ff836c1621beb85314612a616a089cfa16dd0eea4b855"
-  v2_07_current_approved_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
-  v2_07_current_approved_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
-  v2_07_latest_closed_closure: evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-84.json
-  v2_07_latest_closed_closure_sha256: "sha256:c572a05a5c1fdc30fe3ff77fdfad1bcfa729d0d2296df2cad3a33ff9e4c73b54"
-  v2_07_latest_closed_reconciliation: evidence/acceptance/VF-10-07/2026-09-05-live-qualification/attempt83-readonly-reconciliation.json
-  v2_07_latest_closed_reconciliation_sha256: "sha256:43c7e65ae2fa86ac602713218f130ab0a4d656c2d327b04f0e5308009b0a4560"
+  v2_07_current_candidate_authority: null
+  v2_07_current_proposal: null
+  v2_07_current_proposal_sha256: null
+  v2_07_current_candidate_acceptance: null
+  v2_07_current_candidate_acceptance_sha256: null
+  v2_07_current_candidate_authority_sha256: null
+  v2_07_current_candidate_independent_audit: null
+  v2_07_current_candidate_independent_audit_sha256: null
+  v2_07_current_authority_independent_audit: null
+  v2_07_current_authority_independent_audit_sha256: null
+  v2_07_current_approved_authority: null
+  v2_07_current_approved_authority_sha256: null
+  v2_07_latest_closed_closure: evidence/acceptance/VF-10-07/2026-09-05-attempt85-live-qualification/success-attempt-85.json
+  v2_07_latest_closed_closure_sha256: "sha256:aeef45f237fd07e0937cdd51eaaf545ac0d8bb4c90eb105708f1681da787cc79"
+  v2_07_latest_closed_reconciliation: evidence/acceptance/VF-10-07/2026-09-05-attempt85-live-qualification/attempt85-live-result.json
+  v2_07_latest_closed_reconciliation_sha256: "sha256:aa1dc5c2c82d36b32992750fad77d4776c1d92e337f539124670b310201f28f8"
   v2_07_attempt72_closure: evidence/acceptance/VF-10-07/2026-09-04-live-qualification/failed-attempt-72.json
   v2_07_attempt72_closure_sha256: "sha256:834fb6657e1d0de9a711a7847c033c7be6854edc3b569b68fa3f1d805f07014a"
   v2_07_attempt72_orchestrator: evidence/acceptance/VF-10-07/2026-09-04-live-qualification/attempt72-live-orchestrator.json
@@ -6771,8 +6773,8 @@ audit_evidence:
   v2_07_attempt18_closed_proposal_sha256: "sha256:2752b61dfe4481eaa15ef349f859d91650160971a828d7d19af2638f7c8715be"
   v2_07_attempt18_closed_authority: evidence/acceptance/VF-10-07/2026-08-21-patch-schema-requalification-candidate/approved-authority.json
   v2_07_attempt18_closed_authority_sha256: "sha256:bd077b2ae63fcf60a6e9c7dca0b95c777f360f28c9c53a7e7cf1d2dcca60e11c"
-  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-09-04-attempt76-active-route-propagation-candidate/combined-live-proposal.json
-  v2_07_latest_closed_proposal_sha256: "sha256:da59afdc9ea272c7201215d890741202f5e8f8152ba5765f6172332b1cd51bc6"
+  v2_07_latest_closed_proposal: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/combined-live-proposal.json
+  v2_07_latest_closed_proposal_sha256: "sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540"
   v2_07_latest_candidate_proposal: null
   v2_07_latest_candidate_proposal_sha256: null
   v2_07_latest_candidate_acceptance: null
@@ -6792,8 +6794,8 @@ audit_evidence:
   v2_07_attempt21_closed_authority_sha256: "sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"
   v2_07_attempt21_closure: evidence/acceptance/VF-10-07/2026-08-20-live-qualification/failed-attempt-21.json
   v2_07_attempt21_closure_sha256: "sha256:cd7200aca5f532a3e9062b37c296cf412bce974605f44278156c23674710bd68"
-  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-09-04-attempt76-active-route-propagation-candidate/approved-authority.json
-  v2_07_latest_closed_authority_sha256: "sha256:900833b5b851b4031653f0a04e9899a39c4a08c6e5a2594dabbb2eaf9e922fdb"
+  v2_07_latest_closed_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
+  v2_07_latest_closed_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
   v2_07_attempt17_closed_proposal: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/combined-live-proposal.json
   v2_07_attempt17_closed_proposal_sha256: "sha256:6bc0cef713615f5bdd47b85a5903249644f514f7666956941d5435288d6bd99c"
   v2_07_attempt17_closed_authority: evidence/acceptance/VF-10-07/2026-08-20-template-identity-requalification-candidate/approved-authority.json
@@ -6816,8 +6818,8 @@ audit_evidence:
   v2_07_historical_amended_proposal: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/amended-live-proposal.json
   v2_07_historical_approved_authority: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/approved-authority.json
   v2_07_historical_image_publication: evidence/acceptance/VF-10-07/2026-08-20-inline-wire-image-candidate/image-publication.json
-  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-09-04-live-qualification/failed-attempt-78.json
-  v2_07_latest_live_attempt_sha256: "sha256:6ae6b03b0e3e3cdb309da4e123b1ca746745289e407341388b986e9818be5003"
+  v2_07_latest_live_attempt: evidence/acceptance/VF-10-07/2026-09-05-attempt85-live-qualification/attempt85-live-result.json
+  v2_07_latest_live_attempt_sha256: "sha256:aa1dc5c2c82d36b32992750fad77d4776c1d92e337f539124670b310201f28f8"
   v2_07_attempt78_orchestrator: evidence/acceptance/VF-10-07/2026-09-04-live-qualification/attempt78-live-orchestrator.json
   v2_07_attempt78_orchestrator_sha256: "sha256:eeba93083e40c83552fc5d3b5204a464b33cb0eaa1042b40f8b6778a4ab0f500"
   v2_07_attempt78_reconciliation: evidence/acceptance/VF-10-07/2026-09-04-live-qualification/attempt78-readonly-reconciliation.json
@@ -6849,6 +6851,6 @@ audit_evidence:
   v2_06_historical_live_finding_closure: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/live-closure-3d8d467.json
   v2_06_historical_read_only_preflight: evidence/acceptance/VF-10-06/2026-08-19-v2-06-completion-matrix/read-only-preflight-3d8d467.json
   v2_06_local_source_repair: evidence/acceptance/VF-10-06/2026-08-19-local-r2-readback-repair/acceptance.json
-  current_goal_scope: v2_07_attempt85_approved_disposable_only_single_use_absolute_cap
+  current_goal_scope: v2_07_qualified_attempt85_consumed_success_clean_no_executable_authority
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
-  v2_07_status: NOT_QUALIFIED_ATTEMPT85_APPROVED_SINGLE_USE_UNCONSUMED
+  v2_07_status: QUALIFIED_ATTEMPT85_PASS_CLEAN_ZERO_COMPUTE
