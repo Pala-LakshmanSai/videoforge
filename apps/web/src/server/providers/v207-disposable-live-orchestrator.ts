@@ -29,6 +29,8 @@ const SAFE_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
 const ABSENT_DIAGNOSTIC =
   /(?:(?:^|[^\w])(?:code|error\s+code)\s*[:=]\s*(?:10007|10090)(?![A-Za-z0-9_])|["'](?:code|errorCode)["']\s*:\s*(?:10007|10090)(?![A-Za-z0-9_])|\bworker(?:\s+script)?\s+(?:does\s+not\s+exist|not\s+found)\b|\bno\s+such\s+worker\b|\bworkers?\.api\.error\.script[_ -]?not[_ -]?found\b)/iu;
 const FINAL_PROOF_READS = 3;
+const INITIAL_ABSENCE_MAX_ATTEMPTS = 6;
+const INITIAL_ABSENCE_RETRY_MILLISECONDS = 2_000;
 const ROUTE_PROPAGATION_MAX_ATTEMPTS = 30;
 const ROUTE_PROPAGATION_MAX_MILLISECONDS = 60_000;
 const ROUTE_PROPAGATION_RETRY_MILLISECONDS = 2_000;
@@ -340,6 +342,35 @@ async function assertWorkerAbsent(
         : "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
     );
   }
+}
+
+async function assertStableInitialWorkerAbsence(
+  run: V207CommandRunner,
+  cwd: string,
+  configPath: string,
+  environment: Environment,
+  sleepImpl: (milliseconds: number) => Promise<void>,
+): Promise<void> {
+  let consecutiveAbsent = 0;
+  for (let attempt = 1; attempt <= INITIAL_ABSENCE_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      await assertWorkerAbsent(run, cwd, configPath, environment);
+      consecutiveAbsent += 1;
+      if (consecutiveAbsent === FINAL_PROOF_READS) return;
+    } catch (error) {
+      if (
+        !(error instanceof V207DisposableOrchestratorError) ||
+        error.message !== "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED"
+      ) {
+        throw error;
+      }
+      consecutiveAbsent = 0;
+    }
+    if (attempt < INITIAL_ABSENCE_MAX_ATTEMPTS) {
+      await sleepImpl(INITIAL_ABSENCE_RETRY_MILLISECONDS);
+    }
+  }
+  throw new V207DisposableOrchestratorError("V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED");
 }
 
 function activeVersionId(result: V207CommandResult): string {
@@ -1409,7 +1440,7 @@ export async function runV207DisposableLiveOrchestration(
   await record("preflight_completed");
 
   try {
-    await assertWorkerAbsent(run, cwd, configPath, environment);
+    await assertStableInitialWorkerAbsence(run, cwd, configPath, environment, sleepImpl);
   } catch (error) {
     // This is still the read-only admission boundary. Persist a terminal result before
     // returning the provider diagnostic so an absence-parser drift cannot leave evidence in
@@ -1421,7 +1452,7 @@ export async function runV207DisposableLiveOrchestration(
     });
     throw error;
   }
-  await record("initial_control_plane_absence_confirmed");
+  await record("initial_control_plane_absence_confirmed", { reads: FINAL_PROOF_READS });
 
   try {
     if (options.installSignalHandlers !== false) {

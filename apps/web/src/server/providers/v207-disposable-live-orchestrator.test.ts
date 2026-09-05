@@ -119,6 +119,7 @@ async function fixture(
     pythonPutSignal?: "SIGINT" | "SIGTERM";
     signal?: "SIGINT" | "SIGTERM";
     absenceDiagnostic?: string;
+    absenceDiagnostics?: readonly string[];
   } = {},
 ) {
   const root = await mkdtemp("/tmp/v207-disposable-");
@@ -127,6 +128,7 @@ async function fixture(
   let exists = overrides.preexisting ?? false;
   let secret = false;
   let childCalls = 0;
+  let absenceChecks = 0;
   const bucket = memoryBucket();
   const fetchRef: { current?: typeof fetch } = {};
   const signalTarget = new EventEmitter();
@@ -184,11 +186,14 @@ async function fixture(
     if (request.args.includes("deployments")) {
       return exists
         ? result(JSON.stringify({ versions: [{ version_id: VERSION_ID, percentage: 100 }] }))
-        : result(
-            "",
-            1,
-            overrides.absenceDiagnostic ?? "Worker script does not exist [code: 10090]",
-          );
+        : result("", 1, (() => {
+            const diagnostic =
+              overrides.absenceDiagnostics?.[absenceChecks] ??
+              overrides.absenceDiagnostic ??
+              "Worker script does not exist [code: 10090]";
+            absenceChecks += 1;
+            return diagnostic;
+          })());
     }
     if (request.args.includes("deploy")) {
       exists = true;
@@ -687,6 +692,8 @@ describe("V2-07 disposable live orchestrator", () => {
     expect(labels).toEqual([
       "git",
       "preflight",
+      "status",
+      "status",
       "status",
       "deploy",
       "secret",
@@ -1826,8 +1833,8 @@ describe("V2-07 disposable live orchestrator", () => {
       }),
     ).rejects.toMatchObject({ code: "V207_DISPOSABLE_DISABLED_ROUTE_UNCONFIRMED" });
 
-    expect(sleeps).toEqual([1_000, 2_000, 2_000]);
-    expect(now).toBe(64_000);
+    expect(sleeps).toEqual([2_000, 2_000, 1_000, 2_000, 2_000]);
+    expect(now).toBe(68_000);
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 1 });
   });
 
@@ -1880,6 +1887,23 @@ describe("V2-07 disposable live orchestrator", () => {
     const completed = await runV207DisposableLiveOrchestration(setup.options);
     expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
     expect(setup.state()).toEqual({ exists: false, secret: false, childCalls: 2 });
+  });
+
+  it("requires three consecutive exact absence reads after a bounded transient", async () => {
+    const setup = await fixture({
+      absenceDiagnostics: [
+        "temporary Cloudflare transport failure",
+        "This Worker does not exist on your account. [code: 10007]",
+        "This Worker does not exist on your account. [code: 10007]",
+        "This Worker does not exist on your account. [code: 10007]",
+      ],
+    });
+    const completed = await runV207DisposableLiveOrchestration(setup.options);
+    expect(completed).toMatchObject({ qualificationExitCode: 0, cleanedUp: true });
+    const evidence = JSON.parse(await readFile(join(setup.root, "evidence.json"), "utf8"));
+    expect(evidence.events).toContainEqual(
+      expect.objectContaining({ event: "initial_control_plane_absence_confirmed", reads: 3 }),
+    );
   });
 
   it("normalizes Wrangler ANSI output before accepting a colored 10007 absence diagnostic", async () => {
