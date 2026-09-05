@@ -408,8 +408,8 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       }),
       cleanupOutputKeys,
       cleanupAttributableResource,
-      interruptionCheckpoint: async (phase) => {
-        if (phase === "lane-delete" && crashAfterLaneDelete)
+      laneDeletionCheckpoint: async () => {
+        if (crashAfterLaneDelete)
           throw new V208ProcessInterruption("nested-lane-delete-crash");
       },
       materializationCheckpoint: async () => {
@@ -488,6 +488,94 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       "V208_CLEANUP_PLAN_INVALID",
     );
     expect(freshAdmission).not.toHaveBeenCalled();
+    expect(createLane).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("recovers an IN_FLIGHT cleanup plan only from durable create and readback evidence", async () => {
+    const recovered = {
+      lane: "soulx" as const,
+      purpose: "qualification" as const,
+      endpointId: "endpoint-durable-recovery",
+      endpointIdSha256: `sha256:${createHash("sha256")
+        .update("endpoint-durable-recovery")
+        .digest("hex")}`,
+      templateId: "template-durable-recovery",
+      templateIdSha256: `sha256:${createHash("sha256")
+        .update("template-durable-recovery")
+        .digest("hex")}`,
+      image: authority().image,
+      sourceCommit: authority().imageSourceCommit,
+      deploymentSha256: `sha256:${"8".repeat(64)}`,
+      volumeIdSha256: V208_SOULX_VOLUME_ID_SHA256,
+      volumeManifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+      volumeSizeGb: 50 as const,
+      volumeMount: "/runpod-volume" as const,
+      region: "EU-RO-1" as const,
+      gpu: "NVIDIA GeForce RTX 4090" as const,
+      gpuCount: 1 as const,
+      workersMin: 0 as const,
+      workersMax: 1 as const,
+      idleTimeoutSeconds: 60 as const,
+      handlerConcurrency: 1 as const,
+      scalerType: "REQUEST_COUNT" as const,
+      scalerValue: 1 as const,
+      initTimeoutSeconds: 800,
+    };
+    const freshAdmission = vi.fn(async () => {
+      throw new Error("STOP_AFTER_DURABLE_RECOVERY");
+    });
+    const createLane = vi.fn();
+    const dispatch = vi.fn();
+    const transitions: Array<Record<string, unknown>> = [];
+    const reconstruct = vi.fn(async ({ descriptor }: { descriptor: { id: string } }) => ({
+      inputKeys: [`tenant/input/${descriptor.id}`],
+      outputKeys: [`tenant/output/${descriptor.id}`],
+    }));
+    const dependencies = {
+      soulx: {
+        lane: "soulx",
+        publicImage: authority().image,
+        sourceCommit: authority().imageSourceCommit,
+        deploymentSha256: recovered.deploymentSha256,
+        volumeIdSha256: V208_SOULX_VOLUME_ID_SHA256,
+        volumeManifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+      },
+      transport: {
+        durable: {
+          issueStageAuthority: async () => ({ authorityId: "authority-create-window" }),
+          claimStageAuthority: async () => ({ decision: "RESUME" }),
+          claimOperation: async (operation: Record<string, unknown>) => {
+            if (operation.kind === "create")
+              return { action: "RECONCILE", record: { ...operation, state: "ACKED", evidence: recovered } };
+            if (operation.kind === "readback")
+              return { action: "DONE", record: { ...operation, state: "TERMINAL", evidence: recovered } };
+            return { action: "RECONCILE", record: { ...operation, state: "IN_FLIGHT" } };
+          },
+          transitionOperation: async (transition: Record<string, unknown>) => {
+            transitions.push(transition);
+            return { ...transition, state: transition.to };
+          },
+        },
+        freshAdmission,
+        createLane,
+        dispatch,
+      } as unknown as V213DualLaneTransport,
+      materializeWholeSpan: vi.fn(),
+      verifySuccess: vi.fn(),
+      cleanupMaterializedInputs: vi.fn(),
+      cleanupAmbiguousMaterializedInputs: vi.fn(),
+      reconstructDeterministicQualificationKeys: reconstruct,
+      cleanupDeterministicQualificationKeys: vi.fn(),
+      cleanupOutputKeys: vi.fn(),
+      cleanupAttributableResource: vi.fn(),
+      serializeEvidence: vi.fn(),
+    } satisfies V208SoulXOrchestratorDependencies;
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "STOP_AFTER_DURABLE_RECOVERY",
+    );
+    expect(reconstruct).toHaveBeenCalledTimes(5);
+    expect(transitions.some(({ to, evidence }) => to === "TERMINAL" && evidence)).toBe(true);
     expect(createLane).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
   });

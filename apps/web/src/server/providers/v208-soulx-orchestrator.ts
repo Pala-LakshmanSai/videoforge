@@ -124,6 +124,8 @@ export interface V208SoulXOrchestratorDependencies {
     phase: "lane-delete" | "attributable-cleanup" | "output-delete" | "final-zero",
   ) => Promise<void>;
   readonly materializationCheckpoint?: (descriptorId: string) => Promise<void>;
+  readonly deploymentCheckpoint?: () => Promise<void>;
+  readonly laneDeletionCheckpoint?: () => Promise<void>;
 }
 
 export class V208ProcessInterruption extends Error {}
@@ -353,6 +355,46 @@ function validateCleanupPlanEvidence(
   return value;
 }
 
+async function recoverV208DeploymentFromDurableCreate(
+  transport: V213DualLaneTransport,
+  sealed: V213SealedLane,
+  authorityId: string,
+): Promise<V213LaneDeployment> {
+  const resourceKey = `v213-${authorityId}-${sealed.lane}-qualification`;
+  const createOperation = operationIdentity(
+    authorityId,
+    "create",
+    resourceKey,
+    hashCanonical({
+      sealed,
+      purpose: "qualification",
+      resourceKey,
+      workersMin: 0,
+      workersMax: 1,
+      idleTimeoutSeconds: 60,
+    }),
+  );
+  const createClaim = await transport.durable.claimOperation(createOperation);
+  if (createClaim.action === "EXECUTE") throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
+  const deployment = createClaim.record.evidence as V213LaneDeployment | undefined;
+  if (!deployment) throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
+  assertDeploymentReadback(deployment, deployment, sealed);
+  const readbackOperation = operationIdentity(
+    authorityId,
+    "readback",
+    resourceKey,
+    hashCanonical(deployment),
+  );
+  const readbackClaim = await transport.durable.claimOperation(readbackOperation);
+  if (readbackClaim.action !== "DONE") throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
+  const readback = readbackClaim.record.evidence as V213LaneDeployment | undefined;
+  if (!readback) throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
+  assertDeploymentReadback(readback, deployment, sealed);
+  if (canonicalizeJson(readback as unknown as JsonValue) !== canonicalizeJson(deployment as unknown as JsonValue))
+    throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
+  return deployment;
+}
+
 const operationIdentity = (
   authorityId: string,
   kind: V213OperationKind,
@@ -580,13 +622,52 @@ export async function runV208SoulXWithV213Transport(
   );
   const cleanupPlanClaim = await dependencies.transport.durable.claimOperation(cleanupPlanOperation);
   let cleanupPlan: V208CleanupPlanEvidence | null = null;
-  if (consumed.decision === "RESUME") {
-    if (cleanupPlanClaim.action !== "DONE") throw new Error("V208_CLEANUP_PLAN_REQUIRED");
-    cleanupPlan = validateCleanupPlanEvidence(
-      cleanupPlanClaim.record.evidence,
+  const buildAndPersistCleanupPlan = async (
+    planDeployment: V213LaneDeployment,
+  ): Promise<V208CleanupPlanEvidence> => {
+    const descriptorKeys = [] as Array<{
+      descriptorId: string;
+      inputKeys: readonly string[];
+      outputKeys: readonly string[];
+    }>;
+    for (const descriptor of plannedDescriptors) {
+      const reconstructed = await dependencies.reconstructDeterministicQualificationKeys({
+        descriptor,
+        deployment: planDeployment,
+        stageAuthorityId: issued.authorityId,
+        inputSha256: plan.planSha256,
+      });
+      descriptorKeys.push({ descriptorId: descriptor.id, ...reconstructed });
+    }
+    const unsigned = { deployment: planDeployment, descriptorKeys };
+    const validated = validateCleanupPlanEvidence(
+      { ...unsigned, evidenceSha256: hashCanonical(unsigned) },
       dependencies.soulx,
       plannedDescriptors.map(({ id }) => id),
     );
+    await completePhase(
+      dependencies.transport,
+      cleanupPlanOperation,
+      cleanupPlanClaim.record.state,
+      validated as unknown as JsonValue,
+    );
+    return validated;
+  };
+  if (consumed.decision === "RESUME") {
+    if (cleanupPlanClaim.action === "DONE")
+      cleanupPlan = validateCleanupPlanEvidence(
+        cleanupPlanClaim.record.evidence,
+        dependencies.soulx,
+        plannedDescriptors.map(({ id }) => id),
+      );
+    else
+      cleanupPlan = await buildAndPersistCleanupPlan(
+        await recoverV208DeploymentFromDurableCreate(
+          dependencies.transport,
+          dependencies.soulx,
+          issued.authorityId,
+        ),
+      );
   }
   const admission = await dependencies.transport.freshAdmission();
   const admissionCheckedAt = Date.parse(admission.checkedAt);
@@ -761,35 +842,8 @@ export async function runV208SoulXWithV213Transport(
       60,
     );
     assertDeploymentReadback(deployment, deployment, dependencies.soulx);
-    const descriptorKeys = [] as Array<{
-      descriptorId: string;
-      inputKeys: readonly string[];
-      outputKeys: readonly string[];
-    }>;
-    for (const descriptor of plannedDescriptors) {
-      const reconstructed = await dependencies.reconstructDeterministicQualificationKeys({
-        descriptor,
-        deployment,
-        stageAuthorityId: issued.authorityId,
-        inputSha256: plan.planSha256,
-      });
-      descriptorKeys.push({ descriptorId: descriptor.id, ...reconstructed });
-    }
-    const cleanupPlanUnsigned = { deployment, descriptorKeys };
-    cleanupPlan = validateCleanupPlanEvidence(
-      {
-        ...cleanupPlanUnsigned,
-        evidenceSha256: hashCanonical(cleanupPlanUnsigned),
-      },
-      dependencies.soulx,
-      plannedDescriptors.map(({ id }) => id),
-    );
-    await completePhase(
-      dependencies.transport,
-      cleanupPlanOperation,
-      cleanupPlanClaim.record.state,
-      cleanupPlan as unknown as JsonValue,
-    );
+    await dependencies.deploymentCheckpoint?.();
+    cleanupPlan = await buildAndPersistCleanupPlan(deployment);
     const pendingSuccesses: Array<{
       readonly descriptor: (typeof plan.qualification.wholeSpanDescriptors)[number];
       readonly materialization: V213QualificationCaseMaterialization;
@@ -1157,9 +1211,15 @@ export async function runV208SoulXWithV213Transport(
       );
       if (cleanupLaneClaim.action === "DONE") laneAbsenceConfirmed = true;
       else {
-        await waitForLaneDrain(dependencies.transport, deployment, poll.pollMs);
-        await deleteLaneDurably(dependencies.transport, deployment, issued.authorityId);
+        const existingLane = await dependencies.transport.findLaneByResourceKey(resourceKey);
+        if (existingLane !== null) {
+          assertDeploymentReadback(existingLane, deployment, dependencies.soulx);
+          await waitForLaneDrain(dependencies.transport, deployment, poll.pollMs);
+          await deleteLaneDurably(dependencies.transport, deployment, issued.authorityId);
+          await dependencies.laneDeletionCheckpoint?.();
+        }
         laneAbsenceConfirmed =
+          existingLane === null ||
           (await dependencies.transport.findLaneByResourceKey(resourceKey)) === null;
         if (!laneAbsenceConfirmed) throw new Error("V208_DELETE_UNCONFIRMED");
         await completePhase(
