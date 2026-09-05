@@ -11,6 +11,7 @@
     "build": "turbo run build",
     "build:check-generated": "node scripts/build-check-generated.mjs",
     "activate:v2-13-guarded": "node deploy/v2-13/guarded-activation.mjs",
+    "launch:v2-08-soulx-live": "node deploy/v2-08/launch-soulx-live.mjs",
     "execute:v2-13-full-live": "node deploy/v2-13/full-live-executor.mjs",
     "promote:v2-13-qualified": "node deploy/v2-13/promote-qualified-production.mjs",
     "ci:python": "pnpm python:lint && pnpm --filter @videoforge/contracts test:python && pnpm test:workers",
