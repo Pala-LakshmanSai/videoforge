@@ -40,17 +40,18 @@
     "reuse_authorized": false
   },
   "superseded_live_launch_attempt": {
-    "proposal_sha256": "sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8",
+    "proposal_sha256": "sha256:fbd5acf14dcd891b3468c9c74d9570652415d96819b915168171767b9d80c440",
     "authority_consumed": true,
     "authority_reusable": false,
-    "result": "FAILED_LAUNCH_READINESS_BEFORE_RUNPOD",
-    "failure_reason": "EXPIRED_V2_13_SQL_AUTHORITY_DEPENDENCY_AND_MISSING_STANDALONE_DURABLE_LAUNCHER",
+    "result": "FAILED_PRE_DISPATCH_ACK_CLASSIFICATION_CLEAN",
+    "failure_reason": "V208_DISPATCH_ACK_UNKNOWN_AFTER_PRE_DISPATCH_HEALTH_ERROR_WAS_COLLAPSED_BY_OUTER_CATCH",
     "image_publication_completed": true,
-    "runpod_mutations": 0,
-    "gpu_use": false,
-    "r2_mutations": 0,
+    "runpod_mutations": "DISPOSABLE_ENDPOINT_AND_TEMPLATE_CREATED_THEN_DELETED",
+    "gpu_use": "NO_BILLING_INCREMENT_OBSERVED_JOB_ACCEPTANCE_INTRINSICALLY_AMBIGUOUS",
+    "r2_mutations": "TWO_MATERIALIZATIONS_CREATED_ALL_FIVE_DETERMINISTIC_DESCRIPTOR_KEYSETS_PROVEN_ABSENT",
     "external_spend_usd": 0,
-    "replacement": "STANDALONE_FILE_DURABLE_V2_08_LAUNCHER_AND_PROPOSAL_BOUND_REQUEST"
+    "cleanup": "PASS_LANE_ABSENT_ALL_FIVE_R2_CLEANUP_PHASES_TERMINAL_THREE_ZERO_COMPUTE_BILLING_VOLUME_READS",
+    "replacement": "V2_08_ONLY_BOUNDED_STARTUP_HEALTH_PROPAGATION_AND_EXACT_PRE_POST_ERROR_CLASSIFICATION"
   },
   "control": {
     "source_commit": null,
@@ -126,13 +127,13 @@
     "qualification_durable_store": "apps/web/src/server/providers/v208-file-durable-stage-store.ts",
     "qualification_durable_store_sha256": "sha256:d6b25a0cfa4ee23c135c91e5afff934ebf18e22baf36b48f32786485b67407a6",
     "qualification_orchestrator": "apps/web/src/server/providers/v208-soulx-orchestrator.ts",
-    "qualification_orchestrator_sha256": "sha256:326943c938b8aebd66b896d22c4451dec72f0005b12c830b83a62028c05f89e0",
+    "qualification_orchestrator_sha256": "sha256:a5277c3f47b7d728f6024d72bf75edb2c5acb01592aae5614cf745fafa66f198",
     "qualification_contract": "apps/web/src/server/providers/v208-soulx-qualification.ts",
-    "qualification_contract_sha256": "sha256:e9e7d55b7925b0d4feae7beb4458fff45dc32cbd3ed908a39f5e44056a152b34",
+    "qualification_contract_sha256": "sha256:4ae049f21c3fe141f539358cfe8f8b37698a2af15ec240c77db77d77abfbb586",
     "qualification_materializer": "apps/web/src/server/providers/v213-direct-qualification-materializer.ts",
     "qualification_materializer_sha256": "sha256:f8cd9444a9980c34657563ac83cd57f70d48876f7c1db32d248797dc4c9e8848",
     "qualification_transport": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
-    "qualification_transport_sha256": "sha256:f22e0722f11624fbc057553d643931af24624b122230d7b1b789b68dde4abd6c",
+    "qualification_transport_sha256": "sha256:abf1b80898fb497348114604002a239e619fa9934923134b1a6ab4771f5d8222",
     "execution_marker": "soulx-v208-qualification-v1",
     "handler": {
       "path": "workers/avatar-primary/soulx_serverless.py",
@@ -171,7 +172,7 @@
   },
   "read_only_preflight": {
     "path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/read-only-preflight.json",
-    "sha256": "sha256:f75a070e1dda2e8c8e630fe26233bf817101722f09993907573939c26a7a594d",
+    "sha256": "sha256:726b831fa6d156802b2a8239eed657aa26cd0587d56a5f5b6d5a7c668779be73",
     "provider_mutations": 0,
     "external_spend_usd": 0,
     "stable_read_count": 3,
@@ -187,7 +188,7 @@
       "offering_id": "NVIDIA GeForce RTX 4090",
       "display_name": "RTX 4090",
       "region": "EU-RO-1",
-      "availability": "LOW",
+      "availability": "MEDIUM",
       "secure_cloud": true
     },
     "fresh_read_required_before_each_mutation_boundary": true
@@ -219,7 +220,7 @@
     "gpu": "NVIDIA GeForce RTX 4090",
     "gpu_offering_id": "NVIDIA GeForce RTX 4090",
     "region": "EU-RO-1",
-    "availability_at_preflight": "LOW",
+    "availability_at_preflight": "MEDIUM",
     "serverless_flex_usd_per_gpu_hour": 1.116,
     "serverless_flex_usd_per_gpu_second": 0.00031,
     "billing_baseline_usd": 2.7231514439627063,

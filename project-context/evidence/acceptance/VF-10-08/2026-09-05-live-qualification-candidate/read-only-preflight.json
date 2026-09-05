@@ -1,15 +1,15 @@
 {
   "schema_version": "videoforge.v2-08-read-only-preflight/v1",
   "checkpoint": "V2-08",
-  "checked_at": "2026-09-05T12:57:48.693Z",
+  "checked_at": "2026-09-05T14:26:41.751Z",
   "provider_mutations": 0,
   "external_spend_usd": 0,
   "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
   "stable_read_count": 3,
   "stable_reads": [
-    "2026-09-05T12:57:07.471Z",
-    "2026-09-05T12:57:43.736Z",
-    "2026-09-05T12:57:48.693Z"
+    "2026-09-05T14:26:35.666Z",
+    "2026-09-05T14:26:39.147Z",
+    "2026-09-05T14:26:41.751Z"
   ],
   "inventory": {
     "pods": 0,
@@ -35,7 +35,7 @@
     "display_name": "RTX 4090",
     "region": "EU-RO-1",
     "secure_cloud": true,
-    "availability": "LOW",
+    "availability": "MEDIUM",
     "vram_gb": 24,
     "secure_pod_catalog_rate_usd_per_hour_not_used_for_serverless_billing": 0.74
   },
@@ -46,6 +46,6 @@
   },
   "cumulative_endpoint_billing_usd": 2.7231514439627063,
   "continued_retained_volume_billing_usd_per_month": 7,
-  "observation": "RunPod currently abbreviates the display label to RTX 4090 and reported LOW availability in all three stable reads. Qualification selection remains bound to the stable offering_id and exact EU-RO-1 region, not display_name; no GPU or region fallback is allowed.",
+  "observation": "RunPod currently abbreviates the display label to RTX 4090 and reported MEDIUM availability. Three stable reads proved zero Pods, endpoints, private templates, and active workers after the consumed failed attempt cleanup. Qualification selection remains bound to the stable offering_id and exact EU-RO-1 region, not display_name; no GPU or region fallback is allowed.",
   "fresh_inventory_catalog_billing_read_required_before_mutation": true
 }

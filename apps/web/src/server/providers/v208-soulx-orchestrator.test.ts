@@ -118,6 +118,38 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     );
   });
 
+  it("propagates a pre-dispatch health error without journaling ACK_UNKNOWN", async () => {
+    const transitionOperation = vi.fn();
+    const findJobByRequestKey = vi.fn();
+    const providerDispatch = vi.fn(async () => {
+      throw new Error("RUNPOD_READ_FAILED");
+    });
+    const transport = {
+      durable: {
+        claimOperation: async (operation: Record<string, unknown>) => ({
+          action: "EXECUTE",
+          record: { ...operation, state: "IN_FLIGHT" },
+        }),
+        transitionOperation,
+      },
+      dispatch: providerDispatch,
+      findJobByRequestKey,
+    } as unknown as V213DualLaneTransport;
+    await expect(
+      dispatchV208Durably(
+        transport,
+        { endpointId: "endpoint-v208" } as never,
+        "soulx-health-failure",
+        { request: { envelope: {} } } as never,
+        60_000,
+        "authority-v208",
+      ),
+    ).rejects.toThrow("RUNPOD_READ_FAILED");
+    expect(providerDispatch).toHaveBeenCalledOnce();
+    expect(transitionOperation).not.toHaveBeenCalled();
+    expect(findJobByRequestKey).not.toHaveBeenCalled();
+  });
+
   it("rejects missing receipt, media, A/V, item-count, or timing proof", () => {
     const valid = {
       workerReceiptVerified: true,

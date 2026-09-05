@@ -602,17 +602,16 @@ export async function dispatchV208Durably(
       ? { jobId: claim.record.providerId }
       : null;
   if (claim.action === "EXECUTE") {
-    let ack: Awaited<ReturnType<V213DualLaneTransport["dispatch"]>>;
-    try {
-      ack = await transport.dispatch({
-        deployment,
-        requestKey,
-        envelope: materialization.request,
-        policy: { executionTimeoutMs, ttlMs: 7_200_000 },
-      });
-    } catch {
-      ack = { kind: "ACK_UNKNOWN" };
-    }
+    // The concrete transport returns ACK_UNKNOWN only after an ambiguous POST.  Pre-dispatch
+    // health/read failures must propagate so the durable operation remains IN_FLIGHT and can be
+    // resumed safely; converting every thrown error to ACK_UNKNOWN would misclassify no-POST
+    // failures and trigger the ambiguous-dispatch cleanup path.
+    const ack = await transport.dispatch({
+      deployment,
+      requestKey,
+      envelope: materialization.request,
+      policy: { executionTimeoutMs, ttlMs: 7_200_000 },
+    });
     if (ack.kind === "ACK") found = { jobId: ack.jobId };
     else {
       const transitioned = await transport.durable.transitionOperation({

@@ -75,6 +75,8 @@ function fixture(
     deletionRemains?: boolean;
     queueNonEmpty?: boolean;
     queueNonEmptyOnCheck?: number;
+    startupHealthReadFailures?: number;
+    startupHealthFailureCode?: string;
   } = {},
 ) {
   const model = input();
@@ -214,6 +216,12 @@ function fixture(
       queueChecks += 1;
       if (options.queueNonEmpty || options.queueNonEmptyOnCheck === queueChecks)
         throw new Error("V213_STARTUP_QUEUE_NOT_CONFIRMED");
+      if (queueChecks <= (options.startupHealthReadFailures ?? 0)) {
+        const code = options.startupHealthFailureCode ?? "RUNPOD_READ_FAILED";
+        const error = new Error(code) as Error & { code: string };
+        error.code = code;
+        throw error;
+      }
     }),
     dispatch: vi.fn(async (requestKey: string) => {
       if (options.dispatchAmbiguous) throw new Error("lost");
@@ -251,6 +259,7 @@ function fixture(
     })),
   };
   const verifyOutputReadback = vi.fn(async () => true as const);
+  const sleep = vi.fn(async (_milliseconds: number) => undefined);
   const createJobClient = vi.fn((endpointId: string) => {
     void endpointId;
     return client;
@@ -277,7 +286,7 @@ function fixture(
       materializeQualificationCase: async () => {
         throw new Error("UNUSED_QUALIFICATION_MATERIALIZER");
       },
-      sleep: async () => undefined,
+      sleep,
       now: () => new Date("2026-08-26T00:30:00.000Z"),
     });
   const transport = makeTransport();
@@ -289,6 +298,7 @@ function fixture(
     model,
     endpointRaw,
     verifyOutputReadback,
+    sleep,
     createJobClient,
     workerEnvironment,
   };
@@ -566,6 +576,109 @@ describe("V213 concrete RunPod dual-lane transport", () => {
     ).resolves.toEqual({ kind: "ACK_UNKNOWN" });
     await expect(transport.findJobByRequestKey()).resolves.toBeNull();
     expect(client.dispatch).toHaveBeenCalledOnce();
+  });
+
+  it("retries only transient startup health reads before the first POST", async () => {
+    const { transport, client, sleep, model } = fixture({ startupHealthReadFailures: 2 });
+    const created = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "qualification",
+      resourceKey: "stage:soulx:startup-health-retry",
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    await expect(
+      transport.dispatch({
+        deployment: created.deployment,
+        requestKey: "v213-soulx-startup-health-retry",
+        envelope: {},
+        policy: { executionTimeoutMs: 60_000, ttlMs: 7_200_000 },
+      }),
+    ).resolves.toMatchObject({ kind: "ACK", jobId: "job_v213-soulx-startup-health-retry" });
+    expect(client.confirmStartupQueueEmpty).toHaveBeenCalledTimes(3);
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(sleep.mock.calls.map(([milliseconds]) => milliseconds)).toEqual([2_000, 2_000]);
+    expect(client.dispatchWithV208Policy).toHaveBeenCalledOnce();
+    expect(client.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("bounds V2-08 startup health propagation retries before posting", async () => {
+    const { transport, client, sleep, model } = fixture({ startupHealthReadFailures: 99 });
+    const created = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "qualification",
+      resourceKey: "stage:soulx:bounded-startup-health",
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    await expect(
+      transport.dispatch({
+        deployment: created.deployment,
+        requestKey: "v213-soulx-bounded-startup-health",
+        envelope: {},
+        policy: { executionTimeoutMs: 60_000, ttlMs: 7_200_000 },
+      }),
+    ).rejects.toThrow("RUNPOD_READ_FAILED");
+    expect(client.confirmStartupQueueEmpty).toHaveBeenCalledTimes(12);
+    expect(sleep).toHaveBeenCalledTimes(11);
+    expect(sleep.mock.calls.every(([milliseconds]) => milliseconds === 2_000)).toBe(true);
+    expect(client.dispatchWithV208Policy).not.toHaveBeenCalled();
+  });
+
+  it("does not extend ordinary dispatch startup health retries", async () => {
+    const { transport, client, sleep, model } = fixture({ startupHealthReadFailures: 1 });
+    const created = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "production",
+      resourceKey: "stage:soulx:ordinary-startup-health",
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    await expect(
+      transport.dispatch({
+        deployment: created.deployment,
+        requestKey: "v213-soulx-ordinary-startup-health",
+        envelope: {},
+      }),
+    ).rejects.toThrow("RUNPOD_READ_FAILED");
+    expect(client.confirmStartupQueueEmpty).toHaveBeenCalledOnce();
+    expect(client.dispatch).not.toHaveBeenCalled();
+    expect(client.dispatchWithV208Policy).not.toHaveBeenCalled();
+    expect(sleep).not.toHaveBeenCalled();
+  });
+
+  it("fails immediately on non-transient startup health states without posting", async () => {
+    for (const code of [
+      "RUNPOD_STARTUP_QUEUE_NOT_CONFIRMED",
+      "RUNPOD_READ_AMBIGUOUS",
+      "RUNPOD_RESPONSE_INVALID",
+    ] as const) {
+      const { transport, client, sleep, model } = fixture({
+        startupHealthReadFailures: 1,
+        startupHealthFailureCode: code,
+      });
+      const created = await transport.createLane({
+        sealed: model.soulx,
+        purpose: "qualification",
+        resourceKey: `stage:soulx:startup-health-${code.toLowerCase()}`,
+        workersMin: 0,
+        workersMax: 1,
+      });
+      if (created.kind !== "ACK") throw new Error("fixture");
+      await expect(
+        transport.dispatch({
+          deployment: created.deployment,
+          requestKey: `v213-soulx-startup-health-${code.toLowerCase()}`,
+          envelope: {},
+        }),
+      ).rejects.toThrow(code);
+      expect(client.confirmStartupQueueEmpty).toHaveBeenCalledOnce();
+      expect(client.dispatch).not.toHaveBeenCalled();
+      expect(sleep).not.toHaveBeenCalled();
+    }
   });
 
   it("forwards only the exact V2-08 per-request policy to the bounded client method", async () => {

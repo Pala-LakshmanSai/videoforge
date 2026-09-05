@@ -1,0 +1,30 @@
+{
+  "schema_version": "videoforge.v2-08-live-attempt-failure/v1",
+  "checkpoint": "V2-08",
+  "stage": 7,
+  "proposal_sha256": "sha256:fbd5acf14dcd891b3468c9c74d9570652415d96819b915168171767b9d80c440",
+  "authority_sha256": "sha256:ffe23bacc1ab05c042ea9638dd6616cdc377832fe1e0bdd08f039534cc0ec37e",
+  "authority_status": "CONSUMED_NON_REUSABLE",
+  "result": "NOT_QUALIFIED",
+  "terminal_error": "V208_DISPATCH_ACK_UNKNOWN",
+  "diagnosis": "The V2-08 orchestrator converted every thrown transport error into ACK_UNKNOWN. A just-created endpoint health failure therefore became indistinguishable from an ambiguous POST, while RunPod has no request-key job lookup. The exact original health error was erased and cannot be proven retrospectively.",
+  "repair": "Only V2-08 policy dispatch receives a bounded startup-health propagation window. Only terminal HTTP read failure is retried; transport ambiguity, auth, malformed response, abort, and nonempty queue fail immediately. Pre-POST errors now propagate unchanged. The RunPod POST remains single-attempt and only its ambiguous result becomes ACK_UNKNOWN.",
+  "provider_job_acceptance": "AMBIGUOUS_NO_PROVIDER_JOB_ID",
+  "billing_baseline_usd": 2.7231514439627063,
+  "billing_after_cleanup_usd": 2.7231514439627063,
+  "observed_incremental_spend_usd": 0,
+  "cleanup": {
+    "endpoint_and_template_absent": true,
+    "r2_descriptor_cleanup_phases_terminal": 5,
+    "r2_absence_verified": true,
+    "final_stable_zero_compute_billing_volume_reads": 3,
+    "retained_volumes_unchanged": true
+  },
+  "validation": {
+    "focused_tests_passed": 55,
+    "web_typecheck_passed": true,
+    "independent_audit": "PASS_P0_0_P1_0_P2_1_EVIDENCE_LIMITATION_ONLY",
+    "stage_6_files_changed": false
+  },
+  "next_boundary": "Fresh exact single-use approval is required for the repaired source. No authority reuse or redispatch is permitted."
+}

@@ -31,6 +31,15 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/u;
 const KEY_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const HEX_KEY = /^(?:[0-9a-f]{2}){32,}$/u;
+/**
+ * A just-created Serverless endpoint can briefly reject its read-only health probe while its
+ * control plane becomes visible. The underlying client already retries each GET (including
+ * ambiguous transport failures); this second window covers only the terminal HTTP read failure
+ * returned after that bounded probe. Keep the retry category exact: ambiguous transport, queue,
+ * auth, malformed, aborted, and other unsafe states must propagate immediately.
+ */
+const STARTUP_HEALTH_MAX_ATTEMPTS = 12;
+const STARTUP_HEALTH_RETRY_INTERVAL_MS = 2_000;
 
 export interface V213RunPodControlPort {
   createServerlessTemplate(
@@ -197,6 +206,12 @@ function isAmbiguousTemplateCreateError(error: unknown): boolean {
   return /(?:ambiguous|tim(?:e|ed)[ -]?out|unknown response|network|connection|fetch|lost)/iu.test(
     message,
   );
+}
+
+function isRetryableStartupHealthError(error: unknown): boolean {
+  if (error === null || typeof error !== "object" || !("code" in error)) return false;
+  const code = (error as { readonly code?: unknown }).code;
+  return code === "RUNPOD_READ_FAILED";
 }
 
 /**
@@ -1028,7 +1043,22 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
   }): Promise<V213DispatchAck> {
     if (!ID.test(input.requestKey)) throw new Error("V213_REQUEST_KEY_INVALID");
     const client = this.options.createJobClient(input.deployment.endpointId);
-    await client.confirmStartupQueueEmpty();
+    if (input.policy === undefined) {
+      await client.confirmStartupQueueEmpty();
+    } else {
+      for (let attempt = 0; attempt < STARTUP_HEALTH_MAX_ATTEMPTS; attempt += 1) {
+        try {
+          // Keep this read-only gate outside the POST try/catch. A health/read failure must remain
+          // a pre-dispatch error; only an ambiguous POST becomes ACK_UNKNOWN.
+          await client.confirmStartupQueueEmpty();
+          break;
+        } catch (error) {
+          if (!isRetryableStartupHealthError(error) || attempt + 1 >= STARTUP_HEALTH_MAX_ATTEMPTS)
+            throw error;
+          await this.sleep(STARTUP_HEALTH_RETRY_INTERVAL_MS);
+        }
+      }
+    }
     try {
       const job = input.policy
         ? await client.dispatchWithV208Policy(input.requestKey, input.envelope, {
