@@ -4,29 +4,29 @@ updated_at: "2026-09-05"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_08_soulx_provider_free_completion
+current_milestone: v2_08_soulx_fresh_read_only_preflight
 current_task: VF-10-08
 current_wave: v2_08_soulx_serial_certification_after_v2_07_pass
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_implementation
+task_stage: read_only_preflight
 application_code_changes_authorized: true
-provider_calls_authorized: false
-read_only_provider_calls_authorized: false
+provider_calls_authorized: true
+read_only_provider_calls_authorized: true
 remote_or_cloud_mutations_authorized: false
-credential_access_authorized: false
+credential_access_authorized: true
 gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_08_provider_free_standalone_durability_repair
-  live_provider_calls: "Forbidden until the repaired source is sealed, independently audited, and freshly approved exactly; no V2-09."
+  mode: v2_08_read_only_preflight_after_provider_free_repair
+  live_provider_calls: "Only bounded read-only RunPod account, inventory, GPU catalog, and cumulative billing reads are authorized. Mutations, dispatch, GPU use, R2 access, and spend remain forbidden; no V2-09."
   remote_mutation: false
   deployment_or_publication: "Immutable image publication remains valid and unchanged; no provider mutation is currently authorized."
-  credential_value_access: "Forbidden during the provider-free repair."
+  credential_value_access: "RunPod keychain loading is authorized only inside the bounded read-only preflight client; credential values must not be printed or persisted."
   paid_requests_or_spend: "No finite spend authority is active."
   runpod_mutation_or_gpu: "Forbidden. The approved attempt stopped before RunPod and is consumed/non-reusable."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "The approved attempt published and anonymously verified immutable image sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3, then failed launch readiness before RunPod because the direct V2-08 CLI still depended on an expired V2-13 SQL authority/materialization path and had no standalone durable launcher. Zero RunPod mutation, GPU use, R2 mutation, or added spend occurred. The authority is consumed/non-reusable; a provider-free standalone durability repair is in progress."
+  provider_free_product_action: "The standalone V2-08 launcher, local durable store, deterministic proposal-bound request builder, direct CLI source pin, crash-safe unique lock claims, and cleanup-only RESUME paths are implemented. Focused tests are green and final independent repair audit is in progress. The prior authority remains consumed/non-reusable; zero RunPod mutation, GPU use, R2 mutation, or added spend occurred during repair."
   v2_08_prior_publication_attempt: "Workflow run 33961641686 failed before authentication/publication because TMPDIR_DIRECTORY_ABSENT; no immutable digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Its approval is consumed/non-reusable and invalidated by source drift. A second approved run 33962783745 at source 67af7d9a built only a local image, then failed before authentication/publication because LITERAL_BACKSLASH_IN_SINGLE_QUOTED_DOCKER_GO_TEMPLATE; no registry digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Both approvals are consumed/non-reusable; the fresh 4f2c5cb3 successor repairs only workflow quoting and requires separate exact approval."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
@@ -4031,9 +4031,9 @@ live_development:
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   authorized_spend_usd: 0
-  provider_authority_scope: none_provider_free_v2_08_repair
+  provider_authority_scope: v2_08_bounded_account_inventory_catalog_billing_reads_only
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -5996,18 +5996,18 @@ provider_authority_attempt78: &v2_07_provider_authority_attempt78
       checked_at: "2026-09-04T23:14:00+05:30"
 
 provider_authority: &v2_08_provider_free_authority
-  mode: none
-  provider: null
+  mode: read_only
+  provider: runpod
   cap_usd: 0
   non_transferable: true
-  source: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
+  source: user_requested_v2_08_completion_plus_paid_checkpoint_read_only_bootstrap
   authorized_by_user_at: "2026-09-05"
-  proposal_sha256: "sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8"
-  authority: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json
-  authority_sha256: "sha256:40e9984bdc194fca055f14e92c88020231cf5edad3bd047e049ad6f703246804"
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
+  proposal_sha256: null
+  authority: null
+  authority_sha256: null
+  resources: [runpod_account_identity, runpod_compute_inventory, runpod_rtx4090_eu_ro_1_catalog, runpod_cumulative_endpoint_billing]
+  authorized_operations: [account_identity_lookup, inventory_lookup, rate_lookup, resource_identity_lookup]
+  allowed_operations: [account_identity_lookup, inventory_lookup, rate_lookup, resource_identity_lookup]
   terminal_evidence: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/launch-readiness-failure.json
   model_id: Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro
   rate_snapshot:
@@ -6023,24 +6023,24 @@ provider_authority: &v2_08_provider_free_authority
 recommended_next_task:
   task_id: VF-10-08
   checkpoint: V2-08
-  milestone: v2_08_soulx_provider_free_completion
-  status: V2_08_PROVIDER_FREE_STANDALONE_DURABILITY_REPAIR
+  milestone: v2_08_soulx_fresh_read_only_preflight
+  status: V2_08_BOUNDED_READ_ONLY_PREFLIGHT
   dependency_status: v2_07_mage_live_qualified_attempt85_clean
   authorization_status: prior_exact_authority_consumed_non_reusable
-  task_stage: provider_free_implementation
+  task_stage: read_only_preflight
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_08_provider_free_authority
   provider_mode: fixture
   read_profile: v2_08_soulx_serverless
   task_brief: tasks/VF-10-08.md
-  goal: "Finish and independently audit the standalone crash-durable V2-08 qualification launcher, then seal one fresh exact proposal."
-  provider_calls_authorized: false
-  read_only_provider_calls_authorized: false
+  goal: "Refresh exact RunPod account, inventory, RTX 4090 EU-RO-1 availability/rate, and cumulative billing after the green provider-free repair, then seal one fresh exact proposal."
+  provider_calls_authorized: true
+  read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
-  credential_value_read_authorized: false
+  credential_access_authorized: true
+  credential_value_read_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
@@ -6051,9 +6051,9 @@ recommended_next_task:
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
   model_id: Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro
-  resources: [v208_disposable_soulx_max1_endpoint, v208_disposable_soulx_private_template, v208_exact_generated_r2_keys, v208_existing_soulx_50gb_volume]
-  authorized_operations: []
-  allowed_operations: []
+  resources: [runpod_account_identity, runpod_compute_inventory, runpod_rtx4090_eu_ro_1_catalog, runpod_cumulative_endpoint_billing]
+  authorized_operations: [account_identity_lookup, inventory_lookup, rate_lookup, resource_identity_lookup]
+  allowed_operations: [account_identity_lookup, inventory_lookup, rate_lookup, resource_identity_lookup]
   rate_snapshot: [runpod_serverless_flex_rtx4090_eu_ro_1_usd_1_116_per_gpu_hour, retained_volumes_usd_7_per_month_combined]
   authority_note: "The prior exact authority is consumed/non-reusable. Launch readiness failed before RunPod with zero GPU use and zero added spend. The immutable image remains anonymously verified, but repaired control source requires a fresh exact proposal and approval; no Stage 6 rerun or V2-09."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json

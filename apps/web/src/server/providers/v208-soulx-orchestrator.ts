@@ -59,7 +59,9 @@ export function assertV208StageConsumptionDecision(
   if (decision === "REPLAY_REJECTED") throw new Error("V208_AUTHORITY_REPLAY_REJECTED");
 }
 
-export const enforceV208FinalSpendCap = (decision: "EXECUTE" | "RESUME"): boolean =>
+export const enforceV208FinalSpendCap = (
+  decision: "EXECUTE" | "RESUME" | "REPLAY_REJECTED",
+): boolean =>
   decision === "EXECUTE";
 
 export interface V208SoulXOrchestratorDependencies {
