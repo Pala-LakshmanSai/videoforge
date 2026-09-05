@@ -393,22 +393,22 @@ gates:
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
     current_candidate_proposal_sha256: "sha256:a64a3ac76dba05c52085adb387e10a5fa210755b2ecc0a130a20207ec8de199a"
     current_candidate_acceptance_sha256: null
-    current_candidate_approval_sentence_sha256: null
+    current_candidate_approval_sentence_sha256: "sha256:03a3545edb1ed1f689848a4239b2b0d821027cb9ce6ea4001ab8c1312bd1cd9f"
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: not_started_fresh_approval_required
-    current_candidate_source_commit: null
-    immutable_image_source_commit: null
-    approved_authority: null
-    approved_authority_sha256: null
-    approved_authority_status: prior_consumed_fresh_exact_approval_required
-    runpod_mutation_performed: "Prior authority posted one cold and one warm job; cold failed media contract, warm cancelled, disposable resources and R2 keys cleaned"
+    authority_materialization_diff_audit: pending
+    current_candidate_source_commit: "251752b8b390fa69008e0abd49f73a6a65ae971a"
+    immutable_image_source_commit: "251752b8b390fa69008e0abd49f73a6a65ae971a"
+    approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
+    approved_authority_sha256: "sha256:f8d2f6cf436864c37442afaddfec92f3f4c7f98d29160ddfb404f90f024febd0"
+    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
+    runpod_mutation_performed: "No RunPod qualification mutation under the current authority; one exact new image publication completed and passed anonymous full readback"
     gpu_seconds: 0
     observed_incremental_spend_usd: 0
-    current_blocker: fresh_exact_combined_publication_and_qualification_approval
-    immutable_image: null
+    current_blocker: independent_authority_diff_audit_before_runpod_mutation
+    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:e1dce095fbd4522fdc9c704f48609876903616de3781a3ed232a22789e4fd47d"
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
-    image_publication_workflow_run_id: 33975663940
+    image_publication_workflow_run_id: 33982211389
     current_candidate_dockerfile_sha256: "sha256:bfd42540882998d98b9f48e68b69ccc6ec6d3efd8d674651d0f7812ad26b6cc6"
     current_candidate_publication_workflow_sha256: "sha256:0135e6ff04d84992794f4d09a8dc79f20a28e81043a8269b40a95635c3667f70"
     prior_publication_workflow_run_id: 33961641686
@@ -424,7 +424,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: exact_existing_image_reverified_authority_materialized_pending_independent_diff_audit
+    result: exact_new_repaired_image_published_authority_materialized_pending_independent_diff_audit
 
   GATE_SOULX_LICENSE_001:
     status: open
