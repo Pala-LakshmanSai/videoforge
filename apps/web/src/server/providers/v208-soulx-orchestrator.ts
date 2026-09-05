@@ -6,6 +6,7 @@ import type {
   V213DualLaneTransport,
   V213LaneDeployment,
   V213JobRead,
+  V213QualificationCaseDescriptor,
   V213QualificationCaseMaterialization,
   V213SealedLane,
 } from "./v213-dual-lane-live.js";
@@ -93,6 +94,17 @@ export interface V208SoulXOrchestratorDependencies {
   readonly cleanupAmbiguousMaterializedInputs: (
     materialization: V213QualificationCaseMaterialization,
   ) => Promise<true>;
+  readonly cleanupDeterministicQualificationKeys: (input: {
+    readonly descriptor: V208SoulXWholeSpanDescriptor | V213QualificationCaseDescriptor;
+    readonly deployment: V213LaneDeployment;
+    readonly stageAuthorityId: string;
+    readonly inputSha256: string;
+    readonly terminalOutcome: "FAILED";
+  }) => Promise<{
+    readonly inputKeys: readonly string[];
+    readonly outputKeys: readonly string[];
+    readonly absenceVerified: true;
+  }>;
   readonly cleanupAttributableResource: (resourceKey: string) => Promise<true>;
   readonly serializeEvidence: (result: V208SoulXQualificationResult) => Promise<void>;
   readonly maxStatusReads?: number;
@@ -102,6 +114,7 @@ export interface V208SoulXOrchestratorDependencies {
   readonly interruptionCheckpoint?: (
     phase: "lane-delete" | "attributable-cleanup" | "output-delete" | "final-zero",
   ) => Promise<void>;
+  readonly materializationCheckpoint?: (descriptorId: string) => Promise<void>;
 }
 
 export class V208ProcessInterruption extends Error {}
@@ -242,6 +255,44 @@ function keys(materialization: V213QualificationCaseMaterialization, expected: n
     if (typeof path !== "string" || !path.startsWith("/tenant/") || path.includes(".."))
       throw new Error("V208_OUTPUT_AUTHORITY_INVALID");
     return path.slice(1);
+  });
+}
+
+function inputKeys(materialization: V213QualificationCaseMaterialization): string[] {
+  const request = materialization.request as Record<string, JsonValue>;
+  const ports = request.ports as Record<string, JsonValue> | undefined;
+  const inputs = ports?.inputs;
+  if (!Array.isArray(inputs) || inputs.length === 0) throw new Error("V208_INPUT_AUTHORITY_INVALID");
+  return inputs.map((authority) => {
+    const path = (authority as Record<string, JsonValue>).path;
+    if (typeof path !== "string" || !path.startsWith("/tenant/") || path.includes(".."))
+      throw new Error("V208_INPUT_AUTHORITY_INVALID");
+    return path.slice(1);
+  });
+}
+
+async function journalMaterializationKeys(
+  transport: V213DualLaneTransport,
+  authorityId: string,
+  deploymentSha256: string,
+  planSha256: string,
+  descriptorId: string,
+  materialization: V213QualificationCaseMaterialization,
+  outputCount: number,
+): Promise<void> {
+  const operation = phaseOperation(
+    authorityId,
+    deploymentSha256,
+    planSha256,
+    `materialization-${descriptorId}`,
+  );
+  const claim = await transport.durable.claimOperation(operation);
+  if (claim.action === "DONE") return;
+  await completePhase(transport, operation, claim.record.state, {
+    descriptorId,
+    inputKeys: inputKeys(materialization),
+    outputKeys: keys(materialization, outputCount),
+    materializationEvidenceSha256: materialization.materializationEvidenceSha256,
   });
 }
 
@@ -515,6 +566,8 @@ export async function runV208SoulXWithV213Transport(
   let finalBilling = admission.cumulativeBillingUsd;
   let qualificationBillingBaseline = authority.billingBaselineUsd;
   let resumedQualification = false;
+  let cleanupOnlyResume = false;
+  let cleanupResumeDeployment: V213LaneDeployment | null = null;
   const proveFinalState = async () => {
     let priorBilling: number | null = null;
     let priorCheckedAt = 0;
@@ -618,6 +671,8 @@ export async function runV208SoulXWithV213Transport(
       // An interrupted execution without the signed qualification-complete receipt can never
       // restart paid work. Reconstruct only an existing lane and enter the cleanup path below.
       deployment = await dependencies.transport.findLaneByResourceKey(resourceKey);
+      cleanupOnlyResume = true;
+      cleanupResumeDeployment = deployment;
       throw new Error("V208_RESUME_REQUIRES_CLEANUP_ONLY");
     } else {
     deployment = await createAndReadLane(
@@ -649,6 +704,16 @@ export async function runV208SoulXWithV213Transport(
       };
       materializations.push(materializationRecord);
       outputKeys.push(...keys(materialization, 4));
+      await dependencies.materializationCheckpoint?.(descriptor.id);
+      await journalMaterializationKeys(
+        dependencies.transport,
+        issued.authorityId,
+        dependencies.soulx.deploymentSha256,
+        plan.planSha256,
+        descriptor.id,
+        materialization,
+        4,
+      );
       pendingSuccesses.push({
         descriptor,
         materialization,
@@ -742,6 +807,16 @@ export async function runV208SoulXWithV213Transport(
       };
       materializations.push(materializationRecord);
       outputKeys.push(...keys(materialization, 1));
+      await dependencies.materializationCheckpoint?.(descriptor.id);
+      await journalMaterializationKeys(
+        dependencies.transport,
+        issued.authorityId,
+        dependencies.soulx.deploymentSha256,
+        plan.planSha256,
+        descriptor.id,
+        materialization,
+        1,
+      );
       const jobId = await dispatchV208Durably(
         dependencies.transport,
         deployment,
@@ -973,6 +1048,34 @@ export async function runV208SoulXWithV213Transport(
     }
   }
   if (laneAbsenceConfirmed) {
+    if (cleanupOnlyResume) {
+      if (!cleanupResumeDeployment) cleanupFailed = true;
+      else {
+        for (const descriptor of [
+          ...plan.qualification.wholeSpanDescriptors,
+          ...plan.qualification.caseDescriptors.filter(({ mode }) => mode !== "complete"),
+        ]) {
+          try {
+            const cleaned = await dependencies.cleanupDeterministicQualificationKeys({
+              descriptor,
+              deployment: cleanupResumeDeployment,
+              stageAuthorityId: issued.authorityId,
+              inputSha256: plan.planSha256,
+              terminalOutcome: "FAILED",
+            });
+            if (
+              cleaned.absenceVerified !== true ||
+              cleaned.inputKeys.length === 0 ||
+              cleaned.outputKeys.length === 0
+            )
+              throw new Error("V208_DETERMINISTIC_R2_CLEANUP_INVALID");
+            outputKeys.push(...cleaned.outputKeys);
+          } catch {
+            cleanupFailed = true;
+          }
+        }
+      }
+    }
     for (const record of materializations.filter(({ cleaned }) => !cleaned)) {
       try {
         if (record.terminalOutcome) await cleanupKnownInputs(record, record.terminalOutcome);

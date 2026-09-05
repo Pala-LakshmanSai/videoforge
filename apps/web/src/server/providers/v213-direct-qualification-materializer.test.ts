@@ -5,8 +5,11 @@ import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 import type { HostedR2BucketBinding } from "../hosted/configuration.js";
+import { V208_SOULX_WHOLE_SPAN_DESCRIPTORS } from "../hosted/v213-qualification-materializer.js";
+import { V213_QUALIFICATION_CASE_DESCRIPTORS } from "./v213-dual-lane-live.js";
 import {
   buildV213SoulXQualificationWav,
+  createV208DirectWholeSpanQualificationAdapter,
   createV213DirectR2Bucket,
   createV213DirectQualificationMaterializer,
   type V213QualificationProtectedInputDescriptor,
@@ -402,6 +405,60 @@ describe("V2-13 direct protected qualification materializer", () => {
     expect(test.query.mock.calls.some(([sql]) => sql.includes("persist_v213"))).toBe(true);
     expect(test.query.mock.calls.some(([sql]) => sql.includes("read_v213"))).toBe(true);
     expect(Object.keys(test)).not.toContain("dispatch");
+  });
+
+  it("reconstructs cold, warm and fault keys after post-materialization process loss", async () => {
+    const protectedValues = protectedInputs();
+    const descriptors = [
+      ...V208_SOULX_WHOLE_SPAN_DESCRIPTORS,
+      ...V213_QUALIFICATION_CASE_DESCRIPTORS.filter(
+        ({ lane, mode }) => lane === "soulx" && mode !== "complete",
+      ),
+    ];
+    for (const descriptor of descriptors) {
+      const test = harness();
+      const adapter = createV208DirectWholeSpanQualificationAdapter({
+        fullLiveAuthorityId: FULL_AUTHORITY,
+        operationId: "soulx-live-qualification",
+        outerStateSha256: proof("6"),
+        sourceCommit: SOURCE_COMMIT,
+        sourceRefs: sourceRefs(),
+        protectedInputDescriptors: protectedValues.descriptors,
+        protectedSourceBytes: protectedValues.sources,
+        r2: {
+          accountId: "a".repeat(32),
+          bucketName: "videoforge-private",
+          accessKeyId: "A".repeat(24),
+          secretAccessKey: "S".repeat(40),
+        },
+        signing: { secretHex: "ab".repeat(32), keyId: "qualification-key-v1" },
+        database: test.database as never,
+        bucket: test.bucket,
+        r2Signer: test.r2Signer,
+        now: () => NOW,
+        randomHex: test.randomHex,
+      });
+      const cleanupInput = {
+        descriptor,
+        deployment: deployment("soulx"),
+        stageAuthorityId: "soulx-stage-authority",
+        inputSha256: proof("7"),
+      } as const;
+      if (descriptor.key === "soulxWholeSpanCold" || descriptor.key === "soulxWholeSpanWarm")
+        await adapter.materializeWholeSpan(cleanupInput as never);
+      else await adapter.materializeQualificationCase(cleanupInput as never);
+      // Treat the returned materialization as lost with the process: cleanup uses only deterministic
+      // authority/descriptor inputs and never the adapter's in-memory materialization ownership map.
+      const cleaned = await adapter.cleanupDeterministicQualificationKeys({
+        ...cleanupInput,
+        terminalOutcome: "FAILED",
+      });
+      expect(cleaned.inputKeys.length).toBeGreaterThan(0);
+      expect(cleaned.outputKeys.length).toBeGreaterThan(0);
+      expect(cleaned.absenceVerified).toBe(true);
+      for (const key of [...cleaned.inputKeys, ...cleaned.outputKeys])
+        await expect(test.bucket.head(key)).resolves.toBeNull();
+    }
   });
 
   it("fails protected byte drift before any DB or R2 call", () => {

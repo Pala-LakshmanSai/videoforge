@@ -148,6 +148,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       verifySuccess: vi.fn(),
       cleanupMaterializedInputs: vi.fn(),
       cleanupAmbiguousMaterializedInputs: vi.fn(),
+      cleanupDeterministicQualificationKeys: vi.fn(),
       cleanupOutputKeys: vi.fn(),
       cleanupAttributableResource: vi.fn(),
       serializeEvidence: vi.fn(),
@@ -221,6 +222,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       verifySuccess: vi.fn(),
       cleanupMaterializedInputs: vi.fn(),
       cleanupAmbiguousMaterializedInputs: vi.fn(),
+      cleanupDeterministicQualificationKeys: vi.fn(),
       cleanupOutputKeys: vi.fn(),
       cleanupAttributableResource: vi.fn(),
       serializeEvidence: vi.fn(),
@@ -232,7 +234,32 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     expect(createLane).not.toHaveBeenCalled();
   });
 
-  it("allows paid active-state RESUME admission but performs cleanup only without redispatch", async () => {
+  it("reconstructs every cold, warm and fault R2 key after an unjournaled materialization crash without redispatch", async () => {
+    const resumeDeployment = {
+      lane: "soulx" as const,
+      purpose: "qualification" as const,
+      endpointId: "endpoint-resume",
+      endpointIdSha256: `sha256:${"6".repeat(64)}`,
+      templateId: "template-resume",
+      templateIdSha256: `sha256:${"7".repeat(64)}`,
+      image: authority().image,
+      sourceCommit: authority().imageSourceCommit,
+      deploymentSha256: `sha256:${"8".repeat(64)}`,
+      volumeIdSha256: V208_SOULX_VOLUME_ID_SHA256,
+      volumeManifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+      volumeSizeGb: 50 as const,
+      volumeMount: "/runpod-volume" as const,
+      region: "EU-RO-1" as const,
+      gpu: "NVIDIA GeForce RTX 4090" as const,
+      gpuCount: 1 as const,
+      workersMin: 0 as const,
+      workersMax: 1 as const,
+      idleTimeoutSeconds: 60 as const,
+      handlerConcurrency: 1 as const,
+      scalerType: "REQUEST_COUNT" as const,
+      scalerValue: 1 as const,
+      initTimeoutSeconds: 800,
+    };
     const issueStageAuthority = vi.fn(async () => ({ authorityId: "authority-v208-resume" }));
     const claimStageAuthority = vi.fn(async () => ({ decision: "RESUME" }));
     const claimOperation = vi.fn(async (operation: Record<string, unknown>) => ({
@@ -245,7 +272,9 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     const dispatch = vi.fn();
     const cleanupAttributableResource = vi.fn(async () => true as const);
     const cleanupOutputKeys = vi.fn(async () => true as const);
+    const deterministicCleanupDescriptors: string[] = [];
     let inventoryRead = 0;
+    let laneDeleted = false;
     const dependencies = {
       soulx: {
         lane: "soulx",
@@ -256,7 +285,15 @@ describe("V2-08 concrete SoulX orchestrator", () => {
         volumeManifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
       },
       transport: {
-        durable: { issueStageAuthority, claimStageAuthority, claimOperation },
+        durable: {
+          issueStageAuthority,
+          claimStageAuthority,
+          claimOperation,
+          transitionOperation: async (transition: Record<string, unknown>) => ({
+            ...transition,
+            state: transition.to,
+          }),
+        },
         freshAdmission: async () => ({
           checkedAt: "2026-09-05T00:00:00.000Z",
           accountIdSha256: `sha256:${"5".repeat(64)}`,
@@ -280,7 +317,10 @@ describe("V2-08 concrete SoulX orchestrator", () => {
         }),
         now: () =>
           new Date(Date.UTC(2026, 8, 5, 0, 0, 0, Math.max(0, inventoryRead - 1) * 2_000)),
-        findLaneByResourceKey: vi.fn(async () => null),
+        findLaneByResourceKey: vi.fn(async () => (laneDeleted ? null : resumeDeployment)),
+        deleteLane: vi.fn(async () => {
+          laneDeleted = true;
+        }),
         createLane,
         materializeQualificationCase,
         dispatch,
@@ -291,8 +331,8 @@ describe("V2-08 concrete SoulX orchestrator", () => {
           runningPods: 0,
           activeWorkers: 0,
           queuedJobs: 0,
-          endpointIdSha256s: [],
-          templateIdSha256s: [],
+          endpointIdSha256s: laneDeleted ? [] : [resumeDeployment.endpointIdSha256],
+          templateIdSha256s: laneDeleted ? [] : [resumeDeployment.templateIdSha256],
           volumes: [
             {
               idSha256: V208_SOULX_VOLUME_ID_SHA256,
@@ -309,6 +349,14 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       verifySuccess: vi.fn(),
       cleanupMaterializedInputs: vi.fn(),
       cleanupAmbiguousMaterializedInputs: vi.fn(),
+      cleanupDeterministicQualificationKeys: vi.fn(async ({ descriptor }) => {
+        deterministicCleanupDescriptors.push(descriptor.id);
+        return {
+          inputKeys: [`tenant/input/${descriptor.id}`],
+          outputKeys: [`tenant/output/${descriptor.id}`],
+          absenceVerified: true as const,
+        };
+      }),
       cleanupOutputKeys,
       cleanupAttributableResource,
       serializeEvidence: vi.fn(),
@@ -317,7 +365,16 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       "V208_RESUME_REQUIRES_CLEANUP_ONLY",
     );
     expect(cleanupAttributableResource).toHaveBeenCalledTimes(1);
-    expect(cleanupOutputKeys).toHaveBeenCalledWith([]);
+    expect(deterministicCleanupDescriptors).toEqual([
+      "soulx-cold-whole-span-2-4-6-10s",
+      "soulx-warm-whole-span-2-4-6-10s",
+      "soulx-cancel",
+      "soulx-invalid-output",
+      "soulx-timeout",
+    ]);
+    expect(cleanupOutputKeys).toHaveBeenCalledWith(
+      deterministicCleanupDescriptors.map((id) => `tenant/output/${id}`),
+    );
     expect(createLane).not.toHaveBeenCalled();
     expect(materializeWholeSpan).not.toHaveBeenCalled();
     expect(materializeQualificationCase).not.toHaveBeenCalled();
@@ -573,6 +630,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       }),
       cleanupMaterializedInputs,
       cleanupAmbiguousMaterializedInputs: vi.fn(async () => true as const),
+      cleanupDeterministicQualificationKeys: vi.fn(),
       cleanupOutputKeys,
       cleanupAttributableResource: async () => {
         lifecycle.push("cleanup-resource");
@@ -630,6 +688,15 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     expect(transport.deleteLane).toHaveBeenCalledTimes(1);
     expect(cleanupOutputKeys).toHaveBeenCalledTimes(2);
     expect(dispatched).toHaveLength(5);
+    const materializationJournals = [...durableOperations.values()].filter((record) =>
+      String(record.resourceKey).includes(":v208-phase-materialization-"),
+    );
+    expect(materializationJournals).toHaveLength(5);
+    for (const record of materializationJournals)
+      expect(record).toMatchObject({
+        state: "TERMINAL",
+        evidence: { inputKeys: expect.any(Array), outputKeys: expect.any(Array) },
+      });
     expect(lifecycle.filter((event) => event === "cleanup-resource")).toHaveLength(2);
     expect(lifecycle.slice(-5)).toEqual([
       "cleanup-resource",

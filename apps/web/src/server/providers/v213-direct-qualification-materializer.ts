@@ -539,6 +539,17 @@ export interface V208DirectWholeSpanQualificationAdapter {
   readonly cleanupAmbiguousMaterializedInputs: (
     materialization: V213QualificationCaseMaterialization,
   ) => Promise<true>;
+  readonly cleanupDeterministicQualificationKeys: (input: {
+    readonly descriptor: V208SoulXWholeSpanDescriptor | V213QualificationCaseDescriptor;
+    readonly deployment: V213LaneDeployment;
+    readonly stageAuthorityId: string;
+    readonly inputSha256: string;
+    readonly terminalOutcome: "FAILED";
+  }) => Promise<{
+    readonly inputKeys: readonly string[];
+    readonly outputKeys: readonly string[];
+    readonly absenceVerified: true;
+  }>;
   readonly cleanupOutputKeys: (keys: readonly string[]) => Promise<true>;
   /** Exact protected R2 read used only after the signed receipt binds an owned output authority. */
   readonly readOutput: (objectKey: string) => Promise<Uint8Array<ArrayBuffer>>;
@@ -608,6 +619,77 @@ export function createV208DirectWholeSpanQualificationAdapter(
       if ((await bucket.head(key)) !== null) throw new Error("V208_DIRECT_R2_CLEANUP_AMBIGUOUS");
     }
     return true as const;
+  };
+  const deterministicRequest = (materializationInput: {
+    readonly descriptor: V208SoulXWholeSpanDescriptor | V213QualificationCaseDescriptor;
+    readonly deployment: V213LaneDeployment;
+    readonly stageAuthorityId: string;
+    readonly inputSha256: string;
+  }) => {
+    const descriptor = materializationInput.descriptor;
+    const whole = descriptor.key === "soulxWholeSpanCold" || descriptor.key === "soulxWholeSpanWarm";
+    const avatar = exactProtectedBytes(
+      input.protectedInputDescriptors.avatarSource,
+      input.protectedSourceBytes!.avatarSource,
+    );
+    const inputs = whole
+      ? [
+          inputArtifact("avatar_source", descriptor, avatar),
+          ...([2, 4, 6, 10] as const).map((seconds) => {
+            const key = `soulx${seconds}s` as const;
+            const source = exactProtectedBytes(
+              input.protectedInputDescriptors[key],
+              input.protectedSourceBytes![key],
+            );
+            return inputArtifact("audio", descriptor, buildV213SoulXQualificationWav(source, seconds));
+          }),
+        ]
+      : (() => {
+          if (descriptor.lane !== "soulx")
+            throw new Error("V208_QUALIFICATION_OPERATION_DESCRIPTOR_DRIFT");
+          const source = sourceForDescriptor(
+            input.protectedInputDescriptors,
+            input.protectedSourceBytes!,
+            descriptor,
+          );
+          return [
+            inputArtifact("avatar_source", descriptor, source.avatar),
+            inputArtifact("audio", descriptor, source.audio),
+          ];
+        })();
+    return buildV213QualificationMaterializationRequest({
+      schemaVersion: "videoforge.v213-qualification-materialization-request/v1",
+      fullLiveAuthorityId: input.fullLiveAuthorityId,
+      operationId: input.operationId,
+      stageAuthorityId: materializationInput.stageAuthorityId,
+      outerStateSha256: input.outerStateSha256,
+      inputSha256: materializationInput.inputSha256 as `sha256:${string}`,
+      sourceCommit: input.sourceCommit,
+      descriptor,
+      caseSourceRef: input.sourceRefs.caseSource,
+      generatorRef: input.sourceRefs.generators.soulx,
+      validatorRef: input.sourceRefs.validators.soulx,
+      deployment: materializationInput.deployment,
+      inputs,
+    });
+  };
+  const deterministicKeys = (request: ReturnType<typeof deterministicRequest>) => {
+    const attemptId = `v213-${request.descriptor.id}-${request.requestSha256.slice(7, 19)}`;
+    const base =
+      `tenant/${request.fullLiveAuthorityId}/workspace/${request.stageAuthorityId}/project/` +
+      `v213-qualification/revision/${request.sourceCommit}`;
+    const inputKeys = request.inputs.map(
+      (artifact) => `${base}/lane/input/job/${attemptId}/artifact/${artifact.assetId}`,
+    );
+    const seconds =
+      request.descriptor.key === "soulxWholeSpanCold" ||
+      request.descriptor.key === "soulxWholeSpanWarm"
+        ? ([2, 4, 6, 10] as const)
+        : ([request.descriptor.seconds] as const);
+    const outputKeys = seconds.map(
+      (duration) => `${base}/lane/soulx-avatar/job/${attemptId}/artifact/soulx-${duration}s`,
+    );
+    return { inputKeys, outputKeys };
   };
   const adapter: V208DirectWholeSpanQualificationAdapter = {
     async materializeWholeSpan(materializationInput) {
@@ -681,6 +763,17 @@ export function createV208DirectWholeSpanQualificationAdapter(
     async cleanupAmbiguousMaterializedInputs(materialization) {
       exactMaterialization(materialization);
       return deleteAndProveAbsent(objectKeys(materialization, "inputs"));
+    },
+    async cleanupDeterministicQualificationKeys(cleanupInput) {
+      const request = deterministicRequest(cleanupInput);
+      const { inputKeys, outputKeys } = deterministicKeys(request);
+      const evidence = await cleanupV213QualificationInputs(request, {
+        bucket,
+        terminalOutcome: cleanupInput.terminalOutcome,
+      });
+      if (evidence.absenceVerified !== true) throw new Error("V208_DIRECT_R2_CLEANUP_AMBIGUOUS");
+      await deleteAndProveAbsent(outputKeys);
+      return Object.freeze({ inputKeys, outputKeys, absenceVerified: true as const });
     },
     cleanupOutputKeys: (keys) => deleteAndProveAbsent(keys),
     async readOutput(objectKey) {
