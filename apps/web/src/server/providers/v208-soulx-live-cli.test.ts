@@ -1,6 +1,5 @@
 // @vitest-environment node
 
-import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -8,15 +7,13 @@ import {
   runV208SoulXLiveCli,
 } from "./v208-soulx-live-cli.js";
 
-const FULL_AUTHORITY = "12345678-1234-4123-8123-123456789abc";
 const STAGE_AUTHORITY = "authority-v208-soulx";
 const RESOURCE_KEY = `v213-${STAGE_AUTHORITY}-soulx-qualification`;
 
-function database(value: unknown): TransactionalSqlExecutor {
+function durable(value: unknown) {
   return {
-    query: vi.fn(async () => ({ rows: [{ value }] })),
-    transaction: vi.fn(),
-  } as unknown as TransactionalSqlExecutor;
+    readSnapshot: vi.fn(() => value as never),
+  };
 }
 
 describe("V2-08 live composition", () => {
@@ -26,6 +23,8 @@ describe("V2-08 live composition", () => {
       stageAuthorityId: STAGE_AUTHORITY,
       operations: [
         {
+          operationId: "create-op",
+          stageAuthorityId: STAGE_AUTHORITY,
           kind: "create",
           resourceKey: RESOURCE_KEY,
           state: "ACKED",
@@ -33,6 +32,8 @@ describe("V2-08 live composition", () => {
           evidence: {},
         },
         {
+          operationId: "dispatch-op",
+          stageAuthorityId: STAGE_AUTHORITY,
           kind: "dispatch",
           resourceKey: "v208-soulx-cold-whole-span-2-4-6-10s",
           state: "ACKED",
@@ -40,6 +41,8 @@ describe("V2-08 live composition", () => {
           evidence: null,
         },
         {
+          operationId: "status-op",
+          stageAuthorityId: STAGE_AUTHORITY,
           kind: "status",
           resourceKey: `sha256:${"a".repeat(64)}:job-cold:0`,
           state: "TERMINAL",
@@ -47,6 +50,8 @@ describe("V2-08 live composition", () => {
           evidence: {},
         },
         {
+          operationId: "cancel-op",
+          stageAuthorityId: STAGE_AUTHORITY,
           kind: "cancel",
           resourceKey: `sha256:${"a".repeat(64)}:job-cancel`,
           state: "TERMINAL",
@@ -54,6 +59,8 @@ describe("V2-08 live composition", () => {
           evidence: {},
         },
         {
+          operationId: "delete-op",
+          stageAuthorityId: STAGE_AUTHORITY,
           kind: "delete",
           resourceKey: RESOURCE_KEY,
           state: "TERMINAL",
@@ -62,13 +69,14 @@ describe("V2-08 live composition", () => {
         },
       ],
     };
-    const sql = database({
-      schemaVersion: "videoforge.v213-cleanup-scope/v1",
-      fullLiveAuthorityId: FULL_AUTHORITY,
-      stages: [
-        { stage: "mage", stageAuthorityId: "other-authority", operations: [] },
-        stage,
-      ],
+    const store = durable({
+      stageAuthority: {
+        status: "CLAIMED",
+        authority: { authorityId: STAGE_AUTHORITY },
+        claim: { nonceSha256: `sha256:${"a".repeat(64)}`, consumedAt: "2026-01-01T00:00:00.000Z" },
+        handoff: null,
+      },
+      operations: stage.operations,
     });
     const cleanupAttributableResources = vi.fn(async () => ({
       production: [],
@@ -76,33 +84,42 @@ describe("V2-08 live composition", () => {
       deletedTemplateIdSha256s: [],
     }));
     const cleanup = createV208CleanupAttributableResource({
-      database: sql,
-      fullLiveAuthorityId: FULL_AUTHORITY,
+      durable: store,
       transport: { cleanupAttributableResources },
     });
 
     await expect(cleanup(RESOURCE_KEY)).resolves.toBe(true);
-    expect(sql.query).toHaveBeenCalledWith(
-      "SELECT public.videoforge_load_v213_cleanup_scope($1::uuid) value",
-      [FULL_AUTHORITY],
-    );
-    expect(cleanupAttributableResources).toHaveBeenCalledWith([stage]);
+    expect(store.readSnapshot).toHaveBeenCalledTimes(1);
+    expect(cleanupAttributableResources).toHaveBeenCalledWith([
+      expect.objectContaining({
+        stage: "soulx",
+        stageAuthorityId: STAGE_AUTHORITY,
+        operations: stage.operations,
+      }),
+    ]);
   });
 
   it("rejects cleanup scope containing a different resource key", async () => {
     const cleanup = createV208CleanupAttributableResource({
-      database: database({
-        schemaVersion: "videoforge.v213-cleanup-scope/v1",
-        fullLiveAuthorityId: FULL_AUTHORITY,
-        stages: [
+      durable: durable({
+        stageAuthority: {
+          status: "CLAIMED",
+          authority: { authorityId: STAGE_AUTHORITY },
+          claim: { nonceSha256: `sha256:${"a".repeat(64)}`, consumedAt: "2026-01-01T00:00:00.000Z" },
+          handoff: null,
+        },
+        operations: [
           {
-            stage: "soulx",
+            operationId: "bad-op",
             stageAuthorityId: STAGE_AUTHORITY,
-            operations: [{ resourceKey: "v213-another-authority-soulx-qualification" }],
+            kind: "create",
+            resourceKey: "v213-another-authority-soulx-qualification",
+            state: "ACKED",
+            providerId: "endpoint-v208",
+            evidence: null,
           },
         ],
       }),
-      fullLiveAuthorityId: FULL_AUTHORITY,
       transport: { cleanupAttributableResources: vi.fn() },
     });
     await expect(cleanup(RESOURCE_KEY)).rejects.toThrow("V208_CLEANUP_OPERATION_SCOPE_INVALID");

@@ -567,17 +567,24 @@ export interface V208DirectWholeSpanQualificationAdapter {
 /** Distinct V2-08 adapter. It preserves the V2-13 single-span factory byte-for-byte while staging
  * one avatar and all four approved audio spans into one signed whole-span worker request. */
 export function createV208DirectWholeSpanQualificationAdapter(
-  input: Parameters<typeof createV213DirectQualificationMaterializer>[0],
+  input: Omit<Parameters<typeof createV213DirectQualificationMaterializer>[0], "database"> &
+    Readonly<{
+      readonly database?: TransactionalSqlExecutor;
+      readonly materializationStore?: V213QualificationMaterializationStore;
+    }>,
 ): V208DirectWholeSpanQualificationAdapter {
   if (input.operationId !== "soulx-live-qualification")
     throw new Error("V208_WHOLE_SPAN_OPERATION_INVALID");
   validateV213DirectQualificationInputs(input);
   const bucket = input.bucket ?? createV213DirectR2Bucket({ config: input.r2, fetch: input.fetch });
+  if ((input.database === undefined) === (input.materializationStore === undefined))
+    throw new Error("V208_QUALIFICATION_MATERIALIZATION_STORE_INVALID");
   const dependencies = createV213QualificationMaterializerDependencies({
     config: { r2: { ...input.r2, region: "auto" } } as never,
     bucket,
     signing: input.signing,
-    store: createStore(input.database, input.signing.secretHex),
+    store:
+      input.materializationStore ?? createStore(input.database!, input.signing.secretHex),
   });
   const materializerDependencies = {
     ...dependencies,
