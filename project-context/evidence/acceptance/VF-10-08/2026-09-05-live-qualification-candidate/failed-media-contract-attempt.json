@@ -1,0 +1,57 @@
+{
+  "schema_version": "videoforge.v2-08-failed-media-contract-attempt/v1",
+  "checkpoint": "V2-08",
+  "stage": 7,
+  "proposal_sha256": "sha256:6d7df20805361ddb552f438cc89327598a0db907e174024d8c0928748bf5e106",
+  "control_source_commit": "a5e116d025b98505c1b53d80ec8f25a7b12ecaa2",
+  "authority_materialization_commit": "852e1472d5ef5c383fededb2e34b406e6bd84799",
+  "image_source_commit": "0d32b1c3d36610f6a41d9b413628164d47f490d0",
+  "image_digest": "sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714",
+  "provider_result": {
+    "cold_job_post_count": 1,
+    "cold_job_provider_status": "COMPLETED",
+    "cold_job_output_status": "FAILED",
+    "cold_job_failure_code": "SOULX_SERVERLESS_MEDIA_CONTRACT_INVALID",
+    "cold_job_delay_ms": 181534,
+    "cold_job_execution_ms": 241127,
+    "warm_job_post_count": 1,
+    "warm_job_terminal_status": "CANCELLED",
+    "fault_job_post_count": 0,
+    "outer_failure_code": "V208_WHOLE_SPAN_COMPLETION_UNPROVEN",
+    "redispatch_count": 0
+  },
+  "diagnosis": {
+    "aggregate_failure_code_prevented_exact_predicate_recovery": true,
+    "strongest_reproduced_cause": "WORKER_40MS_AAC_DURATION_TOLERANCE_WAS_STRICTER_THAN_THE_80MS_NATIVE_READBACK_CONTRACT",
+    "aac_16khz_access_unit_ms": 64,
+    "bounded_2s_example_audio_duration_ms": 2048,
+    "repair_commit": "3c1e81047711a70f8bdeeaae6ae4490d8bf6449b",
+    "repair_scope": "STAGE_7_MEDIA_NORMALIZATION_AND_REDACTION_SAFE_PREDICATE_CODES_ONLY",
+    "stage_6_changed": false
+  },
+  "cleanup": {
+    "disposable_endpoint_absent": true,
+    "disposable_template_absent": true,
+    "warm_job_cancelled": true,
+    "all_five_deterministic_r2_cleanup_phases_terminal": true,
+    "all_five_deterministic_r2_key_sets_absent": true,
+    "cleanup_only_resume_performed": true,
+    "cleanup_only_resume_redispatched": false
+  },
+  "final_read_only_proof": {
+    "three_stable_billing_reads_usd": [
+      2.7231514439627063,
+      2.7231514439627063,
+      2.7231514439627063
+    ],
+    "incremental_billing_usd": 0,
+    "matching_disposable_endpoints": 0,
+    "matching_disposable_templates": 0,
+    "existing_volume_retention_unchanged": true
+  },
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "qualification_passed": false,
+  "production_activated": false,
+  "v2_09_executed": false
+}

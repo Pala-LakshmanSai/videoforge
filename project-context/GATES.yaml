@@ -389,28 +389,28 @@ gates:
     blocks: soulx_serverless_dispatch_and_crop_activation
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesssoulx001-soulx-endpoint"
     owner: V2-08
-    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-volume-manifest-attempt.json"
+    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-media-contract-attempt.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:6d7df20805361ddb552f438cc89327598a0db907e174024d8c0928748bf5e106"
+    current_candidate_proposal_sha256: "sha256:26e5ab8ad1a705df0fab6b6ec43d184afbb07567f202b4d9a2f005b5ed657e9b"
     current_candidate_acceptance_sha256: null
-    current_candidate_approval_sentence_sha256: "sha256:ee0c06c50a839adb5e76f67189eca1d9c5f4c1b5b5662b11777d62ff2033352e"
+    current_candidate_approval_sentence_sha256: null
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: pending
-    current_candidate_source_commit: "a5e116d025b98505c1b53d80ec8f25a7b12ecaa2"
-    immutable_image_source_commit: "0d32b1c3d36610f6a41d9b413628164d47f490d0"
-    approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
-    approved_authority_sha256: "sha256:0b19b5f5433b22ccc444afd53e83efa78f15974cb857a2d96adef067ae05d1cc"
-    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
-    runpod_mutation_performed: "No RunPod qualification mutation under the current authority; existing image was anonymously reverified without republication"
+    authority_materialization_diff_audit: not_started_fresh_approval_required
+    current_candidate_source_commit: null
+    immutable_image_source_commit: null
+    approved_authority: null
+    approved_authority_sha256: null
+    approved_authority_status: prior_consumed_fresh_exact_approval_required
+    runpod_mutation_performed: "Prior authority posted one cold and one warm job; cold failed media contract, warm cancelled, disposable resources and R2 keys cleaned"
     gpu_seconds: 0
     observed_incremental_spend_usd: 0
-    current_blocker: independent_authority_diff_audit_before_runpod_mutation
-    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714"
+    current_blocker: fresh_exact_combined_publication_and_qualification_approval
+    immutable_image: null
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
     image_publication_workflow_run_id: 33975663940
-    current_candidate_dockerfile_sha256: "sha256:d5e772cf5c43af312712905251dead5795c99e052b9b2b6ca7eb84856e4ea7c7"
-    current_candidate_publication_workflow_sha256: "sha256:a819a9793ebe0fd01855f3ea4eb36b35715f13b00284884fe4b77c784bfae1d3"
+    current_candidate_dockerfile_sha256: "sha256:bfd42540882998d98b9f48e68b69ccc6ec6d3efd8d674651d0f7812ad26b6cc6"
+    current_candidate_publication_workflow_sha256: "sha256:0135e6ff04d84992794f4d09a8dc79f20a28e81043a8269b40a95635c3667f70"
     prior_publication_workflow_run_id: 33961641686
     prior_publication_result: failed_before_authentication_or_publication
     prior_publication_failure: TMPDIR_DIRECTORY_ABSENT

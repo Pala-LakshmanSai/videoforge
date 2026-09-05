@@ -1,0 +1,36 @@
+{
+  "schema_version": "videoforge.v2-08-read-only-preflight/v1",
+  "checkpoint": "V2-08",
+  "stage": 7,
+  "checked_at": "2026-09-05T17:24:40.300Z",
+  "provider_mutations": 0,
+  "external_spend_usd": 0,
+  "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+  "inventory": {
+    "matching_disposable_endpoints": 0,
+    "matching_disposable_templates": 0,
+    "active_attributable_serverless_workers": 0,
+    "retained_network_volumes": 2,
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1"
+  },
+  "selected_gpu": {
+    "offering_id": "NVIDIA GeForce RTX 4090",
+    "display_name": "RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "HIGH",
+    "minimum_approved_availability": "LOW",
+    "serverless_flex_usd_per_gpu_hour": 1.116
+  },
+  "billing_reads_usd": [
+    2.7231514439627063,
+    2.7231514439627063,
+    2.7231514439627063
+  ],
+  "billing_reads_stable": true,
+  "fresh_billing_baseline_usd": 2.7231514439627063,
+  "finite_incremental_spend_cap_usd": 1.8,
+  "cumulative_billing_stop_threshold_usd": 4.523151443962706,
+  "continued_existing_volume_retention_usd_per_month": 7,
+  "stage_6_changed_or_rerun": false
+}

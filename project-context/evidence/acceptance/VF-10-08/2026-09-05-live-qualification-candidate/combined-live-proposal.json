@@ -1,26 +1,24 @@
 {
-  "schema_version": "videoforge.v2-08-soulx-live-qualification-builder-rebind-proposal/v1",
+  "schema_version": "videoforge.v2-08-soulx-media-contract-repair-proposal/v1",
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "candidate_status": "SEALED_AWAITING_FRESH_EXACT_USER_APPROVAL_BUILDER_REBIND",
+  "candidate_status": "SEALED_AWAITING_FRESH_EXACT_USER_APPROVAL_FOR_ONE_NEW_IMAGE_AND_QUALIFICATION",
   "qualification_status": "NOT_QUALIFIED",
   "authority_mode": "NO_EXECUTABLE_AUTHORITY_FRESH_APPROVAL_REQUIRED",
-  "proposal_kind": "PROVIDER_FREE_BUILDER_REBIND_WITH_EXISTING_IMAGE_REUSE",
-  "reason_for_fresh_proposal": "The single-use authority materialized by commit 7585b008a20921317ac925e4665a1c9aa5c07fa5 was consumed by a provider-free preflight before any RunPod, R2, GPU, or spend action. The approved-authority record dropped one hexadecimal character from the correct approved proposal digest, while the request builder still pinned the prior SoulX image, source, config, and anonymous proof. Either mismatch independently failed closed before provider access. The existing immutable image from source 0d32b1c3d36610f6a41d9b413628164d47f490d0 remains reusable without republication. This fresh candidate binds the repaired builder constants and regression test, the deactivated qualification authority/context evidence, and one future authority successor under fresh exact approval.",
+  "proposal_kind": "ONE_NEW_IMMUTABLE_IMAGE_PUBLICATION_AND_SINGLE_USE_QUALIFICATION_AFTER_MEDIA_CONTRACT_REPAIR",
+  "reason_for_fresh_proposal": "The single-use authority at commit 852e1472d5ef5c383fededb2e34b406e6bd84799 was consumed by one cold and one warm RunPod job. The cold model completed but the worker rejected its MP4 under an aggregate 40 ms media-duration contract; the warm job was cancelled, no fault jobs or redispatch occurred, the disposable lane and all deterministic R2 objects were cleaned, and three billing reads remained exactly USD 2.7231514439627063. Clean repair 3c1e81047711a70f8bdeeaae6ae4490d8bf6449b normalizes exact Stage 7 output media, aligns AAC/container/A-V tolerance with the existing 80 ms native readback contract, and adds fixed redaction-safe predicate codes. The prior image does not contain this repair and is invalid for another qualification. This fresh proposal authorizes exactly one new immutable image publication from the clean proposal source followed by one max-one qualification under the unchanged cap.",
   "prior_consumed_authority": {
-    "materialization_commit": "7585b008a20921317ac925e4665a1c9aa5c07fa5",
+    "materialization_commit": "852e1472d5ef5c383fededb2e34b406e6bd84799",
     "authority_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json",
     "authority_consumed": true,
     "authority_reusable": false,
-    "preflight_failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-authority-preflight.json",
-    "preflight_failure_code": "V208_AUTHORITY_RECORD_AND_REQUEST_BUILDER_BINDING_INVALID",
-    "malformed_proposal_sha256": "sha256:ba2c0a8a663e20edec756c992db83eba9fc56f4db71cd7f472a8c6871582335c",
-    "malformed_proposal_sha256_total_length": 70,
-    "malformed_proposal_sha256_hex_length": 63,
-    "runpod_mutations": 0,
-    "r2_mutations": 0,
-    "gpu_seconds": 0,
+    "preflight_failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-media-contract-attempt.json",
+    "preflight_failure_code": "SOULX_SERVERLESS_MEDIA_CONTRACT_INVALID",
+    "approved_proposal_sha256": "sha256:6d7df20805361ddb552f438cc89327598a0db907e174024d8c0928748bf5e106",
+    "runpod_job_posts": 2,
+    "runpod_redispatches": 0,
+    "cleanup_complete": true,
     "external_spend_usd": 0,
     "reuse_authorized": false
   },
@@ -119,9 +117,9 @@
   },
   "control": {
     "source_commit": null,
-    "source_commit_role": "fresh_clean_builder_rebind_proposal_record_commit_bound_in_a_new_external_approval_sentence",
-    "source_hash_binding_state": "PENDING_CLEAN_BUILDER_REBIND_AND_FRESH_EXACT_APPROVAL",
-    "source_hash_binding_note": "The existing immutable SoulX image was already published and anonymously verified from exact source commit 0d32b1c3d36610f6a41d9b413628164d47f490d0. No image publication or republication is requested here. A future exact clean commit may contain only the allowlisted builder/test rebind and qualification/context evidence, and must be freshly approved before any provider mutation.",
+    "source_commit_role": "fresh_clean_media_repair_proposal_record_and_image_source_bound_in_a_new_external_approval_sentence",
+    "source_hash_binding_state": "PENDING_CLEAN_MEDIA_REPAIR_PROPOSAL_COMMIT_AND_FRESH_EXACT_APPROVAL",
+    "source_hash_binding_note": "The prior immutable image failed the Stage 7 media contract and is not reusable. A future exact clean proposal-record commit contains the audited media repair and publication pins; the external approval must bind that same commit as control and image source before one manual publication or any RunPod mutation.",
     "execution_control_commit": null,
     "execution_control_commit_role": "single_post_approval_authority_materialization_successor_only",
     "execution_control_commit_required": true,
@@ -129,16 +127,16 @@
       "authorized": true,
       "exactly_one_deterministic_commit": true,
       "allowed_only_after": [
-        "exact proposal hash is finalized after builder rebind",
+        "exact proposal hash is finalized after the media repair and image-definition rebind",
         "fresh exact user approval is recorded and hashed",
-        "the existing immutable image digest is anonymously reverified without publication or republication",
+        "one newly published immutable image digest from the exact clean proposal source is captured and anonymously verified",
         "independent diff audit passes before any RunPod mutation",
-        "local git HEAD and the pushed remote branch both equal the exact fresh builder-rebind proposal-record commit"
+        "local git HEAD and the pushed remote branch both equal the exact fresh media-repair proposal-record commit"
       ],
       "derived_inputs": [
         "canonical proposal bytes and sha256",
         "exact approval-sentence bytes and sha256",
-        "verified existing immutable image digest and anonymous publication evidence",
+        "verified newly published immutable image digest and anonymous publication evidence",
         "final code-worker-reported source and execution-control hashes",
         "durable R2 materialization-key journals, sealed pre-dispatch cleanup-plan evidence, and deterministic chained crash-resume proof"
       ],
@@ -158,9 +156,9 @@
         "narrow CURRENT_STATE/GATES/task evidence pointers"
       ],
       "exact_transition_proof": [
-        "Before any provider mutation, record clean local git HEAD == the exact fresh builder-rebind proposal-record commit and verify the pushed remote branch equals that commit; reuse only the existing immutable image digest and do not publish or republish an image.",
+        "Before publication or any RunPod mutation, record clean local git HEAD == the exact fresh media-repair proposal-record commit and verify the pushed remote branch equals that commit; publish exactly one new immutable image from that source with republish=false.",
         "After fresh exact approval and immutable image-digest reverification, materialize exactly one successor execution-control commit from proposal bytes/hash, approval bytes/hash, verified digest, and the independently audited allowlisted delta.",
-        "The successor must preserve the precursor/image source identity; it may bind only V208 compiled constants plus authority/context evidence and may not alter worker, Dockerfile, workflow, CLI, orchestrator, contract, model, or volume bytes.",
+        "After publication, the successor must preserve the approved image source identity and bind the returned immutable digest; it may change only V208 compiled authority constants plus authority/context evidence and may not alter worker, Dockerfile, workflow, CLI, orchestrator, contract, model, or volume bytes.",
         "Before any provider dispatch, persist and durably seal cleanup-plan with the lane deployment and all five descriptor key sets; a RESUME requires the DONE cleanup-plan evidence and its canonical hash validation.",
         "Each of the five materializations writes a durable R2 key journal keyed by v208-phase-materialization-{descriptorId} containing descriptorId, inputKeys, outputKeys, and materializationEvidenceSha256; lane deletion and each per-descriptor r2-cleanup-{descriptorId} phase are independently durable for chained crash resume.",
         "On cleanup-only RESUME, reconstruct all deterministic R2 input/output keys from the sealed plan, descriptor, deployment, stage authority, plan hash, and source commit, delete and prove exact absence without redispatch, then require the lane drain and final zero/billing/volume reads.",
@@ -173,7 +171,7 @@
         "RESUME with a stage claim of EXECUTE is cleanup-only: never create or dispatch; perform exact-name discovery, partial cleanup/absence reconciliation, and terminal-absent replay before any success path."
       ],
       "forbidden_delta": [
-        "image publication or republication",
+        "a second image publication, republication, or any image built from a source other than the approved clean proposal commit",
         "worker source or runtime logic",
         "Dockerfile or publication workflow",
         "qualification CLI/orchestrator/contract logic",
@@ -208,15 +206,15 @@
     "execution_marker": "soulx-v208-qualification-v1",
     "handler": {
       "path": "workers/avatar-primary/soulx_serverless.py",
-      "sha256": "sha256:d1b1eb956513dfe378860a58e8d89322a9ecb13a20e508d20ed1ab3575732bf6"
+      "sha256": "sha256:f4d6d18ee858d7835316ee984cece8b8f95547bc42867d08b1d9adc3f1a73cc5"
     },
     "handler_test": {
       "path": "workers/avatar-primary/tests/test_soulx_serverless.py",
-      "sha256": "sha256:cadc2f514ae8d36d638fe0091586a7aed7db91563d14a75b78d79b24cd7e464c"
+      "sha256": "sha256:d736b8dbe91a67a419d78407a7c2a46ca880cad33394a6830862a007a258e240"
     },
     "dockerfile": {
       "path": "workers/avatar-primary/Dockerfile.serverless",
-      "sha256": "sha256:d5e772cf5c43af312712905251dead5795c99e052b9b2b6ca7eb84856e4ea7c7"
+      "sha256": "sha256:bfd42540882998d98b9f48e68b69ccc6ec6d3efd8d674651d0f7812ad26b6cc6"
     },
     "requirements": {
       "path": "workers/avatar-primary/requirements.serverless.txt",
@@ -224,12 +222,12 @@
     },
     "publication_workflow": {
       "path": ".github/workflows/avatar-primary-serverless-image.yml",
-      "sha256": "sha256:a819a9793ebe0fd01855f3ea4eb36b35715f13b00284884fe4b77c784bfae1d3",
-      "source_commit_must_equal": "0d32b1c3d36610f6a41d9b413628164d47f490d0"
+      "sha256": "sha256:0135e6ff04d84992794f4d09a8dc79f20a28e81043a8269b40a95635c3667f70",
+      "source_commit_must_equal": null
     },
     "publication_workflow_test": {
       "path": "workers/avatar-primary/tests/test_soulx_serverless_workflow.py",
-      "sha256": "sha256:aebbea9718a4d41938a218d74afc77f7c62cf2e260df3cfff0d2438bdd3f58a3"
+      "sha256": "sha256:54f5517f4eb13c776af7faa9965a270e376375c6b784359a90a5d51e31ebd64b"
     },
     "remote_source_publication": {
       "remote": "origin",
@@ -237,10 +235,10 @@
       "exact_push_refspec": null,
       "remote_head_must_equal_after_push": null,
       "workflow_dispatch_ref": null,
-      "workflow_dispatch_requires_publish_true": false,
-      "workflow_dispatch_expected_existing_digest": "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714",
-      "reuse_existing_publication_only": true,
-      "publication_or_republication_authorized": false
+      "workflow_dispatch_requires_publish_true": true,
+      "workflow_dispatch_expected_existing_digest": "",
+      "reuse_existing_publication_only": false,
+      "publication_or_republication_authorized": true
     }
   },
   "predecessor": {
@@ -252,8 +250,8 @@
     "stage_6_rerun_authorized": false
   },
   "read_only_preflight": {
-    "path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/read-only-preflight.json",
-    "sha256": "sha256:726b831fa6d156802b2a8239eed657aa26cd0587d56a5f5b6d5a7c668779be73",
+    "path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/read-only-preflight-media-repair.json",
+    "sha256": "sha256:bfaa282969c4f05c03294625a27325a79422781522de34e0b1faa86e884a7d02",
     "provider_mutations": 0,
     "external_spend_usd": 0,
     "stable_read_count": 3,
@@ -269,30 +267,30 @@
       "offering_id": "NVIDIA GeForce RTX 4090",
       "display_name": "RTX 4090",
       "region": "EU-RO-1",
-      "availability": "MEDIUM",
+      "availability": "HIGH",
       "secure_cloud": true
     },
     "fresh_read_required_before_each_mutation_boundary": true
   },
   "image": {
-    "source_commit": "0d32b1c3d36610f6a41d9b413628164d47f490d0",
-    "source_commit_role": "exact_source_of_existing_immutable_image_already_published_and_anonymously_verified",
+    "source_commit": null,
+    "source_commit_role": "exact_clean_media_repair_proposal_commit_bound_in_external_approval_not_execution_control_commit",
     "repository": "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
     "registry": "ghcr.io",
-    "tag": "serverless-v2-08",
-    "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714",
-    "digest": "sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714",
-    "prepublication_digest_available": true,
-    "publication_state": "PUBLISHED_NEW_DIGEST_REUSE_WITHOUT_REPUBLICATION",
-    "publication_authorized": false,
-    "publication_authorized_under_exact_approval": false,
-    "publication_operation": "NO_PUBLICATION_REUSE_EXISTING_ANONYMOUSLY_VERIFIED_DIGEST",
-    "publication_digest_rule": "Reverify the existing immutable manifest, config, every descriptor, and source label anonymously before any RunPod mutation; do not publish or republish an image.",
-    "same_commit_existing_digest_rule": "Reuse is permitted only for this exact immutable digest and source commit; any digest, config, manifest, descriptor, source-label, or source-commit drift stops the qualification.",
+    "tag": null,
+    "immutable_image": null,
+    "digest": null,
+    "prepublication_digest_available": false,
+    "publication_state": "PENDING_ONE_EXACT_MANUAL_PUBLICATION_FROM_MEDIA_REPAIR_SOURCE",
+    "publication_authorized": true,
+    "publication_authorized_under_exact_approval": true,
+    "publication_operation": "EXACT_PUSH_OF_MEDIA_REPAIR_PROPOSAL_SOURCE_THEN_ONE_MANUAL_WORKFLOW_DISPATCH_WITH_PUBLISH_TRUE",
+    "publication_digest_rule": "Capture the returned push digest, remote manifest digest and header digest after publication; require exact equality plus anonymous manifest, config, descriptor and source-label verification before any RunPod mutation. Do not invent or reuse the prior digest.",
+    "same_commit_existing_digest_rule": "The media-repair source tag must be new. If it already exists, stop rather than republish or infer equivalence.",
     "republish": false,
     "republication_authorized": false,
-    "exact_same_commit_digest_reuse_only": true,
-    "prior_invalidated_image_digest": "sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3",
+    "exact_same_commit_digest_reuse_only": false,
+    "prior_invalidated_image_digest": "sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714",
     "base_image": "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b",
     "model_source_revision": "9bc03de06bb0de82cd6bc477804512ae06144bf2",
     "model_revision": "59119b6c681230c3eeee157e224ae1941746711e",
@@ -302,7 +300,7 @@
     "gpu": "NVIDIA GeForce RTX 4090",
     "gpu_offering_id": "NVIDIA GeForce RTX 4090",
     "region": "EU-RO-1",
-    "availability_at_preflight": "MEDIUM",
+    "availability_at_preflight": "HIGH",
     "serverless_flex_usd_per_gpu_hour": 1.116,
     "serverless_flex_usd_per_gpu_second": 0.00031,
     "billing_baseline_usd": 2.7231514439627063,
