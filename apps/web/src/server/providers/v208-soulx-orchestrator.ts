@@ -359,7 +359,7 @@ async function recoverV208DeploymentFromDurableCreate(
   transport: V213DualLaneTransport,
   sealed: V213SealedLane,
   authorityId: string,
-): Promise<V213LaneDeployment> {
+): Promise<{ readonly deployment: V213LaneDeployment } | { readonly absent: true }> {
   const resourceKey = `v213-${authorityId}-${sealed.lane}-qualification`;
   const createOperation = operationIdentity(
     authorityId,
@@ -376,8 +376,33 @@ async function recoverV208DeploymentFromDurableCreate(
   );
   const createClaim = await transport.durable.claimOperation(createOperation);
   if (createClaim.action === "EXECUTE") throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
-  const deployment = createClaim.record.evidence as V213LaneDeployment | undefined;
-  if (!deployment) throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
+  let createState = createClaim.record.state;
+  let deployment = createClaim.record.evidence as V213LaneDeployment | undefined;
+  if (!deployment) {
+    if (createState === "TERMINAL") throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
+    const found = await transport.findLaneByResourceKey(resourceKey);
+    if (found === null) {
+      await transport.durable.transitionOperation({
+        operationId: createOperation.operationId,
+        from: createState,
+        to: "TERMINAL",
+        evidence: { absent: true },
+      });
+      return { absent: true };
+    }
+    assertDeploymentReadback(found, found, sealed);
+    if (createState !== "ACKED") {
+      const acked = await transport.durable.transitionOperation({
+        operationId: createOperation.operationId,
+        from: createState,
+        to: "ACKED",
+        providerId: found.endpointId,
+        evidence: found as unknown as JsonValue,
+      });
+      createState = acked.state;
+    }
+    deployment = found;
+  }
   assertDeploymentReadback(deployment, deployment, sealed);
   const readbackOperation = operationIdentity(
     authorityId,
@@ -386,13 +411,28 @@ async function recoverV208DeploymentFromDurableCreate(
     hashCanonical(deployment),
   );
   const readbackClaim = await transport.durable.claimOperation(readbackOperation);
-  if (readbackClaim.action !== "DONE") throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
-  const readback = readbackClaim.record.evidence as V213LaneDeployment | undefined;
+  let readback = readbackClaim.record.evidence as V213LaneDeployment | undefined;
+  if (readbackClaim.action !== "DONE") {
+    readback = await transport.readLane(deployment);
+    assertDeploymentReadback(readback, deployment, sealed);
+    if (
+      canonicalizeJson(readback as unknown as JsonValue) !==
+      canonicalizeJson(deployment as unknown as JsonValue)
+    )
+      throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
+    await transport.durable.transitionOperation({
+      operationId: readbackOperation.operationId,
+      from: readbackClaim.record.state,
+      to: "TERMINAL",
+      providerId: deployment.endpointId,
+      evidence: deployment as unknown as JsonValue,
+    });
+  }
   if (!readback) throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
   assertDeploymentReadback(readback, deployment, sealed);
   if (canonicalizeJson(readback as unknown as JsonValue) !== canonicalizeJson(deployment as unknown as JsonValue))
     throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
-  return deployment;
+  return { deployment };
 }
 
 const operationIdentity = (
@@ -622,6 +662,7 @@ export async function runV208SoulXWithV213Transport(
   );
   const cleanupPlanClaim = await dependencies.transport.durable.claimOperation(cleanupPlanOperation);
   let cleanupPlan: V208CleanupPlanEvidence | null = null;
+  let resumeCreateAbsent = false;
   const buildAndPersistCleanupPlan = async (
     planDeployment: V213LaneDeployment,
   ): Promise<V208CleanupPlanEvidence> => {
@@ -660,14 +701,15 @@ export async function runV208SoulXWithV213Transport(
         dependencies.soulx,
         plannedDescriptors.map(({ id }) => id),
       );
-    else
-      cleanupPlan = await buildAndPersistCleanupPlan(
-        await recoverV208DeploymentFromDurableCreate(
-          dependencies.transport,
-          dependencies.soulx,
-          issued.authorityId,
-        ),
+    else {
+      const recovered = await recoverV208DeploymentFromDurableCreate(
+        dependencies.transport,
+        dependencies.soulx,
+        issued.authorityId,
       );
+      if ("absent" in recovered) resumeCreateAbsent = true;
+      else cleanupPlan = await buildAndPersistCleanupPlan(recovered.deployment);
+    }
   }
   const admission = await dependencies.transport.freshAdmission();
   const admissionCheckedAt = Date.parse(admission.checkedAt);
@@ -828,10 +870,11 @@ export async function runV208SoulXWithV213Transport(
     } else if (consumed.decision === "RESUME") {
       // An interrupted execution without the signed qualification-complete receipt can never
       // restart paid work. Reconstruct only an existing lane and enter the cleanup path below.
-      if (!cleanupPlan) throw new Error("V208_CLEANUP_PLAN_REQUIRED");
-      deployment = cleanupPlan.deployment;
+      if (!cleanupPlan && !resumeCreateAbsent) throw new Error("V208_CLEANUP_PLAN_REQUIRED");
+      deployment = cleanupPlan?.deployment ?? null;
       cleanupOnlyResume = true;
       cleanupResumeDeployment = deployment;
+      if (resumeCreateAbsent) laneAbsenceConfirmed = true;
       throw new Error("V208_RESUME_REQUIRES_CLEANUP_ONLY");
     } else {
     deployment = await createAndReadLane(
@@ -1237,7 +1280,10 @@ export async function runV208SoulXWithV213Transport(
   }
   if (laneAbsenceConfirmed) {
     if (cleanupOnlyResume) {
-      if (!cleanupResumeDeployment || !cleanupPlan) cleanupFailed = true;
+      if (resumeCreateAbsent) {
+        // A durable read-only lookup proved the create acknowledgement was lost and no lane exists.
+        // Since the cleanup plan precedes every materialization, there are no deterministic R2 keys.
+      } else if (!cleanupResumeDeployment || !cleanupPlan) cleanupFailed = true;
       else {
         for (const planned of cleanupPlan.descriptorKeys) {
           try {

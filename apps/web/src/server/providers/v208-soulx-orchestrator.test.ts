@@ -525,6 +525,9 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     const freshAdmission = vi.fn(async () => {
       throw new Error("STOP_AFTER_DURABLE_RECOVERY");
     });
+    let foundDeployment: typeof recovered | null = recovered;
+    const findLaneByResourceKey = vi.fn(async () => foundDeployment);
+    const readLane = vi.fn(async () => recovered);
     const createLane = vi.fn();
     const dispatch = vi.fn();
     const transitions: Array<Record<string, unknown>> = [];
@@ -547,9 +550,9 @@ describe("V2-08 concrete SoulX orchestrator", () => {
           claimStageAuthority: async () => ({ decision: "RESUME" }),
           claimOperation: async (operation: Record<string, unknown>) => {
             if (operation.kind === "create")
-              return { action: "RECONCILE", record: { ...operation, state: "ACKED", evidence: recovered } };
+              return { action: "RECONCILE", record: { ...operation, state: "ACK_UNKNOWN" } };
             if (operation.kind === "readback")
-              return { action: "DONE", record: { ...operation, state: "TERMINAL", evidence: recovered } };
+              return { action: "EXECUTE", record: { ...operation, state: "IN_FLIGHT" } };
             return { action: "RECONCILE", record: { ...operation, state: "IN_FLIGHT" } };
           },
           transitionOperation: async (transition: Record<string, unknown>) => {
@@ -558,6 +561,8 @@ describe("V2-08 concrete SoulX orchestrator", () => {
           },
         },
         freshAdmission,
+        findLaneByResourceKey,
+        readLane,
         createLane,
         dispatch,
       } as unknown as V213DualLaneTransport,
@@ -575,7 +580,27 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       "STOP_AFTER_DURABLE_RECOVERY",
     );
     expect(reconstruct).toHaveBeenCalledTimes(5);
+    expect(findLaneByResourceKey).toHaveBeenCalledTimes(1);
+    expect(readLane).toHaveBeenCalledTimes(1);
     expect(transitions.some(({ to, evidence }) => to === "TERMINAL" && evidence)).toBe(true);
+    expect(createLane).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+
+    foundDeployment = null;
+    reconstruct.mockClear();
+    readLane.mockClear();
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "STOP_AFTER_DURABLE_RECOVERY",
+    );
+    expect(reconstruct).not.toHaveBeenCalled();
+    expect(readLane).not.toHaveBeenCalled();
+    expect(
+      transitions.some(
+        ({ to, evidence }) =>
+          to === "TERMINAL" &&
+          (evidence as { absent?: boolean } | undefined)?.absent === true,
+      ),
+    ).toBe(true);
     expect(createLane).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
   });
