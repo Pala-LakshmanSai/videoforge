@@ -103,10 +103,10 @@ describe("V2-07 activation authority", () => {
       "sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:ffd295202e2fc272646ce4c19c6b508edf4aef7e6ce070d271e6d31f2087f307",
+      "sha256:874d94e6421fdf8a4c4d02d68bc02863d29fd011da6a42aa2e8dba4748b1ea79",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("8d76745f634452c5e0592980231e0de0df18be59");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("989b3f2a12dc77c9c684fa19854c0226bd09c732");
     expect(V207_ANCHOR_REFRESH_SOURCE_COMMIT).toBe("a6c7266e0c19fce07757c78fbd588dd442b7d24f");
     expect(V207_TYPED_ACTIVATION_AUTHORITY_COMMIT).toBe("e5571ed2478f0c526ebf508d0a4ce301bafa8203");
     expect(V207_ORCHESTRATOR_MARKER_LIFECYCLE_COMMIT).toBe(
@@ -126,11 +126,9 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
-      "sha256:ae892de3c4afdce57978a89bd3ffab814d9bd4bcdb450aa97db09e61edbe0b55",
-    );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4.5);
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false);
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
+    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
     expect(V207_APPROVED_EXECUTION_ENTRYPOINT).toBe("disposable-live-orchestrator-v1");
   });
 
@@ -414,61 +412,18 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("accepts Attempt83 only through the exact disposable entrypoint", () => {
+  it("rejects Attempt84 before fresh exact authority", () => {
     const exact = {
       V207_IMAGE: image,
       V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
       V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
       V207_EXECUTION_ENTRYPOINT: V207_APPROVED_EXECUTION_ENTRYPOINT,
     };
-    expect(parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5" })).toEqual({
-      image,
-      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
-      capUsd: 4.5,
-      anchorRefreshAuthorized: false,
-    });
-    expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4" })).toThrow(
-      "V207_FINITE_CAP_MISMATCH",
+    expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5" })).toThrow(
+      "V207_FRESH_AUTHORITY_REQUIRED",
     );
-    expect(() =>
-      parseV207ActivationAuthority({
-        ...exact,
-        V207_EXECUTION_ENTRYPOINT: "legacy-shared-staging",
-        V207_FINITE_CAP_USD: "4.5",
-      }),
-    ).toThrow("V207_EXECUTION_ENTRYPOINT_MISMATCH");
-    expect(() =>
-      parseV207ActivationAuthority({
-        ...exact,
-        V207_EXECUTION_ENTRYPOINT: undefined,
-        V207_FINITE_CAP_USD: "4.5",
-      }),
-    ).toThrow("V207_EXECUTION_ENTRYPOINT_MISMATCH");
-    expect(() =>
-      parseV207ActivationAuthority({
-        ...exact,
-        V207_PROPOSAL_SHA256:
-          "sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06",
-        V207_FINITE_CAP_USD: "4.5",
-      }),
-    ).toThrow("V207_PROPOSAL_MISMATCH");
-    expect(() =>
-      parseV207ActivationAuthority({
-        ...exact,
-        V207_IMAGE:
-          "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
-        V207_FINITE_CAP_USD: "4.5",
-      }),
-    ).toThrow("V207_IMAGE_DIGEST_REQUIRED");
-    expect(() =>
-      parseV207ActivationAuthority({
-        ...exact,
-        V207_IMAGE_SOURCE_COMMIT: "8d76745f634452c5e0592980231e0de0df18be59",
-        V207_FINITE_CAP_USD: "4.5",
-      }),
-    ).toThrow("V207_IMAGE_SOURCE_COMMIT_MISMATCH");
-    expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5001" })).toThrow(
-      "V207_FINITE_CAP_MISMATCH",
+    expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4" })).toThrow(
+      "V207_FRESH_AUTHORITY_REQUIRED",
     );
   });
 

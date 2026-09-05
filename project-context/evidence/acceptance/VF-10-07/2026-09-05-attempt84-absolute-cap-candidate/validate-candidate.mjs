@@ -1,0 +1,21 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const dir = dirname(fileURLToPath(import.meta.url));
+const root = resolve(dir, "../../../../..");
+const proposalPath = resolve(dir, "combined-live-proposal.json");
+const proposal = JSON.parse(await readFile(proposalPath, "utf8"));
+const proposalSha = `sha256:${createHash("sha256").update(await readFile(proposalPath)).digest("hex")}`;
+const activation = await readFile(resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8");
+if (proposalSha !== "sha256:874d94e6421fdf8a4c4d02d68bc02863d29fd011da6a42aa2e8dba4748b1ea79") throw new Error("proposal");
+if (proposal.control_source_commit !== "989b3f2a12dc77c9c684fa19854c0226bd09c732") throw new Error("control");
+if (proposal.repair.expected_cumulative_billing_threshold_usd !== 4.5) throw new Error("threshold");
+if (proposal.repair.expected_remaining_allowance_usd !== 1.992690361890709) throw new Error("remaining");
+if (!activation.includes("sha256:874d94e6421fdf8a4c4d02d68bc02863d29fd011da6a42aa2e8dba4748b1ea79")) throw new Error("pointer");
+if (!activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null")) throw new Error("authority");
+if (!activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")) throw new Error("cap");
+if (!activation.includes("V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null")) throw new Error("anchor");
+if (!activation.includes('V207_APPROVED_EXECUTION_ENTRYPOINT = "disposable-live-orchestrator-v1"')) throw new Error("entrypoint");
+console.log("PASS Attempt84 absolute-cap candidate sealed; executable authority absent");

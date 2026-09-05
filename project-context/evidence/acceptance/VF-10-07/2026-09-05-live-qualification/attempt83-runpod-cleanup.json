@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "videoforge.v2-07-failed-cleanup/v1",
+  "endpointIdHash": "sha256:873565afec918789e54cf1898c4d889cef7068ab67c4c0edc041ff8298995f2b",
+  "templateIdHash": "sha256:c05c333315312c9e405d7bc45df328e4214c5709521884050a7db6c84c736667",
+  "retainedVolumeIdHash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+  "stableTerminalSnapshotCount": 2,
+  "endpointWorkerRecordCount": 1,
+  "terminalPodRecordCount": 1,
+  "endpointDeleted": true,
+  "templateDeleted": true,
+  "finalDisposableResourcesAbsent": true
+}
