@@ -200,14 +200,21 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt82 is `APPROVED_SINGLE_USE_PENDING_EXECUTION` at proposal
-`sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06`, control/image source
-`aceef8e0d0d678468ea9560f1faa94aa562fc466`, pending exact image
-`sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb`, and authority
-`sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee`. The single-use
-authority covers direct exact-image publication/readback and the bounded Stage 6 sequence within
-the cumulative `$4.50` cap. No redispatch, shared staging mutation, fallback, anchor refresh,
-retained-volume mutation, or V2-08 is authorized.
+**Current gate:** Attempt83 is `PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL` at proposal
+`sha256:ffd295202e2fc272646ce4c19c6b508edf4aef7e6ce070d271e6d31f2087f307`, control
+`8d76745f634452c5e0592980231e0de0df18be59`, image source
+`aceef8e0d0d678468ea9560f1faa94aa562fc466`, and already-published exact image
+`sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb`. It binds only
+`apps/web/src/server/providers/v207-disposable-live-orchestrator.ts` through a required marker; the legacy shared-staging
+launcher, republication, redispatch, fallback, anchor refresh, retained-volume mutation, and V2-08
+are forbidden. No executable authority currently exists.
+
+Attempt82 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. It published and anonymously verified the exact
+image, then a mistaken legacy-wrapper invocation failed before mutation. The disposable wrapper
+passed all three route fingerprints and pre-GPU compatibility cycles but was interrupted before a
+GPU job. Manual cleanup and three stable reads prove zero compute, unchanged retained volumes, and
+cumulative spend USD `2.507309638109291`. Closure is
+`evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-82.json`.
 
 Attempt81 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE` at proposal
 `sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087` with control

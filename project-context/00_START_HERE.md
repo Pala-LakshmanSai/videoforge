@@ -4,7 +4,8 @@
 
 ### Current new-chat launch point — 2026-09-05
 
-- Provider-free Attempt82 timeout-terminal repair is green but has no live authority. RunPod publishes
+- Attempt82 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its provider-free timeout-terminal repair remains
+  green. RunPod publishes
   no stable timeout error string, so the repaired image adds a qualification-only probe: exact marker
   plus signed `v207-timeout-*`, `deployment-mage-v207`, and 32-item identity, then a 30-second sleep
   after authority/port/URL validation and before runtime, Comfy, or output. The web gate also requires
@@ -16,9 +17,24 @@
   `sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb`. Attempt82 proposal
   `sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06` binds control/image source
   `aceef8e0d0d678468ea9560f1faa94aa562fc466`, exact image publication, the bounded Stage 6 run,
-  `$4.50` cumulative cap, and cleanup. Exact authority
-  `sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee` is approved once and
-  unconsumed; publication and the bounded run are next. V2-08 remains unauthorized.
+  `$4.50` cumulative cap, and cleanup. The image was published and anonymously read back across all
+  24 descriptors and 3,761,679,871 bytes. A mistaken legacy-wrapper invocation failed before mutation;
+  the correct disposable wrapper later passed three route fingerprints and three cleaned pre-GPU
+  cycles, then execution was interrupted before any GPU or qualification job. Manual cleanup deleted
+  the disposable Worker and remaining template. Final reconciliation proves zero compute, unchanged
+  retained volumes, and cumulative spend USD `2.507309638109291` (increment USD
+  `0.10069872112944722`). Closure is
+  `evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-82.json`. Exact authority
+  `sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee` is consumed; no executable
+  authority remains. Stage 6 remains not qualified and V2-08 remains unauthorized.
+- Attempt83 is sealed provider-free and awaits fresh exact approval: proposal
+  `sha256:ffd295202e2fc272646ce4c19c6b508edf4aef7e6ce070d271e6d31f2087f307` binds control
+  `8d76745f634452c5e0592980231e0de0df18be59`, image source
+  `aceef8e0d0d678468ea9560f1faa94aa562fc466`, and the already published image above without
+  republication. The control technically binds the exact marker and selects only
+  `apps/web/src/server/providers/v207-disposable-live-orchestrator.ts`. It does not authorize the
+  legacy shared-staging launcher, which rejects the marker before authority parsing. No executable
+  authority exists until the exact Attempt83 approval.
 - Attempt81 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`: proposal
   `sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087`, control source
   `9caea53785484be42a7bea210a0294addef1a3e0`, unchanged image source `d530320af723e33c6ce32552743fd00dc063eedc`,
@@ -40,9 +56,9 @@
   active workers, and running Pods; billing stayed at USD `2.266709277551854`, within the `$4.50` cap.
   Closure is `evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-80.json`
   (`sha256:a3368ea58706c3f749505f7131997e6fe87a1824ea8812f089f8be2ddef021c9`).
-- Stage 6 remains `NOT_QUALIFIED`; Attempts80 and 81 cannot be retried. The published exact image
+- Stage 6 remains `NOT_QUALIFIED`; Attempts80 through 82 cannot be retried. The published exact image
   remains reusable only under fresh exact successor authority. The timeout-terminal source repair is
-  green and audited; one fresh Attempt82 proposal and exact approval remain. No provider, mutation,
+  green and audited; any successor requires a fresh audited proposal and exact approval. No provider, mutation,
   credential, GPU, spend, retained-volume mutation, or V2-08 authority exists.
 
 - V2-07 Attempt79 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Cycle 1 of the pre-GPU compatibility

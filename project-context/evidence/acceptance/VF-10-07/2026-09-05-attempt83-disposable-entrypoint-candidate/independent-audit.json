@@ -1,0 +1,17 @@
+{
+  "schema_version": "videoforge.v2-07-attempt83-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 83,
+  "result": "PASS",
+  "proposal_sha256": "sha256:ffd295202e2fc272646ce4c19c6b508edf4aef7e6ce070d271e6d31f2087f307",
+  "findings": { "p0": 0, "p1": 0, "p2": 0 },
+  "verified": [
+    "Attempt82 authority is consumed and no executable authority remains",
+    "published image identity is unchanged and republication is forbidden",
+    "control source 8d76745f634452c5e0592980231e0de0df18be59 technically binds the disposable-worker entrypoint marker and makes the legacy launcher reject it before authority parsing",
+    "legacy shared-staging launcher, mutation, and rollback-anchor refresh are forbidden",
+    "RunPod inventory is zero-compute with both retained volumes unchanged",
+    "cap, rate, placement, cleanup, and V2-08 exclusions remain exact"
+  ]
+}

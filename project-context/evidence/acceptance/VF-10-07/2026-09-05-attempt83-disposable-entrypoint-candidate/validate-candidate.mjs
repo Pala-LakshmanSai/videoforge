@@ -1,0 +1,24 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+
+const root = resolve(import.meta.dirname, "../../../../..");
+const here = import.meta.dirname;
+const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+const proposalPath = resolve(here, "combined-live-proposal.json");
+const proposalBytes = await readFile(proposalPath);
+const proposal = JSON.parse(proposalBytes);
+if (hash(proposalBytes) !== "sha256:ffd295202e2fc272646ce4c19c6b508edf4aef7e6ce070d271e6d31f2087f307") throw new Error("proposal hash");
+if (proposal.control_source_commit !== "8d76745f634452c5e0592980231e0de0df18be59") throw new Error("control source");
+if (proposal.repair.exact_executable_entrypoint !== "apps/web/src/server/providers/v207-disposable-live-orchestrator.ts") throw new Error("entrypoint");
+if (proposal.repair.legacy_shared_staging_entrypoint_authorized !== false || proposal.repair.shared_staging_mutation_authorized !== false) throw new Error("legacy launcher");
+if (proposal.image !== "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb") throw new Error("image");
+const activation = await readFile(resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8");
+if (!activation.includes("sha256:ffd295202e2fc272646ce4c19c6b508edf4aef7e6ce070d271e6d31f2087f307")) throw new Error("proposal pointer");
+if (!activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null")) throw new Error("authority");
+if (!activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")) throw new Error("cap");
+if (!activation.includes("V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null")) throw new Error("anchor");
+if (!activation.includes('V207_APPROVED_EXECUTION_ENTRYPOINT = "disposable-live-orchestrator-v1"')) throw new Error("entrypoint marker");
+const legacy = await readFile(resolve(root, "apps/web/src/server/providers/v207-live-orchestrator.ts"), "utf8");
+if (!legacy.includes('V207LiveOrchestratorError("V207_LEGACY_ENTRYPOINT_FORBIDDEN")')) throw new Error("legacy rejection");
+console.log("PASS Attempt83 disposable-only candidate sealed; executable authority absent");

@@ -1,0 +1,23 @@
+{
+  "schema_version": "videoforge.v2-07-attempt83-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 83,
+  "result": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "proposal": "combined-live-proposal.json",
+  "proposal_sha256": "sha256:ffd295202e2fc272646ce4c19c6b508edf4aef7e6ce070d271e6d31f2087f307",
+  "control_source_commit": "8d76745f634452c5e0592980231e0de0df18be59",
+  "image_source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "image_digest": "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+  "image_republication": false,
+  "exact_executable_entrypoint": "apps/web/src/server/providers/v207-disposable-live-orchestrator.ts",
+  "legacy_shared_staging_entrypoint_authorized": false,
+  "required_execution_marker": "disposable-live-orchestrator-v1",
+  "finite_cap_usd": 4.5,
+  "retained_volume_charge_usd_per_month": 7,
+  "executable_authority": false,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0,
+  "next_boundary": "Fresh exact Attempt83 approval is required before the disposable-only bounded Stage 6 retry."
+}

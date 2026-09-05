@@ -1,0 +1,62 @@
+{
+  "schema_version": "videoforge.v2-07-attempt82-failed-clean-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 82,
+  "result": "NOT_QUALIFIED_FAILED_CLEAN",
+  "failure_code": "V207_EXECUTION_INTERRUPTED_BEFORE_GPU_DISPATCH",
+  "failure_stage": "post_pre_gpu_qualification_start",
+  "proposal_sha256": "sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06",
+  "authority_sha256": "sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee",
+  "authority_status": "CONSUMED_NON_REUSABLE",
+  "control_source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "image_source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "image": {
+    "digest": "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+    "publication": "PASS_EXACT_IMMUTABLE",
+    "anonymous_full_readback": "PASS",
+    "descriptor_count": 24,
+    "total_descriptor_bytes": 3761679871,
+    "proof_sha256": "sha256:eca6cfe6acec62ed63ec1f7c9d40e7fb14e908c6e594da3864f936fa53670704",
+    "proof_artifact_sha256": "sha256:b7d93daa01c7295275e21b1b39cc86d371fc5ccd73d7fa00ff4c9cb03e27c1c6"
+  },
+  "execution": {
+    "legacy_wrapper_invoked_first": true,
+    "legacy_wrapper_failure_code": "V207_WORKER_ROLLBACK_ANCHOR_NOT_RETAINED",
+    "legacy_wrapper_mutation_started": false,
+    "correct_disposable_wrapper_started": true,
+    "active_route_exact_fingerprints": 3,
+    "pre_gpu_compatibility_cycles_passed": 3,
+    "interrupted_before_gpu_jobs": true,
+    "gpu_jobs_submitted": 0,
+    "stage6_qualification_started": false,
+    "max_two_gate_started": false
+  },
+  "cleanup": {
+    "manual_cleanup_required": true,
+    "cloudflare_worker_deleted": true,
+    "runpod_template_deleted": true,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2,
+    "retained_volumes_unchanged": true
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 2.4066109169798438,
+    "final_endpoint_spend_usd": 2.507309638109291,
+    "incremental_spend_usd": 0.10069872112944722,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "evidence": {
+    "legacy_orchestrator_sha256": "sha256:94bfa97825be412d97489c08d8c25dccd97870eec101b63f4a510a77f63a5856",
+    "readonly_reconciliation_sha256": "sha256:d8f46c8795e8ed95f5f50acb99016c386a04f97c28dac0aa7a28387688903064"
+  },
+  "v2_07_qualified": false,
+  "v2_08_actions": 0,
+  "next_boundary": "Attempt82 cannot be retried. No executable authority remains. Any successor requires provider-free diagnosis, a fresh exact audited proposal, and fresh exact approval."
+}
