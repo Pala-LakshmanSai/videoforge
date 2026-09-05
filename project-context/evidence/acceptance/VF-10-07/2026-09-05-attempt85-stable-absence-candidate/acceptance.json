@@ -1,0 +1,21 @@
+{
+  "schema_version": "videoforge.v2-07-attempt85-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 85,
+  "result": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "proposal_sha256": "sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540",
+  "control_source_commit": "2fccf2ed7257613f4a12017562243a8aeb889138",
+  "image_source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "image_digest": "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+  "absolute_cumulative_cap_usd": 4.5,
+  "baseline_endpoint_spend_usd": 2.507309638109291,
+  "remaining_allowance_usd": 1.992690361890709,
+  "initial_absence_contract": "THREE_CONSECUTIVE_EXACT_WITHIN_SIX_RETRY_ONLY_TRANSIENT",
+  "focused_tests": "89/89 PASS",
+  "typescript": "PASS",
+  "executable_authority": false,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": "videoforge.v2-07-attempt84-failed-clean-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 84,
+  "result": "NOT_QUALIFIED_FAILED_CLEAN",
+  "failure_code": "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
+  "failure_stage": "initial_disposable_worker_absence_preflight",
+  "proposal_sha256": "sha256:874d94e6421fdf8a4c4d02d68bc02863d29fd011da6a42aa2e8dba4748b1ea79",
+  "authority_sha256": "sha256:db7dc441474c744af9885cf57087ce873632d6aa4f2631d76ef038d8b1e861f8",
+  "authority_status": "CONSUMED_NON_REUSABLE",
+  "control_source_commit": "989b3f2a12dc77c9c684fa19854c0226bd09c732",
+  "image_source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "image_digest": "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+  "execution": {
+    "fresh_preflight_passed": true,
+    "initial_disposable_worker_absence": "UNCONFIRMED",
+    "direct_followup_cloudflare_worker_absence": "CONFIRMED",
+    "direct_followup_cloudflare_code": 10007,
+    "remote_mutations": 0,
+    "runpod_resources_created": 0,
+    "gpu_jobs_submitted": 0,
+    "external_spend_usd": 0,
+    "stage6_qualification_started": false
+  },
+  "cleanup": {
+    "cleanup_required": false,
+    "disposable_resources_created": 0,
+    "final_disposable_resources_absent": true,
+    "retained_attempt83_zero_inventory_baseline": true,
+    "retained_volume_count": 2,
+    "retained_volumes_unchanged": true
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 2.507309638109291,
+    "final_endpoint_spend_usd": 2.507309638109291,
+    "incremental_spend_usd": 0,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "within_approved_cap": true
+  },
+  "evidence": {
+    "retained_reconciliation": "attempt83-readonly-reconciliation.json",
+    "retained_reconciliation_sha256": "sha256:43c7e65ae2fa86ac602713218f130ab0a4d656c2d327b04f0e5308009b0a4560"
+  },
+  "v2_07_qualified": false,
+  "v2_08_actions": 0,
+  "next_boundary": "Attempt84 cannot be retried. Repair the initial disposable Worker absence observation provider-free, validate and independently audit it, then obtain fresh exact successor approval."
+}

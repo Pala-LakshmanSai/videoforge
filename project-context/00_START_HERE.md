@@ -43,6 +43,15 @@
   increment. Closure is
   `evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-83.json`. V2-07 remains
   not qualified; no executable authority or V2-08 action exists.
+- Attempt84 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`: proposal
+  `sha256:874d94e6421fdf8a4c4d02d68bc02863d29fd011da6a42aa2e8dba4748b1ea79` and authority
+  `sha256:db7dc441474c744af9885cf57087ce873632d6aa4f2631d76ef038d8b1e861f8`. Fresh preflight passed,
+  then the initial disposable Worker absence read returned `UNCONFIRMED`; execution stopped before
+  remote mutation, RunPod resource creation, GPU, or spend. A direct follow-up confirmed the exact
+  Worker absent with Cloudflare code `10007`. Attempt83's zero-inventory reconciliation remains the
+  baseline at USD `2.507309638109291`; retained volumes are unchanged. Closure is
+  `evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-84.json`. V2-07 remains
+  not qualified; no executable authority or V2-08 action exists.
 - Attempt81 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`: proposal
   `sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087`, control source
   `9caea53785484be42a7bea210a0294addef1a3e0`, unchanged image source `d530320af723e33c6ce32552743fd00dc063eedc`,
@@ -64,7 +73,7 @@
   active workers, and running Pods; billing stayed at USD `2.266709277551854`, within the `$4.50` cap.
   Closure is `evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-80.json`
   (`sha256:a3368ea58706c3f749505f7131997e6fe87a1824ea8812f089f8be2ddef021c9`).
-- Stage 6 remains `NOT_QUALIFIED`; Attempts80 through 83 cannot be retried. The published exact image
+- Stage 6 remains `NOT_QUALIFIED`; Attempts80 through 84 cannot be retried. The published exact image
   remains reusable only under fresh exact successor authority. The timeout-terminal source repair is
   green and audited; any successor requires a fresh audited proposal and exact approval. No provider, mutation,
   credential, GPU, spend, retained-volume mutation, or V2-08 authority exists.
