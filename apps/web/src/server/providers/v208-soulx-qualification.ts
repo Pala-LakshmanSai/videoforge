@@ -31,6 +31,8 @@ export const V208_EXECUTION_ENTRYPOINT = "soulx-v208-qualification-v1" as const;
 // standalone launch-readiness audit stopped before RunPod. A repaired source requires a fresh
 // source-bound proposal and exact approval before any provider mutation is reachable.
 export const V208_PENDING_PROPOSAL_SHA256: string | null = null;
+export const V208_COMPILED_AUTHORITY_ACTIVE = false as const;
+export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null = null;
 export const V208_APPROVED_AUTHORITY_SHA256: string | null = null;
 export const V208_APPROVED_FINITE_CAP_USD: number | null = null;
 export const V208_APPROVED_IMAGE: string | null = null;
@@ -361,8 +363,7 @@ export function validateV208SoulXQualificationResult(
     result.cumulativeBillingUsd < plan.authority.billingBaselineUsd ||
     result.cumulativeBillingUsd > plan.authority.cumulativeBillingStopThresholdUsd ||
     Math.abs(
-      result.cumulativeBillingUsd -
-        (plan.authority.billingBaselineUsd + result.observedSpendUsd),
+      result.cumulativeBillingUsd - (plan.authority.billingBaselineUsd + result.observedSpendUsd),
     ) > 0.000_000_001
   )
     throw new Error("V208_SOULX_QUALIFICATION_RESULT_REJECTED");

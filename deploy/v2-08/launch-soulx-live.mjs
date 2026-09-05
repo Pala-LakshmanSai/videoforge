@@ -18,17 +18,17 @@ import {
   fsyncSync,
   lstatSync,
   mkdirSync,
-  mkdtempSync,
   openSync,
   readFileSync,
   readSync,
   realpathSync,
   writeSync,
 } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn as nodeSpawn } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const QUALIFICATION_CLI_RELATIVE_PATH = "apps/web/src/server/providers/v208-soulx-live-cli.ts";
@@ -37,6 +37,17 @@ const TSX_LOADER_RELATIVE_PATH = "apps/web/node_modules/tsx/dist/loader.mjs";
 const TSX_LOADER_PATH = resolve(ROOT, TSX_LOADER_RELATIVE_PATH);
 const TSX_LOADER_SOURCE_SHA256 =
   "sha256:0b1c5b86192772fe9257710e739959cee5947c11ae1f93b61abfaa9b80c6def1";
+const QUALIFICATION_AUTHORITY_RELATIVE_PATH =
+  "apps/web/src/server/providers/v208-soulx-qualification.ts";
+const QUALIFICATION_AUTHORITY_PATH = resolve(ROOT, QUALIFICATION_AUTHORITY_RELATIVE_PATH);
+const AUTHORITY_COMMIT_ALLOWED_PATHS = Object.freeze([
+  QUALIFICATION_AUTHORITY_RELATIVE_PATH,
+  "project-context/CURRENT_STATE.yaml",
+  "project-context/GATES.yaml",
+  "project-context/tasks/VF-10-08.md",
+  "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json",
+  "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
+]);
 
 export const LAUNCH_CONFIRMATION = "LAUNCH_EXACT_V2_08_SOULX_LIVE_ONCE";
 export const CHILD_CONFIRMATION = "EXECUTE_EXACT_V2_08_SOULX_QUALIFICATION";
@@ -265,6 +276,63 @@ function closeQuietly(descriptor) {
 function pathWithin(parent, child) {
   const suffix = resolve(child).slice(resolve(parent).length);
   return suffix === "" || suffix.startsWith(sep);
+}
+
+function exactCompiledString(source, name, pattern, code) {
+  const match = source.match(
+    new RegExp(
+      `export const ${name}(?:\\s*:[^=;]+)?\\s*=\\s*"(${pattern})"(?:\\s+as const)?\\s*;`,
+      "u",
+    ),
+  );
+  if (!match) fail(code);
+  return match[1];
+}
+
+/** Fail before opening any provider credential or protected media descriptor. */
+function validateLaunchAuthority({ runGit = execFileSync } = {}) {
+  const source = readFileSync(QUALIFICATION_AUTHORITY_PATH, "utf8");
+  if (!/export const V208_COMPILED_AUTHORITY_ACTIVE\s*=\s*true(?:\s+as const)?\s*;/u.test(source))
+    fail("FRESH_EXACT_AUTHORITY_REQUIRED");
+  const proposalSha256 = exactCompiledString(
+    source,
+    "V208_PENDING_PROPOSAL_SHA256",
+    "sha256:[a-f0-9]{64}",
+    "PROPOSAL_AUTHORITY_INVALID",
+  );
+  const controlSourceCommit = exactCompiledString(
+    source,
+    "V208_APPROVED_CONTROL_SOURCE_COMMIT",
+    "[a-f0-9]{40}",
+    "CONTROL_SOURCE_AUTHORITY_INVALID",
+  );
+  const git = (args, code) => {
+    try {
+      return String(
+        runGit("git", ["-C", ROOT, ...args], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        }),
+      ).trim();
+    } catch {
+      fail(code);
+    }
+  };
+  if (git(["status", "--porcelain", "--untracked-files=all"], "SOURCE_STATUS") !== "")
+    fail("SOURCE_DIRTY");
+  const head = git(["rev-parse", "HEAD^{commit}"], "SOURCE_HEAD");
+  const parent = git(["rev-parse", "HEAD^1"], "SOURCE_PARENT");
+  if (parent !== controlSourceCommit) fail("CONTROL_SOURCE_LINEAGE_MISMATCH");
+  const changed = git(["diff", "--name-only", `${controlSourceCommit}..${head}`], "SOURCE_DIFF")
+    .split("\n")
+    .filter(Boolean);
+  if (
+    changed.length === 0 ||
+    changed.some((path) => !AUTHORITY_COMMIT_ALLOWED_PATHS.includes(path)) ||
+    !changed.includes(QUALIFICATION_AUTHORITY_RELATIVE_PATH)
+  )
+    fail("AUTHORITY_MATERIALIZATION_SCOPE_INVALID");
+  return Object.freeze({ proposalSha256, controlSourceCommit, head });
 }
 
 function validatePinnedChildSources() {
@@ -625,33 +693,27 @@ function privateBindingFile(journalDirectory, name, value) {
   return path;
 }
 
-function resolveJournalDirectory(value) {
-  if (value !== undefined) {
-    const path = exactAbsolutePath(value, "JOURNAL_PATH");
-    rejectArchivePath(path, "JOURNAL_ARCHIVE_PATH");
-    try {
-      lstatSync(path);
-      exactDirectory(path, "JOURNAL_DIRECTORY");
-      return Object.freeze({ path, fresh: false });
-    } catch (error) {
-      if (!(error instanceof Error && error.code === "ENOENT")) {
-        if (error instanceof Error && error.message.startsWith("V2_08_SOULX_LAUNCH_")) throw error;
-        fail("JOURNAL_DIRECTORY");
-      }
-      const parent = dirname(path);
-      ensureDirectory(parent, "JOURNAL_PARENT");
-      mkdirSync(path, { mode: 0o700 });
-      exactDirectory(path, "JOURNAL_DIRECTORY");
-      return Object.freeze({ path, fresh: true });
-    }
-  }
-  const parent = join(homedir(), ".videoforge", "v2-08");
-  ensureDirectory(join(homedir(), ".videoforge"), "VIDEOFORGE_DIRECTORY");
+function resolveJournalDirectory(value, requestId, homeDirectory = userInfo().homedir) {
+  const parent = join(homeDirectory, ".videoforge", "v2-08");
+  const path = join(parent, requestId);
+  if (value !== undefined && exactAbsolutePath(value, "JOURNAL_PATH") !== path)
+    fail("JOURNAL_SINGLE_USE_BINDING");
+  rejectArchivePath(path, "JOURNAL_ARCHIVE_PATH");
+  ensureDirectory(join(homeDirectory, ".videoforge"), "VIDEOFORGE_DIRECTORY");
   ensureDirectory(parent, "JOURNAL_PARENT");
-  const path = mkdtempSync(join(parent, "soulx-live-"));
-  chmodSync(path, 0o700);
-  exactDirectory(path, "JOURNAL_DIRECTORY");
-  return Object.freeze({ path, fresh: true });
+  try {
+    lstatSync(path);
+    exactDirectory(path, "JOURNAL_DIRECTORY");
+    return Object.freeze({ path, fresh: false });
+  } catch (error) {
+    if (!(error instanceof Error && error.code === "ENOENT")) {
+      if (error instanceof Error && error.message.startsWith("V2_08_SOULX_LAUNCH_")) throw error;
+      fail("JOURNAL_DIRECTORY");
+    }
+    mkdirSync(path, { mode: 0o700 });
+    exactDirectory(path, "JOURNAL_DIRECTORY");
+    return Object.freeze({ path, fresh: true });
+  }
 }
 
 function sourceDescriptors(manifest, codePrefix = "SOURCE") {
@@ -749,17 +811,26 @@ export function prepareLaunch({
   values,
   baseEnvironment = process.env,
   r2SecretsDirectory = DEFAULT_R2_SECRETS_DIRECTORY,
+  homeDirectory = userInfo().homedir,
+  validateAuthority = validateLaunchAuthority,
 } = {}) {
   if (!(values instanceof Map)) fail("ARGUMENTS");
+  const compiledAuthority = validateAuthority();
   const childSources = validatePinnedChildSources();
   const requestPath = validateOptionPath(values, "request-file");
   const manifestPath = validateOptionPath(values, "input-manifest-file");
   const productionSecretsPath = validateOptionPath(values, "production-secrets-file");
-  const journal = resolveJournalDirectory(validateOptionPath(values, "journal-dir"));
   if (requestPath === undefined || manifestPath === undefined) fail("INPUT_REQUIRED");
 
   const requestFile = readJsonFile(requestPath, "REQUEST_FILE");
   const request = parseRequest(requestFile.value);
+  if (request.request_id !== `v208-${compiledAuthority.proposalSha256.slice(7)}`)
+    fail("REQUEST_PROPOSAL_BINDING_INVALID");
+  const journal = resolveJournalDirectory(
+    validateOptionPath(values, "journal-dir"),
+    request.request_id,
+    homeDirectory,
+  );
   const manifestFile = readJsonFile(manifestPath, "INPUT_MANIFEST_FILE", 1024 * 1024);
   const manifest = parseInputManifest(manifestFile.value);
   const r2 = parseR2Binding(request, values);

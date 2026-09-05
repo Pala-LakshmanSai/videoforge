@@ -1,9 +1,15 @@
 // @vitest-environment node
 
 import { describe, expect, it, vi } from "vitest";
+import { closeSync, mkdtempSync, openSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
+  assertV208SingleUseJournalBinding,
   createV208CleanupAttributableResource,
+  readV208BinaryFd,
+  readV208TextFd,
   runV208SoulXLiveCli,
 } from "./v208-soulx-live-cli.js";
 
@@ -17,6 +23,26 @@ function durable(value: unknown) {
 }
 
 describe("V2-08 live composition", () => {
+  it("accepts NUL-bearing media and one launcher JSON newline", () => {
+    const root = mkdtempSync(join(tmpdir(), "v208-fd-test-"));
+    const binaryPath = join(root, "input.png");
+    const textPath = join(root, "input.json");
+    writeFileSync(binaryPath, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1]));
+    writeFileSync(textPath, '{"ok":true}\n');
+    const binaryFd = openSync(binaryPath, "r");
+    const textFd = openSync(textPath, "r");
+    try {
+      expect(readV208BinaryFd(String(binaryFd), "BINARY_INVALID")).toEqual(
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1]),
+      );
+      expect(readV208TextFd(String(textFd), "TEXT_INVALID")).toBe('{"ok":true}');
+    } finally {
+      closeSync(binaryFd);
+      closeSync(textFd);
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("loads and narrows the durable cleanup scope to the exact consumed SoulX authority", async () => {
     const stage = {
       stage: "soulx",
@@ -105,7 +131,10 @@ describe("V2-08 live composition", () => {
         stageAuthority: {
           status: "CLAIMED",
           authority: { authorityId: STAGE_AUTHORITY },
-          claim: { nonceSha256: `sha256:${"a".repeat(64)}`, consumedAt: "2026-01-01T00:00:00.000Z" },
+          claim: {
+            nonceSha256: `sha256:${"a".repeat(64)}`,
+            consumedAt: "2026-01-01T00:00:00.000Z",
+          },
           handoff: null,
         },
         operations: [
@@ -125,7 +154,24 @@ describe("V2-08 live composition", () => {
     await expect(cleanup(RESOURCE_KEY)).rejects.toThrow("V208_CLEANUP_OPERATION_SCOPE_INVALID");
   });
 
-  it("loads the RunPod key through the keychain port but remains fail-closed at null authority", async () => {
+  it("rejects a fresh journal or request id for the same proposal", () => {
+    const proposal = `sha256:${"a".repeat(64)}`;
+    const home = "/private/test-home";
+    const requestId = `v208-${"a".repeat(64)}`;
+    expect(() =>
+      assertV208SingleUseJournalBinding(
+        proposal,
+        requestId,
+        `${home}/.videoforge/v2-08/${requestId}`,
+        home,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertV208SingleUseJournalBinding(proposal, requestId, `${home}/fresh-journal`, home),
+    ).toThrow("V208_SINGLE_USE_JOURNAL_BINDING_INVALID");
+  });
+
+  it("rejects null authority before loading the RunPod key", async () => {
     const loadRunPodKey = vi.fn(async () => "runpod-key-at-least-twenty-characters");
     const writeOutput = vi.fn();
     await expect(
@@ -136,7 +182,7 @@ describe("V2-08 live composition", () => {
         writeOutput,
       }),
     ).rejects.toThrow("V208_FRESH_EXACT_AUTHORITY_REQUIRED");
-    expect(loadRunPodKey).toHaveBeenCalledTimes(1);
+    expect(loadRunPodKey).not.toHaveBeenCalled();
     expect(writeOutput).not.toHaveBeenCalled();
   });
 });

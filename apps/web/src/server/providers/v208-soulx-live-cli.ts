@@ -1,6 +1,7 @@
 import { createHash, createPrivateKey, createPublicKey, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { userInfo } from "node:os";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { ProvenanceReceiptSigner } from "@videoforge/control-plane";
@@ -8,7 +9,11 @@ import { canonicalizeJson, type JsonValue } from "@videoforge/contracts";
 
 import { loadSujalRunPodApiKeyFromKeychain } from "./keychain.js";
 import { assertSujalRunPodAccount } from "./runpod-account.js";
-import { RunPodControlClient, RunPodDrainGuard, RunPodServerlessJobClient } from "./runpod-control.js";
+import {
+  RunPodControlClient,
+  RunPodDrainGuard,
+  RunPodServerlessJobClient,
+} from "./runpod-control.js";
 import { fetchCp07Catalog, findCp07Offering } from "./runpod-echo-cp07-preflight.js";
 import { runV208SoulXWithV213Transport } from "./v208-soulx-orchestrator.js";
 import {
@@ -27,7 +32,10 @@ import {
   V208_V207_ATTEMPT85_CLOSURE_SHA256,
   type V208SoulXQualificationResult,
 } from "./v208-soulx-qualification.js";
-import { createV208SoulXReceiptVerifier, probeV208Mp4Bytes } from "./v208-soulx-receipt-verifier.js";
+import {
+  createV208SoulXReceiptVerifier,
+  probeV208Mp4Bytes,
+} from "./v208-soulx-receipt-verifier.js";
 import {
   V213_SERVERLESS_FLEX_RATE_SOURCE,
   readEndpointBilling,
@@ -70,6 +78,19 @@ const V208_PROTECTED_INPUT_ENVIRONMENT_NAMES: Set<string> = new Set(
   Object.values(V208_PROTECTED_INPUT_ENVIRONMENT),
 );
 export const V208_SOULX_LIVE_CLI_CONFIRMATION = "EXECUTE_EXACT_V2_08_SOULX_QUALIFICATION";
+
+export function assertV208SingleUseJournalBinding(
+  proposalSha256: string,
+  requestId: string,
+  journalDirectory: string,
+  homeDirectory = userInfo().homedir,
+): void {
+  if (!SHA256.test(proposalSha256)) throw new Error("V208_PROPOSAL_BINDING_INVALID");
+  const exactRequestId = `v208-${proposalSha256.slice(7)}`;
+  const exactJournalDirectory = join(homeDirectory, ".videoforge", "v2-08", exactRequestId);
+  if (requestId !== exactRequestId || resolve(journalDirectory) !== exactJournalDirectory)
+    throw new Error("V208_SINGLE_USE_JOURNAL_BINDING_INVALID");
+}
 
 export interface V208SoulXLiveRequest {
   readonly schema_version: typeof V208_REQUEST_SCHEMA;
@@ -135,7 +156,8 @@ function authorityEnvironment(environment: Readonly<Record<string, string | unde
     ...environment,
     V208_EXECUTION_ENTRYPOINT: environment.V208_EXECUTION_ENTRYPOINT ?? V208_EXECUTION_ENTRYPOINT,
     V208_PROPOSAL_SHA256: environment.V208_PROPOSAL_SHA256 ?? V208_PENDING_PROPOSAL_SHA256 ?? "",
-    V208_AUTHORITY_SHA256: environment.V208_AUTHORITY_SHA256 ?? V208_APPROVED_AUTHORITY_SHA256 ?? "",
+    V208_AUTHORITY_SHA256:
+      environment.V208_AUTHORITY_SHA256 ?? V208_APPROVED_AUTHORITY_SHA256 ?? "",
     V208_IMAGE: environment.V208_IMAGE ?? V208_APPROVED_IMAGE ?? "",
     V208_IMAGE_SOURCE_COMMIT:
       environment.V208_IMAGE_SOURCE_COMMIT ?? V208_APPROVED_IMAGE_SOURCE_COMMIT ?? "",
@@ -150,7 +172,9 @@ function authorityEnvironment(environment: Readonly<Record<string, string | unde
       (V208_APPROVED_FINITE_CAP_USD === null ? "" : String(V208_APPROVED_FINITE_CAP_USD)),
     V208_BILLING_BASELINE_USD:
       environment.V208_BILLING_BASELINE_USD ??
-      (V208_APPROVED_BILLING_BASELINE_USD === null ? "" : String(V208_APPROVED_BILLING_BASELINE_USD)),
+      (V208_APPROVED_BILLING_BASELINE_USD === null
+        ? ""
+        : String(V208_APPROVED_BILLING_BASELINE_USD)),
     V208_CUMULATIVE_BILLING_STOP_THRESHOLD_USD:
       environment.V208_CUMULATIVE_BILLING_STOP_THRESHOLD_USD ??
       (V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD === null
@@ -159,10 +183,7 @@ function authorityEnvironment(environment: Readonly<Record<string, string | unde
   };
 }
 
-function productionInput(
-  inputs: V208ProtectedInputs,
-  authoritySha256: string,
-): ProductionInput {
+function productionInput(inputs: V208ProtectedInputs, authoritySha256: string): ProductionInput {
   if (inputs.request.command !== "soulx-live-qualification")
     throw new Error("V208_V213_COMMAND_INVALID");
   const raw = object(inputs.request.input);
@@ -170,14 +191,15 @@ function productionInput(
   const qualificationR2 = object(dualLaneInput?.qualificationR2);
   if (
     raw === null ||
-    !["dualLaneInput", "commandPayload,dualLaneInput"].includes(Object.keys(raw).sort().join(",")) ||
+    !["dualLaneInput", "commandPayload,dualLaneInput"].includes(
+      Object.keys(raw).sort().join(","),
+    ) ||
     dualLaneInput === null ||
     qualificationR2 === null
   )
     throw new Error("V208_PRODUCTION_INPUT_INVALID");
   const commandPayload = raw.commandPayload === undefined ? {} : object(raw.commandPayload);
-  if (commandPayload === null)
-    throw new Error("V208_PRODUCTION_INPUT_INVALID");
+  if (commandPayload === null) throw new Error("V208_PRODUCTION_INPUT_INVALID");
   const fullLiveAuthorityId = localAuthorityUuid(inputs.request, authoritySha256);
   const outerStateSha256 = hashCanonical({
     schemaVersion: "videoforge.v208-soulx-local-outer-state/v1",
@@ -207,7 +229,9 @@ export function createV208CleanupAttributableResource(input: {
   readonly transport: Pick<V213RunPodDualLaneTransport, "cleanupAttributableResources">;
 }) {
   return async (resourceKey: string): Promise<true> => {
-    const match = /^v213-([A-Za-z0-9][A-Za-z0-9_.:-]{0,190})-soulx-qualification$/u.exec(resourceKey);
+    const match = /^v213-([A-Za-z0-9][A-Za-z0-9_.:-]{0,190})-soulx-qualification$/u.exec(
+      resourceKey,
+    );
     if (!match) throw new Error("V208_CLEANUP_RESOURCE_KEY_INVALID");
     const snapshot = input.durable.readSnapshot();
     const stageAuthority = snapshot.stageAuthority;
@@ -252,6 +276,11 @@ export function createV208SoulXLiveComposition(input: {
   const protectedInputs = input.protectedInputs;
   const executionEnvironment = authorityEnvironment(input.environment ?? process.env);
   const authority = parseV208SoulXAuthority(executionEnvironment);
+  assertV208SingleUseJournalBinding(
+    authority.proposalSha256,
+    protectedInputs.request.request_id,
+    protectedInputs.journalDirectory,
+  );
   const plan = buildV208SoulXQualificationPlan(authority);
   const production = productionInput(protectedInputs, authority.authoritySha256);
   const fetchPort = input.fetch ?? globalThis.fetch;
@@ -294,9 +323,11 @@ export function createV208SoulXLiveComposition(input: {
       planSha256: plan.planSha256 as `sha256:${string}`,
     },
     signAuthority: (unsigned) =>
-      sign(null, Buffer.from(canonicalizeJson(unsigned as unknown as JsonValue), "utf8"), stagePrivateKey).toString(
-        "base64",
-      ),
+      sign(
+        null,
+        Buffer.from(canonicalizeJson(unsigned as unknown as JsonValue), "utf8"),
+        stagePrivateKey,
+      ).toString("base64"),
     now,
   });
   const adapter = createV208DirectWholeSpanQualificationAdapter({
@@ -357,8 +388,7 @@ export function createV208SoulXLiveComposition(input: {
       cleanupOutputKeys: adapter.cleanupOutputKeys,
       cleanupMaterializedInputs: adapter.cleanupMaterializedInputs,
       cleanupAmbiguousMaterializedInputs: adapter.cleanupAmbiguousMaterializedInputs,
-      reconstructDeterministicQualificationKeys:
-        adapter.reconstructDeterministicQualificationKeys,
+      reconstructDeterministicQualificationKeys: adapter.reconstructDeterministicQualificationKeys,
       cleanupDeterministicQualificationKeys: adapter.cleanupDeterministicQualificationKeys,
       cleanupAttributableResource: createV208CleanupAttributableResource({
         durable,
@@ -374,18 +404,21 @@ export function createV208SoulXLiveComposition(input: {
   });
 }
 
-function readFd(value: string | undefined, code: string): Buffer {
+export function readV208BinaryFd(value: string | undefined, code: string): Buffer {
   if (!/^[0-9]{1,3}$/u.test(value ?? "")) throw new Error(code);
   const fd = Number(value);
   if (!Number.isSafeInteger(fd) || fd < 3 || fd > 255) throw new Error(code);
   const bytes = readFileSync(fd);
-  if (bytes.length === 0 || bytes.length > 16 * 1024 * 1024 || bytes.includes(0))
-    throw new Error(code);
+  if (bytes.length === 0 || bytes.length > 16 * 1024 * 1024) throw new Error(code);
   return bytes;
 }
 
-function readTextFd(value: string | undefined, code: string): string {
-  const text = readFd(value, code).toString("utf8");
+export function readV208TextFd(value: string | undefined, code: string): string {
+  const bytes = readV208BinaryFd(value, code);
+  if (bytes.includes(0)) throw new Error(code);
+  let text = new TextDecoder().decode(bytes);
+  if (!Buffer.from(text, "utf8").equals(bytes)) throw new Error(code);
+  if (text.endsWith("\n")) text = text.slice(0, -1);
   if (text.trim() !== text || text.length === 0) throw new Error(code);
   return text;
 }
@@ -482,16 +515,14 @@ function parseV208QualificationSecrets(value: unknown): V213ProductionSecrets {
     Buffer.from(record.pairEnvelopeSigningKeyHex as string, "hex"),
     Buffer.from(record.pairProviderProofKeyHex as string, "hex"),
   ];
-  if (
-    new Set(allKeyBytes.map((bytes) => sha256Bytes(bytes))).size !== allKeyBytes.length
-  )
+  if (new Set(allKeyBytes.map((bytes) => sha256Bytes(bytes))).size !== allKeyBytes.length)
     throw new Error("V208_PRODUCTION_SECRETS_REUSE");
   return Object.freeze(record) as unknown as V213ProductionSecrets;
 }
 
 function parseJsonFd(value: string | undefined, code: string): unknown {
   try {
-    return JSON.parse(readTextFd(value, code));
+    return JSON.parse(readV208TextFd(value, code));
   } catch (error) {
     if (error instanceof Error && error.message === code) throw error;
     throw new Error(code);
@@ -531,7 +562,11 @@ export function readV208ProtectedInputs(
     (name) => name.startsWith("V208_") && !V208_PROTECTED_INPUT_ENVIRONMENT_NAMES.has(name),
   );
   if (extras.length > 0) throw new Error("V208_AMBIENT_BINDING_REJECTED");
-  if (typeof runpodApiKey !== "string" || runpodApiKey.trim() !== runpodApiKey || runpodApiKey.length < 20)
+  if (
+    typeof runpodApiKey !== "string" ||
+    runpodApiKey.trim() !== runpodApiKey ||
+    runpodApiKey.length < 20
+  )
     throw new Error("V208_RUNPOD_KEY_INVALID");
   const journalDirectory = environment[V208_PROTECTED_INPUT_ENVIRONMENT.journalDirectory];
   if (
@@ -545,7 +580,7 @@ export function readV208ProtectedInputs(
   const request = exactV208Request(
     parseJsonFd(environment[V208_PROTECTED_INPUT_ENVIRONMENT.requestFd], "V208_REQUEST_FD_INVALID"),
   );
-  const productionSecretsRaw = readTextFd(
+  const productionSecretsRaw = readV208TextFd(
     environment[V208_PROTECTED_INPUT_ENVIRONMENT.productionSecretsFd],
     "V208_PRODUCTION_SECRETS_FD_INVALID",
   );
@@ -559,19 +594,19 @@ export function readV208ProtectedInputs(
     })(),
   );
   const r2 = Object.freeze({
-    accountId: readTextFd(
+    accountId: readV208TextFd(
       environment[V208_PROTECTED_INPUT_ENVIRONMENT.r2AccountIdFd],
       "V208_R2_ACCOUNT_ID_FD_INVALID",
     ),
-    accessKeyId: readTextFd(
+    accessKeyId: readV208TextFd(
       environment[V208_PROTECTED_INPUT_ENVIRONMENT.r2AccessKeyIdFd],
       "V208_R2_ACCESS_KEY_ID_FD_INVALID",
     ),
-    secretAccessKey: readTextFd(
+    secretAccessKey: readV208TextFd(
       environment[V208_PROTECTED_INPUT_ENVIRONMENT.r2SecretAccessKeyFd],
       "V208_R2_SECRET_ACCESS_KEY_FD_INVALID",
     ),
-    bucketName: readTextFd(
+    bucketName: readV208TextFd(
       environment[V208_PROTECTED_INPUT_ENVIRONMENT.r2BucketNameFd],
       "V208_R2_BUCKET_NAME_FD_INVALID",
     ),
@@ -580,22 +615,31 @@ export function readV208ProtectedInputs(
     throw new Error("V208_R2_BINDING_DRIFT");
   const sourceBytes = Object.freeze({
     avatarSource: Uint8Array.from(
-      readFd(
+      readV208BinaryFd(
         environment[V208_PROTECTED_INPUT_ENVIRONMENT.avatarSourceFd],
         "V208_AVATAR_SOURCE_FD_INVALID",
       ),
     ),
     soulx2s: Uint8Array.from(
-      readFd(environment[V208_PROTECTED_INPUT_ENVIRONMENT.audio2sFd], "V208_AUDIO_2S_FD_INVALID"),
+      readV208BinaryFd(
+        environment[V208_PROTECTED_INPUT_ENVIRONMENT.audio2sFd],
+        "V208_AUDIO_2S_FD_INVALID",
+      ),
     ),
     soulx4s: Uint8Array.from(
-      readFd(environment[V208_PROTECTED_INPUT_ENVIRONMENT.audio4sFd], "V208_AUDIO_4S_FD_INVALID"),
+      readV208BinaryFd(
+        environment[V208_PROTECTED_INPUT_ENVIRONMENT.audio4sFd],
+        "V208_AUDIO_4S_FD_INVALID",
+      ),
     ),
     soulx6s: Uint8Array.from(
-      readFd(environment[V208_PROTECTED_INPUT_ENVIRONMENT.audio6sFd], "V208_AUDIO_6S_FD_INVALID"),
+      readV208BinaryFd(
+        environment[V208_PROTECTED_INPUT_ENVIRONMENT.audio6sFd],
+        "V208_AUDIO_6S_FD_INVALID",
+      ),
     ),
     soulx10s: Uint8Array.from(
-      readFd(
+      readV208BinaryFd(
         environment[V208_PROTECTED_INPUT_ENVIRONMENT.audio10sFd],
         "V208_AUDIO_10S_FD_INVALID",
       ),
@@ -638,9 +682,13 @@ export async function runV208SoulXLiveCli(
     writeOutput?: (value: string) => void;
   }> = {},
 ) {
+  // Fail closed before reading either provider credential. The launcher independently performs
+  // the same compiled-authority gate before it opens the protected R2 descriptors.
+  parseV208SoulXAuthority(authorityEnvironment(environment));
   const key = await (ports.loadRunPodKey ?? loadSujalRunPodApiKeyFromKeychain)();
-  const inputs = (ports.readInputs ?? ((source, runpodKey) =>
-    readV208ProtectedInputs(source, runpodKey)))(environment, key);
+  const inputs = (
+    ports.readInputs ?? ((source, runpodKey) => readV208ProtectedInputs(source, runpodKey))
+  )(environment, key);
   const composition = (ports.createComposition ?? createV208SoulXLiveComposition)({
     protectedInputs: inputs,
     environment,

@@ -61,7 +61,7 @@ function writeFixture(root) {
   const request = {
     schema_version: REQUEST_SCHEMA,
     command: "soulx-live-qualification",
-    request_id: "v208-test-request-001",
+    request_id: `v208-${"a".repeat(64)}`,
     input: {
       dualLaneInput: {
         qualificationProtectedInputDescriptors: {
@@ -122,13 +122,14 @@ test("launcher prepares exact private FDs, excludes ambient secrets, and forward
   const root = mkdtempSync(join(tmpdir(), "v208-launch-test-"));
   try {
     const fixture = writeFixture(root);
+    const journal = join(root, ".videoforge", "v2-08", `v208-${"a".repeat(64)}`);
     const parsed = parseArgs([
       "--request-file",
       fixture.requestPath,
       "--input-manifest-file",
       fixture.manifestPath,
       "--journal-dir",
-      join(root, "journal"),
+      journal,
       "--confirm",
       LAUNCH_CONFIRMATION,
     ]);
@@ -141,6 +142,8 @@ test("launcher prepares exact private FDs, excludes ambient secrets, and forward
         V208_SECRET: "must-not-inherit",
         VIDEOFORGE_V213_SECRET: "must-not-inherit",
       },
+      homeDirectory: root,
+      validateAuthority: () => ({ proposalSha256: `sha256:${"a".repeat(64)}` }),
     });
     assert.equal(plan.freshJournal, true);
     assert.equal(plan.r2.account_id, "a".repeat(32));
@@ -192,7 +195,7 @@ test("launcher resumes a journal only with matching private bindings and generat
   const root = mkdtempSync(join(tmpdir(), "v208-launch-resume-test-"));
   try {
     const fixture = writeFixture(root);
-    const journal = join(root, "journal");
+    const journal = join(root, ".videoforge", "v2-08", `v208-${"a".repeat(64)}`);
     const argv = [
       "--request-file",
       fixture.requestPath,
@@ -204,13 +207,20 @@ test("launcher resumes a journal only with matching private bindings and generat
       LAUNCH_CONFIRMATION,
     ];
     const parsed = parseArgs(argv);
-    const first = prepareLaunch({ values: parsed.values, r2SecretsDirectory: fixture.r2Directory });
+    const first = prepareLaunch({
+      values: parsed.values,
+      r2SecretsDirectory: fixture.r2Directory,
+      homeDirectory: root,
+      validateAuthority: () => ({ proposalSha256: `sha256:${"a".repeat(64)}` }),
+    });
     const generatedSecrets = readFileSync(join(journal, "production-secrets.json"), "utf8");
     closePlan(first);
 
     const resumed = prepareLaunch({
       values: parsed.values,
       r2SecretsDirectory: fixture.r2Directory,
+      homeDirectory: root,
+      validateAuthority: () => ({ proposalSha256: `sha256:${"a".repeat(64)}` }),
     });
     try {
       assert.equal(resumed.freshJournal, false);
