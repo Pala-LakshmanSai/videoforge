@@ -236,7 +236,7 @@ describe("V2-07 read-only reconciliation", () => {
     ).rejects.toThrow("V207_RECONCILIATION_BASELINE_INVALID");
   });
 
-  it("treats the fresh cap as incremental over a historical baseline", async () => {
+  it("treats the approved cap as an absolute cumulative ceiling", async () => {
     await expect(
       reconcileV207Readonly({
         accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
@@ -251,7 +251,7 @@ describe("V2-07 read-only reconciliation", () => {
       reconcileV207Readonly({
         accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
         baselineEndpointSpendUsd: 5,
-        maximumCumulativeFiniteSpendUsd: 0.1,
+        maximumCumulativeFiniteSpendUsd: 5.1,
         inventory: async () => inventory(),
         billingAmount: async () => 5.1,
         wait: async () => undefined,
@@ -261,7 +261,7 @@ describe("V2-07 read-only reconciliation", () => {
         baseline_endpoint_spend_usd: 5,
         final_endpoint_spend_usd: 5.1,
         incremental_spend_usd: 0.09999999999999964,
-        maximum_cumulative_finite_spend_usd: 0.1,
+        maximum_cumulative_finite_spend_usd: 5.1,
         within_approved_cap: true,
       },
     });
@@ -272,7 +272,7 @@ describe("V2-07 read-only reconciliation", () => {
       reconcileV207Readonly({
         accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
         baselineEndpointSpendUsd: 5,
-        maximumCumulativeFiniteSpendUsd: 0.2,
+        maximumCumulativeFiniteSpendUsd: 5.2,
         inventory: async () => inventory(),
         billingAmount: async () => 5.21,
         wait: async () => undefined,
@@ -281,14 +281,51 @@ describe("V2-07 read-only reconciliation", () => {
   });
 
   it("keeps threshold arithmetic and downward reads fail-closed", () => {
-    expect(v207IncrementalSpendThreshold(5, 0.2)).toBe(5.2);
-    expect(v207IncrementalSpendFromBilling(5, 5.2, 0.2)).toBeCloseTo(0.2);
-    expect(() => v207IncrementalSpendFromBilling(5, 4.99, 0.2)).toThrow(
+    const baseline = 2.507309638109291;
+    const absoluteCap = 4.5;
+    expect(v207IncrementalSpendThreshold(baseline, absoluteCap)).toBe(absoluteCap);
+    expect(absoluteCap - baseline).toBeCloseTo(1.992690361890709);
+    expect(v207IncrementalSpendFromBilling(baseline, absoluteCap, absoluteCap)).toBeCloseTo(
+      1.992690361890709,
+    );
+    expect(() => v207IncrementalSpendFromBilling(baseline, 4.500001, absoluteCap)).toThrow(
+      "V207_RECONCILIATION_FINITE_CAP_EXCEEDED",
+    );
+    expect(() => v207IncrementalSpendFromBilling(baseline, baseline - 0.01, absoluteCap)).toThrow(
       "V207_RECONCILIATION_BILLING_INVALID",
     );
-    expect(() => v207IncrementalSpendThreshold(Number.MAX_VALUE, Number.MAX_VALUE)).toThrow(
+    expect(() => v207IncrementalSpendThreshold(4.500001, absoluteCap)).toThrow(
       "V207_RECONCILIATION_FINITE_CAP_INVALID",
     );
+  });
+
+  it("enforces the absolute cap in both failed and success reconciliation", async () => {
+    const baseline = 2.507309638109291;
+    await expect(
+      reconcileV207Readonly({
+        accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
+        baselineEndpointSpendUsd: baseline,
+        maximumCumulativeFiniteSpendUsd: 4.5,
+        inventory: async () => inventory(),
+        billingAmount: async () => 4.500001,
+        wait: async () => undefined,
+      }),
+    ).rejects.toThrow("V207_RECONCILIATION_FINITE_CAP_EXCEEDED");
+    await expect(
+      reconcileV207SuccessReadonly({
+        accountIdHash: SUJAL_RUNPOD_ACCOUNT_ID_SHA256,
+        baselineEndpointSpendUsd: baseline,
+        maximumCumulativeFiniteSpendUsd: 4.5,
+        expectedEndpointIdHash: SUCCESS_ENDPOINT_ID_HASH,
+        expectedTemplateIdHash: SUCCESS_TEMPLATE_ID_HASH,
+        expectedConfiguration: SUCCESS_CONFIGURATION,
+        inventory: async () => successInventory(),
+        resources: async () => successResources(),
+        queueEmpty: async () => undefined,
+        billingAmount: async () => 4.500001,
+        wait: async () => undefined,
+      }),
+    ).rejects.toThrow("V207_RECONCILIATION_FINITE_CAP_EXCEEDED");
   });
 
   it("requires three stable read-only snapshots while retaining the exact endpoint/template", async () => {

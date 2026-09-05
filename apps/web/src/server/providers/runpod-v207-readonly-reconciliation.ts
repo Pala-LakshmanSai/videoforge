@@ -353,29 +353,26 @@ export interface V207SuccessReadonlyReconciliationResult {
 /**
  * Return the approved-cap threshold in provider billing space.
  *
- * The user-approved finite cap is a fresh-attempt allowance.  RunPod's billing
- * endpoint returns the account's cumulative endpoint total, so comparing that
- * total directly with the fresh cap incorrectly rejects a run whose historical
- * spend predates the approval.  Keep this arithmetic in one small, exported
- * helper so the live runner and the final read-only reconciliation cannot drift.
+ * RunPod's billing endpoint returns the account's cumulative endpoint total and
+ * the approved finite cap is an absolute ceiling in that same billing space.
+ * Keep this arithmetic in one small, exported helper so the live runner and the
+ * final read-only reconciliation cannot drift or accidentally add the baseline
+ * to the approved ceiling.
  */
 export function v207IncrementalSpendThreshold(
   baselineEndpointSpendUsd: number,
-  maximumIncrementalSpendUsd: number,
+  maximumCumulativeFiniteSpendUsd: number,
 ): number {
   if (
     !Number.isFinite(baselineEndpointSpendUsd) ||
     baselineEndpointSpendUsd < 0 ||
-    !Number.isFinite(maximumIncrementalSpendUsd) ||
-    maximumIncrementalSpendUsd <= 0
+    !Number.isFinite(maximumCumulativeFiniteSpendUsd) ||
+    maximumCumulativeFiniteSpendUsd <= 0 ||
+    baselineEndpointSpendUsd > maximumCumulativeFiniteSpendUsd
   ) {
     throw new Error("V207_RECONCILIATION_FINITE_CAP_INVALID");
   }
-  const threshold = baselineEndpointSpendUsd + maximumIncrementalSpendUsd;
-  if (!Number.isFinite(threshold)) {
-    throw new Error("V207_RECONCILIATION_FINITE_CAP_INVALID");
-  }
-  return threshold;
+  return maximumCumulativeFiniteSpendUsd;
 }
 
 /**
@@ -387,12 +384,12 @@ export function v207IncrementalSpendThreshold(
 export function v207IncrementalSpendFromBilling(
   baselineEndpointSpendUsd: number,
   currentEndpointSpendUsd: number,
-  maximumIncrementalSpendUsd: number,
+  maximumCumulativeFiniteSpendUsd: number,
   exceededCode = "V207_RECONCILIATION_FINITE_CAP_EXCEEDED",
 ): number {
   const threshold = v207IncrementalSpendThreshold(
     baselineEndpointSpendUsd,
-    maximumIncrementalSpendUsd,
+    maximumCumulativeFiniteSpendUsd,
   );
   if (!Number.isFinite(currentEndpointSpendUsd) || currentEndpointSpendUsd < 0) {
     throw new Error("V207_RECONCILIATION_BILLING_INVALID");

@@ -1583,9 +1583,9 @@ export async function runV207PreflightOnly(): Promise<V207PreflightSummary> {
     image_attestation: imageAttestation,
     runpod_account_id_sha256: account.accountIdHash,
     baseline_endpoint_spend_usd: baseline,
-    // RunPod returns cumulative billing.  The approved cap applies only to
-    // spend after this fresh baseline, regardless of historical spend.
-    remaining_cumulative_cap_usd: finiteCapUsd,
+    // RunPod returns cumulative billing, and the approval binds an absolute
+    // ceiling in that same billing space.
+    remaining_cumulative_cap_usd: finiteCapUsd - baseline,
     cumulative_billing_threshold_usd: billingThreshold,
     route_authority: routeAuthority,
     selected_catalog_offering: Object.freeze({
@@ -2549,7 +2549,7 @@ async function main(): Promise<void> {
       approved_finite_spend_cap_usd: finiteCapUsd,
       runpod_account_id_sha256: account.accountIdHash,
       baseline_endpoint_spend_usd: baseline,
-      remaining_cumulative_cap_at_start_usd: finiteCapUsd,
+      remaining_cumulative_cap_at_start_usd: finiteCapUsd - baseline,
       cumulative_billing_threshold_usd: billingThreshold,
       image_digest: IMAGE.slice(IMAGE.indexOf("@") + 1),
       manifest_sha256: MANIFEST,

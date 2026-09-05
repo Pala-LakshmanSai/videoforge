@@ -978,6 +978,11 @@ describe("V2-07 live qualification runner safety", () => {
   it("has a provider-free preflight branch before template, endpoint, and R2 mutations", () => {
     expect(source).toContain('process.env.V207_PREFLIGHT_ONLY === "1"');
     expect(source).toContain("runV207PreflightOnly");
+    expect(source).toContain("remaining_cumulative_cap_usd: finiteCapUsd - baseline");
+    expect(source).toContain("remaining_cumulative_cap_at_start_usd: finiteCapUsd - baseline");
+    expect(source).toContain(
+      "const billingThreshold = v207IncrementalSpendThreshold(baseline, finiteCapUsd)",
+    );
     expect(source).toContain("V207_PREFLIGHT_INVENTORY_UNEXPECTED");
     expect(source).toContain("V207_ROUTE_AUTHORITY_UNVERIFIED");
     expect(source).toContain("fetchCp07Catalog");
