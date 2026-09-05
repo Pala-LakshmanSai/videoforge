@@ -5,7 +5,7 @@
 ### Current new-chat launch point — 2026-09-05
 
 - V2-08 is the active checkpoint after V2-07's clean qualification. Its provider-free SoulX max1
-  implementation at exact source `c3bcac0902c607d69ce101c21b081d4926b33bd8` is sealed and
+  implementation at exact source `67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd` is sealed and
   independently audited PASS with P0/P1/P2 `0/0/0`: exact source/image
   lineage, application-read-only retained volume, 2/4/6/10-second whole-span batch, signed cold/warm
   cache reuse, durable phase-safe RESUME, exact R2/ffprobe proof, bounded cleanup, and final-zero
@@ -14,9 +14,13 @@
   Preserve all V2-07/Mage source and Attempt85 evidence as a frozen regression baseline. The read-only
   preflight completed with zero disposable compute, RTX 4090 EU-RO-1 HIGH availability, serverless rate
   USD `1.116/GPU-hour`, and billing baseline USD `2.7231514439627063`. Exact live proposal
-  `sha256:2367e5e66543568f90f17531205af1fbae5c25f8af4eb1996364edb150a0b938` is sealed and awaiting fresh
+  `sha256:e8565950779ce9a5b508974fb7e064777450d271568079408756df4a9a801855` is sealed and awaiting fresh
   exact approval. No image publication, RunPod mutation, GPU use, spend, or production deployment is
   currently authorized.
+- Prior approved publication workflow run `33961641686` failed before authentication/publication because
+  `TMPDIR_DIRECTORY_ABSENT`; it produced no immutable digest or image artifact and made no RunPod mutation,
+  GPU use, or spend. That approval is consumed/non-reusable and invalidated by source drift; this fresh
+  `67af7d9a` successor requires its own exact approval.
 - V2-07 is `QUALIFIED_PASS_CLEAN` by Attempt85. Proposal
   `sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540`, control
   `2fccf2ed7257613f4a12017562243a8aeb889138`, and authority

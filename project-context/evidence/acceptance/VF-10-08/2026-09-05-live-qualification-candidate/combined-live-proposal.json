@@ -6,10 +6,26 @@
   "candidate_status": "PENDING_FRESH_EXACT_USER_APPROVAL",
   "qualification_status": "NOT_QUALIFIED",
   "authority_mode": "NO_EXECUTABLE_AUTHORITY_UNTIL_EXACT_APPROVAL",
+  "superseded_prior_publication_attempt": {
+    "prior_source_commit": "c3bcac0902c607d69ce101c21b081d4926b33bd8",
+    "prior_approval_consumed": true,
+    "prior_approval_reusable": false,
+    "workflow_run_id": 33961641686,
+    "result": "FAILED_BEFORE_AUTHENTICATION_OR_PUBLICATION",
+    "failure_reason": "TMPDIR_DIRECTORY_ABSENT",
+    "publication_completed": false,
+    "immutable_digest_produced": false,
+    "image_artifact_produced": false,
+    "runpod_mutations": 0,
+    "gpu_use": false,
+    "external_spend_usd": 0,
+    "source_drift_invalidated_prior_approval": true,
+    "reuse_authorized": false
+  },
   "control": {
-    "source_commit": "c3bcac0902c607d69ce101c21b081d4926b33bd8",
+    "source_commit": "67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd",
     "source_commit_role": "precursor_selector_preflight_and_image_source_only",
-    "source_hash_binding_state": "BOUND_TO_C3BC_PRECURSOR_PENDING_APPROVAL",
+    "source_hash_binding_state": "BOUND_TO_67AF_PRECURSOR_PENDING_APPROVAL",
     "source_hash_binding_note": "This exact source commit is the selector/preflight and image-build precursor only. A single deterministic post-approval authority-materialization successor may bind the approved digest and authority evidence; it is not an image source replacement.",
     "execution_control_commit": null,
     "execution_control_commit_role": "post_approval_authority_materialization_only",
@@ -88,7 +104,7 @@
     },
     "dockerfile": {
       "path": "workers/avatar-primary/Dockerfile.serverless",
-      "sha256": "sha256:4490efbafd1d8f9db5e951e9a74744751b57f6af75f3d45ba6e78bfc5aa8cc87"
+      "sha256": "sha256:d1b4039f44147acb4b9e08e72700156cc239b3bc4dfddb0bb92518c22c2bfc3a"
     },
     "requirements": {
       "path": "workers/avatar-primary/requirements.serverless.txt",
@@ -96,14 +112,14 @@
     },
     "publication_workflow": {
       "path": ".github/workflows/avatar-primary-serverless-image.yml",
-      "sha256": "sha256:4ecca3e4ce57756c884efffada4d6de4e1a8beebcf7017e62446ce8ccb588e4a",
-      "source_commit_must_equal": "c3bcac0902c607d69ce101c21b081d4926b33bd8"
+      "sha256": "sha256:12080a4e0ca9d97302fb56ae1931b188f229a0085538faf3b9f242fb7936502d",
+      "source_commit_must_equal": "67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd"
     },
     "remote_source_publication": {
       "remote": "origin",
       "branch_ref": "refs/heads/codex/serverless-v2-roadmap-v4",
-      "exact_push_refspec": "c3bcac0902c607d69ce101c21b081d4926b33bd8:refs/heads/codex/serverless-v2-roadmap-v4",
-      "remote_head_must_equal_after_push": "c3bcac0902c607d69ce101c21b081d4926b33bd8",
+      "exact_push_refspec": "67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd:refs/heads/codex/serverless-v2-roadmap-v4",
+      "remote_head_must_equal_after_push": "67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd",
       "workflow_dispatch_ref": "codex/serverless-v2-roadmap-v4",
       "workflow_dispatch_requires_publish_true": true,
       "workflow_dispatch_expected_existing_digest": ""
@@ -141,11 +157,11 @@
     "fresh_read_required_before_each_mutation_boundary": true
   },
   "image": {
-    "source_commit": "c3bcac0902c607d69ce101c21b081d4926b33bd8",
+    "source_commit": "67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd",
     "source_commit_role": "precursor_image_build_source_not_execution_control_commit",
     "repository": "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
     "registry": "ghcr.io",
-    "tag": "c3bcac0902c607d69ce101c21b081d4926b33bd8",
+    "tag": "67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd",
     "immutable_image": null,
     "digest": null,
     "prepublication_digest_available": false,
@@ -387,7 +403,7 @@
   ],
   "stop_conditions": [
     "any source, handler, Dockerfile, workflow, image digest, model, volume, GPU offering id, region, rate, availability, account, endpoint, template, or policy drift",
-    "image publication does not return and anonymously verify one exact immutable digest bound to source commit c3bcac0902c607d69ce101c21b081d4926b33bd8",
+    "image publication does not return and anonymously verify one exact immutable digest bound to source commit 67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd",
     "fresh preflight does not prove zero compute/disposable resources, exact RTX 4090 offering id in EU-RO-1, HIGH-or-better availability, flex rate at or below USD 1.116/GPU-hour, and the exact retained SoulX volume",
     "terms risk decision is absent from exact user approval",
     "any job count other than the five ordered cold/warm/cancel/invalid/timeout jobs, or any redispatch",

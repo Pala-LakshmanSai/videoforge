@@ -390,6 +390,21 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesssoulx001-soulx-endpoint"
     owner: V2-08
     last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/acceptance.json"
+    current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
+    current_candidate_proposal_sha256: "sha256:e8565950779ce9a5b508974fb7e064777450d271568079408756df4a9a801855"
+    current_candidate_acceptance_sha256: "sha256:990f0df8b3d0671cc60f255ac5f9333acaf279f524a2f2acd5f0d004db34abf0"
+    current_candidate_approval_sentence_sha256: "sha256:2fe49a2bcd7c67e013d6ea29f2fb6d5eea79fdffd1a13eebb1017093f597df8a"
+    current_candidate_validator: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/validate-candidate.mjs"
+    current_candidate_validator_sha256: "sha256:0e1cc33c991658dcf5a079ab30cfd5340312fd2508ea8d81ccb2456157762270"
+    current_candidate_source_commit: "67af7d9a7f6d2de7e8d7ff96e1a18f15ab78ecbd"
+    current_candidate_dockerfile_sha256: "sha256:d1b4039f44147acb4b9e08e72700156cc239b3bc4dfddb0bb92518c22c2bfc3a"
+    current_candidate_publication_workflow_sha256: "sha256:12080a4e0ca9d97302fb56ae1931b188f229a0085538faf3b9f242fb7936502d"
+    prior_publication_workflow_run_id: 33961641686
+    prior_publication_result: failed_before_authentication_or_publication
+    prior_publication_failure: TMPDIR_DIRECTORY_ABSENT
+    prior_publication_digest_or_artifact: none
+    prior_publication_runpod_gpu_spend: none
+    prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
     result: open_provider_free_candidate_sealed_exact_max1_live_cold_warm_fault_and_cleanup_proof_pending_approval_and_execution
 
   GATE_SOULX_LICENSE_001:
