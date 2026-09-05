@@ -359,6 +359,7 @@ async function recoverV208DeploymentFromDurableCreate(
   transport: V213DualLaneTransport,
   sealed: V213SealedLane,
   authorityId: string,
+  cleanupAttributableResource: (resourceKey: string) => Promise<true>,
 ): Promise<{ readonly deployment: V213LaneDeployment } | { readonly absent: true }> {
   const resourceKey = `v213-${authorityId}-${sealed.lane}-qualification`;
   const createOperation = operationIdentity(
@@ -377,62 +378,117 @@ async function recoverV208DeploymentFromDurableCreate(
   const createClaim = await transport.durable.claimOperation(createOperation);
   if (createClaim.action === "EXECUTE") throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
   let createState = createClaim.record.state;
-  let deployment = createClaim.record.evidence as V213LaneDeployment | undefined;
-  if (!deployment) {
-    if (createState === "TERMINAL") throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
-    const found = await transport.findLaneByResourceKey(resourceKey);
-    if (found === null) {
+  const evidence = createClaim.record.evidence as unknown;
+  const terminalAbsent =
+    createState === "TERMINAL" &&
+    typeof evidence === "object" &&
+    evidence !== null &&
+    (evidence as { absent?: unknown }).absent === true;
+  const looksFull =
+    typeof evidence === "object" &&
+    evidence !== null &&
+    typeof (evidence as { endpointId?: unknown }).endpointId === "string" &&
+    typeof (evidence as { templateId?: unknown }).templateId === "string";
+
+  const readAndJournal = async (deployment: V213LaneDeployment) => {
+    assertDeploymentReadback(deployment, deployment, sealed);
+    const readbackOperation = operationIdentity(
+      authorityId,
+      "readback",
+      resourceKey,
+      hashCanonical(deployment),
+    );
+    const readbackClaim = await transport.durable.claimOperation(readbackOperation);
+    let readback = readbackClaim.record.evidence as V213LaneDeployment | undefined;
+    if (readbackClaim.action !== "DONE") {
+      readback = await transport.readLane(deployment);
+      assertDeploymentReadback(readback, deployment, sealed);
+      if (
+        canonicalizeJson(readback as unknown as JsonValue) !==
+        canonicalizeJson(deployment as unknown as JsonValue)
+      )
+        throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
       await transport.durable.transitionOperation({
-        operationId: createOperation.operationId,
-        from: createState,
+        operationId: readbackOperation.operationId,
+        from: readbackClaim.record.state,
         to: "TERMINAL",
-        evidence: { absent: true },
+        providerId: deployment.endpointId,
+        evidence: deployment as unknown as JsonValue,
       });
-      return { absent: true };
     }
-    assertDeploymentReadback(found, found, sealed);
-    if (createState !== "ACKED") {
-      const acked = await transport.durable.transitionOperation({
-        operationId: createOperation.operationId,
-        from: createState,
-        to: "ACKED",
-        providerId: found.endpointId,
-        evidence: found as unknown as JsonValue,
-      });
-      createState = acked.state;
-    }
-    deployment = found;
-  }
-  assertDeploymentReadback(deployment, deployment, sealed);
-  const readbackOperation = operationIdentity(
-    authorityId,
-    "readback",
-    resourceKey,
-    hashCanonical(deployment),
-  );
-  const readbackClaim = await transport.durable.claimOperation(readbackOperation);
-  let readback = readbackClaim.record.evidence as V213LaneDeployment | undefined;
-  if (readbackClaim.action !== "DONE") {
-    readback = await transport.readLane(deployment);
+    if (!readback) throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
     assertDeploymentReadback(readback, deployment, sealed);
     if (
       canonicalizeJson(readback as unknown as JsonValue) !==
       canonicalizeJson(deployment as unknown as JsonValue)
     )
       throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
-    await transport.durable.transitionOperation({
-      operationId: readbackOperation.operationId,
-      from: readbackClaim.record.state,
-      to: "TERMINAL",
-      providerId: deployment.endpointId,
-      evidence: deployment as unknown as JsonValue,
-    });
+    return deployment;
+  };
+
+  if (looksFull && !terminalAbsent) {
+    const deployment = evidence as V213LaneDeployment;
+    try {
+      assertDeploymentReadback(deployment, deployment, sealed);
+      return { deployment: await readAndJournal(deployment) };
+    } catch {
+      await cleanupAttributableResource(resourceKey);
+    }
   }
-  if (!readback) throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
-  assertDeploymentReadback(readback, deployment, sealed);
-  if (canonicalizeJson(readback as unknown as JsonValue) !== canonicalizeJson(deployment as unknown as JsonValue))
-    throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
-  return { deployment };
+
+  let reconciliationRequired = terminalAbsent || evidence !== undefined || looksFull;
+  let recovered: V213LaneDeployment | null = null;
+  if (reconciliationRequired && !terminalAbsent) await cleanupAttributableResource(resourceKey);
+  let consecutiveAbsent = 0;
+  for (let read = 0; read < 30; read += 1) {
+    let found: V213LaneDeployment | null = null;
+    let lookupFailed = false;
+    try {
+      found = await transport.findLaneByResourceKey(resourceKey);
+    } catch {
+      lookupFailed = true;
+      reconciliationRequired = true;
+      consecutiveAbsent = 0;
+      await cleanupAttributableResource(resourceKey);
+    }
+    if (lookupFailed) {
+      // Keep polling through the bounded window; an error is never absence evidence.
+    } else if (found === null) {
+      reconciliationRequired = true;
+      consecutiveAbsent += 1;
+    }
+    else if (!reconciliationRequired) {
+      assertDeploymentReadback(found, found, sealed);
+      if (createState !== "ACKED") {
+        const acked = await transport.durable.transitionOperation({
+          operationId: createOperation.operationId,
+          from: createState,
+          to: "ACKED",
+          providerId: found.endpointId,
+          evidence: found as unknown as JsonValue,
+        });
+        createState = acked.state;
+      }
+      return { deployment: await readAndJournal(found) };
+    } else {
+      consecutiveAbsent = 0;
+      try {
+        recovered = await readAndJournal(found);
+      } finally {
+        await cleanupAttributableResource(resourceKey);
+      }
+    }
+    if (read < 29) await transport.sleep(2_000);
+  }
+  if (consecutiveAbsent < 3) throw new Error("V208_DURABLE_DEPLOYMENT_ABSENCE_UNCONFIRMED");
+  if (createState !== "TERMINAL")
+    await transport.durable.transitionOperation({
+      operationId: createOperation.operationId,
+      from: createState,
+      to: "TERMINAL",
+      evidence: { absent: true },
+    });
+  return recovered ? { deployment: recovered } : { absent: true };
 }
 
 const operationIdentity = (
@@ -706,6 +762,7 @@ export async function runV208SoulXWithV213Transport(
         dependencies.transport,
         dependencies.soulx,
         issued.authorityId,
+        dependencies.cleanupAttributableResource,
       );
       if ("absent" in recovered) resumeCreateAbsent = true;
       else cleanupPlan = await buildAndPersistCleanupPlan(recovered.deployment);

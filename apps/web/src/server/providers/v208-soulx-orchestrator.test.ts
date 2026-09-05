@@ -522,15 +522,46 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       scalerValue: 1 as const,
       initTimeoutSeconds: 800,
     };
+    let stopAfterRecovery = true;
     const freshAdmission = vi.fn(async () => {
-      throw new Error("STOP_AFTER_DURABLE_RECOVERY");
+      if (stopAfterRecovery) throw new Error("STOP_AFTER_DURABLE_RECOVERY");
+      return {
+        checkedAt: "2026-09-05T00:00:00.000Z",
+        accountIdSha256: `sha256:${"5".repeat(64)}`,
+        gpu: "cleanup-only",
+        region: "cleanup-only",
+        availability: "LOW",
+        flexRateUsdPerGpuHour: 9,
+        cumulativeBillingUsd: 10.2,
+        runningPods: 0,
+        activeWorkers: 0,
+        endpoints: 0,
+        privateTemplates: 0,
+        volumes: [
+          {
+            idSha256: V208_SOULX_VOLUME_ID_SHA256,
+            manifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+            sizeGb: 50,
+            region: "EU-RO-1",
+          },
+        ],
+      };
     });
     let foundDeployment: typeof recovered | null = recovered;
-    const findLaneByResourceKey = vi.fn(async () => foundDeployment);
+    let lookupSequence: Array<typeof recovered | null | Error> = [];
+    const findLaneByResourceKey = vi.fn(async () => {
+      const next = lookupSequence.length > 0 ? lookupSequence.shift()! : foundDeployment;
+      if (next instanceof Error) throw next;
+      return next;
+    });
     const readLane = vi.fn(async () => recovered);
     const createLane = vi.fn();
     const dispatch = vi.fn();
     const transitions: Array<Record<string, unknown>> = [];
+    let createEvidence: Record<string, unknown> | undefined;
+    let createState = "ACK_UNKNOWN";
+    const cleanupAttributableResource = vi.fn(async () => true as const);
+    let finalInventoryRead = 0;
     const reconstruct = vi.fn(async ({ descriptor }: { descriptor: { id: string } }) => ({
       inputKeys: [`tenant/input/${descriptor.id}`],
       outputKeys: [`tenant/output/${descriptor.id}`],
@@ -550,7 +581,14 @@ describe("V2-08 concrete SoulX orchestrator", () => {
           claimStageAuthority: async () => ({ decision: "RESUME" }),
           claimOperation: async (operation: Record<string, unknown>) => {
             if (operation.kind === "create")
-              return { action: "RECONCILE", record: { ...operation, state: "ACK_UNKNOWN" } };
+              return {
+                action: "RECONCILE",
+                record: {
+                  ...operation,
+                  state: createState,
+                  ...(createEvidence ? { evidence: createEvidence } : {}),
+                },
+              };
             if (operation.kind === "readback")
               return { action: "EXECUTE", record: { ...operation, state: "IN_FLIGHT" } };
             return { action: "RECONCILE", record: { ...operation, state: "IN_FLIGHT" } };
@@ -563,6 +601,28 @@ describe("V2-08 concrete SoulX orchestrator", () => {
         freshAdmission,
         findLaneByResourceKey,
         readLane,
+        sleep: async () => undefined,
+        now: () =>
+          new Date(Date.UTC(2026, 8, 5, 0, 0, 0, Math.max(0, finalInventoryRead - 1) * 2_000)),
+        inventory: async () => ({
+          checkedAt: new Date(
+            Date.UTC(2026, 8, 5, 0, 0, 0, finalInventoryRead++ * 2_000),
+          ).toISOString(),
+          runningPods: 0,
+          activeWorkers: 0,
+          queuedJobs: 0,
+          endpointIdSha256s: [],
+          templateIdSha256s: [],
+          volumes: [
+            {
+              idSha256: V208_SOULX_VOLUME_ID_SHA256,
+              manifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+              sizeGb: 50,
+              region: "EU-RO-1",
+            },
+          ],
+        }),
+        billingAmount: async () => 10.2,
         createLane,
         dispatch,
       } as unknown as V213DualLaneTransport,
@@ -572,8 +632,8 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       cleanupAmbiguousMaterializedInputs: vi.fn(),
       reconstructDeterministicQualificationKeys: reconstruct,
       cleanupDeterministicQualificationKeys: vi.fn(),
-      cleanupOutputKeys: vi.fn(),
-      cleanupAttributableResource: vi.fn(),
+      cleanupOutputKeys: vi.fn(async () => true as const),
+      cleanupAttributableResource,
       serializeEvidence: vi.fn(),
     } satisfies V208SoulXOrchestratorDependencies;
     await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
@@ -586,14 +646,44 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     expect(createLane).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
 
+    createEvidence = { templateId: "template-only-partial" };
     foundDeployment = null;
+    cleanupAttributableResource.mockClear();
     reconstruct.mockClear();
-    readLane.mockClear();
     await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
       "STOP_AFTER_DURABLE_RECOVERY",
     );
+    expect(cleanupAttributableResource).toHaveBeenCalled();
+    expect(reconstruct).not.toHaveBeenCalled();
+
+    lookupSequence = [new Error("ONE_SIDED_PROVIDER_LOOKUP"), ...Array(29).fill(null)];
+    cleanupAttributableResource.mockClear();
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "STOP_AFTER_DURABLE_RECOVERY",
+    );
+    expect(cleanupAttributableResource).toHaveBeenCalled();
+
+    lookupSequence = [null, recovered, ...Array(28).fill(null)];
+    reconstruct.mockClear();
+    cleanupAttributableResource.mockClear();
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "STOP_AFTER_DURABLE_RECOVERY",
+    );
+    expect(cleanupAttributableResource).toHaveBeenCalled();
+    expect(reconstruct).toHaveBeenCalledTimes(5);
+
+    foundDeployment = null;
+    createEvidence = { absent: true };
+    createState = "TERMINAL";
+    stopAfterRecovery = false;
+    reconstruct.mockClear();
+    readLane.mockClear();
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "V208_RESUME_REQUIRES_CLEANUP_ONLY",
+    );
     expect(reconstruct).not.toHaveBeenCalled();
     expect(readLane).not.toHaveBeenCalled();
+    expect(finalInventoryRead).toBe(3);
     expect(
       transitions.some(
         ({ to, evidence }) =>
