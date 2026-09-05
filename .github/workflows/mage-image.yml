@@ -47,8 +47,8 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
-          parent_digest="sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
-          parent_config_digest="sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2"
+          parent_digest="sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62"
+          parent_config_digest="sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2"
           source_epoch="$(git show -s --format=%ct "$GITHUB_SHA")"
           [[ "$source_epoch" =~ ^[0-9]+$ ]]
           created="$(date -u -d "@$source_epoch" +'%Y-%m-%dT%H:%M:%SZ')"
@@ -114,7 +114,7 @@ jobs:
           # Pin the current checkout bytes copied into the image explicitly;
           # labels alone would allow a workflow change to silently drift.
           expected_source_hashes=(
-            "workers/image-media/mage_serverless.py|8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c"
+            "workers/image-media/mage_serverless.py|026f2e9444d8a020a36282c36f7d0bd0931e74cf8bcea08430ffbe33412f87bd"
             "workers/common/serverless_envelope.py|34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0"
             "packages/contracts/python/videoforge_contracts/_schema_documents.py|08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f"
           )
@@ -134,7 +134,7 @@ jobs:
           source_commit="$(docker image inspect --format='{{index .Config.Labels "ai.videoforge.source-commit"}}' "$image")"
           test "$source_commit" = "$expected_source_commit"
           base_digest="$(docker image inspect --format='{{index .Config.Labels "org.opencontainers.image.base.digest"}}' "$image")"
-          test "$base_digest" = "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
+          test "$base_digest" = "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62"
           docker run --rm --entrypoint python "$image" -c \
             'import torch; from videoforge_image_media import MAGE_MODEL_REVISION, MAGE_SOURCE_REVISION; assert MAGE_MODEL_REVISION == "d8c99241f6fa80fbd453014234af2bf337ea21e6"; assert MAGE_SOURCE_REVISION == "26d7f8556822d9d08c2d3e1878636ac3b4969af9"; print("mage-int8-comfy-import-ok")'
           docker run --rm --entrypoint python "$image" -c \
@@ -154,7 +154,7 @@ jobs:
           candidate_source="$RUNNER_TEMP/v207-candidate-mage_serverless.py"
           candidate_verification="$RUNNER_TEMP/v207-candidate-verification.json"
           candidate_schema="$RUNNER_TEMP/v207-candidate-schema-documents.py"
-          expected_handler_sha="8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c"
+          expected_handler_sha="026f2e9444d8a020a36282c36f7d0bd0931e74cf8bcea08430ffbe33412f87bd"
           expected_envelope_sha="34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0"
           expected_schema_sha="08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f"
           python3 workers/image-media/verify_mage_oci_overlay.py \
@@ -168,7 +168,7 @@ jobs:
             --expected-source /opt/videoforge/mage_serverless.py\|sha256:$expected_handler_sha \
             --expected-source /opt/videoforge/common/serverless_envelope.py\|sha256:$expected_envelope_sha \
             --expected-source /opt/videoforge/src/videoforge_contracts/_schema_documents.py\|sha256:$expected_schema_sha \
-            --expected-parent-image ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497 \
+            --expected-parent-image ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62 \
             --extract-source "$candidate_source" \
             --extract-source-file /opt/videoforge/src/videoforge_contracts/_schema_documents.py\|"$candidate_schema" > "$candidate_verification"
           test "$(jq -r '.manifest_digest' "$candidate_verification")" = \
@@ -403,7 +403,7 @@ jobs:
               "anonymous_publication_proof": anonymous_proof,
               "parent_image": (
                   "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@"
-                  "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
+                  "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62"
               ),
               "source_sha256": {
                   "packages/contracts/python/videoforge_contracts/_schema_documents.py": (
@@ -413,7 +413,7 @@ jobs:
                       "sha256:34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0"
                   ),
                   "workers/image-media/mage_serverless.py": (
-                      "sha256:8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c"
+                      "sha256:026f2e9444d8a020a36282c36f7d0bd0931e74cf8bcea08430ffbe33412f87bd"
                   ),
               },
               "model_volume": "/runpod-volume",

@@ -92,6 +92,33 @@ _RESUME_UNIT_KEYS = frozenset(
 )
 _TIMING_MAX_MS = 86_400_000
 _SIGNED_AUTHORITY_TTL_SECONDS = 7_200
+_QUALIFICATION_TIMEOUT_PROBE = "RUNPOD_EXECUTION_TIMEOUT_V1"
+_QUALIFICATION_TIMEOUT_ATTEMPT = re.compile(r"^v207-timeout-[A-Za-z0-9][A-Za-z0-9._:-]{0,143}$")
+_QUALIFICATION_TIMEOUT_DEPLOYMENT = "deployment-mage-v207"
+_QUALIFICATION_TIMEOUT_ITEM_COUNT = 32
+_QUALIFICATION_TIMEOUT_DELAY_SECONDS = 30
+
+
+async def _run_sealed_timeout_probe(
+    payload: dict[str, Any], *, accepted: dict[str, Any], attempt_id: str
+) -> None:
+    """Hold only an exact signed V2-07 timeout batch beyond RunPod's 5s deadline."""
+    marker = payload.get("qualification_probe")
+    signed_work = accepted.get("work")
+    signed_runtime = accepted.get("runtime")
+    signed_probe = (
+        isinstance(signed_work, dict)
+        and isinstance(signed_runtime, dict)
+        and _QUALIFICATION_TIMEOUT_ATTEMPT.fullmatch(attempt_id) is not None
+        and signed_work.get("attempt_id") == attempt_id
+        and signed_work.get("item_count") == _QUALIFICATION_TIMEOUT_ITEM_COUNT
+        and signed_runtime.get("deployment_id") == _QUALIFICATION_TIMEOUT_DEPLOYMENT
+    )
+    if marker is None and not signed_probe:
+        return
+    if marker != _QUALIFICATION_TIMEOUT_PROBE or not signed_probe:
+        raise ServerlessMageError("MAGE_SERVERLESS_QUALIFICATION_PROBE_INVALID")
+    await asyncio.sleep(_QUALIFICATION_TIMEOUT_DELAY_SECONDS)
 
 
 def _exact_utf8_sha256(value: object, *, max_bytes: int) -> str:
@@ -1137,6 +1164,10 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 _validate_output_url(input_url)
             except ServerlessMageError as error:
                 raise ServerlessMageError("MAGE_SERVERLESS_INPUT_URL_INVALID") from error
+        # The validated envelope, not the extra payload marker, supplies the trusted attempt,
+        # deployment, and batch shape. Delay after all authorities pass and before readback,
+        # delivery claim, runtime/Comfy startup, or output work.
+        await _run_sealed_timeout_probe(payload, accepted=accepted, attempt_id=mage_job.attempt_id)
         scratch_root = Path(os.environ.get("VIDEOFORGE_JOB_SCRATCH_ROOT", "/tmp/videoforge-jobs"))
         if resume_units:
             _verify_resume_readbacks_in_scratch(

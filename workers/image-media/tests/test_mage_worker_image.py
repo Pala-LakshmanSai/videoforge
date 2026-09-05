@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REPAIR_DOCKERFILE = ROOT / "Dockerfile.mage.repair"
 BASE_IMMUTABLE_IMAGE = (
     "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@"
-    "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
+    "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62"
 )
 REPAIR_RUNTIME_FILES = (
     (
@@ -34,7 +34,7 @@ REPAIR_RUNTIME_FILES = (
     ),
 )
 REPAIR_SOURCE_HASHES = {
-    "workers/image-media/mage_serverless.py": "8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c",
+    "workers/image-media/mage_serverless.py": "026f2e9444d8a020a36282c36f7d0bd0931e74cf8bcea08430ffbe33412f87bd",
     "workers/common/serverless_envelope.py": "34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0",
     "packages/contracts/python/videoforge_contracts/_schema_documents.py": "08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f",
 }
@@ -89,6 +89,14 @@ class MageWorkerImageTest(unittest.TestCase):
         self.assertIn('--source-commit "$GITHUB_SHA"', workflow)
         self.assertIn('--build-arg "VIDEOFORGE_SOURCE_COMMIT=$expected_source_commit"', workflow)
         self.assertNotRegex(workflow, r"--source-commit [0-9a-f]{40}")
+        self.assertNotIn(
+            "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497",
+            workflow,
+        )
+        self.assertNotIn(
+            "8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c",
+            workflow,
+        )
 
     def test_repair_image_overlays_handler_and_inherits_entrypoint(self) -> None:
         dockerfile = REPAIR_DOCKERFILE.read_text(encoding="utf-8")

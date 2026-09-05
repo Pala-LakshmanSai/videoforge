@@ -176,7 +176,8 @@ const sortedJson = (value: unknown): string => {
 
 const SAFE_PROVIDER_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
 const V207_PROVIDER_ERROR_MAX_BYTES = 4 * 1024;
-const V207_RUNPOD_EXECUTION_TIMEOUT_ERROR = "Job execution timed out";
+const V207_TIMEOUT_TERMINAL_MAX_EXECUTION_MS = 30_000;
+const V207_TIMEOUT_PROBE = "RUNPOD_EXECUTION_TIMEOUT_V1" as const;
 const V207_ENDPOINT_READBACK_MISMATCH_CATEGORIES: ReadonlySet<string> = new Set([
   "identity",
   "environment",
@@ -855,29 +856,40 @@ export function buildV207TimeoutTerminalCheckpoint(
 }
 
 /**
- * RunPod can expose an enforced per-job execution timeout as either TIMED_OUT or FAILED. Accept
- * the latter only when the exact sealed policy was dispatched and the trusted top-level `/status`
- * error is the exact RunPod execution-timeout value. Nested diagnostics, coercion, and timing alone
- * can never turn a generic or worker-origin failure into timeout proof.
+ * Bind a provider timeout terminal to the exact job policy, two preceding successful batches on
+ * the same sealed plan, and a bounded provider execution-time crossing the policy threshold.
  */
 export function classifyV207TimeoutTerminal(
-  result: Pick<RunPodJobResult, "status" | "error">,
+  result: Pick<RunPodJobResult, "status" | "executionTimeMs">,
   policy: unknown,
+  referenceProof: unknown,
 ): V207TimeoutTerminalCategory | null {
   const candidate =
     policy && typeof policy === "object" && !Array.isArray(policy) ? (policy as AnyRecord) : null;
+  const references =
+    referenceProof && typeof referenceProof === "object" && !Array.isArray(referenceProof)
+      ? (referenceProof as AnyRecord)
+      : null;
   if (
     !candidate ||
     Object.keys(candidate).length !== 2 ||
     candidate.executionTimeout !== V207_TIMEOUT_EXECUTION_TIMEOUT_MS ||
-    candidate.ttl !== V207_TIMEOUT_TTL_MS
+    candidate.ttl !== V207_TIMEOUT_TTL_MS ||
+    !references ||
+    Object.keys(references).length !== 4 ||
+    references.coldStatus !== "COMPLETED" ||
+    references.warmStatus !== "COMPLETED" ||
+    references.samePlanManifest !== true ||
+    references.probeContract !== V207_TIMEOUT_PROBE ||
+    typeof result.executionTimeMs !== "number" ||
+    !Number.isFinite(result.executionTimeMs) ||
+    result.executionTimeMs < V207_TIMEOUT_EXECUTION_TIMEOUT_MS ||
+    result.executionTimeMs > V207_TIMEOUT_TERMINAL_MAX_EXECUTION_MS
   ) {
     return null;
   }
   if (result.status === "TIMED_OUT") return "provider_timed_out";
-  if (result.status === "FAILED" && result.error === V207_RUNPOD_EXECUTION_TIMEOUT_ERROR) {
-    return "execution_timeout_failed";
-  }
+  if (result.status === "FAILED") return "execution_timeout_failed";
   return null;
 }
 
@@ -1790,6 +1802,7 @@ async function createBatch(
   abortCheck?: () => void,
   acceptedUnits?: readonly RunPodV207AcceptedUnitRecord[],
   executionItemIds?: readonly string[],
+  qualificationProbe?: typeof V207_TIMEOUT_PROBE,
 ): Promise<{
   readonly input: RunPodV207DispatchBatchInput;
   readonly objectKeys: readonly string[];
@@ -1995,6 +2008,7 @@ async function createBatch(
         plan_manifest_canonical_json: planManifestCanonicalJson,
         execution,
         execution_canonical_json: executionCanonicalJson,
+        ...(qualificationProbe ? { qualification_probe: qualificationProbe } : {}),
         ...(resume ? { resume } : {}),
         ...(resumeCanonicalJson ? { resume_canonical_json: resumeCanonicalJson } : {}),
       },
@@ -2724,9 +2738,9 @@ async function main(): Promise<void> {
       await harness.scaleDownToInitial();
 
       // Deliberately own one separate timeout attempt under the approved max-one endpoint. The
-      // provider must report literal TIMED_OUT or FAILED with the exact trusted top-level RunPod
-      // execution-timeout error. Local timeouts, generic/nested diagnostics, and successful output
-      // are not substituted for this proof and fail closed.
+      // RunPod documents endpoint execution timeout as stopping the worker and marking the request
+      // failed. Bind that terminal to two preceding successful batches on the same sealed plan, the
+      // exact per-job policy, and a bounded provider execution-time crossing the policy threshold.
       const timeoutAttemptId = `v207-timeout-${runTag}`;
       const timeout = await createBatch(
         timeoutAttemptId,
@@ -2735,16 +2749,30 @@ async function main(): Promise<void> {
         generatedObjectKeys,
         32,
         cancellation.throwIfRequested,
+        undefined,
+        undefined,
+        V207_TIMEOUT_PROBE,
       );
       await persistCheckpoint("timeout-ports");
       cancellation.throwIfRequested();
       const timeoutJob = await harness.dispatchTimeoutBatch(timeout.input);
       await persistCheckpoint("timeout-dispatch");
       const timeoutResult = await harness.reconcile(timeoutJob.id);
-      const timeoutTerminalCategory = classifyV207TimeoutTerminal(timeoutResult, {
-        executionTimeout: V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
-        ttl: V207_TIMEOUT_TTL_MS,
-      });
+      const timeoutTerminalCategory = classifyV207TimeoutTerminal(
+        timeoutResult,
+        {
+          executionTimeout: V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+          ttl: V207_TIMEOUT_TTL_MS,
+        },
+        {
+          coldStatus: coldEvidence.status,
+          warmStatus: warmEvidence.status,
+          samePlanManifest:
+            cold.planManifestSha256 === warm.planManifestSha256 &&
+            warm.planManifestSha256 === timeout.planManifestSha256,
+          probeContract: V207_TIMEOUT_PROBE,
+        },
+      );
       evidence.timeout_status = timeoutResult.status;
       evidence.timeout_terminal_category = timeoutTerminalCategory;
       const timeoutCheckpoint = buildV207TimeoutTerminalCheckpoint(

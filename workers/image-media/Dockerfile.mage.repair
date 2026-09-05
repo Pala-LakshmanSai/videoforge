@@ -2,7 +2,7 @@
 
 # Source-only overlay for the already published Mage image.  The digest-pinned
 # base owns the runtime, dependencies, model policy, and Serverless entrypoint.
-FROM ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497
+FROM ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62
 
 ARG VIDEOFORGE_SOURCE_COMMIT
 
@@ -10,10 +10,10 @@ LABEL org.opencontainers.image.title="VideoForge Mage Serverless Worker (repaire
       org.opencontainers.image.version="v2-07-serverless-repair" \
       org.opencontainers.image.revision="${VIDEOFORGE_SOURCE_COMMIT}" \
       org.opencontainers.image.base.name="ghcr.io/pala-lakshmansai/videoforge-mage-v2-07" \
-      org.opencontainers.image.base.digest="sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497" \
+      org.opencontainers.image.base.digest="sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62" \
       ai.videoforge.source-commit="${VIDEOFORGE_SOURCE_COMMIT}" \
       ai.videoforge.repair.kind="source-only-overlay" \
-      ai.videoforge.base-image="ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497"
+      ai.videoforge.base-image="ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62"
 
 # Keep the current immutable base image's ENV, ENTRYPOINT, runtime-hygiene
 # modules, and sealed-volume safeguards. The source-only repair changes only

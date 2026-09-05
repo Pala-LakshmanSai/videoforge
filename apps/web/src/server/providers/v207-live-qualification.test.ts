@@ -1049,6 +1049,10 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain("await harness.dispatchTimeoutBatch(timeout.input)");
     expect(source).toContain("const timeoutResult = await harness.reconcile(timeoutJob.id)");
     expect(source).toContain("classifyV207TimeoutTerminal(");
+    expect(source).toContain("coldStatus: coldEvidence.status");
+    expect(source).toContain("warmStatus: warmEvidence.status");
+    expect(source).toContain("probeContract: V207_TIMEOUT_PROBE");
+    expect(source).toContain("qualification_probe: qualificationProbe");
     expect(source).toContain('throw new Error("V207_TIMEOUT_NOT_OBSERVED")');
     expect(source).toContain('event: "provider_timeout_terminal"');
     expect(source).toContain('evidence.timeout_output_cleanup = "CONFIRMED"');
@@ -1056,52 +1060,92 @@ describe("V2-07 live qualification runner safety", () => {
 
   it("accepts only sealed and explicit provider execution-timeout terminals", () => {
     const policy = { executionTimeout: 5_000, ttl: 7_200_000 };
-    expect(classifyV207TimeoutTerminal({ status: "TIMED_OUT" }, policy)).toBe("provider_timed_out");
+    const references = {
+      coldStatus: "COMPLETED",
+      warmStatus: "COMPLETED",
+      samePlanManifest: true,
+      probeContract: "RUNPOD_EXECUTION_TIMEOUT_V1",
+    };
     expect(
-      classifyV207TimeoutTerminal({ status: "FAILED", error: "Job execution timed out" }, policy),
+      classifyV207TimeoutTerminal(
+        { status: "TIMED_OUT", executionTimeMs: 5_000 },
+        policy,
+        references,
+      ),
+    ).toBe("provider_timed_out");
+    expect(
+      classifyV207TimeoutTerminal(
+        { status: "FAILED", executionTimeMs: 11_742 },
+        policy,
+        references,
+      ),
     ).toBe("execution_timeout_failed");
     expect(
-      classifyV207TimeoutTerminal(
-        { status: "FAILED", error: { code: "RUNPOD_EXECUTION_TIMEOUT" } },
-        policy,
-      ),
+      classifyV207TimeoutTerminal({ status: "FAILED", executionTimeMs: 11_742 }, policy, {
+        ...references,
+        samePlanManifest: false,
+      }),
     ).toBe(null);
     expect(
-      classifyV207TimeoutTerminal(
-        { status: "FAILED", error: { message: "Job execution timed out" } },
-        policy,
-      ),
+      classifyV207TimeoutTerminal({ status: "FAILED", executionTimeMs: 11_742 }, policy, {
+        ...references,
+        coldStatus: "FAILED",
+      }),
+    ).toBe(null);
+    expect(
+      classifyV207TimeoutTerminal({ status: "FAILED", executionTimeMs: 11_742 }, policy, {
+        ...references,
+        probeContract: "UNSIGNED_OR_UNKNOWN",
+      }),
     ).toBe(null);
   });
 
   it("rejects generic failures, timing-shaped failures, and timeout-policy drift", () => {
     const policy = { executionTimeout: 5_000, ttl: 7_200_000 };
-    expect(classifyV207TimeoutTerminal({ status: "FAILED", error: "worker died" }, policy)).toBe(
-      null,
-    );
+    const references = {
+      coldStatus: "COMPLETED",
+      warmStatus: "COMPLETED",
+      samePlanManifest: true,
+      probeContract: "RUNPOD_EXECUTION_TIMEOUT_V1",
+    };
     expect(
-      classifyV207TimeoutTerminal({ status: "FAILED", error: { executionTime: 11_742 } }, policy),
+      classifyV207TimeoutTerminal({ status: "FAILED", executionTimeMs: 4_999 }, policy, references),
     ).toBe(null);
     expect(
       classifyV207TimeoutTerminal(
-        { status: "FAILED", error: "Job execution timed out unexpectedly" },
+        { status: "FAILED", executionTimeMs: 30_001 },
         policy,
+        references,
       ),
     ).toBe(null);
     expect(
       classifyV207TimeoutTerminal(
-        { status: "FAILED", error: "Job execution timed out" },
+        { status: "FAILED", executionTimeMs: 11_742 },
         { executionTimeout: 5_001, ttl: 7_200_000 },
+        references,
       ),
     ).toBe(null);
     expect(
       classifyV207TimeoutTerminal(
-        { status: "TIMED_OUT" },
+        { status: "TIMED_OUT", executionTimeMs: 11_742 },
         { executionTimeout: 5_000, ttl: 7_200_000, extra: true },
+        references,
       ),
     ).toBe(null);
-    expect(classifyV207TimeoutTerminal({ status: "COMPLETED" }, policy)).toBe(null);
-    expect(classifyV207TimeoutTerminal({ status: "CANCELLED" }, policy)).toBe(null);
+    expect(
+      classifyV207TimeoutTerminal(
+        { status: "COMPLETED", executionTimeMs: 11_742 },
+        policy,
+        references,
+      ),
+    ).toBe(null);
+    expect(
+      classifyV207TimeoutTerminal(
+        { status: "CANCELLED", executionTimeMs: 11_742 },
+        policy,
+        references,
+      ),
+    ).toBe(null);
   });
 
   it("never coerces or serializes hostile timeout diagnostics", () => {
@@ -1117,7 +1161,14 @@ describe("V2-07 live qualification runner safety", () => {
     hostile.toString = toString;
     hostile.self = hostile;
 
-    expect(classifyV207TimeoutTerminal({ status: "FAILED", error: hostile }, policy)).toBe(null);
+    expect(
+      classifyV207TimeoutTerminal({ status: "FAILED", executionTimeMs: 4_999 }, policy, {
+        coldStatus: "COMPLETED",
+        warmStatus: "COMPLETED",
+        samePlanManifest: true,
+        probeContract: "RUNPOD_EXECUTION_TIMEOUT_V1",
+      }),
+    ).toBe(null);
     expect(toJSON).not.toHaveBeenCalled();
     expect(toString).not.toHaveBeenCalled();
 

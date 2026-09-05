@@ -13,7 +13,7 @@ import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.error import HTTPError, URLError
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -513,6 +513,143 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             result = asyncio.run(mage_serverless.handler(job))
         self.assertEqual(result["error"]["code"], "MAGE_SERVERLESS_OUTPUT_URL_INVALID")
         ready.assert_not_awaited()
+
+    def test_exact_signed_timeout_probe_sleeps_for_runpod_execution_timeout(self) -> None:
+        attempt_id = "v207-timeout-attempt82"
+        accepted = self._accepted(attempt_id)
+        accepted["work"]["item_count"] = 32
+        accepted["runtime"]["deployment_id"] = "deployment-mage-v207"
+        payload = {"qualification_probe": "RUNPOD_EXECUTION_TIMEOUT_V1"}
+        sleep = AsyncMock()
+        with patch.object(mage_serverless.asyncio, "sleep", sleep):
+            asyncio.run(
+                mage_serverless._run_sealed_timeout_probe(
+                    payload, accepted=accepted, attempt_id=attempt_id
+                )
+            )
+        sleep.assert_awaited_once_with(30)
+
+    def test_exact_timeout_probe_handler_validates_all_authority_before_sleep(self) -> None:
+        attempt_id = "v207-timeout-attempt82"
+        scene_ids = tuple(f"scene-{index:02d}" for index in range(32))
+        accepted = self._accepted(attempt_id)
+        accepted["work"]["item_count"] = len(scene_ids)
+        accepted["runtime"]["deployment_id"] = "deployment-mage-v207"
+        authorities = [
+            self._generated_authority(
+                attempt_id=attempt_id,
+                reservation_id=f"reservation-{index:02d}",
+                scene_id=scene_id,
+            )
+            for index, scene_id in enumerate(scene_ids)
+        ]
+        accepted["artifacts"]["transfer_port_reservation_ids"] = [
+            authority["reservation_id"] for authority in authorities
+        ]
+        job = self._job(
+            attempt_id=attempt_id,
+            ports={"inputs": [], "outputs": []},
+            generated_output_authorities=authorities,
+        )
+        job["input"]["output_put_urls"] = [
+            f"https://r2.example.test/{scene_id}" for scene_id in scene_ids
+        ]
+        job["input"]["qualification_probe"] = "RUNPOD_EXECUTION_TIMEOUT_V1"
+        fake_mage_job = SimpleNamespace(
+            attempt_id=attempt_id,
+            model_revision="revision-a",
+            items=tuple(SimpleNamespace(scene_id=scene_id) for scene_id in scene_ids),
+        )
+        validate = MagicMock(return_value=accepted)
+        validate_url = MagicMock(wraps=mage_serverless._validate_output_url)
+        sleep = AsyncMock(side_effect=asyncio.CancelledError)
+        claim = AsyncMock(side_effect=AssertionError("delivery must remain unclaimed"))
+        ready = AsyncMock(side_effect=AssertionError("runtime must remain untouched"))
+        with (
+            patch.object(mage_serverless, "validate_envelope", validate),
+            patch.object(mage_serverless.MageJob, "from_value", return_value=fake_mage_job),
+            patch.object(mage_serverless, "_validate_output_url", validate_url),
+            patch.object(mage_serverless.asyncio, "sleep", sleep),
+            patch.object(mage_serverless, "_claim_delivery", new=claim),
+            patch.object(mage_serverless, "_ready_runtime", new=ready),
+            self.assertRaises(asyncio.CancelledError),
+        ):
+            asyncio.run(mage_serverless.handler(job))
+        validate.assert_called_once()
+        self.assertEqual(validate_url.call_count, 32)
+        sleep.assert_awaited_once_with(30)
+        claim.assert_not_awaited()
+        ready.assert_not_awaited()
+
+    def test_exact_timeout_probe_handler_rejects_bad_url_before_sleep(self) -> None:
+        attempt_id = "v207-timeout-attempt82"
+        accepted = self._accepted(attempt_id)
+        accepted["work"]["item_count"] = 1
+        accepted["runtime"]["deployment_id"] = "deployment-mage-v207"
+        job = self._job(attempt_id=attempt_id, output_url="http://not-r2.example.test/object")
+        job["input"]["qualification_probe"] = "RUNPOD_EXECUTION_TIMEOUT_V1"
+        sleep = AsyncMock(side_effect=AssertionError("invalid authority must not sleep"))
+        with (
+            patch.object(mage_serverless, "validate_envelope", return_value=accepted),
+            patch.object(
+                mage_serverless.MageJob,
+                "from_value",
+                return_value=self._fake_mage_job(attempt_id),
+            ),
+            patch.object(mage_serverless.asyncio, "sleep", sleep),
+        ):
+            result = asyncio.run(mage_serverless.handler(job))
+        self.assertEqual(result["failure_code"], "MAGE_SERVERLESS_OUTPUT_URL_INVALID")
+        sleep.assert_not_awaited()
+
+    def test_timeout_probe_fails_closed_on_marker_or_signed_identity_drift(self) -> None:
+        attempt_id = "v207-timeout-attempt82"
+        base = self._accepted(attempt_id)
+        base["work"]["item_count"] = 32
+        base["runtime"]["deployment_id"] = "deployment-mage-v207"
+        cases = (
+            ({}, base, attempt_id),
+            ({"qualification_probe": "RUNPOD_EXECUTION_TIMEOUT_V2"}, base, attempt_id),
+            (
+                {"qualification_probe": "RUNPOD_EXECUTION_TIMEOUT_V1"},
+                {**base, "work": {**base["work"], "item_count": 31}},
+                attempt_id,
+            ),
+            (
+                {"qualification_probe": "RUNPOD_EXECUTION_TIMEOUT_V1"},
+                {
+                    **base,
+                    "runtime": {**base["runtime"], "deployment_id": "deployment-other"},
+                },
+                attempt_id,
+            ),
+            ({"qualification_probe": "RUNPOD_EXECUTION_TIMEOUT_V1"}, base, "attempt-a"),
+        )
+        for payload, accepted, candidate_attempt_id in cases:
+            with (
+                self.subTest(attempt_id=candidate_attempt_id, payload=payload),
+                self.assertRaisesRegex(
+                    mage_serverless.ServerlessMageError,
+                    "MAGE_SERVERLESS_QUALIFICATION_PROBE_INVALID",
+                ),
+            ):
+                asyncio.run(
+                    mage_serverless._run_sealed_timeout_probe(
+                        payload,
+                        accepted=accepted,
+                        attempt_id=candidate_attempt_id,
+                    )
+                )
+
+    def test_ordinary_job_without_timeout_probe_remains_unchanged(self) -> None:
+        sleep = AsyncMock(side_effect=AssertionError("ordinary jobs must not sleep"))
+        with patch.object(mage_serverless.asyncio, "sleep", sleep):
+            asyncio.run(
+                mage_serverless._run_sealed_timeout_probe(
+                    {}, accepted=self._accepted(), attempt_id="attempt-a"
+                )
+            )
+        sleep.assert_not_awaited()
 
     def test_generated_authority_rejects_scope_path_expiry_and_replay(self) -> None:
         accepted = self._accepted()

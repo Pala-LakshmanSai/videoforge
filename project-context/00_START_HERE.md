@@ -4,14 +4,16 @@
 
 ### Current new-chat launch point — 2026-09-05
 
-- Provider-free Attempt82 timeout-terminal repair is green but has no live authority. It accepts a
-  RunPod `FAILED` timeout only for the exact sealed `executionTimeout=5000` and `ttl=7200000` policy
-  and the exact trusted top-level `/status` error `Job execution timed out`. Generic, nested,
-  worker-origin, timing-only, coerced, or policy-drifted values fail closed. The `/stream` diagnostic
-  fallback was removed, checkpoint status is reduced to `TIMED_OUT`/`FAILED`/`OTHER`, hostile values
-  cannot serialize, focused tests pass 85/85, and independent re-audit is P0/P1/P2 `0/0/0`.
-  Next: commit the repair, seal one fresh exact Attempt82 proposal, obtain exact approval, and run it.
-  No provider call, mutation, GPU, spend, retained-volume mutation, or V2-08 authority currently exists.
+- Provider-free Attempt82 timeout-terminal repair is green but has no live authority. RunPod publishes
+  no stable timeout error string, so the repaired image adds a qualification-only probe: exact marker
+  plus signed `v207-timeout-*`, `deployment-mage-v207`, and 32-item identity, then a 30-second sleep
+  after authority/port/URL validation and before runtime, Comfy, or output. The web gate also requires
+  two preceding `COMPLETED` same-plan batches, exact `executionTimeout=5000`/`ttl=7200000`, provider
+  execution time from 5000 through 30000 ms, and terminal `FAILED` or `TIMED_OUT`. Ordinary jobs are
+  unchanged; raw provider errors are not trusted or persisted. Web tests pass 85/85 and worker/image/
+  overlay tests pass 86/86; TypeScript, ESLint, Ruff, and diff checks pass. Independent re-audit is
+  P0/P1/P2 `0/0/0`. Deterministic image build, exact publication/qualification proposal, and approval
+  remain. No live/GPU/spend/V2-08 authority exists.
 - Attempt81 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`: proposal
   `sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087`, control source
   `9caea53785484be42a7bea210a0294addef1a3e0`, unchanged image source `d530320af723e33c6ce32552743fd00dc063eedc`,
