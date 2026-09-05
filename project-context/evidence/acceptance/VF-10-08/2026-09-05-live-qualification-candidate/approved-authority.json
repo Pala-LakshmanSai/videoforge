@@ -1,0 +1,91 @@
+{
+  "schema_version": "videoforge.v2-08-soulx-approved-authority/v1",
+  "checkpoint": "V2-08",
+  "task_id": "VF-10-08",
+  "stage": 7,
+  "status": "APPROVED_SINGLE_USE_UNCONSUMED",
+  "single_use": true,
+  "consumed": false,
+  "lineage": {
+    "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
+    "proposal_sha256": "sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8",
+    "approval_sentence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approval-sentence.txt",
+    "approval_sentence_sha256": "sha256:6e3a005b3347cd069547ff6b07f9c4ee4204be71a49662c56442b235dd1f5c4d",
+    "user_approval_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
+    "user_approval_sha256": "sha256:5d2abb5c510dbb48523ef07ee4b22c495bce6d1933cd10d681ab1d9238a1acfb",
+    "precursor_source_commit": "4f2c5cb3c602ffb48db4a1dc7143477259202896",
+    "execution_control_commit_role": "post_approval_authority_materialization_only"
+  },
+  "image_publication": {
+    "workflow_run_id": 33963672249,
+    "workflow_source_commit": "4f2c5cb3c602ffb48db4a1dc7143477259202896",
+    "publication_state": "PUBLISHED_NEW_DIGEST",
+    "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3",
+    "manifest_digest": "sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3",
+    "config_digest": "sha256:fccc1973fb5af08d954e91561e6b4c467c405d64e2f6bdd521cad8d9af7f415a",
+    "artifact_name": "soulx-serverless-v2-08-deployability",
+    "artifact_id": 9968823575,
+    "artifact_sha256": "sha256:864e5b5bc0dcf1149677eed85adebd9f4bf990cd63a936c3a7c28669c6566607",
+    "anonymous_proof_sha256": "sha256:fca3fa204cfb0d2cfd171a3b330ab00b30c5c08caac40d7cb3120da1763b5e7b",
+    "anonymous_manifest_http_status": 200,
+    "anonymous_descriptor_count": 24,
+    "anonymous_verified_bytes": 5115593343,
+    "all_descriptors_verified": true,
+    "model_download_performed": false,
+    "runpod_mutation_performed": false
+  },
+  "runpod_scope": {
+    "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "required_availability": "HIGH",
+    "maximum_serverless_flex_rate_usd_per_gpu_hour": 1.116,
+    "workers_min": 0,
+    "workers_max": 1,
+    "handler_concurrency": 1,
+    "exact_jobs": ["cold", "warm", "cancel", "invalid", "timeout"],
+    "redispatch_authorized": false,
+    "gpu_fallback_authorized": false
+  },
+  "billing": {
+    "baseline_usd": 2.7231514439627063,
+    "finite_incremental_cap_usd": 1.8,
+    "cumulative_stop_threshold_usd": 4.523151443962706,
+    "worst_case_gpu_seconds": 5785,
+    "worst_case_liability_usd": 1.79335,
+    "continued_existing_volume_retention_usd_per_month": 7
+  },
+  "execution": {
+    "entrypoint": "apps/web/src/server/providers/v208-soulx-live-cli.ts",
+    "marker": "soulx-v208-qualification-v1",
+    "cleanup_plan_sealed_before_dispatch": true,
+    "durable_materialization_key_journals": 5,
+    "cleanup_only_resume_without_redispatch": true,
+    "active_worker_drain_to_zero_before_lane_delete": true,
+    "generated_r2_input_output_cleanup": true,
+    "final_zero_compute_billing_volume_reads": 3
+  },
+  "retained_volume": {
+    "volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+    "manifest_sha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+    "size_gb": 50,
+    "region": "EU-RO-1",
+    "mount": "/runpod-volume",
+    "mutation_authorized": false
+  },
+  "terms": {
+    "unresolved_apache_2_0_hosted_commercial_use_risk_accepted_for_qualification_only": true,
+    "legal_clearance_claimed": false
+  },
+  "scope_exclusions": [
+    "no_stage_6_rerun",
+    "no_v2_09_execution",
+    "no_max2_proof",
+    "no_cloudflare_worker_or_route_mutation",
+    "no_production_route",
+    "no_model_download",
+    "no_volume_mutation",
+    "no_gpu_fallback",
+    "no_redispatch"
+  ]
+}

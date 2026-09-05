@@ -397,6 +397,10 @@ gates:
     current_candidate_validator: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/validate-candidate.mjs"
     current_candidate_validator_sha256: "sha256:4c9ad4264c20ba565fe9ae72f93c5086a10db0ad76c8318c82f0e8bd75ac4ea7"
     current_candidate_source_commit: "4f2c5cb3c602ffb48db4a1dc7143477259202896"
+    approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
+    approved_authority_sha256: "sha256:40e9984bdc194fca055f14e92c88020231cf5edad3bd047e049ad6f703246804"
+    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
+    image_publication_workflow_run_id: 33963672249
     current_candidate_dockerfile_sha256: "sha256:d1b4039f44147acb4b9e08e72700156cc239b3bc4dfddb0bb92518c22c2bfc3a"
     current_candidate_publication_workflow_sha256: "sha256:49e68adcd592029deb77f2360d0a063157209b209892dfe36a2e1b0faaf36e3f"
     prior_publication_workflow_run_id: 33961641686
@@ -412,7 +416,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: open_provider_free_candidate_sealed_exact_max1_live_cold_warm_fault_and_cleanup_proof_pending_approval_and_execution
+    result: exact_max1_live_cold_warm_fault_and_cleanup_proof_authorized_pending_execution
 
   GATE_SOULX_LICENSE_001:
     status: open
