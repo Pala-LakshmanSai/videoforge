@@ -203,6 +203,8 @@ export function createV208SoulXLiveComposition(input: {
       cleanupOutputKeys: adapter.cleanupOutputKeys,
       cleanupMaterializedInputs: adapter.cleanupMaterializedInputs,
       cleanupAmbiguousMaterializedInputs: adapter.cleanupAmbiguousMaterializedInputs,
+      reconstructDeterministicQualificationKeys:
+        adapter.reconstructDeterministicQualificationKeys,
       cleanupDeterministicQualificationKeys: adapter.cleanupDeterministicQualificationKeys,
       cleanupAttributableResource: createV208CleanupAttributableResource({
         database,

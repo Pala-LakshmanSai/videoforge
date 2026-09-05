@@ -148,6 +148,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       verifySuccess: vi.fn(),
       cleanupMaterializedInputs: vi.fn(),
       cleanupAmbiguousMaterializedInputs: vi.fn(),
+      reconstructDeterministicQualificationKeys: vi.fn(),
       cleanupDeterministicQualificationKeys: vi.fn(),
       cleanupOutputKeys: vi.fn(),
       cleanupAttributableResource: vi.fn(),
@@ -222,6 +223,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       verifySuccess: vi.fn(),
       cleanupMaterializedInputs: vi.fn(),
       cleanupAmbiguousMaterializedInputs: vi.fn(),
+      reconstructDeterministicQualificationKeys: vi.fn(),
       cleanupDeterministicQualificationKeys: vi.fn(),
       cleanupOutputKeys: vi.fn(),
       cleanupAttributableResource: vi.fn(),
@@ -239,9 +241,9 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       lane: "soulx" as const,
       purpose: "qualification" as const,
       endpointId: "endpoint-resume",
-      endpointIdSha256: `sha256:${"6".repeat(64)}`,
+      endpointIdSha256: `sha256:${createHash("sha256").update("endpoint-resume").digest("hex")}`,
       templateId: "template-resume",
-      templateIdSha256: `sha256:${"7".repeat(64)}`,
+      templateIdSha256: `sha256:${createHash("sha256").update("template-resume").digest("hex")}`,
       image: authority().image,
       sourceCommit: authority().imageSourceCommit,
       deploymentSha256: `sha256:${"8".repeat(64)}`,
@@ -261,13 +263,42 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       initTimeoutSeconds: 800,
     };
     const issueStageAuthority = vi.fn(async () => ({ authorityId: "authority-v208-resume" }));
-    const claimStageAuthority = vi.fn(async () => ({ decision: "RESUME" }));
-    const claimOperation = vi.fn(async (operation: Record<string, unknown>) => ({
-      action: "EXECUTE",
-      record: { ...operation, state: "IN_FLIGHT" },
+    let stageClaimCount = 0;
+    const claimStageAuthority = vi.fn(async () => ({
+      decision: stageClaimCount++ === 0 ? "EXECUTE" : "RESUME",
     }));
-    const createLane = vi.fn();
-    const materializeWholeSpan = vi.fn();
+    const plannedIds = [
+      "soulx-cold-whole-span-2-4-6-10s",
+      "soulx-warm-whole-span-2-4-6-10s",
+      "soulx-cancel",
+      "soulx-invalid-output",
+      "soulx-timeout",
+    ];
+    const durableOperations = new Map<string, Record<string, unknown>>();
+    const claimOperation = vi.fn(async (operation: Record<string, unknown>) => {
+      const key = String(operation.operationId);
+      const existing = durableOperations.get(key);
+      if (existing)
+        return {
+          action: existing.state === "TERMINAL" ? ("DONE" as const) : ("RECONCILE" as const),
+          record: existing,
+        };
+      const record = { ...operation, state: "IN_FLIGHT" as const };
+      durableOperations.set(key, record);
+      return { action: "EXECUTE" as const, record };
+    });
+    const createLane = vi.fn(async () => ({ kind: "ACK" as const, deployment: resumeDeployment }));
+    const materializeWholeSpan = vi.fn(async ({ descriptor }: { descriptor: { id: string } }) => ({
+      schemaVersion: "videoforge.v213-qualification-case-materialization/v1" as const,
+      caseDescriptorSha256: `sha256:${"a".repeat(64)}`,
+      materializationEvidenceSha256: `sha256:${"b".repeat(64)}`,
+      request: {
+        ports: { inputs: [{ path: `/tenant/input/${descriptor.id}` }] },
+        generated_output_authorities: [2, 4, 6, 10].map((seconds) => ({
+          path: `/tenant/output/${descriptor.id}-${seconds}`,
+        })),
+      },
+    }));
     const materializeQualificationCase = vi.fn();
     const dispatch = vi.fn();
     const cleanupAttributableResource = vi.fn(async () => true as const);
@@ -275,6 +306,9 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     const deterministicCleanupDescriptors: string[] = [];
     let inventoryRead = 0;
     let laneDeleted = false;
+    let crashAfterLaneDelete = true;
+    let admissionRead = 0;
+    let crashAfterMaterialization = true;
     const dependencies = {
       soulx: {
         lane: "soulx",
@@ -289,32 +323,42 @@ describe("V2-08 concrete SoulX orchestrator", () => {
           issueStageAuthority,
           claimStageAuthority,
           claimOperation,
-          transitionOperation: async (transition: Record<string, unknown>) => ({
-            ...transition,
-            state: transition.to,
-          }),
+          transitionOperation: async (transition: Record<string, unknown>) => {
+            const key = String(transition.operationId);
+            const record = {
+              ...(durableOperations.get(String(transition.operationId)) ?? {}),
+              ...transition,
+              state: transition.to,
+              ...(transition.evidence ? { evidence: transition.evidence } : {}),
+            };
+            durableOperations.set(key, record);
+            return record;
+          },
         },
-        freshAdmission: async () => ({
-          checkedAt: "2026-09-05T00:00:00.000Z",
-          accountIdSha256: `sha256:${"5".repeat(64)}`,
-          gpu: "unavailable-during-cleanup",
-          region: "provider-transient",
-          availability: "LOW",
-          flexRateUsdPerGpuHour: 9,
-          cumulativeBillingUsd: 10.2,
-          runningPods: 1,
-          activeWorkers: 1,
-          endpoints: 1,
-          privateTemplates: 1,
-          volumes: [
-            {
-              idSha256: V208_SOULX_VOLUME_ID_SHA256,
-              manifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
-              sizeGb: 50,
-              region: "EU-RO-1",
-            },
-          ],
-        }),
+        freshAdmission: async () => {
+          const cleanupAdmission = admissionRead++ > 0;
+          return {
+            checkedAt: "2026-09-05T00:00:00.000Z",
+            accountIdSha256: `sha256:${"5".repeat(64)}`,
+            gpu: cleanupAdmission ? "unavailable-during-cleanup" : "NVIDIA GeForce RTX 4090",
+            region: cleanupAdmission ? "provider-transient" : "EU-RO-1",
+            availability: cleanupAdmission ? "LOW" : "HIGH",
+            flexRateUsdPerGpuHour: cleanupAdmission ? 9 : 1.116,
+            cumulativeBillingUsd: cleanupAdmission ? 10.2 : 10,
+            runningPods: cleanupAdmission ? 1 : 0,
+            activeWorkers: cleanupAdmission ? 1 : 0,
+            endpoints: cleanupAdmission ? 1 : 0,
+            privateTemplates: cleanupAdmission ? 1 : 0,
+            volumes: [
+              {
+                idSha256: V208_SOULX_VOLUME_ID_SHA256,
+                manifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+                sizeGb: 50,
+                region: "EU-RO-1",
+              },
+            ],
+          };
+        },
         now: () =>
           new Date(Date.UTC(2026, 8, 5, 0, 0, 0, Math.max(0, inventoryRead - 1) * 2_000)),
         findLaneByResourceKey: vi.fn(async () => (laneDeleted ? null : resumeDeployment)),
@@ -322,6 +366,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
           laneDeleted = true;
         }),
         createLane,
+        readLane: vi.fn(async () => resumeDeployment),
         materializeQualificationCase,
         dispatch,
         inventory: async () => ({
@@ -349,6 +394,10 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       verifySuccess: vi.fn(),
       cleanupMaterializedInputs: vi.fn(),
       cleanupAmbiguousMaterializedInputs: vi.fn(),
+      reconstructDeterministicQualificationKeys: vi.fn(async ({ descriptor }) => ({
+        inputKeys: [`tenant/input/${descriptor.id}`],
+        outputKeys: [`tenant/output/${descriptor.id}`],
+      })),
       cleanupDeterministicQualificationKeys: vi.fn(async ({ descriptor }) => {
         deterministicCleanupDescriptors.push(descriptor.id);
         return {
@@ -359,25 +408,87 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       }),
       cleanupOutputKeys,
       cleanupAttributableResource,
+      interruptionCheckpoint: async (phase) => {
+        if (phase === "lane-delete" && crashAfterLaneDelete)
+          throw new V208ProcessInterruption("nested-lane-delete-crash");
+      },
+      materializationCheckpoint: async () => {
+        if (crashAfterMaterialization) {
+          crashAfterMaterialization = false;
+          throw new V208ProcessInterruption("post-materialization-crash");
+        }
+      },
       serializeEvidence: vi.fn(),
     } satisfies V208SoulXOrchestratorDependencies;
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "post-materialization-crash",
+    );
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "nested-lane-delete-crash",
+    );
+    crashAfterLaneDelete = false;
     await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
       "V208_RESUME_REQUIRES_CLEANUP_ONLY",
     );
     expect(cleanupAttributableResource).toHaveBeenCalledTimes(1);
-    expect(deterministicCleanupDescriptors).toEqual([
-      "soulx-cold-whole-span-2-4-6-10s",
-      "soulx-warm-whole-span-2-4-6-10s",
-      "soulx-cancel",
-      "soulx-invalid-output",
-      "soulx-timeout",
-    ]);
+    expect(deterministicCleanupDescriptors).toEqual(plannedIds);
     expect(cleanupOutputKeys).toHaveBeenCalledWith(
       deterministicCleanupDescriptors.map((id) => `tenant/output/${id}`),
     );
-    expect(createLane).not.toHaveBeenCalled();
-    expect(materializeWholeSpan).not.toHaveBeenCalled();
+    expect(createLane).toHaveBeenCalledTimes(1);
+    expect(materializeWholeSpan).toHaveBeenCalledTimes(1);
     expect(materializeQualificationCase).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("rejects a corrupted durable cleanup plan before any provider read or mutation", async () => {
+    const freshAdmission = vi.fn();
+    const createLane = vi.fn();
+    const dispatch = vi.fn();
+    const dependencies = {
+      soulx: {
+        lane: "soulx",
+        publicImage: authority().image,
+        sourceCommit: authority().imageSourceCommit,
+        deploymentSha256: `sha256:${"8".repeat(64)}`,
+        volumeIdSha256: V208_SOULX_VOLUME_ID_SHA256,
+        volumeManifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+      },
+      transport: {
+        durable: {
+          issueStageAuthority: async () => ({ authorityId: "authority-corrupt-plan" }),
+          claimStageAuthority: async () => ({ decision: "RESUME" }),
+          claimOperation: async (operation: Record<string, unknown>) =>
+            String(operation.resourceKey).includes(":v208-phase-cleanup-plan:0")
+              ? {
+                  action: "DONE",
+                  record: {
+                    ...operation,
+                    state: "TERMINAL",
+                    evidence: { evidenceSha256: `sha256:${"9".repeat(64)}` },
+                  },
+                }
+              : { action: "EXECUTE", record: { ...operation, state: "IN_FLIGHT" } },
+        },
+        freshAdmission,
+        createLane,
+        dispatch,
+      } as unknown as V213DualLaneTransport,
+      materializeWholeSpan: vi.fn(),
+      verifySuccess: vi.fn(),
+      cleanupMaterializedInputs: vi.fn(),
+      cleanupAmbiguousMaterializedInputs: vi.fn(),
+      reconstructDeterministicQualificationKeys: vi.fn(),
+      cleanupDeterministicQualificationKeys: vi.fn(),
+      cleanupOutputKeys: vi.fn(),
+      cleanupAttributableResource: vi.fn(),
+      serializeEvidence: vi.fn(),
+    } satisfies V208SoulXOrchestratorDependencies;
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "V208_CLEANUP_PLAN_INVALID",
+    );
+    expect(freshAdmission).not.toHaveBeenCalled();
+    expect(createLane).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
   });
 
@@ -630,6 +741,10 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       }),
       cleanupMaterializedInputs,
       cleanupAmbiguousMaterializedInputs: vi.fn(async () => true as const),
+      reconstructDeterministicQualificationKeys: vi.fn(async ({ descriptor }) => ({
+        inputKeys: [`tenant/input/${descriptor.id}`],
+        outputKeys: [`tenant/output/${descriptor.id}`],
+      })),
       cleanupDeterministicQualificationKeys: vi.fn(),
       cleanupOutputKeys,
       cleanupAttributableResource: async () => {

@@ -94,6 +94,15 @@ export interface V208SoulXOrchestratorDependencies {
   readonly cleanupAmbiguousMaterializedInputs: (
     materialization: V213QualificationCaseMaterialization,
   ) => Promise<true>;
+  readonly reconstructDeterministicQualificationKeys: (input: {
+    readonly descriptor: V208SoulXWholeSpanDescriptor | V213QualificationCaseDescriptor;
+    readonly deployment: V213LaneDeployment;
+    readonly stageAuthorityId: string;
+    readonly inputSha256: string;
+  }) => Promise<{
+    readonly inputKeys: readonly string[];
+    readonly outputKeys: readonly string[];
+  }>;
   readonly cleanupDeterministicQualificationKeys: (input: {
     readonly descriptor: V208SoulXWholeSpanDescriptor | V213QualificationCaseDescriptor;
     readonly deployment: V213LaneDeployment;
@@ -294,6 +303,54 @@ async function journalMaterializationKeys(
     outputKeys: keys(materialization, outputCount),
     materializationEvidenceSha256: materialization.materializationEvidenceSha256,
   });
+}
+
+interface V208CleanupPlanEvidence {
+  readonly deployment: V213LaneDeployment;
+  readonly descriptorKeys: readonly {
+    readonly descriptorId: string;
+    readonly inputKeys: readonly string[];
+    readonly outputKeys: readonly string[];
+  }[];
+  readonly evidenceSha256: string;
+}
+
+function validateCleanupPlanEvidence(
+  raw: unknown,
+  sealed: V213SealedLane,
+  expectedDescriptorIds: readonly string[],
+): V208CleanupPlanEvidence {
+  const value = raw as V208CleanupPlanEvidence | null;
+  if (!value || !Array.isArray(value.descriptorKeys) || !SHA256.test(value.evidenceSha256))
+    throw new Error("V208_CLEANUP_PLAN_INVALID");
+  assertDeploymentReadback(value.deployment, value.deployment, sealed);
+  if (
+    canonicalizeJson(value.descriptorKeys.map(({ descriptorId }) => descriptorId) as JsonValue) !==
+    canonicalizeJson(expectedDescriptorIds as unknown as JsonValue)
+  )
+    throw new Error("V208_CLEANUP_PLAN_INVALID");
+  const allKeys: string[] = [];
+  for (const item of value.descriptorKeys) {
+    if (
+      !ID.test(item.descriptorId) ||
+      !Array.isArray(item.inputKeys) ||
+      item.inputKeys.length === 0 ||
+      !Array.isArray(item.outputKeys) ||
+      item.outputKeys.length === 0 ||
+      [...item.inputKeys, ...item.outputKeys].some(
+        (key) => typeof key !== "string" || !key.startsWith("tenant/") || key.includes(".."),
+      )
+    )
+      throw new Error("V208_CLEANUP_PLAN_INVALID");
+    allKeys.push(...item.inputKeys, ...item.outputKeys);
+  }
+  if (new Set(allKeys).size !== allKeys.length)
+    throw new Error("V208_CLEANUP_PLAN_INVALID");
+  const { evidenceSha256: _hash, ...unsigned } = value;
+  void _hash;
+  if (value.evidenceSha256 !== hashCanonical(unsigned))
+    throw new Error("V208_CLEANUP_PLAN_INVALID");
+  return value;
 }
 
 const operationIdentity = (
@@ -511,6 +568,26 @@ export async function runV208SoulXWithV213Transport(
   const qualificationClaim = await dependencies.transport.durable.claimOperation(
     qualificationOperation,
   );
+  const plannedDescriptors = [
+    ...plan.qualification.wholeSpanDescriptors,
+    ...plan.qualification.caseDescriptors.filter(({ mode }) => mode !== "complete"),
+  ];
+  const cleanupPlanOperation = phaseOperation(
+    issued.authorityId,
+    dependencies.soulx.deploymentSha256,
+    plan.planSha256,
+    "cleanup-plan",
+  );
+  const cleanupPlanClaim = await dependencies.transport.durable.claimOperation(cleanupPlanOperation);
+  let cleanupPlan: V208CleanupPlanEvidence | null = null;
+  if (consumed.decision === "RESUME") {
+    if (cleanupPlanClaim.action !== "DONE") throw new Error("V208_CLEANUP_PLAN_REQUIRED");
+    cleanupPlan = validateCleanupPlanEvidence(
+      cleanupPlanClaim.record.evidence,
+      dependencies.soulx,
+      plannedDescriptors.map(({ id }) => id),
+    );
+  }
   const admission = await dependencies.transport.freshAdmission();
   const admissionCheckedAt = Date.parse(admission.checkedAt);
   const admissionNow = dependencies.transport.now().getTime();
@@ -670,7 +747,8 @@ export async function runV208SoulXWithV213Transport(
     } else if (consumed.decision === "RESUME") {
       // An interrupted execution without the signed qualification-complete receipt can never
       // restart paid work. Reconstruct only an existing lane and enter the cleanup path below.
-      deployment = await dependencies.transport.findLaneByResourceKey(resourceKey);
+      if (!cleanupPlan) throw new Error("V208_CLEANUP_PLAN_REQUIRED");
+      deployment = cleanupPlan.deployment;
       cleanupOnlyResume = true;
       cleanupResumeDeployment = deployment;
       throw new Error("V208_RESUME_REQUIRES_CLEANUP_ONLY");
@@ -683,6 +761,35 @@ export async function runV208SoulXWithV213Transport(
       60,
     );
     assertDeploymentReadback(deployment, deployment, dependencies.soulx);
+    const descriptorKeys = [] as Array<{
+      descriptorId: string;
+      inputKeys: readonly string[];
+      outputKeys: readonly string[];
+    }>;
+    for (const descriptor of plannedDescriptors) {
+      const reconstructed = await dependencies.reconstructDeterministicQualificationKeys({
+        descriptor,
+        deployment,
+        stageAuthorityId: issued.authorityId,
+        inputSha256: plan.planSha256,
+      });
+      descriptorKeys.push({ descriptorId: descriptor.id, ...reconstructed });
+    }
+    const cleanupPlanUnsigned = { deployment, descriptorKeys };
+    cleanupPlan = validateCleanupPlanEvidence(
+      {
+        ...cleanupPlanUnsigned,
+        evidenceSha256: hashCanonical(cleanupPlanUnsigned),
+      },
+      dependencies.soulx,
+      plannedDescriptors.map(({ id }) => id),
+    );
+    await completePhase(
+      dependencies.transport,
+      cleanupPlanOperation,
+      cleanupPlanClaim.record.state,
+      cleanupPlan as unknown as JsonValue,
+    );
     const pendingSuccesses: Array<{
       readonly descriptor: (typeof plan.qualification.wholeSpanDescriptors)[number];
       readonly materialization: V213QualificationCaseMaterialization;
@@ -1039,23 +1146,56 @@ export async function runV208SoulXWithV213Transport(
   }
   if (deployment) {
     try {
-      await waitForLaneDrain(dependencies.transport, deployment, poll.pollMs);
-      await deleteLaneDurably(dependencies.transport, deployment, issued.authorityId);
-      laneAbsenceConfirmed =
-        (await dependencies.transport.findLaneByResourceKey(resourceKey)) === null;
-    } catch {
+      const cleanupLaneOperation = phaseOperation(
+        issued.authorityId,
+        dependencies.soulx.deploymentSha256,
+        plan.planSha256,
+        "cleanup-lane-deleted",
+      );
+      const cleanupLaneClaim = await dependencies.transport.durable.claimOperation(
+        cleanupLaneOperation,
+      );
+      if (cleanupLaneClaim.action === "DONE") laneAbsenceConfirmed = true;
+      else {
+        await waitForLaneDrain(dependencies.transport, deployment, poll.pollMs);
+        await deleteLaneDurably(dependencies.transport, deployment, issued.authorityId);
+        laneAbsenceConfirmed =
+          (await dependencies.transport.findLaneByResourceKey(resourceKey)) === null;
+        if (!laneAbsenceConfirmed) throw new Error("V208_DELETE_UNCONFIRMED");
+        await completePhase(
+          dependencies.transport,
+          cleanupLaneOperation,
+          cleanupLaneClaim.record.state,
+          { deploymentSha256: deployment.deploymentSha256, absent: true },
+        );
+        await dependencies.interruptionCheckpoint?.("lane-delete");
+      }
+    } catch (error) {
+      if (error instanceof V208ProcessInterruption) throw error;
       cleanupFailed = true;
     }
   }
   if (laneAbsenceConfirmed) {
     if (cleanupOnlyResume) {
-      if (!cleanupResumeDeployment) cleanupFailed = true;
+      if (!cleanupResumeDeployment || !cleanupPlan) cleanupFailed = true;
       else {
-        for (const descriptor of [
-          ...plan.qualification.wholeSpanDescriptors,
-          ...plan.qualification.caseDescriptors.filter(({ mode }) => mode !== "complete"),
-        ]) {
+        for (const planned of cleanupPlan.descriptorKeys) {
           try {
+            const descriptor = plannedDescriptors.find(({ id }) => id === planned.descriptorId);
+            if (!descriptor) throw new Error("V208_CLEANUP_PLAN_INVALID");
+            const cleanupOperation = phaseOperation(
+              issued.authorityId,
+              dependencies.soulx.deploymentSha256,
+              plan.planSha256,
+              `r2-cleanup-${planned.descriptorId}`,
+            );
+            const cleanupClaim = await dependencies.transport.durable.claimOperation(
+              cleanupOperation,
+            );
+            if (cleanupClaim.action === "DONE") {
+              outputKeys.push(...planned.outputKeys);
+              continue;
+            }
             const cleaned = await dependencies.cleanupDeterministicQualificationKeys({
               descriptor,
               deployment: cleanupResumeDeployment,
@@ -1066,9 +1206,24 @@ export async function runV208SoulXWithV213Transport(
             if (
               cleaned.absenceVerified !== true ||
               cleaned.inputKeys.length === 0 ||
-              cleaned.outputKeys.length === 0
+              cleaned.outputKeys.length === 0 ||
+              canonicalizeJson(cleaned.inputKeys as unknown as JsonValue) !==
+                canonicalizeJson(planned.inputKeys as unknown as JsonValue) ||
+              canonicalizeJson(cleaned.outputKeys as unknown as JsonValue) !==
+                canonicalizeJson(planned.outputKeys as unknown as JsonValue)
             )
               throw new Error("V208_DETERMINISTIC_R2_CLEANUP_INVALID");
+            await completePhase(
+              dependencies.transport,
+              cleanupOperation,
+              cleanupClaim.record.state,
+              {
+                descriptorId: planned.descriptorId,
+                inputKeysSha256: hashCanonical(planned.inputKeys),
+                outputKeysSha256: hashCanonical(planned.outputKeys),
+                absenceVerified: true,
+              },
+            );
             outputKeys.push(...cleaned.outputKeys);
           } catch {
             cleanupFailed = true;

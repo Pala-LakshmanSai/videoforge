@@ -539,6 +539,15 @@ export interface V208DirectWholeSpanQualificationAdapter {
   readonly cleanupAmbiguousMaterializedInputs: (
     materialization: V213QualificationCaseMaterialization,
   ) => Promise<true>;
+  readonly reconstructDeterministicQualificationKeys: (input: {
+    readonly descriptor: V208SoulXWholeSpanDescriptor | V213QualificationCaseDescriptor;
+    readonly deployment: V213LaneDeployment;
+    readonly stageAuthorityId: string;
+    readonly inputSha256: string;
+  }) => Promise<{
+    readonly inputKeys: readonly string[];
+    readonly outputKeys: readonly string[];
+  }>;
   readonly cleanupDeterministicQualificationKeys: (input: {
     readonly descriptor: V208SoulXWholeSpanDescriptor | V213QualificationCaseDescriptor;
     readonly deployment: V213LaneDeployment;
@@ -763,6 +772,9 @@ export function createV208DirectWholeSpanQualificationAdapter(
     async cleanupAmbiguousMaterializedInputs(materialization) {
       exactMaterialization(materialization);
       return deleteAndProveAbsent(objectKeys(materialization, "inputs"));
+    },
+    async reconstructDeterministicQualificationKeys(reconstructionInput) {
+      return Object.freeze(deterministicKeys(deterministicRequest(reconstructionInput)));
     },
     async cleanupDeterministicQualificationKeys(cleanupInput) {
       const request = deterministicRequest(cleanupInput);
