@@ -4,13 +4,15 @@
 
 ### Current new-chat launch point — 2026-09-05
 
-- Attempt81 is sealed `PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL`: proposal
+- Attempt81 is `APPROVED_SINGLE_USE_UNCONSUMED`: proposal
   `sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087`, control source
   `9caea53785484be42a7bea210a0294addef1a3e0`, unchanged image source `d530320af723e33c6ce32552743fd00dc063eedc`,
   and published image `sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62`.
   It removes the repeated cancellation wait and accepts exact terminal inventory only after four
   queue-zero reads plus two identical terminal snapshots. Tests pass 106/106 focused and 1638/1638
-  web; independent audit is P0/P1/P2 `0/0/0`. No executable authority exists yet.
+  web; independent audit is P0/P1/P2 `0/0/0`. Exact authority
+  `sha256:cac3a6bcdab8f479131ecdb68224e61a83d7ec835418783344b1268fd237f076` authorizes only the bounded
+  `$4.50` sequence and cleanup; no image republication, fallback, anchor refresh, volume mutation, or V2-08.
 - V2-07 Attempt80 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. All three pre-GPU cycles and cold/warm
   32-image batches passed. Cancellation reached provider `CANCELLED`, then failed closed at
   `RUNPOD_ZERO_NOT_CONFIRMED` because stable-zero liability release did not accept terminal inventory;

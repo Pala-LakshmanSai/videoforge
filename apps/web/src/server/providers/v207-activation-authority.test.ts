@@ -72,7 +72,7 @@ function activationSourceFixture({
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the consumed Attempt80 proposal and immutable image", () => {
+  it("pins the approved Attempt81 proposal and immutable image", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
@@ -102,10 +102,10 @@ describe("V2-07 activation authority", () => {
       "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b",
+      "sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
-    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("d530320af723e33c6ce32552743fd00dc063eedc");
+    expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("9caea53785484be42a7bea210a0294addef1a3e0");
     expect(V207_ANCHOR_REFRESH_SOURCE_COMMIT).toBe("a6c7266e0c19fce07757c78fbd588dd442b7d24f");
     expect(V207_TYPED_ACTIVATION_AUTHORITY_COMMIT).toBe("e5571ed2478f0c526ebf508d0a4ce301bafa8203");
     expect(V207_ORCHESTRATOR_MARKER_LIFECYCLE_COMMIT).toBe(
@@ -125,9 +125,11 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
-    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
+      "sha256:cac3a6bcdab8f479131ecdb68224e61a83d7ec835418783344b1268fd237f076",
+    );
+    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4.5);
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false);
   });
 
   it("uses a fail-closed non-cyclic source binding for all approval constants", () => {
@@ -410,18 +412,33 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects Attempt80 after its authority is consumed", () => {
+  it("accepts exact Attempt81 authority and rejects cap drift", () => {
     const exact = {
       V207_IMAGE: image,
       V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
       V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
     };
-    expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5" })).toThrow(
-      "V207_FRESH_AUTHORITY_REQUIRED",
-    );
+    expect(parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5" })).toEqual({
+      image,
+      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
+      capUsd: 4.5,
+      anchorRefreshAuthorized: false,
+    });
     expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4" })).toThrow(
-      "V207_FRESH_AUTHORITY_REQUIRED",
+      "V207_FINITE_CAP_MISMATCH",
     );
+  });
+
+  it("rejects Attempt80 after its authority is consumed", () => {
+    expect(() =>
+      parseV207ActivationAuthority({
+        V207_IMAGE: image,
+        V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
+        V207_PROPOSAL_SHA256:
+          "sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b",
+        V207_FINITE_CAP_USD: "4.5",
+      }),
+    ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
   it("rejects Attempt79 after its authority is consumed", () => {
@@ -484,7 +501,7 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects refresh activation without the exact pending Attempt80 proposal", () => {
+  it("rejects refresh activation without the exact pending Attempt81 proposal", () => {
     const refreshMarker = { V207_ROLLBACK_ANCHOR_REFRESH: "two-phase-v1" };
     expect(() =>
       parseV207ActivationAuthority({

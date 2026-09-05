@@ -35,13 +35,17 @@ expectEqual(
   "harness test",
 );
 const activation = await read(resolve(root, "apps/web/src/server/providers/v207-activation-authority.ts"), "utf8");
-if (!activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null")) {
-  throw new Error("live authority is not null");
+if (
+  !activation.includes(
+    '"sha256:cac3a6bcdab8f479131ecdb68224e61a83d7ec835418783344b1268fd237f076"',
+  )
+) {
+  throw new Error("compiled authority mismatch");
 }
-if (!activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")) {
-  throw new Error("live cap is not null");
+if (!activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4.5")) {
+  throw new Error("compiled cap mismatch");
 }
-if (!activation.includes("V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null")) {
-  throw new Error("anchor authority is not null");
+if (!activation.includes("V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false")) {
+  throw new Error("anchor authority mismatch");
 }
-console.log("PASS Attempt81 sealed candidate; executable authority remains absent");
+console.log("PASS Attempt81 exact single-use authority activated");

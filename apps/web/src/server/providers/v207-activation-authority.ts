@@ -21,7 +21,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:2f38c58468d1183c0cf50c98b0ec123740b7fa74c0733d8167d35e650881e99b" as const;
+  "sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087" as const;
 export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
   "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
 export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
@@ -37,7 +37,7 @@ export const V207_ANCHOR_REFRESH_HELPER_SHA256 =
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "d530320af723e33c6ce32552743fd00dc063eedc" as const;
+  "9caea53785484be42a7bea210a0294addef1a3e0" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
@@ -79,16 +79,16 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempts69 through 80 were consumed. No executable authority or cap remains;
-// any successor requires a freshly sealed proposal and exact approval.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
-export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
+// Attempts69 through 80 were consumed. Attempt81 is single-use and source-bound.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null =
+  "sha256:cac3a6bcdab8f479131ecdb68224e61a83d7ec835418783344b1268fd237f076";
+export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
  * same compiled approval boundary as the proposal and finite cap. Any future
  * authority must bind its own decision in a separate immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;
