@@ -1,0 +1,22 @@
+{
+  "schema_version": "videoforge.v2-07-attempt82-authority-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 82,
+  "result": "PASS",
+  "audited_at": "2026-09-05T08:52:35+05:30",
+  "proposal_sha256": "sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06",
+  "approved_authority_sha256": "sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee",
+  "activation_source_sha256": "sha256:31e385f9a6b9328a21b3338cf81ccecb28f35a6c5b7731cb2ec2b8429dffe63b",
+  "canonical_activation_source_sha256": "sha256:790e300091e827387500ed0228c0a10beb2833c1d9aa14f6c63169f917eaa808",
+  "activation_test_sha256": "sha256:7567cd3ba6169b0d537b8346cfd48c3450f5ad98276de159f929c6e7a6725153",
+  "acceptance_sha256": "sha256:1dd9264f1a0ee0a7e99faec177a63e2559c53b9a2898dbc55f27970963ceeb0e",
+  "focused_tests": "85/85 PASS",
+  "typescript": "PASS",
+  "context_validation": "PASS",
+  "findings": { "p0": 0, "p1": 0, "p2": 0 },
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0,
+  "conclusion": "Exact Attempt82 authority, image, proposal, cap, exclusions, and single-use activation are consistently bound and ready for execution."
+}

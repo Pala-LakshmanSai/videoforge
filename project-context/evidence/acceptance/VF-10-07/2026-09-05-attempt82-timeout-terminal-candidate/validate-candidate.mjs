@@ -43,6 +43,18 @@ for (const [name, path] of Object.entries(sourcePaths)) {
 }
 const identity = await parse(resolve(here, "local-image-identity.json"));
 const verification = await parse(resolve(here, "local-image-verification.json"));
+const acceptance = await parse(resolve(here, "acceptance.json"));
+expectEqual(
+  hash(await read(resolve(here, "approved-authority.json"))),
+  "sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee",
+  "approved authority",
+);
+expectEqual(acceptance.result, "APPROVED_SINGLE_USE_PENDING_EXECUTION", "acceptance result");
+expectEqual(
+  acceptance.authority_sha256,
+  "sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee",
+  "acceptance authority",
+);
 expectEqual(identity.manifest_digest, proposal.image.split("@")[1], "identity manifest");
 expectEqual(verification.manifest_digest, identity.manifest_digest, "verification manifest");
 expectEqual(identity.source_commit, proposal.image_source_commit, "identity source");
@@ -54,13 +66,17 @@ if (!activation.includes(proposal.control_source_commit)) throw new Error("contr
 if (!activation.includes("sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06")) {
   throw new Error("proposal is not pinned");
 }
-if (!activation.includes("V207_APPROVED_AUTHORITY_SHA256: string | null = null")) {
-  throw new Error("live authority is not null");
+if (
+  !activation.includes(
+    '"sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee"',
+  )
+) {
+  throw new Error("approved authority is not compiled");
 }
-if (!activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = null")) {
-  throw new Error("live cap is not null");
+if (!activation.includes("V207_APPROVED_FINITE_CAP_USD: number | null = 4.5")) {
+  throw new Error("live cap is not exact");
 }
-if (!activation.includes("V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null")) {
-  throw new Error("anchor authority is not null");
+if (!activation.includes("V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false")) {
+  throw new Error("anchor authority is not disabled");
 }
-console.log("PASS Attempt82 sealed; executable authority absent");
+console.log("PASS Attempt82 activated; exact single-use authority compiled");

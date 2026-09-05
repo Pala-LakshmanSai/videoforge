@@ -16,7 +16,9 @@
   `sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb`. Attempt82 proposal
   `sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06` binds control/image source
   `aceef8e0d0d678468ea9560f1faa94aa562fc466`, exact image publication, the bounded Stage 6 run,
-  `$4.50` cumulative cap, and cleanup. Fresh exact approval remains; no live/GPU/spend/V2-08 authority exists.
+  `$4.50` cumulative cap, and cleanup. Exact authority
+  `sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee` is approved once and
+  unconsumed; publication and the bounded run are next. V2-08 remains unauthorized.
 - Attempt81 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`: proposal
   `sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087`, control source
   `9caea53785484be42a7bea210a0294addef1a3e0`, unchanged image source `d530320af723e33c6ce32552743fd00dc063eedc`,

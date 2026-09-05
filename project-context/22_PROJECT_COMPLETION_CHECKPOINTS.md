@@ -200,7 +200,16 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt81 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE` at proposal
+**Current gate:** Attempt82 is `APPROVED_SINGLE_USE_PENDING_EXECUTION` at proposal
+`sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06`, control/image source
+`aceef8e0d0d678468ea9560f1faa94aa562fc466`, pending exact image
+`sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb`, and authority
+`sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee`. The single-use
+authority covers direct exact-image publication/readback and the bounded Stage 6 sequence within
+the cumulative `$4.50` cap. No redispatch, shared staging mutation, fallback, anchor refresh,
+retained-volume mutation, or V2-08 is authorized.
+
+Attempt81 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE` at proposal
 `sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087` with control
 `9caea53785484be42a7bea210a0294addef1a3e0`, unchanged image source `d530320af723e33c6ce32552743fd00dc063eedc`,
 and published image `sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62`.
