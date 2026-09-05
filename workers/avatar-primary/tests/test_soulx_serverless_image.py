@@ -176,7 +176,7 @@ class SoulXServerlessImageDefinitionTests(unittest.TestCase):
         self.assertIn("sha256sum --check --strict", self.source)
 
 
-class ReadOnlyModelMountTests(unittest.TestCase):
+class ApplicationReadOnlyModelMountTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         spec = importlib.util.spec_from_file_location(
@@ -196,39 +196,92 @@ class ReadOnlyModelMountTests(unittest.TestCase):
             temporary.write(contents)
         return Path(temporary.name)
 
-    def test_accepts_exact_read_only_mount(self) -> None:
-        mountinfo = self._mountinfo(
-            "40 30 0:55 / /runpod-volume ro,nosuid,nodev - ext4 /dev/sdb ro\n"
-        )
-        with mock.patch.dict(
-            os.environ, {"SOULX_MODEL_ROOT": "/runpod-volume/soulx-flashhead-pro"}
-        ):
-            self.entrypoint.require_read_only_model_mount(mountinfo)
+    def _environment(self) -> dict[str, str]:
+        return {
+            "SOULX_MODEL_ROOT": "/runpod-volume/soulx-flashhead-pro",
+            "VIDEOFORGE_JOB_SCRATCH_ROOT": "/tmp/videoforge-soulx-jobs",
+            "HF_HOME": "/tmp/videoforge-soulx-cache/huggingface",
+            "TRANSFORMERS_CACHE": "/tmp/videoforge-soulx-cache/transformers",
+            "DIFFUSERS_CACHE": "/tmp/videoforge-soulx-cache/diffusers",
+            "XDG_CACHE_HOME": "/tmp/videoforge-soulx-cache",
+            "XDG_CONFIG_HOME": "/tmp/videoforge-soulx-config",
+            "TMPDIR": "/tmp/videoforge-soulx-tmp",
+        }
 
-    def test_rejects_missing_or_writable_mount(self) -> None:
-        for contents, code in (
-            ("40 30 0:55 / /other ro - ext4 /dev/sdb ro\n", "SOULX_MODEL_VOLUME_MOUNT_MISSING"),
-            (
-                "40 30 0:55 / /runpod-volume rw,nosuid - ext4 /dev/sdb rw\n",
-                "SOULX_MODEL_VOLUME_NOT_READ_ONLY",
-            ),
-        ):
-            with (
-                self.subTest(code=code),
-                mock.patch.dict(
-                    os.environ, {"SOULX_MODEL_ROOT": "/runpod-volume/soulx-flashhead-pro"}
-                ),
-            ):
-                with self.assertRaisesRegex(RuntimeError, code):
-                    self.entrypoint.require_read_only_model_mount(self._mountinfo(contents))
+    def test_accepts_exact_mount_without_requiring_kernel_read_only(self) -> None:
+        for mount_options in ("ro,nosuid,nodev", "rw,nosuid,nodev"):
+            with self.subTest(mount_options=mount_options):
+                mountinfo = self._mountinfo(
+                    f"40 30 0:55 / /runpod-volume {mount_options} - ext4 /dev/sdb {mount_options}\n"
+                )
+                with mock.patch.dict(os.environ, self._environment(), clear=True):
+                    self.entrypoint.require_application_read_only_model_mount(mountinfo)
+
+    def test_rejects_missing_exact_mount(self) -> None:
+        mountinfo = self._mountinfo("40 30 0:55 / /other rw - ext4 /dev/sdb rw\n")
+        with mock.patch.dict(os.environ, self._environment(), clear=True):
+            with self.assertRaisesRegex(RuntimeError, "SOULX_MODEL_VOLUME_MOUNT_MISSING"):
+                self.entrypoint.require_application_read_only_model_mount(mountinfo)
 
     def test_rejects_model_root_drift(self) -> None:
         mountinfo = self._mountinfo(
             "40 30 0:55 / /runpod-volume ro,nosuid,nodev - ext4 /dev/sdb ro\n"
         )
-        with mock.patch.dict(os.environ, {"SOULX_MODEL_ROOT": "/tmp/model"}):
+        environment = self._environment()
+        environment["SOULX_MODEL_ROOT"] = "/tmp/model"
+        with mock.patch.dict(os.environ, environment, clear=True):
             with self.assertRaisesRegex(RuntimeError, "SOULX_MODEL_ROOT_INVALID"):
-                self.entrypoint.require_read_only_model_mount(mountinfo)
+                self.entrypoint.require_application_read_only_model_mount(mountinfo)
+
+    def test_rejects_every_writable_root_on_or_below_model_volume(self) -> None:
+        mountinfo = self._mountinfo(
+            "40 30 0:55 / /runpod-volume rw,nosuid,nodev - ext4 /dev/sdb rw\n"
+        )
+        for environment in self.entrypoint._WRITABLE_ROOT_ENVIRONMENTS:
+            with self.subTest(environment=environment):
+                values = self._environment()
+                values[environment] = f"/runpod-volume/writable/{environment.lower()}"
+                with mock.patch.dict(os.environ, values, clear=True):
+                    with self.assertRaisesRegex(
+                        RuntimeError, f"SOULX_WRITABLE_ROOT_INVALID:{environment}"
+                    ):
+                        self.entrypoint.require_application_read_only_model_mount(mountinfo)
+
+    def test_rejects_missing_relative_or_symlinked_writable_root(self) -> None:
+        mountinfo = self._mountinfo(
+            "40 30 0:55 / /runpod-volume rw,nosuid,nodev - ext4 /dev/sdb rw\n"
+        )
+        for value in ("", "relative/cache"):
+            with self.subTest(value=value):
+                values = self._environment()
+                values["HF_HOME"] = value
+                with mock.patch.dict(os.environ, values, clear=True):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "SOULX_WRITABLE_ROOT_INVALID:HF_HOME"
+                    ):
+                        self.entrypoint.require_application_read_only_model_mount(mountinfo)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            outside = Path(temporary)
+            model_mount = outside / "model-mount"
+            model_mount.mkdir()
+            (model_mount / "cache").mkdir()
+            cache_link = outside / "cache-link"
+            cache_link.symlink_to(model_mount / "cache", target_is_directory=True)
+            with mock.patch.object(self.entrypoint, "_MODEL_MOUNT", model_mount):
+                values = self._environment()
+                values["SOULX_MODEL_ROOT"] = str(model_mount / "soulx-flashhead-pro")
+                values["HF_HOME"] = str(cache_link)
+                with (
+                    mock.patch.object(
+                        self.entrypoint, "_MODEL_ROOT", model_mount / "soulx-flashhead-pro"
+                    ),
+                    mock.patch.dict(os.environ, values, clear=True),
+                ):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "SOULX_WRITABLE_ROOT_INVALID:HF_HOME"
+                    ):
+                        self.entrypoint.require_application_read_only_model_mount(mountinfo)
 
 
 if __name__ == "__main__":

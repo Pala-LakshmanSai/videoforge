@@ -222,12 +222,12 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
             "752b600d5428bb253d83d0c6044296bbcb4bb29f17d4df37c40fcf63c19b30e4",
             "b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080",
             "1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32",
-            "bde3ec146ffe31e891fdbe6bf9d21de065646c20f0ef2e0885e753d2850a0bb9",
+            "3c4d11116333af5e83b74831a3c0cf529a0ef5ae780f1eba9547ec26b40faa65",
             "7dafb7f17682f0c15158c39bd644f2aff16dcf614bb9ecb2ed747379eaebd775",
             "34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0",
-            "6b20bfeac282bd8fd43291abb18cfe2cf7c46a352a58da006f57738307c9b7d6",
+            "08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f",
             "83650cf6430fd82e26c855df5f91b34cf5a4eda2beebf7650d8cf86e27f88443",
-            "b31ebc93f99c055c0ab158b72027d652ae9cbb4b232562167672cdde35c63c09",
+            "31902ff99db25fbc3d62c2aa28f74c57ae25a32536f4a737dd80fda988a841b5",
             "88e5d7a6023f10c46be3be34204539231c4eee57f14519788952b3a4a686adca",
         ):
             self.assertIn(expected_hash, publish)
