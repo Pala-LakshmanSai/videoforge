@@ -30,6 +30,7 @@ vi.mock("./v208-soulx-qualification.js", async (importOriginal) => {
 import type { V213DualLaneTransport } from "./v213-dual-lane-live.js";
 import {
   dispatchV208Durably,
+  enforceV208FinalSpendCap,
   assertV208StageConsumptionDecision,
   runV208SoulXWithV213Transport,
   validateV208WholeSpanSuccessProof,
@@ -53,6 +54,11 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     expect(() => assertV208StageConsumptionDecision("REPLAY_REJECTED")).toThrow(
       "V208_AUTHORITY_REPLAY_REJECTED",
     );
+  });
+
+  it("enforces final spend only for EXECUTE, never cleanup after a DONE-phase RESUME", () => {
+    expect(enforceV208FinalSpendCap("EXECUTE")).toBe(true);
+    expect(enforceV208FinalSpendCap("RESUME")).toBe(false);
   });
 
   it("reconstructs a durable dispatch on RESUME without redispatch", async () => {
@@ -265,9 +271,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     }));
     let inventoryRead = 0;
     const inventory = vi.fn(async () => ({
-      checkedAt: new Date(
-        Date.UTC(2026, 8, 5, 0, 0, 0, inventoryRead++ * 2_000),
-      ).toISOString(),
+      checkedAt: new Date(Date.UTC(2026, 8, 5, 0, 0, 0, inventoryRead++ * 2_000)).toISOString(),
       runningPods: 0,
       activeWorkers: 0,
       queuedJobs: 0,
@@ -305,8 +309,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       transport: {
         durable: { issueStageAuthority, claimStageAuthority, claimOperation, transitionOperation },
         freshAdmission,
-        now: () =>
-          new Date(Date.UTC(2026, 8, 5, 0, 0, 0, Math.max(0, inventoryRead - 1) * 2_000)),
+        now: () => new Date(Date.UTC(2026, 8, 5, 0, 0, 0, Math.max(0, inventoryRead - 1) * 2_000)),
         inventory,
         billingAmount: async () => 16.5,
         findLaneByResourceKey: vi.fn(async () => null),
@@ -530,8 +533,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
             ],
           };
         },
-        now: () =>
-          new Date(Date.UTC(2026, 8, 5, 0, 0, 0, Math.max(0, inventoryRead - 1) * 2_000)),
+        now: () => new Date(Date.UTC(2026, 8, 5, 0, 0, 0, Math.max(0, inventoryRead - 1) * 2_000)),
         findLaneByResourceKey: vi.fn(async () => (laneDeleted ? null : resumeDeployment)),
         deleteLane: vi.fn(async () => {
           laneDeleted = true;
@@ -541,9 +543,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
         materializeQualificationCase,
         dispatch,
         inventory: async () => ({
-          checkedAt: new Date(
-            Date.UTC(2026, 8, 5, 0, 0, 0, inventoryRead++ * 2_000),
-          ).toISOString(),
+          checkedAt: new Date(Date.UTC(2026, 8, 5, 0, 0, 0, inventoryRead++ * 2_000)).toISOString(),
           runningPods: 0,
           activeWorkers: 0,
           queuedJobs: 0,
@@ -580,8 +580,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       cleanupOutputKeys,
       cleanupAttributableResource,
       laneDeletionCheckpoint: async () => {
-        if (crashAfterLaneDelete)
-          throw new V208ProcessInterruption("nested-lane-delete-crash");
+        if (crashAfterLaneDelete) throw new V208ProcessInterruption("nested-lane-delete-crash");
       },
       materializationCheckpoint: async () => {
         if (crashAfterMaterialization) {
@@ -859,8 +858,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     expect(
       transitions.some(
         ({ to, evidence }) =>
-          to === "TERMINAL" &&
-          (evidence as { absent?: boolean } | undefined)?.absent === true,
+          to === "TERMINAL" && (evidence as { absent?: boolean } | undefined)?.absent === true,
       ),
     ).toBe(true);
     expect(createLane).not.toHaveBeenCalled();
@@ -922,12 +920,8 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     let providerLaneDeleted = false;
     let createdIdleTimeout: number | undefined;
     let stageClaims = 0;
-    let crashAt:
-      | "lane-delete"
-      | "attributable-cleanup"
-      | "output-delete"
-      | "final-zero"
-      | null = "lane-delete";
+    let crashAt: "lane-delete" | "attributable-cleanup" | "output-delete" | "final-zero" | null =
+      "lane-delete";
     const durableOperations = new Map<string, Record<string, unknown>>();
     const output = (count: number, id: string) => ({
       schemaVersion: "videoforge.v213-qualification-case-materialization/v1" as const,
@@ -1167,15 +1161,9 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     });
     expect(dispatched.filter((id) => id.includes("whole-span"))).toHaveLength(2);
     expect(createdIdleTimeout).toBe(60);
-    const coldDispatch = lifecycle.indexOf(
-      "dispatch:v208-soulx-cold-whole-span-2-4-6-10s",
-    );
-    const warmDispatch = lifecycle.indexOf(
-      "dispatch:v208-soulx-warm-whole-span-2-4-6-10s",
-    );
-    const coldStatus = lifecycle.indexOf(
-      "status:job-v208-soulx-cold-whole-span-2-4-6-10s",
-    );
+    const coldDispatch = lifecycle.indexOf("dispatch:v208-soulx-cold-whole-span-2-4-6-10s");
+    const warmDispatch = lifecycle.indexOf("dispatch:v208-soulx-warm-whole-span-2-4-6-10s");
+    const coldStatus = lifecycle.indexOf("status:job-v208-soulx-cold-whole-span-2-4-6-10s");
     expect(coldDispatch).toBeGreaterThanOrEqual(0);
     expect(coldStatus).toBeGreaterThan(coldDispatch);
     expect(warmDispatch).toBeGreaterThan(coldStatus);

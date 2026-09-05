@@ -59,6 +59,9 @@ export function assertV208StageConsumptionDecision(
   if (decision === "REPLAY_REJECTED") throw new Error("V208_AUTHORITY_REPLAY_REJECTED");
 }
 
+export const enforceV208FinalSpendCap = (decision: "EXECUTE" | "RESUME"): boolean =>
+  decision === "EXECUTE";
+
 export interface V208SoulXOrchestratorDependencies {
   readonly transport: V213DualLaneTransport;
   readonly soulx: V213SealedLane;
@@ -273,7 +276,8 @@ function inputKeys(materialization: V213QualificationCaseMaterialization): strin
   const request = materialization.request as Record<string, JsonValue>;
   const ports = request.ports as Record<string, JsonValue> | undefined;
   const inputs = ports?.inputs;
-  if (!Array.isArray(inputs) || inputs.length === 0) throw new Error("V208_INPUT_AUTHORITY_INVALID");
+  if (!Array.isArray(inputs) || inputs.length === 0)
+    throw new Error("V208_INPUT_AUTHORITY_INVALID");
   return inputs.map((authority) => {
     const path = (authority as Record<string, JsonValue>).path;
     if (typeof path !== "string" || !path.startsWith("/tenant/") || path.includes(".."))
@@ -346,8 +350,7 @@ function validateCleanupPlanEvidence(
       throw new Error("V208_CLEANUP_PLAN_INVALID");
     allKeys.push(...item.inputKeys, ...item.outputKeys);
   }
-  if (new Set(allKeys).size !== allKeys.length)
-    throw new Error("V208_CLEANUP_PLAN_INVALID");
+  if (new Set(allKeys).size !== allKeys.length) throw new Error("V208_CLEANUP_PLAN_INVALID");
   const { evidenceSha256: _hash, ...unsigned } = value;
   void _hash;
   if (value.evidenceSha256 !== hashCanonical(unsigned))
@@ -438,7 +441,8 @@ async function recoverV208DeploymentFromDurableCreate(
     }
   }
 
-  let reconciliationRequired = neverMutated || terminalAbsent || evidence !== undefined || looksFull;
+  let reconciliationRequired =
+    neverMutated || terminalAbsent || evidence !== undefined || looksFull;
   let recovered: V213LaneDeployment | null = null;
   if (reconciliationRequired && !terminalAbsent) await cleanupAttributableResource(resourceKey);
   let consecutiveAbsent = 0;
@@ -458,8 +462,7 @@ async function recoverV208DeploymentFromDurableCreate(
     } else if (found === null) {
       reconciliationRequired = true;
       consecutiveAbsent += 1;
-    }
-    else if (!reconciliationRequired) {
+    } else if (!reconciliationRequired) {
       assertDeploymentReadback(found, found, sealed);
       if (createState !== "ACKED") {
         const acked = await transport.durable.transitionOperation({
@@ -506,7 +509,12 @@ const operationIdentity = (
   requestSha256,
 });
 
-const phaseOperation = (authorityId: string, deploymentSha256: string, planSha256: string, phase: string) =>
+const phaseOperation = (
+  authorityId: string,
+  deploymentSha256: string,
+  planSha256: string,
+  phase: string,
+) =>
   operationIdentity(
     authorityId,
     "status",
@@ -544,14 +552,7 @@ async function terminal(
     if (value.status !== "IN_QUEUE" && value.status !== "IN_PROGRESS") return value;
     if (index + 1 < reads) await transport.sleep(pollMs);
   }
-  await cancelAndConfirmTerminal(
-    transport,
-    deployment,
-    jobId,
-    cancelReads,
-    pollMs,
-    authorityId,
-  );
+  await cancelAndConfirmTerminal(transport, deployment, jobId, cancelReads, pollMs, authorityId);
   throw new Error("V208_STATUS_HORIZON_CANCELLED");
 }
 
@@ -710,9 +711,8 @@ export async function runV208SoulXWithV213Transport(
     plan.planSha256,
     "qualification-complete",
   );
-  const qualificationClaim = await dependencies.transport.durable.claimOperation(
-    qualificationOperation,
-  );
+  const qualificationClaim =
+    await dependencies.transport.durable.claimOperation(qualificationOperation);
   const plannedDescriptors = [
     ...plan.qualification.wholeSpanDescriptors,
     ...plan.qualification.caseDescriptors.filter(({ mode }) => mode !== "complete"),
@@ -723,7 +723,8 @@ export async function runV208SoulXWithV213Transport(
     plan.planSha256,
     "cleanup-plan",
   );
-  const cleanupPlanClaim = await dependencies.transport.durable.claimOperation(cleanupPlanOperation);
+  const cleanupPlanClaim =
+    await dependencies.transport.durable.claimOperation(cleanupPlanOperation);
   let cleanupPlan: V208CleanupPlanEvidence | null = null;
   let resumeCreateAbsent = false;
   const buildAndPersistCleanupPlan = async (
@@ -862,7 +863,7 @@ export async function runV208SoulXWithV213Transport(
         !Number.isFinite(billing) ||
         billing < admission.cumulativeBillingUsd ||
         (priorBilling !== null && Math.abs(billing - priorBilling) > 0.000_001) ||
-        (!cleanupOnlyResume &&
+        (enforceV208FinalSpendCap(consumed.decision) &&
           (billing > authority.cumulativeBillingStopThresholdUsd ||
             billing - qualificationBillingBaseline > authority.finiteCapUsd))
       )
@@ -943,176 +944,72 @@ export async function runV208SoulXWithV213Transport(
       if (resumeCreateAbsent) laneAbsenceConfirmed = true;
       throw new Error("V208_RESUME_REQUIRES_CLEANUP_ONLY");
     } else {
-    deployment = await createAndReadLane(
-      dependencies.transport,
-      dependencies.soulx,
-      "qualification",
-      issued.authorityId,
-      60,
-    );
-    assertDeploymentReadback(deployment, deployment, dependencies.soulx);
-    await dependencies.deploymentCheckpoint?.();
-    cleanupPlan = await buildAndPersistCleanupPlan(deployment);
-    const pendingSuccesses: Array<{
-      readonly descriptor: (typeof plan.qualification.wholeSpanDescriptors)[number];
-      readonly materialization: V213QualificationCaseMaterialization;
-      readonly record: (typeof materializations)[number];
-      jobId: string | null;
-    }> = [];
-    // Materialize both before starting compute so no staging delay falls inside the warm window.
-    for (const descriptor of plan.qualification.wholeSpanDescriptors) {
-      const materialization = await dependencies.materializeWholeSpan({
-        descriptor,
-        deployment,
-        stageAuthorityId: issued.authorityId,
-        inputSha256: plan.planSha256,
-      });
-      const materializationRecord: (typeof materializations)[number] = {
-        materialization,
-        terminalOutcome: null,
-        cleaned: false,
-      };
-      materializations.push(materializationRecord);
-      outputKeys.push(...keys(materialization, 4));
-      await dependencies.materializationCheckpoint?.(descriptor.id);
-      await journalMaterializationKeys(
+      deployment = await createAndReadLane(
         dependencies.transport,
+        dependencies.soulx,
+        "qualification",
         issued.authorityId,
-        dependencies.soulx.deploymentSha256,
-        plan.planSha256,
-        descriptor.id,
-        materialization,
-        4,
+        60,
       );
-      pendingSuccesses.push({
-        descriptor,
-        materialization,
-        record: materializationRecord,
-        jobId: null,
-      });
-    }
-    const coldPending = pendingSuccesses[0];
-    const warmPending = pendingSuccesses[1];
-    if (!coldPending?.descriptor.cold || warmPending?.descriptor.cold !== false)
-      throw new Error("V208_WARM_PLAN_ORDER_INVALID");
-    coldPending.jobId = await dispatchV208Durably(
-      dependencies.transport,
-      deployment,
-      coldPending.descriptor.id,
-      coldPending.materialization,
-      800_000,
-      issued.authorityId,
-    );
-    activeJobs.add(coldPending.jobId);
-    activeJobMaterializations.set(coldPending.jobId, coldPending.record);
-    for (const [index, pending] of pendingSuccesses.entries()) {
-      const { descriptor, materialization, record: materializationRecord } = pending;
-      const jobId = pending.jobId;
-      if (!jobId) throw new Error("V208_SUCCESS_JOB_MISSING");
-      const observed = await terminal(
-        dependencies.transport,
-        deployment,
-        jobId,
-        poll.reads,
-        poll.cancelReads,
-        poll.pollMs,
-        issued.authorityId,
-      );
-      if (index === 0) {
-        // The cold terminal read is the queue-empty guard. Dispatch warm immediately, before any
-        // input deletion, R2 GET, hashing, or ffprobe can let the max1 worker idle out.
-        warmPending.jobId = await dispatchV208Durably(
-          dependencies.transport,
+      assertDeploymentReadback(deployment, deployment, dependencies.soulx);
+      await dependencies.deploymentCheckpoint?.();
+      cleanupPlan = await buildAndPersistCleanupPlan(deployment);
+      const pendingSuccesses: Array<{
+        readonly descriptor: (typeof plan.qualification.wholeSpanDescriptors)[number];
+        readonly materialization: V213QualificationCaseMaterialization;
+        readonly record: (typeof materializations)[number];
+        jobId: string | null;
+      }> = [];
+      // Materialize both before starting compute so no staging delay falls inside the warm window.
+      for (const descriptor of plan.qualification.wholeSpanDescriptors) {
+        const materialization = await dependencies.materializeWholeSpan({
+          descriptor,
           deployment,
-          warmPending.descriptor.id,
-          warmPending.materialization,
-          800_000,
-          issued.authorityId,
-        );
-        activeJobs.add(warmPending.jobId);
-        activeJobMaterializations.set(warmPending.jobId, warmPending.record);
-      }
-      activeJobs.delete(jobId);
-      activeJobMaterializations.delete(jobId);
-      if (observed.status === "IN_QUEUE" || observed.status === "IN_PROGRESS")
-        throw new Error("V208_TERMINAL_STATUS_UNPROVEN");
-      await cleanupKnownInputs(materializationRecord, observed.status);
-      if (observed.status !== "COMPLETED" || !observed.receiptDelivery)
-        throw new Error("V208_WHOLE_SPAN_COMPLETION_UNPROVEN");
-      const verified = await dependencies.verifySuccess({
-        descriptor,
-        jobId,
-        deployment,
-        materialization,
-        observed,
-      });
-      validateV208WholeSpanSuccessProof(verified);
-      successReceipts += 1;
-      outputItems += verified.outputItemsVerified;
-      nativeFullSplitVerified = nativeFullSplitVerified && verified.nativeFullSplitReadbackVerified;
-      exactAudioVideoVerified = exactAudioVideoVerified && verified.exactAudioVideoProbeVerified;
-      if (descriptor.cold) {
-        coldReady = verified.coldModelReadyMs;
-        coldWorkerId = verified.workerId;
-      } else if (
-        verified.workerId !== coldWorkerId ||
-        verified.coldModelReadyMs < 0
-      ) {
-        throw new Error("V208_WARM_WORKER_REUSE_UNPROVEN");
-      }
-    }
-    for (const descriptor of plan.qualification.caseDescriptors.filter(
-      (item) => item.mode !== "complete",
-    )) {
-      const materialization = await dependencies.transport.materializeQualificationCase({
-        descriptor,
-        deployment,
-        stageAuthorityId: issued.authorityId,
-        inputSha256: plan.planSha256,
-      });
-      const materializationRecord: (typeof materializations)[number] = {
-        materialization,
-        terminalOutcome: null,
-        cleaned: false,
-      };
-      materializations.push(materializationRecord);
-      outputKeys.push(...keys(materialization, 1));
-      await dependencies.materializationCheckpoint?.(descriptor.id);
-      await journalMaterializationKeys(
-        dependencies.transport,
-        issued.authorityId,
-        dependencies.soulx.deploymentSha256,
-        plan.planSha256,
-        descriptor.id,
-        materialization,
-        1,
-      );
-      const jobId = await dispatchV208Durably(
-        dependencies.transport,
-        deployment,
-        descriptor.id,
-        materialization,
-        descriptor.mode === "timeout" ? 5_000 : 60_000,
-        issued.authorityId,
-      );
-      activeJobs.add(jobId);
-      activeJobMaterializations.set(jobId, materializationRecord);
-      if (descriptor.mode === "cancel") {
-        const confirmed = await cancelAndConfirmTerminal(
+          stageAuthorityId: issued.authorityId,
+          inputSha256: plan.planSha256,
+        });
+        const materializationRecord: (typeof materializations)[number] = {
+          materialization,
+          terminalOutcome: null,
+          cleaned: false,
+        };
+        materializations.push(materializationRecord);
+        outputKeys.push(...keys(materialization, 4));
+        await dependencies.materializationCheckpoint?.(descriptor.id);
+        await journalMaterializationKeys(
           dependencies.transport,
-          deployment,
-          jobId,
-          poll.cancelReads,
-          poll.pollMs,
           issued.authorityId,
+          dependencies.soulx.deploymentSha256,
+          plan.planSha256,
+          descriptor.id,
+          materialization,
+          4,
         );
-        if (confirmed.status !== "CANCELLED")
-          throw new Error("V208_CANCEL_TERMINAL_READBACK_UNPROVEN");
-        await cleanupKnownInputs(materializationRecord, confirmed.status);
-        cancellationVerified = true;
-        activeJobs.delete(jobId);
-        activeJobMaterializations.delete(jobId);
-      } else {
+        pendingSuccesses.push({
+          descriptor,
+          materialization,
+          record: materializationRecord,
+          jobId: null,
+        });
+      }
+      const coldPending = pendingSuccesses[0];
+      const warmPending = pendingSuccesses[1];
+      if (!coldPending?.descriptor.cold || warmPending?.descriptor.cold !== false)
+        throw new Error("V208_WARM_PLAN_ORDER_INVALID");
+      coldPending.jobId = await dispatchV208Durably(
+        dependencies.transport,
+        deployment,
+        coldPending.descriptor.id,
+        coldPending.materialization,
+        800_000,
+        issued.authorityId,
+      );
+      activeJobs.add(coldPending.jobId);
+      activeJobMaterializations.set(coldPending.jobId, coldPending.record);
+      for (const [index, pending] of pendingSuccesses.entries()) {
+        const { descriptor, materialization, record: materializationRecord } = pending;
+        const jobId = pending.jobId;
+        if (!jobId) throw new Error("V208_SUCCESS_JOB_MISSING");
         const observed = await terminal(
           dependencies.transport,
           deployment,
@@ -1122,54 +1019,155 @@ export async function runV208SoulXWithV213Transport(
           poll.pollMs,
           issued.authorityId,
         );
+        if (index === 0) {
+          // The cold terminal read is the queue-empty guard. Dispatch warm immediately, before any
+          // input deletion, R2 GET, hashing, or ffprobe can let the max1 worker idle out.
+          warmPending.jobId = await dispatchV208Durably(
+            dependencies.transport,
+            deployment,
+            warmPending.descriptor.id,
+            warmPending.materialization,
+            800_000,
+            issued.authorityId,
+          );
+          activeJobs.add(warmPending.jobId);
+          activeJobMaterializations.set(warmPending.jobId, warmPending.record);
+        }
         activeJobs.delete(jobId);
         activeJobMaterializations.delete(jobId);
         if (observed.status === "IN_QUEUE" || observed.status === "IN_PROGRESS")
           throw new Error("V208_TERMINAL_STATUS_UNPROVEN");
         await cleanupKnownInputs(materializationRecord, observed.status);
-        if (
-          (descriptor.mode === "invalid" &&
-            (observed.status !== "FAILED" ||
-              observed.failureCode !== "SOULX_OUTPUT_CONTRACT_INVALID")) ||
-          (descriptor.mode === "timeout" && observed.status !== "TIMED_OUT")
-        )
-          throw new Error("V208_FAULT_GATE_UNPROVEN");
-        if (descriptor.mode === "invalid") invalidOutputVerified = true;
-        if (descriptor.mode === "timeout") timeoutVerified = true;
+        if (observed.status !== "COMPLETED" || !observed.receiptDelivery)
+          throw new Error("V208_WHOLE_SPAN_COMPLETION_UNPROVEN");
+        const verified = await dependencies.verifySuccess({
+          descriptor,
+          jobId,
+          deployment,
+          materialization,
+          observed,
+        });
+        validateV208WholeSpanSuccessProof(verified);
+        successReceipts += 1;
+        outputItems += verified.outputItemsVerified;
+        nativeFullSplitVerified =
+          nativeFullSplitVerified && verified.nativeFullSplitReadbackVerified;
+        exactAudioVideoVerified = exactAudioVideoVerified && verified.exactAudioVideoProbeVerified;
+        if (descriptor.cold) {
+          coldReady = verified.coldModelReadyMs;
+          coldWorkerId = verified.workerId;
+        } else if (verified.workerId !== coldWorkerId || verified.coldModelReadyMs < 0) {
+          throw new Error("V208_WARM_WORKER_REUSE_UNPROVEN");
+        }
       }
-    }
-    if (
-      successReceipts !== 2 ||
-      outputItems !== 8 ||
-      nativeFullSplitVerified !== true ||
-      exactAudioVideoVerified !== true ||
-      cancellationVerified !== true ||
-      invalidOutputVerified !== true ||
-      timeoutVerified !== true ||
-      inputCleanupEvidenceVerified !== 5 ||
-      !deployment
-    )
-      throw new Error("V208_AGGREGATE_SUCCESS_PROOF_INVALID");
-    await completePhase(
-      dependencies.transport,
-      qualificationOperation,
-      qualificationClaim.record.state,
-      {
-        deployment,
-        outputKeys,
-        coldReady,
-        coldWorkerId,
-        billingBaselineUsd: qualificationBillingBaseline,
-      } as unknown as JsonValue,
-    );
+      for (const descriptor of plan.qualification.caseDescriptors.filter(
+        (item) => item.mode !== "complete",
+      )) {
+        const materialization = await dependencies.transport.materializeQualificationCase({
+          descriptor,
+          deployment,
+          stageAuthorityId: issued.authorityId,
+          inputSha256: plan.planSha256,
+        });
+        const materializationRecord: (typeof materializations)[number] = {
+          materialization,
+          terminalOutcome: null,
+          cleaned: false,
+        };
+        materializations.push(materializationRecord);
+        outputKeys.push(...keys(materialization, 1));
+        await dependencies.materializationCheckpoint?.(descriptor.id);
+        await journalMaterializationKeys(
+          dependencies.transport,
+          issued.authorityId,
+          dependencies.soulx.deploymentSha256,
+          plan.planSha256,
+          descriptor.id,
+          materialization,
+          1,
+        );
+        const jobId = await dispatchV208Durably(
+          dependencies.transport,
+          deployment,
+          descriptor.id,
+          materialization,
+          descriptor.mode === "timeout" ? 5_000 : 60_000,
+          issued.authorityId,
+        );
+        activeJobs.add(jobId);
+        activeJobMaterializations.set(jobId, materializationRecord);
+        if (descriptor.mode === "cancel") {
+          const confirmed = await cancelAndConfirmTerminal(
+            dependencies.transport,
+            deployment,
+            jobId,
+            poll.cancelReads,
+            poll.pollMs,
+            issued.authorityId,
+          );
+          if (confirmed.status !== "CANCELLED")
+            throw new Error("V208_CANCEL_TERMINAL_READBACK_UNPROVEN");
+          await cleanupKnownInputs(materializationRecord, confirmed.status);
+          cancellationVerified = true;
+          activeJobs.delete(jobId);
+          activeJobMaterializations.delete(jobId);
+        } else {
+          const observed = await terminal(
+            dependencies.transport,
+            deployment,
+            jobId,
+            poll.reads,
+            poll.cancelReads,
+            poll.pollMs,
+            issued.authorityId,
+          );
+          activeJobs.delete(jobId);
+          activeJobMaterializations.delete(jobId);
+          if (observed.status === "IN_QUEUE" || observed.status === "IN_PROGRESS")
+            throw new Error("V208_TERMINAL_STATUS_UNPROVEN");
+          await cleanupKnownInputs(materializationRecord, observed.status);
+          if (
+            (descriptor.mode === "invalid" &&
+              (observed.status !== "FAILED" ||
+                observed.failureCode !== "SOULX_OUTPUT_CONTRACT_INVALID")) ||
+            (descriptor.mode === "timeout" && observed.status !== "TIMED_OUT")
+          )
+            throw new Error("V208_FAULT_GATE_UNPROVEN");
+          if (descriptor.mode === "invalid") invalidOutputVerified = true;
+          if (descriptor.mode === "timeout") timeoutVerified = true;
+        }
+      }
+      if (
+        successReceipts !== 2 ||
+        outputItems !== 8 ||
+        nativeFullSplitVerified !== true ||
+        exactAudioVideoVerified !== true ||
+        cancellationVerified !== true ||
+        invalidOutputVerified !== true ||
+        timeoutVerified !== true ||
+        inputCleanupEvidenceVerified !== 5 ||
+        !deployment
+      )
+        throw new Error("V208_AGGREGATE_SUCCESS_PROOF_INVALID");
+      await completePhase(
+        dependencies.transport,
+        qualificationOperation,
+        qualificationClaim.record.state,
+        {
+          deployment,
+          outputKeys,
+          coldReady,
+          coldWorkerId,
+          billingBaselineUsd: qualificationBillingBaseline,
+        } as unknown as JsonValue,
+      );
     }
     // Stop the compute lane before deleting its output objects. This prevents a late worker write
     // from recreating a supposedly deleted artifact after cleanup was declared complete.
     const laneStillPresent =
       !resumedQualification ||
       (await dependencies.transport.findLaneByResourceKey(resourceKey)) !== null;
-    if (laneStillPresent)
-      await waitForLaneDrain(dependencies.transport, deployment, poll.pollMs);
+    if (laneStillPresent) await waitForLaneDrain(dependencies.transport, deployment, poll.pollMs);
     await deleteLaneDurably(dependencies.transport, deployment, issued.authorityId);
     await dependencies.interruptionCheckpoint?.("lane-delete");
     deployment = null;
@@ -1182,9 +1180,8 @@ export async function runV208SoulXWithV213Transport(
       plan.planSha256,
       "attributable-cleanup",
     );
-    const attributableClaim = await dependencies.transport.durable.claimOperation(
-      attributableOperation,
-    );
+    const attributableClaim =
+      await dependencies.transport.durable.claimOperation(attributableOperation);
     if (attributableClaim.action !== "DONE") {
       await dependencies.cleanupAttributableResource(resourceKey);
       await dependencies.interruptionCheckpoint?.("attributable-cleanup");
@@ -1207,12 +1204,10 @@ export async function runV208SoulXWithV213Transport(
       outputClaim.action === "DONE" ? true : await dependencies.cleanupOutputKeys(outputKeys);
     if (outputClaim.action !== "DONE") await dependencies.interruptionCheckpoint?.("output-delete");
     if (outputClaim.action !== "DONE")
-      await completePhase(
-        dependencies.transport,
-        outputOperation,
-        outputClaim.record.state,
-        { outputsDeleted: true, outputKeysSha256: hashCanonical(outputKeys) },
-      );
+      await completePhase(dependencies.transport, outputOperation, outputClaim.record.state, {
+        outputsDeleted: true,
+        outputKeysSha256: hashCanonical(outputKeys),
+      });
     outputsCleaned = true;
     const finalOperation = phaseOperation(
       issued.authorityId,
@@ -1230,12 +1225,9 @@ export async function runV208SoulXWithV213Transport(
     } else {
       await proveFinalState();
       await dependencies.interruptionCheckpoint?.("final-zero");
-      await completePhase(
-        dependencies.transport,
-        finalOperation,
-        finalClaim.record.state,
-        { finalBilling },
-      );
+      await completePhase(dependencies.transport, finalOperation, finalClaim.record.state, {
+        finalBilling,
+      });
     }
     if (
       successReceipts !== 2 ||
@@ -1315,9 +1307,8 @@ export async function runV208SoulXWithV213Transport(
         plan.planSha256,
         "cleanup-lane-deleted",
       );
-      const cleanupLaneClaim = await dependencies.transport.durable.claimOperation(
-        cleanupLaneOperation,
-      );
+      const cleanupLaneClaim =
+        await dependencies.transport.durable.claimOperation(cleanupLaneOperation);
       if (cleanupLaneClaim.action === "DONE") laneAbsenceConfirmed = true;
       else {
         const existingLane = await dependencies.transport.findLaneByResourceKey(resourceKey);
@@ -1361,9 +1352,8 @@ export async function runV208SoulXWithV213Transport(
               plan.planSha256,
               `r2-cleanup-${planned.descriptorId}`,
             );
-            const cleanupClaim = await dependencies.transport.durable.claimOperation(
-              cleanupOperation,
-            );
+            const cleanupClaim =
+              await dependencies.transport.durable.claimOperation(cleanupOperation);
             if (cleanupClaim.action === "DONE") {
               outputKeys.push(...planned.outputKeys);
               continue;

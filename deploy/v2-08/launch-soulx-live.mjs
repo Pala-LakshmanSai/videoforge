@@ -292,7 +292,11 @@ function exactCompiledString(source, name, pattern, code) {
 /** Fail before opening any provider credential or protected media descriptor. */
 function validateLaunchAuthority({ runGit = execFileSync } = {}) {
   const source = readFileSync(QUALIFICATION_AUTHORITY_PATH, "utf8");
-  if (!/export const V208_COMPILED_AUTHORITY_ACTIVE\s*=\s*true(?:\s+as const)?\s*;/u.test(source))
+  if (
+    !/export const V208_COMPILED_AUTHORITY_ACTIVE(?:\s*:\s*boolean)?\s*=\s*true(?:\s+as const)?\s*;/u.test(
+      source,
+    )
+  )
     fail("FRESH_EXACT_AUTHORITY_REQUIRED");
   const proposalSha256 = exactCompiledString(
     source,
