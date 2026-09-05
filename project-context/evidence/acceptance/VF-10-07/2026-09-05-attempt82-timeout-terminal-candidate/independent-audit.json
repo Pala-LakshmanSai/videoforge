@@ -1,0 +1,34 @@
+{
+  "schema_version": "videoforge.v2-07-attempt82-independent-audit/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 82,
+  "audited_source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "result": "PASS_ZERO_P0_ZERO_P1_ZERO_P2",
+  "findings": {"p0": 0, "p1": 0, "p2": 0},
+  "verified_contract": {
+    "timeout_probe_requires_exact_marker_and_signed_identity": true,
+    "timeout_probe_runs_after_validation_and_before_runtime": true,
+    "ordinary_jobs_do_not_enter_timeout_probe": true,
+    "sealed_timeout_policy_required": true,
+    "two_completed_same_plan_reference_batches_required": true,
+    "bounded_provider_execution_time_and_terminal_required": true,
+    "provider_error_string_not_trusted": true,
+    "hostile_values_are_not_coerced_or_serialized": true,
+    "stream_diagnostic_removed": true,
+    "checkpoint_is_redacted": true,
+    "redispatch_added": false,
+    "cleanup_and_final_reconciliation_unchanged": true,
+    "image_workflow_lineage_consistent": true
+  },
+  "validation": {
+    "focused_timeout_and_activation_tests": "85/85 PASS",
+    "worker_image_and_overlay_tests": "86/86 PASS",
+    "web_typescript": "PASS",
+    "changed_file_eslint": "PASS",
+    "changed_file_prettier": "PASS",
+    "context_validation": "PASS_V2_07_PROFILE_WITHIN_WORD_BUDGET",
+    "git_diff_check": "PASS"
+  },
+  "provider_activity": {"credential_access": 0, "provider_mutations": 0, "gpu_jobs_submitted": 0, "external_spend_usd": 0}
+}

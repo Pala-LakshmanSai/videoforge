@@ -8,7 +8,7 @@ current_milestone: private_hosted_beta_stage5_live_functional_prompt_v18_compact
 current_task: VF-10-07
 current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: v2_07_attempt82_timeout_terminal_repair_green_awaiting_proposal
+task_stage: v2_07_attempt82_sealed_awaiting_exact_approval
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,14 +18,14 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: provider_free_timeout_repair_green_no_live_authority
+  mode: attempt82_sealed_no_executable_authority
   live_provider_calls: false
   remote_mutation: false
   deployment_or_publication: false
   credential_value_access: false
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: "Attempt81 is CONSUMED_FAILED_CLEAN_NON_REUSABLE. Mage passed cold/warm 64/64 images, duplicate replay, cancellation, and stable-zero, then RunPod returned FAILED for the execution-timeout gate and max-two did not run. RunPod documents endpoint execution timeout as stopping the worker and marking the request failed but does not publish a stable timeout error string. The repaired image adds a qualification-only probe requiring the exact marker plus signed v207-timeout attempt, deployment-mage-v207, and 32-item identity; after full authority/port/URL validation it sleeps 30 seconds before runtime, Comfy, or output. The web gate requires two preceding COMPLETED same-plan batches, exact 5000 ms executionTimeout/7200000 ms TTL, provider execution time from 5000 through 30000 ms, and terminal FAILED or TIMED_OUT. Ordinary jobs are unchanged and raw provider errors are not trusted. Web tests pass 85/85, worker/image/overlay tests 86/86, TypeScript/ESLint/Ruff pass, and independent re-audit is P0/P1/P2 0/0/0. Immutable image derivation, exact publication/qualification proposal, and approval remain required; no live, GPU, retained-volume mutation, or V2-08 authority exists."
+  v2_07_action: "Attempt82 is PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL under proposal sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06 and control/image source aceef8e0d0d678468ea9560f1faa94aa562fc466. Two deterministic builds produced exact pending image sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb. The qualification-only probe requires an exact marker plus signed v207-timeout attempt, deployment-mage-v207, and 32-item identity, then sleeps before runtime. The web gate requires two preceding COMPLETED same-plan batches, exact 5000 ms executionTimeout/7200000 ms TTL, provider execution time from 5000 through 30000 ms, and terminal FAILED or TIMED_OUT. Web tests pass 85/85, worker/image/overlay tests 86/86, and independent audit is P0/P1/P2 0/0/0. Fresh exact approval must authorize direct image publication plus the bounded Stage 6 run. No executable authority, provider mutation, GPU, spend, retained-volume mutation, or V2-08 authority exists."
   provider_free_product_action: "Source 29667134 is live as Worker 50cfd256 with media worker 0.1.14 online. Exactly one project f7655814 completed Stages 1-5; Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 compact prompts, settled USD 0.001401, conserved its reservation, and exposed the 520px scrollable viewer. All 31 positive prompts contain the enabled bounded project keywords exactly once and only the pinned medium, realism, camera, and lighting style fields; removed style metadata has zero hits. Total Stage 3+5 variable external spend was USD 0.001473. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 

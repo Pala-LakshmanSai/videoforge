@@ -1,0 +1,23 @@
+{
+  "schema_version": "videoforge.v2-07-attempt82-candidate-acceptance/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 82,
+  "result": "PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL",
+  "proposal": "combined-live-proposal.json",
+  "proposal_sha256": "sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06",
+  "control_source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "image_source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "image_digest": "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+  "image_republication": true,
+  "independent_audit": "independent-audit.json",
+  "independent_audit_sha256": "sha256:dea1293aeea24c9959f117988007118bbe0ab29ff10627c0b18216095ffa35a9",
+  "findings": {"p0": 0, "p1": 0, "p2": 0},
+  "finite_cap_usd": 4.5,
+  "retained_volume_charge_usd_per_month": 7,
+  "executable_authority": false,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "external_spend_usd": 0,
+  "next_boundary": "Fresh user approval must exactly match proposal hash, control source, image source and digest, cap, placement, bounded operations, retention, and exclusions."
+}

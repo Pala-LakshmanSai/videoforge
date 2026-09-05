@@ -1,0 +1,18 @@
+{
+  "config_digest": "sha256:fe08710bb809b702d8efe46b4d67d100b9f9630c8969f62efe7fd1b54d069897",
+  "entrypoint": ["python", "/opt/videoforge/mage-serverless-entrypoint.py"],
+  "handler_extracted": false,
+  "handler_path": "/opt/videoforge/mage_serverless.py",
+  "layer_digest": "sha256:3fa4e0376595860c72c0f86c49ec5820f8330115bc0895680b7a3714f684b83d",
+  "manifest_digest": "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+  "parent_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+  "runtime_platform": "linux/amd64",
+  "source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "source_files": [
+    {"destination": "/opt/videoforge/common/serverless_envelope.py", "source_sha256": "sha256:34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0"},
+    {"destination": "/opt/videoforge/mage_serverless.py", "source_sha256": "sha256:026f2e9444d8a020a36282c36f7d0bd0931e74cf8bcea08430ffbe33412f87bd"},
+    {"destination": "/opt/videoforge/src/videoforge_contracts/_schema_documents.py", "source_sha256": "sha256:08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f"}
+  ],
+  "source_sha256": "sha256:026f2e9444d8a020a36282c36f7d0bd0931e74cf8bcea08430ffbe33412f87bd",
+  "sources_extracted": []
+}

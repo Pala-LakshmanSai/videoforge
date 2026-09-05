@@ -1,27 +1,27 @@
 import { createHash } from "node:crypto";
 
 export const V207_REPAIRED_IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62" as const;
+  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb" as const;
 
-export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "d530320af723e33c6ce32552743fd00dc063eedc";
+export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "aceef8e0d0d678468ea9560f1faa94aa562fc466";
 export const V207_REPAIRED_IMAGE_CONFIG_DIGEST =
-  "sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2" as const;
+  "sha256:fe08710bb809b702d8efe46b4d67d100b9f9630c8969f62efe7fd1b54d069897" as const;
 export const V207_REPAIRED_IMAGE_LAYER_DIGEST =
-  "sha256:5c54508181bbdaf45691e7db0f4f907194ad7ff1cd38b0f86bfc0469bca0a334" as const;
+  "sha256:3fa4e0376595860c72c0f86c49ec5820f8330115bc0895680b7a3714f684b83d" as const;
 export const V207_REPAIRED_IMAGE_LAYER_DIFF_ID =
-  "sha256:9f581bc2881547b77ff207720599b634386bd23b038124d38a7ab76442ff4770" as const;
+  "sha256:6beeab001c562dc353f49c3c320fc1fdf8086f19328206bfeb2eb44e0979af65" as const;
 export const V207_REPAIRED_HANDLER_SHA256 =
-  "sha256:8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c" as const;
+  "sha256:026f2e9444d8a020a36282c36f7d0bd0931e74cf8bcea08430ffbe33412f87bd" as const;
 export const V207_EXECUTION_SUBSET_SCHEMA_SHA256 =
   "sha256:08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f" as const;
 export const V207_REPAIRED_IMAGE_PARENT =
-  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497" as const;
+  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62" as const;
 export const V207_REPAIRED_IMAGE_BASE_DIGEST =
-  "sha256:8a5b8f453c694b2eeee097e3d958b08c5e47c15290b5cdc17a4fb7e5e3e4f497" as const;
+  "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62" as const;
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
-  "sha256:de5c854ae5aa9e611e218b89d29a250eb03a0a316f0ac92d584d53a038d06ff2" as const;
+  "sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087" as const;
+  "sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06" as const;
 export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
   "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
 export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
@@ -37,7 +37,7 @@ export const V207_ANCHOR_REFRESH_HELPER_SHA256 =
 export const V207_HOSTED_PNG_CRC32_REPAIR_COMMIT =
   "1960ea9307bb7fcb591c842b84fc1c622aec49eb" as const;
 export const V207_PENDING_CONTROL_SOURCE_COMMIT =
-  "9caea53785484be42a7bea210a0294addef1a3e0" as const;
+  "aceef8e0d0d678468ea9560f1faa94aa562fc466" as const;
 export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =

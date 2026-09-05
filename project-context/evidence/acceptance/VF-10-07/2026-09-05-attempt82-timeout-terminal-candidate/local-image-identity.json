@@ -1,0 +1,25 @@
+{
+  "architecture": "amd64",
+  "config_digest": "sha256:fe08710bb809b702d8efe46b4d67d100b9f9630c8969f62efe7fd1b54d069897",
+  "config_size_bytes": 16410,
+  "created": "2026-09-05T03:05:03Z",
+  "created_by": "COPY workers/image-media/mage_serverless.py /opt/videoforge/mage_serverless.py; COPY workers/common/serverless_envelope.py /opt/videoforge/common/serverless_envelope.py; COPY packages/contracts/python/videoforge_contracts/_schema_documents.py /opt/videoforge/src/videoforge_contracts/_schema_documents.py",
+  "destination": "/opt/videoforge/mage_serverless.py",
+  "layer_diff_id": "sha256:6beeab001c562dc353f49c3c320fc1fdf8086f19328206bfeb2eb44e0979af65",
+  "layer_digest": "sha256:3fa4e0376595860c72c0f86c49ec5820f8330115bc0895680b7a3714f684b83d",
+  "layer_size_bytes": 39562,
+  "layer_tar_size_bytes": 256000,
+  "manifest_digest": "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+  "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+  "os": "linux",
+  "overlay_kind": "source-only-overlay-v2",
+  "parent_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+  "schema_version": "videoforge.v2-07-deterministic-oci-overlay/v1",
+  "source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+  "source_files": [
+    {"destination": "/opt/videoforge/common/serverless_envelope.py", "source_sha256": "sha256:34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0", "source_size_bytes": 13544},
+    {"destination": "/opt/videoforge/mage_serverless.py", "source_sha256": "sha256:026f2e9444d8a020a36282c36f7d0bd0931e74cf8bcea08430ffbe33412f87bd", "source_size_bytes": 65148},
+    {"destination": "/opt/videoforge/src/videoforge_contracts/_schema_documents.py", "source_sha256": "sha256:08fd73862b7d79f685dfaf1b72dd6b1e41468f3f581ad766ffea1f85c9dbf66f", "source_size_bytes": 164185}
+  ],
+  "source_sha256": "sha256:026f2e9444d8a020a36282c36f7d0bd0931e74cf8bcea08430ffbe33412f87bd"
+}
