@@ -192,29 +192,29 @@ gates:
     current_candidate_preapproval_acceptance_sha256: "sha256:29f5c5c5c4ed91d52917f9117d2e4bab65e85b0a5431f173bc487af8a999f790"
     current_candidate_independent_audit: "evidence/acceptance/VF-10-07/2026-09-05-attempt84-absolute-cap-candidate/independent-audit.json"
     current_candidate_independent_audit_sha256: "sha256:2bad38c9fe2433793354b662321589082cc791899e215688a21d1afead2cc3e1"
-    current_candidate_authority_independent_audit: null
-    current_candidate_authority_independent_audit_sha256: null
+    current_candidate_authority_independent_audit: "evidence/acceptance/VF-10-07/2026-09-05-attempt84-absolute-cap-candidate/authority-independent-audit.json"
+    current_candidate_authority_independent_audit_sha256: "sha256:1bfe0937b2635d85512260358816fe9c1d67b63eee214b504e2b32393c7abd86"
     current_candidate_route_repair_audit: null
     current_candidate_route_repair_audit_sha256: null
     current_candidate_preflight: null
     current_candidate_preflight_sha256: null
-    current_candidate_authority: null
-    current_candidate_authority_sha256: null
-    current_candidate_approved_preexecution_authority_sha256: null
+    current_candidate_authority: "evidence/acceptance/VF-10-07/2026-09-05-attempt84-absolute-cap-candidate/approved-authority.json"
+    current_candidate_authority_sha256: "sha256:db7dc441474c744af9885cf57087ce873632d6aa4f2631d76ef038d8b1e861f8"
+    current_candidate_approved_preexecution_authority_sha256: "sha256:db7dc441474c744af9885cf57087ce873632d6aa4f2631d76ef038d8b1e861f8"
     current_candidate_authority_consumed: false
-    current_candidate_authority_state: NONE
-    current_candidate_authority_mode: none
-    current_candidate_finite_cap_usd: 0
+    current_candidate_authority_state: APPROVED_SINGLE_USE_UNCONSUMED
+    current_candidate_authority_mode: paid
+    current_candidate_finite_cap_usd: 4.5
     current_candidate_requested_finite_cap_usd: 4.5
-    current_candidate_executable_finite_cap_usd: 0
+    current_candidate_executable_finite_cap_usd: 4.5
     current_candidate_anchor_refresh_authorized: false
     current_candidate_historical_approved_anchor_refresh: false
     current_candidate_exact_anchor_refresh_activation: null
-    current_candidate_cloudflare_mutation_authorized: false
-    current_candidate_scoped_signer_worker_route_activation_authorized: false
-    current_candidate_runpod_mutation_authorized: false
-    current_candidate_gpu_use_authorized: false
-    current_candidate_credential_access_authorized: false
+    current_candidate_cloudflare_mutation_authorized: true
+    current_candidate_scoped_signer_worker_route_activation_authorized: true
+    current_candidate_runpod_mutation_authorized: true
+    current_candidate_gpu_use_authorized: true
+    current_candidate_credential_access_authorized: true
     current_candidate_image_publication_authorized: false
     current_candidate_exact_bounded_sequence_only: true
     current_candidate_provider_calls_completed: false
@@ -224,11 +224,11 @@ gates:
     current_candidate_accepted_units: 0
     current_candidate_external_spend_usd: 0
     current_candidate_control_source_commit: "989b3f2a12dc77c9c684fa19854c0226bd09c732"
-    current_candidate_canonical_activation_source_sha256: null
+    current_candidate_canonical_activation_source_sha256: "sha256:b11ee3e4dc649e94eeec1f763b631ec530de4478e2d84774374515a9d12d1123"
     current_candidate_orchestrator_source_sha256: "sha256:ec457d09ff9ea2f17b978fe51c575e0b32366d7942520665459ccabe4916fb3d"
     current_candidate_output_ports_source_sha256: "sha256:fa4d9954af19a2ae14853185da44a94d00120f48edeb24568bac126326b901b5"
-    current_candidate_activation_authority_source_sha256: "sha256:698242bd6147facdca41ee9463f9de6b0d6128af0697cf73195a0964d3deb9f8"
-    current_candidate_activation_authority_test_sha256: "sha256:158a22339df2504fd130119372055e480859425abcc8d1cebd21b9f75285d794"
+    current_candidate_activation_authority_source_sha256: "sha256:f2bfc5f8ef0d32dbaa980062f34e2760445e060808407dcd2d33c185b73f3c76"
+    current_candidate_activation_authority_test_sha256: "sha256:6e3015150b6d63a79454566ac34c5ce9c9528caff64e3acf0de463ba059c5131"
     current_candidate_mage_handler_source_sha256: "sha256:8fd7e47308b64865b117bca3bfb3ee41d269935e13660f13a23a15b90d83f96c"
     current_candidate_mage_publication_workflow_sha256: "sha256:4ac55208ee9a76f781cb09471d32f033f468484d6a4e56a70984e80974d24508"
     current_candidate_anchor_repair_commit: "9c9ca3476c976592ae73414e6a1e53cc0fcbb643"
@@ -237,11 +237,11 @@ gates:
     current_candidate_image_source_commit: "aceef8e0d0d678468ea9560f1faa94aa562fc466"
     current_candidate_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb"
     current_candidate_image_publication_state: PUBLISHED_FULL_ANONYMOUS_READBACK_PASS
-    current_candidate_image_publication: "evidence/acceptance/VF-10-07/2026-09-05-attempt80-urllib-user-agent-candidate/image-publication.json"
-    current_candidate_image_publication_sha256: "sha256:21fa19443784d22e3cd5f75929fec8f4b94fe2921ce5dc2c7b16088c91ed27a2"
-    current_candidate_image_config_sha256: "sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2"
-    current_candidate_image_layer_sha256: "sha256:5c54508181bbdaf45691e7db0f4f907194ad7ff1cd38b0f86bfc0469bca0a334"
-    current_candidate_image_layer_diff_id: "sha256:9f581bc2881547b77ff207720599b634386bd23b038124d38a7ab76442ff4770"
+    current_candidate_image_publication: "evidence/acceptance/VF-10-07/2026-09-05-attempt82-timeout-terminal-candidate/anonymous-publication-proof.json"
+    current_candidate_image_publication_sha256: "sha256:b7d93daa01c7295275e21b1b39cc86d371fc5ccd73d7fa00ff4c9cb03e27c1c6"
+    current_candidate_image_config_sha256: "sha256:fe08710bb809b702d8efe46b4d67d100b9f9630c8969f62efe7fd1b54d069897"
+    current_candidate_image_layer_sha256: "sha256:3fa4e0376595860c72c0f86c49ec5820f8330115bc0895680b7a3714f684b83d"
+    current_candidate_image_layer_diff_id: "sha256:6beeab001c562dc353f49c3c320fc1fdf8086f19328206bfeb2eb44e0979af65"
     current_candidate_proposed_gpu: NVIDIA_GeForce_RTX_4090
     current_candidate_proposed_region: EU-RO-1
     current_candidate_proposed_rate_usd_per_gpu_hour: 1.116
@@ -264,9 +264,9 @@ gates:
     current_candidate_retained_volume_size_gb_each: 50
     current_candidate_retained_volume_region: EU-RO-1
     current_candidate_retained_volume_usd_per_month: 7
-    current_candidate_image_reuse_proposed: false
+    current_candidate_image_reuse_proposed: true
     current_candidate_image_publication_proposed: false
-    current_candidate_image_reuse_authorized: false
+    current_candidate_image_reuse_authorized: true
     current_candidate_gpu_fallback: false
     current_candidate_v2_08_authorized: false
     current_candidate_finalize_response_diagnostics_commit: "a1da27192c567823f9508ecd6f146f8667e1daac"
@@ -311,20 +311,20 @@ gates:
     historical_attempt35_authority_mode: no_live_authority_attempt35_consumed
     pending_proposal: "evidence/acceptance/VF-10-07/2026-09-05-attempt84-absolute-cap-candidate/combined-live-proposal.json"
     pending_proposal_sha256: "sha256:874d94e6421fdf8a4c4d02d68bc02863d29fd011da6a42aa2e8dba4748b1ea79"
-    pending_authority: null
-    pending_authority_sha256: null
-    pending_authority_state: NONE
-    pending_authority_mode: none
-    pending_numeric_cap_usd: 0
+    pending_authority: "evidence/acceptance/VF-10-07/2026-09-05-attempt84-absolute-cap-candidate/approved-authority.json"
+    pending_authority_sha256: "sha256:db7dc441474c744af9885cf57087ce873632d6aa4f2631d76ef038d8b1e861f8"
+    pending_authority_state: APPROVED_SINGLE_USE_UNCONSUMED
+    pending_authority_mode: paid
+    pending_numeric_cap_usd: 4.5
     pending_requested_numeric_cap_usd: 4.5
     pending_anchor_refresh_authorized: false
     pending_exact_anchor_refresh_activation: null
-    pending_cloudflare_mutation_authorized: false
-    pending_scoped_signer_worker_route_activation_authorized: false
-    pending_runpod_mutation_authorized: false
-    pending_gpu_use_authorized: false
+    pending_cloudflare_mutation_authorized: true
+    pending_scoped_signer_worker_route_activation_authorized: true
+    pending_runpod_mutation_authorized: true
+    pending_gpu_use_authorized: true
     pending_image_publication_authorized: false
-    pending_exact_bounded_sequence_only: false
+    pending_exact_bounded_sequence_only: true
     pending_control_source_commit: "989b3f2a12dc77c9c684fa19854c0226bd09c732"
     pending_live_qualification_source_sha256: null
     pending_qualification_harness_source_sha256: null
@@ -361,12 +361,12 @@ gates:
     pending_current_cumulative_endpoint_spend_usd: null
     pending_late_unattributed_billing_increment_usd: null
     pending_route_probe: null
-    provider_calls_authorized: false
-    provider_mutations_authorized: false
-    gpu_use_authorized: false
+    provider_calls_authorized: true
+    provider_mutations_authorized: true
+    gpu_use_authorized: true
     v2_08_authorized: false
-    authority_mode: none_attempt84_pending_fresh_approval
-    result: "NOT_QUALIFIED_ATTEMPT84_SEALED_AWAITING_EXACT_APPROVAL"
+    authority_mode: attempt84_approved_single_use_unconsumed
+    result: "NOT_QUALIFIED_ATTEMPT84_APPROVED_PENDING_EXECUTION"
     attempt49_pre_activation_no_go: "evidence/acceptance/VF-10-07/2026-08-24-attempt49-authority-bound-lineage-candidate/pre-activation-no-go.json"
     attempt49_pre_activation_no_go_sha256: "sha256:6eb7575c6cd96ddd04f27e5f672038c482cd32db2861d97c0b4d939960bd65ba"
     closure_evidence: "evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-83.json"
@@ -381,7 +381,7 @@ gates:
     canonicalization_repair_commit: "f945392"
     deploy_diagnostic_repair_commit: "7066520"
     deploy_diagnostic_repair_source_sha256: "sha256:d8aa5ded8cd67141ad951f774245f8181adb34c1f3fafe2cc047ff244ae5f894"
-    next_boundary: "fresh exact Attempt84 approval, then only the disposable-worker entrypoint with absolute cumulative threshold USD 4.50; no V2-08"
+    next_boundary: "execute only the approved disposable-worker entrypoint with absolute cumulative threshold USD 4.50, then mandatory cleanup; no V2-08"
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:
