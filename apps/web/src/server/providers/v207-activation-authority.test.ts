@@ -126,9 +126,11 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
-    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
+      "sha256:ae892de3c4afdce57978a89bd3ffab814d9bd4bcdb450aa97db09e61edbe0b55",
+    );
+    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4.5);
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false);
     expect(V207_APPROVED_EXECUTION_ENTRYPOINT).toBe("disposable-live-orchestrator-v1");
   });
 
@@ -412,17 +414,61 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("rejects Attempt83 before fresh exact authority", () => {
+  it("accepts Attempt83 only through the exact disposable entrypoint", () => {
     const exact = {
       V207_IMAGE: image,
       V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
       V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
+      V207_EXECUTION_ENTRYPOINT: V207_APPROVED_EXECUTION_ENTRYPOINT,
     };
-    expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5" })).toThrow(
-      "V207_FRESH_AUTHORITY_REQUIRED",
-    );
+    expect(parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5" })).toEqual({
+      image,
+      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
+      capUsd: 4.5,
+      anchorRefreshAuthorized: false,
+    });
     expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4" })).toThrow(
-      "V207_FRESH_AUTHORITY_REQUIRED",
+      "V207_FINITE_CAP_MISMATCH",
+    );
+    expect(() =>
+      parseV207ActivationAuthority({
+        ...exact,
+        V207_EXECUTION_ENTRYPOINT: "legacy-shared-staging",
+        V207_FINITE_CAP_USD: "4.5",
+      }),
+    ).toThrow("V207_EXECUTION_ENTRYPOINT_MISMATCH");
+    expect(() =>
+      parseV207ActivationAuthority({
+        ...exact,
+        V207_EXECUTION_ENTRYPOINT: undefined,
+        V207_FINITE_CAP_USD: "4.5",
+      }),
+    ).toThrow("V207_EXECUTION_ENTRYPOINT_MISMATCH");
+    expect(() =>
+      parseV207ActivationAuthority({
+        ...exact,
+        V207_PROPOSAL_SHA256:
+          "sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06",
+        V207_FINITE_CAP_USD: "4.5",
+      }),
+    ).toThrow("V207_PROPOSAL_MISMATCH");
+    expect(() =>
+      parseV207ActivationAuthority({
+        ...exact,
+        V207_IMAGE:
+          "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+        V207_FINITE_CAP_USD: "4.5",
+      }),
+    ).toThrow("V207_IMAGE_DIGEST_REQUIRED");
+    expect(() =>
+      parseV207ActivationAuthority({
+        ...exact,
+        V207_IMAGE_SOURCE_COMMIT: "8d76745f634452c5e0592980231e0de0df18be59",
+        V207_FINITE_CAP_USD: "4.5",
+      }),
+    ).toThrow("V207_IMAGE_SOURCE_COMMIT_MISMATCH");
+    expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5001" })).toThrow(
+      "V207_FINITE_CAP_MISMATCH",
     );
   });
 
