@@ -308,7 +308,10 @@ describe("V208FileDurableStageStore", () => {
     // A fresh journal proves lock ownership without depending on a second in-process operation.
     const lockedRoot = root();
     const lockedStore = createV208FileDurableStageStore(options(lockedRoot));
-    const lockPath = join(lockedRoot, V208_FILE_DURABLE_LOCK_FILENAME);
+    const lockPath = join(
+      lockedRoot,
+      `${V208_FILE_DURABLE_LOCK_FILENAME}.${randomUUID()}`,
+    );
     writeFileSync(lockPath, `${canonicalizeJson({ pid: process.pid, token: "held" })}\n`, {
       mode: V208_FILE_DURABLE_FILE_MODE,
     });
@@ -323,7 +326,10 @@ describe("V208FileDurableStageStore", () => {
   it("reclaims a complete stale lock and publishes no partial lock files", async () => {
     const journalDirectory = root();
     const store = createV208FileDurableStageStore(options(journalDirectory));
-    const lockPath = join(journalDirectory, V208_FILE_DURABLE_LOCK_FILENAME);
+    const lockPath = join(
+      journalDirectory,
+      `${V208_FILE_DURABLE_LOCK_FILENAME}.${randomUUID()}`,
+    );
     writeFileSync(
       lockPath,
       `${canonicalizeJson({ pid: 2_147_483_647, token: randomUUID() })}\n`,
@@ -344,11 +350,16 @@ describe("V208FileDurableStageStore", () => {
 
   it("never releases a replacement lock with a different token or inode", async () => {
     const journalDirectory = root();
-    const lockPath = join(journalDirectory, V208_FILE_DURABLE_LOCK_FILENAME);
+    let lockPath = "";
     let replacement = "";
     const store = createV208FileDurableStageStore(
       options(journalDirectory, {
         signAuthority: () => {
+          const lockName = readdirSync(journalDirectory).find((name) =>
+            name.startsWith(`${V208_FILE_DURABLE_LOCK_FILENAME}.`),
+          );
+          expect(lockName).toBeDefined();
+          lockPath = join(journalDirectory, lockName!);
           unlinkSync(lockPath);
           replacement = `${canonicalizeJson({ pid: process.pid, token: randomUUID() })}\n`;
           writeFileSync(lockPath, replacement, { mode: V208_FILE_DURABLE_FILE_MODE });
@@ -367,5 +378,53 @@ describe("V208FileDurableStageStore", () => {
     ).rejects.toMatchObject({ code: "V208_FILE_DURABLE_LOCK_RELEASE_OWNERSHIP_INVALID" });
     expect(readFileSync(lockPath, "utf8")).toBe(replacement);
     unlinkSync(lockPath);
+  });
+
+  it("admits only one concurrent owner while reclaiming a crashed unique claim", async () => {
+    const journalDirectory = root();
+    const stalePath = join(
+      journalDirectory,
+      `${V208_FILE_DURABLE_LOCK_FILENAME}.${randomUUID()}`,
+    );
+    writeFileSync(
+      stalePath,
+      `${canonicalizeJson({ pid: 2_147_483_647, token: randomUUID() })}\n`,
+      { mode: V208_FILE_DURABLE_FILE_MODE },
+    );
+    chmodSync(stalePath, V208_FILE_DURABLE_FILE_MODE);
+
+    let releaseSigner!: () => void;
+    const signerGate = new Promise<void>((resolve) => {
+      releaseSigner = resolve;
+    });
+    const first = createV208FileDurableStageStore(
+      options(journalDirectory, {
+        signAuthority: async () => {
+          await signerGate;
+          return "A".repeat(88);
+        },
+      }),
+    );
+    const second = createV208FileDurableStageStore(options(journalDirectory));
+    const firstResult = first.issueStageAuthority({
+      stage: "soulx",
+      inputSha256: manifest.planSha256,
+      predecessorHandoffSha256,
+    });
+    await expect(
+      second.issueStageAuthority({
+        stage: "soulx",
+        inputSha256: manifest.planSha256,
+        predecessorHandoffSha256,
+      }),
+    ).rejects.toMatchObject({ code: "V208_FILE_DURABLE_LOCKED" });
+    releaseSigner();
+    await expect(firstResult).resolves.toMatchObject({ stage: "soulx" });
+    expect(existsSync(stalePath)).toBe(false);
+    expect(
+      readdirSync(journalDirectory).filter((name) =>
+        name.startsWith(`${V208_FILE_DURABLE_LOCK_FILENAME}.`),
+      ),
+    ).toEqual([]);
   });
 });

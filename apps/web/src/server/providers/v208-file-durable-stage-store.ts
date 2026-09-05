@@ -7,6 +7,7 @@ import {
   lstatSync,
   mkdirSync,
   openSync,
+  readdirSync,
   readFileSync,
   renameSync,
   unlinkSync,
@@ -60,6 +61,10 @@ const COMMIT = /^[a-f0-9]{40}$/u;
 const IMAGE = /^ghcr\.io\/[a-z0-9][a-z0-9._/-]*@sha256:[a-f0-9]{64}$/u;
 const ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const LOCK_CLAIM_FILENAME = new RegExp(
+  `^${V208_FILE_DURABLE_LOCK_FILENAME.replace(".", "\\.")}\\.([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$`,
+  "u",
+);
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/u;
 const SOULX_DISPATCH_RESOURCE = /^(?:v208|v213)-soulx-[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
 const SOULX_JOB_RESOURCE = /^sha256:[a-f0-9]{64}:[A-Za-z0-9][A-Za-z0-9_.:-]{0,190}$/u;
@@ -991,8 +996,7 @@ function lockIsLive(observed: LockObservation | null): boolean {
 
 /** Publish a fully written lock inode with create-only link semantics. A crash can leave only an
  * unreferenced temporary inode or a complete canonical final lock, never a partial final lock. */
-function tryPublishLock(path: string): LockObservation | null {
-  const token = randomUUID();
+function tryPublishLock(path: string, token: string): LockObservation | null {
   const payload = canonicalBytes({ pid: process.pid, token });
   const temporary = temporaryPath(path, "v208-lock");
   let descriptor: number | undefined;
@@ -1044,26 +1048,65 @@ function tryPublishLock(path: string): LockObservation | null {
   }
 }
 
-function acquireLock(directory: string): LockHandle {
-  const path = join(directory, V208_FILE_DURABLE_LOCK_FILENAME);
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      const created = tryPublishLock(path);
-      if (created !== null) return created;
-      const observed = readLockObservation(path);
-      if (attempt !== 0 || lockIsLive(observed)) fail("V208_FILE_DURABLE_LOCKED");
-      // Re-read the complete identity immediately before unlinking. This prevents a stale
-      // observation from deleting a successor lock published by another process.
-      const current = readLockObservation(path);
-      if (!sameLock(observed!, current)) fail("V208_FILE_DURABLE_LOCKED");
-      unlinkSync(path);
-      syncDirectory(directory, "V208_FILE_DURABLE_STALE_LOCK_SYNC_FAILED");
-    } catch (error) {
-      if (error instanceof V208FileDurableStageStoreError) throw error;
-      fail("V208_FILE_DURABLE_LOCK_ACQUIRE_FAILED");
-    }
+function lockClaimPaths(directory: string): readonly string[] {
+  let names: readonly string[];
+  try {
+    names = readdirSync(directory);
+  } catch {
+    fail("V208_FILE_DURABLE_LOCK_DIRECTORY_READ_FAILED");
   }
-  fail("V208_FILE_DURABLE_LOCKED");
+  return names
+    .filter(
+      (name) =>
+        name === V208_FILE_DURABLE_LOCK_FILENAME || LOCK_CLAIM_FILENAME.test(name),
+    )
+    .sort()
+    .map((name) => join(directory, name));
+}
+
+function removeStaleClaim(path: string, directory: string): void {
+  try {
+    unlinkSync(path);
+    syncDirectory(directory, "V208_FILE_DURABLE_STALE_LOCK_SYNC_FAILED");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT")
+      fail("V208_FILE_DURABLE_LOCK_ACQUIRE_FAILED");
+  }
+}
+
+function acquireLock(directory: string): LockHandle {
+  const token = randomUUID();
+  const path = join(directory, `${V208_FILE_DURABLE_LOCK_FILENAME}.${token}`);
+  let created: LockHandle | null = null;
+  try {
+    created = tryPublishLock(path, token);
+    if (created === null) fail("V208_FILE_DURABLE_LOCKED");
+    for (const candidatePath of lockClaimPaths(directory)) {
+      if (candidatePath === created.path) continue;
+      const observed = readLockObservation(candidatePath);
+      if (observed === null) {
+        // A concurrently released unique claim is harmless. An extant unreadable claim is
+        // ambiguous and therefore blocks rather than being deleted.
+        if (exists(candidatePath)) fail("V208_FILE_DURABLE_LOCKED");
+        continue;
+      }
+      if (lockIsLive(observed)) fail("V208_FILE_DURABLE_LOCKED");
+      // Claim paths include a never-reused UUID. Removing this path can therefore only remove
+      // this exact crashed owner; it can never name a successor lock.
+      removeStaleClaim(candidatePath, directory);
+    }
+    return created;
+  } catch (error) {
+    if (created !== null) {
+      try {
+        releaseLock(created);
+      } catch {
+        // Preserve the acquisition error. A mismatched replacement remains for inspection.
+      }
+    }
+    if (error instanceof V208FileDurableStageStoreError) throw error;
+    fail("V208_FILE_DURABLE_LOCK_ACQUIRE_FAILED");
+  }
 }
 
 function releaseLock(lock: LockHandle): void {
