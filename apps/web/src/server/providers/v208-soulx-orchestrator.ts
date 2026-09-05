@@ -675,13 +675,6 @@ export async function runV208SoulXWithV213Transport(
   const authority = parseV208SoulXAuthority(environment);
   const plan = buildV208SoulXQualificationPlan(authority);
   const poll = assertPollPolicy(dependencies);
-  if (authority.finiteCapUsd < V208_WORST_CASE_LIABILITY_USD)
-    throw new Error("V208_WORST_CASE_LIABILITY_EXCEEDS_CAP");
-  if (
-    authority.cumulativeBillingStopThresholdUsd - authority.billingBaselineUsd <
-    V208_WORST_CASE_LIABILITY_USD
-  )
-    throw new Error("V208_WORST_CASE_LIABILITY_EXCEEDS_CUMULATIVE_THRESHOLD");
   if (
     dependencies.soulx.lane !== "soulx" ||
     dependencies.soulx.publicImage !== authority.image ||
@@ -699,6 +692,18 @@ export async function runV208SoulXWithV213Transport(
   });
   const consumed = await dependencies.transport.durable.claimStageAuthority(issued);
   assertV208StageConsumptionDecision(consumed.decision);
+  // A consumed authority can only RESUME cleanup. Do not let a stale billing/cap wall prevent
+  // that cleanup after a previous process has already incurred the charge; only a fresh EXECUTE
+  // may reserve additional paid compute and therefore needs the full liability checks.
+  if (consumed.decision === "EXECUTE") {
+    if (authority.finiteCapUsd < V208_WORST_CASE_LIABILITY_USD)
+      throw new Error("V208_WORST_CASE_LIABILITY_EXCEEDS_CAP");
+    if (
+      authority.cumulativeBillingStopThresholdUsd - authority.billingBaselineUsd <
+      V208_WORST_CASE_LIABILITY_USD
+    )
+      throw new Error("V208_WORST_CASE_LIABILITY_EXCEEDS_CUMULATIVE_THRESHOLD");
+  }
   const qualificationOperation = phaseOperation(
     issued.authorityId,
     dependencies.soulx.deploymentSha256,
@@ -787,7 +792,8 @@ export async function runV208SoulXWithV213Transport(
     Math.abs(admissionNow - admissionCheckedAt) > 60_000 ||
     !Number.isFinite(admission.cumulativeBillingUsd) ||
     admission.cumulativeBillingUsd < authority.billingBaselineUsd ||
-    admission.cumulativeBillingUsd > authority.cumulativeBillingStopThresholdUsd ||
+    (consumed.decision === "EXECUTE" &&
+      admission.cumulativeBillingUsd > authority.cumulativeBillingStopThresholdUsd) ||
     exactVolume.length !== 1;
   const executeAdmissionInvalid =
     consumed.decision === "EXECUTE" &&
@@ -856,8 +862,9 @@ export async function runV208SoulXWithV213Transport(
         !Number.isFinite(billing) ||
         billing < admission.cumulativeBillingUsd ||
         (priorBilling !== null && Math.abs(billing - priorBilling) > 0.000_001) ||
-        billing > authority.cumulativeBillingStopThresholdUsd ||
-        billing - qualificationBillingBaseline > authority.finiteCapUsd
+        (!cleanupOnlyResume &&
+          (billing > authority.cumulativeBillingStopThresholdUsd ||
+            billing - qualificationBillingBaseline > authority.finiteCapUsd))
       )
         throw new Error("V208_ZERO_COMPUTE_OR_CAP_UNCONFIRMED");
       finalBilling = billing;

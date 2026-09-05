@@ -134,7 +134,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       );
   });
 
-  it("rejects an insufficient cap before admission, materialization, dispatch or cleanup", async () => {
+  it("rejects an insufficient EXECUTE cap before admission, materialization, dispatch or cleanup", async () => {
     parseAuthority.mockReturnValue(authority(0.5));
     const calls = {
       freshAdmission: vi.fn(),
@@ -154,9 +154,23 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       cleanupAttributableResource: vi.fn(),
       serializeEvidence: vi.fn(),
     };
+    const issueStageAuthority = vi.fn(async () => ({ authorityId: "authority-v208-cap" }));
+    const claimStageAuthority = vi.fn(async () => ({ decision: "EXECUTE" as const }));
     const dependencies = {
-      transport: calls as unknown as V213DualLaneTransport,
-      soulx: {} as never,
+      transport: {
+        ...calls,
+        durable: { issueStageAuthority, claimStageAuthority },
+      } as unknown as V213DualLaneTransport,
+      soulx: {
+        lane: "soulx",
+        publicImage: authority().image,
+        sourceCommit: authority().imageSourceCommit,
+        deploymentSha256: `sha256:${"8".repeat(64)}`,
+        volumeIdSha256: V208_SOULX_VOLUME_ID_SHA256,
+        volumeManifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+      },
+      // The authority must be claimed before the decision-specific cap gate can run.
+      // These are durable local calls, not provider mutations.
       ...extra,
     } satisfies V208SoulXOrchestratorDependencies;
     await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
@@ -164,6 +178,163 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     );
     for (const call of [...Object.values(calls), ...Object.values(extra)])
       expect(call).not.toHaveBeenCalled();
+  });
+
+  it("lets cleanup-only RESUME finish after billing and cap thresholds are crossed", async () => {
+    const resumeAuthority = authority(0.5);
+    parseAuthority.mockReturnValue(resumeAuthority);
+    const digest = (value: string) =>
+      `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
+    const deployment = {
+      lane: "soulx" as const,
+      purpose: "qualification" as const,
+      endpointId: "endpoint-resume-cap",
+      endpointIdSha256: digest("endpoint-resume-cap"),
+      templateId: "template-resume-cap",
+      templateIdSha256: digest("template-resume-cap"),
+      image: resumeAuthority.image,
+      sourceCommit: resumeAuthority.imageSourceCommit,
+      deploymentSha256: `sha256:${"8".repeat(64)}`,
+      volumeIdSha256: V208_SOULX_VOLUME_ID_SHA256,
+      volumeManifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+      volumeSizeGb: 50 as const,
+      volumeMount: "/runpod-volume" as const,
+      region: "EU-RO-1" as const,
+      gpu: "NVIDIA GeForce RTX 4090" as const,
+      gpuCount: 1 as const,
+      workersMin: 0 as const,
+      workersMax: 1 as const,
+      idleTimeoutSeconds: 60 as const,
+      handlerConcurrency: 1 as const,
+      scalerType: "REQUEST_COUNT" as const,
+      scalerValue: 1 as const,
+      initTimeoutSeconds: 800,
+    };
+    const descriptorIds = [
+      "soulx-cold-whole-span-2-4-6-10s",
+      "soulx-warm-whole-span-2-4-6-10s",
+      "soulx-cancel",
+      "soulx-invalid-output",
+      "soulx-timeout",
+    ];
+    const descriptorKeys = descriptorIds.map((descriptorId) => ({
+      descriptorId,
+      inputKeys: [`tenant/input/${descriptorId}`],
+      outputKeys: [`tenant/output/${descriptorId}`],
+    }));
+    const unsignedCleanupPlan = { deployment, descriptorKeys };
+    const cleanupPlan = {
+      ...unsignedCleanupPlan,
+      evidenceSha256: digest(canonicalizeJson(unsignedCleanupPlan as never)),
+    };
+    const issueStageAuthority = vi.fn(async () => ({ authorityId: "authority-v208-resume-cap" }));
+    const claimStageAuthority = vi.fn(async () => ({ decision: "RESUME" as const }));
+    const claimOperation = vi.fn(async (operation: Record<string, unknown>) =>
+      String(operation.resourceKey).includes("v208-phase-cleanup-plan")
+        ? {
+            action: "DONE" as const,
+            record: { ...operation, state: "TERMINAL", evidence: cleanupPlan },
+          }
+        : { action: "EXECUTE" as const, record: { ...operation, state: "IN_FLIGHT" } },
+    );
+    const transitionOperation = vi.fn(async (transition: Record<string, unknown>) => ({
+      ...transition,
+      state: transition.to,
+    }));
+    const freshAdmission = vi.fn(async () => ({
+      checkedAt: "2026-09-05T00:00:00.000Z",
+      accountIdSha256: resumeAuthority.runpodAccountIdSha256,
+      // Resume does not need a currently available GPU or an unused lane.
+      gpu: "unavailable-during-cleanup",
+      region: "provider-transient",
+      availability: "LOW",
+      flexRateUsdPerGpuHour: 9,
+      cumulativeBillingUsd: 16.5,
+      runningPods: 1,
+      activeWorkers: 1,
+      endpoints: 1,
+      privateTemplates: 1,
+      volumes: [
+        {
+          idSha256: V208_SOULX_VOLUME_ID_SHA256,
+          manifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+          sizeGb: 50,
+          region: "EU-RO-1" as const,
+        },
+      ],
+    }));
+    let inventoryRead = 0;
+    const inventory = vi.fn(async () => ({
+      checkedAt: new Date(
+        Date.UTC(2026, 8, 5, 0, 0, 0, inventoryRead++ * 2_000),
+      ).toISOString(),
+      runningPods: 0,
+      activeWorkers: 0,
+      queuedJobs: 0,
+      endpointIdSha256s: [],
+      templateIdSha256s: [],
+      volumes: [
+        {
+          idSha256: V208_SOULX_VOLUME_ID_SHA256,
+          manifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+          sizeGb: 50,
+          region: "EU-RO-1" as const,
+        },
+      ],
+    }));
+    const createLane = vi.fn();
+    const dispatch = vi.fn();
+    const cleanupAttributableResource = vi.fn(async () => true as const);
+    const cleanupOutputKeys = vi.fn(async () => true as const);
+    const cleanupDeterministicQualificationKeys = vi.fn(
+      async ({ descriptor }: { descriptor: { id: string } }) => ({
+        inputKeys: [`tenant/input/${descriptor.id}`],
+        outputKeys: [`tenant/output/${descriptor.id}`],
+        absenceVerified: true as const,
+      }),
+    );
+    const dependencies = {
+      soulx: {
+        lane: "soulx",
+        publicImage: resumeAuthority.image,
+        sourceCommit: resumeAuthority.imageSourceCommit,
+        deploymentSha256: deployment.deploymentSha256,
+        volumeIdSha256: V208_SOULX_VOLUME_ID_SHA256,
+        volumeManifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+      },
+      transport: {
+        durable: { issueStageAuthority, claimStageAuthority, claimOperation, transitionOperation },
+        freshAdmission,
+        now: () =>
+          new Date(Date.UTC(2026, 8, 5, 0, 0, 0, Math.max(0, inventoryRead - 1) * 2_000)),
+        inventory,
+        billingAmount: async () => 16.5,
+        findLaneByResourceKey: vi.fn(async () => null),
+        sleep: async () => undefined,
+        createLane,
+        dispatch,
+      } as unknown as V213DualLaneTransport,
+      materializeWholeSpan: vi.fn(),
+      verifySuccess: vi.fn(),
+      cleanupMaterializedInputs: vi.fn(),
+      cleanupAmbiguousMaterializedInputs: vi.fn(),
+      reconstructDeterministicQualificationKeys: vi.fn(),
+      cleanupDeterministicQualificationKeys,
+      cleanupAttributableResource,
+      cleanupOutputKeys,
+      serializeEvidence: vi.fn(),
+    } satisfies V208SoulXOrchestratorDependencies;
+
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "V208_RESUME_REQUIRES_CLEANUP_ONLY",
+    );
+    expect(freshAdmission).toHaveBeenCalledTimes(1);
+    expect(inventory).toHaveBeenCalledTimes(3);
+    expect(cleanupDeterministicQualificationKeys).toHaveBeenCalledTimes(5);
+    expect(cleanupAttributableResource).toHaveBeenCalledTimes(1);
+    expect(cleanupOutputKeys).toHaveBeenCalledTimes(1);
+    expect(createLane).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it.each([
