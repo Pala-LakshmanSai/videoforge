@@ -194,7 +194,7 @@
     "qualification_orchestrator": "apps/web/src/server/providers/v208-soulx-orchestrator.ts",
     "qualification_orchestrator_sha256": "sha256:a5277c3f47b7d728f6024d72bf75edb2c5acb01592aae5614cf745fafa66f198",
     "qualification_contract": "apps/web/src/server/providers/v208-soulx-qualification.ts",
-    "qualification_contract_sha256": "sha256:1486013296cd4751eb9cee9f51473c243bcc5e171fcc4f4673f22c1f0c0ccd25",
+    "qualification_contract_sha256": "sha256:ad882040633e2146357855bc5262346a363fb39258c046a82e1a2ed5556647c1",
     "qualification_materializer": "apps/web/src/server/providers/v213-direct-qualification-materializer.ts",
     "qualification_materializer_sha256": "sha256:f8cd9444a9980c34657563ac83cd57f70d48876f7c1db32d248797dc4c9e8848",
     "qualification_runpod_control": "apps/web/src/server/providers/runpod-control.ts",

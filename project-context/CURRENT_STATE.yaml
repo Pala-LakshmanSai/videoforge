@@ -4340,9 +4340,9 @@ last_known_provider_resource_truth:
   ongoing_retained_volume_usd_per_month_total: 7.0
   cumulative_endpoint_spend_usd: 2.7231514439627063
   v2_08_proposal: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
-  v2_08_proposal_sha256: "sha256:26e5ab8ad1a705df0fab6b6ec43d184afbb07567f202b4d9a2f005b5ed657e9b"
+  v2_08_proposal_sha256: "sha256:a64a3ac76dba05c52085adb387e10a5fa210755b2ecc0a130a20207ec8de199a"
   v2_08_acceptance_sha256: null
-  note: "Proposal 6d7df208 was consumed by a cold Stage 7 media-contract failure; warm was cancelled, disposable resources and deterministic R2 keys were cleaned, and three billing reads remain USD 2.7231514439627063. Repair 3c1e810 is green and independently audited. Fresh proposal 26e5ab8 awaits one exact approval for one new immutable image publication and one max1 qualification."
+  note: "Proposal 6d7df208 was consumed by a cold Stage 7 media-contract failure; warm was cancelled, disposable resources and deterministic R2 keys were cleaned, and three billing reads remain USD 2.7231514439627063. Repair 3c1e810 is green and independently audited. Fresh proposal a64a3ac awaits one exact approval for one new immutable image publication and one max1 qualification."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_SOULX_001
@@ -6002,7 +6002,7 @@ provider_authority: &v2_08_approved_single_use_authority
   non_transferable: true
   source: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
   authorized_by_user_at: null
-  proposal_sha256: "sha256:26e5ab8ad1a705df0fab6b6ec43d184afbb07567f202b4d9a2f005b5ed657e9b"
+  proposal_sha256: "sha256:a64a3ac76dba05c52085adb387e10a5fa210755b2ecc0a130a20207ec8de199a"
   authority: null
   authority_sha256: null
   consumed: true
@@ -6058,7 +6058,7 @@ recommended_next_task:
   authority_note: "Proposal 6d7df208 was consumed by a cleaned Stage 7 media-contract failure. Repair 3c1e810 is green and independently audited; one fresh exact combined image-publication and qualification approval is required. No Stage 6 rerun or V2-09."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
-  successor_proposal_sha256: "sha256:26e5ab8ad1a705df0fab6b6ec43d184afbb07567f202b4d9a2f005b5ed657e9b"
+  successor_proposal_sha256: "sha256:a64a3ac76dba05c52085adb387e10a5fa210755b2ecc0a130a20207ec8de199a"
   superseded_proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
   superseded_proposal_record_commit: 4b8a6ef83772fea44701129154ae4d69833498eb
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842

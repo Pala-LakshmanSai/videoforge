@@ -3,9 +3,9 @@
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
+  "status": "CONSUMED_SINGLE_USE_FAILED_MEDIA_CONTRACT_CLEANED_NON_REUSABLE",
   "single_use": true,
-  "consumed": false,
+  "consumed": true,
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
     "proposal_sha256": "sha256:6d7df20805361ddb552f438cc89327598a0db907e174024d8c0928748bf5e106",

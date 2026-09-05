@@ -391,7 +391,7 @@ gates:
     owner: V2-08
     last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-media-contract-attempt.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:26e5ab8ad1a705df0fab6b6ec43d184afbb07567f202b4d9a2f005b5ed657e9b"
+    current_candidate_proposal_sha256: "sha256:a64a3ac76dba05c52085adb387e10a5fa210755b2ecc0a130a20207ec8de199a"
     current_candidate_acceptance_sha256: null
     current_candidate_approval_sentence_sha256: null
     current_candidate_validator: null
