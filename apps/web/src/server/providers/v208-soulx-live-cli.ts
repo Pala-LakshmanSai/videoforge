@@ -9,7 +9,7 @@ import { createNeonExecutor, createNeonPool } from "../hosted/neon.js";
 import { loadSujalRunPodApiKeyFromKeychain } from "./keychain.js";
 import { assertSujalRunPodAccount } from "./runpod-account.js";
 import { RunPodControlClient, RunPodDrainGuard, RunPodServerlessJobClient } from "./runpod-control.js";
-import { fetchCp07Catalog } from "./runpod-echo-cp07-preflight.js";
+import { fetchCp07Catalog, findCp07Offering } from "./runpod-echo-cp07-preflight.js";
 import { runV208SoulXWithV213Transport } from "./v208-soulx-orchestrator.js";
 import type { V208SoulXQualificationResult } from "./v208-soulx-qualification.js";
 import { createV208SoulXReceiptVerifier, probeV208Mp4Bytes } from "./v208-soulx-receipt-verifier.js";
@@ -171,10 +171,7 @@ export function createV208SoulXLiveComposition(input: {
     accountPreflight: () => assertSujalRunPodAccount(protectedInputs.runpodApiKey),
     readAdmissionFacts: async () => {
       const candidates = await fetchCp07Catalog(protectedInputs.runpodApiKey, fetchPort);
-      const exact = candidates.find(
-        (candidate) =>
-          candidate.displayName === "NVIDIA GeForce RTX 4090" && candidate.region === "EU-RO-1",
-      );
+      const exact = findCp07Offering(candidates, "NVIDIA GeForce RTX 4090", "EU-RO-1");
       if (!exact) throw new Error("V208_RUNPOD_EXACT_OFFERING_UNAVAILABLE");
       return {
         checkedAt: now().toISOString(),

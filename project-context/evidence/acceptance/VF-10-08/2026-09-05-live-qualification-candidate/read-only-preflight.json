@@ -1,0 +1,51 @@
+{
+  "schema_version": "videoforge.v2-08-read-only-preflight/v1",
+  "checkpoint": "V2-08",
+  "checked_at": "2026-09-05T08:53:54.501Z",
+  "provider_mutations": 0,
+  "external_spend_usd": 0,
+  "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+  "stable_read_count": 3,
+  "stable_reads": [
+    "2026-09-05T08:50:54.544Z",
+    "2026-09-05T08:53:33.227Z",
+    "2026-09-05T08:53:54.501Z"
+  ],
+  "inventory": {
+    "pods": 0,
+    "running_pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "retained_volumes": [
+      {
+        "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "size_gb": 50,
+        "region": "EU-RO-1"
+      }
+    ]
+  },
+  "selected_gpu": {
+    "offering_id": "NVIDIA GeForce RTX 4090",
+    "display_name": "RTX 4090",
+    "region": "EU-RO-1",
+    "secure_cloud": true,
+    "availability": "HIGH",
+    "vram_gb": 24,
+    "secure_pod_catalog_rate_usd_per_hour_not_used_for_serverless_billing": 0.74
+  },
+  "serverless_flex_rate": {
+    "usd_per_gpu_second": 0.00031,
+    "usd_per_gpu_hour": 1.116,
+    "source": "OFFICIAL_CURRENT_RUNPOD_SERVERLESS_FLEX_PRICING_SNAPSHOT"
+  },
+  "cumulative_endpoint_billing_usd": 2.7231514439627063,
+  "continued_retained_volume_billing_usd_per_month": 7,
+  "observation": "RunPod currently abbreviates the display label to RTX 4090. Qualification selection is bound to the stable offering_id, not display_name.",
+  "fresh_inventory_catalog_billing_read_required_before_mutation": true
+}

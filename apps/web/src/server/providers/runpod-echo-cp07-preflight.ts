@@ -44,6 +44,17 @@ export interface Cp07GpuCandidate {
   readonly vramGb: number;
 }
 
+/** Select by the provider's stable offering id; the human display label is not an identity. */
+export function findCp07Offering(
+  candidates: readonly Cp07GpuCandidate[],
+  offeringId: string,
+  region: typeof CP07_REGION,
+): Cp07GpuCandidate | undefined {
+  return candidates.find(
+    (candidate) => candidate.offeringId === offeringId && candidate.region === region,
+  );
+}
+
 export class Cp07PreflightError extends Error {
   constructor(readonly code: string) {
     super(code);

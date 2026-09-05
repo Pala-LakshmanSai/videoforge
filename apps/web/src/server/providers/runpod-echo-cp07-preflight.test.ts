@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SUJAL_RUNPOD_ACCOUNT_ID_SHA256 } from "./keychain";
 import {
   Cp07PreflightError,
+  findCp07Offering,
   parseCp07Catalog,
   runCp07ReadOnlyPreflight,
   type Cp07Inventory,
@@ -98,6 +99,19 @@ describe("CP-07 read-only preflight", () => {
       "NVIDIA RTX PRO 4500 Blackwell",
       "NVIDIA GeForce RTX 4090",
     ]);
+  });
+
+  it("selects RTX 4090 by stable offering id when the display label is abbreviated", () => {
+    const selected = findCp07Offering(
+      parseCp07Catalog(catalog),
+      "NVIDIA GeForce RTX 4090",
+      "EU-RO-1",
+    );
+    expect(selected).toMatchObject({
+      offeringId: "NVIDIA GeForce RTX 4090",
+      displayName: "RTX 4090",
+      availability: "HIGH",
+    });
   });
 
   it("proves zero compute, one retained Mage volume, and a separate proposed Echo volume", async () => {

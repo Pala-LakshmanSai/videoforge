@@ -67,7 +67,7 @@ import type {
   V213PrequalificationInput,
   V213SoulXQualificationHandoff,
 } from "./v213-dual-lane-live.js";
-import { fetchCp07Catalog } from "./runpod-echo-cp07-preflight.js";
+import { fetchCp07Catalog, findCp07Offering } from "./runpod-echo-cp07-preflight.js";
 import {
   createV213RunPodDualLaneTransport,
   type V213AttributableCleanupResult,
@@ -3631,10 +3631,7 @@ export async function createV213PrequalificationRuntime(
       readEndpointBilling(inputs.runpodApiKey, ports.fetch),
       control.inventory(ports.now()),
     ]);
-    const exact = candidates.find(
-      (candidate) =>
-        candidate.displayName === "NVIDIA GeForce RTX 4090" && candidate.region === "EU-RO-1",
-    );
+    const exact = findCp07Offering(candidates, "NVIDIA GeForce RTX 4090", "EU-RO-1");
     if (!exact) fail("RUNPOD_EXACT_OFFERING_UNAVAILABLE");
     return Object.freeze({
       checkedAt: inventory.checkedAt,
@@ -3824,10 +3821,7 @@ export async function createV213ProductionRuntime(
     accountPreflight: () => assertSujalRunPodAccount(inputs.runpodApiKey),
     readAdmissionFacts: async () => {
       const candidates = await fetchCp07Catalog(inputs.runpodApiKey, ports.fetch);
-      const exact = candidates.find(
-        (candidate) =>
-          candidate.displayName === "NVIDIA GeForce RTX 4090" && candidate.region === "EU-RO-1",
-      );
+      const exact = findCp07Offering(candidates, "NVIDIA GeForce RTX 4090", "EU-RO-1");
       if (!exact) fail("RUNPOD_EXACT_OFFERING_UNAVAILABLE");
       return {
         checkedAt: ports.now().toISOString(),
