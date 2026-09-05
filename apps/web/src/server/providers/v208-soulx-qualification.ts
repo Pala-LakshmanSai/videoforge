@@ -28,21 +28,27 @@ export const V208_SOULX_VOLUME_ID_SHA256 =
 export const V208_SOULX_VOLUME_MANIFEST_SHA256 =
   "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626" as const;
 export const V208_EXECUTION_ENTRYPOINT = "soulx-v208-qualification-v1" as const;
-// Fail closed after the prior exact authority was consumed by publication/materialization and the
-// standalone launch-readiness audit stopped before RunPod. A repaired source requires a fresh
-// source-bound proposal and exact approval before any provider mutation is reachable.
-export const V208_PENDING_PROPOSAL_SHA256: string | null = null;
-export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = false;
-export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null = null;
-export const V208_APPROVED_AUTHORITY_SHA256: string | null = null;
-export const V208_APPROVED_FINITE_CAP_USD: number | null = null;
-export const V208_APPROVED_IMAGE: string | null = null;
-export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null = null;
-export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null = null;
+// Exact single-use authority materialized from the fresh approved repaired proposal. The launcher
+// still requires a clean one-parent allowlisted successor and fails closed outside this binding.
+export const V208_PENDING_PROPOSAL_SHA256: string | null =
+  "sha256:fbd5acf14dcd891b3468c9c74d9570652415d96819b915168171767b9d80c440";
+export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = true;
+export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null =
+  "7ad0cd2aeb53b4925d02cca0ff263a5d3a473591";
+export const V208_APPROVED_AUTHORITY_SHA256: string | null =
+  "sha256:ffe23bacc1ab05c042ea9638dd6616cdc377832fe1e0bdd08f039534cc0ec37e";
+export const V208_APPROVED_FINITE_CAP_USD: number | null = 1.8;
+export const V208_APPROVED_IMAGE: string | null =
+  "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3";
+export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null =
+  "4f2c5cb3c602ffb48db4a1dc7143477259202896";
+export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null =
+  "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
 /** The admission floor is LOW; MEDIUM and HIGH are both acceptable provider states. */
-export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = null;
-export const V208_APPROVED_BILLING_BASELINE_USD: number | null = null;
-export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null = null;
+export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = "LOW";
+export const V208_APPROVED_BILLING_BASELINE_USD: number | null = 2.7231514439627063;
+export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null =
+  4.523151443962706;
 
 export interface V208CompiledAuthority {
   readonly proposalSha256: string | null;

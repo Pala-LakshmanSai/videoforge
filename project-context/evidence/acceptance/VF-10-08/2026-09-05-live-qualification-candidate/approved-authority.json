@@ -1,5 +1,5 @@
 {
-  "schema_version": "videoforge.v2-08-soulx-approved-authority/v1",
+  "schema_version": "videoforge.v2-08-soulx-approved-authority/v2",
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
@@ -8,18 +8,22 @@
   "consumed": false,
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
-    "proposal_sha256": "sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8",
-    "approval_sentence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approval-sentence.txt",
-    "approval_sentence_sha256": "sha256:6e3a005b3347cd069547ff6b07f9c4ee4204be71a49662c56442b235dd1f5c4d",
+    "proposal_sha256": "sha256:fbd5acf14dcd891b3468c9c74d9570652415d96819b915168171767b9d80c440",
+    "approval_statement_storage": "inline_exact_statement_in_user_approval_json",
+    "approval_statement_sha256": "sha256:1161c06b10cac793fea2b38c9982d5156ebf51b5a2cfebb8e24b011ae68cdf38",
     "user_approval_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
-    "user_approval_sha256": "sha256:5d2abb5c510dbb48523ef07ee4b22c495bce6d1933cd10d681ab1d9238a1acfb",
+    "user_approval_sha256": "sha256:99ec327a960ec4f6ae61f5f6331f8692681678e8ca507bba029dbd167c2b58e4",
+    "control_source_commit": "7ad0cd2aeb53b4925d02cca0ff263a5d3a473591",
+    "control_source_remote_ref": "refs/heads/codex/serverless-v2-roadmap-v4",
+    "control_source_remote_verified": true,
     "precursor_source_commit": "4f2c5cb3c602ffb48db4a1dc7143477259202896",
-    "execution_control_commit_role": "post_approval_authority_materialization_only"
+    "image_source_commit": "4f2c5cb3c602ffb48db4a1dc7143477259202896",
+    "execution_control_commit_role": "one_post_approval_authority_materialization_successor_only"
   },
   "image_publication": {
     "workflow_run_id": 33963672249,
     "workflow_source_commit": "4f2c5cb3c602ffb48db4a1dc7143477259202896",
-    "publication_state": "PUBLISHED_NEW_DIGEST",
+    "publication_state": "REUSE_EXISTING_IMMUTABLE_DIGEST_NO_REPUBLICATION",
     "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3",
     "manifest_digest": "sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3",
     "config_digest": "sha256:fccc1973fb5af08d954e91561e6b4c467c405d64e2f6bdd521cad8d9af7f415a",
@@ -31,6 +35,8 @@
     "anonymous_descriptor_count": 24,
     "anonymous_verified_bytes": 5115593343,
     "all_descriptors_verified": true,
+    "anonymous_reverification_required_before_runpod_mutation": true,
+    "republication_authorized": false,
     "model_download_performed": false,
     "runpod_mutation_performed": false
   },
@@ -38,29 +44,33 @@
     "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
     "gpu": "NVIDIA GeForce RTX 4090",
     "region": "EU-RO-1",
-    "required_availability": "HIGH",
+    "required_availability": "LOW",
+    "availability_semantics": "LOW_OR_BETTER",
     "maximum_serverless_flex_rate_usd_per_gpu_hour": 1.116,
     "workers_min": 0,
     "workers_max": 1,
     "handler_concurrency": 1,
     "exact_jobs": ["cold", "warm", "cancel", "invalid", "timeout"],
+    "whole_span_seconds": [2, 4, 6, 10],
     "redispatch_authorized": false,
-    "gpu_fallback_authorized": false
+    "gpu_fallback_authorized": false,
+    "region_fallback_authorized": false
   },
   "billing": {
     "baseline_usd": 2.7231514439627063,
     "finite_incremental_cap_usd": 1.8,
     "cumulative_stop_threshold_usd": 4.523151443962706,
-    "worst_case_gpu_seconds": 5785,
-    "worst_case_liability_usd": 1.79335,
     "continued_existing_volume_retention_usd_per_month": 7
   },
   "execution": {
+    "launcher": "deploy/v2-08/launch-soulx-live.mjs",
     "entrypoint": "apps/web/src/server/providers/v208-soulx-live-cli.ts",
     "marker": "soulx-v208-qualification-v1",
+    "deterministic_proposal_derived_request_and_journal": true,
     "cleanup_plan_sealed_before_dispatch": true,
     "durable_materialization_key_journals": 5,
     "cleanup_only_resume_without_redispatch": true,
+    "signal_safe_cleanup": true,
     "active_worker_drain_to_zero_before_lane_delete": true,
     "generated_r2_input_output_cleanup": true,
     "final_zero_compute_billing_volume_reads": 3
@@ -78,14 +88,15 @@
     "legal_clearance_claimed": false
   },
   "scope_exclusions": [
+    "no_image_republication",
     "no_stage_6_rerun",
     "no_v2_09_execution",
     "no_max2_proof",
     "no_cloudflare_worker_or_route_mutation",
     "no_production_route",
     "no_model_download",
-    "no_volume_mutation",
-    "no_gpu_fallback",
+    "no_retained_volume_mutation",
+    "no_gpu_or_region_fallback",
     "no_redispatch"
   ]
 }
