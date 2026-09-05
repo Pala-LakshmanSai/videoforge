@@ -431,6 +431,10 @@ def _trim_native_mp4(source: bytes, destination: Path, span: dict[str, Any]) -> 
     end_frame = span["trim_end_sample_exclusive_48k"] // 1_920
     start_sample_16k = span["trim_start_sample_48k"] // 3
     end_sample_16k = span["trim_end_sample_exclusive_48k"] // 3
+    padded_samples_16k = span["padded_samples_48k"] // 3
+    selected_samples_16k = end_sample_16k - start_sample_16k
+    selected_frames = end_frame - start_frame
+    selected_duration = selected_frames / 25
     subprocess.run(
         [
             "ffmpeg",
@@ -439,15 +443,23 @@ def _trim_native_mp4(source: bytes, destination: Path, span: dict[str, Any]) -> 
             "error",
             "-i",
             str(source_path),
-            "-vf",
-            f"trim=start_frame={start_frame}:end_frame={end_frame},setpts=PTS-STARTPTS",
-            "-af",
+            "-filter_complex",
             (
+                "[0:v:0]fps=25:start_time=0,"
+                f"trim=start_frame={start_frame}:end_frame={end_frame},"
+                "setpts=PTS-STARTPTS,scale=512:512:flags=lanczos,setsar=1[v];"
+                "[0:a:0]aresample=16000:async=0:first_pts=0,"
+                "aformat=sample_rates=16000:channel_layouts=mono,"
+                f"apad=whole_len={padded_samples_16k},"
                 f"atrim=start_sample={start_sample_16k}:end_sample={end_sample_16k},"
-                "asetpts=PTS-STARTPTS"
+                "asetpts=PTS-STARTPTS,"
+                f"apad=whole_len={selected_samples_16k},"
+                f"atrim=end_sample={selected_samples_16k}[a]"
             ),
-            "-r",
-            "25",
+            "-map",
+            "[v]",
+            "-map",
+            "[a]",
             "-c:v",
             "libx264",
             "-preset",
@@ -458,15 +470,20 @@ def _trim_native_mp4(source: bytes, destination: Path, span: dict[str, Any]) -> 
             "yuv420p",
             "-c:a",
             "aac",
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
             "-b:a",
             "192k",
+            "-video_track_timescale",
+            "25000",
             "-movflags",
             "+faststart",
             "-frames:v",
-            str(end_frame - start_frame),
+            str(selected_frames),
             "-t",
-            f"{(end_frame - start_frame) / 25:.2f}",
-            "-shortest",
+            f"{selected_duration:.6f}",
             str(destination),
         ],
         check=True,
@@ -540,21 +557,24 @@ def _parse_native_probe(
         _finite_number(format_value.get("duration"), "SOULX_SERVERLESS_MEDIA_PROBE_INVALID") * 1000
     )
     av_delta_ms = abs(video_duration_ms - audio_duration_ms)
-    if (
-        video_stream.get("codec_name") != "h264"
-        or audio_stream.get("codec_name") != "aac"
-        or width != 512
-        or height != 512
-        or (fps_num, fps_den) != (25, 1)
-        or frame_count != expected_frames
-        or sample_rate_hz != 16_000
-        or channels != 1
-        or abs(video_duration_ms - expected_duration_ms) > 40
-        or abs(audio_duration_ms - expected_duration_ms) > 40
-        or abs(format_duration_ms - expected_duration_ms) > 40
-        or av_delta_ms > 40
-    ):
-        raise ServerlessSoulXError("SOULX_SERVERLESS_MEDIA_CONTRACT_INVALID")
+    predicates = (
+        (video_stream.get("codec_name") == "h264", "VIDEO_CODEC"),
+        (audio_stream.get("codec_name") == "aac", "AUDIO_CODEC"),
+        (width == 512 and height == 512, "VIDEO_DIMENSIONS"),
+        ((fps_num, fps_den) == (25, 1), "VIDEO_FPS"),
+        (frame_count == expected_frames, "VIDEO_FRAME_COUNT"),
+        (sample_rate_hz == 16_000, "AUDIO_SAMPLE_RATE"),
+        (channels == 1, "AUDIO_CHANNELS"),
+        (abs(video_duration_ms - expected_duration_ms) <= 40, "VIDEO_DURATION"),
+        # AAC-LC at 16 kHz advances in 1,024-sample (64 ms) access units. The MP4 stream and
+        # container may therefore report one bounded final access unit beyond the selected span.
+        (abs(audio_duration_ms - expected_duration_ms) <= 80, "AUDIO_DURATION"),
+        (abs(format_duration_ms - expected_duration_ms) <= 80, "FORMAT_DURATION"),
+        (av_delta_ms <= 80, "AV_DURATION_DELTA"),
+    )
+    for valid, predicate in predicates:
+        if not valid:
+            raise ServerlessSoulXError(f"SOULX_SERVERLESS_MEDIA_{predicate}_INVALID")
     return {
         "format": "mp4",
         "video_codec": "h264",

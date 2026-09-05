@@ -7,6 +7,8 @@ import hashlib
 import hmac
 import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import types
@@ -524,11 +526,166 @@ class SoulXServerlessTest(unittest.TestCase):
         drifted["streams"][0]["width"] = 640
         with self.assertRaisesRegex(
             soulx_serverless.ServerlessSoulXError,
-            "SOULX_SERVERLESS_MEDIA_CONTRACT_INVALID",
+            "SOULX_SERVERLESS_MEDIA_VIDEO_DIMENSIONS_INVALID",
         ):
             soulx_serverless._parse_native_probe(
                 drifted, expected_frames=50, expected_duration_ms=2_000
             )
+
+    def test_native_probe_reports_exact_redaction_safe_failed_predicate(self) -> None:
+        document = {
+            "streams": [
+                {
+                    "codec_type": "video",
+                    "codec_name": "h264",
+                    "width": 512,
+                    "height": 512,
+                    "avg_frame_rate": "25/1",
+                    "nb_read_frames": "50",
+                    "duration": "2.000000",
+                },
+                {
+                    "codec_type": "audio",
+                    "codec_name": "aac",
+                    "sample_rate": "16000",
+                    "channels": 1,
+                    "duration": "2.000000",
+                },
+            ],
+            "format": {"duration": "2.000000"},
+        }
+        drifts = (
+            (("streams", 0, "codec_name"), "vp9", "VIDEO_CODEC"),
+            (("streams", 1, "codec_name"), "opus", "AUDIO_CODEC"),
+            (("streams", 0, "avg_frame_rate"), "30/1", "VIDEO_FPS"),
+            (("streams", 0, "nb_read_frames"), "49", "VIDEO_FRAME_COUNT"),
+            (("streams", 1, "sample_rate"), "48000", "AUDIO_SAMPLE_RATE"),
+            (("streams", 1, "channels"), 2, "AUDIO_CHANNELS"),
+            (("streams", 0, "duration"), "1.900000", "VIDEO_DURATION"),
+            (("streams", 1, "duration"), "1.900000", "AUDIO_DURATION"),
+            (("format", "duration"), "1.900000", "FORMAT_DURATION"),
+        )
+        for path, value, predicate in drifts:
+            with self.subTest(predicate=predicate):
+                drifted = copy.deepcopy(document)
+                target = drifted
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = value
+                with self.assertRaisesRegex(
+                    soulx_serverless.ServerlessSoulXError,
+                    f"SOULX_SERVERLESS_MEDIA_{predicate}_INVALID",
+                ):
+                    soulx_serverless._parse_native_probe(
+                        drifted, expected_frames=50, expected_duration_ms=2_000
+                    )
+
+    def test_native_probe_accepts_one_bounded_16k_aac_access_unit(self) -> None:
+        document = {
+            "streams": [
+                {
+                    "codec_type": "video",
+                    "codec_name": "h264",
+                    "width": 512,
+                    "height": 512,
+                    "avg_frame_rate": "25/1",
+                    "nb_read_frames": "50",
+                    "duration": "2.000000",
+                },
+                {
+                    "codec_type": "audio",
+                    "codec_name": "aac",
+                    "sample_rate": "16000",
+                    "channels": 1,
+                    "duration": "2.048000",
+                },
+            ],
+            "format": {"duration": "2.048000"},
+        }
+        observed = soulx_serverless._parse_native_probe(
+            document, expected_frames=50, expected_duration_ms=2_000
+        )
+        self.assertEqual(observed["audio_duration_ms"], 2_048)
+        self.assertEqual(observed["av_delta_ms"], 48)
+
+        audio_drifted = copy.deepcopy(document)
+        audio_drifted["streams"][1]["duration"] = "2.081000"
+        with self.assertRaisesRegex(
+            soulx_serverless.ServerlessSoulXError,
+            "SOULX_SERVERLESS_MEDIA_AUDIO_DURATION_INVALID",
+        ):
+            soulx_serverless._parse_native_probe(
+                audio_drifted, expected_frames=50, expected_duration_ms=2_000
+            )
+
+        format_drifted = copy.deepcopy(document)
+        format_drifted["format"]["duration"] = "2.081000"
+        with self.assertRaisesRegex(
+            soulx_serverless.ServerlessSoulXError,
+            "SOULX_SERVERLESS_MEDIA_FORMAT_DURATION_INVALID",
+        ):
+            soulx_serverless._parse_native_probe(
+                format_drifted, expected_frames=50, expected_duration_ms=2_000
+            )
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg required")
+    def test_trim_normalizes_exact_video_and_aac_duration(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            source = Path(root) / "source.mp4"
+            output = Path(root) / "output.mp4"
+            subprocess.run(
+                [
+                    str(shutil.which("ffmpeg")),
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "testsrc=size=640x360:rate=30:duration=3",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "sine=frequency=440:sample_rate=48000:duration=3",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-c:a",
+                    "aac",
+                    "-ac",
+                    "2",
+                    "-shortest",
+                    str(source),
+                ],
+                check=True,
+                timeout=60,
+            )
+            span = {
+                "padded_samples_48k": 144_000,
+                "trim_start_sample_48k": 48_000,
+                "trim_end_sample_exclusive_48k": 144_000,
+            }
+            body = soulx_serverless._trim_native_mp4(source.read_bytes(), output, span)
+            self.assertEqual(body, output.read_bytes())
+            with patch.dict(
+                os.environ,
+                {"VIDEOFORGE_FFPROBE_PATH": str(shutil.which("ffprobe"))},
+            ):
+                observed = soulx_serverless._probe_native_mp4(
+                    output, expected_frames=50, expected_duration_ms=2_000
+                )
+            self.assertEqual(
+                (
+                    observed["width"],
+                    observed["height"],
+                    observed["frame_count"],
+                    observed["audio_sample_rate_hz"],
+                    observed["audio_channels"],
+                ),
+                (512, 512, 50, 16_000, 1),
+            )
+            self.assertEqual(observed["audio_duration_ms"], 2_000)
 
     def test_runs_ordered_2_4_6_10_batch_and_signs_one_native_clip_per_span(self) -> None:
         fixture = Fixture()

@@ -219,7 +219,7 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
         self.assertIn('ai.videoforge.source-commit"}}', publish)
         self.assertIn('= "$GITHUB_SHA"', publish)
         for expected_hash in (
-            "d1b1eb956513dfe378860a58e8d89322a9ecb13a20e508d20ed1ab3575732bf6",
+            "f4d6d18ee858d7835316ee984cece8b8f95547bc42867d08b1d9adc3f1a73cc5",
             "b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080",
             "1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32",
             "3c4d11116333af5e83b74831a3c0cf529a0ef5ae780f1eba9547ec26b40faa65",
