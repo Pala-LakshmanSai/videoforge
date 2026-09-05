@@ -28,6 +28,8 @@ const NONCE = /^[a-f0-9]{64}$/u;
 const SAFE_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
 const ABSENT_DIAGNOSTIC =
   /(?:(?:^|[^\w])(?:code|error\s+code)\s*[:=]\s*(?:10007|10090)(?![A-Za-z0-9_])|["'](?:code|errorCode)["']\s*:\s*(?:10007|10090)(?![A-Za-z0-9_])|\bworker(?:\s+script)?\s+(?:does\s+not\s+exist|not\s+found)\b|\bno\s+such\s+worker\b|\bworkers?\.api\.error\.script[_ -]?not[_ -]?found\b)/iu;
+const RETRYABLE_ABSENCE_DIAGNOSTIC =
+  /\b(?:transport|network|fetch\s+failed|econn(?:refused|reset)|enotfound|etimedout|timed\s+out|socket|tls|dns|rate[- ]?limit(?:ed|ing)?|too\s+many\s+requests|429|internal\s+server\s+error|bad\s+gateway|service\s+unavailable|cloudflare\s+api[^\n]{0,120}\b5\d{2}\b)\b/iu;
 const FINAL_PROOF_READS = 3;
 const INITIAL_ABSENCE_MAX_ATTEMPTS = 6;
 const INITIAL_ABSENCE_RETRY_MILLISECONDS = 2_000;
@@ -335,13 +337,22 @@ async function assertWorkerAbsent(
     undefined,
     signal,
   );
-  if (!provesWorkerAbsent(result)) {
+  if (provesWorkerAbsent(result)) return;
+  if (result.exitCode === 0) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_WORKER_PREEXISTING");
+  }
+  if (result.signal !== null || result.exitCode === null) {
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_WORKER_ABSENCE_UNSAFE");
+  }
+  const diagnostic = stripVTControlCharacters(
+    `${result.stdout.slice(0, 131_072)}\n${result.stderr.slice(0, 131_072)}`,
+  );
+  if (RETRYABLE_ABSENCE_DIAGNOSTIC.test(diagnostic)) {
     throw new V207DisposableOrchestratorError(
-      result.exitCode === 0
-        ? "V207_DISPOSABLE_WORKER_PREEXISTING"
-        : "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
+      "V207_DISPOSABLE_WORKER_ABSENCE_RETRYABLE_TRANSIENT",
     );
   }
+  throw new V207DisposableOrchestratorError("V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED");
 }
 
 async function assertStableInitialWorkerAbsence(
@@ -360,7 +371,7 @@ async function assertStableInitialWorkerAbsence(
     } catch (error) {
       if (
         !(error instanceof V207DisposableOrchestratorError) ||
-        error.message !== "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED"
+        error.message !== "V207_DISPOSABLE_WORKER_ABSENCE_RETRYABLE_TRANSIENT"
       ) {
         throw error;
       }

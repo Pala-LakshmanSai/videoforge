@@ -92,9 +92,14 @@ function memoryBucket(
   };
 }
 
-const result = (stdout = "", exitCode: number | null = 0, stderr = ""): V207CommandResult => ({
+const result = (
+  stdout = "",
+  exitCode: number | null = 0,
+  stderr = "",
+  signal: NodeJS.Signals | null = null,
+): V207CommandResult => ({
   exitCode,
-  signal: null,
+  signal,
   stdout,
   stderr,
 });
@@ -120,6 +125,7 @@ async function fixture(
     signal?: "SIGINT" | "SIGTERM";
     absenceDiagnostic?: string;
     absenceDiagnostics?: readonly string[];
+    absenceSignal?: NodeJS.Signals;
   } = {},
 ) {
   const root = await mkdtemp("/tmp/v207-disposable-");
@@ -184,6 +190,9 @@ async function fixture(
       expect(request.args[request.args.indexOf("--name") + 1]).toBe(V207_DISPOSABLE_WORKER_NAME);
     }
     if (request.args.includes("deployments")) {
+      if (!exists && overrides.absenceSignal !== undefined) {
+        return result("", null, "", overrides.absenceSignal);
+      }
       return exists
         ? result(JSON.stringify({ versions: [{ version_id: VERSION_ID, percentage: 100 }] }))
         : result("", 1, (() => {
@@ -1906,6 +1915,39 @@ describe("V2-07 disposable live orchestrator", () => {
     );
   });
 
+  it("bounds persistent retryable absence transport failures without mutation", async () => {
+    const setup = await fixture({ absenceDiagnostic: "network transport timed out" });
+    const sleeps: number[] = [];
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        sleepImpl: async (milliseconds) => {
+          sleeps.push(milliseconds);
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED" });
+    expect(setup.calls.filter((call) => call.args.includes("deployments"))).toHaveLength(6);
+    expect(sleeps).toEqual([2_000, 2_000, 2_000, 2_000, 2_000]);
+    expect(setup.calls.some((call) => call.args.includes("deploy"))).toBe(false);
+    expect(setup.calls.some((call) => call.args.includes("delete"))).toBe(false);
+  });
+
+  it("never retries a signaled absence command", async () => {
+    const setup = await fixture({ absenceSignal: "SIGTERM" });
+    const sleeps: number[] = [];
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        sleepImpl: async (milliseconds) => {
+          sleeps.push(milliseconds);
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_DISPOSABLE_WORKER_ABSENCE_UNSAFE" });
+    expect(setup.calls.filter((call) => call.args.includes("deployments"))).toHaveLength(1);
+    expect(sleeps).toEqual([]);
+    expect(setup.calls.some((call) => call.args.includes("deploy"))).toBe(false);
+  });
+
   it("normalizes Wrangler ANSI output before accepting a colored 10007 absence diagnostic", async () => {
     const setup = await fixture({
       absenceDiagnostic:
@@ -1918,9 +1960,14 @@ describe("V2-07 disposable live orchestrator", () => {
 
   it("rejects a request identifier that merely contains 10007", async () => {
     const setup = await fixture({ absenceDiagnostic: "request id: 10007" });
-    await expect(runV207DisposableLiveOrchestration(setup.options)).rejects.toMatchObject({
+    const sleeps: number[] = [];
+    await expect(runV207DisposableLiveOrchestration({
+      ...setup.options,
+      sleepImpl: async (milliseconds) => { sleeps.push(milliseconds); },
+    })).rejects.toMatchObject({
       code: "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
     });
+    expect(sleeps).toEqual([]);
     expect(setup.calls.some((call) => call.args.includes("deploy"))).toBe(false);
     expect(setup.calls.some((call) => call.args.includes("delete"))).toBe(false);
     const evidence = JSON.parse(await readFile(join(setup.root, "evidence.json"), "utf8"));
