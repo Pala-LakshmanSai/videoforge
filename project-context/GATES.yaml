@@ -389,16 +389,16 @@ gates:
     blocks: soulx_serverless_dispatch_and_crop_activation
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesssoulx001-soulx-endpoint"
     owner: V2-08
-    last_run: "evidence/acceptance/VF-9-24U/acceptance.json"
-    result: open_pod_technical_proof_preserved_visual_crop_and_serverless_max1_cold_warm_focused_fault_proof_pending
+    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/acceptance.json"
+    result: open_provider_free_candidate_sealed_exact_max1_live_cold_warm_fault_and_cleanup_proof_pending_approval_and_execution
 
   GATE_SOULX_LICENSE_001:
     status: open
     blocks: soulx_production_deployability_claim
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatesoulxlicense001-deployability-record"
     owner: V2-08
-    last_run: null
-    result: open_first_party_code_and_weights_commercial_publication_terms_unrecorded
+    last_run: "evidence/acceptance/VF-10-08/2026-09-05-terms-preflight/first-party-license-observation.json"
+    result: open_unresolved_apache_2_hosted_commercial_use_risk_requires_explicit_qualification_only_acceptance_and_separate_production_resolution
 
   GATE_E2E_001:
     status: open
