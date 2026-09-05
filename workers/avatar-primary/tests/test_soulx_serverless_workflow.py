@@ -216,7 +216,7 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
             1
         ].split("- name: Remove registry credentials", 1)[0]
         self.assertIn('docker pull "$immutable_image"', publish)
-        self.assertIn('ai.videoforge.source-commit\\"}}', publish)
+        self.assertIn('ai.videoforge.source-commit"}}', publish)
         self.assertIn('= "$GITHUB_SHA"', publish)
         for expected_hash in (
             "bf3478321d01cdef00f8462236a3f2d35c9736bdc791c053e283c7e6d378077d",
@@ -327,7 +327,7 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
     def test_current_checkout_is_the_only_published_source_lineage(self) -> None:
         self.assertIn('test "$(git rev-parse HEAD)" = "$GITHUB_SHA"', self.source)
         self.assertIn('ai.videoforge.source-commit="${VIDEOFORGE_SOURCE_COMMIT}"', self.dockerfile)
-        self.assertIn('ai.videoforge.source-commit\\"}}', self.source)
+        self.assertIn('ai.videoforge.source-commit"}}', self.source)
 
 
 if __name__ == "__main__":

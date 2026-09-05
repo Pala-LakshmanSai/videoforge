@@ -114,11 +114,11 @@ jobs:
             "$build_context"
           test "$(docker image inspect --format='{{.Architecture}}' "$local_image")" = "amd64"
           test "$(docker image inspect --format='{{.Os}}' "$local_image")" = "linux"
-          test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.lane\"}}' "$local_image")" = \
+          test "$(docker image inspect --format='{{index .Config.Labels "ai.videoforge.lane"}}' "$local_image")" = \
             "soulx_avatar"
-          test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.runtime-profile\"}}' "$local_image")" = \
+          test "$(docker image inspect --format='{{index .Config.Labels "ai.videoforge.runtime-profile"}}' "$local_image")" = \
             "videoforge_soulx_flashhead_pro_bf16_v1"
-          test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.source-commit\"}}' "$local_image")" = \
+          test "$(docker image inspect --format='{{index .Config.Labels "ai.videoforge.source-commit"}}' "$local_image")" = \
             "$GITHUB_SHA"
           docker run --rm --entrypoint /bin/sh "$local_image" -c \
             'test ! -e /runpod-volume/soulx-flashhead-pro && test -x /usr/bin/ffprobe'
@@ -207,27 +207,27 @@ jobs:
             test "$(stat -c%s "$existing_config")" = "$existing_config_size"
             test "$(jq -r '.architecture' "$existing_config")" = "amd64"
             test "$(jq -r '.os' "$existing_config")" = "linux"
-            test "$(jq -r '.config.Labels[\"ai.videoforge.source-commit\"]' "$existing_config")" = \
+            test "$(jq -r '.config.Labels["ai.videoforge.source-commit"]' "$existing_config")" = \
               "$GITHUB_SHA"
-            test "$(jq -r '.config.Labels[\"org.opencontainers.image.revision\"]' "$existing_config")" = \
+            test "$(jq -r '.config.Labels["org.opencontainers.image.revision"]' "$existing_config")" = \
               "$GITHUB_SHA"
-            test "$(jq -r '.config.Labels[\"org.opencontainers.image.base.name\"]' "$existing_config")" = \
+            test "$(jq -r '.config.Labels["org.opencontainers.image.base.name"]' "$existing_config")" = \
               "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s"
-            test "$(jq -r '.config.Labels[\"org.opencontainers.image.base.digest\"]' "$existing_config")" = \
+            test "$(jq -r '.config.Labels["org.opencontainers.image.base.digest"]' "$existing_config")" = \
               "sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b"
-            test "$(jq -r '.config.Labels[\"ai.videoforge.lane\"]' "$existing_config")" = \
+            test "$(jq -r '.config.Labels["ai.videoforge.lane"]' "$existing_config")" = \
               "soulx_avatar"
-            test "$(jq -r '.config.Labels[\"ai.videoforge.runtime-profile\"]' "$existing_config")" = \
+            test "$(jq -r '.config.Labels["ai.videoforge.runtime-profile"]' "$existing_config")" = \
               "videoforge_soulx_flashhead_pro_bf16_v1"
-            test "$(jq -r '.config.Labels[\"ai.videoforge.source-revision\"]' "$existing_config")" = \
+            test "$(jq -r '.config.Labels["ai.videoforge.source-revision"]' "$existing_config")" = \
               "9bc03de06bb0de82cd6bc477804512ae06144bf2"
-            test "$(jq -r '.config.Labels[\"ai.videoforge.model-revision\"]' "$existing_config")" = \
+            test "$(jq -r '.config.Labels["ai.videoforge.model-revision"]' "$existing_config")" = \
               "59119b6c681230c3eeee157e224ae1941746711e"
-            test "$(jq -r '.config.Labels[\"ai.videoforge.model-manifest\"]' "$existing_config")" = \
+            test "$(jq -r '.config.Labels["ai.videoforge.model-manifest"]' "$existing_config")" = \
               "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626"
             remote_image="ghcr.io/${repository}@$expected_existing_digest"
             docker pull "$remote_image" >/dev/null
-            test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.source-commit\"}}' "$remote_image")" = "$GITHUB_SHA"
+            test "$(docker image inspect --format='{{index .Config.Labels "ai.videoforge.source-commit"}}' "$remote_image")" = "$GITHUB_SHA"
             docker run --rm --entrypoint /bin/sh "$remote_image" -c \
               'printf "%s  %s\n" \
                 938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5 /opt/videoforge/requirements.serverless.txt \
@@ -290,7 +290,7 @@ jobs:
           immutable_image="ghcr.io/${repository}@$image_digest"
           [[ "$immutable_image" =~ ^ghcr\.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:[a-f0-9]{64}$ ]]
           docker pull "$immutable_image" >/dev/null
-          test "$(docker image inspect --format='{{index .Config.Labels \"ai.videoforge.source-commit\"}}' "$immutable_image")" = "$GITHUB_SHA"
+          test "$(docker image inspect --format='{{index .Config.Labels "ai.videoforge.source-commit"}}' "$immutable_image")" = "$GITHUB_SHA"
           docker run --rm --entrypoint /bin/sh "$immutable_image" -c \
             'printf "%s  %s\n" \
               938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5 /opt/videoforge/requirements.serverless.txt \
