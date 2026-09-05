@@ -22,6 +22,9 @@ const compiled = (): V208CompiledAuthority => ({
   image: `ghcr.io/pala-lakshmansai/videoforge-soulx-v2-08@${proof("3")}`,
   imageSourceCommit: "4".repeat(40),
   runpodAccountIdSha256: proof("5"),
+  requiredAvailability: "HIGH",
+  billingBaselineUsd: 10,
+  cumulativeBillingStopThresholdUsd: 10.9,
 });
 const environment = () => ({
   V208_EXECUTION_ENTRYPOINT,
@@ -31,6 +34,9 @@ const environment = () => ({
   V208_IMAGE: `ghcr.io/pala-lakshmansai/videoforge-soulx-v2-08@${proof("3")}`,
   V208_IMAGE_SOURCE_COMMIT: "4".repeat(40),
   V208_RUNPOD_ACCOUNT_ID_SHA256: proof("5"),
+  V208_REQUIRED_AVAILABILITY: "HIGH",
+  V208_BILLING_BASELINE_USD: "10",
+  V208_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: "10.9",
   V208_PREDECESSOR_CLOSURE_SHA256: V208_V207_ATTEMPT85_CLOSURE_SHA256,
 });
 
@@ -49,6 +55,13 @@ describe("V2-08 SoulX-only qualification wrapper", () => {
       ["V208_IMAGE", `ghcr.io/example/wrong@${proof("9")}`, "V208_IMAGE_MISMATCH"],
       ["V208_IMAGE_SOURCE_COMMIT", "9".repeat(40), "V208_IMAGE_SOURCE_COMMIT_MISMATCH"],
       ["V208_RUNPOD_ACCOUNT_ID_SHA256", proof("9"), "V208_RUNPOD_ACCOUNT_MISMATCH"],
+      ["V208_REQUIRED_AVAILABILITY", "MEDIUM", "V208_REQUIRED_AVAILABILITY_MISMATCH"],
+      ["V208_BILLING_BASELINE_USD", "10.1", "V208_BILLING_BASELINE_MISMATCH"],
+      [
+        "V208_CUMULATIVE_BILLING_STOP_THRESHOLD_USD",
+        "11",
+        "V208_CUMULATIVE_BILLING_STOP_THRESHOLD_MISMATCH",
+      ],
       ["V208_PREDECESSOR_CLOSURE_SHA256", proof("9"), "V208_V207_PREDECESSOR_MISMATCH"],
       ["V208_FINITE_CAP_USD", "2", "V208_FINITE_CAP_MISMATCH"],
     ];
@@ -70,6 +83,7 @@ describe("V2-08 SoulX-only qualification wrapper", () => {
     expect(plan.deployment).toMatchObject({
       region: "EU-RO-1",
       gpu: "NVIDIA GeForce RTX 4090",
+      requiredAvailability: "HIGH",
       workersMin: 0,
       workersMax: 1,
       handlerConcurrency: 1,
@@ -80,6 +94,12 @@ describe("V2-08 SoulX-only qualification wrapper", () => {
       noGpuFallback: true,
     });
     expect(plan.qualification.completeSpanSeconds).toEqual([2, 4, 6, 10]);
+    expect(plan.billing).toEqual({
+      baselineUsd: 10,
+      cumulativeStopThresholdUsd: 10.9,
+      finiteCapUsd: 1,
+      maxRateUsdPerGpuHour: 1.116,
+    });
     expect(plan.qualification).toMatchObject({
       requiredWholeSpanBatch: true,
       existingMaterializerWholeSpanBatch: true,
@@ -131,7 +151,8 @@ describe("V2-08 SoulX-only qualification wrapper", () => {
       retainedSoulXVolumeUnchanged: true,
       workersMin: 0,
       workersMax: 1,
-      observedSpendUsd: 1,
+      observedSpendUsd: 0.9,
+      cumulativeBillingUsd: 10.9,
     };
     const executeSoulXQualification = vi.fn(async (receivedPlan: typeof plan) => {
       expect(receivedPlan.planSha256).toBe(plan.planSha256);
@@ -157,6 +178,13 @@ describe("V2-08 SoulX-only qualification wrapper", () => {
     ).toThrow("V208_SOULX_QUALIFICATION_RESULT_REJECTED");
     expect(() =>
       validateV208SoulXQualificationResult(plan, { ...valid, observedSpendUsd: 1.000_001 }),
+    ).toThrow("V208_SOULX_QUALIFICATION_RESULT_REJECTED");
+    expect(() =>
+      validateV208SoulXQualificationResult(plan, {
+        ...valid,
+        observedSpendUsd: 0.95,
+        cumulativeBillingUsd: 10.95,
+      }),
     ).toThrow("V208_SOULX_QUALIFICATION_RESULT_REJECTED");
   });
 });

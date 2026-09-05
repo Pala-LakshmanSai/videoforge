@@ -430,6 +430,11 @@ export async function runV208SoulXWithV213Transport(
   if (authority.finiteCapUsd < V208_WORST_CASE_LIABILITY_USD)
     throw new Error("V208_WORST_CASE_LIABILITY_EXCEEDS_CAP");
   if (
+    authority.cumulativeBillingStopThresholdUsd - authority.billingBaselineUsd <
+    V208_WORST_CASE_LIABILITY_USD
+  )
+    throw new Error("V208_WORST_CASE_LIABILITY_EXCEEDS_CUMULATIVE_THRESHOLD");
+  if (
     dependencies.soulx.lane !== "soulx" ||
     dependencies.soulx.publicImage !== authority.image ||
     dependencies.soulx.sourceCommit !== authority.imageSourceCommit ||
@@ -454,7 +459,7 @@ export async function runV208SoulXWithV213Transport(
     Math.abs(admissionNow - admissionCheckedAt) > 60_000 ||
     admission.gpu !== "NVIDIA GeForce RTX 4090" ||
     admission.region !== "EU-RO-1" ||
-    (admission.availability !== "MEDIUM" && admission.availability !== "HIGH") ||
+    admission.availability !== authority.requiredAvailability ||
     admission.runningPods !== 0 ||
     admission.activeWorkers !== 0 ||
     admission.endpoints !== 0 ||
@@ -463,7 +468,7 @@ export async function runV208SoulXWithV213Transport(
     admission.flexRateUsdPerGpuHour < 0 ||
     admission.flexRateUsdPerGpuHour > RATE ||
     !Number.isFinite(admission.cumulativeBillingUsd) ||
-    admission.cumulativeBillingUsd < 0 ||
+    admission.cumulativeBillingUsd !== authority.billingBaselineUsd ||
     exactVolume.length !== 1
   )
     throw new Error("V208_FRESH_ADMISSION_REJECTED");
@@ -524,6 +529,7 @@ export async function runV208SoulXWithV213Transport(
         !Number.isFinite(billing) ||
         billing < admission.cumulativeBillingUsd ||
         (priorBilling !== null && Math.abs(billing - priorBilling) > 0.000_001) ||
+        billing > authority.cumulativeBillingStopThresholdUsd ||
         billing - qualificationBillingBaseline > authority.finiteCapUsd
       )
         throw new Error("V208_ZERO_COMPUTE_OR_CAP_UNCONFIRMED");
@@ -908,6 +914,7 @@ export async function runV208SoulXWithV213Transport(
       workersMin: 0,
       workersMax: 1,
       observedSpendUsd: finalBilling - qualificationBillingBaseline,
+      cumulativeBillingUsd: finalBilling,
     });
     await dependencies.transport.durable.completeStageAuthority(
       issued.authorityId,

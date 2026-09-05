@@ -35,6 +35,9 @@ export const V208_APPROVED_FINITE_CAP_USD: number | null = null;
 export const V208_APPROVED_IMAGE: string | null = null;
 export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null = null;
 export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null = null;
+export const V208_APPROVED_REQUIRED_AVAILABILITY: "HIGH" | null = null;
+export const V208_APPROVED_BILLING_BASELINE_USD: number | null = null;
+export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null = null;
 
 export interface V208CompiledAuthority {
   readonly proposalSha256: string | null;
@@ -43,6 +46,9 @@ export interface V208CompiledAuthority {
   readonly image: string | null;
   readonly imageSourceCommit: string | null;
   readonly runpodAccountIdSha256: string | null;
+  readonly requiredAvailability: "HIGH" | null;
+  readonly billingBaselineUsd: number | null;
+  readonly cumulativeBillingStopThresholdUsd: number | null;
 }
 
 export interface V208SoulXAuthority {
@@ -52,6 +58,9 @@ export interface V208SoulXAuthority {
   readonly image: string;
   readonly imageSourceCommit: string;
   readonly runpodAccountIdSha256: string;
+  readonly requiredAvailability: "HIGH";
+  readonly billingBaselineUsd: number;
+  readonly cumulativeBillingStopThresholdUsd: number;
   readonly predecessorClosureSha256: typeof V208_V207_ATTEMPT85_CLOSURE_SHA256;
 }
 
@@ -70,6 +79,7 @@ export interface V208SoulXQualificationPlan {
     readonly region: typeof V213_REGION;
     readonly gpu: typeof V213_GPU;
     readonly maxRateUsdPerGpuHour: number;
+    readonly requiredAvailability: "HIGH";
     readonly workersMin: 0;
     readonly workersMax: 1;
     readonly handlerConcurrency: 1;
@@ -80,6 +90,12 @@ export interface V208SoulXQualificationPlan {
     readonly volumeMode: "READ_ONLY";
     readonly disposableEndpointAndTemplate: true;
     readonly noGpuFallback: true;
+  }>;
+  readonly billing: Readonly<{
+    readonly baselineUsd: number;
+    readonly cumulativeStopThresholdUsd: number;
+    readonly finiteCapUsd: number;
+    readonly maxRateUsdPerGpuHour: number;
   }>;
   readonly qualification: Readonly<{
     readonly requiredWholeSpanBatch: true;
@@ -126,6 +142,7 @@ export interface V208SoulXQualificationResult {
   readonly workersMin: 0;
   readonly workersMax: 1;
   readonly observedSpendUsd: number;
+  readonly cumulativeBillingUsd: number;
 }
 
 export interface V208SoulXQualificationPort {
@@ -145,6 +162,9 @@ const currentCompiledAuthority = (): V208CompiledAuthority => ({
   image: V208_APPROVED_IMAGE,
   imageSourceCommit: V208_APPROVED_IMAGE_SOURCE_COMMIT,
   runpodAccountIdSha256: V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256,
+  requiredAvailability: V208_APPROVED_REQUIRED_AVAILABILITY,
+  billingBaselineUsd: V208_APPROVED_BILLING_BASELINE_USD,
+  cumulativeBillingStopThresholdUsd: V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD,
 });
 
 const hashCanonical = (value: unknown): string =>
@@ -163,7 +183,10 @@ export function validateV208SoulXAuthority(
     compiled.finiteCapUsd === null ||
     compiled.image === null ||
     compiled.imageSourceCommit === null ||
-    compiled.runpodAccountIdSha256 === null
+    compiled.runpodAccountIdSha256 === null ||
+    compiled.requiredAvailability === null ||
+    compiled.billingBaselineUsd === null ||
+    compiled.cumulativeBillingStopThresholdUsd === null
   )
     throw new Error("V208_FRESH_EXACT_AUTHORITY_REQUIRED");
   if (
@@ -173,7 +196,12 @@ export function validateV208SoulXAuthority(
     compiled.finiteCapUsd <= 0 ||
     !IMAGE.test(compiled.image) ||
     !COMMIT.test(compiled.imageSourceCommit) ||
-    !SHA256.test(compiled.runpodAccountIdSha256)
+    !SHA256.test(compiled.runpodAccountIdSha256) ||
+    compiled.requiredAvailability !== "HIGH" ||
+    !Number.isFinite(compiled.billingBaselineUsd) ||
+    compiled.billingBaselineUsd < 0 ||
+    !Number.isFinite(compiled.cumulativeBillingStopThresholdUsd) ||
+    compiled.cumulativeBillingStopThresholdUsd < compiled.billingBaselineUsd
   )
     throw new Error("V208_COMPILED_AUTHORITY_INVALID");
   if (environment.V208_EXECUTION_ENTRYPOINT !== V208_EXECUTION_ENTRYPOINT)
@@ -187,11 +215,28 @@ export function validateV208SoulXAuthority(
     throw new Error("V208_IMAGE_SOURCE_COMMIT_MISMATCH");
   if (environment.V208_RUNPOD_ACCOUNT_ID_SHA256 !== compiled.runpodAccountIdSha256)
     throw new Error("V208_RUNPOD_ACCOUNT_MISMATCH");
+  if (environment.V208_REQUIRED_AVAILABILITY !== compiled.requiredAvailability)
+    throw new Error("V208_REQUIRED_AVAILABILITY_MISMATCH");
   if (environment.V208_PREDECESSOR_CLOSURE_SHA256 !== V208_V207_ATTEMPT85_CLOSURE_SHA256)
     throw new Error("V208_V207_PREDECESSOR_MISMATCH");
   const cap = Number(environment.V208_FINITE_CAP_USD ?? "");
   if (!Number.isFinite(cap) || cap <= 0) throw new Error("V208_FINITE_CAP_REQUIRED");
   if (cap !== compiled.finiteCapUsd) throw new Error("V208_FINITE_CAP_MISMATCH");
+  const billingBaselineUsd = Number(environment.V208_BILLING_BASELINE_USD ?? "");
+  if (!Number.isFinite(billingBaselineUsd) || billingBaselineUsd < 0)
+    throw new Error("V208_BILLING_BASELINE_REQUIRED");
+  if (billingBaselineUsd !== compiled.billingBaselineUsd)
+    throw new Error("V208_BILLING_BASELINE_MISMATCH");
+  const cumulativeBillingStopThresholdUsd = Number(
+    environment.V208_CUMULATIVE_BILLING_STOP_THRESHOLD_USD ?? "",
+  );
+  if (
+    !Number.isFinite(cumulativeBillingStopThresholdUsd) ||
+    cumulativeBillingStopThresholdUsd < billingBaselineUsd
+  )
+    throw new Error("V208_CUMULATIVE_BILLING_STOP_THRESHOLD_REQUIRED");
+  if (cumulativeBillingStopThresholdUsd !== compiled.cumulativeBillingStopThresholdUsd)
+    throw new Error("V208_CUMULATIVE_BILLING_STOP_THRESHOLD_MISMATCH");
   return Object.freeze({
     proposalSha256: compiled.proposalSha256,
     authoritySha256: compiled.authoritySha256,
@@ -199,6 +244,9 @@ export function validateV208SoulXAuthority(
     image: compiled.image,
     imageSourceCommit: compiled.imageSourceCommit,
     runpodAccountIdSha256: compiled.runpodAccountIdSha256,
+    requiredAvailability: compiled.requiredAvailability,
+    billingBaselineUsd,
+    cumulativeBillingStopThresholdUsd,
     predecessorClosureSha256: V208_V207_ATTEMPT85_CLOSURE_SHA256,
   });
 }
@@ -236,6 +284,7 @@ export function buildV208SoulXQualificationPlan(
       region: V213_REGION,
       gpu: V213_GPU,
       maxRateUsdPerGpuHour: V213_MAX_RATE_USD_PER_GPU_HOUR,
+      requiredAvailability: authority.requiredAvailability,
       workersMin: 0 as const,
       workersMax: 1 as const,
       handlerConcurrency: 1 as const,
@@ -246,6 +295,12 @@ export function buildV208SoulXQualificationPlan(
       volumeMode: "READ_ONLY" as const,
       disposableEndpointAndTemplate: true as const,
       noGpuFallback: true as const,
+    },
+    billing: {
+      baselineUsd: authority.billingBaselineUsd,
+      cumulativeStopThresholdUsd: authority.cumulativeBillingStopThresholdUsd,
+      finiteCapUsd: authority.finiteCapUsd,
+      maxRateUsdPerGpuHour: V213_MAX_RATE_USD_PER_GPU_HOUR,
     },
     qualification: {
       requiredWholeSpanBatch: true as const,
@@ -300,7 +355,14 @@ export function validateV208SoulXQualificationResult(
     result.workersMax !== 1 ||
     !Number.isFinite(result.observedSpendUsd) ||
     result.observedSpendUsd < 0 ||
-    result.observedSpendUsd > plan.authority.finiteCapUsd
+    result.observedSpendUsd > plan.authority.finiteCapUsd ||
+    !Number.isFinite(result.cumulativeBillingUsd) ||
+    result.cumulativeBillingUsd < plan.authority.billingBaselineUsd ||
+    result.cumulativeBillingUsd > plan.authority.cumulativeBillingStopThresholdUsd ||
+    Math.abs(
+      result.cumulativeBillingUsd -
+        (plan.authority.billingBaselineUsd + result.observedSpendUsd),
+    ) > 0.000_000_001
   )
     throw new Error("V208_SOULX_QUALIFICATION_RESULT_REJECTED");
   return Object.freeze(result);
