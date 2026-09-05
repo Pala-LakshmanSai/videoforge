@@ -4,6 +4,15 @@
 
 ### Current new-chat launch point — 2026-09-05
 
+- Attempt85 is `APPROVED_SINGLE_USE_UNCONSUMED`: proposal
+  `sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540`, control
+  `2fccf2ed7257613f4a12017562243a8aeb889138`, and authority
+  `sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858`. It reuses the exact
+  published image without republication and permits one disposable-only Stage 6 run after three
+  consecutive exact Worker-absence reads within six attempts. The absolute cumulative cap is USD
+  `4.50`, baseline USD `2.507309638109291`, remaining allowance USD `1.992690361890709`; continued
+  volume retention is USD `7/month`. No legacy staging, redispatch, fallback, anchor refresh,
+  retained-volume mutation, or V2-08 is authorized.
 - Attempt82 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Its provider-free timeout-terminal repair remains
   green. RunPod publishes
   no stable timeout error string, so the repaired image adds a qualification-only probe: exact marker
