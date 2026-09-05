@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  isV208AvailabilityAtLeast,
   V208_EXECUTION_ENTRYPOINT,
   V208_SOULX_VOLUME_ID_SHA256,
   V208_V207_ATTEMPT85_CLOSURE_SHA256,
@@ -22,7 +23,7 @@ const compiled = (): V208CompiledAuthority => ({
   image: `ghcr.io/pala-lakshmansai/videoforge-soulx-v2-08@${proof("3")}`,
   imageSourceCommit: "4".repeat(40),
   runpodAccountIdSha256: proof("5"),
-  requiredAvailability: "HIGH",
+  requiredAvailability: "LOW",
   billingBaselineUsd: 10,
   cumulativeBillingStopThresholdUsd: 10.9,
 });
@@ -34,13 +35,20 @@ const environment = () => ({
   V208_IMAGE: `ghcr.io/pala-lakshmansai/videoforge-soulx-v2-08@${proof("3")}`,
   V208_IMAGE_SOURCE_COMMIT: "4".repeat(40),
   V208_RUNPOD_ACCOUNT_ID_SHA256: proof("5"),
-  V208_REQUIRED_AVAILABILITY: "HIGH",
+  V208_REQUIRED_AVAILABILITY: "LOW",
   V208_BILLING_BASELINE_USD: "10",
   V208_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: "10.9",
   V208_PREDECESSOR_CLOSURE_SHA256: V208_V207_ATTEMPT85_CLOSURE_SHA256,
 });
 
 describe("V2-08 SoulX-only qualification wrapper", () => {
+  it("accepts LOW, MEDIUM, or HIGH against the LOW floor", () => {
+    expect(isV208AvailabilityAtLeast("LOW", "LOW")).toBe(true);
+    expect(isV208AvailabilityAtLeast("MEDIUM", "LOW")).toBe(true);
+    expect(isV208AvailabilityAtLeast("HIGH", "LOW")).toBe(true);
+    expect(isV208AvailabilityAtLeast("UNKNOWN", "LOW")).toBe(false);
+  });
+
   it("is fail-closed until a fresh exact proposal, authority, cap and image are compiled", () => {
     expect(() => parseV208SoulXAuthority(environment())).toThrow(
       "V208_FRESH_EXACT_AUTHORITY_REQUIRED",
@@ -83,7 +91,7 @@ describe("V2-08 SoulX-only qualification wrapper", () => {
     expect(plan.deployment).toMatchObject({
       region: "EU-RO-1",
       gpu: "NVIDIA GeForce RTX 4090",
-      requiredAvailability: "HIGH",
+      requiredAvailability: "LOW",
       workersMin: 0,
       workersMax: 1,
       handlerConcurrency: 1,

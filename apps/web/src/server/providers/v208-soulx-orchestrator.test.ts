@@ -12,7 +12,7 @@ const authority = (cap = 6) => ({
   image: `ghcr.io/example/soulx@sha256:${"3".repeat(64)}`,
   imageSourceCommit: "4".repeat(40),
   runpodAccountIdSha256: `sha256:${"5".repeat(64)}`,
-  requiredAvailability: "HIGH" as const,
+  requiredAvailability: "LOW" as const,
   billingBaselineUsd: 10,
   cumulativeBillingStopThresholdUsd: 16,
   predecessorClosureSha256:
@@ -342,8 +342,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
 
   it.each([
     ["wrong account", { accountIdSha256: `sha256:${"9".repeat(64)}` }],
-    ["low availability", { availability: "LOW" }],
-    ["medium availability", { availability: "MEDIUM" }],
+    ["unknown availability", { availability: "UNKNOWN" }],
     ["billing baseline drift", { cumulativeBillingUsd: 10.000_001 }],
     ["stale observation", { checkedAt: "2026-09-04T23:58:59.999Z" }],
   ])("rejects %s after SQL claim but before provider mutation", async (_label, patch) => {

@@ -23,6 +23,7 @@ import type {
 } from "../hosted/v213-qualification-materializer.js";
 import {
   buildV208SoulXQualificationPlan,
+  isV208AvailabilityAtLeast,
   parseV208SoulXAuthority,
   validateV208SoulXQualificationResult,
   V208_SOULX_VOLUME_ID_SHA256,
@@ -61,8 +62,7 @@ export function assertV208StageConsumptionDecision(
 
 export const enforceV208FinalSpendCap = (
   decision: "EXECUTE" | "RESUME" | "REPLAY_REJECTED",
-): boolean =>
-  decision === "EXECUTE";
+): boolean => decision === "EXECUTE";
 
 export interface V208SoulXOrchestratorDependencies {
   readonly transport: V213DualLaneTransport;
@@ -802,7 +802,7 @@ export async function runV208SoulXWithV213Transport(
     consumed.decision === "EXECUTE" &&
     (admission.gpu !== "NVIDIA GeForce RTX 4090" ||
       admission.region !== "EU-RO-1" ||
-      admission.availability !== authority.requiredAvailability ||
+      !isV208AvailabilityAtLeast(admission.availability, authority.requiredAvailability) ||
       admission.runningPods !== 0 ||
       admission.activeWorkers !== 0 ||
       admission.endpoints !== 0 ||

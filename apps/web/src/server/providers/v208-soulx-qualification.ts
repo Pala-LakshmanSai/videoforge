@@ -9,6 +9,7 @@ import {
   V213_REGION,
   V213_SOULX_COLD_READY_LIMIT_MS,
   V213_VOLUME_MOUNT,
+  type V213Availability,
   type V213QualificationCaseDescriptor,
 } from "./v213-dual-lane-live.js";
 import { V208_SOULX_WHOLE_SPAN_DESCRIPTORS } from "../hosted/v213-qualification-materializer.js";
@@ -38,7 +39,8 @@ export const V208_APPROVED_FINITE_CAP_USD: number | null = null;
 export const V208_APPROVED_IMAGE: string | null = null;
 export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null = null;
 export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null = null;
-export const V208_APPROVED_REQUIRED_AVAILABILITY: "HIGH" | null = null;
+/** The admission floor is LOW; MEDIUM and HIGH are both acceptable provider states. */
+export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = null;
 export const V208_APPROVED_BILLING_BASELINE_USD: number | null = null;
 export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null = null;
 
@@ -49,7 +51,7 @@ export interface V208CompiledAuthority {
   readonly image: string | null;
   readonly imageSourceCommit: string | null;
   readonly runpodAccountIdSha256: string | null;
-  readonly requiredAvailability: "HIGH" | null;
+  readonly requiredAvailability: "LOW" | null;
   readonly billingBaselineUsd: number | null;
   readonly cumulativeBillingStopThresholdUsd: number | null;
 }
@@ -61,7 +63,7 @@ export interface V208SoulXAuthority {
   readonly image: string;
   readonly imageSourceCommit: string;
   readonly runpodAccountIdSha256: string;
-  readonly requiredAvailability: "HIGH";
+  readonly requiredAvailability: "LOW";
   readonly billingBaselineUsd: number;
   readonly cumulativeBillingStopThresholdUsd: number;
   readonly predecessorClosureSha256: typeof V208_V207_ATTEMPT85_CLOSURE_SHA256;
@@ -82,7 +84,7 @@ export interface V208SoulXQualificationPlan {
     readonly region: typeof V213_REGION;
     readonly gpu: typeof V213_GPU;
     readonly maxRateUsdPerGpuHour: number;
-    readonly requiredAvailability: "HIGH";
+    readonly requiredAvailability: "LOW";
     readonly workersMin: 0;
     readonly workersMax: 1;
     readonly handlerConcurrency: 1;
@@ -175,6 +177,19 @@ const hashCanonical = (value: unknown): string =>
     .update(canonicalizeJson(value as JsonValue), "utf8")
     .digest("hex")}`;
 
+const V208_AVAILABILITY_RANK: Readonly<Record<V213Availability, number>> = Object.freeze({
+  LOW: 0,
+  MEDIUM: 1,
+  HIGH: 2,
+});
+
+/** V2-08 admits the exact LOW-or-better threshold without GPU or region fallback. */
+export function isV208AvailabilityAtLeast(observed: string, threshold: V213Availability): boolean {
+  const observedRank = V208_AVAILABILITY_RANK[observed as V213Availability];
+  const thresholdRank = V208_AVAILABILITY_RANK[threshold];
+  return observedRank !== undefined && thresholdRank !== undefined && observedRank >= thresholdRank;
+}
+
 /** Pure validator used by the sealed activation parser and provider-free tests. */
 export function validateV208SoulXAuthority(
   environment: Readonly<Record<string, string | undefined>>,
@@ -200,7 +215,7 @@ export function validateV208SoulXAuthority(
     !IMAGE.test(compiled.image) ||
     !COMMIT.test(compiled.imageSourceCommit) ||
     !SHA256.test(compiled.runpodAccountIdSha256) ||
-    compiled.requiredAvailability !== "HIGH" ||
+    compiled.requiredAvailability !== "LOW" ||
     !Number.isFinite(compiled.billingBaselineUsd) ||
     compiled.billingBaselineUsd < 0 ||
     !Number.isFinite(compiled.cumulativeBillingStopThresholdUsd) ||

@@ -39,13 +39,26 @@
     "source_drift_invalidated_prior_approval": true,
     "reuse_authorized": false
   },
+  "superseded_live_launch_attempt": {
+    "proposal_sha256": "sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8",
+    "authority_consumed": true,
+    "authority_reusable": false,
+    "result": "FAILED_LAUNCH_READINESS_BEFORE_RUNPOD",
+    "failure_reason": "EXPIRED_V2_13_SQL_AUTHORITY_DEPENDENCY_AND_MISSING_STANDALONE_DURABLE_LAUNCHER",
+    "image_publication_completed": true,
+    "runpod_mutations": 0,
+    "gpu_use": false,
+    "r2_mutations": 0,
+    "external_spend_usd": 0,
+    "replacement": "STANDALONE_FILE_DURABLE_V2_08_LAUNCHER_AND_PROPOSAL_BOUND_REQUEST"
+  },
   "control": {
-    "source_commit": "4f2c5cb3c602ffb48db4a1dc7143477259202896",
-    "source_commit_role": "precursor_selector_preflight_and_image_source_only",
-    "source_hash_binding_state": "BOUND_TO_4F2_PRECURSOR_PENDING_APPROVAL",
-    "source_hash_binding_note": "This exact source commit is the selector/preflight and image-build precursor only. A single deterministic post-approval authority-materialization successor may bind the approved digest and authority evidence; it is not an image source replacement.",
+    "source_commit": null,
+    "source_commit_role": "exact_proposal_record_commit_bound_in_the_external_approval_sentence",
+    "source_hash_binding_state": "PENDING_CLEAN_PROPOSAL_RECORD_COMMIT",
+    "source_hash_binding_note": "The exact clean commit containing these canonical proposal bytes is recorded after commit and bound alongside this proposal hash in the approval sentence. The immutable worker image remains independently bound to image source 4f2c5cb3.",
     "execution_control_commit": null,
-    "execution_control_commit_role": "post_approval_authority_materialization_only",
+    "execution_control_commit_role": "single_post_approval_authority_materialization_successor_only",
     "execution_control_commit_required": true,
     "post_approval_authority_materialization": {
       "authorized": true,
@@ -53,14 +66,14 @@
       "allowed_only_after": [
         "exact proposal hash is finalized after code-worker rebind",
         "exact user approval is recorded and hashed",
-        "one immutable image digest is published or exact same-commit digest is reused and anonymously verified",
+        "the existing immutable image digest is anonymously reverified without republication",
         "independent diff audit passes before any RunPod mutation",
-        "local git HEAD and the pushed remote branch both equal the exact precursor source commit"
+        "local git HEAD and the pushed remote branch both equal the exact proposal record control-source commit"
       ],
       "derived_inputs": [
         "canonical proposal bytes and sha256",
         "exact approval-sentence bytes and sha256",
-        "verified immutable image digest and publication evidence",
+        "verified existing immutable image digest and anonymous publication evidence",
         "final code-worker-reported source and execution-control hashes",
         "durable R2 materialization-key journals, sealed pre-dispatch cleanup-plan evidence, and deterministic chained crash-resume proof"
       ],
@@ -80,7 +93,7 @@
         "narrow CURRENT_STATE/GATES/task evidence pointers"
       ],
       "exact_transition_proof": [
-        "Before any provider mutation, record clean local git HEAD == the precursor source commit and verify the exact pushed remote branch/ref and workflow GITHUB_SHA equal that commit.",
+        "Before any provider mutation, record clean local git HEAD == the exact proposal record control-source commit and verify the pushed remote branch equals that commit; no image workflow dispatch is authorized.",
         "After exact approval and immutable image-digest verification, materialize exactly one successor execution-control commit from proposal bytes/hash, approval bytes/hash, verified digest, and the independently audited allowlisted delta.",
         "The successor must preserve the precursor/image source identity; it may bind only V208 compiled constants plus authority/context evidence and may not alter worker, Dockerfile, workflow, CLI, orchestrator, contract, model, or volume bytes.",
         "Before any provider dispatch, persist and durably seal cleanup-plan with the lane deployment and all five descriptor key sets; a RESUME requires the DONE cleanup-plan evidence and its canonical hash validation.",
@@ -105,13 +118,19 @@
       "must_complete_before_runpod_mutation": true
     },
     "qualification_cli": "apps/web/src/server/providers/v208-soulx-live-cli.ts",
-    "qualification_cli_sha256": "sha256:682358254f824d29ada9bae7fd47c3539e651227749a805e93cce539fb874c71",
+    "qualification_cli_sha256": "sha256:36bfa4e171b6ca28d2acece22d52aaba34398bf2bb3b2cf5a30fab9c845ede4d",
+    "qualification_launcher": "deploy/v2-08/launch-soulx-live.mjs",
+    "qualification_launcher_sha256": "sha256:5a628af03bb612201d4f08c4a3a9391ee21a6c53afe94fc9cdb6157737961698",
+    "qualification_request_builder": "deploy/v2-08/build-soulx-live-request.mjs",
+    "qualification_request_builder_sha256": "sha256:3bcb558746fe6ceab761f2bb49fd506bfe9bb1448bd2b9012519fb3f3cfecb30",
+    "qualification_durable_store": "apps/web/src/server/providers/v208-file-durable-stage-store.ts",
+    "qualification_durable_store_sha256": "sha256:d6b25a0cfa4ee23c135c91e5afff934ebf18e22baf36b48f32786485b67407a6",
     "qualification_orchestrator": "apps/web/src/server/providers/v208-soulx-orchestrator.ts",
-    "qualification_orchestrator_sha256": "sha256:b634784e347bc95b6a3c73591df29095081677e845d7d88e711613979435c2b0",
+    "qualification_orchestrator_sha256": "sha256:326943c938b8aebd66b896d22c4451dec72f0005b12c830b83a62028c05f89e0",
     "qualification_contract": "apps/web/src/server/providers/v208-soulx-qualification.ts",
-    "qualification_contract_sha256": "sha256:0531e4e68506582c72aa983ea14c8911247827abf79da746c7e89f5616ce58c2",
+    "qualification_contract_sha256": "sha256:e9e7d55b7925b0d4feae7beb4458fff45dc32cbd3ed908a39f5e44056a152b34",
     "qualification_materializer": "apps/web/src/server/providers/v213-direct-qualification-materializer.ts",
-    "qualification_materializer_sha256": "sha256:6b2a04e7e0d19412501385c6e8c33b570a11a29e26d14d5828e6ca05cb73f779",
+    "qualification_materializer_sha256": "sha256:f8cd9444a9980c34657563ac83cd57f70d48876f7c1db32d248797dc4c9e8848",
     "qualification_transport": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
     "qualification_transport_sha256": "sha256:f22e0722f11624fbc057553d643931af24624b122230d7b1b789b68dde4abd6c",
     "execution_marker": "soulx-v208-qualification-v1",
@@ -135,10 +154,10 @@
     "remote_source_publication": {
       "remote": "origin",
       "branch_ref": "refs/heads/codex/serverless-v2-roadmap-v4",
-      "exact_push_refspec": "4f2c5cb3c602ffb48db4a1dc7143477259202896:refs/heads/codex/serverless-v2-roadmap-v4",
-      "remote_head_must_equal_after_push": "4f2c5cb3c602ffb48db4a1dc7143477259202896",
-      "workflow_dispatch_ref": "codex/serverless-v2-roadmap-v4",
-      "workflow_dispatch_requires_publish_true": true,
+      "exact_push_refspec": null,
+      "remote_head_must_equal_after_push": null,
+      "workflow_dispatch_ref": null,
+      "workflow_dispatch_requires_publish_true": false,
       "workflow_dispatch_expected_existing_digest": ""
     }
   },
@@ -152,7 +171,7 @@
   },
   "read_only_preflight": {
     "path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/read-only-preflight.json",
-    "sha256": "sha256:360cc4226deb2a931d5c6df62a8fe1b8cbdc21c301161251e55c0a6cf5e19100",
+    "sha256": "sha256:f75a070e1dda2e8c8e630fe26233bf817101722f09993907573939c26a7a594d",
     "provider_mutations": 0,
     "external_spend_usd": 0,
     "stable_read_count": 3,
@@ -168,7 +187,7 @@
       "offering_id": "NVIDIA GeForce RTX 4090",
       "display_name": "RTX 4090",
       "region": "EU-RO-1",
-      "availability": "HIGH",
+      "availability": "LOW",
       "secure_cloud": true
     },
     "fresh_read_required_before_each_mutation_boundary": true
@@ -179,14 +198,14 @@
     "repository": "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
     "registry": "ghcr.io",
     "tag": "4f2c5cb3c602ffb48db4a1dc7143477259202896",
-    "immutable_image": null,
-    "digest": null,
-    "prepublication_digest_available": false,
-    "publication_state": "PENDING_EXACT_PUBLICATION_FROM_SOURCE",
-    "publication_authorized": true,
-    "publication_authorized_under_exact_approval": true,
-    "publication_operation": "exact_push_of_precursor_then_one_manual_workflow_dispatch_publish_true",
-    "publication_digest_rule": "Capture the returned push digest, remote manifest digest and header digest after publication; require exact equality, anonymous manifest/blob pull, source-commit labels, config digest and all declared source hashes before any RunPod mutation. Do not invent a digest before publication.",
+    "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3",
+    "digest": "sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3",
+    "prepublication_digest_available": true,
+    "publication_state": "PUBLISHED_AND_ANONYMOUSLY_VERIFIED",
+    "publication_authorized": false,
+    "publication_authorized_under_exact_approval": false,
+    "publication_operation": "NONE_REUSE_EXISTING_EXACT_IMMUTABLE_DIGEST",
+    "publication_digest_rule": "Require exact anonymous manifest/blob/config/source readback of the existing immutable digest before RunPod mutation; any mismatch stops. No republication or workflow dispatch is authorized.",
     "same_commit_existing_digest_rule": "An existing tag may be reused only when the workflow receives that exact expected digest and verifies the complete immutable manifest/config/blob/source identity; otherwise stop.",
     "republish": false,
     "republication_authorized": false,
@@ -200,7 +219,7 @@
     "gpu": "NVIDIA GeForce RTX 4090",
     "gpu_offering_id": "NVIDIA GeForce RTX 4090",
     "region": "EU-RO-1",
-    "availability_at_preflight": "HIGH",
+    "availability_at_preflight": "LOW",
     "serverless_flex_usd_per_gpu_hour": 1.116,
     "serverless_flex_usd_per_gpu_second": 0.00031,
     "billing_baseline_usd": 2.7231514439627063,
@@ -287,6 +306,8 @@
     }
   ],
   "qualification_contract": {
+    "availability_floor": "LOW",
+    "availability_floor_semantics": "LOW_MEDIUM_OR_HIGH_ACCEPTED_WITH_EXACT_GPU_REGION_RATE_AND_NO_FALLBACK",
     "exactly_five_provider_jobs": true,
     "whole_span_batch_is_one_request_per_cold_or_warm_job": true,
     "complete_span_seconds": [2, 4, 6, 10],
@@ -309,6 +330,12 @@
   },
   "durability_and_resume": {
     "single_use_stage_authority": true,
+    "request_id_is_exact_proposal_digest": true,
+    "deterministic_single_journal_path": "~/.videoforge/v2-08/v208-{proposal_sha256_hex}",
+    "arbitrary_or_fresh_journal_rejected": true,
+    "launcher_and_direct_cli_require_clean_exact_control_parent_and_allowlisted_authority_successor": true,
+    "provider_credentials_loaded_only_after_compiled_authority_and_control_source_validation": true,
+    "crash_safe_unique_lock_claims_with_token_and_inode_release": true,
     "claim_before_dispatch": true,
     "ack_unknown_reconcile_by_exact_request_key": true,
     "blind_redispatch": false,
@@ -421,7 +448,7 @@
   "stop_conditions": [
     "any source, handler, Dockerfile, workflow, image digest, model, volume, GPU offering id, region, rate, availability, account, endpoint, template, or policy drift",
     "image publication does not return and anonymously verify one exact immutable digest bound to source commit 4f2c5cb3c602ffb48db4a1dc7143477259202896",
-    "fresh preflight does not prove zero compute/disposable resources, exact RTX 4090 offering id in EU-RO-1, HIGH-or-better availability, flex rate at or below USD 1.116/GPU-hour, and the exact retained SoulX volume",
+    "fresh preflight does not prove zero compute/disposable resources, exact RTX 4090 offering id in EU-RO-1, LOW-or-better availability, flex rate at or below USD 1.116/GPU-hour, and the exact retained SoulX volume",
     "terms risk decision is absent from exact user approval",
     "any job count other than the five ordered cold/warm/cancel/invalid/timeout jobs, or any redispatch",
     "cold readiness reaches or exceeds seven minutes, output/receipt/probe/readback proof is incomplete, or volume manifest changes",
