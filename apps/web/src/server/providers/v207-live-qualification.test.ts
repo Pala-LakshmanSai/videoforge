@@ -23,6 +23,7 @@ const {
   assertV207ItemCount,
   assertV207FreshCatalogOffering,
   buildV207TemplateEnvironment,
+  classifyV207TimeoutTerminal,
   createV207Cancellation,
   deleteV207GeneratedObject,
   deleteV207GeneratedObjects,
@@ -1042,14 +1043,63 @@ describe("V2-07 live qualification runner safety", () => {
     expect(source).toContain('const signals: readonly NodeJS.Signals[] = ["SIGINT", "SIGTERM"]');
   });
 
-  it("owns a separate real provider timeout attempt and rejects local/failed substitutes", () => {
+  it("owns a separate real provider timeout attempt and rejects unproven failed substitutes", () => {
     expect(source).toContain("const timeoutAttemptId = `v207-timeout-${runTag}`");
     expect(source).toContain("await harness.dispatchTimeoutBatch(timeout.input)");
     expect(source).toContain("const timeoutResult = await harness.reconcile(timeoutJob.id)");
-    expect(source).toContain('timeoutResult.status !== "TIMED_OUT"');
+    expect(source).toContain("classifyV207TimeoutTerminal(");
     expect(source).toContain('throw new Error("V207_TIMEOUT_NOT_OBSERVED")');
     expect(source).toContain('event: "provider_timeout_terminal"');
     expect(source).toContain('evidence.timeout_output_cleanup = "CONFIRMED"');
+  });
+
+  it("accepts only sealed and explicit provider execution-timeout terminals", () => {
+    const policy = { executionTimeout: 5_000, ttl: 7_200_000 };
+    expect(classifyV207TimeoutTerminal({ status: "TIMED_OUT" }, policy)).toBe("provider_timed_out");
+    expect(
+      classifyV207TimeoutTerminal({ status: "FAILED", error: "Job execution timed out" }, policy),
+    ).toBe("execution_timeout_failed");
+    expect(
+      classifyV207TimeoutTerminal(
+        { status: "FAILED", error: { code: "RUNPOD_EXECUTION_TIMEOUT" } },
+        policy,
+      ),
+    ).toBe("execution_timeout_failed");
+    expect(
+      classifyV207TimeoutTerminal({ status: "FAILED", error: "opaque provider failure" }, policy, {
+        message: "Execution timeout.",
+      }),
+    ).toBe("execution_timeout_failed");
+  });
+
+  it("rejects generic failures, timing-shaped failures, and timeout-policy drift", () => {
+    const policy = { executionTimeout: 5_000, ttl: 7_200_000 };
+    expect(classifyV207TimeoutTerminal({ status: "FAILED", error: "worker died" }, policy)).toBe(
+      null,
+    );
+    expect(
+      classifyV207TimeoutTerminal({ status: "FAILED", error: { executionTime: 11_742 } }, policy),
+    ).toBe(null);
+    expect(
+      classifyV207TimeoutTerminal(
+        { status: "FAILED", error: "Job execution timed out unexpectedly" },
+        policy,
+      ),
+    ).toBe(null);
+    expect(
+      classifyV207TimeoutTerminal(
+        { status: "FAILED", error: "Job execution timed out" },
+        { executionTimeout: 5_001, ttl: 7_200_000 },
+      ),
+    ).toBe(null);
+    expect(
+      classifyV207TimeoutTerminal(
+        { status: "TIMED_OUT" },
+        { executionTimeout: 5_000, ttl: 7_200_000, extra: true },
+      ),
+    ).toBe(null);
+    expect(classifyV207TimeoutTerminal({ status: "COMPLETED" }, policy)).toBe(null);
+    expect(classifyV207TimeoutTerminal({ status: "CANCELLED" }, policy)).toBe(null);
   });
 
   it("does not rotate a seed endpoint or redispatch a 31-unit replacement", () => {

@@ -1,0 +1,29 @@
+{
+  "schema_version": "videoforge.v2-07-attempt81-live-qualification/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 81,
+  "success": false,
+  "phase": "timeout-terminal",
+  "failure_code": "V207_TIMEOUT_NOT_OBSERVED",
+  "proposal_sha256": "sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087",
+  "authority_sha256": "sha256:cac3a6bcdab8f479131ecdb68224e61a83d7ec835418783344b1268fd237f076",
+  "control_source_commit": "9caea53785484be42a7bea210a0294addef1a3e0",
+  "image_source_commit": "d530320af723e33c6ce32552743fd00dc063eedc",
+  "image_digest": "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+  "pre_gpu_cycles_passed": 3,
+  "batches": [
+    {"kind": "cold", "status": "COMPLETED", "item_count": 32, "durable_readbacks": 32, "execution_time_ms": 167093, "delay_time_ms": 5490},
+    {"kind": "warm", "status": "COMPLETED", "item_count": 32, "durable_readbacks": 32, "execution_time_ms": 113468, "delay_time_ms": 1447}
+  ],
+  "duplicate_delivery_same_job_no_redispatch": true,
+  "cancellation": {"provider_status": "CANCELLED", "output_cleanup": "CONFIRMED", "stable_zero_proof": "PASS"},
+  "timeout": {"expected_status": "TIMED_OUT", "observed_status": "FAILED", "delay_time_ms": 11107, "execution_time_ms": 11742, "provider_error_present": true},
+  "max_two_gate_started": false,
+  "generated_output_rollback": {"result": "CONFIRMED", "required": 128, "confirmed": 128, "failed": 0},
+  "workers_zero_confirmed": true,
+  "endpoint_and_template_deleted": true,
+  "v2_07_qualified": false,
+  "v2_08_actions": 0,
+  "sensitive_material_retained": false
+}

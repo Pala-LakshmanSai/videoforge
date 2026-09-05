@@ -18,6 +18,8 @@ import {
   V207_RUNPOD_REQUEST_AUTHORITY_TTL_SECONDS,
   V207_RUNPOD_REGION,
   V207_RUNPOD_VOLUME_MOUNT,
+  V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+  V207_TIMEOUT_TTL_MS,
 } from "./runpod-control";
 import {
   RunPodV207QualificationHarness,
@@ -174,6 +176,19 @@ const sortedJson = (value: unknown): string => {
 
 const SAFE_PROVIDER_CODE = /^[A-Z][A-Z0-9_.:-]{2,160}$/u;
 const V207_PROVIDER_ERROR_MAX_BYTES = 4 * 1024;
+const V207_TIMEOUT_FAILURE_CODES: ReadonlySet<string> = new Set([
+  "EXECUTION_TIMEOUT",
+  "JOB_EXECUTION_TIMEOUT",
+  "RUNPOD_EXECUTION_TIMEOUT",
+  "SERVERLESS_EXECUTION_TIMEOUT",
+  "WORKER_EXECUTION_TIMEOUT",
+]);
+const V207_TIMEOUT_FAILURE_MESSAGES: ReadonlySet<string> = new Set([
+  "Execution timeout",
+  "Job execution timeout",
+  "Job execution timed out",
+  "Worker execution timeout",
+]);
 const V207_ENDPOINT_READBACK_MISMATCH_CATEGORIES: ReadonlySet<string> = new Set([
   "identity",
   "environment",
@@ -526,6 +541,7 @@ const SAFE_EVIDENCE_KEYS = new Set([
   "cancel_status",
   "cancel_output_cleanup",
   "timeout_status",
+  "timeout_terminal_category",
   "timeout_output_cleanup",
   "finalize_response_diagnostic",
   "timing_provenance",
@@ -827,6 +843,66 @@ const findV207ProviderErrorCode = (value: unknown, depth = 0): string | null => 
 /** Prefer a bounded root `/status` error, then fall back to a handler output error code. */
 export function extractV207ProviderJobErrorCode(jobError: unknown, output: unknown): string | null {
   return findV207ProviderErrorCode(jobError) ?? findV207ProviderErrorCode(output);
+}
+
+const hasExactV207ExecutionTimeoutDiagnostic = (value: unknown, depth = 0): boolean => {
+  if (depth > 5) return false;
+  if (typeof value === "string") {
+    const candidate = value.trim().replace(/[.:]$/u, "");
+    return (
+      V207_TIMEOUT_FAILURE_CODES.has(candidate) || V207_TIMEOUT_FAILURE_MESSAGES.has(candidate)
+    );
+  }
+  if (Array.isArray(value)) {
+    return value
+      .slice(0, 32)
+      .some((entry) => hasExactV207ExecutionTimeoutDiagnostic(entry, depth + 1));
+  }
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as AnyRecord;
+  for (const key of ["code", "error_code", "errorCode", "message", "reason", "error"]) {
+    if (
+      Object.hasOwn(candidate, key) &&
+      hasExactV207ExecutionTimeoutDiagnostic(candidate[key], depth + 1)
+    ) {
+      return true;
+    }
+  }
+  return false;
+};
+
+export type V207TimeoutTerminalCategory = "provider_timed_out" | "execution_timeout_failed";
+
+/**
+ * RunPod can expose an enforced per-job execution timeout as either TIMED_OUT or FAILED. Accept
+ * the latter only when the exact sealed policy was dispatched and the bounded provider tuple
+ * explicitly identifies an execution timeout. Timing alone can never turn a generic failure
+ * into timeout proof.
+ */
+export function classifyV207TimeoutTerminal(
+  result: Pick<RunPodJobResult, "status" | "error">,
+  policy: unknown,
+  diagnostic?: unknown,
+): V207TimeoutTerminalCategory | null {
+  const candidate =
+    policy && typeof policy === "object" && !Array.isArray(policy) ? (policy as AnyRecord) : null;
+  if (
+    !candidate ||
+    Object.keys(candidate).length !== 2 ||
+    candidate.executionTimeout !== V207_TIMEOUT_EXECUTION_TIMEOUT_MS ||
+    candidate.ttl !== V207_TIMEOUT_TTL_MS
+  ) {
+    return null;
+  }
+  if (result.status === "TIMED_OUT") return "provider_timed_out";
+  if (
+    result.status === "FAILED" &&
+    (hasExactV207ExecutionTimeoutDiagnostic(result.error) ||
+      hasExactV207ExecutionTimeoutDiagnostic(diagnostic))
+  ) {
+    return "execution_timeout_failed";
+  }
+  return null;
 }
 
 const RESULT_TEMP_PATH = `${RESULT_PATH}.tmp`;
@@ -2688,13 +2764,31 @@ async function main(): Promise<void> {
       const timeoutJob = await harness.dispatchTimeoutBatch(timeout.input);
       await persistCheckpoint("timeout-dispatch");
       const timeoutResult = await harness.reconcile(timeoutJob.id);
+      let timeoutDiagnostic: unknown;
+      if (timeoutResult.status === "FAILED") {
+        try {
+          timeoutDiagnostic = await harness.diagnostic(timeoutJob.id);
+        } catch {
+          timeoutDiagnostic = undefined;
+        }
+      }
+      const timeoutTerminalCategory = classifyV207TimeoutTerminal(
+        timeoutResult,
+        {
+          executionTimeout: V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
+          ttl: V207_TIMEOUT_TTL_MS,
+        },
+        timeoutDiagnostic,
+      );
       evidence.timeout_status = timeoutResult.status;
+      evidence.timeout_terminal_category = timeoutTerminalCategory;
       await persistCheckpoint("timeout-terminal", {
         event: "provider_timeout_terminal",
         status: timeoutResult.status,
+        timeout_terminal_category: timeoutTerminalCategory,
         job_id_hash: timeoutResult.idHash,
       });
-      if (timeoutResult.status !== "TIMED_OUT") {
+      if (timeoutTerminalCategory === null) {
         throw new Error("V207_TIMEOUT_NOT_OBSERVED");
       }
       await deleteV207GeneratedObjects(timeout.objectKeys, nonce);

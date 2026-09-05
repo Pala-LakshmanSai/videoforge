@@ -1,0 +1,21 @@
+{
+  "schema_version": "videoforge.v2-07-attempt81-live-orchestrator-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 81,
+  "result": "FAILED_CLEAN",
+  "failure_code": "V207_LIVE_RUNNER_FAILED",
+  "child_failure_code": "V207_TIMEOUT_NOT_OBSERVED",
+  "pre_gpu_clean_cycles": 3,
+  "cleanup_required": false,
+  "cleanup_confirmed_reads": 3,
+  "disposable_output_worker_absent": true,
+  "temporary_route_absence_confirmed": true,
+  "temporary_route_status_only_reads": [404, 404, 404],
+  "response_bodies_headers_urls_or_queries_retained": false,
+  "runpod_endpoint_deleted": true,
+  "runpod_template_deleted": true,
+  "generated_output_rollback_confirmed": 128,
+  "generated_output_rollback_failed": 0,
+  "v2_08_actions": 0
+}

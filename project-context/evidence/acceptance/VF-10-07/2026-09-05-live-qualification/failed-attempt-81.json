@@ -1,0 +1,59 @@
+{
+  "schema_version": "videoforge.v2-07-attempt81-failed-clean-closure/v1",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 81,
+  "result": "NOT_QUALIFIED_FAILED_CLEAN",
+  "failure_code": "V207_TIMEOUT_NOT_OBSERVED",
+  "failure_stage": "timeout_terminal_status_contract",
+  "proposal_sha256": "sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087",
+  "authority_sha256": "sha256:cac3a6bcdab8f479131ecdb68224e61a83d7ec835418783344b1268fd237f076",
+  "authority_status": "CONSUMED_NON_REUSABLE",
+  "control_source_commit": "9caea53785484be42a7bea210a0294addef1a3e0",
+  "image_source_commit": "d530320af723e33c6ce32552743fd00dc063eedc",
+  "image_digest": "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+  "passed": {
+    "pre_gpu_cycles": 3,
+    "cold_images_and_readbacks": 32,
+    "warm_images_and_readbacks": 32,
+    "duplicate_replay_without_redispatch": true,
+    "cancellation_provider_status": "CANCELLED",
+    "cancellation_stable_zero_repair": true,
+    "cancellation_output_cleanup": true
+  },
+  "timeout": {"expected": "TIMED_OUT", "observed": "FAILED", "provider_error_present": true, "delay_time_ms": 11107, "execution_time_ms": 11742},
+  "max_two_gate_started": false,
+  "outputs": {"rollback_required": 128, "rollback_confirmed": 128, "rollback_failed": 0},
+  "cleanup": {
+    "endpoint_deleted": true,
+    "template_deleted": true,
+    "cloudflare_worker_and_route_absent": true,
+    "cloudflare_absence_reads": 3,
+    "runpod_final_zero_compute_reads": 3,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_count": 2
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 2.266709277551854,
+    "final_endpoint_spend_usd": 2.4066109169798438,
+    "incremental_spend_usd": 0.13990163942798972,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "evidence": {
+    "qualification": "attempt81-live-qualification.json",
+    "qualification_sha256": "sha256:efccbcb06a4612cc1907eebbf6ac8c252668130583891cbae9b8897b31e03cac",
+    "orchestrator": "attempt81-live-orchestrator.json",
+    "orchestrator_sha256": "sha256:34f58b9e8b1d25a4e0e2187940dffbab2754e22dc573cb26f45ad34db11507e8",
+    "reconciliation": "attempt81-readonly-reconciliation.json",
+    "reconciliation_sha256": "sha256:d2da15e379bf207502587f6adcb11eaec86b732866e56a69751ad44bfc58de68"
+  },
+  "v2_07_qualified": false,
+  "v2_08_actions": 0,
+  "next_boundary": "Provider-free diagnosis and repair of the timeout terminal status contract, then a fresh exact audited successor proposal. Attempt81 cannot be retried."
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": "videoforge.v2-07-readonly-reconciliation/v2",
+  "checkpoint": "V2-07",
+  "task_id": "VF-10-07",
+  "attempt": 81,
+  "checked_at": "2026-09-05T02:20:26.688Z",
+  "stable_read_count": 3,
+  "read_only": true,
+  "provider_mutations": 0,
+  "gpu_jobs_submitted": 0,
+  "inventory": {
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "running_pods": 0,
+    "retained_volume_charge_usd_per_month": 7,
+    "retained_volumes": [{"sizeGb": 50, "dataCenterId": "EU-RO-1"}, {"sizeGb": 50, "dataCenterId": "EU-RO-1"}]
+  },
+  "billing": {
+    "baseline_endpoint_spend_usd": 2.266709277551854,
+    "final_endpoint_spend_usd": 2.4066109169798438,
+    "incremental_spend_usd": 0.13990163942798972,
+    "maximum_cumulative_finite_spend_usd": 4.5,
+    "within_approved_cap": true,
+    "settlement": "THREE_STABLE_READS"
+  }
+}

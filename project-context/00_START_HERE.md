@@ -4,15 +4,18 @@
 
 ### Current new-chat launch point — 2026-09-05
 
-- Attempt81 is `APPROVED_SINGLE_USE_UNCONSUMED`: proposal
+- Attempt81 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`: proposal
   `sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087`, control source
   `9caea53785484be42a7bea210a0294addef1a3e0`, unchanged image source `d530320af723e33c6ce32552743fd00dc063eedc`,
   and published image `sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62`.
   It removes the repeated cancellation wait and accepts exact terminal inventory only after four
   queue-zero reads plus two identical terminal snapshots. Tests pass 106/106 focused and 1638/1638
-  web; independent audit is P0/P1/P2 `0/0/0`. Exact authority
-  `sha256:cac3a6bcdab8f479131ecdb68224e61a83d7ec835418783344b1268fd237f076` authorizes only the bounded
-  `$4.50` sequence and cleanup; no image republication, fallback, anchor refresh, volume mutation, or V2-08.
+  web; independent audit is P0/P1/P2 `0/0/0`. Cold/warm generated and verified 64/64 images,
+  duplicate replay and cancellation passed, then the timeout gate received provider `FAILED` instead
+  of the gate's required `TIMED_OUT`; max-two did not run. Rollback removed 128/128 outputs. Exact
+  cleanup and three final reads prove zero compute; spend was USD `0.13990163942798972`, within cap.
+  Closure `evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-81.json` is
+  `sha256:66cf2b2a9a6131c7100bb249cf2ac81e1d12990836a80e8f071766ea6ba36316`. No live authority remains.
 - V2-07 Attempt80 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. All three pre-GPU cycles and cold/warm
   32-image batches passed. Cancellation reached provider `CANCELLED`, then failed closed at
   `RUNPOD_ZERO_NOT_CONFIRMED` because stable-zero liability release did not accept terminal inventory;

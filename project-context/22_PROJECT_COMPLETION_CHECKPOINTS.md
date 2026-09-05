@@ -200,13 +200,15 @@ the current checkpoint. Do not restart the old checkpoint or its full test matri
 
 **Timebox:** capacity-dependent; keep each live gate atomic and bounded.
 
-**Current gate:** Attempt81 is `APPROVED_SINGLE_USE_UNCONSUMED` at proposal
+**Current gate:** Attempt81 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE` at proposal
 `sha256:ed0062759c2c12f050a542a80a21b57f26c0f7ae8c1f31a9e1635f8ec2daf087` with control
 `9caea53785484be42a7bea210a0294addef1a3e0`, unchanged image source `d530320af723e33c6ce32552743fd00dc063eedc`,
 and published image `sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62`.
-It passes independent audit with P0/P1/P2 `0/0/0`; authority
-`sha256:cac3a6bcdab8f479131ecdb68224e61a83d7ec835418783344b1268fd237f076` permits only the bounded
-`$4.50` execution and cleanup. Attempt80 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Three pre-GPU cycles and both
+It passed cold/warm 64-image generation, cancellation and stable-zero, then stopped because RunPod
+reported the sealed execution timeout as `FAILED` while the gate required only `TIMED_OUT`; max-two
+did not run. Rollback 128/128, disposal, three zero reads, and USD `0.13990163942798972` spend passed.
+Closure is `sha256:66cf2b2a9a6131c7100bb249cf2ac81e1d12990836a80e8f071766ea6ba36316`.
+No live authority remains. Attempt80 is `CONSUMED_FAILED_CLEAN_NON_REUSABLE`. Three pre-GPU cycles and both
 32-image cold/warm batches passed. Provider cancellation reached `CANCELLED`, but post-cancel
 stable-zero liability release failed closed at `RUNPOD_ZERO_NOT_CONFIRMED`; timeout/max-two did not
 run. Rollback removed 96/96 generated objects. Exact cleanup and three final zero-compute/billing
