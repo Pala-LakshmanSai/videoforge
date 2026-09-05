@@ -28,27 +28,20 @@ export const V208_SOULX_VOLUME_ID_SHA256 =
 export const V208_SOULX_VOLUME_MANIFEST_SHA256 =
   "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626" as const;
 export const V208_EXECUTION_ENTRYPOINT = "soulx-v208-qualification-v1" as const;
-// Exact single-use authority materialized from the approved dispatch-guard repair proposal. The
-// launcher still requires this clean one-parent successor and fails closed outside it.
-export const V208_PENDING_PROPOSAL_SHA256: string | null =
-  "sha256:8cf7ca34105cef7f031f71c3f623967c7f9516792bcc9ba9947b8b56652ee29a";
-export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = true;
-export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null =
-  "24803efec335c70a9508eb2fdaec6e276d8053ae";
-export const V208_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:c9c57ed10d4300d9d5c376313fe686fc768b520591f578df5b8a22d4e6fc6d16";
-export const V208_APPROVED_FINITE_CAP_USD: number | null = 1.8;
-export const V208_APPROVED_IMAGE: string | null =
-  "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3";
-export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null =
-  "4f2c5cb3c602ffb48db4a1dc7143477259202896";
-export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null =
-  "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
+// The dispatch-guard authority was consumed by the failed manifest-format attempt. A fresh image
+// publication and exact approval must be materialized before this can become executable again.
+export const V208_PENDING_PROPOSAL_SHA256: string | null = null;
+export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = false;
+export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null = null;
+export const V208_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V208_APPROVED_FINITE_CAP_USD: number | null = null;
+export const V208_APPROVED_IMAGE: string | null = null;
+export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null = null;
+export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null = null;
 /** The admission floor is LOW; MEDIUM and HIGH are both acceptable provider states. */
-export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = "LOW";
-export const V208_APPROVED_BILLING_BASELINE_USD: number | null = 2.7231514439627063;
-export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null =
-  4.523151443962706;
+export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = null;
+export const V208_APPROVED_BILLING_BASELINE_USD: number | null = null;
+export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null = null;
 
 export interface V208CompiledAuthority {
   readonly proposalSha256: string | null;

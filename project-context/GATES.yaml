@@ -389,27 +389,28 @@ gates:
     blocks: soulx_serverless_dispatch_and_crop_activation
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesssoulx001-soulx-endpoint"
     owner: V2-08
-    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-dispatch-guard-attempt.json"
+    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-volume-manifest-attempt.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:8cf7ca34105cef7f031f71c3f623967c7f9516792bcc9ba9947b8b56652ee29a"
+    current_candidate_proposal_sha256: "sha256:ba2c0a8a663e20edec756c992db83eba9fc56f4db71cd7f472a8c6871582335c"
     current_candidate_acceptance_sha256: null
-    current_candidate_approval_sentence_sha256: "sha256:fe8bb2b89b81d72f55c7b756ba183a12aac28ec40b0d00a0403f6670606d926e"
+    current_candidate_approval_sentence_sha256: null
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: pending
-    current_candidate_source_commit: "24803efec335c70a9508eb2fdaec6e276d8053ae"
-    immutable_image_source_commit: "4f2c5cb3c602ffb48db4a1dc7143477259202896"
-    approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
-    approved_authority_sha256: "sha256:c9c57ed10d4300d9d5c376313fe686fc768b520591f578df5b8a22d4e6fc6d16"
-    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
-    runpod_mutation_performed: "a4ff authority created and deleted one disposable endpoint/template; current proposal has no authority"
-    gpu_seconds: 0
+    authority_materialization_diff_audit: not_applicable_until_fresh_approval
+    current_candidate_source_commit: null
+    immutable_image_source_commit: null
+    approved_authority: null
+    approved_authority_sha256: null
+    approved_authority_status: none_pending_clean_repaired_source_and_fresh_exact_approval
+    runpod_mutation_performed: "8cf7 authority sent two acknowledged jobs, then deleted the disposable endpoint/template; current draft has no authority"
+    gpu_seconds: not_claimed
     observed_incremental_spend_usd: 0
-    current_blocker: independent_authority_diff_audit
-    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
-    image_publication_workflow_run_id: 33963672249
-    current_candidate_dockerfile_sha256: "sha256:d1b4039f44147acb4b9e08e72700156cc239b3bc4dfddb0bb92518c22c2bfc3a"
-    current_candidate_publication_workflow_sha256: "sha256:49e68adcd592029deb77f2360d0a063157209b209892dfe36a2e1b0faaf36e3f"
+    current_blocker: clean_repaired_source_commit_new_immutable_image_publication_and_fresh_exact_approval
+    immutable_image: null
+    prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
+    image_publication_workflow_run_id: null
+    current_candidate_dockerfile_sha256: "sha256:d5e772cf5c43af312712905251dead5795c99e052b9b2b6ca7eb84856e4ea7c7"
+    current_candidate_publication_workflow_sha256: "sha256:a819a9793ebe0fd01855f3ea4eb36b35715f13b00284884fe4b77c784bfae1d3"
     prior_publication_workflow_run_id: 33961641686
     prior_publication_result: failed_before_authentication_or_publication
     prior_publication_failure: TMPDIR_DIRECTORY_ABSENT
@@ -423,7 +424,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: exact_dispatch_guard_repaired_max1_live_qualification_authorized_pending_execution
+    result: failed_before_model_load_manifest_wire_format_repair_draft_pending_new_image_and_fresh_exact_approval
 
   GATE_SOULX_LICENSE_001:
     status: open

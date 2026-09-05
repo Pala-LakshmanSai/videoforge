@@ -1,0 +1,61 @@
+{
+  "schema_version": "videoforge.v2-08-post-volume-manifest-failure-reconciliation/v1",
+  "checkpoint": "V2-08",
+  "task_id": "VF-10-08",
+  "stage": 7,
+  "account_id_sha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+  "provider_mutations_during_reconciliation": 0,
+  "gpu_jobs_submitted_during_reconciliation": 0,
+  "stable_read_count": 3,
+  "reads": [
+    {
+      "checked_at": "2026-09-05T15:32:21.248Z",
+      "pods": 0,
+      "running_pods": 0,
+      "endpoints": 0,
+      "private_templates": 0,
+      "active_serverless_workers": 0,
+      "billing_usd": 2.7231514439627063
+    },
+    {
+      "checked_at": "2026-09-05T15:32:25.766Z",
+      "pods": 0,
+      "running_pods": 0,
+      "endpoints": 0,
+      "private_templates": 0,
+      "active_serverless_workers": 0,
+      "billing_usd": 2.7231514439627063
+    },
+    {
+      "checked_at": "2026-09-05T15:32:28.327Z",
+      "pods": 0,
+      "running_pods": 0,
+      "endpoints": 0,
+      "private_templates": 0,
+      "active_serverless_workers": 0,
+      "billing_usd": 2.7231514439627063
+    }
+  ],
+  "retained_volumes": [
+    {
+      "id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+      "size_gb": 50,
+      "region": "EU-RO-1"
+    },
+    {
+      "id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+      "size_gb": 50,
+      "region": "EU-RO-1"
+    }
+  ],
+  "disposable_endpoint_absent": true,
+  "disposable_template_absent": true,
+  "deterministic_r2_cleanup_phase_count": 5,
+  "all_deterministic_r2_cleanup_phases_absence_verified": true,
+  "billing_baseline_usd": 2.7231514439627063,
+  "billing_final_usd": 2.7231514439627063,
+  "incremental_spend_usd": 0,
+  "maximum_cumulative_finite_spend_usd": 4.523151443962706,
+  "within_approved_cap": true,
+  "retained_volume_billing": "UNCHANGED_EXISTING_TWO_50_GB_VOLUMES_ONLY"
+}

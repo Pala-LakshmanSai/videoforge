@@ -127,6 +127,14 @@ def _expect_sha256(value: object, code: str) -> str:
     return value
 
 
+def _volume_manifest_sha256(verification: dict[str, object]) -> str:
+    """Normalize soulx_volume's internal bare digest to the signed wire format."""
+    value = verification.get("manifest_sha256")
+    if not isinstance(value, str) or not re.fullmatch(r"[a-f0-9]{64}", value):
+        raise ServerlessSoulXError("SOULX_SERVERLESS_VOLUME_MANIFEST_INVALID")
+    return f"sha256:{value}"
+
+
 def _environment(name: str) -> str:
     value = os.environ.get(name)
     if not value:
@@ -845,7 +853,8 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         await _run_sealed_qualification_probe(payload, accepted=accepted)
         await _claim_delivery(accepted["work"]["attempt_id"])
         pre_manifest = await asyncio.to_thread(verify_volume)
-        if pre_manifest["manifest_sha256"] != accepted["runtime"]["model_manifest_sha256"]:
+        pre_manifest_sha256 = _volume_manifest_sha256(pre_manifest)
+        if pre_manifest_sha256 != accepted["runtime"]["model_manifest_sha256"]:
             raise ServerlessSoulXError("SOULX_SERVERLESS_VOLUME_MANIFEST_MISMATCH")
         # Captured before _ready_runtime mutates the process cache and signed into every output
         # item so qualification can distinguish a real same-worker warm reuse from a label.
@@ -963,7 +972,8 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                     }
                 )
             post_manifest = await asyncio.to_thread(verify_volume)
-            if post_manifest["manifest_sha256"] != pre_manifest["manifest_sha256"]:
+            post_manifest_sha256 = _volume_manifest_sha256(post_manifest)
+            if post_manifest_sha256 != pre_manifest_sha256:
                 raise ServerlessSoulXError("SOULX_SERVERLESS_VOLUME_MUTATION_DETECTED")
             timings = runtime_health.get("timings")
             if not isinstance(timings, dict):
@@ -1018,8 +1028,8 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                     "probe_source": "WORKER_RUNTIME_SELF_REPORT",
                 },
                 "volume_verification": {
-                    "manifest_sha256_before": pre_manifest["manifest_sha256"],
-                    "manifest_sha256_after": post_manifest["manifest_sha256"],
+                    "manifest_sha256_before": pre_manifest_sha256,
+                    "manifest_sha256_after": post_manifest_sha256,
                     "mutation_detected": False,
                     "cross_mount_detected": False,
                 },

@@ -565,7 +565,8 @@ class SoulXServerlessTest(unittest.TestCase):
             patch.object(
                 soulx_serverless,
                 "verify_volume",
-                return_value={"manifest_sha256": "sha256:" + "4" * 64},
+                # Real soulx_volume.verify_volume returns its internal digest as bare hex.
+                return_value={"manifest_sha256": "4" * 64},
             ),
             patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)),
             patch.object(soulx_serverless, "_fetch_exact", side_effect=fixture.fetch),
@@ -603,6 +604,16 @@ class SoulXServerlessTest(unittest.TestCase):
             self.assertEqual(result["provenance_receipt"]["lane"], "soulx_avatar")
             receipt_body = base64.b64decode(result["provenance_receipt_body_base64"])
             self.assertEqual(digest(receipt_body), result["provenance_receipt"]["receipt_sha256"])
+            receipt_document = json.loads(receipt_body)
+            self.assertEqual(
+                receipt_document["volume_verification"],
+                {
+                    "manifest_sha256_before": "sha256:" + "4" * 64,
+                    "manifest_sha256_after": "sha256:" + "4" * 64,
+                    "mutation_detected": False,
+                    "cross_mount_detected": False,
+                },
+            )
             self.assertEqual(
                 result["provenance_receipt"]["envelope_sha256"],
                 soulx_serverless.restricted_canonical_sha256(fixture.payload["envelope"]),
