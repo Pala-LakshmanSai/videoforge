@@ -31,7 +31,7 @@ export const V208_EXECUTION_ENTRYPOINT = "soulx-v208-qualification-v1" as const;
 // standalone launch-readiness audit stopped before RunPod. A repaired source requires a fresh
 // source-bound proposal and exact approval before any provider mutation is reachable.
 export const V208_PENDING_PROPOSAL_SHA256: string | null = null;
-export const V208_COMPILED_AUTHORITY_ACTIVE = false as const;
+export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = false;
 export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null = null;
 export const V208_APPROVED_AUTHORITY_SHA256: string | null = null;
 export const V208_APPROVED_FINITE_CAP_USD: number | null = null;
@@ -258,6 +258,12 @@ export function validateV208SoulXAuthority(
 export function parseV208SoulXAuthority(
   environment: Readonly<Record<string, string | undefined>>,
 ): V208SoulXAuthority {
+  if (
+    V208_COMPILED_AUTHORITY_ACTIVE !== true ||
+    V208_APPROVED_CONTROL_SOURCE_COMMIT === null ||
+    !COMMIT.test(V208_APPROVED_CONTROL_SOURCE_COMMIT)
+  )
+    throw new Error("V208_FRESH_EXACT_AUTHORITY_REQUIRED");
   return validateV208SoulXAuthority(environment, currentCompiledAuthority());
 }
 

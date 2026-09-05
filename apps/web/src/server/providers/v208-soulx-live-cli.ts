@@ -1,8 +1,9 @@
 import { createHash, createPrivateKey, createPublicKey, sign } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { userInfo } from "node:os";
-import { join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { ProvenanceReceiptSigner } from "@videoforge/control-plane";
 import { canonicalizeJson, type JsonValue } from "@videoforge/contracts";
@@ -21,6 +22,7 @@ import {
   parseV208SoulXAuthority,
   V208_APPROVED_AUTHORITY_SHA256,
   V208_APPROVED_BILLING_BASELINE_USD,
+  V208_APPROVED_CONTROL_SOURCE_COMMIT,
   V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD,
   V208_APPROVED_FINITE_CAP_USD,
   V208_APPROVED_IMAGE,
@@ -78,6 +80,52 @@ const V208_PROTECTED_INPUT_ENVIRONMENT_NAMES: Set<string> = new Set(
   Object.values(V208_PROTECTED_INPUT_ENVIRONMENT),
 );
 export const V208_SOULX_LIVE_CLI_CONFIRMATION = "EXECUTE_EXACT_V2_08_SOULX_QUALIFICATION";
+const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
+const AUTHORITY_COMMIT_ALLOWED_PATHS = new Set([
+  "apps/web/src/server/providers/v208-soulx-qualification.ts",
+  "project-context/CURRENT_STATE.yaml",
+  "project-context/GATES.yaml",
+  "project-context/tasks/VF-10-08.md",
+  "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json",
+  "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
+]);
+
+export function assertV208ExecutionControlSource(
+  controlSourceCommit = V208_APPROVED_CONTROL_SOURCE_COMMIT,
+  runGit: typeof execFileSync = execFileSync,
+): void {
+  if (controlSourceCommit === null || !/^[a-f0-9]{40}$/u.test(controlSourceCommit))
+    throw new Error("V208_CONTROL_SOURCE_AUTHORITY_INVALID");
+  const git = (args: readonly string[], code: string): string => {
+    try {
+      return String(
+        runGit("git", ["-C", REPOSITORY_ROOT, ...args], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        }),
+      ).trim();
+    } catch {
+      throw new Error(code);
+    }
+  };
+  if (git(["status", "--porcelain", "--untracked-files=all"], "V208_SOURCE_STATUS_FAILED") !== "")
+    throw new Error("V208_EXECUTION_SOURCE_DIRTY");
+  const head = git(["rev-parse", "HEAD^{commit}"], "V208_SOURCE_HEAD_FAILED");
+  if (git(["rev-parse", "HEAD^1"], "V208_SOURCE_PARENT_FAILED") !== controlSourceCommit)
+    throw new Error("V208_CONTROL_SOURCE_LINEAGE_MISMATCH");
+  const changed = git(
+    ["diff", "--name-only", `${controlSourceCommit}..${head}`],
+    "V208_SOURCE_DIFF_FAILED",
+  )
+    .split("\n")
+    .filter(Boolean);
+  if (
+    changed.length === 0 ||
+    !changed.includes("apps/web/src/server/providers/v208-soulx-qualification.ts") ||
+    changed.some((path) => !AUTHORITY_COMMIT_ALLOWED_PATHS.has(path))
+  )
+    throw new Error("V208_AUTHORITY_MATERIALIZATION_SCOPE_INVALID");
+}
 
 export function assertV208SingleUseJournalBinding(
   proposalSha256: string,
@@ -276,6 +324,7 @@ export function createV208SoulXLiveComposition(input: {
   const protectedInputs = input.protectedInputs;
   const executionEnvironment = authorityEnvironment(input.environment ?? process.env);
   const authority = parseV208SoulXAuthority(executionEnvironment);
+  assertV208ExecutionControlSource();
   assertV208SingleUseJournalBinding(
     authority.proposalSha256,
     protectedInputs.request.request_id,
@@ -676,6 +725,7 @@ export function readV208ProtectedInputs(
 export async function runV208SoulXLiveCli(
   environment: NodeJS.ProcessEnv = process.env,
   ports: Readonly<{
+    validateControlSource?: () => void;
     loadRunPodKey?: () => Promise<string>;
     readInputs?: (environment: NodeJS.ProcessEnv, runpodKey: string) => V208ProtectedInputs;
     createComposition?: typeof createV208SoulXLiveComposition;
@@ -685,6 +735,7 @@ export async function runV208SoulXLiveCli(
   // Fail closed before reading either provider credential. The launcher independently performs
   // the same compiled-authority gate before it opens the protected R2 descriptors.
   parseV208SoulXAuthority(authorityEnvironment(environment));
+  (ports.validateControlSource ?? assertV208ExecutionControlSource)();
   const key = await (ports.loadRunPodKey ?? loadSujalRunPodApiKeyFromKeychain)();
   const inputs = (
     ports.readInputs ?? ((source, runpodKey) => readV208ProtectedInputs(source, runpodKey))

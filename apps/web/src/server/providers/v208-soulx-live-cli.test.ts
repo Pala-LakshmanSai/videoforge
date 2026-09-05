@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  assertV208ExecutionControlSource,
   assertV208SingleUseJournalBinding,
   createV208CleanupAttributableResource,
   readV208BinaryFd,
@@ -23,6 +24,24 @@ function durable(value: unknown) {
 }
 
 describe("V2-08 live composition", () => {
+  it("pins direct CLI execution to one clean authority successor", () => {
+    const control = "b".repeat(40);
+    const runGit = vi.fn((_command: string, args: string[]) => {
+      const operation = args.slice(2).join(" ");
+      if (operation.startsWith("status ")) return "";
+      if (operation === "rev-parse HEAD^{commit}") return `${"c".repeat(40)}\n`;
+      if (operation === "rev-parse HEAD^1") return `${control}\n`;
+      if (operation.startsWith("diff --name-only "))
+        return "apps/web/src/server/providers/v208-soulx-qualification.ts\n";
+      throw new Error("unexpected git call");
+    });
+    expect(() => assertV208ExecutionControlSource(control, runGit as never)).not.toThrow();
+    runGit.mockImplementationOnce(() => " M deploy/v2-08/launch-soulx-live.mjs\n");
+    expect(() => assertV208ExecutionControlSource(control, runGit as never)).toThrow(
+      "V208_EXECUTION_SOURCE_DIRTY",
+    );
+  });
+
   it("accepts NUL-bearing media and one launcher JSON newline", () => {
     const root = mkdtempSync(join(tmpdir(), "v208-fd-test-"));
     const binaryPath = join(root, "input.png");
