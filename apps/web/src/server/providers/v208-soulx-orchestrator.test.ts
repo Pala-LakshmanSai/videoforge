@@ -170,8 +170,15 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     ["medium availability", { availability: "MEDIUM" }],
     ["billing baseline drift", { cumulativeBillingUsd: 10.000_001 }],
     ["stale observation", { checkedAt: "2026-09-04T23:58:59.999Z" }],
-  ])("rejects %s before the authority or provider mutation", async (_label, patch) => {
-    const issueStageAuthority = vi.fn();
+  ])("rejects %s after SQL claim but before provider mutation", async (_label, patch) => {
+    const issueStageAuthority = vi.fn(async () => ({
+      authorityId: "authority-v208-admission",
+    }));
+    const claimStageAuthority = vi.fn(async () => ({ decision: "EXECUTE" }));
+    const claimOperation = vi.fn(async (operation: Record<string, unknown>) => ({
+      action: "EXECUTE",
+      record: { ...operation, state: "IN_FLIGHT" },
+    }));
     const createLane = vi.fn();
     const admission = {
       checkedAt: "2026-09-05T00:00:00.000Z",
@@ -207,7 +214,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       transport: {
         freshAdmission: async () => admission,
         now: () => new Date("2026-09-05T00:00:00.000Z"),
-        durable: { issueStageAuthority },
+        durable: { issueStageAuthority, claimStageAuthority, claimOperation },
         createLane,
       } as unknown as V213DualLaneTransport,
       materializeWholeSpan: vi.fn(),
@@ -221,8 +228,100 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
       "V208_FRESH_ADMISSION_REJECTED",
     );
-    expect(issueStageAuthority).not.toHaveBeenCalled();
+    expect(issueStageAuthority).toHaveBeenCalledTimes(1);
     expect(createLane).not.toHaveBeenCalled();
+  });
+
+  it("allows paid active-state RESUME admission but performs cleanup only without redispatch", async () => {
+    const issueStageAuthority = vi.fn(async () => ({ authorityId: "authority-v208-resume" }));
+    const claimStageAuthority = vi.fn(async () => ({ decision: "RESUME" }));
+    const claimOperation = vi.fn(async (operation: Record<string, unknown>) => ({
+      action: "EXECUTE",
+      record: { ...operation, state: "IN_FLIGHT" },
+    }));
+    const createLane = vi.fn();
+    const materializeWholeSpan = vi.fn();
+    const materializeQualificationCase = vi.fn();
+    const dispatch = vi.fn();
+    const cleanupAttributableResource = vi.fn(async () => true as const);
+    const cleanupOutputKeys = vi.fn(async () => true as const);
+    let inventoryRead = 0;
+    const dependencies = {
+      soulx: {
+        lane: "soulx",
+        publicImage: authority().image,
+        sourceCommit: authority().imageSourceCommit,
+        deploymentSha256: `sha256:${"8".repeat(64)}`,
+        volumeIdSha256: V208_SOULX_VOLUME_ID_SHA256,
+        volumeManifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+      },
+      transport: {
+        durable: { issueStageAuthority, claimStageAuthority, claimOperation },
+        freshAdmission: async () => ({
+          checkedAt: "2026-09-05T00:00:00.000Z",
+          accountIdSha256: `sha256:${"5".repeat(64)}`,
+          gpu: "unavailable-during-cleanup",
+          region: "provider-transient",
+          availability: "LOW",
+          flexRateUsdPerGpuHour: 9,
+          cumulativeBillingUsd: 10.2,
+          runningPods: 1,
+          activeWorkers: 1,
+          endpoints: 1,
+          privateTemplates: 1,
+          volumes: [
+            {
+              idSha256: V208_SOULX_VOLUME_ID_SHA256,
+              manifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+              sizeGb: 50,
+              region: "EU-RO-1",
+            },
+          ],
+        }),
+        now: () =>
+          new Date(Date.UTC(2026, 8, 5, 0, 0, 0, Math.max(0, inventoryRead - 1) * 2_000)),
+        findLaneByResourceKey: vi.fn(async () => null),
+        createLane,
+        materializeQualificationCase,
+        dispatch,
+        inventory: async () => ({
+          checkedAt: new Date(
+            Date.UTC(2026, 8, 5, 0, 0, 0, inventoryRead++ * 2_000),
+          ).toISOString(),
+          runningPods: 0,
+          activeWorkers: 0,
+          queuedJobs: 0,
+          endpointIdSha256s: [],
+          templateIdSha256s: [],
+          volumes: [
+            {
+              idSha256: V208_SOULX_VOLUME_ID_SHA256,
+              manifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+              sizeGb: 50,
+              region: "EU-RO-1",
+            },
+          ],
+        }),
+        billingAmount: async () => 10.2,
+        sleep: async () => undefined,
+      } as unknown as V213DualLaneTransport,
+      materializeWholeSpan,
+      verifySuccess: vi.fn(),
+      cleanupMaterializedInputs: vi.fn(),
+      cleanupAmbiguousMaterializedInputs: vi.fn(),
+      cleanupOutputKeys,
+      cleanupAttributableResource,
+      serializeEvidence: vi.fn(),
+    } satisfies V208SoulXOrchestratorDependencies;
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "V208_RESUME_REQUIRES_CLEANUP_ONLY",
+    );
+    expect(cleanupAttributableResource).toHaveBeenCalledTimes(1);
+    expect(cleanupOutputKeys).toHaveBeenCalledWith([]);
+    expect(createLane).not.toHaveBeenCalled();
+    expect(materializeWholeSpan).not.toHaveBeenCalled();
+    expect(materializeQualificationCase).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it("dispatches two true whole-span batches, no Mage, cleans outputs, and reads zero three times", async () => {

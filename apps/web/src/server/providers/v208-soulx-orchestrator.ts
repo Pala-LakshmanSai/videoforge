@@ -442,6 +442,24 @@ export async function runV208SoulXWithV213Transport(
     dependencies.soulx.volumeManifestSha256 !== V208_SOULX_VOLUME_MANIFEST_SHA256
   )
     throw new Error("V208_SOULX_BINDING_INVALID");
+  // Durable authority mutation is SQL-only. Claim it before admission so a process restart can
+  // enter cleanup even when paid work has legitimately moved billing above the initial baseline.
+  const issued = await dependencies.transport.durable.issueStageAuthority({
+    stage: "soulx",
+    inputSha256: plan.planSha256,
+    predecessorHandoffSha256: authority.predecessorClosureSha256,
+  });
+  const consumed = await dependencies.transport.durable.claimStageAuthority(issued);
+  assertV208StageConsumptionDecision(consumed.decision);
+  const qualificationOperation = phaseOperation(
+    issued.authorityId,
+    dependencies.soulx.deploymentSha256,
+    plan.planSha256,
+    "qualification-complete",
+  );
+  const qualificationClaim = await dependencies.transport.durable.claimOperation(
+    qualificationOperation,
+  );
   const admission = await dependencies.transport.freshAdmission();
   const admissionCheckedAt = Date.parse(admission.checkedAt);
   const admissionNow = dependencies.transport.now().getTime();
@@ -452,33 +470,30 @@ export async function runV208SoulXWithV213Transport(
       volume.sizeGb === 50 &&
       volume.region === "EU-RO-1",
   );
-  if (
+  const commonAdmissionInvalid =
     admission.accountIdSha256 !== authority.runpodAccountIdSha256 ||
     !Number.isFinite(admissionNow) ||
     !Number.isFinite(admissionCheckedAt) ||
     Math.abs(admissionNow - admissionCheckedAt) > 60_000 ||
-    admission.gpu !== "NVIDIA GeForce RTX 4090" ||
-    admission.region !== "EU-RO-1" ||
-    admission.availability !== authority.requiredAvailability ||
-    admission.runningPods !== 0 ||
-    admission.activeWorkers !== 0 ||
-    admission.endpoints !== 0 ||
-    admission.privateTemplates !== 0 ||
-    !Number.isFinite(admission.flexRateUsdPerGpuHour) ||
-    admission.flexRateUsdPerGpuHour < 0 ||
-    admission.flexRateUsdPerGpuHour > RATE ||
     !Number.isFinite(admission.cumulativeBillingUsd) ||
-    admission.cumulativeBillingUsd !== authority.billingBaselineUsd ||
-    exactVolume.length !== 1
-  )
+    admission.cumulativeBillingUsd < authority.billingBaselineUsd ||
+    admission.cumulativeBillingUsd > authority.cumulativeBillingStopThresholdUsd ||
+    exactVolume.length !== 1;
+  const executeAdmissionInvalid =
+    consumed.decision === "EXECUTE" &&
+    (admission.gpu !== "NVIDIA GeForce RTX 4090" ||
+      admission.region !== "EU-RO-1" ||
+      admission.availability !== authority.requiredAvailability ||
+      admission.runningPods !== 0 ||
+      admission.activeWorkers !== 0 ||
+      admission.endpoints !== 0 ||
+      admission.privateTemplates !== 0 ||
+      !Number.isFinite(admission.flexRateUsdPerGpuHour) ||
+      admission.flexRateUsdPerGpuHour < 0 ||
+      admission.flexRateUsdPerGpuHour > RATE ||
+      admission.cumulativeBillingUsd !== authority.billingBaselineUsd);
+  if (commonAdmissionInvalid || executeAdmissionInvalid)
     throw new Error("V208_FRESH_ADMISSION_REJECTED");
-  const issued = await dependencies.transport.durable.issueStageAuthority({
-    stage: "soulx",
-    inputSha256: plan.planSha256,
-    predecessorHandoffSha256: authority.predecessorClosureSha256,
-  });
-  const consumed = await dependencies.transport.durable.claimStageAuthority(issued);
-  assertV208StageConsumptionDecision(consumed.decision);
   // The concrete V2-13 transport reconstructs deterministic cleanup names from this prefix.
   const resourceKey = `v213-${issued.authorityId}-soulx-qualification`;
   let deployment: V213LaneDeployment | null = null;
@@ -498,7 +513,7 @@ export async function runV208SoulXWithV213Transport(
   let inputCleanupEvidenceVerified = 0;
   let finalProofCompleted = false;
   let finalBilling = admission.cumulativeBillingUsd;
-  let qualificationBillingBaseline = admission.cumulativeBillingUsd;
+  let qualificationBillingBaseline = authority.billingBaselineUsd;
   let resumedQualification = false;
   const proveFinalState = async () => {
     let priorBilling: number | null = null;
@@ -568,15 +583,6 @@ export async function runV208SoulXWithV213Transport(
   let invalidOutputVerified = false;
   let timeoutVerified = false;
   try {
-    const qualificationOperation = phaseOperation(
-      issued.authorityId,
-      dependencies.soulx.deploymentSha256,
-      plan.planSha256,
-      "qualification-complete",
-    );
-    const qualificationClaim = await dependencies.transport.durable.claimOperation(
-      qualificationOperation,
-    );
     if (qualificationClaim.action === "DONE") {
       resumedQualification = true;
       const saved = qualificationClaim.record.evidence as unknown as {
@@ -608,6 +614,11 @@ export async function runV208SoulXWithV213Transport(
       invalidOutputVerified = true;
       timeoutVerified = true;
       inputCleanupEvidenceVerified = 5;
+    } else if (consumed.decision === "RESUME") {
+      // An interrupted execution without the signed qualification-complete receipt can never
+      // restart paid work. Reconstruct only an existing lane and enter the cleanup path below.
+      deployment = await dependencies.transport.findLaneByResourceKey(resourceKey);
+      throw new Error("V208_RESUME_REQUIRES_CLEANUP_ONLY");
     } else {
     deployment = await createAndReadLane(
       dependencies.transport,
