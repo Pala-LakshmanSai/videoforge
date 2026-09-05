@@ -1,11 +1,29 @@
 {
-  "schema_version": "videoforge.v2-08-soulx-live-qualification-proposal/v1",
+  "schema_version": "videoforge.v2-08-soulx-live-qualification-builder-rebind-proposal/v1",
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "candidate_status": "DRAFT_PENDING_CLEAN_REPAIR_SOURCE_COMMIT_AND_FRESH_EXACT_USER_APPROVAL",
+  "candidate_status": "SEALED_AWAITING_FRESH_EXACT_USER_APPROVAL_BUILDER_REBIND",
   "qualification_status": "NOT_QUALIFIED",
-  "authority_mode": "NO_EXECUTABLE_AUTHORITY_UNTIL_EXACT_APPROVAL",
+  "authority_mode": "NO_EXECUTABLE_AUTHORITY_FRESH_APPROVAL_REQUIRED",
+  "proposal_kind": "PROVIDER_FREE_BUILDER_REBIND_WITH_EXISTING_IMAGE_REUSE",
+  "reason_for_fresh_proposal": "The single-use authority materialized by commit 7585b008a20921317ac925e4665a1c9aa5c07fa5 was consumed by a provider-free preflight before any RunPod, R2, GPU, or spend action. The approved-authority record dropped one hexadecimal character from the correct approved proposal digest, while the request builder still pinned the prior SoulX image, source, config, and anonymous proof. Either mismatch independently failed closed before provider access. The existing immutable image from source 0d32b1c3d36610f6a41d9b413628164d47f490d0 remains reusable without republication. This fresh candidate binds the repaired builder constants and regression test, the deactivated qualification authority/context evidence, and one future authority successor under fresh exact approval.",
+  "prior_consumed_authority": {
+    "materialization_commit": "7585b008a20921317ac925e4665a1c9aa5c07fa5",
+    "authority_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json",
+    "authority_consumed": true,
+    "authority_reusable": false,
+    "preflight_failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-authority-preflight.json",
+    "preflight_failure_code": "V208_AUTHORITY_RECORD_AND_REQUEST_BUILDER_BINDING_INVALID",
+    "malformed_proposal_sha256": "sha256:ba2c0a8a663e20edec756c992db83eba9fc56f4db71cd7f472a8c6871582335c",
+    "malformed_proposal_sha256_total_length": 70,
+    "malformed_proposal_sha256_hex_length": 63,
+    "runpod_mutations": 0,
+    "r2_mutations": 0,
+    "gpu_seconds": 0,
+    "external_spend_usd": 0,
+    "reuse_authorized": false
+  },
   "superseded_prior_publication_attempt": {
     "prior_source_commit": "c3bcac0902c607d69ce101c21b081d4926b33bd8",
     "prior_approval_consumed": true,
@@ -101,9 +119,9 @@
   },
   "control": {
     "source_commit": null,
-    "source_commit_role": "exact_proposal_record_commit_bound_in_the_external_approval_sentence",
-    "source_hash_binding_state": "PENDING_CLEAN_REPAIR_AND_PROPOSAL_RECORD_COMMIT",
-    "source_hash_binding_note": "The exact clean commit containing the minimal Stage 7 worker repair and these canonical proposal bytes is recorded after commit and bound alongside this proposal hash in the approval sentence. That same commit is the sole source for one new immutable SoulX image publication.",
+    "source_commit_role": "fresh_clean_builder_rebind_proposal_record_commit_bound_in_a_new_external_approval_sentence",
+    "source_hash_binding_state": "PENDING_CLEAN_BUILDER_REBIND_AND_FRESH_EXACT_APPROVAL",
+    "source_hash_binding_note": "The existing immutable SoulX image was already published and anonymously verified from exact source commit 0d32b1c3d36610f6a41d9b413628164d47f490d0. No image publication or republication is requested here. A future exact clean commit may contain only the allowlisted builder/test rebind and qualification/context evidence, and must be freshly approved before any provider mutation.",
     "execution_control_commit": null,
     "execution_control_commit_role": "single_post_approval_authority_materialization_successor_only",
     "execution_control_commit_required": true,
@@ -111,16 +129,16 @@
       "authorized": true,
       "exactly_one_deterministic_commit": true,
       "allowed_only_after": [
-        "exact proposal hash is finalized after code-worker rebind",
-        "exact user approval is recorded and hashed",
-        "one new immutable image is published exactly once from the approved repaired source and anonymously verified",
+        "exact proposal hash is finalized after builder rebind",
+        "fresh exact user approval is recorded and hashed",
+        "the existing immutable image digest is anonymously reverified without publication or republication",
         "independent diff audit passes before any RunPod mutation",
-        "local git HEAD and the pushed remote branch both equal the exact proposal record control-source commit"
+        "local git HEAD and the pushed remote branch both equal the exact fresh builder-rebind proposal-record commit"
       ],
       "derived_inputs": [
         "canonical proposal bytes and sha256",
         "exact approval-sentence bytes and sha256",
-        "verified new immutable image digest and anonymous publication evidence",
+        "verified existing immutable image digest and anonymous publication evidence",
         "final code-worker-reported source and execution-control hashes",
         "durable R2 materialization-key journals, sealed pre-dispatch cleanup-plan evidence, and deterministic chained crash-resume proof"
       ],
@@ -131,8 +149,8 @@
         "project-context/tasks/VF-10-08.md"
       ],
       "future_post_approval_outputs": [
-        "approved-authority.json (candidate directory; created only after exact approval)",
-        "user-approval.json (candidate directory; created only after exact approval)"
+        "approved-authority.json (candidate directory; consumed record replaced only after exact approval)",
+        "user-approval.json (candidate directory; consumed record replaced only after exact approval)"
       ],
       "delta_allowlist": [
         "V208 compiled authority constants and exact proposal/authority/image/account pointers",
@@ -140,8 +158,8 @@
         "narrow CURRENT_STATE/GATES/task evidence pointers"
       ],
       "exact_transition_proof": [
-        "Before any provider mutation, record clean local git HEAD == the exact repaired proposal record control-source commit and verify the pushed remote branch equals that commit; only the exact approved one-time manual image publication is authorized before RunPod mutation.",
-        "After exact approval and immutable image-digest verification, materialize exactly one successor execution-control commit from proposal bytes/hash, approval bytes/hash, verified digest, and the independently audited allowlisted delta.",
+        "Before any provider mutation, record clean local git HEAD == the exact fresh builder-rebind proposal-record commit and verify the pushed remote branch equals that commit; reuse only the existing immutable image digest and do not publish or republish an image.",
+        "After fresh exact approval and immutable image-digest reverification, materialize exactly one successor execution-control commit from proposal bytes/hash, approval bytes/hash, verified digest, and the independently audited allowlisted delta.",
         "The successor must preserve the precursor/image source identity; it may bind only V208 compiled constants plus authority/context evidence and may not alter worker, Dockerfile, workflow, CLI, orchestrator, contract, model, or volume bytes.",
         "Before any provider dispatch, persist and durably seal cleanup-plan with the lane deployment and all five descriptor key sets; a RESUME requires the DONE cleanup-plan evidence and its canonical hash validation.",
         "Each of the five materializations writes a durable R2 key journal keyed by v208-phase-materialization-{descriptorId} containing descriptorId, inputKeys, outputKeys, and materializationEvidenceSha256; lane deletion and each per-descriptor r2-cleanup-{descriptorId} phase are independently durable for chained crash resume.",
@@ -155,6 +173,7 @@
         "RESUME with a stage claim of EXECUTE is cleanup-only: never create or dispatch; perform exact-name discovery, partial cleanup/absence reconciliation, and terminal-absent replay before any success path."
       ],
       "forbidden_delta": [
+        "image publication or republication",
         "worker source or runtime logic",
         "Dockerfile or publication workflow",
         "qualification CLI/orchestrator/contract logic",
@@ -169,13 +188,15 @@
     "qualification_launcher": "deploy/v2-08/launch-soulx-live.mjs",
     "qualification_launcher_sha256": "sha256:5a628af03bb612201d4f08c4a3a9391ee21a6c53afe94fc9cdb6157737961698",
     "qualification_request_builder": "deploy/v2-08/build-soulx-live-request.mjs",
-    "qualification_request_builder_sha256": "sha256:3bcb558746fe6ceab761f2bb49fd506bfe9bb1448bd2b9012519fb3f3cfecb30",
+    "qualification_request_builder_sha256": "sha256:2cdd0a006b766f68560c85f628f36c2aa582c6e6c4fca3b6e34075824f3d040a",
+    "qualification_request_builder_test": "scripts/tests/v2-08-build-soulx-live-request.test.mjs",
+    "qualification_request_builder_test_sha256": "sha256:2af5a0da00fb36525433b88facfd9ad52d01b23ba188fe6c8cb5c2665c452f12",
     "qualification_durable_store": "apps/web/src/server/providers/v208-file-durable-stage-store.ts",
     "qualification_durable_store_sha256": "sha256:d6b25a0cfa4ee23c135c91e5afff934ebf18e22baf36b48f32786485b67407a6",
     "qualification_orchestrator": "apps/web/src/server/providers/v208-soulx-orchestrator.ts",
     "qualification_orchestrator_sha256": "sha256:a5277c3f47b7d728f6024d72bf75edb2c5acb01592aae5614cf745fafa66f198",
     "qualification_contract": "apps/web/src/server/providers/v208-soulx-qualification.ts",
-    "qualification_contract_sha256": "sha256:e1b4b72cea8a23ace3f0c8b151fa4ca1fe37fea0f646c5626c1444d7523999fd",
+    "qualification_contract_sha256": "sha256:1486013296cd4751eb9cee9f51473c243bcc5e171fcc4f4673f22c1f0c0ccd25",
     "qualification_materializer": "apps/web/src/server/providers/v213-direct-qualification-materializer.ts",
     "qualification_materializer_sha256": "sha256:f8cd9444a9980c34657563ac83cd57f70d48876f7c1db32d248797dc4c9e8848",
     "qualification_runpod_control": "apps/web/src/server/providers/runpod-control.ts",
@@ -204,7 +225,7 @@
     "publication_workflow": {
       "path": ".github/workflows/avatar-primary-serverless-image.yml",
       "sha256": "sha256:a819a9793ebe0fd01855f3ea4eb36b35715f13b00284884fe4b77c784bfae1d3",
-      "source_commit_must_equal": null
+      "source_commit_must_equal": "0d32b1c3d36610f6a41d9b413628164d47f490d0"
     },
     "publication_workflow_test": {
       "path": "workers/avatar-primary/tests/test_soulx_serverless_workflow.py",
@@ -216,8 +237,10 @@
       "exact_push_refspec": null,
       "remote_head_must_equal_after_push": null,
       "workflow_dispatch_ref": null,
-      "workflow_dispatch_requires_publish_true": true,
-      "workflow_dispatch_expected_existing_digest": ""
+      "workflow_dispatch_requires_publish_true": false,
+      "workflow_dispatch_expected_existing_digest": "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714",
+      "reuse_existing_publication_only": true,
+      "publication_or_republication_authorized": false
     }
   },
   "predecessor": {
@@ -252,23 +275,23 @@
     "fresh_read_required_before_each_mutation_boundary": true
   },
   "image": {
-    "source_commit": null,
-    "source_commit_role": "exact_clean_repaired_control_source_bound_in_external_approval_not_execution_control_commit",
+    "source_commit": "0d32b1c3d36610f6a41d9b413628164d47f490d0",
+    "source_commit_role": "exact_source_of_existing_immutable_image_already_published_and_anonymously_verified",
     "repository": "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
     "registry": "ghcr.io",
-    "tag": null,
-    "immutable_image": null,
-    "digest": null,
-    "prepublication_digest_available": false,
-    "publication_state": "PENDING_ONE_EXACT_MANUAL_PUBLICATION_FROM_REPAIRED_SOURCE",
-    "publication_authorized": true,
-    "publication_authorized_under_exact_approval": true,
-    "publication_operation": "EXACT_PUSH_OF_REPAIRED_SOURCE_THEN_ONE_MANUAL_WORKFLOW_DISPATCH_WITH_PUBLISH_TRUE",
-    "publication_digest_rule": "Capture the returned push digest, remote manifest digest and header digest after publication; require exact equality, anonymous manifest/blob/config/source readback and exact repaired-source labels before any RunPod mutation. Do not invent or reuse the prior image digest.",
-    "same_commit_existing_digest_rule": "An existing tag may be reused only when the workflow receives that exact expected digest and verifies the complete immutable manifest/config/blob/source identity; otherwise stop.",
+    "tag": "serverless-v2-08",
+    "immutable_image": "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714",
+    "digest": "sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714",
+    "prepublication_digest_available": true,
+    "publication_state": "PUBLISHED_NEW_DIGEST_REUSE_WITHOUT_REPUBLICATION",
+    "publication_authorized": false,
+    "publication_authorized_under_exact_approval": false,
+    "publication_operation": "NO_PUBLICATION_REUSE_EXISTING_ANONYMOUSLY_VERIFIED_DIGEST",
+    "publication_digest_rule": "Reverify the existing immutable manifest, config, every descriptor, and source label anonymously before any RunPod mutation; do not publish or republish an image.",
+    "same_commit_existing_digest_rule": "Reuse is permitted only for this exact immutable digest and source commit; any digest, config, manifest, descriptor, source-label, or source-commit drift stops the qualification.",
     "republish": false,
     "republication_authorized": false,
-    "exact_same_commit_digest_reuse_only": false,
+    "exact_same_commit_digest_reuse_only": true,
     "prior_invalidated_image_digest": "sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3",
     "base_image": "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s@sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b",
     "model_source_revision": "9bc03de06bb0de82cd6bc477804512ae06144bf2",

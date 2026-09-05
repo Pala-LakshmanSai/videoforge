@@ -4,6 +4,25 @@
   "task_id": "VF-10-08",
   "stage": 7,
   "approval_source": "explicit_user_approval_in_current_codex_task",
+  "approval_status": "CONSUMED_NON_REUSABLE_PRE_DISPATCH_AUDIT_FAILED",
+  "consumed": true,
+  "reusable": false,
+  "consumption": {
+    "consumed_at": "2026-09-05",
+    "consumed_by_commit": "7585b008a20921317ac925e4665a1c9aa5c07fa5",
+    "failure_code": "V208_AUTHORITY_RECORD_AND_REQUEST_BUILDER_BINDING_INVALID",
+    "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-authority-preflight.json",
+    "runpod_mutations": 0,
+    "r2_mutations": 0,
+    "gpu_seconds": 0,
+    "external_spend_usd": 0
+  },
+  "exact_statement_proposal_digest_validation": {
+    "value": "sha256:ba2c0a8a663e20edc756c992db83eba9fc56f4db71cd7f472a8c6871582335c",
+    "total_length": 71,
+    "hex_length_after_sha256": 64,
+    "valid_sha256_digest": true
+  },
   "exact_statement": "I approve exact V2-08 volume-manifest repair proposal sha256:ba2c0a8a663e20edc756c992db83eba9fc56f4db71cd7f472a8c6871582335c, bound to clean control and image source 0d32b1c3d36610f6a41d9b413628164d47f490d0, exact git push 0d32b1c3d36610f6a41d9b413628164d47f490d0:refs/heads/codex/serverless-v2-roadmap-v4 to origin, followed by one exact manual publication of a new immutable SoulX image from that source with publication_authorized=true and republish=false, capture and anonymous verification of its exact immutable digest before any RunPod mutation, followed by exactly one allowlisted deterministic authority-materialization successor commit and independent diff audit before RunPod mutation. I acknowledge that consumed proposal sha256:8cf7ca34105cef7f031f71c3f623967c7f9516792bcc9ba9947b8b56652ee29a failed before model loading because SOULX_SERVERLESS_VOLUME_MANIFEST_MISMATCH caused by bare-hex versus sha256-prefixed digest comparison; its two acknowledged jobs were terminated, the disposable endpoint/template and deterministic R2 objects were cleaned, three final reads proved zero compute and unchanged billing USD 2.7231514439627063, and that authority is non-reusable. I approve the unchanged hard USD 1.80 incremental cap and USD 4.523151443962706 cumulative stop threshold, one single-use max-one qualification using NVIDIA GeForce RTX 4090 in EU-RO-1 at no more than USD 1.116/GPU-hour with LOW-or-better availability, workersMin zero and workersMax one, exactly five cold/warm/cancel/invalid/timeout jobs covering whole-span [2,4,6,10] with exactly one RunPod POST per job and no redispatch, generated R2 input/output creation and exact cleanup, disposable endpoint/template cleanup, signal-safe cleanup-only RESUME without redispatch, three final zero-compute/billing/volume reads, and continued retention of only the existing volumes at USD 7/month. I accept the unresolved Apache-2.0 hosted/commercial-use terms risk for this qualification only without claiming legal clearance. I authorize no GPU or region fallback, model download, retained-volume mutation, Stage 6 rerun or modification, max-two proof, Cloudflare Worker or route mutation, production route, or V2-09 execution.",
   "exact_statement_sha256": "sha256:a0875c268dbe7ec876f5528734190ca33b288c0b9a37e51cb0e1703e007c6c79",
   "exact_statement_hash_convention": "utf8_exact_statement_plus_one_lf",

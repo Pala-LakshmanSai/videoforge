@@ -67,12 +67,12 @@ const MAGE_RESULT_SHA256 =
   "sha256:aa1dc5c2c82d36b32992750fad77d4776c1d92e337f539124670b310201f28f8";
 
 const SOULX_IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3";
-const SOULX_SOURCE_COMMIT = "4f2c5cb3c602ffb48db4a1dc7143477259202896";
+  "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714";
+const SOULX_SOURCE_COMMIT = "0d32b1c3d36610f6a41d9b413628164d47f490d0";
 const SOULX_CONFIG_SHA256 =
-  "sha256:fccc1973fb5af08d954e91561e6b4c467c405d64e2f6bdd521cad8d9af7f415a";
+  "sha256:0a934b84bdf67ec7fcd730a62233031bf4e1fd92c4860747130102bdffc1ba6a";
 const SOULX_ANONYMOUS_PROOF_SHA256 =
-  "sha256:fca3fa204cfb0d2cfd171a3b330ab00b30c5c08caac40d7cb3120da1763b5e7b";
+  "sha256:5d5ef1aff182f764146e81f33c8af6fe8e9d48f7bc357aadc355aa5aae78bb6c";
 const SOULX_VOLUME_ID_SHA256 =
   "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be";
 const SOULX_VOLUME_MANIFEST_SHA256 =

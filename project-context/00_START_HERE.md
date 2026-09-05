@@ -4,6 +4,14 @@
 
 ### Current new-chat launch point — 2026-09-05
 
+- V2-08 Stage 7 is provider-free and awaiting fresh exact approval. Workflow `33975663940` published
+  and anonymously verified immutable image `sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714`
+  from source `0d32b1c3d36610f6a41d9b413628164d47f490d0`. The approved `ba2c0a8a...`
+  authority successor failed its required provider-free pre-dispatch audit because the authority
+  record omitted one proposal-digest character and the request builder retained prior image pins.
+  No RunPod/R2 mutation, GPU time, or spend occurred. Both Stage 7 bindings are repaired, executable
+  authority is null, Stage 6 remains frozen, and proposal
+  `sha256:6d7df20805361ddb552f438cc89327598a0db907e174024d8c0928748bf5e106` awaits exact approval.
 - V2-08 is the active checkpoint after V2-07's clean qualification. Its provider-free SoulX max1
   implementation at exact source `4f2c5cb3c602ffb48db4a1dc7143477259202896` is sealed and
   independently audited PASS with P0/P1/P2 `0/0/0`: exact source/image

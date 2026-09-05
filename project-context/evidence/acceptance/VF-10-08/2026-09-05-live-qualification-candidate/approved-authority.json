@@ -3,23 +3,23 @@
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
+  "status": "CONSUMED_NON_REUSABLE_PRE_DISPATCH_AUDIT_FAILED",
   "single_use": true,
-  "consumed": false,
+  "consumed": true,
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
-    "proposal_sha256": "sha256:ba2c0a8a663e20edc756c992db83eba9fc56f4db71cd7f472a8c6871582335c",
+    "proposal_sha256": "sha256:ba2c0a8a663e20edec756c992db83eba9fc56f4db71cd7f472a8c6871582335c",
     "approval_statement_storage": "inline_exact_statement_in_user_approval_json",
     "approval_statement_sha256": "sha256:a0875c268dbe7ec876f5528734190ca33b288c0b9a37e51cb0e1703e007c6c79",
     "user_approval_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
-    "user_approval_sha256": "sha256:c263093a379ea849f0a7071ef2589716aefd3535dc2f6b7a8329d3a4188a0a22",
+    "user_approval_sha256": "sha256:f61d8e12f4d0207fda5c11e5c77437b07785d52f462491e30206bb9e43d172ae",
     "control_source_commit": "0d32b1c3d36610f6a41d9b413628164d47f490d0",
     "control_source_remote_ref": "refs/heads/codex/serverless-v2-roadmap-v4",
     "control_source_remote_verified": true,
-    "precursor_source_commit": "4f2c5cb3c602ffb48db4a1dc7143477259202896",
+    "precursor_source_commit": "0d32b1c3d36610f6a41d9b413628164d47f490d0",
     "image_source_commit": "0d32b1c3d36610f6a41d9b413628164d47f490d0",
     "execution_control_commit_role": "one_post_approval_authority_materialization_successor_only",
-    "execution_control_commit": null
+    "execution_control_commit": "7585b008a20921317ac925e4665a1c9aa5c07fa5"
   },
   "image_publication": {
     "workflow_run_id": 33975663940,
@@ -93,6 +93,18 @@
   "terms": {
     "unresolved_apache_2_0_hosted_commercial_use_risk_accepted_for_qualification_only": true,
     "legal_clearance_claimed": false
+  },
+  "consumption": {
+    "consumed_at": "2026-09-05",
+    "consumed_by_commit": "7585b008a20921317ac925e4665a1c9aa5c07fa5",
+    "result": "PROVIDER_FREE_PRE_DISPATCH_AUDIT_FAILED",
+    "failure_code": "V208_AUTHORITY_RECORD_AND_REQUEST_BUILDER_BINDING_INVALID",
+    "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-authority-preflight.json",
+    "runpod_mutations": 0,
+    "r2_mutations": 0,
+    "gpu_seconds": 0,
+    "external_spend_usd": 0,
+    "reusable": false
   },
   "scope_exclusions": [
     "no_gpu_or_region_fallback",

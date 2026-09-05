@@ -1,0 +1,30 @@
+{
+  "schema_version": "videoforge.v2-08-provider-free-authority-preflight-failure/v1",
+  "checkpoint": "V2-08",
+  "stage": 7,
+  "status": "FAILED_CLEAN_BEFORE_PROVIDER_ACCESS",
+  "authority_materialization_commit": "7585b008a20921317ac925e4665a1c9aa5c07fa5",
+  "approved_proposal_sha256": "sha256:ba2c0a8a663e20edec756c992db83eba9fc56f4db71cd7f472a8c6871582335c",
+  "failures": [
+    {
+      "code": "V208_APPROVED_AUTHORITY_PROPOSAL_SHA256_LENGTH_INVALID",
+      "detail": "The materialized approved-authority record omitted one hexadecimal character from the correct approved proposal digest."
+    },
+    {
+      "code": "V208_SOULX_REQUEST_BUILDER_SOULX_BINDING_INVALID",
+      "detail": "The request builder still pinned the prior SoulX image, source, config, and anonymous proof instead of the newly published immutable image."
+    }
+  ],
+  "provider_effects": {
+    "runpod_mutations": 0,
+    "runpod_job_posts": 0,
+    "r2_mutations": 0,
+    "gpu_seconds": 0,
+    "external_spend_usd": 0
+  },
+  "cleanup_required": false,
+  "stage_6_changed_or_rerun": false,
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "next_boundary": "Finish the provider-free Stage 7 builder rebind, deactivate executable authority, seal a fresh exact proposal, and require fresh exact approval before any provider access."
+}
