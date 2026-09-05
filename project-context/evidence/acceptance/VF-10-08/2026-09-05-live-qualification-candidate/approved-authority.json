@@ -3,16 +3,16 @@
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
+  "status": "CONSUMED_NON_REUSABLE_PROVIDER_FREE_BUILDER_BINDING_AUDIT_FAILED",
   "single_use": true,
-  "consumed": false,
+  "consumed": true,
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
     "proposal_sha256": "sha256:a64a3ac76dba05c52085adb387e10a5fa210755b2ecc0a130a20207ec8de199a",
     "approval_statement_storage": "inline_exact_statement_in_user_approval_json",
     "approval_statement_sha256": "sha256:03a3545edb1ed1f689848a4239b2b0d821027cb9ce6ea4001ab8c1312bd1cd9f",
     "user_approval_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
-    "user_approval_sha256": "sha256:3a8cb9f071284e0ecb7d0b989cef98659f362b0e793dc883c7660dfbfe5879b2",
+    "user_approval_sha256": "sha256:4daebd02681f74a32ff02b543bc7dad8dca035e52aad8c1061a2638474503e26",
     "control_source_commit": "251752b8b390fa69008e0abd49f73a6a65ae971a",
     "control_source_remote_ref": "refs/heads/codex/serverless-v2-roadmap-v4",
     "control_source_remote_verified": true,
@@ -90,6 +90,19 @@
   "terms": {
     "unresolved_apache_2_0_hosted_commercial_use_risk_accepted_for_qualification_only": true,
     "legal_clearance_claimed": false
+  },
+  "consumption": {
+    "consumed_at": "2026-09-05",
+    "consumed_by_commit": "f34e039088dd26df7f3367a1525e854b918469cc",
+    "result": "PROVIDER_FREE_REQUEST_BUILDER_BINDING_AUDIT_FAILED",
+    "failure_code": "V208_SOULX_REQUEST_BUILDER_SOULX_BINDING_INVALID",
+    "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-media-authority-preflight.json",
+    "runpod_mutations": 0,
+    "runpod_job_posts": 0,
+    "r2_mutations": 0,
+    "gpu_seconds": 0,
+    "external_spend_usd": 0,
+    "reusable": false
   },
   "scope_exclusions": [
     "no_second_image_publication_or_republication",
