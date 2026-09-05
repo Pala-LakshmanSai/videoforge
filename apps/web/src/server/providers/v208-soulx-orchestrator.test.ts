@@ -560,6 +560,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     const transitions: Array<Record<string, unknown>> = [];
     let createEvidence: Record<string, unknown> | undefined;
     let createState = "ACK_UNKNOWN";
+    let createAction: "EXECUTE" | "RECONCILE" = "RECONCILE";
     const cleanupAttributableResource = vi.fn(async () => true as const);
     let finalInventoryRead = 0;
     const reconstruct = vi.fn(async ({ descriptor }: { descriptor: { id: string } }) => ({
@@ -582,7 +583,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
           claimOperation: async (operation: Record<string, unknown>) => {
             if (operation.kind === "create")
               return {
-                action: "RECONCILE",
+                action: createAction,
                 record: {
                   ...operation,
                   state: createState,
@@ -691,6 +692,22 @@ describe("V2-08 concrete SoulX orchestrator", () => {
           (evidence as { absent?: boolean } | undefined)?.absent === true,
       ),
     ).toBe(true);
+    expect(createLane).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+
+    // A RESUME whose deterministic create operation is freshly claimed EXECUTE proves absence and
+    // performs cleanup-only final-zero work. It never interprets the claim as permission to create.
+    createAction = "EXECUTE";
+    createEvidence = undefined;
+    createState = "IN_FLIGHT";
+    foundDeployment = null;
+    finalInventoryRead = 0;
+    cleanupAttributableResource.mockClear();
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "V208_RESUME_REQUIRES_CLEANUP_ONLY",
+    );
+    expect(cleanupAttributableResource).toHaveBeenCalled();
+    expect(finalInventoryRead).toBe(3);
     expect(createLane).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
   });

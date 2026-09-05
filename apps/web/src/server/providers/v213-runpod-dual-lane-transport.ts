@@ -792,9 +792,48 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     const identity = resourceKey.match(/-(mage|soulx)-(qualification|production)$/u);
     if (!identity) throw new Error("V213_RESOURCE_KEY_LINEAGE_INVALID");
     const lane = identity[1] as "mage" | "soulx";
+    const purpose = identity[2] as "qualification" | "production";
     const journaled = this.journaledResourceIdentity(resourceKey, operations);
     const binding = this.bindingForResourceKey(resourceKey, operations);
-    if (!journaled || !binding) throw new Error("V213_CLEANUP_PARTIAL_IDENTITY_UNAVAILABLE");
+    if (!binding) throw new Error("V213_CLEANUP_PARTIAL_IDENTITY_UNAVAILABLE");
+    if (!journaled) {
+      // A raw process kill can occur after the deterministic template POST but before any outer
+      // operation evidence exists. Qualification resources are still attributable by their exact
+      // authority-derived name plus the sealed image/environment or endpoint policy/volume.
+      if (purpose !== "qualification")
+        throw new Error("V213_CLEANUP_PARTIAL_IDENTITY_UNAVAILABLE");
+      if (template) {
+        const environment = workerEnvironmentForLane({
+          sealed: binding,
+          purpose,
+          resourceKeySha256: hashId(resourceKey),
+          secrets: this.options.workerEnvironment,
+        });
+        if (
+          !templateIdentityMatches(template, {
+            name: resourceName(resourceKey, "template"),
+            image: binding.publicImage,
+            resourceKey,
+            lane,
+            purpose,
+            environment,
+          })
+        )
+          throw new Error("V213_CLEANUP_PARTIAL_IDENTITY_DRIFT");
+      }
+      if (endpoint) {
+        const raw = endpoint.raw as Record<string, unknown>;
+        if (
+          raw.workersMin !== 0 ||
+          raw.workersMax !== 1 ||
+          raw.gpuCount !== 1 ||
+          JSON.stringify(raw.gpuTypeIds) !== JSON.stringify(["NVIDIA GeForce RTX 4090"]) ||
+          !providerVolumeMatches(raw, binding.volumeIdSha256)
+        )
+          throw new Error("V213_CLEANUP_PARTIAL_IDENTITY_DRIFT");
+      }
+      return;
+    }
     if (endpoint) {
       const raw = endpoint.raw as Record<string, unknown>;
       if (

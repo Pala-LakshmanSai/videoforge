@@ -376,7 +376,9 @@ async function recoverV208DeploymentFromDurableCreate(
     }),
   );
   const createClaim = await transport.durable.claimOperation(createOperation);
-  if (createClaim.action === "EXECUTE") throw new Error("V208_DURABLE_DEPLOYMENT_REQUIRED");
+  // RESUME may observe EXECUTE when this authority never reached provider mutation. It must still
+  // take the cleanup-only path and prove deterministic resource absence; it must never create.
+  const neverMutated = createClaim.action === "EXECUTE";
   let createState = createClaim.record.state;
   const evidence = createClaim.record.evidence as unknown;
   const terminalAbsent =
@@ -436,7 +438,7 @@ async function recoverV208DeploymentFromDurableCreate(
     }
   }
 
-  let reconciliationRequired = terminalAbsent || evidence !== undefined || looksFull;
+  let reconciliationRequired = neverMutated || terminalAbsent || evidence !== undefined || looksFull;
   let recovered: V213LaneDeployment | null = null;
   if (reconciliationRequired && !terminalAbsent) await cleanupAttributableResource(resourceKey);
   let consecutiveAbsent = 0;

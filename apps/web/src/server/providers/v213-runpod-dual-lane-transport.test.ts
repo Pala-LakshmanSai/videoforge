@@ -64,6 +64,7 @@ function fixture(
   options: {
     dispatchAmbiguous?: boolean;
     templateCreateAmbiguous?: boolean;
+    templateCreateHardKill?: boolean;
     templateImageOverride?: string;
     templateLaneOverride?: string;
     templatePurposeOverride?: string;
@@ -119,6 +120,7 @@ function fixture(
                 }),
           },
         });
+        if (options.templateCreateHardKill) throw new Error("SIMULATED_PROCESS_KILL");
         if (options.templateCreateAmbiguous) throw new Error("template create timed out");
         return item;
       },
@@ -798,6 +800,45 @@ describe("V213 concrete RunPod dual-lane transport", () => {
       ]),
     ).resolves.toMatchObject({ production: [], deletedTemplateIdSha256s: [expect.any(String)] });
     expect(control.deleteTemplate).toHaveBeenCalledOnce();
+  });
+
+  it("discovers and cleans a raw-kill template with an IN_FLIGHT create and no evidence", async () => {
+    const { transport, control, client, model } = fixture({ templateCreateHardKill: true });
+    const resourceKey = "v213-stage_raw-mage-qualification";
+    await expect(
+      transport.createLane({
+        sealed: model.mage,
+        purpose: "qualification",
+        resourceKey,
+        workersMin: 0,
+        workersMax: 1,
+      }),
+    ).rejects.toThrow("SIMULATED_PROCESS_KILL");
+    expect(control.createServerlessTemplate).toHaveBeenCalledOnce();
+    expect(control.createScaleZeroEndpoint).not.toHaveBeenCalled();
+
+    await expect(
+      transport.cleanupAttributableResources([
+        {
+          stage: "mage",
+          stageAuthorityId: "stage_raw",
+          operations: [
+            {
+              kind: "create",
+              resourceKey,
+              state: "IN_FLIGHT",
+              providerId: null,
+              evidence: null,
+            },
+          ],
+        },
+      ]),
+    ).resolves.toMatchObject({ production: [], deletedTemplateIdSha256s: [expect.any(String)] });
+    expect(control.deleteTemplate).toHaveBeenCalledOnce();
+    expect(control.createServerlessTemplate).toHaveBeenCalledOnce();
+    expect(control.createScaleZeroEndpoint).not.toHaveBeenCalled();
+    expect(client.dispatch).not.toHaveBeenCalled();
+    expect(client.dispatchWithV208Policy).not.toHaveBeenCalled();
   });
 
   it("rejects a template-only deterministic candidate when its journaled hash mismatches", async () => {
