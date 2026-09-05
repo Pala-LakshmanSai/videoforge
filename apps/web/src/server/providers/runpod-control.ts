@@ -39,6 +39,13 @@ export type RunPodV207TimeoutPolicy = Readonly<{
   readonly ttl: typeof V207_TIMEOUT_TTL_MS;
 }>;
 
+export const V208_DISPATCH_EXECUTION_TIMEOUTS_MS = Object.freeze([5_000, 60_000, 800_000] as const);
+export type RunPodV208ExecutionTimeoutMs = (typeof V208_DISPATCH_EXECUTION_TIMEOUTS_MS)[number];
+export type RunPodV208DispatchPolicy = Readonly<{
+  readonly executionTimeout: RunPodV208ExecutionTimeoutMs;
+  readonly ttl: typeof V207_TIMEOUT_TTL_MS;
+}>;
+
 type FetchPort = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 type JsonRecord = Readonly<Record<string, unknown>>;
 
@@ -1105,6 +1112,7 @@ export class RunPodControlClient {
     placement: RunPodV207Placement,
     environment: Readonly<Record<string, string>>,
     guard: RunPodDrainGuard,
+    strictV207Timing = true,
   ): Promise<void> {
     if (!ID.test(endpointId) || !ID.test(templateId)) {
       throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
@@ -1112,8 +1120,9 @@ export class RunPodControlClient {
     assertRunPodEndpointPolicy(policy);
     assertV207Placement(placement);
     if (
-      policy.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
-      policy.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS
+      strictV207Timing &&
+      (policy.idleTimeout !== V207_RUNPOD_IDLE_TIMEOUT_SECONDS ||
+        policy.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS)
     ) {
       throw new RunPodControlError("RUNPOD_V207_TIMING_POLICY_INVALID");
     }
@@ -1643,6 +1652,26 @@ export class RunPodServerlessJobClient {
         executionTimeout: V207_TIMEOUT_EXECUTION_TIMEOUT_MS,
         ttl: V207_TIMEOUT_TTL_MS,
       },
+    });
+  }
+
+  /** Dispatches one V2-08 qualification case under its exact finite per-request ceiling. */
+  dispatchWithV208Policy(
+    requestKey: string,
+    input: JsonValue,
+    policy: RunPodV208DispatchPolicy,
+  ): Promise<RunPodJobResult> {
+    if (
+      !V208_DISPATCH_EXECUTION_TIMEOUTS_MS.includes(policy.executionTimeout) ||
+      policy.ttl !== V207_TIMEOUT_TTL_MS
+    )
+      throw new RunPodControlError("RUNPOD_V208_DISPATCH_POLICY_INVALID");
+    const inputRecord = record(input);
+    if (inputRecord && Object.hasOwn(inputRecord, "policy"))
+      throw new RunPodControlError("RUNPOD_V208_DISPATCH_POLICY_INVALID");
+    return this.dispatchRequest(requestKey, {
+      input,
+      policy: { executionTimeout: policy.executionTimeout, ttl: V207_TIMEOUT_TTL_MS },
     });
   }
 

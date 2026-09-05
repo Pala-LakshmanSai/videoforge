@@ -4,29 +4,29 @@ updated_at: "2026-09-05"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_07_mage_serverless_qualified_pass_clean
-current_task: VF-10-07
-current_wave: parallel_product_v2_08_through_v2_13_and_serial_v2_07_certification
+current_milestone: v2_08_soulx_provider_free_completion
+current_task: VF-10-08
+current_wave: v2_08_soulx_serial_certification_after_v2_07_pass
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: v2_07_qualified_attempt85_consumed_success_clean
+task_stage: read_only_preflight
 application_code_changes_authorized: true
-provider_calls_authorized: false
-read_only_provider_calls_authorized: false
+provider_calls_authorized: true
+read_only_provider_calls_authorized: true
 remote_or_cloud_mutations_authorized: false
-credential_access_authorized: false
+credential_access_authorized: true
 gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_07_qualified_attempt85_consumed_no_executable_authority
-  live_provider_calls: false
+  mode: v2_08_read_only_preflight_no_mutation_authority
+  live_provider_calls: "RunPod read-only inventory, account, quota, rate, region, resource identity, and resource absence lookups only."
   remote_mutation: false
   deployment_or_publication: false
-  credential_value_access: false
+  credential_value_access: "Configured credential use is limited to the narrow read-only RunPod inventory, catalog, rate, billing, and capacity preflight authorized by the V2-08 checkpoint bootstrap; never print or persist credential values."
   paid_requests_or_spend: false
   runpod_mutation_or_gpu: false
-  v2_07_action: "V2-07 is qualified by Attempt85 under consumed authority sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858. Four batches produced 128 durable images; replay, cancellation, signed timeout, and max-two passed. Cleanup and three final reads prove zero compute, unchanged retained volumes, and cumulative billing USD 2.507309638109291 with zero increment. No executable authority remains and no V2-08 action occurred."
-  provider_free_product_action: "Source 29667134 is live as Worker 50cfd256 with media worker 0.1.14 online. Exactly one project f7655814 completed Stages 1-5; Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 compact prompts, settled USD 0.001401, conserved its reservation, and exposed the 520px scrollable viewer. All 31 positive prompts contain the enabled bounded project keywords exactly once and only the pinned medium, realism, camera, and lighting style fields; removed style metadata has zero hits. Total Stage 3+5 variable external spend was USD 0.001473. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
+  v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
+  provider_free_product_action: "V2-08 SoulX provider-free implementation is sealed and independently audited PASS with P0/P1/P2 0/0/0. Narrow read-only RunPod inventory, catalog, rate, billing, and capacity preflight may now run through configured credentials. No publication, RunPod mutation, GPU use, spend, or production deployment is authorized before a fresh exact proposal and approval."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -550,7 +550,7 @@ two_track_execution:
   activated_at: "2026-08-25"
   product_track_status: ACTIVE_PROVIDER_FREE
   product_track_scope: V2-08_through_V2-13
-  certification_track_status: V2-07_NOT_QUALIFIED
+  certification_track_status: V2-08_ACTIVE_AFTER_V2-07_QUALIFIED
   certification_order: [V2-07_MAGE, V2-08_SOULX, V2-09_THROUGH_V2-12_LIVE, V2-13_FINAL_SMOKE_DRAIN]
   atomic_certification_gates: [compute_output_identity, cancel_timeout, max2_concurrent_readers]
   atomic_gate_validity_hours: 24
@@ -1596,7 +1596,7 @@ fast_completion_plan:
   architecture: tenant_private_durable_account_workspace_owned_state_two_queue_serverless_lanes_autoscaling_only
   models: exact_mage_flow_int8_convrot_and_soulx_flashhead_pro_only
   target: best_case_three_day_invited_production_release
-  checkpoints_remaining: [V2-07, V2-08, V2-09, V2-10, V2-11, V2-12, V2-13]
+  checkpoints_remaining: [V2-08, V2-09, V2-10, V2-11, V2-12, V2-13]
   verification: focused_changed_surface_tests_one_repair_cycle_canonical_at_v2_09_and_v2_13
   never_reduced: [tenant_isolation, authority_and_caps, artifact_lineage, volume_integrity, zero_worker_drain]
   completed_foundations_not_to_rebuild: [word_level_transcript, scheduler_v2_voiceover_splitting, three_compositions, tenant_queue, personal_worker_renderer]
@@ -4030,9 +4030,9 @@ live_development:
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   authorized_spend_usd: 0
-  provider_authority_scope: none_attempt85_consumed_success
+  provider_authority_scope: v2_08_read_only_preflight_no_mutation_no_spend
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -4102,8 +4102,8 @@ roadmap_state:
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
   V2-07: complete_green_live_qualified_attempt85_cleanup_zero_compute
-  V2-08: provider_free_in_progress_live_blocked_on_V2-07
-  V2-09: provider_free_authorized_live_blocked_on_V2-07_and_V2-08
+  V2-08: provider_free_active_live_unqualified_no_executable_authority
+  V2-09: provider_free_authorized_live_blocked_on_V2-08
   V2-10: provider_free_authorized_live_blocked_on_V2-09
   V2-11: provider_free_authorized_live_blocked_on_lane_max1_and_V2-10
   V2-12: provider_free_authorized_live_blocked_on_V2-11
@@ -4304,7 +4304,7 @@ model_runtime_evidence:
     settled_external_spend_usd: null
     visual_crop_approval: approved_exact_full_and_split_provider_free_profile_active
     visual_crop_approval_evidence: evidence/acceptance/VF-10-08/2026-08-26-soulx-crop-profile-approval.json
-    commercial_and_publication_terms_evidence: pending
+    commercial_and_publication_terms_evidence: evidence/acceptance/VF-10-08/2026-09-05-terms-preflight/first-party-license-observation.json
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
@@ -4366,8 +4366,8 @@ blocking_gates_for_production:
   - GATE_STYLE_002
 
 active_ownership: []
-in_progress_checkpoint: V2-07
-certification_checkpoint: V2-07_NOT_QUALIFIED_ATTEMPT79_FAILED_CLEAN_AUTHORITY_CONSUMED
+in_progress_checkpoint: V2-08
+certification_checkpoint: V2-08_PROVIDER_FREE_PREPARATION_V2_07_QUALIFIED
 
 provider_authority_closed: &v2_07_provider_authority_closed
   mode: none
@@ -6005,55 +6005,54 @@ provider_authority_attempt78: &v2_07_provider_authority_attempt78
       usd_per_unit: 0.07
       checked_at: "2026-09-04T23:14:00+05:30"
 
-provider_authority: &v2_07_provider_authority_attempt85
-  mode: none
-  provider: null
+provider_authority: &v2_08_readonly_preflight_authority
+  mode: read_only
+  provider: runpod
   cap_usd: 0
-  approved_maximum_cumulative_finite_spend_usd: 4.5
   non_transferable: true
-  source: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
-  authorized_by_user_at: "2026-09-05T10:42:28+05:30"
-  consumed: true
-  baseline_cumulative_endpoint_spend_usd: 2.507309638109291
-  remaining_allowance_usd: 1.992690361890709
-  final_cumulative_endpoint_spend_usd: 2.507309638109291
-  actual_incremental_spend_usd: 0
-  closure: evidence/acceptance/VF-10-07/2026-09-05-attempt85-live-qualification/success-attempt-85.json
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
-  model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
-  rate_snapshot:
-    - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1
-      billing_unit: gpu_hour
-      usd_per_unit: 1.116
-      checked_at: "2026-09-05T00:39:25+05:30"
-    - resource_id: runpod_retained_network_volumes_100gb
-      billing_unit: month
-      usd_per_unit: 7
-      checked_at: "2026-09-05T00:39:25+05:30"
+  source: user_request_plus_v2_08_checkpoint_readonly_bootstrap
+  authorized_by_user_at: "2026-09-05T14:16:50+05:30"
+  resources:
+    - runpod_account
+    - runpod_inventory
+    - runpod_catalog_rtx4090_eu_ro_1
+    - runpod_billing
+    - runpod_capacity
+    - runpod_disposable_worker_absence
+    - runpod_retained_volumes
+  authorized_operations: &v2_08_readonly_operations
+    - account_identity_lookup
+    - inventory_lookup
+    - quota_lookup
+    - rate_lookup
+    - region_lookup
+    - resource_identity_lookup
+    - resource_absence_lookup
+  allowed_operations: *v2_08_readonly_operations
+  model_id: Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro
+  rate_snapshot: []
 
 recommended_next_task:
-  task_id: VF-10-07
-  checkpoint: V2-07
-  milestone: v2_07_mage_serverless_qualified_pass_clean
-  status: V2_07_QUALIFIED_ATTEMPT85_CONSUMED_SUCCESS_CLEAN
-  dependency_status: v2_06_stage5_live_functional_prompt_v18_qualified
-  authorization_status: no_executable_authority_attempt85_consumed_success
-  task_stage: v2_07_complete_handoff
+  task_id: VF-10-08
+  checkpoint: V2-08
+  milestone: v2_08_soulx_provider_free_completion
+  status: V2_08_PROVIDER_FREE_SEALED_LIVE_UNQUALIFIED
+  dependency_status: v2_07_mage_live_qualified_attempt85_clean
+  authorization_status: readonly_provider_preflight_only_no_executable_v2_08_authority
+  task_stage: read_only_preflight
   current_goal_authority: null
   current_goal_authority_sha256: null
-  provider_authority: *v2_07_provider_authority_attempt85
+  provider_authority: *v2_08_readonly_preflight_authority
   provider_mode: fixture
-  read_profile: v2_07_mage_serverless
-  task_brief: tasks/VF-10-07.md
-  goal: "Preserve the qualified V2-07 closure; do not execute V2-08 without its own authority."
-  provider_calls_authorized: false
-  read_only_provider_calls_authorized: false
+  read_profile: v2_08_soulx_serverless
+  task_brief: tasks/VF-10-08.md
+  goal: "Refresh narrow read-only RunPod truth for the independently audited V2-08 provider-free seal, then obtain fresh exact authority before any SoulX publication or live qualification."
+  provider_calls_authorized: true
+  read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
-  credential_value_read_authorized: false
+  credential_access_authorized: true
+  credential_value_read_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
@@ -6063,22 +6062,22 @@ recommended_next_task:
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
-  model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
+  model_id: Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro
   resources: []
   authorized_operations: []
   allowed_operations: []
   rate_snapshot: [runpod_serverless_flex_rtx4090_eu_ro_1_usd_1_116_per_gpu_hour, retained_volumes_usd_7_per_month_combined]
-  authority_note: "Attempt85 authority is consumed after successful V2-07 qualification and cleanup. No provider, mutation, GPU, spend, or V2-08 authority remains."
+  authority_note: "Attempt85 authority is consumed after successful V2-07 qualification and cleanup. V2-08 bootstrap permits only configured-credential read-only RunPod inventory, catalog, rate, billing, and capacity preflight. No mutation, GPU, spend, or executable V2-08 authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  successor_proposal_path: project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json
-  successor_proposal_sha256: "sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444"
+  successor_proposal_path: null
+  successor_proposal_sha256: null
   superseded_proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
   superseded_proposal_record_commit: 4b8a6ef83772fea44701129154ae4d69833498eb
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: v2_07_qualified_attempt85_consumed_success_clean
-  execution_blocker: v2_08_not_authorized
+  execution_status: v2_08_provider_free_sealed_independent_audit_pass
+  execution_blocker: v2_08_live_proposal_not_yet_refreshed_sealed_or_approved
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:

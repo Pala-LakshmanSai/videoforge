@@ -97,6 +97,7 @@ export interface V213LaneDeployment {
   readonly gpuCount: 1;
   readonly workersMin: 0;
   readonly workersMax: 1;
+  readonly idleTimeoutSeconds: 5 | 60;
   readonly handlerConcurrency: 1;
   readonly scalerType: "REQUEST_COUNT";
   readonly scalerValue: 1;
@@ -303,6 +304,7 @@ export interface V213DualLaneTransport {
     readonly resourceKey: string;
     readonly workersMin: 0;
     readonly workersMax: 1;
+    readonly idleTimeoutSeconds?: 5 | 60;
   }) => Promise<
     | Readonly<{ readonly kind: "ACK"; readonly deployment: V213LaneDeployment }>
     | Readonly<{
@@ -331,6 +333,10 @@ export interface V213DualLaneTransport {
     readonly deployment: V213LaneDeployment;
     readonly requestKey: string;
     readonly envelope: JsonValue;
+    readonly policy?: Readonly<{
+      readonly executionTimeoutMs: 5_000 | 60_000 | 800_000;
+      readonly ttlMs: 7_200_000;
+    }>;
   }) => Promise<V213DispatchAck>;
   /** One bounded lookup after ACK_UNKNOWN; it never dispatches. */
   readonly findJobByRequestKey: (input: {
@@ -799,6 +805,7 @@ function assertDeployment(
   actual: V213LaneDeployment,
   sealed: V213SealedLane,
   purpose: "qualification" | "production",
+  idleTimeoutSeconds: 5 | 60,
 ): void {
   if (
     actual.lane !== sealed.lane ||
@@ -819,6 +826,7 @@ function assertDeployment(
     actual.gpuCount !== 1 ||
     actual.workersMin !== 0 ||
     actual.workersMax !== 1 ||
+    actual.idleTimeoutSeconds !== idleTimeoutSeconds ||
     actual.handlerConcurrency !== 1 ||
     actual.scalerType !== "REQUEST_COUNT" ||
     actual.scalerValue !== 1 ||
@@ -834,11 +842,12 @@ const sameDeployment = (left: V213LaneDeployment, right: V213LaneDeployment): bo
   canonicalizeJson(left as unknown as JsonValue) ===
   canonicalizeJson(right as unknown as JsonValue);
 
-async function createAndReadLane(
+export async function createAndReadLane(
   transport: V213DualLaneTransport,
   sealed: V213SealedLane,
   purpose: "qualification" | "production",
   authorityId: string,
+  idleTimeoutSeconds: 5 | 60 = 5,
 ): Promise<V213LaneDeployment> {
   const resourceKey = `v213-${authorityId}-${sealed.lane}-${purpose}`;
   const requestSha256 = hashCanonical({
@@ -847,6 +856,7 @@ async function createAndReadLane(
     resourceKey,
     workersMin: 0,
     workersMax: 1,
+    ...(idleTimeoutSeconds === 5 ? {} : { idleTimeoutSeconds }),
   });
   const operation = operationIdentity(authorityId, "create", resourceKey, requestSha256);
   const claim = await transport.durable.claimOperation(operation);
@@ -867,6 +877,7 @@ async function createAndReadLane(
         resourceKey,
         workersMin: 0,
         workersMax: 1,
+        ...(idleTimeoutSeconds === 5 ? {} : { idleTimeoutSeconds }),
       });
     } catch {
       ack = { kind: "ACK_UNKNOWN" };
@@ -886,7 +897,7 @@ async function createAndReadLane(
     }
   }
   if (created === null) throw new V213DualLaneError("V213_CREATE_ACK_UNKNOWN");
-  assertDeployment(created, sealed, purpose);
+  assertDeployment(created, sealed, purpose, idleTimeoutSeconds);
   if (operationState !== "TERMINAL" && operationState !== "ACKED") {
     await transport.durable.transitionOperation({
       operationId: operation.operationId,
@@ -905,7 +916,7 @@ async function createAndReadLane(
   const readClaim = await transport.durable.claimOperation(readOperation);
   if (readClaim.action !== "DONE") {
     const readback = await transport.readLane(created);
-    assertDeployment(readback, sealed, purpose);
+    assertDeployment(readback, sealed, purpose, idleTimeoutSeconds);
     if (!sameDeployment(created, readback)) fail("V213_DEPLOYMENT_READBACK_MISMATCH");
   }
   if (readClaim.record.state !== "TERMINAL") {
@@ -1240,7 +1251,7 @@ async function runCase(
   throw new V213DualLaneError("V213_STATUS_TIMEOUT");
 }
 
-async function readJobDurably(
+export async function readJobDurably(
   transport: V213DualLaneTransport,
   deployment: V213LaneDeployment,
   jobId: string,
@@ -1271,7 +1282,7 @@ async function readJobDurably(
   return observed;
 }
 
-async function cancelJobDurably(
+export async function cancelJobDurably(
   transport: V213DualLaneTransport,
   deployment: V213LaneDeployment,
   jobId: string,
@@ -1483,7 +1494,7 @@ async function cleanupCreated(
   }
 }
 
-async function deleteLaneDurably(
+export async function deleteLaneDurably(
   transport: V213DualLaneTransport,
   deployment: V213LaneDeployment,
   authorityId: string,

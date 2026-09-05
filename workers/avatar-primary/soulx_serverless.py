@@ -58,6 +58,45 @@ _CAPABILITY = re.compile(r"^[A-Za-z0-9._:-]{32,512}$")
 _MAX_BATCH_ITEMS = 128
 _MAX_INPUT_BYTES = 512 * 1024 * 1024
 _MAX_OUTPUT_BYTES = 128 * 1024 * 1024
+_QUALIFICATION_INVALID_OUTPUT_PROBE = "SOULX_INVALID_OUTPUT_CONTRACT_V1"
+_QUALIFICATION_TIMEOUT_PROBE = "RUNPOD_EXECUTION_TIMEOUT_V1"
+_QUALIFICATION_INVALID_ATTEMPT = re.compile(r"^v213-soulx-invalid-output-[0-9a-f]{12}$")
+_QUALIFICATION_TIMEOUT_ATTEMPT = re.compile(r"^v213-soulx-timeout-[0-9a-f]{12}$")
+_QUALIFICATION_TIMEOUT_DELAY_SECONDS = 30
+
+
+async def _run_sealed_qualification_probe(
+    payload: dict[str, Any], *, accepted: dict[str, Any]
+) -> None:
+    """Exercise only exact signed SoulX negative cases after all port validation."""
+
+    marker = payload.get("qualification_probe")
+    work = accepted.get("work")
+    runtime = accepted.get("runtime")
+    attempt_id = work.get("attempt_id") if isinstance(work, dict) else None
+    expected = None
+    if isinstance(attempt_id, str):
+        if _QUALIFICATION_INVALID_ATTEMPT.fullmatch(attempt_id):
+            expected = _QUALIFICATION_INVALID_OUTPUT_PROBE
+        elif _QUALIFICATION_TIMEOUT_ATTEMPT.fullmatch(attempt_id):
+            expected = _QUALIFICATION_TIMEOUT_PROBE
+    signed_probe = (
+        isinstance(work, dict)
+        and isinstance(runtime, dict)
+        and expected is not None
+        and work.get("lane") == "soulx_avatar"
+        and work.get("task_id") == "soulx-live-qualification"
+        and work.get("item_count") == 1
+        and runtime.get("endpoint_profile_id") == "soulx-serverless-v1"
+    )
+    if marker is None and expected is None:
+        return
+    if marker != expected or not signed_probe:
+        raise ServerlessSoulXError("SOULX_SERVERLESS_QUALIFICATION_PROBE_INVALID")
+    if marker == _QUALIFICATION_TIMEOUT_PROBE:
+        await asyncio.sleep(_QUALIFICATION_TIMEOUT_DELAY_SECONDS)
+        raise TimeoutError("SOULX_SERVERLESS_TIMEOUT_PROBE_NOT_TERMINATED")
+    raise ServerlessSoulXError("SOULX_OUTPUT_CONTRACT_INVALID")
 
 
 def _canonical_bytes(value: object) -> bytes:
@@ -800,10 +839,17 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             port.get("content_type") != "audio/wav" for port in input_ports[1:]
         ):
             raise ServerlessSoulXError("SOULX_SERVERLESS_INPUT_CONTENT_TYPE_INVALID")
+        # The extra marker is request-hashed; the authenticated envelope supplies the trusted
+        # attempt, lane, task, item count, and runtime identity. Run only after every authority and
+        # URL has passed validation, before delivery claim, model startup, input GET, or output PUT.
+        await _run_sealed_qualification_probe(payload, accepted=accepted)
         await _claim_delivery(accepted["work"]["attempt_id"])
         pre_manifest = await asyncio.to_thread(verify_volume)
         if pre_manifest["manifest_sha256"] != accepted["runtime"]["model_manifest_sha256"]:
             raise ServerlessSoulXError("SOULX_SERVERLESS_VOLUME_MANIFEST_MISMATCH")
+        # Captured before _ready_runtime mutates the process cache and signed into every output
+        # item so qualification can distinguish a real same-worker warm reuse from a label.
+        runtime_cache_hit = _runtime is not None
         runtime = await _ready_runtime()
         runtime_ready_epoch = time.time()
         runtime_health = runtime.health()
@@ -891,6 +937,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 object_key = authority["path"].removeprefix("/")
                 probe = {
                     "native_clip_reused_for_full_and_split": True,
+                    "runtime_cache_hit": runtime_cache_hit,
                     **preparation,
                     **media_probe,
                 }

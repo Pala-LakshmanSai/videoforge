@@ -13,7 +13,9 @@ import {
 } from "../../../../../deploy/v2-13/generate-mage-qualification-case.mjs";
 import {
   generateSoulXQualificationCase,
+  generateSoulXWholeSpanQualificationCase,
   validateSoulXQualificationCase,
+  validateSoulXWholeSpanQualificationCase,
 } from "../../../../../deploy/v2-13/generate-soulx-qualification-cases.mjs";
 import type {
   V213LaneDeployment,
@@ -45,6 +47,8 @@ const WORKER_REQUEST_KEYS = [
   "output_put_urls",
   "ports",
 ] as const;
+export const V213_SOULX_INVALID_OUTPUT_PROBE = "SOULX_INVALID_OUTPUT_CONTRACT_V1" as const;
+export const V213_SOULX_TIMEOUT_PROBE = "RUNPOD_EXECUTION_TIMEOUT_V1" as const;
 const CASES = Object.freeze({
   mage: Object.freeze({
     key: "mage",
@@ -112,6 +116,31 @@ const CASES = Object.freeze({
   }),
 } as const);
 
+export const V208_SOULX_WHOLE_SPAN_DESCRIPTORS = Object.freeze([
+  Object.freeze({
+    key: "soulxWholeSpanCold" as const,
+    lane: "soulx" as const,
+    id: "soulx-cold-whole-span-2-4-6-10s",
+    seconds: 22,
+    mode: "complete" as const,
+    cold: true as const,
+  }),
+  Object.freeze({
+    key: "soulxWholeSpanWarm" as const,
+    lane: "soulx" as const,
+    id: "soulx-warm-whole-span-2-4-6-10s",
+    seconds: 22,
+    mode: "complete" as const,
+    cold: false as const,
+  }),
+] as const);
+
+export type V208SoulXWholeSpanDescriptor = (typeof V208_SOULX_WHOLE_SPAN_DESCRIPTORS)[number];
+type QualificationDescriptor = V213QualificationCaseDescriptor | V208SoulXWholeSpanDescriptor;
+const isWholeSpanDescriptor = (
+  descriptor: QualificationDescriptor | Record<string, unknown>,
+): boolean => descriptor.key === "soulxWholeSpanCold" || descriptor.key === "soulxWholeSpanWarm";
+
 export type V213QualificationOperation = "mage-live-qualification" | "soulx-live-qualification";
 
 export interface V213QualificationSourceRef {
@@ -136,7 +165,7 @@ export interface V213QualificationMaterializationRequest {
   readonly outerStateSha256: Sha256;
   readonly inputSha256: Sha256;
   readonly sourceCommit: string;
-  readonly descriptor: V213QualificationCaseDescriptor;
+  readonly descriptor: QualificationDescriptor;
   readonly caseSourceRef: V213QualificationSourceRef;
   readonly generatorRef: V213QualificationSourceRef;
   readonly validatorRef: V213QualificationSourceRef;
@@ -177,6 +206,15 @@ export interface V213QualificationMaterializerDependencies {
   readonly store: V213QualificationMaterializationStore;
   readonly now?: () => Date;
   readonly randomHex?: (bytes: number) => string;
+}
+
+export interface V213QualificationInputCleanupEvidence {
+  readonly schemaVersion: "videoforge.v213-qualification-input-cleanup/v1";
+  readonly requestSha256: Sha256;
+  readonly terminalOutcome: "COMPLETED" | "FAILED" | "CANCELLED" | "TIMED_OUT";
+  readonly deletedObjectKeySha256s: readonly Sha256[];
+  readonly absenceVerified: true;
+  readonly evidenceSha256: Sha256;
 }
 
 function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
@@ -286,10 +324,12 @@ export function parseV213QualificationMaterializationRequest(
     !HASH.test(deployment.volumeManifestSha256) ||
     !Array.isArray(inputs) ||
     (descriptor.lane === "mage" && inputs.length !== 0) ||
-    (descriptor.lane === "soulx" && inputs.length !== 2)
+    (descriptor.lane === "soulx" && inputs.length !== (isWholeSpanDescriptor(descriptor) ? 5 : 2))
   )
     throw new Error("V213_QUALIFICATION_MATERIALIZATION_REQUEST_INVALID");
-  const expectedDescriptor = CASES[descriptor.key as keyof typeof CASES];
+  const expectedDescriptor = isWholeSpanDescriptor(descriptor)
+    ? V208_SOULX_WHOLE_SPAN_DESCRIPTORS.find((item) => item.key === descriptor.key)
+    : CASES[descriptor.key as keyof typeof CASES];
   const lane = descriptor.lane as "mage" | "soulx";
   if (
     !expectedDescriptor ||
@@ -334,12 +374,12 @@ export function parseV213QualificationMaterializationRequest(
     )
       throw new Error("V213_QUALIFICATION_MATERIALIZATION_REQUEST_INVALID");
   }
-  if (
-    descriptor.lane === "soulx" &&
-    ((inputs[0] as Record<string, unknown>).role !== "avatar_source" ||
-      (inputs[1] as Record<string, unknown>).role !== "audio")
-  )
-    throw new Error("V213_QUALIFICATION_MATERIALIZATION_REQUEST_INVALID");
+  if (descriptor.lane === "soulx") {
+    if ((inputs[0] as Record<string, unknown>).role !== "avatar_source")
+      throw new Error("V213_QUALIFICATION_MATERIALIZATION_REQUEST_INVALID");
+    if (inputs.slice(1).some((input) => (input as Record<string, unknown>).role !== "audio"))
+      throw new Error("V213_QUALIFICATION_MATERIALIZATION_REQUEST_INVALID");
+  }
   const { requestSha256: _hash, ...unsigned } = item;
   void _hash;
   if (canonicalSha256(unsigned) !== item.requestSha256)
@@ -406,6 +446,25 @@ function safeSignedHeaders(value: unknown): value is Readonly<Record<string, str
 
 function expectedPortExpiry(now: Date): string {
   return new Date(now.getTime() + PORT_LIFETIME_SECONDS * 1_000).toISOString();
+}
+
+function outputMaxContentLength(descriptor: QualificationDescriptor): number {
+  return descriptor.lane === "mage" ? 16 * 1024 * 1024 : 64 * 1024 * 1024;
+}
+
+function executionTimeoutSeconds(descriptor: QualificationDescriptor): number {
+  if (descriptor.lane === "mage") return 2400;
+  if (isWholeSpanDescriptor(descriptor)) return 800;
+  if (descriptor.mode === "cancel" || descriptor.mode === "invalid") return 60;
+  if (descriptor.mode === "timeout") return 5;
+  return 1800;
+}
+
+function qualificationProbe(descriptor: QualificationDescriptor): string | null {
+  if (descriptor.lane !== "soulx") return null;
+  if (descriptor.mode === "invalid") return V213_SOULX_INVALID_OUTPUT_PROBE;
+  if (descriptor.mode === "timeout") return V213_SOULX_TIMEOUT_PROBE;
+  return null;
 }
 
 function signedUrlBindsObjectKey(url: string, objectKey: string): boolean {
@@ -559,7 +618,8 @@ function validateWav(bytes: Uint8Array<ArrayBuffer>, expectedFrames: number): bo
 
 function artifactBytes(
   artifact: V213QualificationInputArtifact,
-  descriptor?: V213QualificationCaseDescriptor,
+  descriptor?: QualificationDescriptor,
+  audioOrdinal = 0,
 ): Uint8Array<ArrayBuffer> {
   const bytes = decodeBase64(artifact.bodyBase64);
   if (bytes.byteLength < 1 || bytes.byteLength > MAX_INPUT_BYTES)
@@ -568,7 +628,16 @@ function artifactBytes(
     throw new Error("V213_QUALIFICATION_SOURCE_PNG_INVALID");
   if (
     artifact.contentType === "audio/wav" &&
-    (!descriptor || !validateWav(bytes, Math.max(144_000, descriptor.seconds * 48_000)))
+    (!descriptor ||
+      !validateWav(
+        bytes,
+        Math.max(
+          144_000,
+          (isWholeSpanDescriptor(descriptor)
+            ? ([2, 4, 6, 10] as const)[audioOrdinal]
+            : descriptor.seconds)! * 48_000,
+        ),
+      ))
   )
     throw new Error("V213_QUALIFICATION_AUDIO_WAV_INVALID");
   return bytes;
@@ -629,53 +698,63 @@ async function stageInputs(
 ): Promise<readonly StagedInput[]> {
   const attemptId = qualificationAttemptId(request);
   const staged: StagedInput[] = [];
-  for (const artifact of request.inputs) {
-    const bytes = artifactBytes(artifact, request.descriptor);
-    if ((await bytesSha256(bytes)) !== artifact.sha256)
-      throw new Error("V213_QUALIFICATION_INPUT_HASH_DRIFT");
-    const objectKey =
-      `tenant/${request.fullLiveAuthorityId}/workspace/${request.stageAuthorityId}/project/` +
-      `v213-qualification/revision/${request.sourceCommit}/lane/input/job/${attemptId}/artifact/${artifact.assetId}`;
-    if (!isExactHostedR2ObjectKey(objectKey)) throw new Error("V213_QUALIFICATION_R2_KEY_INVALID");
-    const before = await exactStoredObject(
-      bucket,
-      objectKey,
-      artifact.contentType,
-      bytes.byteLength,
-      artifact.sha256,
-    );
-    if (before === "DRIFT") throw new Error("V213_QUALIFICATION_R2_OBJECT_DRIFT");
-    let created = false;
-    if (before === "ABSENT") {
-      try {
-        await bucket.put(objectKey, bytes.buffer, {
-          httpMetadata: { contentType: artifact.contentType },
-          sha256: artifact.sha256.slice(7),
-        });
-        created = true;
-      } catch {
-        const recovered = await exactStoredObject(
-          bucket,
-          objectKey,
-          artifact.contentType,
-          bytes.byteLength,
-          artifact.sha256,
-        );
-        if (recovered !== "EXACT") throw new Error("V213_QUALIFICATION_R2_PUT_ACK_UNKNOWN");
-        created = true;
-      }
-    }
-    if (
-      (await exactStoredObject(
+  let audioOrdinal = 0;
+  try {
+    for (const artifact of request.inputs) {
+      const bytes = artifactBytes(artifact, request.descriptor, audioOrdinal);
+      if (artifact.role === "audio") audioOrdinal += 1;
+      if ((await bytesSha256(bytes)) !== artifact.sha256)
+        throw new Error("V213_QUALIFICATION_INPUT_HASH_DRIFT");
+      const objectKey =
+        `tenant/${request.fullLiveAuthorityId}/workspace/${request.stageAuthorityId}/project/` +
+        `v213-qualification/revision/${request.sourceCommit}/lane/input/job/${attemptId}/artifact/${artifact.assetId}`;
+      if (!isExactHostedR2ObjectKey(objectKey))
+        throw new Error("V213_QUALIFICATION_R2_KEY_INVALID");
+      const before = await exactStoredObject(
         bucket,
         objectKey,
         artifact.contentType,
         bytes.byteLength,
         artifact.sha256,
-      )) !== "EXACT"
-    )
-      throw new Error("V213_QUALIFICATION_R2_READBACK_DRIFT");
-    staged.push(Object.freeze({ artifact, bytes, objectKey, created }));
+      );
+      if (before === "DRIFT") throw new Error("V213_QUALIFICATION_R2_OBJECT_DRIFT");
+      let created = false;
+      if (before === "ABSENT") {
+        try {
+          await bucket.put(objectKey, bytes.buffer, {
+            httpMetadata: { contentType: artifact.contentType },
+            sha256: artifact.sha256.slice(7),
+          });
+          created = true;
+        } catch {
+          const recovered = await exactStoredObject(
+            bucket,
+            objectKey,
+            artifact.contentType,
+            bytes.byteLength,
+            artifact.sha256,
+          );
+          if (recovered !== "EXACT") throw new Error("V213_QUALIFICATION_R2_PUT_ACK_UNKNOWN");
+          created = true;
+        }
+      }
+      if (
+        (await exactStoredObject(
+          bucket,
+          objectKey,
+          artifact.contentType,
+          bytes.byteLength,
+          artifact.sha256,
+        )) !== "EXACT"
+      )
+        throw new Error("V213_QUALIFICATION_R2_READBACK_DRIFT");
+      staged.push(Object.freeze({ artifact, bytes, objectKey, created }));
+    }
+  } catch (error) {
+    // stageInputs used to lose its local list when a later input failed.  Clean every object this
+    // invocation can prove it created before propagating the failure.
+    if (staged.length > 0) await cleanupCreatedInputs(bucket, staged);
+    throw error;
   }
   return Object.freeze(staged);
 }
@@ -686,6 +765,37 @@ async function cleanupCreatedInputs(bucket: HostedR2BucketBinding, staged: reado
     if ((await bucket.head(item.objectKey)) !== null)
       throw new Error("V213_QUALIFICATION_R2_CLEANUP_AMBIGUOUS");
   }
+}
+
+/** Delete every deterministic qualification input after its provider job reaches a terminal state.
+ * These keys are unique to the request hash and therefore attributable even when materialization
+ * reused an exact object left by an earlier interrupted invocation. */
+export async function cleanupV213QualificationInputs(
+  rawRequest: unknown,
+  input: {
+    readonly bucket: HostedR2BucketBinding;
+    readonly terminalOutcome: "COMPLETED" | "FAILED" | "CANCELLED" | "TIMED_OUT";
+  },
+): Promise<V213QualificationInputCleanupEvidence> {
+  const request = parseV213QualificationMaterializationRequest(rawRequest);
+  const keys = request.inputs.map((artifact) => objectKeyForInput(request, artifact));
+  for (const key of [...keys].reverse()) {
+    try {
+      await input.bucket.delete(key);
+    } catch {
+      // A lost delete acknowledgement is safe only when exact readback proves absence.
+    }
+    if ((await input.bucket.head(key)) !== null)
+      throw new Error("V213_QUALIFICATION_TERMINAL_INPUT_CLEANUP_AMBIGUOUS");
+  }
+  const base = {
+    schemaVersion: "videoforge.v213-qualification-input-cleanup/v1" as const,
+    requestSha256: request.requestSha256,
+    terminalOutcome: input.terminalOutcome,
+    deletedObjectKeySha256s: Object.freeze(keys.map((key) => digestUtf8(key) as Sha256)),
+    absenceVerified: true as const,
+  };
+  return Object.freeze({ ...base, evidenceSha256: canonicalSha256(base) as Sha256 });
 }
 
 function outputPrefix(request: V213QualificationMaterializationRequest, attemptId: string): string {
@@ -706,11 +816,20 @@ async function buildMaterialization(
   const randomHex = dependencies.randomHex ?? randomHexDefault;
   const attemptId = qualificationAttemptId(request);
   const prefix = outputPrefix(request, attemptId);
-  const generatedCount = request.descriptor.lane === "mage" ? MAGE_QUALIFICATION_ITEM_COUNT : 1;
+  const generatedCount =
+    request.descriptor.lane === "mage"
+      ? MAGE_QUALIFICATION_ITEM_COUNT
+      : isWholeSpanDescriptor(request.descriptor)
+        ? 4
+        : 1;
   const outputIds = Array.from({ length: generatedCount }, (_, index) =>
     request.descriptor.lane === "mage"
       ? `mage-output-${String(index + 1).padStart(2, "0")}`
-      : `soulx-output-${request.descriptor.seconds}s`,
+      : `soulx-output-${
+          isWholeSpanDescriptor(request.descriptor)
+            ? ([2, 4, 6, 10] as const)[index]
+            : request.descriptor.seconds
+        }s`,
   );
   const generatedAuthorities = outputIds.map((reservationId, index) => ({
     schema_version: "artifact-generated-output-authority/v1",
@@ -721,10 +840,14 @@ async function buildMaterialization(
     path: `/${prefix}/artifact/${
       request.descriptor.lane === "mage"
         ? `mage-qualification-${String(index + 1).padStart(2, "0")}`
-        : `soulx-${request.descriptor.seconds}s`
+        : `soulx-${
+            isWholeSpanDescriptor(request.descriptor)
+              ? ([2, 4, 6, 10] as const)[index]
+              : request.descriptor.seconds
+          }s`
     }`,
     content_type: request.descriptor.lane === "mage" ? "image/png" : "video/mp4",
-    max_content_length: request.descriptor.lane === "mage" ? 16 * 1024 * 1024 : 64 * 1024 * 1024,
+    max_content_length: outputMaxContentLength(request.descriptor),
     expires_at: expiresAt,
     max_uses: 1 as const,
     capability_handle: randomHex(32),
@@ -791,6 +914,24 @@ async function buildMaterialization(
     batch = generateMageQualificationCase({ attemptId, outputUrls, sha256Utf8: sha });
     if (!validateMageQualificationCase(batch, sha))
       throw new Error("V213_MAGE_WORKER_CONTRACT_INVALID");
+  } else if (isWholeSpanDescriptor(request.descriptor)) {
+    const source = staged[0]!;
+    const audios = staged.slice(1);
+    batch = generateSoulXWholeSpanQualificationCase({
+      attemptId,
+      sourceAssetId: source.artifact.assetId,
+      sourceSha256: source.artifact.sha256,
+      sourceReservationId: source.artifact.reservationId,
+      spans: audios.map(({ artifact }, index) => ({
+        seconds: ([2, 4, 6, 10] as const)[index]!,
+        audioAssetId: artifact.assetId,
+        audioSha256: artifact.sha256,
+        audioReservationId: artifact.reservationId,
+        outputReservationId: outputIds[index]!,
+      })),
+    });
+    if (!validateSoulXWholeSpanQualificationCase(batch))
+      throw new Error("V208_SOULX_WHOLE_SPAN_WORKER_CONTRACT_INVALID");
   } else {
     const source = staged.find(({ artifact }) => artifact.role === "avatar_source")!;
     const audio = staged.find(({ artifact }) => artifact.role === "audio")!;
@@ -867,7 +1008,7 @@ async function buildMaterialization(
         (sum, authority) => sum + authority.max_content_length,
         0,
       ),
-      execution_timeout_seconds: request.descriptor.lane === "mage" ? 2400 : 1800,
+      execution_timeout_seconds: executionTimeoutSeconds(request.descriptor),
       init_timeout_seconds: request.deployment.initTimeoutSeconds,
     },
     policy: {
@@ -897,6 +1038,9 @@ async function buildMaterialization(
     input_get_urls: inputPorts.map(({ url }) => url),
     generated_output_authorities: generatedAuthorities,
     output_put_urls: outputUrls,
+    ...(qualificationProbe(request.descriptor)
+      ? { qualification_probe: qualificationProbe(request.descriptor)! }
+      : {}),
   } as unknown as JsonValue;
   const caseDescriptorSha256 = canonicalSha256(request.descriptor) as Sha256;
   const materializationEvidenceSha256 = canonicalSha256({
@@ -948,14 +1092,17 @@ function outputAuthorityShape(
 ): void {
   if (!record(value)) throw new Error("V213_QUALIFICATION_OUTPUT_AUTHORITY_INVALID");
   const lane = request.descriptor.lane;
+  const soulxSeconds = isWholeSpanDescriptor(request.descriptor)
+    ? ([2, 4, 6, 10] as const)[index]
+    : request.descriptor.seconds;
   const outputId =
     lane === "mage"
       ? `mage-output-${String(index + 1).padStart(2, "0")}`
-      : `soulx-output-${request.descriptor.seconds}s`;
+      : `soulx-output-${soulxSeconds}s`;
   const artifactId =
     lane === "mage"
       ? `mage-qualification-${String(index + 1).padStart(2, "0")}`
-      : `soulx-${request.descriptor.seconds}s`;
+      : `soulx-${soulxSeconds}s`;
   const prefix = outputPrefix(request, qualificationAttemptId(request));
   const expected = {
     schema_version: "artifact-generated-output-authority/v1",
@@ -965,7 +1112,7 @@ function outputAuthorityShape(
     method: "PUT",
     path: `/${prefix}/artifact/${artifactId}`,
     content_type: lane === "mage" ? "image/png" : "video/mp4",
-    max_content_length: lane === "mage" ? 16 * 1024 * 1024 : 64 * 1024 * 1024,
+    max_content_length: outputMaxContentLength(request.descriptor),
     expires_at: expiresAt,
     max_uses: 1,
   } as const;
@@ -994,7 +1141,15 @@ function validateWorkerRequest(
   value: unknown,
   request: V213QualificationMaterializationRequest,
 ): Record<string, unknown> {
-  if (!record(value) || !exactKeys(value, WORKER_REQUEST_KEYS))
+  const probe = qualificationProbe(request.descriptor);
+  if (
+    !record(value) ||
+    !exactKeys(
+      value,
+      probe ? [...WORKER_REQUEST_KEYS, "qualification_probe"] : WORKER_REQUEST_KEYS,
+    ) ||
+    (probe !== null && value.qualification_probe !== probe)
+  )
     throw new Error("V213_QUALIFICATION_WORKER_REQUEST_INVALID");
   const envelope = value.envelope;
   if (!record(envelope)) throw new Error("V213_QUALIFICATION_ENVELOPE_INVALID");
@@ -1023,7 +1178,12 @@ function validateWorkerRequest(
     envelopeWork.task_id !== request.operationId ||
     envelopeWork.attempt_id !== expectedAttemptId ||
     envelopeWork.lane !== expectedLane ||
-    envelopeWork.item_count !== (request.descriptor.lane === "mage" ? 32 : 1) ||
+    envelopeWork.item_count !==
+      (request.descriptor.lane === "mage"
+        ? 32
+        : isWholeSpanDescriptor(request.descriptor)
+          ? 4
+          : 1) ||
     envelopeRuntime.endpoint_profile_id !==
       (request.descriptor.lane === "mage" ? "mage-serverless-v1" : "soulx-serverless-v1") ||
     envelopeRuntime.deployment_id !== request.deployment.deploymentSha256 ||
@@ -1048,12 +1208,21 @@ function validateWorkerRequest(
     !Number.isFinite(issuedAt) ||
     !Number.isFinite(expiresAt) ||
     expiresAt - issuedAt !== PORT_LIFETIME_SECONDS * 1_000 ||
-    envelopeLimits.max_items !== (request.descriptor.lane === "mage" ? 32 : 1) ||
-    envelopeLimits.execution_timeout_seconds !==
-      (request.descriptor.lane === "mage" ? 2400 : 1800) ||
+    envelopeLimits.max_items !==
+      (request.descriptor.lane === "mage"
+        ? 32
+        : isWholeSpanDescriptor(request.descriptor)
+          ? 4
+          : 1) ||
+    envelopeLimits.execution_timeout_seconds !== executionTimeoutSeconds(request.descriptor) ||
     envelopeLimits.init_timeout_seconds !== request.deployment.initTimeoutSeconds ||
     envelopeLimits.max_output_bytes !==
-      (request.descriptor.lane === "mage" ? 32 * 16 * 1024 * 1024 : 64 * 1024 * 1024) ||
+      (request.descriptor.lane === "mage"
+        ? 32
+        : isWholeSpanDescriptor(request.descriptor)
+          ? 4
+          : 1) *
+        outputMaxContentLength(request.descriptor) ||
     !record(envelope.policy) ||
     envelope.policy.model_download_permitted !== false ||
     envelope.policy.volume_mutation_permitted !== false ||
@@ -1079,7 +1248,8 @@ function validateWorkerRequest(
   const expectedInputPorts = request.inputs;
   if (
     inputUrls.length !== expectedInputPorts.length ||
-    generatedAuthorities.length !== (request.descriptor.lane === "mage" ? 32 : 1)
+    generatedAuthorities.length !==
+      (request.descriptor.lane === "mage" ? 32 : isWholeSpanDescriptor(request.descriptor) ? 4 : 1)
   )
     throw new Error("V213_QUALIFICATION_WORKER_PORTS_INVALID");
   const expectedExpiry = envelopeLimits.expires_at as string;
@@ -1093,9 +1263,11 @@ function validateWorkerRequest(
   )
     throw new Error("V213_QUALIFICATION_WORKER_PORTS_INVALID");
   const inputManifest = [] as Record<string, unknown>[];
+  let audioOrdinal = 0;
   for (const [index, artifact] of expectedInputPorts.entries()) {
     const inputPort = inputAuthorities[index];
-    const bytes = artifactBytes(artifact, request.descriptor);
+    const bytes = artifactBytes(artifact, request.descriptor, audioOrdinal);
+    if (artifact.role === "audio") audioOrdinal += 1;
     const expectedObjectKey = objectKeyForInput(request, artifact);
     if (
       !record(inputPort) ||
@@ -1172,6 +1344,29 @@ function validateWorkerRequest(
     });
     if (envelopeWork.items_manifest_sha256 !== canonicalSha256(batch as object))
       throw new Error("V213_MAGE_WORKER_CONTRACT_INVALID");
+  } else if (isWholeSpanDescriptor(request.descriptor)) {
+    if (!validateSoulXWholeSpanQualificationCase(batch))
+      throw new Error("V208_SOULX_WHOLE_SPAN_WORKER_CONTRACT_INVALID");
+    const soulxBatch = batch as Record<string, unknown>;
+    const batchSource = soulxBatch.avatar_source as Record<string, unknown>;
+    const spans = soulxBatch.spans as readonly Record<string, unknown>[];
+    if (
+      batchSource.asset_id !== request.inputs[0]!.assetId ||
+      batchSource.sha256 !== request.inputs[0]!.sha256 ||
+      batchSource.port_reservation_id !== request.inputs[0]!.reservationId ||
+      spans.some((span, index) => {
+        const audio = request.inputs[index + 1]!;
+        return (
+          span.audio_asset_id !== audio.assetId ||
+          span.audio_sha256 !== audio.sha256 ||
+          span.audio_port_reservation_id !== audio.reservationId ||
+          span.output_reservation_id !== generatedAuthorities[index]!.reservation_id
+        );
+      }) ||
+      envelopeArtifacts.plan_manifest_sha256 !== canonicalSha256(batch as object) ||
+      envelopeWork.items_manifest_sha256 !== canonicalSha256(batch as object)
+    )
+      throw new Error("V208_SOULX_WHOLE_SPAN_WORKER_CONTRACT_INVALID");
   } else {
     if (!validateSoulXQualificationCase(batch, request.descriptor.seconds))
       throw new Error("V213_SOULX_WORKER_CONTRACT_INVALID");

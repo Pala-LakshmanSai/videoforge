@@ -1,6 +1,7 @@
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const ALLOWED_SECONDS = new Set([2, 4, 6, 10]);
+export const SOULX_WHOLE_SPAN_QUALIFICATION_SECONDS = Object.freeze([2, 4, 6, 10]);
 
 export function generateSoulXQualificationCase(input) {
   const {
@@ -90,4 +91,88 @@ export function validateSoulXQualificationCase(value, seconds) {
       span.trim_start_sample_48k === 0 &&
       span.trim_end_sample_exclusive_48k === selected,
   );
+}
+
+/** Distinct V2-08 case. Existing single-span V2-13 generation remains byte-for-byte unchanged. */
+export function generateSoulXWholeSpanQualificationCase(input) {
+  const { attemptId, sourceAssetId, sourceSha256, sourceReservationId, spans } = input;
+  if (
+    ![attemptId, sourceAssetId, sourceReservationId].every((value) => ID.test(value ?? "")) ||
+    !HASH.test(sourceSha256 ?? "") ||
+    !Array.isArray(spans) ||
+    spans.length !== SOULX_WHOLE_SPAN_QUALIFICATION_SECONDS.length
+  )
+    throw new Error("V208_SOULX_WHOLE_SPAN_GENERATOR_INPUT_INVALID");
+  const generatedSpans = spans.map((span, index) => {
+    const seconds = SOULX_WHOLE_SPAN_QUALIFICATION_SECONDS[index];
+    if (
+      span.seconds !== seconds ||
+      ![span.audioAssetId, span.audioReservationId, span.outputReservationId].every((value) =>
+        ID.test(value ?? ""),
+      ) ||
+      !HASH.test(span.audioSha256 ?? "")
+    )
+      throw new Error("V208_SOULX_WHOLE_SPAN_GENERATOR_INPUT_INVALID");
+    const selectedSamples = seconds * 48_000;
+    return Object.freeze({
+      item_id: `soulx-${seconds}s`,
+      audio_asset_id: span.audioAssetId,
+      audio_sha256: span.audioSha256,
+      audio_port_reservation_id: span.audioReservationId,
+      output_reservation_id: span.outputReservationId,
+      padded_samples_48k: Math.max(144_000, selectedSamples),
+      trim_start_sample_48k: 0,
+      trim_end_sample_exclusive_48k: selectedSamples,
+    });
+  });
+  return Object.freeze({
+    schema_version: "videoforge-soulx-span-batch/v1",
+    attempt_id: attemptId,
+    avatar_source: Object.freeze({
+      asset_id: sourceAssetId,
+      sha256: sourceSha256,
+      port_reservation_id: sourceReservationId,
+    }),
+    spans: Object.freeze(generatedSpans),
+  });
+}
+
+export function validateSoulXWholeSpanQualificationCase(value) {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join(",") !== "attempt_id,avatar_source,schema_version,spans" ||
+    value.schema_version !== "videoforge-soulx-span-batch/v1" ||
+    !ID.test(value.attempt_id ?? "") ||
+    !value.avatar_source ||
+    typeof value.avatar_source !== "object" ||
+    Array.isArray(value.avatar_source) ||
+    Object.keys(value.avatar_source).sort().join(",") !== "asset_id,port_reservation_id,sha256" ||
+    !ID.test(value.avatar_source.asset_id ?? "") ||
+    !ID.test(value.avatar_source.port_reservation_id ?? "") ||
+    !HASH.test(value.avatar_source.sha256 ?? "") ||
+    !Array.isArray(value.spans) ||
+    value.spans.length !== SOULX_WHOLE_SPAN_QUALIFICATION_SECONDS.length
+  )
+    return false;
+  return value.spans.every((span, index) => {
+    const seconds = SOULX_WHOLE_SPAN_QUALIFICATION_SECONDS[index];
+    const selected = seconds * 48_000;
+    return Boolean(
+      span &&
+        typeof span === "object" &&
+        !Array.isArray(span) &&
+        Object.keys(span).sort().join(",") ===
+          "audio_asset_id,audio_port_reservation_id,audio_sha256,item_id,output_reservation_id,padded_samples_48k,trim_end_sample_exclusive_48k,trim_start_sample_48k" &&
+        span.item_id === `soulx-${seconds}s` &&
+        ID.test(span.audio_asset_id ?? "") &&
+        ID.test(span.audio_port_reservation_id ?? "") &&
+        ID.test(span.output_reservation_id ?? "") &&
+        HASH.test(span.audio_sha256 ?? "") &&
+        span.padded_samples_48k === Math.max(144_000, selected) &&
+        span.trim_start_sample_48k === 0 &&
+        span.trim_end_sample_exclusive_48k === selected,
+    );
+  });
 }

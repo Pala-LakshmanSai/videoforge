@@ -8,8 +8,10 @@ import type { HostedR2BucketBinding } from "../hosted/configuration.js";
 import { HostedR2Signer } from "../hosted/r2.js";
 import {
   buildV213QualificationMaterializationRequest,
+  cleanupV213QualificationInputs,
   createV213QualificationMaterializerDependencies,
   materializeV213QualificationCase,
+  type V208SoulXWholeSpanDescriptor,
   type V213QualificationInputArtifact,
   type V213QualificationMaterializationStore,
   type V213QualificationSourceRef,
@@ -499,7 +501,7 @@ function sourceForDescriptor(
 
 function inputArtifact(
   role: "avatar_source" | "audio",
-  descriptor: V213QualificationCaseDescriptor,
+  descriptor: V213QualificationCaseDescriptor | V208SoulXWholeSpanDescriptor,
   bytes: Uint8Array<ArrayBuffer>,
 ): V213QualificationInputArtifact {
   const digest = sha256(bytes);
@@ -512,6 +514,187 @@ function inputArtifact(
     sha256: digest,
     bodyBase64: Buffer.from(bytes).toString("base64"),
   });
+}
+
+export interface V208DirectWholeSpanQualificationAdapter {
+  readonly materializeWholeSpan: (input: {
+    readonly descriptor: V208SoulXWholeSpanDescriptor;
+    readonly deployment: V213LaneDeployment;
+    readonly stageAuthorityId: string;
+    readonly inputSha256: string;
+  }) => Promise<V213QualificationCaseMaterialization>;
+  readonly materializeQualificationCase: (input: {
+    readonly descriptor: V213QualificationCaseDescriptor;
+    readonly deployment: V213LaneDeployment;
+    readonly stageAuthorityId: string;
+    readonly inputSha256: string;
+  }) => Promise<V213QualificationCaseMaterialization>;
+  readonly cleanupMaterializedInputs: (input: {
+    readonly materialization: V213QualificationCaseMaterialization;
+    readonly terminalOutcome: "COMPLETED" | "FAILED" | "CANCELLED" | "TIMED_OUT";
+  }) => Promise<{
+    readonly originalRequestSha256: `sha256:${string}`;
+    readonly evidence: Awaited<ReturnType<typeof cleanupV213QualificationInputs>>;
+  }>;
+  readonly cleanupAmbiguousMaterializedInputs: (
+    materialization: V213QualificationCaseMaterialization,
+  ) => Promise<true>;
+  readonly cleanupOutputKeys: (keys: readonly string[]) => Promise<true>;
+  /** Exact protected R2 read used only after the signed receipt binds an owned output authority. */
+  readonly readOutput: (objectKey: string) => Promise<Uint8Array<ArrayBuffer>>;
+}
+
+/** Distinct V2-08 adapter. It preserves the V2-13 single-span factory byte-for-byte while staging
+ * one avatar and all four approved audio spans into one signed whole-span worker request. */
+export function createV208DirectWholeSpanQualificationAdapter(
+  input: Parameters<typeof createV213DirectQualificationMaterializer>[0],
+): V208DirectWholeSpanQualificationAdapter {
+  if (input.operationId !== "soulx-live-qualification")
+    throw new Error("V208_WHOLE_SPAN_OPERATION_INVALID");
+  validateV213DirectQualificationInputs(input);
+  const bucket = input.bucket ?? createV213DirectR2Bucket({ config: input.r2, fetch: input.fetch });
+  const dependencies = createV213QualificationMaterializerDependencies({
+    config: { r2: { ...input.r2, region: "auto" } } as never,
+    bucket,
+    signing: input.signing,
+    store: createStore(input.database, input.signing.secretHex),
+  });
+  const materializerDependencies = {
+    ...dependencies,
+    ...(input.r2Signer === undefined ? {} : { r2Signer: input.r2Signer }),
+    now: input.now,
+    randomHex: input.randomHex,
+  };
+  const requests = new Map<
+    string,
+    ReturnType<typeof buildV213QualificationMaterializationRequest>
+  >();
+  const exactMaterialization = (materialization: V213QualificationCaseMaterialization) => {
+    const request = requests.get(materialization.materializationEvidenceSha256);
+    if (!request) throw new Error("V208_WHOLE_SPAN_MATERIALIZATION_NOT_OWNED");
+    return request;
+  };
+  const objectKeys = (
+    materialization: V213QualificationCaseMaterialization,
+    role: "inputs" | "outputs",
+  ) => {
+    const request = materialization.request as Record<string, unknown>;
+    if (role === "outputs") {
+      const authorities = request.generated_output_authorities;
+      if (!Array.isArray(authorities)) throw new Error("V208_OUTPUT_AUTHORITY_INVALID");
+      return authorities.map((authority) => {
+        const path = (authority as Record<string, unknown>).path;
+        if (typeof path !== "string" || !path.startsWith("/tenant/") || path.includes(".."))
+          throw new Error("V208_OUTPUT_AUTHORITY_INVALID");
+        return path.slice(1);
+      });
+    }
+    const ports = (request.ports as Record<string, unknown> | undefined)?.inputs;
+    if (!Array.isArray(ports)) throw new Error("V208_INPUT_AUTHORITY_INVALID");
+    return ports.map((authority) => {
+      const path = (authority as Record<string, unknown>).path;
+      if (typeof path !== "string" || !path.startsWith("/tenant/") || path.includes(".."))
+        throw new Error("V208_INPUT_AUTHORITY_INVALID");
+      return path.slice(1);
+    });
+  };
+  const deleteAndProveAbsent = async (keys: readonly string[]) => {
+    for (const key of [...keys].reverse()) {
+      try {
+        await bucket.delete(key);
+      } catch {
+        // Lost acknowledgements are accepted only when HEAD proves exact absence below.
+      }
+      if ((await bucket.head(key)) !== null) throw new Error("V208_DIRECT_R2_CLEANUP_AMBIGUOUS");
+    }
+    return true as const;
+  };
+  const adapter: V208DirectWholeSpanQualificationAdapter = {
+    async materializeWholeSpan(materializationInput) {
+      const descriptor = materializationInput.descriptor;
+      const avatar = exactProtectedBytes(
+        input.protectedInputDescriptors.avatarSource,
+        input.protectedSourceBytes!.avatarSource,
+      );
+      const audioArtifacts = ([2, 4, 6, 10] as const).map((seconds) => {
+        const key = `soulx${seconds}s` as const;
+        const source = exactProtectedBytes(
+          input.protectedInputDescriptors[key],
+          input.protectedSourceBytes![key],
+        );
+        return inputArtifact("audio", descriptor, buildV213SoulXQualificationWav(source, seconds));
+      });
+      const request = buildV213QualificationMaterializationRequest({
+        schemaVersion: "videoforge.v213-qualification-materialization-request/v1",
+        fullLiveAuthorityId: input.fullLiveAuthorityId,
+        operationId: input.operationId,
+        stageAuthorityId: materializationInput.stageAuthorityId,
+        outerStateSha256: input.outerStateSha256,
+        inputSha256: materializationInput.inputSha256 as `sha256:${string}`,
+        sourceCommit: input.sourceCommit,
+        descriptor,
+        caseSourceRef: input.sourceRefs.caseSource,
+        generatorRef: input.sourceRefs.generators.soulx,
+        validatorRef: input.sourceRefs.validators.soulx,
+        deployment: materializationInput.deployment,
+        inputs: [inputArtifact("avatar_source", descriptor, avatar), ...audioArtifacts],
+      });
+      const result = await materializeV213QualificationCase(request, materializerDependencies);
+      requests.set(result.materialization.materializationEvidenceSha256, request);
+      return result.materialization;
+    },
+    async materializeQualificationCase(materializationInput) {
+      if (materializationInput.descriptor.lane !== "soulx")
+        throw new Error("V208_QUALIFICATION_OPERATION_DESCRIPTOR_DRIFT");
+      const { avatar, audio } = sourceForDescriptor(
+        input.protectedInputDescriptors,
+        input.protectedSourceBytes!,
+        materializationInput.descriptor,
+      );
+      const request = buildV213QualificationMaterializationRequest({
+        schemaVersion: "videoforge.v213-qualification-materialization-request/v1",
+        fullLiveAuthorityId: input.fullLiveAuthorityId,
+        operationId: input.operationId,
+        stageAuthorityId: materializationInput.stageAuthorityId,
+        outerStateSha256: input.outerStateSha256,
+        inputSha256: materializationInput.inputSha256 as `sha256:${string}`,
+        sourceCommit: input.sourceCommit,
+        descriptor: materializationInput.descriptor,
+        caseSourceRef: input.sourceRefs.caseSource,
+        generatorRef: input.sourceRefs.generators.soulx,
+        validatorRef: input.sourceRefs.validators.soulx,
+        deployment: materializationInput.deployment,
+        inputs: [
+          inputArtifact("avatar_source", materializationInput.descriptor, avatar),
+          inputArtifact("audio", materializationInput.descriptor, audio),
+        ],
+      });
+      const result = await materializeV213QualificationCase(request, materializerDependencies);
+      requests.set(result.materialization.materializationEvidenceSha256, request);
+      return result.materialization;
+    },
+    async cleanupMaterializedInputs({ materialization, terminalOutcome }) {
+      const request = exactMaterialization(materialization);
+      const evidence = await cleanupV213QualificationInputs(request, { bucket, terminalOutcome });
+      return { originalRequestSha256: request.requestSha256, evidence };
+    },
+    async cleanupAmbiguousMaterializedInputs(materialization) {
+      exactMaterialization(materialization);
+      return deleteAndProveAbsent(objectKeys(materialization, "inputs"));
+    },
+    cleanupOutputKeys: (keys) => deleteAndProveAbsent(keys),
+    async readOutput(objectKey) {
+      if (!objectKey.startsWith("tenant/") || objectKey.includes(".."))
+        throw new Error("V208_OUTPUT_READBACK_KEY_INVALID");
+      const value = await bucket.get(objectKey);
+      if (value === null) throw new Error("V208_OUTPUT_READBACK_MISSING");
+      const bytes = await value.arrayBuffer();
+      if (bytes.byteLength !== value.size || bytes.byteLength === 0)
+        throw new Error("V208_OUTPUT_READBACK_SIZE_INVALID");
+      return new Uint8Array(bytes);
+    },
+  };
+  return Object.freeze(adapter);
 }
 
 /**

@@ -4,6 +4,15 @@
 
 ### Current new-chat launch point — 2026-09-05
 
+- V2-08 is the active checkpoint after V2-07's clean qualification. Its provider-free SoulX max1
+  implementation is sealed and independently audited PASS with P0/P1/P2 `0/0/0`: exact source/image
+  lineage, application-read-only retained volume, 2/4/6/10-second whole-span batch, signed cold/warm
+  cache reuse, durable phase-safe RESUME, exact R2/ffprobe proof, bounded cleanup, and final-zero
+  evidence are implemented. Focused validation passed 181 TypeScript tests, 29 SoulX worker/image
+  tests, typecheck, and the unchanged Stage 6 fence of 414 TypeScript plus 98 Mage worker tests.
+  Preserve all V2-07/Mage source and Attempt85 evidence as a frozen regression baseline. Next is the
+  authorized read-only provider preflight and one independently audited exact live proposal. No image
+  publication, RunPod mutation, GPU use, spend, or production deployment is currently authorized.
 - V2-07 is `QUALIFIED_PASS_CLEAN` by Attempt85. Proposal
   `sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540`, control
   `2fccf2ed7257613f4a12017562243a8aeb889138`, and authority

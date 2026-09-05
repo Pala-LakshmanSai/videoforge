@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { HostedR2BucketBinding } from "./configuration.js";
 import {
   buildV213QualificationMaterializationRequest,
+  cleanupV213QualificationInputs,
   materializeV213QualificationCase,
+  V208_SOULX_WHOLE_SPAN_DESCRIPTORS,
   type V213QualificationMaterializationRequest,
   type V213QualificationMaterializationRouteResult,
   type V213QualificationMaterializationStore,
@@ -70,6 +72,7 @@ function deployment(lane: "mage" | "soulx") {
     gpuCount: 1 as const,
     workersMin: 0 as const,
     workersMax: 1 as const,
+    idleTimeoutSeconds: 5 as const,
     handlerConcurrency: 1 as const,
     scalerType: "REQUEST_COUNT" as const,
     scalerValue: 1 as const,
@@ -100,7 +103,9 @@ function refs(lane: "mage" | "soulx") {
   };
 }
 
-function soulxRequest(): V213QualificationMaterializationRequest {
+function soulxRequest(
+  mode: "complete" | "cancel" | "invalid" | "timeout" = "complete",
+): V213QualificationMaterializationRequest {
   const source = png();
   const audio = wav();
   return buildV213QualificationMaterializationRequest({
@@ -112,12 +117,26 @@ function soulxRequest(): V213QualificationMaterializationRequest {
     inputSha256: proof("5"),
     sourceCommit: SOURCE,
     descriptor: {
-      key: "soulx2s",
+      key:
+        mode === "cancel"
+          ? "soulxCancel"
+          : mode === "invalid"
+            ? "soulxInvalidOutput"
+            : mode === "timeout"
+              ? "soulxTimeout"
+              : "soulx2s",
       lane: "soulx",
-      id: "soulx-cold-2s",
+      id:
+        mode === "cancel"
+          ? "soulx-cancel"
+          : mode === "invalid"
+            ? "soulx-invalid-output"
+            : mode === "timeout"
+              ? "soulx-timeout"
+              : "soulx-cold-2s",
       seconds: 2,
-      mode: "complete",
-      cold: true,
+      mode,
+      cold: mode === "complete",
     },
     ...refs("soulx"),
     deployment: deployment("soulx"),
@@ -138,6 +157,44 @@ function soulxRequest(): V213QualificationMaterializationRequest {
         sha256: hash(audio),
         bodyBase64: base64(audio),
       },
+    ],
+  });
+}
+
+function wholeSpanRequest(): V213QualificationMaterializationRequest {
+  const source = png();
+  const seconds = [2, 4, 6, 10] as const;
+  return buildV213QualificationMaterializationRequest({
+    schemaVersion: "videoforge.v213-qualification-materialization-request/v1",
+    fullLiveAuthorityId: FULL_AUTHORITY,
+    operationId: "soulx-live-qualification",
+    stageAuthorityId: "soulx-stage-authority",
+    outerStateSha256: proof("4"),
+    inputSha256: proof("5"),
+    sourceCommit: SOURCE,
+    descriptor: V208_SOULX_WHOLE_SPAN_DESCRIPTORS[0],
+    ...refs("soulx"),
+    deployment: deployment("soulx"),
+    inputs: [
+      {
+        role: "avatar_source",
+        assetId: "source",
+        reservationId: "source-port",
+        contentType: "image/png",
+        sha256: hash(source),
+        bodyBase64: base64(source),
+      },
+      ...seconds.map((value) => {
+        const audio = wav(Math.max(144_000, value * 48_000));
+        return {
+          role: "audio" as const,
+          assetId: `audio-${value}s`,
+          reservationId: `audio-port-${value}s`,
+          contentType: "audio/wav" as const,
+          sha256: hash(audio),
+          bodyBase64: base64(audio),
+        };
+      }),
     ],
   });
 }
@@ -167,6 +224,8 @@ function mageRequest(): V213QualificationMaterializationRequest {
 
 function harness(
   options: {
+    failPutNumber?: number;
+    deleteLostAck?: boolean;
     putLostAck?: boolean;
     persistLostAck?: boolean;
     persistAbsent?: boolean;
@@ -202,6 +261,7 @@ function harness(
     },
     put: async (key, value, rawOptions) => {
       puts(key);
+      if (options.failPutNumber === puts.mock.calls.length) throw new Error("put failed");
       const bytes = new Uint8Array(value as ArrayBuffer);
       const optionsValue = rawOptions as { httpMetadata?: { contentType?: string } };
       const checksum = await crypto.subtle.digest("SHA-256", bytes);
@@ -217,6 +277,7 @@ function harness(
     delete: async (keys) => {
       deletes(keys);
       for (const key of typeof keys === "string" ? [keys] : keys) objects.delete(key);
+      if (options.deleteLostAck) throw new Error("lost delete ack");
     },
   };
   let intentRequest: V213QualificationMaterializationRequest | null = null;
@@ -300,6 +361,21 @@ function harness(
 }
 
 describe("V2-13 JIT qualification materializer", () => {
+  it("materializes the distinct V2-08 2/4/6/10 whole-span batch without changing V2-13", async () => {
+    const test = harness();
+    const result = await materializeV213QualificationCase(wholeSpanRequest(), test.dependencies);
+    const worker = result.materialization.request as Record<string, unknown>;
+    const batch = worker.batch as { spans: readonly unknown[] };
+    expect(batch.spans).toHaveLength(4);
+    expect(worker.input_get_urls).toHaveLength(5);
+    expect(worker.output_put_urls).toHaveLength(4);
+    expect(worker.generated_output_authorities).toHaveLength(4);
+    expect(
+      (worker.envelope as { limits: { execution_timeout_seconds: number } }).limits
+        .execution_timeout_seconds,
+    ).toBe(800);
+  });
+
   it("stages exact SoulX inputs and returns a signed worker-contract request with bounded ports", async () => {
     const test = harness();
     const request = soulxRequest();
@@ -315,6 +391,48 @@ describe("V2-13 JIT qualification materializer", () => {
     expect(test.puts).toHaveBeenCalledTimes(2);
     expect(test.deletes).not.toHaveBeenCalled();
     expect(JSON.stringify(result)).not.toContain("abababababababab");
+  });
+
+  it("materializes invalid-output with the exact authenticated worker probe", async () => {
+    const test = harness();
+    const result = await materializeV213QualificationCase(
+      soulxRequest("invalid"),
+      test.dependencies,
+    );
+    const worker = result.materialization.request as Record<string, unknown>;
+    expect(worker.qualification_probe).toBe("SOULX_INVALID_OUTPUT_CONTRACT_V1");
+    expect(
+      (worker.envelope as { limits: { execution_timeout_seconds: number } }).limits
+        .execution_timeout_seconds,
+    ).toBe(60);
+  });
+
+  it("materializes timeout with the exact authenticated worker probe", async () => {
+    const test = harness();
+    const result = await materializeV213QualificationCase(
+      soulxRequest("timeout"),
+      test.dependencies,
+    );
+    const worker = result.materialization.request as Record<string, unknown>;
+    expect(worker.qualification_probe).toBe("RUNPOD_EXECUTION_TIMEOUT_V1");
+    expect(
+      (worker.envelope as { limits: { execution_timeout_seconds: number } }).limits
+        .execution_timeout_seconds,
+    ).toBe(5);
+  });
+
+  it("materializes cancellation with the exact signed 60-second ceiling and no probe", async () => {
+    const test = harness();
+    const result = await materializeV213QualificationCase(
+      soulxRequest("cancel"),
+      test.dependencies,
+    );
+    const worker = result.materialization.request as Record<string, unknown>;
+    expect(worker).not.toHaveProperty("qualification_probe");
+    expect(
+      (worker.envelope as { limits: { execution_timeout_seconds: number } }).limits
+        .execution_timeout_seconds,
+    ).toBe(60);
   });
 
   it("builds the complete 32-item MageJob and never exposes a provider dispatch surface", async () => {
@@ -368,6 +486,47 @@ describe("V2-13 JIT qualification materializer", () => {
       materializeV213QualificationCase(soulxRequest(), test.dependencies),
     ).rejects.toThrow("PERSIST_ACK_UNKNOWN");
     expect(test.deletes).toHaveBeenCalledTimes(2);
+    expect(test.objects.size).toBe(0);
+  });
+
+  it("cleans an attributable earlier input when staging a later input fails", async () => {
+    const test = harness({ failPutNumber: 2 });
+    await expect(
+      materializeV213QualificationCase(soulxRequest(), test.dependencies),
+    ).rejects.toThrow("R2_PUT_ACK_UNKNOWN");
+    expect(test.deletes).toHaveBeenCalledTimes(1);
+    expect(test.objects.size).toBe(0);
+  });
+
+  it.each(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"] as const)(
+    "deletes and proves all staged inputs absent after terminal %s",
+    async (terminalOutcome) => {
+      const test = harness();
+      const request = soulxRequest();
+      await materializeV213QualificationCase(request, test.dependencies);
+      expect(test.objects.size).toBe(2);
+      const evidence = await cleanupV213QualificationInputs(request, {
+        bucket: test.bucket,
+        terminalOutcome,
+      });
+      expect(evidence).toMatchObject({
+        schemaVersion: "videoforge.v213-qualification-input-cleanup/v1",
+        requestSha256: request.requestSha256,
+        terminalOutcome,
+        absenceVerified: true,
+      });
+      expect(evidence.deletedObjectKeySha256s).toHaveLength(2);
+      expect(test.objects.size).toBe(0);
+    },
+  );
+
+  it("reconciles lost terminal delete acknowledgements only after absence readback", async () => {
+    const test = harness({ deleteLostAck: true });
+    const request = soulxRequest();
+    await materializeV213QualificationCase(request, test.dependencies);
+    await expect(
+      cleanupV213QualificationInputs(request, { bucket: test.bucket, terminalOutcome: "FAILED" }),
+    ).resolves.toMatchObject({ absenceVerified: true });
     expect(test.objects.size).toBe(0);
   });
 

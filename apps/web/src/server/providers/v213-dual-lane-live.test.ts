@@ -245,6 +245,7 @@ const makeFake = (
       gpuCount: 1,
       workersMin: 0,
       workersMax: 1,
+      idleTimeoutSeconds: 5,
       handlerConcurrency: 1,
       scalerType: "REQUEST_COUNT",
       scalerValue: 1,

@@ -228,6 +228,12 @@ function fixture(
       jobs.set(job.id, job);
       return { ...job, idHash: sha("3"), executionTimeMs: 1, delayTimeMs: 1 };
     }),
+    dispatchWithV208Policy: vi.fn(async (requestKey: string) => {
+      if (options.dispatchAmbiguous) throw new Error("lost");
+      const job = { id: `job_${requestKey}`, status: "COMPLETED", output: {} };
+      jobs.set(job.id, job);
+      return { ...job, idHash: sha("3"), executionTimeMs: 1, delayTimeMs: 1 };
+    }),
     status: vi.fn(async (id: string) => ({
       ...jobs.get(id)!,
       idHash: sha("3"),
@@ -250,6 +256,7 @@ function fixture(
   const makeTransport = (
     transportInput: V213DualLaneInput = model,
     exactWorkerEnvironment: typeof workerEnvironment | null = workerEnvironment,
+    withOutputVerifier = true,
   ) =>
     createV213RunPodDualLaneTransport({
       durable: {} as never,
@@ -264,7 +271,7 @@ function fixture(
         cumulativeBillingUsd: 1,
       }),
       createJobClient,
-      verifyOutputReadback,
+      ...(withOutputVerifier ? { verifyOutputReadback } : {}),
       materializeQualificationCase: async () => {
         throw new Error("UNUSED_QUALIFICATION_MATERIALIZER");
       },
@@ -278,6 +285,7 @@ function fixture(
     control,
     client,
     model,
+    endpointRaw,
     verifyOutputReadback,
     createJobClient,
     workerEnvironment,
@@ -413,6 +421,45 @@ describe("V213 concrete RunPod dual-lane transport", () => {
     expect(client.dispatch).toHaveBeenCalledOnce();
   });
 
+  it("preserves an explicit 60-second idle timeout through create and readback", async () => {
+    const { transport, control, model } = fixture();
+    const created = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "qualification",
+      resourceKey: "stage:soulx:v208-idle-window",
+      workersMin: 0,
+      workersMax: 1,
+      idleTimeoutSeconds: 60,
+    });
+    expect(created).toMatchObject({ kind: "ACK", deployment: { idleTimeoutSeconds: 60 } });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    expect(control.createScaleZeroEndpoint).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.anything(),
+      expect.objectContaining({ idleTimeout: 60 }),
+      expect.anything(),
+      false,
+    );
+    await expect(transport.readLane(created.deployment)).resolves.toEqual(created.deployment);
+  });
+
+  it("rejects an endpoint idle-timeout drift during readback", async () => {
+    const { transport, model, endpointRaw } = fixture();
+    const created = await transport.createLane({
+      sealed: model.mage,
+      purpose: "qualification",
+      resourceKey: "stage:mage:idle-drift",
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    endpointRaw.get(created.deployment.endpointId)!.idleTimeout = 60;
+    await expect(transport.readLane(created.deployment)).rejects.toThrow(
+      "V213_DEPLOYMENT_READBACK_MISSING",
+    );
+  });
+
   it("recovers an exact template after a create timeout before creating its endpoint", async () => {
     const { transport, control, model } = fixture({ templateCreateAmbiguous: true });
     const resourceKey = "v213-stage_mage-mage-qualification";
@@ -519,6 +566,51 @@ describe("V213 concrete RunPod dual-lane transport", () => {
     expect(client.dispatch).toHaveBeenCalledOnce();
   });
 
+  it("forwards only the exact V2-08 per-request policy to the bounded client method", async () => {
+    const { transport, client, model } = fixture();
+    const created = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "qualification",
+      resourceKey: "stage:soulx:v208-policy",
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    await transport.dispatch({
+      deployment: created.deployment,
+      requestKey: "v208-soulx-timeout",
+      envelope: { qualification_probe: "RUNPOD_EXECUTION_TIMEOUT_V1" },
+      policy: { executionTimeoutMs: 5_000, ttlMs: 7_200_000 },
+    });
+    expect(client.dispatchWithV208Policy).toHaveBeenCalledWith(
+      "v208-soulx-timeout",
+      { qualification_probe: "RUNPOD_EXECUTION_TIMEOUT_V1" },
+      { executionTimeout: 5_000, ttl: 7_200_000 },
+    );
+    expect(client.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("maps an exact application-level SoulX probe rejection to terminal FAILED", async () => {
+    const { transport, client } = fixture();
+    client.status.mockResolvedValueOnce({
+      id: "job_probe",
+      idHash: sha("3"),
+      status: "COMPLETED",
+      output: {
+        status: "FAILED",
+        failure_code: "SOULX_OUTPUT_CONTRACT_INVALID",
+        error: { code: "SOULX_OUTPUT_CONTRACT_INVALID" },
+      },
+      executionTimeMs: 1,
+      delayTimeMs: 1,
+    });
+    await expect(transport.status("endpoint-soulx", "job_probe")).resolves.toMatchObject({
+      jobId: "job_probe",
+      status: "FAILED",
+      failureCode: "SOULX_OUTPUT_CONTRACT_INVALID",
+    });
+  });
+
   it("dispatches each production lane only through its own endpoint", async () => {
     const { transport, model, createJobClient } = fixture();
     const mage = await transport.createLane({
@@ -588,6 +680,31 @@ describe("V213 concrete RunPod dual-lane transport", () => {
       },
     );
     expect(verifyOutputReadback).toHaveBeenCalledOnce();
+  });
+
+  it("preserves receipt delivery without falsely claiming output readback", async () => {
+    const { makeTransport, model, verifyOutputReadback } = fixture({ withDelivery: true });
+    const transport = makeTransport(model, undefined, false);
+    const created = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "qualification",
+      resourceKey: "stage:soulx:receipt-only",
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    const ack = await transport.dispatch({
+      deployment: created.deployment,
+      requestKey: "v208-soulx-receipt-only",
+      envelope: {},
+    });
+    if (ack.kind !== "ACK") throw new Error("fixture");
+    const observed = await transport.status(created.deployment.endpointId, ack.jobId);
+    expect(observed).toMatchObject({
+      receiptDelivery: { receiptBodyBase64: "ZXhhY3QtcmVjZWlwdA==" },
+    });
+    expect(observed.outputReadbackVerified).toBeUndefined();
+    expect(verifyOutputReadback).not.toHaveBeenCalled();
   });
 
   it("reconstructs exact resources and reads an ACKed job after a process restart", async () => {

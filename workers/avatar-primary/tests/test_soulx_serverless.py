@@ -298,6 +298,113 @@ class Fixture:
 
 
 class SoulXServerlessTest(unittest.TestCase):
+    def test_exact_invalid_output_probe_rejects_after_signed_identity_match(self) -> None:
+        accepted = {
+            "work": {
+                "attempt_id": "v213-soulx-invalid-output-012345abcdef",
+                "lane": "soulx_avatar",
+                "task_id": "soulx-live-qualification",
+                "item_count": 1,
+            },
+            "runtime": {"endpoint_profile_id": "soulx-serverless-v1"},
+        }
+        with self.assertRaisesRegex(
+            soulx_serverless.ServerlessSoulXError, "SOULX_OUTPUT_CONTRACT_INVALID"
+        ):
+            asyncio.run(
+                soulx_serverless._run_sealed_qualification_probe(
+                    {"qualification_probe": "SOULX_INVALID_OUTPUT_CONTRACT_V1"},
+                    accepted=accepted,
+                )
+            )
+
+    def test_exact_timeout_probe_blocks_past_provider_deadline(self) -> None:
+        accepted = {
+            "work": {
+                "attempt_id": "v213-soulx-timeout-012345abcdef",
+                "lane": "soulx_avatar",
+                "task_id": "soulx-live-qualification",
+                "item_count": 1,
+            },
+            "runtime": {"endpoint_profile_id": "soulx-serverless-v1"},
+        }
+        with patch.object(soulx_serverless.asyncio, "sleep", AsyncMock()) as sleep:
+            with self.assertRaises(TimeoutError):
+                asyncio.run(
+                    soulx_serverless._run_sealed_qualification_probe(
+                        {"qualification_probe": "RUNPOD_EXECUTION_TIMEOUT_V1"}, accepted=accepted
+                    )
+                )
+        sleep.assert_awaited_once_with(30)
+
+    def test_qualification_probe_fails_closed_on_marker_or_signed_identity_drift(self) -> None:
+        accepted = {
+            "work": {
+                "attempt_id": "v213-soulx-timeout-012345abcdef",
+                "lane": "soulx_avatar",
+                "task_id": "foreign-task",
+                "item_count": 1,
+            },
+            "runtime": {"endpoint_profile_id": "soulx-serverless-v1"},
+        }
+        for payload in (
+            {"qualification_probe": "RUNPOD_EXECUTION_TIMEOUT_V2"},
+            {"qualification_probe": "RUNPOD_EXECUTION_TIMEOUT_V1"},
+            {},
+        ):
+            with self.assertRaisesRegex(
+                soulx_serverless.ServerlessSoulXError,
+                "SOULX_SERVERLESS_QUALIFICATION_PROBE_INVALID",
+            ):
+                asyncio.run(
+                    soulx_serverless._run_sealed_qualification_probe(payload, accepted=accepted)
+                )
+
+    def test_ordinary_job_without_probe_is_unchanged(self) -> None:
+        asyncio.run(
+            soulx_serverless._run_sealed_qualification_probe(
+                {},
+                accepted={
+                    "work": {
+                        "attempt_id": "attempt-soulx-001",
+                        "lane": "soulx_avatar",
+                        "task_id": "task-a",
+                        "item_count": 1,
+                    },
+                    "runtime": {"endpoint_profile_id": "soulx-serverless-v1"},
+                },
+            )
+        )
+
+    def test_handler_reaches_invalid_probe_only_after_exact_authority_validation(self) -> None:
+        fixture = Fixture((2,))
+        prior_attempt = fixture.attempt
+        fixture.attempt = "v213-soulx-invalid-output-012345abcdef"
+        fixture.batch["attempt_id"] = fixture.attempt
+        fixture.envelope["work"]["attempt_id"] = fixture.attempt
+        fixture.envelope["work"]["task_id"] = "soulx-live-qualification"
+        fixture.envelope["artifacts"]["output_prefix"] = str(
+            fixture.envelope["artifacts"]["output_prefix"]
+        ).replace(prior_attempt, fixture.attempt)
+        fixture.plan_hash = digest(canonical(fixture.batch).encode())
+        fixture.envelope["work"]["items_manifest_sha256"] = fixture.plan_hash
+        fixture.envelope["artifacts"]["plan_manifest_sha256"] = fixture.plan_hash
+        for port in fixture.inputs:
+            port["path"] = str(port["path"]).replace(prior_attempt, fixture.attempt)
+        fixture.outputs[0]["path"] = (
+            f"/{fixture.envelope['artifacts']['output_prefix']}/artifact/span-2"
+        )
+        fixture.payload["qualification_probe"] = "SOULX_INVALID_OUTPUT_CONTRACT_V1"
+        sign_envelope(fixture.envelope)
+        ready = AsyncMock()
+        with patch.object(soulx_serverless, "_ready_runtime", ready):
+            result = asyncio.run(
+                soulx_serverless.handler({"id": "job-invalid", "input": fixture.payload})
+            )
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["failure_code"], "SOULX_OUTPUT_CONTRACT_INVALID")
+        ready.assert_not_awaited()
+
     def setUp(self) -> None:
         soulx_serverless._runtime = None
         soulx_serverless._claimed_deliveries.clear()
@@ -489,6 +596,9 @@ class SoulXServerlessTest(unittest.TestCase):
                     item["probe"]["native_clip_reused_for_full_and_split"]
                     for item in result["items"]
                 )
+            )
+            self.assertTrue(
+                all(item["probe"]["runtime_cache_hit"] is False for item in result["items"])
             )
             self.assertEqual(result["provenance_receipt"]["lane"], "soulx_avatar")
             receipt_body = base64.b64decode(result["provenance_receipt_body_base64"])

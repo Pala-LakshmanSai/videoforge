@@ -130,6 +130,7 @@ function deployment(lane: "mage" | "soulx") {
     gpuCount: 1 as const,
     workersMin: 0 as const,
     workersMax: 1 as const,
+    idleTimeoutSeconds: 5 as const,
     handlerConcurrency: 1 as const,
     scalerType: "REQUEST_COUNT" as const,
     scalerValue: 1 as const,

@@ -1,0 +1,30 @@
+{
+  "schema_version": "videoforge.v2-08-first-party-license-observation/v1",
+  "checkpoint": "V2-08",
+  "observed_at": "2026-09-05T06:35:05Z",
+  "model": "Soul-AILab/SoulX-FlashHead-1_3B#Model_Pro",
+  "code_source": {
+    "repository": "Soul-AILab/SoulX-FlashHead",
+    "revision": "9bc03de06bb0de82cd6bc477804512ae06144bf2",
+    "license_url": "https://raw.githubusercontent.com/Soul-AILab/SoulX-FlashHead/9bc03de06bb0de82cd6bc477804512ae06144bf2/LICENSE",
+    "license_bytes_sha256": "sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "declared_license": "Apache-2.0"
+  },
+  "weight_source": {
+    "repository": "Soul-AILab/SoulX-FlashHead-1_3B",
+    "revision": "59119b6c681230c3eeee157e224ae1941746711e",
+    "model_card_url": "https://huggingface.co/Soul-AILab/SoulX-FlashHead-1_3B/raw/59119b6c681230c3eeee157e224ae1941746711e/README.md",
+    "model_card_bytes_sha256": "sha256:8238f9999249967b7aa1e02b74d32fd4aaee53b149953ab69e3d91777dd39328",
+    "api_revision_url": "https://huggingface.co/api/models/Soul-AILab/SoulX-FlashHead-1_3B/revision/59119b6c681230c3eeee157e224ae1941746711e",
+    "api_revision_bytes_sha256": "sha256:24682d206908916b14dc0db5a0b9f22382590fa8eb92e52316a452d0a9e4d57b",
+    "api_revision_sha": "59119b6c681230c3eeee157e224ae1941746711e",
+    "declared_license": "apache-2.0"
+  },
+  "observation": "The exact pinned first-party code license and exact pinned first-party model metadata both declare Apache-2.0. This evidence records source metadata and is not legal advice.",
+  "explicit_user_risk_decision": null,
+  "gate_status": "OPEN_AWAITING_EXPLICIT_USER_DECISION",
+  "provider_calls": 0,
+  "remote_mutations": 0,
+  "gpu_use": 0,
+  "spend_usd": 0
+}

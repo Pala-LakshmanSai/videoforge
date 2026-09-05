@@ -1048,7 +1048,7 @@ function productionSecrets(
   return Object.freeze(value as unknown as V213ProductionSecrets);
 }
 
-function v213WorkerEnvironmentSecrets(secrets: V213ProductionSecrets) {
+export function v213WorkerEnvironmentSecrets(secrets: V213ProductionSecrets) {
   const pairDispatchKey = Buffer.from(secrets.pairDispatchTokenKeyBase64, "base64");
   const mageWorkerTokenHex = createHmac("sha256", pairDispatchKey)
     .update("videoforge.v213-mage-serverless-worker-token/v1", "utf8")
@@ -2356,7 +2356,7 @@ async function oneDatabaseValue(
   return result.rows[0]?.value;
 }
 
-function createV213SqlDurableStageStore(input: {
+export function createV213SqlDurableStageStore(input: {
   readonly database: TransactionalSqlExecutor;
   readonly fullLiveAuthorityId: string;
   readonly signingKey: Buffer;
@@ -2604,7 +2604,10 @@ const defaultPrequalificationPorts: V213PrequalificationFactoryPorts = Object.fr
     createNeonExecutor(createNeonPool(inputs.operatorDatabaseUrl)),
 });
 
-async function readEndpointBilling(apiKey: string, fetchPort: WorkflowFetch): Promise<number> {
+export async function readEndpointBilling(
+  apiKey: string,
+  fetchPort: WorkflowFetch,
+): Promise<number> {
   const query = new URLSearchParams({
     bucketSize: "hour",
     grouping: "endpointId",

@@ -795,6 +795,47 @@ describe("RunPod scale-zero control", () => {
     ).toThrow("RUNPOD_TIMEOUT_POLICY_INVALID");
   });
 
+  it.each([5_000, 60_000, 800_000] as const)(
+    "binds the exact V2-08 %i ms per-request ceiling without changing V2-07",
+    async (executionTimeout) => {
+      const guard = new RunPodDrainGuard();
+      guard.confirmZero(0, 0);
+      const bodies: unknown[] = [];
+      const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const path = new URL(String(input)).pathname;
+        if (path.endsWith("/run")) {
+          bodies.push(JSON.parse(String(init?.body)) as unknown);
+          return response({ id: `job_${executionTimeout}`, status: "IN_QUEUE" });
+        }
+        return response(health());
+      });
+      const client = new RunPodServerlessJobClient({
+        apiKey: key,
+        endpointId: "endpoint_01",
+        guard,
+        fetch,
+        baseUrl: "http://127.0.0.1:43123",
+      });
+      await client.dispatchWithV208Policy(
+        `attempt_${executionTimeout}`,
+        { value: "v208" },
+        { executionTimeout, ttl: V207_TIMEOUT_TTL_MS },
+      );
+      expect(bodies).toEqual([
+        {
+          input: { value: "v208" },
+          policy: { executionTimeout, ttl: V207_TIMEOUT_TTL_MS },
+        },
+      ]);
+      expect(() =>
+        client.dispatchWithV208Policy("attempt_invalid_v208", {}, {
+          executionTimeout: 6_000,
+          ttl: V207_TIMEOUT_TTL_MS,
+        } as never),
+      ).toThrow("RUNPOD_V208_DISPATCH_POLICY_INVALID");
+    },
+  );
+
   it("binds status and cancellation responses to the requested job", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);

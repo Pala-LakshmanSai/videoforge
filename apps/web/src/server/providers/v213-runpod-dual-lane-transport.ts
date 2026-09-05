@@ -10,6 +10,7 @@ import type {
   RunPodNamedResource,
   RunPodResourceIdentity,
   RunPodServerlessJobClient,
+  RunPodV208DispatchPolicy,
 } from "./runpod-control.js";
 import { RunPodDrainGuard as ConcreteDrainGuard } from "./runpod-control.js";
 import type {
@@ -66,6 +67,7 @@ export interface V213RunPodControlPort {
     placement: { readonly networkVolumeId: string; readonly dataCenterIds: readonly ["EU-RO-1"] },
     environment: Readonly<Record<string, string>>,
     guard: RunPodDrainGuard,
+    strictV207Timing?: boolean,
   ): Promise<void>;
   inventory(now?: Date): Promise<RunPodInventory>;
   resolveExactNetworkVolumeId(input: {
@@ -83,7 +85,7 @@ export interface V213RunPodControlPort {
 
 type JobPort = Pick<
   RunPodServerlessJobClient,
-  "dispatch" | "status" | "cancel" | "confirmStartupQueueEmpty"
+  "dispatch" | "dispatchWithV208Policy" | "status" | "cancel" | "confirmStartupQueueEmpty"
 >;
 
 export interface V213RunPodDualLaneOptions {
@@ -100,8 +102,8 @@ export interface V213RunPodDualLaneOptions {
     readonly cumulativeBillingUsd: number;
   }>;
   readonly createJobClient: (endpointId: string) => JobPort;
-  /** Independent artifact readback proof. COMPLETED alone is never sufficient. */
-  readonly verifyOutputReadback: (
+  /** Optional independent artifact readback proof. Receipt delivery is preserved without it. */
+  readonly verifyOutputReadback?: (
     result: RunPodJobResult,
     delivery: V213WorkerReceiptDelivery,
   ) => Promise<true>;
@@ -500,6 +502,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     readonly resourceKey: string;
     readonly workersMin: 0;
     readonly workersMax: 1;
+    readonly idleTimeoutSeconds?: 5 | 60;
   }) {
     const templateName = resourceName(input.resourceKey, "template");
     const endpointName = resourceName(input.resourceKey, "endpoint");
@@ -564,7 +567,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
         workersMin: 0 as const,
         workersMax: 1 as const,
         gpuCount: 1 as const,
-        idleTimeout: 5,
+        idleTimeout: input.idleTimeoutSeconds ?? 5,
         executionTimeoutMs: 2_400_000,
       };
       endpoint = await this.options.control.createScaleZeroEndpoint(
@@ -573,7 +576,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
         ["NVIDIA GeForce RTX 4090"],
         policy,
         placement,
-        true,
+        (input.idleTimeoutSeconds ?? 5) === 5,
       );
       const guard = new ConcreteDrainGuard();
       guard.confirmZero(0, 0);
@@ -584,6 +587,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
         placement,
         environment,
         guard,
+        (input.idleTimeoutSeconds ?? 5) === 5,
       );
     } catch {
       // The template mutation may have succeeded while endpoint creation is ambiguous. The caller
@@ -616,6 +620,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       gpuCount: 1,
       workersMin: 0,
       workersMax: 1,
+      idleTimeoutSeconds: input.idleTimeoutSeconds ?? 5,
       handlerConcurrency: 1,
       scalerType: "REQUEST_COUNT",
       scalerValue: 1,
@@ -858,6 +863,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       endpointRaw.templateId !== template.id ||
       endpointRaw.workersMin !== 0 ||
       endpointRaw.workersMax !== 1 ||
+      (endpointRaw.idleTimeout !== 5 && endpointRaw.idleTimeout !== 60) ||
       endpointRaw.gpuCount !== 1 ||
       JSON.stringify(endpointRaw.gpuTypeIds) !== JSON.stringify(["NVIDIA GeForce RTX 4090"]) ||
       !providerVolumeMatches(endpointRaw, sealed.volumeIdSha256) ||
@@ -887,6 +893,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       gpuCount: 1,
       workersMin: 0,
       workersMax: 1,
+      idleTimeoutSeconds: endpointRaw.idleTimeout as 5 | 60,
       handlerConcurrency: 1,
       scalerType: "REQUEST_COUNT",
       scalerValue: 1,
@@ -954,6 +961,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       endpointRaw?.templateId !== deployment.templateId ||
       endpointRaw.workersMin !== 0 ||
       endpointRaw.workersMax !== 1 ||
+      endpointRaw.idleTimeout !== deployment.idleTimeoutSeconds ||
       endpointRaw.gpuCount !== 1 ||
       JSON.stringify(endpointRaw.gpuTypeIds) !== JSON.stringify([deployment.gpu]) ||
       !providerVolumeMatches(endpointRaw, binding.volumeIdSha256) ||
@@ -974,12 +982,21 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     readonly deployment: V213LaneDeployment;
     readonly requestKey: string;
     readonly envelope: JsonValue;
+    readonly policy?: Readonly<{
+      readonly executionTimeoutMs: 5_000 | 60_000 | 800_000;
+      readonly ttlMs: 7_200_000;
+    }>;
   }): Promise<V213DispatchAck> {
     if (!ID.test(input.requestKey)) throw new Error("V213_REQUEST_KEY_INVALID");
     const client = this.options.createJobClient(input.deployment.endpointId);
     await client.confirmStartupQueueEmpty();
     try {
-      const job = await client.dispatch(input.requestKey, input.envelope);
+      const job = input.policy
+        ? await client.dispatchWithV208Policy(input.requestKey, input.envelope, {
+            executionTimeout: input.policy.executionTimeoutMs,
+            ttl: input.policy.ttlMs,
+          } satisfies RunPodV208DispatchPolicy)
+        : await client.dispatch(input.requestKey, input.envelope);
       this.jobs.set(job.id, { endpointId: input.deployment.endpointId, client });
       return { kind: "ACK", jobId: job.id };
     } catch {
@@ -1017,21 +1034,31 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       typeof receiptBodyBase64 === "string"
         ? ({ receipt, receiptBodyBase64 } as V213WorkerReceiptDelivery)
         : undefined;
-    const outputReadbackVerified = delivery
+    const outputReadbackVerified = delivery && this.options.verifyOutputReadback
       ? await this.options.verifyOutputReadback(result, delivery)
       : undefined;
+    const applicationFailure =
+      result.status === "COMPLETED" &&
+      output?.status === "FAILED" &&
+      typeof output.failure_code === "string" &&
+      /^[A-Z][A-Z0-9_.:-]{2,120}$/u.test(output.failure_code)
+        ? output.failure_code
+        : null;
     return Object.freeze({
       jobId: result.id,
-      status: result.status as V213JobRead["status"],
-      ...(delivery ? { receiptDelivery: delivery, outputReadbackVerified } : {}),
-      ...(typeof result.error === "object" && result.error !== null
-        ? {
-            failureCode:
-              typeof (result.error as Record<string, unknown>).code === "string"
-                ? String((result.error as Record<string, unknown>).code)
-                : undefined,
-          }
-        : {}),
+      status: (applicationFailure ? "FAILED" : result.status) as V213JobRead["status"],
+      ...(delivery ? { receiptDelivery: delivery } : {}),
+      ...(outputReadbackVerified === undefined ? {} : { outputReadbackVerified }),
+      ...(applicationFailure
+        ? { failureCode: applicationFailure }
+        : typeof result.error === "object" && result.error !== null
+          ? {
+              failureCode:
+                typeof (result.error as Record<string, unknown>).code === "string"
+                  ? String((result.error as Record<string, unknown>).code)
+                  : undefined,
+            }
+          : {}),
     });
   }
 
