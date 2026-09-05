@@ -21,7 +21,7 @@ export const V207_REPAIRED_IMAGE_BASE_DIGEST =
 export const V207_REPAIRED_IMAGE_PARENT_CONFIG_DIGEST =
   "sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2" as const;
 export const V207_PENDING_PROPOSAL_SHA256 =
-  "sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06" as const;
+  "sha256:c9b6879284918ed10801549488e60e5234554c32ae4f8c80dd23f4919237984e" as const;
 export const V207_ANCHOR_REFRESH_SOURCE_COMMIT =
   "a6c7266e0c19fce07757c78fbd588dd442b7d24f" as const;
 export const V207_TYPED_ACTIVATION_AUTHORITY_COMMIT =
@@ -42,6 +42,7 @@ export const V207_FINALIZE_REPLAY_FAST_PATH_COMMIT =
   "bf26c3a86ec6a48f619c39613d425da816eeae4d" as const;
 export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
   "f513ac807c6d5e2298092a936495e3c4fc0e6a28" as const;
+export const V207_APPROVED_EXECUTION_ENTRYPOINT = "disposable-live-orchestrator-v1" as const;
 
 // Historical validators bind these consumed immutable lineages while the active
 // pointer advances. They are evidence markers only and are never dispatch authority:
@@ -79,16 +80,15 @@ export const V207_TERMINAL_SNAPSHOT_STABILIZATION_COMMIT =
 // 96f5e16cf03be7e31049478ce7f6b0c134a8108c
 export const V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256 =
   "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5" as const;
-// Attempts69 through 81 were consumed. Attempt82 is single-use and source-bound.
-export const V207_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee";
-export const V207_APPROVED_FINITE_CAP_USD: number | null = 4.5;
+// Attempts69 through 82 were consumed. No executable authority or cap remains.
+export const V207_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V207_APPROVED_FINITE_CAP_USD: number | null = null;
 /**
  * Anchor refresh is an additional Worker mutation and must be opt-in at the
  * same compiled approval boundary as the proposal and finite cap. Any future
  * authority must bind its own decision in a separate immutable activation commit.
  */
-export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = false;
+export const V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED: boolean | null = null;
 
 const V207_PROPOSAL_POINTER_PATTERN =
   /^export\s+const\s+V207_PENDING_PROPOSAL_SHA256\s*=\s*"sha256:[a-f0-9]{64}"\s+as\s+const\s*;/gmu;
@@ -193,6 +193,9 @@ export function parseV207ActivationAuthority(
   const approvedCapUsd: number | null = V207_APPROVED_FINITE_CAP_USD;
   if (approvedAuthoritySha256 === null || approvedCapUsd === null) {
     throw new Error("V207_FRESH_AUTHORITY_REQUIRED");
+  }
+  if (environment.V207_EXECUTION_ENTRYPOINT !== V207_APPROVED_EXECUTION_ENTRYPOINT) {
+    throw new Error("V207_EXECUTION_ENTRYPOINT_MISMATCH");
   }
   const capUsd = Number(environment.V207_FINITE_CAP_USD ?? "");
   if (!Number.isFinite(capUsd) || capUsd <= 0) {

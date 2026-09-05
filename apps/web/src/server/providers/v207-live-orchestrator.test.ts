@@ -31,6 +31,7 @@ import {
   V207_ANCHOR_REFRESH_DEFAULT_CONFIG_PATH,
 } from "./v207-anchor-refresh-marker";
 import {
+  V207_APPROVED_EXECUTION_ENTRYPOINT,
   V207_PENDING_PROPOSAL_SHA256,
   V207_REPAIRED_IMAGE,
   V207_REPAIRED_IMAGE_SOURCE_COMMIT,
@@ -395,6 +396,20 @@ afterEach(async () => {
 });
 
 describe("V2-07 live orchestrator", () => {
+  it("rejects the disposable-only authority marker before legacy launcher authority parsing", async () => {
+    let authorityParsed = false;
+    await expect(
+      runV207LiveOrchestration({
+        environment: { V207_EXECUTION_ENTRYPOINT: V207_APPROVED_EXECUTION_ENTRYPOINT },
+        authorityParser: () => {
+          authorityParsed = true;
+          return parseFixtureAuthority();
+        },
+      }),
+    ).rejects.toMatchObject({ code: "V207_LEGACY_ENTRYPOINT_FORBIDDEN" });
+    expect(authorityParsed).toBe(false);
+  });
+
   it("pins the currently approved refreshed active Worker anchor without exposing its raw version id", () => {
     expect(V207_ANCHOR_REFRESH_EXPECTED_OLD_ACTIVE_VERSION_ID_SHA256).toBe(
       "sha256:1e5d35b4c2709641024655c7df5832f360aeb665068804f07ecc600a68186e19",

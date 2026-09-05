@@ -6,6 +6,7 @@ import { dirname, isAbsolute, resolve } from "node:path";
 import {
   parseV207ActivationAuthority,
   type V207ActivationAuthority,
+  V207_APPROVED_EXECUTION_ENTRYPOINT,
 } from "./v207-activation-authority";
 import {
   applyV207RollbackAnchorRefreshMarker,
@@ -1385,6 +1386,9 @@ export async function runV207LiveOrchestration(
   options: V207LiveOrchestratorOptions = {},
 ): Promise<V207LiveOrchestratorResult> {
   const environment = options.environment ?? process.env;
+  if (environment.V207_EXECUTION_ENTRYPOINT === V207_APPROVED_EXECUTION_ENTRYPOINT) {
+    throw new V207LiveOrchestratorError("V207_LEGACY_ENTRYPOINT_FORBIDDEN");
+  }
   const authority = (options.authorityParser ?? parseV207ActivationAuthority)(environment);
   const sourceCommit = environment.V207_IMAGE_SOURCE_COMMIT ?? "";
   if (!SOURCE_COMMIT.test(sourceCommit)) {

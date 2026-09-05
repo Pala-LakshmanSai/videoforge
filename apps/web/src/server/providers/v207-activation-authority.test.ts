@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   V207_APPROVED_AUTHORITY_SHA256,
   V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED,
+  V207_APPROVED_EXECUTION_ENTRYPOINT,
   V207_APPROVED_FINITE_CAP_USD,
   V207_ANCHOR_REFRESH_HELPER_COMMIT,
   V207_ANCHOR_REFRESH_HELPER_SHA256,
@@ -72,7 +73,7 @@ function activationSourceFixture({
 // Attempt33 is consumed; Attempt34 closed before mutation on capacity drift; Attempt35/37 are consumed.
 
 describe("V2-07 activation authority", () => {
-  it("pins the approved Attempt82 proposal and immutable image", () => {
+  it("pins the pending Attempt83 proposal and published immutable image", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
       "@sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
@@ -102,7 +103,7 @@ describe("V2-07 activation authority", () => {
       "sha256:2aa6c2d124fe299502e3142e4f66d9d627855a3c63eda30b806febb588ec4bb2",
     );
     expect(V207_PENDING_PROPOSAL_SHA256).toBe(
-      "sha256:7b3cbf20e34e16bead28e9b176b5fefc328d181021cdefc8bf05335886bbce06",
+      "sha256:c9b6879284918ed10801549488e60e5234554c32ae4f8c80dd23f4919237984e",
     );
     expect(V207_HOSTED_PNG_CRC32_REPAIR_COMMIT).toBe("1960ea9307bb7fcb591c842b84fc1c622aec49eb");
     expect(V207_PENDING_CONTROL_SOURCE_COMMIT).toBe("aceef8e0d0d678468ea9560f1faa94aa562fc466");
@@ -125,11 +126,10 @@ describe("V2-07 activation authority", () => {
     expect(V207_CONSUMED_ATTEMPT31_AUTHORITY_SHA256).toBe(
       "sha256:02b91db639ddf6e612c7103d38f9c5c1bae3ff0072afaeebb124274db1e3eab5",
     );
-    expect(V207_APPROVED_AUTHORITY_SHA256).toBe(
-      "sha256:10fd28f06d9ff82a70c69b15f027bde4b96850c9f8dfd2e4d7b8addfa06285ee",
-    );
-    expect(V207_APPROVED_FINITE_CAP_USD).toBe(4.5);
-    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBe(false);
+    expect(V207_APPROVED_AUTHORITY_SHA256).toBeNull();
+    expect(V207_APPROVED_FINITE_CAP_USD).toBeNull();
+    expect(V207_APPROVED_ANCHOR_REFRESH_AUTHORIZED).toBeNull();
+    expect(V207_APPROVED_EXECUTION_ENTRYPOINT).toBe("disposable-live-orchestrator-v1");
   });
 
   it("uses a fail-closed non-cyclic source binding for all approval constants", () => {
@@ -412,20 +412,17 @@ describe("V2-07 activation authority", () => {
     ).toThrow("V207_PROPOSAL_MISMATCH");
   });
 
-  it("accepts only exact Attempt82 activation and rejects cap drift", () => {
+  it("rejects Attempt83 before fresh exact authority", () => {
     const exact = {
       V207_IMAGE: image,
       V207_IMAGE_SOURCE_COMMIT: V207_REPAIRED_IMAGE_SOURCE_COMMIT,
       V207_PROPOSAL_SHA256: V207_PENDING_PROPOSAL_SHA256,
     };
-    expect(parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5" })).toEqual({
-      image,
-      proposalSha256: V207_PENDING_PROPOSAL_SHA256,
-      capUsd: 4.5,
-      anchorRefreshAuthorized: false,
-    });
+    expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4.5" })).toThrow(
+      "V207_FRESH_AUTHORITY_REQUIRED",
+    );
     expect(() => parseV207ActivationAuthority({ ...exact, V207_FINITE_CAP_USD: "4" })).toThrow(
-      "V207_FINITE_CAP_MISMATCH",
+      "V207_FRESH_AUTHORITY_REQUIRED",
     );
   });
 
