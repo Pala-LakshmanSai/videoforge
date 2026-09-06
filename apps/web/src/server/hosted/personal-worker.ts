@@ -724,7 +724,7 @@ async function heartbeat(request: Request, config: HostedRuntimeConfiguration) {
 
 interface ClaimedAttempt extends Record<string, unknown> {
   readonly id: string;
-  readonly kind: "ASR" | "RENDER";
+  readonly kind: "ASR" | "SPAN_AUDIO" | "RENDER";
   readonly job_spec_object_key: string;
   readonly job_spec_content_length: string | number;
   readonly job_spec_checksum_sha256: string;
@@ -836,6 +836,7 @@ async function reconcilePlannedAttempt(
 }
 
 function exactStoredTemplate(value: unknown): {
+  readonly kind: "ASR" | "SPAN_AUDIO" | "RENDER";
   readonly inputDocument: Record<string, unknown>;
   readonly outputs: readonly {
     readonly source: string;
@@ -852,6 +853,7 @@ function exactStoredTemplate(value: unknown): {
     Object.keys(row).sort().join(",") !==
       "attempt_id,input_document,kind,outputs,result,schema_version,tooling" ||
     row.schema_version !== "videoforge-personal-worker-job-template/v1" ||
+    !["ASR", "SPAN_AUDIO", "RENDER"].includes(String(row.kind)) ||
     typeof row.input_document !== "object" ||
     row.input_document === null ||
     Array.isArray(row.input_document) ||
@@ -867,6 +869,7 @@ function exactStoredTemplate(value: unknown): {
     return null;
   }
   return {
+    kind: row.kind as "ASR" | "SPAN_AUDIO" | "RENDER",
     inputDocument: row.input_document as Record<string, unknown>,
     outputs: row.outputs as never,
     result: row.result as never,
@@ -1075,7 +1078,8 @@ async function claim(
       throw new Error("Personal worker job template checksum does not match durable truth.");
     }
     const template = exactStoredTemplate(JSON.parse(new TextDecoder().decode(bytes)));
-    if (!template) throw new Error("Personal worker job template is malformed.");
+    if (!template || template.kind !== claimed.kind)
+      throw new Error("Personal worker job template is malformed.");
     await pool.query("SELECT set_config($1, $2, false)", [
       "videoforge.account_id",
       scope.accountId,
