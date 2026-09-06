@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import types
 import unittest
 import wave
@@ -735,7 +736,9 @@ class SoulXServerlessTest(unittest.TestCase):
                 # Real soulx_volume.verify_volume returns its internal digest as bare hex.
                 return_value={"manifest_sha256": "4" * 64},
             ),
-            patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)),
+            patch.object(
+                soulx_serverless, "_ready_runtime", AsyncMock(return_value=(runtime, False))
+            ),
             patch.object(soulx_serverless, "_fetch_exact", side_effect=fixture.fetch),
             patch.object(
                 soulx_serverless,
@@ -798,6 +801,122 @@ class SoulXServerlessTest(unittest.TestCase):
             self.assertEqual(len(runtime.calls), 4)
             self.assertFalse((Path(root) / "jobs" / fixture.attempt).exists())
 
+    def test_concurrent_handlers_sign_cold_initializer_and_warm_waiter_cache_facts(self) -> None:
+        cold = Fixture((2,))
+        warm = Fixture((2,))
+        prior_attempt = warm.attempt
+        warm.attempt = "attempt-soulx-warm-002"
+        warm.batch["attempt_id"] = warm.attempt
+        warm.envelope["work"]["attempt_id"] = warm.attempt
+        warm.envelope["artifacts"]["output_prefix"] = str(
+            warm.envelope["artifacts"]["output_prefix"]
+        ).replace(prior_attempt, warm.attempt)
+        for port in warm.inputs:
+            port["path"] = str(port["path"]).replace(prior_attempt, warm.attempt)
+        warm.outputs[0]["path"] = (
+            f"/{warm.envelope['artifacts']['output_prefix']}/artifact/span-2"
+        )
+        warm.plan_hash = digest(canonical(warm.batch).encode())
+        warm.envelope["work"]["items_manifest_sha256"] = warm.plan_hash
+        warm.envelope["artifacts"]["plan_manifest_sha256"] = warm.plan_hash
+        sign_envelope(warm.envelope)
+
+        initialize_started = threading.Event()
+        release_initialize = threading.Event()
+        runtime = FakeRuntime()
+
+        def initialize() -> None:
+            initialize_started.set()
+            if not release_initialize.wait(timeout=5):
+                raise AssertionError("runtime initialization was not released")
+
+        runtime.initialize = initialize  # type: ignore[attr-defined]
+
+        class ObservedStartupLock:
+            def __init__(self) -> None:
+                self.lock = asyncio.Lock()
+                self.entries = 0
+                self.waiter_entered = asyncio.Event()
+
+            async def __aenter__(self) -> ObservedStartupLock:
+                self.entries += 1
+                if self.entries == 2:
+                    self.waiter_entered.set()
+                await self.lock.acquire()
+                return self
+
+            async def __aexit__(self, *_args: object) -> None:
+                self.lock.release()
+
+        startup_lock = ObservedStartupLock()
+
+        def trim(_body: bytes, path: Path, _span: dict[str, object]) -> bytes:
+            body = b"native-" + path.stem.encode()
+            path.write_bytes(body)
+            return body
+
+        def probe(
+            _path: Path, *, expected_frames: int, expected_duration_ms: int
+        ) -> dict[str, object]:
+            return {
+                "format": "mp4",
+                "video_codec": "h264",
+                "audio_codec": "aac",
+                "width": 512,
+                "height": 512,
+                "fps_num": 25,
+                "fps_den": 1,
+                "frame_count": expected_frames,
+                "duration_ms": expected_duration_ms,
+                "video_duration_ms": expected_duration_ms,
+                "audio_duration_ms": expected_duration_ms,
+                "av_delta_ms": 0,
+                "audio_sample_rate_hz": 16_000,
+                "audio_channels": 1,
+            }
+
+        async def scenario() -> tuple[dict[str, object], dict[str, object]]:
+            cold_task = asyncio.create_task(
+                soulx_serverless.handler({"id": "job-cold", "input": cold.payload})
+            )
+            self.assertTrue(await asyncio.to_thread(initialize_started.wait, 2))
+            warm_task = asyncio.create_task(
+                soulx_serverless.handler({"id": "job-warm", "input": warm.payload})
+            )
+            await asyncio.wait_for(startup_lock.waiter_entered.wait(), timeout=2)
+            release_initialize.set()
+            cold_result, warm_result = await asyncio.gather(cold_task, warm_task)
+            return cold_result, warm_result
+
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch.dict(os.environ, {"VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(root).resolve())}),
+            patch.object(soulx_serverless, "_startup_lock", startup_lock),
+            patch.object(soulx_serverless, "SoulXRuntime", return_value=runtime),
+            patch.object(
+                soulx_serverless,
+                "verify_volume",
+                return_value={"manifest_sha256": "4" * 64},
+            ),
+            patch.object(soulx_serverless, "_fetch_exact", side_effect=cold.fetch),
+            patch.object(soulx_serverless, "_trim_native_mp4", side_effect=trim),
+            patch.object(soulx_serverless, "_probe_native_mp4", side_effect=probe),
+            patch.object(
+                soulx_serverless, "_put_generated", side_effect=lambda _a, _u, body: digest(body)
+            ),
+        ):
+            cold_result, warm_result = asyncio.run(scenario())
+
+        self.assertEqual(cold_result["status"], "SUCCEEDED", cold_result)
+        self.assertEqual(warm_result["status"], "SUCCEEDED", warm_result)
+        self.assertTrue(
+            all(item["probe"]["runtime_cache_hit"] is False for item in cold_result["items"])
+        )
+        self.assertTrue(
+            all(item["probe"]["runtime_cache_hit"] is True for item in warm_result["items"])
+        )
+        self.assertEqual(startup_lock.entries, 2)
+
     def test_resume_verifies_readback_and_dispatches_only_unresolved_spans(self) -> None:
         fixture = Fixture((2, 4))
         accepted_body = b"prior-native"
@@ -856,10 +975,12 @@ class SoulXServerlessTest(unittest.TestCase):
             patch.object(
                 soulx_serverless,
                 "verify_volume",
-                return_value={"manifest_sha256": "sha256:" + "4" * 64},
+                return_value={"manifest_sha256": "4" * 64},
             ),
             patch.object(soulx_serverless, "_verify_resume_readbacks") as verify_readback,
-            patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)),
+            patch.object(
+                soulx_serverless, "_ready_runtime", AsyncMock(return_value=(runtime, False))
+            ),
             patch.object(soulx_serverless, "_fetch_exact", side_effect=fixture.fetch),
             patch.object(soulx_serverless, "_trim_native_mp4", side_effect=trim),
             patch.object(
@@ -908,9 +1029,11 @@ class SoulXServerlessTest(unittest.TestCase):
                 patch.object(
                     soulx_serverless,
                     "verify_volume",
-                    return_value={"manifest_sha256": "sha256:" + "4" * 64},
+                    return_value={"manifest_sha256": "4" * 64},
                 ),
-                patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)),
+                patch.object(
+                    soulx_serverless, "_ready_runtime", AsyncMock(return_value=(runtime, False))
+                ),
                 patch.object(soulx_serverless, "_generate", AsyncMock()) as generate,
             ):
                 result = asyncio.run(
@@ -935,9 +1058,11 @@ class SoulXServerlessTest(unittest.TestCase):
             patch.object(
                 soulx_serverless,
                 "verify_volume",
-                return_value={"manifest_sha256": "sha256:" + "4" * 64},
+                return_value={"manifest_sha256": "4" * 64},
             ),
-            patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=runtime)),
+            patch.object(
+                soulx_serverless, "_ready_runtime", AsyncMock(return_value=(runtime, False))
+            ),
             patch.object(soulx_serverless, "_generate", AsyncMock()) as generate,
         ):
             result = asyncio.run(
@@ -973,9 +1098,13 @@ class SoulXServerlessTest(unittest.TestCase):
             patch.object(
                 soulx_serverless,
                 "verify_volume",
-                return_value={"manifest_sha256": "sha256:" + "4" * 64},
+                return_value={"manifest_sha256": "4" * 64},
             ),
-            patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=FakeRuntime())),
+            patch.object(
+                soulx_serverless,
+                "_ready_runtime",
+                AsyncMock(return_value=(FakeRuntime(), False)),
+            ),
             patch.object(soulx_serverless, "_fetch_exact", side_effect=fixture.fetch),
             patch.object(
                 soulx_serverless, "_generate", AsyncMock(side_effect=RuntimeError("secret detail"))
@@ -996,9 +1125,13 @@ class SoulXServerlessTest(unittest.TestCase):
             patch.object(
                 soulx_serverless,
                 "verify_volume",
-                return_value={"manifest_sha256": "sha256:" + "4" * 64},
+                return_value={"manifest_sha256": "4" * 64},
             ),
-            patch.object(soulx_serverless, "_ready_runtime", AsyncMock(return_value=FakeRuntime())),
+            patch.object(
+                soulx_serverless,
+                "_ready_runtime",
+                AsyncMock(return_value=(FakeRuntime(), False)),
+            ),
             patch.object(soulx_serverless, "_fetch_exact", side_effect=fixture.fetch),
         ):
             entered = asyncio.Event()

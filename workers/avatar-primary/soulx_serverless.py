@@ -639,16 +639,17 @@ def _probe_native_mp4(
     )
 
 
-async def _ready_runtime() -> SoulXRuntime:
+async def _ready_runtime() -> tuple[SoulXRuntime, bool]:
     global _runtime
     async with _startup_lock:
+        runtime_cache_hit = _runtime is not None
         if _runtime is None:
             candidate = SoulXRuntime()
             await asyncio.to_thread(candidate.initialize)
             if candidate.health().get("state") != "ready":
                 raise ServerlessSoulXError("SOULX_SERVERLESS_MODEL_NOT_READY")
             _runtime = candidate
-    return _runtime
+        return _runtime, runtime_cache_hit
 
 
 async def _claim_delivery(attempt_id: str) -> None:
@@ -885,10 +886,10 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
         pre_manifest_sha256 = _volume_manifest_sha256(pre_manifest)
         if pre_manifest_sha256 != accepted["runtime"]["model_manifest_sha256"]:
             raise ServerlessSoulXError("SOULX_SERVERLESS_VOLUME_MANIFEST_MISMATCH")
-        # Captured before _ready_runtime mutates the process cache and signed into every output
-        # item so qualification can distinguish a real same-worker warm reuse from a label.
-        runtime_cache_hit = _runtime is not None
-        runtime = await _ready_runtime()
+        # Compute the cache fact while holding the same startup lock that initializes the runtime.
+        # A concurrent waiter therefore observes the initialized process cache only after the cold
+        # initializer has completed, rather than recording the pre-lock state shared by both jobs.
+        runtime, runtime_cache_hit = await _ready_runtime()
         runtime_ready_epoch = time.time()
         runtime_health = runtime.health()
         gpu = _observed_gpu(runtime_health)

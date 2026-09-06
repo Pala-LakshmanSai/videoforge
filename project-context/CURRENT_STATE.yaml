@@ -4,30 +4,30 @@ updated_at: "2026-09-06"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_08_warm_prequeue_authority_materialized_pending_audit
+current_milestone: v2_08_lock_scoped_cache_fact_repair_sealed_awaiting_fresh_exact_approval
 current_task: VF-10-08
 current_wave: v2_08_soulx_serial_certification_after_v2_07_pass
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: provider_free_release_candidate
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: true
-credential_access_authorized: true
-gpu_use_authorized: true
-maximum_external_spend_usd: 1.8494314167182893
+remote_or_cloud_mutations_authorized: false
+credential_access_authorized: false
+gpu_use_authorized: false
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_08_warm_prequeue_authority_materialized_pending_audit
-  live_provider_calls: "One exact max-one five-job Stage 7 qualification is authorized only after independent authority diff audit, anonymous image reverification, and fresh admission checks pass."
-  remote_mutation: true
-  deployment_or_publication: "No second image publication is needed or authorized; immutable image 75c5999b remains available for a fresh reuse-only proposal."
-  credential_value_access: "Authorized only through the sealed V2-08 launcher for this single-use qualification after independent audit and admission pass."
-  paid_requests_or_spend: "Hard USD 1.8494314167182893 incremental cap from baseline USD 3.072259441105416 and cumulative stop USD 4.921690857823705."
-  runpod_mutation_or_gpu: "Authorized after audit and admission: exact RTX 4090 EU-RO-1, workersMin 0/workersMax 1, exactly five jobs, no redispatch or fallback, mandatory cleanup."
+  mode: v2_08_lock_scoped_cache_fact_repair_sealed_awaiting_fresh_exact_approval
+  live_provider_calls: "No provider mutation or job is authorized. Proposal 4d4b7cff is consumed after exactly two POSTs and complete cleanup."
+  remote_mutation: false
+  deployment_or_publication: "Worker bytes changed; old image 75c5999b is historical only. One new immutable publication requires fresh exact approval."
+  credential_value_access: "Not authorized while the worker-image repair proposal awaits fresh exact approval."
+  paid_requests_or_spend: "USD 0 executable cap. Proposed replacement is USD 1.8494314167182893 from stable baseline USD 3.2726152463292237 with cumulative stop USD 5.122046663047513."
+  runpod_mutation_or_gpu: "Not authorized. No RTX 4090, endpoint, template, R2, or job mutation may occur before fresh exact approval, image materialization, independent audit, and fresh admission."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "Proposal 4d4b7cff is exactly approved at pushed control 44fe9c3b; one deterministic authority successor is materialized pending independent audit. The repair prequeues warm using the exact owned cold client and guard without relaxing strict receipt checks. Stage 6 remains frozen."
-  v2_08_prior_publication_attempt: "Workflow run 33961641686 failed before authentication/publication because TMPDIR_DIRECTORY_ABSENT; no immutable digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Its approval is consumed/non-reusable and invalidated by source drift. A second approved run 33962783745 at source 67af7d9a built only a local image, then failed before authentication/publication because LITERAL_BACKSLASH_IN_SINGLE_QUOTED_DOCKER_GO_TEMPLATE; no registry digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Both approvals are consumed/non-reusable; the fresh 4f2c5cb3 successor repairs only workflow quoting and requires separate exact approval."
+  provider_free_product_action: "Proposal 4d4b7cff consumed two same-worker cold/warm POSTs. Warm false cache facts isolated a pre-lock attestation race. The repair samples inside the existing startup lock; deterministic concurrent tests prove cold false, warm true, one initialization, and unchanged strict verification. Stage 6 remains frozen."
+  v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c are consumed after exactly two same-worker cold/warm POSTs. The warm receipt signed a false cache fact because both asynchronous handler entries sampled before the startup lock; cleanup is complete. The lock-scoped worker repair changes image bytes, so the historical 75c5999b image cannot be reused and one new immutable publication requires fresh exact approval."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
 fixture_user_walkthrough:
@@ -4030,10 +4030,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: staging
-  provider_calls_authorized: true
-  authorized_spend_usd: 1.8494314167182893
-  provider_authority_scope: v2_08_warm_prequeue_single_use_max1_pending_independent_audit
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: none_v2_08_warm_prequeue_authority_consumed_fresh_approval_required
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -4103,7 +4103,7 @@ roadmap_state:
   V2-05: complete_green_same_chat_reaudit_provider_free
   V2-06: complete_green_independently_audited
   V2-07: complete_green_live_qualified_attempt85_cleanup_zero_compute
-  V2-08: receipt_nonce_repair_awaiting_fresh_exact_approval
+  V2-08: lock_scoped_cache_fact_worker_image_repair_sealed_awaiting_fresh_exact_approval
   V2-09: provider_free_authorized_live_blocked_on_V2-08
   V2-10: provider_free_authorized_live_blocked_on_V2-09
   V2-11: provider_free_authorized_live_blocked_on_lane_max1_and_V2-10
@@ -4309,15 +4309,15 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-09-06T06:14:50.949Z"
-  basis: v2_08_five_read_billing_stabilization_and_exact_gpu_watch
-  evidence: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/read-only-billing-stabilization-after-e197.json
-  evidence_sha256: "sha256:1bb77932456d4cc3864822e529e9e5961c4ce69a8eb79ba69625d33e78a3e19f"
+  checked_at: "2026-09-06T08:12:27.182Z"
+  basis: v2_08_failed_warm_prequeue_cleanup_and_three_final_zero_compute_billing_volume_reads
+  evidence: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-warm-prequeue-cache-fact-attempt.json
+  evidence_sha256: "sha256:43d94fc1b6d188b1f8a85e2b27a7e51ed2f3e7ffbeeac131d85bc081ebee8f5b"
   current_live_refresh_permitted_now: false
   stale_until_new_authority_and_authorized_read_only_inventory_succeeds: false
   rtx4090_eu_ro_1_offering_id: NVIDIA GeForce RTX 4090
-  rtx4090_eu_ro_1_availability: LOW
-  rtx4090_availability_checked_at: "2026-09-06T06:14:50.949Z"
+  rtx4090_eu_ro_1_availability: HIGH_LAST_PRE_RUN_CHECK_NOT_A_CURRENT_ADMISSION
+  rtx4090_availability_checked_at: "2026-09-06T07:55:21.784Z"
   secure_rtx4090_reference_usd_per_gpu_hour: 0.74
   serverless_flex_rtx4090_usd_per_gpu_hour: 1.116
   pods: 0
@@ -4338,11 +4338,11 @@ last_known_provider_resource_truth:
       region: EU-RO-1
       recurring_usd_per_month: 3.5
   ongoing_retained_volume_usd_per_month_total: 7.0
-  cumulative_endpoint_spend_usd: 3.072259441105416
+  cumulative_endpoint_spend_usd: 3.2726152463292237
   v2_08_proposal: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
-  v2_08_proposal_sha256: "sha256:76bb40a526e3f49fcd90ca41c2f507248428c1b73063aa79652dac0a1347c6f2"
+  v2_08_proposal_sha256: "sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37"
   v2_08_acceptance_sha256: null
-  note: "Five identical billing reads over 234.464 seconds prove stable USD 3.072259441105416 with zero compute and unchanged volumes. Exact RTX 4090 availability was intermittent but final LOW. Proposal 76bb40a5 preserves USD 1.8494314167182893 incremental cap and revises the cumulative stop to USD 4.921690857823705; fresh exact approval is required."
+  note: "The consumed warm-prequeue attempt completed exactly two same-worker cold/warm jobs and then failed strict warm cache attestation because the worker sampled before the startup lock. Cleanup and three reads prove zero compute/disposables, unchanged volumes, and stable billing USD 3.2726152463292237. The provider-free lock-scoped repair is green. A fresh proposal requests one new immutable image publication plus the unchanged five-job max-one qualification under USD 1.8494314167182893 incremental cap and USD 5.122046663047513 cumulative stop; no executable authority exists."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_SOULX_001
@@ -4357,7 +4357,7 @@ blocking_gates_for_production:
 
 active_ownership: []
 in_progress_checkpoint: V2-08
-certification_checkpoint: V2_08_WARM_PREQUEUE_AUTHORITY_MATERIALIZED_PENDING_AUDIT
+certification_checkpoint: V2_08_LOCK_SCOPED_CACHE_FACT_REPAIR_SEALED_AWAITING_FRESH_EXACT_APPROVAL
 
 provider_authority_closed: &v2_07_provider_authority_closed
   mode: none
@@ -5995,8 +5995,8 @@ provider_authority_attempt78: &v2_07_provider_authority_attempt78
       usd_per_unit: 0.07
       checked_at: "2026-09-04T23:14:00+05:30"
 
-provider_authority: &v2_08_approved_warm_prequeue_authority
-  mode: paid
+v2_08_latest_consumed_authority:
+  mode: closed_consumed_failed_clean_non_reusable
   provider: runpod
   cap_usd: 1.8494314167182893
   non_transferable: true
@@ -6004,11 +6004,12 @@ provider_authority: &v2_08_approved_warm_prequeue_authority
   authorized_by_user_at: "2026-09-06"
   proposal_sha256: "sha256:4d4b7cff2573ca466e0cc4d7b66519bfca14a5a82949265488ff1ce0f26c3ba6"
   authority: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json
-  authority_sha256: "sha256:7242c191588045f02e6f65cfa9ff483f26f0c0aab8591660bdfd1e321ccaa07e"
-  consumed: false
+  authority_sha256: "sha256:ad3ed58436594928e85ca2ba897ecbd89ccb56df699ca8e33d549bdf54f6ec6b"
+  original_approved_authority_sha256: "sha256:7242c191588045f02e6f65cfa9ff483f26f0c0aab8591660bdfd1e321ccaa07e"
+  consumed: true
   resources: [v208_disposable_soulx_max1_endpoint, v208_disposable_soulx_private_template, v208_exact_generated_r2_keys, v208_existing_soulx_50gb_volume]
-  authorized_operations: [fresh_preflight, anonymous_image_reverification, create_disposable_lane, five_exact_jobs, preserve_verified_outputs, cleanup, three_final_zero_reads]
-  allowed_operations: [fresh_preflight, anonymous_image_reverification, create_disposable_lane, five_exact_jobs, preserve_verified_outputs, cleanup, three_final_zero_reads]
+  authorized_operations: []
+  allowed_operations: []
   model_id: Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1
@@ -6020,31 +6021,48 @@ provider_authority: &v2_08_approved_warm_prequeue_authority
       usd_per_unit: 0.07
       checked_at: "2026-09-04T23:14:00+05:30"
 
+provider_authority: &v2_08_no_executable_authority
+  mode: none
+  provider: null
+  cap_usd: 0
+  non_transferable: true
+  source: null
+  authorized_by_user_at: null
+  proposal_sha256: null
+  authority: null
+  authority_sha256: null
+  consumed: false
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
+  model_id: null
+  rate_snapshot: []
+
 recommended_next_task:
   task_id: VF-10-08
   checkpoint: V2-08
-  milestone: v2_08_warm_prequeue_authority_materialized_pending_audit
-  status: V2_08_WARM_PREQUEUE_AUTHORITY_MATERIALIZED_PENDING_AUDIT
+  milestone: v2_08_lock_scoped_cache_fact_repair_sealed_awaiting_fresh_exact_approval
+  status: V2_08_LOCK_SCOPED_CACHE_FACT_REPAIR_SEALED_AWAITING_FRESH_EXACT_APPROVAL
   dependency_status: v2_07_mage_live_qualified_attempt85_clean
-  authorization_status: exact_single_use_authority_materialized
-  task_stage: bounded_mutation
-  current_goal_authority: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json
-  current_goal_authority_sha256: "sha256:7242c191588045f02e6f65cfa9ff483f26f0c0aab8591660bdfd1e321ccaa07e"
-  provider_authority: *v2_08_approved_warm_prequeue_authority
+  authorization_status: consumed_no_executable_authority_fresh_exact_approval_required
+  task_stage: provider_free_release_candidate
+  current_goal_authority: null
+  current_goal_authority_sha256: null
+  provider_authority: *v2_08_no_executable_authority
   provider_mode: staging
   read_profile: v2_08_soulx_serverless
   task_brief: tasks/VF-10-08.md
-  goal: "Independently audit the warm-prequeue authority successor, then execute the bounded SoulX max1 qualification and mandatory cleanup."
-  provider_calls_authorized: true
+  goal: "Obtain fresh exact approval for one worker-image publication and the bounded SoulX max1 qualification after independent provider-free audit."
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 1.8494314167182893
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  credential_value_read_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: true
+  gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
@@ -6052,20 +6070,21 @@ recommended_next_task:
   application_code_changes_authorized: true
   model_id: Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro
   resources: [v208_disposable_soulx_max1_endpoint, v208_disposable_soulx_private_template, v208_exact_generated_r2_keys, v208_existing_soulx_50gb_volume]
-  authorized_operations: [fresh_preflight, anonymous_image_reverification, create_disposable_lane, five_exact_jobs, preserve_verified_outputs, cleanup, three_final_zero_reads]
-  allowed_operations: [fresh_preflight, anonymous_image_reverification, create_disposable_lane, five_exact_jobs, preserve_verified_outputs, cleanup, three_final_zero_reads]
+  authorized_operations: []
+  allowed_operations: []
   rate_snapshot: [runpod_serverless_flex_rtx4090_eu_ro_1_usd_1_116_per_gpu_hour, retained_volumes_usd_7_per_month_combined]
-  authority_note: "Proposal 4d4b7cff at exact pushed control 44fe9c3b is approved for one reuse-only max1 five-job qualification after independent audit and fresh admission. No image republication, fallback, Stage 6 change/rerun, or V2-09."
+  authority_note: "Proposal 4d4b7cff is consumed after two same-worker cold/warm POSTs and complete cleanup. No image publication, RunPod/R2 mutation, fallback, Stage 6 change/rerun, or V2-09 is currently authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
-  successor_proposal_sha256: "sha256:4d4b7cff2573ca466e0cc4d7b66519bfca14a5a82949265488ff1ce0f26c3ba6"
-  superseded_proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
-  superseded_proposal_record_commit: 4b8a6ef83772fea44701129154ae4d69833498eb
-  superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
+  successor_proposal_sha256: "sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37"
+  superseded_proposal_sha256: "sha256:4d4b7cff2573ca466e0cc4d7b66519bfca14a5a82949265488ff1ce0f26c3ba6"
+  superseded_proposal_record_commit: 44fe9c3b5488116aa9bc6e69d64061240d3864fc
+  superseded_proposal_source_commit: 44fe9c3b5488116aa9bc6e69d64061240d3864fc
+  superseded_authority_execution_commit: cc35866cef4b101bab0bf20c43bc922ebd8631fc
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: v2_08_warm_prequeue_authority_materialized_pending_independent_audit
-  execution_blocker: v2_08_materialization_diff_audit_and_fresh_admission_before_runpod_or_r2_mutation
+  execution_status: v2_08_lock_scoped_cache_fact_repair_provider_free_green
+  execution_blocker: fresh_exact_publication_and_qualification_approval_required
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:

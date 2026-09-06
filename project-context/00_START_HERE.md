@@ -2,37 +2,20 @@
 
 ## Active handoff — read this section first
 
-### Current new-chat launch point — 2026-09-05
+### Current new-chat launch point — 2026-09-06
 
-- V2-08 Stage 7 is provider-free and awaiting fresh exact approval. Workflow `33975663940` published
-  and anonymously verified immutable image `sha256:cca75a1593748b43fa0f6cda96108c0fd6d7ba81f26ba1ae211e66cd1b4ab714`
-  from source `0d32b1c3d36610f6a41d9b413628164d47f490d0`. The approved `ba2c0a8a...`
-  authority successor failed its required provider-free pre-dispatch audit because the authority
-  record omitted one proposal-digest character and the request builder retained prior image pins.
-  No RunPod/R2 mutation, GPU time, or spend occurred. Both Stage 7 bindings are repaired, executable
-  authority is null, Stage 6 remains frozen, and proposal
-  `sha256:6d7df20805361ddb552f438cc89327598a0db907e174024d8c0928748bf5e106` awaits exact approval.
-- V2-08 is the active checkpoint after V2-07's clean qualification. Its provider-free SoulX max1
-  implementation at exact source `4f2c5cb3c602ffb48db4a1dc7143477259202896` is sealed and
-  independently audited PASS with P0/P1/P2 `0/0/0`: exact source/image
-  lineage, application-read-only retained volume, 2/4/6/10-second whole-span batch, signed cold/warm
-  cache reuse, durable phase-safe RESUME, exact R2/ffprobe proof, bounded cleanup, and final-zero
-  evidence are implemented. Focused validation passed 181 TypeScript tests, 29 SoulX worker/image
-  tests, typecheck, and the unchanged Stage 6 fence of 414 TypeScript plus 98 Mage worker tests.
-  Preserve all V2-07/Mage source and Attempt85 evidence as a frozen regression baseline. The read-only
-  preflight completed with zero disposable compute, RTX 4090 EU-RO-1 HIGH availability, serverless rate
-  USD `1.116/GPU-hour`, and billing baseline USD `2.7231514439627063`. Exact live proposal
-  `sha256:deb2ed27914b6541103e5581d2a323dbbc3e4197fec5c50c0038a3908c3fa1e8` is sealed and awaiting fresh
-  exact approval. No image publication, RunPod mutation, GPU use, spend, or production deployment is
-  currently authorized.
-- Prior approved publication workflow run `33961641686` failed before authentication/publication because
-  `TMPDIR_DIRECTORY_ABSENT`; it produced no immutable digest or image artifact and made no RunPod mutation,
-  GPU use, or spend. That approval is consumed/non-reusable and invalidated by source drift. A second
-  approved run `33962783745` at source `67af7d9a` built only a local image, then failed before
-  authentication/publication because `LITERAL_BACKSLASH_IN_SINGLE_QUOTED_DOCKER_GO_TEMPLATE`; it produced
-  no registry digest or image artifact and made no RunPod mutation, GPU use, or spend. Both approvals are
-  consumed/non-reusable; the fresh `4f2c5cb3` successor repairs only the workflow quoting and requires its
-  own exact approval.
+- V2-07 Stage 6 is `QUALIFIED_PASS_CLEAN`, frozen, and untouched. V2-08 Stage 7 remains not qualified.
+  Proposal `4d4b7cff...c3ba6` was consumed after exactly two same-worker cold/warm POSTs with no
+  redispatch. Cold preserved four verified MP4s; warm completed but signed `runtime_cache_hit=false`
+  because both asynchronous handlers sampled before the existing startup lock. Cleanup deleted the
+  disposable lane, proved all five deterministic R2 keysets absent, and three reads proved zero
+  compute, unchanged retained volumes, and stable billing USD `3.2726152463292237`. The focused
+  provider-free repair samples inside the startup lock; 110/110 focused tests pass and the Stage 6
+  diff is empty. Worker bytes changed, so the next bounded proposal must authorize exactly one new
+  immutable image publication before the same max-one five-job qualification. No executable
+  authority, publication, RunPod/R2 mutation, GPU use, fallback, Stage 6 rerun, or V2-09 exists now.
+  The independently audited proposal is `sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37`
+  and awaits fresh exact approval.
 - V2-07 is `QUALIFIED_PASS_CLEAN` by Attempt85. Proposal
   `sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540`, control
   `2fccf2ed7257613f4a12017562243a8aeb889138`, and authority

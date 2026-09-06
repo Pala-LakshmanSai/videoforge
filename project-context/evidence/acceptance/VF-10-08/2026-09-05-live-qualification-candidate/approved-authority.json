@@ -3,11 +3,18 @@
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
+  "status": "CONSUMED_SINGLE_USE_NOT_QUALIFIED_CLEANED",
   "single_use": true,
-  "consumed": false,
+  "consumed": true,
   "reusable": false,
-  "consumption": null,
+  "consumption": {
+    "execution_control_commit": "cc35866cef4b101bab0bf20c43bc922ebd8631fc",
+    "runpod_job_posts": 2,
+    "redispatches": 0,
+    "result": "WARM_RUNTIME_CACHE_FACT_FALSE_NOT_QUALIFIED",
+    "cleanup_complete": true,
+    "failure_evidence": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-warm-prequeue-cache-fact-attempt.json"
+  },
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
     "proposal_sha256": "sha256:4d4b7cff2573ca466e0cc4d7b66519bfca14a5a82949265488ff1ce0f26c3ba6",
@@ -23,7 +30,7 @@
     "precursor_source_commit": "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
     "image_source_commit": "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
     "execution_control_commit_role": "one_post_approval_authority_materialization_successor_only",
-    "execution_control_commit": null
+    "execution_control_commit": "cc35866cef4b101bab0bf20c43bc922ebd8631fc"
   },
   "image_publication": {
     "original_publication_workflow_run_id": 34009939213,

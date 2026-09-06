@@ -1,5 +1,5 @@
 schema_version: "2.0"
-updated_at: "2026-09-05"
+updated_at: "2026-09-06"
 evidence_root: "evidence/gates"
 
 execution_model:
@@ -389,28 +389,30 @@ gates:
     blocks: soulx_serverless_dispatch_and_crop_activation
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesssoulx001-soulx-endpoint"
     owner: V2-08
-    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-billing-baseline-drift-e197-attempt.json"
+    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-warm-prequeue-cache-fact-attempt.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:4d4b7cff2573ca466e0cc4d7b66519bfca14a5a82949265488ff1ce0f26c3ba6"
+    current_candidate_proposal_sha256: "sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37"
     current_candidate_acceptance_sha256: null
-    current_candidate_approval_sentence_sha256: "sha256:b04c3bb27f790234100474d842719ea1102436ffc9e44b742fae9185c92664c1"
+    current_candidate_approval_sentence_sha256: null
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: pending
-    current_candidate_source_commit: "44fe9c3b5488116aa9bc6e69d64061240d3864fc"
-    immutable_image_source_commit: "0b09d6e9d72e868f0f9a6143dfad72147c193c64"
+    authority_materialization_diff_audit: post_materialization_not_started_no_authority
+    current_candidate_source_commit: null
+    immutable_image_source_commit: null
     approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
-    approved_authority_sha256: "sha256:7242c191588045f02e6f65cfa9ff483f26f0c0aab8591660bdfd1e321ccaa07e"
-    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
+    approved_authority_sha256: "sha256:ad3ed58436594928e85ca2ba897ecbd89ccb56df699ca8e33d549bdf54f6ec6b"
+    original_approved_authority_sha256: "sha256:7242c191588045f02e6f65cfa9ff483f26f0c0aab8591660bdfd1e321ccaa07e"
+    approved_authority_status: consumed_non_reusable_no_executable_authority
     runpod_mutation_performed: "One disposable endpoint/template created and deleted. Exactly two cold/warm POSTs completed with no redispatch; all five deterministic R2 keysets are absent and final compute is zero."
-    gpu_seconds: unproven_two_completed_jobs_billing_unchanged
-    observed_incremental_spend_usd: 0
-    current_blocker: independent_authority_diff_audit_and_fresh_admission_before_runpod_or_r2_mutation
-    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036"
+    gpu_seconds: two_completed_jobs_exact_seconds_not_claimed
+    observed_incremental_spend_usd: 0.2003558052238077
+    current_blocker: fresh_exact_one_image_publication_and_max_one_qualification_approval
+    immutable_image: null
+    historical_consumed_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036"
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
-    image_publication_workflow_run_id: 34009939213
-    current_candidate_dockerfile_sha256: "sha256:a45720b2eb221fee36aff6a3bb1f6be93cb92990f1c855b131336a0eb56d0e59"
-    current_candidate_publication_workflow_sha256: "sha256:ba490c2d693a16da3cacf634a9761999d62003fa49352998f43de13563a7140d"
+    historical_consumed_image_publication_workflow_run_id: 34009939213
+    current_candidate_dockerfile_sha256: "sha256:7759a6639f2019899bfbac2e233a3781933030018865d68d676f404ddf335454"
+    current_candidate_publication_workflow_sha256: "sha256:fcfa75cb05230ddf32a0d054ce0b5a541fe842c6c1c53f9f3a394b82ad7dcc56"
     prior_publication_workflow_run_id: 33961641686
     prior_publication_result: failed_before_authentication_or_publication
     prior_publication_failure: TMPDIR_DIRECTORY_ABSENT
@@ -424,7 +426,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: warm_prequeue_authority_materialized_pending_independent_audit
+    result: provider_free_lock_scoped_cache_fact_repair_independently_audited_sealed_awaiting_fresh_exact_approval
 
   GATE_SOULX_LICENSE_001:
     status: open

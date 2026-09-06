@@ -1,0 +1,92 @@
+{
+  "schema_version": "videoforge.v2-08-warm-prequeue-cache-fact-failure/v1",
+  "checkpoint": "V2-08",
+  "task_id": "VF-10-08",
+  "stage": 7,
+  "recorded_at_utc": "2026-09-06T08:12:27.182Z",
+  "status": "NOT_QUALIFIED_CLEAN_PROVIDER_FREE_REPAIR_REQUIRED",
+  "control_source_commit": "44fe9c3b5488116aa9bc6e69d64061240d3864fc",
+  "execution_control_commit": "cc35866cef4b101bab0bf20c43bc922ebd8631fc",
+  "proposal_sha256": "sha256:4d4b7cff2573ca466e0cc4d7b66519bfca14a5a82949265488ff1ce0f26c3ba6",
+  "authority_sha256": "sha256:7242c191588045f02e6f65cfa9ff483f26f0c0aab8591660bdfd1e321ccaa07e",
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "independent_materialization_diff_audit": "PASS_P0_0_P1_0_P2_1_NONBLOCKING",
+  "runpod": {
+    "job_posts": 2,
+    "redispatches": 0,
+    "cold_job_id": "40cdf53e-e507-43c1-b561-721d8fc10659-e1",
+    "warm_job_id": "e5c6a9db-1105-4d5d-b40b-9576c0998b3f-e2",
+    "cold_terminal": "COMPLETED",
+    "warm_terminal": "COMPLETED",
+    "unposted_cases": ["cancel", "invalid", "timeout"],
+    "surface_failure_code": "V208_RECEIPT_ITEM_INVALID"
+  },
+  "exact_receipt_failure": {
+    "cold_worker_id": "ja51odh4v4cegv",
+    "warm_worker_id": "ja51odh4v4cegv",
+    "same_worker_identity": true,
+    "cold_receipt_sha256": "sha256:706c90bd02dd61493c3b4bcb6f8b448b1f2da83f765aae45ec646d017fe54493",
+    "warm_receipt_sha256": "sha256:41089fb86132dcc9996f6cbc564a3ed89ca0b30a206a4c69d512c28a7e75e63d",
+    "cold_receipt_nonce": 2757203113697758,
+    "warm_receipt_nonce": 4928086308801636,
+    "cold_runtime_cache_hit": false,
+    "warm_runtime_cache_hit": false,
+    "warm_items_with_false_cache_fact": ["soulx-2s", "soulx-4s", "soulx-6s", "soulx-10s"],
+    "all_other_item_predicates_pass": true
+  },
+  "provider_free_root_cause": "THE_CURRENT_WORKER_SAMPLES_RUNTIME_CACHE_HIT_BEFORE_ACQUIRING_ITS_EXISTING_STARTUP_LOCK; THE_SIGNED_TIMINGS_PROVE_COLD_AND_WARM_HANDLER_ENTRY_OVERLAPPED_WHILE_RUNTIME_WAS_STILL_NONE, SO_BOTH_CAPTURED_FALSE_BEFORE_THE_WARM_CALLER_COULD_WAIT_FOR_AND_REUSE_THE_INITIALIZED_RUNTIME",
+  "provider_free_repair": "CAPTURE_THE_RUNTIME_CACHE_FACT_INSIDE_THE_EXISTING_STARTUP_LOCK_AND_RETURN_IT_WITH_THE_RUNTIME_SO_THE_INITIALIZER_SIGNS_FALSE_AND_A_CONCURRENT_WAITER_REUSING_THE_INITIALIZED_PROCESS_RUNTIME_SIGNS_TRUE",
+  "verifier_relaxed": false,
+  "new_worker_image_required": true,
+  "evidence_boundary": "SAME_WORKER_ID_AND_IDENTICAL_INITIALIZATION_TIMING_FACTS_STRONGLY_SUPPORT_SHARED_RUNTIME_REUSE_BUT_RECEIPTS_DO_NOT_CARRY_A_PROCESS_OR_RUNTIME_INSTANCE_ID; LIVE_REQUALIFICATION_REMAINS_REQUIRED",
+  "verified_outputs": {
+    "current_attempt_preserved_count": 4,
+    "current_attempt_warm_preserved_count": 0,
+    "mode": "0600",
+    "whole_span_seconds": [2, 4, 6, 10],
+    "cold_sha256": {
+      "2": "sha256:0c695c652f7ad6fd54e57666994ca2c72b4ae80fb47c4d8c1158dc6e5a5ab29d",
+      "4": "sha256:ea154de76f169adc01e5fc72add732cac8bc6be615f8727a7b8d2eae246f544c",
+      "6": "sha256:64b9c2d1112388f95b8b9620c1813e073a3e9bb507af588e5171b96b0bfe3552",
+      "10": "sha256:ab89e01a586b5d1981a081047f52e2a4e4020ded4d08ed5e75c3550889ca6434"
+    },
+    "prior_attempt_eight_verified_outputs_remain_preserved": true,
+    "prior_attempt_proposal_sha256": "sha256:784f68823244adf733bcbe423f1445fdabb0e85ea7f6a37aaec076c820e6d04f"
+  },
+  "cleanup": {
+    "cleanup_only_resume_without_redispatch": true,
+    "disposable_endpoint_absent": true,
+    "disposable_template_absent": true,
+    "all_five_r2_cleanup_phases_absence_verified": true,
+    "final_stable_reads": 3,
+    "running_pods": 0,
+    "active_serverless_workers": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "retained_volumes": 2,
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1",
+    "retained_volume_mutation": false,
+    "inventory_read_times_utc": [
+      "2026-09-06T08:12:04.699Z",
+      "2026-09-06T08:12:12.847Z",
+      "2026-09-06T08:12:20.948Z"
+    ]
+  },
+  "billing": {
+    "baseline_usd": 3.072259441105416,
+    "final_stable_usd": 3.2726152463292237,
+    "observed_incremental_usd": 0.2003558052238077,
+    "approved_incremental_cap_usd": 1.8494314167182893,
+    "remaining_cap_headroom_usd": 1.6490756114944813,
+    "billing_read_times_utc": [
+      "2026-09-06T08:12:08.844Z",
+      "2026-09-06T08:12:17.057Z",
+      "2026-09-06T08:12:27.182Z"
+    ]
+  },
+  "stage_6_modified_or_rerun": false,
+  "qualification_claimed": false,
+  "replacement_approval_required_before_image_publication_or_any_runpod_or_r2_mutation": true
+}
