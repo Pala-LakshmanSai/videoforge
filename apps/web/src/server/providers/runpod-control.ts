@@ -619,9 +619,15 @@ export class RunPodDrainGuard {
     this.state = "v208_startup_queue_empty";
   }
 
-  /** Arms only the second V2-08 POST while exactly one already-owned cold job occupies max-one. */
-  confirmV208PairedWarmQueue(queuedJobCount: number): void {
-    if (this.state !== "active" || !Number.isSafeInteger(queuedJobCount) || queuedJobCount !== 1) {
+  /** Arms only the second V2-08 POST while the already-owned cold job is actively running. */
+  confirmV208PairedWarmQueue(inQueue: number, inProgress: number): void {
+    if (
+      this.state !== "active" ||
+      !Number.isSafeInteger(inQueue) ||
+      !Number.isSafeInteger(inProgress) ||
+      inQueue !== 0 ||
+      inProgress !== 1
+    ) {
       this.state = "unknown";
       throw new RunPodControlError("RUNPOD_V208_PAIRED_WARM_QUEUE_NOT_CONFIRMED");
     }
@@ -1963,7 +1969,7 @@ export class RunPodServerlessJobClient {
     const jobs = record(value.jobs);
     const inQueue = strictCounter(jobs, "inQueue");
     const inProgress = strictCounter(jobs, "inProgress");
-    this.options.guard.confirmV208PairedWarmQueue(inQueue + inProgress);
+    this.options.guard.confirmV208PairedWarmQueue(inQueue, inProgress);
   }
 
   /**

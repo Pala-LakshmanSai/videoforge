@@ -28,26 +28,20 @@ export const V208_SOULX_VOLUME_ID_SHA256 =
 export const V208_SOULX_VOLUME_MANIFEST_SHA256 =
   "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626" as const;
 export const V208_EXECUTION_ENTRYPOINT = "soulx-v208-qualification-v1" as const;
-// Single-use authority is compiled from the exact approval and newly published immutable image.
-// Execution remains blocked until the required independent eight-path diff audit passes.
-export const V208_PENDING_PROPOSAL_SHA256: string | null =
-  "sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37";
-export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = true;
-export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null =
-  "73181707e49be61955af4f2891f4c7185a1c288f";
-export const V208_APPROVED_AUTHORITY_SHA256: string | null =
-  "sha256:6dfa2bd4efe6202dcd8c1df4067babb3e2a298993145d41a4920bcad0b1e389f";
-export const V208_APPROVED_FINITE_CAP_USD: number | null = 1.8494314167182893;
-export const V208_APPROVED_IMAGE: string | null =
-  "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e";
-export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null =
-  "73181707e49be61955af4f2891f4c7185a1c288f";
-export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null =
-  "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
-export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = "LOW";
-export const V208_APPROVED_BILLING_BASELINE_USD: number | null = 3.2726152463292237;
-export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null =
-  5.122046663047513;
+// The 692bcb15 single-use authority was consumed by two cold/warm POSTs. Keep execution
+// fail-closed until the cold-IN_PROGRESS ordering repair receives fresh exact approval and its
+// deterministic authority successor passes an independent diff audit.
+export const V208_PENDING_PROPOSAL_SHA256: string | null = null;
+export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = false;
+export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null = null;
+export const V208_APPROVED_AUTHORITY_SHA256: string | null = null;
+export const V208_APPROVED_FINITE_CAP_USD: number | null = null;
+export const V208_APPROVED_IMAGE: string | null = null;
+export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null = null;
+export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null = null;
+export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = null;
+export const V208_APPROVED_BILLING_BASELINE_USD: number | null = null;
+export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null = null;
 
 export interface V208CompiledAuthority {
   readonly proposalSha256: string | null;

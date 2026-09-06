@@ -314,7 +314,7 @@ describe("RunPod scale-zero control", () => {
         healthReads += 1;
         return response({
           workers: {},
-          jobs: healthReads === 1 ? { inQueue: 0, inProgress: 0 } : { inQueue: 1, inProgress: 0 },
+          jobs: healthReads === 1 ? { inQueue: 0, inProgress: 0 } : { inQueue: 0, inProgress: 1 },
         });
       }
       if (path.endsWith("/run"))
@@ -345,6 +345,29 @@ describe("RunPod scale-zero control", () => {
     expect(
       fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith("/run")),
     ).toHaveLength(2);
+  });
+
+  it.each([
+    ["still queued", { inQueue: 1, inProgress: 0 }],
+    ["no owned work", { inQueue: 0, inProgress: 0 }],
+    ["queued and running", { inQueue: 1, inProgress: 1 }],
+    ["missing counter", { inProgress: 1 }],
+    ["malformed counter", { inQueue: "0", inProgress: 1 }],
+  ] as const)("rejects paired warm admission when cold is %s", async (_label, jobs) => {
+    const guard = new RunPodDrainGuard();
+    guard.markActive();
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch: async () => response({ workers: {}, jobs }),
+      baseUrl: "http://127.0.0.1:43123",
+    });
+
+    await expect(client.confirmV208PairedWarmQueue()).rejects.toThrow(
+      "RUNPOD_V208_PAIRED_WARM_QUEUE_NOT_CONFIRMED",
+    );
+    expect(guard.snapshot()).toBe("unknown");
   });
 
   it.each([

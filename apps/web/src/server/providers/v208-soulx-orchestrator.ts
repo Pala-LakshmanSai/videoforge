@@ -569,8 +569,12 @@ async function terminal(
   cancelReads: number,
   pollMs: number,
   authorityId: string,
+  startRead = 0,
 ) {
-  for (let index = 0; index < reads; index += 1) {
+  if (!Number.isSafeInteger(startRead) || startRead < 0 || startRead > reads)
+    throw new Error("V208_STATUS_READ_CURSOR_INVALID");
+  if (startRead > 0 && startRead < reads) await transport.sleep(pollMs);
+  for (let index = startRead; index < reads; index += 1) {
     const value = await readJobDurably(transport, deployment, jobId, authorityId, index);
     if (value.jobId !== jobId) throw new Error("V208_JOB_ID_DRIFT");
     if (value.status !== "IN_QUEUE" && value.status !== "IN_PROGRESS") return value;
@@ -578,6 +582,34 @@ async function terminal(
   }
   await cancelAndConfirmTerminal(transport, deployment, jobId, cancelReads, pollMs, authorityId);
   throw new Error("V208_STATUS_HORIZON_CANCELLED");
+}
+
+export async function waitForV208ColdInProgress(
+  transport: V213DualLaneTransport,
+  deployment: V213LaneDeployment,
+  jobId: string,
+  reads: number,
+  pollMs: number,
+  authorityId: string,
+): Promise<
+  | { readonly kind: "IN_PROGRESS"; readonly nextRead: number }
+  | { readonly kind: "TERMINAL"; readonly nextRead: number; readonly observed: V213JobRead }
+  | { readonly kind: "HORIZON"; readonly nextRead: number }
+> {
+  for (let index = 0; index < reads; index += 1) {
+    const observed = await readJobDurably(transport, deployment, jobId, authorityId, index);
+    if (observed.jobId !== jobId) throw new Error("V208_JOB_ID_DRIFT");
+    if (observed.status === "IN_PROGRESS") {
+      return index + 1 < reads
+        ? { kind: "IN_PROGRESS", nextRead: index + 1 }
+        : { kind: "HORIZON", nextRead: reads };
+    }
+    if (observed.status !== "IN_QUEUE") {
+      return { kind: "TERMINAL", nextRead: index + 1, observed };
+    }
+    if (index + 1 < reads) await transport.sleep(pollMs);
+  }
+  return { kind: "HORIZON", nextRead: reads };
 }
 
 async function cancelAndConfirmTerminal(
@@ -1039,9 +1071,43 @@ export async function runV208SoulXWithV213Transport(
       );
       activeJobs.add(coldPending.jobId);
       activeJobMaterializations.set(coldPending.jobId, coldPending.record);
-      // Queue warm while cold owns the only worker. With workersMax=1 this prevents RunPod from
-      // scaling cold to zero between terminal observation and the second POST, while preserving
-      // strict serial execution and exactly one POST per case.
+      // Do not create the warm job until the exact owned cold job is durably IN_PROGRESS. RunPod
+      // may otherwise schedule two queued async handlers in either order, allowing the warm role
+      // to initialize the runtime first. The returned cursor keeps admission and terminal reads
+      // inside one 830-read/1,660-second horizon without replaying durable status operations.
+      const coldAdmission = await waitForV208ColdInProgress(
+        dependencies.transport,
+        deployment,
+        coldPending.jobId,
+        poll.reads,
+        poll.pollMs,
+        issued.authorityId,
+      );
+      if (coldAdmission.kind !== "IN_PROGRESS") {
+        const terminalObserved =
+          coldAdmission.kind === "TERMINAL"
+            ? coldAdmission.observed
+            : await cancelAndConfirmTerminal(
+                dependencies.transport,
+                deployment,
+                coldPending.jobId,
+                poll.cancelReads,
+                poll.pollMs,
+                issued.authorityId,
+              );
+        if (terminalObserved.status === "IN_QUEUE" || terminalObserved.status === "IN_PROGRESS")
+          throw new Error("V208_COLD_TERMINAL_STATUS_UNPROVEN");
+        activeJobs.delete(coldPending.jobId);
+        activeJobMaterializations.delete(coldPending.jobId);
+        await cleanupKnownInputs(coldPending.record, terminalObserved.status);
+        throw new Error(
+          coldAdmission.kind === "TERMINAL"
+            ? "V208_COLD_IN_PROGRESS_UNPROVEN"
+            : "V208_COLD_IN_PROGRESS_HORIZON_CANCELLED",
+        );
+      }
+      // Queue warm only after cold is running on the sole worker. The concrete transport also
+      // requires exact health counters inQueue=0 and inProgress=1 before admitting this POST.
       warmPending.jobId = await dispatchV208Durably(
         dependencies.transport,
         deployment,
@@ -1065,6 +1131,7 @@ export async function runV208SoulXWithV213Transport(
           poll.cancelReads,
           poll.pollMs,
           issued.authorityId,
+          descriptor.cold ? coldAdmission.nextRead : 0,
         );
         activeJobs.delete(jobId);
         activeJobMaterializations.delete(jobId);

@@ -209,11 +209,15 @@ function harness() {
       readonly contentType: string;
       readonly contentLength: number;
       readonly checksumSha256: string;
+      readonly lifetimeSeconds: number;
+      readonly now?: Date;
     }) => ({
       method: "GET" as const,
       url: `https://r2.invalid/get/${input.objectKey}`,
       requiredHeaders: {},
-      expiresAt: "2026-08-28T00:15:00.000Z",
+      expiresAt: new Date(
+        (input.now ?? NOW).getTime() + input.lifetimeSeconds * 1_000,
+      ).toISOString(),
       contentType: input.contentType,
       contentLength: input.contentLength,
       checksumSha256: input.checksumSha256,
@@ -222,11 +226,15 @@ function harness() {
       readonly objectKey: string;
       readonly contentType: string;
       readonly maxContentLength: number;
+      readonly lifetimeSeconds: number;
+      readonly now?: Date;
     }) => ({
       method: "PUT" as const,
       url: `https://r2.invalid/put/${input.objectKey}`,
       requiredHeaders: { "content-type": input.contentType },
-      expiresAt: "2026-08-28T00:15:00.000Z",
+      expiresAt: new Date(
+        (input.now ?? NOW).getTime() + input.lifetimeSeconds * 1_000,
+      ).toISOString(),
       contentType: input.contentType,
       maxContentLength: input.maxContentLength,
     }),

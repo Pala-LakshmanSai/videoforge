@@ -1,0 +1,94 @@
+{
+  "schema_version": "videoforge.v2-08-lock-scoped-cache-fact-failure/v1",
+  "checkpoint": "V2-08",
+  "task_id": "VF-10-08",
+  "stage": 7,
+  "recorded_at_utc": "2026-09-06T09:24:23.911Z",
+  "status": "NOT_QUALIFIED_CLEAN_PROVIDER_FREE_ORDERING_REPAIR_REQUIRED",
+  "control_source_commit": "73181707e49be61955af4f2891f4c7185a1c288f",
+  "execution_control_commit": "cde3515faf4a8581a83132cd7a8cb296980bd9ff",
+  "proposal_sha256": "sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37",
+  "authority_sha256": "sha256:6dfa2bd4efe6202dcd8c1df4067babb3e2a298993145d41a4920bcad0b1e389f",
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "independent_materialization_diff_audit": "PASS_P0_0_P1_0_P2_1_NONBLOCKING",
+  "runpod": {
+    "job_posts": 2,
+    "redispatches": 0,
+    "cold_job_id": "3d0f50c7-b5b3-40d1-94de-8272f3ba93f0-e2",
+    "warm_job_id": "057d3fcb-f12d-4020-baea-b32f7e3938d9-e1",
+    "cold_terminal": "COMPLETED",
+    "warm_terminal_durably_recorded": false,
+    "warm_cleanup_cancel_state": "ACK_UNKNOWN",
+    "unposted_cases": [
+      "cancel",
+      "invalid",
+      "timeout"
+    ],
+    "surface_failure_code": "V208_RECEIPT_ITEM_INVALID"
+  },
+  "exact_receipt_failure": {
+    "cold_worker_id": "ckp60aqvejz8w8",
+    "cold_receipt_sha256": "sha256:385165b228325cf57874e4dadafd8eaba5b0af2be8fe2de5b6a2ea0e6f1389ec",
+    "cold_receipt_nonce": 1236891479947651,
+    "cold_items_succeeded": 4,
+    "model_inference_completed": true,
+    "cold_runtime_cache_hit_expected": false,
+    "cold_runtime_cache_hit_actual": true,
+    "cold_items_with_true_cache_fact": [
+      "soulx-2s",
+      "soulx-4s",
+      "soulx-6s",
+      "soulx-10s"
+    ],
+    "all_output_media_contracts_passed": true,
+    "outputs_preserved_after_strict_receipt_rejection": 0
+  },
+  "provider_free_root_cause": "WARM_WAS_POSTED_BEFORE_COLD_REACHED_IN_PROGRESS_AND_PROVIDER_QUEUE_ORDER_DID_NOT_GUARANTEE_HANDLER_OR_STARTUP_LOCK_ACQUISITION_ORDER; EVIDENCE_SUPPORTS_BUT_DOES_NOT_DIRECTLY_OBSERVE_THE_INFERENCE_THAT_WARM_INITIALIZED_THE_PROCESS_RUNTIME_FIRST, WHILE COLD_DIRECTLY_REPORTED_A_CACHE_HIT",
+  "provider_free_repair": "KEEP_THE_WORKER_AND_STRICT_RECEIPT_VERIFIER_UNCHANGED; REQUIRE_A_DURABLE_EXACT_COLD_IN_PROGRESS_READ_AND_EXACT_HEALTH_STATE_IN_QUEUE_ZERO_IN_PROGRESS_ONE_BEFORE_THE_SINGLE_WARM_POST; CARRY_THE_READ_CURSOR_SO_GATE_AND_TERMINAL_READS_SHARE_THE_EXISTING_830_READ_1660_SECOND_HORIZON; FAIL_CLOSED_WITHOUT_A_WARM_POST_IF_COLD_NEVER_REACHES_IN_PROGRESS",
+  "worker_or_image_bytes_changed": false,
+  "image_republication_required": false,
+  "immutable_image_reuse": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e",
+    "source_commit": "73181707e49be61955af4f2891f4c7185a1c288f",
+    "config_sha256": "sha256:224b2a728490cf1c708b42e56702da2b71bd2374658f0c640dd39ef23e860935",
+    "anonymous_proof_sha256": "sha256:9929d19da89ab2c20e280ac45ad152bc325b8bf56ef1e9c21e83d473c3408bc4",
+    "reverify_before_provider_mutation": true,
+    "publication_or_republication_authorized": false
+  },
+  "verified_outputs": {
+    "current_attempt_preserved_count": 0,
+    "prior_attempt_eight_verified_outputs_remain_preserved": true,
+    "prior_attempt_proposal_sha256": "sha256:784f68823244adf733bcbe423f1445fdabb0e85ea7f6a37aaec076c820e6d04f"
+  },
+  "cleanup": {
+    "cleanup_only_resume_without_redispatch": true,
+    "disposable_endpoint_absent": true,
+    "disposable_template_absent": true,
+    "all_five_r2_cleanup_phases_absence_verified": true,
+    "fresh_independent_stable_reads": 3,
+    "fresh_independent_read_checked_at_utc": "2026-09-06T09:24:23.911Z",
+    "running_pods": 0,
+    "active_serverless_workers": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "retained_volumes": 2,
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1",
+    "retained_volume_mutation": false,
+    "journal_qualification_complete_state": "IN_FLIGHT",
+    "journal_warm_cancel_state": "ACK_UNKNOWN",
+    "external_reconciliation_overrides_stale_journal_for_current_provider_state": true
+  },
+  "billing": {
+    "baseline_usd": 3.2726152463292237,
+    "final_stable_usd": 3.376928996265633,
+    "observed_incremental_usd": 0.1043137499364093,
+    "approved_incremental_cap_usd": 1.8494314167182893,
+    "remaining_cap_headroom_usd": 1.74511766678188,
+    "settlement": "THREE_STABLE_READS"
+  },
+  "stage_6_modified_or_rerun": false,
+  "qualification_claimed": false,
+  "replacement_approval_required_before_any_runpod_or_r2_mutation": true
+}

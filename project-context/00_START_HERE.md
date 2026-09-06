@@ -5,17 +5,17 @@
 ### Current new-chat launch point — 2026-09-06
 
 - V2-07 Stage 6 is `QUALIFIED_PASS_CLEAN`, frozen, and untouched. V2-08 Stage 7 remains not qualified.
-  Proposal `4d4b7cff...c3ba6` was consumed after exactly two same-worker cold/warm POSTs with no
-  redispatch. Cold preserved four verified MP4s; warm completed but signed `runtime_cache_hit=false`
-  because both asynchronous handlers sampled before the existing startup lock. Cleanup deleted the
-  disposable lane, proved all five deterministic R2 keysets absent, and three reads proved zero
-  compute, unchanged retained volumes, and stable billing USD `3.2726152463292237`. The focused
-  provider-free repair samples inside the startup lock; 110/110 focused tests pass and the Stage 6
-  diff is empty. Worker bytes changed, so the next bounded proposal must authorize exactly one new
-  immutable image publication before the same max-one five-job qualification. No executable
-  authority, publication, RunPod/R2 mutation, GPU use, fallback, Stage 6 rerun, or V2-09 exists now.
-  The independently audited proposal is `sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37`
-  and awaits fresh exact approval.
+  Proposal `692bcb15...2df37` was consumed after exactly two cold/warm POSTs with no redispatch.
+  Cold completed four valid MP4 items but signed `runtime_cache_hit=true`; the evidence-supported
+  inference is that warm acquired the startup lock first. Strict verification rejected it before preservation and fault jobs were not
+  posted. Cleanup removed the disposable lane and all five R2 keysets; three fresh reads prove zero
+  compute, unchanged volumes, and stable billing USD `3.376928996265633`. The provider-free repair
+  posts warm only after durable cold `IN_PROGRESS` and exact `inQueue=0,inProgress=1`, sharing the
+  original 830-read/1,660-second horizon. Stage 7 focused tests pass 182/182; Stage 6 and worker/image
+  bytes are unchanged. Existing immutable image `f3b1d141` will be reverified and reused without
+  publication or republication. No executable authority or provider mutation exists now. Proposal
+  `sha256:9e5d4eb98e9085009b338855858bc9eda6781ebf71e6a1f51b3fd032f215040c`
+  awaits independent audit, a clean control commit, and fresh exact approval.
 - V2-07 is `QUALIFIED_PASS_CLEAN` by Attempt85. Proposal
   `sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540`, control
   `2fccf2ed7257613f4a12017562243a8aeb889138`, and authority

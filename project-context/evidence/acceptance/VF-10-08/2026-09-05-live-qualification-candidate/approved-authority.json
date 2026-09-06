@@ -3,10 +3,18 @@
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
+  "status": "CONSUMED_SINGLE_USE_NOT_QUALIFIED_CLEANED",
   "single_use": true,
-  "consumed": false,
+  "consumed": true,
   "reusable": false,
+  "consumption": {
+    "execution_control_commit": "cde3515faf4a8581a83132cd7a8cb296980bd9ff",
+    "runpod_job_posts": 2,
+    "redispatches": 0,
+    "result": "COLD_RUNTIME_CACHE_FACT_TRUE_NOT_QUALIFIED",
+    "cleanup_complete_by_fresh_independent_reconciliation": true,
+    "failure_evidence": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-lock-scoped-cache-fact-attempt.json"
+  },
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
     "proposal_sha256": "sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37",

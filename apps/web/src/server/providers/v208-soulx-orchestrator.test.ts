@@ -35,6 +35,7 @@ import {
   isV208TimeoutTerminalProof,
   runV208SoulXWithV213Transport,
   validateV208WholeSpanSuccessProof,
+  waitForV208ColdInProgress,
   V208_FOCUSED_FAULT_STATUS_HORIZON_MS,
   V208ProcessInterruption,
   V208_SUCCESS_STATUS_HORIZON_MS,
@@ -198,6 +199,108 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     expect(providerDispatch).toHaveBeenCalledOnce();
     expect(transitionOperation).not.toHaveBeenCalled();
     expect(findJobByRequestKey).not.toHaveBeenCalled();
+  });
+
+  it("waits through cold queue state and returns the next unused durable status cursor", async () => {
+    const statuses = ["IN_QUEUE", "IN_PROGRESS"] as const;
+    const claimedResourceKeys: string[] = [];
+    let statusIndex = 0;
+    const sleep = vi.fn(async () => undefined);
+    const transport = {
+      durable: {
+        claimOperation: async (operation: Record<string, unknown>) => {
+          claimedResourceKeys.push(String(operation.resourceKey));
+          return { action: "EXECUTE" as const, record: { ...operation, state: "IN_FLIGHT" } };
+        },
+        transitionOperation: async (transition: Record<string, unknown>) => ({
+          ...transition,
+          state: transition.to,
+        }),
+      },
+      status: async (_endpointId: string, jobId: string) => ({
+        jobId,
+        status: statuses[statusIndex++]!,
+      }),
+      sleep,
+    } as unknown as V213DualLaneTransport;
+
+    await expect(
+      waitForV208ColdInProgress(
+        transport,
+        { endpointId: "endpoint-v208", endpointIdSha256: `sha256:${"8".repeat(64)}` } as never,
+        "job-v208-cold",
+        4,
+        2_000,
+        "authority-v208",
+      ),
+    ).resolves.toEqual({ kind: "IN_PROGRESS", nextRead: 2 });
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(claimedResourceKeys.map((key) => key.slice(key.lastIndexOf(":")))).toEqual([":0", ":1"]);
+  });
+
+  it("fails cold admission closed when the job becomes terminal before IN_PROGRESS", async () => {
+    const transport = {
+      durable: {
+        claimOperation: async (operation: Record<string, unknown>) => ({
+          action: "EXECUTE" as const,
+          record: { ...operation, state: "IN_FLIGHT" },
+        }),
+        transitionOperation: async (transition: Record<string, unknown>) => ({
+          ...transition,
+          state: transition.to,
+        }),
+      },
+      status: async (_endpointId: string, jobId: string) => ({ jobId, status: "COMPLETED" }),
+      sleep: vi.fn(),
+    } as unknown as V213DualLaneTransport;
+
+    await expect(
+      waitForV208ColdInProgress(
+        transport,
+        { endpointId: "endpoint-v208", endpointIdSha256: `sha256:${"8".repeat(64)}` } as never,
+        "job-v208-cold",
+        4,
+        2_000,
+        "authority-v208",
+      ),
+    ).resolves.toEqual({
+      kind: "TERMINAL",
+      nextRead: 1,
+      observed: { jobId: "job-v208-cold", status: "COMPLETED" },
+    });
+  });
+
+  it("does not admit warm when cold reaches IN_PROGRESS only on the final horizon read", async () => {
+    const statuses = ["IN_QUEUE", "IN_PROGRESS"] as const;
+    let statusIndex = 0;
+    const transport = {
+      durable: {
+        claimOperation: async (operation: Record<string, unknown>) => ({
+          action: "EXECUTE" as const,
+          record: { ...operation, state: "IN_FLIGHT" },
+        }),
+        transitionOperation: async (transition: Record<string, unknown>) => ({
+          ...transition,
+          state: transition.to,
+        }),
+      },
+      status: async (_endpointId: string, jobId: string) => ({
+        jobId,
+        status: statuses[statusIndex++]!,
+      }),
+      sleep: async () => undefined,
+    } as unknown as V213DualLaneTransport;
+
+    await expect(
+      waitForV208ColdInProgress(
+        transport,
+        { endpointId: "endpoint-v208", endpointIdSha256: `sha256:${"8".repeat(64)}` } as never,
+        "job-v208-cold",
+        2,
+        2_000,
+        "authority-v208",
+      ),
+    ).resolves.toEqual({ kind: "HORIZON", nextRead: 2 });
   });
 
   it("rejects missing receipt, media, A/V, item-count, or timing proof", () => {
@@ -1134,25 +1237,28 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       },
       findJobByRequestKey: async () => null,
       status: async (_endpoint: string, jobId: string) => {
-        lifecycle.push(`status:${jobId}`);
         const read = (statusReads.get(jobId) ?? 0) + 1;
         statusReads.set(jobId, read);
-        return jobId.includes("cancel")
+        const observed = jobId.includes("cancel")
           ? { jobId, status: "CANCELLED" }
           : jobId.includes("invalid-output")
             ? { jobId, status: "FAILED", failureCode: "SOULX_OUTPUT_CONTRACT_INVALID" }
             : jobId.includes("timeout")
               ? { jobId, status: "FAILED" }
-              : jobId.includes("cold-whole-span") && read < 830
-                ? { jobId, status: "IN_PROGRESS" }
-                : {
-                    jobId,
-                    status: "COMPLETED",
-                    receiptDelivery: {
-                      receipt: {} as never,
-                      receiptBodyBase64: "c2lnbmVkLXJlY2VpcHQ=",
-                    },
-                  };
+              : jobId.includes("cold-whole-span") && read === 1
+                ? { jobId, status: "IN_QUEUE" }
+                : jobId.includes("cold-whole-span") && read < 830
+                  ? { jobId, status: "IN_PROGRESS" }
+                  : {
+                      jobId,
+                      status: "COMPLETED",
+                      receiptDelivery: {
+                        receipt: {} as never,
+                        receiptBodyBase64: "c2lnbmVkLXJlY2VpcHQ=",
+                      },
+                    };
+        lifecycle.push(`status:${jobId}:${observed.status}`);
+        return observed;
       },
       cancel: async (_endpoint: string, jobId: string) => ({ jobId, status: "CANCELLED" }),
       deleteLane: vi.fn(async () => {
@@ -1257,11 +1363,20 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     expect(createdIdleTimeout).toBe(60);
     const coldDispatch = lifecycle.indexOf("dispatch:v208-soulx-cold-whole-span-2-4-6-10s");
     const warmDispatch = lifecycle.indexOf("dispatch:v208-soulx-warm-whole-span-2-4-6-10s");
-    const coldStatus = lifecycle.indexOf("status:job-v208-soulx-cold-whole-span-2-4-6-10s");
+    const coldQueuedStatus = lifecycle.indexOf(
+      "status:job-v208-soulx-cold-whole-span-2-4-6-10s:IN_QUEUE",
+    );
+    const coldProgressStatus = lifecycle.indexOf(
+      "status:job-v208-soulx-cold-whole-span-2-4-6-10s:IN_PROGRESS",
+    );
+    const coldTerminalStatus = lifecycle.indexOf(
+      "status:job-v208-soulx-cold-whole-span-2-4-6-10s:COMPLETED",
+    );
     expect(coldDispatch).toBeGreaterThanOrEqual(0);
-    expect(coldStatus).toBeGreaterThan(coldDispatch);
-    expect(warmDispatch).toBeGreaterThan(coldDispatch);
-    expect(warmDispatch).toBeLessThan(coldStatus);
+    expect(coldQueuedStatus).toBeGreaterThan(coldDispatch);
+    expect(coldProgressStatus).toBeGreaterThan(coldQueuedStatus);
+    expect(warmDispatch).toBeGreaterThan(coldProgressStatus);
+    expect(warmDispatch).toBeLessThan(coldTerminalStatus);
     expect(inputCleanupDispatchCounts[0]).toBe(2);
     expect(dispatched.some((id) => id.includes("mage"))).toBe(false);
     expect(dispatchPolicies.map(({ requestKey, ...policy }) => [requestKey, policy])).toEqual([
