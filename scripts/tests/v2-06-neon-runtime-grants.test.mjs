@@ -120,6 +120,14 @@ test("the hosted runtime can append through the exact function but has no direct
     assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature));
   }
   const compactGrantSource = source.replace(/\s+/gu, "");
+  const internalSystemReference =
+    "videoforge_materialize_hosted_v209_system_avatar_reference_v2(uuid,uuid,uuid,uuid)";
+  assert.ok(!EXPECTED_RUNTIME_FUNCTIONS.includes(internalSystemReference));
+  assert.ok(
+    compactGrantSource.includes(
+      `REVOKEEXECUTEONFUNCTIONpublic.${internalSystemReference}FROM:"runtime_role";`,
+    ),
+  );
   for (const signature of v209RuntimeSignatures) {
     assert.ok(
       compactGrantSource.includes(`GRANTEXECUTEONFUNCTIONpublic.${signature}TO:"runtime_role";`),

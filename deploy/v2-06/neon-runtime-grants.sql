@@ -23,6 +23,12 @@ REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM :"runtime_role";
 -- ambient capability before granting the small, explicit hosted-runtime routine surface below.
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"runtime_role";
+-- 0078 renames the pre-lock implementation internally. PostgreSQL preserves ACLs on rename, so
+-- make the wrapper the sole runtime entrypoint before rebuilding the explicit allowlist below.
+REVOKE EXECUTE ON FUNCTION public.videoforge_materialize_hosted_v209_system_avatar_reference_v2(
+  uuid, uuid, uuid, uuid
+)
+FROM :"runtime_role";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   hosted_auth_users,

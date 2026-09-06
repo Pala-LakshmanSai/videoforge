@@ -26,6 +26,12 @@ const SYSTEM_RUNTIME_ASSET_ID = uuid(76004);
 const SYSTEM_ORIGINAL_LINK_ID = uuid(76005);
 const SYSTEM_RUNTIME_LINK_ID = uuid(76006);
 const GENERATION_REQUEST_ID = uuid(76007);
+const DUPLICATE_SYSTEM_PROFILE_ID = uuid(76010);
+const DUPLICATE_SYSTEM_VERSION_ID = uuid(76011);
+const DUPLICATE_SYSTEM_RUNTIME_LINK_ID = uuid(76012);
+const AMBIGUOUS_SYSTEM_PROFILE_ID = uuid(76013);
+const AMBIGUOUS_SYSTEM_VERSION_ID = uuid(76014);
+const AMBIGUOUS_SYSTEM_RUNTIME_LINK_ID = uuid(76015);
 const SYSTEM_RUNTIME_SHA256 = HASHES.avatarRuntimeA;
 const SYSTEM_OBJECT_KEY =
   `tenant/${SYSTEM_ACCOUNT_ID}/workspace/${SYSTEM_WORKSPACE_ID}/avatar-profile/` +
@@ -141,6 +147,114 @@ async function convertTenantAvatarToSystemClone(executor) {
   );
 }
 
+async function seedWrongProfileSharingSystemRuntime(executor) {
+  await executor.query(`SELECT set_config('videoforge.account_id',$1,false)`, [SYSTEM_ACCOUNT_ID]);
+  await executor.query(
+    `INSERT INTO avatar_profiles(id,account_id,workspace_id,name,normalized_name,status,
+       created_by_user_id,scope_kind) VALUES($1,$2,$3,'Wrong Shared Runtime',
+       'wrong shared runtime','ACTIVE',$4,'SYSTEM')`,
+    [DUPLICATE_SYSTEM_PROFILE_ID, SYSTEM_ACCOUNT_ID, SYSTEM_WORKSPACE_ID, SYSTEM_USER_ID],
+  );
+  await executor.query(
+    `INSERT INTO avatar_profile_versions(id,account_id,workspace_id,profile_id,version_number,state,
+       profile_contract_name,profile_contract_version,profile_payload,profile_hash,original_asset_id,
+       runtime_source_asset_id,runtime_source_binary_sha256,source_preparation_profile,
+       source_validation_profile,rights_attested_by_user_id,likeness_attested_by_user_id,ready_at,
+       scope_kind) VALUES($1,$2,$3,$4,1,'READY','avatar-profile-version','v1',
+       '{"source":"wrong-shared-runtime"}'::jsonb,$5,$6,$7,$8,'wrong-preparation-v1',
+       'wrong-validation-v1',$9,$9,transaction_timestamp(),'SYSTEM')`,
+    [
+      DUPLICATE_SYSTEM_VERSION_ID,
+      SYSTEM_ACCOUNT_ID,
+      SYSTEM_WORKSPACE_ID,
+      DUPLICATE_SYSTEM_PROFILE_ID,
+      sha256("wrong-shared-runtime-profile"),
+      SYSTEM_ORIGINAL_ASSET_ID,
+      SYSTEM_RUNTIME_ASSET_ID,
+      SYSTEM_RUNTIME_SHA256,
+      SYSTEM_USER_ID,
+    ],
+  );
+  await executor.execute(
+    `ALTER TABLE avatar_profiles DISABLE TRIGGER avatar_profiles_system_immutable`,
+  );
+  await executor.query(`UPDATE avatar_profiles SET active_version_id=$1 WHERE id=$2`, [
+    DUPLICATE_SYSTEM_VERSION_ID,
+    DUPLICATE_SYSTEM_PROFILE_ID,
+  ]);
+  await executor.execute(
+    `ALTER TABLE avatar_profiles ENABLE TRIGGER avatar_profiles_system_immutable`,
+  );
+  await executor.query(
+    `INSERT INTO avatar_profile_assets(id,account_id,workspace_id,profile_id,version_id,asset_id,
+       role,binary_sha256,retention_state) VALUES($1,$2,$3,$4,$5,$6,'RUNTIME',$7,'RETAIN')`,
+    [
+      DUPLICATE_SYSTEM_RUNTIME_LINK_ID,
+      SYSTEM_ACCOUNT_ID,
+      SYSTEM_WORKSPACE_ID,
+      DUPLICATE_SYSTEM_PROFILE_ID,
+      DUPLICATE_SYSTEM_VERSION_ID,
+      SYSTEM_RUNTIME_ASSET_ID,
+      SYSTEM_RUNTIME_SHA256,
+    ],
+  );
+  await executor.query(`SELECT set_config('videoforge.account_id',$1,false)`, [IDS.accountA]);
+}
+
+async function seedAmbiguousProfileSharingSystemRuntime(executor) {
+  await executor.query(`SELECT set_config('videoforge.account_id',$1,false)`, [SYSTEM_ACCOUNT_ID]);
+  await executor.query(
+    `INSERT INTO avatar_profiles(id,account_id,workspace_id,name,normalized_name,status,
+       created_by_user_id,scope_kind) VALUES($1,$2,$3,'Ambiguous Shared Runtime',
+       'ambiguous shared runtime','ACTIVE',$4,'SYSTEM')`,
+    [AMBIGUOUS_SYSTEM_PROFILE_ID, SYSTEM_ACCOUNT_ID, SYSTEM_WORKSPACE_ID, SYSTEM_USER_ID],
+  );
+  await executor.query(
+    `INSERT INTO avatar_profile_versions(id,account_id,workspace_id,profile_id,version_number,state,
+       profile_contract_name,profile_contract_version,profile_payload,profile_hash,original_asset_id,
+       runtime_source_asset_id,runtime_source_binary_sha256,source_preparation_profile,
+       source_validation_profile,rights_attested_by_user_id,likeness_attested_by_user_id,ready_at,
+       scope_kind) VALUES($1,$2,$3,$4,1,'READY','avatar-profile-version','v1',
+       '{"source":"ambiguous-shared-runtime"}'::jsonb,$5,$6,$7,$8,'owned-preparation-v1',
+       'owned-validation-v1',$9,$9,transaction_timestamp(),'SYSTEM')`,
+    [
+      AMBIGUOUS_SYSTEM_VERSION_ID,
+      SYSTEM_ACCOUNT_ID,
+      SYSTEM_WORKSPACE_ID,
+      AMBIGUOUS_SYSTEM_PROFILE_ID,
+      HASHES.avatarProfileA,
+      SYSTEM_ORIGINAL_ASSET_ID,
+      SYSTEM_RUNTIME_ASSET_ID,
+      SYSTEM_RUNTIME_SHA256,
+      SYSTEM_USER_ID,
+    ],
+  );
+  await executor.execute(
+    `ALTER TABLE avatar_profiles DISABLE TRIGGER avatar_profiles_system_immutable`,
+  );
+  await executor.query(`UPDATE avatar_profiles SET active_version_id=$1 WHERE id=$2`, [
+    AMBIGUOUS_SYSTEM_VERSION_ID,
+    AMBIGUOUS_SYSTEM_PROFILE_ID,
+  ]);
+  await executor.execute(
+    `ALTER TABLE avatar_profiles ENABLE TRIGGER avatar_profiles_system_immutable`,
+  );
+  await executor.query(
+    `INSERT INTO avatar_profile_assets(id,account_id,workspace_id,profile_id,version_id,asset_id,
+       role,binary_sha256,retention_state) VALUES($1,$2,$3,$4,$5,$6,'RUNTIME',$7,'RETAIN')`,
+    [
+      AMBIGUOUS_SYSTEM_RUNTIME_LINK_ID,
+      SYSTEM_ACCOUNT_ID,
+      SYSTEM_WORKSPACE_ID,
+      AMBIGUOUS_SYSTEM_PROFILE_ID,
+      AMBIGUOUS_SYSTEM_VERSION_ID,
+      SYSTEM_RUNTIME_ASSET_ID,
+      SYSTEM_RUNTIME_SHA256,
+    ],
+  );
+  await executor.query(`SELECT set_config('videoforge.account_id',$1,false)`, [IDS.accountA]);
+}
+
 test("0076 derives and materializes one exact tenant SYSTEM avatar input reference", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     await seedSystemAvatarClone(executor);
@@ -175,10 +289,19 @@ test("0076 derives and materializes one exact tenant SYSTEM avatar input referen
       ),
       "23514",
     );
-    const first = await executor.query(
-      `SELECT public.videoforge_materialize_hosted_v209_system_avatar_reference($1,$2,$3,$4) AS value`,
-      [IDS.accountA, IDS.workspaceA, IDS.userA, IDS.projectA],
+    const calls = await Promise.all(
+      [0, 1].map(() =>
+        executor.query(
+          `SELECT public.videoforge_materialize_hosted_v209_system_avatar_reference($1,$2,$3,$4) AS value`,
+          [IDS.accountA, IDS.workspaceA, IDS.userA, IDS.projectA],
+        ),
+      ),
     );
+    const callValues = calls.map((call) => call.rows[0].value);
+    assert.deepEqual(callValues.map((value) => value.replayed).sort(), [false, true]);
+    assert.equal(callValues[0].reservationId, callValues[1].reservationId);
+    const first = calls.find((call) => call.rows[0].value.replayed === false);
+    assert.ok(first);
     assert.equal(first.rows[0].value.referenceRequired, true);
     assert.equal(first.rows[0].value.referenceReady, true);
     assert.equal(first.rows[0].value.objectKey, SYSTEM_OBJECT_KEY);
@@ -213,6 +336,7 @@ test("0076 derives and materializes one exact tenant SYSTEM avatar input referen
     assert.equal(stored.rows[0].checksum_sha256, SYSTEM_RUNTIME_SHA256);
     assert.equal(stored.rows[0].probe.system_runtime_source_asset_id, SYSTEM_RUNTIME_ASSET_ID);
 
+    await seedWrongProfileSharingSystemRuntime(executor);
     const projection = await executor.query(
       `SELECT public.videoforge_read_hosted_v209_system_avatar_projection($1,$2,$3) AS value`,
       [IDS.accountA, IDS.workspaceA, IDS.revisionA],
@@ -233,6 +357,36 @@ test("0076 derives and materializes one exact tenant SYSTEM avatar input referen
     assert.equal(replay.rows[0].value.reservationId, first.rows[0].value.reservationId);
     assert.equal(replay.rows[0].value.replayed, true);
 
+    await seedAmbiguousProfileSharingSystemRuntime(executor);
+    const ambiguousProjection = await executor.query(
+      `SELECT public.videoforge_read_hosted_v209_system_avatar_projection($1,$2,$3) AS value`,
+      [IDS.accountA, IDS.workspaceA, IDS.revisionA],
+    );
+    assert.equal(
+      ambiguousProjection.rows[0].value,
+      null,
+      "an equally matching active SYSTEM graph must fail closed instead of selecting one",
+    );
+    await expectDatabaseError(
+      executor.query(
+        `SELECT public.videoforge_materialize_hosted_v209_system_avatar_reference($1,$2,$3,$4)`,
+        [IDS.accountA, IDS.workspaceA, IDS.userA, IDS.projectA],
+      ),
+      "23514",
+    );
+
+    await executor.query(`UPDATE assets SET metadata='{}'::jsonb WHERE id=$1`, [
+      IDS.avatarRuntimeA,
+    ]);
+    await expectDatabaseError(
+      executor.query(
+        `UPDATE artifact_receipts SET deleted_at=transaction_timestamp(),
+           deletion_reason='must remain append-only' WHERE id=$1`,
+        [first.rows[0].value.receiptId],
+      ),
+      "55000",
+    );
+
     await expectDatabaseError(
       executor.query(`UPDATE artifact_reservations SET updated_at=now() WHERE id=$1`, [
         first.rows[0].value.reservationId,
@@ -250,7 +404,7 @@ test("0076 derives and materializes one exact tenant SYSTEM avatar input referen
   });
 });
 
-test("0076 keeps the SYSTEM exception narrow and the ready-render marker DB-owned", async () => {
+test("0076 through 0078 keep the SYSTEM exception narrow and the ready-render marker DB-owned", async () => {
   const source = await readFile(
     new URL("../migrations/0076_hosted_v209_system_avatar_reference.sql", import.meta.url),
     "utf8",
@@ -274,6 +428,30 @@ test("0076 keeps the SYSTEM exception narrow and the ready-render marker DB-owne
     /videoforge_hosted_v209_uuid\(\s*'input-reservation',target\.generation_request_id,'avatar-source'\)/u,
   );
   assert.doesNotMatch(repair, /hosted-v209-system-avatar-reservation:/u);
+  const hardening = await readFile(
+    new URL(
+      "../migrations/0078_hosted_v209_system_avatar_reference_hardening.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(hardening, /tenant_version\.profile_hash=revision\.avatar_profile_hash/u);
+  assert.match(hardening, /system_version\.profile_hash=tenant_version\.profile_hash/u);
+  assert.match(
+    hardening,
+    /system_version\.source_preparation_profile=tenant_version\.source_preparation_profile/u,
+  );
+  assert.match(hardening, /system_profile\.active_version_id=system_version\.id/u);
+  assert.match(
+    hardening,
+    /AND 1=\(SELECT count\(\*\) FROM public\.avatar_profile_versions unique_version/u,
+  );
+  assert.match(hardening, /structural_system_reference:=reserved\.id IS NOT NULL/u);
+  assert.match(
+    hardening,
+    /pg_advisory_xact_lock\(hashtextextended\(identity\.generation_request_id::text,41\)\)/u,
+  );
+  assert.doesNotMatch(hardening, /signed_url|authorization|secret|token_ciphertext/iu);
 });
 
 test("0076 SYSTEM reference receipts survive a secret-free metadata backup and restore", async () => {
