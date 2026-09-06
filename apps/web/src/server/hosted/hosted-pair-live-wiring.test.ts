@@ -365,12 +365,15 @@ describe("hosted pair live provider wiring", () => {
     }));
     const terminalOutput = {
       acceptCompleted: vi.fn(
-        async (_input: {
+        async (input: {
           lane: HostedPairLane;
           attemptId: string;
           providerJobId: string;
           output: unknown;
-        }) => ({ state: "ACCEPTED" }),
+        }) => {
+          void input;
+          return { state: "ACCEPTED" };
+        },
       ),
     };
     const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };

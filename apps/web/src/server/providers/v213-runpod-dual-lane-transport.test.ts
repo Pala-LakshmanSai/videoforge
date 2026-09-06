@@ -266,7 +266,9 @@ function fixture(
     })),
   };
   const verifyOutputReadback = vi.fn(async () => true as const);
-  const sleep = vi.fn(async (_milliseconds: number) => undefined);
+  const sleep = vi.fn(async (milliseconds: number) => {
+    void milliseconds;
+  });
   const createJobClient = vi.fn((endpointId: string) => {
     void endpointId;
     return client;

@@ -625,17 +625,19 @@ export class HostedSqlFunctionV209TerminalOutputStore implements HostedV209Termi
           terminalSha256,
           JSON.stringify(input.receipt),
           JSON.stringify(
-            receipts.map(
-              ({
-                reservationId: _r,
-                itemId: _i,
-                objectKey: _o,
-                contentType: _c,
-                contentLength: _l,
-                checksumSha256: _s,
-                ...row
-              }) => row,
-            ),
+            receipts.map((receipt) => ({
+              receipt_id: receipt.receipt_id,
+              callback_id: receipt.callback_id,
+              receipt_sha256: receipt.receipt_sha256,
+              expires_at: receipt.expires_at,
+              reservation_id: receipt.reservation_id,
+              item_id: receipt.item_id,
+              object_key: receipt.object_key,
+              content_type: receipt.content_type,
+              content_length: receipt.content_length,
+              checksum_sha256: receipt.checksum_sha256,
+              probe: receipt.probe,
+            })),
           ),
           input.committedAt,
         ],

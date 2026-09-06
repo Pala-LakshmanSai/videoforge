@@ -95,10 +95,15 @@ describe("hosted V2-09 span audio coordinator", () => {
     const value = await projection();
     const schedule = vi.fn(
       async (
-        _identity: HostedV209SpanIdentity,
-        _submission: HostedSpanAudioSubmission,
-        _expectedAttemptId: string,
-      ) => ({ state: "OUTBOXED" }),
+        identity: HostedV209SpanIdentity,
+        submission: HostedSpanAudioSubmission,
+        expectedAttemptId: string,
+      ) => {
+        void identity;
+        void submission;
+        void expectedAttemptId;
+        return { state: "OUTBOXED" };
+      },
     );
     const coordinator = createHostedV209SpanAudioCoordinator({
       loadJobs: vi.fn(async () => value),
