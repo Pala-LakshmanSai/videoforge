@@ -589,7 +589,7 @@ export function buildSoulXLiveRequest({
     mageQualificationCapUsd: 4.5,
     soulxQualificationCapUsd: 1,
     minimumStableReadSpacingMs: 2_000,
-    maxStatusReads: 180,
+    maxStatusReads: 830,
     pollIntervalMs: 2_000,
     qualificationEnvelopeSchemaSha256: sourceReference(
       root,

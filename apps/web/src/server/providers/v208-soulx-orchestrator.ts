@@ -42,6 +42,10 @@ const MAX_SUCCESS_JOB_SECONDS = 800;
 const MAX_FOCUSED_FAULT_JOB_SECONDS = 60;
 const MAX_TIMEOUT_JOB_SECONDS = 5;
 const MAX_IDLE_SECONDS = 60;
+export const V208_SUCCESS_STATUS_HORIZON_MS = 1_660_000;
+export const V208_FOCUSED_FAULT_STATUS_HORIZON_MS = 60_000;
+const V208_MAX_SUCCESS_STATUS_READS = 830;
+const V208_LANE_DRAIN_HORIZON_MS = 860_000;
 // V2-08 alone uses a 60-second idle window to preserve the cold worker until immediate warm
 // dispatch. No composition may assume that output
 // verification or materialization finishes quickly enough to keep it warm, so every one of the
@@ -202,14 +206,14 @@ function assertPollPolicy(dependencies: V208SoulXOrchestratorDependencies): {
   pollMs: number;
   stableMs: number;
 } {
-  const reads = dependencies.maxStatusReads ?? 240;
+  const reads = dependencies.maxStatusReads ?? V208_MAX_SUCCESS_STATUS_READS;
   const cancelReads = dependencies.maxCancelStatusReads ?? 30;
   const pollMs = dependencies.pollIntervalMs ?? 2_000;
   const stableMs = dependencies.minimumStableReadSpacingMs ?? 2_000;
   if (
     !Number.isSafeInteger(reads) ||
     reads < 1 ||
-    reads > 300 ||
+    reads > V208_MAX_SUCCESS_STATUS_READS ||
     !Number.isSafeInteger(cancelReads) ||
     cancelReads < 1 ||
     cancelReads > 60 ||
@@ -218,7 +222,9 @@ function assertPollPolicy(dependencies: V208SoulXOrchestratorDependencies): {
     pollMs > 2_000 ||
     !Number.isSafeInteger(stableMs) ||
     stableMs < 2_000 ||
-    stableMs > 10_000
+    stableMs > 10_000 ||
+    reads * pollMs < V208_SUCCESS_STATUS_HORIZON_MS ||
+    cancelReads * pollMs < V208_FOCUSED_FAULT_STATUS_HORIZON_MS
   )
     throw new Error("V208_POLL_POLICY_INVALID");
   return { reads, cancelReads, pollMs, stableMs };
@@ -642,10 +648,11 @@ async function waitForLaneDrain(
   deployment: V213LaneDeployment,
   pollMs: number,
 ): Promise<void> {
-  // The longest V2-08 dispatch policy is 800 seconds. The extra minute covers provider status
-  // propagation and the five-second scale-to-zero idle setting without permitting an unbounded
-  // wait or deleting an endpoint underneath a running worker.
-  const maxReads = Math.ceil(860_000 / pollMs);
+  // Drain starts only after every acknowledged job is terminal or cancel-confirmed, so it does not
+  // include the separate 800-second pre-execution queue allowance in the success status horizon.
+  // The 800-second residual worker allowance plus one minute of provider propagation keeps cleanup
+  // bounded without deleting an endpoint underneath a running worker.
+  const maxReads = Math.ceil(V208_LANE_DRAIN_HORIZON_MS / pollMs);
   for (let read = 0; read < maxReads; read += 1) {
     const inventory = await transport.inventory();
     const soulxVolume = inventory.volumes.filter(
@@ -808,8 +815,7 @@ export async function runV208SoulXWithV213Transport(
       admission.privateTemplates !== 0 ||
       !Number.isFinite(admission.flexRateUsdPerGpuHour) ||
       admission.flexRateUsdPerGpuHour < 0 ||
-      admission.flexRateUsdPerGpuHour > RATE ||
-      admission.cumulativeBillingUsd !== authority.billingBaselineUsd);
+      admission.flexRateUsdPerGpuHour > RATE);
   if (commonAdmissionInvalid || executeAdmissionInvalid)
     throw new Error("V208_FRESH_ADMISSION_REJECTED");
   // The concrete V2-13 transport reconstructs deterministic cleanup names from this prefix.
@@ -1117,7 +1123,7 @@ export async function runV208SoulXWithV213Transport(
             dependencies.transport,
             deployment,
             jobId,
-            poll.reads,
+            poll.cancelReads,
             poll.cancelReads,
             poll.pollMs,
             issued.authorityId,

@@ -3,13 +3,22 @@
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
+  "status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE_STATUS_HORIZON_CANCELLED",
   "single_use": true,
-  "consumed": false,
-  "reusable": true,
+  "consumed": true,
+  "reusable": false,
+  "consumption": {
+    "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-status-horizon-attempt.json",
+    "failure_evidence_sha256": "sha256:c2b6461135c7f240bd0de7a248f5b5c856f50542293c23c88320a1d840cd4bc6",
+    "runpod_job_posts": 1,
+    "redispatches": 0,
+    "cleanup_complete": true
+  },
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
     "proposal_sha256": "sha256:236bfadad6cfbab5b2a574de3a9d189325862c66dda79f45378f1a006e68e94f",
+    "proposal_bytes_anchor_commit": "cd5317eb9b190eb783b3da0a8f6e824acb1af18f",
+    "proposal_path_is_now_reused_for_successor": true,
     "approval_statement_storage": "inline_exact_statement_in_user_approval_json",
     "approval_statement_sha256": "sha256:3b158a0001dc7cc03d89a1523e80bed9f036e92e42266ff8f3f689d5b77365dd",
     "user_approval_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
@@ -20,7 +29,7 @@
     "precursor_source_commit": "251752b8b390fa69008e0abd49f73a6a65ae971a",
     "image_source_commit": "251752b8b390fa69008e0abd49f73a6a65ae971a",
     "execution_control_commit_role": "one_post_approval_authority_materialization_successor_only",
-    "execution_control_commit": null
+    "execution_control_commit": "cd5317eb9b190eb783b3da0a8f6e824acb1af18f"
   },
   "image_publication": {
     "original_publication_workflow_run_id": 33982211389,

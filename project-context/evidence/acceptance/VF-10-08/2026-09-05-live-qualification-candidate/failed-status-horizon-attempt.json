@@ -1,0 +1,44 @@
+{
+  "schema_version": "videoforge.v2-08-failed-status-horizon-attempt/v1",
+  "checkpoint": "V2-08",
+  "stage": 7,
+  "proposal_sha256": "sha256:236bfadad6cfbab5b2a574de3a9d189325862c66dda79f45378f1a006e68e94f",
+  "authority_sha256": "sha256:16079b689dc9c7e253e9032fca94fea79eb5a41e5019c313e4211de8997e50ce",
+  "materialization_commit": "cd5317eb9b190eb783b3da0a8f6e824acb1af18f",
+  "result": "FAILED_CLEAN_STATUS_HORIZON_CANCELLED",
+  "failure_code": "V208_STATUS_HORIZON_CANCELLED",
+  "exact_root_cause": "SUCCESS_JOB_800_SECOND_TIMEOUT_WAS_OBSERVED_BY_ONLY_180_READS_AT_2_SECONDS",
+  "status_timeline": {
+    "in_queue_reads": 93,
+    "in_progress_reads": 87,
+    "total_reads": 180,
+    "poll_interval_ms": 2000,
+    "configured_horizon_ms": 360000,
+    "terminal_after_guard_cancel": "CANCELLED"
+  },
+  "runpod_job_posts": 1,
+  "posted_descriptor": "soulx-cold-whole-span-2-4-6-10s",
+  "runpod_redispatches": 0,
+  "warm_materialized_but_not_posted": true,
+  "cancel_invalid_timeout_jobs_posted": 0,
+  "cleanup": {
+    "disposable_lane_deleted_and_absent": true,
+    "r2_cleanup_phases_terminal": 5,
+    "planned_r2_keys_absent": 27,
+    "running_pods": 0,
+    "active_workers": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "retained_network_volumes": 2
+  },
+  "billing": {
+    "approved_baseline_usd": 2.7981025265471544,
+    "three_posted_reads_usd": [2.7981025265471544, 2.7981025265471544, 2.7981025265471544],
+    "posted_increment_usd": 0,
+    "delayed_settlement_possible": true,
+    "conservative_unsettled_reserve_usd": 0.08
+  },
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "stage_6_modified_or_rerun": false
+}

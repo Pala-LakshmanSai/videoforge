@@ -34,7 +34,9 @@ import {
   assertV208StageConsumptionDecision,
   runV208SoulXWithV213Transport,
   validateV208WholeSpanSuccessProof,
+  V208_FOCUSED_FAULT_STATUS_HORIZON_MS,
   V208ProcessInterruption,
+  V208_SUCCESS_STATUS_HORIZON_MS,
   V208_WORST_CASE_LIABILITY_USD,
   type V208SoulXOrchestratorDependencies,
 } from "./v208-soulx-orchestrator.js";
@@ -47,6 +49,31 @@ describe("V2-08 concrete SoulX orchestrator", () => {
   beforeEach(() => parseAuthority.mockReset().mockReturnValue(authority()));
   it("computes the bounded cold, warm and fault worst-case liability", () => {
     expect(V208_WORST_CASE_LIABILITY_USD).toBeCloseTo((5785 * 1.116) / 3600, 12);
+    expect(V208_SUCCESS_STATUS_HORIZON_MS).toBe(1_660_000);
+    expect(V208_FOCUSED_FAULT_STATUS_HORIZON_MS).toBe(60_000);
+  });
+
+  it.each([
+    { maxStatusReads: 829 },
+    { maxStatusReads: 831 },
+    { maxStatusReads: 830, pollIntervalMs: 1_999 },
+    { maxCancelStatusReads: 29 },
+  ])("rejects a poll policy that shortens or exceeds a bounded horizon: %o", async (policy) => {
+    const expected = authority();
+    const dependencies = {
+      ...policy,
+      soulx: {
+        lane: "soulx",
+        publicImage: expected.image,
+        sourceCommit: expected.imageSourceCommit,
+        deploymentSha256: `sha256:${"8".repeat(64)}`,
+        volumeIdSha256: V208_SOULX_VOLUME_ID_SHA256,
+        volumeManifestSha256: V208_SOULX_VOLUME_MANIFEST_SHA256,
+      },
+    } as unknown as V208SoulXOrchestratorDependencies;
+    await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(
+      "V208_POLL_POLICY_INVALID",
+    );
   });
 
   it("accepts durable RESUME but rejects a consumed replay", () => {
@@ -375,7 +402,8 @@ describe("V2-08 concrete SoulX orchestrator", () => {
   it.each([
     ["wrong account", { accountIdSha256: `sha256:${"9".repeat(64)}` }],
     ["unknown availability", { availability: "UNKNOWN" }],
-    ["billing baseline drift", { cumulativeBillingUsd: 10.000_001 }],
+    ["billing below approved baseline", { cumulativeBillingUsd: 9.999_999 }],
+    ["billing above cumulative stop", { cumulativeBillingUsd: 16.000_001 }],
     ["stale observation", { checkedAt: "2026-09-04T23:58:59.999Z" }],
   ])("rejects %s after SQL claim but before provider mutation", async (_label, patch) => {
     const issueStageAuthority = vi.fn(async () => ({
@@ -947,6 +975,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       ttlMs: number;
     }> = [];
     const lifecycle: string[] = [];
+    const statusReads = new Map<string, number>();
     const inputCleanupDispatchCounts: number[] = [];
     let providerLaneDeleted = false;
     let createdIdleTimeout: number | undefined;
@@ -1045,7 +1074,8 @@ describe("V2-08 concrete SoulX orchestrator", () => {
         region: "EU-RO-1",
         availability: "HIGH",
         flexRateUsdPerGpuHour: 1.116,
-        cumulativeBillingUsd: 10,
+        // A late settlement above the approved baseline is admitted and consumes the finite cap.
+        cumulativeBillingUsd: 10.2,
         runningPods: 0,
         activeWorkers: 0,
         endpoints: 0,
@@ -1082,20 +1112,24 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       findJobByRequestKey: async () => null,
       status: async (_endpoint: string, jobId: string) => {
         lifecycle.push(`status:${jobId}`);
+        const read = (statusReads.get(jobId) ?? 0) + 1;
+        statusReads.set(jobId, read);
         return jobId.includes("cancel")
           ? { jobId, status: "CANCELLED" }
           : jobId.includes("invalid-output")
             ? { jobId, status: "FAILED", failureCode: "SOULX_OUTPUT_CONTRACT_INVALID" }
             : jobId.includes("timeout")
               ? { jobId, status: "TIMED_OUT" }
-              : {
-                  jobId,
-                  status: "COMPLETED",
-                  receiptDelivery: {
-                    receipt: {} as never,
-                    receiptBodyBase64: "c2lnbmVkLXJlY2VpcHQ=",
-                  },
-                };
+              : jobId.includes("cold-whole-span") && read < 830
+                ? { jobId, status: "IN_PROGRESS" }
+                : {
+                    jobId,
+                    status: "COMPLETED",
+                    receiptDelivery: {
+                      receipt: {} as never,
+                      receiptBodyBase64: "c2lnbmVkLXJlY2VpcHQ=",
+                    },
+                  };
       },
       cancel: async (_endpoint: string, jobId: string) => ({ jobId, status: "CANCELLED" }),
       deleteLane: vi.fn(async () => {
@@ -1184,13 +1218,19 @@ describe("V2-08 concrete SoulX orchestrator", () => {
       await expect(runV208SoulXWithV213Transport(dependencies, {})).rejects.toThrow(phase);
     }
     crashAt = null;
-    await expect(runV208SoulXWithV213Transport(dependencies, {})).resolves.toMatchObject({
+    const finalResult = await runV208SoulXWithV213Transport(dependencies, {});
+    expect(finalResult).toMatchObject({
       qualified: true,
       workerReceiptsVerified: 2,
       outputItemsVerified: 8,
       finalZeroComputeReads: 3,
     });
+    expect(finalResult.observedSpendUsd).toBeCloseTo(0.2, 12);
     expect(dispatched.filter((id) => id.includes("whole-span"))).toHaveLength(2);
+    expect(statusReads.get("job-v208-soulx-cold-whole-span-2-4-6-10s")).toBe(830);
+    expect(statusReads.get("job-v208-soulx-warm-whole-span-2-4-6-10s")).toBe(1);
+    expect(statusReads.get("job-v208-soulx-invalid-output")).toBe(1);
+    expect(statusReads.get("job-v208-soulx-timeout")).toBe(1);
     expect(createdIdleTimeout).toBe(60);
     const coldDispatch = lifecycle.indexOf("dispatch:v208-soulx-cold-whole-span-2-4-6-10s");
     const warmDispatch = lifecycle.indexOf("dispatch:v208-soulx-warm-whole-span-2-4-6-10s");

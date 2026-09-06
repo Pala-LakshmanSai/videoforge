@@ -52,6 +52,8 @@ test("V2-08 builder emits the exact proposal-derived, provider-free request shap
   });
   assert.equal(built.request.input.dualLaneInput.qualificationR2.accountId, R2_ACCOUNT_ID);
   assert.equal(built.request.input.dualLaneInput.qualificationR2.bucketName, R2_BUCKET_NAME);
+  assert.equal(built.request.input.dualLaneInput.maxStatusReads, 830);
+  assert.equal(built.request.input.dualLaneInput.pollIntervalMs, 2_000);
   assert.deepEqual(built.request.input.dualLaneInput.qualificationCaseDescriptors, [
     {
       key: "mage",
