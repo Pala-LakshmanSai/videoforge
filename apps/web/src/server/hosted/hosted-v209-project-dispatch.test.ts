@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   handleHostedV209ProjectDispatch,
   materializeHostedV209OrdinaryDispatchCandidate,
+  resumeHostedV209ProjectDispatch,
 } from "./hosted-v209-project-dispatch";
 
 const id = (digit: string) =>
@@ -11,6 +12,10 @@ const id = (digit: string) =>
 const sha = (digit: string) => `sha256:${digit.repeat(64)}` as `sha256:${string}`;
 const projectId = id("4");
 const scope = { user_id: id("1"), account_id: id("2"), workspace_id: id("3") };
+const systemAvatarObjectKey =
+  `tenant/ffffffff-ffff-4fff-8fff-000000000001/workspace/ffffffff-ffff-4fff-8fff-000000000011` +
+  `/avatar-profile/${id("d")}/version/${id("e")}/canonical/avatar.png`;
+const avatarSourceReservationId = "abababab-abab-4bab-8bab-abababababab";
 const config = {
   environment: "production",
   gpuTransport: "QUALIFIED_EXACT",
@@ -18,7 +23,7 @@ const config = {
   neon: { databaseUrl: "postgres://runtime.invalid/db" },
 } as never;
 
-async function candidate(pairExists = false) {
+async function candidate(pairExists = false, systemAvatar = false) {
   const revisionId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
   const mageAttemptId = "12121212-1212-4212-8212-121212121212";
   const soulxAttemptId = "34343434-3434-4434-8434-343434343434";
@@ -64,7 +69,9 @@ async function candidate(pairExists = false) {
         sourceVoiceoverObjectKey: `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${projectId}/revision/${revisionId}/lane/input/job/${id("d")}/artifact/voiceover`,
         sourceVoiceoverContentType: "audio/wav",
         sourceVoiceoverContentLength: 96_000,
-        avatarSourceObjectKey: `tenant/${scope.account_id}/workspace/${scope.workspace_id}/avatar-profile/${id("e")}/version/${id("f")}/canonical/avatar.png`,
+        avatarSourceObjectKey: systemAvatar
+          ? systemAvatarObjectKey
+          : `tenant/${scope.account_id}/workspace/${scope.workspace_id}/avatar-profile/${id("e")}/version/${id("f")}/canonical/avatar.png`,
         avatarSourceContentType: "image/png",
         avatarSourceContentLength: 1024,
         selectedStartMs: 0,
@@ -94,7 +101,7 @@ async function candidate(pairExists = false) {
     approvalSha256: sha("7"),
     expiresAt: "2026-09-06T01:40:00.000Z",
     totalCapUsd: 2,
-    avatarSourceInputReservationId: "abababab-abab-4bab-8bab-abababababab",
+    avatarSourceInputReservationId: avatarSourceReservationId,
     laneBindings: [{ lane: "mage_image" }, { lane: "soulx_avatar" }],
     pair: [{ lane: "mage_image" }, { lane: "soulx_avatar" }],
     batches: [
@@ -111,6 +118,16 @@ async function candidate(pairExists = false) {
     replayed: pairExists,
     pairExists,
     existingWorkflowId: pairExists ? `hosted-pair-${generationRequestId}` : null,
+  };
+}
+
+function verifiedSystemReference(prepared: Awaited<ReturnType<typeof candidate>>) {
+  return {
+    sourceScopeKind: "SYSTEM" as const,
+    assetId: id("f"),
+    objectKey: systemAvatarObjectKey,
+    checksumSha256: sha("5"),
+    reservationId: prepared.avatarSourceInputReservationId,
   };
 }
 
@@ -147,11 +164,14 @@ function request(body = "{}", origin = "https://videoforge.example") {
   );
 }
 
-function dependencies(value: Awaited<ReturnType<typeof candidate>>) {
+function dependencies(
+  value: Awaited<ReturnType<typeof candidate>>,
+  systemAvatarReference: ReturnType<typeof verifiedSystemReference> | null = null,
+) {
   const runtime = { end: vi.fn(async () => undefined) };
   const reconciler = { end: vi.fn(async () => undefined) };
   const createPool = vi.fn().mockReturnValueOnce(runtime).mockReturnValueOnce(reconciler);
-  const materialize = vi.fn(async () => value);
+  const materialize = vi.fn(async () => ({ candidate: value, systemAvatarReference }));
   const observe = vi.fn(async () => observation());
   const commitAndSchedule = vi.fn(async () => ({
     id: `hosted-pair-${value.generationRequestId}`,
@@ -224,7 +244,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
         userId: scope.user_id,
         projectId,
       }),
-    ).resolves.toEqual(prepared);
+    ).resolves.toEqual({ candidate: prepared, systemAvatarReference: null });
     expect(
       queries.map((sql) =>
         sql.includes("set_config")
@@ -237,7 +257,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
   });
 
   it("accepts an exact SYSTEM reference replay and binds its revision and generation to the candidate", async () => {
-    const prepared = await candidate();
+    const prepared = await candidate(false, true);
     const query = vi.fn(async (sql: string) => {
       if (sql.includes("set_config")) return { rows: [], affectedRows: 0 };
       if (sql.includes("system_avatar_reference"))
@@ -251,11 +271,11 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
                 projectId,
                 projectRevisionId: prepared.projectRevisionId,
                 generationRequestId: prepared.generationRequestId,
-                assetId: id("a"),
+                assetId: id("f"),
                 receiptId: id("b"),
-                reservationId: id("c"),
-                objectKey: `tenant/ffffffff-ffff-4fff-8fff-000000000001/workspace/ffffffff-ffff-4fff-8fff-000000000011/avatar-profile/${id("d")}/version/${id("e")}/canonical/avatar.png`,
-                checksumSha256: sha("a"),
+                reservationId: avatarSourceReservationId,
+                objectKey: systemAvatarObjectKey,
+                checksumSha256: sha("5"),
                 referenceRequired: true,
                 referenceReady: true,
                 replayed: true,
@@ -277,7 +297,10 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
         userId: scope.user_id,
         projectId,
       }),
-    ).resolves.toEqual(prepared);
+    ).resolves.toEqual({
+      candidate: prepared,
+      systemAvatarReference: verifiedSystemReference(prepared),
+    });
     expect(query).toHaveBeenCalledTimes(3);
   });
 
@@ -385,6 +408,43 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       workflow_id: `hosted-pair-${prepared.generationRequestId}`,
       correlation_id: "v209-safe-correlation",
     });
+  });
+
+  it("allows the shared browser and durable-SPAN resume seam only with the exact SYSTEM tuple", async () => {
+    const prepared = await candidate(false, true);
+    const reference = verifiedSystemReference(prepared);
+    const accepted = dependencies(prepared, reference);
+    const acceptedResponse = await resumeHostedV209ProjectDispatch(
+      { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
+      config,
+      {
+        accountId: scope.account_id,
+        workspaceId: scope.workspace_id,
+        userId: scope.user_id,
+        projectId,
+      },
+      accepted.value,
+    );
+    expect(acceptedResponse.status).toBe(202);
+    expect(accepted.observe).toHaveBeenCalledOnce();
+    expect(accepted.commitAndSchedule).toHaveBeenCalledOnce();
+
+    const mismatched = dependencies(prepared, { ...reference, checksumSha256: sha("a") });
+    await expect(
+      resumeHostedV209ProjectDispatch(
+        { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
+        config,
+        {
+          accountId: scope.account_id,
+          workspaceId: scope.workspace_id,
+          userId: scope.user_id,
+          projectId,
+        },
+        mismatched.value,
+      ),
+    ).rejects.toThrow("V209_ORDINARY_WORK_INVALID");
+    expect(mismatched.observe).not.toHaveBeenCalled();
+    expect(mismatched.commitAndSchedule).not.toHaveBeenCalled();
   });
 
   it("retrieves an existing deterministic workflow without observation or redispatch", async () => {

@@ -4,6 +4,8 @@ import type { V209ShortAdmissionObservation } from "./v209-short-live-cost";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
+const SYSTEM_AVATAR_OBJECT_KEY =
+  /^tenant\/ffffffff-ffff-4fff-8fff-000000000001\/workspace\/ffffffff-ffff-4fff-8fff-000000000011\/avatar-profile\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/version\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/canonical\/avatar\.(?:png|jpg)$/u;
 const FRESH_MS = 5 * 60_000;
 const MAX_RATE = 1_116_000;
 
@@ -12,6 +14,14 @@ type JsonRecord = Record<string, unknown>;
 export interface V209OrdinaryWork {
   readonly mage_image: readonly JsonRecord[];
   readonly soulx_avatar: readonly JsonRecord[];
+}
+
+export interface V209OrdinaryVerifiedSystemAvatarReference {
+  readonly sourceScopeKind: "SYSTEM";
+  readonly assetId: string;
+  readonly objectKey: string;
+  readonly checksumSha256: `sha256:${string}`;
+  readonly reservationId: string;
 }
 
 export interface V209OrdinaryLiveAdmission {
@@ -38,7 +48,10 @@ export interface V209OrdinaryLiveAdmission {
   readonly admissionSha256: `sha256:${string}`;
 }
 
-export async function assertV209OrdinaryCandidate(rawCandidate: unknown): Promise<{
+export async function assertV209OrdinaryCandidate(
+  rawCandidate: unknown,
+  systemAvatarReference: V209OrdinaryVerifiedSystemAvatarReference | null = null,
+): Promise<{
   readonly candidate: JsonRecord;
   readonly work: V209OrdinaryWork;
 }> {
@@ -61,7 +74,18 @@ export async function assertV209OrdinaryCandidate(rawCandidate: unknown): Promis
   delete candidateBase.existingWorkflowId;
   if ((await sha256CanonicalJson(candidateBase)) !== candidate.candidateSha256)
     throw new RangeError("V209_ORDINARY_CANDIDATE_HASH_INVALID");
-  const work = exactWork(candidate.work, candidate);
+  if (
+    systemAvatarReference !== null &&
+    (systemAvatarReference.sourceScopeKind !== "SYSTEM" ||
+      !UUID.test(systemAvatarReference.assetId) ||
+      !UUID.test(systemAvatarReference.reservationId) ||
+      !SHA256.test(systemAvatarReference.checksumSha256) ||
+      !SYSTEM_AVATAR_OBJECT_KEY.test(systemAvatarReference.objectKey) ||
+      candidate.avatarSourceInputReservationId !== systemAvatarReference.reservationId)
+  ) {
+    throw new RangeError("V209_ORDINARY_SYSTEM_AVATAR_REFERENCE_INVALID");
+  }
+  const work = exactWork(candidate.work, candidate, systemAvatarReference);
   if ((await sha256CanonicalJson(work)) !== candidate.workManifestSha256)
     throw new RangeError("V209_ORDINARY_WORK_HASH_INVALID");
   return Object.freeze({ candidate, work });
@@ -83,7 +107,11 @@ function epoch(value: string, code: string): number {
   return time;
 }
 
-function exactWork(value: unknown, candidate: JsonRecord): V209OrdinaryWork {
+function exactWork(
+  value: unknown,
+  candidate: JsonRecord,
+  systemAvatarReference: V209OrdinaryVerifiedSystemAvatarReference | null,
+): V209OrdinaryWork {
   const work = record(value);
   if (!work || !exactKeys(work, ["mage_image", "soulx_avatar"]))
     throw new RangeError("V209_ORDINARY_WORK_INVALID");
@@ -209,9 +237,13 @@ function exactWork(value: unknown, candidate: JsonRecord): V209OrdinaryWork {
       !item.spanAudioObjectKey.startsWith(
         `tenant/${candidate.accountId}/workspace/${candidate.workspaceId}/`,
       ) ||
-      !item.avatarSourceObjectKey.startsWith(
-        `tenant/${candidate.accountId}/workspace/${candidate.workspaceId}/`,
-      ) ||
+      (systemAvatarReference === null
+        ? !item.avatarSourceObjectKey.startsWith(
+            `tenant/${candidate.accountId}/workspace/${candidate.workspaceId}/`,
+          )
+        : item.avatarSourceAssetId !== systemAvatarReference.assetId ||
+          item.avatarSourceObjectKey !== systemAvatarReference.objectKey ||
+          item.avatarSourceSha256 !== systemAvatarReference.checksumSha256) ||
       typeof item.sourceVoiceoverContentType !== "string" ||
       item.spanAudioContentType !== "audio/wav" ||
       typeof item.avatarSourceContentType !== "string" ||
@@ -253,8 +285,12 @@ function exactWork(value: unknown, candidate: JsonRecord): V209OrdinaryWork {
 export async function freezeV209OrdinaryLiveAdmission(
   rawCandidate: unknown,
   observation: V209ShortAdmissionObservation,
+  systemAvatarReference: V209OrdinaryVerifiedSystemAvatarReference | null = null,
 ): Promise<V209OrdinaryLiveAdmission> {
-  const { candidate, work } = await assertV209OrdinaryCandidate(rawCandidate);
+  const { candidate, work } = await assertV209OrdinaryCandidate(
+    rawCandidate,
+    systemAvatarReference,
+  );
 
   const databaseNow = epoch(observation.databaseNow, "V209_ORDINARY_DATABASE_TIME_INVALID");
   const providerAt = epoch(observation.providerObservedAt, "V209_ORDINARY_PROVIDER_TIME_INVALID");

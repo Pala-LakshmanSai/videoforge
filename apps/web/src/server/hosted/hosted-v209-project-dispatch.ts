@@ -17,6 +17,7 @@ import { response, sameOrigin, sessionScope } from "./hosted-product-route-commo
 import {
   assertV209OrdinaryCandidate,
   freezeV209OrdinaryLiveAdmission,
+  type V209OrdinaryVerifiedSystemAvatarReference,
 } from "../runtime/v209-ordinary-live-cost";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -32,6 +33,11 @@ type DispatchIdentity = {
   readonly userId: string;
   readonly projectId: string;
 };
+
+interface MaterializedDispatchCandidate {
+  readonly candidate: unknown;
+  readonly systemAvatarReference: V209OrdinaryVerifiedSystemAvatarReference | null;
+}
 
 type Candidate = Record<string, unknown> & {
   readonly schemaVersion: "videoforge.hosted-v209-ordinary-dispatch/v1";
@@ -64,7 +70,7 @@ export interface HostedV209ProjectDispatchDependencies {
   readonly materialize: (
     database: TransactionalSqlExecutor,
     identity: DispatchIdentity,
-  ) => Promise<unknown>;
+  ) => Promise<MaterializedDispatchCandidate>;
   readonly observe: typeof observeV209ShortAdmission;
   readonly commitAndSchedule: typeof commitAndScheduleV209OrdinaryPair;
   readonly ensureWorkflow: typeof materializeAndEnsureV209OrdinaryPair;
@@ -130,13 +136,18 @@ function exactSystemAvatarReference(value: unknown, identity: DispatchIdentity) 
   return reference as {
     readonly projectRevisionId: string;
     readonly generationRequestId: string;
+    readonly referenceRequired: boolean;
+    readonly assetId?: string;
+    readonly objectKey?: string;
+    readonly checksumSha256?: `sha256:${string}`;
+    readonly reservationId?: string;
   };
 }
 
 export async function materializeHostedV209OrdinaryDispatchCandidate(
   database: TransactionalSqlExecutor,
   identity: DispatchIdentity,
-): Promise<unknown> {
+): Promise<MaterializedDispatchCandidate> {
   return database.transaction(async (transaction) => {
     await transaction.query("SELECT set_config($1,$2,true)", [
       "videoforge.account_id",
@@ -173,7 +184,35 @@ export async function materializeHostedV209OrdinaryDispatchCandidate(
     ) {
       throw new RangeError("HOSTED_V209_SYSTEM_AVATAR_REFERENCE_INVALID");
     }
-    return candidate;
+    let systemAvatarReference: V209OrdinaryVerifiedSystemAvatarReference | null = null;
+    if (reference.referenceRequired) {
+      const candidateRecord = candidate as Record<string, unknown>;
+      const work = candidateRecord.work as Record<string, unknown> | undefined;
+      const soulx = Array.isArray(work?.soulx_avatar) ? work.soulx_avatar : [];
+      if (
+        candidateRecord.avatarSourceInputReservationId !== reference.reservationId ||
+        soulx.length < 1 ||
+        soulx.some((item) => {
+          if (!item || typeof item !== "object" || Array.isArray(item)) return true;
+          const source = item as Record<string, unknown>;
+          return (
+            source.avatarSourceAssetId !== reference.assetId ||
+            source.avatarSourceObjectKey !== reference.objectKey ||
+            source.avatarSourceSha256 !== reference.checksumSha256
+          );
+        })
+      ) {
+        throw new RangeError("HOSTED_V209_SYSTEM_AVATAR_REFERENCE_INVALID");
+      }
+      systemAvatarReference = Object.freeze({
+        sourceScopeKind: "SYSTEM" as const,
+        assetId: reference.assetId!,
+        objectKey: reference.objectKey!,
+        checksumSha256: reference.checksumSha256!,
+        reservationId: reference.reservationId!,
+      });
+    }
+    return Object.freeze({ candidate, systemAvatarReference });
   });
 }
 
@@ -282,12 +321,10 @@ export async function resumeHostedV209ProjectDispatch(
   const runtimePool = suppliedRuntimePool ?? injected.createPool(config.neon.databaseUrl);
   try {
     const runtimeDatabase = injected.createExecutor(runtimePool);
-    const candidate = exactCandidate(
-      await injected.materialize(runtimeDatabase, identity),
-      identity,
-    );
+    const materialized = await injected.materialize(runtimeDatabase, identity);
+    const candidate = exactCandidate(materialized.candidate, identity);
     if (!candidate) return response({ error: { code: "HOSTED_V209_CANDIDATE_NOT_READY" } }, 409);
-    await assertV209OrdinaryCandidate(candidate);
+    await assertV209OrdinaryCandidate(candidate, materialized.systemAvatarReference);
     const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
     if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)
       return response({ error: { code: "HOSTED_PAIR_RECONCILER_BINDING_MISSING" } }, 503);
@@ -312,7 +349,11 @@ export async function resumeHostedV209ProjectDispatch(
         return dispatchResponse(candidate, correlationId, 200);
       }
       const observation = await injected.observe(environment, runtimeDatabase);
-      const admission = await freezeV209OrdinaryLiveAdmission(candidate, observation);
+      const admission = await freezeV209OrdinaryLiveAdmission(
+        candidate,
+        observation,
+        materialized.systemAvatarReference,
+      );
       const scheduled = await injected.commitAndSchedule(
         environment,
         runtimeDatabase,
