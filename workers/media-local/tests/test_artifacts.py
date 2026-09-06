@@ -16,7 +16,7 @@ class R2PortFixtureTests(unittest.TestCase):
             self.assertEqual(cli.main(), 0)
         shared.assert_called_once_with(
             resolver_factory=R2PortFixtureArtifactResolver,
-            accepted_commands=frozenset({"transcribe", "render"}),
+            accepted_commands=frozenset({"transcribe", "materialize-span", "render"}),
         )
 
     def test_maps_content_addressed_input_and_bounded_run_output(self) -> None:

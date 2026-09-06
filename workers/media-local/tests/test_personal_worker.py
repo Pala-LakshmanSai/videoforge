@@ -215,6 +215,13 @@ class PersonalWorkerContractTests(unittest.TestCase):
                     "videoforge_media_local.personal_execution._SleepAssertion",
                     return_value=sleep_assertion,
                 ),
+                patch.object(
+                    personal_execution.shutil,
+                    "disk_usage",
+                    return_value=SimpleNamespace(
+                        free=personal_execution._required_free_bytes(parsed.objects)
+                    ),
+                ),
                 patch(
                     "videoforge_media_local.personal_execution._run_media_subprocess",
                     return_value=(0, b"not-json"),
