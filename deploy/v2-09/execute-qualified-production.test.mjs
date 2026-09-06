@@ -76,6 +76,8 @@ function authority(overrides = {}) {
     },
     production: {
       worker_name: "videoforge-production-runtime",
+      chrome_auth_state_sha256: `sha256:${"d".repeat(64)}`,
+      chrome_request_sha256: `sha256:${"e".repeat(64)}`,
       config_sha256: `sha256:${"8".repeat(64)}`,
       worker_bundle_sha256: `sha256:${"9".repeat(64)}`,
       secret_allowlist_sha256: `sha256:${"0".repeat(64)}`,
@@ -291,7 +293,9 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       worker: value.production.worker_name,
       config_sha256: `sha256:${"2".repeat(64)}`,
       gpu_transport: "DISABLED_UNQUALIFIED",
-      deploy_count: 1,
+      bootstrap_deploy_count: 1,
+      full_disabled_deploy_count: 1,
+      deploy_count: 2,
     };
   }
   if (id === "upload-cloudflare-production-secrets") {
@@ -301,7 +305,10 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       worker: value.production.worker_name,
       secret_allowlist_sha256: value.production.secret_allowlist_sha256,
       secret_count: value.production.secret_count,
-      upload_count: 1,
+      secret_put_count: value.production.secret_count,
+      deploy_count: 1,
+      mutation_count: value.production.secret_count + 1,
+      transaction_count: 1,
     };
   }
   if (id === "deploy-cloudflare-qualified-production") {
@@ -1005,14 +1012,23 @@ test("unknown success acknowledgement is reconciled or transitions through failu
     assert.equal(calls.filter((called) => called === id).length, 2);
 });
 
-test("default live adapters fail closed without a provider implementation", async () => {
+test("live execution requires the sealed concrete configuration", async () => {
   await assert.rejects(
     executeQualifiedProduction({
       mode: "EXECUTE",
       authority: authority(),
       sourceCommit: SOURCE_COMMIT,
+    }),
+    /V2_09_LIVE_CONFIGURATION_REQUIRED/u,
+  );
+  await assert.rejects(
+    executeQualifiedProduction({
+      mode: "EXECUTE",
+      authority: authority(),
+      sourceCommit: SOURCE_COMMIT,
+      configuration: {},
       now: NOW,
     }),
-    /V2_09_LIVE_COMPOSITION_NOT_READY/u,
+    /V2_09_LIVE_OPTION_INVALID/u,
   );
 });

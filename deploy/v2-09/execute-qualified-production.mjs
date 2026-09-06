@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
+import {
+  closeSync,
+  constants as fsConstants,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+} from "node:fs";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export const AUTHORITY_SCHEMA = "videoforge.v2-09-qualified-production-authority/v1";
@@ -536,8 +545,10 @@ function validateOperationResult(
   if (
     operationId === "deploy-cloudflare-disabled-bootstrap" &&
     (!exactKeys(result, [
+      "bootstrap_deploy_count",
       "config_sha256",
       "deploy_count",
+      "full_disabled_deploy_count",
       "gpu_transport",
       "operation_id",
       "schema_version",
@@ -547,24 +558,32 @@ function validateOperationResult(
       result.worker !== authority.production.worker_name ||
       !HASH.test(result.config_sha256 ?? "") ||
       result.gpu_transport !== "DISABLED_UNQUALIFIED" ||
-      result.deploy_count !== 1)
+      result.bootstrap_deploy_count !== 1 ||
+      result.full_disabled_deploy_count !== 1 ||
+      result.deploy_count !== 2)
   )
     fail("V2_09_DISABLED_BOOTSTRAP_INVALID");
   if (
     operationId === "upload-cloudflare-production-secrets" &&
     (!exactKeys(result, [
+      "deploy_count",
+      "mutation_count",
       "operation_id",
       "schema_version",
       "secret_allowlist_sha256",
       "secret_count",
-      "upload_count",
+      "secret_put_count",
+      "transaction_count",
       "worker",
     ]) ||
       result.schema_version !== "videoforge.v2-09-secret-upload-result/v1" ||
       result.worker !== authority.production.worker_name ||
       result.secret_allowlist_sha256 !== authority.production.secret_allowlist_sha256 ||
       result.secret_count !== authority.production.secret_count ||
-      result.upload_count !== 1)
+      result.secret_put_count !== authority.production.secret_count ||
+      result.deploy_count !== 1 ||
+      result.mutation_count !== authority.production.secret_count + 1 ||
+      result.transaction_count !== 1)
   )
     fail("V2_09_SECRET_UPLOAD_INVALID");
   if (
@@ -945,6 +964,8 @@ export function validateAuthority(
     fail("V2_09_AUTHORITY_MEDIA_WORKER_INVALID");
   if (
     !exactKeys(authority.production, [
+      "chrome_auth_state_sha256",
+      "chrome_request_sha256",
       "config_sha256",
       "secret_allowlist_sha256",
       "secret_count",
@@ -952,6 +973,8 @@ export function validateAuthority(
       "worker_name",
     ]) ||
     authority.production.worker_name !== "videoforge-production-runtime" ||
+    !HASH.test(authority.production.chrome_auth_state_sha256 ?? "") ||
+    !HASH.test(authority.production.chrome_request_sha256 ?? "") ||
     !HASH.test(authority.production.config_sha256 ?? "") ||
     !HASH.test(authority.production.worker_bundle_sha256 ?? "") ||
     !HASH.test(authority.production.secret_allowlist_sha256 ?? "") ||
@@ -1455,9 +1478,65 @@ export async function executeQualifiedProductionForTest(options = {}) {
 export async function executeQualifiedProduction(options = {}) {
   if (options.mode === undefined || options.mode === "DRY_RUN") return dryRunPlan();
   if (Object.hasOwn(options, "adapters")) fail("V2_09_LIVE_ADAPTER_INJECTION_FORBIDDEN");
-  // The live composition is intentionally fail-closed until the sibling concrete adapter module
-  // can construct every fixed V2-09 capability and recompute its source/config/manifest hashes.
-  fail("V2_09_LIVE_COMPOSITION_NOT_READY");
+  if (
+    Object.keys(options).some(
+      (key) => !["authority", "configuration", "mode", "sourceCommit"].includes(key),
+    )
+  )
+    fail("V2_09_LIVE_OPTION_INVALID");
+  if (options.configuration === null || typeof options.configuration !== "object")
+    fail("V2_09_LIVE_CONFIGURATION_REQUIRED");
+  const { createConcreteQualifiedProductionAdapters } = await import(
+    "./concrete-qualified-production-adapters.mjs"
+  );
+  const adapters = createConcreteQualifiedProductionAdapters(options.configuration);
+  return executeWithInjectedAdapters({
+    mode: options.mode,
+    authority: options.authority,
+    sourceCommit: options.sourceCommit,
+    now: new Date(),
+    currentTime: () => new Date(),
+    adapters,
+  });
+}
+
+function readPrivateJson(path, code) {
+  if (typeof path !== "string" || !isAbsolute(path)) fail(code);
+  const absolute = resolve(path);
+  const parentPath = dirname(absolute);
+  let parent;
+  try {
+    parent = lstatSync(parentPath);
+  } catch {
+    fail(code);
+  }
+  if (
+    parent.isSymbolicLink() ||
+    !parent.isDirectory() ||
+    (parent.mode & 0o777) !== 0o700 ||
+    (typeof process.getuid === "function" && parent.uid !== process.getuid())
+  )
+    fail(code);
+  let descriptor;
+  try {
+    descriptor = openSync(absolute, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
+    const stats = fstatSync(descriptor);
+    if (
+      !stats.isFile() ||
+      (stats.mode & 0o777) !== 0o600 ||
+      stats.size <= 0 ||
+      stats.size > 1024 * 1024 ||
+      (typeof process.getuid === "function" && stats.uid !== process.getuid())
+    )
+      fail(code);
+    const value = JSON.parse(readFileSync(descriptor, "utf8"));
+    if (value === null || typeof value !== "object" || Array.isArray(value)) fail(code);
+    return value;
+  } catch {
+    fail(code);
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
 }
 
 export async function main(argv = process.argv.slice(2)) {
@@ -1465,7 +1544,22 @@ export async function main(argv = process.argv.slice(2)) {
     process.stdout.write(`${JSON.stringify(dryRunPlan(), null, 2)}\n`);
     return;
   }
-  fail("V2_09_PROGRAMMATIC_INJECTED_ADAPTERS_REQUIRED");
+  if (
+    argv.length !== 5 ||
+    !["--execute", "--cleanup-only"].includes(argv[0]) ||
+    argv[1] !== "--authority" ||
+    argv[3] !== "--configuration"
+  )
+    fail("V2_09_LIVE_ARGUMENTS_INVALID");
+  const authority = readPrivateJson(argv[2], "V2_09_AUTHORITY_FILE_INVALID");
+  const configuration = readPrivateJson(argv[4], "V2_09_CONFIGURATION_FILE_INVALID");
+  const result = await executeQualifiedProduction({
+    mode: argv[0] === "--execute" ? "EXECUTE" : "CLEANUP_ONLY",
+    authority,
+    sourceCommit: authority.source_commit,
+    configuration,
+  });
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
