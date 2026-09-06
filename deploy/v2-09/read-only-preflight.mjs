@@ -413,12 +413,7 @@ export async function verifyFrozenImage(fetchImpl, expected) {
   const layers = Array.isArray(manifest.layers)
     ? manifest.layers.map((layer) => descriptor(layer, LAYER_MEDIA_TYPES, "GHCR_LAYER_DESCRIPTOR"))
     : [];
-  if (
-    config.digest !== expected.configDigest ||
-    layers.length < 1 ||
-    layers.length > 128 ||
-    new Set([config.digest, ...layers.map((layer) => layer.digest)]).size !== layers.length + 1
-  )
+  if (config.digest !== expected.configDigest || layers.length < 1 || layers.length > 128)
     fail("GHCR_DESCRIPTOR_DRIFT");
   const configResponse = await readGhcrObject(fetchImpl, {
     repository: expected.repository,

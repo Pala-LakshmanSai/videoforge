@@ -202,6 +202,67 @@ test("GHCR preflight anonymously hashes the manifest, config, and every ordered 
   assert.equal(calls[0].init.headers.authorization, undefined);
 });
 
+test("GHCR preflight accepts repeated ordered layer descriptors and verifies every occurrence", async () => {
+  const fixture = imageFixture();
+  const manifest = JSON.parse(fixture.manifestBytes.toString("utf8"));
+  manifest.layers = [manifest.layers[0], manifest.layers[0], manifest.layers[0]];
+  fixture.manifestBytes = Buffer.from(JSON.stringify(manifest));
+  fixture.expected.manifestDigest = hash(fixture.manifestBytes);
+  const calls = [];
+  const fetchImpl = async (input, init = {}) => {
+    const url = new URL(input);
+    calls.push({ url: url.href, init });
+    if (url.pathname === "/token")
+      return response(JSON.stringify({ token: "anonymous-token-value-123456789" }));
+    if (url.pathname.endsWith(`/manifests/${fixture.expected.manifestDigest}`))
+      return response(fixture.manifestBytes, {
+        headers: {
+          "content-length": String(fixture.manifestBytes.length),
+          "content-type": "application/vnd.oci.image.manifest.v1+json",
+          "docker-content-digest": fixture.expected.manifestDigest,
+        },
+      });
+    if (url.pathname.endsWith(`/blobs/${fixture.expected.configDigest}`))
+      return response(fixture.configBytes, {
+        headers: { "content-length": String(fixture.configBytes.length) },
+      });
+    if (url.hostname === "ghcr.io" && url.pathname.endsWith(`/blobs/${fixture.layerDigest}`))
+      return response(null, {
+        status: 307,
+        headers: {
+          location: `https://pkg-containers.githubusercontent.com/ghcrblobs1/blobs/${fixture.layerDigest}?signature=redacted`,
+        },
+      });
+    if (
+      url.hostname === "pkg-containers.githubusercontent.com" &&
+      url.pathname.endsWith(`/blobs/${fixture.layerDigest}`)
+    )
+      return response(fixture.layerBytes, {
+        headers: { "content-length": String(fixture.layerBytes.length) },
+      });
+    throw new Error(`unexpected URL ${url.href}`);
+  };
+
+  const proof = await verifyFrozenImage(fetchImpl, fixture.expected);
+  assert.equal(proof.manifestDigest, fixture.expected.manifestDigest);
+  assert.deepEqual(
+    proof.layers,
+    [0, 1, 2].map((index) => ({
+      index,
+      digest: fixture.layerDigest,
+      sizeBytes: fixture.layerBytes.length,
+    })),
+  );
+  assert.equal(
+    calls.filter(
+      ({ url }) =>
+        new URL(url).hostname === "pkg-containers.githubusercontent.com" &&
+        new URL(url).pathname.endsWith(`/blobs/${fixture.layerDigest}`),
+    ).length,
+    3,
+  );
+});
+
 test("GHCR preflight rejects a blob redirect outside the exact anonymous registry host", async () => {
   const fixture = imageFixture();
   const fetchImpl = async (input) => {
