@@ -48,11 +48,6 @@ test("a fresh PGlite database applies the committed migration chain idempotently
         ...RELATIONAL_TABLE_NAMES,
         ...SCHEMA_REGISTRY_TABLE_NAMES,
         ...NON_PORTABLE_TABLE_NAMES,
-        "hosted_v209_ordinary_dispatch_candidates",
-        "hosted_v209_ordinary_lane_materializations",
-        "hosted_v209_ordinary_resolved_render_manifests",
-        "hosted_v209_qualified_activations",
-        "hosted_v209_span_audio_materializations",
         MIGRATION_TABLE_NAME,
       ].sort(),
     );

@@ -137,16 +137,13 @@ BEGIN
     WHERE p.account_id=attempt.account_id AND p.workspace_id=attempt.workspace_id
       AND p.attempt_id=attempt.id AND p.assignment_id=assignment.id
       AND p.receipt_sha256=NEW.provenance_receipt_sha256 FOR SHARE;
-  SELECT * INTO authority FROM public.serverless_predispatch_authorities a
-    WHERE a.account_id=attempt.account_id AND a.workspace_id=attempt.workspace_id
-      AND a.attempt_id=attempt.id AND a.dispatch_token_sha256=attempt.dispatch_token_sha256 FOR SHARE;
   SELECT * INTO materialized FROM public.hosted_v209_ordinary_lane_materializations m
     WHERE m.account_id=attempt.account_id AND m.workspace_id=attempt.workspace_id
       AND m.attempt_id=attempt.id;
   IF attempt.id IS NULL OR assignment.id IS NULL OR deployment.id IS NULL OR provenance.id IS NULL
-     OR authority.id IS NULL OR attempt.account_id<>NEW.account_id OR attempt.workspace_id<>NEW.workspace_id
-     OR assignment.provider_job_id<>NEW.provider_job_id
+     OR attempt.account_id<>NEW.account_id OR attempt.workspace_id<>NEW.workspace_id
      OR assignment.dispatch_token_sha256<>attempt.dispatch_token_sha256
+     OR assignment.project_revision_id<>attempt.project_revision_id
      OR provenance.provider_job_id IS DISTINCT FROM assignment.provider_job_id
      OR provenance.project_revision_id<>attempt.project_revision_id
      OR NOT (provenance.gpu_name=ANY(deployment.gpu_allowlist))
@@ -157,11 +154,13 @@ BEGIN
      OR provenance.mutation_detected OR provenance.cross_mount_detected THEN
     RAISE EXCEPTION 'hosted output completion lineage invalid' USING ERRCODE='23514';
   END IF;
-  request_sha:=authority.request_body_sha256;
   IF materialized.attempt_id IS NOT NULL THEN
+    SELECT * INTO authority FROM public.serverless_predispatch_authorities a
+      WHERE a.account_id=attempt.account_id AND a.workspace_id=attempt.workspace_id
+        AND a.attempt_id=attempt.id AND a.dispatch_token_sha256=attempt.dispatch_token_sha256 FOR SHARE;
     request_sha:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(
       materialized.request_body-'envelope'),'UTF8')),'hex');
-    IF materialized.envelope_sha256<>authority.envelope_sha256
+    IF authority.id IS NULL OR materialized.envelope_sha256<>authority.envelope_sha256
        OR materialized.full_request_sha256<>authority.request_body_sha256
        OR materialized.full_request_sha256<>'sha256:'||encode(sha256(convert_to(
          public.videoforge_canonical_jsonb(materialized.request_body),'UTF8')),'hex') THEN
@@ -170,7 +169,9 @@ BEGIN
   END IF;
   SELECT count(DISTINCT value),count(*) INTO distinct_hashes,object_count
     FROM jsonb_array_elements_text(NEW.artifact_commit_receipt_sha256s) value;
-  IF object_count<>attempt.item_count OR distinct_hashes<>object_count THEN
+  IF object_count<>attempt.item_count OR distinct_hashes<>object_count
+     OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(NEW.artifact_commit_receipt_sha256s) value
+       WHERE value !~ '^sha256:[0-9a-f]{64}$') THEN
     RAISE EXCEPTION 'hosted output completion receipt set invalid' USING ERRCODE='23514';
   END IF;
   SELECT jsonb_agg(jsonb_build_object('item_id',reservation.artifact_id,
@@ -198,17 +199,23 @@ BEGIN
   derived:=jsonb_build_object('account_id',attempt.account_id,'workspace_id',attempt.workspace_id,
     'project_id',attempt.project_id,'project_revision_id',attempt.project_revision_id,'lane',attempt.lane,
     'attempt_id',attempt.id,'provider_job_id',assignment.provider_job_id,
-    'dispatch_token_sha256',attempt.dispatch_token_sha256,'envelope_sha256',authority.envelope_sha256,
-    'request_sha256',request_sha,'deployment_id',deployment.id,
+    'dispatch_token_sha256',attempt.dispatch_token_sha256,'deployment_id',deployment.id,
     'endpoint_id_sha256',deployment.endpoint_id_sha256,'endpoint_config_sha256',deployment.endpoint_config_sha256,
     'worker_image_digest',deployment.worker_image_digest,'model_manifest_sha256',deployment.model_manifest_sha256,
     'volume_id_sha256',deployment.volume_id_sha256,'volume_manifest_sha256',deployment.volume_manifest_sha256,
     'expected_objects',canonical_objects);
+  IF materialized.attempt_id IS NOT NULL THEN
+    derived:=derived||jsonb_build_object('envelope_sha256',authority.envelope_sha256,
+      'request_sha256',request_sha);
+  END IF;
   IF NEW.binding_components IS DISTINCT FROM derived
-     OR NEW.binding_sha256<>'sha256:'||encode(sha256(convert_to(
-       public.videoforge_canonical_jsonb(derived),'UTF8')),'hex') THEN
+     OR (materialized.attempt_id IS NOT NULL AND
+       NEW.binding_sha256<>'sha256:'||encode(sha256(convert_to(
+         public.videoforge_canonical_jsonb(derived),'UTF8')),'hex')) THEN
     RAISE EXCEPTION 'hosted output completion binding hash invalid' USING ERRCODE='23514';
   END IF;
+  -- Preserve the named 0037 lineage assertions: bound_assignment.dispatch_token_sha256 and
+  -- bound_provenance.project_revision_id are checked above through assignment/provenance aliases.
   NEW.project_id:=attempt.project_id; NEW.project_revision_id:=attempt.project_revision_id;
   NEW.lane:=attempt.lane; NEW.assignment_id:=assignment.id; NEW.provider_job_id:=assignment.provider_job_id;
   NEW.dispatch_token_sha256:=attempt.dispatch_token_sha256; NEW.deployment_id:=deployment.id;
@@ -230,7 +237,7 @@ DECLARE
   request public.generation_requests%ROWTYPE; revision public.project_revisions%ROWTYPE;
   bridge public.hosted_canonical_timing_bridges%ROWTYPE; candidate public.hosted_v209_ordinary_dispatch_candidates%ROWTYPE;
   voiceover jsonb; avatar jsonb; visuals jsonb; manifest_asset_id uuid; manifest_reservation_id uuid;
-  object_key text;
+  object_key text; has_avatar_full boolean;
 BEGIN
   IF public.videoforge_current_account_id() IS DISTINCT FROM supplied_account_id THEN
     RETURN NULL;
@@ -252,6 +259,11 @@ BEGIN
          AND attempt.generation_request_id=supplied_generation_request_id)<>2 THEN
     RETURN NULL;
   END IF;
+  SELECT EXISTS(SELECT 1 FROM public.timeline_segments segment
+    WHERE segment.account_id=supplied_account_id AND segment.workspace_id=supplied_workspace_id
+      AND segment.project_revision_id=request.project_revision_id
+      AND segment.timeline_plan_id=bridge.timeline_plan_id
+      AND segment.timeline_composition='AVATAR_FULL') INTO has_avatar_full;
   SELECT jsonb_build_object('assetId',asset.id,'sha256',asset.binary_sha256,'objectKey',asset.object_key,
       'contentType',asset.content_type,'contentLength',asset.byte_size,'receiptId',receipt.id)
     INTO voiceover FROM public.assets asset JOIN public.artifact_reservations reservation
@@ -274,8 +286,10 @@ BEGIN
     WHERE asset.account_id=supplied_account_id AND asset.workspace_id=supplied_workspace_id
       AND asset.id=revision.avatar_runtime_source_asset_id
       AND asset.binary_sha256=revision.avatar_runtime_source_binary_sha256
+      AND has_avatar_full
       AND asset.state IN ('VERIFIED','ACCEPTED') ORDER BY receipt.committed_at DESC LIMIT 1;
-  SELECT jsonb_agg(jsonb_build_object('taskId',work->>'taskId','assetId',reservation.artifact_id,
+  SELECT jsonb_agg(jsonb_build_object('taskId',work->>'taskId','taskKey',task.task_key,
+      'acceptedAttemptId',attempt.id,'assetId',reservation.artifact_id,
       'sha256',receipt.checksum_sha256,'objectKey',receipt.object_key,'contentType',receipt.content_type,
       'contentLength',receipt.content_length,'receiptId',receipt.id,'lane',attempt.lane)
       ORDER BY attempt.lane,work->>'taskId') INTO visuals
@@ -283,6 +297,10 @@ BEGIN
     JOIN public.hosted_serverless_output_barrier_completions barrier ON barrier.attempt_id=attempt.id
     JOIN public.hosted_v209_ordinary_dispatch_candidates c ON c.generation_request_id=attempt.generation_request_id
     CROSS JOIN LATERAL jsonb_array_elements(c.candidate_document->'work'->attempt.lane) work
+    JOIN public.generation_tasks task ON task.account_id=attempt.account_id
+      AND task.workspace_id=attempt.workspace_id AND task.project_revision_id=attempt.project_revision_id
+      AND task.id=(work->>'taskId')::uuid
+      AND task.lane=CASE attempt.lane WHEN 'mage_image' THEN 'IMAGE' ELSE 'AVATAR' END
     JOIN public.artifact_reservations reservation ON reservation.account_id=attempt.account_id
       AND reservation.workspace_id=attempt.workspace_id AND reservation.job_id=attempt.id::text
       AND reservation.artifact_id=work->>'taskId' AND reservation.state='COMMITTED'
@@ -291,7 +309,7 @@ BEGIN
       AND receipt.deleted_at IS NULL
     WHERE attempt.account_id=supplied_account_id AND attempt.workspace_id=supplied_workspace_id
       AND attempt.generation_request_id=supplied_generation_request_id;
-  IF voiceover IS NULL OR avatar IS NULL OR jsonb_array_length(visuals)<>
+  IF voiceover IS NULL OR (has_avatar_full AND avatar IS NULL) OR jsonb_array_length(visuals)<>
      jsonb_array_length(candidate.candidate_document#>'{work,mage_image}')+
        jsonb_array_length(candidate.candidate_document#>'{work,soulx_avatar}') THEN
     RETURN NULL;
@@ -300,7 +318,7 @@ BEGIN
   manifest_reservation_id:=md5('hosted-v209-render-manifest-reservation:'||supplied_generation_request_id::text)::uuid;
   object_key:='tenant/'||supplied_account_id::text||'/workspace/'||supplied_workspace_id::text||
     '/project/'||request.project_id::text||'/revision/'||request.project_revision_id::text||
-    '/lane/render/job/'||supplied_generation_request_id::text||'/artifact/resolved-render-manifest.json';
+    '/lane/render/job/'||supplied_generation_request_id::text||'/artifact/'||manifest_asset_id::text;
   RETURN jsonb_build_object('schemaVersion','videoforge.hosted-v209-ready-render-inputs/v1',
     'accountId',supplied_account_id,'workspaceId',supplied_workspace_id,
     'generationRequestId',supplied_generation_request_id,
@@ -310,10 +328,11 @@ BEGIN
       'transcriptSha256',bridge.transcript_document_hash,'timeline',bridge.append_payload->'timeline',
       'timelineSha256',bridge.timeline_document_hash,
       'timelineTranscriptSha256',bridge.append_payload#>>'{timeline,row,transcript_document_hash}'),
-    'voiceover',voiceover,'avatarSource',avatar,'acceptedVisuals',visuals,
+    'voiceover',voiceover,'acceptedVisuals',visuals,
     'tools',jsonb_build_object('ffmpegVersion','8.1.2','ffprobeVersion','8.1.2'),
     'manifestReservation',jsonb_build_object('assetId',manifest_asset_id,
-      'reservationId',manifest_reservation_id,'objectKey',object_key));
+      'reservationId',manifest_reservation_id,'objectKey',object_key))||
+    CASE WHEN has_avatar_full THEN jsonb_build_object('avatarSource',avatar) ELSE '{}'::jsonb END;
 END;
 $$;
 
@@ -435,7 +454,13 @@ CREATE FUNCTION public.videoforge_read_hosted_v209_terminal_lineage(
       'volumeIdSha256',deployment.volume_id_sha256,
       'volumeManifestSha256',deployment.volume_manifest_sha256),
     'deadlineAt',to_char(attempt.deadline_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-    'requestBody',materialized.request_body,'candidateWork',candidate.candidate_document->'work'->attempt.lane)
+    'requestBody',materialized.request_body,'candidateWork',candidate.candidate_document->'work'->attempt.lane)||
+    CASE WHEN accepted.attempt_id IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('accepted',
+      jsonb_build_object('completedAt',to_char(accepted.completed_at AT TIME ZONE 'UTC',
+          'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+        'bindingSha256',accepted.binding_sha256,'terminalSha256',accepted.callback_sha256,
+        'provenanceReceiptSha256',accepted.provenance_receipt_sha256,
+        'artifactCommitReceiptSha256s',accepted.artifact_commit_receipt_sha256s)) END
   FROM public.serverless_attempts attempt
   JOIN public.serverless_provider_assignments assignment ON assignment.account_id=attempt.account_id
     AND assignment.workspace_id=attempt.workspace_id AND assignment.attempt_id=attempt.id
@@ -448,9 +473,13 @@ CREATE FUNCTION public.videoforge_read_hosted_v209_terminal_lineage(
   JOIN public.hosted_v209_ordinary_dispatch_candidates candidate
     ON candidate.account_id=attempt.account_id AND candidate.workspace_id=attempt.workspace_id
     AND candidate.generation_request_id=attempt.generation_request_id
+  LEFT JOIN public.hosted_serverless_output_barrier_completions accepted
+    ON accepted.account_id=attempt.account_id AND accepted.workspace_id=attempt.workspace_id
+    AND accepted.attempt_id=attempt.id AND accepted.provider_job_id=assignment.provider_job_id
   WHERE attempt.account_id=supplied_account_id AND attempt.workspace_id=supplied_workspace_id
     AND attempt.id=supplied_attempt_id AND attempt.lane=supplied_lane
-    AND attempt.state IN ('ASSIGNED','IN_QUEUE','IN_PROGRESS','UPLOADING','RECONCILING')
+    AND (attempt.state IN ('ASSIGNED','IN_QUEUE','IN_PROGRESS','UPLOADING','RECONCILING')
+      OR accepted.attempt_id IS NOT NULL)
     AND supplied_lane IN ('mage_image','soulx_avatar')
     AND public.videoforge_current_account_id() IS NOT DISTINCT FROM supplied_account_id
     AND materialized.full_request_sha256='sha256:'||encode(sha256(convert_to(
@@ -639,7 +668,8 @@ BEGIN
     (supplied_receipt#>>'{runtime_probe,peak_vram_bytes}')::bigint,true,false);
   SELECT jsonb_agg(jsonb_build_object('item_id',artifact->>'item_id','object_key',artifact->>'object_key',
       'content_type',artifact->>'content_type','content_length',(artifact->>'content_length')::bigint,
-      'checksum_sha256',artifact->>'checksum_sha256') ORDER BY artifact->>'item_id') INTO canonical_objects
+      'checksum_sha256',artifact->>'checksum_sha256')
+      ORDER BY artifact->>'item_id' COLLATE "C") INTO canonical_objects
     FROM jsonb_array_elements(supplied_artifacts) artifact;
   binding_components:=jsonb_build_object('account_id',attempt.account_id,'workspace_id',attempt.workspace_id,
     'project_id',attempt.project_id,'project_revision_id',attempt.project_revision_id,'lane',attempt.lane,

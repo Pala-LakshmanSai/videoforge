@@ -215,6 +215,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "hosted_cpu_job_events",
   "hosted_project_reviews",
   "media_worker_events",
+  "hosted_v209_span_audio_materializations",
+  "hosted_v209_ordinary_resolved_render_manifests",
 ] satisfies readonly RelationalTableName[]);
 
 const RESTORE_INSERT_TABLES = new Set<RelationalTableName>(RESTORE_INSERT_ORDER);

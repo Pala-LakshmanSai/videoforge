@@ -166,6 +166,8 @@ export const RELATIONAL_TABLE_NAMES = [
   "media_worker_input_objects",
   "media_worker_leases",
   "media_worker_events",
+  "hosted_v209_span_audio_materializations",
+  "hosted_v209_ordinary_resolved_render_manifests",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
@@ -193,6 +195,9 @@ export const NON_PORTABLE_TABLE_NAMES = [
   "hosted_pair_runtime_states",
   "hosted_pair_cleanup_observations",
   "hosted_provider_proof_keys",
+  "hosted_v209_ordinary_dispatch_candidates",
+  "hosted_v209_ordinary_lane_materializations",
+  "hosted_v209_qualified_activations",
 ] as const;
 
 /**

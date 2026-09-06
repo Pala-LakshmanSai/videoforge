@@ -296,17 +296,17 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
               EXISTS (
                 SELECT 1 FROM pg_trigger guard
                  WHERE guard.tgrelid = relation.oid
-                   AND guard.tgname = relation.relname || '_tenant_write_guard'
+                   AND guard.tgname = left(relation.relname || '_tenant_write_guard', 63)
               ) AS has_write_guard,
               EXISTS (
                 SELECT 1 FROM pg_policy policy
                  WHERE policy.polrelid = relation.oid
-                   AND policy.polname = relation.relname || '_tenant_rls'
+                   AND policy.polname = left(relation.relname || '_tenant_rls', 63)
               ) AS has_policy,
               EXISTS (
                 SELECT 1 FROM pg_policy policy
                  WHERE policy.polrelid = relation.oid
-                   AND policy.polname = relation.relname || '_owner_only'
+                   AND policy.polname = left(relation.relname || '_owner_only', 63)
               ) AS has_owner_only_policy
          FROM pg_class relation
          JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
@@ -354,7 +354,7 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
               EXISTS (
                 SELECT 1 FROM pg_trigger guard
                  WHERE guard.tgrelid = relation.oid
-                   AND guard.tgname = relation.relname || '_tenant_write_guard'
+                   AND guard.tgname = left(relation.relname || '_tenant_write_guard', 63)
               ) AS has_write_guard
          FROM pg_class relation
          JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace

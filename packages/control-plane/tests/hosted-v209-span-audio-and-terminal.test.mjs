@@ -144,4 +144,13 @@ test("0075 pins exact 48 kHz cadence and recomputes binding and terminal hashes"
   );
   assert.match(sql, /materialized\.full_request_sha256<>authority\.request_body_sha256/u);
   assert.match(sql, /current_account_id\(\) IS DISTINCT FROM supplied_account_id/u);
+  assert.match(sql, /'taskKey',task\.task_key/u);
+  assert.match(sql, /'acceptedAttemptId',attempt\.id/u);
+  assert.match(sql, /'\/artifact\/'\|\|manifest_asset_id::text/u);
+  assert.match(sql, /segment\.timeline_composition='AVATAR_FULL'/u);
+  assert.match(sql, /CASE WHEN has_avatar_full THEN jsonb_build_object\('avatarSource',avatar\)/u);
+  assert.match(sql, /ORDER BY artifact->>'item_id' COLLATE "C"/u);
+  assert.match(sql, /'bindingSha256',accepted\.binding_sha256/u);
+  assert.match(sql, /'terminalSha256',accepted\.callback_sha256/u);
+  assert.match(sql, /'artifactCommitReceiptSha256s',accepted\.artifact_commit_receipt_sha256s/u);
 });
