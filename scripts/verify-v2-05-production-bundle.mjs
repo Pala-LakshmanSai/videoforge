@@ -110,8 +110,10 @@ const expectedProductionImports = [
 ];
 const hostedAppSource = await readFile(hostedAppPath, "utf8");
 const hostedPromptRouteImport = 'import("./hosted-prompt-route")';
+const hostedV209DispatchImport = 'import("./hosted-v209-project-dispatch")';
 const hostedProductImport = 'import("./product")';
 const hostedPromptRouteImportOffset = hostedAppSource.indexOf(hostedPromptRouteImport);
+const hostedV209DispatchImportOffset = hostedAppSource.indexOf(hostedV209DispatchImport);
 const hostedProductImportOffset = hostedAppSource.indexOf(hostedProductImport);
 const forbiddenProductionSource = [
   "shared-app-fixture",
@@ -138,11 +140,13 @@ async function filesBelow(directory) {
 const failures = [];
 if (
   hostedPromptRouteImportOffset < 0 ||
+  hostedV209DispatchImportOffset < 0 ||
   hostedProductImportOffset < 0 ||
-  hostedPromptRouteImportOffset > hostedProductImportOffset
+  hostedPromptRouteImportOffset > hostedProductImportOffset ||
+  hostedV209DispatchImportOffset > hostedProductImportOffset
 ) {
   failures.push(
-    "production hosted route owner must dynamically route hosted-prompt-route before product",
+    "production hosted route owner must dynamically route hosted-prompt-route and V2-09 dispatch before product",
   );
 }
 if (
@@ -282,6 +286,41 @@ try {
     ).reduce((total, bytes) => total + bytes, 0);
     if (!Number.isSafeInteger(incrementalPromptBytes) || incrementalPromptBytes > 256 * 1024) {
       failures.push("Stage 5 incremental prompt closure exceeds the 256 KiB CPU-safety bound");
+    }
+  }
+  const hostedV209DispatchKey = Object.keys(workerManifest).find((key) =>
+    /(?:^|\/)hosted-v209-project-dispatch\.ts$/u.test(key),
+  );
+  if (!hostedV209DispatchKey || workerManifest[hostedV209DispatchKey]?.isDynamicEntry !== true) {
+    failures.push("V2-09 lacks its dedicated hosted GPU-dispatch dynamic entry");
+  } else {
+    const dispatchReachable = new Set();
+    const dispatchPending = [hostedV209DispatchKey];
+    while (dispatchPending.length > 0) {
+      const key = dispatchPending.pop();
+      if (typeof key !== "string" || dispatchReachable.has(key)) continue;
+      dispatchReachable.add(key);
+      const isStatic = staticallyReachable.has(key);
+      for (const importedKey of [
+        ...(workerManifest[key]?.imports ?? []),
+        ...(isStatic ? [] : (workerManifest[key]?.dynamicImports ?? [])),
+      ]) {
+        dispatchPending.push(importedKey);
+      }
+    }
+    const forbiddenDispatchClosure = [...dispatchReachable].filter((key) => {
+      const identities = [key, workerManifest[key]?.file ?? ""];
+      return identities.some((identity) => {
+        const basename = path.posix.basename(identity);
+        const broadProduct =
+          basename === "product.ts" || /^_?product(?:-[A-Za-z0-9_-]+)?\.js$/u.test(basename);
+        return broadProduct || /(?:^|\/)local(?:\/|$)|fixture/iu.test(identity);
+      });
+    });
+    if (forbiddenDispatchClosure.length > 0) {
+      failures.push(
+        `V2-09 GPU-dispatch closure reaches forbidden broad modules: ${forbiddenDispatchClosure.join(", ")}`,
+      );
     }
   }
   const hostedGenerationValidatorKey = Object.keys(workerManifest).find((key) =>

@@ -10,12 +10,6 @@ import {
 } from "./configuration";
 import { deriveCallbackToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
-import { handlePersonalWorkerRequest } from "./personal-worker";
-import {
-  commitAndScheduleV209ShortPair,
-  observeV209ShortAdmission,
-} from "./hosted-pair-live-wiring";
-import { freezeV209ShortLiveAdmission } from "../runtime/v209-short-live-cost";
 import { hostedServerlessCallbackDisabledResponse } from "./hosted-serverless-callback";
 import type { HostedAuthenticatedServerlessCallbackRoute } from "./hosted-serverless-callback-auth";
 import {
@@ -32,26 +26,13 @@ import {
   type HostedCpuSubmission,
   type HostedSpanAudioSubmission,
 } from "./submission";
-import { handleV213OperatorWorkflowStart } from "./v213-operator-workflow";
-import { handleV213PostConsumptionSelectionRequest } from "./v213-post-consumption-selection";
-import {
-  handleV213AcceptanceOperatorEvidenceRequest,
-  handleV213LiveOperatorRequest,
-  type V213OperatorEvidenceRouteDependencies,
-  type V213OperatorRouteDependencies,
+import type {
+  V213OperatorEvidenceRouteDependencies,
+  V213OperatorRouteDependencies,
 } from "./v213-live-operator-route";
-import {
-  handleV213ResolvedRenderManifestRequest,
-  type V213ResolvedRenderManifestReadDependencies,
-} from "./v213-resolved-render-manifest-route";
-import { createV213WorkerLiveAcceptanceExecute } from "./v213-worker-live-execution";
+import type { V213ResolvedRenderManifestReadDependencies } from "./v213-resolved-render-manifest-route";
 import { handleHostedInviteRedemption, HOSTED_INVITE_REDEMPTION_PATH } from "./invite-redemption";
 import { exactHostedCpuCancellationConfirmation } from "./hosted-cpu-cancellation";
-import {
-  handleHostedV209ProjectDispatch,
-  resumeHostedV209ProjectDispatch,
-} from "./hosted-v209-project-dispatch";
-import { createHostedV209SpanAudioCoordinator } from "./hosted-v209-span-audio";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -107,10 +88,25 @@ interface HostedQueueRow extends Record<string, unknown> {
 
 export function hostedCpuPrimaryOutput(kind: "ASR" | "SPAN_AUDIO" | "RENDER") {
   return kind === "ASR"
-    ? Object.freeze({ lane: "input", suffix: "transcript", contentType: "application/json", maxBytes: 16 * 1024 ** 2 })
+    ? Object.freeze({
+        lane: "input",
+        suffix: "transcript",
+        contentType: "application/json",
+        maxBytes: 16 * 1024 ** 2,
+      })
     : kind === "SPAN_AUDIO"
-      ? Object.freeze({ lane: "input", suffix: "span-audio", contentType: "audio/wav", maxBytes: 128 * 1024 ** 2 })
-      : Object.freeze({ lane: "render", suffix: "final-mp4", contentType: "video/mp4", maxBytes: 10 * 1024 ** 3 });
+      ? Object.freeze({
+          lane: "input",
+          suffix: "span-audio",
+          contentType: "audio/wav",
+          maxBytes: 128 * 1024 ** 2,
+        })
+      : Object.freeze({
+          lane: "render",
+          suffix: "final-mp4",
+          contentType: "video/mp4",
+          maxBytes: 10 * 1024 ** 3,
+        });
 }
 
 function checksumFromR2(value?: ArrayBuffer): string | null {
@@ -380,7 +376,8 @@ async function handleCpuSubmission(
   if (!trusted && (!Number.isSafeInteger(length) || length < 1 || length > 1_048_576)) {
     return json({ error: { code: "CPU_SUBMISSION_REJECTED" } }, 400);
   }
-  let submission: HostedCpuSubmission | HostedSpanAudioSubmission | null = trusted?.submission ?? null;
+  let submission: HostedCpuSubmission | HostedSpanAudioSubmission | null =
+    trusted?.submission ?? null;
   if (!trusted) {
     let raw: unknown;
     try {
@@ -761,9 +758,12 @@ export async function scheduleHostedSpanAudioSubmission(
       expectedAttemptId: input.expectedAttemptId,
     },
   );
-  const payload = await result.json() as Record<string, unknown>;
-  if (result.status >= 400 || payload.schema_version !== "videoforge-hosted-cpu-attempt/v1" ||
-    typeof payload.state !== "string") {
+  const payload = (await result.json()) as Record<string, unknown>;
+  if (
+    result.status >= 400 ||
+    payload.schema_version !== "videoforge-hosted-cpu-attempt/v1" ||
+    typeof payload.state !== "string"
+  ) {
     throw new Error("HOSTED_V209_SPAN_SCHEDULE_REJECTED");
   }
   return Object.freeze({ state: payload.state });
@@ -780,58 +780,33 @@ export async function scheduleHostedRenderSubmission(
 ): Promise<{ readonly state: string }> {
   if (input.submission.kind !== "RENDER") throw new Error("HOSTED_V209_RENDER_SCHEDULE_REJECTED");
   const result = await handleCpuSubmission(
-    new Request(config.publicOrigin, { method: "POST" }), environment, config, { waitUntil() {} },
-    { scope: { account_id: input.accountId, workspace_id: input.workspaceId }, submission: input.submission },
+    new Request(config.publicOrigin, { method: "POST" }),
+    environment,
+    config,
+    { waitUntil() {} },
+    {
+      scope: { account_id: input.accountId, workspace_id: input.workspaceId },
+      submission: input.submission,
+    },
   );
-  const payload = await result.json() as Record<string, unknown>;
-  if (result.status >= 400 || payload.schema_version !== "videoforge-hosted-cpu-attempt/v1" ||
-    typeof payload.state !== "string") throw new Error("HOSTED_V209_RENDER_SCHEDULE_REJECTED");
+  const payload = (await result.json()) as Record<string, unknown>;
+  if (
+    result.status >= 400 ||
+    payload.schema_version !== "videoforge-hosted-cpu-attempt/v1" ||
+    typeof payload.state !== "string"
+  )
+    throw new Error("HOSTED_V209_RENDER_SCHEDULE_REJECTED");
   return Object.freeze({ state: payload.state });
 }
 
-function createHostedV209SpanAudioLiveCoordinator(
+async function createHostedV209SpanAudioLiveCoordinator(
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
 ) {
-  const databaseCall = async (sql: string, parameters: readonly string[]) => {
-    const pool = createNeonPool(config.neon.databaseUrl);
-    try {
-      const result = await createNeonExecutor(pool).transaction(async (transaction) => {
-        await transaction.query("SELECT set_config($1,$2,true)", [
-          "videoforge.account_id",
-          parameters[0]!,
-        ]);
-        return transaction.query<{ value: unknown }>(sql, parameters);
-      });
-      if (result.rows.length !== 1) throw new Error("HOSTED_V209_SPAN_DATABASE_RESULT_INVALID");
-      return result.rows[0]!.value;
-    } finally {
-      await pool.end();
-    }
-  };
-  return createHostedV209SpanAudioCoordinator({
-    loadJobs: (identity) => databaseCall(
-      `SELECT public.videoforge_materialize_hosted_v209_span_audio_jobs(
-         $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS value`,
-      [identity.accountId, identity.workspaceId, identity.userId, identity.projectId],
-    ),
-    schedule: async (identity, submission, expectedAttemptId) =>
-      scheduleHostedSpanAudioSubmission(environment, config, {
-        accountId: identity.accountId,
-        workspaceId: identity.workspaceId,
-        submission,
-        expectedAttemptId,
-      }),
-    finalize: (input) => databaseCall(
-      `SELECT public.videoforge_finalize_hosted_v209_span_audio(
-         $1::uuid,$2::uuid,$3::uuid,$4::jsonb) AS value`,
-      [input.accountId, input.workspaceId, input.attemptId, canonicalJson(input.resultDocument)],
-    ),
-    resumePair: async (identity) => {
-      const result = await resumeHostedV209ProjectDispatch(environment, config, identity);
-      if (!result.ok) throw new Error("HOSTED_V209_SPAN_PAIR_RESUME_REJECTED");
-    },
-  });
+  const { createHostedV209SpanAudioLiveCoordinator: createCoordinator } = await import(
+    "./hosted-v209-span-live"
+  );
+  return createCoordinator(environment, config, scheduleHostedSpanAudioSubmission);
 }
 
 async function hostedSession(
@@ -1154,13 +1129,14 @@ export async function startHostedCpuRecoveryWorkflow(
   return workflow.create({ id: `recovery-${crypto.randomUUID()}`, params });
 }
 
-const hostedPairDispatchDependencies = Object.freeze({
-  createPool: createNeonPool,
-  createExecutor: createNeonExecutor,
-  session: hostedSession,
-  observeAdmission: observeV209ShortAdmission,
-  commitAndSchedule: commitAndScheduleV209ShortPair,
-});
+interface HostedPairDispatchDependencies {
+  readonly createPool: typeof createNeonPool;
+  readonly createExecutor: typeof createNeonExecutor;
+  readonly session: typeof hostedSession;
+  readonly observeAdmission: typeof import("./hosted-pair-live-wiring").observeV209ShortAdmission;
+  readonly commitAndSchedule: typeof import("./hosted-pair-live-wiring").commitAndScheduleV209ShortPair;
+  readonly freezeAdmission?: typeof import("../runtime/v209-short-live-cost").freezeV209ShortLiveAdmission;
+}
 
 export async function handleHostedPairDispatch(
   request: Request,
@@ -1168,15 +1144,30 @@ export async function handleHostedPairDispatch(
   config: ReturnType<typeof hostedRuntimeConfiguration>,
   executionContext: HostedExecutionContext,
   generationRequestId: string,
-  dependencies: typeof hostedPairDispatchDependencies = hostedPairDispatchDependencies,
+  dependencies?: HostedPairDispatchDependencies,
 ): Promise<Response> {
   if (config.gpuTransport !== "QUALIFIED_EXACT" || !config.gpuActivation)
     return json({ error: { code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED" } }, 503);
   if (!sameOriginBrowserWrite(request, config))
     return json({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  const pool = dependencies.createPool(config.neon.databaseUrl);
+  let resolvedDependencies = dependencies;
+  if (!resolvedDependencies) {
+    const [wiring, cost] = await Promise.all([
+      import("./hosted-pair-live-wiring"),
+      import("../runtime/v209-short-live-cost"),
+    ]);
+    resolvedDependencies = Object.freeze({
+      createPool: createNeonPool,
+      createExecutor: createNeonExecutor,
+      session: hostedSession,
+      observeAdmission: wiring.observeV209ShortAdmission,
+      commitAndSchedule: wiring.commitAndScheduleV209ShortPair,
+      freezeAdmission: cost.freezeV209ShortLiveAdmission,
+    });
+  }
+  const pool = resolvedDependencies.createPool(config.neon.databaseUrl);
   try {
-    const session = await dependencies.session(request, config, pool, executionContext);
+    const session = await resolvedDependencies.session(request, config, pool, executionContext);
     if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
     const scoped = await pool.query(`SELECT * FROM videoforge_hosted_session_scope($1)`, [
       session.session.token,
@@ -1222,16 +1213,21 @@ export async function handleHostedPairDispatch(
       value.renderPlan === null
     )
       return json({ error: { code: "HOSTED_PAIR_REQUEST_INVALID" } }, 400);
-    const reconcilerPool = dependencies.createPool(environment.VIDEOFORGE_RECONCILER_DATABASE_URL!);
+    const reconcilerPool = resolvedDependencies.createPool(
+      environment.VIDEOFORGE_RECONCILER_DATABASE_URL!,
+    );
     let scheduled;
     try {
-      const runtimeDatabase = dependencies.createExecutor(pool);
-      const observation = await dependencies.observeAdmission(environment, runtimeDatabase);
-      const admission = await freezeV209ShortLiveAdmission(value.renderPlan, observation);
-      scheduled = await dependencies.commitAndSchedule(
+      const runtimeDatabase = resolvedDependencies.createExecutor(pool);
+      const observation = await resolvedDependencies.observeAdmission(environment, runtimeDatabase);
+      const freezeAdmission =
+        resolvedDependencies.freezeAdmission ??
+        (await import("../runtime/v209-short-live-cost")).freezeV209ShortLiveAdmission;
+      const admission = await freezeAdmission(value.renderPlan, observation);
+      scheduled = await resolvedDependencies.commitAndSchedule(
         environment,
         runtimeDatabase,
-        dependencies.createExecutor(reconcilerPool),
+        resolvedDependencies.createExecutor(reconcilerPool),
         {
           approvalId: value.approvalId as string,
           approvalSha256: value.approvalSha256,
@@ -1345,7 +1341,6 @@ export async function handleHostedRequest(
   } catch {
     return json({ error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } }, 503);
   }
-  const spanAudio = createHostedV209SpanAudioLiveCoordinator(environment, config);
   const url = new URL(request.url);
   if (url.pathname === HOSTED_INVITE_REDEMPTION_PATH) {
     const pool = createNeonPool(config.neon.databaseUrl);
@@ -1371,48 +1366,77 @@ export async function handleHostedRequest(
       await pool.end();
     }
   }
-  const resolvedRenderManifest = await handleV213ResolvedRenderManifestRequest(
-    request,
-    environment,
-    config,
-    configurationDependencies.resolvedRenderManifestRouteDependencies,
-    configurationDependencies.now,
-  );
-  if (resolvedRenderManifest) return resolvedRenderManifest;
-  const operatorEvidence = await handleV213AcceptanceOperatorEvidenceRequest(
-    request,
-    environment,
-    config,
-    configurationDependencies.operatorEvidenceRouteDependencies,
-    configurationDependencies.now,
-  );
-  if (operatorEvidence) return operatorEvidence;
-  const liveAcceptance = await handleV213LiveOperatorRequest(
-    request,
-    environment,
-    config,
-    configurationDependencies.liveAcceptanceExecute ??
-      createV213WorkerLiveAcceptanceExecute(environment, config),
-    configurationDependencies.liveAcceptanceRouteDependencies,
-  );
-  if (liveAcceptance) return liveAcceptance;
-  const operatorWorkflow = await handleV213OperatorWorkflowStart(request, environment, config);
-  if (operatorWorkflow) return operatorWorkflow;
-  const postConsumptionSelection = await handleV213PostConsumptionSelectionRequest(
-    request,
-    environment,
-    config,
-    executionContext,
-  );
-  if (postConsumptionSelection) return postConsumptionSelection;
-  const personalWorkerResponse = await handlePersonalWorkerRequest(
-    request,
-    environment,
-    executionContext,
-    config,
-    spanAudio,
-  );
-  if (personalWorkerResponse) return personalWorkerResponse;
+  if (url.pathname === "/api/operator/v2-13/resolved-render-manifest") {
+    const { handleV213ResolvedRenderManifestRequest } = await import(
+      "./v213-resolved-render-manifest-route"
+    );
+    return (await handleV213ResolvedRenderManifestRequest(
+      request,
+      environment,
+      config,
+      configurationDependencies.resolvedRenderManifestRouteDependencies,
+      configurationDependencies.now,
+    ))!;
+  }
+  if (url.pathname === "/api/operator/v2-13/acceptance-evidence") {
+    const { handleV213AcceptanceOperatorEvidenceRequest } = await import(
+      "./v213-live-operator-route"
+    );
+    return (await handleV213AcceptanceOperatorEvidenceRequest(
+      request,
+      environment,
+      config,
+      configurationDependencies.operatorEvidenceRouteDependencies,
+      configurationDependencies.now,
+    ))!;
+  }
+  if (url.pathname === "/api/operator/v2-13/live-acceptance") {
+    const [{ handleV213LiveOperatorRequest }, { createV213WorkerLiveAcceptanceExecute }] =
+      await Promise.all([
+        import("./v213-live-operator-route"),
+        import("./v213-worker-live-execution"),
+      ]);
+    return (await handleV213LiveOperatorRequest(
+      request,
+      environment,
+      config,
+      configurationDependencies.liveAcceptanceExecute ??
+        createV213WorkerLiveAcceptanceExecute(environment, config),
+      configurationDependencies.liveAcceptanceRouteDependencies,
+    ))!;
+  }
+  if (
+    url.pathname === "/api/operator/v2-13/pair-workflows" ||
+    url.pathname.startsWith("/api/operator/v2-13/pair-workflows/")
+  ) {
+    const { handleV213OperatorWorkflowStart } = await import("./v213-operator-workflow");
+    return (await handleV213OperatorWorkflowStart(request, environment, config))!;
+  }
+  if (url.pathname === "/api/v2/hosted/v213/materialization-selection") {
+    const { handleV213PostConsumptionSelectionRequest } = await import(
+      "./v213-post-consumption-selection"
+    );
+    return (await handleV213PostConsumptionSelectionRequest(
+      request,
+      environment,
+      config,
+      executionContext,
+    ))!;
+  }
+  if (/^\/api\/v2\/media-worker(?:s|\/|-)/u.test(url.pathname)) {
+    const [{ handlePersonalWorkerRequest }, spanAudio] = await Promise.all([
+      import("./personal-worker"),
+      createHostedV209SpanAudioLiveCoordinator(environment, config),
+    ]);
+    const personalWorkerResponse = await handlePersonalWorkerRequest(
+      request,
+      environment,
+      executionContext,
+      config,
+      spanAudio,
+    );
+    if (personalWorkerResponse) return personalWorkerResponse;
+  }
   if (
     request.method === "POST" &&
     /^\/api\/v2\/hosted\/projects\/[0-9a-f-]+\/prompts$/u.test(url.pathname)
@@ -1421,15 +1445,22 @@ export async function handleHostedRequest(
     const promptResponse = await handleHostedPromptRequest(request, config, executionContext);
     if (promptResponse) return promptResponse;
   }
-  const v209DispatchResponse = await handleHostedV209ProjectDispatch(
-    request,
-    environment,
-    config,
-    executionContext,
-    undefined,
-    spanAudio,
-  );
-  if (v209DispatchResponse) return v209DispatchResponse;
+  if (
+    request.method === "POST" &&
+    /^\/api\/v2\/hosted\/projects\/[0-9a-f-]+\/gpu-dispatch$/u.test(url.pathname)
+  ) {
+    const { handleHostedV209ProjectDispatch } = await import("./hosted-v209-project-dispatch");
+    const spanAudio = await createHostedV209SpanAudioLiveCoordinator(environment, config);
+    const v209DispatchResponse = await handleHostedV209ProjectDispatch(
+      request,
+      environment,
+      config,
+      executionContext,
+      undefined,
+      spanAudio,
+    );
+    if (v209DispatchResponse) return v209DispatchResponse;
+  }
   const { handleHostedProductRequest } = await import("./product");
   const productResponse = await handleHostedProductRequest(
     request,

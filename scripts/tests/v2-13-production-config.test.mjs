@@ -320,7 +320,11 @@ async function productionBundle(workerSource, clientSource, options = {}) {
   const workerManifest = {
     "_worker-common.js": {
       file: "assets/worker-common.js",
-      dynamicImports: ["src/server/hosted/hosted-prompt-route.ts", "_product.js"],
+      dynamicImports: [
+        "src/server/hosted/hosted-prompt-route.ts",
+        "src/server/hosted/hosted-v209-project-dispatch.ts",
+        "_product.js",
+      ],
     },
     "_product.js": {
       file: "assets/product.js",
@@ -346,6 +350,11 @@ async function productionBundle(workerSource, clientSource, options = {}) {
       isDynamicEntry: true,
       imports: ["_worker-common.js"],
     },
+    "src/server/hosted/hosted-v209-project-dispatch.ts": {
+      file: "assets/hosted-v209-project-dispatch.js",
+      isDynamicEntry: true,
+      imports: ["_worker-common.js"],
+    },
     "virtual:cloudflare/worker-entry": {
       file: "index.js",
       isEntry: true,
@@ -359,6 +368,8 @@ async function productionBundle(workerSource, clientSource, options = {}) {
     "generation-coordinator.js": "const coordinator = true;\n",
     "hosted-generation-contract-validators.js": "const planningValidators = true;\n",
     "hosted-prompt-route.js": options.promptRouteSource ?? "const promptRoute = true;\n",
+    "hosted-v209-project-dispatch.js":
+      options.v209DispatchSource ?? "const hostedV209Dispatch = true;\n",
     ...(options.extraAssets ?? {}),
   };
   await mkdir(path.join(workerDirectory, "assets"), { recursive: true });
@@ -459,6 +470,33 @@ test("bundle firewall rejects broad modules from the Stage 5 prompt closure", as
       });
       assert.notEqual(result.status, 0, forbidden.key);
       assert.match(result.stderr, /Stage 5 prompt closure reaches forbidden broad modules/u);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+});
+
+test("bundle firewall rejects broad modules from the V2-09 GPU-dispatch closure", async () => {
+  for (const forbidden of [
+    { key: "_product.js", file: null },
+    { key: "src/server/local/provider.ts", file: "local-provider.js" },
+    { key: "src/server/hosted/fixture-router.ts", file: "fixture-router.js" },
+  ]) {
+    const directory = await productionBundle("const worker = true;\n", "const client = true;\n", {
+      mutateManifest(manifest) {
+        manifest["src/server/hosted/hosted-v209-project-dispatch.ts"].imports.push(forbidden.key);
+        if (forbidden.file) manifest[forbidden.key] = { file: `assets/${forbidden.file}` };
+      },
+      extraAssets: forbidden.file ? { [forbidden.file]: "const forbidden = true;\n" } : {},
+    });
+    try {
+      const result = spawnSync(process.execPath, [bundleVerifier], {
+        cwd: root,
+        encoding: "utf8",
+        env: { ...process.env, VIDEOFORGE_BUNDLE_DIR: path.basename(directory) },
+      });
+      assert.notEqual(result.status, 0, forbidden.key);
+      assert.match(result.stderr, /V2-09 GPU-dispatch closure reaches forbidden broad modules/u);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

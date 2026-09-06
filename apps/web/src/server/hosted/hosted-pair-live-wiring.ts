@@ -40,10 +40,6 @@ import {
 } from "../runtime/v209-short-live-cost";
 import type { V209OrdinaryLiveAdmission } from "../runtime/v209-ordinary-live-cost";
 import { HostedR2Signer } from "./r2";
-import {
-  createHostedV209TerminalOutputIngestor,
-  HostedSqlFunctionV209TerminalOutputStore,
-} from "./hosted-v209-terminal-output-ingestor";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const ENDPOINT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$/u;
@@ -1022,6 +1018,8 @@ export async function createHostedPairLiveComposition(
   if (!environment.PRIVATE_ARTIFACTS) {
     throw new HostedDispatchCoordinationError("HOSTED_PAIR_PROVENANCE_RECEIPT_BINDINGS_MISSING");
   }
+  const { createHostedV209TerminalOutputIngestor, HostedSqlFunctionV209TerminalOutputStore } =
+    await import("./hosted-v209-terminal-output-ingestor");
   const terminalOutput = createHostedV209TerminalOutputIngestor({
     database: reconcilerDatabase,
     bucket: environment.PRIVATE_ARTIFACTS,

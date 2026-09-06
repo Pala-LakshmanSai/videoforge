@@ -5,18 +5,12 @@ import {
   type HostedRuntimeEnvironment,
 } from "../src/server/hosted/configuration";
 import { hostedPairProductionBindingState } from "../src/server/hosted/hosted-pair-production-composition";
-import {
-  createHostedPairLiveComposition,
-  type HostedPairLiveEnvironment,
-  type HostedPairWorkflowParameters,
+import type {
+  HostedPairLiveEnvironment,
+  HostedPairWorkflowParameters,
 } from "../src/server/hosted/hosted-pair-live-wiring";
 import { createNeonExecutor, createNeonPool } from "../src/server/hosted/neon";
-import { V213SqlAcceptanceWorkflowPort } from "../src/server/hosted/v213-acceptance-workflow-production";
-import {
-  parseV213AcceptanceWorkflowParameters,
-  runV213DatabaseAcceptanceWorkflow,
-  type V213AcceptanceWorkflowParameters,
-} from "../src/server/hosted/v213-acceptance-workflow-runner";
+import type { V213AcceptanceWorkflowParameters } from "../src/server/hosted/v213-acceptance-workflow-runner";
 
 type Environment = HostedRuntimeEnvironment & HostedPairLiveEnvironment;
 type WorkflowParameters = HostedPairWorkflowParameters | V213AcceptanceWorkflowParameters;
@@ -44,19 +38,27 @@ function scope(value: WorkflowParameters): HostedPairWorkflowParameters {
  * 0043 Mage-then-SoulX boundary; later steps only observe, cancel exact known jobs, and settle. */
 export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, WorkflowParameters> {
   async run(event: Readonly<WorkflowEvent<WorkflowParameters>>, step: WorkflowStep) {
-    const acceptance =
+    const acceptanceCandidate =
       event.payload &&
       typeof event.payload === "object" &&
       "kind" in event.payload &&
-      event.payload.kind === "V213_DATABASE_ACCEPTANCE"
-        ? parseV213AcceptanceWorkflowParameters(event.payload)
-        : null;
-    const pair = acceptance ? null : scope(event.payload);
+      event.payload.kind === "V213_DATABASE_ACCEPTANCE";
+    const acceptance = acceptanceCandidate
+      ? (
+          await import("../src/server/hosted/v213-acceptance-workflow-runner")
+        ).parseV213AcceptanceWorkflowParameters(event.payload)
+      : null;
+    const pair = acceptanceCandidate ? null : scope(event.payload);
     if (hostedPairProductionBindingState(this.env).state === "DISABLED_UNQUALIFIED")
       return Object.freeze({ state: "DISABLED_UNQUALIFIED" as const });
     const config = hostedRuntimeConfiguration(this.env);
 
     if (acceptance) {
+      const [{ V213SqlAcceptanceWorkflowPort }, { runV213DatabaseAcceptanceWorkflow }] =
+        await Promise.all([
+          import("../src/server/hosted/v213-acceptance-workflow-production"),
+          import("../src/server/hosted/v213-acceptance-workflow-runner"),
+        ]);
       const runtimePool = createNeonPool(this.env.DATABASE_URL!);
       const reconcilerPool = createNeonPool(this.env.VIDEOFORGE_RECONCILER_DATABASE_URL!);
       try {
@@ -85,9 +87,11 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
           const reconcilerDatabase = createNeonExecutor(reconcilerPool);
           if (!this.env.PRIVATE_ARTIFACTS)
             throw new Error("Hosted pair render artifact binding is missing.");
-          const { createHostedV209RenderHandoff } = await import(
-            "../src/server/hosted/hosted-v209-render-handoff"
-          );
+          const [{ createHostedPairLiveComposition }, { createHostedV209RenderHandoff }] =
+            await Promise.all([
+              import("../src/server/hosted/hosted-pair-live-wiring"),
+              import("../src/server/hosted/hosted-v209-render-handoff"),
+            ]);
           const renderHandoff = createHostedV209RenderHandoff({
             database: reconcilerDatabase,
             runtimeDatabase,
