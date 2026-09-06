@@ -152,6 +152,29 @@ test("0076 derives and materializes one exact tenant SYSTEM avatar input referen
     assert.equal(workspace.rows[0].value.referenceRequired, false);
 
     await convertTenantAvatarToSystemClone(executor);
+    await expectDatabaseError(
+      executor.query(
+        `INSERT INTO artifact_reservations(id,account_id,workspace_id,project_id,
+           project_revision_id,asset_id,lane,job_id,artifact_id,object_key,method,content_type,
+           content_length,checksum_sha256,expires_at,max_uses,used_count,state,retention_class,
+           deletion_owner_account_id) VALUES($1,$2,$3,$4,$5,$6,'INPUT',$7,$8,$9,'GET',
+           'image/png',4096,$10,transaction_timestamp()+interval '1 hour',1,1,'COMMITTED',
+           'PROJECT',$2)`,
+        [
+          uuid(76009),
+          IDS.accountA,
+          IDS.workspaceA,
+          IDS.projectA,
+          IDS.revisionA,
+          IDS.avatarRuntimeA,
+          `v209-system-avatar-${IDS.revisionA}`,
+          IDS.avatarRuntimeA,
+          SYSTEM_OBJECT_KEY,
+          SYSTEM_RUNTIME_SHA256,
+        ],
+      ),
+      "23514",
+    );
     const first = await executor.query(
       `SELECT public.videoforge_materialize_hosted_v209_system_avatar_reference($1,$2,$3,$4) AS value`,
       [IDS.accountA, IDS.workspaceA, IDS.userA, IDS.projectA],
@@ -161,6 +184,16 @@ test("0076 derives and materializes one exact tenant SYSTEM avatar input referen
     assert.equal(first.rows[0].value.objectKey, SYSTEM_OBJECT_KEY);
     assert.equal(first.rows[0].value.checksumSha256, SYSTEM_RUNTIME_SHA256);
     assert.equal(first.rows[0].value.replayed, false);
+    const candidateReservation = await executor.query(
+      `SELECT public.videoforge_hosted_v209_uuid(
+         'input-reservation',$1::uuid,'avatar-source') AS id`,
+      [GENERATION_REQUEST_ID],
+    );
+    assert.equal(
+      first.rows[0].value.reservationId,
+      candidateReservation.rows[0].id,
+      "the durable SYSTEM reference must use the exact 0074 candidate reservation",
+    );
 
     const stored = await executor.query(
       `SELECT reservation.method,reservation.lane,reservation.state,reservation.project_revision_id,
@@ -229,6 +262,18 @@ test("0076 keeps the SYSTEM exception narrow and the ready-render marker DB-owne
     /videoforge_is_hosted_v209_system_avatar_reference\(reservation\.account_id/u,
   );
   assert.doesNotMatch(source, /signed_url|authorization|secret|token_ciphertext/iu);
+  const repair = await readFile(
+    new URL(
+      "../migrations/0077_hosted_v209_system_avatar_candidate_reservation.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(
+    repair,
+    /videoforge_hosted_v209_uuid\(\s*'input-reservation',target\.generation_request_id,'avatar-source'\)/u,
+  );
+  assert.doesNotMatch(repair, /hosted-v209-system-avatar-reservation:/u);
 });
 
 test("0076 SYSTEM reference receipts survive a secret-free metadata backup and restore", async () => {

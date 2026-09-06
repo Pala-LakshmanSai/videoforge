@@ -456,6 +456,12 @@
       "name": "hosted_v209_system_avatar_reference",
       "filename": "0076_hosted_v209_system_avatar_reference.sql",
       "sha256": "sha256:878039c43152f4c8938d3b3273d9871894d03823f643f3c4b0b4005c53c745c5"
+    },
+    {
+      "version": 77,
+      "name": "hosted_v209_system_avatar_candidate_reservation",
+      "filename": "0077_hosted_v209_system_avatar_candidate_reservation.sql",
+      "sha256": "sha256:5afce995259d8e717135648c3c10bfa7813da79d33347cf840d90cd3eb06f213"
     }
   ]
 }
