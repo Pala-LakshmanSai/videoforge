@@ -92,6 +92,14 @@ test("the hosted runtime can append through the exact function but has no direct
   ]) {
     assert.match(source, pattern);
   }
+  const v209RuntimeSignatures = [
+    "videoforge_load_hosted_gpu_activation_v2()",
+    "videoforge_materialize_hosted_v209_ordinary_dispatch(uuid,uuid,uuid,uuid)",
+    "videoforge_commit_hosted_v209_ordinary_pair(uuid,uuid,uuid,uuid,jsonb)",
+    "videoforge_load_hosted_v209_ordinary_lane_materialization(uuid,uuid,uuid,text)",
+    "videoforge_commit_hosted_v209_ordinary_lane_materialization(uuid,uuid,uuid,text,uuid,text,jsonb,text)",
+    "videoforge_begin_hosted_v209_ordinary_send(uuid,uuid,uuid,text,uuid,text,text)",
+  ];
   for (const signature of [
     "videoforge_prepare_hosted_voiceover_context(jsonb)",
     "videoforge_complete_hosted_voiceover_context(jsonb)",
@@ -104,8 +112,18 @@ test("the hosted runtime can append through the exact function but has no direct
     "videoforge_fail_hosted_prompt_run(uuid,text,text,boolean,bigint)",
     "videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)",
     "videoforge_reconcile_unknown_hosted_voiceover_context(jsonb)",
+    ...v209RuntimeSignatures,
   ]) {
     assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature));
+  }
+  const compactGrantSource = source.replace(/\s+/gu, "");
+  for (const signature of v209RuntimeSignatures) {
+    assert.ok(
+      compactGrantSource.includes(
+        `GRANTEXECUTEONFUNCTIONpublic.${signature}TO:"runtime_role";`,
+      ),
+      `missing exact runtime grant for ${signature}`,
+    );
   }
   assert.doesNotMatch(
     source,
@@ -122,6 +140,31 @@ test("the hosted runtime can append through the exact function but has no direct
   assert.doesNotMatch(
     source,
     /GRANT\s+[^;\n]*(?:SELECT|INSERT|UPDATE|DELETE)[^;\n]*\bON\s+hosted_paid_dispatch_(?:approvals|claims)\b/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /GRANT\s+[^;\n]*(?:SELECT|INSERT|UPDATE|DELETE)[^;\n]*\bON\s+hosted_v209_(?:ordinary_dispatch_candidates|qualified_activations|ordinary_lane_materializations)\b/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /GRANT EXECUTE ON FUNCTION public\.videoforge_import_hosted_v209_qualified_activation\(jsonb\)[\s\S]*?TO :"runtime_role";/u,
+  );
+  assert.ok(
+    !EXPECTED_RUNTIME_FUNCTIONS.includes(
+      "videoforge_import_hosted_v209_qualified_activation(jsonb)",
+    ),
+  );
+  const grantStatements = source
+    .split(";")
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.startsWith("GRANT "));
+  assert.ok(
+    grantStatements.every(
+      (statement) =>
+        !/\bhosted_v209_(?:ordinary_dispatch_candidates|qualified_activations|ordinary_lane_materializations)\b/u.test(
+          statement,
+        ),
+    ),
   );
   assert.doesNotMatch(
     source,

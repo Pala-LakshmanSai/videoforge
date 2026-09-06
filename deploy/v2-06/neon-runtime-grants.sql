@@ -154,6 +154,33 @@ GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_pair_activation_v2(uuid,
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_gpu_activation_v1()
 TO :"runtime_role";
+-- Migration 0074 exposes the V2-09 ordinary production path only through tenant-scoped,
+-- fail-closed SECURITY DEFINER routines.  The first transaction creates a non-sendable pair;
+-- each lane becomes sendable only after its exact signed full worker request is durably bound.
+-- Runtime receives no direct access to the activation, candidate, or materialization tables and
+-- cannot import qualification evidence.
+GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_gpu_activation_v2()
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_materialize_hosted_v209_ordinary_dispatch(
+  uuid, uuid, uuid, uuid
+)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_commit_hosted_v209_ordinary_pair(
+  uuid, uuid, uuid, uuid, jsonb
+)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_v209_ordinary_lane_materialization(
+  uuid, uuid, uuid, text
+)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_commit_hosted_v209_ordinary_lane_materialization(
+  uuid, uuid, uuid, text, uuid, text, jsonb, text
+)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_begin_hosted_v209_ordinary_send(
+  uuid, uuid, uuid, text, uuid, text, text
+)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_claim_v213_workflow_start(jsonb)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_complete_v213_workflow_start(jsonb)
