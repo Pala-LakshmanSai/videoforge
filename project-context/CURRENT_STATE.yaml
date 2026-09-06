@@ -566,7 +566,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. Complete canonical verification and context audit for V2-09 GHCR repair source 7697707e2202be357593f187c6371d67a5dee5d9, then request fresh exact replacement authority for one bounded read-only preflight from a clean detached or separate worktree at that executable source."
+  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. Independently audit the canonical-green context successor for V2-09 GHCR repair source 7697707e2202be357593f187c6371d67a5dee5d9, then request fresh exact replacement authority for one bounded read-only preflight from a clean detached or separate worktree at that executable source."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
