@@ -101,6 +101,7 @@ test("the hosted runtime can append through the exact function but has no direct
     "videoforge_begin_hosted_v209_ordinary_send(uuid,uuid,uuid,text,uuid,text,text)",
     "videoforge_materialize_hosted_v209_span_audio_jobs(uuid,uuid,uuid,uuid)",
     "videoforge_finalize_hosted_v209_span_audio(uuid,uuid,uuid,jsonb)",
+    "videoforge_materialize_hosted_v209_system_avatar_reference(uuid,uuid,uuid,uuid)",
   ];
   for (const signature of [
     "videoforge_prepare_hosted_voiceover_context(jsonb)",
@@ -121,9 +122,7 @@ test("the hosted runtime can append through the exact function but has no direct
   const compactGrantSource = source.replace(/\s+/gu, "");
   for (const signature of v209RuntimeSignatures) {
     assert.ok(
-      compactGrantSource.includes(
-        `GRANTEXECUTEONFUNCTIONpublic.${signature}TO:"runtime_role";`,
-      ),
+      compactGrantSource.includes(`GRANTEXECUTEONFUNCTIONpublic.${signature}TO:"runtime_role";`),
       `missing exact runtime grant for ${signature}`,
     );
   }

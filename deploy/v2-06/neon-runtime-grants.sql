@@ -192,6 +192,12 @@ GRANT EXECUTE ON FUNCTION public.videoforge_finalize_hosted_v209_span_audio(
   uuid, uuid, uuid, jsonb
 )
 TO :"runtime_role";
+-- Migration 0076 may create only the DB-derived, immutable project/revision GET reference for an
+-- exact SYSTEM READY avatar clone. Genuine WORKSPACE presets are a verified no-op.
+GRANT EXECUTE ON FUNCTION public.videoforge_materialize_hosted_v209_system_avatar_reference(
+  uuid, uuid, uuid, uuid
+)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_claim_v213_workflow_start(jsonb)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_complete_v213_workflow_start(jsonb)

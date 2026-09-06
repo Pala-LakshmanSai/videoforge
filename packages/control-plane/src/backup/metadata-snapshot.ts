@@ -34,6 +34,16 @@ const RESERVED_SCOPE_ROW_FILTERS = Object.freeze({
   )`,
   users: `id <> 'ffffffff-ffff-4fff-8fff-000000000021'::uuid`,
   memberships: `id <> 'ffffffff-ffff-4fff-8fff-000000000031'::uuid`,
+  // Immutable built-ins are release-installed baseline, not tenant metadata. A restore destination
+  // must carry the identical SYSTEM graph before a tenant reference to it can be accepted.
+  assets: `account_id <> 'ffffffff-ffff-4fff-8fff-000000000001'::uuid`,
+  avatar_profiles: `account_id <> 'ffffffff-ffff-4fff-8fff-000000000001'::uuid`,
+  avatar_profile_versions: `account_id <> 'ffffffff-ffff-4fff-8fff-000000000001'::uuid`,
+  avatar_profile_assets: `account_id <> 'ffffffff-ffff-4fff-8fff-000000000001'::uuid`,
+  avatar_compatibility_assessments: `account_id <> 'ffffffff-ffff-4fff-8fff-000000000001'::uuid`,
+  image_styles: `account_id <> 'ffffffff-ffff-4fff-8fff-000000000001'::uuid`,
+  image_style_versions: `account_id <> 'ffffffff-ffff-4fff-8fff-000000000001'::uuid`,
+  image_style_references: `account_id <> 'ffffffff-ffff-4fff-8fff-000000000001'::uuid`,
 } satisfies Partial<Record<RelationalTableName, string>>);
 
 function reservedScopeFilter(tableName: RelationalTableName): string {

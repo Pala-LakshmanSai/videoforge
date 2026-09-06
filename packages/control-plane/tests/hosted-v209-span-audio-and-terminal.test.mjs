@@ -11,7 +11,9 @@ const migrationUrl = new URL(
 
 test("0075 installs tenant-private span, terminal, and render seams", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor, sources }) => {
-    assert.equal(sources.at(-1)?.filename, "0075_hosted_v209_span_audio_and_terminal.sql");
+    assert.ok(
+      sources.some((source) => source.filename === "0075_hosted_v209_span_audio_and_terminal.sql"),
+    );
     const kind = await executor.query(
       `SELECT pg_get_constraintdef(oid) AS definition
          FROM pg_constraint
