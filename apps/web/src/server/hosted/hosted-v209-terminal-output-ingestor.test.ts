@@ -407,6 +407,7 @@ describe("hosted V2-09 terminal output ingestor", () => {
         },
       ],
       committedAt: "2026-09-06T10:01:00.000Z",
+      receipt: value.output.provenance_receipt as never,
     });
     expect(reservationParameters).toEqual([
       ids.reservation,

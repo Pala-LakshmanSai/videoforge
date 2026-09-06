@@ -7,7 +7,11 @@ import { HostedSqlAtomicPairPredispatch } from "./hosted-atomic-pair-predispatch
 import { HostedSqlV209OrdinaryPredispatch } from "./hosted-v209-ordinary-predispatch";
 import { HostedSqlV209OrdinaryLaneMaterializer } from "./hosted-v209-ordinary-materialization";
 import { HostedSqlV209OrdinaryRuntimeStore } from "./hosted-v209-ordinary-runtime-store";
-import type { HostedRuntimeConfiguration, HostedWorkflowBinding } from "./configuration";
+import type {
+  HostedR2BucketBinding,
+  HostedRuntimeConfiguration,
+  HostedWorkflowBinding,
+} from "./configuration";
 import {
   HostedPairProductionComposition,
   HostedPairProductionReconciler,
@@ -36,12 +40,17 @@ import {
 } from "../runtime/v209-short-live-cost";
 import type { V209OrdinaryLiveAdmission } from "../runtime/v209-ordinary-live-cost";
 import { HostedR2Signer } from "./r2";
+import {
+  createHostedV209TerminalOutputIngestor,
+  HostedSqlFunctionV209TerminalOutputStore,
+} from "./hosted-v209-terminal-output-ingestor";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const ENDPOINT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$/u;
 const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
 
 export interface HostedPairLiveEnvironment extends HostedPairProductionBindingEnvironment {
+  readonly PRIVATE_ARTIFACTS?: HostedR2BucketBinding;
   readonly VIDEOFORGE_PROVIDER_PROOF_KEY_ID?: string;
   readonly RUNPOD_API_KEY?: string;
   readonly VIDEOFORGE_MAGE_ENDPOINT_ID?: string;
@@ -1000,6 +1009,27 @@ export async function createHostedPairLiveComposition(
       signature_sha256: await hashSecret(signatureValue),
     });
   };
+  const receiptSecretHex = exact(
+    environment.VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY,
+    "HOSTED_PAIR_PROVENANCE_RECEIPT_BINDINGS_MISSING",
+  );
+  if (!/^[0-9a-f]{64}$/u.test(receiptSecretHex)) {
+    throw new HostedDispatchCoordinationError("HOSTED_PAIR_PROVENANCE_RECEIPT_BINDINGS_MISSING");
+  }
+  if (!environment.PRIVATE_ARTIFACTS) {
+    throw new HostedDispatchCoordinationError("HOSTED_PAIR_PROVENANCE_RECEIPT_BINDINGS_MISSING");
+  }
+  const terminalOutput = createHostedV209TerminalOutputIngestor({
+    database: reconcilerDatabase,
+    bucket: environment.PRIVATE_ARTIFACTS,
+    receiptKeyId: exact(
+      environment.VIDEOFORGE_PROVIDER_PROOF_KEY_ID,
+      "HOSTED_PAIR_PROVENANCE_RECEIPT_BINDINGS_MISSING",
+    ),
+    receiptKey: Uint8Array.from({ length: 32 }, (_, index) =>
+      Number.parseInt(receiptSecretHex.slice(index * 2, index * 2 + 2), 16)),
+    store: new HostedSqlFunctionV209TerminalOutputStore(reconcilerDatabase),
+  });
   return Object.freeze({
     composition,
     reconciler: new HostedPairWorkflowReconciler(
@@ -1018,6 +1048,7 @@ export async function createHostedPairLiveComposition(
       }),
       settlementGuard,
       signZeroProof,
+      terminalOutput,
     ),
   });
 }
