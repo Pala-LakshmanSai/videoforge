@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  exportMetadataSnapshot,
   FakeServerlessEndpoint,
+  MetadataSnapshotError,
   PROVENANCE_ATTESTATION_SCOPE,
   ProvenanceReceiptSigner,
+  restoreMetadataSnapshot,
+  serializeMetadataSnapshot,
   ServerlessDispatchService,
   mintDispatchToken,
   providerFreeV2Authority,
@@ -15,6 +19,7 @@ import { FairAdmissionRepository } from "../dist/src/admission/index.js";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
   FIXED_TIME,
+  createMigratedDatabase,
   expectDatabaseError,
   sha256,
   uuid,
@@ -357,6 +362,68 @@ test("migration 0037 seals the hosted output completion relation", async () => {
     assert.match(derivation.rows[0].definition, /ORDER BY reservation\.artifact_id COLLATE "C"/u);
     assert.match(derivation.rows[0].definition, /bound_assignment\.dispatch_token_sha256/u);
     assert.match(derivation.rows[0].definition, /bound_provenance\.project_revision_id/u);
+  });
+});
+
+test("a populated legacy output barrier exports and restores after its artifact evidence", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    const destination = await createMigratedDatabase();
+    try {
+      const accepted = await acceptedCanonicalFixture(executor);
+      const sourceBarrier = await executor.query(
+        `SELECT binding_sha256,provenance_receipt_sha256,artifact_commit_receipt_sha256s
+           FROM hosted_serverless_output_barrier_completions
+          WHERE attempt_id=$1`,
+        [accepted.attemptId],
+      );
+      const snapshot = await exportMetadataSnapshot(executor);
+      const serialized = serializeMetadataSnapshot(snapshot);
+      const restored = await restoreMetadataSnapshot(destination.executor, serialized);
+      assert.equal(restored.snapshotSha256, snapshot.snapshotSha256);
+      const barrier = await destination.executor.query(
+        `SELECT binding_sha256,provenance_receipt_sha256,artifact_commit_receipt_sha256s
+           FROM hosted_serverless_output_barrier_completions
+          WHERE attempt_id=$1`,
+        [accepted.attemptId],
+      );
+      assert.deepEqual(barrier.rows, sourceBarrier.rows);
+    } finally {
+      await destination.database.close();
+    }
+  });
+});
+
+test("portable metadata export refuses an ordinary V2-09 signed request and accepted output", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    const accepted = await acceptedCanonicalFixture(executor);
+    const requestBody = {
+      envelope: { dispatch_token: "must-not-enter-portable-backup" },
+      input_get_urls: ["https://example.invalid/signed-input"],
+      output_put_urls: ["https://example.invalid/signed-output"],
+    };
+    await executor.query(
+      `INSERT INTO hosted_v209_ordinary_lane_materializations(
+         attempt_id,account_id,workspace_id,generation_request_id,lane,envelope_sha256,
+         full_request_sha256,request_body,created_at
+       )
+       SELECT a.id,a.account_id,a.workspace_id,a.generation_request_id,a.lane,$2,$3,$4::jsonb,$5
+         FROM serverless_attempts a
+        WHERE a.id=$1`,
+      [
+        accepted.attemptId,
+        sha256("portable-v209-envelope"),
+        sha256("portable-v209-full-request"),
+        JSON.stringify(requestBody),
+        FIXED_TIME,
+      ],
+    );
+    await assert.rejects(exportMetadataSnapshot(executor), (error) => {
+      assert.ok(error instanceof MetadataSnapshotError);
+      assert.equal(error.code, "METADATA_SECRET_BYTES_FORBIDDEN");
+      assert.match(error.message, /ordinary V2-09 dispatch/u);
+      assert.match(error.recovery, /secret-free V2-09 lineage projection/u);
+      return true;
+    });
   });
 });
 

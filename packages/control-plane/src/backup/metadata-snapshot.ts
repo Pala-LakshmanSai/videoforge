@@ -141,6 +141,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "serverless_predispatch_authorities",
   "serverless_dispatch_outbox",
   "serverless_provider_assignments",
+  "artifact_reservations",
+  "artifact_receipts",
   "serverless_progress_events",
   "serverless_provenance_receipts",
   "serverless_output_receipts",
@@ -149,8 +151,6 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "serverless_reconciliations",
   "serverless_cost_ledgers",
   "serverless_cost_events",
-  "artifact_reservations",
-  "artifact_receipts",
   "hosted_project_create_requests",
   "hosted_cpu_job_attempts",
   "hosted_cpu_upload_authorities",
@@ -534,9 +534,37 @@ async function readMigrationLedger(
   );
 }
 
+async function assertNoUnportableV209Dispatch(executor: SqlExecutor): Promise<void> {
+  const result = await executor.query<{ readonly blocked: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+         FROM public.hosted_v209_ordinary_lane_materializations
+       UNION ALL
+       SELECT 1
+         FROM public.hosted_serverless_output_barrier_completions completion
+         JOIN public.serverless_attempts attempt
+           ON attempt.account_id = completion.account_id
+          AND attempt.workspace_id = completion.workspace_id
+          AND attempt.id = completion.attempt_id
+         JOIN public.hosted_v209_ordinary_dispatch_candidates candidate
+           ON candidate.account_id = attempt.account_id
+          AND candidate.workspace_id = attempt.workspace_id
+          AND candidate.generation_request_id = attempt.generation_request_id
+     ) AS blocked`,
+  );
+  if (result.rows[0]?.blocked === true) {
+    throw snapshotProblem(
+      "METADATA_SECRET_BYTES_FORBIDDEN",
+      "An ordinary V2-09 dispatch contains a secret-bearing worker request or accepted output that is not portable.",
+      "Keep the source database and use its native backup/PITR; add a secret-free V2-09 lineage projection before portable export.",
+    );
+  }
+}
+
 async function exportFromExecutor(executor: SqlExecutor): Promise<MetadataSnapshot> {
   await configureStableSession(executor);
   await assertExpectedSchema(executor);
+  await assertNoUnportableV209Dispatch(executor);
   const migrationLedger = await readMigrationLedger(executor);
   const tables: MetadataTableSnapshot[] = [];
   for (const [ordinal, tableName] of RELATIONAL_TABLE_NAMES.entries()) {
@@ -806,9 +834,22 @@ async function insertTable(
     | readonly string[]
     | undefined;
   const source =
-    deferred === undefined
-      ? "$1::jsonb"
-      : `(SELECT jsonb_agg(value${deferred.map((column) => ` - '${column}'`).join("")})
+    tableName === "serverless_attempts"
+      ? `(SELECT jsonb_agg(CASE WHEN value->>'state'='SUCCEEDED' THEN
+           value||jsonb_build_object('state','RECONCILING','terminal_at',NULL)
+           ELSE value END)
+            FROM jsonb_array_elements($1::jsonb))`
+      : tableName === "serverless_dispatch_outbox"
+        ? `(SELECT jsonb_agg(CASE WHEN value->>'state'='READY_TO_DISPATCH' THEN value ELSE
+           value||jsonb_build_object(
+             'state','READY_TO_DISPATCH','send_attempt_count',0,
+             'lease_id',NULL,'lease_holder_sha256',NULL,'leased_at',NULL,'lease_expires_at',NULL,
+             'version',(value->>'version')::integer-1
+           ) END)
+            FROM jsonb_array_elements($1::jsonb))`
+        : deferred === undefined
+          ? "$1::jsonb"
+          : `(SELECT jsonb_agg(value${deferred.map((column) => ` - '${column}'`).join("")})
             FROM jsonb_array_elements($1::jsonb))`;
   const orderedSource =
     tableName === "cost_events"
@@ -856,6 +897,76 @@ async function restoreDeferredColumns(
       throw snapshotProblem(
         "METADATA_RESTORE_VERIFICATION_FAILED",
         `Deferred relationships for ${tableName} were not restored completely.`,
+        "Discard the destination and retry into a fresh migrated database.",
+      );
+    }
+  }
+  const outbox = tableSnapshot(snapshot, "serverless_dispatch_outbox");
+  if (outbox.rowCount > 0) {
+    const result = await executor.query(
+      `UPDATE public."serverless_dispatch_outbox" AS target
+          SET state=source.state,
+              send_attempt_count=source.send_attempt_count,
+              lease_id=source.lease_id,
+              lease_holder_sha256=source.lease_holder_sha256,
+              leased_at=source.leased_at,
+              lease_expires_at=source.lease_expires_at,
+              updated_at=source.updated_at,
+              version=source.version
+         FROM jsonb_populate_recordset(
+           NULL::public."serverless_dispatch_outbox", $1::jsonb
+         ) AS source
+        WHERE target.id=source.id
+          AND source.state<>'READY_TO_DISPATCH'`,
+      [rowsDocument(outbox)],
+    );
+    const expected = outbox.rows.reduce((count, row) => {
+      const parsed = JSON.parse(row) as { readonly state?: unknown; readonly version?: unknown };
+      if (parsed.state === "READY_TO_DISPATCH") return count;
+      if (!Number.isInteger(parsed.version) || Number(parsed.version) <= 1) {
+        throw snapshotProblem(
+          "METADATA_SNAPSHOT_INVALID",
+          "A sent serverless dispatch snapshot has an invalid transition version.",
+          "Use an unmodified snapshot emitted by the matching VideoForge exporter.",
+        );
+      }
+      return count + 1;
+    }, 0);
+    if (result.affectedRows !== expected) {
+      throw snapshotProblem(
+        "METADATA_RESTORE_VERIFICATION_FAILED",
+        `Serverless dispatch state restored ${String(result.affectedRows)} of ${String(expected)} rows.`,
+        "Discard the destination and retry into a fresh migrated database.",
+      );
+    }
+  }
+  const serverlessAttempts = tableSnapshot(snapshot, "serverless_attempts");
+  if (serverlessAttempts.rowCount > 0) {
+    const result = await executor.query(
+      `UPDATE public."serverless_attempts" AS target
+          SET state=source.state,
+              submitted_at=source.submitted_at,
+              ttl_expires_at=source.ttl_expires_at,
+              terminal_at=source.terminal_at,
+              possible_duplicate_executions=source.possible_duplicate_executions,
+              possible_duplicate_cost_usd=source.possible_duplicate_cost_usd,
+              updated_at=source.updated_at,
+              version=source.version
+         FROM jsonb_populate_recordset(
+           NULL::public."serverless_attempts", $1::jsonb
+         ) AS source
+        WHERE target.id=source.id
+          AND source.state='SUCCEEDED'`,
+      [rowsDocument(serverlessAttempts)],
+    );
+    const expected = serverlessAttempts.rows.reduce((count, row) => {
+      const parsed = JSON.parse(row) as { readonly state?: unknown };
+      return count + (parsed.state === "SUCCEEDED" ? 1 : 0);
+    }, 0);
+    if (result.affectedRows !== expected) {
+      throw snapshotProblem(
+        "METADATA_RESTORE_VERIFICATION_FAILED",
+        `Serverless accepted attempt state restored ${String(result.affectedRows)} of ${String(expected)} rows.`,
         "Discard the destination and retry into a fresh migrated database.",
       );
     }
