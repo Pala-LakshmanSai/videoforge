@@ -19,7 +19,7 @@ maximum_external_spend_usd: 0
 
 current_goal_boundary:
   mode: v2_09_read_only_preflight_authorized_pending_context_commit_and_independent_audit
-  live_provider_calls: "Proposal 9e5d4eb9 passed the exact five-job qualification and is consumed; no further RunPod POST, R2 mutation, GPU use, or spend is authorized."
+  live_provider_calls: "Proposal 9e5d4eb9 passed the exact five-job qualification and is consumed; no further RunPod mutation or job POST, R2 mutation, GPU use, or spend is authorized. The current V2-09 bootstrap separately authorizes exactly the bounded preflight's one fixed read-only RunPod account-identity GraphQL POST and its fixed read-only provider reads."
   remote_mutation: false
   deployment_or_publication: "Existing immutable image f3b1d141 was freshly anonymously reverified without publication; no publication or republication is authorized."
   credential_value_access: "The current V2-09 implementation/deployment request authorizes the task brief's one bounded read-only preflight through the already configured RunPod credential. It authorizes no mutation, dispatch, GPU use, database call, R2 call, or spend."
@@ -566,7 +566,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. V2-09 source 26a6dc5229b910535c43debc7845c4dfde4a1b44 passed focused independent source audit P0=0/P1=0. Validate and commit this context materialization, complete independent context diff audit and final canonical provider-free verification, then execute the already authorized bounded read-only preflight before seeking fresh exact deployment/spend authority."
+  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. V2-09 source 26a6dc5229b910535c43debc7845c4dfde4a1b44 passed focused independent source audit P0=0/P1=0. Validate and commit this context materialization, complete independent context diff audit and final canonical provider-free verification, then execute the already authorized bounded read-only preflight from a clean detached or separate worktree at executable source 26a6dc5229b910535c43debc7845c4dfde4a1b44; never pass the later context-only successor as expected source. Seek fresh exact deployment/spend authority only after that preflight."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -6218,7 +6218,7 @@ recommended_next_task:
   authorized_operations: *v2_09_read_only_operations
   allowed_operations: *v2_09_read_only_operations
   rate_snapshot: []
-  authority_note: "The current V2-09 request authorizes exactly the bounded read-only preflight defined by deploy/v2-09/read-only-preflight.mjs through the already configured RunPod credential after clean context materialization and independent audit. It authorizes no deployment, endpoint/template/volume/R2/database mutation, provider job POST, GPU use, or spend. Source 26a6dc5229b910535c43debc7845c4dfde4a1b44 passed focused independent source audit P0=0/P1=0; final canonical verification remains pending and fresh exact deployment/spend authority is required."
+  authority_note: "The current V2-09 request authorizes exactly the bounded read-only preflight defined by deploy/v2-09/read-only-preflight.mjs through the already configured RunPod credential after clean context materialization and independent audit, including its one fixed read-only account-identity GraphQL POST. It authorizes no deployment, endpoint/template/volume/R2/database mutation, provider job POST, GPU use, or spend. The preflight must run from a clean detached or separate worktree at executable source 26a6dc5229b910535c43debc7845c4dfde4a1b44 and must never use the later context-only successor as expected source. That executable source passed focused independent source audit P0=0/P1=0; final canonical verification remains pending and fresh exact deployment/spend authority is required."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: null
   successor_proposal_sha256: null
