@@ -48,6 +48,9 @@ test("a fresh PGlite database applies the committed migration chain idempotently
         ...RELATIONAL_TABLE_NAMES,
         ...SCHEMA_REGISTRY_TABLE_NAMES,
         ...NON_PORTABLE_TABLE_NAMES,
+        "hosted_v209_ordinary_dispatch_candidates",
+        "hosted_v209_ordinary_lane_materializations",
+        "hosted_v209_qualified_activations",
         MIGRATION_TABLE_NAME,
       ].sort(),
     );
@@ -109,12 +112,12 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
   }
 });
 
-test("hosted prompt progress upgrades the exact 0059 chain to 0073", async () => {
+test("hosted prompt progress upgrades the exact 0059 chain through latest 0074", async () => {
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0073_hosted_prompt_writer_v2_profile.sql");
+    assert.equal(sources.at(-1)?.filename, "0074_hosted_v209_ordinary_dispatch.sql");
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -138,7 +141,7 @@ test("hosted prompt progress upgrades the exact 0059 chain to 0073", async () =>
     const upgraded = await applyMigrations(executor, sources);
     assert.deepEqual(
       upgraded.appliedVersions,
-      [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73],
+      [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74],
     );
     const definitions = await executor.query(
       `SELECT proname, pg_get_functiondef(oid) AS definition
