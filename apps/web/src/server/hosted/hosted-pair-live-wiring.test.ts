@@ -12,6 +12,7 @@ import {
   createHostedRunPodObservationSource,
   createHostedRunPodPair,
 } from "./hosted-pair-live-wiring";
+import type { HostedPairLane } from "./hosted-pair-runtime-executor";
 
 const digest = (character: string) => `sha256:${character.repeat(64)}` as const;
 const ids = {
@@ -362,7 +363,14 @@ describe("hosted pair live provider wiring", () => {
       status: "COMPLETED" as const,
       output: { receipt: id },
     }));
-    const terminalOutput = { acceptCompleted: vi.fn(async () => ({ state: "ACCEPTED" })) };
+    const terminalOutput = {
+      acceptCompleted: vi.fn(async (_input: {
+        lane: HostedPairLane;
+        attemptId: string;
+        providerJobId: string;
+        output: unknown;
+      }) => ({ state: "ACCEPTED" })),
+    };
     const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
     const drained = vi.fn(async () => ({
       workersTotal: 0 as const,
