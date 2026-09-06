@@ -40,9 +40,17 @@ export interface HostedV209TerminalLineage {
   readonly deadlineAt: string;
   readonly requestBody: JsonRecord;
   readonly candidateWork: readonly JsonRecord[];
+  readonly accepted?: {
+    readonly completedAt: string;
+    readonly bindingSha256: Sha256;
+    readonly terminalSha256: Sha256;
+    readonly provenanceReceiptSha256: Sha256;
+    readonly artifactCommitReceiptSha256s: readonly Sha256[];
+  };
 }
 
 export interface HostedV209TerminalOutputStore {
+  readonly atomicBarrier?: true;
   load(input: {
     readonly accountId: string;
     readonly workspaceId: string;
@@ -55,7 +63,7 @@ export interface HostedV209TerminalOutputStore {
     readonly artifacts: readonly VerifiedArtifact[];
     readonly committedAt: string;
     readonly receipt: ProvenanceReceipt;
-  }): Promise<readonly Sha256[]>;
+  }): Promise<{ readonly state: HostedOutputBarrierOutcome; readonly receiptSha256s: readonly Sha256[] }>;
 }
 
 interface VerifiedArtifact {
@@ -439,12 +447,16 @@ export class HostedSqlV209TerminalOutputStore implements HostedV209TerminalOutpu
       )
         fail();
     });
-    return Object.freeze(receipts.map((receipt) => receipt.receiptSha256).sort());
+    return Object.freeze({
+      state: "LANE_COMPLETED" as const,
+      receiptSha256s: Object.freeze(receipts.map((receipt) => receipt.receiptSha256).sort()),
+    });
   }
 }
 
 /** Reconciler-role adapter: uses only the narrow 0075 SECURITY DEFINER projections. */
 export class HostedSqlFunctionV209TerminalOutputStore implements HostedV209TerminalOutputStore {
+  readonly atomicBarrier = true as const;
   constructor(private readonly database: TransactionalSqlExecutor) {}
 
   async load(input: Parameters<HostedV209TerminalOutputStore["load"]>[0]) {
@@ -457,7 +469,9 @@ export class HostedSqlFunctionV209TerminalOutputStore implements HostedV209Termi
       );
       const value = result.rows[0]?.lineage;
       const projection = record(value);
-      if (!exactKeys(projection, ["schemaVersion", "binding", "deadlineAt", "requestBody", "candidateWork"]) ||
+      const expectedKeys = ["schemaVersion", "binding", "deadlineAt", "requestBody", "candidateWork"];
+      if (Object.hasOwn(projection, "accepted")) expectedKeys.push("accepted");
+      if (!exactKeys(projection, expectedKeys) ||
         projection.schemaVersion !== "videoforge.hosted-v209-terminal-lineage/v1" ||
         !Array.isArray(projection.candidateWork)) return null;
       const binding = record(projection.binding);
@@ -468,11 +482,24 @@ export class HostedSqlFunctionV209TerminalOutputStore implements HostedV209Termi
         binding.providerJobId !== input.providerJobId ||
         binding.requestSha256 !== canonicalSha256(requestWithoutEnvelope) ||
         typeof projection.deadlineAt !== "string" || !Number.isFinite(Date.parse(projection.deadlineAt))) fail();
+      const acceptedValue = Object.hasOwn(projection, "accepted") ? record(projection.accepted) : null;
+      const accepted = acceptedValue === null ? undefined : {
+        completedAt: string(acceptedValue.completedAt),
+        bindingSha256: string(acceptedValue.bindingSha256) as Sha256,
+        terminalSha256: string(acceptedValue.terminalSha256) as Sha256,
+        provenanceReceiptSha256: string(acceptedValue.provenanceReceiptSha256) as Sha256,
+        artifactCommitReceiptSha256s: Object.freeze(
+          Array.isArray(acceptedValue.artifactCommitReceiptSha256s)
+            ? acceptedValue.artifactCommitReceiptSha256s.map((value) => string(value) as Sha256)
+            : fail(),
+        ),
+      };
       return Object.freeze({
         binding: binding as unknown as HostedV209TerminalLineage["binding"],
         deadlineAt: projection.deadlineAt,
         requestBody,
         candidateWork: Object.freeze(projection.candidateWork.map(record)),
+        ...(accepted === undefined ? {} : { accepted: Object.freeze(accepted) }),
       });
     });
   }
@@ -509,6 +536,22 @@ export class HostedSqlFunctionV209TerminalOutputStore implements HostedV209Termi
       contentLength: artifact.contentLength, checksumSha256: artifact.checksumSha256,
     })));
     const finalBinding: HostedServerlessAttemptBinding = Object.freeze({ ...binding, expectedObjects });
+    if (input.lineage.accepted) {
+      const accepted = input.lineage.accepted;
+      const storedTerminalSha256 = canonicalSha256({
+        schema_version: "videoforge-hosted-serverless-terminal-output/v1",
+        transport_status: "COMPLETED",
+        provenance_receipt_sha256: input.receipt.receipt_sha256,
+        artifact_commit_receipt_sha256s: [...accepted.artifactCommitReceiptSha256s].sort(),
+      });
+      if (input.receipt.receipt_sha256 !== accepted.provenanceReceiptSha256 ||
+        hostedOutputBindingSha256(finalBinding) !== accepted.bindingSha256 ||
+        storedTerminalSha256 !== accepted.terminalSha256) fail();
+      return Object.freeze({
+        state: "DUPLICATE_IDEMPOTENT" as const,
+        receiptSha256s: accepted.artifactCommitReceiptSha256s,
+      });
+    }
     const receiptHashes = receipts.map((receipt) => receipt.receipt_sha256).sort();
     const terminalSha256 = canonicalSha256({
       schema_version: "videoforge-hosted-serverless-terminal-output/v1",
@@ -531,7 +574,10 @@ export class HostedSqlFunctionV209TerminalOutputStore implements HostedV209Termi
     if (!['LANE_COMPLETED', 'DUPLICATE_IDEMPOTENT'].includes(String(accepted.state)) ||
       !Array.isArray(accepted.artifactCommitReceiptSha256s) ||
       canonicalSha256([...accepted.artifactCommitReceiptSha256s].sort()) !== canonicalSha256(receiptHashes)) fail();
-    return Object.freeze(receiptHashes as Sha256[]);
+    return Object.freeze({
+      state: accepted.state as HostedOutputBarrierOutcome,
+      receiptSha256s: Object.freeze(receiptHashes as Sha256[]),
+    });
   }
 }
 
@@ -552,7 +598,8 @@ export function createHostedV209TerminalOutputIngestor(
   input: HostedV209TerminalOutputIngestorInput,
 ) {
   const signer = new ProvenanceReceiptSigner(input.receiptKeyId, input.receiptKey);
-  const store = input.store ?? new HostedSqlV209TerminalOutputStore(input.database);
+  const store: HostedV209TerminalOutputStore =
+    input.store ?? new HostedSqlV209TerminalOutputStore(input.database);
   return Object.freeze({
     async acceptCompleted(request: {
       readonly accountId: string;
@@ -624,12 +671,13 @@ export function createHostedV209TerminalOutputIngestor(
           fail();
         verified.push(artifact);
       }
-      const commitHashes = await store.commitArtifacts({
+      const committed = await store.commitArtifacts({
         lineage,
         artifacts: verified,
         committedAt: request.observedAt,
         receipt: parsed.receipt,
       });
+      const commitHashes = committed.receiptSha256s;
       const binding: HostedServerlessAttemptBinding = Object.freeze({
         ...lineage.binding,
         expectedObjects: Object.freeze(
@@ -642,8 +690,10 @@ export function createHostedV209TerminalOutputIngestor(
           })),
         ),
       });
+      let outcome = committed.state;
       let acceptBarrier = input.acceptBarrier;
-      if (!acceptBarrier) {
+      if (store.atomicBarrier) acceptBarrier = undefined;
+      if (!store.atomicBarrier && !acceptBarrier) {
         const scopedRepository = new HostedSqlOutputBarrierRepository(input.database, {
           accountId: request.accountId,
           workspaceId: request.workspaceId,
@@ -655,12 +705,14 @@ export function createHostedV209TerminalOutputIngestor(
           repository: scopedRepository,
         }).acceptCompleted;
       }
-      const outcome = await acceptBarrier(binding, {
-        transportStatus: "COMPLETED",
-        receipt: parsed.receipt,
-        artifactCommitReceiptSha256s: commitHashes,
-        observedAt: request.observedAt,
-      });
+      if (acceptBarrier) {
+        outcome = await acceptBarrier(binding, {
+          transportStatus: "COMPLETED",
+          receipt: parsed.receipt,
+          artifactCommitReceiptSha256s: commitHashes,
+          observedAt: request.observedAt,
+        });
+      }
       return Object.freeze({
         state: outcome,
         attemptId: request.attemptId,

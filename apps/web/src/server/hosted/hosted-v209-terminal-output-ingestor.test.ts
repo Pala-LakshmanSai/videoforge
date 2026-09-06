@@ -186,7 +186,10 @@ function fixture(options: { foreignAccount?: boolean; badGet?: boolean } = {}) {
     provenance_receipt_body_base64: receiptBytes.toString("base64"),
   };
   const commitHash = sha("artifact-commit");
-  const commitArtifacts = vi.fn(async () => Object.freeze([commitHash]));
+  const commitArtifacts = vi.fn(async () => Object.freeze({
+    state: "LANE_COMPLETED" as const,
+    receiptSha256s: Object.freeze([commitHash]),
+  }));
   const store: HostedV209TerminalOutputStore = {
     async load() {
       return lineage;
@@ -263,6 +266,24 @@ describe("hosted V2-09 terminal output ingestor", () => {
     });
     expect(value.commitArtifacts).toHaveBeenCalledTimes(2);
     expect(acceptBarrier).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses the 0075 atomic store as the sole barrier authority", async () => {
+    const value = fixture();
+    const acceptBarrier = vi.fn();
+    const service = createHostedV209TerminalOutputIngestor({
+      database: {} as TransactionalSqlExecutor,
+      bucket: value.bucket,
+      receiptKeyId: keyId,
+      receiptKey: key,
+      store: { ...value.store, atomicBarrier: true },
+      acceptBarrier,
+    });
+    await expect(service.acceptCompleted(request(value.output))).resolves.toMatchObject({
+      state: "LANE_COMPLETED",
+      artifactCommitReceiptSha256s: [value.commitHash],
+    });
+    expect(acceptBarrier).not.toHaveBeenCalled();
   });
 
   it("treats a repeated internal COMPLETED observation as replay despite a later poll time", async () => {
