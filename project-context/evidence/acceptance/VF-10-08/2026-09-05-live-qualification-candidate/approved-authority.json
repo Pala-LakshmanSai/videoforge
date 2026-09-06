@@ -1,13 +1,26 @@
 {
-  "schema_version": "videoforge.v2-08-soulx-approved-authority/v13",
+  "schema_version": "videoforge.v2-08-soulx-approved-authority/v14",
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
+  "status": "CONSUMED_PREFLIGHT_EXACT_OFFERING_UNAVAILABLE_CLEAN",
   "single_use": true,
-  "consumed": false,
+  "consumed": true,
   "reusable": false,
-  "consumption": null,
+  "consumption": {
+    "execution_control_commit": "adc66864358eaad2ee9a617c7e9979d0e3e888f2",
+    "failure_code": "V208_RUNPOD_EXACT_OFFERING_UNAVAILABLE",
+    "runpod_job_posts": 0,
+    "runpod_redispatches": 0,
+    "provider_resource_mutations": 0,
+    "r2_materializations": 0,
+    "qualification_claimed": false,
+    "cleanup_mutation_required": false,
+    "final_stable_billing_usd": 2.9606986929138657,
+    "observed_incremental_spend_usd": 0,
+    "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-exact-offering-unavailable-attempt.json",
+    "failure_evidence_sha256": "sha256:a0d4b58b7d3f694dea56ae44e1191848933964e3dfeb23379c583ab5ee11b146"
+  },
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
     "proposal_sha256": "sha256:b6bb008e7e321acd66a5b9e062b9ea50758911ea7d1075f7a2a19f83e2987bc2",
@@ -23,7 +36,7 @@
     "precursor_source_commit": "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
     "image_source_commit": "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
     "execution_control_commit_role": "one_post_approval_authority_materialization_successor_only",
-    "execution_control_commit": null
+    "execution_control_commit": "adc66864358eaad2ee9a617c7e9979d0e3e888f2"
   },
   "image_publication": {
     "original_publication_workflow_run_id": 34009939213,

@@ -1,0 +1,54 @@
+{
+  "schema_version": "videoforge.v2-08-failed-exact-offering-unavailable-attempt/v1",
+  "checkpoint": "V2-08",
+  "task_id": "VF-10-08",
+  "stage": 7,
+  "recorded_at_utc": "2026-09-06T05:25:00Z",
+  "status": "NOT_QUALIFIED_PREFLIGHT_FAILED_CLEAN",
+  "control_source_commit": "263838300f3133ec3cc0fd6565584127e6f5eaa4",
+  "execution_control_commit": "adc66864358eaad2ee9a617c7e9979d0e3e888f2",
+  "proposal_sha256": "sha256:b6bb008e7e321acd66a5b9e062b9ea50758911ea7d1075f7a2a19f83e2987bc2",
+  "authority_sha256": "sha256:abba74c09a86d71eab7248e828c663c9fec9960dc2ae4630650c01233c3aae03",
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "independent_materialization_diff_audit": "PASS_P0_0_P1_0_P2_1_NON_BLOCKING",
+  "anonymous_image_reverification": {
+    "manifest_http_status": 200,
+    "manifest_digest": "sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036",
+    "config_digest": "sha256:33125c93a5289332b3247881ead867ae12ebd76240dbc789ddf775643ef3f909",
+    "descriptor_count": 24,
+    "all_descriptors_available": true,
+    "source_label_commit": "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
+    "anonymous_proof_sha256": "sha256:7dd3e99d16f4d86a8d53e441a8a3be0825721279abb60b9ec7f876c3e92e0bf5",
+    "publication_performed": false
+  },
+  "failure_code": "V208_RUNPOD_EXACT_OFFERING_UNAVAILABLE",
+  "catalog_observation": {
+    "required_gpu": "NVIDIA GeForce RTX 4090",
+    "required_region": "EU-RO-1",
+    "required_availability": "LOW_OR_BETTER",
+    "exact_offering_present": false,
+    "fallback_used": false
+  },
+  "journal": {
+    "stage_authority_state": "CLAIMED",
+    "dispatch_count": 0,
+    "create_count": 0,
+    "readback_count": 0,
+    "delete_count": 0,
+    "cancel_count": 0,
+    "provider_id_count": 0,
+    "materialization_count": 0,
+    "verified_output_count": 0,
+    "redispatch_count": 0
+  },
+  "three_final_reads": [
+    {"running_pods": 0, "active_workers": 0, "endpoints": 0, "private_templates": 0, "retained_volumes": 2, "billing_usd": 2.9606986929138657},
+    {"running_pods": 0, "active_workers": 0, "endpoints": 0, "private_templates": 0, "retained_volumes": 2, "billing_usd": 2.9606986929138657},
+    {"running_pods": 0, "active_workers": 0, "endpoints": 0, "private_templates": 0, "retained_volumes": 2, "billing_usd": 2.9606986929138657}
+  ],
+  "observed_incremental_spend_usd": 0,
+  "cleanup_mutation_required": false,
+  "qualification_claimed": false,
+  "next_step": "RESEAL_PROVIDER_FREE_THEN_WAIT_FOR_EXACT_RTX_4090_EU_RO_1_LOW_OR_BETTER_BEFORE_REQUESTING_REPLACEMENT_APPROVAL"
+}
