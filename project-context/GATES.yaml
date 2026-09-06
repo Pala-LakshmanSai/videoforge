@@ -385,32 +385,37 @@ gates:
     pending_startup_terminal_inventory_policy: "startup remains exact pre-dispatch only; post-reader queue-only fallback requires both exact reader IDs locally terminal, zero owned jobs, exact zero queue reads, and two stable terminal inventory snapshots"
 
   GATE_SERVERLESS_SOULX_001:
-    status: open
+    status: closed
     blocks: soulx_serverless_dispatch_and_crop_activation
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesssoulx001-soulx-endpoint"
     owner: V2-08
-    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-lock-scoped-cache-fact-attempt.json"
+    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/success-cold-in-progress-qualification.json"
+    last_run_sha256: "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa"
+    last_run_at: "2026-09-06T10:41:02Z"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
     current_candidate_proposal_sha256: "sha256:9e5d4eb98e9085009b338855858bc9eda6781ebf71e6a1f51b3fd032f215040c"
-    current_candidate_acceptance_sha256: "sha256:1519139a480af0877f1a3996f477a0b685d312d55bc5d0ecb3626c7f24599edd"
+    current_candidate_acceptance_sha256: "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa"
     current_candidate_approval_sentence_sha256: "sha256:a86dadd5986d6829469d5d6198db6e50fdba9cf0a27f5da251147f68b2a17731"
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: pending_before_any_runpod_or_r2_mutation
+    authority_materialization_diff_audit: GO_P0_0_P1_0_P2_0
     current_candidate_source_commit: "8b8d3e8736d69324cac566fb79884852fbc9a27f"
     immutable_image_source_commit: "73181707e49be61955af4f2891f4c7185a1c288f"
     approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
-    approved_authority_sha256: "sha256:1519139a480af0877f1a3996f477a0b685d312d55bc5d0ecb3626c7f24599edd"
+    approved_authority_sha256: "sha256:e2a1e3527c744ec30387e7efab99c79778da0660338991876687437bfca1fdf2"
+    approved_preexecution_authority_sha256: "sha256:1519139a480af0877f1a3996f477a0b685d312d55bc5d0ecb3626c7f24599edd"
     superseded_consumed_authority_record_sha256: "sha256:277d606eb02d44c150c3cf11efb67ecea8d84d98c4a819c80cc7efebfcc76629"
     superseded_original_approved_authority_sha256: "sha256:6dfa2bd4efe6202dcd8c1df4067babb3e2a298993145d41a4920bcad0b1e389f"
-    current_user_approval_record_sha256: "sha256:a336084f1d425d9ce99515f3b8f00e76d934e8c4f0b581c71040742008c783b3"
+    current_user_approval_record_sha256: "sha256:03424070661f2ce27aff6f3a1430866087a9e489191127cab3e4cfa343415ea2"
+    approved_preexecution_user_approval_record_sha256: "sha256:a336084f1d425d9ce99515f3b8f00e76d934e8c4f0b581c71040742008c783b3"
     superseded_consumed_user_approval_record_sha256: "sha256:f80c1941dce99b234b2bbcab49d24f6faac1afeb271725a3254343b90c9149bd"
     superseded_original_approved_user_approval_record_sha256: "sha256:f45eff119188f572641ad91feddfc0b2db3e23df7c9b5bc76c1e471a80b13a3f"
-    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
-    runpod_mutation_performed: "One disposable endpoint/template created and deleted. Exactly two cold/warm POSTs with no redispatch; cold completed but strict cache fact failed, all five deterministic R2 keysets are absent, and three fresh reads prove zero compute."
-    gpu_seconds: cold_completed_warm_cleanup_cancelled_exact_seconds_not_claimed
-    observed_incremental_spend_usd: 0.1043137499364093
-    current_blocker: independent_authority_diff_audit_then_fresh_exact_admission
+    approved_authority_status: consumed_single_use_qualified_pass_clean
+    runpod_mutation_performed: "Exactly five cold/warm/cancel/invalid/timeout POSTs with no redispatch passed the strict qualification; eight MP4s were verified and preserved, all deterministic R2 keysets and the disposable lane were deleted, and three final reads proved zero compute and unchanged retained volumes."
+    gpu_seconds: exact_seconds_not_claimed
+    observed_incremental_spend_usd: 0.08383633207995445
+    cumulative_billing_usd: 3.4607653283455875
+    current_blocker: null
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e"
     immutable_image_config_sha256: "sha256:224b2a728490cf1c708b42e56702da2b71bd2374658f0c640dd39ef23e860935"
     immutable_image_anonymous_proof_sha256: "sha256:9929d19da89ab2c20e280ac45ad152bc325b8bf56ef1e9c21e83d473c3408bc4"
@@ -433,7 +438,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: cold_in_progress_authority_materialized_pending_independent_diff_audit
+    result: qualified_pass_clean_five_posts_no_redispatch_eight_outputs_cleanup_zero_compute
 
   GATE_SOULX_LICENSE_001:
     status: open
