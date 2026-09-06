@@ -539,9 +539,8 @@ class SpanAudioMaterializationJob:
         except ValueError:
             duration_ms, sample_rate, channels = -1, -1, -1
         cancelled_after_probe = probed.cancelled or cancelled()
-        exact_soulx_frames = (
-            sample_rate_hz != 48_000
-            or _exact_soulx_frame_count(audio_path, expected_duration * 48)
+        exact_soulx_frames = sample_rate_hz != 48_000 or _exact_soulx_frame_count(
+            audio_path, expected_duration * 48
         )
         if (
             cancelled_after_probe

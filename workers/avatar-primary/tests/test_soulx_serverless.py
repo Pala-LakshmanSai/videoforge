@@ -813,9 +813,7 @@ class SoulXServerlessTest(unittest.TestCase):
         ).replace(prior_attempt, warm.attempt)
         for port in warm.inputs:
             port["path"] = str(port["path"]).replace(prior_attempt, warm.attempt)
-        warm.outputs[0]["path"] = (
-            f"/{warm.envelope['artifacts']['output_prefix']}/artifact/span-2"
-        )
+        warm.outputs[0]["path"] = f"/{warm.envelope['artifacts']['output_prefix']}/artifact/span-2"
         warm.plan_hash = digest(canonical(warm.batch).encode())
         warm.envelope["work"]["items_manifest_sha256"] = warm.plan_hash
         warm.envelope["artifacts"]["plan_manifest_sha256"] = warm.plan_hash

@@ -264,12 +264,7 @@ def _generated_output_upload_http_failure_code(status: object) -> str:
     ordinary three-digit HTTP range is represented by one fixed code rather than copied into
     the worker result.
     """
-    if (
-        isinstance(status, bool)
-        or not isinstance(status, int)
-        or status < 100
-        or status > 599
-    ):
+    if isinstance(status, bool) or not isinstance(status, int) or status < 100 or status > 599:
         return f"{_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX}_HTTP_STATUS_INVALID"
     return f"{_GENERATED_OUTPUT_UPLOAD_FAILURE_PREFIX}_HTTP_{status // 100}XX_{status}"
 

@@ -778,7 +778,9 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             with self.subTest(status=status), patch.object(mage_serverless, "urlopen") as urlopen:
                 response = urlopen.return_value.__enter__.return_value
                 response.status = status
-                with self.assertRaisesRegex(mage_serverless.ServerlessMageError, expected) as raised:
+                with self.assertRaisesRegex(
+                    mage_serverless.ServerlessMageError, expected
+                ) as raised:
                     mage_serverless._put_generated_output(
                         authority, "https://r2.example.test/presigned", body
                     )
@@ -801,13 +803,13 @@ class MageServerlessBoundaryTest(unittest.TestCase):
                     authority, "https://r2.example.test/presigned", body
                 )
         self.assertEqual(urlopen.call_count, 1)
-        self.assertEqual(
-            str(raised.exception), "MAGE_SERVERLESS_OUTPUT_UPLOAD_HTTP_4XX_403"
-        )
+        self.assertEqual(str(raised.exception), "MAGE_SERVERLESS_OUTPUT_UPLOAD_HTTP_4XX_403")
         for secret in (secret_url, secret_body, "do-not-leak"):
             self.assertNotIn(secret, str(raised.exception))
 
-    def test_generated_output_upload_classifies_timeout_tls_and_network_without_exception_text(self) -> None:
+    def test_generated_output_upload_classifies_timeout_tls_and_network_without_exception_text(
+        self,
+    ) -> None:
         body = b"png"
         authority = self._generated_authority()
         secret = "https://secret.example.test/presigned?token=do-not-leak"
@@ -834,10 +836,13 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             ),
         )
         for failure, expected in cases:
-            with self.subTest(expected=expected), patch.object(
-                mage_serverless, "urlopen", side_effect=failure
-            ) as urlopen:
-                with self.assertRaisesRegex(mage_serverless.ServerlessMageError, expected) as raised:
+            with (
+                self.subTest(expected=expected),
+                patch.object(mage_serverless, "urlopen", side_effect=failure) as urlopen,
+            ):
+                with self.assertRaisesRegex(
+                    mage_serverless.ServerlessMageError, expected
+                ) as raised:
                     mage_serverless._put_generated_output(
                         authority, "https://r2.example.test/presigned", body
                     )
