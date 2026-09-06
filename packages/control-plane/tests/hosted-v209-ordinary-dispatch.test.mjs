@@ -13,6 +13,10 @@ const migrationUrl = new URL(
   "../migrations/0074_hosted_v209_ordinary_dispatch.sql",
   import.meta.url,
 );
+const ledgerRepairUrl = new URL(
+  "../migrations/0080_hosted_pair_current_migration_ledger.sql",
+  import.meta.url,
+);
 const fixturePredispatchUrl = new URL(
   "../migrations/0042_hosted_atomic_pair_predispatch.sql",
   import.meta.url,
@@ -25,6 +29,7 @@ test("0074 installs the additive ordinary V2-09 DB boundaries without weakening 
     );
     const routines = await executor.query(
       `SELECT p.oid::regprocedure::text AS signature, p.prosecdef AS security_definer,
+              pg_get_functiondef(p.oid) AS definition,
               has_function_privilege('public',p.oid,'EXECUTE') AS public_execute
          FROM pg_catalog.pg_proc p
          JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
@@ -37,14 +42,22 @@ test("0074 installs the additive ordinary V2-09 DB boundaries without weakening 
           "videoforge_commit_hosted_v209_ordinary_lane_materialization",
           "videoforge_import_hosted_v209_qualified_activation",
           "videoforge_load_hosted_gpu_activation_v2",
+          "videoforge_load_hosted_pair_activation_v2",
           "videoforge_load_hosted_v209_ordinary_lane_materialization",
           "videoforge_materialize_hosted_v209_ordinary_dispatch",
         ],
       ],
     );
-    assert.equal(routines.rows.length, 7);
+    assert.equal(routines.rows.length, 8);
     assert.ok(routines.rows.every((row) => row.security_definer === true));
     assert.ok(routines.rows.every((row) => row.public_execute === false));
+    const activationLoaders = routines.rows.filter(
+      (row) =>
+        row.signature.startsWith("videoforge_load_hosted_gpu_activation_v2(") ||
+        row.signature.startsWith("videoforge_load_hosted_pair_activation_v2("),
+    );
+    assert.equal(activationLoaders.length, 2);
+    assert.ok(activationLoaders.every((row) => /version BETWEEN 37 AND 80/u.test(row.definition)));
 
     const policies = await executor.query(
       `SELECT c.relname,c.relrowsecurity,c.relforcerowsecurity,count(policy.polname)::integer AS policies
@@ -125,7 +138,16 @@ test("0074 pins frozen Stage 6/7 artifacts without requiring nonexistent histori
     assert.match(sql, new RegExp(pinned.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
   }
   assert.doesNotMatch(sql, /videoforge_verify_v213_qualification_receipt/u);
-  assert.match(sql, /version BETWEEN 37 AND 49/u);
+  const ledgerRepair = await readFile(ledgerRepairUrl, "utf8");
+  assert.equal((ledgerRepair.match(/version BETWEEN 37 AND 80/gu) ?? []).length, 2);
+  assert.match(
+    ledgerRepair,
+    /REVOKE ALL ON FUNCTION public\.videoforge_load_hosted_pair_activation_v2\(uuid,uuid,uuid\) FROM PUBLIC/u,
+  );
+  assert.match(
+    ledgerRepair,
+    /REVOKE ALL ON FUNCTION public\.videoforge_load_hosted_gpu_activation_v2\(\) FROM PUBLIC/u,
+  );
   assert.match(sql, /videoforge-hosted-qualified-gpu-activation-verifier-v1/u);
   assert.match(sql, /'enabledConfigSha256',activation\.deployed_config_sha256/u);
   assert.match(sql, /a\.state='MATERIALIZED'/u);
