@@ -169,41 +169,69 @@ describe("V2-08 whole-span receipt verifier", () => {
       videoDurationMs: bytes[0]! * 1_000,
       audioDurationMs: bytes[0]! * 1_000,
     }));
+    const preserveVerifiedOutputs = vi.fn(async () => undefined);
     const verify = createV208SoulXReceiptVerifier({
       signer,
       readOutput: async (key) => output.get(key)!,
       probeMp4,
+      preserveVerifiedOutputs,
     });
-    await expect(
-      verify({
-        descriptor: {
-          key: "soulxWholeSpanCold",
-          lane: "soulx",
-          id: "soulx-cold-whole-span-2-4-6-10s",
-          seconds: 22,
-          mode: "complete",
-          cold: true,
-        },
+    const verificationInput = {
+      descriptor: {
+        key: "soulxWholeSpanCold",
+        lane: "soulx",
+        id: "soulx-cold-whole-span-2-4-6-10s",
+        seconds: 22,
+        mode: "complete",
+        cold: true,
+      } as const,
+      jobId: "job-v208",
+      deployment,
+      materialization: {
+        schemaVersion: "videoforge.v213-qualification-case-materialization/v1" as const,
+        caseDescriptorSha256: `sha256:${"a".repeat(64)}`,
+        materializationEvidenceSha256: `sha256:${"b".repeat(64)}`,
+        request,
+      },
+      observed: {
         jobId: "job-v208",
-        deployment,
-        materialization: {
-          schemaVersion: "videoforge.v213-qualification-case-materialization/v1",
-          caseDescriptorSha256: `sha256:${"a".repeat(64)}`,
-          materializationEvidenceSha256: `sha256:${"b".repeat(64)}`,
-          request,
-        },
-        observed: {
-          jobId: "job-v208",
-          status: "COMPLETED",
-          receiptDelivery: { receipt, receiptBodyBase64: bodyBytes.toString("base64") },
-        },
-      }),
-    ).resolves.toMatchObject({
+        status: "COMPLETED" as const,
+        receiptDelivery: { receipt, receiptBodyBase64: bodyBytes.toString("base64") },
+      },
+    };
+    await expect(verify(verificationInput)).resolves.toMatchObject({
       workerReceiptVerified: true,
       outputItemsVerified: 4,
       coldModelReadyMs: 300_000,
       workerId: "worker-v208",
     });
     expect(probeMp4).toHaveBeenCalledTimes(4);
+    expect(preserveVerifiedOutputs).toHaveBeenCalledTimes(1);
+    expect(preserveVerifiedOutputs).toHaveBeenCalledWith({
+      descriptorId: "soulx-cold-whole-span-2-4-6-10s",
+      outputs: ([2, 4, 6, 10] as const).map((seconds) => ({
+        itemId: `soulx-${seconds}s`,
+        sha256: sha(output.get(`${outputPrefix}/soulx-${seconds}s`)!),
+        bytes: output.get(`${outputPrefix}/soulx-${seconds}s`)!,
+      })),
+    });
+    await expect(verify(verificationInput)).rejects.toThrow(
+      "A provenance receipt nonce cannot be replayed.",
+    );
+    expect(preserveVerifiedOutputs).toHaveBeenCalledTimes(1);
+
+    const preserveInvalid = vi.fn(async () => undefined);
+    const invalidProbe = vi.fn(async (bytes: Uint8Array) => ({
+      ...(await probeMp4(bytes)),
+      videoFrames: bytes[0] === 10 ? 1 : bytes[0]! * 25,
+    }));
+    const invalidVerify = createV208SoulXReceiptVerifier({
+      signer,
+      readOutput: async (key) => output.get(key)!,
+      probeMp4: invalidProbe,
+      preserveVerifiedOutputs: preserveInvalid,
+    });
+    await expect(invalidVerify(verificationInput)).rejects.toThrow("V208_OUTPUT_READBACK_INVALID");
+    expect(preserveInvalid).not.toHaveBeenCalled();
   });
 });

@@ -17,6 +17,7 @@ import {
   parseProductionSecrets,
   prepareLaunch,
   runPreparedLaunch,
+  validateLaunchAuthority,
 } from "../../deploy/v2-08/launch-soulx-live.mjs";
 
 function secureFile(path, bytes) {
@@ -107,6 +108,34 @@ test("V2-08 launcher rejects missing confirmation and unknown bindings", () => {
         "secret",
       ]),
     /V2_08_SOULX_LAUNCH_ARGUMENT_UNKNOWN/u,
+  );
+});
+
+test("launcher authority guard admits only the exact builder repair scope", () => {
+  const control = "b".repeat(40);
+  const authoritySource = [
+    "export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = true;",
+    `export const V208_PENDING_PROPOSAL_SHA256: string | null = "sha256:${"a".repeat(64)}";`,
+    `export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null = "${control}";`,
+  ].join("\n");
+  const changed = [
+    "apps/web/src/server/providers/v208-soulx-qualification.ts",
+    "deploy/v2-08/build-soulx-live-request.mjs",
+    "scripts/tests/v2-08-build-soulx-live-request.test.mjs",
+  ];
+  const runGit = (_command, args) => {
+    const operation = args.slice(2).join(" ");
+    if (operation.startsWith("status ")) return "";
+    if (operation === "rev-parse HEAD^{commit}") return `${"c".repeat(40)}\n`;
+    if (operation === "rev-parse HEAD^1") return `${control}\n`;
+    if (operation.startsWith("diff --name-only ")) return `${changed.join("\n")}\n`;
+    throw new Error("unexpected git call");
+  };
+  assert.doesNotThrow(() => validateLaunchAuthority({ runGit, authoritySource }));
+  changed.push("package.json");
+  assert.throws(
+    () => validateLaunchAuthority({ runGit, authoritySource }),
+    /V2_08_SOULX_LAUNCH_AUTHORITY_MATERIALIZATION_SCOPE_INVALID/u,
   );
 });
 

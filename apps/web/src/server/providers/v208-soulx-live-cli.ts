@@ -1,6 +1,19 @@
-import { createHash, createPrivateKey, createPublicKey, sign } from "node:crypto";
+import { createHash, createPrivateKey, createPublicKey, randomBytes, sign } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import {
+  closeSync,
+  constants as fsConstants,
+  fchmodSync,
+  fsyncSync,
+  linkSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  realpathSync,
+  unlinkSync,
+  writeSync,
+} from "node:fs";
 import { userInfo } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -83,12 +96,165 @@ export const V208_SOULX_LIVE_CLI_CONFIRMATION = "EXECUTE_EXACT_V2_08_SOULX_QUALI
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 const AUTHORITY_COMMIT_ALLOWED_PATHS = new Set([
   "apps/web/src/server/providers/v208-soulx-qualification.ts",
+  "deploy/v2-08/build-soulx-live-request.mjs",
+  "scripts/tests/v2-08-build-soulx-live-request.test.mjs",
   "project-context/CURRENT_STATE.yaml",
   "project-context/GATES.yaml",
   "project-context/tasks/VF-10-08.md",
   "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json",
   "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
 ]);
+const V208_VERIFIED_OUTPUT_DESCRIPTOR = /^soulx-(?:cold|warm)-whole-span-2-4-6-10s$/u;
+const V208_VERIFIED_OUTPUT_ITEM = /^soulx-(?:2|4|6|10)s$/u;
+const V208_VERIFIED_OUTPUT_TEMP_TOKEN = /^[a-f0-9]{32}$/u;
+
+function assertPrivateOutputDirectory(path: string): void {
+  try {
+    mkdirSync(path, { mode: 0o700 });
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "EEXIST"))
+      throw new Error("V208_VERIFIED_OUTPUT_DIRECTORY_INVALID");
+  }
+  const metadata = lstatSync(path);
+  if (
+    !metadata.isDirectory() ||
+    metadata.isSymbolicLink() ||
+    metadata.uid !== userInfo().uid ||
+    realpathSync(path) !== path ||
+    (metadata.mode & 0o777) !== 0o700
+  )
+    throw new Error("V208_VERIFIED_OUTPUT_DIRECTORY_INVALID");
+}
+
+function syncPrivateOutputDirectory(path: string): void {
+  assertPrivateOutputDirectory(path);
+  const descriptor = openSync(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  try {
+    fsyncSync(descriptor);
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
+/** Durable local qualification copies. They never replace exact R2 readback or cleanup proof. */
+export function createV208LocalVerifiedOutputWriter(
+  journalDirectory: string,
+  testHooks: {
+    readonly createTempToken?: () => string;
+    readonly writeChunk?: (descriptor: number, bytes: Buffer, offset: number) => number;
+  } = {},
+) {
+  const journal = resolve(journalDirectory);
+  const root = resolve(journal, "verified-outputs");
+  if (root !== join(journal, "verified-outputs"))
+    throw new Error("V208_VERIFIED_OUTPUT_DIRECTORY_INVALID");
+  return async (input: {
+    readonly descriptorId: string;
+    readonly outputs: readonly {
+      readonly itemId: string;
+      readonly sha256: `sha256:${string}`;
+      readonly bytes: Uint8Array;
+    }[];
+  }): Promise<void> => {
+    if (
+      !V208_VERIFIED_OUTPUT_DESCRIPTOR.test(input.descriptorId) ||
+      input.outputs.length !== 4 ||
+      new Set(input.outputs.map((item) => item.itemId)).size !== 4
+    )
+      throw new Error("V208_VERIFIED_OUTPUT_BINDING_INVALID");
+    assertPrivateOutputDirectory(journal);
+    assertPrivateOutputDirectory(root);
+    const directory = resolve(root, input.descriptorId);
+    if (dirname(directory) !== root) throw new Error("V208_VERIFIED_OUTPUT_BINDING_INVALID");
+    assertPrivateOutputDirectory(directory);
+    for (const output of input.outputs) {
+      if (
+        !V208_VERIFIED_OUTPUT_ITEM.test(output.itemId) ||
+        !SHA256.test(output.sha256) ||
+        output.bytes.byteLength === 0 ||
+        `sha256:${createHash("sha256").update(output.bytes).digest("hex")}` !== output.sha256
+      )
+        throw new Error("V208_VERIFIED_OUTPUT_BINDING_INVALID");
+      const path = resolve(directory, `${output.itemId}.mp4`);
+      if (dirname(path) !== directory) throw new Error("V208_VERIFIED_OUTPUT_BINDING_INVALID");
+      try {
+        const existing = lstatSync(path);
+        if (
+          !existing.isFile() ||
+          existing.isSymbolicLink() ||
+          existing.uid !== userInfo().uid ||
+          (existing.mode & 0o777) !== 0o600 ||
+          !readFileSync(path).equals(Buffer.from(output.bytes))
+        )
+          throw new Error("V208_VERIFIED_OUTPUT_EXISTING_MISMATCH");
+        continue;
+      } catch (error) {
+        if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+      }
+      let descriptor: number | undefined;
+      let temporaryPath: string | undefined;
+      let ownsTemporary = false;
+      try {
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          const token = (testHooks.createTempToken ?? (() => randomBytes(16).toString("hex")))();
+          if (!V208_VERIFIED_OUTPUT_TEMP_TOKEN.test(token))
+            throw new Error("V208_VERIFIED_OUTPUT_WRITE_FAILED");
+          temporaryPath = resolve(directory, `.${output.itemId}.${token}.tmp`);
+          if (dirname(temporaryPath) !== directory)
+            throw new Error("V208_VERIFIED_OUTPUT_WRITE_FAILED");
+          try {
+            descriptor = openSync(
+              temporaryPath,
+              fsConstants.O_WRONLY |
+                fsConstants.O_CREAT |
+                fsConstants.O_EXCL |
+                fsConstants.O_NOFOLLOW,
+              0o600,
+            );
+            ownsTemporary = true;
+            break;
+          } catch (error) {
+            if (!(error instanceof Error && "code" in error && error.code === "EEXIST"))
+              throw error;
+          }
+        }
+        if (descriptor === undefined || temporaryPath === undefined)
+          throw new Error("V208_VERIFIED_OUTPUT_WRITE_FAILED");
+        const bytes = Buffer.from(output.bytes);
+        let offset = 0;
+        while (offset < bytes.length) {
+          const written = (testHooks.writeChunk ?? writeSync)(descriptor, bytes, offset);
+          if (written <= 0) throw new Error("V208_VERIFIED_OUTPUT_WRITE_FAILED");
+          offset += written;
+        }
+        fsyncSync(descriptor);
+        fchmodSync(descriptor, 0o600);
+        closeSync(descriptor);
+        descriptor = undefined;
+        linkSync(temporaryPath, path);
+        syncPrivateOutputDirectory(directory);
+        unlinkSync(temporaryPath);
+        ownsTemporary = false;
+        syncPrivateOutputDirectory(directory);
+      } catch {
+        if (descriptor !== undefined) {
+          closeSync(descriptor);
+          descriptor = undefined;
+        }
+        if (ownsTemporary && temporaryPath !== undefined) {
+          try {
+            unlinkSync(temporaryPath);
+          } catch {
+            // The verified final is never created from an incomplete temporary file.
+          }
+        }
+        throw new Error("V208_VERIFIED_OUTPUT_WRITE_FAILED");
+      } finally {
+        if (descriptor !== undefined) closeSync(descriptor);
+      }
+    }
+  };
+}
 
 export function assertV208ExecutionControlSource(
   controlSourceCommit = V208_APPROVED_CONTROL_SOURCE_COMMIT,
@@ -433,6 +599,9 @@ export function createV208SoulXLiveComposition(input: {
         signer,
         readOutput: adapter.readOutput,
         probeMp4: probeV208Mp4Bytes,
+        preserveVerifiedOutputs: createV208LocalVerifiedOutputWriter(
+          protectedInputs.journalDirectory,
+        ),
       }),
       cleanupOutputKeys: adapter.cleanupOutputKeys,
       cleanupMaterializedInputs: adapter.cleanupMaterializedInputs,

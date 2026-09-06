@@ -1,0 +1,68 @@
+{
+  "schema_version": "videoforge.v2-08-failed-receipt-nonce-attempt/v1",
+  "checkpoint": "V2-08",
+  "stage": 7,
+  "proposal_sha256": "sha256:106c97f6495d30fdd7c8c318c7e94fd8286c551b55784bd25ac119808abc24f5",
+  "authority_sha256": "sha256:87968f10fc12a11aad04451eb314bb8841cb45c6584c7339dd0413b90f2b03f9",
+  "materialization_commit": "d42deeb3540ee66dc413aaf587acf952e907b18a",
+  "result": "FAILED_CLEAN_RECEIPT_NONCE_REPLAYED",
+  "failure_code": "RECEIPT_NONCE_REPLAYED",
+  "exact_root_cause": "SOULX_WORKER_HARDCODED_RECEIPT_NONCE_ONE_FOR_DISTINCT_COLD_AND_WARM_ATTEMPTS",
+  "jobs": {
+    "cold": {
+      "provider_terminal_status": "COMPLETED",
+      "receipt_nonce": 1,
+      "output_items_generated": 4,
+      "receipt_verification": "PASSED"
+    },
+    "warm": {
+      "provider_terminal_status": "COMPLETED",
+      "receipt_nonce": 1,
+      "output_items_generated": 4,
+      "receipt_verification": "FAILED_DUPLICATE_NONCE"
+    },
+    "cancel_invalid_timeout_posted": 0
+  },
+  "runpod_job_posts": 2,
+  "runpod_redispatches": 0,
+  "model_generation_completed_for_cold_and_warm": true,
+  "generated_output_preview_preserved": false,
+  "generated_output_preview_note": "All eight generated qualification outputs were removed by mandatory cleanup before the user requested display; a future successful run must preserve a local verified preview copy before provider cleanup.",
+  "cleanup": {
+    "cleanup_only_resume_completed": true,
+    "disposable_lane_deleted_and_absent": true,
+    "r2_cleanup_phases_terminal": 5,
+    "generated_output_keys_checked": 8,
+    "generated_output_keys_absent": 8,
+    "running_pods": 0,
+    "active_workers": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "retained_network_volumes": 2
+  },
+  "billing": {
+    "approved_baseline_usd": 2.7981025265471544,
+    "fresh_preflight_usd": 2.828824442549376,
+    "three_immediate_post_cleanup_reads_usd": [
+      2.828824442549376,
+      2.828824442549376,
+      2.828824442549376
+    ],
+    "newly_posted_increment_usd": 0,
+    "delayed_settlement_possible": true,
+    "conservative_unsettled_reserve_usd": 0.2
+  },
+  "repair": {
+    "scope": [
+      "workers/avatar-primary/soulx_serverless.py",
+      "workers/avatar-primary/tests/test_soulx_serverless.py"
+    ],
+    "strategy": "DOMAIN_SEPARATED_SHA256_OF_SIGNED_ATTEMPT_ID_MAPPED_TO_POSITIVE_JAVASCRIPT_SAFE_INTEGER",
+    "same_attempt_is_stable": true,
+    "distinct_cold_warm_attempts_are_distinct": true,
+    "shared_replay_protection_changed": false,
+    "stage_6_changed": false
+  },
+  "authority_consumed": true,
+  "authority_reusable": false
+}

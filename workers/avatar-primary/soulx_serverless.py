@@ -58,11 +58,20 @@ _CAPABILITY = re.compile(r"^[A-Za-z0-9._:-]{32,512}$")
 _MAX_BATCH_ITEMS = 128
 _MAX_INPUT_BYTES = 512 * 1024 * 1024
 _MAX_OUTPUT_BYTES = 128 * 1024 * 1024
+_MAX_SAFE_RECEIPT_NONCE = 9_007_199_254_740_991
+_RECEIPT_NONCE_DOMAIN = b"videoforge:soulx-avatar:receipt-nonce:v1\x00"
 _QUALIFICATION_INVALID_OUTPUT_PROBE = "SOULX_INVALID_OUTPUT_CONTRACT_V1"
 _QUALIFICATION_TIMEOUT_PROBE = "RUNPOD_EXECUTION_TIMEOUT_V1"
 _QUALIFICATION_INVALID_ATTEMPT = re.compile(r"^v213-soulx-invalid-output-[0-9a-f]{12}$")
 _QUALIFICATION_TIMEOUT_ATTEMPT = re.compile(r"^v213-soulx-timeout-[0-9a-f]{12}$")
 _QUALIFICATION_TIMEOUT_DELAY_SECONDS = 30
+
+
+def _receipt_nonce(attempt_id: str) -> int:
+    """Derive one stable, request-scoped receipt nonce from the signed attempt identity."""
+
+    digest = hashlib.sha256(_RECEIPT_NONCE_DOMAIN + attempt_id.encode("utf-8")).digest()
+    return int.from_bytes(digest, "big") % _MAX_SAFE_RECEIPT_NONCE + 1
 
 
 async def _run_sealed_qualification_probe(
@@ -1076,7 +1085,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                     "removed": True,
                     "scratch_on_model_volume": False,
                 },
-                "receipt_nonce": 1,
+                "receipt_nonce": _receipt_nonce(accepted["work"]["attempt_id"]),
                 "issued_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             }
             receipt, receipt_body_bytes = sign_receipt(

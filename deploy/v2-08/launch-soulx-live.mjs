@@ -42,6 +42,8 @@ const QUALIFICATION_AUTHORITY_RELATIVE_PATH =
 const QUALIFICATION_AUTHORITY_PATH = resolve(ROOT, QUALIFICATION_AUTHORITY_RELATIVE_PATH);
 const AUTHORITY_COMMIT_ALLOWED_PATHS = Object.freeze([
   QUALIFICATION_AUTHORITY_RELATIVE_PATH,
+  "deploy/v2-08/build-soulx-live-request.mjs",
+  "scripts/tests/v2-08-build-soulx-live-request.test.mjs",
   "project-context/CURRENT_STATE.yaml",
   "project-context/GATES.yaml",
   "project-context/tasks/VF-10-08.md",
@@ -290,8 +292,11 @@ function exactCompiledString(source, name, pattern, code) {
 }
 
 /** Fail before opening any provider credential or protected media descriptor. */
-function validateLaunchAuthority({ runGit = execFileSync } = {}) {
-  const source = readFileSync(QUALIFICATION_AUTHORITY_PATH, "utf8");
+export function validateLaunchAuthority({
+  runGit = execFileSync,
+  authoritySource = readFileSync(QUALIFICATION_AUTHORITY_PATH, "utf8"),
+} = {}) {
+  const source = authoritySource;
   if (
     !/export const V208_COMPILED_AUTHORITY_ACTIVE(?:\s*:\s*boolean)?\s*=\s*true(?:\s+as const)?\s*;/u.test(
       source,

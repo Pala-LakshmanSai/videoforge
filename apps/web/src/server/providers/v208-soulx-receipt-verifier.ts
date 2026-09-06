@@ -126,6 +126,14 @@ export function createV208SoulXReceiptVerifier(input: {
   readonly signer: ProvenanceReceiptSigner;
   readonly readOutput: (objectKey: string) => Promise<Uint8Array>;
   readonly probeMp4: (bytes: Uint8Array) => Promise<V208Mp4Probe>;
+  readonly preserveVerifiedOutputs: (input: {
+    readonly descriptorId: string;
+    readonly outputs: readonly {
+      readonly itemId: string;
+      readonly sha256: `sha256:${string}`;
+      readonly bytes: Uint8Array;
+    }[];
+  }) => Promise<void>;
 }): V208SoulXOrchestratorDependencies["verifySuccess"] {
   const seenNonces = new Set<number>();
   return async ({ descriptor, jobId, deployment, materialization, observed }) => {
@@ -192,6 +200,11 @@ export function createV208SoulXReceiptVerifier(input: {
       receipt.runtime_probe.peak_vram_bytes > receipt.runtime_probe.total_vram_bytes
     )
       throw new Error("V208_RECEIPT_CONTRACT_INVALID");
+    const verifiedOutputs: Array<{
+      readonly itemId: string;
+      readonly sha256: `sha256:${string}`;
+      readonly bytes: Uint8Array;
+    }> = [];
     for (const [index, seconds] of SECONDS.entries()) {
       const item = receipt.items[index]!;
       const authorityPath = (authorities[index] as Record<string, JsonValue>).path;
@@ -236,10 +249,18 @@ export function createV208SoulXReceiptVerifier(input: {
         Math.abs(probe.durationMs - seconds * 1_000) > 80
       )
         throw new Error("V208_OUTPUT_READBACK_INVALID");
+      verifiedOutputs.push({
+        itemId: item.item_id,
+        sha256: item.output_sha256 as `sha256:${string}`,
+        bytes: Uint8Array.from(bytes),
+      });
     }
     const modelReadyMs = receipt.timings.container_ready_ms;
     if (typeof modelReadyMs !== "number" || !Number.isSafeInteger(modelReadyMs) || modelReadyMs < 0)
       throw new Error("V208_MODEL_READY_TIMING_INVALID");
+    // Retain only a completely accepted receipt. R2 remains authoritative during verification;
+    // this local copy is written before the orchestrator performs its exact remote cleanup.
+    await input.preserveVerifiedOutputs({ descriptorId: descriptor.id, outputs: verifiedOutputs });
     seenNonces.add(receipt.receipt_nonce);
     return {
       workerReceiptVerified: true,

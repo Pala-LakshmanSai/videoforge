@@ -444,6 +444,16 @@ class SoulXServerlessTest(unittest.TestCase):
             self.assertEqual(facts["trim_end_frame_exclusive_25fps"], 50)
             self.assertEqual(facts["trim_end_sample_exclusive_48k"], 96_000)
 
+    def test_receipt_nonce_is_stable_safe_and_distinct_per_signed_attempt(self) -> None:
+        cold = soulx_serverless._receipt_nonce("attempt-soulx-cold")
+        warm = soulx_serverless._receipt_nonce("attempt-soulx-warm")
+        self.assertEqual(cold, soulx_serverless._receipt_nonce("attempt-soulx-cold"))
+        self.assertNotEqual(cold, warm)
+        self.assertGreaterEqual(cold, 1)
+        self.assertLessEqual(cold, 9_007_199_254_740_991)
+        self.assertGreaterEqual(warm, 1)
+        self.assertLessEqual(warm, 9_007_199_254_740_991)
+
     def test_resume_readback_requires_exact_durable_bytes(self) -> None:
         body = b"durable-native"
         unit = {
@@ -762,6 +772,10 @@ class SoulXServerlessTest(unittest.TestCase):
             receipt_body = base64.b64decode(result["provenance_receipt_body_base64"])
             self.assertEqual(digest(receipt_body), result["provenance_receipt"]["receipt_sha256"])
             receipt_document = json.loads(receipt_body)
+            self.assertEqual(
+                receipt_document["receipt_nonce"],
+                soulx_serverless._receipt_nonce(fixture.attempt),
+            )
             self.assertEqual(
                 receipt_document["volume_verification"],
                 {
