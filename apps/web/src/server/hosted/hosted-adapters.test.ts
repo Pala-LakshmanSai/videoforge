@@ -30,6 +30,7 @@ import {
   exactHostedRenderSubmission,
   whisperModelUri,
 } from "./submission";
+import { hostedCpuPrimaryOutput } from "./app";
 
 function environment(providerMode: "staging" | "production" = "staging"): HostedRuntimeEnvironment {
   return {
@@ -99,6 +100,14 @@ function environment(providerMode: "staging" | "production" = "staging"): Hosted
 }
 
 describe("V2-06 hosted adapters", () => {
+  it("binds server-owned span audio to one exact 48 kHz WAV output lane", () => {
+    expect(hostedCpuPrimaryOutput("SPAN_AUDIO")).toEqual({
+      lane: "input",
+      suffix: "span-audio",
+      contentType: "audio/wav",
+      maxBytes: 128 * 1024 ** 2,
+    });
+  });
   it("persists the canonical v2 revision contract needed by hosted scheduling", async () => {
     const revision = hostedRevisionConfigV2({
       projectId: "11111111-1111-4111-8111-111111111111",

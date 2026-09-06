@@ -29,6 +29,8 @@ import {
   canonicalJson,
   exactHostedCpuSubmission,
   exactHostedRenderSubmission,
+  type HostedCpuSubmission,
+  type HostedSpanAudioSubmission,
 } from "./submission";
 import { handleV213OperatorWorkflowStart } from "./v213-operator-workflow";
 import { handleV213PostConsumptionSelectionRequest } from "./v213-post-consumption-selection";
@@ -97,6 +99,14 @@ interface HostedQueueRow extends Record<string, unknown> {
   readonly cancellable_attempt_id: string | null;
   readonly created_at: Date | string;
   readonly updated_at: Date | string;
+}
+
+export function hostedCpuPrimaryOutput(kind: "ASR" | "SPAN_AUDIO" | "RENDER") {
+  return kind === "ASR"
+    ? Object.freeze({ lane: "input", suffix: "transcript", contentType: "application/json", maxBytes: 16 * 1024 ** 2 })
+    : kind === "SPAN_AUDIO"
+      ? Object.freeze({ lane: "input", suffix: "span-audio", contentType: "audio/wav", maxBytes: 128 * 1024 ** 2 })
+      : Object.freeze({ lane: "render", suffix: "final-mp4", contentType: "video/mp4", maxBytes: 10 * 1024 ** 3 });
 }
 
 function checksumFromR2(value?: ArrayBuffer): string | null {
@@ -353,31 +363,43 @@ async function handleCpuSubmission(
   environment: HostedRuntimeEnvironment,
   config: ReturnType<typeof hostedRuntimeConfiguration>,
   executionContext: HostedExecutionContext,
+  trusted?: {
+    readonly scope: { readonly account_id: string; readonly workspace_id: string };
+    readonly submission: HostedSpanAudioSubmission;
+    readonly expectedAttemptId: string;
+  },
 ): Promise<Response> {
-  if (!sameOriginBrowserWrite(request, config)) {
+  if (!trusted && !sameOriginBrowserWrite(request, config)) {
     return json({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
   }
   const length = Number(request.headers.get("content-length") ?? "0");
-  if (!Number.isSafeInteger(length) || length < 1 || length > 1_048_576) {
+  if (!trusted && (!Number.isSafeInteger(length) || length < 1 || length > 1_048_576)) {
     return json({ error: { code: "CPU_SUBMISSION_REJECTED" } }, 400);
   }
-  let raw: unknown;
-  try {
-    raw = await request.json();
-  } catch {
-    return json({ error: { code: "CPU_SUBMISSION_REJECTED" } }, 400);
+  let submission: HostedCpuSubmission | HostedSpanAudioSubmission | null = trusted?.submission ?? null;
+  if (!trusted) {
+    let raw: unknown;
+    try {
+      raw = await request.json();
+    } catch {
+      return json({ error: { code: "CPU_SUBMISSION_REJECTED" } }, 400);
+    }
+    submission = exactHostedCpuSubmission(raw);
+    if (!submission) return json({ error: { code: "CPU_SUBMISSION_REJECTED" } }, 400);
   }
-  const submission = exactHostedCpuSubmission(raw);
   if (!submission) return json({ error: { code: "CPU_SUBMISSION_REJECTED" } }, 400);
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
-    const session = await hostedSession(request, config, pool, executionContext);
-    if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
-    const scopeResult = await pool.query(`SELECT * FROM videoforge_hosted_session_scope($1)`, [
-      session.session.token,
-    ]);
-    const scope = scopeResult.rows[0];
-    if (!scope) return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
+    let scope = trusted?.scope;
+    if (!scope) {
+      const session = await hostedSession(request, config, pool, executionContext);
+      if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
+      const scopeResult = await pool.query(`SELECT * FROM videoforge_hosted_session_scope($1)`, [
+        session.session.token,
+      ]);
+      scope = scopeResult.rows[0] as typeof scope;
+      if (!scope) return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
+    }
 
     const imageDigest = config.mediaWorkerRelease.executionBundleSha256;
     const requestSha256 = await sha256(canonicalJson(submission));
@@ -446,7 +468,7 @@ async function handleCpuSubmission(
         [
           scope.account_id,
           scope.workspace_id,
-          receiptIds,
+          receiptIds as never,
           submission.projectId,
           submission.projectRevisionId,
         ],
@@ -471,7 +493,10 @@ async function handleCpuSubmission(
       ) {
         throw new Error("CPU_SUBMISSION_IDEMPOTENCY_CONFLICT");
       }
-      attemptId ??= crypto.randomUUID();
+      if (trusted && attemptId !== undefined && attemptId !== trusted.expectedAttemptId) {
+        throw new Error("CPU_SUBMISSION_IDEMPOTENCY_CONFLICT");
+      }
+      attemptId ??= trusted?.expectedAttemptId ?? crypto.randomUUID();
       if (existing.rows[0] && existing.rows[0].state !== "PLANNED") {
         return {
           attemptId,
@@ -479,10 +504,11 @@ async function handleCpuSubmission(
           state: existing.rows[0].state,
         };
       }
-      const lane = submission.kind === "ASR" ? "input" : "render";
+      const primaryContract = hostedCpuPrimaryOutput(submission.kind);
+      const lane = primaryContract.lane;
       const prefix = `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${submission.projectId}/revision/${submission.projectRevisionId}/lane/${lane}/job/${attemptId}/artifact`;
       const jobSpecKey = `${prefix}/job-spec`;
-      const primaryKey = `${prefix}/${submission.kind === "ASR" ? "transcript" : "final-mp4"}`;
+      const primaryKey = `${prefix}/${primaryContract.suffix}`;
       const resultKey = `${prefix}/result-document`;
       const callbackToken = await deriveCallbackToken(config.workflowCallbackSecret, attemptId);
       const inputDocument = bindHostedCpuInputDocument(
@@ -502,8 +528,8 @@ async function handleCpuSubmission(
           bytes: Number(artifact.content_length),
         };
       });
-      const primaryType = submission.kind === "ASR" ? "application/json" : "video/mp4";
-      const primaryMax = submission.kind === "ASR" ? 16 * 1024 ** 2 : 10 * 1024 ** 3;
+      const primaryType = primaryContract.contentType;
+      const primaryMax = primaryContract.maxBytes;
       const jobSpec = {
         schema_version: "videoforge-personal-worker-job-template/v1",
         attempt_id: attemptId,
@@ -705,6 +731,38 @@ async function handleCpuSubmission(
   } finally {
     await pool.end();
   }
+}
+
+/** Internal-only entrypoint for a DB-materialized SPAN_AUDIO submission. It deliberately shares
+ * the exact durable attempt, R2 job-spec, upload-authority, and Workflow path used by browser ASR
+ * and persisted RENDER submissions while preserving the DB-owned deterministic attempt ID. */
+export async function scheduleHostedSpanAudioSubmission(
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  input: {
+    readonly accountId: string;
+    readonly workspaceId: string;
+    readonly submission: HostedSpanAudioSubmission;
+    readonly expectedAttemptId: string;
+  },
+): Promise<{ readonly state: string }> {
+  const result = await handleCpuSubmission(
+    new Request(config.publicOrigin, { method: "POST" }),
+    environment,
+    config,
+    { waitUntil() {} },
+    {
+      scope: { account_id: input.accountId, workspace_id: input.workspaceId },
+      submission: input.submission,
+      expectedAttemptId: input.expectedAttemptId,
+    },
+  );
+  const payload = await result.json() as Record<string, unknown>;
+  if (result.status >= 400 || payload.schema_version !== "videoforge-hosted-cpu-attempt/v1" ||
+    typeof payload.state !== "string") {
+    throw new Error("HOSTED_V209_SPAN_SCHEDULE_REJECTED");
+  }
+  return Object.freeze({ state: payload.state });
 }
 
 async function hostedSession(
