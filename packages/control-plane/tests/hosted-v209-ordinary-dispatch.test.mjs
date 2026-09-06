@@ -20,7 +20,11 @@ const fixturePredispatchUrl = new URL(
 
 test("0074 installs the additive ordinary V2-09 DB boundaries without weakening 0042", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor, sources }) => {
-    assert.equal(sources.at(-1)?.filename, "0074_hosted_v209_ordinary_dispatch.sql");
+    assert.ok(
+      sources.some(
+        ({ filename }) => filename === "0074_hosted_v209_ordinary_dispatch.sql",
+      ),
+    );
     const routines = await executor.query(
       `SELECT p.oid::regprocedure::text AS signature, p.prosecdef AS security_definer,
               has_function_privilege('public',p.oid,'EXECUTE') AS public_execute
