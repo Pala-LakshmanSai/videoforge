@@ -16,6 +16,9 @@ const OBJECT_KEY =
   /^tenant\/([^/]+)\/workspace\/([^/]+)\/project\/([^/]+)\/revision\/([^/]+)\/lane\/(input|mage-image|soulx-avatar|render)\/job\/([^/]+)\/artifact\/([^/]+)$/u;
 const AVATAR_SOURCE_OBJECT_KEY =
   /^tenant\/([^/]+)\/workspace\/([^/]+)\/avatar-profile\/([^/]+)\/version\/([^/]+)\/canonical\/avatar\.(png|jpg)$/u;
+const AVATAR_ORIGINAL_SOURCE_OBJECT_KEY =
+  /^tenant\/([^/]+)\/workspace\/([^/]+)\/avatar-profile\/([^/]+)\/version\/([^/]+)\/original\/source$/u;
+const AVATAR_PASSTHROUGH_PROFILE = "hosted-avatar-source-pass-through-v1";
 const SOULX_SOURCE_PROFILE = "soulx-pro-vf924u-approved-v1";
 const SOULX_SOURCE_SHA256 =
   "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83";
@@ -173,7 +176,11 @@ function exactAvatarSourceScope(
   artifact: HostedCommittedArtifact,
   input: HostedRenderPlanMaterializationInput,
 ): void {
-  const match = AVATAR_SOURCE_OBJECT_KEY.exec(artifact.objectKey);
+  const canonicalMatch = AVATAR_SOURCE_OBJECT_KEY.exec(artifact.objectKey);
+  const originalMatch = AVATAR_ORIGINAL_SOURCE_OBJECT_KEY.exec(artifact.objectKey);
+  const match = canonicalMatch ?? originalMatch;
+  const passThrough =
+    input.revisionDocument.avatar_binding.source_preparation_version === AVATAR_PASSTHROUGH_PROFILE;
   if (!match || match[1] !== input.accountId || match[2] !== input.workspaceId ||
     match[3] !== input.revisionDocument.avatar_binding.avatar_profile_id ||
     match[4] !== input.revisionDocument.avatar_binding.avatar_profile_version_id ||
@@ -187,7 +194,11 @@ function exactAvatarSourceScope(
     artifact.reservationState !== "COMMITTED" || artifact.receiptDeletedAt !== null ||
     !UUID.test(artifact.receiptId) || !SHA256.test(artifact.checksumSha256) ||
     !Number.isSafeInteger(artifact.contentLength) || artifact.contentLength < 1 ||
-    (match[5] === "png" ? artifact.contentType !== "image/png" : artifact.contentType !== "image/jpeg")) {
+    (originalMatch !== null && !passThrough) ||
+    (canonicalMatch !== null && passThrough) ||
+    (canonicalMatch !== null &&
+      (canonicalMatch[5] === "png" ? artifact.contentType !== "image/png" : artifact.contentType !== "image/jpeg")) ||
+    (originalMatch !== null && !["image/png", "image/jpeg"].includes(artifact.contentType))) {
     reject("SOULX_CROP_PROFILE_UNQUALIFIED");
   }
 }

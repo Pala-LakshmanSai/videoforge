@@ -372,6 +372,7 @@ describe("hosted pair live provider wiring", () => {
       }) => ({ state: "ACCEPTED" })),
     };
     const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
+    const beforeSettlement = vi.fn(async () => ({ state: "RENDER_SCHEDULED" }));
     const drained = vi.fn(async () => ({
       workersTotal: 0 as const,
       queuedJobs: 0 as const,
@@ -388,6 +389,7 @@ describe("hosted pair live provider wiring", () => {
       vi.fn(async () => ({ guard: "exact" })),
       vi.fn(async () => ({})),
       terminalOutput,
+      beforeSettlement,
     );
     await expect(reconciler.observe(ids, false)).resolves.toEqual({ state: "SETTLED" });
     expect(terminalOutput.acceptCompleted.mock.calls.map(([call]) => ({
@@ -410,6 +412,27 @@ describe("hosted pair live provider wiring", () => {
       },
     ]);
     expect(settle.reconcile).toHaveBeenCalledOnce();
+    expect(beforeSettlement).toHaveBeenCalledOnce();
+    expect(beforeSettlement.mock.invocationCallOrder[0]).toBeLessThan(
+      settle.reconcile.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it("does not settle when the durable render handoff fails", async () => {
+    const status = vi.fn(async (id: string) => ({ id, status: "COMPLETED" as const, output: {} }));
+    const settle = { reconcile: vi.fn() };
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rows()) } as never,
+      { mage_image: { status, cancel: vi.fn() }, soulx_avatar: { status, cancel: vi.fn() } },
+      settle as never,
+      { mage_image: vi.fn(), soulx_avatar: vi.fn() },
+      vi.fn(),
+      vi.fn(),
+      { acceptCompleted: vi.fn(async () => ({ state: "LANE_COMPLETED" })) },
+      vi.fn(async () => { throw new Error("RENDER_HANDOFF_FAILED"); }),
+    );
+    await expect(reconciler.observe(ids, false)).rejects.toThrow("RENDER_HANDOFF_FAILED");
+    expect(settle.reconcile).not.toHaveBeenCalled();
   });
 
   it("fails closed before settlement when the V2-09 cost guard is absent", async () => {

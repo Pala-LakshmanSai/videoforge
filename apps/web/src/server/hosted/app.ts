@@ -369,8 +369,8 @@ async function handleCpuSubmission(
   executionContext: HostedExecutionContext,
   trusted?: {
     readonly scope: { readonly account_id: string; readonly workspace_id: string };
-    readonly submission: HostedSpanAudioSubmission;
-    readonly expectedAttemptId: string;
+    readonly submission: HostedCpuSubmission | HostedSpanAudioSubmission;
+    readonly expectedAttemptId?: string;
   },
 ): Promise<Response> {
   if (!trusted && !sameOriginBrowserWrite(request, config)) {
@@ -766,6 +766,26 @@ export async function scheduleHostedSpanAudioSubmission(
     typeof payload.state !== "string") {
     throw new Error("HOSTED_V209_SPAN_SCHEDULE_REJECTED");
   }
+  return Object.freeze({ state: payload.state });
+}
+
+export async function scheduleHostedRenderSubmission(
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  input: {
+    readonly accountId: string;
+    readonly workspaceId: string;
+    readonly submission: HostedCpuSubmission;
+  },
+): Promise<{ readonly state: string }> {
+  if (input.submission.kind !== "RENDER") throw new Error("HOSTED_V209_RENDER_SCHEDULE_REJECTED");
+  const result = await handleCpuSubmission(
+    new Request(config.publicOrigin, { method: "POST" }), environment, config, { waitUntil() {} },
+    { scope: { account_id: input.accountId, workspace_id: input.workspaceId }, submission: input.submission },
+  );
+  const payload = await result.json() as Record<string, unknown>;
+  if (result.status >= 400 || payload.schema_version !== "videoforge-hosted-cpu-attempt/v1" ||
+    typeof payload.state !== "string") throw new Error("HOSTED_V209_RENDER_SCHEDULE_REJECTED");
   return Object.freeze({ state: payload.state });
 }
 

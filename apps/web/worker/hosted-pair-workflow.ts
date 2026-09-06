@@ -1,12 +1,16 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 
-import type { HostedRuntimeEnvironment } from "../src/server/hosted/configuration";
+import {
+  hostedRuntimeConfiguration,
+  type HostedRuntimeEnvironment,
+} from "../src/server/hosted/configuration";
 import { hostedPairProductionBindingState } from "../src/server/hosted/hosted-pair-production-composition";
 import {
   createHostedPairLiveComposition,
   type HostedPairLiveEnvironment,
   type HostedPairWorkflowParameters,
 } from "../src/server/hosted/hosted-pair-live-wiring";
+import { createHostedV209RenderHandoff } from "../src/server/hosted/hosted-v209-render-handoff";
 import { createNeonExecutor, createNeonPool } from "../src/server/hosted/neon";
 import { V213SqlAcceptanceWorkflowPort } from "../src/server/hosted/v213-acceptance-workflow-production";
 import {
@@ -51,6 +55,7 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
     const pair = acceptance ? null : scope(event.payload);
     if (hostedPairProductionBindingState(this.env).state === "DISABLED_UNQUALIFIED")
       return Object.freeze({ state: "DISABLED_UNQUALIFIED" as const });
+    const config = hostedRuntimeConfiguration(this.env);
 
     if (acceptance) {
       const runtimePool = createNeonPool(this.env.DATABASE_URL!);
@@ -77,10 +82,28 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
         const runtimePool = createNeonPool(this.env.DATABASE_URL!);
         const reconcilerPool = createNeonPool(this.env.VIDEOFORGE_RECONCILER_DATABASE_URL!);
         try {
+          const runtimeDatabase = createNeonExecutor(runtimePool);
+          const reconcilerDatabase = createNeonExecutor(reconcilerPool);
+          if (!this.env.PRIVATE_ARTIFACTS)
+            throw new Error("Hosted pair render artifact binding is missing.");
+          const renderHandoff = createHostedV209RenderHandoff({
+            database: reconcilerDatabase,
+            runtimeDatabase,
+            bucket: this.env.PRIVATE_ARTIFACTS,
+            schedule: async (submission) => {
+              const { scheduleHostedRenderSubmission } = await import("../src/server/hosted/app");
+              return scheduleHostedRenderSubmission(this.env, config, {
+                accountId: params.accountId,
+                workspaceId: params.workspaceId,
+                submission,
+              });
+            },
+          });
           const live = await createHostedPairLiveComposition(
             this.env,
-            createNeonExecutor(runtimePool),
-            createNeonExecutor(reconcilerPool),
+            runtimeDatabase,
+            reconcilerDatabase,
+            (workflowScope) => renderHandoff.ensure(workflowScope),
           );
           if (observation === 0) {
             const dispatch = await live.composition.resume({
@@ -90,7 +113,7 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
             });
             if (dispatch.state === "DISABLED_UNQUALIFIED") return dispatch;
           }
-          const clock = await createNeonExecutor(runtimePool).transaction(async (transaction) => {
+          const clock = await runtimeDatabase.transaction(async (transaction) => {
             const result = await transaction.query<{ database_now: string | Date }>(
               "SELECT transaction_timestamp() AS database_now",
             );

@@ -463,6 +463,47 @@ describe("hosted render-plan materialization", () => {
     expect(JSON.stringify(result.payload)).toContain(SOULX_SOURCE_SHA256);
   });
 
+  it("accepts the exact locked workspace original source only for pass-through preparation", async () => {
+    const base = await validInput(true);
+    const revisionDocument = structuredClone(base.revisionDocument) as any;
+    revisionDocument.avatar_binding.source_preparation_version =
+      "hosted-avatar-source-pass-through-v1";
+    const revision = await validateAndHashContractDocument("projectRevisionConfig", revisionDocument);
+    const timelineDocument = structuredClone(base.timing.timeline) as any;
+    timelineDocument.revision_config_hash = revision.sha256;
+    const timeline = await validateAndHashContractDocument("timelinePlan", timelineDocument);
+    const manifestDocument = structuredClone(base.resolvedManifest.document) as any;
+    manifestDocument.revision_config_hash = revision.sha256;
+    manifestDocument.timeline_plan_hash = timeline.sha256;
+    const manifest = await validateAndHashContractDocument("resolvedRenderManifest", manifestDocument);
+    const avatarSource = {
+      ...base.avatarSource!,
+      objectKey: `tenant/${ACCOUNT}/workspace/${WORKSPACE}/avatar-profile/${revisionDocument.avatar_binding.avatar_profile_id}/version/${revisionDocument.avatar_binding.avatar_profile_version_id}/original/source`,
+    };
+    await expect(materializeHostedRenderPlan(new MemoryDatabase(), {
+      ...base,
+      revision: { ...base.revision, revisionConfigSha256: revision.sha256 },
+      revisionDocument: revision.value,
+      timing: { ...base.timing, timeline: timeline.value, timelineSha256: timeline.sha256 },
+      avatarSource,
+      resolvedManifest: {
+        document: manifest.value,
+        artifact: { ...base.resolvedManifest.artifact, checksumSha256: manifest.sha256 },
+      },
+    })).resolves.toMatchObject({ replayed: false });
+  });
+
+  it("rejects an original source path under a canonical preparation claim", async () => {
+    const input = await validInput(true);
+    await expectCode(materializeHostedRenderPlan(new MemoryDatabase(), {
+      ...input,
+      avatarSource: {
+        ...input.avatarSource!,
+        objectKey: `tenant/${ACCOUNT}/workspace/${WORKSPACE}/avatar-profile/${input.revisionDocument.avatar_binding.avatar_profile_id}/version/${input.revisionDocument.avatar_binding.avatar_profile_version_id}/original/source`,
+      },
+    }), "SOULX_CROP_PROFILE_UNQUALIFIED");
+  });
+
   it("fails closed when the approved SoulX source background is absent", async () => {
     const input = await validInput(true);
     await expectCode(

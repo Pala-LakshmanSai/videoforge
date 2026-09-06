@@ -779,6 +779,7 @@ export class HostedPairWorkflowReconciler {
         readonly observedAt: string;
       }) => Promise<unknown>;
     },
+    private readonly beforeSettlement?: (scope: HostedPairWorkflowScope) => Promise<unknown>,
   ) {}
 
   async observe(scope: HostedPairWorkflowScope, cancelKnownActive: boolean) {
@@ -824,6 +825,7 @@ export class HostedPairWorkflowReconciler {
         unknown,
       });
     }
+    if (this.beforeSettlement) await this.beforeSettlement(scope);
     const drained = await Promise.all([
       this.confirmDrained.mage_image(),
       this.confirmDrained.soulx_avatar(),
@@ -872,6 +874,7 @@ export async function createHostedPairLiveComposition(
   environment: HostedPairLiveEnvironment,
   runtimeDatabase: TransactionalSqlExecutor,
   reconcilerDatabase: TransactionalSqlExecutor,
+  beforeSettlement?: (scope: HostedPairWorkflowScope) => Promise<unknown>,
 ) {
   await assertHostedPairDatabasePrincipals(runtimeDatabase, reconcilerDatabase);
   const provider = await createHostedRunPodPair(environment);
@@ -1049,6 +1052,7 @@ export async function createHostedPairLiveComposition(
       settlementGuard,
       signZeroProof,
       terminalOutput,
+      beforeSettlement,
     ),
   });
 }
