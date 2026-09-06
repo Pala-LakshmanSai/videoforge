@@ -759,6 +759,17 @@ export class HostedPairWorkflowReconciler {
         readonly observedAt: string;
       },
     ) => Promise<JsonValue> = async () => ({}),
+    private readonly terminalOutput?: {
+      readonly acceptCompleted: (input: {
+        readonly accountId: string;
+        readonly workspaceId: string;
+        readonly attemptId: string;
+        readonly lane: HostedPairLane;
+        readonly providerJobId: string;
+        readonly output: unknown;
+        readonly observedAt: string;
+      }) => Promise<unknown>;
+    },
   ) {}
 
   async observe(scope: HostedPairWorkflowScope, cancelKnownActive: boolean) {
@@ -777,6 +788,18 @@ export class HostedPairWorkflowReconciler {
           allTerminal = false;
           active += 1;
           if (cancelKnownActive) await this.transports[row.lane].cancel(row.providerJobId);
+        } else if (status.status === "COMPLETED" && this.terminalOutput) {
+          if (!Object.hasOwn(status, "output"))
+            throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_OUTPUT_MISSING");
+          await this.terminalOutput.acceptCompleted({
+            accountId: scope.accountId,
+            workspaceId: scope.workspaceId,
+            attemptId: row.attemptId,
+            lane: row.lane,
+            providerJobId: row.providerJobId,
+            output: status.output,
+            observedAt: new Date().toISOString(),
+          });
         }
       } catch (error) {
         allTerminal = false;

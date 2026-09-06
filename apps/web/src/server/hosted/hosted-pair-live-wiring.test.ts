@@ -356,6 +356,54 @@ describe("hosted pair live provider wiring", () => {
     });
   });
 
+  it("ingests each bounded COMPLETED provider output before settlement", async () => {
+    const status = vi.fn(async (id: string) => ({
+      id,
+      status: "COMPLETED" as const,
+      output: { receipt: id },
+    }));
+    const terminalOutput = { acceptCompleted: vi.fn(async () => ({ state: "ACCEPTED" })) };
+    const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
+    const drained = vi.fn(async () => ({
+      workersTotal: 0 as const,
+      queuedJobs: 0 as const,
+      observedAt: "2026-09-06T01:00:00.000Z",
+    }));
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rows()) } as never,
+      {
+        mage_image: { status, cancel: vi.fn() },
+        soulx_avatar: { status, cancel: vi.fn() },
+      },
+      settle as never,
+      { mage_image: drained, soulx_avatar: drained },
+      vi.fn(async () => ({ guard: "exact" })),
+      vi.fn(async () => ({})),
+      terminalOutput,
+    );
+    await expect(reconciler.observe(ids, false)).resolves.toEqual({ state: "SETTLED" });
+    expect(terminalOutput.acceptCompleted.mock.calls.map(([call]) => ({
+      lane: call.lane,
+      attemptId: call.attemptId,
+      providerJobId: call.providerJobId,
+      output: call.output,
+    }))).toEqual([
+      {
+        lane: "mage_image",
+        attemptId: "mage_image-attempt",
+        providerJobId: "mage_image-job-1",
+        output: { receipt: "mage_image-job-1" },
+      },
+      {
+        lane: "soulx_avatar",
+        attemptId: "soulx_avatar-attempt",
+        providerJobId: "soulx_avatar-job-1",
+        output: { receipt: "soulx_avatar-job-1" },
+      },
+    ]);
+    expect(settle.reconcile).toHaveBeenCalledOnce();
+  });
+
   it("fails closed before settlement when the V2-09 cost guard is absent", async () => {
     const status = vi.fn(async (id: string) => ({ id, status: "COMPLETED" as const }));
     const settle = { reconcile: vi.fn() };
