@@ -375,9 +375,11 @@ test("0076 derives and materializes one exact tenant SYSTEM avatar input referen
       "23514",
     );
 
-    await executor.query(`UPDATE assets SET metadata='{}'::jsonb WHERE id=$1`, [
-      IDS.avatarRuntimeA,
-    ]);
+    await executor.query(
+      `UPDATE assets SET metadata='{}'::jsonb,object_key=object_key||'.drift',
+         binary_sha256=$2,content_type='image/jpeg' WHERE id=$1`,
+      [IDS.avatarRuntimeA, sha256("0079-mutated-tenant-avatar")],
+    );
     await expectDatabaseError(
       executor.query(
         `UPDATE artifact_receipts SET deleted_at=transaction_timestamp(),
@@ -404,7 +406,7 @@ test("0076 derives and materializes one exact tenant SYSTEM avatar input referen
   });
 });
 
-test("0076 through 0078 keep the SYSTEM exception narrow and the ready-render marker DB-owned", async () => {
+test("0076 through 0079 keep the SYSTEM exception narrow and the ready-render marker DB-owned", async () => {
   const source = await readFile(
     new URL("../migrations/0076_hosted_v209_system_avatar_reference.sql", import.meta.url),
     "utf8",
@@ -452,6 +454,28 @@ test("0076 through 0078 keep the SYSTEM exception narrow and the ready-render ma
     /pg_advisory_xact_lock\(hashtextextended\(identity\.generation_request_id::text,41\)\)/u,
   );
   assert.doesNotMatch(hardening, /signed_url|authorization|secret|token_ciphertext/iu);
+  const receiptHardening = await readFile(
+    new URL(
+      "../migrations/0079_hosted_v209_system_avatar_receipt_and_acl_hardening.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const structuralStart = receiptHardening.indexOf("structural_system_reference:=");
+  const structuralEnd = receiptHardening.indexOf("exact_system_reference:=");
+  assert.ok(structuralStart >= 0 && structuralEnd > structuralStart);
+  const structuralClassification = receiptHardening.slice(structuralStart, structuralEnd);
+  assert.match(
+    structuralClassification,
+    /revision\.avatar_runtime_source_asset_id=reserved\.asset_id/u,
+  );
+  assert.match(structuralClassification, /'input-reservation',request\.id,'avatar-source'/u);
+  assert.doesNotMatch(structuralClassification, /JOIN public\.assets|tenant_asset/u);
+  assert.match(
+    receiptHardening,
+    /exact_system_reference:=structural_system_reference AND\s+public\.videoforge_is_hosted_v209_system_avatar_reference/u,
+  );
+  assert.doesNotMatch(receiptHardening, /signed_url|authorization|secret|token_ciphertext/iu);
 });
 
 test("0076 SYSTEM reference receipts survive a secret-free metadata backup and restore", async () => {

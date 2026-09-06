@@ -51,7 +51,9 @@ test "$(stat -f '%Lp' "$ACTIVATION_RECORD" 2>/dev/null || stat -c '%a' "$ACTIVAT
 # Apply the committed migration chain only through the approved Neon migration-owner service.
 # PGSERVICEFILE contains host/dbname/user but no password; PGPASSFILE is mode 0600.  The helper
 # verifies every migration byte/hash, the exact ledger prefix, the owner identity, runtime grants,
-# and FORCE RLS.  It never accepts a DATABASE_URL argv.
+# and FORCE RLS. Before any pending migration it validates the runtime role and transactionally
+# disables all of that role's function execution; only the final exact allowlist restores service.
+# A crash therefore leaves runtime dispatch disabled. It never accepts a DATABASE_URL argv.
 export V2_06_PG_SERVICEFILE="$PRIVATE_INPUT_DIR/owner.pg_service.conf"
 export V2_06_PG_SERVICE=videoforge_v2_06_owner
 export V2_06_PGPASSFILE="$PRIVATE_INPUT_DIR/owner.pgpass"
@@ -231,7 +233,7 @@ videoforge-v2-06-staging-private`. Wildcard origins and headers are forbidden.
 - Rollback first selects the previously recorded Cloudflare Worker code version, then performs an
   ordinary deployment of the intended restored source/config so code and deployment metadata converge;
   rollback selection alone is not claimed atomic. The prior immutable desktop release manifest remains
-  available. Every migration in the committed manifest (currently through 0078) is additive and
+  available. Every migration in the committed manifest (currently through 0079) is additive and
   retained. Successful final video objects are
   not time-deleted; the user-facing Delete operation owns durable R2 deletion. Only failed/cancelled
   transient attempt objects use bounded retention. Auth/session tables rely on Neon native PITR rather

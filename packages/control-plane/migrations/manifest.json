@@ -468,6 +468,12 @@
       "name": "hosted_v209_system_avatar_reference_hardening",
       "filename": "0078_hosted_v209_system_avatar_reference_hardening.sql",
       "sha256": "sha256:c1fb46651322acff10476472dccee04ddd8553721bd1174347dde2a457c95773"
+    },
+    {
+      "version": 79,
+      "name": "hosted_v209_system_avatar_receipt_and_acl_hardening",
+      "filename": "0079_hosted_v209_system_avatar_receipt_and_acl_hardening.sql",
+      "sha256": "sha256:773618d0109dc3dfcc34acd8dd7108b2a6e11dadac0e7f7d029ff852236b52f3"
     }
   ]
 }

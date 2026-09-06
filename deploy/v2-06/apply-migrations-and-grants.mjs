@@ -282,6 +282,25 @@ const main = async () => {
     ledgerText = "";
   }
   const ledger = parseLedger(ledgerText);
+  let applyRuntimeRole;
+  let applyRuntimeRoleIdentifier;
+  if (applyGrants && !verifyOnly) {
+    applyRuntimeRole = required("V2_06_RUNTIME_ROLE");
+    applyRuntimeRoleIdentifier = safeIdentifier(applyRuntimeRole, "V2_06_RUNTIME_ROLE");
+    const roleRows = await query(
+      `SELECT rolname, rolsuper::text, rolcreaterole::text, rolcreatedb::text, rolinherit::text, rolreplication::text, rolbypassrls::text FROM pg_roles WHERE rolname = ${safeLiteral(applyRuntimeRole)}`,
+      environment,
+    );
+    if (!roleRows)
+      fail(
+        "runtime role does not exist; create it through the approved Neon owner operation first",
+      );
+    const roleFlags = roleRows.split("\t").slice(1);
+    if (roleFlags.length !== 6 || roleFlags.some((value) => value !== "false"))
+      fail(
+        "runtime role must already be NOSUPERUSER/NOCREATEDB/NOCREATEROLE/NOINHERIT/NOREPLICATION/NOBYPASSRLS before grants",
+      );
+  }
   if (!verifyOnly) {
     const requiredPrefix = process.env.V2_06_REQUIRED_LEDGER_PREFIX_VERSION;
     if (
@@ -301,6 +320,18 @@ const main = async () => {
         applied.sha256 !== expected.sha256
       )
         fail(`existing migration ledger position ${index + 1} is not an exact manifest prefix`);
+    }
+    if (applyGrants) {
+      const preMigrationRuntimeDisableSql = [
+        "BEGIN;",
+        "SELECT pg_advisory_xact_lock(1448494662, 1);",
+        `REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM ${applyRuntimeRoleIdentifier};`,
+        "COMMIT;",
+      ].join("\n");
+      await runPsql(
+        ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--command", preMigrationRuntimeDisableSql],
+        environment,
+      );
     }
     if (ledger.length === 0 && !ledgerText) {
       await runPsql(
@@ -337,26 +368,11 @@ const main = async () => {
   }
 
   if (applyGrants && !verifyOnly) {
-    const runtimeRole = required("V2_06_RUNTIME_ROLE");
-    const roleIdentifier = safeIdentifier(runtimeRole, "V2_06_RUNTIME_ROLE");
-    const roleRows = await query(
-      `SELECT rolname, rolsuper::text, rolcreaterole::text, rolcreatedb::text, rolinherit::text, rolreplication::text, rolbypassrls::text FROM pg_roles WHERE rolname = ${safeLiteral(runtimeRole)}`,
-      environment,
-    );
-    if (!roleRows)
-      fail(
-        "runtime role does not exist; create it through the approved Neon owner operation first",
-      );
-    const roleFlags = roleRows.split("\t").slice(1);
-    if (roleFlags.length !== 6 || roleFlags.some((value) => value !== "false"))
-      fail(
-        "runtime role must already be NOSUPERUSER/NOCREATEDB/NOCREATEROLE/NOINHERIT/NOREPLICATION/NOBYPASSRLS before grants",
-      );
     const grantsSql = (await readFile(grantsPath, "utf8"))
       .split(/\r?\n/u)
       .filter((line) => !/^\s*\\(?:if|else|endif|quit)\b/u.test(line))
       .join("\n")
-      .replaceAll(':"runtime_role"', roleIdentifier);
+      .replaceAll(':"runtime_role"', applyRuntimeRoleIdentifier);
     const temporaryDirectory = await mkdtemp(resolve(tmpdir(), "videoforge-v2-06-grants-"));
     const temporarySql = resolve(temporaryDirectory, "runtime-grants.sql");
     try {

@@ -35,6 +35,24 @@ test("migration activation fails closed without the pgcrypto prerequisite for 00
   assert.match(source, /provider-managed primitives, not application capabilities/u);
 });
 
+test("grant activation disables the validated runtime before applying any pending migration", () => {
+  const source = readFileSync("deploy/v2-06/apply-migrations-and-grants.mjs", "utf8");
+  const roleValidation = source.indexOf("const roleRows = await query(");
+  const runtimeDisable = source.indexOf("const preMigrationRuntimeDisableSql = [");
+  const migrationLoop = source.indexOf("for (const migration of migrations.slice(ledger.length))");
+  assert.ok(roleValidation >= 0);
+  assert.ok(roleValidation < runtimeDisable);
+  assert.ok(runtimeDisable < migrationLoop);
+  assert.match(
+    source,
+    /REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM \$\{applyRuntimeRoleIdentifier\};/u,
+  );
+  assert.match(
+    source,
+    /SELECT pg_advisory_xact_lock\(1448494662, 1\);[\s\S]*REVOKE ALL ON ALL FUNCTIONS[\s\S]*COMMIT;/u,
+  );
+});
+
 test("V2-06 CORS verifier accepts Wrangler's exact policy output", () => {
   const result = spawnSync(process.execPath, [verifier, "--origin", origin], {
     input: output,
