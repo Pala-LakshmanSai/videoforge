@@ -534,7 +534,7 @@ export class HostedR2OutputArtifactBarrier implements HostedPrivateArtifactBarri
       expected.contentLength > 2 * 1024 ** 3 ||
       head.size !== expected.contentLength ||
       head.httpMetadata?.contentType !== expected.contentType ||
-      checksum !== expected.checksumSha256
+      (checksum !== null && checksum !== expected.checksumSha256)
     ) {
       return null;
     }

@@ -96,6 +96,15 @@ interface ParsedCallback {
   readonly observedAt: string;
 }
 
+/** A provider status poll has already established COMPLETED. This is an internal application
+ * boundary, not a provider callback or an HTTP payload. */
+export interface HostedInternalCompletedOutput {
+  readonly transportStatus: "COMPLETED";
+  readonly receipt: ProvenanceReceipt;
+  readonly artifactCommitReceiptSha256s: readonly Sha256[];
+  readonly observedAt: string;
+}
+
 export type HostedOutputBarrierOutcome = "LANE_COMPLETED" | "DUPLICATE_IDEMPOTENT";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -257,12 +266,155 @@ export function createHostedServerlessOutputBarrier(input: {
   readonly artifacts: HostedPrivateArtifactBarrierPort;
   readonly repository: HostedLaneCompletionRepository;
 }) {
+  async function acceptVerified(
+    binding: HostedServerlessAttemptBinding,
+    callback: ParsedCallback,
+    callbackSha256: Sha256,
+  ): Promise<HostedOutputBarrierOutcome> {
+    exactExpectedObjects(binding);
+    const immutableBindingSha256 = hostedOutputBindingSha256(binding);
+    const existing = await input.repository.accepted(binding.attemptId);
+    if (existing) {
+      if (
+        existing.callbackSha256 !== callbackSha256 ||
+        existing.bindingSha256 !== immutableBindingSha256
+      ) {
+        throw new HostedOutputBarrierError("HOSTED_OUTPUT_IDEMPOTENCY_CONFLICT");
+      }
+      return "DUPLICATE_IDEMPOTENT";
+    }
+
+    try {
+      verifyProvenanceReceipt(input.signer, callback.receipt, {
+        dispatchTokenSha256: binding.dispatchTokenSha256,
+        envelopeSha256: binding.envelopeSha256,
+        requestSha256: binding.requestSha256,
+        attemptId: binding.attemptId,
+        providerJobId: binding.providerJobId,
+        accountId: binding.accountId,
+        workspaceId: binding.workspaceId,
+        deploymentId: binding.deploymentId,
+        endpointIdSha256: binding.endpointIdSha256,
+        containerDigest: binding.workerImageDigest,
+        volumeIdSha256: binding.volumeIdSha256,
+        volumeManifestSha256: binding.volumeManifestSha256,
+        modelManifestSha256: binding.modelManifestSha256,
+        gpuAllowlist: ["NVIDIA GeForce RTX 4090"],
+        seenNonces: await input.repository.seenReceiptNonces(binding.attemptId),
+      });
+      if (callback.receipt.lane !== binding.lane) {
+        throw new HostedOutputBarrierError("HOSTED_OUTPUT_FOREIGN");
+      }
+    } catch (error) {
+      if (error instanceof HostedOutputBarrierError) throw error;
+      if (!(error instanceof ReceiptVerificationError)) {
+        throw new HostedOutputBarrierError("HOSTED_OUTPUT_RECEIPT_INVALID");
+      }
+      const foreign = [
+        "RECEIPT_TENANT_MISMATCH",
+        "RECEIPT_TOKEN_MISMATCH",
+        "RECEIPT_ATTEMPT_MISMATCH",
+        "RECEIPT_JOB_MISMATCH",
+      ].includes(error.code);
+      throw new HostedOutputBarrierError(
+        foreign ? "HOSTED_OUTPUT_FOREIGN" : "HOSTED_OUTPUT_RECEIPT_INVALID",
+      );
+    }
+    verifyReceiptObjectSet(binding, callback.receipt);
+
+    const commitHashes: Sha256[] = [];
+    for (const expected of binding.expectedObjects) {
+      let readback: HostedPrivateArtifactReadback | null;
+      try {
+        readback = await input.artifacts.readCommitted(binding, expected);
+      } catch {
+        throw new HostedOutputBarrierError("HOSTED_OUTPUT_PRIVATE_READBACK_FAILED");
+      }
+      if (
+        !readback ||
+        readback.itemId !== expected.itemId ||
+        readback.objectKey !== expected.objectKey ||
+        readback.contentType !== expected.contentType ||
+        readback.contentLength !== expected.contentLength ||
+        readback.checksumSha256 !== expected.checksumSha256 ||
+        readback.reservationState !== "COMMITTED" ||
+        readback.readbackChecksumSha256 !== expected.checksumSha256 ||
+        readback.readbackContentLength !== expected.contentLength ||
+        readback.readbackContentType !== expected.contentType ||
+        !SHA256.test(readback.artifactCommitReceiptSha256)
+      ) {
+        throw new HostedOutputBarrierError("HOSTED_OUTPUT_PRIVATE_READBACK_FAILED");
+      }
+      commitHashes.push(readback.artifactCommitReceiptSha256);
+    }
+    if (!sameStringSet(commitHashes, callback.artifactCommitReceiptSha256s)) {
+      throw new HostedOutputBarrierError("HOSTED_OUTPUT_OBJECT_SET_MISMATCH");
+    }
+
+    const proposed: HostedLaneCompletionRecord = Object.freeze({
+      attemptId: binding.attemptId,
+      bindingSha256: immutableBindingSha256,
+      callbackSha256,
+      provenanceReceiptSha256: callback.receipt.receipt_sha256,
+      artifactCommitReceiptSha256s: Object.freeze([...commitHashes].sort()),
+      completedAt: callback.observedAt,
+    });
+    const completion = await input.repository.completeVerified({
+      record: proposed,
+      binding,
+      receipt: callback.receipt,
+    });
+    const committed = completion.record;
+    if (
+      committed.callbackSha256 !== callbackSha256 ||
+      committed.bindingSha256 !== immutableBindingSha256
+    ) {
+      throw new HostedOutputBarrierError("HOSTED_OUTPUT_IDEMPOTENCY_CONFLICT");
+    }
+    return completion.inserted ? "LANE_COMPLETED" : "DUPLICATE_IDEMPOTENT";
+  }
+
   return Object.freeze({
+    /** Accepts a result learned from the exact bound provider status endpoint. The idempotency hash
+     * deliberately excludes observation time, so another poll of identical terminal bytes is a
+     * harmless replay. */
+    async acceptCompleted(
+      binding: HostedServerlessAttemptBinding,
+      completed: HostedInternalCompletedOutput,
+    ): Promise<HostedOutputBarrierOutcome> {
+      if (
+        completed.transportStatus !== "COMPLETED" ||
+        !Number.isFinite(Date.parse(completed.observedAt)) ||
+        completed.artifactCommitReceiptSha256s.length < 1 ||
+        completed.artifactCommitReceiptSha256s.some((value) => !SHA256.test(value)) ||
+        new Set(completed.artifactCommitReceiptSha256s).size !==
+          completed.artifactCommitReceiptSha256s.length
+      ) {
+        throw new HostedOutputBarrierError("HOSTED_OUTPUT_CALLBACK_MALFORMED");
+      }
+      const stableTerminalSha256 = canonicalSha256({
+        schema_version: "videoforge-hosted-serverless-terminal-output/v1",
+        transport_status: "COMPLETED",
+        provenance_receipt_sha256: completed.receipt.receipt_sha256,
+        artifact_commit_receipt_sha256s: [...completed.artifactCommitReceiptSha256s].sort(
+          compareUtf8Bytes,
+        ),
+      });
+      return acceptVerified(
+        binding,
+        {
+          transportStatus: "COMPLETED",
+          receipt: completed.receipt,
+          artifactCommitReceiptSha256s: completed.artifactCommitReceiptSha256s,
+          observedAt: completed.observedAt,
+        },
+        stableTerminalSha256,
+      );
+    },
     async accept(
       binding: HostedServerlessAttemptBinding,
       callbackValue: unknown,
     ): Promise<HostedOutputBarrierOutcome> {
-      exactExpectedObjects(binding);
       const callback = parseCallback(callbackValue);
       let callbackSha256: Sha256;
       try {
@@ -270,106 +422,7 @@ export function createHostedServerlessOutputBarrier(input: {
       } catch {
         throw new HostedOutputBarrierError("HOSTED_OUTPUT_CALLBACK_MALFORMED");
       }
-      const immutableBindingSha256 = hostedOutputBindingSha256(binding);
-      const existing = await input.repository.accepted(binding.attemptId);
-      if (existing) {
-        if (
-          existing.callbackSha256 !== callbackSha256 ||
-          existing.bindingSha256 !== immutableBindingSha256
-        ) {
-          throw new HostedOutputBarrierError("HOSTED_OUTPUT_IDEMPOTENCY_CONFLICT");
-        }
-        return "DUPLICATE_IDEMPOTENT";
-      }
-
-      try {
-        verifyProvenanceReceipt(input.signer, callback.receipt, {
-          dispatchTokenSha256: binding.dispatchTokenSha256,
-          envelopeSha256: binding.envelopeSha256,
-          requestSha256: binding.requestSha256,
-          attemptId: binding.attemptId,
-          providerJobId: binding.providerJobId,
-          accountId: binding.accountId,
-          workspaceId: binding.workspaceId,
-          deploymentId: binding.deploymentId,
-          endpointIdSha256: binding.endpointIdSha256,
-          containerDigest: binding.workerImageDigest,
-          volumeIdSha256: binding.volumeIdSha256,
-          volumeManifestSha256: binding.volumeManifestSha256,
-          modelManifestSha256: binding.modelManifestSha256,
-          gpuAllowlist: ["NVIDIA GeForce RTX 4090"],
-          seenNonces: await input.repository.seenReceiptNonces(binding.attemptId),
-        });
-        if (callback.receipt.lane !== binding.lane) {
-          throw new HostedOutputBarrierError("HOSTED_OUTPUT_FOREIGN");
-        }
-      } catch (error) {
-        if (error instanceof HostedOutputBarrierError) throw error;
-        if (!(error instanceof ReceiptVerificationError)) {
-          throw new HostedOutputBarrierError("HOSTED_OUTPUT_RECEIPT_INVALID");
-        }
-        const foreign = [
-          "RECEIPT_TENANT_MISMATCH",
-          "RECEIPT_TOKEN_MISMATCH",
-          "RECEIPT_ATTEMPT_MISMATCH",
-          "RECEIPT_JOB_MISMATCH",
-        ].includes(error.code);
-        throw new HostedOutputBarrierError(
-          foreign ? "HOSTED_OUTPUT_FOREIGN" : "HOSTED_OUTPUT_RECEIPT_INVALID",
-        );
-      }
-      verifyReceiptObjectSet(binding, callback.receipt);
-
-      const commitHashes: Sha256[] = [];
-      for (const expected of binding.expectedObjects) {
-        let readback: HostedPrivateArtifactReadback | null;
-        try {
-          readback = await input.artifacts.readCommitted(binding, expected);
-        } catch {
-          throw new HostedOutputBarrierError("HOSTED_OUTPUT_PRIVATE_READBACK_FAILED");
-        }
-        if (
-          !readback ||
-          readback.itemId !== expected.itemId ||
-          readback.objectKey !== expected.objectKey ||
-          readback.contentType !== expected.contentType ||
-          readback.contentLength !== expected.contentLength ||
-          readback.checksumSha256 !== expected.checksumSha256 ||
-          readback.reservationState !== "COMMITTED" ||
-          readback.readbackChecksumSha256 !== expected.checksumSha256 ||
-          readback.readbackContentLength !== expected.contentLength ||
-          readback.readbackContentType !== expected.contentType ||
-          !SHA256.test(readback.artifactCommitReceiptSha256)
-        ) {
-          throw new HostedOutputBarrierError("HOSTED_OUTPUT_PRIVATE_READBACK_FAILED");
-        }
-        commitHashes.push(readback.artifactCommitReceiptSha256);
-      }
-      if (!sameStringSet(commitHashes, callback.artifactCommitReceiptSha256s)) {
-        throw new HostedOutputBarrierError("HOSTED_OUTPUT_OBJECT_SET_MISMATCH");
-      }
-
-      const proposed: HostedLaneCompletionRecord = Object.freeze({
-        attemptId: binding.attemptId,
-        bindingSha256: immutableBindingSha256,
-        callbackSha256,
-        provenanceReceiptSha256: callback.receipt.receipt_sha256,
-        artifactCommitReceiptSha256s: Object.freeze([...commitHashes].sort()),
-        completedAt: callback.observedAt,
-      });
-      const completion = await input.repository.completeVerified({
-        record: proposed,
-        binding,
-        receipt: callback.receipt,
-      });
-      const committed = completion.record;
-      if (
-        committed.callbackSha256 !== callbackSha256 ||
-        committed.bindingSha256 !== immutableBindingSha256
-      ) {
-        throw new HostedOutputBarrierError("HOSTED_OUTPUT_IDEMPOTENCY_CONFLICT");
-      }
-      return completion.inserted ? "LANE_COMPLETED" : "DUPLICATE_IDEMPOTENT";
+      return acceptVerified(binding, callback, callbackSha256);
     },
   });
 }
