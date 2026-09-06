@@ -1276,7 +1276,7 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
   const passPath = join(directory, "owner.pgpass");
   const manifestBytes = readFileSync("packages/control-plane/migrations/manifest.json");
   const manifest = JSON.parse(manifestBytes);
-  const ledger = manifest.migrations.map(({ version, name, filename, sha256 }) => ({
+  const ledger = manifest.migrations.slice(0, 49).map(({ version, name, filename, sha256 }) => ({
     version,
     name,
     filename,

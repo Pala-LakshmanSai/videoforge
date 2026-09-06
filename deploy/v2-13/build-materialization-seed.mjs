@@ -725,6 +725,7 @@ function validateProposal(proposal, proposalPath) {
           "database_vocabulary",
           "full_live_adapters",
           "full_live_executor",
+          "full_live_launcher",
           "guarded_activation",
           "hosted_live_production_adapters",
           "mage_workflow",

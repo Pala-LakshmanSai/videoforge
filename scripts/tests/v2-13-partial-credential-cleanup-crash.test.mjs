@@ -277,7 +277,7 @@ function createFixture() {
   const manifest = JSON.parse(
     readFileSync(resolve("packages/control-plane/migrations/manifest.json"), "utf8"),
   );
-  const ledger = manifest.migrations
+  const ledger = manifest.migrations.slice(0, 49)
     .map(({ version, name, filename, sha256 }) => `${version}\t${name}\t${filename}\t${sha256}`)
     .join("\n");
   const run = (command, args) => {

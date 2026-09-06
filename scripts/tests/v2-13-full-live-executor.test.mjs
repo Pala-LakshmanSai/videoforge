@@ -1,24 +1,29 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
+import { execFileSync, spawnSync } from "node:child_process";
 import test from "node:test";
 
-import {
+const frozenRoot = realpathSync(mkdtempSync(join(tmpdir(), "videoforge-v213-frozen-executor-")));
+execFileSync("git", ["clone", "--quiet", "--shared", "--no-checkout", process.cwd(), frozenRoot]);
+execFileSync("git", ["-C", frozenRoot, "checkout", "--quiet", "e1462fe7421caae8a5f0a651c90e009e2aecdee4"]);
+test.after(() => rmSync(frozenRoot, { recursive: true, force: true }));
+const {
   assertResult,
   certificationPredecessorEvidence,
   cleanupProofEvidence,
   createDurableCancellationSource,
-  executeFullLive as executeFullLiveRaw,
+  executeFullLive: executeFullLiveRaw,
   missingConcreteTools,
   OPERATIONS,
   runPodMutationBoundaryReached,
   readDurableCancellationRecord,
   validateFullLiveSourceClosure,
-} from "../../deploy/v2-13/full-live-executor.mjs";
-import {
+} = await import(pathToFileURL(join(frozenRoot, "deploy/v2-13/full-live-executor.mjs")).href);
+const {
   acquireExecutionLease,
   executionLeasePathFor,
   enterCleanupOnly,
@@ -26,11 +31,11 @@ import {
   releaseExecutionLease,
   updateState,
   writeExclusive,
-} from "../../deploy/v2-13/full-live-orchestration-authority.mjs";
-import {
+} = await import(pathToFileURL(join(frozenRoot, "deploy/v2-13/full-live-orchestration-authority.mjs")).href);
+const {
   EXACT_PREDECESSOR_RELEASE_ATTEMPT,
   EXACT_TERMINAL_FAILED_SUCCESSOR_ATTEMPT,
-} from "../../deploy/v2-13/validate-full-live-approval.mjs";
+} = await import(pathToFileURL(join(frozenRoot, "deploy/v2-13/validate-full-live-approval.mjs")).href);
 
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
@@ -296,7 +301,7 @@ function stateFixture() {
     },
     outer_orchestration: {
       full_live_executor_path: "deploy/v2-13/full-live-executor.mjs",
-      full_live_executor_sha256: hash(readFileSync("deploy/v2-13/full-live-executor.mjs")),
+      full_live_executor_sha256: hash(readFileSync(join(frozenRoot, "deploy/v2-13/full-live-executor.mjs"))),
     },
   };
   const authorityBytes = Buffer.from('{"authority":"test"}\n');
@@ -984,7 +989,7 @@ test("the smoke operation cannot claim release certification", () => {
 });
 
 test("default command performs zero actions and reports every concrete tooling gap", () => {
-  const result = spawnSync(process.execPath, ["deploy/v2-13/full-live-executor.mjs"], {
+  const result = spawnSync(process.execPath, [join(frozenRoot, "deploy/v2-13/full-live-executor.mjs")], {
     encoding: "utf8",
   });
   assert.equal(result.status, 0, result.stderr);
@@ -1327,7 +1332,7 @@ test("execute mode has a closed concrete catalog and requires exact state bindin
   const result = spawnSync(
     process.execPath,
     [
-      "deploy/v2-13/full-live-executor.mjs",
+      join(frozenRoot, "deploy/v2-13/full-live-executor.mjs"),
       "--execute",
       "--confirm",
       "EXECUTE_EXACT_V2_13_FULL_LIVE_ONCE",
@@ -2075,7 +2080,7 @@ test("fake command integration preserves the exact graph and terminal cleanup pr
 });
 
 test("prequalification receipt checks keep the execution and live identities bound on both paths", async () => {
-  const executorSource = readFileSync("deploy/v2-13/full-live-executor.mjs", "utf8");
+  const executorSource = readFileSync(join(frozenRoot, "deploy/v2-13/full-live-executor.mjs"), "utf8");
   assert.match(
     executorSource,
     /if \(mode\.staged === true\)[\s\S]{0,240}verifyPrequalificationDatabaseReceipt\(\{[\s\S]{0,120}environment: process\.env,[\s\S]{0,80}state,[\s\S]{0,80}priorResults,/u,

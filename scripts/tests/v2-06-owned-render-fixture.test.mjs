@@ -185,11 +185,11 @@ fixture("source path, current migration chain, and activation caps are hard-pinn
       ),
     /exact approved pinned V2-06 owned local-slice path/u,
   );
-  assert.equal(COMMITTED_MIGRATIONS.length, 61);
-  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.version, 61);
+  assert.equal(COMMITTED_MIGRATIONS.length, 80);
+  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.version, 80);
   assert.equal(
     COMMITTED_MIGRATIONS.at(-1)?.filename,
-    "0061_hosted_voiceover_context_reconciliation.sql",
+    "0080_hosted_pair_current_migration_ledger.sql",
   );
   assertMigrationLedgerRows(COMMITTED_MIGRATIONS);
   const fixture = await verifyLocalFixture();

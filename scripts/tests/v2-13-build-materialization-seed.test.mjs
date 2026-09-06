@@ -67,6 +67,7 @@ const V4_PROPOSAL_SCHEMA = "videoforge.v2-13-full-live-completion-proposal/v4";
 const V5_PROPOSAL_SCHEMA = "videoforge.v2-13-full-live-completion-proposal/v5";
 const PREDECESSOR_MAGE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
 const SUCCESSOR_SOULX_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
+const V213_MIGRATION_MANIFEST_COMMIT = "a90d9fe637c199b312d709c2877cc673fafa7761";
 const proof = (letter) => `sha256:${letter.repeat(64)}`;
 const envelopeKeys = [
   "mage",
@@ -279,7 +280,7 @@ function harness({
   descriptorTransform = (value) => value,
   factsPretty = false,
   factsTransform = (value) => value,
-  proposalSchema,
+  proposalSchema = V4_PROPOSAL_SCHEMA,
   proposalTransform = (value) => value,
   protectedPretty = false,
   protectedTransform = (value) => value,
@@ -436,7 +437,13 @@ function harness({
   const origin = proposal.source.pending_source_contract.account_and_workers_dev_origin;
   const overlay = new Map();
   const migrationManifestPath = "packages/control-plane/migrations/manifest.json";
-  const migrationManifestBytes = readFileSync(new URL(migrationManifestPath, ROOT));
+  // V2-13's sealed authority is intentionally bound to the exact 49-row manifest that existed at
+  // its release source. Later additive checkpoint migrations must not silently widen that scope.
+  const migrationManifestBytes = execFileSync(
+    "git",
+    ["show", `${V213_MIGRATION_MANIFEST_COMMIT}:${migrationManifestPath}`],
+    { encoding: "buffer" },
+  );
   const migrationManifest = JSON.parse(migrationManifestBytes);
   overlay.set(migrationManifestPath, migrationManifestBytes);
   proposal.source.exact_release_components.migration_manifest = {
@@ -884,6 +891,10 @@ function buildTempGitEndToEndFixture() {
   input.proposal.requested_scope.static_release_descriptor = structuredClone(descriptorBinding);
   input.proposal.immutable_github_release_ref_request.exact_target_commit = releaseSourceCommit;
   if (input.proposal.schema_version === V3_PROPOSAL_SCHEMA) {
+    input.proposal.immutable_github_release_ref_request.exact_ref =
+      "refs/tags/videoforge-v2-13-release-20260826-v3";
+    input.proposal.immutable_github_release_ref_request.exact_tag_name =
+      "videoforge-v2-13-release-20260826-v3";
     input.proposal.immutable_github_release_ref_request.creation_requested = true;
     input.proposal.immutable_github_release_ref_request.maximum_new_refs = 1;
   }
@@ -925,6 +936,8 @@ function buildTempGitEndToEndFixture() {
   approvalWithSource.static_release_descriptor = structuredClone(descriptorBinding);
   approvalWithSource.approval.immutable_github_release_ref.exact_target_commit =
     releaseSourceCommit;
+  approvalWithSource.approval.immutable_github_release_ref.exact_tag_name =
+    input.proposal.immutable_github_release_ref_request.exact_tag_name;
   approvalWithSource.approval.internal_production_credentials = {
     exact_one_time_count:
       EXACT_PREQUALIFICATION_DATABASE_BOOTSTRAP_POLICY.exact_one_time_internal_production_credential_count,

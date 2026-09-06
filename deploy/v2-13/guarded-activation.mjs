@@ -295,7 +295,7 @@ function prequalificationManifest() {
   if (
     manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(manifest.migrations) ||
-    manifest.migrations.length !== 49
+    manifest.migrations.length < 49
   )
     fail("prequalification migration manifest is not the exact 49-row contract");
   for (const [index, migration] of manifest.migrations.entries()) {
@@ -308,7 +308,12 @@ function prequalificationManifest() {
     )
       fail("prequalification migration manifest bytes drifted");
   }
-  return Object.freeze({ manifest, bytes });
+  // Preserve the exact authority-bound 1..49 ledger even when later checkpoints append migrations.
+  const authorityManifest = Object.freeze({
+    ...manifest,
+    migrations: Object.freeze(manifest.migrations.slice(0, 49)),
+  });
+  return Object.freeze({ manifest: authorityManifest, bytes });
 }
 
 function prequalificationLedger(text, manifest, expectedCount = 49) {

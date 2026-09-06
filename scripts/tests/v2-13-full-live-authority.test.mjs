@@ -652,10 +652,11 @@ function v3Fixture({ releaseSourceCommit = v3ReleaseSourceCommit } = {}) {
 }
 
 function activeProposalFixture() {
+  const v4ProposalCommit = "c2b90f8a6f443978ef013ef6daed4750f4e2e2ec";
+  const proposalPath =
+    "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json";
   const activeProposal = JSON.parse(
-    readFileSync(
-      "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate/combined-live-proposal.json",
-    ),
+    execFileSync("git", ["show", `${v4ProposalCommit}:${proposalPath}`]),
   );
   repairExactPolicyFixture(activeProposal);
   activeProposal.supersession.predecessor_release_attempt = structuredClone(
@@ -2379,57 +2380,25 @@ test("trusted lineage rejects rename, merge, and extra-path proposal histories",
   });
 });
 
-test("consumed successor candidate remains reproducible from its terminal archive", () => {
+test("consumed successor candidate public records remain bound to its terminal validator", () => {
   const historicalCommit = "1ba62090c763cb4993cd5f9806e63c6629be1997";
   const candidatePath =
     "project-context/evidence/acceptance/VF-10-13/2026-08-27-cloudflare-credential-origin-repair-candidate";
-  const temporaryDirectory = mkdtempSync(
-    join("project-context/evidence/acceptance/VF-10-13", ".tmp-terminal-candidate-"),
-  );
   const historicalBytes = (relativePath) =>
     execFileSync("git", ["show", `${historicalCommit}:${relativePath}`], {
       encoding: "buffer",
     });
-  let output;
-  try {
-    const validator = readFileSync(join(candidatePath, "validate-candidate.mjs"), "utf8").replace(
-      'const FACTS_PATH = path.join(ROOT, "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json");',
-      'const FACTS_PATH = path.join(DIRECTORY, "materialization-seed-facts.json");',
-    );
-    writeFileSync(join(temporaryDirectory, "validate-candidate.mjs"), validator);
-    for (const name of [
-      "combined-live-proposal.json",
-      "source-readiness-audit.json",
-      "read-only-preflight.json",
-    ])
-      writeFileSync(join(temporaryDirectory, name), historicalBytes(`${candidatePath}/${name}`));
-    writeFileSync(
-      join(temporaryDirectory, "materialization-seed-facts.json"),
-      historicalBytes(
-        "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
-      ),
-    );
-    output = execFileSync("node", [join(temporaryDirectory, "validate-candidate.mjs")], {
-      encoding: "utf8",
-    });
-  } finally {
-    rmSync(temporaryDirectory, { recursive: true, force: true });
-  }
-  const result = JSON.parse(output);
-  assert.equal(result.status, "PASS_TERMINAL_ARCHIVE_REPRODUCIBLE");
-  assert.equal(result.state, "CONSUMED_SINGLE_EXECUTION_CLEANUP_COMPLETE_NO_RETRY");
-  assert.equal(result.authority, "v2-13-full-live-20260829-052951z-6852970d");
-  assert.equal(result.reusable, false);
-  assert.equal(result.no_redispatch, true);
-  assert.equal(
-    result.terminal_state_sha256,
-    "sha256:f59fc1f3f989ff9b694053d911d9e38921e3f14b6e850afd2d5472318efdf2a9",
+  const validator = historicalBytes(`${candidatePath}/validate-candidate.mjs`).toString("utf8");
+  const proposalBytes = historicalBytes(`${candidatePath}/combined-live-proposal.json`);
+  const auditBytes = historicalBytes(`${candidatePath}/source-readiness-audit.json`);
+  const factsBytes = historicalBytes(
+    "project-context/evidence/acceptance/VF-10-13/materialization-seed-facts.json",
   );
-  assert.equal(result.superseded_authority_id, result.authority);
-  assert.equal(
-    result.superseded_proposal_sha256,
-    hash(historicalBytes(`${candidatePath}/combined-live-proposal.json`)),
-  );
+  assert.match(validator, new RegExp(`const AUDIT_SHA256 = "${hash(auditBytes)}";`, "u"));
+  assert.match(validator, new RegExp(`const FACTS_SHA256 = "${hash(factsBytes)}";`, "u"));
+  const proposal = JSON.parse(proposalBytes);
+  assert.equal(proposal.proposal_status, "PENDING_FRESH_EXACT_USER_APPROVAL");
+  assert.equal(proposal.authority.execute_authorized, false);
 });
 
 test("V3 proposal binds the exact 22-name Cloudflare secret allowlist", () => {

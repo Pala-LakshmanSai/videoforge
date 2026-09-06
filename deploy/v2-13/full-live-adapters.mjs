@@ -177,7 +177,7 @@ const BRIDGE_LOADER_SOURCE_SHA256 =
   "sha256:0b1c5b86192772fe9257710e739959cee5947c11ae1f93b61abfaa9b80c6def1";
 const BRIDGE_TRANSPORT_PATH = "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts";
 const BRIDGE_CLI_SOURCE_SHA256 =
-  "sha256:9298c774d939dcd9a53f565b08f673c27fff7576360a3c69eea00dcf1473b3c0";
+  "sha256:a69d53a22a2a0f264dfa30537648876fc973dc2a144e6b8696231254e03c77b9";
 const PREQUALIFICATION_MIGRATION_MANIFEST_PATH = "packages/control-plane/migrations/manifest.json";
 const PREQUALIFICATION_OPERATOR_GRANTS_PATH = "deploy/v2-13/neon-full-live-operator-grants.sql";
 const PREQUALIFICATION_MIGRATION_MANIFEST_SHA256 = sha256(
@@ -5595,7 +5595,7 @@ function prequalificationManifest() {
   if (
     manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(manifest.migrations) ||
-    manifest.migrations.length !== 49
+    manifest.migrations.length < 49
   )
     fail("PREQUALIFICATION_MANIFEST");
   for (const [index, migration] of manifest.migrations.entries()) {
@@ -5605,7 +5605,9 @@ function prequalificationManifest() {
       fail("PREQUALIFICATION_MIGRATION_HASH", migration.filename);
     migration.sql = sql;
   }
-  return manifest;
+  // The consumed V2-13 authority covers exactly migrations 1..49. Validate the complete current
+  // manifest above, but never let later additive checkpoint migrations widen that execution scope.
+  return Object.freeze({ ...manifest, migrations: Object.freeze(manifest.migrations.slice(0, 49)) });
 }
 
 function prequalificationRoleReadbackSql(role) {
@@ -9418,7 +9420,7 @@ function createTypeScriptBridgeAdapters({
   requirePrequalificationReceipt = false,
   prepareAcceptanceAuthority,
   expectedCliSha256 = BRIDGE_CLI_SOURCE_SHA256,
-  expectedTransportSha256 = "sha256:6dc4f248e4bad0d7a5f81c471998f2d13c686f51d93c08b3b3afb53824865ee2",
+  expectedTransportSha256 = "sha256:2cea9431dab3d93997bd0c27c4bb99d474da2bb4d75a37d3c82a206db04599ea",
 } = {}) {
   const actualCliSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_PATH)));
   const actualTransportSha256 = sha256(readFileSync(resolve(ROOT, BRIDGE_TRANSPORT_PATH)));

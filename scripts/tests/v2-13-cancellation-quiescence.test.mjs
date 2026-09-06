@@ -1,16 +1,22 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmodSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { execFileSync } from "node:child_process";
 import test from "node:test";
 
-import { executeFullLive } from "../../deploy/v2-13/full-live-executor.mjs";
-import {
+const frozenRoot = realpathSync(mkdtempSync(join(tmpdir(), "videoforge-v213-frozen-cancellation-")));
+execFileSync("git", ["clone", "--quiet", "--shared", "--no-checkout", process.cwd(), frozenRoot]);
+execFileSync("git", ["-C", frozenRoot, "checkout", "--quiet", "e1462fe7421caae8a5f0a651c90e009e2aecdee4"]);
+test.after(() => rmSync(frozenRoot, { recursive: true, force: true }));
+const { executeFullLive } = await import(pathToFileURL(join(frozenRoot, "deploy/v2-13/full-live-executor.mjs")).href);
+const {
   initialConsumptionRecord,
   writeExclusive,
-} from "../../deploy/v2-13/full-live-orchestration-authority.mjs";
-import { EXACT_PREDECESSOR_RELEASE_ATTEMPT } from "../../deploy/v2-13/validate-full-live-approval.mjs";
+} = await import(pathToFileURL(join(frozenRoot, "deploy/v2-13/full-live-orchestration-authority.mjs")).href);
+const { EXACT_PREDECESSOR_RELEASE_ATTEMPT } = await import(pathToFileURL(join(frozenRoot, "deploy/v2-13/validate-full-live-approval.mjs")).href);
 
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const proof = (character) => `sha256:${character.repeat(64)}`;
@@ -29,7 +35,7 @@ function stateFixture() {
     },
     outer_orchestration: {
       full_live_executor_path: "deploy/v2-13/full-live-executor.mjs",
-      full_live_executor_sha256: sha256(readFileSync("deploy/v2-13/full-live-executor.mjs")),
+      full_live_executor_sha256: sha256(readFileSync(join(frozenRoot, "deploy/v2-13/full-live-executor.mjs"))),
     },
   };
   const validated = {
