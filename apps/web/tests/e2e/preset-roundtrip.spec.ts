@@ -257,21 +257,17 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   ]);
 
   const presetSummaries = page.locator("summary.visual-preset-summary");
-  const avatarSummary = presetSummaries.nth(0);
-  const styleSummary = presetSummaries.nth(1);
-  await expect(presetSummaries).toHaveCount(2);
+  const avatarSummary = page.locator("#avatar-profile-select .visual-preset-summary-static");
+  const styleSummary = page.locator("#image-style-select summary.visual-preset-summary");
+  await expect(presetSummaries).toHaveCount(1);
   await expect(avatarSummary).toContainText("Amish Farm Host");
+  await expect(avatarSummary.getByLabel("Selected")).toBeVisible();
   await expect(styleSummary).toContainText("Authentic Documentary Stock");
   await expect(page.locator(".visual-preset-menu:visible")).toHaveCount(0);
   await expect(page.getByLabel("Exact script (optional)")).toHaveCount(0);
   await expect(page.getByText(/Keywords (?:will be applied|not applied)/iu)).toHaveCount(0);
 
-  await avatarSummary.click();
-  await expect(page.getByRole("radiogroup", { name: "Avatar Profile options" })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Amish Farm Host/u })).toBeVisible();
-  await page.keyboard.press("Escape");
   await expect(page.getByRole("radiogroup", { name: "Avatar Profile options" })).not.toBeVisible();
-  await expect(avatarSummary).toBeFocused();
 
   await expect(page.getByText("Automatic fair admission", { exact: true })).toBeVisible();
   await expect(page.getByLabel(/GPU offer/u)).toHaveCount(0);
@@ -364,7 +360,9 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   expect({ ...afterAvatar, avatarProfileVersionId: originalDraft.avatarProfileVersionId }).toEqual(
     originalDraft,
   );
-  await expect(page.locator("summary.visual-preset-summary").nth(0)).toContainText(avatarName);
+  await expect(page.locator("#avatar-profile-select summary.visual-preset-summary")).toContainText(
+    avatarName,
+  );
   const avatarCatalog = await page.evaluate(async () => {
     const response = await fetch("/api/v1/avatar-profiles?fixture=project_create_ready");
     if (!response.ok) throw new Error(`Avatar catalog returned ${response.status}`);
@@ -385,7 +383,7 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
     }
   });
   await page.getByRole("link", { name: "New style", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "New style" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "New image style" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expectProjectDraftVisible(page, afterAvatar);
   expect(await readDraft(page)).toEqual(afterAvatar);
@@ -398,7 +396,9 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
     { name: "reference-two.png", mimeType: "image/png", buffer: stylePngTwo },
     { name: "reference-three.png", mimeType: "image/png", buffer: stylePngThree },
   ]);
-  const references = page.locator(".fixture-upload-preview img");
+  await expect(page.locator(".preset-source-dropzone")).toContainText("3 references selected");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  const references = page.locator("img.style-source-preview");
   await expect(references).toHaveCount(3);
   for (let index = 0; index < 3; index += 1) {
     await expect
@@ -409,18 +409,13 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
       )
       .toBeGreaterThanOrEqual(640);
   }
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByRole("checkbox", { name: /Reference rights attestation/u }).check();
-  await page.getByRole("checkbox", { name: /Runware processing disclosure/u }).check();
-  await page.getByRole("button", { name: "Analyze fixture references" }).click();
-  await expect(page.getByLabel("Reviewed lighting")).toBeVisible();
-  await page.reload();
-  await expect(page.getByLabel("Reviewed lighting")).toHaveValue(/Natural available light/u);
-  await page.getByLabel("Reviewed lighting").fill("Edited natural window light");
-  await page.getByRole("button", { name: "Accept reviewed profile" }).click();
+  await page.getByRole("button", { name: "Prepare analysis" }).click();
+  await page.getByRole("button", { name: "Analyze this draft once" }).click();
+  await expect(page.getByText("Local fixture profile returned for workflow review.")).toBeVisible();
+  await expect(page.getByLabel("Review notes (optional)")).toHaveCount(0);
 
   const styleGate = await installMutationGate(page, "/api/v1/image-styles/*/versions/*/publish");
-  const publishStyle = page.getByRole("button", { name: "Publish style v1" });
+  const publishStyle = page.getByRole("button", { name: "Publish immutable style version" });
   await publishStyle.click();
   await expect(publishStyle).toBeDisabled();
   await expect(publishStyle).toHaveAttribute("aria-busy", "true");
@@ -446,7 +441,9 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   expect({ ...afterStyle, imageStyleVersionId: afterAvatar.imageStyleVersionId }).toEqual(
     afterAvatar,
   );
-  await expect(page.locator("summary.visual-preset-summary").nth(1)).toContainText(styleName);
+  await expect(page.locator("#image-style-select summary.visual-preset-summary")).toContainText(
+    styleName,
+  );
   const styleCatalog = await page.evaluate(async () => {
     const response = await fetch("/api/v1/image-styles?fixture=project_create_ready");
     if (!response.ok) throw new Error(`Image Style catalog returned ${response.status}`);
@@ -455,14 +452,14 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   expect(styleCatalog).toContainEqual(
     expect.objectContaining({ name: styleName, versionId: createdStyle.version_id }),
   );
-  expect(styleMutationCount).toBe(5);
+  expect(styleMutationCount).toBe(4);
 
   await page.goto("/styles?fixture=project_create_ready");
   await page.getByPlaceholder("Search styles").fill(styleName);
   const createdCard = page.locator("article.style-card").filter({ hasText: styleName });
   await expect(createdCard).toHaveCount(1);
   await createdCard.getByRole("button", { name: /References \(3\)/u }).click();
-  await expect(page.getByRole("dialog")).toContainText("Edited natural window light");
+  await expect(page.getByRole("dialog")).toContainText("Natural available light");
   const retainedReferences = page.getByRole("dialog").getByRole("img");
   await expect(retainedReferences).toHaveCount(3);
   for (let index = 0; index < 3; index += 1) {
@@ -476,8 +473,9 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   }
   await page.getByRole("button", { name: "Archive style" }).click();
   await expect(createdCard.getByText("ARCHIVED")).toBeVisible();
+  expect(styleMutationCount).toBe(5);
 
   await page.goto("/projects/new?fixture=project_create_ready");
-  await page.locator("summary.visual-preset-summary").nth(1).click();
+  await page.locator("#image-style-select summary.visual-preset-summary").click();
   await expect(page.getByRole("radio", { name: new RegExp(styleName, "u") })).toHaveCount(0);
 });

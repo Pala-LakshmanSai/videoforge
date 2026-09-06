@@ -3302,19 +3302,21 @@ export function HostedPresetCreationScreen({
                 private beta spend ceiling.
               </p>
             ) : null}
-            <div className="field">
-              <label className="field-label" htmlFor="style-review-notes">
-                Review notes (optional)
-              </label>
-              <textarea
-                id="style-review-notes"
-                className="textarea"
-                rows={3}
-                value={profileNotes}
-                onChange={(event) => setProfileNotes(event.target.value)}
-                placeholder="Keep natural practical light and tactile material detail."
-              />
-            </div>
+            {!fixtureBackend ? (
+              <div className="field">
+                <label className="field-label" htmlFor="style-review-notes">
+                  Review notes (optional)
+                </label>
+                <textarea
+                  id="style-review-notes"
+                  className="textarea"
+                  rows={3}
+                  value={profileNotes}
+                  onChange={(event) => setProfileNotes(event.target.value)}
+                  placeholder="Keep natural practical light and tactile material detail."
+                />
+              </div>
+            ) : null}
             <div className="preset-action-disclosure">
               Publishing confirms that this profile matches the look you want. Published versions
               remain unchanged so existing projects stay reproducible.

@@ -7,6 +7,7 @@ import { PageHeader } from "../components/PageHeader";
 import { Badge, Button, Disclosure, EmptyState, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 
 interface HostedLibraryItem {
   readonly attempt_id: string;
@@ -149,10 +150,10 @@ function HostedLibraryScreen() {
 }
 
 export function LibraryScreen() {
-  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "fixture" ? (
-    <FixtureLibraryScreen />
-  ) : (
+  return isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE) ? (
     <HostedLibraryScreen />
+  ) : (
+    <FixtureLibraryScreen />
   );
 }
 

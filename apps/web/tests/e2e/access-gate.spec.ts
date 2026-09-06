@@ -40,18 +40,25 @@ test("synthetic invited account enters the queue without an external auth reques
   await page.goto("/?fixture=invite_sign_in");
 
   await expect(page.getByRole("heading", { name: "Enter VideoForge" })).toBeVisible();
-  await expect(page.getByText("No email, Google, or external request will be sent.")).toBeVisible();
+  await expect(
+    page.getByText("Google sign-in is simulated locally. No request leaves this computer."),
+  ).toBeVisible();
   await expect(page.getByLabel("Synthetic verified email")).toHaveCount(0);
   await expect(page.getByLabel("Email password fixture")).toHaveCount(0);
   await expect(page.getByLabel("One-time invite code")).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
 
-  const continueButton = page.getByRole("button", { name: "Continue with Email" });
+  const continueButton = page.getByRole("button", { name: "Continue with Google" });
   await expect(continueButton).toBeEnabled();
   await continueButton.focus();
   await expect(continueButton).toBeFocused();
   await page.keyboard.press("Enter");
+
+  await expect(page.getByRole("status")).toContainText("Google verified");
+  const finishButton = page.getByRole("button", { name: "Finish invitation" });
+  await expect(finishButton).toBeEnabled();
+  await finishButton.click();
 
   await expect(page).toHaveURL(/\/?\?fixture=happy_generating$/u);
   await expect(page.getByRole("heading", { name: "Queue", exact: true })).toBeVisible();

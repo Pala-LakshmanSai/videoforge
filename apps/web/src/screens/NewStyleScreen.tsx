@@ -8,6 +8,7 @@ import { isHostedBetaMode, isHostedProviderMode } from "../hosted/provider-mode"
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/ui";
 import { api } from "../lib/api";
+import { updateDraft } from "../lib/draft";
 import { normalizeImageStyleReference } from "../lib/media-validation";
 import { currentScenario, withScenario } from "../lib/scenario";
 
@@ -88,13 +89,15 @@ function FixtureStyleCreationRoute() {
         scenario,
       );
     },
-    publish(value) {
-      return api.publishImageStyleDraft(
+    async publish(value) {
+      const published = await api.publishImageStyleDraft(
         value.style_id,
         value.version_id,
         value.version_tag,
         scenario,
       );
+      updateDraft({ imageStyleVersionId: published.version_id }, scenario);
+      return published;
     },
   };
   const health = useQuery({

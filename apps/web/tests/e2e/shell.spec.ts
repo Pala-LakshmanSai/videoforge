@@ -52,9 +52,9 @@ const uiSurfaceRoutes: UiSurfaceRoute[] = [
     surfaces: [".entity-card"],
   },
   {
-    heading: "New style",
+    heading: "New image style",
     path: "/styles/new?fixture=project_create_ready",
-    surfaces: [".layout-main > .panel", ".onboarding-details"],
+    surfaces: [".panel.preset-create-panel"],
   },
   {
     heading: "Library",
@@ -670,9 +670,10 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await page.getByRole("link", { name: "New Project", exact: true }).click();
   await expect(page.getByRole("heading", { name: "New project" })).toBeVisible();
 
-  const avatarPicker = page.locator("summary.visual-preset-summary").nth(0);
-  const stylePicker = page.locator("summary.visual-preset-summary").nth(1);
-  await expect(avatarPicker).toContainText("Amish Farm Host");
+  const avatarSummary = page.locator("#avatar-profile-select .visual-preset-summary-static");
+  const stylePicker = page.locator("#image-style-select summary.visual-preset-summary");
+  await expect(avatarSummary).toContainText("Amish Farm Host");
+  await expect(avatarSummary.getByLabel("Selected")).toBeVisible();
   await expect(stylePicker).toContainText("Authentic Documentary Stock");
   await expect(page.getByRole("radiogroup", { name: "Avatar Profile options" })).not.toBeVisible();
   await expect(page.getByRole("radiogroup", { name: "Image Style options" })).not.toBeVisible();
@@ -684,23 +685,13 @@ test("Create Project uses exact visual presets and never exposes project-local a
   await expect(page.getByRole("button", { name: /upload avatar/i })).toHaveCount(0);
   await expect(page.locator("select")).toHaveCount(0);
 
-  const avatarDetails = avatarPicker.locator("..");
-  await avatarPicker.press("ArrowDown");
-  const avatarOptions = page.getByRole("radiogroup", { name: "Avatar Profile options" });
-  await expect(avatarOptions).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Amish Farm Host/ })).toBeFocused();
-  await expect
-    .poll(() =>
-      avatarDetails.evaluate((element) => {
-        const container = element.getBoundingClientRect();
-        const menu = element.querySelector(".visual-preset-menu")?.getBoundingClientRect();
-        return Boolean(menu && menu.top >= container.top && menu.bottom <= container.bottom + 1);
-      }),
-    )
-    .toBe(true);
+  await stylePicker.press("ArrowDown");
+  const styleOptions = page.getByRole("radiogroup", { name: "Image Style options" });
+  await expect(styleOptions).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Authentic Documentary Stock/ })).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(avatarOptions).not.toBeVisible();
-  await expect(avatarPicker).toBeFocused();
+  await expect(styleOptions).not.toBeVisible();
+  await expect(stylePicker).toBeFocused();
 
   await expect(page.getByText("Automatic fair admission", { exact: true })).toBeVisible();
   await expect(page.getByLabel(/GPU offer/u)).toHaveCount(0);

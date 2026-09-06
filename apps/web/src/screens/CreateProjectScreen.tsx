@@ -499,7 +499,12 @@ function FixtureCreateProjectScreen() {
                       <Link
                         className="button button-secondary"
                         to="/styles/new"
-                        search={{ fixture: scenario, returnTo: "/projects/new" } as never}
+                        search={
+                          {
+                            fixture: scenario,
+                            returnTo: withScenario("/projects/new", scenario),
+                          } as never
+                        }
                       >
                         <ImagePlus size={15} />
                         New style

@@ -11,12 +11,13 @@ import { humanize } from "../features/shared/status";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 import { HostedReviewScreen } from "../hosted/HostedProductScreens";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 
 export function ReviewScreen({ projectId }: { projectId: string }) {
-  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "fixture" ? (
-    <FixtureReviewScreen projectId={projectId} />
-  ) : (
+  return isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE) ? (
     <HostedReviewScreen projectId={projectId} />
+  ) : (
+    <FixtureReviewScreen projectId={projectId} />
   );
 }
 
