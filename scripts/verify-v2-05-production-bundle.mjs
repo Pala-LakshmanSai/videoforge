@@ -105,6 +105,7 @@ const expectedProductionImports = [
   "../src/server/hosted/app",
   "../src/server/hosted/configuration",
   "../src/server/hosted/retention",
+  "../src/server/hosted/worker-version",
   "./hosted-workflow",
   "./hosted-pair-workflow",
 ];
