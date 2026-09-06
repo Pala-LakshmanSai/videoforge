@@ -364,12 +364,14 @@ describe("hosted pair live provider wiring", () => {
       output: { receipt: id },
     }));
     const terminalOutput = {
-      acceptCompleted: vi.fn(async (_input: {
-        lane: HostedPairLane;
-        attemptId: string;
-        providerJobId: string;
-        output: unknown;
-      }) => ({ state: "ACCEPTED" })),
+      acceptCompleted: vi.fn(
+        async (_input: {
+          lane: HostedPairLane;
+          attemptId: string;
+          providerJobId: string;
+          output: unknown;
+        }) => ({ state: "ACCEPTED" }),
+      ),
     };
     const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
     const beforeSettlement = vi.fn(async () => ({ state: "RENDER_SCHEDULED" }));
@@ -392,12 +394,14 @@ describe("hosted pair live provider wiring", () => {
       beforeSettlement,
     );
     await expect(reconciler.observe(ids, false)).resolves.toEqual({ state: "SETTLED" });
-    expect(terminalOutput.acceptCompleted.mock.calls.map(([call]) => ({
-      lane: call.lane,
-      attemptId: call.attemptId,
-      providerJobId: call.providerJobId,
-      output: call.output,
-    }))).toEqual([
+    expect(
+      terminalOutput.acceptCompleted.mock.calls.map(([call]) => ({
+        lane: call.lane,
+        attemptId: call.attemptId,
+        providerJobId: call.providerJobId,
+        output: call.output,
+      })),
+    ).toEqual([
       {
         lane: "mage_image",
         attemptId: "mage_image-attempt",
@@ -429,7 +433,9 @@ describe("hosted pair live provider wiring", () => {
       vi.fn(),
       vi.fn(),
       { acceptCompleted: vi.fn(async () => ({ state: "LANE_COMPLETED" })) },
-      vi.fn(async () => { throw new Error("RENDER_HANDOFF_FAILED"); }),
+      vi.fn(async () => {
+        throw new Error("RENDER_HANDOFF_FAILED");
+      }),
     );
     await expect(reconciler.observe(ids, false)).rejects.toThrow("RENDER_HANDOFF_FAILED");
     expect(settle.reconcile).not.toHaveBeenCalled();

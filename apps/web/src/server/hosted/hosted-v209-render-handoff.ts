@@ -4,9 +4,7 @@ import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
 
 import type { HostedR2BucketBinding } from "./configuration";
 import { canonicalJson, exactHostedRenderSubmission, type HostedCpuSubmission } from "./submission";
-import {
-  HostedRenderPlanAppendDatabase,
-} from "./hosted-serverless-callback";
+import { HostedRenderPlanAppendDatabase } from "./hosted-serverless-callback";
 import {
   materializeHostedRenderPlan,
   type HostedCommittedArtifact,
@@ -19,12 +17,14 @@ const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 type RecordValue = Record<string, unknown>;
 
 function record(value: unknown): RecordValue {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
   return value as RecordValue;
 }
 
 function text(value: unknown, pattern?: RegExp): string {
-  if (typeof value !== "string" || (pattern && !pattern.test(value))) throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+  if (typeof value !== "string" || (pattern && !pattern.test(value)))
+    throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
   return value;
 }
 
@@ -51,8 +51,11 @@ export async function ensureHostedV209ExactManifestObject(
   const prior = await bucket.head(objectKey);
   if (prior !== null) {
     const priorSha256 = headSha256(prior.checksums?.sha256);
-    if (prior.size !== bytes.byteLength || prior.httpMetadata?.contentType !== "application/json" ||
-      (priorSha256 !== null && priorSha256 !== expectedSha256)) {
+    if (
+      prior.size !== bytes.byteLength ||
+      prior.httpMetadata?.contentType !== "application/json" ||
+      (priorSha256 !== null && priorSha256 !== expectedSha256)
+    ) {
       throw new Error("HOSTED_V209_RENDER_MANIFEST_DRIFT");
     }
   } else {
@@ -62,13 +65,18 @@ export async function ensureHostedV209ExactManifestObject(
     });
   }
   const [head, object] = await Promise.all([bucket.head(objectKey), bucket.get(objectKey)]);
-  if (!head || !object || head.size !== bytes.byteLength || object.size !== bytes.byteLength ||
+  if (
+    !head ||
+    !object ||
+    head.size !== bytes.byteLength ||
+    object.size !== bytes.byteLength ||
     head.httpMetadata?.contentType !== "application/json" ||
-    object.httpMetadata?.contentType !== "application/json") {
+    object.httpMetadata?.contentType !== "application/json"
+  ) {
     throw new Error("HOSTED_V209_RENDER_MANIFEST_READBACK_INVALID");
   }
   const readback = await object.arrayBuffer();
-  if (readback.byteLength !== bytes.byteLength || await sha256(readback) !== expectedSha256) {
+  if (readback.byteLength !== bytes.byteLength || (await sha256(readback)) !== expectedSha256) {
     throw new Error("HOSTED_V209_RENDER_MANIFEST_READBACK_INVALID");
   }
 }
@@ -76,7 +84,10 @@ export async function ensureHostedV209ExactManifestObject(
 function artifact(
   source: unknown,
   scope: { accountId: string; workspaceId: string; projectId: string; revisionId: string },
-  extra: Pick<HostedCommittedArtifact, "lane" | "kind" | "taskKey" | "acceptedAttemptId" | "barrierAcceptance">,
+  extra: Pick<
+    HostedCommittedArtifact,
+    "lane" | "kind" | "taskKey" | "acceptedAttemptId" | "barrierAcceptance"
+  >,
 ): HostedCommittedArtifact {
   const row = record(source);
   const contentLength = Number(row.contentLength);
@@ -111,9 +122,16 @@ export function createHostedV209RenderHandoff(input: {
   readonly schedule: (submission: HostedCpuSubmission) => Promise<{ readonly state: string }>;
 }) {
   return Object.freeze({
-    async ensure(scope: { readonly accountId: string; readonly workspaceId: string; readonly generationRequestId: string }) {
+    async ensure(scope: {
+      readonly accountId: string;
+      readonly workspaceId: string;
+      readonly generationRequestId: string;
+    }) {
       const readyValue = await input.database.transaction(async (transaction) => {
-        await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", scope.accountId]);
+        await transaction.query("SELECT set_config($1,$2,true)", [
+          "videoforge.account_id",
+          scope.accountId,
+        ]);
         const result = await transaction.query<{ ready: unknown }>(
           "SELECT public.videoforge_read_hosted_v209_ready_render_inputs($1::uuid,$2::uuid,$3::uuid) AS ready",
           [scope.accountId, scope.workspaceId, scope.generationRequestId],
@@ -122,31 +140,62 @@ export function createHostedV209RenderHandoff(input: {
       });
       if (readyValue === null) throw new Error("HOSTED_V209_RENDER_NOT_READY");
       const ready = record(readyValue);
-      if (ready.schemaVersion !== "videoforge.hosted-v209-ready-render-inputs/v1" ||
-        ready.accountId !== scope.accountId || ready.workspaceId !== scope.workspaceId ||
-        ready.generationRequestId !== scope.generationRequestId) throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+      if (
+        ready.schemaVersion !== "videoforge.hosted-v209-ready-render-inputs/v1" ||
+        ready.accountId !== scope.accountId ||
+        ready.workspaceId !== scope.workspaceId ||
+        ready.generationRequestId !== scope.generationRequestId
+      )
+        throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
       const revision = record(ready.revision);
       const revisionSnapshot = record(revision.snapshot);
-      const revisionDocument = await validateAndHashContractDocument("projectRevisionConfig", revision.document as never);
+      const revisionDocument = await validateAndHashContractDocument(
+        "projectRevisionConfig",
+        revision.document as never,
+      );
       const timing = record(ready.timing);
-      const transcript = await validateAndHashContractDocument("transcriptTiming", timing.transcript as never);
-      const timeline = await validateAndHashContractDocument("timelinePlan", timing.timeline as never);
-      if (revisionSnapshot.status !== "LOCKED" || revisionSnapshot.id !== revisionDocument.value.project_revision_id ||
+      const transcript = await validateAndHashContractDocument(
+        "transcriptTiming",
+        timing.transcript as never,
+      );
+      const timeline = await validateAndHashContractDocument(
+        "timelinePlan",
+        timing.timeline as never,
+      );
+      if (
+        revisionSnapshot.status !== "LOCKED" ||
+        revisionSnapshot.id !== revisionDocument.value.project_revision_id ||
         revisionSnapshot.revision_config_hash !== revisionDocument.sha256 ||
-        timing.transcriptSha256 !== transcript.sha256 || timing.timelineSha256 !== timeline.sha256) {
+        timing.transcriptSha256 !== transcript.sha256 ||
+        timing.timelineSha256 !== timeline.sha256
+      ) {
         throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
       }
       const projectId = revisionDocument.value.project_id;
       const revisionId = revisionDocument.value.project_revision_id;
-      const artifactScope = { accountId: scope.accountId, workspaceId: scope.workspaceId, projectId, revisionId };
+      const artifactScope = {
+        accountId: scope.accountId,
+        workspaceId: scope.workspaceId,
+        projectId,
+        revisionId,
+      };
       const voiceover = artifact(ready.voiceover, artifactScope, {
-        lane: "INPUT", kind: "VOICEOVER", taskKey: null, acceptedAttemptId: null,
+        lane: "INPUT",
+        kind: "VOICEOVER",
+        taskKey: null,
+        acceptedAttemptId: null,
         barrierAcceptance: "COMMITTED_INPUT",
       });
-      if (!Array.isArray(ready.acceptedVisuals)) throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+      if (!Array.isArray(ready.acceptedVisuals))
+        throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
       const acceptedVisuals = ready.acceptedVisuals.map((value) => {
         const row = record(value);
-        const lane = row.lane === "mage_image" ? "MAGE_IMAGE" : row.lane === "soulx_avatar" ? "SOULX_AVATAR" : null;
+        const lane =
+          row.lane === "mage_image"
+            ? "MAGE_IMAGE"
+            : row.lane === "soulx_avatar"
+              ? "SOULX_AVATAR"
+              : null;
         if (!lane) throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
         return artifact(row, artifactScope, {
           lane,
@@ -159,17 +208,29 @@ export function createHostedV209RenderHandoff(input: {
       if (new Set(acceptedVisuals.map((value) => value.taskKey)).size !== acceptedVisuals.length) {
         throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
       }
-      const acceptedBindings = Object.fromEntries(acceptedVisuals.map((value) => [value.taskKey!, {
-        taskKey: value.taskKey!, assetId: value.assetId,
-        sha256: value.checksumSha256 as AcceptedAssetBinding["sha256"],
-        kind: value.kind as "IMAGE" | "AVATAR_CLIP",
-        ...(value.kind === "AVATAR_CLIP" ? { rendererSourceProfile: "soulx-pro-vf924u-approved-v1" } : {}),
-      } satisfies AcceptedAssetBinding]));
+      const acceptedBindings = Object.fromEntries(
+        acceptedVisuals.map((value) => [
+          value.taskKey!,
+          {
+            taskKey: value.taskKey!,
+            assetId: value.assetId,
+            sha256: value.checksumSha256 as AcceptedAssetBinding["sha256"],
+            kind: value.kind as "IMAGE" | "AVATAR_CLIP",
+            ...(value.kind === "AVATAR_CLIP"
+              ? { rendererSourceProfile: "soulx-pro-vf924u-approved-v1" }
+              : {}),
+          } satisfies AcceptedAssetBinding,
+        ]),
+      );
       const planned = await planVNextResolvedRenderManifest({
         revision: revisionDocument,
         timeline,
-        voiceover: { taskKey: "voiceover", assetId: voiceover.assetId,
-          sha256: voiceover.checksumSha256 as AcceptedAssetBinding["sha256"], kind: "VOICEOVER" },
+        voiceover: {
+          taskKey: "voiceover",
+          assetId: voiceover.assetId,
+          sha256: voiceover.checksumSha256 as AcceptedAssetBinding["sha256"],
+          kind: "VOICEOVER",
+        },
         acceptedAssets: { byTaskKey: acceptedBindings },
         renderProfileVersion: "ffmpeg-render-v3",
       });
@@ -179,14 +240,29 @@ export function createHostedV209RenderHandoff(input: {
       const bytes = new TextEncoder().encode(canonicalJson(planned.value.value));
       const buffer = new ArrayBuffer(bytes.byteLength);
       new Uint8Array(buffer).set(bytes);
-      await ensureHostedV209ExactManifestObject(input.bucket, objectKey, buffer, planned.value.sha256);
+      await ensureHostedV209ExactManifestObject(
+        input.bucket,
+        objectKey,
+        buffer,
+        planned.value.sha256,
+      );
       const committedValue = await input.database.transaction(async (transaction) => {
-        await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", scope.accountId]);
+        await transaction.query("SELECT set_config($1,$2,true)", [
+          "videoforge.account_id",
+          scope.accountId,
+        ]);
         const result = await transaction.query<{ committed: unknown }>(
           `SELECT public.videoforge_commit_hosted_v209_resolved_render_manifest(
              $1::uuid,$2::uuid,$3::uuid,$4::jsonb,$5,$6,$7::bigint) AS committed`,
-          [scope.accountId, scope.workspaceId, scope.generationRequestId,
-            canonicalJson(planned.value.value), planned.value.sha256, objectKey, bytes.byteLength],
+          [
+            scope.accountId,
+            scope.workspaceId,
+            scope.generationRequestId,
+            canonicalJson(planned.value.value),
+            planned.value.sha256,
+            objectKey,
+            bytes.byteLength,
+          ],
         );
         return result.rows[0]?.committed;
       });
@@ -194,24 +270,37 @@ export function createHostedV209RenderHandoff(input: {
       if (committed.schemaVersion !== "videoforge.hosted-v209-resolved-render-manifest/v1")
         throw new Error("HOSTED_V209_RENDER_COMMIT_INVALID");
       const manifestArtifact = artifact(record(committed.artifact), artifactScope, {
-        lane: "RENDER", kind: "RESOLVED_RENDER_MANIFEST", taskKey: null,
-        acceptedAttemptId: null, barrierAcceptance: "COMMITTED_MANIFEST",
+        lane: "RENDER",
+        kind: "RESOLVED_RENDER_MANIFEST",
+        taskKey: null,
+        acceptedAttemptId: null,
+        barrierAcceptance: "COMMITTED_MANIFEST",
       });
-      if (manifestArtifact.objectKey !== objectKey ||
+      if (
+        manifestArtifact.objectKey !== objectKey ||
         manifestArtifact.checksumSha256 !== planned.value.sha256 ||
         manifestArtifact.contentType !== "application/json" ||
-        manifestArtifact.contentLength !== bytes.byteLength) {
+        manifestArtifact.contentLength !== bytes.byteLength
+      ) {
         throw new Error("HOSTED_V209_RENDER_COMMIT_INVALID");
       }
-      const avatarSource = ready.avatarSource === undefined ? undefined : artifact(ready.avatarSource, artifactScope, {
-        lane: "INPUT", kind: "IMAGE", taskKey: null, acceptedAttemptId: null,
-        barrierAcceptance: "COMMITTED_INPUT",
-      });
+      const avatarSource =
+        ready.avatarSource === undefined
+          ? undefined
+          : artifact(ready.avatarSource, artifactScope, {
+              lane: "INPUT",
+              kind: "IMAGE",
+              taskKey: null,
+              acceptedAttemptId: null,
+              barrierAcceptance: "COMMITTED_INPUT",
+            });
       const materializationInput: HostedRenderPlanMaterializationInput = {
         accountId: scope.accountId,
         workspaceId: scope.workspaceId,
         revision: {
-          status: "LOCKED", projectId, projectRevisionId: revisionId,
+          status: "LOCKED",
+          projectId,
+          projectRevisionId: revisionId,
           revisionConfigSha256: revisionDocument.sha256,
           avatarProfileVersionId: revisionDocument.value.avatar_binding.avatar_profile_version_id,
           avatarProfileHash: revisionDocument.value.avatar_binding.avatar_profile_hash,
@@ -220,22 +309,32 @@ export function createHostedV209RenderHandoff(input: {
           styleProfileHash: revisionDocument.value.style_profile_hash,
         },
         revisionDocument: revisionDocument.value,
-        timing: { transcript: transcript.value, transcriptSha256: transcript.sha256,
-          timeline: timeline.value, timelineSha256: timeline.sha256,
-          timelineTranscriptSha256: text(timing.timelineTranscriptSha256, SHA256) },
-        voiceover, ...(avatarSource ? { avatarSource } : {}), acceptedVisuals,
+        timing: {
+          transcript: transcript.value,
+          transcriptSha256: transcript.sha256,
+          timeline: timeline.value,
+          timelineSha256: timeline.sha256,
+          timelineTranscriptSha256: text(timing.timelineTranscriptSha256, SHA256),
+        },
+        voiceover,
+        ...(avatarSource ? { avatarSource } : {}),
+        acceptedVisuals,
         resolvedManifest: { document: planned.value.value, artifact: manifestArtifact },
         tools: record(ready.tools) as HostedRenderPlanMaterializationInput["tools"],
       };
       const renderPlan = await materializeHostedRenderPlan(
-        new HostedRenderPlanAppendDatabase(input.runtimeDatabase), materializationInput,
+        new HostedRenderPlanAppendDatabase(input.runtimeDatabase),
+        materializationInput,
       );
       const submission = exactHostedRenderSubmission(renderPlan.payload, projectId, revisionId);
       if (!submission) throw new Error("HOSTED_V209_RENDER_SUBMISSION_INVALID");
       const scheduled = await input.schedule(submission);
       if (!["OUTBOXED", "RUNNING", "SUCCEEDED"].includes(scheduled.state))
         throw new Error("HOSTED_V209_RENDER_SCHEDULE_REJECTED");
-      return Object.freeze({ state: "RENDER_SCHEDULED" as const, payloadSha256: renderPlan.payloadSha256 });
+      return Object.freeze({
+        state: "RENDER_SCHEDULED" as const,
+        payloadSha256: renderPlan.payloadSha256,
+      });
     },
   });
 }

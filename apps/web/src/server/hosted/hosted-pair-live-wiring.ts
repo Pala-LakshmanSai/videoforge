@@ -1030,7 +1030,8 @@ export async function createHostedPairLiveComposition(
       "HOSTED_PAIR_PROVENANCE_RECEIPT_BINDINGS_MISSING",
     ),
     receiptKey: Uint8Array.from({ length: 32 }, (_, index) =>
-      Number.parseInt(receiptSecretHex.slice(index * 2, index * 2 + 2), 16)),
+      Number.parseInt(receiptSecretHex.slice(index * 2, index * 2 + 2), 16),
+    ),
     store: new HostedSqlFunctionV209TerminalOutputStore(reconcilerDatabase),
   });
   return Object.freeze({

@@ -181,24 +181,37 @@ function exactAvatarSourceScope(
   const match = canonicalMatch ?? originalMatch;
   const passThrough =
     input.revisionDocument.avatar_binding.source_preparation_version === AVATAR_PASSTHROUGH_PROFILE;
-  if (!match || match[1] !== input.accountId || match[2] !== input.workspaceId ||
+  if (
+    !match ||
+    match[1] !== input.accountId ||
+    match[2] !== input.workspaceId ||
     match[3] !== input.revisionDocument.avatar_binding.avatar_profile_id ||
     match[4] !== input.revisionDocument.avatar_binding.avatar_profile_version_id ||
-    artifact.accountId !== input.accountId || artifact.workspaceId !== input.workspaceId ||
+    artifact.accountId !== input.accountId ||
+    artifact.workspaceId !== input.workspaceId ||
     artifact.projectId !== input.revision.projectId ||
     artifact.projectRevisionId !== input.revision.projectRevisionId ||
     artifact.assetId !== input.revisionDocument.avatar_binding.runtime_source_asset_id ||
     artifact.checksumSha256 !== input.revisionDocument.avatar_binding.runtime_source_sha256 ||
-    artifact.lane !== "INPUT" || artifact.taskKey !== null || artifact.acceptedAttemptId !== null ||
-    artifact.kind !== "IMAGE" || artifact.barrierAcceptance !== "COMMITTED_INPUT" ||
-    artifact.reservationState !== "COMMITTED" || artifact.receiptDeletedAt !== null ||
-    !UUID.test(artifact.receiptId) || !SHA256.test(artifact.checksumSha256) ||
-    !Number.isSafeInteger(artifact.contentLength) || artifact.contentLength < 1 ||
+    artifact.lane !== "INPUT" ||
+    artifact.taskKey !== null ||
+    artifact.acceptedAttemptId !== null ||
+    artifact.kind !== "IMAGE" ||
+    artifact.barrierAcceptance !== "COMMITTED_INPUT" ||
+    artifact.reservationState !== "COMMITTED" ||
+    artifact.receiptDeletedAt !== null ||
+    !UUID.test(artifact.receiptId) ||
+    !SHA256.test(artifact.checksumSha256) ||
+    !Number.isSafeInteger(artifact.contentLength) ||
+    artifact.contentLength < 1 ||
     (originalMatch !== null && !passThrough) ||
     (canonicalMatch !== null && passThrough) ||
     (canonicalMatch !== null &&
-      (canonicalMatch[5] === "png" ? artifact.contentType !== "image/png" : artifact.contentType !== "image/jpeg")) ||
-    (originalMatch !== null && !["image/png", "image/jpeg"].includes(artifact.contentType))) {
+      (canonicalMatch[5] === "png"
+        ? artifact.contentType !== "image/png"
+        : artifact.contentType !== "image/jpeg")) ||
+    (originalMatch !== null && !["image/png", "image/jpeg"].includes(artifact.contentType))
+  ) {
     reject("SOULX_CROP_PROFILE_UNQUALIFIED");
   }
 }

@@ -10,7 +10,6 @@ import {
   type HostedPairLiveEnvironment,
   type HostedPairWorkflowParameters,
 } from "../src/server/hosted/hosted-pair-live-wiring";
-import { createHostedV209RenderHandoff } from "../src/server/hosted/hosted-v209-render-handoff";
 import { createNeonExecutor, createNeonPool } from "../src/server/hosted/neon";
 import { V213SqlAcceptanceWorkflowPort } from "../src/server/hosted/v213-acceptance-workflow-production";
 import {
@@ -86,6 +85,9 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
           const reconcilerDatabase = createNeonExecutor(reconcilerPool);
           if (!this.env.PRIVATE_ARTIFACTS)
             throw new Error("Hosted pair render artifact binding is missing.");
+          const { createHostedV209RenderHandoff } = await import(
+            "../src/server/hosted/hosted-v209-render-handoff"
+          );
           const renderHandoff = createHostedV209RenderHandoff({
             database: reconcilerDatabase,
             runtimeDatabase,

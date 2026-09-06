@@ -36,11 +36,15 @@ function bucket(initial?: ArrayBuffer): HostedR2BucketBinding & { put: ReturnTyp
         ? {
             size: stored.byteLength,
             httpMetadata: { contentType: "application/json" },
-            async arrayBuffer() { return stored!.slice(0); },
+            async arrayBuffer() {
+              return stored!.slice(0);
+            },
           }
         : null;
     },
-    async list() { return { objects: [], truncated: false }; },
+    async list() {
+      return { objects: [], truncated: false };
+    },
     async delete() {},
   };
 }
