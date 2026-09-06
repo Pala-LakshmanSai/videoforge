@@ -530,7 +530,7 @@ async function readHostedCatalog(): Promise<CatalogResponse> {
 
 interface HostedAttempt {
   readonly id: string;
-  readonly kind: "ASR" | "RENDER" | "MAGE_IMAGE" | "SOULX_AVATAR";
+  readonly kind: "ASR" | "SPAN_AUDIO" | "RENDER" | "MAGE_IMAGE" | "SOULX_AVATAR";
   readonly state: string;
   readonly version: number;
   readonly created_at: string;
@@ -780,7 +780,7 @@ interface ProjectDetailResponse {
 
 interface HostedV209DispatchResponse {
   readonly schema_version: "videoforge-hosted-v209-project-dispatch/v1";
-  readonly state: "SCHEDULED";
+  readonly state: "SCHEDULED" | "PREPARING_INPUTS";
   readonly correlation_id: string;
 }
 
@@ -790,7 +790,7 @@ const HOSTED_V209_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 function exactHostedV209DispatchResponse(value: HostedV209DispatchResponse) {
   if (
     value.schema_version !== "videoforge-hosted-v209-project-dispatch/v1" ||
-    value.state !== "SCHEDULED" ||
+    !["SCHEDULED", "PREPARING_INPUTS"].includes(value.state) ||
     !HOSTED_V209_CORRELATION_ID.test(value.correlation_id)
   ) {
     throw new Error("Generation start could not be verified.");
@@ -3855,6 +3855,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           <Button variant="secondary" onClick={() => gpuDispatch.mutate()}>
             <RefreshCw size={15} /> Retry generation
           </Button>
+        </div>
+      ) : gpuDispatch.data?.state === "PREPARING_INPUTS" ? (
+        <div className="validation validation-info" role="status" aria-live="polite">
+          Preparing exact avatar audio on your personal media worker. Generation will continue
+          automatically when those inputs are verified.
         </div>
       ) : gpuDispatch.data ? (
         <div className="validation validation-success" role="status" aria-live="polite">

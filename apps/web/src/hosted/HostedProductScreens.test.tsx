@@ -2609,6 +2609,57 @@ describe("hosted product journey", () => {
     ).toBe(true);
   });
 
+  it("waits for server-owned span audio without redispatching from the browser", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const base = {
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-09-06T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      gpu_transport: "QUALIFIED_EXACT" as const,
+      gpu_readiness: qualifiedGpuReadiness,
+      voiceover_context: {
+        id: "33333333-3333-4333-8333-333333333333",
+        state: "SUCCEEDED" as const,
+        transcript_hash: `sha256:${"a".repeat(64)}`,
+        reserved_cost_micro_usd: 10_000,
+      },
+      generation: {
+        id: "44444444-4444-4444-8444-444444444444",
+        timeline_plan_sha256: `sha256:${"b".repeat(64)}`,
+        planned_tasks: 2,
+        completed_tasks: 0,
+        failed_tasks: 0,
+        stage: "READY_FOR_GPU_DISPATCH" as const,
+      },
+      queue: { status: "ACTIVE", position: 1, ahead: 0, total: 1 },
+      stages: [{ id: "prompt-writing", name: "Write image prompts", status: "COMPLETE" }],
+    };
+    let dispatches = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (!String(input).endsWith("/gpu-dispatch")) {
+        return Response.json({
+          ...base,
+          attempts: [],
+        });
+      }
+      dispatches += 1;
+      return Response.json({
+        schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+        state: "PREPARING_INPUTS",
+        correlation_id: `v209-span-${dispatches}`,
+      }, { status: 202 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(await screen.findByText(/Preparing exact avatar audio/u)).toBeInTheDocument();
+    expect(dispatches).toBe(1);
+  });
+
   it("reports only measured personal-worker and retained-object facts", async () => {
     vi.stubGlobal(
       "fetch",
