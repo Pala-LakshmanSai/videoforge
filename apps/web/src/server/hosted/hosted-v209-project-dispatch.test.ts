@@ -1,7 +1,10 @@
 import { sha256CanonicalJson } from "@videoforge/contracts";
 import { describe, expect, it, vi } from "vitest";
 
-import { handleHostedV209ProjectDispatch } from "./hosted-v209-project-dispatch";
+import {
+  handleHostedV209ProjectDispatch,
+  materializeHostedV209OrdinaryDispatchCandidate,
+} from "./hosted-v209-project-dispatch";
 
 const id = (digit: string) =>
   `${digit.repeat(8)}-${digit.repeat(4)}-4${digit.repeat(3)}-8${digit.repeat(3)}-${digit.repeat(12)}`;
@@ -179,6 +182,150 @@ function dependencies(value: Awaited<ReturnType<typeof candidate>>) {
 }
 
 describe("ordinary authenticated V2-09 project dispatch", () => {
+  it("materializes the exact WORKSPACE no-op reference before the candidate in one transaction", async () => {
+    const prepared = await candidate();
+    const queries: string[] = [];
+    const database = {
+      transaction: async (
+        work: (transaction: { query: (sql: string) => Promise<unknown> }) => Promise<unknown>,
+      ) =>
+        work({
+          query: async (sql: string) => {
+            queries.push(sql);
+            if (sql.includes("set_config")) return { rows: [], affectedRows: 0 };
+            if (sql.includes("system_avatar_reference")) {
+              return {
+                rows: [
+                  {
+                    reference: {
+                      schemaVersion: "videoforge.hosted-v209-system-avatar-reference/v1",
+                      accountId: scope.account_id,
+                      workspaceId: scope.workspace_id,
+                      projectId,
+                      projectRevisionId: prepared.projectRevisionId,
+                      generationRequestId: prepared.generationRequestId,
+                      referenceRequired: false,
+                      referenceReady: true,
+                      replayed: true,
+                    },
+                  },
+                ],
+                affectedRows: 1,
+              };
+            }
+            return { rows: [{ candidate: prepared }], affectedRows: 1 };
+          },
+        }),
+    } as never;
+    await expect(
+      materializeHostedV209OrdinaryDispatchCandidate(database, {
+        accountId: scope.account_id,
+        workspaceId: scope.workspace_id,
+        userId: scope.user_id,
+        projectId,
+      }),
+    ).resolves.toEqual(prepared);
+    expect(
+      queries.map((sql) =>
+        sql.includes("set_config")
+          ? "scope"
+          : sql.includes("system_avatar_reference")
+            ? "reference"
+            : "candidate",
+      ),
+    ).toEqual(["scope", "reference", "candidate"]);
+  });
+
+  it("accepts an exact SYSTEM reference replay and binds its revision and generation to the candidate", async () => {
+    const prepared = await candidate();
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("set_config")) return { rows: [], affectedRows: 0 };
+      if (sql.includes("system_avatar_reference"))
+        return {
+          rows: [
+            {
+              reference: {
+                schemaVersion: "videoforge.hosted-v209-system-avatar-reference/v1",
+                accountId: scope.account_id,
+                workspaceId: scope.workspace_id,
+                projectId,
+                projectRevisionId: prepared.projectRevisionId,
+                generationRequestId: prepared.generationRequestId,
+                assetId: id("a"),
+                receiptId: id("b"),
+                reservationId: id("c"),
+                objectKey: `tenant/ffffffff-ffff-4fff-8fff-000000000001/workspace/ffffffff-ffff-4fff-8fff-000000000011/avatar-profile/${id("d")}/version/${id("e")}/canonical/avatar.png`,
+                checksumSha256: sha("a"),
+                referenceRequired: true,
+                referenceReady: true,
+                replayed: true,
+              },
+            },
+          ],
+          affectedRows: 1,
+        };
+      return { rows: [{ candidate: prepared }], affectedRows: 1 };
+    });
+    const database = {
+      transaction: async (work: (transaction: { query: typeof query }) => Promise<unknown>) =>
+        work({ query }),
+    } as never;
+    await expect(
+      materializeHostedV209OrdinaryDispatchCandidate(database, {
+        accountId: scope.account_id,
+        workspaceId: scope.workspace_id,
+        userId: scope.user_id,
+        projectId,
+      }),
+    ).resolves.toEqual(prepared);
+    expect(query).toHaveBeenCalledTimes(3);
+  });
+
+  it("rejects malformed reference or candidate lineage before returning materialized work", async () => {
+    const prepared = await candidate();
+    const run = async (reference: Record<string, unknown>, value = prepared) => {
+      const candidateQuery = vi.fn(async () => ({ rows: [{ candidate: value }], affectedRows: 1 }));
+      const database = {
+        transaction: async (
+          work: (transaction: { query: (sql: string) => Promise<unknown> }) => Promise<unknown>,
+        ) =>
+          work({
+            query: async (sql: string) => {
+              if (sql.includes("set_config")) return { rows: [], affectedRows: 0 };
+              if (sql.includes("system_avatar_reference"))
+                return { rows: [{ reference }], affectedRows: 1 };
+              return candidateQuery();
+            },
+          }),
+      } as never;
+      const result = materializeHostedV209OrdinaryDispatchCandidate(database, {
+        accountId: scope.account_id,
+        workspaceId: scope.workspace_id,
+        userId: scope.user_id,
+        projectId,
+      });
+      return { result, candidateQuery };
+    };
+    const common = {
+      schemaVersion: "videoforge.hosted-v209-system-avatar-reference/v1",
+      accountId: scope.account_id,
+      workspaceId: scope.workspace_id,
+      projectId,
+      projectRevisionId: prepared.projectRevisionId,
+      generationRequestId: prepared.generationRequestId,
+      referenceRequired: false,
+      referenceReady: true,
+      replayed: true,
+    };
+    const malformed = await run({ ...common, referenceReady: false });
+    await expect(malformed.result).rejects.toThrow("HOSTED_V209_SYSTEM_AVATAR_REFERENCE_INVALID");
+    expect(malformed.candidateQuery).not.toHaveBeenCalled();
+
+    const mismatched = await run(common, { ...prepared, generationRequestId: id("9") });
+    await expect(mismatched.result).rejects.toThrow("HOSTED_V209_SYSTEM_AVATAR_REFERENCE_INVALID");
+    expect(mismatched.candidateQuery).toHaveBeenCalledOnce();
+  });
+
   it("returns preparation with one correlation header and performs no GPU observation", async () => {
     const prepared = await candidate();
     const deps = dependencies(prepared);

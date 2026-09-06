@@ -22,7 +22,16 @@ import {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
+const SYSTEM_AVATAR_OBJECT_KEY =
+  /^tenant\/ffffffff-ffff-4fff-8fff-000000000001\/workspace\/ffffffff-ffff-4fff-8fff-000000000011\/avatar-profile\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/version\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/canonical\/avatar\.(?:png|jpg)$/u;
 const PATH = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/gpu-dispatch$/u;
+
+type DispatchIdentity = {
+  readonly accountId: string;
+  readonly workspaceId: string;
+  readonly userId: string;
+  readonly projectId: string;
+};
 
 type Candidate = Record<string, unknown> & {
   readonly schemaVersion: "videoforge.hosted-v209-ordinary-dispatch/v1";
@@ -54,12 +63,7 @@ export interface HostedV209ProjectDispatchDependencies {
   readonly scope: typeof sessionScope;
   readonly materialize: (
     database: TransactionalSqlExecutor,
-    identity: {
-      readonly accountId: string;
-      readonly workspaceId: string;
-      readonly userId: string;
-      readonly projectId: string;
-    },
+    identity: DispatchIdentity,
   ) => Promise<unknown>;
   readonly observe: typeof observeV209ShortAdmission;
   readonly commitAndSchedule: typeof commitAndScheduleV209OrdinaryPair;
@@ -71,34 +75,107 @@ const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
   createPool: createNeonPool,
   createExecutor: createNeonExecutor,
   scope: sessionScope,
-  async materialize(
-    database: TransactionalSqlExecutor,
-    identity: {
-      readonly accountId: string;
-      readonly workspaceId: string;
-      readonly userId: string;
-      readonly projectId: string;
-    },
-  ) {
-    return database.transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1,$2,true)", [
-        "videoforge.account_id",
-        identity.accountId,
-      ]);
-      const result = await transaction.query<{ candidate: unknown }>(
-        `SELECT public.videoforge_materialize_hosted_v209_ordinary_dispatch(
-           $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS candidate`,
-        [identity.accountId, identity.workspaceId, identity.userId, identity.projectId],
-      );
-      if (result.rows.length !== 1) throw new Error("HOSTED_V209_CANDIDATE_NOT_READY");
-      return result.rows[0]?.candidate;
-    });
-  },
+  materialize: materializeHostedV209OrdinaryDispatchCandidate,
   observe: observeV209ShortAdmission,
   commitAndSchedule: commitAndScheduleV209OrdinaryPair,
   ensureWorkflow: materializeAndEnsureV209OrdinaryPair,
   correlationId: () => `v209-${crypto.randomUUID()}`,
 });
+
+function exactSystemAvatarReference(value: unknown, identity: DispatchIdentity) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const reference = value as Record<string, unknown>;
+  const commonKeys = [
+    "accountId",
+    "generationRequestId",
+    "projectId",
+    "projectRevisionId",
+    "referenceReady",
+    "referenceRequired",
+    "replayed",
+    "schemaVersion",
+    "workspaceId",
+  ];
+  const systemKeys = ["assetId", "checksumSha256", "objectKey", "receiptId", "reservationId"];
+  const required = reference.referenceRequired;
+  const expectedKeys = required === true ? [...commonKeys, ...systemKeys] : commonKeys;
+  if (
+    Object.keys(reference).sort().join(",") !== expectedKeys.sort().join(",") ||
+    reference.schemaVersion !== "videoforge.hosted-v209-system-avatar-reference/v1" ||
+    reference.accountId !== identity.accountId ||
+    reference.workspaceId !== identity.workspaceId ||
+    reference.projectId !== identity.projectId ||
+    ![reference.projectRevisionId, reference.generationRequestId].every(
+      (item) => typeof item === "string" && DATABASE_UUID.test(item),
+    ) ||
+    typeof required !== "boolean" ||
+    reference.referenceReady !== true ||
+    typeof reference.replayed !== "boolean" ||
+    (required === false && reference.replayed !== true)
+  ) {
+    return null;
+  }
+  if (
+    required === true &&
+    (![reference.assetId, reference.receiptId, reference.reservationId].every(
+      (item) => typeof item === "string" && DATABASE_UUID.test(item),
+    ) ||
+      typeof reference.objectKey !== "string" ||
+      !SYSTEM_AVATAR_OBJECT_KEY.test(reference.objectKey) ||
+      typeof reference.checksumSha256 !== "string" ||
+      !SHA256.test(reference.checksumSha256))
+  ) {
+    return null;
+  }
+  return reference as {
+    readonly projectRevisionId: string;
+    readonly generationRequestId: string;
+  };
+}
+
+export async function materializeHostedV209OrdinaryDispatchCandidate(
+  database: TransactionalSqlExecutor,
+  identity: DispatchIdentity,
+): Promise<unknown> {
+  return database.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1,$2,true)", [
+      "videoforge.account_id",
+      identity.accountId,
+    ]);
+    const parameters = [
+      identity.accountId,
+      identity.workspaceId,
+      identity.userId,
+      identity.projectId,
+    ];
+    const referenceResult = await transaction.query<{ reference: unknown }>(
+      `SELECT public.videoforge_materialize_hosted_v209_system_avatar_reference(
+         $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS reference`,
+      parameters,
+    );
+    const reference = exactSystemAvatarReference(referenceResult.rows[0]?.reference, identity);
+    if (referenceResult.rows.length !== 1 || !reference) {
+      throw new RangeError("HOSTED_V209_SYSTEM_AVATAR_REFERENCE_INVALID");
+    }
+    const result = await transaction.query<{ candidate: unknown }>(
+      `SELECT public.videoforge_materialize_hosted_v209_ordinary_dispatch(
+         $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS candidate`,
+      parameters,
+    );
+    if (result.rows.length !== 1) throw new Error("HOSTED_V209_CANDIDATE_NOT_READY");
+    const candidate = result.rows[0]?.candidate;
+    if (
+      !candidate ||
+      typeof candidate !== "object" ||
+      Array.isArray(candidate) ||
+      (candidate as Record<string, unknown>).projectRevisionId !== reference.projectRevisionId ||
+      (candidate as Record<string, unknown>).generationRequestId !== reference.generationRequestId
+    ) {
+      throw new RangeError("HOSTED_V209_SYSTEM_AVATAR_REFERENCE_INVALID");
+    }
+    return candidate;
+  });
+}
 
 function exactCandidate(
   value: unknown,
@@ -163,11 +240,14 @@ function dispatchResponse(candidate: Candidate, correlationId: string, status: n
 }
 
 function preparationResponse(state: "PREPARING_INPUTS" | "SCHEDULED", correlationId: string) {
-  const base = response({
-    schema_version: "videoforge-hosted-v209-project-dispatch/v1",
-    state,
-    correlation_id: correlationId,
-  }, 202);
+  const base = response(
+    {
+      schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+      state,
+      correlation_id: correlationId,
+    },
+    202,
+  );
   const headers = new Headers(base.headers);
   headers.set("x-videoforge-correlation-id", correlationId);
   return new Response(base.body, { status: base.status, headers });
@@ -188,7 +268,12 @@ async function emptyBody(request: Request): Promise<boolean> {
 export async function resumeHostedV209ProjectDispatch(
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
-  identity: { readonly accountId: string; readonly workspaceId: string; readonly userId: string; readonly projectId: string },
+  identity: {
+    readonly accountId: string;
+    readonly workspaceId: string;
+    readonly userId: string;
+    readonly projectId: string;
+  },
   injected: HostedV209ProjectDispatchDependencies = defaults,
   suppliedCorrelationId?: string,
   suppliedRuntimePool?: HostedNeonPool,
@@ -197,7 +282,10 @@ export async function resumeHostedV209ProjectDispatch(
   const runtimePool = suppliedRuntimePool ?? injected.createPool(config.neon.databaseUrl);
   try {
     const runtimeDatabase = injected.createExecutor(runtimePool);
-    const candidate = exactCandidate(await injected.materialize(runtimeDatabase, identity), identity);
+    const candidate = exactCandidate(
+      await injected.materialize(runtimeDatabase, identity),
+      identity,
+    );
     if (!candidate) return response({ error: { code: "HOSTED_V209_CANDIDATE_NOT_READY" } }, 409);
     await assertV209OrdinaryCandidate(candidate);
     const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
@@ -206,18 +294,30 @@ export async function resumeHostedV209ProjectDispatch(
     const reconcilerPool = injected.createPool(reconcilerUrl);
     try {
       if (candidate.pairExists) {
-        await injected.ensureWorkflow(environment, runtimeDatabase, injected.createExecutor(reconcilerPool), {
-          accountId: identity.accountId,
-          workspaceId: identity.workspaceId,
-          generationRequestId: candidate.generationRequestId,
-        }, config);
-        console.info("hosted_v209_project_dispatch", { correlation_id: correlationId, event: "EXISTING_WORKFLOW_RETRIEVED" });
+        await injected.ensureWorkflow(
+          environment,
+          runtimeDatabase,
+          injected.createExecutor(reconcilerPool),
+          {
+            accountId: identity.accountId,
+            workspaceId: identity.workspaceId,
+            generationRequestId: candidate.generationRequestId,
+          },
+          config,
+        );
+        console.info("hosted_v209_project_dispatch", {
+          correlation_id: correlationId,
+          event: "EXISTING_WORKFLOW_RETRIEVED",
+        });
         return dispatchResponse(candidate, correlationId, 200);
       }
       const observation = await injected.observe(environment, runtimeDatabase);
       const admission = await freezeV209OrdinaryLiveAdmission(candidate, observation);
-      const scheduled = await injected.commitAndSchedule(environment, runtimeDatabase,
-        injected.createExecutor(reconcilerPool), {
+      const scheduled = await injected.commitAndSchedule(
+        environment,
+        runtimeDatabase,
+        injected.createExecutor(reconcilerPool),
+        {
           approvalId: candidate.approvalId,
           approvalSha256: candidate.approvalSha256,
           claimId: crypto.randomUUID(),
@@ -233,7 +333,10 @@ export async function resumeHostedV209ProjectDispatch(
           totalCapUsd: candidate.totalCapUsd,
           expiresAt: candidate.expiresAt,
           pair: candidate.pair,
-        }, admission, config);
+        },
+        admission,
+        config,
+      );
       console.info("hosted_v209_project_dispatch", {
         correlation_id: correlationId,
         event: scheduled.recovered ? "WORKFLOW_RECOVERED" : "WORKFLOW_SCHEDULED",
