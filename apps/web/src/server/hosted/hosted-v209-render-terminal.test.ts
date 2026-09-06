@@ -110,7 +110,15 @@ async function harness(requestState: "ACTIVE" | "SUCCEEDED") {
     list: vi.fn(),
     delete: vi.fn(),
   };
-  return { candidate, query, bucket, terminal: createHostedV209RenderTerminalHandoff({ database: database as never, bucket: bucket as never }) };
+  return {
+    candidate,
+    query,
+    bucket,
+    terminal: createHostedV209RenderTerminalHandoff({
+      database: database as never,
+      bucket: bucket as never,
+    }),
+  };
 }
 
 describe("hosted V2-09 reconciler terminal handoff", () => {

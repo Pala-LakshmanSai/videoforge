@@ -123,9 +123,7 @@ async function loadFreshFinalOutput(
     throw new Error("HOSTED_V209_RENDER_RESULT_DRIFT");
   let decoded: unknown;
   try {
-    decoded = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes),
-    );
+    decoded = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes));
   } catch {
     throw new Error("HOSTED_V209_RENDER_RESULT_DRIFT");
   }
@@ -199,7 +197,11 @@ export function createHostedV209RenderTerminalHandoff(input: {
       readonly workspaceId: string;
       readonly attemptId: string;
     }) {
-      if (!UUID.test(scope.accountId) || !UUID.test(scope.workspaceId) || !UUID.test(scope.attemptId))
+      if (
+        !UUID.test(scope.accountId) ||
+        !UUID.test(scope.workspaceId) ||
+        !UUID.test(scope.attemptId)
+      )
         throw new Error("HOSTED_V209_RENDER_TERMINAL_INVALID");
       const candidate = await readCandidate(input.database, scope);
       validateCandidate(candidate, scope);

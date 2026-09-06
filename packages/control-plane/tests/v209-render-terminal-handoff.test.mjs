@@ -52,7 +52,14 @@ async function fixture(executor) {
     `INSERT INTO hosted_render_plans(account_id,workspace_id,project_id,project_revision_id,
       schema_version,payload,payload_sha256) VALUES($1,$2,$3,$4,
       'videoforge-hosted-cpu-submission/v1',$5::jsonb,$6)`,
-    [IDS.accountA, IDS.workspaceA, IDS.projectA, IDS.revisionA, JSON.stringify(payload), payloadSha256],
+    [
+      IDS.accountA,
+      IDS.workspaceA,
+      IDS.projectA,
+      IDS.revisionA,
+      JSON.stringify(payload),
+      payloadSha256,
+    ],
   );
   await executor.query(
     `INSERT INTO hosted_cpu_job_attempts(id,account_id,workspace_id,project_id,
@@ -108,7 +115,14 @@ async function fixture(executor) {
     container: "mp4",
     duration_ms: 30_000,
     total_frames: 900,
-    video: { codec: "h264", pixel_format: "yuv420p", width: 1920, height: 1080, fps_num: 30, fps_den: 1 },
+    video: {
+      codec: "h264",
+      pixel_format: "yuv420p",
+      width: 1920,
+      height: 1080,
+      fps_num: 30,
+      fps_den: 1,
+    },
     audio: { codec: "aac", sample_rate_hz: 48_000 },
     stream_counts: { video: 1, audio: 1, subtitle: 0, data: 0 },
     decode_ok: true,
