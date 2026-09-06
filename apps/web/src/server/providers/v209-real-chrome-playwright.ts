@@ -1,5 +1,15 @@
 import { createHash } from "node:crypto";
-import { lstatSync, readFileSync } from "node:fs";
+import {
+  closeSync,
+  constants as fsConstants,
+  existsSync,
+  fstatSync,
+  fsyncSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { readFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 
@@ -110,6 +120,49 @@ function protectedAuthState(path: string): string {
   )
     fail("V209_REAL_CHROME_AUTH_STATE_INVALID");
   return absolute;
+}
+
+function protectedOutputTarget(path: string): string {
+  const absolute = resolve(path);
+  const parent = lstatSync(dirname(absolute));
+  if (
+    parent.isSymbolicLink() ||
+    !parent.isDirectory() ||
+    (parent.mode & 0o777) !== 0o700 ||
+    (typeof process.getuid === "function" && parent.uid !== process.getuid()) ||
+    existsSync(absolute)
+  )
+    fail("V209_REAL_CHROME_OUTPUT_TARGET_INVALID");
+  return absolute;
+}
+
+function persistVerifiedOutput(path: string, bytes: Uint8Array): void {
+  let descriptor: number | undefined;
+  let closed = false;
+  try {
+    descriptor = openSync(
+      path,
+      fsConstants.O_WRONLY |
+        fsConstants.O_CREAT |
+        fsConstants.O_EXCL |
+        (fsConstants.O_NOFOLLOW ?? 0),
+      0o600,
+    );
+    fstatSync(descriptor);
+    writeFileSync(descriptor, bytes);
+    fsyncSync(descriptor);
+  } catch (error) {
+    if (descriptor !== undefined) {
+      closeSync(descriptor);
+      closed = true;
+    }
+    // Never unlink by pathname after releasing the file capability: a same-UID process could
+    // replace that name between identity check and unlink. A failed 0600 partial is retained for
+    // explicit identity-aware operator cleanup.
+    throw error;
+  } finally {
+    if (descriptor !== undefined && !closed) closeSync(descriptor);
+  }
 }
 
 async function abortable<T>(signal: AbortSignal, operation: () => Promise<T>): Promise<T> {
@@ -500,6 +553,7 @@ class V209PlaywrightSession implements V209RealChromeSessionPort, V209StageProgr
     private readonly browser: PlaywrightBrowser,
     private readonly voiceoverPath: string,
     private readonly expectedOrigin: string,
+    private readonly verifiedOutputPath: string,
   ) {}
 
   async readGeneratePage(input: { readonly signal: AbortSignal }): Promise<unknown> {
@@ -734,6 +788,10 @@ class V209PlaywrightSession implements V209RealChromeSessionPort, V209StageProgr
       if (!path) fail("V209_REAL_CHROME_DOWNLOAD_INVALID");
       const bytes = await abortable(input.signal, () => readFile(path, { signal: input.signal }));
       if (sha256Bytes(bytes) !== input.outputSha256) fail("V209_REAL_CHROME_DOWNLOAD_INVALID");
+      if (input.signal.aborted) throw input.signal.reason;
+      // Synchronous exclusive write+fsync keeps the outer deadline from returning while a
+      // verified private artifact is still being materialized in the background.
+      persistVerifiedOutput(this.verifiedOutputPath, bytes);
       return Object.freeze({
         schemaVersion: V209_REAL_CHROME_DOWNLOAD_SCHEMA,
         mode: "PRODUCTION",
@@ -819,6 +877,7 @@ export interface RunV209RealChromePlaywrightInput {
   readonly productionOrigin: string;
   readonly authStatePath: string;
   readonly voiceoverPath: string;
+  readonly verifiedOutputPath: string;
   readonly launch?: LaunchV209InstalledChrome;
 }
 
@@ -827,6 +886,7 @@ export async function runV209RealChromePlaywright(
 ): Promise<V209RealChromeOperatorEvidence> {
   const origin = exactOrigin(input.productionOrigin);
   const authStatePath = protectedAuthState(input.authStatePath);
+  const verifiedOutputPath = protectedOutputTarget(input.verifiedOutputPath);
   const voiceoverPath = exactRegularFile(
     input.voiceoverPath,
     "V209_REAL_CHROME_PREPARED_INPUT_INVALID",
@@ -868,6 +928,7 @@ export async function runV209RealChromePlaywright(
           browser,
           voiceoverPath,
           origin,
+          verifiedOutputPath,
         );
         return session;
       } catch (error) {

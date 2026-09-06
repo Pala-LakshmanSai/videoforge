@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -63,6 +63,7 @@ function sourceFiles() {
   writeFileSync(voiceoverPath, voiceover, { mode: 0o600 });
   const downloadPath = join(directory, "output.mp4");
   writeFileSync(downloadPath, OUTPUT, { mode: 0o600 });
+  const verifiedOutputPath = join(directory, "verified-output.mp4");
   const request: V209RealChromeOperatorRequest = {
     schemaVersion: V209_REAL_CHROME_REQUEST_SCHEMA,
     source: V209_REAL_CHROME_SOURCE,
@@ -83,7 +84,14 @@ function sourceFiles() {
     pollIntervalMs: 0,
     stopAt: new Date(Date.now() + 60_000).toISOString(),
   };
-  return { directory, authStatePath, voiceoverPath, downloadPath, request };
+  return {
+    directory,
+    authStatePath,
+    voiceoverPath,
+    downloadPath,
+    verifiedOutputPath,
+    request,
+  };
 }
 
 function fakeChrome(input: {
@@ -335,6 +343,7 @@ describe("V2-09 real Chrome Playwright binding", () => {
         productionOrigin: "https://videoforge.example.test",
         authStatePath: files.authStatePath,
         voiceoverPath: files.voiceoverPath,
+        verifiedOutputPath: files.verifiedOutputPath,
         launch: chrome.launch,
       });
 
@@ -387,6 +396,8 @@ describe("V2-09 real Chrome Playwright binding", () => {
       expect(chrome.page.close).toHaveBeenCalledOnce();
       expect(chrome.context.close).toHaveBeenCalledOnce();
       expect(chrome.browser.close).toHaveBeenCalledOnce();
+      expect(readFileSync(files.verifiedOutputPath)).toEqual(OUTPUT);
+      expect(lstatSync(files.verifiedOutputPath).mode & 0o777).toBe(0o600);
     } finally {
       rmSync(files.directory, { recursive: true, force: true });
     }
@@ -405,6 +416,7 @@ describe("V2-09 real Chrome Playwright binding", () => {
           productionOrigin: "https://videoforge.example.test",
           authStatePath: files.authStatePath,
           voiceoverPath: files.voiceoverPath,
+          verifiedOutputPath: files.verifiedOutputPath,
           launch: chrome.launch,
         }),
       ).rejects.toMatchObject({ code: "V209_REAL_CHROME_PREPARED_INPUT_INVALID" });
@@ -420,6 +432,7 @@ describe("V2-09 real Chrome Playwright binding", () => {
           productionOrigin: "https://videoforge.example.test",
           authStatePath: files.authStatePath,
           voiceoverPath: files.voiceoverPath,
+          verifiedOutputPath: files.verifiedOutputPath,
           launch: chrome.launch,
         }),
       ).rejects.toMatchObject({ code: "V209_REAL_CHROME_AUTH_STATE_INVALID" });
@@ -443,6 +456,7 @@ describe("V2-09 real Chrome Playwright binding", () => {
           productionOrigin: "https://videoforge.example.test",
           authStatePath: files.authStatePath,
           voiceoverPath: files.voiceoverPath,
+          verifiedOutputPath: files.verifiedOutputPath,
           launch: chrome.launch,
         }),
       ).rejects.toMatchObject({ code: "V209_REAL_CHROME_BROWSER_UNAVAILABLE" });
