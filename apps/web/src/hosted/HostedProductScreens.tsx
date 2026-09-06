@@ -929,6 +929,7 @@ function hostedDraftIsResumable(
 export interface FixtureStyleCreationAdapter {
   readonly returnTo: string;
   listStyles(): Promise<CatalogResponse["styles"]>;
+  load(styleId: string, versionId: string): Promise<ImageStyleHubVersionResponse>;
   normalize(file: File): Promise<NormalizedStyleReference>;
   createAndRegister(
     name: string,
@@ -956,6 +957,13 @@ function fixtureStyleResponse(value: ImageStyleHubVersionResponse): HostedPreset
         ].join(" · ")
       : null,
   };
+}
+
+function persistFixtureStyleResumeIdentity(value: ImageStyleHubVersionResponse): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set("resumeStyleId", value.style_id);
+  url.searchParams.set("resumeVersionId", value.version_id);
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 const FILE_ACCESS_HINT =
@@ -2480,6 +2488,7 @@ export function HostedPresetCreationScreen({
   const defaultReturnTo = fixtureStyleAdapter?.returnTo ?? (isAvatar ? "/avatars" : "/styles");
   const returnTo = normalizeHostedReturnTo(params.get("returnTo"), defaultReturnTo);
   const parentId = params.get("parentId");
+  const resumeStyleId = params.get("resumeStyleId");
   const resumeVersionId = params.get("resumeVersionId");
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
@@ -2505,6 +2514,7 @@ export function HostedPresetCreationScreen({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const createRequest = useRef<{ readonly body: string; readonly key: string } | null>(null);
+  const fixtureResumeStarted = useRef<string | null>(null);
   const referenceRetryRequest = useRef<{ readonly body: string; readonly key: string } | null>(
     null,
   );
@@ -2516,6 +2526,12 @@ export function HostedPresetCreationScreen({
       if (!fixtureBackend) return readHostedCatalog();
       return { avatars: [], styles: await fixtureStyleAdapter!.listStyles() };
     },
+  });
+  const fixtureResume = useQuery({
+    queryKey: ["fixture-style-draft", resumeStyleId, resumeVersionId],
+    queryFn: () => fixtureStyleAdapter!.load(resumeStyleId!, resumeVersionId!),
+    enabled: fixtureBackend && Boolean(resumeStyleId && resumeVersionId),
+    retry: false,
   });
   const catalogValue = catalog.data as Partial<CatalogResponse> | undefined;
   const items = catalog.data ? (isAvatar ? catalog.data.avatars : catalog.data.styles) : [];
@@ -2605,6 +2621,44 @@ export function HostedPresetCreationScreen({
     resumeInitialized,
     resumeVersionId,
     resumedDraft,
+  ]);
+
+  useEffect(() => {
+    if (!fixtureBackend || !resumeStyleId || !resumeVersionId) return;
+    const resumeKey = `${resumeStyleId}:${resumeVersionId}`;
+    if (fixtureResumeStarted.current === resumeKey) return;
+    if (fixtureResume.isError) {
+      fixtureResumeStarted.current = resumeKey;
+      setError(
+        fixtureResume.error instanceof Error
+          ? fixtureResume.error.message
+          : "The saved style could not be loaded.",
+      );
+      return;
+    }
+    const fixture = fixtureResume.data;
+    if (!fixture) return;
+    fixtureResumeStarted.current = resumeKey;
+    if (fixture.style_id !== resumeStyleId || fixture.version_id !== resumeVersionId) {
+      setError("The saved style response did not match the requested draft.");
+      return;
+    }
+    if (fixture.state !== "REFERENCES_READY" && fixture.state !== "NEEDS_REVIEW") {
+      setError("This saved style is no longer available for setup.");
+      return;
+    }
+    setError(null);
+    setName(fixture.name);
+    setFixtureStyleVersion(fixture);
+    setCreated(fixtureStyleResponse(fixture));
+    setStep(fixture.state === "NEEDS_REVIEW" ? 4 : 3);
+  }, [
+    fixtureBackend,
+    fixtureResume.data,
+    fixtureResume.error,
+    fixtureResume.isError,
+    resumeStyleId,
+    resumeVersionId,
   ]);
 
   function cancel() {
@@ -2819,6 +2873,9 @@ export function HostedPresetCreationScreen({
           name.trim(),
           styleSources.map((source) => source.normalized!),
         );
+        const resumeKey = `${fixture.style_id}:${fixture.version_id}`;
+        fixtureResumeStarted.current = resumeKey;
+        persistFixtureStyleResumeIdentity(fixture);
         setFixtureStyleVersion(fixture);
         setCreated(fixtureStyleResponse(fixture));
         setStep(3);

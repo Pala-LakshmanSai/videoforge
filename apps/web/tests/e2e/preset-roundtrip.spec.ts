@@ -410,9 +410,35 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
       .toBeGreaterThanOrEqual(640);
   }
   await page.getByRole("button", { name: "Prepare analysis" }).click();
-  await page.getByRole("button", { name: "Analyze this draft once" }).click();
+  const analyzeStyle = page.getByRole("button", { name: "Analyze this draft once" });
+  await expect(analyzeStyle).toBeVisible();
+  const resumeUrl = new URL(page.url());
+  expect(resumeUrl.searchParams.get("fixture")).toBe("project_create_ready");
+  expect(resumeUrl.searchParams.get("returnTo")).toBe("/projects/new?fixture=project_create_ready");
+  expect(resumeUrl.searchParams.get("resumeStyleId")).toMatch(/^image_style_fixture_created_/u);
+  expect(resumeUrl.searchParams.get("resumeVersionId")).toMatch(
+    /^image_style_version_fixture_created_/u,
+  );
+  expect(styleMutationCount).toBe(2);
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Analyze references" })).toBeVisible();
+  await expect(page.getByText(`Continuing “${styleName}”`)).toBeVisible();
+  await expect(analyzeStyle).toBeVisible();
+  await expect(page.getByLabel("Upload style references")).toHaveCount(0);
+  expect(styleMutationCount).toBe(2);
+
+  await analyzeStyle.click();
   await expect(page.getByText("Local fixture profile returned for workflow review.")).toBeVisible();
   await expect(page.getByLabel("Review notes (optional)")).toHaveCount(0);
+  expect(styleMutationCount).toBe(3);
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Review and publish" })).toBeVisible();
+  await expect(page.getByText(`Continuing “${styleName}”`)).toBeVisible();
+  await expect(page.getByText("Local fixture profile returned for workflow review.")).toBeVisible();
+  await expect(page.getByLabel("Upload style references")).toHaveCount(0);
+  expect(styleMutationCount).toBe(3);
 
   const styleGate = await installMutationGate(page, "/api/v1/image-styles/*/versions/*/publish");
   const publishStyle = page.getByRole("button", { name: "Publish immutable style version" });

@@ -38,6 +38,9 @@ function FixtureStyleCreationRoute() {
         reference_count: style.referenceCount,
       }));
     },
+    load(styleId, versionId) {
+      return api.imageStyleDraft(styleId, versionId, scenario);
+    },
     normalize: normalizeImageStyleReference,
     async createAndRegister(name, sources) {
       const draft = await api.createImageStyleDraft(
