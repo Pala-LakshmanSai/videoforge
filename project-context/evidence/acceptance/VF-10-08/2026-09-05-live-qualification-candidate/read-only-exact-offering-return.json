@@ -1,0 +1,39 @@
+{
+  "schema_version": "videoforge.v2-08-read-only-exact-offering-return/v1",
+  "checkpoint": "V2-08",
+  "checked_at": "2026-09-06T05:33:05.229Z",
+  "account_identity": "verified_by_existing_hashed_account_guard",
+  "provider_mutations": 0,
+  "r2_accesses": 0,
+  "runpod_job_posts": 0,
+  "runpod_redispatches": 0,
+  "external_spend_usd": 0,
+  "selected_gpu": {
+    "offering_id": "NVIDIA GeForce RTX 4090",
+    "display_name": "RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "LOW",
+    "secure_cloud": true,
+    "vram_gb": 24,
+    "catalog_secure_pod_rate_usd_per_hour": 0.74,
+    "catalog_rate_note": "This POD catalog price is inventory evidence only and does not replace the sealed USD 1.116/GPU-hour Serverless Flex cap rate."
+  },
+  "final_reconciliation": {
+    "completed_at": "2026-09-06T05:33:35.993Z",
+    "stable_read_count": 3,
+    "pods": 0,
+    "running_pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "network_volumes": 2,
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1",
+    "billing_usd": 2.9606986929138657,
+    "observed_incremental_spend_usd": 0,
+    "cumulative_stop_usd": 4.828824442549376
+  },
+  "qualification_mutation_authorized": false,
+  "fresh_exact_approval_required": true,
+  "gpu_or_region_fallback": false
+}

@@ -3,11 +3,11 @@
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "candidate_status": "SEALED_WAITING_FOR_EXACT_RTX_4090_EU_RO_1_BEFORE_FRESH_EXACT_USER_APPROVAL",
+  "candidate_status": "SEALED_EXACT_RTX_4090_EU_RO_1_LOW_AVAILABLE_AWAITING_FRESH_EXACT_USER_APPROVAL",
   "qualification_status": "NOT_QUALIFIED",
   "authority_mode": "NO_EXECUTABLE_AUTHORITY_FRESH_APPROVAL_REQUIRED",
   "proposal_kind": "REUSE_EXISTING_IMMUTABLE_IMAGE_AND_SINGLE_USE_QUALIFICATION_AFTER_EXACT_OFFERING_RETURNS",
-  "reason_for_fresh_proposal": "Proposal sha256:b6bb008e7e321acd66a5b9e062b9ea50758911ea7d1075f7a2a19f83e2987bc2 passed its authority audit and anonymous image reverification, then was consumed by the fresh admission preflight before any lane, R2 object, or job mutation because NVIDIA GeForce RTX 4090 was absent from EU-RO-1. The journal proves zero dispatches, provider IDs, lane operations, materializations, outputs, and redispatches. Three final reads prove zero pods/workers/endpoints/templates, two unchanged retained volumes, and stable billing USD 2.9606986929138657 with zero observed increment. The timeout-status repair remains provider-free green and all eight verified MP4s from the prior five-job attempt remain preserved. This successor requests the same reuse-only max-one qualification but must not be presented for fresh exact approval until a read-only catalog check proves the exact RTX 4090 EU-RO-1 offering is LOW or better. No fallback is proposed. The unchanged absolute cumulative stop USD 4.828824442549376 leaves a maximum fresh incremental cap USD 1.8681257496355103 from the stable baseline.",
+  "reason_for_fresh_proposal": "Proposal sha256:b6bb008e7e321acd66a5b9e062b9ea50758911ea7d1075f7a2a19f83e2987bc2 passed its authority audit and anonymous image reverification, then was consumed by the fresh admission preflight before any lane, R2 object, or job mutation because NVIDIA GeForce RTX 4090 was absent from EU-RO-1. The journal proves zero dispatches, provider IDs, lane operations, materializations, outputs, and redispatches. Three final reads prove zero pods/workers/endpoints/templates, two unchanged retained volumes, and stable billing USD 2.9606986929138657 with zero observed increment. The timeout-status repair remains provider-free green and all eight verified MP4s from the prior five-job attempt remain preserved. A fresh read-only check at 2026-09-06T05:33:05.229Z now proves the exact RTX 4090 offering is available in EU-RO-1 at LOW, satisfying the sealed LOW-or-better floor. This successor requests the same reuse-only max-one qualification. No fallback is proposed. The unchanged absolute cumulative stop USD 4.828824442549376 leaves a maximum fresh incremental cap USD 1.8681257496355103 from the stable baseline.",
   "latest_consumed_exact_offering_preflight": {
     "proposal_sha256": "sha256:b6bb008e7e321acd66a5b9e062b9ea50758911ea7d1075f7a2a19f83e2987bc2",
     "authority_sha256": "sha256:abba74c09a86d71eab7248e828c663c9fec9960dc2ae4630650c01233c3aae03",
@@ -336,8 +336,8 @@
     "stage_6_rerun_authorized": false
   },
   "read_only_preflight": {
-    "path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/read-only-preflight-receipt-nonce-repair.json",
-    "sha256": "sha256:598c6aa9c12a7ce7ab511f7321aaf59c2c828771afb2525135fa50409becd38f",
+    "path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/read-only-exact-offering-return.json",
+    "sha256": "sha256:00994dc6ed38fe36f564e5c8457ff44b9061f6b01ac8f5ecda459a73ddd578ad",
     "provider_mutations": 0,
     "external_spend_usd": 0,
     "stable_read_count": 3,
@@ -353,7 +353,7 @@
       "offering_id": "NVIDIA GeForce RTX 4090",
       "display_name": "RTX 4090",
       "region": "EU-RO-1",
-      "availability": "HIGH",
+      "availability": "LOW",
       "secure_cloud": true
     },
     "fresh_read_required_before_each_mutation_boundary": true
@@ -390,7 +390,7 @@
     "gpu": "NVIDIA GeForce RTX 4090",
     "gpu_offering_id": "NVIDIA GeForce RTX 4090",
     "region": "EU-RO-1",
-    "availability_at_preflight": "HIGH",
+    "availability_at_preflight": "LOW",
     "serverless_flex_usd_per_gpu_hour": 1.116,
     "serverless_flex_usd_per_gpu_second": 0.00031,
     "billing_baseline_usd": 2.9606986929138657,
