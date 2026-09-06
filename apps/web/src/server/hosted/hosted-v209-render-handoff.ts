@@ -21,7 +21,6 @@ function record(value: unknown): RecordValue {
     throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
   return value as RecordValue;
 }
-
 function text(value: unknown, pattern?: RegExp): string {
   if (typeof value !== "string" || (pattern && !pattern.test(value)))
     throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");

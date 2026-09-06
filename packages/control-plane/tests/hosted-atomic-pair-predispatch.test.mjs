@@ -632,9 +632,13 @@ test("0043 persists one-shot Mage SENT and refuses ghost-job absence settlement"
   });
 });
 
-test("0044 atomically persists signed two-lane zero proof and settles render readiness", async () => {
+test("0044/0082 settle render readiness and exact two-lane success cost idempotently", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
-    const fixture = await seededPair(executor, true);
+    const fixture = await seededPair(executor, true, {
+      rateSource: "V2-09_APPROVED_MAX_USD_1.116_GPU_HOUR",
+      reservationUsd: 0.744,
+      spendCeilingUsd: 1,
+    });
     await commit(executor, fixture);
     const prepared = await executor.transaction(async (tx) => {
       await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
@@ -975,6 +979,156 @@ test("0044 atomically persists signed two-lane zero proof and settles render rea
       lease_state: "RELEASED",
       pair_phase: "SETTLED",
     });
+
+    const costTargets = await executor.query(
+      `SELECT a.id,a.lane,s.provider_job_id,s.provider_job_id_sha256,
+        p.rate_source,p.rate_checked_at
+       FROM serverless_attempts a
+       JOIN serverless_provider_assignments s ON s.attempt_id=a.id AND s.is_current
+       JOIN serverless_predispatch_authorities p ON p.attempt_id=a.id
+       WHERE a.generation_request_id=$1 ORDER BY a.lane`,
+      [fixture.generationRequestId],
+    );
+    const observedAt = new Date().toISOString();
+    const executionByLane = { mage_image: 700, soulx_avatar: 900 };
+    const terminalFacts = costTargets.rows.map((row) => {
+      const unsigned = {
+        executionTimeMs: executionByLane[row.lane],
+        lane: row.lane,
+        observedAt,
+        providerJobId: row.provider_job_id,
+        providerJobIdSha256: row.provider_job_id_sha256,
+        providerState: "COMPLETED",
+        rateCheckedAt: new Date(row.rate_checked_at).toISOString(),
+        rateSource: row.rate_source,
+      };
+      return { ...unsigned, proofSha256: canonicalSha256(unsigned) };
+    });
+    const settleCosts = () =>
+      executor.transaction(async (tx) => {
+        await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+        return tx.query(
+          `SELECT videoforge_settle_hosted_v209_success_costs($1,$2,$3,$4::jsonb) AS value`,
+          [
+            IDS.accountA,
+            IDS.workspaceA,
+            fixture.generationRequestId,
+            JSON.stringify(terminalFacts),
+          ],
+        );
+      });
+    const firstCost = (await settleCosts()).rows[0].value;
+    assert.equal(firstCost.schemaVersion, "videoforge.hosted-v209-success-cost-settlement/v1");
+    assert.equal(firstCost.projectRevisionId, IDS.revisionA);
+    assert.equal(firstCost.genericProjectRevisionNetCostIncluded, false);
+    assert.equal(firstCost.exactGpuCostMicroUsd, 496);
+    assert.equal(firstCost.conservativeGpuLiabilityMicroUsd, 0);
+    assert.equal(firstCost.replayed, false);
+    assert.deepEqual(
+      firstCost.lanes.map(({ lane, executionTimeMs, costMicroUsd }) => ({
+        lane,
+        executionTimeMs,
+        costMicroUsd,
+      })),
+      [
+        { lane: "mage_image", executionTimeMs: 700, costMicroUsd: 217 },
+        { lane: "soulx_avatar", executionTimeMs: 900, costMicroUsd: 279 },
+      ],
+    );
+    const replay = (await settleCosts()).rows[0].value;
+    assert.equal(replay.replayed, true);
+    assert.equal(replay.exactGpuCostMicroUsd, 496);
+    const staleObservedAt = new Date(Date.now() - 10 * 60_000).toISOString();
+    const staleFacts = terminalFacts.map(({ proofSha256: _proofSha256, ...fact }) => {
+      const unsigned = { ...fact, observedAt: staleObservedAt };
+      return { ...unsigned, proofSha256: canonicalSha256(unsigned) };
+    });
+    await executor.execute("ALTER TABLE serverless_cost_events DISABLE TRIGGER ALL");
+    for (const fact of staleFacts) {
+      const target = costTargets.rows.find((row) => row.lane === fact.lane);
+      const rateSource = `${fact.rateSource};providerState=COMPLETED;providerProofSha256=${fact.proofSha256};providerJobIdSha256=${fact.providerJobIdSha256};costBasis=exact_execution;executionTimeMs=${fact.executionTimeMs}`;
+      await executor.query(
+        `UPDATE serverless_cost_events event SET rate_source=$2,
+          recorded_at=CASE WHEN event.kind='PROVIDER_REPORT' THEN $3 ELSE event.recorded_at END
+         WHERE event.attempt_id=$1 AND event.kind IN ('PROVIDER_REPORT','SETTLED')`,
+        [target.id, rateSource, staleObservedAt],
+      );
+    }
+    await executor.execute("ALTER TABLE serverless_cost_events ENABLE TRIGGER ALL");
+    const staleReplay = await executor.transaction(async (tx) => {
+      await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+      return tx.query(
+        `SELECT videoforge_settle_hosted_v209_success_costs($1,$2,$3,$4::jsonb) AS value`,
+        [IDS.accountA, IDS.workspaceA, fixture.generationRequestId, JSON.stringify(staleFacts)],
+      );
+    });
+    assert.equal(staleReplay.rows[0].value.replayed, true);
+    assert.equal(staleReplay.rows[0].value.exactGpuCostMicroUsd, 496);
+    const genericCost = await executor.transaction(async (tx) => {
+      await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+      return tx.query(
+        `SELECT videoforge_read_hosted_v209_project_revision_net_cost($1,$2,$3) AS value`,
+        [IDS.accountA, IDS.workspaceA, IDS.revisionA],
+      );
+    });
+    assert.deepEqual(genericCost.rows[0].value, {
+      schemaVersion: "videoforge.v2-09-e2e-cost-readback/v1",
+      projectRevisionId: IDS.revisionA,
+      genericProjectRevisionNetCostMicroUsd: 0,
+    });
+    const publicReader = await executor.query(
+      `SELECT has_function_privilege('public',
+        'videoforge_read_hosted_v209_project_revision_net_cost(uuid,uuid,uuid)','EXECUTE') allowed`,
+    );
+    assert.equal(publicReader.rows[0].allowed, false);
+    await expectDatabaseError(
+      () =>
+        executor.transaction(async (tx) => {
+          await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountB]);
+          return tx.query(
+            `SELECT videoforge_read_hosted_v209_project_revision_net_cost($1,$2,$3)`,
+            [IDS.accountA, IDS.workspaceA, IDS.revisionA],
+          );
+        }),
+      "42501",
+    );
+    const durableCosts = await executor.query(
+      `SELECT a.lane,l.reported_usd,l.settled_usd,
+        array_agg(e.kind ORDER BY e.sequence) kinds
+       FROM serverless_attempts a
+       JOIN serverless_cost_ledgers l ON l.attempt_id=a.id
+       JOIN serverless_cost_events e ON e.attempt_id=a.id
+       WHERE a.generation_request_id=$1 GROUP BY a.lane,l.reported_usd,l.settled_usd
+       ORDER BY a.lane`,
+      [fixture.generationRequestId],
+    );
+    assert.deepEqual(durableCosts.rows, [
+      {
+        lane: "mage_image",
+        reported_usd: "0.000217",
+        settled_usd: "0.000217",
+        kinds: ["RESERVATION", "PROVIDER_REPORT", "SETTLED"],
+      },
+      {
+        lane: "soulx_avatar",
+        reported_usd: "0.000279",
+        settled_usd: "0.000279",
+        kinds: ["RESERVATION", "PROVIDER_REPORT", "SETTLED"],
+      },
+    ]);
+    const drifted = structuredClone(terminalFacts);
+    drifted[0].executionTimeMs += 1;
+    await expectDatabaseError(
+      () =>
+        executor.transaction(async (tx) => {
+          await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
+          return tx.query(
+            `SELECT videoforge_settle_hosted_v209_success_costs($1,$2,$3,$4::jsonb)`,
+            [IDS.accountA, IDS.workspaceA, fixture.generationRequestId, JSON.stringify(drifted)],
+          );
+        }),
+      "23514",
+    );
   });
 });
 

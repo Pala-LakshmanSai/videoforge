@@ -19,6 +19,11 @@ const exactFunctions = [
   "videoforge_accept_hosted_v209_terminal_output(uuid,uuid,uuid,text,text,text,jsonb,jsonb,timestamptz)",
   "videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)",
   "videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint)",
+  "videoforge_settle_hosted_v209_success_costs(uuid,uuid,uuid,jsonb)",
+  "videoforge_read_hosted_v209_project_revision_net_cost(uuid,uuid,uuid)",
+  "videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid)",
+  "videoforge_finalize_v209_render_terminal(jsonb)",
+  "videoforge_reconcile_hosted_v209_staged_click(jsonb)",
 ];
 
 test("V2-09 reconciler grants only the ordinary pair terminal and render capabilities", () => {
@@ -72,6 +77,11 @@ test("V2-09 reconciler ACL proof keeps irreversible terminal writes away from ru
     "videoforge_accept_hosted_v209_terminal_output(uuid,uuid,uuid,text,text,text,jsonb,jsonb,timestamp with time zone)",
     "videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)",
     "videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint)",
+    "videoforge_settle_hosted_v209_success_costs(uuid,uuid,uuid,jsonb)",
+    "videoforge_read_hosted_v209_project_revision_net_cost(uuid,uuid,uuid)",
+    "videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid)",
+    "videoforge_finalize_v209_render_terminal(jsonb)",
+    "videoforge_reconcile_hosted_v209_staged_click(jsonb)",
   ])
     assert.ok(
       compact.includes(
@@ -81,4 +91,10 @@ test("V2-09 reconciler ACL proof keeps irreversible terminal writes away from ru
     );
   assert.match(source, /procedure\.oid::regprocedure::text<>ALL/u);
   assert.match(source, /AND NOT EXISTS \(\s*SELECT 1 FROM pg_depend/u);
+});
+
+test("V2-09 reconciler ACL verification failures always exit psql nonzero", () => {
+  assert.doesNotMatch(source, /^\\quit\s*$/gmu);
+  assert.equal(source.match(/^\\quit 1$/gmu)?.length, 4);
+  assert.equal(source.match(/^ROLLBACK;\n\\quit 1$/gmu)?.length, 2);
 });

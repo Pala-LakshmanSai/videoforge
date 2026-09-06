@@ -288,6 +288,7 @@ async function executeThroughQualified(operator, approved) {
   const secrets = await operator.uploadCloudflareSecrets.run({
     authority: approved,
     operationId: "upload-cloudflare-production-secrets",
+    secretInputSha256s: operator.uploadCloudflareSecrets.secret_input_sha256s,
   });
   const deployed = await operator.deployCloudflareQualified.run({
     authority: approved,
@@ -409,6 +410,7 @@ test("an unknown qualified deploy outcome is durably reconciled to disabled with
   await operator.uploadCloudflareSecrets.run({
     authority: approved,
     operationId: "upload-cloudflare-production-secrets",
+    secretInputSha256s: operator.uploadCloudflareSecrets.secret_input_sha256s,
   });
   await assert.rejects(
     operator.deployCloudflareQualified.run({
@@ -573,6 +575,7 @@ test("cleanup-only can disable and remove only attributable secrets after normal
   await operator.uploadCloudflareSecrets.run({
     authority: approved,
     operationId: "upload-cloudflare-production-secrets",
+    secretInputSha256s: operator.uploadCloudflareSecrets.secret_input_sha256s,
   });
   const beforeCleanupCalls = mock.calls.length;
   observed = new Date("2026-09-07T01:00:00Z");
@@ -598,6 +601,40 @@ test("cleanup-only can disable and remove only attributable secrets after normal
   );
 });
 
+test("secret upload uses the construction-sealed bytes after a pathname replacement", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  const approved = authority(value);
+  await operator.deployCloudflareDisabled.run({
+    authority: approved,
+    operationId: "deploy-cloudflare-disabled-bootstrap",
+  });
+  const replacedName = SECRET_NAMES[3];
+  writeFileSync(value.configuration.secretFiles[replacedName], "unapproved-replacement", {
+    mode: 0o600,
+  });
+  await operator.uploadCloudflareSecrets.run({
+    authority: approved,
+    operationId: "upload-cloudflare-production-secrets",
+    secretInputSha256s: operator.uploadCloudflareSecrets.secret_input_sha256s,
+  });
+  const secretPuts = mock.calls.filter(({ args }) => args.slice(4, 6).join(" ") === "secret put");
+  assert.equal(secretPuts.length, SECRET_NAMES.length);
+  for (const call of secretPuts) {
+    const name = call.args[6];
+    assert.equal(Buffer.isBuffer(call.options.input), true);
+    assert.equal(call.options.input.toString("utf8"), `fixture-${name}`);
+  }
+});
+
 test("route version-header mismatch fails closed and reconciles the qualified deployment", async () => {
   const value = fixture();
   const healthy = harness(value);
@@ -617,6 +654,7 @@ test("route version-header mismatch fails closed and reconciles the qualified de
   await operator.uploadCloudflareSecrets.run({
     authority: approved,
     operationId: "upload-cloudflare-production-secrets",
+    secretInputSha256s: operator.uploadCloudflareSecrets.secret_input_sha256s,
   });
   const bad = harness(value, { wrongRouteVersion: true });
   let routeMismatchInjected = false;

@@ -4644,6 +4644,33 @@ async function commitProject(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      const createLifecycle = await transaction.query<{
+        project_id: string;
+        project_revision_id: string;
+      }>(
+        `SELECT create_request.project_id,create_request.project_revision_id
+           FROM hosted_project_create_requests AS create_request
+          WHERE create_request.account_id=$1 AND create_request.workspace_id=$2
+            AND create_request.project_id=$3 AND create_request.project_revision_id=$4
+          FOR UPDATE OF create_request`,
+        [scope.account_id, scope.workspace_id, projectId, String(pending.project_revision_id)],
+      );
+      if (
+        createLifecycle.rows[0]?.project_id !== projectId ||
+        createLifecycle.rows[0]?.project_revision_id !== String(pending.project_revision_id)
+      ) {
+        throw new Error("PROJECT_LIFECYCLE_CLOSED");
+      }
+      const projectLifecycle = await transaction.query<{ status: string }>(
+        `SELECT project.status
+           FROM projects AS project
+          WHERE project.account_id=$1 AND project.workspace_id=$2 AND project.id=$3
+            AND project.status='ACTIVE'
+          FOR UPDATE OF project`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      if (projectLifecycle.rows[0]?.status !== "ACTIVE")
+        throw new Error("PROJECT_LIFECYCLE_CLOSED");
       if (pending.state === "READY") return;
       await transaction.query(
         `UPDATE assets SET state = 'VERIFIED', verified_at = $2
@@ -4733,6 +4760,10 @@ async function commitProject(
         objects: [{ artifact_receipt_id: pending.upload_receipt_id, uri }],
       },
     });
+  } catch (error) {
+    if (error instanceof Error && error.message === "PROJECT_LIFECYCLE_CLOSED")
+      return response({ error: { code: error.message } }, 409);
+    throw error;
   } finally {
     await pool.end();
   }

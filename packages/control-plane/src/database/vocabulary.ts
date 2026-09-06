@@ -167,6 +167,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "media_worker_leases",
   "media_worker_events",
   "hosted_v209_span_audio_materializations",
+  "hosted_v209_staged_click_reconciliations",
   "hosted_v209_ordinary_resolved_render_manifests",
 ] as const;
 

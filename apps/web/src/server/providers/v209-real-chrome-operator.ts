@@ -11,6 +11,12 @@ export const V209_REAL_CHROME_PAGE_SCHEMA =
 export const V209_REAL_CHROME_CLAIM_SCHEMA = "videoforge.v2-09-generate-click-claim/v1" as const;
 export const V209_REAL_CHROME_CLICK_SCHEMA =
   "videoforge.v2-09-generate-click-observation/v1" as const;
+export const V209_REAL_CHROME_CLICK_IDENTITY_SCHEMA =
+  "videoforge.v2-09-generate-click-identity/v1" as const;
+export const V209_REAL_CHROME_CREATE_REQUEST_IDENTITY_SCHEMA =
+  "videoforge.v2-09-create-request-identity/v1" as const;
+export const V209_REAL_CHROME_PROJECT_IDENTITY_SCHEMA =
+  "videoforge.v2-09-project-identity/v1" as const;
 export const V209_REAL_CHROME_PROGRESS_SCHEMA =
   "videoforge.v2-09-stage-progress-observation/v1" as const;
 export const V209_REAL_CHROME_VIDEO_SCHEMA =
@@ -145,6 +151,57 @@ export interface V209GenerateClickClaimPort {
     readonly prepared: V209RealChromePreparedInput;
     readonly signal: AbortSignal;
   }): Promise<unknown>;
+  /**
+   * Durably hands off the exact acknowledged click identity before any progress read. Failure is
+   * terminal: the operator propagates it and never retries the click.
+   */
+  recordAcknowledgedClick(
+    identity: V209AcknowledgedGenerateClickIdentity,
+    input: { readonly signal: AbortSignal },
+  ): Promise<void>;
+  recordCreateRequest(
+    identity: V209CreateRequestIdentity,
+    input: { readonly signal: AbortSignal },
+  ): Promise<void>;
+  recordProjectIdentity(
+    identity: V209ProjectIdentity,
+    input: { readonly signal: AbortSignal },
+  ): Promise<void>;
+}
+
+export interface V209CreateRequestIdentity {
+  readonly schemaVersion: typeof V209_REAL_CHROME_CREATE_REQUEST_IDENTITY_SCHEMA;
+  readonly source: typeof V209_REAL_CHROME_SOURCE;
+  readonly accountId: string;
+  readonly workspaceId: string;
+  readonly claimId: string;
+  readonly clickOrdinal: 1;
+  readonly idempotencyKey: string;
+  readonly createRequestSha256: string;
+  readonly voiceoverSha256: string;
+}
+
+export interface V209ProjectIdentity extends Omit<V209CreateRequestIdentity, "schemaVersion"> {
+  readonly schemaVersion: typeof V209_REAL_CHROME_PROJECT_IDENTITY_SCHEMA;
+  readonly projectId: string;
+  readonly projectRevisionId: string;
+  readonly generationRequestId: null;
+}
+
+export interface V209AcknowledgedGenerateClickIdentity {
+  readonly schemaVersion: typeof V209_REAL_CHROME_CLICK_IDENTITY_SCHEMA;
+  readonly source: typeof V209_REAL_CHROME_SOURCE;
+  readonly accountId: string;
+  readonly workspaceId: string;
+  readonly projectId: string;
+  readonly projectRevisionId: string;
+  readonly generationRequestId: string;
+  readonly claimId: string;
+  readonly clickOrdinal: 1;
+  readonly generateClickCount: 1;
+  readonly voiceoverSha256: string;
+  readonly idempotencyKey: string;
+  readonly createRequestSha256: string;
 }
 
 export interface V209GenerateClickObservation {
@@ -159,6 +216,8 @@ export interface V209GenerateClickObservation {
   readonly clickOrdinal: 1;
   readonly generateClickCount: 1;
   readonly generationRequestId: string;
+  readonly idempotencyKey: string;
+  readonly createRequestSha256: string;
 }
 
 export interface V209StageProgressObservation {
@@ -534,6 +593,8 @@ function assertClick(
   identifier(click.projectId, "V209_REAL_CHROME_GENERATE_CLICK_AMBIGUOUS");
   identifier(click.projectRevisionId, "V209_REAL_CHROME_GENERATE_CLICK_AMBIGUOUS");
   identifier(click.generationRequestId, "V209_REAL_CHROME_GENERATE_CLICK_AMBIGUOUS");
+  identifier(click.idempotencyKey, "V209_REAL_CHROME_GENERATE_CLICK_AMBIGUOUS");
+  sha256(click.createRequestSha256, "V209_REAL_CHROME_GENERATE_CLICK_AMBIGUOUS");
   if (
     click.schemaVersion !== V209_REAL_CHROME_CLICK_SCHEMA ||
     click.claimId !== claimId ||
@@ -846,6 +907,24 @@ export async function runV209RealChromeOperator(
       },
     );
     const click = assertClick(clickValue, input.request, claim.claimId);
+    const acknowledgedIdentity = Object.freeze({
+      schemaVersion: V209_REAL_CHROME_CLICK_IDENTITY_SCHEMA,
+      source: input.request.source,
+      accountId: input.request.accountId,
+      workspaceId: input.request.workspaceId,
+      projectId: click.projectId,
+      projectRevisionId: click.projectRevisionId,
+      generationRequestId: click.generationRequestId,
+      claimId: claim.claimId,
+      clickOrdinal: 1,
+      generateClickCount: 1,
+      voiceoverSha256: input.request.prepared.voiceoverSha256,
+      idempotencyKey: click.idempotencyKey,
+      createRequestSha256: click.createRequestSha256,
+    } as const satisfies V209AcknowledgedGenerateClickIdentity);
+    await withDeadline(deadline, "V209_REAL_CHROME_CLICK_IDENTITY_PERSIST_FAILED", (signal) =>
+      input.claims.recordAcknowledgedClick(acknowledgedIdentity, { signal }),
+    );
     const terminal = await waitForOutput(input, click, deadline);
     const video = assertVideo(
       await withDeadline(deadline, "V209_REAL_CHROME_PLAYBACK_INVALID", (signal) =>

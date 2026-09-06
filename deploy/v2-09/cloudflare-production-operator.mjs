@@ -5,6 +5,7 @@ import {
   closeSync,
   constants as fsConstants,
   existsSync,
+  fstatSync,
   fsyncSync,
   lstatSync,
   mkdtempSync,
@@ -137,6 +138,46 @@ function privateFile(path, { mayNotExist = false } = {}) {
     (typeof process.getuid === "function" && stat.uid !== process.getuid())
   )
     fail("PRIVATE_FILE_INVALID");
+}
+
+function sealSecretInputs(configuration) {
+  return Object.freeze(
+    Object.fromEntries(
+      SECRET_NAMES.map((name) => {
+        const path = configuration.secretFiles[name];
+        let descriptor;
+        let before;
+        let after;
+        let bytes;
+        try {
+          descriptor = openSync(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+          before = fstatSync(descriptor);
+          bytes = Buffer.from(readFileSync(descriptor));
+          after = fstatSync(descriptor);
+        } catch {
+          fail("SECRET_SNAPSHOT_INVALID");
+        } finally {
+          if (descriptor !== undefined) closeSync(descriptor);
+        }
+        if (
+          !before.isFile() ||
+          before.nlink !== 1 ||
+          (before.mode & 0o777) !== 0o600 ||
+          (typeof process.getuid === "function" && before.uid !== process.getuid()) ||
+          before.dev !== after.dev ||
+          before.ino !== after.ino ||
+          before.mode !== after.mode ||
+          before.uid !== after.uid ||
+          before.nlink !== after.nlink ||
+          before.size !== after.size ||
+          before.size !== bytes.length ||
+          bytes.length === 0
+        )
+          fail("SECRET_SNAPSHOT_INVALID");
+        return [name, Object.freeze({ bytes, sha256: sha256(bytes) })];
+      }),
+    ),
+  );
 }
 
 function writePrivateJson(path, value) {
@@ -1024,7 +1065,6 @@ async function reconcileFailure(runtime, authority, context, journal) {
     fail("RECONCILIATION_SECRET_SET_NOT_EMPTY");
   await verifyDisabled(runtime, authority, context, journal);
   journal.state = "SAFE_DISABLED_CLEAN";
-  journal.active_version_id = journal.active_version_id;
   saveJournal(journal, runtime.configuration);
   return Object.freeze({
     schema_version: "videoforge.v2-09-cloudflare-safety-reconciliation/v1",
@@ -1124,8 +1164,10 @@ async function uploadSecrets(runtime, context) {
   return guardedRun(runtime, context, "upload-cloudflare-production-secrets", async (journal) => {
     materializeDisabled(runtime.configuration, context.authority);
     const allowlistSha256 = sha256(canonical([...SECRET_NAMES].sort()));
+    const suppliedSecretSha256s = context.secretInputSha256s;
     if (
       context.authority.production.secret_allowlist_sha256 !== allowlistSha256 ||
+      canonical(suppliedSecretSha256s) !== canonical(runtime.secretInputSha256s) ||
       (await exactSecretNames(runtime, context.authority, context)).length !== 0
     )
       fail("SECRET_AUTHORITY_OR_BASELINE_DRIFT");
@@ -1138,7 +1180,7 @@ async function uploadSecrets(runtime, context) {
         "SECRET_PUT",
         ["secret", "put", name, "--config", runtime.configuration.disabledConfigPath],
         "SECRET_PUT",
-        { input: readFileSync(runtime.configuration.secretFiles[name], "utf8"), name },
+        { input: Buffer.from(runtime.secretInputs[name].bytes), name },
       );
       journal.introduced_secret_names.push(name);
       saveJournal(journal, runtime.configuration);
@@ -1289,7 +1331,7 @@ function functionSha256(value, code) {
   return sha256(Function.prototype.toString.call(value));
 }
 
-function sanitizedConfigurationIdentity(configuration) {
+function sanitizedConfigurationIdentity(configuration, secretInputSha256s) {
   return sha256(
     canonical({
       schema_version: "videoforge.v2-09-cloudflare-sanitized-configuration/v1",
@@ -1306,12 +1348,17 @@ function sanitizedConfigurationIdentity(configuration) {
       secret_path_sha256s: Object.fromEntries(
         SECRET_NAMES.map((name) => [name, sha256(configuration.secretFiles[name])]),
       ),
+      secret_input_sha256s: secretInputSha256s,
     }),
   );
 }
 
 export function createV209CloudflareProductionOperator(inputConfiguration, dependencies = {}) {
   const configuration = assertConfiguration(inputConfiguration);
+  const secretInputs = sealSecretInputs(configuration);
+  const secretInputSha256s = Object.freeze(
+    Object.fromEntries(SECRET_NAMES.map((name) => [name, secretInputs[name].sha256])),
+  );
   const injectedNames = Object.keys(dependencies).filter((name) => name !== "testOnly");
   if (injectedNames.length > 0 && dependencies.testOnly !== true)
     fail("PRODUCTION_DEPENDENCY_INJECTION_FORBIDDEN");
@@ -1322,6 +1369,8 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
     oauthApiResponse: dependencies.oauthApiResponse ?? cloudflareOAuthApiResponse,
     oauthSpawn: dependencies.oauthSpawn,
     runChild: dependencies.runChild ?? runCancellableChildProcess,
+    secretInputs,
+    secretInputSha256s,
     snapshotUploadArtifact: dependencies.snapshotUploadArtifact ?? snapshotUploadArtifact,
   });
   if (
@@ -1340,7 +1389,10 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
     imported_dependency_sha256s: Object.fromEntries(
       IMPORTED_DEPENDENCY_PATHS.map((path) => [path, sha256(readFileSync(resolve(ROOT, path)))]),
     ),
-    configuration_identity_sha256: sanitizedConfigurationIdentity(configuration),
+    configuration_identity_sha256: sanitizedConfigurationIdentity(
+      configuration,
+      secretInputSha256s,
+    ),
     composed_dependency_sha256s: {
       fetchImpl: functionSha256(runtime.fetchImpl, "FETCH_DEPENDENCY_INVALID"),
       now: functionSha256(runtime.now, "CLOCK_DEPENDENCY_INVALID"),
@@ -1369,7 +1421,10 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
     });
   return Object.freeze({
     deployCloudflareDisabled: descriptor("deployCloudflareDisabled", deployDisabled),
-    uploadCloudflareSecrets: descriptor("uploadCloudflareSecrets", uploadSecrets),
+    uploadCloudflareSecrets: Object.freeze({
+      ...descriptor("uploadCloudflareSecrets", uploadSecrets),
+      secret_input_sha256s: secretInputSha256s,
+    }),
     deployCloudflareQualified: descriptor("deployCloudflareQualified", deployQualified),
     readbackCloudflareQualified: descriptor("readbackCloudflareQualified", readbackQualified),
     reconcileCloudflareSafety: descriptor(

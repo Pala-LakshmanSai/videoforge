@@ -156,6 +156,7 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       browser_evidence_sha256: `sha256:${"d".repeat(64)}`,
       chrome_version_sha256: `sha256:${"e".repeat(64)}`,
       duration_seconds: 45,
+      generic_project_revision_net_cost_usd: 1,
       playback_verified: true,
       seek_verified: true,
       download_verified: true,
@@ -165,20 +166,20 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       completion_total_usd: value.caps.completion_baseline_usd + 1,
     };
   }
-  if (id === "apply-migrations-0074-0081") {
+  if (id === "apply-migrations-0074-0084") {
     return {
       operation_id: id,
-      mode: "APPLIED_0074_0081",
+      mode: "APPLIED_0074_0084",
       from_version: 73,
-      to_version: 81,
-      applied_versions: [74, 75, 76, 77, 78, 79, 80, 81],
+      to_version: 84,
+      applied_versions: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84],
     };
   }
   if (id === "apply-v209-grants") {
     return {
       schema_version: "videoforge.v2-09-grants-result/v1",
       operation_id: id,
-      migration_head: 81,
+      migration_head: 84,
       public_execute_count: 0,
       runtime_grants_verified: true,
       operator_grants_verified: true,
@@ -385,9 +386,12 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       settled: true,
       billing_baseline_usd: value.caps.billing_baseline_usd,
       billing_total_usd: value.caps.billing_baseline_usd + (outcome === "SUCCESS" ? 1 : 0),
-      completion_total_usd: value.caps.completion_baseline_usd + (outcome === "SUCCESS" ? 1 : 0),
+      completion_total_usd: value.caps.completion_baseline_usd + (outcome === "SUCCESS" ? 2 : 0),
       redispatch_count: 0,
       duplicate_compute_usd: 0,
+      exact_itemized_usd: outcome === "SUCCESS" ? 1 : 0,
+      conservative_liability_usd: 0,
+      generic_project_revision_net_cost_usd: outcome === "SUCCESS" ? 1 : 0,
       terminal_jobs:
         outcome === "SUCCESS"
           ? [
@@ -695,11 +699,11 @@ test("fresh successor authority may reuse exact migration head and immutable wor
     adapters: adapters({
       calls,
       resultOverrides: {
-        "apply-migrations-0074-0081": {
-          operation_id: "apply-migrations-0074-0081",
-          mode: "VERIFIED_EXISTING_0081",
-          from_version: 81,
-          to_version: 81,
+        "apply-migrations-0074-0084": {
+          operation_id: "apply-migrations-0074-0084",
+          mode: "VERIFIED_EXISTING_0084",
+          from_version: 84,
+          to_version: 84,
           applied_versions: [],
         },
         "publish-media-worker-0.1.15": {
@@ -908,9 +912,9 @@ test("authority is rechecked immediately before each external mutation", async (
       currentTime: () => (++reads < 4 ? NOW : new Date("2026-09-06T13:00:00Z")),
       adapters: adapters({ calls }),
     }),
-    /V2_09_ROLLOUT_FAILED_CLEAN:apply-migrations-0074-0081/u,
+    /V2_09_ROLLOUT_FAILED_CLEAN:apply-migrations-0074-0084/u,
   );
-  assert.equal(calls.includes("apply-migrations-0074-0081"), false);
+  assert.equal(calls.includes("apply-migrations-0074-0084"), false);
 });
 
 test("lane and media proofs reject incomplete immutable bindings", async () => {
@@ -966,6 +970,58 @@ test("success requires two COMPLETED lane jobs", async () => {
       adapters: adapters({ resultOverrides: { "read-settled-billing": settlement } }),
     }),
     /V2_09_ROLLOUT_FAILED_CLEAN:SUCCESS_FINALIZATION/u,
+  );
+});
+
+test("conservative settlement liability is cap-bound without being treated as billed", async () => {
+  const value = authority();
+  const settlement = resultFor("read-settled-billing", value, "SUCCESS");
+  settlement.billing_total_usd = value.caps.billing_baseline_usd;
+  settlement.exact_itemized_usd = 0;
+  settlement.conservative_liability_usd = 1;
+
+  const report = await executeTest({
+    mode: "EXECUTE",
+    authority: value,
+    sourceCommit: SOURCE_COMMIT,
+    now: NOW,
+    adapters: adapters({ resultOverrides: { "read-settled-billing": settlement } }),
+  });
+
+  assert.equal(report.status, "SUCCEEDED_CLEAN");
+});
+
+test("settlement itemization must exactly split billed cost and conservative liability", async () => {
+  const value = authority();
+  const settlement = resultFor("read-settled-billing", value, "SUCCESS");
+  settlement.exact_itemized_usd = 0;
+  settlement.conservative_liability_usd = 0.9;
+
+  await assert.rejects(
+    executeTest({
+      mode: "EXECUTE",
+      authority: value,
+      sourceCommit: SOURCE_COMMIT,
+      now: NOW,
+      adapters: adapters({ resultOverrides: { "read-settled-billing": settlement } }),
+    }),
+    /V2_09_ROLLOUT_FAILED_CLEANUP_INCOMPLETE:SUCCESS_FINALIZATION/u,
+  );
+});
+
+test("completion accounting keeps generic project cost separate and sums it once with GPU cost", async () => {
+  const value = authority();
+  const settlement = resultFor("read-settled-billing", value, "SUCCESS");
+  settlement.generic_project_revision_net_cost_usd = 0.5;
+  await assert.rejects(
+    executeTest({
+      mode: "EXECUTE",
+      authority: value,
+      sourceCommit: SOURCE_COMMIT,
+      now: NOW,
+      adapters: adapters({ resultOverrides: { "read-settled-billing": settlement } }),
+    }),
+    /V2_09_ROLLOUT_FAILED_CLEANUP_INCOMPLETE:SUCCESS_FINALIZATION/u,
   );
 });
 
@@ -1030,5 +1086,16 @@ test("live execution requires the sealed concrete configuration", async () => {
       now: NOW,
     }),
     /V2_09_LIVE_OPTION_INVALID/u,
+  );
+  await assert.rejects(
+    executeQualifiedProduction({
+      mode: "EXECUTE",
+      authority: authority(),
+      sourceCommit: SOURCE_COMMIT,
+      configuration: {
+        branch: BRANCH,
+      },
+    }),
+    /V2_09_LIVE_CONFIGURATION_REQUIRED/u,
   );
 });

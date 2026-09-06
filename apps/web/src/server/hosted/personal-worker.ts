@@ -735,6 +735,7 @@ interface ClaimedAttempt extends Record<string, unknown> {
 
 interface PlannedAttempt extends Record<string, unknown> {
   readonly id: string;
+  readonly project_id: string;
   readonly job_spec_object_key: string;
   readonly job_spec_content_length: number | string;
   readonly job_spec_checksum_sha256: string;
@@ -758,14 +759,18 @@ async function reconcilePlannedAttempt(
       scope.accountId,
     ]);
     const result = await transaction.query<PlannedAttempt>(
-      `SELECT id, job_spec_object_key, job_spec_content_length, job_spec_checksum_sha256,
-              created_at
-         FROM hosted_cpu_job_attempts
-        WHERE account_id = $1 AND workspace_id = $2
-          AND execution_backend = 'PERSONAL_WORKER' AND state = 'PLANNED'
-          AND deadline_at > now()
-        ORDER BY created_at, id
-        LIMIT 1 FOR UPDATE SKIP LOCKED`,
+      `SELECT attempt.id,attempt.project_id,attempt.job_spec_object_key,
+              attempt.job_spec_content_length,attempt.job_spec_checksum_sha256,attempt.created_at
+         FROM hosted_cpu_job_attempts AS attempt
+         JOIN projects AS project
+           ON project.account_id=attempt.account_id
+          AND project.workspace_id=attempt.workspace_id
+          AND project.id=attempt.project_id
+        WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
+          AND attempt.execution_backend = 'PERSONAL_WORKER' AND attempt.state = 'PLANNED'
+          AND attempt.deadline_at > now() AND project.status='ACTIVE'
+        ORDER BY attempt.created_at, attempt.id
+        LIMIT 1 FOR UPDATE OF project,attempt SKIP LOCKED`,
       [scope.accountId, scope.workspaceId],
     );
     return result.rows[0] ?? null;
@@ -793,8 +798,12 @@ async function reconcilePlannedAttempt(
         `UPDATE hosted_cpu_job_attempts
             SET state = 'OUTBOXED', version = version + 1, updated_at = now()
           WHERE id = $1 AND account_id = $2 AND workspace_id = $3 AND state = 'PLANNED'
+            AND project_id=$4
+            AND EXISTS(SELECT 1 FROM projects project
+              WHERE project.account_id=$2 AND project.workspace_id=$3
+                AND project.id=$4 AND project.status='ACTIVE')
         RETURNING id`,
-        [candidate.id, scope.accountId, scope.workspaceId],
+        [candidate.id, scope.accountId, scope.workspaceId, candidate.project_id],
       );
       if (outboxed.rows[0]) {
         await transaction.query(
@@ -1036,13 +1045,20 @@ async function claim(
       );
       if (existing.rows[0]) return null;
       const attempt = await transaction.query<ClaimedAttempt>(
-        `SELECT id, kind, job_spec_object_key, job_spec_content_length, job_spec_checksum_sha256,
-                deadline_at
-           FROM hosted_cpu_job_attempts
-          WHERE account_id = $1 AND workspace_id = $2 AND execution_backend = 'PERSONAL_WORKER'
-            AND state = 'OUTBOXED' AND deadline_at > now()
-          ORDER BY created_at, id
-          LIMIT 1 FOR UPDATE SKIP LOCKED`,
+        `SELECT attempt.id,attempt.kind,attempt.job_spec_object_key,
+                attempt.job_spec_content_length,attempt.job_spec_checksum_sha256,
+                attempt.deadline_at
+           FROM hosted_cpu_job_attempts AS attempt
+           JOIN projects AS project
+             ON project.account_id=attempt.account_id
+            AND project.workspace_id=attempt.workspace_id
+            AND project.id=attempt.project_id
+          WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
+            AND attempt.execution_backend = 'PERSONAL_WORKER'
+            AND attempt.state = 'OUTBOXED' AND attempt.deadline_at > now()
+            AND project.status='ACTIVE'
+          ORDER BY attempt.created_at, attempt.id
+          LIMIT 1 FOR UPDATE OF project,attempt SKIP LOCKED`,
         [scope.accountId, scope.workspaceId],
       );
       const row = attempt.rows[0];
@@ -1530,6 +1546,13 @@ async function completeLease(
       readonly resultDocument: JsonValue;
     }) => Promise<unknown>;
   },
+  renderTerminal?: {
+    readonly acceptCompleted: (input: {
+      readonly accountId: string;
+      readonly workspaceId: string;
+      readonly attemptId: string;
+    }) => Promise<unknown>;
+  },
 ) {
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
@@ -1549,6 +1572,13 @@ async function completeLease(
       }
       if (terminal.state === "SUCCEEDED" && terminal.kind === "SPAN_AUDIO" && spanAudio) {
         await finalizeHostedSpanAudioTerminalReplay(environment, terminal, spanAudio);
+      }
+      if (terminal.state === "SUCCEEDED" && terminal.kind === "RENDER" && renderTerminal) {
+        await renderTerminal.acceptCompleted({
+          accountId: terminal.accountId,
+          workspaceId: terminal.workspaceId,
+          attemptId: terminal.attemptId,
+        });
       }
       return completionAccepted(terminal.state);
     }
@@ -1754,6 +1784,13 @@ async function completeLease(
           resultDocument: verifiedResultDocument,
         });
       }
+      if (settled === "SUCCEEDED" && lease.kind === "RENDER" && renderTerminal) {
+        await renderTerminal.acceptCompleted({
+          accountId: lease.accountId,
+          workspaceId: lease.workspaceId,
+          attemptId: lease.attemptId,
+        });
+      }
       return completionAccepted(settled);
     }
     const terminal = await terminalLeaseForCompletion(request, pool, leaseId);
@@ -1762,6 +1799,13 @@ async function completeLease(
     }
     if (terminal.state === "SUCCEEDED" && terminal.kind === "SPAN_AUDIO" && spanAudio) {
       await finalizeHostedSpanAudioTerminalReplay(environment, terminal, spanAudio);
+    }
+    if (terminal.state === "SUCCEEDED" && terminal.kind === "RENDER" && renderTerminal) {
+      await renderTerminal.acceptCompleted({
+        accountId: terminal.accountId,
+        workspaceId: terminal.workspaceId,
+        attemptId: terminal.attemptId,
+      });
     }
     return completionAccepted(terminal.state);
   } finally {
@@ -1775,6 +1819,7 @@ export async function handlePersonalWorkerRequest(
   executionContext: HostedExecutionContext,
   resolvedConfiguration?: HostedRuntimeConfiguration,
   spanAudio?: Parameters<typeof completeLease>[4],
+  renderTerminal?: Parameters<typeof completeLease>[5],
 ): Promise<Response | null> {
   const config = resolvedConfiguration ?? hostedRuntimeConfiguration(environment);
   const url = new URL(request.url);
@@ -1815,7 +1860,7 @@ export async function handlePersonalWorkerRequest(
   if (request.method === "POST" && lease && UUID.test(lease[1]!)) {
     if (lease[2] === "heartbeat") return leaseHeartbeat(request, config, lease[1]!);
     if (lease[2] === "upload-port") return leaseUploadPort(request, config, lease[1]!);
-    return completeLease(request, environment, config, lease[1]!, spanAudio);
+    return completeLease(request, environment, config, lease[1]!, spanAudio, renderTerminal);
   }
   return null;
 }

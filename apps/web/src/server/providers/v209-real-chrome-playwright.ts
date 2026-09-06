@@ -17,9 +17,11 @@ import { chromium } from "@playwright/test";
 
 import {
   V209_REAL_CHROME_CLICK_SCHEMA,
+  V209_REAL_CHROME_CREATE_REQUEST_IDENTITY_SCHEMA,
   V209_REAL_CHROME_DOWNLOAD_SCHEMA,
   V209_REAL_CHROME_PAGE_SCHEMA,
   V209_REAL_CHROME_PROGRESS_SCHEMA,
+  V209_REAL_CHROME_PROJECT_IDENTITY_SCHEMA,
   V209_REAL_CHROME_SOURCE,
   V209_REAL_CHROME_VIDEO_SCHEMA,
   runV209RealChromeOperator,
@@ -33,6 +35,8 @@ import {
 } from "./v209-real-chrome-operator.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const BROWSER_PROJECT_IDEMPOTENCY =
+  /^browser-project-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const UI_POLL_MS = 250;
 
@@ -85,6 +89,22 @@ function exactRegularFile(path: string, code: string): string {
 
 function sha256Bytes(bytes: Uint8Array): string {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === undefined || typeof value === "function" || typeof value === "symbol")
+    fail("V209_REAL_CHROME_CREATE_REQUEST_INVALID");
+  if (value === null || typeof value !== "object") {
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) fail("V209_REAL_CHROME_CREATE_REQUEST_INVALID");
+    return encoded;
+  }
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const item = value as Record<string, unknown>;
+  return `{${Object.keys(item)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(item[key])}`)
+    .join(",")}}`;
 }
 
 function protectedAuthState(path: string): string {
@@ -204,16 +224,40 @@ interface PlaywrightRequest {
   method(): string;
   url(): string;
   postDataJSON(): unknown;
+  postData(): string | null;
+  headerValue(name: string): Promise<string | null>;
+}
+
+interface PlaywrightResponse {
+  status(): number;
+  url(): string;
+  request(): PlaywrightRequest;
+  json(): Promise<unknown>;
+}
+
+interface PlaywrightRoute {
+  request(): PlaywrightRequest;
+  fetch(options: { readonly maxRedirects: 0 }): Promise<PlaywrightResponse>;
+  fulfill(options: { readonly response: PlaywrightResponse }): Promise<void>;
+  abort(): Promise<void>;
 }
 
 interface PlaywrightPage {
   goto(url: string, options?: Readonly<Record<string, unknown>>): Promise<unknown>;
   url(): string;
   waitForURL(url: RegExp, options?: Readonly<Record<string, unknown>>): Promise<void>;
+  route(
+    url: string,
+    handler: (route: PlaywrightRoute, request: PlaywrightRequest) => Promise<void>,
+  ): Promise<void>;
   waitForRequest(
     predicate: (request: PlaywrightRequest) => boolean,
     options?: Readonly<Record<string, unknown>>,
   ): Promise<PlaywrightRequest>;
+  waitForResponse(
+    predicate: (response: PlaywrightResponse) => boolean,
+    options?: Readonly<Record<string, unknown>>,
+  ): Promise<PlaywrightResponse>;
   waitForEvent(
     name: "download",
     options?: Readonly<Record<string, unknown>>,
@@ -235,6 +279,7 @@ interface PlaywrightBrowser {
     readonly storageState: string;
     readonly acceptDownloads: true;
     readonly baseURL: string;
+    readonly serviceWorkers: "block";
   }): Promise<PlaywrightContext>;
   close(): Promise<void>;
 }
@@ -321,6 +366,28 @@ function exactPost(origin: string, pathname: string): (request: PlaywrightReques
       return false;
     }
   };
+}
+
+function assertExactResponseUrl(
+  response: PlaywrightResponse,
+  origin: string,
+  pathname: string,
+): void {
+  let url: URL;
+  try {
+    url = new URL(response.url());
+  } catch {
+    fail("V209_REAL_CHROME_PROJECT_INVALID");
+  }
+  if (
+    url.origin !== origin ||
+    url.pathname !== pathname ||
+    url.search !== "" ||
+    url.hash !== "" ||
+    url.username !== "" ||
+    url.password !== ""
+  )
+    fail("V209_REAL_CHROME_PROJECT_INVALID");
 }
 
 function catalogIndex(value: unknown, key: "avatars" | "styles", expectedId: string): number {
@@ -545,6 +612,10 @@ class V209PlaywrightSession implements V209RealChromeSessionPort, V209StageProgr
   } | null = null;
   #durationSeconds: number | null = null;
   #terminalOutput: TerminalOutput | null = null;
+  #createIdentity: {
+    readonly idempotencyKey: string;
+    readonly createRequestSha256: string;
+  } | null = null;
 
   constructor(
     private readonly request: V209RealChromeOperatorRequest,
@@ -554,6 +625,7 @@ class V209PlaywrightSession implements V209RealChromeSessionPort, V209StageProgr
     private readonly voiceoverPath: string,
     private readonly expectedOrigin: string,
     private readonly verifiedOutputPath: string,
+    private readonly claims: V209GenerateClickClaimPort,
   ) {}
 
   async readGeneratePage(input: { readonly signal: AbortSignal }): Promise<unknown> {
@@ -624,14 +696,114 @@ class V209PlaywrightSession implements V209RealChromeSessionPort, V209StageProgr
       name: "Create project & start",
       exact: true,
     });
-    const createRequest = this.page.waitForRequest(
-      exactPost(this.expectedOrigin, "/api/v2/hosted/projects"),
+    let resolveIntercept!: (value: {
+      readonly created: Record<string, unknown>;
+      readonly idempotencyKey: string;
+      readonly createRequestSha256: string;
+    }) => void;
+    let rejectIntercept!: (reason: unknown) => void;
+    const intercepted = new Promise<{
+      readonly created: Record<string, unknown>;
+      readonly idempotencyKey: string;
+      readonly createRequestSha256: string;
+    }>((resolvePromise, rejectPromise) => {
+      resolveIntercept = resolvePromise;
+      rejectIntercept = rejectPromise;
+    });
+    // Attach rejection observation before the click: locator.click may itself reject when an
+    // intercepted request is aborted, but the interception failure must never go unhandled.
+    void intercepted.catch(() => undefined);
+    let interceptedRequestSeen = false;
+    await abortable(input.signal, () =>
+      this.page.route(`${this.expectedOrigin}/api/v2/hosted/projects`, async (route, request) => {
+        try {
+          if (interceptedRequestSeen) fail("V209_REAL_CHROME_SECOND_CLICK_FORBIDDEN");
+          interceptedRequestSeen = true;
+          if (!exactPost(this.expectedOrigin, "/api/v2/hosted/projects")(request))
+            fail("V209_REAL_CHROME_CREATE_REQUEST_INVALID");
+          const requestDocument = request.postDataJSON();
+          assertPreparedSubmission(
+            requestDocument,
+            this.request,
+            "videoforge-hosted-project-create/v2",
+          );
+          const body = request.postData();
+          const idempotencyKey = await abortable(input.signal, () =>
+            request.headerValue("idempotency-key"),
+          );
+          if (
+            body === null ||
+            idempotencyKey === null ||
+            !BROWSER_PROJECT_IDEMPOTENCY.test(idempotencyKey)
+          )
+            fail("V209_REAL_CHROME_CREATE_REQUEST_INVALID");
+          const createRequestSha256 = sha256Bytes(
+            Buffer.from(canonicalJson(requestDocument), "utf8"),
+          );
+          await abortable(input.signal, () =>
+            this.claims.recordCreateRequest(
+              Object.freeze({
+                schemaVersion: V209_REAL_CHROME_CREATE_REQUEST_IDENTITY_SCHEMA,
+                source: V209_REAL_CHROME_SOURCE,
+                accountId: this.request.accountId,
+                workspaceId: this.request.workspaceId,
+                claimId: input.claimId,
+                clickOrdinal: 1,
+                idempotencyKey,
+                createRequestSha256,
+                voiceoverSha256: this.request.prepared.voiceoverSha256,
+              }),
+              { signal: input.signal },
+            ),
+          );
+          this.#createIdentity = { idempotencyKey, createRequestSha256 };
+          // Network dispatch is deliberately held until the exact request identity is durable.
+          const response = await abortable(input.signal, () => route.fetch({ maxRedirects: 0 }));
+          assertExactResponseUrl(response, this.expectedOrigin, "/api/v2/hosted/projects");
+          if (![200, 201].includes(response.status())) fail("V209_REAL_CHROME_PROJECT_INVALID");
+          const created = record(
+            await abortable(input.signal, () => response.json()),
+            "V209_REAL_CHROME_PROJECT_INVALID",
+          );
+          if (
+            created.schema_version !== "videoforge-hosted-project-create-response/v1" ||
+            !UUID.test(String(created.project_id)) ||
+            !UUID.test(String(created.project_revision_id)) ||
+            !["UPLOAD_PENDING", "READY"].includes(String(created.state))
+          )
+            fail("V209_REAL_CHROME_PROJECT_INVALID");
+          await abortable(input.signal, () =>
+            this.claims.recordProjectIdentity(
+              Object.freeze({
+                schemaVersion: V209_REAL_CHROME_PROJECT_IDENTITY_SCHEMA,
+                source: V209_REAL_CHROME_SOURCE,
+                accountId: this.request.accountId,
+                workspaceId: this.request.workspaceId,
+                claimId: input.claimId,
+                clickOrdinal: 1,
+                idempotencyKey,
+                createRequestSha256,
+                voiceoverSha256: this.request.prepared.voiceoverSha256,
+                projectId: String(created.project_id),
+                projectRevisionId: String(created.project_revision_id),
+                generationRequestId: null,
+              }),
+              { signal: input.signal },
+            ),
+          );
+          // The page cannot upload, commit, or submit CPU work until this fulfillment.
+          await abortable(input.signal, () => route.fulfill({ response }));
+          resolveIntercept({ created, idempotencyKey, createRequestSha256 });
+        } catch (error) {
+          await route.abort().catch(() => undefined);
+          rejectIntercept(error);
+        }
+      }),
     );
     await abortable(input.signal, () => start.click());
-    assertPreparedSubmission(
-      (await abortable(input.signal, () => createRequest)).postDataJSON(),
-      this.request,
-      "videoforge-hosted-project-create/v2",
+    const { created, idempotencyKey, createRequestSha256 } = await abortable(
+      input.signal,
+      () => intercepted,
     );
     await abortable(input.signal, () =>
       this.page.waitForURL(/\/projects\/[0-9a-f-]+$/u, { waitUntil: "domcontentloaded" }),
@@ -646,6 +818,11 @@ class V209PlaywrightSession implements V209RealChromeSessionPort, V209StageProgr
       projectRevisionId: String(project.revision_id),
       generationRequestId: String(generation.id),
     };
+    if (
+      this.#identity.projectId !== created.project_id ||
+      this.#identity.projectRevisionId !== created.project_revision_id
+    )
+      fail("V209_REAL_CHROME_PROJECT_INVALID");
     return Object.freeze({
       schemaVersion: V209_REAL_CHROME_CLICK_SCHEMA,
       claimId: input.claimId,
@@ -653,6 +830,8 @@ class V209PlaywrightSession implements V209RealChromeSessionPort, V209StageProgr
       accountId: this.request.accountId,
       workspaceId: this.request.workspaceId,
       ...this.#identity,
+      idempotencyKey,
+      createRequestSha256,
       state: "ACKNOWLEDGED",
       clickOrdinal: 1,
       generateClickCount: 1,
@@ -913,6 +1092,7 @@ export async function runV209RealChromePlaywright(
             storageState: authStatePath,
             acceptDownloads: true,
             baseURL: origin,
+            serviceWorkers: "block",
           }),
         );
         page = await abortable(signal, () => context!.newPage());
@@ -929,6 +1109,7 @@ export async function runV209RealChromePlaywright(
           voiceoverPath,
           origin,
           verifiedOutputPath,
+          input.claims,
         );
         return session;
       } catch (error) {

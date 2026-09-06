@@ -481,10 +481,11 @@ test("0074 installs the additive ordinary V2-09 DB boundaries without weakening 
           "videoforge_v209_ordinary_load_lane_legacy_0081",
           "videoforge_v209_ordinary_commit_lane_legacy_0081",
           "videoforge_v209_ordinary_begin_send_legacy_0081",
+          "videoforge_load_hosted_gpu_activation_v2_head0081",
         ],
       ],
     );
-    assert.equal(privateAvatarFunctions.rows.length, 6);
+    assert.equal(privateAvatarFunctions.rows.length, 7);
     assert.ok(privateAvatarFunctions.rows.every((row) => row.public_execute === false));
     const activationLoaders = routines.rows.filter(
       (row) =>
@@ -492,7 +493,7 @@ test("0074 installs the additive ordinary V2-09 DB boundaries without weakening 
         row.signature.startsWith("videoforge_load_hosted_pair_activation_v2("),
     );
     assert.equal(activationLoaders.length, 2);
-    assert.ok(activationLoaders.every((row) => /version BETWEEN 37 AND 81/u.test(row.definition)));
+    assert.ok(activationLoaders.every((row) => /version BETWEEN 37 AND 84/u.test(row.definition)));
 
     const policies = await executor.query(
       `SELECT c.relname,c.relrowsecurity,c.relforcerowsecurity,count(policy.polname)::integer AS policies

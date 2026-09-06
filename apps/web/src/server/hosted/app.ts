@@ -429,7 +429,9 @@ async function handleCpuSubmission(
             AND render_plan.project_id = revision.project_id
             AND render_plan.project_revision_id = revision.id
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
-            AND revision.id = $4 AND revision.status = 'LOCKED'`,
+            AND project.status = 'ACTIVE'
+            AND revision.id = $4 AND revision.status = 'LOCKED'
+          FOR UPDATE OF project`,
         [scope.account_id, scope.workspace_id, submission.projectId, submission.projectRevisionId],
       );
       if (!lineage.rows[0]) return null;
@@ -653,16 +655,37 @@ async function handleCpuSubmission(
         httpMetadata: { contentType: "application/json" },
         customMetadata: { sha256: prepared.jobSpecChecksum },
       });
-      await startHostedCpuWorkflow(environment, {
-        attemptId: prepared.attemptId,
-        accountId: scope.account_id,
-        workspaceId: scope.workspace_id,
-      });
       await executor.transaction(async (transaction) => {
         await transaction.query("SELECT set_config($1, $2, true)", [
           "videoforge.account_id",
           scope.account_id,
         ]);
+        const launchable = await transaction.query<{ id: string }>(
+          `SELECT attempt.id
+             FROM hosted_cpu_job_attempts AS attempt
+             JOIN projects AS project
+               ON project.account_id=attempt.account_id
+              AND project.workspace_id=attempt.workspace_id
+              AND project.id=attempt.project_id
+            WHERE attempt.account_id=$1 AND attempt.workspace_id=$2 AND attempt.id=$3
+              AND attempt.project_id=$4 AND attempt.project_revision_id=$5
+              AND attempt.state='PLANNED' AND project.status='ACTIVE'
+            FOR UPDATE OF project,attempt`,
+          [
+            scope.account_id,
+            scope.workspace_id,
+            prepared.attemptId,
+            submission.projectId,
+            submission.projectRevisionId,
+          ],
+        );
+        if (launchable.rows[0]?.id !== prepared.attemptId)
+          throw new Error("PROJECT_LIFECYCLE_CLOSED");
+        await startHostedCpuWorkflow(environment, {
+          attemptId: prepared.attemptId,
+          accountId: scope.account_id,
+          workspaceId: scope.workspace_id,
+        });
         const outboxed = await transaction.query<{ id: string }>(
           `UPDATE hosted_cpu_job_attempts
               SET state = 'OUTBOXED', job_spec_content_length = $2,
@@ -725,6 +748,9 @@ async function handleCpuSubmission(
       202,
     );
   } catch (error) {
+    if (error instanceof Error && error.message === "PROJECT_LIFECYCLE_CLOSED") {
+      return json({ error: { code: "PROJECT_LIFECYCLE_CLOSED" } }, 409);
+    }
     if (error instanceof Error && error.message === "CPU_SUBMISSION_IDEMPOTENCY_CONFLICT") {
       return json({ error: { code: "CPU_SUBMISSION_IDEMPOTENCY_CONFLICT" } }, 409);
     }
@@ -807,6 +833,33 @@ async function createHostedV209SpanAudioLiveCoordinator(
     "./hosted-v209-span-live"
   );
   return createCoordinator(environment, config, scheduleHostedSpanAudioSubmission);
+}
+
+function createHostedV209RenderTerminalLiveCoordinator(environment: HostedRuntimeEnvironment) {
+  return Object.freeze({
+    async acceptCompleted(input: {
+      readonly accountId: string;
+      readonly workspaceId: string;
+      readonly attemptId: string;
+    }) {
+      if (!environment.VIDEOFORGE_RECONCILER_DATABASE_URL)
+        throw new Error("Hosted render terminal reconciler database is unavailable.");
+      const pool = createNeonPool(environment.VIDEOFORGE_RECONCILER_DATABASE_URL);
+      try {
+        const { createHostedV209RenderTerminalHandoff } = await import(
+          "./hosted-v209-render-terminal"
+        );
+        if (!environment.PRIVATE_ARTIFACTS)
+          throw new Error("Hosted render terminal artifact binding is unavailable.");
+        return createHostedV209RenderTerminalHandoff({
+          database: createNeonExecutor(pool),
+          bucket: environment.PRIVATE_ARTIFACTS,
+        }).acceptCompleted(input);
+      } finally {
+        await pool.end();
+      }
+    },
+  });
 }
 
 async function hostedSession(
@@ -1428,12 +1481,14 @@ export async function handleHostedRequest(
       import("./personal-worker"),
       createHostedV209SpanAudioLiveCoordinator(environment, config),
     ]);
+    const renderTerminal = createHostedV209RenderTerminalLiveCoordinator(environment);
     const personalWorkerResponse = await handlePersonalWorkerRequest(
       request,
       environment,
       executionContext,
       config,
       spanAudio,
+      renderTerminal,
     );
     if (personalWorkerResponse) return personalWorkerResponse;
   }

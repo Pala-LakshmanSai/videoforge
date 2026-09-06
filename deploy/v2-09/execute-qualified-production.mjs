@@ -67,11 +67,37 @@ const EPSILON = 1e-9;
 const FRESH_ADMISSION_TTL_MS = 5 * 60 * 1_000;
 const ADAPTER_IDENTITY_SCHEMA = "videoforge.v2-09-injected-adapter-identity/v1";
 const ADAPTER_SOURCE_IDENTITY_SCHEMA = "videoforge.v2-09-adapter-source-identity/v1";
+const LIVE_CONFIGURATION_KEYS = Object.freeze([
+  "branch",
+  "chromeAuthStateFile",
+  "chromeRequestFile",
+  "cloudflare",
+  "databaseOperatorUrlFile",
+  "databaseOwnerUrlFile",
+  "databaseReconcilerUrlFile",
+  "environment",
+  "journalPath",
+  "mediaReleaseManifestFile",
+  "mediaWorker",
+  "migrationMode",
+  "operatorRole",
+  "pushRef",
+  "qualifiedBindingFile",
+  "qualifiedConfigOutputFile",
+  "qualifiedConfigReceiptFile",
+  "reconcilerRole",
+  "remote",
+  "root",
+  "runpodApiKeyFile",
+  "runpodWorkerEnvironmentFile",
+  "runtimeRole",
+  "sourceCommit",
+]);
 
 export const NORMAL_OPERATIONS = Object.freeze([
   Object.freeze({ id: "push-clean-source", boundary: "REMOTE_MUTATION" }),
   Object.freeze({ id: "readback-clean-source", boundary: "READBACK" }),
-  Object.freeze({ id: "apply-migrations-0074-0081", boundary: "DATABASE_MUTATION" }),
+  Object.freeze({ id: "apply-migrations-0074-0084", boundary: "DATABASE_MUTATION" }),
   Object.freeze({ id: "apply-v209-grants", boundary: "DATABASE_MUTATION" }),
   Object.freeze({ id: "publish-media-worker-0.1.15", boundary: "REMOTE_MUTATION" }),
   Object.freeze({ id: "readback-media-worker-0.1.15", boundary: "READBACK" }),
@@ -337,16 +363,16 @@ function validateOperationResult(
   )
     fail("V2_09_SOURCE_READBACK_INVALID");
   if (
-    operationId === "apply-migrations-0074-0081" &&
+    operationId === "apply-migrations-0074-0084" &&
     !(
-      (result.mode === "APPLIED_0074_0081" &&
+      (result.mode === "APPLIED_0074_0084" &&
         result.from_version === 73 &&
-        result.to_version === 81 &&
+        result.to_version === 84 &&
         Array.isArray(result.applied_versions) &&
-        result.applied_versions.join(",") === "74,75,76,77,78,79,80,81") ||
-      (result.mode === "VERIFIED_EXISTING_0081" &&
-        result.from_version === 81 &&
-        result.to_version === 81 &&
+        result.applied_versions.join(",") === "74,75,76,77,78,79,80,81,82,83,84") ||
+      (result.mode === "VERIFIED_EXISTING_0084" &&
+        result.from_version === 84 &&
+        result.to_version === 84 &&
         Array.isArray(result.applied_versions) &&
         result.applied_versions.length === 0)
     )
@@ -364,7 +390,7 @@ function validateOperationResult(
       "schema_version",
     ]) ||
       result.schema_version !== "videoforge.v2-09-grants-result/v1" ||
-      result.migration_head !== 81 ||
+      result.migration_head !== 84 ||
       result.public_execute_count !== 0 ||
       result.runtime_grants_verified !== true ||
       result.operator_grants_verified !== true ||
@@ -709,6 +735,7 @@ function validateOperationResult(
       "completion_total_usd",
       "download_verified",
       "duration_seconds",
+      "generic_project_revision_net_cost_usd",
       "generation_request_sha256",
       "mp4_sha256",
       "operation_id",
@@ -729,6 +756,12 @@ function validateOperationResult(
       !HASH.test(result.mp4_sha256 ?? "") ||
       !HASH.test(result.browser_evidence_sha256 ?? "") ||
       !HASH.test(result.chrome_version_sha256 ?? "") ||
+      !finiteNonNegative(result.generic_project_revision_net_cost_usd) ||
+      result.generic_project_revision_net_cost_usd > INCREMENTAL_CAP_USD + EPSILON ||
+      !equalMoney(
+        result.completion_total_usd,
+        authority.caps.completion_baseline_usd + result.generic_project_revision_net_cost_usd,
+      ) ||
       !finiteNonNegative(result.duration_seconds) ||
       result.duration_seconds < 30 ||
       result.duration_seconds > 60 ||
@@ -832,10 +865,30 @@ function validateCleanupResult(operationId, result, authority, outcome, priorRes
       const mageUsd = result.terminal_jobs?.find(({ lane }) => lane === "mage")?.cost_usd ?? 0;
       const soulxUsd = result.terminal_jobs?.find(({ lane }) => lane === "soulx")?.cost_usd ?? 0;
       return (
+        !exactKeys(result, [
+          "billing_baseline_usd",
+          "billing_total_usd",
+          "completion_total_usd",
+          "conservative_liability_usd",
+          "cost_itemization",
+          "duplicate_compute_usd",
+          "exact_itemized_usd",
+          "generic_project_revision_net_cost_usd",
+          "operation_id",
+          "redispatch_count",
+          "settled",
+          "terminal_jobs",
+        ]) ||
         result.settled !== true ||
         !equalMoney(result.billing_baseline_usd, authority.caps.billing_baseline_usd) ||
         !finiteNonNegative(result.billing_total_usd) ||
         !finiteNonNegative(result.completion_total_usd) ||
+        !finiteNonNegative(result.exact_itemized_usd) ||
+        !finiteNonNegative(result.conservative_liability_usd) ||
+        !finiteNonNegative(result.generic_project_revision_net_cost_usd) ||
+        result.exact_itemized_usd > INCREMENTAL_CAP_USD + EPSILON ||
+        result.conservative_liability_usd > INCREMENTAL_CAP_USD + EPSILON ||
+        result.generic_project_revision_net_cost_usd > INCREMENTAL_CAP_USD + EPSILON ||
         result.redispatch_count !== 0 ||
         result.duplicate_compute_usd !== 0 ||
         !jobsValid ||
@@ -843,8 +896,26 @@ function validateCleanupResult(operationId, result, authority, outcome, priorRes
         !equalMoney(result.cost_itemization.mage_usd, mageUsd) ||
         !equalMoney(result.cost_itemization.soulx_usd, soulxUsd) ||
         !equalMoney(result.cost_itemization.total_usd, mageUsd + soulxUsd) ||
+        !equalMoney(
+          result.cost_itemization.total_usd,
+          result.exact_itemized_usd + result.conservative_liability_usd,
+        ) ||
+        result.cost_itemization.total_usd > INCREMENTAL_CAP_USD + EPSILON ||
+        result.generic_project_revision_net_cost_usd +
+          result.exact_itemized_usd +
+          result.conservative_liability_usd >
+          INCREMENTAL_CAP_USD + EPSILON ||
+        !equalMoney(
+          result.completion_total_usd,
+          authority.caps.completion_baseline_usd +
+            result.generic_project_revision_net_cost_usd +
+            result.exact_itemized_usd +
+            result.conservative_liability_usd,
+        ) ||
+        result.completion_total_usd > authority.caps.completion_stop_usd + EPSILON ||
+        result.completion_total_usd > COMPLETION_CAP_USD + EPSILON ||
         result.billing_total_usd + EPSILON <
-          authority.caps.billing_baseline_usd + result.cost_itemization.total_usd
+          authority.caps.billing_baseline_usd + result.exact_itemized_usd
       );
     })()
   )
@@ -1484,7 +1555,7 @@ export async function executeQualifiedProduction(options = {}) {
     )
   )
     fail("V2_09_LIVE_OPTION_INVALID");
-  if (options.configuration === null || typeof options.configuration !== "object")
+  if (!exactKeys(options.configuration, LIVE_CONFIGURATION_KEYS))
     fail("V2_09_LIVE_CONFIGURATION_REQUIRED");
   const { createConcreteQualifiedProductionAdapters } = await import(
     "./concrete-qualified-production-adapters.mjs"

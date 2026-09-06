@@ -315,9 +315,9 @@ export async function seedMaterialization(executor, options = {}) {
       output_prefix: outputPrefix,
       max_input_bytes: 1000,
       max_output_bytes: 10000,
-      spend_ceiling_usd: 1,
-      reservation_usd: 0.5,
-      rate_source: "provider-free-test",
+      spend_ceiling_usd: options.spendCeilingUsd ?? 1,
+      reservation_usd: options.reservationUsd ?? 0.5,
+      rate_source: options.rateSource ?? "provider-free-test",
       rate_checked_at: new Date().toISOString(),
       authority_expires_at: new Date(Date.now() + 3_600_000).toISOString(),
     });

@@ -21,6 +21,8 @@ const PROJECT_ID = "project-1";
 const PROJECT_REVISION_ID = "project-revision-1";
 const CLAIM_ID = "claim-1";
 const GENERATION_REQUEST_ID = "generation-request-1";
+const IDEMPOTENCY_KEY = "browser-project-11111111-1111-4111-8111-111111111111";
+const CREATE_REQUEST_SHA256 = `sha256:${"f".repeat(64)}`;
 const RENDER_ATTEMPT_ID = "render-attempt-1";
 const OUTPUT_ID =
   "tenant/account-1/workspace/workspace-1/project/project-1/revision/project-revision-1/lane/render/job/render-attempt-1/artifact/final-mp4";
@@ -100,6 +102,8 @@ const click = {
   clickOrdinal: 1,
   generateClickCount: 1,
   generationRequestId: GENERATION_REQUEST_ID,
+  idempotencyKey: IDEMPOTENCY_KEY,
+  createRequestSha256: CREATE_REQUEST_SHA256,
 } as const;
 
 function progress(
@@ -139,6 +143,7 @@ function harness(
     readonly claim?: Record<string, unknown>;
     readonly click?: Record<string, unknown>;
     readonly clickError?: Error;
+    readonly clickIdentityError?: Error;
     readonly claimNever?: boolean;
     readonly browserNever?: boolean;
     readonly pageNever?: boolean;
@@ -171,6 +176,11 @@ function harness(
     void input.signal;
     return overrides.claimNever === true ? never() : (overrides.claim ?? claim);
   });
+  const recordAcknowledgedClick = vi.fn(async () => {
+    if (overrides.clickIdentityError !== undefined) throw overrides.clickIdentityError;
+  });
+  const recordCreateRequest = vi.fn(async () => undefined);
+  const recordProjectIdentity = vi.fn(async () => undefined);
   const readGeneratePage = vi.fn(async (input: SignalInput) => {
     void input.signal;
     return overrides.pageNever === true ? never() : (overrides.page ?? page);
@@ -281,7 +291,12 @@ function harness(
   });
   const input = {
     request: { ...request, ...overrides.request },
-    claims: { reserveOneShot },
+    claims: {
+      reserveOneShot,
+      recordCreateRequest,
+      recordProjectIdentity,
+      recordAcknowledgedClick,
+    },
     browser: { openSession },
     progress: { read },
     sleep,
@@ -289,6 +304,7 @@ function harness(
   return {
     input,
     reserveOneShot,
+    recordAcknowledgedClick,
     openSession,
     readGeneratePage,
     clickGenerate,
@@ -348,6 +364,25 @@ describe("V2-09 real Chrome operator", () => {
     });
     expect(value.readGeneratePage).toHaveBeenCalledOnce();
     expect(value.clickGenerate).toHaveBeenCalledOnce();
+    expect(value.recordAcknowledgedClick).toHaveBeenCalledOnce();
+    expect(value.recordAcknowledgedClick).toHaveBeenCalledWith(
+      {
+        schemaVersion: "videoforge.v2-09-generate-click-identity/v1",
+        source: V209_REAL_CHROME_SOURCE,
+        accountId: ACCOUNT_ID,
+        workspaceId: WORKSPACE_ID,
+        projectId: PROJECT_ID,
+        projectRevisionId: PROJECT_REVISION_ID,
+        generationRequestId: GENERATION_REQUEST_ID,
+        claimId: CLAIM_ID,
+        clickOrdinal: 1,
+        generateClickCount: 1,
+        voiceoverSha256: prepared.voiceoverSha256,
+        idempotencyKey: IDEMPOTENCY_KEY,
+        createRequestSha256: CREATE_REQUEST_SHA256,
+      },
+      { signal: expect.any(AbortSignal) },
+    );
     expect(value.clickGenerate).toHaveBeenCalledWith({
       claimId: CLAIM_ID,
       signal: expect.any(AbortSignal),
@@ -447,6 +482,30 @@ describe("V2-09 real Chrome operator", () => {
     expect(value.clickGenerate).toHaveBeenCalledOnce();
     expect(value.read).not.toHaveBeenCalled();
     expect(value.close).toHaveBeenCalledOnce();
+  });
+
+  it("hands off the acknowledged identity exactly once before a later output failure", async () => {
+    const value = harness({ progressError: new Error("later output failure") });
+    await expect(runV209RealChromeOperator(value.input)).rejects.toMatchObject({
+      code: "V209_REAL_CHROME_TERMINAL_AMBIGUOUS",
+    });
+    expect(value.clickGenerate).toHaveBeenCalledOnce();
+    expect(value.recordAcknowledgedClick).toHaveBeenCalledOnce();
+    expect(value.read).toHaveBeenCalledOnce();
+    expect(value.recordAcknowledgedClick.mock.invocationCallOrder[0]).toBeLessThan(
+      value.read.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it("propagates identity persistence failure without retrying or clicking again", async () => {
+    const value = harness({ clickIdentityError: new Error("fsync failed") });
+    await expect(runV209RealChromeOperator(value.input)).rejects.toMatchObject({
+      code: "V209_REAL_CHROME_CLICK_IDENTITY_PERSIST_FAILED",
+    });
+    expect(value.clickGenerate).toHaveBeenCalledOnce();
+    expect(value.recordAcknowledgedClick).toHaveBeenCalledOnce();
+    expect(value.read).not.toHaveBeenCalled();
+    expect(value.openSession).toHaveBeenCalledOnce();
   });
 
   it("treats monitor failure, ambiguous terminal state, and sequence drift as terminal ambiguity", async () => {

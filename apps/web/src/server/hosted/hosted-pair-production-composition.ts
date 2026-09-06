@@ -69,6 +69,9 @@ export const HOSTED_PAIR_REQUIRED_MIGRATIONS = Object.freeze([
   [79, "sha256:773618d0109dc3dfcc34acd8dd7108b2a6e11dadac0e7f7d029ff852236b52f3"],
   [80, "sha256:00c2eea0e713a181f9c84af1a78fa8b1fb57fca3d1e2348915463133befe81bb"],
   [81, "sha256:dee1b8adab28d9996c4fd9b7d71b322fc0d48123e6c81f2760499bd79e2b945c"],
+  [82, "sha256:c36621d8fdd25ccc6a9506b3d4572c28223aa9e1e2bbbbb2039c7dc661b30454"],
+  [83, "sha256:06ffc203c6e124dc5569b403156a1726d114c04089efd8081d9baa7504d6d587"],
+  [84, "sha256:626a78dc70217a28d189467fd5ff3b8b9a91be8de00a6dee358d8b00b87ed75f"],
 ] as const);
 
 export interface HostedPairProductionBindingEnvironment {
@@ -186,7 +189,7 @@ export function evaluateHostedPairProductionGate(
         input.migrationLedger[index]?.sha256 !== sha256,
     )
   )
-    return disabled("MIGRATION_LEDGER_0037_0081_INVALID");
+    return disabled("MIGRATION_LEDGER_0037_0084_INVALID");
   const now = Date.parse(input.now);
   if (!Number.isFinite(now)) return disabled("CLOCK_INVALID");
   for (const lane of ["mage_image", "soulx_avatar"] as const) {

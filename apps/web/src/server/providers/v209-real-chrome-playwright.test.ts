@@ -21,6 +21,7 @@ const WORKSPACE_ID = "workspace-1";
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
 const REVISION_ID = "22222222-2222-4222-8222-222222222222";
 const GENERATION_ID = "33333333-3333-4333-8333-333333333333";
+const CREATE_IDEMPOTENCY_KEY = "browser-project-55555555-5555-4555-8555-555555555555";
 const RENDER_ATTEMPT_ID = "44444444-4444-4444-8444-444444444444";
 const CLAIM_ID = "claim-1";
 const OUTPUT = Buffer.from("private exact v209 mp4 bytes");
@@ -98,6 +99,8 @@ function fakeChrome(input: {
   readonly request: V209RealChromeOperatorRequest;
   readonly downloadPath: string;
   readonly redirectOrigin?: string;
+  readonly createResponseUrl?: string;
+  readonly createResponseStatus?: number;
 }) {
   const calls = {
     currentUrl: "https://videoforge.example.test/projects/new",
@@ -106,7 +109,14 @@ function fakeChrome(input: {
     approvalClicks: 0,
     downloadClicks: 0,
     projectReads: 0,
+    networkCreateRequests: 0,
+    postCreateMutations: 0,
+    routeAborts: 0,
+    routeFetchMaxRedirects: [] as number[],
   };
+  let createRouteHandler:
+    | ((route: Record<string, any>, request: Record<string, any>) => Promise<void>)
+    | undefined;
 
   const noElement = {
     count: vi.fn(async () => 0),
@@ -141,7 +151,36 @@ function fakeChrome(input: {
     isEnabled: vi.fn(async () => calls.readinessClicks === 1),
     click: vi.fn(async () => {
       calls.startClicks += 1;
-      calls.currentUrl = `https://videoforge.example.test/projects/${PROJECT_ID}`;
+      if (!createRouteHandler) throw new Error("create route unavailable");
+      const response = {
+        status: () => input.createResponseStatus ?? 201,
+        url: () =>
+          input.createResponseUrl ?? "https://videoforge.example.test/api/v2/hosted/projects",
+        request: () => createRequest,
+        json: async () => ({
+          schema_version: "videoforge-hosted-project-create-response/v1",
+          project_id: PROJECT_ID,
+          project_revision_id: REVISION_ID,
+          state: "UPLOAD_PENDING",
+          upload: {},
+        }),
+      };
+      const route = {
+        request: () => createRequest,
+        fetch: vi.fn(async (options: { maxRedirects: number }) => {
+          calls.networkCreateRequests += 1;
+          calls.routeFetchMaxRedirects.push(options.maxRedirects);
+          return response;
+        }),
+        fulfill: vi.fn(async () => {
+          calls.postCreateMutations += 1;
+          calls.currentUrl = `https://videoforge.example.test/projects/${PROJECT_ID}`;
+        }),
+        abort: vi.fn(async () => {
+          calls.routeAborts += 1;
+        }),
+      };
+      void createRouteHandler(route, createRequest);
     }),
   };
   const approve = {
@@ -206,6 +245,34 @@ function fakeChrome(input: {
         ]
       : [],
   });
+  const createBody = {
+    title: input.request.prepared.title,
+    avatar_profile_version_id: input.request.prepared.avatarProfileVersionId,
+    image_style_version_id: input.request.prepared.imageStyleVersionId,
+    extra_prompt_keywords: "",
+    apply_extra_prompt_keywords: false,
+    user_seed: null,
+    spend_cap_usd: input.request.prepared.spendCapUsd,
+    voiceover: {
+      filename: input.request.prepared.voiceoverFilename,
+      content_type: input.request.prepared.voiceoverContentType,
+      content_length: input.request.prepared.voiceoverContentLength,
+      checksum_sha256: input.request.prepared.voiceoverSha256,
+      duration_ms: input.request.prepared.voiceoverDurationMs,
+    },
+  };
+  const createRequest = {
+    method: () => "POST",
+    url: () => "https://videoforge.example.test/api/v2/hosted/projects",
+    postDataJSON: () => ({
+      ...createBody,
+      schema_version: "videoforge-hosted-project-create/v2",
+    }),
+    postData: () =>
+      JSON.stringify({ ...createBody, schema_version: "videoforge-hosted-project-create/v2" }),
+    headerValue: async (name: string) =>
+      name.toLowerCase() === "idempotency-key" ? CREATE_IDEMPOTENCY_KEY : null,
+  };
   const page = {
     goto: vi.fn(async (url: string) => {
       const target = new URL(url);
@@ -215,6 +282,14 @@ function fakeChrome(input: {
     }),
     url: vi.fn(() => calls.currentUrl),
     waitForURL: vi.fn(async () => undefined),
+    route: vi.fn(
+      async (
+        _url: string,
+        handler: (route: Record<string, any>, request: Record<string, any>) => Promise<void>,
+      ) => {
+        createRouteHandler = handler;
+      },
+    ),
     waitForRequest: vi.fn(
       async (
         predicate: (request: {
@@ -223,39 +298,18 @@ function fakeChrome(input: {
           postDataJSON(): unknown;
         }) => boolean,
       ) => {
-        const body = {
-          title: input.request.prepared.title,
-          avatar_profile_version_id: input.request.prepared.avatarProfileVersionId,
-          image_style_version_id: input.request.prepared.imageStyleVersionId,
-          extra_prompt_keywords: "",
-          apply_extra_prompt_keywords: false,
-          user_seed: null,
-          spend_cap_usd: input.request.prepared.spendCapUsd,
-          voiceover: {
-            filename: input.request.prepared.voiceoverFilename,
-            content_type: input.request.prepared.voiceoverContentType,
-            content_length: input.request.prepared.voiceoverContentLength,
-            checksum_sha256: input.request.prepared.voiceoverSha256,
-            duration_ms: input.request.prepared.voiceoverDurationMs,
-          },
-        };
         const candidates = [
           {
             method: () => "POST",
             url: () => "https://videoforge.example.test/api/v2/hosted/projects/preflight",
             postDataJSON: () => ({
-              ...body,
+              ...createBody,
               schema_version: "videoforge-hosted-project-preflight/v1",
             }),
+            postData: () => null,
+            headerValue: async () => null,
           },
-          {
-            method: () => "POST",
-            url: () => "https://videoforge.example.test/api/v2/hosted/projects",
-            postDataJSON: () => ({
-              ...body,
-              schema_version: "videoforge-hosted-project-create/v2",
-            }),
-          },
+          createRequest,
         ];
         const request = candidates.find(predicate);
         if (!request) throw new Error("unexpected request predicate");
@@ -314,7 +368,10 @@ function fakeChrome(input: {
   return { launch, browser, context, page, calls };
 }
 
-function claimPort(request: V209RealChromeOperatorRequest) {
+function claimPort(
+  request: V209RealChromeOperatorRequest,
+  failures: { readonly create?: Error; readonly project?: Error } = {},
+) {
   const reserveOneShot = vi.fn(async () => ({
     schemaVersion: V209_REAL_CHROME_CLAIM_SCHEMA,
     claimId: CLAIM_ID,
@@ -328,7 +385,19 @@ function claimPort(request: V209RealChromeOperatorRequest) {
     priorClickCount: 0,
     clickOrdinal: 1,
   }));
-  return { reserveOneShot };
+  const recordCreateRequest = vi.fn(async () => {
+    if (failures.create) throw failures.create;
+  });
+  const recordProjectIdentity = vi.fn(async () => {
+    if (failures.project) throw failures.project;
+  });
+  const recordAcknowledgedClick = vi.fn(async () => undefined);
+  return {
+    reserveOneShot,
+    recordCreateRequest,
+    recordProjectIdentity,
+    recordAcknowledgedClick,
+  };
 }
 
 describe("V2-09 real Chrome Playwright binding", () => {
@@ -378,11 +447,34 @@ describe("V2-09 real Chrome Playwright binding", () => {
         generateClickCount: 1,
       });
       expect(claims.reserveOneShot).toHaveBeenCalledOnce();
+      expect(claims.recordCreateRequest).toHaveBeenCalledOnce();
+      expect(claims.recordProjectIdentity).toHaveBeenCalledOnce();
+      expect(claims.recordCreateRequest.mock.invocationCallOrder[0]).toBeLessThan(
+        claims.recordProjectIdentity.mock.invocationCallOrder[0]!,
+      );
+      expect(claims.recordProjectIdentity.mock.invocationCallOrder[0]).toBeLessThan(
+        claims.recordAcknowledgedClick.mock.invocationCallOrder[0]!,
+      );
+      expect(claims.recordAcknowledgedClick).toHaveBeenCalledOnce();
+      expect(claims.recordAcknowledgedClick).toHaveBeenCalledWith(
+        expect.objectContaining({
+          schemaVersion: "videoforge.v2-09-generate-click-identity/v1",
+          projectId: PROJECT_ID,
+          projectRevisionId: REVISION_ID,
+          generationRequestId: GENERATION_ID,
+          claimId: CLAIM_ID,
+          clickOrdinal: 1,
+          generateClickCount: 1,
+          voiceoverSha256: files.request.prepared.voiceoverSha256,
+        }),
+        { signal: expect.any(AbortSignal) },
+      );
       expect(chrome.launch).toHaveBeenCalledWith({ channel: "chrome", headless: false });
       expect(chrome.browser.newContext).toHaveBeenCalledWith({
         storageState: files.authStatePath,
         acceptDownloads: true,
         baseURL: "https://videoforge.example.test",
+        serviceWorkers: "block",
       });
       expect(chrome.page.goto).toHaveBeenNthCalledWith(
         1,
@@ -437,6 +529,100 @@ describe("V2-09 real Chrome Playwright binding", () => {
         }),
       ).rejects.toMatchObject({ code: "V209_REAL_CHROME_AUTH_STATE_INVALID" });
       expect(chrome.launch).not.toHaveBeenCalled();
+    } finally {
+      rmSync(files.directory, { recursive: true, force: true });
+    }
+  });
+
+  it("holds the create POST before network until request identity persistence succeeds", async () => {
+    const files = sourceFiles();
+    try {
+      const chrome = fakeChrome(files);
+      const claims = claimPort(files.request, { create: new Error("request fsync failed") });
+      await expect(
+        runV209RealChromePlaywright({
+          request: files.request,
+          claims,
+          productionOrigin: "https://videoforge.example.test",
+          authStatePath: files.authStatePath,
+          voiceoverPath: files.voiceoverPath,
+          verifiedOutputPath: files.verifiedOutputPath,
+          launch: chrome.launch,
+        }),
+      ).rejects.toMatchObject({ code: "V209_REAL_CHROME_GENERATE_CLICK_AMBIGUOUS" });
+      expect(claims.reserveOneShot).toHaveBeenCalledOnce();
+      expect(claims.recordCreateRequest).toHaveBeenCalledOnce();
+      expect(chrome.calls.startClicks).toBe(1);
+      expect(chrome.calls.networkCreateRequests).toBe(0);
+      expect(chrome.calls.postCreateMutations).toBe(0);
+      expect(chrome.calls.routeAborts).toBe(1);
+    } finally {
+      rmSync(files.directory, { recursive: true, force: true });
+    }
+  });
+
+  it("holds page continuation before upload, commit, or CPU until project identity is durable", async () => {
+    const files = sourceFiles();
+    try {
+      const chrome = fakeChrome(files);
+      const claims = claimPort(files.request, { project: new Error("project fsync failed") });
+      await expect(
+        runV209RealChromePlaywright({
+          request: files.request,
+          claims,
+          productionOrigin: "https://videoforge.example.test",
+          authStatePath: files.authStatePath,
+          voiceoverPath: files.voiceoverPath,
+          verifiedOutputPath: files.verifiedOutputPath,
+          launch: chrome.launch,
+        }),
+      ).rejects.toMatchObject({ code: "V209_REAL_CHROME_GENERATE_CLICK_AMBIGUOUS" });
+      expect(claims.recordCreateRequest).toHaveBeenCalledOnce();
+      expect(claims.recordProjectIdentity).toHaveBeenCalledOnce();
+      expect(chrome.calls.networkCreateRequests).toBe(1);
+      expect(chrome.calls.postCreateMutations).toBe(0);
+      expect(chrome.calls.routeAborts).toBe(1);
+    } finally {
+      rmSync(files.directory, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    [
+      "redirect",
+      {
+        createResponseStatus: 302,
+        createResponseUrl: "https://videoforge.example.test/api/v2/hosted/projects",
+      },
+    ],
+    [
+      "foreign response",
+      {
+        createResponseStatus: 201,
+        createResponseUrl: "https://attacker.example/api/v2/hosted/projects",
+      },
+    ],
+  ])("rejects a %s without releasing post-create continuation", async (_label, drift) => {
+    const files = sourceFiles();
+    try {
+      const chrome = fakeChrome({ ...files, ...drift });
+      const claims = claimPort(files.request);
+      await expect(
+        runV209RealChromePlaywright({
+          request: files.request,
+          claims,
+          productionOrigin: "https://videoforge.example.test",
+          authStatePath: files.authStatePath,
+          voiceoverPath: files.voiceoverPath,
+          verifiedOutputPath: files.verifiedOutputPath,
+          launch: chrome.launch,
+        }),
+      ).rejects.toMatchObject({ code: "V209_REAL_CHROME_GENERATE_CLICK_AMBIGUOUS" });
+      expect(chrome.calls.networkCreateRequests).toBe(1);
+      expect(chrome.calls.routeFetchMaxRedirects).toEqual([0]);
+      expect(claims.recordProjectIdentity).not.toHaveBeenCalled();
+      expect(chrome.calls.postCreateMutations).toBe(0);
+      expect(chrome.calls.routeAborts).toBe(1);
     } finally {
       rmSync(files.directory, { recursive: true, force: true });
     }

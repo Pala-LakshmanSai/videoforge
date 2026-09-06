@@ -196,7 +196,7 @@ async function restartFixture() {
 }
 
 describe("hosted production pair composition", () => {
-  it("accepts the exact current 37..81 manifest ledger", () => {
+  it("accepts the exact current 37..84 manifest ledger", () => {
     expect(HOSTED_PAIR_REQUIRED_MIGRATIONS).toEqual([
       [37, "sha256:e21a04350d2685f231bbfa8ac9a1109a22194ab0e227d49a9dfa4c68d84aa9ef"],
       [38, "sha256:de64f32ab2b07d9e3448e29f466ea6a26e48f507cab12800abc2efd7393afe00"],
@@ -243,6 +243,9 @@ describe("hosted production pair composition", () => {
       [79, "sha256:773618d0109dc3dfcc34acd8dd7108b2a6e11dadac0e7f7d029ff852236b52f3"],
       [80, "sha256:00c2eea0e713a181f9c84af1a78fa8b1fb57fca3d1e2348915463133befe81bb"],
       [81, "sha256:dee1b8adab28d9996c4fd9b7d71b322fc0d48123e6c81f2760499bd79e2b945c"],
+      [82, "sha256:c36621d8fdd25ccc6a9506b3d4572c28223aa9e1e2bbbbb2039c7dc661b30454"],
+      [83, "sha256:06ffc203c6e124dc5569b403156a1726d114c04089efd8081d9baa7504d6d587"],
+      [84, "sha256:626a78dc70217a28d189467fd5ff3b8b9a91be8de00a6dee358d8b00b87ed75f"],
     ]);
     expect(evaluateHostedPairProductionGate(gate())).toEqual({ state: "READY" });
   });
@@ -265,8 +268,13 @@ describe("hosted production pair composition", () => {
 
   it("rejects ledger, qualification, approval, role, or key drift", () => {
     expect(evaluateHostedPairProductionGate(gate({ migrationLedger: [] }))).toMatchObject({
-      reason: "MIGRATION_LEDGER_0037_0081_INVALID",
+      reason: "MIGRATION_LEDGER_0037_0084_INVALID",
     });
+    expect(
+      evaluateHostedPairProductionGate(
+        gate({ migrationLedger: gate().migrationLedger.slice(0, -3) }),
+      ),
+    ).toMatchObject({ reason: "MIGRATION_LEDGER_0037_0084_INVALID" });
     expect(
       evaluateHostedPairProductionGate(
         gate({

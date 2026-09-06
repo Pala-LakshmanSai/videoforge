@@ -139,7 +139,8 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
     const { executor } = await this.#ready;
     await executor.transaction(async (transaction) => {
       await transaction.execute(
-        `TRUNCATE hosted_project_reviews, hosted_project_create_requests,
+        `TRUNCATE hosted_project_reviews, hosted_v209_staged_click_reconciliations,
+                  hosted_project_create_requests,
                   hosted_v209_short_admissions,
                   hosted_v209_terminal_acceptances, hosted_v209_settlement_cost_evidence,
                   hosted_v209_ordinary_resolved_render_manifests,

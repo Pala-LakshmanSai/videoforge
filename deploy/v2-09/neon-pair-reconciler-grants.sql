@@ -7,11 +7,11 @@
 
 \if :{?runtime_role}
 \else
-\quit
+\quit 1
 \endif
 \if :{?reconciler_role}
 \else
-\quit
+\quit 1
 \endif
 
 \set ON_ERROR_STOP on
@@ -51,7 +51,7 @@ WHERE rolname IN (:'runtime_role',:'reconciler_role')
 \if :reconciliation_roles_valid
 \else
 ROLLBACK;
-\quit
+\quit 1
 \endif
 
 GRANT USAGE ON SCHEMA public TO :"reconciler_role";
@@ -73,7 +73,12 @@ REVOKE EXECUTE ON FUNCTION
   public.videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid),
   public.videoforge_commit_hosted_v209_resolved_render_manifest(
     uuid,uuid,uuid,jsonb,text,text,bigint
-  )
+  ),
+  public.videoforge_settle_hosted_v209_success_costs(uuid,uuid,uuid,jsonb),
+  public.videoforge_read_hosted_v209_project_revision_net_cost(uuid,uuid,uuid),
+  public.videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid),
+  public.videoforge_finalize_v209_render_terminal(jsonb),
+  public.videoforge_reconcile_hosted_v209_staged_click(jsonb)
 FROM :"runtime_role";
 
 GRANT EXECUTE ON FUNCTION
@@ -90,7 +95,12 @@ GRANT EXECUTE ON FUNCTION
   public.videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid),
   public.videoforge_commit_hosted_v209_resolved_render_manifest(
     uuid,uuid,uuid,jsonb,text,text,bigint
-  )
+  ),
+  public.videoforge_settle_hosted_v209_success_costs(uuid,uuid,uuid,jsonb),
+  public.videoforge_read_hosted_v209_project_revision_net_cost(uuid,uuid,uuid),
+  public.videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid),
+  public.videoforge_finalize_v209_render_terminal(jsonb),
+  public.videoforge_reconcile_hosted_v209_staged_click(jsonb)
 TO :"reconciler_role";
 
 SELECT (
@@ -126,7 +136,12 @@ SELECT (
         'videoforge_read_hosted_v209_terminal_lineage(uuid,uuid,uuid,text,text)',
         'videoforge_accept_hosted_v209_terminal_output(uuid,uuid,uuid,text,text,text,jsonb,jsonb,timestamp with time zone)',
         'videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)',
-        'videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint)'
+        'videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint)',
+        'videoforge_settle_hosted_v209_success_costs(uuid,uuid,uuid,jsonb)',
+        'videoforge_read_hosted_v209_project_revision_net_cost(uuid,uuid,uuid)',
+        'videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid)',
+        'videoforge_finalize_v209_render_terminal(jsonb)',
+        'videoforge_reconcile_hosted_v209_staged_click(jsonb)'
       ]::text[])
       AND NOT EXISTS (
         SELECT 1 FROM pg_depend dependency
@@ -153,11 +168,21 @@ SELECT (
     'public.videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)','EXECUTE')
   AND NOT has_function_privilege(:'runtime_role',
     'public.videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint)','EXECUTE')
+  AND NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_settle_hosted_v209_success_costs(uuid,uuid,uuid,jsonb)','EXECUTE')
+  AND NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_read_hosted_v209_project_revision_net_cost(uuid,uuid,uuid)','EXECUTE')
+  AND NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid)','EXECUTE')
+  AND NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_finalize_v209_render_terminal(jsonb)','EXECUTE')
+  AND NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_reconcile_hosted_v209_staged_click(jsonb)','EXECUTE')
 ) AS v209_reconciler_acl_exact
 \gset
 \if :v209_reconciler_acl_exact
 COMMIT;
 \else
 ROLLBACK;
-\quit
+\quit 1
 \endif
