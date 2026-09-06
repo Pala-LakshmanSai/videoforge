@@ -107,6 +107,9 @@ test("credential read rejects symlinks, permissive mode, and wrong ownership bef
   const invalid = [
     credentialMetadata({ isSymbolicLink: () => true }),
     credentialMetadata({ mode: 0o100640n }),
+    credentialMetadata({ nlink: 2n }),
+    credentialMetadata({ size: 19n }),
+    credentialMetadata({ size: 4097n }),
     credentialMetadata({
       uid: BigInt(typeof process.getuid === "function" ? process.getuid() + 1 : 1),
     }),
@@ -271,7 +274,7 @@ test("GHCR preflight anonymously hashes the manifest, config, and every ordered 
       return response(null, {
         status: 307,
         headers: {
-          location: `https://pkg-containers.githubusercontent.com/ghcrblobs1/blobs/${fixture.layerDigest}?signature=redacted`,
+          location: `https://pkg-containers.githubusercontent.com/ghcr1/blobs/${fixture.layerDigest}?se=2030-01-01T00%3A00%3A00Z&sig=redacted`,
         },
       });
     if (
@@ -296,6 +299,10 @@ test("GHCR preflight anonymously hashes the manifest, config, and every ordered 
   assert.equal(calls.length, 5);
   assert.ok(calls.every((call) => (call.init.method ?? "GET") === "GET"));
   assert.equal(calls[0].init.headers.authorization, undefined);
+  const redirected = calls.find(
+    ({ url }) => new URL(url).hostname === "pkg-containers.githubusercontent.com",
+  );
+  assert.equal(redirected.init.headers.authorization, undefined);
 });
 
 test("GHCR preflight accepts repeated ordered layer descriptors and verifies every occurrence", async () => {
@@ -326,7 +333,7 @@ test("GHCR preflight accepts repeated ordered layer descriptors and verifies eve
       return response(null, {
         status: 307,
         headers: {
-          location: `https://pkg-containers.githubusercontent.com/ghcrblobs1/blobs/${fixture.layerDigest}?signature=redacted`,
+          location: `https://pkg-containers.githubusercontent.com/ghcrblobs1/blobs/${fixture.layerDigest}?se=2030-01-01T00%3A00%3A00Z&sig=redacted`,
         },
       });
     if (
@@ -382,6 +389,39 @@ test("GHCR preflight rejects a blob redirect outside the exact anonymous registr
     throw new Error(`unexpected URL ${url.href}`);
   };
   await assert.rejects(verifyFrozenImage(fetchImpl, fixture.expected), /GHCR_BLOB_REDIRECT/u);
+});
+
+test("GHCR preflight rejects malformed signed blob redirects", async () => {
+  const fixture = imageFixture();
+  const invalidLocations = [
+    `http://pkg-containers.githubusercontent.com/ghcr1/blobs/${fixture.layerDigest}?se=x&sig=y`,
+    `https://user@pkg-containers.githubusercontent.com/ghcr1/blobs/${fixture.layerDigest}?se=x&sig=y`,
+    `https://pkg-containers.githubusercontent.com/other1/blobs/${fixture.layerDigest}?se=x&sig=y`,
+    `https://pkg-containers.githubusercontent.com/ghcr1/blobs/${hash("wrong")}?se=x&sig=y`,
+    `https://pkg-containers.githubusercontent.com/ghcr1/blobs/${fixture.layerDigest}?sig=y`,
+    `https://pkg-containers.githubusercontent.com/ghcr1/blobs/${fixture.layerDigest}?se=x&sig=y&sig=z`,
+    `https://pkg-containers.githubusercontent.com/ghcr1/blobs/${fixture.layerDigest}?se=x&sig=y#fragment`,
+  ];
+  for (const location of invalidLocations) {
+    const fetchImpl = async (input) => {
+      const url = new URL(input);
+      if (url.pathname === "/token")
+        return response(JSON.stringify({ token: "anonymous-token-value-123456789" }));
+      if (url.pathname.endsWith(`/manifests/${fixture.expected.manifestDigest}`))
+        return response(fixture.manifestBytes, {
+          headers: {
+            "content-type": "application/vnd.oci.image.manifest.v1+json",
+            "docker-content-digest": fixture.expected.manifestDigest,
+          },
+        });
+      if (url.pathname.endsWith(`/blobs/${fixture.expected.configDigest}`))
+        return response(fixture.configBytes);
+      if (url.pathname.endsWith(`/blobs/${fixture.layerDigest}`))
+        return response(null, { status: 307, headers: { location } });
+      throw new Error(`unexpected URL ${url.href}`);
+    };
+    await assert.rejects(verifyFrozenImage(fetchImpl, fixture.expected), /GHCR_BLOB_REDIRECT/u);
+  }
 });
 
 function frozenImageProof(expected) {

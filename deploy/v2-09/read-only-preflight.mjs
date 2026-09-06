@@ -346,8 +346,13 @@ async function readGhcrObject(fetchImpl, { repository, token, path, accept, kind
       target.hostname !== GHCR_BLOB_REDIRECT_HOST ||
       target.username !== "" ||
       target.password !== "" ||
+      target.hash !== "" ||
+      target.searchParams.getAll("se").length !== 1 ||
+      target.searchParams.get("se") === "" ||
+      target.searchParams.getAll("sig").length !== 1 ||
+      target.searchParams.get("sig") === "" ||
       !new RegExp(
-        `^/ghcrblobs[^/]+/blobs/${path
+        `^/ghcr(?:blobs)?[A-Za-z0-9-]+/blobs/${path
           .slice("blobs/".length)
           .replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}$`,
         "u",
@@ -602,6 +607,9 @@ const validateApiKeyFile = (metadata) => {
   if (
     !metadata.isFile() ||
     (metadata.mode & 0o777n) !== 0o600n ||
+    metadata.nlink !== 1n ||
+    metadata.size < 20n ||
+    metadata.size > 4096n ||
     (typeof process.getuid === "function" && metadata.uid !== BigInt(process.getuid()))
   )
     fail("API_KEY_FILE");
