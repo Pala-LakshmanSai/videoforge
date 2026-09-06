@@ -185,11 +185,11 @@ fixture("source path, current migration chain, and activation caps are hard-pinn
       ),
     /exact approved pinned V2-06 owned local-slice path/u,
   );
-  assert.equal(COMMITTED_MIGRATIONS.length, 81);
-  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.version, 81);
+  assert.equal(COMMITTED_MIGRATIONS.length, 84);
+  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.version, 84);
   assert.equal(
     COMMITTED_MIGRATIONS.at(-1)?.filename,
-    "0081_hosted_v209_ordinary_avatar_predispatch_guard.sql",
+    "0084_hosted_v209_staged_click_cleanup.sql",
   );
   assertMigrationLedgerRows(COMMITTED_MIGRATIONS);
   const fixture = await verifyLocalFixture();
