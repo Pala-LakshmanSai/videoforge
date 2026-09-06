@@ -28,20 +28,26 @@ export const V208_SOULX_VOLUME_ID_SHA256 =
 export const V208_SOULX_VOLUME_MANIFEST_SHA256 =
   "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626" as const;
 export const V208_EXECUTION_ENTRYPOINT = "soulx-v208-qualification-v1" as const;
-// The 692bcb15 single-use authority was consumed by two cold/warm POSTs. Keep execution
-// fail-closed until the cold-IN_PROGRESS ordering repair receives fresh exact approval and its
-// deterministic authority successor passes an independent diff audit.
-export const V208_PENDING_PROPOSAL_SHA256: string | null = null;
-export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = false;
-export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null = null;
-export const V208_APPROVED_AUTHORITY_SHA256: string | null = null;
-export const V208_APPROVED_FINITE_CAP_USD: number | null = null;
-export const V208_APPROVED_IMAGE: string | null = null;
-export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null = null;
-export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null = null;
-export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = null;
-export const V208_APPROVED_BILLING_BASELINE_USD: number | null = null;
-export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null = null;
+// Single-use cold-IN_PROGRESS authority. Provider mutation remains fail-closed until this exact
+// authority-materialization successor passes its independent diff audit and fresh admission.
+export const V208_PENDING_PROPOSAL_SHA256: string | null =
+  "sha256:9e5d4eb98e9085009b338855858bc9eda6781ebf71e6a1f51b3fd032f215040c";
+export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = true;
+export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null =
+  "8b8d3e8736d69324cac566fb79884852fbc9a27f";
+export const V208_APPROVED_AUTHORITY_SHA256: string | null =
+  "sha256:1519139a480af0877f1a3996f477a0b685d312d55bc5d0ecb3626c7f24599edd";
+export const V208_APPROVED_FINITE_CAP_USD: number | null = 1.8494314167182893;
+export const V208_APPROVED_IMAGE: string | null =
+  "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e";
+export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null =
+  "73181707e49be61955af4f2891f4c7185a1c288f";
+export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null =
+  "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
+export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = "LOW";
+export const V208_APPROVED_BILLING_BASELINE_USD: number | null = 3.376928996265633;
+export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null =
+  5.226360412983922;
 
 export interface V208CompiledAuthority {
   readonly proposalSha256: string | null;
