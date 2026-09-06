@@ -1,28 +1,20 @@
 {
-  "schema_version": "videoforge.v2-08-soulx-approved-authority/v7",
+  "schema_version": "videoforge.v2-08-soulx-approved-authority/v8",
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE_BILLING_BASELINE_DRIFT",
+  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
   "single_use": true,
-  "consumed": true,
-  "reusable": false,
-  "consumption": {
-    "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-billing-baseline-drift-attempt.json",
-    "failure_evidence_sha256": "sha256:a5d94592ea2904c487350aaff7c8dc65e4e495be20affdf228c519bb27b6231e",
-    "runpod_job_posts": 0,
-    "r2_materializations": 0,
-    "attempt_spend_usd": 0,
-    "provider_inventory_clean": true
-  },
+  "consumed": false,
+  "reusable": true,
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
-    "proposal_sha256": "sha256:cbff56e5eb1ed367da7574abe7765068b38255b655b1b3251ef115755c38c5e1",
+    "proposal_sha256": "sha256:236bfadad6cfbab5b2a574de3a9d189325862c66dda79f45378f1a006e68e94f",
     "approval_statement_storage": "inline_exact_statement_in_user_approval_json",
-    "approval_statement_sha256": "sha256:169ef48a689ba315247138e7e492b2f802bed30672cdef89a56b7c8621096bfd",
+    "approval_statement_sha256": "sha256:3b158a0001dc7cc03d89a1523e80bed9f036e92e42266ff8f3f689d5b77365dd",
     "user_approval_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
-    "user_approval_sha256": "sha256:69dc87c35183bdbfb45e6b9339fcd5f340b66bff4b56b81e40e7dc2d952bb653",
-    "control_source_commit": "f333f06a5b7d96f8151b226def501d667d543d2c",
+    "user_approval_sha256": "sha256:2546b614c1f7ab84fa9a294d364b51cd01ffe7a914b756b0e66db9f3f57960db",
+    "control_source_commit": "1de1489e9eb802a0ebb7df91c32b4dd5261a0df4",
     "control_source_remote_ref": "refs/heads/codex/serverless-v2-roadmap-v4",
     "control_source_remote_verified": true,
     "precursor_source_commit": "251752b8b390fa69008e0abd49f73a6a65ae971a",
@@ -44,7 +36,7 @@
     "anonymous_descriptor_count": 24,
     "anonymous_full_readback_bytes": 5115594505,
     "all_descriptors_verified": true,
-    "fresh_proof_sha256": "sha256:21fe5a3c305f57bc48b20a12a8b31928d60b7ae3a0ddd6a2ca688d68f91aca24",
+    "fresh_proof_sha256": "sha256:50afd80fc6e847d136f8cdaffad949867dd1dbd312b549c2a072669b572318af",
     "source_labels_verified": true,
     "model_download_performed": false,
     "runpod_mutation_performed": false
@@ -67,9 +59,9 @@
     "region_fallback_authorized": false
   },
   "billing": {
-    "baseline_usd": 2.7231514439627063,
+    "baseline_usd": 2.7981025265471544,
     "finite_incremental_cap_usd": 1.8,
-    "cumulative_stop_threshold_usd": 4.523151443962706,
+    "cumulative_stop_threshold_usd": 4.598102526547154,
     "continued_existing_volume_retention_usd_per_month": 7
   },
   "execution": {
