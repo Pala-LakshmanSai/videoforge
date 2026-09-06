@@ -187,10 +187,7 @@ fixture("source path, current migration chain, and activation caps are hard-pinn
   );
   assert.equal(COMMITTED_MIGRATIONS.length, 84);
   assert.equal(COMMITTED_MIGRATIONS.at(-1)?.version, 84);
-  assert.equal(
-    COMMITTED_MIGRATIONS.at(-1)?.filename,
-    "0084_hosted_v209_staged_click_cleanup.sql",
-  );
+  assert.equal(COMMITTED_MIGRATIONS.at(-1)?.filename, "0084_hosted_v209_staged_click_cleanup.sql");
   assertMigrationLedgerRows(COMMITTED_MIGRATIONS);
   const fixture = await verifyLocalFixture();
   const plan = planFixture(fixture, scope, "2026-08-17T12:00:00Z");
