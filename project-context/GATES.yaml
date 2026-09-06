@@ -393,19 +393,19 @@ gates:
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
     current_candidate_proposal_sha256: "sha256:4d4b7cff2573ca466e0cc4d7b66519bfca14a5a82949265488ff1ce0f26c3ba6"
     current_candidate_acceptance_sha256: null
-    current_candidate_approval_sentence_sha256: null
+    current_candidate_approval_sentence_sha256: "sha256:b04c3bb27f790234100474d842719ea1102436ffc9e44b742fae9185c92664c1"
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: required_after_fresh_exact_approval
-    current_candidate_source_commit: null
+    authority_materialization_diff_audit: pending
+    current_candidate_source_commit: "44fe9c3b5488116aa9bc6e69d64061240d3864fc"
     immutable_image_source_commit: "0b09d6e9d72e868f0f9a6143dfad72147c193c64"
     approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
-    approved_authority_sha256: "sha256:44fe7966e0da3f00703626a49163ee1f40e5d5ba3481a473a7d030bb0a66661d"
-    approved_authority_status: consumed_not_qualified_warm_worker_reuse_unproven_clean
+    approved_authority_sha256: "sha256:7242c191588045f02e6f65cfa9ff483f26f0c0aab8591660bdfd1e321ccaa07e"
+    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
     runpod_mutation_performed: "One disposable endpoint/template created and deleted. Exactly two cold/warm POSTs completed with no redispatch; all five deterministic R2 keysets are absent and final compute is zero."
     gpu_seconds: unproven_two_completed_jobs_billing_unchanged
     observed_incremental_spend_usd: 0
-    current_blocker: fresh_exact_user_approval_for_proposal_4d4b7cff
+    current_blocker: independent_authority_diff_audit_and_fresh_admission_before_runpod_or_r2_mutation
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036"
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
     image_publication_workflow_run_id: 34009939213
@@ -424,7 +424,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: warm_prequeue_repair_sealed_provider_free_awaiting_fresh_exact_approval
+    result: warm_prequeue_authority_materialized_pending_independent_audit
 
   GATE_SOULX_LICENSE_001:
     status: open
