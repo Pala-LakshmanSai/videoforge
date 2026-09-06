@@ -391,7 +391,7 @@ gates:
     owner: V2-08
     last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-receipt-nonce-attempt.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:ea326f65537ea0cb07dd96606645209a4a2b977d348cbf7cbedb1e838b820780"
+    current_candidate_proposal_sha256: "sha256:a9bfe3d0aecf97f412ba1e1cde1a19c71fa4fe6457241e2b2bb79f1612a10bb1"
     current_candidate_acceptance_sha256: null
     current_candidate_approval_sentence_sha256: null
     current_candidate_validator: null
@@ -405,7 +405,7 @@ gates:
     runpod_mutation_performed: "Exactly two cold/warm RunPod job POSTs with no redispatch; both completed four outputs, but warm proof was rejected because both receipts used nonce 1; disposable lane and every generated R2 key were cleaned"
     gpu_seconds: unknown_two_completed_jobs_delayed_settlement_possible
     observed_incremental_spend_usd: posted_zero_with_usd_0_20_delayed_settlement_reserve
-    current_blocker: fresh_repaired_image_publication_and_qualification_proposal_and_exact_approval
+    current_blocker: fresh_publication_hash_repair_proposal_and_exact_approval_after_ea326f_push_only_attempt
     immutable_image: null
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
     image_publication_workflow_run_id: 33982211389

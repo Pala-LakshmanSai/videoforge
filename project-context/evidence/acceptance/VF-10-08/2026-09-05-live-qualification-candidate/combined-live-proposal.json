@@ -7,7 +7,7 @@
   "qualification_status": "NOT_QUALIFIED",
   "authority_mode": "NO_EXECUTABLE_AUTHORITY_FRESH_APPROVAL_REQUIRED",
   "proposal_kind": "ONE_EXACT_REPAIRED_IMAGE_PUBLICATION_AND_SINGLE_USE_QUALIFICATION_AFTER_RECEIPT_NONCE_REPAIR",
-  "reason_for_fresh_proposal": "Proposal sha256:106c97f6495d30fdd7c8c318c7e94fd8286c551b55784bd25ac119808abc24f5 posted exactly two cold/warm whole-span jobs with no redispatch. Both jobs completed and each generated four clips. Cold verification passed, but warm verification correctly rejected RECEIPT_NONCE_REPLAYED because the SoulX worker hardcoded receipt_nonce=1 for both distinct signed attempt IDs. No cancel, invalid, or timeout job was posted. Cleanup-only reconciliation deleted the disposable endpoint/template and all deterministic R2 input/output objects; three final reads proved zero compute/disposable resources and stable posted billing USD 2.828824442549376. The repair deterministically derives a positive JavaScript-safe receipt nonce from a domain-separated SHA-256 of the signed attempt_id and preserves verified output clips locally only after the entire receipt, every byte/hash, and every exact ffprobe check pass. Worker bytes changed, so this proposal authorizes exactly one new immutable image publication from the fresh clean repaired source, anonymous full verification, one deterministic authority successor, and one max-one qualification under a USD 2.00 cap including a USD 0.20 reserve for possible delayed settlement from the two completed prior jobs.",
+  "reason_for_fresh_proposal": "Proposal sha256:106c97f6495d30fdd7c8c318c7e94fd8286c551b55784bd25ac119808abc24f5 posted exactly two cold/warm whole-span jobs with no redispatch. Both jobs completed and each generated four clips. Cold verification passed, but warm verification correctly rejected RECEIPT_NONCE_REPLAYED because the SoulX worker hardcoded receipt_nonce=1 for both distinct signed attempt IDs. Cleanup deleted the disposable lane and all generated R2 objects; billing remained USD 2.828824442549376. The first nonce-repair publication proposal sha256:ea326f65537ea0cb07dd96606645209a4a2b977d348cbf7cbedb1e838b820780 was consumed after its exact source push only: a pre-dispatch audit found the publication workflow and Dockerfile still pinned the previous worker hash, so no workflow dispatch, image, RunPod/R2 mutation, GPU job, or spend occurred. This successor repairs every worker/Dockerfile publication hash gate, retains the deterministic signed-attempt receipt nonce and atomic verified-output preservation, and authorizes exactly one new immutable image publication from the fresh clean repaired source, anonymous full verification, one deterministic authority successor, and one max-one qualification under a USD 2.00 cap including a USD 0.20 reserve for possible delayed settlement from the prior completed jobs.",
   "prior_consumed_authority": {
     "materialization_commit": "d42deeb3540ee66dc413aaf587acf952e907b18a",
     "authority_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json",
@@ -22,6 +22,23 @@
     "cleanup_complete": true,
     "external_spend_usd": "POSTED_ZERO_DELAYED_SETTLEMENT_RESERVED_AT_USD_0_20",
     "reuse_authorized": false
+  },
+  "superseded_publication_preflight_attempt": {
+    "proposal_sha256": "sha256:ea326f65537ea0cb07dd96606645209a4a2b977d348cbf7cbedb1e838b820780",
+    "source_commit": "422a872f8fcee46fa040bb5cefcf2d5cedcede84",
+    "exact_push_completed": true,
+    "result": "FAILED_CLOSED_BEFORE_WORKFLOW_DISPATCH",
+    "failure_code": "V208_PUBLICATION_WORKFLOW_WORKER_HASH_STALE",
+    "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-publication-preflight-worker-hash.json",
+    "failure_evidence_sha256": "sha256:99956c5e0bd5770d7916d32d466ffbf1aa160ac95ee2dc42715420032c1c5ef8",
+    "workflow_dispatches": 0,
+    "registry_publications": 0,
+    "runpod_mutations": 0,
+    "r2_mutations": 0,
+    "gpu_jobs": 0,
+    "external_spend_usd": 0,
+    "approval_consumed": true,
+    "approval_reusable": false
   },
   "superseded_prior_publication_attempt": {
     "prior_source_commit": "c3bcac0902c607d69ce101c21b081d4926b33bd8",
@@ -228,7 +245,7 @@
     },
     "dockerfile": {
       "path": "workers/avatar-primary/Dockerfile.serverless",
-      "sha256": "sha256:bfd42540882998d98b9f48e68b69ccc6ec6d3efd8d674651d0f7812ad26b6cc6"
+      "sha256": "sha256:a45720b2eb221fee36aff6a3bb1f6be93cb92990f1c855b131336a0eb56d0e59"
     },
     "requirements": {
       "path": "workers/avatar-primary/requirements.serverless.txt",
@@ -236,12 +253,12 @@
     },
     "publication_workflow": {
       "path": ".github/workflows/avatar-primary-serverless-image.yml",
-      "sha256": "sha256:0135e6ff04d84992794f4d09a8dc79f20a28e81043a8269b40a95635c3667f70",
+      "sha256": "sha256:ba490c2d693a16da3cacf634a9761999d62003fa49352998f43de13563a7140d",
       "source_commit_must_equal": null
     },
     "publication_workflow_test": {
       "path": "workers/avatar-primary/tests/test_soulx_serverless_workflow.py",
-      "sha256": "sha256:54f5517f4eb13c776af7faa9965a270e376375c6b784359a90a5d51e31ebd64b"
+      "sha256": "sha256:d7671dac72352e6043702fa56b8c0339183b32073675a2201506e30b7afa660c"
     },
     "remote_source_publication": {
       "remote": "origin",

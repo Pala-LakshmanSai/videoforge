@@ -1,0 +1,30 @@
+{
+  "schema_version": "videoforge.v2-08-failed-publication-preflight/v1",
+  "checkpoint": "V2-08",
+  "stage": 7,
+  "proposal_sha256": "sha256:ea326f65537ea0cb07dd96606645209a4a2b977d348cbf7cbedb1e838b820780",
+  "approved_control_and_image_source": "422a872f8fcee46fa040bb5cefcf2d5cedcede84",
+  "exact_push_completed": true,
+  "remote_ref": "refs/heads/codex/serverless-v2-roadmap-v4",
+  "remote_head_after_push": "422a872f8fcee46fa040bb5cefcf2d5cedcede84",
+  "result": "FAILED_CLOSED_BEFORE_WORKFLOW_DISPATCH",
+  "failure_code": "V208_PUBLICATION_WORKFLOW_WORKER_HASH_STALE",
+  "exact_root_cause": "THE_IMAGE_WORKFLOW_PINNED_THE_PREVIOUS_SOULX_SERVERLESS_PY_SHA256_INSTEAD_OF_THE_RECEIPT_NONCE_REPAIR_BYTES",
+  "current_worker_sha256": "sha256:9c1ca1aba9b8a95e80b4b631c51c24f9a53d2cca926dda84672bf33cb6a49248",
+  "stale_workflow_worker_sha256": "sha256:f4d6d18ee858d7835316ee984cece8b8f95547bc42867d08b1d9adc3f1a73cc5",
+  "workflow_dispatches": 0,
+  "registry_publications": 0,
+  "image_artifacts": 0,
+  "runpod_mutations": 0,
+  "r2_mutations": 0,
+  "gpu_jobs": 0,
+  "external_spend_usd": 0,
+  "authority_materialized": false,
+  "approval_consumed": true,
+  "approval_reusable": false,
+  "repair_scope": [
+    ".github/workflows/avatar-primary-serverless-image.yml",
+    "workers/avatar-primary/tests/test_soulx_serverless_workflow.py"
+  ],
+  "stage_6_changed": false
+}

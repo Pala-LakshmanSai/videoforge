@@ -26,7 +26,7 @@ current_goal_boundary:
   paid_requests_or_spend: "Not authorized; cap is USD 0 until a fresh exact proposal is approved. Posted billing is USD 2.828824442549376 with USD 0.20 reserved for possible delayed settlement from the cleaned two-job attempt."
   runpod_mutation_or_gpu: "Not authorized. The prior cold and warm jobs completed generation, then warm proof failed on replayed nonce 1; cleanup proved zero disposable compute."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "Repair only the Stage 7 hardcoded receipt nonce and preserve fully verified local output copies before mandatory R2 cleanup; seal a fresh proposal and audit. Proposal 106c97f6 and authority 87968f10 are consumed/non-reusable. Stage 6 remains frozen."
+  provider_free_product_action: "The Stage 7 nonce and atomic verified-output repairs are complete. Proposal ea326f65/source 422a872f was consumed after its exact push only when pre-dispatch review found stale worker hashes in the image workflow and Dockerfile; no workflow dispatch, image, RunPod/R2 mutation, GPU job, or spend occurred. Repair publication hash gates, reseal, and request fresh exact approval. Stage 6 remains frozen."
   v2_08_prior_publication_attempt: "Workflow run 33961641686 failed before authentication/publication because TMPDIR_DIRECTORY_ABSENT; no immutable digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Its approval is consumed/non-reusable and invalidated by source drift. A second approved run 33962783745 at source 67af7d9a built only a local image, then failed before authentication/publication because LITERAL_BACKSLASH_IN_SINGLE_QUOTED_DOCKER_GO_TEMPLATE; no registry digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Both approvals are consumed/non-reusable; the fresh 4f2c5cb3 successor repairs only workflow quoting and requires separate exact approval."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
@@ -4340,9 +4340,9 @@ last_known_provider_resource_truth:
   ongoing_retained_volume_usd_per_month_total: 7.0
   cumulative_endpoint_spend_usd: 2.828824442549376
   v2_08_proposal: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
-  v2_08_proposal_sha256: "sha256:ea326f65537ea0cb07dd96606645209a4a2b977d348cbf7cbedb1e838b820780"
+  v2_08_proposal_sha256: "sha256:a9bfe3d0aecf97f412ba1e1cde1a19c71fa4fe6457241e2b2bb79f1612a10bb1"
   v2_08_acceptance_sha256: null
-  note: "Proposal 106c97f6 and authority 87968f10 were consumed after two completed cold/warm jobs; warm receipt proof rejected duplicate nonce 1. Cleanup proved zero compute/disposable resources and removed all generated R2 objects. Three billing reads were stable at USD 2.828824442549376; USD 0.20 remains reserved for possible delayed settlement. Fresh proposal ea326f65 awaits exact approval for one repaired image publication and max1 qualification."
+  note: "Proposal 106c97f6 and authority 87968f10 were consumed after the cleaned nonce failure. Proposal ea326f65/source 422a872f was consumed after its exact push only and stopped before workflow dispatch on stale publication hash guards. No image/provider/spend resulted. Fresh proposal a9bfe3d0 awaits exact approval for one repaired image publication and max1 qualification."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_SOULX_001
@@ -6055,10 +6055,10 @@ recommended_next_task:
   authorized_operations: []
   allowed_operations: []
   rate_snapshot: [runpod_serverless_flex_rtx4090_eu_ro_1_usd_1_116_per_gpu_hour, retained_volumes_usd_7_per_month_combined]
-  authority_note: "Proposal 106c97f6 and authority 87968f10 at execution commit d42deeb are consumed and non-reusable. Cold and warm each completed four clips, but warm receipt verification rejected replayed nonce 1. Exactly two job POSTs, no redispatch, no fault jobs. Disposable lane and generated R2 objects are absent; three billing reads remained USD 2.828824442549376, with USD 0.20 reserved for possible delayed settlement. No Stage 6 change or rerun."
+  authority_note: "Proposal 106c97f6 and authority 87968f10 are consumed after the cleaned nonce failure. Proposal ea326f65/source 422a872f is also consumed/non-reusable after its exact push only; publication stopped before workflow dispatch because the workflow/Dockerfile pinned the prior worker hash. No image, RunPod/R2 mutation, GPU job, or new spend occurred. Fresh proposal approval is required."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
-  successor_proposal_sha256: "sha256:ea326f65537ea0cb07dd96606645209a4a2b977d348cbf7cbedb1e838b820780"
+  successor_proposal_sha256: "sha256:a9bfe3d0aecf97f412ba1e1cde1a19c71fa4fe6457241e2b2bb79f1612a10bb1"
   superseded_proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
   superseded_proposal_record_commit: 4b8a6ef83772fea44701129154ae4d69833498eb
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
