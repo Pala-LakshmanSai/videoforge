@@ -393,19 +393,19 @@ gates:
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
     current_candidate_proposal_sha256: "sha256:e197999886a45c2d787a4b26c2b4846470a5f84b4c0fc0863e9b502a03ed5a0e"
     current_candidate_acceptance_sha256: null
-    current_candidate_approval_sentence_sha256: null
+    current_candidate_approval_sentence_sha256: "sha256:907595574f5b28a5ddffbc0f648ea679190ff20870f28dc421f82c5e6cb658b2"
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: required_after_fresh_exact_approval
-    current_candidate_source_commit: null
+    authority_materialization_diff_audit: pending
+    current_candidate_source_commit: "f7a30a80e3ce2df58c8c01fa582efde4af00ef15"
     immutable_image_source_commit: "0b09d6e9d72e868f0f9a6143dfad72147c193c64"
     approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
-    approved_authority_sha256: "sha256:9cd7d777e8bfa98405ac8b4613b313293f57aaa7baeee2911de3fef8c72bb9b6"
-    approved_authority_status: consumed_not_qualified_billing_baseline_drift_clean
+    approved_authority_sha256: "sha256:744914e10d80700b2d2e4ab8497c3a1bb0f3ca50a78b40afd04fb426c8909aff"
+    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
     runpod_mutation_performed: "Zero. Fresh pre-mutation reads found billing baseline drift; zero endpoint/template/R2/job mutation, zero POSTs, zero GPU seconds, and no redispatch."
     gpu_seconds: 0
     observed_incremental_spend_usd: 0
-    current_blocker: fresh_exact_user_approval_for_proposal_e1979998
+    current_blocker: independent_authority_diff_audit_before_runpod_or_r2_access
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036"
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
     image_publication_workflow_run_id: 34009939213
@@ -424,7 +424,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: billing_baseline_drift_clean_provider_free_resealed_awaiting_fresh_exact_approval
+    result: reduced_cap_authority_materialized_pending_independent_audit
 
   GATE_SOULX_LICENSE_001:
     status: open

@@ -4,29 +4,29 @@ updated_at: "2026-09-06"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_08_billing_baseline_drift_clean_awaiting_fresh_approval
+current_milestone: v2_08_reduced_cap_authority_materialized_pending_audit
 current_task: VF-10-08
 current_wave: v2_08_soulx_serial_certification_after_v2_07_pass
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_reconciliation_complete
+task_stage: bounded_mutation
 application_code_changes_authorized: true
-provider_calls_authorized: false
+provider_calls_authorized: true
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: false
-credential_access_authorized: false
-gpu_use_authorized: false
-maximum_external_spend_usd: 0
+remote_or_cloud_mutations_authorized: true
+credential_access_authorized: true
+gpu_use_authorized: true
+maximum_external_spend_usd: 1.8494314167182893
 
 current_goal_boundary:
-  mode: v2_08_billing_baseline_drift_clean_awaiting_fresh_approval
-  live_provider_calls: "No provider mutation or job is authorized. Fresh exact source-bound approval is required."
-  remote_mutation: false
+  mode: v2_08_reduced_cap_authority_materialized_pending_audit
+  live_provider_calls: "One exact max-one five-job Stage 7 qualification is authorized only after the independent authority diff audit passes."
+  remote_mutation: true
   deployment_or_publication: "No second image publication is needed or authorized; immutable image 75c5999b remains available for a fresh reuse-only proposal."
-  credential_value_access: "Not authorized while the replacement proposal awaits fresh exact approval."
-  paid_requests_or_spend: "USD 0 executable cap. Replacement proposal requests at most USD 1.8494314167182893 incremental from stable baseline USD 2.9793930258310866 under unchanged stop USD 4.828824442549376."
-  runpod_mutation_or_gpu: "Not authorized. Proposal c7501e25 authority was consumed by billing-baseline drift before mutation; fallback remains forbidden."
+  credential_value_access: "Authorized only through the sealed V2-08 launcher for this single-use qualification after the independent audit passes."
+  paid_requests_or_spend: "Hard USD 1.8494314167182893 incremental cap from baseline USD 2.9793930258310866 and cumulative stop USD 4.828824442549376."
+  runpod_mutation_or_gpu: "Authorized after independent diff audit: exact RTX 4090 EU-RO-1, workersMin 0/workersMax 1, exactly five jobs, no redispatch or fallback, mandatory cleanup."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "Proposal c7501e25 and successor 75062eb3 passed audit but were consumed by a fresh billing-baseline drift with zero RunPod/R2 mutation. Proposal e1979998 is sealed at the new baseline and reduced cap awaiting fresh exact approval. Stage 6 remains frozen."
+  provider_free_product_action: "Proposal e1979998 is exactly approved at pushed control f7a30a80 and its one deterministic authority successor is materialized pending independent audit. Stage 6 remains frozen."
   v2_08_prior_publication_attempt: "Workflow run 33961641686 failed before authentication/publication because TMPDIR_DIRECTORY_ABSENT; no immutable digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Its approval is consumed/non-reusable and invalidated by source drift. A second approved run 33962783745 at source 67af7d9a built only a local image, then failed before authentication/publication because LITERAL_BACKSLASH_IN_SINGLE_QUOTED_DOCKER_GO_TEMPLATE; no registry digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Both approvals are consumed/non-reusable; the fresh 4f2c5cb3 successor repairs only workflow quoting and requires separate exact approval."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
@@ -4030,10 +4030,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: none_billing_baseline_drift_fresh_exact_approval_required
+  provider_mode: staging
+  provider_calls_authorized: true
+  authorized_spend_usd: 1.8494314167182893
+  provider_authority_scope: v2_08_reduced_cap_single_use_max1_pending_independent_audit
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -4357,7 +4357,7 @@ blocking_gates_for_production:
 
 active_ownership: []
 in_progress_checkpoint: V2-08
-certification_checkpoint: V2_08_BILLING_BASELINE_DRIFT_CLEAN_AWAITING_FRESH_APPROVAL
+certification_checkpoint: V2_08_REDUCED_CAP_AUTHORITY_MATERIALIZED_PENDING_AUDIT
 
 provider_authority_closed: &v2_07_provider_authority_closed
   mode: none
@@ -5995,20 +5995,20 @@ provider_authority_attempt78: &v2_07_provider_authority_attempt78
       usd_per_unit: 0.07
       checked_at: "2026-09-04T23:14:00+05:30"
 
-provider_authority: &v2_08_consumed_billing_drift_authority
-  mode: none
-  provider: null
-  cap_usd: 0
+provider_authority: &v2_08_approved_reduced_cap_authority
+  mode: paid
+  provider: runpod
+  cap_usd: 1.8494314167182893
   non_transferable: true
   source: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
   authorized_by_user_at: "2026-09-06"
-  proposal_sha256: "sha256:c7501e25f5f8ccdaffbccbdb313f76e0bf5dde0d7b49705050f3aa6f596d7752"
+  proposal_sha256: "sha256:e197999886a45c2d787a4b26c2b4846470a5f84b4c0fc0863e9b502a03ed5a0e"
   authority: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json
-  authority_sha256: "sha256:9cd7d777e8bfa98405ac8b4613b313293f57aaa7baeee2911de3fef8c72bb9b6"
-  consumed: true
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
+  authority_sha256: "sha256:744914e10d80700b2d2e4ab8497c3a1bb0f3ca50a78b40afd04fb426c8909aff"
+  consumed: false
+  resources: [v208_disposable_soulx_max1_endpoint, v208_disposable_soulx_private_template, v208_exact_generated_r2_keys, v208_existing_soulx_50gb_volume]
+  authorized_operations: [fresh_preflight, anonymous_image_reverification, create_disposable_lane, five_exact_jobs, preserve_verified_outputs, cleanup, three_final_zero_reads]
+  allowed_operations: [fresh_preflight, anonymous_image_reverification, create_disposable_lane, five_exact_jobs, preserve_verified_outputs, cleanup, three_final_zero_reads]
   model_id: Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1
@@ -6023,39 +6023,39 @@ provider_authority: &v2_08_consumed_billing_drift_authority
 recommended_next_task:
   task_id: VF-10-08
   checkpoint: V2-08
-  milestone: v2_08_billing_baseline_drift_clean_awaiting_fresh_approval
-  status: V2_08_BILLING_BASELINE_DRIFT_CLEAN_AWAITING_FRESH_APPROVAL
+  milestone: v2_08_reduced_cap_authority_materialized_pending_audit
+  status: V2_08_REDUCED_CAP_AUTHORITY_MATERIALIZED_PENDING_AUDIT
   dependency_status: v2_07_mage_live_qualified_attempt85_clean
-  authorization_status: no_executable_authority_consumed_billing_drift_clean
-  task_stage: provider_free_reconciliation_complete
-  current_goal_authority: null
-  current_goal_authority_sha256: null
-  provider_authority: *v2_08_consumed_billing_drift_authority
-  provider_mode: fixture
+  authorization_status: exact_single_use_authority_materialized
+  task_stage: bounded_mutation
+  current_goal_authority: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json
+  current_goal_authority_sha256: "sha256:744914e10d80700b2d2e4ab8497c3a1bb0f3ca50a78b40afd04fb426c8909aff"
+  provider_authority: *v2_08_approved_reduced_cap_authority
+  provider_mode: staging
   read_profile: v2_08_soulx_serverless
   task_brief: tasks/VF-10-08.md
-  goal: "Obtain fresh exact approval for the reduced-cap Stage 7 proposal after clean provider-free billing-baseline reconciliation."
-  provider_calls_authorized: false
+  goal: "Independently audit the reduced-cap authority successor, then execute the bounded SoulX max1 qualification and mandatory cleanup."
+  provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
-  credential_value_read_authorized: false
+  maximum_external_spend_usd: 1.8494314167182893
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
+  credential_value_read_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  gpu_use_authorized: true
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
   application_code_changes_authorized: true
   model_id: Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
+  resources: [v208_disposable_soulx_max1_endpoint, v208_disposable_soulx_private_template, v208_exact_generated_r2_keys, v208_existing_soulx_50gb_volume]
+  authorized_operations: [fresh_preflight, anonymous_image_reverification, create_disposable_lane, five_exact_jobs, preserve_verified_outputs, cleanup, three_final_zero_reads]
+  allowed_operations: [fresh_preflight, anonymous_image_reverification, create_disposable_lane, five_exact_jobs, preserve_verified_outputs, cleanup, three_final_zero_reads]
   rate_snapshot: [runpod_serverless_flex_rtx4090_eu_ro_1_usd_1_116_per_gpu_hour, retained_volumes_usd_7_per_month_combined]
-  authority_note: "Proposal c7501e25 and authority 9f425a55 were consumed by fresh billing-baseline drift before any RunPod/R2 mutation. Proposal e1979998 uses stable baseline USD 2.9793930258310866 and reduced cap USD 1.8494314167182893; fresh exact approval is required."
+  authority_note: "Proposal e1979998 at exact pushed control f7a30a80 is approved for one reuse-only max1 five-job qualification after independent diff audit. No image publication/republication, fallback, Stage 6 change/rerun, or V2-09."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
   successor_proposal_sha256: "sha256:e197999886a45c2d787a4b26c2b4846470a5f84b4c0fc0863e9b502a03ed5a0e"
@@ -6064,8 +6064,8 @@ recommended_next_task:
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: v2_08_billing_baseline_drift_clean_provider_free_resealed
-  execution_blocker: fresh_exact_user_approval_for_proposal_e1979998
+  execution_status: v2_08_reduced_cap_authority_materialized_pending_independent_audit
+  execution_blocker: v2_08_materialization_diff_audit_before_runpod_or_r2_access
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
