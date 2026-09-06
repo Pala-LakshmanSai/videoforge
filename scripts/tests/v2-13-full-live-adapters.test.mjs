@@ -2835,7 +2835,8 @@ test("prequalification bootstrap executes the exact manifest tail through a lock
     readFileSync("packages/control-plane/migrations/manifest.json", "utf8"),
   );
   const rows = (count) =>
-    manifest.migrations.slice(0, 49)
+    manifest.migrations
+      .slice(0, 49)
       .slice(0, count)
       .map(({ version, name, filename, sha256 }) => `${version}\t${name}\t${filename}\t${sha256}`)
       .join("\n");
@@ -4973,7 +4974,8 @@ test("post-consumption production-secret bootstrap binds every protected copy an
     readFileSync("packages/control-plane/migrations/manifest.json", "utf8"),
   );
   const rows = (count) =>
-    manifest.migrations.slice(0, 49)
+    manifest.migrations
+      .slice(0, 49)
       .slice(0, count)
       .map(({ version, name, filename, sha256 }) => `${version}\t${name}\t${filename}\t${sha256}`)
       .join("\n");

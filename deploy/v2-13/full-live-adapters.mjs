@@ -5607,7 +5607,10 @@ function prequalificationManifest() {
   }
   // The consumed V2-13 authority covers exactly migrations 1..49. Validate the complete current
   // manifest above, but never let later additive checkpoint migrations widen that execution scope.
-  return Object.freeze({ ...manifest, migrations: Object.freeze(manifest.migrations.slice(0, 49)) });
+  return Object.freeze({
+    ...manifest,
+    migrations: Object.freeze(manifest.migrations.slice(0, 49)),
+  });
 }
 
 function prequalificationRoleReadbackSql(role) {
