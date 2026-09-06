@@ -438,6 +438,12 @@
       "name": "hosted_prompt_writer_v2_profile",
       "filename": "0073_hosted_prompt_writer_v2_profile.sql",
       "sha256": "sha256:59d6af63ba2d8eafc7c93eb4cc255d162253aa2cb433183ab251eb404dc6fd9e"
+    },
+    {
+      "version": 74,
+      "name": "hosted_v209_ordinary_dispatch",
+      "filename": "0074_hosted_v209_ordinary_dispatch.sql",
+      "sha256": "sha256:7f0dc293788eed07e44c7de7274a88ef058d3728600088f154c34a84d8553ddc"
     }
   ]
 }
