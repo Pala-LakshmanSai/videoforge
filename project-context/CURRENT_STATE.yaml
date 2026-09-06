@@ -4,7 +4,7 @@ updated_at: "2026-09-07"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_read_only_preflight_repair_canonical_green_pending_context_audit_and_replacement_approval
+current_milestone: v2_09_read_only_preflight_redirect_repair_canonical_green_pending_context_audit_and_replacement_approval
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -18,20 +18,20 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_read_only_preflight_repair_canonical_green_pending_context_audit_and_replacement_approval
-  live_provider_calls: "Proposal 9e5d4eb9 passed the exact five-job qualification and is consumed; no further RunPod mutation or job POST, R2 mutation, GPU use, or spend is authorized. The initial V2-09 bounded read-only preflight authority was consumed by one execution that failed closed on a provider-free GHCR duplicate-layer false positive; no further provider read is authorized pending fresh exact replacement approval."
+  mode: v2_09_read_only_preflight_redirect_repair_canonical_green_pending_context_audit_and_replacement_approval
+  live_provider_calls: "Proposal 9e5d4eb9 passed the exact five-job qualification and is consumed; no further RunPod mutation or job POST, R2 mutation, GPU use, or spend is authorized. The initial V2-09 bounded read-only preflight and exact replacement proposal 67b08992 were each consumed by one execution; the replacement made exactly one read-only account GraphQL POST, six authenticated RunPod GETs, and anonymous GHCR reads, then failed closed on GHCR blob-redirect shape before proof emission. No further provider read is authorized pending fresh exact replacement approval."
   remote_mutation: false
   deployment_or_publication: "Existing immutable image f3b1d141 was freshly anonymously reverified without publication; no publication or republication is authorized."
-  credential_value_access: "The initial V2-09 bounded read-only preflight consumed its one configured RunPod credential read and failed closed without emitting a proof. No further credential read is authorized pending fresh exact replacement approval."
+  credential_value_access: "The initial and replacement V2-09 bounded read-only preflights each consumed one configured RunPod credential read and failed closed without emitting a proof. No further credential read is authorized pending fresh exact replacement approval."
   paid_requests_or_spend: "Closed at USD 0.08383633207995445 observed increment and USD 3.4607653283455875 cumulative billing; no remaining executable cap."
   runpod_mutation_or_gpu: "Qualification passed and cleanup proved zero compute; no further RunPod mutation or GPU use is authorized."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "V2-09 source 7697707e2202be357593f187c6371d67a5dee5d9 removes only the invalid GHCR global descriptor-uniqueness check and adds a repeated-layer regression; focused tests pass 6/6, independent repair audit is P0=0/P1=0, and CI=1 TURBO_FORCE=true pnpm verify passed with 506/506 script tests, 431/431 control-plane tests, and 44/44 installed-Chrome tests. The accepted V2-07 and V2-08 qualifications are frozen predecessors; Stage 6 and Stage 7 were not and must not be rerun or modified."
+  provider_free_product_action: "V2-09 source 263775afcf3fdaa701587d4bd5480a7782adf18c preserves the repeated-layer repair, binds the credential read to one O_NOFOLLOW descriptor with stable inode/security metadata, and accepts only exact signed GHCR ghcr/ghcrblobs shard redirects without forwarding authorization. Focused tests pass 10/10, independent repair audit is P0=0/P1=0, and CI=1 TURBO_FORCE=true pnpm verify passed with 506/506 script tests, 431/431 control-plane tests, and 44/44 installed-Chrome tests. The accepted V2-07 and V2-08 qualifications are frozen predecessors; Stage 6 and Stage 7 were not and must not be rerun or modified."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "The historical V2-13 v5 proposal is separate, unapproved, and not executable from this V2-09 task. Independently audit the canonical-green context successor for the provider-free GHCR repair, then request fresh exact replacement authority for one bounded read-only preflight."
+  note: "The historical V2-13 v5 proposal is separate, unapproved, and not executable from this V2-09 task. Independently audit the canonical-green context successor for provider-free source 263775af, then request fresh exact replacement authority for one bounded read-only preflight."
 
 v2_09_provider_free_candidate:
-  source_commit: "7697707e2202be357593f187c6371d67a5dee5d9"
+  source_commit: "263775afcf3fdaa701587d4bd5480a7782adf18c"
   source_audit: "PASS_INDEPENDENT_FOCUSED_P0_0_P1_0"
   canonical_provider_free_verification: PASS_506_SCRIPT_431_CONTROL_PLANE_44_INSTALLED_CHROME
   production_state: DISABLED_UNQUALIFIED
@@ -52,7 +52,7 @@ v2_09_provider_free_candidate:
   media_worker_release: "media-worker-v0.1.15 is an unpublished candidate; do not publish, install, or replace v0.1.14 without fresh exact authority."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
   provider_state: "No provider call, credential read, database/R2 mutation, publication, deployment, GPU use, or spend occurred while producing or materializing this candidate."
-  current_authority: "The initial bounded read-only V2-09 preflight authority was consumed by one clean failed execution. No provider or credential read is currently authorized; one replacement bounded read-only preflight requires fresh exact approval after this canonical-green context successor passes independent audit. Any git push, migration/grant application, media publication/install, RunPod/Cloudflare/R2 mutation, Chrome E2E dispatch, GPU use, or spend requires fresh exact V2-09 authority."
+  current_authority: "The initial bounded read-only V2-09 preflight and exact replacement proposal 67b08992 were each consumed by one clean failed execution. No provider or credential read is currently authorized; another replacement bounded read-only preflight requires fresh exact approval after this canonical-green context successor passes independent audit. Any git push, migration/grant application, media publication/install, RunPod/Cloudflare/R2 mutation, Chrome E2E dispatch, GPU use, or spend requires fresh exact V2-09 authority."
 
 fixture_user_walkthrough:
   status: SUPERSEDED_BY_PRIVATE_HOSTED_BETA
@@ -218,10 +218,10 @@ hosted_beta_user_walkthrough:
   deployment_candidate: null
   deployed_source_commit: "29667134b17daa9723495d028ec22c4eeaee3ee3"
   cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
-  pending_source_candidate: "V2-09 provider-free GHCR preflight repair source 7697707e2202be357593f187c6371d67a5dee5d9 passed focused 6/6, independent repair audit P0=0/P1=0, and canonical verification with 506/506 script, 431/431 control-plane, and 44/44 installed-Chrome tests; context audit remains before fresh exact replacement read-only preflight approval; production is disabled and undeployed"
+  pending_source_candidate: "V2-09 provider-free preflight repair source 263775afcf3fdaa701587d4bd5480a7782adf18c passed focused 10/10, independent repair audit P0=0/P1=0, and canonical verification with 506/506 script, 431/431 control-plane, and 44/44 installed-Chrome tests; context audit remains before fresh exact replacement read-only preflight approval; production is disabled and undeployed"
   pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
-  pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. COMPLETE_INDEPENDENT_CONTEXT_AUDIT_FOR_CANONICAL_GREEN_GHCR_REPAIR_SOURCE_7697707E, THEN_REQUEST_FRESH_EXACT_REPLACEMENT_READ_ONLY_PREFLIGHT_APPROVAL."
-  pending_validations: "Independent context audit for the canonical-green GHCR duplicate-layer repair successor remains before fresh exact replacement read-only preflight approval."
+  pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. COMPLETE_INDEPENDENT_CONTEXT_AUDIT_FOR_CANONICAL_GREEN_PREFLIGHT_REPAIR_SOURCE_263775AF, THEN_REQUEST_FRESH_EXACT_REPLACEMENT_READ_ONLY_PREFLIGHT_APPROVAL."
+  pending_validations: "Independent context audit for canonical-green preflight repair source 263775af remains before fresh exact replacement read-only preflight approval."
   latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 29667134b17daa9723495d028ec22c4eeaee3ee3 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.14 ALREADY PUBLISHED INSTALLED AND ACTIVE DO NOT REPUBLISH OR REINSTALL; DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD TOTAL NEW VARIABLE EXTERNAL SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; ENABLE IMAGE KEYWORDS WITH A BOUNDED TEST VALUE AND USE REAL CHROME TO VERIFY STAGE 5 COMPLETION, COMPACT PROMPTS, ONLY PINNED MEDIUM REALISM CAMERA AND LIGHTING STYLE CUES, NO PALETTE OR HEX OR OTHER REMOVED STYLE METADATA, AND THE ENABLED IMAGE KEYWORDS EXACTLY ONCE IN EVERY POSITIVE SCENE PROMPT; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
   latest_live_run: "Approved source 29667134 deployed once as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6 with media worker 0.1.14 already active. Exactly one project f7655814-1b12-40c7-b0d5-993ad0c074e2 passed the 2,152,579,950-byte free-space gate with 2,944,651,264 bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 prompts, settled USD 0.001401, and conserved the reservation; total Stage 3+5 variable spend was USD 0.001473. Real Chrome verified the 520px scrollable prompt viewer, exact once-per-prompt enabled keywords, four pinned style fields, and zero removed style metadata hits. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   deployed_config_sha256: "cf25f25a7829deba82a3d16b44ddf64cf3238577e409f25570921c8514bff858"
@@ -566,7 +566,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. Independently audit the canonical-green context successor for V2-09 GHCR repair source 7697707e2202be357593f187c6371d67a5dee5d9, then request fresh exact replacement authority for one bounded read-only preflight from a clean detached or separate worktree at that executable source."
+  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. Independently audit the canonical-green context successor for V2-09 preflight repair source 263775afcf3fdaa701587d4bd5480a7782adf18c, then request fresh exact replacement authority for one bounded read-only preflight from a clean detached or separate worktree at that executable source."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -1009,9 +1009,9 @@ provider_free_product_progress:
   guarded_pair_workflow_commit: "4239be9"
   guarded_pair_workflow_status: PROVIDER_FREE_PASS_independently_audited_migration_0044_not_deployed_disabled_unqualified
   guarded_pair_workflow_note: "The guarded Workflow wires atomic pair scheduling, exact RunPod lane adapters, bounded cancellation/recovery, callback settlement, and durable zero-worker evidence. Migration 0044 now verifies the persisted V2-09 admission, fresh nonfuture provider billing, exact terminal pair, phase cap, and cumulative baseline/ledger/reservation exposure atomically with settlement; direct unguarded settlement remains ungranted. Fresh independent audit is required. Production remains DISABLED_UNQUALIFIED and no bindings, secrets, roles, config, or migrations were deployed."
-  hosted_v209_ordinary_production_integration_commit: "7697707e2202be357593f187c6371d67a5dee5d9"
-  hosted_v209_ordinary_production_integration_status: PROVIDER_FREE_GHCR_REPAIR_AND_CANONICAL_PASS_CONTEXT_AUDIT_PENDING
-  hosted_v209_ordinary_production_integration_note: "Source 7697707e2202be357593f187c6371d67a5dee5d9 preserves the cd91d00a lifecycle implementation and changes only the GHCR preflight validator plus regression. The consumed read-only preflight proved the sealed SoulX manifest contains three legitimate repeated empty-layer descriptors; immutable manifest hashing already binds exact order and every occurrence remains byte/digest/size verified. Focused tests pass 6/6, independent repair audit passed P0=0/P1=0, and CI=1 TURBO_FORCE=true pnpm verify passed with 506/506 script tests, 431/431 control-plane tests, and 44/44 installed-Chrome tests. No deployment, Stage 6/7 rerun, GPU use, provider mutation, or spend occurred."
+  hosted_v209_ordinary_production_integration_commit: "263775afcf3fdaa701587d4bd5480a7782adf18c"
+  hosted_v209_ordinary_production_integration_status: PROVIDER_FREE_CREDENTIAL_AND_GHCR_REDIRECT_REPAIR_CANONICAL_PASS_CONTEXT_AUDIT_PENDING
+  hosted_v209_ordinary_production_integration_note: "Source 263775afcf3fdaa701587d4bd5480a7782adf18c preserves the cd91d00a lifecycle and 7697707e repeated-layer repair. It binds the credential read to one O_NOFOLLOW descriptor with stable inode/security metadata and admits only the exact signed GHCR ghcr/ghcrblobs shard redirect while withholding registry authorization and retaining exact per-occurrence byte/digest/size verification. Focused tests pass 10/10, independent repair audit passed P0=0/P1=0, and CI=1 TURBO_FORCE=true pnpm verify passed with 506/506 script tests, 431/431 control-plane tests, and 44/44 installed-Chrome tests. No deployment, Stage 6/7 rerun, GPU use, provider mutation, or spend occurred while producing the repair."
   hosted_v209_historical_provider_free_gate:
     source_commit: "cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d"
     command: "CI=1 TURBO_FORCE=true pnpm verify"
@@ -1030,7 +1030,7 @@ provider_free_product_progress:
     external_spend_usd: 0
     remote_mutations: 0
   hosted_v209_current_provider_free_gate:
-    source_commit: "7697707e2202be357593f187c6371d67a5dee5d9"
+    source_commit: "263775afcf3fdaa701587d4bd5480a7782adf18c"
     focused_independent_source_audit: PASS_P0_0_P1_0
     canonical_command: "CI=1 TURBO_FORCE=true pnpm verify"
     canonical_status: PASS_EXIT_0
@@ -1050,11 +1050,15 @@ provider_free_product_progress:
   hosted_v209_read_only_preflight_commit: "1c93ab69ecae516b0e940f01395ea9dbae92c988"
   hosted_v209_read_only_preflight_status: CONSUMED_FAILED_CLEAN_GHCR_DUPLICATE_LAYER_FALSE_POSITIVE_NO_PROOF
   hosted_v209_read_only_preflight_note: "One bounded read-only execution at cd91d00a made only its fixed provider reads and failed closed with V2_09_READ_ONLY_PREFLIGHT_GHCR_DESCRIPTOR_DRIFT before emitting proof. No mutation, job POST, DB/R2 call, GPU, or spend occurred; the disposable detached worktree and empty temporary output were removed. Provider-free evidence proves the failure was the invalid uniqueness check against three legitimate repeated SoulX empty-layer descriptors. No redispatch or further provider read is authorized pending fresh exact replacement approval."
+  hosted_v209_replacement_read_only_preflight_source: "7697707e2202be357593f187c6371d67a5dee5d9"
+  hosted_v209_replacement_read_only_preflight_proposal_sha256: "sha256:67b08992fb98035f3595e55b0511e98088a4a9c8d9b2faf27cec5f7b1eb3ba31"
+  hosted_v209_replacement_read_only_preflight_status: CONSUMED_FAILED_CLEAN_GHCR_BLOB_REDIRECT_NO_PROOF
+  hosted_v209_replacement_read_only_preflight_note: "The exact replacement authority was consumed once at 7697707e. It securely read the configured credential once, made exactly one read-only RunPod account GraphQL POST, six authenticated RunPod GETs, and anonymous GHCR reads, then failed closed with V2_09_READ_ONLY_PREFLIGHT_GHCR_BLOB_REDIRECT before proof emission. The output file was mode-0600 and zero bytes; the detached worktree and temporary directory were removed. No mutation, job POST, DB/R2 call, GPU, or spend occurred. No redispatch or further provider read is authorized pending fresh exact replacement approval."
   hosted_v209_frozen_script_fixture_commit: "aea6f74886b4cda72526dbbd0b6dc9dac3dfd4a6"
   hosted_v209_frozen_script_fixture_status: HISTORICAL_PASS_498_OF_498_AT_CC74BA4A
-  hosted_v209_frozen_script_fixture_note: "The historical canonical provider-free gate at cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d reverified 498/498 script tests at migration head 0080. GHCR repair source 7697707e independently passed its own canonical gate with 506/506 script tests at migration head 0084. Consumed V2-13 authority remains pinned to its historical scope."
+  hosted_v209_frozen_script_fixture_note: "The historical canonical provider-free gate at cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d reverified 498/498 script tests at migration head 0080. Preflight repair source 263775af independently passed its own canonical gate with 506/506 script tests at migration head 0084. Consumed V2-13 authority remains pinned to its historical scope."
   remaining_provider_free_activation_blockers:
-    - independent_context_audit_for_canonical_green_ghcr_repair_source_7697707e
+    - independent_context_audit_for_canonical_green_preflight_repair_source_263775af
     - fresh_exact_replacement_approval_for_one_bounded_read_only_preflight
     - execute_one_replacement_bounded_read_only_preflight_and_record_current_redacted_facts
     - fresh_exact_v2_09_deployment_and_spend_proposal_and_user_approval
@@ -1070,7 +1074,7 @@ provider_free_product_progress:
     - internal_network_log_database_runpod_r2_lineage_cost_and_failure_monitoring
     - terminal_jobs_zero_active_workers_and_failure_cleanup_with_only_existing_volumes_retained
   remaining_live_blockers:
-    - independent_context_audit_for_canonical_green_ghcr_repair_source_7697707e
+    - independent_context_audit_for_canonical_green_preflight_repair_source_263775af
     - fresh_exact_replacement_read_only_preflight_approval_and_execution
     - fresh_exact_v2_09_authority
     - production_deployment_and_real_chrome_e2e
@@ -6133,9 +6137,9 @@ provider_authority: &v2_09_provider_authority_read_only
   cap_usd: 0
   non_transferable: true
   source: "7697707e2202be357593f187c6371d67a5dee5d9"
-  authorized_by_user_at: "2026-09-06"
-  proposal_sha256: null
-  authority: "Initial V2-09 paid-checkpoint read-only bootstrap consumed by one failed-closed execution; replacement not authorized."
+  authorized_by_user_at: "2026-09-07"
+  proposal_sha256: "sha256:67b08992fb98035f3595e55b0511e98088a4a9c8d9b2faf27cec5f7b1eb3ba31"
+  authority: "Exact V2-09 replacement bounded read-only preflight consumed by one failed-closed GHCR blob-redirect execution; another replacement is not authorized."
   authority_sha256: null
   consumed: true
   reusable: false
@@ -6153,10 +6157,10 @@ provider_authority: &v2_09_provider_authority_read_only
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_read_only_preflight_repair_canonical_green_pending_context_audit_and_replacement_approval
-  status: READ_ONLY_PREFLIGHT_REPAIR_CANONICAL_GREEN_PENDING_CONTEXT_AUDIT_AND_REPLACEMENT_APPROVAL
+  milestone: v2_09_read_only_preflight_redirect_repair_canonical_green_pending_context_audit_and_replacement_approval
+  status: READ_ONLY_PREFLIGHT_REDIRECT_REPAIR_CANONICAL_GREEN_PENDING_CONTEXT_AUDIT_AND_REPLACEMENT_APPROVAL
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
-  authorization_status: prior_bounded_read_only_preflight_consumed_replacement_not_authorized
+  authorization_status: replacement_bounded_read_only_preflight_consumed_another_replacement_not_authorized
   task_stage: read_only_preflight
   current_goal_authority: null
   current_goal_authority_sha256: null
@@ -6207,7 +6211,7 @@ recommended_next_task:
   authorized_operations: *v2_09_read_only_operations
   allowed_operations: *v2_09_read_only_operations
   rate_snapshot: []
-  authority_note: "The initial V2-09 bounded read-only preflight authority was consumed once at cd91d00a and failed closed on GHCR descriptor uniqueness before proof emission. No further provider read, credential access, deployment, endpoint/template/volume/R2/database mutation, provider job POST, GPU use, or spend is authorized. After canonical verification and independent context audit of repair source 7697707e2202be357593f187c6371d67a5dee5d9, fresh exact replacement approval is required for one bounded read-only preflight from a clean detached or separate worktree at that executable source."
+  authority_note: "The initial V2-09 bounded read-only preflight failed closed on GHCR descriptor uniqueness. Exact replacement proposal 67b08992 was then consumed once at 7697707e and failed closed on GHCR blob-redirect shape before proof emission after exactly its approved read-only calls. No further provider read, credential access, deployment, endpoint/template/volume/R2/database mutation, provider job POST, GPU use, or spend is authorized. After independent context audit of canonical-green repair source 263775afcf3fdaa701587d4bd5480a7782adf18c, fresh exact replacement approval is required for one bounded read-only preflight from a clean detached or separate worktree at that executable source."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: null
   successor_proposal_sha256: null
@@ -6217,8 +6221,8 @@ recommended_next_task:
   superseded_authority_execution_commit: cde3515faf4a8581a83132cd7a8cb296980bd9ff
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: provider_free_ghcr_repair_and_canonical_green_context_audit_pending
-  execution_blocker: replacement_read_only_preflight_requires_independent_context_audit_and_fresh_exact_approval
+  execution_status: provider_free_credential_and_ghcr_redirect_repair_canonical_green_context_audit_pending
+  execution_blocker: another_replacement_read_only_preflight_requires_independent_context_audit_and_fresh_exact_approval
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
