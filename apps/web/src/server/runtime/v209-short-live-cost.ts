@@ -5,7 +5,7 @@ import {
 } from "@videoforge/contracts";
 
 const PLAN_SHA = "sha256:f975e2be15db227e96c6ea06f025c3f7ead025a5f80b80e9e2b0ac1f9fd6a4ea" as const;
-const RATE = 1_100_000;
+const RATE = 1_116_000;
 const STARTUP_MS = 672_035;
 const EXECUTION_UPLOAD_MS = 107_965;
 const CANCEL_TAIL_MS = 420_000;

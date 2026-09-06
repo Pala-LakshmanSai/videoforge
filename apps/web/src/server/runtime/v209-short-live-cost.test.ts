@@ -16,7 +16,7 @@ const observation = () => ({
     region: "EU-RO-1" as const,
     availability: "HIGH" as const,
     secureReferenceRateMicroUsdPerGpuHour: 740_000,
-    flexRateMicroUsdPerGpuHour: 1_100_000,
+    flexRateMicroUsdPerGpuHour: 1_116_000,
     checkedAt: "2026-08-26T05:59:30.000Z",
   },
   billing: { cumulativeEndpointBillingMicroUsd: 2_214_659, checkedAt: "2026-08-26T05:59:30.000Z" },
@@ -49,7 +49,7 @@ describe("V2-09 exact short live admission", () => {
     expect(result.rate).toMatchObject({
       availability: "LOW",
       secureReferenceRateMicroUsdPerGpuHour: 740_000,
-      flexRateMicroUsdPerGpuHour: 1_100_000,
+      flexRateMicroUsdPerGpuHour: 1_116_000,
     });
     expect(result.billing.cumulativeEndpointBillingMicroUsd).toBe(2_214_659);
   });
@@ -69,9 +69,9 @@ describe("V2-09 exact short live admission", () => {
     expect(admitted.cancelAt).toBe("2026-08-26T06:20:00.000Z");
     expect(admitted.stopAt).toBe("2026-08-26T06:30:00.000Z");
     expect(V209_SHORT_LIVE_COST_PROFILE).toMatchObject({
-      primaryExecutionForecastMicroUsd: 733_334,
-      possibleDuplicateLiabilityMicroUsd: 733_334,
-      settlementBillingLagAndCancellationReserveMicroUsd: 533_332,
+      primaryExecutionForecastMicroUsd: 744_000,
+      possibleDuplicateLiabilityMicroUsd: 744_000,
+      settlementBillingLagAndCancellationReserveMicroUsd: 512_000,
       hardVariableCostCeilingMicroUsd: 2_000_000,
       combinedCompletionCapMicroUsd: 17_500_000,
       noRedispatch: true,
@@ -110,7 +110,7 @@ describe("V2-09 exact short live admission", () => {
     await expect(
       freezeV209ShortLiveAdmission(plan(), {
         ...observation(),
-        rate: { ...observation().rate, flexRateMicroUsdPerGpuHour: 1_100_001 },
+        rate: { ...observation().rate, flexRateMicroUsdPerGpuHour: 1_116_001 },
       }),
     ).rejects.toThrow("V209_SHORT_RATE_ADMISSION_INVALID");
     await expect(
