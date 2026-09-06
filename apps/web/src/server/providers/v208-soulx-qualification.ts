@@ -28,20 +28,27 @@ export const V208_SOULX_VOLUME_ID_SHA256 =
 export const V208_SOULX_VOLUME_MANIFEST_SHA256 =
   "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626" as const;
 export const V208_EXECUTION_ENTRYPOINT = "soulx-v208-qualification-v1" as const;
-// The single-use Stage 7 authority was consumed by five exact POSTs and fully cleaned. Fresh exact
-// source-bound approval is required before any new provider access.
-export const V208_PENDING_PROPOSAL_SHA256: string | null = null;
-export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = false;
-export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null = null;
-export const V208_APPROVED_AUTHORITY_SHA256: string | null = null;
-export const V208_APPROVED_FINITE_CAP_USD: number | null = null;
-export const V208_APPROVED_IMAGE: string | null = null;
-export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null = null;
-export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null = null;
+// Single-use Stage 7 authority. Execution is gated by the clean one-commit lineage and an
+// independent diff audit before any provider credential or protected input is opened.
+export const V208_PENDING_PROPOSAL_SHA256: string | null =
+  "sha256:b6bb008e7e321acd66a5b9e062b9ea50758911ea7d1075f7a2a19f83e2987bc2";
+export const V208_COMPILED_AUTHORITY_ACTIVE: boolean = true;
+export const V208_APPROVED_CONTROL_SOURCE_COMMIT: string | null =
+  "263838300f3133ec3cc0fd6565584127e6f5eaa4";
+export const V208_APPROVED_AUTHORITY_SHA256: string | null =
+  "sha256:abba74c09a86d71eab7248e828c663c9fec9960dc2ae4630650c01233c3aae03";
+export const V208_APPROVED_FINITE_CAP_USD: number | null = 1.8681257496355103;
+export const V208_APPROVED_IMAGE: string | null =
+  "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036";
+export const V208_APPROVED_IMAGE_SOURCE_COMMIT: string | null =
+  "0b09d6e9d72e868f0f9a6143dfad72147c193c64";
+export const V208_APPROVED_RUNPOD_ACCOUNT_ID_SHA256: string | null =
+  "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c";
 /** The admission floor is LOW; MEDIUM and HIGH are both acceptable provider states. */
-export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = null;
-export const V208_APPROVED_BILLING_BASELINE_USD: number | null = null;
-export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null = null;
+export const V208_APPROVED_REQUIRED_AVAILABILITY: "LOW" | null = "LOW";
+export const V208_APPROVED_BILLING_BASELINE_USD: number | null = 2.9606986929138657;
+export const V208_APPROVED_CUMULATIVE_BILLING_STOP_THRESHOLD_USD: number | null =
+  4.828824442549376;
 
 export interface V208CompiledAuthority {
   readonly proposalSha256: string | null;
