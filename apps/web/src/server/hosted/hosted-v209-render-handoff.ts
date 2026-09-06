@@ -94,6 +94,12 @@ function artifact(
   if (!Number.isSafeInteger(contentLength) || contentLength < 1) {
     throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
   }
+  if (
+    (row.sourceScopeKind !== undefined && row.sourceScopeKind !== "SYSTEM") ||
+    (row.sourceScopeKind === "SYSTEM" && row.systemSourceReferenceVerified !== true)
+  ) {
+    throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+  }
   return Object.freeze({
     accountId: scope.accountId,
     workspaceId: scope.workspaceId,
@@ -112,6 +118,17 @@ function artifact(
     acceptedAttemptId: extra.acceptedAttemptId,
     barrierAcceptance: extra.barrierAcceptance,
     kind: extra.kind,
+    ...(row.sourceScopeKind === "SYSTEM"
+      ? {
+          systemSourceReference: Object.freeze({
+            verified: true,
+            avatarProfileId: text(row.systemAvatarProfileId, UUID),
+            avatarProfileVersionId: text(row.systemAvatarProfileVersionId, UUID),
+            runtimeSourceAssetId: text(row.systemRuntimeSourceAssetId, UUID),
+            runtimeProfileAssetLinkId: text(row.systemRuntimeProfileAssetLinkId, UUID),
+          }),
+        }
+      : {}),
   });
 }
 
@@ -236,7 +253,16 @@ export function createHostedV209RenderHandoff(input: {
       });
       if (!planned.ok) throw new Error("HOSTED_V209_RENDER_PLAN_INVALID");
       const reservation = record(ready.manifestReservation);
+      const reservationAssetId = text(reservation.assetId, UUID);
+      text(reservation.reservationId, UUID);
       const objectKey = text(reservation.objectKey);
+      const expectedObjectKey =
+        `tenant/${scope.accountId}/workspace/${scope.workspaceId}/project/${projectId}` +
+        `/revision/${revisionId}/lane/render/job/${scope.generationRequestId}` +
+        `/artifact/${reservationAssetId}`;
+      if (objectKey !== expectedObjectKey) {
+        throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+      }
       const bytes = new TextEncoder().encode(canonicalJson(planned.value.value));
       const buffer = new ArrayBuffer(bytes.byteLength);
       new Uint8Array(buffer).set(bytes);

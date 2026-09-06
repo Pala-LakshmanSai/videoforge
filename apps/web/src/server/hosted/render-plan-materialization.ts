@@ -59,6 +59,13 @@ export interface HostedCommittedArtifact {
   readonly acceptedAttemptId: string | null;
   readonly barrierAcceptance: "ACCEPTED_CANONICAL" | "COMMITTED_INPUT" | "COMMITTED_MANIFEST";
   readonly kind: MediaKind;
+  readonly systemSourceReference?: {
+    readonly verified: true;
+    readonly avatarProfileId: string;
+    readonly avatarProfileVersionId: string;
+    readonly runtimeSourceAssetId: string;
+    readonly runtimeProfileAssetLinkId: string;
+  };
 }
 
 export interface HostedLockedRevisionSnapshot {
@@ -181,12 +188,24 @@ function exactAvatarSourceScope(
   const match = canonicalMatch ?? originalMatch;
   const passThrough =
     input.revisionDocument.avatar_binding.source_preparation_version === AVATAR_PASSTHROUGH_PROFILE;
+  const system = artifact.systemSourceReference;
+  const systemReferenceValid =
+    system !== undefined &&
+    system.verified === true &&
+    [
+      system.avatarProfileId,
+      system.avatarProfileVersionId,
+      system.runtimeSourceAssetId,
+      system.runtimeProfileAssetLinkId,
+    ].every((value) => UUID.test(value));
   if (
-    !match ||
-    match[1] !== input.accountId ||
-    match[2] !== input.workspaceId ||
-    match[3] !== input.revisionDocument.avatar_binding.avatar_profile_id ||
-    match[4] !== input.revisionDocument.avatar_binding.avatar_profile_version_id ||
+    (!match && !systemReferenceValid) ||
+    (match !== null && system !== undefined) ||
+    (match !== null &&
+      (match[1] !== input.accountId ||
+        match[2] !== input.workspaceId ||
+        match[3] !== input.revisionDocument.avatar_binding.avatar_profile_id ||
+        match[4] !== input.revisionDocument.avatar_binding.avatar_profile_version_id)) ||
     artifact.accountId !== input.accountId ||
     artifact.workspaceId !== input.workspaceId ||
     artifact.projectId !== input.revision.projectId ||
@@ -210,7 +229,8 @@ function exactAvatarSourceScope(
       (canonicalMatch[5] === "png"
         ? artifact.contentType !== "image/png"
         : artifact.contentType !== "image/jpeg")) ||
-    (originalMatch !== null && !["image/png", "image/jpeg"].includes(artifact.contentType))
+    (originalMatch !== null && !["image/png", "image/jpeg"].includes(artifact.contentType)) ||
+    (systemReferenceValid && !["image/png", "image/jpeg"].includes(artifact.contentType))
   ) {
     reject("SOULX_CROP_PROFILE_UNQUALIFIED");
   }
