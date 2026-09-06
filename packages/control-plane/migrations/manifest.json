@@ -444,6 +444,12 @@
       "name": "hosted_v209_ordinary_dispatch",
       "filename": "0074_hosted_v209_ordinary_dispatch.sql",
       "sha256": "sha256:77ef79b39fdc4b757e8aae0406cd7be9f361b5e30eb2cc9feeddf0818b4bb8ba"
+    },
+    {
+      "version": 75,
+      "name": "hosted_v209_span_audio_and_terminal",
+      "filename": "0075_hosted_v209_span_audio_and_terminal.sql",
+      "sha256": "sha256:708eb76d5a9243b558cf846086195f736305a6870b02d55d2350128354784d89"
     }
   ]
 }
