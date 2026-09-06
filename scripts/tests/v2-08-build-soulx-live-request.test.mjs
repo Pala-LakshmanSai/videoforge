@@ -122,19 +122,19 @@ test("V2-08 builder emits the exact proposal-derived, provider-free request shap
   ]);
   assert.equal(
     built.request.input.dualLaneInput.soulx.publicImage,
-    "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036",
+    "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e",
   );
   assert.equal(
     built.request.input.dualLaneInput.soulx.sourceCommit,
-    "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
+    "73181707e49be61955af4f2891f4c7185a1c288f",
   );
   assert.equal(
     built.evidence.soulx.configSha256,
-    "sha256:33125c93a5289332b3247881ead867ae12ebd76240dbc789ddf775643ef3f909",
+    "sha256:224b2a728490cf1c708b42e56702da2b71bd2374658f0c640dd39ef23e860935",
   );
   assert.equal(
     built.request.input.dualLaneInput.soulx.deploymentSha256,
-    "sha256:7dd3e99d16f4d86a8d53e441a8a3be0825721279abb60b9ec7f876c3e92e0bf5",
+    "sha256:9929d19da89ab2c20e280ac45ad152bc325b8bf56ef1e9c21e83d473c3408bc4",
   );
   assert.equal(built.inputManifest.schema_version, INPUT_MANIFEST_SCHEMA);
   assert.deepEqual(Object.keys(built.inputManifest.audio_sources).sort(), ["10", "2", "4", "6"]);
