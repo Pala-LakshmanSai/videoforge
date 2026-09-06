@@ -1039,7 +1039,9 @@ test("0044/0082 settle render readiness and exact two-lane success cost idempote
     assert.equal(replay.replayed, true);
     assert.equal(replay.exactGpuCostMicroUsd, 496);
     const staleObservedAt = new Date(Date.now() - 10 * 60_000).toISOString();
-    const staleFacts = terminalFacts.map(({ proofSha256: _proofSha256, ...fact }) => {
+    const staleFacts = terminalFacts.map((terminalFact) => {
+      const fact = { ...terminalFact };
+      delete fact.proofSha256;
       const unsigned = { ...fact, observedAt: staleObservedAt };
       return { ...unsigned, proofSha256: canonicalSha256(unsigned) };
     });
