@@ -8,6 +8,11 @@ import {
 import { sha256 } from "../src/server/hosted/crypto";
 import { createNeonExecutor, createNeonPool } from "../src/server/hosted/neon";
 import { hostedPairProductionBindingState } from "../src/server/hosted/hosted-pair-production-composition";
+import { canonicalJson } from "../src/server/hosted/submission";
+import {
+  attemptHostedV209SpanWorkflowReconciliation,
+  type HostedV209SpanTerminalProjection,
+} from "../src/server/hosted/hosted-v209-span-workflow-reconciliation";
 
 interface HostedWorkflowParameters {
   readonly attemptId: string;
@@ -252,7 +257,93 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
         }
       });
 
-      if (["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"].includes(state)) return { state };
+      if (state === "SUCCEEDED") {
+        const finalization = await step.do(`finalize span audio ${observation}`, async () => {
+          const pool = createNeonPool(config.neon.databaseUrl);
+          try {
+            const database = createNeonExecutor(pool);
+            const terminal = await database.transaction(async (transaction) => {
+              await transaction.query("SELECT set_config($1, $2, true)", [
+                TENANT_PRINCIPAL_SETTING,
+                params.accountId,
+              ]);
+              const result = await transaction.query<{
+                kind: string;
+                state: string;
+                result_object_key: string | null;
+                result_content_length: number | string | null;
+                result_checksum_sha256: string | null;
+              }>(
+                `SELECT kind, state, result_object_key, result_content_length,
+                        result_checksum_sha256
+                   FROM hosted_cpu_job_attempts
+                  WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+                    AND execution_backend = 'PERSONAL_WORKER'`,
+                [params.attemptId, params.accountId, params.workspaceId],
+              );
+              const row = result.rows[0];
+              if (!row) throw new Error("Hosted SPAN terminal projection is unavailable.");
+              return Object.freeze({
+                attemptId: params.attemptId,
+                accountId: params.accountId,
+                workspaceId: params.workspaceId,
+                kind: row.kind,
+                state: row.state,
+                resultObjectKey: row.result_object_key,
+                resultContentLength:
+                  row.result_content_length === null ? null : Number(row.result_content_length),
+                resultChecksumSha256: row.result_checksum_sha256,
+              } satisfies HostedV209SpanTerminalProjection);
+            });
+            if (!this.env.PRIVATE_ARTIFACTS) {
+              return Object.freeze({ state: "FINALIZATION_PENDING" as const });
+            }
+            return await attemptHostedV209SpanWorkflowReconciliation(
+              {
+                bucket: this.env.PRIVATE_ARTIFACTS,
+                finalize: async (input) =>
+                  database.transaction(async (transaction) => {
+                    await transaction.query("SELECT set_config($1, $2, true)", [
+                      TENANT_PRINCIPAL_SETTING,
+                      input.accountId,
+                    ]);
+                    const result = await transaction.query<{ value: unknown }>(
+                      `SELECT public.videoforge_finalize_hosted_v209_span_audio(
+                         $1::uuid,$2::uuid,$3::uuid,$4::jsonb) AS value`,
+                      [
+                        input.accountId,
+                        input.workspaceId,
+                        input.attemptId,
+                        canonicalJson(input.resultDocument),
+                      ],
+                    );
+                    if (result.rows.length !== 1)
+                      throw new Error("Hosted SPAN finalization result is unavailable.");
+                    return result.rows[0]!.value;
+                  }),
+                resumePair: async (identity) => {
+                  const { resumeHostedV209ProjectDispatch } = await import(
+                    "../src/server/hosted/hosted-v209-project-dispatch"
+                  );
+                  const resumed = await resumeHostedV209ProjectDispatch(
+                    this.env,
+                    config,
+                    identity,
+                    undefined,
+                    undefined,
+                    pool,
+                  );
+                  if (!resumed.ok) throw new Error("Hosted SPAN pair resume was rejected.");
+                },
+              },
+              terminal,
+            );
+          } finally {
+            await pool.end();
+          }
+        });
+        if (finalization.state !== "FINALIZATION_PENDING") return { state };
+      } else if (["FAILED", "CANCELLED", "EXPIRED"].includes(state)) return { state };
       if (observation < 289) {
         await step.sleep(`wait for account-owned worker ${observation}`, "5 minutes");
       }
