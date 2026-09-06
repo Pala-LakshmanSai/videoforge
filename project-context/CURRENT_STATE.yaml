@@ -4302,7 +4302,8 @@ model_runtime_evidence:
     pod_start_to_model_ready_ms: 672035
     worker_inference_10s_ms: 20268
     pod_projected_30m_avatar_gpu_cost_at_observed_074_rate_usd: 0.40203785517777774
-    settled_external_spend_usd: 0.08383633207995445
+    settled_external_spend_usd: null
+    observed_serverless_qualification_spend_usd: 0.08383633207995445
     serverless_qualification_evidence: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/success-cold-in-progress-qualification.json
     serverless_qualification_evidence_sha256: "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa"
     visual_crop_approval: approved_exact_full_and_split_provider_free_profile_active
