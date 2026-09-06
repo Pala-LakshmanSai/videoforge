@@ -32,6 +32,7 @@ import {
   dispatchV208Durably,
   enforceV208FinalSpendCap,
   assertV208StageConsumptionDecision,
+  isV208TimeoutTerminalProof,
   runV208SoulXWithV213Transport,
   validateV208WholeSpanSuccessProof,
   V208_FOCUSED_FAULT_STATUS_HORIZON_MS,
@@ -51,6 +52,28 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     expect(V208_WORST_CASE_LIABILITY_USD).toBeCloseTo((5785 * 1.116) / 3600, 12);
     expect(V208_SUCCESS_STATUS_HORIZON_MS).toBe(1_660_000);
     expect(V208_FOCUSED_FAULT_STATUS_HORIZON_MS).toBe(60_000);
+  });
+
+  it("accepts both RunPod provider-native timeout terminal shapes", () => {
+    expect(isV208TimeoutTerminalProof({ jobId: "timeout-job", status: "TIMED_OUT" })).toBe(true);
+    expect(isV208TimeoutTerminalProof({ jobId: "timeout-job", status: "FAILED" })).toBe(true);
+  });
+
+  it("rejects application failures and output-bearing failures as timeout proof", () => {
+    expect(
+      isV208TimeoutTerminalProof({
+        jobId: "timeout-job",
+        status: "FAILED",
+        failureCode: "SOULX_SERVERLESS_TIMEOUT",
+      }),
+    ).toBe(false);
+    expect(
+      isV208TimeoutTerminalProof({
+        jobId: "timeout-job",
+        status: "FAILED",
+        outputReadbackVerified: true,
+      }),
+    ).toBe(false);
   });
 
   it.each([
@@ -1119,7 +1142,7 @@ describe("V2-08 concrete SoulX orchestrator", () => {
           : jobId.includes("invalid-output")
             ? { jobId, status: "FAILED", failureCode: "SOULX_OUTPUT_CONTRACT_INVALID" }
             : jobId.includes("timeout")
-              ? { jobId, status: "TIMED_OUT" }
+              ? { jobId, status: "FAILED" }
               : jobId.includes("cold-whole-span") && read < 830
                 ? { jobId, status: "IN_PROGRESS" }
                 : {

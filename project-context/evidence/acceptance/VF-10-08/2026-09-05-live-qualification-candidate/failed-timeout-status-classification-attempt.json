@@ -1,0 +1,63 @@
+{
+  "schema_version": "videoforge.v2-08-failed-timeout-status-classification-attempt/v1",
+  "checkpoint": "V2-08",
+  "task_id": "VF-10-08",
+  "stage": 7,
+  "recorded_at_utc": "2026-09-06T05:01:20.012Z",
+  "status": "NOT_QUALIFIED_CLEAN_PROVIDER_FREE_REPAIR_REQUIRED",
+  "control_source_commit": "fe716c3b402c82e7397357aa48d50c58cbeba597",
+  "execution_control_commit": "676af50c8cd391ecb977c17f23dce8598a17b0cc",
+  "proposal_sha256": "sha256:784f68823244adf733bcbe423f1445fdabb0e85ea7f6a37aaec076c820e6d04f",
+  "authority_sha256": "sha256:d6bc5968aaaae9449aaceefcdbec66082c1da08c7c80a2dbb2cb2a1dff8cfff5",
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "independent_materialization_diff_audit": "PASS_P0_0_P1_0",
+  "runpod": {
+    "job_posts": 5,
+    "redispatches": 0,
+    "cold_job_id": "001c9a34-aa61-49c6-97c5-8f4794e0c910-e2",
+    "warm_job_id": "a47f3121-d423-4265-b7a6-4cedb81750e9-e1",
+    "cancel_job_id": "0f9cda10-61ad-438a-b84a-dd7bd4ee7d75-e2",
+    "invalid_job_id": "6253f2b5-c5a8-4844-b2ae-4301a2eac6be-e2",
+    "timeout_job_id": "18441700-54f6-43b8-bb82-dd1d1a303dc3-e2",
+    "cold_terminal": "COMPLETED",
+    "warm_terminal": "COMPLETED",
+    "cancel_terminal": "CANCELLED",
+    "invalid_terminal": "FAILED_SOULX_OUTPUT_CONTRACT_INVALID",
+    "timeout_terminal_observed": "FAILED_WITHOUT_APPLICATION_FAILURE_CODE",
+    "timeout_terminal_required_by_source": "TIMED_OUT",
+    "surface_failure_code": "V208_FAULT_GATE_UNPROVEN"
+  },
+  "verified_outputs": {
+    "count": 8,
+    "preserved": true,
+    "mode": "0600",
+    "whole_span_seconds": [2, 4, 6, 10],
+    "codec_contract": "H264_512X512_YUV420P_25FPS_MONO_AAC_16KHZ",
+    "cold_and_warm_sha256": {
+      "2": "sha256:036ed48479f7a0454ed12785aba1027979ce57e35094238e3728174263002b94",
+      "4": "sha256:40b65c58e1079eab158c3a6ed33b4f3101563b96368e36db31d4a29a22894407",
+      "6": "sha256:f9757b47d3133fd87ccb0a0ecdc604f431230ff311e490fafb5b0c8c41ce26cb",
+      "10": "sha256:0690bf827bf363ff498909b34241f18bbb33d4296df7ab7203b50fad457d2352"
+    }
+  },
+  "cleanup": {
+    "cleanup_only_resume_without_redispatch": true,
+    "disposable_endpoint_absent": true,
+    "disposable_template_absent": true,
+    "all_five_r2_cleanup_phases_absence_verified": true,
+    "final_stable_reads": 3,
+    "running_pods": 0,
+    "active_serverless_workers": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "retained_volumes": 2,
+    "retained_volume_mutation": false,
+    "stable_billing_usd": 2.9606986929138657,
+    "observed_incremental_spend_usd": 0
+  },
+  "provider_free_root_cause": "RUNPOD_EXECUTION_TIMEOUT_STATUS_API_REPORTED_FAILED_WITHOUT_APPLICATION_ERROR_OR_OUTPUT_WHILE_THE_V208_GATE_ACCEPTED_ONLY_TIMED_OUT",
+  "provider_free_repair": "ACCEPT_TIMED_OUT_OR_FAILED_WITHOUT_APPLICATION_FAILURE_CODE_RECEIPT_OR_OUTPUT_READBACK_ONLY_FOR_THE_EXACT_V208_TIMEOUT_DESCRIPTOR_BOUND_TO_A_30_SECOND_PROBE_AND_5_SECOND_EXECUTION_TIMEOUT",
+  "qualification_claimed": false,
+  "replacement_approval_required_before_any_further_runpod_or_r2_mutation": true
+}

@@ -1,13 +1,25 @@
 {
-  "schema_version": "videoforge.v2-08-soulx-approved-authority/v11",
+  "schema_version": "videoforge.v2-08-soulx-approved-authority/v12",
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
+  "status": "CONSUMED_NOT_QUALIFIED_TIMEOUT_STATUS_CLASSIFICATION_MISMATCH_CLEAN",
   "single_use": true,
-  "consumed": false,
+  "consumed": true,
   "reusable": false,
-  "consumption": null,
+  "consumption": {
+    "execution_control_commit": "676af50c8cd391ecb977c17f23dce8598a17b0cc",
+    "runpod_job_posts": 5,
+    "runpod_redispatches": 0,
+    "verified_outputs_preserved": 8,
+    "qualification_claimed": false,
+    "failure_code": "V208_FAULT_GATE_UNPROVEN",
+    "cleanup_complete": true,
+    "final_stable_billing_usd": 2.9606986929138657,
+    "observed_incremental_spend_usd": 0,
+    "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-timeout-status-classification-attempt.json",
+    "failure_evidence_sha256": "sha256:f57cbf74caa5e1c0ff883204201bba7ebe613a4e4f447c517273eb1d2fe27e9b"
+  },
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
     "proposal_sha256": "sha256:784f68823244adf733bcbe423f1445fdabb0e85ea7f6a37aaec076c820e6d04f",
@@ -23,7 +35,7 @@
     "precursor_source_commit": "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
     "image_source_commit": "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
     "execution_control_commit_role": "one_post_approval_authority_materialization_successor_only",
-    "execution_control_commit": null
+    "execution_control_commit": "676af50c8cd391ecb977c17f23dce8598a17b0cc"
   },
   "image_publication": {
     "original_publication_workflow_run_id": 34009939213,

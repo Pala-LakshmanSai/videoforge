@@ -68,6 +68,22 @@ export const enforceV208FinalSpendCap = (
   decision: "EXECUTE" | "RESUME" | "REPLAY_REJECTED",
 ): boolean => decision === "EXECUTE";
 
+/**
+ * RunPod's status API can report an executionTimeout terminal as FAILED without an application
+ * error payload. The V2-08 timeout case is already bound to a deterministic 30-second probe and a
+ * five-second provider executionTimeout, so accept that provider-native shape while continuing to
+ * reject worker/application failures and any result carrying output evidence.
+ */
+export function isV208TimeoutTerminalProof(observed: V213JobRead): boolean {
+  return (
+    observed.status === "TIMED_OUT" ||
+    (observed.status === "FAILED" &&
+      observed.failureCode === undefined &&
+      observed.receiptDelivery === undefined &&
+      observed.outputReadbackVerified === undefined)
+  );
+}
+
 export interface V208SoulXOrchestratorDependencies {
   readonly transport: V213DualLaneTransport;
   readonly soulx: V213SealedLane;
@@ -1137,7 +1153,7 @@ export async function runV208SoulXWithV213Transport(
             (descriptor.mode === "invalid" &&
               (observed.status !== "FAILED" ||
                 observed.failureCode !== "SOULX_OUTPUT_CONTRACT_INVALID")) ||
-            (descriptor.mode === "timeout" && observed.status !== "TIMED_OUT")
+            (descriptor.mode === "timeout" && !isV208TimeoutTerminalProof(observed))
           )
             throw new Error("V208_FAULT_GATE_UNPROVEN");
           if (descriptor.mode === "invalid") invalidOutputVerified = true;
