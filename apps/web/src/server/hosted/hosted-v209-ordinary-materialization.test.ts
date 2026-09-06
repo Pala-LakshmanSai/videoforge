@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createHostedEnvelopePairSigner } from "./hosted-envelope-signer";
 import { HostedSqlV209OrdinaryLaneMaterializer } from "./hosted-v209-ordinary-materialization";
+import { HOSTED_V209_SOULX_AVATAR_SOURCE_SHA256 } from "./hosted-v209-ordinary-worker-request";
 
 const issuedAt = "2026-09-06T01:00:00.000Z";
 const sha = (digit: string) => `sha256:${digit.repeat(64)}`;
@@ -61,8 +62,8 @@ describe("ordinary V2-09 pair request materialization", () => {
         avatarSourceObjectKey:
           "tenant/account-a/workspace/workspace-a/avatar-profile/profile-a/version/version-a/canonical/avatar.png",
         avatarSourceContentType: "image/png",
-        avatarSourceContentLength: 100,
-        avatarSourceSha256: sha("1"),
+        avatarSourceContentLength: 1_912_005,
+        avatarSourceSha256: HOSTED_V209_SOULX_AVATAR_SOURCE_SHA256,
         spanAudioAssetId: "span-asset",
         spanAudioInputReservationId: "span-input",
         spanAudioObjectKey:
