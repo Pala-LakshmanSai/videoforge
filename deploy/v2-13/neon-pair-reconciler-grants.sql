@@ -37,10 +37,22 @@ REVOKE EXECUTE ON FUNCTION public.videoforge_load_hosted_v209_settlement_guard(u
 REVOKE EXECUTE ON FUNCTION public.videoforge_complete_v209_terminal_acceptance(jsonb) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.videoforge_load_v209_terminal_output_projection(uuid,uuid,uuid,text) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.videoforge_load_v212_terminal_output_projection(uuid,text,text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_terminal_lineage(uuid,uuid,uuid,text,text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.videoforge_accept_hosted_v209_terminal_output(uuid,uuid,uuid,text,text,text,jsonb,jsonb,timestamptz) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.videoforge_load_v209_terminal_output_projection(uuid,uuid,uuid,text)
 FROM :"runtime_role";
 
 REVOKE EXECUTE ON FUNCTION public.videoforge_load_v212_terminal_output_projection(uuid,text,text)
+FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_terminal_lineage(uuid,uuid,uuid,text,text)
+FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION public.videoforge_accept_hosted_v209_terminal_output(uuid,uuid,uuid,text,text,text,jsonb,jsonb,timestamptz)
+FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)
+FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION public.videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint)
 FROM :"runtime_role";
 
 GRANT USAGE ON SCHEMA public TO :"reconciler_role";
@@ -83,6 +95,14 @@ GRANT EXECUTE ON FUNCTION public.videoforge_load_v209_terminal_output_projection
 TO :"reconciler_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_load_v212_terminal_output_projection(uuid,text,text)
 TO :"reconciler_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_terminal_lineage(uuid,uuid,uuid,text,text)
+TO :"reconciler_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_accept_hosted_v209_terminal_output(uuid,uuid,uuid,text,text,text,jsonb,jsonb,timestamptz)
+TO :"reconciler_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)
+TO :"reconciler_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint)
+TO :"reconciler_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_record_v213_acceptance_technical_capture(jsonb),
   public.videoforge_record_v213_v211_policy_action(jsonb),
   public.videoforge_record_v213_v211_scenario_step(jsonb),
@@ -110,6 +130,22 @@ SELECT
     'public.videoforge_load_v209_terminal_output_projection(uuid,uuid,uuid,text)','EXECUTE')
   AND has_function_privilege(:'reconciler_role',
     'public.videoforge_load_v212_terminal_output_projection(uuid,text,text)','EXECUTE')
+  AND has_function_privilege(:'reconciler_role',
+    'public.videoforge_read_hosted_v209_terminal_lineage(uuid,uuid,uuid,text,text)','EXECUTE')
+  AND has_function_privilege(:'reconciler_role',
+    'public.videoforge_accept_hosted_v209_terminal_output(uuid,uuid,uuid,text,text,text,jsonb,jsonb,timestamp with time zone)','EXECUTE')
+  AND has_function_privilege(:'reconciler_role',
+    'public.videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)','EXECUTE')
+  AND has_function_privilege(:'reconciler_role',
+    'public.videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint)','EXECUTE')
+  AND (NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_read_hosted_v209_terminal_lineage(uuid,uuid,uuid,text,text)','EXECUTE'))
+  AND (NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_accept_hosted_v209_terminal_output(uuid,uuid,uuid,text,text,text,jsonb,jsonb,timestamp with time zone)','EXECUTE'))
+  AND (NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)','EXECUTE'))
+  AND (NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint)','EXECUTE'))
   AND has_function_privilege(:'reconciler_role',
     'public.videoforge_record_v213_acceptance_technical_capture(jsonb)','EXECUTE')
   AND has_function_privilege(:'reconciler_role',

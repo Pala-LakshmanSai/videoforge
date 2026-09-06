@@ -181,6 +181,17 @@ GRANT EXECUTE ON FUNCTION public.videoforge_begin_hosted_v209_ordinary_send(
   uuid, uuid, uuid, text, uuid, text, text
 )
 TO :"runtime_role";
+-- Migration 0075 keeps browser input preparation server-owned. Runtime may materialize only the
+-- current tenant's deterministic SPAN_AUDIO jobs and finalize only the exact verified worker
+-- result; it receives no direct access to the additive materialization tables.
+GRANT EXECUTE ON FUNCTION public.videoforge_materialize_hosted_v209_span_audio_jobs(
+  uuid, uuid, uuid, uuid
+)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_finalize_hosted_v209_span_audio(
+  uuid, uuid, uuid, jsonb
+)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_claim_v213_workflow_start(jsonb)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_complete_v213_workflow_start(jsonb)

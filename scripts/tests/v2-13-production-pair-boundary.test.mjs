@@ -153,3 +153,28 @@ test("reconciler terminal projection is read-only, tenant-bound, and function-on
     /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER)\s+ON\s+(?:TABLE\s+)?(?:public\.)?(?:video_runtime_states|hosted_pair_runtime_states|video_runtime_events)/iu,
   );
 });
+
+test("V2-09 terminal ingestion and render handoff remain reconciler-only function seams", async () => {
+  const { reconcilerSql } = await fixture();
+  const reconcilerOnly = [
+    "videoforge_read_hosted_v209_terminal_lineage(uuid,uuid,uuid,text,text)",
+    "videoforge_accept_hosted_v209_terminal_output(uuid,uuid,uuid,text,text,text,jsonb,jsonb,timestamptz)",
+    "videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)",
+    "videoforge_commit_hosted_v209_resolved_render_manifest(uuid,uuid,uuid,jsonb,text,text,bigint)",
+  ];
+  const compact = reconcilerSql.replace(/\s+/gu, "");
+  for (const signature of reconcilerOnly) {
+    assert.ok(
+      compact.includes(`GRANTEXECUTEONFUNCTIONpublic.${signature}TO:\"reconciler_role\";`),
+      `missing exact reconciler grant for ${signature}`,
+    );
+    assert.ok(
+      compact.includes(`REVOKEEXECUTEONFUNCTIONpublic.${signature}FROM:\"runtime_role\";`),
+      `missing exact runtime revoke for ${signature}`,
+    );
+  }
+  assert.doesNotMatch(
+    reconcilerSql,
+    /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER)[^;]*\bON\s+(?:TABLE\s+)?(?:public\.)?hosted_v209_(?:span_audio_materializations|ordinary_resolved_render_manifests)\b/iu,
+  );
+});

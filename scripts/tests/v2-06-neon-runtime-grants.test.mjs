@@ -99,6 +99,8 @@ test("the hosted runtime can append through the exact function but has no direct
     "videoforge_load_hosted_v209_ordinary_lane_materialization(uuid,uuid,uuid,text)",
     "videoforge_commit_hosted_v209_ordinary_lane_materialization(uuid,uuid,uuid,text,uuid,text,jsonb,text)",
     "videoforge_begin_hosted_v209_ordinary_send(uuid,uuid,uuid,text,uuid,text,text)",
+    "videoforge_materialize_hosted_v209_span_audio_jobs(uuid,uuid,uuid,uuid)",
+    "videoforge_finalize_hosted_v209_span_audio(uuid,uuid,uuid,jsonb)",
   ];
   for (const signature of [
     "videoforge_prepare_hosted_voiceover_context(jsonb)",
