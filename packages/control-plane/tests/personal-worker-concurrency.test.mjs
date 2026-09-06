@@ -21,8 +21,8 @@ test("personal-worker claims are account-scoped and do not take a global worker 
   const claimEnd = worker.indexOf("const row = attempt.rows[0];", claimStart);
   assert.ok(claimStart >= 0 && claimEnd > claimStart, "personal-worker claim query must exist");
   const claimQuery = worker.slice(claimStart, claimEnd);
-  assert.match(claimQuery, /account_id = \$1 AND workspace_id = \$2/u);
-  assert.match(claimQuery, /LIMIT 1 FOR UPDATE SKIP LOCKED/u);
+  assert.match(claimQuery, /attempt\.account_id = \$1 AND attempt\.workspace_id = \$2/u);
+  assert.match(claimQuery, /LIMIT 1 FOR UPDATE OF project,attempt SKIP LOCKED/u);
   assert.doesNotMatch(
     claimQuery,
     /global_generation_capacity|provider_workload_leases|advisory_xact_lock/u,
