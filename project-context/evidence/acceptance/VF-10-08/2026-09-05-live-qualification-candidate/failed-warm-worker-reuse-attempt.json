@@ -6,7 +6,7 @@
   "execution_control_commit": "8275f9cf8effce15539c1c0af54f2a03484851ca",
   "qualified": false,
   "surface_failure_code": "V208_RECEIPT_ITEM_INVALID",
-  "exact_root_cause": "WARM_POST_WAS_SENT_ONLY_AFTER_COLD_TERMINAL_READ_AND_RUNPOD_SCALED_THE_COLD_WORKER_TO_ZERO_DESPITE_THE_60_SECOND_IDLE_TIMEOUT",
+  "exact_root_cause": "WARM_POST_WAS_SENT_ONLY_AFTER_COLD_TERMINAL_READ_AND_PROVIDER_ASSIGNED_A_DIFFERENT_WORKER_WITH_A_CACHE_MISS",
   "provider_job_posts": 2,
   "provider_redispatches": 0,
   "cold": {
@@ -36,13 +36,23 @@
     "retained_volumes_unchanged": true,
     "retained_volume_count": 2,
     "retained_volume_size_gb_each": 50,
-    "retained_volume_region": "EU-RO-1"
+    "retained_volume_region": "EU-RO-1",
+    "inventory_read_times_utc": [
+      "2026-09-06T06:58:37.710Z",
+      "2026-09-06T06:58:45.037Z",
+      "2026-09-06T06:58:52.326Z"
+    ]
   },
   "billing": {
     "baseline_usd": 3.072259441105416,
     "final_stable_usd": 3.072259441105416,
     "observed_incremental_usd": 0,
-    "final_read_count": 3
+    "final_read_count": 3,
+    "billing_read_times_utc": [
+      "2026-09-06T06:58:41.037Z",
+      "2026-09-06T06:58:48.303Z",
+      "2026-09-06T06:58:55.352Z"
+    ]
   },
   "stage_6_modified_or_rerun": false,
   "authority_consumed": true,

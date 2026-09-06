@@ -1266,7 +1266,14 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     expect(dispatched.some((id) => id.includes("mage"))).toBe(false);
     expect(dispatchPolicies.map(({ requestKey, ...policy }) => [requestKey, policy])).toEqual([
       ["v208-soulx-cold-whole-span-2-4-6-10s", { executionTimeoutMs: 800_000, ttlMs: 7_200_000 }],
-      ["v208-soulx-warm-whole-span-2-4-6-10s", { executionTimeoutMs: 800_000, ttlMs: 7_200_000 }],
+      [
+        "v208-soulx-warm-whole-span-2-4-6-10s",
+        {
+          executionTimeoutMs: 800_000,
+          ttlMs: 7_200_000,
+          prequeueAfterRequestKey: "v208-soulx-cold-whole-span-2-4-6-10s",
+        },
+      ],
       ["v208-soulx-cancel", { executionTimeoutMs: 60_000, ttlMs: 7_200_000 }],
       ["v208-soulx-invalid-output", { executionTimeoutMs: 60_000, ttlMs: 7_200_000 }],
       ["v208-soulx-timeout", { executionTimeoutMs: 5_000, ttlMs: 7_200_000 }],

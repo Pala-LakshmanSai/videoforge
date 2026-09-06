@@ -336,6 +336,7 @@ export interface V213DualLaneTransport {
     readonly policy?: Readonly<{
       readonly executionTimeoutMs: 5_000 | 60_000 | 800_000;
       readonly ttlMs: 7_200_000;
+      readonly prequeueAfterRequestKey?: string;
     }>;
   }) => Promise<V213DispatchAck>;
   /** One bounded lookup after ACK_UNKNOWN; it never dispatches. */

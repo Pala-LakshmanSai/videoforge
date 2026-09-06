@@ -7,7 +7,7 @@
   "qualification_status": "NOT_QUALIFIED",
   "authority_mode": "NO_EXECUTABLE_AUTHORITY_FRESH_APPROVAL_REQUIRED",
   "proposal_kind": "REUSE_EXISTING_IMMUTABLE_IMAGE_AND_SINGLE_USE_QUALIFICATION_AFTER_EXACT_OFFERING_RETURNS",
-  "reason_for_fresh_proposal": "Proposal sha256:76bb40a526e3f49fcd90ca41c2f507248428c1b73063aa79652dac0a1347c6f2 and successor 8275f9cf passed independent audit and fresh admission. Exactly two cold/warm POSTs completed with no redispatch. Cold preserved four verified MP4s, but RunPod scaled its worker to zero in the gap before the warm POST despite idleTimeoutSeconds 60; warm therefore ran on a different worker and correctly reported runtime_cache_hit=false, causing local V208_RECEIPT_ITEM_INVALID. Cleanup-only RESUME deleted the disposable endpoint/template, proved all five deterministic R2 keysets absent, and three reads proved zero compute, unchanged two retained volumes, and stable billing USD 3.072259441105416. The provider-free repair queues warm immediately after cold; workersMax one preserves serial execution while preventing an idle gap. Focused tests pass 25/25 and typecheck passes. The same cap, baseline, cumulative stop, immutable image, GPU, region, five-job scope, and no-fallback rule are retained.",
+  "reason_for_fresh_proposal": "Proposal sha256:76bb40a526e3f49fcd90ca41c2f507248428c1b73063aa79652dac0a1347c6f2 and successor 8275f9cf passed independent audit and fresh admission. Exactly two cold/warm POSTs completed with no redispatch. Cold preserved four verified MP4s; after the post-terminal dispatch gap, warm ran on a different worker and correctly reported runtime_cache_hit=false, causing local V208_RECEIPT_ITEM_INVALID. Cleanup-only RESUME deleted the disposable endpoint/template, proved all five deterministic R2 keysets absent, and three timestamped reads proved zero compute, unchanged two retained volumes, and stable billing USD 3.072259441105416. The provider-free repair queues warm immediately after cold, and adds an exact paired-warm admission bound to the already-owned cold job; workersMax one preserves serial execution while preventing a zero-demand gap. Strict cache and same-worker receipt checks remain unchanged. Focused tests and typecheck pass. The same cap, baseline, cumulative stop, immutable image, GPU, region, five-job scope, and no-fallback rule are retained.",
   "latest_consumed_warm_worker_reuse_attempt": {
     "proposal_sha256": "sha256:76bb40a526e3f49fcd90ca41c2f507248428c1b73063aa79652dac0a1347c6f2",
     "authority_sha256": "sha256:226a9aafe486c767cf71c1ecb60e61e06f45da7d89709ff56c4c69c801266986",
@@ -24,7 +24,7 @@
     "final_stable_billing_usd": 3.072259441105416,
     "observed_incremental_spend_usd": 0,
     "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-warm-worker-reuse-attempt.json",
-    "failure_evidence_sha256": "sha256:735a1cb7949ef2a0ab318ca3caae568f97ec3346d43719aaff02dd9eb21b6f18",
+    "failure_evidence_sha256": "sha256:d5a4e28e9db02e86a8c1e2cab78769b386ad230e38cb554228c5758db20606fc",
     "authority_consumed": true,
     "authority_reusable": false
   },
@@ -239,7 +239,7 @@
         "fresh exact user approval is recorded and hashed",
         "the existing immutable image is anonymously reverified without publication or republication",
         "independent diff audit passes before any RunPod mutation",
-        "local git HEAD and the pushed remote branch both equal the exact fresh V2-08 port-lifetime-repair proposal-record commit"
+        "local git HEAD and the pushed remote branch both equal the exact fresh V2-08 warm-prequeue-repair proposal-record commit"
       ],
       "derived_inputs": [
         "canonical proposal bytes and sha256",
@@ -267,7 +267,7 @@
         "narrow CURRENT_STATE/GATES/task evidence pointers"
       ],
       "exact_transition_proof": [
-        "Before any RunPod/R2 access, record clean local git HEAD == the exact fresh V2-08 port-lifetime-repair proposal-record commit and verify the pushed remote branch equals that commit.",
+        "Before any RunPod/R2 access, record clean local git HEAD == the exact fresh V2-08 warm-prequeue-repair proposal-record commit and verify the pushed remote branch equals that commit.",
         "Anonymously reverify the existing SoulX image manifest, config, source labels, and all descriptors without publication, then materialize exactly one successor execution-control commit from proposal bytes/hash, approval bytes/hash, verified digest, and the independently audited allowlisted delta.",
         "The successor must bind the newly verified image digest and may change only V208 compiled authority constants, exact image pins in the existing request builder where required, plus authority/context evidence; it may not alter worker, Dockerfile, workflow, CLI, orchestrator, receipt verifier, model, or volume bytes.",
         "Before any provider dispatch, persist and durably seal cleanup-plan with the lane deployment and all five descriptor key sets; a RESUME requires the DONE cleanup-plan evidence and its canonical hash validation.",
@@ -311,9 +311,11 @@
     "qualification_durable_store": "apps/web/src/server/providers/v208-file-durable-stage-store.ts",
     "qualification_durable_store_sha256": "sha256:d6b25a0cfa4ee23c135c91e5afff934ebf18e22baf36b48f32786485b67407a6",
     "qualification_orchestrator": "apps/web/src/server/providers/v208-soulx-orchestrator.ts",
-    "qualification_orchestrator_sha256": "sha256:95a249b3f5d74bd7bd5d34afea167b9199c49c7c6e734df6865b97cdc4837961",
+    "qualification_orchestrator_sha256": "sha256:3d9f62371f8a3324878e9e5848ba079e064fb822c1438c25482c3f51412f1be4",
     "qualification_orchestrator_test": "apps/web/src/server/providers/v208-soulx-orchestrator.test.ts",
-    "qualification_orchestrator_test_sha256": "sha256:6dc8bb5a0ca4c1283356c4367a883395b3dfe5631f95bf6a784b9e6d383dc733",
+    "qualification_orchestrator_test_sha256": "sha256:d2bab1cd00b6f23adc41c9c780aa8a655363885f00a411ab1852754570a48921",
+    "qualification_case_source": "apps/web/src/server/providers/v213-dual-lane-live.ts",
+    "qualification_case_source_sha256": "sha256:e13e3c098406780cb93386eac003ae69edfb2be13d0e3f9dd621954dfa5dc975",
     "qualification_contract": "apps/web/src/server/providers/v208-soulx-qualification.ts",
     "qualification_contract_sha256": "sha256:5b63e88856321187324137ed6a5eeb183fcbf0afe37d054f2a0c88463fd5a5cd",
     "qualification_shared_materializer": "apps/web/src/server/hosted/v213-qualification-materializer.ts",
@@ -323,11 +325,11 @@
     "qualification_materializer": "apps/web/src/server/providers/v213-direct-qualification-materializer.ts",
     "qualification_materializer_sha256": "sha256:f8cd9444a9980c34657563ac83cd57f70d48876f7c1db32d248797dc4c9e8848",
     "qualification_runpod_control": "apps/web/src/server/providers/runpod-control.ts",
-    "qualification_runpod_control_sha256": "sha256:15efaf5f19041912f56fac6f9b710bfe99e4890c67fc5cc6109a9b0aada114ee",
+    "qualification_runpod_control_sha256": "sha256:800787fda5f3cb9abc1e54ea67239a968a25a3fccde18631162485633233d320",
     "qualification_transport": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
-    "qualification_transport_sha256": "sha256:c5353db5344f1977dfc4e15faf3bd163eff820500c4acb90e04dfdc810ca7522",
-    "qualification_runpod_control_test_sha256": "sha256:b93d720eac1517831d088bf4ec13ca180e6336f1f6d9ecb501591c817e8bcba7",
-    "qualification_transport_test_sha256": "sha256:3596f399b343449b05d48913071b7293c599687a462ff39d7f2d11c380f7386f",
+    "qualification_transport_sha256": "sha256:95a051d6de7238256486e54816a819cc1235c1365dd4108755d43fa8aecc067a",
+    "qualification_runpod_control_test_sha256": "sha256:0ce8e56dad7644a550351389a9e17e66096f8cce54f14cdb7c988d5b4856c900",
+    "qualification_transport_test_sha256": "sha256:58d335acb49caf2517052ac3ae2d349032571bac9fa631a467999c8e53d449ea",
     "execution_marker": "soulx-v208-qualification-v1",
     "handler": {
       "path": "workers/avatar-primary/soulx_serverless.py",
@@ -416,7 +418,7 @@
     "publication_authorized_under_exact_approval": false,
     "publication_operation": "NONE_REUSE_WITHOUT_REPUBLICATION",
     "publication_digest_rule": "Fresh anonymous verification must confirm the exact existing manifest, config, source label, and all descriptors before RunPod mutation; no publication or republication is authorized.",
-    "same_commit_existing_digest_rule": "Worker, Dockerfile, workflow, requirements, and image bytes remain those of image source 0b09d6e9; the control-only port-lifetime repair does not require image republication.",
+    "same_commit_existing_digest_rule": "Worker, Dockerfile, workflow, requirements, and image bytes remain those of image source 0b09d6e9; the control-only warm-prequeue repair does not require image republication.",
     "republish": false,
     "republication_authorized": false,
     "exact_same_commit_digest_reuse_only": true,

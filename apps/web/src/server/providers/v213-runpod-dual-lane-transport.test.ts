@@ -227,6 +227,7 @@ function fixture(
   const client = {
     confirmStartupQueueEmpty: vi.fn(checkStartupQueueEmpty),
     confirmV208StartupQueueEmpty: vi.fn(checkStartupQueueEmpty),
+    confirmV208PairedWarmQueue: vi.fn(checkStartupQueueEmpty),
     dispatch: vi.fn(async (requestKey: string) => {
       if (options.dispatchAmbiguous) throw new Error("lost");
       const job = {
@@ -608,6 +609,69 @@ describe("V213 concrete RunPod dual-lane transport", () => {
     expect(sleep.mock.calls.map(([milliseconds]) => milliseconds)).toEqual([2_000, 2_000]);
     expect(client.dispatchWithV208Policy).toHaveBeenCalledOnce();
     expect(client.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("admits only the exact warm request prequeued behind its owned cold job", async () => {
+    const { transport, client, model } = fixture();
+    const created = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "qualification",
+      resourceKey: "stage:soulx:paired-warm",
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    const cold = "v208-soulx-cold-whole-span-2-4-6-10s";
+    const warm = "v208-soulx-warm-whole-span-2-4-6-10s";
+    await expect(
+      transport.dispatch({
+        deployment: created.deployment,
+        requestKey: cold,
+        envelope: {},
+        policy: { executionTimeoutMs: 800_000, ttlMs: 7_200_000 },
+      }),
+    ).resolves.toMatchObject({ kind: "ACK", jobId: `job_${cold}` });
+    await expect(
+      transport.dispatch({
+        deployment: created.deployment,
+        requestKey: warm,
+        envelope: {},
+        policy: {
+          executionTimeoutMs: 800_000,
+          ttlMs: 7_200_000,
+          prequeueAfterRequestKey: cold,
+        },
+      }),
+    ).resolves.toMatchObject({ kind: "ACK", jobId: `job_${warm}` });
+    expect(client.confirmV208StartupQueueEmpty).toHaveBeenCalledOnce();
+    expect(client.confirmV208PairedWarmQueue).toHaveBeenCalledOnce();
+    expect(client.dispatchWithV208Policy).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects paired warm admission without the exact owned cold job", async () => {
+    const { transport, client, model } = fixture();
+    const created = await transport.createLane({
+      sealed: model.soulx,
+      purpose: "qualification",
+      resourceKey: "stage:soulx:unowned-paired-warm",
+      workersMin: 0,
+      workersMax: 1,
+    });
+    if (created.kind !== "ACK") throw new Error("fixture");
+    await expect(
+      transport.dispatch({
+        deployment: created.deployment,
+        requestKey: "v208-soulx-warm-whole-span-2-4-6-10s",
+        envelope: {},
+        policy: {
+          executionTimeoutMs: 800_000,
+          ttlMs: 7_200_000,
+          prequeueAfterRequestKey: "v208-soulx-cold-whole-span-2-4-6-10s",
+        },
+      }),
+    ).rejects.toThrow("V213_V208_PAIRED_WARM_OWNERSHIP_UNPROVEN");
+    expect(client.confirmV208PairedWarmQueue).not.toHaveBeenCalled();
+    expect(client.dispatchWithV208Policy).not.toHaveBeenCalled();
   });
 
   it("bounds V2-08 startup health propagation retries before posting", async () => {

@@ -391,7 +391,7 @@ gates:
     owner: V2-08
     last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-billing-baseline-drift-e197-attempt.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:bcde60df44e6b79278bf0fff0ba530cc7c1747d0e7530895133d04ab56517b7e"
+    current_candidate_proposal_sha256: "sha256:6f3e6c9c506d665b9af1b04314e99309f1f4444a0b3a70e3ab3510fe4b693d12"
     current_candidate_acceptance_sha256: null
     current_candidate_approval_sentence_sha256: null
     current_candidate_validator: null
@@ -400,12 +400,12 @@ gates:
     current_candidate_source_commit: null
     immutable_image_source_commit: "0b09d6e9d72e868f0f9a6143dfad72147c193c64"
     approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
-    approved_authority_sha256: "sha256:7ca896214d9bf633de27dad50f5c06d2947c6dbc67c06e6efe21ab2edda88e9d"
+    approved_authority_sha256: "sha256:44fe7966e0da3f00703626a49163ee1f40e5d5ba3481a473a7d030bb0a66661d"
     approved_authority_status: consumed_not_qualified_warm_worker_reuse_unproven_clean
     runpod_mutation_performed: "One disposable endpoint/template created and deleted. Exactly two cold/warm POSTs completed with no redispatch; all five deterministic R2 keysets are absent and final compute is zero."
-    gpu_seconds: 0
+    gpu_seconds: unproven_two_completed_jobs_billing_unchanged
     observed_incremental_spend_usd: 0
-    current_blocker: fresh_exact_user_approval_for_proposal_bcde60df
+    current_blocker: fresh_exact_user_approval_for_proposal_6f3e6c9c
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036"
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
     image_publication_workflow_run_id: 34009939213

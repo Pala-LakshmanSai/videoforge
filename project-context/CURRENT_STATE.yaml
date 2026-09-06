@@ -6004,7 +6004,7 @@ provider_authority: &v2_08_consumed_warm_worker_reuse_authority
   authorized_by_user_at: "2026-09-06"
   proposal_sha256: "sha256:76bb40a526e3f49fcd90ca41c2f507248428c1b73063aa79652dac0a1347c6f2"
   authority: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json
-  authority_sha256: "sha256:7ca896214d9bf633de27dad50f5c06d2947c6dbc67c06e6efe21ab2edda88e9d"
+  authority_sha256: "sha256:44fe7966e0da3f00703626a49163ee1f40e5d5ba3481a473a7d030bb0a66661d"
   consumed: true
   resources: []
   authorized_operations: []
@@ -6058,14 +6058,14 @@ recommended_next_task:
   authority_note: "Proposal 76bb40a5 is consumed after two exact POSTs. Cleanup is complete with zero settled increment. Provider-free warm prequeue repair prevents zero-scale between cold and warm without relaxing receipt checks. Fresh exact approval is required."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
-  successor_proposal_sha256: "sha256:bcde60df44e6b79278bf0fff0ba530cc7c1747d0e7530895133d04ab56517b7e"
+  successor_proposal_sha256: "sha256:6f3e6c9c506d665b9af1b04314e99309f1f4444a0b3a70e3ab3510fe4b693d12"
   superseded_proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
   superseded_proposal_record_commit: 4b8a6ef83772fea44701129154ae4d69833498eb
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
   execution_status: v2_08_warm_prequeue_repair_sealed_provider_free
-  execution_blocker: fresh_exact_user_approval_for_proposal_bcde60df
+  execution_blocker: fresh_exact_user_approval_for_proposal_6f3e6c9c
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:

@@ -21,7 +21,7 @@
     "final_zero_compute_reads": 3,
     "observed_incremental_spend_usd": 0,
     "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-warm-worker-reuse-attempt.json",
-    "failure_evidence_sha256": "sha256:735a1cb7949ef2a0ab318ca3caae568f97ec3346d43719aaff02dd9eb21b6f18",
+    "failure_evidence_sha256": "sha256:d5a4e28e9db02e86a8c1e2cab78769b386ad230e38cb554228c5758db20606fc",
     "qualification_claimed": false
   },
   "lineage": {
@@ -32,7 +32,7 @@
     "approval_statement_storage": "inline_exact_statement_in_user_approval_json",
     "approval_statement_sha256": "sha256:59429164e5b46deb10d814b508d197431f3fe5df99fb509e4fa2acc165285eec",
     "user_approval_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
-    "user_approval_sha256": "sha256:67bb754633f97826d15e96292aca6af8948404893b3f6bc9289ada311d50d15d",
+    "user_approval_sha256": "sha256:92ee1c56107c70374c92e07a89f4bc4dd4adf04b8c193b7f9de59d6ab74baaaa",
     "control_source_commit": "8f3260a1074263d97d476ae49c44139a104a4273",
     "control_source_remote_ref": "refs/heads/codex/serverless-v2-roadmap-v4",
     "control_source_remote_verified": true,

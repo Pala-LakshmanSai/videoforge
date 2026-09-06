@@ -305,6 +305,48 @@ describe("RunPod scale-zero control", () => {
     ).toHaveLength(1);
   });
 
+  it("arms exactly one paired warm POST behind one active V2-08 cold job", async () => {
+    const guard = new RunPodDrainGuard();
+    let healthReads = 0;
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/health")) {
+        healthReads += 1;
+        return response({
+          workers: {},
+          jobs: healthReads === 1 ? { inQueue: 0, inProgress: 0 } : { inQueue: 1, inProgress: 0 },
+        });
+      }
+      if (path.endsWith("/run"))
+        return response({ id: `job_v208_${fetch.mock.calls.length}`, status: "IN_QUEUE" });
+      throw new Error("unexpected request");
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+
+    await client.confirmV208StartupQueueEmpty();
+    await client.dispatchWithV208Policy(
+      "v208-soulx-cold-whole-span-2-4-6-10s",
+      {},
+      { executionTimeout: 800_000, ttl: V207_TIMEOUT_TTL_MS },
+    );
+    await client.confirmV208PairedWarmQueue();
+    expect(guard.snapshot()).toBe("v208_paired_warm_queue_confirmed");
+    await client.dispatchWithV208Policy(
+      "v208-soulx-warm-whole-span-2-4-6-10s",
+      {},
+      { executionTimeout: 800_000, ttl: V207_TIMEOUT_TTL_MS },
+    );
+    expect(
+      fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith("/run")),
+    ).toHaveLength(2);
+  });
+
   it.each([
     ["queued", { inQueue: 1, inProgress: 0 }],
     ["in progress", { inQueue: 0, inProgress: 1 }],

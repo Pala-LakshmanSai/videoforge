@@ -501,6 +501,7 @@ export class RunPodDrainGuard {
     | "draining"
     | "queue_empty"
     | "v208_startup_queue_empty"
+    | "v208_paired_warm_queue_confirmed"
     | "zero" = "unknown";
 
   markActive(): void {
@@ -618,6 +619,15 @@ export class RunPodDrainGuard {
     this.state = "v208_startup_queue_empty";
   }
 
+  /** Arms only the second V2-08 POST while exactly one already-owned cold job occupies max-one. */
+  confirmV208PairedWarmQueue(queuedJobCount: number): void {
+    if (this.state !== "active" || !Number.isSafeInteger(queuedJobCount) || queuedJobCount !== 1) {
+      this.state = "unknown";
+      throw new RunPodControlError("RUNPOD_V208_PAIRED_WARM_QUEUE_NOT_CONFIRMED");
+    }
+    this.state = "v208_paired_warm_queue_confirmed";
+  }
+
   assertDispatchAllowed(): void {
     if (this.state !== "zero" && this.state !== "warm_idle") {
       throw new RunPodControlError("RUNPOD_DISPATCH_BLOCKED");
@@ -628,7 +638,8 @@ export class RunPodDrainGuard {
     if (
       this.state !== "zero" &&
       this.state !== "warm_idle" &&
-      this.state !== "v208_startup_queue_empty"
+      this.state !== "v208_startup_queue_empty" &&
+      this.state !== "v208_paired_warm_queue_confirmed"
     ) {
       throw new RunPodControlError("RUNPOD_DISPATCH_BLOCKED");
     }
@@ -1944,6 +1955,15 @@ export class RunPodServerlessJobClient {
     const inQueue = strictCounter(jobs, "inQueue");
     const inProgress = strictCounter(jobs, "inProgress");
     this.options.guard.confirmV208StartupQueueEmpty(inQueue + inProgress);
+  }
+
+  /** V2-08-only proof for the one warm POST queued behind one already-owned cold job. */
+  async confirmV208PairedWarmQueue(): Promise<void> {
+    const value = await this.request("GET", "/health");
+    const jobs = record(value.jobs);
+    const inQueue = strictCounter(jobs, "inQueue");
+    const inProgress = strictCounter(jobs, "inProgress");
+    this.options.guard.confirmV208PairedWarmQueue(inQueue + inProgress);
   }
 
   /**

@@ -103,6 +103,7 @@ type JobPort = Pick<
   | "cancel"
   | "confirmStartupQueueEmpty"
   | "confirmV208StartupQueueEmpty"
+  | "confirmV208PairedWarmQueue"
 >;
 
 export interface V213RunPodDualLaneOptions {
@@ -465,7 +466,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
   private readonly deployments = new Map<string, V213LaneDeployment>();
   private readonly jobs = new Map<
     string,
-    { readonly endpointId: string; readonly client: JobPort }
+    { readonly endpointId: string; readonly client: JobPort; readonly requestKey?: string }
   >();
   private billing = 0;
 
@@ -1047,12 +1048,26 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     readonly policy?: Readonly<{
       readonly executionTimeoutMs: 5_000 | 60_000 | 800_000;
       readonly ttlMs: 7_200_000;
+      readonly prequeueAfterRequestKey?: string;
     }>;
   }): Promise<V213DispatchAck> {
     if (!ID.test(input.requestKey)) throw new Error("V213_REQUEST_KEY_INVALID");
     const client = this.options.createJobClient(input.deployment.endpointId);
     if (input.policy === undefined) {
       await client.confirmStartupQueueEmpty();
+    } else if (input.policy.prequeueAfterRequestKey !== undefined) {
+      if (
+        input.requestKey !== "v208-soulx-warm-whole-span-2-4-6-10s" ||
+        input.policy.prequeueAfterRequestKey !==
+          "v208-soulx-cold-whole-span-2-4-6-10s" ||
+        [...this.jobs.values()].filter(
+          (job) =>
+            job.endpointId === input.deployment.endpointId &&
+            job.requestKey === input.policy!.prequeueAfterRequestKey,
+        ).length !== 1
+      )
+        throw new Error("V213_V208_PAIRED_WARM_OWNERSHIP_UNPROVEN");
+      await client.confirmV208PairedWarmQueue();
     } else {
       for (let attempt = 0; attempt < STARTUP_HEALTH_MAX_ATTEMPTS; attempt += 1) {
         try {
@@ -1074,7 +1089,11 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
             ttl: input.policy.ttlMs,
           } satisfies RunPodV208DispatchPolicy)
         : await client.dispatch(input.requestKey, input.envelope);
-      this.jobs.set(job.id, { endpointId: input.deployment.endpointId, client });
+      this.jobs.set(job.id, {
+        endpointId: input.deployment.endpointId,
+        client,
+        requestKey: input.requestKey,
+      });
       return { kind: "ACK", jobId: job.id };
     } catch (error) {
       if (

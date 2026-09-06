@@ -609,13 +609,19 @@ export async function dispatchV208Durably(
   materialization: V213QualificationCaseMaterialization,
   executionTimeoutMs: 5_000 | 60_000 | 800_000,
   authorityId: string,
+  prequeueAfterRequestKey?: string,
 ) {
   const requestKey = `v208-${id}`;
   const operation = operationIdentity(
     authorityId,
     "dispatch",
     requestKey,
-    hashCanonical({ request: materialization.request, executionTimeoutMs, ttlMs: 7_200_000 }),
+    hashCanonical({
+      request: materialization.request,
+      executionTimeoutMs,
+      ttlMs: 7_200_000,
+      ...(prequeueAfterRequestKey === undefined ? {} : { prequeueAfterRequestKey }),
+    }),
   );
   const claim = await transport.durable.claimOperation(operation);
   let state = claim.record.state;
@@ -632,7 +638,11 @@ export async function dispatchV208Durably(
       deployment,
       requestKey,
       envelope: materialization.request,
-      policy: { executionTimeoutMs, ttlMs: 7_200_000 },
+      policy: {
+        executionTimeoutMs,
+        ttlMs: 7_200_000,
+        ...(prequeueAfterRequestKey === undefined ? {} : { prequeueAfterRequestKey }),
+      },
     });
     if (ack.kind === "ACK") found = { jobId: ack.jobId };
     else {
@@ -1039,6 +1049,7 @@ export async function runV208SoulXWithV213Transport(
         warmPending.materialization,
         800_000,
         issued.authorityId,
+        `v208-${coldPending.descriptor.id}`,
       );
       activeJobs.add(warmPending.jobId);
       activeJobMaterializations.set(warmPending.jobId, warmPending.record);
