@@ -304,15 +304,18 @@ async function validInput(includeSoulx = false): Promise<HostedRenderPlanMateria
     }),
     ...(includeSoulx
       ? {
-          avatarSource: artifact({
-            lane: "INPUT",
-            taskKey: null,
-            assetId: revisionDocument.avatar_binding.runtime_source_asset_id,
-            receiptId: "12121212-1212-4121-8121-121212121212",
-            checksumSha256: SOULX_SOURCE_SHA256,
-            contentType: "image/png",
-            kind: "IMAGE",
-          }),
+          avatarSource: {
+            ...artifact({
+              lane: "INPUT",
+              taskKey: null,
+              assetId: revisionDocument.avatar_binding.runtime_source_asset_id,
+              receiptId: "12121212-1212-4121-8121-121212121212",
+              checksumSha256: SOULX_SOURCE_SHA256,
+              contentType: "image/png",
+              kind: "IMAGE",
+            }),
+            objectKey: `tenant/${ACCOUNT}/workspace/${WORKSPACE}/avatar-profile/${revisionDocument.avatar_binding.avatar_profile_id}/version/${revisionDocument.avatar_binding.avatar_profile_version_id}/canonical/avatar.png`,
+          },
         }
       : {}),
     acceptedVisuals: includeSoulx

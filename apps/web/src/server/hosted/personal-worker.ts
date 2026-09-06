@@ -1443,7 +1443,7 @@ function completionAccepted(state: PersonalWorkerTerminalState): Response {
 
 async function readVerifiedSpanResult(
   environment: HostedRuntimeEnvironment,
-  terminal: DeviceScope & { readonly attemptId: string } & PersonalWorkerTerminalLease,
+  terminal: { readonly accountId: string; readonly workspaceId: string; readonly attemptId: string } & PersonalWorkerTerminalLease,
 ): Promise<JsonValue> {
   if (terminal.resultObjectKey === null || terminal.resultContentLength === null ||
     terminal.resultChecksumSha256 === null || terminal.resultContentLength < 1 ||
@@ -1462,6 +1462,28 @@ async function readVerifiedSpanResult(
     throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
   }
   return decoded as JsonValue;
+}
+
+export async function finalizeHostedSpanAudioTerminalReplay(
+  environment: HostedRuntimeEnvironment,
+  terminal: { readonly accountId: string; readonly workspaceId: string; readonly attemptId: string } & PersonalWorkerTerminalLease,
+  spanAudio: {
+    readonly acceptCompleted: (input: {
+      readonly accountId: string;
+      readonly workspaceId: string;
+      readonly attemptId: string;
+      readonly resultDocument: JsonValue;
+    }) => Promise<unknown>;
+  },
+) {
+  if (terminal.state !== "SUCCEEDED" || terminal.kind !== "SPAN_AUDIO") return;
+  const resultDocument = await readVerifiedSpanResult(environment, terminal);
+  await spanAudio.acceptCompleted({
+    accountId: terminal.accountId,
+    workspaceId: terminal.workspaceId,
+    attemptId: terminal.attemptId,
+    resultDocument,
+  });
 }
 
 async function completeLease(
@@ -1495,13 +1517,7 @@ async function completeLease(
         return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
       }
       if (terminal.state === "SUCCEEDED" && terminal.kind === "SPAN_AUDIO" && spanAudio) {
-        const resultDocument = await readVerifiedSpanResult(environment, terminal);
-        await spanAudio.acceptCompleted({
-          accountId: terminal.accountId,
-          workspaceId: terminal.workspaceId,
-          attemptId: terminal.attemptId,
-          resultDocument,
-        });
+        await finalizeHostedSpanAudioTerminalReplay(environment, terminal, spanAudio);
       }
       return completionAccepted(terminal.state);
     }
@@ -1713,13 +1729,7 @@ async function completeLease(
       return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
     }
     if (terminal.state === "SUCCEEDED" && terminal.kind === "SPAN_AUDIO" && spanAudio) {
-      const resultDocument = await readVerifiedSpanResult(environment, terminal);
-      await spanAudio.acceptCompleted({
-        accountId: terminal.accountId,
-        workspaceId: terminal.workspaceId,
-        attemptId: terminal.attemptId,
-        resultDocument,
-      });
+      await finalizeHostedSpanAudioTerminalReplay(environment, terminal, spanAudio);
     }
     return completionAccepted(terminal.state);
   } finally {

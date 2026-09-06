@@ -1,5 +1,5 @@
 import { validateAndHashContractDocument } from "@videoforge/contracts";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { CloudRunJobsClient, executionNamesForAttempt } from "./cloud-run";
 import {
@@ -19,6 +19,7 @@ import {
 } from "./r2";
 import {
   completionMatchesTerminalLease,
+  finalizeHostedSpanAudioTerminalReplay,
   mediaWorkerTerminalEventKind,
   supportedWorkerPlatform,
 } from "./personal-worker";
@@ -490,6 +491,50 @@ describe("V2-06 hosted adapters", () => {
         },
       ),
     ).toBe(true);
+  });
+
+  it("re-runs durable span finalization before acknowledging a terminal replay", async () => {
+    const result = Buffer.from(JSON.stringify({
+      schema_version: "selected-span-audio-result/v1",
+      status: "SUCCEEDED",
+    }), "utf8");
+    const checksum = `sha256:${Buffer.from(await crypto.subtle.digest("SHA-256", result))
+      .toString("hex")}`;
+    const acceptCompleted = vi.fn(async () => undefined);
+    const source = {
+      ...environment(),
+      PRIVATE_ARTIFACTS: {
+        async get() {
+          return {
+            size: result.byteLength,
+            httpMetadata: { contentType: "application/json" },
+            async arrayBuffer() {
+              return result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength);
+            },
+          };
+        },
+      },
+    } as never;
+    const terminal = {
+      accountId: "11111111-1111-1111-1111-111111111111",
+      workspaceId: "22222222-2222-2222-2222-222222222222",
+      attemptId: "33333333-3333-4333-8333-333333333333",
+      kind: "SPAN_AUDIO" as const,
+      state: "SUCCEEDED" as const,
+      failureCode: null,
+      resultObjectKey: "tenant/a/span-result",
+      resultContentLength: result.byteLength,
+      resultChecksumSha256: checksum,
+    };
+    await finalizeHostedSpanAudioTerminalReplay(source, terminal, { acceptCompleted });
+    await finalizeHostedSpanAudioTerminalReplay(source, terminal, { acceptCompleted });
+    expect(acceptCompleted).toHaveBeenCalledTimes(2);
+    expect(acceptCompleted).toHaveBeenLastCalledWith({
+      accountId: terminal.accountId,
+      workspaceId: terminal.workspaceId,
+      attemptId: terminal.attemptId,
+      resultDocument: { schema_version: "selected-span-audio-result/v1", status: "SUCCEEDED" },
+    });
   });
 
   it("maps cancellation to the media-worker event kind allowed by migration 0032", () => {
