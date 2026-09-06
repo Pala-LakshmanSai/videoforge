@@ -38,6 +38,8 @@ function scope(value: WorkflowParameters): HostedPairWorkflowParameters {
  * 0043 Mage-then-SoulX boundary; later steps only observe, cancel exact known jobs, and settle. */
 export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, WorkflowParameters> {
   async run(event: Readonly<WorkflowEvent<WorkflowParameters>>, step: WorkflowStep) {
+    if (hostedPairProductionBindingState(this.env).state === "DISABLED_UNQUALIFIED")
+      return Object.freeze({ state: "DISABLED_UNQUALIFIED" as const });
     const acceptanceCandidate =
       event.payload &&
       typeof event.payload === "object" &&
@@ -49,8 +51,6 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
         ).parseV213AcceptanceWorkflowParameters(event.payload)
       : null;
     const pair = acceptanceCandidate ? null : scope(event.payload);
-    if (hostedPairProductionBindingState(this.env).state === "DISABLED_UNQUALIFIED")
-      return Object.freeze({ state: "DISABLED_UNQUALIFIED" as const });
     const config = hostedRuntimeConfiguration(this.env);
 
     if (acceptance) {
