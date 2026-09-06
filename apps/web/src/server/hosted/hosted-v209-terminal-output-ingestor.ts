@@ -598,8 +598,7 @@ export function createHostedV209TerminalOutputIngestor(
   input: HostedV209TerminalOutputIngestorInput,
 ) {
   const signer = new ProvenanceReceiptSigner(input.receiptKeyId, input.receiptKey);
-  const store: HostedV209TerminalOutputStore =
-    input.store ?? new HostedSqlV209TerminalOutputStore(input.database);
+  const store = input.store ?? new HostedSqlV209TerminalOutputStore(input.database);
   return Object.freeze({
     async acceptCompleted(request: {
       readonly accountId: string;
@@ -692,8 +691,9 @@ export function createHostedV209TerminalOutputIngestor(
       });
       let outcome = committed.state;
       let acceptBarrier = input.acceptBarrier;
-      if (store.atomicBarrier) acceptBarrier = undefined;
-      if (!store.atomicBarrier && !acceptBarrier) {
+      const atomicBarrier = "atomicBarrier" in store && store.atomicBarrier === true;
+      if (atomicBarrier) acceptBarrier = undefined;
+      if (!atomicBarrier && !acceptBarrier) {
         const scopedRepository = new HostedSqlOutputBarrierRepository(input.database, {
           accountId: request.accountId,
           workspaceId: request.workspaceId,
