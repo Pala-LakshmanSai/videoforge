@@ -60,6 +60,17 @@ _RENDER_FAILURE_CODES = frozenset(
         "RENDER_CANCELLED",
     }
 )
+_SPAN_AUDIO_FAILURE_CODES = frozenset(
+    {
+        "SPAN_INPUT_INVALID",
+        "SPAN_SOURCE_HASH_MISMATCH",
+        "SPAN_SOURCE_DECODE_FAILED",
+        "SPAN_TOOL_MISSING",
+        "SPAN_PROCESS_FAILED",
+        "SPAN_OUTPUT_INVALID",
+        "SPAN_CANCELLED",
+    }
+)
 _MEDIA_EXECUTION_IO_FAILED = "MEDIA_EXECUTION_IO_FAILED"
 _MEDIA_EXECUTION_CONTRACT_INVALID = "MEDIA_EXECUTION_CONTRACT_INVALID"
 _MEDIA_EXECUTION_LEASE_STALE = "MEDIA_EXECUTION_LEASE_STALE"
@@ -160,8 +171,15 @@ def parse_personal_job(value: object) -> PersonalJob:
     attempt_id = value["attempt_id"]
     if not isinstance(attempt_id, str) or not _UUID.fullmatch(attempt_id):
         raise ValueError("Personal worker attempt is invalid")
-    if value["kind"] not in {"ASR", "RENDER"} or not isinstance(value["input_document"], dict):
+    if value["kind"] not in {"ASR", "SPAN_AUDIO", "RENDER"} or not isinstance(
+        value["input_document"], dict
+    ):
         raise ValueError("Personal worker job kind or input is invalid")
+    if value["kind"] == "SPAN_AUDIO" and (
+        value["input_document"].get("schema_version") != "selected-span-audio-job/v1"
+        or value["input_document"].get("output_profile") != "SOULX_PCM16_48K_MONO"
+    ):
+        raise ValueError("Personal worker span-audio profile is invalid")
     expires_at = datetime.fromisoformat(str(value["expires_at"]).replace("Z", "+00:00"))
     if expires_at.tzinfo != timezone.utc:
         raise ValueError("Personal worker expiry must be UTC")
@@ -582,6 +600,26 @@ def _primary_path(scratch: Path, result: object) -> Path:
     return path
 
 
+def _span_audio_primary_path(scratch: Path, result: object) -> Path:
+    if not isinstance(result, dict) or not isinstance(result.get("audio"), dict):
+        raise ValueError("Personal worker span-audio result is malformed")
+    audio = result["audio"]
+    if (
+        not isinstance(audio.get("artifact_uri"), str)
+        or audio.get("content_type") != "audio/wav"
+        or audio.get("sample_rate_hz") != 48_000
+        or audio.get("channels") != 1
+    ):
+        raise ValueError("Personal worker span-audio primary output is missing")
+    path = _local_path(scratch, audio["artifact_uri"])
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("Personal worker span-audio output is not a regular file")
+    checksum, size = _sha256_file(path)
+    if audio.get("byte_size") != size or audio.get("sha256") != checksum:
+        raise ValueError("Personal worker span-audio output facts do not match bytes")
+    return path
+
+
 def _asr_primary_path(scratch: Path, input_document: dict[str, Any]) -> Path:
     output = input_document.get("output")
     if (
@@ -599,7 +637,11 @@ def _asr_primary_path(scratch: Path, input_document: dict[str, Any]) -> Path:
 def _child_result_failure_code(kind: str) -> str:
     """Return a bounded code for a child that did not return a usable result."""
 
-    return "ASR_RESULT_INVALID" if kind == "ASR" else "RENDER_RESULT_INVALID"
+    if kind == "ASR":
+        return "ASR_RESULT_INVALID"
+    if kind == "SPAN_AUDIO":
+        return "SPAN_RESULT_INVALID"
+    return "RENDER_RESULT_INVALID"
 
 
 def _reject_json_constant(value: str) -> object:
@@ -640,7 +682,11 @@ def _parse_child_result(
 def _job_result_state(job: PersonalJob, result: object) -> tuple[str, str | None]:
     if not isinstance(result, dict):
         raise ValueError("Personal worker result is malformed")
-    expected_schema = "asr-job-result/v1" if job.kind == "ASR" else "render-job-result/v1"
+    expected_schema = {
+        "ASR": "asr-job-result/v1",
+        "SPAN_AUDIO": "selected-span-audio-result/v1",
+        "RENDER": "render-job-result/v1",
+    }[job.kind]
     if (
         result.get("schema_version") != expected_schema
         or result.get("attempt_id") != job.attempt_id
@@ -655,7 +701,11 @@ def _job_result_state(job: PersonalJob, result: object) -> tuple[str, str | None
         raise ValueError("Personal worker result status is invalid")
     error = result.get("error")
     code = error.get("code") if isinstance(error, dict) else None
-    valid_codes = _ASR_FAILURE_CODES if job.kind == "ASR" else _RENDER_FAILURE_CODES
+    valid_codes = {
+        "ASR": _ASR_FAILURE_CODES,
+        "SPAN_AUDIO": _SPAN_AUDIO_FAILURE_CODES,
+        "RENDER": _RENDER_FAILURE_CODES,
+    }[job.kind]
     return "FAILED", str(code) if isinstance(code, str) and code in valid_codes else None
 
 
@@ -706,7 +756,11 @@ def execute_personal_job(
             command.extend(["-m", "videoforge_media_local.cli"])
         command.extend(
             [
-                "transcribe" if job.kind == "ASR" else "render",
+                {
+                    "ASR": "transcribe",
+                    "SPAN_AUDIO": "materialize-span",
+                    "RENDER": "render",
+                }[job.kind],
                 "--artifact-root",
                 str(scratch),
                 "--input",
@@ -726,6 +780,15 @@ def execute_personal_job(
                     str(tools.whisper_model),
                     "--whisper-version",
                     job.tooling["whisper_version"],
+                    "--ffmpeg",
+                    str(tools.ffmpeg),
+                    "--ffprobe",
+                    str(tools.ffprobe),
+                ]
+            )
+        elif job.kind == "SPAN_AUDIO":
+            command.extend(
+                [
                     "--ffmpeg",
                     str(tools.ffmpeg),
                     "--ffprobe",
@@ -774,7 +837,11 @@ def execute_personal_job(
                 primary = (
                     _asr_primary_path(scratch, job.input_document)
                     if job.kind == "ASR"
-                    else _primary_path(scratch, result)
+                    else (
+                        _span_audio_primary_path(scratch, result)
+                        if job.kind == "SPAN_AUDIO"
+                        else _primary_path(scratch, result)
+                    )
                 )
                 for output in job.outputs:
                     if monitor.is_cancelled():

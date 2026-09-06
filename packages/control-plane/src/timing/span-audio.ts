@@ -49,6 +49,8 @@ export interface BuildSelectedSpanAudioJobInput {
   readonly sourceDurationMs: number;
   readonly sourceArtifactUri: string;
   readonly cancelToken: string;
+  /** Omitted preserves the provider-free local 16 kHz contract. */
+  readonly outputProfile?: "SOULX_PCM16_48K_MONO";
 }
 
 export interface SelectedSpanAudioJobDispatch {
@@ -200,9 +202,12 @@ export async function buildSelectedSpanAudioJob(
   const selectedEndMs = assertInteger(request.span.selectedEndMsExclusive, "selected end", 1);
   const trimStartMs = assertInteger(request.span.trimStartMs, "trim start");
   const trimEndMs = assertInteger(request.span.trimEndMsExclusive, "trim end", 1);
+  const maximumPaddedEndMs =
+    sourceDurationMs + (request.outputProfile === "SOULX_PCM16_48K_MONO" ? 20 : 0);
   if (
     request.span.transcriptId !== request.transcriptId ||
-    paddedEndMs > sourceDurationMs ||
+    paddedEndMs > maximumPaddedEndMs ||
+    selectedStartMs > sourceDurationMs ||
     paddedStartMs > selectedStartMs ||
     selectedStartMs >= selectedEndMs ||
     selectedEndMs > paddedEndMs ||
@@ -233,6 +238,9 @@ export async function buildSelectedSpanAudioJob(
     request.cancelToken.length > 240
   ) {
     throw new SpanAudioAcceptanceError("SPAN_INPUT_INVALID", "The cancel token is invalid.");
+  }
+  if (request.outputProfile !== undefined && request.outputProfile !== "SOULX_PCM16_48K_MONO") {
+    throw new SpanAudioAcceptanceError("SPAN_INPUT_INVALID", "The output profile is invalid.");
   }
 
   const outputAssetId = stableUuid(
@@ -268,6 +276,7 @@ export async function buildSelectedSpanAudioJob(
     }),
     output: Object.freeze({ asset_id: outputAssetId, result_uri: resultUri }),
     cancel_token: request.cancelToken,
+    ...(request.outputProfile === undefined ? {} : { output_profile: request.outputProfile }),
   });
   return Object.freeze({
     input,
@@ -282,6 +291,11 @@ export async function prepareSelectedSpanAudioAcceptance(
 ): Promise<PreparedSelectedSpanAudioAcceptance> {
   canonicalizeJson(command.jobInput);
   canonicalizeJson(command.jobResult);
+  const hasOutputProfile =
+    typeof command.jobInput === "object" &&
+    command.jobInput !== null &&
+    !Array.isArray(command.jobInput) &&
+    Object.hasOwn(command.jobInput, "output_profile");
   const input = exactObject(
     command.jobInput,
     [
@@ -297,6 +311,7 @@ export async function prepareSelectedSpanAudioAcceptance(
       "selection",
       "output",
       "cancel_token",
+      ...(hasOutputProfile ? ["output_profile"] : []),
     ],
     "span job input",
   );
@@ -383,7 +398,10 @@ export async function prepareSelectedSpanAudioAcceptance(
   const inputHash = asSha256(await sha256CanonicalJson(command.jobInput as JsonValue));
   const resultHash = asSha256(await sha256CanonicalJson(command.jobResult as JsonValue));
 
+  const expectedSampleRateHz = hasOutputProfile ? 48_000 : 16_000;
+  const maximumPaddedEndMs = sourceDurationMs + (hasOutputProfile ? 20 : 0);
   if (
+    (hasOutputProfile && input.output_profile !== "SOULX_PCM16_48K_MONO") ||
     result.attempt_id !== attemptId ||
     result.span_id !== spanId ||
     result.timeline_plan_id !== timelinePlanId ||
@@ -400,7 +418,8 @@ export async function prepareSelectedSpanAudioAcceptance(
       paddedStartMs <= selectedStartMs &&
       selectedStartMs < selectedEndMs &&
       selectedEndMs <= paddedEndMs &&
-      paddedEndMs <= sourceDurationMs &&
+      paddedEndMs <= maximumPaddedEndMs &&
+      selectedStartMs <= sourceDurationMs &&
       trimStartMs === selectedStartMs - paddedStartMs &&
       trimEndMs === trimStartMs + selectedEndMs - selectedStartMs
     ) ||
@@ -413,7 +432,7 @@ export async function prepareSelectedSpanAudioAcceptance(
     canonicalizeJson(resultSelection) !== canonicalizeJson(inputSelection) ||
     audio.asset_id !== outputAssetId ||
     audio.content_type !== "audio/wav" ||
-    audio.sample_rate_hz !== 16_000 ||
+    audio.sample_rate_hz !== expectedSampleRateHz ||
     audio.channels !== 1 ||
     durationMs !== paddedEndMs - paddedStartMs ||
     artifactMatch === null ||
@@ -445,7 +464,7 @@ export async function prepareSelectedSpanAudioAcceptance(
     padded_end_ms_exclusive: paddedEndMs,
     trim_start_ms: trimStartMs,
     trim_end_ms_exclusive: trimEndMs,
-    sample_rate_hz: 16_000,
+    sample_rate_hz: expectedSampleRateHz,
     channels: 1,
   });
 

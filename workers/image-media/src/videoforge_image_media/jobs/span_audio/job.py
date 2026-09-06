@@ -5,6 +5,7 @@ import json
 import os
 import re
 import uuid
+import wave
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
@@ -23,6 +24,10 @@ _RUN_URI = re.compile(
     r"(?P<attempt>[A-Za-z0-9][A-Za-z0-9._:-]{0,159})/span-audio-result\.json$"
 )
 _TASK_KEY = re.compile(r"^[^\x00-\x1f\x7f]{1,240}$")
+_OUTPUT_PROFILES = {
+    "LOCAL_PCM16_16K_MONO": 16_000,
+    "SOULX_PCM16_48K_MONO": 48_000,
+}
 _ZERO_SHA256 = "sha256:" + ("0" * 64)
 
 _ERRORS: dict[str, tuple[str, bool]] = {
@@ -79,22 +84,27 @@ def _integer(value: object, label: str, *, minimum: int = 0, maximum: int = 3_60
 
 
 def _validate_document(document: object) -> dict[str, Any]:
+    if not isinstance(document, Mapping):
+        raise ValueError("selected span job has invalid fields")
+    expected_root = {
+        "schema_version",
+        "project_revision_id",
+        "attempt_id",
+        "timeline_plan_id",
+        "transcript_id",
+        "span_id",
+        "timeline_segment_id",
+        "task_key",
+        "source_voiceover",
+        "selection",
+        "output",
+        "cancel_token",
+    }
+    if "output_profile" in document:
+        expected_root.add("output_profile")
     root = _mapping(
         document,
-        {
-            "schema_version",
-            "project_revision_id",
-            "attempt_id",
-            "timeline_plan_id",
-            "transcript_id",
-            "span_id",
-            "timeline_segment_id",
-            "task_key",
-            "source_voiceover",
-            "selection",
-            "output",
-            "cancel_token",
-        },
+        expected_root,
         "selected span job",
     )
     if root["schema_version"] != "selected-span-audio-job/v1":
@@ -146,14 +156,21 @@ def _validate_document(document: object) -> dict[str, Any]:
     padded_end = _integer(selection["padded_end_ms_exclusive"], "padded end", minimum=1)
     trim_start = _integer(selection["trim_start_ms"], "trim start")
     trim_end = _integer(selection["trim_end_ms_exclusive"], "trim end", minimum=1)
+    output_profile = root.get("output_profile", "LOCAL_PCM16_16K_MONO")
+    if output_profile not in _OUTPUT_PROFILES:
+        raise ValueError("selected span output profile is invalid")
+    maximum_padded_end = (
+        duration_ms + 20 if output_profile == "SOULX_PCM16_48K_MONO" else duration_ms
+    )
     if not (
-        padded_start <= selected_start < selected_end <= padded_end <= duration_ms
+        padded_start <= selected_start < selected_end <= padded_end <= maximum_padded_end
+        and selected_start <= duration_ms
         and trim_start == selected_start - padded_start
         and trim_end == trim_start + selected_end - selected_start
     ):
         raise ValueError("selected and padded span boundaries are inconsistent")
 
-    return {
+    validated = {
         "schema_version": "selected-span-audio-job/v1",
         "project_revision_id": revision_id,
         "attempt_id": attempt_id,
@@ -182,6 +199,9 @@ def _validate_document(document: object) -> dict[str, Any]:
         },
         "cancel_token": _text(root["cancel_token"], "cancel token", maximum=240),
     }
+    if "output_profile" in root:
+        validated["output_profile"] = output_profile
+    return validated
 
 
 def _file_sha256(path: Path, should_cancel: Any) -> str | None:
@@ -214,8 +234,9 @@ def _ffmpeg_arguments(
     output: Path,
     padded_start_ms: int,
     padded_end_ms: int,
+    sample_rate_hz: int,
 ) -> tuple[str, ...]:
-    return (
+    arguments = (
         str(ffmpeg),
         "-nostdin",
         "-hide_banner",
@@ -231,12 +252,20 @@ def _ffmpeg_arguments(
         "-map",
         "0:a:0",
         "-vn",
+    )
+    if sample_rate_hz == 48_000:
+        exact_samples = (padded_end_ms - padded_start_ms) * 48
+        arguments += (
+            "-af",
+            f"apad=whole_len={exact_samples},atrim=end_sample={exact_samples},asetpts=PTS-STARTPTS",
+        )
+    return arguments + (
         "-map_metadata",
         "-1",
         "-ac",
         "1",
         "-ar",
-        "16000",
+        str(sample_rate_hz),
         "-c:a",
         "pcm_s16le",
         "-bitexact",
@@ -244,6 +273,20 @@ def _ffmpeg_arguments(
         "+bitexact",
         str(output),
     )
+
+
+def _exact_soulx_frame_count(path: Path, expected_frames: int) -> bool:
+    try:
+        with wave.open(str(path), "rb") as stream:
+            return (
+                stream.getnchannels() == 1
+                and stream.getsampwidth() == 2
+                and stream.getframerate() == 48_000
+                and stream.getcomptype() == "NONE"
+                and stream.getnframes() == expected_frames
+            )
+    except (EOFError, OSError, wave.Error):
+        return False
 
 
 def _ffprobe_arguments(ffprobe: Path, output: Path) -> tuple[str, ...]:
@@ -261,7 +304,7 @@ def _ffprobe_arguments(ffprobe: Path, output: Path) -> tuple[str, ...]:
     )
 
 
-def _probe(stdout: str) -> tuple[int, int, int]:
+def _probe(stdout: str, expected_sample_rate_hz: int) -> tuple[int, int, int]:
     try:
         document = json.loads(stdout)
         stream = document["streams"][0]
@@ -279,7 +322,11 @@ def _probe(stdout: str) -> tuple[int, int, int]:
         json.JSONDecodeError,
     ) as error:
         raise ValueError("invalid span audio probe") from error
-    if stream.get("codec_name") != "pcm_s16le" or sample_rate != 16000 or channels != 1:
+    if (
+        stream.get("codec_name") != "pcm_s16le"
+        or sample_rate != expected_sample_rate_hz
+        or channels != 1
+    ):
         raise ValueError("span audio output profile mismatch")
     return duration_ms, sample_rate, channels
 
@@ -441,6 +488,7 @@ class SpanAudioMaterializationJob:
         audio_path = result_path.with_name(f".{result_path.stem}.wav")
         audio_path.unlink(missing_ok=True)
         selection = job["selection"]
+        sample_rate_hz = _OUTPUT_PROFILES[job.get("output_profile", "LOCAL_PCM16_16K_MONO")]
         try:
             rendered = self._process.run(
                 _ffmpeg_arguments(
@@ -449,6 +497,7 @@ class SpanAudioMaterializationJob:
                     audio_path,
                     selection["padded_start_ms"],
                     selection["padded_end_ms_exclusive"],
+                    sample_rate_hz,
                 ),
                 should_cancel=cancelled,
             )
@@ -486,11 +535,20 @@ class SpanAudioMaterializationJob:
             probed = ProcessResult(return_code=-1, launch_error="failed")
         expected_duration = selection["padded_end_ms_exclusive"] - selection["padded_start_ms"]
         try:
-            duration_ms, sample_rate, channels = _probe(probed.stdout)
+            duration_ms, sample_rate, channels = _probe(probed.stdout, sample_rate_hz)
         except ValueError:
             duration_ms, sample_rate, channels = -1, -1, -1
         cancelled_after_probe = probed.cancelled or cancelled()
-        if cancelled_after_probe or probed.return_code != 0 or duration_ms != expected_duration:
+        exact_soulx_frames = (
+            sample_rate_hz != 48_000
+            or _exact_soulx_frame_count(audio_path, expected_duration * 48)
+        )
+        if (
+            cancelled_after_probe
+            or probed.return_code != 0
+            or duration_ms != expected_duration
+            or not exact_soulx_frames
+        ):
             audio_path.unlink(missing_ok=True)
             result = _failure(
                 job,

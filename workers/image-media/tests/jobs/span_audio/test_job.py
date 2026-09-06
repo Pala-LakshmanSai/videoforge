@@ -69,6 +69,10 @@ class FakeProcess:
         if should_cancel():
             return ProcessResult(return_code=-15, cancelled=True)
         if "-show_entries" in command:
+            sample_rate = 16000
+            if self.calls and len(self.calls) > 1:
+                rendered = self.calls[0]
+                sample_rate = int(rendered[rendered.index("-ar") + 1])
             return ProcessResult(
                 return_code=0,
                 stdout=json.dumps(
@@ -76,7 +80,7 @@ class FakeProcess:
                         "streams": [
                             {
                                 "codec_name": "pcm_s16le",
-                                "sample_rate": "16000",
+                                "sample_rate": str(sample_rate),
                                 "channels": 1,
                                 "duration": f"{self.duration_ms / 1000:.6f}",
                             }
@@ -86,7 +90,14 @@ class FakeProcess:
                 ),
             )
         if self.return_code == 0:
-            Path(command[-1]).write_bytes(self.output)
+            if command[command.index("-ar") + 1] == "48000":
+                with wave.open(str(Path(command[-1])), "wb") as stream:
+                    stream.setnchannels(1)
+                    stream.setsampwidth(2)
+                    stream.setframerate(48000)
+                    stream.writeframes(b"\x01\x00" * 48 * self.duration_ms)
+            else:
+                Path(command[-1]).write_bytes(self.output)
         return ProcessResult(return_code=self.return_code, stderr="redacted fixture failure")
 
 
@@ -195,6 +206,60 @@ class SpanAudioMaterializationJobTests(unittest.TestCase):
         )
         self.assertEqual(persisted, result)
 
+    def test_soulx_profile_materializes_real_48k_pcm16_mono(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["output_profile"] = "SOULX_PCM16_48K_MONO"
+        result, process, _ = self._run(document=document)
+        self.assertEqual(result["status"], "SUCCEEDED")
+        self.assertEqual(result["audio"]["sample_rate_hz"], 48000)
+        ffmpeg = process.calls[0]
+        self.assertEqual(ffmpeg[ffmpeg.index("-ar") + 1], "48000")
+        self.assertIn("apad=whole_len=240000", ffmpeg[ffmpeg.index("-af") + 1])
+
+    def test_soulx_profile_silence_pads_aligned_end_and_proves_exact_frames(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["output_profile"] = "SOULX_PCM16_48K_MONO"
+        document["selection"] = {
+            "selected_start_ms": 8000,
+            "selected_end_ms_exclusive": 12000,
+            "padded_start_ms": 7500,
+            "padded_end_ms_exclusive": 12020,
+            "trim_start_ms": 500,
+            "trim_end_ms_exclusive": 4500,
+        }
+        result, _, artifacts = self._run(
+            document=document, process=FakeProcess(self.output_bytes, duration_ms=4520)
+        )
+        self.assertEqual(result["status"], "SUCCEEDED")
+        published = artifacts.published[0][0]
+        # The temporary publication source is deleted after publish; the exact count was
+        # already enforced by the worker before this point.
+        self.assertFalse(published.exists())
+
+        too_far = copy.deepcopy(document)
+        too_far["selection"]["padded_end_ms_exclusive"] = 12021
+        failed, process, _ = self._run(document=too_far)
+        self.assertEqual(failed["error"]["code"], "SPAN_INPUT_INVALID")
+        self.assertEqual(process.calls, [])
+
+    def test_soulx_profile_rejects_wav_with_wrong_exact_frame_count(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["output_profile"] = "SOULX_PCM16_48K_MONO"
+        result, _, artifacts = self._run(
+            document=document,
+            process=FakeProcess(self.output_bytes, duration_ms=4999),
+        )
+        self.assertEqual(result["error"]["code"], "SPAN_OUTPUT_INVALID")
+        self.assertEqual(artifacts.published, [])
+
+    def test_unknown_output_profile_fails_before_process_access(self) -> None:
+        document = copy.deepcopy(self.document)
+        document["output_profile"] = "UNSAFE_48K_LABEL_ONLY"
+        result, process, artifacts = self._run(document=document)
+        self.assertEqual(result["error"]["code"], "SPAN_INPUT_INVALID")
+        self.assertEqual(process.calls, [])
+        self.assertEqual(artifacts.published, [])
+
     def test_exact_retry_is_byte_equivalent_and_does_not_overwrite_result(self) -> None:
         first, _, _ = self._run()
         second, _, _ = self._run()
@@ -294,6 +359,39 @@ class SpanAudioMaterializationJobTests(unittest.TestCase):
         self.assertEqual(first["audio"]["channels"], 1)
         self.assertEqual(second["audio"]["sha256"], first["audio"]["sha256"])
         self.assertEqual(second["audio"]["byte_size"], first["audio"]["byte_size"])
+
+        soulx_document = copy.deepcopy(self.document)
+        soulx_document["source_voiceover"]["sha256"] = source_hash
+        soulx_document["source_voiceover"]["artifact_uri"] = (
+            f"vf-local://objects/sha256/{digest[:2]}/{digest}.wav"
+        )
+        soulx_document["output_profile"] = "SOULX_PCM16_48K_MONO"
+        soulx_document["selection"] = {
+            "selected_start_ms": 8000,
+            "selected_end_ms_exclusive": 12000,
+            "padded_start_ms": 7500,
+            "padded_end_ms_exclusive": 12020,
+            "trim_start_ms": 500,
+            "trim_end_ms_exclusive": 4500,
+        }
+        soulx_root = self.root / "real-run-soulx"
+        resolver = LocalArtifactResolver(soulx_root)
+        object_parent = soulx_root / "objects" / "sha256" / digest[:2]
+        object_parent.mkdir(parents=True)
+        (object_parent / f"{digest}.wav").write_bytes(source.read_bytes())
+        soulx = SpanAudioMaterializationJob(
+            artifacts=resolver,
+            process=SubprocessRunner(),
+            ffmpeg=ffmpeg,
+            ffprobe=ffprobe,
+        ).run(soulx_document)
+        self.assertEqual(soulx["status"], "SUCCEEDED")
+        self.assertEqual(soulx["audio"]["sample_rate_hz"], 48000)
+        soulx_digest = soulx["audio"]["sha256"].removeprefix("sha256:")
+        soulx_wav = soulx_root / "objects" / "sha256" / soulx_digest[:2] / f"{soulx_digest}.wav"
+        with wave.open(str(soulx_wav), "rb") as stream:
+            self.assertEqual(stream.getframerate(), 48000)
+            self.assertEqual(stream.getnframes(), 216960)
 
     def test_hostile_existing_result_is_never_treated_as_an_exact_retry(self) -> None:
         result_path = self.root / "runs" / "span-audio-result.json"

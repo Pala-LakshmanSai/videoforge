@@ -26,6 +26,7 @@ from videoforge_media_local.personal_execution import (
     _job_result_state,
     _parse_child_result,
     _run_media_subprocess,
+    _span_audio_primary_path,
     _stream_put,
     ToolPaths,
     execute_personal_job,
@@ -96,6 +97,52 @@ def job() -> dict[str, object]:
 
 
 class PersonalWorkerContractTests(unittest.TestCase):
+    def test_accepts_only_explicit_soulx_48k_span_audio_jobs(self) -> None:
+        span = job()
+        span["kind"] = "SPAN_AUDIO"
+        span["input_document"] = {
+            "schema_version": "selected-span-audio-job/v1",
+            "output_profile": "SOULX_PCM16_48K_MONO",
+        }
+        parsed = parse_personal_job(span)
+        self.assertEqual(parsed.kind, "SPAN_AUDIO")
+        result = {
+            "schema_version": "selected-span-audio-result/v1",
+            "attempt_id": parsed.attempt_id,
+            "status": "FAILED",
+            "error": {"code": "SPAN_PROCESS_FAILED"},
+        }
+        self.assertEqual(_job_result_state(parsed, result), ("FAILED", "SPAN_PROCESS_FAILED"))
+        self.assertEqual(_child_result_failure_code(parsed.kind), "SPAN_RESULT_INVALID")
+
+        span["input_document"]["output_profile"] = "LOCAL_PCM16_16K_MONO"
+        with self.assertRaisesRegex(ValueError, "span-audio profile"):
+            parse_personal_job(span)
+
+    def test_span_audio_primary_requires_48k_metadata_and_exact_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload = b"RIFF-span-audio"
+            digest = personal_execution.hashlib.sha256(payload).hexdigest()
+            uri = f"vf-local://objects/sha256/{digest[:2]}/{digest}.wav"
+            path = _local_path(root, uri)
+            path.parent.mkdir(parents=True)
+            path.write_bytes(payload)
+            result = {
+                "audio": {
+                    "artifact_uri": uri,
+                    "content_type": "audio/wav",
+                    "sample_rate_hz": 48000,
+                    "channels": 1,
+                    "byte_size": len(payload),
+                    "sha256": f"sha256:{digest}",
+                }
+            }
+            self.assertEqual(_span_audio_primary_path(root, result), path)
+            result["audio"]["sample_rate_hz"] = 16000
+            with self.assertRaisesRegex(ValueError, "primary output"):
+                _span_audio_primary_path(root, result)
+
     def test_preserves_valid_asr_child_failure_codes(self) -> None:
         asr = job()
         asr["kind"] = "ASR"

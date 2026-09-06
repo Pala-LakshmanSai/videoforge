@@ -7,6 +7,7 @@ import {
   DurableLocalTranscriptionPersistence,
   DurableSelectedSpanAudioPersistence,
   DurableTranscriptionError,
+  prepareSelectedSpanAudioAcceptance,
   prepareDurableLocalTranscription,
 } from "../dist/src/index.js";
 import { createPGliteControlPlaneRepositories } from "../dist/src/adapters/index.js";
@@ -453,6 +454,92 @@ test("selected span job construction rejects unsafe task keys and fractional bou
         span: { ...span, taskKey: "audio-span:owned:0", selectedStartMs: 3000.5 },
       }),
     { code: "SPAN_INPUT_INVALID" },
+  );
+});
+
+test("selected span SoulX profile binds 48 kHz into the hashed input and acceptance", async () => {
+  const span = {
+    spanId: LOCAL_IDS.span,
+    spanKey: "span:owned:0",
+    timelineSegmentId: LOCAL_IDS.timelineSegment,
+    transcriptId: uuid(31_100),
+    taskKey: "audio-span:owned:0",
+    sourceAssetId: IDS.voiceoverA,
+    sourceBinarySha256: HASHES.voiceoverA,
+    selectedStartMs: 8000,
+    selectedEndMsExclusive: 12_000,
+    paddedStartMs: 7500,
+    paddedEndMsExclusive: 12_020,
+    trimStartMs: 500,
+    trimEndMsExclusive: 4500,
+    state: "PLANNED",
+    materializedAssetId: null,
+    materializedBinarySha256: null,
+    version: 1,
+    materializedAt: null,
+  };
+  const dispatch = await buildSelectedSpanAudioJob({
+    projectRevisionId: IDS.revisionA,
+    attemptId: LOCAL_IDS.spanAttempt,
+    timelinePlanId: LOCAL_IDS.timelinePlan,
+    transcriptId: span.transcriptId,
+    span,
+    sourceDurationMs: 12_000,
+    sourceArtifactUri: objectUri(HASHES.voiceoverA, "wav"),
+    cancelToken: "selected-span-cancel-token-never-persisted-000001",
+    outputProfile: "SOULX_PCM16_48K_MONO",
+  });
+  assert.equal(dispatch.input.output_profile, "SOULX_PCM16_48K_MONO");
+  const outputHash = sha256("soulx-48k-span");
+  const jobResult = {
+    schema_version: "selected-span-audio-result/v1",
+    attempt_id: LOCAL_IDS.spanAttempt,
+    status: "SUCCEEDED",
+    span_id: span.spanId,
+    timeline_plan_id: LOCAL_IDS.timelinePlan,
+    transcript_id: span.transcriptId,
+    timeline_segment_id: span.timelineSegmentId,
+    task_key: span.taskKey,
+    source_voiceover: {
+      asset_id: span.sourceAssetId,
+      sha256: span.sourceBinarySha256,
+      duration_ms: 12_000,
+    },
+    selection: dispatch.input.selection,
+    audio: {
+      asset_id: dispatch.outputAssetId,
+      sha256: outputHash,
+      artifact_uri: objectUri(outputHash, "wav"),
+      content_type: "audio/wav",
+      byte_size: 433_964,
+      duration_ms: 4_520,
+      sample_rate_hz: 48_000,
+      channels: 1,
+    },
+    error: null,
+  };
+  const prepared = await prepareSelectedSpanAudioAcceptance({
+    projectId: IDS.projectA,
+    taskId: LOCAL_IDS.spanTask,
+    expectedHeadVersion: 2,
+    expectedSpanVersion: 1,
+    jobInput: dispatch.input,
+    jobResult,
+    finishedAt: FIXED_TIME,
+  });
+  assert.equal(prepared.artifactRegistration.metadata.sample_rate_hz, 48_000);
+  await assert.rejects(
+    () =>
+      prepareSelectedSpanAudioAcceptance({
+        projectId: IDS.projectA,
+        taskId: LOCAL_IDS.spanTask,
+        expectedHeadVersion: 2,
+        expectedSpanVersion: 1,
+        jobInput: dispatch.input,
+        jobResult: { ...jobResult, audio: { ...jobResult.audio, sample_rate_hz: 16_000 } },
+        finishedAt: FIXED_TIME,
+      }),
+    { code: "SPAN_RESULT_MISMATCH" },
   );
 });
 
