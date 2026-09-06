@@ -4,31 +4,31 @@ updated_at: "2026-09-06"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_08_soulx_live_qualified_pass_clean
-current_task: VF-10-08
-current_wave: v2_08_soulx_certification_complete
+current_milestone: v2_09_read_only_preflight_authorized_pending_context_commit_and_independent_audit
+current_task: VF-10-09
+current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: complete
-application_code_changes_authorized: false
-provider_calls_authorized: false
-read_only_provider_calls_authorized: false
+task_stage: read_only_preflight
+application_code_changes_authorized: true
+provider_calls_authorized: true
+read_only_provider_calls_authorized: true
 remote_or_cloud_mutations_authorized: false
-credential_access_authorized: false
+credential_access_authorized: true
 gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_08_soulx_live_qualified_pass_clean
+  mode: v2_09_read_only_preflight_authorized_pending_context_commit_and_independent_audit
   live_provider_calls: "Proposal 9e5d4eb9 passed the exact five-job qualification and is consumed; no further RunPod POST, R2 mutation, GPU use, or spend is authorized."
   remote_mutation: false
   deployment_or_publication: "Existing immutable image f3b1d141 was freshly anonymously reverified without publication; no publication or republication is authorized."
-  credential_value_access: "Not authorized after consumed clean success."
+  credential_value_access: "The current V2-09 implementation/deployment request authorizes the task brief's one bounded read-only preflight through the already configured RunPod credential. It authorizes no mutation, dispatch, GPU use, database call, R2 call, or spend."
   paid_requests_or_spend: "Closed at USD 0.08383633207995445 observed increment and USD 3.4607653283455875 cumulative billing; no remaining executable cap."
   runpod_mutation_or_gpu: "Qualification passed and cleanup proved zero compute; no further RunPod mutation or GPU use is authorized."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "The cold-IN_PROGRESS ordering repair passed live qualification: cold/warm used the same worker with cache false/true, all eight MP4s passed, all three faults passed, and cleanup reached zero compute. Stage 6 remains frozen."
+  provider_free_product_action: "The V2-09 provider-free bridge, authority, browser continuation, diagnostics, and release fencing source passed the canonical provider-free gate at executable source cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d. Context seal and independent audit remain open. The accepted V2-07 and V2-08 qualifications are frozen predecessors; Stage 6 and Stage 7 must not be rerun or modified."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
+  note: "The historical V2-13 v5 proposal is separate, unapproved, and not executable from this V2-09 task. Commit this context materialization, independently audit the exact clean source, execute the already authorized bounded read-only V2-09 preflight, then request fresh exact deployment/spend authority."
 
 fixture_user_walkthrough:
   status: SUPERSEDED_BY_PRIVATE_HOSTED_BETA
@@ -194,10 +194,10 @@ hosted_beta_user_walkthrough:
   deployment_candidate: null
   deployed_source_commit: "29667134b17daa9723495d028ec22c4eeaee3ee3"
   cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
-  pending_source_candidate: null
-  pending_worker_release: "none; immutable media-worker-v0.1.14 is published, installed, and online"
-  pending_release_boundary: "SOURCE_29667134_IS_LIVE_AS_WORKER_50CFD256_AND_STAGE5_V18_IS_QUALIFIED. REQUIRE_FRESH_EXACT_AUTHORITY_BEFORE_ANY_SUCCESSOR_DEPLOYMENT_OR_PROJECT."
-  pending_validations: "NONE_FOR_STAGE5_V18; LIVE_QUALIFICATION_COMPLETE."
+  pending_source_candidate: "V2-09 executable source cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d passed the canonical provider-free gate; context seal and independent audit remain pending, and production remains disabled and undeployed"
+  pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
+  pending_release_boundary: "V2-07_AND_V2-08_ARE_FROZEN_QUALIFIED_PREDECESSORS. COMMIT_THIS_CONTEXT_MATERIALIZATION_AND_COMPLETE_INDEPENDENT_AUDIT_THEN_EXECUTE_THE_ALREADY_AUTHORIZED_BOUNDED_READ_ONLY_PREFLIGHT_BEFORE_REQUESTING_FRESH_EXACT_DEPLOYMENT_SPEND_AUTHORITY."
+  pending_validations: "Clean context commit and independent V2-09 diff audit remain required before the already authorized bounded read-only preflight and live proposal."
   latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 29667134b17daa9723495d028ec22c4eeaee3ee3 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.14 ALREADY PUBLISHED INSTALLED AND ACTIVE DO NOT REPUBLISH OR REINSTALL; DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD TOTAL NEW VARIABLE EXTERNAL SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; ENABLE IMAGE KEYWORDS WITH A BOUNDED TEST VALUE AND USE REAL CHROME TO VERIFY STAGE 5 COMPLETION, COMPACT PROMPTS, ONLY PINNED MEDIUM REALISM CAMERA AND LIGHTING STYLE CUES, NO PALETTE OR HEX OR OTHER REMOVED STYLE METADATA, AND THE ENABLED IMAGE KEYWORDS EXACTLY ONCE IN EVERY POSITIVE SCENE PROMPT; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
   latest_live_run: "Approved source 29667134 deployed once as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6 with media worker 0.1.14 already active. Exactly one project f7655814-1b12-40c7-b0d5-993ad0c074e2 passed the 2,152,579,950-byte free-space gate with 2,944,651,264 bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 prompts, settled USD 0.001401, and conserved the reservation; total Stage 3+5 variable spend was USD 0.001473. Real Chrome verified the 520px scrollable prompt viewer, exact once-per-prompt enabled keywords, four pinned style fields, and zero removed style metadata hits. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   deployed_config_sha256: "cf25f25a7829deba82a3d16b44ddf64cf3238577e409f25570921c8514bff858"
@@ -212,7 +212,7 @@ hosted_beta_user_walkthrough:
   external_spend_authorized_usd: 0
   remote_mutation_authorized: false
   database_preflight: "LIVE_LEDGER_73_OF_73_PGCRYPTO_PRESENT_FORCE_RLS_EXACT_RUNTIME_GRANTS_AND_APPEND_FUNCTION_CAPABILITY_VERIFIED_INCLUDING_SELECT_ONLY_REVISION_TIMING_HEADS_WITH_ZERO_DIRECT_WRITES; MIGRATIONS_0069_THROUGH_0073_AND_RUNTIME_GRANT_SET_APPLIED_DO_NOT_REPLAY"
-  pending_database_migration: null
+  pending_database_migration: "Hosted database was last recorded through 0073; additive migrations 0074-0080 and their exact grant final state remain unapplied."
   auth_repair_commit: "c79be781fcc3e1c976400a7f5347a007e5a72680"
   auth_repair_root_cause: "The two tested Google identities were retained pre-0047 admitted accounts, and a failed Google account switch could leave the prior admitted VideoForge session active. No fresh arbitrary-account admission was observed. The repair clears the prior VideoForge session before OAuth, fails closed on tenant revalidation, and lets a never-invited Google identity authenticate only to the invite-code gate. Existing admitted accounts and their data remain intact."
   backup_restore: "PASS_ENCRYPTED_50_ROW_BACKUP_SHA256_66B7B369_DISPOSABLE_RESTORE_VERIFIED_AND_DELETED"
@@ -371,7 +371,7 @@ hosted_beta_user_walkthrough:
     - PROGRESS_QUEUE_ETA_AND_COSTS
     - REVIEW_TARGETED_RETRY_MANIFEST_AND_DOWNLOAD
     - ACCOUNT_ISOLATION_DELETION_AND_LOGOUT
-  release_boundary: "This is a private hosted-beta deployment only. Production activation, V2-07 through V2-13 live qualification, provider calls, RunPod operations, GPU use, and C1/C2 resealing remain blocked."
+  release_boundary: "This remains a private hosted-beta deployment only. V2-07 and V2-08 are frozen qualified predecessors; production activation and V2-09 through V2-13 live execution, provider calls, RunPod operations, GPU use, and C1/C2 resealing remain blocked."
   validations:
     hosted_context_low_latency_repair_commit: "4ac93d54ad2c90eb64e3498abb6309538ce51231"
     hosted_context_low_latency_web: "PASS_68_OF_68"
@@ -526,7 +526,7 @@ hosted_beta_user_walkthrough:
     hosted_auth_zero_active_provider_workloads: PASS
 
 new_chat_handoff:
-  status: FULL_LIVE_SUCCESSOR_SEALED_PENDING_FRESH_EXACT_USER_APPROVAL
+  status: HISTORICAL_V2_13_HANDOFF_SUPERSEDED_BY_V2_09_FINAL_SEAL
   starting_point: CURRENT_CLEAN_GIT_HEAD
   independently_audited_full_live_source_commit: "417e84d4f021699337e9bd411753777d689728d7"
   independently_audited_application_code_commit: "cbbb38d173175bc417a98594cec60d1c31c9949e"
@@ -542,7 +542,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Independently audit and obtain fresh exact approval of v5 proposal sha256:8b4c01b2c076ab13859608030b26e640e4fcf84dc3b2756440b5cea6ab7cc444 after its exact five-path proposal-record commit, bound to execution-control commit 731ee45a9aa2641e1a0b941b3e04e99a686645fb and audited application source cbbb38d173175bc417a98594cec60d1c31c9949e. The consumed d3bfbb40 authority and failed SoulX run 33287914248 are terminal and cannot be retried or redispatched."
+  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. Executable V2-09 source cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d passed the canonical provider-free gate; commit this context materialization and complete an independent audit, then execute the already authorized bounded read-only preflight before seeking fresh exact deployment/spend authority."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -550,8 +550,8 @@ two_track_execution:
   decision: DEC_DELIVERY_002
   activated_at: "2026-08-25"
   product_track_status: ACTIVE_PROVIDER_FREE
-  product_track_scope: V2-08_through_V2-13
-  certification_track_status: V2-08_ACTIVE_AFTER_V2-07_QUALIFIED
+  product_track_scope: V2-09_through_V2-13
+  certification_track_status: V2_07_AND_V2_08_COMPLETE_PASS_CLEAN_V2_09_LIVE_NOT_STARTED
   certification_order: [V2-07_MAGE, V2-08_SOULX, V2-09_THROUGH_V2-12_LIVE, V2-13_FINAL_SMOKE_DRAIN]
   atomic_certification_gates: [compute_output_identity, cancel_timeout, max2_concurrent_readers]
   atomic_gate_validity_hours: 24
@@ -574,7 +574,8 @@ two_track_execution:
   remote_mutation_authorized: false
   gpu_use_authorized: false
   external_spend_cap_usd: 0
-  release_blocked_until_mage_and_soulx_pass: true
+  release_blocked_until_mage_and_soulx_pass: false
+  release_blocked_until_v2_09_through_v2_13_pass: true
   final_two_lane_smoke_required: true
   independent_zero_job_zero_worker_drain_required: true
   integration_cadence: one_bounded_green_product_commit_per_working_day
@@ -889,11 +890,11 @@ provider_free_product_progress:
   async_transport_status: PASS_independently_audited
   async_transport_note: "Durable dispatch now uses a provider-neutral async port; ambiguous or malformed post-mutation RunPod responses remain ACK_UNKNOWN and cannot trigger blind redispatch."
   soulx_handler_commit: "7039092"
-  soulx_handler_status: PROVIDER_FREE_PASS_independently_audited
-  soulx_handler_note: "Exact per-envelope tenant/workspace, observed single RTX4090, measured timing, actual ffprobe validation, resume/readback, signed receipts, and scratch cleanup are implemented. Live image publication and qualification remain open and unauthorized."
+  soulx_handler_status: LIVE_QUALIFIED_V2_08_PASS_CLEAN_FROZEN
+  soulx_handler_note: "Exact per-envelope tenant/workspace, single RTX4090 evidence, measured timing, ffprobe validation, resume/readback, signed receipts, and scratch cleanup passed V2-08. The qualification is frozen and must not be rerun or modified for V2-09."
   soulx_serverless_image_commit: "84e0088"
-  soulx_serverless_image_status: PROVIDER_FREE_PASS_independently_audited
-  soulx_serverless_image_note: "Exact base/source/model hashes, offline read-only model volume, /tmp-only mutable paths, ffprobe, and the exact handler entrypoint are defined. The image has not been built or published."
+  soulx_serverless_image_status: IMMUTABLE_PUBLISHED_AND_V2_08_QUALIFIED_FROZEN
+  soulx_serverless_image_note: "Immutable image sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e from source 73181707 is anonymously verified and passed V2-08. V2-09 permits reuse only, without publication or republication."
   hosted_serverless_composition_commit: "bcf3a1c"
   hosted_serverless_composition_status: PROVIDER_FREE_PASS_independently_audited
   hosted_serverless_composition_note: "Fresh canonical certification and full sealed lineage gate every new-work call. Expired exact evidence can acquire restart-safe cancel/reconcile-only scope and cannot dispatch."
@@ -901,25 +902,25 @@ provider_free_product_progress:
   production_fixture_firewall_status: PASS_independently_audited
   production_fixture_firewall_note: "Production and staging use hosted truth; emitted production client contains no fixture APIs, headers, query helpers, schemas, or assets. GPU transport remains DISABLED_UNQUALIFIED."
   soulx_publication_workflow_commit: "e49b938"
-  soulx_publication_workflow_status: PROVIDER_FREE_PASS_independently_audited_not_triggered
+  soulx_publication_workflow_status: IMMUTABLE_PUBLICATION_COMPLETED_AND_ANONYMOUSLY_REVERIFIED_V2_08_FROZEN
   hosted_output_barrier_commit: "9ba4b64"
   hosted_output_barrier_status: PROVIDER_FREE_PASS_independently_audited
   hosted_render_plan_materializer_commit: "789bd1d"
   hosted_render_plan_materializer_status: MAGE_AND_EXACT_APPROVED_SOULX_PROFILE_PROVIDER_FREE_PASS_LIVE_BLOCKED
   soulx_crop_candidate_commit: "f355705"
-  soulx_crop_candidate_status: APPROVED_EXACT_FULL_AND_SPLIT_PROVIDER_FREE_PROFILE_ACTIVE_NO_LIVE_AUTHORITY_NOT_QUALIFIED
+  soulx_crop_candidate_status: APPROVED_EXACT_FULL_AND_SPLIT_PROFILE_V2_08_QUALIFIED_FROZEN
   soulx_crop_renderer_commit: "417ab1c"
-  soulx_crop_renderer_status: PROVIDER_FREE_PASS_INDEPENDENTLY_AUDITED_LIVE_QUALIFICATION_BLOCKED
+  soulx_crop_renderer_status: V2_08_LIVE_QUALIFIED_PASS_CLEAN_FROZEN
   soulx_crop_candidate_sha256: "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
   soulx_crop_approval_path: "evidence/acceptance/VF-10-08/2026-08-26-soulx-crop-profile-approval.json"
   soulx_crop_approval_sha256: "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"
   soulx_crop_profile_group_id: "soulx-pro-vf924u-full-split-v1"
-  soulx_crop_visual_approval_note: "The user explicitly approved both exact full and split layouts. Approval activates only the hash-bound provider-free renderer profile; SoulX remains NOT_QUALIFIED and no live, deployment, provider, GPU, or spend authority exists."
+  soulx_crop_visual_approval_note: "The user approved both exact full and split layouts, and the hash-bound profile passed V2-08 live qualification. Production activation remains separate and unauthorized; the qualification must not be rerun or modified."
   hosted_output_persistence_commit: "6249673"
   hosted_output_persistence_status: PROVIDER_FREE_PASS_independently_audited_migration_not_deployed
   hosted_short_pilot_commit: "2379906"
-  hosted_short_pilot_status: PROVIDER_FREE_GROUNDWORK_PASS_SOULX_VISUAL_PROFILE_ACTIVE_LIVE_QUALIFICATION_BLOCKED
-  hosted_v209_short_cost_status: PROVIDER_FREE_REPAIR_PASS_FRESH_INDEPENDENT_AUDIT_REQUIRED_LIVE_MEASUREMENT_BLOCKED
+  hosted_short_pilot_status: PROVIDER_FREE_PRODUCTION_INTEGRATION_SOURCE_GREEN_CONTEXT_SEAL_AND_INDEPENDENT_AUDIT_PENDING_LIVE_DEPLOYMENT_UNAUTHORIZED
+  hosted_v209_short_cost_status: PROVIDER_FREE_SOURCE_GREEN_CONTEXT_SEAL_AND_INDEPENDENT_AUDIT_PENDING
   hosted_v209_short_cost_note: "The exact canonical 40-second approved-SoulX plan binds every segment/artifact and has one Mage split-right-image item plus two SoulX avatar items. The DB-aligned 20-minute cold-lane wall bound uses observed SoulX start-to-ready 672.035s plus 107.965s execution/upload and a conservative 420s cancel/terminal tail. At RTX4090 Serverless Flex <=$1.116/GPU-h, primary=$0.744, possible duplicate liability without redispatch=$0.744, uncertainty=$0.512, hard V2-09 ceiling=$2. The production route obtains trusted provider/DB observations. Migration 0042 unconditionally requires canonical plan sha256:f975e2be15db227e96c6ea06f025c3f7ead025a5f80b80e9e2b0ac1f9fd6a4ea, derives and requires its exact one-Mage/two-SoulX durable work, and atomically requires billing baseline plus the full $2 phase cap within the $17.50 completion cap, alongside 20/30 deadlines and no-redispatch. Migration 0044 atomically recomputes provider/ledger/reservation exposure before settlement can commit; the runtime cannot settle directly and the reconciler has only the guarded six-argument settlement capability. Focused provider-free tests pass, but fresh independent audit and live measurement remain required; the separate $7/month volumes remain excluded."
   hosted_two_account_queue_commit: "8c21d4c"
   hosted_two_account_queue_status: PROVIDER_FREE_GROUNDWORK_PASS_independently_audited_live_max2_blocked
@@ -932,7 +933,7 @@ provider_free_product_progress:
   final_release_certification_note: "The release ledger fail-closes 15 exact gates, binds current release identity and trusted evidence classes, requires fresh two-lane smoke before independent drain and settled billing, and always leaves liveReleaseAuthorized=false pending separate explicit release authority."
   factual_gpu_readiness_commit: "c516726"
   factual_gpu_readiness_status: PROVIDER_FREE_PASS_independently_audited_dispatch_disabled
-  factual_gpu_readiness_note: "The authenticated hosted catalog and UI expose exact Mage and SoulX NOT_QUALIFIED state, exact SoulX full/split visual approval, remaining live gates, and provider-free lineage while keeping GPU transport DISABLED_UNQUALIFIED and exposing no dispatch control."
+  factual_gpu_readiness_note: "The currently deployed app truthfully keeps production GPU transport DISABLED_UNQUALIFIED. Separately, Mage V2-07 and SoulX V2-08 are frozen live-qualified predecessors; they do not activate production without an exact V2-09 deployment binding and authority."
   hosted_callback_render_bridge_commit: "53c5c23"
   hosted_callback_render_bridge_status: PROVIDER_FREE_PASS_independently_audited_source_only
   hosted_callback_render_bridge_note: "Ordinary output acceptance can bridge to render-plan materialization through migration 0038, but the current hosted route remains fail-closed and no live worker callback is composed."
@@ -970,8 +971,8 @@ provider_free_product_progress:
   hosted_lane_batch_materialization_status: PROVIDER_FREE_PASS_independently_audited_migration_0041_not_deployed
   hosted_lane_batch_materialization_note: "Migration 0041 and the hosted persistence adapter materialize exact durable lane batches with task lineage and fail-closed replay. No migration, grant, provider call, or dispatch occurred."
   authenticated_worker_envelope_commit: "9ef6efa"
-  authenticated_worker_envelope_status: PROVIDER_FREE_PASS_independently_audited_images_invalidated
-  authenticated_worker_envelope_note: "The shared verifier and both lane handlers authenticate exact signed job envelopes. These byte changes invalidate every earlier Mage and SoulX image-bound qualification for activation; fresh immutable images and qualification are required."
+  authenticated_worker_envelope_status: PROVIDER_FREE_PASS_INDEPENDENTLY_AUDITED_QUALIFIED_SUCCESSOR_IMAGES_FROZEN
+  authenticated_worker_envelope_note: "The shared verifier and both lane handlers authenticate exact signed job envelopes. The successor Mage and SoulX images containing these bytes were independently qualified by V2-07 Attempt85 and V2-08; those image-bound qualifications are frozen and may be reused for V2-09 without republication or requalification."
   hosted_atomic_pair_predispatch_commit: "120b6b8"
   hosted_atomic_pair_predispatch_status: PROVIDER_FREE_PASS_independently_audited_migration_0042_not_deployed
   hosted_atomic_pair_predispatch_note: "Migration 0042 atomically rechecks paid authority and both exact lane qualifications, unconditionally requires the canonical f975e2be...d6a4ea plan, derives and requires its exact V2-09 one-Mage/two-SoulX work from persisted lane artifacts, and requires baseline plus the full $2 phase cap within $17.50 before materializing the pair. The repair is provider-free and awaits fresh independent audit; it supplies no authority and performs no provider action."
@@ -984,26 +985,56 @@ provider_free_product_progress:
   guarded_pair_workflow_commit: "4239be9"
   guarded_pair_workflow_status: PROVIDER_FREE_PASS_independently_audited_migration_0044_not_deployed_disabled_unqualified
   guarded_pair_workflow_note: "The guarded Workflow wires atomic pair scheduling, exact RunPod lane adapters, bounded cancellation/recovery, callback settlement, and durable zero-worker evidence. Migration 0044 now verifies the persisted V2-09 admission, fresh nonfuture provider billing, exact terminal pair, phase cap, and cumulative baseline/ledger/reservation exposure atomically with settlement; direct unguarded settlement remains ungranted. Fresh independent audit is required. Production remains DISABLED_UNQUALIFIED and no bindings, secrets, roles, config, or migrations were deployed."
+  hosted_v209_ordinary_production_integration_commit: "cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d"
+  hosted_v209_ordinary_production_integration_status: PROVIDER_FREE_SOURCE_GREEN_CONTEXT_SEAL_AND_INDEPENDENT_REAUDIT_PENDING
+  hosted_v209_ordinary_production_integration_note: "Executable source cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d composes tenant-owned ordinary dispatch, exact lane request materialization, SPAN audio preparation, one-shot pair execution and recovery, terminal output ingestion, accepted-artifact handoff, renderer continuation, and diagnostics. Additive migrations 0074-0080 carry the DB contract. Migration 0080 makes both activation loaders require the identical exact 37-80 ledger, re-revokes PUBLIC, and preserves the existing runtime allowlist. The canonical provider-free gate passed; context seal and independent audit remain pending. No provider call, deployment, credential read, Stage 6/7 rerun, GPU use, or spend occurred."
+  hosted_v209_final_provider_free_gate:
+    source_commit: "cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d"
+    command: "CI=1 TURBO_FORCE=true pnpm verify"
+    exit_code: 0
+    package_build_lint_typecheck_tasks: PASS_21_OF_21
+    package_test_tasks: PASS_14_OF_14
+    control_plane_tests: PASS_402_OF_402
+    web_tests: PASS_1800_WITH_1_SKIPPED
+    provider_sandbox_tests: PASS_43_OF_43
+    script_tests: PASS_498_OF_498
+    worker_suites: PASS
+    cloudflare_runtime_tests: PASS_1_OF_1
+    installed_chrome_tests: PASS_44_OF_44
+    provider_calls: 0
+    credential_reads: 0
+    external_spend_usd: 0
+    remote_mutations: 0
+  hosted_v209_last_recorded_deployed_migration: 73
+  hosted_v209_source_migration_head: 80
+  hosted_v209_pending_migrations: [74, 75, 76, 77, 78, 79, 80]
+  hosted_v209_pending_media_worker_release: "0.1.15"
+  hosted_v209_stage_6_stage_7_policy: FROZEN_QUALIFIED_DO_NOT_RERUN_OR_MODIFY
+  hosted_v209_read_only_preflight_commit: "1c93ab69ecae516b0e940f01395ea9dbae92c988"
+  hosted_v209_read_only_preflight_status: LOCAL_TOOLING_TESTED_NOT_EXECUTED_FRESH_EXACT_AUTHORITY_REQUIRED
+  hosted_v209_read_only_preflight_note: "The dedicated V2-09 entrypoint is capability-limited to exact account, catalog/rate, billing, pods/endpoints/templates/volumes, and anonymous frozen-image reads. It binds clean HEAD and a mode-0600 key, emits a redacted canonical proof, and has no mutation, job, DB, R2, authority-write, GPU, or spend capability. Focused tests pass 5/5; no live read was performed while building it."
+  hosted_v209_frozen_script_fixture_commit: "aea6f74886b4cda72526dbbd0b6dc9dac3dfd4a6"
+  hosted_v209_frozen_script_fixture_status: PASS_498_OF_498_AT_CC74BA4A
+  hosted_v209_frozen_script_fixture_note: "The canonical provider-free gate at cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d reverified 498/498 script tests. Migration-head tests use 0080 while consumed V2-13 authority remains pinned to its historical 49-migration and source-byte scope; current V2-09 changes do not repin or widen that authority."
   remaining_provider_free_activation_blockers:
-    - cloudflare_oauth_config_and_account_bound_workers_dev_origin_contract
-    - exact_pre_mutation_404_text_plain_route_body_hash_and_post_quarantine_200_readback
-    - materialization_seed_sha256_outer_consumption_and_nested_hash_binding
-    - fresh_v2_13_proposal_record_audit_and_exact_approval
+    - clean_context_commit_and_independent_v2_09_diff_audit
+    - obtain_fresh_exact_read_only_preflight_authority_then_execute_and_record_current_redacted_facts
+    - fresh_exact_v2_09_deployment_and_spend_proposal_and_user_approval
   production_activation_requirements:
-    - fresh_immutable_mage_and_soulx_images_after_envelope_verifier_change
-    - fresh_sealed_deployment_snapshots
-    - fresh_dual_live_lane_qualification
-    - apply_migrations_0037_through_0045_and_least_privilege_grants
-    - render_validate_and_deploy_exact_production_config
-    - provision_separate_runtime_and_reconciler_roles_and_secret_bindings
-    - fresh_exact_paid_and_deployment_authority
-    - authenticated_workers_dev_subdomain_origin_readback_and_exact_route_state_transitions
-    - protected_wrangler_oauth_config_without_raw_api_token_export
-    - normalized_hash_bound_google_oauth_web_client_secret_and_r2_s3_credential_files_verified_from_completed_rotation
-    - materialization_seed_sha256_bound_at_consumption_and_every_seed_read
+    - exact_clean_source_push_after_user_approval
+    - fresh_read_only_account_inventory_billing_rate_and_exact_rtx4090_eu_ro_1_availability
+    - publish_and_install_exact_media_worker_0_1_15_once
+    - apply_only_pending_migrations_0074_through_0080_and_exact_runtime_operator_grants
+    - create_and_bind_two_exact_rtx4090_eu_ro_1_workers_min_zero_workers_max_one_production_lanes
+    - reuse_frozen_qualified_mage_and_soulx_images_without_republication_or_requalification
+    - render_validate_and_deploy_exact_production_config_and_secret_allowlist
+    - one_owned_30_to_60_second_real_chrome_generate_to_private_mp4_e2e
+    - internal_network_log_database_runpod_r2_lineage_cost_and_failure_monitoring
+    - terminal_jobs_zero_active_workers_and_failure_cleanup_with_only_existing_volumes_retained
   remaining_live_blockers:
-    - mage_live_qualification
-    - soulx_live_qualification
+    - v2_09_context_seal_and_independent_audit
+    - fresh_exact_v2_09_authority
+    - production_deployment_and_real_chrome_e2e
   batch3_through_batch6_note: "Provider-free release source e2f4d629 is the evidence-only child of independently audited application code 0124d8a and remains default NO_ACTION across the exact 26-operation graph. Prior proposal sha256:6cf20ed...d5d99 at 557bb861 was consumed once under authority record 909c977, failed before normal work, and completed cleanup-only with zero mutation and zero spend; that authority is terminal and non-reusable. Fresh proposal sha256:14116dc6...3e46 awaits its exact proposal-record commit, independent audit, and fresh exact approval. Materialization facts are sha256:7baeb86c...c6471 with UUID 8c08f1f8-a15d-4197-a752-2f03b2404bce and the static descriptor self-hash is sha256:2b56d003...842d8. Production remains DISABLED_UNQUALIFIED and undeployed."
   focused_web_tests: 58_pass_batch2_plus_57_pass_batch3_batch4
   focused_v2_11_tests: 13_pass
@@ -1597,7 +1628,7 @@ fast_completion_plan:
   architecture: tenant_private_durable_account_workspace_owned_state_two_queue_serverless_lanes_autoscaling_only
   models: exact_mage_flow_int8_convrot_and_soulx_flashhead_pro_only
   target: best_case_three_day_invited_production_release
-  checkpoints_remaining: [V2-08, V2-09, V2-10, V2-11, V2-12, V2-13]
+  checkpoints_remaining: [V2-09, V2-10, V2-11, V2-12, V2-13]
   verification: focused_changed_surface_tests_one_repair_cycle_canonical_at_v2_09_and_v2_13
   never_reduced: [tenant_isolation, authority_and_caps, artifact_lineage, volume_integrity, zero_worker_drain]
   completed_foundations_not_to_rebuild: [word_level_transcript, scheduler_v2_voiceover_splitting, three_compositions, tenant_queue, personal_worker_renderer]
@@ -4031,9 +4062,9 @@ live_development:
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   authorized_spend_usd: 0
-  provider_authority_scope: none_v2_08_consumed_success_clean
+  provider_authority_scope: v2_09_bounded_read_only_preflight_only
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -4104,7 +4135,7 @@ roadmap_state:
   V2-06: complete_green_independently_audited
   V2-07: complete_green_live_qualified_attempt85_cleanup_zero_compute
   V2-08: complete_green_live_qualified_cleanup_zero_compute
-  V2-09: provider_free_authorized_live_requires_separate_fresh_authority
+  V2-09: provider_free_source_green_context_seal_and_independent_audit_pending_live_requires_separate_fresh_authority
   V2-10: provider_free_authorized_live_blocked_on_V2-09
   V2-11: provider_free_authorized_live_blocked_on_lane_max1_and_V2-10
   V2-12: provider_free_authorized_live_blocked_on_V2-11
@@ -4357,8 +4388,8 @@ blocking_gates_for_production:
   - GATE_IMAGE_001
   - GATE_STYLE_002
 
-active_ownership: []
-in_progress_checkpoint: null
+active_ownership: [V2_09_SHORT_LIVE_E2E]
+in_progress_checkpoint: V2-09
 certification_checkpoint: V2_08_QUALIFIED_PASS_CLEAN
 
 provider_authority_closed: &v2_07_provider_authority_closed
@@ -6023,7 +6054,7 @@ v2_08_latest_consumed_authority:
       usd_per_unit: 0.07
       checked_at: "2026-09-04T23:14:00+05:30"
 
-provider_authority: &v2_08_consumed_success_authority
+provider_authority_v2_08_consumed_success: &v2_08_consumed_success_authority
   mode: none
   provider: null
   historical_provider: runpod
@@ -6057,27 +6088,66 @@ provider_authority: &v2_08_consumed_success_authority
       usd_per_unit: 0.07
       checked_at: "2026-09-04T23:14:00+05:30"
 
+provider_authority: &v2_09_provider_authority_read_only
+  mode: read_only
+  provider: RunPod_and_anonymous_GHCR
+  cap_usd: 0
+  non_transferable: true
+  source: "cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d"
+  authorized_by_user_at: "2026-09-06"
+  proposal_sha256: null
+  authority: "Current V2-09 implementation and deployment request under the paid-checkpoint read-only bootstrap."
+  authority_sha256: null
+  consumed: false
+  reusable: false
+  provider_calls_authorized: true
+  provider_mutations_authorized: false
+  credential_access_authorized: true
+  gpu_use_authorized: false
+  actual_spend_usd: 0
+  resources:
+    - runpod_account_identity
+    - runpod_serverless_gpu_catalog
+    - runpod_billing_endpoint_records
+    - runpod_pod_inventory
+    - runpod_endpoint_inventory
+    - runpod_template_inventory
+    - runpod_network_volume_inventory
+    - ghcr_frozen_mage_image
+    - ghcr_frozen_soulx_image
+  authorized_operations: &v2_09_read_only_operations
+    - account_identity_lookup
+    - inventory_lookup
+    - quota_lookup
+    - rate_lookup
+    - region_lookup
+    - resource_identity_lookup
+    - resource_absence_lookup
+  allowed_operations: *v2_09_read_only_operations
+  model_id: null
+  rate_snapshot: []
+
 recommended_next_task:
-  task_id: VF-10-08
-  checkpoint: V2-08
-  milestone: v2_08_soulx_live_qualified_pass_clean
-  status: V2_08_QUALIFIED_PASS_CLEAN
-  dependency_status: v2_07_mage_live_qualified_attempt85_clean
-  authorization_status: consumed_success_clean_no_executable_authority
-  task_stage: complete
-  current_goal_authority: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json
-  current_goal_authority_sha256: "sha256:e2a1e3527c744ec30387e7efab99c79778da0660338991876687437bfca1fdf2"
-  provider_authority: *v2_08_consumed_success_authority
+  task_id: VF-10-09
+  checkpoint: V2-09
+  milestone: v2_09_read_only_preflight_authorized_pending_context_commit_and_independent_audit
+  status: READ_ONLY_PREFLIGHT_AUTHORIZED_PENDING_CONTEXT_COMMIT_AND_INDEPENDENT_AUDIT
+  dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
+  authorization_status: bounded_read_only_preflight_authorized_no_mutation_or_spend
+  task_stage: read_only_preflight
+  current_goal_authority: null
+  current_goal_authority_sha256: null
+  provider_authority: *v2_09_provider_authority_read_only
   provider_mode: fixture
-  read_profile: v2_08_soulx_serverless
-  task_brief: tasks/VF-10-08.md
-  goal: "Preserve the qualified Stage 7 evidence and consumed no-replay boundary; V2-09 remains separate and unauthorized."
-  provider_calls_authorized: false
-  read_only_provider_calls_authorized: false
+  read_profile: v2_09_short_live_e2e
+  task_brief: tasks/VF-10-09.md
+  goal: "Connect the ordinary hosted Generate flow to the frozen qualified max-one Mage and SoulX lanes, then complete one real 30-60-second private Chrome E2E under fresh exact authority."
+  provider_calls_authorized: true
+  read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
-  credential_value_read_authorized: false
+  credential_access_authorized: true
+  credential_value_read_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
@@ -6086,24 +6156,46 @@ recommended_next_task:
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
   ongoing_retained_soulx_volume_usd_per_month: 3.5
-  application_code_changes_authorized: false
-  model_id: Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
-  rate_snapshot: [runpod_serverless_flex_rtx4090_eu_ro_1_usd_1_116_per_gpu_hour, retained_volumes_usd_7_per_month_combined]
-  authority_note: "Proposal 9e5d4eb9 passed with exactly five POSTs and no redispatch; eight outputs are preserved, cleanup and three zero-compute reads passed, and the authority is consumed and deactivated."
+  application_code_changes_authorized: true
+  model_id: null
+  qualified_lane_bindings:
+    mage_image:
+      image_digest: "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb"
+      image_source_commit: aceef8e0d0d678468ea9560f1faa94aa562fc466
+      image_config_sha256: "sha256:fe08710bb809b702d8efe46b4d67d100b9f9630c8969f62efe7fd1b54d069897"
+      anonymous_proof_sha256: "sha256:eca6cfe6acec62ed63ec1f7c9d40e7fb14e908c6e594da3864f936fa53670704"
+      acceptance_artifact_sha256: "sha256:aeef45f237fd07e0937cdd51eaaf545ac0d8bb4c90eb105708f1681da787cc79"
+    soulx_avatar:
+      image_digest: "sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e"
+      image_source_commit: 73181707e49be61955af4f2891f4c7185a1c288f
+      image_config_sha256: "sha256:224b2a728490cf1c708b42e56702da2b71bd2374658f0c640dd39ef23e860935"
+      anonymous_proof_sha256: "sha256:9929d19da89ab2c20e280ac45ad152bc325b8bf56ef1e9c21e83d473c3408bc4"
+      acceptance_artifact_sha256: "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa"
+  resources:
+    - runpod_account_identity
+    - runpod_serverless_gpu_catalog
+    - runpod_billing_endpoint_records
+    - runpod_pod_inventory
+    - runpod_endpoint_inventory
+    - runpod_template_inventory
+    - runpod_network_volume_inventory
+    - ghcr_frozen_mage_image
+    - ghcr_frozen_soulx_image
+  authorized_operations: *v2_09_read_only_operations
+  allowed_operations: *v2_09_read_only_operations
+  rate_snapshot: []
+  authority_note: "The current V2-09 implementation/deployment request authorizes exactly the bounded read-only preflight defined by deploy/v2-09/read-only-preflight.mjs through the already configured RunPod credential after clean context materialization and independent audit. It authorizes no deployment, endpoint/template/volume/R2/database mutation, provider job POST, GPU use, or spend. Executable source cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d passed the canonical provider-free gate; fresh exact deployment/spend authority remains required."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  successor_proposal_path: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
-  successor_proposal_sha256: "sha256:9e5d4eb98e9085009b338855858bc9eda6781ebf71e6a1f51b3fd032f215040c"
+  successor_proposal_path: null
+  successor_proposal_sha256: null
   superseded_proposal_sha256: "sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37"
   superseded_proposal_record_commit: 73181707e49be61955af4f2891f4c7185a1c288f
   superseded_proposal_source_commit: 73181707e49be61955af4f2891f4c7185a1c288f
   superseded_authority_execution_commit: cde3515faf4a8581a83132cd7a8cb296980bd9ff
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: v2_08_qualified_pass_clean
-  execution_blocker: v2_09_requires_separate_fresh_authority_and_is_not_executed
+  execution_status: provider_free_bridge_source_green_pending_context_seal_and_independent_audit
+  execution_blocker: live_deployment_requires_context_seal_independent_audit_and_fresh_exact_read_only_preflight_and_deployment_spend_authority
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
@@ -6133,7 +6225,7 @@ verification:
     final_zero_compute_reads: 3
     retained_volume_count: 2
     stage_6_modified_or_rerun: false
-  latest_live_check:
+  historical_live_check_attempt80:
     recorded_at_utc: "2026-09-04T20:24:02.638Z"
     evidence: evidence/acceptance/VF-10-07/2026-09-05-live-qualification/failed-attempt-80.json
     evidence_sha256: "sha256:a3368ea58706c3f749505f7131997e6fe87a1824ea8812f089f8be2ddef021c9"
