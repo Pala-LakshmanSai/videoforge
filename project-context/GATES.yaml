@@ -393,24 +393,24 @@ gates:
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
     current_candidate_proposal_sha256: "sha256:a9bfe3d0aecf97f412ba1e1cde1a19c71fa4fe6457241e2b2bb79f1612a10bb1"
     current_candidate_acceptance_sha256: null
-    current_candidate_approval_sentence_sha256: null
+    current_candidate_approval_sentence_sha256: "sha256:f9cd588b23ffccb7bc50bf786cdf75baa64c1ad7174689a10a04b36834ff4800"
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: not_applicable_no_executable_authority
-    current_candidate_source_commit: null
-    immutable_image_source_commit: null
-    approved_authority: null
-    approved_authority_sha256: null
-    approved_authority_status: consumed_failed_clean_non_reusable_receipt_nonce_replayed
+    authority_materialization_diff_audit: pending
+    current_candidate_source_commit: "0b09d6e9d72e868f0f9a6143dfad72147c193c64"
+    immutable_image_source_commit: "0b09d6e9d72e868f0f9a6143dfad72147c193c64"
+    approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
+    approved_authority_sha256: "sha256:69c7e3f271e51592b5862dc4057f2c28628e97f7a9121c47d878907efa37c5c2"
+    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
     runpod_mutation_performed: "Exactly two cold/warm RunPod job POSTs with no redispatch; both completed four outputs, but warm proof was rejected because both receipts used nonce 1; disposable lane and every generated R2 key were cleaned"
     gpu_seconds: unknown_two_completed_jobs_delayed_settlement_possible
     observed_incremental_spend_usd: posted_zero_with_usd_0_20_delayed_settlement_reserve
-    current_blocker: fresh_publication_hash_repair_proposal_and_exact_approval_after_ea326f_push_only_attempt
-    immutable_image: null
+    current_blocker: independent_authority_diff_audit_before_runpod_or_r2_access
+    immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036"
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
-    image_publication_workflow_run_id: 33982211389
-    current_candidate_dockerfile_sha256: "sha256:bfd42540882998d98b9f48e68b69ccc6ec6d3efd8d674651d0f7812ad26b6cc6"
-    current_candidate_publication_workflow_sha256: "sha256:0135e6ff04d84992794f4d09a8dc79f20a28e81043a8269b40a95635c3667f70"
+    image_publication_workflow_run_id: 34009939213
+    current_candidate_dockerfile_sha256: "sha256:a45720b2eb221fee36aff6a3bb1f6be93cb92990f1c855b131336a0eb56d0e59"
+    current_candidate_publication_workflow_sha256: "sha256:ba490c2d693a16da3cacf634a9761999d62003fa49352998f43de13563a7140d"
     prior_publication_workflow_run_id: 33961641686
     prior_publication_result: failed_before_authentication_or_publication
     prior_publication_failure: TMPDIR_DIRECTORY_ABSENT
@@ -424,7 +424,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: receipt_nonce_repair_awaiting_fresh_exact_approval
+    result: publication_guard_authority_materialized_pending_independent_audit
 
   GATE_SOULX_LICENSE_001:
     status: open
