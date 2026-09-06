@@ -612,11 +612,6 @@ class V209PlaywrightSession implements V209RealChromeSessionPort, V209StageProgr
   } | null = null;
   #durationSeconds: number | null = null;
   #terminalOutput: TerminalOutput | null = null;
-  #createIdentity: {
-    readonly idempotencyKey: string;
-    readonly createRequestSha256: string;
-  } | null = null;
-
   constructor(
     private readonly request: V209RealChromeOperatorRequest,
     private readonly page: PlaywrightPage,
@@ -756,7 +751,6 @@ class V209PlaywrightSession implements V209RealChromeSessionPort, V209StageProgr
               { signal: input.signal },
             ),
           );
-          this.#createIdentity = { idempotencyKey, createRequestSha256 };
           // Network dispatch is deliberately held until the exact request identity is durable.
           const response = await abortable(input.signal, () => route.fetch({ maxRedirects: 0 }));
           assertExactResponseUrl(response, this.expectedOrigin, "/api/v2/hosted/projects");
