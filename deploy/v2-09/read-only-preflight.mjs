@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { lstat, readFile } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
+import { lstat, open } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -583,21 +584,66 @@ export async function runV209ReadOnlyPreflight(
   return Object.freeze({ ...unsigned, proofSha256: canonicalSha256(unsigned) });
 }
 
-async function secureApiKey(path) {
-  const resolved = resolve(path);
-  const metadata = await lstat(resolved);
+const stableFileMetadata = (metadata) =>
+  [
+    metadata.dev,
+    metadata.ino,
+    metadata.mode,
+    metadata.nlink,
+    metadata.uid,
+    metadata.gid,
+    metadata.rdev,
+    metadata.size,
+    metadata.mtimeNs,
+    metadata.ctimeNs,
+  ].join(":");
+
+const validateApiKeyFile = (metadata) => {
   if (
-    metadata.isSymbolicLink() ||
     !metadata.isFile() ||
-    (metadata.mode & 0o777) !== 0o600 ||
-    (typeof process.getuid === "function" && metadata.uid !== process.getuid())
+    (metadata.mode & 0o777n) !== 0o600n ||
+    (typeof process.getuid === "function" && metadata.uid !== BigInt(process.getuid()))
   )
     fail("API_KEY_FILE");
-  const bytes = await readFile(resolved);
-  if (bytes.length < 20 || bytes.length > 4096 || bytes.includes(0)) fail("API_KEY_FILE");
-  const value = bytes.toString("utf8");
-  if (value.trim() !== value) fail("API_KEY_FILE");
-  return value;
+};
+
+export async function secureApiKey(path, { lstatImpl = lstat, openImpl = open } = {}) {
+  const resolved = resolve(path);
+  let handle;
+  try {
+    const pathBefore = await lstatImpl(resolved, { bigint: true });
+    if (pathBefore.isSymbolicLink()) fail("API_KEY_FILE");
+    validateApiKeyFile(pathBefore);
+    handle = await openImpl(resolved, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+    const openedBefore = await handle.stat({ bigint: true });
+    validateApiKeyFile(openedBefore);
+    if (stableFileMetadata(pathBefore) !== stableFileMetadata(openedBefore)) fail("API_KEY_FILE");
+    const bytes = await handle.readFile();
+    const openedAfter = await handle.stat({ bigint: true });
+    const pathAfter = await lstatImpl(resolved, { bigint: true });
+    if (pathAfter.isSymbolicLink()) fail("API_KEY_FILE");
+    validateApiKeyFile(openedAfter);
+    validateApiKeyFile(pathAfter);
+    if (
+      stableFileMetadata(openedBefore) !== stableFileMetadata(openedAfter) ||
+      stableFileMetadata(openedAfter) !== stableFileMetadata(pathAfter)
+    )
+      fail("API_KEY_FILE");
+    if (bytes.length < 20 || bytes.length > 4096 || bytes.includes(0)) fail("API_KEY_FILE");
+    const value = bytes.toString("utf8");
+    if (value.trim() !== value) fail("API_KEY_FILE");
+    return value;
+  } catch (error) {
+    if (error instanceof Error && error.message === "V2_09_READ_ONLY_PREFLIGHT_API_KEY_FILE")
+      throw error;
+    fail("API_KEY_FILE");
+  } finally {
+    try {
+      await handle?.close();
+    } catch {
+      fail("API_KEY_FILE");
+    }
+  }
 }
 
 async function gitRead(args) {

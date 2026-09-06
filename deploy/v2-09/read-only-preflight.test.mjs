@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { constants as fsConstants } from "node:fs";
 import test from "node:test";
 
 import {
   readRunPodEvidence,
   runV209ReadOnlyPreflight,
+  secureApiKey,
   verifyFrozenImage,
   V209_RETAINED_VOLUMES,
 } from "./read-only-preflight.mjs";
@@ -30,6 +32,100 @@ const response = (body, init = {}) =>
     status: init.status ?? 200,
     headers: init.headers,
   });
+
+const credentialMetadata = (overrides = {}) => ({
+  dev: 1n,
+  ino: 2n,
+  mode: 0o100600n,
+  nlink: 1n,
+  uid: BigInt(typeof process.getuid === "function" ? process.getuid() : 0),
+  gid: 20n,
+  rdev: 0n,
+  size: 38n,
+  mtimeNs: 10n,
+  ctimeNs: 11n,
+  isFile: () => true,
+  isSymbolicLink: () => false,
+  ...overrides,
+});
+
+test("credential read uses one no-follow file descriptor read and stable inode metadata", async () => {
+  const metadata = credentialMetadata();
+  const calls = { close: 0, lstat: 0, open: 0, read: 0, stat: 0 };
+  const value = "runpod-test-key-that-is-never-returned";
+  const observed = await secureApiKey("./credential", {
+    lstatImpl: async () => {
+      calls.lstat += 1;
+      return metadata;
+    },
+    openImpl: async (_path, flags) => {
+      calls.open += 1;
+      assert.equal(flags, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+      return {
+        stat: async () => {
+          calls.stat += 1;
+          return metadata;
+        },
+        readFile: async () => {
+          calls.read += 1;
+          return Buffer.from(value);
+        },
+        close: async () => {
+          calls.close += 1;
+        },
+      };
+    },
+  });
+  assert.equal(observed, value);
+  assert.deepEqual(calls, { close: 1, lstat: 2, open: 1, read: 1, stat: 2 });
+});
+
+test("credential read rejects path replacement and still closes the opened descriptor", async () => {
+  const opened = credentialMetadata();
+  let lstatReads = 0;
+  let closes = 0;
+  await assert.rejects(
+    secureApiKey("./credential", {
+      lstatImpl: async () => {
+        lstatReads += 1;
+        return lstatReads === 1 ? opened : credentialMetadata({ ino: 3n });
+      },
+      openImpl: async () => ({
+        stat: async () => opened,
+        readFile: async () => Buffer.from("runpod-test-key-that-is-never-returned"),
+        close: async () => {
+          closes += 1;
+        },
+      }),
+    }),
+    /API_KEY_FILE/u,
+  );
+  assert.equal(closes, 1);
+});
+
+test("credential read rejects symlinks, permissive mode, and wrong ownership before open", async () => {
+  const invalid = [
+    credentialMetadata({ isSymbolicLink: () => true }),
+    credentialMetadata({ mode: 0o100640n }),
+    credentialMetadata({
+      uid: BigInt(typeof process.getuid === "function" ? process.getuid() + 1 : 1),
+    }),
+  ];
+  for (const metadata of invalid) {
+    let opens = 0;
+    await assert.rejects(
+      secureApiKey("./credential", {
+        lstatImpl: async () => metadata,
+        openImpl: async () => {
+          opens += 1;
+          assert.fail("invalid path metadata must fail before open");
+        },
+      }),
+      /API_KEY_FILE/u,
+    );
+    assert.equal(opens, 0);
+  }
+});
 
 test("RunPod preflight performs only bounded identity, billing, inventory, and Serverless reads", async () => {
   const apiKey = "runpod-test-key-that-is-never-returned";
