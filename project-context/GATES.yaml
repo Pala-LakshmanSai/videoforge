@@ -389,23 +389,23 @@ gates:
     blocks: soulx_serverless_dispatch_and_crop_activation
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesssoulx001-soulx-endpoint"
     owner: V2-08
-    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-exact-offering-unavailable-attempt.json"
+    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-billing-baseline-drift-c750-attempt.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:c7501e25f5f8ccdaffbccbdb313f76e0bf5dde0d7b49705050f3aa6f596d7752"
+    current_candidate_proposal_sha256: "sha256:e197999886a45c2d787a4b26c2b4846470a5f84b4c0fc0863e9b502a03ed5a0e"
     current_candidate_acceptance_sha256: null
-    current_candidate_approval_sentence_sha256: "sha256:15e9dec018cfb73a6728e3b7f33617da8d1e34b519b0371de8de0932b87d1507"
+    current_candidate_approval_sentence_sha256: null
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: pending
-    current_candidate_source_commit: "f0a3a860b74f52410555b51e8af777dbe019406c"
+    authority_materialization_diff_audit: required_after_fresh_exact_approval
+    current_candidate_source_commit: null
     immutable_image_source_commit: "0b09d6e9d72e868f0f9a6143dfad72147c193c64"
     approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
-    approved_authority_sha256: "sha256:9f425a5540e33ad62087968d8edd22d7297098db1fb12a6bd03697574e4acca2"
-    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
-    runpod_mutation_performed: "Zero. Admission stopped before provider or R2 mutation because exact RTX 4090 EU-RO-1 capacity was unavailable; zero POSTs and no redispatch."
+    approved_authority_sha256: "sha256:9cd7d777e8bfa98405ac8b4613b313293f57aaa7baeee2911de3fef8c72bb9b6"
+    approved_authority_status: consumed_not_qualified_billing_baseline_drift_clean
+    runpod_mutation_performed: "Zero. Fresh pre-mutation reads found billing baseline drift; zero endpoint/template/R2/job mutation, zero POSTs, zero GPU seconds, and no redispatch."
     gpu_seconds: 0
     observed_incremental_spend_usd: 0
-    current_blocker: independent_authority_diff_audit_before_runpod_or_r2_access
+    current_blocker: fresh_exact_user_approval_for_proposal_e1979998
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036"
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
     image_publication_workflow_run_id: 34009939213
@@ -424,7 +424,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: exact_qualification_authority_materialized_pending_independent_audit
+    result: billing_baseline_drift_clean_provider_free_resealed_awaiting_fresh_exact_approval
 
   GATE_SOULX_LICENSE_001:
     status: open
