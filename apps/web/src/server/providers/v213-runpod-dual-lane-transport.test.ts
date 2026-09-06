@@ -612,7 +612,12 @@ describe("V213 concrete RunPod dual-lane transport", () => {
   });
 
   it("admits only the exact warm request prequeued behind its owned cold job", async () => {
-    const { transport, client, model } = fixture();
+    const { transport, client, model, createJobClient } = fixture();
+    createJobClient
+      .mockImplementationOnce(() => client)
+      .mockImplementation(() => {
+        throw new Error("FRESH_CLIENT_FOR_PAIRED_WARM_FORBIDDEN");
+      });
     const created = await transport.createLane({
       sealed: model.soulx,
       purpose: "qualification",
@@ -645,6 +650,33 @@ describe("V213 concrete RunPod dual-lane transport", () => {
     ).resolves.toMatchObject({ kind: "ACK", jobId: `job_${warm}` });
     expect(client.confirmV208StartupQueueEmpty).toHaveBeenCalledOnce();
     expect(client.confirmV208PairedWarmQueue).toHaveBeenCalledOnce();
+    expect(client.dispatchWithV208Policy).toHaveBeenCalledTimes(2);
+    expect(createJobClient).toHaveBeenCalledOnce();
+    await expect(
+      transport.dispatch({
+        deployment: created.deployment,
+        requestKey: warm,
+        envelope: {},
+        policy: {
+          executionTimeoutMs: 800_000,
+          ttlMs: 7_200_000,
+          prequeueAfterRequestKey: cold,
+        },
+      }),
+    ).rejects.toThrow("V213_V208_PAIRED_WARM_OWNERSHIP_UNPROVEN");
+    for (const [requestKey, prequeueAfterRequestKey] of [
+      ["v208-soulx-warm-whole-span-2-4-6-10s", "v208-soulx-cold-altered"],
+      ["v208-soulx-invalid-output", cold],
+    ] as const) {
+      await expect(
+        transport.dispatch({
+          deployment: created.deployment,
+          requestKey,
+          envelope: {},
+          policy: { executionTimeoutMs: 800_000, ttlMs: 7_200_000, prequeueAfterRequestKey },
+        }),
+      ).rejects.toThrow("V213_V208_PAIRED_WARM_OWNERSHIP_UNPROVEN");
+    }
     expect(client.dispatchWithV208Policy).toHaveBeenCalledTimes(2);
   });
 

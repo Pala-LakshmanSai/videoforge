@@ -1052,23 +1052,32 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
     }>;
   }): Promise<V213DispatchAck> {
     if (!ID.test(input.requestKey)) throw new Error("V213_REQUEST_KEY_INVALID");
-    const client = this.options.createJobClient(input.deployment.endpointId);
+    let client: JobPort;
     if (input.policy === undefined) {
+      client = this.options.createJobClient(input.deployment.endpointId);
       await client.confirmStartupQueueEmpty();
     } else if (input.policy.prequeueAfterRequestKey !== undefined) {
+      const ownedCold = [...this.jobs.values()].filter(
+        (job) =>
+          job.endpointId === input.deployment.endpointId &&
+          job.requestKey === input.policy!.prequeueAfterRequestKey,
+      );
       if (
         input.requestKey !== "v208-soulx-warm-whole-span-2-4-6-10s" ||
         input.policy.prequeueAfterRequestKey !==
           "v208-soulx-cold-whole-span-2-4-6-10s" ||
-        [...this.jobs.values()].filter(
+        ownedCold.length !== 1 ||
+        [...this.jobs.values()].some(
           (job) =>
             job.endpointId === input.deployment.endpointId &&
-            job.requestKey === input.policy!.prequeueAfterRequestKey,
-        ).length !== 1
+            job.requestKey === input.requestKey,
+        )
       )
         throw new Error("V213_V208_PAIRED_WARM_OWNERSHIP_UNPROVEN");
+      client = ownedCold[0]!.client;
       await client.confirmV208PairedWarmQueue();
     } else {
+      client = this.options.createJobClient(input.deployment.endpointId);
       for (let attempt = 0; attempt < STARTUP_HEALTH_MAX_ATTEMPTS; attempt += 1) {
         try {
           // Keep this read-only gate outside the POST try/catch. A health/read failure must remain

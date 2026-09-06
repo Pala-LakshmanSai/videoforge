@@ -391,7 +391,7 @@ gates:
     owner: V2-08
     last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-billing-baseline-drift-e197-attempt.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:6f3e6c9c506d665b9af1b04314e99309f1f4444a0b3a70e3ab3510fe4b693d12"
+    current_candidate_proposal_sha256: "sha256:4d4b7cff2573ca466e0cc4d7b66519bfca14a5a82949265488ff1ce0f26c3ba6"
     current_candidate_acceptance_sha256: null
     current_candidate_approval_sentence_sha256: null
     current_candidate_validator: null
@@ -405,7 +405,7 @@ gates:
     runpod_mutation_performed: "One disposable endpoint/template created and deleted. Exactly two cold/warm POSTs completed with no redispatch; all five deterministic R2 keysets are absent and final compute is zero."
     gpu_seconds: unproven_two_completed_jobs_billing_unchanged
     observed_incremental_spend_usd: 0
-    current_blocker: fresh_exact_user_approval_for_proposal_6f3e6c9c
+    current_blocker: fresh_exact_user_approval_for_proposal_4d4b7cff
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036"
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
     image_publication_workflow_run_id: 34009939213

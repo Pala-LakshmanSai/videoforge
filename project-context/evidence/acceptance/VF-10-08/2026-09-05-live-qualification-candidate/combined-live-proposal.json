@@ -327,9 +327,9 @@
     "qualification_runpod_control": "apps/web/src/server/providers/runpod-control.ts",
     "qualification_runpod_control_sha256": "sha256:800787fda5f3cb9abc1e54ea67239a968a25a3fccde18631162485633233d320",
     "qualification_transport": "apps/web/src/server/providers/v213-runpod-dual-lane-transport.ts",
-    "qualification_transport_sha256": "sha256:95a051d6de7238256486e54816a819cc1235c1365dd4108755d43fa8aecc067a",
+    "qualification_transport_sha256": "sha256:8f4ab75d62cb293f4212750c225004041af5e9b194d741b6b12977ad726db941",
     "qualification_runpod_control_test_sha256": "sha256:0ce8e56dad7644a550351389a9e17e66096f8cce54f14cdb7c988d5b4856c900",
-    "qualification_transport_test_sha256": "sha256:58d335acb49caf2517052ac3ae2d349032571bac9fa631a467999c8e53d449ea",
+    "qualification_transport_test_sha256": "sha256:103a650d8c37c78c0fd6d9558f6984efde704a9b6930d1b5bade7df67d91cded",
     "execution_marker": "soulx-v208-qualification-v1",
     "handler": {
       "path": "workers/avatar-primary/soulx_serverless.py",
