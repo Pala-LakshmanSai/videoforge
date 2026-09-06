@@ -4309,15 +4309,15 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-09-06T03:27:50.385Z"
-  basis: v2_08_receipt_nonce_repair_fresh_read_only_preflight
-  evidence: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/read-only-preflight-receipt-nonce-repair.json
-  evidence_sha256: "sha256:598c6aa9c12a7ce7ab511f7321aaf59c2c828771afb2525135fa50409becd38f"
+  checked_at: "2026-09-06T05:33:05.229Z"
+  basis: v2_08_exact_rtx4090_capacity_return_read_only_preflight_and_three_read_reconciliation
+  evidence: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/read-only-exact-offering-return.json
+  evidence_sha256: "sha256:00994dc6ed38fe36f564e5c8457ff44b9061f6b01ac8f5ecda459a73ddd578ad"
   current_live_refresh_permitted_now: false
   stale_until_new_authority_and_authorized_read_only_inventory_succeeds: false
   rtx4090_eu_ro_1_offering_id: NVIDIA GeForce RTX 4090
-  rtx4090_eu_ro_1_availability: HIGH
-  rtx4090_availability_checked_at: "2026-09-06T03:27:50.385Z"
+  rtx4090_eu_ro_1_availability: LOW
+  rtx4090_availability_checked_at: "2026-09-06T05:33:05.229Z"
   secure_rtx4090_reference_usd_per_gpu_hour: 0.74
   serverless_flex_rtx4090_usd_per_gpu_hour: 1.116
   pods: 0
