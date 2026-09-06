@@ -195,14 +195,18 @@ async function fixture(
       }
       return exists
         ? result(JSON.stringify({ versions: [{ version_id: VERSION_ID, percentage: 100 }] }))
-        : result("", 1, (() => {
-            const diagnostic =
-              overrides.absenceDiagnostics?.[absenceChecks] ??
-              overrides.absenceDiagnostic ??
-              "Worker script does not exist [code: 10090]";
-            absenceChecks += 1;
-            return diagnostic;
-          })());
+        : result(
+            "",
+            1,
+            (() => {
+              const diagnostic =
+                overrides.absenceDiagnostics?.[absenceChecks] ??
+                overrides.absenceDiagnostic ??
+                "Worker script does not exist [code: 10090]";
+              absenceChecks += 1;
+              return diagnostic;
+            })(),
+          );
     }
     if (request.args.includes("deploy")) {
       exists = true;
@@ -1961,10 +1965,14 @@ describe("V2-07 disposable live orchestrator", () => {
   it("rejects a request identifier that merely contains 10007", async () => {
     const setup = await fixture({ absenceDiagnostic: "request id: 10007" });
     const sleeps: number[] = [];
-    await expect(runV207DisposableLiveOrchestration({
-      ...setup.options,
-      sleepImpl: async (milliseconds) => { sleeps.push(milliseconds); },
-    })).rejects.toMatchObject({
+    await expect(
+      runV207DisposableLiveOrchestration({
+        ...setup.options,
+        sleepImpl: async (milliseconds) => {
+          sleeps.push(milliseconds);
+        },
+      }),
+    ).rejects.toMatchObject({
       code: "V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED",
     });
     expect(sleeps).toEqual([]);

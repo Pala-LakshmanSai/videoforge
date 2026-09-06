@@ -165,11 +165,11 @@ test("V2-09 terminal ingestion and render handoff remain reconciler-only functio
   const compact = reconcilerSql.replace(/\s+/gu, "");
   for (const signature of reconcilerOnly) {
     assert.ok(
-      compact.includes(`GRANTEXECUTEONFUNCTIONpublic.${signature}TO:\"reconciler_role\";`),
+      compact.includes(`GRANTEXECUTEONFUNCTIONpublic.${signature}TO:"reconciler_role";`),
       `missing exact reconciler grant for ${signature}`,
     );
     assert.ok(
-      compact.includes(`REVOKEEXECUTEONFUNCTIONpublic.${signature}FROM:\"runtime_role\";`),
+      compact.includes(`REVOKEEXECUTEONFUNCTIONpublic.${signature}FROM:"runtime_role";`),
       `missing exact runtime revoke for ${signature}`,
     );
   }

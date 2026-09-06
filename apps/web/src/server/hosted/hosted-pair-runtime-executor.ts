@@ -375,9 +375,7 @@ export class HostedPairRuntimeExecutor {
       lane: envelope.lane,
       expectedAttemptId: prepared.attemptId,
       expectedEnvelopeSha256: prepared.expectedEnvelopeSha256,
-      ...(prepared.requestBody
-        ? { expectedRequestBodySha256: prepared.requestBodySha256 }
-        : {}),
+      ...(prepared.requestBody ? { expectedRequestBodySha256: prepared.requestBodySha256 } : {}),
     });
     const document = (
       await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", envelope.document)

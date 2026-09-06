@@ -308,10 +308,7 @@ describe("V208FileDurableStageStore", () => {
     // A fresh journal proves lock ownership without depending on a second in-process operation.
     const lockedRoot = root();
     const lockedStore = createV208FileDurableStageStore(options(lockedRoot));
-    const lockPath = join(
-      lockedRoot,
-      `${V208_FILE_DURABLE_LOCK_FILENAME}.${randomUUID()}`,
-    );
+    const lockPath = join(lockedRoot, `${V208_FILE_DURABLE_LOCK_FILENAME}.${randomUUID()}`);
     writeFileSync(lockPath, `${canonicalizeJson({ pid: process.pid, token: "held" })}\n`, {
       mode: V208_FILE_DURABLE_FILE_MODE,
     });
@@ -326,15 +323,10 @@ describe("V208FileDurableStageStore", () => {
   it("reclaims a complete stale lock and publishes no partial lock files", async () => {
     const journalDirectory = root();
     const store = createV208FileDurableStageStore(options(journalDirectory));
-    const lockPath = join(
-      journalDirectory,
-      `${V208_FILE_DURABLE_LOCK_FILENAME}.${randomUUID()}`,
-    );
-    writeFileSync(
-      lockPath,
-      `${canonicalizeJson({ pid: 2_147_483_647, token: randomUUID() })}\n`,
-      { mode: V208_FILE_DURABLE_FILE_MODE },
-    );
+    const lockPath = join(journalDirectory, `${V208_FILE_DURABLE_LOCK_FILENAME}.${randomUUID()}`);
+    writeFileSync(lockPath, `${canonicalizeJson({ pid: 2_147_483_647, token: randomUUID() })}\n`, {
+      mode: V208_FILE_DURABLE_FILE_MODE,
+    });
     chmodSync(lockPath, V208_FILE_DURABLE_FILE_MODE);
 
     await expect(
@@ -382,15 +374,10 @@ describe("V208FileDurableStageStore", () => {
 
   it("admits only one concurrent owner while reclaiming a crashed unique claim", async () => {
     const journalDirectory = root();
-    const stalePath = join(
-      journalDirectory,
-      `${V208_FILE_DURABLE_LOCK_FILENAME}.${randomUUID()}`,
-    );
-    writeFileSync(
-      stalePath,
-      `${canonicalizeJson({ pid: 2_147_483_647, token: randomUUID() })}\n`,
-      { mode: V208_FILE_DURABLE_FILE_MODE },
-    );
+    const stalePath = join(journalDirectory, `${V208_FILE_DURABLE_LOCK_FILENAME}.${randomUUID()}`);
+    writeFileSync(stalePath, `${canonicalizeJson({ pid: 2_147_483_647, token: randomUUID() })}\n`, {
+      mode: V208_FILE_DURABLE_FILE_MODE,
+    });
     chmodSync(stalePath, V208_FILE_DURABLE_FILE_MODE);
 
     let releaseSigner!: () => void;

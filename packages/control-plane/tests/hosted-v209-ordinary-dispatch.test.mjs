@@ -9,7 +9,10 @@ import {
   withPgcryptoMigratedDatabase,
 } from "./support/pglite.mjs";
 
-const migrationUrl = new URL("../migrations/0074_hosted_v209_ordinary_dispatch.sql", import.meta.url);
+const migrationUrl = new URL(
+  "../migrations/0074_hosted_v209_ordinary_dispatch.sql",
+  import.meta.url,
+);
 const fixturePredispatchUrl = new URL(
   "../migrations/0042_hosted_atomic_pair_predispatch.sql",
   import.meta.url,
@@ -25,15 +28,17 @@ test("0074 installs the additive ordinary V2-09 DB boundaries without weakening 
          JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
         WHERE n.nspname='public' AND p.proname=ANY($1::text[])
         ORDER BY p.proname`,
-      [[
-        "videoforge_commit_hosted_v209_ordinary_pair",
-        "videoforge_begin_hosted_v209_ordinary_send",
-        "videoforge_commit_hosted_v209_ordinary_lane_materialization",
-        "videoforge_import_hosted_v209_qualified_activation",
-        "videoforge_load_hosted_gpu_activation_v2",
-        "videoforge_load_hosted_v209_ordinary_lane_materialization",
-        "videoforge_materialize_hosted_v209_ordinary_dispatch",
-      ]],
+      [
+        [
+          "videoforge_commit_hosted_v209_ordinary_pair",
+          "videoforge_begin_hosted_v209_ordinary_send",
+          "videoforge_commit_hosted_v209_ordinary_lane_materialization",
+          "videoforge_import_hosted_v209_qualified_activation",
+          "videoforge_load_hosted_gpu_activation_v2",
+          "videoforge_load_hosted_v209_ordinary_lane_materialization",
+          "videoforge_materialize_hosted_v209_ordinary_dispatch",
+        ],
+      ],
     );
     assert.equal(routines.rows.length, 7);
     assert.ok(routines.rows.every((row) => row.security_definer === true));
@@ -46,14 +51,21 @@ test("0074 installs the additive ordinary V2-09 DB boundaries without weakening 
          LEFT JOIN pg_catalog.pg_policy policy ON policy.polrelid=c.oid
         WHERE n.nspname='public' AND c.relname=ANY($1::text[])
         GROUP BY c.relname,c.relrowsecurity,c.relforcerowsecurity ORDER BY c.relname`,
-      [[
-        "hosted_v209_ordinary_dispatch_candidates",
-        "hosted_v209_ordinary_lane_materializations",
-        "hosted_v209_qualified_activations",
-      ]],
+      [
+        [
+          "hosted_v209_ordinary_dispatch_candidates",
+          "hosted_v209_ordinary_lane_materializations",
+          "hosted_v209_qualified_activations",
+        ],
+      ],
     );
     assert.deepEqual(
-      policies.rows.map((row) => [row.relname, row.relrowsecurity, row.relforcerowsecurity, row.policies]),
+      policies.rows.map((row) => [
+        row.relname,
+        row.relrowsecurity,
+        row.relforcerowsecurity,
+        row.policies,
+      ]),
       [
         ["hosted_v209_ordinary_dispatch_candidates", true, true, 1],
         ["hosted_v209_ordinary_lane_materializations", true, true, 1],
@@ -130,7 +142,10 @@ test("0074 pins frozen Stage 6/7 artifacts without requiring nonexistent histori
   assert.match(sql, /target\.attempt_state<>'PLANNED' OR target\.outbox_state IS NOT NULL/u);
   assert.match(sql, /supplied_request_body_sha256<>computed_request_sha/u);
   assert.match(sql, /supplied_expected_envelope_sha256<>computed_envelope_sha/u);
-  assert.match(sql, /batch\.input_manifest_sha256,supplied_request_body_sha256,supplied_expected_envelope_sha256/u);
+  assert.match(
+    sql,
+    /batch\.input_manifest_sha256,supplied_request_body_sha256,supplied_expected_envelope_sha256/u,
+  );
   assert.match(sql, /authority_hash,supplied_request_body_sha256,/u);
   assert.match(sql, /supplied_lane='mage_image' AND deployment\.request_ttl_seconds<>7200/u);
   assert.match(sql, /supplied_lane='soulx_avatar' AND deployment\.request_ttl_seconds<>3600/u);
@@ -152,15 +167,9 @@ test("0074 pins frozen Stage 6/7 artifacts without requiring nonexistent histori
   );
   assert.match(sql, /'\{limits,issued_at\}'/u);
   assert.match(sql, /'\{limits,expires_at\}'/u);
-  assert.match(
-    sql,
-    /'baseEnvelopeTemplateSha256',finalized_envelope_sha/u,
-  );
+  assert.match(sql, /'baseEnvelopeTemplateSha256',finalized_envelope_sha/u);
   assert.doesNotMatch(sql, /'unsignedEnvelopeTemplateSha256',finalized_envelope_sha/u);
-  assert.match(
-    sql,
-    /public\.videoforge_canonical_jsonb\(supplied_request_body->'batch'\)/u,
-  );
+  assert.match(sql, /public\.videoforge_canonical_jsonb\(supplied_request_body->'batch'\)/u);
   assert.match(
     sql,
     /supplied_request_body->'envelope'->'work'->>'items_manifest_sha256'<>computed_batch_sha/u,

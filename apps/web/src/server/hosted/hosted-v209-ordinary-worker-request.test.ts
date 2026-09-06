@@ -149,11 +149,13 @@ describe("ordinary V2-09 immutable worker request", () => {
         attemptId,
         issuedAt,
         expiresAt: soulxExpiresAt,
-        envelope: envelope("soulx_avatar", 1, prefix, [
-          avatarReservation,
-          spanReservation,
-          outputReservation,
-        ], soulxExpiresAt),
+        envelope: envelope(
+          "soulx_avatar",
+          1,
+          prefix,
+          [avatarReservation, spanReservation, outputReservation],
+          soulxExpiresAt,
+        ),
         work,
         avatarSourceInputReservationId: avatarReservation,
       },

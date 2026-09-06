@@ -583,8 +583,7 @@ export function createV208DirectWholeSpanQualificationAdapter(
     config: { r2: { ...input.r2, region: "auto" } } as never,
     bucket,
     signing: input.signing,
-    store:
-      input.materializationStore ?? createStore(input.database!, input.signing.secretHex),
+    store: input.materializationStore ?? createStore(input.database!, input.signing.secretHex),
   });
   const materializerDependencies = {
     ...dependencies,
@@ -643,7 +642,8 @@ export function createV208DirectWholeSpanQualificationAdapter(
     readonly inputSha256: string;
   }) => {
     const descriptor = materializationInput.descriptor;
-    const whole = descriptor.key === "soulxWholeSpanCold" || descriptor.key === "soulxWholeSpanWarm";
+    const whole =
+      descriptor.key === "soulxWholeSpanCold" || descriptor.key === "soulxWholeSpanWarm";
     const avatar = exactProtectedBytes(
       input.protectedInputDescriptors.avatarSource,
       input.protectedSourceBytes!.avatarSource,
@@ -657,7 +657,11 @@ export function createV208DirectWholeSpanQualificationAdapter(
               input.protectedInputDescriptors[key],
               input.protectedSourceBytes![key],
             );
-            return inputArtifact("audio", descriptor, buildV213SoulXQualificationWav(source, seconds));
+            return inputArtifact(
+              "audio",
+              descriptor,
+              buildV213SoulXQualificationWav(source, seconds),
+            );
           }),
         ]
       : (() => {

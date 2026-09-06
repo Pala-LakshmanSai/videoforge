@@ -494,12 +494,16 @@ describe("V2-06 hosted adapters", () => {
   });
 
   it("re-runs durable span finalization before acknowledging a terminal replay", async () => {
-    const result = Buffer.from(JSON.stringify({
-      schema_version: "selected-span-audio-result/v1",
-      status: "SUCCEEDED",
-    }), "utf8");
-    const checksum = `sha256:${Buffer.from(await crypto.subtle.digest("SHA-256", result))
-      .toString("hex")}`;
+    const result = Buffer.from(
+      JSON.stringify({
+        schema_version: "selected-span-audio-result/v1",
+        status: "SUCCEEDED",
+      }),
+      "utf8",
+    );
+    const checksum = `sha256:${Buffer.from(await crypto.subtle.digest("SHA-256", result)).toString(
+      "hex",
+    )}`;
     const acceptCompleted = vi.fn(async () => undefined);
     const source = {
       ...environment(),

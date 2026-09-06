@@ -186,10 +186,12 @@ function fixture(options: { foreignAccount?: boolean; badGet?: boolean } = {}) {
     provenance_receipt_body_base64: receiptBytes.toString("base64"),
   };
   const commitHash = sha("artifact-commit");
-  const commitArtifacts = vi.fn(async () => Object.freeze({
-    state: "LANE_COMPLETED" as const,
-    receiptSha256s: Object.freeze([commitHash]),
-  }));
+  const commitArtifacts = vi.fn(async () =>
+    Object.freeze({
+      state: "LANE_COMPLETED" as const,
+      receiptSha256s: Object.freeze([commitHash]),
+    }),
+  );
   const store: HostedV209TerminalOutputStore = {
     async load() {
       return lineage;

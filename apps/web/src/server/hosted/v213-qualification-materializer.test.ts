@@ -398,7 +398,7 @@ describe("V2-13 JIT qualification materializer", () => {
     expect(ports.inputs.map((port) => port.method)).toEqual(["GET", "GET"]);
     expect(worker.input_get_urls).toHaveLength(2);
     expect(worker.output_put_urls).toHaveLength(1);
-    expect((envelope.limits as { issued_at: string; expires_at: string })).toMatchObject({
+    expect(envelope.limits as { issued_at: string; expires_at: string }).toMatchObject({
       issued_at: NOW,
       expires_at: "2026-08-28T00:15:00.000Z",
     });

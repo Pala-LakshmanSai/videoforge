@@ -1142,7 +1142,15 @@ async function activeLease(
   request: Request,
   pool: HostedNeonPool,
   leaseId: string,
-): Promise<(DeviceScope & { leaseToken: string; attemptId: string; state: string; kind: "ASR" | "SPAN_AUDIO" | "RENDER" }) | null> {
+): Promise<
+  | (DeviceScope & {
+      leaseToken: string;
+      attemptId: string;
+      state: string;
+      kind: "ASR" | "SPAN_AUDIO" | "RENDER";
+    })
+  | null
+> {
   const scope = await deviceScope(request, pool);
   const leaseToken = request.headers.get("x-videoforge-lease-token");
   if (!scope || !leaseToken || !TOKEN.test(leaseToken)) return null;
@@ -1166,8 +1174,13 @@ async function activeLease(
   );
   const row = result.rows[0];
   return row
-    ? { ...scope, leaseToken, attemptId: String(row.attempt_id), state: String(row.state),
-        kind: String(row.kind) as "ASR" | "SPAN_AUDIO" | "RENDER" }
+    ? {
+        ...scope,
+        leaseToken,
+        attemptId: String(row.attempt_id),
+        state: String(row.state),
+        kind: String(row.kind) as "ASR" | "SPAN_AUDIO" | "RENDER",
+      }
     : null;
 }
 
@@ -1443,21 +1456,35 @@ function completionAccepted(state: PersonalWorkerTerminalState): Response {
 
 async function readVerifiedSpanResult(
   environment: HostedRuntimeEnvironment,
-  terminal: { readonly accountId: string; readonly workspaceId: string; readonly attemptId: string } & PersonalWorkerTerminalLease,
+  terminal: {
+    readonly accountId: string;
+    readonly workspaceId: string;
+    readonly attemptId: string;
+  } & PersonalWorkerTerminalLease,
 ): Promise<JsonValue> {
-  if (terminal.resultObjectKey === null || terminal.resultContentLength === null ||
-    terminal.resultChecksumSha256 === null || terminal.resultContentLength < 1 ||
-    terminal.resultContentLength > 1_048_576) throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
+  if (
+    terminal.resultObjectKey === null ||
+    terminal.resultContentLength === null ||
+    terminal.resultChecksumSha256 === null ||
+    terminal.resultContentLength < 1 ||
+    terminal.resultContentLength > 1_048_576
+  )
+    throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
   const object = await environment.PRIVATE_ARTIFACTS?.get(terminal.resultObjectKey);
-  if (!object || object.size !== terminal.resultContentLength ||
-    object.httpMetadata?.contentType !== "application/json") {
+  if (
+    !object ||
+    object.size !== terminal.resultContentLength ||
+    object.httpMetadata?.contentType !== "application/json"
+  ) {
     throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
   }
   const bytes = await object.arrayBuffer();
   if ((await sha256Bytes(bytes)) !== terminal.resultChecksumSha256) {
     throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
   }
-  const decoded = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes));
+  const decoded = JSON.parse(
+    new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes),
+  );
   if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded)) {
     throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
   }
@@ -1466,7 +1493,11 @@ async function readVerifiedSpanResult(
 
 export async function finalizeHostedSpanAudioTerminalReplay(
   environment: HostedRuntimeEnvironment,
-  terminal: { readonly accountId: string; readonly workspaceId: string; readonly attemptId: string } & PersonalWorkerTerminalLease,
+  terminal: {
+    readonly accountId: string;
+    readonly workspaceId: string;
+    readonly attemptId: string;
+  } & PersonalWorkerTerminalLease,
   spanAudio: {
     readonly acceptCompleted: (input: {
       readonly accountId: string;
@@ -1577,7 +1608,8 @@ async function completeLease(
       const bytes = await resultObject.arrayBuffer();
       try {
         const decoded = JSON.parse(new TextDecoder().decode(bytes));
-        if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded)) throw new Error();
+        if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded))
+          throw new Error();
         verifiedResultDocument = decoded as JsonValue;
       } catch {
         return json({ error: { code: "MEDIA_WORKER_RESULT_MISMATCH" } }, 409);

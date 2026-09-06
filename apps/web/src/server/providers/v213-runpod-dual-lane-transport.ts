@@ -12,10 +12,7 @@ import type {
   RunPodServerlessJobClient,
   RunPodV208DispatchPolicy,
 } from "./runpod-control.js";
-import {
-  RunPodControlError,
-  RunPodDrainGuard as ConcreteDrainGuard,
-} from "./runpod-control.js";
+import { RunPodControlError, RunPodDrainGuard as ConcreteDrainGuard } from "./runpod-control.js";
 import type {
   V213AdmissionRead,
   V213DispatchAck,
@@ -824,8 +821,7 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       // A raw process kill can occur after the deterministic template POST but before any outer
       // operation evidence exists. Qualification resources are still attributable by their exact
       // authority-derived name plus the sealed image/environment or endpoint policy/volume.
-      if (purpose !== "qualification")
-        throw new Error("V213_CLEANUP_PARTIAL_IDENTITY_UNAVAILABLE");
+      if (purpose !== "qualification") throw new Error("V213_CLEANUP_PARTIAL_IDENTITY_UNAVAILABLE");
       if (template) {
         const environment = workerEnvironmentForLane({
           sealed: binding,
@@ -1064,13 +1060,11 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       );
       if (
         input.requestKey !== "v208-soulx-warm-whole-span-2-4-6-10s" ||
-        input.policy.prequeueAfterRequestKey !==
-          "v208-soulx-cold-whole-span-2-4-6-10s" ||
+        input.policy.prequeueAfterRequestKey !== "v208-soulx-cold-whole-span-2-4-6-10s" ||
         ownedCold.length !== 1 ||
         [...this.jobs.values()].some(
           (job) =>
-            job.endpointId === input.deployment.endpointId &&
-            job.requestKey === input.requestKey,
+            job.endpointId === input.deployment.endpointId && job.requestKey === input.requestKey,
         )
       )
         throw new Error("V213_V208_PAIRED_WARM_OWNERSHIP_UNPROVEN");
@@ -1148,9 +1142,10 @@ export class V213RunPodDualLaneTransport implements V213DualLaneTransport {
       typeof receiptBodyBase64 === "string"
         ? ({ receipt, receiptBodyBase64 } as V213WorkerReceiptDelivery)
         : undefined;
-    const outputReadbackVerified = delivery && this.options.verifyOutputReadback
-      ? await this.options.verifyOutputReadback(result, delivery)
-      : undefined;
+    const outputReadbackVerified =
+      delivery && this.options.verifyOutputReadback
+        ? await this.options.verifyOutputReadback(result, delivery)
+        : undefined;
     const applicationFailure =
       result.status === "COMPLETED" &&
       output?.status === "FAILED" &&

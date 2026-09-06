@@ -23,7 +23,10 @@ test("personal-worker claims are account-scoped and do not take a global worker 
   const claimQuery = worker.slice(claimStart, claimEnd);
   assert.match(claimQuery, /account_id = \$1 AND workspace_id = \$2/u);
   assert.match(claimQuery, /LIMIT 1 FOR UPDATE SKIP LOCKED/u);
-  assert.doesNotMatch(claimQuery, /global_generation_capacity|provider_workload_leases|advisory_xact_lock/u);
+  assert.doesNotMatch(
+    claimQuery,
+    /global_generation_capacity|provider_workload_leases|advisory_xact_lock/u,
+  );
 
   // Device and attempt ownership are composite tenant keys. Two accounts (and multiple devices in
   // one account) therefore have independent render leases while duplicate claims remain fenced.

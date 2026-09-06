@@ -87,9 +87,7 @@ export class HostedSqlV209OrdinaryLaneMaterializer {
     const bodies = await Promise.all(
       loaded.map(async (item) => {
         if ((await sha256CanonicalJson(item.envelopeTemplate)) !== item.baseEnvelopeTemplateSha256)
-          throw new HostedDispatchCoordinationError(
-            "HOSTED_V209_ORDINARY_ENVELOPE_TEMPLATE_DRIFT",
-          );
+          throw new HostedDispatchCoordinationError("HOSTED_V209_ORDINARY_ENVELOPE_TEMPLATE_DRIFT");
         const template = item.envelopeTemplate as Record<string, JsonValue>;
         const limits = template.limits;
         if (!limits || typeof limits !== "object" || Array.isArray(limits))

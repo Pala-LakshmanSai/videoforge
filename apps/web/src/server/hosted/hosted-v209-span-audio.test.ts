@@ -73,29 +73,33 @@ async function projection() {
     workspaceId: ids.workspaceId,
     projectId: ids.projectId,
     projectRevisionId: ids.revisionId,
-    jobs: [{
-      spanId: ids.spanId,
-      taskId: ids.taskId,
-      taskKey: ids.taskId,
-      attemptId: ids.attemptId,
-      idempotencyKey: submissionDocument.idempotency_key,
-      inputDocument,
-      submissionDocument,
-      submissionSha256: await sha256(canonicalJson(submissionDocument)),
-      objects,
-      state: "PLANNED",
-    }],
+    jobs: [
+      {
+        spanId: ids.spanId,
+        taskId: ids.taskId,
+        taskKey: ids.taskId,
+        attemptId: ids.attemptId,
+        idempotencyKey: submissionDocument.idempotency_key,
+        inputDocument,
+        submissionDocument,
+        submissionSha256: await sha256(canonicalJson(submissionDocument)),
+        objects,
+        state: "PLANNED",
+      },
+    ],
   };
 }
 
 describe("hosted V2-09 span audio coordinator", () => {
   it("schedules only the exact DB-owned 48 kHz submission", async () => {
     const value = await projection();
-    const schedule = vi.fn(async (
-      _identity: HostedV209SpanIdentity,
-      _submission: HostedSpanAudioSubmission,
-      _expectedAttemptId: string,
-    ) => ({ state: "OUTBOXED" }));
+    const schedule = vi.fn(
+      async (
+        _identity: HostedV209SpanIdentity,
+        _submission: HostedSpanAudioSubmission,
+        _expectedAttemptId: string,
+      ) => ({ state: "OUTBOXED" }),
+    );
     const coordinator = createHostedV209SpanAudioCoordinator({
       loadJobs: vi.fn(async () => value),
       schedule,
@@ -121,7 +125,10 @@ describe("hosted V2-09 span audio coordinator", () => {
     value.jobs[0]!.submissionSha256 = `sha256:${"f".repeat(64)}`;
     const schedule = vi.fn();
     const coordinator = createHostedV209SpanAudioCoordinator({
-      loadJobs: vi.fn(async () => value), schedule, finalize: vi.fn(), resumePair: vi.fn(),
+      loadJobs: vi.fn(async () => value),
+      schedule,
+      finalize: vi.fn(),
+      resumePair: vi.fn(),
     });
     await expect(coordinator.prepare(ids)).rejects.toMatchObject({
       code: "HOSTED_V209_SPAN_SUBMISSION_HASH_MISMATCH",
@@ -149,7 +156,10 @@ describe("hosted V2-09 span audio coordinator", () => {
       checksumSha256: `sha256:${digest}`,
     };
     const coordinator = createHostedV209SpanAudioCoordinator({
-      loadJobs: vi.fn(), schedule: vi.fn(), finalize: vi.fn(async () => finalization), resumePair,
+      loadJobs: vi.fn(),
+      schedule: vi.fn(),
+      finalize: vi.fn(async () => finalization),
+      resumePair,
     });
     await coordinator.acceptCompleted({
       accountId: ids.accountId,
@@ -167,9 +177,7 @@ describe("hosted V2-09 span audio coordinator", () => {
 
   it("re-enters server-owned preparation when another span remains", async () => {
     const value = await projection();
-    const loadJobs = vi.fn()
-      .mockResolvedValueOnce(value)
-      .mockResolvedValueOnce(value);
+    const loadJobs = vi.fn().mockResolvedValueOnce(value).mockResolvedValueOnce(value);
     const schedule = vi.fn(async () => ({ state: "OUTBOXED" }));
     const finalization = {
       schemaVersion: "videoforge.hosted-v209-span-audio-finalization/v1",
@@ -189,7 +197,10 @@ describe("hosted V2-09 span audio coordinator", () => {
       checksumSha256: `sha256:${digest}`,
     };
     const coordinator = createHostedV209SpanAudioCoordinator({
-      loadJobs, schedule, finalize: vi.fn(async () => finalization), resumePair: vi.fn(),
+      loadJobs,
+      schedule,
+      finalize: vi.fn(async () => finalization),
+      resumePair: vi.fn(),
     });
     await coordinator.acceptCompleted({
       accountId: ids.accountId,

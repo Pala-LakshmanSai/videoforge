@@ -181,7 +181,10 @@ describe("hosted pair runtime executor", () => {
           requestBodySha256: hash,
           requestBody,
         },
-        { ...claims.soulx_avatar, expectedEnvelopeSha256: await sha256CanonicalJson(unsigned("soulx_avatar")) },
+        {
+          ...claims.soulx_avatar,
+          expectedEnvelopeSha256: await sha256CanonicalJson(unsigned("soulx_avatar")),
+        },
       ] as never;
     });
     await expect(f.executor.execute(input)).rejects.toMatchObject({

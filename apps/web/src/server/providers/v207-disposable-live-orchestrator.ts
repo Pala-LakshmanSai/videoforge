@@ -348,9 +348,7 @@ async function assertWorkerAbsent(
     `${result.stdout.slice(0, 131_072)}\n${result.stderr.slice(0, 131_072)}`,
   );
   if (RETRYABLE_ABSENCE_DIAGNOSTIC.test(diagnostic)) {
-    throw new V207DisposableOrchestratorError(
-      "V207_DISPOSABLE_WORKER_ABSENCE_RETRYABLE_TRANSIENT",
-    );
+    throw new V207DisposableOrchestratorError("V207_DISPOSABLE_WORKER_ABSENCE_RETRYABLE_TRANSIENT");
   }
   throw new V207DisposableOrchestratorError("V207_DISPOSABLE_WORKER_ABSENCE_UNCONFIRMED");
 }

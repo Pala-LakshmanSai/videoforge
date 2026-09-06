@@ -2647,11 +2647,14 @@ describe("hosted product journey", () => {
         });
       }
       dispatches += 1;
-      return Response.json({
-        schema_version: "videoforge-hosted-v209-project-dispatch/v1",
-        state: "PREPARING_INPUTS",
-        correlation_id: `v209-span-${dispatches}`,
-      }, { status: 202 });
+      return Response.json(
+        {
+          schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+          state: "PREPARING_INPUTS",
+          correlation_id: `v209-span-${dispatches}`,
+        },
+        { status: 202 },
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId={projectId} />);

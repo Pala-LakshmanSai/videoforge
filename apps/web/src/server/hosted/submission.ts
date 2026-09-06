@@ -97,16 +97,36 @@ export interface HostedSpanAudioSubmission extends Omit<HostedCpuSubmission, "ki
 }
 
 export function exactSelectedSpanAudioInput(value: unknown): Record<string, unknown> | null {
-  if (!isRecord(value) || !hasExactKeys(value, [
-    "schema_version", "project_revision_id", "attempt_id", "timeline_plan_id", "transcript_id",
-    "span_id", "timeline_segment_id", "task_key", "source_voiceover", "selection", "output",
-    "cancel_token", "output_profile",
-  ])) return null;
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      "schema_version",
+      "project_revision_id",
+      "attempt_id",
+      "timeline_plan_id",
+      "transcript_id",
+      "span_id",
+      "timeline_segment_id",
+      "task_key",
+      "source_voiceover",
+      "selection",
+      "output",
+      "cancel_token",
+      "output_profile",
+    ])
+  )
+    return null;
   if (
     value.schema_version !== "selected-span-audio-job/v1" ||
     value.output_profile !== "SOULX_PCM16_48K_MONO" ||
-    ![value.project_revision_id, value.attempt_id, value.timeline_plan_id, value.transcript_id,
-      value.span_id, value.timeline_segment_id].every(isBoundedId) ||
+    ![
+      value.project_revision_id,
+      value.attempt_id,
+      value.timeline_plan_id,
+      value.transcript_id,
+      value.span_id,
+      value.timeline_segment_id,
+    ].every(isBoundedId) ||
     !isBoundedId(value.task_key) ||
     !isStringWithLength(value.cancel_token, 16, 240) ||
     !isRecord(value.source_voiceover) ||
@@ -117,14 +137,21 @@ export function exactSelectedSpanAudioInput(value: unknown): Record<string, unkn
     !Number.isSafeInteger(value.source_voiceover.duration_ms) ||
     Number(value.source_voiceover.duration_ms) < 10_000 ||
     !isRecord(value.selection) ||
-    !hasExactKeys(value.selection, ["selected_start_ms", "selected_end_ms_exclusive",
-      "padded_start_ms", "padded_end_ms_exclusive", "trim_start_ms", "trim_end_ms_exclusive"]) ||
+    !hasExactKeys(value.selection, [
+      "selected_start_ms",
+      "selected_end_ms_exclusive",
+      "padded_start_ms",
+      "padded_end_ms_exclusive",
+      "trim_start_ms",
+      "trim_end_ms_exclusive",
+    ]) ||
     !Object.values(value.selection).every(Number.isSafeInteger) ||
     !isRecord(value.output) ||
     !hasExactKeys(value.output, ["asset_id", "result_uri"]) ||
     !isBoundedId(value.output.asset_id) ||
     typeof value.output.result_uri !== "string"
-  ) return null;
+  )
+    return null;
   const sourceMatch = LOCAL_OBJECT.exec(String(value.source_voiceover.artifact_uri));
   const selection = value.selection as Record<string, number>;
   const paddedStart = selection.padded_start_ms!;
@@ -134,14 +161,19 @@ export function exactSelectedSpanAudioInput(value: unknown): Record<string, unkn
   const trimStart = selection.trim_start_ms!;
   const trimEnd = selection.trim_end_ms_exclusive!;
   if (
-    !sourceMatch || value.source_voiceover.sha256 !== `sha256:${sourceMatch[1]}` ||
-    paddedStart < 0 || selectedStart < paddedStart || selectedEnd <= selectedStart ||
-    paddedEnd < selectedEnd || trimStart !== selectedStart - paddedStart ||
+    !sourceMatch ||
+    value.source_voiceover.sha256 !== `sha256:${sourceMatch[1]}` ||
+    paddedStart < 0 ||
+    selectedStart < paddedStart ||
+    selectedEnd <= selectedStart ||
+    paddedEnd < selectedEnd ||
+    trimStart !== selectedStart - paddedStart ||
     trimEnd !== trimStart + selectedEnd - selectedStart ||
     paddedEnd > Number(value.source_voiceover.duration_ms) + 20 ||
     value.output.result_uri !==
       `vf-local-run://${String(value.project_revision_id)}/${String(value.attempt_id)}/span-audio-result.json`
-  ) return null;
+  )
+    return null;
   return structuredClone(value);
 }
 
@@ -150,21 +182,44 @@ export function exactHostedSpanAudioSubmission(
   value: unknown,
   expectedAttemptId?: string,
 ): HostedSpanAudioSubmission | null {
-  if (!isRecord(value) || !hasExactKeys(value, [
-    "schema_version", "idempotency_key", "project_id", "project_revision_id", "kind",
-    "input_document", "objects",
-  ]) || value.schema_version !== "videoforge-hosted-cpu-submission/v1" ||
-    value.kind !== "SPAN_AUDIO" || !isBoundedId(value.idempotency_key) ||
-    typeof value.project_id !== "string" || !UUID.test(value.project_id) ||
-    typeof value.project_revision_id !== "string" || !UUID.test(value.project_revision_id) ||
-    !Array.isArray(value.objects) || value.objects.length !== 1) return null;
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      "schema_version",
+      "idempotency_key",
+      "project_id",
+      "project_revision_id",
+      "kind",
+      "input_document",
+      "objects",
+    ]) ||
+    value.schema_version !== "videoforge-hosted-cpu-submission/v1" ||
+    value.kind !== "SPAN_AUDIO" ||
+    !isBoundedId(value.idempotency_key) ||
+    typeof value.project_id !== "string" ||
+    !UUID.test(value.project_id) ||
+    typeof value.project_revision_id !== "string" ||
+    !UUID.test(value.project_revision_id) ||
+    !Array.isArray(value.objects) ||
+    value.objects.length !== 1
+  )
+    return null;
   const inputDocument = exactSelectedSpanAudioInput(value.input_document);
-  if (!inputDocument || inputDocument.project_revision_id !== value.project_revision_id ||
-    (expectedAttemptId !== undefined && inputDocument.attempt_id !== expectedAttemptId)) return null;
+  if (
+    !inputDocument ||
+    inputDocument.project_revision_id !== value.project_revision_id ||
+    (expectedAttemptId !== undefined && inputDocument.attempt_id !== expectedAttemptId)
+  )
+    return null;
   const object = value.objects[0];
-  if (!isRecord(object) || !hasExactKeys(object, ["artifact_receipt_id", "uri"]) ||
-    typeof object.artifact_receipt_id !== "string" || !UUID.test(object.artifact_receipt_id) ||
-    object.uri !== (inputDocument.source_voiceover as Record<string, unknown>).artifact_uri) return null;
+  if (
+    !isRecord(object) ||
+    !hasExactKeys(object, ["artifact_receipt_id", "uri"]) ||
+    typeof object.artifact_receipt_id !== "string" ||
+    !UUID.test(object.artifact_receipt_id) ||
+    object.uri !== (inputDocument.source_voiceover as Record<string, unknown>).artifact_uri
+  )
+    return null;
   return Object.freeze({
     idempotencyKey: String(value.idempotency_key),
     projectId: value.project_id,
@@ -292,11 +347,12 @@ export function bindHostedCpuInputDocument(
   projectRevisionId: string,
   attemptId: string,
 ): Record<string, unknown> {
-  const expectedSchema = kind === "ASR"
-    ? "asr-job-input/v1"
-    : kind === "SPAN_AUDIO"
-      ? "selected-span-audio-job/v1"
-      : "render-job-input/v1";
+  const expectedSchema =
+    kind === "ASR"
+      ? "asr-job-input/v1"
+      : kind === "SPAN_AUDIO"
+        ? "selected-span-audio-job/v1"
+        : "render-job-input/v1";
   if (document.schema_version !== expectedSchema) {
     throw new TypeError("Hosted CPU input document does not match its exact job kind.");
   }
@@ -309,11 +365,12 @@ export function bindHostedCpuInputDocument(
     throw new TypeError("Hosted CPU input document has no exact output declaration.");
   }
   const outputRecord = output as Record<string, unknown>;
-  outputRecord.result_uri = kind === "ASR"
-    ? `vf-local-run://${projectRevisionId}/${attemptId}/asr-result.json`
-    : kind === "SPAN_AUDIO"
-      ? `vf-local-run://${projectRevisionId}/${attemptId}/span-audio-result.json`
-      : `vf-local-run://${projectRevisionId}/${attemptId}/videoforge-output.mp4`;
+  outputRecord.result_uri =
+    kind === "ASR"
+      ? `vf-local-run://${projectRevisionId}/${attemptId}/asr-result.json`
+      : kind === "SPAN_AUDIO"
+        ? `vf-local-run://${projectRevisionId}/${attemptId}/span-audio-result.json`
+        : `vf-local-run://${projectRevisionId}/${attemptId}/videoforge-output.mp4`;
   if (kind === "RENDER") outputRecord.filename = "videoforge-output.mp4";
   if (kind === "RENDER") {
     if (!isRenderJobInputDocument(bound)) {

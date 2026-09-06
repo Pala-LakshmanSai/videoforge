@@ -1056,10 +1056,7 @@ function lockClaimPaths(directory: string): readonly string[] {
     fail("V208_FILE_DURABLE_LOCK_DIRECTORY_READ_FAILED");
   }
   return names
-    .filter(
-      (name) =>
-        name === V208_FILE_DURABLE_LOCK_FILENAME || LOCK_CLAIM_FILENAME.test(name),
-    )
+    .filter((name) => name === V208_FILE_DURABLE_LOCK_FILENAME || LOCK_CLAIM_FILENAME.test(name))
     .sort()
     .map((name) => join(directory, name));
 }
