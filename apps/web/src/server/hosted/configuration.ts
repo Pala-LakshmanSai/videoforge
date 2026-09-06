@@ -81,6 +81,10 @@ export interface HostedRuntimeEnvironment {
   readonly VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID?: string;
   readonly VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY?: string;
   readonly VIDEOFORGE_PROVIDER_PROOF_KEY_ID?: string;
+  /** Verifies immutable Mage/SoulX worker provenance receipts. This key is deliberately
+   * separate from the provider-observation proof key used by cleanup reconciliation. */
+  readonly VIDEOFORGE_PROVENANCE_RECEIPT_VERIFY_KEY?: string;
+  readonly VIDEOFORGE_PROVENANCE_RECEIPT_KEY_ID?: string;
   readonly VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN?: string;
   readonly RUNPOD_API_KEY?: string;
   readonly RUNPOD_API_BASE_URL?: string;

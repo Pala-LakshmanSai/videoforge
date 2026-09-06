@@ -45,6 +45,7 @@ import {
 import { createV213WorkerLiveAcceptanceExecute } from "./v213-worker-live-execution";
 import { handleHostedInviteRedemption, HOSTED_INVITE_REDEMPTION_PATH } from "./invite-redemption";
 import { exactHostedCpuCancellationConfirmation } from "./hosted-cpu-cancellation";
+import { handleHostedV209ProjectDispatch } from "./hosted-v209-project-dispatch";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -1155,42 +1156,48 @@ export interface HostedConfigurationDependencies {
   readonly resolvedRenderManifestRouteDependencies?: V213ResolvedRenderManifestReadDependencies;
 }
 
+export function hostedGpuActivationDatabaseSource(
+  environment: HostedRuntimeEnvironment,
+  disabled: HostedRuntimeConfiguration,
+  poolFactory: typeof createNeonPool = createNeonPool,
+): HostedQualifiedGpuActivationDatabaseSource | undefined {
+  if (
+    disabled.environment !== "production" ||
+    environment.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT"
+  )
+    return undefined;
+  return {
+    async load() {
+      const pool = poolFactory(disabled.neon.databaseUrl);
+      try {
+        const result = await pool.query<{ snapshot: unknown } & Record<string, unknown>>(
+          "SELECT public.videoforge_load_hosted_gpu_activation_v2() AS snapshot",
+        );
+        const snapshot = result.rows[0]?.snapshot;
+        if (result.rows.length !== 1 || typeof snapshot !== "object" || snapshot === null)
+          throw new Error("HOSTED_GPU_ACTIVATION_SNAPSHOT_INVALID");
+        const value = snapshot as Record<string, unknown>;
+        if (
+          Object.keys(value).sort().join(",") !== "evidence,verification" ||
+          typeof value.evidence !== "object" ||
+          value.evidence === null ||
+          typeof value.verification !== "object" ||
+          value.verification === null
+        )
+          throw new Error("HOSTED_GPU_ACTIVATION_SNAPSHOT_INVALID");
+        return {
+          evidence: value.evidence as Readonly<Record<string, unknown>>,
+          verification: value.verification as never,
+        };
+      } finally {
+        await pool.end();
+      }
+    },
+  };
+}
+
 const hostedConfigurationDependencies: HostedConfigurationDependencies = Object.freeze({
-  databaseSource(environment: HostedRuntimeEnvironment, disabled: HostedRuntimeConfiguration) {
-    if (
-      disabled.environment !== "production" ||
-      environment.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT"
-    )
-      return undefined;
-    return {
-      async load() {
-        const pool = createNeonPool(disabled.neon.databaseUrl);
-        try {
-          const result = await pool.query<{ snapshot: unknown } & Record<string, unknown>>(
-            "SELECT public.videoforge_load_hosted_gpu_activation_v1() AS snapshot",
-          );
-          const snapshot = result.rows[0]?.snapshot;
-          if (result.rows.length !== 1 || typeof snapshot !== "object" || snapshot === null)
-            throw new Error("HOSTED_GPU_ACTIVATION_SNAPSHOT_INVALID");
-          const value = snapshot as Record<string, unknown>;
-          if (
-            Object.keys(value).sort().join(",") !== "evidence,verification" ||
-            typeof value.evidence !== "object" ||
-            value.evidence === null ||
-            typeof value.verification !== "object" ||
-            value.verification === null
-          )
-            throw new Error("HOSTED_GPU_ACTIVATION_SNAPSHOT_INVALID");
-          return {
-            evidence: value.evidence as Readonly<Record<string, unknown>>,
-            verification: value.verification as never,
-          };
-        } finally {
-          await pool.end();
-        }
-      },
-    };
-  },
+  databaseSource: hostedGpuActivationDatabaseSource,
 });
 
 export async function handleHostedRequest(
@@ -1285,6 +1292,13 @@ export async function handleHostedRequest(
     const promptResponse = await handleHostedPromptRequest(request, config, executionContext);
     if (promptResponse) return promptResponse;
   }
+  const v209DispatchResponse = await handleHostedV209ProjectDispatch(
+    request,
+    environment,
+    config,
+    executionContext,
+  );
+  if (v209DispatchResponse) return v209DispatchResponse;
   const { handleHostedProductRequest } = await import("./product");
   const productResponse = await handleHostedProductRequest(
     request,

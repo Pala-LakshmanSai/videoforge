@@ -777,6 +777,25 @@ describe("RunPod scale-zero control", () => {
     expect(() => guard.assertDispatchAllowed()).not.toThrow();
   });
 
+  it("rejects an oversized status body before retaining provider output", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async () =>
+      response({ id: "job_01", status: "COMPLETED", output: "x".repeat(1024 * 1024) }),
+    );
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+      readRetryDelaysMs: [],
+    });
+    await expect(client.status("job_01")).rejects.toMatchObject({
+      code: "RUNPOD_RESPONSE_INVALID",
+    });
+  });
+
   it("polls the requested job until the provider reports terminal cancellation", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);

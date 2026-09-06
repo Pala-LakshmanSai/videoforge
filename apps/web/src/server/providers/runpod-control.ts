@@ -1521,6 +1521,42 @@ const jobResult = (value: JsonRecord): RunPodJobResult => {
   });
 };
 
+const MAX_SERVERLESS_RESPONSE_BYTES = 1024 * 1024;
+
+async function boundedServerlessResponseText(response: Response): Promise<string> {
+  const declared = response.headers.get("content-length");
+  if (declared !== null) {
+    const bytes = Number(declared);
+    if (!Number.isSafeInteger(bytes) || bytes < 0 || bytes > MAX_SERVERLESS_RESPONSE_BYTES)
+      throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
+  }
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    for (;;) {
+      const next = await reader.read();
+      if (next.done) break;
+      length += next.value.byteLength;
+      if (length > MAX_SERVERLESS_RESPONSE_BYTES) {
+        await reader.cancel();
+        throw new RunPodControlError("RUNPOD_RESPONSE_INVALID");
+      }
+      chunks.push(next.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes);
+}
+
 export interface RunPodServerlessJobClientOptions {
   readonly apiKey: string;
   readonly endpointId: string;
@@ -1621,7 +1657,7 @@ export class RunPodServerlessJobClient {
       );
     }
     try {
-      const value = record(JSON.parse(await response.text()));
+      const value = record(JSON.parse(await boundedServerlessResponseText(response)));
       if (!value) throw new Error("invalid");
       return value;
     } catch {

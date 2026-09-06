@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { RunPodControlError, type RunPodJobResult } from "./runpod-control";
 import { RunPodServerlessTransport } from "./runpod-serverless-transport";
+import { sha256CanonicalJson } from "@videoforge/contracts";
 
 const ENDPOINT_SHA256 = `sha256:${"a".repeat(64)}` as ServerlessRunRequest["endpointIdSha256"];
 const REQUEST_SHA256 = `sha256:${"b".repeat(64)}` as ServerlessRunRequest["requestBodySha256"];
@@ -44,6 +45,27 @@ describe("provider-neutral RunPod Serverless transport", () => {
     await expect(transport.run(request())).resolves.toEqual({ id: "job_01" });
     expect(port.dispatch).toHaveBeenCalledTimes(1);
     expect(port.dispatch).toHaveBeenCalledWith(request().dispatchToken, request().envelope);
+  });
+
+  it("dispatches an exact full immutable-handler body and rejects hash drift before POST", async () => {
+    const port = client();
+    const transport = new RunPodServerlessTransport(port, ENDPOINT_SHA256);
+    const body = Object.freeze({
+      envelope: request().envelope,
+      batch: { attempt_id: "attempt-1", items: [] },
+      ports: { inputs: [] },
+      input_get_urls: [],
+      generated_output_authorities: [],
+      output_put_urls: [],
+    });
+    const exact = { ...request(), body, requestBodySha256: await sha256CanonicalJson(body) };
+    await expect(transport.run(exact)).resolves.toEqual({ id: "job_01" });
+    expect(port.dispatch).toHaveBeenCalledWith(exact.dispatchToken, body);
+
+    await expect(
+      transport.run({ ...exact, requestBodySha256: REQUEST_SHA256 }),
+    ).rejects.toMatchObject({ code: "REQUEST_REJECTED" });
+    expect(port.dispatch).toHaveBeenCalledTimes(1);
   });
 
   it("rejects endpoint drift before any provider request", async () => {
@@ -106,6 +128,14 @@ describe("provider-neutral RunPod Serverless transport", () => {
     await expect(
       new RunPodServerlessTransport(unknown, ENDPOINT_SHA256).status("job_01"),
     ).rejects.toMatchObject({ code: "STATUS_UNKNOWN" });
+  });
+
+  it("retains terminal provider output for server-side receipt ingestion", async () => {
+    const port = client();
+    port.status.mockResolvedValueOnce({ ...job("COMPLETED"), output: { receipt: "bounded" } });
+    await expect(
+      new RunPodServerlessTransport(port, ENDPOINT_SHA256).status("job_01"),
+    ).resolves.toEqual({ id: "job_01", status: "COMPLETED", output: { receipt: "bounded" } });
   });
 
   it("cancels only the exact job and preserves uncertain cancellation", async () => {

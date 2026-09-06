@@ -6,6 +6,7 @@ import type {
 } from "@videoforge/control-plane";
 import { ServerlessTransportError } from "@videoforge/control-plane";
 import type { JsonValue } from "@videoforge/contracts";
+import { sha256CanonicalJson } from "@videoforge/contracts";
 
 import type { RunPodJobResult, RunPodServerlessJobClient } from "./runpod-control";
 import { RunPodControlError } from "./runpod-control";
@@ -33,6 +34,7 @@ function snapshot(result: RunPodJobResult, afterRunMutation = false): Serverless
   return Object.freeze({
     id: result.id,
     status: result.status as ServerlessProviderStatus,
+    ...(Object.hasOwn(result, "output") ? { output: result.output } : {}),
   });
 }
 
@@ -102,10 +104,13 @@ export class RunPodServerlessTransport implements ServerlessTransportPort {
       throw new ServerlessTransportError("REQUEST_REJECTED");
     }
     try {
-      const result = await this.client.dispatch(
-        request.dispatchToken,
-        request.envelope as JsonValue,
-      );
+      const body = request.body ?? request.envelope;
+      if (
+        request.body &&
+        (await sha256CanonicalJson(body as JsonValue)) !== request.requestBodySha256
+      )
+        throw new ServerlessTransportError("REQUEST_REJECTED");
+      const result = await this.client.dispatch(request.dispatchToken, body as JsonValue);
       return Object.freeze({ id: snapshot(result, true).id });
     } catch (error) {
       if (error instanceof ServerlessTransportError) throw error;

@@ -1,7 +1,7 @@
 import { canonicalSha256, type Sha256 } from "@videoforge/control-plane";
 import { describe, expect, it, vi } from "vitest";
 
-import { handleHostedRequest } from "./app";
+import { handleHostedRequest, hostedGpuActivationDatabaseSource } from "./app";
 import {
   configuredHostedRuntimeConfiguration,
   hostedRuntimeConfiguration,
@@ -206,6 +206,29 @@ function resolve(value = verified(), source = environment()) {
 }
 
 describe("qualified hosted GPU transport configuration", () => {
+  it("loads the narrow v2 activation snapshot and enables the exact production transport", async () => {
+    const verification = verified();
+    const source = environment();
+    const disabled = hostedRuntimeConfiguration(source);
+    const query = vi.fn(async () => ({ rows: [{ snapshot: { evidence, verification } }] }));
+    const end = vi.fn(async () => undefined);
+    const databaseSource = hostedGpuActivationDatabaseSource(source, disabled, (() => ({
+      query,
+      end,
+    })) as never);
+    await expect(
+      configuredHostedRuntimeConfiguration({
+        source,
+        databaseSource,
+        now: () => new Date(NOW),
+      }),
+    ).resolves.toMatchObject({ gpuTransport: "QUALIFIED_EXACT" });
+    expect(query).toHaveBeenCalledWith(
+      "SELECT public.videoforge_load_hosted_gpu_activation_v2() AS snapshot",
+    );
+    expect(end).toHaveBeenCalledOnce();
+  });
+
   it("resolves the production request configuration through the exact trusted DB seam", async () => {
     const verification = verified();
     await expect(

@@ -25,6 +25,8 @@ export interface HostedPairSendClaim {
   readonly deploymentId: string;
   readonly phase: string;
   readonly expectedEnvelopeSha256: Sha256;
+  /** Exact immutable-handler input, present only for ordinary V2-09 materialized lanes. */
+  readonly requestBody?: Readonly<Record<string, unknown>>;
   readonly attemptState?: string;
   readonly outboxState?: string;
   readonly providerJobId?: string | null;
@@ -45,6 +47,7 @@ export interface HostedPairRuntimeStore {
     readonly dispatchTokenKey: string;
     readonly expectedAttemptId: string;
     readonly expectedEnvelopeSha256: Sha256;
+    readonly expectedRequestBodySha256?: Sha256;
   }): Promise<HostedPairSendClaim>;
   finishSend(input: {
     readonly accountId: string;
@@ -317,9 +320,23 @@ export class HostedPairRuntimeExecutor {
         document.work.attempt_id !== expected.attemptId ||
         document.dispatch_token !== expected.dispatchToken ||
         document.runtime.deployment_id !== expected.deploymentId ||
-        (await sha256CanonicalJson(unsigned)) !== expected.expectedEnvelopeSha256
+        (await sha256CanonicalJson(expected.requestBody ? document : unsigned)) !==
+          expected.expectedEnvelopeSha256
       ) {
         throw new HostedDispatchCoordinationError("HOSTED_PAIR_ENVELOPE_LINEAGE_INVALID");
+      }
+      if (expected.requestBody) {
+        const requestEnvelope = expected.requestBody.envelope;
+        if (
+          (await sha256CanonicalJson(expected.requestBody as JsonValue)) !==
+            expected.requestBodySha256 ||
+          !requestEnvelope ||
+          typeof requestEnvelope !== "object" ||
+          Array.isArray(requestEnvelope) ||
+          (await sha256CanonicalJson(requestEnvelope as JsonValue)) !==
+            (await sha256CanonicalJson(document))
+        )
+          throw new HostedDispatchCoordinationError("HOSTED_PAIR_REQUEST_BODY_LINEAGE_INVALID");
       }
     }
     const mage =
@@ -358,18 +375,22 @@ export class HostedPairRuntimeExecutor {
       lane: envelope.lane,
       expectedAttemptId: prepared.attemptId,
       expectedEnvelopeSha256: prepared.expectedEnvelopeSha256,
+      ...(prepared.requestBody
+        ? { expectedRequestBodySha256: prepared.requestBodySha256 }
+        : {}),
     });
     const document = (
       await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", envelope.document)
     ).value as ServerlessWorkerJobEnvelopeV3Document;
     const unsigned = unsignedEnvelope(document);
-    const unsignedSha256 = await sha256CanonicalJson(unsigned);
     if (
       document.dispatch_token !== claim.dispatchToken ||
       document.work.lane !== claim.lane ||
       document.runtime.deployment_id !== claim.deploymentId ||
       document.work.attempt_id !== claim.attemptId ||
-      unsignedSha256 !== claim.expectedEnvelopeSha256
+      (await sha256CanonicalJson(prepared.requestBody ? document : unsigned)) !==
+        claim.expectedEnvelopeSha256 ||
+      claim.requestBodySha256 !== prepared.requestBodySha256
     ) {
       // SENT is already durable. Hash/signature/lineage drift is uncertain and must not resend.
       await this.#finish(input, claim, "DISPATCH_ACK_UNKNOWN", null);
@@ -381,6 +402,7 @@ export class HostedPairRuntimeExecutor {
         dispatchToken: claim.dispatchToken,
         requestBodySha256: claim.requestBodySha256,
         envelope: document,
+        ...(prepared.requestBody ? { body: prepared.requestBody } : {}),
       });
       if (!response || typeof response.id !== "string" || !PROVIDER_JOB_ID.test(response.id)) {
         await this.#finish(input, claim, "DISPATCH_ACK_UNKNOWN", null);

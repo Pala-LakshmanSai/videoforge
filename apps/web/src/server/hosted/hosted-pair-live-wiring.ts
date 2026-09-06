@@ -4,7 +4,10 @@ import { canonicalizeJsonToUtf8, sha256CanonicalJson, type JsonValue } from "@vi
 
 import { createHostedEnvelopePairSigner } from "./hosted-envelope-signer";
 import { HostedSqlAtomicPairPredispatch } from "./hosted-atomic-pair-predispatch";
-import type { HostedWorkflowBinding } from "./configuration";
+import { HostedSqlV209OrdinaryPredispatch } from "./hosted-v209-ordinary-predispatch";
+import { HostedSqlV209OrdinaryLaneMaterializer } from "./hosted-v209-ordinary-materialization";
+import { HostedSqlV209OrdinaryRuntimeStore } from "./hosted-v209-ordinary-runtime-store";
+import type { HostedRuntimeConfiguration, HostedWorkflowBinding } from "./configuration";
 import {
   HostedPairProductionComposition,
   HostedPairProductionReconciler,
@@ -31,6 +34,8 @@ import {
   readV209ShortProviderObservation,
   type V209ShortLiveAdmission,
 } from "../runtime/v209-short-live-cost";
+import type { V209OrdinaryLiveAdmission } from "../runtime/v209-ordinary-live-cost";
+import { HostedR2Signer } from "./r2";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const ENDPOINT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$/u;
@@ -54,6 +59,76 @@ export interface HostedPairWorkflowScope {
 export interface HostedPairWorkflowParameters extends HostedPairWorkflowScope {
   readonly cancelAt: string;
   readonly stopAt: string;
+}
+
+async function loadHostedPairWorkflowSchedule(
+  database: TransactionalSqlExecutor,
+  input: HostedPairWorkflowScope,
+) {
+  return database.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1,$2,true)", [
+      "videoforge.account_id",
+      input.accountId,
+    ]);
+    const result = await transaction.query<{
+      existing_pair: boolean;
+      cancel_at: string | Date;
+      stop_at: string | Date;
+    }>("SELECT * FROM public.videoforge_load_hosted_pair_workflow_schedule($1,$2,$3)", [
+      input.accountId,
+      input.workspaceId,
+      input.generationRequestId,
+    ]);
+    const row = result.rows[0];
+    if (result.rows.length !== 1 || !row)
+      throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_DEADLINE_INVALID");
+    return Object.freeze({
+      existingPair: row.existing_pair,
+      cancelAt: new Date(row.cancel_at).toISOString(),
+      stopAt: new Date(row.stop_at).toISOString(),
+    });
+  });
+}
+
+/** Ensures the one deterministic Workflow after the atomic DB pair exists. This is also the
+ * recovery path when the DB commit succeeded but the first Workflow create response was lost. */
+export async function ensureHostedPairWorkflow(
+  environment: HostedPairLiveEnvironment & {
+    readonly HOSTED_PAIR_WORKFLOW?: HostedWorkflowBinding;
+  },
+  runtimeDatabase: TransactionalSqlExecutor,
+  reconcilerDatabase: TransactionalSqlExecutor,
+  input: HostedPairWorkflowScope,
+): Promise<{ readonly id: string; readonly recovered: boolean }> {
+  await assertHostedPairLiveBindings(environment);
+  await assertHostedPairDatabasePrincipals(runtimeDatabase, reconcilerDatabase);
+  const workflow = environment.HOSTED_PAIR_WORKFLOW;
+  if (!workflow) throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_BINDING_MISSING");
+  const schedule = await loadHostedPairWorkflowSchedule(runtimeDatabase, input);
+  if (
+    !schedule.existingPair ||
+    Date.parse(schedule.stopAt) - Date.parse(schedule.cancelAt) !== 10 * 60 * 1_000
+  )
+    throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_DEADLINE_INVALID");
+  const id = `hosted-pair-${input.generationRequestId}`;
+  const params: HostedPairWorkflowParameters = Object.freeze({
+    accountId: input.accountId,
+    workspaceId: input.workspaceId,
+    generationRequestId: input.generationRequestId,
+    cancelAt: schedule.cancelAt,
+    stopAt: schedule.stopAt,
+  });
+  try {
+    const created = await workflow.create({ id, params });
+    if (created.id !== id)
+      throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_ID_MISMATCH");
+    return Object.freeze({ id, recovered: false });
+  } catch (error) {
+    if (error instanceof HostedDispatchCoordinationError) throw error;
+    const existing = await workflow.get(id);
+    await existing.status();
+    return Object.freeze({ id, recovered: true });
+  }
 }
 
 type HostedPairPredispatchInput = Omit<
@@ -200,38 +275,16 @@ export async function commitAndScheduleHostedPair(
   runtimeDatabase: TransactionalSqlExecutor,
   reconcilerDatabase: TransactionalSqlExecutor,
   input: HostedPairPredispatchInput,
-  v209Admission: V209ShortLiveAdmission,
+  v209Admission: V209ShortLiveAdmission | V209OrdinaryLiveAdmission,
+  commitPredispatch?: (dispatchTokenKey: string) => Promise<readonly unknown[]>,
+  beforeWorkflow?: (dispatchTokenKey: string) => Promise<void>,
 ): Promise<{ readonly id: string; readonly recovered: boolean }> {
   await assertHostedPairLiveBindings(environment);
   await assertHostedPairDatabasePrincipals(runtimeDatabase, reconcilerDatabase);
   await createHostedRunPodPair(environment);
   const workflow = environment.HOSTED_PAIR_WORKFLOW;
   if (!workflow) throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_BINDING_MISSING");
-  const loadSchedule = () =>
-    runtimeDatabase.transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1,$2,true)", [
-        "videoforge.account_id",
-        input.accountId,
-      ]);
-      const result = await transaction.query<{
-        existing_pair: boolean;
-        cancel_at: string | Date;
-        stop_at: string | Date;
-      }>("SELECT * FROM public.videoforge_load_hosted_pair_workflow_schedule($1,$2,$3)", [
-        input.accountId,
-        input.workspaceId,
-        input.generationRequestId,
-      ]);
-      const row = result.rows[0];
-      if (result.rows.length !== 1 || !row)
-        throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_DEADLINE_INVALID");
-      return Object.freeze({
-        existingPair: row.existing_pair,
-        cancelAt: new Date(row.cancel_at).toISOString(),
-        stopAt: new Date(row.stop_at).toISOString(),
-      });
-    });
-  const preflightSchedule = await loadSchedule();
+  const preflightSchedule = await loadHostedPairWorkflowSchedule(runtimeDatabase, input);
   if (
     preflightSchedule.existingPair &&
     (preflightSchedule.cancelAt !== v209Admission.cancelAt ||
@@ -248,15 +301,17 @@ export async function commitAndScheduleHostedPair(
     "HOSTED_PAIR_PRODUCTION_BINDINGS_MISSING",
   );
   if (!preflightSchedule.existingPair) {
-    const committed = await new HostedSqlAtomicPairPredispatch(runtimeDatabase).commit({
-      ...input,
-      dispatchTokenKey,
-      v209Admission,
-    });
+    const committed = commitPredispatch
+      ? await commitPredispatch(dispatchTokenKey)
+      : await new HostedSqlAtomicPairPredispatch(runtimeDatabase).commit({
+          ...input,
+          dispatchTokenKey,
+          v209Admission: v209Admission as V209ShortLiveAdmission,
+        });
     if (committed.length !== 2)
       throw new HostedDispatchCoordinationError("HOSTED_ATOMIC_PAIR_INVALID");
   }
-  const schedule = await loadSchedule();
+  const schedule = await loadHostedPairWorkflowSchedule(runtimeDatabase, input);
   if (schedule.cancelAt !== v209Admission.cancelAt || schedule.stopAt !== v209Admission.stopAt)
     throw new HostedDispatchCoordinationError("HOSTED_V209_SCHEDULE_DRIFT");
   if (
@@ -264,25 +319,144 @@ export async function commitAndScheduleHostedPair(
     Date.parse(schedule.stopAt) - Date.parse(schedule.cancelAt) !== 10 * 60 * 1_000
   )
     throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_DEADLINE_INVALID");
-  const id = `hosted-pair-${input.generationRequestId}`;
-  const params: HostedPairWorkflowParameters = Object.freeze({
-    accountId: input.accountId,
-    workspaceId: input.workspaceId,
-    generationRequestId: input.generationRequestId,
-    cancelAt: schedule.cancelAt,
-    stopAt: schedule.stopAt,
+  await beforeWorkflow?.(dispatchTokenKey);
+  return ensureHostedPairWorkflow(environment, runtimeDatabase, reconcilerDatabase, input);
+}
+
+/** Ordinary authenticated-project variant. It retains the same exact V2-09 admission and Workflow
+ * scheduling gates while using migration 0074's server-owned identity/approval boundary. */
+export async function commitAndScheduleV209OrdinaryPair(
+  environment: HostedPairLiveEnvironment & {
+    readonly HOSTED_PAIR_WORKFLOW?: HostedWorkflowBinding;
+  },
+  runtimeDatabase: TransactionalSqlExecutor,
+  reconcilerDatabase: TransactionalSqlExecutor,
+  input: HostedPairPredispatchInput & { readonly userId: string },
+  admission: V209OrdinaryLiveAdmission,
+  config: Pick<HostedRuntimeConfiguration, "r2">,
+): Promise<{ readonly id: string; readonly recovered: boolean }> {
+  if (
+    input.generationPlanSha256 !== admission.generationPlanSha256 ||
+    input.totalCapUsd !== 2 ||
+    Date.parse(input.expiresAt) < Date.parse(admission.stopAt) ||
+    admission.cost.hardVariableCostCeilingMicroUsd !== 2_000_000 ||
+    admission.cost.combinedCompletionCapMicroUsd !== 17_500_000 ||
+    admission.cost.noRedispatch !== true
+  )
+    throw new HostedDispatchCoordinationError("HOSTED_V209_COST_ADMISSION_INVALID");
+  const ordinary = new HostedSqlV209OrdinaryPredispatch(runtimeDatabase);
+  const materializer = createV209OrdinaryMaterializer(environment, runtimeDatabase, config);
+  return commitAndScheduleHostedPair(
+    environment,
+    runtimeDatabase,
+    reconcilerDatabase,
+    input,
+    admission,
+    (dispatchTokenKey) =>
+      ordinary.commit({
+        accountId: input.accountId,
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+        projectId: input.projectId,
+        admission,
+        dispatchTokenKey,
+      }),
+    async (dispatchTokenKey) => {
+      await materializer.bindPair({
+        accountId: input.accountId,
+        workspaceId: input.workspaceId,
+        generationRequestId: input.generationRequestId,
+        dispatchTokenKey,
+      });
+    },
+  );
+}
+
+function createV209OrdinaryMaterializer(
+  environment: HostedPairLiveEnvironment,
+  runtimeDatabase: TransactionalSqlExecutor,
+  config: Pick<HostedRuntimeConfiguration, "r2">,
+) {
+  const signer = createHostedEnvelopePairSigner({
+    secretHex: exact(
+      environment.VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX,
+      "HOSTED_PAIR_PRODUCTION_BINDINGS_MISSING",
+    ),
+    keyId: exact(
+      environment.VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID,
+      "HOSTED_PAIR_PRODUCTION_BINDINGS_MISSING",
+    ),
   });
-  try {
-    const created = await workflow.create({ id, params });
-    if (created.id !== id)
-      throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_ID_MISMATCH");
-    return Object.freeze({ id, recovered: false });
-  } catch (error) {
-    if (error instanceof HostedDispatchCoordinationError) throw error;
-    const existing = await workflow.get(id);
-    await existing.status();
-    return Object.freeze({ id, recovered: true });
-  }
+  return new HostedSqlV209OrdinaryLaneMaterializer(
+    runtimeDatabase,
+    signer,
+    new HostedR2Signer(config.r2),
+  );
+}
+
+/** Crash recovery for a pair already committed by 0074 but not yet durably handed to Workflow. */
+export async function materializeAndEnsureV209OrdinaryPair(
+  environment: HostedPairLiveEnvironment & {
+    readonly HOSTED_PAIR_WORKFLOW?: HostedWorkflowBinding;
+  },
+  runtimeDatabase: TransactionalSqlExecutor,
+  reconcilerDatabase: TransactionalSqlExecutor,
+  input: HostedPairWorkflowScope,
+  config: Pick<HostedRuntimeConfiguration, "r2">,
+): Promise<{ readonly id: string; readonly recovered: boolean }> {
+  await assertHostedPairLiveBindings(environment);
+  await assertHostedPairDatabasePrincipals(runtimeDatabase, reconcilerDatabase);
+  await createHostedRunPodPair(environment);
+  const dispatchTokenKey = exact(
+    environment.VIDEOFORGE_DISPATCH_TOKEN_KEY,
+    "HOSTED_PAIR_PRODUCTION_BINDINGS_MISSING",
+  );
+  await createV209OrdinaryMaterializer(environment, runtimeDatabase, config).bindPair({
+    ...input,
+    dispatchTokenKey,
+  });
+  return ensureHostedPairWorkflow(environment, runtimeDatabase, reconcilerDatabase, input);
+}
+
+/** Executes the exact ordinary request bodies already CAS-bound by 0074. It exposes no request
+ * rematerialization and therefore cannot refresh signed URLs or redispatch altered bytes. */
+export async function resumeHostedV209OrdinaryPair(
+  environment: HostedPairLiveEnvironment,
+  runtimeDatabase: TransactionalSqlExecutor,
+  input: HostedPairWorkflowScope,
+) {
+  await assertHostedPairLiveBindings(environment);
+  const provider = await createHostedRunPodPair(environment);
+  const dispatchTokenKey = exact(
+    environment.VIDEOFORGE_DISPATCH_TOKEN_KEY,
+    "HOSTED_PAIR_PRODUCTION_BINDINGS_MISSING",
+  );
+  const signer = createHostedEnvelopePairSigner({
+    secretHex: exact(
+      environment.VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX,
+      "HOSTED_PAIR_PRODUCTION_BINDINGS_MISSING",
+    ),
+    keyId: exact(
+      environment.VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID,
+      "HOSTED_PAIR_PRODUCTION_BINDINGS_MISSING",
+    ),
+  });
+  const store = new HostedSqlV209OrdinaryRuntimeStore(runtimeDatabase);
+  const prepared = await store.prepare({ ...input, dispatchTokenKey });
+  const envelopes = prepared.map((claim) => {
+    const document = claim.requestBody?.envelope;
+    if (!document || typeof document !== "object" || Array.isArray(document))
+      throw new HostedDispatchCoordinationError("HOSTED_V209_ORDINARY_REQUEST_NOT_BOUND");
+    return Object.freeze({ lane: claim.lane, document: document as JsonValue });
+  }) as unknown as readonly [
+    { readonly lane: "mage_image"; readonly document: JsonValue },
+    { readonly lane: "soulx_avatar"; readonly document: JsonValue },
+  ];
+  return new HostedPairRuntimeExecutor(
+    store,
+    provider.transports,
+    hostedPairDocumentVerifier(signer),
+  ).execute({ ...input, dispatchTokenKey, envelopes });
 }
 
 /** The only V2-09 short-project mutation entrypoint. The exact plan/work/cost admission is checked

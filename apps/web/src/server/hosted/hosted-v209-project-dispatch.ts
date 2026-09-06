@@ -1,0 +1,296 @@
+import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
+import type { JsonValue } from "@videoforge/contracts";
+
+import type { HostedExecutionContext } from "./auth";
+import type {
+  HostedNeonPool,
+  HostedRuntimeConfiguration,
+  HostedRuntimeEnvironment,
+} from "./configuration";
+import {
+  commitAndScheduleV209OrdinaryPair,
+  materializeAndEnsureV209OrdinaryPair,
+  observeV209ShortAdmission,
+} from "./hosted-pair-live-wiring";
+import { createNeonExecutor, createNeonPool } from "./neon";
+import { response, sameOrigin, sessionScope } from "./hosted-product-route-common";
+import {
+  assertV209OrdinaryCandidate,
+  freezeV209OrdinaryLiveAdmission,
+} from "../runtime/v209-ordinary-live-cost";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const SHA256 = /^sha256:[0-9a-f]{64}$/u;
+const PATH = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/gpu-dispatch$/u;
+
+type Candidate = Record<string, unknown> & {
+  readonly schemaVersion: "videoforge.hosted-v209-ordinary-dispatch/v1";
+  readonly candidateSha256: string;
+  readonly replayed: boolean;
+  readonly pairExists: boolean;
+  readonly existingWorkflowId: string | null;
+  readonly accountId: string;
+  readonly workspaceId: string;
+  readonly projectId: string;
+  readonly projectRevisionId: string;
+  readonly generationRequestId: string;
+  readonly generationPlanSha256: string;
+  readonly leaseId: string;
+  readonly approvalId: string;
+  readonly approvalSha256: string;
+  readonly expiresAt: string;
+  readonly totalCapUsd: number;
+  readonly laneBindings: JsonValue;
+  readonly pair: JsonValue;
+  readonly workManifestSha256: string;
+  readonly work: JsonValue;
+  readonly avatarSourceInputReservationId: string;
+};
+
+export interface HostedV209ProjectDispatchDependencies {
+  readonly createPool: (databaseUrl: string) => HostedNeonPool;
+  readonly createExecutor: (pool: HostedNeonPool) => TransactionalSqlExecutor;
+  readonly scope: typeof sessionScope;
+  readonly materialize: (
+    database: TransactionalSqlExecutor,
+    identity: {
+      readonly accountId: string;
+      readonly workspaceId: string;
+      readonly userId: string;
+      readonly projectId: string;
+    },
+  ) => Promise<unknown>;
+  readonly observe: typeof observeV209ShortAdmission;
+  readonly commitAndSchedule: typeof commitAndScheduleV209OrdinaryPair;
+  readonly ensureWorkflow: typeof materializeAndEnsureV209OrdinaryPair;
+  readonly correlationId: () => string;
+}
+
+const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
+  createPool: createNeonPool,
+  createExecutor: createNeonExecutor,
+  scope: sessionScope,
+  async materialize(
+    database: TransactionalSqlExecutor,
+    identity: {
+      readonly accountId: string;
+      readonly workspaceId: string;
+      readonly userId: string;
+      readonly projectId: string;
+    },
+  ) {
+    return database.transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", [
+        "videoforge.account_id",
+        identity.accountId,
+      ]);
+      const result = await transaction.query<{ candidate: unknown }>(
+        `SELECT public.videoforge_materialize_hosted_v209_ordinary_dispatch(
+           $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS candidate`,
+        [identity.accountId, identity.workspaceId, identity.userId, identity.projectId],
+      );
+      if (result.rows.length !== 1) throw new Error("HOSTED_V209_CANDIDATE_NOT_READY");
+      return result.rows[0]?.candidate;
+    });
+  },
+  observe: observeV209ShortAdmission,
+  commitAndSchedule: commitAndScheduleV209OrdinaryPair,
+  ensureWorkflow: materializeAndEnsureV209OrdinaryPair,
+  correlationId: () => `v209-${crypto.randomUUID()}`,
+});
+
+function exactCandidate(
+  value: unknown,
+  identity: {
+    readonly accountId: string;
+    readonly workspaceId: string;
+    readonly projectId: string;
+  },
+): Candidate | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as Candidate;
+  if (
+    candidate.schemaVersion !== "videoforge.hosted-v209-ordinary-dispatch/v1" ||
+    typeof candidate.candidateSha256 !== "string" ||
+    !SHA256.test(candidate.candidateSha256) ||
+    typeof candidate.replayed !== "boolean" ||
+    typeof candidate.pairExists !== "boolean" ||
+    candidate.accountId !== identity.accountId ||
+    candidate.workspaceId !== identity.workspaceId ||
+    candidate.projectId !== identity.projectId ||
+    ![
+      candidate.projectRevisionId,
+      candidate.generationRequestId,
+      candidate.leaseId,
+      candidate.approvalId,
+    ].every((item) => typeof item === "string" && DATABASE_UUID.test(item)) ||
+    ![candidate.generationPlanSha256, candidate.approvalSha256, candidate.workManifestSha256].every(
+      (item) => typeof item === "string" && SHA256.test(item),
+    ) ||
+    typeof candidate.avatarSourceInputReservationId !== "string" ||
+    !DATABASE_UUID.test(candidate.avatarSourceInputReservationId) ||
+    !Number.isFinite(Date.parse(candidate.expiresAt)) ||
+    candidate.totalCapUsd !== 2 ||
+    !candidate.laneBindings ||
+    typeof candidate.laneBindings !== "object" ||
+    !candidate.pair ||
+    typeof candidate.pair !== "object" ||
+    !candidate.work ||
+    typeof candidate.work !== "object" ||
+    (candidate.pairExists
+      ? candidate.existingWorkflowId !== `hosted-pair-${candidate.generationRequestId}`
+      : candidate.existingWorkflowId !== null)
+  )
+    return null;
+  return candidate;
+}
+
+function dispatchResponse(candidate: Candidate, correlationId: string, status: number): Response {
+  const base = response(
+    {
+      schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+      state: "SCHEDULED",
+      generation_request_id: candidate.generationRequestId,
+      workflow_id: `hosted-pair-${candidate.generationRequestId}`,
+      correlation_id: correlationId,
+    },
+    status,
+  );
+  const headers = new Headers(base.headers);
+  headers.set("x-videoforge-correlation-id", correlationId);
+  return new Response(base.body, { status: base.status, headers });
+}
+
+async function emptyBody(request: Request): Promise<boolean> {
+  const length = Number(request.headers.get("content-length") ?? "0");
+  if (!Number.isSafeInteger(length) || length < 0 || length > 2) return false;
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength !== length && request.headers.has("content-length"))
+    return false;
+  return (
+    raw === "" ||
+    (request.headers.get("content-type")?.split(";", 1)[0] === "application/json" && raw === "{}")
+  );
+}
+
+export async function handleHostedV209ProjectDispatch(
+  request: Request,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+  injected: HostedV209ProjectDispatchDependencies = defaults,
+): Promise<Response | null> {
+  const match = PATH.exec(new URL(request.url).pathname);
+  if (!match) return null;
+  if (request.method !== "POST" || !UUID.test(match[1]!))
+    return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  if (config.environment !== "production" || config.gpuTransport !== "QUALIFIED_EXACT")
+    return response({ error: { code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED" } }, 503);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!(await emptyBody(request)))
+    return response({ error: { code: "HOSTED_V209_DISPATCH_REQUEST_INVALID" } }, 400);
+
+  const correlationId = injected.correlationId();
+  console.info("hosted_v209_project_dispatch", { correlation_id: correlationId, event: "STARTED" });
+  const runtimePool = injected.createPool(config.neon.databaseUrl);
+  try {
+    const scope = await injected.scope(request, config, runtimePool, executionContext);
+    if (scope instanceof Response) return scope;
+    const identity = {
+      accountId: scope.account_id,
+      workspaceId: scope.workspace_id,
+      userId: scope.user_id,
+      projectId: match[1]!,
+    };
+    const runtimeDatabase = injected.createExecutor(runtimePool);
+    const candidate = exactCandidate(
+      await injected.materialize(runtimeDatabase, identity),
+      identity,
+    );
+    if (!candidate) return response({ error: { code: "HOSTED_V209_CANDIDATE_NOT_READY" } }, 409);
+    await assertV209OrdinaryCandidate(candidate);
+    if (candidate.pairExists) {
+      const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
+      if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)
+        return response({ error: { code: "HOSTED_PAIR_RECONCILER_BINDING_MISSING" } }, 503);
+      const reconcilerPool = injected.createPool(reconcilerUrl);
+      try {
+        await injected.ensureWorkflow(
+          environment,
+          runtimeDatabase,
+          injected.createExecutor(reconcilerPool),
+          {
+            accountId: identity.accountId,
+            workspaceId: identity.workspaceId,
+            generationRequestId: candidate.generationRequestId,
+          },
+          config,
+        );
+      } finally {
+        await reconcilerPool.end();
+      }
+      console.info("hosted_v209_project_dispatch", {
+        correlation_id: correlationId,
+        event: "EXISTING_WORKFLOW_RETRIEVED",
+      });
+      return dispatchResponse(candidate, correlationId, 200);
+    }
+
+    const observation = await injected.observe(environment, runtimeDatabase);
+    const admission = await freezeV209OrdinaryLiveAdmission(candidate, observation);
+    const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
+    if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)
+      return response({ error: { code: "HOSTED_PAIR_RECONCILER_BINDING_MISSING" } }, 503);
+    const reconcilerPool = injected.createPool(reconcilerUrl);
+    try {
+      const scheduled = await injected.commitAndSchedule(
+        environment,
+        runtimeDatabase,
+        injected.createExecutor(reconcilerPool),
+        {
+          approvalId: candidate.approvalId,
+          approvalSha256: candidate.approvalSha256,
+          claimId: crypto.randomUUID(),
+          accountId: identity.accountId,
+          workspaceId: identity.workspaceId,
+          userId: identity.userId,
+          projectId: identity.projectId,
+          projectRevisionId: candidate.projectRevisionId,
+          generationRequestId: candidate.generationRequestId,
+          generationPlanSha256: candidate.generationPlanSha256,
+          leaseId: candidate.leaseId,
+          laneBindings: candidate.laneBindings,
+          totalCapUsd: candidate.totalCapUsd,
+          expiresAt: candidate.expiresAt,
+          pair: candidate.pair,
+        },
+        admission,
+        config,
+      );
+      console.info("hosted_v209_project_dispatch", {
+        correlation_id: correlationId,
+        event: scheduled.recovered ? "WORKFLOW_RECOVERED" : "WORKFLOW_SCHEDULED",
+      });
+      return dispatchResponse(candidate, correlationId, 202);
+    } finally {
+      await reconcilerPool.end();
+    }
+  } catch (error) {
+    const code =
+      error instanceof RangeError && /^[A-Z0-9_]+$/u.test(error.message)
+        ? error.message
+        : "HOSTED_V209_DISPATCH_REJECTED";
+    console.warn("hosted_v209_project_dispatch", {
+      correlation_id: correlationId,
+      event: "REJECTED",
+      code,
+    });
+    return response({ error: { code: "HOSTED_V209_DISPATCH_REJECTED" } }, 409);
+  } finally {
+    await runtimePool.end();
+  }
+}
+
+export { PATH as HOSTED_V209_PROJECT_DISPATCH_PATH };

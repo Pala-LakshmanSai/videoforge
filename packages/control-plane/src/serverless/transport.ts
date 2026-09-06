@@ -21,6 +21,8 @@ export type ServerlessProviderStatus =
 export interface ServerlessJobSnapshot {
   readonly id: string;
   readonly status: ServerlessProviderStatus;
+  /** Bounded provider result retained only for terminal server-side verification. */
+  readonly output?: unknown;
 }
 
 export interface ServerlessRunRequest {
@@ -28,6 +30,8 @@ export interface ServerlessRunRequest {
   readonly dispatchToken: string;
   readonly requestBodySha256: Sha256;
   readonly envelope: Readonly<Record<string, unknown>>;
+  /** Exact immutable-handler input. Omitted only by legacy provider-free fixtures. */
+  readonly body?: Readonly<Record<string, unknown>>;
 }
 
 /**

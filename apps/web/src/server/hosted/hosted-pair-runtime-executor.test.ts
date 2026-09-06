@@ -146,6 +146,51 @@ describe("hosted pair runtime executor", () => {
     ]);
   });
 
+  it("sends only the exact fully bound ordinary worker bodies", async () => {
+    const f = fixture((lane) => ({ id: `${lane}-job` }));
+    const prepared = await Promise.all(
+      (["mage_image", "soulx_avatar"] as const).map(async (lane) => {
+        const requestBody = { envelope: envelope(lane).document, lane_payload: lane };
+        return {
+          ...claims[lane],
+          expectedEnvelopeSha256: await sha256CanonicalJson(envelope(lane).document),
+          requestBodySha256: await sha256CanonicalJson(requestBody),
+          requestBody,
+        };
+      }),
+    );
+    f.store.prepare = vi.fn(async () => prepared as never);
+    f.store.beginSend = vi.fn(async ({ lane }) => prepared[lane === "mage_image" ? 0 : 1]!);
+    await expect(f.executor.execute(input)).resolves.toMatchObject({ state: "BOTH_ASSIGNED" });
+    expect(f.transports.mage_image.run).toHaveBeenCalledWith(
+      expect.objectContaining({ body: prepared[0]!.requestBody }),
+    );
+    expect(f.transports.soulx_avatar.run).toHaveBeenCalledWith(
+      expect.objectContaining({ body: prepared[1]!.requestBody }),
+    );
+  });
+
+  it("rejects ordinary full-body drift before beginSend or provider POST", async () => {
+    const f = fixture((lane) => ({ id: `${lane}-job` }));
+    f.store.prepare = vi.fn(async () => {
+      const requestBody = { envelope: envelope("mage_image").document, altered: true };
+      return [
+        {
+          ...claims.mage_image,
+          expectedEnvelopeSha256: await sha256CanonicalJson(envelope("mage_image").document),
+          requestBodySha256: hash,
+          requestBody,
+        },
+        { ...claims.soulx_avatar, expectedEnvelopeSha256: await sha256CanonicalJson(unsigned("soulx_avatar")) },
+      ] as never;
+    });
+    await expect(f.executor.execute(input)).rejects.toMatchObject({
+      code: "HOSTED_PAIR_REQUEST_BODY_LINEAGE_INVALID",
+    });
+    expect(f.store.beginSend).not.toHaveBeenCalled();
+    expect(f.transports.mage_image.run).not.toHaveBeenCalled();
+  });
+
   it("stops before SoulX after first acknowledgement ambiguity", async () => {
     const f = fixture((lane) => {
       if (lane === "mage_image") throw new ServerlessTransportError("DISPATCH_ACK_UNKNOWN");
