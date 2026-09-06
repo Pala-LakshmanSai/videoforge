@@ -1,0 +1,49 @@
+{
+  "schema_version": "videoforge.v2-08-read-only-billing-stabilization/v1",
+  "checkpoint": "V2-08",
+  "task_id": "VF-10-08",
+  "stage": 7,
+  "provider_mutations": 0,
+  "r2_accesses": 0,
+  "runpod_job_posts": 0,
+  "external_spend_attributable_to_watch_usd": 0,
+  "billing": {
+    "stable": true,
+    "value_usd": 3.072259441105416,
+    "read_count": 5,
+    "span_seconds": 234.464,
+    "reads": [
+      {"checked_at": "2026-09-06T06:10:56.485Z", "value_usd": 3.072259441105416},
+      {"checked_at": "2026-09-06T06:11:54.945Z", "value_usd": 3.072259441105416},
+      {"checked_at": "2026-09-06T06:12:57.537Z", "value_usd": 3.072259441105416},
+      {"checked_at": "2026-09-06T06:13:55.006Z", "value_usd": 3.072259441105416},
+      {"checked_at": "2026-09-06T06:14:50.949Z", "value_usd": 3.072259441105416}
+    ]
+  },
+  "inventory_each_read": {
+    "pods": 0,
+    "running_pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_serverless_workers": 0,
+    "retained_network_volumes": 2,
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1"
+  },
+  "exact_gpu_catalog": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability_series": ["ABSENT", "LOW", "LOW", "ABSENT", "LOW"],
+    "continuous_availability": false,
+    "final_availability": "LOW",
+    "final_availability_floor_satisfied": true,
+    "fallback_used": false
+  },
+  "proposed_financial_boundary": {
+    "billing_baseline_usd": 3.072259441105416,
+    "finite_incremental_cap_usd": 1.8494314167182893,
+    "cumulative_stop_usd": 4.921690857823705,
+    "worst_case_qualification_liability_usd": 1.79335,
+    "headroom_usd": 0.056081416718289256
+  }
+}

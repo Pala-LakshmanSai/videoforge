@@ -4,11 +4,11 @@ updated_at: "2026-09-06"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_08_second_billing_drift_clean_waiting_stability_and_revised_cap
+current_milestone: v2_08_stable_billing_revised_stop_proposal_awaiting_approval
 current_task: VF-10-08
 current_wave: v2_08_soulx_serial_certification_after_v2_07_pass
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_reconciliation
+task_stage: provider_free_reconciliation_complete
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,15 +18,15 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_08_second_billing_drift_clean_waiting_stability_and_revised_cap
-  live_provider_calls: "Read-only billing and exact-offering monitoring only. No mutation or job is authorized."
+  mode: v2_08_stable_billing_revised_stop_proposal_awaiting_approval
+  live_provider_calls: "No mutation or job is authorized. Fresh exact approval is required for the stable-baseline revised-stop proposal."
   remote_mutation: false
   deployment_or_publication: "No second image publication is needed or authorized; immutable image 75c5999b remains available for a fresh reuse-only proposal."
   credential_value_access: "Only bounded read-only billing and catalog monitoring is permitted; no launcher or mutation credential access."
-  paid_requests_or_spend: "USD 0 executable cap. Current baseline USD 3.072259441105416 leaves only USD 1.7565650014439598 under the prior cumulative stop, below the USD 1.79335 worst-case qualification liability."
+  paid_requests_or_spend: "USD 0 executable cap. Proposal 76bb40a5 requests USD 1.8494314167182893 incremental from stable baseline USD 3.072259441105416 and revised cumulative stop USD 4.921690857823705."
   runpod_mutation_or_gpu: "Not authorized. Proposal e1979998 authority was consumed by second billing drift before mutation; fallback remains forbidden."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "Proposal e1979998 and successor d1b14c21 passed audit but were consumed by a second billing-baseline drift with zero RunPod/R2 mutation. Wait for billing stability, then seal a revised-cap proposal. Stage 6 remains frozen."
+  provider_free_product_action: "Proposal e1979998 and successor d1b14c21 passed audit but were consumed by second billing drift with zero mutation. Five reads over 234.464 seconds prove stable billing USD 3.072259441105416. Proposal 76bb40a5 preserves the prior incremental cap and raises only the cumulative stop for settled billing. Stage 6 remains frozen."
   v2_08_prior_publication_attempt: "Workflow run 33961641686 failed before authentication/publication because TMPDIR_DIRECTORY_ABSENT; no immutable digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Its approval is consumed/non-reusable and invalidated by source drift. A second approved run 33962783745 at source 67af7d9a built only a local image, then failed before authentication/publication because LITERAL_BACKSLASH_IN_SINGLE_QUOTED_DOCKER_GO_TEMPLATE; no registry digest or image artifact was produced and no RunPod mutation, GPU use, or spend occurred. Both approvals are consumed/non-reusable; the fresh 4f2c5cb3 successor repairs only workflow quoting and requires separate exact approval."
   note: "The private hosted-beta approval is separate from V2-13. The v5 successor binds SoulX release source 417e84d4f021699337e9bd411753777d689728d7 and exact new tag videoforge-v2-13-release-20260830-v5, but fresh exact V2-13 approval is still required before tag creation or any full-live action."
 
@@ -4309,15 +4309,15 @@ model_runtime_evidence:
     evidence: evidence/acceptance/VF-9-24U/acceptance.json
 
 last_known_provider_resource_truth:
-  checked_at: "2026-09-06T06:06:30.593Z"
-  basis: v2_08_second_billing_baseline_drift_pre_mutation_three_read_reconciliation
-  evidence: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-billing-baseline-drift-e197-attempt.json
-  evidence_sha256: "sha256:c5d76f532d94a01ca582750aead80d26898c9da901e32424031d0575e0560bca"
+  checked_at: "2026-09-06T06:14:50.949Z"
+  basis: v2_08_five_read_billing_stabilization_and_exact_gpu_watch
+  evidence: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/read-only-billing-stabilization-after-e197.json
+  evidence_sha256: "sha256:1bb77932456d4cc3864822e529e9e5961c4ce69a8eb79ba69625d33e78a3e19f"
   current_live_refresh_permitted_now: false
   stale_until_new_authority_and_authorized_read_only_inventory_succeeds: false
   rtx4090_eu_ro_1_offering_id: NVIDIA GeForce RTX 4090
   rtx4090_eu_ro_1_availability: LOW
-  rtx4090_availability_checked_at: "2026-09-06T06:06:30.593Z"
+  rtx4090_availability_checked_at: "2026-09-06T06:14:50.949Z"
   secure_rtx4090_reference_usd_per_gpu_hour: 0.74
   serverless_flex_rtx4090_usd_per_gpu_hour: 1.116
   pods: 0
@@ -4339,10 +4339,10 @@ last_known_provider_resource_truth:
       recurring_usd_per_month: 3.5
   ongoing_retained_volume_usd_per_month_total: 7.0
   cumulative_endpoint_spend_usd: 3.072259441105416
-  v2_08_proposal: null
-  v2_08_proposal_sha256: null
+  v2_08_proposal: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
+  v2_08_proposal_sha256: "sha256:76bb40a526e3f49fcd90ca41c2f507248428c1b73063aa79652dac0a1347c6f2"
   v2_08_acceptance_sha256: null
-  note: "Proposal e1979998 and successor d1b14c21 passed audit, then fresh pre-mutation reads found billing USD 3.072259441105416 instead of the sealed baseline. It stopped with zero RunPod/R2 mutation or spend. Exact RTX 4090 EU-RO-1 remains LOW. The prior cumulative stop now lacks USD 0.03678499855604023 of worst-case qualification coverage; wait for billing stability before sealing a revised-cap proposal."
+  note: "Five identical billing reads over 234.464 seconds prove stable USD 3.072259441105416 with zero compute and unchanged volumes. Exact RTX 4090 availability was intermittent but final LOW. Proposal 76bb40a5 preserves USD 1.8494314167182893 incremental cap and revises the cumulative stop to USD 4.921690857823705; fresh exact approval is required."
 
 blocking_gates_for_production:
   - GATE_SERVERLESS_SOULX_001
@@ -4357,7 +4357,7 @@ blocking_gates_for_production:
 
 active_ownership: []
 in_progress_checkpoint: V2-08
-certification_checkpoint: V2_08_SECOND_BILLING_DRIFT_CLEAN_WAITING_STABILITY_AND_REVISED_CAP
+certification_checkpoint: V2_08_STABLE_BILLING_REVISED_STOP_PROPOSAL_AWAITING_APPROVAL
 
 provider_authority_closed: &v2_07_provider_authority_closed
   mode: none
@@ -6023,18 +6023,18 @@ provider_authority: &v2_08_consumed_second_billing_drift_authority
 recommended_next_task:
   task_id: VF-10-08
   checkpoint: V2-08
-  milestone: v2_08_second_billing_drift_clean_waiting_stability_and_revised_cap
-  status: V2_08_SECOND_BILLING_DRIFT_CLEAN_WAITING_STABILITY_AND_REVISED_CAP
+  milestone: v2_08_stable_billing_revised_stop_proposal_awaiting_approval
+  status: V2_08_STABLE_BILLING_REVISED_STOP_PROPOSAL_AWAITING_APPROVAL
   dependency_status: v2_07_mage_live_qualified_attempt85_clean
   authorization_status: no_executable_authority_consumed_second_billing_drift_clean
-  task_stage: provider_free_reconciliation
+  task_stage: provider_free_reconciliation_complete
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_08_consumed_second_billing_drift_authority
   provider_mode: fixture
   read_profile: v2_08_soulx_serverless
   task_brief: tasks/VF-10-08.md
-  goal: "Monitor billing stability read-only, then seal one revised-cap Stage 7 proposal with sufficient worst-case coverage."
+  goal: "Obtain fresh exact approval for proposal 76bb40a5 after five-read billing stabilization and revised cumulative-stop sealing."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
@@ -6055,17 +6055,17 @@ recommended_next_task:
   authorized_operations: []
   allowed_operations: []
   rate_snapshot: [runpod_serverless_flex_rtx4090_eu_ro_1_usd_1_116_per_gpu_hour, retained_volumes_usd_7_per_month_combined]
-  authority_note: "Proposal e1979998 and authority 744914e1 were consumed by second billing-baseline drift before any RunPod/R2 mutation. Current baseline USD 3.072259441105416 leaves insufficient room under the prior cumulative stop for the USD 1.79335 worst-case qualification liability."
+  authority_note: "Proposal e1979998 and authority 744914e1 were consumed by second billing drift before mutation. Five reads prove stable baseline USD 3.072259441105416. Proposal 76bb40a5 keeps the USD 1.8494314167182893 incremental cap and revises the cumulative stop to USD 4.921690857823705."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  successor_proposal_path: null
-  successor_proposal_sha256: null
+  successor_proposal_path: evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json
+  successor_proposal_sha256: "sha256:76bb40a526e3f49fcd90ca41c2f507248428c1b73063aa79652dac0a1347c6f2"
   superseded_proposal_sha256: "sha256:dd78e1e61ed0c0572045d5eb2fcfabac9323c915540be1e58bab995d2076db19"
   superseded_proposal_record_commit: 4b8a6ef83772fea44701129154ae4d69833498eb
   superseded_proposal_source_commit: 3c77fc97b6acb6907b9e9c7a4f4bd26495d02842
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: v2_08_second_billing_drift_clean_waiting_stability_and_revised_cap
-  execution_blocker: stable_billing_then_revised_cumulative_stop_approval
+  execution_status: v2_08_stable_billing_revised_stop_proposal_sealed_provider_free
+  execution_blocker: fresh_exact_user_approval_for_proposal_76bb40a5
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
