@@ -780,24 +780,29 @@ export class HostedPairWorkflowReconciler {
 
   async observe(scope: HostedPairWorkflowScope, cancelKnownActive: boolean) {
     const rows = await this.inspection.inspect(scope);
+    if (rows.length !== 2 || rows[0]?.lane !== "mage_image" || rows[1]?.lane !== "soulx_avatar")
+      throw new HostedDispatchCoordinationError("HOSTED_PAIR_INSPECTION_INVALID");
     let active = 0;
     let unknown = 0;
     let allTerminal = true;
+    let allCompleted = true;
     for (const row of rows) {
       if (row.providerJobId === null) {
         if (!this.#provablyAbsent(row)) unknown += 1;
+        allCompleted = false;
         continue;
       }
       try {
         const status = await this.transports[row.lane].status(row.providerJobId);
         if (!TERMINAL.has(status.status)) {
           allTerminal = false;
+          allCompleted = false;
           active += 1;
           if (cancelKnownActive) await this.transports[row.lane].cancel(row.providerJobId);
         } else if (status.status === "COMPLETED" && this.terminalOutput) {
           if (!Object.hasOwn(status, "output"))
             throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_OUTPUT_MISSING");
-          await this.terminalOutput.acceptCompleted({
+          const accepted = await this.terminalOutput.acceptCompleted({
             accountId: scope.accountId,
             workspaceId: scope.workspaceId,
             attemptId: row.attemptId,
@@ -806,9 +811,19 @@ export class HostedPairWorkflowReconciler {
             output: status.output,
             observedAt: new Date().toISOString(),
           });
+          if (!this.#completedBarrierAccepted(accepted))
+            throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_OUTPUT_NOT_ACCEPTED");
+        } else if (status.status === "COMPLETED") {
+          if (this.beforeSettlement)
+            throw new HostedDispatchCoordinationError(
+              "HOSTED_V209_TERMINAL_OUTPUT_INGESTOR_MISSING",
+            );
+        } else {
+          allCompleted = false;
         }
       } catch (error) {
         allTerminal = false;
+        allCompleted = false;
         unknown += 1;
         if (!(error instanceof ServerlessTransportError) || error.code !== "STATUS_UNKNOWN")
           throw error;
@@ -821,7 +836,10 @@ export class HostedPairWorkflowReconciler {
         unknown,
       });
     }
-    if (this.beforeSettlement) await this.beforeSettlement(scope);
+    // Rendering is a success-only handoff: provider FAILED/CANCELLED/TIMED_OUT and exact
+    // REQUEST_REJECTED absence still need the same zero-worker, cost and lease-release settlement,
+    // but they can never satisfy the completed-artifact barrier required by the renderer.
+    if (allCompleted && this.beforeSettlement) await this.beforeSettlement(scope);
     const drained = await Promise.all([
       this.confirmDrained.mage_image(),
       this.confirmDrained.soulx_avatar(),
@@ -833,6 +851,12 @@ export class HostedPairWorkflowReconciler {
     ]);
     await this.settle.reconcile({ ...scope, zeroWorkerProofs, settlementCostGuard });
     return Object.freeze({ state: "SETTLED" as const });
+  }
+
+  #completedBarrierAccepted(value: unknown): boolean {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const state = (value as Record<string, unknown>).state;
+    return state === "LANE_COMPLETED" || state === "DUPLICATE_IDEMPOTENT";
   }
 
   #provablyAbsent(row: HostedPairInspection): boolean {

@@ -372,7 +372,7 @@ describe("hosted pair live provider wiring", () => {
           output: unknown;
         }) => {
           void input;
-          return { state: "ACCEPTED" };
+          return { state: "LANE_COMPLETED" };
         },
       ),
     };
@@ -423,6 +423,178 @@ describe("hosted pair live provider wiring", () => {
     expect(beforeSettlement.mock.invocationCallOrder[0]).toBeLessThan(
       settle.reconcile.mock.invocationCallOrder[0]!,
     );
+  });
+
+  it("settles a Mage REQUEST_REJECTED pair without rendering or redispatch", async () => {
+    const rejectedBeforeMage = [
+      {
+        ...rows(null)[0]!,
+        attemptState: "PERMANENT_FAILED",
+        outboxState: "DEAD_LETTER",
+      },
+      rows(null)[1]!,
+    ];
+    const run = vi.fn();
+    const status = vi.fn();
+    const beforeSettlement = vi.fn();
+    const settlementGuard = vi.fn(async () => ({ guard: "cost-bounded" }));
+    const signZeroProof = vi.fn(async (lane: HostedPairLane) => ({ lane, proof: "zero" }));
+    const drained = vi.fn(async () => ({
+      workersTotal: 0 as const,
+      queuedJobs: 0 as const,
+      observedAt: "2026-09-06T01:00:00.000Z",
+    }));
+    const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
+    const transports = {
+      mage_image: { run, status, cancel: vi.fn() },
+      soulx_avatar: { run, status, cancel: vi.fn() },
+    };
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rejectedBeforeMage) } as never,
+      transports,
+      settle as never,
+      { mage_image: drained, soulx_avatar: drained },
+      settlementGuard,
+      signZeroProof,
+      { acceptCompleted: vi.fn() },
+      beforeSettlement,
+    );
+
+    await expect(reconciler.observe(ids, false)).resolves.toEqual({ state: "SETTLED" });
+    expect(status).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+    expect(beforeSettlement).not.toHaveBeenCalled();
+    expect(drained).toHaveBeenCalledTimes(2);
+    expect(settlementGuard).toHaveBeenCalledOnce();
+    expect(signZeroProof.mock.calls.map(([lane]) => lane)).toEqual(["mage_image", "soulx_avatar"]);
+    expect(settle.reconcile).toHaveBeenCalledWith({
+      ...ids,
+      zeroWorkerProofs: [
+        { lane: "mage_image", proof: "zero" },
+        { lane: "soulx_avatar", proof: "zero" },
+      ],
+      settlementCostGuard: { guard: "cost-bounded" },
+    });
+  });
+
+  it.each(["FAILED", "CANCELLED", "TIMED_OUT"] as const)(
+    "drains and settles a provider %s pair without rendering or redispatch",
+    async (terminalState) => {
+      const run = vi.fn();
+      const status = vi.fn(async (id: string) => ({ id, status: terminalState }));
+      const cancel = vi.fn();
+      const beforeSettlement = vi.fn();
+      const settlementGuard = vi.fn(async () => ({ guard: "cost-bounded" }));
+      const drained = vi.fn(async () => ({
+        workersTotal: 0 as const,
+        queuedJobs: 0 as const,
+        observedAt: "2026-09-06T01:00:00.000Z",
+      }));
+      const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
+      const transports = {
+        mage_image: { run, status, cancel },
+        soulx_avatar: { run, status, cancel },
+      };
+      const reconciler = new HostedPairWorkflowReconciler(
+        { inspect: vi.fn(async () => rows()) } as never,
+        transports,
+        settle as never,
+        { mage_image: drained, soulx_avatar: drained },
+        settlementGuard,
+        vi.fn(async () => ({})),
+        { acceptCompleted: vi.fn() },
+        beforeSettlement,
+      );
+
+      await expect(reconciler.observe(ids, true)).resolves.toEqual({ state: "SETTLED" });
+      expect(status).toHaveBeenCalledTimes(2);
+      expect(run).not.toHaveBeenCalled();
+      expect(cancel).not.toHaveBeenCalled();
+      expect(beforeSettlement).not.toHaveBeenCalled();
+      expect(drained).toHaveBeenCalledTimes(2);
+      expect(settlementGuard).toHaveBeenCalledOnce();
+      expect(settle.reconcile).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("settles mixed COMPLETED and FAILED lanes without scheduling a render", async () => {
+    const run = vi.fn();
+    const status = vi.fn(async (id: string) =>
+      id.startsWith("mage_image-")
+        ? { id, status: "COMPLETED" as const, output: { receipt: id } }
+        : { id, status: "FAILED" as const },
+    );
+    const terminalOutput = {
+      acceptCompleted: vi.fn(async () => ({ state: "LANE_COMPLETED" })),
+    };
+    const beforeSettlement = vi.fn();
+    const settlementGuard = vi.fn(async () => ({ guard: "cost-bounded" }));
+    const signZeroProof = vi.fn(async (lane: HostedPairLane) => ({ lane, proof: "zero" }));
+    const drained = vi.fn(async () => ({
+      workersTotal: 0 as const,
+      queuedJobs: 0 as const,
+      observedAt: "2026-09-06T01:00:00.000Z",
+    }));
+    const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
+    const transports = {
+      mage_image: { run, status, cancel: vi.fn() },
+      soulx_avatar: { run, status, cancel: vi.fn() },
+    };
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rows()) } as never,
+      transports,
+      settle as never,
+      { mage_image: drained, soulx_avatar: drained },
+      settlementGuard,
+      signZeroProof,
+      terminalOutput,
+      beforeSettlement,
+    );
+
+    await expect(reconciler.observe(ids, false)).resolves.toEqual({ state: "SETTLED" });
+    expect(run).not.toHaveBeenCalled();
+    expect(terminalOutput.acceptCompleted).toHaveBeenCalledOnce();
+    expect(beforeSettlement).not.toHaveBeenCalled();
+    expect(drained).toHaveBeenCalledTimes(2);
+    expect(settlementGuard).toHaveBeenCalledOnce();
+    expect(signZeroProof.mock.calls.map(([lane]) => lane)).toEqual(["mage_image", "soulx_avatar"]);
+    expect(settle.reconcile).toHaveBeenCalledWith({
+      ...ids,
+      zeroWorkerProofs: [
+        { lane: "mage_image", proof: "zero" },
+        { lane: "soulx_avatar", proof: "zero" },
+      ],
+      settlementCostGuard: { guard: "cost-bounded" },
+    });
+  });
+
+  it.each([
+    { label: "empty", inspected: [] },
+    { label: "partial", inspected: [rows()[0]!] },
+  ])("rejects a $label inspection before render, drain, or settlement", async ({ inspected }) => {
+    const beforeSettlement = vi.fn();
+    const drained = vi.fn();
+    const settle = { reconcile: vi.fn() };
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => inspected) } as never,
+      {
+        mage_image: { status: vi.fn(), cancel: vi.fn() },
+        soulx_avatar: { status: vi.fn(), cancel: vi.fn() },
+      },
+      settle as never,
+      { mage_image: drained, soulx_avatar: drained },
+      vi.fn(),
+      vi.fn(),
+      { acceptCompleted: vi.fn() },
+      beforeSettlement,
+    );
+
+    await expect(reconciler.observe(ids, false)).rejects.toMatchObject({
+      code: "HOSTED_PAIR_INSPECTION_INVALID",
+    });
+    expect(beforeSettlement).not.toHaveBeenCalled();
+    expect(drained).not.toHaveBeenCalled();
+    expect(settle.reconcile).not.toHaveBeenCalled();
   });
 
   it("does not settle when the durable render handoff fails", async () => {
