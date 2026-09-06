@@ -246,6 +246,18 @@ const gpuReadiness = {
   ] as const,
 };
 
+const qualifiedGpuReadiness = {
+  ...gpuReadiness,
+  gpu_transport: "QUALIFIED_EXACT" as const,
+  provider_calls_authorized: true as const,
+  dispatch_available: true as const,
+  lanes: gpuReadiness.lanes.map((lane) => ({
+    ...lane,
+    qualification: "QUALIFIED_EXACT" as const,
+    missing_gates: [] as const,
+  })),
+};
+
 describe("hosted product errors", () => {
   it.each([
     [
@@ -2450,6 +2462,151 @@ describe("hosted product journey", () => {
     expect(
       screen.queryByRole("heading", { name: "Voiceover-to-image plan" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("starts the ready V2-09 pair exactly once and shows only its opaque correlation ID", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    let resolveDispatch!: (response: Response) => void;
+    const dispatchResponse = new Promise<Response>((resolve) => {
+      resolveDispatch = resolve;
+    });
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-09-06T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [],
+      gpu_transport: "QUALIFIED_EXACT" as const,
+      gpu_readiness: qualifiedGpuReadiness,
+      voiceover_context: {
+        id: "33333333-3333-4333-8333-333333333333",
+        state: "SUCCEEDED" as const,
+        transcript_hash: `sha256:${"a".repeat(64)}`,
+        reserved_cost_micro_usd: 10_000,
+      },
+      generation: {
+        id: "44444444-4444-4444-8444-444444444444",
+        timeline_plan_sha256: `sha256:${"b".repeat(64)}`,
+        planned_tasks: 2,
+        completed_tasks: 0,
+        failed_tasks: 0,
+        stage: "READY_FOR_GPU_DISPATCH" as const,
+      },
+      queue: { status: "ADMITTED", position: 1, ahead: 0, total: 1 },
+      stages: [
+        {
+          id: "prompt-writing",
+          name: "Write image prompts",
+          status: "COMPLETE",
+          progress_percent: 100,
+        },
+      ],
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/gpu-dispatch")) {
+        expect(init).toMatchObject({ method: "POST", body: "{}" });
+        expect(Object.keys(init?.headers ?? {})).not.toContain("authorization");
+        return dispatchResponse;
+      }
+      return Response.json(detail);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(await screen.findByText(/Generation is starting/u)).toBeInTheDocument();
+    resolveDispatch(
+      Response.json(
+        {
+          schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+          state: "SCHEDULED",
+          generation_request_id: "private-generation-id",
+          workflow_id: "private-workflow-id",
+          correlation_id: "v209-correlation-a",
+        },
+        { status: 202 },
+      ),
+    );
+    const correlationId = await screen.findByText("v209-correlation-a");
+    expect(correlationId.parentElement).toHaveTextContent(
+      "Generation is running. Correlation ID: v209-correlation-a",
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch")),
+      ).toHaveLength(1),
+    );
+    expect(screen.queryByText("private-generation-id")).not.toBeInTheDocument();
+    expect(screen.queryByText("private-workflow-id")).not.toBeInTheDocument();
+  });
+
+  it("never automatically redispatches an uncertain start and retries only through the same seam", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-09-06T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [],
+      gpu_transport: "QUALIFIED_EXACT" as const,
+      gpu_readiness: qualifiedGpuReadiness,
+      generation: {
+        id: "44444444-4444-4444-8444-444444444444",
+        timeline_plan_sha256: `sha256:${"b".repeat(64)}`,
+        planned_tasks: 2,
+        completed_tasks: 0,
+        failed_tasks: 0,
+        stage: "READY_FOR_GPU_DISPATCH" as const,
+      },
+      queue: { status: "ACTIVE", position: 1, ahead: 0, total: 1 },
+      stages: [
+        {
+          id: "prompt-writing",
+          name: "Write image prompts",
+          status: "COMPLETE",
+          progress_percent: 100,
+        },
+      ],
+    };
+    let dispatches = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (!path.endsWith("/gpu-dispatch")) return Response.json(detail);
+      expect(init).toMatchObject({ method: "POST", body: "{}" });
+      dispatches += 1;
+      if (dispatches === 1)
+        return Response.json({ error: { code: "HOSTED_PAIR_ACK_UNKNOWN" } }, { status: 504 });
+      return Response.json(
+        {
+          schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+          state: "SCHEDULED",
+          generation_request_id: "private-generation-id",
+          workflow_id: "private-workflow-id",
+          correlation_id: "v209-correlation-recovered",
+        },
+        { status: 202 },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(await screen.findByText(/VideoForge will not retry automatically/u)).toBeInTheDocument();
+    await new Promise((resolve) => window.setTimeout(resolve, 25));
+    expect(dispatches).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Retry generation" }));
+    expect(await screen.findByText(/v209-correlation-recovered/u)).toBeInTheDocument();
+    expect(dispatches).toBe(2);
+    expect(
+      fetchMock.mock.calls
+        .filter(([input]) => String(input).endsWith("/gpu-dispatch"))
+        .every(([input]) => String(input) === `/api/v2/hosted/projects/${projectId}/gpu-dispatch`),
+    ).toBe(true);
   });
 
   it("reports only measured personal-worker and retained-object facts", async () => {

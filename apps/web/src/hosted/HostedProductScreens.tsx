@@ -778,6 +778,26 @@ interface ProjectDetailResponse {
   readonly manifest_url?: string | null;
 }
 
+interface HostedV209DispatchResponse {
+  readonly schema_version: "videoforge-hosted-v209-project-dispatch/v1";
+  readonly state: "SCHEDULED";
+  readonly correlation_id: string;
+}
+
+const HOSTED_V209_DISPATCH_READY_QUEUE_STATES = new Set(["ADMITTED", "ACTIVE"]);
+const HOSTED_V209_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
+
+function exactHostedV209DispatchResponse(value: HostedV209DispatchResponse) {
+  if (
+    value.schema_version !== "videoforge-hosted-v209-project-dispatch/v1" ||
+    value.state !== "SCHEDULED" ||
+    !HOSTED_V209_CORRELATION_ID.test(value.correlation_id)
+  ) {
+    throw new Error("Generation start could not be verified.");
+  }
+  return value;
+}
+
 export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
   if (!data) return 2_000;
   const activeWork = hostedHasActiveWork(data.stages, data.attempts);
@@ -3336,6 +3356,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const automaticContextReconciliationAttempt = useRef<string | null>(null);
   const automaticPromptAttempt = useRef<string | null>(null);
   const renderHandoffAttempt = useRef<string | null>(null);
+  const automaticGpuDispatchAttempt = useRef<string | null>(null);
   const [armedCancellation, setArmedCancellation] = useState<{
     readonly attemptId: string;
     readonly attemptState: string;
@@ -3397,6 +3418,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       ),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
+  const gpuDispatch = useMutation({
+    retry: false,
+    mutationFn: async () =>
+      exactHostedV209DispatchResponse(
+        await readJson<HostedV209DispatchResponse>(
+          `/api/v2/hosted/projects/${projectId}/gpu-dispatch`,
+          { method: "POST", body: "{}" },
+        ),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
   useEffect(() => {
     if (
       asr?.state !== "SUCCEEDED" ||
@@ -3452,6 +3484,31 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     query.data?.stages,
     query.data?.voiceover_context?.state,
   ]);
+  const promptStageState = query.data?.stages?.find(
+    (stage) => stage.id === "prompt-writing",
+  )?.status;
+  const gpuDispatchReady = Boolean(
+    query.data?.generation?.id &&
+      query.data.generation.stage === "READY_FOR_GPU_DISPATCH" &&
+      promptStageState === "COMPLETE" &&
+      query.data.gpu_transport === "QUALIFIED_EXACT" &&
+      query.data.gpu_readiness.dispatch_available === true &&
+      HOSTED_V209_DISPATCH_READY_QUEUE_STATES.has(
+        String(query.data.queue?.status ?? "").toUpperCase(),
+      ),
+  );
+  useEffect(() => {
+    const generationId = query.data?.generation?.id;
+    if (
+      !generationId ||
+      !gpuDispatchReady ||
+      automaticGpuDispatchAttempt.current === generationId
+    ) {
+      return;
+    }
+    automaticGpuDispatchAttempt.current = generationId;
+    gpuDispatch.mutate();
+  }, [gpuDispatch, gpuDispatchReady, query.data?.generation?.id]);
   const cancel = useMutation({
     mutationFn: (attemptId: string) =>
       readJson(`/api/v2/cpu-attempts/${attemptId}`, {
@@ -3787,6 +3844,23 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </p>
         </div>
       </section>
+
+      {gpuDispatch.isPending ? (
+        <div className="validation validation-info" role="status" aria-live="polite">
+          Generation is starting. VideoForge is scheduling the verified image and avatar work.
+        </div>
+      ) : gpuDispatch.isError ? (
+        <div className="validation validation-danger" role="alert">
+          <p>Generation start could not be confirmed. VideoForge will not retry automatically.</p>
+          <Button variant="secondary" onClick={() => gpuDispatch.mutate()}>
+            <RefreshCw size={15} /> Retry generation
+          </Button>
+        </div>
+      ) : gpuDispatch.data ? (
+        <div className="validation validation-success" role="status" aria-live="polite">
+          Generation is running. Correlation ID: <code>{gpuDispatch.data.correlation_id}</code>
+        </div>
+      ) : null}
 
       <div className="progress-workspace">
         <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
