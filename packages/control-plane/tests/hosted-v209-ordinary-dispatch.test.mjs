@@ -137,4 +137,36 @@ test("0074 pins frozen Stage 6/7 artifacts without requiring nonexistent histori
   assert.match(sql, /target\.deadline_at<>target\.attempt_created_at\+/u);
   assert.match(sql, /ARRAY\['inputs','outputs'\]::text\[\]/u);
   assert.match(sql, /ARRAY\['inputs'\]::text\[\]/u);
+  assert.match(
+    sql,
+    /IF lane_name='mage_image' THEN[\s\S]*jsonb_agg\(value->>'output_reservation_id' ORDER BY ordinal\)[\s\S]*INTO worker_reservation_ids/u,
+  );
+  assert.match(
+    sql,
+    /worker_reservation_ids:=jsonb_build_array\(avatar_input_id\)\|\|[\s\S]*value->>'input_reservation_id'[\s\S]*\|\|[\s\S]*value->>'output_reservation_id'/u,
+  );
+  assert.match(sql, /'worker_transfer_port_reservation_ids',worker_reservation_ids/u);
+  assert.match(
+    sql,
+    /'\{artifacts,transfer_port_reservation_ids\}',target\.worker_reservation_ids,false/u,
+  );
+  assert.match(sql, /'\{limits,issued_at\}'/u);
+  assert.match(sql, /'\{limits,expires_at\}'/u);
+  assert.match(
+    sql,
+    /'baseEnvelopeTemplateSha256',finalized_envelope_sha/u,
+  );
+  assert.doesNotMatch(sql, /'unsignedEnvelopeTemplateSha256',finalized_envelope_sha/u);
+  assert.match(
+    sql,
+    /public\.videoforge_canonical_jsonb\(supplied_request_body->'batch'\)/u,
+  );
+  assert.match(
+    sql,
+    /supplied_request_body->'envelope'->'work'->>'items_manifest_sha256'<>computed_batch_sha/u,
+  );
+  assert.match(
+    sql,
+    /supplied_request_body->'envelope'->'artifacts'->>'plan_manifest_sha256'<>computed_batch_sha/u,
+  );
 });

@@ -396,6 +396,7 @@ DECLARE
   mage_work jsonb:='[]'::jsonb; soulx_work jsonb:='[]'::jsonb; work jsonb;
   lane_bindings jsonb:='[]'::jsonb; lane_binding jsonb; pair jsonb:='[]'::jsonb;
   item_manifest jsonb; input_manifest jsonb; reservation_manifest jsonb; reservation_ids jsonb;
+  worker_reservation_ids jsonb;
   batch_id uuid; dispatch_task_id uuid; attempt_id uuid; input_id uuid; output_id uuid;
   avatar_input_id uuid;
   output_prefix text; role_name text; artifact_input jsonb; output_reservation jsonb;
@@ -696,6 +697,17 @@ BEGIN
       FROM jsonb_array_elements(items) WITH ORDINALITY entry(value,ordinal)
       CROSS JOIN LATERAL (VALUES(value->>'input_reservation_id',1),
         (value->>'output_reservation_id',2)) reservation(reservation_id,reservation_order);
+    IF lane_name='mage_image' THEN
+      SELECT jsonb_agg(value->>'output_reservation_id' ORDER BY ordinal)
+        INTO worker_reservation_ids
+        FROM jsonb_array_elements(items) WITH ORDINALITY entry(value,ordinal);
+    ELSE
+      worker_reservation_ids:=jsonb_build_array(avatar_input_id)||
+        (SELECT jsonb_agg(value->>'input_reservation_id' ORDER BY ordinal)
+          FROM jsonb_array_elements(items) WITH ORDINALITY entry(value,ordinal))||
+        (SELECT jsonb_agg(value->>'output_reservation_id' ORDER BY ordinal)
+          FROM jsonb_array_elements(items) WITH ORDINALITY entry(value,ordinal));
+    END IF;
     items_sha:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(item_manifest),'UTF8')),'hex');
     input_sha:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(input_manifest),'UTF8')),'hex');
     reservation_sha:='sha256:'||encode(sha256(convert_to(public.videoforge_canonical_jsonb(reservation_manifest),'UTF8')),'hex');
@@ -749,6 +761,7 @@ BEGIN
       'items_manifest_sha256',items_sha,'input_manifest_sha256',input_sha,
       'reservation_manifest_sha256',reservation_sha,'request_body',request_body,
       'request_body_sha256',request_sha,'envelope',envelope,'envelope_sha256',envelope_sha,
+      'worker_transfer_port_reservation_ids',worker_reservation_ids,
       'output_prefix',output_prefix,
       'max_input_bytes',CASE lane_name WHEN 'mage_image' THEN 8388608 ELSE 268435456 END,
       'max_output_bytes',2147483648,'spend_ceiling_usd',1,'reservation_usd',0.744,
@@ -1061,6 +1074,7 @@ DECLARE
   target record; raw_token text; candidate public.hosted_v209_ordinary_dispatch_candidates%ROWTYPE;
   materialized public.hosted_v209_ordinary_lane_materializations%ROWTYPE;
   lane_expires_at timestamptz;
+  finalized_envelope jsonb; finalized_envelope_sha text;
 BEGIN
   IF public.videoforge_current_account_id() IS DISTINCT FROM supplied_account_id
      OR supplied_lane NOT IN ('mage_image','soulx_avatar')
@@ -1071,7 +1085,8 @@ BEGIN
       a.created_at attempt_created_at,a.deadline_at,
       o.state outbox_state,o.send_attempt_count,a.deployment_id,d.endpoint_id_sha256,
       d.request_ttl_seconds,b.envelope_sha256,d.provider_endpoint_id,v.token_ciphertext,
-      b.payload->'envelope' envelope_template
+      b.payload->'envelope' envelope_template,
+      b.payload->'worker_transfer_port_reservation_ids' worker_reservation_ids
     INTO target
     FROM public.serverless_attempts a
     LEFT JOIN public.serverless_dispatch_outbox o ON o.attempt_id=a.id
@@ -1107,12 +1122,25 @@ BEGIN
   IF 'sha256:'||encode(sha256(convert_to(raw_token,'UTF8')),'hex')<>target.dispatch_token_sha256 THEN
     RAISE EXCEPTION 'hosted V2-09 ordinary lane token binding invalid' USING ERRCODE='42501';
   END IF;
+  IF jsonb_typeof(target.worker_reservation_ids) IS DISTINCT FROM 'array'
+     OR jsonb_array_length(target.worker_reservation_ids)<1 THEN
+    RAISE EXCEPTION 'hosted V2-09 ordinary worker reservations unavailable' USING ERRCODE='23514';
+  END IF;
+  finalized_envelope:=jsonb_set(jsonb_set(jsonb_set(jsonb_set(target.envelope_template,
+    '{dispatch_token}',to_jsonb(raw_token),false),
+    '{artifacts,transfer_port_reservation_ids}',target.worker_reservation_ids,false),
+    '{limits,issued_at}',to_jsonb(to_char(target.attempt_created_at AT TIME ZONE 'UTC',
+      'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),true),
+    '{limits,expires_at}',to_jsonb(to_char(lane_expires_at AT TIME ZONE 'UTC',
+      'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),false);
+  finalized_envelope_sha:='sha256:'||encode(sha256(convert_to(
+    public.videoforge_canonical_jsonb(finalized_envelope),'UTF8')),'hex');
   RETURN jsonb_build_object('schemaVersion','videoforge.hosted-v209-ordinary-lane-materialization/v1',
     'lane',supplied_lane,'attemptId',target.attempt_id,'deploymentId',target.deployment_id,
     'endpointId',target.provider_endpoint_id,'endpointIdSha256',target.endpoint_id_sha256,
     'dispatchToken',raw_token,'dispatchTokenSha256',target.dispatch_token_sha256,
-    'envelopeTemplate',jsonb_set(target.envelope_template,'{dispatch_token}',to_jsonb(raw_token),false),
-    'unsignedEnvelopeTemplateSha256',target.envelope_sha256,'outputPrefix',target.output_prefix,
+    'envelopeTemplate',finalized_envelope,
+    'baseEnvelopeTemplateSha256',finalized_envelope_sha,'outputPrefix',target.output_prefix,
     'candidateSha256',candidate.candidate_sha256,
     'generationPlanSha256',candidate.generation_plan_sha256,
     'avatarSourceInputReservationId',candidate.candidate_document->>'avatarSourceInputReservationId',
@@ -1135,7 +1163,7 @@ CREATE FUNCTION public.videoforge_commit_hosted_v209_ordinary_lane_materializati
 DECLARE
   target record; candidate public.hosted_v209_ordinary_dispatch_candidates%ROWTYPE;
   stored public.hosted_v209_ordinary_lane_materializations%ROWTYPE;
-  computed_request_sha text; computed_envelope_sha text; lane_work jsonb;
+  computed_request_sha text; computed_envelope_sha text; computed_batch_sha text; lane_work jsonb;
   expected_inputs jsonb; expected_outputs jsonb; expected_ports jsonb;
   deployment public.serverless_endpoint_deployments%ROWTYPE;
   batch public.hosted_lane_batches%ROWTYPE; runtime_lane public.video_runtime_lane_states%ROWTYPE;
@@ -1179,6 +1207,8 @@ BEGIN
     public.videoforge_canonical_jsonb(supplied_request_body),'UTF8')),'hex');
   computed_envelope_sha:='sha256:'||encode(sha256(convert_to(
     public.videoforge_canonical_jsonb(supplied_request_body->'envelope'),'UTF8')),'hex');
+  computed_batch_sha:='sha256:'||encode(sha256(convert_to(
+    public.videoforge_canonical_jsonb(supplied_request_body->'batch'),'UTF8')),'hex');
   lane_work:=candidate.candidate_document->'work'->supplied_lane;
   lane_expires_at:=target.deadline_at;
   IF supplied_lane='mage_image' THEN
@@ -1233,6 +1263,9 @@ BEGIN
      OR supplied_request_body->'envelope'->'artifacts'->>'output_prefix'<>target.output_prefix
      OR supplied_request_body->'envelope'->'artifacts'->'transfer_port_reservation_ids'
         IS DISTINCT FROM expected_ports
+     OR (supplied_lane='soulx_avatar' AND
+       (supplied_request_body->'envelope'->'work'->>'items_manifest_sha256'<>computed_batch_sha
+        OR supplied_request_body->'envelope'->'artifacts'->>'plan_manifest_sha256'<>computed_batch_sha))
      OR jsonb_typeof(supplied_request_body->'envelope') IS DISTINCT FROM 'object'
      OR jsonb_typeof(supplied_request_body->'batch') IS DISTINCT FROM 'object'
      OR jsonb_typeof(supplied_request_body->'ports') IS DISTINCT FROM 'object'
