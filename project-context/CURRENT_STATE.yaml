@@ -26,12 +26,12 @@ current_goal_boundary:
   paid_requests_or_spend: "Closed at USD 0.08383633207995445 observed increment and USD 3.4607653283455875 cumulative billing; no remaining executable cap."
   runpod_mutation_or_gpu: "Qualification passed and cleanup proved zero compute; no further RunPod mutation or GPU use is authorized."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "The V2-09 provider-free production lifecycle source at 26a6dc5229b910535c43debc7845c4dfde4a1b44 passed an independent focused source audit with P0=0 and P1=0. This context materialization and the final canonical provider-free gate remain pending. The accepted V2-07 and V2-08 qualifications are frozen predecessors; Stage 6 and Stage 7 were not and must not be rerun or modified."
+  provider_free_product_action: "The V2-09 provider-free production lifecycle source at 7a7d1098a27909e97d967213273abbb2ac729ea9 passed an independent focused source audit with P0=0 and P1=0. This context materialization and the final canonical provider-free gate remain pending. The accepted V2-07 and V2-08 qualifications are frozen predecessors; Stage 6 and Stage 7 were not and must not be rerun or modified."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
   note: "The historical V2-13 v5 proposal is separate, unapproved, and not executable from this V2-09 task. Commit this context materialization, independently audit the exact clean source, execute the already authorized bounded read-only V2-09 preflight, then request fresh exact deployment/spend authority."
 
 v2_09_provider_free_candidate:
-  source_commit: "26a6dc5229b910535c43debc7845c4dfde4a1b44"
+  source_commit: "7a7d1098a27909e97d967213273abbb2ac729ea9"
   source_audit: "PASS_INDEPENDENT_FOCUSED_P0_0_P1_0"
   canonical_provider_free_verification: PENDING_AFTER_CONTEXT_MATERIALIZATION
   production_state: DISABLED_UNQUALIFIED
@@ -218,7 +218,7 @@ hosted_beta_user_walkthrough:
   deployment_candidate: null
   deployed_source_commit: "29667134b17daa9723495d028ec22c4eeaee3ee3"
   cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
-  pending_source_candidate: "V2-09 production lifecycle source 26a6dc5229b910535c43debc7845c4dfde4a1b44 passed independent focused source audit P0=0/P1=0; context validation/commit, independent context diff audit, and the final canonical provider-free gate remain pending; production is disabled and undeployed"
+  pending_source_candidate: "V2-09 production lifecycle source 7a7d1098a27909e97d967213273abbb2ac729ea9 passed independent focused source audit P0=0/P1=0; context validation/commit, independent context diff audit, and the final canonical provider-free gate remain pending; production is disabled and undeployed"
   pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
   pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. VALIDATE_AND_COMMIT_THIS_CONTEXT_MATERIALIZATION, COMPLETE_INDEPENDENT_CONTEXT_DIFF_AUDIT_AND_FINAL_CANONICAL_PROVIDER_FREE_VERIFICATION, THEN EXECUTE_THE_ALREADY_AUTHORIZED_BOUNDED_READ_ONLY_PREFLIGHT_BEFORE_REQUESTING_FRESH_EXACT_DEPLOYMENT_SPEND_AUTHORITY."
   pending_validations: "Context/deployment validation, clean context commit, independent context diff audit, final canonical provider-free verification, and the already authorized bounded read-only preflight remain required before a live proposal."
@@ -566,7 +566,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. V2-09 source 26a6dc5229b910535c43debc7845c4dfde4a1b44 passed focused independent source audit P0=0/P1=0. Validate and commit this context materialization, complete independent context diff audit and final canonical provider-free verification, then execute the already authorized bounded read-only preflight from a clean detached or separate worktree at executable source 26a6dc5229b910535c43debc7845c4dfde4a1b44; never pass the later context-only successor as expected source. Seek fresh exact deployment/spend authority only after that preflight."
+  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. V2-09 source 7a7d1098a27909e97d967213273abbb2ac729ea9 passed focused independent source audit P0=0/P1=0. Validate and commit this context materialization, complete independent context diff audit and final canonical provider-free verification, then execute the already authorized bounded read-only preflight from a clean detached or separate worktree at executable source 7a7d1098a27909e97d967213273abbb2ac729ea9; never pass the later context-only successor as expected source. Seek fresh exact deployment/spend authority only after that preflight."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -1009,9 +1009,9 @@ provider_free_product_progress:
   guarded_pair_workflow_commit: "4239be9"
   guarded_pair_workflow_status: PROVIDER_FREE_PASS_independently_audited_migration_0044_not_deployed_disabled_unqualified
   guarded_pair_workflow_note: "The guarded Workflow wires atomic pair scheduling, exact RunPod lane adapters, bounded cancellation/recovery, callback settlement, and durable zero-worker evidence. Migration 0044 now verifies the persisted V2-09 admission, fresh nonfuture provider billing, exact terminal pair, phase cap, and cumulative baseline/ledger/reservation exposure atomically with settlement; direct unguarded settlement remains ungranted. Fresh independent audit is required. Production remains DISABLED_UNQUALIFIED and no bindings, secrets, roles, config, or migrations were deployed."
-  hosted_v209_ordinary_production_integration_commit: "26a6dc5229b910535c43debc7845c4dfde4a1b44"
+  hosted_v209_ordinary_production_integration_commit: "7a7d1098a27909e97d967213273abbb2ac729ea9"
   hosted_v209_ordinary_production_integration_status: PROVIDER_FREE_SOURCE_FOCUSED_AUDIT_PASS_CONTEXT_AND_CANONICAL_PENDING
-  hosted_v209_ordinary_production_integration_note: "Source 26a6dc5229b910535c43debc7845c4dfde4a1b44 composes tenant-owned ordinary dispatch, exact lane request materialization, SPAN audio preparation, one-shot pair execution/recovery, terminal output ingestion, accepted-artifact and renderer handoff, exact cost settlement, early one-click Chrome identity, and staged lifecycle cleanup. Additive migrations 0074-0084 carry the DB contract. The focused independent source audit passed P0=0/P1=0; context seal, context diff audit, and the final canonical provider-free gate remain pending. No provider call, deployment, credential read, Stage 6/7 rerun, GPU use, or spend occurred."
+  hosted_v209_ordinary_production_integration_note: "Source 7a7d1098a27909e97d967213273abbb2ac729ea9 composes tenant-owned ordinary dispatch, exact lane request materialization, SPAN audio preparation, one-shot pair execution/recovery, terminal output ingestion, accepted-artifact and renderer handoff, exact cost settlement, early one-click Chrome identity, and staged lifecycle cleanup. Additive migrations 0074-0084 carry the DB contract. The focused independent source audit passed P0=0/P1=0; context seal, context diff audit, and the final canonical provider-free gate remain pending. No provider call, deployment, credential read, Stage 6/7 rerun, GPU use, or spend occurred."
   hosted_v209_historical_provider_free_gate:
     source_commit: "cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d"
     command: "CI=1 TURBO_FORCE=true pnpm verify"
@@ -1030,7 +1030,7 @@ provider_free_product_progress:
     external_spend_usd: 0
     remote_mutations: 0
   hosted_v209_current_provider_free_gate:
-    source_commit: "26a6dc5229b910535c43debc7845c4dfde4a1b44"
+    source_commit: "7a7d1098a27909e97d967213273abbb2ac729ea9"
     focused_independent_source_audit: PASS_P0_0_P1_0
     canonical_command: "CI=1 TURBO_FORCE=true pnpm verify"
     canonical_status: PENDING_AFTER_CONTEXT_COMMIT_AND_INDEPENDENT_CONTEXT_DIFF_AUDIT
@@ -1049,7 +1049,7 @@ provider_free_product_progress:
   hosted_v209_read_only_preflight_note: "The dedicated V2-09 entrypoint is capability-limited to exact account, catalog/rate, billing, pods/endpoints/templates/volumes, and anonymous frozen-image reads. It binds clean HEAD and a mode-0600 key, emits a redacted canonical proof, and has no mutation, job, DB, R2, authority-write, GPU, or spend capability. The current task authorizes one bounded read-only execution only after clean context materialization and independent audit; no live read has occurred yet."
   hosted_v209_frozen_script_fixture_commit: "aea6f74886b4cda72526dbbd0b6dc9dac3dfd4a6"
   hosted_v209_frozen_script_fixture_status: HISTORICAL_PASS_498_OF_498_AT_CC74BA4A
-  hosted_v209_frozen_script_fixture_note: "The historical canonical provider-free gate at cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d reverified 498/498 script tests at migration head 0080. Those counts must not be inherited by source 26a6dc5229b910535c43debc7845c4dfde4a1b44, whose migration head is 0084 and whose final canonical gate remains pending. Consumed V2-13 authority remains pinned to its historical scope."
+  hosted_v209_frozen_script_fixture_note: "The historical canonical provider-free gate at cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d reverified 498/498 script tests at migration head 0080. Those counts must not be inherited by source 7a7d1098a27909e97d967213273abbb2ac729ea9, whose migration head is 0084 and whose final canonical gate remains pending. Consumed V2-13 authority remains pinned to its historical scope."
   remaining_provider_free_activation_blockers:
     - clean_context_commit_independent_context_diff_audit_and_final_canonical_verification
     - execute_the_already_authorized_bounded_read_only_preflight_and_record_current_redacted_facts
@@ -6127,7 +6127,7 @@ provider_authority: &v2_09_provider_authority_read_only
   provider: RunPod_and_anonymous_GHCR
   cap_usd: 0
   non_transferable: true
-  source: "26a6dc5229b910535c43debc7845c4dfde4a1b44"
+  source: "7a7d1098a27909e97d967213273abbb2ac729ea9"
   authorized_by_user_at: "2026-09-06"
   proposal_sha256: null
   authority: "Current V2-09 implementation and deployment request under the paid-checkpoint read-only bootstrap."
@@ -6218,7 +6218,7 @@ recommended_next_task:
   authorized_operations: *v2_09_read_only_operations
   allowed_operations: *v2_09_read_only_operations
   rate_snapshot: []
-  authority_note: "The current V2-09 request authorizes exactly the bounded read-only preflight defined by deploy/v2-09/read-only-preflight.mjs through the already configured RunPod credential after clean context materialization and independent audit, including its one fixed read-only account-identity GraphQL POST. It authorizes no deployment, endpoint/template/volume/R2/database mutation, provider job POST, GPU use, or spend. The preflight must run from a clean detached or separate worktree at executable source 26a6dc5229b910535c43debc7845c4dfde4a1b44 and must never use the later context-only successor as expected source. That executable source passed focused independent source audit P0=0/P1=0; final canonical verification remains pending and fresh exact deployment/spend authority is required."
+  authority_note: "The current V2-09 request authorizes exactly the bounded read-only preflight defined by deploy/v2-09/read-only-preflight.mjs through the already configured RunPod credential after clean context materialization and independent audit, including its one fixed read-only account-identity GraphQL POST. It authorizes no deployment, endpoint/template/volume/R2/database mutation, provider job POST, GPU use, or spend. The preflight must run from a clean detached or separate worktree at executable source 7a7d1098a27909e97d967213273abbb2ac729ea9 and must never use the later context-only successor as expected source. That executable source passed focused independent source audit P0=0/P1=0; final canonical verification remains pending and fresh exact deployment/spend authority is required."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: null
   successor_proposal_sha256: null
