@@ -1029,7 +1029,20 @@ export async function runV208SoulXWithV213Transport(
       );
       activeJobs.add(coldPending.jobId);
       activeJobMaterializations.set(coldPending.jobId, coldPending.record);
-      for (const [index, pending] of pendingSuccesses.entries()) {
+      // Queue warm while cold owns the only worker. With workersMax=1 this prevents RunPod from
+      // scaling cold to zero between terminal observation and the second POST, while preserving
+      // strict serial execution and exactly one POST per case.
+      warmPending.jobId = await dispatchV208Durably(
+        dependencies.transport,
+        deployment,
+        warmPending.descriptor.id,
+        warmPending.materialization,
+        800_000,
+        issued.authorityId,
+      );
+      activeJobs.add(warmPending.jobId);
+      activeJobMaterializations.set(warmPending.jobId, warmPending.record);
+      for (const pending of pendingSuccesses) {
         const { descriptor, materialization, record: materializationRecord } = pending;
         const jobId = pending.jobId;
         if (!jobId) throw new Error("V208_SUCCESS_JOB_MISSING");
@@ -1042,20 +1055,6 @@ export async function runV208SoulXWithV213Transport(
           poll.pollMs,
           issued.authorityId,
         );
-        if (index === 0) {
-          // The cold terminal read is the queue-empty guard. Dispatch warm immediately, before any
-          // input deletion, R2 GET, hashing, or ffprobe can let the max1 worker idle out.
-          warmPending.jobId = await dispatchV208Durably(
-            dependencies.transport,
-            deployment,
-            warmPending.descriptor.id,
-            warmPending.materialization,
-            800_000,
-            issued.authorityId,
-          );
-          activeJobs.add(warmPending.jobId);
-          activeJobMaterializations.set(warmPending.jobId, warmPending.record);
-        }
         activeJobs.delete(jobId);
         activeJobMaterializations.delete(jobId);
         if (observed.status === "IN_QUEUE" || observed.status === "IN_PROGRESS")

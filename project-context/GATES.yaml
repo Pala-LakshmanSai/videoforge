@@ -391,21 +391,21 @@ gates:
     owner: V2-08
     last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-billing-baseline-drift-e197-attempt.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:76bb40a526e3f49fcd90ca41c2f507248428c1b73063aa79652dac0a1347c6f2"
+    current_candidate_proposal_sha256: "sha256:bcde60df44e6b79278bf0fff0ba530cc7c1747d0e7530895133d04ab56517b7e"
     current_candidate_acceptance_sha256: null
-    current_candidate_approval_sentence_sha256: "sha256:59429164e5b46deb10d814b508d197431f3fe5df99fb509e4fa2acc165285eec"
+    current_candidate_approval_sentence_sha256: null
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: pending
-    current_candidate_source_commit: "8f3260a1074263d97d476ae49c44139a104a4273"
+    authority_materialization_diff_audit: required_after_fresh_exact_approval
+    current_candidate_source_commit: null
     immutable_image_source_commit: "0b09d6e9d72e868f0f9a6143dfad72147c193c64"
     approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
-    approved_authority_sha256: "sha256:226a9aafe486c767cf71c1ecb60e61e06f45da7d89709ff56c4c69c801266986"
-    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
-    runpod_mutation_performed: "Zero. Fresh pre-mutation reads found second billing drift and insufficient remaining cumulative-stop headroom; zero endpoint/template/R2/job mutation, zero POSTs, zero GPU seconds, and no redispatch."
+    approved_authority_sha256: "sha256:7ca896214d9bf633de27dad50f5c06d2947c6dbc67c06e6efe21ab2edda88e9d"
+    approved_authority_status: consumed_not_qualified_warm_worker_reuse_unproven_clean
+    runpod_mutation_performed: "One disposable endpoint/template created and deleted. Exactly two cold/warm POSTs completed with no redispatch; all five deterministic R2 keysets are absent and final compute is zero."
     gpu_seconds: 0
     observed_incremental_spend_usd: 0
-    current_blocker: independent_authority_diff_audit_and_fresh_admission_before_runpod_or_r2_mutation
+    current_blocker: fresh_exact_user_approval_for_proposal_bcde60df
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036"
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
     image_publication_workflow_run_id: 34009939213
@@ -424,7 +424,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: stable_billing_authority_materialized_pending_independent_audit
+    result: warm_prequeue_repair_sealed_provider_free_awaiting_fresh_exact_approval
 
   GATE_SOULX_LICENSE_001:
     status: open

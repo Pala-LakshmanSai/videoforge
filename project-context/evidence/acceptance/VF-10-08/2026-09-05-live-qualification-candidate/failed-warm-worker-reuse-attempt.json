@@ -1,0 +1,50 @@
+{
+  "schema_version": "videoforge.v2-08-warm-worker-reuse-failure/v1",
+  "checkpoint": "V2-08",
+  "stage": 7,
+  "proposal_sha256": "sha256:76bb40a526e3f49fcd90ca41c2f507248428c1b73063aa79652dac0a1347c6f2",
+  "execution_control_commit": "8275f9cf8effce15539c1c0af54f2a03484851ca",
+  "qualified": false,
+  "surface_failure_code": "V208_RECEIPT_ITEM_INVALID",
+  "exact_root_cause": "WARM_POST_WAS_SENT_ONLY_AFTER_COLD_TERMINAL_READ_AND_RUNPOD_SCALED_THE_COLD_WORKER_TO_ZERO_DESPITE_THE_60_SECOND_IDLE_TIMEOUT",
+  "provider_job_posts": 2,
+  "provider_redispatches": 0,
+  "cold": {
+    "status": "COMPLETED",
+    "worker_id": "dtq2vw6r0pjhul",
+    "receipt_sha256": "sha256:4b957a45470a9aae246d466cfd8c1fd09f707cc3ca28756c7d4b5b64bb1c2da0",
+    "verified_outputs_preserved": 4
+  },
+  "warm": {
+    "status": "COMPLETED",
+    "worker_id": "v5rb8971znyi84",
+    "receipt_sha256": "sha256:7ccce94c1b171e56ce60e05eb57f4774b81a5e54043d5213c9b06700dad0f99d",
+    "runtime_cache_hit": false,
+    "verified_outputs_preserved": 0
+  },
+  "repair": "QUEUE_THE_SINGLE_WARM_POST_IMMEDIATELY_AFTER_THE_SINGLE_COLD_POST_SO_WORKERS_MAX_ONE_SERIALIZES_BOTH_ON_THE_SAME_WORKER_WITHOUT_AN_IDLE_GAP",
+  "repair_scope": [
+    "apps/web/src/server/providers/v208-soulx-orchestrator.ts",
+    "apps/web/src/server/providers/v208-soulx-orchestrator.test.ts"
+  ],
+  "repair_provider_free_tests": "25/25 focused orchestrator and receipt verifier tests pass; web typecheck passes",
+  "cleanup": {
+    "disposable_endpoint_absent": true,
+    "disposable_template_absent": true,
+    "all_five_deterministic_r2_keysets_absent": true,
+    "final_zero_compute_reads": 3,
+    "retained_volumes_unchanged": true,
+    "retained_volume_count": 2,
+    "retained_volume_size_gb_each": 50,
+    "retained_volume_region": "EU-RO-1"
+  },
+  "billing": {
+    "baseline_usd": 3.072259441105416,
+    "final_stable_usd": 3.072259441105416,
+    "observed_incremental_usd": 0,
+    "final_read_count": 3
+  },
+  "stage_6_modified_or_rerun": false,
+  "authority_consumed": true,
+  "authority_reusable": false
+}

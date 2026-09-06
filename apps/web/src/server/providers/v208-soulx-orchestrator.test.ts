@@ -1260,7 +1260,8 @@ describe("V2-08 concrete SoulX orchestrator", () => {
     const coldStatus = lifecycle.indexOf("status:job-v208-soulx-cold-whole-span-2-4-6-10s");
     expect(coldDispatch).toBeGreaterThanOrEqual(0);
     expect(coldStatus).toBeGreaterThan(coldDispatch);
-    expect(warmDispatch).toBeGreaterThan(coldStatus);
+    expect(warmDispatch).toBeGreaterThan(coldDispatch);
+    expect(warmDispatch).toBeLessThan(coldStatus);
     expect(inputCleanupDispatchCounts[0]).toBe(2);
     expect(dispatched.some((id) => id.includes("mage"))).toBe(false);
     expect(dispatchPolicies.map(({ requestKey, ...policy }) => [requestKey, policy])).toEqual([
