@@ -389,23 +389,23 @@ gates:
     blocks: soulx_serverless_dispatch_and_crop_activation
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gateserverlesssoulx001-soulx-endpoint"
     owner: V2-08
-    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-receipt-nonce-attempt.json"
+    last_run: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-audit-interruption-attempt.json"
     current_candidate: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json"
-    current_candidate_proposal_sha256: "sha256:a9bfe3d0aecf97f412ba1e1cde1a19c71fa4fe6457241e2b2bb79f1612a10bb1"
+    current_candidate_proposal_sha256: "sha256:784f68823244adf733bcbe423f1445fdabb0e85ea7f6a37aaec076c820e6d04f"
     current_candidate_acceptance_sha256: null
-    current_candidate_approval_sentence_sha256: "sha256:f9cd588b23ffccb7bc50bf786cdf75baa64c1ad7174689a10a04b36834ff4800"
+    current_candidate_approval_sentence_sha256: null
     current_candidate_validator: null
     current_candidate_validator_sha256: null
-    authority_materialization_diff_audit: pending
-    current_candidate_source_commit: "0b09d6e9d72e868f0f9a6143dfad72147c193c64"
+    authority_materialization_diff_audit: not_applicable_no_executable_authority
+    current_candidate_source_commit: null
     immutable_image_source_commit: "0b09d6e9d72e868f0f9a6143dfad72147c193c64"
-    approved_authority: "evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/approved-authority.json"
-    approved_authority_sha256: "sha256:69c7e3f271e51592b5862dc4057f2c28628e97f7a9121c47d878907efa37c5c2"
-    approved_authority_status: approved_single_use_unconsumed_pending_independent_diff_audit
-    runpod_mutation_performed: "Exactly two cold/warm RunPod job POSTs with no redispatch; both completed four outputs, but warm proof was rejected because both receipts used nonce 1; disposable lane and every generated R2 key were cleaned"
-    gpu_seconds: unknown_two_completed_jobs_delayed_settlement_possible
-    observed_incremental_spend_usd: posted_zero_with_usd_0_20_delayed_settlement_reserve
-    current_blocker: independent_authority_diff_audit_before_runpod_or_r2_access
+    approved_authority: null
+    approved_authority_sha256: null
+    approved_authority_status: consumed_interrupted_clean_non_reusable
+    runpod_mutation_performed: "Exactly one cold RunPod job POST with no redispatch; 55/55 reads remained IN_QUEUE before interruption; cleanup deleted the disposable lane and proved all 27 deterministic R2 keys absent"
+    gpu_seconds: unknown_queue_only_observed
+    observed_incremental_spend_usd: 0.1318742503644897
+    current_blocker: fresh_reuse_only_proposal_and_exact_approval_after_3600_second_port_lifetime_repair
     immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:75c5999b5934b13ed6eaf6e35f28fe22b4a3ec30702efc1f44ff4407438bf036"
     prior_invalidated_immutable_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:177755b6cc6029311beb8a8891434e68433d5706e0456137d50b03c4ca503ab3"
     image_publication_workflow_run_id: 34009939213
@@ -424,7 +424,7 @@ gates:
     second_prior_publication_digest_or_artifact: none
     second_prior_publication_runpod_gpu_spend: none
     second_prior_approval_status: consumed_non_reusable_invalidated_by_source_drift
-    result: publication_guard_authority_materialized_pending_independent_audit
+    result: interrupted_clean_awaiting_fresh_exact_approval
 
   GATE_SOULX_LICENSE_001:
     status: open

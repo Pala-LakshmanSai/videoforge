@@ -3,11 +3,17 @@
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
+  "status": "CONSUMED_INTERRUPTED_CLEAN_NON_REUSABLE",
   "single_use": true,
-  "consumed": false,
+  "consumed": true,
   "reusable": false,
-  "consumption": null,
+  "consumption": {
+    "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-audit-interruption-attempt.json",
+    "failure_evidence_sha256": "sha256:d5c109ccca33a439308f2b1b9a059dbe7ee3c43d0734ebd4c38ddd6b600822f1",
+    "runpod_job_posts": 1,
+    "redispatches": 0,
+    "cleanup_complete": true
+  },
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
     "proposal_sha256": "sha256:a9bfe3d0aecf97f412ba1e1cde1a19c71fa4fe6457241e2b2bb79f1612a10bb1",
@@ -16,14 +22,14 @@
     "approval_statement_storage": "inline_exact_statement_in_user_approval_json",
     "approval_statement_sha256": "sha256:f9cd588b23ffccb7bc50bf786cdf75baa64c1ad7174689a10a04b36834ff4800",
     "user_approval_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/user-approval.json",
-    "user_approval_sha256": "sha256:74b7ac54716ef03d52681d3348a4a801953e949be241ca0c7ba896c870f93e42",
+    "user_approval_sha256": "sha256:93f989bb19bec9c382fa15e46077730b328dfe7a9d53d3359636fc37c3215b5d",
     "control_source_commit": "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
     "control_source_remote_ref": "refs/heads/codex/serverless-v2-roadmap-v4",
     "control_source_remote_verified": true,
     "precursor_source_commit": "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
     "image_source_commit": "0b09d6e9d72e868f0f9a6143dfad72147c193c64",
     "execution_control_commit_role": "one_post_approval_authority_materialization_successor_only",
-    "execution_control_commit": null
+    "execution_control_commit": "f9d3a8c84833616ea373bc0a446283cdc93748dc"
   },
   "image_publication": {
     "original_publication_workflow_run_id": 34009939213,

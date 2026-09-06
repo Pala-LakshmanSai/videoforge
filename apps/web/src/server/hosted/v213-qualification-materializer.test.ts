@@ -323,16 +323,18 @@ function harness(
           contentType,
           contentLength,
           checksumSha256,
+          lifetimeSeconds,
         }: {
           objectKey: string;
           contentType: string;
           contentLength: number;
           checksumSha256: string;
+          lifetimeSeconds: number;
         }) => ({
           method: "GET" as const,
           url: `https://r2.invalid/get/${objectKey}`,
           requiredHeaders: {},
-          expiresAt: "2026-08-28T00:15:00.000Z",
+          expiresAt: new Date(Date.parse(NOW) + lifetimeSeconds * 1_000).toISOString(),
           contentType,
           contentLength,
           checksumSha256,
@@ -341,15 +343,17 @@ function harness(
           objectKey,
           contentType,
           maxContentLength,
+          lifetimeSeconds,
         }: {
           objectKey: string;
           contentType: string;
           maxContentLength: number;
+          lifetimeSeconds: number;
         }) => ({
           method: "PUT" as const,
           url: `https://r2.invalid/put/${objectKey}`,
           requiredHeaders: { "content-type": contentType },
-          expiresAt: "2026-08-28T00:15:00.000Z",
+          expiresAt: new Date(Date.parse(NOW) + lifetimeSeconds * 1_000).toISOString(),
           contentType,
           maxContentLength,
         }),
@@ -374,6 +378,12 @@ describe("V2-13 JIT qualification materializer", () => {
       (worker.envelope as { limits: { execution_timeout_seconds: number } }).limits
         .execution_timeout_seconds,
     ).toBe(800);
+    expect(
+      (worker.envelope as { limits: { issued_at: string; expires_at: string } }).limits,
+    ).toMatchObject({
+      issued_at: NOW,
+      expires_at: "2026-08-28T01:00:00.000Z",
+    });
   });
 
   it("stages exact SoulX inputs and returns a signed worker-contract request with bounded ports", async () => {
@@ -388,6 +398,10 @@ describe("V2-13 JIT qualification materializer", () => {
     expect(ports.inputs.map((port) => port.method)).toEqual(["GET", "GET"]);
     expect(worker.input_get_urls).toHaveLength(2);
     expect(worker.output_put_urls).toHaveLength(1);
+    expect((envelope.limits as { issued_at: string; expires_at: string })).toMatchObject({
+      issued_at: NOW,
+      expires_at: "2026-08-28T00:15:00.000Z",
+    });
     expect(test.puts).toHaveBeenCalledTimes(2);
     expect(test.deletes).not.toHaveBeenCalled();
     expect(JSON.stringify(result)).not.toContain("abababababababab");

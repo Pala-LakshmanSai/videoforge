@@ -1,0 +1,64 @@
+{
+  "schema_version": "videoforge.v2-08-interrupted-in-queue-attempt/v1",
+  "checkpoint": "V2-08",
+  "task_id": "VF-10-08",
+  "stage": 7,
+  "proposal_sha256": "sha256:a9bfe3d0aecf97f412ba1e1cde1a19c71fa4fe6457241e2b2bb79f1612a10bb1",
+  "authority_sha256": "sha256:69c7e3f271e51592b5862dc4057f2c28628e97f7a9121c47d878907efa37c5c2",
+  "materialization_commit": "f9d3a8c84833616ea373bc0a446283cdc93748dc",
+  "result": "INTERRUPTED_CLEAN_AFTER_ONE_COLD_POST_IN_QUEUE",
+  "interruption_cause": "OPERATOR_INTERRUPTION_REPORTED_NOT_DURABLY_CLASSIFIED",
+  "runpod_job_posts": 1,
+  "runpod_redispatches": 0,
+  "status_timeline": {
+    "in_queue_reads": 55,
+    "in_progress_reads": 0,
+    "terminal_reads": 0,
+    "total_reads": 55,
+    "poll_interval_ms": 2000,
+    "last_status": "IN_QUEUE"
+  },
+  "jobs": {
+    "cold": {
+      "posted": true,
+      "dispatch_acks": 1,
+      "last_status": "IN_QUEUE",
+      "output_generation_evidenced": false
+    },
+    "warm": { "materialized": true, "posted": false },
+    "cancel_invalid_timeout_post_count": 0
+  },
+  "cleanup": {
+    "cleanup_plan_terminal": true,
+    "lane_deleted_and_absent": true,
+    "r2_cleanup_phases_terminal": 5,
+    "planned_r2_keys_absent": 27,
+    "verified_local_outputs": 0,
+    "final_inventory_reads": 3,
+    "final_inventory_each": {
+      "pods": 0,
+      "running_pods": 0,
+      "active_serverless_workers": 0,
+      "endpoints": 0,
+      "templates": 0,
+      "network_volumes": 2,
+      "billing_usd": 2.9606986929138657
+    }
+  },
+  "billing": {
+    "admission_baseline_usd": 2.828824442549376,
+    "final_stable_billing_usd": 2.9606986929138657,
+    "observed_increment_usd": 0.1318742503644897,
+    "approved_absolute_stop_usd": 4.828824442549376,
+    "remaining_allowance_usd": 1.8681257496355103
+  },
+  "journal_proof": {
+    "authority_manifest_sha256": "sha256:ad8b7cc6650541cab742161a1a9d9132170790254355da401f1f4e6a3e2954da",
+    "stage_state_sha256": "sha256:11fdce3e6cb37cdf683a766c1e7dfb0df29ea09923978a4295a9c7d34e43e922",
+    "materialization_state_sha256": "sha256:68546a2e0a0ae8ca5b3398dc16eaee95d89d59cdc27254e3a1baf89e66f68d7e"
+  },
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "stage_6_changed_or_rerun": false,
+  "output_claim": "NO_OUTPUT_GENERATION_EVIDENCED_AND_NO_VERIFIED_LOCAL_MP4"
+}

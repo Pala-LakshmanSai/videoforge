@@ -37,7 +37,8 @@ const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/u;
 const UTC = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$/u;
 const CAPABILITY = /^[A-Za-z0-9._:-]{32,512}$/u;
 const MAX_INPUT_BYTES = 16 * 1024 * 1024;
-const PORT_LIFETIME_SECONDS = 900;
+const DEFAULT_PORT_LIFETIME_SECONDS = 900;
+const V208_WHOLE_SPAN_PORT_LIFETIME_SECONDS = 3600;
 const CASE_SOURCE_PATH = "apps/web/src/server/providers/v213-dual-lane-live.ts";
 const WORKER_REQUEST_KEYS = [
   "batch",
@@ -444,8 +445,14 @@ function safeSignedHeaders(value: unknown): value is Readonly<Record<string, str
   return true;
 }
 
-function expectedPortExpiry(now: Date): string {
-  return new Date(now.getTime() + PORT_LIFETIME_SECONDS * 1_000).toISOString();
+function portLifetimeSeconds(descriptor: QualificationDescriptor): number {
+  return isWholeSpanDescriptor(descriptor)
+    ? V208_WHOLE_SPAN_PORT_LIFETIME_SECONDS
+    : DEFAULT_PORT_LIFETIME_SECONDS;
+}
+
+function expectedPortExpiry(now: Date, descriptor: QualificationDescriptor): string {
+  return new Date(now.getTime() + portLifetimeSeconds(descriptor) * 1_000).toISOString();
 }
 
 function outputMaxContentLength(descriptor: QualificationDescriptor): number {
@@ -812,7 +819,8 @@ async function buildMaterialization(
   dependencies: V213QualificationMaterializerDependencies,
 ): Promise<V213QualificationMaterializationRouteResult> {
   const now = dependencies.now?.() ?? new Date();
-  const expiresAt = expectedPortExpiry(now);
+  const lifetimeSeconds = portLifetimeSeconds(request.descriptor);
+  const expiresAt = expectedPortExpiry(now, request.descriptor);
   const randomHex = dependencies.randomHex ?? randomHexDefault;
   const attemptId = qualificationAttemptId(request);
   const prefix = outputPrefix(request, attemptId);
@@ -859,7 +867,7 @@ async function buildMaterialization(
         objectKey,
         contentType: authority.content_type,
         maxContentLength: authority.max_content_length,
-        lifetimeSeconds: PORT_LIFETIME_SECONDS,
+        lifetimeSeconds,
         now,
       });
       validateSignedGeneratedPort(port, {
@@ -879,7 +887,7 @@ async function buildMaterialization(
         contentType: artifact.contentType,
         contentLength: bytes.byteLength,
         checksumSha256: artifact.sha256,
-        lifetimeSeconds: PORT_LIFETIME_SECONDS,
+        lifetimeSeconds,
         now,
       });
       validateSignedInputPort(signed, {
@@ -1207,7 +1215,7 @@ function validateWorkerRequest(
   if (
     !Number.isFinite(issuedAt) ||
     !Number.isFinite(expiresAt) ||
-    expiresAt - issuedAt !== PORT_LIFETIME_SECONDS * 1_000 ||
+    expiresAt - issuedAt !== portLifetimeSeconds(request.descriptor) * 1_000 ||
     envelopeLimits.max_items !==
       (request.descriptor.lane === "mage"
         ? 32

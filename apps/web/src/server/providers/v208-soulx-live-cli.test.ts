@@ -385,7 +385,7 @@ describe("V2-08 live composition", () => {
     const loadRunPodKey = vi.fn(async () => "runpod-key-at-least-twenty-characters");
     const writeOutput = vi.fn();
     await expect(
-      runV208SoulXLiveCli(process.env, {
+      runV208SoulXLiveCli({} as NodeJS.ProcessEnv, {
         loadRunPodKey,
         readInputs: () => ({}) as never,
         createComposition: (() => ({ dependencies: {} })) as never,
