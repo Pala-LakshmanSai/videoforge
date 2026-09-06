@@ -3,9 +3,18 @@
   "checkpoint": "V2-08",
   "task_id": "VF-10-08",
   "stage": 7,
-  "status": "APPROVED_SINGLE_USE_UNCONSUMED_PENDING_INDEPENDENT_DIFF_AUDIT",
+  "status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE_BILLING_BASELINE_DRIFT",
   "single_use": true,
-  "consumed": false,
+  "consumed": true,
+  "reusable": false,
+  "consumption": {
+    "failure_evidence_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/failed-billing-baseline-drift-attempt.json",
+    "failure_evidence_sha256": "sha256:a5d94592ea2904c487350aaff7c8dc65e4e495be20affdf228c519bb27b6231e",
+    "runpod_job_posts": 0,
+    "r2_materializations": 0,
+    "attempt_spend_usd": 0,
+    "provider_inventory_clean": true
+  },
   "lineage": {
     "proposal_path": "project-context/evidence/acceptance/VF-10-08/2026-09-05-live-qualification-candidate/combined-live-proposal.json",
     "proposal_sha256": "sha256:cbff56e5eb1ed367da7574abe7765068b38255b655b1b3251ef115755c38c5e1",

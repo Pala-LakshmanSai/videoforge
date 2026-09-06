@@ -1,0 +1,36 @@
+{
+  "schema_version": "videoforge.v2-08-failed-billing-baseline-drift-attempt/v1",
+  "checkpoint": "V2-08",
+  "stage": 7,
+  "proposal_sha256": "sha256:cbff56e5eb1ed367da7574abe7765068b38255b655b1b3251ef115755c38c5e1",
+  "authority_sha256": "sha256:f1c155cfb0f9bbb74ab4671afef5455f2a39f2440ecae0f07ba8d267f0084a92",
+  "materialization_commit": "096c6b9ffca21d15b5b0131027928fad1e7b837d",
+  "result": "FAILED_CLOSED_BEFORE_RUNPOD_JOB_POST",
+  "failure_code": "V208_FRESH_ADMISSION_REJECTED",
+  "exact_root_cause": "EXACT_BILLING_BASELINE_DRIFT",
+  "approved_billing_baseline_usd": 2.7231514439627063,
+  "observed_stable_billing_usd": 2.7981025265471544,
+  "settled_drift_usd": 0.0749510825844481,
+  "stable_billing_reads": [
+    2.7981025265471544,
+    2.7981025265471544,
+    2.7981025265471544
+  ],
+  "stable_read_spacing_ms_at_least": 2000,
+  "runpod_job_posts": 0,
+  "runpod_redispatches": 0,
+  "gpu_job_submitted": false,
+  "r2_mutations": 0,
+  "disposable_endpoint_or_template_created": false,
+  "cleanup_only_resume_completed_provider_absence_reconciliation": true,
+  "final_inventory": {
+    "running_pods": 0,
+    "active_serverless_workers": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "retained_network_volumes": 2
+  },
+  "authority_consumed": true,
+  "authority_reusable": false,
+  "stage_6_modified_or_rerun": false
+}
