@@ -175,7 +175,9 @@ describe("ordinary V2-09 immutable worker request", () => {
       },
     });
     expect(ports.sign).toHaveBeenCalledTimes(2);
-    expect(ports.signGenerated).toHaveBeenCalledOnce();
+    expect(ports.signGenerated).toHaveBeenCalledWith(
+      expect.objectContaining({ maxContentLength: 128 * 1024 * 1024 }),
+    );
   });
 
   it("fails before signing when a 16k span is supplied", async () => {

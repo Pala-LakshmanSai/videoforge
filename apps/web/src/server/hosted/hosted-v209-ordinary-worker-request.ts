@@ -8,7 +8,7 @@ import type { HostedR2Signer } from "./r2";
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const MAX_MAGE_OUTPUT_BYTES = 16 * 1024 * 1024;
-const MAX_SOULX_OUTPUT_BYTES = 512 * 1024 * 1024;
+const MAX_SOULX_OUTPUT_BYTES = 128 * 1024 * 1024;
 
 type RecordValue = Record<string, unknown>;
 
