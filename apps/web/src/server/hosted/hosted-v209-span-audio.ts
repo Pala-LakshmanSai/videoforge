@@ -158,8 +158,7 @@ function exactFinalization(
 export function createHostedV209SpanAudioCoordinator(
   dependencies: HostedV209SpanAudioCoordinatorDependencies,
 ) {
-  return Object.freeze({
-    async prepare(identity: HostedV209SpanIdentity) {
+  const prepare = async (identity: HostedV209SpanIdentity) => {
       if (![identity.accountId, identity.workspaceId, identity.userId].every((id) => DATABASE_UUID.test(id)) ||
         !UUID.test(identity.projectId)) {
         throw new HostedV209SpanAudioError("HOSTED_V209_SPAN_SCOPE_INVALID");
@@ -188,7 +187,9 @@ export function createHostedV209SpanAudioCoordinator(
         projectRevisionId: projection.projectRevisionId,
         attemptIds: Object.freeze(projection.jobs.map((job) => job.attemptId)),
       });
-    },
+    };
+  return Object.freeze({
+    prepare,
     async acceptCompleted(input: {
       readonly accountId: string;
       readonly workspaceId: string;
@@ -203,7 +204,12 @@ export function createHostedV209SpanAudioCoordinator(
           userId: finalized.userId,
           projectId: finalized.projectId,
         });
-      }
+      } else await prepare({
+        accountId: finalized.accountId,
+        workspaceId: finalized.workspaceId,
+        userId: finalized.userId,
+        projectId: finalized.projectId,
+      });
       return finalized;
     },
   });

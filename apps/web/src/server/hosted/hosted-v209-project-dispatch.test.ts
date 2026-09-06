@@ -179,6 +179,35 @@ function dependencies(value: Awaited<ReturnType<typeof candidate>>) {
 }
 
 describe("ordinary authenticated V2-09 project dispatch", () => {
+  it("returns preparation with one correlation header and performs no GPU observation", async () => {
+    const prepared = await candidate();
+    const deps = dependencies(prepared);
+    const prepare = vi.fn(async () => ({ state: "PREPARING_INPUTS" as const }));
+    const response = await handleHostedV209ProjectDispatch(
+      request(),
+      { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
+      config,
+      {} as never,
+      deps.value,
+      { prepare },
+    );
+    expect(response?.status).toBe(202);
+    expect(response?.headers.get("x-videoforge-correlation-id")).toBe("v209-safe-correlation");
+    await expect(response?.json()).resolves.toEqual({
+      schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+      state: "PREPARING_INPUTS",
+      correlation_id: "v209-safe-correlation",
+    });
+    expect(prepare).toHaveBeenCalledWith({
+      accountId: scope.account_id,
+      workspaceId: scope.workspace_id,
+      userId: scope.user_id,
+      projectId,
+    });
+    expect(deps.materialize).not.toHaveBeenCalled();
+    expect(deps.observe).not.toHaveBeenCalled();
+    expect(deps.commitAndSchedule).not.toHaveBeenCalled();
+  });
   it("loads only DB-owned identity, takes one observation, and schedules one workflow", async () => {
     const prepared = await candidate();
     const deps = dependencies(prepared);

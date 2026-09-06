@@ -47,7 +47,11 @@ import {
 import { createV213WorkerLiveAcceptanceExecute } from "./v213-worker-live-execution";
 import { handleHostedInviteRedemption, HOSTED_INVITE_REDEMPTION_PATH } from "./invite-redemption";
 import { exactHostedCpuCancellationConfirmation } from "./hosted-cpu-cancellation";
-import { handleHostedV209ProjectDispatch } from "./hosted-v209-project-dispatch";
+import {
+  handleHostedV209ProjectDispatch,
+  resumeHostedV209ProjectDispatch,
+} from "./hosted-v209-project-dispatch";
+import { createHostedV209SpanAudioCoordinator } from "./hosted-v209-span-audio";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -765,6 +769,51 @@ export async function scheduleHostedSpanAudioSubmission(
   return Object.freeze({ state: payload.state });
 }
 
+function createHostedV209SpanAudioLiveCoordinator(
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+) {
+  const databaseCall = async (sql: string, parameters: readonly string[]) => {
+    const pool = createNeonPool(config.neon.databaseUrl);
+    try {
+      const result = await createNeonExecutor(pool).transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1,$2,true)", [
+          "videoforge.account_id",
+          parameters[0]!,
+        ]);
+        return transaction.query<{ value: unknown }>(sql, parameters);
+      });
+      if (result.rows.length !== 1) throw new Error("HOSTED_V209_SPAN_DATABASE_RESULT_INVALID");
+      return result.rows[0]!.value;
+    } finally {
+      await pool.end();
+    }
+  };
+  return createHostedV209SpanAudioCoordinator({
+    loadJobs: (identity) => databaseCall(
+      `SELECT public.videoforge_materialize_hosted_v209_span_audio_jobs(
+         $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS value`,
+      [identity.accountId, identity.workspaceId, identity.userId, identity.projectId],
+    ),
+    schedule: async (identity, submission, expectedAttemptId) =>
+      scheduleHostedSpanAudioSubmission(environment, config, {
+        accountId: identity.accountId,
+        workspaceId: identity.workspaceId,
+        submission,
+        expectedAttemptId,
+      }),
+    finalize: (input) => databaseCall(
+      `SELECT public.videoforge_finalize_hosted_v209_span_audio(
+         $1::uuid,$2::uuid,$3::uuid,$4::jsonb) AS value`,
+      [input.accountId, input.workspaceId, input.attemptId, canonicalJson(input.resultDocument)],
+    ),
+    resumePair: async (identity) => {
+      const result = await resumeHostedV209ProjectDispatch(environment, config, identity);
+      if (!result.ok) throw new Error("HOSTED_V209_SPAN_PAIR_RESUME_REJECTED");
+    },
+  });
+}
+
 async function hostedSession(
   request: Request,
   config: ReturnType<typeof hostedRuntimeConfiguration>,
@@ -1276,6 +1325,7 @@ export async function handleHostedRequest(
   } catch {
     return json({ error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } }, 503);
   }
+  const spanAudio = createHostedV209SpanAudioLiveCoordinator(environment, config);
   const url = new URL(request.url);
   if (url.pathname === HOSTED_INVITE_REDEMPTION_PATH) {
     const pool = createNeonPool(config.neon.databaseUrl);
@@ -1340,6 +1390,7 @@ export async function handleHostedRequest(
     environment,
     executionContext,
     config,
+    spanAudio,
   );
   if (personalWorkerResponse) return personalWorkerResponse;
   if (
@@ -1355,6 +1406,8 @@ export async function handleHostedRequest(
     environment,
     config,
     executionContext,
+    undefined,
+    spanAudio,
   );
   if (v209DispatchResponse) return v209DispatchResponse;
   const { handleHostedProductRequest } = await import("./product");

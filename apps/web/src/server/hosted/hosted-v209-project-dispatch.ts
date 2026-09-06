@@ -162,6 +162,17 @@ function dispatchResponse(candidate: Candidate, correlationId: string, status: n
   return new Response(base.body, { status: base.status, headers });
 }
 
+function preparationResponse(state: "PREPARING_INPUTS" | "SCHEDULED", correlationId: string) {
+  const base = response({
+    schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+    state,
+    correlation_id: correlationId,
+  }, 202);
+  const headers = new Headers(base.headers);
+  headers.set("x-videoforge-correlation-id", correlationId);
+  return new Response(base.body, { status: base.status, headers });
+}
+
 async function emptyBody(request: Request): Promise<boolean> {
   const length = Number(request.headers.get("content-length") ?? "0");
   if (!Number.isSafeInteger(length) || length < 0 || length > 2) return false;
@@ -174,12 +185,82 @@ async function emptyBody(request: Request): Promise<boolean> {
   );
 }
 
+export async function resumeHostedV209ProjectDispatch(
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  identity: { readonly accountId: string; readonly workspaceId: string; readonly userId: string; readonly projectId: string },
+  injected: HostedV209ProjectDispatchDependencies = defaults,
+  suppliedCorrelationId?: string,
+  suppliedRuntimePool?: HostedNeonPool,
+): Promise<Response> {
+  const correlationId = suppliedCorrelationId ?? injected.correlationId();
+  const runtimePool = suppliedRuntimePool ?? injected.createPool(config.neon.databaseUrl);
+  try {
+    const runtimeDatabase = injected.createExecutor(runtimePool);
+    const candidate = exactCandidate(await injected.materialize(runtimeDatabase, identity), identity);
+    if (!candidate) return response({ error: { code: "HOSTED_V209_CANDIDATE_NOT_READY" } }, 409);
+    await assertV209OrdinaryCandidate(candidate);
+    const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
+    if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)
+      return response({ error: { code: "HOSTED_PAIR_RECONCILER_BINDING_MISSING" } }, 503);
+    const reconcilerPool = injected.createPool(reconcilerUrl);
+    try {
+      if (candidate.pairExists) {
+        await injected.ensureWorkflow(environment, runtimeDatabase, injected.createExecutor(reconcilerPool), {
+          accountId: identity.accountId,
+          workspaceId: identity.workspaceId,
+          generationRequestId: candidate.generationRequestId,
+        }, config);
+        console.info("hosted_v209_project_dispatch", { correlation_id: correlationId, event: "EXISTING_WORKFLOW_RETRIEVED" });
+        return dispatchResponse(candidate, correlationId, 200);
+      }
+      const observation = await injected.observe(environment, runtimeDatabase);
+      const admission = await freezeV209OrdinaryLiveAdmission(candidate, observation);
+      const scheduled = await injected.commitAndSchedule(environment, runtimeDatabase,
+        injected.createExecutor(reconcilerPool), {
+          approvalId: candidate.approvalId,
+          approvalSha256: candidate.approvalSha256,
+          claimId: crypto.randomUUID(),
+          accountId: identity.accountId,
+          workspaceId: identity.workspaceId,
+          userId: identity.userId,
+          projectId: identity.projectId,
+          projectRevisionId: candidate.projectRevisionId,
+          generationRequestId: candidate.generationRequestId,
+          generationPlanSha256: candidate.generationPlanSha256,
+          leaseId: candidate.leaseId,
+          laneBindings: candidate.laneBindings,
+          totalCapUsd: candidate.totalCapUsd,
+          expiresAt: candidate.expiresAt,
+          pair: candidate.pair,
+        }, admission, config);
+      console.info("hosted_v209_project_dispatch", {
+        correlation_id: correlationId,
+        event: scheduled.recovered ? "WORKFLOW_RECOVERED" : "WORKFLOW_SCHEDULED",
+      });
+      return dispatchResponse(candidate, correlationId, 202);
+    } finally {
+      await reconcilerPool.end();
+    }
+  } finally {
+    if (!suppliedRuntimePool) await runtimePool.end();
+  }
+}
+
 export async function handleHostedV209ProjectDispatch(
   request: Request,
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
   injected: HostedV209ProjectDispatchDependencies = defaults,
+  spanAudio?: {
+    readonly prepare: (identity: {
+      readonly accountId: string;
+      readonly workspaceId: string;
+      readonly userId: string;
+      readonly projectId: string;
+    }) => Promise<{ readonly state: "PREPARING_INPUTS" | "PAIR_RESUMED" }>;
+  },
 ): Promise<Response | null> {
   const match = PATH.exec(new URL(request.url).pathname);
   if (!match) return null;
@@ -204,79 +285,21 @@ export async function handleHostedV209ProjectDispatch(
       userId: scope.user_id,
       projectId: match[1]!,
     };
-    const runtimeDatabase = injected.createExecutor(runtimePool);
-    const candidate = exactCandidate(
-      await injected.materialize(runtimeDatabase, identity),
-      identity,
-    );
-    if (!candidate) return response({ error: { code: "HOSTED_V209_CANDIDATE_NOT_READY" } }, 409);
-    await assertV209OrdinaryCandidate(candidate);
-    if (candidate.pairExists) {
-      const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
-      if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)
-        return response({ error: { code: "HOSTED_PAIR_RECONCILER_BINDING_MISSING" } }, 503);
-      const reconcilerPool = injected.createPool(reconcilerUrl);
-      try {
-        await injected.ensureWorkflow(
-          environment,
-          runtimeDatabase,
-          injected.createExecutor(reconcilerPool),
-          {
-            accountId: identity.accountId,
-            workspaceId: identity.workspaceId,
-            generationRequestId: candidate.generationRequestId,
-          },
-          config,
-        );
-      } finally {
-        await reconcilerPool.end();
+    if (spanAudio) {
+      const preparation = await spanAudio.prepare(identity);
+      if (preparation.state === "PREPARING_INPUTS") {
+        return preparationResponse("PREPARING_INPUTS", correlationId);
       }
-      console.info("hosted_v209_project_dispatch", {
-        correlation_id: correlationId,
-        event: "EXISTING_WORKFLOW_RETRIEVED",
-      });
-      return dispatchResponse(candidate, correlationId, 200);
+      return preparationResponse("SCHEDULED", correlationId);
     }
-
-    const observation = await injected.observe(environment, runtimeDatabase);
-    const admission = await freezeV209OrdinaryLiveAdmission(candidate, observation);
-    const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
-    if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)
-      return response({ error: { code: "HOSTED_PAIR_RECONCILER_BINDING_MISSING" } }, 503);
-    const reconcilerPool = injected.createPool(reconcilerUrl);
-    try {
-      const scheduled = await injected.commitAndSchedule(
-        environment,
-        runtimeDatabase,
-        injected.createExecutor(reconcilerPool),
-        {
-          approvalId: candidate.approvalId,
-          approvalSha256: candidate.approvalSha256,
-          claimId: crypto.randomUUID(),
-          accountId: identity.accountId,
-          workspaceId: identity.workspaceId,
-          userId: identity.userId,
-          projectId: identity.projectId,
-          projectRevisionId: candidate.projectRevisionId,
-          generationRequestId: candidate.generationRequestId,
-          generationPlanSha256: candidate.generationPlanSha256,
-          leaseId: candidate.leaseId,
-          laneBindings: candidate.laneBindings,
-          totalCapUsd: candidate.totalCapUsd,
-          expiresAt: candidate.expiresAt,
-          pair: candidate.pair,
-        },
-        admission,
-        config,
-      );
-      console.info("hosted_v209_project_dispatch", {
-        correlation_id: correlationId,
-        event: scheduled.recovered ? "WORKFLOW_RECOVERED" : "WORKFLOW_SCHEDULED",
-      });
-      return dispatchResponse(candidate, correlationId, 202);
-    } finally {
-      await reconcilerPool.end();
-    }
+    return await resumeHostedV209ProjectDispatch(
+      environment,
+      config,
+      identity,
+      injected,
+      correlationId,
+      runtimePool,
+    );
   } catch (error) {
     const code =
       error instanceof RangeError && /^[A-Z0-9_]+$/u.test(error.message)

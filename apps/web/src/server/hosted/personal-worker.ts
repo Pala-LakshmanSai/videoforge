@@ -1,3 +1,5 @@
+import type { JsonValue } from "@videoforge/contracts";
+
 import { createHostedAuth, type HostedExecutionContext } from "./auth";
 import {
   hostedRuntimeConfiguration,
@@ -1140,7 +1142,7 @@ async function activeLease(
   request: Request,
   pool: HostedNeonPool,
   leaseId: string,
-): Promise<(DeviceScope & { leaseToken: string; attemptId: string; state: string }) | null> {
+): Promise<(DeviceScope & { leaseToken: string; attemptId: string; state: string; kind: "ASR" | "SPAN_AUDIO" | "RENDER" }) | null> {
   const scope = await deviceScope(request, pool);
   const leaseToken = request.headers.get("x-videoforge-lease-token");
   if (!scope || !leaseToken || !TOKEN.test(leaseToken)) return null;
@@ -1148,7 +1150,7 @@ async function activeLease(
     `WITH tenant_scope AS MATERIALIZED (
        SELECT set_config('videoforge.account_id', $4, true)
      )
-     SELECT lease.attempt_id, lease.state
+     SELECT lease.attempt_id, attempt.kind, lease.state
        FROM media_worker_leases AS lease
        JOIN hosted_cpu_job_attempts AS attempt
          ON attempt.account_id = lease.account_id
@@ -1164,7 +1166,8 @@ async function activeLease(
   );
   const row = result.rows[0];
   return row
-    ? { ...scope, leaseToken, attemptId: String(row.attempt_id), state: String(row.state) }
+    ? { ...scope, leaseToken, attemptId: String(row.attempt_id), state: String(row.state),
+        kind: String(row.kind) as "ASR" | "SPAN_AUDIO" | "RENDER" }
     : null;
 }
 
@@ -1296,6 +1299,7 @@ export interface PersonalWorkerCompletion {
 }
 
 export interface PersonalWorkerTerminalLease {
+  readonly kind: "ASR" | "SPAN_AUDIO" | "RENDER";
   readonly state: PersonalWorkerTerminalState;
   readonly failureCode: string | null;
   readonly resultObjectKey: string | null;
@@ -1388,6 +1392,7 @@ async function terminalLeaseForCompletion(
   if (!scope || !leaseToken || !TOKEN.test(leaseToken)) return null;
   const result = await pool.query<{
     attempt_id: string;
+    kind: string;
     state: string;
     attempt_state: string;
     failure_code: string | null;
@@ -1398,7 +1403,7 @@ async function terminalLeaseForCompletion(
     `WITH tenant_scope AS MATERIALIZED (
        SELECT set_config('videoforge.account_id', $4, true)
      )
-     SELECT lease.attempt_id, lease.state, attempt.state AS attempt_state, lease.failure_code,
+     SELECT lease.attempt_id, attempt.kind, lease.state, attempt.state AS attempt_state, lease.failure_code,
             attempt.result_object_key, attempt.result_content_length, attempt.result_checksum_sha256
        FROM media_worker_leases AS lease
        JOIN hosted_cpu_job_attempts AS attempt
@@ -1418,6 +1423,7 @@ async function terminalLeaseForCompletion(
     ...scope,
     leaseToken,
     attemptId: String(row.attempt_id),
+    kind: String(row.kind) as PersonalWorkerTerminalLease["kind"],
     state: row.state as PersonalWorkerTerminalState,
     failureCode: row.failure_code === null ? null : String(row.failure_code),
     resultObjectKey: row.result_object_key === null ? null : String(row.result_object_key),
@@ -1435,11 +1441,42 @@ function completionAccepted(state: PersonalWorkerTerminalState): Response {
   });
 }
 
+async function readVerifiedSpanResult(
+  environment: HostedRuntimeEnvironment,
+  terminal: DeviceScope & { readonly attemptId: string } & PersonalWorkerTerminalLease,
+): Promise<JsonValue> {
+  if (terminal.resultObjectKey === null || terminal.resultContentLength === null ||
+    terminal.resultChecksumSha256 === null || terminal.resultContentLength < 1 ||
+    terminal.resultContentLength > 1_048_576) throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
+  const object = await environment.PRIVATE_ARTIFACTS?.get(terminal.resultObjectKey);
+  if (!object || object.size !== terminal.resultContentLength ||
+    object.httpMetadata?.contentType !== "application/json") {
+    throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
+  }
+  const bytes = await object.arrayBuffer();
+  if ((await sha256Bytes(bytes)) !== terminal.resultChecksumSha256) {
+    throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
+  }
+  const decoded = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes));
+  if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded)) {
+    throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
+  }
+  return decoded as JsonValue;
+}
+
 async function completeLease(
   request: Request,
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
   leaseId: string,
+  spanAudio?: {
+    readonly acceptCompleted: (input: {
+      readonly accountId: string;
+      readonly workspaceId: string;
+      readonly attemptId: string;
+      readonly resultDocument: JsonValue;
+    }) => Promise<unknown>;
+  },
 ) {
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
@@ -1457,9 +1494,19 @@ async function completeLease(
       if (!terminal || !completionMatchesTerminalLease(terminal, completion)) {
         return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
       }
+      if (terminal.state === "SUCCEEDED" && terminal.kind === "SPAN_AUDIO" && spanAudio) {
+        const resultDocument = await readVerifiedSpanResult(environment, terminal);
+        await spanAudio.acceptCompleted({
+          accountId: terminal.accountId,
+          workspaceId: terminal.workspaceId,
+          attemptId: terminal.attemptId,
+          resultDocument,
+        });
+      }
       return completionAccepted(terminal.state);
     }
     let receipt: string | null = null;
+    let verifiedResultDocument: JsonValue | null = null;
     if (completion.status === "SUCCEEDED") {
       const callbackToken = await deriveCallbackToken(
         config.workflowCallbackSecret,
@@ -1513,7 +1560,9 @@ async function completeLease(
       }
       const bytes = await resultObject.arrayBuffer();
       try {
-        JSON.parse(new TextDecoder().decode(bytes));
+        const decoded = JSON.parse(new TextDecoder().decode(bytes));
+        if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded)) throw new Error();
+        verifiedResultDocument = decoded as JsonValue;
       } catch {
         return json({ error: { code: "MEDIA_WORKER_RESULT_MISMATCH" } }, 409);
       }
@@ -1647,10 +1696,30 @@ async function completeLease(
       );
       return state;
     });
-    if (settled) return completionAccepted(settled);
+    if (settled) {
+      if (settled === "SUCCEEDED" && lease.kind === "SPAN_AUDIO" && spanAudio) {
+        if (!verifiedResultDocument) throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
+        await spanAudio.acceptCompleted({
+          accountId: lease.accountId,
+          workspaceId: lease.workspaceId,
+          attemptId: lease.attemptId,
+          resultDocument: verifiedResultDocument,
+        });
+      }
+      return completionAccepted(settled);
+    }
     const terminal = await terminalLeaseForCompletion(request, pool, leaseId);
     if (!terminal || !completionMatchesTerminalLease(terminal, completion)) {
       return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
+    }
+    if (terminal.state === "SUCCEEDED" && terminal.kind === "SPAN_AUDIO" && spanAudio) {
+      const resultDocument = await readVerifiedSpanResult(environment, terminal);
+      await spanAudio.acceptCompleted({
+        accountId: terminal.accountId,
+        workspaceId: terminal.workspaceId,
+        attemptId: terminal.attemptId,
+        resultDocument,
+      });
     }
     return completionAccepted(terminal.state);
   } finally {
@@ -1663,6 +1732,7 @@ export async function handlePersonalWorkerRequest(
   environment: HostedRuntimeEnvironment,
   executionContext: HostedExecutionContext,
   resolvedConfiguration?: HostedRuntimeConfiguration,
+  spanAudio?: Parameters<typeof completeLease>[4],
 ): Promise<Response | null> {
   const config = resolvedConfiguration ?? hostedRuntimeConfiguration(environment);
   const url = new URL(request.url);
@@ -1703,7 +1773,7 @@ export async function handlePersonalWorkerRequest(
   if (request.method === "POST" && lease && UUID.test(lease[1]!)) {
     if (lease[2] === "heartbeat") return leaseHeartbeat(request, config, lease[1]!);
     if (lease[2] === "upload-port") return leaseUploadPort(request, config, lease[1]!);
-    return completeLease(request, environment, config, lease[1]!);
+    return completeLease(request, environment, config, lease[1]!, spanAudio);
   }
   return null;
 }

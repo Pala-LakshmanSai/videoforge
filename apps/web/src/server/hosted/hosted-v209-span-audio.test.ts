@@ -164,4 +164,40 @@ describe("hosted V2-09 span audio coordinator", () => {
       projectId: ids.projectId,
     });
   });
+
+  it("re-enters server-owned preparation when another span remains", async () => {
+    const value = await projection();
+    const loadJobs = vi.fn()
+      .mockResolvedValueOnce(value)
+      .mockResolvedValueOnce(value);
+    const schedule = vi.fn(async () => ({ state: "OUTBOXED" }));
+    const finalization = {
+      schemaVersion: "videoforge.hosted-v209-span-audio-finalization/v1",
+      replayed: false,
+      pairReady: false,
+      accountId: ids.accountId,
+      workspaceId: ids.workspaceId,
+      userId: ids.userId,
+      projectId: ids.projectId,
+      projectRevisionId: ids.revisionId,
+      generationRequestId: ids.generationId,
+      attemptId: ids.attemptId,
+      spanId: ids.spanId,
+      assetId: ids.assetId,
+      artifactReceiptId: ids.receiptId,
+      objectKey: `tenant/${ids.accountId}/workspace/${ids.workspaceId}/span`,
+      checksumSha256: `sha256:${digest}`,
+    };
+    const coordinator = createHostedV209SpanAudioCoordinator({
+      loadJobs, schedule, finalize: vi.fn(async () => finalization), resumePair: vi.fn(),
+    });
+    await coordinator.acceptCompleted({
+      accountId: ids.accountId,
+      workspaceId: ids.workspaceId,
+      attemptId: ids.attemptId,
+      resultDocument: { schema_version: "selected-span-audio-result/v1" },
+    });
+    expect(loadJobs).toHaveBeenCalledOnce();
+    expect(schedule).toHaveBeenCalledOnce();
+  });
 });

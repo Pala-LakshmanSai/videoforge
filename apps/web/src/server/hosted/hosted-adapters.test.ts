@@ -444,6 +444,7 @@ describe("V2-06 hosted adapters", () => {
 
   it("acknowledges only the durable terminal completion on replay", () => {
     const succeeded = {
+      kind: "ASR" as const,
       state: "SUCCEEDED" as const,
       failureCode: null,
       resultObjectKey: "result-a",
