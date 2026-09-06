@@ -480,6 +480,12 @@
       "name": "hosted_pair_current_migration_ledger",
       "filename": "0080_hosted_pair_current_migration_ledger.sql",
       "sha256": "sha256:00c2eea0e713a181f9c84af1a78fa8b1fb57fca3d1e2348915463133befe81bb"
+    },
+    {
+      "version": 81,
+      "name": "hosted_v209_ordinary_avatar_predispatch_guard",
+      "filename": "0081_hosted_v209_ordinary_avatar_predispatch_guard.sql",
+      "sha256": "sha256:dee1b8adab28d9996c4fd9b7d71b322fc0d48123e6c81f2760499bd79e2b945c"
     }
   ]
 }

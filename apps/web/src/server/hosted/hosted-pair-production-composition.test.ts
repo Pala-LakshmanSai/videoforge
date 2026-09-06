@@ -196,7 +196,7 @@ async function restartFixture() {
 }
 
 describe("hosted production pair composition", () => {
-  it("accepts the exact current 37..80 manifest ledger", () => {
+  it("accepts the exact current 37..81 manifest ledger", () => {
     expect(HOSTED_PAIR_REQUIRED_MIGRATIONS).toEqual([
       [37, "sha256:e21a04350d2685f231bbfa8ac9a1109a22194ab0e227d49a9dfa4c68d84aa9ef"],
       [38, "sha256:de64f32ab2b07d9e3448e29f466ea6a26e48f507cab12800abc2efd7393afe00"],
@@ -242,6 +242,7 @@ describe("hosted production pair composition", () => {
       [78, "sha256:c1fb46651322acff10476472dccee04ddd8553721bd1174347dde2a457c95773"],
       [79, "sha256:773618d0109dc3dfcc34acd8dd7108b2a6e11dadac0e7f7d029ff852236b52f3"],
       [80, "sha256:00c2eea0e713a181f9c84af1a78fa8b1fb57fca3d1e2348915463133befe81bb"],
+      [81, "sha256:dee1b8adab28d9996c4fd9b7d71b322fc0d48123e6c81f2760499bd79e2b945c"],
     ]);
     expect(evaluateHostedPairProductionGate(gate())).toEqual({ state: "READY" });
   });
@@ -264,7 +265,7 @@ describe("hosted production pair composition", () => {
 
   it("rejects ledger, qualification, approval, role, or key drift", () => {
     expect(evaluateHostedPairProductionGate(gate({ migrationLedger: [] }))).toMatchObject({
-      reason: "MIGRATION_LEDGER_0037_0080_INVALID",
+      reason: "MIGRATION_LEDGER_0037_0081_INVALID",
     });
     expect(
       evaluateHostedPairProductionGate(

@@ -128,6 +128,21 @@ test("the hosted runtime can append through the exact function but has no direct
       `REVOKEEXECUTEONFUNCTIONpublic.${internalSystemReference}FROM:"runtime_role";`,
     ),
   );
+  for (const internalSignature of [
+    "videoforge_assert_hosted_v209_ordinary_avatar_source(uuid,uuid,uuid)",
+    "videoforge_v209_ordinary_materialize_legacy_0081(uuid,uuid,uuid,uuid)",
+    "videoforge_v209_ordinary_pair_legacy_0081(uuid,uuid,uuid,uuid,jsonb)",
+    "videoforge_v209_ordinary_load_lane_legacy_0081(uuid,uuid,uuid,text)",
+    "videoforge_v209_ordinary_commit_lane_legacy_0081(uuid,uuid,uuid,text,uuid,text,jsonb,text)",
+    "videoforge_v209_ordinary_begin_send_legacy_0081(uuid,uuid,uuid,text,uuid,text,text)",
+  ]) {
+    assert.ok(!EXPECTED_RUNTIME_FUNCTIONS.includes(internalSignature));
+    assert.ok(
+      compactGrantSource.includes(
+        `REVOKEEXECUTEONFUNCTIONpublic.${internalSignature}FROM:"runtime_role";`,
+      ),
+    );
+  }
   for (const signature of v209RuntimeSignatures) {
     assert.ok(
       compactGrantSource.includes(`GRANTEXECUTEONFUNCTIONpublic.${signature}TO:"runtime_role";`),

@@ -29,6 +29,26 @@ REVOKE EXECUTE ON FUNCTION public.videoforge_materialize_hosted_v209_system_avat
   uuid, uuid, uuid, uuid
 )
 FROM :"runtime_role";
+-- 0081 wraps every ordinary paid seam. Renamed implementations and the internal assertion are
+-- never direct application capabilities, including when an upgrade preserves old function ACLs.
+REVOKE EXECUTE ON FUNCTION public.videoforge_assert_hosted_v209_ordinary_avatar_source(
+  uuid, uuid, uuid
+) FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION public.videoforge_v209_ordinary_materialize_legacy_0081(
+  uuid, uuid, uuid, uuid
+) FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION public.videoforge_v209_ordinary_pair_legacy_0081(
+  uuid, uuid, uuid, uuid, jsonb
+) FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION public.videoforge_v209_ordinary_load_lane_legacy_0081(
+  uuid, uuid, uuid, text
+) FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION public.videoforge_v209_ordinary_commit_lane_legacy_0081(
+  uuid, uuid, uuid, text, uuid, text, jsonb, text
+) FROM :"runtime_role";
+REVOKE EXECUTE ON FUNCTION public.videoforge_v209_ordinary_begin_send_legacy_0081(
+  uuid, uuid, uuid, text, uuid, text, text
+) FROM :"runtime_role";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   hosted_auth_users,
