@@ -35,6 +35,22 @@ const canonical = (value) => {
 const signed = (value) => ({ ...value, receipt_sha256: hash(canonical(value)) });
 const durableBaseline = (observedAt = "2026-09-07T10:00:00.000Z") => {
   const value = {
+    schemaVersion: "videoforge.v2-09-global-completion-baseline/v1",
+    accountCount: 1,
+    workspaceCount: 1,
+    attemptCount: 1,
+    settledNetMicroUsd: 4_250_000,
+    openReservationMicroUsd: 0,
+    reportedUnsettledMicroUsd: 0,
+    completionBaselineMicroUsd: 4_250_000,
+    maximumCompletionBaselineMicroUsd: 15_500_000,
+    derivation: "ALL_PROJECT_ATTEMPTS_SETTLED_PLUS_MAX_OPEN_RESERVATION_OR_REPORTED_ONCE",
+    observedAt,
+  };
+  return { ...value, receiptSha256: hash(canonical(value)) };
+};
+const tenantBaseline = (observedAt = "2026-09-07T10:02:00.000Z") => {
+  const value = {
     schemaVersion: "videoforge.v2-09-completion-baseline/v1",
     accountId: "11111111-1111-4111-8111-111111111111",
     workspaceId: "22222222-2222-4222-8222-222222222222",
@@ -94,8 +110,7 @@ function authority() {
     frozen_lanes: QUALIFIED_LANES.map((lane) => ({ ...lane })),
     production_inputs: {
       worker_name: "videoforge-production-runtime",
-      chrome_auth_state_sha256: hash("chrome-auth"),
-      chrome_request_sha256: hash("chrome-request"),
+      chrome_bootstrap_plan_sha256: hash("chrome-plan"),
       materialization_input_sha256: hash("materialization-input"),
       secret_allowlist_sha256: hash("allowlist"),
       secret_count: 22,
@@ -178,6 +193,8 @@ function receipts(approved = authority(), proof = preflight(approved)) {
       protected_static_inputs: { ...approved.production_inputs },
       config_sha256: hash("config"),
       worker_bundle_sha256: hash("worker"),
+      chrome_auth_state_sha256: hash("chrome-auth"),
+      chrome_request_sha256: hash("chrome-request"),
     }),
     baseline: signed({
       schema_version: "videoforge.v2-09-combined-baseline-receipt/v1",
@@ -186,7 +203,11 @@ function receipts(approved = authority(), proof = preflight(approved)) {
       billing_rows_sha256: hash("billing-rows"),
       completion_baseline_derivation:
         "GENERIC_PROJECT_ATTEMPT_SETTLED_PLUS_MAX_OPEN_RESERVATION_OR_REPORTED_ONCE",
-      completion_baseline_receipt_sha256: durableBaseline("2026-09-07T10:01:00.000Z").receiptSha256,
+      global_completion_baseline_derivation:
+        "ALL_PROJECT_ATTEMPTS_SETTLED_PLUS_MAX_OPEN_RESERVATION_OR_REPORTED_ONCE",
+      completion_baseline_receipt_sha256: tenantBaseline().receiptSha256,
+      global_completion_baseline_receipt_sha256: durableBaseline("2026-09-07T10:01:00.000Z")
+        .receiptSha256,
       completion_baseline_usd: 4.25,
     }),
     configuration: { exact: "opaque-live-configuration" },
@@ -214,6 +235,7 @@ function state(events, { completionAckFails = false, executeCompletionAckFails =
         schema_version: "videoforge.v2-09-combined-outer-state/v1",
         outer_authority_id: approved.authority_id,
         inner_authority_id: null,
+        inner_authority_sha256: null,
         proposal_sha256: approved.proposal_sha256,
         source_commit: approved.source_commit,
         consumed_once: true,
@@ -238,6 +260,11 @@ function state(events, { completionAckFails = false, executeCompletionAckFails =
       operation.result = result;
       operation.result_sha256 = hash(canonical(result));
       if (
+        operationId === "materialize-v209-postdeploy-chrome-auth" &&
+        snapshot.status === "AWAITING_INTERACTIVE_CHROME_LOGIN"
+      )
+        snapshot.status = "CLAIMED";
+      if (
         operationId === "execute-qualified-production" &&
         executeCompletionAckFails &&
         !executeCompletionAckFailed
@@ -247,8 +274,16 @@ function state(events, { completionAckFails = false, executeCompletionAckFails =
       }
       return clone();
     },
-    async bindInnerAuthority({ innerAuthorityId }) {
+    async bindInnerAuthority({ innerAuthorityId, innerAuthoritySha256 }) {
       snapshot.inner_authority_id = innerAuthorityId;
+      snapshot.inner_authority_sha256 = innerAuthoritySha256;
+      return clone();
+    },
+    async awaitInteractiveChromeLogin() {
+      snapshot.status = "AWAITING_INTERACTIVE_CHROME_LOGIN";
+      return clone();
+    },
+    async resumeInteractiveChromeLogin() {
       return clone();
     },
     async enterCleanupOnly() {
@@ -290,11 +325,13 @@ test("one outer authority runs preflight before staging and derives bounded inne
     },
     stageOperation: async ({ operationId }) => {
       events.push(operationId);
-      return operationId.includes("completion-baseline")
-        ? durableBaseline(
-            operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
-          )
-        : { operation_id: operationId };
+      return operationId === "read-postlogin-tenant-completion-baseline"
+        ? tenantBaseline()
+        : operationId.includes("completion-baseline")
+          ? durableBaseline(
+              operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
+            )
+          : { operation_id: operationId };
     },
     materializeStagedReceipts: async () => receiptSet(staged),
     cleanupStaged: async () => {},
@@ -314,11 +351,16 @@ test("one outer authority runs preflight before staging and derives bounded inne
   });
   assert.equal(events[0], "claim");
   assert.equal(events[1], "preflight");
-  assert.deepEqual(events.slice(2, 16), [
+  assert.deepEqual(events.slice(2, -2), [
     "read-pre-mutation-completion-baseline",
+    "materialize-v209-protected-inputs",
     ...OPERATION_IDS.slice(0, 4),
     "read-post-migration-completion-baseline",
-    ...OPERATION_IDS.slice(4, 12),
+    ...OPERATION_IDS.slice(4, 11),
+    "materialize-v209-endpoint-secrets",
+    ...OPERATION_IDS.slice(11, 17),
+    "materialize-v209-postdeploy-chrome-auth",
+    "read-postlogin-tenant-completion-baseline",
   ]);
   assert.deepEqual(events.slice(-2), ["execute", "complete"]);
   assert.equal(result.schema_version, COMBINED_EXECUTION_SCHEMA);
@@ -330,10 +372,15 @@ test("one outer authority runs preflight before staging and derives bounded inne
   assert.equal(received.authority.caps.completion_baseline_usd, 4.25);
   assert.equal(received.authority.caps.completion_stop_usd, 6.25);
   assert.deepEqual(received.configuration, staged.configuration);
-  assert.equal(received.combinedExecution.operations.length, 12);
+  assert.equal(received.combinedExecution.operations.length, 17);
+  assert.equal(
+    received.combinedExecution.inner_authority_sha256,
+    hash(canonical(received.authority)),
+  );
+  assert.match(received.combinedExecution.staged_receipts_sha256, /^sha256:[0-9a-f]{64}$/u);
   assert.deepEqual(
     received.combinedExecution.operations.map(({ operation_id }) => operation_id),
-    OPERATION_IDS.slice(0, 12),
+    OPERATION_IDS.slice(0, 17),
   );
 });
 
@@ -380,11 +427,13 @@ test("tampered staged receipt fails closed before production execution", async (
       },
       stageOperation: async ({ operationId }) => {
         events.push(operationId);
-        return operationId.includes("completion-baseline")
-          ? durableBaseline(
-              operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
-            )
-          : { operation_id: operationId };
+        return operationId === "read-postlogin-tenant-completion-baseline"
+          ? tenantBaseline()
+          : operationId.includes("completion-baseline")
+            ? durableBaseline(
+                operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
+              )
+            : { operation_id: operationId };
       },
       materializeStagedReceipts: async () => receiptSet(staged),
       loadConfiguration: async () => staged.configuration,
@@ -410,11 +459,13 @@ function successfulOptions({ events, outerState, executeProduction }) {
     runPreflight: async () => proof,
     stageOperation: async ({ operationId }) => {
       events.push(operationId);
-      return operationId.includes("completion-baseline")
-        ? durableBaseline(
-            operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
-          )
-        : { operation_id: operationId };
+      return operationId === "read-postlogin-tenant-completion-baseline"
+        ? tenantBaseline()
+        : operationId.includes("completion-baseline")
+          ? durableBaseline(
+              operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
+            )
+          : { operation_id: operationId };
     },
     materializeStagedReceipts: async () => receiptSet(staged),
     loadConfiguration: async () => staged.configuration,
@@ -540,11 +591,13 @@ test("live composition wiring runs fixed injected stages only after preflight pa
       },
       createOuterState: () => state(events),
       stageOperation: async ({ operationId }) =>
-        operationId.includes("completion-baseline")
-          ? durableBaseline(
-              operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
-            )
-          : { operation_id: operationId },
+        operationId === "read-postlogin-tenant-completion-baseline"
+          ? tenantBaseline()
+          : operationId.includes("completion-baseline")
+            ? durableBaseline(
+                operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
+              )
+            : { operation_id: operationId },
       materializeStagedReceipts: async () => receiptSet(staged),
       loadConfiguration: async () => staged.configuration,
       cleanupStaged: async () => {},
@@ -600,11 +653,13 @@ test("a failure after a staged provider mutation runs cleanup and never starts i
         events.push(operationId);
         if (operationId === "create-soulx-production-lane-max-one")
           throw new Error("STAGED_MUTATION_FAILED");
-        return operationId.includes("completion-baseline")
-          ? durableBaseline(
-              operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
-            )
-          : { operation_id: operationId };
+        return operationId === "read-postlogin-tenant-completion-baseline"
+          ? tenantBaseline()
+          : operationId.includes("completion-baseline")
+            ? durableBaseline(
+                operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
+              )
+            : { operation_id: operationId };
       },
       materializeStagedReceipts: async () => receiptSet(staged),
       loadConfiguration: async () => staged.configuration,
@@ -615,4 +670,72 @@ test("a failure after a staged provider mutation runs cleanup and never starts i
   );
   assert.equal(events.includes("inner-execute"), false);
   assert.equal(events.at(-1), "full-stage-cleanup");
+});
+
+test("interactive Chrome login pauses safely and resumes without replaying staged mutations", async () => {
+  const events = [];
+  const outerState = state(events);
+  let authAttempts = 0;
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async ({ authority: inner }) => ({
+      schema_version: "videoforge.v2-09-qualified-production-execution/v1",
+      authority_id: inner.authority_id,
+      status: "SUCCEEDED_CLEAN",
+      operations: [...OPERATION_IDS],
+      paid_dispatch_count: 1,
+      redispatch_count: 0,
+    }),
+  });
+  const baseStageOperation = options.stageOperation;
+  options.stageOperation = async (context) => {
+    if (context.operationId === "materialize-v209-postdeploy-chrome-auth") {
+      authAttempts += 1;
+      if (authAttempts < 2) {
+        const error = new Error("V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN");
+        error.code = error.message;
+        error.resumable = true;
+        throw error;
+      }
+    }
+    return baseStageOperation(context);
+  };
+  const paused = await executeCombinedQualifiedProductionForTest(options);
+  assert.equal(paused.status, "AWAITING_INTERACTIVE_CHROME_LOGIN");
+  assert.equal(events.filter((value) => value === "push-clean-source").length, 1);
+  assert.equal(events.includes("cleanup-only"), false);
+  const resumed = await executeCombinedQualifiedProductionForTest(options);
+  assert.equal(resumed.status, "SUCCEEDED_CLEAN");
+  assert.equal(authAttempts, 2);
+  assert.equal(events.filter((value) => value === "push-clean-source").length, 1);
+});
+
+test("post-login tenant baseline cannot exceed the conservative pre-mutation global baseline", async () => {
+  const events = [];
+  const outerState = state(events);
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async () => events.push("execute"),
+  });
+  const baseStageOperation = options.stageOperation;
+  options.stageOperation = async (context) => {
+    if (context.operationId !== "read-postlogin-tenant-completion-baseline")
+      return baseStageOperation(context);
+    const receipt = tenantBaseline();
+    const unsigned = {
+      ...receipt,
+      completionBaselineMicroUsd: 4_250_001,
+      settledNetMicroUsd: 4_250_001,
+    };
+    delete unsigned.receiptSha256;
+    return { ...unsigned, receiptSha256: hash(canonical(unsigned)) };
+  };
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /V2_09_COMBINED_TENANT_BASELINE_EXCEEDS_GLOBAL/u,
+  );
+  assert.equal(events.includes("execute"), false);
+  assert.equal(events.includes("cleanup-only"), true);
 });

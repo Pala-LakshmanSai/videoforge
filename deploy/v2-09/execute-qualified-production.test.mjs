@@ -38,6 +38,8 @@ const STATE_METHODS = [
   "completeCleanup",
   "completeSuccess",
   "reconcileSuccess",
+  "pauseInteractiveChromeLogin",
+  "resumeInteractiveChromeLogin",
 ];
 const TEST_SOURCE_IDENTITY = Object.freeze({
   schema_version: "videoforge.v2-09-adapter-source-identity/v1",
@@ -130,6 +132,7 @@ function authority(overrides = {}) {
 
 function combinedResume(value, outerAuthorityId = "v2-09-combined-test-authority") {
   const preflightProof = `sha256:${"3".repeat(64)}`;
+  const stagedReceiptsSha256 = hash("complete-staged-receipts");
   const priorResults = [];
   const operations = COMBINED_PRECOMPLETED_OPERATION_IDS.map((operationId) => {
     const result = resultFor(operationId, value, "SUCCESS", priorResults);
@@ -141,6 +144,8 @@ function combinedResume(value, outerAuthorityId = "v2-09-combined-test-authority
     execution_marker: COMBINED_EXECUTION_MARKER,
     outer_authority_id: outerAuthorityId,
     preflight_proof_sha256: preflightProof,
+    staged_receipts_sha256: stagedReceiptsSha256,
+    inner_authority_sha256: hash(canonical(value)),
     operations,
   };
   return { ...unsigned, receipt_sha256: hash(canonical(unsigned)) };
@@ -149,8 +154,9 @@ function combinedResume(value, outerAuthorityId = "v2-09-combined-test-authority
 function combinedAuthority(overrides = {}) {
   const outerAuthorityId = "v2-09-combined-test-authority";
   const preflightProof = `sha256:${"3".repeat(64)}`;
+  const stagedReceiptsSha256 = hash("complete-staged-receipts");
   const innerAuthorityId = `v2-09-inner-${hash(
-    canonical({ outerAuthorityId, preflightProof }),
+    canonical({ outerAuthorityId, preflightProof, stagedReceiptsSha256 }),
   ).slice(7, 31)}`;
   return authority({ authority_id: innerAuthorityId, ...overrides });
 }
@@ -558,6 +564,14 @@ function adapters({ failAt, resultOverrides = {}, calls = [] } = {}) {
     reconcileSuccess: async ({ authorityId }) => ({
       authority_id: authorityId,
       status: "SUCCEEDED_CLEAN",
+    }),
+    pauseInteractiveChromeLogin: async ({ authorityId }) => ({
+      authority_id: authorityId,
+      status: "AWAITING_INTERACTIVE_CHROME_LOGIN",
+    }),
+    resumeInteractiveChromeLogin: async ({ authorityId }) => ({
+      authority_id: authorityId,
+      status: "CLAIMED",
     }),
   };
   return sealAdapters({ operations, state });

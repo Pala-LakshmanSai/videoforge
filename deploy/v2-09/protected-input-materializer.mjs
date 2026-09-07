@@ -279,6 +279,7 @@ export async function materializeV209ProtectedInputs({
   authorityId,
   configuration,
   materialization,
+  derivedOwnerUrl,
   runPsql,
   randomBytesImpl = randomBytes,
 }) {
@@ -299,7 +300,21 @@ export async function materializeV209ProtectedInputs({
     canonical(roleNames) !== canonical(expectedRoles)
   )
     fail("ROLE_INVALID");
-  const ownerUrl = deriveOwnerDatabaseUrl(materialization.databaseOwner);
+  const ownerUrl =
+    derivedOwnerUrl === undefined
+      ? deriveOwnerDatabaseUrl(materialization.databaseOwner)
+      : String(derivedOwnerUrl);
+  try {
+    const parsedOwner = new URL(ownerUrl);
+    if (
+      !new Set(["postgres:", "postgresql:"]).has(parsedOwner.protocol) ||
+      !parsedOwner.username ||
+      !parsedOwner.password
+    )
+      fail("OWNER_URL_INVALID");
+  } catch {
+    fail("OWNER_URL_INVALID");
+  }
   const next = () => {
     const bytes = randomBytesImpl(32);
     if (!Buffer.isBuffer(bytes) || bytes.length !== 32) fail("RANDOM_INVALID");

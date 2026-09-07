@@ -15,8 +15,7 @@ import { pathToFileURL } from "node:url";
 export const AUTHORITY_SCHEMA = "videoforge.v2-09-qualified-production-authority/v1";
 export const DRY_RUN_SCHEMA = "videoforge.v2-09-qualified-production-dry-run/v1";
 export const EXECUTION_SCHEMA = "videoforge.v2-09-qualified-production-execution/v1";
-export const COMBINED_RESUME_SCHEMA =
-  "videoforge.v2-09-qualified-production-combined-resume/v1";
+export const COMBINED_RESUME_SCHEMA = "videoforge.v2-09-qualified-production-combined-resume/v1";
 export const COMBINED_EXECUTION_MARKER = "V2_09_PREFLIGHT_THEN_QUALIFIED_PRODUCTION_ONCE";
 export const BRANCH = "codex/serverless-v2-roadmap-v4";
 export const PUSH_REF = `refs/heads/${BRANCH}`;
@@ -147,7 +146,7 @@ export const OPERATION_IDS = Object.freeze([
 export const COMBINED_PRECOMPLETED_OPERATION_IDS = Object.freeze(
   NORMAL_OPERATIONS.slice(
     0,
-    NORMAL_OPERATIONS.findIndex(({ id }) => id === "render-qualified-production-config") + 1,
+    NORMAL_OPERATIONS.findIndex(({ id }) => id === "import-v209-qualified-activation") + 1,
   ).map(({ id }) => id),
 );
 
@@ -163,6 +162,8 @@ const STATE_METHODS = Object.freeze([
   "completeCleanup",
   "completeSuccess",
   "reconcileSuccess",
+  "pauseInteractiveChromeLogin",
+  "resumeInteractiveChromeLogin",
 ]);
 
 function canonical(value) {
@@ -182,17 +183,21 @@ function assertCombinedResume(combinedExecution, authority) {
   if (
     !exactKeys(combinedExecution, [
       "execution_marker",
+      "inner_authority_sha256",
       "operations",
       "outer_authority_id",
       "preflight_proof_sha256",
       "receipt_sha256",
       "schema_version",
+      "staged_receipts_sha256",
     ]) ||
     combinedExecution.schema_version !== COMBINED_RESUME_SCHEMA ||
     combinedExecution.execution_marker !== COMBINED_EXECUTION_MARKER ||
     !AUTHORITY_ID.test(combinedExecution.outer_authority_id ?? "") ||
     combinedExecution.outer_authority_id === authority.authority_id ||
     !HASH.test(combinedExecution.preflight_proof_sha256 ?? "") ||
+    !HASH.test(combinedExecution.staged_receipts_sha256 ?? "") ||
+    !HASH.test(combinedExecution.inner_authority_sha256 ?? "") ||
     !HASH.test(combinedExecution.receipt_sha256 ?? "") ||
     !Array.isArray(combinedExecution.operations) ||
     combinedExecution.operations.length !== COMBINED_PRECOMPLETED_OPERATION_IDS.length
@@ -202,9 +207,12 @@ function assertCombinedResume(combinedExecution, authority) {
     canonical({
       outerAuthorityId: combinedExecution.outer_authority_id,
       preflightProof: combinedExecution.preflight_proof_sha256,
+      stagedReceiptsSha256: combinedExecution.staged_receipts_sha256,
     }),
   ).slice(7, 31)}`;
   if (authority.authority_id !== expectedInnerId) fail("V2_09_COMBINED_INNER_ID_INVALID");
+  if (sha256(canonical(authority)) !== combinedExecution.inner_authority_sha256)
+    fail("V2_09_COMBINED_INNER_AUTHORITY_HASH_INVALID");
   const unsigned = { ...combinedExecution };
   delete unsigned.receipt_sha256;
   if (sha256(canonical(unsigned)) !== combinedExecution.receipt_sha256)
@@ -1352,11 +1360,7 @@ async function executeWithInjectedAdapters({
   const authorityId = authority.authority_id;
   const results = [];
   const combinedResume =
-    mode === "EXECUTE" && combinedExecution !== undefined
-      ? assertCombinedResume(combinedExecution, authority)
-      : null;
-  if (mode !== "EXECUTE" && combinedExecution !== undefined)
-    fail("V2_09_COMBINED_RESUME_MODE_INVALID");
+    combinedExecution !== undefined ? assertCombinedResume(combinedExecution, authority) : null;
 
   if (mode === "CLEANUP_ONLY") {
     assertAuthorityResponse(
@@ -1650,18 +1654,34 @@ export async function executeQualifiedProduction(options = {}) {
   if (
     Object.keys(options).some(
       (key) =>
-        !["authority", "combinedExecution", "configuration", "mode", "sourceCommit"].includes(
-          key,
-        ),
+        !["authority", "combinedExecution", "configuration", "mode", "sourceCommit"].includes(key),
     )
   )
     fail("V2_09_LIVE_OPTION_INVALID");
   if (!exactKeys(options.configuration, LIVE_CONFIGURATION_KEYS))
     fail("V2_09_LIVE_CONFIGURATION_REQUIRED");
-  const { createConcreteQualifiedProductionAdapters } = await import(
-    "./concrete-qualified-production-adapters.mjs"
-  );
-  const adapters = createConcreteQualifiedProductionAdapters(options.configuration);
+  const {
+    createConcreteQualifiedProductionAdapters,
+    createConcreteQualifiedProductionResumedAdapters,
+  } = await import("./concrete-qualified-production-adapters.mjs");
+  const priorResults =
+    options.combinedExecution === undefined
+      ? null
+      : Object.fromEntries(
+          options.combinedExecution.operations.map(({ operation_id, result }) => [
+            operation_id,
+            result,
+          ]),
+        );
+  const adapters =
+    options.combinedExecution === undefined
+      ? createConcreteQualifiedProductionAdapters(options.configuration)
+      : createConcreteQualifiedProductionResumedAdapters(options.configuration, {
+          combinedExecution: options.combinedExecution,
+          executionAuthority: options.authority,
+          journalAuthorityId: options.combinedExecution.outer_authority_id,
+          priorResults,
+        });
   return executeWithInjectedAdapters({
     mode: options.mode,
     authority: options.authority,

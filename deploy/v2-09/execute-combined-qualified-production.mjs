@@ -33,9 +33,10 @@ import {
 import { runV209ReadOnlyPreflight, secureApiKey } from "./read-only-preflight.mjs";
 import {
   MAXIMUM_COMPLETION_BASELINE_MICRO_USD,
+  renderGlobalCompletionBaselineSql,
   renderPostMigrationCompletionBaselineSql,
-  renderPreMutationCompletionBaselineSql,
   validateCompletionBaselineReceipt,
+  validateGlobalCompletionBaselineReceipt,
 } from "./read-durable-completion-baseline.mjs";
 
 export const COMBINED_AUTHORITY_SCHEMA =
@@ -47,9 +48,14 @@ export const OUTER_STATE_SCHEMA = "videoforge.v2-09-combined-outer-state/v1";
 export const STAGED_OPERATION_IDS = Object.freeze([
   "run-read-only-preflight",
   "read-pre-mutation-completion-baseline",
+  "materialize-v209-protected-inputs",
   ...COMBINED_PRECOMPLETED_OPERATION_IDS.slice(0, 4),
   "read-post-migration-completion-baseline",
-  ...COMBINED_PRECOMPLETED_OPERATION_IDS.slice(4),
+  ...COMBINED_PRECOMPLETED_OPERATION_IDS.slice(4, 11),
+  "materialize-v209-endpoint-secrets",
+  ...COMBINED_PRECOMPLETED_OPERATION_IDS.slice(11),
+  "materialize-v209-postdeploy-chrome-auth",
+  "read-postlogin-tenant-completion-baseline",
   "derive-qualified-production-authority",
   "execute-qualified-production",
 ]);
@@ -65,6 +71,8 @@ const BILLING_RECEIPT_SCHEMA = "videoforge.v2-09-combined-baseline-receipt/v1";
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const COMPLETION_BASELINE_DERIVATION =
   "GENERIC_PROJECT_ATTEMPT_SETTLED_PLUS_MAX_OPEN_RESERVATION_OR_REPORTED_ONCE";
+const GLOBAL_COMPLETION_BASELINE_DERIVATION =
+  "ALL_PROJECT_ATTEMPTS_SETTLED_PLUS_MAX_OPEN_RESERVATION_OR_REPORTED_ONCE";
 
 function fail(code) {
   throw new Error(code);
@@ -295,8 +303,7 @@ export function validateCombinedAuthority(
   const inputs = authority.production_inputs;
   if (
     !exactKeys(inputs, [
-      "chrome_auth_state_sha256",
-      "chrome_request_sha256",
+      "chrome_bootstrap_plan_sha256",
       "materialization_input_sha256",
       "secret_allowlist_sha256",
       "secret_count",
@@ -304,13 +311,11 @@ export function validateCombinedAuthority(
     ]) ||
     inputs.worker_name !== "videoforge-production-runtime" ||
     [
-      inputs.chrome_auth_state_sha256,
-      inputs.chrome_request_sha256,
+      inputs.chrome_bootstrap_plan_sha256,
       inputs.materialization_input_sha256,
       inputs.secret_allowlist_sha256,
     ].some((value) => !HASH.test(value ?? "")) ||
-    !Number.isSafeInteger(inputs.secret_count) ||
-    inputs.secret_count <= 0
+    inputs.secret_count !== 22
   )
     fail("V2_09_COMBINED_PROTECTED_INPUT_INVALID");
   return authority;
@@ -324,10 +329,12 @@ function validateStagedReceipts(staged, authority, preflight) {
       "configuration",
       "lanes",
       "media_release",
+      "outer_receipts_sha256",
       "production",
       "schema_version",
     ]) ||
     staged.schema_version !== STAGED_RECEIPTS_SCHEMA ||
+    !HASH.test(staged.outer_receipts_sha256 ?? "") ||
     !exactKeys(staged.adapter, [
       "adapter_set_sha256",
       "preflight_proof_sha256",
@@ -395,13 +402,17 @@ function validateStagedReceipts(staged, authority, preflight) {
       "receipt_sha256",
       "schema_version",
       "worker_bundle_sha256",
+      "chrome_auth_state_sha256",
+      "chrome_request_sha256",
     ]) ||
     production.schema_version !== PRODUCTION_RECEIPT_SCHEMA ||
     production.preflight_proof_sha256 !== preflight.proofSha256 ||
     JSON.stringify(production.protected_static_inputs) !==
       JSON.stringify(authority.production_inputs) ||
     !HASH.test(production.config_sha256 ?? "") ||
-    !HASH.test(production.worker_bundle_sha256 ?? "")
+    !HASH.test(production.worker_bundle_sha256 ?? "") ||
+    !HASH.test(production.chrome_auth_state_sha256 ?? "") ||
+    !HASH.test(production.chrome_request_sha256 ?? "")
   )
     fail("V2_09_COMBINED_PRODUCTION_RECEIPT_INVALID");
   assertSelfHash(production, "V2_09_COMBINED_PRODUCTION_RECEIPT_HASH_INVALID");
@@ -414,6 +425,8 @@ function validateStagedReceipts(staged, authority, preflight) {
       "completion_baseline_derivation",
       "completion_baseline_receipt_sha256",
       "completion_baseline_usd",
+      "global_completion_baseline_receipt_sha256",
+      "global_completion_baseline_derivation",
       "preflight_proof_sha256",
       "receipt_sha256",
       "schema_version",
@@ -423,7 +436,9 @@ function validateStagedReceipts(staged, authority, preflight) {
     baseline.billing_baseline_usd !== preflight.runpod?.billing?.cumulativeEndpointBillingUsd ||
     baseline.billing_rows_sha256 !== preflight.runpod?.billing?.rowsSha256 ||
     baseline.completion_baseline_derivation !== COMPLETION_BASELINE_DERIVATION ||
+    baseline.global_completion_baseline_derivation !== GLOBAL_COMPLETION_BASELINE_DERIVATION ||
     !HASH.test(baseline.completion_baseline_receipt_sha256 ?? "") ||
+    !HASH.test(baseline.global_completion_baseline_receipt_sha256 ?? "") ||
     !finiteNonNegative(baseline.completion_baseline_usd) ||
     baseline.completion_baseline_usd + INCREMENTAL_CAP_USD > COMPLETION_CAP_USD
   )
@@ -443,8 +458,16 @@ export function deriveQualifiedProductionAuthority(authority, preflight, staged)
   const inputs = authority.production_inputs;
   const baseline = staged.baseline;
   const media = staged.media_release;
+  // Bind the inner authority to every staged fact, not merely the outer ID and preflight. This
+  // makes a changed lane, persistence, media, baseline, configuration, or adapter receipt derive a
+  // different single-use authority before the Cloudflare/Chrome suffix can start.
+  const stagedReceiptsSha256 = sha256(canonical(staged));
   const innerAuthorityId = `v2-09-inner-${sha256(
-    canonical({ outerAuthorityId: authority.authority_id, preflightProof: preflight.proofSha256 }),
+    canonical({
+      outerAuthorityId: authority.authority_id,
+      preflightProof: preflight.proofSha256,
+      stagedReceiptsSha256,
+    }),
   ).slice(7, 31)}`;
   return Object.freeze({
     authority_id: innerAuthorityId,
@@ -481,8 +504,8 @@ export function deriveQualifiedProductionAuthority(authority, preflight, staged)
     }),
     production: Object.freeze({
       worker_name: inputs.worker_name,
-      chrome_auth_state_sha256: inputs.chrome_auth_state_sha256,
-      chrome_request_sha256: inputs.chrome_request_sha256,
+      chrome_auth_state_sha256: staged.production.chrome_auth_state_sha256,
+      chrome_request_sha256: staged.production.chrome_request_sha256,
       secret_allowlist_sha256: inputs.secret_allowlist_sha256,
       secret_count: inputs.secret_count,
       config_sha256: staged.production.config_sha256,
@@ -517,6 +540,7 @@ function validateOuterState(value, authority) {
     !exactKeys(value, [
       "consumed_once",
       "inner_authority_id",
+      "inner_authority_sha256",
       "operations",
       "outer_authority_id",
       "proposal_sha256",
@@ -529,7 +553,13 @@ function validateOuterState(value, authority) {
     value.proposal_sha256 !== authority.proposal_sha256 ||
     value.source_commit !== authority.source_commit ||
     value.consumed_once !== true ||
-    !["CLAIMED", "CLEANUP_ONLY", "FAILED_CLEAN", "SUCCEEDED_CLEAN"].includes(value.status) ||
+    ![
+      "CLAIMED",
+      "AWAITING_INTERACTIVE_CHROME_LOGIN",
+      "CLEANUP_ONLY",
+      "FAILED_CLEAN",
+      "SUCCEEDED_CLEAN",
+    ].includes(value.status) ||
     !Array.isArray(value.operations) ||
     value.operations.length !== STAGED_OPERATION_IDS.length ||
     value.operations.some(
@@ -542,7 +572,9 @@ function validateOuterState(value, authority) {
         (operation.status === "COMPLETED" &&
           sha256(canonical(operation.result)) !== operation.result_sha256),
     ) ||
-    (value.inner_authority_id !== null && !AUTHORITY_ID.test(value.inner_authority_id))
+    (value.inner_authority_id !== null && !AUTHORITY_ID.test(value.inner_authority_id)) ||
+    (value.inner_authority_sha256 !== null && !HASH.test(value.inner_authority_sha256)) ||
+    (value.inner_authority_id === null) !== (value.inner_authority_sha256 === null)
   )
     fail("V2_09_COMBINED_OUTER_STATE_INVALID");
   return value;
@@ -728,6 +760,7 @@ export function createDurableOuterState(statePath) {
         schema_version: OUTER_STATE_SCHEMA,
         outer_authority_id: authority.authority_id,
         inner_authority_id: null,
+        inner_authority_sha256: null,
         proposal_sha256: authority.proposal_sha256,
         source_commit: authority.source_commit,
         consumed_once: true,
@@ -758,17 +791,37 @@ export function createDurableOuterState(statePath) {
       operation.status = "COMPLETED";
       operation.result = result;
       operation.result_sha256 = sha256(canonical(result));
+      if (
+        operationId === "materialize-v209-postdeploy-chrome-auth" &&
+        value.status === "AWAITING_INTERACTIVE_CHROME_LOGIN"
+      )
+        value.status = "CLAIMED";
       return write(value);
     },
-    bindInnerAuthority({ innerAuthorityId }) {
+    bindInnerAuthority({ innerAuthorityId, innerAuthoritySha256 }) {
       const value = read();
       if (
         !AUTHORITY_ID.test(innerAuthorityId ?? "") ||
-        (value.inner_authority_id !== null && value.inner_authority_id !== innerAuthorityId)
+        !HASH.test(innerAuthoritySha256 ?? "") ||
+        (value.inner_authority_id !== null && value.inner_authority_id !== innerAuthorityId) ||
+        (value.inner_authority_sha256 !== null &&
+          value.inner_authority_sha256 !== innerAuthoritySha256)
       )
         fail("V2_09_COMBINED_INNER_ID_BINDING_INVALID");
       value.inner_authority_id = innerAuthorityId;
+      value.inner_authority_sha256 = innerAuthoritySha256;
       return write(value);
+    },
+    awaitInteractiveChromeLogin() {
+      const value = read();
+      value.status = "AWAITING_INTERACTIVE_CHROME_LOGIN";
+      return write(value);
+    },
+    resumeInteractiveChromeLogin() {
+      const value = read();
+      if (value.status !== "AWAITING_INTERACTIVE_CHROME_LOGIN")
+        fail("V2_09_COMBINED_CHROME_RESUME_INVALID");
+      return value;
     },
     enterCleanupOnly() {
       const value = read();
@@ -816,6 +869,26 @@ function assertTerminalExecution(value, innerAuthorityId) {
   return value;
 }
 
+function isInteractiveChromePause(error) {
+  return (
+    error instanceof Error &&
+    error.message === "V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN" &&
+    error.resumable === true &&
+    error.code === error.message
+  );
+}
+
+function awaitingChromeReceipt(authority, state, preflight) {
+  return Object.freeze({
+    schema_version: COMBINED_EXECUTION_SCHEMA,
+    authority_id: authority.authority_id,
+    inner_authority_id: state.inner_authority_id,
+    status: "AWAITING_INTERACTIVE_CHROME_LOGIN",
+    preflight_proof_sha256: preflight.proofSha256,
+    production_execution: null,
+  });
+}
+
 async function beginAndRun({ authority, operationId, outerState, run }) {
   let state = validateOuterState(await outerState.reconcileSuccess(), authority);
   const existing = state.operations.find(({ id }) => id === operationId);
@@ -854,15 +927,27 @@ async function reconstructInnerForCleanup({
   validateAuthority(inner, { sourceCommit, now, cleanupOnly: true });
   if (state.inner_authority_id !== inner.authority_id)
     fail("V2_09_COMBINED_INNER_ID_BINDING_INVALID");
-  return { configuration, inner };
+  return {
+    configuration,
+    inner,
+    combinedExecution: combinedExecutionReceipt(
+      authority,
+      preflight,
+      results,
+      stagedDocument(results, configuration),
+      inner,
+    ),
+  };
 }
 
-function combinedExecutionReceipt(authority, preflight, prefixResults) {
+function combinedExecutionReceipt(authority, preflight, prefixResults, staged, innerAuthority) {
   const unsigned = {
     schema_version: COMBINED_RESUME_SCHEMA,
     execution_marker: COMBINED_EXECUTION_MARKER,
     outer_authority_id: authority.authority_id,
     preflight_proof_sha256: preflight.proofSha256,
+    staged_receipts_sha256: sha256(canonical(staged)),
+    inner_authority_sha256: sha256(canonical(innerAuthority)),
     operations: COMBINED_PRECOMPLETED_OPERATION_IDS.map((operationId) => ({
       operation_id: operationId,
       result: prefixResults[operationId],
@@ -874,11 +959,7 @@ function combinedExecutionReceipt(authority, preflight, prefixResults) {
 
 function assertStableCompletionBaseline(before, after) {
   for (const value of [before, after])
-    validateCompletionBaselineReceipt(value, {
-      accountId: value?.accountId,
-      workspaceId: value?.workspaceId,
-      maximumMicroUsd: MAXIMUM_COMPLETION_BASELINE_MICRO_USD,
-    });
+    validateGlobalCompletionBaselineReceipt(value, MAXIMUM_COMPLETION_BASELINE_MICRO_USD);
   const unstableKeys = new Set(["observedAt", "receiptSha256"]);
   const stableBefore = Object.fromEntries(
     Object.entries(before).filter(([key]) => !unstableKeys.has(key)),
@@ -892,11 +973,7 @@ function assertStableCompletionBaseline(before, after) {
 }
 
 function assertPreMutationCompletionBaseline(value) {
-  return validateCompletionBaselineReceipt(value, {
-    accountId: value?.accountId,
-    workspaceId: value?.workspaceId,
-    maximumMicroUsd: MAXIMUM_COMPLETION_BASELINE_MICRO_USD,
-  });
+  return validateGlobalCompletionBaselineReceipt(value, MAXIMUM_COMPLETION_BASELINE_MICRO_USD);
 }
 
 export async function executeCombinedQualifiedProductionForTest({
@@ -926,6 +1003,8 @@ export async function executeCombinedQualifiedProductionForTest({
       "beginOperation",
       "completeOperation",
       "bindInnerAuthority",
+      "awaitInteractiveChromeLogin",
+      "resumeInteractiveChromeLogin",
       "enterCleanupOnly",
       "completeSuccess",
       "completeCleanup",
@@ -947,6 +1026,8 @@ export async function executeCombinedQualifiedProductionForTest({
       configuration,
     );
     const inner = deriveQualifiedProductionAuthority(authority, preflight, staged);
+    if (state.inner_authority_sha256 !== sha256(canonical(inner)))
+      fail("V2_09_COMBINED_INNER_HASH_BINDING_INVALID");
     const execution = assertTerminalExecution(
       completedResult(state, "execute-qualified-production"),
       inner.authority_id,
@@ -962,13 +1043,53 @@ export async function executeCombinedQualifiedProductionForTest({
   }
   if (state.status === "FAILED_CLEAN") fail("V2_09_COMBINED_FAILED_CLEAN");
 
+  if (state.status === "AWAITING_INTERACTIVE_CHROME_LOGIN") {
+    const preflight = assertPreflight(completedResult(state, "run-read-only-preflight"), authority);
+    const resumedResults = Object.fromEntries(
+      state.operations
+        .filter(({ result }) => result !== null)
+        .map(({ id, result }) => [id, result]),
+    );
+    if (state.inner_authority_id === null) {
+      const chromeOperation = state.operations.find(
+        ({ id }) => id === "materialize-v209-postdeploy-chrome-auth",
+      );
+      if (chromeOperation?.status !== "STARTED") fail("V2_09_COMBINED_CHROME_RESUME_INVALID");
+      validateOuterState(await outerState.resumeInteractiveChromeLogin(), authority);
+      let chromeResult;
+      try {
+        chromeResult = await stageOperation({
+          operationId: "materialize-v209-postdeploy-chrome-auth",
+          authority,
+          preflight,
+          priorResults: resumedResults,
+          resumeInteractiveChrome: true,
+        });
+      } catch (error) {
+        if (isInteractiveChromePause(error))
+          return awaitingChromeReceipt(authority, state, preflight);
+        throw error;
+      }
+      validateOuterState(
+        await outerState.completeOperation({
+          operationId: "materialize-v209-postdeploy-chrome-auth",
+          result: chromeResult,
+        }),
+        authority,
+      );
+      state = validateOuterState(await outerState.reconcileSuccess(), authority);
+      // Continue through the ordinary idempotent coordinator below. Completed prefix operations
+      // are read from the durable outer state and are never replayed.
+    } else fail("V2_09_COMBINED_CHROME_RESUME_INVALID");
+  }
+
   const interrupted = state.operations.find(({ status }) => status === "STARTED");
   if (state.status === "CLEANUP_ONLY" || interrupted) {
     const executeStatus = state.operations.find(
       ({ id }) => id === "execute-qualified-production",
     )?.status;
     if (state.inner_authority_id && ["STARTED", "COMPLETED"].includes(executeStatus)) {
-      const { configuration, inner } = await reconstructInnerForCleanup({
+      const { configuration, inner, combinedExecution } = await reconstructInnerForCleanup({
         authority,
         sourceCommit,
         now,
@@ -980,6 +1101,7 @@ export async function executeCombinedQualifiedProductionForTest({
         configuration,
         mode: "CLEANUP_ONLY",
         sourceCommit,
+        combinedExecution,
       });
     } else {
       await cleanupStaged({ authority, state });
@@ -1025,6 +1147,18 @@ export async function executeCombinedQualifiedProductionForTest({
         }),
     });
     assertPreMutationCompletionBaseline(results["read-pre-mutation-completion-baseline"]);
+    results["materialize-v209-protected-inputs"] = await beginAndRun({
+      authority,
+      operationId: "materialize-v209-protected-inputs",
+      outerState,
+      run: () =>
+        stageOperation({
+          operationId: "materialize-v209-protected-inputs",
+          authority,
+          preflight,
+          priorResults: { ...results },
+        }),
+    });
     for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS.slice(0, 4)) {
       results[operationId] = await beginAndRun({
         authority,
@@ -1050,7 +1184,7 @@ export async function executeCombinedQualifiedProductionForTest({
       results["read-pre-mutation-completion-baseline"],
       results["read-post-migration-completion-baseline"],
     );
-    for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS.slice(4)) {
+    for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS.slice(4, 11)) {
       results[operationId] = await beginAndRun({
         authority,
         operationId,
@@ -1059,21 +1193,80 @@ export async function executeCombinedQualifiedProductionForTest({
           stageOperation({ operationId, authority, preflight, priorResults: { ...results } }),
       });
     }
+    results["materialize-v209-endpoint-secrets"] = await beginAndRun({
+      authority,
+      operationId: "materialize-v209-endpoint-secrets",
+      outerState,
+      run: () =>
+        stageOperation({
+          operationId: "materialize-v209-endpoint-secrets",
+          authority,
+          preflight,
+          priorResults: { ...results },
+        }),
+    });
+    for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS.slice(11)) {
+      results[operationId] = await beginAndRun({
+        authority,
+        operationId,
+        outerState,
+        run: () =>
+          stageOperation({ operationId, authority, preflight, priorResults: { ...results } }),
+      });
+    }
+    results["materialize-v209-postdeploy-chrome-auth"] = await beginAndRun({
+      authority,
+      operationId: "materialize-v209-postdeploy-chrome-auth",
+      outerState,
+      run: () =>
+        stageOperation({
+          operationId: "materialize-v209-postdeploy-chrome-auth",
+          authority,
+          preflight,
+          priorResults: { ...results },
+        }),
+    });
+    results["read-postlogin-tenant-completion-baseline"] = await beginAndRun({
+      authority,
+      operationId: "read-postlogin-tenant-completion-baseline",
+      outerState,
+      run: () =>
+        stageOperation({
+          operationId: "read-postlogin-tenant-completion-baseline",
+          authority,
+          preflight,
+          priorResults: { ...results },
+        }),
+    });
+    const tenantBaseline = results["read-postlogin-tenant-completion-baseline"];
+    validateCompletionBaselineReceipt(tenantBaseline, {
+      accountId: tenantBaseline?.accountId,
+      workspaceId: tenantBaseline?.workspaceId,
+      maximumMicroUsd: MAXIMUM_COMPLETION_BASELINE_MICRO_USD,
+    });
+    if (
+      tenantBaseline.completionBaselineMicroUsd >
+      results["read-post-migration-completion-baseline"].completionBaselineMicroUsd
+    )
+      fail("V2_09_COMBINED_TENANT_BASELINE_EXCEEDS_GLOBAL");
     const configuration = await loadConfiguration();
     results["derive-qualified-production-authority"] = await beginAndRun({
       authority,
       operationId: "derive-qualified-production-authority",
       outerState,
       run: async () => ({
-        staged_receipts: await materializeStagedReceipts({
-          authority,
-          preflight,
-          baseline: results["read-post-migration-completion-baseline"],
-          prefixResults: Object.fromEntries(
-            COMBINED_PRECOMPLETED_OPERATION_IDS.map((id) => [id, results[id]]),
-          ),
-          configuration,
-        }),
+        staged_receipts: {
+          ...(await materializeStagedReceipts({
+            authority,
+            preflight,
+            baseline: results["read-post-migration-completion-baseline"],
+            prefixResults: Object.fromEntries(
+              COMBINED_PRECOMPLETED_OPERATION_IDS.map((id) => [id, results[id]]),
+            ),
+            configuration,
+          })),
+          outer_receipts_sha256: sha256(canonical(results)),
+        },
       }),
     });
     const staged = stagedDocument(results, configuration);
@@ -1085,7 +1278,10 @@ export async function executeCombinedQualifiedProductionForTest({
       const operation = state.operations.find(({ id }) => id === "execute-qualified-production");
       if (operation.status !== "PENDING") fail("V2_09_COMBINED_INNER_ID_BINDING_INVALID");
       state = validateOuterState(
-        await outerState.bindInnerAuthority({ innerAuthorityId: innerAuthority.authority_id }),
+        await outerState.bindInnerAuthority({
+          innerAuthorityId: innerAuthority.authority_id,
+          innerAuthoritySha256: sha256(canonical(innerAuthority)),
+        }),
         authority,
       );
     }
@@ -1099,7 +1295,13 @@ export async function executeCombinedQualifiedProductionForTest({
           configuration,
           mode: "EXECUTE",
           sourceCommit,
-          combinedExecution: combinedExecutionReceipt(authority, preflight, results),
+          combinedExecution: combinedExecutionReceipt(
+            authority,
+            preflight,
+            results,
+            staged,
+            innerAuthority,
+          ),
         }),
     });
     assertTerminalExecution(results["execute-qualified-production"], innerAuthority.authority_id);
@@ -1130,13 +1332,35 @@ export async function executeCombinedQualifiedProductionForTest({
     });
   } catch (error) {
     const latest = validateOuterState(await outerState.reconcileSuccess(), authority);
+    if (isInteractiveChromePause(error)) {
+      const waitingAtChromeAuth =
+        latest.inner_authority_id === null &&
+        latest.operations.find(({ id }) => id === "materialize-v209-postdeploy-chrome-auth")
+          ?.status === "STARTED";
+      const waitingInsideExecution =
+        latest.inner_authority_id !== null &&
+        latest.operations.find(({ id }) => id === "execute-qualified-production")?.status ===
+          "STARTED";
+      if (!waitingAtChromeAuth && !waitingInsideExecution) throw error;
+      const paused = validateOuterState(await outerState.awaitInteractiveChromeLogin(), authority);
+      return awaitingChromeReceipt(authority, paused, results["run-read-only-preflight"]);
+    }
+    if (
+      error instanceof Error &&
+      /^V2_09_ROLLOUT_FAILED_CLEAN(?::|$)/u.test(error.message) &&
+      latest.inner_authority_id !== null
+    ) {
+      validateOuterState(await outerState.enterCleanupOnly(), authority);
+      validateOuterState(await outerState.completeCleanup(), authority);
+      throw error;
+    }
     if (latest.status !== "SUCCEEDED_CLEAN") {
       validateOuterState(await outerState.enterCleanupOnly(), authority);
       const innerStarted = latest.operations.find(
         ({ id }) => id === "execute-qualified-production",
       )?.status;
       if (latest.inner_authority_id && ["STARTED", "COMPLETED"].includes(innerStarted)) {
-        const { configuration, inner } = await reconstructInnerForCleanup({
+        const { configuration, inner, combinedExecution } = await reconstructInnerForCleanup({
           authority,
           sourceCommit,
           now,
@@ -1148,6 +1372,7 @@ export async function executeCombinedQualifiedProductionForTest({
           configuration,
           mode: "CLEANUP_ONLY",
           sourceCommit,
+          combinedExecution,
         });
       } else if (
         latest.operations.some(
@@ -1227,6 +1452,26 @@ async function psqlJson(configuration, urlFile, sql) {
   }
 }
 
+async function psqlJsonWithUrl(configuration, databaseUrl, sql) {
+  const { spawnSync } = await import("node:child_process");
+  const result = spawnSync(
+    "psql",
+    ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--quiet", "--tuples-only", "--no-align"],
+    {
+      cwd: configuration.root,
+      encoding: "utf8",
+      env: postgresEnvironment(databaseUrl),
+      input: sql,
+    },
+  );
+  if (result.status !== 0) fail("V2_09_COMBINED_BASELINE_READ_FAILED");
+  try {
+    return JSON.parse(result.stdout.trim());
+  } catch {
+    fail("V2_09_COMBINED_BASELINE_READ_INVALID");
+  }
+}
+
 function stagingAuthority(outer, preflight, baseline, mediaWorker) {
   const completion = baseline?.completionBaselineMicroUsd ?? 0;
   return {
@@ -1276,8 +1521,17 @@ function stagingAuthority(outer, preflight, baseline, mediaWorker) {
   };
 }
 
-function createLiveMaterializer(options, loadConfiguration) {
+function createLiveMaterializer(options, loadConfiguration, loadMaterializationPlan) {
   let runtime;
+  let ownerUrl;
+  const readOwnerUrlOnce = async () => {
+    if (ownerUrl !== undefined) return ownerUrl;
+    const { deriveOwnerDatabaseUrl } = await import("./protected-input-materializer.mjs");
+    ownerUrl = deriveOwnerDatabaseUrl(
+      (await loadMaterializationPlan()).protected_input_materialization.databaseOwner,
+    );
+    return ownerUrl;
+  };
   const initialize = async (authority, preflight, priorResults, resume = false) => {
     if (runtime) return runtime;
     const configuration = await loadConfiguration();
@@ -1285,10 +1539,10 @@ function createLiveMaterializer(options, loadConfiguration) {
       ...configuration,
       journalPath: `${options.statePath}.staging-journal`,
     };
-    const { createConcreteQualifiedProductionAdapters } = await import(
+    const { createConcreteQualifiedProductionStagingAdapters } = await import(
       "./concrete-qualified-production-adapters.mjs"
     );
-    const adapters = createConcreteQualifiedProductionAdapters(stagingConfiguration);
+    const adapters = createConcreteQualifiedProductionStagingAdapters(stagingConfiguration);
     const initial = stagingAuthority(authority, preflight, null, authority.media_worker_inputs);
     if (!resume) await adapters.state.claimAuthority({ authority: initial });
     runtime = {
@@ -1304,31 +1558,92 @@ function createLiveMaterializer(options, loadConfiguration) {
     async run({ operationId, authority, preflight, priorResults }) {
       const configuration = await loadConfiguration();
       if (operationId.includes("completion-baseline")) {
-        const chrome = securePrivateJson(
-          configuration.chromeRequestFile,
-          "V2_09_COMBINED_CHROME_REQUEST_INVALID",
-        );
-        const scope = chrome.request;
-        const input = {
-          accountId: scope.accountId,
-          workspaceId: scope.workspaceId,
-          maximumMicroUsd: MAXIMUM_COMPLETION_BASELINE_MICRO_USD,
-        };
-        const before = operationId.startsWith("read-pre");
-        const value = await psqlJson(
+        const value = await psqlJsonWithUrl(
           configuration,
-          before ? configuration.databaseOwnerUrlFile : configuration.databaseOperatorUrlFile,
-          before
-            ? renderPreMutationCompletionBaselineSql(input)
-            : renderPostMigrationCompletionBaselineSql(input),
+          await readOwnerUrlOnce(),
+          renderGlobalCompletionBaselineSql(MAXIMUM_COMPLETION_BASELINE_MICRO_USD),
         );
-        return validateCompletionBaselineReceipt(value, input);
+        return validateGlobalCompletionBaselineReceipt(
+          value,
+          MAXIMUM_COMPLETION_BASELINE_MICRO_USD,
+        );
+      }
+      if (operationId === "materialize-v209-protected-inputs") {
+        const { materializeV209ProtectedInputs } = await import(
+          "./protected-input-materializer.mjs"
+        );
+        const { spawnSync } = await import("node:child_process");
+        return materializeV209ProtectedInputs({
+          authorityId: authority.authority_id,
+          configuration,
+          materialization: (await loadMaterializationPlan()).protected_input_materialization,
+          derivedOwnerUrl: await readOwnerUrlOnce(),
+          runPsql: async ({ env, sql }) => {
+            const result = spawnSync(
+              "psql",
+              ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--quiet"],
+              { cwd: configuration.root, encoding: "utf8", env, input: sql },
+            );
+            if (result.status !== 0) fail("V2_09_COMBINED_ROLE_MATERIALIZATION_FAILED");
+          },
+        });
       }
       const active = await initialize(authority, preflight, priorResults);
       const baseline = priorResults["read-post-migration-completion-baseline"];
       let staged = stagingAuthority(authority, preflight, baseline, active.mediaWorker);
       active.latestAuthority = staged;
       active.latestResults = priorResults;
+      if (operationId === "materialize-v209-endpoint-secrets") {
+        const deployments = active.adapters.readPersistedDeploymentBindings({
+          authority: staged,
+          priorResults,
+        });
+        const { materializeV209EndpointSecrets } = await import(
+          "./protected-input-materializer.mjs"
+        );
+        const result = materializeV209EndpointSecrets({ configuration, deployments });
+        const { createConcreteQualifiedProductionDeploymentAdapters } = await import(
+          "./concrete-qualified-production-adapters.mjs"
+        );
+        active.deploymentAdapters = createConcreteQualifiedProductionDeploymentAdapters(
+          active.stagingConfiguration,
+          { authority: staged, priorResults },
+        );
+        return result;
+      }
+      if (operationId === "materialize-v209-postdeploy-chrome-auth") {
+        const { materializeV209ChromeBootstrap } = await import(
+          "./chrome-production-bootstrap.mjs"
+        );
+        const result = await materializeV209ChromeBootstrap(
+          (await loadMaterializationPlan()).chrome_bootstrap,
+        );
+        const { createConcreteQualifiedProductionResumedAdapters } = await import(
+          "./concrete-qualified-production-adapters.mjs"
+        );
+        active.resumedAdapters = createConcreteQualifiedProductionResumedAdapters(
+          active.stagingConfiguration,
+          { authority: staged, priorResults },
+        );
+        return result;
+      }
+      if (operationId === "read-postlogin-tenant-completion-baseline") {
+        const chrome = securePrivateJson(
+          configuration.chromeRequestFile,
+          "V2_09_COMBINED_CHROME_REQUEST_INVALID",
+        );
+        const input = {
+          accountId: chrome.request?.accountId,
+          workspaceId: chrome.request?.workspaceId,
+          maximumMicroUsd: MAXIMUM_COMPLETION_BASELINE_MICRO_USD,
+        };
+        const value = await psqlJson(
+          configuration,
+          configuration.databaseOperatorUrlFile,
+          renderPostMigrationCompletionBaselineSql(input),
+        );
+        return validateCompletionBaselineReceipt(value, input);
+      }
       const operation = NORMAL_OPERATIONS.find(({ id }) => id === operationId);
       await active.adapters.state.beginNormalOperation({
         authorityId: authority.authority_id,
@@ -1340,7 +1655,8 @@ function createLiveMaterializer(options, loadConfiguration) {
           (id) => [id, priorResults[id]],
         ),
       );
-      let result = await active.adapters.operations[operationId]({
+      const operationAdapters = active.deploymentAdapters ?? active.adapters;
+      let result = await operationAdapters.operations[operationId]({
         authority: staged,
         operation,
         priorResults: orderedPrior,
@@ -1387,6 +1703,15 @@ function createLiveMaterializer(options, loadConfiguration) {
       const active = runtime;
       if (!active) fail("V2_09_COMBINED_STAGE_RUNTIME_MISSING");
       const render = prefixResults["render-qualified-production-config"];
+      const chromeAuth = prefixResults["materialize-v209-postdeploy-chrome-auth"];
+      const tenantBaseline = prefixResults["read-postlogin-tenant-completion-baseline"];
+      if (
+        !HASH.test(chromeAuth?.auth_state_sha256 ?? "") ||
+        !HASH.test(chromeAuth?.chrome_request_sha256 ?? "") ||
+        chromeAuth?.generate_clicks !== 0 ||
+        chromeAuth?.post_deploy_authentication !== true
+      )
+        fail("V2_09_COMBINED_POSTDEPLOY_CHROME_RECEIPT_INVALID");
       const makeReceipt = (value) => ({ ...value, receipt_sha256: sha256(canonical(value)) });
       const lanes = QUALIFIED_LANES.map((lane) =>
         makeReceipt({
@@ -1396,9 +1721,8 @@ function createLiveMaterializer(options, loadConfiguration) {
           qualified_lane: { ...lane },
         }),
       );
-      const derivedAdapters = (
-        await import("./concrete-qualified-production-adapters.mjs")
-      ).createConcreteQualifiedProductionAdapters(configuration);
+      const derivedAdapters = active.resumedAdapters;
+      if (!derivedAdapters) fail("V2_09_COMBINED_FINAL_ADAPTER_MISSING");
       return {
         schema_version: STAGED_RECEIPTS_SCHEMA,
         media_release: makeReceipt({
@@ -1413,6 +1737,8 @@ function createLiveMaterializer(options, loadConfiguration) {
           protected_static_inputs: { ...authority.production_inputs },
           config_sha256: render.config_sha256,
           worker_bundle_sha256: render.worker_bundle_sha256,
+          chrome_auth_state_sha256: chromeAuth.auth_state_sha256,
+          chrome_request_sha256: chromeAuth.chrome_request_sha256,
         }),
         adapter: makeReceipt({
           adapter_set_sha256: derivedAdapters.identity_sha256,
@@ -1424,8 +1750,10 @@ function createLiveMaterializer(options, loadConfiguration) {
           billing_baseline_usd: preflight.runpod.billing.cumulativeEndpointBillingUsd,
           billing_rows_sha256: preflight.runpod.billing.rowsSha256,
           completion_baseline_derivation: COMPLETION_BASELINE_DERIVATION,
-          completion_baseline_receipt_sha256: baseline.receiptSha256,
-          completion_baseline_usd: baseline.completionBaselineMicroUsd / 1_000_000,
+          global_completion_baseline_derivation: GLOBAL_COMPLETION_BASELINE_DERIVATION,
+          completion_baseline_receipt_sha256: tenantBaseline.receiptSha256,
+          global_completion_baseline_receipt_sha256: baseline.receiptSha256,
+          completion_baseline_usd: tenantBaseline.completionBaselineMicroUsd / 1_000_000,
         }),
       };
     },
@@ -1460,58 +1788,74 @@ function createLiveMaterializer(options, loadConfiguration) {
           active.mediaWorker,
         );
         active.latestResults = results;
+        if (results["persist-qualified-production-deployments"]) {
+          const { createConcreteQualifiedProductionDeploymentAdapters } = await import(
+            "./concrete-qualified-production-adapters.mjs"
+          );
+          active.deploymentAdapters = createConcreteQualifiedProductionDeploymentAdapters(
+            active.stagingConfiguration,
+            { authority: active.latestAuthority, priorResults: results },
+          );
+        }
       }
-      const staged = runtime.latestAuthority;
-      const priorResults = Object.entries(runtime.latestResults ?? {}).filter(([id]) =>
-        COMBINED_PRECOMPLETED_OPERATION_IDS.includes(id),
-      );
-      await runtime.adapters.state.enterCleanupOnly({
-        authorityId: authority.authority_id,
-        failureCode: "V2_09_COMBINED_STAGING_FAILED",
-        failureOperationId: "COMBINED_STAGING",
-      });
-      for (const operation of CLEANUP_OPERATIONS) {
-        const result = await runtime.adapters.operations[operation.id]({
-          authority: staged,
-          cleanupOnly: true,
-          failureOperationId: "COMBINED_STAGING",
-          operation,
-          outcome: "FAILURE",
-          priorResults,
+      if (runtime.deploymentAdapters)
+        await runtime.deploymentAdapters.cleanupDeploymentSuffix({
+          authority: runtime.latestAuthority,
         });
-        await runtime.adapters.state.recordCleanupOperation({
-          authorityId: authority.authority_id,
-          operationId: operation.id,
-          outcome: "FAILURE",
-          result,
-        });
-      }
-      await runtime.adapters.state.completeCleanup({ authorityId: authority.authority_id });
+      else await runtime.adapters.cleanupStagedRunPod({ authority: runtime.latestAuthority });
     },
   };
 }
 
 export async function executeCombinedQualifiedProduction(options) {
+  let materializationPlan;
   let configuration;
-  const loadConfiguration = async () => {
-    if (configuration === undefined) {
-      configuration = securePrivateJson(
+  const loadMaterializationPlan = async () => {
+    if (materializationPlan === undefined) {
+      materializationPlan = securePrivateJson(
         options.configurationPath,
-        "V2_09_COMBINED_CONFIGURATION_FILE_INVALID",
+        "V2_09_COMBINED_MATERIALIZATION_PLAN_INVALID",
       );
       if (
-        sha256(canonical(configuration)) !==
-        options.authority.production_inputs.materialization_input_sha256
+        !exactKeys(materializationPlan, [
+          "chrome_bootstrap",
+          "production_configuration",
+          "protected_input_materialization",
+          "schema_version",
+        ]) ||
+        materializationPlan.schema_version !==
+          "videoforge.v2-09-combined-materialization-plan/v1" ||
+        sha256(
+          canonical({
+            production_configuration: materializationPlan.production_configuration,
+            protected_input_materialization: materializationPlan.protected_input_materialization,
+          }),
+        ) !== options.authority.production_inputs.materialization_input_sha256 ||
+        sha256(canonical(materializationPlan.chrome_bootstrap)) !==
+          options.authority.production_inputs.chrome_bootstrap_plan_sha256
       )
-        fail("V2_09_COMBINED_CONFIGURATION_HASH_INVALID");
+        fail("V2_09_COMBINED_MATERIALIZATION_PLAN_INVALID");
+    }
+    return materializationPlan;
+  };
+  const loadConfiguration = async () => {
+    if (configuration === undefined) {
+      configuration = (await loadMaterializationPlan()).production_configuration;
     }
     return configuration;
   };
-  const materializer = createLiveMaterializer(options, loadConfiguration);
+  const materializer = createLiveMaterializer(options, loadConfiguration, loadMaterializationPlan);
   return composeCombinedQualifiedProduction(options, {
     loadApiKey: async () => secureApiKey((await loadConfiguration()).runpodApiKeyFile),
     runPreflight: runV209ReadOnlyPreflight,
-    executeProduction: executeQualifiedProduction,
+    executeProduction: (context) =>
+      executeQualifiedProduction({
+        ...context,
+        configuration: {
+          ...context.configuration,
+          journalPath: `${options.statePath}.staging-journal`,
+        },
+      }),
     createOuterState: createDurableOuterState,
     stageOperation: (context) => materializer.run(context),
     materializeStagedReceipts: (context) => materializer.receipts(context),
