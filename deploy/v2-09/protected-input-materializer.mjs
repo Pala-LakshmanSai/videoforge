@@ -309,6 +309,43 @@ function keyId(authorityId, purpose) {
   return `v209-${purpose}-${sha256(Buffer.from(`${authorityId}\0${purpose}`)).slice(7, 31)}`;
 }
 
+function protectedCleanupIdentity(authorityId, configuration) {
+  if (!/^v2-09-[a-z0-9][a-z0-9._-]{7,95}$/u.test(authorityId ?? "")) fail("AUTHORITY_INVALID");
+  const roleNames = [
+    configuration.operatorRole,
+    configuration.runtimeRole,
+    configuration.reconcilerRole,
+  ];
+  const roleSuffix = sha256(authorityId).slice(7, 15);
+  const expectedRoles = ["operator", "runtime", "reconciler"].map(
+    (purpose) => `videoforge_v209_${purpose}_${roleSuffix}`,
+  );
+  if (canonical(roleNames) !== canonical(expectedRoles)) fail("ROLE_INVALID");
+  return Object.freeze({
+    roleNames,
+    tombstone: Object.freeze({
+      schema_version: "videoforge.v2-09-protected-input-cleanup-tombstone/v1",
+      authority_id: authorityId,
+      status: "CLEANED",
+      role_name_sha256s: roleNames.map((role) => sha256(role)),
+    }),
+  });
+}
+
+export function hasV209ProtectedInputCleanup({ authorityId, configuration, materialization }) {
+  const { tombstone } = protectedCleanupIdentity(authorityId, configuration);
+  const cleanupPath = `${materialization.roleJournalPath}.cleanup`;
+  if (!existsSync(cleanupPath)) return false;
+  let observed;
+  try {
+    observed = JSON.parse(readPrivate(cleanupPath, "CLEANUP_TOMBSTONE_INVALID").toString("utf8"));
+  } catch {
+    fail("CLEANUP_TOMBSTONE_INVALID");
+  }
+  if (canonical(observed) !== canonical(tombstone)) fail("CLEANUP_TOMBSTONE_INVALID");
+  return true;
+}
+
 export async function materializeV209ProtectedInputs({
   authorityId,
   configuration,
@@ -474,26 +511,13 @@ export async function cleanupV209ProtectedInputs({
   derivedOwnerUrl,
   runPsql,
 }) {
-  if (!/^v2-09-[a-z0-9][a-z0-9._-]{7,95}$/u.test(authorityId ?? "")) fail("AUTHORITY_INVALID");
   if (typeof runPsql !== "function") fail("PSQL_PORT_INVALID");
-  const roleNames = [
-    configuration.operatorRole,
-    configuration.runtimeRole,
-    configuration.reconcilerRole,
-  ];
-  const roleSuffix = sha256(authorityId).slice(7, 15);
-  const expectedRoles = ["operator", "runtime", "reconciler"].map(
-    (purpose) => `videoforge_v209_${purpose}_${roleSuffix}`,
+  const { roleNames, tombstone: cleanupTombstone } = protectedCleanupIdentity(
+    authorityId,
+    configuration,
   );
-  if (canonical(roleNames) !== canonical(expectedRoles)) fail("ROLE_INVALID");
   const journalPath = materialization.roleJournalPath;
   const cleanupPath = `${journalPath}.cleanup`;
-  const cleanupTombstone = {
-    schema_version: "videoforge.v2-09-protected-input-cleanup-tombstone/v1",
-    authority_id: authorityId,
-    status: "CLEANED",
-    role_name_sha256s: roleNames.map((role) => sha256(role)),
-  };
   if (existsSync(cleanupPath)) {
     let observed;
     try {

@@ -9,6 +9,7 @@ import { SECRET_NAMES } from "../v2-13/guarded-activation.mjs";
 import {
   cleanupV209ProtectedInputs,
   deriveOwnerDatabaseUrl,
+  hasV209ProtectedInputCleanup,
   materializeV209EndpointSecrets,
   materializeV209ProtectedInputs,
 } from "./protected-input-materializer.mjs";
@@ -164,6 +165,14 @@ test("an existing versioned role journal forbids replay", async () => {
 
 test("authority cleanup drops only marked roles and removes outputs including endpoint partials", async () => {
   const value = fixture();
+  assert.equal(
+    hasV209ProtectedInputCleanup({
+      authorityId: AUTHORITY_ID,
+      configuration: value.configuration,
+      materialization: value.materialization,
+    }),
+    false,
+  );
   let counter = 0;
   const calls = [];
   await materializeV209ProtectedInputs({
@@ -203,6 +212,14 @@ test("authority cleanup drops only marked roles and removes outputs including en
   assert.equal(adopted.adopted_cleanup, true);
   assert.equal(adopted.role_cleanup_attempted, false);
   assert.equal(existsSync(`${value.materialization.roleJournalPath}.cleanup`), true);
+  assert.equal(
+    hasV209ProtectedInputCleanup({
+      authorityId: AUTHORITY_ID,
+      configuration: value.configuration,
+      materialization: value.materialization,
+    }),
+    true,
+  );
   await assert.rejects(
     materializeV209ProtectedInputs({
       authorityId: AUTHORITY_ID,
@@ -211,5 +228,16 @@ test("authority cleanup drops only marked roles and removes outputs including en
       runPsql: async () => assert.fail("cleaned authority must not rematerialize"),
     }),
     /ROLE_MUTATION_AMBIGUOUS_NO_REPLAY/u,
+  );
+
+  writeFileSync(`${value.materialization.roleJournalPath}.cleanup`, "{}\n", { mode: 0o600 });
+  assert.throws(
+    () =>
+      hasV209ProtectedInputCleanup({
+        authorityId: AUTHORITY_ID,
+        configuration: value.configuration,
+        materialization: value.materialization,
+      }),
+    /CLEANUP_TOMBSTONE_INVALID/u,
   );
 });
