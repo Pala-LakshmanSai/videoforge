@@ -146,12 +146,15 @@ acceptance measures actual 5-10-user operations, database/storage usage, and ale
 | Personal-worker ASR/render | `$0` provider compute; device time/electricity and real 30-minute runtime unmeasured |
 | R2/Cloudflare/Neon variable share | Unmeasured; expected small |
 | Repair/fallback | None active |
-| **Total variable 30-minute generation** | **Target <=`$1.00`; hard MVP ceiling <=`$2.00`; open gate** |
+| **Total variable 30-minute generation** | **Target <=`$1.00`; measured economics gate, not a project cap** |
 
-The target and ceiling exclude the continuing `$7.00/month` volumes. A production profile cannot
-claim this budget until representative cold/warm, concurrent, failed, and recovered runs settle.
-If the conservative predispatch estimate exceeds the active project cap or the `$2.00` product
-ceiling, reject before provider mutation unless a later explicit decision changes the ceiling.
+The target excludes the continuing `$7.00/month` volumes. A production profile cannot claim this
+economics target until representative cold/warm, concurrent, failed, and recovered runs settle.
+Hosted projects have no user-configured maximum-spend field: new revisions persist a `NULL` project
+limit and predispatch does not reject solely because an estimate exceeds a per-project ceiling.
+Exact cost estimates, reservations, attribution, settlement, and cancellation remain mandatory.
+This unlimited-project decision is separate from paid release authority: every mutation checkpoint
+still requires its own finite source-bound action cap and stop conditions.
 
 ## Speed and readiness budget
 

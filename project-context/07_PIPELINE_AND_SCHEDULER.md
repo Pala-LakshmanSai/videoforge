@@ -56,7 +56,8 @@ Every stage transition requires the exact durable predecessor receipts and tenan
 - Locally probe/hash audio, reserve its exact private R2 object, durably upload the validated original,
   and verify the object receipt/hash. Preserve those original bytes for final audio.
 - Freeze an immutable revision containing the verified voiceover asset/receipt/hash, selected
-  versions/hashes, `scheduler-v2`, compiler versions, seed, output contract, and spend cap.
+  versions/hashes, `scheduler-v2`, compiler versions, seed, output contract, and the `NULL`
+  unlimited-project cost-limit fact.
 - Generate is idempotent at the VideoForge command boundary: duplicate browser submission returns the
   existing private queue item. It does not imply provider exactly-once behavior.
 - Enqueue privately. A serializable fair-admission transaction activates it only when the account has

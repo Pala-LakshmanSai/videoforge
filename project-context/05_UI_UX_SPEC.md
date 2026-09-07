@@ -14,7 +14,7 @@ detail available on demand.
 
 Remove or replace infrastructure concepts that require user operation. Users do not select GPUs,
 start/stop Pods, unlock a global session, choose a warm worker, or use RunPod console instructions.
-They select creative inputs, a spend cap, and **Generate video**. Automatic scale-to-zero worker
+They select creative inputs and **Generate video**. Projects have no maximum-spend input. Automatic scale-to-zero worker
 behavior appears as truthful status/details only.
 
 Every signed-in account has one default workspace. User-created projects, queue, Avatar Hub, Image
@@ -79,7 +79,8 @@ unless backend/provider evidence supports it. Never imply technical QA judged cr
 ### 3. Create Project
 
 - Title, validated voiceover upload, visual Avatar Profile selector, visual Image Style selector,
-  optional keyword toggle/text, optional seed, estimate, spend cap, and one Generate button.
+  optional keyword toggle/text, optional seed, estimate, and one Generate button. Cost remains
+  visible and exactly accounted, but there is no user-configured maximum-spend field.
 - No project-local avatar upload. `+ New avatar` autosaves the entire draft/upload handle, returns to
   it, and selects the new ready profile. `+ New style` behaves the same.
 - Selectors show only the account's usable versions plus explicit built-ins. A foreign/removed ID
@@ -228,7 +229,7 @@ account's jobs even though endpoints and volumes are shared infrastructure.
 - Accordions expose `aria-expanded`/`aria-controls`; galleries/lightboxes support keyboard controls.
 - Respect reduced motion. Dock magnification never carries meaning or changes layout geometry.
 - Transcript may appear in the operator UI but is never burned into output.
-- Mobile cannot hide Generate, Approve, Cancel, budget, retention, or security-critical controls.
+- Mobile cannot hide Generate, Approve, Cancel, cost, retention, or security-critical controls.
 - At mobile widths command bar remains readable, progress becomes one column, galleries use two
   columns where viable, sheets become full-screen, safe-area padding clears the dock, and no page
   has horizontal overflow.

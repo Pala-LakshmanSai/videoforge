@@ -462,6 +462,8 @@ gates:
     current_control_source_commit: "5442eb77795c9319be01162ddec7a82d7e7bbb0d"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-flex-missing.json"
     current_failure_sha256: "sha256:431dd71c90e9399d6c8bbc3dbce1841ac10c6011295d431211958010fe26b984"
+    provider_free_repair_state: "Hosted projects are NULL/unlimited with no maximum-spend input through pending migration 0086; exact cost accounting remains. Authenticated RunPod catalog truth supplies exact RTX 4090 EU-RO-1 LOW-or-better availability, while the guarded official RunPod pricing page supplies USD 0.00031/second and USD 1.116/hour. No GPU/region/rate fallback was added."
+    next_gate: "Clean source seal, focused independent audit, then one fresh exact finite-cap combined preflight, conditional production activation, and Chrome E2E authority."
 
   GATE_RANGA_001:
     status: open
