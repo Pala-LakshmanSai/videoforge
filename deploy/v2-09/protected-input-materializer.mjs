@@ -24,7 +24,6 @@ const ENDPOINT_SECRET_NAMES = Object.freeze([
   "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
 ]);
 const REUSED_SECRET_NAMES = Object.freeze([
-  "BETTER_AUTH_SECRET",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
   "R2_ACCESS_KEY_ID",
@@ -32,6 +31,7 @@ const REUSED_SECRET_NAMES = Object.freeze([
   "RUNPOD_API_KEY",
 ]);
 const GENERATED_SECRET_NAMES = Object.freeze([
+  "BETTER_AUTH_SECRET",
   "WORKFLOW_CALLBACK_SECRET",
   "MEDIA_WORKER_TOKEN_SECRET",
   "VIDEOFORGE_DISPATCH_TOKEN_KEY",
@@ -305,7 +305,7 @@ export async function materializeV209ProtectedInputs({
     if (!Buffer.isBuffer(bytes) || bytes.length !== 32) fail("RANDOM_INVALID");
     return bytes;
   };
-  const raw = Array.from({ length: 10 }, next);
+  const raw = Array.from({ length: 11 }, next);
   if (new Set(raw.map(sha256)).size !== raw.length) fail("RANDOM_REUSE");
   const passwords = raw.slice(0, 3).map((bytes) => bytes.toString("base64url"));
   const roleRecords = roleNames.map((role, index) => ({ role, password: passwords[index] }));
@@ -350,15 +350,16 @@ export async function materializeV209ProtectedInputs({
       writePrivateOnce(configuration.runpodApiKeyFile, value, "RUNPOD_KEY_OUTPUT_INVALID");
   }
   const generated = {
-    WORKFLOW_CALLBACK_SECRET: raw[3].toString("base64"),
-    MEDIA_WORKER_TOKEN_SECRET: raw[4].toString("base64"),
-    VIDEOFORGE_DISPATCH_TOKEN_KEY: raw[5].toString("base64"),
+    BETTER_AUTH_SECRET: raw[3].toString("base64"),
+    WORKFLOW_CALLBACK_SECRET: raw[4].toString("base64"),
+    MEDIA_WORKER_TOKEN_SECRET: raw[5].toString("base64"),
+    VIDEOFORGE_DISPATCH_TOKEN_KEY: raw[6].toString("base64"),
     VIDEOFORGE_DISPATCH_TOKEN_KEY_ID: keyId(authorityId, "dispatch"),
-    VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: raw[6].toString("hex"),
+    VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: raw[7].toString("hex"),
     VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: keyId(authorityId, "envelope"),
-    VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: raw[7].toString("hex"),
+    VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: raw[8].toString("hex"),
     VIDEOFORGE_PROVIDER_PROOF_KEY_ID: keyId(authorityId, "provider-proof"),
-    VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: raw[8].toString("base64"),
+    VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: raw[9].toString("base64"),
   };
   for (const name of GENERATED_SECRET_NAMES)
     writePrivateOnce(paths[name], Buffer.from(generated[name]), `GENERATED_${name}_INVALID`);
@@ -372,7 +373,7 @@ export async function materializeV209ProtectedInputs({
     envelopeSigningKeyHex: generated.VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX,
     receiptKeyId: generated.VIDEOFORGE_PROVIDER_PROOF_KEY_ID,
     receiptSigningKeyHex: generated.VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY,
-    mageWorkerTokenHex: raw[9].toString("hex"),
+    mageWorkerTokenHex: raw[10].toString("hex"),
   };
   writePrivateOnce(
     configuration.runpodWorkerEnvironmentFile,

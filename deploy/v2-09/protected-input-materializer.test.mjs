@@ -32,7 +32,6 @@ function fixture() {
   );
   const reusableSecretFiles = Object.fromEntries(
     [
-      "BETTER_AUTH_SECRET",
       "GOOGLE_CLIENT_ID",
       "GOOGLE_CLIENT_SECRET",
       "R2_ACCESS_KEY_ID",
@@ -98,6 +97,8 @@ test("materializes fresh role credentials and pre-endpoint secrets without retur
     runPsql: async (request) => calls.push(request),
   });
   assert.equal(receipt.role_mutation_count, 1);
+  assert.equal(receipt.generated_secret_count, 10);
+  assert.equal(receipt.reused_secret_count, 5);
   assert.equal(receipt.deferred_endpoint_secret_count, 4);
   assert.equal(calls.length, 1);
   assert.match(calls[0].sql, /CREATE ROLE/u);
