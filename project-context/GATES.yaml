@@ -455,11 +455,11 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_authority_state: none_58cb3e2b_consumed_failed_clean
-    current_proposal_sha256: null
-    current_control_source_commit: null
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-availability-recovered-replacement.json"
+    current_authority_sha256: "sha256:81809cddd75a84a3438345471a5cb539fd4476482b279496ac817d07947cf784"
+    current_authority_state: approved_single_use_unconsumed_pending_successor_audit
+    current_proposal_sha256: "sha256:5b78e19baa6427f48c4d4aa4379f25422bbeaabd92872ae2d18336dbfbb2cc80"
+    current_control_source_commit: "b4f0f7a1edbf76c18cfc288988b0bd091dc4850e"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-runpod-region-match.json"
     current_failure_sha256: "sha256:a7bab38ef809e88d3c857d9c16837296035e626de67f81cc40c71921b50d1672"
     current_audit_stop: null
@@ -475,7 +475,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "Seal and independently audit one fresh source-bound combined activation proposal, then obtain fresh exact approval."
+    next_gate: "Complete the mandatory independent authority-materialization successor audit, then execute the approved combined activation and one Chrome E2E."
 
   GATE_RANGA_001:
     status: open

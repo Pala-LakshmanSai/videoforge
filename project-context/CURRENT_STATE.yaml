@@ -4,31 +4,31 @@ updated_at: "2026-09-07"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_eu_ro_1_low_available_pending_fresh_proposal
+current_milestone: v2_09_combined_production_activation_approved
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: clean_context_bundle_proposal_seal
+task_stage: bounded_mutation
 application_code_changes_authorized: true
-provider_calls_authorized: false
+provider_calls_authorized: true
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: false
-credential_access_authorized: false
-gpu_use_authorized: false
-maximum_external_spend_usd: 0
+remote_or_cloud_mutations_authorized: true
+credential_access_authorized: true
+gpu_use_authorized: true
+maximum_external_spend_usd: 2
 
 current_goal_boundary:
-  mode: v2_09_availability_recovered_no_activation_authority
-  live_provider_calls: "Authority v2-09-58cb3e2bbe96d721 is consumed FAILED_CLEAN and non-reusable. No current provider authority exists."
-  remote_mutation: false
-  deployment_or_publication: "No publication or deployment is currently authorized."
-  credential_value_access: "No current authority; zero credential-value reads are permitted during diagnosis."
-  paid_requests_or_spend: "No current authority; zero incremental spend is permitted."
-  runpod_mutation_or_gpu: "No current authority; zero RunPod mutations, provider POSTs, or GPU jobs are permitted."
+  mode: v2_09_combined_production_activation_approved
+  live_provider_calls: "Single-use authority v2-09-5b78e19baa6427f4 is approved and unconsumed for the exact combined V2-09 activation."
+  remote_mutation: true
+  deployment_or_publication: "Exact source b4f0f7a1 and media-worker bundle sha256:b779c9c8 are approved for the bounded combined activation."
+  credential_value_access: "Only the authority's exact bounded protected credential reads are approved."
+  paid_requests_or_spend: "Maximum incremental spend USD 2; maximum completion ceiling USD 17.50."
+  runpod_mutation_or_gpu: "Exactly one Mage and one SoulX max-one production lane and one Chrome generation are approved; zero redispatch."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
   provider_free_product_action: "The current provider-free repair removes the maximum-spend input and client field from every hosted project, persists NULL unlimited project limits through migration 0086, retains exact cost accounting/reservations/settlement, and separates exact authenticated RTX 4090 EU-RO-1 LOW-or-better availability from the guarded official RunPod pricing-page rate of USD 0.00031/second and USD 1.116/hour. Release authority remains a separate finite source-bound cap. Stage 6 and Stage 7 were not modified or rerun."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "Authority 58cb3e2b remains consumed FAILED_CLEAN and non-reusable. A later user-authorized read-only monitor observed one exact RTX 4090 EU-RO-1 entry at LOW availability at 2026-09-07T18:13:45.876Z. No mutation, provider job, GPU, Chrome, redispatch, Stage 6/7, or spend occurred; a fresh exact source-bound proposal and approval remain required."
+  note: "Proposal 5b78e19b and authority v2-09-5b78e19baa6427f4 are approved, source-bound, materialized mode-0600, and pending mandatory independent successor audit before single execution. Prior authorities remain consumed and non-reusable. Stage 6/7 remain frozen."
 
 v2_09_provider_free_candidate:
   source_commit: "dc6ef647fb35602333f92a4191a3071c426386b9"
@@ -54,7 +54,7 @@ v2_09_provider_free_candidate:
   media_worker_release: "media-worker-v0.1.15 is an unpublished candidate; do not publish, install, or replace v0.1.14 without fresh exact authority."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
   provider_state: "Authorities 051c6d42, d6e5ff7b, 4ee7b952, 91892237, ea4e2e45, f9d40174, 7ecd9929, cfcaccfc, and 58cb3e2b are consumed and non-reusable. Exact RTX 4090 EU-RO-1 LOW availability was observed at 2026-09-07T18:13:45.876Z; no current provider authority exists."
-  current_authority: null
+  current_authority: v2-09-5b78e19baa6427f4
   latest_monitored_availability: LOW
   latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
   latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
@@ -4088,9 +4088,9 @@ historical_v2_06_final_live_closure_authority:
   actual_spend_usd: 0
   new_recurring_resources_created: 0
 
-credential_value_read_authorized: false
+credential_value_read_authorized: true
 model_downloads_authorized: false
-worker_image_publication_authorized: false
+worker_image_publication_authorized: true
 sample_output_publication_authorized: false
 retained_volume_mutation_authorized: false
 
@@ -4099,15 +4099,15 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_fresh_successor_inventory_or_mutation
-  current_authority: null
-  current_authority_sha256: null
+  current_authority: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-availability-recovered-replacement.json
+  current_authority_sha256: "sha256:81809cddd75a84a3438345471a5cb539fd4476482b279496ac817d07947cf784"
   latest_closed_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
   latest_closed_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
-  mutation_authorized: false
-  mutation_authorization_scope: none_58cb3e2b_consumed_failed_clean
-  gpu_use_authorized: false
-  gpu_authorization_scope: none_58cb3e2b_consumed_failed_clean
-  spend_authorized_usd: 0
+  mutation_authorized: true
+  mutation_authorization_scope: v2_09_5b78e19b_exact_combined_activation
+  gpu_use_authorized: true
+  gpu_authorization_scope: v2_09_5b78e19b_one_mage_one_soulx_zero_redispatch
+  spend_authorized_usd: 2
 
 repository:
   initialized: true
@@ -4136,10 +4136,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: none_58cb3e2b_consumed_failed_clean
+  provider_mode: production
+  provider_calls_authorized: true
+  authorized_spend_usd: 2
+  provider_authority_scope: v2_09_5b78e19b_exact_combined_activation
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -6164,27 +6164,59 @@ provider_authority_v2_08_consumed_success: &v2_08_consumed_success_authority
       checked_at: "2026-09-04T23:14:00+05:30"
 
 provider_authority: &v2_09_provider_authority_combined
-  mode: none
-  provider: null
+  mode: paid
+  provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
   historical_provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
-  cap_usd: 0
+  cap_usd: 2
   historical_cap_usd: 2
   non_transferable: true
-  source: "555b27c864b8e194780fadbb750322c521222c6f"
+  source: "b4f0f7a1edbf76c18cfc288988b0bd091dc4850e"
   authorized_by_user_at: "2026-09-07"
-  proposal_sha256: "sha256:58cb3e2bbe96d721919e5881e1488f4a50c6eed44733c8c0c9ef6c79e1192f4a"
-  authority: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-role-cleanup-pg17-replacement.json
-  authority_sha256: "sha256:46f8e5abb00933347d4b5439b20b10ff75454814dadc157e4fc23adfd7134e99"
-  consumed: true
+  proposal_sha256: "sha256:5b78e19baa6427f48c4d4aa4379f25422bbeaabd92872ae2d18336dbfbb2cc80"
+  authority: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-availability-recovered-replacement.json
+  authority_sha256: "sha256:81809cddd75a84a3438345471a5cb539fd4476482b279496ac817d07947cf784"
+  consumed: false
   reusable: false
-  provider_calls_authorized: false
-  provider_mutations_authorized: false
-  credential_access_authorized: false
-  gpu_use_authorized: false
+  provider_calls_authorized: true
+  provider_mutations_authorized: true
+  credential_access_authorized: true
+  gpu_use_authorized: true
   actual_spend_usd: 0
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
+  resources:
+    - "github:Pala-LakshmanSai/videoforge:refs/heads/codex/serverless-v2-roadmap-v4"
+    - "runpod:mage-production-lane:EU-RO-1:RTX4090"
+    - "runpod:soulx-production-lane:EU-RO-1:RTX4090"
+    - "cloudflare:worker:videoforge-production-runtime"
+    - "neon:videoforge-production-database"
+    - "github:media-worker-v0.1.15"
+    - "paired-mac:videoforge-personal-media-worker"
+  authorized_operations: &v2_09_combined_operations
+    - push-clean-source
+    - readback-clean-source
+    - apply-migrations-0074-0086
+    - apply-v209-grants
+    - publish-media-worker-0.1.15
+    - readback-media-worker-0.1.15
+    - install-media-worker-0.1.15
+    - fresh-read-only-admission
+    - create-mage-production-lane-max-one
+    - create-soulx-production-lane-max-one
+    - persist-qualified-production-deployments
+    - render-qualified-production-config
+    - deploy-cloudflare-disabled-bootstrap
+    - upload-cloudflare-production-secrets
+    - deploy-cloudflare-qualified-production
+    - readback-qualified-production
+    - import-v209-qualified-activation
+    - run-one-v209-chrome-e2e
+    - verify-private-mp4-lineage
+    - reconcile-v209-production-safety
+    - reconcile-attributable-runpod-work
+    - clean-v209-transient-r2
+    - prove-three-zero-compute-reads
+    - read-settled-billing
+    - verify-retained-resources
+  allowed_operations: *v2_09_combined_operations
   model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot + Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1_per_second
@@ -6199,31 +6231,31 @@ provider_authority: &v2_09_provider_authority_combined
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_eu_ro_1_low_available_pending_fresh_proposal
-  status: AVAILABILITY_RECOVERED_PENDING_FRESH_PROPOSAL
+  milestone: v2_09_combined_production_activation_approved
+  status: APPROVED_SINGLE_USE_PENDING_SUCCESSOR_DIFF_AUDIT
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
-  authorization_status: no_current_authority_consumed_failed_clean
-  task_stage: clean_context_bundle_proposal_seal
-  current_goal_authority: null
-  current_goal_authority_sha256: null
+  authorization_status: approved_single_use_unconsumed
+  task_stage: bounded_mutation
+  current_goal_authority: v2-09-5b78e19baa6427f4
+  current_goal_authority_sha256: "sha256:81809cddd75a84a3438345471a5cb539fd4476482b279496ac817d07947cf784"
   provider_authority: *v2_09_provider_authority_combined
-  provider_mode: fixture
+  provider_mode: live_authority_gated
   provider_free_repair_commit: "7bdc466dde53f9b4296b3413a7e4cfc46495a4b8"
   provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-role-cleanup-pg17-repair.json"
   provider_free_repair_validation: "postgresql_17_all_86_migrations_three_grant_scripts_foreign_edge_rejected_zero_roles_memberships_plus_83_of_83_focused_tests_two_independent_go_audits"
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
   goal: "Connect the ordinary hosted Generate flow to the frozen qualified max-one Mage and SoulX lanes, then complete one real 30-60-second private Chrome E2E under fresh exact authority."
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
-  credential_value_read_authorized: false
+  maximum_external_spend_usd: 2
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
+  credential_value_read_authorized: true
   model_downloads_authorized: false
-  worker_image_publication_authorized: false
+  worker_image_publication_authorized: true
   sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  gpu_use_authorized: true
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
@@ -6243,9 +6275,16 @@ recommended_next_task:
       image_config_sha256: "sha256:224b2a728490cf1c708b42e56702da2b71bd2374658f0c640dd39ef23e860935"
       anonymous_proof_sha256: "sha256:9929d19da89ab2c20e280ac45ad152bc325b8bf56ef1e9c21e83d473c3408bc4"
       acceptance_artifact_sha256: "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa"
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
+  resources:
+    - "github:Pala-LakshmanSai/videoforge:refs/heads/codex/serverless-v2-roadmap-v4"
+    - "runpod:mage-production-lane:EU-RO-1:RTX4090"
+    - "runpod:soulx-production-lane:EU-RO-1:RTX4090"
+    - "cloudflare:worker:videoforge-production-runtime"
+    - "neon:videoforge-production-database"
+    - "github:media-worker-v0.1.15"
+    - "paired-mac:videoforge-personal-media-worker"
+  authorized_operations: *v2_09_combined_operations
+  allowed_operations: *v2_09_combined_operations
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1_per_second
       billing_unit: gpu_second
@@ -6255,17 +6294,17 @@ recommended_next_task:
       billing_unit: gpu_hour
       usd_per_unit: 1.116
       checked_at: "2026-09-07"
-  authority_note: "Authority 58cb3e2b is consumed FAILED_CLEAN and non-reusable. A later read-only monitor observed exact RTX 4090 EU-RO-1 LOW availability; no current activation authority exists."
+  authority_note: "Proposal 5b78e19b and authority v2-09-5b78e19baa6427f4 are approved and unconsumed, bound to source b4f0f7a1 and bundle b779c9c8, pending mandatory independent successor audit."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  successor_proposal_path: null
-  successor_proposal_sha256: null
+  successor_proposal_path: /Users/lakshmansai/.videoforge/v2-09/proposals/availability-recovered-replacement.txt
+  successor_proposal_sha256: "sha256:5b78e19baa6427f48c4d4aa4379f25422bbeaabd92872ae2d18336dbfbb2cc80"
   superseded_proposal_sha256: "sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37"
   superseded_proposal_record_commit: 73181707e49be61955af4f2891f4c7185a1c288f
   superseded_proposal_source_commit: 73181707e49be61955af4f2891f4c7185a1c288f
   superseded_authority_execution_commit: cde3515faf4a8581a83132cd7a8cb296980bd9ff
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: consumed_failed_clean_runpod_region_match_non_reusable
+  execution_status: approved_single_use_unconsumed_pending_successor_diff_audit
   current_failure_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-runpod-region-match.json
   current_failure_evidence_sha256: "sha256:a7bab38ef809e88d3c857d9c16837296035e626de67f81cc40c71921b50d1672"
   pg_service_repair_commit: "6b2d2e91f583faaad8eadf13052e105786f969a4"
@@ -6277,7 +6316,7 @@ recommended_next_task:
   preclaim_readiness_repair_commits: ["f0dac6df4eb8f7209e5bdb5e9ee2eeae6ef9d1eb", "0117cb1c26003714616bdd9f02584ff025d803e7", "0f4ed8dde449051c7d67d8e36ed67d49f737fca0", "dcd4c146023dfed996271d7f4da3afe39045bdfa", "eb113e44fc661b259ec0c06039c643a802714884"]
   preclaim_readiness_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-private-output-parent-preflight-repair.json
   preclaim_readiness_repair_validation: "FOCUSED_97_OF_97_AND_INDEPENDENT_GO_P0_0_P1_0"
-  execution_blocker: fresh_source_bound_proposal_and_exact_approval_required_after_monitored_low_availability
+  execution_blocker: mandatory_independent_successor_diff_audit_pending
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
