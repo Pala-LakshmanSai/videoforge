@@ -455,11 +455,11 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_authority_state: none_cfcaccfc_consumed_failed_clean
-    current_proposal_sha256: null
-    current_control_source_commit: null
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-role-cleanup-pg17-replacement.json"
+    current_authority_sha256: "sha256:46f8e5abb00933347d4b5439b20b10ff75454814dadc157e4fc23adfd7134e99"
+    current_authority_state: approved_single_use_unconsumed_pending_successor_audit
+    current_proposal_sha256: "sha256:58cb3e2bbe96d721919e5881e1488f4a50c6eed44733c8c0c9ef6c79e1192f4a"
+    current_control_source_commit: "555b27c864b8e194780fadbb750322c521222c6f"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-role-cleanup-membership.json"
     current_failure_sha256: "sha256:1f7f7329d3e9ff01ffe5d133b92f5903b941c577e77e01e687ad5ff6bbec5e6f"
     current_audit_stop: null
@@ -471,7 +471,7 @@ gates:
     latest_closed_control_source_commit: "3c1dbfc2c2d53dad165b577341bb46b524aa0ca5"
     latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-role-cleanup-membership.json"
     latest_closed_failure_sha256: "sha256:1f7f7329d3e9ff01ffe5d133b92f5903b941c577e77e01e687ad5ff6bbec5e6f"
-    next_gate: "Commit the clean context seal, compute the exact source-bound media-worker bundle, seal and independently audit one replacement proposal, then obtain fresh exact approval."
+    next_gate: "Complete the mandatory independent authority-materialization successor audit, then execute the approved combined activation and one Chrome E2E."
 
   GATE_RANGA_001:
     status: open

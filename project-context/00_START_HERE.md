@@ -4,7 +4,11 @@
 
 ### Current new-chat launch point — 2026-09-06
 
-- V2-09 proposal `sha256:cfcaccfc...e05` is consumed `FAILED_CLEAN` and non-reusable. Its preflight
+- V2-09 proposal `sha256:58cb3e2b...92f4a` and authority `v2-09-58cb3e2bbe96d721` are approved,
+  source-bound to pushed clean source `555b27c8...21c6f`, and materialized mode-0600 with exact
+  media-worker bundle `sha256:b8e82b29...9b686`. The mandatory independent successor diff audit is
+  the only remaining pre-execution gate. Proposal `sha256:cfcaccfc...e05` is consumed
+  `FAILED_CLEAN` and non-reusable. Its preflight
   and completion baseline passed, then authority-role cleanup failed before migrations or any later
   deployment operation. Marker-bound recovery removed all three roles and protected files with zero
   provider mutation, GPU job, redispatch, Stage 6/7 work, or spend. Provider-free repair
@@ -13,8 +17,7 @@
   uses the PostgreSQL-17-proven transient cleanup membership before `DROP OWNED`. A disposable
   PostgreSQL 17 run applied all 86 migrations, passed all three production grant scripts, rejected a
   foreign membership, and cleaned to zero roles/memberships. Focused tests pass 83/83 and two
-  independent audits are GO P0=0/P1=0. Stage 6/7 remain frozen `QUALIFIED_PASS_CLEAN`. Next: clean
-  context/source seal, exact media-worker bundle and replacement proposal, then fresh exact approval.
+  independent audits are GO P0=0/P1=0. Stage 6/7 remain frozen `QUALIFIED_PASS_CLEAN`.
 - V2-07 Stage 6 is `QUALIFIED_PASS_CLEAN`, frozen, and untouched. V2-08 Stage 7 remains not qualified.
   Proposal `692bcb15...2df37` was consumed after exactly two cold/warm POSTs with no redispatch.
   Cold completed four valid MP4 items but signed `runtime_cache_hit=true`; the evidence-supported
