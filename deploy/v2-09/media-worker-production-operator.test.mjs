@@ -19,10 +19,13 @@ import test from "node:test";
 import {
   createV209MediaWorkerProductionPorts as createProductionPorts,
   createV209MediaWorkerProductionPortsForTest,
+  validateV209MediaWorkerMaterializationReceipt,
   resumeV209MediaWorkerUserConfirmation as resumeProductionConfirmation,
   resumeV209MediaWorkerUserConfirmationForTest,
   V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
   V209_MEDIA_WORKER_CONFIRMATION_SCHEMA,
+  V209_MEDIA_WORKER_MATERIALIZATION_MODE,
+  V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA,
   V209MediaWorkerUserConfirmationRequired,
 } from "./media-worker-production-operator.mjs";
 
@@ -150,6 +153,61 @@ function authority(manifestSha256, overrides = {}, installerAssetSha256 = macosS
       cleanup_only_recovery: true,
     },
     ...overrides,
+  };
+}
+
+function stagedAuthority(overrides = {}) {
+  return {
+    authority_id: "v2-09-media-worker-staged-test-authority",
+    source_commit: sourceCommit,
+    issued_at: "2026-09-06T11:00:00Z",
+    expires_at: "2026-09-06T13:00:00Z",
+    media_worker: {
+      release: "0.1.15",
+      materialization_mode: V209_MEDIA_WORKER_MATERIALIZATION_MODE,
+      execution_bundle_sha256: executionBundleSha256,
+      whisper_model_sha256: whisperModelSha256,
+    },
+    scope: {
+      media_worker_release: "0.1.15",
+      allow_media_worker_materialization_once: true,
+      allow_model_download: false,
+      allow_stage_6_or_7_qualification: false,
+      cleanup_only_recovery: true,
+    },
+    ...overrides,
+  };
+}
+
+function stagedFixture() {
+  const windowsBytes = Buffer.from("exact-windows-installer");
+  const macosBytes = Buffer.from("exact-macos-dmg");
+  const windowsDigest = sha256(windowsBytes);
+  const macosDigest = sha256(macosBytes);
+  const base = fixture({ macosBytes });
+  base.manifest.windows.sha256 = windowsDigest;
+  base.manifest.windows.size_bytes = windowsBytes.byteLength;
+  base.manifestBytes = Buffer.from(`${JSON.stringify(sortObject(base.manifest), null, 2)}\n`);
+  base.manifestSha256 = sha256(base.manifestBytes);
+  base.release.assets = [
+    {
+      ...base.release.assets[0],
+      size: windowsBytes.byteLength,
+      digest: windowsDigest,
+    },
+    { ...base.release.assets[1], size: macosBytes.byteLength, digest: macosDigest },
+    {
+      ...base.release.assets[2],
+      size: base.manifestBytes.byteLength,
+      digest: base.manifestSha256,
+    },
+  ];
+  return {
+    ...base,
+    macosBytes,
+    windowsBytes,
+    macosDigest,
+    windowsDigest,
   };
 }
 
@@ -507,6 +565,223 @@ test("publish dispatches the exact workflow once and accepts only its exact succ
     }
   } finally {
     box.remove();
+  }
+});
+
+test("staged materialization dispatches once and derives a deterministic closed-world receipt", async () => {
+  const box = sandbox();
+  const releaseFixture = stagedFixture();
+  const childCalls = [];
+  let listCalls = 0;
+  const runChild = async (request) => {
+    childCalls.push(request);
+    if (request.args.includes("--method"))
+      return { status: 0, signal: null, stdout: "", stderr: "" };
+    listCalls += 1;
+    const workflow_runs =
+      listCalls === 1
+        ? []
+        : [
+            {
+              head_sha: sourceCommit,
+              head_branch: "codex/serverless-v2-roadmap-v4",
+              event: "workflow_dispatch",
+              path: ".github/workflows/media-worker-release.yml@refs/heads/codex/serverless-v2-roadmap-v4",
+              status: "completed",
+              conclusion: "success",
+              created_at: "2026-09-06T12:00:00Z",
+              run_attempt: 1,
+            },
+          ];
+    return { status: 0, signal: null, stdout: JSON.stringify({ workflow_runs }), stderr: "" };
+  };
+  let releaseReads = 0;
+  const bytesByName = new Map([
+    ["VideoForge-Worker-0.1.15-Setup.exe", releaseFixture.windowsBytes],
+    ["VideoForge-Worker-0.1.15.dmg", releaseFixture.macosBytes],
+    ["media-worker-release.json", releaseFixture.manifestBytes],
+  ]);
+  const fetchImpl = async (url) => {
+    if (url.includes("api.github.com/")) {
+      releaseReads += 1;
+      if (releaseReads === 1) return new Response("missing", { status: 404 });
+      return new Response(JSON.stringify(releaseFixture.release), { status: 200 });
+    }
+    const name = url.split("/").at(-1);
+    if (!bytesByName.has(name)) throw new Error(`unexpected asset ${name}`);
+    return new Response(bytesByName.get(name), { status: 200 });
+  };
+  try {
+    const ports = createV209MediaWorkerProductionPorts(box.configuration, {
+      hostHome: box.home,
+      hostPlatform: "darwin",
+      hostUid: 501,
+      runChild,
+      fetchImpl,
+      clock,
+      sleep: async () => {},
+    });
+    const result = await ports.publishMediaWorker.run({
+      operationId: "publish-media-worker-0.1.15",
+      authority: stagedAuthority(),
+    });
+    assert.equal(result.mode, "MATERIALIZED_ONCE");
+    assert.equal(result.publish_count, 1);
+    assert.deepEqual(result.materialization_receipt, {
+      schema_version: V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA,
+      authority_id: "v2-09-media-worker-staged-test-authority",
+      source_commit: sourceCommit,
+      repository: "Pala-LakshmanSai/videoforge",
+      workflow_path: ".github/workflows/media-worker-release.yml",
+      release_tag: "media-worker-v0.1.15",
+      release: "0.1.15",
+      release_manifest_sha256: releaseFixture.manifestSha256,
+      installer_asset_sha256: releaseFixture.macosDigest,
+      windows_installer_asset_sha256: releaseFixture.windowsDigest,
+      execution_bundle_sha256: executionBundleSha256,
+      whisper_model_sha256: whisperModelSha256,
+      signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
+      immutable_release: true,
+      release_asset_count: 3,
+      materialization_receipt_sha256: result.materialization_receipt.materialization_receipt_sha256,
+    });
+    assert.match(
+      result.materialization_receipt.materialization_receipt_sha256,
+      /^sha256:[0-9a-f]{64}$/u,
+    );
+    assert.deepEqual(
+      validateV209MediaWorkerMaterializationReceipt(
+        result.materialization_receipt,
+        stagedAuthority(),
+        sourceCommit,
+        clock,
+      ),
+      {
+        release: "0.1.15",
+        execution_bundle_sha256: executionBundleSha256,
+        whisper_model_sha256: whisperModelSha256,
+        release_manifest_sha256: releaseFixture.manifestSha256,
+        installer_asset_sha256: releaseFixture.macosDigest,
+        signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
+      },
+    );
+    assert.throws(
+      () =>
+        validateV209MediaWorkerMaterializationReceipt(
+          { ...result.materialization_receipt, installer_asset_sha256: macosSha256 },
+          stagedAuthority(),
+          sourceCommit,
+          clock,
+        ),
+      /V2_09_MEDIA_WORKER_MATERIALIZATION_RECEIPT_INVALID/u,
+    );
+    assert.equal(childCalls.filter((call) => call.args.includes("--method")).length, 1);
+    assert.equal(releaseReads, 2);
+  } finally {
+    box.remove();
+  }
+});
+
+test("staged materialization rejects replay, ambiguous runs, and asset tamper", async (t) => {
+  await t.test("replay", async () => {
+    const box = sandbox();
+    const releaseFixture = stagedFixture();
+    let childCalls = 0;
+    try {
+      const ports = createV209MediaWorkerProductionPorts(box.configuration, {
+        hostHome: box.home,
+        hostPlatform: "darwin",
+        hostUid: 501,
+        runChild: async () => {
+          childCalls += 1;
+          throw new Error("must not dispatch");
+        },
+        fetchImpl: async () =>
+          new Response(JSON.stringify(releaseFixture.release), { status: 200 }),
+        clock,
+      });
+      await assert.rejects(
+        ports.publishMediaWorker.run({
+          operationId: "publish-media-worker-0.1.15",
+          authority: stagedAuthority(),
+        }),
+        /V2_09_MEDIA_WORKER_MATERIALIZATION_REPLAY/u,
+      );
+      assert.equal(childCalls, 0);
+    } finally {
+      box.remove();
+    }
+  });
+
+  for (const scenario of ["ambiguous", "tamper"]) {
+    await t.test(scenario, async () => {
+      const box = sandbox();
+      const releaseFixture = stagedFixture();
+      let listCalls = 0;
+      let releaseReads = 0;
+      const exactRun = {
+        head_sha: sourceCommit,
+        head_branch: "codex/serverless-v2-roadmap-v4",
+        event: "workflow_dispatch",
+        path: ".github/workflows/media-worker-release.yml@refs/heads/codex/serverless-v2-roadmap-v4",
+        status: "completed",
+        conclusion: "success",
+        created_at: "2026-09-06T12:00:00Z",
+        run_attempt: 1,
+      };
+      const runChild = async (request) => {
+        if (request.args.includes("--method"))
+          return { status: 0, signal: null, stdout: "", stderr: "" };
+        listCalls += 1;
+        return {
+          status: 0,
+          signal: null,
+          stdout: JSON.stringify({
+            workflow_runs:
+              listCalls === 1 ? [] : scenario === "ambiguous" ? [exactRun, exactRun] : [exactRun],
+          }),
+          stderr: "",
+        };
+      };
+      const fetchImpl = async (url) => {
+        if (url.includes("api.github.com/")) {
+          releaseReads += 1;
+          return releaseReads === 1
+            ? new Response("missing", { status: 404 })
+            : new Response(JSON.stringify(releaseFixture.release), { status: 200 });
+        }
+        const name = url.split("/").at(-1);
+        const bytes =
+          name === "VideoForge-Worker-0.1.15-Setup.exe"
+            ? Buffer.from("tampered")
+            : name === "VideoForge-Worker-0.1.15.dmg"
+              ? releaseFixture.macosBytes
+              : releaseFixture.manifestBytes;
+        return new Response(bytes, { status: 200 });
+      };
+      try {
+        const ports = createV209MediaWorkerProductionPorts(box.configuration, {
+          hostHome: box.home,
+          hostPlatform: "darwin",
+          hostUid: 501,
+          runChild,
+          fetchImpl,
+          clock,
+          sleep: async () => {},
+        });
+        await assert.rejects(
+          ports.publishMediaWorker.run({
+            operationId: "publish-media-worker-0.1.15",
+            authority: stagedAuthority(),
+          }),
+          scenario === "ambiguous"
+            ? /V2_09_MEDIA_WORKER_WORKFLOW_DISPATCH_AMBIGUOUS/u
+            : /V2_09_MEDIA_WORKER_ASSET_DOWNLOAD_IDENTITY_INVALID/u,
+        );
+      } finally {
+        box.remove();
+      }
+    });
   }
 });
 

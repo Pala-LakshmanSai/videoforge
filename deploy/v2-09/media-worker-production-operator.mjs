@@ -29,6 +29,9 @@ export const V209_MEDIA_WORKER_REPOSITORY = "Pala-LakshmanSai/videoforge";
 export const V209_MEDIA_WORKER_SERVICE = "com.videoforge.personal-media-worker";
 export const V209_MEDIA_WORKER_CONFIRMATION_SCHEMA =
   "videoforge.v2-09-media-worker-user-confirmation/v1";
+export const V209_MEDIA_WORKER_MATERIALIZATION_MODE = "PREAUTHORIZED_STAGED_ONCE";
+export const V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA =
+  "videoforge.v2-09-media-worker-materialization-receipt/v1";
 
 const SOURCE_PATH = fileURLToPath(import.meta.url);
 const RUN_CANCELLABLE_SOURCE_PATH = fileURLToPath(
@@ -60,6 +63,11 @@ const WORKFLOW_TIMEOUT_MS = 90 * 60_000;
 const DOWNLOAD_TIMEOUT_MS = 30 * 60_000;
 const HEARTBEAT_TIMEOUT_MS = 3 * 60_000;
 const MAX_JSON_BYTES = 1024 * 1024;
+const RELEASE_ASSET_MAX_BYTES = Object.freeze({
+  "VideoForge-Worker-0.1.15-Setup.exe": 768 * 1024 * 1024,
+  "VideoForge-Worker-0.1.15.dmg": 768 * 1024 * 1024,
+  "media-worker-release.json": MAX_JSON_BYTES,
+});
 const DEFAULT_CHILD_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
 const REQUIRED_POSTGRES_ENVIRONMENT_KEYS = Object.freeze([
   "PGDATABASE",
@@ -138,6 +146,8 @@ function parseTime(value, code) {
 }
 
 function assertAuthority(authority, sourceCommit, clock, { cleanup = false } = {}) {
+  const staged =
+    authority?.media_worker?.materialization_mode === V209_MEDIA_WORKER_MATERIALIZATION_MODE;
   if (
     authority === null ||
     typeof authority !== "object" ||
@@ -146,9 +156,17 @@ function assertAuthority(authority, sourceCommit, clock, { cleanup = false } = {
     authority.media_worker?.release !== V209_MEDIA_WORKER_VERSION ||
     !HASH.test(authority.media_worker?.execution_bundle_sha256 ?? "") ||
     !HASH.test(authority.media_worker?.whisper_model_sha256 ?? "") ||
-    !HASH.test(authority.media_worker?.release_manifest_sha256 ?? "") ||
-    !HASH.test(authority.media_worker?.installer_asset_sha256 ?? "") ||
-    !HASH.test(authority.media_worker?.signing_identity_sha256 ?? "") ||
+    (!staged && !HASH.test(authority.media_worker?.release_manifest_sha256 ?? "")) ||
+    (!staged && !HASH.test(authority.media_worker?.installer_asset_sha256 ?? "")) ||
+    (!staged && !HASH.test(authority.media_worker?.signing_identity_sha256 ?? "")) ||
+    (staged &&
+      (!exactKeys(authority.media_worker, [
+        "execution_bundle_sha256",
+        "materialization_mode",
+        "release",
+        "whisper_model_sha256",
+      ]) ||
+        authority.scope?.allow_media_worker_materialization_once !== true)) ||
     authority.scope?.media_worker_release !== V209_MEDIA_WORKER_VERSION ||
     authority.scope?.allow_model_download !== false ||
     authority.scope?.allow_stage_6_or_7_qualification !== false ||
@@ -467,7 +485,7 @@ function releaseUrls(configuration) {
   });
 }
 
-function validateRelease(release, configuration, mediaWorker) {
+function validateRelease(release, configuration, mediaWorker, { materializing = false } = {}) {
   const urls = releaseUrls(configuration);
   if (
     release === null ||
@@ -504,6 +522,7 @@ function validateRelease(release, configuration, mediaWorker) {
       asset.name !== name ||
       !Number.isSafeInteger(asset.size) ||
       asset.size <= 0 ||
+      asset.size > RELEASE_ASSET_MAX_BYTES[name] ||
       !HASH.test(asset.digest ?? "") ||
       asset.state !== "uploaded" ||
       asset.browser_download_url !== expectedUrl
@@ -513,17 +532,145 @@ function validateRelease(release, configuration, mediaWorker) {
   const manifestAsset = assets.get("media-worker-release.json");
   const macosAsset = assets.get("VideoForge-Worker-0.1.15.dmg");
   if (
-    manifestAsset.digest !== mediaWorker.release_manifest_sha256 ||
-    macosAsset.digest !== mediaWorker.installer_asset_sha256
+    !materializing &&
+    (manifestAsset.digest !== mediaWorker.release_manifest_sha256 ||
+      macosAsset.digest !== mediaWorker.installer_asset_sha256)
   )
     fail("RELEASE_AUTHORITY_DRIFT");
   return Object.freeze({ assets, manifestAsset, macosAsset, urls });
 }
 
-async function fetchSmallAsset(fetchImpl, url, expectedSize, expectedSha256) {
+async function inspectMaterializedRelease({ configuration, authority, fetchImpl, clock }) {
+  const mediaWorker = assertAuthority(authority, configuration.sourceCommit, clock);
+  if (mediaWorker.materialization_mode !== V209_MEDIA_WORKER_MATERIALIZATION_MODE)
+    fail("MATERIALIZATION_MODE_INVALID");
+  const urls = releaseUrls(configuration);
+  const release = await fetchBoundedJson(fetchImpl, urls.api, "RELEASE_READBACK");
+  const validated = validateRelease(release, configuration, mediaWorker, { materializing: true });
+  const downloaded = new Map();
+  for (const name of RELEASE_ASSET_NAMES) {
+    const asset = validated.assets.get(name);
+    const bytes = await fetchExactAsset(
+      fetchImpl,
+      asset.browser_download_url,
+      asset.size,
+      asset.digest,
+    );
+    downloaded.set(name, bytes);
+  }
+  const manifestBytes = downloaded.get("media-worker-release.json");
+  const manifestSha256 = sha256(manifestBytes);
+  const manifest = validateReleaseManifest(manifestBytes, manifestSha256);
+  if (
+    manifest.version !== V209_MEDIA_WORKER_VERSION ||
+    manifest.execution_bundle_sha256 !== mediaWorker.execution_bundle_sha256 ||
+    manifest.whisper_model_sha256 !== mediaWorker.whisper_model_sha256 ||
+    manifest.macos.trust !== "AD_HOC_BETA"
+  )
+    fail("MATERIALIZATION_MANIFEST_INVALID");
+  for (const [platform, name] of [
+    ["windows", "VideoForge-Worker-0.1.15-Setup.exe"],
+    ["macos", "VideoForge-Worker-0.1.15.dmg"],
+  ]) {
+    const asset = validated.assets.get(name);
+    if (
+      manifest[platform].sha256 !== asset.digest ||
+      manifest[platform].size_bytes !== asset.size ||
+      manifest[platform].url !== asset.browser_download_url
+    )
+      fail("MATERIALIZATION_ASSET_DRIFT");
+  }
+  const facts = {
+    schema_version: V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA,
+    authority_id: authority.authority_id,
+    source_commit: configuration.sourceCommit,
+    repository: configuration.repository,
+    workflow_path: configuration.workflowPath,
+    release_tag: configuration.releaseTag,
+    release: V209_MEDIA_WORKER_VERSION,
+    release_manifest_sha256: manifestSha256,
+    installer_asset_sha256: sha256(downloaded.get("VideoForge-Worker-0.1.15.dmg")),
+    windows_installer_asset_sha256: sha256(downloaded.get("VideoForge-Worker-0.1.15-Setup.exe")),
+    execution_bundle_sha256: manifest.execution_bundle_sha256,
+    whisper_model_sha256: manifest.whisper_model_sha256,
+    signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
+    immutable_release: true,
+    release_asset_count: downloaded.size,
+  };
+  return Object.freeze({
+    ...facts,
+    materialization_receipt_sha256: sha256(canonical(facts)),
+  });
+}
+
+export function validateV209MediaWorkerMaterializationReceipt(
+  receipt,
+  authority,
+  sourceCommit,
+  clock = productionClock,
+) {
+  const mediaWorker = assertAuthority(authority, sourceCommit, clock);
+  const keys = [
+    "authority_id",
+    "execution_bundle_sha256",
+    "immutable_release",
+    "installer_asset_sha256",
+    "materialization_receipt_sha256",
+    "release",
+    "release_asset_count",
+    "release_manifest_sha256",
+    "release_tag",
+    "repository",
+    "schema_version",
+    "signing_identity_sha256",
+    "source_commit",
+    "whisper_model_sha256",
+    "windows_installer_asset_sha256",
+    "workflow_path",
+  ];
+  if (!exactKeys(receipt, keys)) fail("MATERIALIZATION_RECEIPT_INVALID");
+  const unsigned = { ...receipt };
+  delete unsigned.materialization_receipt_sha256;
+  if (
+    mediaWorker.materialization_mode !== V209_MEDIA_WORKER_MATERIALIZATION_MODE ||
+    receipt.schema_version !== V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA ||
+    receipt.authority_id !== authority.authority_id ||
+    receipt.source_commit !== sourceCommit ||
+    receipt.repository !== V209_MEDIA_WORKER_REPOSITORY ||
+    receipt.workflow_path !== V209_MEDIA_WORKER_WORKFLOW ||
+    receipt.release_tag !== V209_MEDIA_WORKER_TAG ||
+    receipt.release !== V209_MEDIA_WORKER_VERSION ||
+    receipt.execution_bundle_sha256 !== mediaWorker.execution_bundle_sha256 ||
+    receipt.whisper_model_sha256 !== mediaWorker.whisper_model_sha256 ||
+    receipt.signing_identity_sha256 !== V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256 ||
+    receipt.immutable_release !== true ||
+    receipt.release_asset_count !== RELEASE_ASSET_NAMES.length ||
+    !HASH.test(receipt.release_manifest_sha256 ?? "") ||
+    !HASH.test(receipt.installer_asset_sha256 ?? "") ||
+    !HASH.test(receipt.windows_installer_asset_sha256 ?? "") ||
+    sha256(canonical(unsigned)) !== receipt.materialization_receipt_sha256
+  )
+    fail("MATERIALIZATION_RECEIPT_INVALID");
+  return Object.freeze({
+    release: receipt.release,
+    execution_bundle_sha256: receipt.execution_bundle_sha256,
+    whisper_model_sha256: receipt.whisper_model_sha256,
+    release_manifest_sha256: receipt.release_manifest_sha256,
+    installer_asset_sha256: receipt.installer_asset_sha256,
+    signing_identity_sha256: receipt.signing_identity_sha256,
+  });
+}
+
+async function fetchExactAsset(
+  fetchImpl,
+  url,
+  expectedSize,
+  expectedSha256,
+  timeoutMs = DOWNLOAD_TIMEOUT_MS,
+) {
   let current = url;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30_000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     for (let redirects = 0; redirects <= 1; redirects += 1) {
       const parsed = parseHttps(current, "ASSET_URL_INVALID", RELEASE_ASSET_HOSTS);
@@ -558,6 +705,10 @@ async function fetchSmallAsset(fetchImpl, url, expectedSize, expectedSha256) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+function fetchSmallAsset(fetchImpl, url, expectedSize, expectedSha256) {
+  return fetchExactAsset(fetchImpl, url, expectedSize, expectedSha256, 30_000);
 }
 
 async function inspectRelease({ configuration, authority, fetchImpl, clock }) {
@@ -624,9 +775,11 @@ async function workflowRuns(runChild, configuration, cancellationSignal) {
 async function publishMediaWorker(context, { configuration, runChild, fetchImpl, clock, sleep }) {
   if (context.operationId !== "publish-media-worker-0.1.15") fail("OPERATION_ID_INVALID");
   const mediaWorker = assertAuthority(context.authority, configuration.sourceCommit, clock);
+  const staged = mediaWorker.materialization_mode === V209_MEDIA_WORKER_MATERIALIZATION_MODE;
   const urls = releaseUrls(configuration);
   const status = await releaseStatus(fetchImpl, urls.api);
   if (status === 200) {
+    if (staged) fail("MATERIALIZATION_REPLAY");
     const exact = await inspectRelease({
       configuration,
       authority: context.authority,
@@ -696,14 +849,29 @@ async function publishMediaWorker(context, { configuration, runChild, fetchImpl,
     if (nowDate(clock).getTime() - startedAt >= WORKFLOW_TIMEOUT_MS) fail("WORKFLOW_TIMEOUT");
     await sleep(5_000);
   }
-  const exact = await inspectRelease({
-    configuration,
-    authority: context.authority,
-    fetchImpl,
-    clock,
-  });
+  const exact = staged
+    ? await inspectMaterializedRelease({
+        configuration,
+        authority: context.authority,
+        fetchImpl,
+        clock,
+      })
+    : await inspectRelease({
+        configuration,
+        authority: context.authority,
+        fetchImpl,
+        clock,
+      });
   if (selected.head_sha !== configuration.sourceCommit || selected.run_attempt !== 1)
     fail("WORKFLOW_RUN_IDENTITY_INVALID");
+  if (staged)
+    return Object.freeze({
+      schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
+      operation_id: context.operationId,
+      mode: "MATERIALIZED_ONCE",
+      publish_count: 1,
+      materialization_receipt: exact,
+    });
   return Object.freeze({
     schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
     operation_id: context.operationId,
