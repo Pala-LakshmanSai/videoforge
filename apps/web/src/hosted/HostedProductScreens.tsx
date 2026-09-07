@@ -49,7 +49,6 @@ const MAX_STYLE_REFERENCE_BYTES = 20 * 1024 * 1024;
 const MAX_STYLE_ANALYSIS_BYTES = 30 * 1024 * 1024;
 const MAX_STYLE_REFERENCES = 8;
 const MIN_STYLE_REFERENCES = 3;
-const DEFAULT_SPEND_CAP_USD = "1.00";
 const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v2";
 const VOICEOVER_TYPES = new Set(["audio/mpeg", "audio/wav"]);
 const MAX_HOSTED_VOICEOVER_FILENAME = 160;
@@ -140,7 +139,6 @@ export interface CatalogResponse {
   };
   readonly project_defaults?: {
     readonly generation_mode?: string;
-    readonly spend_cap_usd?: number;
     readonly user_seed?: number | null;
   };
 }
@@ -1260,16 +1258,14 @@ function formatUsd(value: number | null | undefined): string {
 export function hostedPreflightEstimateText(
   estimate: HostedPreflightResponse["estimate"],
   dispatchAvailable: boolean,
-  fallbackCapUsd: number,
 ): string {
-  const cap = estimate?.cap_usd ?? fallbackCapUsd;
   if (!dispatchAvailable) {
-    return `No paid video generation in this beta · maximum ${formatUsd(cap)}`;
+    return "No paid video generation in this beta";
   }
   if (typeof estimate?.projected_usd === "number" && Number.isFinite(estimate.projected_usd)) {
-    return `Estimated variable cost ${formatUsd(estimate.projected_usd)} · maximum ${formatUsd(cap)}`;
+    return `Estimated variable cost ${formatUsd(estimate.projected_usd)}`;
   }
-  return `Estimate pending · maximum ${formatUsd(cap)}`;
+  return "Estimate pending";
 }
 
 function formatMilliseconds(value: number | null | undefined): string {
@@ -1561,7 +1557,6 @@ export function HostedCreateProjectScreen() {
   const [extraPromptKeywords, setExtraPromptKeywords] = useState("");
   const [applyExtraPromptKeywords, setApplyExtraPromptKeywords] = useState(false);
   const [userSeed, setUserSeed] = useState("");
-  const [spendCapUsd, setSpendCapUsd] = useState(DEFAULT_SPEND_CAP_USD);
   const [voiceoverMeta, setVoiceoverMeta] = useState<{
     readonly filename: string;
     readonly contentType: string;
@@ -1575,8 +1570,6 @@ export function HostedCreateProjectScreen() {
     if (/\.mp3$/iu.test(file.name)) return "audio/mpeg";
     return VOICEOVER_TYPES.has(file.type) ? file.type : "";
   };
-  const cap = Number(spendCapUsd);
-  const capValid = Number.isFinite(cap) && cap >= 0.05 && cap <= 2;
   const keywordsValid = extraPromptKeywords.length <= 500;
   const workerOnline = catalog.data?.media_worker_state === "ONLINE";
   const inputChecklist = [
@@ -1595,7 +1588,7 @@ export function HostedCreateProjectScreen() {
     }
   }, [avatarVersionId, catalog.data, styleVersionId]);
   const canPreflight = Boolean(
-    title.trim() && avatarVersionId && styleVersionId && voiceover && capValid && keywordsValid,
+    title.trim() && avatarVersionId && styleVersionId && voiceover && keywordsValid,
   );
   const preflightMutation = useMutation({
     mutationFn: async () => {
@@ -1622,7 +1615,6 @@ export function HostedCreateProjectScreen() {
             extra_prompt_keywords: applyExtraPromptKeywords ? extraPromptKeywords.trim() : "",
             apply_extra_prompt_keywords: applyExtraPromptKeywords,
             user_seed: userSeed.trim() ? Number(userSeed) : null,
-            spend_cap_usd: cap,
             voiceover: {
               filename,
               content_type: contentType,
@@ -1677,7 +1669,6 @@ export function HostedCreateProjectScreen() {
             extra_prompt_keywords: applyExtraPromptKeywords ? extraPromptKeywords.trim() : "",
             apply_extra_prompt_keywords: applyExtraPromptKeywords,
             user_seed: userSeed.trim() ? Number(userSeed) : null,
-            spend_cap_usd: cap,
             voiceover: {
               filename: metadata.filename,
               content_type: metadata.contentType,
@@ -1966,28 +1957,6 @@ export function HostedCreateProjectScreen() {
             ))}
           </div>
 
-          <div className="field">
-            <label htmlFor="hosted-spend-cap">Maximum spend</label>
-            <div className="hosted-money-input">
-              <span>$</span>
-              <input
-                id="hosted-spend-cap"
-                className="input"
-                inputMode="decimal"
-                type="number"
-                min="0.05"
-                max="2"
-                step="0.01"
-                value={spendCapUsd}
-                onChange={(event) => {
-                  setSpendCapUsd(event.target.value);
-                  setPreflightResult(null);
-                }}
-              />
-            </div>
-            <small>This is a hard limit, not an expected charge.</small>
-          </div>
-
           {preflightResult ? (
             <div
               className={
@@ -2004,7 +1973,6 @@ export function HostedCreateProjectScreen() {
                 {hostedPreflightEstimateText(
                   preflightResult.estimate,
                   catalog.data.gpu_readiness.dispatch_available,
-                  cap,
                 )}
               </span>
             </div>
@@ -2019,11 +1987,6 @@ export function HostedCreateProjectScreen() {
               </ul>
             </div>
           ) : null}
-          {!capValid ? (
-            <p className="validation validation-danger">
-              Enter a finite spend cap of at least $0.05.
-            </p>
-          ) : null}
           {!keywordsValid ? (
             <p className="validation validation-danger">
               Extra prompt keywords must be at most 500 characters.
@@ -2037,7 +2000,7 @@ export function HostedCreateProjectScreen() {
           {!catalog.data.gpu_readiness.dispatch_available ? (
             <p className="helper hosted-beta-note" role="note">
               After creation, VideoForge automatically transcribes, understands the voiceover, plans
-              scenes, and writes image prompts within your project maximum. Final video generation
+              scenes, and writes image prompts for your project. Final video generation
               is not yet available, and no paid GPU work will start.
             </p>
           ) : null}
@@ -3891,7 +3854,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   : "No provider charge"
               }
               detail={
-                cost?.cap_usd == null ? "personal worker" : `${formatUsd(cost.cap_usd)} maximum`
+                cost?.cap_usd == null
+                  ? "No project spending limit"
+                  : `${formatUsd(cost.cap_usd)} maximum`
               }
               tone="success"
             />

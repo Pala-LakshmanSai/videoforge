@@ -324,7 +324,7 @@ function assertPreparedSubmission(
   const submission = record(value, "V209_REAL_CHROME_PREPARED_INPUT_INVALID");
   const voiceover = record(submission.voiceover, "V209_REAL_CHROME_PREPARED_INPUT_INVALID");
   if (
-    Object.keys(submission).length !== 9 ||
+    Object.keys(submission).length !== 8 ||
     ![
       "schema_version",
       "title",
@@ -333,7 +333,6 @@ function assertPreparedSubmission(
       "extra_prompt_keywords",
       "apply_extra_prompt_keywords",
       "user_seed",
-      "spend_cap_usd",
       "voiceover",
     ].every((key) => Object.hasOwn(submission, key)) ||
     Object.keys(voiceover).length !== 5 ||
@@ -347,7 +346,6 @@ function assertPreparedSubmission(
     submission.extra_prompt_keywords !== "" ||
     submission.apply_extra_prompt_keywords !== false ||
     submission.user_seed !== null ||
-    submission.spend_cap_usd !== request.prepared.spendCapUsd ||
     voiceover.filename !== request.prepared.voiceoverFilename ||
     voiceover.content_type !== request.prepared.voiceoverContentType ||
     voiceover.content_length !== request.prepared.voiceoverContentLength ||
@@ -642,11 +640,6 @@ class V209PlaywrightSession implements V209RealChromeSessionPort, V209StageProgr
     );
     await choosePreset(this.page, "#hosted-avatar-select", avatarIndex, input.signal);
     await choosePreset(this.page, "#hosted-style-select", styleIndex, input.signal);
-    await abortable(input.signal, () =>
-      this.page
-        .getByLabel("Maximum spend", { exact: true })
-        .fill(String(this.request.prepared.spendCapUsd)),
-    );
     const preflight = this.page.getByRole("button", {
       name: "Check cost & readiness",
       exact: true,

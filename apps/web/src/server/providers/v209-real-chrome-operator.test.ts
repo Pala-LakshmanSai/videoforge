@@ -50,7 +50,6 @@ const prepared = {
   voiceoverDurationMs: 40_000,
   avatarProfileVersionId: "avatar-version-1",
   imageStyleVersionId: "style-version-1",
-  spendCapUsd: 2,
 } as const;
 
 const request = {

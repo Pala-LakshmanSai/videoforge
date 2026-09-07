@@ -110,7 +110,6 @@ export interface V209RealChromePreparedInput {
   readonly voiceoverDurationMs: number;
   readonly avatarProfileVersionId: string;
   readonly imageStyleVersionId: string;
-  readonly spendCapUsd: number;
 }
 
 export interface V209RealChromePageObservation {
@@ -430,7 +429,6 @@ function assertPreparedInput(value: V209RealChromePreparedInput): void {
     "voiceoverDurationMs",
     "avatarProfileVersionId",
     "imageStyleVersionId",
-    "spendCapUsd",
   ] as const;
   if (
     Object.keys(prepared).length !== keys.length ||
@@ -462,8 +460,6 @@ function assertPreparedInput(value: V209RealChromePreparedInput): void {
   if (durationMs > 60_000) fail("V209_REAL_CHROME_REQUEST_INVALID");
   identifier(prepared.avatarProfileVersionId, "V209_REAL_CHROME_REQUEST_INVALID");
   identifier(prepared.imageStyleVersionId, "V209_REAL_CHROME_REQUEST_INVALID");
-  const spendCapUsd = finite(prepared.spendCapUsd, "V209_REAL_CHROME_REQUEST_INVALID");
-  if (spendCapUsd < 0.05 || spendCapUsd > 2) fail("V209_REAL_CHROME_REQUEST_INVALID");
 }
 
 function assertPreparedParity(
@@ -481,7 +477,6 @@ function assertPreparedParity(
     "voiceoverDurationMs",
     "avatarProfileVersionId",
     "imageStyleVersionId",
-    "spendCapUsd",
   ] as const) {
     if (prepared[key] !== expected[key]) fail(code);
   }

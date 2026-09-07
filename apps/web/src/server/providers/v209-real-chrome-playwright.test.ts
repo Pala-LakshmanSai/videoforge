@@ -79,7 +79,6 @@ function sourceFiles() {
       voiceoverDurationMs: 40_000,
       avatarProfileVersionId: "avatar-version-1",
       imageStyleVersionId: "style-version-1",
-      spendCapUsd: 2,
     },
     maxProgressReads: 3,
     pollIntervalMs: 0,
@@ -252,7 +251,6 @@ function fakeChrome(input: {
     extra_prompt_keywords: "",
     apply_extra_prompt_keywords: false,
     user_seed: null,
-    spend_cap_usd: input.request.prepared.spendCapUsd,
     voiceover: {
       filename: input.request.prepared.voiceoverFilename,
       content_type: input.request.prepared.voiceoverContentType,

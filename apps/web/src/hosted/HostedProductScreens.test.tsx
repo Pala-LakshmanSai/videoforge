@@ -391,9 +391,14 @@ describe("hosted product journey", () => {
           detail: "GPU_TRANSPORT_DISABLED_UNQUALIFIED internal lane detail",
         },
         true,
-        1,
       ),
-    ).toBe("Estimate pending · maximum $1.00");
+    ).toBe("Estimate pending");
+    expect(
+      hostedPreflightEstimateText({ projected_usd: 0.73, cap_usd: null }, true),
+    ).toBe("Estimated variable cost $0.73");
+    expect(hostedPreflightEstimateText({ projected_usd: 0.73 }, false)).toBe(
+      "No paid video generation in this beta",
+    );
     expect(
       preflightBlockers({
         blockers: [
@@ -1277,13 +1282,7 @@ describe("hosted product journey", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("Owner")).toBeInTheDocument();
     expect(screen.getByText("Documentary")).toBeInTheDocument();
-    expect(screen.getByLabelText("Maximum spend")).toHaveClass("input");
-    expect(screen.getByLabelText("Maximum spend")).toHaveValue(1);
-    fireEvent.change(screen.getByLabelText("Maximum spend"), { target: { value: "0.05" } });
-    expect(screen.getByLabelText("Maximum spend")).toHaveValue(0.05);
-    expect(screen.queryByText(/finite spend cap/u)).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Maximum spend"), { target: { value: "0.04" } });
-    expect(screen.getByText("Enter a finite spend cap of at least $0.05.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Maximum spend")).not.toBeInTheDocument();
     expect(screen.getByText(/no paid GPU work will start/u)).toBeInTheDocument();
     expect(
       screen.queryByText(
@@ -1354,6 +1353,7 @@ describe("hosted product journey", () => {
     const progressHero = await screen.findByRole("region", { name: "Live video progress" });
     expect(within(progressHero).getAllByText("Running").length).toBeGreaterThan(0);
     expect(within(progressHero).queryByText("Blocked")).not.toBeInTheDocument();
+    expect(within(progressHero).getByText("No project spending limit")).toBeInTheDocument();
   });
 
   it("requires a second deliberate click before stopping active transcription", async () => {
