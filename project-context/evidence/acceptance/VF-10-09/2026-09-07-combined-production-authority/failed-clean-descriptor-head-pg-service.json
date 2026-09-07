@@ -1,0 +1,73 @@
+{
+  "schema_version": "videoforge.v2-09-combined-production-failed-clean/v1",
+  "checkpoint": "V2-09",
+  "status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "authority_id": "v2-09-ea4e2e45c34f740d",
+  "authority_sha256": "sha256:ada407387f8340c86c3f32f72bd8d626ab27818ae4280fd7dd74d2cf43bfabca",
+  "proposal_sha256": "sha256:ea4e2e45c34f740ddd468153076c3fc08243687a402490ab2e040daba449e396",
+  "source_commit": "e5d0c4523097e483ee45a3a27f27d7abc4f6c21a",
+  "authority_consumed_once": true,
+  "outer_state_status": "FAILED_CLEAN",
+  "outer_state_sha256": "sha256:609cf9846d65ad90615d5430c8be584b3aaa2216612a62d5c2a12f86ebf98c7e",
+  "stop_code": "V2_09_PROTECTED_MATERIALIZATION_PG_SERVICE_INVALID",
+  "stop_operation": "read-pre-mutation-completion-baseline",
+  "stop_cause": "owner_pg_service_contains_disallowed_channel_binding_key",
+  "preflight": {
+    "status": "COMPLETED",
+    "checked_at": "2026-09-07T12:27:18.560Z",
+    "proof_sha256": "sha256:609f5887fdfed1d3461e403ee5075137f76652a4596dd901eef0847061db4b26",
+    "credential_reads": 1,
+    "database_calls": 0,
+    "r2_calls": 0,
+    "provider_mutations": 0,
+    "runpod_job_posts": 0,
+    "gpu_jobs": 0,
+    "external_spend_usd": 0,
+    "stage_6_reruns": 0,
+    "stage_7_reruns": 0,
+    "billing_baseline_usd": 3.5284023286949378,
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "availability": "LOW",
+    "rate_usd_per_second": 0.00031,
+    "rate_usd_per_gpu_hour": 1.116,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "retained_volume_count": 2,
+    "mage_image_head_proof_sha256": "sha256:cf69a575e1401aabbd407173000181f4108d2f4ab95cdb55a19815d93ffb2c80",
+    "soulx_image_head_proof_sha256": "sha256:83f33c8ee63bfe00d1c8dbaf4fa3cd3c5d6013d201dd463fa8265b734071203a"
+  },
+  "operations": {
+    "completed": [
+      "run-read-only-preflight"
+    ],
+    "started_not_completed": [
+      "read-pre-mutation-completion-baseline"
+    ],
+    "later_pending_count": 24,
+    "inner_authority_derived": false
+  },
+  "mutation_summary": {
+    "database_mutations": 0,
+    "r2_mutations": 0,
+    "cloudflare_mutations": 0,
+    "media_worker_publications": 0,
+    "media_worker_installations": 0,
+    "runpod_endpoint_or_template_mutations": 0,
+    "provider_job_posts": 0,
+    "gpu_jobs": 0,
+    "redispatches": 0,
+    "external_spend_usd": 0
+  },
+  "cleanup": {
+    "required": false,
+    "protected_roles_or_secret_outputs_created": false,
+    "staging_or_inner_journal_created": false,
+    "attributable_remote_resources_created": false,
+    "executor_process_running": false,
+    "retained_volumes_unchanged": true
+  },
+  "next_gate": "provider_free_pg_service_closed_world_repair_audit_clean_commit_bundle_recompute_and_fresh_exact_approval"
+}
