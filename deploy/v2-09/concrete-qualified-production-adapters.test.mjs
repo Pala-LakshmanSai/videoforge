@@ -19,6 +19,7 @@ import {
   createConcreteQualifiedProductionAdaptersForTest,
   createConcreteQualifiedProductionStagingAdaptersForTest,
   hasV209InnerFailedClean,
+  readV209InnerSucceededClean,
 } from "./concrete-qualified-production-adapters.mjs";
 import { SECRET_NAMES } from "../v2-13/guarded-activation.mjs";
 import {
@@ -1289,7 +1290,16 @@ test("deployment factory binds all secrets and rehydrates the persisted pair wit
     priorResults,
   };
   assert.equal(hasV209InnerFailedClean(proofInput), false);
+  assert.equal(readV209InnerSucceededClean(proofInput), null);
   await deployment.state.loadCleanupAuthority({ authority: inner });
+  for (const operation of CLEANUP_OPERATIONS.slice(0, 2)) {
+    await deployment.state.recordCleanupOperation({
+      authorityId: inner.authority_id,
+      operationId: operation.id,
+      outcome: "SUCCESS",
+      result: { operation_id: operation.id },
+    });
+  }
   for (const operation of CLEANUP_OPERATIONS) {
     await deployment.state.recordCleanupOperation({
       authorityId: inner.authority_id,
@@ -1304,6 +1314,37 @@ test("deployment factory binds all secrets and rehydrates the persisted pair wit
   tampered.cleanup.at(-1).outcome = "SUCCESS";
   writeFileSync(configuration.journalPath, `${canonical(tampered)}\n`, { mode: 0o600 });
   assert.throws(() => hasV209InnerFailedClean(proofInput), /V2_09_INNER_CLEANUP_PROOF_INVALID/u);
+
+  const succeeded = structuredClone(tampered);
+  succeeded.status = "SUCCEEDED_CLEAN";
+  succeeded.normal["run-one-v209-chrome-e2e"] = {
+    status: "COMPLETED",
+    result_sha256: hash("chrome-result"),
+  };
+  succeeded.normal["verify-private-mp4-lineage"] = {
+    status: "COMPLETED",
+    result_sha256: hash("lineage-result"),
+  };
+  succeeded.cleanup = CLEANUP_OPERATIONS.map((operation) => ({
+    operation_id: operation.id,
+    outcome: "SUCCESS",
+    result_sha256: hash(`success-${operation.id}`),
+  }));
+  writeFileSync(configuration.journalPath, `${canonical(succeeded)}\n`, { mode: 0o600 });
+  assert.deepEqual(readV209InnerSucceededClean(proofInput), {
+    schema_version: "videoforge.v2-09-qualified-production-execution/v1",
+    authority_id: inner.authority_id,
+    status: "SUCCEEDED_CLEAN",
+    operations: [...OPERATION_IDS],
+    paid_dispatch_count: 1,
+    redispatch_count: 0,
+  });
+  delete succeeded.normal["verify-private-mp4-lineage"];
+  writeFileSync(configuration.journalPath, `${canonical(succeeded)}\n`, { mode: 0o600 });
+  assert.throws(
+    () => readV209InnerSucceededClean(proofInput),
+    /V2_09_INNER_SUCCESS_PROOF_INVALID/u,
+  );
 });
 
 test("interactive Chrome pause and resume preserve the unstarted Generate operation", async () => {

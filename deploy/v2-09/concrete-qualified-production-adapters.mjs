@@ -398,7 +398,7 @@ function validateCombinedJournalHandoff(combinedExecution, executionAuthority, p
   return combinedExecution.outer_authority_id;
 }
 
-export function hasV209InnerFailedClean({
+function readBoundInnerJournal({
   configuration,
   executionAuthority,
   journalAuthorityId,
@@ -431,26 +431,68 @@ export function hasV209InnerFailedClean({
     )
       fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
   }
-  if (journal.status !== "FAILED_CLEAN") return false;
+  return journal;
+}
+
+function validateCleanupAttempts(cleanup, { finalOutcome }) {
   const cleanupIds = CLEANUP_OPERATIONS.map(({ id }) => id);
-  if (journal.cleanup.length < cleanupIds.length) fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+  if (cleanup.length < cleanupIds.length) fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
   let cleanupPosition = 0;
-  for (const entry of journal.cleanup) {
-    if (entry.operation_id !== cleanupIds[cleanupPosition]) {
-      if (cleanupPosition > 0 && entry.operation_id === cleanupIds[0]) cleanupPosition = 0;
-      else fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+  let attemptOutcome = null;
+  let lastCompletedOutcome = null;
+  for (const entry of cleanup) {
+    if (entry.operation_id === cleanupIds[0] && cleanupPosition !== 0) {
+      cleanupPosition = 0;
+      attemptOutcome = null;
     }
     if (
       !exactKeys(entry, ["operation_id", "outcome", "result_sha256"]) ||
       entry.operation_id !== cleanupIds[cleanupPosition] ||
-      entry.outcome !== "FAILURE" ||
+      !["SUCCESS", "FAILURE"].includes(entry.outcome) ||
       !HASH.test(entry.result_sha256 ?? "")
     )
       fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+    if (cleanupPosition === 0) attemptOutcome = entry.outcome;
+    else if (entry.outcome !== attemptOutcome) fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
     cleanupPosition = (cleanupPosition + 1) % cleanupIds.length;
+    if (cleanupPosition === 0) lastCompletedOutcome = attemptOutcome;
   }
-  if (cleanupPosition !== 0) fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+  if (cleanupPosition !== 0 || lastCompletedOutcome !== finalOutcome)
+    fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+}
+
+export function hasV209InnerFailedClean(input) {
+  const journal = readBoundInnerJournal(input);
+  if (journal.status !== "FAILED_CLEAN") return false;
+  validateCleanupAttempts(journal.cleanup, { finalOutcome: "FAILURE" });
   return true;
+}
+
+export function readV209InnerSucceededClean(input) {
+  const journal = readBoundInnerJournal(input);
+  if (journal.status !== "SUCCEEDED_CLEAN") return null;
+  const normalIds = NORMAL_OPERATIONS.map(({ id }) => id);
+  if (canonical(Object.keys(journal.normal).sort()) !== canonical([...normalIds].sort()))
+    fail("V2_09_INNER_SUCCESS_PROOF_INVALID");
+  for (const operationId of normalIds) {
+    if (
+      !exactKeys(journal.normal[operationId], ["result_sha256", "status"]) ||
+      journal.normal[operationId].status !== "COMPLETED" ||
+      !HASH.test(journal.normal[operationId].result_sha256 ?? "")
+    )
+      fail("V2_09_INNER_SUCCESS_PROOF_INVALID");
+  }
+  if (journal.cleanup.length !== CLEANUP_OPERATIONS.length)
+    fail("V2_09_INNER_SUCCESS_PROOF_INVALID");
+  validateCleanupAttempts(journal.cleanup, { finalOutcome: "SUCCESS" });
+  return Object.freeze({
+    schema_version: "videoforge.v2-09-qualified-production-execution/v1",
+    authority_id: input.executionAuthority.authority_id,
+    status: "SUCCEEDED_CLEAN",
+    operations: Object.freeze([...OPERATION_IDS]),
+    paid_dispatch_count: 1,
+    redispatch_count: 0,
+  });
 }
 
 function assertPrivateRegularPath(path, { mayNotExist = false } = {}) {
