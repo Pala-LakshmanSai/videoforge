@@ -1,7 +1,7 @@
 -- Apply with the migration owner after migration 0074. The three login roles must already exist.
 -- This grants only the operator capabilities needed to import and immediately load the exact
--- frozen V2-07/V2-08 qualification binding. It grants no direct table access and invokes neither
--- function.
+-- frozen V2-07/V2-08 qualification binding and to re-read the V2-09 completion baseline. It grants
+-- no direct table access and invokes none of the functions.
 --   psql --variable=operator_role=... --variable=runtime_role=... \
 --     --variable=reconciler_role=... --file=deploy/v2-09/neon-qualified-activation-operator-grants.sql
 
@@ -63,12 +63,16 @@ REVOKE EXECUTE ON FUNCTION public.videoforge_import_hosted_v209_qualified_activa
 FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.videoforge_load_hosted_gpu_activation_v2()
 FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)
+FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.videoforge_import_hosted_v209_qualified_activation(jsonb)
 FROM :"runtime_role";
 REVOKE EXECUTE ON FUNCTION public.videoforge_import_hosted_v209_qualified_activation(jsonb)
 FROM :"reconciler_role";
 REVOKE EXECUTE ON FUNCTION public.videoforge_load_hosted_gpu_activation_v2()
 FROM :"reconciler_role";
+REVOKE EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)
+FROM :"runtime_role";
 REVOKE EXECUTE ON FUNCTION public.videoforge_import_hosted_v209_qualified_activation(jsonb)
 FROM :"operator_role";
 REVOKE EXECUTE ON FUNCTION public.videoforge_load_hosted_gpu_activation_v2()
@@ -82,6 +86,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_import_hosted_v209_qualified_activat
 TO :"operator_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_gpu_activation_v2()
 TO :"operator_role", :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)
+TO :"operator_role";
 
 SELECT (
   has_function_privilege(:'operator_role',
@@ -100,6 +106,14 @@ SELECT (
     'public.videoforge_load_hosted_gpu_activation_v2()','EXECUTE')
   AND NOT has_function_privilege('PUBLIC',
     'public.videoforge_load_hosted_gpu_activation_v2()','EXECUTE')
+  AND has_function_privilege(:'operator_role',
+    'public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)','EXECUTE')
+  AND NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)','EXECUTE')
+  AND NOT has_function_privilege(:'reconciler_role',
+    'public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)','EXECUTE')
+  AND NOT has_function_privilege('PUBLIC',
+    'public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)','EXECUTE')
   AND has_schema_privilege(:'operator_role','public','USAGE')
   AND NOT has_schema_privilege(:'operator_role','public','CREATE')
   AND NOT EXISTS (
@@ -124,7 +138,8 @@ SELECT (
       AND has_function_privilege(:'operator_role',procedure.oid,'EXECUTE')
       AND procedure.oid::regprocedure::text<>ALL(ARRAY[
         'videoforge_import_hosted_v209_qualified_activation(jsonb)',
-        'videoforge_load_hosted_gpu_activation_v2()'
+        'videoforge_load_hosted_gpu_activation_v2()',
+        'videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)'
       ]::text[])
       AND NOT EXISTS (
         SELECT 1 FROM pg_depend dependency

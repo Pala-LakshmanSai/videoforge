@@ -5,6 +5,8 @@ import test from "node:test";
 const grantsPath = "deploy/v2-09/neon-qualified-activation-operator-grants.sql";
 const signature = "public.videoforge_import_hosted_v209_qualified_activation(jsonb)";
 const loadSignature = "public.videoforge_load_hosted_gpu_activation_v2()";
+const baselineSignature =
+  "public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)";
 
 function compact(sql) {
   return sql
@@ -63,6 +65,9 @@ test("V2-09 activation import is operator-only and its readback loader is runtim
       `GRANT EXECUTE ON FUNCTION ${loadSignature} TO :"operator_role", :"runtime_role";`,
     ),
   );
+  assert.ok(sql.includes(`GRANT EXECUTE ON FUNCTION ${baselineSignature} TO :"operator_role";`));
+  for (const grantee of ["PUBLIC", ':"runtime_role"'])
+    assert.ok(sql.includes(`REVOKE EXECUTE ON FUNCTION ${baselineSignature} FROM ${grantee};`));
   assert.doesNotMatch(
     sql,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_import_hosted_v209_qualified_activation\(jsonb\) TO :"(?:runtime|reconciler)_role";/u,
@@ -87,7 +92,7 @@ test("V2-09 operator ACL verification failures always exit psql nonzero", async 
   assert.equal(sql.match(/^ROLLBACK;\n\\quit 1$/gmu)?.length, 2);
 });
 
-test("V2-09 activation import uses exactly the two hardened SECURITY DEFINER capabilities", async () => {
+test("V2-09 activation import and completion baseline use only hardened SECURITY DEFINER capabilities", async () => {
   const [importSql, migration] = await Promise.all([
     readFile("deploy/v2-09/neon-import-qualified-activation.sql", "utf8"),
     readFile("packages/control-plane/migrations/0084_hosted_v209_staged_click_cleanup.sql", "utf8"),

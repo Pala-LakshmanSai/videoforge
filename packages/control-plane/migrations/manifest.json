@@ -504,6 +504,12 @@
       "name": "hosted_v209_staged_click_cleanup",
       "filename": "0084_hosted_v209_staged_click_cleanup.sql",
       "sha256": "sha256:626a78dc70217a28d189467fd5ff3b8b9a91be8de00a6dee358d8b00b87ed75f"
+    },
+    {
+      "version": 85,
+      "name": "hosted_v209_completion_baseline",
+      "filename": "0085_hosted_v209_completion_baseline.sql",
+      "sha256": "sha256:8e3150e340a3a8b2525d41470b6e98e127434e7baf199eb543921647716d585b"
     }
   ]
 }

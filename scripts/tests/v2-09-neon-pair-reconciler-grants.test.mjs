@@ -24,6 +24,7 @@ const exactFunctions = [
   "videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid)",
   "videoforge_finalize_v209_render_terminal(jsonb)",
   "videoforge_reconcile_hosted_v209_staged_click(jsonb)",
+  "videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)",
 ];
 
 test("V2-09 reconciler grants only the ordinary pair terminal and render capabilities", () => {
@@ -82,6 +83,7 @@ test("V2-09 reconciler ACL proof keeps irreversible terminal writes away from ru
     "videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid)",
     "videoforge_finalize_v209_render_terminal(jsonb)",
     "videoforge_reconcile_hosted_v209_staged_click(jsonb)",
+    "videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)",
   ])
     assert.ok(
       compact.includes(

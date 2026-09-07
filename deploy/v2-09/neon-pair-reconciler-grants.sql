@@ -78,7 +78,8 @@ REVOKE EXECUTE ON FUNCTION
   public.videoforge_read_hosted_v209_project_revision_net_cost(uuid,uuid,uuid),
   public.videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid),
   public.videoforge_finalize_v209_render_terminal(jsonb),
-  public.videoforge_reconcile_hosted_v209_staged_click(jsonb)
+  public.videoforge_reconcile_hosted_v209_staged_click(jsonb),
+  public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)
 FROM :"runtime_role";
 
 GRANT EXECUTE ON FUNCTION
@@ -100,7 +101,8 @@ GRANT EXECUTE ON FUNCTION
   public.videoforge_read_hosted_v209_project_revision_net_cost(uuid,uuid,uuid),
   public.videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid),
   public.videoforge_finalize_v209_render_terminal(jsonb),
-  public.videoforge_reconcile_hosted_v209_staged_click(jsonb)
+  public.videoforge_reconcile_hosted_v209_staged_click(jsonb),
+  public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)
 TO :"reconciler_role";
 
 SELECT (
@@ -141,7 +143,8 @@ SELECT (
         'videoforge_read_hosted_v209_project_revision_net_cost(uuid,uuid,uuid)',
         'videoforge_read_v209_render_terminal_candidate(uuid,uuid,uuid)',
         'videoforge_finalize_v209_render_terminal(jsonb)',
-        'videoforge_reconcile_hosted_v209_staged_click(jsonb)'
+        'videoforge_reconcile_hosted_v209_staged_click(jsonb)',
+        'videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)'
       ]::text[])
       AND NOT EXISTS (
         SELECT 1 FROM pg_depend dependency
@@ -178,6 +181,8 @@ SELECT (
     'public.videoforge_finalize_v209_render_terminal(jsonb)','EXECUTE')
   AND NOT has_function_privilege(:'runtime_role',
     'public.videoforge_reconcile_hosted_v209_staged_click(jsonb)','EXECUTE')
+  AND NOT has_function_privilege(:'runtime_role',
+    'public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)','EXECUTE')
 ) AS v209_reconciler_acl_exact
 \gset
 \if :v209_reconciler_acl_exact
