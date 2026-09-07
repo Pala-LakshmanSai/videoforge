@@ -4,7 +4,7 @@ updated_at: "2026-09-07"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_repaired_combined_source_audited_awaiting_exact_authority
+current_milestone: v2_09_combined_authority_materialized_pending_independent_diff_audit
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -18,17 +18,17 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_repaired_combined_source_audited_awaiting_exact_authority
-  live_provider_calls: "Proposal 9e5d4eb9 passed the exact five-job qualification and is consumed. Combined proposals 453a2763 and 8a300cab were consumed only by exact git pushes of their bound sources; pre-mutation checks then stopped before credential read, database, RunPod, R2, media, Cloudflare, GPU, or spend mutation. No further provider read or mutation is authorized."
+  mode: v2_09_combined_authority_materialized_pending_independent_diff_audit
+  live_provider_calls: "Final combined proposal 4d1aa75c is approved and bound to pushed clean source 639e9e59. Authority v2-09-4d1aa75c99393ec1 is materialized for 24 hours, but its mandatory independent successor diff audit remains before any credential read, provider, database, R2, media-worker, Cloudflare, GPU, or spend action."
   remote_mutation: false
   deployment_or_publication: "Existing immutable image f3b1d141 was freshly anonymously reverified without publication; no publication or republication is authorized."
-  credential_value_access: "The initial and five replacement V2-09 bounded read-only preflights each consumed one configured RunPod credential read and failed closed without emitting a proof. Combined proposals 453a2763 and 8a300cab consumed no credential read. No further credential read is authorized."
+  credential_value_access: "The initial and five replacement V2-09 bounded read-only preflights each consumed one configured RunPod credential read and failed closed without emitting a proof. Final proposal 4d1aa75c conditionally authorizes its exact bounded protected reads only after the authority successor passes independent diff audit; none has occurred under this authority."
   paid_requests_or_spend: "Closed at USD 0.08383633207995445 observed increment and USD 3.4607653283455875 cumulative billing; no remaining executable cap."
   runpod_mutation_or_gpu: "Qualification passed and cleanup proved zero compute; no further RunPod mutation or GPU use is authorized."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
   provider_free_product_action: "Repaired V2-09 executable source 75bbc46eb40f88eb586579a34a104e6cc0d772c1 removes the protected-input, post-deploy Chrome, static-plan database-password, and static Chrome deadline circular dependencies. It uses one descriptor-bound operator-URL snapshot, rejects secret-bearing plan fields, and derives an exact 1,660-second Chrome success horizon only after authenticated tenant/catalog discovery while requiring the outer authority to cover it. Focused tests pass 55/55 and 38/38; independent audits are GO P0=0/P1=0. Exact RTX 4090, EU-RO-1, LOW-or-better, USD 0.00031/second and USD 1.116/hour gates remain unchanged. Stage 6 and Stage 7 were not modified or rerun."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "Combined proposals 453a2763 and 8a300cab were consumed by their exact source pushes only; neither performed preflight, credential access, or provider mutation. Repaired executable source 75bbc46e closes the discovered credential and resumable Chrome deadline seams, passes focused tests and independent audits GO P0=0/P1=0, and awaits one replacement combined deployment authority. No current provider or deployment authority exists."
+  note: "Final proposal sha256:4d1aa75c99393ec16dd533e445af44b8562a0558d5d064ac62a73a3559b62bb2 is approved at pushed clean source 639e9e594fde7d1b15c74a5bf7f754a7ac4485a6. Private plan sha256:9d4cb7efef62f3ffe4decc8e7a6b92776873cfbca733a08262af2120896cb82f and authority sha256:274c2346d16189846b1ce31b748a5c9e8ef1fe19189dca91f81ba1188e6da5aa are materialized mode-0600; independent diff audit is the last pre-mutation gate."
 
 v2_09_provider_free_candidate:
   source_commit: "75bbc46eb40f88eb586579a34a104e6cc0d772c1"
@@ -53,7 +53,7 @@ v2_09_provider_free_candidate:
   media_worker_release: "media-worker-v0.1.15 is an unpublished candidate; do not publish, install, or replace v0.1.14 without fresh exact authority."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
   provider_state: "No provider call, credential read, database/R2 mutation, publication, deployment, GPU use, or spend occurred while producing or materializing this candidate."
-  current_authority: "Combined proposals 453a2763 and 8a300cab are consumed by their exact pushes only; no preflight or provider mutation followed. No provider or credential read is currently authorized. Repaired source 75bbc46e passes focused tests and independent audits and requires one replacement combined authority for exact push, deterministic authority materialization, diagnostic preflight, conditional V2-09 production deployment, resumable Chrome authentication, and one live E2E."
+  current_authority: "Final proposal 4d1aa75c is approved at pushed control source 639e9e59. Authority v2-09-4d1aa75c99393ec1 and its protected plan are materialized for 24 hours; the mandatory independent successor diff audit remains before its conditional diagnostic preflight, production deployment, resumable Chrome authentication, and one live E2E may execute."
 
 fixture_user_walkthrough:
   status: SUPERSEDED_BY_PRIVATE_HOSTED_BETA
@@ -219,10 +219,10 @@ hosted_beta_user_walkthrough:
   deployment_candidate: null
   deployed_source_commit: "29667134b17daa9723495d028ec22c4eeaee3ee3"
   cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
-  pending_source_candidate: "V2-09 repaired executable source 75bbc46eb40f88eb586579a34a104e6cc0d772c1 passes focused database-environment and Chrome/coordinator tests 55/55 and 38/38 with independent audits GO P0=0/P1=0; combined proposals 453a2763 and 8a300cab are consumed by push only; production is disabled and undeployed"
+  pending_source_candidate: "V2-09 repaired executable source 75bbc46eb40f88eb586579a34a104e6cc0d772c1 passes focused database-environment and Chrome/coordinator tests 55/55 and 38/38 with independent audits GO P0=0/P1=0; final authority 4d1aa75c is materialized at pushed control source 639e9e59 pending independent successor diff audit; production is disabled and undeployed"
   pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
   pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. REPAIRED_SOURCE_D8337C24_PASSED_145_OF_145_AND_INDEPENDENT_FINAL_AUDITS_GO_P0_0_P1_0. REQUEST_ONE_REPLACEMENT_COMBINED_DIAGNOSTIC_PREFLIGHT_AND_CONDITIONAL_DEPLOYMENT_CHROME_AUTHORITY."
-  pending_validations: "One exact replacement combined diagnostic-preflight and conditional V2-09 deployment/Chrome authority; then execute without a standalone preflight approval loop."
+  pending_validations: "Independent audit of the single authority-materialization successor, then execute its combined diagnostic preflight and conditional V2-09 deployment/Chrome journey without another approval loop."
   latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 29667134b17daa9723495d028ec22c4eeaee3ee3 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.14 ALREADY PUBLISHED INSTALLED AND ACTIVE DO NOT REPUBLISH OR REINSTALL; DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD TOTAL NEW VARIABLE EXTERNAL SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; ENABLE IMAGE KEYWORDS WITH A BOUNDED TEST VALUE AND USE REAL CHROME TO VERIFY STAGE 5 COMPLETION, COMPACT PROMPTS, ONLY PINNED MEDIUM REALISM CAMERA AND LIGHTING STYLE CUES, NO PALETTE OR HEX OR OTHER REMOVED STYLE METADATA, AND THE ENABLED IMAGE KEYWORDS EXACTLY ONCE IN EVERY POSITIVE SCENE PROMPT; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
   latest_live_run: "Approved source 29667134 deployed once as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6 with media worker 0.1.14 already active. Exactly one project f7655814-1b12-40c7-b0d5-993ad0c074e2 passed the 2,152,579,950-byte free-space gate with 2,944,651,264 bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 prompts, settled USD 0.001401, and conserved the reservation; total Stage 3+5 variable spend was USD 0.001473. Real Chrome verified the 520px scrollable prompt viewer, exact once-per-prompt enabled keywords, four pinned style fields, and zero removed style metadata hits. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   deployed_config_sha256: "cf25f25a7829deba82a3d16b44ddf64cf3238577e409f25570921c8514bff858"
@@ -6173,13 +6173,13 @@ provider_authority: &v2_09_provider_authority_read_only
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_repaired_combined_source_audited_awaiting_exact_authority
-  status: REPAIRED_COMBINED_SOURCE_AUDITED_AWAITING_EXACT_AUTHORITY
+  milestone: v2_09_combined_authority_materialized_pending_independent_diff_audit
+  status: COMBINED_AUTHORITY_MATERIALIZED_PENDING_INDEPENDENT_DIFF_AUDIT
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
-  authorization_status: combined_453a_consumed_by_push_only_no_current_authority
+  authorization_status: final_4d1aa75c_materialized_pending_independent_diff_audit
   task_stage: read_only_preflight
-  current_goal_authority: null
-  current_goal_authority_sha256: null
+  current_goal_authority: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority.json
+  current_goal_authority_sha256: "sha256:274c2346d16189846b1ce31b748a5c9e8ef1fe19189dca91f81ba1188e6da5aa"
   provider_authority: *v2_09_provider_authority_read_only
   provider_mode: fixture
   read_profile: v2_09_short_live_e2e
@@ -6227,7 +6227,7 @@ recommended_next_task:
   authorized_operations: *v2_09_read_only_operations
   allowed_operations: *v2_09_read_only_operations
   rate_snapshot: []
-  authority_note: "The initial V2-09 preflights through fifth proposal d186ca50 are consumed. Combined proposals 453a2763 and 8a300cab were each consumed only by their exact source pushes; both stopped before credential read, database, RunPod, R2, media, Cloudflare, GPU, or spend mutation. No provider read or mutation is currently authorized. Repaired executable source 75bbc46eb40f88eb586579a34a104e6cc0d772c1 passes focused tests 55/55 and 38/38 with independent audits GO P0=0/P1=0; one replacement combined authority is required."
+  authority_note: "The initial V2-09 preflights through fifth proposal d186ca50 are consumed. Combined proposals 453a2763 and 8a300cab were each consumed only by their exact source pushes; both stopped before credential read, database, RunPod, R2, media, Cloudflare, GPU, or spend mutation. Final proposal 4d1aa75c is approved and authority v2-09-4d1aa75c99393ec1 is materialized against pushed control source 639e9e59; its independent successor diff audit is the only remaining pre-execution gate."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: null
   successor_proposal_sha256: null
@@ -6237,7 +6237,7 @@ recommended_next_task:
   superseded_authority_execution_commit: cde3515faf4a8581a83132cd7a8cb296980bd9ff
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: repaired_combined_source_audited_context_sealed_awaiting_exact_authority
+  execution_status: combined_authority_materialized_pending_independent_diff_audit
   execution_blocker: fresh_exact_replacement_combined_approval
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 

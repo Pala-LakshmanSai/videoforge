@@ -1,5 +1,5 @@
 schema_version: "2.0"
-updated_at: "2026-09-06"
+updated_at: "2026-09-07"
 evidence_root: "evidence/gates"
 
 execution_model:
@@ -455,6 +455,11 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority.json"
+    current_authority_sha256: "sha256:274c2346d16189846b1ce31b748a5c9e8ef1fe19189dca91f81ba1188e6da5aa"
+    current_authority_state: materialized_pending_independent_diff_audit
+    current_proposal_sha256: "sha256:4d1aa75c99393ec16dd533e445af44b8562a0558d5d064ac62a73a3559b62bb2"
+    current_control_source_commit: "639e9e594fde7d1b15c74a5bf7f754a7ac4485a6"
 
   GATE_RANGA_001:
     status: open
