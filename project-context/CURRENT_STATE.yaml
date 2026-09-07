@@ -222,8 +222,8 @@ hosted_beta_user_walkthrough:
   cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
   pending_source_candidate: "Replacement authority d9703df5 is consumed FAILED_CLEAN at the missing catalog-flex gate. Provider-free source dc6ef647 removes every project maximum-spend input and enforcement path, adds migration 0086 for NULL unlimited new-project limits with inert legacy values, and obtains the guarded RTX 4090 rate from RunPod's official pricing page while authenticated catalog truth supplies exact EU-RO-1 LOW-or-better availability. Two independent focused audits passed P0=0/P1=0; one replacement combined authority is the next gate and production remains disabled and undeployed."
   pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
-  pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. SEAL_AND_INDEPENDENTLY_AUDIT_THE_UNLIMITED_PROJECT_AND_OFFICIAL_RATE_REPAIR, THEN_REQUEST_ONE_REPLACEMENT_COMBINED_PREFLIGHT_CONDITIONAL_DEPLOYMENT_AND_CHROME_AUTHORITY."
-  pending_validations: "Complete only focused provider-free validation and independent audit. Any authenticated read, replacement authority, deployment, provider mutation, GPU use, or Chrome journey requires the next exact combined approval."
+  pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. REQUEST_ONE_REPLACEMENT_COMBINED_PREFLIGHT_CONDITIONAL_DEPLOYMENT_AND_CHROME_AUTHORITY."
+  pending_validations: "Provider-free validation and two independent audits passed. Any authenticated read, replacement authority, deployment, provider mutation, GPU use, or Chrome journey requires the next exact combined approval."
   latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 29667134b17daa9723495d028ec22c4eeaee3ee3 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.14 ALREADY PUBLISHED INSTALLED AND ACTIVE DO NOT REPUBLISH OR REINSTALL; DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD TOTAL NEW VARIABLE EXTERNAL SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; ENABLE IMAGE KEYWORDS WITH A BOUNDED TEST VALUE AND USE REAL CHROME TO VERIFY STAGE 5 COMPLETION, COMPACT PROMPTS, ONLY PINNED MEDIUM REALISM CAMERA AND LIGHTING STYLE CUES, NO PALETTE OR HEX OR OTHER REMOVED STYLE METADATA, AND THE ENABLED IMAGE KEYWORDS EXACTLY ONCE IN EVERY POSITIVE SCENE PROMPT; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
   latest_live_run: "Approved source 29667134 deployed once as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6 with media worker 0.1.14 already active. Exactly one project f7655814-1b12-40c7-b0d5-993ad0c074e2 passed the 2,152,579,950-byte free-space gate with 2,944,651,264 bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 prompts, settled USD 0.001401, and conserved the reservation; total Stage 3+5 variable spend was USD 0.001473. Real Chrome verified the 520px scrollable prompt viewer, exact once-per-prompt enabled keywords, four pinned style fields, and zero removed style metadata hits. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   deployed_config_sha256: "cf25f25a7829deba82a3d16b44ddf64cf3238577e409f25570921c8514bff858"
@@ -1046,8 +1046,8 @@ provider_free_product_progress:
     external_spend_usd: 0
     remote_mutations: 0
   hosted_v209_last_recorded_deployed_migration: 73
-  hosted_v209_source_migration_head: 85
-  hosted_v209_pending_migrations: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85]
+  hosted_v209_source_migration_head: 86
+  hosted_v209_pending_migrations: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86]
   hosted_v209_pending_media_worker_release: "0.1.15"
   hosted_v209_stage_6_stage_7_policy: FROZEN_QUALIFIED_DO_NOT_RERUN_OR_MODIFY
   hosted_v209_read_only_preflight_commit: "1c93ab69ecae516b0e940f01395ea9dbae92c988"
@@ -4195,7 +4195,7 @@ roadmap_state:
   V2-06: complete_green_independently_audited
   V2-07: complete_green_live_qualified_attempt85_cleanup_zero_compute
   V2-08: complete_green_live_qualified_cleanup_zero_compute
-  V2-09: provider_free_source_green_context_seal_and_independent_audit_pending_live_requires_separate_fresh_authority
+  V2-09: provider_free_source_green_two_independent_audits_passed_live_requires_separate_fresh_authority
   V2-10: provider_free_authorized_live_blocked_on_V2-09
   V2-11: provider_free_authorized_live_blocked_on_lane_max1_and_V2-10
   V2-12: provider_free_authorized_live_blocked_on_V2-11
@@ -6228,7 +6228,7 @@ recommended_next_task:
   authorized_operations: *v2_09_combined_operations
   allowed_operations: *v2_09_combined_operations
   rate_snapshot: []
-  authority_note: "Prior proposal 4d1aa75c is consumed FAILED_CLEAN with zero credential reads or external actions. Replacement proposal d9703df5 is also consumed FAILED_CLEAN after its single bounded authenticated preflight found the exact catalog match lacked price.flex; all mutation operations remained pending. Provider-free repair now uses authenticated catalog truth for availability and RunPod's official pricing page for rate, and makes hosted project limits NULL/unlimited through migration 0086. No replacement is authorized until the clean repair source and independent audit are sealed."
+  authority_note: "Prior proposal 4d1aa75c is consumed FAILED_CLEAN with zero credential reads or external actions. Replacement proposal d9703df5 is also consumed FAILED_CLEAN after its single bounded authenticated preflight found the exact catalog match lacked price.flex; all mutation operations remained pending. Provider-free repair uses authenticated catalog truth for availability and RunPod's official pricing page for rate, makes all project limits runtime-inert through migration 0086, and passed two independent audits. No replacement is currently authorized."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: null
   successor_proposal_sha256: null
