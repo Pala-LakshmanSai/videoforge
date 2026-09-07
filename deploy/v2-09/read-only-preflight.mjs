@@ -29,7 +29,8 @@ const GHCR_HEADER_TIMEOUT_MILLISECONDS = 60_000;
 const GHCR_BODY_IDLE_TIMEOUT_MILLISECONDS = 60_000;
 const GHCR_BODY_MINIMUM_TIMEOUT_MILLISECONDS = 5 * 60_000;
 const GHCR_BODY_MAXIMUM_TIMEOUT_MILLISECONDS = 2 * 60 * 60_000;
-const GHCR_BODY_MINIMUM_BYTES_PER_SECOND = 1024 * 1024;
+const GHCR_BODY_DEADLINE_GRACE_MILLISECONDS = 5 * 60_000;
+const GHCR_BODY_MINIMUM_BYTES_PER_SECOND = 256 * 1024;
 const MAX_TOKEN_BYTES = 64 * 1024;
 const MAX_MANIFEST_BYTES = 8 * 1024 * 1024;
 const MAX_CONFIG_BYTES = 8 * 1024 * 1024;
@@ -171,6 +172,7 @@ export async function readRunPodEvidence({
   checkedAt,
   expectedAccountIdSha256 = RUNPOD_ACCOUNT_ID_SHA256,
   retainedVolumePins = V209_RETAINED_VOLUMES,
+  onFailure = () => {},
 }) {
   const billingUrl = new URL("/v1/billing/endpoints", RUNPOD_REST_ORIGIN);
   billingUrl.searchParams.set("bucketSize", "hour");
@@ -180,28 +182,43 @@ export async function readRunPodEvidence({
   const accountQuery = JSON.stringify({
     query: "query VideoForgeAccountIdentity { myself { id } }",
   });
+  const reads = [
+    runpodJson(fetchImpl, apiKey, RUNPOD_GRAPHQL_URL, {
+      method: "POST",
+      body: accountQuery,
+    }),
+    runpodJson(fetchImpl, apiKey, RUNPOD_CATALOG_URL),
+    runpodJson(fetchImpl, apiKey, `${RUNPOD_REST_ORIGIN}/v1/pods?includeWorkers=true`),
+    runpodJson(
+      fetchImpl,
+      apiKey,
+      `${RUNPOD_REST_ORIGIN}/v1/endpoints?includeTemplate=true&includeWorkers=true`,
+    ),
+    runpodJson(
+      fetchImpl,
+      apiKey,
+      `${RUNPOD_REST_ORIGIN}/v1/templates?includeEndpointBoundTemplates=true`,
+    ),
+    runpodJson(fetchImpl, apiKey, `${RUNPOD_REST_ORIGIN}/v1/networkvolumes`),
+    runpodJson(fetchImpl, apiKey, billingUrl),
+    readOfficialRunPodServerlessFlexRate(fetchImpl, checkedAt),
+  ];
+  let firstFailure;
+  let failed = false;
+  const observedReads = reads.map((read) =>
+    Promise.resolve(read).catch((error) => {
+      if (!failed) {
+        failed = true;
+        firstFailure = error;
+        onFailure();
+      }
+      throw error;
+    }),
+  );
+  const settledReads = await Promise.allSettled(observedReads);
+  if (failed) throw firstFailure;
   const [account, catalog, pods, endpoints, templates, volumes, billingRows, officialPricing] =
-    await Promise.all([
-      runpodJson(fetchImpl, apiKey, RUNPOD_GRAPHQL_URL, {
-        method: "POST",
-        body: accountQuery,
-      }),
-      runpodJson(fetchImpl, apiKey, RUNPOD_CATALOG_URL),
-      runpodJson(fetchImpl, apiKey, `${RUNPOD_REST_ORIGIN}/v1/pods?includeWorkers=true`),
-      runpodJson(
-        fetchImpl,
-        apiKey,
-        `${RUNPOD_REST_ORIGIN}/v1/endpoints?includeTemplate=true&includeWorkers=true`,
-      ),
-      runpodJson(
-        fetchImpl,
-        apiKey,
-        `${RUNPOD_REST_ORIGIN}/v1/templates?includeEndpointBoundTemplates=true`,
-      ),
-      runpodJson(fetchImpl, apiKey, `${RUNPOD_REST_ORIGIN}/v1/networkvolumes`),
-      runpodJson(fetchImpl, apiKey, billingUrl),
-      readOfficialRunPodServerlessFlexRate(fetchImpl, checkedAt),
-    ]);
+    settledReads.map((read) => read.value);
   const accountId = account?.data?.myself?.id;
   if (
     typeof accountId !== "string" ||
@@ -281,12 +298,13 @@ function descriptor(value, mediaTypes, code) {
   return Object.freeze({ digest: value.digest, mediaType: value.mediaType, size: value.size });
 }
 
-const boundedBodyTimeoutMilliseconds = (expectedSize, maximumSize) =>
+export const boundedBodyTimeoutMilliseconds = (expectedSize, maximumSize) =>
   Math.min(
     GHCR_BODY_MAXIMUM_TIMEOUT_MILLISECONDS,
     Math.max(
       GHCR_BODY_MINIMUM_TIMEOUT_MILLISECONDS,
-      Math.ceil(((expectedSize ?? maximumSize) / GHCR_BODY_MINIMUM_BYTES_PER_SECOND) * 1000),
+      GHCR_BODY_DEADLINE_GRACE_MILLISECONDS +
+        Math.ceil(((expectedSize ?? maximumSize) / GHCR_BODY_MINIMUM_BYTES_PER_SECOND) * 1000),
     ),
   );
 
@@ -696,10 +714,33 @@ export async function runV209ReadOnlyPreflight(
   const observed = now();
   if (!(observed instanceof Date) || !Number.isFinite(observed.getTime())) fail("CLOCK");
   const checkedAt = observed.toISOString();
-  const [rawRunpod, rawImages] = await Promise.all([
-    readRunPod({ apiKey, fetchImpl, checkedAt }),
-    Promise.all(V209_FROZEN_IMAGES.map((image) => verifyImage(fetchImpl, image))),
-  ]);
+  const sharedController = new AbortController();
+  const sharedFetch = (input, init = {}) =>
+    fetchImpl(input, {
+      ...init,
+      signal:
+        init.signal === undefined
+          ? sharedController.signal
+          : AbortSignal.any([sharedController.signal, init.signal]),
+    });
+  const reads = [
+    readRunPod({
+      apiKey,
+      fetchImpl: sharedFetch,
+      checkedAt,
+      onFailure: () => sharedController.abort(),
+    }),
+    ...V209_FROZEN_IMAGES.map((image) => verifyImage(sharedFetch, image)),
+  ];
+  let rawRunpod;
+  let rawImages;
+  try {
+    [rawRunpod, ...rawImages] = await Promise.all(reads);
+  } catch (error) {
+    sharedController.abort();
+    await Promise.allSettled(reads);
+    throw error;
+  }
   const runpod = validateRunPodEvidence(rawRunpod);
   const images = validateImageEvidence(rawImages);
   const unsigned = {

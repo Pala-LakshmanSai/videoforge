@@ -5,6 +5,7 @@ import test from "node:test";
 
 import {
   anonymousGhcrFetch,
+  boundedBodyTimeoutMilliseconds,
   readBoundedBody,
   readRunPodEvidence,
   runV209ReadOnlyPreflight,
@@ -533,6 +534,14 @@ test("GHCR absolute body deadline stops continuous non-idle transfer", async () 
   assert.equal(controller.signal.aborted, true);
 });
 
+test("GHCR body deadline includes slow-link grace and remains hard-capped", () => {
+  assert.equal(boundedBodyTimeoutMilliseconds(256 * 1024, 256 * 1024), 301_000);
+  assert.equal(
+    boundedBodyTimeoutMilliseconds(8 * 1024 * 1024 * 1024, 8 * 1024 * 1024 * 1024),
+    7_200_000,
+  );
+});
+
 test("GHCR bounded body preserves exact size and digest failures", async () => {
   const bytes = Buffer.from("bounded-body");
   await assert.rejects(
@@ -764,6 +773,92 @@ test("entrypoint binds clean source and emits only redacted canonical zero-mutat
     ),
     /SOURCE_OR_INPUT_BINDING/u,
   );
+});
+
+test("entrypoint cancels and settles sibling reads on the first failure", async () => {
+  const source = "2".repeat(40);
+  let siblingAborted = false;
+  let siblingSettled = false;
+  await assert.rejects(
+    runV209ReadOnlyPreflight(
+      { expectedSource: source, apiKey: "runpod-test-key-that-is-never-returned" },
+      {
+        head: source,
+        trackedClean: true,
+        now: () => new Date("2026-09-06T12:00:00.000Z"),
+        fetchImpl: async (_input, { signal }) =>
+          new Promise((resolve) => {
+            signal.addEventListener(
+              "abort",
+              () => {
+                siblingAborted = true;
+                resolve(response("{}"));
+              },
+              { once: true },
+            );
+          }),
+        readRunPod: async () => runpodProof(),
+        verifyImage: async (injectedFetch, expected) => {
+          if (expected.lane === "mage_image") {
+            await Promise.resolve();
+            throw new Error("first image failed");
+          }
+          await injectedFetch("https://example.invalid/sibling", {
+            signal: new AbortController().signal,
+          });
+          siblingSettled = true;
+          return frozenImageProof(expected);
+        },
+      },
+    ),
+    /first image failed/u,
+  );
+  assert.equal(siblingAborted, true);
+  assert.equal(siblingSettled, true);
+});
+
+test("entrypoint cancels and settles nested RunPod reads on one read failure", async () => {
+  const source = "2".repeat(40);
+  let started = 0;
+  let settledAfterAbort = 0;
+  let settledAtRejection;
+  await assert.rejects(
+    runV209ReadOnlyPreflight(
+      { expectedSource: source, apiKey: "runpod-test-key-that-is-never-returned" },
+      {
+        head: source,
+        trackedClean: true,
+        now: () => new Date("2026-09-06T12:00:00.000Z"),
+        fetchImpl: async (input, { signal }) => {
+          started += 1;
+          if (new URL(input).pathname === "/v1/pods") throw new Error("one RunPod read failed");
+          return new Promise((_, reject) => {
+            const settle = () => {
+              setTimeout(() => {
+                settledAfterAbort += 1;
+                reject(new DOMException("aborted", "AbortError"));
+              }, 10);
+            };
+            if (signal.aborted) settle();
+            else signal.addEventListener("abort", settle, { once: true });
+          });
+        },
+        verifyImage: async (injectedFetch, expected) => {
+          await injectedFetch(`https://example.invalid/${expected.lane}`, {
+            signal: new AbortController().signal,
+          });
+          return frozenImageProof(expected);
+        },
+      },
+    ).catch((error) => {
+      settledAtRejection = settledAfterAbort;
+      throw error;
+    }),
+    /V2_09_READ_ONLY_PREFLIGHT_RUNPOD_READ_AMBIGUOUS/u,
+  );
+  assert.equal(started, 10);
+  assert.equal(settledAfterAbort, 9);
+  assert.equal(settledAtRejection, 9);
 });
 
 test("entrypoint rejects rate, retained-volume, and frozen-image proof drift", async () => {
