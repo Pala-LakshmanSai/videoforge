@@ -359,6 +359,7 @@ export async function materializeV209ProtectedInputs({
   const passwords = raw.slice(0, 3).map((bytes) => bytes.toString("base64url"));
   const roleRecords = roleNames.map((role, index) => ({ role, password: passwords[index] }));
   const journalPath = materialization.roleJournalPath;
+  if (existsSync(`${journalPath}.cleanup`)) fail("ROLE_MUTATION_AMBIGUOUS_NO_REPLAY");
   const claim = {
     schema_version: "videoforge.v2-09-role-materialization-journal/v1",
     authority_id: authorityId,
@@ -486,6 +487,31 @@ export async function cleanupV209ProtectedInputs({
   );
   if (canonical(roleNames) !== canonical(expectedRoles)) fail("ROLE_INVALID");
   const journalPath = materialization.roleJournalPath;
+  const cleanupPath = `${journalPath}.cleanup`;
+  const cleanupTombstone = {
+    schema_version: "videoforge.v2-09-protected-input-cleanup-tombstone/v1",
+    authority_id: authorityId,
+    status: "CLEANED",
+    role_name_sha256s: roleNames.map((role) => sha256(role)),
+  };
+  if (existsSync(cleanupPath)) {
+    let observed;
+    try {
+      observed = JSON.parse(readPrivate(cleanupPath, "CLEANUP_TOMBSTONE_INVALID").toString("utf8"));
+    } catch {
+      fail("CLEANUP_TOMBSTONE_INVALID");
+    }
+    if (canonical(observed) !== canonical(cleanupTombstone)) fail("CLEANUP_TOMBSTONE_INVALID");
+    unlinkPrivateIfExists(`${journalPath}.complete`, "ROLE_JOURNAL_INVALID");
+    unlinkPrivateIfExists(journalPath, "ROLE_JOURNAL_INVALID");
+    return Object.freeze({
+      schema_version: "videoforge.v2-09-protected-input-cleanup-result/v1",
+      authority_id: authorityId,
+      role_cleanup_attempted: false,
+      removed_file_count: 0,
+      adopted_cleanup: true,
+    });
+  }
   if (!existsSync(journalPath)) {
     unlinkPrivateIfExists(`${journalPath}.next`, "ROLE_JOURNAL_INVALID");
     return Object.freeze({
@@ -493,6 +519,7 @@ export async function cleanupV209ProtectedInputs({
       authority_id: authorityId,
       role_cleanup_attempted: false,
       removed_file_count: 0,
+      adopted_cleanup: false,
     });
   }
   let journal;
@@ -546,12 +573,21 @@ export async function cleanupV209ProtectedInputs({
   removedFileCount += Number(
     unlinkPrivateIfExists(`${journalPath}.complete`, "ROLE_JOURNAL_INVALID"),
   );
+  // The tombstone is durable before the source journal is removed. A crash or outer-state
+  // acknowledgement loss after this point can adopt the exact authority-bound cleanup without
+  // replaying role mutation or requiring deleted credential files.
+  writePrivateOnce(
+    cleanupPath,
+    Buffer.from(`${canonical(cleanupTombstone)}\n`),
+    "CLEANUP_TOMBSTONE_INVALID",
+  );
   removedFileCount += Number(unlinkPrivateIfExists(journalPath, "ROLE_JOURNAL_INVALID"));
   return Object.freeze({
     schema_version: "videoforge.v2-09-protected-input-cleanup-result/v1",
     authority_id: authorityId,
     role_cleanup_attempted: true,
     removed_file_count: removedFileCount,
+    adopted_cleanup: false,
   });
 }
 

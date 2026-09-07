@@ -183,6 +183,7 @@ test("authority cleanup drops only marked roles and removes outputs including en
     runPsql: async (request) => calls.push(request),
   });
   assert.equal(result.role_cleanup_attempted, true);
+  assert.equal(result.adopted_cleanup, false);
   assert.equal(existsSync(endpointPath), false);
   assert.equal(existsSync(value.configuration.runpodApiKeyFile), false);
   assert.equal(existsSync(value.materialization.roleJournalPath), false);
@@ -192,4 +193,23 @@ test("authority cleanup drops only marked roles and removes outputs including en
   assert.match(calls[1].sql, /DROP OWNED BY/u);
   assert.match(calls[1].sql, /DROP ROLE/u);
   assert.match(calls[1].sql, new RegExp(AUTHORITY_ID, "u"));
+
+  const adopted = await cleanupV209ProtectedInputs({
+    authorityId: AUTHORITY_ID,
+    configuration: value.configuration,
+    materialization: value.materialization,
+    runPsql: async () => assert.fail("durable cleanup must not replay database mutation"),
+  });
+  assert.equal(adopted.adopted_cleanup, true);
+  assert.equal(adopted.role_cleanup_attempted, false);
+  assert.equal(existsSync(`${value.materialization.roleJournalPath}.cleanup`), true);
+  await assert.rejects(
+    materializeV209ProtectedInputs({
+      authorityId: AUTHORITY_ID,
+      configuration: value.configuration,
+      materialization: value.materialization,
+      runPsql: async () => assert.fail("cleaned authority must not rematerialize"),
+    }),
+    /ROLE_MUTATION_AMBIGUOUS_NO_REPLAY/u,
+  );
 });
