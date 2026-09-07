@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtempSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -327,4 +328,110 @@ test("malformed deadline is rejected with a bounded code before file or browser 
     /V2_09_CHROME_BOOTSTRAP_CONFIGURATION_INVALID/u,
   );
   assert.equal(launches, 0);
+});
+
+test("voiceover probing and request hashing use one stable descriptor snapshot", async () => {
+  const value = harness();
+  const original = readFileSync(value.configuration.voiceoverPath);
+  const expected = `sha256:${createHash("sha256").update(original).digest("hex")}`;
+  value.dependencies.probeVoiceover = async (bytes, identity) => {
+    assert.equal(identity.sha256, expected);
+    assert.deepEqual(bytes, original);
+    writeFileSync(value.configuration.voiceoverPath, "replaced pathname bytes", { mode: 0o600 });
+    return 45_000;
+  };
+  const receipt = await materializeV209ChromeBootstrap(value.configuration, value.dependencies);
+  const request = JSON.parse(readFileSync(value.configuration.chromeRequestPath, "utf8"));
+  assert.equal(receipt.voiceover_sha256, expected);
+  assert.equal(request.request.prepared.voiceoverSha256, expected);
+  assert.equal(request.request.prepared.voiceoverContentLength, original.length);
+});
+
+test("arbitrary browser operational failures are terminal, never resumable login pauses", async () => {
+  const value = harness();
+  value.dependencies.launch = async () => {
+    throw new Error("browser binary damaged");
+  };
+  let observed;
+  try {
+    await materializeV209ChromeBootstrap(value.configuration, value.dependencies);
+  } catch (error) {
+    observed = error;
+  }
+  assert.equal(observed?.message, "V2_09_CHROME_BOOTSTRAP_BROWSER_OPERATION_FAILED");
+  assert.notEqual(observed?.resumable, true);
+});
+
+test("a non-timeout navigation failure is terminal rather than awaiting login", async () => {
+  const value = harness();
+  value.dependencies.launch = async () => ({
+    newContext: async () => ({
+      newPage: async () => ({
+        goto: async () => undefined,
+        waitForURL: async () => {
+          throw new Error("browser target closed");
+        },
+        close: async () => undefined,
+      }),
+      close: async () => undefined,
+    }),
+    close: async () => undefined,
+  });
+  let observed;
+  try {
+    await materializeV209ChromeBootstrap(value.configuration, value.dependencies);
+  } catch (error) {
+    observed = error;
+  }
+  assert.equal(observed?.message, "V2_09_CHROME_BOOTSTRAP_LOGIN_NAVIGATION_FAILED");
+  assert.notEqual(observed?.resumable, true);
+});
+
+test("a completed browser auth write is claim-bound and adopted after receipt crash", async () => {
+  const value = harness();
+  value.dependencies.launch = async () => ({
+    newContext: async () => ({
+      newPage: async () => ({
+        goto: async () => undefined,
+        waitForURL: async () => undefined,
+        evaluate: async () => value.facts,
+        close: async () => undefined,
+      }),
+      storageState: async ({ path }) => {
+        writeFileSync(path, '{"cookies":[{"name":"session","value":"opaque"}],"origins":[]}');
+        throw new Error("simulated crash after browser write");
+      },
+      close: async () => undefined,
+    }),
+    close: async () => undefined,
+  });
+  await assert.rejects(
+    materializeV209ChromeBootstrap(value.configuration, value.dependencies),
+    /V2_09_CHROME_BOOTSTRAP_AUTH_WRITE_FAILED/u,
+  );
+  assert.throws(() => statSync(value.configuration.authStatePath));
+  const resumed = harness();
+  resumed.configuration = value.configuration;
+  resumed.facts = value.facts;
+  let storageWrites = 0;
+  const standard = resumed.dependencies.launch;
+  resumed.dependencies.launch = async () => {
+    const browser = await standard();
+    const originalNewContext = browser.newContext;
+    browser.newContext = async (options) => {
+      assert.equal(options.storageState, value.configuration.authStatePath);
+      const context = await originalNewContext(options);
+      const originalStorage = context.storageState;
+      context.storageState = async (input) => {
+        storageWrites += 1;
+        return originalStorage(input);
+      };
+      return context;
+    };
+    return browser;
+  };
+  const receipt = await materializeV209ChromeBootstrap(value.configuration, resumed.dependencies);
+  assert.equal(receipt.status, "AUTHENTICATED_READY_FOR_ONE_E2E");
+  assert.equal(storageWrites, 0);
+  assert.equal(statSync(value.configuration.authStatePath).mode & 0o777, 0o600);
 });

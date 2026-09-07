@@ -2,11 +2,13 @@ import { createHash } from "node:crypto";
 import {
   closeSync,
   constants as fsConstants,
+  existsSync,
   fstatSync,
   fsyncSync,
   lstatSync,
   openSync,
   readFileSync,
+  renameSync,
   unlinkSync,
   writeSync,
 } from "node:fs";
@@ -98,25 +100,6 @@ function privateParent(path) {
   return absolute;
 }
 
-function privateInput(path) {
-  const absolute = privateParent(path);
-  let stat;
-  try {
-    stat = lstatSync(absolute);
-  } catch {
-    fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
-  }
-  if (
-    !stat.isFile() ||
-    stat.isSymbolicLink() ||
-    stat.nlink !== 1 ||
-    (stat.mode & 0o777) !== 0o600 ||
-    (typeof process.getuid === "function" && stat.uid !== process.getuid())
-  )
-    fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
-  return absolute;
-}
-
 function readPrivate(path, code) {
   const absolute = privateParent(path);
   let descriptor;
@@ -131,6 +114,8 @@ function readPrivate(path, code) {
       (before.mode & 0o777) !== 0o600 ||
       before.dev !== after.dev ||
       before.ino !== after.ino ||
+      before.mtimeMs !== after.mtimeMs ||
+      before.ctimeMs !== after.ctimeMs ||
       before.size !== after.size ||
       before.size !== bytes.length ||
       bytes.length < 1
@@ -182,6 +167,21 @@ function releaseReservation(reservation, remove) {
   }
 }
 
+function fsyncParent(path) {
+  let descriptor;
+  try {
+    descriptor = openSync(
+      dirname(path),
+      fsConstants.O_RDONLY | fsConstants.O_DIRECTORY | fsConstants.O_NOFOLLOW,
+    );
+    fsyncSync(descriptor);
+  } catch {
+    fail("V2_09_CHROME_BOOTSTRAP_WRITE_FAILED");
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
 function writeReserved(reservation, value) {
   const bytes = Buffer.from(`${canonical(value)}\n`, "utf8");
   let offset = 0;
@@ -192,7 +192,25 @@ function writeReserved(reservation, value) {
   }
   fsyncSync(reservation.descriptor);
   releaseReservation(reservation, false);
+  fsyncParent(reservation.absolute);
   return bytes;
+}
+
+function writeOrAdoptExactJson(path, value, code) {
+  const absolute = privateParent(path);
+  const expected = Buffer.from(`${canonical(value)}\n`, "utf8");
+  if (existsSync(absolute)) {
+    const observed = readPrivate(absolute, code);
+    if (!observed.equals(expected)) fail(code);
+    return { absolute, bytes: observed, adopted: true, reservation: null };
+  }
+  const reservation = reservePrivate(absolute);
+  return {
+    absolute,
+    bytes: writeReserved(reservation, value),
+    adopted: false,
+    reservation,
+  };
 }
 
 function verifyReservedBrowserWrite(reservation) {
@@ -214,16 +232,120 @@ function verifyReservedBrowserWrite(reservation) {
   return readFileSync(reservation.absolute);
 }
 
-function defaultProbeVoiceover(path) {
+function defaultProbeVoiceover(bytes) {
   const result = spawnSync(
     "ffprobe",
-    ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", path],
-    { encoding: "utf8", shell: false, timeout: 30_000 },
+    ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", "pipe:0"],
+    { encoding: "utf8", input: bytes, shell: false, timeout: 30_000 },
   );
   const durationSeconds = Number(String(result.stdout).trim());
   if (result.status !== 0 || !Number.isFinite(durationSeconds))
     fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
   return Math.round(durationSeconds * 1_000);
+}
+
+function parseAuthState(bytes) {
+  let value;
+  try {
+    value = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    return false;
+  }
+  return (
+    exactKeys(value, ["cookies", "origins"]) &&
+    Array.isArray(value.cookies) &&
+    value.cookies.length > 0 &&
+    value.cookies.every(
+      (cookie) =>
+        cookie !== null &&
+        typeof cookie === "object" &&
+        !Array.isArray(cookie) &&
+        typeof cookie.name === "string" &&
+        cookie.name.length > 0 &&
+        typeof cookie.value === "string" &&
+        cookie.value.length > 0,
+    ) &&
+    Array.isArray(value.origins)
+  );
+}
+
+function authAttemptBinding(authStatePath, binding) {
+  const target = privateParent(authStatePath);
+  const bindingSha256 = sha256(canonical(binding));
+  const claimPath = `${target}.v209-claim.json`;
+  const stagePath = `${target}.v209-${bindingSha256.slice(7, 31)}.next`;
+  const claim = {
+    schema_version: "videoforge.v2-09-chrome-auth-adoption-claim/v1",
+    auth_state_path_sha256: sha256(target),
+    binding_sha256: bindingSha256,
+    stage_path_sha256: sha256(stagePath),
+  };
+  const claimBytes = Buffer.from(`${canonical(claim)}\n`, "utf8");
+  if (existsSync(claimPath)) {
+    if (!readPrivate(claimPath, "V2_09_CHROME_BOOTSTRAP_AUTH_ADOPTION_INVALID").equals(claimBytes))
+      fail("V2_09_CHROME_BOOTSTRAP_AUTH_ADOPTION_INVALID");
+  } else {
+    const reservation = reservePrivate(claimPath);
+    writeReserved(reservation, claim);
+  }
+  return { target, claimPath, stagePath };
+}
+
+function adoptPrivateAuth(path, code) {
+  const bytes = readPrivate(path, code);
+  if (!parseAuthState(bytes)) fail(code);
+  return bytes;
+}
+
+function beginOrAdoptAuth(authStatePath, binding) {
+  const target = privateParent(authStatePath);
+  const claimPath = `${target}.v209-claim.json`;
+  if (existsSync(target) && !existsSync(claimPath)) fail("V2_09_CHROME_BOOTSTRAP_OUTPUT_EXISTS");
+  const attempt = authAttemptBinding(authStatePath, binding);
+  if (existsSync(attempt.target)) {
+    if (existsSync(attempt.stagePath)) fail("V2_09_CHROME_BOOTSTRAP_AUTH_ADOPTION_AMBIGUOUS");
+    return {
+      ...attempt,
+      adopted: adoptPrivateAuth(attempt.target, "V2_09_CHROME_BOOTSTRAP_AUTH_ADOPTION_INVALID"),
+    };
+  }
+  if (existsSync(attempt.stagePath)) {
+    const stat = lstatSync(attempt.stagePath);
+    if (stat.size === 0 && stat.isFile() && !stat.isSymbolicLink()) unlinkSync(attempt.stagePath);
+    else {
+      const bytes = adoptPrivateAuth(
+        attempt.stagePath,
+        "V2_09_CHROME_BOOTSTRAP_AUTH_ADOPTION_AMBIGUOUS",
+      );
+      renameSync(attempt.stagePath, attempt.target);
+      fsyncParent(attempt.target);
+      return { ...attempt, adopted: bytes };
+    }
+  }
+  return { ...attempt, reservation: reservePrivate(attempt.stagePath), adopted: null };
+}
+
+function completeAuthAttempt(attempt) {
+  const bytes = verifyReservedBrowserWrite(attempt.reservation);
+  if (!parseAuthState(bytes)) fail("V2_09_CHROME_BOOTSTRAP_AUTH_STATE_INVALID");
+  if (existsSync(attempt.target)) fail("V2_09_CHROME_BOOTSTRAP_AUTH_ADOPTION_AMBIGUOUS");
+  renameSync(attempt.stagePath, attempt.target);
+  fsyncParent(attempt.target);
+  return adoptPrivateAuth(attempt.target, "V2_09_CHROME_BOOTSTRAP_AUTH_STATE_INVALID");
+}
+
+function isLoginTimeout(error) {
+  return (
+    error instanceof Error &&
+    (error.name === "TimeoutError" || /(?:timed out|timeout)/iu.test(error.message))
+  );
+}
+
+function awaitingLogin() {
+  const error = new Error("V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN");
+  error.code = error.message;
+  error.resumable = true;
+  return error;
 }
 
 function chooseCatalogVersion(catalog, key, ready) {
@@ -293,9 +415,12 @@ function validateScopeConfiguration(configuration) {
 export async function materializeV209ChromeRequestScope(configuration, dependencies = {}) {
   validateScopeConfiguration(configuration);
   const origin = exactOrigin(configuration.productionOrigin);
-  const voiceoverPath = privateInput(configuration.voiceoverPath);
-  const voiceover = readFileSync(voiceoverPath);
-  const durationMs = await (dependencies.probeVoiceover ?? defaultProbeVoiceover)(voiceoverPath);
+  const voiceoverPath = privateParent(configuration.voiceoverPath);
+  const voiceover = readPrivate(voiceoverPath, "V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
+  const durationMs = await (dependencies.probeVoiceover ?? defaultProbeVoiceover)(voiceover, {
+    path: voiceoverPath,
+    sha256: sha256(voiceover),
+  });
   const extension = extname(voiceoverPath).toLowerCase();
   const contentType =
     extension === ".wav" ? "audio/wav" : extension === ".mp3" ? "audio/mpeg" : null;
@@ -412,40 +537,79 @@ export async function materializeV209PostDeployChromeAuth(configuration, depende
   const bound = parseBoundRequest({ ...configuration, productionOrigin: origin });
   if (sha256(bound.bytes) !== configuration.chromeRequestSha256)
     fail("V2_09_CHROME_BOOTSTRAP_BOUND_REQUEST_INVALID");
-  const auth = reservePrivate(configuration.authStatePath);
+  const auth = beginOrAdoptAuth(configuration.authStatePath, {
+    mode: "BOUND_REQUEST_POST_DEPLOY",
+    origin,
+    chrome_request_sha256: configuration.chromeRequestSha256,
+  });
+  const request = bound.document.request;
+  if (auth.adopted) {
+    return Object.freeze({
+      schema_version: AUTH_RECEIPT_SCHEMA,
+      status: "AUTHENTICATED_READY_FOR_ONE_E2E",
+      chrome_request_sha256: sha256(bound.bytes),
+      auth_state_path: auth.target,
+      auth_state_sha256: sha256(auth.adopted),
+      account_id_sha256: sha256(request.accountId),
+      workspace_id_sha256: sha256(request.workspaceId),
+      generate_clicks: 0,
+      post_deploy_authentication: true,
+    });
+  }
   let browser;
   let context;
   let page;
   let succeeded = false;
   try {
-    browser = await (dependencies.launch ?? defaultLaunch)();
-    context = await browser.newContext({
-      acceptDownloads: false,
-      baseURL: origin,
-      serviceWorkers: "block",
-    });
-    page = await context.newPage();
-    await page.goto(`${origin}/projects/new`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(
-      new RegExp(
-        `^${origin.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}/projects/new(?:[?#].*)?$`,
-        "u",
-      ),
-      { timeout: configuration.loginTimeoutMs },
-    );
-    const [tenant, catalog] = await page.evaluate(async () => {
-      const read = async (path) => {
-        const response = await fetch(path, { headers: { accept: "application/json" } });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      };
-      return Promise.all([read("/api/v2/tenant"), read("/api/v2/hosted/project-catalog")]);
-    });
-    const request = bound.document.request;
+    try {
+      browser = await (dependencies.launch ?? defaultLaunch)();
+      context = await browser.newContext({
+        acceptDownloads: false,
+        baseURL: origin,
+        serviceWorkers: "block",
+      });
+      page = await context.newPage();
+      await page.goto(`${origin}/projects/new`, { waitUntil: "domcontentloaded" });
+    } catch {
+      fail("V2_09_CHROME_BOOTSTRAP_BROWSER_OPERATION_FAILED");
+    }
+    try {
+      await page.waitForURL(
+        new RegExp(
+          `^${origin.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}/projects/new(?:[?#].*)?$`,
+          "u",
+        ),
+        { timeout: configuration.loginTimeoutMs },
+      );
+    } catch (error) {
+      if (isLoginTimeout(error)) throw awaitingLogin();
+      fail("V2_09_CHROME_BOOTSTRAP_LOGIN_NAVIGATION_FAILED");
+    }
+    let tenant;
+    let catalog;
+    try {
+      [tenant, catalog] = await page.evaluate(async () => {
+        const read = async (path) => {
+          const response = await fetch(path, { headers: { accept: "application/json" } });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        };
+        return Promise.all([read("/api/v2/tenant"), read("/api/v2/hosted/project-catalog")]);
+      });
+    } catch (error) {
+      if (error instanceof Error && /HTTP (?:401|403)\b/u.test(error.message))
+        throw awaitingLogin();
+      fail("V2_09_CHROME_BOOTSTRAP_HOSTED_READ_FAILED");
+    }
     const avatarId = request.prepared.avatarProfileVersionId;
     const styleId = request.prepared.imageStyleVersionId;
     if (
       tenant?.schema_version !== "videoforge-hosted-tenant/v1" ||
+      !UUID.test(String(tenant.account_id ?? "")) ||
+      !UUID.test(String(tenant.workspace_id ?? ""))
+    )
+      throw awaitingLogin();
+    if (
       tenant.account_id !== request.accountId ||
       tenant.workspace_id !== request.workspaceId ||
       !Array.isArray(catalog?.avatars) ||
@@ -460,36 +624,35 @@ export async function materializeV209PostDeployChromeAuth(configuration, depende
       )
     )
       fail("V2_09_CHROME_BOOTSTRAP_POST_DEPLOY_SCOPE_MISMATCH");
-    await context.storageState({ path: auth.absolute });
-    const authBytes = verifyReservedBrowserWrite(auth);
+    try {
+      await context.storageState({ path: auth.stagePath });
+    } catch {
+      fail("V2_09_CHROME_BOOTSTRAP_AUTH_WRITE_FAILED");
+    }
+    const authBytes = completeAuthAttempt(auth);
     succeeded = true;
     return Object.freeze({
       schema_version: AUTH_RECEIPT_SCHEMA,
       status: "AUTHENTICATED_READY_FOR_ONE_E2E",
       chrome_request_sha256: sha256(bound.bytes),
-      auth_state_path: auth.absolute,
+      auth_state_path: auth.target,
       auth_state_sha256: sha256(authBytes),
       account_id_sha256: sha256(request.accountId),
       workspace_id_sha256: sha256(request.workspaceId),
       generate_clicks: 0,
       post_deploy_authentication: true,
     });
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      [
-        "V2_09_CHROME_BOOTSTRAP_POST_DEPLOY_SCOPE_MISMATCH",
-        "V2_09_CHROME_BOOTSTRAP_BOUND_REQUEST_INVALID",
-      ].includes(error.message)
-    )
-      throw error;
-    const awaiting = new Error("V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN");
-    awaiting.code = "V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN";
-    awaiting.resumable = true;
-    throw awaiting;
   } finally {
     await Promise.allSettled([page?.close(), context?.close(), browser?.close()]);
-    if (!succeeded) releaseReservation(auth, true);
+    if (!succeeded && auth.reservation) {
+      releaseReservation(auth.reservation, false);
+      try {
+        const stat = lstatSync(auth.stagePath);
+        if (stat.size === 0) unlinkSync(auth.stagePath);
+      } catch {
+        // A non-empty staged auth state is retained for exact claim-bound adoption.
+      }
+    }
   }
 }
 
@@ -561,9 +724,12 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
     fail("V2_09_CHROME_BOOTSTRAP_CONFIGURATION_INVALID");
 
   const origin = exactOrigin(configuration.productionOrigin);
-  const voiceoverPath = privateInput(configuration.voiceoverPath);
-  const voiceover = readFileSync(voiceoverPath);
-  const durationMs = await (dependencies.probeVoiceover ?? defaultProbeVoiceover)(voiceoverPath);
+  const voiceoverPath = privateParent(configuration.voiceoverPath);
+  const voiceover = readPrivate(voiceoverPath, "V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
+  const durationMs = await (dependencies.probeVoiceover ?? defaultProbeVoiceover)(voiceover, {
+    path: voiceoverPath,
+    sha256: sha256(voiceover),
+  });
   const extension = extname(voiceoverPath).toLowerCase();
   const contentType =
     extension === ".wav" ? "audio/wav" : extension === ".mp3" ? "audio/mpeg" : null;
@@ -578,45 +744,65 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
     fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
 
   privateParent(configuration.verifiedOutputPath);
-  const auth = reservePrivate(configuration.authStatePath);
+  const auth = beginOrAdoptAuth(configuration.authStatePath, {
+    mode: "FULL_POST_DEPLOY_BOOTSTRAP",
+    origin,
+    configuration_sha256: sha256(canonical(configuration)),
+    voiceover_sha256: sha256(voiceover),
+  });
   let request;
   let browser;
   let context;
   let page;
   let succeeded = false;
   try {
-    browser = await (dependencies.launch ?? defaultLaunch)();
-    context = await browser.newContext({
-      acceptDownloads: false,
-      baseURL: origin,
-      serviceWorkers: "block",
-    });
-    page = await context.newPage();
-    await page.goto(`${origin}/projects/new`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(
-      new RegExp(
-        `^${origin.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}/projects/new(?:[?#].*)?$`,
-        "u",
-      ),
-      {
-        timeout: configuration.loginTimeoutMs,
-      },
-    );
-    const facts = await page.evaluate(async () => {
-      const read = async (path) => {
-        const response = await fetch(path, { headers: { accept: "application/json" } });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      };
-      return Promise.all([read("/api/v2/tenant"), read("/api/v2/hosted/project-catalog")]);
-    });
+    try {
+      browser = await (dependencies.launch ?? defaultLaunch)();
+      context = await browser.newContext({
+        ...(auth.adopted ? { storageState: auth.target } : {}),
+        acceptDownloads: false,
+        baseURL: origin,
+        serviceWorkers: "block",
+      });
+      page = await context.newPage();
+      await page.goto(`${origin}/projects/new`, { waitUntil: "domcontentloaded" });
+    } catch {
+      fail("V2_09_CHROME_BOOTSTRAP_BROWSER_OPERATION_FAILED");
+    }
+    try {
+      await page.waitForURL(
+        new RegExp(
+          `^${origin.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}/projects/new(?:[?#].*)?$`,
+          "u",
+        ),
+        { timeout: configuration.loginTimeoutMs },
+      );
+    } catch (error) {
+      if (isLoginTimeout(error)) throw awaitingLogin();
+      fail("V2_09_CHROME_BOOTSTRAP_LOGIN_NAVIGATION_FAILED");
+    }
+    let facts;
+    try {
+      facts = await page.evaluate(async () => {
+        const read = async (path) => {
+          const response = await fetch(path, { headers: { accept: "application/json" } });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        };
+        return Promise.all([read("/api/v2/tenant"), read("/api/v2/hosted/project-catalog")]);
+      });
+    } catch (error) {
+      if (error instanceof Error && /HTTP (?:401|403)\b/u.test(error.message))
+        throw awaitingLogin();
+      fail("V2_09_CHROME_BOOTSTRAP_HOSTED_READ_FAILED");
+    }
     const [tenant, catalog] = facts;
     if (
       tenant?.schema_version !== "videoforge-hosted-tenant/v1" ||
       !UUID.test(String(tenant.account_id ?? "")) ||
       !UUID.test(String(tenant.workspace_id ?? ""))
     )
-      fail("V2_09_CHROME_BOOTSTRAP_AUTH_UNAVAILABLE");
+      throw awaitingLogin();
     const avatarProfileVersionId = chooseCatalogVersion(
       catalog,
       "avatars",
@@ -627,12 +813,18 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
       "styles",
       (value) => value?.state === "PUBLISHED" && value?.status === "ACTIVE",
     );
-    await context.storageState({ path: auth.absolute });
-    const authBytes = verifyReservedBrowserWrite(auth);
-    request = reservePrivate(configuration.chromeRequestPath);
+    let authBytes = auth.adopted;
+    if (!authBytes) {
+      try {
+        await context.storageState({ path: auth.stagePath });
+      } catch {
+        fail("V2_09_CHROME_BOOTSTRAP_AUTH_WRITE_FAILED");
+      }
+      authBytes = completeAuthAttempt(auth);
+    }
     const requestDocument = {
       schemaVersion: REQUEST_SCHEMA,
-      authStatePath: auth.absolute,
+      authStatePath: auth.target,
       productionOrigin: origin,
       verifiedOutputPath: resolve(configuration.verifiedOutputPath),
       voiceoverPath,
@@ -657,12 +849,17 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
         },
       },
     };
-    const requestBytes = writeReserved(request, requestDocument);
+    request = writeOrAdoptExactJson(
+      configuration.chromeRequestPath,
+      requestDocument,
+      "V2_09_CHROME_BOOTSTRAP_REQUEST_ADOPTION_INVALID",
+    );
+    const requestBytes = request.bytes;
     succeeded = true;
     return Object.freeze({
       schema_version: RECEIPT_SCHEMA,
       status: "AUTHENTICATED_READY_FOR_ONE_E2E",
-      auth_state_path: auth.absolute,
+      auth_state_path: auth.target,
       auth_state_sha256: sha256(authBytes),
       chrome_request_path: request.absolute,
       chrome_request_sha256: sha256(requestBytes),
@@ -676,17 +873,19 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
       interactive_login_only: true,
       post_deploy_authentication: true,
     });
-  } catch (error) {
-    if (error instanceof Error && error.message.startsWith("V2_09_")) throw error;
-    const awaiting = new Error("V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN");
-    awaiting.code = "V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN";
-    awaiting.resumable = true;
-    throw awaiting;
   } finally {
     await Promise.allSettled([page?.close(), context?.close(), browser?.close()]);
     if (!succeeded) {
-      releaseReservation(auth, true);
-      if (request) releaseReservation(request, true);
+      // Exact completed request bytes are safe to adopt on resume. Never remove them by pathname.
+      if (auth.reservation) {
+        releaseReservation(auth.reservation, false);
+        try {
+          const stat = lstatSync(auth.stagePath);
+          if (stat.size === 0) unlinkSync(auth.stagePath);
+        } catch {
+          // Preserve non-empty claim-bound auth state for crash-safe adoption.
+        }
+      }
     }
   }
 }
