@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -195,6 +196,12 @@ test("preparation writes mode-0600 artifacts after build and isolated Wrangler d
       if (command === "git" && args[0] === "rev-parse")
         return { status: 0, stdout: `${exactBinding.release.source_commit}\n`, stderr: "" };
       if (command === "git") return { status: 0, stdout: "", stderr: "" };
+      const outdirIndex = args.indexOf("--outdir");
+      if (outdirIndex !== -1) {
+        const outdir = args[outdirIndex + 1];
+        mkdirSync(outdir, { recursive: true });
+        writeFileSync(join(outdir, "worker.js"), "export default {};\n");
+      }
       return { status: 0, stdout: "", stderr: "" };
     };
     const receipt = await prepareQualifiedProductionConfig(
@@ -202,6 +209,7 @@ test("preparation writes mode-0600 artifacts after build and isolated Wrangler d
       { runner },
     );
     assert.equal(receipt.gpu_transport, "QUALIFIED_EXACT");
+    assert.match(receipt.worker_bundle_sha256, /^sha256:[0-9a-f]{64}$/u);
     assert.equal(receipt.deployment_attempted, false);
     assert.equal(receipt.provider_calls, 0);
     assert.equal(receipt.credential_reads, 0);

@@ -5,6 +5,9 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  hashV213DryOutputBundle,
+} from "../v2-13/full-live-adapters.mjs";
+import {
   ACTIVATED_ASSETS_PATH,
   ACTIVATED_MAIN_PATH,
   parseProductionConfig,
@@ -179,6 +182,7 @@ export async function prepareQualifiedProductionConfig(
       source_commit: binding.release.source_commit,
       binding_sha256: sha256(bindingBytes),
       config_sha256: sha256(configBytes),
+      worker_bundle_sha256: hashV213DryOutputBundle(dryRunOutput),
       media_worker_release: {
         version: "0.1.15",
         manifest_sha256: binding.release.media_worker_release_manifest_sha256,
