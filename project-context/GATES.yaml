@@ -470,8 +470,8 @@ gates:
     latest_closed_control_source_commit: "b10b63dc338b501e1fadc489d44cbe73ae5702b8"
     latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-pg-role-suffix.json"
     latest_closed_failure_sha256: "sha256:3e8f0a1898a3a23b869972e119780879f03afdd19cf7fdb5f95949353b0fbc2f"
-    provider_free_repair_state: "Repair 6b2d2e91 requires exactly one pg_service section with exact keys host, dbname, user, sslmode, channel_binding; requires sslmode=require and channel_binding=require; requires the exact matching URL query; and propagates PGCHANNELBINDING=require through protected materialization, combined baseline, all concrete database environments, and the sanitized media-worker child environment. The five focused suites pass 118/118 and independent audit is GO P0=0/P1=0. Stage 6/7 were untouched."
-    next_gate: "Seal the exact authority-derived role suffix provider-free, independently audit and recompute the bundle, then obtain fresh exact approval; never replay consumed proposal f9d40174."
+    provider_free_repair_state: "PG repair 6b2d2e91 remains green. Role-plan repair 6cc1dc20 validates exact SHA-256 authority-derived roles before state claim, credential read, or provider preflight and reuses the validator for materialization and cleanup. Focused suites pass 120/120 and independent design audit is GO P0=0/P1=0. Stage 6/7 were untouched."
+    next_gate: "Commit final context, recompute the exact source-bound bundle, seal and independently audit one fresh proposal, then obtain fresh exact approval; never replay consumed f9d40174."
 
   GATE_RANGA_001:
     status: open

@@ -1,0 +1,26 @@
+{
+  "schema_version": "videoforge.v2-09-authority-role-preflight-repair/v1",
+  "checkpoint": "V2-09",
+  "repair_commit": "6cc1dc2081ffd659643806f84e75ee819b5ed39b",
+  "closed_authority": "v2-09-f9d401740dc721ca",
+  "closed_failure_evidence_sha256": "sha256:3e8f0a1898a3a23b869972e119780879f03afdd19cf7fdb5f95949353b0fbc2f",
+  "repair": "VALIDATE_EXACT_SHA256_AUTHORITY_DERIVED_ROLE_NAMES_BEFORE_STATE_CLAIM_CREDENTIAL_READ_OR_PROVIDER_PREFLIGHT",
+  "shared_validation": "SAME_PURE_VALIDATOR_USED_BY_PLAN_ADMISSION_MATERIALIZATION_AND_CLEANUP",
+  "focused_tests": {
+    "passed": 120,
+    "failed": 0
+  },
+  "independent_design_audit": {
+    "decision": "GO",
+    "p0": 0,
+    "p1": 0
+  },
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "remote_mutations": 0,
+  "gpu_jobs": 0,
+  "stage_6_changes_or_jobs": 0,
+  "stage_7_changes_or_jobs": 0,
+  "external_spend_usd": 0,
+  "next_boundary": "CLEAN_CONTEXT_BUNDLE_PROPOSAL_SEAL_AND_FRESH_EXACT_APPROVAL"
+}

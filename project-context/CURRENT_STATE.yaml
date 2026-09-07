@@ -4,11 +4,11 @@ updated_at: "2026-09-07"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_role_suffix_reseal_required
+current_milestone: v2_09_role_preflight_repair_green_awaiting_fresh_exact_approval
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_reseal
+task_stage: fresh_exact_proposal_seal
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,7 +18,7 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_role_suffix_reseal_required
+  mode: v2_09_role_preflight_repair_green_awaiting_fresh_exact_approval
   live_provider_calls: "Proposal f9d40174 and authority v2-09-f9d401740dc721ca are consumed FAILED_CLEAN. Preflight and the pre-mutation database baseline passed; protected-input materialization stopped before mutation with V2_09_PROTECTED_MATERIALIZATION_ROLE_INVALID."
   remote_mutation: false
   deployment_or_publication: "Existing immutable image f3b1d141 was freshly anonymously reverified without publication; no publication or republication is authorized."
@@ -28,7 +28,7 @@ current_goal_boundary:
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
   provider_free_product_action: "The current provider-free repair removes the maximum-spend input and client field from every hosted project, persists NULL unlimited project limits through migration 0086, retains exact cost accounting/reservations/settlement, and separates exact authenticated RTX 4090 EU-RO-1 LOW-or-better availability from the guarded official RunPod pricing-page rate of USD 0.00031/second and USD 1.116/hour. Release authority remains a separate finite source-bound cap. Stage 6 and Stage 7 were not modified or rerun."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "Proposal f9d40174 is consumed FAILED_CLEAN. Descriptor-HEAD preflight passed and the global completion baseline was USD 0.386630 against the USD 15.50 ceiling. Protected-input materialization then rejected plan role suffix f9d40174 because authority-derived suffix 5beb5d17 was required. The guard fired before owner URL derivation, role journal/file write, or psql mutation. State-only cleanup closed exact outer-state sha256:1cefe37df3e5bdf6902d04df7c69a11d20616d53c244346fa96abf3e2dd78228. No mutation, job POST, GPU, redispatch, or spend occurred."
+  note: "Proposal f9d40174 is consumed FAILED_CLEAN after preflight and baseline passed and the wrong role suffix stopped before mutation. Repair 6cc1dc20 now validates exact SHA-256 authority-derived operator/runtime/reconciler roles during private-plan admission before state claim, credential read, or provider preflight, and reuses the same pure validator for materialization and cleanup. Focused tests pass 120/120; independent design audit is GO P0=0/P1=0. No provider call, credential read, mutation, GPU, Stage 6/7 work, or spend occurred during repair."
 
 v2_09_provider_free_candidate:
   source_commit: "dc6ef647fb35602333f92a4191a3071c426386b9"
@@ -223,7 +223,7 @@ hosted_beta_user_walkthrough:
   pending_source_candidate: "Provider-free repair must reconcile the owner pg_service channel_binding key with the exact closed parser before a new source-bound proposal. Descriptor-HEAD image verification itself passed live."
   pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
   pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. FRESH_EXACT_SOURCE_BOUND_APPROVAL_REQUIRED_BEFORE_ANY_LIVE_ACTION."
-  pending_validations: "Live descriptor-HEAD preflight passed. Provider-free pg_service repair 6b2d2e91 passes 118/118 focused tests and independent audit GO P0=0/P1=0. Final context seal, bundle recomputation, and fresh exact proposal remain."
+  pending_validations: "Role-plan preflight repair 6cc1dc20 passes 120/120 focused tests and independent design audit GO P0=0/P1=0. Final context seal, bundle recomputation, proposal, and final independent audits remain."
   latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 29667134b17daa9723495d028ec22c4eeaee3ee3 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.14 ALREADY PUBLISHED INSTALLED AND ACTIVE DO NOT REPUBLISH OR REINSTALL; DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD TOTAL NEW VARIABLE EXTERNAL SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; ENABLE IMAGE KEYWORDS WITH A BOUNDED TEST VALUE AND USE REAL CHROME TO VERIFY STAGE 5 COMPLETION, COMPACT PROMPTS, ONLY PINNED MEDIUM REALISM CAMERA AND LIGHTING STYLE CUES, NO PALETTE OR HEX OR OTHER REMOVED STYLE METADATA, AND THE ENABLED IMAGE KEYWORDS EXACTLY ONCE IN EVERY POSITIVE SCENE PROMPT; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
   latest_live_run: "Approved source 29667134 deployed once as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6 with media worker 0.1.14 already active. Exactly one project f7655814-1b12-40c7-b0d5-993ad0c074e2 passed the 2,152,579,950-byte free-space gate with 2,944,651,264 bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 prompts, settled USD 0.001401, and conserved the reservation; total Stage 3+5 variable spend was USD 0.001473. Real Chrome verified the 520px scrollable prompt viewer, exact once-per-prompt enabled keywords, four pinned style fields, and zero removed style metadata hits. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   deployed_config_sha256: "cf25f25a7829deba82a3d16b44ddf64cf3238577e409f25570921c8514bff858"
@@ -6195,11 +6195,11 @@ provider_authority: &v2_09_provider_authority_combined
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_role_suffix_reseal_required
-  status: FAILED_CLEAN_AWAITING_ROLE_SUFFIX_RESEAL_AND_FRESH_AUTHORITY
+  milestone: v2_09_role_preflight_repair_green_awaiting_fresh_exact_approval
+  status: PROVIDER_FREE_ROLE_PREFLIGHT_REPAIR_GREEN_AWAITING_FRESH_EXACT_AUTHORITY
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: none_f9d40174_consumed_failed_clean
-  task_stage: provider_free_reseal
+  task_stage: fresh_exact_proposal_seal
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_combined
@@ -6264,6 +6264,9 @@ recommended_next_task:
   pg_service_repair_commit: "6b2d2e91f583faaad8eadf13052e105786f969a4"
   pg_service_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-pg-service-repair.json
   pg_service_repair_validation: "FOCUSED_118_OF_118_AND_INDEPENDENT_GO_P0_0_P1_0"
+  role_preflight_repair_commit: "6cc1dc2081ffd659643806f84e75ee819b5ed39b"
+  role_preflight_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-authority-role-preflight-repair.json
+  role_preflight_repair_validation: "FOCUSED_120_OF_120_AND_INDEPENDENT_DESIGN_GO_P0_0_P1_0"
   execution_blocker: correct_authority_derived_role_suffix_reseal_audit_bundle_recompute_and_fresh_approval_required
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
