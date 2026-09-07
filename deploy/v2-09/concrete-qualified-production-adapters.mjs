@@ -113,6 +113,7 @@ const CONFIGURATION_KEYS = Object.freeze([
   "sourceCommit",
 ]);
 const CONCRETE_ENVIRONMENT_KEYS = new Set(["HOME", "LANG", "LC_ALL", "PATH"]);
+const MEDIA_WORKER_STATIC_ENVIRONMENT_KEYS = new Set(["GH_CONFIG_DIR", "GH_HOST", "PATH"]);
 const PROTECTED_INPUT_NAMES = Object.freeze([
   "runpodApiKeyFile",
   "runpodWorkerEnvironmentFile",
@@ -549,8 +550,7 @@ function snapshotConcreteConfiguration(value) {
   return cloneAndFreeze(value);
 }
 
-function snapshotConcreteConfigurationWithHydratedMediaWorker(value) {
-  const configuration = snapshotConcreteConfiguration(value);
+function hydrateMediaWorkerConfiguration(configuration, protectedInputs) {
   const mediaWorker = configuration.mediaWorker;
   if (
     mediaWorker === null ||
@@ -559,15 +559,29 @@ function snapshotConcreteConfigurationWithHydratedMediaWorker(value) {
     mediaWorker.environment === null ||
     typeof mediaWorker.environment !== "object" ||
     Array.isArray(mediaWorker.environment) ||
+    Object.entries(mediaWorker.environment).some(
+      ([name, entry]) =>
+        !MEDIA_WORKER_STATIC_ENVIRONMENT_KEYS.has(name) || typeof entry !== "string",
+    ) ||
     resolve(mediaWorker.databaseCredentialPath ?? "") !==
-      resolve(configuration.databaseOperatorUrlFile)
+      resolve(configuration.databaseOperatorUrlFile) ||
+    protectedInputs?.databaseOperatorUrlFile?.bytes === undefined
   )
     fail("V2_09_CONCRETE_MEDIA_WORKER_CONFIGURATION_INVALID");
-  const operatorUrl = readPrivateBytesOnce(configuration.databaseOperatorUrlFile).toString("utf8");
+  const operatorUrl = protectedInputs.databaseOperatorUrlFile.bytes.toString("utf8");
   const environment = postgresEnvironment({ environment: mediaWorker.environment }, operatorUrl);
   return cloneAndFreeze({
     ...configuration,
     mediaWorker: { ...mediaWorker, environment },
+  });
+}
+
+function snapshotConcreteConfigurationWithHydratedMediaWorker(value, protectedInputOptions) {
+  const base = snapshotConcreteConfiguration(value);
+  const protectedInputs = protectedInputSnapshot(base, protectedInputOptions);
+  return Object.freeze({
+    configuration: hydrateMediaWorkerConfiguration(base, protectedInputs),
+    protectedInputs,
   });
 }
 
@@ -4561,8 +4575,8 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
 }
 
 export function createConcreteQualifiedProductionAdapters(configuration) {
-  const snapshot = snapshotConcreteConfigurationWithHydratedMediaWorker(configuration);
-  const protectedInputs = protectedInputSnapshot(snapshot);
+  const { configuration: snapshot, protectedInputs } =
+    snapshotConcreteConfigurationWithHydratedMediaWorker(configuration);
   const ports = createV209BuiltInProductionPorts(snapshot);
   const expectedCloudflareSecretSha256s = Object.fromEntries(
     Object.entries(protectedInputs.cloudflareSecretFiles).map(([name, input]) => [
@@ -4583,20 +4597,31 @@ export function createConcreteQualifiedProductionAdapters(configuration) {
 
 export function createConcreteQualifiedProductionAdaptersForTest(configuration, overrides) {
   if (overrides?.testOnly !== true) fail("V2_09_TEST_ADAPTER_FACTORY_FORBIDDEN");
-  const snapshot = snapshotConcreteConfiguration(configuration);
+  const hydrateMediaWorker = overrides?.hydrateMediaWorker === true;
+  const prepared = hydrateMediaWorker
+    ? snapshotConcreteConfigurationWithHydratedMediaWorker(configuration)
+    : { configuration: snapshotConcreteConfiguration(configuration), protectedInputs: null };
+  const snapshot = prepared.configuration;
   const testOverrides = { ...overrides };
   delete testOverrides.testOnly;
+  delete testOverrides.hydrateMediaWorker;
+  if (prepared.protectedInputs) testOverrides.protectedInputs = prepared.protectedInputs;
+  if (typeof testOverrides.portsFromHydratedConfiguration === "function") {
+    testOverrides.ports = testOverrides.portsFromHydratedConfiguration(snapshot);
+    delete testOverrides.portsFromHydratedConfiguration;
+  }
   return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, testOverrides);
 }
 
 export function createConcreteQualifiedProductionStagingAdapters(configuration) {
-  const snapshot = snapshotConcreteConfigurationWithHydratedMediaWorker(configuration);
-  return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, {
-    ports: createV209StagingPorts(snapshot),
-    protectedInputs: protectedInputSnapshot(snapshot, {
+  const { configuration: snapshot, protectedInputs } =
+    snapshotConcreteConfigurationWithHydratedMediaWorker(configuration, {
       allowDeferredEndpointSecrets: true,
       skipChrome: true,
-    }),
+    });
+  return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, {
+    ports: createV209StagingPorts(snapshot),
+    protectedInputs,
     stagingOnly: true,
   });
 }
@@ -4604,12 +4629,17 @@ export function createConcreteQualifiedProductionStagingAdapters(configuration) 
 export function createConcreteQualifiedProductionStagingAdaptersForTest(configuration, overrides) {
   if (overrides?.testOnly !== true) fail("V2_09_TEST_ADAPTER_FACTORY_FORBIDDEN");
   const hydrateMediaWorker = overrides?.hydrateMediaWorker === true;
-  const snapshot = hydrateMediaWorker
-    ? snapshotConcreteConfigurationWithHydratedMediaWorker(configuration)
-    : snapshotConcreteConfiguration(configuration);
+  const prepared = hydrateMediaWorker
+    ? snapshotConcreteConfigurationWithHydratedMediaWorker(configuration, {
+        allowDeferredEndpointSecrets: true,
+        skipChrome: true,
+      })
+    : { configuration: snapshotConcreteConfiguration(configuration), protectedInputs: null };
+  const snapshot = prepared.configuration;
   const testOverrides = { ...overrides, stagingOnly: true };
   delete testOverrides.testOnly;
   delete testOverrides.hydrateMediaWorker;
+  if (prepared.protectedInputs) testOverrides.protectedInputs = prepared.protectedInputs;
   if (typeof testOverrides.portsFromHydratedConfiguration === "function") {
     testOverrides.ports = testOverrides.portsFromHydratedConfiguration(snapshot);
     delete testOverrides.portsFromHydratedConfiguration;
@@ -4618,11 +4648,12 @@ export function createConcreteQualifiedProductionStagingAdaptersForTest(configur
 }
 
 export function createConcreteQualifiedProductionDeploymentAdapters(configuration, rehydration) {
-  const snapshot = snapshotConcreteConfigurationWithHydratedMediaWorker(configuration);
+  const { configuration: snapshot, protectedInputs } =
+    snapshotConcreteConfigurationWithHydratedMediaWorker(configuration, { skipChrome: true });
   return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, {
     deploymentOnly: true,
     ports: createV209BuiltInProductionPorts(snapshot),
-    protectedInputs: protectedInputSnapshot(snapshot, { skipChrome: true }),
+    protectedInputs,
     rehydration,
   });
 }
@@ -4632,15 +4663,25 @@ export function createConcreteQualifiedProductionDeploymentAdaptersForTest(
   overrides,
 ) {
   if (overrides?.testOnly !== true) fail("V2_09_TEST_ADAPTER_FACTORY_FORBIDDEN");
-  const snapshot = snapshotConcreteConfiguration(configuration);
+  const hydrateMediaWorker = overrides?.hydrateMediaWorker === true;
+  const prepared = hydrateMediaWorker
+    ? snapshotConcreteConfigurationWithHydratedMediaWorker(configuration, { skipChrome: true })
+    : { configuration: snapshotConcreteConfiguration(configuration), protectedInputs: null };
+  const snapshot = prepared.configuration;
   const testOverrides = { ...overrides, deploymentOnly: true };
   delete testOverrides.testOnly;
+  delete testOverrides.hydrateMediaWorker;
+  if (prepared.protectedInputs) testOverrides.protectedInputs = prepared.protectedInputs;
+  if (typeof testOverrides.portsFromHydratedConfiguration === "function") {
+    testOverrides.ports = testOverrides.portsFromHydratedConfiguration(snapshot);
+    delete testOverrides.portsFromHydratedConfiguration;
+  }
   return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, testOverrides);
 }
 
 export function createConcreteQualifiedProductionResumedAdapters(configuration, rehydration) {
-  const snapshot = snapshotConcreteConfigurationWithHydratedMediaWorker(configuration);
-  const protectedInputs = protectedInputSnapshot(snapshot);
+  const { configuration: snapshot, protectedInputs } =
+    snapshotConcreteConfigurationWithHydratedMediaWorker(configuration);
   const ports = createV209BuiltInProductionPorts(snapshot);
   const expectedCloudflareSecretSha256s = Object.fromEntries(
     Object.entries(protectedInputs.cloudflareSecretFiles).map(([name, input]) => [
@@ -4658,4 +4699,22 @@ export function createConcreteQualifiedProductionResumedAdapters(configuration, 
     protectedInputs,
     rehydration,
   });
+}
+
+export function createConcreteQualifiedProductionResumedAdaptersForTest(configuration, overrides) {
+  if (overrides?.testOnly !== true) fail("V2_09_TEST_ADAPTER_FACTORY_FORBIDDEN");
+  const hydrateMediaWorker = overrides?.hydrateMediaWorker === true;
+  const prepared = hydrateMediaWorker
+    ? snapshotConcreteConfigurationWithHydratedMediaWorker(configuration)
+    : { configuration: snapshotConcreteConfiguration(configuration), protectedInputs: null };
+  const snapshot = prepared.configuration;
+  const testOverrides = { ...overrides };
+  delete testOverrides.testOnly;
+  delete testOverrides.hydrateMediaWorker;
+  if (prepared.protectedInputs) testOverrides.protectedInputs = prepared.protectedInputs;
+  if (typeof testOverrides.portsFromHydratedConfiguration === "function") {
+    testOverrides.ports = testOverrides.portsFromHydratedConfiguration(snapshot);
+    delete testOverrides.portsFromHydratedConfiguration;
+  }
+  return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, testOverrides);
 }

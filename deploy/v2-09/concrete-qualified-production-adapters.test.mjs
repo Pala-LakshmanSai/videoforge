@@ -17,6 +17,7 @@ import {
   concreteAdapterIdentity,
   createConcreteQualifiedProductionDeploymentAdaptersForTest,
   createConcreteQualifiedProductionAdaptersForTest,
+  createConcreteQualifiedProductionResumedAdaptersForTest,
   createConcreteQualifiedProductionStagingAdaptersForTest,
   hasV209InnerFailedClean,
   readV209InnerSucceededClean,
@@ -53,6 +54,11 @@ const createConcreteQualifiedProductionStagingAdapters = (configuration, overrid
   });
 const createConcreteQualifiedProductionDeploymentAdapters = (configuration, overrides) =>
   createConcreteQualifiedProductionDeploymentAdaptersForTest(configuration, {
+    ...overrides,
+    testOnly: true,
+  });
+const createConcreteQualifiedProductionResumedAdapters = (configuration, overrides) =>
+  createConcreteQualifiedProductionResumedAdaptersForTest(configuration, {
     ...overrides,
     testOnly: true,
   });
@@ -977,28 +983,35 @@ test("adapter identity seals this source and every exact narrow port", () => {
   );
 });
 
-test("staging factory hydrates media-worker postgres fields from the materialized operator URL", () => {
+test("all live factory phases hydrate one bound operator URL snapshot and reject static secrets", () => {
   const { configuration } = fixture();
   configuration.mediaWorker = {
     databaseCredentialPath: configuration.databaseOperatorUrlFile,
     environment: { PATH: "/usr/bin:/bin" },
   };
-  let hydrated;
-  const adapters = createConcreteQualifiedProductionStagingAdapters(configuration, {
-    hydrateMediaWorker: true,
-    portsFromHydratedConfiguration: (snapshot) => {
-      hydrated = snapshot.mediaWorker.environment;
-      return portSet();
-    },
-  });
-  assert.deepEqual(configuration.mediaWorker.environment, { PATH: "/usr/bin:/bin" });
-  assert.equal(hydrated.PGHOST, "db.example.test");
-  assert.equal(hydrated.PGPORT, "5432");
-  assert.equal(hydrated.PGDATABASE, "videoforge");
-  assert.equal(hydrated.PGUSER, "videoforge_operator");
-  assert.equal(hydrated.PGPASSWORD, "operator-secret");
-  assert.equal(hydrated.PGSSLMODE, "require");
-  assert.equal(JSON.stringify(adapters).includes("operator-secret"), false);
+  for (const create of [
+    createConcreteQualifiedProductionStagingAdapters,
+    createConcreteQualifiedProductionDeploymentAdapters,
+    createConcreteQualifiedProductionAdapters,
+    createConcreteQualifiedProductionResumedAdapters,
+  ]) {
+    let hydrated;
+    const adapters = create(configuration, {
+      hydrateMediaWorker: true,
+      portsFromHydratedConfiguration: (snapshot) => {
+        hydrated = snapshot.mediaWorker.environment;
+        return portSet();
+      },
+    });
+    assert.deepEqual(configuration.mediaWorker.environment, { PATH: "/usr/bin:/bin" });
+    assert.equal(hydrated.PGHOST, "db.example.test");
+    assert.equal(hydrated.PGPORT, "5432");
+    assert.equal(hydrated.PGDATABASE, "videoforge");
+    assert.equal(hydrated.PGUSER, "videoforge_operator");
+    assert.equal(hydrated.PGPASSWORD, "operator-secret");
+    assert.equal(hydrated.PGSSLMODE, "require");
+    assert.equal(JSON.stringify(adapters).includes("operator-secret"), false);
+  }
 
   configuration.mediaWorker.databaseCredentialPath = configuration.databaseOwnerUrlFile;
   assert.throws(
@@ -1009,6 +1022,47 @@ test("staging factory hydrates media-worker postgres fields from the materialize
       }),
     /V2_09_CONCRETE_MEDIA_WORKER_CONFIGURATION_INVALID/u,
   );
+
+  configuration.mediaWorker.databaseCredentialPath = configuration.databaseOperatorUrlFile;
+  for (const environment of [
+    { PGPASSWORD: "must-not-be-in-plan" },
+    { RUNPOD_API_KEY: "must-not-be-in-plan" },
+    { API_TOKEN: "must-not-be-in-plan" },
+  ]) {
+    configuration.mediaWorker.environment = environment;
+    assert.throws(
+      () =>
+        createConcreteQualifiedProductionStagingAdapters(configuration, {
+          hydrateMediaWorker: true,
+          portsFromHydratedConfiguration: () => portSet(),
+        }),
+      /V2_09_CONCRETE_MEDIA_WORKER_CONFIGURATION_INVALID/u,
+    );
+  }
+});
+
+test("media-worker hydration and adapter binding share one descriptor-bound operator snapshot", () => {
+  const { configuration } = fixture();
+  configuration.mediaWorker = {
+    databaseCredentialPath: configuration.databaseOperatorUrlFile,
+    environment: {},
+  };
+  let hydratedPassword;
+  const adapters = createConcreteQualifiedProductionStagingAdapters(configuration, {
+    hydrateMediaWorker: true,
+    portsFromHydratedConfiguration: (snapshot) => {
+      hydratedPassword = snapshot.mediaWorker.environment.PGPASSWORD;
+      writeFileSync(
+        configuration.databaseOperatorUrlFile,
+        "postgresql://videoforge_operator:changed-after-snapshot@db.example.test:5432/videoforge?sslmode=require",
+        { mode: 0o600 },
+      );
+      return portSet();
+    },
+  });
+  assert.equal(hydratedPassword, "operator-secret");
+  assert.equal(JSON.stringify(adapters).includes("operator-secret"), false);
+  assert.equal(JSON.stringify(adapters).includes("changed-after-snapshot"), false);
 });
 
 test("factory exposes the exact coordinator graph and fixed low-level lane context", async () => {
