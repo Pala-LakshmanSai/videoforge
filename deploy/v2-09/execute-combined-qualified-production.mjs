@@ -1636,7 +1636,12 @@ async function composeCombinedQualifiedProduction(options, dependencies) {
     hasProtectedCleanup: dependencies.hasProtectedCleanup,
     hasInnerCleanup: dependencies.hasInnerCleanup,
     readInnerSuccess: dependencies.readInnerSuccess,
-    preClaim: dependencies.preClaim,
+    preClaim: async (context) => {
+      const { head, trackedClean } = await dependencies.gitState();
+      if (head !== context.sourceCommit || trackedClean !== true)
+        fail("V2_09_COMBINED_GIT_STATE_INVALID");
+      if (dependencies.preClaim !== undefined) await dependencies.preClaim(context);
+    },
     outerState: dependencies.createOuterState(options.statePath),
   });
 }
@@ -2325,6 +2330,7 @@ export async function executeCombinedQualifiedProductionWithDependenciesForTest(
 ) {
   if (
     dependencies?.testOnlyInjectedDependencies !== true ||
+    (dependencies.preClaim !== undefined && typeof dependencies.preClaim !== "function") ||
     [
       "loadApiKey",
       "runPreflight",

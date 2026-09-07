@@ -541,6 +541,62 @@ function privateOutputPlan(directory, secretsDirectory = join(directory, "secret
   };
 }
 
+function liveCompositionFixture({ gitState, calls, events }) {
+  const directory = mkdtempSync(join(tmpdir(), "vf-v209-combined-git-state-"));
+  const approved = authority();
+  const proof = preflight(approved);
+  const staged = receipts(approved, proof);
+  return {
+    options: {
+      authority: approved,
+      sourceCommit: SOURCE,
+      configurationPath: join(directory, "configuration.json"),
+      statePath: join(directory, "outer-state.json"),
+    },
+    dependencies: {
+      testOnlyInjectedDependencies: true,
+      loadApiKey: async () => {
+        calls.credential += 1;
+        return "x".repeat(32);
+      },
+      gitState: async () => {
+        calls.git += 1;
+        return gitState;
+      },
+      runPreflight: async () => {
+        calls.preflight += 1;
+        return proof;
+      },
+      createOuterState: () => state(events),
+      stageOperation: async ({ operationId }) => {
+        calls.stage += 1;
+        return operationId === "read-postlogin-tenant-completion-baseline"
+          ? tenantBaseline()
+          : operationId.includes("completion-baseline")
+            ? durableBaseline(
+                operationId.startsWith("read-post") ? "2026-09-07T10:01:00.000Z" : undefined,
+              )
+            : { operation_id: operationId };
+      },
+      materializeStagedReceipts: async () => receiptSet(staged),
+      loadConfiguration: async () => staged.configuration,
+      cleanupStaged: async () => {},
+      cleanupProtected: async () => {},
+      hasProtectedCleanup: async () => false,
+      hasInnerCleanup: async () => false,
+      readInnerSuccess: async () => null,
+      executeProduction: async ({ authority: inner }) => ({
+        schema_version: "videoforge.v2-09-qualified-production-execution/v1",
+        authority_id: inner.authority_id,
+        status: "SUCCEEDED_CLEAN",
+        operations: [...OPERATION_IDS],
+        paid_dispatch_count: 1,
+        redispatch_count: 0,
+      }),
+    },
+  };
+}
+
 test("missing private materialization output directory fails before claim, key, preflight, or stage", async () => {
   const directory = mkdtempSync(join(tmpdir(), "vf-v209-combined-output-dir-"));
   const approved = authority();
@@ -631,6 +687,29 @@ test("existing private materialization output directories pass the pre-claim gat
   assert.equal(credentialReads, 1);
   assert.equal(preflightCalls, 1);
   assert.ok(stageCalls > 0);
+});
+
+test("pre-claim git state rejects wrong HEAD and dirty worktree before claim or execution", async () => {
+  for (const gitState of [
+    { head: "8".repeat(40), trackedClean: true },
+    { head: SOURCE, trackedClean: false },
+  ]) {
+    const events = [];
+    const calls = { credential: 0, git: 0, preflight: 0, stage: 0 };
+    const fixture = liveCompositionFixture({ gitState, calls, events });
+    await assert.rejects(
+      executeCombinedQualifiedProductionWithDependenciesForTest(
+        fixture.options,
+        fixture.dependencies,
+      ),
+      /V2_09_COMBINED_GIT_STATE_INVALID/u,
+    );
+    assert.deepEqual(events, []);
+    assert.equal(calls.git, 1);
+    assert.equal(calls.credential, 0);
+    assert.equal(calls.preflight, 0);
+    assert.equal(calls.stage, 0);
+  }
 });
 
 test("interrupted inner execution resumes cleanup-only without mutating redispatch", async () => {
@@ -871,6 +950,7 @@ test("live composition wiring runs fixed injected stages only after preflight pa
   const configurationPath = join(directory, "configuration.json");
   writeFileSync(configurationPath, JSON.stringify(staged.configuration), { mode: 0o600 });
   const events = [];
+  let gitStateCalls = 0;
   const result = await executeCombinedQualifiedProductionWithDependenciesForTest(
     {
       authority: approved,
@@ -884,7 +964,10 @@ test("live composition wiring runs fixed injected stages only after preflight pa
         events.push("key");
         return "x".repeat(32);
       },
-      gitState: async () => ({ head: SOURCE, trackedClean: true }),
+      gitState: async () => {
+        gitStateCalls += 1;
+        return { head: SOURCE, trackedClean: true };
+      },
       runPreflight: async () => {
         events.push("preflight");
         return proof;
@@ -917,6 +1000,7 @@ test("live composition wiring runs fixed injected stages only after preflight pa
   );
   assert.equal(result.status, "SUCCEEDED_CLEAN");
   assert.deepEqual(events.slice(0, 3), ["claim", "key", "preflight"]);
+  assert.equal(gitStateCalls, 2);
 });
 
 test("live execution rejects a future RunPod key copy before claiming authority", async () => {
