@@ -549,6 +549,28 @@ function snapshotConcreteConfiguration(value) {
   return cloneAndFreeze(value);
 }
 
+function snapshotConcreteConfigurationWithHydratedMediaWorker(value) {
+  const configuration = snapshotConcreteConfiguration(value);
+  const mediaWorker = configuration.mediaWorker;
+  if (
+    mediaWorker === null ||
+    typeof mediaWorker !== "object" ||
+    Array.isArray(mediaWorker) ||
+    mediaWorker.environment === null ||
+    typeof mediaWorker.environment !== "object" ||
+    Array.isArray(mediaWorker.environment) ||
+    resolve(mediaWorker.databaseCredentialPath ?? "") !==
+      resolve(configuration.databaseOperatorUrlFile)
+  )
+    fail("V2_09_CONCRETE_MEDIA_WORKER_CONFIGURATION_INVALID");
+  const operatorUrl = readPrivateBytesOnce(configuration.databaseOperatorUrlFile).toString("utf8");
+  const environment = postgresEnvironment({ environment: mediaWorker.environment }, operatorUrl);
+  return cloneAndFreeze({
+    ...configuration,
+    mediaWorker: { ...mediaWorker, environment },
+  });
+}
+
 function protectedInputSnapshot(
   configuration,
   { allowDeferredEndpointSecrets = false, skipChrome = false } = {},
@@ -4539,7 +4561,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
 }
 
 export function createConcreteQualifiedProductionAdapters(configuration) {
-  const snapshot = snapshotConcreteConfiguration(configuration);
+  const snapshot = snapshotConcreteConfigurationWithHydratedMediaWorker(configuration);
   const protectedInputs = protectedInputSnapshot(snapshot);
   const ports = createV209BuiltInProductionPorts(snapshot);
   const expectedCloudflareSecretSha256s = Object.fromEntries(
@@ -4568,7 +4590,7 @@ export function createConcreteQualifiedProductionAdaptersForTest(configuration, 
 }
 
 export function createConcreteQualifiedProductionStagingAdapters(configuration) {
-  const snapshot = snapshotConcreteConfiguration(configuration);
+  const snapshot = snapshotConcreteConfigurationWithHydratedMediaWorker(configuration);
   return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, {
     ports: createV209StagingPorts(snapshot),
     protectedInputs: protectedInputSnapshot(snapshot, {
@@ -4581,14 +4603,22 @@ export function createConcreteQualifiedProductionStagingAdapters(configuration) 
 
 export function createConcreteQualifiedProductionStagingAdaptersForTest(configuration, overrides) {
   if (overrides?.testOnly !== true) fail("V2_09_TEST_ADAPTER_FACTORY_FORBIDDEN");
-  const snapshot = snapshotConcreteConfiguration(configuration);
+  const hydrateMediaWorker = overrides?.hydrateMediaWorker === true;
+  const snapshot = hydrateMediaWorker
+    ? snapshotConcreteConfigurationWithHydratedMediaWorker(configuration)
+    : snapshotConcreteConfiguration(configuration);
   const testOverrides = { ...overrides, stagingOnly: true };
   delete testOverrides.testOnly;
+  delete testOverrides.hydrateMediaWorker;
+  if (typeof testOverrides.portsFromHydratedConfiguration === "function") {
+    testOverrides.ports = testOverrides.portsFromHydratedConfiguration(snapshot);
+    delete testOverrides.portsFromHydratedConfiguration;
+  }
   return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, testOverrides);
 }
 
 export function createConcreteQualifiedProductionDeploymentAdapters(configuration, rehydration) {
-  const snapshot = snapshotConcreteConfiguration(configuration);
+  const snapshot = snapshotConcreteConfigurationWithHydratedMediaWorker(configuration);
   return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, {
     deploymentOnly: true,
     ports: createV209BuiltInProductionPorts(snapshot),
@@ -4609,7 +4639,7 @@ export function createConcreteQualifiedProductionDeploymentAdaptersForTest(
 }
 
 export function createConcreteQualifiedProductionResumedAdapters(configuration, rehydration) {
-  const snapshot = snapshotConcreteConfiguration(configuration);
+  const snapshot = snapshotConcreteConfigurationWithHydratedMediaWorker(configuration);
   const protectedInputs = protectedInputSnapshot(snapshot);
   const ports = createV209BuiltInProductionPorts(snapshot);
   const expectedCloudflareSecretSha256s = Object.fromEntries(

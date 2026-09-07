@@ -977,6 +977,40 @@ test("adapter identity seals this source and every exact narrow port", () => {
   );
 });
 
+test("staging factory hydrates media-worker postgres fields from the materialized operator URL", () => {
+  const { configuration } = fixture();
+  configuration.mediaWorker = {
+    databaseCredentialPath: configuration.databaseOperatorUrlFile,
+    environment: { PATH: "/usr/bin:/bin" },
+  };
+  let hydrated;
+  const adapters = createConcreteQualifiedProductionStagingAdapters(configuration, {
+    hydrateMediaWorker: true,
+    portsFromHydratedConfiguration: (snapshot) => {
+      hydrated = snapshot.mediaWorker.environment;
+      return portSet();
+    },
+  });
+  assert.deepEqual(configuration.mediaWorker.environment, { PATH: "/usr/bin:/bin" });
+  assert.equal(hydrated.PGHOST, "db.example.test");
+  assert.equal(hydrated.PGPORT, "5432");
+  assert.equal(hydrated.PGDATABASE, "videoforge");
+  assert.equal(hydrated.PGUSER, "videoforge_operator");
+  assert.equal(hydrated.PGPASSWORD, "operator-secret");
+  assert.equal(hydrated.PGSSLMODE, "require");
+  assert.equal(JSON.stringify(adapters).includes("operator-secret"), false);
+
+  configuration.mediaWorker.databaseCredentialPath = configuration.databaseOwnerUrlFile;
+  assert.throws(
+    () =>
+      createConcreteQualifiedProductionStagingAdapters(configuration, {
+        hydrateMediaWorker: true,
+        portsFromHydratedConfiguration: () => portSet(),
+      }),
+    /V2_09_CONCRETE_MEDIA_WORKER_CONFIGURATION_INVALID/u,
+  );
+});
+
 test("factory exposes the exact coordinator graph and fixed low-level lane context", async () => {
   const { configuration } = fixture();
   const portCalls = [];
