@@ -547,18 +547,22 @@ async function inspectMaterializedRelease({ configuration, authority, fetchImpl,
   const urls = releaseUrls(configuration);
   const release = await fetchBoundedJson(fetchImpl, urls.api, "RELEASE_READBACK");
   const validated = validateRelease(release, configuration, mediaWorker, { materializing: true });
-  const downloaded = new Map();
+  let manifestBytes;
+  const verifiedDigests = new Map();
   for (const name of RELEASE_ASSET_NAMES) {
     const asset = validated.assets.get(name);
-    const bytes = await fetchExactAsset(
+    const verified = await fetchExactAsset(
       fetchImpl,
       asset.browser_download_url,
       asset.size,
       asset.digest,
+      DOWNLOAD_TIMEOUT_MS,
+      { retainBytes: name === "media-worker-release.json" },
     );
-    downloaded.set(name, bytes);
+    verifiedDigests.set(name, verified.sha256);
+    if (name === "media-worker-release.json") manifestBytes = verified.bytes;
   }
-  const manifestBytes = downloaded.get("media-worker-release.json");
+  if (!Buffer.isBuffer(manifestBytes)) fail("MATERIALIZATION_MANIFEST_INVALID");
   const manifestSha256 = sha256(manifestBytes);
   const manifest = validateReleaseManifest(manifestBytes, manifestSha256);
   if (
@@ -589,13 +593,13 @@ async function inspectMaterializedRelease({ configuration, authority, fetchImpl,
     release_tag: configuration.releaseTag,
     release: V209_MEDIA_WORKER_VERSION,
     release_manifest_sha256: manifestSha256,
-    installer_asset_sha256: sha256(downloaded.get("VideoForge-Worker-0.1.15.dmg")),
-    windows_installer_asset_sha256: sha256(downloaded.get("VideoForge-Worker-0.1.15-Setup.exe")),
+    installer_asset_sha256: verifiedDigests.get("VideoForge-Worker-0.1.15.dmg"),
+    windows_installer_asset_sha256: verifiedDigests.get("VideoForge-Worker-0.1.15-Setup.exe"),
     execution_bundle_sha256: manifest.execution_bundle_sha256,
     whisper_model_sha256: manifest.whisper_model_sha256,
     signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
     immutable_release: true,
-    release_asset_count: downloaded.size,
+    release_asset_count: verifiedDigests.size,
   };
   return Object.freeze({
     ...facts,
@@ -667,6 +671,7 @@ async function fetchExactAsset(
   expectedSize,
   expectedSha256,
   timeoutMs = DOWNLOAD_TIMEOUT_MS,
+  { retainBytes = false } = {},
 ) {
   let current = url;
   const controller = new AbortController();
@@ -696,10 +701,36 @@ async function fetchExactAsset(
         continue;
       }
       if (!response || response.status !== 200) fail("ASSET_DOWNLOAD_STATUS");
-      const bytes = Buffer.from(await response.arrayBuffer());
-      if (bytes.byteLength !== expectedSize || sha256(bytes) !== expectedSha256)
+      const contentLength = response.headers?.get?.("content-length");
+      if (
+        contentLength !== null &&
+        contentLength !== undefined &&
+        (!/^\d+$/u.test(contentLength) || Number(contentLength) !== expectedSize)
+      )
         fail("ASSET_DOWNLOAD_IDENTITY_INVALID");
-      return bytes;
+      if (!response.body?.getReader) fail("ASSET_DOWNLOAD_STATUS");
+      const digest = createHash("sha256");
+      const retained = retainBytes ? [] : null;
+      let size = 0;
+      const reader = response.body.getReader();
+      for (;;) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        if (!(chunk.value instanceof Uint8Array)) fail("ASSET_DOWNLOAD_STATUS");
+        size += chunk.value.byteLength;
+        if (!Number.isSafeInteger(size) || size > expectedSize)
+          fail("ASSET_DOWNLOAD_IDENTITY_INVALID");
+        digest.update(chunk.value);
+        if (retained) retained.push(Buffer.from(chunk.value));
+      }
+      const observedSha256 = `sha256:${digest.digest("hex")}`;
+      if (size !== expectedSize || observedSha256 !== expectedSha256)
+        fail("ASSET_DOWNLOAD_IDENTITY_INVALID");
+      return Object.freeze({
+        size,
+        sha256: observedSha256,
+        ...(retained ? { bytes: Buffer.concat(retained, size) } : {}),
+      });
     }
     fail("ASSET_REDIRECT_LIMIT");
   } finally {
@@ -707,8 +738,11 @@ async function fetchExactAsset(
   }
 }
 
-function fetchSmallAsset(fetchImpl, url, expectedSize, expectedSha256) {
-  return fetchExactAsset(fetchImpl, url, expectedSize, expectedSha256, 30_000);
+async function fetchSmallAsset(fetchImpl, url, expectedSize, expectedSha256) {
+  const verified = await fetchExactAsset(fetchImpl, url, expectedSize, expectedSha256, 30_000, {
+    retainBytes: true,
+  });
+  return verified.bytes;
 }
 
 async function inspectRelease({ configuration, authority, fetchImpl, clock }) {

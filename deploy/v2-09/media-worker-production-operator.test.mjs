@@ -39,6 +39,14 @@ function sha256(bytes) {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
 
+function repeatedSha256(byte, size, chunkSize) {
+  const digest = createHash("sha256");
+  const chunk = Buffer.alloc(chunkSize, byte);
+  for (let offset = 0; offset < size; offset += chunkSize)
+    digest.update(chunk.subarray(0, Math.min(chunkSize, size - offset)));
+  return `sha256:${digest.digest("hex")}`;
+}
+
 const TEST_DEPENDENCY_IDENTITY_SHA256 = sha256(
   "media-worker-production-operator.test.mjs/focused-dependencies/v1",
 );
@@ -782,6 +790,122 @@ test("staged materialization rejects replay, ambiguous runs, and asset tamper", 
         box.remove();
       }
     });
+  }
+});
+
+test("staged materialization streams large assets sequentially without arrayBuffer retention", async () => {
+  const box = sandbox();
+  const releaseFixture = stagedFixture();
+  const largeSize = 8 * 1024 * 1024;
+  const chunkSize = 64 * 1024;
+  const windowsDigest = repeatedSha256(0x61, largeSize, chunkSize);
+  const macosDigest = repeatedSha256(0x62, largeSize, chunkSize);
+  releaseFixture.manifest.windows.sha256 = windowsDigest;
+  releaseFixture.manifest.windows.size_bytes = largeSize;
+  releaseFixture.manifest.macos.sha256 = macosDigest;
+  releaseFixture.manifest.macos.size_bytes = largeSize;
+  releaseFixture.manifestBytes = Buffer.from(
+    `${JSON.stringify(sortObject(releaseFixture.manifest), null, 2)}\n`,
+  );
+  releaseFixture.manifestSha256 = sha256(releaseFixture.manifestBytes);
+  releaseFixture.release.assets[0].size = largeSize;
+  releaseFixture.release.assets[0].digest = windowsDigest;
+  releaseFixture.release.assets[1].size = largeSize;
+  releaseFixture.release.assets[1].digest = macosDigest;
+  releaseFixture.release.assets[2].size = releaseFixture.manifestBytes.byteLength;
+  releaseFixture.release.assets[2].digest = releaseFixture.manifestSha256;
+  let listCalls = 0;
+  const exactRun = {
+    head_sha: sourceCommit,
+    head_branch: "codex/serverless-v2-roadmap-v4",
+    event: "workflow_dispatch",
+    path: ".github/workflows/media-worker-release.yml@refs/heads/codex/serverless-v2-roadmap-v4",
+    status: "completed",
+    conclusion: "success",
+    created_at: "2026-09-06T12:00:00Z",
+    run_attempt: 1,
+  };
+  const runChild = async (request) => {
+    if (request.args.includes("--method"))
+      return { status: 0, signal: null, stdout: "", stderr: "" };
+    listCalls += 1;
+    return {
+      status: 0,
+      signal: null,
+      stdout: JSON.stringify({ workflow_runs: listCalls === 1 ? [] : [exactRun] }),
+      stderr: "",
+    };
+  };
+  let releaseReads = 0;
+  let activeReaders = 0;
+  let maximumActiveReaders = 0;
+  let arrayBufferCalls = 0;
+  const streamingResponse = (byte, size) => {
+    let offset = 0;
+    let started = false;
+    return {
+      status: 200,
+      headers: new Headers({ "content-length": String(size) }),
+      arrayBuffer: async () => {
+        arrayBufferCalls += 1;
+        throw new Error("large asset must not use arrayBuffer");
+      },
+      body: {
+        getReader: () => ({
+          read: async () => {
+            if (!started) {
+              started = true;
+              activeReaders += 1;
+              maximumActiveReaders = Math.max(maximumActiveReaders, activeReaders);
+            }
+            if (offset === size) {
+              activeReaders -= 1;
+              return { done: true };
+            }
+            const length = Math.min(chunkSize, size - offset);
+            offset += length;
+            return { done: false, value: new Uint8Array(length).fill(byte) };
+          },
+        }),
+      },
+    };
+  };
+  const fetchImpl = async (url) => {
+    if (url.includes("api.github.com/")) {
+      releaseReads += 1;
+      return releaseReads === 1
+        ? new Response("missing", { status: 404 })
+        : new Response(JSON.stringify(releaseFixture.release), { status: 200 });
+    }
+    const name = url.split("/").at(-1);
+    if (name === "VideoForge-Worker-0.1.15-Setup.exe") return streamingResponse(0x61, largeSize);
+    if (name === "VideoForge-Worker-0.1.15.dmg") return streamingResponse(0x62, largeSize);
+    return new Response(releaseFixture.manifestBytes, {
+      status: 200,
+      headers: { "content-length": String(releaseFixture.manifestBytes.byteLength) },
+    });
+  };
+  try {
+    const ports = createV209MediaWorkerProductionPorts(box.configuration, {
+      hostHome: box.home,
+      hostPlatform: "darwin",
+      hostUid: 501,
+      runChild,
+      fetchImpl,
+      clock,
+      sleep: async () => {},
+    });
+    const result = await ports.publishMediaWorker.run({
+      operationId: "publish-media-worker-0.1.15",
+      authority: stagedAuthority(),
+    });
+    assert.equal(result.materialization_receipt.windows_installer_asset_sha256, windowsDigest);
+    assert.equal(result.materialization_receipt.installer_asset_sha256, macosDigest);
+    assert.equal(maximumActiveReaders, 1);
+    assert.equal(activeReaders, 0);
+    assert.equal(arrayBufferCalls, 0);
+  } finally {
+    box.remove();
   }
 });
 
