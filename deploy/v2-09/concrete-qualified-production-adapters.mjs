@@ -19,6 +19,7 @@ import { runCancellableChildProcess } from "../v2-13/full-live-adapters.mjs";
 import { createV209CloudflareProductionOperator } from "./cloudflare-production-operator.mjs";
 import {
   BRANCH,
+  NORMAL_OPERATIONS,
   OPERATION_IDS,
   PUSH_REF,
   deriveInjectedAdapterIdentity,
@@ -78,6 +79,8 @@ const STATE_METHODS = Object.freeze([
   "completeCleanup",
   "completeSuccess",
   "reconcileSuccess",
+  "pauseInteractiveChromeLogin",
+  "resumeInteractiveChromeLogin",
 ]);
 const CONFIGURATION_KEYS = Object.freeze([
   "branch",
@@ -116,6 +119,12 @@ const PROTECTED_INPUT_NAMES = Object.freeze([
   "chromeAuthStateFile",
   "qualifiedBindingFile",
 ]);
+const DEFERRED_ENDPOINT_SECRET_NAMES = new Set([
+  "VIDEOFORGE_MAGE_ENDPOINT_ID",
+  "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+  "VIDEOFORGE_SOULX_ENDPOINT_ID",
+  "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+]);
 
 // These are the only unresolved low-level seams. Each implementation is source-hash identified;
 // their combined identity plus this file's bytes is what the rollout authority approves.
@@ -134,6 +143,26 @@ export function createV209BuiltInProductionPorts(configuration) {
   return Object.freeze({
     ...createV209MediaWorkerProductionPorts(configuration.mediaWorker),
     ...createV209CloudflareProductionOperator(configuration.cloudflare),
+  });
+}
+
+function createV209StagingPorts(configuration) {
+  const media = createV209MediaWorkerProductionPorts(configuration.mediaWorker);
+  const forbidden = (name) =>
+    Object.freeze({
+      source_sha256: sha256(`v2-09-staging-forbidden-port:${name}`),
+      run: async () => fail(`V2_09_STAGING_PORT_FORBIDDEN:${name}`),
+    });
+  return Object.freeze({
+    ...media,
+    deployCloudflareDisabled: forbidden("deployCloudflareDisabled"),
+    uploadCloudflareSecrets: Object.freeze({
+      ...forbidden("uploadCloudflareSecrets"),
+      secret_input_sha256s: Object.freeze({}),
+    }),
+    deployCloudflareQualified: forbidden("deployCloudflareQualified"),
+    readbackCloudflareQualified: forbidden("readbackCloudflareQualified"),
+    reconcileCloudflareSafety: forbidden("reconcileCloudflareSafety"),
   });
 }
 
@@ -370,9 +399,14 @@ function snapshotConcreteConfiguration(value) {
   return cloneAndFreeze(value);
 }
 
-function protectedInputSnapshot(configuration) {
+function protectedInputSnapshot(configuration, { stagingOnly = false } = {}) {
+  const protectedNames = stagingOnly
+    ? PROTECTED_INPUT_NAMES.filter(
+        (name) => !["chromeRequestFile", "chromeAuthStateFile"].includes(name),
+      )
+    : PROTECTED_INPUT_NAMES;
   const inputs = Object.fromEntries(
-    PROTECTED_INPUT_NAMES.map((name) => {
+    protectedNames.map((name) => {
       const path = configuration[name];
       let descriptor;
       let stat;
@@ -417,44 +451,50 @@ function protectedInputSnapshot(configuration) {
     fail("V2_09_CONCRETE_PROTECTED_INPUT_INVALID");
   inputs.cloudflareSecretFiles = Object.freeze(
     Object.fromEntries(
-      Object.entries(cloudflareSecretFiles).map(([name, path]) => {
-        const reusedName = PROTECTED_INPUT_NAMES.find(
-          (inputName) => resolve(configuration[inputName]) === resolve(path),
-        );
-        if (reusedName !== undefined) return [name, inputs[reusedName]];
-        let descriptor;
-        let stat;
-        let bytes;
-        try {
-          descriptor = openSync(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
-          stat = fstatSync(descriptor);
-          bytes = Buffer.from(readFileSync(descriptor));
-        } catch {
+      Object.entries(cloudflareSecretFiles)
+        .filter(([name, path]) => {
+          if (!stagingOnly || existsSync(path)) return true;
+          if (DEFERRED_ENDPOINT_SECRET_NAMES.has(name)) return false;
           fail("V2_09_CONCRETE_PROTECTED_INPUT_INVALID");
-        } finally {
-          if (descriptor !== undefined) closeSync(descriptor);
-        }
-        if (
-          !stat.isFile() ||
-          stat.nlink !== 1 ||
-          (stat.mode & 0o777) !== 0o600 ||
-          (typeof process.getuid === "function" && stat.uid !== process.getuid())
-        )
-          fail("V2_09_CONCRETE_PROTECTED_INPUT_INVALID");
-        return [
-          name,
-          Object.freeze({
-            bytes,
-            dev: stat.dev,
-            ino: stat.ino,
-            mode: stat.mode,
-            uid: stat.uid,
-            nlink: stat.nlink,
-            sha256: sha256(bytes),
-            size: stat.size,
-          }),
-        ];
-      }),
+        })
+        .map(([name, path]) => {
+          const reusedName = PROTECTED_INPUT_NAMES.find(
+            (inputName) => resolve(configuration[inputName]) === resolve(path),
+          );
+          if (reusedName !== undefined) return [name, inputs[reusedName]];
+          let descriptor;
+          let stat;
+          let bytes;
+          try {
+            descriptor = openSync(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+            stat = fstatSync(descriptor);
+            bytes = Buffer.from(readFileSync(descriptor));
+          } catch {
+            fail("V2_09_CONCRETE_PROTECTED_INPUT_INVALID");
+          } finally {
+            if (descriptor !== undefined) closeSync(descriptor);
+          }
+          if (
+            !stat.isFile() ||
+            stat.nlink !== 1 ||
+            (stat.mode & 0o777) !== 0o600 ||
+            (typeof process.getuid === "function" && stat.uid !== process.getuid())
+          )
+            fail("V2_09_CONCRETE_PROTECTED_INPUT_INVALID");
+          return [
+            name,
+            Object.freeze({
+              bytes,
+              dev: stat.dev,
+              ino: stat.ino,
+              mode: stat.mode,
+              uid: stat.uid,
+              nlink: stat.nlink,
+              sha256: sha256(bytes),
+              size: stat.size,
+            }),
+          ];
+        }),
     ),
   );
   return Object.freeze(inputs);
@@ -986,6 +1026,38 @@ function createJournalState({ journalPath, adapterIdentitySha256 }) {
         status: state.status === "SUCCEEDED_CLEAN" ? "SUCCEEDED_CLEAN" : "NOT_SUCCEEDED",
       };
     },
+    async pauseInteractiveChromeLogin({ authorityId }) {
+      const state = readJournal(journalPath);
+      const deployed = [
+        "deploy-cloudflare-disabled-bootstrap",
+        "upload-cloudflare-production-secrets",
+        "deploy-cloudflare-qualified-production",
+        "readback-qualified-production",
+        "import-v209-qualified-activation",
+      ].every((operationId) => state.normal[operationId]?.status === "COMPLETED");
+      if (
+        state.authority_id !== authorityId ||
+        state.status !== "CLAIMED" ||
+        !deployed ||
+        state.normal["run-one-v209-chrome-e2e"] !== undefined
+      )
+        fail("V2_09_CONCRETE_CHROME_LOGIN_PAUSE_INVALID");
+      state.status = "AWAITING_INTERACTIVE_CHROME_LOGIN";
+      save(state);
+      return { authority_id: authorityId, status: "AWAITING_INTERACTIVE_CHROME_LOGIN" };
+    },
+    async resumeInteractiveChromeLogin({ authorityId }) {
+      const state = readJournal(journalPath);
+      if (
+        state.authority_id !== authorityId ||
+        state.status !== "AWAITING_INTERACTIVE_CHROME_LOGIN" ||
+        state.normal["run-one-v209-chrome-e2e"] !== undefined
+      )
+        fail("V2_09_CONCRETE_CHROME_LOGIN_RESUME_INVALID");
+      state.status = "CLAIMED";
+      save(state);
+      return { authority_id: authorityId, status: "CLAIMED" };
+    },
   });
 }
 
@@ -1002,7 +1074,10 @@ function concreteConfigurationIdentity(configuration, protectedInputs) {
       root_sha256: sha256(resolve(configuration.root)),
       journal_path_sha256: sha256(resolve(configuration.journalPath)),
       protected_input_sha256s: Object.fromEntries(
-        PROTECTED_INPUT_NAMES.map((name) => [name, protectedInputs[name].sha256]),
+        PROTECTED_INPUT_NAMES.filter((name) => protectedInputs[name] !== undefined).map((name) => [
+          name,
+          protectedInputs[name].sha256,
+        ]),
       ),
       cloudflare_secret_sha256s: Object.fromEntries(
         Object.entries(protectedInputs.cloudflareSecretFiles).map(([name, input]) => [
@@ -1103,6 +1178,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     fetchImpl = fetch,
     now = () => new Date(),
     sleep = (milliseconds) => new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds)),
+    stagingOnly = false,
   } = {},
 ) {
   if (
@@ -1144,11 +1220,14 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
         path === configuration.journalPath ||
         path === configuration.mediaReleaseManifestFile ||
         path === configuration.qualifiedConfigOutputFile ||
-        path === configuration.qualifiedConfigReceiptFile,
+        path === configuration.qualifiedConfigReceiptFile ||
+        (stagingOnly &&
+          [configuration.chromeRequestFile, configuration.chromeAuthStateFile].includes(path)),
     });
   if (resolve(configuration.root) !== ROOT) fail("V2_09_CONCRETE_ROOT_INVALID");
 
-  const protectedInputs = suppliedProtectedInputs ?? protectedInputSnapshot(configuration);
+  const protectedInputs =
+    suppliedProtectedInputs ?? protectedInputSnapshot(configuration, { stagingOnly });
   const ownerDatabaseEnvironment = postgresEnvironment(
     configuration,
     protectedInputs.databaseOwnerUrlFile.bytes.toString("utf8"),
@@ -1192,10 +1271,9 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
   )
     fail("V2_09_CONCRETE_DATABASE_ROLE_BINDING_INVALID");
   const migrationBundle = loadV209MigrationBundle();
-  const chromeDocument = validateChromeDocument(
-    configuration,
-    protectedInputs.chromeRequestFile.bytes,
-  );
+  const chromeDocument = stagingOnly
+    ? null
+    : validateChromeDocument(configuration, protectedInputs.chromeRequestFile.bytes);
   const assertProtectedInputUnchanged = (name) => {
     const expected = protectedInputs[name];
     const path = configuration[name];
@@ -3811,6 +3889,108 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     }) !== identitySha256
   )
     fail("V2_09_CONCRETE_ADAPTER_IDENTITY_UNSTABLE");
+  if (stagingOnly) {
+    const prefixOperationIds = NORMAL_OPERATIONS.slice(
+      0,
+      NORMAL_OPERATIONS.findIndex(({ id }) => id === "render-qualified-production-config") + 1,
+    ).map(({ id }) => id);
+    const readPersistedDeploymentBindings = ({ authority, priorResults }) => {
+      assertAuthorityConfiguration(authority);
+      if (priorResults === null || typeof priorResults !== "object" || Array.isArray(priorResults))
+        fail("V2_09_STAGING_DEPLOYMENT_BINDING_INVALID");
+      const journal = readJournal(configuration.journalPath);
+      if (journal.authority_id !== authority.authority_id || journal.status !== "CLAIMED")
+        fail("V2_09_STAGING_DEPLOYMENT_BINDING_INVALID");
+      const required = [
+        "create-mage-production-lane-max-one",
+        "create-soulx-production-lane-max-one",
+        "persist-qualified-production-deployments",
+      ];
+      for (const operationId of required) {
+        const result = priorResults[operationId];
+        if (
+          result === undefined ||
+          journal.normal[operationId]?.status !== "COMPLETED" ||
+          journal.normal[operationId].result_sha256 !== sha256(canonical(result))
+        )
+          fail("V2_09_STAGING_DEPLOYMENT_BINDING_INVALID");
+      }
+      const persisted = priorResults["persist-qualified-production-deployments"];
+      if (
+        persisted?.operation_id !== "persist-qualified-production-deployments" ||
+        persisted.persisted_deployment_count !== 2 ||
+        !Array.isArray(persisted.deployments) ||
+        persisted.deployments.length !== 2
+      )
+        fail("V2_09_STAGING_DEPLOYMENT_BINDING_INVALID");
+      const bindings = {};
+      for (const lane of ["mage", "soulx"]) {
+        const deployment = journal.resources[lane];
+        const binding = authority.scope?.lanes?.find((entry) => entry.lane === lane);
+        const receipt = priorResults[`create-${lane}-production-lane-max-one`];
+        const persistedReceipt = persisted.deployments.find((entry) => entry.lane === lane);
+        if (
+          binding === undefined ||
+          typeof deployment?.endpointId !== "string" ||
+          deployment.endpointId.length === 0 ||
+          sha256(deployment.endpointId) !== deployment.endpointIdSha256 ||
+          typeof deployment.templateId !== "string" ||
+          deployment.templateId.length === 0 ||
+          sha256(deployment.templateId) !== deployment.templateIdSha256 ||
+          deployment.sourceCommit !== authority.source_commit ||
+          deployment.volumeIdSha256 !== binding.volume_id_sha256 ||
+          deployment.volumeManifestSha256 !== binding.volume_manifest_sha256 ||
+          receipt?.endpoint_id_sha256 !== deployment.endpointIdSha256 ||
+          receipt?.template_id_sha256 !== deployment.templateIdSha256 ||
+          receipt?.deployment_sha256 !== deployment.deploymentSha256 ||
+          persistedReceipt?.endpoint_id_sha256 !== deployment.endpointIdSha256 ||
+          persistedReceipt?.template_id_sha256 !== deployment.templateIdSha256 ||
+          persistedReceipt?.deployment_sha256 !== deployment.deploymentSha256 ||
+          !HASH.test(persistedReceipt?.deployment_row_id_sha256 ?? "")
+        )
+          fail("V2_09_STAGING_DEPLOYMENT_BINDING_INVALID");
+        bindings[lane] = Object.freeze({
+          endpointId: deployment.endpointId,
+          endpointIdSha256: deployment.endpointIdSha256,
+        });
+      }
+      return Object.freeze(bindings);
+    };
+    const cleanupStagedRunPod = async ({ authority, operation = {} }) => {
+      assertAuthorityConfiguration(authority);
+      const observed = await invokeRunPodReconciliation(
+        authority,
+        operation,
+        "DELETE_ATTRIBUTABLE_PAIR",
+        { deployments: [], jobs: [] },
+        { includeJobs: false },
+      );
+      if (
+        observed.inventory.activeWorkers !== 0 ||
+        observed.inventory.runningPods !== 0 ||
+        observed.inventory.queuedJobs !== 0 ||
+        observed.inventory.endpointIdSha256s.length !== 0
+      )
+        fail("V2_09_STAGING_RUNPOD_CLEANUP_INVALID");
+      return Object.freeze({
+        operation_id: "cleanup-staged-runpod",
+        endpoint_count: 0,
+        active_worker_count: 0,
+        running_pod_count: 0,
+        queued_job_count: 0,
+      });
+    };
+    return Object.freeze({
+      identity_sha256: identitySha256,
+      operations: Object.freeze(
+        Object.fromEntries(prefixOperationIds.map((id) => [id, frozenOperations[id]])),
+      ),
+      readPersistedDeploymentBindings,
+      cleanupStagedRunPod,
+      source_identity: sourceIdentity,
+      state,
+    });
+  }
   return Object.freeze({
     identity_sha256: identitySha256,
     operations: frozenOperations,
@@ -3844,6 +4024,23 @@ export function createConcreteQualifiedProductionAdaptersForTest(configuration, 
   if (overrides?.testOnly !== true) fail("V2_09_TEST_ADAPTER_FACTORY_FORBIDDEN");
   const snapshot = snapshotConcreteConfiguration(configuration);
   const testOverrides = { ...overrides };
+  delete testOverrides.testOnly;
+  return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, testOverrides);
+}
+
+export function createConcreteQualifiedProductionStagingAdapters(configuration) {
+  const snapshot = snapshotConcreteConfiguration(configuration);
+  return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, {
+    ports: createV209StagingPorts(snapshot),
+    protectedInputs: protectedInputSnapshot(snapshot, { stagingOnly: true }),
+    stagingOnly: true,
+  });
+}
+
+export function createConcreteQualifiedProductionStagingAdaptersForTest(configuration, overrides) {
+  if (overrides?.testOnly !== true) fail("V2_09_TEST_ADAPTER_FACTORY_FORBIDDEN");
+  const snapshot = snapshotConcreteConfiguration(configuration);
+  const testOverrides = { ...overrides, stagingOnly: true };
   delete testOverrides.testOnly;
   return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, testOverrides);
 }

@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmodSync, lstatSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  lstatSync,
+  mkdtempSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -9,6 +16,7 @@ import {
   REQUIRED_CONCRETE_PORTS,
   concreteAdapterIdentity,
   createConcreteQualifiedProductionAdaptersForTest,
+  createConcreteQualifiedProductionStagingAdaptersForTest,
 } from "./concrete-qualified-production-adapters.mjs";
 import {
   BRANCH,
@@ -30,6 +38,11 @@ const canonical = (value) => {
 };
 const createConcreteQualifiedProductionAdapters = (configuration, overrides) =>
   createConcreteQualifiedProductionAdaptersForTest(configuration, { ...overrides, testOnly: true });
+const createConcreteQualifiedProductionStagingAdapters = (configuration, overrides) =>
+  createConcreteQualifiedProductionStagingAdaptersForTest(configuration, {
+    ...overrides,
+    testOnly: true,
+  });
 
 function fixture() {
   const directory = mkdtempSync(resolve(tmpdir(), "videoforge-v209-concrete-test-"));
@@ -981,6 +994,130 @@ test("factory exposes the exact coordinator graph and fixed low-level lane conte
     ),
     true,
   );
+});
+
+test("staging factory needs neither Chrome inputs nor deferred endpoint secrets", async () => {
+  const { configuration, directory } = fixture();
+  unlinkSync(configuration.chromeRequestFile);
+  unlinkSync(configuration.chromeAuthStateFile);
+  for (const name of [
+    "VIDEOFORGE_MAGE_ENDPOINT_ID",
+    "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+    "VIDEOFORGE_SOULX_ENDPOINT_ID",
+    "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+  ])
+    configuration.cloudflare.secretFiles[name] = resolve(directory, `${name}.missing`);
+  const calls = [];
+  const adapters = createConcreteQualifiedProductionStagingAdapters(configuration, {
+    ports: portSet(),
+    runChild: childRunner(calls),
+  });
+  assert.deepEqual(Object.keys(adapters.operations), [
+    "push-clean-source",
+    "readback-clean-source",
+    "apply-migrations-0074-0085",
+    "apply-v209-grants",
+    "publish-media-worker-0.1.15",
+    "readback-media-worker-0.1.15",
+    "install-media-worker-0.1.15",
+    "fresh-read-only-admission",
+    "create-mage-production-lane-max-one",
+    "create-soulx-production-lane-max-one",
+    "persist-qualified-production-deployments",
+    "render-qualified-production-config",
+  ]);
+  const value = authority(adapters.identity_sha256);
+  await adapters.state.claimAuthority({ authority: value });
+  const priorResults = {};
+  for (const operationId of [
+    "create-mage-production-lane-max-one",
+    "create-soulx-production-lane-max-one",
+    "persist-qualified-production-deployments",
+  ]) {
+    await adapters.state.beginNormalOperation({
+      authorityId: value.authority_id,
+      operationId,
+      redispatchAllowed: false,
+    });
+    const result = await adapters.operations[operationId]({
+      authority: value,
+      operation: {},
+      priorResults: Object.entries(priorResults),
+    });
+    priorResults[operationId] = result;
+    await adapters.state.completeNormalOperation({
+      authorityId: value.authority_id,
+      operationId,
+      result,
+    });
+  }
+  const bindings = adapters.readPersistedDeploymentBindings({
+    authority: value,
+    priorResults,
+  });
+  assert.deepEqual(Object.keys(bindings), ["mage", "soulx"]);
+  assert.equal(bindings.mage.endpointIdSha256, hash(bindings.mage.endpointId));
+  assert.equal(bindings.soulx.endpointIdSha256, hash(bindings.soulx.endpointId));
+  await assert.rejects(
+    async () =>
+      adapters.readPersistedDeploymentBindings({
+        authority: value,
+        priorResults: {
+          ...priorResults,
+          "create-mage-production-lane-max-one": {
+            ...priorResults["create-mage-production-lane-max-one"],
+            endpoint_id_sha256: hash("tampered"),
+          },
+        },
+      }),
+    /V2_09_STAGING_DEPLOYMENT_BINDING_INVALID/u,
+  );
+  const cleanup = await adapters.cleanupStagedRunPod({ authority: value });
+  assert.equal(cleanup.endpoint_count, 0);
+  assert.equal(
+    calls.some(({ options }) => options?.input?.includes('"command":"DELETE_ATTRIBUTABLE_PAIR"')),
+    true,
+  );
+});
+
+test("interactive Chrome pause and resume preserve the unstarted Generate operation", async () => {
+  const { configuration } = fixture();
+  const adapters = createConcreteQualifiedProductionAdapters(configuration, {
+    ports: portSet(),
+    runChild: childRunner(),
+  });
+  const value = authority(adapters.identity_sha256);
+  await adapters.state.claimAuthority({ authority: value });
+  for (const operationId of [
+    "deploy-cloudflare-disabled-bootstrap",
+    "upload-cloudflare-production-secrets",
+    "deploy-cloudflare-qualified-production",
+    "readback-qualified-production",
+    "import-v209-qualified-activation",
+  ]) {
+    await adapters.state.beginNormalOperation({
+      authorityId: value.authority_id,
+      operationId,
+      redispatchAllowed: false,
+    });
+    await adapters.state.completeNormalOperation({
+      authorityId: value.authority_id,
+      operationId,
+      result: { operation_id: operationId },
+    });
+  }
+  assert.equal(
+    (await adapters.state.pauseInteractiveChromeLogin({ authorityId: value.authority_id })).status,
+    "AWAITING_INTERACTIVE_CHROME_LOGIN",
+  );
+  let journal = JSON.parse(readFileSync(configuration.journalPath));
+  assert.equal(journal.normal["run-one-v209-chrome-e2e"], undefined);
+  assert.equal(
+    (await adapters.state.resumeInteractiveChromeLogin({ authorityId: value.authority_id })).status,
+    "CLAIMED",
+  );
+  journal = JSON.parse(readFileSync(configuration.journalPath));
+  assert.equal(journal.normal["run-one-v209-chrome-e2e"], undefined);
 });
 
 test("fsynced mode-0600 journal consumes once, forbids normal replay, and permits cleanup-only", async () => {
