@@ -25,6 +25,8 @@ const SCOPE_RECEIPT_SCHEMA = "videoforge.v2-09-chrome-request-scope-receipt/v1";
 const AUTH_CONFIG_SCHEMA = "videoforge.v2-09-post-deploy-chrome-auth/v1";
 const AUTH_RECEIPT_SCHEMA = "videoforge.v2-09-post-deploy-chrome-auth-receipt/v1";
 const SOURCE = "HOSTED_V209_ORDINARY";
+const SUCCESS_HORIZON_SECONDS = 1_660;
+const MINIMUM_EXECUTION_WINDOW_MS = 800_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,190}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
@@ -697,7 +699,7 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
       "productionOrigin",
       "schemaVersion",
       "spendCapUsd",
-      "stopAt",
+      "successHorizonSeconds",
       "title",
       "verifiedOutputPath",
       "voiceoverPath",
@@ -719,7 +721,7 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
     !Number.isFinite(configuration.spendCapUsd) ||
     configuration.spendCapUsd < 0.05 ||
     configuration.spendCapUsd > 2 ||
-    !exactInstant(configuration.stopAt)
+    configuration.successHorizonSeconds !== SUCCESS_HORIZON_SECONDS
   )
     fail("V2_09_CHROME_BOOTSTRAP_CONFIGURATION_INVALID");
 
@@ -813,6 +815,38 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
       "styles",
       (value) => value?.state === "PUBLISHED" && value?.status === "ACTIVE",
     );
+    const observed = (dependencies.now ?? (() => new Date()))();
+    const authorityExpiresAt = dependencies.authorityExpiresAt;
+    if (!(observed instanceof Date) || !Number.isFinite(observed.getTime()))
+      fail("V2_09_CHROME_BOOTSTRAP_CLOCK_INVALID");
+    if (!exactInstant(authorityExpiresAt) || observed.getTime() >= Date.parse(authorityExpiresAt))
+      fail("V2_09_CHROME_BOOTSTRAP_AUTHORITY_EXPIRY_INVALID");
+    const preferredStopAtMs = observed.getTime() + configuration.successHorizonSeconds * 1_000;
+    let stopAtMs = Math.min(preferredStopAtMs, Date.parse(authorityExpiresAt));
+    if (existsSync(configuration.chromeRequestPath)) {
+      let existing;
+      try {
+        existing = JSON.parse(
+          readPrivate(
+            configuration.chromeRequestPath,
+            "V2_09_CHROME_BOOTSTRAP_REQUEST_ADOPTION_INVALID",
+          ).toString("utf8"),
+        );
+      } catch {
+        fail("V2_09_CHROME_BOOTSTRAP_REQUEST_ADOPTION_INVALID");
+      }
+      const existingStopAt = existing?.request?.stopAt;
+      if (
+        !exactInstant(existingStopAt) ||
+        Date.parse(existingStopAt) > stopAtMs ||
+        Date.parse(existingStopAt) > Date.parse(authorityExpiresAt)
+      )
+        fail("V2_09_CHROME_BOOTSTRAP_REQUEST_ADOPTION_INVALID");
+      stopAtMs = Date.parse(existingStopAt);
+    }
+    if (stopAtMs - observed.getTime() < MINIMUM_EXECUTION_WINDOW_MS)
+      fail("V2_09_CHROME_BOOTSTRAP_EXECUTION_WINDOW_INVALID");
+    const stopAt = new Date(stopAtMs).toISOString();
     let authBytes = auth.adopted;
     if (!authBytes) {
       try {
@@ -833,7 +867,7 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
         source: SOURCE,
         accountId: tenant.account_id,
         workspaceId: tenant.workspace_id,
-        stopAt: configuration.stopAt,
+        stopAt,
         maxProgressReads: configuration.maxProgressReads,
         pollIntervalMs: configuration.pollIntervalMs,
         prepared: {

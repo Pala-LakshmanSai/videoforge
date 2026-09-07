@@ -16,6 +16,10 @@ import {
   validateV209PostDeployChromeAuthReceipt,
 } from "./chrome-production-bootstrap.mjs";
 
+const STATIC_SCOPE_STOP_AT = "2026-09-08T01:00:00.000Z";
+const BOOTSTRAP_NOW = new Date("2026-09-07T10:00:00.000Z");
+const BOOTSTRAP_STOP_AT = "2026-09-07T10:27:40.000Z";
+
 function harness(overrides = {}) {
   const root = mkdtempSync(resolve(tmpdir(), "v209-chrome-bootstrap-"));
   const secure = resolve(root, "secure");
@@ -32,7 +36,7 @@ function harness(overrides = {}) {
     verifiedOutputPath: resolve(secure, "verified.mp4"),
     title: "V2-09 production acceptance",
     spendCapUsd: 2,
-    stopAt: "2026-09-08T01:00:00.000Z",
+    successHorizonSeconds: 1_660,
     maxProgressReads: 720,
     pollIntervalMs: 1_000,
     loginTimeoutMs: 300_000,
@@ -86,6 +90,8 @@ function harness(overrides = {}) {
     dependencies: {
       launch: async () => browser,
       probeVoiceover: async () => 45_000,
+      now: () => new Date(BOOTSTRAP_NOW),
+      authorityExpiresAt: "2026-09-08T01:00:00.000Z",
     },
   };
 }
@@ -107,6 +113,7 @@ test("interactive login materializes auth and a deterministic request without Ge
   assert.equal(request.request.prepared.imageStyleVersionId, "style-a");
   assert.equal(request.request.prepared.voiceoverDurationMs, 45_000);
   assert.equal(request.request.prepared.voiceoverContentType, "audio/wav");
+  assert.equal(request.request.stopAt, BOOTSTRAP_STOP_AT);
   assert.equal(
     value.calls.some(([name]) => /click|generate/iu.test(name)),
     false,
@@ -152,7 +159,7 @@ test("request scope binds before deployment without opening Chrome or creating a
     verifiedOutputPath: value.configuration.verifiedOutputPath,
     title: value.configuration.title,
     spendCapUsd: value.configuration.spendCapUsd,
-    stopAt: value.configuration.stopAt,
+    stopAt: STATIC_SCOPE_STOP_AT,
     maxProgressReads: value.configuration.maxProgressReads,
     pollIntervalMs: value.configuration.pollIntervalMs,
     accountId: value.facts[0].account_id,
@@ -186,7 +193,7 @@ test("post-deploy authentication matches bound tenant and presets without Genera
     verifiedOutputPath: value.configuration.verifiedOutputPath,
     title: value.configuration.title,
     spendCapUsd: value.configuration.spendCapUsd,
-    stopAt: value.configuration.stopAt,
+    stopAt: STATIC_SCOPE_STOP_AT,
     maxProgressReads: value.configuration.maxProgressReads,
     pollIntervalMs: value.configuration.pollIntervalMs,
     accountId: value.facts[0].account_id,
@@ -244,7 +251,7 @@ test("post-deploy login timeout is explicitly resumable and leaves the request b
     verifiedOutputPath: value.configuration.verifiedOutputPath,
     title: value.configuration.title,
     spendCapUsd: value.configuration.spendCapUsd,
-    stopAt: value.configuration.stopAt,
+    stopAt: STATIC_SCOPE_STOP_AT,
     maxProgressReads: value.configuration.maxProgressReads,
     pollIntervalMs: value.configuration.pollIntervalMs,
     accountId: value.facts[0].account_id,
@@ -316,8 +323,8 @@ test("existing protected output is never overwritten", async () => {
   assert.equal(readFileSync(value.configuration.authStatePath, "utf8"), "existing");
 });
 
-test("malformed deadline is rejected with a bounded code before file or browser work", async () => {
-  const value = harness({ stopAt: "not-an-instant" });
+test("arbitrary static or extended bootstrap horizons are rejected before browser work", async () => {
+  const value = harness({ successHorizonSeconds: 1_661 });
   let launches = 0;
   value.dependencies.launch = async () => {
     launches += 1;
@@ -328,6 +335,54 @@ test("malformed deadline is rejected with a bounded code before file or browser 
     /V2_09_CHROME_BOOTSTRAP_CONFIGURATION_INVALID/u,
   );
   assert.equal(launches, 0);
+});
+
+test("dynamic deadline is capped by the exact authority expiry and keeps the execution minimum", async () => {
+  const value = harness();
+  value.dependencies.authorityExpiresAt = "2026-09-07T10:16:40.000Z";
+  await materializeV209ChromeBootstrap(value.configuration, value.dependencies);
+  const request = JSON.parse(readFileSync(value.configuration.chromeRequestPath, "utf8"));
+  assert.equal(request.request.stopAt, value.dependencies.authorityExpiresAt);
+
+  const short = harness();
+  short.dependencies.authorityExpiresAt = "2026-09-07T10:13:19.999Z";
+  await assert.rejects(
+    materializeV209ChromeBootstrap(short.configuration, short.dependencies),
+    /V2_09_CHROME_BOOTSTRAP_EXECUTION_WINDOW_INVALID/u,
+  );
+  assert.throws(() => statSync(short.configuration.authStatePath));
+  assert.throws(() => statSync(short.configuration.chromeRequestPath));
+});
+
+test("interactive pause can resume hours later with a fresh bounded success horizon", async () => {
+  const value = harness();
+  const successfulLaunch = value.dependencies.launch;
+  value.dependencies.launch = async () => ({
+    newContext: async () => ({
+      newPage: async () => ({
+        goto: async () => undefined,
+        waitForURL: async () => {
+          const error = new Error("timed out");
+          error.name = "TimeoutError";
+          throw error;
+        },
+        close: async () => undefined,
+      }),
+      close: async () => undefined,
+    }),
+    close: async () => undefined,
+  });
+  await assert.rejects(
+    materializeV209ChromeBootstrap(value.configuration, value.dependencies),
+    /V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN/u,
+  );
+
+  value.dependencies.launch = successfulLaunch;
+  value.dependencies.now = () => new Date("2026-09-07T22:00:00.000Z");
+  value.dependencies.authorityExpiresAt = "2026-09-08T05:32:10.000Z";
+  await materializeV209ChromeBootstrap(value.configuration, value.dependencies);
+  const request = JSON.parse(readFileSync(value.configuration.chromeRequestPath, "utf8"));
+  assert.equal(request.request.stopAt, "2026-09-07T22:27:40.000Z");
 });
 
 test("voiceover probing and request hashing use one stable descriptor snapshot", async () => {
