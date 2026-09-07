@@ -4,10 +4,13 @@
 
 ### Current new-chat launch point — 2026-09-06
 
-- V2-09 proposal `sha256:58cb3e2b...92f4a` and authority `v2-09-58cb3e2bbe96d721` are approved,
-  source-bound to pushed clean source `555b27c8...21c6f`, and materialized mode-0600 with exact
-  media-worker bundle `sha256:b8e82b29...9b686`. The mandatory independent successor diff audit is
-  the only remaining pre-execution gate. Proposal `sha256:cfcaccfc...e05` is consumed
+- V2-09 proposal `sha256:58cb3e2b...92f4a` and authority `v2-09-58cb3e2bbe96d721` are consumed
+  `FAILED_CLEAN` and non-reusable. The single execution stopped during read-only RunPod preflight
+  because the catalog did not yield exactly one `EU-RO-1` entry for the exact RTX 4090 match. No
+  preflight receipt or inner authority was emitted and all 25 later operations stayed pending; no
+  database, publication, endpoint/template, Cloudflare/R2, provider-job, GPU, Chrome, redispatch,
+  Stage 6/7, or spend action was reached. Fresh zero-compute/billing/volume proof is not claimed.
+  Proposal `sha256:cfcaccfc...e05` is also consumed
   `FAILED_CLEAN` and non-reusable. Its preflight
   and completion baseline passed, then authority-role cleanup failed before migrations or any later
   deployment operation. Marker-bound recovery removed all three roles and protected files with zero
@@ -18,18 +21,10 @@
   PostgreSQL 17 run applied all 86 migrations, passed all three production grant scripts, rejected a
   foreign membership, and cleaned to zero roles/memberships. Focused tests pass 83/83 and two
   independent audits are GO P0=0/P1=0. Stage 6/7 remain frozen `QUALIFIED_PASS_CLEAN`.
-- V2-07 Stage 6 is `QUALIFIED_PASS_CLEAN`, frozen, and untouched. V2-08 Stage 7 remains not qualified.
-  Proposal `692bcb15...2df37` was consumed after exactly two cold/warm POSTs with no redispatch.
-  Cold completed four valid MP4 items but signed `runtime_cache_hit=true`; the evidence-supported
-  inference is that warm acquired the startup lock first. Strict verification rejected it before preservation and fault jobs were not
-  posted. Cleanup removed the disposable lane and all five R2 keysets; three fresh reads prove zero
-  compute, unchanged volumes, and stable billing USD `3.376928996265633`. The provider-free repair
-  posts warm only after durable cold `IN_PROGRESS` and exact `inQueue=0,inProgress=1`, sharing the
-  original 830-read/1,660-second horizon. Stage 7 focused tests pass 182/182; Stage 6 and worker/image
-  bytes are unchanged. Existing immutable image `f3b1d141` will be reverified and reused without
-  publication or republication. No executable authority or provider mutation exists now. Proposal
-  `sha256:9e5d4eb98e9085009b338855858bc9eda6781ebf71e6a1f51b3fd032f215040c`
-  awaits independent audit, a clean control commit, and fresh exact approval.
+- V2-07 Stage 6 and V2-08 Stage 7 are both `QUALIFIED_PASS_CLEAN`, frozen, and untouched by V2-09.
+  Their disposable qualification authorities are consumed, cleanup proved zero compute, and no
+  Stage 6/7 job, rerun, image republication, or modification is authorized here. V2-09 may only
+  reverify and reuse their exact immutable bindings under fresh source-bound authority.
 - V2-07 is `QUALIFIED_PASS_CLEAN` by Attempt85. Proposal
   `sha256:e983f2b5ed1fd1d78d2c07f3e0154ad9e824f993a71aa12b321150f958d3b540`, control
   `2fccf2ed7257613f4a12017562243a8aeb889138`, and authority

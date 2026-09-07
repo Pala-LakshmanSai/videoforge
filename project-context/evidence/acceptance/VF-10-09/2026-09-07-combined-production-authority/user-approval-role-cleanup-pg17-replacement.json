@@ -3,8 +3,8 @@
   "checkpoint": "V2-09",
   "task_id": "VF-10-09",
   "approval_source": "explicit_user_approval_in_current_codex_task",
-  "approval_status": "APPROVED_SINGLE_USE_NOT_YET_CONSUMED",
-  "consumed": false,
+  "approval_status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "consumed": true,
   "reusable": false,
   "exact_user_statement": "I approve exact V2-09 role-cleanup-pg17 replacement combined production activation proposal sha256:58cb3e2bbe96d721919e5881e1488f4a50c6eed44733c8c0c9ef6c79e1192f4a",
   "exact_user_statement_sha256": "sha256:0e2f0097c8d49654e7ea30d007ecbe61500cb90ab0c24579d767e74c08e490cc",
@@ -24,5 +24,9 @@
   "database_calls_performed": 0,
   "r2_calls_performed": 0,
   "gpu_jobs_performed": 0,
-  "external_spend_usd": 0
+  "external_spend_usd": 0,
+  "consumption_status": "FAILED_CLEAN",
+  "failure_operation": "run-read-only-preflight",
+  "failure_code": "V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_REGION_MATCH",
+  "closure_evidence": "failed-clean-runpod-region-match.json"
 }
