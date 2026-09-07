@@ -455,15 +455,15 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority.json"
-    current_authority_sha256: "sha256:198f5d578c641cddeb90e62f1eabfa44d774196b56d6620039e3e860bf9ae9f1"
-    current_authority_state: consumed_failed_clean_rate_catalog_flex_missing
-    current_proposal_sha256: "sha256:d9703df5651be2e58523d8f8bc88d2a030b6c93d7dd48488b8274d0040cdd1f9"
-    current_control_source_commit: "5442eb77795c9319be01162ddec7a82d7e7bbb0d"
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-unlimited-project.json"
+    current_authority_sha256: "sha256:d6055e464f93eb030eeb64ee591569b0ba42d98870ef0e1c868f89dafb7d55ff"
+    current_authority_state: approved_materialized_pending_independent_diff_audit
+    current_proposal_sha256: "sha256:051c6d42eec2cd693dcafeb5e51cf9ad2577d6a362c90f0192194d1ac11f74fb"
+    current_control_source_commit: "6468361ff125538f31d9167419ac78c0c828d7df"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-flex-missing.json"
     current_failure_sha256: "sha256:431dd71c90e9399d6c8bbc3dbce1841ac10c6011295d431211958010fe26b984"
     provider_free_repair_state: "Hosted projects are NULL/unlimited with no maximum-spend input through pending migration 0086; exact cost accounting remains. Authenticated RunPod catalog truth supplies exact RTX 4090 EU-RO-1 LOW-or-better availability, while the guarded official RunPod pricing page supplies USD 0.00031/second and USD 1.116/hour. No GPU/region/rate fallback was added."
-    next_gate: "One fresh exact finite-cap combined preflight, conditional production activation, and Chrome E2E authority at the clean control source."
+    next_gate: "Independent authority-successor diff audit, then execute the single combined preflight, conditional production activation, and Chrome E2E."
 
   GATE_RANGA_001:
     status: open

@@ -1,0 +1,109 @@
+{
+  "authority_id": "v2-09-051c6d42eec2cd69",
+  "caps": {
+    "max_completion_usd": 17.5,
+    "max_incremental_usd": 2
+  },
+  "credential_reads": {
+    "database_operator_url_exact": 1,
+    "database_owner_url_exact": 1,
+    "inner_protected_snapshot_max": 2,
+    "preflight_runpod_api_key_exact": 1,
+    "receipt_derivation_protected_snapshot_exact": 1,
+    "staging_protected_snapshot_max": 2
+  },
+  "execution": "V2_09_PREFLIGHT_THEN_QUALIFIED_PRODUCTION_ONCE",
+  "expires_at": "2026-09-08T08:12:32.000Z",
+  "frozen_lanes": [
+    {
+      "lane": "mage",
+      "image_sha256": "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+      "image_source_commit": "aceef8e0d0d678468ea9560f1faa94aa562fc466",
+      "image_config_sha256": "sha256:fe08710bb809b702d8efe46b4d67d100b9f9630c8969f62efe7fd1b54d069897",
+      "anonymous_proof_sha256": "sha256:eca6cfe6acec62ed63ec1f7c9d40e7fb14e908c6e594da3864f936fa53670704",
+      "acceptance_sha256": "sha256:aeef45f237fd07e0937cdd51eaaf545ac0d8bb4c90eb105708f1681da787cc79",
+      "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+      "volume_manifest_sha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+      "volume_size_gb": 50,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "region": "EU-RO-1",
+      "workers_min": 0,
+      "workers_max": 1,
+      "handler_concurrency": 1
+    },
+    {
+      "lane": "soulx",
+      "image_sha256": "sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e",
+      "image_source_commit": "73181707e49be61955af4f2891f4c7185a1c288f",
+      "image_config_sha256": "sha256:224b2a728490cf1c708b42e56702da2b71bd2374658f0c640dd39ef23e860935",
+      "anonymous_proof_sha256": "sha256:9929d19da89ab2c20e280ac45ad152bc325b8bf56ef1e9c21e83d473c3408bc4",
+      "acceptance_sha256": "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa",
+      "volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+      "volume_manifest_sha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+      "volume_size_gb": 50,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "region": "EU-RO-1",
+      "workers_min": 0,
+      "workers_max": 1,
+      "handler_concurrency": 1
+    }
+  ],
+  "issued_at": "2026-09-07T08:12:32.000Z",
+  "job_limits": {
+    "chrome_e2e_runs": 1,
+    "generation_requests": 1,
+    "redispatches": 0,
+    "stage_6_jobs": 0,
+    "stage_7_jobs": 0
+  },
+  "media_worker_inputs": {
+    "execution_bundle_sha256": "sha256:520b4c91248f281aa48a167765aa749951b401f233761f003fc8138b05a2f61d",
+    "materialization_mode": "PREAUTHORIZED_STAGED_ONCE",
+    "release": "0.1.15",
+    "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002"
+  },
+  "offering": {
+    "availability_floor": "LOW",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "max_rate_usd_per_gpu_hour": 1.116,
+    "region": "EU-RO-1"
+  },
+  "operations": [
+    "push-clean-source",
+    "readback-clean-source",
+    "apply-migrations-0074-0086",
+    "apply-v209-grants",
+    "publish-media-worker-0.1.15",
+    "readback-media-worker-0.1.15",
+    "install-media-worker-0.1.15",
+    "fresh-read-only-admission",
+    "create-mage-production-lane-max-one",
+    "create-soulx-production-lane-max-one",
+    "persist-qualified-production-deployments",
+    "render-qualified-production-config",
+    "deploy-cloudflare-disabled-bootstrap",
+    "upload-cloudflare-production-secrets",
+    "deploy-cloudflare-qualified-production",
+    "readback-qualified-production",
+    "import-v209-qualified-activation",
+    "run-one-v209-chrome-e2e",
+    "verify-private-mp4-lineage",
+    "reconcile-v209-production-safety",
+    "reconcile-attributable-runpod-work",
+    "clean-v209-transient-r2",
+    "prove-three-zero-compute-reads",
+    "read-settled-billing",
+    "verify-retained-resources"
+  ],
+  "production_inputs": {
+    "chrome_bootstrap_plan_sha256": "sha256:4a8b3036ccc5124d4cc249ebc3a6cfc32d0fcd3668c3e51c1cb808297875ab45",
+    "materialization_input_sha256": "sha256:dd0d77de6ef1f00d4936ac74e0733cd80a04753e7aff103431d3465b3a0af768",
+    "secret_allowlist_sha256": "sha256:c1aaa716f02b728085d7f7272deb6aa669752895c84c253d5a67155fc6586e26",
+    "secret_count": 22,
+    "worker_name": "videoforge-production-runtime"
+  },
+  "proposal_sha256": "sha256:051c6d42eec2cd693dcafeb5e51cf9ad2577d6a362c90f0192194d1ac11f74fb",
+  "schema_version": "videoforge.v2-09-combined-qualified-production-authority/v1",
+  "single_use": true,
+  "source_commit": "6468361ff125538f31d9167419ac78c0c828d7df"
+}
