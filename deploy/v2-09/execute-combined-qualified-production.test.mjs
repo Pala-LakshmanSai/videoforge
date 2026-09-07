@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -15,6 +15,7 @@ import {
   executeCombinedQualifiedProductionWithDependenciesForTest,
   createDurableOuterState,
   createLiveMaterializerForTest,
+  validateV209PrivateOutputDirectories,
 } from "./execute-combined-qualified-production.mjs";
 import {
   COMPLETION_CAP_USD,
@@ -517,6 +518,120 @@ function successfulOptions({ events, outerState, executeProduction }) {
     readInnerSuccess: async () => null,
   };
 }
+
+function privateOutputPlan(directory, secretsDirectory = join(directory, "secrets")) {
+  const secretFiles = Object.fromEntries(
+    Array.from({ length: 22 }, (_, index) => [
+      `SECRET_${index}`,
+      join(secretsDirectory, `secret-${index}`),
+    ]),
+  );
+  return {
+    production_configuration: {
+      databaseOwnerUrlFile: join(directory, "database-owner.url"),
+      databaseOperatorUrlFile: join(directory, "database-operator.url"),
+      databaseReconcilerUrlFile: join(directory, "database-reconciler.url"),
+      runpodApiKeyFile: join(directory, "runpod.key"),
+      runpodWorkerEnvironmentFile: join(directory, "runpod-worker-environment.json"),
+      cloudflare: { secretFiles },
+    },
+    protected_input_materialization: {
+      roleJournalPath: join(directory, "roles.journal"),
+    },
+  };
+}
+
+test("missing private materialization output directory fails before claim, key, preflight, or stage", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "vf-v209-combined-output-dir-"));
+  const approved = authority();
+  const materializationPlan = privateOutputPlan(directory);
+  const events = [];
+  const options = successfulOptions({
+    events,
+    outerState: state(events),
+    executeProduction: async () => events.push("execute"),
+  });
+  let credentialReads = 0;
+  let preflightCalls = 0;
+  let stageCalls = 0;
+  options.loadApiKey = async () => {
+    credentialReads += 1;
+    return "x".repeat(32);
+  };
+  options.runPreflight = async () => {
+    preflightCalls += 1;
+    return preflight(approved);
+  };
+  options.stageOperation = async () => {
+    stageCalls += 1;
+    return {};
+  };
+  options.preClaim = async ({ authority: current }) =>
+    validateV209PrivateOutputDirectories({
+      authority: current,
+      materializationPlan,
+      statePath: join(directory, "outer-state.json"),
+    });
+
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /V2_09_COMBINED_PRIVATE_OUTPUT_DIRECTORY_INVALID/u,
+  );
+  assert.deepEqual(events, []);
+  assert.equal(credentialReads, 0);
+  assert.equal(preflightCalls, 0);
+  assert.equal(stageCalls, 0);
+});
+
+test("existing private materialization output directories pass the pre-claim gate", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "vf-v209-combined-output-dir-valid-"));
+  const secretsDirectory = join(directory, "secrets");
+  mkdirSync(secretsDirectory, { mode: 0o700 });
+  const approved = authority();
+  const materializationPlan = privateOutputPlan(directory, secretsDirectory);
+  const events = [];
+  const options = successfulOptions({
+    events,
+    outerState: state(events),
+    executeProduction: async ({ authority: inner }) => ({
+      schema_version: "videoforge.v2-09-qualified-production-execution/v1",
+      authority_id: inner.authority_id,
+      status: "SUCCEEDED_CLEAN",
+      operations: [...OPERATION_IDS],
+      paid_dispatch_count: 1,
+      redispatch_count: 0,
+    }),
+  });
+  let credentialReads = 0;
+  let preflightCalls = 0;
+  let stageCalls = 0;
+  options.loadApiKey = async () => {
+    credentialReads += 1;
+    return "x".repeat(32);
+  };
+  options.runPreflight = async () => {
+    preflightCalls += 1;
+    return preflight(approved);
+  };
+  const stageOperation = options.stageOperation;
+  options.stageOperation = async (context) => {
+    stageCalls += 1;
+    return stageOperation(context);
+  };
+  options.preClaim = async ({ authority: current }) =>
+    validateV209PrivateOutputDirectories({
+      authority: current,
+      materializationPlan,
+      statePath: join(directory, "outer-state.json"),
+    });
+
+  const result = await executeCombinedQualifiedProductionForTest(options);
+  assert.equal(result.status, "SUCCEEDED_CLEAN");
+  assert.equal(events[0], "claim");
+  assert.equal(credentialReads, 1);
+  assert.equal(preflightCalls, 1);
+  assert.ok(stageCalls > 0);
+});
 
 test("interrupted inner execution resumes cleanup-only without mutating redispatch", async () => {
   const events = [];

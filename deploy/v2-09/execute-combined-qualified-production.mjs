@@ -604,6 +604,56 @@ function validateOuterState(value, authority) {
   return value;
 }
 
+function validatePrivateOutputParent(path) {
+  if (typeof path !== "string" || !isAbsolute(path) || path.includes("\0"))
+    fail("V2_09_COMBINED_PRIVATE_OUTPUT_DIRECTORY_INVALID");
+  let parent;
+  try {
+    parent = lstatSync(dirname(resolve(path)));
+  } catch {
+    fail("V2_09_COMBINED_PRIVATE_OUTPUT_DIRECTORY_INVALID");
+  }
+  if (
+    !parent.isDirectory() ||
+    parent.isSymbolicLink() ||
+    (parent.mode & 0o777) !== 0o700 ||
+    (typeof process.getuid === "function" && parent.uid !== process.getuid())
+  )
+    fail("V2_09_COMBINED_PRIVATE_OUTPUT_DIRECTORY_INVALID");
+}
+
+export function validateV209PrivateOutputDirectories({
+  authority,
+  materializationPlan,
+  statePath,
+}) {
+  const configuration = materializationPlan?.production_configuration;
+  const secretFiles = configuration?.cloudflare?.secretFiles;
+  const secretCount = authority?.production_inputs?.secret_count;
+  if (
+    secretFiles === null ||
+    typeof secretFiles !== "object" ||
+    Array.isArray(secretFiles) ||
+    !Number.isSafeInteger(secretCount) ||
+    Object.keys(secretFiles).length !== secretCount ||
+    new Set(Object.values(secretFiles)).size !== secretCount
+  )
+    fail("V2_09_COMBINED_PRIVATE_OUTPUT_DIRECTORY_INVALID");
+
+  const paths = [
+    statePath,
+    materializationPlan?.protected_input_materialization?.roleJournalPath,
+    configuration.databaseOwnerUrlFile,
+    configuration.databaseOperatorUrlFile,
+    configuration.databaseReconcilerUrlFile,
+    configuration.runpodApiKeyFile,
+    configuration.runpodWorkerEnvironmentFile,
+    ...Object.values(secretFiles),
+  ];
+  for (const path of paths) validatePrivateOutputParent(path);
+  return Object.freeze({ validated_parent_count: paths.length });
+}
+
 function securePrivateJson(path, code) {
   if (typeof path !== "string" || !isAbsolute(path)) fail(code);
   const absolute = resolve(path);
@@ -1025,6 +1075,7 @@ export async function executeCombinedQualifiedProductionForTest({
   hasProtectedCleanup,
   hasInnerCleanup,
   readInnerSuccess,
+  preClaim,
   outerState,
 }) {
   validateCombinedAuthority(authority, { sourceCommit, now, cleanupOnly: true });
@@ -1040,6 +1091,7 @@ export async function executeCombinedQualifiedProductionForTest({
     typeof hasProtectedCleanup !== "function" ||
     typeof hasInnerCleanup !== "function" ||
     typeof readInnerSuccess !== "function" ||
+    (preClaim !== undefined && typeof preClaim !== "function") ||
     [
       "loadOrClaim",
       "beginOperation",
@@ -1054,6 +1106,8 @@ export async function executeCombinedQualifiedProductionForTest({
     ].some((method) => typeof outerState?.[method] !== "function")
   )
     fail("V2_09_COMBINED_DEPENDENCY_INVALID");
+
+  if (preClaim !== undefined) await preClaim({ authority, sourceCommit, now });
 
   let state = validateOuterState(await outerState.loadOrClaim({ authority }), authority);
   if (state.status === "SUCCEEDED_CLEAN") {
@@ -1582,6 +1636,7 @@ async function composeCombinedQualifiedProduction(options, dependencies) {
     hasProtectedCleanup: dependencies.hasProtectedCleanup,
     hasInnerCleanup: dependencies.hasInnerCleanup,
     readInnerSuccess: dependencies.readInnerSuccess,
+    preClaim: dependencies.preClaim,
     outerState: dependencies.createOuterState(options.statePath),
   });
 }
@@ -2219,7 +2274,7 @@ export async function executeCombinedQualifiedProduction(options) {
   const materializer = createLiveMaterializer(options, loadConfiguration, loadMaterializationPlan);
   // Reject a plan that points preflight at a future materialized copy before claiming the
   // single-use authority. Preflight and materialization must share the exact approved source.
-  await loadMaterializationPlan();
+  const approvedMaterializationPlan = await loadMaterializationPlan();
   return composeCombinedQualifiedProduction(options, {
     loadApiKey: async () => secureApiKey((await loadConfiguration()).runpodApiKeyFile),
     runPreflight: runV209ReadOnlyPreflight,
@@ -2240,6 +2295,12 @@ export async function executeCombinedQualifiedProduction(options) {
     hasProtectedCleanup: (context) => materializer.hasProtectedCleanup(context),
     hasInnerCleanup: (context) => materializer.hasInnerCleanup(context),
     readInnerSuccess: (context) => materializer.readInnerSuccess(context),
+    preClaim: () =>
+      validateV209PrivateOutputDirectories({
+        authority: options.authority,
+        materializationPlan: approvedMaterializationPlan,
+        statePath: options.statePath,
+      }),
     async gitState() {
       const { spawnSync } = await import("node:child_process");
       const head = spawnSync("git", ["rev-parse", "HEAD"], {
