@@ -337,21 +337,39 @@ test("arbitrary static or extended bootstrap horizons are rejected before browse
   assert.equal(launches, 0);
 });
 
-test("dynamic deadline is capped by the exact authority expiry and keeps the execution minimum", async () => {
-  const value = harness();
-  value.dependencies.authorityExpiresAt = "2026-09-07T10:16:40.000Z";
-  await materializeV209ChromeBootstrap(value.configuration, value.dependencies);
-  const request = JSON.parse(readFileSync(value.configuration.chromeRequestPath, "utf8"));
-  assert.equal(request.request.stopAt, value.dependencies.authorityExpiresAt);
+test("dynamic deadline requires the full sealed horizon before auth or request completion", async () => {
+  for (const authorityExpiresAt of ["2026-09-07T10:27:39.999Z", "2026-09-07T10:13:19.999Z"]) {
+    const short = harness();
+    short.dependencies.authorityExpiresAt = authorityExpiresAt;
+    await assert.rejects(
+      materializeV209ChromeBootstrap(short.configuration, short.dependencies),
+      /V2_09_CHROME_BOOTSTRAP_AUTHORITY_EXPIRY_INVALID/u,
+    );
+    assert.throws(() => statSync(short.configuration.authStatePath));
+    assert.throws(() => statSync(short.configuration.chromeRequestPath));
+  }
 
-  const short = harness();
-  short.dependencies.authorityExpiresAt = "2026-09-07T10:13:19.999Z";
+  const exact = harness();
+  exact.dependencies.authorityExpiresAt = BOOTSTRAP_STOP_AT;
+  await materializeV209ChromeBootstrap(exact.configuration, exact.dependencies);
+  const request = JSON.parse(readFileSync(exact.configuration.chromeRequestPath, "utf8"));
+  assert.equal(request.request.stopAt, BOOTSTRAP_STOP_AT);
+});
+
+test("an adopted request keeps its earlier bounded deadline without extending it", async () => {
+  const value = harness();
+  await materializeV209ChromeBootstrap(value.configuration, value.dependencies);
+  value.dependencies.now = () => new Date("2026-09-07T10:01:00.000Z");
+  const request = JSON.parse(readFileSync(value.configuration.chromeRequestPath, "utf8"));
+  assert.equal(request.request.stopAt, BOOTSTRAP_STOP_AT);
+  const receipt = await materializeV209ChromeBootstrap(value.configuration, value.dependencies);
+  assert.equal(receipt.status, "AUTHENTICATED_READY_FOR_ONE_E2E");
+
+  value.dependencies.now = () => new Date("2026-09-07T10:14:20.001Z");
   await assert.rejects(
-    materializeV209ChromeBootstrap(short.configuration, short.dependencies),
+    materializeV209ChromeBootstrap(value.configuration, value.dependencies),
     /V2_09_CHROME_BOOTSTRAP_EXECUTION_WINDOW_INVALID/u,
   );
-  assert.throws(() => statSync(short.configuration.authStatePath));
-  assert.throws(() => statSync(short.configuration.chromeRequestPath));
 });
 
 test("interactive pause can resume hours later with a fresh bounded success horizon", async () => {

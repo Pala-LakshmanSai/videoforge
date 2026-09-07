@@ -822,7 +822,9 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
     if (!exactInstant(authorityExpiresAt) || observed.getTime() >= Date.parse(authorityExpiresAt))
       fail("V2_09_CHROME_BOOTSTRAP_AUTHORITY_EXPIRY_INVALID");
     const preferredStopAtMs = observed.getTime() + configuration.successHorizonSeconds * 1_000;
-    let stopAtMs = Math.min(preferredStopAtMs, Date.parse(authorityExpiresAt));
+    if (Date.parse(authorityExpiresAt) < preferredStopAtMs)
+      fail("V2_09_CHROME_BOOTSTRAP_AUTHORITY_EXPIRY_INVALID");
+    let stopAtMs = preferredStopAtMs;
     if (existsSync(configuration.chromeRequestPath)) {
       let existing;
       try {
