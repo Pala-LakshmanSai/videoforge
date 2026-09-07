@@ -380,7 +380,6 @@ function validateScopeConfiguration(configuration) {
       "pollIntervalMs",
       "productionOrigin",
       "schemaVersion",
-      "spendCapUsd",
       "stopAt",
       "title",
       "verifiedOutputPath",
@@ -402,9 +401,6 @@ function validateScopeConfiguration(configuration) {
     !Number.isSafeInteger(configuration.pollIntervalMs) ||
     configuration.pollIntervalMs < 0 ||
     configuration.pollIntervalMs > 60_000 ||
-    !Number.isFinite(configuration.spendCapUsd) ||
-    configuration.spendCapUsd < 0.05 ||
-    configuration.spendCapUsd > 2 ||
     !exactInstant(configuration.stopAt)
   )
     fail("V2_09_CHROME_BOOTSTRAP_SCOPE_INVALID");
@@ -463,7 +459,6 @@ export async function materializeV209ChromeRequestScope(configuration, dependenc
           voiceoverDurationMs: durationMs,
           avatarProfileVersionId: configuration.avatarProfileVersionId,
           imageStyleVersionId: configuration.imageStyleVersionId,
-          spendCapUsd: configuration.spendCapUsd,
         },
       },
     };
@@ -698,7 +693,6 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
       "pollIntervalMs",
       "productionOrigin",
       "schemaVersion",
-      "spendCapUsd",
       "successHorizonSeconds",
       "title",
       "verifiedOutputPath",
@@ -718,9 +712,6 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
     !Number.isSafeInteger(configuration.pollIntervalMs) ||
     configuration.pollIntervalMs < 0 ||
     configuration.pollIntervalMs > 60_000 ||
-    !Number.isFinite(configuration.spendCapUsd) ||
-    configuration.spendCapUsd < 0.05 ||
-    configuration.spendCapUsd > 2 ||
     configuration.successHorizonSeconds !== SUCCESS_HORIZON_SECONDS
   )
     fail("V2_09_CHROME_BOOTSTRAP_CONFIGURATION_INVALID");
@@ -881,7 +872,6 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
           voiceoverDurationMs: durationMs,
           avatarProfileVersionId,
           imageStyleVersionId,
-          spendCapUsd: configuration.spendCapUsd,
         },
       },
     };
