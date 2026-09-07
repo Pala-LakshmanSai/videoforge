@@ -22,6 +22,7 @@ import {
   materializeV209ChromeRequestScope,
   materializeV209PostDeployChromeAuth,
   validateV209ChromePreclaimInputs,
+  validateV209ChromeVoiceoverMedia,
   validateV209PostDeployChromeAuthReceipt,
 } from "./chrome-production-bootstrap.mjs";
 
@@ -407,6 +408,81 @@ test("preclaim validator binds the staged voiceover hash and exact ffprobe durat
       { probeVoiceover: async () => 45_000 },
     ),
     /V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID/u,
+  );
+});
+
+test("preclaim validator rejects unsupported voiceover extensions and oversized media", async () => {
+  const flac = harness();
+  const flacPath = resolve(flac.secure, "acceptance.flac");
+  writeFileSync(flacPath, readFileSync(flac.configuration.voiceoverPath), { mode: 0o600 });
+  flac.configuration.voiceoverPath = flacPath;
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      flac.configuration,
+      flac.productionConfiguration,
+      { probeVoiceover: async () => 45_000 },
+    ),
+    /V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID/u,
+  );
+
+  assert.throws(
+    () =>
+      validateV209ChromeVoiceoverMedia(
+        "/private/acceptance.wav",
+        { length: 1_073_741_825 },
+        45_000,
+      ),
+    /V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID/u,
+  );
+});
+
+test("preclaim validator requires the exact nested Cloudflare environment contract", async () => {
+  const missingNested = harness();
+  missingNested.productionConfiguration.environment = {
+    WRANGLER_HOME: missingNested.secure,
+    XDG_CONFIG_HOME: missingNested.secure,
+  };
+  delete missingNested.productionConfiguration.cloudflare.environment;
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      missingNested.configuration,
+      missingNested.productionConfiguration,
+      { probeVoiceover: async () => 45_000 },
+    ),
+    /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
+  );
+
+  const missingKey = harness();
+  delete missingKey.productionConfiguration.cloudflare.environment.XDG_CONFIG_HOME;
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      missingKey.configuration,
+      missingKey.productionConfiguration,
+      { probeVoiceover: async () => 45_000 },
+    ),
+    /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
+  );
+
+  const extra = harness();
+  extra.productionConfiguration.cloudflare.environment.EXTRA = "unexpected";
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      extra.configuration,
+      extra.productionConfiguration,
+      { probeVoiceover: async () => 45_000 },
+    ),
+    /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
+  );
+
+  const nonString = harness();
+  nonString.productionConfiguration.cloudflare.environment.PATH = null;
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      nonString.configuration,
+      nonString.productionConfiguration,
+      { probeVoiceover: async () => 45_000 },
+    ),
+    /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
   );
 });
 

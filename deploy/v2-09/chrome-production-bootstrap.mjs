@@ -27,9 +27,22 @@ const AUTH_RECEIPT_SCHEMA = "videoforge.v2-09-post-deploy-chrome-auth-receipt/v1
 const SOURCE = "HOSTED_V209_ORDINARY";
 const SUCCESS_HORIZON_SECONDS = 1_660;
 const MINIMUM_EXECUTION_WINDOW_MS = 800_000;
+const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,190}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
+const CLOUDFLARE_ENVIRONMENT_KEYS = new Set([
+  "CI",
+  "HOME",
+  "LANG",
+  "LC_ALL",
+  "NODE_ENV",
+  "PATH",
+  "TMPDIR",
+  "WRANGLER_HOME",
+  "WRANGLER_SEND_METRICS",
+  "XDG_CONFIG_HOME",
+]);
 
 function fail(code) {
   throw new Error(code);
@@ -267,6 +280,43 @@ function defaultProbeVoiceover(bytes) {
   return Math.round(durationSeconds * 1_000);
 }
 
+function validateVoiceoverMedia(path, bytes, durationMs) {
+  const extension = extname(path).toLowerCase();
+  const contentType =
+    extension === ".wav" ? "audio/wav" : extension === ".mp3" ? "audio/mpeg" : null;
+  if (
+    !Number.isSafeInteger(durationMs) ||
+    durationMs < 30_000 ||
+    durationMs > 60_000 ||
+    contentType === null ||
+    bytes === null ||
+    typeof bytes !== "object" ||
+    !Number.isSafeInteger(bytes.length) ||
+    bytes.length < 1 ||
+    bytes.length > MAX_VOICEOVER_BYTES
+  )
+    fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
+  return contentType;
+}
+
+function validateCloudflareEnvironment(productionConfiguration) {
+  const environment = productionConfiguration?.cloudflare?.environment;
+  if (
+    environment === null ||
+    typeof environment !== "object" ||
+    Array.isArray(environment) ||
+    !Object.hasOwn(environment, "WRANGLER_HOME") ||
+    !Object.hasOwn(environment, "XDG_CONFIG_HOME") ||
+    Object.keys(environment).some((key) => !CLOUDFLARE_ENVIRONMENT_KEYS.has(key)) ||
+    Object.entries(environment).some(
+      ([, value]) =>
+        typeof value !== "string" || value.includes("\0") || value.length > 8_192,
+    )
+  )
+    fail("V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID");
+  return environment;
+}
+
 function validateFullBootstrapConfiguration(configuration) {
   if (
     !exactKeys(configuration, [
@@ -324,7 +374,14 @@ async function validateVoiceoverBinding(configuration, dependencies = {}) {
     durationMs !== configuration.voiceoverDurationMs
   )
     fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
-  return Object.freeze({ path: voiceoverPath, bytes: voiceover, sha256: observedSha256, durationMs });
+  const contentType = validateVoiceoverMedia(voiceoverPath, voiceover, durationMs);
+  return Object.freeze({
+    path: voiceoverPath,
+    bytes: voiceover,
+    sha256: observedSha256,
+    durationMs,
+    contentType,
+  });
 }
 
 function parseAuthState(bytes) {
@@ -500,18 +557,7 @@ export async function materializeV209ChromeRequestScope(configuration, dependenc
     path: voiceoverPath,
     sha256: sha256(voiceover),
   });
-  const extension = extname(voiceoverPath).toLowerCase();
-  const contentType =
-    extension === ".wav" ? "audio/wav" : extension === ".mp3" ? "audio/mpeg" : null;
-  if (
-    !Number.isSafeInteger(durationMs) ||
-    durationMs < 30_000 ||
-    durationMs > 60_000 ||
-    contentType === null ||
-    voiceover.length < 1 ||
-    voiceover.length > 1_073_741_824
-  )
-    fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
+  const contentType = validateVoiceoverMedia(voiceoverPath, voiceover, durationMs);
   const verifiedOutputPath = privateParent(configuration.verifiedOutputPath);
   const authStatePath = privateParent(configuration.authStatePath);
   const request = reservePrivate(configuration.chromeRequestPath);
@@ -776,16 +822,7 @@ export async function validateV209ChromePreclaimInputs(
   validateFullBootstrapConfiguration(configuration);
   const origin = exactOrigin(configuration.productionOrigin);
   const voiceover = await validateVoiceoverBinding(configuration, dependencies);
-  const environment =
-    productionConfiguration?.cloudflare?.environment ?? productionConfiguration?.environment;
-  if (
-    environment === null ||
-    typeof environment !== "object" ||
-    Array.isArray(environment) ||
-    typeof environment.WRANGLER_HOME !== "string" ||
-    typeof environment.XDG_CONFIG_HOME !== "string"
-  )
-    fail("V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID");
+  const environment = validateCloudflareEnvironment(productionConfiguration);
   const wranglerHome = privateDirectory(
     environment.WRANGLER_HOME,
     "V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID",
@@ -812,20 +849,14 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
 
   const origin = exactOrigin(configuration.productionOrigin);
   const voiceoverBinding = await validateVoiceoverBinding(configuration, dependencies);
-  const { path: voiceoverPath, bytes: voiceover, sha256: voiceoverSha256, durationMs } =
+  const {
+    path: voiceoverPath,
+    bytes: voiceover,
+    sha256: voiceoverSha256,
+    durationMs,
+    contentType,
+  } =
     voiceoverBinding;
-  const extension = extname(voiceoverPath).toLowerCase();
-  const contentType =
-    extension === ".wav" ? "audio/wav" : extension === ".mp3" ? "audio/mpeg" : null;
-  if (
-    !Number.isSafeInteger(durationMs) ||
-    durationMs < 30_000 ||
-    durationMs > 60_000 ||
-    contentType === null ||
-    voiceover.length < 1 ||
-    voiceover.length > 1_073_741_824
-  )
-    fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
 
   privateParent(configuration.verifiedOutputPath);
   const auth = beginOrAdoptAuth(configuration.authStatePath, {
@@ -1013,3 +1044,4 @@ export const V209_CHROME_REQUEST_SCOPE_SCHEMA = SCOPE_CONFIG_SCHEMA;
 export const V209_CHROME_REQUEST_SCOPE_RECEIPT_SCHEMA = SCOPE_RECEIPT_SCHEMA;
 export const V209_POST_DEPLOY_CHROME_AUTH_SCHEMA = AUTH_CONFIG_SCHEMA;
 export const V209_POST_DEPLOY_CHROME_AUTH_RECEIPT_SCHEMA = AUTH_RECEIPT_SCHEMA;
+export const validateV209ChromeVoiceoverMedia = validateVoiceoverMedia;
