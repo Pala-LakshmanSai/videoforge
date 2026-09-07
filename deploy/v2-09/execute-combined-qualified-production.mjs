@@ -2159,6 +2159,10 @@ export async function executeCombinedQualifiedProduction(options) {
         ]) ||
         materializationPlan.schema_version !==
           "videoforge.v2-09-combined-materialization-plan/v1" ||
+        typeof materializationPlan.production_configuration?.runpodApiKeyFile !== "string" ||
+        materializationPlan.production_configuration.runpodApiKeyFile !==
+          materializationPlan.protected_input_materialization?.reusableSecretFiles
+            ?.RUNPOD_API_KEY ||
         sha256(
           canonical({
             production_configuration: materializationPlan.production_configuration,
@@ -2179,6 +2183,9 @@ export async function executeCombinedQualifiedProduction(options) {
     return configuration;
   };
   const materializer = createLiveMaterializer(options, loadConfiguration, loadMaterializationPlan);
+  // Reject a plan that points preflight at a future materialized copy before claiming the
+  // single-use authority. Preflight and materialization must share the exact approved source.
+  await loadMaterializationPlan();
   return composeCombinedQualifiedProduction(options, {
     loadApiKey: async () => secureApiKey((await loadConfiguration()).runpodApiKeyFile),
     runPreflight: runV209ReadOnlyPreflight,

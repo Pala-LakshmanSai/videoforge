@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -10,6 +10,7 @@ import {
   COMBINED_EXECUTION_SCHEMA,
   STAGED_OPERATION_IDS,
   STAGED_RECEIPTS_SCHEMA,
+  executeCombinedQualifiedProduction,
   executeCombinedQualifiedProductionForTest,
   executeCombinedQualifiedProductionWithDependenciesForTest,
   createDurableOuterState,
@@ -788,6 +789,43 @@ test("live composition wiring runs fixed injected stages only after preflight pa
   );
   assert.equal(result.status, "SUCCEEDED_CLEAN");
   assert.deepEqual(events.slice(0, 3), ["claim", "key", "preflight"]);
+});
+
+test("live execution rejects a future RunPod key copy before claiming authority", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "vf-v209-combined-plan-binding-"));
+  const approved = authority();
+  const plan = {
+    schema_version: "videoforge.v2-09-combined-materialization-plan/v1",
+    production_configuration: {
+      runpodApiKeyFile: join(directory, "future-materialized-runpod.key"),
+    },
+    protected_input_materialization: {
+      reusableSecretFiles: { RUNPOD_API_KEY: join(directory, "approved-source-runpod.key") },
+    },
+    chrome_bootstrap: {},
+  };
+  approved.production_inputs.materialization_input_sha256 = hash(
+    canonical({
+      production_configuration: plan.production_configuration,
+      protected_input_materialization: plan.protected_input_materialization,
+    }),
+  );
+  approved.production_inputs.chrome_bootstrap_plan_sha256 = hash(
+    canonical(plan.chrome_bootstrap),
+  );
+  const configurationPath = join(directory, "configuration.json");
+  writeFileSync(configurationPath, JSON.stringify(plan), { mode: 0o600 });
+
+  await assert.rejects(
+    executeCombinedQualifiedProduction({
+      authority: approved,
+      sourceCommit: SOURCE,
+      configurationPath,
+      statePath: join(directory, "must-not-be-created.json"),
+    }),
+    /V2_09_COMBINED_MATERIALIZATION_PLAN_INVALID/u,
+  );
+  assert.equal(existsSync(join(directory, "must-not-be-created.json")), false);
 });
 
 test("durable outer state is mode 0600 and an existing claim is never replaced", () => {
