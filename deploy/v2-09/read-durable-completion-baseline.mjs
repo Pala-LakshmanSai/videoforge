@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 export const COMPLETION_BASELINE_SCHEMA = "videoforge.v2-09-completion-baseline/v1";
+export const GLOBAL_COMPLETION_BASELINE_SCHEMA =
+  "videoforge.v2-09-global-completion-baseline/v1";
 export const MAXIMUM_COMPLETION_BASELINE_MICRO_USD = 15_500_000;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -96,6 +98,99 @@ SET LOCAL videoforge.account_id='${accountId}';
 SELECT public.videoforge_read_hosted_v209_completion_baseline(
   '${accountId}'::uuid,'${workspaceId}'::uuid,${maximumMicroUsd}::bigint);
 COMMIT;`;
+}
+
+// The exact browser tenant is not available until the freshly deployed auth secret is live. This
+// owner-only read therefore conservatively sums every PROJECT_REVISION exposure before any
+// mutation. The same query is repeated after migrations, and the later tenant receipt must not
+// exceed this global bound before Generate is clicked.
+export function renderGlobalCompletionBaselineSql(maximumMicroUsd) {
+  if (
+    !Number.isSafeInteger(maximumMicroUsd) ||
+    maximumMicroUsd < 0 ||
+    maximumMicroUsd > MAXIMUM_COMPLETION_BASELINE_MICRO_USD
+  )
+    fail("V2_09_GLOBAL_COMPLETION_BASELINE_INPUT_INVALID");
+  return `BEGIN TRANSACTION READ ONLY;
+WITH per_attempt AS (
+  SELECT event.account_id,event.workspace_id,event.attempt_id,
+    coalesce(sum(event.amount_micro_usd) FILTER(WHERE event.event_type='RESERVED'),0)::bigint reserved,
+    coalesce(sum(event.amount_micro_usd) FILTER(WHERE event.event_type='REPORTED'),0)::bigint reported,
+    coalesce(sum(event.amount_micro_usd) FILTER(WHERE event.event_type='SETTLED'),0)::bigint settled,
+    coalesce(sum(event.amount_micro_usd) FILTER(WHERE event.event_type='RELEASED'),0)::bigint released,
+    coalesce(sum(event.amount_micro_usd) FILTER(WHERE event.event_type='REFUNDED'),0)::bigint refunded
+  FROM public.cost_events event WHERE event.owner_type='PROJECT_REVISION'
+  GROUP BY event.account_id,event.workspace_id,event.attempt_id
+), exposure AS (
+  SELECT *,settled-refunded settled_net,greatest(reserved-settled-released,0) open_reservation,
+    greatest(reported-settled,0) reported_unsettled FROM per_attempt
+), totals AS (
+  SELECT coalesce(sum(settled_net),0)::bigint settled_net,
+    coalesce(sum(open_reservation),0)::bigint open_reservation,
+    coalesce(sum(reported_unsettled),0)::bigint reported_unsettled,
+    coalesce(sum(settled_net+greatest(open_reservation,reported_unsettled)),0)::bigint baseline,
+    count(*)::bigint attempt_count,count(DISTINCT account_id)::bigint account_count,
+    count(DISTINCT workspace_id)::bigint workspace_count,bool_and(settled_net>=0) ledger_valid
+  FROM exposure
+), document AS (
+  SELECT jsonb_build_object('schemaVersion','${GLOBAL_COMPLETION_BASELINE_SCHEMA}',
+    'accountCount',account_count,'workspaceCount',workspace_count,'attemptCount',attempt_count,
+    'settledNetMicroUsd',settled_net,'openReservationMicroUsd',open_reservation,
+    'reportedUnsettledMicroUsd',reported_unsettled,'completionBaselineMicroUsd',baseline,
+    'maximumCompletionBaselineMicroUsd',${maximumMicroUsd},
+    'derivation','ALL_PROJECT_ATTEMPTS_SETTLED_PLUS_MAX_OPEN_RESERVATION_OR_REPORTED_ONCE',
+    'observedAt',to_char(transaction_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) value
+  FROM totals WHERE coalesce(ledger_valid,true) AND baseline<=${maximumMicroUsd}
+)
+SELECT value||jsonb_build_object('receiptSha256','sha256:'||encode(sha256(convert_to(
+  public.videoforge_canonical_jsonb(value),'UTF8')),'hex')) FROM document;
+COMMIT;`;
+}
+
+export function validateGlobalCompletionBaselineReceipt(value, maximumMicroUsd) {
+  if (
+    !Number.isSafeInteger(maximumMicroUsd) ||
+    maximumMicroUsd < 0 ||
+    maximumMicroUsd > MAXIMUM_COMPLETION_BASELINE_MICRO_USD
+  )
+    fail("V2_09_GLOBAL_COMPLETION_BASELINE_INPUT_INVALID");
+  const integerKeys = [
+    "accountCount",
+    "workspaceCount",
+    "attemptCount",
+    "settledNetMicroUsd",
+    "openReservationMicroUsd",
+    "reportedUnsettledMicroUsd",
+    "completionBaselineMicroUsd",
+  ];
+  const keys = [
+    ...integerKeys,
+    "derivation",
+    "maximumCompletionBaselineMicroUsd",
+    "observedAt",
+    "receiptSha256",
+    "schemaVersion",
+  ];
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join(",") !== keys.sort().join(",") ||
+    value.schemaVersion !== GLOBAL_COMPLETION_BASELINE_SCHEMA ||
+    value.maximumCompletionBaselineMicroUsd !== maximumMicroUsd ||
+    value.derivation !==
+      "ALL_PROJECT_ATTEMPTS_SETTLED_PLUS_MAX_OPEN_RESERVATION_OR_REPORTED_ONCE" ||
+    !/^\d{4}-\d{2}-\d{2}T/u.test(value.observedAt ?? "") ||
+    !HASH.test(value.receiptSha256 ?? "") ||
+    integerKeys.some((key) => !Number.isSafeInteger(value[key]) || value[key] < 0) ||
+    value.completionBaselineMicroUsd > maximumMicroUsd
+  )
+    fail("V2_09_GLOBAL_COMPLETION_BASELINE_RECEIPT_INVALID");
+  const unsigned = { ...value };
+  delete unsigned.receiptSha256;
+  if (sha256(canonical(unsigned)) !== value.receiptSha256)
+    fail("V2_09_GLOBAL_COMPLETION_BASELINE_RECEIPT_HASH_INVALID");
+  return Object.freeze({ ...value });
 }
 
 export function validateCompletionBaselineReceipt(value, expected) {
