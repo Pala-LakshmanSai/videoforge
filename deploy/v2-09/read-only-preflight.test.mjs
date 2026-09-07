@@ -4,6 +4,8 @@ import { constants as fsConstants } from "node:fs";
 import test from "node:test";
 
 import {
+  anonymousGhcrFetch,
+  readBoundedBody,
   readRunPodEvidence,
   runV209ReadOnlyPreflight,
   secureApiKey,
@@ -47,6 +49,11 @@ const credentialMetadata = (overrides = {}) => ({
   isFile: () => true,
   isSymbolicLink: () => false,
   ...overrides,
+});
+
+const streamRead = (body, controller = new AbortController()) => ({
+  controller,
+  response: new Response(body),
 });
 
 test("credential read uses one no-follow file descriptor read and stable inode metadata", async () => {
@@ -378,6 +385,129 @@ test("GHCR preflight anonymously hashes the manifest, config, and every ordered 
     ({ url }) => new URL(url).hostname === "pkg-containers.githubusercontent.com",
   );
   assert.equal(redirected.init.headers.authorization, undefined);
+});
+
+test("GHCR header deadline is cleared before a bounded body continues", async () => {
+  const bytes = Buffer.from("body-outlives-header-deadline");
+  const read = await anonymousGhcrFetch(
+    async (_url, { signal }) => {
+      const body = new ReadableStream({
+        start(streamController) {
+          const timer = setTimeout(() => {
+            streamController.enqueue(bytes);
+            streamController.close();
+          }, 15);
+          signal.addEventListener(
+            "abort",
+            () => {
+              clearTimeout(timer);
+              streamController.error(new DOMException("aborted", "AbortError"));
+            },
+            { once: true },
+          );
+        },
+      });
+      return new Response(body);
+    },
+    "https://ghcr.io/fixture",
+    { method: "GET" },
+    { headerTimeoutMilliseconds: 5 },
+  );
+  const observed = await readBoundedBody(read, {
+    expectedDigest: hash(bytes),
+    expectedSize: bytes.length,
+    maximumSize: bytes.length,
+    collect: true,
+    idleTimeoutMilliseconds: 50,
+    absoluteTimeoutMilliseconds: 100,
+  });
+  assert.deepEqual(observed.bytes, bytes);
+  assert.equal(read.controller.signal.aborted, false);
+});
+
+test("GHCR stream abort and timeout errors fail with the exact bounded ambiguity code", async () => {
+  for (const name of ["AbortError", "TimeoutError"]) {
+    const body = new ReadableStream({
+      start(streamController) {
+        streamController.error(new DOMException(name, name));
+      },
+    });
+    await assert.rejects(
+      readBoundedBody(streamRead(body), {
+        expectedDigest: null,
+        expectedSize: null,
+        maximumSize: 10,
+        collect: false,
+        idleTimeoutMilliseconds: 50,
+        absoluteTimeoutMilliseconds: 100,
+      }),
+      (error) =>
+        error instanceof Error && error.message === "V2_09_READ_ONLY_PREFLIGHT_GHCR_READ_AMBIGUOUS",
+    );
+  }
+});
+
+test("GHCR reader creation and idle stalls fail closed and abort the owned request", async () => {
+  const creationController = new AbortController();
+  await assert.rejects(
+    readBoundedBody(
+      {
+        controller: creationController,
+        response: {
+          body: {
+            getReader: () => {
+              throw new Error("reader unavailable");
+            },
+          },
+          headers: new Headers(),
+        },
+      },
+      {
+        expectedDigest: null,
+        expectedSize: null,
+        maximumSize: 10,
+        collect: false,
+      },
+    ),
+    /V2_09_READ_ONLY_PREFLIGHT_GHCR_READ_AMBIGUOUS/u,
+  );
+  assert.equal(creationController.signal.aborted, true);
+
+  const idleController = new AbortController();
+  await assert.rejects(
+    readBoundedBody(streamRead(new ReadableStream({ start() {} }), idleController), {
+      expectedDigest: null,
+      expectedSize: null,
+      maximumSize: 10,
+      collect: false,
+      idleTimeoutMilliseconds: 5,
+      absoluteTimeoutMilliseconds: 20,
+    }),
+    /V2_09_READ_ONLY_PREFLIGHT_GHCR_READ_AMBIGUOUS/u,
+  );
+  assert.equal(idleController.signal.aborted, true);
+});
+
+test("GHCR bounded body preserves exact size and digest failures", async () => {
+  const bytes = Buffer.from("bounded-body");
+  await assert.rejects(
+    readBoundedBody(streamRead(bytes), {
+      expectedDigest: null,
+      expectedSize: bytes.length - 1,
+      maximumSize: bytes.length,
+      collect: false,
+    }),
+    /V2_09_READ_ONLY_PREFLIGHT_GHCR_BODY_SIZE/u,
+  );
+  await assert.rejects(
+    readBoundedBody(streamRead(bytes), {
+      expectedDigest: hash("different"),
+      expectedSize: bytes.length,
+      maximumSize: bytes.length,
+      collect: false,
+    }),
+    /V2_09_READ_ONLY_PREFLIGHT_GHCR_BODY_DIGEST/u,
+  );
 });
 
 test("GHCR preflight accepts repeated ordered layer descriptors and verifies every occurrence", async () => {

@@ -457,13 +457,13 @@ gates:
     result: open_no_real_hosted_end_to_end_project
     current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-unlimited-project.json"
     current_authority_sha256: "sha256:d6055e464f93eb030eeb64ee591569b0ba42d98870ef0e1c868f89dafb7d55ff"
-    current_authority_state: approved_materialized_pending_independent_diff_audit
+    current_authority_state: consumed_failed_clean_non_reusable
     current_proposal_sha256: "sha256:051c6d42eec2cd693dcafeb5e51cf9ad2577d6a362c90f0192194d1ac11f74fb"
     current_control_source_commit: "6468361ff125538f31d9167419ac78c0c828d7df"
-    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-flex-missing.json"
-    current_failure_sha256: "sha256:431dd71c90e9399d6c8bbc3dbce1841ac10c6011295d431211958010fe26b984"
-    provider_free_repair_state: "Hosted projects are NULL/unlimited with no maximum-spend input through pending migration 0086; exact cost accounting remains. Authenticated RunPod catalog truth supplies exact RTX 4090 EU-RO-1 LOW-or-better availability, while the guarded official RunPod pricing page supplies USD 0.00031/second and USD 1.116/hour. No GPU/region/rate fallback was added."
-    next_gate: "Independent authority-successor diff audit, then execute the single combined preflight, conditional production activation, and Chrome E2E."
+    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-ghcr-stream-timeout.json"
+    current_failure_sha256: "sha256:976ebd274b70ab6c6afa39287586724b4072d9ee67ead0b8c1e6ff9282c02bfd"
+    provider_free_repair_state: "Hosted projects remain NULL/unlimited. The GHCR preflight now separates its 60-second header deadline from a 60-second idle deadline and a size-derived bounded absolute body deadline, maps native stream aborts to exact ambiguity, and retains full ordered size and SHA-256 verification. Focused preflight tests pass 15/15."
+    next_gate: "Seal and independently audit one fresh source-bound combined replacement proposal, then obtain exact approval for conditional production activation and one Chrome E2E."
 
   GATE_RANGA_001:
     status: open

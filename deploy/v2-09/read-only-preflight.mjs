@@ -25,6 +25,12 @@ const MAX_RATE_USD_PER_GPU_HOUR = 1.116;
 const MAX_RATE_USD_PER_SECOND = 0.00031;
 const GHCR_ORIGIN = "https://ghcr.io";
 const GHCR_BLOB_REDIRECT_HOST = "pkg-containers.githubusercontent.com";
+const GHCR_HEADER_TIMEOUT_MILLISECONDS = 60_000;
+const GHCR_BODY_IDLE_TIMEOUT_MILLISECONDS = 60_000;
+const GHCR_BODY_MINIMUM_TIMEOUT_MILLISECONDS = 5 * 60_000;
+const GHCR_BODY_MAXIMUM_TIMEOUT_MILLISECONDS = 2 * 60 * 60_000;
+const GHCR_BODY_MINIMUM_BYTES_PER_SECOND = 1024 * 1024;
+const MAX_TOKEN_BYTES = 64 * 1024;
 const MAX_MANIFEST_BYTES = 8 * 1024 * 1024;
 const MAX_CONFIG_BYTES = 8 * 1024 * 1024;
 const MAX_DESCRIPTOR_BYTES = 8 * 1024 * 1024 * 1024;
@@ -271,7 +277,26 @@ function descriptor(value, mediaTypes, code) {
   return Object.freeze({ digest: value.digest, mediaType: value.mediaType, size: value.size });
 }
 
-async function readBoundedBody(response, { expectedDigest, expectedSize, maximumSize, collect }) {
+const boundedBodyTimeoutMilliseconds = (expectedSize, maximumSize) =>
+  Math.min(
+    GHCR_BODY_MAXIMUM_TIMEOUT_MILLISECONDS,
+    Math.max(
+      GHCR_BODY_MINIMUM_TIMEOUT_MILLISECONDS,
+      Math.ceil(((expectedSize ?? maximumSize) / GHCR_BODY_MINIMUM_BYTES_PER_SECOND) * 1000),
+    ),
+  );
+
+export async function readBoundedBody(
+  { response, controller },
+  {
+    expectedDigest,
+    expectedSize,
+    maximumSize,
+    collect,
+    idleTimeoutMilliseconds = GHCR_BODY_IDLE_TIMEOUT_MILLISECONDS,
+    absoluteTimeoutMilliseconds = boundedBodyTimeoutMilliseconds(expectedSize, maximumSize),
+  },
+) {
   const headerLength = response.headers.get("content-length");
   if (headerLength !== null && expectedSize !== null && Number(headerLength) !== expectedSize)
     fail("GHCR_CONTENT_LENGTH");
@@ -279,43 +304,109 @@ async function readBoundedBody(response, { expectedDigest, expectedSize, maximum
   const chunks = [];
   let size = 0;
   if (response.body === null) fail("GHCR_BODY");
-  const reader = response.body.getReader();
-  for (;;) {
-    const item = await reader.read();
-    if (item.done) break;
-    if (!(item.value instanceof Uint8Array)) fail("GHCR_BODY");
-    size += item.value.byteLength;
-    if (size > maximumSize || (expectedSize !== null && size > expectedSize))
-      fail("GHCR_BODY_SIZE");
-    hash.update(item.value);
-    if (collect) chunks.push(Buffer.from(item.value));
+  if (
+    !Number.isSafeInteger(idleTimeoutMilliseconds) ||
+    idleTimeoutMilliseconds <= 0 ||
+    !Number.isSafeInteger(absoluteTimeoutMilliseconds) ||
+    absoluteTimeoutMilliseconds <= 0
+  )
+    fail("GHCR_READ_AMBIGUOUS");
+  let reader;
+  try {
+    reader = response.body.getReader();
+  } catch {
+    controller.abort();
+    fail("GHCR_READ_AMBIGUOUS");
+  }
+  const absoluteDeadline = Date.now() + absoluteTimeoutMilliseconds;
+  try {
+    for (;;) {
+      const remaining = absoluteDeadline - Date.now();
+      if (remaining <= 0) fail("GHCR_READ_AMBIGUOUS");
+      let timer;
+      let item;
+      try {
+        item = await Promise.race([
+          reader.read(),
+          new Promise((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error("V2_09_GHCR_BODY_READ_TIMEOUT")),
+              Math.min(idleTimeoutMilliseconds, remaining),
+            );
+          }),
+        ]);
+      } catch {
+        fail("GHCR_READ_AMBIGUOUS");
+      } finally {
+        if (timer !== undefined) clearTimeout(timer);
+      }
+      if (item.done) break;
+      if (!(item.value instanceof Uint8Array)) fail("GHCR_BODY");
+      size += item.value.byteLength;
+      if (size > maximumSize || (expectedSize !== null && size > expectedSize))
+        fail("GHCR_BODY_SIZE");
+      hash.update(item.value);
+      if (collect) chunks.push(Buffer.from(item.value));
+    }
+  } catch (error) {
+    controller.abort();
+    if (error instanceof Error && error.message.startsWith("V2_09_READ_ONLY_PREFLIGHT_"))
+      throw error;
+    fail("GHCR_READ_AMBIGUOUS");
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+      // The response is already bounded and the controller is owned by this read.
+    }
   }
   const digest = `sha256:${hash.digest("hex")}`;
-  if (digest !== expectedDigest || (expectedSize !== null && size !== expectedSize))
+  if (
+    (expectedDigest !== null && digest !== expectedDigest) ||
+    (expectedSize !== null && size !== expectedSize)
+  )
     fail("GHCR_BODY_DIGEST");
   return Object.freeze({ bytes: collect ? Buffer.concat(chunks) : null, digest, size });
 }
 
-async function anonymousGhcrFetch(fetchImpl, url, init) {
+export async function anonymousGhcrFetch(
+  fetchImpl,
+  url,
+  init,
+  { headerTimeoutMilliseconds = GHCR_HEADER_TIMEOUT_MILLISECONDS } = {},
+) {
+  if (!Number.isSafeInteger(headerTimeoutMilliseconds) || headerTimeoutMilliseconds <= 0)
+    fail("GHCR_READ_AMBIGUOUS");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), headerTimeoutMilliseconds);
   let response;
   try {
     response = await fetchImpl(url, {
       ...init,
       redirect: "manual",
-      signal: AbortSignal.timeout(60_000),
+      signal: controller.signal,
     });
   } catch {
+    controller.abort();
     fail("GHCR_READ_AMBIGUOUS");
+  } finally {
+    clearTimeout(timer);
   }
-  return response;
+  return Object.freeze({ response, controller });
 }
 
-async function readGhcrObject(fetchImpl, { repository, token, path, accept, kind }) {
+async function readGhcrObject(fetchImpl, { repository, token, path, accept, kind }, fetchOptions) {
   const sourceUrl = `${GHCR_ORIGIN}/v2/${repository}/${path}`;
-  let response = await anonymousGhcrFetch(fetchImpl, sourceUrl, {
-    method: "GET",
-    headers: { accept, authorization: `Bearer ${token}` },
-  });
+  let read = await anonymousGhcrFetch(
+    fetchImpl,
+    sourceUrl,
+    {
+      method: "GET",
+      headers: { accept, authorization: `Bearer ${token}` },
+    },
+    fetchOptions,
+  );
+  let { response } = read;
   if ([301, 302, 303, 307, 308].includes(response.status)) {
     if (kind !== "blob") fail("GHCR_REDIRECT");
     const location = response.headers.get("location");
@@ -343,53 +434,89 @@ async function readGhcrObject(fetchImpl, { repository, token, path, accept, kind
       ).test(target.pathname)
     )
       fail("GHCR_BLOB_REDIRECT");
-    response = await anonymousGhcrFetch(fetchImpl, target, {
-      method: "GET",
-      headers: { accept },
-    });
+    read.controller.abort();
+    read = await anonymousGhcrFetch(
+      fetchImpl,
+      target,
+      {
+        method: "GET",
+        headers: { accept },
+      },
+      fetchOptions,
+    );
+    ({ response } = read);
   }
-  if (!response.ok) fail("GHCR_HTTP");
-  return response;
+  if (!response?.ok) {
+    read.controller.abort();
+    fail("GHCR_HTTP");
+  }
+  return read;
 }
 
-async function acquireAnonymousToken(fetchImpl, repository) {
+async function acquireAnonymousToken(fetchImpl, repository, readOptions) {
   const url = new URL("/token", GHCR_ORIGIN);
   url.searchParams.set("service", "ghcr.io");
   url.searchParams.set("scope", `repository:${repository}:pull`);
-  const response = await anonymousGhcrFetch(fetchImpl, url, {
-    method: "GET",
-    headers: { accept: "application/json" },
+  const read = await anonymousGhcrFetch(
+    fetchImpl,
+    url,
+    {
+      method: "GET",
+      headers: { accept: "application/json" },
+    },
+    readOptions,
+  );
+  if (!read.response?.ok) {
+    read.controller.abort();
+    fail("GHCR_TOKEN_HTTP");
+  }
+  const body = await readBoundedBody(read, {
+    expectedDigest: null,
+    expectedSize: null,
+    maximumSize: MAX_TOKEN_BYTES,
+    collect: true,
+    ...readOptions,
   });
-  const value = await jsonResponse(response, "GHCR_TOKEN");
+  let value;
+  try {
+    value = JSON.parse(body.bytes.toString("utf8"));
+  } catch {
+    fail("GHCR_TOKEN_JSON");
+  }
   if (typeof value?.token !== "string" || value.token.length < 20 || value.token.includes("\0"))
     fail("GHCR_TOKEN");
   return value.token;
 }
 
-export async function verifyFrozenImage(fetchImpl, expected) {
-  const token = await acquireAnonymousToken(fetchImpl, expected.repository);
-  const manifestResponse = await readGhcrObject(fetchImpl, {
-    repository: expected.repository,
-    token,
-    path: `manifests/${expected.manifestDigest}`,
-    accept: [...MANIFEST_MEDIA_TYPES].join(", "),
-    kind: "manifest",
-  });
-  const manifestType = manifestResponse.headers
+export async function verifyFrozenImage(fetchImpl, expected, readOptions = {}) {
+  const token = await acquireAnonymousToken(fetchImpl, expected.repository, readOptions);
+  const manifestRead = await readGhcrObject(
+    fetchImpl,
+    {
+      repository: expected.repository,
+      token,
+      path: `manifests/${expected.manifestDigest}`,
+      accept: [...MANIFEST_MEDIA_TYPES].join(", "),
+      kind: "manifest",
+    },
+    readOptions,
+  );
+  const manifestType = manifestRead.response.headers
     .get("content-type")
     ?.split(";", 1)[0]
     ?.trim()
     .toLowerCase();
   if (
-    manifestResponse.headers.get("docker-content-digest") !== expected.manifestDigest ||
+    manifestRead.response.headers.get("docker-content-digest") !== expected.manifestDigest ||
     !MANIFEST_MEDIA_TYPES.has(manifestType)
   )
     fail("GHCR_MANIFEST_IDENTITY");
-  const manifestBody = await readBoundedBody(manifestResponse, {
+  const manifestBody = await readBoundedBody(manifestRead, {
     expectedDigest: expected.manifestDigest,
     expectedSize: null,
     maximumSize: MAX_MANIFEST_BYTES,
     collect: true,
+    ...readOptions,
   });
   let manifest;
   try {
@@ -405,18 +532,23 @@ export async function verifyFrozenImage(fetchImpl, expected) {
     : [];
   if (config.digest !== expected.configDigest || layers.length < 1 || layers.length > 128)
     fail("GHCR_DESCRIPTOR_DRIFT");
-  const configResponse = await readGhcrObject(fetchImpl, {
-    repository: expected.repository,
-    token,
-    path: `blobs/${config.digest}`,
-    accept: config.mediaType,
-    kind: "blob",
-  });
-  const configBody = await readBoundedBody(configResponse, {
+  const configRead = await readGhcrObject(
+    fetchImpl,
+    {
+      repository: expected.repository,
+      token,
+      path: `blobs/${config.digest}`,
+      accept: config.mediaType,
+      kind: "blob",
+    },
+    readOptions,
+  );
+  const configBody = await readBoundedBody(configRead, {
     expectedDigest: config.digest,
     expectedSize: config.size,
     maximumSize: MAX_CONFIG_BYTES,
     collect: true,
+    ...readOptions,
   });
   let configDocument;
   try {
@@ -431,18 +563,23 @@ export async function verifyFrozenImage(fetchImpl, expected) {
     if (labels[name] !== value) fail("GHCR_SOURCE_LABELS");
   const layerProofs = [];
   for (const [index, layer] of layers.entries()) {
-    const response = await readGhcrObject(fetchImpl, {
-      repository: expected.repository,
-      token,
-      path: `blobs/${layer.digest}`,
-      accept: layer.mediaType,
-      kind: "blob",
-    });
-    const body = await readBoundedBody(response, {
+    const read = await readGhcrObject(
+      fetchImpl,
+      {
+        repository: expected.repository,
+        token,
+        path: `blobs/${layer.digest}`,
+        accept: layer.mediaType,
+        kind: "blob",
+      },
+      readOptions,
+    );
+    const body = await readBoundedBody(read, {
       expectedDigest: layer.digest,
       expectedSize: layer.size,
       maximumSize: MAX_DESCRIPTOR_BYTES,
       collect: false,
+      ...readOptions,
     });
     layerProofs.push(Object.freeze({ index, digest: body.digest, sizeBytes: body.size }));
   }
