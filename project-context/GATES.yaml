@@ -462,7 +462,7 @@ gates:
     current_control_source_commit: "6468361ff125538f31d9167419ac78c0c828d7df"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-ghcr-stream-timeout.json"
     current_failure_sha256: "sha256:976ebd274b70ab6c6afa39287586724b4072d9ee67ead0b8c1e6ff9282c02bfd"
-    provider_free_repair_state: "Hosted projects remain NULL/unlimited. The GHCR preflight now separates its 60-second header deadline from a 60-second idle deadline and a size-derived bounded absolute body deadline, maps native stream aborts to exact ambiguity, and retains full ordered size and SHA-256 verification. Focused preflight tests pass 15/15."
+    provider_free_repair_state: "Hosted projects remain NULL/unlimited. The GHCR preflight now separates its 60-second header deadline from a 60-second idle deadline and a size-derived bounded absolute body deadline, maps native stream aborts to exact ambiguity, and retains full ordered size and SHA-256 verification. Focused preflight tests pass 17/17."
     next_gate: "Seal and independently audit one fresh source-bound combined replacement proposal, then obtain exact approval for conditional production activation and one Chrome E2E."
 
   GATE_RANGA_001:

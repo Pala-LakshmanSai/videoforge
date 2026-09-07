@@ -425,6 +425,29 @@ test("GHCR header deadline is cleared before a bounded body continues", async ()
   assert.equal(read.controller.signal.aborted, false);
 });
 
+test("GHCR header deadline aborts a request that never returns headers", async () => {
+  let signal;
+  await assert.rejects(
+    anonymousGhcrFetch(
+      async (_url, init) => {
+        signal = init.signal;
+        return new Promise((_, reject) => {
+          signal.addEventListener(
+            "abort",
+            () => reject(new DOMException("timed out", "AbortError")),
+            { once: true },
+          );
+        });
+      },
+      "https://ghcr.io/fixture",
+      { method: "GET" },
+      { headerTimeoutMilliseconds: 5 },
+    ),
+    /V2_09_READ_ONLY_PREFLIGHT_GHCR_READ_AMBIGUOUS/u,
+  );
+  assert.equal(signal.aborted, true);
+});
+
 test("GHCR stream abort and timeout errors fail with the exact bounded ambiguity code", async () => {
   for (const name of ["AbortError", "TimeoutError"]) {
     const body = new ReadableStream({
@@ -486,6 +509,28 @@ test("GHCR reader creation and idle stalls fail closed and abort the owned reque
     /V2_09_READ_ONLY_PREFLIGHT_GHCR_READ_AMBIGUOUS/u,
   );
   assert.equal(idleController.signal.aborted, true);
+});
+
+test("GHCR absolute body deadline stops continuous non-idle transfer", async () => {
+  const controller = new AbortController();
+  const body = new ReadableStream({
+    async pull(streamController) {
+      await new Promise((resolve) => setTimeout(resolve, 3));
+      streamController.enqueue(Uint8Array.of(1));
+    },
+  });
+  await assert.rejects(
+    readBoundedBody(streamRead(body, controller), {
+      expectedDigest: null,
+      expectedSize: null,
+      maximumSize: 1024,
+      collect: false,
+      idleTimeoutMilliseconds: 20,
+      absoluteTimeoutMilliseconds: 10,
+    }),
+    /V2_09_READ_ONLY_PREFLIGHT_GHCR_READ_AMBIGUOUS/u,
+  );
+  assert.equal(controller.signal.aborted, true);
 });
 
 test("GHCR bounded body preserves exact size and digest failures", async () => {

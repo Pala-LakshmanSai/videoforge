@@ -110,6 +110,10 @@ export const V209_FROZEN_IMAGES = Object.freeze([
 const fail = (code) => {
   throw new Error(`V2_09_READ_ONLY_PREFLIGHT_${code}`);
 };
+const abortAndFail = (controller, code) => {
+  controller?.abort();
+  fail(code);
+};
 
 const canonicalJson = (value) => {
   if (value === null || typeof value === "boolean" || typeof value === "string")
@@ -299,24 +303,23 @@ export async function readBoundedBody(
 ) {
   const headerLength = response.headers.get("content-length");
   if (headerLength !== null && expectedSize !== null && Number(headerLength) !== expectedSize)
-    fail("GHCR_CONTENT_LENGTH");
+    abortAndFail(controller, "GHCR_CONTENT_LENGTH");
   const hash = createHash("sha256");
   const chunks = [];
   let size = 0;
-  if (response.body === null) fail("GHCR_BODY");
+  if (response.body === null) abortAndFail(controller, "GHCR_BODY");
   if (
     !Number.isSafeInteger(idleTimeoutMilliseconds) ||
     idleTimeoutMilliseconds <= 0 ||
     !Number.isSafeInteger(absoluteTimeoutMilliseconds) ||
     absoluteTimeoutMilliseconds <= 0
   )
-    fail("GHCR_READ_AMBIGUOUS");
+    abortAndFail(controller, "GHCR_READ_AMBIGUOUS");
   let reader;
   try {
     reader = response.body.getReader();
   } catch {
-    controller.abort();
-    fail("GHCR_READ_AMBIGUOUS");
+    abortAndFail(controller, "GHCR_READ_AMBIGUOUS");
   }
   const absoluteDeadline = Date.now() + absoluteTimeoutMilliseconds;
   try {
@@ -408,13 +411,13 @@ async function readGhcrObject(fetchImpl, { repository, token, path, accept, kind
   );
   let { response } = read;
   if ([301, 302, 303, 307, 308].includes(response.status)) {
-    if (kind !== "blob") fail("GHCR_REDIRECT");
+    if (kind !== "blob") abortAndFail(read.controller, "GHCR_REDIRECT");
     const location = response.headers.get("location");
     let target;
     try {
       target = new URL(location);
     } catch {
-      fail("GHCR_BLOB_REDIRECT");
+      abortAndFail(read.controller, "GHCR_BLOB_REDIRECT");
     }
     if (
       target.protocol !== "https:" ||
@@ -433,7 +436,7 @@ async function readGhcrObject(fetchImpl, { repository, token, path, accept, kind
         "u",
       ).test(target.pathname)
     )
-      fail("GHCR_BLOB_REDIRECT");
+      abortAndFail(read.controller, "GHCR_BLOB_REDIRECT");
     read.controller.abort();
     read = await anonymousGhcrFetch(
       fetchImpl,
@@ -510,7 +513,7 @@ export async function verifyFrozenImage(fetchImpl, expected, readOptions = {}) {
     manifestRead.response.headers.get("docker-content-digest") !== expected.manifestDigest ||
     !MANIFEST_MEDIA_TYPES.has(manifestType)
   )
-    fail("GHCR_MANIFEST_IDENTITY");
+    abortAndFail(manifestRead.controller, "GHCR_MANIFEST_IDENTITY");
   const manifestBody = await readBoundedBody(manifestRead, {
     expectedDigest: expected.manifestDigest,
     expectedSize: null,
