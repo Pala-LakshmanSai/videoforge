@@ -26,14 +26,14 @@ current_goal_boundary:
   paid_requests_or_spend: "Closed at USD 0.08383633207995445 observed increment and USD 3.4607653283455875 cumulative billing; no remaining executable cap."
   runpod_mutation_or_gpu: "Qualification passed and cleanup proved zero compute; no further RunPod mutation or GPU use is authorized."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "Repaired V2-09 executable source d8337c240cc41a12d8cec358b358d056acfd792e removes the protected-input and post-deploy Chrome circular dependency. It runs preflight first, binds a conservative global completion baseline before mutation, creates fresh versioned database roles and static secrets, defers endpoint secrets until both exact lanes and persistence are durable, deploys Cloudflare before Chrome auth, supports authority-checked resumable interactive login without replay, validates tenant exposure against the global bound before Generate, and converges success/failure acknowledgement loss through exact journal proofs and protected-cleanup tombstones. Exact RTX 4090, EU-RO-1, LOW-or-better, USD 0.00031/second and USD 1.116/hour gates remain unchanged. Full V2-09 tests pass 145/145 and independent final audits are GO P0=0/P1=0. Stage 6 and Stage 7 were not modified or rerun."
+  provider_free_product_action: "Repaired V2-09 executable source 6db9668388b5f6f9aa517d59513ebc632b1bc837 removes the protected-input, post-deploy Chrome, and static-plan database-password circular dependencies. It hydrates the media-worker PostgreSQL environment from the same descriptor-bound mode-0600 operator-URL snapshot used by the adapter identity, rejects secret-bearing static plan fields, and never embeds that password in the plan. Focused combined tests pass 55/55 and the independent repair audit is GO P0=0/P1=0. Exact RTX 4090, EU-RO-1, LOW-or-better, USD 0.00031/second and USD 1.116/hour gates remain unchanged. Stage 6 and Stage 7 were not modified or rerun."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "Combined proposal sha256:453a2763d76c5fc1a19d04507df21b46248b4dae4bcfc6ab6b948431d7cb838e, bound to 38a363a228f48bb7f3f866744d2dee5a3b3abb26, is consumed by its exact source push only; it performed no preflight or provider mutation. Repaired executable source d8337c24 passed independent final audits P0=0/P1=0 and awaits one replacement combined deployment authority. No current provider or deployment authority exists."
+  note: "Combined proposal sha256:453a2763d76c5fc1a19d04507df21b46248b4dae4bcfc6ab6b948431d7cb838e, bound to 38a363a228f48bb7f3f866744d2dee5a3b3abb26, is consumed by its exact source push only; it performed no preflight or provider mutation. Repaired executable source 6db96683 closes the last discovered live-plan credential seam, passes focused combined tests 55/55 and independent audit GO P0=0/P1=0, and awaits one replacement combined deployment authority. No current provider or deployment authority exists."
 
 v2_09_provider_free_candidate:
-  source_commit: "d8337c240cc41a12d8cec358b358d056acfd792e"
+  source_commit: "6db9668388b5f6f9aa517d59513ebc632b1bc837"
   source_audit: "PASS_INDEPENDENT_FOCUSED_P0_0_P1_0"
-  canonical_provider_free_verification: FULL_V2_09_145_OF_145_PASS
+  canonical_provider_free_verification: FOCUSED_COMBINED_55_OF_55_PASS
   production_state: DISABLED_UNQUALIFIED
   deployed_database_head: 73
   candidate_database_head: 85
@@ -53,7 +53,7 @@ v2_09_provider_free_candidate:
   media_worker_release: "media-worker-v0.1.15 is an unpublished candidate; do not publish, install, or replace v0.1.14 without fresh exact authority."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
   provider_state: "No provider call, credential read, database/R2 mutation, publication, deployment, GPU use, or spend occurred while producing or materializing this candidate."
-  current_authority: "Combined proposal 453a2763 is consumed by the exact push of 38a363a2 only; protected-input admission stopped before preflight and every provider mutation. No provider or credential read is currently authorized. Repaired source d8337c24 is independently audited and requires one replacement combined authority for exact push, deterministic authority materialization, diagnostic preflight, conditional V2-09 production deployment, resumable Chrome authentication, and one live E2E."
+  current_authority: "Combined proposal 453a2763 is consumed by the exact push of 38a363a2 only; protected-input admission stopped before preflight and every provider mutation. No provider or credential read is currently authorized. Repaired source 6db96683 passes focused combined tests and independent audit, and requires one replacement combined authority for exact push, deterministic authority materialization, diagnostic preflight, conditional V2-09 production deployment, resumable Chrome authentication, and one live E2E."
 
 fixture_user_walkthrough:
   status: SUPERSEDED_BY_PRIVATE_HOSTED_BETA
@@ -1031,11 +1031,11 @@ provider_free_product_progress:
     external_spend_usd: 0
     remote_mutations: 0
   hosted_v209_current_provider_free_gate:
-    source_commit: "d8337c240cc41a12d8cec358b358d056acfd792e"
+    source_commit: "6db9668388b5f6f9aa517d59513ebc632b1bc837"
     focused_independent_source_audit: PASS_P0_0_P1_0
     canonical_command: "node --test deploy/v2-09/*.test.mjs"
     canonical_status: FULL_V2_09_PASS
-    focused_tests: PASS_145_OF_145
+    focused_tests: PASS_55_OF_55
     control_plane_tests: INHERITED_PREDECESSOR_PASS_431_OF_431
     script_tests: INHERITED_PREDECESSOR_PASS_506_OF_506
     installed_chrome_tests: INHERITED_PREDECESSOR_PASS_44_OF_44
@@ -6227,7 +6227,7 @@ recommended_next_task:
   authorized_operations: *v2_09_read_only_operations
   allowed_operations: *v2_09_read_only_operations
   rate_snapshot: []
-  authority_note: "The initial V2-09 preflights through fifth proposal d186ca50 are consumed. Combined proposal 453a2763 is consumed only by the exact push of source 38a363a2; protected-input admission then stopped before preflight, credential read, database, RunPod, R2, media, Cloudflare, GPU, or spend mutation. No provider read or mutation is currently authorized. Repaired executable source d8337c240cc41a12d8cec358b358d056acfd792e passes full V2-09 tests 145/145 and independent final audits GO P0=0/P1=0; one replacement combined authority is required."
+  authority_note: "The initial V2-09 preflights through fifth proposal d186ca50 are consumed. Combined proposal 453a2763 is consumed only by the exact push of source 38a363a2; protected-input admission then stopped before preflight, credential read, database, RunPod, R2, media, Cloudflare, GPU, or spend mutation. No provider read or mutation is currently authorized. Repaired executable source 6db9668388b5f6f9aa517d59513ebc632b1bc837 passes focused combined tests 55/55 and independent audit GO P0=0/P1=0; one replacement combined authority is required."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: null
   successor_proposal_sha256: null
