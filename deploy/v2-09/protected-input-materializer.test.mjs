@@ -247,6 +247,37 @@ test("materializes fresh role credentials and pre-endpoint secrets without retur
     );
 });
 
+test("materializes identical internal and Cloudflare reconciler URLs at distinct production paths", async () => {
+  const value = fixture();
+  const internalReconcilerPath = join(value.directory, "database-reconciler.url");
+  value.configuration.databaseReconcilerUrlFile = internalReconcilerPath;
+  let counter = 0;
+  const receipt = await materializeV209ProtectedInputs({
+    authorityId: AUTHORITY_ID,
+    configuration: value.configuration,
+    materialization: value.materialization,
+    randomBytesImpl: (size) => Buffer.alloc(size, ++counter),
+    runPsql: async () => {},
+  });
+  const cloudflareReconcilerPath =
+    value.configuration.cloudflare.secretFiles.VIDEOFORGE_RECONCILER_DATABASE_URL;
+  assert.notEqual(internalReconcilerPath, cloudflareReconcilerPath);
+  assert.deepEqual(readFileSync(internalReconcilerPath), readFileSync(cloudflareReconcilerPath));
+  assert.equal(statSync(internalReconcilerPath).mode & 0o777, 0o600);
+  assert.equal(statSync(cloudflareReconcilerPath).mode & 0o777, 0o600);
+  assert.equal(receipt.protected_file_sha256s.length, 23);
+  for (const name of [
+    "VIDEOFORGE_MAGE_ENDPOINT_ID",
+    "VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256",
+    "VIDEOFORGE_SOULX_ENDPOINT_ID",
+    "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
+  ])
+    assert.equal(
+      statSync(value.configuration.cloudflare.secretFiles[name], { throwIfNoEntry: false }),
+      undefined,
+    );
+});
+
 test("endpoint values materialize only from two exact persisted deployment bindings", async () => {
   const value = fixture();
   let counter = 0;

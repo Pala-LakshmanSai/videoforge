@@ -1,0 +1,34 @@
+{
+  "schema_version": "videoforge.v2-09-provider-free-protected-materialization-output-repair/v1",
+  "checkpoint": "V2-09",
+  "task_id": "VF-10-09",
+  "consumed_authority_id": "v2-09-5b78e19baa6427f4",
+  "consumed_proposal_sha256": "sha256:5b78e19baa6427f48c4d4aa4379f25422bbeaabd92872ae2d18336dbfbb2cc80",
+  "failure_evidence_sha256": "sha256:cf2c8416ffe055b0743927e20d51bcde6e819c7364654732b52cb8d14f65c430",
+  "root_cause": "Production configured distinct internal reconciler URL and Cloudflare VIDEOFORGE_RECONCILER_DATABASE_URL paths. Materialization wrote only the internal file, then final protected-output hashing failed on the missing Cloudflare secret. The prior unit fixture aliased both paths and masked the production topology.",
+  "repair": "Derive the reconciler role URL once and write identical bytes mode-0600 to both exact destinations before role mutation. Preserve deferred endpoint secrets and cleanup semantics.",
+  "validation": [
+    {
+      "command": "node --test deploy/v2-09/protected-input-materializer.test.mjs",
+      "result": "PASS_12_OF_12"
+    },
+    {
+      "command": "node --test deploy/v2-09/execute-combined-qualified-production.test.mjs",
+      "result": "PASS_29_OF_29"
+    },
+    {
+      "command": "node --test deploy/v2-09/concrete-qualified-production-adapters.test.mjs",
+      "result": "PASS_34_OF_34"
+    }
+  ],
+  "total_focused_tests": "PASS_75_OF_75",
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "database_calls": 0,
+  "remote_mutations": 0,
+  "gpu_jobs": 0,
+  "external_spend_usd": 0,
+  "stage_6_modified_or_rerun": false,
+  "stage_7_modified_or_rerun": false,
+  "next_gate": "Commit clean repair and context, obtain independent audits, recompute exact media-worker bundle, seal one fresh combined proposal, and obtain fresh exact approval."
+}

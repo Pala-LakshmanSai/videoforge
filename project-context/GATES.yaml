@@ -475,7 +475,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "Diagnose and repair the protected materialization output failure provider-free, reconcile active context, then seal and independently audit one fresh proposal."
+    next_gate: "Independently audit the provider-free dual reconciler URL repair, then seal a clean source/bundle and one fresh proposal for exact approval."
 
   GATE_RANGA_001:
     status: open

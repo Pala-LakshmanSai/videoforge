@@ -4,11 +4,11 @@ updated_at: "2026-09-07"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_protected_materialization_output_failed_clean
+current_milestone: v2_09_protected_materialization_output_repair_green
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_diagnosis
+task_stage: provider_free_repair
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -28,7 +28,7 @@ current_goal_boundary:
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
   provider_free_product_action: "The current provider-free repair removes the maximum-spend input and client field from every hosted project, persists NULL unlimited project limits through migration 0086, retains exact cost accounting/reservations/settlement, and separates exact authenticated RTX 4090 EU-RO-1 LOW-or-better availability from the guarded official RunPod pricing-page rate of USD 0.00031/second and USD 1.116/hour. Release authority remains a separate finite source-bound cap. Stage 6 and Stage 7 were not modified or rerun."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "Proposal 5b78e19b and authority v2-09-5b78e19baa6427f4 are consumed FAILED_CLEAN and non-reusable after protected-input output validation failed. Preflight and baseline passed; cleanup proved zero roles/memberships and removed protected outputs. No later deployment/provider/GPU/Chrome/spend operation occurred."
+  note: "Authority 5b78e19b remains consumed FAILED_CLEAN. Provider-free repair now writes the reconciler role URL to both distinct internal and Cloudflare paths; focused verification passes 75/75. Independent audits and a fresh source-bound proposal remain required."
 
 v2_09_provider_free_candidate:
   source_commit: "dc6ef647fb35602333f92a4191a3071c426386b9"
@@ -55,6 +55,9 @@ v2_09_provider_free_candidate:
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
   provider_state: "Authorities 051c6d42, d6e5ff7b, 4ee7b952, 91892237, ea4e2e45, f9d40174, 7ecd9929, cfcaccfc, 58cb3e2b, and 5b78e19b are consumed and non-reusable. No current provider authority exists."
   current_authority: null
+  protected_materialization_output_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-protected-materialization-output-repair.json"
+  protected_materialization_output_repair_evidence_sha256: "sha256:da4a31512c2635f53aa11d232b17650fc936c9e668deb7f1a9064279546210e6"
+  protected_materialization_output_repair_validation: "FOCUSED_75_OF_75_PENDING_INDEPENDENT_AUDIT"
   latest_monitored_availability: LOW
   latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
   latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
@@ -6199,8 +6202,8 @@ provider_authority: &v2_09_provider_authority_combined
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_protected_materialization_output_failed_clean
-  status: CONSUMED_FAILED_CLEAN_PROTECTED_MATERIALIZATION_OUTPUT
+  milestone: v2_09_protected_materialization_output_repair_green
+  status: PROVIDER_FREE_REPAIR_GREEN_PENDING_INDEPENDENT_AUDIT
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: no_current_authority_consumed_failed_clean
   task_stage: provider_free_diagnosis
@@ -6277,7 +6280,7 @@ recommended_next_task:
   preclaim_readiness_repair_commits: ["f0dac6df4eb8f7209e5bdb5e9ee2eeae6ef9d1eb", "0117cb1c26003714616bdd9f02584ff025d803e7", "0f4ed8dde449051c7d67d8e36ed67d49f737fca0", "dcd4c146023dfed996271d7f4da3afe39045bdfa", "eb113e44fc661b259ec0c06039c643a802714884"]
   preclaim_readiness_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-private-output-parent-preflight-repair.json
   preclaim_readiness_repair_validation: "FOCUSED_97_OF_97_AND_INDEPENDENT_GO_P0_0_P1_0"
-  execution_blocker: provider_free_protected_materialization_output_diagnosis_and_fresh_exact_approval_required
+  execution_blocker: independent_repair_audit_clean_seal_fresh_proposal_and_exact_approval_required
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:

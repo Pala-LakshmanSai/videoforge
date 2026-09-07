@@ -461,10 +461,18 @@ export async function materializeV209ProtectedInputs({
     Buffer.from(roleUrl(ownerUrl, configuration.runtimeRole, passwords[1])),
     "RUNTIME_URL_OUTPUT_INVALID",
   );
+  const reconcilerUrlBytes = Buffer.from(
+    roleUrl(ownerUrl, configuration.reconcilerRole, passwords[2]),
+  );
   writePrivateOnce(
     configuration.databaseReconcilerUrlFile,
-    Buffer.from(roleUrl(ownerUrl, configuration.reconcilerRole, passwords[2])),
+    reconcilerUrlBytes,
     "RECONCILER_URL_OUTPUT_INVALID",
+  );
+  writePrivateOnce(
+    paths.VIDEOFORGE_RECONCILER_DATABASE_URL,
+    reconcilerUrlBytes,
+    "RECONCILER_SECRET_OUTPUT_INVALID",
   );
 
   for (const name of REUSED_SECRET_NAMES) {
