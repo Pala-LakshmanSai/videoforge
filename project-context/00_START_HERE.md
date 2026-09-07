@@ -4,11 +4,12 @@
 
 ### Current new-chat launch point — 2026-09-08
 
+- Proposal `sha256:8c26c376...f5e4` is approved. Authority `v2-09-8c26c376fde44639`, source
+  `5ec3bb24`, and bundle `sha256:2f0835dd...2f99` are materialized; execution awaits successor audit.
 - Provider-free repair now writes the exact reconciler role URL to both distinct production paths:
   the internal reconciler URL and Cloudflare `VIDEOFORGE_RECONCILER_DATABASE_URL`. The production-
   topology regression plus combined/adapters suites pass 75/75. No credential/provider/database,
-  remote mutation, GPU, or spend action occurred. Independent repair audits and a fresh proposal
-  remain required.
+  remote mutation, GPU, or spend action occurred. Three repair and three proposal audits passed.
 - V2-09 proposal `sha256:5b78e19b...cc80` and authority `v2-09-5b78e19baa6427f4` are consumed
   `FAILED_CLEAN` and non-reusable. Exact preflight and the global completion baseline passed, then
   protected-input materialization failed with `V2_09_PROTECTED_MATERIALIZATION_OUTPUT_INVALID`.

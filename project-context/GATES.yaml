@@ -1,5 +1,5 @@
 schema_version: "2.0"
-updated_at: "2026-09-07"
+updated_at: "2026-09-08"
 evidence_root: "evidence/gates"
 
 execution_model:
@@ -455,16 +455,16 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_authority_state: none_5b78e19b_consumed_failed_clean
-    current_proposal_sha256: null
-    current_control_source_commit: null
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-reconciler-secret-output-replacement.json"
+    current_authority_sha256: "sha256:1d19b40ac55944d966db87c6e7e370adfe34becc2bbaa9f6cc95ba43d5e3a866"
+    current_authority_state: approved_single_use_unconsumed_pending_successor_audit
+    current_proposal_sha256: "sha256:8c26c376fde44639a246b664f7c10c82ffed46d018a0b1891e585a04f593f5e4"
+    current_control_source_commit: "5ec3bb24374bf80f247013d6479b6cbaa822188d"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-protected-materialization-output.json"
     current_failure_sha256: "sha256:cf2c8416ffe055b0743927e20d51bcde6e819c7364654732b52cb8d14f65c430"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "Repair 7bdc466d creates exact NOINHERIT roles, permits only PostgreSQL 17's single inert creator-admin membership in runtime/operator/reconciler verification, uses the proven transient INHERIT cleanup edge, checks PUBLIC by ACL grantee zero, and makes every psql verifier failure nonzero. Disposable PostgreSQL 17 applied all 86 migrations, passed all three production grant scripts, rejected a foreign edge, and cleaned to zero roles/memberships. Focused tests pass 83/83; two independent audits are GO P0=0/P1=0. Stage 6/7 were untouched."
+    provider_free_repair_state: "Repair 762e74a1 writes identical mode-0600 reconciler URL bytes to distinct internal and Cloudflare paths before role mutation. Focused tests pass 75/75; three independent source audits and three proposal audits are GO P0=0/P1=0. Stage 6/7 were untouched."
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-availability-recovered-replacement.json"
     latest_closed_authority_sha256: "sha256:81809cddd75a84a3438345471a5cb539fd4476482b279496ac817d07947cf784"
     latest_closed_proposal_sha256: "sha256:5b78e19baa6427f48c4d4aa4379f25422bbeaabd92872ae2d18336dbfbb2cc80"
@@ -475,7 +475,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "Independently audit the provider-free dual reconciler URL repair, then seal a clean source/bundle and one fresh proposal for exact approval."
+    next_gate: "Independently audit the exact authority-materialization successor, then execute the single approved combined activation once."
 
   GATE_RANGA_001:
     status: open
