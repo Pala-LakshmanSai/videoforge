@@ -77,6 +77,15 @@ def test_typed_create_project_model_rejects_inline_avatar() -> None:
         CreateProjectRequest.model_validate(invalid)
 
 
+def test_typed_create_project_model_rejects_retired_project_cap() -> None:
+    invalid = {
+        **load_fixture("create_project_request.valid.json"),
+        "spend_cap_usd": 1.5,
+    }
+    with pytest.raises(ValidationError):
+        CreateProjectRequest.model_validate(invalid)
+
+
 def test_typed_create_project_model_enforces_conditional_keywords() -> None:
     invalid = {
         **load_fixture("create_project_request.valid.json"),

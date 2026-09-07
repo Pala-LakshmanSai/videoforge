@@ -1019,8 +1019,7 @@ export class GlobalSessionRepository {
           AND volume.region = $23 AND volume.mount_path = $24
           AND manifest.manifest_sha256 = $25
           AND receipt.gpu_count = $26 AND receipt.offering_id = $16 AND receipt.gpu_sku = $17
-          AND $4::timestamptz < $5::timestamptz
-          AND $27::bigint <= project_revision.maximum_cost_micro_usd`,
+          AND $4::timestamptz < $5::timestamptz`,
       [
         command.authorizationId,
         envelopeSha256,
@@ -1048,7 +1047,6 @@ export class GlobalSessionRepository {
         envelope.pod_resource_binding.mount_path,
         envelope.pod_resource_binding.manifest_sha256,
         envelope.pod_resource_binding.gpu_count,
-        envelope.maximum_cost_micro_usd,
       ],
     );
     if (result.affectedRows !== 1) {

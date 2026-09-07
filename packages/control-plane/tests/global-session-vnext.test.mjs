@@ -641,6 +641,12 @@ test("one synthetic global session fails closed, drains both Pods, retains volum
       maximum_cost_micro_usd: 100_000,
       deadline_at: "2026-08-13T10:02:00.000Z",
     };
+    await source.executor.query(
+      `UPDATE project_revisions
+          SET maximum_cost_micro_usd = 50000
+        WHERE id = $1`,
+      [activeCommand.projectRevisionId],
+    );
     await repository.authorizePodDispatch({
       authorizationId: ID.dispatchAuthorization,
       envelope: dispatchEnvelope,

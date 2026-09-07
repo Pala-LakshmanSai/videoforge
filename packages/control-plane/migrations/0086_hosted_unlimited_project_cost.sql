@@ -1,5 +1,5 @@
--- Ordinary hosted projects are unlimited by default. Historical finite revision caps remain valid,
--- but NULL is the sole unlimited representation and cost events remain exact and fully accounted.
+-- Ordinary hosted projects are unlimited. Historical finite revision values remain inert audit
+-- data; cost events remain exact and fully accounted.
 
 ALTER TABLE public.project_revisions
   DROP CONSTRAINT project_revisions_maximum_cost_micro_usd_check,
@@ -24,7 +24,7 @@ BEGIN
   voice_definition:=replace(
     voice_definition,
     'revision.maximum_cost_micro_usd>=10000',
-    '(revision.maximum_cost_micro_usd IS NULL OR revision.maximum_cost_micro_usd>=10000)'
+    'TRUE'
   );
   EXECUTE voice_definition;
 
@@ -37,11 +37,11 @@ BEGIN
   prompt_definition:=replace(
     prompt_definition,
     'revision.maximum_cost_micro_usd>=50000',
-    '(revision.maximum_cost_micro_usd IS NULL OR revision.maximum_cost_micro_usd>=50000)'
+    'TRUE'
   );
   EXECUTE prompt_definition;
 END;
 $$;
 
 COMMENT ON COLUMN public.project_revisions.maximum_cost_micro_usd IS
-  'Optional historical project ceiling in integer micro-USD; NULL means unlimited. Exact cost accounting remains mandatory.';
+  'Inert historical project ceiling in integer micro-USD; new revisions use NULL. Exact cost accounting remains mandatory.';

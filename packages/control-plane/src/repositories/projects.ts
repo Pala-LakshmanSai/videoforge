@@ -120,7 +120,7 @@ export interface ProjectRevisionSnapshot {
   readonly extraPromptKeywords: string | null;
   readonly applyExtraPromptKeywords: boolean;
   readonly generationMode: GenerationMode;
-  readonly maximumCostMicroUsd: bigint;
+  readonly maximumCostMicroUsd: bigint | null;
   readonly currency: "USD";
   readonly seed: bigint;
   readonly revisionConfig: CanonicalDocument;

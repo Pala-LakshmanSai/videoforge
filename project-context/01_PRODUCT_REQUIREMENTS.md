@@ -24,7 +24,7 @@ it is not inferred from invite-only access.
 3. Create a private project with title and voiceover; do not re-upload the avatar per project.
 4. Select an immutable published Image Style. Built-in `documentary_stock_v1` is preselected.
 5. Optionally enable project-wide extra image-prompt keywords.
-6. Review validated inputs, exact pinned models/presets, estimated variable cost, and spend cap.
+6. Review validated inputs, exact pinned models/presets, and estimated variable cost.
 7. Select **Generate video** once. The server freezes the revision, enqueues it durably, and disables
    duplicate submission. It never asks the user to select/start/stop a GPU or Pod.
 8. See private queue position, truthful stage/ETA/cost, lane progress, retry/blocker, and scale-to-zero
@@ -50,7 +50,8 @@ Optional:
 - `extra_prompt_keywords`: at most 500 characters, image-only.
 - `apply_extra_prompt_keywords`: explicit boolean, default false.
 - `user_seed`: advanced deterministic variation input.
-- `spend_cap_usd`: numeric finite job cap reserved before provider dispatch.
+- Project creation has no user-configured maximum-spend input. The server persists a `NULL` project
+  limit while retaining exact estimates, reservations, attribution, settlement, and cancellation.
 
 The server derives account/workspace ownership from the authenticated session and rejects foreign
 IDs even if they exist. Create freezes all source hashes, exact Avatar/Image Style versions, model

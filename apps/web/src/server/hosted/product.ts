@@ -6420,10 +6420,6 @@ async function projectDetail(
     const settledCost = costRow
       ? (numberOrNull(costRow.settled_usd) ?? 0) + (numberOrNull(costRow.prompt_settled_usd) ?? 0)
       : 0;
-    const maximumCostMicroUsd = costRow
-      ? numberOrNull(costRow.maximum_cost_micro_usd)
-      : null;
-    const capCost = maximumCostMicroUsd === null ? null : maximumCostMicroUsd / 1_000_000;
     const timingRows = [...(detail.attempts as Record<string, unknown>[]), ...serverlessAttempts];
     const createdAt = timingRows
       .map((value) => new Date(String(value.created_at)).getTime())
@@ -6550,7 +6546,7 @@ async function projectDetail(
       cost: {
         projected_usd: projectedCost,
         settled_usd: settledCost,
-        cap_usd: capCost,
+        cap_usd: null,
         billed_seconds: null,
         provider:
           serverlessAttempts.length > 0

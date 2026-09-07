@@ -255,11 +255,7 @@ export function hostedPromptAuthority(input: {
     plan.revision_style_hash !== styleHash ||
     plan.revision_state !== "LOCKED" ||
     plan.style_state !== "PUBLISHED" ||
-    plan.existing_run_state !== null ||
-    (plan.spend_cap_usd !== null &&
-      (typeof plan.spend_cap_usd !== "number" ||
-        !Number.isFinite(plan.spend_cap_usd) ||
-        plan.spend_cap_usd < input.reservedCostMicroUsd / 1_000_000))
+    plan.existing_run_state !== null
   )
     throw new TypeError("Hosted prompt plan is not executable.");
   const visualProfile = record(

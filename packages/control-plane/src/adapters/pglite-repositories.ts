@@ -1299,7 +1299,7 @@ function mapProjectRevision(row: Row): ProjectContracts.ProjectRevision {
       row.generation_mode,
       "project_revisions.generation_mode",
     ) as ProjectContracts.GenerationMode,
-    maximumCostMicroUsd: bigintValue(
+    maximumCostMicroUsd: nullableBigint(
       row.maximum_cost_micro_usd,
       "project_revisions.maximum_cost_micro_usd",
     ),

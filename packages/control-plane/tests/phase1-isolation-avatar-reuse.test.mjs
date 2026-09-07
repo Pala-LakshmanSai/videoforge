@@ -223,7 +223,7 @@ test("two invited accounts cannot cross workspace records and one ready avatar v
       extraPromptKeywords: "preserved while disabled",
       applyExtraPromptKeywords: false,
       generationMode: "LOWEST_COST",
-      maximumCostMicroUsd: 1_500_000n,
+      maximumCostMicroUsd: null,
       currency: "USD",
       seed: 73n,
       revisionConfig: {
@@ -246,6 +246,7 @@ test("two invited accounts cannot cross workspace records and one ready avatar v
     assert.equal(locked.value.value.avatarProfileVersionId, IDS.avatarVersionA);
     assert.equal(locked.value.value.avatarRuntimeSourceAssetId, IDS.avatarRuntimeA);
     assert.equal(locked.value.value.avatarRuntimeSourceBinarySha256, HASHES.avatarRuntimeA);
+    assert.equal(locked.value.value.maximumCostMicroUsd, null);
 
     const after = await lineageCounts(executor);
     assert.deepEqual(after, before, "avatar reuse must create no upload, test, task, or cost row");

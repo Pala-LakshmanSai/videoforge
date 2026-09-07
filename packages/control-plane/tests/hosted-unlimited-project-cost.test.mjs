@@ -32,7 +32,7 @@ test("0086 makes NULL the unlimited project cost representation without weakenin
     );
     assert.equal(functions.rows.length, 2);
     for (const row of functions.rows) {
-      assert.match(row.definition, /maximum_cost_micro_usd IS NULL/u);
+      assert.doesNotMatch(row.definition, /maximum_cost_micro_usd/u);
     }
 
     const constraint = await executor.query(

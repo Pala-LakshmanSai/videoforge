@@ -382,7 +382,7 @@ describe("hosted prompt authority", () => {
     }
   });
 
-  it("admits an unlimited plan and rejects an already-claimed plan or insufficient legacy cap", () => {
+  it("admits unlimited and legacy finite plans but rejects an already-claimed plan", () => {
     expect(() =>
       hostedPromptAuthority({
         plan: plan(),
@@ -403,7 +403,7 @@ describe("hosted prompt authority", () => {
         identity,
         reservedCostMicroUsd: 40_000,
       }),
-    ).toThrow("not executable");
+    ).not.toThrow();
   });
 
   it("keeps punctuation-free Stage 4 fragments local without transcript-scale duplication", () => {
