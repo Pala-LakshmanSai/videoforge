@@ -99,7 +99,7 @@ const LIVE_CONFIGURATION_KEYS = Object.freeze([
 export const NORMAL_OPERATIONS = Object.freeze([
   Object.freeze({ id: "push-clean-source", boundary: "REMOTE_MUTATION" }),
   Object.freeze({ id: "readback-clean-source", boundary: "READBACK" }),
-  Object.freeze({ id: "apply-migrations-0074-0085", boundary: "DATABASE_MUTATION" }),
+  Object.freeze({ id: "apply-migrations-0074-0086", boundary: "DATABASE_MUTATION" }),
   Object.freeze({ id: "apply-v209-grants", boundary: "DATABASE_MUTATION" }),
   Object.freeze({ id: "publish-media-worker-0.1.15", boundary: "REMOTE_MUTATION" }),
   Object.freeze({ id: "readback-media-worker-0.1.15", boundary: "READBACK" }),
@@ -427,16 +427,16 @@ function validateOperationResult(
   )
     fail("V2_09_SOURCE_READBACK_INVALID");
   if (
-    operationId === "apply-migrations-0074-0085" &&
+    operationId === "apply-migrations-0074-0086" &&
     !(
-      (result.mode === "APPLIED_0074_0085" &&
+      (result.mode === "APPLIED_0074_0086" &&
         result.from_version === 73 &&
-        result.to_version === 85 &&
+        result.to_version === 86 &&
         Array.isArray(result.applied_versions) &&
-        result.applied_versions.join(",") === "74,75,76,77,78,79,80,81,82,83,84,85") ||
-      (result.mode === "VERIFIED_EXISTING_0085" &&
-        result.from_version === 85 &&
-        result.to_version === 85 &&
+        result.applied_versions.join(",") === "74,75,76,77,78,79,80,81,82,83,84,85,86") ||
+      (result.mode === "VERIFIED_EXISTING_0086" &&
+        result.from_version === 86 &&
+        result.to_version === 86 &&
         Array.isArray(result.applied_versions) &&
         result.applied_versions.length === 0)
     )
@@ -454,7 +454,7 @@ function validateOperationResult(
       "schema_version",
     ]) ||
       result.schema_version !== "videoforge.v2-09-grants-result/v1" ||
-      result.migration_head !== 85 ||
+      result.migration_head !== 86 ||
       result.public_execute_count !== 0 ||
       result.runtime_grants_verified !== true ||
       result.operator_grants_verified !== true ||

@@ -160,7 +160,7 @@ function fixture() {
       branch: BRANCH,
       pushRef: PUSH_REF,
       remote: "origin",
-      migrationMode: "APPLY_0074_0085",
+      migrationMode: "APPLY_0074_0086",
       runtimeRole: "videoforge_runtime",
       operatorRole: "videoforge_operator",
       reconcilerRole: "videoforge_reconciler",
@@ -270,12 +270,12 @@ function childRunner(
       input.command === "psql" &&
       input.options?.input?.includes("videoforge.v2-09-migration-result/v1")
     ) {
-      const verified = input.options.input.includes("VERIFIED_EXISTING_0085");
+      const verified = input.options.input.includes("VERIFIED_EXISTING_0086");
       stdout = JSON.stringify({
         schemaVersion: "videoforge.v2-09-migration-result/v1",
-        mode: verified ? "VERIFIED_EXISTING_0085" : "APPLIED_0074_0085",
-        fromVersion: verified ? 85 : 73,
-        toVersion: 85,
+        mode: verified ? "VERIFIED_EXISTING_0086" : "APPLIED_0074_0086",
+        fromVersion: verified ? 86 : 73,
+        toVersion: 86,
       });
     }
     if (input.command === "git" && input.args.join(" ") === "rev-parse HEAD") stdout = SOURCE;
@@ -1115,7 +1115,7 @@ test("staging factory needs neither Chrome inputs nor deferred endpoint secrets"
   assert.deepEqual(Object.keys(adapters.operations), [
     "push-clean-source",
     "readback-clean-source",
-    "apply-migrations-0074-0085",
+    "apply-migrations-0074-0086",
     "apply-v209-grants",
     "publish-media-worker-0.1.15",
     "readback-media-worker-0.1.15",
@@ -1562,10 +1562,10 @@ test("source push/readback and database commands are closed, exact child invocat
   const value = authority(adapters.identity_sha256);
   await adapters.operations["push-clean-source"]({ authority: value });
   await adapters.operations["readback-clean-source"]({ authority: value });
-  const migration = await adapters.operations["apply-migrations-0074-0085"]({ operation: {} });
+  const migration = await adapters.operations["apply-migrations-0074-0086"]({ operation: {} });
   const grants = await adapters.operations["apply-v209-grants"]({});
-  assert.equal(migration.mode, "APPLIED_0074_0085");
-  assert.equal(grants.migration_head, 85);
+  assert.equal(migration.mode, "APPLIED_0074_0086");
+  assert.equal(grants.migration_head, 86);
   assert.deepEqual(
     childCalls.find(({ command, args }) => command === "git" && args[0] === "push")?.args,
     ["push", "--porcelain", "origin", `${SOURCE}:${PUSH_REF}`],
@@ -1582,6 +1582,7 @@ test("source push/readback and database commands are closed, exact child invocat
   assert.ok(migrationCall);
   assert.match(migrationCall.options.input, /0084_hosted_v209_staged_click_cleanup/u);
   assert.match(migrationCall.options.input, /0085_hosted_v209_completion_baseline/u);
+  assert.match(migrationCall.options.input, /0086_hosted_unlimited_project_cost/u);
   assert.doesNotMatch(migrationCall.options.input, /neon-runtime-grants|v213_/u);
   assert.equal(
     childCalls.some(({ args }) => args.some((arg) => /v2-1[0-3]/u.test(arg))),

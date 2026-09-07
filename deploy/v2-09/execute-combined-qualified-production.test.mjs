@@ -1260,6 +1260,6 @@ test("repeated new-process Chrome waits do not replay the prefix or derive prote
   assert.equal(authAttempts, 4);
   assert.equal(receiptDerivations, 1);
   assert.equal(events.filter((value) => value === "push-clean-source").length, 1);
-  assert.equal(events.filter((value) => value === "apply-migrations-0074-0085").length, 1);
+  assert.equal(events.filter((value) => value === "apply-migrations-0074-0086").length, 1);
   assert.equal(events.includes("cleanup-only"), false);
 });

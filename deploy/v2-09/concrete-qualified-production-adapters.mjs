@@ -174,7 +174,7 @@ function createV209StagingPorts(configuration) {
 const DIRECT_OPERATION_IDS = new Set([
   "push-clean-source",
   "readback-clean-source",
-  "apply-migrations-0074-0085",
+  "apply-migrations-0074-0086",
   "apply-v209-grants",
   "fresh-read-only-admission",
   "create-mage-production-lane-max-one",
@@ -231,7 +231,7 @@ function loadV209MigrationBundle() {
   if (
     manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(manifest.migrations) ||
-    manifest.migrations.length !== 85 ||
+    manifest.migrations.length !== 86 ||
     manifest.migrations.some((entry, index) => entry?.version !== index + 1)
   )
     fail("V2_09_CONCRETE_MIGRATION_MANIFEST_INVALID");
@@ -241,7 +241,7 @@ function loadV209MigrationBundle() {
     if (sha256(bytes) !== entry.sha256) fail("V2_09_CONCRETE_MIGRATION_SOURCE_DRIFT");
     return Object.freeze({ ...entry, sql: bytes.toString("utf8") });
   });
-  if (selected.length !== 12 || selected[0].version !== 74 || selected.at(-1).version !== 85)
+  if (selected.length !== 13 || selected[0].version !== 74 || selected.at(-1).version !== 86)
     fail("V2_09_CONCRETE_MIGRATION_MANIFEST_INVALID");
   const ledger = (length) =>
     canonical(
@@ -249,7 +249,7 @@ function loadV209MigrationBundle() {
         .slice(0, length)
         .map(({ version, name, filename, sha256: digest }) => [version, name, filename, digest]),
     );
-  return Object.freeze({ selected, prefixLedger: ledger(73), finalLedger: ledger(85) });
+  return Object.freeze({ selected, prefixLedger: ledger(73), finalLedger: ledger(86) });
 }
 
 function renderV209MigrationSql(bundle, verifyExisting) {
@@ -271,7 +271,7 @@ function renderV209MigrationSql(bundle, verifyExisting) {
     guard(expectedBefore, "V2-09 migration ledger prefix drift"),
     body,
     guard(bundle.finalLedger, "V2-09 migration ledger final drift"),
-    `SELECT jsonb_build_object('schemaVersion','videoforge.v2-09-migration-result/v1','mode','${verifyExisting ? "VERIFIED_EXISTING_0085" : "APPLIED_0074_0085"}','fromVersion',${verifyExisting ? 85 : 73},'toVersion',85);`,
+    `SELECT jsonb_build_object('schemaVersion','videoforge.v2-09-migration-result/v1','mode','${verifyExisting ? "VERIFIED_EXISTING_0086" : "APPLIED_0074_0086"}','fromVersion',${verifyExisting ? 86 : 73},'toVersion',86);`,
     "COMMIT;",
     "",
   ].join("\n");
@@ -1491,7 +1491,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     configuration.branch !== BRANCH ||
     configuration.pushRef !== PUSH_REF ||
     configuration.remote !== "origin" ||
-    !["APPLY_0074_0085", "VERIFY_EXISTING_0085"].includes(configuration.migrationMode) ||
+    !["APPLY_0074_0086", "VERIFY_EXISTING_0086"].includes(configuration.migrationMode) ||
     !ROLE.test(configuration.runtimeRole ?? "") ||
     !ROLE.test(configuration.operatorRole ?? "") ||
     !ROLE.test(configuration.reconcilerRole ?? "") ||
@@ -1888,8 +1888,8 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       fail("V2_09_CONCRETE_SOURCE_READBACK_DRIFT");
     return { operation_id: "readback-clean-source", source_commit: commit, destination_ref: ref };
   };
-  operations["apply-migrations-0074-0085"] = async ({ operation }) => {
-    const verifyExisting = configuration.migrationMode === "VERIFY_EXISTING_0085";
+  operations["apply-migrations-0074-0086"] = async ({ operation }) => {
+    const verifyExisting = configuration.migrationMode === "VERIFY_EXISTING_0086";
     const output = await exactChild(
       runChild,
       configuration,
@@ -1906,25 +1906,25 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     if (
       !exactKeys(receipt, ["fromVersion", "mode", "schemaVersion", "toVersion"]) ||
       receipt.schemaVersion !== "videoforge.v2-09-migration-result/v1" ||
-      receipt.mode !== (verifyExisting ? "VERIFIED_EXISTING_0085" : "APPLIED_0074_0085") ||
-      receipt.fromVersion !== (verifyExisting ? 85 : 73) ||
-      receipt.toVersion !== 85
+      receipt.mode !== (verifyExisting ? "VERIFIED_EXISTING_0086" : "APPLIED_0074_0086") ||
+      receipt.fromVersion !== (verifyExisting ? 86 : 73) ||
+      receipt.toVersion !== 86
     )
       fail("V2_09_CONCRETE_MIGRATION_RECEIPT_INVALID");
     return verifyExisting
       ? {
-          operation_id: "apply-migrations-0074-0085",
-          mode: "VERIFIED_EXISTING_0085",
-          from_version: 85,
-          to_version: 85,
+          operation_id: "apply-migrations-0074-0086",
+          mode: "VERIFIED_EXISTING_0086",
+          from_version: 86,
+          to_version: 86,
           applied_versions: [],
         }
       : {
-          operation_id: "apply-migrations-0074-0085",
-          mode: "APPLIED_0074_0085",
+          operation_id: "apply-migrations-0074-0086",
+          mode: "APPLIED_0074_0086",
           from_version: 73,
-          to_version: 85,
-          applied_versions: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85],
+          to_version: 86,
+          applied_versions: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86],
         };
   };
   operations["apply-v209-grants"] = async () => {
@@ -1952,7 +1952,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     return {
       schema_version: "videoforge.v2-09-grants-result/v1",
       operation_id: "apply-v209-grants",
-      migration_head: 85,
+      migration_head: 86,
       public_execute_count: 0,
       runtime_grants_verified: true,
       operator_grants_verified: true,

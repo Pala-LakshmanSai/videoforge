@@ -216,20 +216,20 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       completion_total_usd: value.caps.completion_baseline_usd + 1,
     };
   }
-  if (id === "apply-migrations-0074-0085") {
+  if (id === "apply-migrations-0074-0086") {
     return {
       operation_id: id,
-      mode: "APPLIED_0074_0085",
+      mode: "APPLIED_0074_0086",
       from_version: 73,
-      to_version: 85,
-      applied_versions: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85],
+      to_version: 86,
+      applied_versions: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86],
     };
   }
   if (id === "apply-v209-grants") {
     return {
       schema_version: "videoforge.v2-09-grants-result/v1",
       operation_id: id,
-      migration_head: 85,
+      migration_head: 86,
       public_execute_count: 0,
       runtime_grants_verified: true,
       operator_grants_verified: true,
@@ -825,11 +825,11 @@ test("fresh successor authority may reuse exact migration head and immutable wor
     adapters: adapters({
       calls,
       resultOverrides: {
-        "apply-migrations-0074-0085": {
-          operation_id: "apply-migrations-0074-0085",
-          mode: "VERIFIED_EXISTING_0085",
-          from_version: 85,
-          to_version: 85,
+        "apply-migrations-0074-0086": {
+          operation_id: "apply-migrations-0074-0086",
+          mode: "VERIFIED_EXISTING_0086",
+          from_version: 86,
+          to_version: 86,
           applied_versions: [],
         },
         "publish-media-worker-0.1.15": {
@@ -1038,9 +1038,9 @@ test("authority is rechecked immediately before each external mutation", async (
       currentTime: () => (++reads < 4 ? NOW : new Date("2026-09-06T13:00:00Z")),
       adapters: adapters({ calls }),
     }),
-    /V2_09_ROLLOUT_FAILED_CLEAN:apply-migrations-0074-0085/u,
+    /V2_09_ROLLOUT_FAILED_CLEAN:apply-migrations-0074-0086/u,
   );
-  assert.equal(calls.includes("apply-migrations-0074-0085"), false);
+  assert.equal(calls.includes("apply-migrations-0074-0086"), false);
 });
 
 test("lane and media proofs reject incomplete immutable bindings", async () => {
