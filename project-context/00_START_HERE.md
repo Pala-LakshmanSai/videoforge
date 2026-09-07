@@ -2,7 +2,7 @@
 
 ## Active handoff — read this section first
 
-### Current new-chat launch point — 2026-09-06
+### Current new-chat launch point — 2026-09-08
 
 - Provider-free repair now writes the exact reconciler role URL to both distinct production paths:
   the internal reconciler URL and Cloudflare `VIDEOFORGE_RECONCILER_DATABASE_URL`. The production-
@@ -18,7 +18,8 @@
 - The user-authorized read-only monitor observed exactly one RTX 4090 and exactly one `EU-RO-1`
   entry at `LOW` availability at `2026-09-07T18:13:45.876Z`; redacted evidence is
   `monitored-eu-ro-1-low-availability.json` (`sha256:36fa200f…4263c`). This observation authorizes no
-  mutation or spend. Next: seal and independently audit one fresh source-bound activation proposal.
+  mutation or spend. Next: independently audit the provider-free dual reconciler URL repair, then
+  seal a clean source/bundle and one fresh source-bound proposal for exact approval.
 - V2-09 proposal `sha256:58cb3e2b...92f4a` and authority `v2-09-58cb3e2bbe96d721` are consumed
   `FAILED_CLEAN` and non-reusable. The single execution stopped during read-only RunPod preflight
   because the catalog did not yield exactly one `EU-RO-1` entry for the exact RTX 4090 match. No

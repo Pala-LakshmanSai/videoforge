@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-09-07"
+updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -22,7 +22,7 @@ current_goal_boundary:
   live_provider_calls: "Authority v2-09-5b78e19baa6427f4 is consumed FAILED_CLEAN and non-reusable. No current provider authority exists."
   remote_mutation: false
   deployment_or_publication: "No publication or deployment is currently authorized."
-  credential_value_access: "No current authority; zero credential-value reads are permitted during diagnosis."
+  credential_value_access: "No current authority; zero credential-value reads are permitted during repair."
   paid_requests_or_spend: "No current authority; zero incremental spend is permitted."
   runpod_mutation_or_gpu: "No current authority; zero RunPod mutations, provider POSTs, or GPU jobs are permitted."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
@@ -31,8 +31,8 @@ current_goal_boundary:
   note: "Authority 5b78e19b remains consumed FAILED_CLEAN. Provider-free repair now writes the reconciler role URL to both distinct internal and Cloudflare paths; focused verification passes 75/75. Independent audits and a fresh source-bound proposal remain required."
 
 v2_09_provider_free_candidate:
-  source_commit: "dc6ef647fb35602333f92a4191a3071c426386b9"
-  source_audit: "PASS_TWO_INDEPENDENT_FOCUSED_AUDITS_P0_0_P1_0"
+  source_commit: "762e74a117a3d0bff5a8af7449b545b93f9cada4"
+  source_audit: "PENDING_INDEPENDENT_AUDIT_AFTER_CONTEXT_SEAL"
   canonical_provider_free_verification: FOCUSED_V209_136_OF_136_PLUS_CONTRACTS_112_OF_112_PYTHON_96_OF_96_HOSTED_78_OF_78_CONTEXT_PASS
   production_state: DISABLED_UNQUALIFIED
   deployed_database_head: 73
@@ -6206,14 +6206,14 @@ recommended_next_task:
   status: PROVIDER_FREE_REPAIR_GREEN_PENDING_INDEPENDENT_AUDIT
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: no_current_authority_consumed_failed_clean
-  task_stage: provider_free_diagnosis
+  task_stage: provider_free_repair
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_combined
   provider_mode: fixture
-  provider_free_repair_commit: "7bdc466dde53f9b4296b3413a7e4cfc46495a4b8"
-  provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-role-cleanup-pg17-repair.json"
-  provider_free_repair_validation: "postgresql_17_all_86_migrations_three_grant_scripts_foreign_edge_rejected_zero_roles_memberships_plus_83_of_83_focused_tests_two_independent_go_audits"
+  provider_free_repair_commit: "762e74a117a3d0bff5a8af7449b545b93f9cada4"
+  provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-protected-materialization-output-repair.json"
+  provider_free_repair_validation: "distinct_internal_and_cloudflare_reconciler_url_paths_equal_mode_0600_all_23_receipt_hashes_endpoint_secrets_deferred_plus_75_of_75_focused_tests_pending_independent_audit_after_context_seal"
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
   goal: "Connect the ordinary hosted Generate flow to the frozen qualified max-one Mage and SoulX lanes, then complete one real 30-60-second private Chrome E2E under fresh exact authority."
