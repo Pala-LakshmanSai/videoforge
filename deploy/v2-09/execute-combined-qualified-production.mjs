@@ -999,6 +999,7 @@ export async function executeCombinedQualifiedProductionForTest({
   cleanupStaged,
   cleanupProtected,
   hasProtectedCleanup,
+  hasInnerCleanup,
   outerState,
 }) {
   validateCombinedAuthority(authority, { sourceCommit, now, cleanupOnly: true });
@@ -1012,6 +1013,7 @@ export async function executeCombinedQualifiedProductionForTest({
     typeof cleanupStaged !== "function" ||
     typeof cleanupProtected !== "function" ||
     typeof hasProtectedCleanup !== "function" ||
+    typeof hasInnerCleanup !== "function" ||
     [
       "loadOrClaim",
       "beginOperation",
@@ -1130,6 +1132,8 @@ export async function executeCombinedQualifiedProductionForTest({
 
   const interrupted = state.operations.find(({ status }) => status === "STARTED");
   if (state.status === "CLEANUP_ONLY" || interrupted) {
+    if (state.status !== "CLEANUP_ONLY")
+      state = validateOuterState(await outerState.enterCleanupOnly(), authority);
     if (state.status === "CLEANUP_ONLY" && (await hasProtectedCleanup({ authority, state }))) {
       validateOuterState(await outerState.completeCleanup(), authority);
       fail("V2_09_COMBINED_CLEANUP_ONLY");
@@ -1145,18 +1149,25 @@ export async function executeCombinedQualifiedProductionForTest({
         state,
         loadConfiguration,
       });
-      await executeProduction({
-        authority: inner,
-        configuration,
-        mode: "CLEANUP_ONLY",
-        sourceCommit,
-        combinedExecution,
-      });
+      if (
+        !(await hasInnerCleanup({
+          authority: inner,
+          configuration,
+          combinedExecution,
+          state,
+        }))
+      )
+        await executeProduction({
+          authority: inner,
+          configuration,
+          mode: "CLEANUP_ONLY",
+          sourceCommit,
+          combinedExecution,
+        });
       await cleanupProtected({ authority, state });
     } else {
       await cleanupStaged({ authority, state });
     }
-    validateOuterState(await outerState.enterCleanupOnly(), authority);
     validateOuterState(await outerState.completeCleanup(), authority);
     fail("V2_09_COMBINED_CLEANUP_ONLY");
   }
@@ -1422,13 +1433,21 @@ export async function executeCombinedQualifiedProductionForTest({
           state: latest,
           loadConfiguration,
         });
-        await executeProduction({
-          authority: inner,
-          configuration,
-          mode: "CLEANUP_ONLY",
-          sourceCommit,
-          combinedExecution,
-        });
+        if (
+          !(await hasInnerCleanup({
+            authority: inner,
+            configuration,
+            combinedExecution,
+            state: latest,
+          }))
+        )
+          await executeProduction({
+            authority: inner,
+            configuration,
+            mode: "CLEANUP_ONLY",
+            sourceCommit,
+            combinedExecution,
+          });
         await cleanupProtected({ authority, state: latest });
       } else if (
         latest.operations.some(
@@ -1464,6 +1483,7 @@ async function composeCombinedQualifiedProduction(options, dependencies) {
     cleanupStaged: dependencies.cleanupStaged,
     cleanupProtected: dependencies.cleanupProtected,
     hasProtectedCleanup: dependencies.hasProtectedCleanup,
+    hasInnerCleanup: dependencies.hasInnerCleanup,
     outerState: dependencies.createOuterState(options.statePath),
   });
 }
@@ -1914,6 +1934,23 @@ function createLiveMaterializer(
         materialization: (await loadMaterializationPlan()).protected_input_materialization,
       });
     },
+    async hasInnerCleanup({ authority, configuration, combinedExecution }) {
+      const { hasV209InnerFailedClean } = await import(
+        "./concrete-qualified-production-adapters.mjs"
+      );
+      return hasV209InnerFailedClean({
+        configuration: {
+          ...configuration,
+          journalPath: `${options.statePath}.staging-journal`,
+        },
+        executionAuthority: authority,
+        journalAuthorityId: combinedExecution.outer_authority_id,
+        combinedExecution,
+        priorResults: Object.fromEntries(
+          combinedExecution.operations.map(({ operation_id, result }) => [operation_id, result]),
+        ),
+      });
+    },
     async cleanup({ authority, state }) {
       const protectedInputOperation = state.operations.find(
         ({ id }) => id === "materialize-v209-protected-inputs",
@@ -2063,6 +2100,7 @@ export async function executeCombinedQualifiedProduction(options) {
     cleanupStaged: (context) => materializer.cleanup(context),
     cleanupProtected: (context) => materializer.cleanupProtected(context),
     hasProtectedCleanup: (context) => materializer.hasProtectedCleanup(context),
+    hasInnerCleanup: (context) => materializer.hasInnerCleanup(context),
     async gitState() {
       const { spawnSync } = await import("node:child_process");
       const head = spawnSync("git", ["rev-parse", "HEAD"], {
@@ -2099,6 +2137,7 @@ export async function executeCombinedQualifiedProductionWithDependenciesForTest(
       "cleanupStaged",
       "cleanupProtected",
       "hasProtectedCleanup",
+      "hasInnerCleanup",
     ].some((key) => typeof dependencies[key] !== "function")
   )
     fail("V2_09_COMBINED_TEST_DEPENDENCY_INJECTION_FORBIDDEN");

@@ -225,9 +225,13 @@ const receiptSet = (staged) => ({
   baseline: staged.baseline,
 });
 
-function state(events, { completionAckFails = false, executeCompletionAckFails = false } = {}) {
+function state(
+  events,
+  { completionAckFails = false, executeCompletionAckFails = false, enterCleanupFails = false } = {},
+) {
   let snapshot;
   let executeCompletionAckFailed = false;
+  let enterCleanupFailed = false;
   const clone = () => structuredClone(snapshot);
   return {
     async loadOrClaim({ authority: approved }) {
@@ -290,6 +294,10 @@ function state(events, { completionAckFails = false, executeCompletionAckFails =
     },
     async enterCleanupOnly() {
       events.push("cleanup-only");
+      if (enterCleanupFails && !enterCleanupFailed) {
+        enterCleanupFailed = true;
+        throw new Error("PROCESS_DIED_BEFORE_CLEANUP_STATE");
+      }
       snapshot.status = "CLEANUP_ONLY";
       return clone();
     },
@@ -342,6 +350,7 @@ test("one outer authority runs preflight before staging and derives bounded inne
     cleanupStaged: async () => {},
     cleanupProtected: async () => {},
     hasProtectedCleanup: async () => false,
+    hasInnerCleanup: async () => false,
     loadConfiguration: async () => staged.configuration,
     executeProduction: async (input) => {
       events.push("execute");
@@ -412,6 +421,7 @@ test("preflight failure consumes once, enters cleanup-only, and cannot stage or 
       cleanupStaged: async () => events.push("stage-cleanup"),
       cleanupProtected: async () => events.push("protected-cleanup"),
       hasProtectedCleanup: async () => false,
+      hasInnerCleanup: async () => false,
     }),
     /PREFLIGHT_FAILED/u,
   );
@@ -451,6 +461,7 @@ test("tampered staged receipt fails closed before production execution", async (
       cleanupStaged: async () => events.push("stage-cleanup"),
       cleanupProtected: async () => events.push("protected-cleanup"),
       hasProtectedCleanup: async () => false,
+      hasInnerCleanup: async () => false,
     }),
     /V2_09_COMBINED_BASELINE_RECEIPT_HASH_INVALID/u,
   );
@@ -485,6 +496,7 @@ function successfulOptions({ events, outerState, executeProduction }) {
     cleanupStaged: async () => {},
     cleanupProtected: async () => events.push("protected-cleanup"),
     hasProtectedCleanup: async () => false,
+    hasInnerCleanup: async () => false,
   };
 }
 
@@ -610,6 +622,80 @@ test("protected-cleanup tombstone closes outer ACK loss without reconstructing i
   );
 });
 
+test("interrupted CLAIMED recovery persists CLEANUP_ONLY before deleting protected inputs", async () => {
+  const events = [];
+  const outerState = state(events, { enterCleanupFails: true });
+  const modes = [];
+  let protectedClean = false;
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async ({ mode }) => {
+      modes.push(mode);
+      if (mode === "EXECUTE") throw new Error("INNER_PROCESS_DIED");
+      return { status: "FAILED_CLEAN" };
+    },
+  });
+  options.cleanupProtected = async () => {
+    protectedClean = true;
+    throw new Error("PROTECTED_CLEANUP_ACK_LOST");
+  };
+  options.hasProtectedCleanup = async () => protectedClean;
+
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /PROCESS_DIED_BEFORE_CLEANUP_STATE/u,
+  );
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /PROTECTED_CLEANUP_ACK_LOST/u,
+  );
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /V2_09_COMBINED_CLEANUP_ONLY/u,
+  );
+  assert.deepEqual(modes, ["EXECUTE", "CLEANUP_ONLY"]);
+  assert.equal(events.filter((value) => value === "cleanup-only").length, 2);
+});
+
+test("durable inner FAILED_CLEAN skips cleanup replay before protected rollback", async () => {
+  const events = [];
+  const outerState = state(events, { enterCleanupFails: true });
+  const modes = [];
+  let innerClean = false;
+  let protectedAttempts = 0;
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async ({ mode }) => {
+      modes.push(mode);
+      if (mode === "EXECUTE") throw new Error("INNER_PROCESS_DIED");
+      innerClean = true;
+      return { status: "FAILED_CLEAN" };
+    },
+  });
+  options.hasInnerCleanup = async () => innerClean;
+  options.cleanupProtected = async () => {
+    protectedAttempts += 1;
+    if (protectedAttempts === 1) throw new Error("PROCESS_DIED_BEFORE_PROTECTED_CLEANUP");
+  };
+
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /PROCESS_DIED_BEFORE_CLEANUP_STATE/u,
+  );
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /PROCESS_DIED_BEFORE_PROTECTED_CLEANUP/u,
+  );
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /V2_09_COMBINED_CLEANUP_ONLY/u,
+  );
+  assert.deepEqual(modes, ["EXECUTE", "CLEANUP_ONLY"]);
+  assert.equal(protectedAttempts, 2);
+});
+
 test("live composition wiring runs fixed injected stages only after preflight pass", async () => {
   const directory = mkdtempSync(join(tmpdir(), "vf-v209-combined-test-"));
   const approved = authority();
@@ -658,6 +744,7 @@ test("live composition wiring runs fixed injected stages only after preflight pa
       cleanupStaged: async () => {},
       cleanupProtected: async () => {},
       hasProtectedCleanup: async () => false,
+      hasInnerCleanup: async () => false,
       executeProduction: async ({ authority: inner }) => ({
         schema_version: "videoforge.v2-09-qualified-production-execution/v1",
         authority_id: inner.authority_id,
@@ -778,6 +865,7 @@ test("a failure after a staged provider mutation runs cleanup and never starts i
       cleanupStaged: async () => events.push("full-stage-cleanup"),
       cleanupProtected: async () => events.push("protected-cleanup"),
       hasProtectedCleanup: async () => false,
+      hasInnerCleanup: async () => false,
     }),
     /STAGED_MUTATION_FAILED/u,
   );
