@@ -323,19 +323,21 @@ function roleSql(roles, authorityId) {
   return `BEGIN;\n${roles
     .map(
       ({ role, password }) =>
-        `DO $vf$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(role)}) THEN RAISE EXCEPTION 'v2-09 role already exists'; END IF; EXECUTE 'CREATE ROLE ' || quote_ident(${sqlLiteral(role)}) || ' LOGIN PASSWORD ' || quote_literal(${sqlLiteral(password)}); EXECUTE 'COMMENT ON ROLE ' || quote_ident(${sqlLiteral(role)}) || ' IS ' || quote_literal(${sqlLiteral(marker)}); END $vf$;`,
+        `DO $vf$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(role)}) THEN RAISE EXCEPTION 'v2-09 role already exists'; END IF; EXECUTE 'CREATE ROLE ' || quote_ident(${sqlLiteral(role)}) || ' LOGIN NOINHERIT PASSWORD ' || quote_literal(${sqlLiteral(password)}); EXECUTE 'COMMENT ON ROLE ' || quote_ident(${sqlLiteral(role)}) || ' IS ' || quote_literal(${sqlLiteral(marker)}); END $vf$;`,
     )
     .join("\n")}\nCOMMIT;\n`;
 }
 
 function roleCleanupSql(roles, authorityId) {
   const marker = `videoforge-v2-09-authority:${authorityId}`;
-  return `BEGIN;\n${roles
+  const cleanup = roles
     .map(
       (role) =>
-        `DO $vf$ DECLARE target oid; BEGIN SELECT oid INTO target FROM pg_roles WHERE rolname = ${sqlLiteral(role)} AND shobj_description(oid, 'pg_authid') = ${sqlLiteral(marker)}; IF target IS NOT NULL THEN EXECUTE 'DROP OWNED BY ' || quote_ident(${sqlLiteral(role)}); EXECUTE 'DROP ROLE ' || quote_ident(${sqlLiteral(role)}); END IF; END $vf$;`,
+        `DO $vf$ DECLARE target oid; BEGIN SELECT oid INTO target FROM pg_roles WHERE rolname = ${sqlLiteral(role)} AND shobj_description(oid, 'pg_authid') = ${sqlLiteral(marker)}; IF target IS NOT NULL THEN EXECUTE 'GRANT ' || quote_ident(${sqlLiteral(role)}) || ' TO ' || quote_ident(current_user) || ' WITH INHERIT TRUE, SET FALSE'; EXECUTE 'DROP OWNED BY ' || quote_ident(${sqlLiteral(role)}); EXECUTE 'DROP ROLE ' || quote_ident(${sqlLiteral(role)}); END IF; END $vf$;`,
     )
-    .join("\n")}\nCOMMIT;\n`;
+    .join("\n");
+  const names = roles.map(sqlLiteral).join(",");
+  return `BEGIN;\n${cleanup}\nDO $vf$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname IN (${names})) THEN RAISE EXCEPTION 'v2-09 role cleanup incomplete'; END IF; END $vf$;\nCOMMIT;\n`;
 }
 
 function unlinkPrivateIfExists(path, code) {

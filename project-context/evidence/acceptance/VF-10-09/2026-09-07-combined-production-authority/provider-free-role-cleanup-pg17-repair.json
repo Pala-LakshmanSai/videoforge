@@ -1,0 +1,61 @@
+{
+  "schema_version": "videoforge.v2-09-provider-free-role-cleanup-repair/v1",
+  "checkpoint": "V2-09",
+  "predecessor_authority_id": "v2-09-cfcaccfc07d8abcb",
+  "predecessor_terminal_status": "FAILED_CLEAN",
+  "predecessor_reusable": false,
+  "provider_mode": "fixture",
+  "postgresql_semantic_test": {
+    "image": "postgres:17-alpine",
+    "major_version": 17,
+    "migration_files_applied": 86,
+    "role_count": 3,
+    "role_attributes": "LOGIN NOINHERIT",
+    "automatic_creator_membership": {
+      "admin_option": true,
+      "inherit_option": false,
+      "set_option": false
+    },
+    "production_grant_scripts_passed": true,
+    "foreign_membership_rejected_with_nonzero_process_exit": true,
+    "cleanup_membership": {
+      "admin_option": false,
+      "inherit_option": true,
+      "set_option": false
+    },
+    "drop_owned_passed_after_production_grants": true,
+    "remaining_authority_roles": 0,
+    "remaining_authority_memberships": 0,
+    "disposable_container_removed": true
+  },
+  "repairs": [
+    "Create every authority-derived login as NOINHERIT.",
+    "Permit at most one exact inert PostgreSQL creator-admin membership and reject every other role edge in runtime, operator, and reconciler grant verification.",
+    "Use a transaction-local creator membership with INHERIT TRUE and SET FALSE so the owner retains object-owner ACL authority while DROP OWNED recognizes target-role privileges; do not repeat ADMIN OPTION and do not SET ROLE.",
+    "Verify PUBLIC function execution through ACL grantee zero instead of treating PUBLIC as a login role.",
+    "Make every psql failure branch nonzero with ON_ERROR_STOP and a deterministic SQL error instead of unsupported psql quit arguments."
+  ],
+  "focused_tests": {
+    "passed": 83,
+    "failed": 0,
+    "diff_check_passed": true,
+    "format_check_passed": true
+  },
+  "independent_repair_audit": {
+    "p0": 0,
+    "p1": 0,
+    "verdict": "GO"
+  },
+  "external_effects": {
+    "credential_reads": 0,
+    "provider_calls": 0,
+    "remote_mutations": 0,
+    "runpod_job_posts": 0,
+    "gpu_jobs": 0,
+    "redispatches": 0,
+    "stage_6_jobs": 0,
+    "stage_7_jobs": 0,
+    "incremental_external_spend_usd": 0
+  },
+  "next_gate": "independent repair audit, clean source/context seal, fresh exact proposal, and fresh exact user approval"
+}

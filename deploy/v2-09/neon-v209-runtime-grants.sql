@@ -2,12 +2,12 @@
 -- table grants from the deployed V2-06/V2-08 application remain unchanged; no V2-10+ function is
 -- executable after this transaction.
 
+\set ON_ERROR_STOP on
 \if :{?runtime_role}
 \else
-\quit 1
+SELECT 1/0;
 \endif
 
-\set ON_ERROR_STOP on
 BEGIN;
 SET search_path=public,pg_catalog;
 SELECT pg_advisory_xact_lock(1448494662,9);
@@ -20,7 +20,7 @@ FROM pg_roles WHERE rolname=:'runtime_role'
 \if :runtime_role_valid
 \else
 ROLLBACK;
-\quit 1
+SELECT 1/0;
 \endif
 
 GRANT USAGE ON SCHEMA public TO :"runtime_role";
@@ -104,11 +104,32 @@ SELECT (
     SELECT signature FROM v209_runtime_function_allowlist
     WHERE NOT has_function_privilege(:'runtime_role',('public.'||signature)::regprocedure,'EXECUTE')
   )
+  -- PostgreSQL 16+ records one creator-admin membership with INHERIT/SET disabled when a
+  -- CREATEROLE login creates this NOINHERIT role. It is cleanup authority, not effective access.
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_auth_members membership
+    JOIN pg_roles member_role ON member_role.oid=membership.member
+    JOIN pg_roles granted_role ON granted_role.oid=membership.roleid
+    WHERE (member_role.rolname=:'runtime_role' OR granted_role.rolname=:'runtime_role')
+      AND NOT (
+        granted_role.rolname=:'runtime_role'
+        AND member_role.rolname=current_user
+        AND membership.admin_option
+        AND NOT membership.inherit_option
+        AND NOT membership.set_option
+      )
+  )
+  AND 1 >= (
+    SELECT count(*) FROM pg_auth_members membership
+    JOIN pg_roles member_role ON member_role.oid=membership.member
+    JOIN pg_roles granted_role ON granted_role.oid=membership.roleid
+    WHERE member_role.rolname=:'runtime_role' OR granted_role.rolname=:'runtime_role'
+  )
 ) AS v209_runtime_acl_exact
 \gset
 \if :v209_runtime_acl_exact
 COMMIT;
 \else
 ROLLBACK;
-\quit 1
+SELECT 1/0;
 \endif

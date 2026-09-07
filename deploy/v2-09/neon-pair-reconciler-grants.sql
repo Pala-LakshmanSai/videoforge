@@ -5,16 +5,16 @@
 --   psql --variable=runtime_role=... --variable=reconciler_role=... \
 --     --file=deploy/v2-09/neon-pair-reconciler-grants.sql
 
+\set ON_ERROR_STOP on
 \if :{?runtime_role}
 \else
-\quit 1
+SELECT 1/0;
 \endif
 \if :{?reconciler_role}
 \else
-\quit 1
+SELECT 1/0;
 \endif
 
-\set ON_ERROR_STOP on
 BEGIN;
 SET search_path = public, pg_catalog;
 SELECT pg_advisory_xact_lock(1448494662,9);
@@ -51,7 +51,7 @@ WHERE rolname IN (:'runtime_role',:'reconciler_role')
 \if :reconciliation_roles_valid
 \else
 ROLLBACK;
-\quit 1
+SELECT 1/0;
 \endif
 
 GRANT USAGE ON SCHEMA public TO :"reconciler_role";
@@ -116,8 +116,23 @@ SELECT (
     SELECT 1 FROM information_schema.role_usage_grants
     WHERE grantee=:'reconciler_role' AND object_schema='public'
   )
+  -- PostgreSQL 16+ records one creator-admin membership with INHERIT/SET disabled when a
+  -- CREATEROLE login creates this NOINHERIT role. It is cleanup authority, not effective access.
   AND NOT EXISTS (
     SELECT 1 FROM pg_auth_members membership
+    JOIN pg_roles member_role ON member_role.oid=membership.member
+    JOIN pg_roles granted_role ON granted_role.oid=membership.roleid
+    WHERE (member_role.rolname=:'reconciler_role' OR granted_role.rolname=:'reconciler_role')
+      AND NOT (
+        granted_role.rolname=:'reconciler_role'
+        AND member_role.rolname=current_user
+        AND membership.admin_option
+        AND NOT membership.inherit_option
+        AND NOT membership.set_option
+      )
+  )
+  AND 1 >= (
+    SELECT count(*) FROM pg_auth_members membership
     JOIN pg_roles member_role ON member_role.oid=membership.member
     JOIN pg_roles granted_role ON granted_role.oid=membership.roleid
     WHERE member_role.rolname=:'reconciler_role' OR granted_role.rolname=:'reconciler_role'
@@ -189,5 +204,5 @@ SELECT (
 COMMIT;
 \else
 ROLLBACK;
-\quit 1
+SELECT 1/0;
 \endif

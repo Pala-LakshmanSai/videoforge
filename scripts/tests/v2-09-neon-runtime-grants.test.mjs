@@ -12,6 +12,11 @@ test("V2-09 runtime grants rebuild a closed pre-V2-10 function allowlist", () =>
   assert.match(source, /REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC/u);
   assert.match(source, /v209_runtime_function_allowlist/u);
   assert.match(source, /procedure\.oid::regprocedure::text NOT IN/u);
+  assert.match(source, /member_role\.rolname=current_user/u);
+  assert.match(source, /membership\.admin_option/u);
+  assert.match(source, /NOT membership\.inherit_option/u);
+  assert.match(source, /NOT membership\.set_option/u);
+  assert.match(source, /AND 1 >= \(\s*SELECT count\(\*\) FROM pg_auth_members/u);
   for (const required of [
     "videoforge_materialize_hosted_v209_ordinary_dispatch",
     "videoforge_commit_hosted_v209_ordinary_pair",
@@ -25,7 +30,8 @@ test("V2-09 runtime grants rebuild a closed pre-V2-10 function allowlist", () =>
 });
 
 test("V2-09 runtime grant failure paths exit nonzero", () => {
-  assert.doesNotMatch(source, /^\\quit\s*$/gmu);
-  assert.equal(source.match(/^\\quit 1$/gmu)?.length, 3);
-  assert.equal(source.match(/^ROLLBACK;\n\\quit 1$/gmu)?.length, 2);
+  assert.doesNotMatch(source, /^\\quit(?:\s|$)/gmu);
+  assert.equal(source.match(/^SELECT 1\/0;$/gmu)?.length, 3);
+  assert.equal(source.match(/^ROLLBACK;\nSELECT 1\/0;$/gmu)?.length, 2);
+  assert.ok(source.indexOf("\\set ON_ERROR_STOP on") < source.indexOf("\\if"));
 });

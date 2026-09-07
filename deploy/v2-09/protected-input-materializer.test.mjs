@@ -226,6 +226,8 @@ test("materializes fresh role credentials and pre-endpoint secrets without retur
   assert.equal(calls[0].env.PATH, "/test/libpq/bin:/usr/bin:/bin");
   assert.equal(calls[0].env.PGCHANNELBINDING, "require");
   assert.match(calls[0].sql, /CREATE ROLE/u);
+  assert.match(calls[0].sql, /LOGIN NOINHERIT PASSWORD/u);
+  assert.doesNotMatch(calls[0].sql, /GRANT .* TO/u);
   assert.doesNotMatch(calls[0].sql, /ALTER ROLE/u);
   assert.equal(statSync(value.configuration.databaseOperatorUrlFile).mode & 0o777, 0o600);
   assert.equal(
@@ -320,9 +322,17 @@ test("authority cleanup drops only marked roles and removes outputs including en
   assert.equal(existsSync(value.materialization.roleJournalPath), false);
   assert.equal(existsSync(sourcePath), true);
   assert.match(calls[0].sql, /COMMENT ON ROLE/u);
+  assert.doesNotMatch(calls[0].sql, /GRANT .* TO/u);
   assert.match(calls[1].sql, /shobj_description/u);
+  assert.match(calls[1].sql, /GRANT .* TO .* WITH INHERIT TRUE, SET FALSE/u);
+  assert.doesNotMatch(calls[1].sql, /WITH ADMIN OPTION/u);
   assert.match(calls[1].sql, /DROP OWNED BY/u);
+  assert.doesNotMatch(calls[1].sql, /SET (?:LOCAL )?ROLE/u);
+  assert.doesNotMatch(calls[1].sql, /RESET ROLE/u);
   assert.match(calls[1].sql, /DROP ROLE/u);
+  assert.match(calls[1].sql, /v2-09 role cleanup incomplete/u);
+  assert.ok(calls[1].sql.indexOf("GRANT ") < calls[1].sql.indexOf("DROP OWNED BY"));
+  assert.ok(calls[1].sql.indexOf("DROP OWNED BY") < calls[1].sql.indexOf("DROP ROLE"));
   assert.match(calls[1].sql, new RegExp(AUTHORITY_ID, "u"));
 
   const adopted = await cleanupV209ProtectedInputs({

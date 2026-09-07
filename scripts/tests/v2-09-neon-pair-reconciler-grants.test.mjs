@@ -34,6 +34,11 @@ test("V2-09 reconciler grants only the ordinary pair terminal and render capabil
   assert.match(source, /REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public/u);
   assert.match(source, /NOT rolinherit/u);
   assert.match(source, /rolconfig IS NULL/u);
+  assert.match(source, /member_role\.rolname=current_user/u);
+  assert.match(source, /membership\.admin_option/u);
+  assert.match(source, /NOT membership\.inherit_option/u);
+  assert.match(source, /NOT membership\.set_option/u);
+  assert.match(source, /AND 1 >= \(\s*SELECT count\(\*\) FROM pg_auth_members/u);
   for (const ownerColumn of [
     "datdba",
     "extowner",
@@ -96,7 +101,8 @@ test("V2-09 reconciler ACL proof keeps irreversible terminal writes away from ru
 });
 
 test("V2-09 reconciler ACL verification failures always exit psql nonzero", () => {
-  assert.doesNotMatch(source, /^\\quit\s*$/gmu);
-  assert.equal(source.match(/^\\quit 1$/gmu)?.length, 4);
-  assert.equal(source.match(/^ROLLBACK;\n\\quit 1$/gmu)?.length, 2);
+  assert.doesNotMatch(source, /^\\quit(?:\s|$)/gmu);
+  assert.equal(source.match(/^SELECT 1\/0;$/gmu)?.length, 4);
+  assert.equal(source.match(/^ROLLBACK;\nSELECT 1\/0;$/gmu)?.length, 2);
+  assert.ok(source.indexOf("\\set ON_ERROR_STOP on") < source.indexOf("\\if"));
 });

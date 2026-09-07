@@ -5,20 +5,20 @@
 --   psql --variable=operator_role=... --variable=runtime_role=... \
 --     --variable=reconciler_role=... --file=deploy/v2-09/neon-qualified-activation-operator-grants.sql
 
+\set ON_ERROR_STOP on
 \if :{?operator_role}
 \else
-\quit 1
+SELECT 1/0;
 \endif
 \if :{?runtime_role}
 \else
-\quit 1
+SELECT 1/0;
 \endif
 \if :{?reconciler_role}
 \else
-\quit 1
+SELECT 1/0;
 \endif
 
-\set ON_ERROR_STOP on
 BEGIN;
 SET search_path = public, pg_catalog;
 SELECT pg_advisory_xact_lock(1448494662,9);
@@ -56,7 +56,7 @@ WHERE rolname IN (:'operator_role',:'runtime_role',:'reconciler_role')
 \if :activation_roles_valid
 \else
 ROLLBACK;
-\quit 1
+SELECT 1/0;
 \endif
 
 REVOKE EXECUTE ON FUNCTION public.videoforge_import_hosted_v209_qualified_activation(jsonb)
@@ -98,22 +98,43 @@ SELECT (
     'public.videoforge_import_hosted_v209_qualified_activation(jsonb)','EXECUTE')
   AND NOT has_function_privilege(:'reconciler_role',
     'public.videoforge_import_hosted_v209_qualified_activation(jsonb)','EXECUTE')
-  AND NOT has_function_privilege('PUBLIC',
-    'public.videoforge_import_hosted_v209_qualified_activation(jsonb)','EXECUTE')
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_proc public_procedure
+    CROSS JOIN LATERAL aclexplode(
+      COALESCE(public_procedure.proacl,acldefault('f',public_procedure.proowner))
+    ) public_acl
+    WHERE public_procedure.oid=
+      'public.videoforge_import_hosted_v209_qualified_activation(jsonb)'::regprocedure
+      AND public_acl.grantee=0 AND public_acl.privilege_type='EXECUTE'
+  )
   AND has_function_privilege(:'runtime_role',
     'public.videoforge_load_hosted_gpu_activation_v2()','EXECUTE')
   AND NOT has_function_privilege(:'reconciler_role',
     'public.videoforge_load_hosted_gpu_activation_v2()','EXECUTE')
-  AND NOT has_function_privilege('PUBLIC',
-    'public.videoforge_load_hosted_gpu_activation_v2()','EXECUTE')
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_proc public_procedure
+    CROSS JOIN LATERAL aclexplode(
+      COALESCE(public_procedure.proacl,acldefault('f',public_procedure.proowner))
+    ) public_acl
+    WHERE public_procedure.oid=
+      'public.videoforge_load_hosted_gpu_activation_v2()'::regprocedure
+      AND public_acl.grantee=0 AND public_acl.privilege_type='EXECUTE'
+  )
   AND has_function_privilege(:'operator_role',
     'public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)','EXECUTE')
   AND NOT has_function_privilege(:'runtime_role',
     'public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)','EXECUTE')
   AND NOT has_function_privilege(:'reconciler_role',
     'public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)','EXECUTE')
-  AND NOT has_function_privilege('PUBLIC',
-    'public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)','EXECUTE')
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_proc public_procedure
+    CROSS JOIN LATERAL aclexplode(
+      COALESCE(public_procedure.proacl,acldefault('f',public_procedure.proowner))
+    ) public_acl
+    WHERE public_procedure.oid=
+      'public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)'::regprocedure
+      AND public_acl.grantee=0 AND public_acl.privilege_type='EXECUTE'
+  )
   AND has_schema_privilege(:'operator_role','public','USAGE')
   AND NOT has_schema_privilege(:'operator_role','public','CREATE')
   AND NOT EXISTS (
@@ -124,8 +145,23 @@ SELECT (
     SELECT 1 FROM information_schema.role_usage_grants
     WHERE grantee=:'operator_role' AND object_schema='public'
   )
+  -- PostgreSQL 16+ records one creator-admin membership with INHERIT/SET disabled when a
+  -- CREATEROLE login creates this NOINHERIT role. It is cleanup authority, not effective access.
   AND NOT EXISTS (
     SELECT 1 FROM pg_auth_members membership
+    JOIN pg_roles member_role ON member_role.oid=membership.member
+    JOIN pg_roles granted_role ON granted_role.oid=membership.roleid
+    WHERE (member_role.rolname=:'operator_role' OR granted_role.rolname=:'operator_role')
+      AND NOT (
+        granted_role.rolname=:'operator_role'
+        AND member_role.rolname=current_user
+        AND membership.admin_option
+        AND NOT membership.inherit_option
+        AND NOT membership.set_option
+      )
+  )
+  AND 1 >= (
+    SELECT count(*) FROM pg_auth_members membership
     JOIN pg_roles member_role ON member_role.oid=membership.member
     JOIN pg_roles granted_role ON granted_role.oid=membership.roleid
     WHERE member_role.rolname=:'operator_role' OR granted_role.rolname=:'operator_role'
@@ -154,5 +190,5 @@ SELECT (
 COMMIT;
 \else
 ROLLBACK;
-\quit 1
+SELECT 1/0;
 \endif

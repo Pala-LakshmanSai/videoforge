@@ -78,6 +78,16 @@ test("V2-09 activation import is operator-only and its readback loader is runtim
   assert.match(sql, /REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"operator_role";/u);
   assert.match(sql, /NOT EXISTS \( SELECT 1 FROM information_schema\.role_table_grants/u);
   assert.match(sql, /NOT EXISTS \( SELECT 1 FROM information_schema\.role_usage_grants/u);
+  assert.match(sql, /member_role\.rolname=current_user/u);
+  assert.match(sql, /membership\.admin_option/u);
+  assert.match(sql, /NOT membership\.inherit_option/u);
+  assert.match(sql, /NOT membership\.set_option/u);
+  assert.match(sql, /AND 1 >= \( SELECT count\(\*\) FROM pg_auth_members/u);
+  assert.doesNotMatch(sql, /has_function_privilege\('PUBLIC'/u);
+  assert.equal(
+    sql.match(/public_acl\.grantee=0 AND public_acl\.privilege_type='EXECUTE'/gu)?.length,
+    3,
+  );
   assert.match(sql, /activation_import_acl_exact/u);
   assert.match(sql, /procedure\.oid::regprocedure::text<>ALL/u);
   assert.match(sql, /videoforge_load_hosted_gpu_activation_v2\(\)/u);
@@ -87,9 +97,10 @@ test("V2-09 activation import is operator-only and its readback loader is runtim
 
 test("V2-09 operator ACL verification failures always exit psql nonzero", async () => {
   const sql = await readFile(grantsPath, "utf8");
-  assert.doesNotMatch(sql, /^\\quit\s*$/gmu);
-  assert.equal(sql.match(/^\\quit 1$/gmu)?.length, 5);
-  assert.equal(sql.match(/^ROLLBACK;\n\\quit 1$/gmu)?.length, 2);
+  assert.doesNotMatch(sql, /^\\quit(?:\s|$)/gmu);
+  assert.equal(sql.match(/^SELECT 1\/0;$/gmu)?.length, 5);
+  assert.equal(sql.match(/^ROLLBACK;\nSELECT 1\/0;$/gmu)?.length, 2);
+  assert.ok(sql.indexOf("\\set ON_ERROR_STOP on") < sql.indexOf("\\if"));
 });
 
 test("V2-09 activation import and completion baseline use only hardened SECURITY DEFINER capabilities", async () => {
