@@ -1,0 +1,36 @@
+{
+  "schema_version": "videoforge.v2-09-provider-free-pg-service-repair/v1",
+  "checkpoint": "V2-09",
+  "repair_commit": "6b2d2e91f583faaad8eadf13052e105786f969a4",
+  "observed_at": "2026-09-07T12:52:53Z",
+  "consumed_authority": "v2-09-ea4e2e45c34f740d",
+  "consumed_proposal_sha256": "sha256:ea4e2e45c34f740ddd468153076c3fc08243687a402490ab2e040daba449e396",
+  "failure_evidence_sha256": "sha256:b61620dd0f8eb4b2c540f6825797c6e761aa973f5e0494cf09dfde35474845c7",
+  "repair": {
+    "pg_service_sections": 1,
+    "required_keys": ["host", "dbname", "user", "sslmode", "channel_binding"],
+    "sslmode": "require",
+    "channel_binding": "require",
+    "url_query_policy": "EXACT_SSLMODE_REQUIRE_AND_CHANNEL_BINDING_REQUIRE_NO_EXTRAS_DUPLICATES_OR_HASH",
+    "psql_environment": "PGSSLMODE_REQUIRE_AND_PGCHANNELBINDING_REQUIRE",
+    "media_worker_child_environment": "PGCHANNELBINDING_REQUIRE_PRESERVED"
+  },
+  "focused_tests": {
+    "command": "node --test deploy/v2-09/protected-input-materializer.test.mjs deploy/v2-09/execute-combined-qualified-production.test.mjs deploy/v2-09/concrete-qualified-production-adapters.test.mjs deploy/v2-09/media-worker-production-operator.test.mjs deploy/v2-09/read-only-preflight.test.mjs",
+    "passed": 118,
+    "failed": 0
+  },
+  "independent_audit": {
+    "decision": "GO",
+    "p0": 0,
+    "p1": 0
+  },
+  "stage_6_modified_or_rerun": false,
+  "stage_7_modified_or_rerun": false,
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "remote_mutations": 0,
+  "gpu_jobs": 0,
+  "external_spend_usd": 0,
+  "next_boundary": "FRESH_EXACT_SOURCE_BOUND_PROPOSAL_AND_USER_APPROVAL"
+}

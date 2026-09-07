@@ -470,8 +470,8 @@ gates:
     latest_closed_control_source_commit: "e5d0c4523097e483ee45a3a27f27d7abc4f6c21a"
     latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-descriptor-head-pg-service.json"
     latest_closed_failure_sha256: "sha256:b61620dd0f8eb4b2c540f6825797c6e761aa973f5e0494cf09dfde35474845c7"
-    provider_free_repair_state: "Hosted projects remain NULL/unlimited. The preflight fully hashes each exact immutable manifest/config, validates every ordered layer descriptor against the frozen full-byte proof anchor, then issues one bounded anonymous HEAD per unique layer with exact content length, optional digest, signed redirect, and no-auth-forwarding checks. It downloads no layer bodies and preserves the first failure across shared cancellation. Focused preflight tests pass 23/23 and combined focused tests pass 47/47."
-    next_gate: "Repair the exact pg_service closed-world contract provider-free, audit and commit it, recompute the media bundle, then seal and obtain fresh exact approval; never replay consumed proposal ea4e2e45."
+    provider_free_repair_state: "Repair 6b2d2e91 requires exactly one pg_service section with exact keys host, dbname, user, sslmode, channel_binding; requires sslmode=require and channel_binding=require; requires the exact matching URL query; and propagates PGCHANNELBINDING=require through protected materialization, combined baseline, all concrete database environments, and the sanitized media-worker child environment. The five focused suites pass 118/118 and independent audit is GO P0=0/P1=0. Stage 6/7 were untouched."
+    next_gate: "Commit final context, recompute the exact source-bound media bundle, seal and independently audit a fresh proposal, then obtain fresh exact approval; never replay consumed proposal ea4e2e45."
 
   GATE_RANGA_001:
     status: open
