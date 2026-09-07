@@ -33,7 +33,7 @@ current_goal_boundary:
 v2_09_provider_free_candidate:
   source_commit: "7ff69fdeecfb02b16cf22e0d6149e6fdbe38b912"
   source_audit: "PASS_INDEPENDENT_FOCUSED_P0_0_P1_0"
-  canonical_provider_free_verification: PASS_EXIT_0_INCLUDING_431_CONTROL_PLANE_44_INSTALLED_CHROME
+  canonical_provider_free_verification: INHERITED_PREDECESSOR_AA8353EF_PASS_NOT_RERUN_FOR_NARROW_SUCCESSOR
   production_state: DISABLED_UNQUALIFIED
   deployed_database_head: 73
   candidate_database_head: 84
