@@ -455,11 +455,11 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_authority_state: none
-    current_proposal_sha256: null
-    current_control_source_commit: null
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-shared-abort-slow-link.json"
+    current_authority_sha256: "sha256:3e92723aacb5b8971db86261aed0f61c46d15c15479db7f5f4c5fe770afcf3f5"
+    current_authority_state: approved_materialized_pending_independent_diff_audit
+    current_proposal_sha256: "sha256:918922376c1f567774cc0c2da9feeb78c42fee3a311cfc2e4b8e3683488fe161"
+    current_control_source_commit: "f226c321b1151da30c2484fb45f847409f87fdb5"
     current_failure: null
     current_failure_sha256: null
     current_audit_stop: null
@@ -471,7 +471,7 @@ gates:
     latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-ghcr-throughput-deadline.json"
     latest_closed_failure_sha256: "sha256:961ad6767bd51b9c02e942ff919f428c681de37e6be20a24c44f3a4b41e295fc"
     provider_free_repair_state: "Hosted projects remain NULL/unlimited. GHCR preflight now shares one cancellation signal across RunPod and both frozen-image branches, awaits sibling settlement on first failure, and uses a conservative 256-KiB/s size budget plus five-minute grace under the unchanged two-hour ceiling. Exact bytes/digests and 60-second idle timeout remain. Focused preflight tests pass 20/20 and combined focused tests pass 44/44."
-    next_gate: "Independently audit the provider-free shared-abort/slow-link repair, commit a clean source, recompute its exact media bundle, then seal one replacement combined proposal."
+    next_gate: "Independently audit the single authority-materialization successor, then run the approved combined preflight, conditional production activation, and one Chrome E2E."
 
   GATE_RANGA_001:
     status: open
