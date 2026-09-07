@@ -201,6 +201,60 @@ test("RunPod preflight performs only bounded identity, billing, inventory, and S
   }
 });
 
+test("RunPod preflight propagates a redacted flex subcode without returning proof", async () => {
+  const apiKey = "runpod-test-key-that-is-never-returned";
+  const accountId = "test-account-id";
+  const rawVolumes = [
+    { id: "test-mage-volume", size: 50, dataCenterId: "EU-RO-1" },
+    { id: "test-soulx-volume", size: 50, dataCenterId: "EU-RO-1" },
+  ];
+  const volumePins = rawVolumes.map((volume, index) => ({
+    lane: index === 0 ? "mage_image" : "soulx_avatar",
+    volumeIdSha256: hash(volume.id),
+    volumeManifestSha256: hash(`manifest-${index}`),
+    sizeGb: 50,
+    region: "EU-RO-1",
+  }));
+  const fetchImpl = async (input) => {
+    const url = new URL(input);
+    if (url.href === "https://api.runpod.io/graphql")
+      return response(JSON.stringify({ data: { myself: { id: accountId } } }));
+    if (url.pathname === "/v2/catalog/gpus")
+      return response(
+        JSON.stringify([
+          {
+            id: "NVIDIA GeForce RTX 4090",
+            manufacturer: "NVIDIA",
+            price: { flex: null },
+            dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
+          },
+        ]),
+      );
+    if (url.pathname === "/v1/networkvolumes") return response(JSON.stringify(rawVolumes));
+    if (url.pathname === "/v1/billing/endpoints") return response("[]");
+    if (["/v1/pods", "/v1/endpoints", "/v1/templates"].includes(url.pathname))
+      return response("[]");
+    throw new Error("unexpected bounded read");
+  };
+  let proof;
+  await assert.rejects(
+    async () => {
+      proof = await readRunPodEvidence({
+        apiKey,
+        fetchImpl,
+        checkedAt: "2026-09-06T12:00:00.000Z",
+        expectedAccountIdSha256: hash(accountId),
+        retainedVolumePins: volumePins,
+      });
+    },
+    (error) =>
+      error instanceof Error &&
+      error.message ===
+        "V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_TYPE",
+  );
+  assert.equal(proof, undefined);
+});
+
 function imageFixture() {
   const labels = {
     "ai.videoforge.source-commit": "1".repeat(40),

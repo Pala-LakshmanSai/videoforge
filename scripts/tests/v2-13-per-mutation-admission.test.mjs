@@ -266,22 +266,31 @@ test("authenticated official Serverless catalog is parsed instead of synthesizin
       () => parseAuthenticatedRunPodServerlessFlexRate(gpus),
       /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_GPU_MATCH/u,
     );
-  for (const price of [
-    {},
-    { serverless: 0.00031 },
-    { flex: "unknown" },
-    { flex: "00.00031" },
-    { flex: " 0.00031" },
-    { flex: "+0.00031" },
-    { flex: "3.1e-4" },
-    { flex: "0.000.31" },
-    { flex: 0 },
-    { flex: Number.POSITIVE_INFINITY },
-  ])
+  for (const [price, code] of [
+    [null, "PRICE_SHAPE"],
+    [[], "PRICE_SHAPE"],
+    ["0.00031", "PRICE_SHAPE"],
+    [{}, "FLEX_MISSING"],
+    [{ serverless: 0.00031 }, "FLEX_MISSING"],
+    [{ flex: null }, "FLEX_TYPE"],
+    [{ flex: true }, "FLEX_TYPE"],
+    [{ flex: "unknown" }, "FLEX_FORMAT"],
+    [{ flex: "00.00031" }, "FLEX_FORMAT"],
+    [{ flex: " 0.00031" }, "FLEX_FORMAT"],
+    [{ flex: "+0.00031" }, "FLEX_FORMAT"],
+    [{ flex: "3.1e-4" }, "FLEX_FORMAT"],
+    [{ flex: "0.000.31" }, "FLEX_FORMAT"],
+    [{ flex: Number.POSITIVE_INFINITY }, "FLEX_NONFINITE"],
+    [{ flex: "9".repeat(400) }, "FLEX_NONFINITE"],
+    [{ flex: 0 }, "FLEX_NONPOSITIVE"],
+    [{ flex: "0.000000" }, "FLEX_NONPOSITIVE"],
+  ]) {
+    const expected = `V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_${code}`;
     assert.throws(
       () => parseAuthenticatedRunPodServerlessFlexRate([{ ...gpu, price }]),
-      /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE/u,
+      (error) => error instanceof Error && error.message === expected,
     );
+  }
   for (const flex of [0.0003101, "0.000311"])
     assert.throws(
       () => parseAuthenticatedRunPodServerlessFlexRate([{ ...gpu, price: { flex } }]),
@@ -305,6 +314,19 @@ test("authenticated official Serverless catalog is parsed instead of synthesizin
         { ...gpu, dataCenters: [{ id: "EU-RO-1", availability: "NONE" }] },
       ]),
     /RUNPOD_MUTATION_ADMISSION_CAPACITY_BELOW_THRESHOLD/u,
+  );
+  assert.throws(
+    () =>
+      parseAuthenticatedRunPodServerlessFlexRate([
+        {
+          ...gpu,
+          price: { flex: null },
+          dataCenters: [{ id: "EU-RO-1", availability: "NONE" }],
+        },
+      ]),
+    (error) =>
+      error instanceof Error &&
+      error.message === "V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_CAPACITY_BELOW_THRESHOLD",
   );
   assert.throws(
     () =>

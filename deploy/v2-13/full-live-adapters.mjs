@@ -3771,29 +3771,6 @@ export function parseAuthenticatedRunPodServerlessFlexRate(catalog) {
       candidate?.manufacturer === "NVIDIA" && candidate.id === "NVIDIA GeForce RTX 4090",
   );
   if (matches.length !== 1) fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_GPU_MATCH");
-  const price = matches[0]?.price;
-  if (
-    price === null ||
-    typeof price !== "object" ||
-    Array.isArray(price) ||
-    !Object.hasOwn(price, "flex")
-  )
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE");
-  const rawRate = price.flex;
-  const canonicalDecimal = /^(?:0|[1-9]\d*)(?:\.\d+)?$/u;
-  if (
-    !(
-      (typeof rawRate === "number" && Number.isFinite(rawRate)) ||
-      (typeof rawRate === "string" && canonicalDecimal.test(rawRate))
-    )
-  )
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE");
-  const rateUsdPerSecond = typeof rawRate === "number" ? rawRate : Number(rawRate);
-  const rateUsdPerGpuHour = rateUsdPerSecond * 3600;
-  if (!Number.isFinite(rateUsdPerSecond) || rateUsdPerSecond <= 0)
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE");
-  if (rateUsdPerSecond > 0.00031 || rateUsdPerGpuHour > 1.116)
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE_CAP");
   const dataCenters = exactRunPodInventoryArray(
     matches[0]?.dataCenters,
     "RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_REGION_MATCH",
@@ -3804,6 +3781,25 @@ export function parseAuthenticatedRunPodServerlessFlexRate(catalog) {
   if (availability === "NONE") fail("RUNPOD_MUTATION_ADMISSION_CAPACITY_BELOW_THRESHOLD");
   if (!["LOW", "MEDIUM", "HIGH"].includes(availability))
     fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_AVAILABILITY");
+  const price = matches[0]?.price;
+  if (price === null || typeof price !== "object" || Array.isArray(price))
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_PRICE_SHAPE");
+  if (!Object.hasOwn(price, "flex"))
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_MISSING");
+  const rawRate = price.flex;
+  const canonicalDecimal = /^(?:0|[1-9]\d*)(?:\.\d+)?$/u;
+  if (typeof rawRate !== "number" && typeof rawRate !== "string")
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_TYPE");
+  if (typeof rawRate === "string" && !canonicalDecimal.test(rawRate))
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_FORMAT");
+  const rateUsdPerSecond = typeof rawRate === "number" ? rawRate : Number(rawRate);
+  const rateUsdPerGpuHour = rateUsdPerSecond * 3600;
+  if (!Number.isFinite(rateUsdPerSecond))
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_NONFINITE");
+  if (rateUsdPerSecond <= 0)
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_NONPOSITIVE");
+  if (rateUsdPerSecond > 0.00031 || rateUsdPerGpuHour > 1.116)
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE_CAP");
   return Object.freeze({
     rateUsdPerSecond,
     rateUsdPerGpuHour,
