@@ -51,6 +51,46 @@ function fixture() {
     "database-runtime.url",
     "postgresql://videoforge_runtime:runtime-secret@db.example.test:5432/videoforge?sslmode=require",
   );
+  const qualifiedBindingFile = privateFile(
+    "binding.json",
+    JSON.stringify({
+      schema_version: "videoforge-v2-09-qualified-production-config-preparation/v1",
+      authority: {
+        mode: "PROVIDER_FREE_CONFIG_PREPARATION",
+        credential_access_authorized: false,
+        deployment_authorized: false,
+        provider_calls_authorized: false,
+        external_spend_usd: 0,
+      },
+      release: { source_commit: SOURCE, media_worker_release_manifest_sha256: hash("{}") },
+      production: {
+        account_id: "1".repeat(32),
+        worker_name: "videoforge-production-runtime",
+        assets_binding: "ASSETS",
+        r2_binding: "PRIVATE_ARTIFACTS",
+        r2_bucket_name: "videoforge-private-artifacts",
+        video_workflow_binding: "VIDEO_WORKFLOW",
+        video_workflow_name: "videoforge-video-workflow",
+        pair_workflow_binding: "HOSTED_PAIR_WORKFLOW",
+        pair_workflow_name: "videoforge-pair-workflow",
+        provenance_receipt_secret_binding: "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+        provenance_receipt_key_id_binding: "VIDEOFORGE_PROVIDER_PROOF_KEY_ID",
+        public_origin: "https://videoforge.example",
+      },
+      lanes: {
+        mage_image: {
+          qualification_record_sha256: QUALIFIED_LANES[0].acceptance_sha256,
+          worker_image_digest: QUALIFIED_LANES[0].image_sha256,
+          endpoint_id_sha256: hash("static-mage-endpoint"),
+        },
+        soulx_avatar: {
+          qualification_record_sha256: QUALIFIED_LANES[1].acceptance_sha256,
+          worker_image_digest: QUALIFIED_LANES[1].image_sha256,
+          endpoint_id_sha256: hash("static-soulx-endpoint"),
+        },
+      },
+    }),
+  );
   const chromeRequestFile = privateFile(
     "chrome-request.json",
     JSON.stringify({
@@ -89,7 +129,7 @@ function fixture() {
       branch: BRANCH,
       pushRef: PUSH_REF,
       remote: "origin",
-      migrationMode: "APPLY_0074_0084",
+      migrationMode: "APPLY_0074_0085",
       runtimeRole: "videoforge_runtime",
       operatorRole: "videoforge_operator",
       reconcilerRole: "videoforge_reconciler",
@@ -116,7 +156,7 @@ function fixture() {
       databaseReconcilerUrlFile,
       chromeRequestFile,
       chromeAuthStateFile,
-      qualifiedBindingFile: privateFile("binding.json", "{}"),
+      qualifiedBindingFile,
       mediaReleaseManifestFile: privateFile("release.json", "{}"),
       qualifiedConfigOutputFile: resolve(directory, "qualified.toml"),
       qualifiedConfigReceiptFile: resolve(directory, "qualified-receipt.json"),
@@ -199,12 +239,12 @@ function childRunner(
       input.command === "psql" &&
       input.options?.input?.includes("videoforge.v2-09-migration-result/v1")
     ) {
-      const verified = input.options.input.includes("VERIFIED_EXISTING_0084");
+      const verified = input.options.input.includes("VERIFIED_EXISTING_0085");
       stdout = JSON.stringify({
         schemaVersion: "videoforge.v2-09-migration-result/v1",
-        mode: verified ? "VERIFIED_EXISTING_0084" : "APPLIED_0074_0084",
-        fromVersion: verified ? 84 : 73,
-        toVersion: 84,
+        mode: verified ? "VERIFIED_EXISTING_0085" : "APPLIED_0074_0085",
+        fromVersion: verified ? 85 : 73,
+        toVersion: 85,
       });
     }
     if (input.command === "git" && input.args.join(" ") === "rev-parse HEAD") stdout = SOURCE;
@@ -228,13 +268,17 @@ function childRunner(
     }
     if (
       input.args.some((value) => String(value).endsWith("render-qualified-production-config.mjs"))
-    )
+    ) {
+      const bindingPath = input.args[input.args.indexOf("--binding") + 1];
+      const binding = JSON.parse(readFileSync(bindingPath, "utf8"));
       stdout = JSON.stringify({
         schema_version: "videoforge-v2-09-qualified-production-config-preparation-receipt/v1",
         source_commit: SOURCE,
+        binding_sha256: hash(readFileSync(bindingPath)),
         config_sha256: `sha256:${"8".repeat(64)}`,
         worker_bundle_sha256: renderedWorkerBundleSha256,
         media_worker_release: { version: "0.1.15", manifest_sha256: hash("{}") },
+        lanes: binding.lanes,
         gpu_transport: "QUALIFIED_EXACT",
         production_build_verified: true,
         wrangler_dry_run_succeeded: true,
@@ -242,6 +286,7 @@ function childRunner(
         provider_calls: 0,
         external_spend_usd: 0,
       });
+    }
     if (input.args.some((value) => String(value).endsWith("v209-runpod-production-bridge.ts"))) {
       const request = JSON.parse(input.options.input);
       if (request.command !== "CREATE_OR_READ_LANE") {
@@ -846,6 +891,50 @@ function authority(adapterIdentitySha256) {
   };
 }
 
+function stagedPriorResults() {
+  const created = QUALIFIED_LANES.map((lane) => {
+    const operationId = `create-${lane.lane}-production-lane-max-one`;
+    return {
+      schema_version: "videoforge.v2-09-production-lane-result/v1",
+      operation_id: operationId,
+      lane: lane.lane,
+      gpu: lane.gpu,
+      region: lane.region,
+      workers_min: lane.workers_min,
+      workers_max: lane.workers_max,
+      handler_concurrency: lane.handler_concurrency,
+      retained_volume_size_gb: lane.volume_size_gb,
+      image_sha256: lane.image_sha256,
+      image_source_commit: lane.image_source_commit,
+      image_config_sha256: lane.image_config_sha256,
+      anonymous_proof_sha256: lane.anonymous_proof_sha256,
+      acceptance_sha256: lane.acceptance_sha256,
+      volume_id_sha256: lane.volume_id_sha256,
+      volume_manifest_sha256: lane.volume_manifest_sha256,
+      endpoint_id_sha256: hash(`${lane.lane}-observed-endpoint`),
+      template_id_sha256: hash(`${lane.lane}-observed-template`),
+      deployment_sha256: hash(`${lane.lane}-observed-deployment`),
+    };
+  });
+  const persistence = {
+    schema_version: "videoforge.v2-09-deployment-persistence-result/v1",
+    operation_id: "persist-qualified-production-deployments",
+    persisted_deployment_count: 2,
+    deployments: created.map((result) => ({
+      lane: result.lane,
+      deployment_sha256: result.deployment_sha256,
+      endpoint_id_sha256: result.endpoint_id_sha256,
+      template_id_sha256: result.template_id_sha256,
+      deployment_row_id_sha256: hash(`${result.lane}-observed-row`),
+    })),
+  };
+  return [
+    [created[0].operation_id, created[0]],
+    [created[1].operation_id, created[1]],
+    [persistence.operation_id, persistence],
+  ];
+}
+
 test("adapter identity seals this source and every exact narrow port", () => {
   const ports = portSet();
   const identity = concreteAdapterIdentity(ports);
@@ -982,10 +1071,10 @@ test("source push/readback and database commands are closed, exact child invocat
   const value = authority(adapters.identity_sha256);
   await adapters.operations["push-clean-source"]({ authority: value });
   await adapters.operations["readback-clean-source"]({ authority: value });
-  const migration = await adapters.operations["apply-migrations-0074-0084"]({ operation: {} });
+  const migration = await adapters.operations["apply-migrations-0074-0085"]({ operation: {} });
   const grants = await adapters.operations["apply-v209-grants"]({});
-  assert.equal(migration.mode, "APPLIED_0074_0084");
-  assert.equal(grants.migration_head, 84);
+  assert.equal(migration.mode, "APPLIED_0074_0085");
+  assert.equal(grants.migration_head, 85);
   assert.deepEqual(
     childCalls.find(({ command, args }) => command === "git" && args[0] === "push")?.args,
     ["push", "--porcelain", "origin", `${SOURCE}:${PUSH_REF}`],
@@ -1001,6 +1090,7 @@ test("source push/readback and database commands are closed, exact child invocat
   );
   assert.ok(migrationCall);
   assert.match(migrationCall.options.input, /0084_hosted_v209_staged_click_cleanup/u);
+  assert.match(migrationCall.options.input, /0085_hosted_v209_completion_baseline/u);
   assert.doesNotMatch(migrationCall.options.input, /neon-runtime-grants|v213_/u);
   assert.equal(
     childCalls.some(({ args }) => args.some((arg) => /v2-1[0-3]/u.test(arg))),
@@ -1056,9 +1146,19 @@ test("config rendering binds static authority to observed hashes and supports st
     /V2_09_CONCRETE_RENDER_CONFIG_DRIFT/u,
   );
 
-  const stagedAdapters = createConcreteQualifiedProductionAdapters(configuration, {
+  const stagedFixture = fixture();
+  const stagedTemplate = JSON.parse(
+    readFileSync(stagedFixture.configuration.qualifiedBindingFile, "utf8"),
+  );
+  stagedTemplate.lanes.mage_image.endpoint_id_sha256 = "__V2_09_OBSERVED_MAGE_ENDPOINT__";
+  stagedTemplate.lanes.soulx_avatar.endpoint_id_sha256 = "__V2_09_OBSERVED_SOULX_ENDPOINT__";
+  writeFileSync(stagedFixture.configuration.qualifiedBindingFile, JSON.stringify(stagedTemplate), {
+    mode: 0o600,
+  });
+  const stagedChildCalls = [];
+  const stagedAdapters = createConcreteQualifiedProductionAdapters(stagedFixture.configuration, {
     ports: portSet(),
-    runChild: childRunner(),
+    runChild: childRunner(stagedChildCalls),
   });
   const stagedAuthority = valueFor(stagedAdapters);
   stagedAuthority.execution = "V2_09_PREFLIGHT_THEN_QUALIFIED_PRODUCTION_ONCE";
@@ -1066,13 +1166,39 @@ test("config rendering binds static authority to observed hashes and supports st
   delete stagedAuthority.production.worker_bundle_sha256;
   const staged = await stagedAdapters.operations["render-qualified-production-config"]({
     authority: stagedAuthority,
+    priorResults: stagedPriorResults(),
     receiptBindingMode: "STAGED_OBSERVED",
   });
   assert.equal(staged.config_sha256, `sha256:${"8".repeat(64)}`);
   assert.equal(staged.worker_bundle_sha256, `sha256:${"9".repeat(64)}`);
+  const renderCall = stagedChildCalls.find(({ args }) =>
+    args.some((value) => String(value).endsWith("render-qualified-production-config.mjs")),
+  );
+  const observedBinding = JSON.parse(
+    readFileSync(renderCall.args[renderCall.args.indexOf("--binding") + 1], "utf8"),
+  );
+  assert.equal(observedBinding.lanes.mage_image.endpoint_id_sha256, hash("mage-observed-endpoint"));
+  assert.equal(
+    observedBinding.lanes.soulx_avatar.endpoint_id_sha256,
+    hash("soulx-observed-endpoint"),
+  );
+  assert.equal(observedBinding.release.media_worker_release_manifest_sha256, hash("{}"));
+  assert.equal(observedBinding.release.source_commit, SOURCE);
+  assert.equal(observedBinding.production.worker_name, "videoforge-production-runtime");
+  const inconsistentPriorResults = stagedPriorResults();
+  inconsistentPriorResults[2][1].deployments[0].endpoint_id_sha256 = hash("tampered-endpoint");
   await assert.rejects(
     stagedAdapters.operations["render-qualified-production-config"]({
       authority: stagedAuthority,
+      priorResults: inconsistentPriorResults,
+      receiptBindingMode: "STAGED_OBSERVED",
+    }),
+    /V2_09_CONCRETE_STAGED_BINDING_INPUT_INVALID/u,
+  );
+  await assert.rejects(
+    stagedAdapters.operations["render-qualified-production-config"]({
+      authority: stagedAuthority,
+      priorResults: stagedPriorResults(),
       receiptBindingMode: "UNBOUNDED",
     }),
     /V2_09_CONCRETE_RENDER_CONFIG_BINDING_MODE_INVALID/u,
@@ -1088,6 +1214,7 @@ test("config rendering binds static authority to observed hashes and supports st
   await assert.rejects(
     invalidAdapters.operations["render-qualified-production-config"]({
       authority: invalidAuthority,
+      priorResults: stagedPriorResults(),
       receiptBindingMode: "STAGED_OBSERVED",
     }),
     /V2_09_CONCRETE_RENDER_CONFIG_DRIFT/u,

@@ -25,6 +25,7 @@ import {
 } from "./execute-qualified-production.mjs";
 import { readRunPodEvidence } from "./read-only-preflight.mjs";
 import { createV209MediaWorkerProductionPorts } from "./media-worker-production-operator.mjs";
+import { validatePreparationBinding } from "./validate-qualified-production-config.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const SOURCE_PATH = fileURLToPath(import.meta.url);
@@ -46,7 +47,7 @@ const DIRECT_DEPENDENCY_PATHS = Object.freeze([
   "deploy/v2-09/v209-runpod-production-bridge.ts",
   "deploy/v2-09/v209-real-chrome-bridge.ts",
   "packages/control-plane/migrations/manifest.json",
-  ...Array.from({ length: 11 }, (_, index) => {
+  ...Array.from({ length: 12 }, (_, index) => {
     const version = 74 + index;
     const entry = JSON.parse(
       readFileSync(resolve(ROOT, "packages/control-plane/migrations/manifest.json"), "utf8"),
@@ -139,7 +140,7 @@ export function createV209BuiltInProductionPorts(configuration) {
 const DIRECT_OPERATION_IDS = new Set([
   "push-clean-source",
   "readback-clean-source",
-  "apply-migrations-0074-0084",
+  "apply-migrations-0074-0085",
   "apply-v209-grants",
   "fresh-read-only-admission",
   "create-mage-production-lane-max-one",
@@ -196,7 +197,7 @@ function loadV209MigrationBundle() {
   if (
     manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(manifest.migrations) ||
-    manifest.migrations.length !== 84 ||
+    manifest.migrations.length !== 85 ||
     manifest.migrations.some((entry, index) => entry?.version !== index + 1)
   )
     fail("V2_09_CONCRETE_MIGRATION_MANIFEST_INVALID");
@@ -206,7 +207,7 @@ function loadV209MigrationBundle() {
     if (sha256(bytes) !== entry.sha256) fail("V2_09_CONCRETE_MIGRATION_SOURCE_DRIFT");
     return Object.freeze({ ...entry, sql: bytes.toString("utf8") });
   });
-  if (selected.length !== 11 || selected[0].version !== 74 || selected.at(-1).version !== 84)
+  if (selected.length !== 12 || selected[0].version !== 74 || selected.at(-1).version !== 85)
     fail("V2_09_CONCRETE_MIGRATION_MANIFEST_INVALID");
   const ledger = (length) =>
     canonical(
@@ -214,7 +215,7 @@ function loadV209MigrationBundle() {
         .slice(0, length)
         .map(({ version, name, filename, sha256: digest }) => [version, name, filename, digest]),
     );
-  return Object.freeze({ selected, prefixLedger: ledger(73), finalLedger: ledger(84) });
+  return Object.freeze({ selected, prefixLedger: ledger(73), finalLedger: ledger(85) });
 }
 
 function renderV209MigrationSql(bundle, verifyExisting) {
@@ -236,7 +237,7 @@ function renderV209MigrationSql(bundle, verifyExisting) {
     guard(expectedBefore, "V2-09 migration ledger prefix drift"),
     body,
     guard(bundle.finalLedger, "V2-09 migration ledger final drift"),
-    `SELECT jsonb_build_object('schemaVersion','videoforge.v2-09-migration-result/v1','mode','${verifyExisting ? "VERIFIED_EXISTING_0084" : "APPLIED_0074_0084"}','fromVersion',${verifyExisting ? 84 : 73},'toVersion',84);`,
+    `SELECT jsonb_build_object('schemaVersion','videoforge.v2-09-migration-result/v1','mode','${verifyExisting ? "VERIFIED_EXISTING_0085" : "APPLIED_0074_0085"}','fromVersion',${verifyExisting ? 85 : 73},'toVersion',85);`,
     "COMMIT;",
     "",
   ].join("\n");
@@ -1111,7 +1112,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     configuration.branch !== BRANCH ||
     configuration.pushRef !== PUSH_REF ||
     configuration.remote !== "origin" ||
-    !["APPLY_0074_0084", "VERIFY_EXISTING_0084"].includes(configuration.migrationMode) ||
+    !["APPLY_0074_0085", "VERIFY_EXISTING_0085"].includes(configuration.migrationMode) ||
     !ROLE.test(configuration.runtimeRole ?? "") ||
     !ROLE.test(configuration.operatorRole ?? "") ||
     !ROLE.test(configuration.reconcilerRole ?? "") ||
@@ -1427,8 +1428,8 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       fail("V2_09_CONCRETE_SOURCE_READBACK_DRIFT");
     return { operation_id: "readback-clean-source", source_commit: commit, destination_ref: ref };
   };
-  operations["apply-migrations-0074-0084"] = async ({ operation }) => {
-    const verifyExisting = configuration.migrationMode === "VERIFY_EXISTING_0084";
+  operations["apply-migrations-0074-0085"] = async ({ operation }) => {
+    const verifyExisting = configuration.migrationMode === "VERIFY_EXISTING_0085";
     const output = await exactChild(
       runChild,
       configuration,
@@ -1445,25 +1446,25 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     if (
       !exactKeys(receipt, ["fromVersion", "mode", "schemaVersion", "toVersion"]) ||
       receipt.schemaVersion !== "videoforge.v2-09-migration-result/v1" ||
-      receipt.mode !== (verifyExisting ? "VERIFIED_EXISTING_0084" : "APPLIED_0074_0084") ||
-      receipt.fromVersion !== (verifyExisting ? 84 : 73) ||
-      receipt.toVersion !== 84
+      receipt.mode !== (verifyExisting ? "VERIFIED_EXISTING_0085" : "APPLIED_0074_0085") ||
+      receipt.fromVersion !== (verifyExisting ? 85 : 73) ||
+      receipt.toVersion !== 85
     )
       fail("V2_09_CONCRETE_MIGRATION_RECEIPT_INVALID");
     return verifyExisting
       ? {
-          operation_id: "apply-migrations-0074-0084",
-          mode: "VERIFIED_EXISTING_0084",
-          from_version: 84,
-          to_version: 84,
+          operation_id: "apply-migrations-0074-0085",
+          mode: "VERIFIED_EXISTING_0085",
+          from_version: 85,
+          to_version: 85,
           applied_versions: [],
         }
       : {
-          operation_id: "apply-migrations-0074-0084",
-          mode: "APPLIED_0074_0084",
+          operation_id: "apply-migrations-0074-0085",
+          mode: "APPLIED_0074_0085",
           from_version: 73,
-          to_version: 84,
-          applied_versions: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84],
+          to_version: 85,
+          applied_versions: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85],
         };
   };
   operations["apply-v209-grants"] = async () => {
@@ -1491,7 +1492,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     return {
       schema_version: "videoforge.v2-09-grants-result/v1",
       operation_id: "apply-v209-grants",
-      migration_head: 84,
+      migration_head: 85,
       public_execute_count: 0,
       runtime_grants_verified: true,
       operator_grants_verified: true,
@@ -1730,6 +1731,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
   };
   operations["render-qualified-production-config"] = async ({
     authority,
+    priorResults = Object.freeze([]),
     receiptBindingMode = "STATIC_AUTHORITY",
   }) => {
     assertAuthorityConfiguration(authority);
@@ -1741,16 +1743,147 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     )
       fail("V2_09_CONCRETE_RENDER_CONFIG_BINDING_MODE_INVALID");
     assertProtectedInputUnchanged("qualifiedBindingFile");
+    const manifestBytes = readPrivateBytesOnce(configuration.mediaReleaseManifestFile);
+    if (sha256(manifestBytes) !== authority.media_worker?.release_manifest_sha256)
+      fail("V2_09_CONCRETE_MEDIA_RELEASE_MANIFEST_DRIFT");
+    let bindingBytes = protectedInputs.qualifiedBindingFile.bytes;
+    let observedEndpoints = null;
+    if (receiptBindingMode === "STAGED_OBSERVED") {
+      if (!Array.isArray(priorResults)) fail("V2_09_CONCRETE_STAGED_BINDING_INPUT_INVALID");
+      const resultById = new Map();
+      for (const entry of priorResults) {
+        if (
+          !Array.isArray(entry) ||
+          entry.length !== 2 ||
+          typeof entry[0] !== "string" ||
+          resultById.has(entry[0])
+        )
+          fail("V2_09_CONCRETE_STAGED_BINDING_INPUT_INVALID");
+        resultById.set(entry[0], entry[1]);
+      }
+      const laneResults = ["mage", "soulx"].map((lane) => {
+        const operationId = `create-${lane}-production-lane-max-one`;
+        const result = resultById.get(operationId);
+        const expected = authority.scope?.lanes?.find((item) => item.lane === lane);
+        if (
+          !exactKeys(result, [
+            "acceptance_sha256",
+            "anonymous_proof_sha256",
+            "deployment_sha256",
+            "endpoint_id_sha256",
+            "gpu",
+            "handler_concurrency",
+            "image_config_sha256",
+            "image_sha256",
+            "image_source_commit",
+            "lane",
+            "operation_id",
+            "region",
+            "retained_volume_size_gb",
+            "schema_version",
+            "template_id_sha256",
+            "volume_id_sha256",
+            "volume_manifest_sha256",
+            "workers_max",
+            "workers_min",
+          ]) ||
+          result?.schema_version !== "videoforge.v2-09-production-lane-result/v1" ||
+          result.operation_id !== operationId ||
+          result.lane !== lane ||
+          expected === undefined ||
+          result.image_sha256 !== expected.image_sha256 ||
+          result.image_source_commit !== expected.image_source_commit ||
+          result.image_config_sha256 !== expected.image_config_sha256 ||
+          result.anonymous_proof_sha256 !== expected.anonymous_proof_sha256 ||
+          result.acceptance_sha256 !== expected.acceptance_sha256 ||
+          result.volume_id_sha256 !== expected.volume_id_sha256 ||
+          result.volume_manifest_sha256 !== expected.volume_manifest_sha256 ||
+          result.gpu !== expected.gpu ||
+          result.region !== expected.region ||
+          result.workers_min !== expected.workers_min ||
+          result.workers_max !== expected.workers_max ||
+          result.handler_concurrency !== expected.handler_concurrency ||
+          result.retained_volume_size_gb !== expected.volume_size_gb ||
+          !HASH.test(result.endpoint_id_sha256 ?? "") ||
+          /^sha256:0{64}$/u.test(result.endpoint_id_sha256) ||
+          !HASH.test(result.template_id_sha256 ?? "") ||
+          !HASH.test(result.deployment_sha256 ?? "")
+        )
+          fail("V2_09_CONCRETE_STAGED_BINDING_INPUT_INVALID");
+        return result;
+      });
+      const persisted = resultById.get("persist-qualified-production-deployments");
+      if (
+        !exactKeys(persisted, [
+          "deployments",
+          "operation_id",
+          "persisted_deployment_count",
+          "schema_version",
+        ]) ||
+        persisted?.schema_version !== "videoforge.v2-09-deployment-persistence-result/v1" ||
+        persisted.operation_id !== "persist-qualified-production-deployments" ||
+        persisted.persisted_deployment_count !== 2 ||
+        !Array.isArray(persisted.deployments) ||
+        persisted.deployments.length !== 2 ||
+        persisted.deployments.some(
+          (deployment, index) =>
+            !exactKeys(deployment, [
+              "deployment_row_id_sha256",
+              "deployment_sha256",
+              "endpoint_id_sha256",
+              "lane",
+              "template_id_sha256",
+            ]) ||
+            deployment?.lane !== laneResults[index].lane ||
+            deployment.endpoint_id_sha256 !== laneResults[index].endpoint_id_sha256 ||
+            deployment.template_id_sha256 !== laneResults[index].template_id_sha256 ||
+            deployment.deployment_sha256 !== laneResults[index].deployment_sha256 ||
+            !HASH.test(deployment.deployment_row_id_sha256 ?? ""),
+        )
+      )
+        fail("V2_09_CONCRETE_STAGED_BINDING_INPUT_INVALID");
+      const template = parseJson(
+        protectedInputs.qualifiedBindingFile.bytes.toString("utf8"),
+        "STAGED_BINDING_TEMPLATE",
+      );
+      const binding = {
+        schema_version: "videoforge-v2-09-qualified-production-config-preparation/v1",
+        authority: {
+          mode: "PROVIDER_FREE_CONFIG_PREPARATION",
+          credential_access_authorized: false,
+          deployment_authorized: false,
+          provider_calls_authorized: false,
+          external_spend_usd: 0,
+        },
+        release: {
+          source_commit: authority.source_commit,
+          media_worker_release_manifest_sha256: sha256(manifestBytes),
+        },
+        production: template?.production,
+        lanes: {
+          mage_image: {
+            qualification_record_sha256: laneResults[0].acceptance_sha256,
+            worker_image_digest: laneResults[0].image_sha256,
+            endpoint_id_sha256: laneResults[0].endpoint_id_sha256,
+          },
+          soulx_avatar: {
+            qualification_record_sha256: laneResults[1].acceptance_sha256,
+            worker_image_digest: laneResults[1].image_sha256,
+            endpoint_id_sha256: laneResults[1].endpoint_id_sha256,
+          },
+        },
+      };
+      validatePreparationBinding(binding);
+      bindingBytes = Buffer.from(`${canonical(binding)}\n`, "utf8");
+      observedEndpoints = laneResults.map(({ endpoint_id_sha256 }) => endpoint_id_sha256);
+    }
     const bindingSnapshotPath = materializeSealedInput(
       configuration.journalPath,
-      "qualified-binding",
-      protectedInputs.qualifiedBindingFile.bytes,
+      receiptBindingMode === "STAGED_OBSERVED"
+        ? "qualified-binding-staged-observed"
+        : "qualified-binding",
+      bindingBytes,
     );
-    if (
-      sha256(readFileSync(configuration.mediaReleaseManifestFile)) !==
-      authority.media_worker?.release_manifest_sha256
-    )
-      fail("V2_09_CONCRETE_MEDIA_RELEASE_MANIFEST_DRIFT");
     const output = await exactChild(
       runChild,
       configuration,
@@ -1774,6 +1907,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       receipt.schema_version !==
         "videoforge-v2-09-qualified-production-config-preparation-receipt/v1" ||
       receipt.source_commit !== authority.source_commit ||
+      receipt.binding_sha256 !== sha256(bindingBytes) ||
       !HASH.test(receipt.config_sha256 ?? "") ||
       !HASH.test(receipt.worker_bundle_sha256 ?? "") ||
       receipt.media_worker_release?.version !== authority.media_worker.release ||
@@ -1785,6 +1919,12 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       receipt.deployment_attempted !== false ||
       receipt.provider_calls !== 0 ||
       receipt.external_spend_usd !== 0
+    )
+      fail("V2_09_CONCRETE_RENDER_CONFIG_DRIFT");
+    if (
+      observedEndpoints !== null &&
+      (receipt.lanes?.mage_image?.endpoint_id_sha256 !== observedEndpoints[0] ||
+        receipt.lanes?.soulx_avatar?.endpoint_id_sha256 !== observedEndpoints[1])
     )
       fail("V2_09_CONCRETE_RENDER_CONFIG_DRIFT");
     if (
