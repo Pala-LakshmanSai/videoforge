@@ -221,7 +221,7 @@ hosted_beta_user_walkthrough:
   cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
   pending_source_candidate: "V2-09 combined source c6ac4b89b2c34d147f9c4f08ae5c0ef96ac1e527 passes focused V2-09 integration 146/146 and independent whole-source audit GO P0=0/P1=0; context sealing remains; exact fifth-replacement proposal d186ca50 is consumed; production is disabled and undeployed"
   pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
-  pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. DIAGNOSTIC_SOURCE_0FB1A927_PASSED_31_OF_31_AND_INDEPENDENT_SOURCE_AUDIT_GO_P0_0_P1_0. MATERIALIZE_AND_AUDIT_CONTEXT_THEN_REQUEST_ONE_COMBINED_DIAGNOSTIC_PREFLIGHT_AND_CONDITIONAL_DEPLOYMENT_CHROME_AUTHORITY."
+  pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. COMBINED_SOURCE_C6AC4B89_PASSED_146_OF_146_AND_INDEPENDENT_WHOLE_SOURCE_AUDIT_GO_P0_0_P1_0. SEAL_CONTEXT_THEN_REQUEST_ONE_COMBINED_DIAGNOSTIC_PREFLIGHT_AND_CONDITIONAL_DEPLOYMENT_CHROME_AUTHORITY."
   pending_validations: "Context sealing for independently audited combined source c6ac4b89; then one exact combined diagnostic-preflight and conditional V2-09 deployment/Chrome authority."
   latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 29667134b17daa9723495d028ec22c4eeaee3ee3 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.14 ALREADY PUBLISHED INSTALLED AND ACTIVE DO NOT REPUBLISH OR REINSTALL; DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD TOTAL NEW VARIABLE EXTERNAL SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; ENABLE IMAGE KEYWORDS WITH A BOUNDED TEST VALUE AND USE REAL CHROME TO VERIFY STAGE 5 COMPLETION, COMPACT PROMPTS, ONLY PINNED MEDIUM REALISM CAMERA AND LIGHTING STYLE CUES, NO PALETTE OR HEX OR OTHER REMOVED STYLE METADATA, AND THE ENABLED IMAGE KEYWORDS EXACTLY ONCE IN EVERY POSITIVE SCENE PROMPT; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
   latest_live_run: "Approved source 29667134 deployed once as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6 with media worker 0.1.14 already active. Exactly one project f7655814-1b12-40c7-b0d5-993ad0c074e2 passed the 2,152,579,950-byte free-space gate with 2,944,651,264 bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 prompts, settled USD 0.001401, and conserved the reservation; total Stage 3+5 variable spend was USD 0.001473. Real Chrome verified the 520px scrollable prompt viewer, exact once-per-prompt enabled keywords, four pinned style fields, and zero removed style metadata hits. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
@@ -1034,11 +1034,11 @@ provider_free_product_progress:
     source_commit: "c6ac4b89b2c34d147f9c4f08ae5c0ef96ac1e527"
     focused_independent_source_audit: PASS_P0_0_P1_0
     canonical_command: "CI=1 TURBO_FORCE=true pnpm verify"
-    canonical_status: INHERITED_PREDECESSOR_AA8353EF_PASS_NOT_RERUN_FOR_NARROW_SUCCESSOR
-    focused_tests: PASS_31_OF_31
+    canonical_status: NOT_RERUN_FOR_FOCUSED_COMBINED_SOURCE
+    focused_tests: PASS_146_OF_146
     control_plane_tests: INHERITED_PREDECESSOR_PASS_431_OF_431
     script_tests: INHERITED_PREDECESSOR_PASS_506_OF_506
-    installed_chrome_tests: PASS_44_OF_44
+    installed_chrome_tests: INHERITED_PREDECESSOR_PASS_44_OF_44
     inherited_historical_counts_forbidden: true
     provider_calls: 0
     credential_reads: 0
