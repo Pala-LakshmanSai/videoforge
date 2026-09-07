@@ -814,6 +814,13 @@ export function createDurableOuterState(statePath) {
     },
     awaitInteractiveChromeLogin() {
       const value = read();
+      if (
+        !["CLAIMED", "AWAITING_INTERACTIVE_CHROME_LOGIN"].includes(value.status) ||
+        value.inner_authority_id !== null ||
+        value.operations.find(({ id }) => id === "materialize-v209-postdeploy-chrome-auth")
+          ?.status !== "STARTED"
+      )
+        fail("V2_09_COMBINED_CHROME_PAUSE_INVALID");
       value.status = "AWAITING_INTERACTIVE_CHROME_LOGIN";
       return write(value);
     },
@@ -925,7 +932,10 @@ async function reconstructInnerForCleanup({
     stagedDocument(results, configuration),
   );
   validateAuthority(inner, { sourceCommit, now, cleanupOnly: true });
-  if (state.inner_authority_id !== inner.authority_id)
+  if (
+    state.inner_authority_id !== inner.authority_id ||
+    state.inner_authority_sha256 !== sha256(canonical(inner))
+  )
     fail("V2_09_COMBINED_INNER_ID_BINDING_INVALID");
   return {
     configuration,
@@ -1043,7 +1053,28 @@ export async function executeCombinedQualifiedProductionForTest({
   }
   if (state.status === "FAILED_CLEAN") fail("V2_09_COMBINED_FAILED_CLEAN");
 
+  const interruptedChromeAuth =
+    state.status === "CLAIMED" &&
+    state.inner_authority_id === null &&
+    state.operations.find(({ id }) => id === "materialize-v209-postdeploy-chrome-auth")?.status ===
+      "STARTED";
+  if (interruptedChromeAuth) {
+    // A process may die after Chrome durably wrote its claim-bound auth state but before the outer
+    // receipt was acknowledged. Only adopt that exact STARTED auth operation; never treat it as a
+    // generic staged failure or replay any deployment operation.
+    try {
+      validateCombinedAuthority(authority, { sourceCommit, now });
+      state = validateOuterState(await outerState.awaitInteractiveChromeLogin(), authority);
+    } catch {
+      // Expired or otherwise invalid authority must not launch Chrome. The generic interrupted
+      // path below performs cleanup-only recovery instead.
+    }
+  }
+
   if (state.status === "AWAITING_INTERACTIVE_CHROME_LOGIN") {
+    // This is an external browser/auth action, so revalidate the current non-cleanup authority
+    // before every adoption attempt.
+    validateCombinedAuthority(authority, { sourceCommit, now });
     const preflight = assertPreflight(completedResult(state, "run-read-only-preflight"), authority);
     const resumedResults = Object.fromEntries(
       state.operations
@@ -1377,7 +1408,10 @@ export async function executeCombinedQualifiedProductionForTest({
       } else if (
         latest.operations.some(
           ({ id, status }) =>
-            COMBINED_PRECOMPLETED_OPERATION_IDS.includes(id) && status !== "PENDING",
+            (COMBINED_PRECOMPLETED_OPERATION_IDS.includes(id) ||
+              id === "materialize-v209-protected-inputs" ||
+              id === "materialize-v209-endpoint-secrets") &&
+            status !== "PENDING",
         )
       )
         await cleanupStaged({ authority, state: latest });
@@ -1554,10 +1588,47 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
     };
     return runtime;
   };
+  const restoreMediaWorker = async (authority, priorResults) => {
+    const publication = priorResults["publish-media-worker-0.1.15"];
+    if (!publication?.release_manifest_sha256) return authority.media_worker_inputs;
+    const { V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256 } = await import(
+      "./media-worker-production-operator.mjs"
+    );
+    return {
+      release: publication.release,
+      execution_bundle_sha256: publication.execution_bundle_sha256,
+      whisper_model_sha256: publication.whisper_model_sha256,
+      release_manifest_sha256: publication.release_manifest_sha256,
+      installer_asset_sha256: publication.installer_asset_sha256,
+      signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
+    };
+  };
   return {
     async run({ operationId, authority, preflight, priorResults }) {
       const configuration = await loadConfiguration();
-      if (operationId.includes("completion-baseline")) {
+      if (operationId === "read-postlogin-tenant-completion-baseline") {
+        const chrome = securePrivateJson(
+          configuration.chromeRequestFile,
+          "V2_09_COMBINED_CHROME_REQUEST_INVALID",
+        );
+        const input = {
+          accountId: chrome.request?.accountId,
+          workspaceId: chrome.request?.workspaceId,
+          maximumMicroUsd: MAXIMUM_COMPLETION_BASELINE_MICRO_USD,
+        };
+        const value = await psqlJson(
+          configuration,
+          configuration.databaseOperatorUrlFile,
+          renderPostMigrationCompletionBaselineSql(input),
+        );
+        return validateCompletionBaselineReceipt(value, input);
+      }
+      if (
+        [
+          "read-pre-mutation-completion-baseline",
+          "read-post-migration-completion-baseline",
+        ].includes(operationId)
+      ) {
         const value = await psqlJsonWithUrl(
           configuration,
           await readOwnerUrlOnce(),
@@ -1588,6 +1659,38 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
           },
         });
       }
+      if (operationId === "materialize-v209-postdeploy-chrome-auth") {
+        // Tenant/workspace and ready preset IDs are intentionally discovered only after the new
+        // BETTER_AUTH_SECRET deployment is live. Use the hardened one-step post-deploy bootstrap;
+        // the split auth API is only valid when a tenant-bound request was materialized earlier.
+        const { materializeV209ChromeBootstrap } = await import(
+          "./chrome-production-bootstrap.mjs"
+        );
+        const result = await materializeV209ChromeBootstrap(
+          (await loadMaterializationPlan()).chrome_bootstrap,
+        );
+        const stagingConfiguration = {
+          ...configuration,
+          journalPath: `${options.statePath}.staging-journal`,
+        };
+        const mediaWorker = await restoreMediaWorker(authority, priorResults);
+        const staged = stagingAuthority(
+          authority,
+          preflight,
+          priorResults["read-post-migration-completion-baseline"],
+          mediaWorker,
+        );
+        runtime = {
+          ...(runtime ?? {}),
+          configuration,
+          stagingConfiguration,
+          mediaWorker,
+          priorResults,
+          latestAuthority: staged,
+          latestResults: priorResults,
+        };
+        return result;
+      }
       const active = await initialize(authority, preflight, priorResults);
       const baseline = priorResults["read-post-migration-completion-baseline"];
       let staged = stagingAuthority(authority, preflight, baseline, active.mediaWorker);
@@ -1610,39 +1713,6 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
           { authority: staged, priorResults },
         );
         return result;
-      }
-      if (operationId === "materialize-v209-postdeploy-chrome-auth") {
-        const { materializeV209ChromeBootstrap } = await import(
-          "./chrome-production-bootstrap.mjs"
-        );
-        const result = await materializeV209ChromeBootstrap(
-          (await loadMaterializationPlan()).chrome_bootstrap,
-        );
-        const { createConcreteQualifiedProductionResumedAdapters } = await import(
-          "./concrete-qualified-production-adapters.mjs"
-        );
-        active.resumedAdapters = createConcreteQualifiedProductionResumedAdapters(
-          active.stagingConfiguration,
-          { authority: staged, priorResults },
-        );
-        return result;
-      }
-      if (operationId === "read-postlogin-tenant-completion-baseline") {
-        const chrome = securePrivateJson(
-          configuration.chromeRequestFile,
-          "V2_09_COMBINED_CHROME_REQUEST_INVALID",
-        );
-        const input = {
-          accountId: chrome.request?.accountId,
-          workspaceId: chrome.request?.workspaceId,
-          maximumMicroUsd: MAXIMUM_COMPLETION_BASELINE_MICRO_USD,
-        };
-        const value = await psqlJson(
-          configuration,
-          configuration.databaseOperatorUrlFile,
-          renderPostMigrationCompletionBaselineSql(input),
-        );
-        return validateCompletionBaselineReceipt(value, input);
       }
       const operation = NORMAL_OPERATIONS.find(({ id }) => id === operationId);
       await active.adapters.state.beginNormalOperation({
@@ -1702,6 +1772,18 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
     async receipts({ authority, preflight, baseline, prefixResults, configuration }) {
       const active = runtime;
       if (!active) fail("V2_09_COMBINED_STAGE_RUNTIME_MISSING");
+      if (!active.resumedAdapters) {
+        const { createConcreteQualifiedProductionResumedAdapters } = await import(
+          "./concrete-qualified-production-adapters.mjs"
+        );
+        active.resumedAdapters = createConcreteQualifiedProductionResumedAdapters(
+          active.stagingConfiguration,
+          {
+            authority: active.latestAuthority,
+            priorResults: active.latestResults,
+          },
+        );
+      }
       const render = prefixResults["render-qualified-production-config"];
       const chromeAuth = prefixResults["materialize-v209-postdeploy-chrome-auth"];
       const tenantBaseline = prefixResults["read-postlogin-tenant-completion-baseline"];
@@ -1758,6 +1840,34 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
       };
     },
     async cleanup({ authority, state }) {
+      const protectedInputOperation = state.operations.find(
+        ({ id }) => id === "materialize-v209-protected-inputs",
+      );
+      const cleanupProtectedInputs = async () => {
+        const configuration = await loadConfiguration();
+        const { cleanupV209ProtectedInputs } = await import("./protected-input-materializer.mjs");
+        const { spawnSync } = await import("node:child_process");
+        await cleanupV209ProtectedInputs({
+          authorityId: authority.authority_id,
+          configuration,
+          materialization: (await loadMaterializationPlan()).protected_input_materialization,
+          derivedOwnerUrl: await readOwnerUrlOnce(),
+          runPsql: async ({ env, sql }) => {
+            const result = spawnSync(
+              "psql",
+              ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--quiet"],
+              { cwd: configuration.root, encoding: "utf8", env, input: sql },
+            );
+            if (result.status !== 0) fail("V2_09_COMBINED_ROLE_CLEANUP_FAILED");
+          },
+        });
+      };
+      if (protectedInputOperation?.status === "STARTED") {
+        // No later operation can have started. Reconcile the possibly partial role/file write
+        // directly because a staging adapter cannot safely snapshot incomplete protected inputs.
+        await cleanupProtectedInputs();
+        return;
+      }
       if (!runtime) {
         const results = Object.fromEntries(
           state.operations
@@ -1788,7 +1898,7 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
           active.mediaWorker,
         );
         active.latestResults = results;
-        if (results["persist-qualified-production-deployments"]) {
+        if (results["materialize-v209-endpoint-secrets"]) {
           const { createConcreteQualifiedProductionDeploymentAdapters } = await import(
             "./concrete-qualified-production-adapters.mjs"
           );
@@ -1798,11 +1908,26 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
           );
         }
       }
+      if (
+        !runtime.deploymentAdapters &&
+        runtime.latestResults?.["materialize-v209-endpoint-secrets"]
+      ) {
+        const { createConcreteQualifiedProductionDeploymentAdapters } = await import(
+          "./concrete-qualified-production-adapters.mjs"
+        );
+        runtime.deploymentAdapters = createConcreteQualifiedProductionDeploymentAdapters(
+          runtime.stagingConfiguration,
+          { authority: runtime.latestAuthority, priorResults: runtime.latestResults },
+        );
+      }
       if (runtime.deploymentAdapters)
         await runtime.deploymentAdapters.cleanupDeploymentSuffix({
           authority: runtime.latestAuthority,
         });
       else await runtime.adapters.cleanupStagedRunPod({ authority: runtime.latestAuthority });
+      // Keep credentials available until every independent Cloudflare/database/RunPod cleanup
+      // attempt has completed. This also removes partial endpoint-secret files from a crashed seal.
+      if (protectedInputOperation?.status === "COMPLETED") await cleanupProtectedInputs();
     },
   };
 }

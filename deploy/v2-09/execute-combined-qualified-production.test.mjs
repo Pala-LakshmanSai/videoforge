@@ -304,6 +304,9 @@ function state(events, { completionAckFails = false, executeCompletionAckFails =
     async reconcileSuccess() {
       return clone();
     },
+    forceClaimedForTest() {
+      snapshot.status = "CLAIMED";
+    },
   };
 }
 
@@ -672,6 +675,43 @@ test("a failure after a staged provider mutation runs cleanup and never starts i
   assert.equal(events.at(-1), "full-stage-cleanup");
 });
 
+test("a partial endpoint-secret write restarts in staging cleanup without constructing production", async () => {
+  const events = [];
+  const outerState = state(events);
+  let cleanupAttempts = 0;
+  let endpointAttempts = 0;
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async () => events.push("inner-execute"),
+  });
+  const baseStageOperation = options.stageOperation;
+  options.stageOperation = async (context) => {
+    if (context.operationId === "materialize-v209-endpoint-secrets") {
+      endpointAttempts += 1;
+      throw new Error("PARTIAL_ENDPOINT_SECRET_WRITE");
+    }
+    return baseStageOperation(context);
+  };
+  options.cleanupStaged = async () => {
+    cleanupAttempts += 1;
+    events.push("staging-cleanup");
+    if (cleanupAttempts === 1) throw new Error("CLEANUP_PROCESS_INTERRUPTED");
+  };
+
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /CLEANUP_PROCESS_INTERRUPTED/u,
+  );
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /V2_09_COMBINED_CLEANUP_ONLY/u,
+  );
+  assert.equal(cleanupAttempts, 2);
+  assert.equal(endpointAttempts, 1);
+  assert.equal(events.includes("inner-execute"), false);
+});
+
 test("interactive Chrome login pauses safely and resumes without replaying staged mutations", async () => {
   const events = [];
   const outerState = state(events);
@@ -738,4 +778,123 @@ test("post-login tenant baseline cannot exceed the conservative pre-mutation glo
   );
   assert.equal(events.includes("execute"), false);
   assert.equal(events.includes("cleanup-only"), true);
+});
+
+test("a crash after the claim-bound Chrome auth write adopts only the STARTED auth operation", async () => {
+  const events = [];
+  const outerState = state(events);
+  let authAttempts = 0;
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async ({ authority: inner }) => ({
+      schema_version: "videoforge.v2-09-qualified-production-execution/v1",
+      authority_id: inner.authority_id,
+      status: "SUCCEEDED_CLEAN",
+      operations: [...OPERATION_IDS],
+      paid_dispatch_count: 1,
+      redispatch_count: 0,
+    }),
+  });
+  const baseStageOperation = options.stageOperation;
+  options.stageOperation = async (context) => {
+    if (context.operationId === "materialize-v209-postdeploy-chrome-auth") {
+      authAttempts += 1;
+      if (authAttempts === 1) {
+        const error = new Error("V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN");
+        error.code = error.message;
+        error.resumable = true;
+        throw error;
+      }
+    }
+    return baseStageOperation(context);
+  };
+  await executeCombinedQualifiedProductionForTest(options);
+  outerState.forceClaimedForTest();
+  const resumed = await executeCombinedQualifiedProductionForTest(options);
+  assert.equal(resumed.status, "SUCCEEDED_CLEAN");
+  assert.equal(authAttempts, 2);
+  assert.equal(events.filter((value) => value === "push-clean-source").length, 1);
+  assert.equal(events.includes("cleanup-only"), false);
+});
+
+test("expired authority never launches Chrome while awaiting interactive login", async () => {
+  const events = [];
+  const outerState = state(events);
+  let authAttempts = 0;
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async () => events.push("execute"),
+  });
+  const baseStageOperation = options.stageOperation;
+  options.stageOperation = async (context) => {
+    if (context.operationId === "materialize-v209-postdeploy-chrome-auth") {
+      authAttempts += 1;
+      const error = new Error("V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN");
+      error.code = error.message;
+      error.resumable = true;
+      throw error;
+    }
+    return baseStageOperation(context);
+  };
+  const paused = await executeCombinedQualifiedProductionForTest(options);
+  assert.equal(paused.status, "AWAITING_INTERACTIVE_CHROME_LOGIN");
+  options.now = new Date("2026-09-07T12:00:00.000Z");
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /V2_09_COMBINED_AUTHORITY_NOT_CURRENT/u,
+  );
+  assert.equal(authAttempts, 1);
+  assert.equal(events.includes("execute"), false);
+});
+
+test("repeated new-process Chrome waits do not replay the prefix or derive protected receipts", async () => {
+  const events = [];
+  const outerState = state(events);
+  let authAttempts = 0;
+  let receiptDerivations = 0;
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async ({ authority: inner }) => ({
+      schema_version: "videoforge.v2-09-qualified-production-execution/v1",
+      authority_id: inner.authority_id,
+      status: "SUCCEEDED_CLEAN",
+      operations: [...OPERATION_IDS],
+      paid_dispatch_count: 1,
+      redispatch_count: 0,
+    }),
+  });
+  const baseStageOperation = options.stageOperation;
+  const baseMaterializeStagedReceipts = options.materializeStagedReceipts;
+  options.stageOperation = async (context) => {
+    if (context.operationId === "materialize-v209-postdeploy-chrome-auth") {
+      authAttempts += 1;
+      if (authAttempts <= 3) {
+        const error = new Error("V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN");
+        error.code = error.message;
+        error.resumable = true;
+        throw error;
+      }
+    }
+    return baseStageOperation(context);
+  };
+  options.materializeStagedReceipts = async (context) => {
+    receiptDerivations += 1;
+    return baseMaterializeStagedReceipts(context);
+  };
+
+  for (let index = 0; index < 3; index += 1) {
+    const paused = await executeCombinedQualifiedProductionForTest(options);
+    assert.equal(paused.status, "AWAITING_INTERACTIVE_CHROME_LOGIN");
+    assert.equal(receiptDerivations, 0);
+  }
+  const completed = await executeCombinedQualifiedProductionForTest(options);
+  assert.equal(completed.status, "SUCCEEDED_CLEAN");
+  assert.equal(authAttempts, 4);
+  assert.equal(receiptDerivations, 1);
+  assert.equal(events.filter((value) => value === "push-clean-source").length, 1);
+  assert.equal(events.filter((value) => value === "apply-migrations-0074-0085").length, 1);
+  assert.equal(events.includes("cleanup-only"), false);
 });
