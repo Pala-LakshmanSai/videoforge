@@ -464,14 +464,14 @@ gates:
     current_failure_sha256: "sha256:1f7f7329d3e9ff01ffe5d133b92f5903b941c577e77e01e687ad5ff6bbec5e6f"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "Preclaim repairs f0dac6df, 0117cb1c, 0f4ed8dd, dcd4c146, and eb113e44 validate exact clean source, every protected output parent, content-bound 30-60s voiceover with stable streamed-packet duration, exact private Wrangler environment, and local media-worker readiness before authority claim. Focused suites pass 97/97 and independent audit is GO P0=0/P1=0. Stage 6/7 were untouched."
+    provider_free_repair_state: "Repair 7bdc466d creates exact NOINHERIT roles, permits only PostgreSQL 17's single inert creator-admin membership in runtime/operator/reconciler verification, uses the proven transient INHERIT cleanup edge, checks PUBLIC by ACL grantee zero, and makes every psql verifier failure nonzero. Disposable PostgreSQL 17 applied all 86 migrations, passed all three production grant scripts, rejected a foreign edge, and cleaned to zero roles/memberships. Focused tests pass 83/83; two independent audits are GO P0=0/P1=0. Stage 6/7 were untouched."
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-preclaim-readiness-replacement.json"
     latest_closed_authority_sha256: "sha256:5359ed15db028cd352ff45072ea7582f5e0ad4ce2b129abeff97d7072d46223e"
     latest_closed_proposal_sha256: "sha256:cfcaccfc07d8abcb18e98a930bf5cd8ea196a41feaa3e02aa57432358bcede05"
     latest_closed_control_source_commit: "3c1dbfc2c2d53dad165b577341bb46b524aa0ca5"
     latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-role-cleanup-membership.json"
     latest_closed_failure_sha256: "sha256:1f7f7329d3e9ff01ffe5d133b92f5903b941c577e77e01e687ad5ff6bbec5e6f"
-    next_gate: "Repair and independently audit role cleanup membership provider-free, reseal source/bundle/proposal, then obtain fresh exact approval."
+    next_gate: "Commit the clean context seal, compute the exact source-bound media-worker bundle, seal and independently audit one replacement proposal, then obtain fresh exact approval."
 
   GATE_RANGA_001:
     status: open

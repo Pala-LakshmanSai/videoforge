@@ -4,7 +4,7 @@ updated_at: "2026-09-07"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_failed_clean_role_cleanup_membership
+current_milestone: v2_09_role_cleanup_pg17_repair_green
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -6195,15 +6195,18 @@ provider_authority: &v2_09_provider_authority_combined
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_failed_clean_role_cleanup_membership
-  status: FAILED_CLEAN_PENDING_PROVIDER_FREE_REPAIR
+  milestone: v2_09_role_cleanup_pg17_repair_green
+  status: PROVIDER_FREE_REPAIR_GREEN_PENDING_CLEAN_SEAL_AND_FRESH_APPROVAL
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: no_current_authority_consumed_failed_clean
-  task_stage: provider_free_repair
+  task_stage: clean_context_bundle_proposal_seal
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_combined
   provider_mode: fixture
+  provider_free_repair_commit: "7bdc466dde53f9b4296b3413a7e4cfc46495a4b8"
+  provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-role-cleanup-pg17-repair.json"
+  provider_free_repair_validation: "postgresql_17_all_86_migrations_three_grant_scripts_foreign_edge_rejected_zero_roles_memberships_plus_83_of_83_focused_tests_two_independent_go_audits"
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
   goal: "Connect the ordinary hosted Generate flow to the frozen qualified max-one Mage and SoulX lanes, then complete one real 30-60-second private Chrome E2E under fresh exact authority."
