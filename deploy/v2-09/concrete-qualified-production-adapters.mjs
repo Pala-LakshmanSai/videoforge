@@ -1728,8 +1728,18 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       }),
     };
   };
-  operations["render-qualified-production-config"] = async ({ authority }) => {
+  operations["render-qualified-production-config"] = async ({
+    authority,
+    receiptBindingMode = "STATIC_AUTHORITY",
+  }) => {
     assertAuthorityConfiguration(authority);
+    if (!["STATIC_AUTHORITY", "STAGED_OBSERVED"].includes(receiptBindingMode))
+      fail("V2_09_CONCRETE_RENDER_CONFIG_BINDING_MODE_INVALID");
+    if (
+      receiptBindingMode === "STAGED_OBSERVED" &&
+      authority?.execution !== "V2_09_PREFLIGHT_THEN_QUALIFIED_PRODUCTION_ONCE"
+    )
+      fail("V2_09_CONCRETE_RENDER_CONFIG_BINDING_MODE_INVALID");
     assertProtectedInputUnchanged("qualifiedBindingFile");
     const bindingSnapshotPath = materializeSealedInput(
       configuration.journalPath,
@@ -1764,7 +1774,8 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       receipt.schema_version !==
         "videoforge-v2-09-qualified-production-config-preparation-receipt/v1" ||
       receipt.source_commit !== authority.source_commit ||
-      receipt.config_sha256 !== authority.production.config_sha256 ||
+      !HASH.test(receipt.config_sha256 ?? "") ||
+      !HASH.test(receipt.worker_bundle_sha256 ?? "") ||
       receipt.media_worker_release?.version !== authority.media_worker.release ||
       receipt.media_worker_release?.manifest_sha256 !==
         authority.media_worker.release_manifest_sha256 ||
@@ -1776,10 +1787,16 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       receipt.external_spend_usd !== 0
     )
       fail("V2_09_CONCRETE_RENDER_CONFIG_DRIFT");
+    if (
+      receiptBindingMode === "STATIC_AUTHORITY" &&
+      (receipt.config_sha256 !== authority.production?.config_sha256 ||
+        receipt.worker_bundle_sha256 !== authority.production?.worker_bundle_sha256)
+    )
+      fail("V2_09_CONCRETE_RENDER_CONFIG_DRIFT");
     return {
       operation_id: "render-qualified-production-config",
       config_sha256: receipt.config_sha256,
-      worker_bundle_sha256: authority.production.worker_bundle_sha256,
+      worker_bundle_sha256: receipt.worker_bundle_sha256,
     };
   };
   operations["import-v209-qualified-activation"] = async ({

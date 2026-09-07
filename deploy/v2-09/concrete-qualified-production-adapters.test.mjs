@@ -163,6 +163,7 @@ function childRunner(
     successfulDatabaseSettled = false,
     successCostsInitiallySettled = successfulDatabaseSettled,
     chromeFailureStage = null,
+    renderedWorkerBundleSha256 = `sha256:${"9".repeat(64)}`,
     noAttempts = false,
     unassigned = false,
     unassignedWithRate = false,
@@ -232,6 +233,7 @@ function childRunner(
         schema_version: "videoforge-v2-09-qualified-production-config-preparation-receipt/v1",
         source_commit: SOURCE,
         config_sha256: `sha256:${"8".repeat(64)}`,
+        worker_bundle_sha256: renderedWorkerBundleSha256,
         media_worker_release: { version: "0.1.15", manifest_sha256: hash("{}") },
         gpu_transport: "QUALIFIED_EXACT",
         production_build_verified: true,
@@ -1036,6 +1038,60 @@ test("fresh admission and config rendering translate only existing bounded V2-09
   });
   assert.equal(rendered.config_sha256, value.production.config_sha256);
   assert.equal(rendered.worker_bundle_sha256, value.production.worker_bundle_sha256);
+});
+
+test("config rendering binds static authority to observed hashes and supports staged observation", async () => {
+  const { configuration } = fixture();
+  const valueFor = (adapters) => authority(adapters.identity_sha256);
+  const staticAdapters = createConcreteQualifiedProductionAdapters(configuration, {
+    ports: portSet(),
+    runChild: childRunner(),
+  });
+  const staticAuthority = valueFor(staticAdapters);
+  staticAuthority.production.worker_bundle_sha256 = hash("wrong-worker-bundle");
+  await assert.rejects(
+    staticAdapters.operations["render-qualified-production-config"]({
+      authority: staticAuthority,
+    }),
+    /V2_09_CONCRETE_RENDER_CONFIG_DRIFT/u,
+  );
+
+  const stagedAdapters = createConcreteQualifiedProductionAdapters(configuration, {
+    ports: portSet(),
+    runChild: childRunner(),
+  });
+  const stagedAuthority = valueFor(stagedAdapters);
+  stagedAuthority.execution = "V2_09_PREFLIGHT_THEN_QUALIFIED_PRODUCTION_ONCE";
+  delete stagedAuthority.production.config_sha256;
+  delete stagedAuthority.production.worker_bundle_sha256;
+  const staged = await stagedAdapters.operations["render-qualified-production-config"]({
+    authority: stagedAuthority,
+    receiptBindingMode: "STAGED_OBSERVED",
+  });
+  assert.equal(staged.config_sha256, `sha256:${"8".repeat(64)}`);
+  assert.equal(staged.worker_bundle_sha256, `sha256:${"9".repeat(64)}`);
+  await assert.rejects(
+    stagedAdapters.operations["render-qualified-production-config"]({
+      authority: stagedAuthority,
+      receiptBindingMode: "UNBOUNDED",
+    }),
+    /V2_09_CONCRETE_RENDER_CONFIG_BINDING_MODE_INVALID/u,
+  );
+
+  const invalidFixture = fixture();
+  const invalidAdapters = createConcreteQualifiedProductionAdapters(invalidFixture.configuration, {
+    ports: portSet(),
+    runChild: childRunner([], { renderedWorkerBundleSha256: "not-a-hash" }),
+  });
+  const invalidAuthority = valueFor(invalidAdapters);
+  invalidAuthority.execution = "V2_09_PREFLIGHT_THEN_QUALIFIED_PRODUCTION_ONCE";
+  await assert.rejects(
+    invalidAdapters.operations["render-qualified-production-config"]({
+      authority: invalidAuthority,
+      receiptBindingMode: "STAGED_OBSERVED",
+    }),
+    /V2_09_CONCRETE_RENDER_CONFIG_DRIFT/u,
+  );
 });
 
 test("persists and imports the exact created pair through protected database roles", async () => {
