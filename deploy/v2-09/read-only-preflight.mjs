@@ -153,30 +153,6 @@ async function runpodJson(fetchImpl, apiKey, url, init = {}) {
   return jsonResponse(response, "RUNPOD_READ");
 }
 
-function exactServerlessOffering(catalog) {
-  const parsedRate = parseAuthenticatedRunPodServerlessFlexRate(catalog);
-  const matches = Array.isArray(catalog?.gpus)
-    ? catalog.gpus.filter(
-        (gpu) =>
-          gpu?.manufacturer === "NVIDIA" && [gpu.id, gpu.name].includes("NVIDIA GeForce RTX 4090"),
-      )
-    : [];
-  const regions = Array.isArray(matches[0]?.dataCenters)
-    ? matches[0].dataCenters.filter((region) => region?.id === "EU-RO-1")
-    : [];
-  const availability = regions[0]?.availability;
-  if (
-    matches.length !== 1 ||
-    regions.length !== 1 ||
-    !["LOW", "MEDIUM", "HIGH"].includes(availability) ||
-    parsedRate.rateUsdPerGpuHour > MAX_RATE_USD_PER_GPU_HOUR ||
-    Math.abs(parsedRate.rateUsdPerGpuHour - parsedRate.rateUsdPerSecond * 3600) >
-      Number.EPSILON * 3600
-  )
-    fail("RUNPOD_EXACT_OFFERING");
-  return Object.freeze({ ...parsedRate, availability });
-}
-
 export async function readRunPodEvidence({
   apiKey,
   fetchImpl,
@@ -247,7 +223,7 @@ export async function readRunPodEvidence({
     if (!Number.isFinite(amount) || amount < 0) fail("RUNPOD_BILLING");
     return sum + amount;
   }, 0);
-  const offering = exactServerlessOffering(catalog);
+  const offering = parseAuthenticatedRunPodServerlessFlexRate(catalog);
   return Object.freeze({
     accountIdSha256: expectedAccountIdSha256,
     billing: Object.freeze({

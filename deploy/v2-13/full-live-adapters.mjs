@@ -3758,39 +3758,52 @@ function exactRunPodInventoryArray(value, code) {
   return value;
 }
 
-function parseAuthenticatedRunPodServerlessFlexOffering(catalog) {
-  const gpus = exactRunPodInventoryArray(catalog?.gpus, "RUNPOD_MUTATION_ADMISSION_RATE_CATALOG");
+export function parseAuthenticatedRunPodServerlessFlexRate(catalog) {
+  const wrapper = catalog !== null && typeof catalog === "object" && !Array.isArray(catalog);
+  if (
+    (Array.isArray(catalog) && Object.hasOwn(catalog, "gpus")) ||
+    (!Array.isArray(catalog) && (!wrapper || !Array.isArray(catalog.gpus)))
+  )
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_SHAPE");
+  const gpus = Array.isArray(catalog) ? catalog : catalog.gpus;
   const matches = gpus.filter(
     (candidate) =>
-      candidate?.manufacturer === "NVIDIA" &&
-      [candidate.id, candidate.name].includes("NVIDIA GeForce RTX 4090"),
+      candidate?.manufacturer === "NVIDIA" && candidate.id === "NVIDIA GeForce RTX 4090",
   );
-  const rateUsdPerSecond = Number(matches[0]?.price?.flex);
+  if (matches.length !== 1) fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_GPU_MATCH");
+  const price = matches[0]?.price;
+  if (price === null || typeof price !== "object" || Array.isArray(price))
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE");
+  const rawRate = price.flex;
+  const canonicalDecimal = /^(?:0|[1-9]\d*)(?:\.\d*[1-9])?$/u;
+  if (
+    !(
+      (typeof rawRate === "number" && Number.isFinite(rawRate)) ||
+      (typeof rawRate === "string" && canonicalDecimal.test(rawRate))
+    )
+  )
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE");
+  const rateUsdPerSecond = typeof rawRate === "number" ? rawRate : Number(rawRate);
+  const rateUsdPerGpuHour = rateUsdPerSecond * 3600;
+  if (!Number.isFinite(rateUsdPerSecond) || rateUsdPerSecond <= 0)
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE");
+  if (rateUsdPerSecond > 0.00031 || rateUsdPerGpuHour > 1.116)
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE_CAP");
   const dataCenters = exactRunPodInventoryArray(
     matches[0]?.dataCenters,
-    "RUNPOD_MUTATION_ADMISSION_SERVERLESS_AVAILABILITY",
+    "RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_REGION_MATCH",
   );
   const regions = dataCenters.filter((region) => region?.id === "EU-RO-1");
+  if (regions.length !== 1) fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_REGION_MATCH");
   const availability = regions[0]?.availability;
-  if (
-    matches.length !== 1 ||
-    !Number.isFinite(rateUsdPerSecond) ||
-    rateUsdPerSecond <= 0 ||
-    regions.length !== 1 ||
-    !["LOW", "MEDIUM", "HIGH"].includes(availability)
-  )
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG");
+  if (availability === "NONE") fail("RUNPOD_MUTATION_ADMISSION_CAPACITY_BELOW_THRESHOLD");
+  if (!["LOW", "MEDIUM", "HIGH"].includes(availability))
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_AVAILABILITY");
   return Object.freeze({
     rateUsdPerSecond,
-    rateUsdPerGpuHour: rateUsdPerSecond * 3600,
+    rateUsdPerGpuHour,
     availability,
   });
-}
-
-export function parseAuthenticatedRunPodServerlessFlexRate(catalog) {
-  const { rateUsdPerSecond, rateUsdPerGpuHour } =
-    parseAuthenticatedRunPodServerlessFlexOffering(catalog);
-  return Object.freeze({ rateUsdPerSecond, rateUsdPerGpuHour });
 }
 
 export function parseOfficialRunPodServerlessFlexRate(markdown) {
@@ -4054,7 +4067,7 @@ function createRunPodPerMutationAdmissionReader({
       sha256(Buffer.from(accountId)) !== RUNPOD_ACCOUNT_ID_SHA256
     )
       fail("RUNPOD_MUTATION_ADMISSION_ACCOUNT");
-    const authenticatedOffering = parseAuthenticatedRunPodServerlessFlexOffering(serverlessCatalog);
+    const authenticatedOffering = parseAuthenticatedRunPodServerlessFlexRate(serverlessCatalog);
     if (
       authenticatedOffering.rateUsdPerSecond !== officialPricing.rateUsdPerSecond ||
       authenticatedOffering.rateUsdPerGpuHour !== officialPricing.rateUsdPerGpuHour

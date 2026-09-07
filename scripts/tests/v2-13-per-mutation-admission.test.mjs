@@ -225,46 +225,90 @@ test("authenticated official Serverless catalog is parsed instead of synthesizin
     () => parseOfficialRunPodServerlessFlexRate(markdown.replace("$0.00031", "unavailable")),
     /RUNPOD_MUTATION_ADMISSION_RATE_SOURCE/u,
   );
+  const gpu = {
+    id: "NVIDIA GeForce RTX 4090",
+    manufacturer: "NVIDIA",
+    price: { flex: 0.00031 },
+    dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
+  };
+  const expected = {
+    rateUsdPerSecond: 0.00031,
+    rateUsdPerGpuHour: 1.116,
+    availability: "LOW",
+  };
+  assert.deepEqual(parseAuthenticatedRunPodServerlessFlexRate([gpu]), expected);
+  assert.deepEqual(parseAuthenticatedRunPodServerlessFlexRate({ gpus: [gpu] }), expected);
   assert.deepEqual(
-    parseAuthenticatedRunPodServerlessFlexRate({
-      gpus: [
-        {
-          id: "NVIDIA GeForce RTX 4090",
-          manufacturer: "NVIDIA",
-          price: { flex: 0.00031 },
-          dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
-        },
-      ],
-    }),
-    { rateUsdPerSecond: 0.00031, rateUsdPerGpuHour: 1.116 },
+    parseAuthenticatedRunPodServerlessFlexRate([
+      {
+        ...gpu,
+        price: { flex: "0.00031" },
+        dataCenters: [{ id: "EU-RO-1", availability: "HIGH" }],
+      },
+    ]),
+    { ...expected, availability: "HIGH" },
+  );
+
+  const ambiguous = [gpu];
+  ambiguous.gpus = [gpu];
+  for (const catalog of [null, {}, { gpus: {} }, ambiguous])
+    assert.throws(
+      () => parseAuthenticatedRunPodServerlessFlexRate(catalog),
+      /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_SHAPE/u,
+    );
+  for (const gpus of [
+    [],
+    [gpu, { ...gpu }],
+    [{ ...gpu, id: "RTX 4090", name: "NVIDIA GeForce RTX 4090" }],
+    [{ ...gpu, manufacturer: "nvidia" }],
+  ])
+    assert.throws(
+      () => parseAuthenticatedRunPodServerlessFlexRate(gpus),
+      /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_GPU_MATCH/u,
+    );
+  for (const price of [
+    {},
+    { serverless: 0.00031 },
+    { flex: "unknown" },
+    { flex: "00.00031" },
+    { flex: "0.000310" },
+    { flex: 0 },
+    { flex: Number.POSITIVE_INFINITY },
+  ])
+    assert.throws(
+      () => parseAuthenticatedRunPodServerlessFlexRate([{ ...gpu, price }]),
+      /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE/u,
+    );
+  for (const flex of [0.0003101, "0.000311"])
+    assert.throws(
+      () => parseAuthenticatedRunPodServerlessFlexRate([{ ...gpu, price: { flex } }]),
+      /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE_CAP/u,
+    );
+  for (const dataCenters of [
+    [],
+    [{ id: "US-TX-3", availability: "HIGH" }],
+    [
+      { id: "EU-RO-1", availability: "LOW" },
+      { id: "EU-RO-1", availability: "HIGH" },
+    ],
+  ])
+    assert.throws(
+      () => parseAuthenticatedRunPodServerlessFlexRate([{ ...gpu, dataCenters }]),
+      /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_REGION_MATCH/u,
+    );
+  assert.throws(
+    () =>
+      parseAuthenticatedRunPodServerlessFlexRate([
+        { ...gpu, dataCenters: [{ id: "EU-RO-1", availability: "NONE" }] },
+      ]),
+    /RUNPOD_MUTATION_ADMISSION_CAPACITY_BELOW_THRESHOLD/u,
   );
   assert.throws(
     () =>
-      parseAuthenticatedRunPodServerlessFlexRate({
-        gpus: [
-          {
-            id: "NVIDIA GeForce RTX 4090",
-            manufacturer: "NVIDIA",
-            price: { flex: "unknown" },
-            dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
-          },
-        ],
-      }),
-    /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG/u,
-  );
-  assert.throws(
-    () =>
-      parseAuthenticatedRunPodServerlessFlexRate({
-        gpus: [
-          {
-            id: "NVIDIA GeForce RTX 4090",
-            manufacturer: "NVIDIA",
-            price: { flex: 0.00031 },
-            dataCenters: [{ id: "EU-RO-1", availability: "NONE" }],
-          },
-        ],
-      }),
-    /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG/u,
+      parseAuthenticatedRunPodServerlessFlexRate([
+        { ...gpu, dataCenters: [{ id: "EU-RO-1", availability: "low" }] },
+      ]),
+    /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_AVAILABILITY/u,
   );
 });
 

@@ -144,6 +144,15 @@ test("RunPod preflight performs only bounded identity, billing, inventory, and S
     sizeGb: 50,
     region: "EU-RO-1",
   }));
+  const catalog = [
+    {
+      id: "NVIDIA GeForce RTX 4090",
+      name: "NVIDIA GeForce RTX 4090",
+      manufacturer: "NVIDIA",
+      price: { flex: 0.00031 },
+      dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
+    },
+  ];
   const calls = [];
   const fetchImpl = async (input, init = {}) => {
     const url = new URL(input);
@@ -157,20 +166,7 @@ test("RunPod preflight performs only bounded identity, billing, inventory, and S
       return response(JSON.stringify({ data: { myself: { id: accountId } } }), {
         headers: { "content-type": "application/json" },
       });
-    if (url.pathname === "/v2/catalog/gpus")
-      return response(
-        JSON.stringify({
-          gpus: [
-            {
-              id: "NVIDIA GeForce RTX 4090",
-              name: "NVIDIA GeForce RTX 4090",
-              manufacturer: "NVIDIA",
-              price: { flex: 0.00031 },
-              dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
-            },
-          ],
-        }),
-      );
+    if (url.pathname === "/v2/catalog/gpus") return response(JSON.stringify(catalog));
     if (url.pathname === "/v1/networkvolumes") return response(JSON.stringify(rawVolumes));
     if (url.pathname === "/v1/billing/endpoints")
       return response(JSON.stringify([{ amount: "1.25" }, { amount: 2 }]));
@@ -188,6 +184,7 @@ test("RunPod preflight performs only bounded identity, billing, inventory, and S
   assert.equal(proof.billing.cumulativeEndpointBillingUsd, 3.25);
   assert.equal(proof.offering.availability, "LOW");
   assert.equal(proof.offering.serverlessFlexRateUsdPerGpuHour, 1.116);
+  assert.equal(proof.offering.catalogSha256, canonicalHash(catalog));
   assert.deepEqual(proof.inventory.retainedVolumes, volumePins);
   assert.equal(JSON.stringify(proof).includes(apiKey), false);
   assert.equal(calls.length, 7);
