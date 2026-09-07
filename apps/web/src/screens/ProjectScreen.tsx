@@ -243,7 +243,11 @@ function FixtureProjectScreen({ projectId }: { projectId: string }) {
             <Metric
               label="Cost"
               value={`$${project.actualCost.toFixed(2)}`}
-              detail={`$${project.capUsd.toFixed(2)} cap`}
+              detail={
+                project.capUsd === null
+                  ? "No project spending limit"
+                  : `$${project.capUsd.toFixed(2)} cap`
+              }
               tone="success"
             />
           </div>

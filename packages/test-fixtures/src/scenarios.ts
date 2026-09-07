@@ -114,7 +114,6 @@ function baseSnapshot(): FixtureSnapshot {
       applyExtraPromptKeywords: false,
       effectiveExtraPromptKeywords: null,
       generationMode: "BALANCED",
-      spendCapUsd: 1.5,
       preservedAcrossPresetRoundtrip: false,
       returnRoute: null,
       preflight: {
@@ -129,12 +128,6 @@ function baseSnapshot(): FixtureSnapshot {
             message: "Authentic Documentary Stock v1 pinned",
           },
           { id: "keywords", label: "Extra keywords", state: "PASS", message: "Not applied" },
-          {
-            id: "budget",
-            label: "Spend cap",
-            state: "PASS",
-            message: "$1.50 cap covers fixture estimate",
-          },
         ],
       },
     },
@@ -159,7 +152,7 @@ function baseSnapshot(): FixtureSnapshot {
       cost: {
         estimatedUsd: 0.88,
         currentUsd: 0.41,
-        capUsd: 1.5,
+        capUsd: null,
       },
       lanes: {
         image: { state: "RUNNING", completed: 184, total: 260, action: "Mage: image 185/260" },
@@ -312,7 +305,6 @@ function clearConsoleData(snapshot: FixtureSnapshot): void {
     applyExtraPromptKeywords: false,
     effectiveExtraPromptKeywords: null,
     generationMode: "BALANCED",
-    spendCapUsd: 1.5,
     preservedAcrossPresetRoundtrip: false,
     returnRoute: null,
     preflight: {
@@ -825,32 +817,6 @@ const scenarios = {
         "Accepted items are retained and the failed chunk can be retried idempotently.",
         true,
         "Retry failed chunk",
-      );
-    },
-  ),
-  budget_blocked: createScenario(
-    "budget_blocked",
-    "Project budget blocked",
-    "Preflight truthfully blocks a project whose estimate exceeds its configured cap.",
-    "/projects/new",
-    ["create", "budget", "blocked"],
-    (snapshot) => {
-      snapshot.project = null;
-      snapshot.draft.spendCapUsd = 0.5;
-      blockPreflight(snapshot, "budget", "$0.88 estimate exceeds the $0.50 cap");
-      snapshot.notice = {
-        tone: "ERROR",
-        title: "Spend cap is too low",
-        detail: "Raise the cap or choose a lower-cost execution mode before generating.",
-        action: "Review estimate",
-      };
-      snapshot.mutationProblem = problem(
-        "BUDGET_CAP_EXCEEDED",
-        409,
-        "Project is blocked by its spend cap",
-        "The fixture estimate is $0.88 and the configured cap is $0.50.",
-        false,
-        "Adjust spend cap",
       );
     },
   ),

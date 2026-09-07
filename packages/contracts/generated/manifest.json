@@ -119,8 +119,8 @@
     {
       "source": "project-context/evidence/create_project_request.schema.json",
       "destination": "generated/schemas/create_project_request.schema.json",
-      "bytes": 2527,
-      "sha256": "sha256:2c5e9864044b1bda7c08234832504081fa6bcba20af3bfc3addb0716c959487c"
+      "bytes": 2410,
+      "sha256": "sha256:3ac5578900c0a2d43ac8f2ec6c535f5a4ba2173e24eff63f1737f802f0e32f7d"
     },
     {
       "source": "project-context/evidence/durable_timing_lineage.schema.json",
@@ -497,20 +497,14 @@
     {
       "source": "project-context/evidence/fixtures/create_project_request.valid.json",
       "destination": "generated/fixtures/create_project_request.valid.json",
-      "bytes": 481,
-      "sha256": "sha256:71d8327be2dc8f1b84d753199ec405fb031d0b889cab197b7ff930b290548096"
+      "bytes": 457,
+      "sha256": "sha256:417650d4718b0388fe50b66141886bf9f6618ee3fd677c2a526c39480d3b02c8"
     },
     {
       "source": "project-context/evidence/fixtures/create_project_request.invalid.inline_avatar.json",
       "destination": "generated/fixtures/create_project_request.invalid.inline_avatar.json",
-      "bytes": 422,
-      "sha256": "sha256:598553a3ac6218d0ca9abbcbc605510818966bd5d84d2f5442464f48cb262326"
-    },
-    {
-      "source": "project-context/evidence/fixtures/create_project_request.invalid.over_budget.json",
-      "destination": "generated/fixtures/create_project_request.invalid.over_budget.json",
-      "bytes": 482,
-      "sha256": "sha256:63f9cbb6d572694b1b560573a060919bd5ca9cc27ca76ca8f57320412578c7c3"
+      "bytes": 398,
+      "sha256": "sha256:9fc7bea92859690d3485da0e13e6a69db083fee7b640da8338e89d6175a2efdc"
     },
     {
       "source": "project-context/evidence/fixtures/durable_timing_lineage.valid.json",
@@ -570,7 +564,7 @@
       "source": "project-context/evidence/fixtures/timeline_plan.valid.json",
       "destination": "generated/fixtures/timeline_plan.valid.json",
       "bytes": 1976,
-      "sha256": "sha256:6ad4858e61cb5cc0483261e78334e82437f158f075b7edd0f7472354a737ef87"
+      "sha256": "sha256:7d8f79232d1d24dc6ff016b4da0a3a13453a78ff7cd9c595bd71ee009923e335"
     },
     {
       "source": "project-context/evidence/fixtures/generation_work_manifest.valid.json",
@@ -600,7 +594,7 @@
       "source": "project-context/evidence/fixtures/resolved_render_manifest.valid.json",
       "destination": "generated/fixtures/resolved_render_manifest.valid.json",
       "bytes": 2694,
-      "sha256": "sha256:e417a50383d12d8ae3d82cf00f5956ebbfbdaeb65847face96bf86abf3f4dda6"
+      "sha256": "sha256:93431b7a6e64ce62dfe35145d91e4b25f72d9877087fe6c0aef4ca4e1ed5325c"
     },
     {
       "source": "project-context/evidence/fixtures/resolved_render_manifest.soulx-approved.valid.json",
@@ -618,7 +612,7 @@
       "source": "project-context/evidence/fixtures/production_manifest.valid.json",
       "destination": "generated/fixtures/production_manifest.valid.json",
       "bytes": 4506,
-      "sha256": "sha256:3541c4bd8bbc6baa39b24d5fbdf3b6c701fdf4eeb7149e2fb358af556c2ef351"
+      "sha256": "sha256:ef5bc28a2bd8e28ebb9f803855aa046a9c88b1dc3db9228c351c95cd2f742428"
     },
     {
       "source": "project-context/evidence/fixtures/pod_worker_job_envelope.valid.json",
@@ -743,8 +737,8 @@
     {
       "source": "project-context/evidence/contract-index.v1.json",
       "destination": "generated/contract-index.v1.json",
-      "bytes": 13178,
-      "sha256": "sha256:9a4a4bf7064c9833ff60da39e9f5689efac8555070727c29898df28c6a22bf97"
+      "bytes": 13081,
+      "sha256": "sha256:74820ca4c2a3945b0094759e70651aa5cd26a1397e1f262da6237e1a231b072c"
     }
   ]
 }

@@ -144,7 +144,6 @@ export function registerProjectRoutes(
         avatarProfileVersionId: request.data.avatar_profile_version_id,
         imageStyleVersionId: request.data.image_style_version_id,
         estimatedCostUsd: preflight.estimatedCostUsd,
-        spendCapUsd: request.data.spend_cap_usd,
         providerCallsAuthorized: false as const,
       });
     }),
@@ -189,7 +188,7 @@ export function registerProjectRoutes(
         title: request.data.title,
         mode: request.data.generation_mode,
         estimatedCost: preflight.estimatedCostUsd,
-        capUsd: request.data.spend_cap_usd,
+        capUsd: null,
         pins: {
           avatarProfileVersionId: request.data.avatar_profile_version_id,
           imageStyleVersionId: request.data.image_style_version_id,

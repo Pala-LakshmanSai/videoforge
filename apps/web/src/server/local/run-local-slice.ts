@@ -177,7 +177,6 @@ async function main(): Promise<void> {
     apply_extra_prompt_keywords: false,
     generation_mode: "BALANCED",
     execution_profile_overrides: null,
-    spend_cap_usd: 0.1,
     user_seed: 20_260_809,
   };
 

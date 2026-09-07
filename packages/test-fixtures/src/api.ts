@@ -85,7 +85,7 @@ export interface ProjectSummaryResponse {
   queuePosition: number | null;
   createdAt: string;
   stages?: ProjectStageResponse[];
-  capUsd: number;
+  capUsd: number | null;
   lanes: FixtureProject["lanes"];
   latestArtifact: FixtureProject["latestArtifact"];
   review: FixtureProject["review"];

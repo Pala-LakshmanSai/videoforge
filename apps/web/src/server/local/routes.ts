@@ -286,17 +286,6 @@ export function registerLocalRoutes(app: Hono, runtime: LocalRuntime): void {
           ),
         );
       }
-      if (request.data.spend_cap_usd !== 0.1) {
-        return problemResponse(
-          apiProblem(
-            "LOCAL_SPEND_CAP_INVALID",
-            422,
-            "Local slice request cap must be $0.10",
-            "The canonical create contract requires a bounded cap; local external spend remains $0.",
-            false,
-          ),
-        );
-      }
       return c.json({
         ok: true as const,
         status: "READY" as const,
@@ -304,7 +293,6 @@ export function registerLocalRoutes(app: Hono, runtime: LocalRuntime): void {
         avatarProfileVersionId: request.data.avatar_profile_version_id,
         imageStyleVersionId: request.data.image_style_version_id,
         estimatedCostUsd: 0,
-        spendCapUsd: 0.1,
         providerCallsAuthorized: false as const,
       });
     }),
@@ -329,15 +317,14 @@ export function registerLocalRoutes(app: Hono, runtime: LocalRuntime): void {
       if (
         request.data.voiceover_asset_id !== voiceover.assetId ||
         request.data.avatar_profile_version_id !== "avatar_profile_version_fixture_001" ||
-        request.data.image_style_version_id !== "style_version_documentary_stock_v1" ||
-        request.data.spend_cap_usd !== 0.1
+        request.data.image_style_version_id !== "style_version_documentary_stock_v1"
       ) {
         return problemResponse(
           apiProblem(
             "LOCAL_PREFLIGHT_REQUIRED",
             422,
             "Local project inputs do not match the ready preflight",
-            "Refresh Create and submit the exact owned voiceover, avatar, style, and bounded $0.10 cap.",
+            "Refresh Create and submit the exact owned voiceover, avatar, and style.",
             false,
           ),
         );

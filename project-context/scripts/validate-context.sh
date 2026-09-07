@@ -382,9 +382,10 @@ if [create_fixture, revision_fixture, timeline_fixture, render_fixture, producti
     errors << "golden fixtures: create/revision voiceover differs" unless create["voiceover_asset_id"] == revision["voiceover_asset_id"]
     errors << "golden fixtures: create/revision Avatar Profile version differs" unless create["avatar_profile_version_id"] == revision.dig("avatar_binding", "avatar_profile_version_id")
     errors << "golden fixtures: create/revision style differs" unless create["image_style_version_id"] == revision["image_style_version_id"]
-    %w[optional_script extra_prompt_keywords apply_extra_prompt_keywords generation_mode spend_cap_usd].each do |field|
+    %w[optional_script extra_prompt_keywords apply_extra_prompt_keywords generation_mode].each do |field|
       errors << "golden fixtures: create/revision #{field} differs" unless create[field] == revision[field]
     end
+    errors << "golden fixtures: project revision must be unlimited" unless revision["spend_cap_usd"].nil?
     if create["user_seed"].is_a?(Integer)
       errors << "golden fixtures: requested seed differs" unless create["user_seed"] == revision["scheduler_seed"]
     end
@@ -436,11 +437,9 @@ begin
   create_schema_text = JSON.generate(create_schema)
   errors << "create-project schema must require avatar_profile_version_id" unless Array(create_schema["required"]).include?("avatar_profile_version_id")
   errors << "create-project schema still exposes a project-local avatar upload branch" if create_schema_text.include?("IMAGE_ASSET") || create_schema_text.include?("avatar_image_asset_id") || create_schema_text.include?("avatar_source")
-  errors << "create-project schema must enforce the $2.00 MVP cap ceiling" unless create_schema.dig("properties", "spend_cap_usd", "maximum") == 2
+  errors << "create-project schema must not accept a client project cap" if create_schema.fetch("properties", {}).key?("spend_cap_usd") || Array(create_schema["required"]).include?("spend_cap_usd")
   invalid_inline = JSON.parse(File.read(root.join("evidence/fixtures/create_project_request.invalid.inline_avatar.json")))
   errors << "negative inline-avatar fixture no longer exercises the removed shape" unless invalid_inline.dig("avatar_source", "kind") == "IMAGE_ASSET" && invalid_inline.dig("avatar_source", "avatar_image_asset_id")
-  invalid_over_budget = JSON.parse(File.read(root.join("evidence/fixtures/create_project_request.invalid.over_budget.json")))
-  errors << "negative over-budget fixture no longer exceeds the MVP ceiling" unless invalid_over_budget["spend_cap_usd"].is_a?(Numeric) && invalid_over_budget["spend_cap_usd"] > 2
 rescue StandardError => e
   errors << "create-project Avatar Hub contract validation failed: #{e.message}"
 end
@@ -449,11 +448,11 @@ begin
   revision_schema = JSON.parse(File.read(root.join("evidence/project_revision_config.schema.json")))
   production_schema = JSON.parse(File.read(root.join("evidence/production_manifest.schema.json")))
   planning_cost = JSON.parse(File.read(root.join("evidence/planning_cost_model.json")))
-  errors << "project-revision schema must enforce the $2.00 MVP cap ceiling" unless revision_schema.dig("properties", "spend_cap_usd", "maximum") == 2
+  errors << "project-revision schema must allow an unlimited NULL limit" unless Array(revision_schema.dig("properties", "spend_cap_usd", "oneOf")).any? { |entry| entry["type"] == "null" }
   errors << "planning cost model must carry the V2 schema" unless planning_cost["schema_version"] == "videoforge.planning-cost-model/v2"
   errors << "planning cost model must leave Serverless economics open" unless planning_cost["status"] == "serverless_v2_economics_unqualified" && planning_cost.dig("serverless_economics", "gate") == "GATE_ECONOMICS_001" && planning_cost.dig("serverless_economics", "status") == "open_unqualified"
   errors << "planning cost target must match DEC_COST_001" unless planning_cost.dig("decision_envelope", "decision_id") == "DEC_COST_001" && planning_cost.dig("decision_envelope", "representative_30m_variable_target_max_usd") == 1
-  errors << "planning cost hard ceiling and request/revision cap differ" unless planning_cost.dig("decision_envelope", "representative_30m_variable_hard_ceiling_usd") == 2
+  errors << "planning cost hard ceiling must remain an economics target" unless planning_cost.dig("decision_envelope", "representative_30m_variable_hard_ceiling_usd") == 2
   errors << "planning cost model must exclude retained volumes from variable per-video cost" unless planning_cost.dig("decision_envelope", "fixed_retained_model_volume_billing_included") == false && planning_cost.dig("fixed_retained_storage", "included_in_variable_per_video_envelope") == false
   errors << "planning cost model retained-volume record differs from the two sealed 50 GB volumes" unless planning_cost.dig("fixed_retained_storage", "volume_count") == 2 && planning_cost.dig("fixed_retained_storage", "volume_size_gb_each") == 50 && planning_cost.dig("fixed_retained_storage", "recorded_usd_per_month_total") == 7
 

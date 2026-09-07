@@ -1238,7 +1238,6 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
         avatar_repair_profile_id: null,
         avatar_quality_profile_id: null,
       },
-      spend_cap_usd: request.createRequest.spend_cap_usd,
       scheduler_version: "scheduler-v2",
       scheduler_seed: request.createRequest.user_seed ?? 982_341,
       prompt_writer_version: "fixture-prompt-writer-v1",

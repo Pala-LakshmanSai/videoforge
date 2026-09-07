@@ -1,8 +1,8 @@
 {
   "schema_version": "resolved-render-manifest/v1",
   "project_revision_id": "revision_fixture_001",
-  "revision_config_hash": "sha256:89bc38845a41ed0070eca069ac19e36ccab65688e0997d2b791f2200e4c00586",
-  "timeline_plan_hash": "sha256:b04fcef46387c7a9e3951e7e04b8c3ed6284b65e1c0cdb34a04018cb14ec3f2c",
+  "revision_config_hash": "sha256:04fc55fe2ad5394bf07d1f76ece85b94b46f3bfcb2dc70d07b8939faa224218e",
+  "timeline_plan_hash": "sha256:10de05f1134f0513690c0f6917d34d533ce40cfef5b7497c1c98589c79fa6cc4",
   "render_profile_version": "ffmpeg-render-v3",
   "voiceover": {
     "asset_id": "asset_voiceover_example",

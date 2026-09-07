@@ -91,7 +91,6 @@ export class FixtureRuntime {
           ? (state.createdProjectRequest.extra_prompt_keywords ?? null)
           : null,
         generationMode: state.createdProjectRequest.generation_mode,
-        spendCapUsd: state.createdProjectRequest.spend_cap_usd,
       };
     }
     return response;

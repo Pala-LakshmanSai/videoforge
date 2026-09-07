@@ -24,7 +24,6 @@ export const projectDraftSchema = z.object({
       avatar_quality_profile_id: z.string().min(1).max(160).optional(),
     })
     .nullable(),
-  spendCapUsd: z.number().min(0.1).max(2),
   userSeed: z.number().int().min(0).max(4_294_967_295),
 });
 
@@ -58,7 +57,6 @@ export const emptyDraft: ProjectDraft = {
   applyExtraPromptKeywords: false,
   generationMode: "BALANCED",
   executionProfileOverrides: null,
-  spendCapUsd: 1.5,
   userSeed: 982341,
 };
 
@@ -96,7 +94,6 @@ export function hydrateDraftFromBootstrap(
       : serverDraft.applyExtraPromptKeywords,
     generationMode: preserveLocalEdits ? current.generationMode : serverDraft.generationMode,
     executionProfileOverrides: mode === "local" ? null : current.executionProfileOverrides,
-    spendCapUsd: serverDraft.spendCapUsd,
   });
 }
 

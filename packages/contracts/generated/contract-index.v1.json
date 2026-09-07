@@ -163,8 +163,7 @@
       "schema": "create_project_request.schema.json",
       "fixtures": [
         {"path": "fixtures/create_project_request.valid.json", "expected": true},
-        {"path": "fixtures/create_project_request.invalid.inline_avatar.json", "expected": false},
-        {"path": "fixtures/create_project_request.invalid.over_budget.json", "expected": false}
+        {"path": "fixtures/create_project_request.invalid.inline_avatar.json", "expected": false}
       ]
     },
     {

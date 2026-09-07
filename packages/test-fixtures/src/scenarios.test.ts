@@ -32,7 +32,6 @@ const PLAYBOOK_SCENARIO_IDS = [
   "preset_roundtrip_draft_preserved",
   "gpu_cold_start",
   "image_partial_failure",
-  "budget_blocked",
   "dispatch_ack_unknown",
   "callback_reconciling",
   "cancel_requested",
@@ -63,7 +62,7 @@ describe("fixture scenario registry", () => {
   it("covers every stable playbook scenario exactly once", () => {
     assert.deepEqual(FIXTURE_SCENARIO_IDS, PLAYBOOK_SCENARIO_IDS);
     assert.deepEqual(Object.keys(fixtureScenarioRegistry), PLAYBOOK_SCENARIO_IDS);
-    assert.equal(listFixtureScenarios().length, 28);
+    assert.equal(listFixtureScenarios().length, 27);
     assert.equal(DEFAULT_FIXTURE_SCENARIO_ID, "happy_generating");
   });
 
@@ -151,10 +150,6 @@ describe("fixture scenario registry", () => {
     assert.equal(
       getFixtureScenario("extra_keywords_conflict").snapshot.mutationProblem?.status,
       422,
-    );
-    assert.equal(
-      getFixtureScenario("budget_blocked").snapshot.mutationProblem?.code,
-      "BUDGET_CAP_EXCEEDED",
     );
     assert.equal(
       getFixtureScenario("dispatch_ack_unknown").snapshot.project?.status,

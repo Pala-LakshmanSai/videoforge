@@ -197,7 +197,6 @@ function FixtureCreateProjectScreen() {
     apply_extra_prompt_keywords: draft.applyExtraPromptKeywords,
     generation_mode: draft.generationMode,
     execution_profile_overrides: draft.executionProfileOverrides,
-    spend_cap_usd: draft.spendCapUsd,
     user_seed: draft.userSeed,
   };
   const estimatedCostUsd = localMode ? 0 : 0.88;
@@ -209,12 +208,10 @@ function FixtureCreateProjectScreen() {
     computeState: compute.isError ? "error" : compute.isPending ? "pending" : "ready",
     contractValid: createProjectRequestSchema.safeParse(payload).success,
     draftHydrated,
-    estimatedCostUsd,
     keywordConflictLabels: keywordValidation.conflicts.map((item) => item.label),
     keywordEnabled: draft.applyExtraPromptKeywords,
     keywordText: draft.extraPromptKeywords,
     primaryProfilesReady,
-    spendCapUsd: draft.spendCapUsd,
     stylePublished: Boolean(selectedStyle),
     title: draft.title,
     voiceoverAssetId: draft.voiceoverAssetId,
@@ -650,31 +647,9 @@ function FixtureCreateProjectScreen() {
               </Disclosure>
             ) : null}
             <div className="field">
-              <label htmlFor="spend-cap">Hard spend cap</label>
-              <input
-                id="spend-cap"
-                className="input"
-                type="number"
-                min="0.1"
-                max="2"
-                step="0.05"
-                readOnly={localMode}
-                aria-readonly={localMode}
-                value={draft.spendCapUsd}
-                onChange={(event) =>
-                  localMode
-                    ? undefined
-                    : setDraft((value) => ({
-                        ...value,
-                        spendCapUsd: Math.min(2, Math.max(0.1, Number(event.target.value))),
-                      }))
-                }
-              />
-              <small>
-                {localMode
-                  ? "Fixed request cap · local tools · external spend $0"
-                  : `Estimated $${estimatedCostUsd.toFixed(2)} · fixture spend $0`}
-              </small>
+              <span>Estimated cost</span>
+              <strong>${estimatedCostUsd.toFixed(2)}</strong>
+              <small>{localMode ? "Local tools · external spend $0" : "Fixture spend $0"}</small>
             </div>
             <Button
               busy={create.isPending}

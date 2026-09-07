@@ -19,7 +19,6 @@ interface ProjectDraftSnapshot {
   extraPromptKeywords: string;
   generationMode: "LOWEST_COST" | "BALANCED" | "FASTER";
   imageStyleVersionId: string;
-  spendCapUsd: number;
   title: string;
   userSeed: number;
   voiceoverAssetId: string | null;
@@ -191,7 +190,6 @@ async function expectProjectDraftVisible(page: Page, expected: ProjectDraftSnaps
   await expect(page.getByRole("heading", { name: "New project" })).toBeVisible();
   await expect(page.getByLabel("Video title")).toHaveValue(expected.title);
   await expect(page.locator(".dropzone")).toContainText(expected.voiceoverName ?? "");
-  await expect(page.getByLabel("Hard spend cap")).toHaveValue(String(expected.spendCapUsd));
   await expect(page.getByRole("button", { name: /FASTER/u })).toHaveClass(/selected/u);
 }
 
@@ -288,7 +286,6 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   await page.getByLabel("Apply extra image prompt keywords").click();
   await page.getByLabel("Image keywords").fill("natural light, no logo, no AI look");
   await page.getByRole("button", { name: /FASTER/u }).click();
-  await page.getByLabel("Hard spend cap").fill("1.75");
 
   const originalDraft = await readDraft(page);
   expect(originalDraft).toMatchObject({
@@ -296,7 +293,6 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
     extraPromptKeywords: "natural light, no logo, no AI look",
     generationMode: "FASTER",
     imageStyleVersionId: "style_version_warm_rural_v1",
-    spendCapUsd: 1.75,
     title,
     voiceoverAssetId: expect.stringMatching(/^fixture_voiceover_sha256_[a-f0-9]{64}$/u),
   });

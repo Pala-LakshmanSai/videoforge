@@ -252,7 +252,6 @@ export class LocalRuntime {
       extraPromptKeywords: null,
       applyExtraPromptKeywords: false,
       effectiveExtraPromptKeywords: null,
-      spendCapUsd: 0.1,
       preflight: {
         status: "READY",
         checks: [
@@ -273,12 +272,6 @@ export class LocalRuntime {
             label: "Image style",
             state: "PASS",
             message: "Authentic Documentary Stock v1 owned examples pinned",
-          },
-          {
-            id: "budget",
-            label: "Spend cap",
-            state: "PASS",
-            message: "$0 local execution; the $0.10 request cap remains unused",
           },
         ],
       },
@@ -330,7 +323,7 @@ export class LocalRuntime {
     }
     this.projectDetail = localProjectTemplate(createRequest.title);
     this.projectDetail.project.mode = createRequest.generation_mode;
-    this.projectDetail.project.capUsd = createRequest.spend_cap_usd;
+    this.projectDetail.project.capUsd = null;
     this.projectDetail.project.pins = {
       avatarProfileVersionId: createRequest.avatar_profile_version_id,
       imageStyleVersionId: createRequest.image_style_version_id,

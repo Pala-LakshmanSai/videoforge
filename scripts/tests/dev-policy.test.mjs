@@ -47,10 +47,6 @@ test("development open routes select truthful defaults and reject another origin
   assert.equal(developmentOpenRoute({ mode: "local" }), "/projects/new");
   assert.equal(developmentOpenRoute({ mode: "sandbox" }), "/projects/new");
   assert.equal(
-    developmentOpenRoute({ mode: "fixture", fixture_id: "budget_blocked" }),
-    "/?fixture=budget_blocked",
-  );
-  assert.equal(
     developmentOpenRoute({ mode: "fixture" }, "/usage?fixture=happy_generating"),
     "/usage?fixture=happy_generating",
   );

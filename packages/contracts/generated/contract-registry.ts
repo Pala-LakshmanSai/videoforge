@@ -299,10 +299,6 @@ export const canonicalContractRegistry = {
         {
           "path": "fixtures/create_project_request.invalid.inline_avatar.json",
           "expected": false
-        },
-        {
-          "path": "fixtures/create_project_request.invalid.over_budget.json",
-          "expected": false
         }
       ]
     },

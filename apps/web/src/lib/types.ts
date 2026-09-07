@@ -23,7 +23,6 @@ export const scenarioIds = [
   "preset_roundtrip_draft_preserved",
   "gpu_cold_start",
   "image_partial_failure",
-  "budget_blocked",
   "dispatch_ack_unknown",
   "callback_reconciling",
   "cancel_requested",
@@ -162,7 +161,7 @@ export interface ProjectSummary {
     avatarProfileVersionId: string | null;
     imageStyleVersionId: string;
   };
-  capUsd: number;
+  capUsd: number | null;
   lanes: {
     image: { state: string; completed: number; total: number; action: string };
     avatar: { state: string; completed: number; total: number; action: string };
@@ -209,7 +208,6 @@ export interface FixtureDraftState {
   applyExtraPromptKeywords: boolean;
   effectiveExtraPromptKeywords: string | null;
   generationMode: "LOWEST_COST" | "BALANCED" | "FASTER";
-  spendCapUsd: number;
   preservedAcrossPresetRoundtrip: boolean;
   returnRoute: string | null;
   preflight: {

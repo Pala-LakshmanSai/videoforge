@@ -12,8 +12,7 @@
     "image_style_version_id",
     "extra_prompt_keywords",
     "apply_extra_prompt_keywords",
-    "generation_mode",
-    "spend_cap_usd"
+    "generation_mode"
   ],
   "properties": {
     "title": {
@@ -62,11 +61,6 @@
         "avatar_primary_profile_id": {"type": "string", "minLength": 1, "maxLength": 160},
         "avatar_quality_profile_id": {"type": "string", "minLength": 1, "maxLength": 160}
       }
-    },
-    "spend_cap_usd": {
-      "type": "number",
-      "minimum": 0.05,
-      "maximum": 2
     },
     "user_seed": {
       "type": ["integer", "null"],

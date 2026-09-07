@@ -24,7 +24,7 @@ describe("useProjectDraft", () => {
     rerender({ mode: "local" });
     await waitFor(() => expect(result.current[2]).toBe(true));
     expect(result.current[0]).toEqual(emptyDraft);
-    act(() => result.current[1]({ ...emptyDraft, title: "Local-only draft", spendCapUsd: 0.1 }));
+    act(() => result.current[1]({ ...emptyDraft, title: "Local-only draft" }));
 
     expect(loadDraft("project_create_ready", "local").title).toBe("Local-only draft");
     expect(loadDraft("project_create_ready", "fixture").title).toBe("Fixture-only draft");

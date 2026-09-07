@@ -36,7 +36,6 @@ const PROJECT_INPUT_PROBLEM_CODES: ReadonlySet<string> = new Set([
   "AVATAR_SOURCE_INVALID",
   "AVATAR_PROFILE_ARCHIVED",
   "EXTRA_KEYWORDS_FORBIDDEN_OUTPUT",
-  "BUDGET_CAP_EXCEEDED",
 ]);
 
 type ProjectDetailResolution =
@@ -317,21 +316,6 @@ export function semanticProjectPreflight(
         ),
       };
     }
-  }
-
-  if (FIXTURE_ESTIMATED_COST_USD > request.spend_cap_usd) {
-    return {
-      ok: false,
-      response: problemResponse(
-        apiProblem(
-          "BUDGET_CAP_EXCEEDED",
-          409,
-          "Project is blocked by its spend cap",
-          `The fixture estimate is $${FIXTURE_ESTIMATED_COST_USD.toFixed(2)} and the configured cap is $${request.spend_cap_usd.toFixed(2)}.`,
-          false,
-        ),
-      ),
-    };
   }
 
   return { ok: true, estimatedCostUsd: FIXTURE_ESTIMATED_COST_USD };

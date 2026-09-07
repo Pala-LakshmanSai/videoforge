@@ -357,7 +357,7 @@ const projectSummarySchema = z
         imageStyleVersionId: z.string(),
       })
       .strict(),
-    capUsd: z.number().nonnegative(),
+    capUsd: z.number().nonnegative().nullable(),
     lanes: z
       .object({
         image: z
@@ -437,7 +437,6 @@ const fixtureDraftSchema = z
     applyExtraPromptKeywords: z.boolean(),
     effectiveExtraPromptKeywords: z.string().nullable(),
     generationMode: z.enum(["LOWEST_COST", "BALANCED", "FASTER"]),
-    spendCapUsd: z.number().nonnegative(),
     preservedAcrossPresetRoundtrip: z.boolean(),
     returnRoute: z.string().nullable(),
     preflight: z
@@ -548,7 +547,6 @@ const projectPreflightMutationSchema = z
     avatarProfileVersionId: z.string(),
     imageStyleVersionId: z.string(),
     estimatedCostUsd: z.number().nonnegative(),
-    spendCapUsd: z.number().nonnegative(),
     providerCallsAuthorized: z.literal(false),
   })
   .strict();

@@ -4,8 +4,7 @@ export type CreateBlockerTarget =
   | "avatar-profile-select"
   | "image-style-select"
   | "compute-profiles"
-  | "image-keywords"
-  | "spend-cap";
+  | "image-keywords";
 
 export interface CreateBlocker {
   code: string;
@@ -21,12 +20,10 @@ export interface CreateEligibilityInput {
   computeState: "error" | "pending" | "ready";
   contractValid: boolean;
   draftHydrated: boolean;
-  estimatedCostUsd: number;
   keywordConflictLabels: string[];
   keywordEnabled: boolean;
   keywordText: string;
   primaryProfilesReady: boolean;
-  spendCapUsd: number;
   stylePublished: boolean;
   title: string;
   voiceoverAssetId: string | null;
@@ -77,13 +74,6 @@ export function createProjectBlockers(input: CreateEligibilityInput): CreateBloc
       "KEYWORDS_CONFLICT",
       `Remove requests for ${input.keywordConflictLabels.join(", ")}.`,
       "image-keywords",
-    );
-  }
-  if (input.spendCapUsd < input.estimatedCostUsd) {
-    push(
-      "SPEND_CAP_TOO_LOW",
-      `Raise the spend cap to at least $${input.estimatedCostUsd.toFixed(2)}.`,
-      "spend-cap",
     );
   }
   if (!input.contractValid && blockers.length === 0) {

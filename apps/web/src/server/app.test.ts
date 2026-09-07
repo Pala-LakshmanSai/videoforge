@@ -39,7 +39,6 @@ const validCreateProjectRequest = {
   apply_extra_prompt_keywords: false,
   generation_mode: "BALANCED",
   execution_profile_overrides: null,
-  spend_cap_usd: 1.5,
   user_seed: null,
 };
 
@@ -663,23 +662,16 @@ describe("fixture API", () => {
     expect(disabled.status).toBe(200);
   });
 
-  it("requires the $0.88 estimate to fit within the submitted spend cap", async () => {
-    const blocked = await app.request("/api/v1/projects/preflight?fixture=project_create_ready", {
-      method: "POST",
-      headers: mutationHeaders(),
-      body: JSON.stringify({ ...validCreateProjectRequest, spend_cap_usd: 0.87 }),
-    });
-    expect(blocked.status).toBe(409);
-    await expect(blocked.json()).resolves.toMatchObject({
-      error: { code: "BUDGET_CAP_EXCEEDED" },
-    });
-
-    const exact = await app.request("/api/v1/projects/preflight?fixture=project_create_ready", {
+  it("rejects the retired client project-cap field", async () => {
+    const response = await app.request("/api/v1/projects/preflight?fixture=project_create_ready", {
       method: "POST",
       headers: mutationHeaders(),
       body: JSON.stringify({ ...validCreateProjectRequest, spend_cap_usd: 0.88 }),
     });
-    expect(exact.status).toBe(200);
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "INVALID_CREATE_PROJECT_REQUEST" },
+    });
   });
 
   it("rejects unknown or cross-lane execution profile overrides with the active lane gate", async () => {
@@ -750,18 +742,6 @@ describe("fixture API", () => {
     expect(conflict.status).toBe(409);
     await expect(conflict.json()).resolves.toMatchObject({
       error: { code: "IDEMPOTENCY_KEY_REUSED" },
-    });
-  });
-
-  it("surfaces deterministic scenario blockers as mutation errors", async () => {
-    const response = await app.request("/api/v1/projects?fixture=budget_blocked", {
-      method: "POST",
-      headers: mutationHeaders(),
-      body: JSON.stringify(validCreateProjectRequest),
-    });
-    expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({
-      error: { code: "BUDGET_CAP_EXCEEDED", retryable: false },
     });
   });
 
@@ -1109,7 +1089,6 @@ describe("fixture API", () => {
       ...validCreateProjectRequest,
       title: "A precise submitted project title",
       generation_mode: "FASTER",
-      spend_cap_usd: 1.25,
     };
     const request = {
       method: "POST",
@@ -1161,7 +1140,7 @@ describe("fixture API", () => {
         title: submitted.title,
         revisionId: createdBody.revisionId,
         mode: "FASTER",
-        capUsd: 1.25,
+        capUsd: null,
         pins: createdBody.pins,
       });
     }
@@ -1170,7 +1149,6 @@ describe("fixture API", () => {
       avatarProfileVersionId: submitted.avatar_profile_version_id,
       imageStyleVersionId: submitted.image_style_version_id,
       generationMode: "FASTER",
-      spendCapUsd: 1.25,
     });
   });
 

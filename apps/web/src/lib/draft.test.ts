@@ -26,7 +26,6 @@ const localServerDraft: FixtureDraftState = {
   applyExtraPromptKeywords: false,
   effectiveExtraPromptKeywords: null,
   generationMode: "BALANCED",
-  spendCapUsd: 0.1,
   preservedAcrossPresetRoundtrip: false,
   returnRoute: null,
   preflight: { status: "READY", checks: [] },
@@ -39,7 +38,6 @@ describe("fixture project draft", () => {
     const draft = loadDraft();
     expect(draft.imageStyleVersionId).toBe("style_version_documentary_stock_v1");
     expect(draft.applyExtraPromptKeywords).toBe(false);
-    expect(draft.spendCapUsd).toBe(1.5);
   });
 
   it("persists every project choice used in a preset-hub round trip", () => {
@@ -65,38 +63,29 @@ describe("fixture project draft", () => {
   });
 
   it("isolates scenario drafts so stable fixture states do not overwrite each other", () => {
-    saveDraft({ ...emptyDraft, title: "Budget fixture draft", spendCapUsd: 0.5 }, "budget_blocked");
+    saveDraft({ ...emptyDraft, title: "Ordinary fixture draft" }, "project_create_ready");
     saveDraft(
       { ...emptyDraft, title: "Keyword fixture draft", applyExtraPromptKeywords: true },
       "extra_keywords_conflict",
     );
 
-    expect(loadDraft("budget_blocked")).toMatchObject({
-      title: "Budget fixture draft",
-      spendCapUsd: 0.5,
+    expect(loadDraft("project_create_ready")).toMatchObject({
+      title: "Ordinary fixture draft",
       applyExtraPromptKeywords: false,
     });
     expect(loadDraft("extra_keywords_conflict")).toMatchObject({
       title: "Keyword fixture draft",
-      spendCapUsd: 1.5,
       applyExtraPromptKeywords: true,
     });
-    expect(localStorage.getItem(projectDraftStorageKeyFor("budget_blocked"))).not.toBeNull();
+    expect(localStorage.getItem(projectDraftStorageKeyFor("project_create_ready"))).not.toBeNull();
   });
 
   it("isolates local drafts from fixture drafts on the stable origin", () => {
-    saveDraft({ ...emptyDraft, title: "Fixture draft", spendCapUsd: 1.5 }, "project_create_ready");
-    saveDraft(
-      { ...emptyDraft, title: "Local draft", spendCapUsd: 0.1 },
-      "project_create_ready",
-      "local",
-    );
+    saveDraft({ ...emptyDraft, title: "Fixture draft" }, "project_create_ready");
+    saveDraft({ ...emptyDraft, title: "Local draft" }, "project_create_ready", "local");
 
     expect(loadDraft("project_create_ready", "fixture").title).toBe("Fixture draft");
-    expect(loadDraft("project_create_ready", "local")).toMatchObject({
-      title: "Local draft",
-      spendCapUsd: 0.1,
-    });
+    expect(loadDraft("project_create_ready", "local")).toMatchObject({ title: "Local draft" });
   });
 
   it("rebinds stale local server-owned inputs while preserving only safe edits", () => {
@@ -112,7 +101,6 @@ describe("fixture project draft", () => {
           image_media_profile_id: "stale-image-profile",
           avatar_primary_profile_id: "stale-avatar-profile",
         },
-        spendCapUsd: 1.5,
         userSeed: 42,
       },
       localServerDraft,
@@ -127,7 +115,6 @@ describe("fixture project draft", () => {
       imageStyleVersionId: "style_local_owned_v1",
       generationMode: "FASTER",
       executionProfileOverrides: null,
-      spendCapUsd: 0.1,
       userSeed: 42,
     });
   });
@@ -196,9 +183,5 @@ describe("fixture project draft", () => {
     );
 
     expect(loadDraft()).toEqual(emptyDraft);
-  });
-
-  it("rejects the MVP cap above two dollars", () => {
-    expect(projectDraftSchema.safeParse({ ...emptyDraft, spendCapUsd: 2.01 }).success).toBe(false);
   });
 });

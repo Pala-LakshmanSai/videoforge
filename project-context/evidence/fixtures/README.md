@@ -9,7 +9,6 @@ global-session/Pod-era schemas without rewriting these bytes.
 - `create_project_request.valid.json` validates the historical request shape and carries only the
   exact Avatar Profile version ID—never raw avatar bytes or an image asset branch.
 - `create_project_request.invalid.inline_avatar.json` is an intentional negative fixture proving the removed `IMAGE_ASSET`/project-local upload shape is rejected.
-- `create_project_request.invalid.over_budget.json` is an intentional negative fixture proving the MVP request contract rejects a cap above `$2.00`.
 - `project_revision_config.valid.json` is the trusted server-resolved v2 form of that same request, including the exact Avatar Profile binding.
 - `project_revision_config.invalid.compatibility_mismatch.json` intentionally claims a `PASSED` preflight state with `FAILED` evidence; schema validation must reject it.
 - `timeline_plan.valid.json` hash-links to the revision and covers all three allowed timeline compositions without generated asset IDs.

@@ -1,7 +1,7 @@
 {
   "schema_version": "timeline-plan/v1",
   "project_revision_id": "revision_fixture_001",
-  "revision_config_hash": "sha256:89bc38845a41ed0070eca069ac19e36ccab65688e0997d2b791f2200e4c00586",
+  "revision_config_hash": "sha256:04fc55fe2ad5394bf07d1f76ece85b94b46f3bfcb2dc70d07b8939faa224218e",
   "scheduler_version": "scheduler-v1",
   "seed": 982341,
   "output_fps_num": 30,

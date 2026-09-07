@@ -10,12 +10,10 @@ const readyInput: CreateEligibilityInput = {
   computeState: "ready",
   contractValid: true,
   draftHydrated: true,
-  estimatedCostUsd: 0.88,
   keywordConflictLabels: [],
   keywordEnabled: false,
   keywordText: "",
   primaryProfilesReady: true,
-  spendCapUsd: 1.5,
   stylePublished: true,
   title: "A valid project",
   voiceoverAssetId: "voiceover_fixture",
@@ -38,7 +36,6 @@ describe("createProjectBlockers", () => {
         keywordEnabled: true,
         keywordText: "add a logo",
         keywordConflictLabels: ["logos"],
-        spendCapUsd: 0.5,
       }),
     ).toEqual([
       { code: "TITLE_REQUIRED", message: "Add a video title.", target: "project-title" },
@@ -66,11 +63,6 @@ describe("createProjectBlockers", () => {
         code: "KEYWORDS_CONFLICT",
         message: "Remove requests for logos.",
         target: "image-keywords",
-      },
-      {
-        code: "SPEND_CAP_TOO_LOW",
-        message: "Raise the spend cap to at least $0.88.",
-        target: "spend-cap",
       },
     ]);
   });

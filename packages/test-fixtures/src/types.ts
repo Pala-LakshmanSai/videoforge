@@ -19,7 +19,6 @@ export const FIXTURE_SCENARIO_IDS = [
   "preset_roundtrip_draft_preserved",
   "gpu_cold_start",
   "image_partial_failure",
-  "budget_blocked",
   "dispatch_ack_unknown",
   "callback_reconciling",
   "cancel_requested",
@@ -111,7 +110,6 @@ export interface FixtureDraft {
   applyExtraPromptKeywords: boolean;
   effectiveExtraPromptKeywords: string | null;
   generationMode: "LOWEST_COST" | "BALANCED" | "FASTER";
-  spendCapUsd: number;
   preservedAcrossPresetRoundtrip: boolean;
   returnRoute: string | null;
   preflight: {
@@ -138,7 +136,7 @@ export interface FixtureProject {
   cost: {
     estimatedUsd: number;
     currentUsd: number;
-    capUsd: number;
+    capUsd: number | null;
   };
   lanes: {
     image: {

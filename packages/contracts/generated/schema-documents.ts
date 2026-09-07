@@ -3991,8 +3991,7 @@ export const canonicalSchemaDocuments = {
       "image_style_version_id",
       "extra_prompt_keywords",
       "apply_extra_prompt_keywords",
-      "generation_mode",
-      "spend_cap_usd"
+      "generation_mode"
     ],
     "properties": {
       "title": {
@@ -4066,11 +4065,6 @@ export const canonicalSchemaDocuments = {
             "maxLength": 160
           }
         }
-      },
-      "spend_cap_usd": {
-        "type": "number",
-        "minimum": 0.05,
-        "maximum": 2
       },
       "user_seed": {
         "type": [

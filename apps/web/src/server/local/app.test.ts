@@ -74,7 +74,6 @@ function createRequest(assetId: string): CreateProjectRequest {
     apply_extra_prompt_keywords: false,
     generation_mode: "BALANCED",
     execution_profile_overrides: null,
-    spend_cap_usd: 0.1,
     user_seed: 20260809,
   };
 }
@@ -570,7 +569,7 @@ async function bootstrap(app: Awaited<ReturnType<typeof localApp>>["app"]) {
   const response = await app.request("/api/v1/bootstrap?fixture=happy_generating");
   expect(response.status).toBe(200);
   return (await response.json()) as {
-    draft: { voiceover: { assetId: string; durationSeconds: number }; spendCapUsd: number };
+    draft: { voiceover: { assetId: string; durationSeconds: number } };
   };
 }
 
@@ -629,7 +628,6 @@ describe("local walking-slice API", () => {
     const boot = await bootstrap(app);
     expect(boot.draft).toMatchObject({
       voiceover: { assetId: runner.voiceover.assetId, durationSeconds: 40 },
-      spendCapUsd: 0.1,
     });
     const voiceover = await app.request(`/api/v1/voiceovers/${runner.voiceover.assetId}`);
     expect(voiceover.status).toBe(200);

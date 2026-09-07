@@ -74,7 +74,6 @@ function revisionValue(transcript) {
       avatar_repair_profile_id: null,
       avatar_quality_profile_id: null,
     },
-    spend_cap_usd: 1.5,
     scheduler_version: SUPPORTED_SCHEDULER_VERSION,
     scheduler_seed: 982_341,
     prompt_writer_version: "fixture-prompt-writer-v1",
