@@ -1084,6 +1084,13 @@ test("staging factory needs neither Chrome inputs nor deferred endpoint secrets"
   );
   const cleanup = await adapters.cleanupStagedRunPod({ authority: value });
   assert.equal(cleanup.endpoint_count, 0);
+  assert.equal(cleanup.database_deactivated, true);
+  assert.equal(
+    calls.some(({ args = [] }) =>
+      args.some((entry) => String(entry).endsWith("neon-deactivate-v209-production.sql")),
+    ),
+    true,
+  );
   assert.equal(
     calls.some(({ options }) => options?.input?.includes('"command":"DELETE_ATTRIBUTABLE_PAIR"')),
     true,
@@ -1236,6 +1243,41 @@ test("deployment factory binds all secrets and rehydrates the persisted pair wit
   assert.equal(cleaned.cloudflare_disabled, true);
   assert.equal(cleaned.database_deactivated, true);
   assert.equal(cleaned.endpoint_count, 0);
+
+  const exhaustiveCalls = [];
+  const failingPorts = portSet();
+  failingPorts.reconcileCloudflareSafety = {
+    ...failingPorts.reconcileCloudflareSafety,
+    run: async () => {
+      throw new Error("simulated cloudflare outage");
+    },
+  };
+  const exhaustive = createConcreteQualifiedProductionDeploymentAdapters(configuration, {
+    ports: failingPorts,
+    runChild: childRunner(exhaustiveCalls),
+    rehydration: {
+      combinedExecution,
+      executionAuthority: inner,
+      journalAuthorityId: value.authority_id,
+      priorResults,
+    },
+  });
+  await assert.rejects(
+    exhaustive.cleanupDeploymentSuffix({ authority: inner }),
+    /V2_09_DEPLOYMENT_SUFFIX_CLEANUP_INCOMPLETE/u,
+  );
+  assert.equal(
+    exhaustiveCalls.some(({ args = [] }) =>
+      args.some((entry) => String(entry).endsWith("neon-deactivate-v209-production.sql")),
+    ),
+    true,
+  );
+  assert.equal(
+    exhaustiveCalls.some(({ options }) =>
+      options?.input?.includes('"command":"DELETE_ATTRIBUTABLE_PAIR"'),
+    ),
+    true,
+  );
 });
 
 test("interactive Chrome pause and resume preserve the unstarted Generate operation", async () => {

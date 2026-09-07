@@ -262,13 +262,47 @@ function sqlLiteral(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
 }
 
-function roleSql(roles) {
+function roleSql(roles, authorityId) {
+  const marker = `videoforge-v2-09-authority:${authorityId}`;
   return `BEGIN;\n${roles
     .map(
       ({ role, password }) =>
-        `DO $vf$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(role)}) THEN RAISE EXCEPTION 'v2-09 role already exists'; END IF; EXECUTE 'CREATE ROLE ' || quote_ident(${sqlLiteral(role)}) || ' LOGIN PASSWORD ' || quote_literal(${sqlLiteral(password)}); END $vf$;`,
+        `DO $vf$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(role)}) THEN RAISE EXCEPTION 'v2-09 role already exists'; END IF; EXECUTE 'CREATE ROLE ' || quote_ident(${sqlLiteral(role)}) || ' LOGIN PASSWORD ' || quote_literal(${sqlLiteral(password)}); EXECUTE 'COMMENT ON ROLE ' || quote_ident(${sqlLiteral(role)}) || ' IS ' || quote_literal(${sqlLiteral(marker)}); END $vf$;`,
     )
     .join("\n")}\nCOMMIT;\n`;
+}
+
+function roleCleanupSql(roles, authorityId) {
+  const marker = `videoforge-v2-09-authority:${authorityId}`;
+  return `BEGIN;\n${roles
+    .map(
+      (role) =>
+        `DO $vf$ DECLARE target oid; BEGIN SELECT oid INTO target FROM pg_roles WHERE rolname = ${sqlLiteral(role)} AND shobj_description(oid, 'pg_authid') = ${sqlLiteral(marker)}; IF target IS NOT NULL THEN EXECUTE 'DROP OWNED BY ' || quote_ident(${sqlLiteral(role)}); EXECUTE 'DROP ROLE ' || quote_ident(${sqlLiteral(role)}); END IF; END $vf$;`,
+    )
+    .join("\n")}\nCOMMIT;\n`;
+}
+
+function unlinkPrivateIfExists(path, code) {
+  if (!existsSync(path)) return false;
+  if (typeof path !== "string" || !isAbsolute(path)) fail(code);
+  privateDirectory(dirname(path));
+  const stat = lstatSync(path);
+  if (
+    !stat.isFile() ||
+    stat.isSymbolicLink() ||
+    stat.nlink !== 1 ||
+    (stat.mode & 0o777) !== 0o600 ||
+    (typeof process.getuid === "function" && stat.uid !== process.getuid())
+  )
+    fail(code);
+  unlinkSync(path);
+  const directory = openSync(dirname(path), fsConstants.O_RDONLY);
+  try {
+    fsyncSync(directory);
+  } finally {
+    closeSync(directory);
+  }
+  return true;
 }
 
 function keyId(authorityId, purpose) {
@@ -397,7 +431,7 @@ export async function materializeV209ProtectedInputs({
   );
   // Every credential needed to recover or clean the fresh versioned roles is durable before the
   // single transactional role mutation. Existing roles are never rotated or reused.
-  await runPsql({ env: postgresEnvironment(ownerUrl), sql: roleSql(roleRecords) });
+  await runPsql({ env: postgresEnvironment(ownerUrl), sql: roleSql(roleRecords, authorityId) });
   const completed = { ...claim, status: "COMPLETED" };
   const nextJournal = `${journalPath}.complete`;
   writePrivateOnce(nextJournal, Buffer.from(`${canonical(completed)}\n`), "ROLE_JOURNAL_INVALID");
@@ -429,6 +463,95 @@ export async function materializeV209ProtectedInputs({
     protected_file_sha256s: Object.freeze(
       outputPaths.map((path) => sha256(readPrivate(path, "OUTPUT_INVALID"))),
     ),
+  });
+}
+
+export async function cleanupV209ProtectedInputs({
+  authorityId,
+  configuration,
+  materialization,
+  derivedOwnerUrl,
+  runPsql,
+}) {
+  if (!/^v2-09-[a-z0-9][a-z0-9._-]{7,95}$/u.test(authorityId ?? "")) fail("AUTHORITY_INVALID");
+  if (typeof runPsql !== "function") fail("PSQL_PORT_INVALID");
+  const roleNames = [
+    configuration.operatorRole,
+    configuration.runtimeRole,
+    configuration.reconcilerRole,
+  ];
+  const roleSuffix = sha256(authorityId).slice(7, 15);
+  const expectedRoles = ["operator", "runtime", "reconciler"].map(
+    (purpose) => `videoforge_v209_${purpose}_${roleSuffix}`,
+  );
+  if (canonical(roleNames) !== canonical(expectedRoles)) fail("ROLE_INVALID");
+  const journalPath = materialization.roleJournalPath;
+  if (!existsSync(journalPath)) {
+    unlinkPrivateIfExists(`${journalPath}.next`, "ROLE_JOURNAL_INVALID");
+    return Object.freeze({
+      schema_version: "videoforge.v2-09-protected-input-cleanup-result/v1",
+      authority_id: authorityId,
+      role_cleanup_attempted: false,
+      removed_file_count: 0,
+    });
+  }
+  let journal;
+  try {
+    journal = JSON.parse(readPrivate(journalPath, "ROLE_JOURNAL_INVALID").toString("utf8"));
+  } catch {
+    fail("ROLE_JOURNAL_INVALID");
+  }
+  if (
+    journal?.schema_version !== "videoforge.v2-09-role-materialization-journal/v1" ||
+    journal.authority_id !== authorityId ||
+    !["STARTED", "COMPLETED"].includes(journal.status) ||
+    canonical(journal.role_name_sha256s) !== canonical(roleNames.map((role) => sha256(role)))
+  )
+    fail("ROLE_JOURNAL_INVALID");
+  const ownerUrl =
+    derivedOwnerUrl === undefined
+      ? deriveOwnerDatabaseUrl(materialization.databaseOwner)
+      : String(derivedOwnerUrl);
+  await runPsql({
+    env: postgresEnvironment(ownerUrl),
+    sql: roleCleanupSql(roleNames, authorityId),
+  });
+  const sourcePaths = new Set(
+    [
+      ...Object.values(materialization.reusableSecretFiles ?? {}),
+      materialization.databaseOwner?.urlFile,
+      materialization.databaseOwner?.serviceFile,
+      materialization.databaseOwner?.passFile,
+    ]
+      .filter((path) => typeof path === "string")
+      .map((path) => resolve(path)),
+  );
+  const outputPaths = new Set(
+    [
+      configuration.databaseOwnerUrlFile,
+      configuration.databaseOperatorUrlFile,
+      configuration.databaseReconcilerUrlFile,
+      configuration.runpodWorkerEnvironmentFile,
+      configuration.runpodApiKeyFile,
+      ...Object.values(configuration.cloudflare?.secretFiles ?? {}),
+    ]
+      .filter((path) => typeof path === "string" && !sourcePaths.has(resolve(path)))
+      .map((path) => resolve(path)),
+  );
+  let removedFileCount = 0;
+  for (const path of outputPaths) {
+    removedFileCount += Number(unlinkPrivateIfExists(`${path}.next`, "OUTPUT_CLEANUP_INVALID"));
+    removedFileCount += Number(unlinkPrivateIfExists(path, "OUTPUT_CLEANUP_INVALID"));
+  }
+  removedFileCount += Number(
+    unlinkPrivateIfExists(`${journalPath}.complete`, "ROLE_JOURNAL_INVALID"),
+  );
+  removedFileCount += Number(unlinkPrivateIfExists(journalPath, "ROLE_JOURNAL_INVALID"));
+  return Object.freeze({
+    schema_version: "videoforge.v2-09-protected-input-cleanup-result/v1",
+    authority_id: authorityId,
+    role_cleanup_attempted: true,
+    removed_file_count: removedFileCount,
   });
 }
 

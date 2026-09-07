@@ -4161,80 +4161,101 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     const last = NORMAL_OPERATIONS.findIndex(({ id }) => id === "import-v209-qualified-activation");
     const cleanupDeploymentSuffix = async ({ authority, operation = {} }) => {
       assertAuthorityConfiguration(authority);
-      const cloudflare = await ports.reconcileCloudflareSafety.run({
-        authority,
-        cleanupOnly: true,
-        operationId: "reconcile-v209-production-safety",
-        outcome: "FAILURE",
-        priorResults: Object.freeze([]),
-        providerDeployments: Object.freeze(Object.fromEntries(providerDeployments)),
-      });
-      if (
-        cloudflare?.safety_verified !== true ||
-        cloudflare?.gpu_transport !== "DISABLED_UNQUALIFIED"
-      )
-        fail("V2_09_DEPLOYMENT_SUFFIX_CLOUDFLARE_CLEANUP_INVALID");
+      const failures = [];
+      let cloudflareDisabled = false;
+      let databaseDeactivated = false;
+      let runPodDeleted = false;
+      try {
+        const cloudflare = await ports.reconcileCloudflareSafety.run({
+          authority,
+          cleanupOnly: true,
+          operationId: "reconcile-v209-production-safety",
+          outcome: "FAILURE",
+          priorResults: Object.freeze([]),
+          providerDeployments: Object.freeze(Object.fromEntries(providerDeployments)),
+        });
+        if (
+          cloudflare?.safety_verified !== true ||
+          cloudflare?.gpu_transport !== "DISABLED_UNQUALIFIED"
+        )
+          throw new Error("cloudflare cleanup invalid");
+        cloudflareDisabled = true;
+      } catch {
+        failures.push("cloudflare");
+      }
       const deploymentIds = ["mage", "soulx"].map(
         (lane) => persistedDeployments.get(lane)?.deploymentId,
       );
       if (deploymentIds.some((id) => !UUID.test(id ?? "")))
         fail("V2_09_DEPLOYMENT_SUFFIX_DATABASE_CLEANUP_INVALID");
-      const output = await exactChild(
-        runChild,
-        configuration,
-        "psql",
-        [
-          "--no-psqlrc",
-          "--set",
-          "ON_ERROR_STOP=1",
-          "--quiet",
-          "--tuples-only",
-          "--no-align",
-          "--variable",
-          `payload_base64=${Buffer.from(
-            canonical({
-              schemaVersion: "videoforge.v2-09-deactivate-production/v1",
-              deploymentIds,
-            }),
-            "utf8",
-          ).toString("base64")}`,
-          "--file",
-          resolve(ROOT, "deploy/v2-09/neon-deactivate-v209-production.sql"),
-        ],
-        "DEACTIVATE_PRODUCTION_PAIR",
-        {
-          cancellationSignal: operation.cancellationSignal,
-          env: postgresEnvironmentFor("databaseOwnerUrlFile"),
-        },
-      );
-      const deactivated = parseJson(output, "DEACTIVATE_PRODUCTION_PAIR");
-      if (
-        deactivated?.schemaVersion !== "videoforge.v2-09-deactivate-production-result/v1" ||
-        deactivated.allInactive !== true
-      )
-        fail("V2_09_DEPLOYMENT_SUFFIX_DATABASE_CLEANUP_INVALID");
-      const observed = await invokeRunPodReconciliation(
-        authority,
-        operation,
-        "DELETE_ATTRIBUTABLE_PAIR",
-        { deployments: [], jobs: [] },
-        { includeJobs: false },
-      );
-      if (
-        observed.inventory.activeWorkers !== 0 ||
-        observed.inventory.runningPods !== 0 ||
-        observed.inventory.queuedJobs !== 0 ||
-        observed.inventory.endpointIdSha256s.length !== 0
-      )
-        fail("V2_09_DEPLOYMENT_SUFFIX_RUNPOD_CLEANUP_INVALID");
+      try {
+        const output = await exactChild(
+          runChild,
+          configuration,
+          "psql",
+          [
+            "--no-psqlrc",
+            "--set",
+            "ON_ERROR_STOP=1",
+            "--quiet",
+            "--tuples-only",
+            "--no-align",
+            "--variable",
+            `payload_base64=${Buffer.from(
+              canonical({
+                schemaVersion: "videoforge.v2-09-deactivate-production/v1",
+                deploymentIds,
+              }),
+              "utf8",
+            ).toString("base64")}`,
+            "--file",
+            resolve(ROOT, "deploy/v2-09/neon-deactivate-v209-production.sql"),
+          ],
+          "DEACTIVATE_PRODUCTION_PAIR",
+          {
+            cancellationSignal: operation.cancellationSignal,
+            env: postgresEnvironmentFor("databaseOwnerUrlFile"),
+          },
+        );
+        const deactivated = parseJson(output, "DEACTIVATE_PRODUCTION_PAIR");
+        if (
+          deactivated?.schemaVersion !== "videoforge.v2-09-deactivate-production-result/v1" ||
+          deactivated.allInactive !== true
+        )
+          throw new Error("database cleanup invalid");
+        databaseDeactivated = true;
+      } catch {
+        failures.push("database");
+      }
+      try {
+        const observed = await invokeRunPodReconciliation(
+          authority,
+          operation,
+          "DELETE_ATTRIBUTABLE_PAIR",
+          { deployments: [], jobs: [] },
+          { includeJobs: false },
+        );
+        if (
+          observed.inventory.activeWorkers !== 0 ||
+          observed.inventory.runningPods !== 0 ||
+          observed.inventory.queuedJobs !== 0 ||
+          observed.inventory.endpointIdSha256s.length !== 0
+        )
+          throw new Error("runpod cleanup invalid");
+        runPodDeleted = true;
+      } catch {
+        failures.push("runpod");
+      }
+      if (failures.length > 0) fail("V2_09_DEPLOYMENT_SUFFIX_CLEANUP_INCOMPLETE");
       return Object.freeze({
         operation_id: "cleanup-deployment-suffix",
-        cloudflare_disabled: true,
-        database_deactivated: true,
+        cloudflare_disabled: cloudflareDisabled,
+        database_deactivated: databaseDeactivated,
         endpoint_count: 0,
         active_worker_count: 0,
         running_pod_count: 0,
         queued_job_count: 0,
+        runpod_deleted: runPodDeleted,
       });
     };
     return Object.freeze({
@@ -4318,22 +4339,82 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     };
     const cleanupStagedRunPod = async ({ authority, operation = {} }) => {
       assertAuthorityConfiguration(authority);
-      const observed = await invokeRunPodReconciliation(
-        authority,
-        operation,
-        "DELETE_ATTRIBUTABLE_PAIR",
-        { deployments: [], jobs: [] },
-        { includeJobs: false },
-      );
-      if (
-        observed.inventory.activeWorkers !== 0 ||
-        observed.inventory.runningPods !== 0 ||
-        observed.inventory.queuedJobs !== 0 ||
-        observed.inventory.endpointIdSha256s.length !== 0
-      )
+      const journal = readJournal(configuration.journalPath);
+      if (journal.authority_id !== authority.authority_id)
         fail("V2_09_STAGING_RUNPOD_CLEANUP_INVALID");
+      const failures = [];
+      let databaseDeactivated = false;
+      if (
+        ["STARTED", "COMPLETED"].includes(
+          journal.normal["persist-qualified-production-deployments"]?.status,
+        )
+      ) {
+        const deploymentIds = ["mage", "soulx"].map((lane) =>
+          deterministicUuid(`${authority.authority_id}:deployment:${lane}`),
+        );
+        try {
+          const output = await exactChild(
+            runChild,
+            configuration,
+            "psql",
+            [
+              "--no-psqlrc",
+              "--set",
+              "ON_ERROR_STOP=1",
+              "--quiet",
+              "--tuples-only",
+              "--no-align",
+              "--variable",
+              `payload_base64=${Buffer.from(
+                canonical({
+                  schemaVersion: "videoforge.v2-09-deactivate-production/v1",
+                  deploymentIds,
+                }),
+                "utf8",
+              ).toString("base64")}`,
+              "--file",
+              resolve(ROOT, "deploy/v2-09/neon-deactivate-v209-production.sql"),
+            ],
+            "DEACTIVATE_PRODUCTION_PAIR",
+            {
+              cancellationSignal: operation.cancellationSignal,
+              env: postgresEnvironmentFor("databaseOwnerUrlFile"),
+            },
+          );
+          const deactivated = parseJson(output, "DEACTIVATE_PRODUCTION_PAIR");
+          if (
+            deactivated?.schemaVersion !== "videoforge.v2-09-deactivate-production-result/v1" ||
+            deactivated.allInactive !== true
+          )
+            throw new Error("database cleanup invalid");
+          databaseDeactivated = true;
+        } catch {
+          failures.push("database");
+        }
+      }
+      let observed;
+      try {
+        observed = await invokeRunPodReconciliation(
+          authority,
+          operation,
+          "DELETE_ATTRIBUTABLE_PAIR",
+          { deployments: [], jobs: [] },
+          { includeJobs: false },
+        );
+        if (
+          observed.inventory.activeWorkers !== 0 ||
+          observed.inventory.runningPods !== 0 ||
+          observed.inventory.queuedJobs !== 0 ||
+          observed.inventory.endpointIdSha256s.length !== 0
+        )
+          throw new Error("runpod cleanup invalid");
+      } catch {
+        failures.push("runpod");
+      }
+      if (failures.length > 0) fail("V2_09_STAGING_CLEANUP_INCOMPLETE");
       return Object.freeze({
         operation_id: "cleanup-staged-runpod",
+        database_deactivated: databaseDeactivated,
         endpoint_count: 0,
         active_worker_count: 0,
         running_pod_count: 0,

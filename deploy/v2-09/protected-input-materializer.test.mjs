@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmodSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import { SECRET_NAMES } from "../v2-13/guarded-activation.mjs";
 import {
+  cleanupV209ProtectedInputs,
   deriveOwnerDatabaseUrl,
   materializeV209EndpointSecrets,
   materializeV209ProtectedInputs,
@@ -159,4 +160,36 @@ test("an existing versioned role journal forbids replay", async () => {
     }),
     /ROLE_MUTATION_AMBIGUOUS_NO_REPLAY/u,
   );
+});
+
+test("authority cleanup drops only marked roles and removes outputs including endpoint partials", async () => {
+  const value = fixture();
+  let counter = 0;
+  const calls = [];
+  await materializeV209ProtectedInputs({
+    authorityId: AUTHORITY_ID,
+    configuration: value.configuration,
+    materialization: value.materialization,
+    randomBytesImpl: (size) => Buffer.alloc(size, ++counter),
+    runPsql: async (request) => calls.push(request),
+  });
+  const endpointPath = value.configuration.cloudflare.secretFiles.VIDEOFORGE_MAGE_ENDPOINT_ID;
+  writeFileSync(endpointPath, "partial-endpoint", { mode: 0o600 });
+  const sourcePath = value.materialization.reusableSecretFiles.RUNPOD_API_KEY;
+  const result = await cleanupV209ProtectedInputs({
+    authorityId: AUTHORITY_ID,
+    configuration: value.configuration,
+    materialization: value.materialization,
+    runPsql: async (request) => calls.push(request),
+  });
+  assert.equal(result.role_cleanup_attempted, true);
+  assert.equal(existsSync(endpointPath), false);
+  assert.equal(existsSync(value.configuration.runpodApiKeyFile), false);
+  assert.equal(existsSync(value.materialization.roleJournalPath), false);
+  assert.equal(existsSync(sourcePath), true);
+  assert.match(calls[0].sql, /COMMENT ON ROLE/u);
+  assert.match(calls[1].sql, /shobj_description/u);
+  assert.match(calls[1].sql, /DROP OWNED BY/u);
+  assert.match(calls[1].sql, /DROP ROLE/u);
+  assert.match(calls[1].sql, new RegExp(AUTHORITY_ID, "u"));
 });
