@@ -3776,7 +3776,6 @@ export function parseAuthenticatedRunPodServerlessFlexRate(catalog) {
     price === null ||
     typeof price !== "object" ||
     Array.isArray(price) ||
-    Object.keys(price).length !== 1 ||
     !Object.hasOwn(price, "flex")
   )
     fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE");
