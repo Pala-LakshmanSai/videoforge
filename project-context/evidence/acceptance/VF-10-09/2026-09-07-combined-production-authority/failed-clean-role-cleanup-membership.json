@@ -1,0 +1,68 @@
+{
+  "schema_version": "videoforge.v2-09-combined-production-failed-clean/v1",
+  "checkpoint": "V2-09",
+  "authority_id": "v2-09-cfcaccfc07d8abcb",
+  "proposal_sha256": "sha256:cfcaccfc07d8abcb18e98a930bf5cd8ea196a41feaa3e02aa57432358bcede05",
+  "source_commit": "3c1dbfc2c2d53dad165b577341bb46b524aa0ca5",
+  "media_worker_execution_bundle_sha256": "sha256:02fab08673806bd596f6d84869a176c20401e13f7c06302d96597fc673572ed5",
+  "executed_once": true,
+  "reusable": false,
+  "terminal_status": "FAILED_CLEAN",
+  "stopped_at_operation": "materialize-v209-protected-inputs",
+  "completed_operations": [
+    "run-read-only-preflight",
+    "read-pre-mutation-completion-baseline"
+  ],
+  "pending_later_operation_count": 23,
+  "inner_authority_id": null,
+  "preflight_proof_sha256": "sha256:6f57e9f3ecf4ff53126cc60c3b875c65816f85c9794136120758301ff8bdd2de",
+  "completion_baseline_receipt_sha256": "sha256:2545f2fe9650c716a3396991e3d191581cf1a37e566660c1191bef662dc613e6",
+  "completion_baseline_micro_usd": 386630,
+  "maximum_completion_baseline_micro_usd": 15500000,
+  "runpod_preflight": {
+    "active_workers": 0,
+    "endpoints": 0,
+    "pods": 0,
+    "private_templates": 0,
+    "historical_endpoint_billing_usd": 3.5284023286949378,
+    "retained_volume_count": 2,
+    "retained_volumes_unchanged": true
+  },
+  "failure": {
+    "outer_error": "V2_09_COMBINED_ROLE_CLEANUP_FAILED",
+    "cleanup_psql_error": "permission denied to drop objects: only roles with privileges of the authority-derived operator role may drop objects owned by it",
+    "cause": "The exact cleanup SQL issued DROP OWNED BY an authority-derived role while the database owner session was not a member of that role."
+  },
+  "cleanup": {
+    "recovery_scope": "authority-marker-bound exact three-role cleanup only",
+    "role_cleanup_tombstone_sha256": "sha256:e0c94f583fdbf1c486de8199ba4af5d913478ed98d101eddff5e4ee66bf58c52",
+    "outer_state_sha256": "sha256:8ad95b981ab5c9610181d41000c63ea87b40db8c01be651d8dd713236257f651",
+    "remaining_authority_roles": 0,
+    "removed_protected_file_count": 22,
+    "remaining_secret_files": 0,
+    "remaining_database_url_files": 0,
+    "remaining_runpod_worker_environment_files": 0,
+    "active_executor_processes": 0,
+    "cleanup_tombstone_status": "CLEANED"
+  },
+  "external_effects": {
+    "database_role_create_transactions": 1,
+    "database_role_cleanup_transaction_attempts": 3,
+    "database_role_cleanup_transactions_committed": 2,
+    "database_role_cleanup_transactions_rolled_back": 1,
+    "database_migrations": 0,
+    "media_worker_publications": 0,
+    "media_worker_installs": 0,
+    "runpod_mutations": 0,
+    "runpod_job_posts": 0,
+    "gpu_jobs": 0,
+    "cloudflare_mutations": 0,
+    "r2_mutations": 0,
+    "chrome_e2e_runs": 0,
+    "redispatches": 0,
+    "stage_6_jobs": 0,
+    "stage_7_jobs": 0,
+    "incremental_external_spend_usd": 0
+  },
+  "recorded_at": "2026-09-07T16:14:15.000Z"
+}

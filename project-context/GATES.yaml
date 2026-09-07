@@ -455,23 +455,23 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-preclaim-readiness-replacement.json"
-    current_authority_sha256: "sha256:5359ed15db028cd352ff45072ea7582f5e0ad4ce2b129abeff97d7072d46223e"
-    current_authority_state: approved_single_use_unconsumed_pending_successor_audit
-    current_proposal_sha256: "sha256:cfcaccfc07d8abcb18e98a930bf5cd8ea196a41feaa3e02aa57432358bcede05"
-    current_control_source_commit: "3c1dbfc2c2d53dad165b577341bb46b524aa0ca5"
-    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-missing-secrets-directory.json"
-    current_failure_sha256: "sha256:2b399ba3aaf71f58162a5ac1a0ec9c751e447dc67333ddeb685e3b7b6c825ce5"
+    current_authority: null
+    current_authority_sha256: null
+    current_authority_state: none_cfcaccfc_consumed_failed_clean
+    current_proposal_sha256: null
+    current_control_source_commit: null
+    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-role-cleanup-membership.json"
+    current_failure_sha256: "sha256:1f7f7329d3e9ff01ffe5d133b92f5903b941c577e77e01e687ad5ff6bbec5e6f"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-role-preflight-replacement.json"
-    latest_closed_authority_sha256: "sha256:3e90df9428cda50a2b1c0c43ef2c4a8bcf2210ce75d8e1523f00c8e1de295235"
-    latest_closed_proposal_sha256: "sha256:7ecd9929c7cedc663c96b690c6944e7ef826f51a2f2f356e00acfe000cf9751f"
-    latest_closed_control_source_commit: "371aee61ff3a8f14d6cb4f564079f9eba64a42b4"
-    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-missing-secrets-directory.json"
-    latest_closed_failure_sha256: "sha256:2b399ba3aaf71f58162a5ac1a0ec9c751e447dc67333ddeb685e3b7b6c825ce5"
     provider_free_repair_state: "Preclaim repairs f0dac6df, 0117cb1c, 0f4ed8dd, dcd4c146, and eb113e44 validate exact clean source, every protected output parent, content-bound 30-60s voiceover with stable streamed-packet duration, exact private Wrangler environment, and local media-worker readiness before authority claim. Focused suites pass 97/97 and independent audit is GO P0=0/P1=0. Stage 6/7 were untouched."
-    next_gate: "Complete the mandatory independent authority-materialization successor audit, then execute the approved combined activation and one Chrome E2E."
+    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-preclaim-readiness-replacement.json"
+    latest_closed_authority_sha256: "sha256:5359ed15db028cd352ff45072ea7582f5e0ad4ce2b129abeff97d7072d46223e"
+    latest_closed_proposal_sha256: "sha256:cfcaccfc07d8abcb18e98a930bf5cd8ea196a41feaa3e02aa57432358bcede05"
+    latest_closed_control_source_commit: "3c1dbfc2c2d53dad165b577341bb46b524aa0ca5"
+    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-role-cleanup-membership.json"
+    latest_closed_failure_sha256: "sha256:1f7f7329d3e9ff01ffe5d133b92f5903b941c577e77e01e687ad5ff6bbec5e6f"
+    next_gate: "Repair and independently audit role cleanup membership provider-free, reseal source/bundle/proposal, then obtain fresh exact approval."
 
   GATE_RANGA_001:
     status: open
