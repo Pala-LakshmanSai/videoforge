@@ -45,13 +45,9 @@ const IDEMPOTENCY = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,159}$/u;
 const VOICEOVER_TYPES = new Set(["audio/mpeg", "audio/wav"]);
 const GENERATION_MODES = new Set(["LOWEST_COST", "BALANCED", "FASTER"]);
 const MAX_VOICEOVER_BYTES = 1_073_741_824;
-const MAX_SPEND_CAP_USD = 2;
 const MAX_EXTRA_PROMPT_KEYWORDS = 500;
 const MAX_OPTIONAL_SCRIPT = 100_000;
 const HOSTED_TARGETED_RETRY_QUALIFIED = false;
-// Stages 3 and 5 reserve $0.01 and $0.04 respectively, so the persisted project ceiling must
-// accept their exact combined bounded cap without authorizing later GPU work.
-const PERSONAL_WORKER_MINIMUM_COST_MICRO_USD = 50_000;
 
 function hostedProviderFreePresetCreationEnabled(config: HostedRuntimeConfiguration): boolean {
   return config.environment === "staging" && config.gpuTransport === "DISABLED_UNQUALIFIED";
@@ -75,7 +71,6 @@ interface ProjectCreateInput {
   readonly extraPromptKeywords: string | null;
   readonly applyExtraPromptKeywords: boolean;
   readonly generationMode: "LOWEST_COST" | "BALANCED" | "FASTER";
-  readonly spendCapUsd: number;
   readonly userSeed: number | null;
   readonly voiceover: {
     readonly filename: string;
@@ -107,12 +102,10 @@ export function hostedRevisionConfigV2(input: {
   readonly extraPromptKeywords?: string | null;
   readonly applyExtraPromptKeywords?: boolean;
   readonly generationMode?: "LOWEST_COST" | "BALANCED" | "FASTER";
-  readonly spendCapUsd?: number;
 }) {
   const extraPromptKeywords = input.extraPromptKeywords ?? null;
   const applyExtraPromptKeywords = input.applyExtraPromptKeywords ?? false;
   const generationMode = input.generationMode ?? "LOWEST_COST";
-  const spendCapUsd = input.spendCapUsd ?? PERSONAL_WORKER_MINIMUM_COST_MICRO_USD / 1_000_000;
   return {
     schema_version: "project-revision-config/v2" as const,
     project_id: input.projectId,
@@ -144,7 +137,7 @@ export function hostedRevisionConfigV2(input: {
       avatar_repair_profile_id: null,
       avatar_quality_profile_id: null,
     },
-    spend_cap_usd: spendCapUsd,
+    spend_cap_usd: null,
     scheduler_version: "scheduler-v2",
     scheduler_seed: input.schedulerSeed,
     prompt_writer_version: "scene-prompt-writer-v1",
@@ -184,7 +177,6 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
     "extra_prompt_keywords",
     "generation_mode",
     "optional_script",
-    "spend_cap_usd",
     "user_seed",
   ];
   const schemaVersion = record.schema_version;
@@ -238,7 +230,6 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
   const extraPromptKeywords = record.extra_prompt_keywords;
   const applyExtraPromptKeywords = record.apply_extra_prompt_keywords;
   const generationMode = record.generation_mode;
-  const spendCapUsd = record.spend_cap_usd;
   const userSeed = record.user_seed;
   if (
     (optionalScript !== undefined &&
@@ -251,11 +242,6 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
     (applyExtraPromptKeywords !== undefined && typeof applyExtraPromptKeywords !== "boolean") ||
     (generationMode !== undefined &&
       (typeof generationMode !== "string" || !GENERATION_MODES.has(generationMode))) ||
-    (spendCapUsd !== undefined &&
-      (typeof spendCapUsd !== "number" ||
-        !Number.isFinite(spendCapUsd) ||
-        spendCapUsd < PERSONAL_WORKER_MINIMUM_COST_MICRO_USD / 1_000_000 ||
-        spendCapUsd > MAX_SPEND_CAP_USD)) ||
     (userSeed !== undefined &&
       userSeed !== null &&
       (typeof userSeed !== "number" ||
@@ -276,7 +262,6 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
     applyExtraPromptKeywords: applyExtraPromptKeywords === true,
     generationMode:
       generationMode === "BALANCED" || generationMode === "FASTER" ? generationMode : "LOWEST_COST",
-    spendCapUsd: typeof spendCapUsd === "number" ? spendCapUsd : 0.1,
     userSeed: typeof userSeed === "number" ? userSeed : null,
     voiceover: {
       filename: voiceover.filename,
@@ -4232,7 +4217,6 @@ async function projectPreflight(
         severity: "ADVISORY",
       });
     }
-    const cap = input.spendCapUsd;
     const ok = blockers.every((blocker) => blocker.severity !== "BLOCKING");
     const gpuProductState = hostedGpuProductState(gpuReadiness);
     return response({
@@ -4242,8 +4226,8 @@ async function projectPreflight(
       estimate: {
         projected_usd: gpuProductState.projectedUsd,
         minimum_usd: 0,
-        maximum_usd: cap,
-        cap_usd: cap,
+        maximum_usd: null,
+        cap_usd: null,
         detail: gpuProductState.estimateDetail,
         voiceover_bytes: input.voiceover.contentLength,
         duration_ms: input.voiceover.durationMs,
@@ -4354,7 +4338,6 @@ async function createProject(
         extraPromptKeywords: input.extraPromptKeywords,
         applyExtraPromptKeywords: input.applyExtraPromptKeywords,
         generationMode: input.generationMode,
-        spendCapUsd: input.spendCapUsd,
       });
       const revisionHash = await sha256(canonicalJson(revisionPayload));
       await transaction.query(
@@ -4419,7 +4402,7 @@ async function createProject(
           input.extraPromptKeywords,
           input.applyExtraPromptKeywords,
           input.generationMode,
-          Math.round(input.spendCapUsd * 1_000_000),
+          null,
           schedulerSeed,
           JSON.stringify(revisionPayload),
           revisionHash,
@@ -6437,9 +6420,10 @@ async function projectDetail(
     const settledCost = costRow
       ? (numberOrNull(costRow.settled_usd) ?? 0) + (numberOrNull(costRow.prompt_settled_usd) ?? 0)
       : 0;
-    const capCost = costRow
-      ? (numberOrNull(costRow.maximum_cost_micro_usd) ?? 0) / 1_000_000
+    const maximumCostMicroUsd = costRow
+      ? numberOrNull(costRow.maximum_cost_micro_usd)
       : null;
+    const capCost = maximumCostMicroUsd === null ? null : maximumCostMicroUsd / 1_000_000;
     const timingRows = [...(detail.attempts as Record<string, unknown>[]), ...serverlessAttempts];
     const createdAt = timingRows
       .map((value) => new Date(String(value.created_at)).getTime())

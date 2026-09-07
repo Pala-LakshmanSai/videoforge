@@ -104,7 +104,7 @@ function plan(overrides: Record<string, unknown> = {}) {
     })),
     extra_prompt_keywords: null,
     apply_extra_prompt_keywords: false,
-    spend_cap_usd: 1,
+    spend_cap_usd: null,
     existing_run_state: null,
     scenes: scenes(),
     ...overrides,
@@ -382,7 +382,14 @@ describe("hosted prompt authority", () => {
     }
   });
 
-  it("rejects an already-claimed plan or insufficient project cap", () => {
+  it("admits an unlimited plan and rejects an already-claimed plan or insufficient legacy cap", () => {
+    expect(() =>
+      hostedPromptAuthority({
+        plan: plan(),
+        identity,
+        reservedCostMicroUsd: 40_000,
+      }),
+    ).not.toThrow();
     expect(() =>
       hostedPromptAuthority({
         plan: plan({ existing_run_state: "UNKNOWN" }),

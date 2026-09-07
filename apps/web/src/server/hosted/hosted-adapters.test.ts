@@ -140,6 +140,7 @@ describe("V2-06 hosted adapters", () => {
           image_media_profile_id: "serverless-mage-image-v1",
           avatar_primary_profile_id: "serverless-soulx-flashhead-pro-v1",
         },
+        spend_cap_usd: null,
       },
     });
   });

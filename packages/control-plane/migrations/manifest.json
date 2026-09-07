@@ -510,6 +510,12 @@
       "name": "hosted_v209_completion_baseline",
       "filename": "0085_hosted_v209_completion_baseline.sql",
       "sha256": "sha256:8e3150e340a3a8b2525d41470b6e98e127434e7baf199eb543921647716d585b"
+    },
+    {
+      "version": 86,
+      "name": "hosted_unlimited_project_cost",
+      "filename": "0086_hosted_unlimited_project_cost.sql",
+      "sha256": "sha256:782eebdb00e3813b78eb0859fd8fd359ed1017b2ccb1d789878b2a055f23c0f5"
     }
   ]
 }

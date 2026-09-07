@@ -155,8 +155,8 @@
     {
       "source": "project-context/evidence/project_revision_config.schema.json",
       "destination": "generated/schemas/project_revision_config.schema.json",
-      "bytes": 6938,
-      "sha256": "sha256:f2031a7ed20a5c8b4d2e7ba81618ea01920975685555e177d22d5056ccea4d40"
+      "bytes": 7005,
+      "sha256": "sha256:a4617cf242690575d40d78a21d398611e728f62db4b46474b1c2d1a990d094da"
     },
     {
       "source": "project-context/evidence/timeline_plan.schema.json",
@@ -557,8 +557,8 @@
     {
       "source": "project-context/evidence/fixtures/project_revision_config.valid.json",
       "destination": "generated/fixtures/project_revision_config.valid.json",
-      "bytes": 2126,
-      "sha256": "sha256:c9ccb7d1dbd2d52a2b40f88d05f329e9307e9612e53a22f34e36a3ca36a22174"
+      "bytes": 2127,
+      "sha256": "sha256:0fad3fa2bef29fe436f49e0ebc225dccff18fdb6c0eb98235178d03218259900"
     },
     {
       "source": "project-context/evidence/fixtures/project_revision_config.invalid.compatibility_mismatch.json",

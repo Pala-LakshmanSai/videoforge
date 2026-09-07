@@ -6664,9 +6664,16 @@ export const canonicalSchemaDocuments = {
         }
       },
       "spend_cap_usd": {
-        "type": "number",
-        "minimum": 0.05,
-        "maximum": 2
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "number",
+            "minimum": 0.05,
+            "maximum": 2
+          }
+        ]
       },
       "scheduler_version": {
         "type": "string",

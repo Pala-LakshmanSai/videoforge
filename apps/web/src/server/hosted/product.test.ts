@@ -717,11 +717,16 @@ describe("hosted product route contract", () => {
     expect(result?.status).toBe(200);
     await expect(result?.json()).resolves.toMatchObject({
       schema_version: "videoforge-hosted-project-preflight/v1",
-      estimate: { duration_ms: 20_000, voiceover_bytes: 320_000 },
+      estimate: {
+        duration_ms: 20_000,
+        voiceover_bytes: 320_000,
+        maximum_usd: null,
+        cap_usd: null,
+      },
     });
   });
 
-  it("accepts the exact bounded Stage 1-5 spend cap in hosted project preflight", async () => {
+  it("rejects client-supplied spend caps in hosted project preflight", async () => {
     const result = await handleHostedProductRequest(
       request("/api/v2/hosted/projects/preflight", "POST", {
         schema_version: "videoforge-hosted-project-preflight/v1",
@@ -741,7 +746,8 @@ describe("hosted product route contract", () => {
       stagingConfig,
       executionContext,
     );
-    expect(result?.status).toBe(200);
+    expect(result?.status).toBe(400);
+    await expect(errorCode(result)).resolves.toBe("PROJECT_PREFLIGHT_REJECTED");
   });
 
   it("keeps provenance manifest unavailable until an approved render exists", async () => {
