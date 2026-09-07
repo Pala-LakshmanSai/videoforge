@@ -242,7 +242,7 @@ test("authenticated official Serverless catalog is parsed instead of synthesizin
     parseAuthenticatedRunPodServerlessFlexRate([
       {
         ...gpu,
-        price: { flex: "0.00031" },
+        price: { flex: "0.000310" },
         dataCenters: [{ id: "EU-RO-1", availability: "HIGH" }],
       },
     ]),
@@ -269,9 +269,13 @@ test("authenticated official Serverless catalog is parsed instead of synthesizin
   for (const price of [
     {},
     { serverless: 0.00031 },
+    { flex: "0.000310", active: "0.000210" },
     { flex: "unknown" },
     { flex: "00.00031" },
-    { flex: "0.000310" },
+    { flex: " 0.00031" },
+    { flex: "+0.00031" },
+    { flex: "3.1e-4" },
+    { flex: "0.000.31" },
     { flex: 0 },
     { flex: Number.POSITIVE_INFINITY },
   ])

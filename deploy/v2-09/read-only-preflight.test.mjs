@@ -149,7 +149,7 @@ test("RunPod preflight performs only bounded identity, billing, inventory, and S
       id: "NVIDIA GeForce RTX 4090",
       name: "NVIDIA GeForce RTX 4090",
       manufacturer: "NVIDIA",
-      price: { flex: 0.00031 },
+      price: { flex: "0.000310" },
       dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
     },
   ];

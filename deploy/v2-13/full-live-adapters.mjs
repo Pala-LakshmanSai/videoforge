@@ -3772,10 +3772,16 @@ export function parseAuthenticatedRunPodServerlessFlexRate(catalog) {
   );
   if (matches.length !== 1) fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_GPU_MATCH");
   const price = matches[0]?.price;
-  if (price === null || typeof price !== "object" || Array.isArray(price))
+  if (
+    price === null ||
+    typeof price !== "object" ||
+    Array.isArray(price) ||
+    Object.keys(price).length !== 1 ||
+    !Object.hasOwn(price, "flex")
+  )
     fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE");
   const rawRate = price.flex;
-  const canonicalDecimal = /^(?:0|[1-9]\d*)(?:\.\d*[1-9])?$/u;
+  const canonicalDecimal = /^(?:0|[1-9]\d*)(?:\.\d+)?$/u;
   if (
     !(
       (typeof rawRate === "number" && Number.isFinite(rawRate)) ||
