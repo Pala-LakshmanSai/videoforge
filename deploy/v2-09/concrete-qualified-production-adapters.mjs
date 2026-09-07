@@ -19,6 +19,9 @@ import { runCancellableChildProcess } from "../v2-13/full-live-adapters.mjs";
 import { createV209CloudflareProductionOperator } from "./cloudflare-production-operator.mjs";
 import {
   BRANCH,
+  COMBINED_EXECUTION_MARKER,
+  COMBINED_PRECOMPLETED_OPERATION_IDS,
+  COMBINED_RESUME_SCHEMA,
   NORMAL_OPERATIONS,
   OPERATION_IDS,
   PUSH_REF,
@@ -345,6 +348,55 @@ function exactKeys(value, keys) {
   );
 }
 
+function validateCombinedJournalHandoff(combinedExecution, executionAuthority, priorResults) {
+  if (
+    !exactKeys(combinedExecution, [
+      "execution_marker",
+      "inner_authority_sha256",
+      "operations",
+      "outer_authority_id",
+      "preflight_proof_sha256",
+      "receipt_sha256",
+      "schema_version",
+      "staged_receipts_sha256",
+    ]) ||
+    combinedExecution.schema_version !== COMBINED_RESUME_SCHEMA ||
+    combinedExecution.execution_marker !== COMBINED_EXECUTION_MARKER ||
+    !HASH.test(combinedExecution.inner_authority_sha256 ?? "") ||
+    combinedExecution.inner_authority_sha256 !== sha256(canonical(executionAuthority)) ||
+    !HASH.test(combinedExecution.staged_receipts_sha256 ?? "") ||
+    !HASH.test(combinedExecution.receipt_sha256 ?? "") ||
+    !Array.isArray(combinedExecution.operations) ||
+    combinedExecution.operations.length !== COMBINED_PRECOMPLETED_OPERATION_IDS.length
+  )
+    fail("V2_09_CONCRETE_COMBINED_HANDOFF_INVALID");
+  const unsigned = { ...combinedExecution };
+  delete unsigned.receipt_sha256;
+  const expectedInnerId = `v2-09-inner-${sha256(
+    canonical({
+      outerAuthorityId: combinedExecution.outer_authority_id,
+      preflightProof: combinedExecution.preflight_proof_sha256,
+      stagedReceiptsSha256: combinedExecution.staged_receipts_sha256,
+    }),
+  ).slice(7, 31)}`;
+  if (
+    executionAuthority.authority_id !== expectedInnerId ||
+    sha256(canonical(unsigned)) !== combinedExecution.receipt_sha256
+  )
+    fail("V2_09_CONCRETE_COMBINED_HANDOFF_INVALID");
+  combinedExecution.operations.forEach((receipt, index) => {
+    const operationId = COMBINED_PRECOMPLETED_OPERATION_IDS[index];
+    if (
+      !exactKeys(receipt, ["operation_id", "result", "result_sha256"]) ||
+      receipt.operation_id !== operationId ||
+      receipt.result_sha256 !== sha256(canonical(receipt.result)) ||
+      canonical(priorResults[operationId]) !== canonical(receipt.result)
+    )
+      fail("V2_09_CONCRETE_COMBINED_HANDOFF_INVALID");
+  });
+  return combinedExecution.outer_authority_id;
+}
+
 function assertPrivateRegularPath(path, { mayNotExist = false } = {}) {
   if (typeof path !== "string" || !isAbsolute(path)) fail("V2_09_CONCRETE_PATH_INVALID");
   const parent = dirname(path);
@@ -399,8 +451,11 @@ function snapshotConcreteConfiguration(value) {
   return cloneAndFreeze(value);
 }
 
-function protectedInputSnapshot(configuration, { stagingOnly = false } = {}) {
-  const protectedNames = stagingOnly
+function protectedInputSnapshot(
+  configuration,
+  { allowDeferredEndpointSecrets = false, skipChrome = false } = {},
+) {
+  const protectedNames = skipChrome
     ? PROTECTED_INPUT_NAMES.filter(
         (name) => !["chromeRequestFile", "chromeAuthStateFile"].includes(name),
       )
@@ -453,8 +508,9 @@ function protectedInputSnapshot(configuration, { stagingOnly = false } = {}) {
     Object.fromEntries(
       Object.entries(cloudflareSecretFiles)
         .filter(([name, path]) => {
-          if (!stagingOnly || existsSync(path)) return true;
-          if (DEFERRED_ENDPOINT_SECRET_NAMES.has(name)) return false;
+          if (existsSync(path)) return true;
+          if (allowDeferredEndpointSecrets && DEFERRED_ENDPOINT_SECRET_NAMES.has(name))
+            return false;
           fail("V2_09_CONCRETE_PROTECTED_INPUT_INVALID");
         })
         .map(([name, path]) => {
@@ -1061,6 +1117,121 @@ function createJournalState({ journalPath, adapterIdentitySha256 }) {
   });
 }
 
+function mapJournalAuthority(
+  state,
+  journalPath,
+  journalAuthorityId,
+  executionAuthorityId,
+  combinedExecution,
+) {
+  if (journalAuthorityId === null || journalAuthorityId === executionAuthorityId) return state;
+  const mappedId = (authorityId) => {
+    if (authorityId !== executionAuthorityId) fail("V2_09_CONCRETE_HANDOFF_AUTHORITY_INVALID");
+    return journalAuthorityId;
+  };
+  const remap = async (promise) => ({ ...(await promise), authority_id: executionAuthorityId });
+  const adopted = new Map(
+    (combinedExecution?.operations ?? []).map((entry) => [entry.operation_id, entry]),
+  );
+  return Object.freeze({
+    async claimAuthority({ authority }) {
+      mappedId(authority?.authority_id);
+      const journal = readJournal(journalPath);
+      if (
+        journal.authority_id !== journalAuthorityId ||
+        journal.proposal_sha256 !== authority.proposal_sha256 ||
+        journal.source_commit !== authority.source_commit ||
+        !["CLAIMED", "AWAITING_INTERACTIVE_CHROME_LOGIN", "CLEANUP_ONLY"].includes(journal.status)
+      )
+        fail("V2_09_CONCRETE_HANDOFF_AUTHORITY_INVALID");
+      return { authority_id: executionAuthorityId, status: journal.status, consumed_once: true };
+    },
+    async beginNormalOperation({ authorityId, operationId, ...rest }) {
+      mappedId(authorityId);
+      const receipt = adopted.get(operationId);
+      if (receipt !== undefined) {
+        const journal = readJournal(journalPath);
+        if (
+          journal.normal[operationId]?.status !== "COMPLETED" ||
+          journal.normal[operationId].result_sha256 !== receipt.result_sha256
+        )
+          fail("V2_09_CONCRETE_HANDOFF_RECEIPT_INVALID");
+        return {
+          authority_id: executionAuthorityId,
+          operation_id: operationId,
+          status: "STARTED",
+          first_start: true,
+        };
+      }
+      return remap(
+        state.beginNormalOperation({
+          authorityId: journalAuthorityId,
+          operationId,
+          ...rest,
+        }),
+      );
+    },
+    async completeNormalOperation({ authorityId, operationId, result, ...rest }) {
+      mappedId(authorityId);
+      const receipt = adopted.get(operationId);
+      if (receipt !== undefined) {
+        const journal = readJournal(journalPath);
+        if (
+          receipt.result_sha256 !== sha256(canonical(result)) ||
+          journal.normal[operationId]?.status !== "COMPLETED" ||
+          journal.normal[operationId].result_sha256 !== receipt.result_sha256
+        )
+          fail("V2_09_CONCRETE_HANDOFF_RECEIPT_INVALID");
+        return {
+          authority_id: executionAuthorityId,
+          operation_id: operationId,
+          status: "COMPLETED",
+        };
+      }
+      return remap(
+        state.completeNormalOperation({
+          authorityId: journalAuthorityId,
+          operationId,
+          result,
+          ...rest,
+        }),
+      );
+    },
+    enterCleanupOnly: ({ authorityId, ...rest }) =>
+      remap(state.enterCleanupOnly({ authorityId: mappedId(authorityId), ...rest })),
+    async loadCleanupAuthority({ authority }) {
+      mappedId(authority?.authority_id);
+      const journal = readJournal(journalPath);
+      if (
+        journal.authority_id !== journalAuthorityId ||
+        journal.proposal_sha256 !== authority.proposal_sha256 ||
+        journal.source_commit !== authority.source_commit ||
+        !["CLAIMED", "AWAITING_INTERACTIVE_CHROME_LOGIN", "CLEANUP_ONLY"].includes(journal.status)
+      )
+        fail("V2_09_CONCRETE_HANDOFF_AUTHORITY_INVALID");
+      if (journal.status !== "CLEANUP_ONLY") {
+        journal.status = "CLEANUP_ONLY";
+        writeFsyncedJson(journalPath, journal);
+      }
+      return { authority_id: executionAuthorityId, status: "CLEANUP_ONLY" };
+    },
+    recordCleanupOperation: ({ authorityId, ...rest }) =>
+      remap(state.recordCleanupOperation({ authorityId: mappedId(authorityId), ...rest })),
+    completeCleanup: ({ authorityId, ...rest }) =>
+      remap(state.completeCleanup({ authorityId: mappedId(authorityId), ...rest })),
+    completeSuccess: ({ authorityId, ...rest }) =>
+      remap(state.completeSuccess({ authorityId: mappedId(authorityId), ...rest })),
+    async reconcileSuccess({ authorityId }) {
+      const value = await state.reconcileSuccess({ authorityId: mappedId(authorityId) });
+      return { ...value, authority_id: executionAuthorityId };
+    },
+    pauseInteractiveChromeLogin: ({ authorityId, ...rest }) =>
+      remap(state.pauseInteractiveChromeLogin({ authorityId: mappedId(authorityId), ...rest })),
+    resumeInteractiveChromeLogin: ({ authorityId, ...rest }) =>
+      remap(state.resumeInteractiveChromeLogin({ authorityId: mappedId(authorityId), ...rest })),
+  });
+}
+
 function concreteConfigurationIdentity(configuration, protectedInputs) {
   return sha256(
     canonical({
@@ -1178,6 +1349,8 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     fetchImpl = fetch,
     now = () => new Date(),
     sleep = (milliseconds) => new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds)),
+    deploymentOnly = false,
+    rehydration = null,
     stagingOnly = false,
   } = {},
 ) {
@@ -1221,13 +1394,17 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
         path === configuration.mediaReleaseManifestFile ||
         path === configuration.qualifiedConfigOutputFile ||
         path === configuration.qualifiedConfigReceiptFile ||
-        (stagingOnly &&
+        ((stagingOnly || deploymentOnly) &&
           [configuration.chromeRequestFile, configuration.chromeAuthStateFile].includes(path)),
     });
   if (resolve(configuration.root) !== ROOT) fail("V2_09_CONCRETE_ROOT_INVALID");
 
   const protectedInputs =
-    suppliedProtectedInputs ?? protectedInputSnapshot(configuration, { stagingOnly });
+    suppliedProtectedInputs ??
+    protectedInputSnapshot(configuration, {
+      allowDeferredEndpointSecrets: stagingOnly,
+      skipChrome: stagingOnly || deploymentOnly,
+    });
   const ownerDatabaseEnvironment = postgresEnvironment(
     configuration,
     protectedInputs.databaseOwnerUrlFile.bytes.toString("utf8"),
@@ -1271,9 +1448,10 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
   )
     fail("V2_09_CONCRETE_DATABASE_ROLE_BINDING_INVALID");
   const migrationBundle = loadV209MigrationBundle();
-  const chromeDocument = stagingOnly
-    ? null
-    : validateChromeDocument(configuration, protectedInputs.chromeRequestFile.bytes);
+  const chromeDocument =
+    stagingOnly || deploymentOnly
+      ? null
+      : validateChromeDocument(configuration, protectedInputs.chromeRequestFile.bytes);
   const assertProtectedInputUnchanged = (name) => {
     const expected = protectedInputs[name];
     const path = configuration[name];
@@ -1345,6 +1523,80 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
   const implementationSha256 = deriveConcreteAdapterIdentity(ports, configuration, protectedInputs);
   const providerDeployments = new Map();
   const persistedDeployments = new Map();
+  let journalAuthorityId = null;
+  if (rehydration !== null) {
+    const authority = rehydration?.executionAuthority ?? rehydration?.authority;
+    const priorResults = rehydration?.priorResults;
+    if (
+      authority?.source_commit !== configuration.sourceCommit ||
+      priorResults === null ||
+      typeof priorResults !== "object" ||
+      Array.isArray(priorResults)
+    )
+      fail("V2_09_CONCRETE_REHYDRATION_INVALID");
+    journalAuthorityId =
+      rehydration.executionAuthority === undefined
+        ? authority.authority_id
+        : validateCombinedJournalHandoff(rehydration.combinedExecution, authority, priorResults);
+    if (
+      rehydration.journalAuthorityId !== undefined &&
+      rehydration.journalAuthorityId !== journalAuthorityId
+    )
+      fail("V2_09_CONCRETE_REHYDRATION_INVALID");
+    const journal = readJournal(configuration.journalPath);
+    if (
+      journal.authority_id !== journalAuthorityId ||
+      journal.source_commit !== authority.source_commit ||
+      !["CLAIMED", "AWAITING_INTERACTIVE_CHROME_LOGIN"].includes(journal.status)
+    )
+      fail("V2_09_CONCRETE_REHYDRATION_INVALID");
+    const persisted = priorResults["persist-qualified-production-deployments"];
+    if (
+      persisted?.operation_id !== "persist-qualified-production-deployments" ||
+      persisted.persisted_deployment_count !== 2 ||
+      !Array.isArray(persisted.deployments) ||
+      persisted.deployments.length !== 2
+    )
+      fail("V2_09_CONCRETE_REHYDRATION_INVALID");
+    for (const lane of ["mage", "soulx"]) {
+      const operationId = `create-${lane}-production-lane-max-one`;
+      const result = priorResults[operationId];
+      const deployment = journal.resources[lane];
+      const binding = authority.scope?.lanes?.find((entry) => entry.lane === lane);
+      const persistedResult = persisted.deployments.find((entry) => entry.lane === lane);
+      if (
+        journal.normal[operationId]?.status !== "COMPLETED" ||
+        journal.normal[operationId].result_sha256 !== sha256(canonical(result)) ||
+        journal.normal["persist-qualified-production-deployments"]?.status !== "COMPLETED" ||
+        journal.normal["persist-qualified-production-deployments"].result_sha256 !==
+          sha256(canonical(persisted)) ||
+        binding === undefined ||
+        typeof deployment?.endpointId !== "string" ||
+        sha256(deployment.endpointId) !== deployment.endpointIdSha256 ||
+        typeof deployment.templateId !== "string" ||
+        sha256(deployment.templateId) !== deployment.templateIdSha256 ||
+        deployment.sourceCommit !== authority.source_commit ||
+        deployment.volumeIdSha256 !== binding.volume_id_sha256 ||
+        deployment.volumeManifestSha256 !== binding.volume_manifest_sha256 ||
+        result?.endpoint_id_sha256 !== deployment.endpointIdSha256 ||
+        result?.template_id_sha256 !== deployment.templateIdSha256 ||
+        result?.deployment_sha256 !== deployment.deploymentSha256 ||
+        persistedResult?.endpoint_id_sha256 !== deployment.endpointIdSha256 ||
+        persistedResult?.template_id_sha256 !== deployment.templateIdSha256 ||
+        persistedResult?.deployment_sha256 !== deployment.deploymentSha256 ||
+        !HASH.test(persistedResult?.deployment_row_id_sha256 ?? "")
+      )
+        fail("V2_09_CONCRETE_REHYDRATION_INVALID");
+      providerDeployments.set(lane, cloneAndFreeze(deployment));
+      persistedDeployments.set(
+        lane,
+        Object.freeze({
+          deploymentId: deterministicUuid(`${journalAuthorityId}:deployment:${lane}`),
+          deploymentRowIdSha256: persistedResult.deployment_row_id_sha256,
+        }),
+      );
+    }
+  }
   let chromeEvidence = null;
   let clickIdentity = null;
   let cleanupState = null;
@@ -3868,19 +4120,32 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       ...Object.fromEntries(STATE_METHODS.map((method) => [method, implementationSha256])),
     }),
   });
-  const provisionalState = createJournalState({
-    journalPath: configuration.journalPath,
-    adapterIdentitySha256: `sha256:${"0".repeat(64)}`,
-  });
+  const executionAuthorityId = rehydration?.executionAuthority?.authority_id ?? journalAuthorityId;
+  const provisionalState = mapJournalAuthority(
+    createJournalState({
+      journalPath: configuration.journalPath,
+      adapterIdentitySha256: `sha256:${"0".repeat(64)}`,
+    }),
+    configuration.journalPath,
+    journalAuthorityId,
+    executionAuthorityId,
+    rehydration?.combinedExecution,
+  );
   const identitySha256 = deriveInjectedAdapterIdentity({
     operations: frozenOperations,
     source_identity: sourceIdentity,
     state: provisionalState,
   });
-  const state = createJournalState({
-    journalPath: configuration.journalPath,
-    adapterIdentitySha256: identitySha256,
-  });
+  const state = mapJournalAuthority(
+    createJournalState({
+      journalPath: configuration.journalPath,
+      adapterIdentitySha256: identitySha256,
+    }),
+    configuration.journalPath,
+    journalAuthorityId,
+    executionAuthorityId,
+    rehydration?.combinedExecution,
+  );
   if (
     deriveInjectedAdapterIdentity({
       operations: frozenOperations,
@@ -3889,6 +4154,101 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     }) !== identitySha256
   )
     fail("V2_09_CONCRETE_ADAPTER_IDENTITY_UNSTABLE");
+  if (deploymentOnly) {
+    const first = NORMAL_OPERATIONS.findIndex(
+      ({ id }) => id === "render-qualified-production-config",
+    );
+    const last = NORMAL_OPERATIONS.findIndex(({ id }) => id === "import-v209-qualified-activation");
+    const cleanupDeploymentSuffix = async ({ authority, operation = {} }) => {
+      assertAuthorityConfiguration(authority);
+      const cloudflare = await ports.reconcileCloudflareSafety.run({
+        authority,
+        cleanupOnly: true,
+        operationId: "reconcile-v209-production-safety",
+        outcome: "FAILURE",
+        priorResults: Object.freeze([]),
+        providerDeployments: Object.freeze(Object.fromEntries(providerDeployments)),
+      });
+      if (
+        cloudflare?.safety_verified !== true ||
+        cloudflare?.gpu_transport !== "DISABLED_UNQUALIFIED"
+      )
+        fail("V2_09_DEPLOYMENT_SUFFIX_CLOUDFLARE_CLEANUP_INVALID");
+      const deploymentIds = ["mage", "soulx"].map(
+        (lane) => persistedDeployments.get(lane)?.deploymentId,
+      );
+      if (deploymentIds.some((id) => !UUID.test(id ?? "")))
+        fail("V2_09_DEPLOYMENT_SUFFIX_DATABASE_CLEANUP_INVALID");
+      const output = await exactChild(
+        runChild,
+        configuration,
+        "psql",
+        [
+          "--no-psqlrc",
+          "--set",
+          "ON_ERROR_STOP=1",
+          "--quiet",
+          "--tuples-only",
+          "--no-align",
+          "--variable",
+          `payload_base64=${Buffer.from(
+            canonical({
+              schemaVersion: "videoforge.v2-09-deactivate-production/v1",
+              deploymentIds,
+            }),
+            "utf8",
+          ).toString("base64")}`,
+          "--file",
+          resolve(ROOT, "deploy/v2-09/neon-deactivate-v209-production.sql"),
+        ],
+        "DEACTIVATE_PRODUCTION_PAIR",
+        {
+          cancellationSignal: operation.cancellationSignal,
+          env: postgresEnvironmentFor("databaseOwnerUrlFile"),
+        },
+      );
+      const deactivated = parseJson(output, "DEACTIVATE_PRODUCTION_PAIR");
+      if (
+        deactivated?.schemaVersion !== "videoforge.v2-09-deactivate-production-result/v1" ||
+        deactivated.allInactive !== true
+      )
+        fail("V2_09_DEPLOYMENT_SUFFIX_DATABASE_CLEANUP_INVALID");
+      const observed = await invokeRunPodReconciliation(
+        authority,
+        operation,
+        "DELETE_ATTRIBUTABLE_PAIR",
+        { deployments: [], jobs: [] },
+        { includeJobs: false },
+      );
+      if (
+        observed.inventory.activeWorkers !== 0 ||
+        observed.inventory.runningPods !== 0 ||
+        observed.inventory.queuedJobs !== 0 ||
+        observed.inventory.endpointIdSha256s.length !== 0
+      )
+        fail("V2_09_DEPLOYMENT_SUFFIX_RUNPOD_CLEANUP_INVALID");
+      return Object.freeze({
+        operation_id: "cleanup-deployment-suffix",
+        cloudflare_disabled: true,
+        database_deactivated: true,
+        endpoint_count: 0,
+        active_worker_count: 0,
+        running_pod_count: 0,
+        queued_job_count: 0,
+      });
+    };
+    return Object.freeze({
+      cleanupDeploymentSuffix,
+      identity_sha256: identitySha256,
+      operations: Object.freeze(
+        Object.fromEntries(
+          NORMAL_OPERATIONS.slice(first, last + 1).map(({ id }) => [id, operations[id]]),
+        ),
+      ),
+      source_identity: sourceIdentity,
+      state,
+    });
+  }
   if (stagingOnly) {
     const prefixOperationIds = NORMAL_OPERATIONS.slice(
       0,
@@ -4032,7 +4392,10 @@ export function createConcreteQualifiedProductionStagingAdapters(configuration) 
   const snapshot = snapshotConcreteConfiguration(configuration);
   return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, {
     ports: createV209StagingPorts(snapshot),
-    protectedInputs: protectedInputSnapshot(snapshot, { stagingOnly: true }),
+    protectedInputs: protectedInputSnapshot(snapshot, {
+      allowDeferredEndpointSecrets: true,
+      skipChrome: true,
+    }),
     stagingOnly: true,
   });
 }
@@ -4043,4 +4406,47 @@ export function createConcreteQualifiedProductionStagingAdaptersForTest(configur
   const testOverrides = { ...overrides, stagingOnly: true };
   delete testOverrides.testOnly;
   return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, testOverrides);
+}
+
+export function createConcreteQualifiedProductionDeploymentAdapters(configuration, rehydration) {
+  const snapshot = snapshotConcreteConfiguration(configuration);
+  return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, {
+    deploymentOnly: true,
+    ports: createV209BuiltInProductionPorts(snapshot),
+    protectedInputs: protectedInputSnapshot(snapshot, { skipChrome: true }),
+    rehydration,
+  });
+}
+
+export function createConcreteQualifiedProductionDeploymentAdaptersForTest(
+  configuration,
+  overrides,
+) {
+  if (overrides?.testOnly !== true) fail("V2_09_TEST_ADAPTER_FACTORY_FORBIDDEN");
+  const snapshot = snapshotConcreteConfiguration(configuration);
+  const testOverrides = { ...overrides, deploymentOnly: true };
+  delete testOverrides.testOnly;
+  return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, testOverrides);
+}
+
+export function createConcreteQualifiedProductionResumedAdapters(configuration, rehydration) {
+  const snapshot = snapshotConcreteConfiguration(configuration);
+  const protectedInputs = protectedInputSnapshot(snapshot);
+  const ports = createV209BuiltInProductionPorts(snapshot);
+  const expectedCloudflareSecretSha256s = Object.fromEntries(
+    Object.entries(protectedInputs.cloudflareSecretFiles).map(([name, input]) => [
+      name,
+      input.sha256,
+    ]),
+  );
+  if (
+    canonical(ports.uploadCloudflareSecrets.secret_input_sha256s) !==
+    canonical(expectedCloudflareSecretSha256s)
+  )
+    fail("V2_09_CONCRETE_CLOUDFLARE_SECRET_SNAPSHOT_DRIFT");
+  return createConcreteQualifiedProductionAdaptersWithPorts(snapshot, {
+    ports,
+    protectedInputs,
+    rehydration,
+  });
 }

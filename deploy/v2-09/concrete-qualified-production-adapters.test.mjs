@@ -15,11 +15,16 @@ import test from "node:test";
 import {
   REQUIRED_CONCRETE_PORTS,
   concreteAdapterIdentity,
+  createConcreteQualifiedProductionDeploymentAdaptersForTest,
   createConcreteQualifiedProductionAdaptersForTest,
   createConcreteQualifiedProductionStagingAdaptersForTest,
 } from "./concrete-qualified-production-adapters.mjs";
+import { SECRET_NAMES } from "../v2-13/guarded-activation.mjs";
 import {
   BRANCH,
+  COMBINED_EXECUTION_MARKER,
+  COMBINED_PRECOMPLETED_OPERATION_IDS,
+  COMBINED_RESUME_SCHEMA,
   OPERATION_IDS,
   PUSH_REF,
   QUALIFIED_LANES,
@@ -40,6 +45,11 @@ const createConcreteQualifiedProductionAdapters = (configuration, overrides) =>
   createConcreteQualifiedProductionAdaptersForTest(configuration, { ...overrides, testOnly: true });
 const createConcreteQualifiedProductionStagingAdapters = (configuration, overrides) =>
   createConcreteQualifiedProductionStagingAdaptersForTest(configuration, {
+    ...overrides,
+    testOnly: true,
+  });
+const createConcreteQualifiedProductionDeploymentAdapters = (configuration, overrides) =>
+  createConcreteQualifiedProductionDeploymentAdaptersForTest(configuration, {
     ...overrides,
     testOnly: true,
   });
@@ -1078,6 +1088,154 @@ test("staging factory needs neither Chrome inputs nor deferred endpoint secrets"
     calls.some(({ options }) => options?.input?.includes('"command":"DELETE_ATTRIBUTABLE_PAIR"')),
     true,
   );
+});
+
+test("deployment factory binds all secrets and rehydrates the persisted pair without Chrome", async () => {
+  const { configuration, directory } = fixture();
+  unlinkSync(configuration.chromeRequestFile);
+  unlinkSync(configuration.chromeAuthStateFile);
+  for (const name of SECRET_NAMES) {
+    if (configuration.cloudflare.secretFiles[name] !== undefined) continue;
+    const path = resolve(directory, `deployment-secret-${name}`);
+    writeFileSync(path, `${name}-fixture`, { mode: 0o600 });
+    configuration.cloudflare.secretFiles[name] = path;
+  }
+  const childCalls = [];
+  const staging = createConcreteQualifiedProductionStagingAdapters(configuration, {
+    ports: portSet(),
+    runChild: childRunner(childCalls),
+  });
+  const value = authority(staging.identity_sha256);
+  await staging.state.claimAuthority({ authority: value });
+  const priorResults = {};
+  for (const operationId of [
+    "create-mage-production-lane-max-one",
+    "create-soulx-production-lane-max-one",
+    "persist-qualified-production-deployments",
+  ]) {
+    await staging.state.beginNormalOperation({
+      authorityId: value.authority_id,
+      operationId,
+      redispatchAllowed: false,
+    });
+    const result = await staging.operations[operationId]({
+      authority: value,
+      operation: {},
+      priorResults: Object.entries(priorResults),
+    });
+    priorResults[operationId] = result;
+    await staging.state.completeNormalOperation({
+      authorityId: value.authority_id,
+      operationId,
+      result,
+    });
+  }
+  for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS) {
+    if (priorResults[operationId] !== undefined) continue;
+    const result = { operation_id: operationId };
+    await staging.state.beginNormalOperation({
+      authorityId: value.authority_id,
+      operationId,
+      redispatchAllowed: false,
+    });
+    await staging.state.completeNormalOperation({
+      authorityId: value.authority_id,
+      operationId,
+      result,
+    });
+    priorResults[operationId] = result;
+  }
+  const preflightProof = hash("deployment-handoff-preflight");
+  const stagedReceiptsSha256 = hash("deployment-handoff-staged-receipts");
+  const innerAuthorityId = `v2-09-inner-${hash(
+    canonical({
+      outerAuthorityId: value.authority_id,
+      preflightProof,
+      stagedReceiptsSha256,
+    }),
+  ).slice(7, 31)}`;
+  const inner = { ...value, authority_id: innerAuthorityId };
+  const combinedUnsigned = {
+    schema_version: COMBINED_RESUME_SCHEMA,
+    execution_marker: COMBINED_EXECUTION_MARKER,
+    outer_authority_id: value.authority_id,
+    preflight_proof_sha256: preflightProof,
+    staged_receipts_sha256: stagedReceiptsSha256,
+    inner_authority_sha256: hash(canonical(inner)),
+    operations: COMBINED_PRECOMPLETED_OPERATION_IDS.map((operationId) => ({
+      operation_id: operationId,
+      result: priorResults[operationId],
+      result_sha256: hash(canonical(priorResults[operationId])),
+    })),
+  };
+  const combinedExecution = {
+    ...combinedUnsigned,
+    receipt_sha256: hash(canonical(combinedUnsigned)),
+  };
+  const deployment = createConcreteQualifiedProductionDeploymentAdapters(configuration, {
+    ports: portSet(),
+    runChild: childRunner(childCalls),
+    rehydration: {
+      combinedExecution,
+      executionAuthority: inner,
+      journalAuthorityId: value.authority_id,
+      priorResults,
+    },
+  });
+  assert.deepEqual(Object.keys(deployment.operations), [
+    "render-qualified-production-config",
+    "deploy-cloudflare-disabled-bootstrap",
+    "upload-cloudflare-production-secrets",
+    "deploy-cloudflare-qualified-production",
+    "readback-qualified-production",
+    "import-v209-qualified-activation",
+  ]);
+  assert.throws(
+    () =>
+      createConcreteQualifiedProductionAdapters(configuration, {
+        ports: portSet(),
+        runChild: childRunner(),
+        rehydration: { authority: value, priorResults },
+      }),
+    /ENOENT|V2_09_CONCRETE_PROTECTED_INPUT_INVALID/u,
+  );
+  assert.equal(
+    (await deployment.state.claimAuthority({ authority: inner })).authority_id,
+    innerAuthorityId,
+  );
+  const journalBeforeAdoption = readFileSync(configuration.journalPath, "utf8");
+  const adoptedOperationId = COMBINED_PRECOMPLETED_OPERATION_IDS[0];
+  const adoptedStart = await deployment.state.beginNormalOperation({
+    authorityId: innerAuthorityId,
+    operationId: adoptedOperationId,
+    redispatchAllowed: false,
+  });
+  assert.equal(adoptedStart.status, "STARTED");
+  const adoptedComplete = await deployment.state.completeNormalOperation({
+    authorityId: innerAuthorityId,
+    operationId: adoptedOperationId,
+    result: priorResults[adoptedOperationId],
+  });
+  assert.equal(adoptedComplete.status, "COMPLETED");
+  assert.equal(readFileSync(configuration.journalPath, "utf8"), journalBeforeAdoption);
+  const imported = await deployment.operations["import-v209-qualified-activation"]({
+    authority: inner,
+    operation: {},
+    priorResults: [
+      [
+        "readback-qualified-production",
+        {
+          config_sha256: value.production.config_sha256,
+          deployment_id_sha256: hash("cloudflare-deployment"),
+        },
+      ],
+    ],
+  });
+  assert.equal(imported.import_count, 1);
+  const cleaned = await deployment.cleanupDeploymentSuffix({ authority: inner });
+  assert.equal(cleaned.cloudflare_disabled, true);
+  assert.equal(cleaned.database_deactivated, true);
+  assert.equal(cleaned.endpoint_count, 0);
 });
 
 test("interactive Chrome pause and resume preserve the unstarted Generate operation", async () => {
