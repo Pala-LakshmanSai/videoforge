@@ -1562,7 +1562,7 @@ async function composeCombinedQualifiedProduction(options, dependencies) {
   });
 }
 
-function postgresEnvironment(databaseUrl) {
+function postgresEnvironment(databaseUrl, path) {
   let parsed;
   try {
     parsed = new URL(databaseUrl);
@@ -1575,8 +1575,10 @@ function postgresEnvironment(databaseUrl) {
     !parsed.hostname
   )
     fail("V2_09_COMBINED_DATABASE_URL_INVALID");
+  if (typeof path !== "string" || path.length === 0 || path.includes("\0"))
+    fail("V2_09_COMBINED_DATABASE_PATH_INVALID");
   return {
-    ...(typeof process.env.PATH === "string" ? { PATH: process.env.PATH } : {}),
+    PATH: path,
     PGHOST: parsed.hostname,
     PGPORT: parsed.port || "5432",
     PGDATABASE: parsed.pathname.slice(1),
@@ -1595,7 +1597,7 @@ async function psqlJson(configuration, urlFile, sql) {
     {
       cwd: configuration.root,
       encoding: "utf8",
-      env: postgresEnvironment(databaseUrl),
+      env: postgresEnvironment(databaseUrl, configuration.environment.PATH),
       input: sql,
     },
   );
@@ -1615,7 +1617,7 @@ async function psqlJsonWithUrl(configuration, databaseUrl, sql) {
     {
       cwd: configuration.root,
       encoding: "utf8",
-      env: postgresEnvironment(databaseUrl),
+      env: postgresEnvironment(databaseUrl, configuration.environment.PATH),
       input: sql,
     },
   );

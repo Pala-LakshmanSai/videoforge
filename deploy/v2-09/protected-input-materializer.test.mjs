@@ -50,6 +50,7 @@ function fixture() {
     databaseReconcilerUrlFile: secretFiles.VIDEOFORGE_RECONCILER_DATABASE_URL,
     runpodWorkerEnvironmentFile: file("runpod-worker.json"),
     runpodApiKeyFile: file("runpod.key"),
+    environment: { PATH: "/test/libpq/bin:/usr/bin:/bin" },
     cloudflare: { secretFiles },
   };
   return {
@@ -103,6 +104,7 @@ test("materializes fresh role credentials and pre-endpoint secrets without retur
   assert.equal(receipt.reused_secret_count, 5);
   assert.equal(receipt.deferred_endpoint_secret_count, 4);
   assert.equal(calls.length, 1);
+  assert.equal(calls[0].env.PATH, "/test/libpq/bin:/usr/bin:/bin");
   assert.match(calls[0].sql, /CREATE ROLE/u);
   assert.doesNotMatch(calls[0].sql, /ALTER ROLE/u);
   assert.equal(statSync(value.configuration.databaseOperatorUrlFile).mode & 0o777, 0o600);
@@ -240,4 +242,30 @@ test("authority cleanup drops only marked roles and removes outputs including en
       }),
     /CLEANUP_TOMBSTONE_INVALID/u,
   );
+});
+
+test("the exact reusable RunPod source can serve preflight and survives materialization cleanup", async () => {
+  const value = fixture();
+  const sourcePath = value.materialization.reusableSecretFiles.RUNPOD_API_KEY;
+  const sourceBytes = readFileSync(sourcePath);
+  value.configuration.runpodApiKeyFile = sourcePath;
+  let counter = 0;
+  const calls = [];
+  await materializeV209ProtectedInputs({
+    authorityId: AUTHORITY_ID,
+    configuration: value.configuration,
+    materialization: value.materialization,
+    randomBytesImpl: (size) => Buffer.alloc(size, ++counter),
+    runPsql: async (request) => calls.push(request),
+  });
+  assert.deepEqual(readFileSync(sourcePath), sourceBytes);
+  await cleanupV209ProtectedInputs({
+    authorityId: AUTHORITY_ID,
+    configuration: value.configuration,
+    materialization: value.materialization,
+    runPsql: async (request) => calls.push(request),
+  });
+  assert.deepEqual(readFileSync(sourcePath), sourceBytes);
+  assert.equal(calls[0].env.PATH, "/test/libpq/bin:/usr/bin:/bin");
+  assert.equal(calls[1].env.PATH, "/test/libpq/bin:/usr/bin:/bin");
 });

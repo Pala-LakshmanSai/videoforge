@@ -245,10 +245,11 @@ function roleUrl(ownerUrl, role, password) {
   return url.toString();
 }
 
-function postgresEnvironment(databaseUrl) {
+function postgresEnvironment(databaseUrl, path) {
   const parsed = new URL(databaseUrl);
+  if (typeof path !== "string" || path.length === 0 || path.includes("\0")) fail("PATH_INVALID");
   return {
-    ...(typeof process.env.PATH === "string" ? { PATH: process.env.PATH } : {}),
+    PATH: path,
     PGHOST: parsed.hostname,
     PGPORT: parsed.port || "5432",
     PGDATABASE: parsed.pathname.slice(1),
@@ -469,7 +470,10 @@ export async function materializeV209ProtectedInputs({
   );
   // Every credential needed to recover or clean the fresh versioned roles is durable before the
   // single transactional role mutation. Existing roles are never rotated or reused.
-  await runPsql({ env: postgresEnvironment(ownerUrl), sql: roleSql(roleRecords, authorityId) });
+  await runPsql({
+    env: postgresEnvironment(ownerUrl, configuration.environment?.PATH),
+    sql: roleSql(roleRecords, authorityId),
+  });
   const completed = { ...claim, status: "COMPLETED" };
   const nextJournal = `${journalPath}.complete`;
   writePrivateOnce(nextJournal, Buffer.from(`${canonical(completed)}\n`), "ROLE_JOURNAL_INVALID");
@@ -564,7 +568,7 @@ export async function cleanupV209ProtectedInputs({
       ? deriveOwnerDatabaseUrl(materialization.databaseOwner)
       : String(derivedOwnerUrl);
   await runPsql({
-    env: postgresEnvironment(ownerUrl),
+    env: postgresEnvironment(ownerUrl, configuration.environment?.PATH),
     sql: roleCleanupSql(roleNames, authorityId),
   });
   const sourcePaths = new Set(
