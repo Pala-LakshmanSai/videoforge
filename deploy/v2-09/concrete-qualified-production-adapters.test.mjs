@@ -18,10 +18,12 @@ import {
   createConcreteQualifiedProductionDeploymentAdaptersForTest,
   createConcreteQualifiedProductionAdaptersForTest,
   createConcreteQualifiedProductionStagingAdaptersForTest,
+  hasV209InnerFailedClean,
 } from "./concrete-qualified-production-adapters.mjs";
 import { SECRET_NAMES } from "../v2-13/guarded-activation.mjs";
 import {
   BRANCH,
+  CLEANUP_OPERATIONS,
   COMBINED_EXECUTION_MARKER,
   COMBINED_PRECOMPLETED_OPERATION_IDS,
   COMBINED_RESUME_SCHEMA,
@@ -1278,6 +1280,30 @@ test("deployment factory binds all secrets and rehydrates the persisted pair wit
     ),
     true,
   );
+
+  const proofInput = {
+    configuration,
+    executionAuthority: inner,
+    journalAuthorityId: value.authority_id,
+    combinedExecution,
+    priorResults,
+  };
+  assert.equal(hasV209InnerFailedClean(proofInput), false);
+  await deployment.state.loadCleanupAuthority({ authority: inner });
+  for (const operation of CLEANUP_OPERATIONS) {
+    await deployment.state.recordCleanupOperation({
+      authorityId: inner.authority_id,
+      operationId: operation.id,
+      outcome: "FAILURE",
+      result: { operation_id: operation.id },
+    });
+  }
+  await deployment.state.completeCleanup({ authorityId: inner.authority_id });
+  assert.equal(hasV209InnerFailedClean(proofInput), true);
+  const tampered = JSON.parse(readFileSync(configuration.journalPath, "utf8"));
+  tampered.cleanup.at(-1).outcome = "SUCCESS";
+  writeFileSync(configuration.journalPath, `${canonical(tampered)}\n`, { mode: 0o600 });
+  assert.throws(() => hasV209InnerFailedClean(proofInput), /V2_09_INNER_CLEANUP_PROOF_INVALID/u);
 });
 
 test("interactive Chrome pause and resume preserve the unstarted Generate operation", async () => {

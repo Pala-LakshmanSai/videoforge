@@ -19,6 +19,7 @@ import { runCancellableChildProcess } from "../v2-13/full-live-adapters.mjs";
 import { createV209CloudflareProductionOperator } from "./cloudflare-production-operator.mjs";
 import {
   BRANCH,
+  CLEANUP_OPERATIONS,
   COMBINED_EXECUTION_MARKER,
   COMBINED_PRECOMPLETED_OPERATION_IDS,
   COMBINED_RESUME_SCHEMA,
@@ -395,6 +396,61 @@ function validateCombinedJournalHandoff(combinedExecution, executionAuthority, p
       fail("V2_09_CONCRETE_COMBINED_HANDOFF_INVALID");
   });
   return combinedExecution.outer_authority_id;
+}
+
+export function hasV209InnerFailedClean({
+  configuration,
+  executionAuthority,
+  journalAuthorityId,
+  combinedExecution,
+  priorResults,
+}) {
+  if (
+    configuration === null ||
+    typeof configuration !== "object" ||
+    configuration.sourceCommit !== executionAuthority?.source_commit
+  )
+    fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+  const validatedOuterId = validateCombinedJournalHandoff(
+    combinedExecution,
+    executionAuthority,
+    priorResults,
+  );
+  if (journalAuthorityId !== validatedOuterId) fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+  const journal = readJournal(configuration.journalPath);
+  if (
+    journal.authority_id !== validatedOuterId ||
+    journal.proposal_sha256 !== executionAuthority.proposal_sha256 ||
+    journal.source_commit !== executionAuthority.source_commit
+  )
+    fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+  for (const receipt of combinedExecution.operations) {
+    if (
+      journal.normal[receipt.operation_id]?.status !== "COMPLETED" ||
+      journal.normal[receipt.operation_id].result_sha256 !== receipt.result_sha256
+    )
+      fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+  }
+  if (journal.status !== "FAILED_CLEAN") return false;
+  const cleanupIds = CLEANUP_OPERATIONS.map(({ id }) => id);
+  if (journal.cleanup.length < cleanupIds.length) fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+  let cleanupPosition = 0;
+  for (const entry of journal.cleanup) {
+    if (entry.operation_id !== cleanupIds[cleanupPosition]) {
+      if (cleanupPosition > 0 && entry.operation_id === cleanupIds[0]) cleanupPosition = 0;
+      else fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+    }
+    if (
+      !exactKeys(entry, ["operation_id", "outcome", "result_sha256"]) ||
+      entry.operation_id !== cleanupIds[cleanupPosition] ||
+      entry.outcome !== "FAILURE" ||
+      !HASH.test(entry.result_sha256 ?? "")
+    )
+      fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+    cleanupPosition = (cleanupPosition + 1) % cleanupIds.length;
+  }
+  if (cleanupPosition !== 0) fail("V2_09_INNER_CLEANUP_PROOF_INVALID");
+  return true;
 }
 
 function assertPrivateRegularPath(path, { mayNotExist = false } = {}) {
