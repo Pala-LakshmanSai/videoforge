@@ -15,6 +15,9 @@ import { pathToFileURL } from "node:url";
 export const AUTHORITY_SCHEMA = "videoforge.v2-09-qualified-production-authority/v1";
 export const DRY_RUN_SCHEMA = "videoforge.v2-09-qualified-production-dry-run/v1";
 export const EXECUTION_SCHEMA = "videoforge.v2-09-qualified-production-execution/v1";
+export const COMBINED_RESUME_SCHEMA =
+  "videoforge.v2-09-qualified-production-combined-resume/v1";
+export const COMBINED_EXECUTION_MARKER = "V2_09_PREFLIGHT_THEN_QUALIFIED_PRODUCTION_ONCE";
 export const BRANCH = "codex/serverless-v2-roadmap-v4";
 export const PUSH_REF = `refs/heads/${BRANCH}`;
 export const INCREMENTAL_CAP_USD = 2;
@@ -138,6 +141,16 @@ export const OPERATION_IDS = Object.freeze([
   ...CLEANUP_OPERATIONS.map(({ id }) => id),
 ]);
 
+// The combined coordinator may execute only this exact prefix while the dynamic media, lane, and
+// rendered-config facts are being materialized. The inner executor adopts its durable receipts and
+// starts at the Cloudflare suffix; no staged mutation is replayed.
+export const COMBINED_PRECOMPLETED_OPERATION_IDS = Object.freeze(
+  NORMAL_OPERATIONS.slice(
+    0,
+    NORMAL_OPERATIONS.findIndex(({ id }) => id === "render-qualified-production-config") + 1,
+  ).map(({ id }) => id),
+);
+
 const FORBIDDEN_OPERATION_PATTERN =
   /(?:v2[-_]?(?:0?[67]|1[0-3])|stage[-_ ]?[67]|(?:mage|soulx).*(?:qualif(?:y|ication)))/iu;
 const STATE_METHODS = Object.freeze([
@@ -163,6 +176,49 @@ function canonical(value) {
 
 function sha256(value) {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function assertCombinedResume(combinedExecution, authority) {
+  if (
+    !exactKeys(combinedExecution, [
+      "execution_marker",
+      "operations",
+      "outer_authority_id",
+      "preflight_proof_sha256",
+      "receipt_sha256",
+      "schema_version",
+    ]) ||
+    combinedExecution.schema_version !== COMBINED_RESUME_SCHEMA ||
+    combinedExecution.execution_marker !== COMBINED_EXECUTION_MARKER ||
+    !AUTHORITY_ID.test(combinedExecution.outer_authority_id ?? "") ||
+    combinedExecution.outer_authority_id === authority.authority_id ||
+    !HASH.test(combinedExecution.preflight_proof_sha256 ?? "") ||
+    !HASH.test(combinedExecution.receipt_sha256 ?? "") ||
+    !Array.isArray(combinedExecution.operations) ||
+    combinedExecution.operations.length !== COMBINED_PRECOMPLETED_OPERATION_IDS.length
+  )
+    fail("V2_09_COMBINED_RESUME_INVALID");
+  const expectedInnerId = `v2-09-inner-${sha256(
+    canonical({
+      outerAuthorityId: combinedExecution.outer_authority_id,
+      preflightProof: combinedExecution.preflight_proof_sha256,
+    }),
+  ).slice(7, 31)}`;
+  if (authority.authority_id !== expectedInnerId) fail("V2_09_COMBINED_INNER_ID_INVALID");
+  const unsigned = { ...combinedExecution };
+  delete unsigned.receipt_sha256;
+  if (sha256(canonical(unsigned)) !== combinedExecution.receipt_sha256)
+    fail("V2_09_COMBINED_RESUME_HASH_INVALID");
+  combinedExecution.operations.forEach((receipt, index) => {
+    if (
+      !exactKeys(receipt, ["operation_id", "result", "result_sha256"]) ||
+      receipt.operation_id !== COMBINED_PRECOMPLETED_OPERATION_IDS[index] ||
+      !HASH.test(receipt.result_sha256 ?? "") ||
+      sha256(canonical(receipt.result)) !== receipt.result_sha256
+    )
+      fail("V2_09_COMBINED_PRECOMPLETED_RECEIPT_INVALID");
+  });
+  return combinedExecution;
 }
 
 function fail(code) {
@@ -1287,6 +1343,7 @@ async function executeWithInjectedAdapters({
   now = new Date(),
   currentTime = () => new Date(),
   adapters: adapterOverrides = {},
+  combinedExecution,
 } = {}) {
   if (mode === "DRY_RUN") return dryRunPlan();
   if (mode !== "EXECUTE" && mode !== "CLEANUP_ONLY") fail("V2_09_EXECUTION_MODE_INVALID");
@@ -1294,6 +1351,12 @@ async function executeWithInjectedAdapters({
   const adapters = createDefaultAdapters(adapterOverrides, authority.adapter_set_sha256);
   const authorityId = authority.authority_id;
   const results = [];
+  const combinedResume =
+    mode === "EXECUTE" && combinedExecution !== undefined
+      ? assertCombinedResume(combinedExecution, authority)
+      : null;
+  if (mode !== "EXECUTE" && combinedExecution !== undefined)
+    fail("V2_09_COMBINED_RESUME_MODE_INVALID");
 
   if (mode === "CLEANUP_ONLY") {
     assertAuthorityResponse(
@@ -1329,7 +1392,39 @@ async function executeWithInjectedAdapters({
 
   let failedOperationId;
   try {
+    if (combinedResume !== null) {
+      for (const receipt of combinedResume.operations) {
+        const operation = NORMAL_OPERATIONS.find(({ id }) => id === receipt.operation_id);
+        failedOperationId = operation.id;
+        const result = validateOperationResult(operation.id, receipt.result, authority, {
+          executionNow: readClock(currentTime),
+          priorResults: results,
+        });
+        assertNormalStartResponse(
+          await adapters.state.beginNormalOperation({
+            authorityId,
+            operationId: operation.id,
+            redispatchAllowed: false,
+          }),
+          authorityId,
+          operation.id,
+        );
+        assertAuthorityResponse(
+          await adapters.state.completeNormalOperation({
+            authorityId,
+            operationId: operation.id,
+            result,
+          }),
+          authorityId,
+          "COMPLETED",
+          operation.id,
+        );
+        results.push([operation.id, result]);
+      }
+    }
     for (const operation of NORMAL_OPERATIONS) {
+      if (combinedResume !== null && COMBINED_PRECOMPLETED_OPERATION_IDS.includes(operation.id))
+        continue;
       failedOperationId = operation.id;
       if (
         ["REMOTE_MUTATION", "DATABASE_MUTATION", "LOCAL_MUTATION", "PAID_DISPATCH"].includes(
@@ -1356,6 +1451,9 @@ async function executeWithInjectedAdapters({
           cleanupOnly: false,
           operation,
           priorResults: Object.freeze([...results]),
+          ...(combinedResume !== null && operation.id === "render-qualified-production-config"
+            ? { receiptBindingMode: "STAGED_OBSERVED" }
+            : {}),
         }),
       );
       const result = validateOperationResult(operation.id, rawResult, authority, {
@@ -1551,7 +1649,10 @@ export async function executeQualifiedProduction(options = {}) {
   if (Object.hasOwn(options, "adapters")) fail("V2_09_LIVE_ADAPTER_INJECTION_FORBIDDEN");
   if (
     Object.keys(options).some(
-      (key) => !["authority", "configuration", "mode", "sourceCommit"].includes(key),
+      (key) =>
+        !["authority", "combinedExecution", "configuration", "mode", "sourceCommit"].includes(
+          key,
+        ),
     )
   )
     fail("V2_09_LIVE_OPTION_INVALID");
@@ -1568,6 +1669,7 @@ export async function executeQualifiedProduction(options = {}) {
     now: new Date(),
     currentTime: () => new Date(),
     adapters,
+    combinedExecution: options.combinedExecution,
   });
 }
 

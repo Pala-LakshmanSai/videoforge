@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -7,6 +8,9 @@ import {
   AUTHORITY_SCHEMA,
   BRANCH,
   CLEANUP_OPERATIONS,
+  COMBINED_EXECUTION_MARKER,
+  COMBINED_PRECOMPLETED_OPERATION_IDS,
+  COMBINED_RESUME_SCHEMA,
   COMPLETION_CAP_USD,
   DRY_RUN_SCHEMA,
   INCREMENTAL_CAP_USD,
@@ -45,6 +49,19 @@ const TEST_SOURCE_IDENTITY = Object.freeze({
   ),
 });
 let testAdapterIdentitySha256;
+
+function canonical(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  return `{${Object.keys(value)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`)
+    .join(",")}}`;
+}
+
+function hash(value) {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
 
 function authority(overrides = {}) {
   const value = {
@@ -109,6 +126,33 @@ function authority(overrides = {}) {
     },
   };
   return { ...value, ...overrides };
+}
+
+function combinedResume(value, outerAuthorityId = "v2-09-combined-test-authority") {
+  const preflightProof = `sha256:${"3".repeat(64)}`;
+  const priorResults = [];
+  const operations = COMBINED_PRECOMPLETED_OPERATION_IDS.map((operationId) => {
+    const result = resultFor(operationId, value, "SUCCESS", priorResults);
+    priorResults.push([operationId, result]);
+    return { operation_id: operationId, result, result_sha256: hash(canonical(result)) };
+  });
+  const unsigned = {
+    schema_version: COMBINED_RESUME_SCHEMA,
+    execution_marker: COMBINED_EXECUTION_MARKER,
+    outer_authority_id: outerAuthorityId,
+    preflight_proof_sha256: preflightProof,
+    operations,
+  };
+  return { ...unsigned, receipt_sha256: hash(canonical(unsigned)) };
+}
+
+function combinedAuthority(overrides = {}) {
+  const outerAuthorityId = "v2-09-combined-test-authority";
+  const preflightProof = `sha256:${"3".repeat(64)}`;
+  const innerAuthorityId = `v2-09-inner-${hash(
+    canonical({ outerAuthorityId, preflightProof }),
+  ).slice(7, 31)}`;
+  return authority({ authority_id: innerAuthorityId, ...overrides });
 }
 
 function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
@@ -642,6 +686,74 @@ test("successful execution invokes only the fixed V2-09 graph exactly once", asy
   assert.equal(
     calls.some((id) => /v2-1[0-3]|stage-[67]|live-qualification/u.test(id)),
     false,
+  );
+});
+
+test("combined resume durably adopts the exact staged prefix and never replays its mutations", async () => {
+  const calls = [];
+  const value = combinedAuthority();
+  const report = await executeTest({
+    mode: "EXECUTE",
+    authority: value,
+    sourceCommit: SOURCE_COMMIT,
+    now: NOW,
+    combinedExecution: combinedResume(value),
+    adapters: adapters({ calls }),
+  });
+  assert.equal(report.status, "SUCCEEDED_CLEAN");
+  assert.deepEqual(report.operations, OPERATION_IDS);
+  assert.deepEqual(
+    calls,
+    OPERATION_IDS.filter((id) => !COMBINED_PRECOMPLETED_OPERATION_IDS.includes(id)),
+  );
+  for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS)
+    assert.equal(calls.includes(operationId), false);
+  assert.equal(calls.filter((id) => id === "run-one-v209-chrome-e2e").length, 1);
+});
+
+test("combined resume rejects tamper, non-derived inner IDs, and partial staged graphs", async () => {
+  const value = combinedAuthority();
+  const tampered = combinedResume(value);
+  tampered.operations[0].result.source_commit = "f".repeat(40);
+  await assert.rejects(
+    executeTest({
+      mode: "EXECUTE",
+      authority: value,
+      sourceCommit: SOURCE_COMMIT,
+      now: NOW,
+      combinedExecution: tampered,
+      adapters: adapters(),
+    }),
+    /V2_09_COMBINED_(?:RESUME_HASH|PRECOMPLETED_RECEIPT)_INVALID/u,
+  );
+
+  const partial = combinedResume(value);
+  partial.operations.pop();
+  const unsigned = { ...partial };
+  delete unsigned.receipt_sha256;
+  partial.receipt_sha256 = hash(canonical(unsigned));
+  await assert.rejects(
+    executeTest({
+      mode: "EXECUTE",
+      authority: value,
+      sourceCommit: SOURCE_COMMIT,
+      now: NOW,
+      combinedExecution: partial,
+      adapters: adapters(),
+    }),
+    /V2_09_COMBINED_RESUME_INVALID/u,
+  );
+
+  await assert.rejects(
+    executeTest({
+      mode: "EXECUTE",
+      authority: authority(),
+      sourceCommit: SOURCE_COMMIT,
+      now: NOW,
+      combinedExecution: combinedResume(value),
+      adapters: adapters(),
+    }),
+    /V2_09_COMBINED_INNER_ID_INVALID/u,
   );
 });
 
