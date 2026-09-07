@@ -19,21 +19,21 @@ maximum_external_spend_usd: 0
 
 current_goal_boundary:
   mode: v2_09_repaired_combined_source_audited_awaiting_exact_authority
-  live_provider_calls: "Proposal 9e5d4eb9 passed the exact five-job qualification and is consumed. Combined proposal sha256:453a2763d76c5fc1a19d04507df21b46248b4dae4bcfc6ab6b948431d7cb838e, bound to source 38a363a228f48bb7f3f866744d2dee5a3b3abb26, was consumed only by its exact git push; protected-input admission then stopped before preflight, credential read, database, RunPod, R2, media, Cloudflare, GPU, or spend mutation. No further provider read or mutation is authorized."
+  live_provider_calls: "Proposal 9e5d4eb9 passed the exact five-job qualification and is consumed. Combined proposals 453a2763 and 8a300cab were consumed only by exact git pushes of their bound sources; pre-mutation checks then stopped before credential read, database, RunPod, R2, media, Cloudflare, GPU, or spend mutation. No further provider read or mutation is authorized."
   remote_mutation: false
   deployment_or_publication: "Existing immutable image f3b1d141 was freshly anonymously reverified without publication; no publication or republication is authorized."
-  credential_value_access: "The initial and five replacement V2-09 bounded read-only preflights each consumed one configured RunPod credential read and failed closed without emitting a proof. Combined proposal 453a2763 consumed no credential read. No further credential read is authorized."
+  credential_value_access: "The initial and five replacement V2-09 bounded read-only preflights each consumed one configured RunPod credential read and failed closed without emitting a proof. Combined proposals 453a2763 and 8a300cab consumed no credential read. No further credential read is authorized."
   paid_requests_or_spend: "Closed at USD 0.08383633207995445 observed increment and USD 3.4607653283455875 cumulative billing; no remaining executable cap."
   runpod_mutation_or_gpu: "Qualification passed and cleanup proved zero compute; no further RunPod mutation or GPU use is authorized."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "Repaired V2-09 executable source 6db9668388b5f6f9aa517d59513ebc632b1bc837 removes the protected-input, post-deploy Chrome, and static-plan database-password circular dependencies. It hydrates the media-worker PostgreSQL environment from the same descriptor-bound mode-0600 operator-URL snapshot used by the adapter identity, rejects secret-bearing static plan fields, and never embeds that password in the plan. Focused combined tests pass 55/55 and the independent repair audit is GO P0=0/P1=0. Exact RTX 4090, EU-RO-1, LOW-or-better, USD 0.00031/second and USD 1.116/hour gates remain unchanged. Stage 6 and Stage 7 were not modified or rerun."
+  provider_free_product_action: "Repaired V2-09 executable source 75bbc46eb40f88eb586579a34a104e6cc0d772c1 removes the protected-input, post-deploy Chrome, static-plan database-password, and static Chrome deadline circular dependencies. It uses one descriptor-bound operator-URL snapshot, rejects secret-bearing plan fields, and derives an exact 1,660-second Chrome success horizon only after authenticated tenant/catalog discovery while requiring the outer authority to cover it. Focused tests pass 55/55 and 38/38; independent audits are GO P0=0/P1=0. Exact RTX 4090, EU-RO-1, LOW-or-better, USD 0.00031/second and USD 1.116/hour gates remain unchanged. Stage 6 and Stage 7 were not modified or rerun."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "Combined proposal sha256:453a2763d76c5fc1a19d04507df21b46248b4dae4bcfc6ab6b948431d7cb838e, bound to 38a363a228f48bb7f3f866744d2dee5a3b3abb26, is consumed by its exact source push only; it performed no preflight or provider mutation. Repaired executable source 6db96683 closes the last discovered live-plan credential seam, passes focused combined tests 55/55 and independent audit GO P0=0/P1=0, and awaits one replacement combined deployment authority. No current provider or deployment authority exists."
+  note: "Combined proposals 453a2763 and 8a300cab were consumed by their exact source pushes only; neither performed preflight, credential access, or provider mutation. Repaired executable source 75bbc46e closes the discovered credential and resumable Chrome deadline seams, passes focused tests and independent audits GO P0=0/P1=0, and awaits one replacement combined deployment authority. No current provider or deployment authority exists."
 
 v2_09_provider_free_candidate:
-  source_commit: "6db9668388b5f6f9aa517d59513ebc632b1bc837"
+  source_commit: "75bbc46eb40f88eb586579a34a104e6cc0d772c1"
   source_audit: "PASS_INDEPENDENT_FOCUSED_P0_0_P1_0"
-  canonical_provider_free_verification: FOCUSED_COMBINED_55_OF_55_PASS
+  canonical_provider_free_verification: FOCUSED_DATABASE_55_OF_55_AND_CHROME_COORDINATOR_38_OF_38_PASS
   production_state: DISABLED_UNQUALIFIED
   deployed_database_head: 73
   candidate_database_head: 85
@@ -53,7 +53,7 @@ v2_09_provider_free_candidate:
   media_worker_release: "media-worker-v0.1.15 is an unpublished candidate; do not publish, install, or replace v0.1.14 without fresh exact authority."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
   provider_state: "No provider call, credential read, database/R2 mutation, publication, deployment, GPU use, or spend occurred while producing or materializing this candidate."
-  current_authority: "Combined proposal 453a2763 is consumed by the exact push of 38a363a2 only; protected-input admission stopped before preflight and every provider mutation. No provider or credential read is currently authorized. Repaired source 6db96683 passes focused combined tests and independent audit, and requires one replacement combined authority for exact push, deterministic authority materialization, diagnostic preflight, conditional V2-09 production deployment, resumable Chrome authentication, and one live E2E."
+  current_authority: "Combined proposals 453a2763 and 8a300cab are consumed by their exact pushes only; no preflight or provider mutation followed. No provider or credential read is currently authorized. Repaired source 75bbc46e passes focused tests and independent audits and requires one replacement combined authority for exact push, deterministic authority materialization, diagnostic preflight, conditional V2-09 production deployment, resumable Chrome authentication, and one live E2E."
 
 fixture_user_walkthrough:
   status: SUPERSEDED_BY_PRIVATE_HOSTED_BETA
@@ -219,7 +219,7 @@ hosted_beta_user_walkthrough:
   deployment_candidate: null
   deployed_source_commit: "29667134b17daa9723495d028ec22c4eeaee3ee3"
   cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
-  pending_source_candidate: "V2-09 repaired executable source d8337c240cc41a12d8cec358b358d056acfd792e passes full V2-09 tests 145/145 and independent final audits GO P0=0/P1=0; combined proposal 453a2763 is consumed by push only; production is disabled and undeployed"
+  pending_source_candidate: "V2-09 repaired executable source 75bbc46eb40f88eb586579a34a104e6cc0d772c1 passes focused database-environment and Chrome/coordinator tests 55/55 and 38/38 with independent audits GO P0=0/P1=0; combined proposals 453a2763 and 8a300cab are consumed by push only; production is disabled and undeployed"
   pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
   pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. REPAIRED_SOURCE_D8337C24_PASSED_145_OF_145_AND_INDEPENDENT_FINAL_AUDITS_GO_P0_0_P1_0. REQUEST_ONE_REPLACEMENT_COMBINED_DIAGNOSTIC_PREFLIGHT_AND_CONDITIONAL_DEPLOYMENT_CHROME_AUTHORITY."
   pending_validations: "One exact replacement combined diagnostic-preflight and conditional V2-09 deployment/Chrome authority; then execute without a standalone preflight approval loop."
@@ -1031,11 +1031,11 @@ provider_free_product_progress:
     external_spend_usd: 0
     remote_mutations: 0
   hosted_v209_current_provider_free_gate:
-    source_commit: "6db9668388b5f6f9aa517d59513ebc632b1bc837"
+    source_commit: "75bbc46eb40f88eb586579a34a104e6cc0d772c1"
     focused_independent_source_audit: PASS_P0_0_P1_0
     canonical_command: "node --test deploy/v2-09/*.test.mjs"
     canonical_status: FULL_V2_09_PASS
-    focused_tests: PASS_55_OF_55
+    focused_tests: PASS_55_OF_55_AND_38_OF_38
     control_plane_tests: INHERITED_PREDECESSOR_PASS_431_OF_431
     script_tests: INHERITED_PREDECESSOR_PASS_506_OF_506
     installed_chrome_tests: INHERITED_PREDECESSOR_PASS_44_OF_44
@@ -6227,7 +6227,7 @@ recommended_next_task:
   authorized_operations: *v2_09_read_only_operations
   allowed_operations: *v2_09_read_only_operations
   rate_snapshot: []
-  authority_note: "The initial V2-09 preflights through fifth proposal d186ca50 are consumed. Combined proposal 453a2763 is consumed only by the exact push of source 38a363a2; protected-input admission then stopped before preflight, credential read, database, RunPod, R2, media, Cloudflare, GPU, or spend mutation. No provider read or mutation is currently authorized. Repaired executable source 6db9668388b5f6f9aa517d59513ebc632b1bc837 passes focused combined tests 55/55 and independent audit GO P0=0/P1=0; one replacement combined authority is required."
+  authority_note: "The initial V2-09 preflights through fifth proposal d186ca50 are consumed. Combined proposals 453a2763 and 8a300cab were each consumed only by their exact source pushes; both stopped before credential read, database, RunPod, R2, media, Cloudflare, GPU, or spend mutation. No provider read or mutation is currently authorized. Repaired executable source 75bbc46eb40f88eb586579a34a104e6cc0d772c1 passes focused tests 55/55 and 38/38 with independent audits GO P0=0/P1=0; one replacement combined authority is required."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: null
   successor_proposal_sha256: null
