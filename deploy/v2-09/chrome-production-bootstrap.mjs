@@ -102,6 +102,25 @@ function privateParent(path) {
   return absolute;
 }
 
+function privateDirectory(path, code) {
+  if (typeof path !== "string" || !isAbsolute(path)) fail(code);
+  const absolute = resolve(path);
+  let directory;
+  try {
+    directory = lstatSync(absolute);
+  } catch {
+    fail(code);
+  }
+  if (
+    !directory.isDirectory() ||
+    directory.isSymbolicLink() ||
+    (directory.mode & 0o777) !== 0o700 ||
+    (typeof process.getuid === "function" && directory.uid !== process.getuid())
+  )
+    fail(code);
+  return absolute;
+}
+
 function readPrivate(path, code) {
   const absolute = privateParent(path);
   let descriptor;
@@ -114,10 +133,12 @@ function readPrivate(path, code) {
       !before.isFile() ||
       before.nlink !== 1 ||
       (before.mode & 0o777) !== 0o600 ||
+      (typeof process.getuid === "function" && before.uid !== process.getuid()) ||
       before.dev !== after.dev ||
       before.ino !== after.ino ||
       before.mtimeMs !== after.mtimeMs ||
       before.ctimeMs !== after.ctimeMs ||
+      before.uid !== after.uid ||
       before.size !== after.size ||
       before.size !== bytes.length ||
       bytes.length < 1
@@ -244,6 +265,66 @@ function defaultProbeVoiceover(bytes) {
   if (result.status !== 0 || !Number.isFinite(durationSeconds))
     fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
   return Math.round(durationSeconds * 1_000);
+}
+
+function validateFullBootstrapConfiguration(configuration) {
+  if (
+    !exactKeys(configuration, [
+      "authStatePath",
+      "chromeRequestPath",
+      "loginTimeoutMs",
+      "maxProgressReads",
+      "pollIntervalMs",
+      "productionOrigin",
+      "schemaVersion",
+      "successHorizonSeconds",
+      "title",
+      "verifiedOutputPath",
+      "voiceoverDurationMs",
+      "voiceoverPath",
+      "voiceoverSha256",
+    ]) ||
+    configuration.schemaVersion !== CONFIG_SCHEMA ||
+    typeof configuration.title !== "string" ||
+    configuration.title.trim() !== configuration.title ||
+    configuration.title.length < 1 ||
+    configuration.title.length > 240 ||
+    !Number.isSafeInteger(configuration.loginTimeoutMs) ||
+    configuration.loginTimeoutMs < 10_000 ||
+    configuration.loginTimeoutMs > 600_000 ||
+    !Number.isSafeInteger(configuration.maxProgressReads) ||
+    configuration.maxProgressReads < 1 ||
+    configuration.maxProgressReads > 1_000 ||
+    !Number.isSafeInteger(configuration.pollIntervalMs) ||
+    configuration.pollIntervalMs < 0 ||
+    configuration.pollIntervalMs > 60_000 ||
+    configuration.successHorizonSeconds !== SUCCESS_HORIZON_SECONDS ||
+    !HASH.test(configuration.voiceoverSha256 ?? "") ||
+    !Number.isSafeInteger(configuration.voiceoverDurationMs) ||
+    configuration.voiceoverDurationMs < 30_000 ||
+    configuration.voiceoverDurationMs > 60_000
+  )
+    fail("V2_09_CHROME_BOOTSTRAP_CONFIGURATION_INVALID");
+}
+
+async function validateVoiceoverBinding(configuration, dependencies = {}) {
+  const voiceoverPath = privateParent(configuration.voiceoverPath);
+  const voiceover = readPrivate(voiceoverPath, "V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
+  const observedSha256 = sha256(voiceover);
+  if (observedSha256 !== configuration.voiceoverSha256)
+    fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
+  const durationMs = await (dependencies.probeVoiceover ?? defaultProbeVoiceover)(voiceover, {
+    path: voiceoverPath,
+    sha256: observedSha256,
+  });
+  if (
+    !Number.isSafeInteger(durationMs) ||
+    durationMs < 30_000 ||
+    durationMs > 60_000 ||
+    durationMs !== configuration.voiceoverDurationMs
+  )
+    fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
+  return Object.freeze({ path: voiceoverPath, bytes: voiceover, sha256: observedSha256, durationMs });
 }
 
 function parseAuthState(bytes) {
@@ -683,46 +764,56 @@ export function validateV209PostDeployChromeAuthReceipt(value, expected) {
   return Object.freeze({ ...value });
 }
 
-export async function materializeV209ChromeBootstrap(configuration, dependencies = {}) {
+/**
+ * Validate only the local, authority-bound inputs needed before claiming a combined run.
+ * This function never launches Chrome, writes state, reads credentials, or contacts a provider.
+ */
+export async function validateV209ChromePreclaimInputs(
+  configuration,
+  productionConfiguration,
+  dependencies = {},
+) {
+  validateFullBootstrapConfiguration(configuration);
+  const origin = exactOrigin(configuration.productionOrigin);
+  const voiceover = await validateVoiceoverBinding(configuration, dependencies);
+  const environment =
+    productionConfiguration?.cloudflare?.environment ?? productionConfiguration?.environment;
   if (
-    !exactKeys(configuration, [
-      "authStatePath",
-      "chromeRequestPath",
-      "loginTimeoutMs",
-      "maxProgressReads",
-      "pollIntervalMs",
-      "productionOrigin",
-      "schemaVersion",
-      "successHorizonSeconds",
-      "title",
-      "verifiedOutputPath",
-      "voiceoverPath",
-    ]) ||
-    configuration.schemaVersion !== CONFIG_SCHEMA ||
-    typeof configuration.title !== "string" ||
-    configuration.title.trim() !== configuration.title ||
-    configuration.title.length < 1 ||
-    configuration.title.length > 240 ||
-    !Number.isSafeInteger(configuration.loginTimeoutMs) ||
-    configuration.loginTimeoutMs < 10_000 ||
-    configuration.loginTimeoutMs > 600_000 ||
-    !Number.isSafeInteger(configuration.maxProgressReads) ||
-    configuration.maxProgressReads < 1 ||
-    configuration.maxProgressReads > 1_000 ||
-    !Number.isSafeInteger(configuration.pollIntervalMs) ||
-    configuration.pollIntervalMs < 0 ||
-    configuration.pollIntervalMs > 60_000 ||
-    configuration.successHorizonSeconds !== SUCCESS_HORIZON_SECONDS
+    environment === null ||
+    typeof environment !== "object" ||
+    Array.isArray(environment) ||
+    typeof environment.WRANGLER_HOME !== "string" ||
+    typeof environment.XDG_CONFIG_HOME !== "string"
   )
-    fail("V2_09_CHROME_BOOTSTRAP_CONFIGURATION_INVALID");
+    fail("V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID");
+  const wranglerHome = privateDirectory(
+    environment.WRANGLER_HOME,
+    "V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID",
+  );
+  const xdgConfigHome = privateDirectory(
+    environment.XDG_CONFIG_HOME,
+    "V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID",
+  );
+  if (wranglerHome !== xdgConfigHome)
+    fail("V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID");
+  return Object.freeze({
+    schema_version: "videoforge.v2-09-chrome-preclaim-inputs/v1",
+    production_origin: origin,
+    voiceover_path: voiceover.path,
+    voiceover_sha256: voiceover.sha256,
+    voiceover_duration_ms: voiceover.durationMs,
+    wrangler_home: wranglerHome,
+    xdg_config_home: xdgConfigHome,
+  });
+}
+
+export async function materializeV209ChromeBootstrap(configuration, dependencies = {}) {
+  validateFullBootstrapConfiguration(configuration);
 
   const origin = exactOrigin(configuration.productionOrigin);
-  const voiceoverPath = privateParent(configuration.voiceoverPath);
-  const voiceover = readPrivate(voiceoverPath, "V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
-  const durationMs = await (dependencies.probeVoiceover ?? defaultProbeVoiceover)(voiceover, {
-    path: voiceoverPath,
-    sha256: sha256(voiceover),
-  });
+  const voiceoverBinding = await validateVoiceoverBinding(configuration, dependencies);
+  const { path: voiceoverPath, bytes: voiceover, sha256: voiceoverSha256, durationMs } =
+    voiceoverBinding;
   const extension = extname(voiceoverPath).toLowerCase();
   const contentType =
     extension === ".wav" ? "audio/wav" : extension === ".mp3" ? "audio/mpeg" : null;
@@ -741,7 +832,7 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
     mode: "FULL_POST_DEPLOY_BOOTSTRAP",
     origin,
     configuration_sha256: sha256(canonical(configuration)),
-    voiceover_sha256: sha256(voiceover),
+    voiceover_sha256: voiceoverSha256,
   });
   let request;
   let browser;
@@ -868,7 +959,7 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
           voiceoverFilename: basename(voiceoverPath),
           voiceoverContentType: contentType,
           voiceoverContentLength: voiceover.length,
-          voiceoverSha256: sha256(voiceover),
+          voiceoverSha256,
           voiceoverDurationMs: durationMs,
           avatarProfileVersionId,
           imageStyleVersionId,
@@ -893,7 +984,7 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
       workspace_id_sha256: sha256(tenant.workspace_id),
       avatar_profile_version_id_sha256: sha256(avatarProfileVersionId),
       image_style_version_id_sha256: sha256(imageStyleVersionId),
-      voiceover_sha256: sha256(voiceover),
+      voiceover_sha256: voiceoverSha256,
       duration_ms: durationMs,
       generate_clicks: 0,
       interactive_login_only: true,

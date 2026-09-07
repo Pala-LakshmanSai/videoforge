@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -13,6 +21,7 @@ import {
   materializeV209ChromeBootstrap,
   materializeV209ChromeRequestScope,
   materializeV209PostDeployChromeAuth,
+  validateV209ChromePreclaimInputs,
   validateV209PostDeployChromeAuthReceipt,
 } from "./chrome-production-bootstrap.mjs";
 
@@ -24,8 +33,12 @@ function harness(overrides = {}) {
   const root = mkdtempSync(resolve(tmpdir(), "v209-chrome-bootstrap-"));
   const secure = resolve(root, "secure");
   mkdirSync(secure, { mode: 0o700 });
+  const wranglerHome = resolve(secure, "wrangler-home");
+  mkdirSync(wranglerHome, { mode: 0o700 });
   const voiceoverPath = resolve(secure, "acceptance.wav");
-  writeFileSync(voiceoverPath, Buffer.from("deterministic spoken fixture"), { mode: 0o600 });
+  const voiceoverBytes = Buffer.from("deterministic spoken fixture");
+  writeFileSync(voiceoverPath, voiceoverBytes, { mode: 0o600 });
+  const voiceoverSha256 = `sha256:${createHash("sha256").update(voiceoverBytes).digest("hex")}`;
   const calls = [];
   const configuration = {
     schemaVersion: V209_CHROME_BOOTSTRAP_SCHEMA,
@@ -39,6 +52,8 @@ function harness(overrides = {}) {
     maxProgressReads: 720,
     pollIntervalMs: 1_000,
     loginTimeoutMs: 300_000,
+    voiceoverSha256,
+    voiceoverDurationMs: 45_000,
     ...overrides,
   };
   const facts = [
@@ -86,6 +101,14 @@ function harness(overrides = {}) {
     calls,
     facts,
     configuration,
+    productionConfiguration: {
+      cloudflare: {
+        environment: {
+          WRANGLER_HOME: wranglerHome,
+          XDG_CONFIG_HOME: wranglerHome,
+        },
+      },
+    },
     dependencies: {
       launch: async () => browser,
       probeVoiceover: async () => 45_000,
@@ -307,6 +330,121 @@ test("invalid voiceover duration fails before Chrome launch", async () => {
     /V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID/u,
   );
   assert.equal(launches, 0);
+});
+
+test("full bootstrap plans require the bound voiceover fields and no extra keys", async () => {
+  const missing = harness();
+  delete missing.configuration.voiceoverSha256;
+  await assert.rejects(
+    materializeV209ChromeBootstrap(missing.configuration, missing.dependencies),
+    /V2_09_CHROME_BOOTSTRAP_CONFIGURATION_INVALID/u,
+  );
+
+  const extra = harness({ unexpected: true });
+  await assert.rejects(
+    materializeV209ChromeBootstrap(extra.configuration, extra.dependencies),
+    /V2_09_CHROME_BOOTSTRAP_CONFIGURATION_INVALID/u,
+  );
+});
+
+test("preclaim validator accepts the exact local voiceover and Wrangler directories without writes", async () => {
+  const value = harness();
+  let probes = 0;
+  const receipt = await validateV209ChromePreclaimInputs(
+    value.configuration,
+    value.productionConfiguration,
+    {
+      probeVoiceover: async (bytes, identity) => {
+        probes += 1;
+        assert.equal(identity.sha256, value.configuration.voiceoverSha256);
+        assert.equal(bytes.length, statSync(value.configuration.voiceoverPath).size);
+        return 45_000;
+      },
+      launch: async () => {
+        throw new Error("must not launch Chrome");
+      },
+    },
+  );
+  assert.equal(receipt.schema_version, "videoforge.v2-09-chrome-preclaim-inputs/v1");
+  assert.equal(receipt.voiceover_sha256, value.configuration.voiceoverSha256);
+  assert.equal(receipt.voiceover_duration_ms, 45_000);
+  assert.equal(
+    receipt.wrangler_home,
+    value.productionConfiguration.cloudflare.environment.WRANGLER_HOME,
+  );
+  assert.equal(
+    receipt.xdg_config_home,
+    value.productionConfiguration.cloudflare.environment.XDG_CONFIG_HOME,
+  );
+  assert.equal(probes, 1);
+  assert.throws(() => statSync(value.configuration.authStatePath));
+  assert.throws(() => statSync(value.configuration.chromeRequestPath));
+});
+
+test("preclaim validator binds the staged voiceover hash and exact ffprobe duration", async () => {
+  const hashMismatch = harness({ voiceoverSha256: `sha256:${"0".repeat(64)}` });
+  let probes = 0;
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      hashMismatch.configuration,
+      hashMismatch.productionConfiguration,
+      {
+        probeVoiceover: async () => {
+          probes += 1;
+          return 45_000;
+        },
+      },
+    ),
+    /V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID/u,
+  );
+  assert.equal(probes, 0);
+
+  const durationMismatch = harness({ voiceoverDurationMs: 45_001 });
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      durationMismatch.configuration,
+      durationMismatch.productionConfiguration,
+      { probeVoiceover: async () => 45_000 },
+    ),
+    /V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID/u,
+  );
+});
+
+test("preclaim validator rejects non-private voiceover files and Wrangler directories", async () => {
+  const voiceoverMode = harness();
+  chmodSync(voiceoverMode.configuration.voiceoverPath, 0o644);
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      voiceoverMode.configuration,
+      voiceoverMode.productionConfiguration,
+      { probeVoiceover: async () => 45_000 },
+    ),
+    /V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID/u,
+  );
+
+  const wranglerMode = harness();
+  chmodSync(wranglerMode.productionConfiguration.cloudflare.environment.WRANGLER_HOME, 0o755);
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      wranglerMode.configuration,
+      wranglerMode.productionConfiguration,
+      { probeVoiceover: async () => 45_000 },
+    ),
+    /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
+  );
+
+  const wranglerAlias = harness();
+  const alias = resolve(wranglerAlias.root, "wrangler-alias");
+  symlinkSync(wranglerAlias.productionConfiguration.cloudflare.environment.WRANGLER_HOME, alias);
+  wranglerAlias.productionConfiguration.cloudflare.environment.XDG_CONFIG_HOME = alias;
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      wranglerAlias.configuration,
+      wranglerAlias.productionConfiguration,
+      { probeVoiceover: async () => 45_000 },
+    ),
+    /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
+  );
 });
 
 test("existing protected output is never overwritten", async () => {

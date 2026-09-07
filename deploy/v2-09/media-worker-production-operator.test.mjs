@@ -10,6 +10,7 @@ import {
   renameSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,11 +20,13 @@ import test from "node:test";
 import {
   createV209MediaWorkerProductionPorts as createProductionPorts,
   createV209MediaWorkerProductionPortsForTest,
+  validateV209MediaWorkerLocalReadinessForTest,
   validateV209MediaWorkerMaterializationReceipt,
   resumeV209MediaWorkerUserConfirmation as resumeProductionConfirmation,
   resumeV209MediaWorkerUserConfirmationForTest,
   V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
   V209_MEDIA_WORKER_CONFIRMATION_SCHEMA,
+  V209_MEDIA_WORKER_LOCAL_READINESS_SCHEMA,
   V209_MEDIA_WORKER_MATERIALIZATION_MODE,
   V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA,
   V209MediaWorkerUserConfirmationRequired,
@@ -284,6 +287,63 @@ function sandbox() {
   return { configuration, home, remove: () => rmSync(root, { recursive: true, force: true }) };
 }
 
+function prepareLocalReadiness(box) {
+  const installationId = "11111111-1111-4111-8111-111111111111";
+  writeFileSync(box.configuration.statePath, JSON.stringify({ installation_id: installationId }), {
+    mode: 0o600,
+  });
+  chmodSync(box.configuration.statePath, 0o600);
+  writeFileSync(box.configuration.launchAgentPath, "plist", { mode: 0o600 });
+  chmodSync(box.configuration.launchAgentPath, 0o600);
+  mkdirSync(box.configuration.applicationPath, { recursive: true, mode: 0o755 });
+  chmodSync(box.configuration.applicationPath, 0o755);
+  mkdirSync(box.configuration.workRoot, { recursive: true, mode: 0o700 });
+  chmodSync(box.configuration.workRoot, 0o700);
+  return installationId;
+}
+
+function localReadinessOptions(box, { keychainStatus = 0, launchAgentValid = true } = {}) {
+  const commands = [];
+  const success = (stdout = "", stderr = "") => ({ status: 0, signal: null, stdout, stderr });
+  const runChild = async (request) => {
+    commands.push(request);
+    if (request.command === "/usr/bin/security")
+      return {
+        status: keychainStatus,
+        signal: null,
+        stdout: "keychain metadata only",
+        stderr: "",
+      };
+    if (request.command === "/usr/libexec/PlistBuddy") {
+      const key = request.args[1];
+      if (!launchAgentValid) return { status: 0, signal: null, stdout: "wrong", stderr: "" };
+      if (key === "Print :Label") return success("com.videoforge.personal-media-worker\n");
+      if (key === "Print :ProgramArguments:0")
+        return success(
+          `${join(box.configuration.applicationPath, "Contents", "MacOS", "VideoForge Worker")}\n`,
+        );
+      if (key === "Print :ProgramArguments:1") return success("--background\n");
+      if (key === "Print :RunAtLoad") return success("true\n");
+    }
+    throw new Error(`unexpected local readiness command: ${request.command}`);
+  };
+  const options = {
+    clock: () => 0,
+    fetchImpl: async () => {
+      throw new Error("network must not be used");
+    },
+    movePath: renameSync,
+    runChild,
+    sleep: async () => {},
+    hostHome: box.home,
+    hostPlatform: "darwin",
+    hostUid: 501,
+    testDependencyIdentitySha256: TEST_DEPENDENCY_IDENTITY_SHA256,
+  };
+  Object.defineProperty(options, "commands", { value: commands });
+  return options;
+}
+
 function fetchFixture({ releaseStatus = 200, release, manifestBytes }) {
   const calls = [];
   const api =
@@ -411,6 +471,136 @@ function installFailureHarness(
   };
   return { commands, fetchImpl, runChild };
 }
+
+test("provider-free local readiness returns only hash and boolean facts", async () => {
+  const box = sandbox();
+  try {
+    prepareLocalReadiness(box);
+    const options = localReadinessOptions(box);
+    const result = await validateV209MediaWorkerLocalReadinessForTest(
+      box.configuration,
+      options,
+    );
+    assert.deepEqual(Object.keys(result).sort(), [
+      "application_path_valid",
+      "configuration_sha256",
+      "installation_state_sha256",
+      "installation_state_valid",
+      "keychain_entry_present",
+      "launch_agent_valid",
+      "platform_valid",
+      "readiness_sha256",
+      "schema_version",
+      "uid_valid",
+      "work_root_valid",
+    ]);
+    assert.equal(result.schema_version, V209_MEDIA_WORKER_LOCAL_READINESS_SCHEMA);
+    for (const key of [
+      "platform_valid",
+      "uid_valid",
+      "installation_state_valid",
+      "keychain_entry_present",
+      "launch_agent_valid",
+      "application_path_valid",
+      "work_root_valid",
+    ])
+      assert.equal(result[key], true);
+    for (const key of [
+      "configuration_sha256",
+      "installation_state_sha256",
+      "readiness_sha256",
+    ])
+      assert.match(result[key], /^sha256:[0-9a-f]{64}$/u);
+    assert.equal("installation_id" in result, false);
+    assert.equal(
+      options.commands.filter(({ command }) => command === "/usr/bin/security").length,
+      1,
+    );
+    const security = options.commands.find(({ command }) => command === "/usr/bin/security");
+    assert.deepEqual(security.args, [
+      "find-generic-password",
+      "-s",
+      "com.videoforge.personal-media-worker",
+      "-a",
+      "11111111-1111-4111-8111-111111111111",
+    ]);
+    assert.equal(security.args.includes("-w"), false);
+    assert.equal(security.options.env.PGPASSWORD, undefined);
+    assert.equal(security.options.env.PGUSER, undefined);
+  } finally {
+    box.remove();
+  }
+});
+
+test("local readiness rejects missing or unsafe prerequisites without confirmation or network", async (t) => {
+  const scenarios = [
+    {
+      name: "non-darwin host",
+      mutate: () => {},
+      options: (box) => {
+        const options = localReadinessOptions(box);
+        options.hostPlatform = "linux";
+        return options;
+      },
+      error: /V2_09_MEDIA_WORKER_READINESS_HOST_INVALID/u,
+    },
+    {
+      name: "missing installation state",
+      mutate: (box) => rmSync(box.configuration.statePath),
+      options: (box) => localReadinessOptions(box),
+      error: /V2_09_MEDIA_WORKER_READINESS_INSTALLATION_STATE_MISSING/u,
+    },
+    {
+      name: "missing keychain item",
+      mutate: () => {},
+      options: (box) => localReadinessOptions(box, { keychainStatus: 44 }),
+      error: /V2_09_MEDIA_WORKER_READINESS_KEYCHAIN_ENTRY_MISSING/u,
+    },
+    {
+      name: "invalid launch agent",
+      mutate: () => {},
+      options: (box) => localReadinessOptions(box, { launchAgentValid: false }),
+      error: /V2_09_MEDIA_WORKER_LAUNCH_AGENT_INVALID/u,
+    },
+    {
+      name: "application symlink",
+      mutate: (box) => {
+        const target = join(box.home, "Applications", "worker-target");
+        mkdirSync(target, { mode: 0o755 });
+        rmSync(box.configuration.applicationPath, { recursive: true, force: true });
+        symlinkSync(target, box.configuration.applicationPath);
+      },
+      options: (box) => localReadinessOptions(box),
+      error: /V2_09_MEDIA_WORKER_READINESS_APPLICATION_INVALID/u,
+    },
+    {
+      name: "work root is not exact private mode",
+      mutate: (box) => chmodSync(box.configuration.workRoot, 0o750),
+      options: (box) => localReadinessOptions(box),
+      error: /V2_09_MEDIA_WORKER_READINESS_WORK_ROOT_INVALID/u,
+    },
+  ];
+  for (const scenario of scenarios) {
+    await t.test(scenario.name, async () => {
+      const box = sandbox();
+      try {
+        prepareLocalReadiness(box);
+        scenario.mutate(box);
+        const options = scenario.options(box);
+        await assert.rejects(
+          validateV209MediaWorkerLocalReadinessForTest(box.configuration, options),
+          scenario.error,
+        );
+        assert.equal(
+          options.commands.filter(({ command }) => command === "/usr/bin/security").length,
+          scenario.name === "missing keychain item" ? 1 : 0,
+        );
+      } finally {
+        box.remove();
+      }
+    });
+  }
+});
 
 test("factory is zero-mutation and source-identifies all three exact concrete ports", () => {
   const box = sandbox();

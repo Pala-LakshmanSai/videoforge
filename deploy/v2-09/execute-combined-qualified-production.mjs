@@ -2300,12 +2300,26 @@ export async function executeCombinedQualifiedProduction(options) {
     hasProtectedCleanup: (context) => materializer.hasProtectedCleanup(context),
     hasInnerCleanup: (context) => materializer.hasInnerCleanup(context),
     readInnerSuccess: (context) => materializer.readInnerSuccess(context),
-    preClaim: () =>
+    preClaim: async () => {
       validateV209PrivateOutputDirectories({
         authority: options.authority,
         materializationPlan: approvedMaterializationPlan,
         statePath: options.statePath,
-      }),
+      });
+      const { validateV209ChromePreclaimInputs } = await import(
+        "./chrome-production-bootstrap.mjs"
+      );
+      await validateV209ChromePreclaimInputs(
+        approvedMaterializationPlan.chrome_bootstrap,
+        approvedMaterializationPlan.production_configuration,
+      );
+      const { validateV209MediaWorkerLocalReadiness } = await import(
+        "./media-worker-production-operator.mjs"
+      );
+      await validateV209MediaWorkerLocalReadiness(
+        approvedMaterializationPlan.production_configuration.mediaWorker,
+      );
+    },
     async gitState() {
       const { spawnSync } = await import("node:child_process");
       const head = spawnSync("git", ["rev-parse", "HEAD"], {

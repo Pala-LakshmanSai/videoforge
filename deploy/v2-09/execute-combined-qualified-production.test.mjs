@@ -712,6 +712,36 @@ test("pre-claim git state rejects wrong HEAD and dirty worktree before claim or 
   }
 });
 
+test("injected Chrome and media readiness preclaims fail before claim or execution", async () => {
+  for (const failure of [
+    "V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID",
+    "V2_09_MEDIA_WORKER_READINESS_INSTALLATION_STATE_MISSING",
+  ]) {
+    const events = [];
+    const calls = { credential: 0, git: 0, preflight: 0, stage: 0 };
+    const fixture = liveCompositionFixture({
+      gitState: { head: SOURCE, trackedClean: true },
+      calls,
+      events,
+    });
+    fixture.dependencies.preClaim = async () => {
+      throw new Error(failure);
+    };
+    await assert.rejects(
+      executeCombinedQualifiedProductionWithDependenciesForTest(
+        fixture.options,
+        fixture.dependencies,
+      ),
+      new RegExp(failure, "u"),
+    );
+    assert.deepEqual(events, []);
+    assert.equal(calls.git, 1);
+    assert.equal(calls.credential, 0);
+    assert.equal(calls.preflight, 0);
+    assert.equal(calls.stage, 0);
+  }
+});
+
 test("interrupted inner execution resumes cleanup-only without mutating redispatch", async () => {
   const events = [];
   const outerState = state(events);

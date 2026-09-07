@@ -32,6 +32,8 @@ export const V209_MEDIA_WORKER_CONFIRMATION_SCHEMA =
 export const V209_MEDIA_WORKER_MATERIALIZATION_MODE = "PREAUTHORIZED_STAGED_ONCE";
 export const V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA =
   "videoforge.v2-09-media-worker-materialization-receipt/v1";
+export const V209_MEDIA_WORKER_LOCAL_READINESS_SCHEMA =
+  "videoforge.v2-09-media-worker-local-readiness/v1";
 
 const SOURCE_PATH = fileURLToPath(import.meta.url);
 const RUN_CANCELLABLE_SOURCE_PATH = fileURLToPath(
@@ -78,6 +80,7 @@ const REQUIRED_POSTGRES_ENVIRONMENT_KEYS = Object.freeze([
   "PGSSLMODE",
   "PGUSER",
 ]);
+const READINESS_STATIC_ENVIRONMENT_KEYS = Object.freeze(["GH_CONFIG_DIR", "GH_HOST", "PATH"]);
 
 function fail(code) {
   throw new Error(`V2_09_MEDIA_WORKER_${code}`);
@@ -234,6 +237,45 @@ function sanitizedChildEnvironment(inputEnvironment, expectedHome) {
   });
 }
 
+function sanitizedReadinessEnvironment(inputEnvironment, expectedHome) {
+  const allowedKeys = new Set([
+    ...READINESS_STATIC_ENVIRONMENT_KEYS,
+    ...REQUIRED_POSTGRES_ENVIRONMENT_KEYS,
+  ]);
+  if (
+    inputEnvironment === null ||
+    typeof inputEnvironment !== "object" ||
+    Array.isArray(inputEnvironment) ||
+    Object.keys(inputEnvironment).some((name) => !allowedKeys.has(name))
+  )
+    fail("READINESS_ENVIRONMENT_INVALID");
+  const path = assertEnvironmentValue(
+    inputEnvironment.PATH ?? DEFAULT_CHILD_PATH,
+    "READINESS_PATH_ENVIRONMENT_INVALID",
+    { maxBytes: 8192 },
+  );
+  const githubConfigDirectory = resolve(
+    inputEnvironment.GH_CONFIG_DIR ?? join(expectedHome, ".config", "gh"),
+  );
+  if (
+    githubConfigDirectory === "/" ||
+    !isAbsolute(githubConfigDirectory) ||
+    (inputEnvironment.GH_CONFIG_DIR !== undefined && !isAbsolute(inputEnvironment.GH_CONFIG_DIR)) ||
+    (inputEnvironment.GH_HOST !== undefined && inputEnvironment.GH_HOST !== "github.com")
+  )
+    fail("READINESS_GITHUB_ENVIRONMENT_INVALID");
+  // Local readiness commands never need database or GitHub credential values. Keep those keys out
+  // of the child environment even when the caller passes a hydrated production configuration.
+  return Object.freeze({
+    HOME: expectedHome,
+    LANG: "C",
+    LC_ALL: "C",
+    PATH: path,
+    GH_CONFIG_DIR: githubConfigDirectory,
+    GH_HOST: "github.com",
+  });
+}
+
 function protectedCredentialIdentity(path, hostUid, code) {
   if (path === "/" || !isAbsolute(path) || !existsSync(path)) fail(code);
   const parent = lstatSync(dirname(path));
@@ -350,6 +392,85 @@ function assertConfiguration(configuration, hostHome, hostUid) {
     environment,
     githubCredentialPath,
     credentialIdentities,
+  });
+}
+
+function readinessDirectory(path, hostUid, code, { exactMode } = {}) {
+  let stat;
+  try {
+    stat = lstatSync(path);
+  } catch {
+    fail(code);
+  }
+  if (
+    !stat.isDirectory() ||
+    stat.isSymbolicLink() ||
+    (exactMode === undefined ? (stat.mode & 0o022) !== 0 : (stat.mode & 0o777) !== exactMode) ||
+    stat.uid !== hostUid
+  )
+    fail(code);
+  return stat;
+}
+
+function assertReadinessConfiguration(inputConfiguration, hostHome, hostUid) {
+  if (
+    inputConfiguration === null ||
+    typeof inputConfiguration !== "object" ||
+    Array.isArray(inputConfiguration) ||
+    inputConfiguration.repository !== V209_MEDIA_WORKER_REPOSITORY ||
+    inputConfiguration.workflowPath !== V209_MEDIA_WORKER_WORKFLOW ||
+    inputConfiguration.releaseTag !== V209_MEDIA_WORKER_TAG ||
+    inputConfiguration.version !== V209_MEDIA_WORKER_VERSION ||
+    !COMMIT.test(inputConfiguration.sourceCommit ?? "") ||
+    inputConfiguration.branch !== "codex/serverless-v2-roadmap-v4" ||
+    typeof inputConfiguration.root !== "string" ||
+    !isAbsolute(inputConfiguration.root) ||
+    typeof inputConfiguration.controlPlaneOrigin !== "string"
+  )
+    fail("READINESS_CONFIGURATION_INVALID");
+  const origin = parseHttps(
+    inputConfiguration.controlPlaneOrigin,
+    "READINESS_CONTROL_PLANE_ORIGIN_INVALID",
+  );
+  if (origin.pathname !== "/" || origin.search !== "")
+    fail("READINESS_CONTROL_PLANE_ORIGIN_INVALID");
+  const expectedHome = resolve(hostHome);
+  const paths = {
+    root: resolve(inputConfiguration.root),
+    applicationPath: resolve(inputConfiguration.applicationPath ?? ""),
+    statePath: resolve(inputConfiguration.statePath ?? ""),
+    launchAgentPath: resolve(inputConfiguration.launchAgentPath ?? ""),
+    workRoot: resolve(inputConfiguration.workRoot ?? ""),
+  };
+  if (
+    paths.root === "/" ||
+    paths.applicationPath !== join(expectedHome, "Applications", "VideoForge Worker.app") ||
+    paths.statePath !==
+      join(
+        expectedHome,
+        "Library",
+        "Application Support",
+        "VideoForge Worker",
+        "installation.json",
+      ) ||
+    paths.launchAgentPath !==
+      join(expectedHome, "Library", "LaunchAgents", `${V209_MEDIA_WORKER_SERVICE}.plist`) ||
+    paths.workRoot === "/" ||
+    !paths.workRoot.startsWith(`${expectedHome}/`)
+  )
+    fail("READINESS_PATH_CONFIGURATION_INVALID");
+  readinessDirectory(paths.root, hostUid, "READINESS_ROOT_INVALID");
+  const environment = sanitizedReadinessEnvironment(inputConfiguration.environment, expectedHome);
+  return Object.freeze({
+    ...paths,
+    controlPlaneOrigin: origin.origin,
+    sourceCommit: inputConfiguration.sourceCommit,
+    version: inputConfiguration.version,
+    branch: inputConfiguration.branch,
+    repository: inputConfiguration.repository,
+    workflowPath: inputConfiguration.workflowPath,
+    releaseTag: inputConfiguration.releaseTag,
+    environment,
   });
 }
 
@@ -1252,6 +1373,67 @@ async function verifyExistingLaunchAgent(runChild, configuration, cancellationSi
   }
 }
 
+async function validateLocalReadiness(inputConfiguration, dependencies) {
+  const { runChild, hostHome, hostPlatform, hostUid } = dependencies;
+  if (
+    typeof runChild !== "function" ||
+    typeof hostHome !== "string" ||
+    hostPlatform !== "darwin" ||
+    !Number.isSafeInteger(hostUid) ||
+    hostUid < 0
+  )
+    fail("READINESS_HOST_INVALID");
+  const configuration = assertReadinessConfiguration(inputConfiguration, hostHome, hostUid);
+  const installation = readInstallationState(configuration);
+  if (installation === null) fail("READINESS_INSTALLATION_STATE_MISSING");
+  readinessDirectory(configuration.applicationPath, hostUid, "READINESS_APPLICATION_INVALID");
+  readinessDirectory(configuration.workRoot, hostUid, "READINESS_WORK_ROOT_INVALID", {
+    exactMode: 0o700,
+  });
+  await verifyExistingLaunchAgent(runChild, configuration);
+  const keychainPresent = await keychainEntryExists(
+    runChild,
+    configuration,
+    installation.installationId,
+  );
+  if (!keychainPresent) fail("READINESS_KEYCHAIN_ENTRY_MISSING");
+  const configurationSha256 = sha256(
+    canonical({
+      applicationPath: configuration.applicationPath,
+      branch: configuration.branch,
+      controlPlaneOrigin: configuration.controlPlaneOrigin,
+      environment: Object.fromEntries(
+        Object.entries(configuration.environment).map(([key, value]) => [key, sha256(value)]),
+      ),
+      launchAgentPath: configuration.launchAgentPath,
+      releaseTag: configuration.releaseTag,
+      repository: configuration.repository,
+      root: configuration.root,
+      sourceCommit: configuration.sourceCommit,
+      statePath: configuration.statePath,
+      version: configuration.version,
+      workRoot: configuration.workRoot,
+      workflowPath: configuration.workflowPath,
+    }),
+  );
+  const unsigned = Object.freeze({
+    schema_version: V209_MEDIA_WORKER_LOCAL_READINESS_SCHEMA,
+    platform_valid: true,
+    uid_valid: true,
+    installation_state_valid: true,
+    installation_state_sha256: installation.sha256,
+    keychain_entry_present: true,
+    launch_agent_valid: true,
+    application_path_valid: true,
+    work_root_valid: true,
+    configuration_sha256: configurationSha256,
+  });
+  return Object.freeze({
+    ...unsigned,
+    readiness_sha256: sha256(canonical(unsigned)),
+  });
+}
+
 async function installMediaWorker(
   context,
   { configuration, runChild, fetchImpl, clock, sleep, hostPlatform, hostUid, movePath, identities },
@@ -1823,6 +2005,18 @@ export function createV209MediaWorkerProductionPorts(inputConfiguration, options
 /** Test-only seam. Production composition must never call this export. */
 export function createV209MediaWorkerProductionPortsForTest(inputConfiguration, options) {
   return createPorts(inputConfiguration, testOnlyDependencies(options));
+}
+
+export async function validateV209MediaWorkerLocalReadiness(inputConfiguration) {
+  return validateLocalReadiness(inputConfiguration, productionDependencies());
+}
+
+/** Test-only seam. Production composition must never call this export. */
+export async function validateV209MediaWorkerLocalReadinessForTest(
+  inputConfiguration,
+  options,
+) {
+  return validateLocalReadiness(inputConfiguration, testOnlyDependencies(options));
 }
 
 export async function resumeV209MediaWorkerUserConfirmation(
