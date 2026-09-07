@@ -3,8 +3,8 @@
   "checkpoint": "V2-09",
   "task_id": "VF-10-09",
   "approval_source": "explicit_user_approval_in_current_codex_task",
-  "approval_status": "APPROVED_SINGLE_USE_NOT_YET_CONSUMED",
-  "consumed": false,
+  "approval_status": "CONSUMED_FAILED_CLEAN",
+  "consumed": true,
   "reusable": false,
   "exact_user_statement": "I approve exact V2-09 availability-recovered replacement combined production activation proposal sha256:5b78e19baa6427f48c4d4aa4379f25422bbeaabd92872ae2d18336dbfbb2cc80",
   "exact_user_statement_sha256": "sha256:6ad8aa22900cbf7942f27d0c236f8f95fd4edb5f7a39a97eaca8acb23b7bf90d",
@@ -24,5 +24,7 @@
   "database_calls_performed": 0,
   "r2_calls_performed": 0,
   "gpu_jobs_performed": 0,
-  "external_spend_usd": 0
+  "external_spend_usd": 0,
+  "failure_evidence": "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-protected-materialization-output.json",
+  "failure_evidence_sha256": "sha256:cf2c8416ffe055b0743927e20d51bcde6e819c7364654732b52cb8d14f65c430"
 }

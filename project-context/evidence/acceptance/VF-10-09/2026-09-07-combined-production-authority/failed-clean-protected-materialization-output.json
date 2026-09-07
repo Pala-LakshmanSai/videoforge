@@ -1,0 +1,79 @@
+{
+  "schema_version": "videoforge.v2-09-combined-production-failed-clean/v1",
+  "checkpoint": "V2-09",
+  "task_id": "VF-10-09",
+  "authority_id": "v2-09-5b78e19baa6427f4",
+  "proposal_sha256": "sha256:5b78e19baa6427f48c4d4aa4379f25422bbeaabd92872ae2d18336dbfbb2cc80",
+  "control_source_commit": "b4f0f7a1edbf76c18cfc288988b0bd091dc4850e",
+  "authority_successor_commit": "eb072a3531e64a94a4a7b7c7c43bf4bb0079c554",
+  "authority_sha256": "sha256:81809cddd75a84a3438345471a5cb539fd4476482b279496ac817d07947cf784",
+  "materialization_plan_sha256": "sha256:00fb06c8f701f7d24ef04f0f58e6f371b94d518a9ad0b4456aa04c02293a06a2",
+  "media_worker_bundle_sha256": "sha256:b779c9c8990ecaab96b9025c597e44e29732cbce3ca0db36cbaf89a51e1a7615",
+  "status": "FAILED_CLEAN",
+  "consumed": true,
+  "reusable": false,
+  "exact_error": "V2_09_PROTECTED_MATERIALIZATION_OUTPUT_INVALID",
+  "outer_state_sha256": "sha256:740150ad28cf963db7e31610451f14fd020a4c6a40ce88b9b9568c6d24ebea12",
+  "preflight_proof_sha256": "sha256:83b46cef1d97b158112552c8d94793a9344cda154cb845aa1d150533f7f5b2c7",
+  "preflight_checked_at_utc": "2026-09-07T18:40:48.511Z",
+  "preflight": {
+    "availability": "LOW",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "rate_usd_per_gpu_hour": 1.116,
+    "cumulative_endpoint_billing_usd": 3.5284023286949378,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "retained_volumes": 2
+  },
+  "completion_baseline": {
+    "completion_baseline_micro_usd": 386630,
+    "maximum_completion_baseline_micro_usd": 15500000,
+    "settled_net_micro_usd": 17648,
+    "open_reservation_micro_usd": 368982,
+    "reported_unsettled_micro_usd": 0
+  },
+  "operations": {
+    "completed": [
+      "run-read-only-preflight",
+      "read-pre-mutation-completion-baseline"
+    ],
+    "started_failed": [
+      "materialize-v209-protected-inputs"
+    ],
+    "pending_count": 23,
+    "inner_authority_emitted": false
+  },
+  "cleanup": {
+    "role_cleanup_tombstone_sha256": "sha256:8709299a35e429fe1fb82bcbe9f2672f550406264491a7baa21d2356ae679548",
+    "role_cleanup_status": "CLEANED",
+    "verified_role_count": 0,
+    "verified_membership_count": 0,
+    "protected_outputs_remaining": 0
+  },
+  "remote_state": {
+    "control_branch_head": "555b27c864b8e194780fadbb750322c521222c6f",
+    "approved_source_push_completed": false
+  },
+  "effects": {
+    "database_read_baseline_completed": true,
+    "temporary_role_transaction_started": true,
+    "migrations_applied": false,
+    "media_worker_published": false,
+    "media_worker_installed": false,
+    "runpod_lane_mutations": 0,
+    "runpod_job_posts": 0,
+    "gpu_jobs": 0,
+    "cloudflare_mutations": 0,
+    "r2_mutations": 0,
+    "chrome_e2e_runs": 0,
+    "redispatches": 0,
+    "stage_6_jobs": 0,
+    "stage_7_jobs": 0,
+    "incremental_external_spend_usd": 0
+  },
+  "audit_process_note": "One independent audit returned GO before execution. Two concurrent audits later returned STOP P1 because active context retained stale no-authority/fresh-approval sentences. The executor had already started, but stopped at the approved protected-materialization fail-closed boundary before source push or deployment/provider mutation. No retry is permitted.",
+  "next_gate": "Provider-free diagnosis of the protected materialization output failure and active-context contradiction, then one fresh independently audited proposal and exact approval."
+}

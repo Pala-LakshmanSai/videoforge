@@ -4,10 +4,12 @@
 
 ### Current new-chat launch point — 2026-09-06
 
-- V2-09 proposal `sha256:5b78e19b...cc80` and authority `v2-09-5b78e19baa6427f4` are
-  approved and materialized mode-0600, bound to clean source `b4f0f7a1...850e` and exact
-  media-worker bundle `sha256:b779c9c8...7615`. The mandatory independent successor diff audit is
-  the only remaining pre-execution gate; Stage 6/7 remain frozen `QUALIFIED_PASS_CLEAN`.
+- V2-09 proposal `sha256:5b78e19b...cc80` and authority `v2-09-5b78e19baa6427f4` are consumed
+  `FAILED_CLEAN` and non-reusable. Exact preflight and the global completion baseline passed, then
+  protected-input materialization failed with `V2_09_PROTECTED_MATERIALIZATION_OUTPUT_INVALID`.
+  Cleanup removed the temporary roles and protected outputs; all 23 later operations stayed pending.
+  No source push, migration, media publication/install, RunPod lane/job/GPU, Cloudflare/R2 mutation,
+  Chrome E2E, redispatch, Stage 6/7 action, or incremental spend occurred.
 - The user-authorized read-only monitor observed exactly one RTX 4090 and exactly one `EU-RO-1`
   entry at `LOW` availability at `2026-09-07T18:13:45.876Z`; redacted evidence is
   `monitored-eu-ro-1-low-availability.json` (`sha256:36fa200f…4263c`). This observation authorizes no

@@ -455,27 +455,27 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-availability-recovered-replacement.json"
-    current_authority_sha256: "sha256:81809cddd75a84a3438345471a5cb539fd4476482b279496ac817d07947cf784"
-    current_authority_state: approved_single_use_unconsumed_pending_successor_audit
-    current_proposal_sha256: "sha256:5b78e19baa6427f48c4d4aa4379f25422bbeaabd92872ae2d18336dbfbb2cc80"
-    current_control_source_commit: "b4f0f7a1edbf76c18cfc288988b0bd091dc4850e"
-    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-runpod-region-match.json"
-    current_failure_sha256: "sha256:a7bab38ef809e88d3c857d9c16837296035e626de67f81cc40c71921b50d1672"
+    current_authority: null
+    current_authority_sha256: null
+    current_authority_state: none_5b78e19b_consumed_failed_clean
+    current_proposal_sha256: null
+    current_control_source_commit: null
+    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-protected-materialization-output.json"
+    current_failure_sha256: "sha256:cf2c8416ffe055b0743927e20d51bcde6e819c7364654732b52cb8d14f65c430"
     current_audit_stop: null
     current_audit_stop_sha256: null
     provider_free_repair_state: "Repair 7bdc466d creates exact NOINHERIT roles, permits only PostgreSQL 17's single inert creator-admin membership in runtime/operator/reconciler verification, uses the proven transient INHERIT cleanup edge, checks PUBLIC by ACL grantee zero, and makes every psql verifier failure nonzero. Disposable PostgreSQL 17 applied all 86 migrations, passed all three production grant scripts, rejected a foreign edge, and cleaned to zero roles/memberships. Focused tests pass 83/83; two independent audits are GO P0=0/P1=0. Stage 6/7 were untouched."
-    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-role-cleanup-pg17-replacement.json"
-    latest_closed_authority_sha256: "sha256:46f8e5abb00933347d4b5439b20b10ff75454814dadc157e4fc23adfd7134e99"
-    latest_closed_proposal_sha256: "sha256:58cb3e2bbe96d721919e5881e1488f4a50c6eed44733c8c0c9ef6c79e1192f4a"
-    latest_closed_control_source_commit: "555b27c864b8e194780fadbb750322c521222c6f"
-    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-runpod-region-match.json"
-    latest_closed_failure_sha256: "sha256:a7bab38ef809e88d3c857d9c16837296035e626de67f81cc40c71921b50d1672"
+    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-availability-recovered-replacement.json"
+    latest_closed_authority_sha256: "sha256:81809cddd75a84a3438345471a5cb539fd4476482b279496ac817d07947cf784"
+    latest_closed_proposal_sha256: "sha256:5b78e19baa6427f48c4d4aa4379f25422bbeaabd92872ae2d18336dbfbb2cc80"
+    latest_closed_control_source_commit: "b4f0f7a1edbf76c18cfc288988b0bd091dc4850e"
+    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-protected-materialization-output.json"
+    latest_closed_failure_sha256: "sha256:cf2c8416ffe055b0743927e20d51bcde6e819c7364654732b52cb8d14f65c430"
     latest_monitored_availability: LOW
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "Complete the mandatory independent authority-materialization successor audit, then execute the approved combined activation and one Chrome E2E."
+    next_gate: "Diagnose and repair the protected materialization output failure provider-free, reconcile active context, then seal and independently audit one fresh proposal."
 
   GATE_RANGA_001:
     status: open
