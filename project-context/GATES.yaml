@@ -455,11 +455,11 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_authority_state: none_pending_provider_free_reseal
-    current_proposal_sha256: null
-    current_control_source_commit: null
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-preclaim-readiness-replacement.json"
+    current_authority_sha256: "sha256:5359ed15db028cd352ff45072ea7582f5e0ad4ce2b129abeff97d7072d46223e"
+    current_authority_state: approved_single_use_unconsumed_pending_successor_audit
+    current_proposal_sha256: "sha256:cfcaccfc07d8abcb18e98a930bf5cd8ea196a41feaa3e02aa57432358bcede05"
+    current_control_source_commit: "3c1dbfc2c2d53dad165b577341bb46b524aa0ca5"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-missing-secrets-directory.json"
     current_failure_sha256: "sha256:2b399ba3aaf71f58162a5ac1a0ec9c751e447dc67333ddeb685e3b7b6c825ce5"
     current_audit_stop: null
@@ -471,7 +471,7 @@ gates:
     latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-missing-secrets-directory.json"
     latest_closed_failure_sha256: "sha256:2b399ba3aaf71f58162a5ac1a0ec9c751e447dc67333ddeb685e3b7b6c825ce5"
     provider_free_repair_state: "Preclaim repairs f0dac6df, 0117cb1c, 0f4ed8dd, dcd4c146, and eb113e44 validate exact clean source, every protected output parent, content-bound 30-60s voiceover with stable streamed-packet duration, exact private Wrangler environment, and local media-worker readiness before authority claim. Focused suites pass 97/97 and independent audit is GO P0=0/P1=0. Stage 6/7 were untouched."
-    next_gate: "Seal and independently audit one clean source/bundle/proposal, then obtain fresh exact approval for the combined activation and one Chrome E2E."
+    next_gate: "Complete the mandatory independent authority-materialization successor audit, then execute the approved combined activation and one Chrome E2E."
 
   GATE_RANGA_001:
     status: open
