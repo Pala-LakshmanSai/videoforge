@@ -7,7 +7,12 @@ import test from "node:test";
 import {
   V209_CHROME_BOOTSTRAP_RECEIPT_SCHEMA,
   V209_CHROME_BOOTSTRAP_SCHEMA,
+  V209_CHROME_REQUEST_SCOPE_SCHEMA,
+  V209_POST_DEPLOY_CHROME_AUTH_SCHEMA,
   materializeV209ChromeBootstrap,
+  materializeV209ChromeRequestScope,
+  materializeV209PostDeployChromeAuth,
+  validateV209PostDeployChromeAuthReceipt,
 } from "./chrome-production-bootstrap.mjs";
 
 function harness(overrides = {}) {
@@ -128,10 +133,161 @@ test("unavailable interactive authentication fails closed and removes owned empt
   });
   await assert.rejects(
     materializeV209ChromeBootstrap(value.configuration, value.dependencies),
-    /V2_09_CHROME_BOOTSTRAP_AUTH_UNAVAILABLE/u,
+    /V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN/u,
   );
   assert.throws(() => statSync(value.configuration.authStatePath));
   assert.throws(() => statSync(value.configuration.chromeRequestPath));
+});
+
+test("request scope binds before deployment without opening Chrome or creating auth state", async () => {
+  const value = harness();
+  let launches = 0;
+  const scope = {
+    schemaVersion: V209_CHROME_REQUEST_SCOPE_SCHEMA,
+    productionOrigin: value.configuration.productionOrigin,
+    authStatePath: value.configuration.authStatePath,
+    chromeRequestPath: value.configuration.chromeRequestPath,
+    voiceoverPath: value.configuration.voiceoverPath,
+    verifiedOutputPath: value.configuration.verifiedOutputPath,
+    title: value.configuration.title,
+    spendCapUsd: value.configuration.spendCapUsd,
+    stopAt: value.configuration.stopAt,
+    maxProgressReads: value.configuration.maxProgressReads,
+    pollIntervalMs: value.configuration.pollIntervalMs,
+    accountId: value.facts[0].account_id,
+    workspaceId: value.facts[0].workspace_id,
+    avatarProfileVersionId: "avatar-a",
+    imageStyleVersionId: "style-a",
+  };
+  const receipt = await materializeV209ChromeRequestScope(scope, {
+    probeVoiceover: async () => 45_000,
+    launch: async () => {
+      launches += 1;
+      throw new Error("must not launch");
+    },
+  });
+  assert.equal(receipt.status, "REQUEST_SCOPE_BOUND_AWAITING_POST_DEPLOY_AUTH");
+  assert.equal(receipt.auth_state_created, false);
+  assert.equal(receipt.generate_clicks, 0);
+  assert.equal(launches, 0);
+  assert.throws(() => statSync(scope.authStatePath));
+  assert.equal(statSync(scope.chromeRequestPath).mode & 0o777, 0o600);
+});
+
+test("post-deploy authentication matches bound tenant and presets without Generate", async () => {
+  const value = harness();
+  const scope = {
+    schemaVersion: V209_CHROME_REQUEST_SCOPE_SCHEMA,
+    productionOrigin: value.configuration.productionOrigin,
+    authStatePath: value.configuration.authStatePath,
+    chromeRequestPath: value.configuration.chromeRequestPath,
+    voiceoverPath: value.configuration.voiceoverPath,
+    verifiedOutputPath: value.configuration.verifiedOutputPath,
+    title: value.configuration.title,
+    spendCapUsd: value.configuration.spendCapUsd,
+    stopAt: value.configuration.stopAt,
+    maxProgressReads: value.configuration.maxProgressReads,
+    pollIntervalMs: value.configuration.pollIntervalMs,
+    accountId: value.facts[0].account_id,
+    workspaceId: value.facts[0].workspace_id,
+    avatarProfileVersionId: "avatar-a",
+    imageStyleVersionId: "style-a",
+  };
+  const scoped = await materializeV209ChromeRequestScope(scope, {
+    probeVoiceover: async () => 45_000,
+  });
+  const receipt = await materializeV209PostDeployChromeAuth(
+    {
+      schemaVersion: V209_POST_DEPLOY_CHROME_AUTH_SCHEMA,
+      productionOrigin: scope.productionOrigin,
+      authStatePath: scope.authStatePath,
+      chromeRequestPath: scope.chromeRequestPath,
+      chromeRequestSha256: scoped.chrome_request_sha256,
+      loginTimeoutMs: 300_000,
+    },
+    value.dependencies,
+  );
+  assert.equal(receipt.status, "AUTHENTICATED_READY_FOR_ONE_E2E");
+  assert.equal(receipt.chrome_request_sha256, scoped.chrome_request_sha256);
+  assert.equal(receipt.post_deploy_authentication, true);
+  assert.equal(receipt.generate_clicks, 0);
+  assert.equal(statSync(scope.authStatePath).mode & 0o777, 0o600);
+  assert.equal(
+    validateV209PostDeployChromeAuthReceipt(receipt, {
+      authStatePath: scope.authStatePath,
+      chromeRequestSha256: scoped.chrome_request_sha256,
+    }).status,
+    "AUTHENTICATED_READY_FOR_ONE_E2E",
+  );
+  assert.throws(
+    () =>
+      validateV209PostDeployChromeAuthReceipt(
+        { ...receipt, chrome_request_sha256: `sha256:${"0".repeat(64)}` },
+        {
+          authStatePath: scope.authStatePath,
+          chromeRequestSha256: scoped.chrome_request_sha256,
+        },
+      ),
+    /V2_09_CHROME_BOOTSTRAP_AUTH_RECEIPT_INVALID/u,
+  );
+});
+
+test("post-deploy login timeout is explicitly resumable and leaves the request bound", async () => {
+  const value = harness();
+  const scope = {
+    schemaVersion: V209_CHROME_REQUEST_SCOPE_SCHEMA,
+    productionOrigin: value.configuration.productionOrigin,
+    authStatePath: value.configuration.authStatePath,
+    chromeRequestPath: value.configuration.chromeRequestPath,
+    voiceoverPath: value.configuration.voiceoverPath,
+    verifiedOutputPath: value.configuration.verifiedOutputPath,
+    title: value.configuration.title,
+    spendCapUsd: value.configuration.spendCapUsd,
+    stopAt: value.configuration.stopAt,
+    maxProgressReads: value.configuration.maxProgressReads,
+    pollIntervalMs: value.configuration.pollIntervalMs,
+    accountId: value.facts[0].account_id,
+    workspaceId: value.facts[0].workspace_id,
+    avatarProfileVersionId: "avatar-a",
+    imageStyleVersionId: "style-a",
+  };
+  const scoped = await materializeV209ChromeRequestScope(scope, {
+    probeVoiceover: async () => 45_000,
+  });
+  const unavailable = harness();
+  unavailable.dependencies.launch = async () => ({
+    newContext: async () => ({
+      newPage: async () => ({
+        goto: async () => undefined,
+        waitForURL: async () => {
+          throw new Error("login timeout");
+        },
+        close: async () => undefined,
+      }),
+      close: async () => undefined,
+    }),
+    close: async () => undefined,
+  });
+  let observed;
+  try {
+    await materializeV209PostDeployChromeAuth(
+      {
+        schemaVersion: V209_POST_DEPLOY_CHROME_AUTH_SCHEMA,
+        productionOrigin: scope.productionOrigin,
+        authStatePath: scope.authStatePath,
+        chromeRequestPath: scope.chromeRequestPath,
+        chromeRequestSha256: scoped.chrome_request_sha256,
+        loginTimeoutMs: 300_000,
+      },
+      unavailable.dependencies,
+    );
+  } catch (error) {
+    observed = error;
+  }
+  assert.equal(observed?.code, "V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN");
+  assert.equal(observed?.resumable, true);
+  assert.equal(statSync(scope.chromeRequestPath).isFile(), true);
+  assert.throws(() => statSync(scope.authStatePath));
 });
 
 test("invalid voiceover duration fails before Chrome launch", async () => {
