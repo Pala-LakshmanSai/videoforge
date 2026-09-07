@@ -455,11 +455,11 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_authority_state: none
-    current_proposal_sha256: null
-    current_control_source_commit: null
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-pg-channel-binding-replacement.json"
+    current_authority_sha256: "sha256:43cebe483dba2f99fc09e847fff2f91b03e8db3b57b25c55d69a097ae9182dea"
+    current_authority_state: approved_materialized_pending_independent_diff_audit
+    current_proposal_sha256: "sha256:f9d401740dc721ca6d8359ffd342cb7f56e85ef51b042cc2c3989c644eec554a"
+    current_control_source_commit: "b10b63dc338b501e1fadc489d44cbe73ae5702b8"
     current_failure: null
     current_failure_sha256: null
     current_audit_stop: null
@@ -471,7 +471,7 @@ gates:
     latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-descriptor-head-pg-service.json"
     latest_closed_failure_sha256: "sha256:b61620dd0f8eb4b2c540f6825797c6e761aa973f5e0494cf09dfde35474845c7"
     provider_free_repair_state: "Repair 6b2d2e91 requires exactly one pg_service section with exact keys host, dbname, user, sslmode, channel_binding; requires sslmode=require and channel_binding=require; requires the exact matching URL query; and propagates PGCHANNELBINDING=require through protected materialization, combined baseline, all concrete database environments, and the sanitized media-worker child environment. The five focused suites pass 118/118 and independent audit is GO P0=0/P1=0. Stage 6/7 were untouched."
-    next_gate: "Commit final context, recompute the exact source-bound media bundle, seal and independently audit a fresh proposal, then obtain fresh exact approval; never replay consumed proposal ea4e2e45."
+    next_gate: "Independently audit the single f9d40174 authority-materialization successor, then run the approved combined preflight, conditional production activation, and one Chrome E2E."
 
   GATE_RANGA_001:
     status: open
