@@ -28,12 +28,12 @@ current_goal_boundary:
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
   provider_free_product_action: "The current provider-free repair removes the maximum-spend input and client field from every hosted project, persists NULL unlimited project limits through migration 0086, retains exact cost accounting/reservations/settlement, and separates exact authenticated RTX 4090 EU-RO-1 LOW-or-better availability from the guarded official RunPod pricing-page rate of USD 0.00031/second and USD 1.116/hour. Release authority remains a separate finite source-bound cap. Stage 6 and Stage 7 were not modified or rerun."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "Proposal d9703df5 and authority 198f5d57 are consumed FAILED_CLEAN at the authenticated catalog flex gate. Outer-state sha256:45755f7dbb3217fc566e23966b54e53dca73e1ffba7f1c14112d0e1f0a7572ce records only preflight STARTED and every mutation operation PENDING. The repair is provider-free; no replacement is authorized until its clean source seal and independent audit."
+  note: "Proposal d9703df5 and authority 198f5d57 are consumed FAILED_CLEAN at the authenticated catalog flex gate. Outer-state sha256:45755f7dbb3217fc566e23966b54e53dca73e1ffba7f1c14112d0e1f0a7572ce records only preflight STARTED and every mutation operation PENDING. Provider-free source dc6ef647 passed two independent focused audits P0=0/P1=0; one replacement combined authority is now the next gate."
 
 v2_09_provider_free_candidate:
-  source_commit: "pending_current_clean_context_seal"
-  source_audit: "PENDING_INDEPENDENT_FOCUSED_AUDIT"
-  canonical_provider_free_verification: FOCUSED_UNLIMITED_PROJECT_AND_OFFICIAL_RATE_VALIDATION_IN_PROGRESS
+  source_commit: "dc6ef647fb35602333f92a4191a3071c426386b9"
+  source_audit: "PASS_TWO_INDEPENDENT_FOCUSED_AUDITS_P0_0_P1_0"
+  canonical_provider_free_verification: FOCUSED_V209_136_OF_136_PLUS_CONTRACTS_112_OF_112_PYTHON_96_OF_96_HOSTED_78_OF_78_CONTEXT_PASS
   production_state: DISABLED_UNQUALIFIED
   deployed_database_head: 73
   candidate_database_head: 86
@@ -220,7 +220,7 @@ hosted_beta_user_walkthrough:
   deployment_candidate: null
   deployed_source_commit: "29667134b17daa9723495d028ec22c4eeaee3ee3"
   cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
-  pending_source_candidate: "Replacement authority d9703df5 is consumed FAILED_CLEAN at the missing catalog-flex gate. The current provider-free implementation removes hosted project maximum-spend input/state, adds migration 0086 for NULL unlimited project limits, and obtains the guarded RTX 4090 rate from RunPod's official pricing page while authenticated catalog truth supplies exact EU-RO-1 LOW-or-better availability. Clean context seal and independent audit are pending; no replacement is authorized and production remains disabled and undeployed."
+  pending_source_candidate: "Replacement authority d9703df5 is consumed FAILED_CLEAN at the missing catalog-flex gate. Provider-free source dc6ef647 removes every project maximum-spend input and enforcement path, adds migration 0086 for NULL unlimited new-project limits with inert legacy values, and obtains the guarded RTX 4090 rate from RunPod's official pricing page while authenticated catalog truth supplies exact EU-RO-1 LOW-or-better availability. Two independent focused audits passed P0=0/P1=0; one replacement combined authority is the next gate and production remains disabled and undeployed."
   pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
   pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. SEAL_AND_INDEPENDENTLY_AUDIT_THE_UNLIMITED_PROJECT_AND_OFFICIAL_RATE_REPAIR, THEN_REQUEST_ONE_REPLACEMENT_COMBINED_PREFLIGHT_CONDITIONAL_DEPLOYMENT_AND_CHROME_AUTHORITY."
   pending_validations: "Complete only focused provider-free validation and independent audit. Any authenticated read, replacement authority, deployment, provider mutation, GPU use, or Chrome journey requires the next exact combined approval."
@@ -568,7 +568,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Finish the clean provider-free unlimited-project and official-rate source seal plus independent audit, then request one replacement combined authority for preflight, conditional production activation, resumable Chrome authentication, one live E2E, and final zero-compute proof without Stage 6/7 rerun."
+  next_action: "Request one replacement combined authority for preflight, conditional production activation, resumable Chrome authentication, one live E2E, and final zero-compute proof without Stage 6/7 rerun."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -1013,7 +1013,7 @@ provider_free_product_progress:
   guarded_pair_workflow_note: "The guarded Workflow wires atomic pair scheduling, exact RunPod lane adapters, bounded cancellation/recovery, callback settlement, and durable zero-worker evidence. Migration 0044 now verifies the persisted V2-09 admission, fresh nonfuture provider billing, exact terminal pair, phase cap, and cumulative baseline/ledger/reservation exposure atomically with settlement; direct unguarded settlement remains ungranted. Fresh independent audit is required. Production remains DISABLED_UNQUALIFIED and no bindings, secrets, roles, config, or migrations were deployed."
   hosted_v209_ordinary_production_integration_commit: "7ff69fdeecfb02b16cf22e0d6149e6fdbe38b912"
   hosted_v209_ordinary_production_integration_status: PROVIDER_FREE_PRICE_SIBLING_REPAIR_FOCUSED_PASS_CONTEXT_AUDITED
-  hosted_v209_ordinary_production_integration_note: "The current provider-free successor preserves the prior lifecycle and strict exact-GPU, EU-RO-1, LOW-or-better availability, rate ceiling, and no-fallback gates while separating their evidence sources: authenticated catalog truth supplies availability and RunPod's official Serverless pricing page supplies USD 0.00031/second and USD 1.116/hour. It also removes the hosted project maximum-spend input and persists NULL unlimited limits through migration 0086, retaining exact cost accounting and the separate finite release-authority boundary. Focused validation and independent audit are pending. No deployment, Stage 6/7 rerun, GPU use, provider mutation, or spend occurred while producing the repair."
+  hosted_v209_ordinary_production_integration_note: "Source dc6ef647 preserves the prior lifecycle and strict exact-GPU, EU-RO-1, LOW-or-better availability, rate ceiling, and no-fallback gates while separating their evidence sources: authenticated catalog truth supplies availability and RunPod's official Serverless pricing page supplies USD 0.00031/second and USD 1.116/hour. It removes every project maximum-spend input and enforcement path, persists NULL for new revisions through migration 0086, keeps legacy finite values inert, and retains exact cost accounting plus the separate finite release-authority boundary. Focused V2-09 integration passes 136/136; contracts pass 112/112 and Python 96/96; hosted follow-up passes 78/78; context validation passes; two independent focused audits are GO P0=0/P1=0. No deployment, Stage 6/7 rerun, GPU use, provider mutation, or spend occurred."
   hosted_v209_historical_provider_free_gate:
     source_commit: "cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d"
     command: "CI=1 TURBO_FORCE=true pnpm verify"
@@ -6239,7 +6239,7 @@ recommended_next_task:
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
   execution_status: failed_clean_rate_catalog_flex_missing
-  execution_blocker: repaired_source_not_yet_sealed_or_independently_audited_no_replacement_authorized
+  execution_blocker: fresh_exact_replacement_combined_authority_required
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
