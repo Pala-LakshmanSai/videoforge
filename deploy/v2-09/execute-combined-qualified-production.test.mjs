@@ -13,9 +13,11 @@ import {
   executeCombinedQualifiedProductionForTest,
   executeCombinedQualifiedProductionWithDependenciesForTest,
   createDurableOuterState,
+  createLiveMaterializerForTest,
 } from "./execute-combined-qualified-production.mjs";
 import {
   COMPLETION_CAP_USD,
+  COMBINED_PRECOMPLETED_OPERATION_IDS,
   INCREMENTAL_CAP_USD,
   OPERATION_IDS,
   QUALIFIED_LANES,
@@ -338,6 +340,7 @@ test("one outer authority runs preflight before staging and derives bounded inne
     },
     materializeStagedReceipts: async () => receiptSet(staged),
     cleanupStaged: async () => {},
+    cleanupProtected: async () => {},
     loadConfiguration: async () => staged.configuration,
     executeProduction: async (input) => {
       events.push("execute");
@@ -366,6 +369,7 @@ test("one outer authority runs preflight before staging and derives bounded inne
     "read-postlogin-tenant-completion-baseline",
   ]);
   assert.deepEqual(events.slice(-2), ["execute", "complete"]);
+  assert.equal(events.includes("protected-cleanup"), false);
   assert.equal(result.schema_version, COMBINED_EXECUTION_SCHEMA);
   assert.equal(result.preflight_proof_sha256, proof.proofSha256);
   assert.notEqual(result.inner_authority_id, result.authority_id);
@@ -405,6 +409,7 @@ test("preflight failure consumes once, enters cleanup-only, and cannot stage or 
       loadConfiguration: async () => events.push("configuration"),
       executeProduction: async () => events.push("execute"),
       cleanupStaged: async () => events.push("stage-cleanup"),
+      cleanupProtected: async () => events.push("protected-cleanup"),
     }),
     /PREFLIGHT_FAILED/u,
   );
@@ -442,6 +447,7 @@ test("tampered staged receipt fails closed before production execution", async (
       loadConfiguration: async () => staged.configuration,
       executeProduction: async () => events.push("execute"),
       cleanupStaged: async () => events.push("stage-cleanup"),
+      cleanupProtected: async () => events.push("protected-cleanup"),
     }),
     /V2_09_COMBINED_BASELINE_RECEIPT_HASH_INVALID/u,
   );
@@ -474,6 +480,7 @@ function successfulOptions({ events, outerState, executeProduction }) {
     loadConfiguration: async () => staged.configuration,
     executeProduction,
     cleanupStaged: async () => {},
+    cleanupProtected: async () => events.push("protected-cleanup"),
   };
 }
 
@@ -499,6 +506,7 @@ test("interrupted inner execution resumes cleanup-only without mutating redispat
   );
   assert.deepEqual(modes, ["EXECUTE", "CLEANUP_ONLY", "CLEANUP_ONLY"]);
   assert.equal(events.filter((value) => value === "push-clean-source").length, 1);
+  assert.equal(events.filter((value) => value === "protected-cleanup").length, 1);
 });
 
 test("lost outer completion acknowledgement reconciles durable success", async () => {
@@ -556,6 +564,7 @@ test("persisted inner completion ACK loss uses inner cleanup and resumes cleanup
   );
   assert.deepEqual(modes, ["EXECUTE", "CLEANUP_ONLY", "CLEANUP_ONLY"]);
   assert.equal(events.includes("stage-cleanup"), false);
+  assert.equal(events.filter((value) => value === "protected-cleanup").length, 1);
 });
 
 test("live composition wiring runs fixed injected stages only after preflight pass", async () => {
@@ -604,6 +613,7 @@ test("live composition wiring runs fixed injected stages only after preflight pa
       materializeStagedReceipts: async () => receiptSet(staged),
       loadConfiguration: async () => staged.configuration,
       cleanupStaged: async () => {},
+      cleanupProtected: async () => {},
       executeProduction: async ({ authority: inner }) => ({
         schema_version: "videoforge.v2-09-qualified-production-execution/v1",
         authority_id: inner.authority_id,
@@ -639,6 +649,60 @@ test("durable outer state rejects a corrupt existing claim without replacing it"
   assert.equal(statSync(statePath).size, 17);
 });
 
+test("a new process reconstructs receipt derivation after durable Chrome completion", async () => {
+  const approved = authority();
+  const proof = preflight(approved);
+  const configuration = { exact: "sealed-configuration" };
+  const prefixResults = Object.fromEntries(
+    COMBINED_PRECOMPLETED_OPERATION_IDS.map((operationId) => [
+      operationId,
+      { operation_id: operationId },
+    ]),
+  );
+  prefixResults["render-qualified-production-config"] = {
+    operation_id: "render-qualified-production-config",
+    config_sha256: hash("rendered-config"),
+    worker_bundle_sha256: hash("worker-bundle"),
+  };
+  prefixResults["materialize-v209-postdeploy-chrome-auth"] = {
+    auth_state_sha256: hash("auth-state"),
+    chrome_request_sha256: hash("chrome-request"),
+    generate_clicks: 0,
+    post_deploy_authentication: true,
+  };
+  prefixResults["read-postlogin-tenant-completion-baseline"] = tenantBaseline();
+  let snapshots = 0;
+  const materializer = createLiveMaterializerForTest({
+    testOnly: true,
+    options: { statePath: "/tmp/v209-new-process-boundary" },
+    loadConfiguration: async () => configuration,
+    loadMaterializationPlan: async () => {
+      throw new Error("MATERIALIZATION_PLAN_MUST_NOT_REPLAY");
+    },
+    createResumedAdapters: (receivedConfiguration, rehydration) => {
+      snapshots += 1;
+      assert.equal(
+        receivedConfiguration.journalPath,
+        "/tmp/v209-new-process-boundary.staging-journal",
+      );
+      assert.equal(rehydration.authority.authority_id, approved.authority_id);
+      assert.deepEqual(rehydration.priorResults, prefixResults);
+      return { identity_sha256: hash("resumed-adapter") };
+    },
+  });
+
+  const result = await materializer.receipts({
+    authority: approved,
+    preflight: proof,
+    baseline: durableBaseline("2026-09-07T10:01:00.000Z"),
+    prefixResults,
+    configuration,
+  });
+  assert.equal(snapshots, 1);
+  assert.equal(result.adapter.adapter_set_sha256, hash("resumed-adapter"));
+  assert.equal(result.production.chrome_auth_state_sha256, hash("auth-state"));
+});
+
 test("a failure after a staged provider mutation runs cleanup and never starts inner execution", async () => {
   const approved = authority();
   const proof = preflight(approved);
@@ -668,6 +732,7 @@ test("a failure after a staged provider mutation runs cleanup and never starts i
       loadConfiguration: async () => staged.configuration,
       executeProduction: async () => events.push("inner-execute"),
       cleanupStaged: async () => events.push("full-stage-cleanup"),
+      cleanupProtected: async () => events.push("protected-cleanup"),
     }),
     /STAGED_MUTATION_FAILED/u,
   );
@@ -749,6 +814,49 @@ test("interactive Chrome login pauses safely and resumes without replaying stage
   assert.equal(resumed.status, "SUCCEEDED_CLEAN");
   assert.equal(authAttempts, 2);
   assert.equal(events.filter((value) => value === "push-clean-source").length, 1);
+});
+
+test("a terminal resumed Chrome failure rolls back once and cannot replay authentication", async () => {
+  const events = [];
+  const outerState = state(events);
+  let authAttempts = 0;
+  let cleanupAttempts = 0;
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async () => events.push("execute"),
+  });
+  const baseStageOperation = options.stageOperation;
+  options.stageOperation = async (context) => {
+    if (context.operationId === "materialize-v209-postdeploy-chrome-auth") {
+      authAttempts += 1;
+      if (authAttempts === 1) {
+        const error = new Error("V2_09_CHROME_BOOTSTRAP_AWAITING_INTERACTIVE_CHROME_LOGIN");
+        error.code = error.message;
+        error.resumable = true;
+        throw error;
+      }
+      throw new Error("V2_09_CHROME_BOOTSTRAP_BROWSER_FAILED");
+    }
+    return baseStageOperation(context);
+  };
+  options.cleanupStaged = async () => {
+    cleanupAttempts += 1;
+  };
+
+  const paused = await executeCombinedQualifiedProductionForTest(options);
+  assert.equal(paused.status, "AWAITING_INTERACTIVE_CHROME_LOGIN");
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /V2_09_CHROME_BOOTSTRAP_BROWSER_FAILED/u,
+  );
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /V2_09_COMBINED_FAILED_CLEAN/u,
+  );
+  assert.equal(authAttempts, 2);
+  assert.equal(cleanupAttempts, 1);
+  assert.equal(events.includes("execute"), false);
 });
 
 test("post-login tenant baseline cannot exceed the conservative pre-mutation global baseline", async () => {
@@ -838,6 +946,7 @@ test("expired authority never launches Chrome while awaiting interactive login",
     }
     return baseStageOperation(context);
   };
+  options.cleanupStaged = async () => events.push("expired-stage-cleanup");
   const paused = await executeCombinedQualifiedProductionForTest(options);
   assert.equal(paused.status, "AWAITING_INTERACTIVE_CHROME_LOGIN");
   options.now = new Date("2026-09-07T12:00:00.000Z");
@@ -847,6 +956,11 @@ test("expired authority never launches Chrome while awaiting interactive login",
   );
   assert.equal(authAttempts, 1);
   assert.equal(events.includes("execute"), false);
+  assert.equal(events.filter((value) => value === "expired-stage-cleanup").length, 1);
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /V2_09_COMBINED_FAILED_CLEAN/u,
+  );
 });
 
 test("repeated new-process Chrome waits do not replay the prefix or derive protected receipts", async () => {

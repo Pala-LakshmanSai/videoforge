@@ -997,6 +997,7 @@ export async function executeCombinedQualifiedProductionForTest({
   loadConfiguration,
   executeProduction,
   cleanupStaged,
+  cleanupProtected,
   outerState,
 }) {
   validateCombinedAuthority(authority, { sourceCommit, now, cleanupOnly: true });
@@ -1008,6 +1009,7 @@ export async function executeCombinedQualifiedProductionForTest({
     typeof loadConfiguration !== "function" ||
     typeof executeProduction !== "function" ||
     typeof cleanupStaged !== "function" ||
+    typeof cleanupProtected !== "function" ||
     [
       "loadOrClaim",
       "beginOperation",
@@ -1074,7 +1076,14 @@ export async function executeCombinedQualifiedProductionForTest({
   if (state.status === "AWAITING_INTERACTIVE_CHROME_LOGIN") {
     // This is an external browser/auth action, so revalidate the current non-cleanup authority
     // before every adoption attempt.
-    validateCombinedAuthority(authority, { sourceCommit, now });
+    try {
+      validateCombinedAuthority(authority, { sourceCommit, now });
+    } catch (error) {
+      validateOuterState(await outerState.enterCleanupOnly(), authority);
+      await cleanupStaged({ authority, state });
+      validateOuterState(await outerState.completeCleanup(), authority);
+      throw error;
+    }
     const preflight = assertPreflight(completedResult(state, "run-read-only-preflight"), authority);
     const resumedResults = Object.fromEntries(
       state.operations
@@ -1099,6 +1108,9 @@ export async function executeCombinedQualifiedProductionForTest({
       } catch (error) {
         if (isInteractiveChromePause(error))
           return awaitingChromeReceipt(authority, state, preflight);
+        validateOuterState(await outerState.enterCleanupOnly(), authority);
+        await cleanupStaged({ authority, state });
+        validateOuterState(await outerState.completeCleanup(), authority);
         throw error;
       }
       validateOuterState(
@@ -1134,6 +1146,7 @@ export async function executeCombinedQualifiedProductionForTest({
         sourceCommit,
         combinedExecution,
       });
+      await cleanupProtected({ authority, state });
     } else {
       await cleanupStaged({ authority, state });
     }
@@ -1292,7 +1305,11 @@ export async function executeCombinedQualifiedProductionForTest({
             preflight,
             baseline: results["read-post-migration-completion-baseline"],
             prefixResults: Object.fromEntries(
-              COMBINED_PRECOMPLETED_OPERATION_IDS.map((id) => [id, results[id]]),
+              [
+                ...COMBINED_PRECOMPLETED_OPERATION_IDS,
+                "materialize-v209-postdeploy-chrome-auth",
+                "read-postlogin-tenant-completion-baseline",
+              ].map((id) => [id, results[id]]),
             ),
             configuration,
           })),
@@ -1382,6 +1399,7 @@ export async function executeCombinedQualifiedProductionForTest({
       latest.inner_authority_id !== null
     ) {
       validateOuterState(await outerState.enterCleanupOnly(), authority);
+      await cleanupProtected({ authority, state: latest });
       validateOuterState(await outerState.completeCleanup(), authority);
       throw error;
     }
@@ -1405,6 +1423,7 @@ export async function executeCombinedQualifiedProductionForTest({
           sourceCommit,
           combinedExecution,
         });
+        await cleanupProtected({ authority, state: latest });
       } else if (
         latest.operations.some(
           ({ id, status }) =>
@@ -1437,6 +1456,7 @@ async function composeCombinedQualifiedProduction(options, dependencies) {
     loadConfiguration: dependencies.loadConfiguration,
     executeProduction: dependencies.executeProduction,
     cleanupStaged: dependencies.cleanupStaged,
+    cleanupProtected: dependencies.cleanupProtected,
     outerState: dependencies.createOuterState(options.statePath),
   });
 }
@@ -1555,7 +1575,12 @@ function stagingAuthority(outer, preflight, baseline, mediaWorker) {
   };
 }
 
-function createLiveMaterializer(options, loadConfiguration, loadMaterializationPlan) {
+function createLiveMaterializer(
+  options,
+  loadConfiguration,
+  loadMaterializationPlan,
+  testDependencies = null,
+) {
   let runtime;
   let ownerUrl;
   const readOwnerUrlOnce = async () => {
@@ -1602,6 +1627,26 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
       installer_asset_sha256: publication.installer_asset_sha256,
       signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
     };
+  };
+  const cleanupProtectedInputs = async (authority) => {
+    const configuration = await loadConfiguration();
+    const { cleanupV209ProtectedInputs } = await import("./protected-input-materializer.mjs");
+    const { spawnSync } = await import("node:child_process");
+    await cleanupV209ProtectedInputs({
+      authorityId: authority.authority_id,
+      configuration,
+      materialization: (await loadMaterializationPlan()).protected_input_materialization,
+      derivedOwnerUrl: await readOwnerUrlOnce(),
+      runPsql: async ({ env, sql }) => {
+        const result = spawnSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--quiet"], {
+          cwd: configuration.root,
+          encoding: "utf8",
+          env,
+          input: sql,
+        });
+        if (result.status !== 0) fail("V2_09_COMBINED_ROLE_CLEANUP_FAILED");
+      },
+    });
   };
   return {
     async run({ operationId, authority, preflight, priorResults }) {
@@ -1770,20 +1815,6 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
       return result;
     },
     async receipts({ authority, preflight, baseline, prefixResults, configuration }) {
-      const active = runtime;
-      if (!active) fail("V2_09_COMBINED_STAGE_RUNTIME_MISSING");
-      if (!active.resumedAdapters) {
-        const { createConcreteQualifiedProductionResumedAdapters } = await import(
-          "./concrete-qualified-production-adapters.mjs"
-        );
-        active.resumedAdapters = createConcreteQualifiedProductionResumedAdapters(
-          active.stagingConfiguration,
-          {
-            authority: active.latestAuthority,
-            priorResults: active.latestResults,
-          },
-        );
-      }
       const render = prefixResults["render-qualified-production-config"];
       const chromeAuth = prefixResults["materialize-v209-postdeploy-chrome-auth"];
       const tenantBaseline = prefixResults["read-postlogin-tenant-completion-baseline"];
@@ -1794,6 +1825,32 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
         chromeAuth?.post_deploy_authentication !== true
       )
         fail("V2_09_COMBINED_POSTDEPLOY_CHROME_RECEIPT_INVALID");
+      let active = runtime;
+      if (!active) {
+        const stagingConfiguration = {
+          ...configuration,
+          journalPath: `${options.statePath}.staging-journal`,
+        };
+        const mediaWorker = await restoreMediaWorker(authority, prefixResults);
+        active = runtime = {
+          configuration,
+          stagingConfiguration,
+          mediaWorker,
+          priorResults: prefixResults,
+          latestAuthority: stagingAuthority(authority, preflight, baseline, mediaWorker),
+          latestResults: prefixResults,
+        };
+      }
+      if (!active.resumedAdapters) {
+        const createResumedAdapters =
+          testDependencies?.createResumedAdapters ??
+          (await import("./concrete-qualified-production-adapters.mjs"))
+            .createConcreteQualifiedProductionResumedAdapters;
+        active.resumedAdapters = createResumedAdapters(active.stagingConfiguration, {
+          authority: active.latestAuthority,
+          priorResults: active.latestResults,
+        });
+      }
       const makeReceipt = (value) => ({ ...value, receipt_sha256: sha256(canonical(value)) });
       const lanes = QUALIFIED_LANES.map((lane) =>
         makeReceipt({
@@ -1839,33 +1896,17 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
         }),
       };
     },
+    cleanupProtected({ authority }) {
+      return cleanupProtectedInputs(authority);
+    },
     async cleanup({ authority, state }) {
       const protectedInputOperation = state.operations.find(
         ({ id }) => id === "materialize-v209-protected-inputs",
       );
-      const cleanupProtectedInputs = async () => {
-        const configuration = await loadConfiguration();
-        const { cleanupV209ProtectedInputs } = await import("./protected-input-materializer.mjs");
-        const { spawnSync } = await import("node:child_process");
-        await cleanupV209ProtectedInputs({
-          authorityId: authority.authority_id,
-          configuration,
-          materialization: (await loadMaterializationPlan()).protected_input_materialization,
-          derivedOwnerUrl: await readOwnerUrlOnce(),
-          runPsql: async ({ env, sql }) => {
-            const result = spawnSync(
-              "psql",
-              ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--quiet"],
-              { cwd: configuration.root, encoding: "utf8", env, input: sql },
-            );
-            if (result.status !== 0) fail("V2_09_COMBINED_ROLE_CLEANUP_FAILED");
-          },
-        });
-      };
       if (protectedInputOperation?.status === "STARTED") {
         // No later operation can have started. Reconcile the possibly partial role/file write
         // directly because a staging adapter cannot safely snapshot incomplete protected inputs.
-        await cleanupProtectedInputs();
+        await cleanupProtectedInputs(authority);
         return;
       }
       if (!runtime) {
@@ -1927,9 +1968,28 @@ function createLiveMaterializer(options, loadConfiguration, loadMaterializationP
       else await runtime.adapters.cleanupStagedRunPod({ authority: runtime.latestAuthority });
       // Keep credentials available until every independent Cloudflare/database/RunPod cleanup
       // attempt has completed. This also removes partial endpoint-secret files from a crashed seal.
-      if (protectedInputOperation?.status === "COMPLETED") await cleanupProtectedInputs();
+      if (protectedInputOperation?.status === "COMPLETED") await cleanupProtectedInputs(authority);
     },
   };
+}
+
+export function createLiveMaterializerForTest({
+  options,
+  loadConfiguration,
+  loadMaterializationPlan,
+  createResumedAdapters,
+  testOnly,
+}) {
+  if (
+    testOnly !== true ||
+    typeof loadConfiguration !== "function" ||
+    typeof loadMaterializationPlan !== "function" ||
+    typeof createResumedAdapters !== "function"
+  )
+    fail("V2_09_COMBINED_MATERIALIZER_TEST_INJECTION_FORBIDDEN");
+  return createLiveMaterializer(options, loadConfiguration, loadMaterializationPlan, {
+    createResumedAdapters,
+  });
 }
 
 export async function executeCombinedQualifiedProduction(options) {
@@ -1986,6 +2046,7 @@ export async function executeCombinedQualifiedProduction(options) {
     materializeStagedReceipts: (context) => materializer.receipts(context),
     loadConfiguration,
     cleanupStaged: (context) => materializer.cleanup(context),
+    cleanupProtected: (context) => materializer.cleanupProtected(context),
     async gitState() {
       const { spawnSync } = await import("node:child_process");
       const head = spawnSync("git", ["rev-parse", "HEAD"], {
@@ -2020,6 +2081,7 @@ export async function executeCombinedQualifiedProductionWithDependenciesForTest(
       "materializeStagedReceipts",
       "loadConfiguration",
       "cleanupStaged",
+      "cleanupProtected",
     ].some((key) => typeof dependencies[key] !== "function")
   )
     fail("V2_09_COMBINED_TEST_DEPENDENCY_INJECTION_FORBIDDEN");
