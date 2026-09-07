@@ -457,13 +457,15 @@ gates:
     result: open_no_real_hosted_end_to_end_project
     current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-ghcr-stream.json"
     current_authority_sha256: "sha256:75095833c1b998cb6edef6504d794c2a9a1e09a5092a2a0f3c76edfcb436c5c8"
-    current_authority_state: approved_materialized_pending_independent_diff_audit
+    current_authority_state: consumed_audit_stop_non_reusable
     current_proposal_sha256: "sha256:d6e5ff7b3c2f9ad19ed564d01c63138312333495f5de2e14ec3eb31006a2a7a0"
     current_control_source_commit: "1631a0c1b23d812630d3359b85535ac854c96109"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-ghcr-stream-timeout.json"
     current_failure_sha256: "sha256:976ebd274b70ab6c6afa39287586724b4072d9ee67ead0b8c1e6ff9282c02bfd"
+    current_audit_stop: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/audit-stop-stale-media-bundle-d6e5ff7b.json"
+    current_audit_stop_sha256: "sha256:3aaa3e3e1860a3859b20f0d657b0a9b720d9943b4e3126964037a6f54c7cc139"
     provider_free_repair_state: "Hosted projects remain NULL/unlimited. The GHCR preflight now separates its 60-second header deadline from a 60-second idle deadline and a size-derived bounded absolute body deadline, maps native stream aborts to exact ambiguity, and retains full ordered size and SHA-256 verification. Focused preflight tests pass 17/17."
-    next_gate: "Independently audit the single authority-materialization successor, then run the approved combined preflight, conditional production activation, and one Chrome E2E."
+    next_gate: "Recompute the source-bound media-worker bundle at the final clean closure source, seal one corrected combined proposal, independently audit it, and obtain fresh exact approval."
 
   GATE_RANGA_001:
     status: open
