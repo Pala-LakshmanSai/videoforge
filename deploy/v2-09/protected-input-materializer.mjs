@@ -162,7 +162,7 @@ function parseIni(bytes, sectionName, code) {
     const header = /^\[([^\]]+)\]$/u.exec(line);
     if (header) {
       section = header[1];
-      if (sections.has(section)) fail(code);
+      if (sections.size !== 0) fail(code);
       sections.set(section, {});
       continue;
     }
@@ -196,18 +196,39 @@ function parsePgPass(bytes, identity) {
   return matches[0];
 }
 
+function assertExactDatabaseUrl(url, code) {
+  const parameters = [...url.searchParams.entries()].sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  if (
+    url.hash !== "" ||
+    canonical(parameters) !==
+      canonical([
+        ["channel_binding", "require"],
+        ["sslmode", "require"],
+      ])
+  )
+    fail(code);
+}
+
 export function deriveOwnerDatabaseUrl(spec) {
   if (spec?.mode === "EXACT_URL_FILE") {
     const bytes = readPrivate(spec.urlFile, "OWNER_URL_INVALID");
     const text = bytes.toString("utf8");
     if (text.trim() !== text) fail("OWNER_URL_INVALID");
-    const parsed = new URL(text);
+    let parsed;
+    try {
+      parsed = new URL(text);
+    } catch {
+      fail("OWNER_URL_INVALID");
+    }
     if (
       !new Set(["postgres:", "postgresql:"]).has(parsed.protocol) ||
       !parsed.username ||
       !parsed.password
     )
       fail("OWNER_URL_INVALID");
+    assertExactDatabaseUrl(parsed, "OWNER_URL_INVALID");
     return text;
   }
   if (spec?.mode !== "PG_SERVICE_PGPASS" || !SERVICE_NAME.test(spec.serviceName ?? ""))
@@ -217,11 +238,16 @@ export function deriveOwnerDatabaseUrl(spec) {
     spec.serviceName,
     "PG_SERVICE_INVALID",
   );
-  const allowed = new Set(["host", "port", "dbname", "user", "sslmode"]);
-  if (Object.keys(service).some((key) => !allowed.has(key))) fail("PG_SERVICE_INVALID");
+  if (
+    canonical(Object.keys(service).sort()) !==
+      canonical(["channel_binding", "dbname", "host", "sslmode", "user"]) ||
+    service.sslmode !== "require" ||
+    service.channel_binding !== "require"
+  )
+    fail("PG_SERVICE_INVALID");
   const identity = {
     host: service.host,
-    port: service.port || "5432",
+    port: "5432",
     database: service.dbname,
     user: service.user,
   };
@@ -234,12 +260,14 @@ export function deriveOwnerDatabaseUrl(spec) {
   url.pathname = `/${identity.database}`;
   url.username = identity.user;
   url.password = password;
-  url.searchParams.set("sslmode", service.sslmode || "require");
+  url.searchParams.set("sslmode", "require");
+  url.searchParams.set("channel_binding", "require");
   return url.toString();
 }
 
 function roleUrl(ownerUrl, role, password) {
   const url = new URL(ownerUrl);
+  assertExactDatabaseUrl(url, "OWNER_URL_INVALID");
   url.username = role;
   url.password = password;
   return url.toString();
@@ -247,6 +275,7 @@ function roleUrl(ownerUrl, role, password) {
 
 function postgresEnvironment(databaseUrl, path) {
   const parsed = new URL(databaseUrl);
+  assertExactDatabaseUrl(parsed, "OWNER_URL_INVALID");
   if (typeof path !== "string" || path.length === 0 || path.includes("\0")) fail("PATH_INVALID");
   return {
     PATH: path,
@@ -255,7 +284,8 @@ function postgresEnvironment(databaseUrl, path) {
     PGDATABASE: parsed.pathname.slice(1),
     PGUSER: decodeURIComponent(parsed.username),
     PGPASSWORD: decodeURIComponent(parsed.password),
-    PGSSLMODE: parsed.searchParams.get("sslmode") || "require",
+    PGSSLMODE: "require",
+    PGCHANNELBINDING: "require",
   };
 }
 
@@ -382,8 +412,10 @@ export async function materializeV209ProtectedInputs({
       !new Set(["postgres:", "postgresql:"]).has(parsedOwner.protocol) ||
       !parsedOwner.username ||
       !parsedOwner.password
-    )
+    ) {
       fail("OWNER_URL_INVALID");
+    }
+    assertExactDatabaseUrl(parsedOwner, "OWNER_URL_INVALID");
   } catch {
     fail("OWNER_URL_INVALID");
   }

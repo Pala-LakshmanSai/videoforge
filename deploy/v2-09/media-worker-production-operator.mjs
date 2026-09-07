@@ -74,6 +74,7 @@ const REQUIRED_POSTGRES_ENVIRONMENT_KEYS = Object.freeze([
   "PGHOST",
   "PGPASSWORD",
   "PGPORT",
+  "PGCHANNELBINDING",
   "PGSSLMODE",
   "PGUSER",
 ]);
@@ -205,6 +206,8 @@ function sanitizedChildEnvironment(inputEnvironment, expectedHome) {
       assertEnvironmentValue(inputEnvironment[key], "POSTGRES_ENVIRONMENT_INVALID"),
     ]),
   );
+  if (postgres.PGSSLMODE !== "require" || postgres.PGCHANNELBINDING !== "require")
+    fail("POSTGRES_ENVIRONMENT_INVALID");
   const path = assertEnvironmentValue(
     inputEnvironment.PATH ?? DEFAULT_CHILD_PATH,
     "PATH_ENVIRONMENT_INVALID",

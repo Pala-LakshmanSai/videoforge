@@ -91,6 +91,21 @@ function sha256(value) {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
 
+function assertExactDatabaseUrl(url) {
+  const parameters = [...url.searchParams.entries()].sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  if (
+    url.hash !== "" ||
+    canonical(parameters) !==
+      canonical([
+        ["channel_binding", "require"],
+        ["sslmode", "require"],
+      ])
+  )
+    fail("V2_09_COMBINED_DATABASE_URL_INVALID");
+}
+
 function exactKeys(value, keys) {
   return (
     value !== null &&
@@ -1585,6 +1600,7 @@ function postgresEnvironment(databaseUrl, path) {
     fail("V2_09_COMBINED_DATABASE_URL_INVALID");
   if (typeof path !== "string" || path.length === 0 || path.includes("\0"))
     fail("V2_09_COMBINED_DATABASE_PATH_INVALID");
+  assertExactDatabaseUrl(parsed);
   return {
     PATH: path,
     PGHOST: parsed.hostname,
@@ -1592,7 +1608,8 @@ function postgresEnvironment(databaseUrl, path) {
     PGDATABASE: parsed.pathname.slice(1),
     PGUSER: decodeURIComponent(parsed.username),
     PGPASSWORD: decodeURIComponent(parsed.password),
-    PGSSLMODE: parsed.searchParams.get("sslmode") || "require",
+    PGSSLMODE: "require",
+    PGCHANNELBINDING: "require",
   };
 }
 

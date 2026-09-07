@@ -270,6 +270,7 @@ function sandbox() {
       PGHOST: "test.invalid",
       PGPASSWORD: "not-a-live-secret",
       PGPORT: "5432",
+      PGCHANNELBINDING: "require",
       PGSSLMODE: "require",
       PGUSER: "videoforge_operator",
     },
@@ -569,6 +570,7 @@ test("publish dispatches the exact workflow once and accepts only its exact succ
       assert.equal(Object.isFrozen(call.options.env), true);
       assert.equal(call.options.env.PATH, originalPath);
       assert.equal(call.options.env.PGHOST, "test.invalid");
+      assert.equal(call.options.env.PGCHANNELBINDING, "require");
       assert.equal(call.options.env.NODE_OPTIONS, undefined);
     }
   } finally {
@@ -1623,6 +1625,34 @@ test("factory rejects unprotected database and GitHub credential files", () => {
     );
   } finally {
     box.remove();
+  }
+});
+
+test("factory requires exact PostgreSQL TLS and channel binding environment", () => {
+  for (const mutate of [
+    (environment) => delete environment.PGCHANNELBINDING,
+    (environment) => {
+      environment.PGCHANNELBINDING = "prefer";
+    },
+    (environment) => {
+      environment.PGSSLMODE = "prefer";
+    },
+  ]) {
+    const box = sandbox();
+    try {
+      mutate(box.configuration.environment);
+      assert.throws(
+        () =>
+          createV209MediaWorkerProductionPorts(box.configuration, {
+            hostHome: box.home,
+            hostPlatform: "darwin",
+            hostUid: 501,
+          }),
+        /V2_09_MEDIA_WORKER_POSTGRES_ENVIRONMENT_INVALID/u,
+      );
+    } finally {
+      box.remove();
+    }
   }
 });
 

@@ -77,11 +77,11 @@ function fixture() {
   const chromeVerifiedOutputFile = resolve(directory, "verified-output.mp4");
   const databaseReconcilerUrlFile = privateFile(
     "database-reconciler.url",
-    "postgresql://videoforge_reconciler:reconciler-secret@db.example.test:5432/videoforge?sslmode=require",
+    "postgresql://videoforge_reconciler:reconciler-secret@db.example.test:5432/videoforge?sslmode=require&channel_binding=require",
   );
   const databaseRuntimeUrlFile = privateFile(
     "database-runtime.url",
-    "postgresql://videoforge_runtime:runtime-secret@db.example.test:5432/videoforge?sslmode=require",
+    "postgresql://videoforge_runtime:runtime-secret@db.example.test:5432/videoforge?sslmode=require&channel_binding=require",
   );
   const qualifiedBindingFile = privateFile(
     "binding.json",
@@ -178,11 +178,11 @@ function fixture() {
       ),
       databaseOwnerUrlFile: privateFile(
         "database-owner.url",
-        "postgresql://owner:owner-secret@db.example.test:5432/videoforge?sslmode=require",
+        "postgresql://owner:owner-secret@db.example.test:5432/videoforge?sslmode=require&channel_binding=require",
       ),
       databaseOperatorUrlFile: privateFile(
         "database-operator.url",
-        "postgresql://videoforge_operator:operator-secret@db.example.test:5432/videoforge?sslmode=require",
+        "postgresql://videoforge_operator:operator-secret@db.example.test:5432/videoforge?sslmode=require&channel_binding=require",
       ),
       databaseReconcilerUrlFile,
       chromeRequestFile,
@@ -1009,6 +1009,7 @@ test("all live factory phases hydrate one bound operator URL snapshot and reject
     assert.equal(hydrated.PGUSER, "videoforge_operator");
     assert.equal(hydrated.PGPASSWORD, "operator-secret");
     assert.equal(hydrated.PGSSLMODE, "require");
+    assert.equal(hydrated.PGCHANNELBINDING, "require");
     assert.equal(JSON.stringify(adapters).includes("operator-secret"), false);
   }
 
@@ -2637,6 +2638,30 @@ test("all database credentials are role-bound to one exact database before any m
       /V2_09_CONCRETE_(?:CONFIGURATION|DATABASE_ROLE_BINDING|DATABASE_URL)_INVALID/u,
     );
     assert.equal(childCount, 0);
+  }
+});
+
+test("all database URLs require exact TLS and channel-binding query parameters", () => {
+  for (const query of [
+    "sslmode=require",
+    "sslmode=require&channel_binding=prefer",
+    "sslmode=require&channel_binding=require&extra=1",
+    "sslmode=require&channel_binding=require#fragment",
+  ]) {
+    const { configuration } = fixture();
+    writeFileSync(
+      configuration.databaseOwnerUrlFile,
+      `postgresql://owner:owner-secret@db.example.test:5432/videoforge?${query}`,
+      { mode: 0o600 },
+    );
+    assert.throws(
+      () =>
+        createConcreteQualifiedProductionAdapters(configuration, {
+          ports: portSet(),
+          runChild: async () => assert.fail("must reject malformed database URL"),
+        }),
+      /V2_09_CONCRETE_DATABASE_URL_INVALID/u,
+    );
   }
 });
 

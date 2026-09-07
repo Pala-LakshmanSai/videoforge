@@ -27,7 +27,7 @@ function fixture() {
   };
   const owner = file(
     "owner.url",
-    "postgresql://owner:owner-password@db.example.test:5432/videoforge?sslmode=require",
+    "postgresql://owner:owner-password@db.example.test:5432/videoforge?sslmode=require&channel_binding=require",
   );
   const secretFiles = Object.fromEntries(
     SECRET_NAMES.map((name) => [name, file(`secret-${name}`)]),
@@ -71,7 +71,7 @@ test("derives an exact owner URL from one service and pgpass match", () => {
   const pass = join(directory, "owner.pgpass");
   writeFileSync(
     service,
-    "[vf]\nhost=db.example.test\nport=5432\ndbname=videoforge\nuser=owner\nsslmode=require\n",
+    "[vf]\nhost=db.example.test\ndbname=videoforge\nuser=owner\nsslmode=require\nchannel_binding=require\n",
     { mode: 0o600 },
   );
   writeFileSync(pass, "db.example.test:5432:videoforge:owner:p%40ssword\n", { mode: 0o600 });
@@ -86,6 +86,103 @@ test("derives an exact owner URL from one service and pgpass match", () => {
   assert.equal(value.username, "owner");
   assert.equal(value.hostname, "db.example.test");
   assert.equal(value.searchParams.get("sslmode"), "require");
+  assert.equal(value.searchParams.get("channel_binding"), "require");
+});
+
+test("rejects non-production channel binding values", () => {
+  const values = ["disable", "prefer", "required", "require,prefer", "Require", "require%00"];
+  for (const channelBinding of values) {
+    const directory = mkdtempSync(join(tmpdir(), "vf-v209-pg-"));
+    chmodSync(directory, 0o700);
+    const service = join(directory, "owner.pg_service.conf");
+    const pass = join(directory, "owner.pgpass");
+    writeFileSync(
+      service,
+      `[vf]\nhost=db.example.test\ndbname=videoforge\nuser=owner\nsslmode=require\nchannel_binding=${channelBinding}\n`,
+      { mode: 0o600 },
+    );
+    writeFileSync(pass, "db.example.test:5432:videoforge:owner:p%40ssword\n", { mode: 0o600 });
+    assert.throws(
+      () =>
+        deriveOwnerDatabaseUrl({
+          mode: "PG_SERVICE_PGPASS",
+          serviceName: "vf",
+          serviceFile: service,
+          passFile: pass,
+        }),
+      /V2_09_PROTECTED_MATERIALIZATION_PG_SERVICE_INVALID/u,
+    );
+  }
+});
+
+test("rejects malformed or unknown libpq service values", () => {
+  for (const channelBinding of [""]) {
+    const directory = mkdtempSync(join(tmpdir(), "vf-v209-pg-"));
+    chmodSync(directory, 0o700);
+    const service = join(directory, "owner.pg_service.conf");
+    const pass = join(directory, "owner.pgpass");
+    writeFileSync(
+      service,
+      `[vf]\nhost=db.example.test\ndbname=videoforge\nuser=owner\nsslmode=require\nchannel_binding=${channelBinding}\n`,
+      { mode: 0o600 },
+    );
+    writeFileSync(pass, "db.example.test:5432:videoforge:owner:p%40ssword\n", { mode: 0o600 });
+    assert.throws(
+      () =>
+        deriveOwnerDatabaseUrl({
+          mode: "PG_SERVICE_PGPASS",
+          serviceName: "vf",
+          serviceFile: service,
+          passFile: pass,
+        }),
+      /V2_09_PROTECTED_MATERIALIZATION_PG_SERVICE_INVALID/u,
+    );
+  }
+});
+
+test("requires one exact production service section and key set", () => {
+  const cases = [
+    "[vf]\nhost=db.example.test\ndbname=videoforge\nuser=owner\nsslmode=require\nchannel_binding=require\nport=5432\n",
+    "[vf]\nhost=db.example.test\ndbname=videoforge\nuser=owner\nsslmode=require\n",
+    "[vf]\nhost=db.example.test\ndbname=videoforge\nuser=owner\nsslmode=require\nchannel_binding=require\n[extra]\nhost=db.example.test\n",
+  ];
+  for (const contents of cases) {
+    const directory = mkdtempSync(join(tmpdir(), "vf-v209-pg-"));
+    chmodSync(directory, 0o700);
+    const service = join(directory, "owner.pg_service.conf");
+    const pass = join(directory, "owner.pgpass");
+    writeFileSync(service, contents, { mode: 0o600 });
+    writeFileSync(pass, "db.example.test:5432:videoforge:owner:p%40ssword\n", { mode: 0o600 });
+    assert.throws(
+      () =>
+        deriveOwnerDatabaseUrl({
+          mode: "PG_SERVICE_PGPASS",
+          serviceName: "vf",
+          serviceFile: service,
+          passFile: pass,
+        }),
+      /V2_09_PROTECTED_MATERIALIZATION_PG_SERVICE_INVALID/u,
+    );
+  }
+});
+
+test("requires exact PostgreSQL URL query parameters without a hash", () => {
+  const cases = [
+    "postgresql://owner:owner-password@db.example.test:5432/videoforge?sslmode=require",
+    "postgresql://owner:owner-password@db.example.test:5432/videoforge?sslmode=require&channel_binding=prefer",
+    "postgresql://owner:owner-password@db.example.test:5432/videoforge?sslmode=require&channel_binding=require&extra=1",
+    "postgresql://owner:owner-password@db.example.test:5432/videoforge?sslmode=require&channel_binding=require#fragment",
+  ];
+  for (const contents of cases) {
+    const directory = mkdtempSync(join(tmpdir(), "vf-v209-pg-"));
+    chmodSync(directory, 0o700);
+    const urlFile = join(directory, "owner.url");
+    writeFileSync(urlFile, contents, { mode: 0o600 });
+    assert.throws(
+      () => deriveOwnerDatabaseUrl({ mode: "EXACT_URL_FILE", urlFile }),
+      /V2_09_PROTECTED_MATERIALIZATION_OWNER_URL_INVALID/u,
+    );
+  }
 });
 
 test("materializes fresh role credentials and pre-endpoint secrets without returning values", async () => {
@@ -105,6 +202,7 @@ test("materializes fresh role credentials and pre-endpoint secrets without retur
   assert.equal(receipt.deferred_endpoint_secret_count, 4);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].env.PATH, "/test/libpq/bin:/usr/bin:/bin");
+  assert.equal(calls[0].env.PGCHANNELBINDING, "require");
   assert.match(calls[0].sql, /CREATE ROLE/u);
   assert.doesNotMatch(calls[0].sql, /ALTER ROLE/u);
   assert.equal(statSync(value.configuration.databaseOperatorUrlFile).mode & 0o777, 0o600);

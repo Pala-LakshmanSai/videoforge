@@ -320,14 +320,25 @@ function postgresEnvironment(configuration, raw) {
   } catch {
     fail("V2_09_CONCRETE_DATABASE_URL_INVALID");
   }
+  const parameters = [...parsed.searchParams.entries()].sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  if (
+    parsed.hash !== "" ||
+    JSON.stringify(parameters) !==
+      JSON.stringify([
+        ["channel_binding", "require"],
+        ["sslmode", "require"],
+      ])
+  )
+    fail("V2_09_CONCRETE_DATABASE_URL_INVALID");
   if (
     parsed.protocol !== "postgresql:" ||
     parsed.username.length === 0 ||
     parsed.password.length === 0 ||
     parsed.hostname.length === 0 ||
     parsed.pathname.length < 2 ||
-    (parsed.searchParams.get("sslmode") !== null &&
-      !["require", "verify-ca", "verify-full"].includes(parsed.searchParams.get("sslmode")))
+    parsed.searchParams.get("sslmode") !== "require"
   )
     fail("V2_09_CONCRETE_DATABASE_URL_INVALID");
   return {
@@ -337,7 +348,8 @@ function postgresEnvironment(configuration, raw) {
     PGDATABASE: decodeURIComponent(parsed.pathname.slice(1)),
     PGUSER: decodeURIComponent(parsed.username),
     PGPASSWORD: decodeURIComponent(parsed.password),
-    PGSSLMODE: parsed.searchParams.get("sslmode") ?? "require",
+    PGSSLMODE: "require",
+    PGCHANNELBINDING: "require",
   };
 }
 
@@ -1558,9 +1570,13 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     runtimeDatabaseEnvironment,
   ];
   const databaseIdentity = (environment) =>
-    [environment.PGHOST, environment.PGPORT, environment.PGDATABASE, environment.PGSSLMODE].join(
-      "\0",
-    );
+    [
+      environment.PGHOST,
+      environment.PGPORT,
+      environment.PGDATABASE,
+      environment.PGSSLMODE,
+      environment.PGCHANNELBINDING,
+    ].join("\0");
   if (
     operatorDatabaseEnvironment.PGUSER !== configuration.operatorRole ||
     reconcilerDatabaseEnvironment.PGUSER !== configuration.reconcilerRole ||
