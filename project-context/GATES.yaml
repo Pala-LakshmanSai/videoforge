@@ -471,7 +471,11 @@ gates:
     latest_closed_control_source_commit: "555b27c864b8e194780fadbb750322c521222c6f"
     latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-runpod-region-match.json"
     latest_closed_failure_sha256: "sha256:a7bab38ef809e88d3c857d9c16837296035e626de67f81cc40c71921b50d1672"
-    next_gate: "Resolve exact EU-RO-1 catalog-region admission provider-free or wait for qualifying capacity, then seal a fresh source-bound proposal and obtain fresh exact approval."
+    latest_monitored_availability: LOW
+    latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
+    latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
+    latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
+    next_gate: "Seal and independently audit one fresh source-bound combined activation proposal, then obtain fresh exact approval."
 
   GATE_RANGA_001:
     status: open

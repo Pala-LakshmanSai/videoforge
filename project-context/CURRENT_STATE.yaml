@@ -4,11 +4,11 @@ updated_at: "2026-09-07"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_runpod_region_preflight_failed_clean
+current_milestone: v2_09_eu_ro_1_low_available_pending_fresh_proposal
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_diagnosis
+task_stage: clean_context_bundle_proposal_seal
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,7 +18,7 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_failed_clean_runpod_region_match
+  mode: v2_09_availability_recovered_no_activation_authority
   live_provider_calls: "Authority v2-09-58cb3e2bbe96d721 is consumed FAILED_CLEAN and non-reusable. No current provider authority exists."
   remote_mutation: false
   deployment_or_publication: "No publication or deployment is currently authorized."
@@ -28,7 +28,7 @@ current_goal_boundary:
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
   provider_free_product_action: "The current provider-free repair removes the maximum-spend input and client field from every hosted project, persists NULL unlimited project limits through migration 0086, retains exact cost accounting/reservations/settlement, and separates exact authenticated RTX 4090 EU-RO-1 LOW-or-better availability from the guarded official RunPod pricing-page rate of USD 0.00031/second and USD 1.116/hour. Release authority remains a separate finite source-bound cap. Stage 6 and Stage 7 were not modified or rerun."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "Proposal 58cb3e2b and authority v2-09-58cb3e2bbe96d721 are consumed FAILED_CLEAN and non-reusable after the read-only RunPod catalog lacked one exact EU-RO-1 match. Zero later operations completed; no mutation, provider job, GPU, Chrome, redispatch, Stage 6/7, or spend occurred. Fresh zero-compute/billing/volume proof was not emitted."
+  note: "Authority 58cb3e2b remains consumed FAILED_CLEAN and non-reusable. A later user-authorized read-only monitor observed one exact RTX 4090 EU-RO-1 entry at LOW availability at 2026-09-07T18:13:45.876Z. No mutation, provider job, GPU, Chrome, redispatch, Stage 6/7, or spend occurred; a fresh exact source-bound proposal and approval remain required."
 
 v2_09_provider_free_candidate:
   source_commit: "dc6ef647fb35602333f92a4191a3071c426386b9"
@@ -53,8 +53,12 @@ v2_09_provider_free_candidate:
   cloudflare_secret_boundary: "All exact production secret bytes are snapshotted and hash-bound before any Cloudflare mutation; production stays DISABLED_UNQUALIFIED until an approved qualified activation."
   media_worker_release: "media-worker-v0.1.15 is an unpublished candidate; do not publish, install, or replace v0.1.14 without fresh exact authority."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
-  provider_state: "Authorities 051c6d42, d6e5ff7b, 4ee7b952, 91892237, ea4e2e45, f9d40174, 7ecd9929, cfcaccfc, and 58cb3e2b are consumed and non-reusable. No current provider authority exists."
+  provider_state: "Authorities 051c6d42, d6e5ff7b, 4ee7b952, 91892237, ea4e2e45, f9d40174, 7ecd9929, cfcaccfc, and 58cb3e2b are consumed and non-reusable. Exact RTX 4090 EU-RO-1 LOW availability was observed at 2026-09-07T18:13:45.876Z; no current provider authority exists."
   current_authority: null
+  latest_monitored_availability: LOW
+  latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
+  latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
+  latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
 
 fixture_user_walkthrough:
   status: SUPERSEDED_BY_PRIVATE_HOSTED_BETA
@@ -6195,11 +6199,11 @@ provider_authority: &v2_09_provider_authority_combined
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_runpod_region_preflight_failed_clean
-  status: CONSUMED_FAILED_CLEAN_RUNPOD_REGION_MATCH
+  milestone: v2_09_eu_ro_1_low_available_pending_fresh_proposal
+  status: AVAILABILITY_RECOVERED_PENDING_FRESH_PROPOSAL
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: no_current_authority_consumed_failed_clean
-  task_stage: provider_free_diagnosis
+  task_stage: clean_context_bundle_proposal_seal
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_combined
@@ -6251,7 +6255,7 @@ recommended_next_task:
       billing_unit: gpu_hour
       usd_per_unit: 1.116
       checked_at: "2026-09-07"
-  authority_note: "Proposal 58cb3e2b and authority v2-09-58cb3e2bbe96d721 are consumed FAILED_CLEAN and non-reusable after exact RunPod region admission failed during read-only preflight. All later operations remained pending; no mutation, job, GPU, Chrome, redispatch, Stage 6/7, or spend occurred."
+  authority_note: "Authority 58cb3e2b is consumed FAILED_CLEAN and non-reusable. A later read-only monitor observed exact RTX 4090 EU-RO-1 LOW availability; no current activation authority exists."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: null
   successor_proposal_sha256: null
@@ -6273,7 +6277,7 @@ recommended_next_task:
   preclaim_readiness_repair_commits: ["f0dac6df4eb8f7209e5bdb5e9ee2eeae6ef9d1eb", "0117cb1c26003714616bdd9f02584ff025d803e7", "0f4ed8dde449051c7d67d8e36ed67d49f737fca0", "dcd4c146023dfed996271d7f4da3afe39045bdfa", "eb113e44fc661b259ec0c06039c643a802714884"]
   preclaim_readiness_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-private-output-parent-preflight-repair.json
   preclaim_readiness_repair_validation: "FOCUSED_97_OF_97_AND_INDEPENDENT_GO_P0_0_P1_0"
-  execution_blocker: exact_runpod_eu_ro_1_region_match_absent_fresh_authority_required_after_capacity_or_contract_resolution
+  execution_blocker: fresh_source_bound_proposal_and_exact_approval_required_after_monitored_low_availability
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
