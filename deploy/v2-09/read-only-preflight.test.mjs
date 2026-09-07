@@ -152,9 +152,9 @@ test("RunPod preflight performs only bounded identity, billing, inventory, and S
       dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
     },
   ];
-  const pricingMarkdown = `| GPU type(s) | Memory | Cost per second | Description |
+  const pricingMarkdown = String.raw`| **GPU type(s)** | **Memory** | **Cost per second** | **Description** |
 | --- | --- | --- | --- |
-| 4090 PRO | 24 GB | $0.00031 | NVIDIA GeForce RTX 4090 |`;
+| 4090 PRO | 24 GB | \$0.00031 | NVIDIA GeForce RTX 4090 |`;
   const calls = [];
   const fetchImpl = async (input, init = {}) => {
     const url = new URL(input);

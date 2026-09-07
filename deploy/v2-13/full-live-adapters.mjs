@@ -3797,7 +3797,7 @@ export function parseOfficialRunPodServerlessFlexRate(markdown) {
       line
         .slice(1, -1)
         .split("|")
-        .map((cell) => cell.trim()),
+        .map((cell) => cell.trim().replace(/^\*\*(.*)\*\*$/u, "$1")),
     );
   const headers = rows.filter(
     (row) =>
@@ -3807,7 +3807,7 @@ export function parseOfficialRunPodServerlessFlexRate(markdown) {
   if (headers.length !== 1) fail("RUNPOD_MUTATION_ADMISSION_RATE_SOURCE");
   const costIndex = headers[0].findIndex((cell) => /^Cost per second$/iu.test(cell));
   const matches = rows.filter((row) => row.some((cell) => cell === "4090 PRO"));
-  const rateMatch = /^\$([0-9]+(?:\.[0-9]+)?)$/u.exec(matches[0]?.[costIndex] ?? "");
+  const rateMatch = /^\\?\$([0-9]+(?:\.[0-9]+)?)$/u.exec(matches[0]?.[costIndex] ?? "");
   const rateUsdPerSecond = Number(rateMatch?.[1]);
   if (matches.length !== 1 || !Number.isFinite(rateUsdPerSecond) || rateUsdPerSecond <= 0)
     fail("RUNPOD_MUTATION_ADMISSION_RATE_SOURCE");

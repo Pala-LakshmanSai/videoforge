@@ -214,9 +214,9 @@ test("all eight RunPod mutation boundaries perform a fresh read on restart", asy
 });
 
 test("authenticated Serverless catalog supplies availability and official docs supply rate", () => {
-  const markdown = `| GPU type(s) | Memory | Cost per second | Description |
+  const markdown = String.raw`| **GPU type(s)** | **Memory** | **Cost per second** | **Description** |
 | --- | --- | --- | --- |
-| 4090 PRO | 24 GB | $0.00031 | NVIDIA GeForce RTX 4090 |`;
+| 4090 PRO | 24 GB | \$0.00031 | NVIDIA GeForce RTX 4090 |`;
   assert.deepEqual(parseOfficialRunPodServerlessFlexRate(markdown), {
     rateUsdPerSecond: 0.00031,
     rateUsdPerGpuHour: 1.116,
