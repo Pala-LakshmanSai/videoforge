@@ -165,6 +165,14 @@ function assertPreflight(value, authority) {
     offering?.region !== authority.offering.region ||
     !["LOW", "MEDIUM", "HIGH"].includes(offering?.availability) ||
     !HASH.test(offering?.catalogSha256 ?? "") ||
+    offering?.serverlessFlexRateSource !==
+      "https://docs.runpod.io/serverless/endpoints/endpoint-configurations" ||
+    !HASH.test(offering?.serverlessFlexRateSourceSha256 ?? "") ||
+    !Number.isFinite(Date.parse(offering?.serverlessFlexRateSourceCheckedAt ?? "")) ||
+    Math.abs(Date.parse(offering.serverlessFlexRateSourceCheckedAt) - Date.parse(value.checkedAt)) >
+      300_000 ||
+    !finiteNonNegative(offering?.serverlessFlexRateUsdPerSecond) ||
+    offering?.serverlessFlexRateUsdPerSecond > 0.00031 ||
     !finiteNonNegative(offering?.serverlessFlexRateUsdPerGpuHour) ||
     offering?.serverlessFlexRateUsdPerGpuHour > authority.offering.max_rate_usd_per_gpu_hour ||
     inventory?.activeWorkers !== 0 ||

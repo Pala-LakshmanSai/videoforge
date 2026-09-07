@@ -770,7 +770,6 @@ function validateChromeDocument(configuration, bytes) {
     !exactKeys(prepared, [
       "avatarProfileVersionId",
       "imageStyleVersionId",
-      "spendCapUsd",
       "title",
       "voiceoverContentLength",
       "voiceoverContentType",
@@ -796,10 +795,7 @@ function validateChromeDocument(configuration, bytes) {
     prepared.voiceoverDurationMs < 30_000 ||
     prepared.voiceoverDurationMs > 60_000 ||
     !IDENTIFIER.test(prepared.avatarProfileVersionId ?? "") ||
-    !IDENTIFIER.test(prepared.imageStyleVersionId ?? "") ||
-    !Number.isFinite(prepared.spendCapUsd) ||
-    prepared.spendCapUsd < 0.05 ||
-    prepared.spendCapUsd > 2
+    !IDENTIFIER.test(prepared.imageStyleVersionId ?? "")
   )
     fail("V2_09_CONCRETE_CHROME_REQUEST_INVALID");
   assertPrivateRegularPath(document.verifiedOutputPath, { mayNotExist: true });

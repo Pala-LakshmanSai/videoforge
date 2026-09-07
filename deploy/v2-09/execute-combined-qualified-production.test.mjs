@@ -157,6 +157,11 @@ function preflight(value = authority()) {
         availability: "LOW",
         gpu: "NVIDIA GeForce RTX 4090",
         region: "EU-RO-1",
+        serverlessFlexRateSource:
+          "https://docs.runpod.io/serverless/endpoints/endpoint-configurations",
+        serverlessFlexRateSourceCheckedAt: "2026-09-07T10:00:00.000Z",
+        serverlessFlexRateSourceSha256: hash("official-pricing"),
+        serverlessFlexRateUsdPerSecond: 0.00031,
         serverlessFlexRateUsdPerGpuHour: 1.116,
         catalogSha256: hash("catalog"),
       },
@@ -810,9 +815,7 @@ test("live execution rejects a future RunPod key copy before claiming authority"
       protected_input_materialization: plan.protected_input_materialization,
     }),
   );
-  approved.production_inputs.chrome_bootstrap_plan_sha256 = hash(
-    canonical(plan.chrome_bootstrap),
-  );
+  approved.production_inputs.chrome_bootstrap_plan_sha256 = hash(canonical(plan.chrome_bootstrap));
   const configurationPath = join(directory, "configuration.json");
   writeFileSync(configurationPath, JSON.stringify(plan), { mode: 0o600 });
 

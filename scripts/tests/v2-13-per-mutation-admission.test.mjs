@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   createRunPodPerMutationAdmissionReader,
-  parseAuthenticatedRunPodServerlessFlexRate,
+  parseAuthenticatedRunPodServerlessAvailability,
   parseOfficialRunPodServerlessFlexRate,
   validateRunPodPerMutationRawComputeInventory,
 } from "../../deploy/v2-13/full-live-adapters.mjs";
@@ -213,7 +213,7 @@ test("all eight RunPod mutation boundaries perform a fresh read on restart", asy
   assert.deepEqual(Object.fromEntries(reads), Object.fromEntries(MUTATIONS.map((id) => [id, 2])));
 });
 
-test("authenticated official Serverless catalog is parsed instead of synthesizing the rate", () => {
+test("authenticated Serverless catalog supplies availability and official docs supply rate", () => {
   const markdown = `| GPU type(s) | Memory | Cost per second | Description |
 | --- | --- | --- | --- |
 | 4090 PRO | 24 GB | $0.00031 | NVIDIA GeForce RTX 4090 |`;
@@ -225,24 +225,23 @@ test("authenticated official Serverless catalog is parsed instead of synthesizin
     () => parseOfficialRunPodServerlessFlexRate(markdown.replace("$0.00031", "unavailable")),
     /RUNPOD_MUTATION_ADMISSION_RATE_SOURCE/u,
   );
+  assert.throws(
+    () => parseOfficialRunPodServerlessFlexRate(markdown.replace("$0.00031", "$0.00032")),
+    /RUNPOD_MUTATION_ADMISSION_RATE_CAP/u,
+  );
   const gpu = {
     id: "NVIDIA GeForce RTX 4090",
     manufacturer: "NVIDIA",
-    price: { flex: 0.00031 },
     dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
   };
-  const expected = {
-    rateUsdPerSecond: 0.00031,
-    rateUsdPerGpuHour: 1.116,
-    availability: "LOW",
-  };
-  assert.deepEqual(parseAuthenticatedRunPodServerlessFlexRate([gpu]), expected);
-  assert.deepEqual(parseAuthenticatedRunPodServerlessFlexRate({ gpus: [gpu] }), expected);
+  const expected = { availability: "LOW" };
+  assert.deepEqual(parseAuthenticatedRunPodServerlessAvailability([gpu]), expected);
+  assert.deepEqual(parseAuthenticatedRunPodServerlessAvailability({ gpus: [gpu] }), expected);
   assert.deepEqual(
-    parseAuthenticatedRunPodServerlessFlexRate([
+    parseAuthenticatedRunPodServerlessAvailability([
       {
         ...gpu,
-        price: { flex: "0.000310", active: "0.000210" },
+        price: {},
         dataCenters: [{ id: "EU-RO-1", availability: "HIGH" }],
       },
     ]),
@@ -253,7 +252,7 @@ test("authenticated official Serverless catalog is parsed instead of synthesizin
   ambiguous.gpus = [gpu];
   for (const catalog of [null, {}, { gpus: {} }, ambiguous])
     assert.throws(
-      () => parseAuthenticatedRunPodServerlessFlexRate(catalog),
+      () => parseAuthenticatedRunPodServerlessAvailability(catalog),
       /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_SHAPE/u,
     );
   for (const gpus of [
@@ -263,38 +262,8 @@ test("authenticated official Serverless catalog is parsed instead of synthesizin
     [{ ...gpu, manufacturer: "nvidia" }],
   ])
     assert.throws(
-      () => parseAuthenticatedRunPodServerlessFlexRate(gpus),
+      () => parseAuthenticatedRunPodServerlessAvailability(gpus),
       /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_GPU_MATCH/u,
-    );
-  for (const [price, code] of [
-    [null, "PRICE_SHAPE"],
-    [[], "PRICE_SHAPE"],
-    ["0.00031", "PRICE_SHAPE"],
-    [{}, "FLEX_MISSING"],
-    [{ serverless: 0.00031 }, "FLEX_MISSING"],
-    [{ flex: null }, "FLEX_TYPE"],
-    [{ flex: true }, "FLEX_TYPE"],
-    [{ flex: "unknown" }, "FLEX_FORMAT"],
-    [{ flex: "00.00031" }, "FLEX_FORMAT"],
-    [{ flex: " 0.00031" }, "FLEX_FORMAT"],
-    [{ flex: "+0.00031" }, "FLEX_FORMAT"],
-    [{ flex: "3.1e-4" }, "FLEX_FORMAT"],
-    [{ flex: "0.000.31" }, "FLEX_FORMAT"],
-    [{ flex: Number.POSITIVE_INFINITY }, "FLEX_NONFINITE"],
-    [{ flex: "9".repeat(400) }, "FLEX_NONFINITE"],
-    [{ flex: 0 }, "FLEX_NONPOSITIVE"],
-    [{ flex: "0.000000" }, "FLEX_NONPOSITIVE"],
-  ]) {
-    const expected = `V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_${code}`;
-    assert.throws(
-      () => parseAuthenticatedRunPodServerlessFlexRate([{ ...gpu, price }]),
-      (error) => error instanceof Error && error.message === expected,
-    );
-  }
-  for (const flex of [0.0003101, "0.000311"])
-    assert.throws(
-      () => parseAuthenticatedRunPodServerlessFlexRate([{ ...gpu, price: { flex } }]),
-      /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE_CAP/u,
     );
   for (const dataCenters of [
     [],
@@ -305,19 +274,19 @@ test("authenticated official Serverless catalog is parsed instead of synthesizin
     ],
   ])
     assert.throws(
-      () => parseAuthenticatedRunPodServerlessFlexRate([{ ...gpu, dataCenters }]),
+      () => parseAuthenticatedRunPodServerlessAvailability([{ ...gpu, dataCenters }]),
       /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_REGION_MATCH/u,
     );
   assert.throws(
     () =>
-      parseAuthenticatedRunPodServerlessFlexRate([
+      parseAuthenticatedRunPodServerlessAvailability([
         { ...gpu, dataCenters: [{ id: "EU-RO-1", availability: "NONE" }] },
       ]),
     /RUNPOD_MUTATION_ADMISSION_CAPACITY_BELOW_THRESHOLD/u,
   );
   assert.throws(
     () =>
-      parseAuthenticatedRunPodServerlessFlexRate([
+      parseAuthenticatedRunPodServerlessAvailability([
         {
           ...gpu,
           price: { flex: null },
@@ -326,11 +295,12 @@ test("authenticated official Serverless catalog is parsed instead of synthesizin
       ]),
     (error) =>
       error instanceof Error &&
-      error.message === "V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_CAPACITY_BELOW_THRESHOLD",
+      error.message ===
+        "V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_CAPACITY_BELOW_THRESHOLD",
   );
   assert.throws(
     () =>
-      parseAuthenticatedRunPodServerlessFlexRate([
+      parseAuthenticatedRunPodServerlessAvailability([
         { ...gpu, dataCenters: [{ id: "EU-RO-1", availability: "low" }] },
       ]),
     /RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_AVAILABILITY/u,
@@ -474,7 +444,6 @@ test("production reader fetches authenticated Serverless availability and reject
                 {
                   id: "NVIDIA GeForce RTX 4090",
                   manufacturer: "NVIDIA",
-                  price: { flex: 0.00031 },
                   dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
                 },
               ],

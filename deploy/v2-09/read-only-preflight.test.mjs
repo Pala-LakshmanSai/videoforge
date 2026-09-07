@@ -149,10 +149,12 @@ test("RunPod preflight performs only bounded identity, billing, inventory, and S
       id: "NVIDIA GeForce RTX 4090",
       name: "NVIDIA GeForce RTX 4090",
       manufacturer: "NVIDIA",
-      price: { flex: "0.000310", active: "0.000210" },
       dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
     },
   ];
+  const pricingMarkdown = `| GPU type(s) | Memory | Cost per second | Description |
+| --- | --- | --- | --- |
+| 4090 PRO | 24 GB | $0.00031 | NVIDIA GeForce RTX 4090 |`;
   const calls = [];
   const fetchImpl = async (input, init = {}) => {
     const url = new URL(input);
@@ -165,6 +167,13 @@ test("RunPod preflight performs only bounded identity, billing, inventory, and S
     if (url.href === "https://api.runpod.io/graphql")
       return response(JSON.stringify({ data: { myself: { id: accountId } } }), {
         headers: { "content-type": "application/json" },
+      });
+    if (url.href === "https://docs.runpod.io/serverless/endpoints/endpoint-configurations")
+      return response(pricingMarkdown, {
+        headers: {
+          "content-type": "text/markdown; charset=utf-8",
+          date: "Sun, 06 Sep 2026 12:00:00 GMT",
+        },
       });
     if (url.pathname === "/v2/catalog/gpus") return response(JSON.stringify(catalog));
     if (url.pathname === "/v1/networkvolumes") return response(JSON.stringify(rawVolumes));
@@ -184,10 +193,15 @@ test("RunPod preflight performs only bounded identity, billing, inventory, and S
   assert.equal(proof.billing.cumulativeEndpointBillingUsd, 3.25);
   assert.equal(proof.offering.availability, "LOW");
   assert.equal(proof.offering.serverlessFlexRateUsdPerGpuHour, 1.116);
+  assert.equal(
+    proof.offering.serverlessFlexRateSource,
+    "https://docs.runpod.io/serverless/endpoints/endpoint-configurations",
+  );
+  assert.equal(proof.offering.serverlessFlexRateSourceSha256, hash(pricingMarkdown));
   assert.equal(proof.offering.catalogSha256, canonicalHash(catalog));
   assert.deepEqual(proof.inventory.retainedVolumes, volumePins);
   assert.equal(JSON.stringify(proof).includes(apiKey), false);
-  assert.equal(calls.length, 7);
+  assert.equal(calls.length, 8);
   for (const call of calls) {
     if (call.url === "https://api.runpod.io/graphql") {
       assert.equal(call.method, "POST");
@@ -201,7 +215,7 @@ test("RunPod preflight performs only bounded identity, billing, inventory, and S
   }
 });
 
-test("RunPod preflight propagates a redacted flex subcode without returning proof", async () => {
+test("RunPod preflight rejects an invalid official rate without returning proof", async () => {
   const apiKey = "runpod-test-key-that-is-never-returned";
   const accountId = "test-account-id";
   const rawVolumes = [
@@ -219,13 +233,24 @@ test("RunPod preflight propagates a redacted flex subcode without returning proo
     const url = new URL(input);
     if (url.href === "https://api.runpod.io/graphql")
       return response(JSON.stringify({ data: { myself: { id: accountId } } }));
+    if (url.href === "https://docs.runpod.io/serverless/endpoints/endpoint-configurations")
+      return response(
+        `| GPU type(s) | Memory | Cost per second | Description |
+| --- | --- | --- | --- |
+| 4090 PRO | 24 GB | unavailable | NVIDIA GeForce RTX 4090 |`,
+        {
+          headers: {
+            "content-type": "text/markdown",
+            date: "Sun, 06 Sep 2026 12:00:00 GMT",
+          },
+        },
+      );
     if (url.pathname === "/v2/catalog/gpus")
       return response(
         JSON.stringify([
           {
             id: "NVIDIA GeForce RTX 4090",
             manufacturer: "NVIDIA",
-            price: { flex: null },
             dataCenters: [{ id: "EU-RO-1", availability: "LOW" }],
           },
         ]),
@@ -249,8 +274,7 @@ test("RunPod preflight propagates a redacted flex subcode without returning proo
     },
     (error) =>
       error instanceof Error &&
-      error.message ===
-        "V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_TYPE",
+      error.message === "V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_RATE_SOURCE",
   );
   assert.equal(proof, undefined);
 });
@@ -518,6 +542,10 @@ function runpodProof() {
       region: "EU-RO-1",
       serverlessFlexRateUsdPerGpuHour: 1.116,
       serverlessFlexRateUsdPerSecond: 0.00031,
+      serverlessFlexRateSource:
+        "https://docs.runpod.io/serverless/endpoints/endpoint-configurations",
+      serverlessFlexRateSourceCheckedAt: "2026-09-06T12:00:00.000Z",
+      serverlessFlexRateSourceSha256: hash("official-pricing"),
       catalogSha256: hash("catalog"),
     },
   };

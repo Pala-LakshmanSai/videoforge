@@ -7,7 +7,8 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  parseAuthenticatedRunPodServerlessFlexRate,
+  parseAuthenticatedRunPodServerlessAvailability,
+  readOfficialRunPodServerlessFlexRate,
   validateRunPodPerMutationRawComputeInventory,
 } from "../v2-13/full-live-adapters.mjs";
 
@@ -21,6 +22,7 @@ const RUNPOD_CATALOG_URL =
   "https://api.runpod.io/v2/catalog/gpus?include=AVAILABILITY&product=SERVERLESS";
 const RUNPOD_REST_ORIGIN = "https://rest.runpod.io";
 const MAX_RATE_USD_PER_GPU_HOUR = 1.116;
+const MAX_RATE_USD_PER_SECOND = 0.00031;
 const GHCR_ORIGIN = "https://ghcr.io";
 const GHCR_BLOB_REDIRECT_HOST = "pkg-containers.githubusercontent.com";
 const MAX_MANIFEST_BYTES = 8 * 1024 * 1024;
@@ -168,26 +170,28 @@ export async function readRunPodEvidence({
   const accountQuery = JSON.stringify({
     query: "query VideoForgeAccountIdentity { myself { id } }",
   });
-  const [account, catalog, pods, endpoints, templates, volumes, billingRows] = await Promise.all([
-    runpodJson(fetchImpl, apiKey, RUNPOD_GRAPHQL_URL, {
-      method: "POST",
-      body: accountQuery,
-    }),
-    runpodJson(fetchImpl, apiKey, RUNPOD_CATALOG_URL),
-    runpodJson(fetchImpl, apiKey, `${RUNPOD_REST_ORIGIN}/v1/pods?includeWorkers=true`),
-    runpodJson(
-      fetchImpl,
-      apiKey,
-      `${RUNPOD_REST_ORIGIN}/v1/endpoints?includeTemplate=true&includeWorkers=true`,
-    ),
-    runpodJson(
-      fetchImpl,
-      apiKey,
-      `${RUNPOD_REST_ORIGIN}/v1/templates?includeEndpointBoundTemplates=true`,
-    ),
-    runpodJson(fetchImpl, apiKey, `${RUNPOD_REST_ORIGIN}/v1/networkvolumes`),
-    runpodJson(fetchImpl, apiKey, billingUrl),
-  ]);
+  const [account, catalog, pods, endpoints, templates, volumes, billingRows, officialPricing] =
+    await Promise.all([
+      runpodJson(fetchImpl, apiKey, RUNPOD_GRAPHQL_URL, {
+        method: "POST",
+        body: accountQuery,
+      }),
+      runpodJson(fetchImpl, apiKey, RUNPOD_CATALOG_URL),
+      runpodJson(fetchImpl, apiKey, `${RUNPOD_REST_ORIGIN}/v1/pods?includeWorkers=true`),
+      runpodJson(
+        fetchImpl,
+        apiKey,
+        `${RUNPOD_REST_ORIGIN}/v1/endpoints?includeTemplate=true&includeWorkers=true`,
+      ),
+      runpodJson(
+        fetchImpl,
+        apiKey,
+        `${RUNPOD_REST_ORIGIN}/v1/templates?includeEndpointBoundTemplates=true`,
+      ),
+      runpodJson(fetchImpl, apiKey, `${RUNPOD_REST_ORIGIN}/v1/networkvolumes`),
+      runpodJson(fetchImpl, apiKey, billingUrl),
+      readOfficialRunPodServerlessFlexRate(fetchImpl, checkedAt),
+    ]);
   const accountId = account?.data?.myself?.id;
   if (
     typeof accountId !== "string" ||
@@ -223,7 +227,7 @@ export async function readRunPodEvidence({
     if (!Number.isFinite(amount) || amount < 0) fail("RUNPOD_BILLING");
     return sum + amount;
   }, 0);
-  const offering = parseAuthenticatedRunPodServerlessFlexRate(catalog);
+  const offering = parseAuthenticatedRunPodServerlessAvailability(catalog);
   return Object.freeze({
     accountIdSha256: expectedAccountIdSha256,
     billing: Object.freeze({
@@ -243,8 +247,12 @@ export async function readRunPodEvidence({
       availability: offering.availability,
       gpu: "NVIDIA GeForce RTX 4090",
       region: "EU-RO-1",
-      serverlessFlexRateUsdPerGpuHour: offering.rateUsdPerGpuHour,
-      serverlessFlexRateUsdPerSecond: offering.rateUsdPerSecond,
+      serverlessFlexRateUsdPerGpuHour: officialPricing.rateUsdPerGpuHour,
+      serverlessFlexRateUsdPerSecond: officialPricing.rateUsdPerSecond,
+      serverlessFlexRateSource:
+        "https://docs.runpod.io/serverless/endpoints/endpoint-configurations",
+      serverlessFlexRateSourceCheckedAt: officialPricing.sourceCheckedAt,
+      serverlessFlexRateSourceSha256: officialPricing.sourceSha256,
       catalogSha256: canonicalSha256(catalog),
     }),
   });
@@ -475,6 +483,17 @@ function validateRunPodEvidence(value) {
     !Number.isFinite(value.offering.serverlessFlexRateUsdPerGpuHour) ||
     value.offering.serverlessFlexRateUsdPerGpuHour <= 0 ||
     value.offering.serverlessFlexRateUsdPerGpuHour > MAX_RATE_USD_PER_GPU_HOUR ||
+    !Number.isFinite(value.offering.serverlessFlexRateUsdPerSecond) ||
+    value.offering.serverlessFlexRateUsdPerSecond <= 0 ||
+    value.offering.serverlessFlexRateUsdPerSecond > MAX_RATE_USD_PER_SECOND ||
+    value.offering.serverlessFlexRateSource !==
+      "https://docs.runpod.io/serverless/endpoints/endpoint-configurations" ||
+    !Number.isFinite(Date.parse(value.offering.serverlessFlexRateSourceCheckedAt ?? "")) ||
+    Math.abs(
+      Date.parse(value.offering.serverlessFlexRateSourceCheckedAt ?? "") -
+        Date.parse(value.billing.windowEnd ?? ""),
+    ) > 300_000 ||
+    !HASH.test(value.offering.serverlessFlexRateSourceSha256 ?? "") ||
     !HASH.test(value.offering.catalogSha256 ?? "")
   )
     fail("RUNPOD_EVIDENCE_DRIFT");

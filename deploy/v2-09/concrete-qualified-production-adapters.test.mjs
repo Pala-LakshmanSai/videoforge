@@ -145,7 +145,6 @@ function fixture() {
           voiceoverDurationMs: 45_000,
           avatarProfileVersionId: "avatar-profile-version-fixture",
           imageStyleVersionId: "image-style-version-fixture",
-          spendCapUsd: 2,
         },
         maxProgressReads: 10,
         pollIntervalMs: 0,

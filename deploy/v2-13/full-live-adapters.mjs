@@ -3758,7 +3758,7 @@ function exactRunPodInventoryArray(value, code) {
   return value;
 }
 
-export function parseAuthenticatedRunPodServerlessFlexRate(catalog) {
+export function parseAuthenticatedRunPodServerlessAvailability(catalog) {
   const wrapper = catalog !== null && typeof catalog === "object" && !Array.isArray(catalog);
   if (
     (Array.isArray(catalog) && Object.hasOwn(catalog, "gpus")) ||
@@ -3781,28 +3781,7 @@ export function parseAuthenticatedRunPodServerlessFlexRate(catalog) {
   if (availability === "NONE") fail("RUNPOD_MUTATION_ADMISSION_CAPACITY_BELOW_THRESHOLD");
   if (!["LOW", "MEDIUM", "HIGH"].includes(availability))
     fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_AVAILABILITY");
-  const price = matches[0]?.price;
-  if (price === null || typeof price !== "object" || Array.isArray(price))
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_PRICE_SHAPE");
-  if (!Object.hasOwn(price, "flex"))
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_MISSING");
-  const rawRate = price.flex;
-  const canonicalDecimal = /^(?:0|[1-9]\d*)(?:\.\d+)?$/u;
-  if (typeof rawRate !== "number" && typeof rawRate !== "string")
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_TYPE");
-  if (typeof rawRate === "string" && !canonicalDecimal.test(rawRate))
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_FORMAT");
-  const rateUsdPerSecond = typeof rawRate === "number" ? rawRate : Number(rawRate);
-  const rateUsdPerGpuHour = rateUsdPerSecond * 3600;
-  if (!Number.isFinite(rateUsdPerSecond))
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_NONFINITE");
-  if (rateUsdPerSecond <= 0)
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_FLEX_NONPOSITIVE");
-  if (rateUsdPerSecond > 0.00031 || rateUsdPerGpuHour > 1.116)
-    fail("RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE_CAP");
   return Object.freeze({
-    rateUsdPerSecond,
-    rateUsdPerGpuHour,
     availability,
   });
 }
@@ -3832,13 +3811,16 @@ export function parseOfficialRunPodServerlessFlexRate(markdown) {
   const rateUsdPerSecond = Number(rateMatch?.[1]);
   if (matches.length !== 1 || !Number.isFinite(rateUsdPerSecond) || rateUsdPerSecond <= 0)
     fail("RUNPOD_MUTATION_ADMISSION_RATE_SOURCE");
+  const rateUsdPerGpuHour = rateUsdPerSecond * 3600;
+  if (rateUsdPerSecond > 0.00031 || rateUsdPerGpuHour > 1.116)
+    fail("RUNPOD_MUTATION_ADMISSION_RATE_CAP");
   return Object.freeze({
     rateUsdPerSecond,
-    rateUsdPerGpuHour: rateUsdPerSecond * 3600,
+    rateUsdPerGpuHour,
   });
 }
 
-async function readOfficialRunPodServerlessFlexRate(fetchImpl, trustedTime) {
+export async function readOfficialRunPodServerlessFlexRate(fetchImpl, trustedTime) {
   let response;
   try {
     response = await fetchImpl(RUNPOD_SERVERLESS_FLEX_RATE_SOURCE, {
@@ -4068,12 +4050,7 @@ function createRunPodPerMutationAdmissionReader({
       sha256(Buffer.from(accountId)) !== RUNPOD_ACCOUNT_ID_SHA256
     )
       fail("RUNPOD_MUTATION_ADMISSION_ACCOUNT");
-    const authenticatedOffering = parseAuthenticatedRunPodServerlessFlexRate(serverlessCatalog);
-    if (
-      authenticatedOffering.rateUsdPerSecond !== officialPricing.rateUsdPerSecond ||
-      authenticatedOffering.rateUsdPerGpuHour !== officialPricing.rateUsdPerGpuHour
-    )
-      fail("RUNPOD_MUTATION_ADMISSION_RATE_DRIFT");
+    const authenticatedOffering = parseAuthenticatedRunPodServerlessAvailability(serverlessCatalog);
     const expectedEndpointBindings = expectedRunPodMutationEndpointBindings(
       operationId,
       priorResults,
@@ -4108,8 +4085,8 @@ function createRunPodPerMutationAdmissionReader({
       exactGpu: "NVIDIA GeForce RTX 4090",
       region: "EU-RO-1",
       availability: authenticatedOffering.availability,
-      serverlessFlexRateUsdPerSecond: authenticatedOffering.rateUsdPerSecond,
-      serverlessFlexRateUsdPerGpuHour: authenticatedOffering.rateUsdPerGpuHour,
+      serverlessFlexRateUsdPerSecond: officialPricing.rateUsdPerSecond,
+      serverlessFlexRateUsdPerGpuHour: officialPricing.rateUsdPerGpuHour,
       serverlessFlexRateSource: RUNPOD_SERVERLESS_FLEX_RATE_SOURCE,
       serverlessFlexRateSourceCheckedAt: officialPricing.sourceCheckedAt,
       serverlessFlexRateSourceSha256: officialPricing.sourceSha256,
