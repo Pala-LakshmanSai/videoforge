@@ -30,6 +30,25 @@ const STATIC_SCOPE_STOP_AT = "2026-09-08T01:00:00.000Z";
 const BOOTSTRAP_NOW = new Date("2026-09-07T10:00:00.000Z");
 const BOOTSTRAP_STOP_AT = "2026-09-07T10:27:40.000Z";
 
+function pcmWav(durationMs) {
+  const sampleRate = 48_000;
+  const dataBytes = Math.round((sampleRate * 2 * durationMs) / 1_000);
+  const bytes = Buffer.alloc(44 + dataBytes);
+  bytes.write("RIFF", 0, "ascii");
+  bytes.writeUInt32LE(36 + dataBytes, 4);
+  bytes.write("WAVEfmt ", 8, "ascii");
+  bytes.writeUInt32LE(16, 16);
+  bytes.writeUInt16LE(1, 20);
+  bytes.writeUInt16LE(1, 22);
+  bytes.writeUInt32LE(sampleRate, 24);
+  bytes.writeUInt32LE(sampleRate * 2, 28);
+  bytes.writeUInt16LE(2, 32);
+  bytes.writeUInt16LE(16, 34);
+  bytes.write("data", 36, "ascii");
+  bytes.writeUInt32LE(dataBytes, 40);
+  return bytes;
+}
+
 function harness(overrides = {}) {
   const root = mkdtempSync(resolve(tmpdir(), "v209-chrome-bootstrap-"));
   const secure = resolve(root, "secure");
@@ -380,6 +399,22 @@ test("preclaim validator accepts the exact local voiceover and Wrangler director
   assert.equal(probes, 1);
   assert.throws(() => statSync(value.configuration.authStatePath));
   assert.throws(() => statSync(value.configuration.chromeRequestPath));
+});
+
+test("production ffprobe derives exact duration from a streamed WAV snapshot", async () => {
+  const value = harness();
+  const voiceover = pcmWav(30_000);
+  writeFileSync(value.configuration.voiceoverPath, voiceover, { mode: 0o600 });
+  value.configuration.voiceoverSha256 = `sha256:${createHash("sha256")
+    .update(voiceover)
+    .digest("hex")}`;
+  value.configuration.voiceoverDurationMs = 30_000;
+  const receipt = await validateV209ChromePreclaimInputs(
+    value.configuration,
+    value.productionConfiguration,
+  );
+  assert.equal(receipt.voiceover_duration_ms, 30_000);
+  assert.equal(receipt.voiceover_sha256, value.configuration.voiceoverSha256);
 });
 
 test("preclaim validator binds the staged voiceover hash and exact ffprobe duration", async () => {

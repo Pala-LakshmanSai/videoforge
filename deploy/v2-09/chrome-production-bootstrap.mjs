@@ -271,11 +271,37 @@ function verifyReservedBrowserWrite(reservation) {
 function defaultProbeVoiceover(bytes) {
   const result = spawnSync(
     "ffprobe",
-    ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", "pipe:0"],
-    { encoding: "utf8", input: bytes, shell: false, timeout: 30_000 },
+    [
+      "-v",
+      "error",
+      "-show_entries",
+      "packet=pts_time,duration_time",
+      "-of",
+      "csv=p=0",
+      "pipe:0",
+    ],
+    {
+      encoding: "utf8",
+      input: bytes,
+      maxBuffer: 16 * 1024 * 1024,
+      shell: false,
+      timeout: 30_000,
+    },
   );
-  const durationSeconds = Number(String(result.stdout).trim());
-  if (result.status !== 0 || !Number.isFinite(durationSeconds))
+  let durationSeconds = Number.NaN;
+  if (result.status === 0) {
+    for (const line of String(result.stdout).trim().split(/\r?\n/u)) {
+      const [ptsText, durationText] = line.split(",");
+      const pts = Number(ptsText);
+      const duration = Number(durationText);
+      if (Number.isFinite(pts) && pts >= 0 && Number.isFinite(duration) && duration > 0)
+        durationSeconds = Math.max(
+          Number.isFinite(durationSeconds) ? durationSeconds : 0,
+          pts + duration,
+        );
+    }
+  }
+  if (!Number.isFinite(durationSeconds))
     fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
   return Math.round(durationSeconds * 1_000);
 }
