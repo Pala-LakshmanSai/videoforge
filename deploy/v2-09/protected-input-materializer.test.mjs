@@ -12,10 +12,32 @@ import {
   hasV209ProtectedInputCleanup,
   materializeV209EndpointSecrets,
   materializeV209ProtectedInputs,
+  validateV209ProtectedRoleConfiguration,
 } from "./protected-input-materializer.mjs";
 
 const hash = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const AUTHORITY_ID = "v2-09-materializer-test-authority";
+
+test("validates the exact authority-derived protected role suffix", () => {
+  const suffix = hash(AUTHORITY_ID).slice(7, 15);
+  const configuration = {
+    operatorRole: `videoforge_v209_operator_${suffix}`,
+    runtimeRole: `videoforge_v209_runtime_${suffix}`,
+    reconcilerRole: `videoforge_v209_reconciler_${suffix}`,
+  };
+  assert.deepEqual(
+    validateV209ProtectedRoleConfiguration(AUTHORITY_ID, configuration),
+    configuration,
+  );
+  assert.throws(
+    () =>
+      validateV209ProtectedRoleConfiguration(AUTHORITY_ID, {
+        ...configuration,
+        runtimeRole: "videoforge_v209_runtime_wrong",
+      }),
+    /V2_09_PROTECTED_MATERIALIZATION_ROLE_INVALID/u,
+  );
+});
 
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), "vf-v209-materializer-"));

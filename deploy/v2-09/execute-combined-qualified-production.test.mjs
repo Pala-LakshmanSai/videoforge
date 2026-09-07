@@ -27,6 +27,14 @@ import {
 const SOURCE = "7".repeat(40);
 const NOW = new Date("2026-09-07T10:00:00.000Z");
 const hash = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
+const exactRoles = (authorityId) => {
+  const suffix = hash(authorityId).slice(7, 15);
+  return {
+    operatorRole: `videoforge_v209_operator_${suffix}`,
+    runtimeRole: `videoforge_v209_runtime_${suffix}`,
+    reconcilerRole: `videoforge_v209_reconciler_${suffix}`,
+  };
+};
 const canonical = (value) => {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
@@ -803,6 +811,7 @@ test("live execution rejects a future RunPod key copy before claiming authority"
     schema_version: "videoforge.v2-09-combined-materialization-plan/v1",
     production_configuration: {
       runpodApiKeyFile: join(directory, "future-materialized-runpod.key"),
+      ...exactRoles(approved.authority_id),
     },
     protected_input_materialization: {
       reusableSecretFiles: { RUNPOD_API_KEY: join(directory, "approved-source-runpod.key") },
@@ -829,6 +838,44 @@ test("live execution rejects a future RunPod key copy before claiming authority"
     /V2_09_COMBINED_MATERIALIZATION_PLAN_INVALID/u,
   );
   assert.equal(existsSync(join(directory, "must-not-be-created.json")), false);
+});
+
+test("live execution rejects authority-derived role suffix drift before key, preflight, or claim", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "vf-v209-combined-role-plan-"));
+  const approved = authority();
+  const plan = {
+    schema_version: "videoforge.v2-09-combined-materialization-plan/v1",
+    production_configuration: {
+      runpodApiKeyFile: join(directory, "approved-source-runpod.key"),
+      ...exactRoles(approved.authority_id),
+      runtimeRole: "videoforge_v209_runtime_wrong",
+    },
+    protected_input_materialization: {
+      reusableSecretFiles: { RUNPOD_API_KEY: join(directory, "approved-source-runpod.key") },
+    },
+    chrome_bootstrap: {},
+  };
+  approved.production_inputs.materialization_input_sha256 = hash(
+    canonical({
+      production_configuration: plan.production_configuration,
+      protected_input_materialization: plan.protected_input_materialization,
+    }),
+  );
+  approved.production_inputs.chrome_bootstrap_plan_sha256 = hash(canonical(plan.chrome_bootstrap));
+  const configurationPath = join(directory, "configuration.json");
+  const statePath = join(directory, "must-not-be-claimed.json");
+  writeFileSync(configurationPath, JSON.stringify(plan), { mode: 0o600 });
+
+  await assert.rejects(
+    executeCombinedQualifiedProduction({
+      authority: approved,
+      sourceCommit: SOURCE,
+      configurationPath,
+      statePath,
+    }),
+    /V2_09_COMBINED_MATERIALIZATION_PLAN_INVALID/u,
+  );
+  assert.equal(existsSync(statePath), false);
 });
 
 test("durable outer state is mode 0600 and an existing claim is never replaced", () => {

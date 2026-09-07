@@ -16,6 +16,7 @@ import { dirname, isAbsolute, resolve } from "node:path";
 
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const ROLE = /^[a-z][a-z0-9_]{2,62}$/u;
+const AUTHORITY_ID = /^v2-09-[a-z0-9][a-z0-9._-]{7,95}$/u;
 const SERVICE_NAME = /^[A-Za-z0-9_.-]{1,63}$/u;
 const ENDPOINT_SECRET_NAMES = Object.freeze([
   "VIDEOFORGE_MAGE_ENDPOINT_ID",
@@ -211,6 +212,30 @@ function assertExactDatabaseUrl(url, code) {
     fail(code);
 }
 
+export function validateV209ProtectedRoleConfiguration(authorityId, configuration) {
+  if (!AUTHORITY_ID.test(authorityId ?? "")) fail("AUTHORITY_INVALID");
+  const roleNames = [
+    configuration?.operatorRole,
+    configuration?.runtimeRole,
+    configuration?.reconcilerRole,
+  ];
+  const roleSuffix = sha256(authorityId).slice(7, 15);
+  const expectedRoles = ["operator", "runtime", "reconciler"].map(
+    (purpose) => `videoforge_v209_${purpose}_${roleSuffix}`,
+  );
+  if (
+    roleNames.some((role) => !ROLE.test(role ?? "")) ||
+    new Set(roleNames).size !== 3 ||
+    canonical(roleNames) !== canonical(expectedRoles)
+  )
+    fail("ROLE_INVALID");
+  return Object.freeze({
+    operatorRole: roleNames[0],
+    runtimeRole: roleNames[1],
+    reconcilerRole: roleNames[2],
+  });
+}
+
 export function deriveOwnerDatabaseUrl(spec) {
   if (spec?.mode === "EXACT_URL_FILE") {
     const bytes = readPrivate(spec.urlFile, "OWNER_URL_INVALID");
@@ -341,17 +366,9 @@ function keyId(authorityId, purpose) {
 }
 
 function protectedCleanupIdentity(authorityId, configuration) {
-  if (!/^v2-09-[a-z0-9][a-z0-9._-]{7,95}$/u.test(authorityId ?? "")) fail("AUTHORITY_INVALID");
-  const roleNames = [
-    configuration.operatorRole,
-    configuration.runtimeRole,
-    configuration.reconcilerRole,
-  ];
-  const roleSuffix = sha256(authorityId).slice(7, 15);
-  const expectedRoles = ["operator", "runtime", "reconciler"].map(
-    (purpose) => `videoforge_v209_${purpose}_${roleSuffix}`,
+  const roleNames = Object.values(
+    validateV209ProtectedRoleConfiguration(authorityId, configuration),
   );
-  if (canonical(roleNames) !== canonical(expectedRoles)) fail("ROLE_INVALID");
   return Object.freeze({
     roleNames,
     tombstone: Object.freeze({
@@ -385,23 +402,11 @@ export async function materializeV209ProtectedInputs({
   runPsql,
   randomBytesImpl = randomBytes,
 }) {
-  if (!/^v2-09-[a-z0-9][a-z0-9._-]{7,95}$/u.test(authorityId ?? "")) fail("AUTHORITY_INVALID");
+  if (!AUTHORITY_ID.test(authorityId ?? "")) fail("AUTHORITY_INVALID");
   if (typeof runPsql !== "function") fail("PSQL_PORT_INVALID");
-  const roleNames = [
-    configuration.operatorRole,
-    configuration.runtimeRole,
-    configuration.reconcilerRole,
-  ];
-  const roleSuffix = sha256(authorityId).slice(7, 15);
-  const expectedRoles = ["operator", "runtime", "reconciler"].map(
-    (purpose) => `videoforge_v209_${purpose}_${roleSuffix}`,
+  const roleNames = Object.values(
+    validateV209ProtectedRoleConfiguration(authorityId, configuration),
   );
-  if (
-    roleNames.some((role) => !ROLE.test(role ?? "")) ||
-    new Set(roleNames).size !== 3 ||
-    canonical(roleNames) !== canonical(expectedRoles)
-  )
-    fail("ROLE_INVALID");
   const ownerUrl =
     derivedOwnerUrl === undefined
       ? deriveOwnerDatabaseUrl(materialization.databaseOwner)

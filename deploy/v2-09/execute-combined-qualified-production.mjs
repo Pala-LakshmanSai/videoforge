@@ -38,6 +38,7 @@ import {
   validateCompletionBaselineReceipt,
   validateGlobalCompletionBaselineReceipt,
 } from "./read-durable-completion-baseline.mjs";
+import { validateV209ProtectedRoleConfiguration } from "./protected-input-materializer.mjs";
 
 export const COMBINED_AUTHORITY_SCHEMA =
   "videoforge.v2-09-combined-qualified-production-authority/v1";
@@ -2198,6 +2199,14 @@ export async function executeCombinedQualifiedProduction(options) {
           options.authority.production_inputs.chrome_bootstrap_plan_sha256
       )
         fail("V2_09_COMBINED_MATERIALIZATION_PLAN_INVALID");
+      try {
+        validateV209ProtectedRoleConfiguration(
+          options.authority.authority_id,
+          materializationPlan.production_configuration,
+        );
+      } catch {
+        fail("V2_09_COMBINED_MATERIALIZATION_PLAN_INVALID");
+      }
     }
     return materializationPlan;
   };
