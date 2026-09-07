@@ -455,23 +455,23 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-shared-abort-slow-link.json"
-    current_authority_sha256: "sha256:3e92723aacb5b8971db86261aed0f61c46d15c15479db7f5f4c5fe770afcf3f5"
-    current_authority_state: approved_materialized_pending_independent_diff_audit
-    current_proposal_sha256: "sha256:918922376c1f567774cc0c2da9feeb78c42fee3a311cfc2e4b8e3683488fe161"
-    current_control_source_commit: "f226c321b1151da30c2484fb45f847409f87fdb5"
+    current_authority: null
+    current_authority_sha256: null
+    current_authority_state: none
+    current_proposal_sha256: null
+    current_control_source_commit: null
     current_failure: null
     current_failure_sha256: null
     current_audit_stop: null
     current_audit_stop_sha256: null
-    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-source-bound-media-bundle.json"
-    latest_closed_authority_sha256: "sha256:8a45fc08c1e733ea1df931c0be3a20c17225d5ab956f92dde0e6c9f4df22c4e0"
-    latest_closed_proposal_sha256: "sha256:4ee7b9521f3a0b818e14dcca5ff67c659e77ffde30682c2223afa899a53c82a5"
-    latest_closed_control_source_commit: "4a4cc03d5de839975138ebb8a24b120a3b00d62a"
-    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-ghcr-throughput-deadline.json"
-    latest_closed_failure_sha256: "sha256:961ad6767bd51b9c02e942ff919f428c681de37e6be20a24c44f3a4b41e295fc"
-    provider_free_repair_state: "Hosted projects remain NULL/unlimited. GHCR preflight now shares one cancellation signal across RunPod and both frozen-image branches, awaits sibling settlement on first failure, and uses a conservative 256-KiB/s size budget plus five-minute grace under the unchanged two-hour ceiling. Exact bytes/digests and 60-second idle timeout remain. Focused preflight tests pass 20/20 and combined focused tests pass 44/44."
-    next_gate: "Independently audit the single authority-materialization successor, then run the approved combined preflight, conditional production activation, and one Chrome E2E."
+    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-shared-abort-slow-link.json"
+    latest_closed_authority_sha256: "sha256:3e92723aacb5b8971db86261aed0f61c46d15c15479db7f5f4c5fe770afcf3f5"
+    latest_closed_proposal_sha256: "sha256:918922376c1f567774cc0c2da9feeb78c42fee3a311cfc2e4b8e3683488fe161"
+    latest_closed_control_source_commit: "f226c321b1151da30c2484fb45f847409f87fdb5"
+    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-shared-abort-slow-link.json"
+    latest_closed_failure_sha256: "sha256:914c6a85901a3dfb1029739f8840c14a0010b9ef98c3572e8ee68c14649e77f1"
+    provider_free_repair_state: "Hosted projects remain NULL/unlimited. The preflight fully hashes each exact immutable manifest/config, validates every ordered layer descriptor against the frozen full-byte proof anchor, then issues one bounded anonymous HEAD per unique layer with exact content length, optional digest, signed redirect, and no-auth-forwarding checks. It downloads no layer bodies and preserves the first failure across shared cancellation. Focused preflight tests pass 23/23 and combined focused tests pass 47/47."
+    next_gate: "Independently audit the descriptor-HEAD repair, commit a clean source, recompute its exact media bundle, then seal one replacement combined proposal; never replay consumed proposal 91892237."
 
   GATE_RANGA_001:
     status: open

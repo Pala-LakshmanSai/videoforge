@@ -4,31 +4,31 @@ updated_at: "2026-09-07"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_shared_abort_authority_materialized_pending_audit
+current_milestone: v2_09_descriptor_head_repair_provider_free_green
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: provider_free_repair
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: true
-credential_access_authorized: true
-gpu_use_authorized: true
-maximum_external_spend_usd: 2
+remote_or_cloud_mutations_authorized: false
+credential_access_authorized: false
+gpu_use_authorized: false
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_shared_abort_authority_materialized_pending_audit
-  live_provider_calls: "Proposal 91892237 is approved at pushed source f226c321. Authority v2-09-918922376c1f5677 is materialized for 24 hours; independent successor audit is mandatory before provider action."
-  remote_mutation: true
+  mode: v2_09_descriptor_head_repair_provider_free_green
+  live_provider_calls: "No active V2-09 authority. Proposal 91892237 and authority v2-09-918922376c1f5677 were consumed FAILED_CLEAN after the bounded read-only preflight failed with V2_09_READ_ONLY_PREFLIGHT_GHCR_READ_AMBIGUOUS."
+  remote_mutation: false
   deployment_or_publication: "Existing immutable image f3b1d141 was freshly anonymously reverified without publication; no publication or republication is authorized."
-  credential_value_access: "Authority 91892237 conditionally authorizes its exact bounded credential reads only after independent successor audit GO."
-  paid_requests_or_spend: "Authority 91892237 permits at most USD 2 incremental release spend and USD 17.50 completion ceiling; hosted projects remain unlimited."
-  runpod_mutation_or_gpu: "After audit GO, authority 91892237 permits only two exact max-one RTX 4090 EU-RO-1 lanes and at most one Mage plus one SoulX POST with zero redispatch."
+  credential_value_access: "Disabled. No further credential read or reuse is authorized after the consumed FAILED_CLEAN authority."
+  paid_requests_or_spend: "Disabled. No paid request or external spend occurred; a fresh exact source-bound authority is required."
+  runpod_mutation_or_gpu: "Disabled. No RunPod mutation, provider job POST, GPU job, or redispatch occurred."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
   provider_free_product_action: "The current provider-free repair removes the maximum-spend input and client field from every hosted project, persists NULL unlimited project limits through migration 0086, retains exact cost accounting/reservations/settlement, and separates exact authenticated RTX 4090 EU-RO-1 LOW-or-better availability from the guarded official RunPod pricing-page rate of USD 0.00031/second and USD 1.116/hour. Release authority remains a separate finite source-bound cap. Stage 6 and Stage 7 were not modified or rerun."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "Proposal sha256:918922376c1f567774cc0c2da9feeb78c42fee3a311cfc2e4b8e3683488fe161 is approved at pushed source f226c321. Private authority sha256:3e92723aacb5b8971db86261aed0f61c46d15c15479db7f5f4c5fe770afcf3f5 and plan sha256:87afb75345d73b3e231190866cddc48cb86964763878d0690e882465c004ca5a are mode-0600; independent diff audit remains before execution."
+  note: "Proposal 91892237 is consumed FAILED_CLEAN after approximately 539 seconds at the GHCR preflight with no inner authority, mutation, GPU job, redispatch, or spend. Provider-free repair stops re-downloading approximately 8.9 GB: it fully hashes each exact immutable manifest and config, validates every ordered layer descriptor against the frozen full-byte proof anchor, performs one bounded anonymous HEAD per unique layer with exact size and redirect checks, and preserves the first failure before shared cancellation. Focused preflight tests pass 23/23 and combined focused tests pass 47/47."
 
 v2_09_provider_free_candidate:
   source_commit: "dc6ef647fb35602333f92a4191a3071c426386b9"
@@ -53,8 +53,8 @@ v2_09_provider_free_candidate:
   cloudflare_secret_boundary: "All exact production secret bytes are snapshotted and hash-bound before any Cloudflare mutation; production stays DISABLED_UNQUALIFIED until an approved qualified activation."
   media_worker_release: "media-worker-v0.1.15 is an unpublished candidate; do not publish, install, or replace v0.1.14 without fresh exact authority."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
-  provider_state: "Authorities 051c6d42, d6e5ff7b, and 4ee7b952 are consumed and non-reusable. Replacement 91892237 is materialized but has performed no credential read, provider call, mutation, GPU job, or spend pending independent audit."
-  current_authority: "Authority v2-09-918922376c1f5677 is materialized against pushed source f226c321 and awaits independent successor audit before execution."
+  provider_state: "Authorities 051c6d42, d6e5ff7b, 4ee7b952, and 91892237 are consumed and non-reusable. Replacement 91892237 failed clean during read-only preflight; no mutation, provider job, GPU job, redispatch, or spend occurred."
+  current_authority: null
 
 fixture_user_walkthrough:
   status: SUPERSEDED_BY_PRIVATE_HOSTED_BETA
@@ -220,10 +220,10 @@ hosted_beta_user_walkthrough:
   deployment_candidate: null
   deployed_source_commit: "29667134b17daa9723495d028ec22c4eeaee3ee3"
   cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
-  pending_source_candidate: "Pushed source f226c321 binds exact media-worker bundle 488f8e14 and the audited shared-abort slow-link repair. Authority 91892237 is materialized; production remains disabled pending independent successor audit."
+  pending_source_candidate: "Provider-free descriptor-HEAD repair eliminates the repeated approximately 8.9-GB layer download while retaining exact immutable manifest/config hashing, ordered layer identities, frozen full-byte proof anchors, bounded availability checks, and first-cause preservation."
   pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
-  pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. AUDIT_THE_SINGLE_91892237_AUTHORITY_SUCCESSOR_BEFORE EXECUTION."
-  pending_validations: "Focused preflight validation passes 20/20 and combined focused validation passes 44/44. Independent authority-successor diff audit is the only remaining pre-execution gate."
+  pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. AUDIT_AND_SEAL_THE_DESCRIPTOR_HEAD_REPAIR_BEFORE_ANY_NEW_EXTERNAL_ACTION."
+  pending_validations: "Focused preflight validation passes 23/23 and combined focused validation passes 47/47. Independent source audit, clean commit, exact bundle recomputation, and one replacement proposal remain."
   latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 29667134b17daa9723495d028ec22c4eeaee3ee3 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.14 ALREADY PUBLISHED INSTALLED AND ACTIVE DO NOT REPUBLISH OR REINSTALL; DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD TOTAL NEW VARIABLE EXTERNAL SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; ENABLE IMAGE KEYWORDS WITH A BOUNDED TEST VALUE AND USE REAL CHROME TO VERIFY STAGE 5 COMPLETION, COMPACT PROMPTS, ONLY PINNED MEDIUM REALISM CAMERA AND LIGHTING STYLE CUES, NO PALETTE OR HEX OR OTHER REMOVED STYLE METADATA, AND THE ENABLED IMAGE KEYWORDS EXACTLY ONCE IN EVERY POSITIVE SCENE PROMPT; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
   latest_live_run: "Approved source 29667134 deployed once as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6 with media worker 0.1.14 already active. Exactly one project f7655814-1b12-40c7-b0d5-993ad0c074e2 passed the 2,152,579,950-byte free-space gate with 2,944,651,264 bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 prompts, settled USD 0.001401, and conserved the reservation; total Stage 3+5 variable spend was USD 0.001473. Real Chrome verified the 520px scrollable prompt viewer, exact once-per-prompt enabled keywords, four pinned style fields, and zero removed style metadata hits. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   deployed_config_sha256: "cf25f25a7829deba82a3d16b44ddf64cf3238577e409f25570921c8514bff858"
@@ -4125,10 +4125,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: production
-  provider_calls_authorized: true
-  authorized_spend_usd: 2
-  provider_authority_scope: replacement_91892237_materialized_pending_independent_diff_audit
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: none_91892237_consumed_failed_clean
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -6153,55 +6153,27 @@ provider_authority_v2_08_consumed_success: &v2_08_consumed_success_authority
       checked_at: "2026-09-04T23:14:00+05:30"
 
 provider_authority: &v2_09_provider_authority_combined
-  mode: paid
-  provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
-  cap_usd: 2
+  mode: none
+  provider: null
+  historical_provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
+  cap_usd: 0
+  historical_cap_usd: 2
   non_transferable: true
   source: "f226c321b1151da30c2484fb45f847409f87fdb5"
   authorized_by_user_at: "2026-09-07"
   proposal_sha256: "sha256:918922376c1f567774cc0c2da9feeb78c42fee3a311cfc2e4b8e3683488fe161"
   authority: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-shared-abort-slow-link.json
   authority_sha256: "sha256:3e92723aacb5b8971db86261aed0f61c46d15c15479db7f5f4c5fe770afcf3f5"
-  consumed: false
+  consumed: true
   reusable: false
-  provider_calls_authorized: true
-  provider_mutations_authorized: true
-  credential_access_authorized: true
-  gpu_use_authorized: true
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  credential_access_authorized: false
+  gpu_use_authorized: false
   actual_spend_usd: 0
-  resources:
-    - github_repository_release
-    - runpod_account_catalog_inventory_billing_and_two_qualified_lanes
-    - neon_production_database
-    - cloudflare_private_r2_and_production_worker
-    - paired_mac_media_worker
-  authorized_operations: &v2_09_combined_operations
-    - push-clean-source
-    - readback-clean-source
-    - apply-migrations-0074-0086
-    - apply-v209-grants
-    - publish-media-worker-0.1.15
-    - readback-media-worker-0.1.15
-    - install-media-worker-0.1.15
-    - fresh-read-only-admission
-    - create-mage-production-lane-max-one
-    - create-soulx-production-lane-max-one
-    - persist-qualified-production-deployments
-    - render-qualified-production-config
-    - deploy-cloudflare-disabled-bootstrap
-    - upload-cloudflare-production-secrets
-    - deploy-cloudflare-qualified-production
-    - readback-qualified-production
-    - import-v209-qualified-activation
-    - run-one-v209-chrome-e2e
-    - verify-private-mp4-lineage
-    - reconcile-v209-production-safety
-    - reconcile-attributable-runpod-work
-    - clean-v209-transient-r2
-    - prove-three-zero-compute-reads
-    - read-settled-billing
-    - verify-retained-resources
-  allowed_operations: *v2_09_combined_operations
+  resources: []
+  authorized_operations: &v2_09_combined_operations []
+  allowed_operations: []
   model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot + Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1_per_second
@@ -6216,28 +6188,28 @@ provider_authority: &v2_09_provider_authority_combined
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_shared_abort_authority_materialized_pending_audit
-  status: REPLACEMENT_AUTHORITY_MATERIALIZED_PENDING_INDEPENDENT_DIFF_AUDIT
+  milestone: v2_09_descriptor_head_repair_provider_free_green
+  status: PROVIDER_FREE_REPAIR_AWAITING_FRESH_EXACT_AUTHORITY
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
-  authorization_status: replacement_91892237_materialized_pending_independent_diff_audit
-  task_stage: bounded_mutation
-  current_goal_authority: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-shared-abort-slow-link.json
-  current_goal_authority_sha256: "sha256:3e92723aacb5b8971db86261aed0f61c46d15c15479db7f5f4c5fe770afcf3f5"
+  authorization_status: none_91892237_consumed_failed_clean
+  task_stage: provider_free_repair
+  current_goal_authority: null
+  current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_combined
-  provider_mode: production
+  provider_mode: fixture
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
   goal: "Connect the ordinary hosted Generate flow to the frozen qualified max-one Mage and SoulX lanes, then complete one real 30-60-second private Chrome E2E under fresh exact authority."
-  provider_calls_authorized: true
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 2
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  credential_value_read_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: true
+  gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
@@ -6257,18 +6229,9 @@ recommended_next_task:
       image_config_sha256: "sha256:224b2a728490cf1c708b42e56702da2b71bd2374658f0c640dd39ef23e860935"
       anonymous_proof_sha256: "sha256:9929d19da89ab2c20e280ac45ad152bc325b8bf56ef1e9c21e83d473c3408bc4"
       acceptance_artifact_sha256: "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa"
-  resources:
-    - runpod_account_identity
-    - runpod_serverless_gpu_catalog
-    - runpod_billing_endpoint_records
-    - runpod_pod_inventory
-    - runpod_endpoint_inventory
-    - runpod_template_inventory
-    - runpod_network_volume_inventory
-    - ghcr_frozen_mage_image
-    - ghcr_frozen_soulx_image
-  authorized_operations: *v2_09_combined_operations
-  allowed_operations: *v2_09_combined_operations
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1_per_second
       billing_unit: gpu_second
@@ -6278,7 +6241,7 @@ recommended_next_task:
       billing_unit: gpu_hour
       usd_per_unit: 1.116
       checked_at: "2026-09-07"
-  authority_note: "Proposal 91892237 is approved at pushed source f226c321. Private authority and plan are materialized mode-0600 for 24 hours with exact source-bound media bundle 488f8e14. Independent successor audit is mandatory before provider action. Prior 4ee7b952 remains consumed FAILED_CLEAN."
+  authority_note: "Proposal 91892237 and authority v2-09-918922376c1f5677 were consumed once and closed FAILED_CLEAN after approximately 539 seconds (8m59s) at run-read-only-preflight with V2_09_READ_ONLY_PREFLIGHT_GHCR_READ_AMBIGUOUS. Outer state sha256:3a939519c5dbd076565686268db60ee3022d636a081954554216193f4b51a76b records no inner authority, no proof, and all 25 later operations pending; no mutation, provider job, GPU job, redispatch, or spend occurred. Closure evidence is failed-clean-shared-abort-slow-link.json sha256:914c6a85901a3dfb1029739f8840c14a0010b9ef98c3572e8ee68c14649e77f1."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/user-approval-shared-abort-slow-link.json
   successor_proposal_sha256: "sha256:918922376c1f567774cc0c2da9feeb78c42fee3a311cfc2e4b8e3683488fe161"
@@ -6288,8 +6251,10 @@ recommended_next_task:
   superseded_authority_execution_commit: cde3515faf4a8581a83132cd7a8cb296980bd9ff
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: approved_materialized_pending_independent_diff_audit
-  execution_blocker: independent_successor_diff_audit_required_before_execution
+  execution_status: consumed_failed_clean_non_reusable
+  execution_blocker: descriptor_head_repair_audit_clean_commit_bundle_recompute_and_fresh_approval_required
+  current_failure_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-shared-abort-slow-link.json
+  current_failure_evidence_sha256: "sha256:914c6a85901a3dfb1029739f8840c14a0010b9ef98c3572e8ee68c14649e77f1"
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:

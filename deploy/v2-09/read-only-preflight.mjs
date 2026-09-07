@@ -210,7 +210,7 @@ export async function readRunPodEvidence({
       if (!failed) {
         failed = true;
         firstFailure = error;
-        onFailure();
+        onFailure(error);
       }
       throw error;
     }),
@@ -405,6 +405,8 @@ export async function anonymousGhcrFetch(
     response = await fetchImpl(url, {
       ...init,
       redirect: "manual",
+      credentials: "omit",
+      cache: "no-store",
       signal: controller.signal,
     });
   } catch {
@@ -413,16 +415,21 @@ export async function anonymousGhcrFetch(
   } finally {
     clearTimeout(timer);
   }
+  if (controller.signal.aborted) fail("GHCR_READ_AMBIGUOUS");
   return Object.freeze({ response, controller });
 }
 
-async function readGhcrObject(fetchImpl, { repository, token, path, accept, kind }, fetchOptions) {
+async function readGhcrObject(
+  fetchImpl,
+  { repository, token, path, accept, kind, method = "GET" },
+  fetchOptions,
+) {
   const sourceUrl = `${GHCR_ORIGIN}/v2/${repository}/${path}`;
   let read = await anonymousGhcrFetch(
     fetchImpl,
     sourceUrl,
     {
-      method: "GET",
+      method,
       headers: { accept, authorization: `Bearer ${token}` },
     },
     fetchOptions,
@@ -460,7 +467,7 @@ async function readGhcrObject(fetchImpl, { repository, token, path, accept, kind
       fetchImpl,
       target,
       {
-        method: "GET",
+        method,
         headers: { accept },
       },
       fetchOptions,
@@ -472,6 +479,20 @@ async function readGhcrObject(fetchImpl, { repository, token, path, accept, kind
     fail("GHCR_HTTP");
   }
   return read;
+}
+
+function exactHeadContentLength(response, expectedSize) {
+  const raw = response?.headers?.get("content-length");
+  if (raw === null || !/^(0|[1-9][0-9]*)$/u.test(raw) || Number(raw) !== expectedSize)
+    fail("GHCR_LAYER_CONTENT_LENGTH");
+  return expectedSize;
+}
+
+function optionalHeadDigest(response, expectedDigest) {
+  const observed = response?.headers?.get("docker-content-digest");
+  if (observed !== null && observed !== undefined && observed !== expectedDigest)
+    fail("GHCR_LAYER_DIGEST");
+  return observed ?? null;
 }
 
 async function acquireAnonymousToken(fetchImpl, repository, readOptions) {
@@ -510,6 +531,7 @@ async function acquireAnonymousToken(fetchImpl, repository, readOptions) {
 }
 
 export async function verifyFrozenImage(fetchImpl, expected, readOptions = {}) {
+  if (!HASH.test(expected?.frozenAnonymousProofSha256 ?? "")) fail("GHCR_PROOF_ANCHOR");
   const token = await acquireAnonymousToken(fetchImpl, expected.repository, readOptions);
   const manifestRead = await readGhcrObject(
     fetchImpl,
@@ -582,8 +604,21 @@ export async function verifyFrozenImage(fetchImpl, expected, readOptions = {}) {
     fail("GHCR_CONFIG_PLATFORM");
   for (const [name, value] of Object.entries(expected.labels))
     if (labels[name] !== value) fail("GHCR_SOURCE_LABELS");
-  const layerProofs = [];
-  for (const [index, layer] of layers.entries()) {
+
+  const uniqueDescriptors = [];
+  const uniqueDescriptorByDigest = new Map();
+  for (const layer of layers) {
+    const existing = uniqueDescriptorByDigest.get(layer.digest);
+    if (existing !== undefined) {
+      if (existing.size !== layer.size || existing.mediaType !== layer.mediaType)
+        fail("GHCR_LAYER_DESCRIPTOR_CONFLICT");
+      continue;
+    }
+    uniqueDescriptorByDigest.set(layer.digest, layer);
+    uniqueDescriptors.push(Object.freeze({ key: layer.digest, layer }));
+  }
+  const headResults = new Map();
+  for (const { key, layer } of uniqueDescriptors) {
     const read = await readGhcrObject(
       fetchImpl,
       {
@@ -592,17 +627,35 @@ export async function verifyFrozenImage(fetchImpl, expected, readOptions = {}) {
         path: `blobs/${layer.digest}`,
         accept: layer.mediaType,
         kind: "blob",
+        method: "HEAD",
       },
       readOptions,
     );
-    const body = await readBoundedBody(read, {
-      expectedDigest: layer.digest,
-      expectedSize: layer.size,
-      maximumSize: MAX_DESCRIPTOR_BYTES,
-      collect: false,
-      ...readOptions,
-    });
-    layerProofs.push(Object.freeze({ index, digest: body.digest, sizeBytes: body.size }));
+    try {
+      if (read.response.status !== 200) fail("GHCR_LAYER_HEAD_HTTP");
+      if (read.response.body !== null && read.response.body !== undefined)
+        fail("GHCR_LAYER_HEAD_BODY");
+      const contentLengthBytes = exactHeadContentLength(read.response, layer.size);
+      const dockerContentDigest = optionalHeadDigest(read.response, layer.digest);
+      headResults.set(key, Object.freeze({ contentLengthBytes, dockerContentDigest }));
+    } finally {
+      read.controller.abort();
+    }
+  }
+  const layerProofs = [];
+  for (const [index, layer] of layers.entries()) {
+    const head = headResults.get(layer.digest);
+    if (!head) fail("GHCR_LAYER_HEAD");
+    layerProofs.push(
+      Object.freeze({
+        index,
+        digest: layer.digest,
+        mediaType: layer.mediaType,
+        sizeBytes: layer.size,
+        headContentLengthBytes: head.contentLengthBytes,
+        headDockerContentDigest: head.dockerContentDigest,
+      }),
+    );
   }
   const unsigned = {
     anonymous: true,
@@ -620,6 +673,8 @@ export async function verifyFrozenImage(fetchImpl, expected, readOptions = {}) {
     sourceCommit: expected.sourceCommit,
     sourceLabelsSha256: canonicalSha256(expected.labels),
     totalDescriptorBytes: config.size + layers.reduce((sum, layer) => sum + layer.size, 0),
+    uniqueLayerCount: uniqueDescriptors.length,
+    verificationMode: "frozen-full-hash-plus-fresh-descriptor-head",
   };
   return Object.freeze({ ...unsigned, proofSha256: canonicalSha256(unsigned) });
 }
@@ -663,6 +718,7 @@ function validateImageEvidence(values) {
     fail("GHCR_EVIDENCE_DRIFT");
   for (const [index, expected] of V209_FROZEN_IMAGES.entries()) {
     const value = values[index];
+    const layers = value?.layers;
     if (
       value?.lane !== expected.lane ||
       value.repository !== expected.repository ||
@@ -675,10 +731,40 @@ function validateImageEvidence(values) {
       value.os !== "linux" ||
       !Number.isSafeInteger(value.descriptorCount) ||
       value.descriptorCount < 2 ||
+      value.verificationMode !== "frozen-full-hash-plus-fresh-descriptor-head" ||
+      !Array.isArray(layers) ||
+      layers.length !== value.descriptorCount - 1 ||
+      !Number.isSafeInteger(value.uniqueLayerCount) ||
+      value.uniqueLayerCount < 1 ||
+      value.uniqueLayerCount > layers.length ||
+      !Number.isSafeInteger(value.manifestSizeBytes) ||
+      value.manifestSizeBytes < 1 ||
+      !Number.isSafeInteger(value.configSizeBytes) ||
+      value.configSizeBytes < 1 ||
+      !Number.isSafeInteger(value.totalDescriptorBytes) ||
+      value.totalDescriptorBytes < value.configSizeBytes ||
       !HASH.test(value.sourceLabelsSha256 ?? "") ||
       !HASH.test(value.proofSha256 ?? "")
     )
       fail("GHCR_EVIDENCE_DRIFT");
+    const descriptorKeys = new Map();
+    for (const [layerIndex, layer] of layers.entries()) {
+      if (
+        layer?.index !== layerIndex ||
+        !HASH.test(layer.digest ?? "") ||
+        !LAYER_MEDIA_TYPES.has(layer.mediaType) ||
+        !Number.isSafeInteger(layer.sizeBytes) ||
+        layer.sizeBytes < 1 ||
+        layer.headContentLengthBytes !== layer.sizeBytes ||
+        (layer.headDockerContentDigest !== null && layer.headDockerContentDigest !== layer.digest)
+      )
+        fail("GHCR_EVIDENCE_DRIFT");
+      const descriptorKey = descriptorKeys.get(layer.digest);
+      const metadata = `${layer.mediaType}:${layer.sizeBytes}`;
+      if (descriptorKey !== undefined && descriptorKey !== metadata) fail("GHCR_EVIDENCE_DRIFT");
+      descriptorKeys.set(layer.digest, metadata);
+    }
+    if (descriptorKeys.size !== value.uniqueLayerCount) fail("GHCR_EVIDENCE_DRIFT");
     const unsigned = { ...value };
     delete unsigned.proofSha256;
     if (canonicalSha256(unsigned) !== value.proofSha256) fail("GHCR_EVIDENCE_HASH");
@@ -715,6 +801,15 @@ export async function runV209ReadOnlyPreflight(
   if (!(observed instanceof Date) || !Number.isFinite(observed.getTime())) fail("CLOCK");
   const checkedAt = observed.toISOString();
   const sharedController = new AbortController();
+  let firstFailure;
+  let firstFailureLatched = false;
+  const latchFirstFailure = (error) => {
+    if (!firstFailureLatched) {
+      firstFailureLatched = true;
+      firstFailure = error;
+    }
+    sharedController.abort();
+  };
   const sharedFetch = (input, init = {}) =>
     fetchImpl(input, {
       ...init,
@@ -723,23 +818,38 @@ export async function runV209ReadOnlyPreflight(
           ? sharedController.signal
           : AbortSignal.any([sharedController.signal, init.signal]),
     });
+  const trackRead = (factory) => {
+    let read;
+    try {
+      read = factory();
+    } catch (error) {
+      latchFirstFailure(error);
+      return Promise.reject(error);
+    }
+    return Promise.resolve(read).catch((error) => {
+      latchFirstFailure(error);
+      throw error;
+    });
+  };
   const reads = [
-    readRunPod({
-      apiKey,
-      fetchImpl: sharedFetch,
-      checkedAt,
-      onFailure: () => sharedController.abort(),
-    }),
-    ...V209_FROZEN_IMAGES.map((image) => verifyImage(sharedFetch, image)),
+    trackRead(() =>
+      readRunPod({
+        apiKey,
+        fetchImpl: sharedFetch,
+        checkedAt,
+        onFailure: latchFirstFailure,
+      }),
+    ),
+    ...V209_FROZEN_IMAGES.map((image) => trackRead(() => verifyImage(sharedFetch, image))),
   ];
   let rawRunpod;
   let rawImages;
   try {
     [rawRunpod, ...rawImages] = await Promise.all(reads);
   } catch (error) {
-    sharedController.abort();
+    latchFirstFailure(error);
     await Promise.allSettled(reads);
-    throw error;
+    throw firstFailureLatched ? firstFailure : error;
   }
   const runpod = validateRunPodEvidence(rawRunpod);
   const images = validateImageEvidence(rawImages);

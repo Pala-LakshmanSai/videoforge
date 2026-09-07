@@ -333,7 +333,53 @@ function imageFixture() {
   };
 }
 
-test("GHCR preflight anonymously hashes the manifest, config, and every ordered layer", async () => {
+function fixtureFetch(fixture, { onLayerHead } = {}) {
+  const calls = [];
+  let layerHeadCount = 0;
+  const fetchImpl = async (input, init = {}) => {
+    const url = new URL(input);
+    calls.push({ url: url.href, init });
+    if (url.pathname === "/token")
+      return response(JSON.stringify({ token: "anonymous-token-value-123456789" }));
+    if (url.pathname.endsWith(`/manifests/${fixture.expected.manifestDigest}`))
+      return response(fixture.manifestBytes, {
+        headers: {
+          "content-length": String(fixture.manifestBytes.length),
+          "content-type": "application/vnd.oci.image.manifest.v1+json",
+          "docker-content-digest": fixture.expected.manifestDigest,
+        },
+      });
+    if (url.pathname.endsWith(`/blobs/${fixture.expected.configDigest}`))
+      return response(fixture.configBytes, {
+        headers: { "content-length": String(fixture.configBytes.length) },
+      });
+    if (url.hostname === "ghcr.io" && url.pathname.endsWith(`/blobs/${fixture.layerDigest}`))
+      return response(null, {
+        status: 307,
+        headers: {
+          location: `https://pkg-containers.githubusercontent.com/ghcrblobs1/blobs/${fixture.layerDigest}?se=2030-01-01T00%3A00%3A00Z&sig=redacted`,
+        },
+      });
+    if (
+      url.hostname === "pkg-containers.githubusercontent.com" &&
+      url.pathname.endsWith(`/blobs/${fixture.layerDigest}`)
+    ) {
+      const layerHead = onLayerHead?.({ count: layerHeadCount++, init }) ?? {};
+      const headers = {};
+      if (layerHead.contentLength !== undefined)
+        headers["content-length"] = String(layerHead.contentLength);
+      if (layerHead.digest !== undefined) headers["docker-content-digest"] = layerHead.digest;
+      return response(layerHead.body ?? null, {
+        status: layerHead.status ?? 200,
+        headers,
+      });
+    }
+    throw new Error(`unexpected URL ${url.href}`);
+  };
+  return { calls, fetchImpl };
+}
+
+test("GHCR preflight hashes manifest/config and HEAD-verifies every ordered layer", async () => {
   const fixture = imageFixture();
   const calls = [];
   const fetchImpl = async (input, init = {}) => {
@@ -364,28 +410,45 @@ test("GHCR preflight anonymously hashes the manifest, config, and every ordered 
       url.hostname === "pkg-containers.githubusercontent.com" &&
       url.pathname.endsWith(`/blobs/${fixture.layerDigest}`)
     )
-      return response(fixture.layerBytes, {
-        headers: { "content-length": String(fixture.layerBytes.length) },
+      return response(null, {
+        headers: {
+          "content-length": String(fixture.layerBytes.length),
+          "docker-content-digest": fixture.layerDigest,
+        },
       });
     throw new Error(`unexpected URL ${url.href}`);
   };
   const proof = await verifyFrozenImage(fetchImpl, fixture.expected);
   assert.equal(proof.manifestDigest, fixture.expected.manifestDigest);
   assert.equal(proof.configDigest, fixture.expected.configDigest);
+  assert.equal(proof.verificationMode, "frozen-full-hash-plus-fresh-descriptor-head");
+  assert.equal(proof.uniqueLayerCount, 1);
   assert.deepEqual(proof.layers, [
-    { index: 0, digest: fixture.layerDigest, sizeBytes: fixture.layerBytes.length },
+    {
+      index: 0,
+      digest: fixture.layerDigest,
+      mediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
+      sizeBytes: fixture.layerBytes.length,
+      headContentLengthBytes: fixture.layerBytes.length,
+      headDockerContentDigest: fixture.layerDigest,
+    },
   ]);
   assert.equal(proof.sourceLabelsSha256, canonicalHash(fixture.expected.labels));
   const unsigned = { ...proof };
   delete unsigned.proofSha256;
   assert.equal(proof.proofSha256, canonicalHash(unsigned));
   assert.equal(calls.length, 5);
-  assert.ok(calls.every((call) => (call.init.method ?? "GET") === "GET"));
+  assert.deepEqual(
+    calls.map((call) => call.init.method ?? "GET"),
+    ["GET", "GET", "GET", "HEAD", "HEAD"],
+  );
   assert.equal(calls[0].init.headers.authorization, undefined);
   const redirected = calls.find(
     ({ url }) => new URL(url).hostname === "pkg-containers.githubusercontent.com",
   );
   assert.equal(redirected.init.headers.authorization, undefined);
+  assert.equal(redirected.init.method, "HEAD");
+  assert.equal(redirected.init.body, undefined);
 });
 
 test("GHCR header deadline is cleared before a bounded body continues", async () => {
@@ -564,7 +627,7 @@ test("GHCR bounded body preserves exact size and digest failures", async () => {
   );
 });
 
-test("GHCR preflight accepts repeated ordered layer descriptors and verifies every occurrence", async () => {
+test("GHCR preflight deduplicates repeated identical descriptors but preserves occurrences", async () => {
   const fixture = imageFixture();
   const manifest = JSON.parse(fixture.manifestBytes.toString("utf8"));
   manifest.layers = [manifest.layers[0], manifest.layers[0], manifest.layers[0]];
@@ -599,8 +662,11 @@ test("GHCR preflight accepts repeated ordered layer descriptors and verifies eve
       url.hostname === "pkg-containers.githubusercontent.com" &&
       url.pathname.endsWith(`/blobs/${fixture.layerDigest}`)
     )
-      return response(fixture.layerBytes, {
-        headers: { "content-length": String(fixture.layerBytes.length) },
+      return response(null, {
+        headers: {
+          "content-length": String(fixture.layerBytes.length),
+          "docker-content-digest": fixture.layerDigest,
+        },
       });
     throw new Error(`unexpected URL ${url.href}`);
   };
@@ -612,17 +678,108 @@ test("GHCR preflight accepts repeated ordered layer descriptors and verifies eve
     [0, 1, 2].map((index) => ({
       index,
       digest: fixture.layerDigest,
+      mediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
       sizeBytes: fixture.layerBytes.length,
+      headContentLengthBytes: fixture.layerBytes.length,
+      headDockerContentDigest: fixture.layerDigest,
     })),
   );
-  assert.equal(
-    calls.filter(
-      ({ url }) =>
-        new URL(url).hostname === "pkg-containers.githubusercontent.com" &&
-        new URL(url).pathname.endsWith(`/blobs/${fixture.layerDigest}`),
-    ).length,
-    3,
+  assert.equal(proof.uniqueLayerCount, 1);
+  const layerCalls = calls.filter(({ url }) =>
+    new URL(url).pathname.endsWith(`/blobs/${fixture.layerDigest}`),
   );
+  assert.equal(layerCalls.length, 2);
+  assert.deepEqual(
+    layerCalls.map(({ init }) => init.method),
+    ["HEAD", "HEAD"],
+  );
+});
+
+test("GHCR preflight rejects conflicting metadata for a repeated digest", async () => {
+  const fixture = imageFixture();
+  const manifest = JSON.parse(fixture.manifestBytes.toString("utf8"));
+  manifest.layers = [
+    manifest.layers[0],
+    {
+      ...manifest.layers[0],
+      mediaType: "application/vnd.oci.image.layer.v1.tar",
+      size: fixture.layerBytes.length + 1,
+    },
+  ];
+  fixture.manifestBytes = Buffer.from(JSON.stringify(manifest));
+  fixture.expected.manifestDigest = hash(fixture.manifestBytes);
+  const fixturePort = fixtureFetch(fixture);
+  await assert.rejects(
+    verifyFrozenImage(fixturePort.fetchImpl, fixture.expected),
+    /GHCR_LAYER_DESCRIPTOR_CONFLICT/u,
+  );
+  const layerCalls = fixturePort.calls.filter(
+    ({ url }) => new URL(url).hostname === "pkg-containers.githubusercontent.com",
+  );
+  assert.equal(layerCalls.length, 0);
+});
+
+test("GHCR layer HEAD requires exact Content-Length and rejects a mismatched optional digest", async () => {
+  const cases = [
+    {
+      name: "missing Content-Length",
+      onLayerHead: () => ({ digest: null }),
+      code: "GHCR_LAYER_CONTENT_LENGTH",
+    },
+    {
+      name: "mismatched Content-Length",
+      onLayerHead: (fixture) => ({ contentLength: fixture.layerBytes.length - 1 }),
+      code: "GHCR_LAYER_CONTENT_LENGTH",
+    },
+    {
+      name: "mismatched Docker digest",
+      onLayerHead: (fixture) => ({
+        contentLength: fixture.layerBytes.length,
+        digest: hash("different-layer"),
+      }),
+      code: "GHCR_LAYER_DIGEST",
+    },
+  ];
+  for (const current of cases) {
+    const fixture = imageFixture();
+    const fixturePort = fixtureFetch(fixture, {
+      onLayerHead: () => {
+        const result = current.onLayerHead(fixture);
+        return result;
+      },
+    });
+    await assert.rejects(
+      verifyFrozenImage(fixturePort.fetchImpl, fixture.expected),
+      new RegExp(current.code, "u"),
+      current.name,
+    );
+    const layerCalls = fixturePort.calls.filter(
+      ({ url }) => new URL(url).hostname === "pkg-containers.githubusercontent.com",
+    );
+    assert.equal(layerCalls.length, 1);
+    assert.equal(layerCalls[0].init.method, "HEAD");
+    assert.equal(layerCalls[0].init.headers.authorization, undefined);
+  }
+});
+
+test("GHCR layer HEAD never consumes a response body", async () => {
+  const fixture = imageFixture();
+  const fixturePort = fixtureFetch(fixture, {
+    onLayerHead: () => ({
+      contentLength: fixture.layerBytes.length,
+      body: fixture.layerBytes,
+    }),
+  });
+  await assert.rejects(
+    verifyFrozenImage(fixturePort.fetchImpl, fixture.expected),
+    /GHCR_LAYER_HEAD_BODY/u,
+  );
+  const target = fixturePort.calls.find(
+    ({ url }) => new URL(url).hostname === "pkg-containers.githubusercontent.com",
+  );
+  assert.equal(target.init.method, "HEAD");
+  assert.equal(target.init.body, undefined);
+  assert.equal(target.init.headers.authorization, undefined);
 });
 
 test("GHCR preflight rejects a blob redirect outside the exact anonymous registry host", async () => {
@@ -692,7 +849,16 @@ function frozenImageProof(expected) {
     descriptorCount: 2,
     frozenAnonymousProofSha256: expected.frozenAnonymousProofSha256,
     lane: expected.lane,
-    layers: [{ index: 0, digest: hash(`${expected.lane}-layer`), sizeBytes: 10 }],
+    layers: [
+      {
+        index: 0,
+        digest: hash(`${expected.lane}-layer`),
+        mediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
+        sizeBytes: 10,
+        headContentLengthBytes: 10,
+        headDockerContentDigest: null,
+      },
+    ],
     manifestDigest: expected.manifestDigest,
     manifestSizeBytes: 200,
     os: "linux",
@@ -700,6 +866,8 @@ function frozenImageProof(expected) {
     sourceCommit: expected.sourceCommit,
     sourceLabelsSha256: canonicalHash(expected.labels),
     totalDescriptorBytes: 110,
+    uniqueLayerCount: 1,
+    verificationMode: "frozen-full-hash-plus-fresh-descriptor-head",
   };
   return { ...unsigned, proofSha256: canonicalHash(unsigned) };
 }
