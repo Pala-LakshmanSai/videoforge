@@ -550,21 +550,17 @@ test("lost outer completion acknowledgement reconciles durable success", async (
   assert.deepEqual(second, first);
 });
 
-test("persisted inner completion ACK loss uses inner cleanup and resumes cleanup-only", async () => {
+test("persisted inner completion ACK loss adopts exact success without cleanup", async () => {
   const events = [];
   const outerState = state(events, { executeCompletionAckFails: true });
   const modes = [];
+  let terminal;
   const options = successfulOptions({
     events,
     outerState,
     executeProduction: async ({ authority: inner, mode }) => {
       modes.push(mode);
-      if (mode === "CLEANUP_ONLY") {
-        if (modes.filter((value) => value === "CLEANUP_ONLY").length === 1)
-          throw new Error("CLEANUP_INTERRUPTED_AFTER_ACK_LOSS");
-        return { status: "FAILED_CLEAN" };
-      }
-      return {
+      terminal = {
         schema_version: "videoforge.v2-09-qualified-production-execution/v1",
         authority_id: inner.authority_id,
         status: "SUCCEEDED_CLEAN",
@@ -572,19 +568,15 @@ test("persisted inner completion ACK loss uses inner cleanup and resumes cleanup
         paid_dispatch_count: 1,
         redispatch_count: 0,
       };
+      return terminal;
     },
   });
-  await assert.rejects(
-    executeCombinedQualifiedProductionForTest(options),
-    /CLEANUP_INTERRUPTED_AFTER_ACK_LOSS/u,
-  );
-  await assert.rejects(
-    executeCombinedQualifiedProductionForTest(options),
-    /V2_09_COMBINED_CLEANUP_ONLY/u,
-  );
-  assert.deepEqual(modes, ["EXECUTE", "CLEANUP_ONLY", "CLEANUP_ONLY"]);
-  assert.equal(events.includes("stage-cleanup"), false);
-  assert.equal(events.filter((value) => value === "protected-cleanup").length, 1);
+  options.readInnerSuccess = async () => terminal;
+  const recovered = await executeCombinedQualifiedProductionForTest(options);
+  assert.equal(recovered.status, "SUCCEEDED_CLEAN");
+  assert.deepEqual(modes, ["EXECUTE"]);
+  assert.equal(events.includes("cleanup-only"), false);
+  assert.equal(events.includes("protected-cleanup"), false);
 });
 
 test("protected-cleanup tombstone closes outer ACK loss without reconstructing inner cleanup", async () => {
@@ -726,12 +718,10 @@ test("durable inner SUCCEEDED_CLEAN is adopted without cleanup or execution repl
         }
       : null;
 
-  await assert.rejects(
-    executeCombinedQualifiedProductionForTest(options),
-    /PROCESS_DIED_BEFORE_CLEANUP_STATE/u,
-  );
   const adopted = await executeCombinedQualifiedProductionForTest(options);
   assert.equal(adopted.status, "SUCCEEDED_CLEAN");
+  const replay = await executeCombinedQualifiedProductionForTest(options);
+  assert.deepEqual(replay, adopted);
   assert.deepEqual(modes, ["EXECUTE"]);
   assert.equal(events.includes("protected-cleanup"), false);
 });

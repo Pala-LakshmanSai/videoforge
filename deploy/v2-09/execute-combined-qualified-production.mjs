@@ -1132,29 +1132,34 @@ export async function executeCombinedQualifiedProductionForTest({
     } else fail("V2_09_COMBINED_CHROME_RESUME_INVALID");
   }
 
-  const executeOperation = state.operations.find(({ id }) => id === "execute-qualified-production");
-  if (
-    state.status === "CLAIMED" &&
-    state.inner_authority_id !== null &&
-    executeOperation?.status === "STARTED"
-  ) {
+  const adoptInnerSuccess = async (candidate) => {
+    const executeOperation = candidate.operations.find(
+      ({ id }) => id === "execute-qualified-production",
+    );
+    if (
+      !["CLAIMED", "CLEANUP_ONLY"].includes(candidate.status) ||
+      candidate.inner_authority_id === null ||
+      !["STARTED", "COMPLETED"].includes(executeOperation?.status)
+    )
+      return null;
     const { configuration, inner, combinedExecution } = await reconstructInnerForCleanup({
       authority,
       sourceCommit,
       now,
-      state,
+      state: candidate,
       loadConfiguration,
     });
     const adoptedExecution = await readInnerSuccess({
       authority: inner,
       configuration,
       combinedExecution,
-      state,
+      state: candidate,
     });
-    if (adoptedExecution !== null) {
-      const terminal = assertTerminalExecution(adoptedExecution, inner.authority_id);
+    if (adoptedExecution === null) return null;
+    const terminal = assertTerminalExecution(adoptedExecution, inner.authority_id);
+    if (executeOperation.status === "STARTED") {
       try {
-        state = validateOuterState(
+        candidate = validateOuterState(
           await outerState.completeOperation({
             operationId: "execute-qualified-production",
             result: terminal,
@@ -1162,28 +1167,39 @@ export async function executeCombinedQualifiedProductionForTest({
           authority,
         );
       } catch {
-        state = validateOuterState(await outerState.reconcileSuccess(), authority);
+        candidate = validateOuterState(await outerState.reconcileSuccess(), authority);
         assertTerminalExecution(
-          completedResult(state, "execute-qualified-production"),
+          completedResult(candidate, "execute-qualified-production"),
           inner.authority_id,
         );
       }
-      try {
-        state = validateOuterState(await outerState.completeSuccess(), authority);
-      } catch {
-        state = validateOuterState(await outerState.reconcileSuccess(), authority);
-      }
-      if (state.status !== "SUCCEEDED_CLEAN") fail("V2_09_COMBINED_SUCCESS_ACK_UNKNOWN");
-      return Object.freeze({
-        schema_version: COMBINED_EXECUTION_SCHEMA,
-        authority_id: authority.authority_id,
-        inner_authority_id: inner.authority_id,
-        status: "SUCCEEDED_CLEAN",
-        preflight_proof_sha256: combinedExecution.preflight_proof_sha256,
-        production_execution: terminal,
-      });
+    } else if (
+      canonical(
+        assertTerminalExecution(
+          completedResult(candidate, "execute-qualified-production"),
+          inner.authority_id,
+        ),
+      ) !== canonical(terminal)
+    )
+      fail("V2_09_COMBINED_TERMINAL_EXECUTION_DRIFT");
+    try {
+      candidate = validateOuterState(await outerState.completeSuccess(), authority);
+    } catch {
+      candidate = validateOuterState(await outerState.reconcileSuccess(), authority);
     }
-  }
+    if (candidate.status !== "SUCCEEDED_CLEAN") fail("V2_09_COMBINED_SUCCESS_ACK_UNKNOWN");
+    return Object.freeze({
+      schema_version: COMBINED_EXECUTION_SCHEMA,
+      authority_id: authority.authority_id,
+      inner_authority_id: inner.authority_id,
+      status: "SUCCEEDED_CLEAN",
+      preflight_proof_sha256: combinedExecution.preflight_proof_sha256,
+      production_execution: terminal,
+    });
+  };
+
+  const recoveredSuccess = await adoptInnerSuccess(state);
+  if (recoveredSuccess !== null) return recoveredSuccess;
 
   const interrupted = state.operations.find(({ status }) => status === "STARTED");
   if (state.status === "CLEANUP_ONLY" || interrupted) {
@@ -1452,6 +1468,8 @@ export async function executeCombinedQualifiedProductionForTest({
     });
   } catch (error) {
     const latest = validateOuterState(await outerState.reconcileSuccess(), authority);
+    const recoveredSuccess = await adoptInnerSuccess(latest);
+    if (recoveredSuccess !== null) return recoveredSuccess;
     if (isInteractiveChromePause(error)) {
       const waitingAtChromeAuth =
         latest.inner_authority_id === null &&
