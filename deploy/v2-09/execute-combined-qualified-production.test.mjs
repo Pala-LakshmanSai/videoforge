@@ -865,6 +865,51 @@ test("a new process reconstructs receipt derivation after durable Chrome complet
   assert.equal(result.production.chrome_auth_state_sha256, hash("auth-state"));
 });
 
+test("postdeploy Chrome bootstrap receives only the exact outer authority expiry", async () => {
+  const approved = authority();
+  const proof = preflight(approved);
+  const configuration = { exact: "sealed-configuration" };
+  const plan = { chrome_bootstrap: { successHorizonSeconds: 1_660 } };
+  const observed = [];
+  const materializer = createLiveMaterializerForTest({
+    testOnly: true,
+    options: { statePath: "/tmp/v209-chrome-expiry-binding" },
+    loadConfiguration: async () => configuration,
+    loadMaterializationPlan: async () => plan,
+    createResumedAdapters: () => ({ identity_sha256: hash("unused") }),
+    materializeChromeBootstrap: async (receivedPlan, dependencies) => {
+      observed.push({ receivedPlan, dependencies });
+      if (dependencies?.authorityExpiresAt !== approved.expires_at)
+        throw new Error("EXACT_OUTER_AUTHORITY_EXPIRY_REQUIRED");
+      return { status: "AUTHENTICATED_READY_FOR_ONE_E2E" };
+    },
+  });
+  await materializer.run({
+    operationId: "materialize-v209-postdeploy-chrome-auth",
+    authority: approved,
+    preflight: proof,
+    priorResults: {},
+  });
+  assert.deepEqual(observed, [
+    {
+      receivedPlan: plan.chrome_bootstrap,
+      dependencies: { authorityExpiresAt: approved.expires_at },
+    },
+  ]);
+
+  for (const expires_at of [undefined, "2026-09-07T11:59:59.999Z"]) {
+    await assert.rejects(
+      materializer.run({
+        operationId: "materialize-v209-postdeploy-chrome-auth",
+        authority: { ...approved, expires_at },
+        preflight: proof,
+        priorResults: {},
+      }),
+      /EXACT_OUTER_AUTHORITY_EXPIRY_REQUIRED/u,
+    );
+  }
+});
+
 test("a failure after a staged provider mutation runs cleanup and never starts inner execution", async () => {
   const approved = authority();
   const proof = preflight(approved);

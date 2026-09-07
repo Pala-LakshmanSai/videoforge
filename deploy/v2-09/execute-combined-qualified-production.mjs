@@ -1809,11 +1809,12 @@ function createLiveMaterializer(
         // Tenant/workspace and ready preset IDs are intentionally discovered only after the new
         // BETTER_AUTH_SECRET deployment is live. Use the hardened one-step post-deploy bootstrap;
         // the split auth API is only valid when a tenant-bound request was materialized earlier.
-        const { materializeV209ChromeBootstrap } = await import(
-          "./chrome-production-bootstrap.mjs"
-        );
+        const materializeV209ChromeBootstrap =
+          testDependencies?.materializeChromeBootstrap ??
+          (await import("./chrome-production-bootstrap.mjs")).materializeV209ChromeBootstrap;
         const result = await materializeV209ChromeBootstrap(
           (await loadMaterializationPlan()).chrome_bootstrap,
+          { authorityExpiresAt: authority.expires_at },
         );
         const stagingConfiguration = {
           ...configuration,
@@ -2121,17 +2122,20 @@ export function createLiveMaterializerForTest({
   loadConfiguration,
   loadMaterializationPlan,
   createResumedAdapters,
+  materializeChromeBootstrap,
   testOnly,
 }) {
   if (
     testOnly !== true ||
     typeof loadConfiguration !== "function" ||
     typeof loadMaterializationPlan !== "function" ||
-    typeof createResumedAdapters !== "function"
+    typeof createResumedAdapters !== "function" ||
+    (materializeChromeBootstrap !== undefined && typeof materializeChromeBootstrap !== "function")
   )
     fail("V2_09_COMBINED_MATERIALIZER_TEST_INJECTION_FORBIDDEN");
   return createLiveMaterializer(options, loadConfiguration, loadMaterializationPlan, {
     createResumedAdapters,
+    materializeChromeBootstrap,
   });
 }
 
