@@ -4,7 +4,7 @@ updated_at: "2026-09-07"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_read_only_preflight_catalog_repair_canonical_green_pending_context_audit_and_third_replacement_approval
+current_milestone: v2_09_read_only_preflight_padded_flex_repair_canonical_green_pending_context_audit_and_fourth_replacement_approval
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -18,20 +18,20 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_read_only_preflight_catalog_repair_canonical_green_pending_context_audit_and_third_replacement_approval
-  live_provider_calls: "Proposal 9e5d4eb9 passed the exact five-job qualification and is consumed; no further RunPod mutation or job POST, R2 mutation, GPU use, or spend is authorized. The initial V2-09 bounded read-only preflight plus exact replacement proposals 67b08992 and 5e8d10d8 were each consumed by one execution. The second replacement made exactly one read-only account GraphQL POST, six authenticated RunPod GETs, and anonymous GHCR reads, then failed closed on the ambiguous Serverless catalog parser before proof emission. No further provider read is authorized pending fresh exact third-replacement approval."
+  mode: v2_09_read_only_preflight_padded_flex_repair_canonical_green_pending_context_audit_and_fourth_replacement_approval
+  live_provider_calls: "Proposal 9e5d4eb9 passed the exact five-job qualification and is consumed; no further RunPod mutation or job POST, R2 mutation, GPU use, or spend is authorized. The initial V2-09 bounded read-only preflight plus exact replacement proposals 67b08992, 5e8d10d8, and d36a9022 were each consumed by one execution. The third replacement made exactly one read-only account GraphQL POST, six authenticated RunPod GETs, and anonymous GHCR reads, then failed closed at the exact Serverless price.flex rate category before proof emission. No further provider read is authorized pending fresh exact fourth-replacement approval."
   remote_mutation: false
   deployment_or_publication: "Existing immutable image f3b1d141 was freshly anonymously reverified without publication; no publication or republication is authorized."
-  credential_value_access: "The initial, replacement, and second-replacement V2-09 bounded read-only preflights each consumed one configured RunPod credential read and failed closed without emitting a proof. No further credential read is authorized pending fresh exact third-replacement approval."
+  credential_value_access: "The initial, replacement, second-replacement, and third-replacement V2-09 bounded read-only preflights each consumed one configured RunPod credential read and failed closed without emitting a proof. No further credential read is authorized pending fresh exact fourth-replacement approval."
   paid_requests_or_spend: "Closed at USD 0.08383633207995445 observed increment and USD 3.4607653283455875 cumulative billing; no remaining executable cap."
   runpod_mutation_or_gpu: "Qualification passed and cleanup proved zero compute; no further RunPod mutation or GPU use is authorized."
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
-  provider_free_product_action: "V2-09 source eba705f415f05c754578ab42bd7c38efdbaa7593 preserves the credential/GHCR repairs and adds one closed-world Serverless catalog parser for either a top-level array or wrapper.gpus array. It retains exact RTX 4090 identity, NVIDIA manufacturer, EU-RO-1, LOW-or-better availability, and the USD 0.00031/second and USD 1.116/hour caps with categorical fail-closed errors and no fallback. Focused tests pass 30/30, independent repair audit is P0=0/P1=0, and CI=1 TURBO_FORCE=true pnpm verify passed, including 431/431 control-plane and 44/44 installed-Chrome tests. The accepted V2-07 and V2-08 qualifications are frozen predecessors; Stage 6 and Stage 7 were not and must not be rerun or modified."
+  provider_free_product_action: "V2-09 source aa8353eff658b60dbfe8bf3979f7e89015994b61 preserves the credential/GHCR/catalog repairs and narrowly accepts mathematically equivalent fixed-scale price.flex decimal strings such as 0.000310 while rejecting alternate price keys, malformed decimals, zero, nonfinite values, and cap breaches. Exact RTX 4090 identity, NVIDIA manufacturer, EU-RO-1, LOW-or-better availability, and the USD 0.00031/second and USD 1.116/hour caps remain unchanged with no fallback. Focused tests pass 30/30, independent repair audit is P0=0/P1=0, and CI=1 TURBO_FORCE=true pnpm verify passed with 506/506 script tests and 44/44 installed-Chrome tests. The accepted V2-07 and V2-08 qualifications are frozen predecessors; Stage 6 and Stage 7 were not and must not be rerun or modified."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "The historical V2-13 v5 proposal is separate, unapproved, and not executable from this V2-09 task. Independently audit the canonical-green context successor for provider-free source eba705f4, then request fresh exact third-replacement authority for one bounded read-only preflight."
+  note: "The historical V2-13 v5 proposal is separate, unapproved, and not executable from this V2-09 task. Independently audit the canonical-green context successor for provider-free source aa8353ef, then request fresh exact fourth-replacement authority for one bounded read-only preflight."
 
 v2_09_provider_free_candidate:
-  source_commit: "eba705f415f05c754578ab42bd7c38efdbaa7593"
+  source_commit: "aa8353eff658b60dbfe8bf3979f7e89015994b61"
   source_audit: "PASS_INDEPENDENT_FOCUSED_P0_0_P1_0"
   canonical_provider_free_verification: PASS_EXIT_0_INCLUDING_431_CONTROL_PLANE_44_INSTALLED_CHROME
   production_state: DISABLED_UNQUALIFIED
@@ -52,7 +52,7 @@ v2_09_provider_free_candidate:
   media_worker_release: "media-worker-v0.1.15 is an unpublished candidate; do not publish, install, or replace v0.1.14 without fresh exact authority."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
   provider_state: "No provider call, credential read, database/R2 mutation, publication, deployment, GPU use, or spend occurred while producing or materializing this candidate."
-  current_authority: "The initial bounded read-only V2-09 preflight and exact replacement proposals 67b08992 and 5e8d10d8 were each consumed by one clean failed execution. No provider or credential read is currently authorized; a third replacement bounded read-only preflight requires fresh exact approval after this canonical-green context successor passes independent audit. Any git push, migration/grant application, media publication/install, RunPod/Cloudflare/R2 mutation, Chrome E2E dispatch, GPU use, or spend requires fresh exact V2-09 authority."
+  current_authority: "The initial bounded read-only V2-09 preflight and exact replacement proposals 67b08992, 5e8d10d8, and d36a9022 were each consumed by one clean failed execution. No provider or credential read is currently authorized; a fourth replacement bounded read-only preflight requires fresh exact approval after this canonical-green context successor passes independent audit. Any git push, migration/grant application, media publication/install, RunPod/Cloudflare/R2 mutation, Chrome E2E dispatch, GPU use, or spend requires fresh exact V2-09 authority."
 
 fixture_user_walkthrough:
   status: SUPERSEDED_BY_PRIVATE_HOSTED_BETA
@@ -218,10 +218,10 @@ hosted_beta_user_walkthrough:
   deployment_candidate: null
   deployed_source_commit: "29667134b17daa9723495d028ec22c4eeaee3ee3"
   cloudflare_worker_version_id: "50cfd256-7119-4fe5-b198-3c88312bf9b6"
-  pending_source_candidate: "V2-09 provider-free catalog repair source eba705f415f05c754578ab42bd7c38efdbaa7593 passed focused 30/30, independent repair audit P0=0/P1=0, and canonical verification including 431/431 control-plane and 44/44 installed-Chrome tests; context audit remains before fresh exact third-replacement read-only preflight approval; production is disabled and undeployed"
+  pending_source_candidate: "V2-09 provider-free padded-flex repair source aa8353eff658b60dbfe8bf3979f7e89015994b61 passed focused 30/30, independent repair audit P0=0/P1=0, and canonical verification with 506/506 script and 44/44 installed-Chrome tests; context audit remains before fresh exact fourth-replacement read-only preflight approval; production is disabled and undeployed"
   pending_worker_release: "media-worker-v0.1.15 is the unpublished V2-09 candidate; immutable v0.1.14 remains installed and online until fresh exact authority"
-  pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. COMPLETE_INDEPENDENT_CONTEXT_AUDIT_FOR_CANONICAL_GREEN_CATALOG_REPAIR_SOURCE_EBA705F4, THEN_REQUEST_FRESH_EXACT_THIRD_REPLACEMENT_READ_ONLY_PREFLIGHT_APPROVAL."
-  pending_validations: "Independent context audit for canonical-green catalog repair source eba705f4 remains before fresh exact third-replacement read-only preflight approval."
+  pending_release_boundary: "V2-07_STAGE6_AND_V2-08_STAGE7_ARE_FROZEN_QUALIFIED_PREDECESSORS_AND_WERE_NOT_RERUN. COMPLETE_INDEPENDENT_CONTEXT_AUDIT_FOR_CANONICAL_GREEN_PADDED_FLEX_REPAIR_SOURCE_AA8353EF, THEN_REQUEST_FRESH_EXACT_FOURTH_REPLACEMENT_READ_ONLY_PREFLIGHT_APPROVAL."
+  pending_validations: "Independent context audit for canonical-green padded-flex repair source aa8353ef remains before fresh exact fourth-replacement read-only preflight approval."
   latest_consumed_approval: "APPROVE PRIVATE HOSTED BETA LIVE SOURCE 29667134b17daa9723495d028ec22c4eeaee3ee3 MIGRATIONS 0069 0070 0071 0072 AND 0073 ALREADY APPLIED DO NOT REAPPLY; V2-06 RUNTIME GRANT SET ALREADY APPLIED DO NOT REAPPLY; MEDIA WORKER 0.1.14 ALREADY PUBLISHED INSTALLED AND ACTIVE DO NOT REPUBLISH OR REINSTALL; DEPLOY STAGING ONCE AND CREATE EXACTLY ONE FRESH STAGE 1-5 PROJECT WITH PROJECT CAP USD 2 AND HARD TOTAL NEW VARIABLE EXTERNAL SPEND CAP USD 1; REQUIRE LOCAL FREE SPACE PREFLIGHT AT LEAST 2152579950 BYTES IMMEDIATELY BEFORE PROJECT CREATION; ENABLE IMAGE KEYWORDS WITH A BOUNDED TEST VALUE AND USE REAL CHROME TO VERIFY STAGE 5 COMPLETION, COMPACT PROMPTS, ONLY PINNED MEDIUM REALISM CAMERA AND LIGHTING STYLE CUES, NO PALETTE OR HEX OR OTHER REMOVED STYLE METADATA, AND THE ENABLED IMAGE KEYWORDS EXACTLY ONCE IN EVERY POSITIVE SCENE PROMPT; STOP AFTER STAGE 5 OR FIRST TERMINAL OR AMBIGUOUS FAILURE; NO RETRY OR PROVIDER RETRIEVAL; NO GPU RUNPOD PRODUCTION OR VOLUME MUTATION"
   latest_live_run: "Approved source 29667134 deployed once as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6 with media worker 0.1.14 already active. Exactly one project f7655814-1b12-40c7-b0d5-993ad0c074e2 passed the 2,152,579,950-byte free-space gate with 2,944,651,264 bytes and completed Stages 1-5. Stage 4 saved 36 segments, 31 image scenes, and 10 avatar segments. Stage 5 made two requests matching two persisted adaptive batches, durably accepted 31/31 prompts, settled USD 0.001401, and conserved the reservation; total Stage 3+5 variable spend was USD 0.001473. Real Chrome verified the 520px scrollable prompt viewer, exact once-per-prompt enabled keywords, four pinned style fields, and zero removed style metadata hits. No retry, continuation, provider retrieval, GPU, RunPod, production, or volume mutation occurred."
   deployed_config_sha256: "cf25f25a7829deba82a3d16b44ddf64cf3238577e409f25570921c8514bff858"
@@ -566,7 +566,7 @@ new_chat_handoff:
   credential_setup_completion_percent: 100
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
-  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. Independently audit the canonical-green context successor for V2-09 catalog repair source eba705f415f05c754578ab42bd7c38efdbaa7593, then request fresh exact third-replacement authority for one bounded read-only preflight from a clean detached or separate worktree at that executable source."
+  next_action: "Historical V2-13 handoff only; do not execute or seek approval for the v5 proposal from this record. Independently audit the canonical-green context successor for V2-09 padded-flex repair source aa8353eff658b60dbfe8bf3979f7e89015994b61, then request fresh exact fourth-replacement authority for one bounded read-only preflight from a clean detached or separate worktree at that executable source."
   serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
@@ -1009,9 +1009,9 @@ provider_free_product_progress:
   guarded_pair_workflow_commit: "4239be9"
   guarded_pair_workflow_status: PROVIDER_FREE_PASS_independently_audited_migration_0044_not_deployed_disabled_unqualified
   guarded_pair_workflow_note: "The guarded Workflow wires atomic pair scheduling, exact RunPod lane adapters, bounded cancellation/recovery, callback settlement, and durable zero-worker evidence. Migration 0044 now verifies the persisted V2-09 admission, fresh nonfuture provider billing, exact terminal pair, phase cap, and cumulative baseline/ledger/reservation exposure atomically with settlement; direct unguarded settlement remains ungranted. Fresh independent audit is required. Production remains DISABLED_UNQUALIFIED and no bindings, secrets, roles, config, or migrations were deployed."
-  hosted_v209_ordinary_production_integration_commit: "eba705f415f05c754578ab42bd7c38efdbaa7593"
-  hosted_v209_ordinary_production_integration_status: PROVIDER_FREE_CATALOG_NORMALIZER_REPAIR_CANONICAL_PASS_CONTEXT_AUDIT_PENDING
-  hosted_v209_ordinary_production_integration_note: "Source eba705f415f05c754578ab42bd7c38efdbaa7593 preserves the cd91d00a lifecycle and prior preflight repairs. It normalizes only a top-level GPU array or wrapper.gpus array, then requires one exact NVIDIA RTX 4090 identity, one EU-RO-1 region, LOW-or-better availability, and strict positive price.flex at or below USD 0.00031/second and USD 1.116/hour. Categorical errors distinguish shape, identity, rate, region, and below-threshold capacity without raw provider data. Focused tests pass 30/30, independent repair audit passed P0=0/P1=0, and CI=1 TURBO_FORCE=true pnpm verify passed, including 431/431 control-plane and 44/44 installed-Chrome tests. No deployment, Stage 6/7 rerun, GPU use, provider mutation, or spend occurred while producing the repair."
+  hosted_v209_ordinary_production_integration_commit: "aa8353eff658b60dbfe8bf3979f7e89015994b61"
+  hosted_v209_ordinary_production_integration_status: PROVIDER_FREE_PADDED_FLEX_RATE_REPAIR_CANONICAL_PASS_CONTEXT_AUDIT_PENDING
+  hosted_v209_ordinary_production_integration_note: "Source aa8353eff658b60dbfe8bf3979f7e89015994b61 preserves the cd91d00a lifecycle and prior preflight repairs. It keeps the exact price.flex leaf but accepts unsigned fixed-scale decimals with trailing zeroes, requires the price object to contain exactly that one own key, and retains strict positive USD 0.00031/second and USD 1.116/hour caps. Exact GPU, region, availability, and no-fallback gates are unchanged. Focused tests pass 30/30, independent repair audit passed P0=0/P1=0, and CI=1 TURBO_FORCE=true pnpm verify passed with 506/506 script tests and 44/44 installed-Chrome tests. No deployment, Stage 6/7 rerun, GPU use, provider mutation, or spend occurred while producing the repair."
   hosted_v209_historical_provider_free_gate:
     source_commit: "cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d"
     command: "CI=1 TURBO_FORCE=true pnpm verify"
@@ -1030,12 +1030,12 @@ provider_free_product_progress:
     external_spend_usd: 0
     remote_mutations: 0
   hosted_v209_current_provider_free_gate:
-    source_commit: "eba705f415f05c754578ab42bd7c38efdbaa7593"
+    source_commit: "aa8353eff658b60dbfe8bf3979f7e89015994b61"
     focused_independent_source_audit: PASS_P0_0_P1_0
     canonical_command: "CI=1 TURBO_FORCE=true pnpm verify"
     canonical_status: PASS_EXIT_0
     control_plane_tests: PASS_431_OF_431
-    script_tests: PASS_EXACT_COUNT_NOT_RECORDED
+    script_tests: PASS_506_OF_506
     installed_chrome_tests: PASS_44_OF_44
     inherited_historical_counts_forbidden: true
     provider_calls: 0
@@ -1058,13 +1058,17 @@ provider_free_product_progress:
   hosted_v209_second_replacement_read_only_preflight_proposal_sha256: "sha256:5e8d10d8d5e5e83a2d8ca4cfd6162983cdcdd5d4684441dacf52d32f2c48a3c2"
   hosted_v209_second_replacement_read_only_preflight_status: CONSUMED_FAILED_CLEAN_SERVERLESS_RATE_CATALOG_NO_PROOF
   hosted_v209_second_replacement_read_only_preflight_note: "The exact second-replacement authority was consumed once at 263775af. It securely read the configured credential once, made exactly one read-only RunPod account GraphQL POST, six authenticated RunPod GETs, and anonymous GHCR reads, then failed closed with V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_RATE_CATALOG before proof emission. The output file was mode-0600 and zero bytes; the detached worktree and temporary directory were removed. The generic code permits catalog container, exact-GPU cardinality, price.flex, EU-RO-1 cardinality, or availability failure; no raw catalog was persisted, so none is claimed as observed. No mutation, job POST, DB/R2 call, GPU, or spend occurred. No redispatch or further provider read is authorized pending fresh exact replacement approval."
+  hosted_v209_third_replacement_read_only_preflight_source: "eba705f415f05c754578ab42bd7c38efdbaa7593"
+  hosted_v209_third_replacement_read_only_preflight_proposal_sha256: "sha256:d36a9022a3acf25fde7c650eab44fb64a779be6ac4e316ebd6ae14ce8a4b1b28"
+  hosted_v209_third_replacement_read_only_preflight_status: CONSUMED_FAILED_CLEAN_SERVERLESS_FLEX_RATE_NO_PROOF
+  hosted_v209_third_replacement_read_only_preflight_note: "The exact third-replacement authority was consumed once at eba705f4. It securely read the configured credential once, made exactly one read-only RunPod account GraphQL POST, six authenticated RunPod GETs, and anonymous GHCR reads, then failed closed with V2_13_FULL_LIVE_ADAPTER_RUNPOD_MUTATION_ADMISSION_RATE_CATALOG_RATE before proof emission. The output file was mode-0600 and zero bytes; the detached worktree and temporary directory were removed. The categorical code proves only a price.flex rate-shape failure; no raw catalog was persisted, so a fixed-scale trailing-zero string is the strongest provider-free explanation, not an observed fact. No mutation, job POST, DB/R2 call, GPU, or spend occurred. No redispatch or further provider read is authorized pending fresh exact fourth-replacement approval."
   hosted_v209_frozen_script_fixture_commit: "aea6f74886b4cda72526dbbd0b6dc9dac3dfd4a6"
   hosted_v209_frozen_script_fixture_status: HISTORICAL_PASS_498_OF_498_AT_CC74BA4A
-  hosted_v209_frozen_script_fixture_note: "The historical canonical provider-free gate at cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d reverified 498/498 script tests at migration head 0080. Catalog repair source eba705f4 independently passed its canonical gate at migration head 0084. Consumed V2-13 authority remains pinned to its historical scope."
+  hosted_v209_frozen_script_fixture_note: "The historical canonical provider-free gate at cc74ba4a7e97fbcfbdb4a2481d3ce0b795426e4d reverified 498/498 script tests at migration head 0080. Padded-flex repair source aa8353ef independently passed its canonical gate with 506/506 script tests at migration head 0084. Consumed V2-13 authority remains pinned to its historical scope."
   remaining_provider_free_activation_blockers:
-    - independent_context_audit_for_canonical_green_catalog_repair_source_eba705f4
-    - fresh_exact_third_replacement_approval_for_one_bounded_read_only_preflight
-    - execute_one_third_replacement_bounded_read_only_preflight_and_record_current_redacted_facts
+    - independent_context_audit_for_canonical_green_padded_flex_repair_source_aa8353ef
+    - fresh_exact_fourth_replacement_approval_for_one_bounded_read_only_preflight
+    - execute_one_fourth_replacement_bounded_read_only_preflight_and_record_current_redacted_facts
     - fresh_exact_v2_09_deployment_and_spend_proposal_and_user_approval
   production_activation_requirements:
     - exact_clean_source_push_after_user_approval
@@ -1078,8 +1082,8 @@ provider_free_product_progress:
     - internal_network_log_database_runpod_r2_lineage_cost_and_failure_monitoring
     - terminal_jobs_zero_active_workers_and_failure_cleanup_with_only_existing_volumes_retained
   remaining_live_blockers:
-    - independent_context_audit_for_canonical_green_catalog_repair_source_eba705f4
-    - fresh_exact_third_replacement_read_only_preflight_approval_and_execution
+    - independent_context_audit_for_canonical_green_padded_flex_repair_source_aa8353ef
+    - fresh_exact_fourth_replacement_read_only_preflight_approval_and_execution
     - fresh_exact_v2_09_authority
     - production_deployment_and_real_chrome_e2e
   batch3_through_batch6_note: "Provider-free release source e2f4d629 is the evidence-only child of independently audited application code 0124d8a and remains default NO_ACTION across the exact 26-operation graph. Prior proposal sha256:6cf20ed...d5d99 at 557bb861 was consumed once under authority record 909c977, failed before normal work, and completed cleanup-only with zero mutation and zero spend; that authority is terminal and non-reusable. Fresh proposal sha256:14116dc6...3e46 awaits its exact proposal-record commit, independent audit, and fresh exact approval. Materialization facts are sha256:7baeb86c...c6471 with UUID 8c08f1f8-a15d-4197-a752-2f03b2404bce and the static descriptor self-hash is sha256:2b56d003...842d8. Production remains DISABLED_UNQUALIFIED and undeployed."
@@ -6140,10 +6144,10 @@ provider_authority: &v2_09_provider_authority_read_only
   provider: null
   cap_usd: 0
   non_transferable: true
-  source: "263775afcf3fdaa701587d4bd5480a7782adf18c"
+  source: "eba705f415f05c754578ab42bd7c38efdbaa7593"
   authorized_by_user_at: "2026-09-07"
-  proposal_sha256: "sha256:5e8d10d8d5e5e83a2d8ca4cfd6162983cdcdd5d4684441dacf52d32f2c48a3c2"
-  authority: "Exact V2-09 second replacement bounded read-only preflight consumed by one failed-closed Serverless rate-catalog execution; a third replacement is not authorized."
+  proposal_sha256: "sha256:d36a9022a3acf25fde7c650eab44fb64a779be6ac4e316ebd6ae14ce8a4b1b28"
+  authority: "Exact V2-09 third replacement bounded read-only preflight consumed by one failed-closed Serverless price.flex rate execution; a fourth replacement is not authorized."
   authority_sha256: null
   consumed: true
   reusable: false
@@ -6161,10 +6165,10 @@ provider_authority: &v2_09_provider_authority_read_only
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_read_only_preflight_catalog_repair_canonical_green_pending_context_audit_and_third_replacement_approval
-  status: READ_ONLY_PREFLIGHT_CATALOG_REPAIR_CANONICAL_GREEN_PENDING_CONTEXT_AUDIT_AND_THIRD_REPLACEMENT_APPROVAL
+  milestone: v2_09_read_only_preflight_padded_flex_repair_canonical_green_pending_context_audit_and_fourth_replacement_approval
+  status: READ_ONLY_PREFLIGHT_PADDED_FLEX_REPAIR_CANONICAL_GREEN_PENDING_CONTEXT_AUDIT_AND_FOURTH_REPLACEMENT_APPROVAL
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
-  authorization_status: second_replacement_bounded_read_only_preflight_consumed_third_replacement_not_authorized
+  authorization_status: third_replacement_bounded_read_only_preflight_consumed_fourth_replacement_not_authorized
   task_stage: read_only_preflight
   current_goal_authority: null
   current_goal_authority_sha256: null
@@ -6215,7 +6219,7 @@ recommended_next_task:
   authorized_operations: *v2_09_read_only_operations
   allowed_operations: *v2_09_read_only_operations
   rate_snapshot: []
-  authority_note: "The initial V2-09 bounded read-only preflight failed closed on GHCR descriptor uniqueness. Exact replacement proposal 67b08992 was consumed once at 7697707e and failed closed on GHCR blob-redirect shape. Exact second-replacement proposal 5e8d10d8 was consumed once at 263775af and failed closed on the generic Serverless rate-catalog gate before proof emission; no raw catalog was persisted, so the exact failing branch is not claimed. Each execution stayed within its approved read-only calls. No further provider read, credential access, deployment, endpoint/template/volume/R2/database mutation, provider job POST, GPU use, or spend is authorized. After independent context audit of canonical-green catalog repair source eba705f415f05c754578ab42bd7c38efdbaa7593, fresh exact third-replacement approval is required for one bounded read-only preflight from a clean detached or separate worktree at that executable source."
+  authority_note: "The initial V2-09 bounded read-only preflight failed closed on GHCR descriptor uniqueness. Exact replacement proposal 67b08992 failed closed on GHCR blob-redirect shape; exact second-replacement proposal 5e8d10d8 failed on the generic Serverless catalog gate; exact third-replacement proposal d36a9022 failed on the price.flex rate category. Each was consumed once at its exact source, stayed within its approved read-only calls, emitted no proof, and performed no mutation, job POST, GPU use, or spend. No raw catalog was persisted, so the fixed-scale trailing-zero explanation is inferred rather than observed. No further provider read, credential access, deployment, endpoint/template/volume/R2/database mutation, provider job POST, GPU use, or spend is authorized. After independent context audit of canonical-green padded-flex repair source aa8353eff658b60dbfe8bf3979f7e89015994b61, fresh exact fourth-replacement approval is required for one bounded read-only preflight from a clean detached or separate worktree at that executable source."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: null
   successor_proposal_sha256: null
@@ -6225,8 +6229,8 @@ recommended_next_task:
   superseded_authority_execution_commit: cde3515faf4a8581a83132cd7a8cb296980bd9ff
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: provider_free_catalog_normalizer_repair_canonical_green_context_audit_pending
-  execution_blocker: third_replacement_read_only_preflight_requires_independent_context_audit_and_fresh_exact_approval
+  execution_status: provider_free_padded_flex_rate_repair_canonical_green_context_audit_pending
+  execution_blocker: fourth_replacement_read_only_preflight_requires_independent_context_audit_and_fresh_exact_approval
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
