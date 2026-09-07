@@ -455,11 +455,11 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_authority_state: none
-    current_proposal_sha256: null
-    current_control_source_commit: null
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-role-preflight-replacement.json"
+    current_authority_sha256: "sha256:3e90df9428cda50a2b1c0c43ef2c4a8bcf2210ce75d8e1523f00c8e1de295235"
+    current_authority_state: approved_materialized_pending_independent_diff_audit
+    current_proposal_sha256: "sha256:7ecd9929c7cedc663c96b690c6944e7ef826f51a2f2f356e00acfe000cf9751f"
+    current_control_source_commit: "371aee61ff3a8f14d6cb4f564079f9eba64a42b4"
     current_failure: null
     current_failure_sha256: null
     current_audit_stop: null
@@ -471,7 +471,7 @@ gates:
     latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-pg-role-suffix.json"
     latest_closed_failure_sha256: "sha256:3e8f0a1898a3a23b869972e119780879f03afdd19cf7fdb5f95949353b0fbc2f"
     provider_free_repair_state: "PG repair 6b2d2e91 remains green. Role-plan repair 6cc1dc20 validates exact SHA-256 authority-derived roles before state claim, credential read, or provider preflight and reuses the validator for materialization and cleanup. Focused suites pass 120/120 and independent design audit is GO P0=0/P1=0. Stage 6/7 were untouched."
-    next_gate: "Commit final context, recompute the exact source-bound bundle, seal and independently audit one fresh proposal, then obtain fresh exact approval; never replay consumed f9d40174."
+    next_gate: "Independently audit the single 7ecd9929 authority-materialization successor, then run the approved combined activation and one Chrome E2E."
 
   GATE_RANGA_001:
     status: open
