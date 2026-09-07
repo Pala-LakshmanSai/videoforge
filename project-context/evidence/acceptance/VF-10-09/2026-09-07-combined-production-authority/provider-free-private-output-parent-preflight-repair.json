@@ -5,7 +5,8 @@
     "f0dac6df4eb8f7209e5bdb5e9ee2eeae6ef9d1eb",
     "0117cb1c26003714616bdd9f02584ff025d803e7",
     "0f4ed8dde449051c7d67d8e36ed67d49f737fca0",
-    "dcd4c146023dfed996271d7f4da3afe39045bdfa"
+    "dcd4c146023dfed996271d7f4da3afe39045bdfa",
+    "eb113e44fc661b259ec0c06039c643a802714884"
   ],
   "closed_authority": "v2-09-7ecd9929c7cedc66",
   "closed_failure_evidence_sha256": "sha256:2b399ba3aaf71f58162a5ac1a0ec9c751e447dc67333ddeb685e3b7b6c825ce5",
@@ -14,10 +15,10 @@
   "directory_creation_policy": "NO_ARBITRARY_OR_RECURSIVE_DIRECTORY_CREATION",
   "focused_tests": {
     "combined_executor_passed": 29,
-    "chrome_bootstrap_passed": 21,
+    "chrome_bootstrap_passed": 22,
     "media_worker_operator_passed": 35,
     "protected_materializer_passed": 11,
-    "total_passed": 96,
+    "total_passed": 97,
     "failed": 0
   },
   "independent_design_audit": {

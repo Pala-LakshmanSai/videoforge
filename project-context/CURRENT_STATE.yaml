@@ -28,7 +28,7 @@ current_goal_boundary:
   v2_07_action: "Frozen qualified predecessor only. Attempt85 is consumed and its activation authority remains null; no V2-07 source or live rerun is permitted by this task."
   provider_free_product_action: "The current provider-free repair removes the maximum-spend input and client field from every hosted project, persists NULL unlimited project limits through migration 0086, retains exact cost accounting/reservations/settlement, and separates exact authenticated RTX 4090 EU-RO-1 LOW-or-better availability from the guarded official RunPod pricing-page rate of USD 0.00031/second and USD 1.116/hour. Release authority remains a separate finite source-bound cap. Stage 6 and Stage 7 were not modified or rerun."
   v2_08_prior_publication_attempt: "Proposal 4d4b7cff and execution control cc35866c remain consumed. The approved replacement published one new immutable image f3b1d141 from source 73181707 in workflow run 34022737122; anonymous manifest/config/all-blob/source proof 9929d19d passed."
-  note: "Proposal 7ecd9929 and authority v2-09-7ecd9929c7cedc66 are consumed FAILED_CLEAN after exact preflight and baseline. Missing authority-private secrets parent stopped protected-input materialization before role creation; cleanup tombstone is CLEANED and no deployment, GPU, provider POST, Stage 6/7 action, or spend occurred. Provider-free preclaim readiness repairs pass 96/96 and independent audit GO P0=0/P1=0; clean reseal and fresh exact approval remain."
+  note: "Proposal 7ecd9929 and authority v2-09-7ecd9929c7cedc66 are consumed FAILED_CLEAN after exact preflight and baseline. Missing authority-private secrets parent stopped protected-input materialization before role creation; cleanup tombstone is CLEANED and no deployment, GPU, provider POST, Stage 6/7 action, or spend occurred. Provider-free preclaim readiness repairs pass 97/97 and independent audit GO P0=0/P1=0; clean reseal and fresh exact approval remain."
 
 v2_09_provider_free_candidate:
   source_commit: "dc6ef647fb35602333f92a4191a3071c426386b9"
@@ -6248,7 +6248,7 @@ recommended_next_task:
       billing_unit: gpu_hour
       usd_per_unit: 1.116
       checked_at: "2026-09-07"
-  authority_note: "Proposal 7ecd9929 and authority v2-09-7ecd9929c7cedc66 are consumed FAILED_CLEAN and non-reusable. Missing authority-private secrets parent stopped before role creation; authority-bound cleanup completed with no deployment/GPU/provider POST/Stage 6/7/spend. Provider-free preclaim readiness repairs pass 96/96 and independent audit GO P0=0/P1=0; clean reseal and fresh exact approval remain."
+  authority_note: "Proposal 7ecd9929 and authority v2-09-7ecd9929c7cedc66 are consumed FAILED_CLEAN and non-reusable. Missing authority-private secrets parent stopped before role creation; authority-bound cleanup completed with no deployment/GPU/provider POST/Stage 6/7/spend. Provider-free preclaim readiness repairs pass 97/97 and independent audit GO P0=0/P1=0; clean reseal and fresh exact approval remain."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
   successor_proposal_path: null
   successor_proposal_sha256: null
@@ -6267,9 +6267,9 @@ recommended_next_task:
   role_preflight_repair_commit: "6cc1dc2081ffd659643806f84e75ee819b5ed39b"
   role_preflight_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-authority-role-preflight-repair.json
   role_preflight_repair_validation: "FOCUSED_120_OF_120_AND_INDEPENDENT_DESIGN_GO_P0_0_P1_0"
-  preclaim_readiness_repair_commits: ["f0dac6df4eb8f7209e5bdb5e9ee2eeae6ef9d1eb", "0117cb1c26003714616bdd9f02584ff025d803e7", "0f4ed8dde449051c7d67d8e36ed67d49f737fca0", "dcd4c146023dfed996271d7f4da3afe39045bdfa"]
+  preclaim_readiness_repair_commits: ["f0dac6df4eb8f7209e5bdb5e9ee2eeae6ef9d1eb", "0117cb1c26003714616bdd9f02584ff025d803e7", "0f4ed8dde449051c7d67d8e36ed67d49f737fca0", "dcd4c146023dfed996271d7f4da3afe39045bdfa", "eb113e44fc661b259ec0c06039c643a802714884"]
   preclaim_readiness_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-private-output-parent-preflight-repair.json
-  preclaim_readiness_repair_validation: "FOCUSED_96_OF_96_AND_INDEPENDENT_GO_P0_0_P1_0"
+  preclaim_readiness_repair_validation: "FOCUSED_97_OF_97_AND_INDEPENDENT_GO_P0_0_P1_0"
   execution_blocker: fresh_exact_source_bound_approval_required
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 

@@ -470,7 +470,7 @@ gates:
     latest_closed_control_source_commit: "371aee61ff3a8f14d6cb4f564079f9eba64a42b4"
     latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-missing-secrets-directory.json"
     latest_closed_failure_sha256: "sha256:2b399ba3aaf71f58162a5ac1a0ec9c751e447dc67333ddeb685e3b7b6c825ce5"
-    provider_free_repair_state: "Preclaim repairs f0dac6df, 0117cb1c, 0f4ed8dd, and dcd4c146 validate exact clean source, every protected output parent, content-bound 30-60s voiceover, exact private Wrangler environment, and local media-worker readiness before authority claim. Focused suites pass 96/96 and independent audit is GO P0=0/P1=0. Stage 6/7 were untouched."
+    provider_free_repair_state: "Preclaim repairs f0dac6df, 0117cb1c, 0f4ed8dd, dcd4c146, and eb113e44 validate exact clean source, every protected output parent, content-bound 30-60s voiceover with stable streamed-packet duration, exact private Wrangler environment, and local media-worker readiness before authority claim. Focused suites pass 97/97 and independent audit is GO P0=0/P1=0. Stage 6/7 were untouched."
     next_gate: "Seal and independently audit one clean source/bundle/proposal, then obtain fresh exact approval for the combined activation and one Chrome E2E."
 
   GATE_RANGA_001:
