@@ -457,11 +457,11 @@ gates:
     result: open_no_real_hosted_end_to_end_project
     current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority.json"
     current_authority_sha256: "sha256:198f5d578c641cddeb90e62f1eabfa44d774196b56d6620039e3e860bf9ae9f1"
-    current_authority_state: materialized_pending_independent_diff_audit
+    current_authority_state: consumed_failed_clean_rate_catalog_flex_missing
     current_proposal_sha256: "sha256:d9703df5651be2e58523d8f8bc88d2a030b6c93d7dd48488b8274d0040cdd1f9"
     current_control_source_commit: "5442eb77795c9319be01162ddec7a82d7e7bbb0d"
-    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-preflight-key-path.json"
-    current_failure_sha256: "sha256:33909336a593c48d58dd9a382f70e94a4032d32bac3684bb9451b6ed13098a4a"
+    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-flex-missing.json"
+    current_failure_sha256: "sha256:431dd71c90e9399d6c8bbc3dbce1841ac10c6011295d431211958010fe26b984"
 
   GATE_RANGA_001:
     status: open
