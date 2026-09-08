@@ -415,9 +415,10 @@ async function runCancellableChildProcess({
   if (cancellationSignal?.aborted === true) fail(cancellationCode);
 
   let child;
+  const { input, ...spawnOptions } = options;
   try {
     child = spawn(command, args, {
-      ...options,
+      ...spawnOptions,
       detached: true,
       encoding: undefined,
     });
@@ -434,6 +435,7 @@ async function runCancellableChildProcess({
   let terminalReason = null;
   let childError = null;
   let closed = false;
+  let inputPending = input !== undefined;
   let killTimer;
   const maximumBytes = options.maxBuffer ?? 4 * 1024 * 1024;
   const capture = (chunks, kind) => (value) => {
@@ -472,12 +474,21 @@ async function runCancellableChildProcess({
     terminate("SIGTERM");
   }, timeoutMs);
 
-  return await new Promise((resolveResult, rejectResult) => {
+  const result = new Promise((resolveResult, rejectResult) => {
     child.once("error", (error) => {
       childError = error;
     });
     child.once("close", (status, signal) => {
       closed = true;
+      if (inputPending) {
+        terminalReason ??= "execution";
+        inputPending = false;
+        try {
+          child.stdin?.destroy?.();
+        } catch {
+          // The public failure remains the fixed execution code.
+        }
+      }
       clearTimeout(timeout);
       clearTimeout(killTimer);
       cancellationSignal?.removeEventListener("abort", requestCancellation);
@@ -503,6 +514,33 @@ async function runCancellableChildProcess({
       );
     });
   });
+  if (input !== undefined) {
+    if (child.stdin === null || typeof child.stdin?.end !== "function") {
+      terminalReason ??= "execution";
+      inputPending = false;
+      terminate("SIGTERM");
+    } else {
+      child.stdin.once("error", () => {
+        terminalReason ??= "execution";
+        inputPending = false;
+        terminate("SIGTERM");
+      });
+      try {
+        child.stdin.end(input, (error) => {
+          inputPending = false;
+          if (error !== undefined && error !== null) {
+            terminalReason ??= "execution";
+            terminate("SIGTERM");
+          }
+        });
+      } catch {
+        terminalReason ??= "execution";
+        inputPending = false;
+        terminate("SIGTERM");
+      }
+    }
+  }
+  return await result;
 }
 
 /** Hash the closed Wrangler dry-output tree, never Wrangler's console text. */

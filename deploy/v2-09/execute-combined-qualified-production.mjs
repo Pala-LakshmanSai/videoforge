@@ -1674,6 +1674,8 @@ function postgresEnvironment(databaseUrl, path) {
   };
 }
 
+const BOUNDED_PSQL_TIMEOUT_MS = 60_000;
+
 async function psqlJson(configuration, urlFile, sql) {
   const { spawnSync } = await import("node:child_process");
   const databaseUrl = securePrivateText(urlFile, "V2_09_COMBINED_DATABASE_URL_INVALID");
@@ -1685,6 +1687,7 @@ async function psqlJson(configuration, urlFile, sql) {
       encoding: "utf8",
       env: postgresEnvironment(databaseUrl, configuration.environment.PATH),
       input: sql,
+      timeout: BOUNDED_PSQL_TIMEOUT_MS,
     },
   );
   if (result.status !== 0) fail("V2_09_COMBINED_BASELINE_READ_FAILED");
@@ -1705,6 +1708,7 @@ async function psqlJsonWithUrl(configuration, databaseUrl, sql) {
       encoding: "utf8",
       env: postgresEnvironment(databaseUrl, configuration.environment.PATH),
       input: sql,
+      timeout: BOUNDED_PSQL_TIMEOUT_MS,
     },
   );
   if (result.status !== 0) fail("V2_09_COMBINED_BASELINE_READ_FAILED");
@@ -1832,6 +1836,7 @@ function createLiveMaterializer(
           encoding: "utf8",
           env,
           input: sql,
+          timeout: BOUNDED_PSQL_TIMEOUT_MS,
         });
         if (result.status !== 0) fail("V2_09_COMBINED_ROLE_CLEANUP_FAILED");
       },
@@ -1887,7 +1892,13 @@ function createLiveMaterializer(
             const result = spawnSync(
               "psql",
               ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--quiet"],
-              { cwd: configuration.root, encoding: "utf8", env, input: sql },
+              {
+                cwd: configuration.root,
+                encoding: "utf8",
+                env,
+                input: sql,
+                timeout: BOUNDED_PSQL_TIMEOUT_MS,
+              },
             );
             if (result.status !== 0) fail("V2_09_COMBINED_ROLE_MATERIALIZATION_FAILED");
           },
