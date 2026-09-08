@@ -455,12 +455,12 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_private_authority_sha256: null
-    current_authority_state: "ca118_consumed_FAILED_CLEAN17_of_26_retained_disabled_worker_two_workflows"
-    current_proposal_sha256: null
-    current_control_source_commit: "cb35713513f39fcc2b4e49b1628cbcbdddeb76f4"
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-retained-disabled-baseline-replacement.json"
+    current_authority_sha256: "sha256:6511d1909b05b4fbcaf09f8ca3973b7043db09378acabc0edd660f73d2ce50c9"
+    current_private_authority_sha256: "sha256:227be85a37864a44d2511ad42b4e36db4eba87616e623523ec876425bfaa78ab"
+    current_authority_state: "exact_cfe842_approved_pending_materialized_audits"
+    current_proposal_sha256: "sha256:cfe84272094767896164e137c3d63f9c58f3e0bd6106156d6497b8ea9b89959f"
+    current_control_source_commit: "69d343171e8226f1df948bf1da7d542b1e340935"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-release-recovered-secret-cleanup.json"
     current_failure_sha256: "sha256:fdf35a7a704f9416cc621747935bc19c2cf97ef72cc1dda76e63f3676492b7ff"
     current_audit_stop: null
@@ -487,7 +487,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7.7candidate69d34317 verified19+1tests independentGO; exact successor proposal sealpending;9.8pending."
+    next_gate: "9.7.6DONE;9.7.7productiondeploymentACTIVE;9.7.8postimportreadinesspending;9.8/9.9pending."
 
   GATE_RANGA_001:
     status: open

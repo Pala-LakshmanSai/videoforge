@@ -1,0 +1,42 @@
+{
+  "schema_version": "videoforge.v2-09-approved-authority-handoff/v1",
+  "authority_id": "v2-09-cfe8427209476789",
+  "source_commit": "69d343171e8226f1df948bf1da7d542b1e340935",
+  "proposal_sha256": "sha256:cfe84272094767896164e137c3d63f9c58f3e0bd6106156d6497b8ea9b89959f",
+  "private_authority_sha256": "sha256:227be85a37864a44d2511ad42b4e36db4eba87616e623523ec876425bfaa78ab",
+  "materialization_plan_sha256": "sha256:cc0a096fbb0e677d3a36a5d2476a457aebdd0ea57f6fbb5d49cce5f28236f046",
+  "source_proposal_audits": "TWO_GO_P0_0_P1_0",
+  "materialized_authority_audits": "PENDING_TWO_INDEPENDENT_AUDITS",
+  "approval": "EXPLICIT_EXACT_USER_APPROVAL",
+  "checkpoint": 9,
+  "subcheckpoint": "9.7",
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN",
+  "cap_usd": 2,
+  "completion_ceiling_usd": 17.5,
+  "single_chrome_e2e": true,
+  "superseded_d6": "UNCLAIMED_PRECLAIM_BLOCKED_SUPERSEDED_NOT_CONSUMED",
+  "execution_state": "APPROVED_PENDING_MATERIALIZED_AUDITS",
+  "prior_cb7": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "prior_492": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "cloudflare_runtime_path": "NATIVE_CONFIGURED_RUNTIME_PATH_REQUIRED",
+  "continuing_user_authorization": {
+    "user_instruction": "you don't have to ask any approval tto me, just get the tasks done, remember this, don't ask any approvalls, just move forward and get ittt done",
+    "scope": "CURRENT_V2_09_9_7_SINGLE_9_8_AND_9_9",
+    "authorized_continuation": [
+      "bounded repairs",
+      "source reseals",
+      "new fresh source-bound authorities",
+      "combined production deployment",
+      "single authorized Chrome E2E",
+      "cleanup and manual-testing readiness"
+    ],
+    "repeat_approval_prompts_required": false,
+    "constraints": [
+      "Existing numeric caps remain enforced",
+      "Stage6/7 remain frozen",
+      "No consumed authority replay",
+      "Every successor uses fresh exact source-bound authority"
+    ],
+    "precedence": "Explicit current user instruction overrides older repeated-approval requirements within this scope"
+  }
+}

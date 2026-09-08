@@ -4,6 +4,13 @@
 
 ### Current new-chat launch point — 2026-09-08
 
+The user explicitly authorized continuing this V2-09 scope without further approval prompts:
+bounded repairs, reseals, fresh source-bound authorities and deployment through9.7, the single9.8
+Chrome E2E, and9.9 cleanup/readiness. Existing numeric caps, frozen Stage6/7 and no consumed-authority
+replay remain mandatory. This instruction overrides older repeated-approval requirements below.
+
+**9.7.7 ACTIVE — exactcfe842 approved:** source `69d343171e8226f1df948bf1da7d542b1e340935`; fresh artifact/runtime checks precede launch. Cap USD2; completion ceiling USD17.5. Approval: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-retained-disabled-baseline-replacement.json` (`sha256:6511d1909b05b4fbcaf09f8ca3973b7043db09378acabc0edd660f73d2ce50c9`).9.7.8/9.8pending.
+
 **9.7.7 remains ACTIVE:**ca118 is consumed `FAILED_CLEAN` at17/26. Cleanup verified zero
 secrets,27 protected outputs/roles cleaned,two inactive DB bindings and three zero-compute reads.
 The disabled Worker and two workflows remain retained; they are not absent. No qualified deploy,
@@ -11,8 +18,8 @@ media installation or Chrome E2E occurred. Closure: `evidence/acceptance/VF-10-0
 Candidate `69d343171e8226f1df948bf1da7d542b1e340935` passes19 Cloudflare tests plus1 targeted
 old-source route test and independent audit GO. Exact retained-baseline adoption, valid deletion,
 safe diagnostics and bounded readbacks preserve no mutation retry. Evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-retained-disabled-baseline-repair.json` (`sha256:2fd87c00dc2324275a9cbd81bceab207a4de301e1a2725cd5a879fe8bc2f54ab`).
-Exact successor proposal sealing is pending.
-No current authority or successor proposal is claimed.9.7.1–6 remain DONE;9.7.8/9.8/9.9pending.
+The exact successor is approved above.
+Current cfe842 authority is recorded above.9.7.1–6 remain DONE;9.7.8/9.8/9.9pending.
 Stage6/7 remain frozen QUALIFIED_PASS_CLEAN and untouched.
 
 
