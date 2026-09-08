@@ -4,32 +4,32 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_postdeploy_heartbeat_combined_activation
+current_milestone: v2_09_postdeploy_heartbeat_failed_clean_endpoint_secrets
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: failed_clean_stop
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: true
-credential_access_authorized: true
-gpu_use_authorized: true
-maximum_external_spend_usd: 2
+remote_or_cloud_mutations_authorized: false
+credential_access_authorized: false
+gpu_use_authorized: false
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_approved_postdeploy_heartbeat_combined_activation
-  live_provider_calls: "Exact single-use 436b authority only; all prior authorities remain consumed."
-  remote_mutation: true
-  deployment_or_publication: "Exact combined deployment and immutable release adoption only; installation follows qualified readback. No publication."
-  credential_value_access: "Exact pre-staged protected inputs only; owner credentials isolated to read-only heartbeat psql."
-  paid_requests_or_spend: "USD 2 incremental cap and USD 17.50 completion ceiling; pre-mutation baseline at most USD 15.50."
-  runpod_mutation_or_gpu: "One Mage and one SoulX RTX 4090 EU-RO-1 lane, workersMin=0 workersMax=1, one POST each, zero redispatch."
+  mode: v2_09_failed_clean_endpoint_secrets_exact_stop
+  live_provider_calls: "No executable authority exists; 436b is consumed FAILED_CLEAN and non-reusable."
+  remote_mutation: false
+  deployment_or_publication: "No further deployment or publication authorized; none reached under 436b."
+  credential_value_access: "No further credential access authorized."
+  paid_requests_or_spend: "Posted billing unchanged at closure; delayed lane startup charges remain unproven. No further spend authorized."
+  runpod_mutation_or_gpu: "Both exact endpoints/templates deleted; three zero-compute reads passed, two sealed volumes unchanged."
   v2_07_action: "Stage 6 and Stage 7 frozen QUALIFIED_PASS_CLEAN; zero modifications or reruns."
-  current_checkpoint: "9.7 activation starting; 1-8 and 9.1-9.6 finished; 9.8 and 9.9 pending."
-  authority_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-postdeploy-heartbeat-replacement.json"
-  authority_evidence_sha256: "sha256:bc86c43a54389a4fbd07c9fa7b6689fdf9b465aa8ee93a3aeecdf397eda13d5a"
-  note: "Existing two sealed 50 GB volumes only, USD 7/month existing retention consent. Exact approved stop conditions require cleanup-only recovery; success not yet claimed."
+  current_checkpoint: "9.7 active at exact endpoint-secrets stop; 1-8 and 9.1-9.6 finished; 9.8 and 9.9 pending."
+  closure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-postdeploy-heartbeat-endpoint-secrets.json"
+  closure_evidence_sha256: "sha256:4ebb569bd4a3198f1770f74dc4391b8f433b78a5ba47e1007781711aa569951f"
+  note: "14/26 completed; initial error masked by cleanup failure. Manual audited cleanup proved exact2 inactive rows, DB86/86, zero temporary roles/sessions and 27 protected files removed. No repair or replay."
 
 v2_09_provider_free_candidate:
   heartbeat_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-postdeploy-heartbeat-repair.json"
@@ -57,8 +57,8 @@ v2_09_provider_free_candidate:
   cloudflare_secret_boundary: "All exact production secret bytes are snapshotted and hash-bound before any Cloudflare mutation; production stays DISABLED_UNQUALIFIED until an approved qualified activation."
   media_worker_release: "media-worker-v0.1.15 is published immutable from exact source b897fc6d by successful workflow run 34178343261; it is not installed or activated and was adopted/read back under consumed e77c authority; install heartbeat failed and app 0.1.14 was restored."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
-  provider_state: "Authorities through af93a237 are consumed and non-reusable. e77c is consumed FAILED_CLEAN with zero incremental spend; 436b single-use activation is approved and starting."
-  current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-postdeploy-heartbeat-replacement.json"
+  provider_state: "436b consumed FAILED_CLEAN; prior authorities non-reusable. Zero compute proved; posted billing unchanged, delayed startup charges unproven."
+  current_authority: null
   concrete_reconciler_path_failure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-concrete-reconciler-path-binding.json"
   concrete_reconciler_path_failure_evidence_sha256: "sha256:5031d8e651d132ef9e57167190fdb9e858cfceca054cf1d625d2e8bd5a356ef0"
   concrete_reconciler_path_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-concrete-reconciler-path-binding-repair.json"
@@ -4166,10 +4166,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: production
-  provider_calls_authorized: true
-  authorized_spend_usd: 2
-  provider_authority_scope: exact_436b_single_use_combined_activation
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: none_consumed_failed_clean
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -6259,8 +6259,8 @@ provider_authority_consumed_reconciler_secret_output: &v2_09_provider_authority_
       checked_at: "2026-09-07"
 
 provider_authority: &v2_09_provider_authority_current
-  mode: paid
-  provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
+  mode: none
+  provider: null
   historical_provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
   cap_usd: 2
   historical_cap_usd: 2
@@ -6273,14 +6273,14 @@ provider_authority: &v2_09_provider_authority_current
   private_authority_sha256: "sha256:5e76f653e78ba3b99189423a7b2a80e75ea6efbc9130bdd12d09a3ab363047d0"
   consumed: true
   reusable: false
-  provider_calls_authorized: true
-  provider_mutations_authorized: true
-  credential_access_authorized: true
-  gpu_use_authorized: true
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  credential_access_authorized: false
+  gpu_use_authorized: false
   actual_spend_usd: null
-  resources: ["videoforge-production-runtime", "media-worker-v0.1.15", "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619", "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"]
-  authorized_operations: ["push-clean-source", "readback-clean-source", "apply-migrations-0074-0086", "apply-v209-grants", "publish-media-worker-0.1.15", "readback-media-worker-0.1.15", "fresh-read-only-admission", "create-mage-production-lane-max-one", "create-soulx-production-lane-max-one", "persist-qualified-production-deployments", "render-qualified-production-config", "deploy-cloudflare-disabled-bootstrap", "upload-cloudflare-production-secrets", "deploy-cloudflare-qualified-production", "readback-qualified-production", "install-media-worker-0.1.15", "import-v209-qualified-activation", "run-one-v209-chrome-e2e", "verify-private-mp4-lineage", "reconcile-v209-production-safety", "reconcile-attributable-runpod-work", "clean-v209-transient-r2", "prove-three-zero-compute-reads", "read-settled-billing", "verify-retained-resources"]
-  allowed_operations: ["push-clean-source", "readback-clean-source", "apply-migrations-0074-0086", "apply-v209-grants", "publish-media-worker-0.1.15", "readback-media-worker-0.1.15", "fresh-read-only-admission", "create-mage-production-lane-max-one", "create-soulx-production-lane-max-one", "persist-qualified-production-deployments", "render-qualified-production-config", "deploy-cloudflare-disabled-bootstrap", "upload-cloudflare-production-secrets", "deploy-cloudflare-qualified-production", "readback-qualified-production", "install-media-worker-0.1.15", "import-v209-qualified-activation", "run-one-v209-chrome-e2e", "verify-private-mp4-lineage", "reconcile-v209-production-safety", "reconcile-attributable-runpod-work", "clean-v209-transient-r2", "prove-three-zero-compute-reads", "read-settled-billing", "verify-retained-resources"]
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
   model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot + Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1_per_second
@@ -6295,32 +6295,32 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_postdeploy_heartbeat_combined_activation
-  status: APPROVED_9_7_ACTIVATION_STARTING
+  milestone: v2_09_postdeploy_heartbeat_failed_clean_endpoint_secrets
+  status: FAILED_CLEAN_9_7_ACTIVE_BLOCKED_EXACT_STOP
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
-  authorization_status: exact_436b_approved_single_use
-  task_stage: bounded_mutation
-  current_goal_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-postdeploy-heartbeat-replacement.json"
-  current_goal_authority_sha256: "sha256:bc86c43a54389a4fbd07c9fa7b6689fdf9b465aa8ee93a3aeecdf397eda13d5a"
+  authorization_status: none_consumed_failed_clean
+  task_stage: failed_clean_stop
+  current_goal_authority: null
+  current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_current
-  provider_mode: production
+  provider_mode: fixture_no_spend
   provider_free_repair_commit: "7c5206db93e21e024e60000a02e232c813d96714"
   provider_free_clean_seal_commit: "b897fc6def69db56a6d3dba43573551042843458"
   provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-child-stdin-eof-repair.json"
   provider_free_repair_validation: "exact_child_stdin_delivery_and_eof_plus_fail_closed_error_quiescence_and_four_bounded_sync_psql_paths_plus_70_of_70_focused_tests_and_three_independent_go_p0_0_p1_0"
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
-  goal: "Complete approved 9.7 activation, single 9.8 Chrome E2E, and 9.9 cleanup/lineage under exact 436b authority."
-  provider_calls_authorized: true
+  goal: "9.7 remains active at exact stop. Future repair, independent audits and fresh exact approval precede any activation; 9.8/9.9 remain pending."
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 2
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  credential_value_read_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: true
+  gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5

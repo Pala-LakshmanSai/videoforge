@@ -4,14 +4,15 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-Exact postdeploy-heartbeat proposal `sha256:436b5932315a4ce7fecdfddb4375dc833e80a5186893796fe474a5d0c431bd4c`
-is approved. Single-use authority `v2-09-436b5932315a4ce7` binds frozen clean source
-`1185dacc424efce0f55894df330d66522d4eae02`. 9.7 combined activation is starting;
-1–8 and 9.1–9.6 remain finished, 9.8/9.9 pending. Installation follows qualified Cloudflare
-readback and requires strict ONLINE with isolated owner read-only SQL. Caps: USD 2 incremental,
-USD 17.50 completion; exact RTX 4090 EU-RO-1 lanes at workersMin=0/workersMax=1, no redispatch.
-Stage 6/7 remain frozen QUALIFIED_PASS_CLEAN. e77c remains consumed FAILED_CLEAN.
-Approval evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-postdeploy-heartbeat-replacement.json`. Deployment success is not yet claimed.
+Authority `v2-09-436b5932315a4ce7` is consumed FAILED_CLEAN after 14/26 operations.
+9.7 remains active at the endpoint-secrets exact stop; 1–8 and 9.1–9.6 stay finished,
+9.8/9.9 pending. Initial failure was masked by cleanup failure. Independently audited cleanup
+deactivated both exact database rows, deleted both endpoints/templates and 27 protected files;
+three reads prove zero compute, database 86/86 and zero temporary roles/sessions.
+Posted billing was unchanged; delayed startup charges remain unproven. No Cloudflare deployment,
+media installation, Chrome E2E or provider jobs ran. Stage 6/7 remain frozen QUALIFIED_PASS_CLEAN.
+No executable authority exists; repair, independent audits and fresh exact approval are required.
+Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-postdeploy-heartbeat-endpoint-secrets.json`.
 
 ### Historical activation evidence
 
