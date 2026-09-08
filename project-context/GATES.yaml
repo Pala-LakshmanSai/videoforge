@@ -455,14 +455,14 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-bulk-secret-single-request.json"
-    current_authority_sha256: "sha256:5618b8ddb3e5c9a63b4c33c4ff4aefebe0e14a8db10b0e492c9cb8106de5daa7"
-    current_private_authority_sha256: "sha256:c095b6e31678f5cf46a5968fae77b1b2fe980914db8d01087058c68bfc51d090"
-    current_authority_state: "d640_launched_two_audits_GO_preclaim_PASS"
-    current_proposal_sha256: "sha256:d6405c6de35c038dfdfaa7cbd7f17a80105220abb7e6ab5965e8485b0cc6bba0"
+    current_authority: null
+    current_authority_sha256: null
+    current_private_authority_sha256: null
+    current_authority_state: "d640_FAILED_CLEAN18_of_26_no_new_authority"
+    current_proposal_sha256: null
     current_control_source_commit: "3c26caff046305869bb20265108bfbf976138d1c"
-    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-d8cc-route-readback.json"
-    current_failure_sha256: "sha256:44e0d4338155e59ee00702a1cd8481ed10b768e3231a03a4994cdb00d7a4fa8e"
+    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-bulk-secret-qualified-payload-preparation.json"
+    current_failure_sha256: "sha256:dc79bd1aa4901ad2d5e5a2b97b8b8031fe66c88861649919413da9b5f9c98856"
     current_audit_stop: null
     current_audit_stop_sha256: null
     provider_free_repair_state: "01773b89cleanupidempotence+safe route diagnostics22/22GO;originalroutecauseUNPROVEN"
@@ -487,7 +487,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7.7 exactd640 executionactive;9.7.8/9.8pending;continuingauthorizationnoapprovalprompt"
+    next_gate: "5097da42payloadrepair31+5PASS independentGO; freshsuccessor undercontinuingauthorization9.7.7active9.8pending"
 
   GATE_RANGA_001:
     status: open

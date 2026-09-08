@@ -1,0 +1,37 @@
+{
+  "schema_version": "videoforge.v2-09-provider-free-repair-evidence/v1",
+  "source_commit": "5097da4208847cc6ad4049b6b89168533b1844d1",
+  "checkpoint": "9.7.7",
+  "root_cause": "Generated README timestamp entered old manifest hash; renderer and immutable snapshot dry-run asset layouts differed",
+  "changes": [
+    "Exclude only exact validated Wrangler4.120 generated README metadata",
+    "Hash all remaining runtime paths, bytes and checksums",
+    "Isolated worker/index.js with sibling assets; renderer and upload use same CLI shape",
+    "No shared V2-13 hash changes"
+  ],
+  "validation": {
+    "integration_passed": 31,
+    "helper_passed": 5,
+    "independent_lineage_audit": "GO_P0_0_P1_0",
+    "actual_cli_proof_sha256": "sha256:435d1e67ab7fc9a75dce38c939012518ab5c3ef395ffca6ecbbf8ee55d771754",
+    "actual_cli_proof": {
+      "source": "3c26caff046305869bb20265108bfbf976138d1c",
+      "commands": "actual pinned Wrangler CLI deploy --no-bundle --assets --strict --dry-run; original index and isolated snapshot worker/index",
+      "runtime_hashes": [
+        "sha256:ad882e80662c1846e87fcb055cbde2d1544445d90814eb007ef69c4c592e7147",
+        "sha256:ad882e80662c1846e87fcb055cbde2d1544445d90814eb007ef69c4c592e7147"
+      ],
+      "equal": true,
+      "tamper_changes_hash": true,
+      "readme_timestamps_differ": true,
+      "helper_sha256": "dc2875ef4c4b3a50f0464dd8e671fc74fe283806d0bd4db94c7cb0db1246b15d",
+      "manifest_proof_sha256": "70725c2d780fe70321a9379103b7b4a3631819ecd74fb554d236f04981a9f950"
+    },
+    "manifest_proof_current_sha256": "sha256:7a596d1cb85bcc892cbe43cd09ed9cff8b73d599b22da57180586a116958700d",
+    "embedded_manifest_hash_resolution": "VERIFIED_ISOLATED_MANIFEST",
+    "isolated_manifest_proof_sha256": "sha256:70725c2d780fe70321a9379103b7b4a3631819ecd74fb554d236f04981a9f950"
+  },
+  "provider_calls": 0,
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN",
+  "next": "FRESH_SUCCESSOR_UNDER_CONTINUING_USER_AUTHORIZATION_NO_REPEAT_APPROVAL"
+}

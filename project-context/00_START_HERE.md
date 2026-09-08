@@ -9,26 +9,14 @@ bounded repairs, reseals, fresh source-bound authorities and deployment through9
 Chrome E2E, and9.9 cleanup/readiness. Existing numeric caps, frozen Stage6/7 and no consumed-authority
 replay remain mandatory. This instruction overrides older repeated-approval requirements below.
 
-**9.7.7 ACTIVE — d640 launched:** exactsource `3c26caff046305869bb20265108bfbf976138d1c`, twoauditsGO,
-preclaim2.236GB/runtime4.120/release200remaining52. Authority: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-bulk-secret-single-request.json` (`sha256:5618b8ddb3e5c9a63b4c33c4ff4aefebe0e14a8db10b0e492c9cb8106de5daa7`).
-USD2cap/USD17.5ceiling; continuingauthorization/noapprovalprompt;9.7.8/9.8pending.
-
-Current candidate `3c26caff046305869bb20265108bfbf976138d1c` uses one22-key PATCH plus final
-disabled deploy, strict readback, no mutation retry, full attribution and deadline clipping.
-23CF+4targeted+8helper+26consumer tests and independent audit pass. Actualworkerd23partialstates
-pass with synthetic bindings/no network; original live propagation cause remains unproven.
-Evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-bulk-secret-single-request-transition-repair.json` (`sha256:c9b708aea2963a393c8a08d2aab5cebdf6cc56b048d57752b5e136a0f997e4bb`). Bounded read-only prerequisites are allowed;
-fresh sealed execution proceeds under continuing authorization. Diagnose and iterate after another
-failure within unchanged caps/frozen boundaries; no new approval prompt.
-
-**9.7.7 ACTIVE — d8cc FAILED_CLEAN17/26:** route-readback stop cause remains UNPROVEN.
-Cloudflare final verification and27protectedoutputs/roles cleanup are complete;DB2inactive,RP3zero.
-DisabledWorker+2workflows retained,secret0. No qualified deployment or9.8success is claimed.
-Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-d8cc-route-readback.json` (`sha256:44e0d4338155e59ee00702a1cd8481ed10b768e3231a03a4994cdb00d7a4fa8e`). Repair `01773b89cb2909f5f46e0f3f7fe990af072882d5` passes22/22 focused tests
-and independent audit GO: cleanup idempotence, actual remaining-secret projection and safe granular
-route diagnostics. Evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-cloudflare-cleanup-idempotence-route-diagnostics.json` (`sha256:8e319e5bf7278469fe5706a30d1a6b7da2d088e1ba59f5ac353dca6b7689a8ad`).
-Continuing user authorization is unchanged; no repeatapproval prompts. Oldauthority normal replay
-is forbidden;9.7.8/9.8/9.9pending;Stage6/7frozen.
+**9.7.7 remains ACTIVE:**d640 FAILED_CLEAN18/26; bulk secrets passed live, qualified preparation
+stopped before mutation intent. Cleanup proved protectedoutputs/rolesclean,secret0,DB2inactive,RP3zero.
+Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-bulk-secret-qualified-payload-preparation.json` (`sha256:dc79bd1aa4901ad2d5e5a2b97b8b8031fe66c88861649919413da9b5f9c98856`). Source `5097da4208847cc6ad4049b6b89168533b1844d1`
+fixes generated README timestamp hashing and mismatched asset layout, retaining all runtime payload
+identity.31integration+5helper tests and independent audit pass; actual repeated CLI hashes match
+and payload tampering changes the hash. Repair: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-wrangler-runtime-payload-hash-repair.json` (`sha256:2cf06d41fc765b941f81d30397759df86cb61b34c98e72327b11089cf9f443fb`).
+Fresh successor pending under continuingauthorization; continue iteration without approval prompts.
+9.7.8/9.8/9.9pending;Stage6/7frozen. No new authority yet.
 
 
 ### Historical activation evidence
