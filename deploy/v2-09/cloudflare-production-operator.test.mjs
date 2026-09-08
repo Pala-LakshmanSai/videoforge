@@ -145,14 +145,19 @@ function authority(value) {
 
 function harness(
   value,
-  { failQualifiedOnce = false, mutateVersionOnce, wrongRouteVersion = false } = {},
+  {
+    failQualifiedOnce = false,
+    mutateVersionOnce,
+    wrongRouteVersion = false,
+    predecessor = null,
+  } = {},
 ) {
   const calls = [];
   const apiCalls = [];
   const sequence = [];
   const secrets = new Set();
   let activationImported = false;
-  let activeConfig = null;
+  let activeConfig = predecessor ? structuredClone(predecessor) : null;
   let activeVersion = VERSION_IDS[0];
   let deployCount = 0;
   let shouldFailQualified = failQualifiedOnce;
@@ -204,6 +209,7 @@ function harness(
       return { status: 0, signal: null, stdout: "", stderr: "" };
     }
     if (args[0] === "secret" && args[1] === "delete") {
+      assert.equal(args.includes("--force"), false);
       secrets.delete(args[2]);
       return { status: 0, signal: null, stdout: "", stderr: "" };
     }
@@ -527,7 +533,7 @@ test("executes exact disabled, 22-secret, qualified, bundle, header, and route c
     "/workers/subdomain",
     "/workers/scripts/videoforge-production-runtime/settings",
     "/workflows?page=1&per_page=100",
-    "/r2/buckets?page=1&per_page=100",
+    "/r2/buckets",
   ]);
   const wranglerArgs = mock.calls.map(({ args }) => args.slice(4));
   assert.equal(
@@ -927,6 +933,16 @@ test("presecret disabled proof rejects arbitrary configuration errors and final 
       /ROUTE_READBACK_DRIFT|FAILURE_RECONCILIATION_REQUIRED/u,
       variant,
     );
+    const recorded = JSON.parse(readFileSync(value.configuration.journalPath, "utf8"));
+    assert.equal(
+      recorded.failure.operation_code,
+      "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_READBACK_DRIFT",
+    );
+    if (variant !== "after-all-secrets")
+      assert.equal(
+        recorded.failure.cleanup_code,
+        "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_READBACK_DRIFT",
+      );
   }
 });
 
@@ -1011,5 +1027,165 @@ test("R2 inventory rejects pagination, truncation, duplicates and unknown shapes
       variant,
     );
     assert.equal(mock.calls.length, 0);
+  }
+});
+
+test("failure journal redacts unknown original and cleanup exceptions", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: async () => {
+      throw new Error("password=private-path-secret");
+    },
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  await assert.rejects(
+    executeThroughQualified(operator, authority(value)),
+    /FAILURE_RECONCILIATION_REQUIRED/u,
+  );
+  const bytes = readFileSync(value.configuration.journalPath, "utf8");
+  assert.deepEqual(JSON.parse(bytes).failure, {
+    operation_code: "UNKNOWN_ERROR",
+    cleanup_code: "UNKNOWN_ERROR",
+  });
+  assert.equal(bytes.includes("password"), false);
+  assert.equal(bytes.includes("private-path-secret"), false);
+});
+
+test("committed secret PUT permits at most three strict readbacks without repeating mutation", async () => {
+  for (const staleReads of [2, 3]) {
+    const value = fixture();
+    const mock = harness(value);
+    let injected = 0;
+    const operator = createV209CloudflareProductionOperator(value.configuration, {
+      testOnly: true,
+      fetchImpl: mock.fetchImpl,
+      oauthApiResponse: mock.oauthApiResponse,
+      snapshotUploadArtifact: mock.snapshotUploadArtifact,
+      now: () => new Date("2026-09-06T22:00:00Z"),
+      runChild: async (input) => {
+        const result = await mock.runChild(input);
+        if (input.args[4] === "versions" && mock.secrets.size === 1 && injected < staleReads) {
+          injected += 1;
+          const version = JSON.parse(result.stdout);
+          version.secret_bindings = [];
+          return { ...result, stdout: JSON.stringify(version) };
+        }
+        return result;
+      },
+    });
+    if (staleReads === 2) await executeThroughQualified(operator, authority(value));
+    else
+      await assert.rejects(
+        executeThroughQualified(operator, authority(value)),
+        /ACTIVE_VERSION_CLOSED_WORLD_DRIFT/u,
+      );
+    assert.equal(injected, staleReads);
+    const puts = mock.calls.filter(({ args }) => args[4] === "secret" && args[5] === "put");
+    assert.equal(puts.length, staleReads === 2 ? SECRET_NAMES.length : 1);
+    assert.equal(puts.filter(({ args }) => args[6] === SECRET_NAMES[0]).length, 1);
+  }
+});
+
+test("cleanup waits for zero-secret inventory without repeating DELETE", async () => {
+  const value = fixture();
+  const mock = harness(value, { failQualifiedOnce: true });
+  let deletes = 0;
+  let stale = 0;
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+    runChild: async (input) => {
+      const result = await mock.runChild(input);
+      if (input.args[4] === "secret" && input.args[5] === "delete") deletes += 1;
+      if (
+        input.args[4] === "secret" &&
+        input.args[5] === "list" &&
+        deletes === SECRET_NAMES.length &&
+        stale < 2
+      ) {
+        stale += 1;
+        return {
+          ...result,
+          stdout: JSON.stringify([{ name: SECRET_NAMES[0], type: "secret_text" }]),
+        };
+      }
+      return result;
+    },
+  });
+  await assert.rejects(
+    executeThroughQualified(operator, authority(value)),
+    /fixture unknown qualified deploy outcome/u,
+  );
+  assert.equal(deletes, SECRET_NAMES.length);
+  assert.equal(stale, 2);
+  assert.equal(
+    JSON.parse(readFileSync(value.configuration.journalPath)).state,
+    "SAFE_DISABLED_CLEAN",
+  );
+});
+
+test("only exact pinned disabled predecessor can be replaced; drift preserves it without cleanup mutation", async () => {
+  for (const drift of [false, true]) {
+    const value = fixture();
+    const previous = structuredClone(value.qualified);
+    previous.vars.VIDEOFORGE_GPU_TRANSPORT = "DISABLED_UNQUALIFIED";
+    const oldConfig = resolve(value.directory, "predecessor.json");
+    writeFileSync(oldConfig, JSON.stringify(previous), { mode: 0o600 });
+    value.configuration.predecessorBaseline = {
+      versionId: drift ? VERSION_IDS[4] : VERSION_IDS[0],
+      sourceCommit: SOURCE,
+      qualifiedConfigPath: oldConfig,
+      qualifiedConfigSha256: hash(readFileSync(oldConfig)),
+    };
+    const mock = harness(value, { predecessor: previous });
+    const operator = createV209CloudflareProductionOperator(value.configuration, {
+      testOnly: true,
+      runChild: mock.runChild,
+      fetchImpl: mock.fetchImpl,
+      snapshotUploadArtifact: mock.snapshotUploadArtifact,
+      now: () => new Date("2026-09-06T22:00:00Z"),
+      oauthApiResponse: async (input) => {
+        const response = await mock.oauthApiResponse(input);
+        const envelope = JSON.parse(response.bytes);
+        if (input.path.endsWith("/settings")) {
+          envelope.status = 200;
+          envelope.body.success = true;
+          envelope.body.result = {};
+        }
+        if (input.path.startsWith("/workflows")) {
+          envelope.body.result = value.qualified.workflows.map(({ name }) => ({ name }));
+          envelope.body.result_info.total_count = 2;
+        }
+        return { bytes: JSON.stringify(envelope) };
+      },
+    });
+    if (!drift) {
+      await executeThroughQualified(operator, authority(value));
+    } else {
+      await assert.rejects(
+        executeThroughQualified(operator, authority(value)),
+        /PREDECESSOR_VERSION_DRIFT/u,
+      );
+      const cleanup = await operator.reconcileCloudflareSafety.run({
+        authority: authority(value),
+        operationId: "reconcile-v209-production-safety",
+        cleanupOnly: true,
+      });
+      assert.equal(cleanup.gpu_transport, "UNTOUCHED_NO_MUTATIONS");
+      assert.equal(
+        mock.calls.some(
+          ({ args }) => args[4] === "deploy" || (args[4] === "secret" && args[5] !== "list"),
+        ),
+        false,
+      );
+    }
   }
 });

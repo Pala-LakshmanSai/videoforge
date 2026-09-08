@@ -1,3 +1,4 @@
+import { setTimeout as waitForPropagation } from "node:timers/promises";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
@@ -331,7 +332,13 @@ function assertConfiguration(value) {
     value === null ||
     typeof value !== "object" ||
     Array.isArray(value) ||
-    JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([...CONFIGURATION_KEYS].sort()) ||
+    JSON.stringify(Object.keys(value).sort()) !==
+      JSON.stringify(
+        [
+          ...CONFIGURATION_KEYS,
+          ...(Object.hasOwn(value, "predecessorBaseline") ? ["predecessorBaseline"] : []),
+        ].sort(),
+      ) ||
     resolve(value.root ?? "") !== ROOT ||
     !COMMIT.test(value.sourceCommit ?? "") ||
     value.workerName !== "videoforge-production-runtime" ||
@@ -340,6 +347,24 @@ function assertConfiguration(value) {
     Array.isArray(value.environment)
   )
     fail("CONFIGURATION_INVALID");
+  if (Object.hasOwn(value, "predecessorBaseline")) {
+    const baseline = value.predecessorBaseline;
+    if (
+      !exactKeys(baseline, [
+        "versionId",
+        "sourceCommit",
+        "qualifiedConfigPath",
+        "qualifiedConfigSha256",
+      ]) ||
+      !UUID.test(baseline.versionId ?? "") ||
+      !COMMIT.test(baseline.sourceCommit ?? "") ||
+      !HASH.test(baseline.qualifiedConfigSha256 ?? "")
+    )
+      fail("PREDECESSOR_DESCRIPTOR_INVALID");
+    privateFile(baseline.qualifiedConfigPath);
+    if (sha256(readFileSync(baseline.qualifiedConfigPath)) !== baseline.qualifiedConfigSha256)
+      fail("PREDECESSOR_CONFIG_HASH_DRIFT");
+  }
   // The deployment adapter is bound immediately after endpoint-secret materialization,
   // before the next operation renders this exact qualified configuration.
   privateFile(value.qualifiedConfigPath, { mayNotExist: true });
@@ -367,6 +392,9 @@ function assertConfiguration(value) {
   )
     fail("ENVIRONMENT_INVALID");
   return Object.freeze({
+    ...(value.predecessorBaseline
+      ? { predecessorBaseline: Object.freeze({ ...value.predecessorBaseline }) }
+      : {}),
     root: value.root,
     sourceCommit: value.sourceCommit,
     workerName: value.workerName,
@@ -446,6 +474,38 @@ function newJournal(authority, configuration) {
   };
 }
 
+const FAILURE_CODES = new Set([
+  "UNKNOWN_ERROR",
+  ...[
+    "PREDECESSOR_DESCRIPTOR_INVALID",
+    "PREDECESSOR_CONFIG_HASH_DRIFT",
+    "PREDECESSOR_CONFIG_INVALID",
+    "PREDECESSOR_BINDING_DRIFT",
+    "PREDECESSOR_VERSION_DRIFT",
+    "PREDECESSOR_SECRETS_PRESENT",
+    "PREDECESSOR_WORKER_ABSENT",
+    "PREDECESSOR_WORKFLOW_DRIFT",
+    "ACTIVE_VERSION_CLOSED_WORLD_DRIFT",
+    "ACTIVE_VERSION_ID_INVALID",
+    "ROUTE_TRANSPORT_FAILED",
+    "ROUTE_BODY_FAILED",
+    "ROUTE_BODY_INVALID",
+    "ROUTE_JSON_INVALID",
+    "ROUTE_READBACK_DRIFT",
+    "SECRET_LIST_FAILED",
+    "SECRET_DELETE_FAILED",
+    "SECRET_READBACK_CANCELLED",
+    "RECONCILIATION_SECRET_SET_NOT_EMPTY",
+    "SECRET_PUT_FAILED",
+    "DEPLOYMENT_STATUS_FAILED",
+    "VERSION_READBACK_FAILED",
+    "DISABLED_RECONCILE_DEPLOY_FAILED",
+    "FAILURE_RECONCILIATION_REQUIRED",
+  ].map((code) => `V2_09_CLOUDFLARE_PRODUCTION_${code}`),
+]);
+const safeFailureCode = (error) =>
+  FAILURE_CODES.has(error?.message) ? error.message : "UNKNOWN_ERROR";
+
 function validateJournal(value, authority, configuration) {
   if (
     !exactKeys(value, [
@@ -461,7 +521,12 @@ function validateJournal(value, authority, configuration) {
       "state",
       "worker",
       "worker_bundle_sha256",
+      ...(Object.hasOwn(value ?? {}, "failure") ? ["failure"] : []),
     ]) ||
+    (Object.hasOwn(value ?? {}, "failure") &&
+      (!exactKeys(value.failure, ["operation_code", "cleanup_code"]) ||
+        !FAILURE_CODES.has(value.failure.operation_code) ||
+        !(value.failure.cleanup_code === null || FAILURE_CODES.has(value.failure.cleanup_code)))) ||
     value.schema_version !== JOURNAL_SCHEMA ||
     value.authority_id !== authority.authority_id ||
     value.proposal_sha256 !== authority.proposal_sha256 ||
@@ -665,6 +730,71 @@ async function oauthRead(runtime, qualified, path, code) {
   return apiEnvelope(response, code);
 }
 
+async function verifyPredecessorBaseline(runtime, authority, context, qualified) {
+  const baseline = runtime.configuration.predecessorBaseline;
+  privateFile(baseline.qualifiedConfigPath);
+  const bytes = readFileSync(baseline.qualifiedConfigPath);
+  if (sha256(bytes) !== baseline.qualifiedConfigSha256) fail("PREDECESSOR_CONFIG_HASH_DRIFT");
+  const previous = parseJson(bytes, "PREDECESSOR_CONFIG_INVALID");
+  if (
+    previous.name !== qualified.name ||
+    previous.account_id !== qualified.account_id ||
+    previous.vars?.VIDEOFORGE_COMMIT !== baseline.sourceCommit ||
+    previous.vars?.VIDEOFORGE_PUBLIC_ORIGIN !== qualified.vars.VIDEOFORGE_PUBLIC_ORIGIN ||
+    canonical(previous.workflows) !== canonical(qualified.workflows) ||
+    canonical(previous.r2_buckets) !== canonical(qualified.r2_buckets)
+  )
+    fail("PREDECESSOR_BINDING_DRIFT");
+  const status = await child(
+    runtime,
+    authority,
+    [
+      "deployments",
+      "status",
+      "--json",
+      "--name",
+      qualified.name,
+      "--config",
+      runtime.configuration.disabledConfigPath,
+    ],
+    "DEPLOYMENT_STATUS",
+    { context },
+  );
+  const versionId = extractSingleActiveVersion(status);
+  if (versionId !== baseline.versionId) fail("PREDECESSOR_VERSION_DRIFT");
+  const version = parseJson(
+    await child(
+      runtime,
+      authority,
+      [
+        "versions",
+        "view",
+        versionId,
+        "--json",
+        "--name",
+        qualified.name,
+        "--config",
+        runtime.configuration.disabledConfigPath,
+      ],
+      "VERSION_READBACK",
+      { context },
+    ),
+    "VERSION_READBACK_JSON_INVALID",
+  );
+  normalizedVersionProjection(version, previous, "DISABLED_UNQUALIFIED", true, []);
+  if ((await exactSecretNames(runtime, authority, context)).length !== 0)
+    fail("PREDECESSOR_SECRETS_PRESENT");
+  await readRoute(
+    runtime,
+    authority,
+    versionId,
+    "DISABLED_UNQUALIFIED",
+    context,
+    true,
+    baseline.sourceCommit,
+  );
+}
+
 async function exactPreMutationInventory(runtime, authority, context, journal) {
   const qualified = qualifiedConfiguration(runtime.configuration, authority).value;
   const account = await oauthRead(runtime, qualified, "/", "ACCOUNT_INVENTORY");
@@ -704,7 +834,16 @@ async function exactPreMutationInventory(runtime, authority, context, journal) {
   if (bucketNames.filter((name) => name === qualified.r2_buckets[0].bucket_name).length !== 1)
     fail("RETAINED_R2_INVENTORY_DRIFT");
   if (workerAbsent) {
+    if (runtime.configuration.predecessorBaseline) fail("PREDECESSOR_WORKER_ABSENT");
     if (presentIntended.length !== 0) fail("WORKFLOW_NAME_COLLISION");
+  } else if (
+    runtime.configuration.predecessorBaseline &&
+    journal.state === "PREPARED" &&
+    journal.events.length === 0
+  ) {
+    if (JSON.stringify(presentIntended) !== JSON.stringify(intendedWorkflows))
+      fail("PREDECESSOR_WORKFLOW_DRIFT");
+    await verifyPredecessorBaseline(runtime, authority, context, qualified);
   } else {
     if (
       !["DISABLED_VERIFIED", "SAFE_DISABLED_CLEAN", "QUALIFIED_VERIFIED"].includes(journal.state) ||
@@ -726,7 +865,14 @@ async function exactPreMutationInventory(runtime, authority, context, journal) {
     );
     if (version.versionId !== journal.active_version_id) fail("EXISTING_WORKER_VERSION_DRIFT");
   }
-  return Object.freeze({ workerAbsent });
+  return Object.freeze({
+    workerAbsent,
+    predecessorVerified:
+      !workerAbsent &&
+      runtime.configuration.predecessorBaseline !== undefined &&
+      journal.state === "PREPARED" &&
+      journal.events.length === 0,
+  });
 }
 
 function normalizedVersionProjection(
@@ -900,6 +1046,7 @@ async function readRoute(
   expectedTransport,
   context,
   allowMissingConfiguration = false,
+  expectedSourceCommit = authority.source_commit,
 ) {
   const qualified = qualifiedConfiguration(runtime.configuration, authority).value;
   const controller = new AbortController();
@@ -947,7 +1094,7 @@ async function readRoute(
       contentType !== "application/json" ||
       response.headers.get(VERSION_HEADER) !== versionId ||
       body?.schema_version !== "videoforge-hosted-status/v1" ||
-      body?.commit !== authority.source_commit ||
+      body?.commit !== expectedSourceCommit ||
       body?.environment !== "production" ||
       body?.gpu_transport !== expectedTransport)
   )
@@ -997,6 +1144,27 @@ async function verifyDisabled(runtime, authority, context, journal) {
   journal.active_version_id = version.versionId;
   saveJournal(journal, runtime.configuration);
   return version;
+}
+
+async function verifyCommittedSecretPut(runtime, authority, context, journal) {
+  const retryable = new Set([
+    "V2_09_CLOUDFLARE_PRODUCTION_ACTIVE_VERSION_CLOSED_WORLD_DRIFT",
+    "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_READBACK_DRIFT",
+  ]);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    assertCurrentAuthority(authority, runtime.configuration, runtime.now);
+    if (context?.cancellationSignal?.aborted) fail("SECRET_READBACK_CANCELLED");
+    try {
+      return await verifyDisabled(runtime, authority, context, journal);
+    } catch (error) {
+      if (attempt === 2 || !retryable.has(error?.message)) throw error;
+      try {
+        await waitForPropagation(2000, undefined, { signal: context?.cancellationSignal });
+      } catch {
+        fail("SECRET_READBACK_CANCELLED");
+      }
+    }
+  }
 }
 
 function copyImmutableTree(source, destination) {
@@ -1153,14 +1321,25 @@ async function reconcileFailure(runtime, authority, context, journal) {
       journal,
       context,
       "SECRET_DELETE",
-      ["secret", "delete", name, "--config", runtime.configuration.disabledConfigPath, "--force"],
+      ["secret", "delete", name, "--config", runtime.configuration.disabledConfigPath],
       "SECRET_DELETE",
       { cleanup: context.cleanupOnly === true, name },
     );
   }
   journal.introduced_secret_names = [];
-  if ((await exactSecretNames(runtime, authority, context)).length !== 0)
-    fail("RECONCILIATION_SECRET_SET_NOT_EMPTY");
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (context.cleanupOnly === true)
+      assertCleanupAuthority(authority, runtime.configuration, runtime.now);
+    else assertCurrentAuthority(authority, runtime.configuration, runtime.now);
+    if (context?.cancellationSignal?.aborted) fail("SECRET_READBACK_CANCELLED");
+    if ((await exactSecretNames(runtime, authority, context)).length === 0) break;
+    if (attempt === 2) fail("RECONCILIATION_SECRET_SET_NOT_EMPTY");
+    try {
+      await waitForPropagation(2000, undefined, { signal: context?.cancellationSignal });
+    } catch {
+      fail("SECRET_READBACK_CANCELLED");
+    }
+  }
   await verifyDisabled(runtime, authority, context, journal);
   journal.state = "SAFE_DISABLED_CLEAN";
   saveJournal(journal, runtime.configuration);
@@ -1181,10 +1360,17 @@ async function guardedRun(runtime, context, operationId, implementation) {
   try {
     return await implementation(journal);
   } catch (error) {
+    journal.failure ??= { operation_code: safeFailureCode(error), cleanup_code: null };
+    try {
+      saveJournal(journal, runtime.configuration);
+    } catch {
+      /* Diagnostic persistence must not block cleanup. */
+    }
     if (journal.events.some(({ status }) => status === "INTENT")) {
       try {
         await reconcileFailure(runtime, context.authority, context, journal);
-      } catch {
+      } catch (cleanupError) {
+        journal.failure.cleanup_code = safeFailureCode(cleanupError);
         journal.state = "MANUAL_RECONCILIATION_REQUIRED";
         saveJournal(journal, runtime.configuration);
         fail("FAILURE_RECONCILIATION_REQUIRED");
@@ -1198,7 +1384,8 @@ async function deployDisabled(runtime, context) {
   return guardedRun(runtime, context, "deploy-cloudflare-disabled-bootstrap", async (journal) => {
     const { disabledSha256 } = materializeDisabled(runtime.configuration, context.authority);
     const inventory = await exactPreMutationInventory(runtime, context.authority, context, journal);
-    if (!inventory.workerAbsent) fail("EXACT_OWNED_WORKER_REQUIRES_CLEANUP_ONLY");
+    if (!inventory.workerAbsent && !inventory.predecessorVerified)
+      fail("EXACT_OWNED_WORKER_REQUIRES_CLEANUP_ONLY");
     await mutate(
       runtime,
       context.authority,
@@ -1282,7 +1469,7 @@ async function uploadSecrets(runtime, context) {
       );
       journal.introduced_secret_names.push(name);
       saveJournal(journal, runtime.configuration);
-      await verifyDisabled(runtime, context.authority, context, journal);
+      await verifyCommittedSecretPut(runtime, context.authority, context, journal);
     }
     if (
       JSON.stringify(await exactSecretNames(runtime, context.authority, context)) !==
@@ -1447,6 +1634,7 @@ function sanitizedConfigurationIdentity(configuration, secretInputSha256s) {
       source_commit: configuration.sourceCommit,
       worker_name: configuration.workerName,
       qualified_config_path_sha256: sha256(configuration.qualifiedConfigPath),
+      predecessor_baseline_sha256: sha256(canonical(configuration.predecessorBaseline ?? null)),
       disabled_config_path_sha256: sha256(configuration.disabledConfigPath),
       bootstrap_config_path_sha256: sha256(configuration.bootstrapConfigPath),
       journal_path_sha256: sha256(configuration.journalPath),
@@ -1568,8 +1756,9 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
         assertCleanupAuthority(context.authority, runtimeValue.configuration, runtimeValue.now);
         const journal = loadJournal(context.authority, runtimeValue.configuration);
         if (
-          canonical(journal) ===
-          canonical(newJournal(context.authority, runtimeValue.configuration))
+          canonical(
+            Object.fromEntries(Object.entries(journal).filter(([key]) => key !== "failure")),
+          ) === canonical(newJournal(context.authority, runtimeValue.configuration))
         ) {
           // A render failure can precede the qualified file and every Cloudflare
           // mutation. Prove this authority's untouched journal without inventing
