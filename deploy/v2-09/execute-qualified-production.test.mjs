@@ -364,7 +364,7 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       secret_count: value.production.secret_count,
       secret_put_count: value.production.secret_count,
       deploy_count: 1,
-      mutation_count: value.production.secret_count + 1,
+      mutation_count: 2,
       transaction_count: 1,
     };
   }
@@ -1364,4 +1364,29 @@ test("live execution requires the sealed concrete configuration", async () => {
     }),
     /V2_09_LIVE_CONFIGURATION_REQUIRED/u,
   );
+});
+
+test("bulk secret upload counts two mutations and rejects the legacy per-key count", async () => {
+  for (const mutation_count of [1, 3, 23]) {
+    const calls = [];
+    await assert.rejects(
+      executeTest({
+        mode: "EXECUTE",
+        authority: authority(),
+        sourceCommit: SOURCE_COMMIT,
+        now: NOW,
+        adapters: adapters({
+          calls,
+          resultOverrides: {
+            "upload-cloudflare-production-secrets": {
+              ...resultFor("upload-cloudflare-production-secrets", authority()),
+              mutation_count,
+            },
+          },
+        }),
+      }),
+      /V2_09_ROLLOUT_FAILED_CLEAN:upload-cloudflare-production-secrets/u,
+    );
+    assert.equal(calls.includes("deploy-cloudflare-qualified-production"), false);
+  }
 });

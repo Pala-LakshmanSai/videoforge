@@ -671,9 +671,10 @@ function validateOperationResult(
       result.worker !== authority.production.worker_name ||
       result.secret_allowlist_sha256 !== authority.production.secret_allowlist_sha256 ||
       result.secret_count !== authority.production.secret_count ||
+      // Logical secret keys written by one bulk PATCH; this is not an HTTP mutation count.
       result.secret_put_count !== authority.production.secret_count ||
       result.deploy_count !== 1 ||
-      result.mutation_count !== authority.production.secret_count + 1 ||
+      result.mutation_count !== 2 ||
       result.transaction_count !== 1)
   )
     fail("V2_09_SECRET_UPLOAD_INVALID");

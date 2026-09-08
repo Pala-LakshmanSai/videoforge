@@ -162,6 +162,14 @@ function harness(
   let deployCount = 0;
   let shouldFailQualified = failQualifiedOnce;
   let shouldMutateVersion = typeof mutateVersionOnce === "function";
+  const bulkCalls = [];
+  const secretBulk = async (input) => {
+    input.beforeDispatch();
+    bulkCalls.push(input);
+    sequence.push({ kind: "bulk" });
+    for (const name of SECRET_NAMES) secrets.add(name);
+    return { secret_count: SECRET_NAMES.length };
+  };
   const runChild = async (input) => {
     calls.push(input);
     sequence.push({ kind: "wrangler", args: input.args.slice(4) });
@@ -301,6 +309,8 @@ function harness(
     return { modulePath, assetsPath, configPath, cleanup() {} };
   };
   return {
+    secretBulk,
+    bulkCalls,
     importActivation: () => {
       activationImported = true;
     },
@@ -351,6 +361,7 @@ test("deployment factory binds before render and requires exact private config b
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   const start = () =>
@@ -390,6 +401,7 @@ test("cleanup before render proves only untouched authority state and never inve
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   const context = {
@@ -442,6 +454,7 @@ test("actual pre-render staged authority cleans untouched state without invented
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-07T01:00:00Z"),
   });
   const staged = {
@@ -509,6 +522,7 @@ test("executes exact disabled, 22-secret, qualified, bundle, header, and route c
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   const result = await executeThroughQualified(operator, authority(value));
@@ -522,7 +536,7 @@ test("executes exact disabled, 22-secret, qualified, bundle, header, and route c
   assert.equal(result.disabled.full_disabled_deploy_count, 1);
   assert.equal(result.disabled.deploy_count, 2);
   assert.equal(result.secrets.secret_put_count, SECRET_NAMES.length);
-  assert.equal(result.secrets.mutation_count, SECRET_NAMES.length + 1);
+  assert.equal(result.secrets.mutation_count, 2);
   assert.equal(result.deployed.deploy_count, 1);
   assert.equal(result.deployed.worker_bundle_sha256, value.workerBundleSha256);
   assert.equal(result.readback.deployment_id_sha256, result.deployed.deployment_id_sha256);
@@ -540,10 +554,7 @@ test("executes exact disabled, 22-secret, qualified, bundle, header, and route c
     wranglerArgs.filter((args) => args[0] === "deploy" && !args.includes("--dry-run")).length,
     4,
   );
-  assert.equal(
-    wranglerArgs.filter((args) => args[0] === "secret" && args[1] === "put").length,
-    SECRET_NAMES.length,
-  );
+  assert.equal(wranglerArgs.filter((args) => args[0] === "secret" && args[1] === "put").length, 0);
   assert.equal(
     wranglerArgs.some((args) => args.includes("r2")),
     false,
@@ -588,7 +599,7 @@ test("executes exact disabled, 22-secret, qualified, bundle, header, and route c
     "result.full_disabled_deploy_count !== 1",
     "result.deploy_count !== 2",
     "result.secret_put_count !== authority.production.secret_count",
-    "result.mutation_count !== authority.production.secret_count + 1",
+    "result.mutation_count !== 2",
   ])
     assert.equal(coordinatorSource.includes(assertion), true, assertion);
   const journal = JSON.parse(readFileSync(value.configuration.journalPath, "utf8"));
@@ -605,6 +616,7 @@ test("an unknown qualified deploy outcome is durably reconciled to disabled with
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   const approved = authority(value);
@@ -644,6 +656,7 @@ test("stale authority and dry-run plan make zero provider or mutation calls", as
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-07T00:00:00Z"),
   });
   assert.deepEqual(planV209CloudflareProduction(), {
@@ -677,6 +690,7 @@ test("version readback rejects an extra non-string root variable", async () => {
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   await assert.rejects(
@@ -708,6 +722,7 @@ test("version readback rejects an unknown typed binding without a binding field"
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   await assert.rejects(
@@ -728,6 +743,7 @@ test("port identity binds composed capability, imported source, sanitized config
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: function firstClock() {
       return new Date("2026-09-06T22:00:00Z");
     },
@@ -738,6 +754,7 @@ test("port identity binds composed capability, imported source, sanitized config
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: function secondClock() {
       return new Date("2026-09-06T22:00:00Z");
     },
@@ -770,6 +787,7 @@ test("cleanup-only can disable and remove only attributable secrets after normal
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => observed,
   });
   const approved = authority(value);
@@ -815,6 +833,7 @@ test("secret upload uses the construction-sealed bytes after a pathname replacem
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   const approved = authority(value);
@@ -831,12 +850,12 @@ test("secret upload uses the construction-sealed bytes after a pathname replacem
     operationId: "upload-cloudflare-production-secrets",
     secretInputSha256s: operator.uploadCloudflareSecrets.secret_input_sha256s,
   });
-  const secretPuts = mock.calls.filter(({ args }) => args.slice(4, 6).join(" ") === "secret put");
-  assert.equal(secretPuts.length, SECRET_NAMES.length);
-  for (const call of secretPuts) {
-    const name = call.args[6];
-    assert.equal(Buffer.isBuffer(call.options.input), true);
-    assert.equal(call.options.input.toString("utf8"), `fixture-${name}`);
+  assert.equal(mock.bulkCalls.length, 1);
+  for (const name of SECRET_NAMES) {
+    assert.equal(
+      Buffer.from(mock.bulkCalls[0].secretInputs[name].bytes).toString("utf8"),
+      `fixture-${name}`,
+    );
   }
 });
 
@@ -849,6 +868,7 @@ test("route version-header mismatch fails closed and reconciles the qualified de
     fetchImpl: healthy.fetchImpl,
     oauthApiResponse: healthy.oauthApiResponse,
     snapshotUploadArtifact: healthy.snapshotUploadArtifact,
+    secretBulk: healthy.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   const approved = authority(value);
@@ -870,6 +890,7 @@ test("route version-header mismatch fails closed and reconciles the qualified de
     runChild: healthy.runChild,
     oauthApiResponse: healthy.oauthApiResponse,
     snapshotUploadArtifact: healthy.snapshotUploadArtifact,
+    secretBulk: healthy.secretBulk,
     fetchImpl: async (...args) => {
       const response = await healthy.fetchImpl(...args);
       if (routeMismatchInjected) return response;
@@ -912,6 +933,7 @@ test("presecret disabled proof rejects arbitrary configuration errors and final 
       runChild: mock.runChild,
       oauthApiResponse: mock.oauthApiResponse,
       snapshotUploadArtifact: mock.snapshotUploadArtifact,
+      secretBulk: mock.secretBulk,
       now: () => new Date("2026-09-06T22:00:00Z"),
       fetchImpl: async (...args) => {
         const response = await mock.fetchImpl(...args);
@@ -959,6 +981,7 @@ test("qualified config readback requires disabled before import and qualified af
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   const result = await executeThroughQualified(operator, authority(value));
@@ -1008,6 +1031,7 @@ test("R2 inventory rejects pagination, truncation, duplicates and unknown shapes
       runChild: mock.runChild,
       fetchImpl: mock.fetchImpl,
       snapshotUploadArtifact: mock.snapshotUploadArtifact,
+      secretBulk: mock.secretBulk,
       now: () => new Date("2026-09-06T22:00:00Z"),
       oauthApiResponse: async (input) => {
         const original = await mock.oauthApiResponse(input);
@@ -1048,6 +1072,7 @@ test("failure journal redacts unknown original and cleanup exceptions", async ()
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   await assert.rejects(
@@ -1063,7 +1088,7 @@ test("failure journal redacts unknown original and cleanup exceptions", async ()
   assert.equal(bytes.includes("private-path-secret"), false);
 });
 
-test("committed secret PUT permits at most three strict readbacks without repeating mutation", async () => {
+test("committed secret bulk PATCH permits at most three strict readbacks without repeating mutation", async () => {
   for (const staleReads of [2, 3]) {
     const value = fixture();
     const mock = harness(value);
@@ -1073,10 +1098,15 @@ test("committed secret PUT permits at most three strict readbacks without repeat
       fetchImpl: mock.fetchImpl,
       oauthApiResponse: mock.oauthApiResponse,
       snapshotUploadArtifact: mock.snapshotUploadArtifact,
+      secretBulk: mock.secretBulk,
       now: () => new Date("2026-09-06T22:00:00Z"),
       runChild: async (input) => {
         const result = await mock.runChild(input);
-        if (input.args[4] === "versions" && mock.secrets.size === 1 && injected < staleReads) {
+        if (
+          input.args[4] === "versions" &&
+          mock.secrets.size === SECRET_NAMES.length &&
+          injected < staleReads
+        ) {
           injected += 1;
           const version = JSON.parse(result.stdout);
           version.secret_bindings = [];
@@ -1093,8 +1123,8 @@ test("committed secret PUT permits at most three strict readbacks without repeat
       );
     assert.equal(injected, staleReads);
     const puts = mock.calls.filter(({ args }) => args[4] === "secret" && args[5] === "put");
-    assert.equal(puts.length, staleReads === 2 ? SECRET_NAMES.length : 1);
-    assert.equal(puts.filter(({ args }) => args[6] === SECRET_NAMES[0]).length, 1);
+    assert.equal(puts.length, 0);
+    assert.equal(mock.bulkCalls.length, 1);
   }
 });
 
@@ -1108,6 +1138,7 @@ test("cleanup waits for zero-secret inventory without repeating DELETE", async (
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
     runChild: async (input) => {
       const result = await mock.runChild(input);
@@ -1158,6 +1189,7 @@ test("only exact pinned disabled predecessor can be replaced; drift preserves it
       runChild: mock.runChild,
       fetchImpl: mock.fetchImpl,
       snapshotUploadArtifact: mock.snapshotUploadArtifact,
+      secretBulk: mock.secretBulk,
       now: () => new Date("2026-09-06T22:00:00Z"),
       oauthApiResponse: async (input) => {
         const response = await mock.oauthApiResponse(input);
@@ -1206,6 +1238,7 @@ test("successful cleanup revalidates without repeating deployment or secret dele
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   await assert.rejects(
@@ -1258,6 +1291,7 @@ test("route diagnostics distinguish a stale version header from wrong source wit
     runChild: mock.runChild,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
     fetchImpl: async (...args) => {
       const response = await mock.fetchImpl(...args);
@@ -1296,6 +1330,7 @@ test("partial committed deletion resumes with live remaining projection and neve
     fetchImpl: mock.fetchImpl,
     oauthApiResponse: mock.oauthApiResponse,
     snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   await executeThroughQualified(operator, authority(value));
@@ -1324,4 +1359,44 @@ test("partial committed deletion resumes with live remaining projection and neve
     JSON.parse(readFileSync(value.configuration.journalPath)).state,
     "SAFE_DISABLED_CLEAN",
   );
+});
+
+test("unknown bulk outcome cleans only the observed attributable subset without replay", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  let bulkRequests = 0;
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+    secretBulk: async (input) => {
+      input.beforeDispatch();
+      bulkRequests += 1;
+      const journal = JSON.parse(readFileSync(value.configuration.journalPath));
+      assert.equal(journal.events.at(-1).kind, "SECRET_BULK_PUT");
+      assert.equal(journal.events.at(-1).status, "INTENT");
+      for (const name of SECRET_NAMES.slice(0, 7)) mock.secrets.add(name);
+      throw Error("sensitive transport detail must not escape");
+    },
+  });
+  await assert.rejects(executeThroughQualified(operator, authority(value)), /SECRET_BULK_FAILED/u);
+  assert.equal(bulkRequests, 1);
+  assert.equal(mock.secrets.size, 0);
+  const deletes = mock.calls.filter(({ args }) => args[4] === "secret" && args[5] === "delete");
+  assert.equal(deletes.length, 7);
+  const text = readFileSync(value.configuration.journalPath, "utf8");
+  assert.equal(text.includes("sensitive transport"), false);
+  assert.equal(JSON.parse(text).state, "SAFE_DISABLED_CLEAN");
+  await assert.rejects(
+    operator.uploadCloudflareSecrets.run({
+      authority: authority(value),
+      operationId: "upload-cloudflare-production-secrets",
+      secretInputSha256s: operator.uploadCloudflareSecrets.secret_input_sha256s,
+    }),
+    /SECRET_BULK_REPLAY_FORBIDDEN/u,
+  );
+  assert.equal(bulkRequests, 1);
 });

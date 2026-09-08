@@ -40,6 +40,8 @@ import {
   validateProductionConfig,
 } from "../v2-13/validate-production-config.mjs";
 
+import { executeV209SecretBulk } from "./cloudflare-secret-bulk.mjs";
+
 const SOURCE_PATH = fileURLToPath(import.meta.url);
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const HASH = /^sha256:[0-9a-f]{64}$/u;
@@ -50,6 +52,7 @@ const PORT_SCHEMA = "videoforge.v2-09-cloudflare-production-port/v1";
 const STATUS_PATH = "/api/v2/hosted/status";
 const VERSION_HEADER = "x-videoforge-worker-version";
 const IMPORTED_DEPENDENCY_PATHS = Object.freeze([
+  "deploy/v2-09/cloudflare-secret-bulk.mjs",
   "deploy/v2-13/full-live-adapters.mjs",
   "deploy/v2-13/guarded-activation.mjs",
   "deploy/v2-13/validate-production-config.mjs",
@@ -475,6 +478,16 @@ function newJournal(authority, configuration) {
 }
 
 const FAILURE_CODES = new Set([
+  ...[
+    "INJECTION_FORBIDDEN",
+    "INPUT_INVALID",
+    "CREDENTIAL_INVALID",
+    "CANCELLED",
+    "OAUTH_READBACK_FAILED",
+    "AUTHORITY_RECHECK_FAILED",
+    "OUTCOME_UNKNOWN",
+    "AUTHORITY_EXPIRED",
+  ].map((code) => `V2_09_CLOUDFLARE_SECRET_BULK_${code}`),
   "UNKNOWN_ERROR",
   ...[
     "PREDECESSOR_DESCRIPTOR_INVALID",
@@ -510,6 +523,8 @@ const FAILURE_CODES = new Set([
     "SECRET_READBACK_CANCELLED",
     "RECONCILIATION_SECRET_SET_NOT_EMPTY",
     "SECRET_PUT_FAILED",
+    "SECRET_BULK_FAILED",
+    "SECRET_BULK_REPLAY_FORBIDDEN",
     "DEPLOYMENT_STATUS_FAILED",
     "VERSION_READBACK_FAILED",
     "DISABLED_RECONCILE_DEPLOY_FAILED",
@@ -1307,6 +1322,7 @@ function possiblyIntroducedSecrets(journal) {
   const names = new Set(journal.introduced_secret_names);
   for (const event of journal.events) {
     if (event.kind === "SECRET_PUT" && typeof event.name === "string") names.add(event.name);
+    if (event.kind === "SECRET_BULK_PUT") for (const name of SECRET_NAMES) names.add(name);
   }
   return [...names].filter((name) => SECRET_NAMES.includes(name)).sort();
 }
@@ -1517,21 +1533,54 @@ async function uploadSecrets(runtime, context) {
       (await exactSecretNames(runtime, context.authority, context)).length !== 0
     )
       fail("SECRET_AUTHORITY_OR_BASELINE_DRIFT");
-    for (const name of SECRET_NAMES) {
-      await mutate(
-        runtime,
-        context.authority,
-        journal,
-        context,
-        "SECRET_PUT",
-        ["secret", "put", name, "--config", runtime.configuration.disabledConfigPath],
-        "SECRET_PUT",
-        { input: Buffer.from(runtime.secretInputs[name].bytes), name },
-      );
-      journal.introduced_secret_names.push(name);
-      saveJournal(journal, runtime.configuration);
-      await verifyCommittedSecretPut(runtime, context.authority, context, journal);
+    if (journal.events.some((event) => event.kind === "SECRET_BULK_PUT"))
+      fail("SECRET_BULK_REPLAY_FORBIDDEN");
+    const qualified = qualifiedConfiguration(runtime.configuration, context.authority).value;
+    const beforeDispatch = () => {
+      assertCurrentAuthority(context.authority, runtime.configuration, runtime.now);
+      if (context.cancellationSignal?.aborted) fail("SECRET_READBACK_CANCELLED");
+    };
+    beforeDispatch();
+    // Intent attributes every requested key before one non-retryable PATCH. A
+    // lost response may have applied any subset; cleanup reads the actual set.
+    record(journal, runtime.configuration, {
+      status: "INTENT",
+      kind: "SECRET_BULK_PUT",
+      operation_id: context.operationId,
+      observed_at: readClock(runtime.now).toISOString(),
+    });
+    try {
+      const result = await runtime.secretBulk({
+        accountId: qualified.account_id,
+        workerName: runtime.configuration.workerName,
+        oauthConfigPath: runtime.configuration.oauthConfigPath,
+        environment: runtime.configuration.environment,
+        expectedOauthScopes: runtime.configuration.expectedOauthScopes,
+        secretInputs: runtime.secretInputs,
+        cancellationSignal: context.cancellationSignal,
+        beforeDispatch,
+        expiresAt: context.authority.expires_at,
+      });
+      if (result?.secret_count !== SECRET_NAMES.length) fail("SECRET_BULK_FAILED");
+      record(journal, runtime.configuration, {
+        status: "COMMITTED",
+        kind: "SECRET_BULK_PUT",
+        operation_id: context.operationId,
+        observed_at: readClock(runtime.now).toISOString(),
+      });
+    } catch (error) {
+      record(journal, runtime.configuration, {
+        status: "UNKNOWN",
+        kind: "SECRET_BULK_PUT",
+        operation_id: context.operationId,
+        observed_at: readClock(runtime.now).toISOString(),
+      });
+      if (FAILURE_CODES.has(error?.message)) throw error;
+      fail("SECRET_BULK_FAILED");
     }
+    journal.introduced_secret_names = [...SECRET_NAMES];
+    saveJournal(journal, runtime.configuration);
+    await verifyCommittedSecretPut(runtime, context.authority, context, journal);
     if (
       JSON.stringify(await exactSecretNames(runtime, context.authority, context)) !==
       JSON.stringify([...SECRET_NAMES].sort())
@@ -1568,7 +1617,7 @@ async function uploadSecrets(runtime, context) {
       secret_count: SECRET_NAMES.length,
       secret_put_count: SECRET_NAMES.length,
       deploy_count: 1,
-      mutation_count: SECRET_NAMES.length + 1,
+      mutation_count: 2,
       transaction_count: 1,
     };
   });
@@ -1726,6 +1775,7 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
     oauthApiResponse: dependencies.oauthApiResponse ?? cloudflareOAuthApiResponse,
     oauthSpawn: dependencies.oauthSpawn,
     runChild: dependencies.runChild ?? runCancellableChildProcess,
+    secretBulk: dependencies.secretBulk ?? executeV209SecretBulk,
     secretInputs,
     secretInputSha256s,
     snapshotUploadArtifact: dependencies.snapshotUploadArtifact ?? snapshotUploadArtifact,
@@ -1735,6 +1785,7 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
     typeof runtime.now !== "function" ||
     typeof runtime.oauthApiResponse !== "function" ||
     typeof runtime.runChild !== "function" ||
+    typeof runtime.secretBulk !== "function" ||
     typeof runtime.snapshotUploadArtifact !== "function" ||
     (runtime.oauthSpawn !== undefined && typeof runtime.oauthSpawn !== "function")
   )
@@ -1759,6 +1810,7 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
           ? null
           : functionSha256(runtime.oauthSpawn, "OAUTH_SPAWN_DEPENDENCY_INVALID"),
       runChild: functionSha256(runtime.runChild, "CHILD_DEPENDENCY_INVALID"),
+      secretBulk: functionSha256(runtime.secretBulk, "SECRET_BULK_DEPENDENCY_INVALID"),
       snapshotUploadArtifact: functionSha256(
         runtime.snapshotUploadArtifact,
         "SNAPSHOT_DEPENDENCY_INVALID",
