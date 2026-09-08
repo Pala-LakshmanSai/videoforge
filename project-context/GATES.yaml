@@ -455,16 +455,16 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_authority_state: none_consumed_failed_clean_repair_pending_reseal
-    current_proposal_sha256: null
-    current_control_source_commit: "5df3383aafbee352729b897496992bd58f4592f9"
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-concrete-reconciler-path-binding-replacement.json"
+    current_authority_sha256: "sha256:50fd81ae72c58c0c25aa518cd22073bc37f7ab9132fdc635c9e5501a6789bc72"
+    current_authority_state: approved_single_use_unconsumed_pending_successor_audit
+    current_proposal_sha256: "sha256:2c15ff7cc8093988983c98b4f8c07ef2060fded30bb93aecc9e51d65f1d82823"
+    current_control_source_commit: "3737a177779325f6a4940096a8cf33e604a84c58"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-concrete-reconciler-path-binding.json"
     current_failure_sha256: "sha256:5031d8e651d132ef9e57167190fdb9e858cfceca054cf1d625d2e8bd5a356ef0"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "Repair 5df3383a requires distinct internal and Cloudflare reconciler paths with equal protected hashes. Focused tests pass 75/75; exact clean-commit audits are in progress. Stage 6/7 were untouched."
+    provider_free_repair_state: "Repair 5df3383a requires distinct internal and Cloudflare reconciler paths with equal protected hashes. Focused tests pass 75/75; three exact-source and three exact-proposal audits are GO P0=0/P1=0. Stage 6/7 were untouched."
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-reconciler-secret-output-replacement.json"
     latest_closed_authority_sha256: "sha256:1d19b40ac55944d966db87c6e7e370adfe34becc2bbaa9f6cc95ba43d5e3a866"
     latest_closed_proposal_sha256: "sha256:8c26c376fde44639a246b664f7c10c82ffed46d018a0b1891e585a04f593f5e4"
@@ -475,7 +475,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "Complete exact repair-commit audits, seal a clean source/bundle and replacement proposal, then obtain fresh exact approval before activation."
+    next_gate: "Complete the independent authority-materialization successor audit, then execute the approved combined activation once."
 
   GATE_RANGA_001:
     status: open

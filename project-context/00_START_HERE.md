@@ -4,6 +4,10 @@
 
 ### Current new-chat launch point — 2026-09-08
 
+- Proposal `sha256:2c15ff7c...2823` is exactly approved. Authority
+  `v2-09-2c15ff7cc8093988`, source `3737a177`, and media-worker bundle
+  `sha256:cdad169b...da28` are materialized mode-0600. Exact source push/readback passed; execution
+  awaits only the mandatory independent authority-materialization successor audit.
 - Proposal `sha256:8c26c376...f5e4` and authority `v2-09-8c26c376fde44639` are consumed
   `FAILED_CLEAN` and non-reusable. Read-only preflight, the global completion baseline, and protected-
   input materialization completed; concrete adapter creation then stopped at
@@ -12,9 +16,8 @@
   Cloudflare/R2 mutation, Chrome E2E, redispatch, Stage 6/7 action, or incremental spend occurred.
 - Provider-free repair now requires the internal reconciler URL and Cloudflare reconciler secret to
   use distinct paths with identical protected-input hashes. The production-topology regression plus
-  combined/adapters/materializer suites pass 75/75. Two code audits are GO; one cleanup audit's stale-
-  context P1 is reconciled here. Next: clean-seal and audit the exact source/bundle, then issue one
-  fresh proposal.
+  combined/adapters/materializer suites pass 75/75. Three exact-source and three exact-proposal
+  audits are GO P0=0/P1=0. Stage 6/7 remain frozen.
 - V2-09 proposal `sha256:5b78e19b...cc80` and authority `v2-09-5b78e19baa6427f4` are consumed
   `FAILED_CLEAN` and non-reusable. Exact preflight and the global completion baseline passed, then
   protected-input materialization failed with `V2_09_PROTECTED_MATERIALIZATION_OUTPUT_INVALID`.
