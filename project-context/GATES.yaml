@@ -455,12 +455,12 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_private_authority_sha256: null
-    current_authority_state: "30d_consumed_FAILED_CLEAN15_of_26_independent_cleanup_GO"
-    current_proposal_sha256: null
-    current_control_source_commit: "b7546348775d8bb743d9b4408591fdfe6daf6650"
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-renderer-diagnostics-replacement.json"
+    current_authority_sha256: "sha256:5a5df54a23bfcc3b9ee75caabf6373b1a1a5df04880e3543ffe4e2e59b066565"
+    current_private_authority_sha256: "sha256:128d1095ac92b5c668a2cd4cf8864cafaccd2efcfb85feb48c1f979538cbffb5"
+    current_authority_state: "exact_2450_approved_pending_materialized_audits"
+    current_proposal_sha256: "sha256:2450b1fb2e02a5a87a8ef4daaa8ca280fb161a12bfc62ec76e5a6a10794b4b32"
+    current_control_source_commit: "cb35713513f39fcc2b4e49b1628cbcbdddeb76f4"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-complete-worker-module-render.json"
     current_failure_sha256: "sha256:3c2295b860296b7ce18ea2846ea3d4481ea63997918e6d74688357bb49fe9641"
     current_audit_stop: null
@@ -487,7 +487,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7.7localdiagnosisactive;cleanup independently complete;priorstepsdone9.7.8/9.8pending;no authority."
+    next_gate: "9.7.6DONE;9.7.7productiondeploymentACTIVE;9.7.8postimportreadinesspending;9.8/9.9pending."
 
   GATE_RANGA_001:
     status: open
