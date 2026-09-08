@@ -926,7 +926,7 @@ async function workflowRuns(runChild, configuration, cancellationSignal) {
       run?.head_sha === configuration.sourceCommit &&
       run?.head_branch === configuration.branch &&
       run?.event === "workflow_dispatch" &&
-      run?.path === `${configuration.workflowPath}@refs/heads/${configuration.branch}`,
+      run?.path === configuration.workflowPath,
   );
 }
 
