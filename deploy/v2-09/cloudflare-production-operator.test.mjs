@@ -516,7 +516,7 @@ test("actual pre-render staged authority cleans untouched state without invented
   assert.deepEqual(mock.calls, []);
 });
 
-test("executes exact disabled, 22-secret, qualified, bundle, header, and route contract", async () => {
+test("executes exact disabled, exact-secret, qualified, bundle, header, and route contract", async () => {
   const value = fixture();
   assert.deepEqual(
     JSON.parse(readFileSync(value.configuration.qualifiedConfigPath, "utf8")).workflows.map(
@@ -1439,7 +1439,7 @@ test("replacement built-in primitives verify inherited qualified secrets without
           !call.args.includes("delete"),
       ),
   );
-  assert.equal(mock.secrets.size, 22);
+  assert.equal(mock.secrets.size, SECRET_NAMES.length);
 });
 
 test("replacement failure containment verifies disabled transport and preserves all inherited secrets", async () => {
@@ -1455,7 +1455,7 @@ test("replacement failure containment verifies disabled transport and preserves 
   const offset = mock.calls.length;
   await primitive.disable(approved);
   assert.equal(mock.activeTransport(), "DISABLED_UNQUALIFIED");
-  assert.equal(mock.secrets.size, 22);
+  assert.equal(mock.secrets.size, SECRET_NAMES.length);
   const calls = mock.calls.slice(offset).map((call) => call.args.slice(4));
   assert.equal(calls.filter((args) => args[0] === "deploy").length, 1);
   for (const args of calls) {

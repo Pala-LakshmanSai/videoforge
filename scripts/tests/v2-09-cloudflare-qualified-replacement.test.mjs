@@ -1,3 +1,4 @@
+import { SECRET_NAMES } from "../../deploy/v2-13/guarded-activation.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
@@ -30,7 +31,7 @@ function fixture(t) {
   const authority = {
     source_commit: "3".repeat(40),
     single_use: true,
-    production: { secret_count: 22 },
+    production: { secret_count: SECRET_NAMES.length },
     caps: { max_incremental_usd: 2, max_completion_usd: 17.5 },
     replacement_predecessor_sha256: hash(canonical(predecessor)),
   };
@@ -76,7 +77,7 @@ test("one replacement preserves inherited secret history and requires effective 
   await f.api.readbackEffective();
   assert.equal(f.calls.filter((x) => x === "deploy").length, 1);
   assert.deepEqual(f.api.read().introduced_secret_names, []);
-  assert.equal(f.api.read().inherited_secret_count, 22);
+  assert.equal(f.api.read().inherited_secret_count, SECRET_NAMES.length);
   await assert.rejects(f.api.deployOnce(), /DEPLOY_REPLAY/);
 });
 test("unknown deploy never retries and allows only one preserving disable", async (t) => {
@@ -123,4 +124,10 @@ test("unbound predecessor and production injection rejected", (t) => {
     () => createV209CloudflareQualifiedReplacement(f.args, { capabilities: f.capabilities }),
     /INJECTION/,
   );
+});
+
+test("production secret contract includes Runware and has no duplicate names", () => {
+  assert.equal(SECRET_NAMES.length, 23);
+  assert.ok(SECRET_NAMES.includes("RUNWARE_API_KEY"));
+  assert.equal(new Set(SECRET_NAMES).size, SECRET_NAMES.length);
 });

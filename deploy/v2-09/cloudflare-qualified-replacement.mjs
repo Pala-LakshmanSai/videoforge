@@ -1,3 +1,4 @@
+import { SECRET_NAMES } from "../v2-13/guarded-activation.mjs";
 import { createHash } from "node:crypto";
 import {
   constants,
@@ -65,7 +66,7 @@ export function createV209CloudflareQualifiedReplacement(
     authority.replacement_predecessor_sha256 !== hash(predecessor) ||
     authority.source_commit === predecessor.sourceCommit ||
     authority.single_use !== true ||
-    authority.production?.secret_count !== 22 ||
+    authority.production?.secret_count !== SECRET_NAMES.length ||
     authority.caps?.max_incremental_usd !== 2 ||
     authority.caps?.max_completion_usd !== 17.5
   )
@@ -170,7 +171,7 @@ export function createV209CloudflareQualifiedReplacement(
           predecessor_sha256: hash(predecessor),
           state: "CLAIMED",
           events: [],
-          inherited_secret_count: 22,
+          inherited_secret_count: SECRET_NAMES.length,
           introduced_secret_names: [],
           retained_r2_deleted: false,
         };

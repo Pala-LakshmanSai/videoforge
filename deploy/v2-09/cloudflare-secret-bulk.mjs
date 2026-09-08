@@ -84,7 +84,6 @@ export async function executeV209SecretBulk(
     !expectedOauthScopes.includes("workers_scripts:write") ||
     !secretInputs ||
     !same(Object.keys(secretInputs), SECRET_NAMES) ||
-    SECRET_NAMES.length !== 22 ||
     typeof expiresAt !== "string" ||
     !Number.isFinite(Date.parse(expiresAt)) ||
     typeof beforeDispatch !== "function"
@@ -157,5 +156,5 @@ export async function executeV209SecretBulk(
   } catch {
     fail("OUTCOME_UNKNOWN");
   }
-  return Object.freeze({ secret_count: 22 });
+  return Object.freeze({ secret_count: SECRET_NAMES.length });
 }

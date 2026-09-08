@@ -43,9 +43,11 @@ function fixture(t) {
   };
   return { args, deps, calls, path, raw };
 }
-test("one exact bulk PATCH preserves22 sealed values and runs authority gate after OAuth", async (t) => {
+test("one exact bulk PATCH preserves exact allowlisted sealed values and runs authority gate after OAuth", async (t) => {
   const f = fixture(t);
-  assert.deepEqual(await executeV209SecretBulk(f.args, f.deps), { secret_count: 22 });
+  assert.deepEqual(await executeV209SecretBulk(f.args, f.deps), {
+    secret_count: SECRET_NAMES.length,
+  });
   assert.equal(f.calls.length, 3);
   assert.deepEqual(f.calls.slice(0, 2), ["oauth", "gate"]);
   const { url, options } = f.calls[2];
