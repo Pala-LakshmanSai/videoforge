@@ -393,6 +393,11 @@ test("single-file worker closes relative chunks and rejects unresolved dependenc
       main,
       'export {default, HostedVideoWorkflow, HostedPairWorkflow} from "./chunk.js";',
     );
+    const collision = `${main}.v209-single-file.tmp`;
+    await writeFile(collision, "owned-by-other");
+    await assert.rejects(bundleQualifiedWorker(main), /V2_09_RENDER_WORKER_WRITE_FAILED/u);
+    assert.equal(await readFile(collision, "utf8"), "owned-by-other");
+    await rm(collision);
     await bundleQualifiedWorker(main);
     const bundled = await readFile(main, "utf8");
     assert.ok(bundled.includes("HostedVideoWorkflow"));
@@ -401,8 +406,11 @@ test("single-file worker closes relative chunks and rejects unresolved dependenc
     await bundleQualifiedWorker(main);
     const broken = 'export {default, HostedVideoWorkflow, HostedPairWorkflow} from "./missing.js";';
     await writeFile(main, broken);
-    await assert.rejects(bundleQualifiedWorker(main), /V2_09_RENDER_WORKER_MODULE_CLOSURE_FAILED/u);
+    await assert.rejects(bundleQualifiedWorker(main), /V2_09_RENDER_WORKER_BUILD_FAILED/u);
     assert.equal(await readFile(main, "utf8"), broken);
+    await writeFile(main, "export default {};");
+    await assert.rejects(bundleQualifiedWorker(main), /V2_09_RENDER_WORKER_EXPORTS_FAILED/u);
+    assert.equal(await readFile(main, "utf8"), "export default {};");
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

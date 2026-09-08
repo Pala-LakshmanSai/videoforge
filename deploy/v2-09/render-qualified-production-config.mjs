@@ -30,11 +30,14 @@ const fail = (message) => {
 };
 
 export async function bundleQualifiedWorker(mainPath = ACTIVATED_MAIN_PATH) {
-  const webRequire = createRequire(resolve(ROOT, "apps/web/package.json"));
-  const viteRequire = createRequire(webRequire.resolve("vite"));
-  const { buildSync } = viteRequire("esbuild");
+  let phase = "V2_09_RENDER_WORKER_RESOLVE_FAILED";
   const temporaryPath = `${mainPath}.v209-single-file.tmp`;
+  let temporaryOwned = false;
   try {
+    const webRequire = createRequire(resolve(ROOT, "apps/web/package.json"));
+    const viteRequire = createRequire(webRequire.resolve("vite"));
+    const { buildSync } = viteRequire("esbuild");
+    phase = "V2_09_RENDER_WORKER_BUILD_FAILED";
     const result = buildSync({
       entryPoints: [mainPath],
       bundle: true,
@@ -48,24 +51,32 @@ export async function bundleQualifiedWorker(mainPath = ACTIVATED_MAIN_PATH) {
       logLevel: "silent",
       allowOverwrite: true,
     });
+    phase = "V2_09_RENDER_WORKER_OUTPUT_COUNT_FAILED";
     const outputs = Object.values(result.metafile.outputs);
+    if (result.outputFiles.length !== 1 || outputs.length !== 1) throw new Error(phase);
+    phase = "V2_09_RENDER_WORKER_IMPORTS_FAILED";
     if (
-      result.outputFiles.length !== 1 ||
-      outputs.length !== 1 ||
       outputs[0].imports.some(
         ({ path, external }) => !external || !/^(node:|cloudflare:)/u.test(path),
-      ) ||
+      )
+    )
+      throw new Error(phase);
+    phase = "V2_09_RENDER_WORKER_EXPORTS_FAILED";
+    if (
       ["default", "HostedVideoWorkflow", "HostedPairWorkflow"].some(
         (name) => !outputs[0].exports.includes(name),
       )
     )
-      throw new Error("incomplete module closure");
+      throw new Error(phase);
+    phase = "V2_09_RENDER_WORKER_WRITE_FAILED";
     await writeFile(temporaryPath, result.outputFiles[0].contents, { flag: "wx", mode: 0o600 });
+    temporaryOwned = true;
+    phase = "V2_09_RENDER_WORKER_RENAME_FAILED";
     await rename(temporaryPath, mainPath);
   } catch {
-    throw new Error("V2_09_RENDER_WORKER_MODULE_CLOSURE_FAILED");
+    throw new Error(phase);
   } finally {
-    await rm(temporaryPath, { force: true });
+    if (temporaryOwned) await rm(temporaryPath, { force: true });
   }
 }
 
@@ -74,6 +85,14 @@ export const V209_RENDER_FAILURE_CODES = Object.freeze([
   "V2_09_RENDER_DEPENDENCIES_FAILED",
   "V2_09_RENDER_BUILD_FAILED",
   "V2_09_RENDER_WORKER_MODULE_CLOSURE_FAILED",
+  "V2_09_RENDER_WORKER_RESOLVE_FAILED",
+  "V2_09_RENDER_WORKER_BUILD_FAILED",
+  "V2_09_RENDER_WORKER_OUTPUT_COUNT_FAILED",
+  "V2_09_RENDER_WORKER_IMPORTS_FAILED",
+  "V2_09_RENDER_WORKER_EXPORTS_FAILED",
+  "V2_09_RENDER_WORKER_WRITE_FAILED",
+  "V2_09_RENDER_WORKER_RENAME_FAILED",
+
   "V2_09_RENDER_WRANGLER_DRY_RUN_FAILED",
   "V2_09_RENDER_BUNDLE_FAILED",
 ]);
