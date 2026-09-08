@@ -455,12 +455,12 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_private_authority_sha256: null
-    current_authority_state: "d640_FAILED_CLEAN18_of_26_no_new_authority"
-    current_proposal_sha256: null
-    current_control_source_commit: "3c26caff046305869bb20265108bfbf976138d1c"
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-runtime-payload-hash.json"
+    current_authority_sha256: "sha256:d47d57440fcfb160d26630259eb78e6abfebafdcd58e154ae504e1ec71a4c115"
+    current_private_authority_sha256: "sha256:4e8d6267e4cb6b9b7bb16ce325d19498e6d93d96cae135a45690d3932c03768d"
+    current_authority_state: "e03_LAUNCHED_TWO_GO_PRECLAIM_PASS"
+    current_proposal_sha256: "sha256:e03dcbb3753fb535178306d54c94ba0b73ce361eb6c833f88ac7e4856dc1d8c1"
+    current_control_source_commit: "5097da4208847cc6ad4049b6b89168533b1844d1"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-bulk-secret-qualified-payload-preparation.json"
     current_failure_sha256: "sha256:dc79bd1aa4901ad2d5e5a2b97b8b8031fe66c88861649919413da9b5f9c98856"
     current_audit_stop: null
@@ -487,7 +487,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "5097da42payloadrepair31+5PASS independentGO; freshsuccessor undercontinuingauthorization9.7.7active9.8pending"
+    next_gate: "9.7.7e03executionactive;9.7.8/9.8pending continuingauthorizationnoapprovalprompt"
 
   GATE_RANGA_001:
     status: open

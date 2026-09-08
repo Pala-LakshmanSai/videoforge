@@ -1,0 +1,21 @@
+{
+  "schema_version": "videoforge.v2-09-approved-authority-handoff/v1",
+  "authority_id": "v2-09-e03dcbb3753fb535",
+  "source_commit": "5097da4208847cc6ad4049b6b89168533b1844d1",
+  "proposal_sha256": "sha256:e03dcbb3753fb535178306d54c94ba0b73ce361eb6c833f88ac7e4856dc1d8c1",
+  "private_authority_sha256": "sha256:4e8d6267e4cb6b9b7bb16ce325d19498e6d93d96cae135a45690d3932c03768d",
+  "materialization_plan_sha256": "sha256:78129b846f5193caa66f60bdc557ed5595572f84fe4a89dee6d1c29061bf1280",
+  "approval": "EXPLICIT_CONTINUING_USER_AUTHORIZATION_NO_REPEAT_PROMPTS",
+  "cap_usd": 2,
+  "completion_ceiling_usd": 17.5,
+  "audits": "TWO_GO_P0_0_P1_0",
+  "preclaim": {
+    "free_disk_bytes": 2259652608,
+    "wrangler_version": "4.120",
+    "release_http_status": 200,
+    "rate_remaining": 59
+  },
+  "execution_state": "LAUNCHED",
+  "checkpoint": "9.7.7",
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN"
+}

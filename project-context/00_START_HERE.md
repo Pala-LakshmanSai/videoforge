@@ -9,6 +9,10 @@ bounded repairs, reseals, fresh source-bound authorities and deployment through9
 Chrome E2E, and9.9 cleanup/readiness. Existing numeric caps, frozen Stage6/7 and no consumed-authority
 replay remain mandatory. This instruction overrides older repeated-approval requirements below.
 
+**9.7.7 ACTIVE — e03 launched:** source5097da42,2GO; preclaim2259652608bytes free,
+runtime4.120,release200remaining59. Authority: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-runtime-payload-hash.json` (`sha256:d47d57440fcfb160d26630259eb78e6abfebafdcd58e154ae504e1ec71a4c115`).
+USD2cap/USD17.5ceiling; continuingiteration authorized;9.7.8/9.8pending.
+
 **9.7.7 remains ACTIVE:**d640 FAILED_CLEAN18/26; bulk secrets passed live, qualified preparation
 stopped before mutation intent. Cleanup proved protectedoutputs/rolesclean,secret0,DB2inactive,RP3zero.
 Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-bulk-secret-qualified-payload-preparation.json` (`sha256:dc79bd1aa4901ad2d5e5a2b97b8b8031fe66c88861649919413da9b5f9c98856`). Source `5097da4208847cc6ad4049b6b89168533b1844d1`
