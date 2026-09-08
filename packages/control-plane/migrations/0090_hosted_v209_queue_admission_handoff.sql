@@ -3,6 +3,12 @@
 -- scoped mutation boundary that turns a qualified browser request into one fair, capped,
 -- tenant-owned ACTIVE request and lease.  It creates no provider attempt, outbox, or work row.
 
+-- 0074's two ordinary materialization functions address the candidate row through `id` while the
+-- table's canonical key is generation_request_id. Add the exact stored compatibility alias so the
+-- already-ledgered functions resolve the same immutable identity without redefining their bodies.
+ALTER TABLE public.hosted_v209_ordinary_dispatch_candidates
+  ADD COLUMN id uuid GENERATED ALWAYS AS (generation_request_id) STORED UNIQUE;
+
 CREATE OR REPLACE FUNCTION public.videoforge_prepare_hosted_v209_runtime(
   supplied_account_id uuid,
   supplied_workspace_id uuid,
