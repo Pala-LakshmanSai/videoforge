@@ -487,7 +487,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "Repair01773b89ready22/22GO;originalroutecauseunresolved;continuingauthorizationunchanged9.8pending"
+    next_gate: "3c26caff bulk transition candidate verified; bounded read-only prerequisites allowed; fresh sealed execution under continuingauthorization; iterateagain afterfailure;9.8pending"
 
   GATE_RANGA_001:
     status: open

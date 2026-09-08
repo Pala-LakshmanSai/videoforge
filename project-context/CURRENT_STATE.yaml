@@ -8,12 +8,12 @@ current_milestone: v2_09_d8cc_failed_clean_route_stop
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_continuation
+task_stage: read_only_preflight
 application_code_changes_authorized: true
-provider_calls_authorized: false
-read_only_provider_calls_authorized: false
+provider_calls_authorized: true
+read_only_provider_calls_authorized: true
 remote_or_cloud_mutations_authorized: false
-credential_access_authorized: false
+credential_access_authorized: true
 gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
@@ -36,6 +36,7 @@ v2_09_continuing_user_authorization:
   recorded_at: "2026-09-08"
   scope: "Current V2-09 through9.7, single9.8, and9.9 manual-testing readiness"
   repeat_approval_prompts_required: false
+  next_failure_policy: "Diagnose, repair, verify and iterate again within unchanged current V2-09 scope"
   authorized_actions: "Bounded repairs, reseals, fresh source-bound authorities, deployment, single Chrome E2E and cleanup"
   preserved_constraints: "Existing numeric caps; Stage6/7 frozen; no consumed-authority replay; fresh exact successor records"
   precedence: "Explicit current user instruction overrides older repeated-approval prompts within this scope"
@@ -54,6 +55,10 @@ v2_09_checkpoint_9_7_subcheckpoints:
   next_main_subcheckpoints: "9.8 single Chrome E2E and 9.9 cleanup/readiness pending"
 
 v2_09_provider_free_candidate:
+  bulk_secret_candidate_source: "3c26caff046305869bb20265108bfbf976138d1c"
+  bulk_secret_candidate_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-bulk-secret-single-request-transition-repair.json"
+  bulk_secret_candidate_evidence_sha256: "sha256:c9b708aea2963a393c8a08d2aab5cebdf6cc56b048d57752b5e136a0f997e4bb"
+  bulk_secret_candidate_status: "23CF+4targeted+8helper+26consumerPASS independentGO;workerd23statesPASS; freshsealedexecutionpending under continuingauthorization"
   d8cc_final_closure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-d8cc-route-readback.json"
   d8cc_final_closure_sha256: "sha256:44e0d4338155e59ee00702a1cd8481ed10b768e3231a03a4994cdb00d7a4fa8e"
   cleanup_route_repair_source: "01773b89cb2909f5f46e0f3f7fe990af072882d5"
@@ -4257,7 +4262,7 @@ live_development:
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   authorized_spend_usd: 0
   provider_authority_scope: exact_d8cc_continuing_authority
 
@@ -6349,15 +6354,15 @@ provider_authority_consumed_reconciler_secret_output: &v2_09_provider_authority_
       checked_at: "2026-09-07"
 
 provider_authority: &v2_09_provider_authority_current
-  mode: none
-  provider: null
+  mode: read_only
+  provider: runpod+cloudflare_r2+neon+github
   historical_provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
   cap_usd: 0
   historical_cap_usd: 2
   non_transferable: true
-  source: null
+  source: AGENTS.md_and_explicit_continuing_user_authorization
   latest_closed_source: "cb35713513f39fcc2b4e49b1628cbcbdddeb76f4"
-  authorized_by_user_at: null
+  authorized_by_user_at: "2026-09-08"
   latest_closed_authorized_by_user_at: "2026-09-08"
   proposal_sha256: null
   latest_closed_proposal_sha256: "sha256:ca1180bf19a1b4cb25c6e5a1c01b097bff4768839f239a7187168e8d19df37c2"
@@ -6367,14 +6372,14 @@ provider_authority: &v2_09_provider_authority_current
   latest_closed_authority_sha256: "sha256:7779361de49da5c0a9f77ad717c65a9d7303334aba1c9d19af9b6ba1b2f4dcf9"
   private_authority_sha256: null
   latest_closed_private_authority_sha256: "sha256:b7ba1e61425962bbaa33c663c668148b43b32d20dda4642a453c385068af17dc"
-  consumed: true
+  consumed: false
   reusable: false
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   provider_mutations_authorized: false
-  credential_access_authorized: false
+  credential_access_authorized: true
   gpu_use_authorized: false
   actual_spend_usd: null
-  resources: []
+  resources: ["exact V2-09 configured prerequisite resources"]
   historical_resources:
     - "github:Pala-LakshmanSai/videoforge:refs/heads/codex/serverless-v2-roadmap-v4"
     - "runpod:mage-production-lane:EU-RO-1:RTX4090"
@@ -6383,7 +6388,7 @@ provider_authority: &v2_09_provider_authority_current
     - "neon:videoforge-production-database"
     - "github:media-worker-v0.1.15"
     - "paired-mac:videoforge-personal-media-worker"
-  authorized_operations: []
+  authorized_operations: [account_identity_lookup, inventory_lookup, quota_lookup, rate_lookup, region_lookup, resource_identity_lookup, resource_absence_lookup]
   historical_authorized_operations:
     - push-clean-source
     - readback-clean-source
@@ -6410,7 +6415,7 @@ provider_authority: &v2_09_provider_authority_current
     - prove-three-zero-compute-reads
     - read-settled-billing
     - verify-retained-resources
-  allowed_operations: []
+  allowed_operations: [account_identity_lookup, inventory_lookup, quota_lookup, rate_lookup, region_lookup, resource_identity_lookup, resource_absence_lookup]
   historical_allowed_operations:
     - push-clean-source
     - readback-clean-source
@@ -6460,7 +6465,7 @@ recommended_next_task:
   status: CONTINUING_AUTHORITY_PRECLAIM_ACTIVE
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: explicit_continuing_user_authorization_d8cc
-  task_stage: provider_free_continuation
+  task_stage: read_only_preflight
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_current
@@ -6472,11 +6477,11 @@ recommended_next_task:
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
   goal: "Pass2GiBdisk release200 runtime/artifactpreclaim gates then execute exactd8cc withoutrepeatapprovalprompts;9.7.7active9.8pending"
-  provider_calls_authorized: false
-  read_only_provider_calls_authorized: false
+  provider_calls_authorized: true
+  read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
+  credential_access_authorized: true
   credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
