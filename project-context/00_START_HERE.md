@@ -9,18 +9,12 @@ bounded repairs, reseals, fresh source-bound authorities and deployment through9
 Chrome E2E, and9.9 cleanup/readiness. Existing numeric caps, frozen Stage6/7 and no consumed-authority
 replay remain mandatory. This instruction overrides older repeated-approval requirements below.
 
-**9.7.7 ACTIVE — exactcfe842 approved:** source `69d343171e8226f1df948bf1da7d542b1e340935`; fresh artifact/runtime checks precede launch. Cap USD2; completion ceiling USD17.5. Approval: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-retained-disabled-baseline-replacement.json` (`sha256:6511d1909b05b4fbcaf09f8ca3973b7043db09378acabc0edd660f73d2ce50c9`).9.7.8/9.8pending.
-
-**9.7.7 remains ACTIVE:**ca118 is consumed `FAILED_CLEAN` at17/26. Cleanup verified zero
-secrets,27 protected outputs/roles cleaned,two inactive DB bindings and three zero-compute reads.
-The disabled Worker and two workflows remain retained; they are not absent. No qualified deploy,
-media installation or Chrome E2E occurred. Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-release-recovered-secret-cleanup.json` (`sha256:fdf35a7a704f9416cc621747935bc19c2cf97ef72cc1dda76e63f3676492b7ff`).
-Candidate `69d343171e8226f1df948bf1da7d542b1e340935` passes19 Cloudflare tests plus1 targeted
-old-source route test and independent audit GO. Exact retained-baseline adoption, valid deletion,
-safe diagnostics and bounded readbacks preserve no mutation retry. Evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-retained-disabled-baseline-repair.json` (`sha256:2fd87c00dc2324275a9cbd81bceab207a4de301e1a2725cd5a879fe8bc2f54ab`).
-The exact successor is approved above.
-Current cfe842 authority is recorded above.9.7.1–6 remain DONE;9.7.8/9.8/9.9pending.
-Stage6/7 remain frozen QUALIFIED_PASS_CLEAN and untouched.
+**9.7.7 remains ACTIVE:**cfe842 consumed FAILED_CLEAN8/26 after interruption with emptylogs.
+Disk115Mi observed; exact cause UNPROVEN. Cleanup-only recovery completed: protectedoutputs
+absent/CLEANED, three zero-compute reads, two sealedvolumes and billing unchanged. No lane/render/CF
+started; priorca118disabledWorker/twoworkflows unchanged. Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-retained-baseline-interrupted-executor.json` (`sha256:a99c2d7d6fc5ee79aef7adfb8c7c7ca48fc11d80583cf0ad30c38cec7f07e83b`).
+Continue same69d with fresh exact authority under continuing user authorization; no repeatapproval
+prompt or oldauthority replay.9.7.8/9.8/9.9pending;Stage6/7frozen.
 
 
 ### Historical activation evidence

@@ -1,0 +1,40 @@
+{
+  "schema_version": "videoforge.v2-09-failed-clean-closure/v1",
+  "authority_id": "v2-09-cfe8427209476789",
+  "source_commit": "69d343171e8226f1df948bf1da7d542b1e340935",
+  "status": "FAILED_CLEAN",
+  "consumed": true,
+  "reusable": false,
+  "completed_operations": 8,
+  "total_operations": 26,
+  "interruption": {
+    "executor_exit_code": 1,
+    "logs": "EMPTY",
+    "observed_free_disk_mib": 115,
+    "later_user_freed_disk_gib": 2.5,
+    "exact_cause": "UNPROVEN"
+  },
+  "cleanup_recovery": {
+    "mode": "EXPLICIT_CLEANUP_ONLY_FROZEN_SOURCE",
+    "status": "FAILED_CLEAN",
+    "exit_code": 1,
+    "exit_semantics": "EXPECTED_CLEANUP_ONLY_TERMINAL",
+    "protected_outputs": "ALL_ABSENT",
+    "tombstone": "CLEANED"
+  },
+  "lanes_render_cloudflare_started": false,
+  "runpod_proof_sha256": "sha256:2b0cb12e127782af49624b8dd3cac0d27e81d05990742ed906ebfdc63aa223ab",
+  "three_zero_compute_reads": true,
+  "retained_volumes": {
+    "count": 2,
+    "size_gb_each": 50,
+    "region": "EU-RO-1",
+    "unchanged": true
+  },
+  "posted_endpoint_billing_usd": 3.5284023286949378,
+  "delayed_billing": "UNPROVEN",
+  "prior_ca118_baseline": "UNCHANGED_RETAINED_DISABLED_WORKER_TWO_WORKFLOWS",
+  "local_disk_cleanup": "Older completed-attempt source worktrees and two temporary checkouts removed; proof files preserved",
+  "next": "SAME_69D34317_FRESH_SOURCE_BOUND_SUCCESSOR_UNDER_CONTINUING_USER_AUTHORIZATION",
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN"
+}
