@@ -1,0 +1,20 @@
+{
+  "schema_version": "videoforge.v2-09-approved-authority-handoff/v1",
+  "authority_id": "v2-09-492678e0a0342125",
+  "source_commit": "144dda524d2e2d1813a08abaf268c3a767061f59",
+  "proposal_sha256": "sha256:492678e0a03421258ffbcbfa006b582d75441da0ab2833305feb1e6856997825",
+  "private_authority_sha256": "sha256:44b34f2ade9253ad9fe437391f34cd7a8d2ec2df6aac2d6dcf00b5a2ad74535e",
+  "materialization_plan_sha256": "sha256:3bf2cf816c0db28c213734aef0b790b62213d91d2726867841a2fcf0070a696a",
+  "source_proposal_audits": "TWO_GO_P0_0_P1_0",
+  "materialized_authority_audits": "TWO_GO_P0_0_P1_0",
+  "approval": "EXPLICIT_EXACT_USER_APPROVAL",
+  "checkpoint": 9,
+  "subcheckpoint": "9.7",
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN",
+  "cap_usd": 2,
+  "completion_ceiling_usd": 17.5,
+  "single_chrome_e2e": true,
+  "superseded_d6": "UNCLAIMED_PRECLAIM_BLOCKED_SUPERSEDED_NOT_CONSUMED",
+  "execution_state": "ACTIVE_EXACT_APPROVED_EXECUTION",
+  "prior_cb7": "CONSUMED_FAILED_CLEAN_NON_REUSABLE"
+}

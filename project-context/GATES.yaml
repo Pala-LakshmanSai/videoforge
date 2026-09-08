@@ -455,17 +455,17 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_private_authority_sha256: null
-    current_authority_state: "none_provider_free_repair_cb7_consumed"
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-workflow-bootstrap-phase-replacement.json"
+    current_authority_sha256: "sha256:bb518d9cfdccbe07d3b2a2c08dcf6b6eba77a0297ebf4eee67a7f0398f904060"
+    current_private_authority_sha256: "sha256:44b34f2ade9253ad9fe437391f34cd7a8d2ec2df6aac2d6dcf00b5a2ad74535e"
+    current_authority_state: "exact_492_approved_execution_active"
     current_proposal_sha256: "sha256:492678e0a03421258ffbcbfa006b582d75441da0ab2833305feb1e6856997825"
     current_control_source_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-native-chrome-workflow-drift.json"
     current_failure_sha256: "sha256:3540ddb3778feb68f82edf81f2ccd3908f6f6a323289962032b20210cbb34eba"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "9.7 workflow/bootstrap/phase repair validated109/109 plus real runtime proof; independent audits GO; sealed awaiting fresh exact approval. cb7 FAILED_CLEAN16/26,d6unclaimed;Stage6/7frozen."
+    provider_free_repair_state: "Repairs validated109/109 plus real runtime proof; two exact artifact audits GO;492 approved executor active;Stage6/7frozen."
     previous_latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-endpoint-transition-replacement.json"
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-native-chrome-preclaim-replacement.json"
     previous_latest_closed_authority_sha256: "sha256:40b129bd736c6052de4017ae8aede0db29d2849b8b733f312a4a94753ad14c1c"
@@ -487,7 +487,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7 sealed proposal awaiting fresh exact approval;9.8/9.9pending;Stage6/7frozen."
+    next_gate: "9.7 approved492 execution active;9.8 singleChrome E2E and9.9 cleanup/readiness pending."
 
   GATE_RANGA_001:
     status: open
