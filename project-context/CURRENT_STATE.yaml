@@ -4,11 +4,11 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_provider_free_repair_active
+current_milestone: v2_09_workflow_bootstrap_phase_sealed_awaiting_exact_approval
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_repair
+task_stage: awaiting_exact_approval
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,7 +18,7 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_provider_free_repair_active
+  mode: v2_09_workflow_bootstrap_phase_sealed_awaiting_exact_approval
   live_provider_calls: "None; cb7 consumed FAILED_CLEAN, provider-free repair only."
   remote_mutation: false
   deployment_or_publication: "None; fresh exact successor approval required."
@@ -29,10 +29,13 @@ current_goal_boundary:
   current_checkpoint: "9.7 active;1–8 and9.1–9.6 finished;9.8/9.9 pending."
   approval_evidence: null
   approval_evidence_sha256: null
-  note: "cb7 consumed FAILED_CLEAN at16/26; d6 unclaimed/superseded. Deployment-order repairs validated109/109 plus real runtime proof; independent audits GO; seal pending."
+  note: "cb7 consumed FAILED_CLEAN at16/26; d6 unclaimed/superseded. Deployment-order repairs validated109/109 plus real runtime proof; independent audits GO; clean source/proposal sealed awaiting exact approval."
 
 
 v2_09_provider_free_candidate:
+  workflow_bootstrap_phase_source_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
+  workflow_bootstrap_phase_proposal_path: "/Users/lakshmansai/.videoforge/v2-09/proposals/workflow-bootstrap-phase-replacement.txt"
+  workflow_bootstrap_phase_proposal_sha256: "sha256:492678e0a03421258ffbcbfa006b582d75441da0ab2833305feb1e6856997825"
   workflow_bootstrap_phase_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-workflow-bootstrap-phase-repair.json"
   workflow_bootstrap_phase_repair_evidence_sha256: "sha256:2aeb0ab30eef8cea124b838c3b732356f64dabe85e19d271e98fb5c238bd330f"
   current_repair_status: WORKFLOW_BOOTSTRAP_PHASE_REPAIR_VALIDATED_109_OF_109_REAL_RUNTIME_PASS_INDEPENDENT_GO
@@ -51,7 +54,7 @@ v2_09_provider_free_candidate:
   heartbeat_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-postdeploy-heartbeat-repair.json"
   heartbeat_repair_evidence_sha256: "sha256:0d78a66bfd412e4d8db8cfbb2722629ad86db27be0789d0744b3c38c227f4307"
   heartbeat_repair_validation: "FOCUSED_139_OF_139_INCLUDING_REAL_POSTGRES17_TWO_INDEPENDENT_GO_P0_0_P1_0"
-  source_commit: "38d0d478962a71dd2470f960a28f2dc7852cb60e"
+  source_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
   source_audit: "PASS_THREE_INDEPENDENT_FOCUSED_AUDITS_P0_0_P1_0"
   canonical_provider_free_verification: FOCUSED_V209_136_OF_136_PLUS_CONTRACTS_112_OF_112_PYTHON_96_OF_96_HOSTED_78_OF_78_CONTEXT_PASS
   production_state: DISABLED_UNQUALIFIED
@@ -6382,22 +6385,22 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_provider_free_repair_active
-  status: PROVIDER_FREE_REPAIR_ACTIVE
+  milestone: v2_09_workflow_bootstrap_phase_sealed_awaiting_exact_approval
+  status: AWAITING_FRESH_EXACT_APPROVAL
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: no_current_provider_authority_cb7_consumed
-  task_stage: provider_free_repair
+  task_stage: awaiting_exact_approval
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_current
   provider_mode: fixture
-  provider_free_repair_commit: "7c5206db93e21e024e60000a02e232c813d96714"
-  provider_free_clean_seal_commit: "f1e115f62ce6c26d2f4e50c779a62705be4546b4"
-  provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-child-stdin-eof-repair.json"
-  provider_free_repair_validation: "exact_child_stdin_delivery_and_eof_plus_fail_closed_error_quiescence_and_four_bounded_sync_psql_paths_plus_70_of_70_focused_tests_and_three_independent_go_p0_0_p1_0"
+  provider_free_repair_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
+  provider_free_clean_seal_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
+  provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-workflow-bootstrap-phase-repair.json"
+  provider_free_repair_validation: "109_OF_109_REAL_RUNTIME_PROOF_INDEPENDENT_GO_P0_0_P1_0"
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
-  goal: "Seal validated deployment-order repairs inside9.7, then fresh exact approval;9.8/9.9 pending."
+  goal: "Obtain exact approval for sealed workflow/bootstrap/phase proposal, then execute9.7;9.8/9.9 pending."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
