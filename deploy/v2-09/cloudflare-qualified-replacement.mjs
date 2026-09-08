@@ -51,6 +51,7 @@ export function createV209CloudflareQualifiedReplacement(
       [
         "versionId",
         "sourceCommit",
+        "artifactRootPath",
         "qualifiedConfigPath",
         "qualifiedConfigSha256",
         "workerBundleSha256",
@@ -59,6 +60,7 @@ export function createV209CloudflareQualifiedReplacement(
         .join(",") ||
     !UUID.test(predecessor.versionId) ||
     !COMMIT.test(predecessor.sourceCommit) ||
+    resolve(predecessor.artifactRootPath ?? "") !== predecessor.artifactRootPath ||
     ![predecessor.qualifiedConfigSha256, predecessor.workerBundleSha256].every((x) =>
       HASH.test(x),
     ) ||

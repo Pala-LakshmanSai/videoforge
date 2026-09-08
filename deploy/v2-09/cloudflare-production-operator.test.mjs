@@ -1465,7 +1465,7 @@ test("replacement failure containment verifies disabled transport and preserves 
   }
 });
 
-test("replacement validates exact prior checkout paths without rewriting pinned config", async () => {
+test("replacement validates a relocated prior artifact tree without rewriting pinned config", async () => {
   const value = fixture();
   const mock = harness(value);
   const dependencies = { ...mock, testOnly: true, now: () => new Date("2026-09-06T22:00:00.000Z") };
@@ -1476,14 +1476,33 @@ test("replacement validates exact prior checkout paths without rewriting pinned 
   );
   const oldConfig = JSON.parse(readFileSync(value.configuration.qualifiedConfigPath));
   const predecessorPath = resolve(value.directory, "prior-qualified.json");
-  oldConfig.main = resolve(
-    value.directory,
-    "source/apps/web/dist-cloudflare/videoforge_production_runtime/index.js",
-  );
-  oldConfig.assets.directory = resolve(value.directory, "source/apps/web/dist-cloudflare/client");
   oldConfig.vars.VIDEOFORGE_COMMIT = "b".repeat(40);
   const bytes = JSON.stringify(oldConfig);
   writeFileSync(predecessorPath, bytes, { mode: 0o600 });
+  const artifactRootPath = resolve(value.directory, "prior-artifacts");
+  mkdirSync(artifactRootPath);
+  chmodSync(artifactRootPath, 0o700);
+  let artifactDirectory = artifactRootPath;
+  for (const segment of ["apps", "web", "dist-cloudflare"]) {
+    mkdirSync((artifactDirectory = resolve(artifactDirectory, segment)));
+    chmodSync(artifactDirectory, 0o700);
+  }
+  const workerDirectory = resolve(artifactDirectory, "videoforge_production_runtime");
+  const assetDirectory = resolve(artifactDirectory, "client");
+  mkdirSync(workerDirectory);
+  mkdirSync(assetDirectory);
+  chmodSync(workerDirectory, 0o700);
+  chmodSync(assetDirectory, 0o700);
+  const workerAssetDirectory = resolve(workerDirectory, "assets");
+  mkdirSync(workerAssetDirectory);
+  chmodSync(workerAssetDirectory, 0o700);
+  const relocatedMain = resolve(workerDirectory, "index.js");
+  const relocatedWorkerAsset = resolve(workerAssetDirectory, "runtime.js");
+  writeFileSync(relocatedMain, "sealed predecessor worker", { mode: 0o600 });
+  writeFileSync(relocatedWorkerAsset, "sealed predecessor worker asset", { mode: 0o600 });
+  writeFileSync(resolve(assetDirectory, "index.html"), "sealed predecessor assets", {
+    mode: 0o600,
+  });
   const runChild = async (input) => {
     const result = await mock.runChild(input);
     if (input.args.includes("view")) {
@@ -1512,17 +1531,17 @@ test("replacement validates exact prior checkout paths without rewriting pinned 
   const predecessor = {
     versionId: VERSION_IDS[3],
     sourceCommit: oldConfig.vars.VIDEOFORGE_COMMIT,
+    artifactRootPath,
     qualifiedConfigPath: predecessorPath,
     qualifiedConfigSha256: hash(bytes),
     workerBundleSha256: approved.production.worker_bundle_sha256,
   };
   await primitive.predecessor(approved, predecessor);
   assert.equal(readFileSync(predecessorPath, "utf8"), bytes);
-  oldConfig.main = resolve(value.directory, "foreign/index.js");
-  const drift = JSON.stringify(oldConfig);
-  writeFileSync(predecessorPath, drift);
+  unlinkSync(relocatedWorkerAsset);
+  symlinkSync(ACTIVATED_MAIN_PATH, relocatedWorkerAsset);
   await assert.rejects(
-    primitive.predecessor(approved, { ...predecessor, qualifiedConfigSha256: hash(drift) }),
-    /PREDECESSOR_ARTIFACT_PATH_DRIFT/,
+    primitive.predecessor(approved, predecessor),
+    /PREDECESSOR_ARTIFACT_PATH_DRIFT|PRIVATE_FILE_INVALID/,
   );
 });

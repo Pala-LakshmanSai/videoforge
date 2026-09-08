@@ -24,6 +24,7 @@ function fixture(t) {
   const predecessor = {
     versionId: "00000000-0000-4000-8000-000000000001",
     sourceCommit: "1".repeat(40),
+    artifactRootPath: root,
     qualifiedConfigPath: old,
     qualifiedConfigSha256: hash("old"),
     workerBundleSha256: "sha256:" + "2".repeat(64),

@@ -413,33 +413,54 @@ function assertConfiguration(value) {
 
 const PREDECESSOR_ARTIFACT_ROOT = Symbol("v209 exact predecessor artifact root");
 
+function predecessorArtifactPaths(root) {
+  if (typeof root !== "string" || !isAbsolute(root) || resolve(root) !== root)
+    fail("PREDECESSOR_ARTIFACT_ROOT_INVALID");
+  privateDirectory(root);
+  let dist = root;
+  for (const segment of ["apps", "web", "dist-cloudflare"]) {
+    dist = resolve(dist, segment);
+    privateDirectory(dist);
+  }
+  const worker = resolve(dist, "videoforge_production_runtime");
+  const main = resolve(worker, "index.js");
+  const assets = resolve(dist, "client");
+  privateDirectory(worker);
+  privateDirectory(assets);
+  privateFile(main);
+  return Object.freeze({ worker, main, assets });
+}
+
+function validatePredecessorArtifactTree(root) {
+  const paths = predecessorArtifactPaths(root);
+  const visit = (path) => {
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink()) fail("PREDECESSOR_ARTIFACT_PATH_DRIFT");
+    if (stat.isDirectory()) {
+      privateDirectory(path);
+      for (const name of readdirSync(path)) visit(resolve(path, name));
+      return;
+    }
+    if (!stat.isFile()) fail("PREDECESSOR_ARTIFACT_PATH_DRIFT");
+    privateFile(path);
+  };
+  visit(paths.worker);
+  visit(paths.assets);
+  return paths;
+}
+
 function qualifiedConfiguration(configuration, authority) {
   privateFile(configuration.qualifiedConfigPath);
   const bytes = readFileSync(configuration.qualifiedConfigPath);
   if (sha256(bytes) !== authority.production.config_sha256) fail("QUALIFIED_CONFIG_HASH_DRIFT");
   const value = parseJson(bytes.toString("utf8"), "QUALIFIED_CONFIG_JSON_INVALID");
   const predecessorRoot = configuration[PREDECESSOR_ARTIFACT_ROOT];
-  if (predecessorRoot !== undefined) {
-    // Only the built-in predecessor reader sets this private symbol. Verify original paths
-    // before normalizing a validation-only copy; neither pinned bytes nor returned value change.
-    if (
-      value.main !==
-        resolve(
-          predecessorRoot,
-          "apps/web/dist-cloudflare/videoforge_production_runtime/index.js",
-        ) ||
-      value.assets?.directory !== resolve(predecessorRoot, "apps/web/dist-cloudflare/client")
-    )
-      fail("PREDECESSOR_ARTIFACT_PATH_DRIFT");
-    validateProductionConfig(
-      {
-        ...value,
-        main: ACTIVATED_MAIN_PATH,
-        assets: { ...value.assets, directory: ACTIVATED_ASSETS_PATH },
-      },
-      { mode: "qualified" },
-    );
-  } else validateProductionConfig(value, { mode: "qualified" });
+  // The pinned predecessor config retains the absolute paths from its original
+  // checkout. Validate those bytes as-is; the separately bound artifact root is
+  // a relocation-only copy used for path and symlink checks and must not rewrite
+  // or re-hash the historical config.
+  validateProductionConfig(value, { mode: "qualified" });
+  if (predecessorRoot !== undefined) validatePredecessorArtifactTree(predecessorRoot);
   const workflowNames = value.workflows.map(({ name }) => name);
   if (
     value.name !== configuration.workerName ||
@@ -1983,6 +2004,13 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
     assertCleanupAuthority: (authority) =>
       assertCleanupAuthority(authority, runtime.configuration, runtime.now),
     async predecessor(authority, predecessor) {
+      const artifactRootPath = predecessor.artifactRootPath;
+      if (
+        predecessor.sourceCommit !== authority.source_commit &&
+        (typeof artifactRootPath !== "string" || !isAbsolute(artifactRootPath))
+      )
+        fail("PREDECESSOR_ARTIFACT_ROOT_INVALID");
+      if (artifactRootPath !== undefined) validatePredecessorArtifactTree(artifactRootPath);
       const oldAuthority = {
         ...authority,
         source_commit: predecessor.sourceCommit,
@@ -1998,10 +2026,9 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
           ...runtime.configuration,
           sourceCommit: predecessor.sourceCommit,
           qualifiedConfigPath: predecessor.qualifiedConfigPath,
-          [PREDECESSOR_ARTIFACT_ROOT]:
-            predecessor.sourceCommit === authority.source_commit
-              ? runtime.configuration.root
-              : resolve(dirname(predecessor.qualifiedConfigPath), "source"),
+          ...(artifactRootPath === undefined
+            ? {}
+            : { [PREDECESSOR_ARTIFACT_ROOT]: artifactRootPath }),
         },
       };
       const version = await read(oldAuthority, "QUALIFIED_EXACT", oldRuntime);
