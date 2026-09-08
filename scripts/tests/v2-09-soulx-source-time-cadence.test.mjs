@@ -36,8 +36,8 @@ test("0092 derives SoulX cadence from canonical source time rather than 30 fps t
 
 test("0092 is the sole manifest successor and preserves both runtime function signatures", () => {
   const manifest = JSON.parse(read("packages/control-plane/migrations/manifest.json"));
-  assert.equal(manifest.migrations.length, 92);
-  const entry = manifest.migrations.at(-1);
+  const entry = manifest.migrations.find(({ version }) => version === 92);
+  assert.ok(entry);
   assert.deepEqual(
     [entry.version, entry.filename],
     [92, "0092_hosted_v209_soulx_source_time_cadence.sql"],

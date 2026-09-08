@@ -552,6 +552,12 @@
       "name": "hosted_v209_soulx_source_time_cadence",
       "filename": "0092_hosted_v209_soulx_source_time_cadence.sql",
       "sha256": "sha256:3391031513a3a44e9baee68c4a5f5dede21b6609279de6a03c096537c215eabe"
+    },
+    {
+      "version": 93,
+      "name": "hosted_v209_span_finalization_request_hash",
+      "filename": "0093_hosted_v209_span_finalization_request_hash.sql",
+      "sha256": "sha256:0b15bd026a7dbee4cabc4e97e7484f8ebd443c35c2f0717312e24873bd6d1d5a"
     }
   ]
 }
