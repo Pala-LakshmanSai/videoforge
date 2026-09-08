@@ -164,6 +164,7 @@ INSERT INTO v209_runtime_function_allowlist(signature) VALUES
   ('videoforge_load_hosted_pair_activation_v2(uuid,uuid,uuid)'),
   ('videoforge_load_hosted_prompt_plan(uuid,uuid,uuid,uuid)'),
   ('videoforge_load_hosted_v209_ordinary_lane_materialization(uuid,uuid,uuid,text)'),
+  ('videoforge_resume_hosted_v209_ordinary_lane_materialization(uuid,uuid,uuid,text)'),
   ('videoforge_materialize_hosted_lane_batches(uuid,uuid,uuid,uuid,uuid,text,jsonb)'),
   ('videoforge_materialize_hosted_v209_ordinary_dispatch(uuid,uuid,uuid,uuid)'),
   ('videoforge_materialize_hosted_v209_span_audio_jobs(uuid,uuid,uuid,uuid)'),

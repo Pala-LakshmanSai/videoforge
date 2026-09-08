@@ -287,7 +287,10 @@ function dispatchResponse(candidate: Candidate, correlationId: string, status: n
   return new Response(base.body, { status: base.status, headers });
 }
 
-function preparationResponse(state: "PREPARING_INPUTS" | "SCHEDULED", correlationId: string) {
+function preparationResponse(
+  state: "PREPARING_INPUTS" | "SCHEDULED" | "WAITING",
+  correlationId: string,
+) {
   const base = response(
     {
       schema_version: "videoforge-hosted-v209-project-dispatch/v1",
@@ -331,7 +334,10 @@ export async function resumeHostedV209ProjectDispatch(
   const runtimePool = suppliedRuntimePool ?? injected.createPool(config.neon.databaseUrl);
   try {
     const runtimeDatabase = injected.createExecutor(runtimePool);
-    if (!admissionAlreadyEnsured) await injected.ensureAdmission(runtimeDatabase, identity);
+    if (!admissionAlreadyEnsured) {
+      const admission = await injected.ensureAdmission(runtimeDatabase, identity);
+      if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
+    }
     const materialized = await injected.materialize(runtimeDatabase, identity);
     const candidate = exactCandidate(materialized.candidate, identity);
     if (!candidate) return response({ error: { code: "HOSTED_V209_CANDIDATE_NOT_READY" } }, 409);
@@ -440,7 +446,11 @@ export async function handleHostedV209ProjectDispatch(
       userId: scope.user_id,
       projectId: match[1]!,
     };
-    await injected.ensureAdmission(injected.createExecutor(runtimePool), identity);
+    const admission = await injected.ensureAdmission(
+      injected.createExecutor(runtimePool),
+      identity,
+    );
+    if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
     if (spanAudio) {
       const preparation = await spanAudio.prepare(identity);
       if (preparation.state === "PREPARING_INPUTS") {

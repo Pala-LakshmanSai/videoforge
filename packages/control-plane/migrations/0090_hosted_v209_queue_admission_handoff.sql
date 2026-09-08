@@ -127,6 +127,102 @@ $$;
 REVOKE ALL ON FUNCTION public.videoforge_prepare_hosted_v209_runtime(uuid,uuid,uuid,uuid,uuid)
   FROM PUBLIC;
 
+-- Runtime replay reads only the immutable full request committed by 0074. It permits the two
+-- safe send states and the already-assigned result, and never reconstructs or resets work.
+CREATE FUNCTION public.videoforge_resume_hosted_v209_ordinary_lane_materialization(
+  supplied_account_id uuid, supplied_workspace_id uuid,
+  supplied_generation_request_id uuid, supplied_lane text
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+DECLARE
+  token_key text:=current_setting('videoforge.dispatch_token_key',true);
+  target record;
+  candidate public.hosted_v209_ordinary_dispatch_candidates%ROWTYPE;
+  materialized public.hosted_v209_ordinary_lane_materializations%ROWTYPE;
+  raw_token text;
+  pair_sendable boolean;
+BEGIN
+  IF public.videoforge_current_account_id() IS DISTINCT FROM supplied_account_id
+     OR supplied_lane NOT IN ('mage_image','soulx_avatar')
+     OR token_key IS NULL OR length(token_key)<32 THEN
+    RAISE EXCEPTION 'hosted V2-09 ordinary resume scope invalid' USING ERRCODE='42501';
+  END IF;
+  SELECT
+    (count(*) FILTER(WHERE attempt.state='OUTBOXED' AND outbox.state='READY_TO_DISPATCH'
+      AND outbox.send_attempt_count=0)=2)
+    OR (
+      count(*) FILTER(WHERE attempt.lane='mage_image' AND attempt.state='ASSIGNED'
+        AND outbox.state='ASSIGNED' AND outbox.send_attempt_count=1
+        AND assignment.provider_job_id IS NOT NULL)=1
+      AND count(*) FILTER(WHERE attempt.lane='soulx_avatar' AND attempt.state='OUTBOXED'
+        AND outbox.state='READY_TO_DISPATCH' AND outbox.send_attempt_count=0)=1
+    )
+    OR (count(*) FILTER(WHERE attempt.state='ASSIGNED' AND outbox.state='ASSIGNED'
+      AND outbox.send_attempt_count=1 AND assignment.provider_job_id IS NOT NULL)=2)
+    INTO pair_sendable
+    FROM public.serverless_attempts attempt
+    JOIN public.serverless_dispatch_outbox outbox ON outbox.attempt_id=attempt.id
+    LEFT JOIN public.serverless_provider_assignments assignment
+      ON assignment.attempt_id=attempt.id AND assignment.is_current
+   WHERE attempt.account_id=supplied_account_id
+     AND attempt.workspace_id=supplied_workspace_id
+     AND attempt.generation_request_id=supplied_generation_request_id;
+  IF NOT coalesce(pair_sendable,false) THEN
+    RAISE EXCEPTION 'hosted V2-09 ordinary pair is not safely resumable' USING ERRCODE='55000';
+  END IF;
+  SELECT attempt.id attempt_id,attempt.state attempt_state,attempt.dispatch_token_sha256,
+      attempt.deadline_at,outbox.state outbox_state,outbox.send_attempt_count,
+      attempt.deployment_id,deployment.endpoint_id_sha256,deployment.provider_endpoint_id,
+      vault.token_ciphertext,assignment.provider_job_id
+    INTO target
+    FROM public.serverless_attempts attempt
+    JOIN public.serverless_dispatch_outbox outbox ON outbox.attempt_id=attempt.id
+    JOIN public.serverless_endpoint_deployments deployment
+      ON deployment.id=attempt.deployment_id AND deployment.lane=attempt.lane
+    JOIN public.hosted_dispatch_token_vault vault ON vault.attempt_id=attempt.id
+    LEFT JOIN public.serverless_provider_assignments assignment
+      ON assignment.attempt_id=attempt.id AND assignment.is_current
+   WHERE attempt.account_id=supplied_account_id
+     AND attempt.workspace_id=supplied_workspace_id
+     AND attempt.generation_request_id=supplied_generation_request_id
+     AND attempt.lane=supplied_lane
+   FOR SHARE OF attempt,outbox,deployment,vault;
+  SELECT * INTO candidate FROM public.hosted_v209_ordinary_dispatch_candidates row
+   WHERE row.account_id=supplied_account_id AND row.workspace_id=supplied_workspace_id
+     AND row.generation_request_id=supplied_generation_request_id FOR SHARE;
+  SELECT * INTO materialized FROM public.hosted_v209_ordinary_lane_materializations row
+   WHERE row.account_id=supplied_account_id AND row.workspace_id=supplied_workspace_id
+     AND row.generation_request_id=supplied_generation_request_id AND row.lane=supplied_lane
+   FOR SHARE;
+  IF target.attempt_id IS NULL OR candidate.id IS NULL OR materialized.attempt_id IS NULL
+     OR candidate.expires_at<=transaction_timestamp() OR target.deadline_at<=transaction_timestamp()
+     OR materialized.attempt_id<>target.attempt_id OR target.provider_endpoint_id IS NULL
+     OR materialized.full_request_sha256 !~ '^sha256:[0-9a-f]{64}$'
+     OR materialized.envelope_sha256 !~ '^sha256:[0-9a-f]{64}$'
+     OR jsonb_typeof(materialized.request_body) IS DISTINCT FROM 'object' THEN
+    RAISE EXCEPTION 'hosted V2-09 ordinary resume lineage invalid' USING ERRCODE='23514';
+  END IF;
+  raw_token:=pgp_sym_decrypt(target.token_ciphertext,token_key);
+  IF 'sha256:'||encode(sha256(convert_to(raw_token,'UTF8')),'hex')<>target.dispatch_token_sha256 THEN
+    RAISE EXCEPTION 'hosted V2-09 ordinary resume token invalid' USING ERRCODE='42501';
+  END IF;
+  RETURN jsonb_build_object(
+    'schemaVersion','videoforge.hosted-v209-ordinary-runtime-resume/v1',
+    'lane',supplied_lane,'attemptId',target.attempt_id,'dispatchToken',raw_token,
+    'dispatchTokenSha256',target.dispatch_token_sha256,
+    'endpointIdSha256',target.endpoint_id_sha256,'deploymentId',target.deployment_id,
+    'attemptState',target.attempt_state,'outboxState',target.outbox_state,
+    'providerJobId',target.provider_job_id,
+    'existingMaterialization',jsonb_build_object('requestBody',materialized.request_body,
+      'requestBodySha256',materialized.full_request_sha256,
+      'envelopeSha256',materialized.envelope_sha256));
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.videoforge_resume_hosted_v209_ordinary_lane_materialization(
+  uuid,uuid,uuid,text
+) FROM PUBLIC;
+
 CREATE OR REPLACE FUNCTION public.videoforge_admit_hosted_v209_generation(
   supplied_account_id uuid,
   supplied_workspace_id uuid,

@@ -778,7 +778,7 @@ interface ProjectDetailResponse {
 
 interface HostedV209DispatchResponse {
   readonly schema_version: "videoforge-hosted-v209-project-dispatch/v1";
-  readonly state: "SCHEDULED" | "PREPARING_INPUTS";
+  readonly state: "SCHEDULED" | "PREPARING_INPUTS" | "WAITING";
   readonly correlation_id: string;
 }
 
@@ -788,7 +788,7 @@ const HOSTED_V209_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 function exactHostedV209DispatchResponse(value: HostedV209DispatchResponse) {
   if (
     value.schema_version !== "videoforge-hosted-v209-project-dispatch/v1" ||
-    !["SCHEDULED", "PREPARING_INPUTS"].includes(value.state) ||
+    !["SCHEDULED", "PREPARING_INPUTS", "WAITING"].includes(value.state) ||
     !HOSTED_V209_CORRELATION_ID.test(value.correlation_id)
   ) {
     throw new Error("Generation start could not be verified.");
@@ -3449,7 +3449,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           { method: "POST", body: "{}" },
         ),
       ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+    onSuccess: (result) => {
+      if (result.state === "WAITING") {
+        window.setTimeout(() => {
+          automaticGpuDispatchAttempt.current = null;
+          void queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] });
+        }, 2_000);
+        return;
+      }
+      void queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] });
+    },
   });
   useEffect(() => {
     if (
@@ -3516,6 +3525,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       query.data.gpu_transport === "QUALIFIED_EXACT" &&
       query.data.gpu_readiness.dispatch_available === true &&
       (query.data.queue === null ||
+        String(query.data.queue?.status ?? "").toUpperCase() === "WAITING" ||
         HOSTED_V209_DISPATCH_READY_QUEUE_STATES.has(
           String(query.data.queue?.status ?? "").toUpperCase(),
         )),

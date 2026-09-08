@@ -18,6 +18,9 @@ type MaterializedProjection = {
   readonly dispatchTokenSha256: `sha256:${string}`;
   readonly endpointIdSha256: `sha256:${string}`;
   readonly deploymentId: string;
+  readonly attemptState: string;
+  readonly outboxState: string;
+  readonly providerJobId: string | null;
   readonly existingMaterialization: {
     readonly requestBody: Readonly<Record<string, unknown>>;
     readonly requestBodySha256: `sha256:${string}`;
@@ -52,6 +55,9 @@ function exactProjection(value: unknown, lane: HostedPairLane): MaterializedProj
     typeof row.dispatchTokenSha256 !== "string" ||
     typeof row.endpointIdSha256 !== "string" ||
     typeof row.deploymentId !== "string" ||
+    typeof row.attemptState !== "string" ||
+    typeof row.outboxState !== "string" ||
+    (row.providerJobId !== null && typeof row.providerJobId !== "string") ||
     !SHA256.test(row.dispatchTokenSha256) ||
     !SHA256.test(row.endpointIdSha256) ||
     !bound.requestBody ||
@@ -96,6 +102,11 @@ export class HostedSqlV209OrdinaryRuntimeStore implements HostedPairRuntimeStore
         "videoforge.dispatch_token_key",
         input.dispatchTokenKey,
       ]);
+      const loaded = await transaction.query<{ value: unknown }>(
+        "SELECT public.videoforge_resume_hosted_v209_ordinary_lane_materialization($1,$2,$3,$4) AS value",
+        [input.accountId, input.workspaceId, input.generationRequestId, input.lane],
+      );
+      const projection = exactProjection(loaded.rows[0]?.value, input.lane);
       const begun = await transaction.query<BeginRow>(
         `SELECT * FROM public.videoforge_begin_hosted_v209_ordinary_send(
            $1,$2,$3,$4,$5,$6,$7)`,
@@ -112,11 +123,6 @@ export class HostedSqlV209OrdinaryRuntimeStore implements HostedPairRuntimeStore
       const row = begun.rows[0];
       if (!row || begun.rows.length !== 1 || row.lane !== input.lane)
         throw new HostedDispatchCoordinationError("HOSTED_V209_ORDINARY_BEGIN_INVALID");
-      const loaded = await transaction.query<{ value: unknown }>(
-        "SELECT public.videoforge_load_hosted_v209_ordinary_lane_materialization($1,$2,$3,$4) AS value",
-        [input.accountId, input.workspaceId, input.generationRequestId, input.lane],
-      );
-      const projection = exactProjection(loaded.rows[0]?.value, input.lane);
       const claim = this.#claim(projection, row.phase);
       if (
         claim.attemptId !== row.attempt_id ||
@@ -151,7 +157,7 @@ export class HostedSqlV209OrdinaryRuntimeStore implements HostedPairRuntimeStore
         input.dispatchTokenKey,
       ]);
       const result = await transaction.query<{ value: unknown }>(
-        "SELECT public.videoforge_load_hosted_v209_ordinary_lane_materialization($1,$2,$3,$4) AS value",
+        "SELECT public.videoforge_resume_hosted_v209_ordinary_lane_materialization($1,$2,$3,$4) AS value",
         [input.accountId, input.workspaceId, input.generationRequestId, lane],
       );
       if (result.rows.length !== 1)
@@ -176,6 +182,9 @@ export class HostedSqlV209OrdinaryRuntimeStore implements HostedPairRuntimeStore
       phase,
       expectedEnvelopeSha256: bound.envelopeSha256,
       requestBody: bound.requestBody,
+      attemptState: row.attemptState,
+      outboxState: row.outboxState,
+      providerJobId: row.providerJobId,
     });
   }
 }

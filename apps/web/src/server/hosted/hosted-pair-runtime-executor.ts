@@ -346,7 +346,12 @@ export class HostedPairRuntimeExecutor {
         ? { kind: "ASSIGNED" as const, providerJobId: prepared[0].providerJobId }
         : await this.#send(input, input.envelopes[0], prepared[0]);
     if (mage.kind !== "ASSIGNED") return mage.result;
-    const soulx = await this.#send(input, input.envelopes[1], prepared[1]);
+    const soulx =
+      prepared[1].attemptState === "ASSIGNED" &&
+      prepared[1].outboxState === "ASSIGNED" &&
+      prepared[1].providerJobId
+        ? { kind: "ASSIGNED" as const, providerJobId: prepared[1].providerJobId }
+        : await this.#send(input, input.envelopes[1], prepared[1]);
     if (soulx.kind !== "ASSIGNED") return soulx.result;
     return Object.freeze({
       state: "BOTH_ASSIGNED" as const,

@@ -146,6 +146,29 @@ describe("hosted pair runtime executor", () => {
     ]);
   });
 
+  it("replays a fully assigned pair without another begin or provider send", async () => {
+    const f = fixture((lane) => ({ id: `${lane}-must-not-run` }));
+    f.store.prepare = vi.fn(async () => {
+      const prepared = await Promise.all(
+        (["mage_image", "soulx_avatar"] as const).map(async (lane) => ({
+          ...claims[lane],
+          expectedEnvelopeSha256: await sha256CanonicalJson(unsigned(lane)),
+          attemptState: "ASSIGNED",
+          outboxState: "ASSIGNED",
+          providerJobId: `${lane}-existing-job`,
+        })),
+      );
+      return prepared as never;
+    });
+    await expect(f.executor.execute(input)).resolves.toEqual({
+      state: "BOTH_ASSIGNED",
+      providerJobIds: ["mage_image-existing-job", "soulx_avatar-existing-job"],
+    });
+    expect(f.store.beginSend).not.toHaveBeenCalled();
+    expect(f.transports.mage_image.run).not.toHaveBeenCalled();
+    expect(f.transports.soulx_avatar.run).not.toHaveBeenCalled();
+  });
+
   it("sends only the exact fully bound ordinary worker bodies", async () => {
     const f = fixture((lane) => ({ id: `${lane}-job` }));
     const prepared = await Promise.all(

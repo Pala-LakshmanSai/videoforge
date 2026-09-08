@@ -384,6 +384,34 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
     expect(deps.observe).not.toHaveBeenCalled();
     expect(deps.commitAndSchedule).not.toHaveBeenCalled();
   });
+
+  it("returns a durable waiting response without materialization or provider observation", async () => {
+    const prepared = await candidate();
+    const deps = dependencies(prepared);
+    const injected = {
+      ...deps.value,
+      ensureAdmission: vi.fn(async () => ({
+        generationRequestId: prepared.generationRequestId,
+        state: "WAITING" as const,
+      })),
+    } as never;
+    const response = await handleHostedV209ProjectDispatch(
+      request(),
+      { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
+      config,
+      {} as never,
+      injected,
+    );
+    expect(response?.status).toBe(202);
+    await expect(response?.json()).resolves.toEqual({
+      schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+      state: "WAITING",
+      correlation_id: "v209-safe-correlation",
+    });
+    expect(deps.materialize).not.toHaveBeenCalled();
+    expect(deps.observe).not.toHaveBeenCalled();
+    expect(deps.commitAndSchedule).not.toHaveBeenCalled();
+  });
   it("loads only DB-owned identity, takes one observation, and schedules one workflow", async () => {
     const prepared = await candidate();
     const deps = dependencies(prepared);
