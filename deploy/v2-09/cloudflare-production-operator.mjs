@@ -22,10 +22,7 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  hashV213DryOutputBundle,
-  runCancellableChildProcess,
-} from "../v2-13/full-live-adapters.mjs";
+import { runCancellableChildProcess } from "../v2-13/full-live-adapters.mjs";
 import {
   APPROVED_WRANGLER_OAUTH_SCOPES,
   cloudflareOAuthApiResponse,
@@ -40,6 +37,7 @@ import {
   validateProductionConfig,
 } from "../v2-13/validate-production-config.mjs";
 
+import { hashV209DryOutputBundle } from "./dry-output-bundle.mjs";
 import { executeV209SecretBulk } from "./cloudflare-secret-bulk.mjs";
 
 const SOURCE_PATH = fileURLToPath(import.meta.url);
@@ -53,6 +51,7 @@ const STATUS_PATH = "/api/v2/hosted/status";
 const VERSION_HEADER = "x-videoforge-worker-version";
 const IMPORTED_DEPENDENCY_PATHS = Object.freeze([
   "deploy/v2-09/cloudflare-secret-bulk.mjs",
+  "deploy/v2-09/dry-output-bundle.mjs",
   "deploy/v2-13/full-live-adapters.mjs",
   "deploy/v2-13/guarded-activation.mjs",
   "deploy/v2-13/validate-production-config.mjs",
@@ -479,6 +478,18 @@ function newJournal(authority, configuration) {
 
 const FAILURE_CODES = new Set([
   ...[
+    "WORKER_INVALID",
+    "DIRECTORY_INVALID",
+    "PATH_INVALID",
+    "SYMLINK",
+    "ENTRY_INVALID",
+    "RACE",
+    "README_INVALID",
+    "README_MISSING",
+    "ENTRYPOINT_MISSING",
+    "READ_FAILED",
+  ].map((code) => `V2_09_DRY_OUTPUT_${code}`),
+  ...[
     "INJECTION_FORBIDDEN",
     "INPUT_INVALID",
     "CREDENTIAL_INVALID",
@@ -524,6 +535,15 @@ const FAILURE_CODES = new Set([
     "RECONCILIATION_SECRET_SET_NOT_EMPTY",
     "SECRET_PUT_FAILED",
     "SECRET_BULK_FAILED",
+    "WORKER_BUNDLE_HASH_DRIFT",
+    "BUNDLE_DRY_RUN_FAILED",
+    "BUNDLE_DRY_RUN_TIMEOUT",
+    "BUNDLE_DRY_RUN_CANCELLED",
+    "UPLOAD_ARTIFACT_INVALID",
+    "UPLOAD_ARTIFACT_NOT_IMMUTABLE",
+    "UPLOAD_CONFIG_BYTES_INVALID",
+    "UPLOAD_ARTIFACT_SYMLINK",
+    "UPLOAD_ARTIFACT_ENTRY_INVALID",
     "SECRET_BULK_REPLAY_FORBIDDEN",
     "DEPLOYMENT_STATUS_FAILED",
     "VERSION_READBACK_FAILED",
@@ -1228,11 +1248,14 @@ function makeTreeRemovable(path) {
 function snapshotUploadArtifact(qualifiedConfigBytes) {
   if (!Buffer.isBuffer(qualifiedConfigBytes)) fail("UPLOAD_CONFIG_BYTES_INVALID");
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v209-cloudflare-upload-"));
-  const modulePath = resolve(directory, "worker.js");
+  const moduleDirectory = resolve(directory, "worker");
+  const modulePath = resolve(moduleDirectory, "index.js");
   const assetsPath = resolve(directory, "assets");
   const configPath = resolve(directory, "qualified-config.json");
   try {
+    mkdirSync(moduleDirectory, { mode: 0o700 });
     copyImmutableTree(ACTIVATED_MAIN_PATH, modulePath);
+    chmodSync(moduleDirectory, 0o500);
     copyImmutableTree(ACTIVATED_ASSETS_PATH, assetsPath);
     writeFileSync(configPath, qualifiedConfigBytes, { flag: "wx", mode: 0o400 });
     chmodSync(directory, 0o500);
@@ -1310,7 +1333,9 @@ async function verifyQualifiedBundle(runtime, authority, context, artifact) {
       "BUNDLE_DRY_RUN",
       { context },
     );
-    const observed = hashV213DryOutputBundle(directory);
+    const observed = hashV209DryOutputBundle(directory, {
+      workerName: runtime.configuration.workerName,
+    });
     if (observed !== authority.production.worker_bundle_sha256) fail("WORKER_BUNDLE_HASH_DRIFT");
     return observed;
   } finally {

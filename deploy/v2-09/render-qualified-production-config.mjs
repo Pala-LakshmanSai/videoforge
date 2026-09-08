@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { hashV213DryOutputBundle } from "../v2-13/full-live-adapters.mjs";
+import { hashV209DryOutputBundle } from "./dry-output-bundle.mjs";
 import {
   ACTIVATED_ASSETS_PATH,
   ACTIVATED_MAIN_PATH,
@@ -276,6 +276,11 @@ export async function prepareQualifiedProductionConfig(
           "exec",
           "wrangler",
           "deploy",
+          ACTIVATED_MAIN_PATH,
+          "--no-bundle",
+          "--assets",
+          ACTIVATED_ASSETS_PATH,
+          "--strict",
           "--dry-run",
           "--outdir",
           dryRunOutput,
@@ -291,7 +296,7 @@ export async function prepareQualifiedProductionConfig(
       binding_sha256: sha256(bindingBytes),
       config_sha256: sha256(configBytes),
       worker_bundle_sha256: renderPhase("V2_09_RENDER_BUNDLE_FAILED", () =>
-        hashV213DryOutputBundle(dryRunOutput),
+        hashV209DryOutputBundle(dryRunOutput, { workerName: "videoforge-production-runtime" }),
       ),
       media_worker_release: {
         version: "0.1.15",

@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { hashV213DryOutputBundle } from "../v2-13/full-live-adapters.mjs";
+import { hashV209DryOutputBundle } from "./dry-output-bundle.mjs";
 import { APPROVED_WRANGLER_OAUTH_SCOPES, SECRET_NAMES } from "../v2-13/guarded-activation.mjs";
 import {
   ACTIVATED_ASSETS_PATH,
@@ -48,7 +48,11 @@ const canonical = (value) => {
 function bundleSha256() {
   const directory = mkdtempSync(resolve(tmpdir(), "videoforge-v209-cf-bundle-test-"));
   writeFileSync(resolve(directory, "index.js"), "fixture-exact-worker-bundle\n");
-  return hashV213DryOutputBundle(directory);
+  writeFileSync(
+    resolve(directory, "README.md"),
+    'This folder contains the built output assets for the worker "videoforge-production-runtime" generated at 2026-09-08T09:00:53.144Z.',
+  );
+  return hashV209DryOutputBundle(directory, { workerName: "videoforge-production-runtime" });
 }
 
 function fixture() {
@@ -178,6 +182,10 @@ function harness(
       const output = args[args.indexOf("--outdir") + 1];
       mkdirSync(output, { recursive: true });
       writeFileSync(resolve(output, "index.js"), "fixture-exact-worker-bundle\n");
+      writeFileSync(
+        resolve(output, "README.md"),
+        'This folder contains the built output assets for the worker "videoforge-production-runtime" generated at 2026-09-08T09:02:53.144Z.',
+      );
       return { status: 0, signal: null, stdout: "", stderr: "" };
     }
     if (args[0] === "deploy") {

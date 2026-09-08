@@ -202,7 +202,11 @@ test("preparation writes mode-0600 artifacts after build and isolated Wrangler d
       if (outdirIndex !== -1) {
         const outdir = args[outdirIndex + 1];
         mkdirSync(outdir, { recursive: true });
-        writeFileSync(join(outdir, "worker.js"), "export default {};\n");
+        writeFileSync(join(outdir, "index.js"), "export default {};\n");
+        writeFileSync(
+          join(outdir, "README.md"),
+          'This folder contains the built output assets for the worker "videoforge-production-runtime" generated at 2026-09-08T09:00:53.144Z.',
+        );
       }
       return { status: 0, stdout: "", stderr: "" };
     };
