@@ -29,7 +29,7 @@ current_goal_boundary:
   current_checkpoint: "9.7 active;1–8 and9.1–9.6 finished;9.8/9.9 pending."
   approval_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-runtime-heartbeat.json"
   approval_evidence_sha256: "sha256:a62ed1df6c29a087150224a8c4cb62cd42656f48a8842c1c57548bd047837762"
-  note: "Five-minute activation aging reproduced read-only. Forward0087 preserves immutable acceptance, original qualification expiry and fresh DB verification;19focusedTS+1actualPostgreSQL17 regression passed; independentGO. Native continuation pending;9.8 not started."
+  note: "Five-minute activation aging reproduced read-only;3b380 replacement stopped before writes on predecessor checkout path mismatch, bounded successor repair active. Forward0087 preserves immutable acceptance, original qualification expiry and fresh DB verification;19focusedTS+1actualPostgreSQL17 regression passed; independentGO. Native continuation pending;9.8 not started."
 
 
 v2_09_continuing_user_authorization:

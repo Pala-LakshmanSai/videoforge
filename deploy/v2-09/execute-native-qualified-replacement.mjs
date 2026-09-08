@@ -72,6 +72,102 @@ function uuid(value) {
   const s = h.join("");
   return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}`;
 }
+/** A stopped, read-only predecessor claim may transfer forward; it can never resume. */
+export function readStoppedNativeReplacementTransfer(plan, liveStateBytes) {
+  const r = plan.transfer_recovery;
+  const keys = [
+    "root",
+    "plan_sha256",
+    "archive_sha256",
+    "stop_sha256",
+    "journal_sha256",
+    "claim_sha256",
+    "transfer_sha256",
+    "operation_sha256",
+  ];
+  if (
+    !r ||
+    Object.keys(r).sort().join() !== keys.sort().join() ||
+    !r.root ||
+    resolve(r.root) !== r.root ||
+    r.root === plan.output_root
+  )
+    fail("TRANSFER_RECOVERY");
+  const read = (name, digest) => {
+    const b = privateBytes(resolve(r.root, name));
+    if (bytesHash(b) !== digest) fail("TRANSFER_RECOVERY_HASH");
+    return JSON.parse(b);
+  };
+  const old = read("replacement-plan.json", r.plan_sha256);
+  const archive = read("predecessor-state.json", r.archive_sha256);
+  const stop = read("replacement-stop.json", r.stop_sha256);
+  const journal = read("cloudflare-replacement-journal.json", r.journal_sha256);
+  const claim = read("replacement-claim.json", r.claim_sha256);
+  const transfer = read("transfer-receipt.json", r.transfer_sha256);
+  const op = read("operation-1.json", r.operation_sha256);
+  const live = JSON.parse(liveStateBytes);
+  const expected = {
+    schema_version: "videoforge.v2-09-predecessor-transferred/v1",
+    prior_state_sha256: hash(archive),
+    successor_plan_sha256: r.plan_sha256,
+    normal_resume_disabled: true,
+  };
+  if (
+    old.output_root !== r.root ||
+    old.prior_root !== plan.prior_root ||
+    old.prior_authority_sha256 !== plan.prior_authority_sha256 ||
+    old.prior_state_sha256 !== plan.prior_state_sha256 ||
+    old.authority.authority_id === plan.authority.authority_id ||
+    canonical(old.predecessor) !== canonical(plan.predecessor) ||
+    canonical(old.authority.caps) !== canonical(plan.authority.caps) ||
+    canonical(live) !== canonical(expected) ||
+    canonical(transfer) !== canonical(expected) ||
+    claim.plan_sha256 !== r.plan_sha256 ||
+    claim.single_use !== true ||
+    canonical(stop) !==
+      canonical({
+        status: "STOPPED_NO_RETRY",
+        containment: "NOT_DEPLOYED",
+        error_code: "BOUNDED_OPERATION_FAILED",
+        generate_clicks: 0,
+      }) ||
+    canonical(op) !==
+      canonical({
+        id: NATIVE_REPLACEMENT_OPERATIONS[0],
+        status: "COMPLETED",
+        result: expected,
+        result_sha256: hash(expected),
+      }) ||
+    canonical(journal) !==
+      canonical({
+        schema_version: "videoforge.v2-09-qualified-replacement-journal/v1",
+        authority_sha256: hash(old.authority),
+        predecessor_sha256: hash(old.predecessor),
+        state: "CLAIMED",
+        events: [],
+        inherited_secret_count: 22,
+        introduced_secret_names: [],
+        retained_r2_deleted: false,
+      })
+  )
+    fail("TRANSFER_RECOVERY_EVIDENCE");
+  for (const name of [
+    "migration-journal.jsonl",
+    "activation-journal.jsonl",
+    "replacement-receipt.json",
+    ...Array.from({ length: 7 }, (_, i) => `operation-${i + 2}.json`),
+  ]) {
+    try {
+      lstatSync(resolve(r.root, name));
+    } catch (e) {
+      if (e.code === "ENOENT") continue;
+      throw e;
+    }
+    fail("TRANSFER_RECOVERY_MUTATION");
+  }
+  return archive;
+}
+
 export async function executeNativeQualifiedReplacement({ planPath, expectedSha256 }) {
   const planBytes = privateBytes(planPath);
   if (bytesHash(planBytes) !== expectedSha256) fail("PLAN_HASH");
@@ -115,11 +211,13 @@ export async function executeNativeQualifiedReplacement({ planPath, expectedSha2
   const stateBytes = privateBytes(statePath);
   if (
     bytesHash(priorBytes) !== p.prior_authority_sha256 ||
-    bytesHash(stateBytes) !== p.prior_state_sha256
+    (!p.transfer_recovery && bytesHash(stateBytes) !== p.prior_state_sha256)
   )
     fail("PREDECESSOR_HASH");
   const prior = JSON.parse(priorBytes),
-    state = JSON.parse(stateBytes);
+    state = p.transfer_recovery
+      ? readStoppedNativeReplacementTransfer(p, stateBytes)
+      : JSON.parse(stateBytes);
   if (
     state.status !== "AWAITING_INTERACTIVE_CHROME_LOGIN" ||
     state.outer_authority_id !== prior.authority_id ||
@@ -216,6 +314,8 @@ export async function executeNativeQualifiedReplacement({ planPath, expectedSha2
     successor_plan_sha256: expectedSha256,
     normal_resume_disabled: true,
   };
+  if (bytesHash(privateBytes(statePath)) !== bytesHash(stateBytes)) fail("TRANSFER_STATE_DRIFT");
+  if (p.transfer_recovery) readStoppedNativeReplacementTransfer(p, privateBytes(statePath));
   const tmp = statePath + ".native-transfer";
   durableNew(tmp, tombstone);
   renameSync(tmp, statePath);

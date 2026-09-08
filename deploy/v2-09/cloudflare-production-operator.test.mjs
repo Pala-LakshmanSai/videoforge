@@ -1442,22 +1442,87 @@ test("replacement built-in primitives verify inherited qualified secrets without
   assert.equal(mock.secrets.size, 22);
 });
 
-
 test("replacement failure containment verifies disabled transport and preserves all inherited secrets", async () => {
   const value = fixture();
   const mock = harness(value);
   const dependencies = { ...mock, testOnly: true, now: () => new Date("2026-09-06T22:00:00.000Z") };
   const approved = authority(value);
-  await executeThroughQualified(createV209CloudflareProductionOperator(value.configuration, dependencies), approved);
+  await executeThroughQualified(
+    createV209CloudflareProductionOperator(value.configuration, dependencies),
+    approved,
+  );
   const primitive = createV209CloudflareReplacementCapabilities(value.configuration, dependencies);
   const offset = mock.calls.length;
   await primitive.disable(approved);
   assert.equal(mock.activeTransport(), "DISABLED_UNQUALIFIED");
   assert.equal(mock.secrets.size, 22);
-  const calls = mock.calls.slice(offset).map(call => call.args.slice(4));
-  assert.equal(calls.filter(args => args[0] === "deploy").length, 1);
+  const calls = mock.calls.slice(offset).map((call) => call.args.slice(4));
+  assert.equal(calls.filter((args) => args[0] === "deploy").length, 1);
   for (const args of calls) {
     assert.ok(!args.includes("delete") && !args.includes("put"));
-    if (args[0] === "deploy") assert.equal(args[args.indexOf("--config") + 1], value.configuration.disabledConfigPath);
+    if (args[0] === "deploy")
+      assert.equal(args[args.indexOf("--config") + 1], value.configuration.disabledConfigPath);
   }
+});
+
+test("replacement validates exact prior checkout paths without rewriting pinned config", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  const dependencies = { ...mock, testOnly: true, now: () => new Date("2026-09-06T22:00:00.000Z") };
+  const approved = authority(value);
+  await executeThroughQualified(
+    createV209CloudflareProductionOperator(value.configuration, dependencies),
+    approved,
+  );
+  const oldConfig = JSON.parse(readFileSync(value.configuration.qualifiedConfigPath));
+  const predecessorPath = resolve(value.directory, "prior-qualified.json");
+  oldConfig.main = resolve(
+    value.directory,
+    "source/apps/web/dist-cloudflare/videoforge_production_runtime/index.js",
+  );
+  oldConfig.assets.directory = resolve(value.directory, "source/apps/web/dist-cloudflare/client");
+  oldConfig.vars.VIDEOFORGE_COMMIT = "b".repeat(40);
+  const bytes = JSON.stringify(oldConfig);
+  writeFileSync(predecessorPath, bytes, { mode: 0o600 });
+  const runChild = async (input) => {
+    const result = await mock.runChild(input);
+    if (input.args.includes("view")) {
+      const v = JSON.parse(result.stdout);
+      v.main = oldConfig.main;
+      v.assets = oldConfig.assets;
+      v.vars.VIDEOFORGE_COMMIT = oldConfig.vars.VIDEOFORGE_COMMIT;
+      return { ...result, stdout: JSON.stringify(v) };
+    }
+    return result;
+  };
+  const fetchImpl = async (...args) => {
+    const response = await mock.fetchImpl(...args);
+    const body = await response.json();
+    body.commit = oldConfig.vars.VIDEOFORGE_COMMIT;
+    return new Response(JSON.stringify(body), {
+      status: response.status,
+      headers: response.headers,
+    });
+  };
+  const primitive = createV209CloudflareReplacementCapabilities(value.configuration, {
+    ...dependencies,
+    runChild,
+    fetchImpl,
+  });
+  const predecessor = {
+    versionId: VERSION_IDS[3],
+    sourceCommit: oldConfig.vars.VIDEOFORGE_COMMIT,
+    qualifiedConfigPath: predecessorPath,
+    qualifiedConfigSha256: hash(bytes),
+    workerBundleSha256: approved.production.worker_bundle_sha256,
+  };
+  await primitive.predecessor(approved, predecessor);
+  assert.equal(readFileSync(predecessorPath, "utf8"), bytes);
+  oldConfig.main = resolve(value.directory, "foreign/index.js");
+  const drift = JSON.stringify(oldConfig);
+  writeFileSync(predecessorPath, drift);
+  await assert.rejects(
+    primitive.predecessor(approved, { ...predecessor, qualifiedConfigSha256: hash(drift) }),
+    /PREDECESSOR_ARTIFACT_PATH_DRIFT/,
+  );
 });

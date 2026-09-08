@@ -4,6 +4,8 @@
 
 ### Current new-chat launch point — 2026-09-08
 
+Current repair continuation: source3b380c80 replacement stopped before migration/publication during predecessor path validation. Existing b90522/26 and authenticated Chrome remain intact. The narrow successor fixes validation across frozen checkouts and preserves the explicit stopped-before-mutation transfer; no old authority replay.9.7.8 ACTIVE;9.8 not started.
+
 The user explicitly authorized continuing this V2-09 scope without further approval prompts:
 bounded repairs, reseals, fresh source-bound authorities and deployment through9.7, the single9.8
 Chrome E2E, and9.9 cleanup/readiness. Existing numeric caps, frozen Stage6/7 and no consumed-authority

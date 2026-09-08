@@ -411,12 +411,35 @@ function assertConfiguration(value) {
   });
 }
 
+const PREDECESSOR_ARTIFACT_ROOT = Symbol("v209 exact predecessor artifact root");
+
 function qualifiedConfiguration(configuration, authority) {
   privateFile(configuration.qualifiedConfigPath);
   const bytes = readFileSync(configuration.qualifiedConfigPath);
   if (sha256(bytes) !== authority.production.config_sha256) fail("QUALIFIED_CONFIG_HASH_DRIFT");
   const value = parseJson(bytes.toString("utf8"), "QUALIFIED_CONFIG_JSON_INVALID");
-  validateProductionConfig(value, { mode: "qualified" });
+  const predecessorRoot = configuration[PREDECESSOR_ARTIFACT_ROOT];
+  if (predecessorRoot !== undefined) {
+    // Only the built-in predecessor reader sets this private symbol. Verify original paths
+    // before normalizing a validation-only copy; neither pinned bytes nor returned value change.
+    if (
+      value.main !==
+        resolve(
+          predecessorRoot,
+          "apps/web/dist-cloudflare/videoforge_production_runtime/index.js",
+        ) ||
+      value.assets?.directory !== resolve(predecessorRoot, "apps/web/dist-cloudflare/client")
+    )
+      fail("PREDECESSOR_ARTIFACT_PATH_DRIFT");
+    validateProductionConfig(
+      {
+        ...value,
+        main: ACTIVATED_MAIN_PATH,
+        assets: { ...value.assets, directory: ACTIVATED_ASSETS_PATH },
+      },
+      { mode: "qualified" },
+    );
+  } else validateProductionConfig(value, { mode: "qualified" });
   const workflowNames = value.workflows.map(({ name }) => name);
   if (
     value.name !== configuration.workerName ||
@@ -1975,6 +1998,10 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
           ...runtime.configuration,
           sourceCommit: predecessor.sourceCommit,
           qualifiedConfigPath: predecessor.qualifiedConfigPath,
+          [PREDECESSOR_ARTIFACT_ROOT]:
+            predecessor.sourceCommit === authority.source_commit
+              ? runtime.configuration.root
+              : resolve(dirname(predecessor.qualifiedConfigPath), "source"),
         },
       };
       const version = await read(oldAuthority, "QUALIFIED_EXACT", oldRuntime);
