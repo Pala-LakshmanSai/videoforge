@@ -15,6 +15,7 @@ import {
   executeCombinedQualifiedProductionWithDependenciesForTest,
   createDurableOuterState,
   createLiveMaterializerForTest,
+  bindV209StagedRenderAuthority,
   validateCombinedAuthority,
   validateV209PrivateOutputDirectories,
 } from "./execute-combined-qualified-production.mjs";
@@ -1267,19 +1268,32 @@ test("a new process reconstructs receipt derivation after durable Chrome complet
   };
   prefixResults["read-postlogin-tenant-completion-baseline"] = tenantBaseline();
   let snapshots = 0;
+  const statePath = join(mkdtempSync(join(tmpdir(), "v209-render-binding-")), "outer.json");
+  writeFileSync(
+    `${statePath}.staging-journal`,
+    JSON.stringify({
+      schema_version: "videoforge.v2-09-qualified-production-journal/v1",
+      authority_id: approved.authority_id,
+      source_commit: approved.source_commit,
+      normal: {
+        "render-qualified-production-config": {
+          status: "COMPLETED",
+          result_sha256: hash(canonical(prefixResults["render-qualified-production-config"])),
+        },
+      },
+    }),
+    { mode: 0o600 },
+  );
   const materializer = createLiveMaterializerForTest({
     testOnly: true,
-    options: { statePath: "/tmp/v209-new-process-boundary" },
+    options: { statePath },
     loadConfiguration: async () => configuration,
     loadMaterializationPlan: async () => {
       throw new Error("MATERIALIZATION_PLAN_MUST_NOT_REPLAY");
     },
     createResumedAdapters: (receivedConfiguration, rehydration) => {
       snapshots += 1;
-      assert.equal(
-        receivedConfiguration.journalPath,
-        "/tmp/v209-new-process-boundary.staging-journal",
-      );
+      assert.equal(receivedConfiguration.journalPath, `${statePath}.staging-journal`);
       assert.equal(rehydration.authority.authority_id, approved.authority_id);
       assert.deepEqual(rehydration.priorResults, prefixResults);
       return { identity_sha256: hash("resumed-adapter") };
@@ -1332,9 +1346,25 @@ test("a new process restores exact-existing adoption provenance and normalizes i
     post_deploy_authentication: true,
   };
   prefixResults["read-postlogin-tenant-completion-baseline"] = tenantBaseline();
+  const statePath = join(mkdtempSync(join(tmpdir(), "v209-render-binding-")), "outer.json");
+  writeFileSync(
+    `${statePath}.staging-journal`,
+    JSON.stringify({
+      schema_version: "videoforge.v2-09-qualified-production-journal/v1",
+      authority_id: approved.authority_id,
+      source_commit: approved.source_commit,
+      normal: {
+        "render-qualified-production-config": {
+          status: "COMPLETED",
+          result_sha256: hash(canonical(prefixResults["render-qualified-production-config"])),
+        },
+      },
+    }),
+    { mode: 0o600 },
+  );
   const materializer = createLiveMaterializerForTest({
     testOnly: true,
-    options: { statePath: "/tmp/v209-existing-release-adoption" },
+    options: { statePath },
     loadConfiguration: async () => configuration,
     loadMaterializationPlan: async () => {
       throw new Error("MATERIALIZATION_PLAN_MUST_NOT_REPLAY");
@@ -1835,4 +1865,53 @@ test("durable diagnostics preserve original failure separately from cleanup with
   assert.equal(observed.failure.operation_code, "ENOENT");
   assert.equal(observed.failure.cleanup_code, "UNKNOWN_ERROR");
   assert.equal(JSON.stringify(observed).includes("private-value"), false);
+});
+
+test("staged Cloudflare authority binds only completed exact render journal receipts", () => {
+  const outer = authority();
+  const staged = { ...outer, production: { ...outer.production_inputs } };
+  const render = {
+    operation_id: "render-qualified-production-config",
+    config_sha256: hash("qualified-config"),
+    worker_bundle_sha256: hash("qualified-bundle"),
+  };
+  const journal = {
+    schema_version: "videoforge.v2-09-qualified-production-journal/v1",
+    authority_id: outer.authority_id,
+    source_commit: outer.source_commit,
+    normal: {
+      [render.operation_id]: { status: "COMPLETED", result_sha256: hash(canonical(render)) },
+    },
+  };
+  assert.equal(bindV209StagedRenderAuthority(staged, undefined, undefined), staged);
+  assert.equal(Object.keys(staged.production).length, 5);
+  const bound = bindV209StagedRenderAuthority(staged, render, journal);
+  assert.equal(bound.production.config_sha256, render.config_sha256);
+  assert.equal(bound.production.worker_bundle_sha256, render.worker_bundle_sha256);
+  assert.equal(bound.authority_id, outer.authority_id);
+  assert.deepEqual(bound.scope, staged.scope);
+  for (const altered of [
+    { ...render, config_sha256: hash("tampered") },
+    { ...render, extra: true },
+    { ...render, worker_bundle_sha256: "invalid" },
+  ])
+    assert.throws(
+      () => bindV209StagedRenderAuthority(staged, altered, journal),
+      /V2_09_COMBINED_RENDER_AUTHORITY_BINDING_INVALID/u,
+    );
+  for (const altered of [
+    { ...journal, authority_id: "v2-09-foreign-authority" },
+    { ...journal, source_commit: "b".repeat(40) },
+    { ...journal, normal: {} },
+    {
+      ...journal,
+      normal: {
+        [render.operation_id]: { status: "STARTED", result_sha256: hash(canonical(render)) },
+      },
+    },
+  ])
+    assert.throws(
+      () => bindV209StagedRenderAuthority(staged, render, altered),
+      /V2_09_COMBINED_RENDER_AUTHORITY_BINDING_INVALID/u,
+    );
 });

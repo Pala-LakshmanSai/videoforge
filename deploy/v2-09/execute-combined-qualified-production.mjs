@@ -1890,6 +1890,32 @@ function stagingAuthority(outer, preflight, baseline, mediaWorker) {
   };
 }
 
+export function bindV209StagedRenderAuthority(authority, renderResult, journal) {
+  if (renderResult === undefined) return authority;
+  const operationId = "render-qualified-production-config";
+  if (
+    !exactKeys(renderResult, ["operation_id", "config_sha256", "worker_bundle_sha256"]) ||
+    renderResult.operation_id !== operationId ||
+    !HASH.test(renderResult.config_sha256 ?? "") ||
+    !HASH.test(renderResult.worker_bundle_sha256 ?? "") ||
+    journal?.schema_version !== "videoforge.v2-09-qualified-production-journal/v1" ||
+    journal?.authority_id !== authority.authority_id ||
+    journal?.source_commit !== authority.source_commit ||
+    !exactKeys(journal?.normal?.[operationId], ["status", "result_sha256"]) ||
+    journal.normal[operationId].status !== "COMPLETED" ||
+    journal.normal[operationId].result_sha256 !== sha256(canonical(renderResult))
+  )
+    fail("V2_09_COMBINED_RENDER_AUTHORITY_BINDING_INVALID");
+  return {
+    ...authority,
+    production: {
+      ...authority.production,
+      config_sha256: renderResult.config_sha256,
+      worker_bundle_sha256: renderResult.worker_bundle_sha256,
+    },
+  };
+}
+
 function createLiveMaterializer(
   options,
   loadConfiguration,
@@ -1897,6 +1923,20 @@ function createLiveMaterializer(
   testDependencies = null,
 ) {
   let runtime;
+  const renderedStagingAuthority = (authority, preflight, baseline, mediaWorker, priorResults) => {
+    const staged = stagingAuthority(authority, preflight, baseline, mediaWorker);
+    const renderResult = priorResults?.["render-qualified-production-config"];
+    return bindV209StagedRenderAuthority(
+      staged,
+      renderResult,
+      renderResult === undefined
+        ? undefined
+        : securePrivateJson(
+            `${options.statePath}.staging-journal`,
+            "V2_09_COMBINED_RENDER_JOURNAL_INVALID",
+          ),
+    );
+  };
   let ownerUrl;
   const readOwnerUrlOnce = async () => {
     if (ownerUrl !== undefined) return ownerUrl;
@@ -2061,11 +2101,12 @@ function createLiveMaterializer(
           journalPath: `${options.statePath}.staging-journal`,
         };
         const mediaWorker = await restoreMediaWorker(authority, priorResults);
-        const staged = stagingAuthority(
+        const staged = renderedStagingAuthority(
           authority,
           preflight,
           priorResults["read-post-migration-completion-baseline"],
           mediaWorker,
+          priorResults,
         );
         runtime = {
           ...(runtime ?? {}),
@@ -2080,7 +2121,13 @@ function createLiveMaterializer(
       }
       const active = await initialize(authority, preflight, priorResults);
       const baseline = priorResults["read-post-migration-completion-baseline"];
-      let staged = stagingAuthority(authority, preflight, baseline, active.mediaWorker);
+      let staged = renderedStagingAuthority(
+        authority,
+        preflight,
+        baseline,
+        active.mediaWorker,
+        priorResults,
+      );
       active.latestAuthority = staged;
       active.latestResults = priorResults;
       if (operationId === "materialize-v209-endpoint-secrets") {
@@ -2183,7 +2230,13 @@ function createLiveMaterializer(
           stagingConfiguration,
           mediaWorker,
           priorResults: prefixResults,
-          latestAuthority: stagingAuthority(authority, preflight, baseline, mediaWorker),
+          latestAuthority: renderedStagingAuthority(
+            authority,
+            preflight,
+            baseline,
+            mediaWorker,
+            prefixResults,
+          ),
           latestResults: prefixResults,
         };
       }
@@ -2312,11 +2365,12 @@ function createLiveMaterializer(
         if (!preflight) return;
         const active = await initialize(authority, preflight, results, true);
         active.mediaWorker = await restoreMediaWorker(authority, results);
-        active.latestAuthority = stagingAuthority(
+        active.latestAuthority = renderedStagingAuthority(
           authority,
           preflight,
           results["read-post-migration-completion-baseline"],
           active.mediaWorker,
+          results,
         );
         active.latestResults = results;
         if (results["materialize-v209-endpoint-secrets"]) {
