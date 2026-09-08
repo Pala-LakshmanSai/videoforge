@@ -522,6 +522,12 @@
       "name": "hosted_durable_qualified_activation",
       "filename": "0087_hosted_durable_qualified_activation.sql",
       "sha256": "sha256:6fb7eba2268517a63a8632c89deb25c627cd13566700e12900f79c8807020a96"
+    },
+    {
+      "version": 88,
+      "name": "hosted_artifact_trigger_execution_scope",
+      "filename": "0088_hosted_artifact_trigger_execution_scope.sql",
+      "sha256": "sha256:0657c70455b53a4f4756f142974c1cdc29956c54075337b96acd2405b7213848"
     }
   ]
 }

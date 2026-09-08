@@ -1,0 +1,21 @@
+{
+  "schema_version": "videoforge.v2-09-artifact-trigger-scope-repair/v1",
+  "status": "FOCUSED_REGRESSION_PASS_AWAITING_INDEPENDENT_AUDIT",
+  "live_worker_source": "9441f8ab35ac9ce29046cf7c27185d6d3b352478",
+  "observed_failure_at": "2026-09-08T12:20:22.061Z",
+  "failure": "permission denied for function videoforge_is_hosted_v209_system_avatar_reference",
+  "sqlstate": "42501",
+  "migration": "packages/control-plane/migrations/0088_hosted_artifact_trigger_execution_scope.sql",
+  "migration_sha256": "sha256:0657c70455b53a4f4756f142974c1cdc29956c54075337b96acd2405b7213848",
+  "regression": "scripts/tests/v2-09-artifact-trigger-scope-postgres.test.mjs",
+  "verified_by_implementation_agent": [
+    "actual PostgreSQL17 original runtime create fails42501",
+    "migration88 repaired create and ordinary receipt succeed",
+    "missing and foreign tenant scope denied",
+    "private predicate and UUID helper remain denied"
+  ],
+  "database_renderer_tests_passed": 4,
+  "production_migration_applied": false,
+  "second_generate_click": false,
+  "stage6_7_modified": false
+}

@@ -36,19 +36,28 @@ function privateBytes(path) {
 }
 
 /** Exact forward-only transaction. Applied historical migration bytes are never rewritten. */
-export function renderNativeMigration87Sql({ migrationRoot, manifestSha256, migrationSha256 }) {
+export function renderNativeMigration87Sql(input) {
+  return renderExactNativeMigration(input, 87);
+}
+export function renderNativeMigration88Sql(input) {
+  return renderExactNativeMigration(input, 88);
+}
+function renderExactNativeMigration({ migrationRoot, manifestSha256, migrationSha256 }, target) {
   const bytes = readFileSync(resolve(migrationRoot, "manifest.json"));
   if (databaseBytesHash(bytes) !== manifestSha256) fail("MANIFEST_HASH");
   const manifest = JSON.parse(bytes);
   if (
     manifest.schema_version !== "videoforge-migration-manifest/v1" ||
-    manifest.migrations?.length !== 87 ||
+    manifest.migrations?.length !== target ||
     manifest.migrations.some((e, i) => e.version !== i + 1)
   )
     fail("MANIFEST");
   const entries = manifest.migrations;
-  const entry = entries[86];
-  if (!/^0087_[a-z0-9_]+\.sql$/.test(entry.filename) || entry.sha256 !== migrationSha256)
+  const entry = entries[target - 1];
+  if (
+    !new RegExp(`^00${target}_[a-z0-9_]+\\.sql$`).test(entry.filename) ||
+    entry.sha256 !== migrationSha256
+  )
     fail("MIGRATION_IDENTITY");
   for (const e of entries) {
     if (
@@ -69,12 +78,12 @@ export function renderNativeMigration87Sql({ migrationRoot, manifestSha256, migr
     "\\set ON_ERROR_STOP on",
     "BEGIN;",
     "SELECT pg_advisory_xact_lock(1448494662,9);",
-    guard(86),
+    guard(target - 1),
     readFileSync(resolve(migrationRoot, entry.filename), "utf8"),
-    `INSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256) VALUES(87,${literal(entry.name)},${literal(entry.filename)},${literal(entry.sha256)});`,
-    guard(87),
+    `INSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256) VALUES(${target},${literal(entry.name)},${literal(entry.filename)},${literal(entry.sha256)});`,
+    guard(target),
     "COMMIT;",
-    "SELECT jsonb_build_object('schema_version','videoforge.v2-09-native-migration-result/v1','from_version',86,'to_version',87);",
+    `SELECT jsonb_build_object('schema_version','videoforge.v2-09-native-migration-result/v1','from_version',${target - 1},'to_version',${target});`,
     "",
   ].join("\n");
 }
@@ -88,7 +97,7 @@ export function executeNativeDatabaseOnce({
   expectedSqlSha256,
 }) {
   if (
-    !["APPLY_0087", "IMPORT_REPLACEMENT_ACTIVATION"].includes(operation) ||
+    !["APPLY_0087", "APPLY_0088", "IMPORT_REPLACEMENT_ACTIVATION"].includes(operation) ||
     databaseBytesHash(sql) !== expectedSqlSha256
   )
     fail("OPERATION");
