@@ -6309,16 +6309,9 @@ recommended_next_task:
       image_config_sha256: "sha256:224b2a728490cf1c708b42e56702da2b71bd2374658f0c640dd39ef23e860935"
       anonymous_proof_sha256: "sha256:9929d19da89ab2c20e280ac45ad152bc325b8bf56ef1e9c21e83d473c3408bc4"
       acceptance_artifact_sha256: "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa"
-  resources:
-    - "github:Pala-LakshmanSai/videoforge:refs/heads/codex/serverless-v2-roadmap-v4"
-    - "runpod:mage-production-lane:EU-RO-1:RTX4090"
-    - "runpod:soulx-production-lane:EU-RO-1:RTX4090"
-    - "cloudflare:worker:videoforge-production-runtime"
-    - "neon:videoforge-production-database"
-    - "github:media-worker-v0.1.15"
-    - "paired-mac:videoforge-personal-media-worker"
-  authorized_operations: *v2_09_combined_operations
-  allowed_operations: *v2_09_combined_operations
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1_per_second
       billing_unit: gpu_second
@@ -6330,12 +6323,12 @@ recommended_next_task:
       checked_at: "2026-09-07"
   authority_note: "Proposal 2c15ff7c and authority v2-09-2c15ff7cc8093988 are consumed FAILED_CLEAN and non-reusable. Repair commit 7c5206db is provider-free green; a clean context seal, exact replacement proposal, independent proposal audit, and fresh exact approval are required before any live continuation."
   prerequisite_evidence: evidence/acceptance/VF-10-06/2026-08-19-final-independent-acceptance/acceptance.json
-  successor_proposal_path: /Users/lakshmansai/.videoforge/v2-09/proposals/concrete-reconciler-path-binding-replacement.txt
-  successor_proposal_sha256: "sha256:2c15ff7cc8093988983c98b4f8c07ef2060fded30bb93aecc9e51d65f1d82823"
-  successor_approval_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/user-approval-concrete-reconciler-path-binding-replacement.json
-  successor_approval_evidence_sha256: "sha256:ad7ba61f2bc7fce5e36a8cdbbff8b665fdb7325a3664a22b5e5baf61f025d74e"
-  successor_authority_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-concrete-reconciler-path-binding-replacement.json
-  successor_authority_evidence_sha256: "sha256:50fd81ae72c58c0c25aa518cd22073bc37f7ab9132fdc635c9e5501a6789bc72"
+  successor_proposal_path: null
+  successor_proposal_sha256: null
+  successor_approval_evidence: null
+  successor_approval_evidence_sha256: null
+  successor_authority_evidence: null
+  successor_authority_evidence_sha256: null
   superseded_proposal_sha256: "sha256:692bcb15b3e1fc55167e189b9249dae681adf0f03fd5b925623be6656bc2df37"
   superseded_proposal_record_commit: 73181707e49be61955af4f2891f4c7185a1c288f
   superseded_proposal_source_commit: 73181707e49be61955af4f2891f4c7185a1c288f
@@ -6356,7 +6349,7 @@ recommended_next_task:
   preclaim_readiness_repair_commits: ["f0dac6df4eb8f7209e5bdb5e9ee2eeae6ef9d1eb", "0117cb1c26003714616bdd9f02584ff025d803e7", "0f4ed8dde449051c7d67d8e36ed67d49f737fca0", "dcd4c146023dfed996271d7f4da3afe39045bdfa", "eb113e44fc661b259ec0c06039c643a802714884"]
   preclaim_readiness_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-private-output-parent-preflight-repair.json
   preclaim_readiness_repair_validation: "FOCUSED_97_OF_97_AND_INDEPENDENT_GO_P0_0_P1_0"
-  execution_blocker: mandatory_independent_successor_diff_audit_pending
+  execution_blocker: clean_source_bundle_and_fresh_exact_proposal_audits_and_approval_required
   provider_free_validation_note: "Live source 29667134 / Worker 50cfd256 with media worker 0.1.14 proves Stages 1-5, two requests matching two persisted adaptive batches, 31/31 durable prompts, exact reservation conservation, USD 0.001401 Stage 5 settlement, and the 520px scrollable viewer. All 31 positive prompts include enabled project keywords exactly once, carry exactly one pinned medium, realism, camera, and lighting field, and have zero palette/hex or other removed style metadata hits. Positive prompts are 90-107 words, average 98. Focused provider-free prompt tests pass 96/96. Auth, origin, rate limit, durability, schema/identity/completeness, hard visual restrictions, and no-redispatch semantics remain unchanged."
 
 verification:
