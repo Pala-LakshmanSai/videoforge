@@ -455,11 +455,11 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_private_authority_sha256: null
-    current_authority_state: "cfe842_consumed_FAILED_CLEAN8_of_26"
-    current_proposal_sha256: null
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-disk-space-recovery.json"
+    current_authority_sha256: "sha256:dd2a8c7c8e1708c41f1f97b19ef7c4833367aee2c80500a022d8f747a65cbe58"
+    current_private_authority_sha256: "sha256:13bf0c02120040d3f73d159db71da4538af6fcfc454a6b7dd6dbc08d04dadaad"
+    current_authority_state: "d8cc_continuing_authority_preclaim_gates"
+    current_proposal_sha256: "sha256:d8cc2a9d1899a6654c852acacb3a8ca302fe095df6b7b2ca5044fd04d3ed9685"
     current_control_source_commit: "69d343171e8226f1df948bf1da7d542b1e340935"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-retained-baseline-interrupted-executor.json"
     current_failure_sha256: "sha256:a99c2d7d6fc5ee79aef7adfb8c7c7ca48fc11d80583cf0ad30c38cec7f07e83b"
@@ -487,7 +487,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "Same69d fresh successor under continuing authorization;9.7.7active9.8pending;no replay"
+    next_gate: "2GiBdisk release200 artifact/runtime gates thenexactactivation;no repeatedapprovalprompt;9.8pending"
 
   GATE_RANGA_001:
     status: open

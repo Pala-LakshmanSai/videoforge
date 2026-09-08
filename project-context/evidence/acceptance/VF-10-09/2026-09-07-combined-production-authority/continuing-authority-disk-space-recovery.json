@@ -1,0 +1,22 @@
+{
+  "schema_version": "videoforge.v2-09-approved-authority-handoff/v1",
+  "authority_id": "v2-09-d8cc2a9d1899a665",
+  "source_commit": "69d343171e8226f1df948bf1da7d542b1e340935",
+  "proposal_sha256": "sha256:d8cc2a9d1899a6654c852acacb3a8ca302fe095df6b7b2ca5044fd04d3ed9685",
+  "private_authority_sha256": "sha256:13bf0c02120040d3f73d159db71da4538af6fcfc454a6b7dd6dbc08d04dadaad",
+  "materialization_plan_sha256": "sha256:5482c002beeacd5a8f312fab113c1235f38d5ebea8bf31ae448feebecf7a0480",
+  "approval": "EXPLICIT_CONTINUING_USER_AUTHORIZATION_NO_REPEAT_PROMPTS",
+  "continuing_authorization_evidence": "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-retained-disabled-baseline-replacement.json",
+  "cap_usd": 2,
+  "completion_ceiling_usd": 17.5,
+  "preclaim_gates": [
+    "At least2GiB disk free",
+    "Release HTTP200 before claim",
+    "Fresh artifact and runtime audits"
+  ],
+  "retained_baseline": "UNCHANGED_CA118_DISABLED_WORKER_AND_TWO_WORKFLOWS",
+  "execution_state": "MATERIALIZED_PRECLAIM_CHECKS_PENDING",
+  "checkpoint": "9.7.7",
+  "single_chrome_e2e": true,
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN"
+}
