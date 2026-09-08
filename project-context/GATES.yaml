@@ -455,10 +455,10 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_private_authority_sha256: null
-    current_authority_state: "none_492_consumed_read_only_prerequisites"
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-consolidated-prerequisites-replacement.json"
+    current_authority_sha256: "sha256:1ea271e67d7134f2d7254471ecae3926c68a2a882a0bd9ea44d4d3b82b8b88cf"
+    current_private_authority_sha256: "sha256:7976cb661ea57bbbf9da22914e023c9453fe6e529e32cae097e8b0cccc315cd2"
+    current_authority_state: "exact_c272_approved_execution_active"
     current_proposal_sha256: "sha256:c27280b04f76ea8d19a2524bc27a7601819dfc7ac0a182deca00f2f74208a251"
     current_control_source_commit: "536e7a400313ff6fd81ff0d62027d08bf5568bbf"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-workflow-phase-runtime-path.json"
@@ -487,7 +487,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "Complete bounded read-only prerequisites and provider-free checks; fresh exact successor approval before activation;9.8/9.9pending."
+    next_gate: "9.7.6DONE;9.7.7productiondeploymentACTIVE;9.7.8postimportreadinesspending;9.8/9.9pending."
 
   GATE_RANGA_001:
     status: open

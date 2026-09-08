@@ -4,44 +4,44 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_consolidated_prerequisites_sealed_awaiting_approval
+current_milestone: v2_09_c272_approved_production_deployment
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: read_only_preflight
+task_stage: bounded_mutation
 application_code_changes_authorized: true
 provider_calls_authorized: true
-read_only_provider_calls_authorized: true
-remote_or_cloud_mutations_authorized: false
+read_only_provider_calls_authorized: false
+remote_or_cloud_mutations_authorized: true
 credential_access_authorized: true
-gpu_use_authorized: false
-maximum_external_spend_usd: 0
+gpu_use_authorized: true
+maximum_external_spend_usd: 2
 
 current_goal_boundary:
-  mode: v2_09_consolidated_prerequisites_sealed_awaiting_approval
-  live_provider_calls: "Only bounded read-only prerequisite inventory under AGENTS bootstrap;492 consumed FAILED_CLEAN."
-  remote_mutation: false
-  deployment_or_publication: "None; successor proposal sealed, awaiting exact approval."
-  credential_value_access: "Only already-configured credentials for bounded read-only prerequisite inventory."
-  paid_requests_or_spend: "No new activation or spend permission; existing volume retention consent unchanged."
-  runpod_mutation_or_gpu: "None;492 final cleanup proved zero compute."
+  mode: v2_09_c272_approved_production_deployment
+  live_provider_calls: "Exact c272 approved combined activation only; two materialized audits GO and actual archive runtime probe PASS; executor active."
+  remote_mutation: true
+  deployment_or_publication: "Exact approved combined activation from frozen536e7a40 only."
+  credential_value_access: "Exact protected snapshots and native Cloudflare runtime PATH only."
+  paid_requests_or_spend: "USD2 finite cap;USD17.5 completion ceiling; existing retained-volume consent unchanged."
+  runpod_mutation_or_gpu: "Exact two qualified max-one EU-RO-1 lanes,workersMin=0,no fallback or replay."
   v2_07_action: "Stage6/7 frozen QUALIFIED_PASS_CLEAN; zero changes or reruns."
   current_checkpoint: "9.7 active;1–8 and9.1–9.6 finished;9.8/9.9 pending."
-  approval_evidence: null
-  approval_evidence_sha256: null
-  note: "492 consumed FAILED_CLEAN16/26; consolidated predeployment check passed; runtime/auth/resource/handoff proof recorded; successor proposal sealed awaiting approval;9.8/9.9pending."
+  approval_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-consolidated-prerequisites-replacement.json"
+  approval_evidence_sha256: "sha256:1ea271e67d7134f2d7254471ecae3926c68a2a882a0bd9ea44d4d3b82b8b88cf"
+  note: "c272 explicitly approved;9.7.6DONE9.7.7ACTIVE9.7.8pending;492consumedFAILED_CLEAN16/26;Stage6/7frozen."
 
 
 v2_09_checkpoint_9_7_subcheckpoints:
   tracker_owner: parent_execution_agent
-  current: "9.7.6"
+  current: "9.7.7"
   "9.7.1": "DONE — failed-attempt cleanup closure"
   "9.7.2": "DONE — runtime PATH and live authorization prerequisites"
   "9.7.3": "DONE — Cloudflare resource contract; R2 repair verified with 15 focused tests"
   "9.7.4": "DONE — install and Chrome handoff audit"
   "9.7.5": "DONE — clean536e7a40;15tests, actual prerequisite proof, two exact audits GO"
-  "9.7.6": "ACTIVE — sealed c27280b0 proposal awaiting exact approval"
-  "9.7.7": "PENDING — combined production deployment"
+  "9.7.6": "DONE \u2014 exact c272 proposal approved"
+  "9.7.7": "ACTIVE \u2014 combined production deployment; two materialized audits GO; executor active"
   "9.7.8": "PENDING — post-import readiness before 9.8"
   next_main_subcheckpoints: "9.8 single Chrome E2E and 9.9 cleanup/readiness pending"
 
@@ -99,8 +99,8 @@ v2_09_provider_free_candidate:
   cloudflare_secret_boundary: "All exact production secret bytes are snapshotted and hash-bound before any Cloudflare mutation; production stays DISABLED_UNQUALIFIED until an approved qualified activation."
   media_worker_release: "media-worker-v0.1.15 is published immutable from exact source b897fc6d by successful workflow run 34178343261; it is not installed or activated and was adopted/read back under consumed e77c authority; install heartbeat failed and app 0.1.14 was restored."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
-  provider_state: "492 consumed FAILED_CLEAN16/26; zero compute cleanup proved. No current activation authority; bounded read-only prerequisites only."
-  current_authority: null
+  provider_state: "Exact c272 approved; new activation outcome pending.492 remains consumedFAILED_CLEAN16/26."
+  current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-consolidated-prerequisites-replacement.json"
   concrete_reconciler_path_failure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-concrete-reconciler-path-binding.json"
   concrete_reconciler_path_failure_evidence_sha256: "sha256:5031d8e651d132ef9e57167190fdb9e858cfceca054cf1d625d2e8bd5a356ef0"
   concrete_reconciler_path_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-concrete-reconciler-path-binding-repair.json"
@@ -4170,16 +4170,16 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_fresh_successor_inventory_or_mutation
-  current_authority: null
-  current_authority_sha256: null
-  current_private_authority_sha256: null
+  current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-consolidated-prerequisites-replacement.json"
+  current_authority_sha256: "sha256:1ea271e67d7134f2d7254471ecae3926c68a2a882a0bd9ea44d4d3b82b8b88cf"
+  current_private_authority_sha256: "sha256:7976cb661ea57bbbf9da22914e023c9453fe6e529e32cae097e8b0cccc315cd2"
   latest_closed_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
   latest_closed_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
-  mutation_authorized: false
-  mutation_authorization_scope: none_consumed_failed_clean
-  gpu_use_authorized: false
-  gpu_authorization_scope: none_consumed_failed_clean
-  spend_authorized_usd: 0
+  mutation_authorized: true
+  mutation_authorization_scope: exact_v2_09_c272_combined_production
+  gpu_use_authorized: true
+  gpu_authorization_scope: exact_two_qualified_max_one_lanes
+  spend_authorized_usd: 2
 
 repository:
   initialized: true
@@ -4208,10 +4208,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
+  provider_mode: production
   provider_calls_authorized: true
-  authorized_spend_usd: 0
-  provider_authority_scope: agents_bootstrap_read_only_prerequisites_only
+  authorized_spend_usd: 2
+  provider_authority_scope: exact_v2_09_c272_combined_production
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -6301,32 +6301,32 @@ provider_authority_consumed_reconciler_secret_output: &v2_09_provider_authority_
       checked_at: "2026-09-07"
 
 provider_authority: &v2_09_provider_authority_current
-  mode: read_only
-  provider: runpod+cloudflare_r2+neon+github
+  mode: paid
+  provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
   historical_provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
-  cap_usd: 0
+  cap_usd: 2
   historical_cap_usd: 2
   non_transferable: true
-  source: AGENTS.md_paid_checkpoint_bootstrap
+  source: "536e7a400313ff6fd81ff0d62027d08bf5568bbf"
   latest_closed_source: "144dda524d2e2d1813a08abaf268c3a767061f59"
   authorized_by_user_at: "2026-09-08"
   latest_closed_authorized_by_user_at: "2026-09-08"
-  proposal_sha256: null
+  proposal_sha256: "sha256:c27280b04f76ea8d19a2524bc27a7601819dfc7ac0a182deca00f2f74208a251"
   latest_closed_proposal_sha256: "sha256:492678e0a03421258ffbcbfa006b582d75441da0ab2833305feb1e6856997825"
-  authority: null
+  authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-consolidated-prerequisites-replacement.json"
   latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-workflow-bootstrap-phase-replacement.json"
-  authority_sha256: null
+  authority_sha256: "sha256:1ea271e67d7134f2d7254471ecae3926c68a2a882a0bd9ea44d4d3b82b8b88cf"
   latest_closed_authority_sha256: "sha256:bb518d9cfdccbe07d3b2a2c08dcf6b6eba77a0297ebf4eee67a7f0398f904060"
-  private_authority_sha256: null
+  private_authority_sha256: "sha256:7976cb661ea57bbbf9da22914e023c9453fe6e529e32cae097e8b0cccc315cd2"
   latest_closed_private_authority_sha256: "sha256:44b34f2ade9253ad9fe437391f34cd7a8d2ec2df6aac2d6dcf00b5a2ad74535e"
   consumed: false
   reusable: false
   provider_calls_authorized: true
-  provider_mutations_authorized: false
+  provider_mutations_authorized: true
   credential_access_authorized: true
-  gpu_use_authorized: false
+  gpu_use_authorized: true
   actual_spend_usd: null
-  resources: ["bounded read-only prerequisite inventory under AGENTS.md"]
+  resources: ["runpod:mage-production-lane:EU-RO-1:RTX4090", "runpod:soulx-production-lane:EU-RO-1:RTX4090", "cloudflare:videoforge-production-runtime", "neon:videoforge-production-database", "paired-mac:videoforge-personal-media-worker"]
   historical_resources:
     - "github:Pala-LakshmanSai/videoforge:refs/heads/codex/serverless-v2-roadmap-v4"
     - "runpod:mage-production-lane:EU-RO-1:RTX4090"
@@ -6335,7 +6335,7 @@ provider_authority: &v2_09_provider_authority_current
     - "neon:videoforge-production-database"
     - "github:media-worker-v0.1.15"
     - "paired-mac:videoforge-personal-media-worker"
-  authorized_operations: [account_identity_lookup, inventory_lookup, quota_lookup, rate_lookup, region_lookup, resource_identity_lookup, resource_absence_lookup]
+  authorized_operations: ["push-clean-source", "readback-clean-source", "apply-migrations-0074-0086", "apply-v209-grants", "publish-media-worker-0.1.15", "readback-media-worker-0.1.15", "fresh-read-only-admission", "create-mage-production-lane-max-one", "create-soulx-production-lane-max-one", "persist-qualified-production-deployments", "render-qualified-production-config", "deploy-cloudflare-disabled-bootstrap", "upload-cloudflare-production-secrets", "deploy-cloudflare-qualified-production", "readback-qualified-production", "install-media-worker-0.1.15", "import-v209-qualified-activation", "run-one-v209-chrome-e2e", "verify-private-mp4-lineage", "reconcile-v209-production-safety", "reconcile-attributable-runpod-work", "clean-v209-transient-r2", "prove-three-zero-compute-reads", "read-settled-billing", "verify-retained-resources"]
   historical_authorized_operations:
     - push-clean-source
     - readback-clean-source
@@ -6362,7 +6362,7 @@ provider_authority: &v2_09_provider_authority_current
     - prove-three-zero-compute-reads
     - read-settled-billing
     - verify-retained-resources
-  allowed_operations: [account_identity_lookup, inventory_lookup, quota_lookup, rate_lookup, region_lookup, resource_identity_lookup, resource_absence_lookup]
+  allowed_operations: ["push-clean-source", "readback-clean-source", "apply-migrations-0074-0086", "apply-v209-grants", "publish-media-worker-0.1.15", "readback-media-worker-0.1.15", "fresh-read-only-admission", "create-mage-production-lane-max-one", "create-soulx-production-lane-max-one", "persist-qualified-production-deployments", "render-qualified-production-config", "deploy-cloudflare-disabled-bootstrap", "upload-cloudflare-production-secrets", "deploy-cloudflare-qualified-production", "readback-qualified-production", "install-media-worker-0.1.15", "import-v209-qualified-activation", "run-one-v209-chrome-e2e", "verify-private-mp4-lineage", "reconcile-v209-production-safety", "reconcile-attributable-runpod-work", "clean-v209-transient-r2", "prove-three-zero-compute-reads", "read-settled-billing", "verify-retained-resources"]
   historical_allowed_operations:
     - push-clean-source
     - readback-clean-source
@@ -6408,32 +6408,32 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_consolidated_prerequisites_sealed_awaiting_approval
-  status: AWAITING_FRESH_EXACT_APPROVAL
+  milestone: v2_09_c272_approved_production_deployment
+  status: APPROVED_PRODUCTION_DEPLOYMENT_ACTIVE
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
-  authorization_status: agents_bootstrap_read_only_only_no_activation
-  task_stage: read_only_preflight
-  current_goal_authority: null
-  current_goal_authority_sha256: null
+  authorization_status: exact_c272_approved
+  task_stage: bounded_mutation
+  current_goal_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-consolidated-prerequisites-replacement.json"
+  current_goal_authority_sha256: "sha256:1ea271e67d7134f2d7254471ecae3926c68a2a882a0bd9ea44d4d3b82b8b88cf"
   provider_authority: *v2_09_provider_authority_current
-  provider_mode: fixture
+  provider_mode: production
   provider_free_repair_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
   provider_free_clean_seal_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
   provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-workflow-bootstrap-phase-repair.json"
   provider_free_repair_validation: "109_OF_109_REAL_RUNTIME_PROOF_INDEPENDENT_GO_P0_0_P1_0"
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
-  goal: "Complete focused consolidated predeployment checks; seal and audit successor proposal before any new activation.9.7active9.8/9.9pending."
+  goal: "Execute exact c272 through9.7.7deployment9.7.8postimportreadiness, then9.8singleChromeE2E and9.9cleanup or exactstop."
   provider_calls_authorized: true
-  read_only_provider_calls_authorized: true
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
+  read_only_provider_calls_authorized: false
+  maximum_external_spend_usd: 2
+  remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
   credential_value_read_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  gpu_use_authorized: true
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5
