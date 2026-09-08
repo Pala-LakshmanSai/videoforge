@@ -1,0 +1,22 @@
+{
+  "schema_version": "videoforge.v2-09-approved-authority-handoff/v1",
+  "authority_id": "v2-09-30d07b585868cea6",
+  "source_commit": "b7546348775d8bb743d9b4408591fdfe6daf6650",
+  "proposal_sha256": "sha256:30d07b585868cea6262aad6d1aec0281608e6bb649490fac337a74f6c69a3ec7",
+  "private_authority_sha256": "sha256:3e4e2d3e537a11b110c5b27edb18b6b4b43a9aa31ffe9e420b7cff4dcc641ef2",
+  "materialization_plan_sha256": "sha256:c6ed08c75d2e29f25ad1284f94b53515e5914e33751a13b04db3c7c5f3a1440f",
+  "source_proposal_audits": "TWO_GO_P0_0_P1_0",
+  "materialized_authority_audits": "PENDING_TWO_INDEPENDENT_AUDITS",
+  "approval": "EXPLICIT_EXACT_USER_APPROVAL",
+  "checkpoint": 9,
+  "subcheckpoint": "9.7",
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN",
+  "cap_usd": 2,
+  "completion_ceiling_usd": 17.5,
+  "single_chrome_e2e": true,
+  "superseded_d6": "UNCLAIMED_PRECLAIM_BLOCKED_SUPERSEDED_NOT_CONSUMED",
+  "execution_state": "APPROVED_PENDING_MATERIALIZED_AUDITS",
+  "prior_cb7": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "prior_492": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "cloudflare_runtime_path": "NATIVE_CONFIGURED_RUNTIME_PATH_REQUIRED"
+}
