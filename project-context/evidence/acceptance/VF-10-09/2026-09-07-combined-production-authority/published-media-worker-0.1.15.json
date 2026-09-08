@@ -1,0 +1,43 @@
+{
+  "schema_version": "videoforge.v2-09-media-worker-release-receipt/v1",
+  "checkpoint": "V2-09",
+  "task_id": "VF-10-09",
+  "release_tag": "media-worker-v0.1.15",
+  "release_id": 384400902,
+  "release_immutable": true,
+  "draft": false,
+  "prerelease": false,
+  "target_commit": "b897fc6def69db56a6d3dba43573551042843458",
+  "published_at_utc": "2026-09-08T02:01:17Z",
+  "workflow": {
+    "run_id": 34178343261,
+    "path": ".github/workflows/media-worker-release.yml",
+    "event": "workflow_dispatch",
+    "head_sha": "b897fc6def69db56a6d3dba43573551042843458",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at_utc": "2026-09-08T01:56:43Z",
+    "updated_at_utc": "2026-09-08T02:01:20Z"
+  },
+  "assets": [
+    {
+      "name": "media-worker-release.json",
+      "size_bytes": 916,
+      "sha256": "sha256:d42bc1ee12829bb8d2824fca144a041283ad164c2fdfa894d7d6ebfba2b4df75",
+      "state": "uploaded"
+    },
+    {
+      "name": "VideoForge-Worker-0.1.15-Setup.exe",
+      "size_bytes": 225874066,
+      "sha256": "sha256:7a55843f437e47f3c8f26185152e1b827ca3a6705dae13166a256ff1ffa2b480",
+      "state": "uploaded"
+    },
+    {
+      "name": "VideoForge-Worker-0.1.15.dmg",
+      "size_bytes": 285652045,
+      "sha256": "sha256:d12025df97c44eee6356da9aab11f904a37fbe4c72b691fccc62d4dd91ae37db",
+      "state": "uploaded"
+    }
+  ],
+  "scope_note": "Publication completed under the consumed af93 authority. This receipt does not authorize replay, replacement, installation, deployment, or any later live operation. A successor may only adopt these exact immutable existing assets under fresh exact authority."
+}

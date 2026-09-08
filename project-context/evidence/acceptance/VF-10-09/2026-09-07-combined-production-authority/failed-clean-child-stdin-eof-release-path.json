@@ -1,0 +1,108 @@
+{
+  "schema_version": "videoforge.v2-09-combined-production-failed-clean/v1",
+  "checkpoint": "V2-09",
+  "task_id": "VF-10-09",
+  "authority_id": "v2-09-af93a2373eb5619b",
+  "proposal_sha256": "sha256:af93a2373eb5619b8ab5b7cd61c1063ee39da0613b9fef9434b260f1e85c1bdb",
+  "control_source_commit": "b897fc6def69db56a6d3dba43573551042843458",
+  "authority_sha256": "sha256:37a3f9c9029a8deee17d3f2e07b1c8177e4d12e1a06ae8963a5947c58facc21e",
+  "materialization_plan_sha256": "sha256:f60412e8217074ccbb8bcafdcaef3a992826491afd88b472c24a2a4336df5f46",
+  "qualified_binding_template_sha256": "sha256:3789ae092dacf0d0fbfd3cf7297d7c8e311074dd548cd8d2cc6b7deaeb550e44",
+  "media_worker_bundle_sha256": "sha256:a1bda39b57e4b0ccad936bd7a044805583d7683287f2ea0861657e90c3a194b6",
+  "status": "FAILED_CLEAN",
+  "consumed": true,
+  "reusable": false,
+  "outer_state_sha256": "sha256:bb3e7b05935943e73e1c2ae0173609517b0dc5a92eb974c23a8d0bcd11626fd1",
+  "cleanup_tombstone_sha256": "sha256:f674278e02beb5eb90e0f081fb76265c32bce536c64f103f8a147f89c920aaca",
+  "failure": {
+    "operation": "publish-media-worker-0.1.15",
+    "operation_status": "STARTED",
+    "receipt_persisted": false,
+    "classification": "LIVE_PATH_PREDICATE_MISMATCH",
+    "severity": "P1",
+    "root_cause": "The exact release workflow path reported by GitHub is .github/workflows/media-worker-release.yml, while the sealed execution source required a non-existent @refs/heads/<branch> suffix. The release workflow itself completed successfully, but the executor could not accept its live path predicate and therefore could not persist operation completion.",
+    "redispatch_permitted": false
+  },
+  "operations": {
+    "completed": [
+      "run-read-only-preflight",
+      "read-pre-mutation-completion-baseline",
+      "materialize-v209-protected-inputs",
+      "push-clean-source",
+      "readback-clean-source",
+      "apply-migrations-0074-0086",
+      "apply-v209-grants",
+      "read-post-migration-completion-baseline"
+    ],
+    "completed_count": 8,
+    "started_not_completed": ["publish-media-worker-0.1.15"],
+    "pending_count": 17,
+    "inner_authority_emitted": false
+  },
+  "database_proof": {
+    "migration_ledger_count": 86,
+    "migration_ledger_min_version": 1,
+    "migration_ledger_max_version": 86,
+    "migrations_0074_through_0086_committed": true,
+    "runtime_operator_reconciler_grants_verified": true,
+    "authority_marker_role_count": 0,
+    "authority_marker_membership_count": 0,
+    "authority_marker_session_count": 0,
+    "authority_owned_relation_count": 0,
+    "authority_owned_function_count": 0
+  },
+  "media_worker_release": {
+    "status": "PUBLISHED_IMMUTABLE_EXISTING",
+    "tag": "media-worker-v0.1.15",
+    "target_commit": "b897fc6def69db56a6d3dba43573551042843458",
+    "workflow_run_id": 34178343261,
+    "workflow_conclusion": "success",
+    "receipt": "published-media-worker-0.1.15.json"
+  },
+  "cleanup": {
+    "status": "CLEANED",
+    "provider_free_runtime_prerequisite_bypass_used_for_cleanup_only": true,
+    "role_cleanup_status": "CLEANED",
+    "generated_protected_outputs_remaining": 0,
+    "executor_processes_remaining": 0,
+    "redispatches": 0
+  },
+  "retained_volumes": [
+    {
+      "lane": "mage_image",
+      "region": "EU-RO-1",
+      "size_gb": 50,
+      "volume_id_sha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619"
+    },
+    {
+      "lane": "soulx_avatar",
+      "region": "EU-RO-1",
+      "size_gb": 50,
+      "volume_id_sha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be"
+    }
+  ],
+  "effects": {
+    "database_migrations_applied": true,
+    "media_worker_published": true,
+    "media_worker_installations": 0,
+    "runpod_lane_mutations": 0,
+    "runpod_endpoints": 0,
+    "runpod_pods": 0,
+    "runpod_active_workers": 0,
+    "runpod_private_templates": 0,
+    "runpod_job_posts": 0,
+    "gpu_jobs": 0,
+    "cloudflare_mutations": 0,
+    "r2_mutations": 0,
+    "chrome_e2e_runs": 0,
+    "redispatches": 0,
+    "stage_6_jobs": 0,
+    "stage_7_jobs": 0,
+    "incremental_external_spend_usd": 0
+  },
+  "frozen_predecessors": {
+    "stage_6": "QUALIFIED_PASS_CLEAN_UNTOUCHED",
+    "stage_7": "QUALIFIED_PASS_CLEAN_UNTOUCHED"
+  },
+  "next_gate": "Provider-free exact-existing immutable-release successor repair, focused validation, independent audit, clean reseal, exact replacement proposal, and fresh exact approval. No live authority exists."
+}
