@@ -989,6 +989,7 @@ test("all live factory phases hydrate one bound operator URL snapshot and reject
   const { configuration } = fixture();
   configuration.mediaWorker = {
     databaseCredentialPath: configuration.databaseOperatorUrlFile,
+    heartbeatCredentialPath: configuration.databaseOwnerUrlFile,
     environment: { PATH: "/usr/bin:/bin" },
   };
   for (const create of [
@@ -998,10 +999,12 @@ test("all live factory phases hydrate one bound operator URL snapshot and reject
     createConcreteQualifiedProductionResumedAdapters,
   ]) {
     let hydrated;
+    let heartbeat;
     const adapters = create(configuration, {
       hydrateMediaWorker: true,
       portsFromHydratedConfiguration: (snapshot) => {
         hydrated = snapshot.mediaWorker.environment;
+        heartbeat = snapshot.mediaWorker.heartbeatEnvironment;
         return portSet();
       },
     });
@@ -1010,10 +1013,32 @@ test("all live factory phases hydrate one bound operator URL snapshot and reject
     assert.equal(hydrated.PGPORT, "5432");
     assert.equal(hydrated.PGDATABASE, "videoforge");
     assert.equal(hydrated.PGUSER, "videoforge_operator");
+    assert.equal(heartbeat.PGUSER, "owner");
+    assert.equal(heartbeat.PGPASSWORD, "owner-secret");
+    assert.equal(heartbeat.PGSSLMODE, "require");
+    assert.equal(heartbeat.PGCHANNELBINDING, "require");
+    assert.equal(JSON.stringify(adapters).includes("owner-secret"), false);
     assert.equal(hydrated.PGPASSWORD, "operator-secret");
     assert.equal(hydrated.PGSSLMODE, "require");
     assert.equal(hydrated.PGCHANNELBINDING, "require");
     assert.equal(JSON.stringify(adapters).includes("operator-secret"), false);
+  }
+
+  for (const invalidHeartbeat of [
+    { heartbeatCredentialPath: configuration.databaseOperatorUrlFile },
+    { heartbeatEnvironment: { PGPASSWORD: "injected-owner" } },
+  ]) {
+    const original = configuration.mediaWorker;
+    configuration.mediaWorker = { ...original, ...invalidHeartbeat };
+    assert.throws(
+      () =>
+        createConcreteQualifiedProductionStagingAdapters(configuration, {
+          hydrateMediaWorker: true,
+          portsFromHydratedConfiguration: () => portSet(),
+        }),
+      /V2_09_CONCRETE_MEDIA_WORKER_CONFIGURATION_INVALID/u,
+    );
+    configuration.mediaWorker = original;
   }
 
   configuration.mediaWorker.databaseCredentialPath = configuration.databaseOwnerUrlFile;
@@ -1048,6 +1073,7 @@ test("media-worker hydration and adapter binding share one descriptor-bound oper
   const { configuration } = fixture();
   configuration.mediaWorker = {
     databaseCredentialPath: configuration.databaseOperatorUrlFile,
+    heartbeatCredentialPath: configuration.databaseOwnerUrlFile,
     environment: {},
   };
   let hydratedPassword;
@@ -1123,7 +1149,6 @@ test("staging factory needs neither Chrome inputs nor deferred endpoint secrets"
     "apply-v209-grants",
     "publish-media-worker-0.1.15",
     "readback-media-worker-0.1.15",
-    "install-media-worker-0.1.15",
     "fresh-read-only-admission",
     "create-mage-production-lane-max-one",
     "create-soulx-production-lane-max-one",
@@ -1289,6 +1314,7 @@ test("deployment factory binds all secrets and rehydrates the persisted pair wit
     "upload-cloudflare-production-secrets",
     "deploy-cloudflare-qualified-production",
     "readback-qualified-production",
+    "install-media-worker-0.1.15",
     "import-v209-qualified-activation",
   ]);
   assert.throws(
@@ -1451,6 +1477,7 @@ test("interactive Chrome pause and resume preserve the unstarted Generate operat
     "upload-cloudflare-production-secrets",
     "deploy-cloudflare-qualified-production",
     "readback-qualified-production",
+    "install-media-worker-0.1.15",
     "import-v209-qualified-activation",
   ]) {
     await adapters.state.beginNormalOperation({

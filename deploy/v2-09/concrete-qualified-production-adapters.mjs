@@ -577,14 +577,22 @@ function hydrateMediaWorkerConfiguration(configuration, protectedInputs) {
     ) ||
     resolve(mediaWorker.databaseCredentialPath ?? "") !==
       resolve(configuration.databaseOperatorUrlFile) ||
-    protectedInputs?.databaseOperatorUrlFile?.bytes === undefined
+    protectedInputs?.databaseOperatorUrlFile?.bytes === undefined ||
+    resolve(mediaWorker.heartbeatCredentialPath ?? "") !==
+      resolve(configuration.databaseOwnerUrlFile) ||
+    Object.hasOwn(mediaWorker, "heartbeatEnvironment") ||
+    protectedInputs?.databaseOwnerUrlFile?.bytes === undefined
   )
     fail("V2_09_CONCRETE_MEDIA_WORKER_CONFIGURATION_INVALID");
   const operatorUrl = protectedInputs.databaseOperatorUrlFile.bytes.toString("utf8");
   const environment = postgresEnvironment({ environment: mediaWorker.environment }, operatorUrl);
+  const heartbeatEnvironment = postgresEnvironment(
+    { environment: mediaWorker.environment },
+    protectedInputs.databaseOwnerUrlFile.bytes.toString("utf8"),
+  );
   return cloneAndFreeze({
     ...configuration,
-    mediaWorker: { ...mediaWorker, environment },
+    mediaWorker: { ...mediaWorker, environment, heartbeatEnvironment },
   });
 }
 

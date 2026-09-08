@@ -4,17 +4,14 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-Authority `v2-09-e77c557b7ee5146a` is consumed `FAILED_CLEAN` and non-reusable.
-The exact source `72d8b4f36ad35f37699240e7365b724713525a76` completed 10/26 outer
-operations, including exact-existing media-worker adoption/readback, then stopped at
-`install-media-worker-0.1.15` with `V2_09_MEDIA_WORKER_HEARTBEAT_READ_FAILED`.
-Checkpoints 1–8 and 9.1–9.6 remain finished; 9.7 remains active but blocked at this exact stop;
-9.8 and 9.9 remain pending. No executable authority exists. Cleanup proved database 86/86,
-zero temporary roles/sessions/protected files, restored app 0.1.14, and three fresh zero-compute
-reads with both retained volumes unchanged and USD 0 incremental billing. No RunPod lane,
-Cloudflare deployment, Chrome E2E, or provider job was reached. Stage 6/7 remain frozen
-QUALIFIED_PASS_CLEAN. Future repair requires independent audits and fresh exact approval;
-no repair or replay is authorized by the consumed proposal. Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-exact-existing-media-heartbeat.json`.
+Heartbeat repair is implemented: isolate the existing owner snapshot to bounded read-only heartbeat SQL,
+fail before install mutation on missing SELECT or RLS bypass, and install only after qualified
+Cloudflare readback while retaining strict ONLINE acceptance. Local PostgreSQL17 reproduces the
+original privilege/RLS failure; focused tests pass. No role grants, migration, release publication,
+Stage 6/7 modification, or new activation ran. A bounded read-only owner inventory confirms existing
+capability. Main checkpoints 1–8 and 9.1–9.6 stay finished; 9.7 remains active, 9.8/9.9 pending.
+Next: clean repair seal, independent exact proposal audit, and fresh exact activation approval.
+Authority e77c remains consumed FAILED_CLEAN and non-reusable; prior cleanup proved zero compute.
 
 ### Historical activation evidence
 

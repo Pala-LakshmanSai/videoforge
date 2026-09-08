@@ -4,11 +4,11 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_exact_existing_media_release_failed_clean_heartbeat
+current_milestone: v2_09_postdeploy_heartbeat_repair
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: failed_clean_stop
+task_stage: provider_free_repair
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,7 +18,7 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_failed_clean_heartbeat_exact_stop
+  mode: v2_09_postdeploy_heartbeat_repair_awaiting_fresh_exact_approval
   live_provider_calls: "No executable authority exists; e77c is consumed FAILED_CLEAN and non-reusable."
   remote_mutation: false
   deployment_or_publication: "Not authorized; exact-existing adoption/readback succeeded but installation heartbeat failed."
@@ -26,12 +26,15 @@ current_goal_boundary:
   paid_requests_or_spend: "No further spend authorized; closed attempt increment USD 0."
   runpod_mutation_or_gpu: "No lane or job reached; three fresh zero-compute reads passed; no replay or redispatch."
   v2_07_action: "Stage 6 and Stage 7 frozen QUALIFIED_PASS_CLEAN; zero modifications or reruns."
-  current_checkpoint: "9.7 active blocked at exact stop; 1-8 and 9.1-9.6 finished; 9.8 and 9.9 pending."
+  current_checkpoint: "9.7 active repair implemented, exact activation approval pending; 1-8 and 9.1-9.6 finished; 9.8 and 9.9 pending."
   closure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-exact-existing-media-heartbeat.json"
   closure_evidence_sha256: "sha256:9ed4f0937d0bf8aec7024065362b49af345a9a0c0e292157ec724ded6ba7a4a4"
-  note: "10/26 completed; V2_09_MEDIA_WORKER_HEARTBEAT_READ_FAILED. Database 86/86, temporary roles/sessions/protected files zero, app 0.1.14 restored. Future repair, independent audits, and fresh exact approval required."
+  note: "10/26 completed; V2_09_MEDIA_WORKER_HEARTBEAT_READ_FAILED. Database 86/86, temporary roles/sessions/protected files zero, app 0.1.14 restored. Heartbeat repair isolates owner read and moves install after qualified readback. Focused tests pass; fresh exact audited approval required."
 
 v2_09_provider_free_candidate:
+  heartbeat_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-postdeploy-heartbeat-repair.json"
+  heartbeat_repair_evidence_sha256: "sha256:0d78a66bfd412e4d8db8cfbb2722629ad86db27be0789d0744b3c38c227f4307"
+  heartbeat_repair_validation: "FOCUSED_139_OF_139_INCLUDING_REAL_POSTGRES17_TWO_INDEPENDENT_GO_P0_0_P1_0"
   source_commit: "72d8b4f36ad35f37699240e7365b724713525a76"
   source_audit: "PASS_THREE_INDEPENDENT_FOCUSED_AUDITS_P0_0_P1_0"
   canonical_provider_free_verification: FOCUSED_V209_136_OF_136_PLUS_CONTRACTS_112_OF_112_PYTHON_96_OF_96_HOSTED_78_OF_78_CONTEXT_PASS
@@ -6292,11 +6295,11 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_exact_existing_media_release_failed_clean_heartbeat
+  milestone: v2_09_postdeploy_heartbeat_repair
   status: FAILED_CLEAN_9_7_ACTIVE_BLOCKED_EXACT_STOP
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: none_consumed_failed_clean
-  task_stage: failed_clean_stop
+  task_stage: provider_free_repair
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_current

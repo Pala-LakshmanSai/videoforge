@@ -352,6 +352,8 @@ function assertConfiguration(configuration, hostHome, hostUid) {
     !isAbsolute(configuration.root) ||
     typeof configuration.databaseCredentialPath !== "string" ||
     !isAbsolute(configuration.databaseCredentialPath) ||
+    typeof configuration.heartbeatCredentialPath !== "string" ||
+    !isAbsolute(configuration.heartbeatCredentialPath) ||
     typeof configuration.controlPlaneOrigin !== "string"
   )
     fail("CONFIGURATION_INVALID");
@@ -361,12 +363,25 @@ function assertConfiguration(configuration, hostHome, hostUid) {
   const paths = {
     applicationPath: resolve(configuration.applicationPath),
     databaseCredentialPath: resolve(configuration.databaseCredentialPath),
+    heartbeatCredentialPath: resolve(configuration.heartbeatCredentialPath),
     statePath: resolve(configuration.statePath),
     launchAgentPath: resolve(configuration.launchAgentPath),
     manifestPath: resolve(configuration.manifestPath),
     workRoot: resolve(configuration.workRoot),
   };
   const environment = sanitizedChildEnvironment(configuration.environment, expectedHome);
+  const heartbeatEnvironment = sanitizedChildEnvironment(
+    configuration.heartbeatEnvironment,
+    expectedHome,
+  );
+  if (
+    paths.heartbeatCredentialPath === paths.databaseCredentialPath ||
+    heartbeatEnvironment.PGUSER === environment.PGUSER ||
+    ["PGHOST", "PGPORT", "PGDATABASE", "PGSSLMODE", "PGCHANNELBINDING"].some(
+      (key) => heartbeatEnvironment[key] !== environment[key],
+    )
+  )
+    fail("HEARTBEAT_DATABASE_IDENTITY_INVALID");
   const githubCredentialPath = resolve(environment.GH_CONFIG_DIR, "hosts.yml");
   if (
     paths.applicationPath !== join(expectedHome, "Applications", "VideoForge Worker.app") ||
@@ -389,6 +404,11 @@ function assertConfiguration(configuration, hostHome, hostUid) {
   )
     fail("PATH_CONFIGURATION_INVALID");
   const credentialIdentities = Object.freeze({
+    heartbeat: protectedCredentialIdentity(
+      paths.heartbeatCredentialPath,
+      hostUid,
+      "HEARTBEAT_CREDENTIAL_PATH_INVALID",
+    ),
     database: protectedCredentialIdentity(
       paths.databaseCredentialPath,
       hostUid,
@@ -411,6 +431,7 @@ function assertConfiguration(configuration, hostHome, hostUid) {
     branch: configuration.branch,
     root: configuration.root,
     databaseCredentialPath: paths.databaseCredentialPath,
+    heartbeatCredentialPath: paths.heartbeatCredentialPath,
     applicationPath: paths.applicationPath,
     statePath: paths.statePath,
     launchAgentPath: paths.launchAgentPath,
@@ -418,6 +439,7 @@ function assertConfiguration(configuration, hostHome, hostUid) {
     workRoot: paths.workRoot,
     controlPlaneOrigin: origin.origin,
     environment,
+    heartbeatEnvironment,
     githubCredentialPath,
     credentialIdentities,
   });
@@ -548,9 +570,9 @@ async function runExact(runChild, configuration, command, args, code, options = 
     );
   if (command === "psql")
     assertCredentialIdentity(
-      configuration.databaseCredentialPath,
-      configuration.credentialIdentities.database,
-      "DATABASE_CREDENTIAL_PATH_DRIFT",
+      configuration.heartbeatCredentialPath,
+      configuration.credentialIdentities.heartbeat,
+      "HEARTBEAT_CREDENTIAL_PATH_DRIFT",
     );
   const result = await runChild({
     command,
@@ -562,7 +584,7 @@ async function runExact(runChild, configuration, command, args, code, options = 
     executionCode: `${code}_FAILED`,
     options: {
       cwd: configuration.root,
-      env: configuration.environment,
+      env: command === "psql" ? configuration.heartbeatEnvironment : configuration.environment,
       input: options.input,
       maxBuffer: options.maxBuffer ?? 4 * 1024 * 1024,
     },
@@ -1355,6 +1377,40 @@ async function downloadLargeAsset(fetchImpl, url, destination, expectedSize, exp
   }
 }
 
+export function v209HeartbeatReadAccessSql() {
+  return "BEGIN READ ONLY; SELECT CASE WHEN (rolsuper OR rolbypassrls) AND has_table_privilege(current_user, 'public.media_worker_devices', 'SELECT') THEN 'V209_HEARTBEAT_READ_ALLOWED' ELSE 'V209_HEARTBEAT_READ_DENIED' END FROM pg_roles WHERE rolname = current_user; COMMIT;";
+}
+
+async function assertHeartbeatReadAccess(runChild, configuration, cancellationSignal) {
+  // Table ownership does not bypass FORCE RLS. Reuse only the approved owner's
+  // existing read capability; never grant access or change tenant policies here.
+  const sql = v209HeartbeatReadAccessSql();
+  const output = await runExact(
+    runChild,
+    configuration,
+    "psql",
+    [
+      "--no-psqlrc",
+      "--quiet",
+      "--set",
+      "ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--command",
+      sql,
+    ],
+    "HEARTBEAT_READ_ACCESS_FAILED",
+    { cancellationSignal, timeoutMs: 15_000 },
+  );
+  if (output !== "V209_HEARTBEAT_READ_ALLOWED") fail("HEARTBEAT_READ_ACCESS_DENIED");
+}
+
+export function v209OnlineHeartbeatSql({ installationId, executionBundleSha256 }) {
+  if (!UUID.test(installationId ?? "") || !HASH.test(executionBundleSha256 ?? ""))
+    fail("HEARTBEAT_BINDING_INVALID");
+  return `BEGIN READ ONLY; SET LOCAL row_security = off; SELECT json_build_object('installation_id', installation_id, 'platform', platform, 'architecture', architecture, 'worker_version', worker_version, 'protocol_version', protocol_version, 'execution_bundle_sha256', execution_bundle_sha256, 'status', status, 'last_seen_at', to_char(last_seen_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))::text FROM public.media_worker_devices WHERE installation_id = '${installationId}' AND worker_version = '${V209_MEDIA_WORKER_VERSION}' AND execution_bundle_sha256 = '${executionBundleSha256}' AND status = 'ONLINE' AND last_seen_at >= now() - interval '90 seconds'; COMMIT;`;
+}
+
 async function readOnlineHeartbeat(
   runChild,
   configuration,
@@ -1365,15 +1421,24 @@ async function readOnlineHeartbeat(
   cancellationSignal,
 ) {
   const started = nowDate(clock).getTime();
-  const sql = `SELECT json_build_object('installation_id', installation_id, 'platform', platform, 'architecture', architecture, 'worker_version', worker_version, 'protocol_version', protocol_version, 'execution_bundle_sha256', execution_bundle_sha256, 'status', status, 'last_seen_at', to_char(last_seen_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))::text FROM media_worker_devices WHERE installation_id = '${installationId}' AND worker_version = '${V209_MEDIA_WORKER_VERSION}' AND execution_bundle_sha256 = '${executionBundleSha256}' AND status = 'ONLINE' AND last_seen_at >= now() - interval '90 seconds';`;
+  const sql = v209OnlineHeartbeatSql({ installationId, executionBundleSha256 });
   for (;;) {
     const output = await runExact(
       runChild,
       configuration,
       "psql",
-      ["--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--tuples-only", "--no-align", "--command", sql],
+      [
+        "--no-psqlrc",
+        "--quiet",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--tuples-only",
+        "--no-align",
+        "--command",
+        sql,
+      ],
       "HEARTBEAT_READ_FAILED",
-      { cancellationSignal },
+      { cancellationSignal, timeoutMs: 15_000 },
     );
     if (output !== "") {
       const heartbeat = parseJson(output, "HEARTBEAT_JSON_INVALID");
@@ -1547,6 +1612,7 @@ async function installMediaWorker(
       confirmationCheckpoint(configuration, context.authority, "LAUNCH_AGENT_MISSING", identities),
     );
   await verifyExistingLaunchAgent(runChild, configuration, context.operation?.cancellationSignal);
+  await assertHeartbeatReadAccess(runChild, configuration, context.operation?.cancellationSignal);
   const exact = await inspectRelease({
     configuration,
     authority: context.authority,
@@ -1888,9 +1954,11 @@ function buildPortIdentities(
     controlPlaneOrigin: configuration.controlPlaneOrigin,
     credential_paths: {
       database_credential_file: configuration.credentialIdentities.database,
+      heartbeat_credential_file: configuration.credentialIdentities.heartbeat,
       github_cli_hosts_file: configuration.credentialIdentities.github,
     },
     environment_sha256: sanitizedEnvironmentSha256(configuration.environment),
+    heartbeat_environment_sha256: sanitizedEnvironmentSha256(configuration.heartbeatEnvironment),
     launchAgentPath: configuration.launchAgentPath,
     manifestPath: configuration.manifestPath,
     releaseTag: configuration.releaseTag,
@@ -2085,10 +2153,7 @@ export async function validateV209MediaWorkerLocalReadiness(inputConfiguration) 
 }
 
 /** Test-only seam. Production composition must never call this export. */
-export async function validateV209MediaWorkerLocalReadinessForTest(
-  inputConfiguration,
-  options,
-) {
+export async function validateV209MediaWorkerLocalReadinessForTest(inputConfiguration, options) {
   return validateLocalReadiness(inputConfiguration, testOnlyDependencies(options));
 }
 

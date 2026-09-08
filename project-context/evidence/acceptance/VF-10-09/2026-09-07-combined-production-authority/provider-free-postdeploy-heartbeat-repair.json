@@ -1,0 +1,46 @@
+{
+  "schema_version": "videoforge.v2-09-postdeploy-heartbeat-repair/v1",
+  "recorded_at": "2026-09-08T03:37:30.146021+00:00",
+  "checkpoint": "9.7",
+  "base_commit": "ec4675352e1df545e0ba94ee1b9a58ed02b6fa1e",
+  "closed_authority": "v2-09-e77c557b7ee5146a",
+  "closed_authority_reusable": false,
+  "changes": [
+    "Exact owner heartbeat credential snapshot isolated to read-only PostgreSQL children; descriptor and environment bound into port identity",
+    "Pre-install bounded SELECT/RLS capability guard and exact fresh ONLINE identity query",
+    "Install after qualified Cloudflare readback and before activation import",
+    "Postdeploy installer failure and incomplete cleanup resume never replay deployment/install/import/Chrome"
+  ],
+  "focused_tests": {
+    "passed": 139,
+    "failed": 0,
+    "includes_real_postgresql_17": true,
+    "cached_container_network": "none",
+    "container_removed": true
+  },
+  "independent_audits": {
+    "completed": 2,
+    "P0": 0,
+    "P1": 0,
+    "identity_followup": "GO"
+  },
+  "context_validation": "PASS",
+  "readonly_owner_capability_inventory": {
+    "owner_has_existing_rls_bypass": true,
+    "heartbeat_table_select": true,
+    "grant_mutations": 0
+  },
+  "source_sha256": {
+    "deploy/v2-09/media-worker-production-operator.mjs": "sha256:8116c05afb85bd28f890ca2f1ed1a2a4839181e40192b4b7dd4385d7a39610f5",
+    "deploy/v2-09/concrete-qualified-production-adapters.mjs": "sha256:62ab9f0b271418b82a5d4b5b4d0d0a40eaea9fb22acfcef53081e3799b6b5a30",
+    "deploy/v2-09/execute-combined-qualified-production.mjs": "sha256:56f6315514e0f9ed904ce19c5df5d641a81ddaaf209bb199a9e190053dcfd4f6",
+    "deploy/v2-09/execute-qualified-production.mjs": "sha256:f33d5d715a13f9999f6aacd0dde054af75015a8b04303ba0f1f65342e03ced14",
+    "scripts/tests/v2-09-media-heartbeat-postgres.test.mjs": "sha256:6945c6c81f15361194770df7a200174a7cf9b7961150fcbf19cc1489d42d6c2c"
+  },
+  "new_activation": false,
+  "provider_job_posts": 0,
+  "external_mutations": 0,
+  "incremental_spend_usd": 0,
+  "stage_6_7": "FROZEN_UNTOUCHED",
+  "next": "Seal exact replacement proposal for fresh exact approval;9.8/9.9 pending"
+}

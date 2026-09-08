@@ -504,9 +504,9 @@ test("one outer authority runs preflight before staging and derives bounded inne
     "materialize-v209-protected-inputs",
     ...OPERATION_IDS.slice(0, 4),
     "read-post-migration-completion-baseline",
-    ...OPERATION_IDS.slice(4, 11),
+    ...OPERATION_IDS.slice(4, 10),
     "materialize-v209-endpoint-secrets",
-    ...OPERATION_IDS.slice(11, 17),
+    ...OPERATION_IDS.slice(10, 17),
     "materialize-v209-postdeploy-chrome-auth",
     "read-postlogin-tenant-completion-baseline",
   ]);
@@ -1760,4 +1760,39 @@ test("repeated new-process Chrome waits do not replay the prefix or derive prote
   assert.equal(events.filter((value) => value === "push-clean-source").length, 1);
   assert.equal(events.filter((value) => value === "apply-migrations-0074-0086").length, 1);
   assert.equal(events.includes("cleanup-only"), false);
+});
+
+test("postdeploy install failure never imports activation or starts Chrome and resumes cleanup only", async () => {
+  const events = [];
+  const outerState = state(events);
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async () => {
+      throw new Error("PAID_EXECUTION_MUST_NOT_RUN");
+    },
+  });
+  const stage = options.stageOperation;
+  options.stageOperation = async (context) => {
+    if (context.operationId === "install-media-worker-0.1.15") {
+      assert.ok(events.includes("readback-qualified-production"));
+      assert.ok(events.includes("materialize-v209-endpoint-secrets"));
+      events.push(context.operationId);
+      throw new Error("V2_09_MEDIA_WORKER_HEARTBEAT_READ_FAILED");
+    }
+    return stage(context);
+  };
+  let cleanupAttempts = 0;
+  options.cleanupStaged = async () => {
+    events.push("deployment-cleanup");
+    if (++cleanupAttempts === 1) throw new Error("CLEANUP_TEMPORARILY_UNAVAILABLE");
+  };
+  await assert.rejects(executeCombinedQualifiedProductionForTest(options));
+  assert.equal(events.includes("import-v209-qualified-activation"), false);
+  assert.equal(events.includes("materialize-v209-postdeploy-chrome-auth"), false);
+  assert.equal(events.includes("protected-cleanup"), false);
+  const stageCount = events.filter((event) => STAGED_OPERATION_IDS.includes(event)).length;
+  await assert.rejects(executeCombinedQualifiedProductionForTest(options));
+  assert.equal(events.filter((event) => STAGED_OPERATION_IDS.includes(event)).length, stageCount);
+  assert.equal(cleanupAttempts, 2);
 });

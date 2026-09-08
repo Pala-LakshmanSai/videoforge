@@ -465,7 +465,7 @@ gates:
     current_failure_sha256: "sha256:9ed4f0937d0bf8aec7024065362b49af345a9a0c0e292157ec724ded6ba7a4a4"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "Exact source/proposal audits GO P0=0/P1=0; focused final suites 100/100. Fresh authority independently audited GO. Stage 6/7 untouched."
+    provider_free_repair_state: "Heartbeat repair: isolated owner read-only SQL, preinstall SELECT/RLS capability check, postdeploy strict ONLINE install. Focused 139/139 including PostgreSQL17 pass; two independent audits GO P0=0/P1=0; exact proposal pending. Stage 6/7 untouched."
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-exact-existing-media-release-replacement.json"
     latest_closed_authority_sha256: "sha256:1c84c7db6a07347b7264155c96e2e51889b932f8666308311f5fdaf8f3c76e9c"
     latest_closed_private_authority_sha256: "sha256:362b064567101bebe4e46d9cf56a32e1e8c2ce78e196cbe5d619620a7cc15bce"
@@ -480,7 +480,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7 remains active blocked at heartbeat exact stop; future repair, independent audits and fresh approval required. 9.8/9.9 pending. No replay or redispatch."
+    next_gate: "9.7 active with heartbeat repair implemented; exact source/proposal audit and fresh activation approval required. 9.8/9.9 pending. No replay or redispatch."
 
   GATE_RANGA_001:
     status: open

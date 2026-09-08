@@ -307,6 +307,15 @@ function sandbox() {
       PGUSER: "videoforge_operator",
     },
   };
+  configuration.heartbeatCredentialPath = join(privateRoot, "owner-database-url");
+  configuration.heartbeatEnvironment = {
+    ...configuration.environment,
+    PGUSER: "videoforge_owner",
+    PGPASSWORD: "owner-secret-for-heartbeat-only",
+  };
+  writeFileSync(configuration.heartbeatCredentialPath, "protected owner credential", {
+    mode: 0o600,
+  });
   writeFileSync(configuration.databaseCredentialPath, "protected credential", { mode: 0o600 });
   chmodSync(configuration.databaseCredentialPath, 0o600);
   writeFileSync(join(githubConfigRoot, "hosts.yml"), "github.com:\n  user: test\n", {
@@ -471,6 +480,8 @@ function installFailureHarness(
         return success();
       }
     }
+    if (request.command === "psql" && request.args.at(-1).includes("V209_HEARTBEAT_READ_ALLOWED"))
+      return success("V209_HEARTBEAT_READ_ALLOWED");
     if (request.command === "psql")
       return success(
         JSON.stringify({
@@ -506,10 +517,7 @@ test("provider-free local readiness returns only hash and boolean facts", async 
   try {
     prepareLocalReadiness(box);
     const options = localReadinessOptions(box);
-    const result = await validateV209MediaWorkerLocalReadinessForTest(
-      box.configuration,
-      options,
-    );
+    const result = await validateV209MediaWorkerLocalReadinessForTest(box.configuration, options);
     assert.deepEqual(Object.keys(result).sort(), [
       "application_path_valid",
       "configuration_sha256",
@@ -534,11 +542,7 @@ test("provider-free local readiness returns only hash and boolean facts", async 
       "work_root_valid",
     ])
       assert.equal(result[key], true);
-    for (const key of [
-      "configuration_sha256",
-      "installation_state_sha256",
-      "readiness_sha256",
-    ])
+    for (const key of ["configuration_sha256", "installation_state_sha256", "readiness_sha256"])
       assert.match(result[key], /^sha256:[0-9a-f]{64}$/u);
     assert.equal("installation_id" in result, false);
     assert.equal(
@@ -1426,6 +1430,8 @@ test("macOS install verifies the exact DMG and universal2 app, preserves pairing
       cpSync(request.args[0], request.args[1], { recursive: true });
       return success();
     }
+    if (request.command === "psql" && request.args.at(-1).includes("V209_HEARTBEAT_READ_ALLOWED"))
+      return success("V209_HEARTBEAT_READ_ALLOWED");
     if (request.command === "psql")
       return success(
         JSON.stringify({
@@ -1563,6 +1569,115 @@ test("a failure immediately after stop reboots the untouched old service", async
   }
 });
 
+test("heartbeat uses only the bound owner child and rejects forced-RLS denial before install mutation", async (t) => {
+  for (const allowed of [true, false]) {
+    await t.test(
+      allowed
+        ? "owner read succeeds without leaking to installer children"
+        : "incapable owner stops before mutation",
+      async () => {
+        const box = sandbox();
+        const releaseFixture = fixture({ macosBytes: Buffer.from("exact-test-dmg") });
+        const harness = installFailureHarness(box, releaseFixture);
+        const requests = [];
+        const runChild = async (request) => {
+          requests.push(request);
+          if (request.command === "psql") {
+            assert.equal(request.options.env.PGUSER, "videoforge_owner");
+            assert.equal(request.options.env.PGPASSWORD, "owner-secret-for-heartbeat-only");
+            assert.equal(request.options.env.PGCHANNELBINDING, "require");
+            assert.equal(request.timeoutMs, 15_000);
+            assert.match(request.args.at(-1), /^BEGIN READ ONLY;/u);
+            if (request.args.at(-1).includes("V209_HEARTBEAT_READ_ALLOWED"))
+              return {
+                status: 0,
+                signal: null,
+                stdout: allowed ? "V209_HEARTBEAT_READ_ALLOWED" : "V209_HEARTBEAT_READ_DENIED",
+                stderr: "",
+              };
+            assert.match(request.args.at(-1), /SET LOCAL row_security = off/u);
+            assert.match(request.args.at(-1), /status = 'ONLINE'/u);
+          } else {
+            assert.notEqual(request.options.env.PGUSER, "videoforge_owner");
+            assert.notEqual(request.options.env.PGPASSWORD, "owner-secret-for-heartbeat-only");
+          }
+          return harness.runChild(request);
+        };
+        try {
+          const ports = createV209MediaWorkerProductionPorts(box.configuration, {
+            hostHome: box.home,
+            hostPlatform: "darwin",
+            hostUid: 501,
+            fetchImpl: harness.fetchImpl,
+            runChild,
+            clock,
+          });
+          const install = ports.installMediaWorker.run({
+            operationId: "install-media-worker-0.1.15",
+            authority: authority(
+              releaseFixture.manifestSha256,
+              {},
+              releaseFixture.effectiveMacosSha256,
+            ),
+          });
+          if (allowed) assert.equal((await install).online, true);
+          else {
+            await assert.rejects(install, /V2_09_MEDIA_WORKER_HEARTBEAT_READ_ACCESS_DENIED/u);
+            assert.equal(existsSync(join(box.configuration.applicationPath, "old-version")), true);
+            assert.equal(
+              requests.some(({ command }) =>
+                ["/usr/bin/hdiutil", "/usr/bin/ditto", "/bin/launchctl"].includes(command),
+              ),
+              false,
+            );
+          }
+        } finally {
+          box.remove();
+        }
+      },
+    );
+  }
+});
+
+test("owner heartbeat credential drift stops before psql or installer mutation", async () => {
+  const box = sandbox();
+  const releaseFixture = fixture({ macosBytes: Buffer.from("exact-test-dmg") });
+  const harness = installFailureHarness(box, releaseFixture);
+  try {
+    const ports = createV209MediaWorkerProductionPorts(box.configuration, {
+      hostHome: box.home,
+      hostPlatform: "darwin",
+      hostUid: 501,
+      fetchImpl: harness.fetchImpl,
+      runChild: harness.runChild,
+      clock,
+    });
+    writeFileSync(box.configuration.heartbeatCredentialPath, "drifted-owner-credential", {
+      mode: 0o600,
+    });
+    await assert.rejects(
+      ports.installMediaWorker.run({
+        operationId: "install-media-worker-0.1.15",
+        authority: authority(
+          releaseFixture.manifestSha256,
+          {},
+          releaseFixture.effectiveMacosSha256,
+        ),
+      }),
+      /V2_09_MEDIA_WORKER_HEARTBEAT_CREDENTIAL_PATH_DRIFT/u,
+    );
+    assert.equal(
+      harness.commands.some(([command]) =>
+        ["psql", "/usr/bin/hdiutil", "/usr/bin/ditto", "/bin/launchctl"].includes(command),
+      ),
+      false,
+    );
+    assert.equal(existsSync(join(box.configuration.applicationPath, "old-version")), true);
+  } finally {
+    box.remove();
+  }
+});
+
 test("a failure after the backup rename restores the old app and service", async () => {
   const box = sandbox();
   const releaseFixture = fixture({ macosBytes: Buffer.from("exact-test-dmg") });
@@ -1648,7 +1763,8 @@ test("fresh install rechecks authority after ONLINE heartbeat before accepting s
   const expiringClock = () => new Date(expired ? "2026-09-06T13:00:00Z" : "2026-09-06T12:00:00Z");
   const runChild = async (request) => {
     const result = await harness.runChild(request);
-    if (request.command !== "psql") return result;
+    if (request.command !== "psql" || request.args.at(-1).includes("V209_HEARTBEAT_READ_ALLOWED"))
+      return result;
     expired = true;
     const heartbeat = JSON.parse(result.stdout);
     return {
@@ -1892,6 +2008,28 @@ test("different live configuration produces different source-bound port identiti
   } finally {
     left.remove();
     right.remove();
+  }
+});
+
+test("owner heartbeat bytes and credential descriptor bind standalone media port identities", () => {
+  const box = sandbox();
+  try {
+    const create = () =>
+      createV209MediaWorkerProductionPorts(box.configuration, {
+        hostHome: box.home,
+        hostPlatform: "darwin",
+        hostUid: 501,
+      }).installMediaWorker.source_sha256;
+    const original = create();
+    box.configuration.heartbeatEnvironment.PGPASSWORD = "different-owner-snapshot";
+    const changedBytes = create();
+    assert.notEqual(changedBytes, original);
+    const alternate = `${box.configuration.heartbeatCredentialPath}.alternate`;
+    writeFileSync(alternate, "separate-owner-descriptor", { mode: 0o600 });
+    box.configuration.heartbeatCredentialPath = alternate;
+    assert.notEqual(create(), changedBytes);
+  } finally {
+    box.remove();
   }
 });
 

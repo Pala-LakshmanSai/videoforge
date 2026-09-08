@@ -46,15 +46,19 @@ export const COMBINED_EXECUTION_SCHEMA =
   "videoforge.v2-09-combined-qualified-production-execution/v1";
 export const STAGED_RECEIPTS_SCHEMA = "videoforge.v2-09-combined-staged-receipts/v1";
 export const OUTER_STATE_SCHEMA = "videoforge.v2-09-combined-outer-state/v1";
+const POST_GRANTS_INDEX = COMBINED_PRECOMPLETED_OPERATION_IDS.indexOf("apply-v209-grants") + 1;
+const POST_DEPLOYMENT_BINDING_INDEX =
+  COMBINED_PRECOMPLETED_OPERATION_IDS.indexOf("persist-qualified-production-deployments") + 1;
+
 export const STAGED_OPERATION_IDS = Object.freeze([
   "run-read-only-preflight",
   "read-pre-mutation-completion-baseline",
   "materialize-v209-protected-inputs",
-  ...COMBINED_PRECOMPLETED_OPERATION_IDS.slice(0, 4),
+  ...COMBINED_PRECOMPLETED_OPERATION_IDS.slice(0, POST_GRANTS_INDEX),
   "read-post-migration-completion-baseline",
-  ...COMBINED_PRECOMPLETED_OPERATION_IDS.slice(4, 11),
+  ...COMBINED_PRECOMPLETED_OPERATION_IDS.slice(POST_GRANTS_INDEX, POST_DEPLOYMENT_BINDING_INDEX),
   "materialize-v209-endpoint-secrets",
-  ...COMBINED_PRECOMPLETED_OPERATION_IDS.slice(11),
+  ...COMBINED_PRECOMPLETED_OPERATION_IDS.slice(POST_DEPLOYMENT_BINDING_INDEX),
   "materialize-v209-postdeploy-chrome-auth",
   "read-postlogin-tenant-completion-baseline",
   "derive-qualified-production-authority",
@@ -103,18 +107,14 @@ export async function validateV209ContractsRuntimePreclaim({
     fail("V2_09_CONTRACTS_RUNTIME_BUILD_INVALID");
 
   const bridgePath = resolve(root, "deploy/v2-09/v209-runpod-production-bridge.ts");
-  const smoke = spawnSync(
-    "pnpm",
-    ["--filter", "@videoforge/web", "exec", "tsx", bridgePath],
-    {
-      cwd: root,
-      encoding: "utf8",
-      env: environment,
-      input: "{}\n",
-      shell: false,
-      timeout: RUNPOD_BRIDGE_SMOKE_TIMEOUT_MS,
-    },
-  );
+  const smoke = spawnSync("pnpm", ["--filter", "@videoforge/web", "exec", "tsx", bridgePath], {
+    cwd: root,
+    encoding: "utf8",
+    env: environment,
+    input: "{}\n",
+    shell: false,
+    timeout: RUNPOD_BRIDGE_SMOKE_TIMEOUT_MS,
+  });
   if (
     smoke.status !== 1 ||
     smoke.error ||
@@ -1443,7 +1443,7 @@ export async function executeCombinedQualifiedProductionForTest({
           priorResults: { ...results },
         }),
     });
-    for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS.slice(0, 4)) {
+    for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS.slice(0, POST_GRANTS_INDEX)) {
       results[operationId] = await beginAndRun({
         authority,
         operationId,
@@ -1468,7 +1468,10 @@ export async function executeCombinedQualifiedProductionForTest({
       results["read-pre-mutation-completion-baseline"],
       results["read-post-migration-completion-baseline"],
     );
-    for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS.slice(4, 11)) {
+    for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS.slice(
+      POST_GRANTS_INDEX,
+      POST_DEPLOYMENT_BINDING_INDEX,
+    )) {
       results[operationId] = await beginAndRun({
         authority,
         operationId,
@@ -1489,7 +1492,9 @@ export async function executeCombinedQualifiedProductionForTest({
           priorResults: { ...results },
         }),
     });
-    for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS.slice(11)) {
+    for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS.slice(
+      POST_DEPLOYMENT_BINDING_INDEX,
+    )) {
       results[operationId] = await beginAndRun({
         authority,
         operationId,

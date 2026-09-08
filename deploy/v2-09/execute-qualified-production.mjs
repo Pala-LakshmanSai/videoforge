@@ -103,7 +103,6 @@ export const NORMAL_OPERATIONS = Object.freeze([
   Object.freeze({ id: "apply-v209-grants", boundary: "DATABASE_MUTATION" }),
   Object.freeze({ id: "publish-media-worker-0.1.15", boundary: "REMOTE_MUTATION" }),
   Object.freeze({ id: "readback-media-worker-0.1.15", boundary: "READBACK" }),
-  Object.freeze({ id: "install-media-worker-0.1.15", boundary: "LOCAL_MUTATION" }),
   // This must remain immediately before the first RunPod mutation.
   Object.freeze({ id: "fresh-read-only-admission", boundary: "READBACK" }),
   Object.freeze({ id: "create-mage-production-lane-max-one", boundary: "REMOTE_MUTATION" }),
@@ -114,6 +113,8 @@ export const NORMAL_OPERATIONS = Object.freeze([
   Object.freeze({ id: "upload-cloudflare-production-secrets", boundary: "REMOTE_MUTATION" }),
   Object.freeze({ id: "deploy-cloudflare-qualified-production", boundary: "REMOTE_MUTATION" }),
   Object.freeze({ id: "readback-qualified-production", boundary: "READBACK" }),
+  // ONLINE requires the exact new release manifest to be deployed and read back first.
+  Object.freeze({ id: "install-media-worker-0.1.15", boundary: "LOCAL_MUTATION" }),
   Object.freeze({ id: "import-v209-qualified-activation", boundary: "DATABASE_MUTATION" }),
   Object.freeze({
     id: "run-one-v209-chrome-e2e",
