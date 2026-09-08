@@ -6336,16 +6336,9 @@ recommended_next_task:
       image_config_sha256: "sha256:224b2a728490cf1c708b42e56702da2b71bd2374658f0c640dd39ef23e860935"
       anonymous_proof_sha256: "sha256:9929d19da89ab2c20e280ac45ad152bc325b8bf56ef1e9c21e83d473c3408bc4"
       acceptance_artifact_sha256: "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa"
-  resources:
-    - "github:Pala-LakshmanSai/videoforge:refs/heads/codex/serverless-v2-roadmap-v4"
-    - "runpod:mage-production-lane:EU-RO-1:RTX4090"
-    - "runpod:soulx-production-lane:EU-RO-1:RTX4090"
-    - "cloudflare:worker:videoforge-production-runtime"
-    - "neon:videoforge-production-database"
-    - "github:media-worker-v0.1.15"
-    - "paired-mac:videoforge-personal-media-worker"
-  authorized_operations: *v2_09_combined_operations
-  allowed_operations: *v2_09_combined_operations
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1_per_second
       billing_unit: gpu_second

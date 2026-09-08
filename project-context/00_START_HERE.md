@@ -4,11 +4,10 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-- Proposal `sha256:af93a237...c1bdb` is exactly approved. Authority
-  `v2-09-af93a2373eb5619b`, source `b897fc6d`, and media-worker bundle
-  `sha256:a1bda39b...a194b6` are materialized mode-0600. Execution awaits only the mandatory independent
-  authority-materialization successor audits; the exact source push/readback remains inside the
-  authorized executor order.
+- Authority `v2-09-af93a2373eb5619b` is consumed `FAILED_CLEAN` and non-reusable after 8/26
+  operations. Migrations reached 86/86 and run `34178343261` published immutable media-worker
+  `0.1.15`; its receipt failed on the live workflow-path predicate. Cleanup proved zero compute or
+  spend. No live authority exists. Next: exact-existing release repair, audit, proposal, and approval.
 - Proposal `sha256:2c15ff7c...2823` and authority `v2-09-2c15ff7cc8093988` are consumed
   `FAILED_CLEAN` and non-reusable. Five operations completed through exact source readback. Migration
   0074-0086 started but received zero stdin bytes and timed out without committing; all 20 later
