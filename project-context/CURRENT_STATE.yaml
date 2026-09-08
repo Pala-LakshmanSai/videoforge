@@ -53,8 +53,8 @@ v2_09_provider_free_candidate:
   cloudflare_secret_boundary: "All exact production secret bytes are snapshotted and hash-bound before any Cloudflare mutation; production stays DISABLED_UNQUALIFIED until an approved qualified activation."
   media_worker_release: "media-worker-v0.1.15 is an unpublished candidate; do not publish, install, or replace v0.1.14 without fresh exact authority."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
-  provider_state: "Prior authorities through 8c26c376 are consumed and non-reusable. Authority v2-09-2c15ff7cc8093988 is approved, unconsumed, and blocked on independent successor audit."
-  current_authority: v2-09-2c15ff7cc8093988
+  provider_state: "All authorities through v2-09-2c15ff7cc8093988 are consumed and non-reusable. No live authority exists."
+  current_authority: null
   concrete_reconciler_path_failure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-concrete-reconciler-path-binding.json"
   concrete_reconciler_path_failure_evidence_sha256: "sha256:5031d8e651d132ef9e57167190fdb9e858cfceca054cf1d625d2e8bd5a356ef0"
   concrete_reconciler_path_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-concrete-reconciler-path-binding-repair.json"
@@ -6342,11 +6342,11 @@ recommended_next_task:
   superseded_authority_execution_commit: cde3515faf4a8581a83132cd7a8cb296980bd9ff
   superseded_approval_record_materialized: true
   superseded_authority_materialized: true
-  execution_status: approved_single_use_unconsumed_pending_successor_diff_audit
-  current_failure_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-concrete-reconciler-path-binding.json
-  current_failure_evidence_sha256: "sha256:5031d8e651d132ef9e57167190fdb9e858cfceca054cf1d625d2e8bd5a356ef0"
-  current_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-concrete-reconciler-path-binding-repair.json
-  current_repair_evidence_sha256: "sha256:22f00f1ade34a11254e438f585d9a7a87012893b1acf2df8f32793647a4bea98"
+  execution_status: provider_free_repair_green_no_live_authority
+  current_failure_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-child-stdin-eof.json
+  current_failure_evidence_sha256: "sha256:597b2334d83369cffdd22d789e09d61a56a6a99de1365319c05a64d388a6c600"
+  current_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-child-stdin-eof-repair.json
+  current_repair_evidence_sha256: "sha256:8226f0de3ab1ad56eaf95d99de76203415c191a3f13e09f8ba22b2aa5c851381"
   pg_service_repair_commit: "6b2d2e91f583faaad8eadf13052e105786f969a4"
   pg_service_repair_evidence: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-pg-service-repair.json
   pg_service_repair_validation: "FOCUSED_118_OF_118_AND_INDEPENDENT_GO_P0_0_P1_0"

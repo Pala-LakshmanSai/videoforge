@@ -4,20 +4,18 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-- Proposal `sha256:2c15ff7c...2823` is exactly approved. Authority
-  `v2-09-2c15ff7cc8093988`, source `3737a177`, and media-worker bundle
-  `sha256:cdad169b...da28` are materialized mode-0600. Exact source push/readback passed; execution
-  awaits only the mandatory independent authority-materialization successor audit.
-- Proposal `sha256:8c26c376...f5e4` and authority `v2-09-8c26c376fde44639` are consumed
-  `FAILED_CLEAN` and non-reusable. Read-only preflight, the global completion baseline, and protected-
-  input materialization completed; concrete adapter creation then stopped at
-  `V2_09_CONCRETE_DATABASE_ROLE_BINDING_INVALID`. Cleanup removed all three temporary roles,
-  memberships, and protected outputs. No migration, media publication/install, RunPod lane/job/GPU,
-  Cloudflare/R2 mutation, Chrome E2E, redispatch, Stage 6/7 action, or incremental spend occurred.
-- Provider-free repair now requires the internal reconciler URL and Cloudflare reconciler secret to
-  use distinct paths with identical protected-input hashes. The production-topology regression plus
-  combined/adapters/materializer suites pass 75/75. Three exact-source and three exact-proposal
-  audits are GO P0=0/P1=0. Stage 6/7 remain frozen.
+- Proposal `sha256:2c15ff7c...2823` and authority `v2-09-2c15ff7cc8093988` are consumed
+  `FAILED_CLEAN` and non-reusable. Five operations completed through exact source readback. Migration
+  0074-0086 started but received zero stdin bytes and timed out without committing; all 20 later
+  operations remained pending and no inner authority was emitted. Cleanup proved ledger 73/73,
+  roles/memberships zero, and generated outputs absent. No media publication/install, RunPod
+  lane/job/GPU, Cloudflare/R2 mutation, Chrome E2E, redispatch, Stage 6/7 action, or incremental spend
+  occurred.
+- Provider-free repair `7c5206db` writes and closes exact child stdin, fails closed without secret
+  leakage, preserves cancellation/timeout quiescence, and bounds all four synchronous psql paths.
+  Focused suites pass 70/70 and component audits are GO P0=0/P1=0. No live authority exists. Next:
+  seal and audit one clean source/bundle and exact replacement proposal, then obtain fresh exact
+  approval. Stage 6/7 remain frozen.
 - V2-09 proposal `sha256:5b78e19b...cc80` and authority `v2-09-5b78e19baa6427f4` are consumed
   `FAILED_CLEAN` and non-reusable. Exact preflight and the global completion baseline passed, then
   protected-input materialization failed with `V2_09_PROTECTED_MATERIALIZATION_OUTPUT_INVALID`.
