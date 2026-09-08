@@ -492,8 +492,21 @@ const FAILURE_CODES = new Set([
     "ROUTE_BODY_INVALID",
     "ROUTE_JSON_INVALID",
     "ROUTE_READBACK_DRIFT",
+    "ROUTE_CONTENT_TYPE_DRIFT",
+    "ROUTE_VERSION_HEADER_DRIFT",
+    "ROUTE_MISSING_CONFIGURATION_DRIFT",
+    "ROUTE_HTTP_STATUS_DRIFT",
+    "ROUTE_SCHEMA_DRIFT",
+    "ROUTE_SOURCE_DRIFT",
+    "ROUTE_ENVIRONMENT_DRIFT",
+    "ROUTE_TRANSPORT_DRIFT",
+
     "SECRET_LIST_FAILED",
     "SECRET_DELETE_FAILED",
+    "SAFE_CLEAN_SECRET_DRIFT",
+    "SAFE_CLEAN_VERSION_DRIFT",
+    "CLEANUP_SECRET_ATTRIBUTION_DRIFT",
+    "SECRET_DELETE_REPLAY_FORBIDDEN",
     "SECRET_READBACK_CANCELLED",
     "RECONCILIATION_SECRET_SET_NOT_EMPTY",
     "SECRET_PUT_FAILED",
@@ -1076,29 +1089,29 @@ async function readRoute(
     fail("ROUTE_BODY_INVALID");
   const body = parseJson(text, "ROUTE_JSON_INVALID");
   const contentType = response.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
-  const missingConfiguration =
+  if (contentType !== "application/json") fail("ROUTE_CONTENT_TYPE_DRIFT");
+  if (response.headers.get(VERSION_HEADER) !== versionId) fail("ROUTE_VERSION_HEADER_DRIFT");
+  if (
     allowMissingConfiguration &&
     expectedTransport === "DISABLED_UNQUALIFIED" &&
-    response.status === 503 &&
-    contentType === "application/json" &&
-    response.headers.get(VERSION_HEADER) === versionId &&
-    response.headers.get("cache-control") === "no-store" &&
-    response.headers.get("x-videoforge-runtime") === "hosted-v2-06" &&
-    exactKeys(body, ["error"]) &&
-    exactKeys(body.error, ["code", "retryable"]) &&
-    body.error.code === "HOSTED_CONFIGURATION_INVALID" &&
-    body.error.retryable === false;
-  if (
-    !missingConfiguration &&
-    (response.status !== 200 ||
-      contentType !== "application/json" ||
-      response.headers.get(VERSION_HEADER) !== versionId ||
-      body?.schema_version !== "videoforge-hosted-status/v1" ||
-      body?.commit !== expectedSourceCommit ||
-      body?.environment !== "production" ||
-      body?.gpu_transport !== expectedTransport)
-  )
-    fail("ROUTE_READBACK_DRIFT");
+    response.status === 503
+  ) {
+    if (
+      response.headers.get("cache-control") !== "no-store" ||
+      response.headers.get("x-videoforge-runtime") !== "hosted-v2-06" ||
+      !exactKeys(body, ["error"]) ||
+      !exactKeys(body.error, ["code", "retryable"]) ||
+      body.error.code !== "HOSTED_CONFIGURATION_INVALID" ||
+      body.error.retryable !== false
+    )
+      fail("ROUTE_MISSING_CONFIGURATION_DRIFT");
+  } else {
+    if (response.status !== 200) fail("ROUTE_HTTP_STATUS_DRIFT");
+    if (body?.schema_version !== "videoforge-hosted-status/v1") fail("ROUTE_SCHEMA_DRIFT");
+    if (body?.commit !== expectedSourceCommit) fail("ROUTE_SOURCE_DRIFT");
+    if (body?.environment !== "production") fail("ROUTE_ENVIRONMENT_DRIFT");
+    if (body?.gpu_transport !== expectedTransport) fail("ROUTE_TRANSPORT_DRIFT");
+  }
   return Object.freeze({
     bodySha256: sha256(text),
     headerSha256: sha256(versionId),
@@ -1122,7 +1135,13 @@ async function exactSecretNames(runtime, authority, context) {
   return names;
 }
 
-async function verifyDisabled(runtime, authority, context, journal) {
+async function verifyDisabled(
+  runtime,
+  authority,
+  context,
+  journal,
+  expectedSecretNames = journal.introduced_secret_names,
+) {
   const version = await readActiveVersion(
     runtime,
     authority,
@@ -1130,7 +1149,7 @@ async function verifyDisabled(runtime, authority, context, journal) {
     "DISABLED_UNQUALIFIED",
     true,
     context,
-    journal.introduced_secret_names,
+    expectedSecretNames,
   );
   await readRoute(
     runtime,
@@ -1138,7 +1157,7 @@ async function verifyDisabled(runtime, authority, context, journal) {
     version.versionId,
     "DISABLED_UNQUALIFIED",
     context,
-    journal.introduced_secret_names.length < SECRET_NAMES.length,
+    expectedSecretNames.length < SECRET_NAMES.length,
   );
   journal.state = "DISABLED_VERIFIED";
   journal.active_version_id = version.versionId;
@@ -1150,6 +1169,7 @@ async function verifyCommittedSecretPut(runtime, authority, context, journal) {
   const retryable = new Set([
     "V2_09_CLOUDFLARE_PRODUCTION_ACTIVE_VERSION_CLOSED_WORLD_DRIFT",
     "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_READBACK_DRIFT",
+    "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_VERSION_HEADER_DRIFT",
   ]);
   for (let attempt = 0; attempt < 3; attempt += 1) {
     assertCurrentAuthority(authority, runtime.configuration, runtime.now);
@@ -1292,6 +1312,35 @@ function possiblyIntroducedSecrets(journal) {
 }
 
 async function reconcileFailure(runtime, authority, context, journal) {
+  if (journal.state === "SAFE_DISABLED_CLEAN") {
+    if (
+      journal.introduced_secret_names.length !== 0 ||
+      (await exactSecretNames(runtime, authority, context)).length !== 0
+    )
+      fail("SAFE_CLEAN_SECRET_DRIFT");
+    const versionId = journal.active_version_id;
+    const version = await readActiveVersion(
+      runtime,
+      authority,
+      runtime.configuration.disabledConfigPath,
+      "DISABLED_UNQUALIFIED",
+      true,
+      context,
+      [],
+    );
+    if (version.versionId !== versionId) fail("SAFE_CLEAN_VERSION_DRIFT");
+    await readRoute(runtime, authority, versionId, "DISABLED_UNQUALIFIED", context, true);
+    journal.state = "SAFE_DISABLED_CLEAN";
+    saveJournal(journal, runtime.configuration);
+    return Object.freeze({
+      schema_version: "videoforge.v2-09-cloudflare-safety-reconciliation/v1",
+      worker: runtime.configuration.workerName,
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      secret_count: 0,
+      retained_r2_deleted: false,
+      safety_verified: true,
+    });
+  }
   journal.state = "RECONCILING_DISABLED";
   saveJournal(journal, runtime.configuration);
   materializeDisabled(runtime.configuration, authority);
@@ -1313,8 +1362,20 @@ async function reconcileFailure(runtime, authority, context, journal) {
     "DISABLED_RECONCILE_DEPLOY",
     { cleanup: context.cleanupOnly === true },
   );
-  await verifyDisabled(runtime, authority, context, journal);
-  for (const name of possiblyIntroducedSecrets(journal).reverse()) {
+  const observedSecretNames = await exactSecretNames(runtime, authority, context);
+  const attributableNames = possiblyIntroducedSecrets(journal);
+  if (observedSecretNames.some((name) => !attributableNames.includes(name)))
+    fail("CLEANUP_SECRET_ATTRIBUTION_DRIFT");
+  await verifyDisabled(runtime, authority, context, journal, observedSecretNames);
+  for (const name of attributableNames.reverse()) {
+    const priorDelete = journal.events.some(
+      (event) =>
+        event.kind === "SECRET_DELETE" &&
+        event.name === name &&
+        ["INTENT", "COMMITTED", "UNKNOWN"].includes(event.status),
+    );
+    if (priorDelete && observedSecretNames.includes(name)) fail("SECRET_DELETE_REPLAY_FORBIDDEN");
+    if (!observedSecretNames.includes(name)) continue;
     await mutate(
       runtime,
       authority,

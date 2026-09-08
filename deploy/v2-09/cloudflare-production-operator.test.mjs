@@ -890,7 +890,7 @@ test("route version-header mismatch fails closed and reconciles the qualified de
       authority: approved,
       operationId: "deploy-cloudflare-qualified-production",
     }),
-    /ROUTE_READBACK_DRIFT/u,
+    /ROUTE_(VERSION_HEADER|TRANSPORT)_DRIFT/u,
   );
   assert.equal(healthy.activeTransport(), "DISABLED_UNQUALIFIED");
   assert.equal(healthy.secrets.size, 0);
@@ -930,18 +930,22 @@ test("presecret disabled proof rejects arbitrary configuration errors and final 
     });
     await assert.rejects(
       executeThroughQualified(operator, authority(value)),
-      /ROUTE_READBACK_DRIFT|FAILURE_RECONCILIATION_REQUIRED/u,
+      /ROUTE_(MISSING_CONFIGURATION|HTTP_STATUS)_DRIFT|FAILURE_RECONCILIATION_REQUIRED/u,
       variant,
     );
     const recorded = JSON.parse(readFileSync(value.configuration.journalPath, "utf8"));
     assert.equal(
       recorded.failure.operation_code,
-      "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_READBACK_DRIFT",
+      variant === "after-all-secrets"
+        ? "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_HTTP_STATUS_DRIFT"
+        : "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_MISSING_CONFIGURATION_DRIFT",
     );
     if (variant !== "after-all-secrets")
       assert.equal(
         recorded.failure.cleanup_code,
-        "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_READBACK_DRIFT",
+        variant === "after-all-secrets"
+          ? "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_HTTP_STATUS_DRIFT"
+          : "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_MISSING_CONFIGURATION_DRIFT",
       );
   }
 });
@@ -964,7 +968,10 @@ test("qualified config readback requires disabled before import and qualified af
     operationId: "readback-qualified-production",
     activationImported: true,
   };
-  await assert.rejects(operator.readbackCloudflareQualified.run(context), /ROUTE_READBACK_DRIFT/u);
+  await assert.rejects(
+    operator.readbackCloudflareQualified.run(context),
+    /ROUTE_(VERSION_HEADER|TRANSPORT)_DRIFT/u,
+  );
   for (const activationImported of [undefined, null, "true", 1]) {
     const callsBefore = mock.calls.length;
     await assert.rejects(
@@ -980,7 +987,7 @@ test("qualified config readback requires disabled before import and qualified af
   );
   await assert.rejects(
     operator.readbackCloudflareQualified.run({ ...context, activationImported: false }),
-    /ROUTE_READBACK_DRIFT/u,
+    /ROUTE_(VERSION_HEADER|TRANSPORT)_DRIFT/u,
   );
 });
 
@@ -1188,4 +1195,133 @@ test("only exact pinned disabled predecessor can be replaced; drift preserves it
       );
     }
   }
+});
+
+test("successful cleanup revalidates without repeating deployment or secret deletion", async () => {
+  const value = fixture();
+  const mock = harness(value, { failQualifiedOnce: true });
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  await assert.rejects(
+    executeThroughQualified(operator, authority(value)),
+    /fixture unknown qualified deploy outcome/u,
+  );
+  const mutationCount = () =>
+    mock.calls.filter(
+      ({ args }) => args[4] === "deploy" || (args[4] === "secret" && args[5] !== "list"),
+    ).length;
+  const before = mutationCount();
+  const context = {
+    authority: authority(value),
+    operationId: "reconcile-v209-production-safety",
+    cleanupOnly: true,
+  };
+  await operator.reconcileCloudflareSafety.run(context);
+  await operator.reconcileCloudflareSafety.run(context);
+  assert.equal(mutationCount(), before);
+  const journal = JSON.parse(readFileSync(value.configuration.journalPath));
+  journal.state = "DISABLED_VERIFIED";
+  journal.introduced_secret_names = [];
+  writeFileSync(value.configuration.journalPath, JSON.stringify(journal));
+  await operator.reconcileCloudflareSafety.run(context);
+  assert.equal(
+    mock.calls.filter(({ args }) => args[4] === "secret" && args[5] === "delete").length,
+    SECRET_NAMES.length,
+  );
+  const ambiguous = JSON.parse(readFileSync(value.configuration.journalPath));
+  ambiguous.state = "DISABLED_VERIFIED";
+  ambiguous.introduced_secret_names = [SECRET_NAMES[0]];
+  mock.secrets.add(SECRET_NAMES[0]);
+  writeFileSync(value.configuration.journalPath, JSON.stringify(ambiguous));
+  await assert.rejects(
+    operator.reconcileCloudflareSafety.run(context),
+    /SECRET_DELETE_REPLAY_FORBIDDEN/u,
+  );
+  assert.equal(
+    mock.calls.filter(({ args }) => args[4] === "secret" && args[5] === "delete").length,
+    SECRET_NAMES.length,
+  );
+});
+
+test("route diagnostics distinguish a stale version header from wrong source without exposing payload", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  let drift = null;
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+    fetchImpl: async (...args) => {
+      const response = await mock.fetchImpl(...args);
+      if (!drift) return response;
+      const body = await response.json();
+      const headers = new Headers(response.headers);
+      if (drift === "version") headers.set("x-videoforge-worker-version", VERSION_IDS[0]);
+      else body.commit = "private-payload-never-emitted";
+      return new Response(JSON.stringify(body), { status: response.status, headers });
+    },
+  });
+  await executeThroughQualified(operator, authority(value));
+  const context = {
+    authority: authority(value),
+    operationId: "readback-qualified-production",
+    activationImported: false,
+  };
+  drift = "version";
+  await assert.rejects(
+    operator.readbackCloudflareQualified.run(context),
+    (error) => error.message === "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_VERSION_HEADER_DRIFT",
+  );
+  drift = "source";
+  await assert.rejects(
+    operator.readbackCloudflareQualified.run(context),
+    (error) => error.message === "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_SOURCE_DRIFT",
+  );
+});
+
+test("partial committed deletion resumes with live remaining projection and never redeletes", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  await executeThroughQualified(operator, authority(value));
+  const deleted = SECRET_NAMES[0];
+  mock.secrets.delete(deleted);
+  const journal = JSON.parse(readFileSync(value.configuration.journalPath));
+  journal.state = "RECONCILING_DISABLED";
+  journal.events.push(
+    { kind: "SECRET_DELETE", name: deleted, status: "INTENT" },
+    { kind: "SECRET_DELETE", name: deleted, status: "COMMITTED" },
+  );
+  assert.ok(journal.introduced_secret_names.includes(deleted));
+  writeFileSync(value.configuration.journalPath, JSON.stringify(journal));
+  await operator.reconcileCloudflareSafety.run({
+    authority: authority(value),
+    operationId: "reconcile-v209-production-safety",
+    cleanupOnly: true,
+  });
+  const deletions = mock.calls.filter(({ args }) => args[4] === "secret" && args[5] === "delete");
+  assert.equal(deletions.length, SECRET_NAMES.length - 1);
+  assert.equal(
+    deletions.some(({ args }) => args[6] === deleted),
+    false,
+  );
+  assert.equal(
+    JSON.parse(readFileSync(value.configuration.journalPath)).state,
+    "SAFE_DISABLED_CLEAN",
+  );
 });
