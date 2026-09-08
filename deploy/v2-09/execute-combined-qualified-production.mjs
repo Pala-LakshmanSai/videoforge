@@ -76,9 +76,56 @@ const GLOBAL_COMPLETION_BASELINE_DERIVATION =
   "ALL_PROJECT_ATTEMPTS_SETTLED_PLUS_MAX_OPEN_RESERVATION_OR_REPORTED_ONCE";
 const MEDIA_WORKER_STAGED_MODE = "PREAUTHORIZED_STAGED_ONCE";
 const MEDIA_WORKER_EXISTING_RELEASE_MODE = "PREAUTHORIZED_EXACT_EXISTING_ONLY";
+const CONTRACTS_BUILD_TIMEOUT_MS = 120_000;
+const RUNPOD_BRIDGE_SMOKE_TIMEOUT_MS = 30_000;
 
 function fail(code) {
   throw new Error(code);
+}
+
+export async function validateV209ContractsRuntimePreclaim({
+  root = ROOT,
+  spawnSyncForTest,
+  testOnly = false,
+} = {}) {
+  if (spawnSyncForTest !== undefined && testOnly !== true)
+    fail("V2_09_CONTRACTS_RUNTIME_PRECLAIM_TEST_INJECTION_FORBIDDEN");
+  const spawnSync = spawnSyncForTest ?? (await import("node:child_process")).spawnSync;
+  const environment = { PATH: process.env.PATH ?? "", CI: "1" };
+  const build = spawnSync("pnpm", ["--filter", "@videoforge/contracts", "build"], {
+    cwd: root,
+    encoding: "utf8",
+    env: environment,
+    shell: false,
+    timeout: CONTRACTS_BUILD_TIMEOUT_MS,
+  });
+  if (build.status !== 0 || build.error || build.signal)
+    fail("V2_09_CONTRACTS_RUNTIME_BUILD_INVALID");
+
+  const bridgePath = resolve(root, "deploy/v2-09/v209-runpod-production-bridge.ts");
+  const smoke = spawnSync(
+    "pnpm",
+    ["--filter", "@videoforge/web", "exec", "tsx", bridgePath],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: environment,
+      input: "{}\n",
+      shell: false,
+      timeout: RUNPOD_BRIDGE_SMOKE_TIMEOUT_MS,
+    },
+  );
+  if (
+    smoke.status !== 1 ||
+    smoke.error ||
+    smoke.signal ||
+    smoke.stderr !== "V2_09_RUNPOD_BRIDGE_REQUEST_INVALID\n"
+  )
+    fail("V2_09_CONTRACTS_RUNTIME_BRIDGE_INVALID");
+  return Object.freeze({
+    schema_version: "videoforge.v2-09-contracts-runtime-preclaim/v1",
+    provider_calls: 0,
+  });
 }
 
 function canonical(value) {
@@ -2361,6 +2408,7 @@ export async function executeCombinedQualifiedProduction(options) {
     hasInnerCleanup: (context) => materializer.hasInnerCleanup(context),
     readInnerSuccess: (context) => materializer.readInnerSuccess(context),
     preClaim: async () => {
+      await validateV209ContractsRuntimePreclaim();
       validateV209PrivateOutputDirectories({
         authority: options.authority,
         materializationPlan: approvedMaterializationPlan,
