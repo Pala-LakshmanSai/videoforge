@@ -4116,7 +4116,8 @@ runpod_account_scope:
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_fresh_successor_inventory_or_mutation
   current_authority: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-child-stdin-eof-replacement.json
-  current_authority_sha256: "sha256:37a3f9c9029a8deee17d3f2e07b1c8177e4d12e1a06ae8963a5947c58facc21e"
+  current_authority_sha256: "sha256:4a931ec91f24855179af86007957255be035a94a24d41450aca1945d2413a2a1"
+  current_private_authority_sha256: "sha256:37a3f9c9029a8deee17d3f2e07b1c8177e4d12e1a06ae8963a5947c58facc21e"
   latest_closed_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
   latest_closed_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
   mutation_authorized: true
@@ -6253,7 +6254,8 @@ provider_authority: &v2_09_provider_authority_current
   authorized_by_user_at: "2026-09-08"
   proposal_sha256: "sha256:af93a2373eb5619b8ab5b7cd61c1063ee39da0613b9fef9434b260f1e85c1bdb"
   authority: evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-child-stdin-eof-replacement.json
-  authority_sha256: "sha256:37a3f9c9029a8deee17d3f2e07b1c8177e4d12e1a06ae8963a5947c58facc21e"
+  authority_sha256: "sha256:4a931ec91f24855179af86007957255be035a94a24d41450aca1945d2413a2a1"
+  private_authority_sha256: "sha256:37a3f9c9029a8deee17d3f2e07b1c8177e4d12e1a06ae8963a5947c58facc21e"
   consumed: false
   reusable: false
   provider_calls_authorized: true
