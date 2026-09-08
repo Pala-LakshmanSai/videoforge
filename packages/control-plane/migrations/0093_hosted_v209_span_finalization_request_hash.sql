@@ -12,6 +12,7 @@ DECLARE
   authority public.hosted_cpu_upload_authorities%ROWTYPE;
   span public.selected_span_audio%ROWTYPE; existing_asset public.assets%ROWTYPE;
   input_document jsonb; audio jsonb; result_sha text; expected_uri text;
+  expected_authority_key text;
   padded_samples bigint; trim_start_samples bigint; trim_end_samples bigint;
   output_reservation_id uuid; output_receipt_id uuid; output_receipt_sha text; receipt_facts jsonb;
   pair_ready boolean; db_now timestamptz:=transaction_timestamp();
@@ -100,7 +101,7 @@ BEGIN
      OR supplied_result_document->>'timeline_segment_id'<>materialized.timeline_segment_id::text
      OR supplied_result_document->>'task_key'<>input_document->>'task_key'
      OR supplied_result_document->'source_voiceover' IS DISTINCT FROM
-       (input_document->'source_voiceover'-'artifact_uri')
+       ((input_document -> 'source_voiceover'::text) - 'artifact_uri'::text)
      OR supplied_result_document->'selection' IS DISTINCT FROM input_document->'selection'
      OR jsonb_typeof(audio)<>'object'
      OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(audio) key)
@@ -120,10 +121,18 @@ BEGIN
   IF audio->>'artifact_uri'<>expected_uri THEN
     RAISE EXCEPTION 'hosted V2-09 span result URI mismatch' USING ERRCODE='23514';
   END IF;
+  expected_authority_key:='tenant/'||supplied_account_id::text||'/workspace/'||supplied_workspace_id::text||
+    '/project/'||materialized.project_id::text||'/revision/'||materialized.project_revision_id::text||
+    '/lane/input/job/'||supplied_attempt_id::text||'/artifact/span-audio';
   SELECT * INTO authority FROM public.hosted_cpu_upload_authorities u
     WHERE u.account_id=supplied_account_id AND u.workspace_id=supplied_workspace_id
-      AND u.attempt_id=supplied_attempt_id AND u.source='PRIMARY_RESULT_OUTPUT' FOR SHARE;
-  IF authority.id IS NULL OR authority.content_type<>'audio/wav' OR authority.issued_at IS NULL
+      AND u.attempt_id=supplied_attempt_id AND u.source='PRIMARY_RESULT_OUTPUT'
+      AND u.object_key=expected_authority_key FOR SHARE;
+  IF authority.id IS NULL OR materialized.project_id IS NULL OR materialized.project_revision_id IS NULL
+     OR materialized.project_id<>attempt.project_id OR materialized.project_revision_id<>attempt.project_revision_id
+     OR authority.account_id<>supplied_account_id OR authority.workspace_id<>supplied_workspace_id
+     OR authority.attempt_id<>supplied_attempt_id OR authority.source<>'PRIMARY_RESULT_OUTPUT'
+     OR authority.object_key<>expected_authority_key OR authority.content_type<>'audio/wav' OR authority.issued_at IS NULL
      OR authority.issued_content_length<>(audio->>'byte_size')::bigint
      OR authority.issued_checksum_sha256<>audio->>'sha256' THEN
     RAISE EXCEPTION 'hosted V2-09 span output authority mismatch' USING ERRCODE='23514';
@@ -197,7 +206,7 @@ BEGIN
     expires_at,max_uses,used_count,state,retention_class,retain_until,deletion_owner_account_id)
   VALUES(output_reservation_id,supplied_account_id,supplied_workspace_id,materialized.project_id,
     materialized.project_revision_id,materialized.output_asset_id,'INPUT',supplied_attempt_id::text,
-    materialized.span_id::text,authority.object_key,'PUT','audio/wav',(audio->>'byte_size')::bigint,
+    'span-audio',expected_authority_key,'PUT','audio/wav',(audio->>'byte_size')::bigint,
     audio->>'sha256',attempt.deadline_at,1,1,'COMMITTED','PROJECT',NULL,supplied_account_id)
   ON CONFLICT(id) DO NOTHING;
   INSERT INTO public.artifact_receipts(id,account_id,workspace_id,reservation_id,callback_id,object_key,
@@ -211,8 +220,16 @@ BEGIN
       AND reservation.workspace_id=receipt.workspace_id AND reservation.id=receipt.reservation_id
     WHERE receipt.account_id=supplied_account_id AND receipt.workspace_id=supplied_workspace_id
       AND receipt.id=output_receipt_id AND receipt.receipt_sha256=output_receipt_sha
-      AND reservation.id=output_reservation_id AND reservation.asset_id=materialized.output_asset_id
-      AND reservation.state='COMMITTED') THEN
+      AND receipt.reservation_id=output_reservation_id AND receipt.object_key=expected_authority_key
+      AND receipt.content_type='audio/wav' AND receipt.content_length=(audio->>'byte_size')::bigint
+      AND receipt.checksum_sha256=audio->>'sha256'
+      AND reservation.id=output_reservation_id AND reservation.project_id=materialized.project_id
+      AND reservation.project_revision_id=materialized.project_revision_id
+      AND reservation.asset_id=materialized.output_asset_id AND reservation.lane='INPUT'
+      AND reservation.job_id=supplied_attempt_id::text AND reservation.artifact_id='span-audio'
+      AND reservation.object_key=expected_authority_key AND reservation.method='PUT'
+      AND reservation.content_type='audio/wav' AND reservation.content_length=(audio->>'byte_size')::bigint
+      AND reservation.checksum_sha256=audio->>'sha256' AND reservation.state='COMMITTED') THEN
     RAISE EXCEPTION 'hosted V2-09 span artifact receipt replay drift' USING ERRCODE='23505';
   END IF;
   SELECT NOT EXISTS(SELECT 1 FROM public.selected_span_audio pending
