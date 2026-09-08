@@ -903,18 +903,19 @@ async function claim(
     if (scope.status !== "ONLINE") {
       return json({ error: { code: "MEDIA_WORKER_HEARTBEAT_REQUIRED" } }, 409);
     }
-    const heartbeat = await pool.query(
-      `WITH tenant_scope AS MATERIALIZED (
-         SELECT set_config('videoforge.account_id', $4, true)
-       )
-       SELECT 1
-         FROM media_worker_devices
-         CROSS JOIN tenant_scope
-        WHERE id = $1 AND account_id = $2 AND workspace_id = $3
-          AND status = 'ONLINE'
-          AND last_seen_at >= now() - interval '90 seconds'`,
-      [scope.deviceId, scope.accountId, scope.workspaceId, scope.accountId],
-    );
+    const heartbeat = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.accountId,
+      ]);
+      return transaction.query(
+        `SELECT 1 FROM media_worker_devices
+          WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+            AND status = 'ONLINE'
+            AND last_seen_at >= now() - interval '90 seconds'`,
+        [scope.deviceId, scope.accountId, scope.workspaceId],
+      );
+    });
     if (!heartbeat.rows[0]) {
       return json({ error: { code: "MEDIA_WORKER_HEARTBEAT_REQUIRED" } }, 409);
     }
@@ -1101,15 +1102,17 @@ async function claim(
     const template = exactStoredTemplate(JSON.parse(new TextDecoder().decode(bytes)));
     if (!template || template.kind !== claimed.kind)
       throw new Error("Personal worker job template is malformed.");
-    await pool.query("SELECT set_config($1, $2, false)", [
-      "videoforge.account_id",
-      scope.accountId,
-    ]);
-    const inputs = await pool.query(
-      `SELECT uri, object_key, content_type, content_length, checksum_sha256
-         FROM media_worker_input_objects WHERE attempt_id = $1 ORDER BY uri`,
-      [claimed.id],
-    );
+    const inputs = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.accountId,
+      ]);
+      return transaction.query(
+        `SELECT uri, object_key, content_type, content_length, checksum_sha256
+           FROM media_worker_input_objects WHERE attempt_id = $1 ORDER BY uri`,
+        [claimed.id],
+      );
+    });
     const signer = new HostedR2Signer(config.r2);
     const objects = await Promise.all(
       inputs.rows.map(async (input) => {
@@ -1173,24 +1176,26 @@ async function activeLease(
   const scope = await deviceScope(request, pool);
   const leaseToken = request.headers.get("x-videoforge-lease-token");
   if (!scope || !leaseToken || !TOKEN.test(leaseToken)) return null;
-  const result = await pool.query(
-    `WITH tenant_scope AS MATERIALIZED (
-       SELECT set_config('videoforge.account_id', $4, true)
-     )
-     SELECT lease.attempt_id, attempt.kind, lease.state
+  const result = await createNeonExecutor(pool).transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1, $2, true)", [
+      "videoforge.account_id",
+      scope.accountId,
+    ]);
+    return transaction.query(
+      `SELECT lease.attempt_id, attempt.kind, lease.state
        FROM media_worker_leases AS lease
        JOIN hosted_cpu_job_attempts AS attempt
          ON attempt.account_id = lease.account_id
         AND attempt.workspace_id = lease.workspace_id
         AND attempt.id = lease.attempt_id
-       CROSS JOIN tenant_scope
       WHERE lease.id = $1 AND lease.device_id = $2 AND lease.lease_token_sha256 = $3
         AND lease.state IN ('CLAIMED', 'RUNNING', 'COMPLETING')
         AND lease.lease_expires_at > now()
         AND attempt.state IN ('RUNNING', 'CANCEL_REQUESTED')
         AND (attempt.deadline_at > now() OR attempt.state = 'CANCEL_REQUESTED')`,
-    [leaseId, scope.deviceId, await sha256(leaseToken), scope.accountId],
-  );
+      [leaseId, scope.deviceId, await sha256(leaseToken)],
+    );
+  });
   const row = result.rows[0];
   return row
     ? {
@@ -1212,22 +1217,24 @@ async function leaseHeartbeat(
   try {
     const lease = await activeLease(request, pool, leaseId);
     if (!lease) return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
-    const result = await pool.query(
-      `WITH tenant_scope AS MATERIALIZED (
-         SELECT set_config('videoforge.account_id', $2, true)
-       )
-       UPDATE media_worker_leases AS lease
+    const result = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        lease.accountId,
+      ]);
+      return transaction.query(
+        `UPDATE media_worker_leases AS lease
           SET lease_expires_at = now() + interval '5 minutes', last_heartbeat_at = now(),
               updated_at = now()
          FROM hosted_cpu_job_attempts AS attempt
-         CROSS JOIN tenant_scope
         WHERE lease.id = $1 AND attempt.id = lease.attempt_id
           AND attempt.state IN ('RUNNING', 'CANCEL_REQUESTED')
           AND lease.lease_expires_at > now()
           AND (attempt.deadline_at > now() OR attempt.state = 'CANCEL_REQUESTED')
       RETURNING attempt.state`,
-      [leaseId, lease.accountId],
-    );
+        [leaseId],
+      );
+    });
     if (!result.rows[0]) return json({ error: { code: "MEDIA_WORKER_LEASE_STALE" } }, 409);
     const state = String(result.rows[0].state);
     return json({
@@ -1422,33 +1429,35 @@ async function terminalLeaseForCompletion(
   const scope = await deviceScope(request, pool);
   const leaseToken = request.headers.get("x-videoforge-lease-token");
   if (!scope || !leaseToken || !TOKEN.test(leaseToken)) return null;
-  const result = await pool.query<{
-    attempt_id: string;
-    kind: string;
-    state: string;
-    attempt_state: string;
-    failure_code: string | null;
-    result_object_key: string | null;
-    result_content_length: number | string | null;
-    result_checksum_sha256: string | null;
-  }>(
-    `WITH tenant_scope AS MATERIALIZED (
-       SELECT set_config('videoforge.account_id', $4, true)
-     )
-     SELECT lease.attempt_id, attempt.kind, lease.state, attempt.state AS attempt_state, lease.failure_code,
+  const result = await createNeonExecutor(pool).transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1, $2, true)", [
+      "videoforge.account_id",
+      scope.accountId,
+    ]);
+    return transaction.query<{
+      attempt_id: string;
+      kind: string;
+      state: string;
+      attempt_state: string;
+      failure_code: string | null;
+      result_object_key: string | null;
+      result_content_length: number | string | null;
+      result_checksum_sha256: string | null;
+    }>(
+      `SELECT lease.attempt_id, attempt.kind, lease.state, attempt.state AS attempt_state, lease.failure_code,
             attempt.result_object_key, attempt.result_content_length, attempt.result_checksum_sha256
        FROM media_worker_leases AS lease
        JOIN hosted_cpu_job_attempts AS attempt
         ON attempt.account_id = lease.account_id
        AND attempt.workspace_id = lease.workspace_id
        AND attempt.id = lease.attempt_id
-       CROSS JOIN tenant_scope
       WHERE lease.id = $1 AND lease.device_id = $2 AND lease.lease_token_sha256 = $3
         AND lease.state IN ('SUCCEEDED', 'FAILED', 'CANCELLED')
         AND attempt.state = lease.state
         AND attempt.state IN ('SUCCEEDED', 'FAILED', 'CANCELLED')`,
-    [leaseId, scope.deviceId, await sha256(leaseToken), scope.accountId],
-  );
+      [leaseId, scope.deviceId, await sha256(leaseToken)],
+    );
+  });
   const row = result.rows[0];
   if (!row) return null;
   return {
@@ -1597,16 +1606,20 @@ async function completeLease(
         [lease.attemptId, await sha256(callbackToken)],
       );
       const expected = primary.rows[0];
-      const expectedResultQuery = await pool.query(
-        `WITH tenant_scope AS MATERIALIZED (
-           SELECT set_config('videoforge.account_id', $4, true)
-         )
-         SELECT object_key, content_type, issued_content_length, issued_checksum_sha256
+      const expectedResultQuery = await createNeonExecutor(pool).transaction(
+        async (transaction) => {
+          await transaction.query("SELECT set_config($1, $2, true)", [
+            "videoforge.account_id",
+            lease.accountId,
+          ]);
+          return transaction.query(
+            `SELECT object_key, content_type, issued_content_length, issued_checksum_sha256
            FROM hosted_cpu_upload_authorities
-           CROSS JOIN tenant_scope
           WHERE account_id = $1 AND workspace_id = $2 AND attempt_id = $3
             AND source = 'RESULT_DOCUMENT' AND issued_at IS NOT NULL`,
-        [lease.accountId, lease.workspaceId, lease.attemptId, lease.accountId],
+            [lease.accountId, lease.workspaceId, lease.attemptId],
+          );
+        },
       );
       const expectedResult = expectedResultQuery.rows[0];
       const bucket = environment.PRIVATE_ARTIFACTS;
