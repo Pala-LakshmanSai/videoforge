@@ -169,11 +169,11 @@ export function validateReleaseManifest(bytes, expectedSha256) {
     fail("media worker release manifest is malformed");
   }
   if (
-    manifest.version !== "0.1.15" ||
-    !manifest.windows.url.includes("/media-worker-v0.1.15/") ||
-    !manifest.macos.url.includes("/media-worker-v0.1.15/")
+    manifest.version !== "0.1.16" ||
+    !manifest.windows.url.includes("/media-worker-v0.1.16/") ||
+    !manifest.macos.url.includes("/media-worker-v0.1.16/")
   )
-    fail("media worker release is not exact immutable 0.1.15");
+    fail("media worker release is not exact immutable 0.1.16");
   rejectSecretsAndPlaceholders(manifest, "media worker release");
   return manifest;
 }
@@ -182,7 +182,7 @@ export function validateQualifiedRenderedConfig(config, binding, releaseManifest
   validateProductionConfig(config, { mode: "qualified" });
   const production = binding.production;
   if (
-    releaseManifest.version !== "0.1.15" ||
+    releaseManifest.version !== "0.1.16" ||
     config.name !== production.worker_name ||
     config.account_id !== production.account_id ||
     config.assets.binding !== production.assets_binding ||

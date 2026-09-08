@@ -33,18 +33,18 @@ const templatePath = resolve(root, "apps/web/wrangler.production.jsonc");
 
 const releaseManifest = () => ({
   schema_version: "videoforge-media-worker-release/v1",
-  version: "0.1.15",
+  version: "0.1.16",
   minimum_protocol_version: 1,
   execution_bundle_sha256: `sha256:${"1".repeat(64)}`,
   whisper_model_sha256: `sha256:${"2".repeat(64)}`,
   windows: {
-    url: "https://downloads.videoforge.example/media-worker-v0.1.15/videoforge-worker.exe",
+    url: "https://downloads.videoforge.example/media-worker-v0.1.16/videoforge-worker.exe",
     sha256: `sha256:${"3".repeat(64)}`,
     size_bytes: 1024,
     trust: "AUTHENTICODE_SIGNED",
   },
   macos: {
-    url: "https://downloads.videoforge.example/media-worker-v0.1.15/videoforge-worker.dmg",
+    url: "https://downloads.videoforge.example/media-worker-v0.1.16/videoforge-worker.dmg",
     sha256: `sha256:${"4".repeat(64)}`,
     size_bytes: 2048,
     trust: "DEVELOPER_ID_NOTARIZED",
@@ -157,23 +157,23 @@ test("binding validator rejects extras, placeholders, raw endpoint ids, secret v
   }
 });
 
-test("release validator binds exact bytes and immutable media worker 0.1.15", () => {
+test("release validator binds exact bytes and immutable media worker 0.1.16", () => {
   const releaseBytes = bytesForRelease();
-  assert.equal(validateReleaseManifest(releaseBytes, sha256(releaseBytes)).version, "0.1.15");
+  assert.equal(validateReleaseManifest(releaseBytes, sha256(releaseBytes)).version, "0.1.16");
   assert.throws(
     () => validateReleaseManifest(releaseBytes, `sha256:${"9".repeat(64)}`),
     /manifest hash drifted/u,
   );
   const wrongVersion = releaseManifest();
-  wrongVersion.version = "0.1.16";
+  wrongVersion.version = "0.1.15";
   const wrongBytes = Buffer.from(JSON.stringify(wrongVersion));
   assert.throws(
     () => validateReleaseManifest(wrongBytes, sha256(wrongBytes)),
-    /not exact immutable 0.1.15/u,
+    /not exact immutable 0.1.16/u,
   );
   const placeholder = releaseManifest();
   placeholder.windows.url =
-    "https://downloads.videoforge.example/media-worker-v0.1.15/placeholder.exe";
+    "https://downloads.videoforge.example/media-worker-v0.1.16/placeholder.exe";
   const placeholderBytes = Buffer.from(JSON.stringify(placeholder));
   assert.throws(
     () => validateReleaseManifest(placeholderBytes, sha256(placeholderBytes)),

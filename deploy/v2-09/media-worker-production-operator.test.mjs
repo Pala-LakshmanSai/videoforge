@@ -90,18 +90,18 @@ function fixture({ macosBytes } = {}) {
   const effectiveMacosSize = macosBytes ? macosBytes.byteLength : 285_000_000;
   const manifest = sortObject({
     schema_version: "videoforge-media-worker-release/v1",
-    version: "0.1.15",
+    version: "0.1.16",
     minimum_protocol_version: 1,
     execution_bundle_sha256: executionBundleSha256,
     whisper_model_sha256: whisperModelSha256,
     windows: {
-      url: "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.15/VideoForge-Worker-0.1.15-Setup.exe",
+      url: "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.16/VideoForge-Worker-0.1.16-Setup.exe",
       sha256: windowsSha256,
       size_bytes: 225_000_000,
       trust: "UNSIGNED_BETA",
     },
     macos: {
-      url: "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.15/VideoForge-Worker-0.1.15.dmg",
+      url: "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.16/VideoForge-Worker-0.1.16.dmg",
       sha256: effectiveMacosSha256,
       size_bytes: effectiveMacosSize,
       trust: "AD_HOC_BETA",
@@ -115,18 +115,18 @@ function fixture({ macosBytes } = {}) {
     digest,
     state: "uploaded",
     content_type: contentType,
-    browser_download_url: `https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.15/${name}`,
+    browser_download_url: `https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.16/${name}`,
   });
   const release = {
-    tag_name: "media-worker-v0.1.15",
+    tag_name: "media-worker-v0.1.16",
     target_commitish: sourceCommit,
-    html_url: "https://github.com/Pala-LakshmanSai/videoforge/releases/tag/media-worker-v0.1.15",
+    html_url: "https://github.com/Pala-LakshmanSai/videoforge/releases/tag/media-worker-v0.1.16",
     draft: false,
     prerelease: false,
     immutable: true,
     assets: [
-      asset("VideoForge-Worker-0.1.15-Setup.exe", 225_000_000, windowsSha256),
-      asset("VideoForge-Worker-0.1.15.dmg", effectiveMacosSize, effectiveMacosSha256),
+      asset("VideoForge-Worker-0.1.16-Setup.exe", 225_000_000, windowsSha256),
+      asset("VideoForge-Worker-0.1.16.dmg", effectiveMacosSize, effectiveMacosSha256),
       asset(
         "media-worker-release.json",
         manifestBytes.byteLength,
@@ -151,7 +151,7 @@ function authority(manifestSha256, overrides = {}, installerAssetSha256 = macosS
     issued_at: "2026-09-06T11:00:00Z",
     expires_at: "2026-09-06T13:00:00Z",
     media_worker: {
-      release: "0.1.15",
+      release: "0.1.16",
       execution_bundle_sha256: executionBundleSha256,
       whisper_model_sha256: whisperModelSha256,
       release_manifest_sha256: manifestSha256,
@@ -159,7 +159,7 @@ function authority(manifestSha256, overrides = {}, installerAssetSha256 = macosS
       signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
     },
     scope: {
-      media_worker_release: "0.1.15",
+      media_worker_release: "0.1.16",
       allow_model_download: false,
       allow_stage_6_or_7_qualification: false,
       cleanup_only_recovery: true,
@@ -175,13 +175,13 @@ function stagedAuthority(overrides = {}) {
     issued_at: "2026-09-06T11:00:00Z",
     expires_at: "2026-09-06T13:00:00Z",
     media_worker: {
-      release: "0.1.15",
+      release: "0.1.16",
       materialization_mode: V209_MEDIA_WORKER_MATERIALIZATION_MODE,
       execution_bundle_sha256: executionBundleSha256,
       whisper_model_sha256: whisperModelSha256,
     },
     scope: {
-      media_worker_release: "0.1.15",
+      media_worker_release: "0.1.16",
       allow_media_worker_materialization_once: true,
       allow_model_download: false,
       allow_stage_6_or_7_qualification: false,
@@ -198,7 +198,7 @@ function adoptionAuthority(releaseFixture, overrides = {}) {
     issued_at: "2026-09-06T11:00:00Z",
     expires_at: "2026-09-06T13:00:00Z",
     media_worker: {
-      release: "0.1.15",
+      release: "0.1.16",
       materialization_mode: V209_MEDIA_WORKER_EXISTING_RELEASE_MODE,
       release_source_commit: "b".repeat(40),
       execution_bundle_sha256: executionBundleSha256,
@@ -209,7 +209,7 @@ function adoptionAuthority(releaseFixture, overrides = {}) {
       signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
     },
     scope: {
-      media_worker_release: "0.1.15",
+      media_worker_release: "0.1.16",
       allow_media_worker_existing_release_adoption_once: true,
       allow_model_download: false,
       allow_stage_6_or_7_qualification: false,
@@ -272,8 +272,8 @@ function sandbox() {
   const configuration = {
     repository: "Pala-LakshmanSai/videoforge",
     workflowPath: ".github/workflows/media-worker-release.yml",
-    releaseTag: "media-worker-v0.1.15",
-    version: "0.1.15",
+    releaseTag: "media-worker-v0.1.16",
+    version: "0.1.16",
     sourceCommit,
     branch: "codex/serverless-v2-roadmap-v4",
     root: repo,
@@ -385,9 +385,9 @@ function localReadinessOptions(box, { keychainStatus = 0, launchAgentValid = tru
 function fetchFixture({ releaseStatus = 200, release, manifestBytes }) {
   const calls = [];
   const api =
-    "https://api.github.com/repos/Pala-LakshmanSai/videoforge/releases/tags/media-worker-v0.1.15";
+    "https://api.github.com/repos/Pala-LakshmanSai/videoforge/releases/tags/media-worker-v0.1.16";
   const manifestUrl =
-    "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.15/media-worker-release.json";
+    "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.16/media-worker-release.json";
   const fetchImpl = async (url, options) => {
     calls.push({ url, options });
     if (url === api) {
@@ -449,7 +449,7 @@ function installFailureHarness(
         );
       if (key === "Print :ProgramArguments:1") return success("--background\n");
       if (key === "Print :RunAtLoad") return success("true\n");
-      return success("0.1.15\n");
+      return success("0.1.16\n");
     }
     if (request.command === "/usr/bin/file")
       return success(
@@ -488,7 +488,7 @@ function installFailureHarness(
           installation_id: installationId,
           platform: "MACOS",
           architecture: "AARCH64",
-          worker_version: "0.1.15",
+          worker_version: "0.1.16",
           protocol_version: 1,
           execution_bundle_sha256: executionBundleSha256,
           status: "ONLINE",
@@ -498,9 +498,9 @@ function installFailureHarness(
     return success();
   };
   const apiUrl =
-    "https://api.github.com/repos/Pala-LakshmanSai/videoforge/releases/tags/media-worker-v0.1.15";
+    "https://api.github.com/repos/Pala-LakshmanSai/videoforge/releases/tags/media-worker-v0.1.16";
   const manifestUrl =
-    "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.15/media-worker-release.json";
+    "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.16/media-worker-release.json";
   const fetchImpl = async (url) => {
     if (url === apiUrl)
       return new Response(JSON.stringify(releaseFixture.release), { status: 200 });
@@ -680,13 +680,13 @@ test("readback verifies every immutable asset and atomically materializes the ex
       clock,
     });
     const result = await ports.readbackMediaWorker.run({
-      operationId: "readback-media-worker-0.1.15",
+      operationId: "readback-media-worker-0.1.16",
       authority: authority(releaseFixture.manifestSha256),
     });
     assert.deepEqual(result, {
       schema_version: "videoforge.v2-09-media-worker-readback-result/v1",
-      operation_id: "readback-media-worker-0.1.15",
-      release: "0.1.15",
+      operation_id: "readback-media-worker-0.1.16",
+      release: "0.1.16",
       execution_bundle_sha256: executionBundleSha256,
       whisper_model_sha256: whisperModelSha256,
       release_manifest_sha256: releaseFixture.manifestSha256,
@@ -778,7 +778,7 @@ test("publish dispatches the exact workflow once and accepts only its exact succ
     box.configuration.controlPlaneOrigin = "https://mutated-after-construction.invalid";
     box.configuration.sourceCommit = "f".repeat(40);
     const result = await ports.publishMediaWorker.run({
-      operationId: "publish-media-worker-0.1.15",
+      operationId: "publish-media-worker-0.1.16",
       authority: authority(releaseFixture.manifestSha256),
     });
     assert.equal(result.mode, "PUBLISHED_ONCE");
@@ -791,7 +791,7 @@ test("publish dispatches the exact workflow once and accepts only its exact succ
         control_plane_origin: "https://videoforge.example.test",
         execution_bundle_sha256: executionBundleSha256,
         publish_release: "true",
-        release_tag: "media-worker-v0.1.15",
+        release_tag: "media-worker-v0.1.16",
         signed_release: "false",
         whisper_model_sha256: whisperModelSha256,
       },
@@ -840,8 +840,8 @@ test("staged materialization dispatches once and derives a deterministic closed-
   };
   let releaseReads = 0;
   const bytesByName = new Map([
-    ["VideoForge-Worker-0.1.15-Setup.exe", releaseFixture.windowsBytes],
-    ["VideoForge-Worker-0.1.15.dmg", releaseFixture.macosBytes],
+    ["VideoForge-Worker-0.1.16-Setup.exe", releaseFixture.windowsBytes],
+    ["VideoForge-Worker-0.1.16.dmg", releaseFixture.macosBytes],
     ["media-worker-release.json", releaseFixture.manifestBytes],
   ]);
   const fetchImpl = async (url) => {
@@ -865,7 +865,7 @@ test("staged materialization dispatches once and derives a deterministic closed-
       sleep: async () => {},
     });
     const result = await ports.publishMediaWorker.run({
-      operationId: "publish-media-worker-0.1.15",
+      operationId: "publish-media-worker-0.1.16",
       authority: stagedAuthority(),
     });
     assert.equal(result.mode, "MATERIALIZED_ONCE");
@@ -876,8 +876,8 @@ test("staged materialization dispatches once and derives a deterministic closed-
       source_commit: sourceCommit,
       repository: "Pala-LakshmanSai/videoforge",
       workflow_path: ".github/workflows/media-worker-release.yml",
-      release_tag: "media-worker-v0.1.15",
-      release: "0.1.15",
+      release_tag: "media-worker-v0.1.16",
+      release: "0.1.16",
       release_manifest_sha256: releaseFixture.manifestSha256,
       installer_asset_sha256: releaseFixture.macosDigest,
       windows_installer_asset_sha256: releaseFixture.windowsDigest,
@@ -900,7 +900,7 @@ test("staged materialization dispatches once and derives a deterministic closed-
         clock,
       ),
       {
-        release: "0.1.15",
+        release: "0.1.16",
         execution_bundle_sha256: executionBundleSha256,
         whisper_model_sha256: whisperModelSha256,
         release_manifest_sha256: releaseFixture.manifestSha256,
@@ -930,8 +930,8 @@ test("exact-existing adoption fully verifies the source-split immutable release 
   const releaseFixture = stagedFixture();
   releaseFixture.release.target_commitish = "b".repeat(40);
   const bytesByName = new Map([
-    ["VideoForge-Worker-0.1.15-Setup.exe", releaseFixture.windowsBytes],
-    ["VideoForge-Worker-0.1.15.dmg", releaseFixture.macosBytes],
+    ["VideoForge-Worker-0.1.16-Setup.exe", releaseFixture.windowsBytes],
+    ["VideoForge-Worker-0.1.16.dmg", releaseFixture.macosBytes],
     ["media-worker-release.json", releaseFixture.manifestBytes],
   ]);
   let childCalls = 0;
@@ -959,7 +959,7 @@ test("exact-existing adoption fully verifies the source-split immutable release 
       clock,
     });
     const result = await ports.publishMediaWorker.run({
-      operationId: "publish-media-worker-0.1.15",
+      operationId: "publish-media-worker-0.1.16",
       authority: exactAuthority,
     });
     assert.equal(result.mode, "ADOPTED_EXACT_EXISTING");
@@ -1005,10 +1005,10 @@ test("exact-existing adoption fails closed on absence, provenance, metadata, or 
         exactAuthority.media_worker.windows_installer_asset_sha256 = windowsSha256;
       const bytesByName = new Map([
         [
-          "VideoForge-Worker-0.1.15-Setup.exe",
+          "VideoForge-Worker-0.1.16-Setup.exe",
           scenario === "bytes" ? Buffer.from("tampered") : releaseFixture.windowsBytes,
         ],
-        ["VideoForge-Worker-0.1.15.dmg", releaseFixture.macosBytes],
+        ["VideoForge-Worker-0.1.16.dmg", releaseFixture.macosBytes],
         ["media-worker-release.json", releaseFixture.manifestBytes],
       ]);
       let childCalls = 0;
@@ -1034,7 +1034,7 @@ test("exact-existing adoption fails closed on absence, provenance, metadata, or 
         });
         await assert.rejects(
           ports.publishMediaWorker.run({
-            operationId: "publish-media-worker-0.1.15",
+            operationId: "publish-media-worker-0.1.16",
             authority: exactAuthority,
           }),
           scenario === "missing"
@@ -1073,7 +1073,7 @@ test("staged materialization rejects replay, ambiguous runs, and asset tamper", 
       });
       await assert.rejects(
         ports.publishMediaWorker.run({
-          operationId: "publish-media-worker-0.1.15",
+          operationId: "publish-media-worker-0.1.16",
           authority: stagedAuthority(),
         }),
         /V2_09_MEDIA_WORKER_MATERIALIZATION_REPLAY/u,
@@ -1123,9 +1123,9 @@ test("staged materialization rejects replay, ambiguous runs, and asset tamper", 
         }
         const name = url.split("/").at(-1);
         const bytes =
-          name === "VideoForge-Worker-0.1.15-Setup.exe"
+          name === "VideoForge-Worker-0.1.16-Setup.exe"
             ? Buffer.from("tampered")
-            : name === "VideoForge-Worker-0.1.15.dmg"
+            : name === "VideoForge-Worker-0.1.16.dmg"
               ? releaseFixture.macosBytes
               : releaseFixture.manifestBytes;
         return new Response(bytes, { status: 200 });
@@ -1142,7 +1142,7 @@ test("staged materialization rejects replay, ambiguous runs, and asset tamper", 
         });
         await assert.rejects(
           ports.publishMediaWorker.run({
-            operationId: "publish-media-worker-0.1.15",
+            operationId: "publish-media-worker-0.1.16",
             authority: stagedAuthority(),
           }),
           scenario === "ambiguous"
@@ -1241,8 +1241,8 @@ test("staged materialization streams large assets sequentially without arrayBuff
         : new Response(JSON.stringify(releaseFixture.release), { status: 200 });
     }
     const name = url.split("/").at(-1);
-    if (name === "VideoForge-Worker-0.1.15-Setup.exe") return streamingResponse(0x61, largeSize);
-    if (name === "VideoForge-Worker-0.1.15.dmg") return streamingResponse(0x62, largeSize);
+    if (name === "VideoForge-Worker-0.1.16-Setup.exe") return streamingResponse(0x61, largeSize);
+    if (name === "VideoForge-Worker-0.1.16.dmg") return streamingResponse(0x62, largeSize);
     return new Response(releaseFixture.manifestBytes, {
       status: 200,
       headers: { "content-length": String(releaseFixture.manifestBytes.byteLength) },
@@ -1259,7 +1259,7 @@ test("staged materialization streams large assets sequentially without arrayBuff
       sleep: async () => {},
     });
     const result = await ports.publishMediaWorker.run({
-      operationId: "publish-media-worker-0.1.15",
+      operationId: "publish-media-worker-0.1.16",
       authority: stagedAuthority(),
     });
     assert.equal(result.materialization_receipt.windows_installer_asset_sha256, windowsDigest);
@@ -1290,7 +1290,7 @@ test("publish reuses only an already exact immutable release without dispatch", 
       clock,
     });
     const result = await ports.publishMediaWorker.run({
-      operationId: "publish-media-worker-0.1.15",
+      operationId: "publish-media-worker-0.1.16",
       authority: authority(releaseFixture.manifestSha256),
     });
     assert.equal(result.mode, "REUSED_EXACT_EXISTING");
@@ -1316,7 +1316,7 @@ test("release readback rejects a single binary asset digest drift", async () => 
     });
     await assert.rejects(
       ports.readbackMediaWorker.run({
-        operationId: "readback-media-worker-0.1.15",
+        operationId: "readback-media-worker-0.1.16",
         authority: authority(releaseFixture.manifestSha256),
       }),
       /V2_09_MEDIA_WORKER_MANIFEST_ASSET_DRIFT/u,
@@ -1349,7 +1349,7 @@ test("expired authority stops before any read or mutation", async () => {
             installation_id: "11111111-1111-4111-8111-111111111111",
             platform: "MACOS",
             architecture: "AARCH64",
-            worker_version: "0.1.15",
+            worker_version: "0.1.16",
             protocol_version: 1,
             execution_bundle_sha256: executionBundleSha256,
             status: "ONLINE",
@@ -1368,7 +1368,7 @@ test("expired authority stops before any read or mutation", async () => {
     });
     await assert.rejects(
       ports.publishMediaWorker.run({
-        operationId: "publish-media-worker-0.1.15",
+        operationId: "publish-media-worker-0.1.16",
         authority: authority(releaseFixture.manifestSha256, {
           expires_at: "2026-09-06T11:59:59Z",
         }),
@@ -1418,7 +1418,7 @@ test("macOS install verifies the exact DMG and universal2 app, preserves pairing
         return success(`${join(oldApp, "Contents", "MacOS", "VideoForge Worker")}\n`);
       if (key === "Print :ProgramArguments:1") return success("--background\n");
       if (key === "Print :RunAtLoad") return success("true\n");
-      return success("0.1.15\n");
+      return success("0.1.16\n");
     }
     if (request.command === "/usr/bin/file")
       return success(
@@ -1438,7 +1438,7 @@ test("macOS install verifies the exact DMG and universal2 app, preserves pairing
           installation_id: installationId,
           platform: "MACOS",
           architecture: "AARCH64",
-          worker_version: "0.1.15",
+          worker_version: "0.1.16",
           protocol_version: 1,
           execution_bundle_sha256: executionBundleSha256,
           status: "ONLINE",
@@ -1448,9 +1448,9 @@ test("macOS install verifies the exact DMG and universal2 app, preserves pairing
     return success();
   };
   const apiUrl =
-    "https://api.github.com/repos/Pala-LakshmanSai/videoforge/releases/tags/media-worker-v0.1.15";
+    "https://api.github.com/repos/Pala-LakshmanSai/videoforge/releases/tags/media-worker-v0.1.16";
   const manifestUrl =
-    "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.15/media-worker-release.json";
+    "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.16/media-worker-release.json";
   const dmgUrl = releaseFixture.manifest.macos.url;
   const fetchImpl = async (url) => {
     if (url === apiUrl)
@@ -1470,10 +1470,10 @@ test("macOS install verifies the exact DMG and universal2 app, preserves pairing
       sleep: async () => {},
     });
     const result = await ports.installMediaWorker.run({
-      operationId: "install-media-worker-0.1.15",
+      operationId: "install-media-worker-0.1.16",
       authority: authority(releaseFixture.manifestSha256, {}, releaseFixture.effectiveMacosSha256),
     });
-    assert.equal(result.release, "0.1.15");
+    assert.equal(result.release, "0.1.16");
     assert.equal(result.installer_asset_sha256, releaseFixture.effectiveMacosSha256);
     assert.equal(result.code_signature_verified, true);
     assert.equal(result.online, true);
@@ -1509,7 +1509,7 @@ test("staging verification failure occurs before the existing service is stopped
     });
     await assert.rejects(
       ports.installMediaWorker.run({
-        operationId: "install-media-worker-0.1.15",
+        operationId: "install-media-worker-0.1.16",
         authority: authority(
           releaseFixture.manifestSha256,
           {},
@@ -1549,7 +1549,7 @@ test("a failure immediately after stop reboots the untouched old service", async
     });
     await assert.rejects(
       ports.installMediaWorker.run({
-        operationId: "install-media-worker-0.1.15",
+        operationId: "install-media-worker-0.1.16",
         authority: authority(
           releaseFixture.manifestSha256,
           {},
@@ -1613,7 +1613,7 @@ test("heartbeat uses only the bound owner child and rejects forced-RLS denial be
             clock,
           });
           const install = ports.installMediaWorker.run({
-            operationId: "install-media-worker-0.1.15",
+            operationId: "install-media-worker-0.1.16",
             authority: authority(
               releaseFixture.manifestSha256,
               {},
@@ -1657,7 +1657,7 @@ test("owner heartbeat credential drift stops before psql or installer mutation",
     });
     await assert.rejects(
       ports.installMediaWorker.run({
-        operationId: "install-media-worker-0.1.15",
+        operationId: "install-media-worker-0.1.16",
         authority: authority(
           releaseFixture.manifestSha256,
           {},
@@ -1700,7 +1700,7 @@ test("a failure after the backup rename restores the old app and service", async
     });
     await assert.rejects(
       ports.installMediaWorker.run({
-        operationId: "install-media-worker-0.1.15",
+        operationId: "install-media-worker-0.1.16",
         authority: authority(
           releaseFixture.manifestSha256,
           {},
@@ -1736,7 +1736,7 @@ test("a partially failed new-service bootstrap removes the new app and restores 
     });
     await assert.rejects(
       ports.installMediaWorker.run({
-        operationId: "install-media-worker-0.1.15",
+        operationId: "install-media-worker-0.1.16",
         authority: authority(
           releaseFixture.manifestSha256,
           {},
@@ -1783,7 +1783,7 @@ test("fresh install rechecks authority after ONLINE heartbeat before accepting s
     });
     await assert.rejects(
       ports.installMediaWorker.run({
-        operationId: "install-media-worker-0.1.15",
+        operationId: "install-media-worker-0.1.16",
         authority: authority(
           releaseFixture.manifestSha256,
           {},
@@ -1821,7 +1821,7 @@ test("missing enrollment produces a deterministic zero-mutation user checkpoint"
             installation_id: "11111111-1111-4111-8111-111111111111",
             platform: "MACOS",
             architecture: "AARCH64",
-            worker_version: "0.1.15",
+            worker_version: "0.1.16",
             protocol_version: 1,
             execution_bundle_sha256: executionBundleSha256,
             status: "ONLINE",
@@ -1841,7 +1841,7 @@ test("missing enrollment produces a deterministic zero-mutation user checkpoint"
     let error;
     try {
       await ports.installMediaWorker.run({
-        operationId: "install-media-worker-0.1.15",
+        operationId: "install-media-worker-0.1.16",
         authority: authority(releaseFixture.manifestSha256),
       });
     } catch (candidate) {
@@ -1937,7 +1937,7 @@ test("confirmation resume rechecks authority after final ONLINE readback", async
         installation_id: installationId,
         platform: "MACOS",
         architecture: "AARCH64",
-        worker_version: "0.1.15",
+        worker_version: "0.1.16",
         protocol_version: 1,
         execution_bundle_sha256: executionBundleSha256,
         status: "ONLINE",
@@ -1958,7 +1958,7 @@ test("confirmation resume rechecks authority after final ONLINE readback", async
     let checkpoint;
     try {
       await ports.installMediaWorker.run({
-        operationId: "install-media-worker-0.1.15",
+        operationId: "install-media-worker-0.1.16",
         authority: authority(releaseFixture.manifestSha256),
       });
     } catch (error) {
@@ -2174,7 +2174,7 @@ test("post-construction GitHub credential metadata drift stops before child exec
     chmodSync(join(box.configuration.environment.GH_CONFIG_DIR, "hosts.yml"), 0o644);
     await assert.rejects(
       ports.publishMediaWorker.run({
-        operationId: "publish-media-worker-0.1.15",
+        operationId: "publish-media-worker-0.1.16",
         authority: authority(releaseFixture.manifestSha256),
       }),
       /V2_09_MEDIA_WORKER_GITHUB_CREDENTIAL_PATH_DRIFT/u,
