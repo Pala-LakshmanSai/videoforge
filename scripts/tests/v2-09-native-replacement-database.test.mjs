@@ -8,6 +8,8 @@ import {
   renderNativeMigration87Sql,
   renderNativeMigration88Sql,
   renderNativeMigration89Sql,
+  renderNativeMigration90Sql,
+  renderNativeMigration91Sql,
 } from "../../deploy/v2-09/native-replacement-database.mjs";
 
 function fixture(t, target) {
@@ -15,21 +17,9 @@ function fixture(t, target) {
   const manifest = JSON.parse(readFileSync(resolve(sourceRoot, "manifest.json")));
   const migrationRoot = mkdtempSync(resolve(tmpdir(), "v209-migration-render-"));
   t.after(() => rmSync(migrationRoot, { recursive: true, force: true }));
-  manifest.migrations = manifest.migrations.slice(0, Math.min(target, 87));
+  manifest.migrations = manifest.migrations.slice(0, target);
   for (const e of manifest.migrations)
     copyFileSync(resolve(sourceRoot, e.filename), resolve(migrationRoot, e.filename));
-  for (let version = 88; version <= target; version += 1) {
-    // Renderer fixtures only; actual SQL has dedicated PostgreSQL regression coverage.
-    const sql = "DO $$ BEGIN PERFORM 1; END $$;\n";
-    const entry = {
-      version,
-      name: "native_helper_acl_fixture",
-      filename: `00${version}_native_helper_acl_fixture.sql`,
-      sha256: databaseBytesHash(sql),
-    };
-    manifest.migrations.push(entry);
-    writeFileSync(resolve(migrationRoot, entry.filename), sql);
-  }
   const bytes = Buffer.from(JSON.stringify(manifest));
   writeFileSync(resolve(migrationRoot, "manifest.json"), bytes);
   return {
@@ -95,4 +85,14 @@ test("migration89 requires exact88 predecessor ledger and rejects altered histor
     .migrations[87];
   writeFileSync(resolve(input.migrationRoot, prior.filename), "-- drift");
   assert.throws(() => renderNativeMigration89Sql(input), /MIGRATION_HASH/);
+});
+
+test("migration91 requires exact90 predecessor ledger and renders only the span-key repair", (t) => {
+  const input = fixture(t, 91);
+  const sql = renderNativeMigration91Sql(input);
+  assert.match(sql, /'from_version',90,'to_version',91/);
+  assert.match(sql, /VALUES\(91,/);
+  assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
+  assert.throws(() => renderNativeMigration90Sql(input), /MANIFEST/);
+  assert.throws(() => renderNativeMigration91Sql(fixture(t, 90)), /MANIFEST/);
 });

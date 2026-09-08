@@ -540,6 +540,12 @@
       "name": "hosted_v209_queue_admission_handoff",
       "filename": "0090_hosted_v209_queue_admission_handoff.sql",
       "sha256": "sha256:fdae2bec0e172c2a3152f4115757963e3d85ef284fc8fa906e3e1a284177c525"
+    },
+    {
+      "version": 91,
+      "name": "hosted_v209_span_task_key_reconciliation",
+      "filename": "0091_hosted_v209_span_task_key_reconciliation.sql",
+      "sha256": "sha256:87752df3ff9ae340aaea6334187910602a45e4d9834be446de4b2db8b0517196"
     }
   ]
 }
