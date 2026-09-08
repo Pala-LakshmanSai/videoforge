@@ -1,0 +1,114 @@
+{
+  "checked_at": "2026-09-08T05:31:29.183Z",
+  "mode": "READ_ONLY_PREREQUISITE_INVENTORY",
+  "resource_mutations": 0,
+  "corrected_path": "/Users/lakshmansai/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+  "observations": [
+    {
+      "kind": "account",
+      "status": 200,
+      "success": true,
+      "envelope_keys": [
+        "errors",
+        "messages",
+        "result",
+        "success"
+      ],
+      "result_kind": "object",
+      "result_keys": [
+        "created_on",
+        "id",
+        "legacy_flags",
+        "name",
+        "settings",
+        "type"
+      ],
+      "result_info": null,
+      "count": null,
+      "errors": [],
+      "account_matches": true
+    },
+    {
+      "kind": "subdomain",
+      "status": 200,
+      "success": true,
+      "envelope_keys": [
+        "errors",
+        "messages",
+        "result",
+        "success"
+      ],
+      "result_kind": "object",
+      "result_keys": [
+        "subdomain"
+      ],
+      "result_info": null,
+      "count": null,
+      "errors": [],
+      "origin_matches": true
+    },
+    {
+      "kind": "worker",
+      "status": 404,
+      "success": false,
+      "envelope_keys": [
+        "errors",
+        "messages",
+        "result",
+        "success"
+      ],
+      "result_kind": "object",
+      "result_keys": null,
+      "result_info": null,
+      "count": null,
+      "errors": [
+        {
+          "code": 10007
+        }
+      ]
+    },
+    {
+      "kind": "workflows",
+      "status": 200,
+      "success": true,
+      "envelope_keys": [
+        "errors",
+        "messages",
+        "result",
+        "result_info",
+        "success"
+      ],
+      "result_kind": "array",
+      "result_keys": null,
+      "result_info": {
+        "count": 1,
+        "page": 1,
+        "per_page": 100,
+        "total_count": 1,
+        "total_pages": 1
+      },
+      "count": 1,
+      "errors": [],
+      "target_workflows_absent": true
+    },
+    {
+      "kind": "r2",
+      "status": 200,
+      "success": true,
+      "envelope_keys": [
+        "errors",
+        "messages",
+        "result",
+        "success"
+      ],
+      "result_kind": "object",
+      "result_keys": [
+        "buckets"
+      ],
+      "result_info": null,
+      "count": 1,
+      "errors": [],
+      "exact_existing_bucket_count": 1
+    }
+  ]
+}

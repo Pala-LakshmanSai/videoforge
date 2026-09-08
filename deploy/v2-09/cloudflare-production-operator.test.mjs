@@ -261,13 +261,15 @@ function harness(
       result = null;
     } else if (path.startsWith("/workflows")) result = [];
     else if (path.startsWith("/r2/buckets"))
-      result = [{ name: value.qualified.r2_buckets[0].bucket_name }];
+      result = { buckets: [{ name: value.qualified.r2_buckets[0].bucket_name }] };
     else throw new Error(`unexpected OAuth path ${path}`);
     return {
       bytes: JSON.stringify({
         status,
         body: {
           success: status === 200,
+          errors: [],
+          messages: [],
           result,
           ...(Array.isArray(result)
             ? {
@@ -964,4 +966,50 @@ test("qualified config readback requires disabled before import and qualified af
     operator.readbackCloudflareQualified.run({ ...context, activationImported: false }),
     /ROUTE_READBACK_DRIFT/u,
   );
+});
+
+test("R2 inventory rejects pagination, truncation, duplicates and unknown shapes before mutation", async () => {
+  for (const variant of [
+    "cursor",
+    "result-info",
+    "truncated",
+    "array",
+    "duplicate",
+    "unknown-item",
+    "workflow-unpaginated",
+  ]) {
+    const value = fixture();
+    const mock = harness(value);
+    const operator = createV209CloudflareProductionOperator(value.configuration, {
+      testOnly: true,
+      runChild: mock.runChild,
+      fetchImpl: mock.fetchImpl,
+      snapshotUploadArtifact: mock.snapshotUploadArtifact,
+      now: () => new Date("2026-09-06T22:00:00Z"),
+      oauthApiResponse: async (input) => {
+        const original = await mock.oauthApiResponse(input);
+        const envelope = JSON.parse(original.bytes);
+        if (variant === "workflow-unpaginated" && input.path.startsWith("/workflows"))
+          delete envelope.body.result_info;
+        if (input.path.startsWith("/r2/buckets")) {
+          assert.equal(input.path, "/r2/buckets");
+          const result = envelope.body.result;
+          if (variant === "cursor") result.cursor = "next";
+          if (variant === "result-info")
+            envelope.body.result_info = { page: 1, total_pages: 1, total_count: 1 };
+          if (variant === "truncated") result.truncated = true;
+          if (variant === "array") envelope.body.result = result.buckets;
+          if (variant === "duplicate") result.buckets.push(result.buckets[0]);
+          if (variant === "unknown-item") result.buckets[0].cursor = "next";
+        }
+        return { bytes: JSON.stringify(envelope) };
+      },
+    });
+    await assert.rejects(
+      executeThroughQualified(operator, authority(value)),
+      /R2_INVENTORY_(RESULT_INVALID|DUPLICATE)|WORKFLOW_INVENTORY_PAGINATION_INVALID/u,
+      variant,
+    );
+    assert.equal(mock.calls.length, 0);
+  }
 });

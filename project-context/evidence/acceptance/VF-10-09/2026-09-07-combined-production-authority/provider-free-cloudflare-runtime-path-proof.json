@@ -1,0 +1,26 @@
+{
+  "schema_version": "videoforge.v2-09-cloudflare-runtime-path-proof/v1",
+  "source_commit": "144dda524d2e2d1813a08abaf268c3a767061f59",
+  "change": "Prepend /Users/lakshmansai/.local/bin to Cloudflare operator PATH only; no source, credential, account, scope or Homebrew mutation.",
+  "command": [
+    "pnpm",
+    "--filter",
+    "@videoforge/web",
+    "exec",
+    "wrangler",
+    "--version"
+  ],
+  "old_result": {
+    "signal": "SIGABRT",
+    "cause": "BROKEN_HOMEBREW_NODE_MISSING_LIBLLHTTP_9_3_DYLIB"
+  },
+  "corrected_result": {
+    "status": 0,
+    "signal": null,
+    "wrangler_version": "4.120.0"
+  },
+  "provider_calls": 0,
+  "credential_value_reads": 0,
+  "source_edits": 0,
+  "prior_focused_validation": "109_OF_109_AND_REAL_RUNTIME_PROOF_RETAINED_NO_REPEAT"
+}

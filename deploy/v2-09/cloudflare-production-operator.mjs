@@ -615,6 +615,43 @@ function resourceNames(envelope, code) {
   return names;
 }
 
+function r2BucketNames(envelope) {
+  const code = "R2_INVENTORY";
+  if (envelope.status !== 200 || envelope.body?.success !== true) fail(`${code}_FAILED`);
+  const body = envelope.body;
+  if (
+    !exactKeys(body, ["success", "errors", "messages", "result"]) ||
+    !Array.isArray(body.errors) ||
+    body.errors.length !== 0 ||
+    !Array.isArray(body.messages) ||
+    body.messages.length !== 0 ||
+    !exactKeys(body.result, ["buckets"]) ||
+    !Array.isArray(body.result.buckets) ||
+    body.result.buckets.some(
+      (item) =>
+        !item ||
+        typeof item !== "object" ||
+        Array.isArray(item) ||
+        typeof item.name !== "string" ||
+        item.name.length === 0 ||
+        Object.keys(item).some((key) =>
+          [
+            "cursor",
+            "next_cursor",
+            "truncated",
+            "is_truncated",
+            "continuation_token",
+            "result_info",
+          ].includes(key),
+        ),
+    )
+  )
+    fail(`${code}_RESULT_INVALID`);
+  const names = body.result.buckets.map(({ name }) => name).sort();
+  if (new Set(names).size !== names.length) fail(`${code}_DUPLICATE`);
+  return names;
+}
+
 async function oauthRead(runtime, qualified, path, code) {
   const response = await runtime.oauthApiResponse({
     accountId: qualified.account_id,
@@ -661,9 +698,8 @@ async function exactPreMutationInventory(runtime, authority, context, journal) {
   );
   const intendedWorkflows = qualified.workflows.map(({ name }) => name).sort();
   const presentIntended = workflowNames.filter((name) => intendedWorkflows.includes(name));
-  const bucketNames = resourceNames(
-    await oauthRead(runtime, qualified, "/r2/buckets?page=1&per_page=100", "R2_INVENTORY"),
-    "R2_INVENTORY",
+  const bucketNames = r2BucketNames(
+    await oauthRead(runtime, qualified, "/r2/buckets", "R2_INVENTORY"),
   );
   if (bucketNames.filter((name) => name === qualified.r2_buckets[0].bucket_name).length !== 1)
     fail("RETAINED_R2_INVENTORY_DRIFT");

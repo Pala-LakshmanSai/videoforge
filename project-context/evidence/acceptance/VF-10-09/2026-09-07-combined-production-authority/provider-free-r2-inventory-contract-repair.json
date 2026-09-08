@@ -1,0 +1,26 @@
+{
+  "schema_version": "videoforge.v2-09-r2-inventory-contract-repair/v1",
+  "checkpoint": "9.7.5",
+  "read_only_inventory_sha256": "sha256:d230c33c05867730570a82f936a90574291f4a61b63883a70faba6bc7c787b2e",
+  "runtime_path_proof_sha256": "sha256:5a4814f3f1bfbd040c012fd04ad853d39e880e9da63d7a192fd4728d55adb5ef",
+  "repair": "R2 uses exact unpaginated /r2/buckets request and separate strict success/errors/messages/result{buckets} parser; workflow pagination remains strict. Reject pagination,cursors,truncation,duplicates,malformed names before mutation.",
+  "focused_tests": {
+    "cloudflare_suite": 15,
+    "final_exact_path_regression": 1,
+    "failures": 0
+  },
+  "retained_validation": "109 prior focused tests and real runtime phase proof retained; no broad repetition.",
+  "consolidated_predeployment_checks": {
+    "actual_native_oauth_account_scopes": "PASS_WITH_CORRECTED_PATH",
+    "account_origin": "EXACT",
+    "worker": "ABSENT404",
+    "target_workflows": "ABSENT",
+    "retained_r2_bucket": "ONE_EXACT_EXISTING",
+    "install_to_chrome_handoff_audit": "GO_NO_ADDITIONAL_CONCRETE_P0_P1"
+  },
+  "provider_mutations": 0,
+  "paid_compute": 0,
+  "stage6_stage7": "FROZEN_UNTOUCHED",
+  "runtime_plan_change": "Only prepend /Users/lakshmansai/.local/bin to Cloudflare operator PATH; no credential/account/scope/runtime installation change.",
+  "independent_audit": "GO_P0_0_P1_0"
+}
