@@ -1822,10 +1822,11 @@ function createLiveMaterializer(
       ...configuration,
       journalPath: `${options.statePath}.staging-journal`,
     };
-    const { createConcreteQualifiedProductionStagingAdapters } = await import(
-      "./concrete-qualified-production-adapters.mjs"
-    );
-    const adapters = createConcreteQualifiedProductionStagingAdapters(stagingConfiguration);
+    const createStagingAdapters =
+      testDependencies?.createStagingAdapters ??
+      (await import("./concrete-qualified-production-adapters.mjs"))
+        .createConcreteQualifiedProductionStagingAdapters;
+    const adapters = createStagingAdapters(stagingConfiguration);
     const initial = stagingAuthority(authority, preflight, null, authority.media_worker_inputs);
     if (!resume) await adapters.state.claimAuthority({ authority: initial });
     runtime = {
@@ -1857,8 +1858,6 @@ function createLiveMaterializer(
         publication.mode !== "REUSED_EXACT_EXISTING" ||
         publication.publish_count !== 0 ||
         publication.immutable_release !== true ||
-        publication.release_source_commit !== approved.release_source_commit ||
-        publication.windows_installer_asset_sha256 !== approved.windows_installer_asset_sha256 ||
         [
           "release",
           "execution_bundle_sha256",
@@ -2054,12 +2053,6 @@ function createLiveMaterializer(
           whisper_model_sha256: active.mediaWorker.whisper_model_sha256,
           release_manifest_sha256: active.mediaWorker.release_manifest_sha256,
           installer_asset_sha256: active.mediaWorker.installer_asset_sha256,
-          ...(adopted
-            ? {
-                release_source_commit: active.mediaWorker.release_source_commit,
-                windows_installer_asset_sha256: active.mediaWorker.windows_installer_asset_sha256,
-              }
-            : {}),
           immutable_release: true,
         };
         active.latestAuthority = stagingAuthority(
@@ -2274,6 +2267,7 @@ export function createLiveMaterializerForTest({
   loadConfiguration,
   loadMaterializationPlan,
   createResumedAdapters,
+  createStagingAdapters,
   materializeChromeBootstrap,
   testOnly,
 }) {
@@ -2282,11 +2276,13 @@ export function createLiveMaterializerForTest({
     typeof loadConfiguration !== "function" ||
     typeof loadMaterializationPlan !== "function" ||
     typeof createResumedAdapters !== "function" ||
+    (createStagingAdapters !== undefined && typeof createStagingAdapters !== "function") ||
     (materializeChromeBootstrap !== undefined && typeof materializeChromeBootstrap !== "function")
   )
     fail("V2_09_COMBINED_MATERIALIZER_TEST_INJECTION_FORBIDDEN");
   return createLiveMaterializer(options, loadConfiguration, loadMaterializationPlan, {
     createResumedAdapters,
+    createStagingAdapters,
     materializeChromeBootstrap,
   });
 }
