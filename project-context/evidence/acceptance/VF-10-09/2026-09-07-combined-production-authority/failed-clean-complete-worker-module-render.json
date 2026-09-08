@@ -1,0 +1,39 @@
+{
+  "schema_version": "videoforge.v2-09-failed-clean-closure/v1",
+  "authority_id": "v2-09-30d07b585868cea6",
+  "source_commit": "b7546348775d8bb743d9b4408591fdfe6daf6650",
+  "proposal_sha256": "sha256:30d07b585868cea6262aad6d1aec0281608e6bb649490fac337a74f6c69a3ec7",
+  "status": "FAILED_CLEAN",
+  "consumed": true,
+  "reusable": false,
+  "completed_operations": 15,
+  "total_operations": 26,
+  "failure_code": "V2_09_RENDER_WORKER_MODULE_CLOSURE_FAILED",
+  "cloudflare_journal_created": false,
+  "cloudflare_deployment": false,
+  "cleanup": {
+    "independent_audit": "GO",
+    "read_only_reconciliation_sha256": "sha256:6e18739b2d94c662cfe2aa57eaddc6868abb675b986cd14d4a2145a5de8c7273",
+    "consecutive_zero_compute_reads": 3,
+    "workers": 0,
+    "endpoints": 0,
+    "pods": 0,
+    "templates": 0,
+    "retained_volumes": {
+      "count": 2,
+      "each_size_gb": 50,
+      "state": "EXACT_SEALED_UNCHANGED"
+    },
+    "database_bindings_matched": 2,
+    "database_bindings_inactive": 2,
+    "protected_outputs_absent": 26,
+    "role_journal_absent": true,
+    "cleanup_tombstone": "CLEANED",
+    "total_protected_cleanup_items": 27,
+    "posted_endpoint_billing_usd": 3.5284023286949378,
+    "delayed_startup_billing": "UNPROVEN"
+  },
+  "checkpoint": "9.7.7",
+  "next": "LOCAL_DIAGNOSIS_ACTIVE_NO_CURRENT_AUTHORITY",
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN"
+}

@@ -4,20 +4,15 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-**9.7.7 remains ACTIVE:** c272 is terminal `FAILED_CLEAN` after 16/26 operations.
-9.7.1–9.7.6 remain DONE; complete-worker repair is sealed at `b7546348775d8bb743d9b4408591fdfe6daf6650`.
-Exact successor is explicitly approved; materialized artifact checks precede launch.
-Finite cap USD2; completion ceiling USD17.5; existing volume retention consent unchanged. Proposal: `sha256:30d07b585868cea6262aad6d1aec0281608e6bb649490fac337a74f6c69a3ec7`
-(`/Users/lakshmansai/.videoforge/v2-09/proposals/complete-worker-module-replacement.txt`). 9.7.8 post-import readiness, 9.8 Chrome E2E and 9.9 remain pending.
-Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-consolidated-worker-module-upload.json` (`sha256:7f9c1a12f3b55db55713722db9027465730fc990459a4e51b0b19ef3ba929241`).
-The attempt uploaded 22 static assets; its empty Cloudflare service was deleted. All 27 protected
-outputs and temporary roles are clean; two DB bindings are inactive; three RunPod reads prove zero compute.
-Repair: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-complete-worker-module-repair.json` (`sha256:7358cbec056e43c1614ede5601fa7ab51d20d565f2f03586bac774cd5a2f901c`):
-eight focused tests and an actual 6.89 MB complete-worker dry-run pass; independent audit GO.
-Stage 6/7 remain frozen QUALIFIED_PASS_CLEAN and untouched. Older authorities remain non-reusable.
+**9.7.7 remains ACTIVE:**30d is consumed; executor reports terminal `FAILED_CLEAN` at15/26
+with `V2_09_RENDER_WORKER_MODULE_CLOSURE_FAILED`, before Cloudflare journal/deployment.
+Local diagnosis remains active; independent cleanup is complete: three zero-compute reads, two
+inactive DB bindings, 27 protected items clean, and both sealed 50 GB volumes unchanged. Posted
+billing is unchanged; delayed charges remain unproven. No authority or normal replay remains.
+Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-complete-worker-module-render.json` (`sha256:3c2295b860296b7ce18ea2846ea3d4481ea63997918e6d74688357bb49fe9641`).
+Previously completed9.7.1–6 remain DONE;9.7.8/9.8/9.9pending. Stage6/7 remain frozen
+QUALIFIED_PASS_CLEAN and untouched.
 
-
-Current approval: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-complete-worker-module-replacement.json` (`sha256:14477e5980d80ffee4f9e130ccec9bb08d75d78f946a99dbf961814f2d2d0b3a`). Authority `v2-09-30d07b585868cea6`, source `b7546348775d8bb743d9b4408591fdfe6daf6650`;9.7.7active9.7.8/9.8pending.
 
 ### Historical activation evidence
 

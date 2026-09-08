@@ -455,39 +455,39 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-complete-worker-module-replacement.json"
-    current_authority_sha256: "sha256:14477e5980d80ffee4f9e130ccec9bb08d75d78f946a99dbf961814f2d2d0b3a"
-    current_private_authority_sha256: "sha256:3e4e2d3e537a11b110c5b27edb18b6b4b43a9aa31ffe9e420b7cff4dcc641ef2"
-    current_authority_state: "exact_30d07_approved_pending_materialized_audits"
-    current_proposal_sha256: "sha256:30d07b585868cea6262aad6d1aec0281608e6bb649490fac337a74f6c69a3ec7"
+    current_authority: null
+    current_authority_sha256: null
+    current_private_authority_sha256: null
+    current_authority_state: "30d_consumed_FAILED_CLEAN15_of_26_independent_cleanup_GO"
+    current_proposal_sha256: null
     current_control_source_commit: "b7546348775d8bb743d9b4408591fdfe6daf6650"
-    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-consolidated-worker-module-upload.json"
-    current_failure_sha256: "sha256:7f9c1a12f3b55db55713722db9027465730fc990459a4e51b0b19ef3ba929241"
+    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-complete-worker-module-render.json"
+    current_failure_sha256: "sha256:3c2295b860296b7ce18ea2846ea3d4481ea63997918e6d74688357bb49fe9641"
     current_audit_stop: null
     current_audit_stop_sha256: null
     provider_free_repair_state: "Complete-worker repair8tests and actual6.89MBworker dryrunPASS; independentGO; seal and successor approval pending."
     previous_latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-endpoint-transition-replacement.json"
-    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-consolidated-prerequisites-replacement.json"
+    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-complete-worker-module-replacement.json"
     previous_latest_closed_authority_sha256: "sha256:40b129bd736c6052de4017ae8aede0db29d2849b8b733f312a4a94753ad14c1c"
-    latest_closed_authority_sha256: "sha256:1ea271e67d7134f2d7254471ecae3926c68a2a882a0bd9ea44d4d3b82b8b88cf"
+    latest_closed_authority_sha256: "sha256:14477e5980d80ffee4f9e130ccec9bb08d75d78f946a99dbf961814f2d2d0b3a"
     previous_latest_closed_private_authority_sha256: "sha256:9c15e8a004072f78a8071616ae6bb318ed7af0c34722d3c28b52ddfd512039be"
-    latest_closed_private_authority_sha256: "sha256:7976cb661ea57bbbf9da22914e023c9453fe6e529e32cae097e8b0cccc315cd2"
+    latest_closed_private_authority_sha256: "sha256:3e4e2d3e537a11b110c5b27edb18b6b4b43a9aa31ffe9e420b7cff4dcc641ef2"
     latest_closed_authority_state: consumed_failed_clean_non_reusable
     previous_latest_closed_proposal_sha256: "sha256:31889dbb1b0e2cf3c185948a718bb15c29e6521e4a0fd0339dd2bfea087cbf77"
-    latest_closed_proposal_sha256: "sha256:c27280b04f76ea8d19a2524bc27a7601819dfc7ac0a182deca00f2f74208a251"
+    latest_closed_proposal_sha256: "sha256:30d07b585868cea6262aad6d1aec0281608e6bb649490fac337a74f6c69a3ec7"
     previous_latest_closed_control_source_commit: "f1e115f62ce6c26d2f4e50c779a62705be4546b4"
-    latest_closed_control_source_commit: "536e7a400313ff6fd81ff0d62027d08bf5568bbf"
+    latest_closed_control_source_commit: "b7546348775d8bb743d9b4408591fdfe6daf6650"
     previous_latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-endpoint-transition-render-config.json"
-    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-consolidated-worker-module-upload.json"
+    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-complete-worker-module-render.json"
     previous_latest_closed_failure_sha256: "sha256:1f0458f43020b097a774df36fcae1143447ce21b395ef21a69b8ea80122796a6"
-    latest_closed_failure_sha256: "sha256:7f9c1a12f3b55db55713722db9027465730fc990459a4e51b0b19ef3ba929241"
+    latest_closed_failure_sha256: "sha256:3c2295b860296b7ce18ea2846ea3d4481ea63997918e6d74688357bb49fe9641"
     latest_published_media_worker_release: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/published-media-worker-0.1.15.json"
     latest_published_media_worker_release_sha256: "sha256:05806b98a8f8acc5609f7b4eea2b563b91dbd60226b7c3eb582e5dcb8af7560c"
     latest_monitored_availability: LOW
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7.6DONE;9.7.7productiondeploymentACTIVE;9.7.8postimportreadinesspending;9.8/9.9pending."
+    next_gate: "9.7.7localdiagnosisactive;cleanup independently complete;priorstepsdone9.7.8/9.8pending;no authority."
 
   GATE_RANGA_001:
     status: open
