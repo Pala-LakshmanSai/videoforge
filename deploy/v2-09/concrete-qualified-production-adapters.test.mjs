@@ -75,9 +75,12 @@ function fixture() {
   const voiceoverBytes = Buffer.from("fixture-voiceover");
   const voiceoverFile = privateFile("voiceover.wav", voiceoverBytes);
   const chromeVerifiedOutputFile = resolve(directory, "verified-output.mp4");
-  const databaseReconcilerUrlFile = privateFile(
-    "database-reconciler.url",
-    "postgresql://videoforge_reconciler:reconciler-secret@db.example.test:5432/videoforge?sslmode=require&channel_binding=require",
+  const reconcilerUrl =
+    "postgresql://videoforge_reconciler:reconciler-secret@db.example.test:5432/videoforge?sslmode=require&channel_binding=require";
+  const databaseReconcilerUrlFile = privateFile("database-reconciler.url", reconcilerUrl);
+  const cloudflareReconcilerUrlFile = privateFile(
+    "cloudflare-database-reconciler.url",
+    reconcilerUrl,
   );
   const databaseRuntimeUrlFile = privateFile(
     "database-runtime.url",
@@ -196,7 +199,7 @@ function fixture() {
       cloudflare: {
         secretFiles: {
           DATABASE_URL: databaseRuntimeUrlFile,
-          VIDEOFORGE_RECONCILER_DATABASE_URL: databaseReconcilerUrlFile,
+          VIDEOFORGE_RECONCILER_DATABASE_URL: cloudflareReconcilerUrlFile,
         },
       },
     },
@@ -2586,6 +2589,17 @@ test("all database credentials are role-bound to one exact database before any m
     (configuration) => delete configuration.databaseReconcilerUrlFile,
     (configuration) => {
       configuration.databaseReconcilerUrlFile = configuration.databaseOwnerUrlFile;
+    },
+    (configuration) => {
+      configuration.cloudflare.secretFiles.VIDEOFORGE_RECONCILER_DATABASE_URL =
+        configuration.databaseReconcilerUrlFile;
+    },
+    (configuration) => {
+      writeFileSync(
+        configuration.cloudflare.secretFiles.VIDEOFORGE_RECONCILER_DATABASE_URL,
+        "postgresql://videoforge_reconciler:different-secret@db.example.test:5432/videoforge?sslmode=require&channel_binding=require",
+        { mode: 0o600 },
+      );
     },
     (configuration) => {
       writeFileSync(

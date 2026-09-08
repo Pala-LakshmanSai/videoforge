@@ -1589,8 +1589,10 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       protectedInputs.databaseReconcilerUrlFile.sha256,
       protectedInputs.cloudflareSecretFiles.DATABASE_URL.sha256,
     ]).size !== 4 ||
-    resolve(configuration.cloudflare?.secretFiles?.VIDEOFORGE_RECONCILER_DATABASE_URL ?? "") !==
-      resolve(configuration.databaseReconcilerUrlFile)
+    resolve(configuration.cloudflare?.secretFiles?.VIDEOFORGE_RECONCILER_DATABASE_URL ?? "") ===
+      resolve(configuration.databaseReconcilerUrlFile) ||
+    protectedInputs.cloudflareSecretFiles.VIDEOFORGE_RECONCILER_DATABASE_URL?.sha256 !==
+      protectedInputs.databaseReconcilerUrlFile.sha256
   )
     fail("V2_09_CONCRETE_DATABASE_ROLE_BINDING_INVALID");
   const migrationBundle = loadV209MigrationBundle();

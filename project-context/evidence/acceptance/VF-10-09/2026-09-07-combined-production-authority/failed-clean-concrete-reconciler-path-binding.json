@@ -1,0 +1,86 @@
+{
+  "schema_version": "videoforge.v2-09-combined-production-failed-clean/v1",
+  "checkpoint": "V2-09",
+  "task_id": "VF-10-09",
+  "authority_id": "v2-09-8c26c376fde44639",
+  "proposal_sha256": "sha256:8c26c376fde44639a246b664f7c10c82ffed46d018a0b1891e585a04f593f5e4",
+  "control_source_commit": "5ec3bb24374bf80f247013d6479b6cbaa822188d",
+  "authority_successor_commit": "4c6d994ab996cfede3853e6a7a1db0e15b4bcd2e",
+  "authority_sha256": "sha256:1d19b40ac55944d966db87c6e7e370adfe34becc2bbaa9f6cc95ba43d5e3a866",
+  "materialization_plan_sha256": "sha256:3d88001cd0ad766fe5e33e1a70a97256b9ad0d59555204f96b0f91753d00e34f",
+  "media_worker_bundle_sha256": "sha256:2f0835ddebfa6040dc89b1e43265b233c1da08ee7017c2070b2a422ed69b2f99",
+  "status": "FAILED_CLEAN",
+  "consumed": true,
+  "reusable": false,
+  "exact_error": "V2_09_CONCRETE_DATABASE_ROLE_BINDING_INVALID",
+  "outer_state_sha256": "sha256:d619fd336571a5ff1bcb346722c891551e6e5ded0aafea25f7d617fd86a66eb6",
+  "preflight_proof_sha256": "sha256:7412ddffc81e48d7ac1a5e4b9101dce2878d2e6b46ada155d4e1952f140cd883",
+  "preflight_checked_at_utc": "2026-09-07T23:48:26.586Z",
+  "preflight": {
+    "availability": "LOW",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "rate_usd_per_gpu_second": 0.00031,
+    "rate_usd_per_gpu_hour": 1.116,
+    "cumulative_endpoint_billing_usd": 3.5284023286949378,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "retained_volumes": 2
+  },
+  "completion_baseline": {
+    "observed_at_utc": "2026-09-07T23:48:41.734Z",
+    "completion_baseline_micro_usd": 386630,
+    "maximum_completion_baseline_micro_usd": 15500000,
+    "settled_net_micro_usd": 17648,
+    "open_reservation_micro_usd": 368982,
+    "reported_unsettled_micro_usd": 0
+  },
+  "protected_materialization": {
+    "result_sha256": "sha256:ef96fa71b7ffc9c94b0dde98224a9f9a07f178822d8c3a09ac693098f0f84371",
+    "role_count": 3,
+    "protected_file_hash_count": 23,
+    "deferred_endpoint_secret_count": 4
+  },
+  "operations": {
+    "completed": [
+      "run-read-only-preflight",
+      "read-pre-mutation-completion-baseline",
+      "materialize-v209-protected-inputs"
+    ],
+    "started_failed": ["push-clean-source"],
+    "pending_count": 22,
+    "inner_authority_emitted": false
+  },
+  "cleanup": {
+    "role_cleanup_tombstone_sha256": "sha256:5852d953949559e4076f22ac2f5d4a8ac1ed7512b0cf83dc7a69f351232f9753",
+    "role_cleanup_status": "CLEANED",
+    "verified_role_count": 0,
+    "verified_membership_count": 0,
+    "protected_outputs_remaining": 0
+  },
+  "remote_state": {
+    "control_branch_head": "5ec3bb24374bf80f247013d6479b6cbaa822188d",
+    "approved_source_push_completed": true,
+    "executor_push_operation_completed": false
+  },
+  "effects": {
+    "database_read_baseline_completed": true,
+    "temporary_role_transaction_completed": true,
+    "migrations_applied": false,
+    "media_worker_published": false,
+    "media_worker_installed": false,
+    "runpod_lane_mutations": 0,
+    "runpod_job_posts": 0,
+    "gpu_jobs": 0,
+    "cloudflare_mutations": 0,
+    "r2_mutations": 0,
+    "chrome_e2e_runs": 0,
+    "redispatches": 0,
+    "stage_6_jobs": 0,
+    "stage_7_jobs": 0,
+    "incremental_external_spend_usd": 0
+  },
+  "next_gate": "Provider-free repair of the concrete adapter distinct reconciler-path binding, focused validation, independent audit, clean reseal, and one fresh exact approval."
+}

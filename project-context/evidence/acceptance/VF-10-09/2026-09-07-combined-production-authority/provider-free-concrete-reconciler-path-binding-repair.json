@@ -1,0 +1,43 @@
+{
+  "schema_version": "videoforge.v2-09-provider-free-repair/v1",
+  "checkpoint": "V2-09",
+  "task_id": "VF-10-09",
+  "supersedes_failed_authority_id": "v2-09-8c26c376fde44639",
+  "supersedes_proposal_sha256": "sha256:8c26c376fde44639a246b664f7c10c82ffed46d018a0b1891e585a04f593f5e4",
+  "failed_clean_evidence": "failed-clean-concrete-reconciler-path-binding.json",
+  "root_cause": "The concrete production adapter incorrectly required the internal reconciler URL file and the Cloudflare reconciler secret file to be the same path even though production intentionally materializes distinct mode-0600 files with identical bytes.",
+  "repair": [
+    "Require the internal and Cloudflare reconciler URL paths to be distinct.",
+    "Require their protected-input SHA-256 values to be equal.",
+    "Use distinct equal-byte files in the concrete-adapter production-topology fixture.",
+    "Reject path aliasing and equal-role byte drift before any child or provider call."
+  ],
+  "focused_validation": {
+    "command": "node --test deploy/v2-09/concrete-qualified-production-adapters.test.mjs deploy/v2-09/protected-input-materializer.test.mjs deploy/v2-09/execute-combined-qualified-production.test.mjs",
+    "passed": 75,
+    "failed": 0
+  },
+  "audit": {
+    "independent_code_reviews": 2,
+    "p0": 0,
+    "p1": 0,
+    "result": "GO",
+    "cleanup_review": "P0_0_P1_STALE_CONTEXT_RECONCILED_IN_THIS_CHANGE",
+    "exact_clean_commit_reviews": "PENDING"
+  },
+  "effects": {
+    "credential_reads": 0,
+    "database_calls": 0,
+    "provider_calls": 0,
+    "remote_mutations": 0,
+    "runpod_job_posts": 0,
+    "gpu_jobs": 0,
+    "cloudflare_mutations": 0,
+    "r2_mutations": 0,
+    "chrome_e2e_runs": 0,
+    "stage_6_jobs": 0,
+    "stage_7_jobs": 0,
+    "external_spend_usd": 0
+  },
+  "next_gate": "Commit the provider-free repair and closure, recompute the exact clean source and media-worker bundle, run fresh exact-commit audits, then seal one fresh replacement proposal for exact approval."
+}
