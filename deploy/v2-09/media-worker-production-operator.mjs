@@ -30,6 +30,7 @@ export const V209_MEDIA_WORKER_SERVICE = "com.videoforge.personal-media-worker";
 export const V209_MEDIA_WORKER_CONFIRMATION_SCHEMA =
   "videoforge.v2-09-media-worker-user-confirmation/v1";
 export const V209_MEDIA_WORKER_MATERIALIZATION_MODE = "PREAUTHORIZED_STAGED_ONCE";
+export const V209_MEDIA_WORKER_EXISTING_RELEASE_MODE = "PREAUTHORIZED_EXACT_EXISTING_ONLY";
 export const V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA =
   "videoforge.v2-09-media-worker-materialization-receipt/v1";
 export const V209_MEDIA_WORKER_LOCAL_READINESS_SCHEMA =
@@ -152,6 +153,12 @@ function parseTime(value, code) {
 function assertAuthority(authority, sourceCommit, clock, { cleanup = false } = {}) {
   const staged =
     authority?.media_worker?.materialization_mode === V209_MEDIA_WORKER_MATERIALIZATION_MODE;
+  const adopting =
+    authority?.media_worker?.materialization_mode === V209_MEDIA_WORKER_EXISTING_RELEASE_MODE;
+  const hasMaterializationMode = Object.hasOwn(
+    authority?.media_worker ?? {},
+    "materialization_mode",
+  );
   if (
     authority === null ||
     typeof authority !== "object" ||
@@ -163,6 +170,7 @@ function assertAuthority(authority, sourceCommit, clock, { cleanup = false } = {
     (!staged && !HASH.test(authority.media_worker?.release_manifest_sha256 ?? "")) ||
     (!staged && !HASH.test(authority.media_worker?.installer_asset_sha256 ?? "")) ||
     (!staged && !HASH.test(authority.media_worker?.signing_identity_sha256 ?? "")) ||
+    (!staged && !adopting && hasMaterializationMode) ||
     (staged &&
       (!exactKeys(authority.media_worker, [
         "execution_bundle_sha256",
@@ -170,7 +178,27 @@ function assertAuthority(authority, sourceCommit, clock, { cleanup = false } = {
         "release",
         "whisper_model_sha256",
       ]) ||
-        authority.scope?.allow_media_worker_materialization_once !== true)) ||
+        authority.scope?.allow_media_worker_materialization_once !== true ||
+        authority.scope?.allow_media_worker_existing_release_adoption_once === true)) ||
+    (adopting &&
+      (!exactKeys(authority.media_worker, [
+        "execution_bundle_sha256",
+        "installer_asset_sha256",
+        "materialization_mode",
+        "release",
+        "release_manifest_sha256",
+        "release_source_commit",
+        "signing_identity_sha256",
+        "whisper_model_sha256",
+        "windows_installer_asset_sha256",
+      ]) ||
+        !COMMIT.test(authority.media_worker.release_source_commit ?? "") ||
+        authority.media_worker.release_source_commit === authority.source_commit ||
+        !HASH.test(authority.media_worker.windows_installer_asset_sha256 ?? "") ||
+        authority.media_worker.signing_identity_sha256 !==
+          V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256 ||
+        authority.scope?.allow_media_worker_existing_release_adoption_once !== true ||
+        authority.scope?.allow_media_worker_materialization_once === true)) ||
     authority.scope?.media_worker_release !== V209_MEDIA_WORKER_VERSION ||
     authority.scope?.allow_model_download !== false ||
     authority.scope?.allow_stage_6_or_7_qualification !== false ||
@@ -611,11 +639,15 @@ function releaseUrls(configuration) {
 
 function validateRelease(release, configuration, mediaWorker, { materializing = false } = {}) {
   const urls = releaseUrls(configuration);
+  const adopting = mediaWorker.materialization_mode === V209_MEDIA_WORKER_EXISTING_RELEASE_MODE;
+  const releaseSourceCommit = adopting
+    ? mediaWorker.release_source_commit
+    : configuration.sourceCommit;
   if (
     release === null ||
     typeof release !== "object" ||
     release.tag_name !== configuration.releaseTag ||
-    release.target_commitish !== configuration.sourceCommit ||
+    release.target_commitish !== releaseSourceCommit ||
     release.html_url !== urls.html ||
     release.draft !== false ||
     release.prerelease !== false ||
@@ -655,10 +687,12 @@ function validateRelease(release, configuration, mediaWorker, { materializing = 
   }
   const manifestAsset = assets.get("media-worker-release.json");
   const macosAsset = assets.get("VideoForge-Worker-0.1.15.dmg");
+  const windowsAsset = assets.get("VideoForge-Worker-0.1.15-Setup.exe");
   if (
     !materializing &&
     (manifestAsset.digest !== mediaWorker.release_manifest_sha256 ||
-      macosAsset.digest !== mediaWorker.installer_asset_sha256)
+      macosAsset.digest !== mediaWorker.installer_asset_sha256 ||
+      (adopting && windowsAsset.digest !== mediaWorker.windows_installer_asset_sha256))
   )
     fail("RELEASE_AUTHORITY_DRIFT");
   return Object.freeze({ assets, manifestAsset, macosAsset, urls });
@@ -666,11 +700,14 @@ function validateRelease(release, configuration, mediaWorker, { materializing = 
 
 async function inspectMaterializedRelease({ configuration, authority, fetchImpl, clock }) {
   const mediaWorker = assertAuthority(authority, configuration.sourceCommit, clock);
-  if (mediaWorker.materialization_mode !== V209_MEDIA_WORKER_MATERIALIZATION_MODE)
-    fail("MATERIALIZATION_MODE_INVALID");
+  const staged = mediaWorker.materialization_mode === V209_MEDIA_WORKER_MATERIALIZATION_MODE;
+  const adopting = mediaWorker.materialization_mode === V209_MEDIA_WORKER_EXISTING_RELEASE_MODE;
+  if (!staged && !adopting) fail("MATERIALIZATION_MODE_INVALID");
   const urls = releaseUrls(configuration);
   const release = await fetchBoundedJson(fetchImpl, urls.api, "RELEASE_READBACK");
-  const validated = validateRelease(release, configuration, mediaWorker, { materializing: true });
+  const validated = validateRelease(release, configuration, mediaWorker, {
+    materializing: staged,
+  });
   let manifestBytes;
   const verifiedDigests = new Map();
   for (const name of RELEASE_ASSET_NAMES) {
@@ -714,6 +751,7 @@ async function inspectMaterializedRelease({ configuration, authority, fetchImpl,
     source_commit: configuration.sourceCommit,
     repository: configuration.repository,
     workflow_path: configuration.workflowPath,
+    ...(adopting ? { release_source_commit: mediaWorker.release_source_commit } : {}),
     release_tag: configuration.releaseTag,
     release: V209_MEDIA_WORKER_VERSION,
     release_manifest_sha256: manifestSha256,
@@ -755,17 +793,27 @@ export function validateV209MediaWorkerMaterializationReceipt(
     "whisper_model_sha256",
     "windows_installer_asset_sha256",
     "workflow_path",
+    ...(mediaWorker.materialization_mode === V209_MEDIA_WORKER_EXISTING_RELEASE_MODE
+      ? ["release_source_commit"]
+      : []),
   ];
   if (!exactKeys(receipt, keys)) fail("MATERIALIZATION_RECEIPT_INVALID");
   const unsigned = { ...receipt };
   delete unsigned.materialization_receipt_sha256;
   if (
-    mediaWorker.materialization_mode !== V209_MEDIA_WORKER_MATERIALIZATION_MODE ||
+    ![V209_MEDIA_WORKER_MATERIALIZATION_MODE, V209_MEDIA_WORKER_EXISTING_RELEASE_MODE].includes(
+      mediaWorker.materialization_mode,
+    ) ||
     receipt.schema_version !== V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA ||
     receipt.authority_id !== authority.authority_id ||
     receipt.source_commit !== sourceCommit ||
     receipt.repository !== V209_MEDIA_WORKER_REPOSITORY ||
     receipt.workflow_path !== V209_MEDIA_WORKER_WORKFLOW ||
+    (mediaWorker.materialization_mode === V209_MEDIA_WORKER_EXISTING_RELEASE_MODE &&
+      (receipt.release_source_commit !== mediaWorker.release_source_commit ||
+        receipt.release_manifest_sha256 !== mediaWorker.release_manifest_sha256 ||
+        receipt.installer_asset_sha256 !== mediaWorker.installer_asset_sha256 ||
+        receipt.windows_installer_asset_sha256 !== mediaWorker.windows_installer_asset_sha256)) ||
     receipt.release_tag !== V209_MEDIA_WORKER_TAG ||
     receipt.release !== V209_MEDIA_WORKER_VERSION ||
     receipt.execution_bundle_sha256 !== mediaWorker.execution_bundle_sha256 ||
@@ -779,14 +827,22 @@ export function validateV209MediaWorkerMaterializationReceipt(
     sha256(canonical(unsigned)) !== receipt.materialization_receipt_sha256
   )
     fail("MATERIALIZATION_RECEIPT_INVALID");
-  return Object.freeze({
+  const resolved = {
     release: receipt.release,
     execution_bundle_sha256: receipt.execution_bundle_sha256,
     whisper_model_sha256: receipt.whisper_model_sha256,
     release_manifest_sha256: receipt.release_manifest_sha256,
     installer_asset_sha256: receipt.installer_asset_sha256,
     signing_identity_sha256: receipt.signing_identity_sha256,
-  });
+  };
+  if (mediaWorker.materialization_mode === V209_MEDIA_WORKER_EXISTING_RELEASE_MODE)
+    return Object.freeze({
+      ...resolved,
+      materialization_mode: V209_MEDIA_WORKER_EXISTING_RELEASE_MODE,
+      release_source_commit: receipt.release_source_commit,
+      windows_installer_asset_sha256: receipt.windows_installer_asset_sha256,
+    });
+  return Object.freeze(resolved);
 }
 
 async function fetchExactAsset(
@@ -934,10 +990,26 @@ async function publishMediaWorker(context, { configuration, runChild, fetchImpl,
   if (context.operationId !== "publish-media-worker-0.1.15") fail("OPERATION_ID_INVALID");
   const mediaWorker = assertAuthority(context.authority, configuration.sourceCommit, clock);
   const staged = mediaWorker.materialization_mode === V209_MEDIA_WORKER_MATERIALIZATION_MODE;
+  const adopting = mediaWorker.materialization_mode === V209_MEDIA_WORKER_EXISTING_RELEASE_MODE;
   const urls = releaseUrls(configuration);
   const status = await releaseStatus(fetchImpl, urls.api);
   if (status === 200) {
     if (staged) fail("MATERIALIZATION_REPLAY");
+    if (adopting) {
+      const exact = await inspectMaterializedRelease({
+        configuration,
+        authority: context.authority,
+        fetchImpl,
+        clock,
+      });
+      return Object.freeze({
+        schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
+        operation_id: context.operationId,
+        mode: "ADOPTED_EXACT_EXISTING",
+        publish_count: 0,
+        materialization_receipt: exact,
+      });
+    }
     const exact = await inspectRelease({
       configuration,
       authority: context.authority,
@@ -957,6 +1029,7 @@ async function publishMediaWorker(context, { configuration, runChild, fetchImpl,
       publish_count: 0,
     });
   }
+  if (adopting) fail(status === 404 ? "ADOPTION_RELEASE_MISSING" : "RELEASE_ABSENCE_UNCONFIRMED");
   if (status !== 404) fail("RELEASE_ABSENCE_UNCONFIRMED");
   const before = await workflowRuns(runChild, configuration, context.operation?.cancellationSignal);
   if (before.length !== 0) fail("WORKFLOW_SOURCE_ALREADY_DISPATCHED");

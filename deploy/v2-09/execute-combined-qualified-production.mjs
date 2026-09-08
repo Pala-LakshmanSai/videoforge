@@ -74,6 +74,8 @@ const COMPLETION_BASELINE_DERIVATION =
   "GENERIC_PROJECT_ATTEMPT_SETTLED_PLUS_MAX_OPEN_RESERVATION_OR_REPORTED_ONCE";
 const GLOBAL_COMPLETION_BASELINE_DERIVATION =
   "ALL_PROJECT_ATTEMPTS_SETTLED_PLUS_MAX_OPEN_RESERVATION_OR_REPORTED_ONCE";
+const MEDIA_WORKER_STAGED_MODE = "PREAUTHORIZED_STAGED_ONCE";
+const MEDIA_WORKER_EXISTING_RELEASE_MODE = "PREAUTHORIZED_EXACT_EXISTING_ONLY";
 
 function fail(code) {
   throw new Error(code);
@@ -311,17 +313,42 @@ export function validateCombinedAuthority(
     authority.offering.max_rate_usd_per_gpu_hour !== 1.116
   )
     fail("V2_09_COMBINED_OFFERING_INVALID");
+  const stagedMediaWorker =
+    authority.media_worker_inputs?.materialization_mode === MEDIA_WORKER_STAGED_MODE;
+  const existingMediaWorker =
+    authority.media_worker_inputs?.materialization_mode === MEDIA_WORKER_EXISTING_RELEASE_MODE;
   if (
-    !exactKeys(authority.media_worker_inputs, [
-      "execution_bundle_sha256",
-      "materialization_mode",
-      "release",
-      "whisper_model_sha256",
-    ]) ||
-    authority.media_worker_inputs.release !== "0.1.15" ||
-    authority.media_worker_inputs.materialization_mode !== "PREAUTHORIZED_STAGED_ONCE" ||
-    !HASH.test(authority.media_worker_inputs.execution_bundle_sha256 ?? "") ||
-    !HASH.test(authority.media_worker_inputs.whisper_model_sha256 ?? "")
+    authority.media_worker_inputs?.release !== "0.1.15" ||
+    !HASH.test(authority.media_worker_inputs?.execution_bundle_sha256 ?? "") ||
+    !HASH.test(authority.media_worker_inputs?.whisper_model_sha256 ?? "") ||
+    (stagedMediaWorker &&
+      !exactKeys(authority.media_worker_inputs, [
+        "execution_bundle_sha256",
+        "materialization_mode",
+        "release",
+        "whisper_model_sha256",
+      ])) ||
+    (existingMediaWorker &&
+      (!exactKeys(authority.media_worker_inputs, [
+        "execution_bundle_sha256",
+        "installer_asset_sha256",
+        "materialization_mode",
+        "release",
+        "release_manifest_sha256",
+        "release_source_commit",
+        "signing_identity_sha256",
+        "whisper_model_sha256",
+        "windows_installer_asset_sha256",
+      ]) ||
+        !COMMIT.test(authority.media_worker_inputs.release_source_commit ?? "") ||
+        authority.media_worker_inputs.release_source_commit === authority.source_commit ||
+        [
+          authority.media_worker_inputs.installer_asset_sha256,
+          authority.media_worker_inputs.release_manifest_sha256,
+          authority.media_worker_inputs.signing_identity_sha256,
+          authority.media_worker_inputs.windows_installer_asset_sha256,
+        ].some((value) => !HASH.test(value ?? "")))) ||
+    (!stagedMediaWorker && !existingMediaWorker)
   )
     fail("V2_09_COMBINED_MEDIA_INPUT_INVALID");
   const inputs = authority.production_inputs;
@@ -1762,7 +1789,11 @@ function stagingAuthority(outer, preflight, baseline, mediaWorker) {
       allow_region_fallback: false,
       allow_model_download: false,
       allow_retained_volume_mutation: false,
-      allow_media_worker_materialization_once: true,
+      ...(mediaWorker.materialization_mode === MEDIA_WORKER_STAGED_MODE
+        ? { allow_media_worker_materialization_once: true }
+        : mediaWorker.materialization_mode === MEDIA_WORKER_EXISTING_RELEASE_MODE
+          ? { allow_media_worker_existing_release_adoption_once: true }
+          : {}),
       media_worker_release: "0.1.15",
     },
   };
@@ -1812,7 +1843,7 @@ function createLiveMaterializer(
     const { V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256 } = await import(
       "./media-worker-production-operator.mjs"
     );
-    return {
+    const restored = {
       release: publication.release,
       execution_bundle_sha256: publication.execution_bundle_sha256,
       whisper_model_sha256: publication.whisper_model_sha256,
@@ -1820,6 +1851,26 @@ function createLiveMaterializer(
       installer_asset_sha256: publication.installer_asset_sha256,
       signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
     };
+    if (authority.media_worker_inputs.materialization_mode === MEDIA_WORKER_EXISTING_RELEASE_MODE) {
+      const approved = authority.media_worker_inputs;
+      if (
+        publication.mode !== "REUSED_EXACT_EXISTING" ||
+        publication.publish_count !== 0 ||
+        publication.immutable_release !== true ||
+        publication.release_source_commit !== approved.release_source_commit ||
+        publication.windows_installer_asset_sha256 !== approved.windows_installer_asset_sha256 ||
+        [
+          "release",
+          "execution_bundle_sha256",
+          "whisper_model_sha256",
+          "release_manifest_sha256",
+          "installer_asset_sha256",
+        ].some((key) => publication[key] !== approved[key])
+      )
+        fail("V2_09_COMBINED_MEDIA_ADOPTION_RESTORE_INVALID");
+      return { ...approved };
+    }
+    return restored;
   };
   const cleanupProtectedInputs = async (authority) => {
     const configuration = await loadConfiguration();
@@ -1980,7 +2031,10 @@ function createLiveMaterializer(
           ? { receiptBindingMode: "STAGED_OBSERVED" }
           : {}),
       });
-      if (operationId === "publish-media-worker-0.1.15" && result.mode === "MATERIALIZED_ONCE") {
+      if (
+        operationId === "publish-media-worker-0.1.15" &&
+        ["MATERIALIZED_ONCE", "ADOPTED_EXACT_EXISTING"].includes(result.mode)
+      ) {
         const { validateV209MediaWorkerMaterializationReceipt } = await import(
           "./media-worker-production-operator.mjs"
         );
@@ -1989,16 +2043,23 @@ function createLiveMaterializer(
           staged,
           authority.source_commit,
         );
+        const adopted = result.mode === "ADOPTED_EXACT_EXISTING";
         result = {
           schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
           operation_id: operationId,
-          mode: "PUBLISHED_ONCE",
-          publish_count: 1,
+          mode: adopted ? "REUSED_EXACT_EXISTING" : "PUBLISHED_ONCE",
+          publish_count: adopted ? 0 : 1,
           release: active.mediaWorker.release,
           execution_bundle_sha256: active.mediaWorker.execution_bundle_sha256,
           whisper_model_sha256: active.mediaWorker.whisper_model_sha256,
           release_manifest_sha256: active.mediaWorker.release_manifest_sha256,
           installer_asset_sha256: active.mediaWorker.installer_asset_sha256,
+          ...(adopted
+            ? {
+                release_source_commit: active.mediaWorker.release_source_commit,
+                windows_installer_asset_sha256: active.mediaWorker.windows_installer_asset_sha256,
+              }
+            : {}),
           immutable_release: true,
         };
         active.latestAuthority = stagingAuthority(
@@ -2068,7 +2129,12 @@ function createLiveMaterializer(
         media_release: makeReceipt({
           schema_version: MEDIA_RECEIPT_SCHEMA,
           preflight_proof_sha256: preflight.proofSha256,
-          ...active.mediaWorker,
+          release: active.mediaWorker.release,
+          execution_bundle_sha256: active.mediaWorker.execution_bundle_sha256,
+          installer_asset_sha256: active.mediaWorker.installer_asset_sha256,
+          release_manifest_sha256: active.mediaWorker.release_manifest_sha256,
+          signing_identity_sha256: active.mediaWorker.signing_identity_sha256,
+          whisper_model_sha256: active.mediaWorker.whisper_model_sha256,
         }),
         lanes,
         production: makeReceipt({
@@ -2161,20 +2227,7 @@ function createLiveMaterializer(
         const preflight = results["run-read-only-preflight"];
         if (!preflight) return;
         const active = await initialize(authority, preflight, results, true);
-        const publication = results["publish-media-worker-0.1.15"];
-        if (publication?.release_manifest_sha256) {
-          const { V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256 } = await import(
-            "./media-worker-production-operator.mjs"
-          );
-          active.mediaWorker = {
-            release: publication.release,
-            execution_bundle_sha256: publication.execution_bundle_sha256,
-            whisper_model_sha256: publication.whisper_model_sha256,
-            release_manifest_sha256: publication.release_manifest_sha256,
-            installer_asset_sha256: publication.installer_asset_sha256,
-            signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
-          };
-        }
+        active.mediaWorker = await restoreMediaWorker(authority, results);
         active.latestAuthority = stagingAuthority(
           authority,
           preflight,

@@ -26,6 +26,7 @@ import {
   resumeV209MediaWorkerUserConfirmationForTest,
   V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
   V209_MEDIA_WORKER_CONFIRMATION_SCHEMA,
+  V209_MEDIA_WORKER_EXISTING_RELEASE_MODE,
   V209_MEDIA_WORKER_LOCAL_READINESS_SCHEMA,
   V209_MEDIA_WORKER_MATERIALIZATION_MODE,
   V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA,
@@ -182,6 +183,34 @@ function stagedAuthority(overrides = {}) {
     scope: {
       media_worker_release: "0.1.15",
       allow_media_worker_materialization_once: true,
+      allow_model_download: false,
+      allow_stage_6_or_7_qualification: false,
+      cleanup_only_recovery: true,
+    },
+    ...overrides,
+  };
+}
+
+function adoptionAuthority(releaseFixture, overrides = {}) {
+  return {
+    authority_id: "v2-09-media-worker-adoption-test-authority",
+    source_commit: sourceCommit,
+    issued_at: "2026-09-06T11:00:00Z",
+    expires_at: "2026-09-06T13:00:00Z",
+    media_worker: {
+      release: "0.1.15",
+      materialization_mode: V209_MEDIA_WORKER_EXISTING_RELEASE_MODE,
+      release_source_commit: "b".repeat(40),
+      execution_bundle_sha256: executionBundleSha256,
+      whisper_model_sha256: whisperModelSha256,
+      release_manifest_sha256: releaseFixture.manifestSha256,
+      installer_asset_sha256: releaseFixture.macosDigest,
+      windows_installer_asset_sha256: releaseFixture.windowsDigest,
+      signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
+    },
+    scope: {
+      media_worker_release: "0.1.15",
+      allow_media_worker_existing_release_adoption_once: true,
       allow_model_download: false,
       allow_stage_6_or_7_qualification: false,
       cleanup_only_recovery: true,
@@ -889,6 +918,134 @@ test("staged materialization dispatches once and derives a deterministic closed-
     assert.equal(releaseReads, 2);
   } finally {
     box.remove();
+  }
+});
+
+test("exact-existing adoption fully verifies the source-split immutable release without dispatch", async () => {
+  const box = sandbox();
+  const releaseFixture = stagedFixture();
+  releaseFixture.release.target_commitish = "b".repeat(40);
+  const bytesByName = new Map([
+    ["VideoForge-Worker-0.1.15-Setup.exe", releaseFixture.windowsBytes],
+    ["VideoForge-Worker-0.1.15.dmg", releaseFixture.macosBytes],
+    ["media-worker-release.json", releaseFixture.manifestBytes],
+  ]);
+  let childCalls = 0;
+  let releaseReads = 0;
+  const fetchImpl = async (url) => {
+    if (url.includes("api.github.com/")) {
+      releaseReads += 1;
+      return new Response(JSON.stringify(releaseFixture.release), { status: 200 });
+    }
+    const name = url.split("/").at(-1);
+    if (!bytesByName.has(name)) throw new Error(`unexpected asset ${name}`);
+    return new Response(bytesByName.get(name), { status: 200 });
+  };
+  try {
+    const exactAuthority = adoptionAuthority(releaseFixture);
+    const ports = createV209MediaWorkerProductionPorts(box.configuration, {
+      hostHome: box.home,
+      hostPlatform: "darwin",
+      hostUid: 501,
+      runChild: async () => {
+        childCalls += 1;
+        throw new Error("adoption must not inspect or dispatch a workflow");
+      },
+      fetchImpl,
+      clock,
+    });
+    const result = await ports.publishMediaWorker.run({
+      operationId: "publish-media-worker-0.1.15",
+      authority: exactAuthority,
+    });
+    assert.equal(result.mode, "ADOPTED_EXACT_EXISTING");
+    assert.equal(result.publish_count, 0);
+    assert.equal(result.materialization_receipt.release_source_commit, "b".repeat(40));
+    assert.equal(childCalls, 0);
+    assert.equal(releaseReads, 2);
+    assert.deepEqual(
+      validateV209MediaWorkerMaterializationReceipt(
+        result.materialization_receipt,
+        exactAuthority,
+        sourceCommit,
+        clock,
+      ),
+      exactAuthority.media_worker,
+    );
+    const wrongAssetAuthority = adoptionAuthority(releaseFixture);
+    wrongAssetAuthority.media_worker.windows_installer_asset_sha256 = windowsSha256;
+    assert.throws(
+      () =>
+        validateV209MediaWorkerMaterializationReceipt(
+          result.materialization_receipt,
+          wrongAssetAuthority,
+          sourceCommit,
+          clock,
+        ),
+      /V2_09_MEDIA_WORKER_MATERIALIZATION_RECEIPT_INVALID/u,
+    );
+  } finally {
+    box.remove();
+  }
+});
+
+test("exact-existing adoption fails closed on absence, provenance, metadata, or bytes", async (t) => {
+  for (const scenario of ["missing", "provenance", "metadata", "bytes"]) {
+    await t.test(scenario, async () => {
+      const box = sandbox();
+      const releaseFixture = stagedFixture();
+      releaseFixture.release.target_commitish =
+        scenario === "provenance" ? "c".repeat(40) : "b".repeat(40);
+      const exactAuthority = adoptionAuthority(releaseFixture);
+      if (scenario === "metadata")
+        exactAuthority.media_worker.windows_installer_asset_sha256 = windowsSha256;
+      const bytesByName = new Map([
+        [
+          "VideoForge-Worker-0.1.15-Setup.exe",
+          scenario === "bytes" ? Buffer.from("tampered") : releaseFixture.windowsBytes,
+        ],
+        ["VideoForge-Worker-0.1.15.dmg", releaseFixture.macosBytes],
+        ["media-worker-release.json", releaseFixture.manifestBytes],
+      ]);
+      let childCalls = 0;
+      const fetchImpl = async (url) => {
+        if (url.includes("api.github.com/"))
+          return scenario === "missing"
+            ? new Response("missing", { status: 404 })
+            : new Response(JSON.stringify(releaseFixture.release), { status: 200 });
+        const name = url.split("/").at(-1);
+        return new Response(bytesByName.get(name), { status: 200 });
+      };
+      try {
+        const ports = createV209MediaWorkerProductionPorts(box.configuration, {
+          hostHome: box.home,
+          hostPlatform: "darwin",
+          hostUid: 501,
+          runChild: async () => {
+            childCalls += 1;
+            throw new Error("adoption must not inspect or dispatch a workflow");
+          },
+          fetchImpl,
+          clock,
+        });
+        await assert.rejects(
+          ports.publishMediaWorker.run({
+            operationId: "publish-media-worker-0.1.15",
+            authority: exactAuthority,
+          }),
+          scenario === "missing"
+            ? /V2_09_MEDIA_WORKER_ADOPTION_RELEASE_MISSING/u
+            : scenario === "provenance"
+              ? /V2_09_MEDIA_WORKER_RELEASE_METADATA_INVALID/u
+              : scenario === "metadata"
+                ? /V2_09_MEDIA_WORKER_RELEASE_AUTHORITY_DRIFT/u
+                : /V2_09_MEDIA_WORKER_ASSET_DOWNLOAD_IDENTITY_INVALID/u,
+        );
+        assert.equal(childCalls, 0);
+      } finally {
+        box.remove();
+      }
+    });
   }
 });
 

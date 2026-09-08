@@ -15,6 +15,7 @@ import {
   executeCombinedQualifiedProductionWithDependenciesForTest,
   createDurableOuterState,
   createLiveMaterializerForTest,
+  validateCombinedAuthority,
   validateV209PrivateOutputDirectories,
 } from "./execute-combined-qualified-production.mjs";
 import {
@@ -130,6 +131,41 @@ function authority() {
     operations: [...OPERATION_IDS],
   };
 }
+
+function exactExistingAuthority() {
+  const approved = authority();
+  approved.media_worker_inputs = {
+    release: "0.1.15",
+    materialization_mode: "PREAUTHORIZED_EXACT_EXISTING_ONLY",
+    release_source_commit: "b".repeat(40),
+    execution_bundle_sha256: hash("media-bundle"),
+    whisper_model_sha256: hash("whisper"),
+    release_manifest_sha256: hash("existing-manifest"),
+    installer_asset_sha256: hash("existing-dmg"),
+    windows_installer_asset_sha256: hash("existing-exe"),
+    signing_identity_sha256: hash("existing-signing-identity"),
+  };
+  return approved;
+}
+
+test("combined authority admits only a closed-world exact-existing media release source split", () => {
+  const approved = exactExistingAuthority();
+  assert.equal(validateCombinedAuthority(approved, { sourceCommit: SOURCE, now: NOW }), approved);
+  assert.notEqual(approved.source_commit, approved.media_worker_inputs.release_source_commit);
+  for (const mutate of [
+    (value) => delete value.media_worker_inputs.release_source_commit,
+    (value) => (value.media_worker_inputs.release_source_commit = SOURCE),
+    (value) => (value.media_worker_inputs.windows_installer_asset_sha256 = "invalid"),
+    (value) => (value.media_worker_inputs.unapproved = true),
+  ]) {
+    const invalid = structuredClone(approved);
+    mutate(invalid);
+    assert.throws(
+      () => validateCombinedAuthority(invalid, { sourceCommit: SOURCE, now: NOW }),
+      /V2_09_COMBINED_MEDIA_INPUT_INVALID/u,
+    );
+  }
+});
 
 function preflight(value = authority()) {
   const unsigned = {
@@ -1180,6 +1216,83 @@ test("a new process reconstructs receipt derivation after durable Chrome complet
   assert.equal(snapshots, 1);
   assert.equal(result.adapter.adapter_set_sha256, hash("resumed-adapter"));
   assert.equal(result.production.chrome_auth_state_sha256, hash("auth-state"));
+});
+
+test("a new process restores exact-existing adoption provenance and normalizes inner media facts", async () => {
+  const approved = exactExistingAuthority();
+  const proof = preflight(approved);
+  const configuration = { exact: "sealed-configuration" };
+  const prefixResults = Object.fromEntries(
+    COMBINED_PRECOMPLETED_OPERATION_IDS.map((operationId) => [
+      operationId,
+      { operation_id: operationId },
+    ]),
+  );
+  prefixResults["publish-media-worker-0.1.15"] = {
+    schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
+    operation_id: "publish-media-worker-0.1.15",
+    mode: "REUSED_EXACT_EXISTING",
+    publish_count: 0,
+    release: approved.media_worker_inputs.release,
+    execution_bundle_sha256: approved.media_worker_inputs.execution_bundle_sha256,
+    whisper_model_sha256: approved.media_worker_inputs.whisper_model_sha256,
+    release_manifest_sha256: approved.media_worker_inputs.release_manifest_sha256,
+    installer_asset_sha256: approved.media_worker_inputs.installer_asset_sha256,
+    release_source_commit: approved.media_worker_inputs.release_source_commit,
+    windows_installer_asset_sha256: approved.media_worker_inputs.windows_installer_asset_sha256,
+    immutable_release: true,
+  };
+  prefixResults["render-qualified-production-config"] = {
+    operation_id: "render-qualified-production-config",
+    config_sha256: hash("rendered-config"),
+    worker_bundle_sha256: hash("worker-bundle"),
+  };
+  prefixResults["materialize-v209-postdeploy-chrome-auth"] = {
+    auth_state_sha256: hash("auth-state"),
+    chrome_request_sha256: hash("chrome-request"),
+    generate_clicks: 0,
+    post_deploy_authentication: true,
+  };
+  prefixResults["read-postlogin-tenant-completion-baseline"] = tenantBaseline();
+  const materializer = createLiveMaterializerForTest({
+    testOnly: true,
+    options: { statePath: "/tmp/v209-existing-release-adoption" },
+    loadConfiguration: async () => configuration,
+    loadMaterializationPlan: async () => {
+      throw new Error("MATERIALIZATION_PLAN_MUST_NOT_REPLAY");
+    },
+    createResumedAdapters: (_receivedConfiguration, rehydration) => {
+      assert.deepEqual(rehydration.authority.media_worker, approved.media_worker_inputs);
+      assert.equal(
+        rehydration.authority.scope.allow_media_worker_existing_release_adoption_once,
+        true,
+      );
+      assert.equal("allow_media_worker_materialization_once" in rehydration.authority.scope, false);
+      return { identity_sha256: hash("resumed-adapter") };
+    },
+  });
+
+  const result = await materializer.receipts({
+    authority: approved,
+    preflight: proof,
+    baseline: durableBaseline("2026-09-07T10:01:00.000Z"),
+    prefixResults,
+    configuration,
+  });
+  assert.deepEqual(Object.keys(result.media_release).sort(), [
+    "execution_bundle_sha256",
+    "installer_asset_sha256",
+    "preflight_proof_sha256",
+    "receipt_sha256",
+    "release",
+    "release_manifest_sha256",
+    "schema_version",
+    "signing_identity_sha256",
+    "whisper_model_sha256",
+  ]);
+  assert.equal("materialization_mode" in result.media_release, false);
+  assert.equal("release_source_commit" in result.media_release, false);
+  assert.equal("windows_installer_asset_sha256" in result.media_release, false);
 });
 
 test("postdeploy Chrome bootstrap receives only the exact outer authority expiry", async () => {
