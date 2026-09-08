@@ -1,0 +1,39 @@
+{
+  "schema_version": "videoforge.v2-09-oauth-client-rejection/v1",
+  "checkpoint": "9.7.8",
+  "overall_checkpoint": "9.7 ACTIVE22/26",
+  "deployed_source": "2419fe1621bb7441e9bf5fc4ec071f7458b074f5",
+  "authority": "v2-09-56efc70a354acd7e",
+  "diagnosis": "Google token exchange rejected configured client with invalid_client/UNAUTHORIZED; BetterAuth mapped to invalid_code before user/database session creation.",
+  "diagnostic_sha256": "sha256:860a2b27d914812fe32abcbf317e440fb1c9e9cdb2fb512c8beb2a1ec613b923",
+  "diagnostic": {
+    "authority_id": "v2-09-56efc70a354acd7e",
+    "events": [
+      {
+        "error_tokens": [
+          "invalid_client",
+          "UNAUTHORIZED"
+        ],
+        "http_status": 302,
+        "pathname": "/api/auth/callback/google",
+        "timestamp": 1788862789152
+      },
+      {
+        "error_tokens": [
+          "invalid_code"
+        ],
+        "http_status": 200,
+        "pathname": "/api/auth/error",
+        "timestamp": 1788862790199
+      }
+    ],
+    "headers_cookies_tokens_or_query_retained": false,
+    "raw_events_discarded": true,
+    "schema_version": "videoforge.v2-09-sanitized-oauth-callback-diagnostic/v1",
+    "tail_bound_seconds": 120,
+    "tail_completed": true
+  },
+  "chrome_e2e_started": false,
+  "deployment_preserved": true,
+  "next": "Verify established credential pair provenance; bounded exact correction and lineage before authentication resume."
+}

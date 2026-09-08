@@ -14,10 +14,17 @@ readback, exact0.1.15 ONLINE and activation import effectiveQUALIFIED_EXACT pass
 Proof: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/deployment-complete-chrome-auth-pending.json` (`sha256:95180905eec72eb53c11c128199f2fd9701962bdb5736c73315e1e4e71566bf6`).
 Outer is AWAITING_INTERACTIVE_CHROME_LOGIN, op23STARTED, process exited0. SPA sign-in stays on
 /projects/new; URL-only wait completed before authentication and the401 pause closed Chrome.
-Auth-only helper1f32c5dd passes7 focused checks and independentGO. It is running for manualGoogle
-sign-in, writing only the exact existing claim-bound stage. The unchanged sealed executor then
-resumes without replaying deployment.9.8 has not started; continuing caps/frozen boundaries apply.
-Auth-only seal: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/auth-only-claim-bound-continuation.json` (`sha256:89793e79305d1cd1b2271a7a3619a54a4134ff15c5c89347fb108c79be5d5a39`).
+Overall **9.7 remains ACTIVE22/26**;9.7.8 is its authentication subtask, not checkpoint9.8.
+Auth-only helper1f32c5dd passed7tests/independentGO, then its bounded wait ended pending.
+NormalChrome production Google callback failed: sanitized live tail proves invalid_client/UNAUTHORIZED.
+Read-only GoogleConsole confirms stored secret matches neither enabled nor disabled secret suffix;
+existingsecret viewing/download unavailable. One replacement was created and saved privately after
+removing the already-disabled slot (Google maximum two secrets); prior enabled secret preserved.
+56ef is now CLEANUP_ONLY before fresh credential/source/version activation; no authority replay.
+User delegated the account choice after demo9 had no device; use lakshmansai121@gmail.com with its existing paired worker for the single E2E.
+Evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/google-secret-mismatch-readonly.json` (`sha256:55fd41275ee389f866e098f3c4c1b81435057c01317c8dd69432e3b5face7dbc`).
+Do notresume56ef after silentlychangingsecret/version: use fresh audited source/input/version/activation
+lineage authority or exact cleanup/freshactivation. Stage6/7frozen;9.8/9.9notstarted.
 
 **Historical e03 closure — e03 closed FAILED_CLEAN at20/26:** bulk secrets, qualified deployment and
 readback passed. Installation timed out waiting for0.1.15 ONLINE; rollback restored0.1.14.

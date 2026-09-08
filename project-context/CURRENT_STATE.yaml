@@ -19,7 +19,7 @@ maximum_external_spend_usd: 2
 
 current_goal_boundary:
   mode: v2_09_deployed_chrome_auth_handoff_active
-  live_provider_calls: "56ef reached22/26; deployment active, Chrome authentication resumable without deployment replay"
+  live_provider_calls: "56ef reached22/26; now CLEANUP_ONLY for fresh credential-bound activation; no deployment replay"
   remote_mutation: true
   deployment_or_publication: "Exact2419fe16 deployed and imported; worker0.1.15 ONLINE; auth-only handoff active"
   credential_value_access: "Exact protectedsnapshots undercontinuingauthorization"
@@ -51,10 +51,14 @@ v2_09_checkpoint_9_7_subcheckpoints:
   "9.7.5": "DONE — clean536e7a40;15tests, actual prerequisite proof, two exact audits GO"
   "9.7.6": "DONE \u2014 exact cfe842 proposal approved"
   "9.7.7": "DONE —56ef22/26;0.1.15 ONLINE and activationimport effectiveQUALIFIED_EXACT"
-  "9.7.8": "ACTIVE — auth-only helper1f32c5dd running;7checks+independentGO; manualGooglelogin pending"
+  "9.7.8": "ACTIVE — overall9.7 reached22/26; replacement Google secret captured; exact56ef cleanup active before fresh activation; user delegated account choice; use existing lakshmansai121 paired worker"
   next_main_subcheckpoints: "9.8 single Chrome E2E and 9.9 cleanup/readiness pending"
 
 v2_09_provider_free_candidate:
+  google_secret_mismatch_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/google-secret-mismatch-readonly.json"
+  google_secret_mismatch_evidence_sha256: "sha256:55fd41275ee389f866e098f3c4c1b81435057c01317c8dd69432e3b5face7dbc"
+  oauth_client_diagnostic_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/oauth-client-rejection-diagnostic.json"
+  oauth_client_diagnostic_evidence_sha256: "sha256:1887045d822f00442acb6529852e5549ac498eaab97a32056f8cb56ab57ade44"
   auth_only_continuation_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/auth-only-claim-bound-continuation.json"
   auth_only_continuation_evidence_sha256: "sha256:89793e79305d1cd1b2271a7a3619a54a4134ff15c5c89347fb108c79be5d5a39"
   deployment_complete_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/deployment-complete-chrome-auth-pending.json"
