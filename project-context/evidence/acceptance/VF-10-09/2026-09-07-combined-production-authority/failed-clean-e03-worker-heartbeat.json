@@ -1,0 +1,105 @@
+{
+  "schema_version": "videoforge.v2-09-failed-clean-worker-heartbeat/v1",
+  "checkpoint": "V2-09",
+  "subcheckpoint": "9.7",
+  "authority_id": "v2-09-e03dcbb3753fb535",
+  "source_commit": "5097da4208847cc6ad4049b6b89168533b1844d1",
+  "proposal_sha256": "sha256:e03dcbb3753fb535178306d54c94ba0b73ce361eb6c833f88ac7e4856dc1d8c1",
+  "status": "FAILED_CLEAN",
+  "completed_outer_operations": 20,
+  "total_outer_operations": 26,
+  "failure": {
+    "cleanup_code": null,
+    "operation_code": "V2_09_MEDIA_WORKER_HEARTBEAT_TIMEOUT",
+    "operation_id": "install-media-worker-0.1.15"
+  },
+  "provider_results": {
+    "qualified_deployment": "COMPLETED",
+    "qualified_preimport_readback": "COMPLETED",
+    "secret_bulk_requests": 1,
+    "secret_keys_written": 22,
+    "media_worker_installation": "HEARTBEAT_TIMEOUT",
+    "restored_worker": {
+      "checked_at": "2026-09-08T09:24:43.640Z",
+      "mode": "READ_ONLY_EXACT_OWNED_INSTALLATION",
+      "row": {
+        "worker_version": "0.1.14",
+        "protocol_version": 1,
+        "execution_bundle_sha256": "sha256:61ff767630bfc848e524cc3347626c169de05678a51829bc86b8a0cc3098f0be",
+        "status": "ONLINE",
+        "last_seen_at": "2026-09-08T09:24:39.4259+00:00",
+        "platform": "MACOS",
+        "architecture": "AARCH64"
+      }
+    },
+    "activation_import": "NOT_REACHED",
+    "chrome_e2e": "NOT_REACHED",
+    "generation_requests": 0,
+    "stage_6_jobs": 0,
+    "stage_7_jobs": 0
+  },
+  "cleanup": {
+    "cloudflare_state": "SAFE_DISABLED_CLEAN",
+    "cloudflare_retained_version": "8c424393-7328-407c-833a-1688c4433356",
+    "cloudflare_secret_count": 0,
+    "secret_deletes_committed": 22,
+    "deployment_rows": {
+      "matched_count": 2,
+      "inactive_count": 2
+    },
+    "protected_outputs": {
+      "schema_version": "v209-final-local-cleanup-proof/v1",
+      "authority_id": "v2-09-e03dcbb3753fb535",
+      "owned_protected_file_count": 26,
+      "owned_protected_files_absent": true,
+      "role_status": "CLEANED",
+      "role_count": 3,
+      "cloudflare_state": "SAFE_DISABLED_CLEAN",
+      "introduced_secret_count": 0,
+      "cloudflare_journal_sha256": "sha256:0f29e344dd31aec0eef08d61cba9dd580a86ed7a19cc4379442066c4e546568b"
+    },
+    "runpod_read_count": 3,
+    "runpod_final_inventory": {
+      "activeWorkers": 0,
+      "endpoints": 0,
+      "pods": 0,
+      "privateTemplates": 0,
+      "retainedVolumes": [
+        {
+          "lane": "mage_image",
+          "volumeIdSha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+          "volumeManifestSha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+          "sizeGb": 50,
+          "region": "EU-RO-1"
+        },
+        {
+          "lane": "soulx_avatar",
+          "volumeIdSha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+          "volumeManifestSha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+          "sizeGb": 50,
+          "region": "EU-RO-1"
+        }
+      ]
+    },
+    "posted_billing_usd": 3.5284023286949378,
+    "delayed_billing": "RECHECK_UNDER_NEXT_ADMISSION_CAP",
+    "consumed_authority_replay": "FORBIDDEN"
+  },
+  "evidence_sha256": {
+    "authority.json": "sha256:4e8d6267e4cb6b9b7bb16ce325d19498e6d93d96cae135a45690d3932c03768d",
+    "materialization-plan.json": "sha256:78129b846f5193caa66f60bdc557ed5595572f84fe4a89dee6d1c29061bf1280",
+    "combined-outer-state.json": "sha256:86962daaaa4ae14eca07e9e2d91e7257c86990a52e2d2cad30410bde85d92851",
+    "cloudflare-journal.json": "sha256:0f29e344dd31aec0eef08d61cba9dd580a86ed7a19cc4379442066c4e546568b",
+    "final-readonly-reconciliation.json": "sha256:3a3d8fd0906e46640996ade2d1b545b617b8f58d040a58060a32a0a492c4ecee",
+    "database-cleanup-proof.json": "sha256:66668d16b28a93d11c00f5789072a60c58b1521c861839243632f291b5cc1543",
+    "local-cleanup-proof.json": "sha256:0a4621c386f35283c7f57a591b9383f7c34e6a6680fd4413f17347b8454a0b26",
+    "heartbeat-diagnostic.json": "sha256:d6f41e161bf55eb7f273fe07dfd42639fc864e5aebf90ccdd01de4c76f9478f6"
+  },
+  "next_retained_baseline_sha256": "sha256:11a6bbe47945ecb51e20d60c5885418c2dbfebab71730247e0e1509b5002c057",
+  "remaining_gates": [
+    "repair and independently audit exact media-worker installation heartbeat",
+    "fresh single-use execution within standing authorization and caps",
+    "single authorized Chrome E2E",
+    "cleanup and manual Chrome readiness"
+  ]
+}

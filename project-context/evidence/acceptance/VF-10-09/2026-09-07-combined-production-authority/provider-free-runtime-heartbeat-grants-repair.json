@@ -1,0 +1,83 @@
+{
+  "schema_version": "videoforge.v2-09-runtime-heartbeat-repair/v1",
+  "checkpoint": "9.7.7",
+  "parent_source": "63378385e207b7f90664428db37498d2ca504a8d",
+  "prior_attempt": "v2-09-e03dcbb3753fb535",
+  "prior_status": "FAILED_CLEAN",
+  "completed_operations": 20,
+  "causes": [
+    "Fresh per-authority LOGIN NOINHERIT runtime role received function permissions but no required table permissions; actual PUBLIC table ACL is empty; local PostgreSQL reproduced heartbeat permission denial SQLSTATE42501.",
+    "Heartbeat tenant GUC and UPDATE were separate autocommit queries; transaction pooling does not guarantee session identity across them."
+  ],
+  "repair": [
+    "Explicit established 46-table/93-privilege matrix with effective closed-world ACL verification in the existing V2-09 grant transaction. Tenant FORCE RLS and closed function list preserved.",
+    "Heartbeat tenant identity and device update execute within one leased transaction with transaction-local GUC."
+  ],
+  "validation": {
+    "postgres_acl_rls_tests": 1,
+    "runtime_operator_reconciler_checks": 9,
+    "heartbeat_transaction_tests": 2,
+    "scope": "Focused PostgreSQL ACL/RLS integration uses stubs for unrelated functions; heartbeat test uses real executor with pool affinity mock; not full migration or live E2E proof."
+  },
+  "diagnostics": [
+    {
+      "path": "/tmp/v209-runtime-acl-proof.json",
+      "sha256": "sha256:054daddf976f5648aa9132f42f037769ec45031352fc1b50010882638e75977e",
+      "proof": {
+        "exact_runtime_grants_script": true,
+        "synthetic_function_stubs": true,
+        "cached_postgres17_network_none": true,
+        "runtime_execute_select_update": "t|f|f",
+        "update_exit": 3,
+        "sqlstate_42501": true,
+        "permission_denied_media_worker_devices": true,
+        "provider_calls": 0
+      }
+    },
+    {
+      "path": "/tmp/v209-015-embedded-config-proof.json",
+      "sha256": "sha256:2a41ed501340ca53a5b5fbc5233dcf85e69f0bbc34a7380f9012590d59570d25",
+      "proof": {
+        "installer_sha256": "d12025df97c44eee6356da9aab11f904a37fbe4c72b691fccc62d4dd91ae37db",
+        "app_version": "0.1.15",
+        "executable_sha256": "2a1e4667a5e92de640b00595e57a3f262f9b7727a801d8cf857b4d287ee2941c",
+        "embedded_config_sha256": "0bf036ba63e9d5cf20fa803c7e5d362b303333a20c58c977564fffa99f97c869",
+        "control_plane_origin": "https://videoforge-production-runtime.lakshmansai121.workers.dev",
+        "execution_bundle_sha256": "sha256:a1bda39b57e4b0ccad936bd7a044805583d7683287f2ea0861657e90c3a194b6",
+        "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+        "method": "read-only mounted exactDMG; static PyInstaller CArchive decompression; app never executed"
+      }
+    },
+    {
+      "path": "/Users/lakshmansai/.videoforge/v2-09/v2-09-e03dcbb3753fb535/runtime-public-acl-diagnostic.json",
+      "sha256": "sha256:f0a997a8e6e46509ccc122ebefa1a4df642bd2875e1b1363a5d42c5aa84720ac",
+      "proof": {
+        "checked_at": "2026-09-08T09:36:12.197Z",
+        "mode": "READ_ONLY_EXACT_TABLE_METADATA",
+        "table": "media_worker_devices",
+        "public_table_privilege_count": 0,
+        "rls_enabled": true,
+        "rls_forced": true
+      }
+    }
+  ],
+  "stage6_stage7": "FROZEN_UNCHANGED_NOT_RERUN",
+  "provider_jobs": 0,
+  "chrome_e2e_started": false,
+  "independent_audits": [
+    {
+      "agent": "authority_audit",
+      "scope": "Exact table privilege matrix and closed capability boundary",
+      "result": "GO",
+      "p0": 0,
+      "p1": 0
+    },
+    {
+      "agent": "live_monitor",
+      "scope": "Heartbeat transaction affinity and focused regression",
+      "result": "GO",
+      "p0": 0,
+      "p1": 0
+    }
+  ]
+}

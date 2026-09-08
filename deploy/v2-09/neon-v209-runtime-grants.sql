@@ -1,6 +1,5 @@
--- Rebuild the hosted login's function capabilities at the V2-09 boundary only. The established
--- table grants from the deployed V2-06/V2-08 application remain unchanged; no V2-10+ function is
--- executable after this transaction.
+-- Rebuild the fresh hosted login's exact V2-09 table and function capabilities.
+-- Established tenant RLS remains enforced; no V2-10+ capability is granted.
 
 \set ON_ERROR_STOP on
 \if :{?runtime_role}
@@ -27,6 +26,109 @@ GRANT USAGE ON SCHEMA public TO :"runtime_role";
 REVOKE CREATE ON SCHEMA public FROM :"runtime_role";
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM :"runtime_role";
+
+-- Fresh per-authority LOGIN NOINHERIT roles have no inherited V2-06 table ACLs.
+-- Recreate only the established hosted table matrix; RLS and tenant triggers still apply.
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"runtime_role";
+CREATE TEMP TABLE v209_runtime_table_allowlist(table_name text, privilege text,
+  PRIMARY KEY(table_name,privilege)) ON COMMIT DROP;
+INSERT INTO v209_runtime_table_allowlist(table_name,privilege) VALUES
+  ('artifact_receipts','INSERT'),
+  ('artifact_receipts','SELECT'),
+  ('artifact_reservations','INSERT'),
+  ('artifact_reservations','SELECT'),
+  ('artifact_reservations','UPDATE'),
+  ('assets','INSERT'),
+  ('assets','SELECT'),
+  ('assets','UPDATE'),
+  ('avatar_profile_assets','INSERT'),
+  ('avatar_profile_assets','SELECT'),
+  ('avatar_profile_versions','INSERT'),
+  ('avatar_profile_versions','SELECT'),
+  ('avatar_profile_versions','UPDATE'),
+  ('avatar_profiles','INSERT'),
+  ('avatar_profiles','SELECT'),
+  ('avatar_profiles','UPDATE'),
+  ('cost_events','SELECT'),
+  ('generation_requests','SELECT'),
+  ('generation_tasks','SELECT'),
+  ('hosted_auth_accounts','DELETE'),
+  ('hosted_auth_accounts','INSERT'),
+  ('hosted_auth_accounts','SELECT'),
+  ('hosted_auth_accounts','UPDATE'),
+  ('hosted_auth_sessions','DELETE'),
+  ('hosted_auth_sessions','INSERT'),
+  ('hosted_auth_sessions','SELECT'),
+  ('hosted_auth_sessions','UPDATE'),
+  ('hosted_auth_users','DELETE'),
+  ('hosted_auth_users','INSERT'),
+  ('hosted_auth_users','SELECT'),
+  ('hosted_auth_users','UPDATE'),
+  ('hosted_auth_verifications','DELETE'),
+  ('hosted_auth_verifications','INSERT'),
+  ('hosted_auth_verifications','SELECT'),
+  ('hosted_auth_verifications','UPDATE'),
+  ('hosted_cpu_job_attempts','INSERT'),
+  ('hosted_cpu_job_attempts','SELECT'),
+  ('hosted_cpu_job_attempts','UPDATE'),
+  ('hosted_cpu_job_events','INSERT'),
+  ('hosted_cpu_job_events','SELECT'),
+  ('hosted_cpu_upload_authorities','INSERT'),
+  ('hosted_cpu_upload_authorities','SELECT'),
+  ('hosted_cpu_upload_authorities','UPDATE'),
+  ('hosted_pair_zero_worker_observations','SELECT'),
+  ('hosted_project_create_requests','INSERT'),
+  ('hosted_project_create_requests','SELECT'),
+  ('hosted_project_create_requests','UPDATE'),
+  ('hosted_project_reviews','INSERT'),
+  ('hosted_project_reviews','SELECT'),
+  ('hosted_prompt_batch_progress','SELECT'),
+  ('hosted_prompt_runs','SELECT'),
+  ('hosted_prompt_scene_progress','SELECT'),
+  ('hosted_render_plans','SELECT'),
+  ('hosted_voiceover_contexts','SELECT'),
+  ('image_style_references','INSERT'),
+  ('image_style_references','SELECT'),
+  ('image_style_versions','INSERT'),
+  ('image_style_versions','SELECT'),
+  ('image_style_versions','UPDATE'),
+  ('image_styles','INSERT'),
+  ('image_styles','SELECT'),
+  ('image_styles','UPDATE'),
+  ('media_worker_devices','INSERT'),
+  ('media_worker_devices','SELECT'),
+  ('media_worker_devices','UPDATE'),
+  ('media_worker_enrollments','INSERT'),
+  ('media_worker_enrollments','SELECT'),
+  ('media_worker_enrollments','UPDATE'),
+  ('media_worker_events','INSERT'),
+  ('media_worker_events','SELECT'),
+  ('media_worker_input_objects','INSERT'),
+  ('media_worker_input_objects','SELECT'),
+  ('media_worker_leases','INSERT'),
+  ('media_worker_leases','SELECT'),
+  ('media_worker_leases','UPDATE'),
+  ('project_revisions','INSERT'),
+  ('project_revisions','SELECT'),
+  ('project_revisions','UPDATE'),
+  ('projects','INSERT'),
+  ('projects','SELECT'),
+  ('projects','UPDATE'),
+  ('prompt_executions','SELECT'),
+  ('prompt_scene_results','SELECT'),
+  ('revision_timing_heads','SELECT'),
+  ('serverless_attempts','SELECT'),
+  ('serverless_cost_ledgers','SELECT'),
+  ('serverless_output_receipts','SELECT'),
+  ('serverless_progress_events','SELECT'),
+  ('timeline_plans','SELECT'),
+  ('timeline_segments','SELECT'),
+  ('video_runtime_lane_states','SELECT'),
+  ('video_runtime_states','SELECT'),
+  ('workspaces','SELECT');
+SELECT format('GRANT %s ON TABLE public.%I TO %I;',privilege,table_name,:'runtime_role')
+FROM v209_runtime_table_allowlist ORDER BY table_name,privilege
+\gexec
 
 CREATE TEMP TABLE v209_runtime_function_allowlist(signature text PRIMARY KEY) ON COMMIT DROP;
 INSERT INTO v209_runtime_function_allowlist(signature) VALUES
@@ -84,7 +186,18 @@ FROM v209_runtime_function_allowlist ORDER BY signature
 \gexec
 
 SELECT (
-  has_schema_privilege(:'runtime_role','public','USAGE')
+  NOT EXISTS (
+    SELECT 1 FROM pg_class relation
+    JOIN pg_namespace namespace ON namespace.oid=relation.relnamespace
+    CROSS JOIN (VALUES ('SELECT'),('INSERT'),('UPDATE'),('DELETE'),('TRUNCATE'),('REFERENCES'),('TRIGGER')) AS capability(privilege)
+    WHERE namespace.nspname='public' AND relation.relkind IN ('r','p','v','m','f')
+      AND has_table_privilege(:'runtime_role',relation.oid,capability.privilege)
+          <> EXISTS (SELECT 1 FROM v209_runtime_table_allowlist allowed
+            WHERE allowed.table_name=relation.relname AND allowed.privilege=capability.privilege)
+  )
+  AND NOT EXISTS (SELECT 1 FROM v209_runtime_table_allowlist allowed
+    WHERE NOT has_table_privilege(:'runtime_role',('public.'||quote_ident(allowed.table_name))::regclass,allowed.privilege))
+  AND has_schema_privilege(:'runtime_role','public','USAGE')
   AND NOT has_schema_privilege(:'runtime_role','public','CREATE')
   AND NOT EXISTS (
     SELECT 1 FROM pg_proc procedure

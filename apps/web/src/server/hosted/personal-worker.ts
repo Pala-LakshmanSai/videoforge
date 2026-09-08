@@ -692,26 +692,28 @@ async function heartbeat(request: Request, config: HostedRuntimeConfiguration) {
       row.execution_bundle_sha256 !== config.mediaWorkerRelease.executionBundleSha256
         ? "UPDATE_REQUIRED"
         : "ONLINE";
-    await pool.query("SELECT set_config($1, $2, false)", [
-      "videoforge.account_id",
-      scope.accountId,
-    ]);
-    const updated = await pool.query(
-      `UPDATE media_worker_devices
+    const updated = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.accountId,
+      ]);
+      return transaction.query(
+        `UPDATE media_worker_devices
           SET worker_version = $2, protocol_version = $3, execution_bundle_sha256 = $4, status = $5,
               last_seen_at = now(), updated_at = now()
         WHERE id = $1 AND platform = $6 AND architecture = $7 AND status <> 'REVOKED'
       RETURNING id`,
-      [
-        scope.deviceId,
-        row.worker_version,
-        row.protocol_version,
-        row.execution_bundle_sha256,
-        status,
-        row.platform,
-        row.architecture,
-      ],
-    );
+        [
+          scope.deviceId,
+          row.worker_version,
+          row.protocol_version,
+          row.execution_bundle_sha256,
+          status,
+          row.platform,
+          row.architecture,
+        ],
+      );
+    });
     if (!updated.rows[0]) return json({ error: { code: "MEDIA_WORKER_IDENTITY_MISMATCH" } }, 409);
     return json({
       schema_version: "videoforge-media-worker-heartbeat-accepted/v1",

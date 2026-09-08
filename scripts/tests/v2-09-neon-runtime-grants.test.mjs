@@ -26,7 +26,22 @@ test("V2-09 runtime grants rebuild a closed pre-V2-10 function allowlist", () =>
   ])
     assert.match(source, new RegExp(required, "u"));
   assert.doesNotMatch(source, /videoforge_[A-Za-z0-9_]*v21[0-3]/u);
-  assert.doesNotMatch(source, /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE)\s+ON/u);
+  // The hosted runtime needs tenant table access, but never blanket table/sequence powers.
+  assert.doesNotMatch(source, /GRANT\s+ALL(?:\s+PRIVILEGES)?\s+ON/iu);
+  assert.doesNotMatch(source, /GRANT[^;]*ON\s+ALL\s+(?:TABLES|SEQUENCES)/iu);
+  assert.doesNotMatch(source, /GRANT[^;]*(?:BYPASSRLS|TRUNCATE|REFERENCES|TRIGGER)/iu);
+  assert.match(source, /NOT rolbypassrls/u);
+  assert.match(source, /REVOKE ALL ON ALL TABLES IN SCHEMA public FROM/u);
+  for (const [table, privilege] of [
+    ["media_worker_devices", "SELECT"],
+    ["media_worker_devices", "UPDATE"],
+    ["hosted_auth_sessions", "INSERT"],
+    ["projects", "INSERT"],
+    ["hosted_render_plans", "SELECT"],
+  ])
+    assert.ok(source.includes(`('${table}','${privilege}')`));
+  assert.ok(!source.includes("('hosted_render_plans','UPDATE')"));
+  assert.ok(!source.includes("('media_worker_devices','DELETE')"));
 });
 
 test("V2-09 runtime grant failure paths exit nonzero", () => {

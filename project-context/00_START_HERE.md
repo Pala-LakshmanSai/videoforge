@@ -9,18 +9,23 @@ bounded repairs, reseals, fresh source-bound authorities and deployment through9
 Chrome E2E, and9.9 cleanup/readiness. Existing numeric caps, frozen Stage6/7 and no consumed-authority
 replay remain mandatory. This instruction overrides older repeated-approval requirements below.
 
-**9.7.7 ACTIVE — e03 launched:** source5097da42,2GO; preclaim2259652608bytes free,
-runtime4.120,release200remaining59. Authority: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-runtime-payload-hash.json` (`sha256:d47d57440fcfb160d26630259eb78e6abfebafdcd58e154ae504e1ec71a4c115`).
-USD2cap/USD17.5ceiling; continuingiteration authorized;9.7.8/9.8pending.
+**9.7.7 ACTIVE — e03 closed FAILED_CLEAN at20/26:** bulk secrets, qualified deployment and
+readback passed. Installation timed out waiting for0.1.15 ONLINE; rollback restored0.1.14.
+Cleanup proves zero secrets/compute, inactive bindings and removed protected roles/outputs.
+Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-e03-worker-heartbeat.json` (`sha256:f57ecce4561e78401d213945413a5b1cfb5d7eb99d1da5125873a3ed95d2eb77`).
+Diagnosis reproduces missing table permissions on a fresh runtime role in local PostgreSQL.
+Exact0.1.15 artifact has the correct production origin. Explicit baseline table grants and a pinned
+heartbeat tenant transaction pass12 focused checks and independent audits. Fresh source seal and
+deployment follow under continuing authorization.9.7.8/9.8/9.9 remain pending.
+Repair: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-runtime-heartbeat-grants-repair.json` (`sha256:71f61a20fc316e91d27968247a603a34a429d613c289a08451e758cd86e14ef6`).
 
-**9.7.7 remains ACTIVE:**d640 FAILED_CLEAN18/26; bulk secrets passed live, qualified preparation
+**Historical d640 closure and payload repair:**d640 FAILED_CLEAN18/26; bulk secrets passed live, qualified preparation
 stopped before mutation intent. Cleanup proved protectedoutputs/rolesclean,secret0,DB2inactive,RP3zero.
 Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-bulk-secret-qualified-payload-preparation.json` (`sha256:dc79bd1aa4901ad2d5e5a2b97b8b8031fe66c88861649919413da9b5f9c98856`). Source `5097da4208847cc6ad4049b6b89168533b1844d1`
 fixes generated README timestamp hashing and mismatched asset layout, retaining all runtime payload
 identity.31integration+5helper tests and independent audit pass; actual repeated CLI hashes match
 and payload tampering changes the hash. Repair: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-wrangler-runtime-payload-hash-repair.json` (`sha256:2cf06d41fc765b941f81d30397759df86cb61b34c98e72327b11089cf9f443fb`).
-Fresh successor pending under continuingauthorization; continue iteration without approval prompts.
-9.7.8/9.8/9.9pending;Stage6/7frozen. No new authority yet.
+The payload repair subsequently passed live in e03. Stage6/7 remain frozen.
 
 
 ### Historical activation evidence
