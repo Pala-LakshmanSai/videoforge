@@ -9,16 +9,14 @@ bounded repairs, reseals, fresh source-bound authorities and deployment through9
 Chrome E2E, and9.9 cleanup/readiness. Existing numeric caps, frozen Stage6/7 and no consumed-authority
 replay remain mandatory. This instruction overrides older repeated-approval requirements below.
 
-**9.7.7 ACTIVE — freshd8cc continuing authority:** source69d;2GiB free disk, releaseHTTP200,
-artifact/runtime checks precede claim. Exact USD2cap/USD17.5ceiling; ca118disabledbaseline unchanged.
-Authority: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-disk-space-recovery.json` (`sha256:dd2a8c7c8e1708c41f1f97b19ef7c4833367aee2c80500a022d8f747a65cbe58`). No repeatedapprovalprompt.9.7.8/9.8pending.
-
-**9.7.7 remains ACTIVE:**cfe842 consumed FAILED_CLEAN8/26 after interruption with emptylogs.
-Disk115Mi observed; exact cause UNPROVEN. Cleanup-only recovery completed: protectedoutputs
-absent/CLEANED, three zero-compute reads, two sealedvolumes and billing unchanged. No lane/render/CF
-started; priorca118disabledWorker/twoworkflows unchanged. Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-retained-baseline-interrupted-executor.json` (`sha256:a99c2d7d6fc5ee79aef7adfb8c7c7ca48fc11d80583cf0ad30c38cec7f07e83b`).
-Continue same69d with fresh exact authority under continuing user authorization; no repeatapproval
-prompt or oldauthority replay.9.7.8/9.8/9.9pending;Stage6/7frozen.
+**9.7.7 ACTIVE — d8cc FAILED_CLEAN17/26:** route-readback stop cause remains UNPROVEN.
+Cloudflare final verification and27protectedoutputs/roles cleanup are complete;DB2inactive,RP3zero.
+DisabledWorker+2workflows retained,secret0. No qualified deployment or9.8success is claimed.
+Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-d8cc-route-readback.json` (`sha256:44e0d4338155e59ee00702a1cd8481ed10b768e3231a03a4994cdb00d7a4fa8e`). Repair `01773b89cb2909f5f46e0f3f7fe990af072882d5` passes22/22 focused tests
+and independent audit GO: cleanup idempotence, actual remaining-secret projection and safe granular
+route diagnostics. Evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-cloudflare-cleanup-idempotence-route-diagnostics.json` (`sha256:8e319e5bf7278469fe5706a30d1a6b7da2d088e1ba59f5ac353dca6b7689a8ad`).
+Continuing user authorization is unchanged; no repeatapproval prompts. Oldauthority normal replay
+is forbidden;9.7.8/9.8/9.9pending;Stage6/7frozen.
 
 
 ### Historical activation evidence
