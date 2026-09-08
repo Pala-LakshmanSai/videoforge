@@ -24,6 +24,11 @@ import {
   executeQualifiedProductionForTest,
   validateAuthority,
 } from "./execute-qualified-production.mjs";
+import { createLiveMaterializerForTest } from "./execute-combined-qualified-production.mjs";
+import {
+  V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
+  V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA,
+} from "./media-worker-production-operator.mjs";
 
 const SOURCE_COMMIT = "a".repeat(40);
 const NOW = new Date("2026-09-06T12:00:00Z");
@@ -723,6 +728,139 @@ test("combined resume durably adopts the exact staged prefix and never replays i
   for (const operationId of COMBINED_PRECOMPLETED_OPERATION_IDS)
     assert.equal(calls.includes(operationId), false);
   assert.equal(calls.filter((id) => id === "run-one-v209-chrome-e2e").length, 1);
+});
+
+test("inner combined resume accepts only the legacy exact-existing publication result shape", async () => {
+  const value = combinedAuthority();
+  const releaseSourceCommit = "b".repeat(40);
+  const outer = {
+    authority_id: "v2-09-combined-adoption-bridge",
+    proposal_sha256: `sha256:${"1".repeat(64)}`,
+    source_commit: SOURCE_COMMIT,
+    issued_at: "2026-01-01T00:00:00.000Z",
+    expires_at: "2027-01-01T00:00:00.000Z",
+    offering: {
+      gpu: "NVIDIA GeForce RTX 4090",
+      region: "EU-RO-1",
+      availability_floor: "LOW",
+      max_rate_usd_per_gpu_hour: 1.116,
+    },
+    media_worker_inputs: {
+      ...value.media_worker,
+      materialization_mode: "PREAUTHORIZED_EXACT_EXISTING_ONLY",
+      release_source_commit: releaseSourceCommit,
+      windows_installer_asset_sha256: `sha256:${"f".repeat(64)}`,
+      signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
+    },
+    production_inputs: { ...value.production },
+  };
+  const receiptFacts = {
+    schema_version: V209_MEDIA_WORKER_MATERIALIZATION_RECEIPT_SCHEMA,
+    authority_id: outer.authority_id,
+    source_commit: SOURCE_COMMIT,
+    repository: "Pala-LakshmanSai/videoforge",
+    workflow_path: ".github/workflows/media-worker-release.yml",
+    release_source_commit: releaseSourceCommit,
+    release_tag: "media-worker-v0.1.15",
+    release: value.media_worker.release,
+    release_manifest_sha256: value.media_worker.release_manifest_sha256,
+    installer_asset_sha256: value.media_worker.installer_asset_sha256,
+    windows_installer_asset_sha256: outer.media_worker_inputs.windows_installer_asset_sha256,
+    execution_bundle_sha256: value.media_worker.execution_bundle_sha256,
+    whisper_model_sha256: value.media_worker.whisper_model_sha256,
+    signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
+    immutable_release: true,
+    release_asset_count: 3,
+  };
+  const materializer = createLiveMaterializerForTest({
+    testOnly: true,
+    options: { statePath: "/tmp/v209-inner-adoption-bridge" },
+    loadConfiguration: async () => ({ exact: "sealed-configuration" }),
+    loadMaterializationPlan: async () => ({ exact: "unused" }),
+    createResumedAdapters: () => ({ identity_sha256: hash("unused") }),
+    createStagingAdapters: () => ({
+      state: {
+        claimAuthority: async () => ({}),
+        beginNormalOperation: async () => ({}),
+        completeNormalOperation: async () => ({}),
+      },
+      operations: {
+        "publish-media-worker-0.1.15": async () => ({
+          schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
+          operation_id: "publish-media-worker-0.1.15",
+          mode: "ADOPTED_EXACT_EXISTING",
+          publish_count: 0,
+          materialization_receipt: {
+            ...receiptFacts,
+            materialization_receipt_sha256: hash(canonical(receiptFacts)),
+          },
+        }),
+      },
+    }),
+  });
+  const normalizedPublication = await materializer.run({
+    operationId: "publish-media-worker-0.1.15",
+    authority: outer,
+    preflight: {
+      runpod: {
+        offering: { catalogSha256: `sha256:${"2".repeat(64)}` },
+        billing: { cumulativeEndpointBillingUsd: 3.5 },
+      },
+    },
+    priorResults: {},
+  });
+  const exactExistingResume = () => {
+    const resume = combinedResume(value);
+    const publication = resume.operations.find(
+      ({ operation_id }) => operation_id === "publish-media-worker-0.1.15",
+    );
+    publication.result = structuredClone(normalizedPublication);
+    publication.result_sha256 = hash(canonical(publication.result));
+    const unsigned = { ...resume };
+    delete unsigned.receipt_sha256;
+    resume.receipt_sha256 = hash(canonical(unsigned));
+    return resume;
+  };
+
+  const calls = [];
+  const accepted = await executeTest({
+    mode: "EXECUTE",
+    authority: value,
+    sourceCommit: SOURCE_COMMIT,
+    now: NOW,
+    combinedExecution: exactExistingResume(),
+    adapters: adapters({ calls }),
+  });
+  assert.equal(accepted.status, "SUCCEEDED_CLEAN");
+  assert.equal(calls.includes("publish-media-worker-0.1.15"), false);
+
+  for (const mutate of [
+    (result) => (result.release_source_commit = "b".repeat(40)),
+    (result) => (result.windows_installer_asset_sha256 = `sha256:${"f".repeat(64)}`),
+    (result) => (result.release_manifest_sha256 = `sha256:${"f".repeat(64)}`),
+    (result) => (result.publish_count = 1),
+  ]) {
+    const tampered = exactExistingResume();
+    const publication = tampered.operations.find(
+      ({ operation_id }) => operation_id === "publish-media-worker-0.1.15",
+    );
+    mutate(publication.result);
+    publication.result_sha256 = hash(canonical(publication.result));
+    const unsigned = { ...tampered };
+    delete unsigned.receipt_sha256;
+    tampered.receipt_sha256 = hash(canonical(unsigned));
+    await assert.rejects(
+      executeTest({
+        mode: "EXECUTE",
+        authority: value,
+        sourceCommit: SOURCE_COMMIT,
+        now: NOW,
+        combinedExecution: tampered,
+        adapters: adapters(),
+      }),
+      /V2_09_ROLLOUT_FAILED_CLEAN:publish-media-worker-0\.1\.15/u,
+    );
+  }
 });
 
 test("combined resume rejects tamper, non-derived inner IDs, and partial staged graphs", async () => {
