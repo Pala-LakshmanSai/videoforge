@@ -4,32 +4,32 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_native_chrome_preclaim_repair_sealed
+current_milestone: v2_09_combined_activation_active
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_repair_sealed
+task_stage: bounded_mutation
 application_code_changes_authorized: true
-provider_calls_authorized: false
+provider_calls_authorized: true
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: false
-credential_access_authorized: false
-gpu_use_authorized: false
-maximum_external_spend_usd: 0
+remote_or_cloud_mutations_authorized: true
+credential_access_authorized: true
+gpu_use_authorized: true
+maximum_external_spend_usd: 2
 
 current_goal_boundary:
-  mode: v2_09_native_chrome_preclaim_repair_sealed
-  live_provider_calls: "No executable authority remains; 3188 and all predecessors consumed/non-reusable."
-  remote_mutation: false
-  deployment_or_publication: "Not authorized; no Cloudflare deployment or media installation reached."
-  credential_value_access: "Bounded existing OAuth refresh/read-only Worker inventory completed; no executable deployment authority."
-  paid_requests_or_spend: "Posted billing unchanged; delayed startup charges unproven. No further spend authorized."
-  runpod_mutation_or_gpu: "Three fresh reads prove zero compute/endpoints/pods/templates; two sealed retained volumes unchanged."
-  v2_07_action: "Stage 6/7 frozen QUALIFIED_PASS_CLEAN; zero changes or reruns."
-  current_checkpoint: "9.7 active at render-config exact stop; 1-8 and9.1-9.6 finished;9.8/9.9 pending."
-  closure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-endpoint-transition-render-config.json"
-  closure_evidence_sha256: "sha256:1f0458f43020b097a774df36fcae1143447ce21b395ef21a69b8ea80122796a6"
-  note: "15/26 last live stop. d6 stopped before claim at stale Chrome isolated-env guard; no provider calls. Native metadata preclaim repaired; all4 actual local checks pass. Fresh source-bound proposal required."
+  mode: v2_09_combined_activation_active
+  live_provider_calls: "Exact cb7 single-use approved activation only; no replay."
+  remote_mutation: true
+  deployment_or_publication: "Approved exact combined deployment; immutable release adoption only, no publication."
+  credential_value_access: "Exact protected plan inputs only."
+  paid_requests_or_spend: "USD2 incremental/USD17.50 completion; baseline at most15.50; delayed charges included."
+  runpod_mutation_or_gpu: "Exact two RTX4090 EU-RO-1 min0/max1 lanes on unchanged sealed50GB volumes."
+  v2_07_action: "Stage6/7 frozen QUALIFIED_PASS_CLEAN; zero changes or reruns."
+  current_checkpoint: "9.7 active;1–8 and9.1–9.6 finished;9.8/9.9 pending."
+  approval_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-native-chrome-preclaim-replacement.json"
+  approval_evidence_sha256: "sha256:5bcdf87abde64bb1c6af8049db2604405548e4ae0cb93b46dc3e2fe0b65d887a"
+  note: "Exact cb7 activation running frozen bba7295f. d6 unclaimed/superseded;3188 consumed FAILED_CLEAN."
 
 v2_09_provider_free_candidate:
   native_chrome_preclaim_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-native-chrome-preclaim-repair.json"
@@ -4175,10 +4175,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: none_consumed_failed_clean
+  provider_mode: production
+  provider_calls_authorized: true
+  authorized_spend_usd: 2
+  provider_authority_scope: exact_cb7_combined_activation
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -6268,28 +6268,85 @@ provider_authority_consumed_reconciler_secret_output: &v2_09_provider_authority_
       checked_at: "2026-09-07"
 
 provider_authority: &v2_09_provider_authority_current
-  mode: none
-  provider: null
+  mode: paid
+  provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
   historical_provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
   cap_usd: 2
   historical_cap_usd: 2
   non_transferable: true
-  source: "f1e115f62ce6c26d2f4e50c779a62705be4546b4"
+  source: "bba7295f7de0b68fd530351fa79c68ec80d5d423"
   authorized_by_user_at: "2026-09-08"
-  proposal_sha256: "sha256:31889dbb1b0e2cf3c185948a718bb15c29e6521e4a0fd0339dd2bfea087cbf77"
-  authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-endpoint-transition-replacement.json"
-  authority_sha256: "sha256:40b129bd736c6052de4017ae8aede0db29d2849b8b733f312a4a94753ad14c1c"
-  private_authority_sha256: "sha256:9c15e8a004072f78a8071616ae6bb318ed7af0c34722d3c28b52ddfd512039be"
-  consumed: true
+  proposal_sha256: "sha256:cb7d11f38888849d24804c22d7938ae722a52f94c9d03b44848cc6d6ff0c239b"
+  authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-native-chrome-preclaim-replacement.json"
+  authority_sha256: "sha256:5bcdf87abde64bb1c6af8049db2604405548e4ae0cb93b46dc3e2fe0b65d887a"
+  private_authority_sha256: "sha256:f13579eaf0199ca21ba6ebd2e9d5f02ed870b67a45b9c501ad9aa6db67c7046f"
+  consumed: false
   reusable: false
-  provider_calls_authorized: false
-  provider_mutations_authorized: false
-  credential_access_authorized: false
-  gpu_use_authorized: false
+  provider_calls_authorized: true
+  provider_mutations_authorized: true
+  credential_access_authorized: true
+  gpu_use_authorized: true
   actual_spend_usd: null
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
+  resources:
+    - "github:Pala-LakshmanSai/videoforge:refs/heads/codex/serverless-v2-roadmap-v4"
+    - "runpod:mage-production-lane:EU-RO-1:RTX4090"
+    - "runpod:soulx-production-lane:EU-RO-1:RTX4090"
+    - "cloudflare:worker:videoforge-production-runtime"
+    - "neon:videoforge-production-database"
+    - "github:media-worker-v0.1.15"
+    - "paired-mac:videoforge-personal-media-worker"
+  authorized_operations:
+    - push-clean-source
+    - readback-clean-source
+    - apply-migrations-0074-0086
+    - apply-v209-grants
+    - publish-media-worker-0.1.15
+    - readback-media-worker-0.1.15
+    - fresh-read-only-admission
+    - create-mage-production-lane-max-one
+    - create-soulx-production-lane-max-one
+    - persist-qualified-production-deployments
+    - render-qualified-production-config
+    - deploy-cloudflare-disabled-bootstrap
+    - upload-cloudflare-production-secrets
+    - deploy-cloudflare-qualified-production
+    - readback-qualified-production
+    - install-media-worker-0.1.15
+    - import-v209-qualified-activation
+    - run-one-v209-chrome-e2e
+    - verify-private-mp4-lineage
+    - reconcile-v209-production-safety
+    - reconcile-attributable-runpod-work
+    - clean-v209-transient-r2
+    - prove-three-zero-compute-reads
+    - read-settled-billing
+    - verify-retained-resources
+  allowed_operations:
+    - push-clean-source
+    - readback-clean-source
+    - apply-migrations-0074-0086
+    - apply-v209-grants
+    - publish-media-worker-0.1.15
+    - readback-media-worker-0.1.15
+    - fresh-read-only-admission
+    - create-mage-production-lane-max-one
+    - create-soulx-production-lane-max-one
+    - persist-qualified-production-deployments
+    - render-qualified-production-config
+    - deploy-cloudflare-disabled-bootstrap
+    - upload-cloudflare-production-secrets
+    - deploy-cloudflare-qualified-production
+    - readback-qualified-production
+    - install-media-worker-0.1.15
+    - import-v209-qualified-activation
+    - run-one-v209-chrome-e2e
+    - verify-private-mp4-lineage
+    - reconcile-v209-production-safety
+    - reconcile-attributable-runpod-work
+    - clean-v209-transient-r2
+    - prove-three-zero-compute-reads
+    - read-settled-billing
+    - verify-retained-resources
   model_id: "Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot + Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro"
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090_eu_ro_1_per_second
@@ -6304,32 +6361,32 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_native_chrome_preclaim_repair_sealed
-  status: FAILED_CLEAN_9_7_EXACT_STOP
+  milestone: v2_09_combined_activation_active
+  status: APPROVED_9_7_ACTIVATION_ACTIVE
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
-  authorization_status: none_consumed_failed_clean
-  task_stage: provider_free_repair_sealed
-  current_goal_authority: null
-  current_goal_authority_sha256: null
+  authorization_status: explicit_exact_cb7_approval
+  task_stage: bounded_mutation
+  current_goal_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-native-chrome-preclaim-replacement.json"
+  current_goal_authority_sha256: "sha256:5bcdf87abde64bb1c6af8049db2604405548e4ae0cb93b46dc3e2fe0b65d887a"
   provider_authority: *v2_09_provider_authority_current
-  provider_mode: fixture_no_spend
+  provider_mode: production
   provider_free_repair_commit: "7c5206db93e21e024e60000a02e232c813d96714"
   provider_free_clean_seal_commit: "f1e115f62ce6c26d2f4e50c779a62705be4546b4"
   provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-child-stdin-eof-repair.json"
   provider_free_repair_validation: "exact_child_stdin_delivery_and_eof_plus_fail_closed_error_quiescence_and_four_bounded_sync_psql_paths_plus_70_of_70_focused_tests_and_three_independent_go_p0_0_p1_0"
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
-  goal: "9.7 remains active at render-config exact stop; future repair, independent audits and fresh exact approval needed;9.8/9.9 pending."
-  provider_calls_authorized: false
+  goal: "Complete exact approved cb7 activation9.7, then single authorized Chrome9.8 and cleanup/readiness9.9; stop on exact ambiguity."
+  provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
-  credential_value_read_authorized: false
+  maximum_external_spend_usd: 2
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
+  credential_value_read_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  gpu_use_authorized: true
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5

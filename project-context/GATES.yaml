@@ -455,14 +455,14 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_private_authority_sha256: null
-    current_authority_state: none_consumed_failed_clean
-    current_proposal_sha256: null
-    current_control_source_commit: null
-    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-endpoint-transition-render-config.json"
-    current_failure_sha256: "sha256:1f0458f43020b097a774df36fcae1143447ce21b395ef21a69b8ea80122796a6"
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-native-chrome-preclaim-replacement.json"
+    current_authority_sha256: "sha256:5bcdf87abde64bb1c6af8049db2604405548e4ae0cb93b46dc3e2fe0b65d887a"
+    current_private_authority_sha256: "sha256:f13579eaf0199ca21ba6ebd2e9d5f02ed870b67a45b9c501ad9aa6db67c7046f"
+    current_authority_state: "approved_single_use_activation_active"
+    current_proposal_sha256: "sha256:cb7d11f38888849d24804c22d7938ae722a52f94c9d03b44848cc6d6ff0c239b"
+    current_control_source_commit: "bba7295f7de0b68fd530351fa79c68ec80d5d423"
+    current_failure: null
+    current_failure_sha256: null
     current_audit_stop: null
     current_audit_stop_sha256: null
     provider_free_repair_state: "Native Chrome preclaim repair59/59 and all4 actual local preclaim checks pass; independentGO. d6 unclaimed/superseded, fresh approval required;Stage6/7 frozen."
@@ -480,7 +480,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7 repair sealed; fresh exact approval needed for deployment. No authority or replay;9.8/9.9 pending."
+    next_gate: "9.7 exact cb7 activation active;9.8/9.9 pending;Stage6/7 frozen."
 
   GATE_RANGA_001:
     status: open
