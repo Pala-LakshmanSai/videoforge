@@ -4,14 +4,14 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-Heartbeat repair is implemented: isolate the existing owner snapshot to bounded read-only heartbeat SQL,
-fail before install mutation on missing SELECT or RLS bypass, and install only after qualified
-Cloudflare readback while retaining strict ONLINE acceptance. Local PostgreSQL17 reproduces the
-original privilege/RLS failure; focused tests pass. No role grants, migration, release publication,
-Stage 6/7 modification, or new activation ran. A bounded read-only owner inventory confirms existing
-capability. Main checkpoints 1–8 and 9.1–9.6 stay finished; 9.7 remains active, 9.8/9.9 pending.
-Next: clean repair seal, independent exact proposal audit, and fresh exact activation approval.
-Authority e77c remains consumed FAILED_CLEAN and non-reusable; prior cleanup proved zero compute.
+Exact postdeploy-heartbeat proposal `sha256:436b5932315a4ce7fecdfddb4375dc833e80a5186893796fe474a5d0c431bd4c`
+is approved. Single-use authority `v2-09-436b5932315a4ce7` binds frozen clean source
+`1185dacc424efce0f55894df330d66522d4eae02`. 9.7 combined activation is starting;
+1–8 and 9.1–9.6 remain finished, 9.8/9.9 pending. Installation follows qualified Cloudflare
+readback and requires strict ONLINE with isolated owner read-only SQL. Caps: USD 2 incremental,
+USD 17.50 completion; exact RTX 4090 EU-RO-1 lanes at workersMin=0/workersMax=1, no redispatch.
+Stage 6/7 remain frozen QUALIFIED_PASS_CLEAN. e77c remains consumed FAILED_CLEAN.
+Approval evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-postdeploy-heartbeat-replacement.json`. Deployment success is not yet claimed.
 
 ### Historical activation evidence
 
