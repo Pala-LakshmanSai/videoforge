@@ -1,0 +1,52 @@
+{
+  "schema_version": "videoforge.v2-09-deployment-ready-auth-pending/v1",
+  "checkpoint_finished": "9.7.7",
+  "checkpoint_active": "9.7.8",
+  "authority_id": "v2-09-56efc70a354acd7e",
+  "source_commit": "2419fe1621bb7441e9bf5fc4ec071f7458b074f5",
+  "status": "AWAITING_INTERACTIVE_CHROME_LOGIN",
+  "completed_operations": 22,
+  "proofs": {
+    "readback-qualified-production": {
+      "config_sha256": "sha256:7914c6db888f97231ed20b3b04a368eef457765d64c0446b690641376c53c6f4",
+      "deployment_id_sha256": "sha256:2005c9b72cede5e5c4f530bcc38c9be8925d85e7f829f167510093c7ddb6550d",
+      "effective_gpu_transport": "DISABLED_UNQUALIFIED",
+      "exact_pair_bound": true,
+      "gpu_transport": "QUALIFIED_EXACT",
+      "operation_id": "readback-qualified-production",
+      "schema_version": "videoforge.v2-09-qualified-readback-result/v1",
+      "worker": "videoforge-production-runtime",
+      "worker_bundle_sha256": "sha256:2bdb2b8e356081a4af45c59517144b7fbcd8f78246ce60a6e864ee6630af0e29"
+    },
+    "install-media-worker-0.1.15": {
+      "code_signature_verified": true,
+      "execution_bundle_sha256": "sha256:a1bda39b57e4b0ccad936bd7a044805583d7683287f2ea0861657e90c3a194b6",
+      "installed_release_sha256": "sha256:fef98542c42724a8250b4538b8105a52bd6951c6622b12f82b0179eb46e554a7",
+      "installer_asset_sha256": "sha256:d12025df97c44eee6356da9aab11f904a37fbe4c72b691fccc62d4dd91ae37db",
+      "online": true,
+      "online_heartbeat_sha256": "sha256:ac1e9310b4fe39fb619095c9d87b88dac0ea5891634fe43c68dde5e7415641bd",
+      "operation_id": "install-media-worker-0.1.15",
+      "release": "0.1.15",
+      "schema_version": "videoforge.v2-09-media-worker-install-result/v1",
+      "signing_identity_sha256": "sha256:eaafe97fbcf85ad460208f419759f4726f9545e451cf08ba973ce95ebea1742b"
+    },
+    "import-v209-qualified-activation": {
+      "cloudflare_deployment_id_sha256": "sha256:2005c9b72cede5e5c4f530bcc38c9be8925d85e7f829f167510093c7ddb6550d",
+      "config_sha256": "sha256:7914c6db888f97231ed20b3b04a368eef457765d64c0446b690641376c53c6f4",
+      "deployment_row_id_sha256s": [
+        "sha256:3569de397fecdb844cc4386e0b9665dbdde931ae2ba56930dc40e3f61bf7e385",
+        "sha256:745a3dffac908b96a3115f73473a0cfc5c77b7fcf125367f18d26ca666f7a956"
+      ],
+      "effective_gpu_transport": "QUALIFIED_EXACT",
+      "import_count": 1,
+      "operation_id": "import-v209-qualified-activation",
+      "qualified_activation_active": true,
+      "schema_version": "videoforge.v2-09-activation-import-result/v1",
+      "source_commit": "2419fe1621bb7441e9bf5fc4ec071f7458b074f5",
+      "worker_bundle_sha256": "sha256:2bdb2b8e356081a4af45c59517144b7fbcd8f78246ce60a6e864ee6630af0e29"
+    }
+  },
+  "heartbeat_timeline_sha256": "sha256:054c570b90f401ee2e5b81d2e7dd06c4e816e4bce501c38a6cc323fc0df192c0",
+  "chrome_e2e_started": false,
+  "replay_count": 0
+}
