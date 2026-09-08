@@ -87,11 +87,15 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
           const reconcilerDatabase = createNeonExecutor(reconcilerPool);
           if (!this.env.PRIVATE_ARTIFACTS)
             throw new Error("Hosted pair render artifact binding is missing.");
-          const [{ createHostedPairLiveComposition }, { createHostedV209RenderHandoff }] =
-            await Promise.all([
-              import("../src/server/hosted/hosted-pair-live-wiring"),
-              import("../src/server/hosted/hosted-v209-render-handoff"),
-            ]);
+          const [
+            { createHostedPairLiveComposition, resumeHostedV209OrdinaryPair },
+            { createHostedV209RenderHandoff },
+            { hasHostedV209OrdinaryDispatchCandidate },
+          ] = await Promise.all([
+            import("../src/server/hosted/hosted-pair-live-wiring"),
+            import("../src/server/hosted/hosted-v209-render-handoff"),
+            import("../src/server/hosted/hosted-v209-queue-admission"),
+          ]);
           const renderHandoff = createHostedV209RenderHandoff({
             database: reconcilerDatabase,
             runtimeDatabase,
@@ -112,11 +116,18 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
             (workflowScope) => renderHandoff.ensure(workflowScope),
           );
           if (observation === 0) {
-            const dispatch = await live.composition.resume({
-              environment: this.env,
-              ...params,
-              dispatchTokenKey: this.env.VIDEOFORGE_DISPATCH_TOKEN_KEY!,
+            const ordinary = await hasHostedV209OrdinaryDispatchCandidate(runtimeDatabase, {
+              accountId: params.accountId,
+              workspaceId: params.workspaceId,
+              generationRequestId: params.generationRequestId,
             });
+            const dispatch = ordinary
+              ? await resumeHostedV209OrdinaryPair(this.env, runtimeDatabase, params)
+              : await live.composition.resume({
+                  environment: this.env,
+                  ...params,
+                  dispatchTokenKey: this.env.VIDEOFORGE_DISPATCH_TOKEN_KEY!,
+                });
             if (dispatch.state === "DISABLED_UNQUALIFIED") return dispatch;
           }
           const clock = await runtimeDatabase.transaction(async (transaction) => {

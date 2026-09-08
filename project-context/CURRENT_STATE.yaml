@@ -4,7 +4,7 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_same_project_ledger89_repair_verified
+current_milestone: v2_09_same_project_gpu_handoff_repair
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -18,44 +18,47 @@ gpu_use_authorized: true
 maximum_external_spend_usd: 2
 
 current_goal_boundary:
-  mode: "v2_09_same_project_ledger89_repair_verified"
-  live_provider_calls: "Read-only baseline verified; context0 generation0 ASR SUCCEEDED"
-  remote_mutation: false
-  deployment_or_publication: "One secret PUT complete; no code rebuild. Further live work stopped at explicit ledger88 boundary; local migration89 under audit"
+  mode: "v2_09_same_project_gpu_handoff_repair"
+  live_provider_calls: "ASR, context, and prompts succeeded once; no GPU provider request yet"
+  remote_mutation: true
+  deployment_or_publication: "One secret PUT and migration89 rebind verified; migration90 plus Worker handoff source repair locally verified pending independent audit and fresh bounded activation"
   credential_value_access: "Existing private mode0600 Runware file; never log or persist value elsewhere"
   paid_requests_or_spend: "USD2 incremental cap; USD17.50 total ceiling; context10000 and prompts40000 microUSD"
   runpod_mutation_or_gpu: "At most one generation on exact two retained qualified lanes; workersMin0/workersMax1; no fallback"
   v2_07_action: "Stage6/7 frozen QUALIFIED_PASS_CLEAN; no modification or rerun"
   current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 ACTIVE;9.9 pending"
   approval_evidence: "Current explicit user continuation on2026-09-08; existing bounded authority preserved"
-  note: "Same project204814e4-3b86-4ae8-9680-d0bb09689ab1; consumed v4/secret/rebind never replayed. No successor activation committed. Ledger88 unique source/config plus append-only table requires scoped migration89 exception before more live work"
+  note: "Same project204814e4-3b86-4ae8-9680-d0bb09689ab1; consumed v4/secret/rebind never replayed. Context and prompts completed once. Queue admission plus ordinary full-payload Worker routing are the active repair; no live GPU request exists yet"
 
 
 v2_09_same_project_continuation:
-  control_source: "f9dccd4ea53b17dc7719c537321027861096422b"
+  control_source: "3c92dd71bf36b2a9053c4901420ad08044a8617f"
   deployed_code_source: "9dad16ee5939c8633bc363d06fef65b1deea2425"
   worker_version_id: "399e9a38-0c26-42c5-b668-33d16e7d6ad5"
   version_sha256: "6ea7f8ebf6c5d2b34a583b578133334ebf95a4d55d45e539e9fa1b2b666b7824"
   config_sha256: "d3f5388c162adf9d6f52a7a58223aa14cb71911efacbef5b8959c7aaaba29230"
-  database_ledger: 88
+  database_ledger: 89
   project_id: "204814e4-3b86-4ae8-9680-d0bb09689ab1"
   revision_id: "b7484391-c82b-4ca6-a9dd-617138e7b37c"
   create_id: "661872bd-a743-4af0-8399-15ca4ada5339"
   asr_attempt_id: "b7a015a6-cd85-4223-bb7d-825867c108b2"
   asr_state: "SUCCEEDED"
-  context_count: 0
+  context_count: 1
+  context_request_id: "f17c7df1-fde8-4a12-9fbf-1885b2ab3d39"
+  prompt_request_id: "d3c346b5-aa52-490f-868e-291e1bcfa714"
+  prompt_count: 7
   generation_count: 0
-  repair_status: "LEDGER89_PROVIDER_FREE_VERIFIED_AWAITING_EXACT_SCOPE_EXCEPTION"
-  completion_cost_usd: 0.38663
-  observed_provider_increment_usd: 0
+  repair_status: "LOCAL_MIGRATION90_AND_ORDINARY_WORKER_HANDOFF_VERIFIED_PENDING_INDEPENDENT_GO"
+  completion_cost_usd: 0.387043
+  observed_provider_increment_usd: 0.000413
   compute_state: "Fresh independent baseline zero pods/workers/queued jobs"
   private_evidence_root: "~/.videoforge/v2-09/native-qualified-claimfix-9dad16ee"
   manual_chrome_ready: false
-  effective_gpu_transport: "DISABLED_UNQUALIFIED"
-  new_activation_committed: false
+  effective_gpu_transport: "QUALIFIED_VERSION_399"
+  new_activation_committed: true
   secret_put_count: 1
-  live_migration89_authorized: false
-  next: "Resolve explicit live ledger88-to89 scope exception for tested migration89, then fresh activation399 and same-project Chrome continuation"
+  live_migration89_authorized: true
+  next: "Seal and independently audit migration90 plus Worker handoff repair, deploy/rebind once, then resume the existing Chrome tab for at most one GPU generation"
   evidence: "evidence/acceptance/VF-10-09/2026-09-08-one-secret-rebind-stop/closure.json"
 
 v2_09_continuing_user_authorization:
@@ -6564,7 +6567,7 @@ provider_authority: &v2_09_provider_authority_current
   non_transferable: true
   authorized_by_user_at: "2026-09-08"
   provider: "runware+runpod+cloudflare_r2+neon+paired_mac_device"
-  source: "f9dccd4ea53b17dc7719c537321027861096422b"
+  source: "3c92dd71bf36b2a9053c4901420ad08044a8617f"
   cap_usd: 2
   maximum_completion_usd: 17.5
   provider_calls_authorized: true
@@ -6574,8 +6577,8 @@ provider_authority: &v2_09_provider_authority_current
   model_id: "qualified Mage and SoulX immutable retained pair"
   resources: ["runpod:mage-qualified-lane", "runpod:soulx-qualified-lane", "neon:production", "cloudflare:videoforge-production-runtime", "project:204814e4-3b86-4ae8-9680-d0bb09689ab1"]
   allowed_operations: ["exact_one_secret_repair", "resulting_version_readback", "same_qualification_activation_rebind", "same_project_context_once", "same_project_render_handoff", "same_project_prompts_once", "same_project_gpu_generation_once", "private_mp4_chrome_verification", "terminal_lineage_cost_compute_closure"]
-  status: "STOPPED_LEDGER88_SCOPE_BOUNDARY_LOCAL_REPAIR_VERIFIED"
-  note: "One RUNWARE_API_KEY PUT confirmed; both attempted executors consumed; no successor activation committed. Local migration89 preparation only until explicit ledger88 exception. Preserve Stage6/7 and no new project/CPU submission."
+  status: "APPROVED_SAME_PROJECT_GPU_HANDOFF_REPAIR"
+  note: "One RUNWARE_API_KEY PUT and migration89 activation rebind are verified. Context and prompts completed once. Preserve Stage6/7 and no new project/CPU/context/prompt submission; at most one GPU generation after audited migration90/source activation."
   authorized_operations: ["exact_one_secret_repair", "resulting_version_readback", "same_qualification_activation_rebind", "same_project_context_once", "same_project_render_handoff", "same_project_prompts_once", "same_project_gpu_generation_once", "private_mp4_chrome_verification", "terminal_lineage_cost_compute_closure"]
   rate_snapshot:
     - resource_id: "exact retained RTX4090 EU-RO-1 pair; unchanged guarded rate"
@@ -6586,7 +6589,7 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_same_project_ledger89_repair_verified
+  milestone: v2_09_same_project_gpu_handoff_repair
   status: EXECUTION_ACTIVE
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: explicit_same_project_continuation_no_replay

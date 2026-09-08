@@ -15,6 +15,10 @@ import {
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { response, sameOrigin, sessionScope } from "./hosted-product-route-common";
 import {
+  ensureHostedV209GenerationAdmission,
+  type HostedV209AdmissionResult,
+} from "./hosted-v209-queue-admission";
+import {
   assertV209OrdinaryCandidate,
   freezeV209OrdinaryLiveAdmission,
   type V209OrdinaryVerifiedSystemAvatarReference,
@@ -74,6 +78,10 @@ export interface HostedV209ProjectDispatchDependencies {
   readonly observe: typeof observeV209ShortAdmission;
   readonly commitAndSchedule: typeof commitAndScheduleV209OrdinaryPair;
   readonly ensureWorkflow: typeof materializeAndEnsureV209OrdinaryPair;
+  readonly ensureAdmission: (
+    database: TransactionalSqlExecutor,
+    identity: DispatchIdentity,
+  ) => Promise<HostedV209AdmissionResult>;
   readonly correlationId: () => string;
 }
 
@@ -85,6 +93,7 @@ const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
   observe: observeV209ShortAdmission,
   commitAndSchedule: commitAndScheduleV209OrdinaryPair,
   ensureWorkflow: materializeAndEnsureV209OrdinaryPair,
+  ensureAdmission: ensureHostedV209GenerationAdmission,
   correlationId: () => `v209-${crypto.randomUUID()}`,
 });
 
@@ -316,11 +325,13 @@ export async function resumeHostedV209ProjectDispatch(
   injected: HostedV209ProjectDispatchDependencies = defaults,
   suppliedCorrelationId?: string,
   suppliedRuntimePool?: HostedNeonPool,
+  admissionAlreadyEnsured = false,
 ): Promise<Response> {
   const correlationId = suppliedCorrelationId ?? injected.correlationId();
   const runtimePool = suppliedRuntimePool ?? injected.createPool(config.neon.databaseUrl);
   try {
     const runtimeDatabase = injected.createExecutor(runtimePool);
+    if (!admissionAlreadyEnsured) await injected.ensureAdmission(runtimeDatabase, identity);
     const materialized = await injected.materialize(runtimeDatabase, identity);
     const candidate = exactCandidate(materialized.candidate, identity);
     if (!candidate) return response({ error: { code: "HOSTED_V209_CANDIDATE_NOT_READY" } }, 409);
@@ -429,6 +440,7 @@ export async function handleHostedV209ProjectDispatch(
       userId: scope.user_id,
       projectId: match[1]!,
     };
+    await injected.ensureAdmission(injected.createExecutor(runtimePool), identity);
     if (spanAudio) {
       const preparation = await spanAudio.prepare(identity);
       if (preparation.state === "PREPARING_INPUTS") {
@@ -443,6 +455,7 @@ export async function handleHostedV209ProjectDispatch(
       injected,
       correlationId,
       runtimePool,
+      true,
     );
   } catch (error) {
     const code =

@@ -132,6 +132,7 @@ FROM v209_runtime_table_allowlist ORDER BY table_name,privilege
 
 CREATE TEMP TABLE v209_runtime_function_allowlist(signature text PRIMARY KEY) ON COMMIT DROP;
 INSERT INTO v209_runtime_function_allowlist(signature) VALUES
+  ('videoforge_admit_hosted_v209_generation(uuid,uuid,uuid,uuid)'),
   ('videoforge_append_hosted_canonical_timing(uuid,uuid,uuid,uuid,uuid,uuid,jsonb)'),
   ('videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)'),
   ('videoforge_archive_hosted_preset(uuid,uuid,text,uuid)'),
@@ -155,6 +156,7 @@ INSERT INTO v209_runtime_function_allowlist(signature) VALUES
   ('videoforge_finish_hosted_style_analysis(uuid,text,text,text,bigint,bigint,bigint)'),
   ('videoforge_hosted_cpu_expected_primary_output(uuid,text)'),
   ('videoforge_hosted_session_scope(text)'),
+  ('videoforge_has_hosted_v209_ordinary_candidate(uuid,uuid,uuid)'),
   ('videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)'),
   ('videoforge_load_hosted_gpu_activation_v1()'),
   ('videoforge_load_hosted_gpu_activation_v2()'),

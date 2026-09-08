@@ -2000,8 +2000,8 @@ export function HostedCreateProjectScreen() {
           {!catalog.data.gpu_readiness.dispatch_available ? (
             <p className="helper hosted-beta-note" role="note">
               After creation, VideoForge automatically transcribes, understands the voiceover, plans
-              scenes, and writes image prompts for your project. Final video generation
-              is not yet available, and no paid GPU work will start.
+              scenes, and writes image prompts for your project. Final video generation is not yet
+              available, and no paid GPU work will start.
             </p>
           ) : null}
           <Button
@@ -3515,9 +3515,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       promptStageState === "COMPLETE" &&
       query.data.gpu_transport === "QUALIFIED_EXACT" &&
       query.data.gpu_readiness.dispatch_available === true &&
-      HOSTED_V209_DISPATCH_READY_QUEUE_STATES.has(
-        String(query.data.queue?.status ?? "").toUpperCase(),
-      ),
+      (query.data.queue === null ||
+        HOSTED_V209_DISPATCH_READY_QUEUE_STATES.has(
+          String(query.data.queue?.status ?? "").toUpperCase(),
+        )),
   );
   useEffect(() => {
     const generationId = query.data?.generation?.id;
@@ -4205,7 +4206,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 ? "Transcription complete; persisting the deterministic generation plan."
                 : query.data.generation
                   ? promptStage?.status === "COMPLETE"
-                    ? "Prompts complete; generation is waiting for GPU qualification."
+                    ? query.data.gpu_transport === "QUALIFIED_EXACT" &&
+                      query.data.gpu_readiness.dispatch_available === true
+                      ? "Prompts complete; generation is ready to start."
+                      : "Prompts complete; generation is waiting for GPU qualification."
                     : promptAutoStartError
                       ? "Automatic image prompt writing could not start."
                       : "Scene planning is complete; image prompts are starting automatically."

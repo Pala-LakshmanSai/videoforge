@@ -2495,7 +2495,7 @@ describe("hosted product journey", () => {
         failed_tasks: 0,
         stage: "READY_FOR_GPU_DISPATCH" as const,
       },
-      queue: { status: "ADMITTED", position: 1, ahead: 0, total: 1 },
+      queue: null,
       stages: [
         {
           id: "prompt-writing",

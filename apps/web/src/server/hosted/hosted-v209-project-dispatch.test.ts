@@ -181,6 +181,10 @@ function dependencies(
     id: `hosted-pair-${value.generationRequestId}`,
     recovered: true,
   }));
+  const ensureAdmission = vi.fn(async () => ({
+    generationRequestId: value.generationRequestId,
+    state: "ACTIVE" as const,
+  }));
   return {
     runtime,
     reconciler,
@@ -188,6 +192,7 @@ function dependencies(
     observe,
     commitAndSchedule,
     ensureWorkflow,
+    ensureAdmission,
     value: {
       createPool,
       createExecutor: (pool: unknown) => pool,
@@ -196,6 +201,7 @@ function dependencies(
       observe,
       commitAndSchedule,
       ensureWorkflow,
+      ensureAdmission,
       correlationId: () => "v209-safe-correlation",
     } as never,
   };

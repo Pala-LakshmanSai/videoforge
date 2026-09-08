@@ -534,6 +534,12 @@
       "name": "hosted_v209_activation_rebind",
       "filename": "0089_hosted_v209_activation_rebind.sql",
       "sha256": "sha256:3defa55e813f71d0bfee6cef42fbd7618dd6a9a4d545ef0866e726b92369d52f"
+    },
+    {
+      "version": 90,
+      "name": "hosted_v209_queue_admission_handoff",
+      "filename": "0090_hosted_v209_queue_admission_handoff.sql",
+      "sha256": "sha256:2c4981f44bb9c3c890804748d53becb66f5ac256df1fb5b9e9ea55806e5559d1"
     }
   ]
 }
