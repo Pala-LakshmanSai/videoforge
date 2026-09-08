@@ -35,17 +35,10 @@ test("0091 preserves visual task identity and resolves span audio through its re
   assert.doesNotMatch(migration, /task\.task_key=s\.task_key/u);
 });
 
-test("0091 is the sole manifest successor and keeps the existing runtime grant signature", () => {
+test("0091 remains the exact ledger entry and keeps the existing runtime grant signature", () => {
   const manifest = JSON.parse(read("packages/control-plane/migrations/manifest.json"));
-  assert.equal(manifest.migrations.length, 91);
-  assert.deepEqual(
-    manifest.migrations.slice(-2).map(({ version, filename }) => [version, filename]),
-    [
-      [90, "0090_hosted_v209_queue_admission_handoff.sql"],
-      [91, "0091_hosted_v209_span_task_key_reconciliation.sql"],
-    ],
-  );
-  const entry = manifest.migrations.at(-1);
+  const entry = manifest.migrations.find(({ version }) => version === 91);
+  assert.equal(entry?.filename, "0091_hosted_v209_span_task_key_reconciliation.sql");
   assert.equal(
     entry.sha256,
     digest(

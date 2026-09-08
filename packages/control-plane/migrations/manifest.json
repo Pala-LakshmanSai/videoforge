@@ -546,6 +546,12 @@
       "name": "hosted_v209_span_task_key_reconciliation",
       "filename": "0091_hosted_v209_span_task_key_reconciliation.sql",
       "sha256": "sha256:87752df3ff9ae340aaea6334187910602a45e4d9834be446de4b2db8b0517196"
+    },
+    {
+      "version": 92,
+      "name": "hosted_v209_soulx_source_time_cadence",
+      "filename": "0092_hosted_v209_soulx_source_time_cadence.sql",
+      "sha256": "sha256:3391031513a3a44e9baee68c4a5f5dede21b6609279de6a03c096537c215eabe"
     }
   ]
 }

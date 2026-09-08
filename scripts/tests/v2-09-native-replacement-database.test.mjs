@@ -10,6 +10,7 @@ import {
   renderNativeMigration89Sql,
   renderNativeMigration90Sql,
   renderNativeMigration91Sql,
+  renderNativeMigration92Sql,
 } from "../../deploy/v2-09/native-replacement-database.mjs";
 
 function fixture(t, target) {
@@ -95,4 +96,16 @@ test("migration91 requires exact90 predecessor ledger and renders only the span-
   assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
   assert.throws(() => renderNativeMigration90Sql(input), /MANIFEST/);
   assert.throws(() => renderNativeMigration91Sql(fixture(t, 90)), /MANIFEST/);
+});
+
+test("migration92 requires exact91 predecessor ledger and renders the SoulX cadence bridge", (t) => {
+  const input = fixture(t, 92);
+  const sql = renderNativeMigration92Sql(input);
+  assert.match(sql, /'from_version',91,'to_version',92/);
+  assert.match(sql, /VALUES\(92,/);
+  assert.match(sql, /selected_start_ms\/40/);
+  assert.match(sql, /selected_end_ms_exclusive\+39/);
+  assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
+  assert.throws(() => renderNativeMigration91Sql(input), /MANIFEST/);
+  assert.throws(() => renderNativeMigration92Sql(fixture(t, 91)), /MANIFEST/);
 });
