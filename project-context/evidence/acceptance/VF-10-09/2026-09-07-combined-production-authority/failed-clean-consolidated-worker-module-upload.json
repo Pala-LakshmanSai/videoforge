@@ -1,0 +1,85 @@
+{
+  "schema_version": "videoforge.v2-09-failed-clean-closure/v1",
+  "closed_at": "2026-09-08T06:07:19.499726+00:00",
+  "checkpoint": "9.7.7",
+  "source_commit": "536e7a400313ff6fd81ff0d62027d08bf5568bbf",
+  "authority_id": "v2-09-c27280b04f76ea8d",
+  "proposal_sha256": "sha256:c27280b04f76ea8d19a2524bc27a7601819dfc7ac0a182deca00f2f74208a251",
+  "status": "FAILED_CLEAN",
+  "consumed_once": true,
+  "reusable": false,
+  "completed_operations": [
+    "run-read-only-preflight",
+    "read-pre-mutation-completion-baseline",
+    "materialize-v209-protected-inputs",
+    "push-clean-source",
+    "readback-clean-source",
+    "apply-migrations-0074-0086",
+    "apply-v209-grants",
+    "read-post-migration-completion-baseline",
+    "publish-media-worker-0.1.15",
+    "readback-media-worker-0.1.15",
+    "fresh-read-only-admission",
+    "create-mage-production-lane-max-one",
+    "create-soulx-production-lane-max-one",
+    "persist-qualified-production-deployments",
+    "materialize-v209-endpoint-secrets",
+    "render-qualified-production-config"
+  ],
+  "interrupted_operation": "deploy-cloudflare-disabled-bootstrap",
+  "failure": {
+    "cleanup_code": "V2_09_DEPLOYMENT_SUFFIX_CLEANUP_INCOMPLETE",
+    "operation_code": "V2_09_CLOUDFLARE_PRODUCTION_FAILURE_RECONCILIATION_REQUIRED",
+    "operation_id": "deploy-cloudflare-disabled-bootstrap"
+  },
+  "diagnosis": "Bootstrap and cleanup uploads returned HTTP400 after initial22staticassets uploaded. Offline dry-runs proved only187-byte facade uploaded, omitting required server chunk. Exact provider errorbody unavailable.",
+  "cloudflare": {
+    "static_assets_uploaded": 22,
+    "active_worker_version_proven": false,
+    "empty_service_created": true,
+    "empty_service_deleted": true,
+    "service_absence_error_code": 10090,
+    "script_versions_absence_error_code": 10007,
+    "target_workflows_absent": true,
+    "retained_r2_mutated": false,
+    "delete_count": 1,
+    "delete_replayed": false,
+    "proof": {
+      "authority_id": "v2-09-c27280b04f76ea8d",
+      "checked_at": "2026-09-08T06:06:37.983Z",
+      "service_absent": true,
+      "service_absence_error_code": 10090,
+      "delete_replayed": false,
+      "original_delete_helper_sha256": "sha256:ab6960e041f5face2c9ca96cd67410e9c89f439ce00287c6cd9c1f45a8245442",
+      "retained_r2_deleted": false
+    },
+    "postdelete_inventory_sha256": "sha256:75c3a0a1cddac2a781b2bd1b8ed43503538cf82586e37334e7736e71d4d430ba"
+  },
+  "database": {
+    "matched_count": 2,
+    "inactive_count": 2
+  },
+  "protected": {
+    "result": {
+      "schema_version": "videoforge.v2-09-protected-input-cleanup-result/v1",
+      "authority_id": "v2-09-c27280b04f76ea8d",
+      "role_cleanup_attempted": true,
+      "removed_file_count": 27,
+      "adopted_cleanup": false
+    },
+    "protected_outputs_remaining": 0,
+    "checked_at": "2026-09-08T06:06:39.723Z"
+  },
+  "runpod_proof_sha256": "sha256:f82cc63d5ea80e37e7e43db8521be889f5f5b3a9fd3decce5ca6300c05271876",
+  "outer_state_sha256": "sha256:1c1773e4e04a21c6d4829026ecadcc534065ca95e96077cf50c3ba612230d9c9",
+  "three_zero_compute_reads": true,
+  "retained_volumes_unchanged": true,
+  "posted_endpoint_billing_usd": 3.5284023286949378,
+  "posted_increment_usd": 0,
+  "delayed_startup_billing": "UNPROVEN",
+  "media_install_count": 0,
+  "chrome_e2e_count": 0,
+  "provider_job_count": 0,
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN_UNTOUCHED",
+  "cleanup_independent_audit": "GO_P0_0_P1_0"
+}

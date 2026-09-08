@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,10 +29,51 @@ const fail = (message) => {
   throw new Error(`V2-09 qualified production config renderer: ${message}`);
 };
 
+export async function bundleQualifiedWorker(mainPath = ACTIVATED_MAIN_PATH) {
+  const webRequire = createRequire(resolve(ROOT, "apps/web/package.json"));
+  const viteRequire = createRequire(webRequire.resolve("vite"));
+  const { buildSync } = viteRequire("esbuild");
+  const temporaryPath = `${mainPath}.v209-single-file.tmp`;
+  try {
+    const result = buildSync({
+      entryPoints: [mainPath],
+      bundle: true,
+      write: false,
+      metafile: true,
+      platform: "neutral",
+      format: "esm",
+      target: "es2022",
+      external: ["node:*", "cloudflare:*"],
+      outfile: mainPath,
+      logLevel: "silent",
+      allowOverwrite: true,
+    });
+    const outputs = Object.values(result.metafile.outputs);
+    if (
+      result.outputFiles.length !== 1 ||
+      outputs.length !== 1 ||
+      outputs[0].imports.some(
+        ({ path, external }) => !external || !/^(node:|cloudflare:)/u.test(path),
+      ) ||
+      ["default", "HostedVideoWorkflow", "HostedPairWorkflow"].some(
+        (name) => !outputs[0].exports.includes(name),
+      )
+    )
+      throw new Error("incomplete module closure");
+    await writeFile(temporaryPath, result.outputFiles[0].contents, { flag: "wx", mode: 0o600 });
+    await rename(temporaryPath, mainPath);
+  } catch {
+    throw new Error("V2_09_RENDER_WORKER_MODULE_CLOSURE_FAILED");
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
+}
+
 export const V209_RENDER_FAILURE_CODES = Object.freeze([
   "V2_09_RENDER_CONFIG_FAILED",
   "V2_09_RENDER_DEPENDENCIES_FAILED",
   "V2_09_RENDER_BUILD_FAILED",
+  "V2_09_RENDER_WORKER_MODULE_CLOSURE_FAILED",
   "V2_09_RENDER_WRANGLER_DRY_RUN_FAILED",
   "V2_09_RENDER_BUNDLE_FAILED",
 ]);
@@ -144,7 +186,7 @@ function childEnvironment(isolatedConfigRoot) {
 
 export async function prepareQualifiedProductionConfig(
   { bindingPath, outputPath, receiptOutputPath, releaseManifestPath },
-  { runner = defaultRunner } = {},
+  { runner = defaultRunner, bundleWorker = bundleQualifiedWorker } = {},
 ) {
   const resolvedBinding = resolve(bindingPath);
   const resolvedRelease = resolve(releaseManifestPath);
@@ -205,6 +247,7 @@ export async function prepareQualifiedProductionConfig(
     renderPhase("V2_09_RENDER_BUILD_FAILED", () =>
       runner("pnpm", ["--filter", "@videoforge/web", "build:cloudflare"], { env }),
     );
+    await bundleWorker();
     renderPhase("V2_09_RENDER_WRANGLER_DRY_RUN_FAILED", () =>
       runner(
         "pnpm",

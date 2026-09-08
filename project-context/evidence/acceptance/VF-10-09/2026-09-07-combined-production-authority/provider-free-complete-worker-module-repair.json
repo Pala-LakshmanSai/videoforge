@@ -1,0 +1,24 @@
+{
+  "schema_version": "videoforge.v2-09-complete-worker-module-repair/v1",
+  "checkpoint": "9.7.7",
+  "failed_authority": "v2-09-c27280b04f76ea8d",
+  "failure": "Wrangler uploaded187-byte facade without imported server chunk; exact API400 body not available; missing graph independently reproduced offline.",
+  "repair": "Bundle emitted Vite server graph into one ESM file atomically before Wrangler dry-run and bundle SHA. Require exactly one output, default+bothWorkflow exports and only node:/cloudflare: external imports. Bootstrap, qualified snapshot and cleanup consume same complete entry file.",
+  "focused_tests": {
+    "passed": 8,
+    "failed": 0
+  },
+  "actual_graph_proof": {
+    "facade_bytes": 187,
+    "complete_bytes": 6890557,
+    "dry_run_status": 0,
+    "dry_run_emitted_complete_file": true,
+    "workerd_initialization": "PASS_DEFAULT_FETCH_AND_BOTH_WORKFLOW_EXPORTS_NO_LISTENERS",
+    "gzip_bytes": 944087,
+    "provider_calls": 0,
+    "credential_reads": 0
+  },
+  "safe_failure_code": "V2_09_RENDER_WORKER_MODULE_CLOSURE_FAILED",
+  "independent_audit": "GO_P0_0_P1_0",
+  "unchanged": "No frozenStage6/7 work, provider job, ChromeE2E, runtime download, retainedvolume mutation, or broad test repetition."
+}

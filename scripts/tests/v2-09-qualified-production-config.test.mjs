@@ -21,6 +21,7 @@ import {
   validateReleaseManifest,
 } from "../../deploy/v2-09/validate-qualified-production-config.mjs";
 import {
+  bundleQualifiedWorker,
   prepareQualifiedProductionConfig,
   renderQualifiedConfig,
   safeV209RenderFailureCode,
@@ -207,7 +208,7 @@ test("preparation writes mode-0600 artifacts after build and isolated Wrangler d
     };
     const receipt = await prepareQualifiedProductionConfig(
       { bindingPath, releaseManifestPath: releasePath, outputPath, receiptOutputPath: receiptPath },
-      { runner },
+      { runner, bundleWorker: async () => {} },
     );
     assert.equal(receipt.gpu_transport, "QUALIFIED_EXACT");
     assert.match(receipt.worker_bundle_sha256, /^sha256:[0-9a-f]{64}$/u);
@@ -356,7 +357,7 @@ test("render child failures emit fixed phase codes without raw child output", as
             outputPath: join(directory, "out.json"),
             receiptOutputPath: join(directory, "receipt.json"),
           },
-          { runner },
+          { runner, bundleWorker: async () => {} },
         ),
         (error) => error.message === `V2_09_RENDER_${phase}_FAILED` && error.cause === undefined,
       );
@@ -378,4 +379,31 @@ test("render child failures emit fixed phase codes without raw child output", as
   assert.equal(child.status, 1);
   assert.equal(child.stdout, "");
   assert.equal(child.stderr, "V2_09_RENDER_CONFIG_FAILED\n");
+});
+
+test("single-file worker closes relative chunks and rejects unresolved dependencies atomically", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "v209-module-closure-"));
+  try {
+    const main = join(directory, "index.js");
+    await writeFile(
+      join(directory, "chunk.js"),
+      'export class HostedVideoWorkflow {} export class HostedPairWorkflow {} export default { fetch(){return new Response("ok")} };',
+    );
+    await writeFile(
+      main,
+      'export {default, HostedVideoWorkflow, HostedPairWorkflow} from "./chunk.js";',
+    );
+    await bundleQualifiedWorker(main);
+    const bundled = await readFile(main, "utf8");
+    assert.ok(bundled.includes("HostedVideoWorkflow"));
+    assert.ok(!bundled.includes('./chunk.js"'));
+    await rm(join(directory, "chunk.js"));
+    await bundleQualifiedWorker(main);
+    const broken = 'export {default, HostedVideoWorkflow, HostedPairWorkflow} from "./missing.js";';
+    await writeFile(main, broken);
+    await assert.rejects(bundleQualifiedWorker(main), /V2_09_RENDER_WORKER_MODULE_CLOSURE_FAILED/u);
+    assert.equal(await readFile(main, "utf8"), broken);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
