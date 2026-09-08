@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -399,6 +400,68 @@ test("cleanup before render proves only untouched authority state and never inve
     { mode: 0o600 },
   );
   await assert.rejects(operator.reconcileCloudflareSafety.run(context), /JOURNAL_INVALID/u);
+  assert.deepEqual(mock.apiCalls, []);
+  assert.deepEqual(mock.calls, []);
+});
+
+test("actual pre-render staged authority cleans untouched state without invented rendered hashes", async () => {
+  const value = fixture();
+  unlinkSync(value.configuration.qualifiedConfigPath);
+  const mock = harness(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-07T01:00:00Z"),
+  });
+  const staged = {
+    ...authority(value),
+    execution: "V2_09_PREFLIGHT_THEN_QUALIFIED_PRODUCTION_ONCE",
+    production: {
+      worker_name: value.configuration.workerName,
+      secret_count: SECRET_NAMES.length,
+      secret_allowlist_sha256: hash(canonical([...SECRET_NAMES].sort())),
+      materialization_input_sha256: hash("protected-plan"),
+      chrome_bootstrap_plan_sha256: hash("chrome-plan"),
+    },
+  };
+  const run = (approved = staged) =>
+    operator.reconcileCloudflareSafety.run({
+      authority: approved,
+      cleanupOnly: true,
+      operationId: "reconcile-v209-production-safety",
+    });
+  const result = await run();
+  assert.equal(result.gpu_transport, "UNTOUCHED_NO_MUTATIONS");
+  assert.equal(result.secret_count, null);
+  assert.equal(result.safety_verified, true);
+  assert.equal(existsSync(value.configuration.journalPath), false);
+  assert.equal(existsSync(value.configuration.qualifiedConfigPath), false);
+  for (const invalid of [
+    { ...staged, execution: "wrong" },
+    { ...staged, source_commit: "f".repeat(40) },
+    { ...staged, proposal_sha256: "invalid" },
+    { ...staged, production: { ...staged.production, config_sha256: null } },
+    { ...staged, production: { ...staged.production, materialization_input_sha256: null } },
+    { ...staged, production: { ...staged.production, secret_allowlist_sha256: hash("foreign") } },
+    { ...staged, scope: { ...staged.scope, cleanup_only_recovery: false } },
+    { ...staged, scope: { ...staged.scope, allow_redispatch: true } },
+  ])
+    await assert.rejects(run(invalid), /CLEANUP_AUTHORITY_INVALID/u);
+  // Even a malformed or dangling existing journal forbids this missing-hash path.
+  for (const existing of [
+    {},
+    { state: "PREPARED", events: [] },
+    { events: [{ status: "INTENT" }] },
+  ]) {
+    writeFileSync(value.configuration.journalPath, JSON.stringify(existing), { mode: 0o600 });
+    await assert.rejects(run(), /PRERENDER_CLEANUP_JOURNAL_PRESENT/u);
+    unlinkSync(value.configuration.journalPath);
+  }
+  symlinkSync(`${value.configuration.journalPath}.absent`, value.configuration.journalPath);
+  await assert.rejects(run(), /PRERENDER_CLEANUP_JOURNAL_PRESENT/u);
   assert.deepEqual(mock.apiCalls, []);
   assert.deepEqual(mock.calls, []);
 });

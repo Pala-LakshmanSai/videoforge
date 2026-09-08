@@ -4,9 +4,7 @@ import { tmpdir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  hashV213DryOutputBundle,
-} from "../v2-13/full-live-adapters.mjs";
+import { hashV213DryOutputBundle } from "../v2-13/full-live-adapters.mjs";
 import {
   ACTIVATED_ASSETS_PATH,
   ACTIVATED_MAIN_PATH,
@@ -30,15 +28,41 @@ const fail = (message) => {
   throw new Error(`V2-09 qualified production config renderer: ${message}`);
 };
 
+export const V209_RENDER_FAILURE_CODES = Object.freeze([
+  "V2_09_RENDER_CONFIG_FAILED",
+  "V2_09_RENDER_DEPENDENCIES_FAILED",
+  "V2_09_RENDER_BUILD_FAILED",
+  "V2_09_RENDER_WRANGLER_DRY_RUN_FAILED",
+  "V2_09_RENDER_BUNDLE_FAILED",
+]);
+export function safeV209RenderFailureCode(error) {
+  return V209_RENDER_FAILURE_CODES.includes(error?.message)
+    ? error.message
+    : "V2_09_RENDER_CONFIG_FAILED";
+}
+
+function renderPhase(code, operation) {
+  try {
+    const result = operation();
+    if (result && typeof result === "object" && (result.error || result.status !== 0))
+      throw new Error(code);
+    return result;
+  } catch {
+    // Never retain child stdout, stderr, paths, or an arbitrary error cause.
+    throw new Error(code);
+  }
+}
+
 const defaultRunner = (command, args, options = {}) => {
   const result = spawnSync(command, args, {
     cwd: ROOT,
     encoding: "utf8",
     shell: false,
+    timeout: 120_000,
+    maxBuffer: 4 * 1024 * 1024,
     ...options,
   });
-  if (result.error) fail(result.error.message);
-  if (result.status !== 0) fail(result.stderr || result.stdout || `${command} failed`);
+  if (result.error || result.status !== 0) throw new Error("V2_09_RENDER_CONFIG_FAILED");
   return result;
 };
 
@@ -160,29 +184,53 @@ export async function prepareQualifiedProductionConfig(
   try {
     await writeFile(temporaryConfig, configBytes, { flag: "wx", mode: 0o600 });
     await mode0600(temporaryConfig, "temporary qualified config");
-    runner("pnpm", ["--filter", "@videoforge/web", "build:cloudflare"], { env });
-    runner(
-      "pnpm",
-      [
-        "--filter",
-        "@videoforge/web",
-        "exec",
-        "wrangler",
-        "deploy",
-        "--dry-run",
-        "--outdir",
-        dryRunOutput,
-        "--config",
-        temporaryConfig,
-      ],
-      { env },
+    renderPhase("V2_09_RENDER_DEPENDENCIES_FAILED", () =>
+      runner(
+        "pnpm",
+        [
+          "--recursive",
+          "--filter",
+          "@videoforge/config",
+          "--filter",
+          "@videoforge/contracts",
+          "--filter",
+          "@videoforge/pipeline",
+          "--filter",
+          "@videoforge/control-plane",
+          "build",
+        ],
+        { env },
+      ),
+    );
+    renderPhase("V2_09_RENDER_BUILD_FAILED", () =>
+      runner("pnpm", ["--filter", "@videoforge/web", "build:cloudflare"], { env }),
+    );
+    renderPhase("V2_09_RENDER_WRANGLER_DRY_RUN_FAILED", () =>
+      runner(
+        "pnpm",
+        [
+          "--filter",
+          "@videoforge/web",
+          "exec",
+          "wrangler",
+          "deploy",
+          "--dry-run",
+          "--outdir",
+          dryRunOutput,
+          "--config",
+          temporaryConfig,
+        ],
+        { env },
+      ),
     );
     const receipt = {
       schema_version: "videoforge-v2-09-qualified-production-config-preparation-receipt/v1",
       source_commit: binding.release.source_commit,
       binding_sha256: sha256(bindingBytes),
       config_sha256: sha256(configBytes),
-      worker_bundle_sha256: hashV213DryOutputBundle(dryRunOutput),
+      worker_bundle_sha256: renderPhase("V2_09_RENDER_BUNDLE_FAILED", () =>
+        hashV213DryOutputBundle(dryRunOutput),
+      ),
       media_worker_release: {
         version: "0.1.15",
         manifest_sha256: binding.release.media_worker_release_manifest_sha256,
@@ -261,4 +309,11 @@ async function main() {
   process.stdout.write(`${JSON.stringify(receipt)}\n`);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    await main();
+  } catch (error) {
+    process.stderr.write(`${safeV209RenderFailureCode(error)}\n`);
+    process.exitCode = 1;
+  }
+}

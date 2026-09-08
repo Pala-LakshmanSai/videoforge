@@ -2922,3 +2922,29 @@ test("zero-compute proof records observed endpoints and rejects provider invento
     /V2_09_CONCRETE_ZERO_COMPUTE_INVALID/u,
   );
 });
+
+test("render subprocess preserves only exact safe phase codes and never raw stderr", async () => {
+  for (const [stderr, signal, expected] of [
+    ["V2_09_RENDER_BUILD_FAILED\n", null, "V2_09_RENDER_BUILD_FAILED"],
+    ["V2_09_RENDER_WRANGLER_DRY_RUN_FAILED", null, "V2_09_RENDER_WRANGLER_DRY_RUN_FAILED"],
+    ["password=private-value", null, "V2_09_CONCRETE_RENDER_CONFIG_FAILED"],
+    [
+      "V2_09_RENDER_BUILD_FAILED\npassword=private-value",
+      null,
+      "V2_09_CONCRETE_RENDER_CONFIG_FAILED",
+    ],
+    ["V2_09_RENDER_BUILD_FAILED_SECRET", null, "V2_09_CONCRETE_RENDER_CONFIG_FAILED"],
+    ["V2_09_RENDER_BUILD_FAILED", "SIGTERM", "V2_09_CONCRETE_RENDER_CONFIG_FAILED"],
+  ]) {
+    const { configuration } = fixture();
+    const adapters = createConcreteQualifiedProductionAdapters(configuration, {
+      ports: portSet(),
+      runChild: async () => ({ status: 1, signal, stdout: "private-stdout", stderr }),
+    });
+    const value = authority(adapters.identity_sha256);
+    await assert.rejects(
+      adapters.operations["render-qualified-production-config"]({ authority: value }),
+      (error) => error.message === expected && error.cause === undefined,
+    );
+  }
+});

@@ -260,7 +260,7 @@ function assertCurrentAuthority(authority, configuration, now) {
   return observed;
 }
 
-function assertCleanupAuthority(authority, configuration, now) {
+function assertCleanupAuthorityBase(authority, configuration, now) {
   const observed = readClock(now);
   const issuedAt = parseInstant(authority?.issued_at, "AUTHORITY_TIME_INVALID");
   const expiresAt = parseInstant(authority?.expires_at, "AUTHORITY_TIME_INVALID");
@@ -273,8 +273,6 @@ function assertCleanupAuthority(authority, configuration, now) {
     authority.authority_id.length < 8 ||
     !HASH.test(authority.proposal_sha256 ?? "") ||
     authority.production?.worker_name !== configuration.workerName ||
-    !HASH.test(authority.production?.config_sha256 ?? "") ||
-    !HASH.test(authority.production?.worker_bundle_sha256 ?? "") ||
     !HASH.test(authority.production?.secret_allowlist_sha256 ?? "") ||
     authority.production?.secret_count !== SECRET_NAMES.length ||
     authority.scope?.cleanup_only_recovery !== true ||
@@ -284,6 +282,38 @@ function assertCleanupAuthority(authority, configuration, now) {
   )
     fail("CLEANUP_AUTHORITY_INVALID");
   return observed;
+}
+
+function assertCleanupAuthority(authority, configuration, now) {
+  const observed = assertCleanupAuthorityBase(authority, configuration, now);
+  if (
+    !HASH.test(authority.production?.config_sha256 ?? "") ||
+    !HASH.test(authority.production?.worker_bundle_sha256 ?? "")
+  )
+    fail("CLEANUP_AUTHORITY_INVALID");
+  return observed;
+}
+
+function isPreRenderCleanupAuthority(authority, configuration, now) {
+  if (
+    authority?.execution !== "V2_09_PREFLIGHT_THEN_QUALIFIED_PRODUCTION_ONCE" ||
+    !exactKeys(authority.production, [
+      "chrome_bootstrap_plan_sha256",
+      "materialization_input_sha256",
+      "secret_allowlist_sha256",
+      "secret_count",
+      "worker_name",
+    ])
+  )
+    return false;
+  assertCleanupAuthorityBase(authority, configuration, now);
+  if (
+    !HASH.test(authority.production.chrome_bootstrap_plan_sha256 ?? "") ||
+    !HASH.test(authority.production.materialization_input_sha256 ?? "") ||
+    authority.production.secret_allowlist_sha256 !== sha256(canonical([...SECRET_NAMES].sort()))
+  )
+    fail("CLEANUP_AUTHORITY_INVALID");
+  return true;
 }
 
 function assertOperationContext(context, operationId) {
@@ -1434,6 +1464,32 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
       "reconcileCloudflareSafety",
       async (runtimeValue, context) => {
         if (context?.cleanupOnly !== true) fail("RECONCILIATION_CONTEXT_INVALID");
+        if (
+          isPreRenderCleanupAuthority(
+            context.authority,
+            runtimeValue.configuration,
+            runtimeValue.now,
+          )
+        ) {
+          // No rendered identities exist yet. Require the exact staged shape and
+          // actual journal absence; do not fabricate hashes or write a partial journal.
+          let journalAbsent = false;
+          try {
+            lstatSync(runtimeValue.configuration.journalPath);
+          } catch (error) {
+            if (error?.code !== "ENOENT") throw error;
+            journalAbsent = true;
+          }
+          if (!journalAbsent) fail("PRERENDER_CLEANUP_JOURNAL_PRESENT");
+          return Object.freeze({
+            schema_version: "videoforge.v2-09-cloudflare-safety-reconciliation/v1",
+            worker: runtimeValue.configuration.workerName,
+            gpu_transport: "UNTOUCHED_NO_MUTATIONS",
+            secret_count: null,
+            retained_r2_deleted: false,
+            safety_verified: true,
+          });
+        }
         assertCleanupAuthority(context.authority, runtimeValue.configuration, runtimeValue.now);
         const journal = loadJournal(context.authority, runtimeValue.configuration);
         if (

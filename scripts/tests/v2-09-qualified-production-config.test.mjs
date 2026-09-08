@@ -23,6 +23,7 @@ import {
 import {
   prepareQualifiedProductionConfig,
   renderQualifiedConfig,
+  safeV209RenderFailureCode,
 } from "../../deploy/v2-09/render-qualified-production-config.mjs";
 
 const root = resolve(new URL("../..", import.meta.url).pathname);
@@ -221,9 +222,22 @@ test("preparation writes mode-0600 artifacts after build and isolated Wrangler d
     assert.equal((await stat(receiptPath)).mode & 0o777, 0o600);
     const rendered = parseProductionConfig(await readFile(outputPath, "utf8"));
     assert.equal(rendered.vars.VIDEOFORGE_GPU_TRANSPORT, "QUALIFIED_EXACT");
-    assert.equal(calls.length, 4);
-    const build = calls[2];
-    const dryRun = calls[3];
+    assert.equal(calls.length, 5);
+    assert.deepEqual(calls[2].args, [
+      "--recursive",
+      "--filter",
+      "@videoforge/config",
+      "--filter",
+      "@videoforge/contracts",
+      "--filter",
+      "@videoforge/pipeline",
+      "--filter",
+      "@videoforge/control-plane",
+      "build",
+    ]);
+    assert.deepEqual(calls[2].options.env, calls[3].options.env);
+    const build = calls[3];
+    const dryRun = calls[4];
     assert.deepEqual(build.args, ["--filter", "@videoforge/web", "build:cloudflare"]);
     assert.deepEqual(dryRun.args.slice(0, 5), [
       "--filter",
@@ -304,4 +318,64 @@ test("renderer default is a provider-free no-op and source exposes no live deplo
   const source = await readFile(renderer, "utf8");
   assert.match(source, /"--dry-run"/u);
   assert.doesNotMatch(source, /--execute|--deploy-live|CLOUDFLARE_API_TOKEN/u);
+});
+
+test("render child failures emit fixed phase codes without raw child output", async () => {
+  for (const phase of ["DEPENDENCIES", "BUILD", "WRANGLER_DRY_RUN", "BUNDLE"]) {
+    const directory = await mkdtemp(join(tmpdir(), "v209-safe-render-"));
+    try {
+      const releaseBytes = bytesForRelease();
+      const exactBinding = binding(releaseBytes);
+      const bindingPath = join(directory, "binding.json");
+      const releaseManifestPath = join(directory, "release.json");
+      await writeFile(bindingPath, JSON.stringify(exactBinding), { mode: 0o600 });
+      await writeFile(releaseManifestPath, releaseBytes, { mode: 0o600 });
+      const runner = (command, args) => {
+        if (command === "git")
+          return {
+            status: 0,
+            stdout: args[0] === "rev-parse" ? exactBinding.release.source_commit : "",
+          };
+        if (
+          (phase === "DEPENDENCIES" && args.includes("--recursive")) ||
+          (phase === "BUILD" && args.includes("build:cloudflare")) ||
+          (phase === "WRANGLER_DRY_RUN" && args.includes("--dry-run"))
+        )
+          return {
+            status: 1,
+            stdout: "password=do-not-output",
+            stderr: "secret=/private/credential",
+          };
+        return { status: 0, stdout: "" };
+      };
+      await assert.rejects(
+        prepareQualifiedProductionConfig(
+          {
+            bindingPath,
+            releaseManifestPath,
+            outputPath: join(directory, "out.json"),
+            receiptOutputPath: join(directory, "receipt.json"),
+          },
+          { runner },
+        ),
+        (error) => error.message === `V2_09_RENDER_${phase}_FAILED` && error.cause === undefined,
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+  assert.equal(
+    safeV209RenderFailureCode(new Error("password=do-not-output")),
+    "V2_09_RENDER_CONFIG_FAILED",
+  );
+  assert.equal(
+    safeV209RenderFailureCode(new Error("V2_09_RENDER_BUILD_FAILED password=x")),
+    "V2_09_RENDER_CONFIG_FAILED",
+  );
+  const child = spawnSync(process.execPath, [renderer, "--private-secret-path"], {
+    encoding: "utf8",
+  });
+  assert.equal(child.status, 1);
+  assert.equal(child.stdout, "");
+  assert.equal(child.stderr, "V2_09_RENDER_CONFIG_FAILED\n");
 });

@@ -29,6 +29,7 @@ import {
   deriveInjectedAdapterIdentity,
 } from "./execute-qualified-production.mjs";
 import { readRunPodEvidence } from "./read-only-preflight.mjs";
+import { V209_RENDER_FAILURE_CODES } from "./render-qualified-production-config.mjs";
 import { createV209MediaWorkerProductionPorts } from "./media-worker-production-operator.mjs";
 import { validatePreparationBinding } from "./validate-qualified-production-config.mjs";
 
@@ -1477,7 +1478,16 @@ async function exactChild(runChild, configuration, command, args, code, options 
       maxBuffer: 4 * 1024 * 1024,
     },
   });
-  if (result.status !== 0 || result.signal !== null) fail(`V2_09_CONCRETE_${code}_FAILED`);
+  if (result.status !== 0 || result.signal !== null) {
+    const diagnostic = typeof result.stderr === "string" ? result.stderr.trim() : "";
+    if (
+      code === "RENDER_CONFIG" &&
+      result.signal === null &&
+      V209_RENDER_FAILURE_CODES.includes(diagnostic)
+    )
+      fail(diagnostic);
+    fail(`V2_09_CONCRETE_${code}_FAILED`);
+  }
   return result.stdout.trim();
 }
 
