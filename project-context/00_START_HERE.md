@@ -4,13 +4,16 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-Authority `v2-09-31889dbb1b0e2cf3` is consumed FAILED_CLEAN after 15/26 operations.
-9.7 remains active at the render-config exact stop; 1–8 and 9.1–9.6 stay finished,
-9.8/9.9 pending. Original code: `V2_09_CONCRETE_RENDER_CONFIG_FAILED`; underlying build
-cause is unproven. Automatic database/RunPod cleanup succeeded; audited protected cleanup removed
-27 outputs after three zero-resource reads and exact two-row inactivity proof. No Cloudflare
-deployment, media installation or Chrome E2E occurred. Posted billing unchanged; delayed startup
-charges unproven. Stage 6/7 remain frozen QUALIFIED_PASS_CLEAN. No executable authority remains.
+9.7 remains active; last3188 attempt consumed FAILED_CLEAN15/26;9.8/9.9 pending.
+The render root cause is now reproduced and repaired: fresh checkout lacked compiled workspace
+dependencies. Exact four dependency builds now precede Vite with scrubbed environment and bounded
+children; actual fresh-checkout production build and Wrangler dry-run pass.89 focused tests pass.
+Read-only exact Worker settings returned404; existing OAuth refreshed with unchanged account/scopes.
+Deployment plan uses its exact native protected store; renderer dryrun isolation stays unchanged.
+Safe phase diagnostics, exact static pre-render cleanup authority and completed-receipt-bound
+postrender authority hashes are independently audited. No new deployment or Chrome run occurred;
+fresh exact proposal approval is required. Stage6/7 remain frozen.3188 closure remains valid:
+zero compute, two inactive bindings,27 protected files removed; delayed startup billing unproven.
 Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-endpoint-transition-render-config.json`.
 
 ### Historical activation evidence

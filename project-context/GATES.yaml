@@ -465,7 +465,7 @@ gates:
     current_failure_sha256: "sha256:1f0458f43020b097a774df36fcae1143447ce21b395ef21a69b8ea80122796a6"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "Endpoint transition and cleanup repair88/88 pass; independent audits GO P0=0/P1=0 including final authority-handoff correction. Exact3188 approved; Stage6/7 untouched."
+    provider_free_repair_state: "Render dependency/authority repair89/89 plus fresh-checkout build/dry-run pass; independent audits GO. No current approval;Stage6/7 frozen."
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-endpoint-transition-replacement.json"
     latest_closed_authority_sha256: "sha256:40b129bd736c6052de4017ae8aede0db29d2849b8b733f312a4a94753ad14c1c"
     latest_closed_private_authority_sha256: "sha256:9c15e8a004072f78a8071616ae6bb318ed7af0c34722d3c28b52ddfd512039be"
@@ -480,7 +480,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7 render-config exact stop; future repair/audits/fresh exact approval needed. No authority or replay;9.8/9.9 pending."
+    next_gate: "9.7 repair sealed; fresh exact approval needed for deployment. No authority or replay;9.8/9.9 pending."
 
   GATE_RANGA_001:
     status: open

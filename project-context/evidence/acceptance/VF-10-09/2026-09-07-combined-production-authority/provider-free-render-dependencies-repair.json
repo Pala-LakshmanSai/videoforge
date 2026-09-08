@@ -1,0 +1,53 @@
+{
+  "schema_version": "videoforge.v2-09-provider-free-render-dependencies-repair/v1",
+  "checkpoint": 9,
+  "subcheckpoint": "9.7",
+  "previous_authority": "v2-09-31889dbb1b0e2cf3",
+  "previous_status": "FAILED_CLEAN_NON_REUSABLE",
+  "last_live_completed_operations": 15,
+  "repair_commits": [
+    "db79a936340633f34f90eb329b32d8390cc8ecbf",
+    "38d0d478962a71dd2470f960a28f2dc7852cb60e"
+  ],
+  "diagnosis": "Fresh checkout Vite build reproduces Rollup unresolved @videoforge/control-plane/vocabulary; contracts preclaim omitted other compiled workspace dependencies. Main prebuilt checkout passes.",
+  "repair": [
+    "Build exact config/contracts/pipeline/control-plane dependencies topologically before Vite with scrubbed env,120second per-child bound and4MiB buffer.",
+    "Fixed phase codes preserve renderer diagnostics without arbitrary child output.",
+    "Pre-render cleanup admits exact static staged authority only when Cloudflare journal absent and concrete no-intent checks pass; no fake hashes.",
+    "After render, staged authority takes exact config/bundle hashes only from completed matching source/authority/journal receipt; restart and cleanup paths identical."
+  ],
+  "tests": {
+    "renderer": 7,
+    "cloudflare": 12,
+    "concrete": 35,
+    "combined": 35,
+    "total": 89,
+    "passed": 89
+  },
+  "real_integration": {
+    "fresh_checkout_source": "db79a936340633f34f90eb329b32d8390cc8ecbf",
+    "offline_install": true,
+    "prebuilt_dependencies_present": false,
+    "production_build_verified": true,
+    "wrangler_dry_run_succeeded": true,
+    "receipt": "provider-free-render-clean-checkout-receipt.json",
+    "receipt_sha256": "sha256:3b01a611c6439ce6217e0456538880dff3347249f1df31a8f83305a9c010ea03",
+    "provider_calls": 0,
+    "credential_reads": 0,
+    "external_spend_usd": 0
+  },
+  "audits": "INDEPENDENT_SCOPED_GO_P0_0_P1_0",
+  "stage6_stage7": "FROZEN_UNTOUCHED",
+  "deployment_claim": false,
+  "chrome_e2e_claim": false,
+  "next": "Fresh exact proposal approval then combined activation; no consumed authority replay.",
+  "runtime_plan_repair": "Cloudflare deployment environment omits WRANGLER_HOME and XDG_CONFIG_HOME overrides; exact existing oauthConfigPath resolves to same native protected store under unchanged HOME. Renderer dryrun isolation unchanged.",
+  "read_only_admission": {
+    "worker_settings_get_count": 1,
+    "status": 404,
+    "worker_absent": true,
+    "oauth_refresh": "existing same-account exact-scope OAuth refreshed",
+    "cloudflare_mutations": 0,
+    "credential_values_recorded": false
+  }
+}

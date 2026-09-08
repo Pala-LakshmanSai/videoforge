@@ -1,0 +1,34 @@
+{
+  "schema_version": "videoforge-v2-09-qualified-production-config-preparation-receipt/v1",
+  "source_commit": "db79a936340633f34f90eb329b32d8390cc8ecbf",
+  "binding_sha256": "sha256:4ba9dd4b37c8e60689d1f7b31eac805d8bf14e82f581bbb9b4b8f94f1df910fb",
+  "config_sha256": "sha256:d4e5b88734d12b6f878a99ee83b9cd901fb9e2eabb0b56975dea0919fe6febf7",
+  "worker_bundle_sha256": "sha256:1ab4dc981beb257e233492d0ae1cf4e7578b1ba3be76e0f94c375d24304a8d36",
+  "media_worker_release": {
+    "version": "0.1.15",
+    "manifest_sha256": "sha256:d42bc1ee12829bb8d2824fca144a041283ad164c2fdfa894d7d6ebfba2b4df75"
+  },
+  "lanes": {
+    "mage_image": {
+      "qualification_record_sha256": "sha256:aeef45f237fd07e0937cdd51eaaf545ac0d8bb4c90eb105708f1681da787cc79",
+      "worker_image_digest": "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+      "endpoint_id_sha256": "sha256:b01f45a7482164044194f263899d3c8c1d6a19c2fd185ad02e982b50c4a7fa12"
+    },
+    "soulx_avatar": {
+      "qualification_record_sha256": "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa",
+      "worker_image_digest": "sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e",
+      "endpoint_id_sha256": "sha256:30b58c95d0422bc171ef3ada55848b34fc95549aa98e5e3cceec861fc33e028f"
+    }
+  },
+  "required_secret_bindings": {
+    "provenance_receipt_secret": "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY",
+    "provenance_receipt_key_id": "VIDEOFORGE_PROVIDER_PROOF_KEY_ID"
+  },
+  "gpu_transport": "QUALIFIED_EXACT",
+  "production_build_verified": true,
+  "wrangler_dry_run_succeeded": true,
+  "deployment_attempted": false,
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "external_spend_usd": 0
+}

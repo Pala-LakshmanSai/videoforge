@@ -1,0 +1,22 @@
+{
+  "schema_version": "videoforge.v2-09-readonly-worker-inventory/v1",
+  "recorded_at": "2026-09-08T04:41:34.901Z",
+  "observation": "completed earlier in this agent turn; no new provider calls while recording",
+  "plan_sha256": "323b5360acb31b38287605466329bcac92826c41c686b6586861e38d98e13dde",
+  "account_id_sha256": "dc7e469ff433fab0fab50ce06a41a24e27de8ab78155299f706d82c63fdccbe8",
+  "worker_name_sha256": "7e679982f0b16f69bf56c239572b5545cc3dc3d16ec1ddb432a4b1514e64a822",
+  "oauth_config_path_sha256": "1f4cc7dea1b7ea98aaf91bae95b329dfd607a26967ba15f6813e26340f96961c",
+  "protected_credential_owned_regular_mode_0600": true,
+  "oauth_refresh_same_account_verified": true,
+  "oauth_refresh_exact_scopes_verified": true,
+  "settings_get_count": 1,
+  "http_status": 404,
+  "worker_state": "ABSENT",
+  "resource_mutation_count": 0,
+  "provider_compute_started": false,
+  "corrected_environment_removed_keys": [
+    "WRANGLER_HOME",
+    "XDG_CONFIG_HOME"
+  ],
+  "corrected_native_oauth_path_equal": true
+}
