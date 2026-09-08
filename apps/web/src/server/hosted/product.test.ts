@@ -221,8 +221,10 @@ describe("hosted product route contract", () => {
 
   it("creates a fresh bounded ASR submission after an explicit failed attempt", async () => {
     const previousProject = testState.projectRows[0];
+    const revisionId = "22222222-2222-4222-8222-222222222222";
     testState.projectRows[0] = {
-      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_id: revisionId,
+      revision_number: 2,
       voiceover_asset_id: "33333333-3333-4333-8333-333333333333",
       checksum_sha256: `sha256:${"a".repeat(64)}`,
       content_type: "audio/mpeg",
@@ -240,9 +242,40 @@ describe("hosted product route contract", () => {
       );
       expect(result?.status).toBe(202);
       const body = (await result?.json()) as {
-        cpu_submission: { idempotency_key: string };
+        project_revision_id: string;
+        cpu_submission: {
+          idempotency_key: string;
+          project_revision_id: string;
+          input_document: {
+            attempt_id: string;
+            output: { result_uri: string };
+            cancel_token: string;
+          };
+        };
       };
-      expect(body.cpu_submission.idempotency_key).toBe(`project-${PROJECT_ID}-asr-v2`);
+      expect(body.project_revision_id).toBe(revisionId);
+      expect(body.cpu_submission.project_revision_id).toBe(revisionId);
+      expect(body.cpu_submission.idempotency_key).toBe(
+        `project-${PROJECT_ID}-revision-${revisionId}-asr-v2`,
+      );
+      expect(body.cpu_submission.input_document.attempt_id).toBe(revisionId);
+      expect(body.cpu_submission.input_document.output.result_uri).toBe(
+        `vf-local-run://${revisionId}/${revisionId}/asr-result.json`,
+      );
+      expect(body.cpu_submission.input_document.cancel_token).toBe(
+        `project-${PROJECT_ID}-revision-${revisionId}-asr-cancel`,
+      );
+
+      const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+      const handoffStart = source.indexOf("async function asrHandoff(");
+      const handoffEnd = source.indexOf("function hostedTranscriptText(", handoffStart);
+      const handoff = source.slice(handoffStart, handoffEnd);
+      expect(handoff).toContain("revision.status = 'LOCKED'");
+      expect(handoff).toContain("ORDER BY revision.revision_number DESC, revision.id DESC");
+      const commitStart = source.indexOf("async function commitProject(");
+      const commitEnd = source.indexOf("/**\n * Advance the ordinary product journey", commitStart);
+      const commit = source.slice(commitStart, commitEnd);
+      expect(commit).toContain("hostedAsrSubmissionIdentity(projectId, revisionId, 1)");
     } finally {
       testState.projectRows[0] = previousProject!;
     }

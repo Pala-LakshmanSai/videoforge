@@ -12,6 +12,7 @@ import {
   renderNativeMigration91Sql,
   renderNativeMigration92Sql,
   renderNativeMigration93Sql,
+  renderNativeMigration94Sql,
 } from "../../deploy/v2-09/native-replacement-database.mjs";
 
 function fixture(t, target) {
@@ -120,4 +121,16 @@ test("migration93 requires exact92 predecessor ledger and renders only span fina
   assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
   assert.throws(() => renderNativeMigration92Sql(input), /MANIFEST/);
   assert.throws(() => renderNativeMigration93Sql(fixture(t, 92)), /MANIFEST/);
+});
+
+test("migration94 requires exact93 predecessor ledger and renders revision-scoped admission", (t) => {
+  const input = fixture(t, 94);
+  const sql = renderNativeMigration94Sql(input);
+  assert.match(sql, /'from_version',93,'to_version',94/);
+  assert.match(sql, /VALUES\(94,/);
+  assert.match(sql, /revision\.revision_number DESC,revision\.id DESC/u);
+  assert.match(sql, /:revision:'\|\|revision_id::text/u);
+  assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
+  assert.throws(() => renderNativeMigration93Sql(input), /MANIFEST/);
+  assert.throws(() => renderNativeMigration94Sql(fixture(t, 93)), /MANIFEST/);
 });

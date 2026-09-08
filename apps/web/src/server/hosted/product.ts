@@ -280,6 +280,25 @@ function parseRenderHandoff(value: unknown): string | null {
   return UUID.test(record.asr_attempt_id) ? record.asr_attempt_id : null;
 }
 
+function hostedAsrSubmissionIdentity(
+  projectId: string,
+  revisionId: string,
+  attemptOrdinal: number,
+): {
+  readonly idempotencyKey: string;
+  readonly attemptId: string;
+  readonly resultUri: string;
+  readonly cancelToken: string;
+} {
+  const revisionScope = `project-${projectId}-revision-${revisionId}`;
+  return {
+    idempotencyKey: `${revisionScope}-asr-v${attemptOrdinal}`,
+    attemptId: revisionId,
+    resultUri: `vf-local-run://${revisionId}/${revisionId}/asr-result.json`,
+    cancelToken: `${revisionScope}-asr-cancel`,
+  };
+}
+
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_PRESET_SOURCE_BYTES = 20 * 1024 * 1024;
 
@@ -4700,21 +4719,23 @@ async function commitProject(
     });
     const extension = voiceoverExtension(String(pending.content_type));
     const checksum = String(pending.checksum_sha256);
+    const revisionId = String(pending.project_revision_id);
+    const asrIdentity = hostedAsrSubmissionIdentity(projectId, revisionId, 1);
     const uri = `vf-local://objects/sha256/${checksum.slice(7, 9)}/${checksum.slice(7)}.${extension}`;
     return response({
       schema_version: "videoforge-hosted-project-ready/v1",
       project_id: projectId,
-      project_revision_id: pending.project_revision_id,
+      project_revision_id: revisionId,
       cpu_submission: {
         schema_version: "videoforge-hosted-cpu-submission/v1",
-        idempotency_key: `project-${projectId}-asr-v1`,
+        idempotency_key: asrIdentity.idempotencyKey,
         project_id: projectId,
-        project_revision_id: pending.project_revision_id,
+        project_revision_id: revisionId,
         kind: "ASR",
         input_document: {
           schema_version: "asr-job-input/v1",
-          project_revision_id: pending.project_revision_id,
-          attempt_id: projectId,
+          project_revision_id: revisionId,
+          attempt_id: asrIdentity.attemptId,
           voiceover: {
             asset_id: pending.voiceover_asset_id,
             sha256: checksum,
@@ -4736,9 +4757,9 @@ async function commitProject(
             split_on_word: true,
           },
           output: {
-            result_uri: `vf-local-run://${pending.project_revision_id}/${projectId}/asr-result.json`,
+            result_uri: asrIdentity.resultUri,
           },
-          cancel_token: projectId,
+          cancel_token: asrIdentity.cancelToken,
         },
         objects: [{ artifact_receipt_id: pending.upload_receipt_id, uri }],
       },
@@ -4781,6 +4802,7 @@ async function asrHandoff(
       ]);
       const result = await transaction.query<{
         revision_id: string;
+        revision_number: number | string;
         voiceover_asset_id: string;
         checksum_sha256: string;
         content_type: string;
@@ -4790,6 +4812,7 @@ async function asrHandoff(
         latest_asr_state: string | null;
       }>(
         `SELECT revision.id::text AS revision_id,
+                revision.revision_number,
                 revision.voiceover_asset_id::text AS voiceover_asset_id,
                 receipt.checksum_sha256, receipt.content_type,
                 asset.duration_ms, receipt.id::text AS receipt_id,
@@ -4833,6 +4856,7 @@ async function asrHandoff(
             AND receipt.checksum_sha256 = asset.binary_sha256
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
             AND project.status = 'ACTIVE'
+          ORDER BY revision.revision_number DESC, revision.id DESC
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId],
       );
@@ -4865,6 +4889,11 @@ async function asrHandoff(
       );
     const asrAttemptOrdinal = asrAttemptCount + 1;
     const extension = voiceoverExtension(state.content_type);
+    const asrIdentity = hostedAsrSubmissionIdentity(
+      projectId,
+      state.revision_id,
+      asrAttemptOrdinal,
+    );
     const uri = `vf-local://objects/sha256/${state.checksum_sha256.slice(7, 9)}/${state.checksum_sha256.slice(7)}.${extension}`;
     return response(
       {
@@ -4873,14 +4902,14 @@ async function asrHandoff(
         project_revision_id: state.revision_id,
         cpu_submission: {
           schema_version: "videoforge-hosted-cpu-submission/v1",
-          idempotency_key: `project-${projectId}-asr-v${asrAttemptOrdinal}`,
+          idempotency_key: asrIdentity.idempotencyKey,
           project_id: projectId,
           project_revision_id: state.revision_id,
           kind: "ASR",
           input_document: {
             schema_version: "asr-job-input/v1",
             project_revision_id: state.revision_id,
-            attempt_id: projectId,
+            attempt_id: asrIdentity.attemptId,
             voiceover: {
               asset_id: state.voiceover_asset_id,
               sha256: state.checksum_sha256,
@@ -4902,9 +4931,9 @@ async function asrHandoff(
               split_on_word: true,
             },
             output: {
-              result_uri: `vf-local-run://${state.revision_id}/${projectId}/asr-result.json`,
+              result_uri: asrIdentity.resultUri,
             },
-            cancel_token: projectId,
+            cancel_token: asrIdentity.cancelToken,
           },
           objects: [{ artifact_receipt_id: state.receipt_id, uri }],
         },
