@@ -455,16 +455,16 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: null
-    current_authority_sha256: null
-    current_authority_state: none_prior_2c15ff7c_consumed_failed_clean
-    current_proposal_sha256: null
-    current_control_source_commit: null
+    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-child-stdin-eof-replacement.json"
+    current_authority_sha256: "sha256:37a3f9c9029a8deee17d3f2e07b1c8177e4d12e1a06ae8963a5947c58facc21e"
+    current_authority_state: approved_single_use_unconsumed_pending_successor_audit
+    current_proposal_sha256: "sha256:af93a2373eb5619b8ab5b7cd61c1063ee39da0613b9fef9434b260f1e85c1bdb"
+    current_control_source_commit: "b897fc6def69db56a6d3dba43573551042843458"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-child-stdin-eof.json"
     current_failure_sha256: "sha256:597b2334d83369cffdd22d789e09d61a56a6a99de1365319c05a64d388a6c600"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "Repair 7c5206db delivers exact child stdin plus EOF, fails closed generically, preserves child quiescence, and bounds four synchronous psql paths. Focused tests pass 70/70; exact clean-source audits are pending. Stage 6/7 were untouched."
+    provider_free_repair_state: "Repair 7c5206db delivers exact child stdin plus EOF, fails closed generically, preserves child quiescence, and bounds four synchronous psql paths. Focused tests pass 70/70; exact source and proposal audits are each 3/3 GO P0=0/P1=0. Stage 6/7 were untouched."
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-concrete-reconciler-path-binding-replacement.json"
     latest_closed_authority_sha256: "sha256:5e4e340f870f90876b644d7795e7124090fca6312e3e17ee7d62a8a6369a98e2"
     latest_closed_proposal_sha256: "sha256:2c15ff7cc8093988983c98b4f8c07ef2060fded30bb93aecc9e51d65f1d82823"
@@ -475,7 +475,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "Seal and independently audit a clean source/bundle and exact replacement proposal, then obtain fresh exact approval."
+    next_gate: "Complete independent authority-materialization successor audits, then execute the approved combined activation once."
 
   GATE_RANGA_001:
     status: open

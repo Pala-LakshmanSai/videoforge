@@ -4,6 +4,11 @@
 
 ### Current new-chat launch point — 2026-09-08
 
+- Proposal `sha256:af93a237...c1bdb` is exactly approved. Authority
+  `v2-09-af93a2373eb5619b`, source `b897fc6d`, and media-worker bundle
+  `sha256:a1bda39b...a194b6` are materialized mode-0600. Execution awaits only the mandatory independent
+  authority-materialization successor audits; the exact source push/readback remains inside the
+  authorized executor order.
 - Proposal `sha256:2c15ff7c...2823` and authority `v2-09-2c15ff7cc8093988` are consumed
   `FAILED_CLEAN` and non-reusable. Five operations completed through exact source readback. Migration
   0074-0086 started but received zero stdin bytes and timed out without committing; all 20 later
@@ -13,9 +18,8 @@
   occurred.
 - Provider-free repair `7c5206db` writes and closes exact child stdin, fails closed without secret
   leakage, preserves cancellation/timeout quiescence, and bounds all four synchronous psql paths.
-  Focused suites pass 70/70 and component audits are GO P0=0/P1=0. No live authority exists. Next:
-  seal and audit one clean source/bundle and exact replacement proposal, then obtain fresh exact
-  approval. Stage 6/7 remain frozen.
+  Focused suites pass 70/70; exact source and proposal audits are each 3/3 GO P0=0/P1=0. Stage 6/7
+  remain frozen.
 - V2-09 proposal `sha256:5b78e19b...cc80` and authority `v2-09-5b78e19baa6427f4` are consumed
   `FAILED_CLEAN` and non-reusable. Exact preflight and the global completion baseline passed, then
   protected-input materialization failed with `V2_09_PROTECTED_MATERIALIZATION_OUTPUT_INVALID`.
