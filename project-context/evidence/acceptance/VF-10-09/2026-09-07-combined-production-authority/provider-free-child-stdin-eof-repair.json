@@ -1,0 +1,47 @@
+{
+  "schema_version": "videoforge.v2-09-provider-free-repair/v1",
+  "checkpoint": "V2-09",
+  "task_id": "VF-10-09",
+  "repair_commit": "7c5206db93e21e024e60000a02e232c813d96714",
+  "failed_authority_id": "v2-09-2c15ff7cc8093988",
+  "failed_proposal_sha256": "sha256:2c15ff7cc8093988983c98b4f8c07ef2060fded30bb93aecc9e51d65f1d82823",
+  "provider_free": true,
+  "repair": {
+    "child_input_removed_from_spawn_options": true,
+    "child_stdin_written_exactly_once": true,
+    "child_stdin_eof_closed": true,
+    "backpressure_completion_observed": true,
+    "premature_child_close_fails_closed": true,
+    "sync_and_async_stdin_errors_are_generic": true,
+    "secret_error_text_not_exposed": true,
+    "cancellation_waits_for_child_close": true,
+    "timeout_waits_for_child_close": true,
+    "synchronous_psql_timeout_ms": 60000
+  },
+  "focused_validation": {
+    "command": "node --test deploy/v2-09/execute-combined-qualified-production.test.mjs deploy/v2-09/concrete-qualified-production-adapters.test.mjs scripts/tests/v2-13-production-child-cancellation.test.mjs",
+    "passed": 70,
+    "failed": 0
+  },
+  "independent_child_runner_audits": {
+    "audit_count": 3,
+    "go_count": 3,
+    "p0": 0,
+    "p1": 0
+  },
+  "live_effects": {
+    "provider_calls": 0,
+    "provider_mutations": 0,
+    "database_mutations": 0,
+    "runpod_job_posts": 0,
+    "gpu_jobs": 0,
+    "cloudflare_mutations": 0,
+    "r2_mutations": 0,
+    "chrome_e2e_runs": 0,
+    "redispatches": 0,
+    "stage_6_jobs": 0,
+    "stage_7_jobs": 0,
+    "incremental_external_spend_usd": 0
+  },
+  "status": "PROVIDER_FREE_REPAIR_GREEN_AWAITING_CLEAN_CONTEXT_SEAL_AND_PROPOSAL"
+}

@@ -1,0 +1,85 @@
+{
+  "schema_version": "videoforge.v2-09-combined-production-failed-clean/v1",
+  "checkpoint": "V2-09",
+  "task_id": "VF-10-09",
+  "authority_id": "v2-09-2c15ff7cc8093988",
+  "proposal_sha256": "sha256:2c15ff7cc8093988983c98b4f8c07ef2060fded30bb93aecc9e51d65f1d82823",
+  "control_source_commit": "3737a177779325f6a4940096a8cf33e604a84c58",
+  "authority_successor_commit": "8f65089179a28271d538000be0755f40787db7a0",
+  "authority_sha256": "sha256:5e4e340f870f90876b644d7795e7124090fca6312e3e17ee7d62a8a6369a98e2",
+  "materialization_plan_sha256": "sha256:4c858ba179999c904d1d34f2ff076ba54eab572509f53612df08cb44e002b0d3",
+  "qualified_binding_template_sha256": "sha256:3789ae092dacf0d0fbfd3cf7297d7c8e311074dd548cd8d2cc6b7deaeb550e44",
+  "media_worker_bundle_sha256": "sha256:cdad169b818b5c6fc2f43920f029e4edc1e12defcdb0033d3a91692029f3da28",
+  "status": "FAILED_CLEAN",
+  "consumed": true,
+  "reusable": false,
+  "observed_terminal_error": "V2_09_STAGING_CLEANUP_INCOMPLETE",
+  "operation_failure": "V2_13_FULL_LIVE_ADAPTER_MIGRATIONS_TIMEOUT",
+  "root_cause": "The cancellable child runner incorrectly passed options.input to spawn and never wrote or closed child stdin. The psql child therefore received zero migration SQL bytes and waited for EOF until the exact 600000 ms timeout.",
+  "outer_state_sha256": "sha256:887024696b3571533e3b257f140cd15a9302ad905d62a1d16733d96c7105f9a2",
+  "preflight": {
+    "checked_at_utc": "2026-09-08T00:32:34.283Z",
+    "availability": "MEDIUM",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "region": "EU-RO-1",
+    "rate_usd_per_gpu_second": 0.00031,
+    "rate_usd_per_gpu_hour": 1.116,
+    "cumulative_endpoint_billing_usd": 3.5284023286949378,
+    "pods": 0,
+    "endpoints": 0,
+    "private_templates": 0,
+    "active_workers": 0,
+    "retained_volumes": 2
+  },
+  "completion_baseline": {
+    "observed_at_utc": "2026-09-08T00:32:49.447Z",
+    "completion_baseline_micro_usd": 386630,
+    "maximum_completion_baseline_micro_usd": 15500000,
+    "settled_net_micro_usd": 17648,
+    "open_reservation_micro_usd": 368982,
+    "reported_unsettled_micro_usd": 0
+  },
+  "operations": {
+    "completed": [
+      "run-read-only-preflight",
+      "read-pre-mutation-completion-baseline",
+      "materialize-v209-protected-inputs",
+      "push-clean-source",
+      "readback-clean-source"
+    ],
+    "started_not_completed": ["apply-migrations-0074-0086"],
+    "pending_count": 20,
+    "inner_authority_emitted": false
+  },
+  "database_proof": {
+    "migration_ledger_count": 73,
+    "migration_ledger_min_version": 1,
+    "migration_ledger_max_version": 73,
+    "migrations_0074_through_0086_committed": false,
+    "authority_marker_role_count": 0,
+    "authority_marker_membership_count": 0
+  },
+  "cleanup": {
+    "role_cleanup_tombstone_sha256": "sha256:6e6eb1508b9211cafbad460a11b8793e002b979c166d0c392f0cd7acd713d556",
+    "role_cleanup_tombstone_mode": "0600",
+    "role_cleanup_status": "CLEANED",
+    "generated_protected_outputs_remaining": 0,
+    "executor_or_psql_processes_remaining": 0
+  },
+  "effects": {
+    "database_migrations_applied": false,
+    "media_worker_published": false,
+    "media_worker_installed": false,
+    "runpod_lane_mutations": 0,
+    "runpod_job_posts": 0,
+    "gpu_jobs": 0,
+    "cloudflare_mutations": 0,
+    "r2_mutations": 0,
+    "chrome_e2e_runs": 0,
+    "redispatches": 0,
+    "stage_6_jobs": 0,
+    "stage_7_jobs": 0,
+    "incremental_external_spend_usd": 0
+  },
+  "next_gate": "Provider-free child-stdin and bounded synchronous psql repair, focused validation, independent source audit, clean reseal, exact replacement proposal audit, and fresh exact approval."
+}
