@@ -1,0 +1,31 @@
+{
+  "schema_version": "videoforge.v2-09-live-artifact-trigger-scope-repair/v1",
+  "status": "MIGRATION88_VERIFIED",
+  "repair_source_commit": "a840b7df1d0948d3a7ce4cc4dfa71d1da32107fd",
+  "deployed_worker_source_commit": "9441f8ab35ac9ce29046cf7c27185d6d3b352478",
+  "committed_at": "2026-09-08T12:42:11.950Z",
+  "from_version": 87,
+  "to_version": 88,
+  "strict_effective_readback": "QUALIFIED_EXACT",
+  "readback_at": "2026-09-08T12:42:20.905Z",
+  "independent_audit": {
+    "P0": 0,
+    "P1": 0
+  },
+  "private_proofs": {
+    "materialized-plan.json": "sha256:ebd0a972f241c35a51ba917c9917f1d589bbaade14280752d166c2b9ba6ac491",
+    "migration-journal.jsonl": "sha256:12186ec37c90b5042f64499a6145a764c25c0223c91b4a40f331e3239698d9b4",
+    "migration-result.json": "sha256:11913705b32c5a3002a064b9f74da6c08e17ef612cecf049163d03ae3a058ecd",
+    "effective-readback.json": "sha256:f4fc25b6da180eea7dca455c8acb3d8c6922e5e4ded9a3b67823c1ff1773bea5"
+  },
+  "additional_generate_clicks": 0,
+  "cloudflare_publications": 0,
+  "provider_jobs": 0,
+  "checkpoint_9_7": "VERIFIED",
+  "checkpoint_9_8": "STOPPED_NO_RETRY",
+  "manual_chrome_ready": false,
+  "independent_final_receipt_sha256": "sha256:47d3c2521ef44459cad194f36addf78afb5767fcdadb549bccb6c0bf0118c4ef",
+  "final_idle_verified": true,
+  "temporary_wav_copy_removed": true,
+  "existing_chrome_queue": "API healthy; computer Connected; no Generate retry"
+}

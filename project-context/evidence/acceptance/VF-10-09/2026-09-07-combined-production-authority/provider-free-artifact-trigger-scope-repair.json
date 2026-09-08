@@ -1,6 +1,6 @@
 {
   "schema_version": "videoforge.v2-09-artifact-trigger-scope-repair/v1",
-  "status": "FOCUSED_REGRESSION_PASS_AWAITING_INDEPENDENT_AUDIT",
+  "status": "REGRESSION_PASS_INDEPENDENT_GO",
   "live_worker_source": "9441f8ab35ac9ce29046cf7c27185d6d3b352478",
   "observed_failure_at": "2026-09-08T12:20:22.061Z",
   "failure": "permission denied for function videoforge_is_hosted_v209_system_avatar_reference",
@@ -17,5 +17,9 @@
   "database_renderer_tests_passed": 4,
   "production_migration_applied": false,
   "second_generate_click": false,
-  "stage6_7_modified": false
+  "stage6_7_modified": false,
+  "independent_audit": {
+    "P0": 0,
+    "P1": 0
+  }
 }

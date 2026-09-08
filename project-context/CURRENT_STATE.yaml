@@ -4,7 +4,7 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_single_click_stopped_root_cause_diagnosis
+current_milestone: v2_09_single_click_stopped_database_repair_verified
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -18,7 +18,7 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_single_click_stopped_root_cause_diagnosis
+  mode: v2_09_single_click_stopped_database_repair_verified
   live_provider_calls: "9441f8ab replacement8/8 and native handoff verified; singleclick HTTP500 at12:20:20.487Z; no create/generation rows; idle closure proved; no retry"
   remote_mutation: false
   deployment_or_publication: "Exact9441f8ab qualified replacement8/8 deployed/imported/readback; migration0087 applied; retained worker0.1.15 ONLINE"
@@ -29,7 +29,7 @@ current_goal_boundary:
   current_checkpoint: "9.7 finished;1–8 and9.1–9.6 finished;9.8 STOPPED_NO_RETRY;9.9 manual readiness not achieved."
   approval_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-runtime-heartbeat.json"
   approval_evidence_sha256: "sha256:a62ed1df6c29a087150224a8c4cb62cd42656f48a8842c1c57548bd047837762"
-  note: "Single click returned HTTP500 before observed project creation. Exact Cloudflare error and realPG reproduction: permission denied for function videoforge_is_hosted_v209_system_avatar_reference (42501). Migration0088 trigger-scope repair in progress; no secondclick. Three retained-pair zero reads and scopedDB zero jobs/leases prove idle; retained production remains deployed."
+  note: "Single click returned HTTP500 before observed project creation. Exact Cloudflare error and realPG reproduction: permission denied for function videoforge_is_hosted_v209_system_avatar_reference (42501). Migration0088 committed12:42:11.950Z from a840b7df after realPG regression and independentGO; strict effectiveQUALIFIED readback passed; no secondclick. Three retained-pair zero reads and scopedDB zero jobs/leases prove idle; retained production remains deployed."
 
 
 v2_09_continuing_user_authorization:
@@ -65,7 +65,7 @@ v2_09_verified_qualified_replacement:
   predecessor: "b905 historical22/26 retained;3b380 stopped claim transferred without normal replay"
   retained: "Existing two lanes,22secrets,0.1.15 pairing, qualification expiry and sealed volumes"
   generate_clicks: 0
-  next: "Validate and apply migration0088 trigger-scope repair; consumed native attempt cannot replay; no manual readiness"
+  next: "Repair verified; close evidence for consumed singleclick stop; no E2E retry or manual readiness"
 
 v2_09_native_single_click_stop:
   clicked_at: "2026-09-08T12:20:20.487Z"
@@ -6535,7 +6535,7 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_single_click_stopped_root_cause_diagnosis
+  milestone: v2_09_single_click_stopped_database_repair_verified
   status: EXECUTION_ACTIVE
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: continuing_authorization_consumed_native_click
@@ -7410,3 +7410,12 @@ audit_evidence:
   current_goal_scope: v2_07_qualified_attempt85_consumed_success_clean_no_executable_authority
   result: V2_06_COMPLETE_GREEN_INDEPENDENT_AUDIT_PASS_ZERO_FINDINGS
   v2_07_status: QUALIFIED_ATTEMPT85_PASS_CLEAN_ZERO_COMPUTE
+
+v2_09_artifact_trigger_repair:
+  status: MIGRATION88_VERIFIED
+  source_commit: a840b7df1d0948d3a7ce4cc4dfa71d1da32107fd
+  deployed_worker_source_commit: 9441f8ab35ac9ce29046cf7c27185d6d3b352478
+  committed_at: "2026-09-08T12:42:11.950Z"
+  evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/live-artifact-trigger-scope-repair.json"
+  additional_generate_clicks: 0
+  manual_chrome_ready: false
