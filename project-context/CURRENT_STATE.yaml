@@ -4,32 +4,32 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_ca118_approved_production_deployment
+current_milestone: v2_09_retained_disabled_candidate_seal_pending
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: provider_free_repair
 application_code_changes_authorized: true
-provider_calls_authorized: true
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: true
-credential_access_authorized: true
-gpu_use_authorized: true
-maximum_external_spend_usd: 2
+remote_or_cloud_mutations_authorized: false
+credential_access_authorized: false
+gpu_use_authorized: false
+maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_ca118_approved_production_deployment
-  live_provider_calls: "Exact ca118 approved combined activation only; materialized audits pending before dispatch."
-  remote_mutation: true
-  deployment_or_publication: "Exact approved combined activation from frozencb357135 only."
-  credential_value_access: "Exact protected snapshots and native Cloudflare runtime PATH only."
-  paid_requests_or_spend: "USD2 finite cap;USD17.5 completion ceiling; existing retained-volume consent unchanged."
-  runpod_mutation_or_gpu: "Exact two qualified max-one EU-RO-1 lanes,workersMin=0,no fallback or replay."
+  mode: v2_09_retained_disabled_candidate_seal_pending
+  live_provider_calls: "None; ca118 consumed FAILED_CLEAN17/26."
+  remote_mutation: false
+  deployment_or_publication: "Retained disabled Worker and two workflows; no qualified deployment/install/Chrome."
+  credential_value_access: "None during provider-free repair."
+  paid_requests_or_spend: "No current authority or cap; existing volume retention consent unchanged."
+  runpod_mutation_or_gpu: "None; three zero-compute reads and two inactive DB bindings verified."
   v2_07_action: "Stage6/7 frozen QUALIFIED_PASS_CLEAN; zero changes or reruns."
   current_checkpoint: "9.7 active;1–8 and9.1–9.6 finished;9.8/9.9 pending."
-  approval_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-release-availability-recovered-replacement.json"
-  approval_evidence_sha256: "sha256:7779361de49da5c0a9f77ad717c65a9d7303334aba1c9d19af9b6ba1b2f4dcf9"
-  note: "ca118 explicitly approved;9.7.6DONE9.7.7ACTIVE9.7.8pending;2450consumedFAILED_CLEAN8/26;Stage6/7frozen."
+  approval_evidence: null
+  approval_evidence_sha256: null
+  note: "ca118FAILED_CLEAN17/26;secret0CFSAFE_DISABLED_CLEAN,27protecteditemsrolesclean;retaineddisabledWorker+2workflows;9.7.7forwardrepairactive,nextadmissionauditpending."
 
 
 v2_09_checkpoint_9_7_subcheckpoints:
@@ -41,11 +41,20 @@ v2_09_checkpoint_9_7_subcheckpoints:
   "9.7.4": "DONE — install and Chrome handoff audit"
   "9.7.5": "DONE — clean536e7a40;15tests, actual prerequisite proof, two exact audits GO"
   "9.7.6": "DONE \u2014 exact ca118 proposal approved"
-  "9.7.7": "ACTIVE \u2014 combined production deployment; materialized audits before dispatch"
+  "9.7.7": "ACTIVE \u2014ca118 FAILED_CLEAN; retained-baseline repair verified; exact successor proposal seal pending"
   "9.7.8": "PENDING — post-import readiness before 9.8"
   next_main_subcheckpoints: "9.8 single Chrome E2E and 9.9 cleanup/readiness pending"
 
 v2_09_provider_free_candidate:
+  retained_baseline_source_commit: "69d343171e8226f1df948bf1da7d542b1e340935"
+  retained_baseline_proposal_path: "/Users/lakshmansai/.videoforge/v2-09/proposals/retained-disabled-baseline-replacement.txt"
+  retained_baseline_proposal_sha256: "sha256:cfe84272094767896164e137c3d63f9c58f3e0bd6106156d6497b8ea9b89959f"
+  retained_baseline_proposal_status: SEALED_AWAITING_FRESH_EXACT_APPROVAL
+
+  retained_disabled_candidate_source: "69d343171e8226f1df948bf1da7d542b1e340935"
+  retained_disabled_candidate_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-retained-disabled-baseline-repair.json"
+  retained_disabled_candidate_evidence_sha256: "sha256:2fd87c00dc2324275a9cbd81bceab207a4de301e1a2725cd5a879fe8bc2f54ab"
+  retained_disabled_candidate_status: "19CFtests+targetedoldsource1/1PASS independentGO; exactproposal sealpending nofreshapproval"
   release_recovery_source_commit: "cb35713513f39fcc2b4e49b1628cbcbdddeb76f4"
   release_recovery_proposal_path: "/Users/lakshmansai/.videoforge/v2-09/proposals/release-read-recovery-replacement.txt"
   release_recovery_proposal_sha256: "sha256:ca1180bf19a1b4cb25c6e5a1c01b097bff4768839f239a7187168e8d19df37c2"
@@ -85,9 +94,9 @@ v2_09_provider_free_candidate:
   workflow_bootstrap_phase_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-workflow-bootstrap-phase-repair.json"
   workflow_bootstrap_phase_repair_evidence_sha256: "sha256:2aeb0ab30eef8cea124b838c3b732356f64dabe85e19d271e98fb5c238bd330f"
   current_repair_status: WORKFLOW_BOOTSTRAP_PHASE_REPAIR_VALIDATED_109_OF_109_REAL_RUNTIME_PASS_INDEPENDENT_GO
-  latest_live_completed_operations: "8/26"
-  latest_live_closure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-renderer-diagnostics-release-absence.json"
-  latest_live_closure_sha256: "sha256:a4ec3a443731289360d0bf9e875bd2441b47bf097ad2796e2446bafe7af1b0e1"
+  latest_live_completed_operations: "17/26"
+  latest_live_closure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-release-recovered-secret-cleanup.json"
+  latest_live_closure_sha256: "sha256:fdf35a7a704f9416cc621747935bc19c2cf97ef72cc1dda76e63f3676492b7ff"
   native_chrome_preclaim_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-native-chrome-preclaim-repair.json"
   native_chrome_preclaim_repair_evidence_sha256: "sha256:88c386a2c837da01af33e7998ef57a8b26ce0518ee726c840bd00482e12b3748"
   native_chrome_preclaim_repair_validation: "FOCUSED_59_OF_59_ALL_FOUR_REAL_LOCAL_PRECLAIM_CHECKS_PASS_INDEPENDENT_GO"
@@ -122,8 +131,8 @@ v2_09_provider_free_candidate:
   cloudflare_secret_boundary: "All exact production secret bytes are snapshotted and hash-bound before any Cloudflare mutation; production stays DISABLED_UNQUALIFIED until an approved qualified activation."
   media_worker_release: "media-worker-v0.1.15 is published immutable from exact source b897fc6d by successful workflow run 34178343261; it is not installed or activated and was adopted/read back under consumed e77c authority; install heartbeat failed and app 0.1.14 was restored."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
-  provider_state: "Exact ca118 approved; new activation outcome pending.492 remains consumedFAILED_CLEAN16/26."
-  current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-release-availability-recovered-replacement.json"
+  provider_state: "ca118FAILED_CLEAN;retaineddisabledWorker+2workflows secret0;27outputsrolescleanDB2inactiveRP3zero;noqualified/install/Chrome."
+  current_authority: null
   concrete_reconciler_path_failure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-concrete-reconciler-path-binding.json"
   concrete_reconciler_path_failure_evidence_sha256: "sha256:5031d8e651d132ef9e57167190fdb9e858cfceca054cf1d625d2e8bd5a356ef0"
   concrete_reconciler_path_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-concrete-reconciler-path-binding-repair.json"
@@ -4182,7 +4191,7 @@ historical_v2_06_final_live_closure_authority:
   actual_spend_usd: 0
   new_recurring_resources_created: 0
 
-credential_value_read_authorized: true
+credential_value_read_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
@@ -4193,16 +4202,16 @@ runpod_account_scope:
   account_id_sha256: "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c"
   forbidden_account: demo9_imageforge
   identity_check: required_before_any_fresh_successor_inventory_or_mutation
-  current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-release-availability-recovered-replacement.json"
-  current_authority_sha256: "sha256:7779361de49da5c0a9f77ad717c65a9d7303334aba1c9d19af9b6ba1b2f4dcf9"
-  current_private_authority_sha256: "sha256:b7ba1e61425962bbaa33c663c668148b43b32d20dda4642a453c385068af17dc"
+  current_authority: null
+  current_authority_sha256: null
+  current_private_authority_sha256: null
   latest_closed_authority: evidence/acceptance/VF-10-07/2026-09-05-attempt85-stable-absence-candidate/approved-authority.json
   latest_closed_authority_sha256: "sha256:555e3249015c076a00d2fc42d6639d0999815b55244fd9e205e04809a506b858"
-  mutation_authorized: true
-  mutation_authorization_scope: exact_v2_09_ca118_combined_production
-  gpu_use_authorized: true
-  gpu_authorization_scope: exact_two_qualified_max_one_lanes
-  spend_authorized_usd: 2
+  mutation_authorized: false
+  mutation_authorization_scope: none_consumed_ca118
+  gpu_use_authorized: false
+  gpu_authorization_scope: none_consumed_ca118
+  spend_authorized_usd: 0
 
 repository:
   initialized: true
@@ -4231,10 +4240,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: production
-  provider_calls_authorized: true
-  authorized_spend_usd: 2
-  provider_authority_scope: exact_v2_09_ca118_combined_production
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: none_forward_repair
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -6324,32 +6333,32 @@ provider_authority_consumed_reconciler_secret_output: &v2_09_provider_authority_
       checked_at: "2026-09-07"
 
 provider_authority: &v2_09_provider_authority_current
-  mode: paid
-  provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
+  mode: none
+  provider: null
   historical_provider: github+runpod+cloudflare_r2+neon+google_cloud+paired_mac_device
-  cap_usd: 2
+  cap_usd: 0
   historical_cap_usd: 2
   non_transferable: true
-  source: "cb35713513f39fcc2b4e49b1628cbcbdddeb76f4"
+  source: null
   latest_closed_source: "cb35713513f39fcc2b4e49b1628cbcbdddeb76f4"
-  authorized_by_user_at: "2026-09-08"
+  authorized_by_user_at: null
   latest_closed_authorized_by_user_at: "2026-09-08"
-  proposal_sha256: "sha256:ca1180bf19a1b4cb25c6e5a1c01b097bff4768839f239a7187168e8d19df37c2"
-  latest_closed_proposal_sha256: "sha256:2450b1fb2e02a5a87a8ef4daaa8ca280fb161a12bfc62ec76e5a6a10794b4b32"
-  authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-release-availability-recovered-replacement.json"
-  latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-renderer-diagnostics-replacement.json"
-  authority_sha256: "sha256:7779361de49da5c0a9f77ad717c65a9d7303334aba1c9d19af9b6ba1b2f4dcf9"
-  latest_closed_authority_sha256: "sha256:5a5df54a23bfcc3b9ee75caabf6373b1a1a5df04880e3543ffe4e2e59b066565"
-  private_authority_sha256: "sha256:b7ba1e61425962bbaa33c663c668148b43b32d20dda4642a453c385068af17dc"
-  latest_closed_private_authority_sha256: "sha256:128d1095ac92b5c668a2cd4cf8864cafaccd2efcfb85feb48c1f979538cbffb5"
-  consumed: false
+  proposal_sha256: null
+  latest_closed_proposal_sha256: "sha256:ca1180bf19a1b4cb25c6e5a1c01b097bff4768839f239a7187168e8d19df37c2"
+  authority: null
+  latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-release-availability-recovered-replacement.json"
+  authority_sha256: null
+  latest_closed_authority_sha256: "sha256:7779361de49da5c0a9f77ad717c65a9d7303334aba1c9d19af9b6ba1b2f4dcf9"
+  private_authority_sha256: null
+  latest_closed_private_authority_sha256: "sha256:b7ba1e61425962bbaa33c663c668148b43b32d20dda4642a453c385068af17dc"
+  consumed: true
   reusable: false
-  provider_calls_authorized: true
-  provider_mutations_authorized: true
-  credential_access_authorized: true
-  gpu_use_authorized: true
+  provider_calls_authorized: false
+  provider_mutations_authorized: false
+  credential_access_authorized: false
+  gpu_use_authorized: false
   actual_spend_usd: null
-  resources: ["runpod:mage-production-lane:EU-RO-1:RTX4090", "runpod:soulx-production-lane:EU-RO-1:RTX4090", "cloudflare:videoforge-production-runtime", "neon:videoforge-production-database", "paired-mac:videoforge-personal-media-worker"]
+  resources: []
   historical_resources:
     - "github:Pala-LakshmanSai/videoforge:refs/heads/codex/serverless-v2-roadmap-v4"
     - "runpod:mage-production-lane:EU-RO-1:RTX4090"
@@ -6358,7 +6367,7 @@ provider_authority: &v2_09_provider_authority_current
     - "neon:videoforge-production-database"
     - "github:media-worker-v0.1.15"
     - "paired-mac:videoforge-personal-media-worker"
-  authorized_operations: ["push-clean-source", "readback-clean-source", "apply-migrations-0074-0086", "apply-v209-grants", "publish-media-worker-0.1.15", "readback-media-worker-0.1.15", "fresh-read-only-admission", "create-mage-production-lane-max-one", "create-soulx-production-lane-max-one", "persist-qualified-production-deployments", "render-qualified-production-config", "deploy-cloudflare-disabled-bootstrap", "upload-cloudflare-production-secrets", "deploy-cloudflare-qualified-production", "readback-qualified-production", "install-media-worker-0.1.15", "import-v209-qualified-activation", "run-one-v209-chrome-e2e", "verify-private-mp4-lineage", "reconcile-v209-production-safety", "reconcile-attributable-runpod-work", "clean-v209-transient-r2", "prove-three-zero-compute-reads", "read-settled-billing", "verify-retained-resources"]
+  authorized_operations: []
   historical_authorized_operations:
     - push-clean-source
     - readback-clean-source
@@ -6385,7 +6394,7 @@ provider_authority: &v2_09_provider_authority_current
     - prove-three-zero-compute-reads
     - read-settled-billing
     - verify-retained-resources
-  allowed_operations: ["push-clean-source", "readback-clean-source", "apply-migrations-0074-0086", "apply-v209-grants", "publish-media-worker-0.1.15", "readback-media-worker-0.1.15", "fresh-read-only-admission", "create-mage-production-lane-max-one", "create-soulx-production-lane-max-one", "persist-qualified-production-deployments", "render-qualified-production-config", "deploy-cloudflare-disabled-bootstrap", "upload-cloudflare-production-secrets", "deploy-cloudflare-qualified-production", "readback-qualified-production", "install-media-worker-0.1.15", "import-v209-qualified-activation", "run-one-v209-chrome-e2e", "verify-private-mp4-lineage", "reconcile-v209-production-safety", "reconcile-attributable-runpod-work", "clean-v209-transient-r2", "prove-three-zero-compute-reads", "read-settled-billing", "verify-retained-resources"]
+  allowed_operations: []
   historical_allowed_operations:
     - push-clean-source
     - readback-clean-source
@@ -6424,39 +6433,39 @@ provider_authority: &v2_09_provider_authority_current
       checked_at: "2026-09-08"
 
   latest_closed_status: FAILED_CLEAN
-  latest_closed_completed_operations: "8/26"
-  latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-renderer-diagnostics-release-absence.json"
-  latest_closed_failure_sha256: "sha256:a4ec3a443731289360d0bf9e875bd2441b47bf097ad2796e2446bafe7af1b0e1"
+  latest_closed_completed_operations: "17/26"
+  latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-release-recovered-secret-cleanup.json"
+  latest_closed_failure_sha256: "sha256:fdf35a7a704f9416cc621747935bc19c2cf97ef72cc1dda76e63f3676492b7ff"
 
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_ca118_approved_production_deployment
-  status: APPROVED_PRODUCTION_DEPLOYMENT_ACTIVE
+  milestone: v2_09_retained_disabled_candidate_seal_pending
+  status: FORWARD_REPAIR_VALIDATION_ACTIVE
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
-  authorization_status: exact_ca118_approved
-  task_stage: bounded_mutation
-  current_goal_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-release-availability-recovered-replacement.json"
-  current_goal_authority_sha256: "sha256:7779361de49da5c0a9f77ad717c65a9d7303334aba1c9d19af9b6ba1b2f4dcf9"
+  authorization_status: ca118_consumed_no_normal_replay
+  task_stage: provider_free_repair
+  current_goal_authority: null
+  current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_current
-  provider_mode: production
+  provider_mode: fixture
   provider_free_repair_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
   provider_free_clean_seal_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
   provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-workflow-bootstrap-phase-repair.json"
   provider_free_repair_validation: "109_OF_109_REAL_RUNTIME_PROOF_INDEPENDENT_GO_P0_0_P1_0"
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
-  goal: "Execute exact ca118 through9.7.7deployment9.7.8postimportreadiness, then9.8singleChromeE2E and9.9cleanup or exactstop."
-  provider_calls_authorized: true
+  goal: "Seal exact successor proposal for69d34317 retained-disabled baseline repair; no freshapproval;9.7.7active9.8pending."
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 2
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  credential_value_read_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  credential_value_read_authorized: false
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: true
+  gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5

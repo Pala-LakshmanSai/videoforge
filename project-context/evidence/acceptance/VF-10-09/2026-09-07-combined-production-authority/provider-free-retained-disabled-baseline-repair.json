@@ -1,0 +1,25 @@
+{
+  "schema_version": "videoforge.v2-09-provider-free-repair-evidence/v1",
+  "source_commit": "69d343171e8226f1df948bf1da7d542b1e340935",
+  "checkpoint": "9.7.7",
+  "changes": [
+    "Exact retained disabled baseline adoption",
+    "Valid secret-delete CLI without unsupported force option",
+    "Safe original operation failure diagnostics preserved through cleanup",
+    "Strict readback bounded to three reads two seconds apart",
+    "No mutation retry",
+    "Preserve verified prior baseline when no new mutation intent exists"
+  ],
+  "validation": {
+    "cloudflare_focused_tests_passed": 19,
+    "old_source_route_targeted_test_passed": 1,
+    "independent_authority_audit": "GO_P0_0_P1_0"
+  },
+  "retained_disabled_baseline_descriptor_sha256": "sha256:55a5bbe53ec7ea7883a47269f926b32ac87217de63038ca574ce1e0edafe3c09",
+  "retained_state": "DISABLED_WORKER_AND_TWO_WORKFLOWS_ZERO_SECRETS",
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "fresh_approval": false,
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN",
+  "next": "EXACT_SUCCESSOR_PROPOSAL_SEAL_PENDING"
+}
