@@ -51,10 +51,12 @@ v2_09_checkpoint_9_7_subcheckpoints:
   "9.7.5": "DONE — clean536e7a40;15tests, actual prerequisite proof, two exact audits GO"
   "9.7.6": "DONE \u2014 exact cfe842 proposal approved"
   "9.7.7": "DONE —56ef22/26;0.1.15 ONLINE and activationimport effectiveQUALIFIED_EXACT"
-  "9.7.8": "ACTIVE — deployed readiness proven; resumable Chrome authentication correction"
+  "9.7.8": "ACTIVE — auth-only helper1f32c5dd running;7checks+independentGO; manualGooglelogin pending"
   next_main_subcheckpoints: "9.8 single Chrome E2E and 9.9 cleanup/readiness pending"
 
 v2_09_provider_free_candidate:
+  auth_only_continuation_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/auth-only-claim-bound-continuation.json"
+  auth_only_continuation_evidence_sha256: "sha256:89793e79305d1cd1b2271a7a3619a54a4134ff15c5c89347fb108c79be5d5a39"
   deployment_complete_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/deployment-complete-chrome-auth-pending.json"
   deployment_complete_evidence_sha256: "sha256:95180905eec72eb53c11c128199f2fd9701962bdb5736c73315e1e4e71566bf6"
   runtime_heartbeat_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-runtime-heartbeat-grants-repair.json"

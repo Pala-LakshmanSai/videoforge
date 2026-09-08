@@ -14,8 +14,10 @@ readback, exact0.1.15 ONLINE and activation import effectiveQUALIFIED_EXACT pass
 Proof: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/deployment-complete-chrome-auth-pending.json` (`sha256:95180905eec72eb53c11c128199f2fd9701962bdb5736c73315e1e4e71566bf6`).
 Outer is AWAITING_INTERACTIVE_CHROME_LOGIN, op23STARTED, process exited0. SPA sign-in stays on
 /projects/new; URL-only wait completed before authentication and the401 pause closed Chrome.
-Auth-only correction prepares the exact existing claim-bound state, then unchanged sealed executor
+Auth-only helper1f32c5dd passes7 focused checks and independentGO. It is running for manualGoogle
+sign-in, writing only the exact existing claim-bound stage. The unchanged sealed executor then
 resumes without replaying deployment.9.8 has not started; continuing caps/frozen boundaries apply.
+Auth-only seal: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/auth-only-claim-bound-continuation.json` (`sha256:89793e79305d1cd1b2271a7a3619a54a4134ff15c5c89347fb108c79be5d5a39`).
 
 **Historical e03 closure — e03 closed FAILED_CLEAN at20/26:** bulk secrets, qualified deployment and
 readback passed. Installation timed out waiting for0.1.15 ONLINE; rollback restored0.1.14.
