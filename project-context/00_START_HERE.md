@@ -4,21 +4,14 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-**9.7.7 ACTIVE — exact2450 approved:** frozen source `cb35713513f39fcc2b4e49b1628cbcbdddeb76f4`; materialized artifact audits and actual runtime checks precede launch. Cap USD2; completion ceiling USD17.5. Current approval: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-renderer-diagnostics-replacement.json` (`sha256:5a5df54a23bfcc3b9ee75caabf6373b1a1a5df04880e3543ffe4e2e59b066565`).9.7.8/9.8pending.
-
-**9.7.7 remains ACTIVE:**30d is consumed; executor reports terminal `FAILED_CLEAN` at15/26
-with `V2_09_RENDER_WORKER_MODULE_CLOSURE_FAILED`, before Cloudflare journal/deployment.
-Original cause remains unproven; prior-attempt independent cleanup is complete: three zero-compute reads, two
-inactive DB bindings, 27 protected items clean, and both sealed 50 GB volumes unchanged. Posted
-billing is unchanged; delayed charges remain unproven. No old30d authority or replay remains.
-Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-complete-worker-module-render.json` (`sha256:3c2295b860296b7ce18ea2846ea3d4481ea63997918e6d74688357bb49fe9641`).
-Previously completed9.7.1–6 remain DONE;9.7.8/9.8/9.9pending. Stage6/7 remain frozen
-QUALIFIED_PASS_CLEAN and untouched.
-
-Provider-free candidate `cb35713513f39fcc2b4e49b1628cbcbdddeb76f4` adds phase diagnostics and
-owned-temp cleanup:8 focused tests, independent GO, and fresh offline actual renderer CLI proof PASS.
-Original30d failure cause remains UNPROVEN; fresh2450 approval is recorded above. Evidence:
-`evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-renderer-diagnostics-owned-temp-repair.json` (`sha256:9e1303a88bfae88ab44261cfcb7a11a186f803ab5bc8366d073fc46b9cc3fafb`).
+**9.7.7 remains ACTIVE:**2450 is consumed `FAILED_CLEAN` at8/26 after anonymous release GET
+returned `RELEASE_ABSENCE_UNCONFIRMED`; lanes, renderer and Cloudflare were not reached.
+All protected outputs and role journal are absent with CLEANED tombstone; three reads verify zero
+compute, two unchanged sealed volumes and unchanged posted billing. Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-renderer-diagnostics-release-absence.json` (`sha256:a4ec3a443731289360d0bf9e875bd2441b47bf097ad2796e2446bafe7af1b0e1`).
+Later bounded GETs observed HTTP504 then HTTP200 after30seconds (54/60 requests remaining).
+Current availability recovered; original HTTP status and causality remain unproven. Same cb357
+source successor proposal sealing is pending; no authority or normal replay remains.
+9.7.1–6 remain DONE;9.7.8/9.8/9.9pending. Stage6/7 remain frozen QUALIFIED_PASS_CLEAN.
 
 
 ### Historical activation evidence

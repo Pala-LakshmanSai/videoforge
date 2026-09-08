@@ -1,0 +1,51 @@
+{
+  "schema_version": "videoforge.v2-09-failed-clean-closure/v1",
+  "authority_id": "v2-09-2450b1fb2e02a5a8",
+  "source_commit": "cb35713513f39fcc2b4e49b1628cbcbdddeb76f4",
+  "proposal_sha256": "sha256:2450b1fb2e02a5a87a8ef4daaa8ca280fb161a12bfc62ec76e5a6a10794b4b32",
+  "status": "FAILED_CLEAN",
+  "consumed": true,
+  "reusable": false,
+  "completed_operations": 8,
+  "total_operations": 26,
+  "failure_code": "RELEASE_ABSENCE_UNCONFIRMED",
+  "failure_operation": "ANONYMOUS_RELEASE_GET",
+  "original_http_status": "NOT_CAPTURED",
+  "later_bounded_read_only_diagnostic": {
+    "http_status": 504,
+    "rate_limit_headers": null,
+    "conclusion": "CURRENT_GATEWAY_TIMEOUT_PROVEN_ORIGINAL_RESPONSE_UNPROVEN",
+    "proof_sha256": "sha256:8f60c88f6c3fcc56d7fba60199afd8d395bc9471a713be7bb726247e351b58cf"
+  },
+  "lanes_render_cloudflare_reached": false,
+  "cleanup": {
+    "independent_audit": "GO",
+    "protected_outputs_and_role_journal": "ALL_ABSENT",
+    "tombstone": "CLEANED",
+    "readonly_reconciliation_sha256": "sha256:c8db26dad8b68e41ec7e49fd14d612baf71a391567f0b296480bbcbbb15b8dea",
+    "consecutive_zero_compute_reads": 3,
+    "workers": 0,
+    "endpoints": 0,
+    "pods": 0,
+    "templates": 0,
+    "retained_sealed_volumes": 2,
+    "each_volume_gb": 50,
+    "volumes": "UNCHANGED",
+    "posted_billing": "UNCHANGED",
+    "delayed_billing": "UNPROVEN"
+  },
+  "checkpoint": "9.7.7",
+  "next": "SAME_CB357_SOURCE_SUCCESSOR_PROPOSAL_SEAL_PENDING_NO_REPLAY",
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN",
+  "bounded_read_only_recovery": {
+    "delay_seconds": 30,
+    "http_status": 200,
+    "rate_limit": 60,
+    "rate_remaining": 54,
+    "rate_used": 6,
+    "rate_reset": 1788853187,
+    "proof_sha256": "sha256:a60ad9ae8361a515e4721f01ab687d826a27678e76c649801da63561937afa90",
+    "conclusion": "LATER_504_RECOVERED_NO_CURRENT_RATE_EXHAUSTION",
+    "original_failure_causality": "UNPROVEN"
+  }
+}
