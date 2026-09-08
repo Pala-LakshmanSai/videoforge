@@ -1,0 +1,179 @@
+{
+  "schema_version": "videoforge.v2-09-failed-clean-closure/v1",
+  "closed_at": "2026-09-08T03:23:00.359720+00:00",
+  "checkpoint": 9,
+  "subcheckpoint": "9.7",
+  "status": "FAILED_CLEAN",
+  "authority_id": "v2-09-e77c557b7ee5146a",
+  "proposal_sha256": "sha256:e77c557b7ee5146afeadf848e787d3e7cff91df7aff0af3123ba9beb9b98d4dd",
+  "source_commit": "72d8b4f36ad35f37699240e7365b724713525a76",
+  "authority_consumed_once": true,
+  "reusable": false,
+  "completed_operations": [
+    "run-read-only-preflight",
+    "read-pre-mutation-completion-baseline",
+    "materialize-v209-protected-inputs",
+    "push-clean-source",
+    "readback-clean-source",
+    "apply-migrations-0074-0086",
+    "apply-v209-grants",
+    "read-post-migration-completion-baseline",
+    "publish-media-worker-0.1.15",
+    "readback-media-worker-0.1.15"
+  ],
+  "failed_operation": "install-media-worker-0.1.15",
+  "error": "V2_09_MEDIA_WORKER_HEARTBEAT_READ_FAILED",
+  "inner_authority_id": null,
+  "outer_state_sha256": "sha256:04b94f06fe87ebb3d6fd655f2e897f69d78380417aed968f70b47c42c9b890f7",
+  "cleanup_tombstone_sha256": "sha256:aa6b9bcf0237684f505cbe9af4eb5eecfd608e748eabb2453a04632dc6627f58",
+  "final_readonly_sha256": "sha256:2738d50f8e632e22346ad8d38483171122c2afb146c75e77f901bc26235c55d7",
+  "database_cleanup": {
+    "ledger_count": 86,
+    "ledger_max": 86,
+    "roles_remaining": 0,
+    "sessions_remaining": 0
+  },
+  "protected_output_files_remaining": 0,
+  "installed_app_version_after_failure": "0.1.14",
+  "three_final_reads": [
+    {
+      "checkedAt": "2026-09-08T03:21:03.847Z",
+      "accountIdSha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+      "billing": {
+        "cumulativeEndpointBillingUsd": 3.5284023286949378,
+        "windowStart": "2026-08-20T00:00:00.000Z",
+        "windowEnd": "2026-09-08T03:21:03.847Z",
+        "rowsSha256": "sha256:772804cf7eee8eb797c22c8e4a6e6e8eb7b6cb9e5a1940ec955c71cd4d106655"
+      },
+      "inventory": {
+        "activeWorkers": 0,
+        "endpoints": 0,
+        "pods": 0,
+        "privateTemplates": 0,
+        "retainedVolumes": [
+          {
+            "lane": "mage_image",
+            "volumeIdSha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+            "volumeManifestSha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+            "sizeGb": 50,
+            "region": "EU-RO-1"
+          },
+          {
+            "lane": "soulx_avatar",
+            "volumeIdSha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+            "volumeManifestSha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+            "sizeGb": 50,
+            "region": "EU-RO-1"
+          }
+        ]
+      },
+      "offering": {
+        "availability": "LOW",
+        "gpu": "NVIDIA GeForce RTX 4090",
+        "region": "EU-RO-1",
+        "serverlessFlexRateUsdPerGpuHour": 1.116,
+        "serverlessFlexRateUsdPerSecond": 0.00031,
+        "serverlessFlexRateSource": "https://docs.runpod.io/serverless/endpoints/endpoint-configurations",
+        "serverlessFlexRateSourceCheckedAt": "2026-09-08T03:21:04.000Z",
+        "serverlessFlexRateSourceSha256": "sha256:f6c40fb52fdc4d3f6d64c824ab886de1d54317a9cad4c99f2af6b68d58686e07",
+        "catalogSha256": "sha256:b6499ad62c2ea4e8d422b5343b48cdf3c05b036af8edbb97f55748f11857e6f3"
+      }
+    },
+    {
+      "checkedAt": "2026-09-08T03:21:11.774Z",
+      "accountIdSha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+      "billing": {
+        "cumulativeEndpointBillingUsd": 3.5284023286949378,
+        "windowStart": "2026-08-20T00:00:00.000Z",
+        "windowEnd": "2026-09-08T03:21:11.774Z",
+        "rowsSha256": "sha256:772804cf7eee8eb797c22c8e4a6e6e8eb7b6cb9e5a1940ec955c71cd4d106655"
+      },
+      "inventory": {
+        "activeWorkers": 0,
+        "endpoints": 0,
+        "pods": 0,
+        "privateTemplates": 0,
+        "retainedVolumes": [
+          {
+            "lane": "mage_image",
+            "volumeIdSha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+            "volumeManifestSha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+            "sizeGb": 50,
+            "region": "EU-RO-1"
+          },
+          {
+            "lane": "soulx_avatar",
+            "volumeIdSha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+            "volumeManifestSha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+            "sizeGb": 50,
+            "region": "EU-RO-1"
+          }
+        ]
+      },
+      "offering": {
+        "availability": "LOW",
+        "gpu": "NVIDIA GeForce RTX 4090",
+        "region": "EU-RO-1",
+        "serverlessFlexRateUsdPerGpuHour": 1.116,
+        "serverlessFlexRateUsdPerSecond": 0.00031,
+        "serverlessFlexRateSource": "https://docs.runpod.io/serverless/endpoints/endpoint-configurations",
+        "serverlessFlexRateSourceCheckedAt": "2026-09-08T03:21:12.000Z",
+        "serverlessFlexRateSourceSha256": "sha256:f6c40fb52fdc4d3f6d64c824ab886de1d54317a9cad4c99f2af6b68d58686e07",
+        "catalogSha256": "sha256:7499a9a66cbea9c41e551a8fe973be65375c534954f8c97dfeea04526472c18b"
+      }
+    },
+    {
+      "checkedAt": "2026-09-08T03:21:20.039Z",
+      "accountIdSha256": "sha256:ce23456f35fb79195520689203584405ad191e8461e87f413ede02f01168143c",
+      "billing": {
+        "cumulativeEndpointBillingUsd": 3.5284023286949378,
+        "windowStart": "2026-08-20T00:00:00.000Z",
+        "windowEnd": "2026-09-08T03:21:20.039Z",
+        "rowsSha256": "sha256:772804cf7eee8eb797c22c8e4a6e6e8eb7b6cb9e5a1940ec955c71cd4d106655"
+      },
+      "inventory": {
+        "activeWorkers": 0,
+        "endpoints": 0,
+        "pods": 0,
+        "privateTemplates": 0,
+        "retainedVolumes": [
+          {
+            "lane": "mage_image",
+            "volumeIdSha256": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+            "volumeManifestSha256": "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+            "sizeGb": 50,
+            "region": "EU-RO-1"
+          },
+          {
+            "lane": "soulx_avatar",
+            "volumeIdSha256": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+            "volumeManifestSha256": "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
+            "sizeGb": 50,
+            "region": "EU-RO-1"
+          }
+        ]
+      },
+      "offering": {
+        "availability": "LOW",
+        "gpu": "NVIDIA GeForce RTX 4090",
+        "region": "EU-RO-1",
+        "serverlessFlexRateUsdPerGpuHour": 1.116,
+        "serverlessFlexRateUsdPerSecond": 0.00031,
+        "serverlessFlexRateSource": "https://docs.runpod.io/serverless/endpoints/endpoint-configurations",
+        "serverlessFlexRateSourceCheckedAt": "2026-09-08T03:21:20.000Z",
+        "serverlessFlexRateSourceSha256": "sha256:f6c40fb52fdc4d3f6d64c824ab886de1d54317a9cad4c99f2af6b68d58686e07",
+        "catalogSha256": "sha256:7499a9a66cbea9c41e551a8fe973be65375c534954f8c97dfeea04526472c18b"
+      }
+    }
+  ],
+  "incremental_endpoint_billing_usd": 0.0,
+  "not_reached": [
+    "fresh-read-only-admission",
+    "RunPod lane creation",
+    "Cloudflare deployment",
+    "Chrome E2E",
+    "provider jobs"
+  ],
+  "stage_6_7": "FROZEN_UNTOUCHED",
+  "source_diagnosis": "Likely privilege mismatch: heartbeat SELECTs media_worker_devices using operator URL; operator grant script revokes all table access and restores only functions. Runtime PostgreSQL stderr/SQLSTATE not retained."
+}

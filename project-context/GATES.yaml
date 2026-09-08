@@ -455,32 +455,32 @@ gates:
     owner: V2-09
     last_run: null
     result: open_no_real_hosted_end_to_end_project
-    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-exact-existing-media-release-replacement.json"
-    current_authority_sha256: "sha256:1c84c7db6a07347b7264155c96e2e51889b932f8666308311f5fdaf8f3c76e9c"
-    current_private_authority_sha256: "sha256:362b064567101bebe4e46d9cf56a32e1e8c2ce78e196cbe5d619620a7cc15bce"
-    current_authority_state: approved_single_use_execution_active
-    current_proposal_sha256: "sha256:e77c557b7ee5146afeadf848e787d3e7cff91df7aff0af3123ba9beb9b98d4dd"
-    current_control_source_commit: "72d8b4f36ad35f37699240e7365b724713525a76"
-    current_failure: null
-    current_failure_sha256: null
+    current_authority: null
+    current_authority_sha256: null
+    current_private_authority_sha256: null
+    current_authority_state: none_consumed_failed_clean
+    current_proposal_sha256: null
+    current_control_source_commit: null
+    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-exact-existing-media-heartbeat.json"
+    current_failure_sha256: "sha256:9ed4f0937d0bf8aec7024065362b49af345a9a0c0e292157ec724ded6ba7a4a4"
     current_audit_stop: null
     current_audit_stop_sha256: null
     provider_free_repair_state: "Exact source/proposal audits GO P0=0/P1=0; focused final suites 100/100. Fresh authority independently audited GO. Stage 6/7 untouched."
-    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-child-stdin-eof-replacement.json"
-    latest_closed_authority_sha256: "sha256:4a931ec91f24855179af86007957255be035a94a24d41450aca1945d2413a2a1"
-    latest_closed_private_authority_sha256: "sha256:37a3f9c9029a8deee17d3f2e07b1c8177e4d12e1a06ae8963a5947c58facc21e"
+    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-exact-existing-media-release-replacement.json"
+    latest_closed_authority_sha256: "sha256:1c84c7db6a07347b7264155c96e2e51889b932f8666308311f5fdaf8f3c76e9c"
+    latest_closed_private_authority_sha256: "sha256:362b064567101bebe4e46d9cf56a32e1e8c2ce78e196cbe5d619620a7cc15bce"
     latest_closed_authority_state: consumed_failed_clean_non_reusable
-    latest_closed_proposal_sha256: "sha256:af93a2373eb5619b8ab5b7cd61c1063ee39da0613b9fef9434b260f1e85c1bdb"
-    latest_closed_control_source_commit: "b897fc6def69db56a6d3dba43573551042843458"
-    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-child-stdin-eof-release-path.json"
-    latest_closed_failure_sha256: "sha256:79148bc631a7e96d6ca0f5ad34e3acef539a66acecb2e3001647b1d58c578a2b"
+    latest_closed_proposal_sha256: "sha256:e77c557b7ee5146afeadf848e787d3e7cff91df7aff0af3123ba9beb9b98d4dd"
+    latest_closed_control_source_commit: "72d8b4f36ad35f37699240e7365b724713525a76"
+    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-exact-existing-media-heartbeat.json"
+    latest_closed_failure_sha256: "sha256:9ed4f0937d0bf8aec7024065362b49af345a9a0c0e292157ec724ded6ba7a4a4"
     latest_published_media_worker_release: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/published-media-worker-0.1.15.json"
     latest_published_media_worker_release_sha256: "sha256:05806b98a8f8acc5609f7b4eea2b563b91dbd60226b7c3eb582e5dcb8af7560c"
     latest_monitored_availability: LOW
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7 approved combined deployment active; then 9.8 single authorized Chrome E2E and 9.9 cleanup, lineage proof, manual-testing readiness. No replay or redispatch."
+    next_gate: "9.7 remains active blocked at heartbeat exact stop; future repair, independent audits and fresh approval required. 9.8/9.9 pending. No replay or redispatch."
 
   GATE_RANGA_001:
     status: open

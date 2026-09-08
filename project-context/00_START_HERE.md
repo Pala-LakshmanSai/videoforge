@@ -4,16 +4,17 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-Fresh exact proposal `sha256:e77c557b7ee5146afeadf848e787d3e7cff91df7aff0af3123ba9beb9b98d4dd`
-is approved for single-use combined activation from clean frozen source
-`72d8b4f36ad35f37699240e7365b724713525a76`. Authority `v2-09-e77c557b7ee5146a`
-has private SHA-256 `362b064567101bebe4e46d9cf56a32e1e8c2ce78e196cbe5d619620a7cc15bce`;
-independent authority audit is GO P0=0/P1=0. Checkpoints 1–8 and 9.1–9.6 remain finished;
-9.7 combined deployment is active, followed by 9.8 single authorized Chrome E2E and 9.9
-cleanup, lineage proof, and manual-testing readiness. Exact-existing media-worker adoption only;
-migrations verify existing head 86. Caps are USD 2 incremental and USD 17.50 completion;
-Stage 6/7 remain frozen QUALIFIED_PASS_CLEAN. Prior af93 authority remains consumed FAILED_CLEAN.
-Current evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-exact-existing-media-release-replacement.json`. This context successor does not alter the frozen execution source.
+Authority `v2-09-e77c557b7ee5146a` is consumed `FAILED_CLEAN` and non-reusable.
+The exact source `72d8b4f36ad35f37699240e7365b724713525a76` completed 10/26 outer
+operations, including exact-existing media-worker adoption/readback, then stopped at
+`install-media-worker-0.1.15` with `V2_09_MEDIA_WORKER_HEARTBEAT_READ_FAILED`.
+Checkpoints 1–8 and 9.1–9.6 remain finished; 9.7 remains active but blocked at this exact stop;
+9.8 and 9.9 remain pending. No executable authority exists. Cleanup proved database 86/86,
+zero temporary roles/sessions/protected files, restored app 0.1.14, and three fresh zero-compute
+reads with both retained volumes unchanged and USD 0 incremental billing. No RunPod lane,
+Cloudflare deployment, Chrome E2E, or provider job was reached. Stage 6/7 remain frozen
+QUALIFIED_PASS_CLEAN. Future repair requires independent audits and fresh exact approval;
+no repair or replay is authorized by the consumed proposal. Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-exact-existing-media-heartbeat.json`.
 
 ### Historical activation evidence
 
