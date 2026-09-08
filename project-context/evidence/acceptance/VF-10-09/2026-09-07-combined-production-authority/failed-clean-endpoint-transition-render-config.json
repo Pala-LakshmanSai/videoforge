@@ -1,0 +1,80 @@
+{
+  "schema_version": "videoforge.v2-09-failed-clean-closure/v1",
+  "closed_at": "2026-09-08T04:27:13.880039+00:00",
+  "checkpoint": 9,
+  "subcheckpoint": "9.7",
+  "source_commit": "f1e115f62ce6c26d2f4e50c779a62705be4546b4",
+  "authority_id": "v2-09-31889dbb1b0e2cf3",
+  "proposal_sha256": "sha256:31889dbb1b0e2cf3c185948a718bb15c29e6521e4a0fd0339dd2bfea087cbf77",
+  "status": "FAILED_CLEAN",
+  "consumed_once": true,
+  "reusable": false,
+  "completed_operations": [
+    "run-read-only-preflight",
+    "read-pre-mutation-completion-baseline",
+    "materialize-v209-protected-inputs",
+    "push-clean-source",
+    "readback-clean-source",
+    "apply-migrations-0074-0086",
+    "apply-v209-grants",
+    "read-post-migration-completion-baseline",
+    "publish-media-worker-0.1.15",
+    "readback-media-worker-0.1.15",
+    "fresh-read-only-admission",
+    "create-mage-production-lane-max-one",
+    "create-soulx-production-lane-max-one",
+    "persist-qualified-production-deployments",
+    "materialize-v209-endpoint-secrets"
+  ],
+  "interrupted_operation": "render-qualified-production-config",
+  "failure": {
+    "cleanup_code": "V2_09_DEPLOYMENT_SUFFIX_CLEANUP_INCOMPLETE",
+    "operation_code": "V2_09_CONCRETE_RENDER_CONFIG_FAILED",
+    "operation_id": "render-qualified-production-config"
+  },
+  "render_diagnosis": "Exact underlying build failure unavailable because child stderr discarded; Vite staging exists but no output/config/receipt. Do not infer missing dependency as cause.",
+  "cleanup_diagnosis": "Cloudflare cleanup authority required rendered config/bundle hashes before pristine no-intent branch; database and RunPod cleanup succeeded. Audited protected cleanup completed only after fresh proofs and no-intent evidence.",
+  "database": {
+    "matched_count": 2,
+    "inactive_count": 2
+  },
+  "protected": {
+    "result": {
+      "schema_version": "videoforge.v2-09-protected-input-cleanup-result/v1",
+      "authority_id": "v2-09-31889dbb1b0e2cf3",
+      "role_cleanup_attempted": true,
+      "removed_file_count": 27,
+      "adopted_cleanup": false
+    },
+    "protected_outputs_remaining": 0,
+    "checkedAt": "2026-09-08T04:26:20.448Z"
+  },
+  "cloudflare": {
+    "authority_id": "v2-09-31889dbb1b0e2cf3",
+    "checkedAt": "2026-09-08T04:26:18.657Z",
+    "operations_pending": [
+      "deploy-cloudflare-disabled-bootstrap",
+      "upload-cloudflare-production-secrets",
+      "deploy-cloudflare-qualified-production",
+      "readback-qualified-production",
+      "install-media-worker-0.1.15",
+      "import-v209-qualified-activation",
+      "materialize-v209-postdeploy-chrome-auth",
+      "execute-qualified-production"
+    ],
+    "cloudflare_journal_absent": true,
+    "gpu_transport": "UNTOUCHED_NO_MUTATIONS"
+  },
+  "runpod_proof_sha256": "sha256:984799fa5a70b8a1d5300849104c67a31067b8bb1c121a91232baa0edabd35a7",
+  "three_zero_compute_reads": true,
+  "retained_volumes_unchanged": true,
+  "posted_endpoint_billing_usd": 3.5284023286949378,
+  "posted_increment_usd": 0,
+  "delayed_startup_billing": "UNPROVEN",
+  "cloudflare_deployment_count": 0,
+  "media_install_count": 0,
+  "chrome_e2e_count": 0,
+  "provider_job_count": 0,
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN_UNTOUCHED",
+  "cleanup_independent_audit": "GO_P0_0_P1_0"
+}

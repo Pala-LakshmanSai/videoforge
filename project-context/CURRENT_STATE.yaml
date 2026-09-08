@@ -4,11 +4,11 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_endpoint_transition_repair_sealing
+current_milestone: v2_09_endpoint_transition_failed_clean_render_config
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_free_repair_sealed
+task_stage: failed_clean_stop
 application_code_changes_authorized: true
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
@@ -18,18 +18,18 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_provider_free_endpoint_transition_repair
-  live_provider_calls: "No executable authority exists; 436b is consumed FAILED_CLEAN and non-reusable."
+  mode: v2_09_failed_clean_render_config_exact_stop
+  live_provider_calls: "No executable authority remains; 3188 and all predecessors consumed/non-reusable."
   remote_mutation: false
-  deployment_or_publication: "No further deployment or publication authorized; none reached under 436b."
+  deployment_or_publication: "Not authorized; no Cloudflare deployment or media installation reached."
   credential_value_access: "No further credential access authorized."
-  paid_requests_or_spend: "Posted billing unchanged at closure; delayed lane startup charges remain unproven. No further spend authorized."
-  runpod_mutation_or_gpu: "Both exact endpoints/templates deleted; three zero-compute reads passed, two sealed volumes unchanged."
-  v2_07_action: "Stage 6 and Stage 7 frozen QUALIFIED_PASS_CLEAN; zero modifications or reruns."
-  current_checkpoint: "9.7 active at exact endpoint-secrets stop; 1-8 and 9.1-9.6 finished; 9.8 and 9.9 pending."
-  closure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-postdeploy-heartbeat-endpoint-secrets.json"
-  closure_evidence_sha256: "sha256:4ebb569bd4a3198f1770f74dc4391b8f433b78a5ba47e1007781711aa569951f"
-  note: "14/26 completed; initial error masked by cleanup failure. Manual audited cleanup proved exact2 inactive rows, DB86/86, zero temporary roles/sessions and 27 protected files removed. Provider-free endpoint transition and cleanup repair active; no replay."
+  paid_requests_or_spend: "Posted billing unchanged; delayed startup charges unproven. No further spend authorized."
+  runpod_mutation_or_gpu: "Three fresh reads prove zero compute/endpoints/pods/templates; two sealed retained volumes unchanged."
+  v2_07_action: "Stage 6/7 frozen QUALIFIED_PASS_CLEAN; zero changes or reruns."
+  current_checkpoint: "9.7 active at render-config exact stop; 1-8 and9.1-9.6 finished;9.8/9.9 pending."
+  closure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-endpoint-transition-render-config.json"
+  closure_evidence_sha256: "sha256:1f0458f43020b097a774df36fcae1143447ce21b395ef21a69b8ea80122796a6"
+  note: "15/26 completed. Render child failed; underlying cause unproven. Database2 inactive and27 protected outputs removed; cleanup complete. No new repair or authority inferred."
 
 v2_09_provider_free_candidate:
   endpoint_transition_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-endpoint-transition-repair.json"
@@ -38,7 +38,7 @@ v2_09_provider_free_candidate:
   heartbeat_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-postdeploy-heartbeat-repair.json"
   heartbeat_repair_evidence_sha256: "sha256:0d78a66bfd412e4d8db8cfbb2722629ad86db27be0789d0744b3c38c227f4307"
   heartbeat_repair_validation: "FOCUSED_139_OF_139_INCLUDING_REAL_POSTGRES17_TWO_INDEPENDENT_GO_P0_0_P1_0"
-  source_commit: "1185dacc424efce0f55894df330d66522d4eae02"
+  source_commit: "f1e115f62ce6c26d2f4e50c779a62705be4546b4"
   source_audit: "PASS_THREE_INDEPENDENT_FOCUSED_AUDITS_P0_0_P1_0"
   canonical_provider_free_verification: FOCUSED_V209_136_OF_136_PLUS_CONTRACTS_112_OF_112_PYTHON_96_OF_96_HOSTED_78_OF_78_CONTEXT_PASS
   production_state: DISABLED_UNQUALIFIED
@@ -60,7 +60,7 @@ v2_09_provider_free_candidate:
   cloudflare_secret_boundary: "All exact production secret bytes are snapshotted and hash-bound before any Cloudflare mutation; production stays DISABLED_UNQUALIFIED until an approved qualified activation."
   media_worker_release: "media-worker-v0.1.15 is published immutable from exact source b897fc6d by successful workflow run 34178343261; it is not installed or activated and was adopted/read back under consumed e77c authority; install heartbeat failed and app 0.1.14 was restored."
   frozen_predecessors: "V2-07 Stage 6 and V2-08 Stage 7 remain QUALIFIED_PASS_CLEAN, zero-compute, consumed, and untouched."
-  provider_state: "436b consumed FAILED_CLEAN; prior authorities non-reusable. Zero compute proved; posted billing unchanged, delayed startup charges unproven."
+  provider_state: "3188 consumed FAILED_CLEAN; all prior authorities non-reusable. Zero resources proved; posted billing unchanged, delayed startup charges unproven."
   current_authority: null
   concrete_reconciler_path_failure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-concrete-reconciler-path-binding.json"
   concrete_reconciler_path_failure_evidence_sha256: "sha256:5031d8e651d132ef9e57167190fdb9e858cfceca054cf1d625d2e8bd5a356ef0"
@@ -6268,12 +6268,12 @@ provider_authority: &v2_09_provider_authority_current
   cap_usd: 2
   historical_cap_usd: 2
   non_transferable: true
-  source: "1185dacc424efce0f55894df330d66522d4eae02"
+  source: "f1e115f62ce6c26d2f4e50c779a62705be4546b4"
   authorized_by_user_at: "2026-09-08"
-  proposal_sha256: "sha256:436b5932315a4ce7fecdfddb4375dc833e80a5186893796fe474a5d0c431bd4c"
-  authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-postdeploy-heartbeat-replacement.json"
-  authority_sha256: "sha256:bc86c43a54389a4fbd07c9fa7b6689fdf9b465aa8ee93a3aeecdf397eda13d5a"
-  private_authority_sha256: "sha256:5e76f653e78ba3b99189423a7b2a80e75ea6efbc9130bdd12d09a3ab363047d0"
+  proposal_sha256: "sha256:31889dbb1b0e2cf3c185948a718bb15c29e6521e4a0fd0339dd2bfea087cbf77"
+  authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-endpoint-transition-replacement.json"
+  authority_sha256: "sha256:40b129bd736c6052de4017ae8aede0db29d2849b8b733f312a4a94753ad14c1c"
+  private_authority_sha256: "sha256:9c15e8a004072f78a8071616ae6bb318ed7af0c34722d3c28b52ddfd512039be"
   consumed: true
   reusable: false
   provider_calls_authorized: false
@@ -6298,22 +6298,22 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_endpoint_transition_repair_sealing
-  status: PASS_SEALED_AWAITING_FRESH_EXACT_APPROVAL_9_7_ACTIVE
+  milestone: v2_09_endpoint_transition_failed_clean_render_config
+  status: FAILED_CLEAN_9_7_EXACT_STOP
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: none_consumed_failed_clean
-  task_stage: provider_free_repair_sealed
+  task_stage: failed_clean_stop
   current_goal_authority: null
   current_goal_authority_sha256: null
   provider_authority: *v2_09_provider_authority_current
   provider_mode: fixture_no_spend
   provider_free_repair_commit: "7c5206db93e21e024e60000a02e232c813d96714"
-  provider_free_clean_seal_commit: "b897fc6def69db56a6d3dba43573551042843458"
+  provider_free_clean_seal_commit: "f1e115f62ce6c26d2f4e50c779a62705be4546b4"
   provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-child-stdin-eof-repair.json"
   provider_free_repair_validation: "exact_child_stdin_delivery_and_eof_plus_fail_closed_error_quiescence_and_four_bounded_sync_psql_paths_plus_70_of_70_focused_tests_and_three_independent_go_p0_0_p1_0"
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
-  goal: "9.7 provider-free repair sealing; fresh exact approval precedes activation. 9.8/9.9 remain pending."
+  goal: "9.7 remains active at render-config exact stop; future repair, independent audits and fresh exact approval needed;9.8/9.9 pending."
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0

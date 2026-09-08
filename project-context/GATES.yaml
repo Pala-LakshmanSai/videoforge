@@ -461,26 +461,26 @@ gates:
     current_authority_state: none_consumed_failed_clean
     current_proposal_sha256: null
     current_control_source_commit: null
-    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-postdeploy-heartbeat-endpoint-secrets.json"
-    current_failure_sha256: "sha256:4ebb569bd4a3198f1770f74dc4391b8f433b78a5ba47e1007781711aa569951f"
+    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-endpoint-transition-render-config.json"
+    current_failure_sha256: "sha256:1f0458f43020b097a774df36fcae1143447ce21b395ef21a69b8ea80122796a6"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "Endpoint transition and cleanup repair88/88 pass; independent audits GO P0=0/P1=0 including final authority-handoff correction. No executable authority; Stage6/7 untouched."
-    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-postdeploy-heartbeat-replacement.json"
-    latest_closed_authority_sha256: "sha256:bc86c43a54389a4fbd07c9fa7b6689fdf9b465aa8ee93a3aeecdf397eda13d5a"
-    latest_closed_private_authority_sha256: "sha256:5e76f653e78ba3b99189423a7b2a80e75ea6efbc9130bdd12d09a3ab363047d0"
+    provider_free_repair_state: "Endpoint transition and cleanup repair88/88 pass; independent audits GO P0=0/P1=0 including final authority-handoff correction. Exact3188 approved; Stage6/7 untouched."
+    latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-endpoint-transition-replacement.json"
+    latest_closed_authority_sha256: "sha256:40b129bd736c6052de4017ae8aede0db29d2849b8b733f312a4a94753ad14c1c"
+    latest_closed_private_authority_sha256: "sha256:9c15e8a004072f78a8071616ae6bb318ed7af0c34722d3c28b52ddfd512039be"
     latest_closed_authority_state: consumed_failed_clean_non_reusable
-    latest_closed_proposal_sha256: "sha256:436b5932315a4ce7fecdfddb4375dc833e80a5186893796fe474a5d0c431bd4c"
-    latest_closed_control_source_commit: "1185dacc424efce0f55894df330d66522d4eae02"
-    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-postdeploy-heartbeat-endpoint-secrets.json"
-    latest_closed_failure_sha256: "sha256:4ebb569bd4a3198f1770f74dc4391b8f433b78a5ba47e1007781711aa569951f"
+    latest_closed_proposal_sha256: "sha256:31889dbb1b0e2cf3c185948a718bb15c29e6521e4a0fd0339dd2bfea087cbf77"
+    latest_closed_control_source_commit: "f1e115f62ce6c26d2f4e50c779a62705be4546b4"
+    latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-endpoint-transition-render-config.json"
+    latest_closed_failure_sha256: "sha256:1f0458f43020b097a774df36fcae1143447ce21b395ef21a69b8ea80122796a6"
     latest_published_media_worker_release: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/published-media-worker-0.1.15.json"
     latest_published_media_worker_release_sha256: "sha256:05806b98a8f8acc5609f7b4eea2b563b91dbd60226b7c3eb582e5dcb8af7560c"
     latest_monitored_availability: LOW
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7 repair sealing: premature config read, missing bridge resourceKey, original provider authority handoff and SQL cleanup repaired. Fresh exact approval required; 9.8/9.9 pending; no replay."
+    next_gate: "9.7 render-config exact stop; future repair/audits/fresh exact approval needed. No authority or replay;9.8/9.9 pending."
 
   GATE_RANGA_001:
     status: open
