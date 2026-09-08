@@ -633,6 +633,12 @@ export function deriveQualifiedProductionAuthority(authority, preflight, staged)
   });
 }
 
+const SAFE_FAILURE_CODE = /^(?:V2_09_[A-Z0-9_]{1,100}|ENOENT|EACCES|EPERM|EIO|UNKNOWN_ERROR)$/u;
+function safeFailureCode(error) {
+  for (const candidate of [error?.code, error?.message])
+    if (typeof candidate === "string" && SAFE_FAILURE_CODE.test(candidate)) return candidate;
+  return "UNKNOWN_ERROR";
+}
 function validateOuterState(value, authority) {
   if (
     !exactKeys(value, [
@@ -645,7 +651,15 @@ function validateOuterState(value, authority) {
       "schema_version",
       "source_commit",
       "status",
+      ...(Object.hasOwn(value ?? {}, "failure") ? ["failure"] : []),
     ]) ||
+    (Object.hasOwn(value, "failure") &&
+      (!exactKeys(value.failure, ["operation_id", "operation_code", "cleanup_code"]) ||
+        (value.failure.operation_id !== null &&
+          !STAGED_OPERATION_IDS.includes(value.failure.operation_id)) ||
+        !SAFE_FAILURE_CODE.test(value.failure.operation_code ?? "") ||
+        (value.failure.cleanup_code !== null &&
+          !SAFE_FAILURE_CODE.test(value.failure.cleanup_code ?? "")))) ||
     value.schema_version !== OUTER_STATE_SCHEMA ||
     value.outer_authority_id !== authority.authority_id ||
     value.proposal_sha256 !== authority.proposal_sha256 ||
@@ -977,6 +991,17 @@ export function createDurableOuterState(statePath) {
       if (value.status !== "AWAITING_INTERACTIVE_CHROME_LOGIN")
         fail("V2_09_COMBINED_CHROME_RESUME_INVALID");
       return value;
+    },
+    recordFailure({ error, cleanup = false }) {
+      const value = read();
+      if (!value.failure)
+        value.failure = {
+          operation_id: value.operations.find(({ status }) => status === "STARTED")?.id ?? null,
+          operation_code: safeFailureCode(error),
+          cleanup_code: null,
+        };
+      if (cleanup) value.failure.cleanup_code = safeFailureCode(error);
+      return write(value);
     },
     enterCleanupOnly() {
       const value = read();
@@ -1640,56 +1665,70 @@ export async function executeCombinedQualifiedProductionForTest({
       const paused = validateOuterState(await outerState.awaitInteractiveChromeLogin(), authority);
       return awaitingChromeReceipt(authority, paused, results["run-read-only-preflight"]);
     }
-    if (
-      error instanceof Error &&
-      /^V2_09_ROLLOUT_FAILED_CLEAN(?::|$)/u.test(error.message) &&
-      latest.inner_authority_id !== null
-    ) {
-      validateOuterState(await outerState.enterCleanupOnly(), authority);
-      await cleanupProtected({ authority, state: latest });
-      validateOuterState(await outerState.completeCleanup(), authority);
-      throw error;
-    }
-    if (latest.status !== "SUCCEEDED_CLEAN") {
-      validateOuterState(await outerState.enterCleanupOnly(), authority);
-      const innerStarted = latest.operations.find(
-        ({ id }) => id === "execute-qualified-production",
-      )?.status;
-      if (latest.inner_authority_id && ["STARTED", "COMPLETED"].includes(innerStarted)) {
-        const { configuration, inner, combinedExecution } = await reconstructInnerForCleanup({
-          authority,
-          sourceCommit,
-          now,
-          state: latest,
-          loadConfiguration,
-        });
-        if (
-          !(await hasInnerCleanup({
-            authority: inner,
-            configuration,
-            combinedExecution,
-            state: latest,
-          }))
-        )
-          await executeProduction({
-            authority: inner,
-            configuration,
-            mode: "CLEANUP_ONLY",
-            sourceCommit,
-            combinedExecution,
-          });
+    const recordFailure = async (failure, cleanup = false) => {
+      if (typeof outerState.recordFailure !== "function") return;
+      try {
+        validateOuterState(await outerState.recordFailure({ error: failure, cleanup }), authority);
+      } catch {
+        // Diagnostic persistence must never prevent the required cleanup attempt.
+      }
+    };
+    await recordFailure(error);
+    try {
+      if (
+        error instanceof Error &&
+        /^V2_09_ROLLOUT_FAILED_CLEAN(?::|$)/u.test(error.message) &&
+        latest.inner_authority_id !== null
+      ) {
+        validateOuterState(await outerState.enterCleanupOnly(), authority);
         await cleanupProtected({ authority, state: latest });
-      } else if (
-        latest.operations.some(
-          ({ id, status }) =>
-            (COMBINED_PRECOMPLETED_OPERATION_IDS.includes(id) ||
-              id === "materialize-v209-protected-inputs" ||
-              id === "materialize-v209-endpoint-secrets") &&
-            status !== "PENDING",
+        validateOuterState(await outerState.completeCleanup(), authority);
+        throw error;
+      }
+      if (latest.status !== "SUCCEEDED_CLEAN") {
+        validateOuterState(await outerState.enterCleanupOnly(), authority);
+        const innerStarted = latest.operations.find(
+          ({ id }) => id === "execute-qualified-production",
+        )?.status;
+        if (latest.inner_authority_id && ["STARTED", "COMPLETED"].includes(innerStarted)) {
+          const { configuration, inner, combinedExecution } = await reconstructInnerForCleanup({
+            authority,
+            sourceCommit,
+            now,
+            state: latest,
+            loadConfiguration,
+          });
+          if (
+            !(await hasInnerCleanup({
+              authority: inner,
+              configuration,
+              combinedExecution,
+              state: latest,
+            }))
+          )
+            await executeProduction({
+              authority: inner,
+              configuration,
+              mode: "CLEANUP_ONLY",
+              sourceCommit,
+              combinedExecution,
+            });
+          await cleanupProtected({ authority, state: latest });
+        } else if (
+          latest.operations.some(
+            ({ id, status }) =>
+              (COMBINED_PRECOMPLETED_OPERATION_IDS.includes(id) ||
+                id === "materialize-v209-protected-inputs" ||
+                id === "materialize-v209-endpoint-secrets") &&
+              status !== "PENDING",
+          )
         )
-      )
-        await cleanupStaged({ authority, state: latest });
-      validateOuterState(await outerState.completeCleanup(), authority);
+          await cleanupStaged({ authority, state: latest });
+        validateOuterState(await outerState.completeCleanup(), authority);
+      }
+    } catch (cleanupError) {
+      if (cleanupError !== error) await recordFailure(cleanupError, true);
+      throw cleanupError;
     }
     throw error;
   }

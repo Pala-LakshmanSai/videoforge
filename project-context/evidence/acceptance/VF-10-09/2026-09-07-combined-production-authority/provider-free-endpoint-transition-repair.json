@@ -1,0 +1,42 @@
+{
+  "schema_version": "videoforge.v2-09-provider-free-endpoint-transition-repair/v1",
+  "checkpoint": 9,
+  "subcheckpoint": "9.7",
+  "base_commit": "3fe4b45da72dc299e1ea78e93bb60a6526fe5c74",
+  "closed_authority": "v2-09-436b5932315a4ce7",
+  "closed_status": "FAILED_CLEAN_NON_REUSABLE",
+  "last_completed_operations": 14,
+  "repairs": [
+    "Allow Cloudflare factory binding before qualified config render; require private regular file and exact hash when consumed.",
+    "Reconstruct V209 resourceKey missing from actual23-field V213 deployment; reject conflicting keys.",
+    "Keep original validated journal authority for provider resources across inner handoff; execution authority remains inner.",
+    "Atomic exact1-2 deployment SQL deactivation with advisory and row locks, strict cardinality, fresh allInactive proof.",
+    "Allow only pristine authority-bound Cloudflare no-intent cleanup; report untouched rather than disabled; database and RunPod cleanup still required.",
+    "Persist safe original operation and cleanup error codes separately without changing cleanup dispatch."
+  ],
+  "diagnosis_correction": "Prior closure EXITED/POD_STATE diagnosis came from separate read-only inspection. Actual pre-provider cleanup bridge failure was missing resourceKey. Shared RunPod parser unchanged.",
+  "validation": {
+    "cloudflare_tests": 11,
+    "concrete_tests": 34,
+    "combined_tests": 34,
+    "real_postgres17_tests": 1,
+    "bridge_tests": 8,
+    "total": 88,
+    "passed": 88,
+    "context_validation": "PASS",
+    "isolated_postgres_container_removed": true
+  },
+  "independent_audits": {
+    "authority_audit": "GO_P0_0_P1_0",
+    "lineage_monitor": "GO_P0_0_P1_0",
+    "live_monitor": "GO_P0_0_P1_0",
+    "final_provider_authority_correction": "independently audited by authority_audit; focused concrete34/34 rerun"
+  },
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "external_mutations": 0,
+  "incremental_spend_usd": 0,
+  "stage6_or_stage7_changes_or_reruns": 0,
+  "chrome_e2e_count": 0,
+  "next": "Seal clean source and exact replacement proposal; fresh approval required;9.8/9.9 pending."
+}

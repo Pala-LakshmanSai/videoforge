@@ -4,14 +4,21 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-Authority `v2-09-436b5932315a4ce7` is consumed FAILED_CLEAN after 14/26 operations.
-9.7 remains active at the endpoint-secrets exact stop; 1–8 and 9.1–9.6 stay finished,
-9.8/9.9 pending. Initial failure was masked by cleanup failure. Independently audited cleanup
-deactivated both exact database rows, deleted both endpoints/templates and 27 protected files;
-three reads prove zero compute, database 86/86 and zero temporary roles/sessions.
-Posted billing was unchanged; delayed startup charges remain unproven. No Cloudflare deployment,
-media installation, Chrome E2E or provider jobs ran. Stage 6/7 remain frozen QUALIFIED_PASS_CLEAN.
-No executable authority exists; repair, independent audits and fresh exact approval are required.
+Checkpoint 9 / 9.7 remains active; 1–8 and 9.1–9.6 stay finished; 9.8/9.9 pending.
+The last authority `v2-09-436b5932315a4ce7` is consumed FAILED_CLEAN at 14/26 and cannot be reused.
+Provider-free diagnosis reproduces the endpoint-secret transition: the Cloudflare factory required
+qualified config before its scheduled render. Cleanup independently failed because the actual
+V213 journal deployment omitted the V2-09 bridge resourceKey and because SQL deactivation used
+an invalid aggregate/pre-update snapshot. The earlier EXITED-parser diagnosis was from a separate
+read-only inspection, not the original bridge failure; no shared RunPod parser is relaxed.
+The repair defers config consumption with private-file/hash checks, reconstructs original provider
+identity across the outer/inner handoff, verifies SQL cleanup in isolated PostgreSQL17, permits
+only provably untouched Cloudflare cleanup before any intent, and records safe separate error codes.
+Focused88/88 including PostgreSQL17 and independent audits pass P0=0/P1=0. No executable authority exists;
+fresh source-bound exact approval is required before activation. Stage 6/7 remain frozen.
+Last closure proves zero compute, two unchanged retained volumes, DB86/86, no temporary roles,
+and 27 protected outputs removed. Posted billing was unchanged; delayed startup charges unproven.
+No Cloudflare deployment, media installation, Chrome E2E or provider job ran under 436b.
 Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-postdeploy-heartbeat-endpoint-secrets.json`.
 
 ### Historical activation evidence

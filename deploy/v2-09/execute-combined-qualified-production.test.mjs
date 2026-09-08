@@ -1796,3 +1796,43 @@ test("postdeploy install failure never imports activation or starts Chrome and r
   assert.equal(events.filter((event) => STAGED_OPERATION_IDS.includes(event)).length, stageCount);
   assert.equal(cleanupAttempts, 2);
 });
+
+test("durable diagnostics preserve original failure separately from cleanup without arbitrary text", async () => {
+  const events = [];
+  const directory = mkdtempSync(join(tmpdir(), "v209-failure-codes-"));
+  const path = join(directory, "state.json");
+  const outerState = createDurableOuterState(path);
+  const options = successfulOptions({
+    events,
+    outerState,
+    executeProduction: async () => {
+      throw new Error("must not run");
+    },
+  });
+  const stage = options.stageOperation;
+  options.stageOperation = async (context) => {
+    if (context.operationId === "materialize-v209-endpoint-secrets")
+      throw Object.assign(new Error("open /private/secret token=password"), { code: "ENOENT" });
+    return stage(context);
+  };
+  options.cleanupStaged = async () => {
+    throw new Error("V2_09_STAGING_CLEANUP_INCOMPLETE");
+  };
+  await assert.rejects(
+    executeCombinedQualifiedProductionForTest(options),
+    /V2_09_STAGING_CLEANUP_INCOMPLETE/u,
+  );
+  let observed = await outerState.reconcileSuccess();
+  assert.equal(observed.status, "CLEANUP_ONLY");
+  assert.deepEqual(observed.failure, {
+    operation_id: "materialize-v209-endpoint-secrets",
+    operation_code: "ENOENT",
+    cleanup_code: "V2_09_STAGING_CLEANUP_INCOMPLETE",
+  });
+  assert.equal(JSON.stringify(observed).includes("password"), false);
+  await outerState.recordFailure({ error: new Error("token=private-value"), cleanup: true });
+  observed = await createDurableOuterState(path).loadOrClaim({ authority: options.authority });
+  assert.equal(observed.failure.operation_code, "ENOENT");
+  assert.equal(observed.failure.cleanup_code, "UNKNOWN_ERROR");
+  assert.equal(JSON.stringify(observed).includes("private-value"), false);
+});

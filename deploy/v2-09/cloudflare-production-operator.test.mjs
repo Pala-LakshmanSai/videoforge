@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  unlinkSync,
+  symlinkSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -300,6 +308,100 @@ async function executeThroughQualified(operator, approved) {
   });
   return { deployed, disabled, readback, secrets };
 }
+
+test("deployment factory binds before render and requires exact private config before provider access", async () => {
+  const value = fixture();
+  const bytes = readFileSync(value.configuration.qualifiedConfigPath);
+  unlinkSync(value.configuration.qualifiedConfigPath);
+  // Exercise the real production factory, not a replacement port descriptor.
+  assert.doesNotThrow(() => createV209CloudflareProductionOperator(value.configuration));
+  const mock = harness(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  const start = () =>
+    operator.deployCloudflareDisabled.run({
+      authority: authority(value),
+      operationId: "deploy-cloudflare-disabled-bootstrap",
+    });
+  await assert.rejects(start, /ENOENT/u);
+  assert.deepEqual(mock.apiCalls, []);
+  assert.deepEqual(mock.calls, []);
+  writeFileSync(value.configuration.qualifiedConfigPath, bytes, { mode: 0o600 });
+  chmodSync(value.configuration.qualifiedConfigPath, 0o644);
+  await assert.rejects(start, /PRIVATE_FILE_INVALID/u);
+  chmodSync(value.configuration.qualifiedConfigPath, 0o600);
+  writeFileSync(value.configuration.qualifiedConfigPath, "{}");
+  await assert.rejects(start, /QUALIFIED_CONFIG_HASH_DRIFT/u);
+  unlinkSync(value.configuration.qualifiedConfigPath);
+  const alternate = `${value.configuration.qualifiedConfigPath}.alternate`;
+  writeFileSync(alternate, bytes, { mode: 0o600 });
+  symlinkSync(alternate, value.configuration.qualifiedConfigPath);
+  await assert.rejects(start, /PRIVATE_FILE_INVALID/u);
+  assert.deepEqual(mock.apiCalls, []);
+  assert.deepEqual(mock.calls, []);
+  unlinkSync(value.configuration.qualifiedConfigPath);
+  writeFileSync(value.configuration.qualifiedConfigPath, bytes, { mode: 0o600 });
+  const result = await executeThroughQualified(operator, authority(value));
+  assert.equal(result.readback.gpu_transport, "QUALIFIED_EXACT");
+});
+
+test("cleanup before render proves only untouched authority state and never invents a deployment", async () => {
+  const value = fixture();
+  unlinkSync(value.configuration.qualifiedConfigPath);
+  const mock = harness(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  const context = {
+    authority: authority(value),
+    cleanupOnly: true,
+    operationId: "reconcile-v209-production-safety",
+  };
+  const expected = {
+    schema_version: "videoforge.v2-09-cloudflare-safety-reconciliation/v1",
+    worker: value.configuration.workerName,
+    gpu_transport: "UNTOUCHED_NO_MUTATIONS",
+    secret_count: null,
+    retained_r2_deleted: false,
+    safety_verified: true,
+  };
+  assert.deepEqual(await operator.reconcileCloudflareSafety.run(context), expected);
+  const pristine = JSON.parse(readFileSync(value.configuration.journalPath, "utf8"));
+  // An existing pristine journal is also valid (e.g. failed input checks before INTENT).
+  assert.deepEqual(await operator.reconcileCloudflareSafety.run(context), expected);
+  for (const changed of [
+    { events: [{ sequence: 1, status: "INTENT", kind: "BOOTSTRAP_DEPLOY" }] },
+    { events: [{ sequence: 1, status: "COMPLETE", kind: "BOOTSTRAP_DEPLOY" }] },
+    { state: "DISABLED_VERIFIED" },
+    { introduced_secret_names: ["DATABASE_URL"] },
+    { active_version_id: "11111111-1111-4111-8111-111111111111" },
+    { worker_bundle_sha256: hash("previous-bundle") },
+  ]) {
+    writeFileSync(value.configuration.journalPath, JSON.stringify({ ...pristine, ...changed }), {
+      mode: 0o600,
+    });
+    await assert.rejects(operator.reconcileCloudflareSafety.run(context), /ENOENT/u);
+  }
+  writeFileSync(
+    value.configuration.journalPath,
+    JSON.stringify({ ...pristine, authority_id: "foreign-authority" }),
+    { mode: 0o600 },
+  );
+  await assert.rejects(operator.reconcileCloudflareSafety.run(context), /JOURNAL_INVALID/u);
+  assert.deepEqual(mock.apiCalls, []);
+  assert.deepEqual(mock.calls, []);
+});
 
 test("executes exact disabled, 22-secret, qualified, bundle, header, and route contract", async () => {
   const value = fixture();

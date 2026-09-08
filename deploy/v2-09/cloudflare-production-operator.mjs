@@ -311,8 +311,10 @@ function assertConfiguration(value) {
     Array.isArray(value.environment)
   )
     fail("CONFIGURATION_INVALID");
-  for (const path of [value.qualifiedConfigPath, ...Object.values(value.secretFiles ?? {})])
-    privateFile(path);
+  // The deployment adapter is bound immediately after endpoint-secret materialization,
+  // before the next operation renders this exact qualified configuration.
+  privateFile(value.qualifiedConfigPath, { mayNotExist: true });
+  for (const path of Object.values(value.secretFiles ?? {})) privateFile(path);
   privateFile(value.oauthConfigPath);
   for (const path of [value.disabledConfigPath, value.bootstrapConfigPath, value.journalPath])
     privateFile(path, { mayNotExist: true });
@@ -351,6 +353,7 @@ function assertConfiguration(value) {
 }
 
 function qualifiedConfiguration(configuration, authority) {
+  privateFile(configuration.qualifiedConfigPath);
   const bytes = readFileSync(configuration.qualifiedConfigPath);
   if (sha256(bytes) !== authority.production.config_sha256) fail("QUALIFIED_CONFIG_HASH_DRIFT");
   const value = parseJson(bytes.toString("utf8"), "QUALIFIED_CONFIG_JSON_INVALID");
@@ -1433,6 +1436,22 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
         if (context?.cleanupOnly !== true) fail("RECONCILIATION_CONTEXT_INVALID");
         assertCleanupAuthority(context.authority, runtimeValue.configuration, runtimeValue.now);
         const journal = loadJournal(context.authority, runtimeValue.configuration);
+        if (
+          canonical(journal) ===
+          canonical(newJournal(context.authority, runtimeValue.configuration))
+        ) {
+          // A render failure can precede the qualified file and every Cloudflare
+          // mutation. Prove this authority's untouched journal without inventing
+          // a deployed transport or attempting a cleanup deployment.
+          return Object.freeze({
+            schema_version: "videoforge.v2-09-cloudflare-safety-reconciliation/v1",
+            worker: runtimeValue.configuration.workerName,
+            gpu_transport: "UNTOUCHED_NO_MUTATIONS",
+            secret_count: null,
+            retained_r2_deleted: false,
+            safety_verified: true,
+          });
+        }
         return reconcileFailure(runtimeValue, context.authority, context, journal);
       },
     ),

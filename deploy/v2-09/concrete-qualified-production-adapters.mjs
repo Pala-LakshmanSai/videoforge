@@ -3255,15 +3255,33 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       fail("V2_09_CONCRETE_UNASSIGNED_RECONCILIATION_INVALID");
     return value;
   };
+  // Combined execution keeps provider resource identity under the validated outer journal,
+  // even after its separately bound inner execution authority takes over.
+  const providerResourceAuthorityId = (authority) => journalAuthorityId ?? authority.authority_id;
   const protectedDeploymentValues = (authority, state) => {
+    const resourceAuthorityId = providerResourceAuthorityId(authority);
     const byLane = new Map();
+    const bindResourceKey = (lane, deployment) => {
+      const resourceKey = `${resourceAuthorityId}-${lane}-production`;
+      if (
+        !["mage", "soulx"].includes(lane) ||
+        deployment?.lane !== lane ||
+        (Object.hasOwn(deployment, "resourceKey") && deployment.resourceKey !== resourceKey)
+      )
+        fail("V2_09_CONCRETE_CLEANUP_DEPLOYMENT_DRIFT");
+      // V213LaneDeployment deliberately omits this V2-09 request-only identity. Reconstruct
+      // it from the current authority and lane, never from an untrusted provider name.
+      return { ...deployment, resourceKey };
+    };
     if (existsSync(configuration.journalPath)) {
       const journal = readJournal(configuration.journalPath);
       for (const lane of ["mage", "soulx"]) {
-        if (journal.resources[lane]) byLane.set(lane, journal.resources[lane]);
+        if (journal.resources[lane])
+          byLane.set(lane, bindResourceKey(lane, journal.resources[lane]));
       }
     }
-    for (const [lane, deployment] of providerDeployments) byLane.set(lane, deployment);
+    for (const [lane, deployment] of providerDeployments)
+      byLane.set(lane, bindResourceKey(lane, deployment));
     for (const row of state.deployments) {
       const binding = authority.scope.lanes.find(({ lane }) => lane === row.lane);
       if (
@@ -3278,7 +3296,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       byLane.set(row.lane, {
         lane: row.lane,
         purpose: "production",
-        resourceKey: `${authority.authority_id}-${row.lane}-production`,
+        resourceKey: `${resourceAuthorityId}-${row.lane}-production`,
         endpointId: row.endpointId,
         templateId: row.templateId,
         endpointIdSha256: row.endpointIdSha256,
@@ -3336,7 +3354,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
         input: `${canonical({
           schema_version: "videoforge.v2-09-runpod-production-bridge/v1",
           command,
-          authority_id: authority.authority_id,
+          authority_id: providerResourceAuthorityId(authority),
           source_commit: authority.source_commit,
           api_key: apiKey,
           lanes: authority.scope.lanes.map((lane) => ({
@@ -4319,6 +4337,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       assertAuthorityConfiguration(authority);
       const failures = [];
       let cloudflareDisabled = false;
+      let cloudflareUntouched = false;
       let databaseDeactivated = false;
       let runPodDeleted = false;
       try {
@@ -4330,12 +4349,24 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
           priorResults: Object.freeze([]),
           providerDeployments: Object.freeze(Object.fromEntries(providerDeployments)),
         });
+        const cleanupJournal = readJournal(configuration.journalPath);
+        cloudflareUntouched =
+          cleanupJournal.authority_id === journalAuthorityId &&
+          cloudflare?.gpu_transport === "UNTOUCHED_NO_MUTATIONS" &&
+          cloudflare?.secret_count === null &&
+          [
+            "deploy-cloudflare-disabled-bootstrap",
+            "upload-cloudflare-production-secrets",
+            "deploy-cloudflare-qualified-production",
+            "readback-qualified-production",
+            "import-v209-qualified-activation",
+          ].every((id) => cleanupJournal.normal[id] === undefined);
         if (
           cloudflare?.safety_verified !== true ||
-          cloudflare?.gpu_transport !== "DISABLED_UNQUALIFIED"
+          (cloudflare?.gpu_transport !== "DISABLED_UNQUALIFIED" && !cloudflareUntouched)
         )
           throw new Error("cloudflare cleanup invalid");
-        cloudflareDisabled = true;
+        cloudflareDisabled = cloudflare.gpu_transport === "DISABLED_UNQUALIFIED";
       } catch {
         failures.push("cloudflare");
       }
@@ -4406,6 +4437,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       return Object.freeze({
         operation_id: "cleanup-deployment-suffix",
         cloudflare_disabled: cloudflareDisabled,
+        cloudflare_untouched: cloudflareUntouched,
         database_deactivated: databaseDeactivated,
         endpoint_count: 0,
         active_worker_count: 0,

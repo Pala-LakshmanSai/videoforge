@@ -465,7 +465,7 @@ gates:
     current_failure_sha256: "sha256:4ebb569bd4a3198f1770f74dc4391b8f433b78a5ba47e1007781711aa569951f"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "Focused 139/139 including PostgreSQL17 passed; two independent audits GO P0=0/P1=0; exact proposal approved. Stage 6/7 untouched."
+    provider_free_repair_state: "Endpoint transition and cleanup repair88/88 pass; independent audits GO P0=0/P1=0 including final authority-handoff correction. No executable authority; Stage6/7 untouched."
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-postdeploy-heartbeat-replacement.json"
     latest_closed_authority_sha256: "sha256:bc86c43a54389a4fbd07c9fa7b6689fdf9b465aa8ee93a3aeecdf397eda13d5a"
     latest_closed_private_authority_sha256: "sha256:5e76f653e78ba3b99189423a7b2a80e75ea6efbc9130bdd12d09a3ab363047d0"
@@ -480,7 +480,7 @@ gates:
     latest_monitored_availability_checked_at_utc: "2026-09-07T18:13:45.876Z"
     latest_monitored_availability_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/monitored-eu-ro-1-low-availability.json"
     latest_monitored_availability_evidence_sha256: "sha256:36fa200fa61236a98b3b611d7637a89a53321a434b1829405a47f4ee9b04263c"
-    next_gate: "9.7 exact stop: diagnose masked endpoint-secrets failure and cleanup SQL/EXITED-parser defects; future audited repair and fresh approval needed. 9.8/9.9 pending; no replay."
+    next_gate: "9.7 repair sealing: premature config read, missing bridge resourceKey, original provider authority handoff and SQL cleanup repaired. Fresh exact approval required; 9.8/9.9 pending; no replay."
 
   GATE_RANGA_001:
     status: open

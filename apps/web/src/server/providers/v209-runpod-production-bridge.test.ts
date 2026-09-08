@@ -437,3 +437,41 @@ test("terminal reconciliation cancels an exact assigned job without deleting its
   assert.equal(result.terminal_jobs?.[0]?.status, "CANCELLED");
   assert.equal(result.terminal_jobs?.[0]?.execution_time_ms, null);
 });
+
+test("staging 23-key deployment requires the exact reconstructed V2-09 resource key", async () => {
+  const request = cleanupRequest();
+  const { resourceKey: _fixtureKey, ...staged } = deployment("mage");
+  assert.equal(Object.keys(staged).length, 23);
+  assert.equal(Object.hasOwn(staged, "resourceKey"), false);
+  let controlCalls = 0;
+  const ports = {
+    createControl: () => {
+      controlCalls += 1;
+      throw new Error("FIXTURE_VALIDATED_BEFORE_PROVIDER_ACCESS");
+    },
+  };
+  await assert.rejects(
+    runV209RunPodProductionBridge({ ...request, deployments: [staged] }, ports),
+    /V2_09_RUNPOD_BRIDGE_DEPLOYMENT_INVALID/u,
+  );
+  assert.equal(controlCalls, 0);
+  const resourceKey = `${request.authority_id}-mage-production`;
+  await assert.rejects(
+    runV209RunPodProductionBridge({ ...request, deployments: [{ ...staged, resourceKey }] }, ports),
+    /FIXTURE_VALIDATED_BEFORE_PROVIDER_ACCESS/u,
+  );
+  assert.equal(controlCalls, 1);
+  for (const wrongKey of [
+    "foreign-authority-mage-production",
+    `${request.authority_id}-soulx-production`,
+  ]) {
+    await assert.rejects(
+      runV209RunPodProductionBridge(
+        { ...request, deployments: [{ ...staged, resourceKey: wrongKey }] },
+        ports,
+      ),
+      /V2_09_RUNPOD_BRIDGE_DEPLOYMENT_INVALID/u,
+    );
+  }
+  assert.equal(controlCalls, 1);
+});

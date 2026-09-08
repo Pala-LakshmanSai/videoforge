@@ -386,6 +386,10 @@ function childRunner(
           workersMin: 0,
           workersMax: 1,
           handlerConcurrency: 1,
+          idleTimeoutSeconds: 5,
+          scalerType: "REQUEST_COUNT",
+          scalerValue: 1,
+          initTimeoutSeconds: 800,
         },
       });
     }
@@ -1201,7 +1205,20 @@ test("staging factory needs neither Chrome inputs nor deferred endpoint secrets"
       }),
     /V2_09_STAGING_DEPLOYMENT_BINDING_INVALID/u,
   );
+  const journalBeforeCleanup = JSON.parse(readFileSync(configuration.journalPath, "utf8"));
+  for (const lane of ["mage", "soulx"]) {
+    assert.equal(Object.hasOwn(journalBeforeCleanup.resources[lane], "resourceKey"), false);
+    assert.equal(Object.keys(journalBeforeCleanup.resources[lane]).length, 23);
+  }
   const cleanup = await adapters.cleanupStagedRunPod({ authority: value });
+  const cleanupRequest = JSON.parse(
+    calls.find(({ options }) => options?.input?.includes('"command":"DELETE_ATTRIBUTABLE_PAIR"'))
+      .options.input,
+  );
+  for (const deployment of cleanupRequest.deployments) {
+    assert.equal(Object.keys(deployment).length, 24);
+    assert.equal(deployment.resourceKey, `${value.authority_id}-${deployment.lane}-production`);
+  }
   assert.equal(cleanup.endpoint_count, 0);
   assert.equal(cleanup.database_deactivated, true);
   assert.equal(
@@ -1214,6 +1231,24 @@ test("staging factory needs neither Chrome inputs nor deferred endpoint secrets"
     calls.some(({ options }) => options?.input?.includes('"command":"DELETE_ATTRIBUTABLE_PAIR"')),
     true,
   );
+  for (const key of ["foreign-authority-mage-production", null]) {
+    const tampered = structuredClone(journalBeforeCleanup);
+    tampered.resources.mage.resourceKey = key;
+    writeFileSync(configuration.journalPath, JSON.stringify(tampered), { mode: 0o600 });
+    const before = calls.filter(({ options }) =>
+      options?.input?.includes('"command":"DELETE_ATTRIBUTABLE_PAIR"'),
+    ).length;
+    await assert.rejects(
+      adapters.cleanupStagedRunPod({ authority: value }),
+      /V2_09_STAGING_CLEANUP_INCOMPLETE/u,
+    );
+    assert.equal(
+      calls.filter(({ options }) =>
+        options?.input?.includes('"command":"DELETE_ATTRIBUTABLE_PAIR"'),
+      ).length,
+      before,
+    );
+  }
 });
 
 test("deployment factory binds all secrets and rehydrates the persisted pair without Chrome", async () => {
@@ -1360,9 +1395,77 @@ test("deployment factory binds all secrets and rehydrates the persisted pair wit
   });
   assert.equal(imported.import_count, 1);
   const cleaned = await deployment.cleanupDeploymentSuffix({ authority: inner });
+  const resumedCleanup = JSON.parse(
+    childCalls.find(({ options }) =>
+      options?.input?.includes('"command":"DELETE_ATTRIBUTABLE_PAIR"'),
+    ).options.input,
+  );
+  assert.notEqual(inner.authority_id, value.authority_id);
+  assert.equal(resumedCleanup.authority_id, value.authority_id);
+  assert.deepEqual(
+    resumedCleanup.deployments.map(({ resourceKey, lane }) => ({ resourceKey, lane })),
+    ["mage", "soulx"].map((lane) => ({
+      lane,
+      resourceKey: `${value.authority_id}-${lane}-production`,
+    })),
+  );
+  assert.throws(
+    () =>
+      createConcreteQualifiedProductionDeploymentAdapters(configuration, {
+        ports: portSet(),
+        runChild: childRunner(),
+        rehydration: {
+          combinedExecution,
+          executionAuthority: inner,
+          journalAuthorityId: "v2-09-foreign-authority",
+          priorResults,
+        },
+      }),
+    /V2_09_CONCRETE_REHYDRATION_INVALID/u,
+  );
   assert.equal(cleaned.cloudflare_disabled, true);
   assert.equal(cleaned.database_deactivated, true);
   assert.equal(cleaned.endpoint_count, 0);
+
+  const untouchedPorts = portSet();
+  untouchedPorts.reconcileCloudflareSafety = {
+    ...untouchedPorts.reconcileCloudflareSafety,
+    run: async () => ({
+      safety_verified: true,
+      gpu_transport: "UNTOUCHED_NO_MUTATIONS",
+      secret_count: null,
+    }),
+  };
+  const untouched = createConcreteQualifiedProductionDeploymentAdapters(configuration, {
+    ports: untouchedPorts,
+    runChild: childRunner(),
+    rehydration: {
+      combinedExecution,
+      executionAuthority: inner,
+      journalAuthorityId: value.authority_id,
+      priorResults,
+    },
+  });
+  const journalWithCloudflare = readFileSync(configuration.journalPath, "utf8");
+  await assert.rejects(
+    untouched.cleanupDeploymentSuffix({ authority: inner }),
+    /V2_09_DEPLOYMENT_SUFFIX_CLEANUP_INCOMPLETE/u,
+  );
+  const noCloudflareJournal = JSON.parse(journalWithCloudflare);
+  for (const id of [
+    "deploy-cloudflare-disabled-bootstrap",
+    "upload-cloudflare-production-secrets",
+    "deploy-cloudflare-qualified-production",
+    "readback-qualified-production",
+    "import-v209-qualified-activation",
+  ])
+    delete noCloudflareJournal.normal[id];
+  writeFileSync(configuration.journalPath, `${canonical(noCloudflareJournal)}\n`);
+  const untouchedCleanup = await untouched.cleanupDeploymentSuffix({ authority: inner });
+  assert.equal(untouchedCleanup.cloudflare_disabled, false);
+  assert.equal(untouchedCleanup.cloudflare_untouched, true);
+  assert.equal(untouchedCleanup.database_deactivated, true);
+  writeFileSync(configuration.journalPath, journalWithCloudflare);
 
   const exhaustiveCalls = [];
   const failingPorts = portSet();
