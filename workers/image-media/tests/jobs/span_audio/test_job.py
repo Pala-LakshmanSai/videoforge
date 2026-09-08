@@ -214,7 +214,10 @@ class SpanAudioMaterializationJobTests(unittest.TestCase):
         self.assertEqual(result["audio"]["sample_rate_hz"], 48000)
         ffmpeg = process.calls[0]
         self.assertEqual(ffmpeg[ffmpeg.index("-ar") + 1], "48000")
-        self.assertIn("apad=whole_len=240000", ffmpeg[ffmpeg.index("-af") + 1])
+        self.assertEqual(
+            ffmpeg[ffmpeg.index("-af") + 1],
+            "asetpts=PTS-STARTPTS,apad=whole_len=240000,atrim=end_sample=240000",
+        )
 
     def test_soulx_profile_silence_pads_aligned_end_and_proves_exact_frames(self) -> None:
         document = copy.deepcopy(self.document)
@@ -392,6 +395,56 @@ class SpanAudioMaterializationJobTests(unittest.TestCase):
         with wave.open(str(soulx_wav), "rb") as stream:
             self.assertEqual(stream.getframerate(), 48000)
             self.assertEqual(stream.getnframes(), 216960)
+
+        # Regression for the live 20.800-23.880 second SoulX span: output-side
+        # -ss was applied after the exact-length filter and produced an empty WAV.
+        long_source = self.root / "long-source.wav"
+        with wave.open(str(long_source), "wb") as stream:
+            stream.setnchannels(1)
+            stream.setsampwidth(2)
+            stream.setframerate(16000)
+            stream.writeframes(b"\x00\x00" * round(16000 * 37.154))
+        long_hash = _sha256(long_source.read_bytes())
+        long_digest = long_hash.removeprefix("sha256:")
+        long_root = self.root / "real-run-long-span"
+        long_resolver = LocalArtifactResolver(long_root)
+        long_object_parent = long_root / "objects" / "sha256" / long_digest[:2]
+        long_object_parent.mkdir(parents=True)
+        (long_object_parent / f"{long_digest}.wav").write_bytes(long_source.read_bytes())
+        long_document = copy.deepcopy(self.document)
+        long_document["source_voiceover"] = {
+            "asset_id": "asset_long_voiceover_local_001",
+            "sha256": long_hash,
+            "artifact_uri": f"vf-local://objects/sha256/{long_digest[:2]}/{long_digest}.wav",
+            "duration_ms": 37154,
+        }
+        long_document["attempt_id"] = "attempt_long_span_local_001"
+        long_document["output"]["asset_id"] = "asset_long_span_local_001"
+        long_document["output"]["result_uri"] = (
+            "vf-local-run://revision_local_001/attempt_long_span_local_001/span-audio-result.json"
+        )
+        long_document["selection"] = {
+            "selected_start_ms": 21320,
+            "selected_end_ms_exclusive": 23360,
+            "padded_start_ms": 20800,
+            "padded_end_ms_exclusive": 23880,
+            "trim_start_ms": 520,
+            "trim_end_ms_exclusive": 2560,
+        }
+        long_document["output_profile"] = "SOULX_PCM16_48K_MONO"
+        long_span = SpanAudioMaterializationJob(
+            artifacts=long_resolver,
+            process=SubprocessRunner(),
+            ffmpeg=ffmpeg,
+            ffprobe=ffprobe,
+        ).run(long_document)
+        self.assertEqual(long_span["status"], "SUCCEEDED")
+        self.assertEqual(long_span["audio"]["duration_ms"], 3080)
+        self.assertEqual(long_span["audio"]["sample_rate_hz"], 48000)
+        long_digest = long_span["audio"]["sha256"].removeprefix("sha256:")
+        long_wav = long_root / "objects" / "sha256" / long_digest[:2] / f"{long_digest}.wav"
+        with wave.open(str(long_wav), "rb") as stream:
+            self.assertEqual(stream.getnframes(), 147840)
 
     def test_hostile_existing_result_is_never_treated_as_an_exact_retry(self) -> None:
         result_path = self.root / "runs" / "span-audio-result.json"

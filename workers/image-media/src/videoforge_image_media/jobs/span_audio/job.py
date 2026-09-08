@@ -243,10 +243,10 @@ def _ffmpeg_arguments(
         "-loglevel",
         "error",
         "-y",
-        "-i",
-        str(source),
         "-ss",
         _seconds(padded_start_ms),
+        "-i",
+        str(source),
         "-t",
         _seconds(padded_end_ms - padded_start_ms),
         "-map",
@@ -257,7 +257,7 @@ def _ffmpeg_arguments(
         exact_samples = (padded_end_ms - padded_start_ms) * 48
         arguments += (
             "-af",
-            f"apad=whole_len={exact_samples},atrim=end_sample={exact_samples},asetpts=PTS-STARTPTS",
+            f"asetpts=PTS-STARTPTS,apad=whole_len={exact_samples},atrim=end_sample={exact_samples}",
         )
     return arguments + (
         "-map_metadata",
