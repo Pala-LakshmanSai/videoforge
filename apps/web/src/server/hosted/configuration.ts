@@ -521,6 +521,9 @@ export async function qualifiedHostedRuntimeConfiguration(input: {
     expiresAt <= now ||
     expiresAt - observedAt > GPU_ACTIVATION_MAX_AGE_MS ||
     verified.databaseObservedAt !== verified.gate.now ||
+    (verified.gate.cloudflare.databaseVerification !== undefined &&
+      (verified.gate.cloudflare.databaseVerification.observedAt !== verified.databaseObservedAt ||
+        verified.gate.cloudflare.databaseVerification.expiresAt !== verified.expiresAt)) ||
     verified.activationSnapshotSha256 !== activationSnapshotSha256 ||
     !SHA256_PATTERN.test(verified.paidApprovalLedgerSha256) ||
     verified.gate.gpuTransport !== "QUALIFIED_EXACT" ||

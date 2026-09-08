@@ -72,6 +72,9 @@ export const HOSTED_PAIR_REQUIRED_MIGRATIONS = Object.freeze([
   [82, "sha256:c36621d8fdd25ccc6a9506b3d4572c28223aa9e1e2bbbbb2039c7dc661b30454"],
   [83, "sha256:06ffc203c6e124dc5569b403156a1726d114c04089efd8081d9baa7504d6d587"],
   [84, "sha256:626a78dc70217a28d189467fd5ff3b8b9a91be8de00a6dee358d8b00b87ed75f"],
+  [85, "sha256:8e3150e340a3a8b2525d41470b6e98e127434e7baf199eb543921647716d585b"],
+  [86, "sha256:4b1fff44485f3d81789a4d203ff5856afea221c6950f129d164484e313e3c2e5"],
+  [87, "sha256:6fb7eba2268517a63a8632c89deb25c627cd13566700e12900f79c8807020a96"],
 ] as const);
 
 export interface HostedPairProductionBindingEnvironment {
@@ -161,6 +164,12 @@ export interface HostedPairProductionGateInput {
     readonly deployedConfigSha256: string;
     readonly readbackSha256: string;
     readonly observedAt: string;
+    /** Fresh DB validation of persisted exact deployment lineage; never a new provider readback. */
+    readonly databaseVerification?: {
+      readonly kind: "PERSISTED_EXACT_ACTIVATION";
+      readonly observedAt: string;
+      readonly expiresAt: string;
+    };
   };
   /** These are public binding identities only. Raw credentials never enter this document. */
   readonly bindings: {
@@ -247,6 +256,21 @@ export function evaluateHostedPairProductionGate(
     approvalExpiry <= now
   )
     return disabled("PAID_APPROVAL_INVALID");
+  const persisted = input.cloudflare.databaseVerification;
+  const persistedObservedAt = Date.parse(persisted?.observedAt ?? "");
+  const persistedExpiresAt = Date.parse(persisted?.expiresAt ?? "");
+  const durableVerified =
+    persisted !== undefined &&
+    Object.keys(persisted).sort().join(",") === "expiresAt,kind,observedAt" &&
+    persisted.kind === "PERSISTED_EXACT_ACTIVATION" &&
+    Number.isFinite(persistedObservedAt) &&
+    Number.isFinite(persistedExpiresAt) &&
+    persistedObservedAt === now &&
+    persistedExpiresAt > now &&
+    persistedExpiresAt - persistedObservedAt <= 5 * 60 * 1_000 &&
+    persistedExpiresAt <= approvalExpiry &&
+    persistedExpiresAt <= Date.parse(input.qualifications.mage_image.expiresAt) &&
+    persistedExpiresAt <= Date.parse(input.qualifications.soulx_avatar.expiresAt);
   if (
     !/^[0-9a-f]{40}$/u.test(input.cloudflare.sourceCommit) ||
     ![
@@ -256,7 +280,8 @@ export function evaluateHostedPairProductionGate(
     ].every((value) => SHA256.test(value)) ||
     !Number.isFinite(Date.parse(input.cloudflare.observedAt)) ||
     Date.parse(input.cloudflare.observedAt) > now ||
-    now - Date.parse(input.cloudflare.observedAt) > 5 * 60 * 1_000
+    (persisted !== undefined && !durableVerified) ||
+    (!durableVerified && now - Date.parse(input.cloudflare.observedAt) > 5 * 60 * 1_000)
   )
     return disabled("CLOUDFLARE_ACTIVATION_INVALID");
   const bindingIds = Object.values(input.bindings);
@@ -313,6 +338,7 @@ export class HostedSqlPairActivationStore implements HostedPairActivationStore {
         now: value.databaseNow,
         migrationLedger: value.migrationLedger,
         paidApproval: value.paidApproval,
+        cloudflare: value.cloudflare,
         qualifications: Object.freeze({
           mage_image: lanes.mage_image.qualification,
           soulx_avatar: lanes.soulx_avatar.qualification,

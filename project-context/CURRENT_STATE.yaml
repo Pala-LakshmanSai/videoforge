@@ -4,7 +4,7 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_deployed_chrome_auth_handoff_active
+current_milestone: v2_09_durable_activation_replacement_pending
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -18,10 +18,10 @@ gpu_use_authorized: true
 maximum_external_spend_usd: 2
 
 current_goal_boundary:
-  mode: v2_09_deployed_chrome_auth_handoff_active
-  live_provider_calls: "56ef FAILED_CLEAN22/26; freshb905 credential-bound activation running source9dd667cc; no authority replay"
+  mode: v2_09_durable_activation_replacement_pending
+  live_provider_calls: "b905 reached22/26 source9dd667cc; existing Chrome authenticated; aged activation blocks readiness; narrow replacement pending; no Generate or replay"
   remote_mutation: true
-  deployment_or_publication: "Exact2419fe16 deployed and imported; worker0.1.15 ONLINE; auth-only handoff active"
+  deployment_or_publication: "Exact9dd667cc deployed and imported; worker0.1.15 ONLINE; migration0087 and qualified replacement pending"
   credential_value_access: "Exact protectedsnapshots undercontinuingauthorization"
   paid_requests_or_spend: "USD2cap USD17.5ceiling retainedconsentunchanged"
   runpod_mutation_or_gpu: "Exactqualified2lanes maxone workersMin0 no replay"
@@ -29,7 +29,7 @@ current_goal_boundary:
   current_checkpoint: "9.7 active;1–8 and9.1–9.6 finished;9.8/9.9 pending."
   approval_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-runtime-heartbeat.json"
   approval_evidence_sha256: "sha256:a62ed1df6c29a087150224a8c4cb62cd42656f48a8842c1c57548bd047837762"
-  note: "Fresh runtime role receives functions but no table privileges; local PostgreSQL reproduces heartbeat permission denial. Exact0.1.15 production origin verified. Repair verified12focusedchecks with independentGO; fresh seal inside9.7.7."
+  note: "Five-minute activation aging reproduced read-only. Forward0087 preserves immutable acceptance, original qualification expiry and fresh DB verification;19focusedTS+1actualPostgreSQL17 regression passed; independentGO. Native continuation pending;9.8 not started."
 
 
 v2_09_continuing_user_authorization:
@@ -51,7 +51,7 @@ v2_09_checkpoint_9_7_subcheckpoints:
   "9.7.5": "DONE — clean536e7a40;15tests, actual prerequisite proof, two exact audits GO"
   "9.7.6": "DONE \u2014 exact cfe842 proposal approved"
   "9.7.7": "DONE —56ef22/26;0.1.15 ONLINE and activationimport effectiveQUALIFIED_EXACT"
-  "9.7.8": "ACTIVE — overall9.7 reached22/26; replacement Google secret captured; 56ef cleanup verified; freshb905 activation running; user delegated account choice; use existing lakshmansai121 paired worker"
+  "9.7.8": "ACTIVE — b90522/26; existing Chrome authenticated with approved paired-worker account; durable0087 repair audited; narrow qualified replacement pending; no Generate"
   next_main_subcheckpoints: "9.8 single Chrome E2E and 9.9 cleanup/readiness pending"
 
 v2_09_provider_free_candidate:
@@ -6478,7 +6478,7 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_deployed_chrome_auth_handoff_active
+  milestone: v2_09_durable_activation_replacement_pending
   status: EXECUTION_ACTIVE
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: explicit_continuing_user_authorization_e03

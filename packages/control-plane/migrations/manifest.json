@@ -516,6 +516,12 @@
       "name": "hosted_unlimited_project_cost",
       "filename": "0086_hosted_unlimited_project_cost.sql",
       "sha256": "sha256:4b1fff44485f3d81789a4d203ff5856afea221c6950f129d164484e313e3c2e5"
+    },
+    {
+      "version": 87,
+      "name": "hosted_durable_qualified_activation",
+      "filename": "0087_hosted_durable_qualified_activation.sql",
+      "sha256": "sha256:6fb7eba2268517a63a8632c89deb25c627cd13566700e12900f79c8807020a96"
     }
   ]
 }

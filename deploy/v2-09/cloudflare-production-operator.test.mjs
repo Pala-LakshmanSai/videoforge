@@ -23,6 +23,7 @@ import {
 } from "../v2-13/validate-production-config.mjs";
 import {
   createV209CloudflareProductionOperator,
+  createV209CloudflareReplacementCapabilities,
   planV209CloudflareProduction,
 } from "./cloudflare-production-operator.mjs";
 
@@ -1407,4 +1408,56 @@ test("unknown bulk outcome cleans only the observed attributable subset without 
     /SECRET_BULK_REPLAY_FORBIDDEN/u,
   );
   assert.equal(bulkRequests, 1);
+});
+
+test("replacement built-in primitives verify inherited qualified secrets without disabled config or secret mutation", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  const dependencies = { ...mock, testOnly: true, now: () => new Date("2026-09-06T22:00:00.000Z") };
+  const approved = authority(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, dependencies);
+  const done = await executeThroughQualified(operator, approved);
+  unlinkSync(value.configuration.disabledConfigPath);
+  const primitive = createV209CloudflareReplacementCapabilities(value.configuration, dependencies);
+  const prior = {
+    versionId: VERSION_IDS[3],
+    sourceCommit: SOURCE,
+    qualifiedConfigPath: value.configuration.qualifiedConfigPath,
+    qualifiedConfigSha256: approved.production.config_sha256,
+    workerBundleSha256: approved.production.worker_bundle_sha256,
+  };
+  const count = mock.calls.length;
+  const observed = await primitive.predecessor(approved, prior);
+  assert.equal(observed.versionIdSha256, done.deployed.deployment_id_sha256);
+  assert.ok(
+    mock.calls
+      .slice(count)
+      .every(
+        (call) =>
+          !call.args.includes("deploy") &&
+          !call.args.includes("put") &&
+          !call.args.includes("delete"),
+      ),
+  );
+  assert.equal(mock.secrets.size, 22);
+});
+
+
+test("replacement failure containment verifies disabled transport and preserves all inherited secrets", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  const dependencies = { ...mock, testOnly: true, now: () => new Date("2026-09-06T22:00:00.000Z") };
+  const approved = authority(value);
+  await executeThroughQualified(createV209CloudflareProductionOperator(value.configuration, dependencies), approved);
+  const primitive = createV209CloudflareReplacementCapabilities(value.configuration, dependencies);
+  const offset = mock.calls.length;
+  await primitive.disable(approved);
+  assert.equal(mock.activeTransport(), "DISABLED_UNQUALIFIED");
+  assert.equal(mock.secrets.size, 22);
+  const calls = mock.calls.slice(offset).map(call => call.args.slice(4));
+  assert.equal(calls.filter(args => args[0] === "deploy").length, 1);
+  for (const args of calls) {
+    assert.ok(!args.includes("delete") && !args.includes("put"));
+    if (args[0] === "deploy") assert.equal(args[args.indexOf("--config") + 1], value.configuration.disabledConfigPath);
+  }
 });

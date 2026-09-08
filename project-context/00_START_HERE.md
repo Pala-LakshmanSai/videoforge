@@ -9,43 +9,36 @@ bounded repairs, reseals, fresh source-bound authorities and deployment through9
 Chrome E2E, and9.9 cleanup/readiness. Existing numeric caps, frozen Stage6/7 and no consumed-authority
 replay remain mandatory. This instruction overrides older repeated-approval requirements below.
 
-**9.7.7 DONE;9.7.8 ACTIVE:**56ef reached22/26 with source2419fe16. Qualified deployment,
-readback, exact0.1.15 ONLINE and activation import effectiveQUALIFIED_EXACT passed.
-Proof: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/deployment-complete-chrome-auth-pending.json` (`sha256:95180905eec72eb53c11c128199f2fd9701962bdb5736c73315e1e4e71566bf6`).
-Outer is AWAITING_INTERACTIVE_CHROME_LOGIN, op23STARTED, process exited0. SPA sign-in stays on
-/projects/new; URL-only wait completed before authentication and the401 pause closed Chrome.
-Overall **9.7 remains ACTIVE22/26**;9.7.8 is its authentication subtask, not checkpoint9.8.
-Auth-only helper1f32c5dd passed7tests/independentGO, then its bounded wait ended pending.
-NormalChrome production Google callback failed: sanitized live tail proves invalid_client/UNAUTHORIZED.
-Read-only GoogleConsole confirms stored secret matches neither enabled nor disabled secret suffix;
-existingsecret viewing/download unavailable. One replacement was created and saved privately after
-removing the already-disabled slot (Google maximum two secrets); prior enabled secret preserved.
-56ef is FAILED_CLEAN. Freshb905 credential/source/version activation is running from9dd667cc
-after two independent audits; exact replacement probe returns invalid_grant instead of invalid_client.
-No consumed authority replay.
-User delegated the account choice after demo9 had no device; use lakshmansai121@gmail.com with its existing paired worker for the single E2E.
-Evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/google-secret-mismatch-readonly.json` (`sha256:55fd41275ee389f866e098f3c4c1b81435057c01317c8dd69432e3b5face7dbc`).
-Do notresume56ef after silentlychangingsecret/version: use fresh audited source/input/version/activation
-lineage authority or exact cleanup/freshactivation. Stage6/7frozen;9.8/9.9notstarted.
+**9.7.7 DONE; 9.7.8 ACTIVE:** b905 reached 22/26 from source
+`9dd667cc0cfd37b59c7cadeb5bce5c65fa81439e`. Qualified deployment/readback,
+exact media-worker 0.1.15 ONLINE, and activation import passed. The existing real Chrome session
+is authenticated to the approved account with its paired worker. The single Generate has not run;
+**9.8 and 9.9 remain pending**, and overall checkpoint 9.7 remains active.
 
-**Historical e03 closure — e03 closed FAILED_CLEAN at20/26:** bulk secrets, qualified deployment and
-readback passed. Installation timed out waiting for0.1.15 ONLINE; rollback restored0.1.14.
-Cleanup proves zero secrets/compute, inactive bindings and removed protected roles/outputs.
-Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-e03-worker-heartbeat.json` (`sha256:f57ecce4561e78401d213945413a5b1cfb5d7eb99d1da5125873a3ed95d2eb77`).
-Diagnosis reproduces missing table permissions on a fresh runtime role in local PostgreSQL.
-Exact0.1.15 artifact has the correct production origin. Explicit baseline table grants and a pinned
-heartbeat tenant transaction pass12 focused checks and independent audits. Fresh source seal and
-deployment follow under continuing authorization.9.7.8/9.8/9.9 remain pending.
-Repair: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-runtime-heartbeat-grants-repair.json` (`sha256:71f61a20fc316e91d27968247a603a34a429d613c289a08451e758cd86e14ef6`).
+The five-minute activation readback age gate subsequently disabled generation. Read-only diagnosis
+proved the persisted activation still existed but the loader excluded it after five minutes.
+Forward migration `0087_hosted_durable_qualified_activation.sql` and the hosted runtime repair
+preserve immutable acceptance time, exact source/version/configuration, original qualification
+expiry, active lane snapshots, request paid caps, and fresh database verification. Focused hosted
+suites passed 19/19 and the actual migration passed a bounded PostgreSQL 17 regression; independent
+audit is GO with P0=0/P1=0. This is source validation, not a deployed repair.
 
-**Historical d640 closure and payload repair:**d640 FAILED_CLEAN18/26; bulk secrets passed live, qualified preparation
-stopped before mutation intent. Cleanup proved protectedoutputs/rolesclean,secret0,DB2inactive,RP3zero.
-Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-bulk-secret-qualified-payload-preparation.json` (`sha256:dc79bd1aa4901ad2d5e5a2b97b8b8031fe66c88861649919413da9b5f9c98856`). Source `5097da4208847cc6ad4049b6b89168533b1844d1`
-fixes generated README timestamp hashing and mismatched asset layout, retaining all runtime payload
-identity.31integration+5helper tests and independent audit pass; actual repeated CLI hashes match
-and payload tampering changes the hash. Repair: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-wrangler-runtime-payload-hash-repair.json` (`sha256:2cf06d41fc765b941f81d30397759df86cb61b34c98e72327b11089cf9f443fb`).
-The payload repair subsequently passed live in e03. Stage6/7 remain frozen.
+A narrow, independently audited qualified replacement is pending: apply only migration 0087,
+replace the Worker once while retaining the existing 22 secrets, two exact lanes and installed
+worker, import one new source/version-bound activation using the original qualification IDs,
+and verify effective readiness before the single native Chrome E2E. The predecessor resume path
+must be durably disabled before transfer; neither a consumed authority nor completed deployment
+operations may be replayed. Stage 6/7 remain frozen `QUALIFIED_PASS_CLEAN`.
 
+Historical credential repair: 56ef is `FAILED_CLEAN`; its replacement Google credential was bound
+to fresh b905 authority. The OAuth repair and account choice are complete. Prior evidence remains
+in `CURRENT_STATE.yaml` and the historical sections below.
+
+Historical e03 (20/26) and d640 (18/26) attempts are `FAILED_CLEAN` and non-reusable.
+Their exact closure, runtime heartbeat/grants repair, and runtime payload hash repair evidence
+remain indexed in `CURRENT_STATE.yaml`. Both repairs subsequently passed live. Cleanup at those
+closures proved no active compute, removed protected outputs/roles, inactive bindings and zero
+Cloudflare secrets; those historical proofs do not describe the currently retained b905 deployment.
 
 ### Historical activation evidence
 

@@ -309,3 +309,50 @@ describe("qualified hosted GPU transport configuration", () => {
     ).resolves.toMatchObject({ gpuTransport: "DISABLED_UNQUALIFIED" });
   });
 });
+
+describe("durable exact activation verification", () => {
+  function durable() {
+    const value = verified();
+    const snapshot = structuredClone(value.gate) as HostedPairProductionGateInput;
+    const cloudflare = snapshot.cloudflare as {
+      observedAt: string;
+      databaseVerification: {
+        kind: "PERSISTED_EXACT_ACTIVATION";
+        observedAt: string;
+        expiresAt: string;
+      };
+    };
+    cloudflare.observedAt = "2026-08-25T23:00:00.000Z";
+    cloudflare.databaseVerification = {
+      kind: "PERSISTED_EXACT_ACTIVATION",
+      observedAt: DATABASE_NOW,
+      expiresAt: EXPIRES,
+    };
+    return { ...value, gate: snapshot, activationSnapshotSha256: canonicalSha256(snapshot) };
+  }
+  it("accepts old immutable acceptance with fresh exact DB validation", async () => {
+    const value = durable();
+    await expect(resolve(value)).resolves.toMatchObject({ gpuTransport: "QUALIFIED_EXACT" });
+    expect(value.gate.cloudflare.observedAt).toBe("2026-08-25T23:00:00.000Z");
+  });
+  it("rejects an old acceptance without durable validation", async () => {
+    const value = durable();
+    delete (value.gate.cloudflare as { databaseVerification?: unknown }).databaseVerification;
+    value.activationSnapshotSha256 = canonicalSha256(value.gate);
+    await expect(resolve(value)).resolves.toMatchObject({ gpuTransport: "DISABLED_UNQUALIFIED" });
+  });
+  it("rejects altered DB validation time, expiry and deployed version", async () => {
+    for (const key of ["observedAt", "expiresAt", "versionIdSha256"] as const) {
+      const value = durable();
+      if (key === "versionIdSha256")
+        (value.gate.cloudflare as { versionIdSha256: string }).versionIdSha256 =
+          sha("other-version");
+      else
+        (value.gate.cloudflare.databaseVerification as { observedAt: string; expiresAt: string })[
+          key
+        ] = "2026-08-26T00:06:00.000Z";
+      value.activationSnapshotSha256 = canonicalSha256(value.gate);
+      await expect(resolve(value)).resolves.toMatchObject({ gpuTransport: "DISABLED_UNQUALIFIED" });
+    }
+  });
+});

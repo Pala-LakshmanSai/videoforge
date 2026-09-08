@@ -1784,7 +1784,7 @@ function sanitizedConfigurationIdentity(configuration, secretInputSha256s) {
   );
 }
 
-export function createV209CloudflareProductionOperator(inputConfiguration, dependencies = {}) {
+function createProductionRuntime(inputConfiguration, dependencies = {}) {
   const configuration = assertConfiguration(inputConfiguration);
   const secretInputs = sealSecretInputs(configuration);
   const secretInputSha256s = Object.freeze(
@@ -1815,6 +1815,12 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
     (runtime.oauthSpawn !== undefined && typeof runtime.oauthSpawn !== "function")
   )
     fail("DEPENDENCY_INVALID");
+  return runtime;
+}
+
+export function createV209CloudflareProductionOperator(inputConfiguration, dependencies = {}) {
+  const runtime = createProductionRuntime(inputConfiguration, dependencies);
+  const { configuration, secretInputSha256s } = runtime;
   const source = readFileSync(SOURCE_PATH);
   const identityBase = Object.freeze({
     schema_version: PORT_SCHEMA,
@@ -1913,5 +1919,149 @@ export function createV209CloudflareProductionOperator(inputConfiguration, depen
         return reconcileFailure(runtimeValue, context.authority, context, journal);
       },
     ),
+  });
+}
+
+// Narrow built-in replacement capabilities; no normal operator journal adoption or secret writes.
+export function createV209CloudflareReplacementCapabilities(configuration, dependencies = {}) {
+  const runtime = createProductionRuntime(configuration, dependencies);
+  const context = (authority) => ({
+    authority,
+    operationId: "deploy-cloudflare-qualified-production",
+  });
+  const read = async (authority, transport, sourceRuntime = runtime) => {
+    const ctx = context(authority);
+    const names = await exactSecretNames(
+      {
+        ...sourceRuntime,
+        configuration: {
+          ...sourceRuntime.configuration,
+          disabledConfigPath: sourceRuntime.configuration.qualifiedConfigPath,
+        },
+      },
+      authority,
+      ctx,
+    );
+    if (canonical(names) !== canonical([...SECRET_NAMES].sort())) fail("SECRET_LIST_DRIFT");
+    return readActiveVersion(
+      sourceRuntime,
+      authority,
+      sourceRuntime.configuration.qualifiedConfigPath,
+      transport,
+      true,
+      ctx,
+      SECRET_NAMES,
+    );
+  };
+  return Object.freeze({
+    now: () => readClock(runtime.now),
+    assertAuthority: (authority) =>
+      assertCurrentAuthority(authority, runtime.configuration, runtime.now),
+    assertCleanupAuthority: (authority) =>
+      assertCleanupAuthority(authority, runtime.configuration, runtime.now),
+    async predecessor(authority, predecessor) {
+      const oldAuthority = {
+        ...authority,
+        source_commit: predecessor.sourceCommit,
+        production: {
+          ...authority.production,
+          config_sha256: predecessor.qualifiedConfigSha256,
+          worker_bundle_sha256: predecessor.workerBundleSha256,
+        },
+      };
+      const oldRuntime = {
+        ...runtime,
+        configuration: {
+          ...runtime.configuration,
+          sourceCommit: predecessor.sourceCommit,
+          qualifiedConfigPath: predecessor.qualifiedConfigPath,
+        },
+      };
+      const version = await read(oldAuthority, "QUALIFIED_EXACT", oldRuntime);
+      if (version.versionId !== predecessor.versionId) fail("PREDECESSOR_VERSION_DRIFT");
+      // An aged activation is precisely why this replacement may be needed. Only these two
+      // explicit effective states are permitted; native config remains exact QUALIFIED_EXACT.
+      try {
+        await readRoute(
+          oldRuntime,
+          oldAuthority,
+          version.versionId,
+          "QUALIFIED_EXACT",
+          context(oldAuthority),
+        );
+      } catch (error) {
+        if (error?.message !== "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_TRANSPORT_DRIFT") throw error;
+        await readRoute(
+          oldRuntime,
+          oldAuthority,
+          version.versionId,
+          "DISABLED_UNQUALIFIED",
+          context(oldAuthority),
+        );
+      }
+      return version;
+    },
+    async prepare(authority) {
+      const artifact = assertUploadArtifact(
+        runtime.snapshotUploadArtifact(
+          qualifiedConfiguration(runtime.configuration, authority).bytes,
+        ),
+        authority,
+      );
+      try {
+        await verifyQualifiedBundle(runtime, authority, context(authority), artifact);
+        return artifact;
+      } catch (error) {
+        artifact.cleanup();
+        throw error;
+      }
+    },
+    async deploy(authority, artifact) {
+      await child(
+        runtime,
+        authority,
+        artifactDeployArgs(runtime, context(authority), artifact),
+        "QUALIFIED_REPLACEMENT_DEPLOY",
+        { context: context(authority), mutation: true },
+      );
+    },
+    async readback(authority, effectiveTransport) {
+      const version = await read(authority, "QUALIFIED_EXACT");
+      await readRoute(
+        runtime,
+        authority,
+        version.versionId,
+        effectiveTransport,
+        context(authority),
+      );
+      return version;
+    },
+    async disable(authority) {
+      materializeDisabled(runtime.configuration, authority);
+      await child(
+        runtime,
+        authority,
+        [
+          "deploy",
+          "--config",
+          runtime.configuration.disabledConfigPath,
+          "--message",
+          `videoforge-v2-09-replacement-disabled:${authority.source_commit}`,
+          "--x-auto-create",
+          "false",
+        ],
+        "QUALIFIED_REPLACEMENT_DISABLE",
+        { context: context(authority), mutation: true, cleanupMutation: true },
+      );
+      const version = await read(authority, "DISABLED_UNQUALIFIED");
+      await readRoute(
+        runtime,
+        authority,
+        version.versionId,
+        "DISABLED_UNQUALIFIED",
+        context(authority),
+      );
+      return version;
+    },
   });
 }
