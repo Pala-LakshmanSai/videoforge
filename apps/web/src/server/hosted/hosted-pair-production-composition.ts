@@ -539,20 +539,21 @@ export class HostedPairProductionComposition {
     private readonly inspection?: Pick<HostedPairRuntimeStore, "inspect">,
   ) {}
 
-  async resume(input: {
+  async gate(input: {
     readonly environment: HostedPairProductionBindingEnvironment;
     readonly accountId: string;
     readonly workspaceId: string;
     readonly generationRequestId: string;
     readonly dispatchTokenKey: string;
-  }): Promise<
-    HostedPairExecutionResult | { readonly state: "DISABLED_UNQUALIFIED"; readonly reason: string }
-  > {
+  }) {
     const bindingState = hostedPairProductionBindingState(input.environment);
     if (bindingState.state === "DISABLED_UNQUALIFIED")
-      return Object.freeze({ state: "DISABLED_UNQUALIFIED", reason: "GPU_TRANSPORT_DISABLED" });
+      return Object.freeze({
+        state: "DISABLED_UNQUALIFIED" as const,
+        reason: "GPU_TRANSPORT_DISABLED",
+      });
     const trusted = await this.activation.load(input);
-    const gate = evaluateHostedPairProductionGate({
+    return evaluateHostedPairProductionGate({
       ...trusted,
       gpuTransport: "QUALIFIED_EXACT",
       bindings: {
@@ -564,6 +565,18 @@ export class HostedPairProductionComposition {
         workflowOperatorToken: "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
       },
     });
+  }
+
+  async resume(input: {
+    readonly environment: HostedPairProductionBindingEnvironment;
+    readonly accountId: string;
+    readonly workspaceId: string;
+    readonly generationRequestId: string;
+    readonly dispatchTokenKey: string;
+  }): Promise<
+    HostedPairExecutionResult | { readonly state: "DISABLED_UNQUALIFIED"; readonly reason: string }
+  > {
+    const gate = await this.gate(input);
     if (gate.state !== "READY") return gate;
     if (this.inspection) {
       const rows = await this.inspection.inspect(input);

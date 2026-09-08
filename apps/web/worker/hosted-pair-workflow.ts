@@ -123,6 +123,12 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
             });
             let dispatch: Awaited<ReturnType<typeof resumeHostedV209OrdinaryPair>>;
             if (ordinary) {
+              const gate = await live.composition.gate({
+                environment: this.env,
+                ...params,
+                dispatchTokenKey: this.env.VIDEOFORGE_DISPATCH_TOKEN_KEY!,
+              });
+              if (gate.state !== "READY") return gate;
               try {
                 dispatch = await resumeHostedV209OrdinaryPair(this.env, runtimeDatabase, params);
               } catch {
