@@ -1,0 +1,36 @@
+{
+  "schema_version": "videoforge.v2-09-native-chrome-preclaim-repair/v1",
+  "checkpoint": 9,
+  "subcheckpoint": "9.7",
+  "unclaimed_authority": "v2-09-d6d071dc40f48325",
+  "status": "UNCLAIMED_PRECLAIM_BLOCKED_SUPERSEDED",
+  "prior_proposal_sha256": "sha256:d6d071dc40f483258a91eb1f7d064ceec8924e9f56a15b5f00e11d14aff77915",
+  "failure_code": "V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID",
+  "authority_state_created": false,
+  "provider_calls": 0,
+  "repair": "Chrome preclaim validates either exact paired isolated directories or explicit supplied native OAuth metadata/path; actual Chrome never consumes obsolete directory evidence. No credential content read, refresh or provider call.",
+  "unchanged": "Renderer isolation, native deployment OAuth guard, Chrome one-click/no-redispatch and frozenStage6/7.",
+  "real_preclaim": {
+    "checks": [
+      "contracts_and_bridge",
+      "private_output_directories",
+      "chrome_native_oauth_and_voiceover",
+      "media_worker_local_readiness"
+    ],
+    "status": "PASS",
+    "chrome_environment_mode": "NATIVE_OAUTH",
+    "voiceover_duration_ms": 37154,
+    "authority_claimed": false,
+    "provider_calls": 0,
+    "credential_value_reads": 0,
+    "paid_compute": 0,
+    "checked_at": "2026-09-08T04:51:48.439Z"
+  },
+  "independent_audits": "TWO_GO_P0_0_P1_0",
+  "focused_tests": {
+    "chrome": 24,
+    "combined": 35,
+    "total": 59
+  },
+  "next": "Fresh source-bound proposal required; never execute superseded unclaimed d6 artifacts;9.8/9.9 pending."
+}

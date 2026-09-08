@@ -4,7 +4,7 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_render_dependencies_repair_sealed
+current_milestone: v2_09_native_chrome_preclaim_repair_sealed
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -18,7 +18,7 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_render_dependencies_repair_sealed
+  mode: v2_09_native_chrome_preclaim_repair_sealed
   live_provider_calls: "No executable authority remains; 3188 and all predecessors consumed/non-reusable."
   remote_mutation: false
   deployment_or_publication: "Not authorized; no Cloudflare deployment or media installation reached."
@@ -29,9 +29,12 @@ current_goal_boundary:
   current_checkpoint: "9.7 active at render-config exact stop; 1-8 and9.1-9.6 finished;9.8/9.9 pending."
   closure_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-endpoint-transition-render-config.json"
   closure_evidence_sha256: "sha256:1f0458f43020b097a774df36fcae1143447ce21b395ef21a69b8ea80122796a6"
-  note: "15/26 last live stop; dependency build root cause reproduced and repaired.89 focused tests and fresh-checkout full renderer/dry-run pass; no executable authority."
+  note: "15/26 last live stop. d6 stopped before claim at stale Chrome isolated-env guard; no provider calls. Native metadata preclaim repaired; all4 actual local checks pass. Fresh source-bound proposal required."
 
 v2_09_provider_free_candidate:
+  native_chrome_preclaim_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-native-chrome-preclaim-repair.json"
+  native_chrome_preclaim_repair_evidence_sha256: "sha256:88c386a2c837da01af33e7998ef57a8b26ce0518ee726c840bd00482e12b3748"
+  native_chrome_preclaim_repair_validation: "FOCUSED_59_OF_59_ALL_FOUR_REAL_LOCAL_PRECLAIM_CHECKS_PASS_INDEPENDENT_GO"
   render_dependencies_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-render-dependencies-repair.json"
   render_dependencies_repair_evidence_sha256: "sha256:846a50ee6acbe73e26508f98f36bb8c24604f18a83512733a4b29aa40884eedd"
   render_dependencies_repair_validation: "FOCUSED_89_OF_89_FRESH_CHECKOUT_BUILD_DRY_RUN_INDEPENDENT_GO"
@@ -6301,7 +6304,7 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_render_dependencies_repair_sealed
+  milestone: v2_09_native_chrome_preclaim_repair_sealed
   status: FAILED_CLEAN_9_7_EXACT_STOP
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: none_consumed_failed_clean

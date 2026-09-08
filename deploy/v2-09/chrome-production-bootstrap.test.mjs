@@ -452,11 +452,9 @@ test("preclaim validator rejects unsupported voiceover extensions and oversized 
   writeFileSync(flacPath, readFileSync(flac.configuration.voiceoverPath), { mode: 0o600 });
   flac.configuration.voiceoverPath = flacPath;
   await assert.rejects(
-    validateV209ChromePreclaimInputs(
-      flac.configuration,
-      flac.productionConfiguration,
-      { probeVoiceover: async () => 45_000 },
-    ),
+    validateV209ChromePreclaimInputs(flac.configuration, flac.productionConfiguration, {
+      probeVoiceover: async () => 45_000,
+    }),
     /V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID/u,
   );
 
@@ -490,33 +488,27 @@ test("preclaim validator requires the exact nested Cloudflare environment contra
   const missingKey = harness();
   delete missingKey.productionConfiguration.cloudflare.environment.XDG_CONFIG_HOME;
   await assert.rejects(
-    validateV209ChromePreclaimInputs(
-      missingKey.configuration,
-      missingKey.productionConfiguration,
-      { probeVoiceover: async () => 45_000 },
-    ),
+    validateV209ChromePreclaimInputs(missingKey.configuration, missingKey.productionConfiguration, {
+      probeVoiceover: async () => 45_000,
+    }),
     /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
   );
 
   const extra = harness();
   extra.productionConfiguration.cloudflare.environment.EXTRA = "unexpected";
   await assert.rejects(
-    validateV209ChromePreclaimInputs(
-      extra.configuration,
-      extra.productionConfiguration,
-      { probeVoiceover: async () => 45_000 },
-    ),
+    validateV209ChromePreclaimInputs(extra.configuration, extra.productionConfiguration, {
+      probeVoiceover: async () => 45_000,
+    }),
     /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
   );
 
   const nonString = harness();
   nonString.productionConfiguration.cloudflare.environment.PATH = null;
   await assert.rejects(
-    validateV209ChromePreclaimInputs(
-      nonString.configuration,
-      nonString.productionConfiguration,
-      { probeVoiceover: async () => 45_000 },
-    ),
+    validateV209ChromePreclaimInputs(nonString.configuration, nonString.productionConfiguration, {
+      probeVoiceover: async () => 45_000,
+    }),
     /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
   );
 });
@@ -752,4 +744,84 @@ test("a completed browser auth write is claim-bound and adopted after receipt cr
   assert.equal(receipt.status, "AUTHENTICATED_READY_FOR_ONE_E2E");
   assert.equal(storageWrites, 0);
   assert.equal(statSync(value.configuration.authStatePath).mode & 0o777, 0o600);
+});
+
+test("preclaim accepts exact native OAuth metadata without isolated directories or credential reads", async () => {
+  const value = harness();
+  const nativeHome = resolve(value.secure, "native-home");
+  const configDirectory = resolve(nativeHome, ".wrangler/config");
+  mkdirSync(configDirectory, { recursive: true, mode: 0o700 });
+  const oauthConfigPath = resolve(configDirectory, "default.toml");
+  // Deliberately not parseable OAuth credentials: preclaim checks metadata only.
+  writeFileSync(oauthConfigPath, "not-a-token-or-valid-toml", { mode: 0o600 });
+  const production = {
+    cloudflare: {
+      oauthConfigPath,
+      environment: { HOME: nativeHome, PATH: "/usr/bin:/bin", WRANGLER_SEND_METRICS: "false" },
+    },
+  };
+  const receipt = await validateV209ChromePreclaimInputs(
+    value.configuration,
+    production,
+    value.dependencies,
+  );
+  assert.equal(receipt.cloudflare_environment_mode, "NATIVE_OAUTH");
+  assert.equal(receipt.wrangler_oauth_config_path, oauthConfigPath);
+  assert.equal(Object.hasOwn(receipt, "wrangler_home"), false);
+  assert.equal(Object.hasOwn(receipt, "xdg_config_home"), false);
+  assert.equal(value.calls.length, 0);
+  for (const environment of [
+    { ...production.cloudflare.environment, WRANGLER_HOME: value.secure },
+    { ...production.cloudflare.environment, XDG_CONFIG_HOME: value.secure },
+    { ...production.cloudflare.environment, CLOUDFLARE_API_TOKEN: "forbidden" },
+    { ...production.cloudflare.environment, VIDEOFORGE_WRANGLER_OAUTH_CONFIG: oauthConfigPath },
+    { PATH: "/usr/bin:/bin" },
+    { ...production.cloudflare.environment, HOME: "relative" },
+  ]) {
+    await assert.rejects(
+      validateV209ChromePreclaimInputs(
+        value.configuration,
+        { cloudflare: { oauthConfigPath, environment } },
+        value.dependencies,
+      ),
+      /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
+    );
+  }
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      value.configuration,
+      {
+        cloudflare: {
+          ...production.cloudflare,
+          oauthConfigPath: resolve(value.secure, "other.toml"),
+        },
+      },
+      value.dependencies,
+    ),
+    /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
+  );
+  chmodSync(oauthConfigPath, 0o644);
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(value.configuration, production, value.dependencies),
+    /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
+  );
+});
+
+test("native OAuth preclaim rejects symlinked credential files", async () => {
+  const value = harness();
+  const nativeHome = resolve(value.secure, "native-home");
+  const configDirectory = resolve(nativeHome, ".wrangler/config");
+  mkdirSync(configDirectory, { recursive: true, mode: 0o700 });
+  const oauthConfigPath = resolve(configDirectory, "default.toml");
+  const target = resolve(value.secure, "target.toml");
+  writeFileSync(target, "fixture", { mode: 0o600 });
+  symlinkSync(target, oauthConfigPath);
+  await assert.rejects(
+    validateV209ChromePreclaimInputs(
+      value.configuration,
+      { cloudflare: { oauthConfigPath, environment: { HOME: nativeHome } } },
+      value.dependencies,
+    ),
+    /V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID/u,
+  );
 });

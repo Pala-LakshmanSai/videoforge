@@ -16,6 +16,8 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { basename, dirname, extname, isAbsolute, resolve } from "node:path";
 
+import { wranglerOAuthConfigPath } from "../v2-13/guarded-activation.mjs";
+
 const CONFIG_SCHEMA = "videoforge.v2-09-chrome-bootstrap/v1";
 const REQUEST_SCHEMA = "videoforge.v2-09-real-chrome-production-request/v1";
 const OPERATOR_SCHEMA = "videoforge.v2-09-real-chrome-operator-request/v1";
@@ -271,15 +273,7 @@ function verifyReservedBrowserWrite(reservation) {
 function defaultProbeVoiceover(bytes) {
   const result = spawnSync(
     "ffprobe",
-    [
-      "-v",
-      "error",
-      "-show_entries",
-      "packet=pts_time,duration_time",
-      "-of",
-      "csv=p=0",
-      "pipe:0",
-    ],
+    ["-v", "error", "-show_entries", "packet=pts_time,duration_time", "-of", "csv=p=0", "pipe:0"],
     {
       encoding: "utf8",
       input: bytes,
@@ -301,8 +295,7 @@ function defaultProbeVoiceover(bytes) {
         );
     }
   }
-  if (!Number.isFinite(durationSeconds))
-    fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
+  if (!Number.isFinite(durationSeconds)) fail("V2_09_CHROME_BOOTSTRAP_VOICEOVER_INVALID");
   return Math.round(durationSeconds * 1_000);
 }
 
@@ -331,16 +324,14 @@ function validateCloudflareEnvironment(productionConfiguration) {
     environment === null ||
     typeof environment !== "object" ||
     Array.isArray(environment) ||
-    !Object.hasOwn(environment, "WRANGLER_HOME") ||
-    !Object.hasOwn(environment, "XDG_CONFIG_HOME") ||
+    Object.hasOwn(environment, "WRANGLER_HOME") !== Object.hasOwn(environment, "XDG_CONFIG_HOME") ||
     Object.keys(environment).some((key) => !CLOUDFLARE_ENVIRONMENT_KEYS.has(key)) ||
     Object.entries(environment).some(
-      ([, value]) =>
-        typeof value !== "string" || value.includes("\0") || value.length > 8_192,
+      ([, value]) => typeof value !== "string" || value.includes("\0") || value.length > 8_192,
     )
   )
     fail("V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID");
-  return environment;
+  return Object.freeze({ ...environment });
 }
 
 function validateFullBootstrapConfiguration(configuration) {
@@ -849,24 +840,63 @@ export async function validateV209ChromePreclaimInputs(
   const origin = exactOrigin(configuration.productionOrigin);
   const voiceover = await validateVoiceoverBinding(configuration, dependencies);
   const environment = validateCloudflareEnvironment(productionConfiguration);
-  const wranglerHome = privateDirectory(
-    environment.WRANGLER_HOME,
-    "V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID",
-  );
-  const xdgConfigHome = privateDirectory(
-    environment.XDG_CONFIG_HOME,
-    "V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID",
-  );
-  if (wranglerHome !== xdgConfigHome)
-    fail("V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID");
+  const code = "V2_09_CHROME_BOOTSTRAP_WRANGLER_HOME_INVALID";
+  let environmentEvidence;
+  if (Object.hasOwn(environment, "WRANGLER_HOME")) {
+    const wranglerHome = privateDirectory(environment.WRANGLER_HOME, code);
+    const xdgConfigHome = privateDirectory(environment.XDG_CONFIG_HOME, code);
+    if (wranglerHome !== xdgConfigHome) fail(code);
+    environmentEvidence = {
+      cloudflare_environment_mode: "ISOLATED_DIRECTORIES",
+      wrangler_home: wranglerHome,
+      xdg_config_home: xdgConfigHome,
+    };
+  } else {
+    // Native deployment deliberately uses the existing approved OAuth location. Resolve
+    // only from the supplied environment and inspect metadata, never credential bytes.
+    const configuredPath = productionConfiguration.cloudflare.oauthConfigPath;
+    if (
+      typeof configuredPath !== "string" ||
+      !isAbsolute(configuredPath) ||
+      typeof environment.HOME !== "string" ||
+      !isAbsolute(environment.HOME)
+    )
+      fail(code);
+    let nativePath;
+    let metadata;
+    let parent;
+    try {
+      nativePath = wranglerOAuthConfigPath(environment);
+      if (resolve(configuredPath) !== resolve(nativePath)) fail(code);
+      metadata = lstatSync(nativePath);
+      parent = lstatSync(dirname(nativePath));
+    } catch {
+      fail(code);
+    }
+    if (
+      !metadata.isFile() ||
+      metadata.isSymbolicLink() ||
+      metadata.nlink !== 1 ||
+      (metadata.mode & 0o777) !== 0o600 ||
+      !parent.isDirectory() ||
+      parent.isSymbolicLink() ||
+      (parent.mode & 0o022) !== 0 ||
+      (typeof process.getuid === "function" &&
+        (metadata.uid !== process.getuid() || parent.uid !== process.getuid()))
+    )
+      fail(code);
+    environmentEvidence = {
+      cloudflare_environment_mode: "NATIVE_OAUTH",
+      wrangler_oauth_config_path: resolve(nativePath),
+    };
+  }
   return Object.freeze({
     schema_version: "videoforge.v2-09-chrome-preclaim-inputs/v1",
     production_origin: origin,
     voiceover_path: voiceover.path,
     voiceover_sha256: voiceover.sha256,
     voiceover_duration_ms: voiceover.durationMs,
-    wrangler_home: wranglerHome,
-    xdg_config_home: xdgConfigHome,
+    ...environmentEvidence,
   });
 }
 
@@ -881,8 +911,7 @@ export async function materializeV209ChromeBootstrap(configuration, dependencies
     sha256: voiceoverSha256,
     durationMs,
     contentType,
-  } =
-    voiceoverBinding;
+  } = voiceoverBinding;
 
   privateParent(configuration.verifiedOutputPath);
   const auth = beginOrAdoptAuth(configuration.authStatePath, {

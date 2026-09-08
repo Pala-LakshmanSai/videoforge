@@ -465,7 +465,7 @@ gates:
     current_failure_sha256: "sha256:1f0458f43020b097a774df36fcae1143447ce21b395ef21a69b8ea80122796a6"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "Render dependency/authority repair89/89 plus fresh-checkout build/dry-run pass; independent audits GO. No current approval;Stage6/7 frozen."
+    provider_free_repair_state: "Native Chrome preclaim repair59/59 and all4 actual local preclaim checks pass; independentGO. d6 unclaimed/superseded, fresh approval required;Stage6/7 frozen."
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-endpoint-transition-replacement.json"
     latest_closed_authority_sha256: "sha256:40b129bd736c6052de4017ae8aede0db29d2849b8b733f312a4a94753ad14c1c"
     latest_closed_private_authority_sha256: "sha256:9c15e8a004072f78a8071616ae6bb318ed7af0c34722d3c28b52ddfd512039be"
