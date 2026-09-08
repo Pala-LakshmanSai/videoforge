@@ -459,13 +459,13 @@ gates:
     current_authority_sha256: null
     current_private_authority_sha256: null
     current_authority_state: "none_492_consumed_read_only_prerequisites"
-    current_proposal_sha256: null
-    current_control_source_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
+    current_proposal_sha256: "sha256:c27280b04f76ea8d19a2524bc27a7601819dfc7ac0a182deca00f2f74208a251"
+    current_control_source_commit: "536e7a400313ff6fd81ff0d62027d08bf5568bbf"
     current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-workflow-phase-runtime-path.json"
     current_failure_sha256: "sha256:57303501d32471bb93b8b8930c4f9ebb3bb8f3f0013f8819585e83bfbfd28102"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "492 FAILED_CLEAN16/26; runtime PATH proof recorded; focused consolidated predeployment check active; successor proposal not sealed."
+    provider_free_repair_state: "492 FAILED_CLEAN16/26; runtime PATH proof recorded; consolidated checks passed;9.7.1–5done,9.7.6sealed proposal awaiting approval."
     previous_latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-endpoint-transition-replacement.json"
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-workflow-bootstrap-phase-replacement.json"
     previous_latest_closed_authority_sha256: "sha256:40b129bd736c6052de4017ae8aede0db29d2849b8b733f312a4a94753ad14c1c"
