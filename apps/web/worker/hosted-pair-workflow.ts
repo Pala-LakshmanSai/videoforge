@@ -121,13 +121,22 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
               workspaceId: params.workspaceId,
               generationRequestId: params.generationRequestId,
             });
-            const dispatch = ordinary
-              ? await resumeHostedV209OrdinaryPair(this.env, runtimeDatabase, params)
-              : await live.composition.resume({
-                  environment: this.env,
-                  ...params,
-                  dispatchTokenKey: this.env.VIDEOFORGE_DISPATCH_TOKEN_KEY!,
-                });
+            let dispatch: Awaited<ReturnType<typeof resumeHostedV209OrdinaryPair>>;
+            if (ordinary) {
+              try {
+                dispatch = await resumeHostedV209OrdinaryPair(this.env, runtimeDatabase, params);
+              } catch {
+                // SENT/unknown acknowledgement is deliberately not sendable. Stop this Workflow
+                // step durably so an operator can reconcile before any further provider action.
+                return Object.freeze({ state: "MANUAL_RECONCILIATION_REQUIRED" as const });
+              }
+            } else {
+              dispatch = await live.composition.resume({
+                environment: this.env,
+                ...params,
+                dispatchTokenKey: this.env.VIDEOFORGE_DISPATCH_TOKEN_KEY!,
+              });
+            }
             if (dispatch.state === "DISABLED_UNQUALIFIED") return dispatch;
           }
           const clock = await runtimeDatabase.transaction(async (transaction) => {
