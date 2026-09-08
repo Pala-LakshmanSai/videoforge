@@ -1,0 +1,43 @@
+{
+  "schema_version": "videoforge.v2-09-combined-authority-materialization-evidence/v1",
+  "checkpoint": "V2-09",
+  "subcheckpoint": "9.7",
+  "status": "APPROVED_SINGLE_USE_EXECUTION_ACTIVE",
+  "authority_id": "v2-09-e77c557b7ee5146a",
+  "authority_private_path": "/Users/lakshmansai/.videoforge/v2-09/v2-09-e77c557b7ee5146a/authority.json",
+  "authority_sha256": "sha256:362b064567101bebe4e46d9cf56a32e1e8c2ce78e196cbe5d619620a7cc15bce",
+  "materialization_plan_private_path": "/Users/lakshmansai/.videoforge/v2-09/v2-09-e77c557b7ee5146a/materialization-plan.json",
+  "materialization_plan_sha256": "sha256:e994f655b4cbfeb2fb1fe14beb467264e53e0faff8cfddf45c6c2411a73273d0",
+  "proposal_sha256": "sha256:e77c557b7ee5146afeadf848e787d3e7cff91df7aff0af3123ba9beb9b98d4dd",
+  "proposal_private_path": "/Users/lakshmansai/.videoforge/v2-09/proposals/exact-existing-media-release-replacement.txt",
+  "source_commit": "72d8b4f36ad35f37699240e7365b724713525a76",
+  "issued_at": "2026-09-08T03:14:39.000Z",
+  "expires_at": "2026-09-09T03:14:39.000Z",
+  "caps": {
+    "max_completion_usd": 17.5,
+    "max_incremental_usd": 2
+  },
+  "media_worker_inputs": {
+    "execution_bundle_sha256": "sha256:a1bda39b57e4b0ccad936bd7a044805583d7683287f2ea0861657e90c3a194b6",
+    "materialization_mode": "PREAUTHORIZED_EXACT_EXISTING_ONLY",
+    "release": "0.1.15",
+    "release_source_commit": "b897fc6def69db56a6d3dba43573551042843458",
+    "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "release_manifest_sha256": "sha256:d42bc1ee12829bb8d2824fca144a041283ad164c2fdfa894d7d6ebfba2b4df75",
+    "installer_asset_sha256": "sha256:d12025df97c44eee6356da9aab11f904a37fbe4c72b691fccc62d4dd91ae37db",
+    "windows_installer_asset_sha256": "sha256:7a55843f437e47f3c8f26185152e1b827ca3a6705dae13166a256ff1ffa2b480",
+    "signing_identity_sha256": "sha256:eaafe97fbcf85ad460208f419759f4726f9545e451cf08ba973ce95ebea1742b"
+  },
+  "independent_authority_audit": "GO_P0_0_P1_0",
+  "prior_authority": "v2-09-af93a2373eb5619b",
+  "prior_authority_state": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "completed_checkpoints": "1-8 and 9.1-9.6",
+  "remaining_gates": [
+    "9.7 combined deployment",
+    "9.8 single authorized Chrome E2E",
+    "9.9 cleanup lineage manual-testing readiness"
+  ],
+  "frozen_predecessors": "Stage 6 and Stage 7 QUALIFIED_PASS_CLEAN; no modifications or reruns",
+  "execution_state_private_path": "/Users/lakshmansai/.videoforge/v2-09/v2-09-e77c557b7ee5146a/combined-outer-state.json",
+  "note": "Approval record is not deployment or E2E success evidence. Runtime state is authoritative for execution progress."
+}

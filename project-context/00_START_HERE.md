@@ -4,10 +4,19 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-- Authority `v2-09-af93a2373eb5619b` is consumed `FAILED_CLEAN` and non-reusable after 8/26
-  operations. Migrations reached 86/86 and run `34178343261` published immutable media-worker
-  `0.1.15`; its receipt failed on the live workflow-path predicate. Cleanup proved zero compute or
-  spend. No live authority exists. Next: exact-existing release repair, audit, proposal, and approval.
+Fresh exact proposal `sha256:e77c557b7ee5146afeadf848e787d3e7cff91df7aff0af3123ba9beb9b98d4dd`
+is approved for single-use combined activation from clean frozen source
+`72d8b4f36ad35f37699240e7365b724713525a76`. Authority `v2-09-e77c557b7ee5146a`
+has private SHA-256 `362b064567101bebe4e46d9cf56a32e1e8c2ce78e196cbe5d619620a7cc15bce`;
+independent authority audit is GO P0=0/P1=0. Checkpoints 1–8 and 9.1–9.6 remain finished;
+9.7 combined deployment is active, followed by 9.8 single authorized Chrome E2E and 9.9
+cleanup, lineage proof, and manual-testing readiness. Exact-existing media-worker adoption only;
+migrations verify existing head 86. Caps are USD 2 incremental and USD 17.50 completion;
+Stage 6/7 remain frozen QUALIFIED_PASS_CLEAN. Prior af93 authority remains consumed FAILED_CLEAN.
+Current evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-exact-existing-media-release-replacement.json`. This context successor does not alter the frozen execution source.
+
+### Historical activation evidence
+
 - Proposal `sha256:2c15ff7c...2823` and authority `v2-09-2c15ff7cc8093988` are consumed
   `FAILED_CLEAN` and non-reusable. Five operations completed through exact source readback. Migration
   0074-0086 started but received zero stdin bytes and timed out without committing; all 20 later
