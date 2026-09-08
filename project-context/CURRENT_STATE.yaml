@@ -4,7 +4,7 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_complete_worker_forward_repair_seal_pending
+current_milestone: v2_09_complete_worker_sealed_awaiting_exact_approval
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -18,7 +18,7 @@ gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
 current_goal_boundary:
-  mode: v2_09_complete_worker_forward_repair_seal_pending
+  mode: v2_09_complete_worker_sealed_awaiting_exact_approval
   live_provider_calls: "None; c272 terminal FAILED_CLEAN; forward provider-free repair only."
   remote_mutation: false
   deployment_or_publication: "None; new exact successor approval pending after seal."
@@ -29,7 +29,7 @@ current_goal_boundary:
   current_checkpoint: "9.7 active;1–8 and9.1–9.6 finished;9.8/9.9 pending."
   approval_evidence: null
   approval_evidence_sha256: null
-  note: "c272FAILED_CLEAN16/26;9.7.7ACTIVE forward repair and seal pending;9.7.1\u20136DONE;9.7.8/9.8/9.9pending.22staticassets uploaded;emptyservice deleted;27outputs/rolesclean,DB2inactive,3RunPodzero."
+  note: "c272FAILED_CLEAN16/26;9.7.7ACTIVE forward repair sealed; fresh exact approval pending;9.7.1\u20136DONE;9.7.8/9.8/9.9pending.22staticassets uploaded;emptyservice deleted;27outputs/rolesclean,DB2inactive,3RunPodzero."
 
 
 v2_09_checkpoint_9_7_subcheckpoints:
@@ -46,9 +46,12 @@ v2_09_checkpoint_9_7_subcheckpoints:
   next_main_subcheckpoints: "9.8 single Chrome E2E and 9.9 cleanup/readiness pending"
 
 v2_09_provider_free_candidate:
+  complete_worker_source_commit: "b7546348775d8bb743d9b4408591fdfe6daf6650"
+  complete_worker_proposal_path: "/Users/lakshmansai/.videoforge/v2-09/proposals/complete-worker-module-replacement.txt"
+  complete_worker_proposal_sha256: "sha256:30d07b585868cea6262aad6d1aec0281608e6bb649490fac337a74f6c69a3ec7"
   complete_worker_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-complete-worker-module-repair.json"
   complete_worker_repair_evidence_sha256: "sha256:7358cbec056e43c1614ede5601fa7ab51d20d565f2f03586bac774cd5a2f901c"
-  complete_worker_repair_validation: "8focusedtests plus actual6.89MBworker dryrun PASS; independent GO; seal pending"
+  complete_worker_repair_validation: "8tests, complete6.89MBdryrun and actualworkerd PASS; two exact auditsGO; sealed awaiting approval"
   consolidated_source_commit: "536e7a400313ff6fd81ff0d62027d08bf5568bbf"
   consolidated_proposal_path: "/Users/lakshmansai/.videoforge/v2-09/proposals/consolidated-prerequisites-replacement.txt"
   consolidated_proposal_sha256: "sha256:c27280b04f76ea8d19a2524bc27a7601819dfc7ac0a182deca00f2f74208a251"
@@ -6411,7 +6414,7 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_complete_worker_forward_repair_seal_pending
+  milestone: v2_09_complete_worker_sealed_awaiting_exact_approval
   status: FORWARD_REPAIR_SEAL_PENDING
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: no_current_authority_c272_consumed_failed_clean
