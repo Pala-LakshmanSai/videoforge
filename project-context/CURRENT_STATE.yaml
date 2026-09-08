@@ -4,33 +4,59 @@ updated_at: "2026-09-08"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_single_click_stopped_database_repair_verified
+current_milestone: v2_09_same_project_ledger89_repair_verified
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: read_only_preflight
+task_stage: bounded_mutation
 application_code_changes_authorized: true
 provider_calls_authorized: true
-read_only_provider_calls_authorized: true
-remote_or_cloud_mutations_authorized: false
+read_only_provider_calls_authorized: false
+remote_or_cloud_mutations_authorized: true
 credential_access_authorized: true
-gpu_use_authorized: false
-maximum_external_spend_usd: 0
+gpu_use_authorized: true
+maximum_external_spend_usd: 2
 
 current_goal_boundary:
-  mode: v2_09_single_click_stopped_database_repair_verified
-  live_provider_calls: "9441f8ab replacement8/8 and native handoff verified; singleclick HTTP500 at12:20:20.487Z; no create/generation rows; idle closure proved; no retry"
+  mode: "v2_09_same_project_ledger89_repair_verified"
+  live_provider_calls: "Read-only baseline verified; context0 generation0 ASR SUCCEEDED"
   remote_mutation: false
-  deployment_or_publication: "Exact9441f8ab qualified replacement8/8 deployed/imported/readback; migration0087 applied; retained worker0.1.15 ONLINE"
-  credential_value_access: "Exact protectedsnapshots undercontinuingauthorization"
-  paid_requests_or_spend: "USD2cap USD17.5ceiling retainedconsentunchanged"
-  runpod_mutation_or_gpu: "Exactqualified2lanes maxone workersMin0 no replay"
-  v2_07_action: "Stage6/7 frozen QUALIFIED_PASS_CLEAN; zero changes or reruns."
-  current_checkpoint: "9.7 finished;1–8 and9.1–9.6 finished;9.8 STOPPED_NO_RETRY;9.9 manual readiness not achieved."
-  approval_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-runtime-heartbeat.json"
-  approval_evidence_sha256: "sha256:a62ed1df6c29a087150224a8c4cb62cd42656f48a8842c1c57548bd047837762"
-  note: "Single click returned HTTP500 before observed project creation. Exact Cloudflare error and realPG reproduction: permission denied for function videoforge_is_hosted_v209_system_avatar_reference (42501). Migration0088 committed12:42:11.950Z from a840b7df after realPG regression and independentGO; strict effectiveQUALIFIED readback passed; no secondclick. Three retained-pair zero reads and scopedDB zero jobs/leases prove idle; retained production remains deployed."
+  deployment_or_publication: "One secret PUT complete; no code rebuild. Further live work stopped at explicit ledger88 boundary; local migration89 under audit"
+  credential_value_access: "Existing private mode0600 Runware file; never log or persist value elsewhere"
+  paid_requests_or_spend: "USD2 incremental cap; USD17.50 total ceiling; context10000 and prompts40000 microUSD"
+  runpod_mutation_or_gpu: "At most one generation on exact two retained qualified lanes; workersMin0/workersMax1; no fallback"
+  v2_07_action: "Stage6/7 frozen QUALIFIED_PASS_CLEAN; no modification or rerun"
+  current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 ACTIVE;9.9 pending"
+  approval_evidence: "Current explicit user continuation on2026-09-08; existing bounded authority preserved"
+  note: "Same project204814e4-3b86-4ae8-9680-d0bb09689ab1; consumed v4/secret/rebind never replayed. No successor activation committed. Ledger88 unique source/config plus append-only table requires scoped migration89 exception before more live work"
 
+
+v2_09_same_project_continuation:
+  control_source: "f9dccd4ea53b17dc7719c537321027861096422b"
+  deployed_code_source: "9dad16ee5939c8633bc363d06fef65b1deea2425"
+  worker_version_id: "399e9a38-0c26-42c5-b668-33d16e7d6ad5"
+  version_sha256: "6ea7f8ebf6c5d2b34a583b578133334ebf95a4d55d45e539e9fa1b2b666b7824"
+  config_sha256: "d3f5388c162adf9d6f52a7a58223aa14cb71911efacbef5b8959c7aaaba29230"
+  database_ledger: 88
+  project_id: "204814e4-3b86-4ae8-9680-d0bb09689ab1"
+  revision_id: "b7484391-c82b-4ca6-a9dd-617138e7b37c"
+  create_id: "661872bd-a743-4af0-8399-15ca4ada5339"
+  asr_attempt_id: "b7a015a6-cd85-4223-bb7d-825867c108b2"
+  asr_state: "SUCCEEDED"
+  context_count: 0
+  generation_count: 0
+  repair_status: "LEDGER89_PROVIDER_FREE_VERIFIED_AWAITING_EXACT_SCOPE_EXCEPTION"
+  completion_cost_usd: 0.38663
+  observed_provider_increment_usd: 0
+  compute_state: "Fresh independent baseline zero pods/workers/queued jobs"
+  private_evidence_root: "~/.videoforge/v2-09/native-qualified-claimfix-9dad16ee"
+  manual_chrome_ready: false
+  effective_gpu_transport: "DISABLED_UNQUALIFIED"
+  new_activation_committed: false
+  secret_put_count: 1
+  live_migration89_authorized: false
+  next: "Resolve explicit live ledger88-to89 scope exception for tested migration89, then fresh activation399 and same-project Chrome continuation"
+  evidence: "evidence/acceptance/VF-10-09/2026-09-08-one-secret-rebind-stop/closure.json"
 
 v2_09_continuing_user_authorization:
   recorded_at: "2026-09-08"
@@ -43,7 +69,7 @@ v2_09_continuing_user_authorization:
 
 v2_09_checkpoint_9_7_subcheckpoints:
   tracker_owner: parent_execution_agent
-  current: "9.7 complete;9.8 stopped"
+  current: "9.7 VERIFIED frozen;9.8 ACTIVE same-project recovery;9.9 pending"
   "9.7.1": "DONE — failed-attempt cleanup closure"
   "9.7.2": "DONE — runtime PATH and live authorization prerequisites"
   "9.7.3": "DONE — Cloudflare resource contract; R2 repair verified with 15 focused tests"
@@ -52,7 +78,7 @@ v2_09_checkpoint_9_7_subcheckpoints:
   "9.7.6": "DONE \u2014 exact cfe842 proposal approved"
   "9.7.7": "DONE —56ef22/26;0.1.15 ONLINE and activationimport effectiveQUALIFIED_EXACT"
   "9.7.8": "DONE —9441f8ab replacement8/8 verified; migration87/liveQUALIFIED_EXACT and native authenticated Chrome handoff completed"
-  next_main_subcheckpoints: "9.8 singleclick STOPPED_NO_RETRY;9.9 idle cleanup proved but manual readiness not achieved"
+  next_main_subcheckpoints: "9.8 existing-project context/render/prompts/single GPU/Chrome proof;9.9 terminal closure"
 
 v2_09_verified_qualified_replacement:
   source_commit: "9441f8ab35ac9ce29046cf7c27185d6d3b352478"
@@ -4310,10 +4336,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
+  provider_mode: production
   provider_calls_authorized: true
-  authorized_spend_usd: 0
-  provider_authority_scope: exact_e03
+  authorized_spend_usd: 2
+  provider_authority_scope: explicit_same_project_v2_09_continuation
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -6507,7 +6533,7 @@ provider_authority_e03_historical_snapshot:
   latest_closed_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-release-recovered-secret-cleanup.json"
   latest_closed_failure_sha256: "sha256:fdf35a7a704f9416cc621747935bc19c2cf97ef72cc1dda76e63f3676492b7ff"
 
-provider_authority: &v2_09_provider_authority_current
+v2_09_historical_consumed_native_authority:
   mode: read_only
   execution_mode_note: "Fixture/no-spend describes current diagnosis execution only; retained production remains QUALIFIED_EXACT."
   non_transferable: true
@@ -6532,35 +6558,60 @@ provider_authority: &v2_09_provider_authority_current
   status: STOPPED_NO_RETRY
   note: "Continuing user authorization permits source repairs and fresh exact successor records; it does not replay this consumed click. Retained qualified deployment remains present and idle."
 
+provider_authority: &v2_09_provider_authority_current
+  mode: "paid"
+  execution_mode_note: "Current explicit user same-project continuation; finite original caps; executable mutations require fresh single-use plans"
+  non_transferable: true
+  authorized_by_user_at: "2026-09-08"
+  provider: "runware+runpod+cloudflare_r2+neon+paired_mac_device"
+  source: "f9dccd4ea53b17dc7719c537321027861096422b"
+  cap_usd: 2
+  maximum_completion_usd: 17.5
+  provider_calls_authorized: true
+  provider_mutations_authorized: true
+  credential_access_authorized: true
+  gpu_use_authorized: true
+  model_id: "qualified Mage and SoulX immutable retained pair"
+  resources: ["runpod:mage-qualified-lane", "runpod:soulx-qualified-lane", "neon:production", "cloudflare:videoforge-production-runtime", "project:204814e4-3b86-4ae8-9680-d0bb09689ab1"]
+  allowed_operations: ["exact_one_secret_repair", "resulting_version_readback", "same_qualification_activation_rebind", "same_project_context_once", "same_project_render_handoff", "same_project_prompts_once", "same_project_gpu_generation_once", "private_mp4_chrome_verification", "terminal_lineage_cost_compute_closure"]
+  status: "STOPPED_LEDGER88_SCOPE_BOUNDARY_LOCAL_REPAIR_VERIFIED"
+  note: "One RUNWARE_API_KEY PUT confirmed; both attempted executors consumed; no successor activation committed. Local migration89 preparation only until explicit ledger88 exception. Preserve Stage6/7 and no new project/CPU submission."
+  authorized_operations: ["exact_one_secret_repair", "resulting_version_readback", "same_qualification_activation_rebind", "same_project_context_once", "same_project_render_handoff", "same_project_prompts_once", "same_project_gpu_generation_once", "private_mp4_chrome_verification", "terminal_lineage_cost_compute_closure"]
+  rate_snapshot:
+    - resource_id: "exact retained RTX4090 EU-RO-1 pair; unchanged guarded rate"
+      billing_unit: "GPU-hour"
+      usd_per_unit: 1.116
+      checked_at: "2026-09-08; inherited exact qualified authority, fresh dispatch admission required"
+
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_single_click_stopped_database_repair_verified
+  milestone: v2_09_same_project_ledger89_repair_verified
   status: EXECUTION_ACTIVE
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
-  authorization_status: continuing_authorization_consumed_native_click
-  task_stage: read_only_preflight
+  authorization_status: explicit_same_project_continuation_no_replay
+  task_stage: bounded_mutation
   current_goal_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-runtime-heartbeat.json"
   current_goal_authority_sha256: "sha256:a62ed1df6c29a087150224a8c4cb62cd42656f48a8842c1c57548bd047837762"
   provider_authority: *v2_09_provider_authority_current
-  provider_mode: fixture
+  provider_mode: production
   provider_free_repair_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
   provider_free_clean_seal_commit: "144dda524d2e2d1813a08abaf268c3a767061f59"
   provider_free_repair_evidence: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-workflow-bootstrap-phase-repair.json"
   provider_free_repair_validation: "109_OF_109_REAL_RUNTIME_PROOF_INDEPENDENT_GO_P0_0_P1_0"
   read_profile: v2_09_short_live_e2e
   task_brief: tasks/VF-10-09.md
-  goal: "Diagnose consumed native singleclick HTTP500; preserve idle qualified deployment and no retry"
+  goal: "Complete same-project9.8 via audited one-secret repair/context/render/prompts/one GPU generation/Chrome proof, then9.9 terminal closure; no create or CPU replay"
   provider_calls_authorized: true
-  read_only_provider_calls_authorized: true
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
+  read_only_provider_calls_authorized: false
+  maximum_external_spend_usd: 2
+  remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
   credential_value_read_authorized: true
   model_downloads_authorized: false
   worker_image_publication_authorized: false
   sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  gpu_use_authorized: true
   retained_volume_mutation_authorized: false
   existing_retained_volume_billing_consent_recorded: true
   ongoing_retained_mage_volume_usd_per_month: 3.5

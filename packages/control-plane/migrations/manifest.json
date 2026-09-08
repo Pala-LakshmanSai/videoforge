@@ -528,6 +528,12 @@
       "name": "hosted_artifact_trigger_execution_scope",
       "filename": "0088_hosted_artifact_trigger_execution_scope.sql",
       "sha256": "sha256:0657c70455b53a4f4756f142974c1cdc29956c54075337b96acd2405b7213848"
+    },
+    {
+      "version": 89,
+      "name": "hosted_v209_activation_rebind",
+      "filename": "0089_hosted_v209_activation_rebind.sql",
+      "sha256": "sha256:3defa55e813f71d0bfee6cef42fbd7618dd6a9a4d545ef0866e726b92369d52f"
     }
   ]
 }

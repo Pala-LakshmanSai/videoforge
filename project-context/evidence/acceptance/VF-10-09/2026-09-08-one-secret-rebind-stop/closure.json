@@ -1,0 +1,108 @@
+{
+  "schema_version": "videoforge.v2-09-one-secret-rebind-stop/v1",
+  "checked_at": "2026-09-08T14:27:42.238015+00:00",
+  "checkpoint": "V2-09",
+  "main_checkpoint": "8/9 finished; checkpoint9 active",
+  "subcheckpoint_9_7": "VERIFIED_FROZEN",
+  "subcheckpoint_9_8": "STOPPED_EXACT_SCOPE_CHANGE",
+  "subcheckpoint_9_9": "PENDING_E2E_TERMINAL_ZERO_COMPUTE_VERIFIED",
+  "control_source": "f9dccd4ea53b17dc7719c537321027861096422b",
+  "deployed_code_source": "9dad16ee5939c8633bc363d06fef65b1deea2425",
+  "deployed_configuration_sha256": "sha256:d3f5388c162adf9d6f52a7a58223aa14cb71911efacbef5b8959c7aaaba29230",
+  "resulting_worker_version_id": "399e9a38-0c26-42c5-b668-33d16e7d6ad5",
+  "resulting_worker_version_sha256": "sha256:6ea7f8ebf6c5d2b34a583b578133334ebf95a4d55d45e539e9fa1b2b666b7824",
+  "effective_gpu_transport": "DISABLED_UNQUALIFIED",
+  "ledger": 88,
+  "secret_names_count": 23,
+  "secret_put_count": 1,
+  "secret_put_http_status": 201,
+  "activation_import_attempts": 1,
+  "activation_imports_committed": 0,
+  "reconciliation": "Two read-only reads confirm exact successor activation absent and original activation unchanged; exact live source/config uniqueness constraint blocks same-source/config new-version activation. Raw SQL error text unavailable.",
+  "scope_stop": "No supported rebind path preserving ledger88 and unchanged source/config; schema migration or actual changed deployment required. Never rewrite immutable evidence or invent source/config hashes.",
+  "frozen_stages": "Stage6/7 QUALIFIED_PASS_CLEAN unchanged",
+  "new_chrome_create_clicks": 0,
+  "chrome_project_recovery_navigations": 0,
+  "new_cpu_submissions": 0,
+  "new_context_submissions": 0,
+  "new_prompt_submissions": 0,
+  "new_gpu_generations": 0,
+  "provider_job_posts": 0,
+  "worker_rebuilds_or_code_deployments": 0,
+  "migration_writes": 0,
+  "completion_cost_usd": 0.38663,
+  "observed_provider_increment_usd": 0,
+  "billing_may_lag": true,
+  "incremental_cap_usd": 2,
+  "total_completion_ceiling_usd": 17.5,
+  "retained_volume_monthly_usd": 7,
+  "project_id": "204814e4-3b86-4ae8-9680-d0bb09689ab1",
+  "revision_id": "b7484391-c82b-4ca6-a9dd-617138e7b37c",
+  "asr_attempt_id": "b7a015a6-cd85-4223-bb7d-825867c108b2",
+  "asr_state": "SUCCEEDED",
+  "context_count": 0,
+  "generation_count": 0,
+  "mp4_play_seek_download_verified": false,
+  "private_evidence": [
+    {
+      "path": "~/.videoforge/v2-09/runware-secret-repair-f9dccd4e/secret-repair-plan.json",
+      "sha256": "sha256:451acf2acc2ac38af8e8c7ebf889655af78d752ac61b0f4ff086307fdb3e8bb6"
+    },
+    {
+      "path": "~/.videoforge/v2-09/runware-secret-repair-f9dccd4e/secret-put-committed.json",
+      "sha256": "sha256:ec31397f45079d0d3ac16dd22d46292ef8d678fe4ac43f376ae6d443236d6d04"
+    },
+    {
+      "path": "~/.videoforge/v2-09/runware-secret-repair-f9dccd4e/replacement-stop.json",
+      "sha256": "sha256:28d2c7d70ef76ba73dce50921b45d72e41ec784df0f84910792915a1c4bd7a49"
+    },
+    {
+      "path": "~/.videoforge/v2-09/runware-rebind-399e9a38/rebind-plan.json",
+      "sha256": "sha256:3b21c2e0eccd3643efabe40894563b27b193421bd5cc722ca4d66bc57f7a3156"
+    },
+    {
+      "path": "~/.videoforge/v2-09/runware-rebind-399e9a38/activation-journal.jsonl",
+      "sha256": "sha256:eece5fef1bd347dcdb223819bdcb722f1aa22edaef5a9e1a12a88d279e051f0f"
+    },
+    {
+      "path": "~/.videoforge/v2-09/runware-rebind-399e9a38/replacement-stop.json",
+      "sha256": "sha256:d0e8cb968bf5b8ef344c8ecadcbebbd8d60e07ad20ce1ec3d6b99dce2255d9b3"
+    },
+    {
+      "path": "~/.videoforge/v2-09/runware-rebind-399e9a38/exact-stop-reconciliation.json",
+      "sha256": "sha256:ac016933f7bc07ce2772d4d5a60b609466015a2f0a3df497a00390e9a8c6eed9"
+    },
+    {
+      "path": "~/.videoforge/v2-09/native-qualified-claimfix-9dad16ee/terminal-full-lineage.json",
+      "sha256": "sha256:96abf9f5dfe57dfb138bd8f83fca379b77f1bae88eaff20b5613ac473b517ca2"
+    },
+    {
+      "path": "~/.videoforge/v2-09/native-qualified-claimfix-9dad16ee/retained-pair-runpod-read-terminal-1.json",
+      "sha256": "sha256:baa27a2d9483a8e7795b497522267150a25b907120be0cb9d96339d5565f6ebf"
+    },
+    {
+      "path": "~/.videoforge/v2-09/native-qualified-claimfix-9dad16ee/retained-pair-runpod-read-terminal-2.json",
+      "sha256": "sha256:210747f040eb42d0b1671565fbd42a4ca6c854b60f5235b4f3750c09e14d43b9"
+    },
+    {
+      "path": "~/.videoforge/v2-09/native-qualified-claimfix-9dad16ee/retained-pair-runpod-read-terminal-3.json",
+      "sha256": "sha256:cdc9c077d805d5dd5f3261405e86cfb9bb473ea598692f765fe682817160541b"
+    },
+    {
+      "path": "~/.videoforge/v2-09/native-qualified-claimfix-9dad16ee/native-completion-observation-terminal.json",
+      "sha256": "sha256:86e3a374e832d0b790715f9133c31b2faed2069297d205d8112a3e6332e35251"
+    },
+    {
+      "path": "~/.videoforge/v2-09/native-qualified-claimfix-9dad16ee/native-billing-observation-terminal.json",
+      "sha256": "sha256:2753a10bde3c9152981d86a82b436113cae07d1c20d801f2a80058c140af4b4c"
+    }
+  ],
+  "terminal_compute": {
+    "separated_reads": 3,
+    "pods": 0,
+    "workers": 0,
+    "queued_jobs": 0,
+    "retained_pair_unchanged": true
+  },
+  "continuing_local_work": "User prioritizes9.8 with multiple Luna workers; minimal provider-free migration89 and independent audit in progress; live ledger change pending explicit scope exception."
+}

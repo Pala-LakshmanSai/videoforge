@@ -9,39 +9,28 @@ bounded repairs, reseals, fresh source-bound authorities and deployment through9
 Chrome E2E, and9.9 cleanup/readiness. Existing numeric caps, frozen Stage6/7 and no consumed-authority
 replay remain mandatory. This instruction overrides older repeated-approval requirements below.
 
-**9.7 DONE; 9.8 STOPPED_NO_RETRY; 9.9 not ready:** source
-`9441f8ab35ac9ce29046cf7c27185d6d3b352478` completed the qualified replacement 8/8
-and native Chrome handoff. Migration 0087, one Worker publication, activation import and
-`QUALIFIED_EXACT` readback passed; existing lanes, 22 secrets, paired media-worker 0.1.15
-and original qualification expiry were retained.
+**Current 9.8 continuation — 2026-09-08:** Main checkpoints1–8 finished;
+9.7 VERIFIED and frozen;9.8 remains active on the existing project after successful
+upload, commit and ASR. Exactly one missing-secret PUT succeeded. Strict23-secret
+readback verifies resulting Worker `399e9a38-0c26-42c5-b668-33d16e7d6ad5`, unchanged
+deployed source `9dad16ee5939c8633bc363d06fef65b1deea2425` and configuration.
+Current effective transport is DISABLED_UNQUALIFIED: ledger88's append-only
+source/config uniqueness prevents new-version activation rebinding. Two scoped
+reads confirm the attempted successor did not commit. No context, prompt or GPU
+request has run. Three separated reads prove zero Pods/workers/queues; completion
+USD0.386630 and observed provider incrementUSD0, subject to billing lag.
 
-The single authorized Create project & start click at `2026-09-08T12:20:20.487Z` returned
-HTTP 500. Two scoped reads found no project-create row; final reads found no new generation or
-serverless attempt and no active generation, provider lease or CPU lease. The native journal is
-`CLICK_OUTCOME_UNKNOWN` with one consumed intent; no second click or authority replay occurred.
-Three separated retained-pair inventory reads prove zero active workers, Pods and queued jobs.
-Global completion cost remains USD 0.386630 including open reservations; provider-reported billing
-is unchanged and may lag. Retained production was not deleted. Cloudflare logs prove denied execution of the private SYSTEM avatar-reference predicate;
-the same SQLSTATE 42501 is reproduced under the runtime role in PostgreSQL 17. Forward migration
-0088 trigger-scope repair from `a840b7df` committed at 12:42:11.950Z after real PostgreSQL
-regression and independent P0=0/P1=0 audit. Strict effective readback at 12:42:20.905Z preserves
-the same qualified Worker. The single E2E remains stopped; no retry occurred;
-**no verified video or manual Chrome readiness is claimed**.
-
-Private idle closure: `~/.videoforge/v2-09/native-qualified-9441f8ab/native-e2e/failed-click-idle-closure.json`,
-SHA256 `e14151e8f234f181eb8353e64139eb6b740a1e4718380f57439a14cc88ba8278`.
-Replacement receipt canonical SHA256 `06acd500c04292ea8a69ad0a39d19023b8cdd110bc75b2ba6cc27d5cef05a6a1`.
-Stage 6/7 remain frozen `QUALIFIED_PASS_CLEAN`; completed checkpoints never roll back.
-
-Historical credential repair: 56ef is `FAILED_CLEAN`; its replacement Google credential was bound
-to fresh b905 authority. The OAuth repair and account choice are complete. Prior evidence remains
-in `CURRENT_STATE.yaml` and the historical sections below.
-
-Historical e03 (20/26) and d640 (18/26) attempts are `FAILED_CLEAN` and non-reusable.
-Their exact closure, runtime heartbeat/grants repair, and runtime payload hash repair evidence
-remain indexed in `CURRENT_STATE.yaml`. Both repairs subsequently passed live. Cleanup at those
-closures proved no active compute, removed protected outputs/roles, inactive bindings and zero
-Cloudflare secrets; those historical proofs do not describe the currently retained b905 deployment.
+The user prioritizes finishing9.8 with multiple Luna workers. Minimal forward
+migration89 passes five runner checks and one actual PostgreSQL17 regression;
+live guard and independent Luna audit passed. Applying89 is a
+change to the explicit ledger88 boundary and remains pending that scope decision.
+No secret/create/upload/commit/CPU replay, Worker rebuild, changed lane/qualification,
+or Stage6/7 rerun is permitted. Existing USD2 incremental/USD17.50 completion caps
+and separate retained-volume consent remain unchanged.9.9 still requires completed
+private MP4 playback/seek/download and final closure. Current details live in
+CURRENT_STATE.yaml and the tracker; stop evidence is
+`evidence/acceptance/VF-10-09/2026-09-08-one-secret-rebind-stop/closure.json`.
+Older attempts below are historical and non-reusable.
 
 ### Historical activation evidence
 

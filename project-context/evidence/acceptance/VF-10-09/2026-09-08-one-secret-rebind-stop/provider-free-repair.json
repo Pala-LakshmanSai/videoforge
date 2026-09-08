@@ -1,0 +1,26 @@
+{
+  "schema_version": "videoforge.v2-09-ledger89-provider-free-repair/v1",
+  "status": "PROVIDER_FREE_VERIFIED_AWAITING_LEDGER_SCOPE_EXCEPTION",
+  "migration_version": 89,
+  "migration_sha256": "sha256:3defa55e813f71d0bfee6cef42fbd7618dd6a9a4d545ef0866e726b92369d52f",
+  "changes": [
+    "Unique immutable activation identity now includes source, configuration and Cloudflare version",
+    "Exact historical constraint found by column signature; missing or ambiguous predecessor rejected",
+    "Old activation evidence and lane qualification references remain append-only",
+    "Loader uses deterministic latest selection and retains deployed-compatible ledger37..87",
+    "Exact native migration89 runner permits only88-to89 with complete historicalhash checks"
+  ],
+  "validation": {
+    "native_migration_renderer": "5/5 PASS",
+    "actual_postgresql17": "1/1 PASS; seed37..89 and return37..87; version rebind, duplicate denial, immutable old row and deterministic loader",
+    "manifest": "all89migration hashes verified",
+    "format_eslint_syntax_diff": "PASS on changed code"
+  },
+  "live_migration_applied": false,
+  "live_ledger": 88,
+  "worker_rebuild_required": false,
+  "new_secret_put_required": false,
+  "scope_exception_required": "User explicitly pinned ledger88; authorize exact forward migration89 before remote mutation",
+  "remaining_original_work": "Fresh same-qualified activation399, strict effective verification, existing Chrome project context/render/prompts/onegeneration, MP4playseekdownload and9.9closure",
+  "independent_luna_audit": "GO; exact SQL/native helper and private executor read-only audit; no unresolved blocking findings"
+}

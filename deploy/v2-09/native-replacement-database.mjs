@@ -42,6 +42,9 @@ export function renderNativeMigration87Sql(input) {
 export function renderNativeMigration88Sql(input) {
   return renderExactNativeMigration(input, 88);
 }
+export function renderNativeMigration89Sql(input) {
+  return renderExactNativeMigration(input, 89);
+}
 function renderExactNativeMigration({ migrationRoot, manifestSha256, migrationSha256 }, target) {
   const bytes = readFileSync(resolve(migrationRoot, "manifest.json"));
   if (databaseBytesHash(bytes) !== manifestSha256) fail("MANIFEST_HASH");
@@ -97,7 +100,9 @@ export function executeNativeDatabaseOnce({
   expectedSqlSha256,
 }) {
   if (
-    !["APPLY_0087", "APPLY_0088", "IMPORT_REPLACEMENT_ACTIVATION"].includes(operation) ||
+    !["APPLY_0087", "APPLY_0088", "APPLY_0089", "IMPORT_REPLACEMENT_ACTIVATION"].includes(
+      operation,
+    ) ||
     databaseBytesHash(sql) !== expectedSqlSha256
   )
     fail("OPERATION");

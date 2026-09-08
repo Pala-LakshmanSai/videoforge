@@ -454,18 +454,18 @@ gates:
     acceptance: "14_TESTING_AND_ACCEPTANCE.md#gatee2e001-real-integrated-project"
     owner: V2-09
     last_run: null
-    result: open_no_real_hosted_end_to_end_project
-    current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-runtime-payload-hash.json"
-    current_authority_sha256: "sha256:d47d57440fcfb160d26630259eb78e6abfebafdcd58e154ae504e1ec71a4c115"
-    current_private_authority_sha256: "sha256:4e8d6267e4cb6b9b7bb16ce325d19498e6d93d96cae135a45690d3932c03768d"
-    current_authority_state: "e03_LAUNCHED_TWO_GO_PRECLAIM_PASS"
-    current_proposal_sha256: "sha256:e03dcbb3753fb535178306d54c94ba0b73ce361eb6c833f88ac7e4856dc1d8c1"
-    current_control_source_commit: "5097da4208847cc6ad4049b6b89168533b1844d1"
-    current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-bulk-secret-qualified-payload-preparation.json"
-    current_failure_sha256: "sha256:dc79bd1aa4901ad2d5e5a2b97b8b8031fe66c88861649919413da9b5f9c98856"
+    result: open_same_project_asr_succeeded_ledger89_scope_exception_pending_no_mp4
+    historical_e03_current_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/continuing-authority-runtime-payload-hash.json"
+    historical_e03_current_authority_sha256: "sha256:d47d57440fcfb160d26630259eb78e6abfebafdcd58e154ae504e1ec71a4c115"
+    historical_e03_current_private_authority_sha256: "sha256:4e8d6267e4cb6b9b7bb16ce325d19498e6d93d96cae135a45690d3932c03768d"
+    current_authority_state: "CURRENT_EXPLICIT_USER_SAME_PROJECT_CONTINUATION_NO_REPLAY"
+    historical_e03_current_proposal_sha256: "sha256:e03dcbb3753fb535178306d54c94ba0b73ce361eb6c833f88ac7e4856dc1d8c1"
+    current_control_source_commit: "f9dccd4ea53b17dc7719c537321027861096422b"
+    historical_e03_current_failure: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-bulk-secret-qualified-payload-preparation.json"
+    historical_e03_current_failure_sha256: "sha256:dc79bd1aa4901ad2d5e5a2b97b8b8031fe66c88861649919413da9b5f9c98856"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "01773b89cleanupidempotence+safe route diagnostics22/22GO;originalroutecauseUNPROVEN"
+    provider_free_repair_state: "Migration89 provider-free verified:5native runner checks +1actualPG regression; preserves deployedWorker37..87gate; liveledger88 exception pending"
     previous_latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-endpoint-transition-replacement.json"
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-release-availability-recovered-replacement.json"
     previous_latest_closed_authority_sha256: "sha256:40b129bd736c6052de4017ae8aede0db29d2849b8b733f312a4a94753ad14c1c"

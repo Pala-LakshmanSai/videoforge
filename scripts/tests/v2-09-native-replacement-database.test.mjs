@@ -7,6 +7,7 @@ import {
   databaseBytesHash,
   renderNativeMigration87Sql,
   renderNativeMigration88Sql,
+  renderNativeMigration89Sql,
 } from "../../deploy/v2-09/native-replacement-database.mjs";
 
 function fixture(t, target) {
@@ -17,13 +18,13 @@ function fixture(t, target) {
   manifest.migrations = manifest.migrations.slice(0, Math.min(target, 87));
   for (const e of manifest.migrations)
     copyFileSync(resolve(sourceRoot, e.filename), resolve(migrationRoot, e.filename));
-  if (target === 88) {
-    // Renderer contract fixture only; actual0088 SQL is verified by its dedicated PostgreSQL test.
+  for (let version = 88; version <= target; version += 1) {
+    // Renderer fixtures only; actual SQL has dedicated PostgreSQL regression coverage.
     const sql = "DO $$ BEGIN PERFORM 1; END $$;\n";
     const entry = {
-      version: 88,
+      version,
       name: "native_helper_acl_fixture",
-      filename: "0088_native_helper_acl_fixture.sql",
+      filename: `00${version}_native_helper_acl_fixture.sql`,
       sha256: databaseBytesHash(sql),
     };
     manifest.migrations.push(entry);
@@ -80,4 +81,18 @@ test("migration88 rejects87-only manifest and unbound target hash", (t) => {
     () => renderNativeMigration88Sql({ ...input, migrationSha256: "sha256:" + "0".repeat(64) }),
     /MIGRATION_IDENTITY/,
   );
+});
+
+test("migration89 requires exact88 predecessor ledger and rejects altered historical bytes", (t) => {
+  const input = fixture(t, 89);
+  const sql = renderNativeMigration89Sql(input);
+  assert.match(sql, /'from_version',88,'to_version',89/);
+  assert.match(sql, /VALUES\(89,/);
+  assert.equal((sql.match(/INSERT INTO public.videoforge_schema_migrations/g) || []).length, 1);
+  assert.throws(() => renderNativeMigration88Sql(input), /MANIFEST/);
+  assert.throws(() => renderNativeMigration89Sql(fixture(t, 88)), /MANIFEST/);
+  const prior = JSON.parse(readFileSync(resolve(input.migrationRoot, "manifest.json")))
+    .migrations[87];
+  writeFileSync(resolve(input.migrationRoot, prior.filename), "-- drift");
+  assert.throws(() => renderNativeMigration89Sql(input), /MIGRATION_HASH/);
 });
