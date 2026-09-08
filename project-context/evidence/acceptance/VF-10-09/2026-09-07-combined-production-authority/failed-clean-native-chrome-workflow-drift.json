@@ -1,0 +1,77 @@
+{
+  "schema_version": "videoforge.v2-09-failed-clean-closure/v1",
+  "closed_at": "2026-09-08T05:07:33.497723+00:00",
+  "checkpoint": 9,
+  "subcheckpoint": "9.7",
+  "source_commit": "bba7295f7de0b68fd530351fa79c68ec80d5d423",
+  "authority_id": "v2-09-cb7d11f38888849d",
+  "proposal_sha256": "sha256:cb7d11f38888849d24804c22d7938ae722a52f94c9d03b44848cc6d6ff0c239b",
+  "status": "FAILED_CLEAN",
+  "consumed_once": true,
+  "reusable": false,
+  "completed_operations": [
+    "run-read-only-preflight",
+    "read-pre-mutation-completion-baseline",
+    "materialize-v209-protected-inputs",
+    "push-clean-source",
+    "readback-clean-source",
+    "apply-migrations-0074-0086",
+    "apply-v209-grants",
+    "read-post-migration-completion-baseline",
+    "publish-media-worker-0.1.15",
+    "readback-media-worker-0.1.15",
+    "fresh-read-only-admission",
+    "create-mage-production-lane-max-one",
+    "create-soulx-production-lane-max-one",
+    "persist-qualified-production-deployments",
+    "materialize-v209-endpoint-secrets",
+    "render-qualified-production-config"
+  ],
+  "interrupted_operation": "deploy-cloudflare-disabled-bootstrap",
+  "failure": {
+    "cleanup_code": "V2_09_DEPLOYMENT_SUFFIX_CLEANUP_INCOMPLETE",
+    "operation_code": "V2_09_CLOUDFLARE_PRODUCTION_QUALIFIED_WORKFLOW_DRIFT",
+    "operation_id": "deploy-cloudflare-disabled-bootstrap"
+  },
+  "diagnosis": "V2-09 operator imposed unsupported pair-name suffix despite exact rendered independent workflow names. Local validation failed before Cloudflare intent. Cleanup rejected orchestration STARTED despite independently pristine Cloudflare journal.",
+  "database": {
+    "matched_count": 2,
+    "inactive_count": 2
+  },
+  "protected": {
+    "result": {
+      "schema_version": "videoforge.v2-09-protected-input-cleanup-result/v1",
+      "authority_id": "v2-09-cb7d11f38888849d",
+      "role_cleanup_attempted": true,
+      "removed_file_count": 27,
+      "adopted_cleanup": false
+    },
+    "protected_outputs_remaining": 0,
+    "checkedAt": "2026-09-08T05:06:45.830Z"
+  },
+  "cloudflare": {
+    "authority_id": "v2-09-cb7d11f38888849d",
+    "checkedAt": "2026-09-08T05:06:43.859Z",
+    "cloudflare_journal_sha256": "sha256:2395fc72a9e1718bac91d730a3d7fab256609e23e091bcf9967a717701b2209a",
+    "cloudflare_journal_state": "PREPARED",
+    "events": 0,
+    "introduced_secrets": 0,
+    "active_version_id": null,
+    "worker_bundle_sha256": null,
+    "disabled_bootstrap_status": "STARTED_BEFORE_INTENT",
+    "gpu_transport": "UNTOUCHED_NO_MUTATIONS"
+  },
+  "runpod_proof_sha256": "sha256:66c408f29a793d70003a9834161fa4033bab31c8a230e7d39c7e1a74432d49dc",
+  "outer_state_sha256": "sha256:a4a20e70c34859984cdbfb738878b09ab5b88b42d7b180cc9289f68b3a230a02",
+  "three_zero_compute_reads": true,
+  "retained_volumes_unchanged": true,
+  "posted_endpoint_billing_usd": 3.5284023286949378,
+  "posted_increment_usd": 0,
+  "delayed_startup_billing": "UNPROVEN",
+  "cloudflare_deployment_count": 0,
+  "media_install_count": 0,
+  "chrome_e2e_count": 0,
+  "provider_job_count": 0,
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN_UNTOUCHED",
+  "cleanup_independent_audit": "GO_P0_0_P1_0"
+}

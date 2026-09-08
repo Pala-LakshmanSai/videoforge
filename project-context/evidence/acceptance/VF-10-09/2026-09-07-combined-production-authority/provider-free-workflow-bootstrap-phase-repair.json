@@ -1,0 +1,39 @@
+{
+  "schema_version": "videoforge.v2-09-workflow-bootstrap-phase-repair/v1",
+  "checkpoint": 9,
+  "subcheckpoint": "9.7",
+  "prior_authority": "v2-09-cb7d11f38888849d",
+  "prior_status": "FAILED_CLEAN",
+  "last_live_completed_operations": 16,
+  "closure_sha256": "sha256:3540ddb3778feb68f82edf81f2ccd3908f6f6a323289962032b20210cbb34eba",
+  "repairs": [
+    "Remove unsupported workflow suffix relation; exact two independent workflow names/classes/bindings remain config-hash bound. Bootstrap removes only R2.",
+    "Allow only exact STARTED orchestration entry in untouched cleanup with independently pristine Cloudflare journal; completed/ambiguous/later intent rejected.",
+    "Before all22 secrets, accept only exact missing-configuration503 JSON and version/runtime/no-store headers after exact disabled deployed-version/config/secret projection. Full22 still strict200.",
+    "Pre-import verify deployed QUALIFIED configuration but effective DISABLED route; post-import require effective QUALIFIED on same version/config/bundle before import result and before Chrome. Explicit boolean phase is mandatory; success uses post-import."
+  ],
+  "focused_tests": {
+    "cloudflare_concrete_qualified_combined": 109,
+    "failed": 0
+  },
+  "real_runtime_proof": {
+    "status": "PASS",
+    "test_count": 1,
+    "input_gpu_transport": "QUALIFIED_EXACT",
+    "empty_activation_database_result": "HTTP200_EFFECTIVE_DISABLED_UNQUALIFIED",
+    "missing_secret_result": "HTTP503_HOSTED_CONFIGURATION_INVALID",
+    "actual_version_header_wrapper": true,
+    "database_queries": 1,
+    "network_calls": 0,
+    "credential_value_reads": 0,
+    "test_source_sha256": "sha256:815d4658ea0aae7178f3098df8dd3ac138290823fa02f9fcf86220ebc934d225"
+  },
+  "audits": {
+    "authority_audit": "GO_P0_0_P1_0_ALL_SIX_FILES",
+    "lineage_monitor": "GO_P0_0_P1_0_PARENT_PHASE_INTEGRATION",
+    "parent": "GO_P0_0_P1_0_CLOUDFLARE_AND_CLEANUP"
+  },
+  "source_changes_provider_calls": 0,
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN_UNTOUCHED",
+  "next": "Seal clean source and fresh exact proposal; no consumed-authority replay;9.8/9.9pending."
+}

@@ -214,6 +214,19 @@ function portSet(calls = []) {
         source_sha256: hash(name),
         run: async (context) => {
           calls.push({ name, context });
+          if (name === "readbackCloudflareQualified")
+            return {
+              schema_version: "videoforge.v2-09-qualified-readback-result/v1",
+              operation_id: context.operationId,
+              worker: context.authority.production.worker_name,
+              config_sha256: context.authority.production.config_sha256,
+              worker_bundle_sha256: context.authority.production.worker_bundle_sha256,
+              deployment_id_sha256: hash("cloudflare-deployment"),
+              gpu_transport: "QUALIFIED_EXACT",
+              effective_gpu_transport:
+                context.activationImported === true ? "QUALIFIED_EXACT" : "DISABLED_UNQUALIFIED",
+              exact_pair_bound: true,
+            };
           if (name === "reconcileCloudflareSafety")
             return {
               safety_verified: true,
@@ -1465,6 +1478,40 @@ test("deployment factory binds all secrets and rehydrates the persisted pair wit
   assert.equal(untouchedCleanup.cloudflare_disabled, false);
   assert.equal(untouchedCleanup.cloudflare_untouched, true);
   assert.equal(untouchedCleanup.database_deactivated, true);
+  const preIntentBootstrap = structuredClone(noCloudflareJournal);
+  preIntentBootstrap.normal["deploy-cloudflare-disabled-bootstrap"] = { status: "STARTED" };
+  writeFileSync(configuration.journalPath, `${canonical(preIntentBootstrap)}\n`);
+  const preIntentCleanup = await untouched.cleanupDeploymentSuffix({ authority: inner });
+  assert.equal(preIntentCleanup.cloudflare_untouched, true);
+  assert.equal(preIntentCleanup.cloudflare_disabled, false);
+  assert.equal(preIntentCleanup.database_deactivated, true);
+  for (const bootstrap of [
+    { status: "COMPLETED", result_sha256: hash("completed-bootstrap") },
+    { status: "UNKNOWN" },
+    { status: "STARTED", result_sha256: hash("unexpected-receipt") },
+  ]) {
+    const rejected = structuredClone(preIntentBootstrap);
+    rejected.normal["deploy-cloudflare-disabled-bootstrap"] = bootstrap;
+    writeFileSync(configuration.journalPath, `${canonical(rejected)}\n`);
+    await assert.rejects(
+      untouched.cleanupDeploymentSuffix({ authority: inner }),
+      /V2_09_DEPLOYMENT_SUFFIX_CLEANUP_INCOMPLETE/u,
+    );
+  }
+  for (const id of [
+    "upload-cloudflare-production-secrets",
+    "deploy-cloudflare-qualified-production",
+    "readback-qualified-production",
+    "import-v209-qualified-activation",
+  ]) {
+    const rejected = structuredClone(preIntentBootstrap);
+    rejected.normal[id] = { status: "STARTED" };
+    writeFileSync(configuration.journalPath, `${canonical(rejected)}\n`);
+    await assert.rejects(
+      untouched.cleanupDeploymentSuffix({ authority: inner }),
+      /V2_09_DEPLOYMENT_SUFFIX_CLEANUP_INCOMPLETE/u,
+    );
+  }
   writeFileSync(configuration.journalPath, journalWithCloudflare);
 
   const exhaustiveCalls = [];
@@ -1850,8 +1897,20 @@ test("config rendering binds static authority to observed hashes and supports st
 test("persists and imports the exact created pair through protected database roles", async () => {
   const { configuration } = fixture();
   const childCalls = [];
+  const portCalls = [];
+  const ports = portSet(portCalls);
+  const readActivated = ports.readbackCloudflareQualified.run;
+  let activatedOverride = {};
+  ports.readbackCloudflareQualified.run = async (context) => {
+    assert.ok(
+      childCalls.some(({ args }) =>
+        args.some((arg) => String(arg).endsWith("neon-import-qualified-activation.sql")),
+      ),
+    );
+    return { ...(await readActivated(context)), ...activatedOverride };
+  };
   const adapters = createConcreteQualifiedProductionAdapters(configuration, {
-    ports: portSet(),
+    ports,
     runChild: childRunner(childCalls),
     now: () => new Date("2026-09-06T12:00:00Z"),
   });
@@ -1893,6 +1952,8 @@ test("persists and imports the exact created pair through protected database rol
   });
   assert.equal(imported.import_count, 1);
   assert.equal(imported.qualified_activation_active, true);
+  assert.equal(imported.effective_gpu_transport, "QUALIFIED_EXACT");
+  assert.equal(portCalls.at(-1).context.activationImported, true);
   assert.deepEqual(
     imported.deployment_row_id_sha256s,
     persisted.deployments.map(({ deployment_row_id_sha256 }) => deployment_row_id_sha256),
@@ -1908,6 +1969,22 @@ test("persists and imports the exact created pair through protected database rol
   );
   assert.equal(databaseCalls[0].options.env.PGUSER, "owner");
   assert.equal(databaseCalls[1].options.env.PGUSER, "videoforge_operator");
+  for (const drift of [
+    { effective_gpu_transport: "DISABLED_UNQUALIFIED" },
+    { deployment_id_sha256: hash("different-version") },
+    { config_sha256: hash("different-config") },
+    { worker_bundle_sha256: hash("different-bundle") },
+  ]) {
+    activatedOverride = drift;
+    await assert.rejects(
+      adapters.operations["import-v209-qualified-activation"]({
+        authority: value,
+        operation: {},
+        priorResults,
+      }),
+      /V2_09_CONCRETE_ACTIVATION_ROUTE_INVALID/u,
+    );
+  }
 });
 
 test("runs one source-bound Chrome click and verifies its preserved private MP4", async () => {

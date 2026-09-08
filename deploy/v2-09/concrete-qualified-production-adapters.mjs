@@ -2518,11 +2518,30 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       readback.loaded?.evidence?.cloudflareVersionIdSha256 !== cloudflare.deployment_id_sha256
     )
       fail("V2_09_CONCRETE_ACTIVATION_READBACK_INVALID");
+    const activated = await ports.readbackCloudflareQualified.run({
+      authority,
+      operationId: "readback-qualified-production",
+      activationImported: true,
+      cancellationSignal: operation.cancellationSignal,
+      cleanupOnly: false,
+    });
+    if (
+      activated?.schema_version !== "videoforge.v2-09-qualified-readback-result/v1" ||
+      activated.worker !== authority.production.worker_name ||
+      activated.config_sha256 !== authority.production.config_sha256 ||
+      activated.worker_bundle_sha256 !== authority.production.worker_bundle_sha256 ||
+      activated.deployment_id_sha256 !== cloudflare.deployment_id_sha256 ||
+      activated.gpu_transport !== "QUALIFIED_EXACT" ||
+      activated.effective_gpu_transport !== "QUALIFIED_EXACT" ||
+      activated.exact_pair_bound !== true
+    )
+      fail("V2_09_CONCRETE_ACTIVATION_ROUTE_INVALID");
     return {
       schema_version: "videoforge.v2-09-activation-import-result/v1",
       operation_id: "import-v209-qualified-activation",
       import_count: 1,
       qualified_activation_active: true,
+      effective_gpu_transport: "QUALIFIED_EXACT",
       source_commit: authority.source_commit,
       config_sha256: authority.production.config_sha256,
       worker_bundle_sha256: authority.production.worker_bundle_sha256,
@@ -3840,6 +3859,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
         ...context,
         cleanupOnly: false,
         operationId: "readback-qualified-production",
+        activationImported: true,
       });
       return {
         operation_id: "reconcile-v209-production-safety",
@@ -4267,6 +4287,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
           outcome: context.outcome,
           priorResults: context.priorResults,
           providerDeployments: Object.freeze(Object.fromEntries(providerDeployments)),
+          ...(operationId === "readback-qualified-production" ? { activationImported: false } : {}),
           ...(operationId.startsWith("create-mage") ? { lane: "mage" } : {}),
           ...(operationId.startsWith("create-soulx") ? { lane: "soulx" } : {}),
           ...(operationId === "upload-cloudflare-production-secrets"
@@ -4360,12 +4381,14 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
           providerDeployments: Object.freeze(Object.fromEntries(providerDeployments)),
         });
         const cleanupJournal = readJournal(configuration.journalPath);
+        const bootstrap = cleanupJournal.normal["deploy-cloudflare-disabled-bootstrap"];
         cloudflareUntouched =
           cleanupJournal.authority_id === journalAuthorityId &&
           cloudflare?.gpu_transport === "UNTOUCHED_NO_MUTATIONS" &&
           cloudflare?.secret_count === null &&
+          (bootstrap === undefined ||
+            (exactKeys(bootstrap, ["status"]) && bootstrap.status === "STARTED")) &&
           [
-            "deploy-cloudflare-disabled-bootstrap",
             "upload-cloudflare-production-secrets",
             "deploy-cloudflare-qualified-production",
             "readback-qualified-production",

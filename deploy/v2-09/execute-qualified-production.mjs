@@ -702,6 +702,7 @@ function validateOperationResult(
       "config_sha256",
       "deployment_id_sha256",
       "exact_pair_bound",
+      "effective_gpu_transport",
       "gpu_transport",
       "operation_id",
       "schema_version",
@@ -715,6 +716,7 @@ function validateOperationResult(
       result.deployment_id_sha256 !==
         resultFrom(priorResults, "deploy-cloudflare-qualified-production")?.deployment_id_sha256 ||
       result.gpu_transport !== "QUALIFIED_EXACT" ||
+      result.effective_gpu_transport !== "DISABLED_UNQUALIFIED" ||
       result.exact_pair_bound !== true)
   )
     fail("V2_09_QUALIFIED_PRODUCTION_READBACK_INVALID");
@@ -728,6 +730,7 @@ function validateOperationResult(
           "cloudflare_deployment_id_sha256",
           "config_sha256",
           "deployment_row_id_sha256s",
+          "effective_gpu_transport",
           "import_count",
           "operation_id",
           "qualified_activation_active",
@@ -738,6 +741,7 @@ function validateOperationResult(
         result.schema_version !== "videoforge.v2-09-activation-import-result/v1" ||
         result.import_count !== 1 ||
         result.qualified_activation_active !== true ||
+        result.effective_gpu_transport !== "QUALIFIED_EXACT" ||
         result.source_commit !== authority.source_commit ||
         result.config_sha256 !== authority.production.config_sha256 ||
         result.worker_bundle_sha256 !== authority.production.worker_bundle_sha256 ||

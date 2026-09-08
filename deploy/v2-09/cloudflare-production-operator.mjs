@@ -32,7 +32,6 @@ import {
   SECRET_NAMES,
   WORKERS_SUBDOMAIN_PATH,
   WORKFLOW_INVENTORY_PATH,
-  workflowBootstrapConfig,
 } from "../v2-13/guarded-activation.mjs";
 import {
   ACTIVATED_ASSETS_PATH,
@@ -404,7 +403,6 @@ function qualifiedConfiguration(configuration, authority) {
   if (
     video.length !== 1 ||
     pair.length !== 1 ||
-    pair[0].name !== `${video[0].name}-pair` ||
     video[0].class_name !== "HostedVideoWorkflow" ||
     pair[0].class_name !== "HostedPairWorkflow"
   )
@@ -416,7 +414,11 @@ function materializeDisabled(configuration, authority) {
   const qualified = qualifiedConfiguration(configuration, authority).value;
   const disabled = structuredClone(qualified);
   disabled.vars.VIDEOFORGE_GPU_TRANSPORT = "DISABLED_UNQUALIFIED";
-  const bootstrap = workflowBootstrapConfig(disabled);
+  // qualifiedConfiguration already validates the exact two independently named
+  // V2-09 Workflows. Bootstrap removes only R2; V2-13's name-suffix convention
+  // is not part of this checkpoint's approved configuration.
+  const bootstrap = structuredClone(disabled);
+  delete bootstrap.r2_buckets;
   if (Object.hasOwn(bootstrap, "r2_buckets")) fail("BOOTSTRAP_R2_PRESENT");
   writePrivateJson(configuration.disabledConfigPath, disabled);
   writePrivateJson(configuration.bootstrapConfigPath, bootstrap);
@@ -855,7 +857,14 @@ async function readActiveVersion(
   });
 }
 
-async function readRoute(runtime, authority, versionId, expectedTransport, context) {
+async function readRoute(
+  runtime,
+  authority,
+  versionId,
+  expectedTransport,
+  context,
+  allowMissingConfiguration = false,
+) {
   const qualified = qualifiedConfiguration(runtime.configuration, authority).value;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
@@ -884,14 +893,27 @@ async function readRoute(runtime, authority, versionId, expectedTransport, conte
     fail("ROUTE_BODY_INVALID");
   const body = parseJson(text, "ROUTE_JSON_INVALID");
   const contentType = response.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
+  const missingConfiguration =
+    allowMissingConfiguration &&
+    expectedTransport === "DISABLED_UNQUALIFIED" &&
+    response.status === 503 &&
+    contentType === "application/json" &&
+    response.headers.get(VERSION_HEADER) === versionId &&
+    response.headers.get("cache-control") === "no-store" &&
+    response.headers.get("x-videoforge-runtime") === "hosted-v2-06" &&
+    exactKeys(body, ["error"]) &&
+    exactKeys(body.error, ["code", "retryable"]) &&
+    body.error.code === "HOSTED_CONFIGURATION_INVALID" &&
+    body.error.retryable === false;
   if (
-    response.status !== 200 ||
-    contentType !== "application/json" ||
-    response.headers.get(VERSION_HEADER) !== versionId ||
-    body?.schema_version !== "videoforge-hosted-status/v1" ||
-    body?.commit !== authority.source_commit ||
-    body?.environment !== "production" ||
-    body?.gpu_transport !== expectedTransport
+    !missingConfiguration &&
+    (response.status !== 200 ||
+      contentType !== "application/json" ||
+      response.headers.get(VERSION_HEADER) !== versionId ||
+      body?.schema_version !== "videoforge-hosted-status/v1" ||
+      body?.commit !== authority.source_commit ||
+      body?.environment !== "production" ||
+      body?.gpu_transport !== expectedTransport)
   )
     fail("ROUTE_READBACK_DRIFT");
   return Object.freeze({
@@ -927,7 +949,14 @@ async function verifyDisabled(runtime, authority, context, journal) {
     context,
     journal.introduced_secret_names,
   );
-  await readRoute(runtime, authority, version.versionId, "DISABLED_UNQUALIFIED", context);
+  await readRoute(
+    runtime,
+    authority,
+    version.versionId,
+    "DISABLED_UNQUALIFIED",
+    context,
+    journal.introduced_secret_names.length < SECRET_NAMES.length,
+  );
   journal.state = "DISABLED_VERIFIED";
   journal.active_version_id = version.versionId;
   saveJournal(journal, runtime.configuration);
@@ -1295,7 +1324,13 @@ async function deployQualified(runtime, context) {
         context,
         SECRET_NAMES,
       );
-      await readRoute(runtime, context.authority, version.versionId, "QUALIFIED_EXACT", context);
+      await readRoute(
+        runtime,
+        context.authority,
+        version.versionId,
+        "DISABLED_UNQUALIFIED",
+        context,
+      );
       journal.state = "QUALIFIED_VERIFIED";
       journal.active_version_id = version.versionId;
       journal.worker_bundle_sha256 = bundleSha256;
@@ -1316,6 +1351,7 @@ async function deployQualified(runtime, context) {
 }
 
 async function readbackQualified(runtime, context) {
+  if (typeof context?.activationImported !== "boolean") fail("ACTIVATION_PHASE_REQUIRED");
   assertOperationContext(context, "readback-qualified-production");
   assertCurrentAuthority(context.authority, runtime.configuration, runtime.now);
   qualifiedConfiguration(runtime.configuration, context.authority);
@@ -1336,7 +1372,9 @@ async function readbackQualified(runtime, context) {
     SECRET_NAMES,
   );
   if (version.versionId !== journal.active_version_id) fail("QUALIFIED_VERSION_CHANGED");
-  await readRoute(runtime, context.authority, version.versionId, "QUALIFIED_EXACT", context);
+  const effectiveTransport =
+    context.activationImported === true ? "QUALIFIED_EXACT" : "DISABLED_UNQUALIFIED";
+  await readRoute(runtime, context.authority, version.versionId, effectiveTransport, context);
   return {
     schema_version: "videoforge.v2-09-qualified-readback-result/v1",
     operation_id: context.operationId,
@@ -1344,6 +1382,7 @@ async function readbackQualified(runtime, context) {
     config_sha256: context.authority.production.config_sha256,
     worker_bundle_sha256: context.authority.production.worker_bundle_sha256,
     gpu_transport: "QUALIFIED_EXACT",
+    effective_gpu_transport: effectiveTransport,
     exact_pair_bound: true,
     deployment_id_sha256: version.versionIdSha256,
   };

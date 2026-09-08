@@ -4,14 +4,21 @@
 
 ### Current new-chat launch point — 2026-09-08
 
-9.7 remains active: exact cb7 approval is recorded and combined activation is running from frozen
-clean source `bba7295f7de0b68fd530351fa79c68ec80d5d423`. Main checkpoints1–8 and9.1–9.6 remain
-finished;9.8/9.9 pending. Proposal `sha256:cb7d11f38888849d24804c22d7938ae722a52f94c9d03b44848cc6d6ff0c239b` binds one26-operation
-execution, $2 incremental/$17.50 completion caps, one Chrome E2E and zero redispatch.
-Authority evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-native-chrome-preclaim-replacement.json`.
-Native OAuth preclaim59/59 and all four actual local checks passed; renderer isolation remains.
-Stage6/7 remain frozen QUALIFIED_PASS_CLEAN. d6 is unclaimed/superseded, not consumed;
-3188 and all earlier consumed authorities remain non-reusable. Live completion is not yet claimed.
+9.7 remains active; provider-free deployment-order repairs are validated and awaiting clean seal. Main checkpoints 1–8 and 9.1–9.6 remain
+finished; 9.8 Chrome E2E and 9.9 cleanup/readiness remain pending. The last live cb7 execution
+from `bba7295f7de0b68fd530351fa79c68ec80d5d423` completed 16/26 operations and is consumed
+`FAILED_CLEAN`, non-reusable. It stopped at disabled bootstrap with
+`V2_09_CLOUDFLARE_PRODUCTION_QUALIFIED_WORKFLOW_DRIFT` before any Cloudflare intent.
+Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/failed-clean-native-chrome-workflow-drift.json` (`sha256:3540ddb3778feb68f82edf81f2ccd3908f6f6a323289962032b20210cbb34eba`).
+Two deployment bindings are inactive; three RunPod reads prove zero compute and unchanged sealed
+volumes; all 27 generated protected outputs and temporary roles are removed. Posted endpoint
+billing is unchanged; delayed startup billing remains unproven. No Cloudflare deployment, media
+installation, Chrome E2E, or provider job occurred. d6 remains unclaimed/superseded, not consumed.
+No current provider authority or spend permission remains. Workflow names, pristine STARTED
+cleanup, pre-secret503 and pre/post-import effective transport now have strict phase-specific
+checks.109/109 focused tests and one actual runtime proof pass; independent audits GO P0=0/P1=0.
+Repair: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-workflow-bootstrap-phase-repair.json`
+(`sha256:2aeb0ab30eef8cea124b838c3b732356f64dabe85e19d271e98fb5c238bd330f`). Clean seal and fresh exact approval remain before activation. Stage 6/7 remain frozen QUALIFIED_PASS_CLEAN and untouched.
 
 ### Historical activation evidence
 

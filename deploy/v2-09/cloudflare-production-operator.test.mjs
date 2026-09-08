@@ -66,8 +66,8 @@ function fixture() {
   qualified.main = ACTIVATED_MAIN_PATH;
   qualified.assets.directory = ACTIVATED_ASSETS_PATH;
   qualified.r2_buckets[0].bucket_name = "videoforge-assets";
-  qualified.workflows[0].name = "videoforge-video";
-  qualified.workflows[1].name = "videoforge-video-pair";
+  qualified.workflows[0].name = "videoforge-video-workflow";
+  qualified.workflows[1].name = "videoforge-pair-workflow";
   Object.assign(qualified.vars, {
     VIDEOFORGE_COMMIT: SOURCE,
     VIDEOFORGE_ENVIRONMENT: "production",
@@ -151,6 +151,7 @@ function harness(
   const apiCalls = [];
   const sequence = [];
   const secrets = new Set();
+  let activationImported = false;
   let activeConfig = null;
   let activeVersion = VERSION_IDS[0];
   let deployCount = 0;
@@ -216,7 +217,22 @@ function harness(
     throw new Error(`unexpected fixture command: ${args.join(" ")}`);
   };
   const fetchImpl = async () => {
-    const transport = activeConfig.vars.VIDEOFORGE_GPU_TRANSPORT;
+    if (secrets.size < SECRET_NAMES.length)
+      return new Response(
+        JSON.stringify({ error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } }),
+        {
+          status: 503,
+          headers: {
+            "content-type": "application/json",
+            "cache-control": "no-store",
+            "x-videoforge-runtime": "hosted-v2-06",
+            "x-videoforge-worker-version": wrongRouteVersion ? VERSION_IDS[4] : activeVersion,
+          },
+        },
+      );
+    const transport = activationImported
+      ? activeConfig.vars.VIDEOFORGE_GPU_TRANSPORT
+      : "DISABLED_UNQUALIFIED";
     return new Response(
       JSON.stringify({
         schema_version: "videoforge-hosted-status/v1",
@@ -277,6 +293,9 @@ function harness(
     return { modulePath, assetsPath, configPath, cleanup() {} };
   };
   return {
+    importActivation: () => {
+      activationImported = true;
+    },
     apiCalls,
     calls,
     secrets,
@@ -306,6 +325,7 @@ async function executeThroughQualified(operator, approved) {
   const readback = await operator.readbackCloudflareQualified.run({
     authority: approved,
     operationId: "readback-qualified-production",
+    activationImported: false,
   });
   return { deployed, disabled, readback, secrets };
 }
@@ -468,6 +488,12 @@ test("actual pre-render staged authority cleans untouched state without invented
 
 test("executes exact disabled, 22-secret, qualified, bundle, header, and route contract", async () => {
   const value = fixture();
+  assert.deepEqual(
+    JSON.parse(readFileSync(value.configuration.qualifiedConfigPath, "utf8")).workflows.map(
+      ({ name }) => name,
+    ),
+    ["videoforge-video-workflow", "videoforge-pair-workflow"],
+  );
   const mock = harness(value);
   const operator = createV209CloudflareProductionOperator(value.configuration, {
     testOnly: true,
@@ -478,6 +504,12 @@ test("executes exact disabled, 22-secret, qualified, bundle, header, and route c
     now: () => new Date("2026-09-06T22:00:00Z"),
   });
   const result = await executeThroughQualified(operator, authority(value));
+  const disabled = JSON.parse(readFileSync(value.configuration.disabledConfigPath, "utf8"));
+  const bootstrap = JSON.parse(readFileSync(value.configuration.bootstrapConfigPath, "utf8"));
+  const withoutR2 = structuredClone(disabled);
+  delete withoutR2.r2_buckets;
+  assert.deepEqual(bootstrap, withoutR2);
+  assert.deepEqual(bootstrap.workflows, disabled.workflows);
   assert.equal(result.disabled.bootstrap_deploy_count, 1);
   assert.equal(result.disabled.full_disabled_deploy_count, 1);
   assert.equal(result.disabled.deploy_count, 2);
@@ -855,4 +887,81 @@ test("route version-header mismatch fails closed and reconciles the qualified de
   assert.equal(healthy.activeTransport(), "DISABLED_UNQUALIFIED");
   assert.equal(healthy.secrets.size, 0);
   assert.equal(bad.calls.length, 0);
+});
+
+test("presecret disabled proof rejects arbitrary configuration errors and final missing configuration", async () => {
+  for (const variant of [
+    "wrong-code",
+    "extra-key",
+    "retryable",
+    "missing-header",
+    "after-all-secrets",
+  ]) {
+    const value = fixture();
+    const mock = harness(value);
+    const operator = createV209CloudflareProductionOperator(value.configuration, {
+      testOnly: true,
+      runChild: mock.runChild,
+      oauthApiResponse: mock.oauthApiResponse,
+      snapshotUploadArtifact: mock.snapshotUploadArtifact,
+      now: () => new Date("2026-09-06T22:00:00Z"),
+      fetchImpl: async (...args) => {
+        const response = await mock.fetchImpl(...args);
+        if (variant === "after-all-secrets" && mock.secrets.size !== SECRET_NAMES.length)
+          return response;
+        const body = { error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } };
+        if (variant === "wrong-code") body.error.code = "OTHER_FAILURE";
+        if (variant === "extra-key") body.error.detail = "unexpected";
+        if (variant === "retryable") body.error.retryable = true;
+        const headers = new Headers(response.headers);
+        headers.set("cache-control", "no-store");
+        headers.set("x-videoforge-runtime", "hosted-v2-06");
+        if (variant === "missing-header") headers.delete("x-videoforge-runtime");
+        return new Response(JSON.stringify(body), { status: 503, headers });
+      },
+    });
+    await assert.rejects(
+      executeThroughQualified(operator, authority(value)),
+      /ROUTE_READBACK_DRIFT|FAILURE_RECONCILIATION_REQUIRED/u,
+      variant,
+    );
+  }
+});
+
+test("qualified config readback requires disabled before import and qualified after import", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  const result = await executeThroughQualified(operator, authority(value));
+  assert.equal(result.readback.effective_gpu_transport, "DISABLED_UNQUALIFIED");
+  const context = {
+    authority: authority(value),
+    operationId: "readback-qualified-production",
+    activationImported: true,
+  };
+  await assert.rejects(operator.readbackCloudflareQualified.run(context), /ROUTE_READBACK_DRIFT/u);
+  for (const activationImported of [undefined, null, "true", 1]) {
+    const callsBefore = mock.calls.length;
+    await assert.rejects(
+      operator.readbackCloudflareQualified.run({ ...context, activationImported }),
+      /ACTIVATION_PHASE_REQUIRED/u,
+    );
+    assert.equal(mock.calls.length, callsBefore);
+  }
+  mock.importActivation();
+  assert.equal(
+    (await operator.readbackCloudflareQualified.run(context)).effective_gpu_transport,
+    "QUALIFIED_EXACT",
+  );
+  await assert.rejects(
+    operator.readbackCloudflareQualified.run({ ...context, activationImported: false }),
+    /ROUTE_READBACK_DRIFT/u,
+  );
 });

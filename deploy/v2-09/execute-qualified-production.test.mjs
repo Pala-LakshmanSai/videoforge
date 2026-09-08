@@ -338,6 +338,7 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       config_sha256: value.production.config_sha256,
       worker_bundle_sha256: value.production.worker_bundle_sha256,
       gpu_transport: "QUALIFIED_EXACT",
+      effective_gpu_transport: "DISABLED_UNQUALIFIED",
       exact_pair_bound: true,
       deployment_id_sha256: `sha256:${"4".repeat(64)}`,
     };
@@ -384,6 +385,7 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       operation_id: id,
       import_count: 1,
       qualified_activation_active: true,
+      effective_gpu_transport: "QUALIFIED_EXACT",
       source_commit: value.source_commit,
       config_sha256: value.production.config_sha256,
       worker_bundle_sha256: value.production.worker_bundle_sha256,
