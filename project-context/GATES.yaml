@@ -465,7 +465,7 @@ gates:
     current_failure_sha256: "sha256:3c2295b860296b7ce18ea2846ea3d4481ea63997918e6d74688357bb49fe9641"
     current_audit_stop: null
     current_audit_stop_sha256: null
-    provider_free_repair_state: "Complete-worker repair8tests and actual6.89MBworker dryrunPASS; independentGO; seal and successor approval pending."
+    provider_free_repair_state: "cb357135 phase diagnostics/owned-temp correction8tests independentGO freshoffline exactCLIproofPASS;original30dcauseUNPROVEN;no newapprovalclaim."
     previous_latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-endpoint-transition-replacement.json"
     latest_closed_authority: "evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/approved-authority-complete-worker-module-replacement.json"
     previous_latest_closed_authority_sha256: "sha256:40b129bd736c6052de4017ae8aede0db29d2849b8b733f312a4a94753ad14c1c"

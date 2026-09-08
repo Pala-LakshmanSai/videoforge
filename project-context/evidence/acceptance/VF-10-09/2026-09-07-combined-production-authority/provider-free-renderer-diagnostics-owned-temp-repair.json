@@ -1,0 +1,39 @@
+{
+  "schema_version": "videoforge.v2-09-provider-free-repair-evidence/v1",
+  "source_commit": "cb35713513f39fcc2b4e49b1628cbcbdddeb76f4",
+  "checkpoint": "9.7.7",
+  "change": "Fixed phase diagnostics and cleanup of owned temporary output only",
+  "original_30d_failure_cause": "UNPROVEN",
+  "focused_tests": {
+    "passed": 8,
+    "failed": 0
+  },
+  "independent_source_audit": "GO_P0_0_P1_0",
+  "fresh_offline_install": {
+    "reused_packages": 517,
+    "downloads": 0
+  },
+  "exact_cli_proof_sha256": "sha256:04ded0636283d83c142173daf57535b880565ceca777c3893d8bcf7c9ba8d267",
+  "exact_cli_proof": {
+    "source_commit": "cb35713513f39fcc2b4e49b1628cbcbdddeb76f4",
+    "actual_child_runner": true,
+    "actual_cli": true,
+    "fixture_bindings": true,
+    "fixture_release": true,
+    "runner_seams": 0,
+    "credential_reads": 0,
+    "provider_calls": 0,
+    "status": 0,
+    "signal": null,
+    "diagnostic": null,
+    "worker_bundle_sha256": "sha256:0045a58be884e54f959830e6ff9f7c33d8e6c5ff14b4cea9583be16171a3c2aa"
+  },
+  "source_path": "CANONICAL_PRIVATE_TMP_DETACHED_CHECKOUT",
+  "environment": "EXACT_APPROVED_30D_CHILD_ENVIRONMENT_WITH_FIXTURE_INPUTS",
+  "provider_calls": 0,
+  "credential_reads": 0,
+  "stage6_stage7": "FROZEN_QUALIFIED_PASS_CLEAN",
+  "new_proposal_or_approval_claimed": false,
+  "actual_cli_invocation_proof_path": "/private/tmp/v209-exact-cli-cb357135/invocation.json",
+  "actual_cli_invocation_proof_sha256": "sha256:1af5aa1529b11795798f830284f510cf5e1660f6fdda2e0a0921db2412e5df7d"
+}

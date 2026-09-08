@@ -13,6 +13,11 @@ Closure: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/
 Previously completed9.7.1–6 remain DONE;9.7.8/9.8/9.9pending. Stage6/7 remain frozen
 QUALIFIED_PASS_CLEAN and untouched.
 
+Provider-free candidate `cb35713513f39fcc2b4e49b1628cbcbdddeb76f4` adds phase diagnostics and
+owned-temp cleanup:8 focused tests, independent GO, and fresh offline actual renderer CLI proof PASS.
+Original30d failure cause remains UNPROVEN; no new proposal or approval is claimed. Evidence:
+`evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/provider-free-renderer-diagnostics-owned-temp-repair.json` (`sha256:9e1303a88bfae88ab44261cfcb7a11a186f803ab5bc8366d073fc46b9cc3fafb`).
+
 
 ### Historical activation evidence
 
