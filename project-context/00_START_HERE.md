@@ -20,7 +20,9 @@ NormalChrome production Google callback failed: sanitized live tail proves inval
 Read-only GoogleConsole confirms stored secret matches neither enabled nor disabled secret suffix;
 existingsecret viewing/download unavailable. One replacement was created and saved privately after
 removing the already-disabled slot (Google maximum two secrets); prior enabled secret preserved.
-56ef is now CLEANUP_ONLY before fresh credential/source/version activation; no authority replay.
+56ef is FAILED_CLEAN. Freshb905 credential/source/version activation is running from9dd667cc
+after two independent audits; exact replacement probe returns invalid_grant instead of invalid_client.
+No consumed authority replay.
 User delegated the account choice after demo9 had no device; use lakshmansai121@gmail.com with its existing paired worker for the single E2E.
 Evidence: `evidence/acceptance/VF-10-09/2026-09-07-combined-production-authority/google-secret-mismatch-readonly.json` (`sha256:55fd41275ee389f866e098f3c4c1b81435057c01317c8dd69432e3b5face7dbc`).
 Do notresume56ef after silentlychangingsecret/version: use fresh audited source/input/version/activation

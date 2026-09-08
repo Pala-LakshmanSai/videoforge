@@ -19,7 +19,7 @@ maximum_external_spend_usd: 2
 
 current_goal_boundary:
   mode: v2_09_deployed_chrome_auth_handoff_active
-  live_provider_calls: "56ef reached22/26; now CLEANUP_ONLY for fresh credential-bound activation; no deployment replay"
+  live_provider_calls: "56ef FAILED_CLEAN22/26; freshb905 credential-bound activation running source9dd667cc; no authority replay"
   remote_mutation: true
   deployment_or_publication: "Exact2419fe16 deployed and imported; worker0.1.15 ONLINE; auth-only handoff active"
   credential_value_access: "Exact protectedsnapshots undercontinuingauthorization"
@@ -51,7 +51,7 @@ v2_09_checkpoint_9_7_subcheckpoints:
   "9.7.5": "DONE — clean536e7a40;15tests, actual prerequisite proof, two exact audits GO"
   "9.7.6": "DONE \u2014 exact cfe842 proposal approved"
   "9.7.7": "DONE —56ef22/26;0.1.15 ONLINE and activationimport effectiveQUALIFIED_EXACT"
-  "9.7.8": "ACTIVE — overall9.7 reached22/26; replacement Google secret captured; exact56ef cleanup active before fresh activation; user delegated account choice; use existing lakshmansai121 paired worker"
+  "9.7.8": "ACTIVE — overall9.7 reached22/26; replacement Google secret captured; 56ef cleanup verified; freshb905 activation running; user delegated account choice; use existing lakshmansai121 paired worker"
   next_main_subcheckpoints: "9.8 single Chrome E2E and 9.9 cleanup/readiness pending"
 
 v2_09_provider_free_candidate:
