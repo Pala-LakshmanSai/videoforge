@@ -103,7 +103,7 @@ export async function readV209ShortProviderObservation(
   const [catalogResponse, billingResponse] = await Promise.all([
     readProviderEndpoint(
       fetchPort,
-      "https://api.runpod.io/v2/catalog/gpus?include=AVAILABILITY&product=POD&count=1&cloud=SECURE",
+      "https://api.runpod.io/v2/catalog/gpus?include=AVAILABILITY&product=SERVERLESS",
       { headers: { authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(30_000) },
       "V209_SHORT_CATALOG_FETCH_FAILED",
     ),
@@ -123,19 +123,21 @@ export async function readV209ShortProviderObservation(
     throw new RangeError("V209_SHORT_PROVIDER_OBSERVATION_FAILED");
   const catalog = record(await catalogResponse.json());
   const gpus = Array.isArray(catalog?.gpus) ? catalog.gpus : [];
-  const selected = gpus.map(record).find((gpu) => {
+  const matches = gpus.map(record).filter((gpu) => {
     const centers = Array.isArray(gpu?.dataCenters) ? gpu.dataCenters.map(record) : [];
-    const center = centers.find((candidate) => candidate?.id === "EU-RO-1");
-    const availability = center?.availability ?? gpu?.availability;
+    const regions = centers.filter((candidate) => candidate?.id === "EU-RO-1");
+    const availability = regions[0]?.availability;
     return (
       gpu?.id === "NVIDIA GeForce RTX 4090" &&
       gpu?.manufacturer === "NVIDIA" &&
       gpu?.secure === true &&
       Number(record(gpu?.price)?.secure) === 0.74 &&
+      regions.length === 1 &&
       (availability === "LOW" || availability === "MEDIUM" || availability === "HIGH")
     );
   });
-  if (!selected) throw new RangeError("V209_SHORT_PROVIDER_OFFERING_UNAVAILABLE");
+  if (matches.length !== 1) throw new RangeError("V209_SHORT_PROVIDER_OFFERING_UNAVAILABLE");
+  const selected = matches[0]!;
   const center = (selected.dataCenters as unknown[])
     .map(record)
     .find((candidate) => candidate?.id === "EU-RO-1")!;

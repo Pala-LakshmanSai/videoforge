@@ -72,6 +72,30 @@ describe("V2-09 exact short live admission", () => {
     ).rejects.toThrow(code);
   });
 
+  it("rejects global Pod availability without an exact Serverless region", async () => {
+    const fetchPort = async (input: string | URL | Request) =>
+      String(input).includes("catalog/gpus")
+        ? Response.json({
+            gpus: [
+              {
+                id: "NVIDIA GeForce RTX 4090",
+                manufacturer: "NVIDIA",
+                secure: true,
+                price: { secure: 0.74 },
+                availability: "LOW",
+              },
+            ],
+          })
+        : Response.json([]);
+    await expect(
+      readV209ShortProviderObservation(
+        "r".repeat(32),
+        async () => new Date(Date.now() + 1_000).toISOString(),
+        fetchPort,
+      ),
+    ).rejects.toThrow("V209_SHORT_PROVIDER_OFFERING_UNAVAILABLE");
+  });
+
   it("binds every segment/artifact and counts split right-image as Mage work", async () => {
     const admitted = await freezeV209ShortLiveAdmission(plan(), observation());
     expect(admitted.work.mage_image).toEqual([
