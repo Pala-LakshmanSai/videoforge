@@ -89,7 +89,7 @@ function rows(providerJobId: string | null = "job-1") {
 }
 
 describe("hosted pair live provider wiring", () => {
-  it("proves the provider queue empty twice before the first dispatch and primes only once", async () => {
+  it("proves the provider queue empty twice before every dispatch attempt", async () => {
     const order: string[] = [];
     const confirmOrdinaryStartupQueueEmpty = vi.fn(async () => {
       order.push("queue-empty");
@@ -109,25 +109,34 @@ describe("hosted pair live provider wiring", () => {
       requestBodySha256: digest("b"),
       envelope: {},
     } as const;
+    await transport.preflight?.();
     await transport.run(request);
+    await transport.preflight?.();
     await transport.run(request);
-    expect(order).toEqual(["queue-empty", "queue-empty", "run", "run"]);
-    expect(confirmOrdinaryStartupQueueEmpty).toHaveBeenCalledTimes(2);
+    expect(order).toEqual([
+      "queue-empty",
+      "queue-empty",
+      "run",
+      "queue-empty",
+      "queue-empty",
+      "run",
+    ]);
+    expect(confirmOrdinaryStartupQueueEmpty).toHaveBeenCalledTimes(4);
   });
 
   it("classifies a failed pre-send queue proof as definitely unsent", async () => {
+    const run = vi.fn();
+    const preflightError = new Error("RUNPOD_STARTUP_QUEUE_NOT_CONFIRMED");
     const transport = createDrainPrimedTransport(
-      { confirmOrdinaryStartupQueueEmpty: vi.fn(async () => Promise.reject(new Error("health"))) },
-      { run: vi.fn(), status: vi.fn(), cancel: vi.fn() },
+      {
+        confirmOrdinaryStartupQueueEmpty: vi.fn(async () => Promise.reject(preflightError)),
+      },
+      { run, status: vi.fn(), cancel: vi.fn() },
     );
     await expect(
-      transport.run({
-        endpointIdSha256: digest("a"),
-        dispatchToken: "dt-0123456789abcdef0123456789abcdef",
-        requestBodySha256: digest("b"),
-        envelope: {},
-      }),
-    ).rejects.toMatchObject({ code: "REQUEST_REJECTED" });
+      transport.preflight?.(),
+    ).rejects.toBe(preflightError);
+    expect(run).not.toHaveBeenCalled();
   });
 
   it("fails disabled before reading endpoint or provider credentials", async () => {

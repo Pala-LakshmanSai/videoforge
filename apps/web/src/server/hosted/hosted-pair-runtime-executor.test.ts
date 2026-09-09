@@ -85,9 +85,19 @@ function fixture(run: (lane: HostedPairLane) => unknown) {
     finishSend,
     inspect: vi.fn(),
   };
+  const preflight = {
+    mage_image: vi.fn(async () => undefined),
+    soulx_avatar: vi.fn(async () => undefined),
+  };
   const transports = {
-    mage_image: { run: vi.fn(async () => run("mage_image")), status: vi.fn(), cancel: vi.fn() },
+    mage_image: {
+      preflight: preflight.mage_image,
+      run: vi.fn(async () => run("mage_image")),
+      status: vi.fn(),
+      cancel: vi.fn(),
+    },
     soulx_avatar: {
+      preflight: preflight.soulx_avatar,
       run: vi.fn(async () => run("soulx_avatar")),
       status: vi.fn(),
       cancel: vi.fn(),
@@ -96,7 +106,7 @@ function fixture(run: (lane: HostedPairLane) => unknown) {
   const executor = new HostedPairRuntimeExecutor(store, transports as never, {
     verifyPair: vi.fn(async () => true),
   });
-  return { executor, store, finishSend, transports };
+  return { executor, store, finishSend, transports, preflight };
 }
 
 const input = {
@@ -132,6 +142,59 @@ describe("hosted pair runtime executor", () => {
       code: "HOSTED_PAIR_ENVELOPE_LINEAGE_INVALID",
     });
     expect(f.store.beginSend).not.toHaveBeenCalled();
+  });
+
+  it("runs provider queue admission before beginSend and provider /run", async () => {
+    const f = fixture((lane) => ({ id: `${lane}-job` }));
+    const order: string[] = [];
+    f.preflight.mage_image.mockImplementationOnce(async () => {
+      order.push("preflight");
+    });
+    f.store.beginSend = vi.fn(
+      async (input: Parameters<HostedPairRuntimeStore["beginSend"]>[0]) => {
+        order.push("begin-send");
+        return {
+          ...claims[input.lane],
+          expectedEnvelopeSha256: await sha256CanonicalJson(unsigned(input.lane)),
+        };
+      },
+    );
+    f.transports.mage_image.run.mockImplementationOnce(async () => {
+      order.push("run");
+      return { id: "mage_image-job" };
+    });
+
+    await expect(f.executor.execute(input)).resolves.toMatchObject({ state: "BOTH_ASSIGNED" });
+    expect(order.slice(0, 3)).toEqual(["preflight", "begin-send", "run"]);
+  });
+
+  it("leaves READY state untouched when queue admission fails before beginSend", async () => {
+    const f = fixture((lane) => ({ id: `${lane}-must-not-run` }));
+    const preflightError = new Error("RUNPOD_READ_AMBIGUOUS");
+    f.preflight.mage_image.mockRejectedValueOnce(preflightError);
+
+    await expect(f.executor.execute(input)).rejects.toBe(preflightError);
+    expect(f.store.beginSend).not.toHaveBeenCalled();
+    expect(f.finishSend).not.toHaveBeenCalled();
+    expect(f.transports.mage_image.run).not.toHaveBeenCalled();
+    expect(f.preflight.soulx_avatar).not.toHaveBeenCalled();
+  });
+
+  it("does not begin SoulX or mark it permanent when its queue admission fails", async () => {
+    const f = fixture((lane) => ({ id: `${lane}-job` }));
+    const preflightError = new Error("RUNPOD_STARTUP_QUEUE_NOT_CONFIRMED");
+    f.preflight.soulx_avatar.mockRejectedValueOnce(preflightError);
+
+    await expect(f.executor.execute(input)).rejects.toBe(preflightError);
+    expect(f.finishSend).toHaveBeenCalledWith(
+      expect.objectContaining({ lane: "mage_image", outcome: "ASSIGNED" }),
+    );
+    expect(f.store.beginSend).toHaveBeenCalledTimes(1);
+    expect(f.store.beginSend).toHaveBeenCalledWith(expect.objectContaining({ lane: "mage_image" }));
+    expect(f.transports.soulx_avatar.run).not.toHaveBeenCalled();
+    expect(f.finishSend).not.toHaveBeenCalledWith(
+      expect.objectContaining({ lane: "soulx_avatar" }),
+    );
   });
 
   it("persists and assigns Mage before SoulX", async () => {

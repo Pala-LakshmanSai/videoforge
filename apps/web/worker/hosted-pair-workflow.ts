@@ -15,6 +15,10 @@ import { hostedPairProductionBindingState } from "../src/server/hosted/hosted-pa
 import { createHostedV209RenderHandoff } from "../src/server/hosted/hosted-v209-render-handoff";
 import { hasHostedV209OrdinaryDispatchCandidate } from "../src/server/hosted/hosted-v209-queue-admission";
 import { createNeonExecutor, createNeonPool } from "../src/server/hosted/neon";
+import {
+  HostedSqlPairRuntimeStore,
+  type HostedPairInspection,
+} from "../src/server/hosted/hosted-pair-runtime-executor";
 import type { V213AcceptanceWorkflowParameters } from "../src/server/hosted/v213-acceptance-workflow-runner";
 
 type Environment = HostedRuntimeEnvironment & HostedPairLiveEnvironment;
@@ -23,6 +27,55 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const MAX_OBSERVATIONS = 120;
 const POOL_CLOSE_GRACE_MS = 1_000;
+
+type ExactPairInspection = readonly [HostedPairInspection, HostedPairInspection];
+
+function exactPairInspection(
+  rows: readonly HostedPairInspection[],
+): rows is ExactPairInspection {
+  return (
+    rows.length === 2 &&
+    rows[0]?.lane === "mage_image" &&
+    rows[1]?.lane === "soulx_avatar"
+  );
+}
+
+/** A definite REQUEST_REJECTED is cleanup-only, even while the paired lane remains unsent. */
+export function isHostedV209CleanupOnlyRecovery(
+  rows: readonly HostedPairInspection[],
+): boolean {
+  if (!exactPairInspection(rows) || !rows.every((row) => row.pairPhase === "CLEANUP_ONLY"))
+    return false;
+  const [mage, soulx] = rows;
+  const terminalFailed = (row: HostedPairInspection) =>
+    row.providerJobId === null &&
+    row.attemptState === "PERMANENT_FAILED" &&
+    row.outboxState === "DEAD_LETTER";
+  const unsent = (row: HostedPairInspection) =>
+    row.providerJobId === null &&
+    row.attemptState === "OUTBOXED" &&
+    row.outboxState === "READY_TO_DISPATCH";
+  return (
+    (terminalFailed(mage) && unsent(soulx)) ||
+    (terminalFailed(soulx) && unsent(mage))
+  );
+}
+
+/** A failed preflight before beginSend leaves both exact lanes safely unsent and retryable. */
+export function isHostedV209SafelyUnsent(
+  rows: readonly HostedPairInspection[],
+): boolean {
+  return (
+    exactPairInspection(rows) &&
+    rows.every(
+      (row) =>
+        row.providerJobId === null &&
+        row.attemptState === "OUTBOXED" &&
+        row.outboxState === "READY_TO_DISPATCH" &&
+        row.pairPhase !== "CLEANUP_ONLY",
+    )
+  );
+}
 
 async function closePoolsWithoutBlockingWorkflow(
   runtimePool: ReturnType<typeof createNeonPool>,
@@ -135,20 +188,33 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
               generationRequestId: params.generationRequestId,
             });
             if (ordinary) {
-              const gate = await live.composition.gate({
-                environment: this.env,
-                ...params,
-                dispatchTokenKey: this.env.VIDEOFORGE_DISPATCH_TOKEN_KEY!,
-              });
-              if (gate.state !== "READY") return gate;
-              try {
-                console.info("hosted_pair_workflow", { event: "ORDINARY_RESUME_STARTING" });
-                await resumeHostedV209OrdinaryPair(this.env, runtimeDatabase, params);
-                console.info("hosted_pair_workflow", { event: "ORDINARY_RESUME_COMPLETE" });
-              } catch {
-                // SENT/unknown acknowledgement is deliberately not sendable. Stop this Workflow
-                // step durably so an operator can reconcile before any further provider action.
-                return Object.freeze({ state: "MANUAL_RECONCILIATION_REQUIRED" as const });
+              const runtimeStore = new HostedSqlPairRuntimeStore(runtimeDatabase);
+              const inspection = await runtimeStore.inspect(params);
+              if (isHostedV209CleanupOnlyRecovery(inspection)) {
+                // A definite provider rejection is already terminal. The paired unsent lane is
+                // intentionally not eligible for ordinary resume; let the reconciler prove
+                // absence, settle both lanes, and release the lease without any provider call.
+                console.info("hosted_pair_workflow", {
+                  event: "CLEANUP_ONLY_RECONCILIATION_STARTING",
+                });
+              } else {
+                const gate = await live.composition.gate({
+                  environment: this.env,
+                  ...params,
+                  dispatchTokenKey: this.env.VIDEOFORGE_DISPATCH_TOKEN_KEY!,
+                });
+                if (gate.state !== "READY") return gate;
+                try {
+                  console.info("hosted_pair_workflow", { event: "ORDINARY_RESUME_STARTING" });
+                  await resumeHostedV209OrdinaryPair(this.env, runtimeDatabase, params);
+                  console.info("hosted_pair_workflow", { event: "ORDINARY_RESUME_COMPLETE" });
+                } catch (error) {
+                  const afterFailure = await runtimeStore.inspect(params);
+                  if (isHostedV209SafelyUnsent(afterFailure)) throw error;
+                  // SENT/unknown acknowledgement is deliberately not sendable. Stop this
+                  // Workflow step durably so an operator can reconcile before any provider action.
+                  return Object.freeze({ state: "MANUAL_RECONCILIATION_REQUIRED" as const });
+                }
               }
             } else {
               const dispatch = await live.composition.resume({

@@ -33,6 +33,7 @@ import {
   HostedSqlPairRuntimeStore,
   type HostedPairInspection,
   type HostedPairLane,
+  type HostedPairRuntimeTransport,
 } from "./hosted-pair-runtime-executor";
 import { HostedDispatchCoordinationError } from "./hosted-serverless-dispatch-coordinator";
 import { RunPodDrainGuard, RunPodServerlessJobClient } from "../providers/runpod-control";
@@ -183,31 +184,28 @@ type LaneClients = Readonly<Record<HostedPairLane, RunPodServerlessJobClient>>;
 export function createDrainPrimedTransport(
   client: Pick<RunPodServerlessJobClient, "confirmOrdinaryStartupQueueEmpty">,
   transport: ServerlessTransportPort,
-): ServerlessTransportPort {
-  let primed = false;
+): HostedPairRuntimeTransport {
+  const preflight = async (): Promise<void> => {
+    try {
+      await client.confirmOrdinaryStartupQueueEmpty();
+      await client.confirmOrdinaryStartupQueueEmpty();
+    } catch (error) {
+      console.error("hosted_pair_runpod_preflight_failure", {
+        phase: "ORDINARY_STARTUP_QUEUE_EMPTY",
+        causeName: error instanceof Error ? error.name : "unknown",
+        causeCode:
+          error && typeof error === "object" && "code" in error
+            ? String((error as { readonly code?: unknown }).code)
+            : null,
+      });
+      // No provider mutation has occurred yet. Preserve the original read or queue-state error so
+      // the caller can safely retry without converting it into a terminal send outcome.
+      throw error;
+    }
+  };
   return Object.freeze({
-    async run(request: Parameters<ServerlessTransportPort["run"]>[0]) {
-      if (!primed) {
-        try {
-          await client.confirmOrdinaryStartupQueueEmpty();
-          await client.confirmOrdinaryStartupQueueEmpty();
-        } catch (error) {
-          console.error("hosted_pair_runpod_preflight_failure", {
-            phase: "ORDINARY_STARTUP_QUEUE_EMPTY",
-            causeName: error instanceof Error ? error.name : "unknown",
-            causeCode:
-              error && typeof error === "object" && "code" in error
-                ? String((error as { readonly code?: unknown }).code)
-                : null,
-          });
-          // No provider mutation has occurred yet; preserve that distinction so a failed
-          // readiness read cannot be mislabeled as an unknown /run acknowledgement.
-          throw new ServerlessTransportError("REQUEST_REJECTED");
-        }
-        primed = true;
-      }
-      return transport.run(request);
-    },
+    preflight,
+    run: (request: Parameters<ServerlessTransportPort["run"]>[0]) => transport.run(request),
     status: (providerJobId: string) => transport.status(providerJobId),
     cancel: (providerJobId: string) => transport.cancel(providerJobId),
   });

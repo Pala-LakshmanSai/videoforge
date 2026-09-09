@@ -66,6 +66,16 @@ export interface HostedPairRuntimeStore {
   }): Promise<readonly HostedPairInspection[]>;
 }
 
+/**
+ * Optional provider-readiness hook used by the concrete RunPod pair wiring.  It is deliberately
+ * outside ServerlessTransportPort: readiness is a read-only admission step and must complete before
+ * the durable begin-send mutation, while the provider-neutral transport surface remains limited to
+ * run/status/cancel.
+ */
+export type HostedPairRuntimeTransport = ServerlessTransportPort & {
+  readonly preflight?: () => Promise<void> | void;
+};
+
 export interface HostedPairInspection {
   readonly lane: HostedPairLane;
   readonly attemptId: string;
@@ -287,7 +297,7 @@ function unsignedEnvelope(document: ServerlessWorkerJobEnvelopeV3Document): Json
 export class HostedPairRuntimeExecutor {
   constructor(
     private readonly store: HostedPairRuntimeStore,
-    private readonly transports: Readonly<Record<HostedPairLane, ServerlessTransportPort>>,
+    private readonly transports: Readonly<Record<HostedPairLane, HostedPairRuntimeTransport>>,
     private readonly verifier: HostedSignedEnvelopeVerifier,
   ) {}
 
@@ -382,6 +392,10 @@ export class HostedPairRuntimeExecutor {
     | { readonly kind: "ASSIGNED"; readonly providerJobId: string }
     | { readonly kind: "STOP"; readonly result: HostedPairExecutionResult }
   > {
+    // Read-only provider admission must happen before beginSend persists SENT and increments the
+    // attempt's send counter. A health/queue read can fail transiently and cannot be converted into
+    // a permanent REQUEST_REJECTED result after the database mutation has already happened.
+    await this.transports[prepared.lane].preflight?.();
     console.info("hosted_pair_runtime", { event: "BEGIN_SEND", lane: envelope.lane });
     const claim = await this.store.beginSend({
       ...input,

@@ -56,4 +56,17 @@ describe("hosted pair Workflow module loading", () => {
       "![ordinary.accountId, ordinary.workspaceId, ordinary.generationRequestId].every",
     );
   });
+
+  it("routes definite rejection cleanup before resume and preserves safe preflight retry", () => {
+    expect(source).toContain("row.attemptState === \"PERMANENT_FAILED\"");
+    expect(source).toContain("row.outboxState === \"DEAD_LETTER\"");
+    expect(source).toContain("row.attemptState === \"OUTBOXED\"");
+    expect(source).toContain("row.outboxState === \"READY_TO_DISPATCH\"");
+    expect(source).toContain('row.pairPhase === "CLEANUP_ONLY"');
+    expect(source.indexOf("isHostedV209CleanupOnlyRecovery(inspection)")).toBeLessThan(
+      source.indexOf('event: "ORDINARY_RESUME_STARTING"'),
+    );
+    expect(source).toContain("if (isHostedV209SafelyUnsent(afterFailure)) throw error;");
+    expect(source).toContain("SENT/unknown acknowledgement");
+  });
 });
