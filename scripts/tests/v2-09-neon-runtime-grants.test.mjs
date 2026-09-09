@@ -23,6 +23,7 @@ test("V2-09 runtime grants rebuild a closed pre-V2-10 function allowlist", () =>
     "videoforge_begin_hosted_v209_ordinary_send",
     "videoforge_materialize_hosted_v209_span_audio_jobs",
     "videoforge_materialize_hosted_v209_system_avatar_reference",
+    "videoforge_load_hosted_pair_workflow_schedule",
   ])
     assert.match(source, new RegExp(required, "u"));
   assert.match(
