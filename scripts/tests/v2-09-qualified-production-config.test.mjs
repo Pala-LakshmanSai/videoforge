@@ -108,9 +108,12 @@ test("qualified renderer preserves the closed-world production identities and ch
     gpu_transport: "QUALIFIED_EXACT",
   });
   assert.equal(rendered.vars.VIDEOFORGE_GPU_TRANSPORT, "QUALIFIED_EXACT");
+  assert.equal(rendered.no_bundle, false);
   const disabledTwin = structuredClone(rendered);
   disabledTwin.vars.VIDEOFORGE_GPU_TRANSPORT = "DISABLED_UNQUALIFIED";
-  assert.deepEqual(validateProductionConfig(disabledTwin, { mode: "activated" }), {
+  const sharedValidationTwin = structuredClone(disabledTwin);
+  sharedValidationTwin.no_bundle = true;
+  assert.deepEqual(validateProductionConfig(sharedValidationTwin, { mode: "activated" }), {
     mode: "activated",
     gpu_transport: "DISABLED_UNQUALIFIED",
     valid: true,
@@ -120,6 +123,12 @@ test("qualified renderer preserves the closed-world production identities and ch
   assert.equal(qualifiedText.includes("VIDEOFORGE_SOULX_ENDPOINT_ID"), false);
   assert.equal(qualifiedText.includes("VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY"), false);
   assert.equal(qualifiedText.includes("VIDEOFORGE_PROVIDER_PROOF_KEY_ID"), false);
+  const noBundleDrift = structuredClone(rendered);
+  noBundleDrift.no_bundle = true;
+  assert.throws(
+    () => validateQualifiedRenderedConfig(noBundleDrift, exactBinding, release),
+    /bundle mode drifted/u,
+  );
 });
 
 test("binding validator rejects extras, placeholders, raw endpoint ids, secret values, and frozen drift", () => {
@@ -254,6 +263,7 @@ test("preparation writes mode-0600 artifacts after build and isolated Wrangler d
     assert.ok(dryRun.args.includes("--dry-run"));
     assert.ok(dryRun.args.includes("--outdir"));
     assert.ok(dryRun.args.includes("--config"));
+    assert.equal(dryRun.args.includes("--no-bundle"), false);
     for (const call of [build, dryRun]) {
       assert.equal(call.options.env.RUNPOD_API_KEY, undefined);
       assert.equal(call.options.env.CLOUDFLARE_API_TOKEN, undefined);
@@ -322,7 +332,7 @@ test("renderer default is a provider-free no-op and source exposes no live deplo
   });
   const source = await readFile(renderer, "utf8");
   assert.match(source, /"--dry-run"/u);
-  assert.doesNotMatch(source, /--execute|--deploy-live|CLOUDFLARE_API_TOKEN/u);
+  assert.doesNotMatch(source, /--no-bundle|--execute|--deploy-live|CLOUDFLARE_API_TOKEN/u);
 });
 
 test("render child failures emit fixed phase codes without raw child output", async () => {

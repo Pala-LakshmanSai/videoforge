@@ -19,7 +19,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { runCancellableChildProcess } from "../v2-13/full-live-adapters.mjs";
@@ -1294,18 +1294,23 @@ function makeTreeRemovable(path) {
   } else chmodSync(path, 0o600);
 }
 
-function snapshotUploadArtifact(qualifiedConfigBytes) {
+export function snapshotV209UploadArtifact(
+  qualifiedConfigBytes,
+  { mainPath = ACTIVATED_MAIN_PATH, assetsSourcePath = ACTIVATED_ASSETS_PATH } = {},
+) {
   if (!Buffer.isBuffer(qualifiedConfigBytes)) fail("UPLOAD_CONFIG_BYTES_INVALID");
+  if (![mainPath, assetsSourcePath].every((path) => typeof path === "string" && isAbsolute(path)))
+    fail("UPLOAD_ARTIFACT_SOURCE_PATH_INVALID");
   const directory = mkdtempSync(join(tmpdir(), "videoforge-v209-cloudflare-upload-"));
   const moduleDirectory = resolve(directory, "worker");
-  const modulePath = resolve(moduleDirectory, "index.js");
+  const modulePath = resolve(moduleDirectory, basename(mainPath));
   const assetsPath = resolve(directory, "assets");
   const configPath = resolve(directory, "qualified-config.json");
   try {
     // Preserve the complete Vite Worker module graph. The entrypoint imports generated sibling
     // chunks, so copying only index.js produces a Cloudflare validation error before versioning.
-    copyImmutableTree(dirname(ACTIVATED_MAIN_PATH), moduleDirectory);
-    copyImmutableTree(ACTIVATED_ASSETS_PATH, assetsPath);
+    copyImmutableTree(dirname(mainPath), moduleDirectory);
+    copyImmutableTree(assetsSourcePath, assetsPath);
     writeFileSync(configPath, qualifiedConfigBytes, { flag: "wx", mode: 0o400 });
     chmodSync(directory, 0o500);
   } catch (error) {
@@ -1851,7 +1856,7 @@ function createProductionRuntime(inputConfiguration, dependencies = {}) {
     secretBulk: dependencies.secretBulk ?? executeV209SecretBulk,
     secretInputs,
     secretInputSha256s,
-    snapshotUploadArtifact: dependencies.snapshotUploadArtifact ?? snapshotUploadArtifact,
+    snapshotUploadArtifact: dependencies.snapshotUploadArtifact ?? snapshotV209UploadArtifact,
   });
   if (
     typeof runtime.fetchImpl !== "function" ||

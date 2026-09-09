@@ -179,7 +179,10 @@ export function validateReleaseManifest(bytes, expectedSha256) {
 }
 
 export function validateQualifiedRenderedConfig(config, binding, releaseManifest) {
-  validateProductionConfig(config, { mode: "qualified" });
+  if (config?.no_bundle !== false) fail("rendered qualified config bundle mode drifted");
+  const sharedValidationConfig = structuredClone(config);
+  sharedValidationConfig.no_bundle = true;
+  validateProductionConfig(sharedValidationConfig, { mode: "qualified" });
   const production = binding.production;
   if (
     releaseManifest.version !== "0.1.16" ||

@@ -25,6 +25,7 @@ import {
   createV209CloudflareProductionOperator,
   createV209CloudflareReplacementCapabilities,
   planV209CloudflareProduction,
+  snapshotV209UploadArtifact,
 } from "./cloudflare-production-operator.mjs";
 
 const ROOT = resolve(new URL("../..", import.meta.url).pathname);
@@ -646,6 +647,42 @@ test("V2-09 qualified deployment rejects no-bundle configuration before Cloudfla
   );
   assert.deepEqual(mock.apiCalls, []);
   assert.deepEqual(mock.calls, []);
+});
+
+test("upload snapshot preserves the complete immutable Worker module graph and rejects symlinks", () => {
+  const source = mkdtempSync(resolve(tmpdir(), "videoforge-v209-module-graph-test-"));
+  const worker = resolve(source, "worker");
+  const chunks = resolve(worker, "assets");
+  const client = resolve(source, "client");
+  mkdirSync(worker);
+  mkdirSync(chunks);
+  mkdirSync(client);
+  writeFileSync(resolve(worker, "index.js"), 'import "./assets/chunk.js";\n');
+  writeFileSync(resolve(chunks, "chunk.js"), "export const exact = true;\n");
+  writeFileSync(resolve(client, "index.html"), "fixture client\n");
+  const artifact = snapshotV209UploadArtifact(Buffer.from("{}\n"), {
+    mainPath: resolve(worker, "index.js"),
+    assetsSourcePath: client,
+  });
+  try {
+    assert.equal(readFileSync(artifact.modulePath, "utf8"), 'import "./assets/chunk.js";\n');
+    assert.equal(
+      readFileSync(resolve(artifact.modulePath, "../assets/chunk.js"), "utf8"),
+      "export const exact = true;\n",
+    );
+  } finally {
+    artifact.cleanup();
+  }
+  symlinkSync(resolve(worker, "index.js"), resolve(chunks, "linked.js"));
+  assert.throws(
+    () =>
+      snapshotV209UploadArtifact(Buffer.from("{}\n"), {
+        mainPath: resolve(worker, "index.js"),
+        assetsSourcePath: client,
+      }),
+    /UPLOAD_ARTIFACT_SYMLINK/u,
+  );
+  rmSync(source, { recursive: true, force: true });
 });
 
 test("an unknown qualified deploy outcome is durably reconciled to disabled with no secrets or R2 deletion", async () => {

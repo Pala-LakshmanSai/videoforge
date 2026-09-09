@@ -156,7 +156,10 @@ function activatedDisabledConfig(template, binding, releaseManifest) {
     VIDEOFORGE_R2_BUCKET_NAME: production.r2_bucket_name,
     MEDIA_WORKER_RELEASE_MANIFEST_JSON: JSON.stringify(releaseManifest),
   });
-  validateProductionConfig(config, { mode: "activated" });
+  config.no_bundle = false;
+  const sharedValidationConfig = structuredClone(config);
+  sharedValidationConfig.no_bundle = true;
+  validateProductionConfig(sharedValidationConfig, { mode: "activated" });
   return config;
 }
 
@@ -277,7 +280,6 @@ export async function prepareQualifiedProductionConfig(
           "wrangler",
           "deploy",
           ACTIVATED_MAIN_PATH,
-          "--no-bundle",
           "--assets",
           ACTIVATED_ASSETS_PATH,
           "--strict",
