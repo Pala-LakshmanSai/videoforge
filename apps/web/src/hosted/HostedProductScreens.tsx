@@ -3457,7 +3457,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         ),
       ),
     onSuccess: (result) => {
-      if (result.state === "WAITING") {
+      if (result.state === "WAITING" || result.state === "PREPARING_INPUTS") {
         window.setTimeout(() => {
           automaticGpuDispatchAttempt.current = null;
           void queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] });

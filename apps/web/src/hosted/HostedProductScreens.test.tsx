@@ -2681,7 +2681,7 @@ describe("hosted product journey", () => {
     ).toBe(true);
   });
 
-  it("waits for server-owned span audio without redispatching from the browser", async () => {
+  it("resumes one same-generation dispatch after server-owned span audio preparation", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const base = {
       project: {
@@ -2710,19 +2710,70 @@ describe("hosted product journey", () => {
       queue: { status: "ACTIVE", position: 1, ahead: 0, total: 1 },
       stages: [{ id: "prompt-writing", name: "Write image prompts", status: "COMPLETE" }],
     };
+    const spanAttempts = [
+      {
+        id: "55555555-5555-4555-8555-555555555555",
+        kind: "SPAN_AUDIO" as const,
+        state: "SUCCEEDED",
+        version: 1,
+        created_at: "2026-09-06T10:00:00.000Z",
+        updated_at: "2026-09-06T10:01:00.000Z",
+        terminal_at: "2026-09-06T10:01:00.000Z",
+        output_checksum_sha256: `sha256:${"c".repeat(64)}`,
+        approved_at: null,
+        preview_url: null,
+      },
+      {
+        id: "66666666-6666-4666-8666-666666666666",
+        kind: "SPAN_AUDIO" as const,
+        state: "SUCCEEDED",
+        version: 1,
+        created_at: "2026-09-06T10:00:00.000Z",
+        updated_at: "2026-09-06T10:01:00.000Z",
+        terminal_at: "2026-09-06T10:01:00.000Z",
+        output_checksum_sha256: `sha256:${"d".repeat(64)}`,
+        approved_at: null,
+        preview_url: null,
+      },
+    ];
+    let phase: "READY" | "PREPARING" | "READY_AFTER_INPUTS" | "RUNNING" = "READY";
+    let preparationReads = 0;
     let dispatches = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (!String(input).endsWith("/gpu-dispatch")) {
+        if (phase === "PREPARING") {
+          preparationReads += 1;
+          if (preparationReads >= 2) phase = "READY_AFTER_INPUTS";
+        }
         return Response.json({
           ...base,
-          attempts: [],
+          attempts: phase === "READY" ? [] : spanAttempts,
+          generation: {
+            ...base.generation,
+            stage:
+              phase === "PREPARING"
+                ? "ACTIVE"
+                : phase === "RUNNING"
+                  ? "ACTIVE"
+                  : "READY_FOR_GPU_DISPATCH",
+          },
+          stages:
+            phase === "PREPARING"
+              ? [
+                  ...base.stages,
+                  { id: "image-generation", name: "Generate images", status: "RUNNING" },
+                ]
+              : base.stages,
         });
       }
       dispatches += 1;
+      if (dispatches === 1) phase = "PREPARING";
+      else phase = "RUNNING";
       return Response.json(
         {
           schema_version: "videoforge-hosted-v209-project-dispatch/v1",
-          state: "PREPARING_INPUTS",
+          state: dispatches === 1 ? "PREPARING_INPUTS" : "SCHEDULED",
+          generation_request_id: base.generation.id,
           correlation_id: `v209-span-${dispatches}`,
         },
         { status: 202 },
@@ -2732,7 +2783,12 @@ describe("hosted product journey", () => {
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
     expect(await screen.findByText(/Preparing exact avatar audio/u)).toBeInTheDocument();
-    expect(dispatches).toBe(1);
+    await waitFor(() => expect(dispatches).toBe(2), { timeout: 6_000 });
+    expect(base.generation.id).toBe("44444444-4444-4444-8444-444444444444");
+    expect(
+      fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch")),
+    ).toHaveLength(2);
+    expect(await screen.findByText(/Generation is running/u)).toBeInTheDocument();
   });
 
   it("reports only measured personal-worker and retained-object facts", async () => {
