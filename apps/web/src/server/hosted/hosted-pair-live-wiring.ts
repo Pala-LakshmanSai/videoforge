@@ -181,15 +181,21 @@ type HostedPairPredispatchInput = Omit<
 type LaneClients = Readonly<Record<HostedPairLane, RunPodServerlessJobClient>>;
 
 export function createDrainPrimedTransport(
-  client: Pick<RunPodServerlessJobClient, "confirmDrained">,
+  client: Pick<RunPodServerlessJobClient, "confirmOrdinaryStartupQueueEmpty">,
   transport: ServerlessTransportPort,
 ): ServerlessTransportPort {
   let primed = false;
   return Object.freeze({
     async run(request: Parameters<ServerlessTransportPort["run"]>[0]) {
       if (!primed) {
-        await client.confirmDrained(30);
-        await client.confirmDrained(30);
+        try {
+          await client.confirmOrdinaryStartupQueueEmpty();
+          await client.confirmOrdinaryStartupQueueEmpty();
+        } catch {
+          // No provider mutation has occurred yet; preserve that distinction so a failed
+          // readiness read cannot be mislabeled as an unknown /run acknowledgement.
+          throw new ServerlessTransportError("REQUEST_REJECTED");
+        }
         primed = true;
       }
       return transport.run(request);

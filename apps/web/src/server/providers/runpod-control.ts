@@ -1990,6 +1990,16 @@ export class RunPodServerlessJobClient {
     }
   }
 
+  /**
+   * Arms one ordinary dispatch from a strict empty provider queue. RunPod's FlashBoot worker
+   * counters can overlap or remain throttled after scale-to-zero, so they are not a reliable
+   * active-compute count. The immutable endpoint policy still caps this client at one worker.
+   */
+  async confirmOrdinaryStartupQueueEmpty(): Promise<void> {
+    await this.confirmStartupQueueEmpty();
+    this.options.guard.confirmZero(0, 0);
+  }
+
   /** V2-08-only startup proof that also arms the disposable endpoint's first dispatch. */
   async confirmV208StartupQueueEmpty(): Promise<void> {
     const value = await this.request("GET", "/health");

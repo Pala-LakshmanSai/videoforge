@@ -269,6 +269,33 @@ describe("RunPod scale-zero control", () => {
     expect(guard.snapshot()).toBe("active");
   });
 
+  it("arms ordinary dispatch from two strict empty-queue proofs despite overlapping worker counters", async () => {
+    const guard = new RunPodDrainGuard();
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/health")) {
+        return response({
+          workers: { idle: 1, ready: 1, throttled: 0 },
+          jobs: { inQueue: 0, inProgress: 0 },
+        });
+      }
+      if (path.endsWith("/run")) return response({ id: "job_ordinary", status: "IN_QUEUE" });
+      throw new Error("unexpected request");
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await client.confirmOrdinaryStartupQueueEmpty();
+    await client.confirmOrdinaryStartupQueueEmpty();
+    await expect(client.dispatch("ordinary_01", { value: "input" })).resolves.toMatchObject({
+      id: "job_ordinary",
+    });
+  });
+
   it("arms exactly one V2-08 dispatch after a strict empty startup queue proof", async () => {
     const guard = new RunPodDrainGuard();
     const fetch = vi.fn(async (input: string | URL | Request) => {

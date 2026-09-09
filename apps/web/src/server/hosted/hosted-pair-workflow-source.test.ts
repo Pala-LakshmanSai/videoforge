@@ -27,6 +27,10 @@ describe("hosted pair Workflow module loading", () => {
     expect(ordinaryPath).toContain('event: "OBSERVATION_STEP_STARTED"');
     expect(ordinaryPath).toContain('event: "COMPOSITION_READY"');
     expect(ordinaryPath).toContain('event: "ORDINARY_RESUME_STARTING"');
+    expect(ordinaryPath).toContain(
+      "closePoolsWithoutBlockingWorkflow(runtimePool, reconcilerPool)",
+    );
+    expect(source).toContain("Promise.race([");
   });
 
   it("keeps acceptance-only modules behind the acceptance branch", () => {

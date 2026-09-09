@@ -89,16 +89,16 @@ function rows(providerJobId: string | null = "job-1") {
 }
 
 describe("hosted pair live provider wiring", () => {
-  it("proves exact endpoint zero before the first dispatch and primes only once", async () => {
+  it("proves the provider queue empty twice before the first dispatch and primes only once", async () => {
     const order: string[] = [];
-    const confirmDrained = vi.fn(async () => {
-      order.push("zero");
+    const confirmOrdinaryStartupQueueEmpty = vi.fn(async () => {
+      order.push("queue-empty");
     });
     const run = vi.fn(async () => {
       order.push("run");
       return { id: "job-1" };
     });
-    const transport = createDrainPrimedTransport({ confirmDrained } as never, {
+    const transport = createDrainPrimedTransport({ confirmOrdinaryStartupQueueEmpty } as never, {
       run,
       status: vi.fn(),
       cancel: vi.fn(),
@@ -111,9 +111,23 @@ describe("hosted pair live provider wiring", () => {
     } as const;
     await transport.run(request);
     await transport.run(request);
-    expect(order).toEqual(["zero", "zero", "run", "run"]);
-    expect(confirmDrained).toHaveBeenCalledTimes(2);
-    expect(confirmDrained).toHaveBeenCalledWith(30);
+    expect(order).toEqual(["queue-empty", "queue-empty", "run", "run"]);
+    expect(confirmOrdinaryStartupQueueEmpty).toHaveBeenCalledTimes(2);
+  });
+
+  it("classifies a failed pre-send queue proof as definitely unsent", async () => {
+    const transport = createDrainPrimedTransport(
+      { confirmOrdinaryStartupQueueEmpty: vi.fn(async () => Promise.reject(new Error("health"))) },
+      { run: vi.fn(), status: vi.fn(), cancel: vi.fn() },
+    );
+    await expect(
+      transport.run({
+        endpointIdSha256: digest("a"),
+        dispatchToken: "dt-0123456789abcdef0123456789abcdef",
+        requestBodySha256: digest("b"),
+        envelope: {},
+      }),
+    ).rejects.toMatchObject({ code: "REQUEST_REJECTED" });
   });
 
   it("fails disabled before reading endpoint or provider credentials", async () => {

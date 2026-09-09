@@ -22,6 +22,18 @@ type WorkflowParameters = HostedPairWorkflowParameters | V213AcceptanceWorkflowP
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const MAX_OBSERVATIONS = 120;
+const POOL_CLOSE_GRACE_MS = 1_000;
+
+async function closePoolsWithoutBlockingWorkflow(
+  runtimePool: ReturnType<typeof createNeonPool>,
+  reconcilerPool: ReturnType<typeof createNeonPool>,
+): Promise<void> {
+  const closed = Promise.allSettled([runtimePool.end(), reconcilerPool.end()]);
+  await Promise.race([
+    closed,
+    new Promise<void>((resolve) => setTimeout(resolve, POOL_CLOSE_GRACE_MS)),
+  ]);
+}
 
 function scope(value: WorkflowParameters): HostedPairWorkflowParameters {
   const ordinary = value as HostedPairWorkflowParameters;
@@ -160,7 +172,7 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
             return Object.freeze({ state: "MANUAL_RECONCILIATION_REQUIRED" as const });
           return live.reconciler.observe(params, Date.parse(clock) >= Date.parse(params.cancelAt));
         } finally {
-          await Promise.allSettled([runtimePool.end(), reconcilerPool.end()]);
+          await closePoolsWithoutBlockingWorkflow(runtimePool, reconcilerPool);
         }
       });
       if (
