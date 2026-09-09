@@ -618,6 +618,12 @@
       "name": "hosted_project_owner_predispatch_cancellation",
       "filename": "0103_hosted_project_owner_predispatch_cancellation.sql",
       "sha256": "sha256:6d53def7804d0dedaf8fd6288af627f3b32a6af2e57a88b31f2733430449dff0"
+    },
+    {
+      "version": 104,
+      "name": "hosted_v209_expired_qualification_refresh",
+      "filename": "0104_hosted_v209_expired_qualification_refresh.sql",
+      "sha256": "sha256:de82920ea25ddd6894577d24edcc9c882e31de70a059186edc55fa2896ca16d6"
     }
   ]
 }
