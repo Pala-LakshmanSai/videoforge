@@ -2190,8 +2190,12 @@
       "sha256": "sha256:21a44ac96f0d388a095add26b8e0a36d7f1c71e5c4af90d7cc106aae09312938"
     },
     {
+      "path": "packages/control-plane/migrations/0095_hosted_v209_same_generation_candidate_renewal.sql",
+      "sha256": "sha256:b80f8328086247114016f4d53c7a882d5c81e5d3632ced99075fb5f8f188c0f3"
+    },
+    {
       "path": "packages/control-plane/migrations/manifest.json",
-      "sha256": "sha256:6a973692bc3451536d65a056a193504db1d69449562079e8a4f9d393515c5a60"
+      "sha256": "sha256:b8d5eafebc68e62652c4e69677b1ec610000234707fa2a0644e639af101b23fc"
     },
     {
       "path": "packages/control-plane/package.json",
@@ -2283,7 +2287,7 @@
     },
     {
       "path": "packages/control-plane/src/database/vocabulary.ts",
-      "sha256": "sha256:f59a35649b555aff4b53b905bf013ca7c9b9a358fc0ceeae04dcdc50ade123a2"
+      "sha256": "sha256:e40129c8f01b19f5634b3f82bac5592c7f852d041c8ae4b5f1f581e346cc0266"
     },
     {
       "path": "packages/control-plane/src/global-session/index.ts",

@@ -13,6 +13,8 @@ import {
   renderNativeMigration92Sql,
   renderNativeMigration93Sql,
   renderNativeMigration94Sql,
+  renderNativeMigration95Sql,
+  executeNativeDatabaseOnce,
 } from "../../deploy/v2-09/native-replacement-database.mjs";
 
 function fixture(t, target) {
@@ -133,4 +135,36 @@ test("migration94 requires exact93 predecessor ledger and renders revision-scope
   assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
   assert.throws(() => renderNativeMigration93Sql(input), /MANIFEST/);
   assert.throws(() => renderNativeMigration94Sql(fixture(t, 93)), /MANIFEST/);
+});
+
+test("migration95 requires exact94 predecessor ledger and renders candidate renewal", (t) => {
+  const input = fixture(t, 95);
+  const sql = renderNativeMigration95Sql(input);
+  assert.match(sql, /'from_version',94,'to_version',95/);
+  assert.match(sql, /hosted_v209_ordinary_dispatch_candidate_renewals/u);
+  assert.match(sql, /videoforge_renew_hosted_v209_ordinary_candidate/u);
+  assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
+  assert.throws(() => renderNativeMigration94Sql(input), /MANIFEST/);
+  assert.throws(() => renderNativeMigration95Sql(fixture(t, 94)), /MANIFEST/);
+});
+
+test("native execution accepts APPLY_0095 only after operation identity validation", (t) => {
+  const root = mkdtempSync(resolve(tmpdir(), "v209-native-operation-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const credentialPath = resolve(root, "credential");
+  writeFileSync(credentialPath, "https://invalid.example/ignored", { mode: 0o600 });
+  const input = {
+    credentialPath,
+    sql: "",
+    journalPath: resolve(root, "journal.jsonl"),
+    expectedSqlSha256: databaseBytesHash(""),
+  };
+  assert.throws(
+    () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0095" }),
+    /DATABASE_IDENTITY/,
+  );
+  assert.throws(
+    () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0096" }),
+    /OPERATION/,
+  );
 });

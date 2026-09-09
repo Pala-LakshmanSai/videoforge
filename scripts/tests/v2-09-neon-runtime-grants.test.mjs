@@ -25,6 +25,11 @@ test("V2-09 runtime grants rebuild a closed pre-V2-10 function allowlist", () =>
     "videoforge_materialize_hosted_v209_system_avatar_reference",
   ])
     assert.match(source, new RegExp(required, "u"));
+  assert.match(
+    source,
+    /\('videoforge_renew_hosted_v209_ordinary_candidate\(uuid,uuid,uuid,uuid,uuid,uuid,integer,integer,text,uuid,uuid\)'\)/u,
+  );
+  assert.doesNotMatch(source, /videoforge_effective_hosted_v209_candidate/u);
   assert.doesNotMatch(source, /videoforge_[A-Za-z0-9_]*v21[0-3]/u);
   // The hosted runtime needs tenant table access, but never blanket table/sequence powers.
   assert.doesNotMatch(source, /GRANT\s+ALL(?:\s+PRIVILEGES)?\s+ON/iu);

@@ -182,6 +182,7 @@ INSERT INTO v209_runtime_function_allowlist(signature) VALUES
   ('videoforge_record_hosted_prompt_scene(uuid,jsonb)'),
   ('videoforge_recover_hosted_atomic_pair_tokens(uuid,uuid,uuid)'),
   ('videoforge_redeem_hosted_invite(text,text)'),
+  ('videoforge_renew_hosted_v209_ordinary_candidate(uuid,uuid,uuid,uuid,uuid,uuid,integer,integer,text,uuid,uuid)'),
   ('videoforge_reserve_hosted_style_analysis(uuid,text,uuid)');
 
 SELECT format('GRANT EXECUTE ON FUNCTION public.%s TO %I;',signature,:'runtime_role')
