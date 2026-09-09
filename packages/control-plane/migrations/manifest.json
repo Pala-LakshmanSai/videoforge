@@ -630,6 +630,12 @@
       "name": "hosted_v209_span_cadence_terminal_bound",
       "filename": "0105_hosted_v209_span_cadence_terminal_bound.sql",
       "sha256": "sha256:0ea28256c62d38974967437dbdf91061321b0d16acc007f2a27c21adef5d4972"
+    },
+    {
+      "version": 106,
+      "name": "hosted_v209_renewed_activation_rebind",
+      "filename": "0106_hosted_v209_renewed_activation_rebind.sql",
+      "sha256": "sha256:14a6f96adc6a254c886cd1f91ac985775838d34559ae1bfe98d4bfced3462f27"
     }
   ]
 }
