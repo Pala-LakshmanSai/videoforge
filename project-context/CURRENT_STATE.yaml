@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-09-08"
+updated_at: "2026-09-10"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -29,6 +29,20 @@ current_goal_boundary:
   current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 ACTIVE;9.9 pending"
   approval_evidence: "Current explicit user continuation on2026-09-08; existing bounded authority preserved"
   note: "Same project204814e4-3b86-4ae8-9680-d0bb09689ab1; consumed v4/secret/rebind never replayed. Context and prompts completed once. Queue admission plus ordinary full-payload Worker routing are the active repair; no live GPU request exists yet"
+
+v2_09_live_presend_recovery_2026_09_10:
+  status: "DEPLOYED_AWAITING_FRESH_PROJECT_STAGE6_PROOF"
+  repair_commit: "94703911cc3ab37926e979f2b3a0795f66d0e0ec"
+  worker_version_id: "a41a2b84-83e4-40f5-bdb8-8921c7b32127"
+  activation_id: "7f1c47cc-e25e-452f-9b64-dc1696eab16a"
+  failed_project_id: "febc1b91-509c-45cd-9b6c-6d7575a6925c"
+  failed_generation_id: "bab4dcb9-fb81-41e2-8f41-0dbd4f5bc6b6"
+  exact_cause: "A transient Cloudflare-to-RunPod health read failed before /run; the prior wrapper executed that read after beginSend and collapsed it to REQUEST_REJECTED, permanently failing Mage despite zero assignment. The old Workflow then tried to resume the unsent SoulX row in CLEANUP_ONLY and stopped before reconciliation."
+  repair: "RunPod queue preflight now runs twice immediately before each lane beginSend with no stale success cache; preflight errors remain safely unsent and preserve their cause. Cleanup-only mixed pairs bypass resume and proceed to reconciliation; fully unsent preflight failures remain Workflow-step retryable."
+  validation: "158 focused tests pass; changed files lint clean; production bundle firewall passes. Repository-wide TypeScript remains blocked by five unrelated pre-existing test-only errors."
+  cleanup: "Exact Workflow terminated; three two-lane health reads proved zero queued/in-progress/completed/failed/retried jobs and zero active workers. Atomic cleanup settled both attempts DEAD_LETTER/PERMANENT_FAILED, generation FAILED, lease RELEASED, assignments zero."
+  provider_state: "No /run assignment or GPU job existed for the failed project; deployment/rebind created zero provider actions; paid compute zero and workersMin remains zero."
+  next: "Delete the terminal failed project in Chrome, create one fresh project, and monitor the new Workflow through Stage6/7 assignment and terminal output. Never Retry the failed project."
 
 
 v2_09_same_project_continuation:
