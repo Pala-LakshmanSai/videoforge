@@ -69,6 +69,7 @@ function fixture() {
   );
   qualified.account_id = "1".repeat(32);
   qualified.main = ACTIVATED_MAIN_PATH;
+  qualified.no_bundle = false;
   qualified.assets.directory = ACTIVATED_ASSETS_PATH;
   qualified.r2_buckets[0].bucket_name = "videoforge-assets";
   qualified.workflows[0].name = "videoforge-video-workflow";
@@ -560,6 +561,10 @@ test("executes exact disabled, exact-secret, qualified, bundle, header, and rout
   ]);
   const wranglerArgs = mock.calls.map(({ args }) => args.slice(4));
   assert.equal(
+    wranglerArgs.some((args) => args.includes("--no-bundle")),
+    false,
+  );
+  assert.equal(
     wranglerArgs.filter((args) => args[0] === "deploy" && !args.includes("--dry-run")).length,
     4,
   );
@@ -614,6 +619,33 @@ test("executes exact disabled, exact-secret, qualified, bundle, header, and rout
   const journal = JSON.parse(readFileSync(value.configuration.journalPath, "utf8"));
   assert.equal(journal.state, "QUALIFIED_VERIFIED");
   assert.equal(journal.retained_r2_deleted, false);
+});
+
+test("V2-09 qualified deployment rejects no-bundle configuration before Cloudflare access", async () => {
+  const value = fixture();
+  const qualified = JSON.parse(readFileSync(value.configuration.qualifiedConfigPath, "utf8"));
+  qualified.no_bundle = true;
+  writeFileSync(value.configuration.qualifiedConfigPath, `${JSON.stringify(qualified, null, 2)}\n`);
+  value.configSha256 = hash(readFileSync(value.configuration.qualifiedConfigPath));
+  const mock = harness(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  await assert.rejects(
+    operator.deployCloudflareDisabled.run({
+      authority: authority(value),
+      operationId: "deploy-cloudflare-disabled-bootstrap",
+    }),
+    /QUALIFIED_BUNDLE_MODE_DRIFT/u,
+  );
+  assert.deepEqual(mock.apiCalls, []);
+  assert.deepEqual(mock.calls, []);
 });
 
 test("an unknown qualified deploy outcome is durably reconciled to disabled with no secrets or R2 deletion", async () => {

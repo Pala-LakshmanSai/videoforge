@@ -459,7 +459,12 @@ function qualifiedConfiguration(configuration, authority) {
   // checkout. Validate those bytes as-is; the separately bound artifact root is
   // a relocation-only copy used for path and symlink checks and must not rewrite
   // or re-hash the historical config.
-  validateProductionConfig(value, { mode: "qualified" });
+  // The shared production contract remains no-bundle for frozen V2-13. V2-09 deploys the
+  // generated Vite module graph through Wrangler's bundler so sibling chunks cannot be omitted.
+  if (value.no_bundle !== false) fail("QUALIFIED_BUNDLE_MODE_DRIFT");
+  const validationValue = structuredClone(value);
+  validationValue.no_bundle = true;
+  validateProductionConfig(validationValue, { mode: "qualified" });
   if (predecessorRoot !== undefined) validatePredecessorArtifactTree(predecessorRoot);
   const workflowNames = value.workflows.map(({ name }) => name);
   if (
@@ -1297,9 +1302,9 @@ function snapshotUploadArtifact(qualifiedConfigBytes) {
   const assetsPath = resolve(directory, "assets");
   const configPath = resolve(directory, "qualified-config.json");
   try {
-    mkdirSync(moduleDirectory, { mode: 0o700 });
-    copyImmutableTree(ACTIVATED_MAIN_PATH, modulePath);
-    chmodSync(moduleDirectory, 0o500);
+    // Preserve the complete Vite Worker module graph. The entrypoint imports generated sibling
+    // chunks, so copying only index.js produces a Cloudflare validation error before versioning.
+    copyImmutableTree(dirname(ACTIVATED_MAIN_PATH), moduleDirectory);
     copyImmutableTree(ACTIVATED_ASSETS_PATH, assetsPath);
     writeFileSync(configPath, qualifiedConfigBytes, { flag: "wx", mode: 0o400 });
     chmodSync(directory, 0o500);
@@ -1323,7 +1328,6 @@ function artifactDeployArgs(runtime, context, artifact, { dryRunDirectory } = {}
   return [
     "deploy",
     artifact.modulePath,
-    "--no-bundle",
     "--assets",
     artifact.assetsPath,
     "--config",
