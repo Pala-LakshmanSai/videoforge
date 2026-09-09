@@ -624,6 +624,12 @@
       "name": "hosted_v209_expired_qualification_refresh",
       "filename": "0104_hosted_v209_expired_qualification_refresh.sql",
       "sha256": "sha256:de82920ea25ddd6894577d24edcc9c882e31de70a059186edc55fa2896ca16d6"
+    },
+    {
+      "version": 105,
+      "name": "hosted_v209_span_cadence_terminal_bound",
+      "filename": "0105_hosted_v209_span_cadence_terminal_bound.sql",
+      "sha256": "sha256:0ea28256c62d38974967437dbdf91061321b0d16acc007f2a27c21adef5d4972"
     }
   ]
 }

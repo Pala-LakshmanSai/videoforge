@@ -90,6 +90,9 @@ export function renderNativeMigration103Sql(input) {
 export function renderNativeMigration104Sql(input) {
   return renderExactNativeMigration(input, 104);
 }
+export function renderNativeMigration105Sql(input) {
+  return renderExactNativeMigration(input, 105);
+}
 function renderExactNativeMigration({ migrationRoot, manifestSha256, migrationSha256 }, target) {
   const bytes = readFileSync(resolve(migrationRoot, "manifest.json"));
   if (databaseBytesHash(bytes) !== manifestSha256) fail("MANIFEST_HASH");
@@ -164,6 +167,7 @@ export function executeNativeDatabaseOnce({
       "APPLY_0102",
       "APPLY_0103",
       "APPLY_0104",
+      "APPLY_0105",
       "APPLY_V209_RUNTIME_GRANTS",
       "IMPORT_REPLACEMENT_ACTIVATION",
     ].includes(operation) ||
