@@ -211,7 +211,7 @@ DECLARE
   mage public.serverless_attempts%ROWTYPE;
   soulx public.serverless_attempts%ROWTYPE;
   recovery public.hosted_v209_same_attempt_deadline_recoveries%ROWTYPE;
-  pair_count integer; schedule_anchor timestamptz;
+  pair_count integer; mage_pair_count integer; soulx_pair_count integer; schedule_anchor timestamptz;
 BEGIN
   IF public.videoforge_current_account_id() IS DISTINCT FROM $1 THEN
     RAISE EXCEPTION 'tenant mismatch' USING ERRCODE='42501';
@@ -227,7 +227,15 @@ BEGIN
   SELECT count(*) INTO pair_count FROM public.serverless_attempts a
    WHERE a.account_id=$1 AND a.workspace_id=$2 AND a.generation_request_id=$3
      AND a.lane IN ('mage_image','soulx_avatar');
-  IF pair_count NOT IN (0,2) THEN
+  SELECT count(*) FILTER (WHERE a.lane='mage_image'),count(*) FILTER (WHERE a.lane='soulx_avatar')
+    INTO mage_pair_count,soulx_pair_count
+    FROM public.serverless_attempts a
+   WHERE a.account_id=$1 AND a.workspace_id=$2 AND a.generation_request_id=$3
+     AND a.lane IN ('mage_image','soulx_avatar');
+  IF pair_count NOT IN (0,2)
+     OR mage_pair_count NOT IN (0,1) OR soulx_pair_count NOT IN (0,1)
+     OR (pair_count=2 AND (mage_pair_count<>1 OR soulx_pair_count<>1))
+     OR (pair_count=0 AND (mage_pair_count<>0 OR soulx_pair_count<>0)) THEN
     RAISE EXCEPTION 'partial hosted pair invalid' USING ERRCODE='23514';
   END IF;
   existing_pair:=pair_count=2;
@@ -253,6 +261,7 @@ BEGIN
     IF claim.id IS NULL OR request.id IS NULL
        OR recovery.project_id<>request.project_id
        OR recovery.project_revision_id<>request.project_revision_id
+       OR recovery.claim_id<>claim.id
        OR recovery.lease_id<>claim.lease_id
        OR claim.project_id<>request.project_id
        OR claim.project_revision_id<>request.project_revision_id
@@ -271,12 +280,19 @@ BEGIN
        OR effective_approval.id IS NULL
        OR effective_approval.lane_bindings IS DISTINCT FROM claim.lane_bindings
        OR effective_approval.expires_at<>recovery.refreshed_approval_expires_at
+       OR lease.generation_request_id<>request.id
+       OR lease.state<>'ACTIVE' OR lease.released_at IS NOT NULL OR lease.release_reason IS NOT NULL
+       OR lease.expires_at<=transaction_timestamp()
        OR lease.version<>recovery.lease_version
        OR lease.expires_at<>recovery.refreshed_lease_expires_at
+       OR mage.id IS NULL OR mage.lane<>'mage_image'
+       OR mage.generation_request_id<>request.id
        OR mage.version<>recovery.mage_refreshed_version
        OR mage.created_at<>recovery.mage_refreshed_created_at
        OR mage.deadline_at<>recovery.mage_refreshed_deadline_at
        OR mage.reconciliation_deadline_at<>recovery.mage_refreshed_reconciliation_deadline_at
+       OR soulx.id IS NULL OR soulx.lane<>'soulx_avatar'
+       OR soulx.generation_request_id<>request.id
        OR soulx.version<>recovery.soulx_refreshed_version
        OR soulx.created_at<>recovery.soulx_refreshed_created_at
        OR soulx.deadline_at<>recovery.soulx_refreshed_deadline_at
@@ -376,7 +392,7 @@ DECLARE
   reserved_total numeric;
 BEGIN
   IF public.videoforge_current_account_id() IS DISTINCT FROM supplied_account_id
-     OR supplied_lease_version IS NULL OR supplied_lease_version<1
+     OR supplied_expected_lease_version IS NULL OR supplied_expected_lease_version<1
      OR supplied_expected_candidate_sha256 !~ '^sha256:[0-9a-f]{64}$'
      OR supplied_expected_approval_id IS NULL OR supplied_mage_attempt_id IS NULL
      OR supplied_soulx_attempt_id IS NULL OR supplied_operation_id IS NULL
@@ -530,6 +546,9 @@ BEGIN
      OR claim_approval.account_id<>claim.account_id OR claim_approval.workspace_id<>claim.workspace_id
      OR claim_approval.project_id<>claim.project_id OR claim_approval.project_revision_id<>claim.project_revision_id
      OR claim_approval.generation_request_id<>claim.generation_request_id OR claim_approval.lease_id<>claim.lease_id
+     OR claim_approval.generation_plan_sha256<>claim.generation_plan_sha256
+     OR claim_approval.lane_bindings IS DISTINCT FROM claim.lane_bindings
+     OR claim_approval.maximum_cumulative_finite_cap_usd<>claim.total_cap_usd
      OR base_candidate.id IS NULL OR base_candidate.account_id<>supplied_account_id
      OR base_candidate.workspace_id<>supplied_workspace_id OR base_candidate.project_id<>supplied_project_id
      OR base_candidate.project_revision_id<>supplied_project_revision_id
@@ -554,6 +573,7 @@ BEGIN
      OR effective_approval.expires_at>=db_now+interval '30 minutes'
      OR admission.generation_request_id IS NULL OR NOT admission.no_redispatch
      OR admission.phase_cap_micro_usd<>2000000 OR admission.combined_cap_micro_usd<>17500000
+     OR admission.stop_at>=db_now
      OR renewal_count<>4 OR previous_renewal.renewal_ordinal<>4
      OR previous_renewal.original_candidate_sha256<>base_candidate.candidate_sha256
      OR previous_renewal.original_approval_id<>base_candidate.approval_id
@@ -579,6 +599,7 @@ BEGIN
      OR mage_deployment.worker_count_min<>0 OR mage_deployment.worker_count_max<>1
      OR soulx_deployment.worker_count_min<>0 OR soulx_deployment.worker_count_max<>1
      OR mage_deployment.handler_concurrency<>1 OR soulx_deployment.handler_concurrency<>1
+     OR mage_deployment.request_ttl_seconds<=1800 OR soulx_deployment.request_ttl_seconds<=1800
      OR runtime.id IS NULL OR runtime.generation_request_id<>request.id
      OR runtime.project_id<>supplied_project_id OR runtime.project_revision_id<>supplied_project_revision_id
      OR runtime.stage<>'WAITING_FOR_WORKER' OR runtime.terminal_at IS NOT NULL
@@ -593,7 +614,10 @@ BEGIN
      OR EXISTS(SELECT 1 FROM public.serverless_cost_ledgers row
        WHERE row.account_id=supplied_account_id AND row.workspace_id=supplied_workspace_id
          AND row.attempt_id IN (mage.id,soulx.id)
-         AND (row.reported_usd<>0 OR row.possible_duplicate_usd<>0 OR row.settled_usd<>0
+         AND (row.project_revision_id<>supplied_project_revision_id
+           OR row.owner_type<>'PROJECT_REVISION' OR row.owner_id<>supplied_project_revision_id
+           OR row.estimated_usd<>row.reserved_usd
+           OR row.reported_usd<>0 OR row.possible_duplicate_usd<>0 OR row.settled_usd<>0
            OR row.refunded_usd<>0 OR row.reserved_usd<=0
            OR NOT row.fixed_retained_volume_usd_excluded))
      OR EXISTS(SELECT 1 FROM public.serverless_cost_events event
@@ -601,7 +625,9 @@ BEGIN
          AND ledger.workspace_id=event.workspace_id AND ledger.id=event.ledger_id
        WHERE event.account_id=supplied_account_id AND event.workspace_id=supplied_workspace_id
          AND event.attempt_id IN (mage.id,soulx.id)
-         AND (event.kind<>'RESERVATION' OR event.sequence<>1 OR event.confidence<>'ESTIMATED'
+         AND (event.project_revision_id<>supplied_project_revision_id
+           OR ledger.attempt_id<>event.attempt_id
+           OR event.kind<>'RESERVATION' OR event.sequence<>1 OR event.confidence<>'ESTIMATED'
            OR event.amount_usd<>ledger.reserved_usd))
      OR EXISTS(SELECT 1 FROM public.serverless_predispatch_authorities row
        JOIN public.serverless_attempts attempt ON attempt.id=row.attempt_id
@@ -639,8 +665,6 @@ BEGIN
      OR EXISTS(SELECT 1 FROM public.hosted_pair_zero_worker_observations row
        WHERE row.account_id=supplied_account_id AND row.workspace_id=supplied_workspace_id
          AND row.generation_request_id=request.id)
-     OR EXISTS(SELECT 1 FROM public.render_jobs row
-       WHERE row.workspace_id=supplied_workspace_id AND row.project_revision_id=supplied_project_revision_id)
      OR EXISTS(SELECT 1 FROM public.hosted_v209_same_attempt_deadline_recoveries row
        WHERE row.account_id=supplied_account_id AND row.workspace_id=supplied_workspace_id
          AND row.generation_request_id=request.id)
@@ -755,6 +779,12 @@ BEGIN
   soulx_deadline:=db_now+make_interval(secs=>soulx_deployment.request_ttl_seconds);
   soulx_reconciliation_deadline:=db_now+make_interval(secs=>least(
     soulx_deployment.reconciliation_deadline_seconds,soulx_deployment.request_ttl_seconds));
+  IF renewed_expires_at<=db_now+interval '30 minutes'
+     OR mage_deadline<=db_now+interval '30 minutes'
+     OR soulx_deadline<=db_now+interval '30 minutes' THEN
+    RAISE EXCEPTION 'hosted V2-09 deadline recovery refreshed TTL does not cover schedule horizon'
+      USING ERRCODE='55000';
+  END IF;
   UPDATE public.serverless_attempts SET created_at=db_now,deadline_at=mage_deadline,
     reconciliation_deadline_at=mage_reconciliation_deadline,updated_at=db_now,version=version+1
    WHERE id=mage.id AND account_id=supplied_account_id AND workspace_id=supplied_workspace_id
