@@ -509,7 +509,8 @@ export async function qualifiedHostedRuntimeConfiguration(input: {
   const deployedVersionIdSha256 =
     typeof deployedVersionId === "string" ? await rawSha256(deployedVersionId) : null;
   const enabledConfigSha256 = (input.evidence as Record<string, unknown>).enabledConfigSha256;
-  if (
+  const gateState = evaluateHostedPairProductionGate(verified.gate);
+  const rejected =
     verified.verifierId !== "videoforge-hosted-qualified-gpu-activation-verifier-v1" ||
     verified.accepted !== true ||
     verified.signatureVerified !== true ||
@@ -541,8 +542,22 @@ export async function qualifiedHostedRuntimeConfiguration(input: {
     verified.gate.bindings.envelopeSignerKey !== "VIDEOFORGE_ENVELOPE_SIGNING_KEY" ||
     verified.gate.bindings.providerProofVerifierKey !== "VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY" ||
     verified.gate.bindings.workflowOperatorToken !== "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN" ||
-    evaluateHostedPairProductionGate(verified.gate).state !== "READY"
-  ) {
+    gateState.state !== "READY";
+  if (rejected) {
+    console.info("hosted_qualified_runtime_configuration", {
+      event: "REJECTED",
+      sourceCommitMatches: verified.sourceCommit === disabled.commit,
+      evidenceHashMatches:
+        verified.canonicalEvidenceSha256 === canonicalSha256(input.evidence),
+      activationHashMatches: verified.activationSnapshotSha256 === activationSnapshotSha256,
+      deployedVersionIdSha256,
+      expectedVersionIdSha256: verified.gate.cloudflare.versionIdSha256,
+      enabledConfigSha256,
+      expectedConfigSha256: verified.gate.cloudflare.deployedConfigSha256,
+      databaseObservedAt: verified.databaseObservedAt,
+      databaseExpiresAt: verified.expiresAt,
+      gateState,
+    });
     return disabled;
   }
 
