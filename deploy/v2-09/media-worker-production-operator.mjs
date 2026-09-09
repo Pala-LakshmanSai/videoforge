@@ -22,8 +22,8 @@ import { fileURLToPath } from "node:url";
 import { runCancellableChildProcess } from "../v2-13/full-live-adapters.mjs";
 import { validateReleaseManifest } from "./validate-qualified-production-config.mjs";
 
-export const V209_MEDIA_WORKER_VERSION = "0.1.16";
-export const V209_MEDIA_WORKER_TAG = "media-worker-v0.1.16";
+export const V209_MEDIA_WORKER_VERSION = "0.1.17";
+export const V209_MEDIA_WORKER_TAG = "media-worker-v0.1.17";
 export const V209_MEDIA_WORKER_WORKFLOW = ".github/workflows/media-worker-release.yml";
 export const V209_MEDIA_WORKER_REPOSITORY = "Pala-LakshmanSai/videoforge";
 export const V209_MEDIA_WORKER_SERVICE = "com.videoforge.personal-media-worker";
@@ -58,8 +58,8 @@ const REDIRECT_HOSTS = new Set([
 const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
 const PRODUCTION_FETCH = globalThis.fetch;
 const RELEASE_ASSET_NAMES = Object.freeze([
-  "VideoForge-Worker-0.1.16-Setup.exe",
-  "VideoForge-Worker-0.1.16.dmg",
+  "VideoForge-Worker-0.1.17-Setup.exe",
+  "VideoForge-Worker-0.1.17.dmg",
   "media-worker-release.json",
 ]);
 const WORKFLOW_TIMEOUT_MS = 90 * 60_000;
@@ -67,8 +67,8 @@ const DOWNLOAD_TIMEOUT_MS = 30 * 60_000;
 const HEARTBEAT_TIMEOUT_MS = 3 * 60_000;
 const MAX_JSON_BYTES = 1024 * 1024;
 const RELEASE_ASSET_MAX_BYTES = Object.freeze({
-  "VideoForge-Worker-0.1.16-Setup.exe": 768 * 1024 * 1024,
-  "VideoForge-Worker-0.1.16.dmg": 768 * 1024 * 1024,
+  "VideoForge-Worker-0.1.17-Setup.exe": 768 * 1024 * 1024,
+  "VideoForge-Worker-0.1.17.dmg": 768 * 1024 * 1024,
   "media-worker-release.json": MAX_JSON_BYTES,
 });
 const DEFAULT_CHILD_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
@@ -708,8 +708,8 @@ function validateRelease(release, configuration, mediaWorker, { materializing = 
       fail("RELEASE_ASSET_INVALID");
   }
   const manifestAsset = assets.get("media-worker-release.json");
-  const macosAsset = assets.get("VideoForge-Worker-0.1.16.dmg");
-  const windowsAsset = assets.get("VideoForge-Worker-0.1.16-Setup.exe");
+  const macosAsset = assets.get("VideoForge-Worker-0.1.17.dmg");
+  const windowsAsset = assets.get("VideoForge-Worker-0.1.17-Setup.exe");
   if (
     !materializing &&
     (manifestAsset.digest !== mediaWorker.release_manifest_sha256 ||
@@ -756,8 +756,8 @@ async function inspectMaterializedRelease({ configuration, authority, fetchImpl,
   )
     fail("MATERIALIZATION_MANIFEST_INVALID");
   for (const [platform, name] of [
-    ["windows", "VideoForge-Worker-0.1.16-Setup.exe"],
-    ["macos", "VideoForge-Worker-0.1.16.dmg"],
+    ["windows", "VideoForge-Worker-0.1.17-Setup.exe"],
+    ["macos", "VideoForge-Worker-0.1.17.dmg"],
   ]) {
     const asset = validated.assets.get(name);
     if (
@@ -777,8 +777,8 @@ async function inspectMaterializedRelease({ configuration, authority, fetchImpl,
     release_tag: configuration.releaseTag,
     release: V209_MEDIA_WORKER_VERSION,
     release_manifest_sha256: manifestSha256,
-    installer_asset_sha256: verifiedDigests.get("VideoForge-Worker-0.1.16.dmg"),
-    windows_installer_asset_sha256: verifiedDigests.get("VideoForge-Worker-0.1.16-Setup.exe"),
+    installer_asset_sha256: verifiedDigests.get("VideoForge-Worker-0.1.17.dmg"),
+    windows_installer_asset_sha256: verifiedDigests.get("VideoForge-Worker-0.1.17-Setup.exe"),
     execution_bundle_sha256: manifest.execution_bundle_sha256,
     whisper_model_sha256: manifest.whisper_model_sha256,
     signing_identity_sha256: V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256,
@@ -967,8 +967,8 @@ async function inspectRelease({ configuration, authority, fetchImpl, clock }) {
   )
     fail("MANIFEST_AUTHORITY_DRIFT");
   for (const [platform, name] of [
-    ["windows", "VideoForge-Worker-0.1.16-Setup.exe"],
-    ["macos", "VideoForge-Worker-0.1.16.dmg"],
+    ["windows", "VideoForge-Worker-0.1.17-Setup.exe"],
+    ["macos", "VideoForge-Worker-0.1.17.dmg"],
   ]) {
     const asset = validated.assets.get(name);
     if (
@@ -1009,7 +1009,7 @@ async function workflowRuns(runChild, configuration, cancellationSignal) {
 }
 
 async function publishMediaWorker(context, { configuration, runChild, fetchImpl, clock, sleep }) {
-  if (context.operationId !== "publish-media-worker-0.1.16") fail("OPERATION_ID_INVALID");
+  if (context.operationId !== "publish-media-worker-0.1.17") fail("OPERATION_ID_INVALID");
   const mediaWorker = assertAuthority(context.authority, configuration.sourceCommit, clock);
   const staged = mediaWorker.materialization_mode === V209_MEDIA_WORKER_MATERIALIZATION_MODE;
   const adopting = mediaWorker.materialization_mode === V209_MEDIA_WORKER_EXISTING_RELEASE_MODE;
@@ -1140,7 +1140,7 @@ async function publishMediaWorker(context, { configuration, runChild, fetchImpl,
 }
 
 async function readbackMediaWorker(context, { configuration, fetchImpl, clock }) {
-  if (context.operationId !== "readback-media-worker-0.1.16") fail("OPERATION_ID_INVALID");
+  if (context.operationId !== "readback-media-worker-0.1.17") fail("OPERATION_ID_INVALID");
   const mediaWorker = assertAuthority(context.authority, configuration.sourceCommit, clock);
   const exact = await inspectRelease({
     configuration,
@@ -1576,7 +1576,7 @@ async function installMediaWorker(
   context,
   { configuration, runChild, fetchImpl, clock, sleep, hostPlatform, hostUid, movePath, identities },
 ) {
-  if (context.operationId !== "install-media-worker-0.1.16") fail("OPERATION_ID_INVALID");
+  if (context.operationId !== "install-media-worker-0.1.17") fail("OPERATION_ID_INVALID");
   const mediaWorker = assertAuthority(context.authority, configuration.sourceCommit, clock);
   if (hostPlatform !== "darwin" || !Number.isSafeInteger(hostUid) || hostUid < 0)
     fail("MACOS_REQUIRED");
@@ -1631,7 +1631,7 @@ async function installMediaWorker(
   )
     fail("WORK_ROOT_INVALID");
   const work = mkdtempSync(join(configuration.workRoot, "install-"));
-  const dmg = join(work, "VideoForge-Worker-0.1.16.dmg");
+  const dmg = join(work, "VideoForge-Worker-0.1.17.dmg");
   const mount = join(work, "mount");
   mkdirSync(mount, { mode: 0o700 });
   const targetParent = dirname(configuration.applicationPath);

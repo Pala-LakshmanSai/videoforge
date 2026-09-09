@@ -302,7 +302,7 @@ export async function prepareQualifiedProductionConfig(
         hashV209DryOutputBundle(dryRunOutput, { workerName: "videoforge-production-runtime" }),
       ),
       media_worker_release: {
-        version: "0.1.16",
+        version: "0.1.17",
         manifest_sha256: binding.release.media_worker_release_manifest_sha256,
       },
       lanes: {

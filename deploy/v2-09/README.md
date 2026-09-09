@@ -60,6 +60,6 @@ node deploy/v2-09/execute-qualified-production.mjs \
 ```
 
 Current authority is **read-only preflight only**. Do not run `--execute` or `--cleanup-only`, push
-source, apply migrations or grants, publish/install media-worker 0.1.16, mutate RunPod/Cloudflare/R2,
+source, apply migrations or grants, publish/install media-worker 0.1.17, mutate RunPod/Cloudflare/R2,
 open a paid Chrome journey, or spend until the exact live proposal is separately approved. V2-07
 Stage 6 and V2-08 Stage 7 are frozen qualified predecessors and must not be modified or rerun.
