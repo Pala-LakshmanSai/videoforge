@@ -459,9 +459,13 @@ function qualifiedConfiguration(configuration, authority) {
   // checkout. Validate those bytes as-is; the separately bound artifact root is
   // a relocation-only copy used for path and symlink checks and must not rewrite
   // or re-hash the historical config.
-  // The shared production contract remains no-bundle for frozen V2-13. V2-09 deploys the
-  // generated Vite module graph through Wrangler's bundler so sibling chunks cannot be omitted.
-  if (value.no_bundle !== false) fail("QUALIFIED_BUNDLE_MODE_DRIFT");
+  // Historical predecessor bytes retain the frozen shared no-bundle contract and are accepted
+  // only with their separately verified relocated artifact root. New V2-09 deployments must let
+  // Wrangler bundle the generated Vite module graph so sibling chunks cannot be omitted.
+  if (predecessorRoot === undefined && value.no_bundle !== false)
+    fail("QUALIFIED_BUNDLE_MODE_DRIFT");
+  if (predecessorRoot !== undefined && value.no_bundle !== true)
+    fail("PREDECESSOR_BUNDLE_MODE_DRIFT");
   const validationValue = structuredClone(value);
   validationValue.no_bundle = true;
   validateProductionConfig(validationValue, { mode: "qualified" });

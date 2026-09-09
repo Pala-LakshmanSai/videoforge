@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
   unlinkSync,
   symlinkSync,
@@ -1546,6 +1547,7 @@ test("replacement validates a relocated prior artifact tree without rewriting pi
   const oldConfig = JSON.parse(readFileSync(value.configuration.qualifiedConfigPath));
   const predecessorPath = resolve(value.directory, "prior-qualified.json");
   oldConfig.vars.VIDEOFORGE_COMMIT = "b".repeat(40);
+  oldConfig.no_bundle = true;
   const bytes = JSON.stringify(oldConfig);
   writeFileSync(predecessorPath, bytes, { mode: 0o600 });
   const artifactRootPath = resolve(value.directory, "prior-artifacts");
