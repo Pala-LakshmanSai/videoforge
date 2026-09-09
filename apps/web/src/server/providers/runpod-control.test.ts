@@ -94,6 +94,26 @@ const assertV207ReadbackCategory = async (
 };
 
 describe("RunPod scale-zero control", () => {
+  it("invokes the native serverless fetch through the global receiver", async () => {
+    const nativeFetch = vi.fn(async function (this: unknown) {
+      expect(this).toBe(globalThis);
+      return response(health());
+    });
+    vi.stubGlobal("fetch", nativeFetch);
+    try {
+      const client = new RunPodServerlessJobClient({
+        apiKey: key,
+        endpointId: "endpoint_01",
+        guard: new RunPodDrainGuard(),
+        baseUrl: "http://127.0.0.1:43123",
+      });
+      await client.confirmStartupQueueEmpty();
+      expect(nativeFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("accepts only the bounded zero-idle endpoint policy", () => {
     expect(() =>
       assertRunPodEndpointPolicy({

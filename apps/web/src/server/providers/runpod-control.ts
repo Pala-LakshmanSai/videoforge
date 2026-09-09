@@ -692,7 +692,10 @@ export class RunPodControlClient {
     if (options.apiKey.trim() !== options.apiKey || options.apiKey.length < 20) {
       throw new RunPodControlError("RUNPOD_AUTH_INVALID");
     }
-    this.fetch = options.fetch ?? fetch;
+    // Cloudflare's native fetch is receiver-sensitive when retained as an object property. Wrap
+    // the global call so `this.fetch(...)` cannot invoke the platform function with this client as
+    // its receiver (which surfaces as a TypeError before any HTTP response exists).
+    this.fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
     this.timeoutMs = options.timeoutMs ?? 30_000;
     if (this.baseUrl !== DEFAULT_BASE_URL && !this.baseUrl.startsWith("http://127.0.0.1:")) {
@@ -1593,7 +1596,9 @@ export class RunPodServerlessJobClient {
       throw new RunPodControlError("RUNPOD_AUTH_INVALID");
     }
     if (!ID.test(options.endpointId)) throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
-    this.fetch = options.fetch ?? fetch;
+    // Preserve the platform global receiver. Directly retaining native fetch and later calling it
+    // as `this.fetch(...)` makes Cloudflare bind this client as the receiver and throw TypeError.
+    this.fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
     this.baseUrl = options.baseUrl ?? "https://api.runpod.ai/v2";
     if (
       this.baseUrl !== "https://api.runpod.ai/v2" &&
