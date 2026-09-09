@@ -193,6 +193,9 @@ test("migration99 requires exact98 predecessor ledger and renders only the fourt
   assert.match(sql, /renewal_ordinal IN \(2,3,4\)/u);
   assert.match(sql, /previous_candidate_sha256 IS DISTINCT FROM previous_candidate_sha/u);
   assert.match(sql, /db_now,4,candidate\.candidate_sha256,candidate\.approval_id/u);
+  assert.match(sql, /lease\.expires_at>=db_now\+interval ''30 minutes''/u);
+  assert.match(sql, /candidate\.expires_at>=db_now\+interval ''30 minutes''/u);
+  assert.match(sql, /approval\.expires_at>=db_now\+interval ''30 minutes''/u);
   assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
   assert.throws(() => renderNativeMigration98Sql(input), /MANIFEST/);
   assert.throws(() => renderNativeMigration99Sql(fixture(t, 98)), /MANIFEST/);

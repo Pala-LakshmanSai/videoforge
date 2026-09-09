@@ -151,10 +151,22 @@ BEGIN
   patched:=replace(patched,
     'renewed_candidate_document,renewed_expires_at,supplied_audit_id,db_now,3,candidate.candidate_sha256,candidate.approval_id);',
     'renewed_candidate_document,renewed_expires_at,supplied_audit_id,db_now,4,candidate.candidate_sha256,candidate.approval_id);');
+  patched:=replace(patched,'lease.expires_at>db_now',
+    'lease.expires_at>=db_now+interval ''30 minutes''');
+  patched:=replace(patched,'candidate.expires_at>db_now',
+    'candidate.expires_at>=db_now+interval ''30 minutes''');
+  patched:=replace(patched,'approval.expires_at>db_now',
+    'approval.expires_at>=db_now+interval ''30 minutes''');
   IF patched=definition OR position('migration.version=98' IN patched)>0
      OR position('generation_request_id=request.id)<>2' IN patched)>0
      OR position('candidate:=public.videoforge_effective_hosted_v209_candidate' IN patched)=0
-     OR position('db_now,4,candidate.candidate_sha256,candidate.approval_id' IN patched)=0 THEN
+     OR position('db_now,4,candidate.candidate_sha256,candidate.approval_id' IN patched)=0
+     OR position('lease.expires_at>db_now' IN patched)>0
+     OR position('candidate.expires_at>db_now' IN patched)>0
+     OR position('approval.expires_at>db_now' IN patched)>0
+     OR position('lease.expires_at>=db_now+interval ''30 minutes''' IN patched)=0
+     OR position('candidate.expires_at>=db_now+interval ''30 minutes''' IN patched)=0
+     OR position('approval.expires_at>=db_now+interval ''30 minutes''' IN patched)=0 THEN
     RAISE EXCEPTION 'hosted V2-09 fourth renewal patch failed' USING ERRCODE='55000';
   END IF;
   EXECUTE patched;
