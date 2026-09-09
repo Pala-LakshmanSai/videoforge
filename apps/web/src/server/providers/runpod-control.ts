@@ -1641,7 +1641,16 @@ export class RunPodServerlessJobClient {
         body,
         signal: AbortSignal.timeout(this.timeoutMs),
       });
-    } catch {
+    } catch (error) {
+      console.error("runpod_serverless_request_transport_failure", {
+        method,
+        path,
+        causeName: error instanceof Error ? error.name : "unknown",
+        causeCode:
+          error && typeof error === "object" && "code" in error
+            ? String((error as { readonly code?: unknown }).code)
+            : null,
+      });
       throw new RunPodControlError(
         method === "GET" ? "RUNPOD_READ_AMBIGUOUS" : "RUNPOD_MUTATION_AMBIGUOUS",
       );
