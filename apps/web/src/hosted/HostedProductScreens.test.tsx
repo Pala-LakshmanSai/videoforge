@@ -393,9 +393,9 @@ describe("hosted product journey", () => {
         true,
       ),
     ).toBe("Estimate pending");
-    expect(
-      hostedPreflightEstimateText({ projected_usd: 0.73, cap_usd: null }, true),
-    ).toBe("Estimated variable cost $0.73");
+    expect(hostedPreflightEstimateText({ projected_usd: 0.73, cap_usd: null }, true)).toBe(
+      "Estimated variable cost $0.73",
+    );
     expect(hostedPreflightEstimateText({ projected_usd: 0.73 }, false)).toBe(
       "No paid video generation in this beta",
     );
@@ -2032,6 +2032,78 @@ describe("hosted product journey", () => {
       fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
     ).toBe(false);
     expect(screen.queryByRole("link", { name: "Review video" })).not.toBeInTheDocument();
+  });
+
+  it("re-arms one automatic render handoff for a successor revision reusing ASR evidence", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const predecessorRevisionId = "22222222-2222-4222-8222-222222222222";
+    const successorRevisionId = "33333333-3333-4333-8333-333333333333";
+    const asrId = "44444444-4444-4444-8444-444444444444";
+    let revisionId = predecessorRevisionId;
+    let renderCalls = 0;
+    const detail = () => ({
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-09-06T10:00:00.000Z",
+        revision_id: revisionId,
+        revision_state: "LOCKED",
+      },
+      attempts: [
+        {
+          id: asrId,
+          kind: "ASR" as const,
+          state: "SUCCEEDED",
+          version: 1,
+          created_at: "2026-09-06T10:00:00.000Z",
+          updated_at: "2026-09-06T10:01:00.000Z",
+          terminal_at: "2026-09-06T10:01:00.000Z",
+          output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+          approved_at: null,
+          preview_url: null,
+        },
+      ],
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
+      gpu_readiness: gpuReadiness,
+      voiceover_context: {
+        id: "55555555-5555-4555-8555-555555555555",
+        state: "SUCCEEDED" as const,
+        transcript_hash: `sha256:${"b".repeat(64)}`,
+        context_hash: `sha256:${"c".repeat(64)}`,
+        context_document: { primary_topic: "Private project" },
+        reserved_cost_micro_usd: 10_000,
+        reported_cost_micro_usd: 1_000,
+      },
+      generation: null,
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/render")) {
+        renderCalls += 1;
+        return Response.json(
+          {
+            error: {
+              code: "HOSTED_PROJECT_PLANNING_FAILED",
+              message: "Video planning could not finish. Your transcript is saved; try again.",
+            },
+          },
+          { status: 409 },
+        );
+      }
+      return Response.json(detail());
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(
+      await screen.findByText(/generation planning could not be verified/u),
+    ).toBeInTheDocument();
+    expect(renderCalls).toBe(1);
+
+    revisionId = successorRevisionId;
+    fireEvent.click(screen.getByRole("button", { name: "Refresh now" }));
+    await waitFor(() => expect(renderCalls).toBe(2));
+    await new Promise((resolve) => window.setTimeout(resolve, 25));
+    expect(renderCalls).toBe(2);
   });
 
   it("plans after successful ASR and remains provider-inert while GPU lanes are unqualified", async () => {

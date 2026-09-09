@@ -5788,6 +5788,7 @@ async function projectDetail(
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
             AND project.status = 'ACTIVE'
             AND project.project_kind = 'USER'
+            AND revision.status = 'LOCKED'
           ORDER BY revision.revision_number DESC
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId],
@@ -5828,8 +5829,9 @@ async function projectDetail(
             AND review.workspace_id = attempt.workspace_id
             AND review.render_attempt_id = attempt.id
           WHERE attempt.account_id = $1 AND attempt.workspace_id = $2 AND attempt.project_id = $3
+            AND attempt.project_revision_id = $4
           ORDER BY attempt.created_at`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const voiceoverContext = await transaction.query(
         `SELECT context.id, context.state, context.transcript_hash, context.context_hash,
@@ -6009,8 +6011,9 @@ async function projectDetail(
            FROM generation_requests AS request
           WHERE request.account_id = $1 AND request.workspace_id = $2
             AND request.project_id = $3
+            AND request.project_revision_id = $4
           ORDER BY request.created_at DESC LIMIT 1`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const runtime = await transaction.query(
         `SELECT runtime.id, runtime.stage, runtime.admitted_at, runtime.prepared_at,
@@ -6035,11 +6038,12 @@ async function projectDetail(
             AND lane.runtime_id = runtime.id
           WHERE runtime.account_id = $1 AND runtime.workspace_id = $2
             AND runtime.project_id = $3
+            AND runtime.project_revision_id = $4
           GROUP BY runtime.id, runtime.stage, runtime.admitted_at, runtime.prepared_at,
                    runtime.terminal_at, runtime.terminal_reason, runtime.updated_at,
                    runtime.created_at
           ORDER BY runtime.created_at DESC LIMIT 1`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const serverlessAttempts = await transaction.query(
         `SELECT attempt.id, attempt.lane, attempt.state, attempt.attempt_ordinal,
@@ -6066,8 +6070,9 @@ async function projectDetail(
             AND ledger.attempt_id = attempt.id
           WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
             AND attempt.project_id = $3
+            AND attempt.project_revision_id = $4
           ORDER BY attempt.created_at`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const serverlessOutputs = await transaction.query(
         `SELECT output.attempt_id, output.lane, output.artifacts, output.accepted_at
@@ -6118,8 +6123,9 @@ async function projectDetail(
             AND ledger.attempt_id = attempt.id
           WHERE revision.account_id = $1 AND revision.workspace_id = $2
             AND revision.project_id = $3
+            AND revision.id = $4
           GROUP BY revision.id, revision.maximum_cost_micro_usd`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const zeroWorkers = await transaction.query(
         `SELECT count(*) AS evidence_count, max(zero.observed_at) AS observed_at,
@@ -6131,8 +6137,9 @@ async function projectDetail(
             AND request.workspace_id = zero.workspace_id
             AND request.id = zero.generation_request_id
           WHERE zero.account_id = $1 AND zero.workspace_id = $2
-            AND request.project_id = $3`,
-        [scope.account_id, scope.workspace_id, projectId],
+            AND request.project_id = $3
+            AND request.project_revision_id = $4`,
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const failedTasks = await transaction.query(
         `SELECT task.id, task.task_key, task.lane, task.state, task.updated_at
@@ -6147,10 +6154,15 @@ async function projectDetail(
         `SELECT review.render_attempt_id, review.output_checksum_sha256,
                 review.approved_by_user_id, review.approved_at
            FROM hosted_project_reviews AS review
+           JOIN hosted_cpu_job_attempts AS attempt
+             ON attempt.account_id = review.account_id
+            AND attempt.workspace_id = review.workspace_id
+            AND attempt.id = review.render_attempt_id
+            AND attempt.project_revision_id = $4
           WHERE review.account_id = $1 AND review.workspace_id = $2
             AND review.project_id = $3
           ORDER BY review.approved_at DESC LIMIT 1`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       return {
         project: project.rows[0],

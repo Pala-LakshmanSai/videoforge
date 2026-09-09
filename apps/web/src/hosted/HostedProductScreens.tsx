@@ -547,6 +547,13 @@ interface HostedAttempt {
   readonly cost?: HostedCost | null;
 }
 
+function hostedContinuationKey(
+  revisionId: string | undefined,
+  entityId: string | null | undefined,
+): string | null {
+  return revisionId && entityId ? `${revisionId}:${entityId}` : null;
+}
+
 export function transcriptionFailureMessage(code: string | null | undefined): string {
   if (code === "MEDIA_EXECUTION_SUBPROCESS_FAILED") {
     return "Your computer's local transcription process stopped unexpectedly after one bounded recovery attempt. Update the personal media worker before retrying.";
@@ -3460,6 +3467,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       void queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] });
     },
   });
+  const revisionId = query.data?.project.revision_id;
+  const renderHandoffKey = hostedContinuationKey(revisionId, asr?.id);
   useEffect(() => {
     if (
       asr?.state !== "SUCCEEDED" ||
@@ -3487,13 +3496,21 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       asr?.state !== "SUCCEEDED" ||
       query.data?.voiceover_context?.state !== "SUCCEEDED" ||
       render ||
-      renderHandoffAttempt.current === asr.id
+      !renderHandoffKey ||
+      renderHandoffAttempt.current === renderHandoffKey
     ) {
       return;
     }
-    renderHandoffAttempt.current = asr.id;
+    renderHandoffAttempt.current = renderHandoffKey;
     renderHandoff.mutate(asr.id);
-  }, [asr?.id, asr?.state, query.data?.voiceover_context?.state, render?.id, renderHandoff]);
+  }, [
+    asr?.id,
+    asr?.state,
+    renderHandoffKey,
+    query.data?.voiceover_context?.state,
+    render?.id,
+    renderHandoff,
+  ]);
   useEffect(() => {
     const generationId = query.data?.generation?.id;
     const promptStageState = query.data?.stages?.find(

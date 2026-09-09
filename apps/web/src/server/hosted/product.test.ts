@@ -18,6 +18,7 @@ const testState = vi.hoisted(() => {
       revision_state: "DRAFT",
     },
   ];
+  const projectDetailAttemptRows: Record<string, unknown>[] = [];
   const rateLimitRows = [{ allowed: true }];
   const archiveState: {
     rows: Record<string, unknown>[];
@@ -55,6 +56,17 @@ const testState = vi.hoisted(() => {
     }
     if (sql.includes("version.state = 'PUBLISHED'") && sql.includes("FROM image_styles AS style"))
       return { rows: publishedStyleRows, affectedRows: publishedStyleRows.length };
+    if (
+      sql.includes("FROM hosted_cpu_job_attempts AS attempt") &&
+      sql.includes("SELECT attempt.id, attempt.kind, attempt.state, attempt.version") &&
+      sql.includes("ORDER BY attempt.created_at")
+    ) {
+      const revisionScoped = /attempt\.project_revision_id\s*=\s*\$4/u.test(sql);
+      const rows = revisionScoped
+        ? projectDetailAttemptRows.filter((row) => row.project_revision_id === params?.[3])
+        : projectDetailAttemptRows;
+      return { rows, affectedRows: rows.length };
+    }
     if (sql.includes("FROM projects AS project")) return { rows: projectRows, affectedRows: 1 };
     return { rows: [], affectedRows: 0 };
   });
@@ -66,6 +78,7 @@ const testState = vi.hoisted(() => {
   return {
     scopeRows,
     projectRows,
+    projectDetailAttemptRows,
     rateLimitRows,
     archiveState,
     projectArchiveState,
@@ -112,6 +125,13 @@ const PRESET_ID = "44444444-4444-4444-8444-444444444444";
 const config = {
   publicOrigin: ORIGIN,
   neon: { databaseUrl: "postgresql://fixture" },
+  r2: {
+    accountId: "fixture-account",
+    bucketName: "fixture-bucket",
+    region: "auto",
+    accessKeyId: "fixture-access-key",
+    secretAccessKey: "fixture-secret-key",
+  },
   mediaWorkerRelease: { whisperModelSha256: `sha256:${"b".repeat(64)}` },
 } as HostedRuntimeConfiguration;
 const stagingConfig = {
@@ -278,6 +298,74 @@ describe("hosted product route contract", () => {
       expect(commit).toContain("hostedAsrSubmissionIdentity(projectId, revisionId, 1)");
     } finally {
       testState.projectRows[0] = previousProject!;
+    }
+  });
+
+  it("does not inherit a predecessor ASR attempt when the latest locked revision is selected", async () => {
+    const previousProject = testState.projectRows[0];
+    const previousAttempts = [...testState.projectDetailAttemptRows];
+    const predecessorRevisionId = "22222222-2222-4222-8222-222222222222";
+    const successorRevisionId = "33333333-3333-4333-8333-333333333333";
+    testState.projectRows[0] = {
+      ...previousProject,
+      id: PROJECT_ID,
+      revision_id: successorRevisionId,
+      revision_number: 2,
+      revision_state: "LOCKED",
+    };
+    testState.projectDetailAttemptRows.splice(0, testState.projectDetailAttemptRows.length, {
+      id: "44444444-4444-4444-8444-444444444444",
+      project_revision_id: predecessorRevisionId,
+      kind: "ASR",
+      state: "SUCCEEDED",
+      version: 1,
+      created_at: "2026-09-09T00:00:00.000Z",
+      updated_at: "2026-09-09T00:01:00.000Z",
+      submitted_at: "2026-09-09T00:00:01.000Z",
+      terminal_at: "2026-09-09T00:01:00.000Z",
+      result_checksum_sha256: null,
+      result_content_length: null,
+      result_object_key: null,
+      result_content_type: "application/json",
+      replay_count: 0,
+      error_code: null,
+      object_key: null,
+      content_type: null,
+      content_length: null,
+      output_checksum_sha256: null,
+      approved_at: null,
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result?.json()) as {
+        attempts: Array<{ kind?: string }>;
+        stages: Array<{ id?: string; status?: string }>;
+      };
+      expect(body.attempts.some((attempt) => attempt.kind === "ASR")).toBe(false);
+      expect(body.stages).toContainEqual(
+        expect.objectContaining({ id: "transcription", status: "WAITING" }),
+      );
+      expect(
+        testState.query.mock.calls.some(
+          ([sql, params]) =>
+            String(sql).includes("FROM hosted_cpu_job_attempts AS attempt") &&
+            String(sql).includes("attempt.project_revision_id = $4") &&
+            params?.[3] === successorRevisionId,
+        ),
+      ).toBe(true);
+    } finally {
+      testState.projectRows[0] = previousProject!;
+      testState.projectDetailAttemptRows.splice(
+        0,
+        testState.projectDetailAttemptRows.length,
+        ...previousAttempts,
+      );
     }
   });
 
