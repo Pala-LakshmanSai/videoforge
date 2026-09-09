@@ -155,7 +155,16 @@ export async function ensureHostedPairWorkflow(
   } catch (error) {
     if (error instanceof HostedDispatchCoordinationError) throw error;
     const existing = await workflow.get(id);
-    await existing.status();
+    const status = await existing.status();
+    const state =
+      status && typeof status === "object" && !Array.isArray(status)
+        ? (status as Record<string, unknown>).status
+        : null;
+    if (["errored", "terminated"].includes(typeof state === "string" ? state : "")) {
+      if (!existing.restart)
+        throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_RESTART_UNAVAILABLE");
+      await existing.restart();
+    }
     return Object.freeze({ id, recovered: true });
   }
 }

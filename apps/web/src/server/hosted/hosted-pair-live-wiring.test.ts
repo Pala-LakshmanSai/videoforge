@@ -11,6 +11,7 @@ import {
   createHostedPairLiveComposition,
   createHostedRunPodObservationSource,
   createHostedRunPodPair,
+  ensureHostedPairWorkflow,
 } from "./hosted-pair-live-wiring";
 import type { HostedPairLane } from "./hosted-pair-runtime-executor";
 
@@ -254,6 +255,52 @@ describe("hosted pair live provider wiring", () => {
     ).toHaveLength(1);
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+
+  it("restarts the same deterministic Workflow after Cloudflare terminated it", async () => {
+    const restart = vi.fn(async () => undefined);
+    const workflow = {
+      create: vi.fn(async () => {
+        throw new Error("workflow id already exists");
+      }),
+      get: vi.fn(async () => ({
+        status: vi.fn(async () => ({ status: "terminated" })),
+        restart,
+        sendEvent: vi.fn(async () => undefined),
+      })),
+    };
+    const runtimeDatabase = {
+      transaction: vi.fn(async (callback) =>
+        callback({
+          query: vi.fn(async (sql: string) => ({
+            rows: sql.includes("current_user")
+              ? [{ principal: "runtime_login" }]
+              : [
+                  {
+                    existing_pair: true,
+                    cancel_at: "2026-09-09T15:40:36.013Z",
+                    stop_at: "2026-09-09T15:50:36.013Z",
+                  },
+                ],
+          })),
+        }),
+      ),
+    };
+    const reconcilerDatabase = {
+      transaction: vi.fn(async (callback) =>
+        callback({ query: vi.fn(async () => ({ rows: [{ principal: "reconciler_login" }] })) }),
+      ),
+    };
+
+    await expect(
+      ensureHostedPairWorkflow(
+        { ...(await enabledEnvironment()), HOSTED_PAIR_WORKFLOW: workflow },
+        runtimeDatabase as never,
+        reconcilerDatabase as never,
+        ids,
+      ),
+    ).resolves.toEqual({ id: `hosted-pair-${ids.generationRequestId}`, recovered: true });
+    expect(restart).toHaveBeenCalledOnce();
   });
 
   it("observes exact known jobs and never invents terminal state", async () => {

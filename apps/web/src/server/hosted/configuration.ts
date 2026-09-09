@@ -11,7 +11,11 @@ export interface HostedWorkflowBinding {
   create(options?: { id?: string; params?: unknown }): Promise<{ id: string }>;
   get(
     id: string,
-  ): Promise<{ status(): Promise<unknown>; sendEvent(event: unknown): Promise<void> }>;
+  ): Promise<{
+    status(): Promise<unknown>;
+    restart?(): Promise<void>;
+    sendEvent(event: unknown): Promise<void>;
+  }>;
 }
 
 export interface HostedR2BucketBinding {
