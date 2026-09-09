@@ -84,7 +84,12 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
     const params = pair!;
 
     for (let observation = 0; observation < MAX_OBSERVATIONS; observation += 1) {
+      console.info("hosted_pair_workflow", { event: "OBSERVATION_STEP_SCHEDULING", observation });
       const result = await step.do(`hosted pair observation ${observation}`, async () => {
+        console.info("hosted_pair_workflow", {
+          event: "OBSERVATION_STEP_STARTED",
+          observation,
+        });
         const runtimePool = createNeonPool(this.env.DATABASE_URL!);
         const reconcilerPool = createNeonPool(this.env.VIDEOFORGE_RECONCILER_DATABASE_URL!);
         try {
@@ -103,12 +108,14 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
                 submission,
               }),
           });
+          console.info("hosted_pair_workflow", { event: "COMPOSITION_STARTING", observation });
           const live = await createHostedPairLiveComposition(
             this.env,
             runtimeDatabase,
             reconcilerDatabase,
             (workflowScope) => renderHandoff.ensure(workflowScope),
           );
+          console.info("hosted_pair_workflow", { event: "COMPOSITION_READY", observation });
           if (observation === 0) {
             const ordinary = await hasHostedV209OrdinaryDispatchCandidate(runtimeDatabase, {
               accountId: params.accountId,
@@ -123,7 +130,9 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
               });
               if (gate.state !== "READY") return gate;
               try {
+                console.info("hosted_pair_workflow", { event: "ORDINARY_RESUME_STARTING" });
                 await resumeHostedV209OrdinaryPair(this.env, runtimeDatabase, params);
+                console.info("hosted_pair_workflow", { event: "ORDINARY_RESUME_COMPLETE" });
               } catch {
                 // SENT/unknown acknowledgement is deliberately not sendable. Stop this Workflow
                 // step durably so an operator can reconcile before any further provider action.

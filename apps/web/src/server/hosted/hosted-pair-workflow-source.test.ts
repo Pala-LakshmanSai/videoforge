@@ -4,6 +4,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(resolve(process.cwd(), "worker/hosted-pair-workflow.ts"), "utf8");
+const liveWiringSource = readFileSync(
+  resolve(process.cwd(), "src/server/hosted/hosted-pair-live-wiring.ts"),
+  "utf8",
+);
 
 describe("hosted pair Workflow module loading", () => {
   it("uses only statically loaded modules after entering the ordinary pair path", () => {
@@ -15,6 +19,14 @@ describe("hosted pair Workflow module loading", () => {
     expect(source).toContain("import { createHostedV209RenderHandoff }");
     expect(source).toContain("import { hasHostedV209OrdinaryDispatchCandidate }");
     expect(source).toContain("import { scheduleHostedRenderSubmission }");
+    expect(liveWiringSource).toContain("createHostedV209TerminalOutputIngestor,");
+    expect(liveWiringSource).toContain("HostedSqlFunctionV209TerminalOutputStore,");
+    expect(liveWiringSource).not.toContain(
+      'await import("./hosted-v209-terminal-output-ingestor")',
+    );
+    expect(ordinaryPath).toContain('event: "OBSERVATION_STEP_STARTED"');
+    expect(ordinaryPath).toContain('event: "COMPOSITION_READY"');
+    expect(ordinaryPath).toContain('event: "ORDINARY_RESUME_STARTING"');
   });
 
   it("keeps acceptance-only modules behind the acceptance branch", () => {

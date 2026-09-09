@@ -7,6 +7,10 @@ import { HostedSqlAtomicPairPredispatch } from "./hosted-atomic-pair-predispatch
 import { HostedSqlV209OrdinaryPredispatch } from "./hosted-v209-ordinary-predispatch";
 import { HostedSqlV209OrdinaryLaneMaterializer } from "./hosted-v209-ordinary-materialization";
 import { HostedSqlV209OrdinaryRuntimeStore } from "./hosted-v209-ordinary-runtime-store";
+import {
+  createHostedV209TerminalOutputIngestor,
+  HostedSqlFunctionV209TerminalOutputStore,
+} from "./hosted-v209-terminal-output-ingestor";
 import type {
   HostedR2BucketBinding,
   HostedRuntimeConfiguration,
@@ -1096,8 +1100,6 @@ export async function createHostedPairLiveComposition(
   if (!environment.PRIVATE_ARTIFACTS) {
     throw new HostedDispatchCoordinationError("HOSTED_PAIR_PROVENANCE_RECEIPT_BINDINGS_MISSING");
   }
-  const { createHostedV209TerminalOutputIngestor, HostedSqlFunctionV209TerminalOutputStore } =
-    await import("./hosted-v209-terminal-output-ingestor");
   const terminalOutput = createHostedV209TerminalOutputIngestor({
     database: reconcilerDatabase,
     bucket: environment.PRIVATE_ARTIFACTS,
