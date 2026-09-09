@@ -54,6 +54,24 @@ describe("V2-09 exact short live admission", () => {
     expect(result.billing.cumulativeEndpointBillingMicroUsd).toBe(2_214_659);
   });
 
+  it.each([
+    ["catalog", "V209_SHORT_CATALOG_FETCH_FAILED"],
+    ["billing", "V209_SHORT_BILLING_FETCH_FAILED"],
+  ])("classifies a rejected %s provider request", async (endpoint, code) => {
+    const fetchPort = async (input: string | URL | Request) => {
+      if (String(input).includes(endpoint === "catalog" ? "catalog/gpus" : "billing/endpoints"))
+        throw new TypeError("fetch failed");
+      return Response.json([]);
+    };
+    await expect(
+      readV209ShortProviderObservation(
+        "r".repeat(32),
+        async () => new Date(Date.now() + 1_000).toISOString(),
+        fetchPort,
+      ),
+    ).rejects.toThrow(code);
+  });
+
   it("binds every segment/artifact and counts split right-image as Mage work", async () => {
     const admitted = await freezeV209ShortLiveAdmission(plan(), observation());
     expect(admitted.work.mage_image).toEqual([

@@ -70,6 +70,19 @@ export interface V209ShortAdmissionObservation {
 
 type FetchPort = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
+async function readProviderEndpoint(
+  fetchPort: FetchPort,
+  input: string,
+  init: RequestInit,
+  failureCode: string,
+): Promise<Response> {
+  try {
+    return await fetchPort(input, init);
+  } catch {
+    throw new RangeError(failureCode);
+  }
+}
+
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -88,11 +101,14 @@ export async function readV209ShortProviderObservation(
     throw new RangeError("V209_SHORT_PROVIDER_BINDING_INVALID");
   const providerObservedAt = new Date().toISOString();
   const [catalogResponse, billingResponse] = await Promise.all([
-    fetchPort(
+    readProviderEndpoint(
+      fetchPort,
       "https://api.runpod.io/v2/catalog/gpus?include=AVAILABILITY&product=POD&count=1&cloud=SECURE",
       { headers: { authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(30_000) },
+      "V209_SHORT_CATALOG_FETCH_FAILED",
     ),
-    fetchPort(
+    readProviderEndpoint(
+      fetchPort,
       `https://rest.runpod.io/v1/billing/endpoints?${new URLSearchParams({
         bucketSize: "hour",
         grouping: "endpointId",
@@ -100,6 +116,7 @@ export async function readV209ShortProviderObservation(
         endTime: providerObservedAt,
       })}`,
       { headers: { authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(15_000) },
+      "V209_SHORT_BILLING_FETCH_FAILED",
     ),
   ]);
   if (!catalogResponse.ok || !billingResponse.ok)
