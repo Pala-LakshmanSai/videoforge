@@ -271,7 +271,8 @@ describe("RunPod scale-zero control", () => {
 
   it("arms ordinary dispatch from two strict empty-queue proofs despite overlapping worker counters", async () => {
     const guard = new RunPodDrainGuard();
-    const fetch = vi.fn(async (input: string | URL | Request) => {
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(new Headers(init?.headers).get("connection")).toBeNull();
       const path = new URL(String(input)).pathname;
       if (path.endsWith("/health")) {
         return response({
@@ -294,6 +295,34 @@ describe("RunPod scale-zero control", () => {
     await expect(client.dispatch("ordinary_01", { value: "input" })).resolves.toMatchObject({
       id: "job_ordinary",
     });
+  });
+
+  it("does not call /run when the ordinary startup preflight fails", async () => {
+    const guard = new RunPodDrainGuard();
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(new Headers(init?.headers).get("connection")).toBeNull();
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/health")) {
+        return response({ workers: { stale: "ignored" }, jobs: { inQueue: 1, inProgress: 0 } });
+      }
+      if (path.endsWith("/run")) return response({ id: "job_must_not_exist", status: "IN_QUEUE" });
+      throw new Error("unexpected request");
+    });
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+
+    await expect(async () => {
+      await client.confirmOrdinaryStartupQueueEmpty();
+      await client.dispatch("ordinary_preflight_failed", { value: "must-not-send" });
+    }).rejects.toThrow("RUNPOD_STARTUP_QUEUE_NOT_CONFIRMED");
+    expect(
+      fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith("/run")),
+    ).toHaveLength(0);
   });
 
   it("arms exactly one V2-08 dispatch after a strict empty startup queue proof", async () => {

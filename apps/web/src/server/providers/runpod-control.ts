@@ -1636,7 +1636,6 @@ export class RunPodServerlessJobClient {
         method,
         headers: {
           authorization: this.options.apiKey,
-          connection: "close",
           ...(body === undefined ? {} : { "content-type": "application/json" }),
         },
         body,
