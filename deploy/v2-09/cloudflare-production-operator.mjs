@@ -993,6 +993,15 @@ function normalizedVersionProjection(
   requireR2,
   expectedSecretNames,
 ) {
+  const limitSources = [version.limits, version.resources?.script_runtime?.limits].filter(
+    (item) => item && typeof item === "object" && !Array.isArray(item),
+  );
+  if (
+    limitSources.length !== 1 ||
+    Object.keys(limitSources[0]).sort().join(",") !== "cpu_ms" ||
+    limitSources[0].cpu_ms !== 30_000
+  )
+    fail("ACTIVE_VERSION_CPU_LIMIT_DRIFT");
   const expectedVars = Object.freeze({
     ...qualified.vars,
     VIDEOFORGE_GPU_TRANSPORT: expectedTransport,
@@ -1083,6 +1092,7 @@ function normalizedVersionProjection(
   )
     fail("ACTIVE_VERSION_CLOSED_WORLD_DRIFT");
   return Object.freeze({
+    limits: Object.freeze({ cpu_ms: 30_000 }),
     vars: Object.fromEntries([...variables].sort(([left], [right]) => left.localeCompare(right))),
     bindings: Object.fromEntries(
       [...bindings].sort(([left], [right]) => left.localeCompare(right)),

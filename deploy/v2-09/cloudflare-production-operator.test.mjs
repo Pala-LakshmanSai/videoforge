@@ -830,6 +830,29 @@ test("version readback rejects an unknown typed binding without a binding field"
   );
 });
 
+test("version readback requires the exact production CPU limit", async () => {
+  const value = fixture();
+  const mock = harness(value, {
+    mutateVersionOnce: (version) => ({ ...version, limits: { cpu_ms: 10 } }),
+  });
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  await assert.rejects(
+    operator.deployCloudflareDisabled.run({
+      authority: authority(value),
+      operationId: "deploy-cloudflare-disabled-bootstrap",
+    }),
+    /ACTIVE_VERSION_CPU_LIMIT_DRIFT/u,
+  );
+});
+
 test("port identity binds composed capability, imported source, sanitized config, and dependencies", () => {
   const value = fixture();
   const mock = harness(value);

@@ -6,6 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "no_bundle": true,
   "main": "./worker/production-index.ts",
+  "limits": { "cpu_ms": 30000 },
   "assets": {
     "directory": "./dist-cloudflare/client",
     "binding": "ASSETS",

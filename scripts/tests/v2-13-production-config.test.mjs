@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -92,6 +93,10 @@ test("production template is an exact fail-closed closed-world config", () => {
     gpu_transport: "DISABLED_UNQUALIFIED",
     valid: true,
   });
+  const config = parseProductionConfig(
+    readFileSync(path.join(root, "apps/web/wrangler.production.jsonc"), "utf8"),
+  );
+  assert.deepEqual(config.limits, { cpu_ms: 30_000 });
 });
 
 test("renderer is provider-free dry-run by default", () => {
@@ -281,6 +286,9 @@ test("validator rejects extras, forbidden modes, secrets, and unresolved activat
     },
     (value) => {
       value.vars.DATABASE_URL = "secret";
+    },
+    (value) => {
+      value.limits.cpu_ms = 10;
     },
   ]) {
     const candidate = structuredClone(template);

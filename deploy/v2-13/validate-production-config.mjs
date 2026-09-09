@@ -127,6 +127,7 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
       "assets",
       "compatibility_date",
       "compatibility_flags",
+      "limits",
       "main",
       "name",
       "no_bundle",
@@ -148,6 +149,8 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     config.main !== expectedMain
   )
     fail("Worker entry or compatibility identity drifted");
+  if (!exactKeys(config.limits, ["cpu_ms"]) || config.limits.cpu_ms !== 30_000)
+    fail("Worker CPU limit must remain the exact production value");
   if (
     !exactKeys(config.assets, ["binding", "directory", "not_found_handling", "run_worker_first"]) ||
     config.assets.binding !== "ASSETS" ||
