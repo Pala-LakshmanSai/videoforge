@@ -125,6 +125,15 @@ BEGIN
      OR position('lease.expires_at>db_now' IN definition)=0
      OR position('candidate.expires_at>db_now' IN definition)=0
      OR position('approval.expires_at>db_now' IN definition)=0
+     OR position('AND expires_at<=db_now' IN definition)=0
+     OR (length(definition)-length(replace(definition,'lease.expires_at>db_now','')))
+          /length('lease.expires_at>db_now')<>1
+     OR (length(definition)-length(replace(definition,'candidate.expires_at>db_now','')))
+          /length('candidate.expires_at>db_now')<>1
+     OR (length(definition)-length(replace(definition,'approval.expires_at>db_now','')))
+          /length('approval.expires_at>db_now')<>1
+     OR (length(definition)-length(replace(definition,'AND expires_at<=db_now','')))
+          /length('AND expires_at<=db_now')<>1
      OR position('candidate:=public.videoforge_effective_hosted_v209_candidate' IN definition)=0
      OR position('(SELECT count(*) FROM public.hosted_v209_ordinary_dispatch_candidate_renewals row' IN definition)=0
      OR position('expires_at,audit_id,created_at,renewal_ordinal,previous_candidate_sha256,previous_approval_id)' IN definition)=0
@@ -157,6 +166,8 @@ BEGIN
     'candidate.expires_at>=db_now+interval ''30 minutes''');
   patched:=replace(patched,'approval.expires_at>db_now',
     'approval.expires_at>=db_now+interval ''30 minutes''');
+  patched:=replace(patched,'AND expires_at<=db_now',
+    'AND expires_at<db_now+interval ''30 minutes''');
   IF patched=definition OR position('migration.version=98' IN patched)>0
      OR position('generation_request_id=request.id)<>2' IN patched)>0
      OR position('candidate:=public.videoforge_effective_hosted_v209_candidate' IN patched)=0
@@ -164,9 +175,23 @@ BEGIN
      OR position('lease.expires_at>db_now' IN patched)>0
      OR position('candidate.expires_at>db_now' IN patched)>0
      OR position('approval.expires_at>db_now' IN patched)>0
+     OR position('AND expires_at<=db_now' IN patched)>0
      OR position('lease.expires_at>=db_now+interval ''30 minutes''' IN patched)=0
      OR position('candidate.expires_at>=db_now+interval ''30 minutes''' IN patched)=0
-     OR position('approval.expires_at>=db_now+interval ''30 minutes''' IN patched)=0 THEN
+     OR position('approval.expires_at>=db_now+interval ''30 minutes''' IN patched)=0
+     OR position('AND expires_at<db_now+interval ''30 minutes''' IN patched)=0
+     OR (length(patched)-length(replace(patched,
+          'lease.expires_at>=db_now+interval ''30 minutes''','')))
+          /length('lease.expires_at>=db_now+interval ''30 minutes''')<>1
+     OR (length(patched)-length(replace(patched,
+          'candidate.expires_at>=db_now+interval ''30 minutes''','')))
+          /length('candidate.expires_at>=db_now+interval ''30 minutes''')<>1
+     OR (length(patched)-length(replace(patched,
+          'approval.expires_at>=db_now+interval ''30 minutes''','')))
+          /length('approval.expires_at>=db_now+interval ''30 minutes''')<>1
+     OR (length(patched)-length(replace(patched,
+          'AND expires_at<db_now+interval ''30 minutes''','')))
+          /length('AND expires_at<db_now+interval ''30 minutes''')<>1 THEN
     RAISE EXCEPTION 'hosted V2-09 fourth renewal patch failed' USING ERRCODE='55000';
   END IF;
   EXECUTE patched;

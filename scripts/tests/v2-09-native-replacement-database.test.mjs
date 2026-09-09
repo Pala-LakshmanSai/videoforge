@@ -196,6 +196,9 @@ test("migration99 requires exact98 predecessor ledger and renders only the fourt
   assert.match(sql, /lease\.expires_at>=db_now\+interval ''30 minutes''/u);
   assert.match(sql, /candidate\.expires_at>=db_now\+interval ''30 minutes''/u);
   assert.match(sql, /approval\.expires_at>=db_now\+interval ''30 minutes''/u);
+  assert.match(sql, /AND expires_at<db_now\+interval ''30 minutes''/u);
+  assert.match(sql, /length\(definition\)-length\(replace\(definition,'lease\.expires_at>db_now',''\)\)/u);
+  assert.match(sql, /length\(definition\)-length\(replace\(definition,'AND expires_at<=db_now',''\)\)/u);
   assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
   assert.throws(() => renderNativeMigration98Sql(input), /MANIFEST/);
   assert.throws(() => renderNativeMigration99Sql(fixture(t, 98)), /MANIFEST/);
