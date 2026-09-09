@@ -570,6 +570,12 @@
       "name": "hosted_v209_same_generation_candidate_renewal",
       "filename": "0095_hosted_v209_same_generation_candidate_renewal.sql",
       "sha256": "sha256:b80f8328086247114016f4d53c7a882d5c81e5d3632ced99075fb5f8f188c0f3"
+    },
+    {
+      "version": 96,
+      "name": "hosted_v209_ordinary_pair_jsonb_subtraction",
+      "filename": "0096_hosted_v209_ordinary_pair_jsonb_subtraction.sql",
+      "sha256": "sha256:87b809f4be3a8d25c8aad534346123adf5a99b67d922e45ad7bc20abc34183c7"
     }
   ]
 }
