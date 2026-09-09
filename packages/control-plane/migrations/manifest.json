@@ -660,6 +660,12 @@
       "name": "hosted_v209_custom_avatar_predispatch",
       "filename": "0110_hosted_v209_custom_avatar_predispatch.sql",
       "sha256": "sha256:0c659451b354afe115b3c6d27abbe181aac3aaa5dc2d3453031324adc92fdf04"
+    },
+    {
+      "version": 111,
+      "name": "hosted_v209_outboxed_horizon_recovery",
+      "filename": "0111_hosted_v209_outboxed_horizon_recovery.sql",
+      "sha256": "sha256:91e4c7d3cf798c39cce22bbd8ec460db7d25bae7988d13a9c1cae3ab2188cccd"
     }
   ]
 }
