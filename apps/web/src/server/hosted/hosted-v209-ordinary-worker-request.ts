@@ -9,7 +9,6 @@ const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 const MAX_MAGE_OUTPUT_BYTES = 16 * 1024 * 1024;
 const MAX_SOULX_OUTPUT_BYTES = 128 * 1024 * 1024;
-const HOSTED_V209_SOULX_AVATAR_SOURCE_BYTES = 1_912_005;
 export const HOSTED_V209_SOULX_AVATAR_SOURCE_SHA256 =
   "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83" as Sha256;
 export const HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS = 3600;
@@ -266,15 +265,14 @@ export async function materializeV209OrdinaryWorkerRequest(
     const avatarSha256 = sha(first.avatarSourceSha256);
     if (
       first.avatarSourceContentType !== "image/png" ||
-      avatarSha256 !== HOSTED_V209_SOULX_AVATAR_SOURCE_SHA256 ||
-      integer(first.avatarSourceContentLength, 1) !== HOSTED_V209_SOULX_AVATAR_SOURCE_BYTES ||
+      integer(first.avatarSourceContentLength, 1) < 1 ||
       input.work.some(
         (item) =>
           item.avatarSourceAssetId !== avatarAssetId ||
           item.avatarSourceObjectKey !== avatarObjectKey ||
           item.avatarSourceSha256 !== avatarSha256 ||
           item.avatarSourceContentType !== "image/png" ||
-          item.avatarSourceContentLength !== HOSTED_V209_SOULX_AVATAR_SOURCE_BYTES ||
+          item.avatarSourceContentLength !== first.avatarSourceContentLength ||
           item.spanAudioContentType !== "audio/wav" ||
           item.spanAudioSampleRateHz !== 48_000 ||
           item.spanAudioChannels !== 1 ||

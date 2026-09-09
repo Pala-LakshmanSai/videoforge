@@ -119,7 +119,7 @@ describe("ordinary V2-09 immutable worker request", () => {
     expect(ports.signGenerated).toHaveBeenCalledOnce();
   });
 
-  it("builds SoulX with one avatar GET, exact 48k span GETs, and sample bounds", async () => {
+  it("builds SoulX for a verified custom PNG with exact 48k span GETs", async () => {
     const prefix = outputPrefix.replace("mage-image", "soulx-avatar");
     const avatarReservation = "avatar-input-a";
     const spanReservation = "span-input-a";
@@ -133,8 +133,8 @@ describe("ordinary V2-09 immutable worker request", () => {
         avatarSourceObjectKey:
           "tenant/account-a/workspace/workspace-a/avatar-profile/profile-a/version/version-a/canonical/avatar.png",
         avatarSourceContentType: "image/png",
-        avatarSourceContentLength: 1_912_005,
-        avatarSourceSha256: HOSTED_V209_SOULX_AVATAR_SOURCE_SHA256,
+        avatarSourceContentLength: 1_187_432,
+        avatarSourceSha256: `sha256:${"f".repeat(64)}`,
         spanAudioAssetId: "span-asset-a",
         spanAudioInputReservationId: spanReservation,
         spanAudioObjectKey:
@@ -192,10 +192,8 @@ describe("ordinary V2-09 immutable worker request", () => {
   });
 
   it.each([
-    ["a nonexact source hash", { avatarSourceSha256: `sha256:${"1".repeat(64)}` }],
     ["JPEG source bytes", { avatarSourceContentType: "image/jpeg" }],
     ["WEBP source bytes", { avatarSourceContentType: "image/webp" }],
-    ["a nonexact source byte length", { avatarSourceContentLength: 1_912_004 }],
   ])("rejects %s before creating any signed port", async (_label, avatarOverride) => {
     const prefix = outputPrefix.replace("mage-image", "soulx-avatar");
     const avatarReservation = "avatar-input-a";

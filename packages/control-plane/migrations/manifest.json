@@ -654,6 +654,12 @@
       "name": "hosted_v209_custom_avatar_source_kind",
       "filename": "0109_hosted_v209_custom_avatar_source_kind.sql",
       "sha256": "sha256:58ff3334ecfbe97b7ca5aee46c0b07db187610dc2ae1d996103d22d516a0e170"
+    },
+    {
+      "version": 110,
+      "name": "hosted_v209_custom_avatar_predispatch",
+      "filename": "0110_hosted_v209_custom_avatar_predispatch.sql",
+      "sha256": "sha256:0c659451b354afe115b3c6d27abbe181aac3aaa5dc2d3453031324adc92fdf04"
     }
   ]
 }
