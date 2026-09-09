@@ -3554,6 +3554,20 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           String(query.data.queue?.status ?? "").toUpperCase(),
         )),
   );
+  const gpuDispatchResumeReady = Boolean(
+    query.data?.generation?.id &&
+      promptStageState === "COMPLETE" &&
+      query.data.gpu_transport === "QUALIFIED_EXACT" &&
+      query.data.gpu_readiness.dispatch_available === true &&
+      !query.data.attempts.some((attempt) =>
+        ["IMAGE", "AVATAR"].includes(String(attempt.kind).toUpperCase()),
+      ) &&
+      (query.data.queue === null ||
+        String(query.data.queue?.status ?? "").toUpperCase() === "WAITING" ||
+        HOSTED_V209_DISPATCH_READY_QUEUE_STATES.has(
+          String(query.data.queue?.status ?? "").toUpperCase(),
+        )),
+  );
   useEffect(() => {
     const generationId = query.data?.generation?.id;
     if (
@@ -3951,7 +3965,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         <div className="validation validation-success" role="status" aria-live="polite">
           Generation is running. Correlation ID: <code>{gpuDispatch.data.correlation_id}</code>
         </div>
-      ) : gpuDispatchReady ? (
+      ) : gpuDispatchResumeReady ? (
         <div className="validation validation-info" role="status" aria-live="polite">
           <p>The verified generation request is ready to continue.</p>
           <Button variant="secondary" onClick={() => gpuDispatch.mutate()}>
