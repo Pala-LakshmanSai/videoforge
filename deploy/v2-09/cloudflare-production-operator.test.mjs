@@ -1633,3 +1633,101 @@ test("replacement validates a relocated prior artifact tree without rewriting pi
     /PREDECESSOR_ARTIFACT_PATH_DRIFT|PRIVATE_FILE_INVALID/,
   );
 });
+
+test("replacement verifies a bundled predecessor from relocated bytes before readback", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  const dependencies = { ...mock, testOnly: true, now: () => new Date("2026-09-06T22:00:00.000Z") };
+  const approved = authority(value);
+  await executeThroughQualified(
+    createV209CloudflareProductionOperator(value.configuration, dependencies),
+    approved,
+  );
+  const oldConfig = JSON.parse(readFileSync(value.configuration.qualifiedConfigPath));
+  const predecessorPath = resolve(value.directory, "bundled-prior-qualified.json");
+  oldConfig.vars.VIDEOFORGE_COMMIT = "b".repeat(40);
+  const bytes = JSON.stringify(oldConfig);
+  writeFileSync(predecessorPath, bytes, { mode: 0o600 });
+  const artifactRootPath = resolve(value.directory, "bundled-prior-artifacts");
+  mkdirSync(artifactRootPath, { mode: 0o700 });
+  let artifactDirectory = artifactRootPath;
+  for (const segment of ["apps", "web", "dist-cloudflare"]) {
+    artifactDirectory = resolve(artifactDirectory, segment);
+    mkdirSync(artifactDirectory, { mode: 0o700 });
+    chmodSync(artifactDirectory, 0o700);
+  }
+  const workerDirectory = resolve(artifactDirectory, "videoforge_production_runtime");
+  const assetDirectory = resolve(artifactDirectory, "client");
+  mkdirSync(workerDirectory, { mode: 0o700 });
+  mkdirSync(assetDirectory, { mode: 0o700 });
+  chmodSync(workerDirectory, 0o700);
+  chmodSync(assetDirectory, 0o700);
+  const relocatedMain = resolve(workerDirectory, "index.js");
+  writeFileSync(relocatedMain, 'import "./assets/chunk.js";\n', { mode: 0o600 });
+  const workerAssetDirectory = resolve(workerDirectory, "assets");
+  mkdirSync(workerAssetDirectory, { mode: 0o700 });
+  chmodSync(workerAssetDirectory, 0o700);
+  writeFileSync(resolve(workerAssetDirectory, "chunk.js"), "export const exact = true;\n", {
+    mode: 0o600,
+  });
+  writeFileSync(resolve(assetDirectory, "index.html"), "sealed predecessor assets", {
+    mode: 0o600,
+  });
+  let observedDryConfig;
+  const runChild = async (input) => {
+    if (input.args.includes("--dry-run")) {
+      const configPath = input.args[input.args.indexOf("--config") + 1];
+      const modulePath = input.args[input.args.indexOf("deploy") + 1];
+      const assetsPath = input.args[input.args.indexOf("--assets") + 1];
+      observedDryConfig = JSON.parse(readFileSync(configPath, "utf8"));
+      assert.equal(observedDryConfig.no_bundle, false);
+      assert.equal(observedDryConfig.main, oldConfig.main);
+      assert.equal(observedDryConfig.assets.directory, oldConfig.assets.directory);
+      assert.equal(readFileSync(modulePath, "utf8"), readFileSync(relocatedMain, "utf8"));
+      assert.equal(
+        readFileSync(resolve(assetsPath, "index.html"), "utf8"),
+        "sealed predecessor assets",
+      );
+    }
+    const result = await mock.runChild(input);
+    if (input.args.includes("view")) {
+      const observed = JSON.parse(result.stdout);
+      observed.main = oldConfig.main;
+      observed.assets = oldConfig.assets;
+      observed.vars.VIDEOFORGE_COMMIT = oldConfig.vars.VIDEOFORGE_COMMIT;
+      return { ...result, stdout: JSON.stringify(observed) };
+    }
+    return result;
+  };
+  const fetchImpl = async (...args) => {
+    const response = await mock.fetchImpl(...args);
+    const body = await response.json();
+    body.commit = oldConfig.vars.VIDEOFORGE_COMMIT;
+    return new Response(JSON.stringify(body), {
+      status: response.status,
+      headers: response.headers,
+    });
+  };
+  const primitive = createV209CloudflareReplacementCapabilities(value.configuration, {
+    ...dependencies,
+    runChild,
+    fetchImpl,
+  });
+  const predecessor = {
+    versionId: VERSION_IDS[3],
+    sourceCommit: oldConfig.vars.VIDEOFORGE_COMMIT,
+    artifactRootPath,
+    qualifiedConfigPath: predecessorPath,
+    qualifiedConfigSha256: hash(bytes),
+    workerBundleSha256: approved.production.worker_bundle_sha256,
+  };
+  const dryRunsBefore = mock.calls.filter(({ args }) => args.includes("--dry-run")).length;
+  const observed = await primitive.predecessor(approved, predecessor);
+  assert.equal(observed.versionIdSha256, hash(predecessor.versionId));
+  assert.deepEqual(JSON.parse(readFileSync(predecessorPath, "utf8")), oldConfig);
+  assert.ok(observedDryConfig);
+  assert.equal(
+    mock.calls.filter(({ args }) => args.includes("--dry-run")).length - dryRunsBefore,
+    1,
+  );
+});

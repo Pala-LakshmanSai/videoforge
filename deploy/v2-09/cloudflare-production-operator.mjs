@@ -453,36 +453,46 @@ function qualifiedConfiguration(configuration, authority) {
   privateFile(configuration.qualifiedConfigPath);
   const bytes = readFileSync(configuration.qualifiedConfigPath);
   if (sha256(bytes) !== authority.production.config_sha256) fail("QUALIFIED_CONFIG_HASH_DRIFT");
-  const value = parseJson(bytes.toString("utf8"), "QUALIFIED_CONFIG_JSON_INVALID");
+  const parsedValue = parseJson(bytes.toString("utf8"), "QUALIFIED_CONFIG_JSON_INVALID");
   const predecessorRoot = configuration[PREDECESSOR_ARTIFACT_ROOT];
+  if (predecessorRoot !== undefined) validatePredecessorArtifactTree(predecessorRoot);
   // The pinned predecessor config retains the absolute paths from its original
   // checkout. Validate those bytes as-is; the separately bound artifact root is
   // a relocation-only copy used for path and symlink checks and must not rewrite
   // or re-hash the historical config.
-  // Historical predecessor bytes retain the frozen shared no-bundle contract and are accepted
-  // only with their separately verified relocated artifact root. New V2-09 deployments must let
-  // Wrangler bundle the generated Vite module graph so sibling chunks cannot be omitted.
-  if (predecessorRoot === undefined && value.no_bundle !== false)
+  // A predecessor must carry a separately verified relocated artifact root. Its historical
+  // no_bundle mode is preserved: the older no-bundle contract is read as-is, while a bundled
+  // predecessor is dry-verified through Wrangler against the relocated module graph.
+  if (predecessorRoot === undefined && parsedValue.no_bundle !== false)
     fail("QUALIFIED_BUNDLE_MODE_DRIFT");
-  if (predecessorRoot !== undefined && value.no_bundle !== true)
+  if (
+    predecessorRoot !== undefined &&
+    parsedValue.no_bundle !== true &&
+    parsedValue.no_bundle !== false
+  )
     fail("PREDECESSOR_BUNDLE_MODE_DRIFT");
-  const validationValue = structuredClone(value);
+  // Keep the signed predecessor bytes and parsed projection unchanged. A bundled predecessor's
+  // relocation is passed only to the provider-free dry-run CLI entrypoint/assets arguments.
+  const validationValue = structuredClone(parsedValue);
+  if (parsedValue.no_bundle === false && predecessorRoot !== undefined) {
+    validationValue.main = ACTIVATED_MAIN_PATH;
+    validationValue.assets = { ...validationValue.assets, directory: ACTIVATED_ASSETS_PATH };
+  }
   validationValue.no_bundle = true;
   validateProductionConfig(validationValue, { mode: "qualified" });
-  if (predecessorRoot !== undefined) validatePredecessorArtifactTree(predecessorRoot);
-  const workflowNames = value.workflows.map(({ name }) => name);
+  const workflowNames = parsedValue.workflows.map(({ name }) => name);
   if (
-    value.name !== configuration.workerName ||
-    value.vars?.VIDEOFORGE_COMMIT !== authority.source_commit ||
-    value.vars?.VIDEOFORGE_ENVIRONMENT !== "production" ||
-    value.vars?.VIDEOFORGE_PROVIDER_MODE !== "production" ||
-    value.vars?.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT" ||
-    !exactOrigin(value.vars?.VIDEOFORGE_PUBLIC_ORIGIN) ||
+    parsedValue.name !== configuration.workerName ||
+    parsedValue.vars?.VIDEOFORGE_COMMIT !== authority.source_commit ||
+    parsedValue.vars?.VIDEOFORGE_ENVIRONMENT !== "production" ||
+    parsedValue.vars?.VIDEOFORGE_PROVIDER_MODE !== "production" ||
+    parsedValue.vars?.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT" ||
+    !exactOrigin(parsedValue.vars?.VIDEOFORGE_PUBLIC_ORIGIN) ||
     new Set(workflowNames).size !== 2
   )
     fail("QUALIFIED_CONFIG_DRIFT");
-  const video = value.workflows.filter(({ binding }) => binding === "VIDEO_WORKFLOW");
-  const pair = value.workflows.filter(({ binding }) => binding === "HOSTED_PAIR_WORKFLOW");
+  const video = parsedValue.workflows.filter(({ binding }) => binding === "VIDEO_WORKFLOW");
+  const pair = parsedValue.workflows.filter(({ binding }) => binding === "HOSTED_PAIR_WORKFLOW");
   if (
     video.length !== 1 ||
     pair.length !== 1 ||
@@ -490,7 +500,7 @@ function qualifiedConfiguration(configuration, authority) {
     pair[0].class_name !== "HostedPairWorkflow"
   )
     fail("QUALIFIED_WORKFLOW_DRIFT");
-  return Object.freeze({ bytes, value });
+  return Object.freeze({ bytes, value: parsedValue });
 }
 
 function materializeDisabled(configuration, authority) {
@@ -1412,6 +1422,23 @@ async function verifyQualifiedBundle(runtime, authority, context, artifact) {
   }
 }
 
+async function verifyRelocatedPredecessorBundle(runtime, authority, context, qualified) {
+  const artifactRootPath = runtime.configuration[PREDECESSOR_ARTIFACT_ROOT];
+  if (artifactRootPath === undefined || qualified.value.no_bundle !== false) return null;
+  const paths = validatePredecessorArtifactTree(artifactRootPath);
+  // Preserve the historical config bytes/hash. The CLI entrypoint and assets arguments point
+  // Wrangler at the separately sealed relocation without rewriting the signed config.
+  const artifact = snapshotV209UploadArtifact(qualified.bytes, {
+    mainPath: paths.main,
+    assetsSourcePath: paths.assets,
+  });
+  try {
+    return await verifyQualifiedBundle(runtime, authority, context, artifact);
+  } finally {
+    artifact.cleanup();
+  }
+}
+
 function possiblyIntroducedSecrets(journal) {
   const names = new Set(journal.introduced_secret_names);
   for (const event of journal.events) {
@@ -2056,6 +2083,13 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
             : { [PREDECESSOR_ARTIFACT_ROOT]: artifactRootPath }),
         },
       };
+      const oldQualified = qualifiedConfiguration(oldRuntime.configuration, oldAuthority);
+      await verifyRelocatedPredecessorBundle(
+        oldRuntime,
+        oldAuthority,
+        context(oldAuthority),
+        oldQualified,
+      );
       const version = await read(oldAuthority, "QUALIFIED_EXACT", oldRuntime);
       if (version.versionId !== predecessor.versionId) fail("PREDECESSOR_VERSION_DRIFT");
       // An aged activation is precisely why this replacement may be needed. Only these two
