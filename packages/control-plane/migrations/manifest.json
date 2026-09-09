@@ -648,6 +648,12 @@
       "name": "hosted_v209_predispatch_lease_renewal",
       "filename": "0108_hosted_v209_predispatch_lease_renewal.sql",
       "sha256": "sha256:809059c928c5e54ed7ab00eac6f0f050109b6f2f69114941735290b0fb8d9cbb"
+    },
+    {
+      "version": 109,
+      "name": "hosted_v209_custom_avatar_source_kind",
+      "filename": "0109_hosted_v209_custom_avatar_source_kind.sql",
+      "sha256": "sha256:58ff3334ecfbe97b7ca5aee46c0b07db187610dc2ae1d996103d22d516a0e170"
     }
   ]
 }

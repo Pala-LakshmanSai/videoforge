@@ -116,9 +116,9 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
     const sources = await loadMigrationSources();
     assert.equal(
       sources.at(-1)?.filename,
-      "0108_hosted_v209_predispatch_lease_renewal.sql",
+      "0109_hosted_v209_custom_avatar_source_kind.sql",
     );
-    assert.equal(sources.at(-1)?.version, 108);
+    assert.equal(sources.at(-1)?.version, 109);
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -145,7 +145,7 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
       [
         60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82,
         83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102,
-        103, 104, 105, 106, 107, 108,
+        103, 104, 105, 106, 107, 108, 109,
       ],
     );
     const recoverySurface = await executor.query(
