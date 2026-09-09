@@ -50,6 +50,21 @@ async function coordinationPhase<T>(code: string, operation: () => Promise<T>): 
     return await operation();
   } catch (error) {
     if (error instanceof HostedDispatchCoordinationError) throw error;
+    const cause = error as {
+      readonly name?: unknown;
+      readonly code?: unknown;
+      readonly constraint?: unknown;
+      readonly routine?: unknown;
+      readonly message?: unknown;
+    };
+    console.error("hosted_pair_coordination_failure", {
+      phase: code,
+      causeName: typeof cause?.name === "string" ? cause.name : null,
+      causeCode: typeof cause?.code === "string" ? cause.code : null,
+      constraint: typeof cause?.constraint === "string" ? cause.constraint : null,
+      routine: typeof cause?.routine === "string" ? cause.routine : null,
+      message: typeof cause?.message === "string" ? cause.message : null,
+    });
     throw new HostedDispatchCoordinationError(code);
   }
 }
