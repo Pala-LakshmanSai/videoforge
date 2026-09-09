@@ -16,6 +16,7 @@ import {
   renderNativeMigration95Sql,
   renderNativeMigration96Sql,
   renderNativeMigration97Sql,
+  renderNativeMigration98Sql,
   executeNativeDatabaseOnce,
 } from "../../deploy/v2-09/native-replacement-database.mjs";
 
@@ -172,7 +173,18 @@ test("migration97 requires exact96 predecessor ledger and renders only the secon
   assert.throws(() => renderNativeMigration97Sql(fixture(t, 96)), /MANIFEST/);
 });
 
-test("native execution accepts APPLY_0095 through APPLY_0097 only after operation identity validation", (t) => {
+test("migration98 requires exact97 predecessor ledger and renders only the third renewal boundary", (t) => {
+  const input = fixture(t, 98);
+  const sql = renderNativeMigration98Sql(input);
+  assert.match(sql, /'from_version',97,'to_version',98/);
+  assert.match(sql, /renewal_ordinal IN \(1,2,3\)/u);
+  assert.match(sql, /db_now,3,candidate\.candidate_sha256,candidate\.approval_id/u);
+  assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
+  assert.throws(() => renderNativeMigration97Sql(input), /MANIFEST/);
+  assert.throws(() => renderNativeMigration98Sql(fixture(t, 97)), /MANIFEST/);
+});
+
+test("native execution accepts APPLY_0095 through APPLY_0098 only after operation identity validation", (t) => {
   const root = mkdtempSync(resolve(tmpdir(), "v209-native-operation-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const credentialPath = resolve(root, "credential");
@@ -193,6 +205,10 @@ test("native execution accepts APPLY_0095 through APPLY_0097 only after operatio
   );
   assert.throws(
     () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0097" }),
+    /DATABASE_IDENTITY/,
+  );
+  assert.throws(
+    () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0098" }),
     /DATABASE_IDENTITY/,
   );
 });

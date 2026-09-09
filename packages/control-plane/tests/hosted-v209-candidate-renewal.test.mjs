@@ -6,7 +6,7 @@ import {
   expectDatabaseError,
   sha256,
   uuid,
-  withPgcryptoMigratedDatabase,
+  withPgcryptoMigrationsThrough,
 } from "./support/pglite.mjs";
 
 const candidateReaderSignatures = [
@@ -24,7 +24,7 @@ const candidateReaderSignatures = [
 ];
 
 test("0095 installs an append-only renewal overlay and private guarded boundary", async () => {
-  await withPgcryptoMigratedDatabase(async ({ executor, sources }) => {
+  await withPgcryptoMigrationsThrough(95, async ({ executor, sources }) => {
     assert.equal(sources.at(-1)?.version, 95);
     assert.equal(
       sources.at(-1)?.filename,
@@ -71,7 +71,7 @@ test("0095 installs an append-only renewal overlay and private guarded boundary"
 });
 
 test("0095 routes every existing candidate reader through the effective renewal", async () => {
-  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+  await withPgcryptoMigrationsThrough(95, async ({ executor }) => {
     const definitions = await executor.query(
       `SELECT p.oid::regprocedure::text AS signature,pg_get_functiondef(p.oid) AS definition
          FROM pg_proc p
@@ -107,7 +107,7 @@ test("0095 routes every existing candidate reader through the effective renewal"
 });
 
 test("0095 rejects an unbound renewal before any approval, lease, or provider rows are written", async () => {
-  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+  await withPgcryptoMigrationsThrough(95, async ({ executor }) => {
     await executor.query(`SELECT set_config('videoforge.account_id',$1,false)`, [IDS.accountA]);
     const args = [
       IDS.accountA,

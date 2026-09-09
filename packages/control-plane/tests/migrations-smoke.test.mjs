@@ -114,7 +114,7 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0097_hosted_v209_second_candidate_renewal.sql");
+    assert.equal(sources.at(-1)?.filename, "0098_hosted_v209_third_candidate_renewal.sql");
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -140,7 +140,7 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
       upgraded.appliedVersions,
       [
         60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82,
-        83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97,
+        83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98,
       ],
     );
     const definitions = await executor.query(
@@ -204,6 +204,31 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
         has_plan_metadata: true,
       },
     ]);
+  } finally {
+    await database.close();
+  }
+});
+
+test("third candidate renewal keeps predecessor lineage null-safe", async () => {
+  const database = new PGlite();
+  try {
+    const executor = new PGliteExecutor(database);
+    await applyMigrations(executor, await loadMigrationSources());
+    const constraint = await executor.query(
+      `SELECT pg_get_constraintdef(oid) AS definition
+         FROM pg_constraint
+        WHERE conrelid='hosted_v209_ordinary_dispatch_candidate_renewals'::regclass
+          AND conname='hosted_v209_renewal_predecessor_check'`,
+    );
+    assert.equal(constraint.rows.length, 1);
+    assert.match(constraint.rows[0].definition, /previous_candidate_sha256 IS NOT NULL/u);
+    const routine = await executor.query(
+      `SELECT pg_get_functiondef(
+         'videoforge_effective_hosted_v209_candidate(uuid,uuid,uuid)'::regprocedure
+       ) AS definition`,
+    );
+    assert.match(routine.rows[0].definition, /previous_candidate_sha256 IS DISTINCT FROM/u);
+    assert.match(routine.rows[0].definition, /previous_approval_id IS DISTINCT FROM/u);
   } finally {
     await database.close();
   }

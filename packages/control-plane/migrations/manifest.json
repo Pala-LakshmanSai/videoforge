@@ -582,6 +582,12 @@
       "name": "hosted_v209_second_candidate_renewal",
       "filename": "0097_hosted_v209_second_candidate_renewal.sql",
       "sha256": "sha256:6334c1fcea0217fb8243161a458ef0f3b41447b9f655359e5be1b3a5ca41b930"
+    },
+    {
+      "version": 98,
+      "name": "hosted_v209_third_candidate_renewal",
+      "filename": "0098_hosted_v209_third_candidate_renewal.sql",
+      "sha256": "sha256:efb695d655f20405376f796c9071a9a5f71ff8c217313c344615ee83b9b76a41"
     }
   ]
 }
