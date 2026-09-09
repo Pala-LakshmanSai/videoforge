@@ -3951,6 +3951,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         <div className="validation validation-success" role="status" aria-live="polite">
           Generation is running. Correlation ID: <code>{gpuDispatch.data.correlation_id}</code>
         </div>
+      ) : gpuDispatchReady ? (
+        <div className="validation validation-info" role="status" aria-live="polite">
+          <p>The verified generation request is ready to continue.</p>
+          <Button variant="secondary" onClick={() => gpuDispatch.mutate()}>
+            <RefreshCw size={15} /> Resume generation
+          </Button>
+        </div>
       ) : null}
 
       <div className="progress-workspace">
