@@ -304,6 +304,15 @@ function preparationResponse(
   return new Response(base.body, { status: base.status, headers });
 }
 
+async function dispatchPhase<T>(code: string, operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof Error && /^[A-Z0-9_]+$/u.test(error.message)) throw error;
+    throw new RangeError(code);
+  }
+}
+
 async function emptyBody(request: Request): Promise<boolean> {
   const length = Number(request.headers.get("content-length") ?? "0");
   if (!Number.isSafeInteger(length) || length < 0 || length > 2) return false;
@@ -365,35 +374,41 @@ export async function resumeHostedV209ProjectDispatch(
         });
         return dispatchResponse(candidate, correlationId, 200);
       }
-      const observation = await injected.observe(environment, runtimeDatabase);
-      const admission = await freezeV209OrdinaryLiveAdmission(
-        candidate,
-        observation,
-        materialized.systemAvatarReference,
+      const observation = await dispatchPhase("HOSTED_V209_OBSERVATION_FAILED", () =>
+        injected.observe(environment, runtimeDatabase),
       );
-      const scheduled = await injected.commitAndSchedule(
-        environment,
-        runtimeDatabase,
-        injected.createExecutor(reconcilerPool),
-        {
-          approvalId: candidate.approvalId,
-          approvalSha256: candidate.approvalSha256,
-          claimId: crypto.randomUUID(),
-          accountId: identity.accountId,
-          workspaceId: identity.workspaceId,
-          userId: identity.userId,
-          projectId: identity.projectId,
-          projectRevisionId: candidate.projectRevisionId,
-          generationRequestId: candidate.generationRequestId,
-          generationPlanSha256: candidate.generationPlanSha256,
-          leaseId: candidate.leaseId,
-          laneBindings: candidate.laneBindings,
-          totalCapUsd: candidate.totalCapUsd,
-          expiresAt: candidate.expiresAt,
-          pair: candidate.pair,
-        },
-        admission,
-        config,
+      const admission = await dispatchPhase("HOSTED_V209_ADMISSION_FREEZE_FAILED", () =>
+        freezeV209OrdinaryLiveAdmission(
+          candidate,
+          observation,
+          materialized.systemAvatarReference,
+        ),
+      );
+      const scheduled = await dispatchPhase("HOSTED_V209_COMMIT_SCHEDULE_FAILED", () =>
+        injected.commitAndSchedule(
+          environment,
+          runtimeDatabase,
+          injected.createExecutor(reconcilerPool),
+          {
+            approvalId: candidate.approvalId,
+            approvalSha256: candidate.approvalSha256,
+            claimId: crypto.randomUUID(),
+            accountId: identity.accountId,
+            workspaceId: identity.workspaceId,
+            userId: identity.userId,
+            projectId: identity.projectId,
+            projectRevisionId: candidate.projectRevisionId,
+            generationRequestId: candidate.generationRequestId,
+            generationPlanSha256: candidate.generationPlanSha256,
+            leaseId: candidate.leaseId,
+            laneBindings: candidate.laneBindings,
+            totalCapUsd: candidate.totalCapUsd,
+            expiresAt: candidate.expiresAt,
+            pair: candidate.pair,
+          },
+          admission,
+          config,
+        ),
       );
       console.info("hosted_v209_project_dispatch", {
         correlation_id: correlationId,

@@ -600,8 +600,8 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
     expect(warn).toHaveBeenCalledWith("hosted_v209_project_dispatch", {
       correlation_id: "v209-safe-correlation",
       event: "REJECTED",
-      code: "HOSTED_V209_DISPATCH_REJECTED",
-      cause: "FETCH_FAILED",
+      code: "HOSTED_V209_OBSERVATION_FAILED",
+      cause: "RangeError",
     });
     warn.mockRestore();
   });
