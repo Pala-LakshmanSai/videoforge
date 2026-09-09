@@ -190,3 +190,127 @@
 .queue-card__facts strong {
   font-size: 0.9rem;
 }
+
+.queue-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 14px 0 16px;
+}
+
+.queue-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.queue-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.queue-filter:hover {
+  color: var(--text);
+  border-color: var(--surface-border-strong);
+}
+
+.queue-filter--active {
+  color: var(--text);
+  border-color: var(--surface-border-strong);
+  background: rgba(120, 110, 255, 0.16);
+}
+
+.queue-filter > span {
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(167, 155, 220, 0.14);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.queue-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 220px;
+  padding: 7px 13px;
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface-fill);
+}
+
+.queue-search input {
+  width: 100%;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.queue-card {
+  grid-template-columns: minmax(208px, 1.6fr) minmax(168px, 0.8fr) auto;
+  row-gap: 10px;
+}
+
+.queue-card__actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.queue-card__actions .button {
+  padding: 8px 13px;
+  font-size: 0.82rem;
+}
+
+.queue-card__explanation {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.queue-card__confirm,
+.queue-card .validation {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.queue-card__confirm {
+  color: var(--muted);
+}
+
+.queue-card__status > span {
+  font-size: 0.8rem;
+}
+
+.queue-card__identity a {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 700px) {
+  .queue-card .queue-card__actions {
+    justify-content: flex-start;
+  }
+}

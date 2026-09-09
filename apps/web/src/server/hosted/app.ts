@@ -82,8 +82,22 @@ interface HostedQueueRow extends Record<string, unknown> {
   readonly state: string;
   readonly stage: string;
   readonly cancellable_attempt_id: string | null;
+  readonly active_kind: string | null;
+  readonly latest_kind: string | null;
+  readonly latest_state: string | null;
+  readonly active_request_count: string | number | null;
+  readonly active_cpu_count: string | number | null;
+  readonly total_serverless_count: string | number | null;
+  readonly nonplanned_serverless_count: string | number | null;
+  readonly active_serverless_count: string | number | null;
+  readonly dispatching_side_effect_count: string | number | null;
   readonly created_at: Date | string;
   readonly updated_at: Date | string;
+}
+
+function hostedQueueCount(value: string | number | null | undefined): number {
+  const parsed = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function hostedCpuPrimaryOutput(kind: "ASR" | "SPAN_AUDIO" | "RENDER") {
@@ -162,6 +176,15 @@ async function handleHostedQueue(
                   ELSE 'Project setup'
                 END AS stage,
                 active_attempt.id AS cancellable_attempt_id,
+                active_attempt.kind AS active_kind,
+                latest_attempt.kind AS latest_kind,
+                latest_attempt.state AS latest_state,
+                capability.active_request_count,
+                capability.active_cpu_count,
+                capability.total_serverless_count,
+                capability.nonplanned_serverless_count,
+                capability.active_serverless_count,
+                capability.dispatching_side_effect_count,
                 project.created_at,
                 GREATEST(project.created_at, COALESCE(latest_attempt.updated_at,project.created_at),
                   COALESCE(context.finished_at,context.started_at,project.created_at)) AS updated_at
@@ -207,6 +230,51 @@ async function handleHostedQueue(
                 AND task.task_key LIKE 'prompt:scene-batch:%'
               ORDER BY task.created_at DESC,task.id DESC LIMIT 1
            ) AS prompt_task ON true
+           LEFT JOIN LATERAL (
+             SELECT
+               (SELECT count(*) FROM generation_requests AS request
+                 WHERE request.account_id=project.account_id
+                   AND request.workspace_id=project.workspace_id
+                   AND request.project_id=project.id
+                   AND request.state IN ('WAITING','RETRY_WAIT','ADMITTED','ACTIVE','CANCELLING')
+               ) AS active_request_count,
+               (SELECT count(*) FROM hosted_cpu_job_attempts AS attempt
+                 WHERE attempt.account_id=project.account_id
+                   AND attempt.workspace_id=project.workspace_id
+                   AND attempt.project_id=project.id
+                   AND attempt.state IN ('PLANNED','OUTBOXED','SUBMITTED','RUNNING',
+                     'RECONCILING','CANCEL_REQUESTED')
+               ) AS active_cpu_count,
+               (SELECT count(*) FROM serverless_attempts AS attempt
+                 WHERE attempt.account_id=project.account_id
+                   AND attempt.workspace_id=project.workspace_id
+                   AND attempt.project_id=project.id
+               ) AS total_serverless_count,
+               (SELECT count(*) FROM serverless_attempts AS attempt
+                 WHERE attempt.account_id=project.account_id
+                   AND attempt.workspace_id=project.workspace_id
+                   AND attempt.project_id=project.id
+                   AND attempt.state<>'PLANNED'
+               ) AS nonplanned_serverless_count,
+               (SELECT count(*) FROM serverless_attempts AS attempt
+                 WHERE attempt.account_id=project.account_id
+                   AND attempt.workspace_id=project.workspace_id
+                   AND attempt.project_id=project.id
+                   AND attempt.state IN ('PLANNED','OUTBOXED','DISPATCHING','ASSIGNED','IN_QUEUE',
+                     'IN_PROGRESS','UPLOADING','RECONCILING','CANCELLING')
+               ) AS active_serverless_count,
+               (SELECT count(*) FROM hosted_voiceover_contexts AS context
+                 WHERE context.account_id=project.account_id
+                   AND context.workspace_id=project.workspace_id
+                   AND context.project_id=project.id
+                   AND context.state='DISPATCHING'
+               ) + (SELECT count(*) FROM hosted_prompt_runs AS prompt_run
+                 WHERE prompt_run.account_id=project.account_id
+                   AND prompt_run.workspace_id=project.workspace_id
+                   AND prompt_run.project_id=project.id
+                   AND prompt_run.state='DISPATCHING'
+               ) AS dispatching_side_effect_count
+           ) AS capability ON true
           WHERE project.account_id=$1 AND project.workspace_id=$2
             AND project.status='ACTIVE'
             AND project.project_kind='USER'
@@ -241,15 +309,35 @@ async function handleHostedQueue(
           : (workers.BUSY ?? 0) > 0
             ? "BUSY"
             : "WAITING_FOR_YOUR_COMPUTER",
-      projects: result.projects.map((project) => ({
-        project_id: project.project_id,
-        title: project.title,
-        state: project.state,
-        stage: project.stage,
-        cancellable_attempt_id: project.cancellable_attempt_id,
-        created_at: new Date(project.created_at).toISOString(),
-        updated_at: new Date(project.updated_at).toISOString(),
-      })),
+      projects: result.projects.map((project) => {
+        const activeCpu = hostedQueueCount(project.active_cpu_count);
+        const totalServerless = hostedQueueCount(project.total_serverless_count);
+        const nonplannedServerless = hostedQueueCount(project.nonplanned_serverless_count);
+        const activeServerless = hostedQueueCount(project.active_serverless_count);
+        const dispatchingSideEffects = hostedQueueCount(project.dispatching_side_effect_count);
+        return {
+          project_id: project.project_id,
+          title: project.title,
+          state: project.state,
+          stage: project.stage,
+          cancellable_attempt_id: project.cancellable_attempt_id,
+          active_job_kind: project.active_kind ?? null,
+          latest_job_kind: project.latest_kind ?? null,
+          latest_job_state: project.latest_state ?? null,
+          // Mirrors videoforge_cancel_hosted_project_predispatch: one active generation request,
+          // no live CPU attempt and only PLANNED provider attempts may be cancelled by the owner.
+          can_cancel_project:
+            hostedQueueCount(project.active_request_count) === 1 &&
+            activeCpu === 0 &&
+            (totalServerless === 0 || totalServerless === 2) &&
+            nonplannedServerless === 0,
+          // Mirrors videoforge_archive_hosted_project: no live CPU, provider or dispatching work.
+          can_delete_project:
+            activeCpu === 0 && activeServerless === 0 && dispatchingSideEffects === 0,
+          created_at: new Date(project.created_at).toISOString(),
+          updated_at: new Date(project.updated_at).toISOString(),
+        };
+      }),
     });
   } finally {
     await pool.end();

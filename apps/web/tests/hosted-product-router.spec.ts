@@ -180,7 +180,8 @@ test("hosted auth mounts the product router and account-owned worker surfaces", 
   await expect(page.getByRole("link", { name: /Download for Mac/u })).toBeVisible();
 
   await page.getByRole("link", { name: "Queue", exact: true }).click();
-  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Cancel job", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm cancel", exact: true }).click();
   await expect.poll(() => cancelled).toBe(true);
 });
 

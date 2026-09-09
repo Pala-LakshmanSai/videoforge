@@ -1,6 +1,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowDown, ArrowUp, Plus, Trash2, Video } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  Video,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { PageHeader } from "../components/PageHeader";
@@ -16,6 +26,11 @@ interface HostedQueueProject {
   readonly state: "IN_PROGRESS" | "ACTION_REQUIRED" | "NEEDS_ATTENTION" | "CANCELLED" | "WAITING";
   readonly stage: string;
   readonly cancellable_attempt_id: string | null;
+  readonly active_job_kind?: string | null;
+  readonly latest_job_kind?: string | null;
+  readonly latest_job_state?: string | null;
+  readonly can_cancel_project?: boolean;
+  readonly can_delete_project?: boolean;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -26,7 +41,14 @@ interface HostedQueueResponse {
   readonly projects: readonly HostedQueueProject[];
 }
 
-const CANCEL_CONFIRMATION_WINDOW_MS = 6_000;
+type HostedQueueFilter = "ALL" | "IN_PROGRESS" | "ATTENTION" | "WAITING";
+
+interface ArmedAction {
+  readonly projectId: string;
+  readonly kind: "CANCEL_JOB" | "CANCEL_PROJECT" | "DELETE";
+}
+
+const CONFIRMATION_WINDOW_MS = 6_000;
 
 async function hostedQueue(): Promise<HostedQueueResponse> {
   const response = await fetch("/api/v2/hosted/queue", {
@@ -34,6 +56,22 @@ async function hostedQueue(): Promise<HostedQueueResponse> {
   });
   if (!response.ok) throw new Error("Hosted queue could not be loaded.");
   return response.json() as Promise<HostedQueueResponse>;
+}
+
+async function hostedQueueMutation(
+  input: string,
+  init: RequestInit,
+  fallbackMessage: string,
+): Promise<void> {
+  const response = await fetch(input, {
+    ...init,
+    headers: { "content-type": "application/json", accept: "application/json", ...init.headers },
+  });
+  if (response.ok) return;
+  const payload = (await response.json().catch(() => null)) as {
+    error?: { code?: string; message?: string };
+  } | null;
+  throw new Error(payload?.error?.message ?? fallbackMessage);
 }
 
 function hostedProjectTone(
@@ -53,54 +91,137 @@ function hostedProjectLabel(state: HostedQueueProject["state"]): string {
   return "Waiting";
 }
 
+function hostedProjectExplanation(project: HostedQueueProject): string {
+  if (project.state === "IN_PROGRESS")
+    return project.active_job_kind === "ASR"
+      ? "Your computer is transcribing the voiceover."
+      : project.active_job_kind === "RENDER"
+        ? "Your computer is assembling the final video."
+        : `Working on ${project.stage.toLowerCase()}.`;
+  if (project.state === "NEEDS_ATTENTION")
+    return `${project.stage} stopped safely. Open the project to review and retry.`;
+  if (project.state === "ACTION_REQUIRED")
+    return "Transcription finished. Open the project to continue voiceover context.";
+  if (project.state === "CANCELLED")
+    return "Work was cancelled. Nothing is running for this video.";
+  return `Waiting at ${project.stage.toLowerCase()}. Nothing is running yet.`;
+}
+
+function hostedRelativeTime(iso: string, now: number): string {
+  const timestamp = Date.parse(iso);
+  if (!Number.isFinite(timestamp)) return "unknown";
+  const seconds = Math.max(0, Math.round((now - timestamp) / 1000));
+  if (seconds < 60) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return days < 30 ? `${days}d ago` : new Date(timestamp).toLocaleDateString();
+}
+
+function hostedAbsoluteTime(iso: string): string {
+  const timestamp = Date.parse(iso);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toLocaleString() : iso;
+}
+
+function hostedFilterMatches(filter: HostedQueueFilter, project: HostedQueueProject): boolean {
+  if (filter === "ALL") return true;
+  if (filter === "IN_PROGRESS") return project.state === "IN_PROGRESS";
+  if (filter === "ATTENTION")
+    return project.state === "NEEDS_ATTENTION" || project.state === "ACTION_REQUIRED";
+  return project.state === "WAITING" || project.state === "CANCELLED";
+}
+
 function HostedQueueScreen() {
-  const [armedCancellationAttemptId, setArmedCancellationAttemptId] = useState<string | null>(null);
+  const [armed, setArmed] = useState<ArmedAction | null>(null);
+  const [filter, setFilter] = useState<HostedQueueFilter>("ALL");
+  const [search, setSearch] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+  const [actionError, setActionError] = useState<{ projectId: string; message: string } | null>(
+    null,
+  );
   const queue = useQuery({
     queryKey: ["hosted-queue"],
     queryFn: hostedQueue,
     refetchInterval: 5_000,
   });
-  const cancel = useMutation({
-    mutationFn: async (attemptId: string) => {
-      const response = await fetch(`/api/v2/cpu-attempts/${attemptId}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          schema_version: "videoforge-hosted-cpu-cancellation/v1",
-          attempt_id: attemptId,
-          confirmation: "STOP",
-        }),
-      });
-      if (!response.ok) throw new Error("The job could not be cancelled.");
-    },
-    onSuccess: () => queue.refetch(),
-  });
   useEffect(() => {
-    if (!armedCancellationAttemptId) return;
-    const timeout = window.setTimeout(
-      () => setArmedCancellationAttemptId(null),
-      CANCEL_CONFIRMATION_WINDOW_MS,
-    );
-    return () => window.clearTimeout(timeout);
-  }, [armedCancellationAttemptId]);
-  useEffect(() => {
-    if (
-      armedCancellationAttemptId &&
-      !queue.data?.projects.some(
-        (project) => project.cancellable_attempt_id === armedCancellationAttemptId,
-      )
-    ) {
-      setArmedCancellationAttemptId(null);
-    }
-  }, [armedCancellationAttemptId, queue.data?.projects]);
+    const interval = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
-  const requestCancellation = (attemptId: string) => {
-    if (armedCancellationAttemptId !== attemptId) {
-      setArmedCancellationAttemptId(attemptId);
+  const runAction = (projectId: string, action: () => Promise<void>) => {
+    setActionError(null);
+    action()
+      .then(() => queue.refetch())
+      .catch((error: unknown) => {
+        setActionError({
+          projectId,
+          message: error instanceof Error ? error.message : "That action could not be completed.",
+        });
+      });
+  };
+
+  const cancelJob = useMutation({
+    mutationFn: (attemptId: string) =>
+      hostedQueueMutation(
+        `/api/v2/cpu-attempts/${attemptId}`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            schema_version: "videoforge-hosted-cpu-cancellation/v1",
+            attempt_id: attemptId,
+            confirmation: "STOP",
+          }),
+        },
+        "The job could not be cancelled.",
+      ),
+  });
+  const cancelProject = useMutation({
+    mutationFn: (projectId: string) =>
+      hostedQueueMutation(
+        `/api/v2/hosted/projects/${projectId}/cancel`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            schema_version: "videoforge-hosted-project-cancellation/v1",
+            project_id: projectId,
+            confirmation: "STOP",
+          }),
+        },
+        "This project could not be cancelled.",
+      ),
+  });
+  const deleteProject = useMutation({
+    mutationFn: (projectId: string) =>
+      hostedQueueMutation(
+        `/api/v2/hosted/projects/${projectId}`,
+        { method: "DELETE", body: "{}" },
+        "This project could not be deleted.",
+      ),
+  });
+
+  useEffect(() => {
+    if (!armed) return;
+    const timeout = window.setTimeout(() => setArmed(null), CONFIRMATION_WINDOW_MS);
+    return () => window.clearTimeout(timeout);
+  }, [armed]);
+  useEffect(() => {
+    if (!armed) return;
+    if (!queue.data?.projects.some((project) => project.project_id === armed.projectId)) {
+      setArmed(null);
+    }
+  }, [armed, queue.data?.projects]);
+
+  const confirmFirst = (action: ArmedAction, run: () => void) => {
+    if (armed?.projectId !== action.projectId || armed.kind !== action.kind) {
+      setActionError(null);
+      setArmed(action);
       return;
     }
-    setArmedCancellationAttemptId(null);
-    cancel.mutate(attemptId);
+    setArmed(null);
+    run();
   };
 
   if (queue.isPending) {
@@ -127,22 +248,60 @@ function HostedQueueScreen() {
       />
     );
   }
-  const active = queue.data.projects.filter((project) => project.state === "IN_PROGRESS").length;
-  const attention = queue.data.projects.filter((project) =>
+  const projects = queue.data.projects;
+  const active = projects.filter((project) => project.state === "IN_PROGRESS").length;
+  const attention = projects.filter((project) =>
     ["ACTION_REQUIRED", "NEEDS_ATTENTION"].includes(project.state),
   ).length;
+  const waiting = projects.filter((project) =>
+    ["WAITING", "CANCELLED"].includes(project.state),
+  ).length;
+  const normalisedSearch = search.trim().toLowerCase();
+  const visible = projects.filter(
+    (project) =>
+      hostedFilterMatches(filter, project) &&
+      (normalisedSearch === "" || project.title.toLowerCase().includes(normalisedSearch)),
+  );
+  const filters: readonly { key: HostedQueueFilter; label: string; count: number }[] = [
+    { key: "ALL", label: "All", count: projects.length },
+    { key: "ATTENTION", label: "Needs attention", count: attention },
+    { key: "IN_PROGRESS", label: "In progress", count: active },
+    { key: "WAITING", label: "Waiting", count: waiting },
+  ];
 
   return (
     <>
-      <PageHeader title="Queue" />
+      <PageHeader
+        title="Queue"
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              busy={queue.isFetching}
+              onClick={() => void queue.refetch()}
+            >
+              <RefreshCw size={16} aria-hidden="true" /> Refresh
+            </Button>
+            <Link to="/projects/new" className="button button-primary">
+              <Plus size={16} aria-hidden="true" /> New project
+            </Link>
+          </>
+        }
+      />
       <div className="grid grid-4 queue-overview">
-        <Metric label="In progress" value={String(active)} tone={active ? "info" : "neutral"} />
+        <Metric
+          label="In progress"
+          value={String(active)}
+          detail="1 video at a time"
+          tone={active ? "info" : "neutral"}
+        />
         <Metric
           label="Action needed"
           value={String(attention)}
+          detail={attention ? "open these first" : "nothing waiting on you"}
           tone={attention ? "warning" : "neutral"}
         />
-        <Metric label="Your limit" value="1" detail="video at a time" />
+        <Metric label="Waiting" value={String(waiting)} detail="not started yet" />
         <Metric
           label="Your computer"
           value={
@@ -152,7 +311,12 @@ function HostedQueueScreen() {
                 ? "Working"
                 : "Not connected"
           }
-          tone={queue.data.worker_state === "ONLINE" ? "success" : "warning"}
+          detail={
+            queue.data.worker_state === "WAITING_FOR_YOUR_COMPUTER"
+              ? "work waits safely"
+              : "transcription and assembly"
+          }
+          tone={queue.data.worker_state === "WAITING_FOR_YOUR_COMPUTER" ? "warning" : "success"}
         />
       </div>
       <Panel heading="Your projects">
@@ -160,7 +324,7 @@ function HostedQueueScreen() {
           Your computer handles transcription and final assembly. If it disconnects, work waits
           safely until it reconnects.
         </div>
-        {queue.data.projects.length === 0 ? (
+        {projects.length === 0 ? (
           <EmptyState
             icon={<Video />}
             title="No media jobs yet"
@@ -172,54 +336,176 @@ function HostedQueueScreen() {
             }
           />
         ) : (
-          <div className="queue-list">
-            {queue.data.projects.map((project) => {
-              const cancellableAttemptId = project.cancellable_attempt_id;
-              return (
-                <article className="queue-card" key={project.project_id}>
-                  <div className="queue-card__identity">
-                    <span className="project-icon">
-                      <Video size={18} />
-                    </span>
-                    <div>
-                      <Link
-                        to="/projects/$projectId"
-                        params={{ projectId: project.project_id }}
-                        aria-label={`Open ${project.title}`}
-                      >
-                        <strong>{project.title}</strong>
-                      </Link>
-                      <small>{project.stage}</small>
-                    </div>
-                  </div>
-                  <div className="queue-card__status">
-                    <Badge tone={hostedProjectTone(project.state)}>
-                      {hostedProjectLabel(project.state)}
-                    </Badge>
-                  </div>
-                  <div className="queue-card__facts">
-                    {cancellableAttemptId ? (
-                      <Button
-                        variant="secondary"
-                        busy={cancel.isPending && cancel.variables === cancellableAttemptId}
-                        onClick={() => requestCancellation(cancellableAttemptId)}
-                      >
-                        {armedCancellationAttemptId === cancellableAttemptId
-                          ? "Confirm cancel"
-                          : "Cancel"}
-                      </Button>
-                    ) : null}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+          <>
+            <div className="queue-toolbar">
+              <div className="queue-filters" role="group" aria-label="Filter your projects">
+                {filters.map((entry) => (
+                  <button
+                    key={entry.key}
+                    type="button"
+                    className={`queue-filter${filter === entry.key ? " queue-filter--active" : ""}`}
+                    aria-pressed={filter === entry.key}
+                    onClick={() => setFilter(entry.key)}
+                  >
+                    {entry.label} <span>{entry.count}</span>
+                  </button>
+                ))}
+              </div>
+              <label className="queue-search">
+                <Search size={15} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={search}
+                  placeholder="Search projects"
+                  aria-label="Search your projects"
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+            </div>
+            {visible.length === 0 ? (
+              <p className="helper">No project matches this filter.</p>
+            ) : (
+              <div className="queue-list">
+                {visible.map((project) => {
+                  const cancellableAttemptId = project.cancellable_attempt_id;
+                  const canCancelProject = project.can_cancel_project === true;
+                  const canDelete = project.can_delete_project !== false && !cancellableAttemptId;
+                  const busyProject =
+                    (cancelJob.isPending && cancelJob.variables === cancellableAttemptId) ||
+                    (cancelProject.isPending && cancelProject.variables === project.project_id) ||
+                    (deleteProject.isPending && deleteProject.variables === project.project_id);
+                  return (
+                    <article className="queue-card" key={project.project_id}>
+                      <div className="queue-card__identity">
+                        <span className="project-icon">
+                          <Video size={18} />
+                        </span>
+                        <div>
+                          <Link
+                            to="/projects/$projectId"
+                            params={{ projectId: project.project_id }}
+                            aria-label={`Open ${project.title}`}
+                          >
+                            <strong>{project.title}</strong>
+                          </Link>
+                          <small>{project.stage}</small>
+                          <small className="queue-card__explanation">
+                            {hostedProjectExplanation(project)}
+                          </small>
+                        </div>
+                      </div>
+                      <div className="queue-card__status">
+                        <Badge tone={hostedProjectTone(project.state)}>
+                          {hostedProjectLabel(project.state)}
+                        </Badge>
+                        <span title={hostedAbsoluteTime(project.updated_at)}>
+                          Updated {hostedRelativeTime(project.updated_at, now)}
+                        </span>
+                        <span title={hostedAbsoluteTime(project.created_at)}>
+                          Created {hostedRelativeTime(project.created_at, now)}
+                        </span>
+                      </div>
+                      <div className="queue-card__facts queue-card__actions">
+                        <Link
+                          className="button button-secondary"
+                          to="/projects/$projectId"
+                          params={{ projectId: project.project_id }}
+                        >
+                          Open
+                        </Link>
+                        {cancellableAttemptId ? (
+                          <Button
+                            variant="secondary"
+                            busy={
+                              cancelJob.isPending && cancelJob.variables === cancellableAttemptId
+                            }
+                            disabled={busyProject}
+                            onClick={() =>
+                              confirmFirst(
+                                { projectId: project.project_id, kind: "CANCEL_JOB" },
+                                () =>
+                                  runAction(project.project_id, () =>
+                                    cancelJob.mutateAsync(cancellableAttemptId),
+                                  ),
+                              )
+                            }
+                          >
+                            <X size={15} aria-hidden="true" />
+                            {armed?.projectId === project.project_id && armed.kind === "CANCEL_JOB"
+                              ? "Confirm cancel"
+                              : "Cancel job"}
+                          </Button>
+                        ) : null}
+                        {canCancelProject ? (
+                          <Button
+                            variant="secondary"
+                            busy={
+                              cancelProject.isPending &&
+                              cancelProject.variables === project.project_id
+                            }
+                            disabled={busyProject}
+                            onClick={() =>
+                              confirmFirst(
+                                { projectId: project.project_id, kind: "CANCEL_PROJECT" },
+                                () =>
+                                  runAction(project.project_id, () =>
+                                    cancelProject.mutateAsync(project.project_id),
+                                  ),
+                              )
+                            }
+                          >
+                            <X size={15} aria-hidden="true" />
+                            {armed?.projectId === project.project_id &&
+                            armed.kind === "CANCEL_PROJECT"
+                              ? "Confirm stop"
+                              : "Stop project"}
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="danger"
+                          busy={
+                            deleteProject.isPending &&
+                            deleteProject.variables === project.project_id
+                          }
+                          disabled={busyProject || !canDelete}
+                          title={
+                            canDelete
+                              ? "Remove this project from Queue and Progress"
+                              : "Cancel the active work before deleting this project"
+                          }
+                          onClick={() =>
+                            confirmFirst({ projectId: project.project_id, kind: "DELETE" }, () =>
+                              runAction(project.project_id, () =>
+                                deleteProject.mutateAsync(project.project_id),
+                              ),
+                            )
+                          }
+                        >
+                          <Trash2 size={15} aria-hidden="true" />
+                          {armed?.projectId === project.project_id && armed.kind === "DELETE"
+                            ? "Confirm delete"
+                            : "Delete"}
+                        </Button>
+                      </div>
+                      {armed?.projectId === project.project_id ? (
+                        <p className="queue-card__confirm" role="status">
+                          {armed.kind === "DELETE"
+                            ? "Deleting removes this project from Queue and Progress. Billing and security history stays preserved."
+                            : "Nothing is retried automatically. Press again within a few seconds to confirm."}
+                        </p>
+                      ) : null}
+                      {actionError?.projectId === project.project_id ? (
+                        <div className="validation validation-danger" role="alert">
+                          {actionError.message}
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
-        {cancel.isError ? (
-          <div className="validation validation-danger" role="alert">
-            {cancel.error.message}
-          </div>
-        ) : null}
       </Panel>
     </>
   );
