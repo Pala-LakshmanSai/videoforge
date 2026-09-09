@@ -4,11 +4,16 @@ import {
   hostedRuntimeConfiguration,
   type HostedRuntimeEnvironment,
 } from "../src/server/hosted/configuration";
-import { hostedPairProductionBindingState } from "../src/server/hosted/hosted-pair-production-composition";
-import type {
-  HostedPairLiveEnvironment,
-  HostedPairWorkflowParameters,
+import { scheduleHostedRenderSubmission } from "../src/server/hosted/app";
+import {
+  createHostedPairLiveComposition,
+  resumeHostedV209OrdinaryPair,
+  type HostedPairLiveEnvironment,
+  type HostedPairWorkflowParameters,
 } from "../src/server/hosted/hosted-pair-live-wiring";
+import { hostedPairProductionBindingState } from "../src/server/hosted/hosted-pair-production-composition";
+import { createHostedV209RenderHandoff } from "../src/server/hosted/hosted-v209-render-handoff";
+import { hasHostedV209OrdinaryDispatchCandidate } from "../src/server/hosted/hosted-v209-queue-admission";
 import { createNeonExecutor, createNeonPool } from "../src/server/hosted/neon";
 import type { V213AcceptanceWorkflowParameters } from "../src/server/hosted/v213-acceptance-workflow-runner";
 
@@ -87,27 +92,16 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
           const reconcilerDatabase = createNeonExecutor(reconcilerPool);
           if (!this.env.PRIVATE_ARTIFACTS)
             throw new Error("Hosted pair render artifact binding is missing.");
-          const [
-            { createHostedPairLiveComposition, resumeHostedV209OrdinaryPair },
-            { createHostedV209RenderHandoff },
-            { hasHostedV209OrdinaryDispatchCandidate },
-          ] = await Promise.all([
-            import("../src/server/hosted/hosted-pair-live-wiring"),
-            import("../src/server/hosted/hosted-v209-render-handoff"),
-            import("../src/server/hosted/hosted-v209-queue-admission"),
-          ]);
           const renderHandoff = createHostedV209RenderHandoff({
             database: reconcilerDatabase,
             runtimeDatabase,
             bucket: this.env.PRIVATE_ARTIFACTS,
-            schedule: async (submission) => {
-              const { scheduleHostedRenderSubmission } = await import("../src/server/hosted/app");
-              return scheduleHostedRenderSubmission(this.env, config, {
+            schedule: (submission) =>
+              scheduleHostedRenderSubmission(this.env, config, {
                 accountId: params.accountId,
                 workspaceId: params.workspaceId,
                 submission,
-              });
-            },
+              }),
           });
           const live = await createHostedPairLiveComposition(
             this.env,
@@ -121,7 +115,6 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
               workspaceId: params.workspaceId,
               generationRequestId: params.generationRequestId,
             });
-            let dispatch: Awaited<ReturnType<typeof resumeHostedV209OrdinaryPair>>;
             if (ordinary) {
               const gate = await live.composition.gate({
                 environment: this.env,
@@ -130,20 +123,20 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
               });
               if (gate.state !== "READY") return gate;
               try {
-                dispatch = await resumeHostedV209OrdinaryPair(this.env, runtimeDatabase, params);
+                await resumeHostedV209OrdinaryPair(this.env, runtimeDatabase, params);
               } catch {
                 // SENT/unknown acknowledgement is deliberately not sendable. Stop this Workflow
                 // step durably so an operator can reconcile before any further provider action.
                 return Object.freeze({ state: "MANUAL_RECONCILIATION_REQUIRED" as const });
               }
             } else {
-              dispatch = await live.composition.resume({
+              const dispatch = await live.composition.resume({
                 environment: this.env,
                 ...params,
                 dispatchTokenKey: this.env.VIDEOFORGE_DISPATCH_TOKEN_KEY!,
               });
+              if (dispatch.state === "DISABLED_UNQUALIFIED") return dispatch;
             }
-            if (dispatch.state === "DISABLED_UNQUALIFIED") return dispatch;
           }
           const clock = await runtimeDatabase.transaction(async (transaction) => {
             const result = await transaction.query<{ database_now: string | Date }>(
