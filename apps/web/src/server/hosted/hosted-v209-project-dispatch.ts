@@ -468,14 +468,23 @@ export async function handleHostedV209ProjectDispatch(
       true,
     );
   } catch (error) {
+    const cause =
+      error instanceof TypeError && error.message === "fetch failed"
+        ? "FETCH_FAILED"
+        : error instanceof DOMException
+          ? error.name
+          : error instanceof Error
+            ? error.name
+            : "NON_ERROR_THROWN";
     const code =
-      error instanceof RangeError && /^[A-Z0-9_]+$/u.test(error.message)
+      error instanceof Error && /^[A-Z0-9_]+$/u.test(error.message)
         ? error.message
         : "HOSTED_V209_DISPATCH_REJECTED";
     console.warn("hosted_v209_project_dispatch", {
       correlation_id: correlationId,
       event: "REJECTED",
       code,
+      cause,
     });
     return response({ error: { code: "HOSTED_V209_DISPATCH_REJECTED" } }, 409);
   } finally {

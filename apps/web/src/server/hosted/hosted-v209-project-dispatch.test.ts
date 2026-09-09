@@ -581,4 +581,28 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
     expect(deps.observe).not.toHaveBeenCalled();
     expect(deps.commitAndSchedule).not.toHaveBeenCalled();
   });
+
+  it("logs a safe cause class for provider fetch failures without changing the public error", async () => {
+    const prepared = await candidate();
+    const deps = dependencies(prepared);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const response = await handleHostedV209ProjectDispatch(
+      request(),
+      { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
+      config,
+      {} as never,
+      { ...deps.value, observe: vi.fn(async () => Promise.reject(new TypeError("fetch failed"))) },
+    );
+    expect(response?.status).toBe(409);
+    await expect(response?.json()).resolves.toEqual({
+      error: { code: "HOSTED_V209_DISPATCH_REJECTED" },
+    });
+    expect(warn).toHaveBeenCalledWith("hosted_v209_project_dispatch", {
+      correlation_id: "v209-safe-correlation",
+      event: "REJECTED",
+      code: "HOSTED_V209_DISPATCH_REJECTED",
+      cause: "FETCH_FAILED",
+    });
+    warn.mockRestore();
+  });
 });
