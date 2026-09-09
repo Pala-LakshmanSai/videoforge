@@ -105,8 +105,7 @@ describe("ordinary V2-09 pair request materialization", () => {
                 envelopeTemplate: template,
                 baseEnvelopeTemplateSha256: await sha256CanonicalJson(template),
                 issuedAt,
-                expiresAt:
-                  lane === "mage_image" ? "2026-09-06T03:00:00.000Z" : "2026-09-06T02:00:00.000Z",
+                expiresAt: "2026-09-06T02:00:00.000Z",
                 work: lane === "mage_image" ? mageWork : soulxWork,
                 avatarSourceInputReservationId: "avatar-input",
               },
@@ -168,10 +167,10 @@ describe("ordinary V2-09 pair request materialization", () => {
     expect(soulx.envelope.work!.items_manifest_sha256).toBe(batchSha);
     expect(soulx.envelope.artifacts!.plan_manifest_sha256).toBe(batchSha);
     expect(commits[0]?.envelope).toMatchObject({
-      limits: { issued_at: issuedAt, expires_at: "2026-09-06T03:00:00.000Z" },
+      limits: { issued_at: issuedAt, expires_at: "2026-09-06T02:00:00.000Z" },
     });
     expect(r2.signGenerated).toHaveBeenCalledWith(
-      expect.objectContaining({ lifetimeSeconds: 7200 }),
+      expect.objectContaining({ lifetimeSeconds: 3600 }),
     );
   });
 });

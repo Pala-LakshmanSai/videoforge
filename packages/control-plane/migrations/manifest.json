@@ -600,6 +600,18 @@
       "name": "hosted_v209_same_attempt_deadline_recovery",
       "filename": "0100_hosted_v209_same_attempt_deadline_recovery.sql",
       "sha256": "sha256:edd951c13ee3d40a48789b37cf5e1fd37f4074cd587753635852e23cf1d10351"
+    },
+    {
+      "version": 101,
+      "name": "hosted_v209_mage_ttl_alignment",
+      "filename": "0101_hosted_v209_mage_ttl_alignment.sql",
+      "sha256": "sha256:548724af9be4ddb92cbb6c1ad11e8a1941f133bcc2d131e562e9c5e2e5309a56"
+    },
+    {
+      "version": 102,
+      "name": "hosted_v209_second_same_attempt_deadline_recovery",
+      "filename": "0102_hosted_v209_second_same_attempt_deadline_recovery.sql",
+      "sha256": "sha256:3c58862aa114ad2c140c06db1abce585e642459a8cdb45232df31c225d96c2e8"
     }
   ]
 }

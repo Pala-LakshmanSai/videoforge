@@ -12,6 +12,7 @@ const MAX_SOULX_OUTPUT_BYTES = 128 * 1024 * 1024;
 const HOSTED_V209_SOULX_AVATAR_SOURCE_BYTES = 1_912_005;
 export const HOSTED_V209_SOULX_AVATAR_SOURCE_SHA256 =
   "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83" as Sha256;
+export const HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS = 3600;
 
 type RecordValue = Record<string, unknown>;
 
@@ -77,7 +78,7 @@ function lifetime(input: V209OrdinaryWorkerRequestInput): number {
   const seconds = (expiresAt - issuedAt) / 1000;
   if (
     !Number.isSafeInteger(seconds) ||
-    seconds !== (input.lane === "mage_image" ? 7200 : 3600) ||
+    seconds !== HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS ||
     new Date(issuedAt).toISOString() !== input.issuedAt ||
     new Date(expiresAt).toISOString() !== input.expiresAt
   )

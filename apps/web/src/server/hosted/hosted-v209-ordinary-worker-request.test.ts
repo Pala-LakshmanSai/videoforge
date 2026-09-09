@@ -3,13 +3,15 @@ import { digestUtf8 } from "@videoforge/control-plane";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS,
   HOSTED_V209_SOULX_AVATAR_SOURCE_SHA256,
   materializeV209OrdinaryWorkerRequest,
 } from "./hosted-v209-ordinary-worker-request";
 
 const issuedAt = "2026-09-06T01:00:00.000Z";
 const soulxExpiresAt = "2026-09-06T02:00:00.000Z";
-const mageExpiresAt = "2026-09-06T03:00:00.000Z";
+const mageExpiresAt = "2026-09-06T02:00:00.000Z";
+const twoHourMageExpiresAt = "2026-09-06T03:00:00.000Z";
 const accountId = "account-a";
 const workspaceId = "workspace-a";
 const attemptId = "attempt-a";
@@ -59,6 +61,10 @@ function envelope(
 }
 
 describe("ordinary V2-09 immutable worker request", () => {
+  it("pins both ordinary lanes to the qualified one-hour authority lifetime", () => {
+    expect(HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS).toBe(3600);
+  });
+
   it("builds the exact Mage handler body with prompts and generated PUTs only", async () => {
     const positive = "authentic documentary still";
     const negative = "text, logo, watermark";
@@ -276,8 +282,8 @@ describe("ordinary V2-09 immutable worker request", () => {
     expect(ports.signGenerated).not.toHaveBeenCalled();
   });
 
-  it("rejects a one-hour Mage authority before signing", async () => {
-    const ports = signer(soulxExpiresAt);
+  it("rejects a two-hour Mage authority before signing", async () => {
+    const ports = signer(twoHourMageExpiresAt);
     await expect(
       materializeV209OrdinaryWorkerRequest(
         {
@@ -286,8 +292,8 @@ describe("ordinary V2-09 immutable worker request", () => {
           workspaceId,
           attemptId,
           issuedAt,
-          expiresAt: soulxExpiresAt,
-          envelope: envelope("mage_image", 1, outputPrefix, ["output-a"], soulxExpiresAt),
+          expiresAt: twoHourMageExpiresAt,
+          envelope: envelope("mage_image", 1, outputPrefix, ["output-a"], twoHourMageExpiresAt),
           work: [{ taskId: "mage-task-a", outputPrefix, outputReservationId: "output-a" }],
         },
         ports as never,

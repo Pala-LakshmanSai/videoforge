@@ -331,6 +331,10 @@ const ledgerRepairUrl = new URL(
   "../migrations/0081_hosted_v209_ordinary_avatar_predispatch_guard.sql",
   import.meta.url,
 );
+const ttlAlignmentUrl = new URL(
+  "../migrations/0101_hosted_v209_mage_ttl_alignment.sql",
+  import.meta.url,
+);
 const fixturePredispatchUrl = new URL(
   "../migrations/0042_hosted_atomic_pair_predispatch.sql",
   import.meta.url,
@@ -638,4 +642,10 @@ test("0074 pins frozen Stage 6/7 artifacts without requiring nonexistent histori
     sql,
     /supplied_request_body->'envelope'->'artifacts'->>'plan_manifest_sha256'<>computed_batch_sha/u,
   );
+  const ttlAlignment = await readFile(ttlAlignmentUrl, "utf8");
+  assert.match(ttlAlignment, /target\.request_ttl_seconds<>3600/u);
+  assert.match(ttlAlignment, /deployment\.request_ttl_seconds<>3600/u);
+  assert.match(ttlAlignment, /target\.request_ttl_seconds<>7200/u);
+  assert.match(ttlAlignment, /deployment\.request_ttl_seconds<>7200/u);
+  assert.match(ttlAlignment, /acl_after IS DISTINCT FROM acl_before/u);
 });

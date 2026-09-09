@@ -19,6 +19,8 @@ import {
   renderNativeMigration98Sql,
   renderNativeMigration99Sql,
   renderNativeMigration100Sql,
+  renderNativeMigration101Sql,
+  renderNativeMigration102Sql,
   executeNativeDatabaseOnce,
 } from "../../deploy/v2-09/native-replacement-database.mjs";
 
@@ -198,8 +200,14 @@ test("migration99 requires exact98 predecessor ledger and renders only the fourt
   assert.match(sql, /candidate\.expires_at>=db_now\+interval ''30 minutes''/u);
   assert.match(sql, /approval\.expires_at>=db_now\+interval ''30 minutes''/u);
   assert.match(sql, /AND expires_at<db_now\+interval ''30 minutes''/u);
-  assert.match(sql, /length\(definition\)-length\(replace\(definition,'lease\.expires_at>db_now',''\)\)/u);
-  assert.match(sql, /length\(definition\)-length\(replace\(definition,'AND expires_at<=db_now',''\)\)/u);
+  assert.match(
+    sql,
+    /length\(definition\)-length\(replace\(definition,'lease\.expires_at>db_now',''\)\)/u,
+  );
+  assert.match(
+    sql,
+    /length\(definition\)-length\(replace\(definition,'AND expires_at<=db_now',''\)\)/u,
+  );
   assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
   assert.throws(() => renderNativeMigration98Sql(input), /MANIFEST/);
   assert.throws(() => renderNativeMigration99Sql(fixture(t, 98)), /MANIFEST/);
@@ -232,7 +240,44 @@ test("migration100 requires exact99 predecessor ledger and renders same-attempt 
   assert.throws(() => renderNativeMigration100Sql(fixture(t, 99)), /MANIFEST/);
 });
 
-test("native execution accepts APPLY_0095 through APPLY_0100 only after operation identity validation", (t) => {
+test("migration101 requires exact100 predecessor ledger and renders Mage TTL alignment", (t) => {
+  const input = fixture(t, 101);
+  const sql = renderNativeMigration101Sql(input);
+  assert.match(sql, /'from_version',100,'to_version',101/);
+  assert.match(sql, /hosted_v209_mage_ttl_alignment/u);
+  assert.match(sql, /target.request_ttl_seconds<>7200/u);
+  assert.match(sql, /deployment.request_ttl_seconds<>7200/u);
+  assert.match(sql, /target.request_ttl_seconds<>3600/u);
+  assert.match(sql, /deployment.request_ttl_seconds<>3600/u);
+  assert.match(sql, /acl_after IS DISTINCT FROM acl_before/u);
+  assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
+  assert.throws(() => renderNativeMigration100Sql(input), /MANIFEST/);
+  assert.throws(() => renderNativeMigration101Sql(fixture(t, 100)), /MANIFEST/);
+});
+
+test("migration102 requires exact101 predecessor ledger and renders the second same-attempt recovery", (t) => {
+  const input = fixture(t, 102);
+  const sql = renderNativeMigration102Sql(input);
+  assert.match(sql, /'from_version',101,'to_version',102/);
+  assert.match(sql, /hosted_v209_second_same_attempt_deadline_recovery/u);
+  assert.match(sql, /renewal_ordinal IN \(1,2,3,4,5,6\)/u);
+  assert.match(sql, /renewal_ordinal IN \(5,6\)/u);
+  assert.match(sql, /videoforge_recover_hosted_v209_same_attempt_deadline_second/u);
+  assert.match(sql, /previous_recovery/u);
+  assert.match(sql, /renewalOrdinal'',6/u);
+  assert.match(sql, /ORDER BY r\.renewal_ordinal DESC,r\.created_at DESC LIMIT 1/u);
+  assert.match(sql, /version<>2/u);
+  assert.match(sql, /renewed_approval_sha,6,mage\.id/u);
+  assert.match(
+    sql,
+    /'AND row\.generation_request_id=request\.id\)=6'\s*\|\|\s*chr\(10\)\s*\|\|\s*'\s{7}IS NOT TRUE'/u,
+  );
+  assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
+  assert.throws(() => renderNativeMigration101Sql(input), /MANIFEST/);
+  assert.throws(() => renderNativeMigration102Sql(fixture(t, 101)), /MANIFEST/);
+});
+
+test("native execution accepts APPLY_0095 through APPLY_0102 only after operation identity validation", (t) => {
   const root = mkdtempSync(resolve(tmpdir(), "v209-native-operation-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const credentialPath = resolve(root, "credential");
@@ -265,6 +310,14 @@ test("native execution accepts APPLY_0095 through APPLY_0100 only after operatio
   );
   assert.throws(
     () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0100" }),
+    /DATABASE_IDENTITY/,
+  );
+  assert.throws(
+    () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0101" }),
+    /DATABASE_IDENTITY/,
+  );
+  assert.throws(
+    () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0102" }),
     /DATABASE_IDENTITY/,
   );
 });

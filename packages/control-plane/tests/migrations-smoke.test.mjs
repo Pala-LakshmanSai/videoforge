@@ -114,8 +114,11 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0100_hosted_v209_same_attempt_deadline_recovery.sql");
-    assert.equal(sources.at(-1)?.version, 100);
+    assert.equal(
+      sources.at(-1)?.filename,
+      "0102_hosted_v209_second_same_attempt_deadline_recovery.sql",
+    );
+    assert.equal(sources.at(-1)?.version, 102);
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -141,7 +144,7 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
       upgraded.appliedVersions,
       [
         60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82,
-        83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
+        83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102,
       ],
     );
     const recoverySurface = await executor.query(
@@ -152,11 +155,59 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
            'public.videoforge_recover_hosted_v209_same_attempt_deadline(uuid,uuid,uuid,uuid,uuid,uuid,integer,text,uuid,uuid,uuid,uuid)'
          ) IS NOT NULL AS has_recovery_function,
          to_regprocedure(
+           'public.videoforge_recover_hosted_v209_same_attempt_deadline_second(uuid,uuid,uuid,uuid,uuid,uuid,integer,text,uuid,uuid,uuid,uuid)'
+         ) IS NOT NULL AS has_second_recovery_function,
+         to_regprocedure(
            'public.videoforge_load_hosted_pair_workflow_schedule(uuid,uuid,uuid)'
-         ) IS NOT NULL AS has_schedule_loader` ,
+         ) IS NOT NULL AS has_schedule_loader,
+         position('ORDER BY r.renewal_ordinal DESC,r.created_at DESC LIMIT 1'
+           IN pg_get_functiondef(
+             'public.videoforge_load_hosted_pair_workflow_schedule(uuid,uuid,uuid)'::regprocedure
+           )) > 0 AS schedule_reads_latest_recovery,
+         position('IF expected_ordinal>7 THEN'
+           IN pg_get_functiondef(
+             'public.videoforge_effective_hosted_v209_candidate(uuid,uuid,uuid)'::regprocedure
+           )) > 0 AS effective_candidate_allows_ordinal_6,
+         position('OR (supplied_lane=''mage_image'' AND target.request_ttl_seconds<>3600)'
+           IN pg_get_functiondef(
+             'public.videoforge_v209_ordinary_load_lane_legacy_0081(uuid,uuid,uuid,text)'::regprocedure
+           )) > 0 AS mage_loader_uses_3600,
+         position('OR (supplied_lane=''mage_image'' AND target.request_ttl_seconds<>7200)'
+           IN pg_get_functiondef(
+             'public.videoforge_v209_ordinary_load_lane_legacy_0081(uuid,uuid,uuid,text)'::regprocedure
+           )) = 0 AS mage_loader_rejects_7200,
+         position('OR (supplied_lane=''soulx_avatar'' AND target.request_ttl_seconds<>3600)'
+           IN pg_get_functiondef(
+             'public.videoforge_v209_ordinary_load_lane_legacy_0081(uuid,uuid,uuid,text)'::regprocedure
+           )) > 0 AS soulx_loader_uses_3600,
+         position('OR (supplied_lane=''mage_image'' AND deployment.request_ttl_seconds<>3600)'
+           IN pg_get_functiondef(
+             'public.videoforge_v209_ordinary_commit_lane_legacy_0081(uuid,uuid,uuid,text,uuid,text,jsonb,text)'::regprocedure
+           )) > 0 AS mage_commit_uses_3600,
+         position('OR (supplied_lane=''mage_image'' AND deployment.request_ttl_seconds<>7200)'
+           IN pg_get_functiondef(
+             'public.videoforge_v209_ordinary_commit_lane_legacy_0081(uuid,uuid,uuid,text,uuid,text,jsonb,text)'::regprocedure
+           )) = 0 AS mage_commit_rejects_7200,
+         position('OR (supplied_lane=''soulx_avatar'' AND deployment.request_ttl_seconds<>3600)'
+           IN pg_get_functiondef(
+             'public.videoforge_v209_ordinary_commit_lane_legacy_0081(uuid,uuid,uuid,text,uuid,text,jsonb,text)'::regprocedure
+           )) > 0 AS soulx_commit_uses_3600`,
     );
     assert.deepEqual(recoverySurface.rows, [
-      { has_recovery_table: true, has_recovery_function: true, has_schedule_loader: true },
+      {
+        has_recovery_table: true,
+        has_recovery_function: true,
+        has_second_recovery_function: true,
+        has_schedule_loader: true,
+        schedule_reads_latest_recovery: true,
+        effective_candidate_allows_ordinal_6: true,
+        mage_loader_uses_3600: true,
+        mage_loader_rejects_7200: true,
+        soulx_loader_uses_3600: true,
+        mage_commit_uses_3600: true,
+        mage_commit_rejects_7200: true,
+        soulx_commit_uses_3600: true,
+      },
     ]);
     const renewalConstraint = await executor.query(
       `SELECT pg_get_constraintdef(oid) AS definition
@@ -165,7 +216,7 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
           AND conname='hosted_v209_renewal_ordinal_check'`,
     );
     assert.equal(renewalConstraint.rows.length, 1);
-    assert.match(renewalConstraint.rows[0].definition, /1, 2, 3, 4, 5/u);
+    assert.match(renewalConstraint.rows[0].definition, /1, 2, 3, 4, 5, 6/u);
     const recoveryFunction = await executor.query(
       `SELECT pg_get_functiondef(
          'videoforge_recover_hosted_v209_same_attempt_deadline(uuid,uuid,uuid,uuid,uuid,uuid,integer,text,uuid,uuid,uuid,uuid)'::regprocedure
@@ -174,6 +225,30 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
     assert.match(recoveryFunction.rows[0].definition, /renewal_count<>4/u);
     assert.match(recoveryFunction.rows[0].definition, /providerActionsCreated/u);
     assert.match(recoveryFunction.rows[0].definition, /refreshed_stop_at/u);
+    const secondRecoveryFunction = await executor.query(
+      `SELECT pg_get_functiondef(
+         'videoforge_recover_hosted_v209_same_attempt_deadline_second(uuid,uuid,uuid,uuid,uuid,uuid,integer,text,uuid,uuid,uuid,uuid)'::regprocedure
+       ) AS definition`,
+    );
+    assert.match(secondRecoveryFunction.rows[0].definition, /renewal_count<>5/u);
+    assert.match(secondRecoveryFunction.rows[0].definition, /previous_recovery/u);
+    assert.match(secondRecoveryFunction.rows[0].definition, /renewalOrdinal'\s*,\s*6/u);
+    assert.match(
+      secondRecoveryFunction.rows[0].definition,
+      /row\.generation_request_id=request\.id\)=6\s+IS NOT TRUE/u,
+    );
+    assert.doesNotMatch(
+      secondRecoveryFunction.rows[0].definition,
+      /row\.generation_request_id=request\.id\)=5\s+IS NOT TRUE/u,
+    );
+    const recoveryOrdinalConstraint = await executor.query(
+      `SELECT pg_get_constraintdef(oid) AS definition
+         FROM pg_constraint
+        WHERE conrelid='hosted_v209_same_attempt_deadline_recoveries'::regclass
+          AND conname='hosted_v209_same_attempt_deadline_recoveries_ordinal_check'`,
+    );
+    assert.equal(recoveryOrdinalConstraint.rows.length, 1);
+    assert.match(recoveryOrdinalConstraint.rows[0].definition, /5, 6/u);
     const definitions = await executor.query(
       `SELECT proname, pg_get_functiondef(oid) AS definition
          FROM pg_proc
