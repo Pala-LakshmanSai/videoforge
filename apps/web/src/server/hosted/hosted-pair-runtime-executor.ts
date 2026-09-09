@@ -6,11 +6,11 @@ import {
 } from "@videoforge/control-plane";
 import {
   sha256CanonicalJson,
-  validateAndHashContractDocument,
   type JsonValue,
   type ServerlessWorkerJobEnvelopeV3Document,
 } from "@videoforge/contracts";
 
+import { validateAndHashHostedContractDocument } from "./precompiled-contract-validation";
 import { HostedDispatchCoordinationError } from "./hosted-serverless-dispatch-coordinator";
 
 export type HostedPairLane = "mage_image" | "soulx_avatar";
@@ -309,7 +309,10 @@ export class HostedPairRuntimeExecutor {
       const envelope = input.envelopes[index]!;
       const expected = prepared[index]!;
       const document = (
-        await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", envelope.document)
+        await validateAndHashHostedContractDocument(
+          "serverlessWorkerJobEnvelopeV3",
+          envelope.document,
+        )
       ).value as ServerlessWorkerJobEnvelopeV3Document;
       const unsigned = unsignedEnvelope(document);
       if (
@@ -383,7 +386,10 @@ export class HostedPairRuntimeExecutor {
       ...(prepared.requestBody ? { expectedRequestBodySha256: prepared.requestBodySha256 } : {}),
     });
     const document = (
-      await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", envelope.document)
+      await validateAndHashHostedContractDocument(
+        "serverlessWorkerJobEnvelopeV3",
+        envelope.document,
+      )
     ).value as ServerlessWorkerJobEnvelopeV3Document;
     const unsigned = unsignedEnvelope(document);
     if (

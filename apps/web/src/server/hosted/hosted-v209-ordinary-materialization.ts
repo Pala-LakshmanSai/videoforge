@@ -1,7 +1,6 @@
 import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
 import {
   sha256CanonicalJson,
-  validateAndHashContractDocument,
   type JsonValue,
 } from "@videoforge/contracts";
 
@@ -13,6 +12,7 @@ import {
   v209OrdinarySoulXBatch,
   type V209OrdinaryWorkerRequest,
 } from "./hosted-v209-ordinary-worker-request";
+import { validateAndHashHostedContractDocument } from "./precompiled-contract-validation";
 import type { HostedR2Signer } from "./r2";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -150,7 +150,7 @@ export class HostedSqlV209OrdinaryLaneMaterializer {
             "HOSTED_V209_ORDINARY_ENVELOPE_SIGNATURE_INVALID",
           );
         const document = (
-          await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", {
+          await validateAndHashHostedContractDocument("serverlessWorkerJobEnvelopeV3", {
             ...(bodies[index]!.body as Record<string, JsonValue>),
             authority_sha256: signature.authoritySha256,
             signature: signature.signature,

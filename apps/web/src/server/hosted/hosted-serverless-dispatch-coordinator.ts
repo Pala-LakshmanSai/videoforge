@@ -16,10 +16,10 @@ import {
 } from "@videoforge/control-plane";
 import {
   sha256CanonicalJson,
-  validateAndHashContractDocument,
   type JsonValue,
   type ServerlessWorkerJobEnvelopeV3Document,
 } from "@videoforge/contracts";
+import { validateAndHashHostedContractDocument } from "./precompiled-contract-validation";
 
 import {
   HostedServerlessCompositionError,
@@ -357,7 +357,10 @@ async function validateEnvelopeBindings(input: {
   let envelope: ServerlessWorkerJobEnvelopeV3Document;
   try {
     envelope = (
-      await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", structuralCandidate)
+      await validateAndHashHostedContractDocument(
+        "serverlessWorkerJobEnvelopeV3",
+        structuralCandidate,
+      )
     ).value;
   } catch {
     reject("HOSTED_SERVERLESS_ENVELOPE_INVALID");
@@ -835,7 +838,7 @@ export async function dispatchHostedPreparedGeneration(input: {
       signedEnvelopes.set(
         item.task.lane,
         (
-          await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", {
+          await validateAndHashHostedContractDocument("serverlessWorkerJobEnvelopeV3", {
             ...item.body,
             authority_sha256: signed.authoritySha256,
             signature: signed.signature,

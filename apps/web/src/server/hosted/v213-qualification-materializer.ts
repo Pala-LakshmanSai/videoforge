@@ -2,9 +2,10 @@ import { canonicalSha256, digestUtf8, type Sha256 } from "@videoforge/control-pl
 import {
   assertContract,
   canonicalizeJsonToUtf8,
-  validateAndHashContractDocument,
   type JsonValue,
 } from "@videoforge/contracts";
+
+import { validateAndHashHostedContractDocument } from "./precompiled-contract-validation";
 
 import {
   generateMageQualificationCase,
@@ -1035,7 +1036,7 @@ async function buildMaterialization(
     authority_sha256: signed.authoritySha256,
     signature: signed.signature,
   };
-  await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", envelope);
+  await validateAndHashHostedContractDocument("serverlessWorkerJobEnvelopeV3", envelope);
   const workerRequest = {
     envelope,
     batch,

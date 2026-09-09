@@ -5,13 +5,13 @@ import type {
 } from "@videoforge/control-plane";
 import {
   sha256CanonicalJson,
-  validateAndHashContractDocument,
   type JsonValue,
   type ServerlessWorkerJobEnvelopeV3Document,
 } from "@videoforge/contracts";
 
 import { HostedDispatchCoordinationError } from "./hosted-serverless-dispatch-coordinator";
 import type { HostedEnvelopePairSigner } from "./hosted-envelope-signer";
+import { validateAndHashHostedContractDocument } from "./precompiled-contract-validation";
 import type { V209ShortLiveAdmission } from "../runtime/v209-short-live-cost";
 
 const COMMIT_FUNCTION = "public.videoforge_commit_hosted_atomic_pair_predispatch";
@@ -267,7 +267,7 @@ export async function signAndVerifyHostedAtomicPair(
     try {
       envelopes.push(
         (
-          await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", {
+          await validateAndHashHostedContractDocument("serverlessWorkerJobEnvelopeV3", {
             ...(commits[index]!.unsignedEnvelope as Record<string, JsonValue>),
             authority_sha256: signature.authoritySha256,
             signature: signature.signature,

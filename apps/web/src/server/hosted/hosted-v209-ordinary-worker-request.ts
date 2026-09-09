@@ -1,8 +1,7 @@
 import { canonicalSha256, digestUtf8, type Sha256 } from "@videoforge/control-plane";
-import { validateAndHashContractDocument } from "@videoforge/contracts";
-
 import { MAGE_MODEL_REVISION } from "../providers/runpod-mage-result";
 import type { HostedPairLane } from "./hosted-pair-runtime-executor";
+import { validateAndHashHostedContractDocument } from "./precompiled-contract-validation";
 import type { HostedR2Signer } from "./r2";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -245,7 +244,7 @@ export async function materializeV209OrdinaryWorkerRequest(
     input.work.length < 1
   )
     fail();
-  await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", input.envelope);
+  await validateAndHashHostedContractDocument("serverlessWorkerJobEnvelopeV3", input.envelope);
 
   const expectedTransferIds =
     input.lane === "mage_image"

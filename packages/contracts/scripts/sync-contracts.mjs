@@ -136,6 +136,7 @@ const hostedGenerationValidatorModule = createStandaloneValidatorModule([
   "asrJobResult",
   "transcriptTiming",
   "timelinePlan",
+  "serverlessWorkerJobEnvelopeV3",
 ]);
 expectedFiles.set(
   path.join(packageRoot, "generated/hosted-generation-contract-validators.ts"),

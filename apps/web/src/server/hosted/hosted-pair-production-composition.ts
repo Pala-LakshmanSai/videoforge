@@ -2,7 +2,6 @@ import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
 import {
   canonicalizeJsonToUtf8,
   sha256CanonicalJson,
-  validateAndHashContractDocument,
   type JsonValue,
   type ServerlessWorkerJobEnvelopeV3Document,
 } from "@videoforge/contracts";
@@ -17,6 +16,7 @@ import {
   type HostedSignedEnvelopeVerifier,
   type HostedSignedPairEnvelope,
 } from "./hosted-pair-runtime-executor";
+import { validateAndHashHostedContractDocument } from "./precompiled-contract-validation";
 import { HostedDispatchCoordinationError } from "./hosted-serverless-dispatch-coordinator";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -475,7 +475,7 @@ async function signReconstructedPair(
       )
         throw new HostedDispatchCoordinationError("HOSTED_PAIR_RESTART_SIGNATURE_INVALID");
       const document = (
-        await validateAndHashContractDocument("serverlessWorkerJobEnvelopeV3", {
+        await validateAndHashHostedContractDocument("serverlessWorkerJobEnvelopeV3", {
           ...(body as Record<string, JsonValue>),
           authority_sha256: signature.authoritySha256,
           signature: signature.signature,
