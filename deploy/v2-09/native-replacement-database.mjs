@@ -174,6 +174,7 @@ export function executeNativeDatabaseOnce({
       "APPLY_0106",
       "APPLY_V209_RUNTIME_GRANTS",
       "IMPORT_REPLACEMENT_ACTIVATION",
+      "REBIND_RENEWED_ACTIVATION",
     ].includes(operation) ||
     databaseBytesHash(sql) !== expectedSqlSha256
   )
