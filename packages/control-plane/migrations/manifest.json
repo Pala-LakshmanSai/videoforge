@@ -612,6 +612,12 @@
       "name": "hosted_v209_second_same_attempt_deadline_recovery",
       "filename": "0102_hosted_v209_second_same_attempt_deadline_recovery.sql",
       "sha256": "sha256:3c58862aa114ad2c140c06db1abce585e642459a8cdb45232df31c225d96c2e8"
+    },
+    {
+      "version": 103,
+      "name": "hosted_project_owner_predispatch_cancellation",
+      "filename": "0103_hosted_project_owner_predispatch_cancellation.sql",
+      "sha256": "sha256:6d53def7804d0dedaf8fd6288af627f3b32a6af2e57a88b31f2733430449dff0"
     }
   ]
 }

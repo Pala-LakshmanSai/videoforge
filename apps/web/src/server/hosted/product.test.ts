@@ -28,6 +28,10 @@ const testState = vi.hoisted(() => {
     rows: Record<string, unknown>[];
     error: unknown;
   } = { rows: [], error: null };
+  const projectCancellationState: {
+    rows: Record<string, unknown>[];
+    error: unknown;
+  } = { rows: [], error: null };
   const avatarDraftRows: Record<string, unknown>[] = [];
   const styleDraftRows: Record<string, unknown>[] = [];
   const publishedStyleRows: Record<string, unknown>[] = [];
@@ -44,6 +48,13 @@ const testState = vi.hoisted(() => {
     if (sql.includes("videoforge_archive_hosted_project")) {
       if (projectArchiveState.error) throw projectArchiveState.error;
       return { rows: projectArchiveState.rows, affectedRows: projectArchiveState.rows.length };
+    }
+    if (sql.includes("videoforge_cancel_hosted_project_predispatch")) {
+      if (projectCancellationState.error) throw projectCancellationState.error;
+      return {
+        rows: projectCancellationState.rows,
+        affectedRows: projectCancellationState.rows.length,
+      };
     }
     if (
       sql.includes("version.state NOT IN ('READY','ABANDONED')") ||
@@ -82,6 +93,7 @@ const testState = vi.hoisted(() => {
     rateLimitRows,
     archiveState,
     projectArchiveState,
+    projectCancellationState,
     avatarDraftRows,
     styleDraftRows,
     publishedStyleRows,
@@ -716,6 +728,72 @@ describe("hosted product route contract", () => {
     expect(result?.status).toBe(409);
     await expect(errorCode(result)).resolves.toBe("PROJECT_HAS_ACTIVE_WORK");
     testState.projectArchiveState.error = null;
+  });
+
+  it("cancels tenant project work only through the provider-safe exact function", async () => {
+    const generationRequestId = "55555555-5555-4555-8555-555555555555";
+    testState.query.mockClear();
+    testState.projectCancellationState.rows.splice(
+      0,
+      testState.projectCancellationState.rows.length,
+      {
+        project_id: PROJECT_ID,
+        generation_request_id: generationRequestId,
+        state: "CANCELLED",
+        replayed: false,
+      },
+    );
+    testState.projectCancellationState.error = null;
+
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/projects/${PROJECT_ID}/cancel`, "POST", {
+        schema_version: "videoforge-hosted-project-cancellation/v1",
+        project_id: PROJECT_ID,
+        confirmation: "STOP",
+      }),
+      environment,
+      config,
+      executionContext,
+    );
+
+    expect(result?.status).toBe(200);
+    await expect(result?.json()).resolves.toEqual({
+      schema_version: "videoforge-hosted-project-cancellation-response/v1",
+      project_id: PROJECT_ID,
+      generation_request_id: generationRequestId,
+      state: "CANCELLED",
+      replayed: false,
+      provider_actions_created: false,
+      redispatch: false,
+    });
+    expect(
+      testState.query.mock.calls.some(([sql]) =>
+        String(sql).includes("videoforge_cancel_hosted_project_predispatch"),
+      ),
+    ).toBe(true);
+    expect(
+      testState.query.mock.calls.some(([sql]) =>
+        /UPDATE\s+generation_requests/iu.test(String(sql)),
+      ),
+    ).toBe(false);
+    testState.projectCancellationState.rows.length = 0;
+  });
+
+  it("rejects stale or unbound project cancellation confirmation", async () => {
+    testState.query.mockClear();
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/projects/${PROJECT_ID}/cancel`, "POST", {
+        schema_version: "videoforge-hosted-project-cancellation/v1",
+        project_id: PRESET_ID,
+        confirmation: "STOP",
+      }),
+      environment,
+      config,
+      executionContext,
+    );
+    expect(result?.status).toBe(400);
+    await expect(errorCode(result)).resolves.toBe("PROJECT_WORK_CANCELLATION_REJECTED");
+    expect(testState.query).not.toHaveBeenCalled();
   });
 
   it("returns a kind-specific not-found when the archive capability resolves no row", async () => {

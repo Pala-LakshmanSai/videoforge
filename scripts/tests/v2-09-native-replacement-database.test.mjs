@@ -21,6 +21,7 @@ import {
   renderNativeMigration100Sql,
   renderNativeMigration101Sql,
   renderNativeMigration102Sql,
+  renderNativeMigration103Sql,
   executeNativeDatabaseOnce,
 } from "../../deploy/v2-09/native-replacement-database.mjs";
 
@@ -277,7 +278,7 @@ test("migration102 requires exact101 predecessor ledger and renders the second s
   assert.throws(() => renderNativeMigration102Sql(fixture(t, 101)), /MANIFEST/);
 });
 
-test("native execution accepts APPLY_0095 through APPLY_0102 only after operation identity validation", (t) => {
+test("native execution accepts APPLY_0095 through APPLY_0103 only after operation identity validation", (t) => {
   const root = mkdtempSync(resolve(tmpdir(), "v209-native-operation-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const credentialPath = resolve(root, "credential");
@@ -320,4 +321,19 @@ test("native execution accepts APPLY_0095 through APPLY_0102 only after operatio
     () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0102" }),
     /DATABASE_IDENTITY/,
   );
+  assert.throws(
+    () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0103" }),
+    /DATABASE_IDENTITY/,
+  );
+});
+
+test("migration103 requires exact102 predecessor ledger and renders owner predispatch cancellation", (t) => {
+  const input = fixture(t, 103);
+  const sql = renderNativeMigration103Sql(input);
+  assert.match(sql, /'from_version',102,'to_version',103/);
+  assert.match(sql, /videoforge_cancel_hosted_project_predispatch/u);
+  assert.match(sql, /OWNER_CANCELLED_BEFORE_PROVIDER_DISPATCH/u);
+  assert.match(sql, /provider_boundary_count<>0/u);
+  assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
+  assert.throws(() => renderNativeMigration102Sql(input), /MANIFEST/);
 });

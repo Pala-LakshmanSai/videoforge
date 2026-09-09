@@ -4083,6 +4083,76 @@ async function archiveHostedProject(
   }
 }
 
+async function cancelHostedProjectWork(
+  request: Request,
+  projectId: string,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+
+  const raw = await parseHostedJson(request, "PROJECT_WORK_CANCELLATION_REJECTED", 4_096);
+  if (raw instanceof Response) return raw;
+  const body = plainRecord(raw);
+  if (
+    !body ||
+    !exactKeys(body, ["schema_version", "project_id", "confirmation"]) ||
+    body.schema_version !== "videoforge-hosted-project-cancellation/v1" ||
+    body.project_id !== projectId ||
+    body.confirmation !== "STOP"
+  ) {
+    return response({ error: { code: "PROJECT_WORK_CANCELLATION_REJECTED" } }, 400);
+  }
+
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const cancelled = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      const result = await transaction.query<Record<string, unknown>>(
+        `SELECT project_id, generation_request_id, state, replayed
+           FROM public.videoforge_cancel_hosted_project_predispatch($1, $2, $3)`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+      return result.rows[0] ?? null;
+    });
+
+    if (!cancelled) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+    return response({
+      schema_version: "videoforge-hosted-project-cancellation-response/v1",
+      project_id: rowString(cancelled, "project_id"),
+      generation_request_id: rowString(cancelled, "generation_request_id"),
+      state: rowString(cancelled, "state"),
+      replayed: cancelled.replayed === true,
+      provider_actions_created: false,
+      redispatch: false,
+    });
+  } catch (error) {
+    if (postgresCode(error) === "55000")
+      return response(
+        {
+          error: {
+            code: "PROJECT_WORK_CANCELLATION_UNAVAILABLE",
+            message:
+              "This run cannot be stopped from this control until its provider state is safely reconciled.",
+          },
+        },
+        409,
+      );
+    if (postgresCode(error) === "42501")
+      return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
 type HostedPreflightBlocker = {
   readonly code: string;
   readonly message: string;
@@ -6850,6 +6920,11 @@ export async function handleHostedProductRequest(
   const manifest = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/manifest$/u.exec(url.pathname);
   if (request.method === "GET" && manifest)
     return projectManifest(request, manifest[1]!, config, executionContext);
+  const cancelProjectWork = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/cancel$/u.exec(
+    url.pathname,
+  );
+  if (request.method === "POST" && cancelProjectWork)
+    return cancelHostedProjectWork(request, cancelProjectWork[1]!, config, executionContext);
   const detail = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)$/u.exec(url.pathname);
   if (request.method === "DELETE" && detail)
     return archiveHostedProject(request, detail[1]!, config, executionContext);

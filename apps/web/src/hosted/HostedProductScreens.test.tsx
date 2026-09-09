@@ -1617,6 +1617,92 @@ describe("hosted product journey", () => {
     await waitFor(() => expect(routerState.navigate).toHaveBeenCalledWith({ to: "/" }));
   });
 
+  it("offers exact provider-safe cancellation before deleting active project work", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const confirm = vi.fn(() => true);
+    vi.stubGlobal("confirm", confirm);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith(`/projects/${projectId}/cancel`)) {
+        return Response.json({
+          schema_version: "videoforge-hosted-project-cancellation-response/v1",
+          project_id: projectId,
+          generation_request_id: "55555555-5555-4555-8555-555555555555",
+          state: "CANCELLED",
+          replayed: false,
+          provider_actions_created: false,
+          redispatch: false,
+        });
+      }
+      return Response.json({
+        project: {
+          id: projectId,
+          title: "Private project",
+          created_at: "2026-08-17T10:00:00.000Z",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
+        },
+        attempts: [
+          {
+            id: "33333333-3333-4333-8333-333333333333",
+            kind: "MAGE_IMAGE" as const,
+            state: "PLANNED",
+            version: 1,
+            created_at: "2026-08-17T10:00:00.000Z",
+            updated_at: "2026-08-17T10:01:00.000Z",
+            terminal_at: null,
+            output_checksum_sha256: null,
+            approved_at: null,
+            preview_url: null,
+          },
+          {
+            id: "44444444-4444-4444-8444-444444444444",
+            kind: "SOULX_AVATAR" as const,
+            state: "PLANNED",
+            version: 1,
+            created_at: "2026-08-17T10:00:00.000Z",
+            updated_at: "2026-08-17T10:01:00.000Z",
+            terminal_at: null,
+            output_checksum_sha256: null,
+            approved_at: null,
+            preview_url: null,
+          },
+        ],
+        gpu_transport: "QUALIFIED_EXACT" as const,
+        gpu_readiness: gpuReadiness,
+        generation: {
+          id: "55555555-5555-4555-8555-555555555555",
+          timeline_plan_sha256: `sha256:${"a".repeat(64)}`,
+          planned_tasks: 2,
+          completed_tasks: 0,
+          failed_tasks: 0,
+          stage: "READY_FOR_GPU_DISPATCH" as const,
+        },
+        queue: { status: "ACTIVE", position: 1 },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel project work" }));
+    expect(confirm).toHaveBeenCalledWith(
+      expect.stringContaining("No provider request will be retried"),
+    );
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/v2/hosted/projects/${projectId}/cancel`,
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            schema_version: "videoforge-hosted-project-cancellation/v1",
+            project_id: projectId,
+            confirmation: "STOP",
+          }),
+        }),
+      ),
+    );
+  });
+
   it("offers a safe explicit retry when personal-worker transcription fails", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const detail = {

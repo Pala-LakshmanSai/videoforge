@@ -87,6 +87,10 @@ TO :"runtime_role";
 -- DELETE privilege is granted.
 GRANT EXECUTE ON FUNCTION public.videoforge_archive_hosted_project(uuid, uuid, uuid)
 TO :"runtime_role";
+-- Migration 0103 exposes owner cancellation only while no provider dispatch evidence exists.
+-- Provider-crossed work remains fenced behind the dedicated cleanup/reconciliation path.
+GRANT EXECUTE ON FUNCTION public.videoforge_cancel_hosted_project_predispatch(uuid, uuid, uuid)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_reserve_hosted_style_analysis(uuid, text, uuid)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_finish_hosted_style_analysis(uuid, text, text, text, bigint, bigint, bigint)

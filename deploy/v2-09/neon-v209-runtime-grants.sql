@@ -137,6 +137,7 @@ INSERT INTO v209_runtime_function_allowlist(signature) VALUES
   ('videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)'),
   ('videoforge_archive_hosted_preset(uuid,uuid,text,uuid)'),
   ('videoforge_archive_hosted_project(uuid,uuid,uuid)'),
+  ('videoforge_cancel_hosted_project_predispatch(uuid,uuid,uuid)'),
   ('videoforge_authorize_hosted_cpu_upload(uuid,text,text,text,text,bigint,text,timestamp with time zone)'),
   ('videoforge_begin_hosted_pair_send(uuid,uuid,uuid,text,uuid,text)'),
   ('videoforge_begin_hosted_v209_ordinary_send(uuid,uuid,uuid,text,uuid,text,text)'),

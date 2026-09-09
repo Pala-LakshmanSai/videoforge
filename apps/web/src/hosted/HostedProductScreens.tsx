@@ -790,6 +790,13 @@ interface HostedV209DispatchResponse {
 }
 
 const HOSTED_V209_DISPATCH_READY_QUEUE_STATES = new Set(["ADMITTED", "ACTIVE"]);
+const HOSTED_PREDISPATCH_CANCELLABLE_QUEUE_STATES = new Set([
+  "WAITING",
+  "RETRY_WAIT",
+  "ADMITTED",
+  "ACTIVE",
+  "CANCELLING",
+]);
 const HOSTED_V209_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 
 function exactHostedV209DispatchResponse(value: HostedV209DispatchResponse) {
@@ -3600,6 +3607,22 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       await navigate({ to: "/" });
     },
   });
+  const cancelProjectWork = useMutation({
+    mutationFn: () =>
+      readJson<{
+        state: "CANCELLED";
+        provider_actions_created: false;
+        redispatch: false;
+      }>(`/api/v2/hosted/projects/${projectId}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({
+          schema_version: "videoforge-hosted-project-cancellation/v1",
+          project_id: projectId,
+          confirmation: "STOP",
+        }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
   if (query.isPending)
     return (
       <Panel className="loading-panel" eyebrow="Hosted project" heading="Opening live progress">
@@ -3777,6 +3800,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   };
   const cancellableAttempts = query.data.attempts.filter((attempt) =>
     ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
+  );
+  const queueState = String(query.data.queue?.status ?? "").toUpperCase();
+  const predispatchGenerationAttempts = query.data.attempts.filter(
+    (attempt) =>
+      (attempt.kind === "MAGE_IMAGE" || attempt.kind === "SOULX_AVATAR") &&
+      attempt.state === "PLANNED",
+  );
+  const canCancelPredispatchGeneration = Boolean(
+    query.data.generation &&
+      HOSTED_PREDISPATCH_CANCELLABLE_QUEUE_STATES.has(queueState) &&
+      (predispatchGenerationAttempts.length === 0 || predispatchGenerationAttempts.length === 2),
   );
   const prompts = query.data.prompts ?? [];
   // The API exposes no raw/in-flight model output. Both final rows and
@@ -4283,6 +4317,23 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           Removes this project from Queue and Progress and prevents any new work. Billing and
           security history stays preserved.
         </p>
+        {canCancelPredispatchGeneration ? (
+          <Button
+            variant="danger"
+            busy={cancelProjectWork.isPending}
+            disabled={cancelProjectWork.isPending}
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Cancel active work for “${query.data.project.title}”? No provider request will be retried. You can delete the project after cancellation finishes.`,
+                )
+              )
+                cancelProjectWork.mutate();
+            }}
+          >
+            <X size={16} aria-hidden="true" /> Cancel project work
+          </Button>
+        ) : null}
         <Button
           variant="danger"
           busy={deleteProject.isPending}
@@ -4301,6 +4352,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         {deleteProject.isError ? (
           <div className="validation validation-danger" role="alert">
             {deleteProject.error.message}
+          </div>
+        ) : null}
+        {cancelProjectWork.isError ? (
+          <div className="validation validation-danger" role="alert">
+            {cancelProjectWork.error.message}
           </div>
         ) : null}
       </Panel>
