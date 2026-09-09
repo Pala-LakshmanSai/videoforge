@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { sha256 } from "./crypto";
-import { canonicalJson } from "./submission";
+import { canonicalJson, exactSelectedSpanAudioInput } from "./submission";
 import {
   createHostedV209SpanAudioCoordinator,
   type HostedV209SpanIdentity,
@@ -91,6 +91,18 @@ async function projection() {
 }
 
 describe("hosted V2-09 span audio coordinator", () => {
+  it("accepts the full terminal 25 fps outward-rounding window and nothing beyond it", async () => {
+    const value = await projection();
+    const input = value.jobs[0]!.inputDocument;
+    input.source_voiceover.duration_ms = 30_001;
+    input.selection.padded_end_ms_exclusive = 30_040;
+
+    expect(exactSelectedSpanAudioInput(input)).not.toBeNull();
+
+    input.source_voiceover.duration_ms = 30_000;
+    expect(exactSelectedSpanAudioInput(input)).toBeNull();
+  });
+
   it("schedules only the exact DB-owned 48 kHz submission", async () => {
     const value = await projection();
     const schedule = vi.fn(

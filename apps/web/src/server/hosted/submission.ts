@@ -169,7 +169,8 @@ export function exactSelectedSpanAudioInput(value: unknown): Record<string, unkn
     paddedEnd < selectedEnd ||
     trimStart !== selectedStart - paddedStart ||
     trimEnd !== trimStart + selectedEnd - selectedStart ||
-    paddedEnd > Number(value.source_voiceover.duration_ms) + 20 ||
+    // A 25 fps outward snap can extend the final source boundary by 0-39 ms.
+    paddedEnd > Number(value.source_voiceover.duration_ms) + 39 ||
     value.output.result_uri !==
       `vf-local-run://${String(value.project_revision_id)}/${String(value.attempt_id)}/span-audio-result.json`
   )
