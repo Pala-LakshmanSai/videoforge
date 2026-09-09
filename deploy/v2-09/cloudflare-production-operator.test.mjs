@@ -851,6 +851,37 @@ test("version readback requires the exact production CPU limit", async () => {
     }),
     /ACTIVE_VERSION_CPU_LIMIT_DRIFT/u,
   );
+  assert.equal(
+    JSON.parse(readFileSync(value.configuration.journalPath, "utf8")).failure.operation_code,
+    "V2_09_CLOUDFLARE_PRODUCTION_ACTIVE_VERSION_CPU_LIMIT_DRIFT",
+  );
+});
+
+test("current version readback rejects an absent production CPU limit", async () => {
+  const value = fixture();
+  const mock = harness(value, {
+    mutateVersionOnce: (version) => {
+      const observed = { ...version };
+      delete observed.limits;
+      return observed;
+    },
+  });
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  await assert.rejects(
+    operator.deployCloudflareDisabled.run({
+      authority: authority(value),
+      operationId: "deploy-cloudflare-disabled-bootstrap",
+    }),
+    /ACTIVE_VERSION_CPU_LIMIT_DRIFT/u,
+  );
 });
 
 test("port identity binds composed capability, imported source, sanitized config, and dependencies", () => {
@@ -1293,6 +1324,7 @@ test("only exact pinned disabled predecessor can be replaced; drift preserves it
   for (const drift of [false, true]) {
     const value = fixture();
     const previous = structuredClone(value.qualified);
+    delete previous.limits;
     previous.vars.VIDEOFORGE_GPU_TRANSPORT = "DISABLED_UNQUALIFIED";
     const oldConfig = resolve(value.directory, "predecessor.json");
     writeFileSync(oldConfig, JSON.stringify(previous), { mode: 0o600 });
@@ -1588,6 +1620,7 @@ test("replacement validates a relocated prior artifact tree without rewriting pi
   const predecessorPath = resolve(value.directory, "prior-qualified.json");
   oldConfig.vars.VIDEOFORGE_COMMIT = "b".repeat(40);
   oldConfig.no_bundle = true;
+  delete oldConfig.limits;
   const bytes = JSON.stringify(oldConfig);
   writeFileSync(predecessorPath, bytes, { mode: 0o600 });
   const artifactRootPath = resolve(value.directory, "prior-artifacts");
@@ -1621,6 +1654,7 @@ test("replacement validates a relocated prior artifact tree without rewriting pi
       v.main = oldConfig.main;
       v.assets = oldConfig.assets;
       v.vars.VIDEOFORGE_COMMIT = oldConfig.vars.VIDEOFORGE_COMMIT;
+      delete v.limits;
       return { ...result, stdout: JSON.stringify(v) };
     }
     return result;
@@ -1669,6 +1703,7 @@ test("replacement verifies a bundled predecessor from relocated bytes before rea
   const oldConfig = JSON.parse(readFileSync(value.configuration.qualifiedConfigPath));
   const predecessorPath = resolve(value.directory, "bundled-prior-qualified.json");
   oldConfig.vars.VIDEOFORGE_COMMIT = "b".repeat(40);
+  delete oldConfig.limits;
   const bytes = JSON.stringify(oldConfig);
   writeFileSync(predecessorPath, bytes, { mode: 0o600 });
   const artifactRootPath = resolve(value.directory, "bundled-prior-artifacts");
@@ -1696,6 +1731,7 @@ test("replacement verifies a bundled predecessor from relocated bytes before rea
   writeFileSync(resolve(assetDirectory, "index.html"), "sealed predecessor assets", {
     mode: 0o600,
   });
+  let historicalLimitShape = "absent";
   let observedDryConfig;
   const runChild = async (input) => {
     if (input.args.includes("--dry-run")) {
@@ -1718,6 +1754,8 @@ test("replacement verifies a bundled predecessor from relocated bytes before rea
       observed.main = oldConfig.main;
       observed.assets = oldConfig.assets;
       observed.vars.VIDEOFORGE_COMMIT = oldConfig.vars.VIDEOFORGE_COMMIT;
+      if (historicalLimitShape === "absent") delete observed.limits;
+      if (historicalLimitShape === "present") observed.limits = { cpu_ms: 30_000 };
       return { ...result, stdout: JSON.stringify(observed) };
     }
     return result;
@@ -1752,5 +1790,10 @@ test("replacement verifies a bundled predecessor from relocated bytes before rea
   assert.equal(
     mock.calls.filter(({ args }) => args.includes("--dry-run")).length - dryRunsBefore,
     1,
+  );
+  historicalLimitShape = "present";
+  await assert.rejects(
+    primitive.predecessor(approved, predecessor),
+    /ACTIVE_VERSION_CPU_LIMIT_DRIFT/u,
   );
 });

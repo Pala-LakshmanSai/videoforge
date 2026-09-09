@@ -474,11 +474,18 @@ function qualifiedConfiguration(configuration, authority) {
   // Keep the signed predecessor bytes and parsed projection unchanged. A bundled predecessor's
   // relocation is passed only to the provider-free dry-run CLI entrypoint/assets arguments.
   const validationValue = structuredClone(parsedValue);
+  const historicalPredecessor = predecessorRoot !== undefined;
+  if (historicalPredecessor && Object.hasOwn(parsedValue, "limits"))
+    fail("PREDECESSOR_CPU_LIMIT_DRIFT");
   if (parsedValue.no_bundle === false && predecessorRoot !== undefined) {
     validationValue.main = ACTIVATED_MAIN_PATH;
     validationValue.assets = { ...validationValue.assets, directory: ACTIVATED_ASSETS_PATH };
   }
   validationValue.no_bundle = true;
+  // The current V2-13 validator requires the new production CPU limit. A historical
+  // predecessor is signed against its original no-limit config, so inject the current
+  // validator's required shape only into this disposable validation clone.
+  if (historicalPredecessor) validationValue.limits = { cpu_ms: 30_000 };
   validateProductionConfig(validationValue, { mode: "qualified" });
   const workflowNames = parsedValue.workflows.map(({ name }) => name);
   if (
@@ -567,11 +574,13 @@ const FAILURE_CODES = new Set([
     "PREDECESSOR_DESCRIPTOR_INVALID",
     "PREDECESSOR_CONFIG_HASH_DRIFT",
     "PREDECESSOR_CONFIG_INVALID",
+    "PREDECESSOR_CPU_LIMIT_DRIFT",
     "PREDECESSOR_BINDING_DRIFT",
     "PREDECESSOR_VERSION_DRIFT",
     "PREDECESSOR_SECRETS_PRESENT",
     "PREDECESSOR_WORKER_ABSENT",
     "PREDECESSOR_WORKFLOW_DRIFT",
+    "ACTIVE_VERSION_CPU_LIMIT_DRIFT",
     "ACTIVE_VERSION_CLOSED_WORLD_DRIFT",
     "ACTIVE_VERSION_ID_INVALID",
     "ROUTE_TRANSPORT_FAILED",
@@ -892,7 +901,14 @@ async function verifyPredecessorBaseline(runtime, authority, context, qualified)
     ),
     "VERSION_READBACK_JSON_INVALID",
   );
-  normalizedVersionProjection(version, previous, "DISABLED_UNQUALIFIED", true, []);
+  normalizedVersionProjection(
+    version,
+    previous,
+    "DISABLED_UNQUALIFIED",
+    true,
+    [],
+    "historical-absent",
+  );
   if ((await exactSecretNames(runtime, authority, context)).length !== 0)
     fail("PREDECESSOR_SECRETS_PRESENT");
   await readRoute(
@@ -992,14 +1008,34 @@ function normalizedVersionProjection(
   expectedTransport,
   requireR2,
   expectedSecretNames,
+  cpuLimitMode = "required",
 ) {
-  const limitSources = [version.limits, version.resources?.script_runtime?.limits].filter(
-    (item) => item && typeof item === "object" && !Array.isArray(item),
-  );
+  const limitSources = [];
+  if (Object.hasOwn(version, "limits")) limitSources.push(version.limits);
+  const scriptRuntime =
+    version.resources !== null &&
+    typeof version.resources === "object" &&
+    !Array.isArray(version.resources)
+      ? version.resources.script_runtime
+      : undefined;
   if (
-    limitSources.length !== 1 ||
-    Object.keys(limitSources[0]).sort().join(",") !== "cpu_ms" ||
-    limitSources[0].cpu_ms !== 30_000
+    scriptRuntime !== null &&
+    typeof scriptRuntime === "object" &&
+    !Array.isArray(scriptRuntime) &&
+    Object.hasOwn(scriptRuntime, "limits")
+  )
+    limitSources.push(scriptRuntime.limits);
+  const exactCpuLimit =
+    limitSources.length === 1 &&
+    limitSources[0] !== null &&
+    typeof limitSources[0] === "object" &&
+    !Array.isArray(limitSources[0]) &&
+    Object.keys(limitSources[0]).sort().join(",") === "cpu_ms" &&
+    limitSources[0].cpu_ms === 30_000;
+  if (
+    (cpuLimitMode === "historical-absent" && limitSources.length !== 0) ||
+    (cpuLimitMode === "required" && !exactCpuLimit) ||
+    !["historical-absent", "required"].includes(cpuLimitMode)
   )
     fail("ACTIVE_VERSION_CPU_LIMIT_DRIFT");
   const expectedVars = Object.freeze({
@@ -1092,7 +1128,7 @@ function normalizedVersionProjection(
   )
     fail("ACTIVE_VERSION_CLOSED_WORLD_DRIFT");
   return Object.freeze({
-    limits: Object.freeze({ cpu_ms: 30_000 }),
+    ...(cpuLimitMode === "required" ? { limits: Object.freeze({ cpu_ms: 30_000 }) } : {}),
     vars: Object.fromEntries([...variables].sort(([left], [right]) => left.localeCompare(right))),
     bindings: Object.fromEntries(
       [...bindings].sort(([left], [right]) => left.localeCompare(right)),
@@ -1109,6 +1145,7 @@ async function readActiveVersion(
   requireR2,
   context,
   expectedSecretNames = [],
+  cpuLimitMode = "required",
 ) {
   const status = await child(
     runtime,
@@ -1151,6 +1188,7 @@ async function readActiveVersion(
     expectedTransport,
     requireR2,
     expectedSecretNames,
+    cpuLimitMode,
   );
   return Object.freeze({
     versionId,
@@ -2035,7 +2073,7 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
     authority,
     operationId: "deploy-cloudflare-qualified-production",
   });
-  const read = async (authority, transport, sourceRuntime = runtime) => {
+  const read = async (authority, transport, sourceRuntime = runtime, cpuLimitMode = "required") => {
     const ctx = context(authority);
     const names = await exactSecretNames(
       {
@@ -2057,6 +2095,7 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
       true,
       ctx,
       SECRET_NAMES,
+      cpuLimitMode,
     );
   };
   return Object.freeze({
@@ -2100,7 +2139,12 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
         context(oldAuthority),
         oldQualified,
       );
-      const version = await read(oldAuthority, "QUALIFIED_EXACT", oldRuntime);
+      const version = await read(
+        oldAuthority,
+        "QUALIFIED_EXACT",
+        oldRuntime,
+        predecessor.sourceCommit === authority.source_commit ? "required" : "historical-absent",
+      );
       if (version.versionId !== predecessor.versionId) fail("PREDECESSOR_VERSION_DRIFT");
       // An aged activation is precisely why this replacement may be needed. Only these two
       // explicit effective states are permitted; native config remains exact QUALIFIED_EXACT.
