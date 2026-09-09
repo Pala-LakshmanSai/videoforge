@@ -8,6 +8,10 @@ const liveWiringSource = readFileSync(
   resolve(process.cwd(), "src/server/hosted/hosted-pair-live-wiring.ts"),
   "utf8",
 );
+const runtimeStoreSource = readFileSync(
+  resolve(process.cwd(), "src/server/hosted/hosted-pair-runtime-executor.ts"),
+  "utf8",
+);
 
 describe("hosted pair Workflow module loading", () => {
   it("uses only statically loaded modules after entering the ordinary pair path", () => {
@@ -66,7 +70,17 @@ describe("hosted pair Workflow module loading", () => {
     expect(source.indexOf("isHostedV209CleanupOnlyRecovery(inspection)")).toBeLessThan(
       source.indexOf('event: "ORDINARY_RESUME_STARTING"'),
     );
-    expect(source).toContain("if (isHostedV209SafelyUnsent(afterFailure)) throw error;");
+    expect(source).toContain("isHostedV209SafelyUnsent(afterFailure)");
     expect(source).toContain("SENT/unknown acknowledgement");
+  });
+
+  it("allows only the exact pre-begin fresh pair to reach the first resume", () => {
+    expect(source).toContain("async function inspectInitializedHostedPair(");
+    expect(source).toContain("return inspection.length === 0 ? null : inspection;");
+    expect(runtimeStoreSource).toContain("result.rows.length === 0");
+    expect(source).toContain("if (inspection && isHostedV209CleanupOnlyRecovery(inspection))");
+    expect(source).toContain(
+      "if (afterFailure === null || isHostedV209SafelyUnsent(afterFailure)) throw error;",
+    );
   });
 });

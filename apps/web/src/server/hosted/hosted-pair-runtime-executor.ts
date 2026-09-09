@@ -233,6 +233,9 @@ export class HostedSqlPairRuntimeStore implements HostedPairRuntimeStore {
         input.workspaceId,
         input.generationRequestId,
       ]);
+      // Before the first beginSend, the committed attempts/outboxes exist but the runtime-state
+      // row does not. Preserve only that empty projection; malformed non-empty projections fail.
+      if (result.rows.length === 0) return Object.freeze([] as HostedPairInspection[]);
       if (
         result.rows.length !== 2 ||
         result.rows[0]?.lane !== "mage_image" ||

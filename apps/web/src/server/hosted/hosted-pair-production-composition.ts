@@ -581,6 +581,7 @@ export class HostedPairProductionComposition {
     if (this.inspection) {
       const rows = await this.inspection.inspect(input);
       if (
+        rows.length === 2 &&
         rows.every(
           (row) => row.recoveryAction === "RECONCILE_ASSIGNED" && row.providerJobId !== null,
         )

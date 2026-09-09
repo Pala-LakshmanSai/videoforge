@@ -192,6 +192,7 @@ async function restartFixture() {
     finishSend,
     store,
     signer,
+    runtime,
   };
 }
 
@@ -333,6 +334,40 @@ describe("hosted production pair composition", () => {
       "mage_image",
       "soulx_avatar",
     ]);
+  });
+
+  it("reconstructs a fresh pair when the pre-begin runtime projection is empty", async () => {
+    const fixture = await restartFixture();
+    fixture.store.inspect = vi.fn(async () => []);
+    const recovered = new HostedPairProductionComposition(
+      fixture.activation,
+      fixture.reconstruction,
+      fixture.runtime,
+      fixture.signer,
+      fixture.store,
+    );
+    await expect(
+      recovered.resume({
+        environment: {
+          VIDEOFORGE_GPU_TRANSPORT: "QUALIFIED_EXACT",
+          DATABASE_URL: "postgres-runtime-binding",
+          VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres-reconciler-binding",
+          VIDEOFORGE_DISPATCH_TOKEN_KEY: "dispatch-token-binding",
+          VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: "envelope-signing-binding",
+          VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: "envelope-signing-key-id",
+          VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: "provider-proof-binding",
+          VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: "workflow-operator-token-binding",
+        },
+        accountId: ids.account,
+        workspaceId: ids.workspace,
+        generationRequestId: ids.request,
+        dispatchTokenKey: "dispatch-token-key-material-never-logged",
+      }),
+    ).resolves.toEqual({
+      state: "BOTH_ASSIGNED",
+      providerJobIds: ["mage_image-job", "soulx_avatar-job"],
+    });
+    expect(fixture.reconstruction.reconstruct).toHaveBeenCalledOnce();
   });
 
   it("recovers a crashed Workflow into observation without a blind resend", async () => {

@@ -5,11 +5,24 @@ import { sha256CanonicalJson } from "@videoforge/contracts";
 
 import {
   HostedPairRuntimeExecutor,
+  HostedSqlPairRuntimeStore,
   type HostedPairLane,
   type HostedPairRuntimeStore,
 } from "./hosted-pair-runtime-executor";
 
 const hash = `sha256:${"a".repeat(64)}` as const;
+
+function inspectionDatabase(rows: readonly Record<string, unknown>[]) {
+  const query = vi.fn(async (sql: string) => ({
+    rows: sql.startsWith("SELECT set_config") ? [] : rows,
+  }));
+  return {
+    transaction: vi.fn(
+      async (operation: (transaction: { query: typeof query }) => Promise<unknown>) =>
+        operation({ query }),
+    ),
+  } as never;
+}
 const claims = {
   mage_image: {
     lane: "mage_image",
@@ -116,6 +129,22 @@ const input = {
   dispatchTokenKey: "k".repeat(32),
   envelopes: [envelope("mage_image"), envelope("soulx_avatar")] as const,
 };
+
+describe("hosted pair runtime inspection", () => {
+  const scope = { accountId: "account", workspaceId: "workspace", generationRequestId: "request" };
+
+  it("preserves the exact pre-begin empty runtime projection", async () => {
+    const store = new HostedSqlPairRuntimeStore(inspectionDatabase([]));
+    await expect(store.inspect(scope)).resolves.toEqual([]);
+  });
+
+  it("still rejects a malformed non-empty runtime projection", async () => {
+    const store = new HostedSqlPairRuntimeStore(inspectionDatabase([{ lane: "mage_image" }]));
+    await expect(store.inspect(scope)).rejects.toMatchObject({
+      message: "HOSTED_PAIR_INSPECTION_INVALID",
+    });
+  });
+});
 
 describe("hosted pair runtime executor", () => {
   it("rejects the signed pair before any send-state mutation when verification fails", async () => {

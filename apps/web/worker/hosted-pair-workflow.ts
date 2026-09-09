@@ -40,6 +40,18 @@ function exactPairInspection(
   );
 }
 
+/** A freshly committed ordinary pair has both attempt/outbox rows, but the runtime-state row is
+ * intentionally created only by beginSend. Treat that single zero-row projection as uninitialized
+ * so the first resume can run its provider preflight; every non-zero malformed projection remains
+ * fail-closed. */
+async function inspectInitializedHostedPair(
+  store: HostedSqlPairRuntimeStore,
+  params: HostedPairWorkflowParameters,
+): Promise<readonly HostedPairInspection[] | null> {
+  const inspection = await store.inspect(params);
+  return inspection.length === 0 ? null : inspection;
+}
+
 /** A definite REQUEST_REJECTED is cleanup-only, even while the paired lane remains unsent. */
 export function isHostedV209CleanupOnlyRecovery(
   rows: readonly HostedPairInspection[],
@@ -189,8 +201,8 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
             });
             if (ordinary) {
               const runtimeStore = new HostedSqlPairRuntimeStore(runtimeDatabase);
-              const inspection = await runtimeStore.inspect(params);
-              if (isHostedV209CleanupOnlyRecovery(inspection)) {
+              const inspection = await inspectInitializedHostedPair(runtimeStore, params);
+              if (inspection && isHostedV209CleanupOnlyRecovery(inspection)) {
                 // A definite provider rejection is already terminal. The paired unsent lane is
                 // intentionally not eligible for ordinary resume; let the reconciler prove
                 // absence, settle both lanes, and release the lease without any provider call.
@@ -209,8 +221,8 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
                   await resumeHostedV209OrdinaryPair(this.env, runtimeDatabase, params);
                   console.info("hosted_pair_workflow", { event: "ORDINARY_RESUME_COMPLETE" });
                 } catch (error) {
-                  const afterFailure = await runtimeStore.inspect(params);
-                  if (isHostedV209SafelyUnsent(afterFailure)) throw error;
+                  const afterFailure = await inspectInitializedHostedPair(runtimeStore, params);
+                  if (afterFailure === null || isHostedV209SafelyUnsent(afterFailure)) throw error;
                   // SENT/unknown acknowledgement is deliberately not sendable. Stop this
                   // Workflow step durably so an operator can reconcile before any provider action.
                   return Object.freeze({ state: "MANUAL_RECONCILIATION_REQUIRED" as const });
