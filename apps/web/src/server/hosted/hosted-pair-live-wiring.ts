@@ -191,7 +191,15 @@ export function createDrainPrimedTransport(
         try {
           await client.confirmOrdinaryStartupQueueEmpty();
           await client.confirmOrdinaryStartupQueueEmpty();
-        } catch {
+        } catch (error) {
+          console.error("hosted_pair_runpod_preflight_failure", {
+            phase: "ORDINARY_STARTUP_QUEUE_EMPTY",
+            causeName: error instanceof Error ? error.name : "unknown",
+            causeCode:
+              error && typeof error === "object" && "code" in error
+                ? String((error as { readonly code?: unknown }).code)
+                : null,
+          });
           // No provider mutation has occurred yet; preserve that distinction so a failed
           // readiness read cannot be mislabeled as an unknown /run acknowledgement.
           throw new ServerlessTransportError("REQUEST_REJECTED");
