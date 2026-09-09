@@ -576,6 +576,12 @@
       "name": "hosted_v209_ordinary_pair_jsonb_subtraction",
       "filename": "0096_hosted_v209_ordinary_pair_jsonb_subtraction.sql",
       "sha256": "sha256:87b809f4be3a8d25c8aad534346123adf5a99b67d922e45ad7bc20abc34183c7"
+    },
+    {
+      "version": 97,
+      "name": "hosted_v209_second_candidate_renewal",
+      "filename": "0097_hosted_v209_second_candidate_renewal.sql",
+      "sha256": "sha256:6334c1fcea0217fb8243161a458ef0f3b41447b9f655359e5be1b3a5ca41b930"
     }
   ]
 }
