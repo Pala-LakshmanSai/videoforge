@@ -3,6 +3,7 @@ import { sha256CanonicalJson } from "@videoforge/contracts";
 import type { V209ShortAdmissionObservation } from "./v209-short-live-cost";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const SEGMENT_ID = /^segment:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const SYSTEM_AVATAR_OBJECT_KEY =
   /^tenant\/ffffffff-ffff-4fff-8fff-000000000001\/workspace\/ffffffff-ffff-4fff-8fff-000000000011\/avatar-profile\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/version\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/canonical\/avatar\.(?:png|jpg)$/u;
@@ -134,8 +135,10 @@ function exactWork(
     "avatarSourceContentLength",
     "avatarSourceContentType",
     "avatarSourceAssetId",
+    "avatarSourceInputReservationId",
     "avatarSourceObjectKey",
     "avatarSourceSha256",
+    "inputReservationId",
     "outputPrefix",
     "outputReservationId",
     "paddedEndMsExclusive",
@@ -194,12 +197,13 @@ function exactWork(
       (item.role !== "image" && item.role !== "right_image") ||
       ![
         item.taskId,
-        item.segmentId,
         item.promptResultId,
         item.styleVersionId,
         item.inputReservationId,
         item.outputReservationId,
       ].every((candidate) => typeof candidate === "string" && UUID.test(candidate)) ||
+      typeof item.segmentId !== "string" ||
+      !SEGMENT_ID.test(item.segmentId) ||
       ![
         item.promptSha256,
         item.positivePromptSha256,
@@ -217,14 +221,19 @@ function exactWork(
       item.role !== "avatar" ||
       ![
         item.taskId,
-        item.segmentId,
         item.spanAudioId,
         item.spanAudioAssetId,
         item.spanAudioInputReservationId,
+        item.inputReservationId,
         item.sourceVoiceoverAssetId,
         item.avatarSourceAssetId,
+        item.avatarSourceInputReservationId,
         item.outputReservationId,
       ].every((candidate) => typeof candidate === "string" && UUID.test(candidate)) ||
+      typeof item.segmentId !== "string" ||
+      !SEGMENT_ID.test(item.segmentId) ||
+      item.inputReservationId !== item.spanAudioInputReservationId ||
+      item.avatarSourceInputReservationId !== candidate.avatarSourceInputReservationId ||
       ![item.spanAudioSha256, item.sourceVoiceoverSha256, item.avatarSourceSha256].every(
         (candidate) => typeof candidate === "string" && SHA256.test(candidate),
       ) ||

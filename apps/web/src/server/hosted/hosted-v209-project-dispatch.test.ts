@@ -6,6 +6,7 @@ import {
   materializeHostedV209OrdinaryDispatchCandidate,
   resumeHostedV209ProjectDispatch,
 } from "./hosted-v209-project-dispatch";
+import { assertV209OrdinaryCandidate } from "../runtime/v209-ordinary-live-cost";
 
 const id = (digit: string) =>
   `${digit.repeat(8)}-${digit.repeat(4)}-4${digit.repeat(3)}-8${digit.repeat(3)}-${digit.repeat(12)}`;
@@ -33,7 +34,7 @@ async function candidate(pairExists = false, systemAvatar = false) {
     mage_image: [
       {
         taskId: id("5"),
-        segmentId: id("6"),
+        segmentId: `segment:${id("6")}`,
         role: "image",
         promptResultId: id("7"),
         promptSha256: sha("1"),
@@ -50,11 +51,12 @@ async function candidate(pairExists = false, systemAvatar = false) {
     soulx_avatar: [
       {
         taskId: id("b"),
-        segmentId: id("c"),
+        segmentId: `segment:${id("c")}`,
         role: "avatar",
         spanAudioId: id("d"),
         spanAudioAssetId: id("1"),
         spanAudioInputReservationId: id("0"),
+        inputReservationId: id("0"),
         spanAudioObjectKey: `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${projectId}/revision/${revisionId}/lane/input/job/${id("d")}/artifact/span-audio`,
         spanAudioContentType: "audio/wav",
         spanAudioContentLength: 288_044,
@@ -65,6 +67,7 @@ async function candidate(pairExists = false, systemAvatar = false) {
         sourceVoiceoverSha256: sha("4"),
         avatarSourceAssetId: id("f"),
         avatarSourceSha256: sha("5"),
+        avatarSourceInputReservationId: avatarSourceReservationId,
         outputReservationId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
         sourceVoiceoverObjectKey: `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${projectId}/revision/${revisionId}/lane/input/job/${id("d")}/artifact/voiceover`,
         sourceVoiceoverContentType: "audio/wav",
@@ -128,6 +131,27 @@ function verifiedSystemReference(prepared: Awaited<ReturnType<typeof candidate>>
     objectKey: systemAvatarObjectKey,
     checksumSha256: sha("5"),
     reservationId: prepared.avatarSourceInputReservationId,
+  };
+}
+
+async function rehashCandidateWork(
+  prepared: Awaited<ReturnType<typeof candidate>>,
+  work: Awaited<ReturnType<typeof candidate>>["work"],
+) {
+  const {
+    candidateSha256: _candidateSha256,
+    replayed,
+    pairExists,
+    existingWorkflowId,
+    ...candidateBase
+  } = prepared;
+  const base = { ...candidateBase, work, workManifestSha256: await sha256CanonicalJson(work) };
+  return {
+    ...base,
+    candidateSha256: await sha256CanonicalJson(base),
+    replayed,
+    pairExists,
+    existingWorkflowId,
   };
 }
 
@@ -208,6 +232,25 @@ function dependencies(
 }
 
 describe("ordinary authenticated V2-09 project dispatch", () => {
+  it("accepts only canonical segment keys and exact SoulX input reservation aliases", async () => {
+    const prepared = await candidate();
+    await expect(assertV209OrdinaryCandidate(prepared)).resolves.toBeDefined();
+
+    const malformedSegmentWork = structuredClone(prepared.work);
+    malformedSegmentWork.mage_image[0]!.segmentId = id("6");
+    const malformedSegment = await rehashCandidateWork(prepared, malformedSegmentWork);
+    await expect(assertV209OrdinaryCandidate(malformedSegment)).rejects.toThrow(
+      "V209_ORDINARY_WORK_INVALID",
+    );
+
+    const mismatchedReservationWork = structuredClone(prepared.work);
+    mismatchedReservationWork.soulx_avatar[0]!.inputReservationId = id("1");
+    const mismatchedReservation = await rehashCandidateWork(prepared, mismatchedReservationWork);
+    await expect(assertV209OrdinaryCandidate(mismatchedReservation)).rejects.toThrow(
+      "V209_ORDINARY_WORK_INVALID",
+    );
+  });
+
   it("materializes the exact WORKSPACE no-op reference before the candidate in one transaction", async () => {
     const prepared = await candidate();
     const queries: string[] = [];
