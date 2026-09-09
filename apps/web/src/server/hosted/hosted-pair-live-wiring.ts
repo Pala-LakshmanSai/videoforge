@@ -45,6 +45,15 @@ const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const ENDPOINT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,159}$/u;
 const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"]);
 
+async function coordinationPhase<T>(code: string, operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof HostedDispatchCoordinationError) throw error;
+    throw new HostedDispatchCoordinationError(code);
+  }
+}
+
 export interface HostedPairLiveEnvironment extends HostedPairProductionBindingEnvironment {
   readonly PRIVATE_ARTIFACTS?: HostedR2BucketBinding;
   readonly VIDEOFORGE_PROVIDER_PROOF_KEY_ID?: string;
@@ -284,12 +293,20 @@ export async function commitAndScheduleHostedPair(
   commitPredispatch?: (dispatchTokenKey: string) => Promise<readonly unknown[]>,
   beforeWorkflow?: (dispatchTokenKey: string) => Promise<void>,
 ): Promise<{ readonly id: string; readonly recovered: boolean }> {
-  await assertHostedPairLiveBindings(environment);
-  await assertHostedPairDatabasePrincipals(runtimeDatabase, reconcilerDatabase);
-  await createHostedRunPodPair(environment);
+  await coordinationPhase("HOSTED_PAIR_BINDING_PREFLIGHT_FAILED", () =>
+    assertHostedPairLiveBindings(environment),
+  );
+  await coordinationPhase("HOSTED_PAIR_DATABASE_PREFLIGHT_FAILED", () =>
+    assertHostedPairDatabasePrincipals(runtimeDatabase, reconcilerDatabase),
+  );
+  await coordinationPhase("HOSTED_PAIR_PROVIDER_CLIENT_PREFLIGHT_FAILED", () =>
+    createHostedRunPodPair(environment),
+  );
   const workflow = environment.HOSTED_PAIR_WORKFLOW;
   if (!workflow) throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_BINDING_MISSING");
-  const preflightSchedule = await loadHostedPairWorkflowSchedule(runtimeDatabase, input);
+  const preflightSchedule = await coordinationPhase("HOSTED_PAIR_SCHEDULE_PREFLIGHT_FAILED", () =>
+    loadHostedPairWorkflowSchedule(runtimeDatabase, input),
+  );
   if (
     preflightSchedule.existingPair &&
     (preflightSchedule.cancelAt !== v209Admission.cancelAt ||
@@ -306,17 +323,21 @@ export async function commitAndScheduleHostedPair(
     "HOSTED_PAIR_PRODUCTION_BINDINGS_MISSING",
   );
   if (!preflightSchedule.existingPair) {
-    const committed = commitPredispatch
-      ? await commitPredispatch(dispatchTokenKey)
-      : await new HostedSqlAtomicPairPredispatch(runtimeDatabase).commit({
-          ...input,
-          dispatchTokenKey,
-          v209Admission: v209Admission as V209ShortLiveAdmission,
-        });
+    const committed = await coordinationPhase("HOSTED_PAIR_PREDISPATCH_COMMIT_FAILED", () =>
+      commitPredispatch
+        ? commitPredispatch(dispatchTokenKey)
+        : new HostedSqlAtomicPairPredispatch(runtimeDatabase).commit({
+            ...input,
+            dispatchTokenKey,
+            v209Admission: v209Admission as V209ShortLiveAdmission,
+          }),
+    );
     if (committed.length !== 2)
       throw new HostedDispatchCoordinationError("HOSTED_ATOMIC_PAIR_INVALID");
   }
-  const schedule = await loadHostedPairWorkflowSchedule(runtimeDatabase, input);
+  const schedule = await coordinationPhase("HOSTED_PAIR_SCHEDULE_READBACK_FAILED", () =>
+    loadHostedPairWorkflowSchedule(runtimeDatabase, input),
+  );
   if (schedule.cancelAt !== v209Admission.cancelAt || schedule.stopAt !== v209Admission.stopAt)
     throw new HostedDispatchCoordinationError("HOSTED_V209_SCHEDULE_DRIFT");
   if (
@@ -324,8 +345,13 @@ export async function commitAndScheduleHostedPair(
     Date.parse(schedule.stopAt) - Date.parse(schedule.cancelAt) !== 10 * 60 * 1_000
   )
     throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_DEADLINE_INVALID");
-  await beforeWorkflow?.(dispatchTokenKey);
-  return ensureHostedPairWorkflow(environment, runtimeDatabase, reconcilerDatabase, input);
+  if (beforeWorkflow)
+    await coordinationPhase("HOSTED_PAIR_MATERIALIZATION_FAILED", () =>
+      beforeWorkflow(dispatchTokenKey),
+    );
+  return coordinationPhase("HOSTED_PAIR_WORKFLOW_HANDOFF_FAILED", () =>
+    ensureHostedPairWorkflow(environment, runtimeDatabase, reconcilerDatabase, input),
+  );
 }
 
 /** Ordinary authenticated-project variant. It retains the same exact V2-09 admission and Workflow
