@@ -679,6 +679,15 @@ test("upload snapshot preserves the complete immutable Worker module graph and r
       readFileSync(resolve(artifact.modulePath, "../assets/chunk.js"), "utf8"),
       "export const exact = true;\n",
     );
+    assert.throws(
+      () =>
+        snapshotV209UploadArtifact(Buffer.from("{}\n"), {
+          mainPath: resolve(worker, "index.js"),
+          assetsSourcePath: client,
+        }),
+      /EEXIST/u,
+    );
+    assert.equal(readFileSync(artifact.modulePath, "utf8"), 'import "./assets/chunk.js";\n');
   } finally {
     artifact.cleanup();
   }

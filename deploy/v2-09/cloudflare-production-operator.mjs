@@ -1305,12 +1305,21 @@ export function snapshotV209UploadArtifact(
   if (!Buffer.isBuffer(qualifiedConfigBytes)) fail("UPLOAD_CONFIG_BYTES_INVALID");
   if (![mainPath, assetsSourcePath].every((path) => typeof path === "string" && isAbsolute(path)))
     fail("UPLOAD_ARTIFACT_SOURCE_PATH_INVALID");
-  const directory = mkdtempSync(join(tmpdir(), "videoforge-v209-cloudflare-upload-"));
+  // Wrangler embeds input paths in its generated bundle comments. Use an exclusive path derived
+  // from the already authority-bound config bytes so the provider-free dry-run hash exactly
+  // matches the later upload bundle while any stale or concurrent artifact fails closed.
+  const directory = resolve(
+    tmpdir(),
+    `videoforge-v209-cloudflare-upload-${sha256(qualifiedConfigBytes).slice(7)}`,
+  );
   const moduleDirectory = resolve(directory, "worker");
   const modulePath = resolve(moduleDirectory, basename(mainPath));
   const assetsPath = resolve(directory, "assets");
   const configPath = resolve(directory, "qualified-config.json");
+  let directoryCreated = false;
   try {
+    mkdirSync(directory, { mode: 0o700 });
+    directoryCreated = true;
     // Preserve the complete Vite Worker module graph. The entrypoint imports generated sibling
     // chunks, so copying only index.js produces a Cloudflare validation error before versioning.
     copyImmutableTree(dirname(mainPath), moduleDirectory);
@@ -1318,8 +1327,10 @@ export function snapshotV209UploadArtifact(
     writeFileSync(configPath, qualifiedConfigBytes, { flag: "wx", mode: 0o400 });
     chmodSync(directory, 0o500);
   } catch (error) {
-    makeTreeRemovable(directory);
-    rmSync(directory, { recursive: true, force: true });
+    if (directoryCreated) {
+      makeTreeRemovable(directory);
+      rmSync(directory, { recursive: true, force: true });
+    }
     throw error;
   }
   return Object.freeze({
