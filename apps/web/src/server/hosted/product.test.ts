@@ -923,6 +923,20 @@ describe("hosted product route contract", () => {
     expect(planning).not.toContain("asr.terminal_at AS asr_terminal_at");
   });
 
+  it("binds render handoff to the supplied ASR on the latest locked successor revision", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const planningStart = source.indexOf("async function renderHandoff(");
+    const planningEnd = source.indexOf("async function projects(", planningStart);
+    const planning = source.slice(planningStart, planningEnd);
+    expect(planning).toContain("AND revision.status = 'LOCKED'");
+    expect(planning).toContain("AND asr.project_revision_id = revision.id");
+    expect(planning).toContain("AND asr.id = $4");
+    expect(planning).toContain("ORDER BY revision.revision_number DESC, revision.id DESC");
+    expect(
+      planning.indexOf("ORDER BY revision.revision_number DESC, revision.id DESC"),
+    ).toBeLessThan(planning.indexOf("LIMIT 1`"));
+  });
+
   it("does not report image prompts complete merely because a timeline exists", () => {
     expect(hostedPromptWritingState(null, true)).toEqual({
       status: "WAITING",

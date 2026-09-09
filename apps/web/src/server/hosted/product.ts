@@ -5461,6 +5461,7 @@ async function renderHandoff(
              ON revision.account_id = project.account_id
             AND revision.workspace_id = project.workspace_id
             AND revision.project_id = project.id
+            AND revision.status = 'LOCKED'
            LEFT JOIN hosted_cpu_job_attempts AS asr
              ON asr.account_id = project.account_id
             AND asr.workspace_id = project.workspace_id
@@ -5480,6 +5481,7 @@ async function renderHandoff(
             AND context.project_revision_id=revision.id
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
             AND project.status = 'ACTIVE'
+          ORDER BY revision.revision_number DESC, revision.id DESC
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, asrAttemptId],
       );
