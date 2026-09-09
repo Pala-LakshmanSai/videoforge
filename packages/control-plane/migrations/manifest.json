@@ -666,6 +666,12 @@
       "name": "hosted_v209_outboxed_horizon_recovery",
       "filename": "0111_hosted_v209_outboxed_horizon_recovery.sql",
       "sha256": "sha256:91e4c7d3cf798c39cce22bbd8ec460db7d25bae7988d13a9c1cae3ab2188cccd"
+    },
+    {
+      "version": 112,
+      "name": "hosted_project_owner_pair_cancellation",
+      "filename": "0112_hosted_project_owner_pair_cancellation.sql",
+      "sha256": "sha256:38b148e0a47d5ff362107a4e34c04edb6266854a356c2cc70050f18097601e5a"
     }
   ]
 }
