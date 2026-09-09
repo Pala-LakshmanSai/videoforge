@@ -1346,6 +1346,7 @@ function artifactDeployArgs(runtime, context, artifact, { dryRunDirectory } = {}
     "--x-auto-create",
     "false",
     "--strict",
+    "--no-upload-source-maps",
     ...(dryRunDirectory === undefined ? [] : ["--dry-run", "--outdir", dryRunDirectory]),
   ];
 }

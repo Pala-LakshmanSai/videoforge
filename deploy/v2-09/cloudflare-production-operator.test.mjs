@@ -567,6 +567,14 @@ test("executes exact disabled, exact-secret, qualified, bundle, header, and rout
     false,
   );
   assert.equal(
+    wranglerArgs
+      .filter(
+        (args) => args[0] === "deploy" && args.includes(`videoforge-v2-09-qualified:${SOURCE}`),
+      )
+      .every((args) => args.includes("--no-upload-source-maps")),
+    true,
+  );
+  assert.equal(
     wranglerArgs.filter((args) => args[0] === "deploy" && !args.includes("--dry-run")).length,
     4,
   );

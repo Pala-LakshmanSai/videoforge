@@ -264,6 +264,7 @@ test("preparation writes mode-0600 artifacts after build and isolated Wrangler d
     assert.ok(dryRun.args.includes("--outdir"));
     assert.ok(dryRun.args.includes("--config"));
     assert.equal(dryRun.args.includes("--no-bundle"), false);
+    assert.equal(dryRun.args.includes("--no-upload-source-maps"), true);
     for (const call of [build, dryRun]) {
       assert.equal(call.options.env.RUNPOD_API_KEY, undefined);
       assert.equal(call.options.env.CLOUDFLARE_API_TOKEN, undefined);

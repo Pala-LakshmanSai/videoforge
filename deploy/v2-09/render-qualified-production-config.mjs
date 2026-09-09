@@ -283,6 +283,7 @@ export async function prepareQualifiedProductionConfig(
           "--assets",
           ACTIVATED_ASSETS_PATH,
           "--strict",
+          "--no-upload-source-maps",
           "--dry-run",
           "--outdir",
           dryRunOutput,
