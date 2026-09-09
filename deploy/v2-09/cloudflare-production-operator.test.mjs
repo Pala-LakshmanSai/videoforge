@@ -1796,4 +1796,14 @@ test("replacement verifies a bundled predecessor from relocated bytes before rea
     primitive.predecessor(approved, predecessor),
     /ACTIVE_VERSION_CPU_LIMIT_DRIFT/u,
   );
+
+  oldConfig.limits = { cpu_ms: 30_000 };
+  const cpuLimitedBytes = JSON.stringify(oldConfig);
+  writeFileSync(predecessorPath, cpuLimitedBytes, { mode: 0o600 });
+  const cpuLimitedPredecessor = {
+    ...predecessor,
+    qualifiedConfigSha256: hash(cpuLimitedBytes),
+  };
+  const cpuLimitedObserved = await primitive.predecessor(approved, cpuLimitedPredecessor);
+  assert.equal(cpuLimitedObserved.versionIdSha256, hash(predecessor.versionId));
 });

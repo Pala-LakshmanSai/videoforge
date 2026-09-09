@@ -475,17 +475,21 @@ function qualifiedConfiguration(configuration, authority) {
   // relocation is passed only to the provider-free dry-run CLI entrypoint/assets arguments.
   const validationValue = structuredClone(parsedValue);
   const historicalPredecessor = predecessorRoot !== undefined;
-  if (historicalPredecessor && Object.hasOwn(parsedValue, "limits"))
+  if (
+    historicalPredecessor &&
+    Object.hasOwn(parsedValue, "limits") &&
+    (!exactKeys(parsedValue.limits, ["cpu_ms"]) || parsedValue.limits.cpu_ms !== 30_000)
+  )
     fail("PREDECESSOR_CPU_LIMIT_DRIFT");
   if (parsedValue.no_bundle === false && predecessorRoot !== undefined) {
     validationValue.main = ACTIVATED_MAIN_PATH;
     validationValue.assets = { ...validationValue.assets, directory: ACTIVATED_ASSETS_PATH };
   }
   validationValue.no_bundle = true;
-  // The current V2-13 validator requires the new production CPU limit. A historical
-  // predecessor is signed against its original no-limit config, so inject the current
-  // validator's required shape only into this disposable validation clone.
-  if (historicalPredecessor) validationValue.limits = { cpu_ms: 30_000 };
+  // The current V2-13 validator requires the production CPU limit. Older predecessors may
+  // predate that contract, so inject it only into the disposable validation clone when absent.
+  if (historicalPredecessor && !Object.hasOwn(parsedValue, "limits"))
+    validationValue.limits = { cpu_ms: 30_000 };
   validateProductionConfig(validationValue, { mode: "qualified" });
   const workflowNames = parsedValue.workflows.map(({ name }) => name);
   if (
@@ -2133,6 +2137,8 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
         },
       };
       const oldQualified = qualifiedConfiguration(oldRuntime.configuration, oldAuthority);
+      const predecessorCpuLimitMode =
+        oldQualified.value.limits?.cpu_ms === 30_000 ? "required" : "historical-absent";
       await verifyRelocatedPredecessorBundle(
         oldRuntime,
         oldAuthority,
@@ -2143,7 +2149,7 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
         oldAuthority,
         "QUALIFIED_EXACT",
         oldRuntime,
-        predecessor.sourceCommit === authority.source_commit ? "required" : "historical-absent",
+        predecessorCpuLimitMode,
       );
       if (version.versionId !== predecessor.versionId) fail("PREDECESSOR_VERSION_DRIFT");
       // An aged activation is precisely why this replacement may be needed. Only these two
