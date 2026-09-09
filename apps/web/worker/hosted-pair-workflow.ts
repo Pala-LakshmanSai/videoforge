@@ -20,6 +20,7 @@ import type { V213AcceptanceWorkflowParameters } from "../src/server/hosted/v213
 type Environment = HostedRuntimeEnvironment & HostedPairLiveEnvironment;
 type WorkflowParameters = HostedPairWorkflowParameters | V213AcceptanceWorkflowParameters;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const MAX_OBSERVATIONS = 120;
 
 function scope(value: WorkflowParameters): HostedPairWorkflowParameters {
@@ -27,9 +28,8 @@ function scope(value: WorkflowParameters): HostedPairWorkflowParameters {
   if (
     Object.keys(value).sort().join(",") !==
       "accountId,cancelAt,generationRequestId,stopAt,workspaceId" ||
-    ![ordinary.accountId, ordinary.workspaceId, ordinary.generationRequestId].every((item) =>
-      UUID.test(item),
-    ) ||
+    ![ordinary.accountId, ordinary.workspaceId].every((item) => DATABASE_UUID.test(item)) ||
+    !UUID.test(ordinary.generationRequestId) ||
     !Number.isFinite(Date.parse(ordinary.cancelAt)) ||
     !Number.isFinite(Date.parse(ordinary.stopAt)) ||
     Date.parse(ordinary.stopAt) - Date.parse(ordinary.cancelAt) !== 10 * 60 * 1_000

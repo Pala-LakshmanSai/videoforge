@@ -42,4 +42,14 @@ describe("hosted pair Workflow module loading", () => {
       'import("../src/server/hosted/v213-acceptance-workflow-runner")',
     );
   });
+
+  it("accepts database UUID account lineage while preserving strict generation UUIDs", () => {
+    expect(source).toContain(
+      "![ordinary.accountId, ordinary.workspaceId].every((item) => DATABASE_UUID.test(item))",
+    );
+    expect(source).toContain("!UUID.test(ordinary.generationRequestId)");
+    expect(source).not.toContain(
+      "![ordinary.accountId, ordinary.workspaceId, ordinary.generationRequestId].every",
+    );
+  });
 });
