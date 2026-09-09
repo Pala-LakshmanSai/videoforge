@@ -18,6 +18,7 @@ import {
   renderNativeMigration97Sql,
   renderNativeMigration98Sql,
   renderNativeMigration99Sql,
+  renderNativeMigration100Sql,
   executeNativeDatabaseOnce,
 } from "../../deploy/v2-09/native-replacement-database.mjs";
 
@@ -204,7 +205,34 @@ test("migration99 requires exact98 predecessor ledger and renders only the fourt
   assert.throws(() => renderNativeMigration99Sql(fixture(t, 98)), /MANIFEST/);
 });
 
-test("native execution accepts APPLY_0095 through APPLY_0099 only after operation identity validation", (t) => {
+test("migration100 requires exact99 predecessor ledger and renders same-attempt deadline recovery", (t) => {
+  const input = fixture(t, 100);
+  const sql = renderNativeMigration100Sql(input);
+  assert.match(sql, /'from_version',99,'to_version',100/);
+  assert.match(sql, /hosted_v209_same_attempt_deadline_recoveries/u);
+  assert.match(sql, /videoforge_recover_hosted_v209_same_attempt_deadline/u);
+  assert.match(sql, /renewal_ordinal IN \(1,2,3,4,5\)/u);
+  assert.match(sql, /previous_candidate_sha256/u);
+  assert.match(sql, /previous_approval_id/u);
+  assert.match(sql, /UPDATE public\.provider_workload_leases/u);
+  assert.match(sql, /version=supplied_expected_lease_version/u);
+  assert.match(sql, /serverless_cost_ledgers/u);
+  assert.match(sql, /serverless_cost_events/u);
+  assert.match(sql, /RESERVATION/u);
+  assert.match(sql, /reported_usd<>0/u);
+  assert.match(sql, /possible_duplicate_usd<>0/u);
+  assert.match(sql, /settled_usd<>0/u);
+  assert.match(sql, /refunded_usd<>0/u);
+  assert.match(sql, /reserved_total<>1\.488/u);
+  assert.match(sql, /state='PLANNED'/u);
+  assert.match(sql, /videoforge_recover_hosted_atomic_pair_tokens/u);
+  assert.match(sql, /videoforge_effective_hosted_v209_candidate/u);
+  assert.equal((sql.match(/INSERT INTO public\.videoforge_schema_migrations/g) || []).length, 1);
+  assert.throws(() => renderNativeMigration99Sql(input), /MANIFEST/);
+  assert.throws(() => renderNativeMigration100Sql(fixture(t, 99)), /MANIFEST/);
+});
+
+test("native execution accepts APPLY_0095 through APPLY_0100 only after operation identity validation", (t) => {
   const root = mkdtempSync(resolve(tmpdir(), "v209-native-operation-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const credentialPath = resolve(root, "credential");
@@ -233,6 +261,10 @@ test("native execution accepts APPLY_0095 through APPLY_0099 only after operatio
   );
   assert.throws(
     () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0099" }),
+    /DATABASE_IDENTITY/,
+  );
+  assert.throws(
+    () => executeNativeDatabaseOnce({ ...input, operation: "APPLY_0100" }),
     /DATABASE_IDENTITY/,
   );
 });

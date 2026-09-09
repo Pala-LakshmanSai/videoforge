@@ -114,7 +114,8 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(sources.at(-1)?.filename, "0099_hosted_v209_fourth_candidate_renewal.sql");
+    assert.equal(sources.at(-1)?.filename, "0100_hosted_v209_same_attempt_deadline_recovery.sql");
+    assert.equal(sources.at(-1)?.version, 100);
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -140,9 +141,39 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
       upgraded.appliedVersions,
       [
         60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82,
-        83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99,
+        83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
       ],
     );
+    const recoverySurface = await executor.query(
+      `SELECT
+         to_regclass('public.hosted_v209_same_attempt_deadline_recoveries') IS NOT NULL
+           AS has_recovery_table,
+         to_regprocedure(
+           'public.videoforge_recover_hosted_v209_same_attempt_deadline(uuid,uuid,uuid,uuid,uuid,uuid,integer,text,uuid,uuid,uuid,uuid)'
+         ) IS NOT NULL AS has_recovery_function,
+         to_regprocedure(
+           'public.videoforge_load_hosted_pair_workflow_schedule(uuid,uuid,uuid)'
+         ) IS NOT NULL AS has_schedule_loader` ,
+    );
+    assert.deepEqual(recoverySurface.rows, [
+      { has_recovery_table: true, has_recovery_function: true, has_schedule_loader: true },
+    ]);
+    const renewalConstraint = await executor.query(
+      `SELECT pg_get_constraintdef(oid) AS definition
+         FROM pg_constraint
+        WHERE conrelid='hosted_v209_ordinary_dispatch_candidate_renewals'::regclass
+          AND conname='hosted_v209_renewal_ordinal_check'`,
+    );
+    assert.equal(renewalConstraint.rows.length, 1);
+    assert.match(renewalConstraint.rows[0].definition, /1, 2, 3, 4, 5/u);
+    const recoveryFunction = await executor.query(
+      `SELECT pg_get_functiondef(
+         'videoforge_recover_hosted_v209_same_attempt_deadline(uuid,uuid,uuid,uuid,uuid,uuid,integer,text,uuid,uuid,uuid,uuid)'::regprocedure
+       ) AS definition`,
+    );
+    assert.match(recoveryFunction.rows[0].definition, /renewal_count<>4/u);
+    assert.match(recoveryFunction.rows[0].definition, /providerActionsCreated/u);
+    assert.match(recoveryFunction.rows[0].definition, /refreshed_stop_at/u);
     const definitions = await executor.query(
       `SELECT proname, pg_get_functiondef(oid) AS definition
          FROM pg_proc

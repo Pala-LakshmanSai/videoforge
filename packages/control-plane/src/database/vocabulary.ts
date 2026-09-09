@@ -199,6 +199,7 @@ export const NON_PORTABLE_TABLE_NAMES = [
   "hosted_v209_ordinary_dispatch_candidates",
   "hosted_v209_ordinary_dispatch_candidate_renewals",
   "hosted_v209_ordinary_lane_materializations",
+  "hosted_v209_same_attempt_deadline_recoveries",
   "hosted_v209_qualified_activations",
 ] as const;
 
