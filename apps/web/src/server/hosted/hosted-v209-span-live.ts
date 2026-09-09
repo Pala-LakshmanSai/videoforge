@@ -55,7 +55,15 @@ export function createHostedV209SpanAudioLiveCoordinator(
       ),
     resumePair: async (identity) => {
       const { resumeHostedV209ProjectDispatch } = await import("./hosted-v209-project-dispatch");
-      const result = await resumeHostedV209ProjectDispatch(environment, config, identity);
+      const result = await resumeHostedV209ProjectDispatch(
+        environment,
+        config,
+        identity,
+        undefined,
+        undefined,
+        undefined,
+        true,
+      );
       if (!result.ok) throw new Error("HOSTED_V209_SPAN_PAIR_RESUME_REJECTED");
     },
   });
