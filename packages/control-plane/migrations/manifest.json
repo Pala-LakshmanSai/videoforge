@@ -642,6 +642,12 @@
       "name": "hosted_v209_activation_rebind_chain",
       "filename": "0107_hosted_v209_activation_rebind_chain.sql",
       "sha256": "sha256:c929cfea6c882483445bb383b7d03cec36ce1ec072cb3fd06662e83ed91b9d7e"
+    },
+    {
+      "version": 108,
+      "name": "hosted_v209_predispatch_lease_renewal",
+      "filename": "0108_hosted_v209_predispatch_lease_renewal.sql",
+      "sha256": "sha256:809059c928c5e54ed7ab00eac6f0f050109b6f2f69114941735290b0fb8d9cbb"
     }
   ]
 }
