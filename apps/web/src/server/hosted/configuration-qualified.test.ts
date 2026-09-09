@@ -308,6 +308,26 @@ describe("qualified hosted GPU transport configuration", () => {
       resolve(verified({ paidApprovalLedgerSha256: "not-a-hash" as Sha256 })),
     ).resolves.toMatchObject({ gpuTransport: "DISABLED_UNQUALIFIED" });
   });
+
+  it("accepts bounded database clock lead but rejects larger forward skew", async () => {
+    const base = verified();
+    const withObservedAt = (observedAt: string) => {
+      const snapshot = structuredClone(base.gate) as HostedPairProductionGateInput;
+      snapshot.now = observedAt;
+      return {
+        ...base,
+        databaseObservedAt: observedAt,
+        gate: snapshot,
+        activationSnapshotSha256: canonicalSha256(snapshot),
+      };
+    };
+    await expect(resolve(withObservedAt("2026-08-26T00:02:02.000Z"))).resolves.toMatchObject({
+      gpuTransport: "QUALIFIED_EXACT",
+    });
+    await expect(resolve(withObservedAt("2026-08-26T00:02:06.000Z"))).resolves.toMatchObject({
+      gpuTransport: "DISABLED_UNQUALIFIED",
+    });
+  });
 });
 
 describe("durable exact activation verification", () => {

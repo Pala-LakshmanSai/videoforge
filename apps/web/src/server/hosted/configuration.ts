@@ -471,6 +471,7 @@ export function hostedRuntimeConfiguration(
 }
 
 const GPU_ACTIVATION_MAX_AGE_MS = 5 * 60 * 1_000;
+const GPU_ACTIVATION_CLOCK_SKEW_MS = 5_000;
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 
 /** Resolves the enabled transport only from a freshly verified DB-backed activation snapshot.
@@ -521,8 +522,8 @@ export async function qualifiedHostedRuntimeConfiguration(input: {
     !Number.isFinite(now) ||
     !Number.isFinite(observedAt) ||
     !Number.isFinite(expiresAt) ||
-    observedAt > now ||
-    now - observedAt > GPU_ACTIVATION_MAX_AGE_MS ||
+    observedAt - now > GPU_ACTIVATION_CLOCK_SKEW_MS ||
+    now - observedAt > GPU_ACTIVATION_MAX_AGE_MS + GPU_ACTIVATION_CLOCK_SKEW_MS ||
     expiresAt <= now ||
     expiresAt - observedAt > GPU_ACTIVATION_MAX_AGE_MS ||
     verified.databaseObservedAt !== verified.gate.now ||
@@ -556,6 +557,7 @@ export async function qualifiedHostedRuntimeConfiguration(input: {
       expectedConfigSha256: verified.gate.cloudflare.deployedConfigSha256,
       databaseObservedAt: verified.databaseObservedAt,
       databaseExpiresAt: verified.expiresAt,
+      runtimeNow: new Date(now).toISOString(),
       gateState,
     });
     return disabled;
