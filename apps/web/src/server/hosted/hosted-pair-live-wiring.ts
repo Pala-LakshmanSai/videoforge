@@ -480,8 +480,10 @@ export async function resumeHostedV209OrdinaryPair(
   runtimeDatabase: TransactionalSqlExecutor,
   input: HostedPairWorkflowScope,
 ) {
+  console.info("hosted_v209_pair_resume", { event: "STARTED" });
   await assertHostedPairLiveBindings(environment);
   const provider = await createHostedRunPodPair(environment);
+  console.info("hosted_v209_pair_resume", { event: "PROVIDER_BOUND" });
   const dispatchTokenKey = exact(
     environment.VIDEOFORGE_DISPATCH_TOKEN_KEY,
     "HOSTED_PAIR_PRODUCTION_BINDINGS_MISSING",
@@ -498,6 +500,7 @@ export async function resumeHostedV209OrdinaryPair(
   });
   const store = new HostedSqlV209OrdinaryRuntimeStore(runtimeDatabase);
   const prepared = await store.prepare({ ...input, dispatchTokenKey });
+  console.info("hosted_v209_pair_resume", { event: "REQUESTS_LOADED" });
   const envelopes = prepared.map((claim) => {
     const document = claim.requestBody?.envelope;
     if (!document || typeof document !== "object" || Array.isArray(document))
@@ -507,6 +510,7 @@ export async function resumeHostedV209OrdinaryPair(
     { readonly lane: "mage_image"; readonly document: JsonValue },
     { readonly lane: "soulx_avatar"; readonly document: JsonValue },
   ];
+  console.info("hosted_v209_pair_resume", { event: "EXECUTOR_STARTING" });
   return new HostedPairRuntimeExecutor(
     store,
     provider.transports,

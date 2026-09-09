@@ -301,10 +301,13 @@ export class HostedPairRuntimeExecutor {
     if (input.envelopes[0].lane !== "mage_image" || input.envelopes[1].lane !== "soulx_avatar") {
       throw new HostedDispatchCoordinationError("HOSTED_PAIR_ENVELOPE_ORDER_INVALID");
     }
+    console.info("hosted_pair_runtime", { event: "PREPARE_STARTED" });
     const prepared = await this.store.prepare(input);
+    console.info("hosted_pair_runtime", { event: "PREPARE_COMPLETE" });
     if (!(await this.verifier.verifyPair(input.envelopes))) {
       throw new HostedDispatchCoordinationError("HOSTED_PAIR_SIGNATURE_INVALID");
     }
+    console.info("hosted_pair_runtime", { event: "SIGNATURES_VERIFIED" });
     for (let index = 0; index < input.envelopes.length; index += 1) {
       const envelope = input.envelopes[index]!;
       const expected = prepared[index]!;
@@ -342,6 +345,7 @@ export class HostedPairRuntimeExecutor {
           throw new HostedDispatchCoordinationError("HOSTED_PAIR_REQUEST_BODY_LINEAGE_INVALID");
       }
     }
+    console.info("hosted_pair_runtime", { event: "ENVELOPES_VERIFIED" });
     const mage =
       prepared[0].attemptState === "ASSIGNED" &&
       prepared[0].outboxState === "ASSIGNED" &&
@@ -378,6 +382,7 @@ export class HostedPairRuntimeExecutor {
     | { readonly kind: "ASSIGNED"; readonly providerJobId: string }
     | { readonly kind: "STOP"; readonly result: HostedPairExecutionResult }
   > {
+    console.info("hosted_pair_runtime", { event: "BEGIN_SEND", lane: envelope.lane });
     const claim = await this.store.beginSend({
       ...input,
       lane: envelope.lane,
@@ -385,6 +390,7 @@ export class HostedPairRuntimeExecutor {
       expectedEnvelopeSha256: prepared.expectedEnvelopeSha256,
       ...(prepared.requestBody ? { expectedRequestBodySha256: prepared.requestBodySha256 } : {}),
     });
+    console.info("hosted_pair_runtime", { event: "SEND_CLAIMED", lane: envelope.lane });
     const document = (
       await validateAndHashHostedContractDocument(
         "serverlessWorkerJobEnvelopeV3",
@@ -406,6 +412,7 @@ export class HostedPairRuntimeExecutor {
       return this.#stop(claim.lane, "DISPATCH_ACK_UNKNOWN");
     }
     try {
+      console.info("hosted_pair_runtime", { event: "PROVIDER_SEND_STARTED", lane: envelope.lane });
       const response = await this.transports[claim.lane].run({
         endpointIdSha256: claim.endpointIdSha256,
         dispatchToken: claim.dispatchToken,
@@ -413,6 +420,7 @@ export class HostedPairRuntimeExecutor {
         envelope: document,
         ...(prepared.requestBody ? { body: prepared.requestBody } : {}),
       });
+      console.info("hosted_pair_runtime", { event: "PROVIDER_SEND_ACKNOWLEDGED", lane: envelope.lane });
       if (!response || typeof response.id !== "string" || !PROVIDER_JOB_ID.test(response.id)) {
         await this.#finish(input, claim, "DISPATCH_ACK_UNKNOWN", null);
         return this.#stop(claim.lane, "DISPATCH_ACK_UNKNOWN");
