@@ -107,7 +107,7 @@ function authority() {
       inner_protected_snapshot_max: 2,
     },
     media_worker_inputs: {
-      release: "0.1.15",
+      release: "0.1.17",
       execution_bundle_sha256: hash("media-bundle"),
       whisper_model_sha256: hash("whisper"),
       materialization_mode: "PREAUTHORIZED_STAGED_ONCE",
@@ -140,7 +140,7 @@ function authority() {
 function exactExistingAuthority() {
   const approved = authority();
   approved.media_worker_inputs = {
-    release: "0.1.15",
+    release: "0.1.17",
     materialization_mode: "PREAUTHORIZED_EXACT_EXISTING_ONLY",
     release_source_commit: "b".repeat(40),
     execution_bundle_sha256: hash("media-bundle"),
@@ -185,7 +185,7 @@ test("exact-existing operation completes with the legacy inner precompleted resu
     repository: "Pala-LakshmanSai/videoforge",
     workflow_path: ".github/workflows/media-worker-release.yml",
     release_source_commit: media.release_source_commit,
-    release_tag: "media-worker-v0.1.15",
+    release_tag: "media-worker-v0.1.17",
     release: media.release,
     release_manifest_sha256: media.release_manifest_sha256,
     installer_asset_sha256: media.installer_asset_sha256,
@@ -198,7 +198,7 @@ test("exact-existing operation completes with the legacy inner precompleted resu
   };
   const rawResult = {
     schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
-    operation_id: "publish-media-worker-0.1.15",
+    operation_id: "publish-media-worker-0.1.17",
     mode: "ADOPTED_EXACT_EXISTING",
     publish_count: 0,
     materialization_receipt: {
@@ -222,11 +222,11 @@ test("exact-existing operation completes with the legacy inner precompleted resu
           return {};
         },
       },
-      operations: { "publish-media-worker-0.1.15": async () => rawResult },
+      operations: { "publish-media-worker-0.1.17": async () => rawResult },
     }),
   });
   const result = await materializer.run({
-    operationId: "publish-media-worker-0.1.15",
+    operationId: "publish-media-worker-0.1.17",
     authority: approved,
     preflight: proof,
     priorResults: {},
@@ -306,7 +306,7 @@ function receipts(approved = authority(), proof = preflight(approved)) {
     media_release: signed({
       schema_version: "videoforge.v2-09-combined-media-release-receipt/v1",
       preflight_proof_sha256: proof.proofSha256,
-      release: "0.1.15",
+      release: "0.1.17",
       execution_bundle_sha256: hash("media-bundle"),
       installer_asset_sha256: hash("installer"),
       release_manifest_sha256: hash("manifest"),
@@ -1322,9 +1322,9 @@ test("a new process restores exact-existing adoption provenance and normalizes i
       { operation_id: operationId },
     ]),
   );
-  prefixResults["publish-media-worker-0.1.15"] = {
+  prefixResults["publish-media-worker-0.1.17"] = {
     schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
-    operation_id: "publish-media-worker-0.1.15",
+    operation_id: "publish-media-worker-0.1.17",
     mode: "REUSED_EXACT_EXISTING",
     publish_count: 0,
     release: approved.media_worker_inputs.release,
@@ -1409,7 +1409,7 @@ test("a new process restores exact-existing adoption provenance and normalizes i
     (value) => (value.release_manifest_sha256 = hash("foreign-manifest")),
   ]) {
     const tamperedResults = structuredClone(prefixResults);
-    mutate(tamperedResults["publish-media-worker-0.1.15"]);
+    mutate(tamperedResults["publish-media-worker-0.1.17"]);
     const rejectingMaterializer = createLiveMaterializerForTest({
       testOnly: true,
       options: { statePath: "/tmp/v209-existing-release-adoption-tamper" },
@@ -1804,7 +1804,7 @@ test("postdeploy install failure never imports activation or starts Chrome and r
   });
   const stage = options.stageOperation;
   options.stageOperation = async (context) => {
-    if (context.operationId === "install-media-worker-0.1.15") {
+    if (context.operationId === "install-media-worker-0.1.17") {
       assert.ok(events.includes("readback-qualified-production"));
       assert.ok(events.includes("materialize-v209-endpoint-secrets"));
       events.push(context.operationId);

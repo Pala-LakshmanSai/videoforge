@@ -87,7 +87,7 @@ function fixture() {
     VIDEOFORGE_R2_REGION: "auto",
     MEDIA_WORKER_RELEASE_MANIFEST_JSON: JSON.stringify({
       schema_version: "videoforge-media-worker-release/v1",
-      version: "0.1.15",
+      version: "0.1.17",
       minimum_protocol_version: 1,
       execution_bundle_sha256: hash("execution"),
       whisper_model_sha256: hash("model"),

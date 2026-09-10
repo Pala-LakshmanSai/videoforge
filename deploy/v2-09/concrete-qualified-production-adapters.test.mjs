@@ -324,7 +324,7 @@ function childRunner(
         binding_sha256: hash(readFileSync(bindingPath)),
         config_sha256: `sha256:${"8".repeat(64)}`,
         worker_bundle_sha256: renderedWorkerBundleSha256,
-        media_worker_release: { version: "0.1.15", manifest_sha256: hash("{}") },
+        media_worker_release: { version: "0.1.17", manifest_sha256: hash("{}") },
         lanes: binding.lanes,
         gpu_transport: "QUALIFIED_EXACT",
         production_build_verified: true,
@@ -933,7 +933,7 @@ function authority(adapterIdentitySha256) {
     },
     issued_at: "2026-09-06T12:00:00Z",
     expires_at: "2026-09-07T12:00:00Z",
-    media_worker: { release: "0.1.15", release_manifest_sha256: hash("{}") },
+    media_worker: { release: "0.1.17", release_manifest_sha256: hash("{}") },
     production: {
       config_sha256: `sha256:${"8".repeat(64)}`,
       worker_bundle_sha256: `sha256:${"9".repeat(64)}`,
@@ -1164,8 +1164,8 @@ test("staging factory needs neither Chrome inputs nor deferred endpoint secrets"
     "readback-clean-source",
     "apply-migrations-0074-0086",
     "apply-v209-grants",
-    "publish-media-worker-0.1.15",
-    "readback-media-worker-0.1.15",
+    "publish-media-worker-0.1.17",
+    "readback-media-worker-0.1.17",
     "fresh-read-only-admission",
     "create-mage-production-lane-max-one",
     "create-soulx-production-lane-max-one",
@@ -1362,7 +1362,7 @@ test("deployment factory binds all secrets and rehydrates the persisted pair wit
     "upload-cloudflare-production-secrets",
     "deploy-cloudflare-qualified-production",
     "readback-qualified-production",
-    "install-media-worker-0.1.15",
+    "install-media-worker-0.1.17",
     "import-v209-qualified-activation",
   ]);
   assert.throws(
@@ -1627,7 +1627,7 @@ test("interactive Chrome pause and resume preserve the unstarted Generate operat
     "upload-cloudflare-production-secrets",
     "deploy-cloudflare-qualified-production",
     "readback-qualified-production",
-    "install-media-worker-0.1.15",
+    "install-media-worker-0.1.17",
     "import-v209-qualified-activation",
   ]) {
     await adapters.state.beginNormalOperation({

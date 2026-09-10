@@ -87,23 +87,23 @@ export const V209_FROZEN_IMAGES = Object.freeze([
     lane: "soulx_avatar",
     repository: "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
     manifestDigest: "sha256:047881a3e85fcb98683c2851989ec064628fa803123588ac25929bd6ca6b243a",
-    configDigest: "sha256:d4133ee6b582d44032ba7886a5c19a844cbb75347527943f6a40d5327e793122",
-    sourceCommit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+    configDigest: "sha256:d08c7eba4c923db9e524974ff0590fde0f713eae74bec85b5614afc956bfa5cd",
+    sourceCommit: "54c4b06bd524756ccf83e960ca4a18181de134ce",
     frozenAnonymousProofSha256:
-      "sha256:5d842aa90bad61378087b790e44fc182e9d52acb27399e6ed9faacac73150f33",
+      "sha256:16329b6cc8516f28ff4e18136204b2a602debae9ba01c5a432b574a7e18449cc",
     labels: Object.freeze({
       "ai.videoforge.lane": "soulx_avatar",
       "ai.videoforge.model-manifest":
         "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
       "ai.videoforge.model-revision": "59119b6c681230c3eeee157e224ae1941746711e",
       "ai.videoforge.runtime-profile": "videoforge_soulx_flashhead_pro_bf16_v1",
-      "ai.videoforge.source-commit": "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+      "ai.videoforge.source-commit": "54c4b06bd524756ccf83e960ca4a18181de134ce",
       "ai.videoforge.source-revision": "9bc03de06bb0de82cd6bc477804512ae06144bf2",
       "org.opencontainers.image.base.digest":
         "sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b",
       "org.opencontainers.image.base.name":
         "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s",
-      "org.opencontainers.image.revision": "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+      "org.opencontainers.image.revision": "54c4b06bd524756ccf83e960ca4a18181de134ce",
     }),
   }),
 ]);

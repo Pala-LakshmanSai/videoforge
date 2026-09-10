@@ -53,6 +53,7 @@ const DIRECT_DEPENDENCY_PATHS = Object.freeze([
   "deploy/v2-09/v209-runpod-production-bridge.ts",
   "deploy/v2-09/v209-real-chrome-bridge.ts",
   "packages/control-plane/migrations/manifest.json",
+  "packages/control-plane/migrations/0117_hosted_v209_parallel_pair_dispatch.sql",
   ...Array.from({ length: 12 }, (_, index) => {
     const version = 74 + index;
     const entry = JSON.parse(
@@ -194,9 +195,9 @@ const DIRECT_OPERATION_IDS = new Set([
 ]);
 
 const PORT_BY_OPERATION = Object.freeze({
-  "publish-media-worker-0.1.15": "publishMediaWorker",
-  "readback-media-worker-0.1.15": "readbackMediaWorker",
-  "install-media-worker-0.1.15": "installMediaWorker",
+  "publish-media-worker-0.1.17": "publishMediaWorker",
+  "readback-media-worker-0.1.17": "readbackMediaWorker",
+  "install-media-worker-0.1.17": "installMediaWorker",
   "deploy-cloudflare-disabled-bootstrap": "deployCloudflareDisabled",
   "upload-cloudflare-production-secrets": "uploadCloudflareSecrets",
   "deploy-cloudflare-qualified-production": "deployCloudflareQualified",
@@ -232,17 +233,32 @@ function loadV209MigrationBundle() {
   if (
     manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(manifest.migrations) ||
-    manifest.migrations.length !== 86 ||
-    manifest.migrations.some((entry, index) => entry?.version !== index + 1)
+    manifest.migrations.length < 86 ||
+    manifest.migrations.at(-1)?.version !== 117 ||
+    manifest.migrations.some(
+      (entry, index) =>
+        entry?.version <= 0 ||
+        (index > 0 && entry.version <= manifest.migrations[index - 1].version),
+    )
   )
     fail("V2_09_CONCRETE_MIGRATION_MANIFEST_INVALID");
   const entries = manifest.migrations.map((entry) => ({ ...entry }));
-  const selected = entries.slice(73).map((entry) => {
+  const selected = entries.slice(73, 86).map((entry) => {
     const bytes = readFileSync(resolve(ROOT, "packages/control-plane/migrations", entry.filename));
     if (sha256(bytes) !== entry.sha256) fail("V2_09_CONCRETE_MIGRATION_SOURCE_DRIFT");
     return Object.freeze({ ...entry, sql: bytes.toString("utf8") });
   });
-  if (selected.length !== 13 || selected[0].version !== 74 || selected.at(-1).version !== 86)
+  const currentEntry = entries.at(-1);
+  const currentBytes = readFileSync(
+    resolve(ROOT, "packages/control-plane/migrations", currentEntry.filename),
+  );
+  if (
+    sha256(currentBytes) !== currentEntry.sha256 ||
+    selected.length !== 13 ||
+    selected[0].version !== 74 ||
+    selected.at(-1).version !== 86 ||
+    currentEntry.version !== 117
+  )
     fail("V2_09_CONCRETE_MIGRATION_MANIFEST_INVALID");
   const ledger = (length) =>
     canonical(
@@ -250,29 +266,56 @@ function loadV209MigrationBundle() {
         .slice(0, length)
         .map(({ version, name, filename, sha256: digest }) => [version, name, filename, digest]),
     );
-  return Object.freeze({ selected, prefixLedger: ledger(73), finalLedger: ledger(86) });
+  return Object.freeze({
+    selected,
+    prefixLedger: ledger(73),
+    finalLedger: ledger(86),
+    currentEntry: Object.freeze({ ...currentEntry, sql: currentBytes.toString("utf8") }),
+    currentPrefixLedger: ledger(entries.length - 1),
+    currentFinalLedger: ledger(entries.length),
+    currentVersion: currentEntry.version,
+  });
 }
 
-function renderV209MigrationSql(bundle, verifyExisting) {
-  const expectedBefore = verifyExisting ? bundle.finalLedger : bundle.prefixLedger;
+function renderV209MigrationSql(bundle, mode) {
+  const legacyVerify = mode === "VERIFY_EXISTING_0086";
+  const currentApply = mode === "APPLY_CURRENT_0117";
+  const currentVerify = mode === "VERIFY_EXISTING_CURRENT";
+  if (!legacyVerify && !currentApply && !currentVerify && mode !== "APPLY_0074_0086")
+    fail("V2_09_CONCRETE_MIGRATION_MODE_INVALID");
+  const expectedBefore = legacyVerify
+    ? bundle.finalLedger
+    : currentApply || currentVerify
+      ? bundle.currentPrefixLedger
+      : bundle.prefixLedger;
   const guard = (expected, label) =>
     `DO $v209$ BEGIN IF COALESCE((SELECT jsonb_agg(jsonb_build_array(version,name,filename,sha256) ORDER BY version) FROM public.videoforge_schema_migrations),'[]'::jsonb) IS DISTINCT FROM ${sqlLiteral(expected)}::jsonb THEN RAISE EXCEPTION '${label}'; END IF; END $v209$;`;
-  const body = verifyExisting
+  const body = legacyVerify || currentVerify
     ? ""
-    : bundle.selected
+    : (currentApply ? [bundle.currentEntry] : bundle.selected)
         .map(
           (entry) =>
             `${entry.sql}\nINSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256) VALUES (${entry.version},${sqlLiteral(entry.name)},${sqlLiteral(entry.filename)},${sqlLiteral(entry.sha256)});`,
         )
         .join("\n");
+  const finalLedger = legacyVerify || mode === "APPLY_0074_0086" ? bundle.finalLedger : bundle.currentFinalLedger;
+  const resultMode = legacyVerify
+    ? "VERIFIED_EXISTING_0086"
+    : mode === "APPLY_0074_0086"
+      ? "APPLIED_0074_0086"
+      : currentApply
+        ? "APPLIED_CURRENT_0117"
+        : "VERIFIED_EXISTING_CURRENT";
+  const fromVersion = legacyVerify ? 86 : mode === "APPLY_0074_0086" ? 73 : 116;
+  const toVersion = legacyVerify || mode === "APPLY_0074_0086" ? 86 : 117;
   return [
     "\\set ON_ERROR_STOP on",
     "BEGIN;",
     "SELECT pg_advisory_xact_lock(1448494662,9);",
     guard(expectedBefore, "V2-09 migration ledger prefix drift"),
     body,
-    guard(bundle.finalLedger, "V2-09 migration ledger final drift"),
-    `SELECT jsonb_build_object('schemaVersion','videoforge.v2-09-migration-result/v1','mode','${verifyExisting ? "VERIFIED_EXISTING_0086" : "APPLIED_0074_0086"}','fromVersion',${verifyExisting ? 86 : 73},'toVersion',86);`,
+    guard(finalLedger, "V2-09 migration ledger final drift"),
+    `SELECT jsonb_build_object('schemaVersion','videoforge.v2-09-migration-result/v1','mode','${resultMode}','fromVersion',${fromVersion},'toVersion',${toVersion});`,
     "COMMIT;",
     "",
   ].join("\n");
@@ -1521,7 +1564,12 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     configuration.branch !== BRANCH ||
     configuration.pushRef !== PUSH_REF ||
     configuration.remote !== "origin" ||
-    !["APPLY_0074_0086", "VERIFY_EXISTING_0086"].includes(configuration.migrationMode) ||
+    ![
+      "APPLY_0074_0086",
+      "VERIFY_EXISTING_0086",
+      "APPLY_CURRENT_0117",
+      "VERIFY_EXISTING_CURRENT",
+    ].includes(configuration.migrationMode) ||
     !ROLE.test(configuration.runtimeRole ?? "") ||
     !ROLE.test(configuration.operatorRole ?? "") ||
     !ROLE.test(configuration.reconcilerRole ?? "") ||
@@ -1925,7 +1973,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     return { operation_id: "readback-clean-source", source_commit: commit, destination_ref: ref };
   };
   operations["apply-migrations-0074-0086"] = async ({ operation }) => {
-    const verifyExisting = configuration.migrationMode === "VERIFY_EXISTING_0086";
+    const mode = configuration.migrationMode;
     const output = await exactChild(
       runChild,
       configuration,
@@ -1935,33 +1983,49 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       {
         cancellationSignal: operation.cancellationSignal,
         env: postgresEnvironmentFor("databaseOwnerUrlFile"),
-        input: renderV209MigrationSql(migrationBundle, verifyExisting),
+        input: renderV209MigrationSql(migrationBundle, mode),
       },
     );
     const receipt = parseJson(output, "MIGRATIONS");
+    const currentMigration = ["APPLY_CURRENT_0117", "VERIFY_EXISTING_CURRENT"].includes(mode);
     if (
       !exactKeys(receipt, ["fromVersion", "mode", "schemaVersion", "toVersion"]) ||
       receipt.schemaVersion !== "videoforge.v2-09-migration-result/v1" ||
-      receipt.mode !== (verifyExisting ? "VERIFIED_EXISTING_0086" : "APPLIED_0074_0086") ||
-      receipt.fromVersion !== (verifyExisting ? 86 : 73) ||
-      receipt.toVersion !== 86
+      receipt.mode !==
+        (mode === "VERIFY_EXISTING_0086"
+          ? "VERIFIED_EXISTING_0086"
+          : mode === "APPLY_0074_0086"
+            ? "APPLIED_0074_0086"
+            : mode === "APPLY_CURRENT_0117"
+              ? "APPLIED_CURRENT_0117"
+              : "VERIFIED_EXISTING_CURRENT") ||
+      receipt.fromVersion !== (currentMigration ? 116 : mode === "VERIFY_EXISTING_0086" ? 86 : 73) ||
+      receipt.toVersion !== (currentMigration ? 117 : 86)
     )
       fail("V2_09_CONCRETE_MIGRATION_RECEIPT_INVALID");
-    return verifyExisting
-      ? {
-          operation_id: "apply-migrations-0074-0086",
-          mode: "VERIFIED_EXISTING_0086",
-          from_version: 86,
-          to_version: 86,
-          applied_versions: [],
-        }
-      : {
-          operation_id: "apply-migrations-0074-0086",
-          mode: "APPLIED_0074_0086",
-          from_version: 73,
-          to_version: 86,
-          applied_versions: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86],
-        };
+    if (mode === "VERIFY_EXISTING_0086")
+      return {
+        operation_id: "apply-migrations-0074-0086",
+        mode: "VERIFIED_EXISTING_0086",
+        from_version: 86,
+        to_version: 86,
+        applied_versions: [],
+      };
+    if (mode === "APPLY_0074_0086")
+      return {
+        operation_id: "apply-migrations-0074-0086",
+        mode: "APPLIED_0074_0086",
+        from_version: 73,
+        to_version: 86,
+        applied_versions: [74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86],
+      };
+    return {
+      operation_id: "apply-migrations-0074-0086",
+      mode: mode === "APPLY_CURRENT_0117" ? "APPLIED_CURRENT_0117" : "VERIFIED_EXISTING_CURRENT",
+      from_version: 116,
+      to_version: 117,
+      applied_versions: mode === "APPLY_CURRENT_0117" ? [117] : [],
+    };
   };
   operations["apply-v209-grants"] = async () => {
     const roleArgs = [
@@ -1988,7 +2052,11 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     return {
       schema_version: "videoforge.v2-09-grants-result/v1",
       operation_id: "apply-v209-grants",
-      migration_head: 86,
+      migration_head: ["APPLY_CURRENT_0117", "VERIFY_EXISTING_CURRENT"].includes(
+        configuration.migrationMode,
+      )
+        ? migrationBundle.currentVersion
+        : 86,
       public_execute_count: 0,
       runtime_grants_verified: true,
       operator_grants_verified: true,

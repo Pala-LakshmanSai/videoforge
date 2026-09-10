@@ -44,11 +44,11 @@ export const QUALIFIED_LANES = Object.freeze([
   Object.freeze({
     lane: "soulx",
     image_sha256: "sha256:047881a3e85fcb98683c2851989ec064628fa803123588ac25929bd6ca6b243a",
-    image_source_commit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
-    image_config_sha256: "sha256:d4133ee6b582d44032ba7886a5c19a844cbb75347527943f6a40d5327e793122",
+    image_source_commit: "54c4b06bd524756ccf83e960ca4a18181de134ce",
+    image_config_sha256: "sha256:d08c7eba4c923db9e524974ff0590fde0f713eae74bec85b5614afc956bfa5cd",
     anonymous_proof_sha256:
-      "sha256:5d842aa90bad61378087b790e44fc182e9d52acb27399e6ed9faacac73150f33",
-    acceptance_sha256: "sha256:586c235e3854ece80ca17b7728d3bdddea47e4e4f3b9fb445584bd7cd2fc17b5",
+      "sha256:16329b6cc8516f28ff4e18136204b2a602debae9ba01c5a432b574a7e18449cc",
+    acceptance_sha256: "sha256:d6fff986aa950becbd345c72090c0d2d8fdabb4bc0b920d194b57e6a596f72b8",
     volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
     volume_manifest_sha256:
       "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
@@ -101,8 +101,8 @@ export const NORMAL_OPERATIONS = Object.freeze([
   Object.freeze({ id: "readback-clean-source", boundary: "READBACK" }),
   Object.freeze({ id: "apply-migrations-0074-0086", boundary: "DATABASE_MUTATION" }),
   Object.freeze({ id: "apply-v209-grants", boundary: "DATABASE_MUTATION" }),
-  Object.freeze({ id: "publish-media-worker-0.1.15", boundary: "REMOTE_MUTATION" }),
-  Object.freeze({ id: "readback-media-worker-0.1.15", boundary: "READBACK" }),
+  Object.freeze({ id: "publish-media-worker-0.1.17", boundary: "REMOTE_MUTATION" }),
+  Object.freeze({ id: "readback-media-worker-0.1.17", boundary: "READBACK" }),
   // This must remain immediately before the first RunPod mutation.
   Object.freeze({ id: "fresh-read-only-admission", boundary: "READBACK" }),
   Object.freeze({ id: "create-mage-production-lane-max-one", boundary: "REMOTE_MUTATION" }),
@@ -114,7 +114,7 @@ export const NORMAL_OPERATIONS = Object.freeze([
   Object.freeze({ id: "deploy-cloudflare-qualified-production", boundary: "REMOTE_MUTATION" }),
   Object.freeze({ id: "readback-qualified-production", boundary: "READBACK" }),
   // ONLINE requires the exact new release manifest to be deployed and read back first.
-  Object.freeze({ id: "install-media-worker-0.1.15", boundary: "LOCAL_MUTATION" }),
+  Object.freeze({ id: "install-media-worker-0.1.17", boundary: "LOCAL_MUTATION" }),
   Object.freeze({ id: "import-v209-qualified-activation", boundary: "DATABASE_MUTATION" }),
   Object.freeze({
     id: "run-one-v209-chrome-e2e",
@@ -439,6 +439,16 @@ function validateOperationResult(
         result.from_version === 86 &&
         result.to_version === 86 &&
         Array.isArray(result.applied_versions) &&
+        result.applied_versions.length === 0) ||
+      (result.mode === "APPLIED_CURRENT_0117" &&
+        result.from_version === 116 &&
+        result.to_version === 117 &&
+        Array.isArray(result.applied_versions) &&
+        result.applied_versions.join(",") === "117") ||
+      (result.mode === "VERIFIED_EXISTING_CURRENT" &&
+        result.from_version === 116 &&
+        result.to_version === 117 &&
+        Array.isArray(result.applied_versions) &&
         result.applied_versions.length === 0)
     )
   )
@@ -455,7 +465,7 @@ function validateOperationResult(
       "schema_version",
     ]) ||
       result.schema_version !== "videoforge.v2-09-grants-result/v1" ||
-      result.migration_head !== 86 ||
+      ![86, 117].includes(result.migration_head) ||
       result.public_execute_count !== 0 ||
       result.runtime_grants_verified !== true ||
       result.operator_grants_verified !== true ||
@@ -463,7 +473,7 @@ function validateOperationResult(
   )
     fail("V2_09_GRANTS_RESULT_INVALID");
   if (
-    operationId === "publish-media-worker-0.1.15" &&
+    operationId === "publish-media-worker-0.1.17" &&
     (!exactKeys(result, [
       "execution_bundle_sha256",
       "immutable_release",
@@ -490,7 +500,7 @@ function validateOperationResult(
   )
     fail("V2_09_MEDIA_WORKER_PUBLICATION_INVALID");
   if (
-    operationId === "readback-media-worker-0.1.15" &&
+    operationId === "readback-media-worker-0.1.17" &&
     (!exactKeys(result, [
       "execution_bundle_sha256",
       "immutable_readback",
@@ -514,7 +524,7 @@ function validateOperationResult(
   )
     fail("V2_09_MEDIA_WORKER_READBACK_INVALID");
   if (
-    operationId === "install-media-worker-0.1.15" &&
+    operationId === "install-media-worker-0.1.17" &&
     (!exactKeys(result, [
       "code_signature_verified",
       "execution_bundle_sha256",
@@ -1095,7 +1105,7 @@ export function validateAuthority(
       "signing_identity_sha256",
       "whisper_model_sha256",
     ]) ||
-    authority.media_worker.release !== "0.1.15" ||
+    authority.media_worker.release !== "0.1.17" ||
     !HASH.test(authority.media_worker.execution_bundle_sha256 ?? "") ||
     !HASH.test(authority.media_worker.release_manifest_sha256 ?? "") ||
     !HASH.test(authority.media_worker.installer_asset_sha256 ?? "") ||
@@ -1178,7 +1188,7 @@ export function validateAuthority(
     scope.allow_region_fallback !== false ||
     scope.allow_model_download !== false ||
     scope.allow_retained_volume_mutation !== false ||
-    scope.media_worker_release !== "0.1.15"
+    scope.media_worker_release !== "0.1.17"
   )
     fail("V2_09_AUTHORITY_SCOPE_INVALID");
 

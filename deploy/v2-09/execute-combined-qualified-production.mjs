@@ -365,7 +365,7 @@ export function validateCombinedAuthority(
   const existingMediaWorker =
     authority.media_worker_inputs?.materialization_mode === MEDIA_WORKER_EXISTING_RELEASE_MODE;
   if (
-    authority.media_worker_inputs?.release !== "0.1.15" ||
+    authority.media_worker_inputs?.release !== "0.1.17" ||
     !HASH.test(authority.media_worker_inputs?.execution_bundle_sha256 ?? "") ||
     !HASH.test(authority.media_worker_inputs?.whisper_model_sha256 ?? "") ||
     (stagedMediaWorker &&
@@ -459,7 +459,7 @@ function validateStagedReceipts(staged, authority, preflight) {
     ]) ||
     media.schema_version !== MEDIA_RECEIPT_SCHEMA ||
     media.preflight_proof_sha256 !== preflight.proofSha256 ||
-    media.release !== "0.1.15" ||
+    media.release !== "0.1.17" ||
     [
       media.execution_bundle_sha256,
       media.installer_asset_sha256,
@@ -626,7 +626,7 @@ export function deriveQualifiedProductionAuthority(authority, preflight, staged)
       allow_region_fallback: false,
       allow_model_download: false,
       allow_retained_volume_mutation: false,
-      media_worker_release: "0.1.15",
+      media_worker_release: "0.1.17",
     }),
     single_use: true,
     source_commit: authority.source_commit,
@@ -1885,7 +1885,7 @@ function stagingAuthority(outer, preflight, baseline, mediaWorker) {
         : mediaWorker.materialization_mode === MEDIA_WORKER_EXISTING_RELEASE_MODE
           ? { allow_media_worker_existing_release_adoption_once: true }
           : {}),
-      media_worker_release: "0.1.15",
+      media_worker_release: "0.1.17",
     },
   };
 }
@@ -1970,7 +1970,7 @@ function createLiveMaterializer(
     return runtime;
   };
   const restoreMediaWorker = async (authority, priorResults) => {
-    const publication = priorResults["publish-media-worker-0.1.15"];
+    const publication = priorResults["publish-media-worker-0.1.17"];
     if (!publication?.release_manifest_sha256) return authority.media_worker_inputs;
     const { V209_MEDIA_WORKER_ADHOC_SIGNING_IDENTITY_SHA256 } = await import(
       "./media-worker-production-operator.mjs"
@@ -2169,7 +2169,7 @@ function createLiveMaterializer(
           : {}),
       });
       if (
-        operationId === "publish-media-worker-0.1.15" &&
+        operationId === "publish-media-worker-0.1.17" &&
         ["MATERIALIZED_ONCE", "ADOPTED_EXACT_EXISTING"].includes(result.mode)
       ) {
         const { validateV209MediaWorkerMaterializationReceipt } = await import(

@@ -262,7 +262,7 @@ export function validateV209NativeBrowserContinuation({
   const deployed = result("deploy-cloudflare-qualified-production"),
     readback = result("readback-qualified-production"),
     activation = result("import-v209-qualified-activation"),
-    installed = result("install-media-worker-0.1.15");
+    installed = result("install-media-worker-0.1.17");
   const replacement =
     replacementReceipt === undefined
       ? null
@@ -320,8 +320,8 @@ export function validateV209NativeBrowserContinuation({
     d.deployment_row_id_sha256s.length !== 2 ||
     new Set(d.deployment_row_id_sha256s).size !== 2 ||
     d.deployment_row_id_sha256s.some((v) => !HASH.test(v)) ||
-    d.installed_release !== "0.1.15" ||
-    installed.release !== "0.1.15" ||
+    d.installed_release !== "0.1.17" ||
+    installed.release !== "0.1.17" ||
     installed.online !== true ||
     d.media_worker_bundle_sha256 !== p.media_worker_inputs.execution_bundle_sha256 ||
     d.media_worker_bundle_sha256 !== installed.execution_bundle_sha256

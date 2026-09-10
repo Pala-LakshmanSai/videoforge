@@ -14,7 +14,7 @@ export const TEMPLATE_PATH = resolve(ROOT, "apps/web/wrangler.production.jsonc")
 export const MAGE_QUALIFICATION_SHA256 =
   "sha256:12bc1b0fa85606ed1adad23b0b6df97d5c16e1e5d0f8e417fadad0403076be5f";
 export const SOULX_QUALIFICATION_SHA256 =
-  "sha256:586c235e3854ece80ca17b7728d3bdddea47e4e4f3b9fb445584bd7cd2fc17b5";
+  "sha256:d6fff986aa950becbd345c72090c0d2d8fdabb4bc0b920d194b57e6a596f72b8";
 export const MAGE_IMAGE_DIGEST =
   "sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0";
 export const SOULX_IMAGE_DIGEST =

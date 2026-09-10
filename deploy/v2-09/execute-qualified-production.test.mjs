@@ -91,7 +91,7 @@ function authority(overrides = {}) {
       max_rate_usd_per_gpu_hour: 1.116,
     },
     media_worker: {
-      release: "0.1.15",
+      release: "0.1.17",
       execution_bundle_sha256: `sha256:${"6".repeat(64)}`,
       whisper_model_sha256: `sha256:${"7".repeat(64)}`,
       release_manifest_sha256: `sha256:${"a".repeat(64)}`,
@@ -129,7 +129,7 @@ function authority(overrides = {}) {
       allow_region_fallback: false,
       allow_model_download: false,
       allow_retained_volume_mutation: false,
-      media_worker_release: "0.1.15",
+      media_worker_release: "0.1.17",
     },
   };
   return { ...value, ...overrides };
@@ -241,7 +241,7 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       reconciler_grants_verified: true,
     };
   }
-  if (id === "publish-media-worker-0.1.15") {
+  if (id === "publish-media-worker-0.1.17") {
     return {
       schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
       operation_id: id,
@@ -255,7 +255,7 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       publish_count: 1,
     };
   }
-  if (id === "readback-media-worker-0.1.15") {
+  if (id === "readback-media-worker-0.1.17") {
     return {
       schema_version: "videoforge.v2-09-media-worker-readback-result/v1",
       operation_id: id,
@@ -268,7 +268,7 @@ function resultFor(id, value, outcome = "SUCCESS", priorResults = []) {
       immutable_readback: true,
     };
   }
-  if (id === "install-media-worker-0.1.15") {
+  if (id === "install-media-worker-0.1.17") {
     return {
       schema_version: "videoforge.v2-09-media-worker-install-result/v1",
       operation_id: id,
@@ -763,7 +763,7 @@ test("inner combined resume accepts only the legacy exact-existing publication r
     repository: "Pala-LakshmanSai/videoforge",
     workflow_path: ".github/workflows/media-worker-release.yml",
     release_source_commit: releaseSourceCommit,
-    release_tag: "media-worker-v0.1.15",
+    release_tag: "media-worker-v0.1.17",
     release: value.media_worker.release,
     release_manifest_sha256: value.media_worker.release_manifest_sha256,
     installer_asset_sha256: value.media_worker.installer_asset_sha256,
@@ -787,9 +787,9 @@ test("inner combined resume accepts only the legacy exact-existing publication r
         completeNormalOperation: async () => ({}),
       },
       operations: {
-        "publish-media-worker-0.1.15": async () => ({
+        "publish-media-worker-0.1.17": async () => ({
           schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
-          operation_id: "publish-media-worker-0.1.15",
+          operation_id: "publish-media-worker-0.1.17",
           mode: "ADOPTED_EXACT_EXISTING",
           publish_count: 0,
           materialization_receipt: {
@@ -801,7 +801,7 @@ test("inner combined resume accepts only the legacy exact-existing publication r
     }),
   });
   const normalizedPublication = await materializer.run({
-    operationId: "publish-media-worker-0.1.15",
+    operationId: "publish-media-worker-0.1.17",
     authority: outer,
     preflight: {
       runpod: {
@@ -814,7 +814,7 @@ test("inner combined resume accepts only the legacy exact-existing publication r
   const exactExistingResume = () => {
     const resume = combinedResume(value);
     const publication = resume.operations.find(
-      ({ operation_id }) => operation_id === "publish-media-worker-0.1.15",
+      ({ operation_id }) => operation_id === "publish-media-worker-0.1.17",
     );
     publication.result = structuredClone(normalizedPublication);
     publication.result_sha256 = hash(canonical(publication.result));
@@ -834,7 +834,7 @@ test("inner combined resume accepts only the legacy exact-existing publication r
     adapters: adapters({ calls }),
   });
   assert.equal(accepted.status, "SUCCEEDED_CLEAN");
-  assert.equal(calls.includes("publish-media-worker-0.1.15"), false);
+  assert.equal(calls.includes("publish-media-worker-0.1.17"), false);
 
   for (const mutate of [
     (result) => (result.release_source_commit = "b".repeat(40)),
@@ -844,7 +844,7 @@ test("inner combined resume accepts only the legacy exact-existing publication r
   ]) {
     const tampered = exactExistingResume();
     const publication = tampered.operations.find(
-      ({ operation_id }) => operation_id === "publish-media-worker-0.1.15",
+      ({ operation_id }) => operation_id === "publish-media-worker-0.1.17",
     );
     mutate(publication.result);
     publication.result_sha256 = hash(canonical(publication.result));
@@ -860,7 +860,7 @@ test("inner combined resume accepts only the legacy exact-existing publication r
         combinedExecution: tampered,
         adapters: adapters(),
       }),
-      /V2_09_ROLLOUT_FAILED_CLEAN:publish-media-worker-0\.1\.15/u,
+      /V2_09_ROLLOUT_FAILED_CLEAN:publish-media-worker-0\.1\.17/u,
     );
   }
 });
@@ -972,9 +972,9 @@ test("fresh successor authority may reuse exact migration head and immutable wor
           to_version: 86,
           applied_versions: [],
         },
-        "publish-media-worker-0.1.15": {
+        "publish-media-worker-0.1.17": {
           schema_version: "videoforge.v2-09-media-worker-publication-result/v1",
-          operation_id: "publish-media-worker-0.1.15",
+          operation_id: "publish-media-worker-0.1.17",
           mode: "REUSED_EXACT_EXISTING",
           release: value.media_worker.release,
           execution_bundle_sha256: value.media_worker.execution_bundle_sha256,
@@ -988,7 +988,7 @@ test("fresh successor authority may reuse exact migration head and immutable wor
     }),
   });
   assert.equal(report.status, "SUCCEEDED_CLEAN");
-  assert.equal(calls.filter((id) => id === "publish-media-worker-0.1.15").length, 1);
+  assert.equal(calls.filter((id) => id === "publish-media-worker-0.1.17").length, 1);
 });
 
 test("a cost overrun fails closed and cannot dispatch again", async () => {
@@ -1205,7 +1205,7 @@ test("lane and media proofs reject incomplete immutable bindings", async () => {
     /V2_09_ROLLOUT_FAILED_CLEAN:create-mage-production-lane-max-one/u,
   );
   const mediaCalls = [];
-  const install = resultFor("install-media-worker-0.1.15", authority());
+  const install = resultFor("install-media-worker-0.1.17", authority());
   await assert.rejects(
     executeTest({
       mode: "EXECUTE",
@@ -1215,11 +1215,11 @@ test("lane and media proofs reject incomplete immutable bindings", async () => {
       adapters: adapters({
         calls: mediaCalls,
         resultOverrides: {
-          "install-media-worker-0.1.15": { ...install, online: false },
+          "install-media-worker-0.1.17": { ...install, online: false },
         },
       }),
     }),
-    /V2_09_ROLLOUT_FAILED_CLEAN:install-media-worker-0.1.15/u,
+    /V2_09_ROLLOUT_FAILED_CLEAN:install-media-worker-0.1.17/u,
   );
 });
 
