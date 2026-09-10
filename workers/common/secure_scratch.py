@@ -71,6 +71,12 @@ PORT_KEYS: Final = frozenset(
         "capability_handle",
     }
 )
+SYSTEM_AVATAR_PATH: Final = re.compile(
+    r"^/tenant/ffffffff-ffff-4fff-8fff-000000000001/"
+    r"workspace/ffffffff-ffff-4fff-8fff-000000000011/avatar-profile/"
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/version/"
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/canonical/avatar\.(?:png|jpg)$"
+)
 
 
 def validate_scoped_port(
@@ -81,6 +87,7 @@ def validate_scoped_port(
     job_id: str,
     method: str,
     now: datetime,
+    allow_system_avatar_path: bool = False,
 ) -> None:
     if set(port) != PORT_KEYS or port.get("schema_version") != "artifact-transfer-port/v3":
         raise ScratchIsolationError("WORKER_ARTIFACT_PORT_INVALID")
@@ -116,11 +123,20 @@ def validate_scoped_port(
         raise ScratchIsolationError("WORKER_ARTIFACT_PORT_INVALID")
     path = port.get("path")
     expected_prefix = f"/tenant/{account_id}/workspace/{workspace_id}/"
-    if (
-        not isinstance(path, str)
-        or not path.startswith(expected_prefix)
-        or f"/job/{job_id}/" not in path
-    ):
+    ordinary_path = (
+        isinstance(path, str)
+        and path.startswith(expected_prefix)
+        and f"/job/{job_id}/" in path
+    )
+    immutable_system_avatar = (
+        allow_system_avatar_path
+        and method == "GET"
+        and port.get("content_type") == "image/png"
+        and port.get("max_uses") == 1
+        and isinstance(path, str)
+        and SYSTEM_AVATAR_PATH.fullmatch(path) is not None
+    )
+    if not ordinary_path and not immutable_system_avatar:
         raise ScratchIsolationError("WORKER_ARTIFACT_PATH_MISMATCH")
     if "?" in path or "/../" in path:
         raise ScratchIsolationError("WORKER_ARTIFACT_PATH_MISMATCH")
@@ -146,6 +162,7 @@ class ScopedWorkerIO(AbstractContextManager["ScopedWorkerIO"]):
         input_ports: tuple[Mapping[str, object], ...],
         output_ports: tuple[Mapping[str, object], ...],
         now: datetime,
+        allow_system_avatar_path: bool = False,
     ) -> None:
         for port in input_ports:
             validate_scoped_port(
@@ -155,6 +172,7 @@ class ScopedWorkerIO(AbstractContextManager["ScopedWorkerIO"]):
                 job_id=job_id,
                 method="GET",
                 now=now,
+                allow_system_avatar_path=allow_system_avatar_path,
             )
         for port in output_ports:
             validate_scoped_port(

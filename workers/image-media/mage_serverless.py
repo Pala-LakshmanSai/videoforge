@@ -23,6 +23,7 @@ from urllib.request import Request, urlopen
 from mage_runtime import MageRuntime
 from mage_volume import verify_model_root
 from videoforge_image_media import MageInlineJob, MageJob
+from videoforge_image_media.mage_production import MageContractError, MageItem, _validate_identity
 
 from secure_scratch import ScratchIsolationError, mage_worker_io, validate_scoped_port
 from serverless_envelope import (
@@ -36,6 +37,39 @@ from serverless_envelope import (
 
 class ServerlessMageError(RuntimeError):
     pass
+
+
+def _parse_ordinary_mage_job(value: object) -> MageJob:
+    """Parse the production batch while preserving the product's 30-scene contract.
+
+    The qualified base package historically accepted only 32--64 remote items, while the
+    application durably plans exactly 30 scenes.  Keep the package parser as the first boundary
+    (so its strict shape and identity checks remain authoritative), then use the same item and
+    sequence validation with the bounded ordinary range 1--64 when it rejects only that stale
+    batch-size floor.  No padding or duplicate scene is introduced.
+    """
+    try:
+        return MageJob.from_value(value)
+    except MageContractError as error:
+        if str(error) != "MAGE_BATCH_SIZE_INVALID":
+            raise
+    if not isinstance(value, dict) or set(value) != {"attempt_id", "model_revision", "items"}:
+        raise MageContractError("MAGE_JOB_SHAPE_INVALID")
+    raw_items = value["items"]
+    if not isinstance(raw_items, list) or not 1 <= len(raw_items) <= 64:
+        raise MageContractError("MAGE_BATCH_SIZE_INVALID")
+    job = MageJob(
+        attempt_id=value["attempt_id"],
+        model_revision=value["model_revision"],
+        items=tuple(MageItem.from_value(item, inline=False) for item in raw_items),
+    )
+    _validate_identity(job.attempt_id, job.model_revision)
+    if len({item.scene_id for item in job.items}) != len(job.items):
+        raise MageContractError("MAGE_SCENE_ID_DUPLICATE")
+    base_seed = job.items[0].seed
+    if any(item.seed != base_seed + index for index, item in enumerate(job.items)):
+        raise MageContractError("MAGE_SEED_SEQUENCE_INVALID")
+    return job
 
 
 _runtime: MageRuntime | None = None
@@ -1092,7 +1126,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             receipt_secret=bytes.fromhex(os.environ["VIDEOFORGE_RECEIPT_SIGNING_KEY_HEX"]),
             **_authority_expectations(envelope),
         )
-        mage_job = MageJob.from_value(batch)
+        mage_job = _parse_ordinary_mage_job(batch)
         if (
             accepted["work"]["lane"] != "mage_image"
             or accepted["work"]["attempt_id"] != mage_job.attempt_id

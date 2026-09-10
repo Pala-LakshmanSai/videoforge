@@ -31,9 +31,26 @@ function snapshot(result: RunPodJobResult, afterRunMutation = false): Serverless
       afterRunMutation ? "DISPATCH_ACK_UNKNOWN" : "REQUEST_REJECTED",
     );
   }
+  const workerOutput =
+    result.status === "COMPLETED" &&
+    result.output !== null &&
+    typeof result.output === "object" &&
+    !Array.isArray(result.output)
+      ? (result.output as Record<string, unknown>)
+      : null;
+  // RunPod's transport reports COMPLETED when the handler process returned normally, including
+  // the worker's fail-closed `{status:"FAILED",failure_code:...}` result. Treat that exact,
+  // bounded worker declaration as a terminal failed job so reconciliation settles the lane
+  // instead of sending a non-success document into the provenance-output ingestor.
+  const status =
+    workerOutput?.status === "FAILED" &&
+    typeof workerOutput.failure_code === "string" &&
+    /^[A-Z][A-Z0-9_]{2,127}$/u.test(workerOutput.failure_code)
+      ? ("FAILED" as const)
+      : (result.status as ServerlessProviderStatus);
   return Object.freeze({
     id: result.id,
-    status: result.status as ServerlessProviderStatus,
+    status,
     ...(Object.hasOwn(result, "output") ? { output: result.output } : {}),
   });
 }

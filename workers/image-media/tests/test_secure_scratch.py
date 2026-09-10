@@ -17,6 +17,7 @@ from secure_scratch import (  # noqa: E402
     mage_worker_io,
     model_volume_policy,
     soulx_worker_io,
+    validate_scoped_port,
 )
 
 
@@ -100,6 +101,39 @@ class SecureScratchTest(unittest.TestCase):
                     output_ports=(self.scoped_port("PUT"),),
                     now=now,
                 )
+
+        system_avatar = self.scoped_port("GET")
+        system_avatar["content_type"] = "image/png"
+        system_avatar["path"] = (
+            "/tenant/ffffffff-ffff-4fff-8fff-000000000001/"
+            "workspace/ffffffff-ffff-4fff-8fff-000000000011/avatar-profile/"
+            "12345678-1234-1234-1234-123456789012/version/"
+            "abcdefab-cdef-abcd-efab-cdefabcdefab/canonical/avatar.png"
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            with soulx_worker_io(
+                root=Path(temporary).resolve(),
+                account_id="account-a",
+                workspace_id="workspace-a",
+                job_id="job-scoped",
+                input_ports=(system_avatar,),
+                output_ports=(),
+                now=now,
+                allow_system_avatar_path=True,
+            ):
+                pass
+
+        system_avatar["path"] = system_avatar["path"].replace("avatar.png", "avatar.gif")
+        with self.assertRaisesRegex(ScratchIsolationError, "WORKER_ARTIFACT_PATH_MISMATCH"):
+            validate_scoped_port(
+                system_avatar,
+                account_id="account-a",
+                workspace_id="workspace-a",
+                job_id="job-scoped",
+                method="GET",
+                now=now,
+                allow_system_avatar_path=True,
+            )
 
         for field, value in (
             ("content_length", -1),

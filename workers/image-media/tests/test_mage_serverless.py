@@ -362,6 +362,35 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         self.assertEqual(result["failure_code"], "MAGE_SERVERLESS_JOB_SHAPE_INVALID")
         self.assertEqual(result["error"]["code"], "MAGE_SERVERLESS_JOB_SHAPE_INVALID")
 
+    def test_ordinary_parser_accepts_the_product_thirty_scene_batch_without_padding(self) -> None:
+        items = []
+        for index in range(30):
+            positive = f"positive-scene-{index}"
+            negative = "negative-scene"
+            items.append(
+                {
+                    "scene_id": f"scene-{index}",
+                    "positive_prompt": positive,
+                    "positive_prompt_sha256": "sha256:" + hashlib.sha256(positive.encode()).hexdigest(),
+                    "negative_prompt": negative,
+                    "negative_prompt_sha256": "sha256:" + hashlib.sha256(negative.encode()).hexdigest(),
+                    "seed": 2_000_000 + index,
+                    "width": 1280,
+                    "height": 720,
+                    "output_put_url": f"https://objects.example/{index}.png",
+                }
+            )
+        parsed = mage_serverless._parse_ordinary_mage_job(
+            {
+                "attempt_id": "attempt-thirty",
+                "model_revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+                "items": items,
+            }
+        )
+        self.assertEqual(len(parsed.items), 30)
+        self.assertEqual(parsed.items[0].scene_id, "scene-0")
+        self.assertEqual(parsed.items[-1].scene_id, "scene-29")
+
     def test_failure_code_survives_runpod_reserved_error_stripping(self) -> None:
         """SLS-Core keeps output fields but moves/removes the reserved `error` field."""
         result = asyncio.run(mage_serverless.handler({"input": {}}))

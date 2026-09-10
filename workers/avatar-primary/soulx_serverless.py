@@ -870,6 +870,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
                 job_id=accepted["work"]["attempt_id"],
                 method="GET",
                 now=now,
+                allow_system_avatar_path=port is input_ports[0],
             )
             if port.get("max_uses") != 1:
                 raise ServerlessSoulXError("SOULX_SERVERLESS_INPUT_PORTS_INVALID")
@@ -919,6 +920,7 @@ async def handler(job: dict[str, Any]) -> dict[str, Any]:
             input_ports=tuple(input_ports),
             output_ports=(),
             now=now,
+            allow_system_avatar_path=True,
         ) as worker_io:
             worker_io.scratch.safe_path("inputs", directory=True)
             worker_io.scratch.safe_path("prepared", directory=True)

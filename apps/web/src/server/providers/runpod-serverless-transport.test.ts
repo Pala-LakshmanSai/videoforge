@@ -138,6 +138,24 @@ describe("provider-neutral RunPod Serverless transport", () => {
     ).resolves.toEqual({ id: "job_01", status: "COMPLETED", output: { receipt: "bounded" } });
   });
 
+  it("maps an exact worker-declared failure inside RunPod COMPLETED to terminal FAILED", async () => {
+    const port = client();
+    const output = { status: "FAILED", failure_code: "MAGE_BATCH_SIZE_INVALID" };
+    port.status.mockResolvedValueOnce({ ...job("COMPLETED"), output });
+    await expect(
+      new RunPodServerlessTransport(port, ENDPOINT_SHA256).status("job_01"),
+    ).resolves.toEqual({ id: "job_01", status: "FAILED", output });
+
+    const malformed = client();
+    malformed.status.mockResolvedValueOnce({
+      ...job("COMPLETED"),
+      output: { status: "FAILED", failure_code: "not bounded" },
+    });
+    await expect(
+      new RunPodServerlessTransport(malformed, ENDPOINT_SHA256).status("job_01"),
+    ).resolves.toMatchObject({ status: "COMPLETED" });
+  });
+
   it("cancels only the exact job and preserves uncertain cancellation", async () => {
     const port = client();
     const transport = new RunPodServerlessTransport(port, ENDPOINT_SHA256);
