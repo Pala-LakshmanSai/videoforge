@@ -71,6 +71,14 @@ PORT_KEYS: Final = frozenset(
         "capability_handle",
     }
 )
+# A prepared input artifact is written by an earlier account-owned job (the personal media
+# worker cutting span audio) and read by a later lane job, so its key carries the producing job's
+# id rather than the reader's. The tenant and workspace prefix is still enforced separately, so
+# this only relaxes the per-job segment for the immutable `lane/input` artifacts of one revision.
+PREPARED_INPUT_PATH: Final = re.compile(
+    r"^/tenant/[0-9a-f-]{36}/workspace/[0-9a-f-]{36}/project/[0-9a-f-]{36}/"
+    r"revision/[0-9a-f-]{36}/lane/input/job/[0-9a-f-]{36}/artifact/[A-Za-z0-9._-]{1,64}$"
+)
 SYSTEM_AVATAR_PATH: Final = re.compile(
     r"^/tenant/ffffffff-ffff-4fff-8fff-000000000001/"
     r"workspace/ffffffff-ffff-4fff-8fff-000000000011/avatar-profile/"
@@ -88,6 +96,7 @@ def validate_scoped_port(
     method: str,
     now: datetime,
     allow_system_avatar_path: bool = False,
+    allow_prepared_input_path: bool = False,
 ) -> None:
     if set(port) != PORT_KEYS or port.get("schema_version") != "artifact-transfer-port/v3":
         raise ScratchIsolationError("WORKER_ARTIFACT_PORT_INVALID")
@@ -136,7 +145,14 @@ def validate_scoped_port(
         and isinstance(path, str)
         and SYSTEM_AVATAR_PATH.fullmatch(path) is not None
     )
-    if not ordinary_path and not immutable_system_avatar:
+    prepared_input = (
+        allow_prepared_input_path
+        and method == "GET"
+        and isinstance(path, str)
+        and path.startswith(expected_prefix)
+        and PREPARED_INPUT_PATH.fullmatch(path) is not None
+    )
+    if not ordinary_path and not immutable_system_avatar and not prepared_input:
         raise ScratchIsolationError("WORKER_ARTIFACT_PATH_MISMATCH")
     if "?" in path or "/../" in path:
         raise ScratchIsolationError("WORKER_ARTIFACT_PATH_MISMATCH")
@@ -163,6 +179,7 @@ class ScopedWorkerIO(AbstractContextManager["ScopedWorkerIO"]):
         output_ports: tuple[Mapping[str, object], ...],
         now: datetime,
         allow_system_avatar_path: bool = False,
+        allow_prepared_input_path: bool = False,
     ) -> None:
         for port in input_ports:
             validate_scoped_port(
@@ -173,6 +190,7 @@ class ScopedWorkerIO(AbstractContextManager["ScopedWorkerIO"]):
                 method="GET",
                 now=now,
                 allow_system_avatar_path=allow_system_avatar_path,
+                allow_prepared_input_path=allow_prepared_input_path,
             )
         for port in output_ports:
             validate_scoped_port(

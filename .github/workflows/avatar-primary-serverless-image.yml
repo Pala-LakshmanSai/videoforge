@@ -51,15 +51,15 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           [[ "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ ]]
           test "$(sha256sum workers/avatar-primary/Dockerfile.serverless | awk '{print $1}')" = \
-            "11ea86a398c03a94f20edd8fe6bc064a450cbb75cf1f41ce8f61c324fb73a5c3"
+            "0ee8a7c0eef66872dd6e9c91753e02420dcc4e456edadd95bb357e7b638122c0"
           test "$(sha256sum workers/avatar-primary/requirements.serverless.txt | awk '{print $1}')" = \
             "938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
           expected_sources=(
-            "workers/avatar-primary/soulx_serverless.py|47e5327322b159828f4525c0435d681f8501b3f122626d587751d0e65703a94a|/opt/videoforge/soulx_serverless.py"
+            "workers/avatar-primary/soulx_serverless.py|2fedcd90d97e011751e553c68a5524e9e00986aeda4e95c82886b9f9c1c7e458|/opt/videoforge/soulx_serverless.py"
             "workers/avatar-primary/soulx_runtime.py|b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080|/opt/videoforge/soulx_runtime.py"
             "workers/avatar-primary/soulx_volume.py|1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32|/opt/videoforge/soulx_volume.py"
             "workers/avatar-primary/soulx-serverless-entrypoint.py|3c4d11116333af5e83b74831a3c0cf529a0ef5ae780f1eba9547ec26b40faa65|/opt/videoforge/soulx-serverless-entrypoint.py"
-            "workers/common/secure_scratch.py|9614063f45cada5d15e2f776b06beb63029bdc4fe0f31349f9aadea7860df348|/opt/videoforge/common/secure_scratch.py"
+            "workers/common/secure_scratch.py|a4f366386b877518c8ed3b5fe9481d09b307f88715d558dc079ee3546afd9e59|/opt/videoforge/common/secure_scratch.py"
             "workers/common/serverless_envelope.py|34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0|/opt/videoforge/common/serverless_envelope.py"
             "packages/contracts/python/videoforge_contracts/_schema_documents.py|fd279c27020d70e6d2d32e2cb98407ba6f2f93872dd7df928ac9d53d70bd29e7|/opt/videoforge/src/videoforge_contracts/_schema_documents.py"
           )
@@ -231,11 +231,11 @@ jobs:
             docker run --rm --entrypoint /bin/sh "$remote_image" -c \
               'printf "%s  %s\n" \
                 938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5 /opt/videoforge/requirements.serverless.txt \
-                47e5327322b159828f4525c0435d681f8501b3f122626d587751d0e65703a94a /opt/videoforge/soulx_serverless.py \
+                2fedcd90d97e011751e553c68a5524e9e00986aeda4e95c82886b9f9c1c7e458 /opt/videoforge/soulx_serverless.py \
                 b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080 /opt/videoforge/soulx_runtime.py \
                 1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32 /opt/videoforge/soulx_volume.py \
                 3c4d11116333af5e83b74831a3c0cf529a0ef5ae780f1eba9547ec26b40faa65 /opt/videoforge/soulx-serverless-entrypoint.py \
-                9614063f45cada5d15e2f776b06beb63029bdc4fe0f31349f9aadea7860df348 /opt/videoforge/common/secure_scratch.py \
+                a4f366386b877518c8ed3b5fe9481d09b307f88715d558dc079ee3546afd9e59 /opt/videoforge/common/secure_scratch.py \
                 34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0 /opt/videoforge/common/serverless_envelope.py \
                 83650cf6430fd82e26c855df5f91b34cf5a4eda2beebf7650d8cf86e27f88443 /opt/videoforge/src/videoforge_contracts/__init__.py \
                 fd279c27020d70e6d2d32e2cb98407ba6f2f93872dd7df928ac9d53d70bd29e7 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
@@ -294,11 +294,11 @@ jobs:
           docker run --rm --entrypoint /bin/sh "$immutable_image" -c \
             'printf "%s  %s\n" \
               938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5 /opt/videoforge/requirements.serverless.txt \
-              47e5327322b159828f4525c0435d681f8501b3f122626d587751d0e65703a94a /opt/videoforge/soulx_serverless.py \
+              2fedcd90d97e011751e553c68a5524e9e00986aeda4e95c82886b9f9c1c7e458 /opt/videoforge/soulx_serverless.py \
               b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080 /opt/videoforge/soulx_runtime.py \
               1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32 /opt/videoforge/soulx_volume.py \
               3c4d11116333af5e83b74831a3c0cf529a0ef5ae780f1eba9547ec26b40faa65 /opt/videoforge/soulx-serverless-entrypoint.py \
-              9614063f45cada5d15e2f776b06beb63029bdc4fe0f31349f9aadea7860df348 /opt/videoforge/common/secure_scratch.py \
+              a4f366386b877518c8ed3b5fe9481d09b307f88715d558dc079ee3546afd9e59 /opt/videoforge/common/secure_scratch.py \
               34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0 /opt/videoforge/common/serverless_envelope.py \
               83650cf6430fd82e26c855df5f91b34cf5a4eda2beebf7650d8cf86e27f88443 /opt/videoforge/src/videoforge_contracts/__init__.py \
               fd279c27020d70e6d2d32e2cb98407ba6f2f93872dd7df928ac9d53d70bd29e7 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
@@ -499,7 +499,7 @@ jobs:
               "config_digest": anonymous_proof["config"]["digest"] if published else None,
               "anonymous_publication_proof": anonymous_proof,
               "dockerfile_sha256": (
-                  "sha256:11ea86a398c03a94f20edd8fe6bc064a450cbb75cf1f41ce8f61c324fb73a5c3"
+                  "sha256:0ee8a7c0eef66872dd6e9c91753e02420dcc4e456edadd95bb357e7b638122c0"
               ),
               "requirements_sha256": (
                   "sha256:938ecd5c4e620ce6b3d857026748c570bb90de0678db8e4357844f32b79370c5"
@@ -525,7 +525,7 @@ jobs:
                       "sha256:3c4d11116333af5e83b74831a3c0cf529a0ef5ae780f1eba9547ec26b40faa65"
                   ),
                   "workers/avatar-primary/soulx_serverless.py": (
-                      "sha256:47e5327322b159828f4525c0435d681f8501b3f122626d587751d0e65703a94a"
+                      "sha256:2fedcd90d97e011751e553c68a5524e9e00986aeda4e95c82886b9f9c1c7e458"
                   ),
                   "workers/avatar-primary/soulx_runtime.py": (
                       "sha256:b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080"
@@ -534,7 +534,7 @@ jobs:
                       "sha256:1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32"
                   ),
                   "workers/common/secure_scratch.py": (
-                      "sha256:9614063f45cada5d15e2f776b06beb63029bdc4fe0f31349f9aadea7860df348"
+                      "sha256:a4f366386b877518c8ed3b5fe9481d09b307f88715d558dc079ee3546afd9e59"
                   ),
                   "workers/common/serverless_envelope.py": (
                       "sha256:34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0"

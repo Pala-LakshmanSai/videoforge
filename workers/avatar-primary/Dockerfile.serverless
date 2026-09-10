@@ -66,11 +66,11 @@ COPY workers/avatar-primary/soulx-serverless-entrypoint.py ./soulx-serverless-en
 # These exact source hashes deliberately make an unreviewed handler/common/schema drift a build
 # failure. Any later repair must explicitly rebind this image definition before publication.
 RUN printf '%s  %s\n' \
-      47e5327322b159828f4525c0435d681f8501b3f122626d587751d0e65703a94a /opt/videoforge/soulx_serverless.py \
+      2fedcd90d97e011751e553c68a5524e9e00986aeda4e95c82886b9f9c1c7e458 /opt/videoforge/soulx_serverless.py \
       b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080 /opt/videoforge/soulx_runtime.py \
       1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32 /opt/videoforge/soulx_volume.py \
       3c4d11116333af5e83b74831a3c0cf529a0ef5ae780f1eba9547ec26b40faa65 /opt/videoforge/soulx-serverless-entrypoint.py \
-      9614063f45cada5d15e2f776b06beb63029bdc4fe0f31349f9aadea7860df348 /opt/videoforge/common/secure_scratch.py \
+      a4f366386b877518c8ed3b5fe9481d09b307f88715d558dc079ee3546afd9e59 /opt/videoforge/common/secure_scratch.py \
       34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0 /opt/videoforge/common/serverless_envelope.py \
       fd279c27020d70e6d2d32e2cb98407ba6f2f93872dd7df928ac9d53d70bd29e7 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
     | sha256sum --check --strict \
