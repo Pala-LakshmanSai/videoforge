@@ -62,6 +62,7 @@ export function AvatarHubScreen() {
     <>
       <PageHeader
         title="Avatar Hub"
+        description="Reusable presenters for your videos, kept private to this workspace."
         actions={
           creationAvailable ? (
             <Link

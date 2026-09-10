@@ -64,6 +64,7 @@ export function StylesHubScreen() {
     <>
       <PageHeader
         title="Image Styles"
+        description="Save a consistent visual language across every project."
         actions={
           creationAvailable ? (
             <Link

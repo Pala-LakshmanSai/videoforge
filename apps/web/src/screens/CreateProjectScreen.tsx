@@ -316,7 +316,10 @@ function FixtureCreateProjectScreen() {
   if (health.isPending) {
     return (
       <>
-        <PageHeader title="New project" />
+        <PageHeader
+          title="New project"
+          description="Set the story, look, and run preferences before you generate."
+        />
         <Panel eyebrow="Runtime" heading="Checking execution mode">
           <div className="empty-state" aria-busy="true">
             <span className="spinner" aria-hidden="true" />
@@ -330,7 +333,10 @@ function FixtureCreateProjectScreen() {
   if (health.isError) {
     return (
       <>
-        <PageHeader title="New project" />
+        <PageHeader
+          title="New project"
+          description="Set the story, look, and run preferences before you generate."
+        />
         <Panel eyebrow="Runtime" heading="Execution mode unavailable">
           <p>Project controls stay locked until the local API confirms the active mode.</p>
           <Button variant="secondary" onClick={() => void health.refetch()}>
@@ -343,7 +349,10 @@ function FixtureCreateProjectScreen() {
 
   return (
     <>
-      <PageHeader title="New project" />
+      <PageHeader
+        title="New project"
+        description="Set the story, look, and run preferences before you generate."
+      />
       <ActionToast message={submittedError} onDismiss={() => setSubmittedError(null)} />
       {bootstrap.isError ? (
         <div className="notice notice-danger" role="alert">

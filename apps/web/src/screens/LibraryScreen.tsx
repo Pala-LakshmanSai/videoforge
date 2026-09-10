@@ -76,7 +76,10 @@ function HostedLibraryScreen() {
 
   return (
     <>
-      <PageHeader title="Library" />
+      <PageHeader
+        title="Library"
+        description="Your approved videos, ready to review or download."
+      />
       {query.data.outputs.length === 0 ? (
         <EmptyState
           icon={<Library />}
@@ -190,7 +193,10 @@ function FixtureLibraryScreen() {
   }
   return (
     <>
-      <PageHeader title="Library" />
+      <PageHeader
+        title="Library"
+        description="Your approved videos, ready to review or download."
+      />
       {approvedProjects.length === 0 ? (
         <EmptyState
           icon={<Library />}

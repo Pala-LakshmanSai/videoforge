@@ -45,7 +45,10 @@ function FixtureUsageScreen() {
   const usage = query.data;
   return (
     <>
-      <PageHeader title="Usage" />
+      <PageHeader
+        title="Usage"
+        description="A clear view of current spend, compute, and retained media."
+      />
       <div className="grid grid-4 usage-grid">
         <Metric
           label="Total"

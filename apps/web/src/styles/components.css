@@ -95,6 +95,10 @@
   transform: translateY(-1px);
 }
 
+.button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -1392,6 +1396,8 @@ h4 {
 
 .empty-state {
   min-height: 220px;
+  gap: 12px;
+  padding: 28px 20px;
 }
 
 .page > .empty-state {
