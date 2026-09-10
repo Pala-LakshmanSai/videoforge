@@ -170,6 +170,20 @@ export interface RunPodDisposableResourceInventory {
   readonly endpoints: readonly RunPodNamedResource[];
 }
 
+export interface RunPodV213TemplateManifestRepair {
+  readonly endpointId: string;
+  readonly endpointIdSha256: string;
+  readonly endpointName: string;
+  readonly templateId: string;
+  readonly templateIdSha256: string;
+  readonly templateName: string;
+  readonly imageName: string;
+  readonly volumeIdSha256: string;
+  readonly currentEnvironmentSha256: string;
+  readonly currentManifestSha256: string;
+  readonly targetManifestSha256: string;
+}
+
 export class RunPodControlError extends Error {
   constructor(
     readonly code: string,
@@ -207,6 +221,9 @@ const strictCounter = (source: JsonRecord | null, key: string): number => {
 
 const hashId = (value: string): string =>
   `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
+
+const hashCanonicalJson = (value: unknown): string =>
+  `sha256:${createHash("sha256").update(canonicalizeJson(value as JsonValue), "utf8").digest("hex")}`;
 
 /** Hash the exact endpoint identity that the worker must echo in its provenance receipt. */
 export function hashRunPodV207EndpointIdentity(endpointId: string): string {
@@ -1211,6 +1228,127 @@ export class RunPodControlClient {
         readbackMismatch,
       );
     }
+  }
+
+  /**
+   * Repair one already-owned V2-13 template in place when only its sealed-volume manifest
+   * binding is stale. The caller must prove the exact endpoint/template identities, current
+   * environment hash, terminal worker records, and scale-zero guard before this single-field
+   * update is admitted. No endpoint or volume is created, replaced, or deleted.
+   */
+  async repairV213TemplateManifest(
+    input: RunPodV213TemplateManifestRepair,
+    guard: RunPodDrainGuard,
+  ): Promise<Readonly<{ beforeEnvironmentSha256: string; afterEnvironmentSha256: string }>> {
+    if (
+      !ID.test(input.endpointId) ||
+      input.endpointIdSha256 !== hashId(input.endpointId) ||
+      !ID.test(input.endpointName) ||
+      !ID.test(input.templateId) ||
+      input.templateIdSha256 !== hashId(input.templateId) ||
+      !ID.test(input.templateName) ||
+      !IMMUTABLE_IMAGE.test(input.imageName) ||
+      !/^sha256:[0-9a-f]{64}$/u.test(input.volumeIdSha256) ||
+      !/^sha256:[0-9a-f]{64}$/u.test(input.currentEnvironmentSha256) ||
+      !/^sha256:[0-9a-f]{64}$/u.test(input.currentManifestSha256) ||
+      !/^sha256:[0-9a-f]{64}$/u.test(input.targetManifestSha256) ||
+      input.currentManifestSha256 === input.targetManifestSha256
+    ) {
+      throw new RunPodControlError("RUNPOD_V213_TEMPLATE_REPAIR_INPUT_INVALID");
+    }
+    guard.assertPolicyUpdateAllowed();
+    const initial = await this.inventoryDisposableResources();
+    const endpointMatches = initial.endpoints.filter(({ id }) => id === input.endpointId);
+    const templateMatches = initial.templates.filter(({ id }) => id === input.templateId);
+    if (endpointMatches.length !== 1 || templateMatches.length !== 1) {
+      throw new RunPodControlError("RUNPOD_V213_TEMPLATE_REPAIR_IDENTITY_DRIFT");
+    }
+    const endpoint = endpointMatches[0]!.raw;
+    const template = templateMatches[0]!.raw;
+    const workers = endpoint.workers;
+    const providerVolumeId = endpoint.networkVolumeId;
+    const providerVolumeIds = endpoint.networkVolumeIds;
+    const validVolume =
+      typeof providerVolumeId === "string" &&
+      (!Array.isArray(providerVolumeIds) ||
+        (providerVolumeIds.length === 1 && providerVolumeIds[0] === providerVolumeId));
+    if (
+      endpoint.name !== input.endpointName ||
+      endpoint.templateId !== input.templateId ||
+      endpoint.workersMin !== 0 ||
+      endpoint.workersMax !== 1 ||
+      endpoint.gpuCount !== 1 ||
+      !exactStringArray(endpoint.gpuTypeIds, [V207_RUNPOD_GPU]) ||
+      (endpoint.dataCenterIds !== undefined &&
+        !exactStringArray(endpoint.dataCenterIds, [V207_RUNPOD_REGION])) ||
+      !validVolume ||
+      hashId(providerVolumeId as string) !== input.volumeIdSha256 ||
+      !Array.isArray(workers) ||
+      workers.some((worker) => {
+        const value = record(worker);
+        const desiredStatus = value?.desiredStatus;
+        const status = value?.status;
+        return (
+          typeof desiredStatus !== "string" ||
+          !["EXITED", "TERMINATED"].includes(desiredStatus) ||
+          (status !== undefined &&
+            (typeof status !== "string" || !["EXITED", "TERMINATED"].includes(status)))
+        );
+      }) ||
+      template.id !== input.templateId ||
+      template.name !== input.templateName ||
+      template.imageName !== input.imageName
+    ) {
+      throw new RunPodControlError("RUNPOD_V213_TEMPLATE_REPAIR_CONTRACT_DRIFT");
+    }
+    const environment = record(template.env);
+    if (
+      environment === null ||
+      Object.values(environment).some((value) => typeof value !== "string") ||
+      hashCanonicalJson(environment) !== input.currentEnvironmentSha256 ||
+      environment.VIDEOFORGE_MAGE_MANIFEST_SHA256 !== input.currentManifestSha256
+    ) {
+      throw new RunPodControlError("RUNPOD_V213_TEMPLATE_REPAIR_PRECONDITION_DRIFT");
+    }
+    const exactEnvironment = environment as Record<string, string>;
+    const repairedEnvironment: Record<string, string> = {
+      ...exactEnvironment,
+      VIDEOFORGE_MAGE_MANIFEST_SHA256: input.targetManifestSha256,
+    };
+    if (
+      Object.keys(repairedEnvironment).length !== Object.keys(exactEnvironment).length ||
+      Object.entries(exactEnvironment).some(
+        ([key, value]) =>
+          key !== "VIDEOFORGE_MAGE_MANIFEST_SHA256" && repairedEnvironment[key] !== value,
+      )
+    ) {
+      throw new RunPodControlError("RUNPOD_V213_TEMPLATE_REPAIR_SCOPE_DRIFT");
+    }
+    const beforeEnvironmentSha256 = hashCanonicalJson(exactEnvironment);
+    const afterEnvironmentSha256 = hashCanonicalJson(repairedEnvironment);
+    await this.updateV207TemplateEnvironment(input.templateId, repairedEnvironment);
+    const readback = await this.inventoryDisposableResources();
+    const readbackEndpoint = readback.endpoints.filter(({ id }) => id === input.endpointId);
+    const readbackTemplate = readback.templates.filter(({ id }) => id === input.templateId);
+    const readbackEndpointValue = readbackEndpoint[0];
+    const readbackTemplateValue = readbackTemplate[0];
+    const readbackEnvironment =
+      readbackTemplateValue === undefined ? null : record(readbackTemplateValue.raw.env);
+    if (
+      readbackEndpointValue === undefined ||
+      readbackTemplateValue === undefined ||
+      readbackEndpoint.length !== 1 ||
+      readbackTemplate.length !== 1 ||
+      readbackEndpointValue.name !== input.endpointName ||
+      readbackEndpointValue.raw.templateId !== input.templateId ||
+      readbackTemplateValue.name !== input.templateName ||
+      readbackTemplateValue.raw.imageName !== input.imageName ||
+      hashCanonicalJson(readbackEnvironment) !== afterEnvironmentSha256 ||
+      readbackEnvironment?.VIDEOFORGE_MAGE_MANIFEST_SHA256 !== input.targetManifestSha256
+    ) {
+      throw new RunPodControlError("RUNPOD_V213_TEMPLATE_REPAIR_READBACK_UNCONFIRMED");
+    }
+    return Object.freeze({ beforeEnvironmentSha256, afterEnvironmentSha256 });
   }
 
   async createNetworkVolume(

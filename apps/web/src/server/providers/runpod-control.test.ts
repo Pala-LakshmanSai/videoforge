@@ -1,4 +1,8 @@
+import { createHash } from "node:crypto";
+
 import { describe, expect, it, vi } from "vitest";
+
+import { canonicalizeJson } from "@videoforge/contracts";
 
 import {
   hashRunPodV207EndpointIdentity,
@@ -19,6 +23,8 @@ const health = (idle = 0) => ({
   workers: { idle, running: 0, initializing: 0, ready: 0, throttled: 0, unhealthy: 0 },
   jobs: { inQueue: 0, inProgress: 0 },
 });
+const canonicalHash = (value: unknown): string =>
+  `sha256:${createHash("sha256").update(canonicalizeJson(value as never), "utf8").digest("hex")}`;
 
 const assertV207ReadbackCategory = async (
   mutate: (endpoint: Record<string, unknown>) => Record<string, unknown>,
@@ -1755,6 +1761,159 @@ describe("RunPod scale-zero control", () => {
     expect(patchBody).not.toHaveProperty("env");
     expect(patchBody).not.toHaveProperty("computeType");
     expect(new URL(String(fetch.mock.calls[3]?.[0])).pathname).toBe("/endpoints/endpoint_01");
+  });
+
+  it("repairs only the stale Mage manifest on an exact idle existing V2-13 pair", async () => {
+    const endpointId = "endpoint_01";
+    const templateId = "template_01";
+    const endpointIdSha256 = hashRunPodV207EndpointIdentity(endpointId);
+    const templateIdSha256 = hashRunPodV207EndpointIdentity(templateId);
+    const currentManifestSha256 = `sha256:${"c".repeat(64)}`;
+    const targetManifestSha256 = `sha256:${"f".repeat(64)}`;
+    const environment = {
+      LOG_LEVEL: "INFO",
+      RUNPOD_INIT_TIMEOUT: "800",
+      VIDEOFORGE_MAGE_MANIFEST_SHA256: currentManifestSha256,
+      VIDEOFORGE_MAGE_VOLUME_ID_HASH: hashRunPodV207EndpointIdentity("volume_01"),
+    };
+    const endpoint = {
+      id: endpointId,
+      name: "vf_v213_existing_endpoint",
+      templateId,
+      workersMin: 0,
+      workersMax: 1,
+      gpuCount: 1,
+      gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+      networkVolumeId: "volume_01",
+      networkVolumeIds: ["volume_01"],
+      dataCenterIds: ["EU-RO-1"],
+      workers: [{ desiredStatus: "EXITED" }],
+    };
+    const template = {
+      id: templateId,
+      name: "vf_v213_existing_template",
+      imageName:
+        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0",
+      env: { ...environment },
+    };
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input));
+      const body = init?.body === undefined ? null : JSON.parse(String(init.body));
+      if (url.pathname.endsWith("/endpoints") && init?.method === undefined) {
+        return response([endpoint]);
+      }
+      if (url.pathname.endsWith("/templates") && init?.method === undefined) {
+        return response([template]);
+      }
+      if (url.pathname.endsWith(`/templates/${templateId}/update`)) {
+        template.env = body.env;
+        return response({ id: templateId, env: template.env });
+      }
+      if (url.pathname.endsWith(`/templates/${templateId}`)) return response(template);
+      throw new Error(`unexpected ${init?.method ?? "GET"} ${url.pathname}`);
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+
+    await expect(
+      client.repairV213TemplateManifest(
+        {
+          endpointId,
+          endpointIdSha256,
+          endpointName: endpoint.name,
+          templateId,
+          templateIdSha256,
+          templateName: template.name,
+          imageName: template.imageName,
+          volumeIdSha256: hashRunPodV207EndpointIdentity("volume_01"),
+          currentEnvironmentSha256: canonicalHash(environment),
+          currentManifestSha256,
+          targetManifestSha256,
+        },
+        guard,
+      ),
+    ).resolves.toEqual({
+      beforeEnvironmentSha256: canonicalHash(environment),
+      afterEnvironmentSha256: canonicalHash({
+        ...environment,
+        VIDEOFORGE_MAGE_MANIFEST_SHA256: targetManifestSha256,
+      }),
+    });
+    expect(template.env).toEqual({
+      ...environment,
+      VIDEOFORGE_MAGE_MANIFEST_SHA256: targetManifestSha256,
+    });
+    expect(fetch.mock.calls.filter(([input]) => String(input).includes("/update"))).toHaveLength(1);
+  });
+
+  it("does not patch an existing template when its environment precondition hash drifts", async () => {
+    const endpointId = "endpoint_01";
+    const templateId = "template_01";
+    const currentManifestSha256 = `sha256:${"c".repeat(64)}`;
+    const environment = {
+      LOG_LEVEL: "INFO",
+      RUNPOD_INIT_TIMEOUT: "800",
+      VIDEOFORGE_MAGE_MANIFEST_SHA256: currentManifestSha256,
+    };
+    const endpoint = {
+      id: endpointId,
+      name: "vf_v213_existing_endpoint",
+      templateId,
+      workersMin: 0,
+      workersMax: 1,
+      gpuCount: 1,
+      gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+      networkVolumeId: "volume_01",
+      workers: [{ desiredStatus: "EXITED" }],
+    };
+    const template = {
+      id: templateId,
+      name: "vf_v213_existing_template",
+      imageName:
+        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0",
+      env: { ...environment },
+    };
+    const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/endpoints") && init?.method === undefined) {
+        return response([endpoint]);
+      }
+      if (url.pathname.endsWith("/templates") && init?.method === undefined) {
+        return response([template]);
+      }
+      throw new Error("template mutation must not be attempted");
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    await expect(
+      client.repairV213TemplateManifest(
+        {
+          endpointId,
+          endpointIdSha256: hashRunPodV207EndpointIdentity(endpointId),
+          endpointName: endpoint.name,
+          templateId,
+          templateIdSha256: hashRunPodV207EndpointIdentity(templateId),
+          templateName: template.name,
+          imageName: template.imageName,
+          volumeIdSha256: hashRunPodV207EndpointIdentity("volume_01"),
+          currentEnvironmentSha256: `sha256:${"0".repeat(64)}`,
+          currentManifestSha256,
+          targetManifestSha256: `sha256:${"f".repeat(64)}`,
+        },
+        guard,
+      ),
+    ).rejects.toThrow("RUNPOD_V213_TEMPLATE_REPAIR_PRECONDITION_DRIFT");
+    expect(fetch.mock.calls.filter(([input]) => String(input).includes("/update"))).toHaveLength(0);
   });
 
   it.each([
