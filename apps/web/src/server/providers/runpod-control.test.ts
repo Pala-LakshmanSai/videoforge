@@ -1718,7 +1718,6 @@ describe("RunPod scale-zero control", () => {
           {
             id: "endpoint_01",
             templateId: "template_01",
-            computeType: "GPU",
             workersMin: 0,
             workersMax: 1,
             gpuCount: 1,

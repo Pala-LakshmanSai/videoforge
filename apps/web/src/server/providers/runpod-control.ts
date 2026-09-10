@@ -973,7 +973,7 @@ export class RunPodControlClient {
       hashId(expected.endpointId) !== expected.endpointIdSha256 ||
       endpoint.templateId !== expected.templateId ||
       hashId(expected.templateId) !== expected.templateIdSha256 ||
-      endpoint.computeType !== "GPU" ||
+      (endpoint.computeType !== undefined && endpoint.computeType !== "GPU") ||
       endpoint.workersMin !== 0 ||
       !expected.allowedWorkersMax.includes(endpoint.workersMax as 1 | 2) ||
       endpoint.gpuCount !== 1 ||
