@@ -12,13 +12,13 @@ import {
 export const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 export const TEMPLATE_PATH = resolve(ROOT, "apps/web/wrangler.production.jsonc");
 export const MAGE_QUALIFICATION_SHA256 =
-  "sha256:aeef45f237fd07e0937cdd51eaaf545ac0d8bb4c90eb105708f1681da787cc79";
+  "sha256:12bc1b0fa85606ed1adad23b0b6df97d5c16e1e5d0f8e417fadad0403076be5f";
 export const SOULX_QUALIFICATION_SHA256 =
-  "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa";
+  "sha256:586c235e3854ece80ca17b7728d3bdddea47e4e4f3b9fb445584bd7cd2fc17b5";
 export const MAGE_IMAGE_DIGEST =
-  "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb";
+  "sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0";
 export const SOULX_IMAGE_DIGEST =
-  "sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e";
+  "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff";
 
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const GIT_SHA = /^[0-9a-f]{40}$/u;

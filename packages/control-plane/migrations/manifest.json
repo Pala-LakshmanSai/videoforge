@@ -672,6 +672,12 @@
       "name": "hosted_project_owner_pair_cancellation",
       "filename": "0112_hosted_project_owner_pair_cancellation.sql",
       "sha256": "sha256:38b148e0a47d5ff362107a4e34c04edb6266854a356c2cc70050f18097601e5a"
+    },
+    {
+      "version": 113,
+      "name": "hosted_v209_737b59cf_image_rebind",
+      "filename": "0113_hosted_v209_737b59cf_image_rebind.sql",
+      "sha256": "sha256:15a9f09d79c898d096b0d67d79c6bd7d406616d1645c5e08216371906524c60d"
     }
   ]
 }

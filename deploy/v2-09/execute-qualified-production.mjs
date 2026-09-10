@@ -25,12 +25,12 @@ export const COMPLETION_CAP_USD = 17.5;
 export const QUALIFIED_LANES = Object.freeze([
   Object.freeze({
     lane: "mage",
-    image_sha256: "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
-    image_source_commit: "aceef8e0d0d678468ea9560f1faa94aa562fc466",
-    image_config_sha256: "sha256:fe08710bb809b702d8efe46b4d67d100b9f9630c8969f62efe7fd1b54d069897",
+    image_sha256: "sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0",
+    image_source_commit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+    image_config_sha256: "sha256:9758825b923a26832570ff68fb841a95f24d9b0f5c684f67443039e6ebf36e34",
     anonymous_proof_sha256:
-      "sha256:eca6cfe6acec62ed63ec1f7c9d40e7fb14e908c6e594da3864f936fa53670704",
-    acceptance_sha256: "sha256:aeef45f237fd07e0937cdd51eaaf545ac0d8bb4c90eb105708f1681da787cc79",
+      "sha256:92a8ca6f5736d3d5210c174cd49b1e9fd33a363a4de8b3fb6804747d76be3b61",
+    acceptance_sha256: "sha256:12bc1b0fa85606ed1adad23b0b6df97d5c16e1e5d0f8e417fadad0403076be5f",
     volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
     volume_manifest_sha256:
       "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
@@ -43,12 +43,12 @@ export const QUALIFIED_LANES = Object.freeze([
   }),
   Object.freeze({
     lane: "soulx",
-    image_sha256: "sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e",
-    image_source_commit: "73181707e49be61955af4f2891f4c7185a1c288f",
-    image_config_sha256: "sha256:224b2a728490cf1c708b42e56702da2b71bd2374658f0c640dd39ef23e860935",
+    image_sha256: "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
+    image_source_commit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+    image_config_sha256: "sha256:d4133ee6b582d44032ba7886a5c19a844cbb75347527943f6a40d5327e793122",
     anonymous_proof_sha256:
-      "sha256:9929d19da89ab2c20e280ac45ad152bc325b8bf56ef1e9c21e83d473c3408bc4",
-    acceptance_sha256: "sha256:aec6b4eca1b51db5b1742e806d28a26c32359a1ddecb615afae1a834dbdf15aa",
+      "sha256:5d842aa90bad61378087b790e44fc182e9d52acb27399e6ed9faacac73150f33",
+    acceptance_sha256: "sha256:586c235e3854ece80ca17b7728d3bdddea47e4e4f3b9fb445584bd7cd2fc17b5",
     volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
     volume_manifest_sha256:
       "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",

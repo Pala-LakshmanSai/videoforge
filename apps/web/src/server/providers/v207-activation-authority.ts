@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 
 export const V207_REPAIRED_IMAGE =
-  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb" as const;
+  "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0" as const;
 
-export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "aceef8e0d0d678468ea9560f1faa94aa562fc466";
+export const V207_REPAIRED_IMAGE_SOURCE_COMMIT = "737b59cf783ce4de24ac5beb1db760fb0b97b0a6";
 export const V207_REPAIRED_IMAGE_CONFIG_DIGEST =
-  "sha256:fe08710bb809b702d8efe46b4d67d100b9f9630c8969f62efe7fd1b54d069897" as const;
+  "sha256:9758825b923a26832570ff68fb841a95f24d9b0f5c684f67443039e6ebf36e34" as const;
 export const V207_REPAIRED_IMAGE_LAYER_DIGEST =
   "sha256:3fa4e0376595860c72c0f86c49ec5820f8330115bc0895680b7a3714f684b83d" as const;
 export const V207_REPAIRED_IMAGE_LAYER_DIFF_ID =
