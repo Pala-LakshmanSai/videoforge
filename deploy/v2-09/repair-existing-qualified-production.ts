@@ -311,7 +311,7 @@ async function assertProviderZero(
     endpointIds.map(async (endpointId) => {
       const guard = new RunPodDrainGuard();
       await new RunPodServerlessJobClient({
-        apiKey: readPrivateText(requiredRuntimeRunPodKey),
+        apiKey: requiredRuntimeRunPodKey,
         endpointId,
         guard,
       }).confirmStartupQueueEmpty();
