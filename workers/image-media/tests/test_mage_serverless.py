@@ -71,7 +71,7 @@ class MageServerlessBoundaryTest(unittest.TestCase):
             },
             "limits": {
                 "issued_at": issued_at.isoformat().replace("+00:00", "Z"),
-                "expires_at": (issued_at + timedelta(seconds=7200))
+                "expires_at": (issued_at + timedelta(seconds=3600))
                 .isoformat()
                 .replace("+00:00", "Z"),
             },
@@ -1228,7 +1228,7 @@ print(json.dumps({"accepted": [unit["item_id"] for unit in units], "claimed": le
         issued_at = datetime.now(UTC) - timedelta(seconds=1)
         accepted["limits"]["issued_at"] = issued_at.isoformat().replace("+00:00", "Z")
         accepted["limits"]["expires_at"] = (
-            (issued_at + timedelta(seconds=7200)).isoformat().replace("+00:00", "Z")
+            (issued_at + timedelta(seconds=3600)).isoformat().replace("+00:00", "Z")
         )
         allocation_ms, container_ready_ms, issued_at = mage_serverless._startup_timings(
             runtime, accepted=accepted, ready_at=now, handler_started_at=now - 0.25

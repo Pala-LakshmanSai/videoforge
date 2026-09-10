@@ -30,8 +30,10 @@ import {
 } from "./hosted-v209-terminal-output-ingestor";
 
 const ids = Object.freeze({
-  account: "11111111-1111-4111-8111-111111111111",
-  workspace: "22222222-2222-4222-8222-222222222222",
+  // These are valid PostgreSQL UUIDs whose version nibbles are not RFC 4122 values.
+  // They reproduce the persisted tenant identifiers that previously failed before lineage load.
+  account: "aaaaaaaa-aaaa-baaa-baaa-aaaaaaaaaaaa",
+  workspace: "bbbbbbbb-bbbb-cbbb-bbbb-bbbbbbbbbbbb",
   project: "33333333-3333-4333-8333-333333333333",
   revision: "44444444-4444-4444-8444-444444444444",
   attempt: "55555555-5555-4555-8555-555555555555",

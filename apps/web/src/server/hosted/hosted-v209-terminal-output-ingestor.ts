@@ -22,6 +22,10 @@ import type { HostedR2BucketBinding } from "./configuration";
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+// PostgreSQL UUID columns accept every hexadecimal UUID shape. Tenant and workspace IDs
+// are database identifiers, not RFC 4122 wire identifiers, so do not reject valid rows
+// merely because their version/variant nibbles are not set.
+const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const LANES = new Set(["mage_image", "soulx_avatar"]);
 const MAX_BYTES = Object.freeze({ mage_image: 16 * 1024 * 1024, soulx_avatar: 128 * 1024 * 1024 });
 
@@ -687,8 +691,8 @@ export function createHostedV209TerminalOutputIngestor(
       readonly observedAt: string;
     }) {
       if (
-        !UUID.test(request.accountId) ||
-        !UUID.test(request.workspaceId) ||
+        !DATABASE_UUID.test(request.accountId) ||
+        !DATABASE_UUID.test(request.workspaceId) ||
         !UUID.test(request.attemptId) ||
         !LANES.has(request.lane) ||
         typeof request.providerJobId !== "string" ||
