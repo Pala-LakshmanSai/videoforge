@@ -490,7 +490,33 @@ async function execute(args: Readonly<Record<string, string | boolean>>) {
 
   const runpod = new RunPodControlClient({ apiKey: requiredRuntimeRunPodKey });
   const initialInventory = await runpod.inventoryDisposableResources();
-  const initialPair = readExistingPair(initialInventory, MAGE_STALE_MANIFEST_SHA256);
+  const mageTemplateEntry = initialInventory.templates.find(({ id }) => id === MAGE_TEMPLATE_ID);
+  const mageTemplateEnvironment = record(mageTemplateEntry?.raw.env);
+  const currentMageManifest = mageTemplateEnvironment?.VIDEOFORGE_MAGE_MANIFEST_SHA256;
+  let repairAlreadyApplied = false;
+  let initialPair;
+  let repairReceipt: {
+    beforeEnvironmentSha256: string;
+    afterEnvironmentSha256: string;
+  };
+  if (currentMageManifest === MAGE_STALE_MANIFEST_SHA256) {
+    initialPair = readExistingPair(initialInventory, MAGE_STALE_MANIFEST_SHA256);
+  } else if (currentMageManifest === MAGE_TARGET_MANIFEST_SHA256) {
+    // The previous single-field RunPod mutation may have committed before a later local
+    // configuration guard failed. Reconcile that exact target read-only; never PATCH again.
+    initialPair = readExistingPair(initialInventory, MAGE_TARGET_MANIFEST_SHA256);
+    const priorEnvironment = {
+      ...initialPair.mage.environment,
+      VIDEOFORGE_MAGE_MANIFEST_SHA256: MAGE_STALE_MANIFEST_SHA256,
+    };
+    repairReceipt = {
+      beforeEnvironmentSha256: hashEnvironment(priorEnvironment),
+      afterEnvironmentSha256: hashEnvironment(initialPair.mage.environment),
+    };
+    repairAlreadyApplied = true;
+  } else {
+    fail("RUNPOD_MAGE_MANIFEST_STATE_INVALID");
+  }
   const providerInventory = await runpod.inventory();
   if (
     providerInventory.runningPodCount !== 0 ||
@@ -523,22 +549,24 @@ async function execute(args: Readonly<Record<string, string | boolean>>) {
     oauthScopes: APPROVED_WRANGLER_OAUTH_SCOPES,
   });
   const zeroBeforeRepair = await assertProviderZero(runpod, [MAGE_ENDPOINT_ID, SOULX_ENDPOINT_ID]);
-  const repairGuard = new RunPodDrainGuard();
-  repairGuard.confirmZero(0, 0);
-  const repairInput = {
-    endpointId: MAGE_ENDPOINT_ID,
-    endpointIdSha256: endpointHashes.mage,
-    endpointName: MAGE_ENDPOINT_NAME,
-    templateId: MAGE_TEMPLATE_ID,
-    templateIdSha256: hashId(MAGE_TEMPLATE_ID),
-    templateName: MAGE_TEMPLATE_NAME,
-    imageName: MAGE_IMAGE_NAME,
-    volumeIdSha256: MAGE_VOLUME_ID_SHA256,
-    currentEnvironmentSha256: hashEnvironment(initialPair.mage.environment),
-    currentManifestSha256: MAGE_STALE_MANIFEST_SHA256,
-    targetManifestSha256: MAGE_TARGET_MANIFEST_SHA256,
-  } as const;
-  const repairReceipt = await runpod.repairV213TemplateManifest(repairInput, repairGuard);
+  if (!repairAlreadyApplied) {
+    const repairGuard = new RunPodDrainGuard();
+    repairGuard.confirmZero(0, 0);
+    const repairInput = {
+      endpointId: MAGE_ENDPOINT_ID,
+      endpointIdSha256: endpointHashes.mage,
+      endpointName: MAGE_ENDPOINT_NAME,
+      templateId: MAGE_TEMPLATE_ID,
+      templateIdSha256: hashId(MAGE_TEMPLATE_ID),
+      templateName: MAGE_TEMPLATE_NAME,
+      imageName: MAGE_IMAGE_NAME,
+      volumeIdSha256: MAGE_VOLUME_ID_SHA256,
+      currentEnvironmentSha256: hashEnvironment(initialPair.mage.environment),
+      currentManifestSha256: MAGE_STALE_MANIFEST_SHA256,
+      targetManifestSha256: MAGE_TARGET_MANIFEST_SHA256,
+    } as const;
+    repairReceipt = await runpod.repairV213TemplateManifest(repairInput, repairGuard);
+  }
   const repairedInventory = await runpod.inventoryDisposableResources();
   const repairedPair = readExistingPair(repairedInventory, MAGE_TARGET_MANIFEST_SHA256);
   const zeroAfterRepair = await assertProviderZero(runpod, [MAGE_ENDPOINT_ID, SOULX_ENDPOINT_ID]);
@@ -583,6 +611,7 @@ async function execute(args: Readonly<Record<string, string | boolean>>) {
       zero_after_deploy: zeroAfterDeploy,
       endpoints_recreated: false,
       volumes_deleted: false,
+      repair_already_applied: repairAlreadyApplied,
     },
     cloudflare: {
       worker_name: WORKER_NAME,
