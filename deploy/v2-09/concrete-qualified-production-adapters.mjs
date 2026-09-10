@@ -48,6 +48,7 @@ const DIRECT_DEPENDENCY_PATHS = Object.freeze([
   "deploy/v2-09/neon-settle-v209-success-costs.sql",
   "deploy/v2-09/neon-settle-v209-terminal-pair.sql",
   "deploy/v2-09/neon-deactivate-v209-production.sql",
+  "deploy/v2-13/full-live-adapters.mjs",
   "deploy/v2-09/read-only-preflight.mjs",
   "deploy/v2-09/render-qualified-production-config.mjs",
   "deploy/v2-09/v209-runpod-production-bridge.ts",

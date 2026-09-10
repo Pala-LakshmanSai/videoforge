@@ -3905,11 +3905,13 @@ function exactTerminalRunPodState(record, code) {
   if (record === null || typeof record !== "object" || Array.isArray(record)) fail(code);
   const desiredStatus = record.desiredStatus;
   const status = record.status;
+  // The current REST pod/worker shape omits `status`; a terminal desiredStatus is the only
+  // compute-state field returned there. Reject any explicit status that is not terminal.
   if (
     typeof desiredStatus !== "string" ||
-    typeof status !== "string" ||
     !RUNPOD_TERMINAL_COMPUTE_STATES.has(desiredStatus) ||
-    !RUNPOD_TERMINAL_COMPUTE_STATES.has(status)
+    (status !== undefined &&
+      (typeof status !== "string" || !RUNPOD_TERMINAL_COMPUTE_STATES.has(status)))
   )
     fail(code);
 }
