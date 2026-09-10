@@ -350,6 +350,19 @@ export async function extractHostedVoiceoverContext(input: {
     if (!transient || attempt === transientAttempts) break;
     await new Promise((resolve) => setTimeout(resolve, 1_000 * attempt));
   }
+  const finalDiagnostic = diagnosticState["current"] as RunwareSafeDiagnostic | null;
+  if (finalDiagnostic !== null) {
+    // The stored problem code collapses every transport failure into one bucket, so record the
+    // provider-safe diagnostic itself. It carries no prompt, response body or credential.
+    console.warn("hosted_voiceover_context_provider", {
+      stage: finalDiagnostic.stage,
+      http_status: "httpStatus" in finalDiagnostic ? finalDiagnostic.httpStatus : null,
+      provider_code: "providerCode" in finalDiagnostic ? finalDiagnostic.providerCode : null,
+      provider_parameter:
+        "providerParameter" in finalDiagnostic ? finalDiagnostic.providerParameter : null,
+      result_status: result?.status ?? null,
+    });
+  }
   if (result === null || result.status === "failed")
     throw new HostedVoiceoverContextProviderError(
       "VOICEOVER_CONTEXT_PROVIDER_REJECTED",
