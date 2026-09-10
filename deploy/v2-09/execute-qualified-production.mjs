@@ -33,7 +33,7 @@ export const QUALIFIED_LANES = Object.freeze([
     acceptance_sha256: "sha256:12bc1b0fa85606ed1adad23b0b6df97d5c16e1e5d0f8e417fadad0403076be5f",
     volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
     volume_manifest_sha256:
-      "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+      "sha256:ffaf47d13c92407a51d2aa78337612daf2733f5a5bb93e27336822a5389ba1c9",
     volume_size_gb: 50,
     gpu: "NVIDIA GeForce RTX 4090",
     region: "EU-RO-1",

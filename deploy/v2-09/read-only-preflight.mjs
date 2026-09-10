@@ -53,7 +53,7 @@ export const V209_RETAINED_VOLUMES = Object.freeze([
   Object.freeze({
     lane: "mage_image",
     volumeIdSha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
-    volumeManifestSha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    volumeManifestSha256: "sha256:ffaf47d13c92407a51d2aa78337612daf2733f5a5bb93e27336822a5389ba1c9",
     sizeGb: 50,
     region: "EU-RO-1",
   }),

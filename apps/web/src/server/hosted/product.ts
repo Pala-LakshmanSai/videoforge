@@ -6146,6 +6146,26 @@ async function projectDetail(
           ORDER BY attempt.created_at`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
+      // Span audio is cut by the account-owned worker one job at a time, so surface its progress
+      // instead of leaving Stage 6 and Stage 7 silent for the whole preparation.
+      const spanAudio = await transaction.query(
+        `SELECT span.state,
+                count(*)::int AS total,
+                min(span.task_key) AS sample_task_key
+           FROM selected_span_audio AS span
+          WHERE span.account_id = $1 AND span.workspace_id = $2
+            AND span.project_revision_id = $3
+          GROUP BY span.state`,
+        [scope.account_id, scope.workspace_id, currentRevisionId],
+      );
+      const spanAudioJobs = await transaction.query(
+        `SELECT job.state, count(*)::int AS total
+           FROM hosted_cpu_job_attempts AS job
+          WHERE job.account_id = $1 AND job.workspace_id = $2
+            AND job.project_id = $3 AND job.kind = 'SPAN_AUDIO'
+          GROUP BY job.state`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
       const serverlessOutputs = await transaction.query(
         `SELECT output.attempt_id, output.lane, output.artifacts, output.accepted_at
            FROM serverless_output_receipts AS output
@@ -6247,6 +6267,8 @@ async function projectDetail(
         runtime: runtime.rows[0] ?? null,
         serverlessAttempts: serverlessAttempts.rows,
         serverlessOutputs: serverlessOutputs.rows,
+        spanAudio: spanAudio.rows,
+        spanAudioJobs: spanAudioJobs.rows,
         cost: cost.rows[0] ?? null,
         zeroWorkers: zeroWorkers.rows[0] ?? null,
         failedTasks: failedTasks.rows,
@@ -6365,6 +6387,23 @@ async function projectDetail(
       runtimeLanes.find((value) => value.lane === lane) ??
       serverlessByLane.get(lane) ??
       null;
+    const spanRows = (detail.spanAudio ?? []) as Record<string, unknown>[];
+    const spanJobRows = (detail.spanAudioJobs ?? []) as Record<string, unknown>[];
+    const spanCount = (rows: Record<string, unknown>[], state: string) =>
+      numberOrNull(rows.find((row) => row.state === state)?.total) ?? 0;
+    const spanTotal = spanRows.reduce((sum, row) => sum + (numberOrNull(row.total) ?? 0), 0);
+    const spanAudioProgress = Object.freeze({
+      total: spanTotal,
+      materialized: spanCount(spanRows, "MATERIALIZED"),
+      planned: spanCount(spanRows, "PLANNED"),
+      running: spanCount(spanJobRows, "RUNNING"),
+      queued: spanCount(spanJobRows, "OUTBOXED"),
+      succeeded: spanCount(spanJobRows, "SUCCEEDED"),
+      failed:
+        spanCount(spanJobRows, "FAILED") +
+        spanCount(spanJobRows, "PERMANENT_FAILED") +
+        spanCount(spanJobRows, "DEAD_LETTER"),
+    });
     const gpuLaneActivity = (["mage_image", "soulx_avatar"] as const).map((lane) => {
       const attempt = serverlessByLane.get(lane) ?? null;
       const runtimeLane = runtimeLanes.find((value) => value.lane === lane) ?? null;
@@ -6673,6 +6712,7 @@ async function projectDetail(
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
       gpu_lanes: gpuLaneActivity,
+      span_audio: spanAudioProgress,
       generation:
         detail.generation === null
           ? null

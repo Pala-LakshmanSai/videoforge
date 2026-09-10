@@ -684,6 +684,12 @@
       "name": "hosted_v209_54c4b06b_soulx_rebind",
       "filename": "0114_hosted_v209_54c4b06b_soulx_rebind.sql",
       "sha256": "sha256:bc2d04f64fc3c3eb324a4dc9fd6c50f2d176f285d435cf0ffa631639e64c3ca0"
+    },
+    {
+      "version": 116,
+      "name": "hosted_v209_mage_volume_manifest_rebind",
+      "filename": "0116_hosted_v209_mage_volume_manifest_rebind.sql",
+      "sha256": "sha256:adc851b33c46ac45c1dccf9f82376468e12ab8bece8c807d034d3d2b3758a0f6"
     }
   ]
 }

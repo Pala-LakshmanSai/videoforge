@@ -774,6 +774,7 @@ interface ProjectDetailResponse {
     readonly problem_code?: string | null;
   };
   readonly gpu_lanes?: readonly HostedGpuLaneActivity[];
+  readonly span_audio?: HostedSpanAudioProgress | null;
   readonly queue?: HostedQueueSnapshot | null;
   readonly stages?: readonly HostedStage[];
   readonly timing?: HostedTiming | null;
@@ -784,6 +785,16 @@ interface ProjectDetailResponse {
   readonly avatar_footage?: readonly HostedAvatarFootageItem[];
   readonly quality_flags?: readonly HostedQualityFlag[];
   readonly manifest_url?: string | null;
+}
+
+interface HostedSpanAudioProgress {
+  readonly total: number;
+  readonly materialized: number;
+  readonly planned: number;
+  readonly running: number;
+  readonly queued: number;
+  readonly succeeded: number;
+  readonly failed: number;
 }
 
 interface HostedGpuLaneActivity {
@@ -884,6 +895,47 @@ function HostedGpuLaneActivityPanel({ lanes }: { readonly lanes: readonly Hosted
             </li>
           );
         })}
+      </ul>
+    </Panel>
+  );
+}
+
+/** Span audio is cut one job at a time on the account-owned worker, and Stage 6 and Stage 7 cannot
+ * dispatch until every span is materialized, so show that preparation rather than a silent wait. */
+function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudioProgress | null }) {
+  if (!progress || progress.total === 0) return null;
+  const done = progress.materialized;
+  const percent = Math.min(100, Math.round((done / progress.total) * 100));
+  const active = progress.running > 0 || progress.queued > 0;
+  const complete = done === progress.total;
+  return (
+    <Panel className="gpu-lane-panel" eyebrow="Your computer" heading="Preparing avatar audio">
+      <ul className="gpu-lane-list">
+        <li className="gpu-lane-item">
+          <div className="gpu-lane-head">
+            <span className="gpu-lane-name">Span audio</span>
+            <span className={`gpu-lane-phase gpu-lane-phase-${active || complete ? "active" : "idle"}`}>
+              {active ? <span className="live-progress-pulse" aria-hidden="true" /> : null}
+              {complete ? "Ready" : active ? "Cutting" : "Waiting"}
+            </span>
+          </div>
+          <div
+            className="gpu-lane-track"
+            role="progressbar"
+            aria-label="Span audio progress"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <span className="gpu-lane-fill" style={{ width: `${percent}%` }} />
+          </div>
+          <p className="helper gpu-lane-detail">
+            {done} of {progress.total} clips ready
+            {progress.running > 0 ? " · 1 cutting now" : ""}
+            {progress.queued > 0 ? ` · ${progress.queued} queued` : ""}
+            {progress.failed > 0 ? ` · ${progress.failed} failed` : ""}
+          </p>
+        </li>
       </ul>
     </Panel>
   );
@@ -4220,6 +4272,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               </p>
             </Panel>
           ) : null}
+          <HostedSpanAudioPanel progress={query.data.span_audio ?? null} />
           <HostedGpuLaneActivityPanel lanes={query.data.gpu_lanes ?? []} />
           <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
             <div className="latest-artifact-frame">
