@@ -6345,8 +6345,44 @@ async function projectDetail(
     const runtimeLanes = Array.isArray(runtime?.lanes)
       ? (runtime?.lanes as Record<string, unknown>[])
       : [];
+    // A lane's durable runtime row still reads WAITING_FOR_WORKER while its dispatched provider
+    // attempt is already live, so prefer the attempt whenever it is in a non-terminal provider
+    // state. Otherwise Stage 6 and Stage 7 render as idle for the whole GPU cold start.
+    const LIVE_SERVERLESS_STATES = new Set([
+      "OUTBOXED",
+      "ASSIGNED",
+      "SUBMITTED",
+      "RUNNING",
+      "RECONCILING",
+    ]);
+    const liveServerlessLane = (lane: string): Record<string, unknown> | null => {
+      const attempt = serverlessByLane.get(lane) ?? null;
+      if (!attempt) return null;
+      return LIVE_SERVERLESS_STATES.has(String(attempt.state).toUpperCase()) ? attempt : null;
+    };
     const laneState = (lane: string): Record<string, unknown> | null =>
-      runtimeLanes.find((value) => value.lane === lane) ?? serverlessByLane.get(lane) ?? null;
+      liveServerlessLane(lane) ??
+      runtimeLanes.find((value) => value.lane === lane) ??
+      serverlessByLane.get(lane) ??
+      null;
+    const gpuLaneActivity = (["mage_image", "soulx_avatar"] as const).map((lane) => {
+      const attempt = serverlessByLane.get(lane) ?? null;
+      const runtimeLane = runtimeLanes.find((value) => value.lane === lane) ?? null;
+      const plannedItems =
+        numberOrNull(runtimeLane?.planned_item_count) ?? numberOrNull(attempt?.item_count) ?? null;
+      const acceptedItems = numberOrNull(runtimeLane?.accepted_item_count) ?? 0;
+      return {
+        lane,
+        attempt_state: attempt ? String(attempt.state) : null,
+        runtime_state: runtimeLane ? String(runtimeLane.state) : null,
+        planned_item_count: plannedItems,
+        accepted_item_count: acceptedItems,
+        attempt_ordinal: numberOrNull(attempt?.attempt_ordinal),
+        submitted_at: timestampOrNull(attempt?.submitted_at),
+        created_at: timestampOrNull(attempt?.created_at),
+        terminal_at: timestampOrNull(attempt?.terminal_at),
+      };
+    });
     const laneProgress = (lane: string): number | null => {
       const value = laneState(lane);
       if (!value) return null;
@@ -6636,6 +6672,7 @@ async function projectDetail(
       attempts,
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
+      gpu_lanes: gpuLaneActivity,
       generation:
         detail.generation === null
           ? null

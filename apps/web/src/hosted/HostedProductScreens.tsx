@@ -618,6 +618,7 @@ const HOSTED_ACTIVE_STAGE_STATUSES = new Set([
   "PREPARING",
   "ACTIVE",
   "ADMITTED",
+  "ASSIGNED",
   "OUTBOXED",
   "SUBMITTED",
   "RECONCILING",
@@ -625,6 +626,7 @@ const HOSTED_ACTIVE_STAGE_STATUSES = new Set([
 ]);
 const HOSTED_ACTIVE_ATTEMPT_STATES = new Set([
   "OUTBOXED",
+  "ASSIGNED",
   "SUBMITTED",
   "RUNNING",
   "RECONCILING",
@@ -771,6 +773,7 @@ interface ProjectDetailResponse {
     readonly reported_cost_micro_usd?: number | string | null;
     readonly problem_code?: string | null;
   };
+  readonly gpu_lanes?: readonly HostedGpuLaneActivity[];
   readonly queue?: HostedQueueSnapshot | null;
   readonly stages?: readonly HostedStage[];
   readonly timing?: HostedTiming | null;
@@ -781,6 +784,109 @@ interface ProjectDetailResponse {
   readonly avatar_footage?: readonly HostedAvatarFootageItem[];
   readonly quality_flags?: readonly HostedQualityFlag[];
   readonly manifest_url?: string | null;
+}
+
+interface HostedGpuLaneActivity {
+  readonly lane: "mage_image" | "soulx_avatar";
+  readonly attempt_state: string | null;
+  readonly runtime_state: string | null;
+  readonly planned_item_count: number | null;
+  readonly accepted_item_count: number;
+  readonly attempt_ordinal: number | null;
+  readonly submitted_at: string | null;
+  readonly created_at: string | null;
+  readonly terminal_at: string | null;
+}
+
+const HOSTED_GPU_LANE_LABELS: Readonly<Record<string, string>> = {
+  mage_image: "Scene images",
+  soulx_avatar: "Avatar performance",
+};
+
+/** Provider phase text for a dispatched lane. The provider queue and the container cold start are
+ * both normal multi-minute waits, so name them instead of leaving the stage looking idle. */
+function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
+  readonly label: string;
+  readonly detail: string;
+  readonly active: boolean;
+} {
+  const state = String(lane.attempt_state ?? "").toUpperCase();
+  const accepted = lane.accepted_item_count;
+  if (state === "SUCCEEDED") return { label: "Complete", detail: "All items accepted.", active: false };
+  if (["FAILED", "PERMANENT_FAILED", "DEAD_LETTER", "RETRYABLE_FAILED"].includes(state))
+    return { label: "Failed", detail: "The provider run ended without an accepted result.", active: false };
+  if (["CANCELLED", "CANCEL_REQUESTED"].includes(state))
+    return { label: "Cancelled", detail: "This lane was stopped.", active: false };
+  if (state === "OUTBOXED")
+    return { label: "Queuing", detail: "Handing the batch to the GPU provider.", active: true };
+  if (state === "ASSIGNED" && accepted === 0)
+    return {
+      label: "Starting GPU worker",
+      detail: "Waiting for an RTX 4090 and loading the model image. A cold start usually takes a few minutes.",
+      active: true,
+    };
+  if (["ASSIGNED", "SUBMITTED", "RUNNING", "RECONCILING"].includes(state))
+    return { label: "Generating", detail: "The GPU worker is producing and verifying items.", active: true };
+  return { label: "Waiting", detail: "This lane has not been dispatched yet.", active: false };
+}
+
+function HostedElapsed({ since }: { readonly since: string | null }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!since) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [since]);
+  const started = since ? Date.parse(since) : Number.NaN;
+  if (!Number.isFinite(started)) return null;
+  const seconds = Math.max(0, Math.floor((now - started) / 1_000));
+  const minutes = Math.floor(seconds / 60);
+  return (
+    <span className="gpu-lane-elapsed" aria-label="Elapsed time">
+      {minutes}m {String(seconds % 60).padStart(2, "0")}s
+    </span>
+  );
+}
+
+function HostedGpuLaneActivityPanel({ lanes }: { readonly lanes: readonly HostedGpuLaneActivity[] }) {
+  const visible = lanes.filter((lane) => lane.attempt_state !== null);
+  if (visible.length === 0) return null;
+  return (
+    <Panel className="gpu-lane-panel" eyebrow="On the GPU" heading="Image and avatar generation">
+      <ul className="gpu-lane-list">
+        {visible.map((lane) => {
+          const phase = hostedGpuLanePhase(lane);
+          const planned = lane.planned_item_count ?? 0;
+          const accepted = lane.accepted_item_count;
+          const percent = planned > 0 ? Math.min(100, Math.round((accepted / planned) * 100)) : 0;
+          return (
+            <li key={lane.lane} className="gpu-lane-item">
+              <div className="gpu-lane-head">
+                <span className="gpu-lane-name">{HOSTED_GPU_LANE_LABELS[lane.lane] ?? lane.lane}</span>
+                <span className={`gpu-lane-phase gpu-lane-phase-${phase.active ? "active" : "idle"}`}>
+                  {phase.active ? <span className="live-progress-pulse" aria-hidden="true" /> : null}
+                  {phase.label}
+                </span>
+                <HostedElapsed since={lane.submitted_at ?? lane.created_at} />
+              </div>
+              <div
+                className={`gpu-lane-track${phase.active && accepted === 0 ? " gpu-lane-track-indeterminate" : ""}`}
+                role="progressbar"
+                aria-label={`${HOSTED_GPU_LANE_LABELS[lane.lane] ?? lane.lane} progress`}
+                {...(accepted > 0 ? { "aria-valuenow": percent, "aria-valuemin": 0, "aria-valuemax": 100 } : {})}
+              >
+                <span className="gpu-lane-fill" style={accepted > 0 ? { width: `${percent}%` } : undefined} />
+              </div>
+              <p className="helper gpu-lane-detail">
+                {planned > 0 ? `${accepted} of ${planned} accepted · ` : ""}
+                {phase.detail}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
+  );
 }
 
 interface HostedV209DispatchResponse {
@@ -1524,7 +1630,7 @@ function hostedStageStatus(status: string): ProjectStage["status"] {
   const normalized = status.toUpperCase();
   if (["COMPLETE", "SUCCEEDED", "APPROVED", "READY_FOR_REVIEW"].includes(normalized))
     return "COMPLETE";
-  if (["RUNNING", "ACTIVE", "ADMITTED", "SUBMITTED", "OUTBOXED"].includes(normalized))
+  if (["RUNNING", "ACTIVE", "ADMITTED", "SUBMITTED", "OUTBOXED", "ASSIGNED", "RECONCILING"].includes(normalized))
     return "RUNNING";
   if (["STARTING", "PREPARING", "RECONCILING"].includes(normalized)) return "STARTING";
   if (["RETRYING", "RETRY_WAIT"].includes(normalized)) return "RETRYING";
@@ -4114,6 +4220,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               </p>
             </Panel>
           ) : null}
+          <HostedGpuLaneActivityPanel lanes={query.data.gpu_lanes ?? []} />
           <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
             <div className="latest-artifact-frame">
               {render?.preview_url ? (
