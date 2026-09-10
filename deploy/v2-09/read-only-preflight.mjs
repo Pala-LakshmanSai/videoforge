@@ -86,7 +86,7 @@ export const V209_FROZEN_IMAGES = Object.freeze([
   Object.freeze({
     lane: "soulx_avatar",
     repository: "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
-    manifestDigest: "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
+    manifestDigest: "sha256:047881a3e85fcb98683c2851989ec064628fa803123588ac25929bd6ca6b243a",
     configDigest: "sha256:d4133ee6b582d44032ba7886a5c19a844cbb75347527943f6a40d5327e793122",
     sourceCommit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
     frozenAnonymousProofSha256:

@@ -43,7 +43,7 @@ export const QUALIFIED_LANES = Object.freeze([
   }),
   Object.freeze({
     lane: "soulx",
-    image_sha256: "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
+    image_sha256: "sha256:047881a3e85fcb98683c2851989ec064628fa803123588ac25929bd6ca6b243a",
     image_source_commit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
     image_config_sha256: "sha256:d4133ee6b582d44032ba7886a5c19a844cbb75347527943f6a40d5327e793122",
     anonymous_proof_sha256:

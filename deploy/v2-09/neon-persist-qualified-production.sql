@@ -51,7 +51,7 @@ BEGIN
       OR item->>'volumeManifestSha256'<>'sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b'
     ) THEN RAISE EXCEPTION 'V209 Mage persistence identity drift' USING ERRCODE='23514'; END IF;
     IF item->>'lane'='soulx_avatar' AND (
-      item->>'imageSha256'<>'sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff'
+      item->>'imageSha256'<>'sha256:047881a3e85fcb98683c2851989ec064628fa803123588ac25929bd6ca6b243a'
       OR item->>'volumeIdSha256'<>'sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be'
       OR item->>'volumeManifestSha256'<>'sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626'
     ) THEN RAISE EXCEPTION 'V209 SoulX persistence identity drift' USING ERRCODE='23514'; END IF;
