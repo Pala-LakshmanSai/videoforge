@@ -224,7 +224,9 @@ const hashId = (value: string): string =>
   `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
 
 const hashCanonicalJson = (value: unknown): string =>
-  `sha256:${createHash("sha256").update(canonicalizeJson(value as JsonValue), "utf8").digest("hex")}`;
+  `sha256:${createHash("sha256")
+    .update(canonicalizeJson(value as JsonValue), "utf8")
+    .digest("hex")}`;
 
 /** Hash the exact endpoint identity that the worker must echo in its provenance receipt. */
 export function hashRunPodV207EndpointIdentity(endpointId: string): string {
@@ -954,6 +956,19 @@ export class RunPodControlClient {
         ? networkVolumeIds
         : null;
     const resolvedVolumeId = networkVolumeId ?? exactVolumeIds?.[0] ?? null;
+    let regionVerified = exactStringArray(endpoint.dataCenterIds, [V207_RUNPOD_REGION]);
+    if (endpoint.dataCenterIds === undefined && resolvedVolumeId !== null) {
+      const volumeInventory = await this.readInventory("/networkvolumes");
+      if (!Array.isArray(volumeInventory)) {
+        throw new RunPodControlError("RUNPOD_V207_POLICY_SNAPSHOT_INVALID");
+      }
+      const matchingVolumes = volumeInventory
+        .map(record)
+        .filter(
+          (volume) => volume?.id === resolvedVolumeId && volume.dataCenterId === V207_RUNPOD_REGION,
+        );
+      regionVerified = matchingVolumes.length === 1;
+    }
     if (
       hashId(expected.endpointId) !== expected.endpointIdSha256 ||
       endpoint.templateId !== expected.templateId ||
@@ -970,7 +985,7 @@ export class RunPodControlClient {
       endpoint.executionTimeoutMs !== V207_RUNPOD_EXECUTION_TIMEOUT_MS ||
       endpoint.scalerType !== V207_RUNPOD_SCALER ||
       endpoint.scalerValue !== V207_RUNPOD_SCALER_VALUE ||
-      !exactStringArray(endpoint.dataCenterIds, [V207_RUNPOD_REGION]) ||
+      !regionVerified ||
       !resolvedVolumeId ||
       !ID.test(resolvedVolumeId) ||
       hashId(resolvedVolumeId) !== expected.volumeIdSha256 ||

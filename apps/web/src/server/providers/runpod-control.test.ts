@@ -24,7 +24,9 @@ const health = (idle = 0) => ({
   jobs: { inQueue: 0, inProgress: 0 },
 });
 const canonicalHash = (value: unknown): string =>
-  `sha256:${createHash("sha256").update(canonicalizeJson(value as never), "utf8").digest("hex")}`;
+  `sha256:${createHash("sha256")
+    .update(canonicalizeJson(value as never), "utf8")
+    .digest("hex")}`;
 
 const assertV207ReadbackCategory = async (
   mutate: (endpoint: Record<string, unknown>) => Record<string, unknown>,
@@ -260,9 +262,9 @@ describe("RunPod scale-zero control", () => {
       workers: { idle: 0, running: 0, initializing: 0, ready: 0, throttled: 1, unhealthy: 0 },
       jobs: { inQueue: 1, inProgress: 0 },
     };
-    await expect(
-      build(throttled).confirmDrained(1, { allowStandbyWorkers: true }),
-    ).rejects.toThrow("RUNPOD_ZERO_NOT_CONFIRMED");
+    await expect(build(throttled).confirmDrained(1, { allowStandbyWorkers: true })).rejects.toThrow(
+      "RUNPOD_ZERO_NOT_CONFIRMED",
+    );
 
     const running = {
       workers: { idle: 1, running: 1, initializing: 0, ready: 0, throttled: 0, unhealthy: 0 },
@@ -1706,6 +1708,55 @@ describe("RunPod scale-zero control", () => {
         allowedWorkersMax: [1],
       }),
     ).resolves.toEqual({ networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] });
+  });
+
+  it("proves an omitted endpoint region from the pinned network-volume readback", async () => {
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/endpoints")
+        return response([
+          {
+            id: "endpoint_01",
+            templateId: "template_01",
+            computeType: "GPU",
+            workersMin: 0,
+            workersMax: 1,
+            gpuCount: 1,
+            gpuTypeIds: ["NVIDIA GeForce RTX 4090"],
+            allowedCudaVersions: ["13.0"],
+            minCudaVersion: "13.0",
+            flashboot: true,
+            networkVolumeId: "volume_01",
+            networkVolumeIds: ["volume_01"],
+            idleTimeout: 5,
+            executionTimeoutMs: 2_400_000,
+            scalerType: "REQUEST_COUNT",
+            scalerValue: 1,
+          },
+        ]);
+      if (path === "/networkvolumes")
+        return response([{ id: "volume_01", size: 50, dataCenterId: "EU-RO-1" }]);
+      throw new Error(`unexpected path ${path}`);
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+    await expect(
+      client.resolveV207EndpointPlacement({
+        endpointId: "endpoint_01",
+        endpointIdSha256: hashRunPodV207EndpointIdentity("endpoint_01"),
+        templateId: "template_01",
+        templateIdSha256: hashRunPodV207EndpointIdentity("template_01"),
+        volumeIdSha256: hashRunPodV207EndpointIdentity("volume_01"),
+        allowedWorkersMax: [1],
+      }),
+    ).resolves.toEqual({ networkVolumeId: "volume_01", dataCenterIds: ["EU-RO-1"] });
+    expect(fetch.mock.calls.map(([input]) => new URL(String(input)).pathname)).toEqual([
+      "/endpoints",
+      "/networkvolumes",
+    ]);
   });
 
   it("rejects V2-11 endpoint inventory volume drift before any policy mutation", async () => {
