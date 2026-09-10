@@ -83,4 +83,12 @@ describe("hosted pair Workflow module loading", () => {
       "if (afterFailure === null || isHostedV209SafelyUnsent(afterFailure)) throw error;",
     );
   });
+
+  it("takes one final provider observation before failing closed at the stop deadline", () => {
+    expect(source).toContain("const pastStopDeadline = Date.parse(clock) >= Date.parse(params.stopAt);");
+    expect(source).toContain("const observationResult = await live.reconciler.observe(");
+    expect(source).toContain(
+      'if (pastStopDeadline && observationResult.state !== "SETTLED")',
+    );
+  });
 });

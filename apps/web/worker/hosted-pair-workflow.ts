@@ -246,9 +246,18 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
               throw new Error("Hosted pair database clock unavailable.");
             return new Date(value).toISOString();
           });
-          if (Date.parse(clock) >= Date.parse(params.stopAt))
+          const pastStopDeadline = Date.parse(clock) >= Date.parse(params.stopAt);
+          // Give the durable reconciler one final read-only observation at the stop boundary.
+          // This is required for an already-assigned provider job that has become definitively
+          // absent: it can be settled as failed without redispatch, while unresolved/active work
+          // still fails closed to operator reconciliation.
+          const observationResult = await live.reconciler.observe(
+            params,
+            Date.parse(clock) >= Date.parse(params.cancelAt),
+          );
+          if (pastStopDeadline && observationResult.state !== "SETTLED")
             return Object.freeze({ state: "MANUAL_RECONCILIATION_REQUIRED" as const });
-          return live.reconciler.observe(params, Date.parse(clock) >= Date.parse(params.cancelAt));
+          return observationResult;
         } finally {
           await closePoolsWithoutBlockingWorkflow(runtimePool, reconcilerPool);
         }
