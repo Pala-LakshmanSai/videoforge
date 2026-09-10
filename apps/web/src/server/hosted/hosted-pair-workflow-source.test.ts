@@ -91,4 +91,12 @@ describe("hosted pair Workflow module loading", () => {
       'if (pastStopDeadline && observationResult.state !== "SETTLED")',
     );
   });
+
+  it("does not let expired paid approval block reconciliation of an assigned pair", () => {
+    expect(source).toContain('event: "ASSIGNED_PAIR_RECONCILIATION_STARTING"');
+    expect(source).toContain('row.recoveryAction === "RECONCILE_ASSIGNED"');
+    expect(source.indexOf('event: "ASSIGNED_PAIR_RECONCILIATION_STARTING"')).toBeLessThan(
+      source.indexOf("const gate = await live.composition.gate"),
+    );
+  });
 });

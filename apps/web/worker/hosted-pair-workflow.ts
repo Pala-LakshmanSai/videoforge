@@ -209,6 +209,20 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
                 console.info("hosted_pair_workflow", {
                   event: "CLEANUP_ONLY_RECONCILIATION_STARTING",
                 });
+              } else if (
+                inspection &&
+                exactPairInspection(inspection) &&
+                inspection.every(
+                  (row) =>
+                    row.recoveryAction === "RECONCILE_ASSIGNED" && row.providerJobId !== null,
+                )
+              ) {
+                // Paid approval gates new dispatch only. An already-assigned pair must remain
+                // reconcilable after the approval window expires; the durable inspection proves
+                // this branch cannot send or redispatch provider work.
+                console.info("hosted_pair_workflow", {
+                  event: "ASSIGNED_PAIR_RECONCILIATION_STARTING",
+                });
               } else {
                 const gate = await live.composition.gate({
                   environment: this.env,
