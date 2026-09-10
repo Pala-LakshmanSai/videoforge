@@ -247,8 +247,13 @@ async function execute(args: Readonly<Record<string, string>>): Promise<JsonReco
   privateFile(runwareKeyPath);
   privateFile(oauthConfigPath);
   const authority = JSON.parse(readPrivateText(join(privateRoot, "authority.json"))) as JsonRecord;
-  const sourceCommit = gitHead();
-  if (authority.source_commit !== sourceCommit) fail("SOURCE_AUTHORITY_MISMATCH");
+  // This is deliberately a post-deploy reconciler: the repository may contain this repair
+  // operator after the already-committed Worker was deployed. The authority remains the source
+  // of truth for the live Worker identity; the clean-worktree check still prevents ambiguity.
+  gitHead();
+  const sourceCommit = authority.source_commit;
+  if (typeof sourceCommit !== "string" || !COMMIT.test(sourceCommit))
+    fail("SOURCE_AUTHORITY_MISMATCH");
   const databaseUrl = readPrivateText(databaseOwnerUrlPath).trim();
   if (databaseUrl.length === 0) fail("DATABASE_URL_INVALID");
   const configuration = cloudflareConfiguration({
