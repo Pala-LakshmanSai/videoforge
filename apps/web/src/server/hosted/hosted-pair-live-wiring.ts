@@ -36,7 +36,11 @@ import {
   type HostedPairRuntimeTransport,
 } from "./hosted-pair-runtime-executor";
 import { HostedDispatchCoordinationError } from "./hosted-serverless-dispatch-coordinator";
-import { RunPodDrainGuard, RunPodServerlessJobClient } from "../providers/runpod-control";
+import {
+  RunPodControlClient,
+  RunPodDrainGuard,
+  RunPodServerlessJobClient,
+} from "../providers/runpod-control";
 import { RunPodServerlessTransport } from "../providers/runpod-serverless-transport";
 import {
   assertV209ShortSettlement,
@@ -260,6 +264,7 @@ export async function createHostedRunPodPair(environment: HostedPairLiveEnvironm
 }> {
   await assertHostedPairLiveBindings(environment);
   const apiKey = exact(environment.RUNPOD_API_KEY, "HOSTED_PAIR_RUNPOD_BINDINGS_INVALID");
+  const control = new RunPodControlClient({ apiKey });
   const endpoints = {
     mage_image: exact(
       environment.VIDEOFORGE_MAGE_ENDPOINT_ID,
@@ -294,12 +299,16 @@ export async function createHostedRunPodPair(environment: HostedPairLiveEnvironm
       endpointId: endpoints.mage_image,
       guard: new RunPodDrainGuard(),
       baseUrl: environment.RUNPOD_API_BASE_URL,
+      confirmTerminalScaleZero: () =>
+        control.confirmEndpointTerminalScaleZero(endpoints.mage_image),
     }),
     soulx_avatar: new RunPodServerlessJobClient({
       apiKey,
       endpointId: endpoints.soulx_avatar,
       guard: new RunPodDrainGuard(),
       baseUrl: environment.RUNPOD_API_BASE_URL,
+      confirmTerminalScaleZero: () =>
+        control.confirmEndpointTerminalScaleZero(endpoints.soulx_avatar),
     }),
   });
   return Object.freeze({

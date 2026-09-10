@@ -5,6 +5,7 @@ import { canonicalizeJson, type JsonValue } from "@videoforge/contracts";
 const DEFAULT_BASE_URL = "https://rest.runpod.io/v1";
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/u;
 const IMMUTABLE_IMAGE = /^[a-z0-9][a-z0-9./_-]{0,190}@sha256:[a-f0-9]{64}$/u;
+const TERMINAL_WORKER_STATUSES = new Set(["EXITED", "TERMINATED"]);
 
 /** V2-07 is deliberately pinned to one immutable placement and accelerator. */
 export const V207_RUNPOD_REGION = "EU-RO-1" as const;
@@ -1513,6 +1514,47 @@ export class RunPodControlClient {
   }
 
   /**
+   * Prove that one retained endpoint and every provider Pod record are terminal even when the
+   * Serverless health counter is stale (`throttled=1` after the last job). This is read-only and
+   * deliberately stricter than the account-wide zero counters: the target endpoint must retain
+   * its scale-zero policy, report every worker record, and contain only EXITED/TERMINATED workers.
+   */
+  async confirmEndpointTerminalScaleZero(endpointId: string): Promise<void> {
+    if (!ID.test(endpointId)) throw new RunPodControlError("RUNPOD_ENDPOINT_ID_INVALID");
+    const inventory = await this.inventory();
+    const endpointIdHash = hashId(endpointId);
+    const matchingEndpoints = inventory.endpoints.filter(
+      (endpoint) => endpoint.idHash === endpointIdHash,
+    );
+    const target = matchingEndpoints.length === 1 ? matchingEndpoints[0] : undefined;
+    const allPodsTerminal = inventory.pods.every(
+      (pod) =>
+        TERMINAL_WORKER_STATUSES.has(pod.desiredStatus) &&
+        pod.observedStatuses.length > 0 &&
+        pod.observedStatuses.every((status) => TERMINAL_WORKER_STATUSES.has(status)),
+    );
+    const allEndpointWorkersTerminal = inventory.endpoints.every(
+      (endpoint) =>
+        endpoint.workerRecordsReported &&
+        endpoint.activeWorkerCount === 0 &&
+        endpoint.workerRecordCount === endpoint.exitedWorkerCount &&
+        endpoint.workerStatuses.every((status) => TERMINAL_WORKER_STATUSES.has(status)),
+    );
+    if (
+      inventory.runningPodCount !== 0 ||
+      inventory.activeServerlessWorkerCount !== 0 ||
+      !allPodsTerminal ||
+      !allEndpointWorkersTerminal ||
+      target === undefined ||
+      target.workersMin !== 0 ||
+      target.workersMax !== 1 ||
+      !target.scaleZeroCompliant
+    ) {
+      throw new RunPodControlError("RUNPOD_TERMINAL_SCALE_ZERO_NOT_CONFIRMED");
+    }
+  }
+
+  /**
    * Recover one retained network-volume id only inside the authenticated provider boundary.
    * Callers persist and compare only its sealed hash; ambiguity or placement drift fails before
    * an endpoint/template mutation can consume the raw id.
@@ -1711,6 +1753,8 @@ export interface RunPodServerlessJobClientOptions {
   /** Bound cancellation reconciliation so an uncertain provider never becomes an unbounded wait. */
   readonly cancelConfirmMaxPolls?: number;
   readonly cancelConfirmPollIntervalMs?: number;
+  /** Independent REST inventory proof for stale retained-endpoint health counters. */
+  readonly confirmTerminalScaleZero?: () => Promise<void>;
 }
 
 const DEFAULT_CANCEL_CONFIRM_MAX_POLLS = 30;
@@ -1724,6 +1768,7 @@ export class RunPodServerlessJobClient {
   private readonly sleep: (milliseconds: number) => Promise<void>;
   private readonly cancelConfirmMaxPolls: number;
   private readonly cancelConfirmPollIntervalMs: number;
+  private readonly confirmTerminalScaleZero: (() => Promise<void>) | undefined;
   private readonly replays = new Map<
     string,
     { readonly inputHash: string; readonly promise: Promise<RunPodJobResult> }
@@ -1752,6 +1797,7 @@ export class RunPodServerlessJobClient {
     this.cancelConfirmMaxPolls = options.cancelConfirmMaxPolls ?? DEFAULT_CANCEL_CONFIRM_MAX_POLLS;
     this.cancelConfirmPollIntervalMs =
       options.cancelConfirmPollIntervalMs ?? DEFAULT_CANCEL_CONFIRM_POLL_INTERVAL_MS;
+    this.confirmTerminalScaleZero = options.confirmTerminalScaleZero;
     if (
       this.readRetryDelaysMs.length > 4 ||
       this.readRetryDelaysMs.some(
@@ -2026,6 +2072,21 @@ export class RunPodServerlessJobClient {
         });
       }
       if (attempt + 1 < maxAttempts && Date.now() - startedAt < deadlineMs) await this.sleep(2_000);
+    }
+    if (options.allowStandbyWorkers === true && this.confirmTerminalScaleZero) {
+      // FlashBoot may leave a stale throttled health counter after the attributable worker and
+      // Pod are EXITED. Bracket the independent terminal inventory with queue-only health reads;
+      // never promote a queued or in-progress job to zero merely because inventory is terminal.
+      await this.confirmQueueEmptyReadOnly(1, 100);
+      await this.confirmTerminalScaleZero();
+      await this.confirmQueueEmptyReadOnly(1, 100);
+      this.options.guard.confirmZero(0, 0);
+      return Object.freeze({
+        workersTotal: 0,
+        billableWorkers: 0,
+        queuedJobs: 0,
+        observedAt: new Date().toISOString(),
+      });
     }
     this.options.guard.confirmZero(Number.NaN, Number.NaN);
     throw new RunPodControlError("RUNPOD_ZERO_NOT_CONFIRMED");

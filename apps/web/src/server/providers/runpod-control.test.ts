@@ -281,6 +281,70 @@ describe("RunPod scale-zero control", () => {
     );
   });
 
+  it("promotes stale throttled health only after terminal inventory and queue brackets", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.markActive();
+    const confirmTerminalScaleZero = vi.fn(async () => undefined);
+    const fetch = vi.fn(async () =>
+      response({
+        workers: { idle: 0, running: 0, initializing: 0, ready: 0, throttled: 1, unhealthy: 0 },
+        jobs: { inQueue: 0, inProgress: 0 },
+      }),
+    );
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+      confirmTerminalScaleZero,
+      sleep: async () => undefined,
+    });
+
+    await expect(client.confirmDrained(1, { allowStandbyWorkers: true })).resolves.toMatchObject({
+      workersTotal: 0,
+      billableWorkers: 0,
+      queuedJobs: 0,
+    });
+    expect(confirmTerminalScaleZero).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(guard.snapshot()).toBe("zero");
+  });
+
+  it("accepts an exact terminal endpoint inventory as an independent scale-zero proof", async () => {
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/pods")
+        return response([
+          {
+            id: "pod_01",
+            desiredStatus: "EXITED",
+            status: "EXITED",
+            endpointId: "endpoint_01",
+          },
+        ]);
+      if (path === "/endpoints")
+        return response([
+          {
+            id: "endpoint_01",
+            workersMin: 0,
+            workersMax: 1,
+            workers: [{ desiredStatus: "EXITED", status: "EXITED" }],
+          },
+        ]);
+      if (path === "/templates" || path === "/networkvolumes") return response([]);
+      throw new Error(`unexpected path: ${path}`);
+    });
+    const client = new RunPodControlClient({
+      apiKey: key,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+    });
+
+    await expect(client.confirmEndpointTerminalScaleZero("endpoint_01")).resolves.toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
   it("rejects incomplete drain and queue-empty health", async () => {
     const incomplete = {
       workers: { idle: 0, running: 0, initializing: 0, throttled: 0, unhealthy: 0 },
