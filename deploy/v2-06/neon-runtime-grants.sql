@@ -174,7 +174,15 @@ GRANT EXECUTE ON FUNCTION public.videoforge_prepare_hosted_pair_send(uuid,uuid,u
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_begin_hosted_pair_send(uuid,uuid,uuid,text,uuid,text)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_begin_hosted_pair_parallel_send(
+  uuid,uuid,uuid,uuid,text,uuid,text
+)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_finish_hosted_pair_send(uuid,uuid,uuid,text,text,text,uuid,text)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_finish_hosted_pair_parallel_send(
+  uuid,uuid,uuid,text,text,text,uuid,text
+)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)
 TO :"runtime_role";

@@ -690,6 +690,12 @@
       "name": "hosted_v209_mage_volume_manifest_rebind",
       "filename": "0116_hosted_v209_mage_volume_manifest_rebind.sql",
       "sha256": "sha256:adc851b33c46ac45c1dccf9f82376468e12ab8bece8c807d034d3d2b3758a0f6"
+    },
+    {
+      "version": 117,
+      "name": "hosted_v209_parallel_pair_dispatch",
+      "filename": "0117_hosted_v209_parallel_pair_dispatch.sql",
+      "sha256": "sha256:8f03133bd0baa7ee0af292df237c2ab0e443844d4bd9938ada18b7bb9872feb6"
     }
   ]
 }

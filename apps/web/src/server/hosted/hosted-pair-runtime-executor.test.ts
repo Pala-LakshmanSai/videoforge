@@ -238,6 +238,48 @@ describe("hosted pair runtime executor", () => {
     ]);
   });
 
+  it("atomically claims a fresh pair and starts both provider requests concurrently", async () => {
+    const f = fixture((lane) => ({ id: `${lane}-job` }));
+    const beginPairSend = vi.fn(async () => {
+      const prepared = await Promise.all(
+        (['mage_image', 'soulx_avatar'] as const).map(async (lane) => ({
+          ...claims[lane],
+          expectedEnvelopeSha256: await sha256CanonicalJson(unsigned(lane)),
+          phase: "BOTH_SENT",
+        })),
+      );
+      return prepared as [(typeof prepared)[0], (typeof prepared)[1]];
+    });
+    const finishPairSend = vi.fn(async (call: { lane: HostedPairLane }) => {
+      void call;
+    });
+    Object.assign(f.store, { beginPairSend, finishPairSend });
+    const started = new Set<HostedPairLane>();
+    let bothStartedBeforeEitherReturned = false;
+    for (const lane of ["mage_image", "soulx_avatar"] as const) {
+      f.transports[lane].run.mockImplementationOnce(async () => {
+        started.add(lane);
+        bothStartedBeforeEitherReturned = started.size === 2;
+        await Promise.resolve();
+        return { id: `${lane}-parallel-job` };
+      });
+    }
+
+    await expect(f.executor.execute(input)).resolves.toEqual({
+      state: "BOTH_ASSIGNED",
+      providerJobIds: ["mage_image-parallel-job", "soulx_avatar-parallel-job"],
+    });
+    expect(beginPairSend).toHaveBeenCalledOnce();
+    expect(f.store.beginSend).not.toHaveBeenCalled();
+    expect(f.preflight.mage_image).toHaveBeenCalledOnce();
+    expect(f.preflight.soulx_avatar).toHaveBeenCalledOnce();
+    expect(bothStartedBeforeEitherReturned).toBe(true);
+    expect(finishPairSend.mock.calls.map(([call]) => call.lane).sort()).toEqual([
+      "mage_image",
+      "soulx_avatar",
+    ]);
+  });
+
   it("replays a fully assigned pair without another begin or provider send", async () => {
     const f = fixture((lane) => ({ id: `${lane}-must-not-run` }));
     f.store.prepare = vi.fn(async () => {

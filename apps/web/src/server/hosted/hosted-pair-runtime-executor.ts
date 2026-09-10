@@ -49,7 +49,29 @@ export interface HostedPairRuntimeStore {
     readonly expectedEnvelopeSha256: Sha256;
     readonly expectedRequestBodySha256?: Sha256;
   }): Promise<HostedPairSendClaim>;
+  /** Atomically marks both fresh lanes SENT before either provider /run call begins. */
+  beginPairSend?(input: {
+    readonly accountId: string;
+    readonly workspaceId: string;
+    readonly generationRequestId: string;
+    readonly dispatchTokenKey: string;
+    readonly expected: readonly [
+      Pick<HostedPairSendClaim, "attemptId" | "expectedEnvelopeSha256">,
+      Pick<HostedPairSendClaim, "attemptId" | "expectedEnvelopeSha256">,
+    ];
+  }): Promise<readonly [HostedPairSendClaim, HostedPairSendClaim]>;
   finishSend(input: {
+    readonly accountId: string;
+    readonly workspaceId: string;
+    readonly generationRequestId: string;
+    readonly lane: HostedPairLane;
+    readonly outcome: "ASSIGNED" | "DISPATCH_ACK_UNKNOWN" | "REQUEST_REJECTED";
+    readonly providerJobId: string | null;
+    readonly deploymentId: string;
+    readonly dispatchTokenSha256: Sha256;
+  }): Promise<void>;
+  /** Parallel-pair outcomes use a state machine that permits either acknowledgement to arrive first. */
+  finishPairSend?(input: {
     readonly accountId: string;
     readonly workspaceId: string;
     readonly generationRequestId: string;
@@ -184,6 +206,51 @@ export class HostedSqlPairRuntimeStore implements HostedPairRuntimeStore {
     });
   }
 
+  async beginPairSend(input: Parameters<NonNullable<HostedPairRuntimeStore["beginPairSend"]>>[0]) {
+    return this.database.transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", [
+        "videoforge.account_id",
+        input.accountId,
+      ]);
+      await transaction.query("SELECT set_config($1,$2,true)", [
+        "videoforge.dispatch_token_key",
+        input.dispatchTokenKey,
+      ]);
+      const result = await transaction.query<BeginRow>(
+        "SELECT * FROM public.videoforge_begin_hosted_pair_parallel_send($1,$2,$3,$4,$5,$6,$7)",
+        [
+          input.accountId,
+          input.workspaceId,
+          input.generationRequestId,
+          input.expected[0].attemptId,
+          input.expected[0].expectedEnvelopeSha256,
+          input.expected[1].attemptId,
+          input.expected[1].expectedEnvelopeSha256,
+        ],
+      );
+      if (
+        result.rows.length !== 2 ||
+        result.rows[0]?.lane !== "mage_image" ||
+        result.rows[1]?.lane !== "soulx_avatar"
+      ) {
+        throw new HostedDispatchCoordinationError("HOSTED_PAIR_SEND_CLAIM_INVALID");
+      }
+      return result.rows.map((row) =>
+        Object.freeze({
+          lane: row.lane,
+          attemptId: row.attempt_id,
+          dispatchToken: row.dispatch_token,
+          dispatchTokenSha256: row.dispatch_token_sha256,
+          endpointIdSha256: row.endpoint_id_sha256,
+          requestBodySha256: row.request_body_sha256,
+          deploymentId: row.deployment_id,
+          phase: row.phase,
+          expectedEnvelopeSha256: row.expected_envelope_sha256,
+        }),
+      ) as unknown as readonly [HostedPairSendClaim, HostedPairSendClaim];
+    });
+  }
+
   async finishSend(input: Parameters<HostedPairRuntimeStore["finishSend"]>[0]) {
     await this.database.transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1,$2,true)", [
@@ -202,6 +269,32 @@ export class HostedSqlPairRuntimeStore implements HostedPairRuntimeStore {
       ];
       const result = await transaction.query(
         "SELECT * FROM public.videoforge_finish_hosted_pair_send($1,$2,$3,$4,$5,$6,$7,$8)",
+        values,
+      );
+      if (result.rows.length !== 1) {
+        throw new HostedDispatchCoordinationError("HOSTED_PAIR_SEND_RESULT_INVALID");
+      }
+    });
+  }
+
+  async finishPairSend(input: Parameters<NonNullable<HostedPairRuntimeStore["finishPairSend"]>>[0]) {
+    await this.database.transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", [
+        "videoforge.account_id",
+        input.accountId,
+      ]);
+      const values: readonly SqlPrimitive[] = [
+        input.accountId,
+        input.workspaceId,
+        input.generationRequestId,
+        input.lane,
+        input.outcome,
+        input.providerJobId,
+        input.deploymentId,
+        input.dispatchTokenSha256,
+      ];
+      const result = await transaction.query(
+        "SELECT * FROM public.videoforge_finish_hosted_pair_parallel_send($1,$2,$3,$4,$5,$6,$7,$8)",
         values,
       );
       if (result.rows.length !== 1) {
@@ -295,7 +388,9 @@ function unsignedEnvelope(document: ServerlessWorkerJobEnvelopeV3Document): Json
 /**
  * Provider-free composition: transports are injected. The DB persists SENT before `/run`, and
  * only an explicit REQUEST_REJECTED is treated as proof that no provider job exists. Every other
- * thrown/malformed response is ACK_UNKNOWN. SoulX cannot begin until Mage is durably ASSIGNED.
+ * thrown/malformed response is ACK_UNKNOWN. Fresh pairs are atomically marked SENT and both
+ * provider requests are issued concurrently; acknowledgement order is handled durably by the
+ * parallel-pair state machine. Legacy partially assigned pairs retain one-lane recovery.
  */
 export class HostedPairRuntimeExecutor {
   constructor(
@@ -359,23 +454,69 @@ export class HostedPairRuntimeExecutor {
       }
     }
     console.info("hosted_pair_runtime", { event: "ENVELOPES_VERIFIED" });
-    const mage =
-      prepared[0].attemptState === "ASSIGNED" &&
-      prepared[0].outboxState === "ASSIGNED" &&
-      prepared[0].providerJobId
-        ? { kind: "ASSIGNED" as const, providerJobId: prepared[0].providerJobId }
-        : await this.#send(input, input.envelopes[0], prepared[0]);
-    if (mage.kind !== "ASSIGNED") return mage.result;
-    const soulx =
-      prepared[1].attemptState === "ASSIGNED" &&
-      prepared[1].outboxState === "ASSIGNED" &&
-      prepared[1].providerJobId
-        ? { kind: "ASSIGNED" as const, providerJobId: prepared[1].providerJobId }
-        : await this.#send(input, input.envelopes[1], prepared[1]);
-    if (soulx.kind !== "ASSIGNED") return soulx.result;
+    const mage = this.#assigned(prepared[0]);
+    const soulx = this.#assigned(prepared[1]);
+    if (mage && soulx) return this.#bothAssigned(mage.providerJobId, soulx.providerJobId);
+
+    // A fresh pair has no provider assignment on either lane. Run both read-only admission checks
+    // first, atomically persist both SENT claims, and only then enter the parallel provider phase.
+    // If either preflight fails, no paid mutation has occurred and the caller may retry safely.
+    if (!mage && !soulx && this.store.beginPairSend && this.store.finishPairSend) {
+      const preflights = await Promise.allSettled([
+        this.transports.mage_image.preflight?.(),
+        this.transports.soulx_avatar.preflight?.(),
+      ]);
+      if (preflights[0]?.status === "rejected") throw preflights[0].reason;
+      if (preflights[1]?.status === "rejected") throw preflights[1].reason;
+      const begun = await this.store.beginPairSend({
+        ...input,
+        expected: [
+          {
+            attemptId: prepared[0].attemptId,
+            expectedEnvelopeSha256: prepared[0].expectedEnvelopeSha256,
+          },
+          {
+            attemptId: prepared[1].attemptId,
+            expectedEnvelopeSha256: prepared[1].expectedEnvelopeSha256,
+          },
+        ],
+      });
+      const sends = await Promise.allSettled([
+        this.#sendClaim(input, input.envelopes[0], prepared[0], begun[0], true),
+        this.#sendClaim(input, input.envelopes[1], prepared[1], begun[1], true),
+      ]);
+      if (sends[0]?.status === "rejected") throw sends[0].reason;
+      if (sends[1]?.status === "rejected") throw sends[1].reason;
+      const parallelMage = sends[0].value;
+      const parallelSoulx = sends[1].value;
+      if (parallelMage.kind !== "ASSIGNED") return parallelMage.result;
+      if (parallelSoulx.kind !== "ASSIGNED") return parallelSoulx.result;
+      return this.#bothAssigned(parallelMage.providerJobId, parallelSoulx.providerJobId);
+    }
+
+    // Crash recovery or an older materialization may have one lane assigned already. Preserve the
+    // original one-shot single-lane path; it never resends a known or ambiguous lane.
+    if (soulx && !mage)
+      return this.#stop("mage_image", "DISPATCH_ACK_UNKNOWN").result;
+    const recoveredMage = mage ?? (await this.#send(input, input.envelopes[0], prepared[0]));
+    if (recoveredMage.kind !== "ASSIGNED") return recoveredMage.result;
+    const recoveredSoulx = await this.#send(input, input.envelopes[1], prepared[1]);
+    if (recoveredSoulx.kind !== "ASSIGNED") return recoveredSoulx.result;
+    return this.#bothAssigned(recoveredMage.providerJobId, recoveredSoulx.providerJobId);
+  }
+
+  #assigned(prepared: HostedPairSendClaim) {
+    return prepared.attemptState === "ASSIGNED" &&
+      prepared.outboxState === "ASSIGNED" &&
+      prepared.providerJobId
+      ? { kind: "ASSIGNED" as const, providerJobId: prepared.providerJobId }
+      : null;
+  }
+
+  #bothAssigned(mageProviderJobId: string, soulxProviderJobId: string) {
     return Object.freeze({
       state: "BOTH_ASSIGNED" as const,
-      providerJobIds: Object.freeze([mage.providerJobId, soulx.providerJobId]) as readonly [
+      providerJobIds: Object.freeze([mageProviderJobId, soulxProviderJobId]) as readonly [
         string,
         string,
       ],
@@ -408,6 +549,23 @@ export class HostedPairRuntimeExecutor {
       ...(prepared.requestBody ? { expectedRequestBodySha256: prepared.requestBodySha256 } : {}),
     });
     console.info("hosted_pair_runtime", { event: "SEND_CLAIMED", lane: envelope.lane });
+    return this.#sendClaim(input, envelope, prepared, claim, false);
+  }
+
+  async #sendClaim(
+    input: {
+      readonly accountId: string;
+      readonly workspaceId: string;
+      readonly generationRequestId: string;
+    },
+    envelope: HostedSignedPairEnvelope,
+    prepared: HostedPairSendClaim,
+    claim: HostedPairSendClaim,
+    parallel: boolean,
+  ): Promise<
+    | { readonly kind: "ASSIGNED"; readonly providerJobId: string }
+    | { readonly kind: "STOP"; readonly result: HostedPairExecutionResult }
+  > {
     const document = (
       await validateAndHashHostedContractDocument(
         "serverlessWorkerJobEnvelopeV3",
@@ -425,7 +583,7 @@ export class HostedPairRuntimeExecutor {
       claim.requestBodySha256 !== prepared.requestBodySha256
     ) {
       // SENT is already durable. Hash/signature/lineage drift is uncertain and must not resend.
-      await this.#finish(input, claim, "DISPATCH_ACK_UNKNOWN", null);
+      await this.#finish(input, claim, "DISPATCH_ACK_UNKNOWN", null, parallel);
       return this.#stop(claim.lane, "DISPATCH_ACK_UNKNOWN");
     }
     try {
@@ -439,16 +597,16 @@ export class HostedPairRuntimeExecutor {
       });
       console.info("hosted_pair_runtime", { event: "PROVIDER_SEND_ACKNOWLEDGED", lane: envelope.lane });
       if (!response || typeof response.id !== "string" || !PROVIDER_JOB_ID.test(response.id)) {
-        await this.#finish(input, claim, "DISPATCH_ACK_UNKNOWN", null);
+        await this.#finish(input, claim, "DISPATCH_ACK_UNKNOWN", null, parallel);
         return this.#stop(claim.lane, "DISPATCH_ACK_UNKNOWN");
       }
-      await this.#finish(input, claim, "ASSIGNED", response.id);
+      await this.#finish(input, claim, "ASSIGNED", response.id, parallel);
       return Object.freeze({ kind: "ASSIGNED" as const, providerJobId: response.id });
     } catch (error) {
       const definite =
         error instanceof ServerlessTransportError && error.code === "REQUEST_REJECTED";
       const outcome = definite ? "REQUEST_REJECTED" : "DISPATCH_ACK_UNKNOWN";
-      await this.#finish(input, claim, outcome, null);
+      await this.#finish(input, claim, outcome, null, parallel);
       return this.#stop(claim.lane, outcome);
     }
   }
@@ -462,15 +620,21 @@ export class HostedPairRuntimeExecutor {
     claim: HostedPairSendClaim,
     outcome: "ASSIGNED" | "DISPATCH_ACK_UNKNOWN" | "REQUEST_REJECTED",
     providerJobId: string | null,
+    parallel = false,
   ) {
-    await this.store.finishSend({
+    const inputValue = {
       ...input,
       lane: claim.lane,
       outcome,
       providerJobId,
       deploymentId: claim.deploymentId,
       dispatchTokenSha256: claim.dispatchTokenSha256,
-    });
+    } as const;
+    if (parallel && this.store.finishPairSend) {
+      await this.store.finishPairSend(inputValue);
+    } else {
+      await this.store.finishSend(inputValue);
+    }
   }
 
   #stop(lane: HostedPairLane, reason: "DISPATCH_ACK_UNKNOWN" | "REQUEST_REJECTED") {
