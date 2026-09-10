@@ -312,6 +312,10 @@ export async function extractHostedVoiceoverContext(input: {
   readonly reportedCostMicroUsd: number;
 }> {
   const diagnosticState: { current: RunwareSafeDiagnostic | null } = { current: null };
+  // Runware occasionally answers a well-formed request with a transient 5xx or a dropped
+  // connection. That is not a rejected request, and the claim cannot be redispatched afterwards,
+  // so retry the transient shapes here instead of burning the whole context claim on one blip.
+  const transientAttempts = 3;
   const transport = new RunwarePromptHttpTransport({
     apiKey: input.apiKey,
     ledger: new RunwareSpendLedger(HOSTED_CONTEXT_RESERVATION_USD),
@@ -321,17 +325,32 @@ export async function extractHostedVoiceoverContext(input: {
       diagnosticState.current = value;
     },
   });
-  const result = await transport.dispatch({
-    requestVersion:
-      REQUEST_CONTRACT_VERSION as unknown as RunwarePromptTransportRequest["requestVersion"],
-    attemptIndex: 1,
-    requestedSceneIds: ["voiceover_context"],
-    request: input.prepared.request,
-    requestBytes: input.prepared.requestBytes,
-    requestSha256: input.prepared.requestHash,
-    retryOfRequestSha256: null,
-  });
-  if (result.status === "failed")
+  let result: Awaited<ReturnType<RunwarePromptHttpTransport["dispatch"]>> | null = null;
+  for (let attempt = 1; attempt <= transientAttempts; attempt += 1) {
+    result = await transport.dispatch({
+      requestVersion:
+        REQUEST_CONTRACT_VERSION as unknown as RunwarePromptTransportRequest["requestVersion"],
+      attemptIndex: (attempt === 1 ? 1 : 2) as 1 | 2,
+      requestedSceneIds: ["voiceover_context"],
+      request: input.prepared.request,
+      requestBytes: input.prepared.requestBytes,
+      requestSha256: input.prepared.requestHash,
+      retryOfRequestSha256: null,
+    });
+    if (result.status === "succeeded" && result.finishReason === "stop") break;
+    if (result.status === "failed") break;
+    const diagnostic = diagnosticState["current"] as RunwareSafeDiagnostic | null;
+    const stage = diagnostic?.stage;
+    const httpStatus =
+      diagnostic !== null && "httpStatus" in diagnostic ? (diagnostic.httpStatus ?? 0) : 0;
+    // Only a transport-level blip is safe to repeat: an authorization or request-shape problem
+    // would fail the same way every time, and a provider rejection is already terminal.
+    const transient =
+      stage === "network" || (stage === "http" && (httpStatus === 429 || httpStatus >= 500));
+    if (!transient || attempt === transientAttempts) break;
+    await new Promise((resolve) => setTimeout(resolve, 1_000 * attempt));
+  }
+  if (result === null || result.status === "failed")
     throw new HostedVoiceoverContextProviderError(
       "VOICEOVER_CONTEXT_PROVIDER_REJECTED",
       diagnosticState.current,
