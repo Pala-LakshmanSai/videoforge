@@ -16,6 +16,20 @@ const canonical = (value) =>
           .join(",")}}`
       : JSON.stringify(value);
 
+// Wrangler embeds the input module's filesystem-relative path in the generated entrypoint
+// comment. The qualified config preparation hashes the checkout path, while the replacement
+// operator hashes an immutable temporary upload snapshot. That comment is not executable payload;
+// normalize only this exact entrypoint metadata so both source-bound proofs hash the same runtime.
+const normalizedRuntimeBytes = (entryPath, bytes) => {
+  if (entryPath !== "index.js") return bytes;
+  const text = bytes.toString("utf8");
+  const normalized = text.replace(
+    /^\/\/ [^\r\n]*\/index\.js\n(?=import )/mu,
+    "// videoforge-entrypoint/index.js\n",
+  );
+  return normalized === text ? bytes : Buffer.from(normalized, "utf8");
+};
+
 /** Hash runtime payload only. Wrangler 4.120's exact generated README is non-runtime metadata. */
 export function hashV209DryOutputBundle(directory, { workerName } = {}) {
   if (typeof workerName !== "string" || !/^[a-z0-9][a-z0-9-]{0,62}$/u.test(workerName))
@@ -68,7 +82,8 @@ export function hashV209DryOutputBundle(directory, { workerName } = {}) {
           readmeSeen = true;
           continue;
         }
-        files.push({ path: entryPath, bytes: bytes.length, sha256: sha256(bytes) });
+        const runtimeBytes = normalizedRuntimeBytes(entryPath, bytes);
+        files.push({ path: entryPath, bytes: runtimeBytes.length, sha256: sha256(runtimeBytes) });
       }
     };
     walk(root);

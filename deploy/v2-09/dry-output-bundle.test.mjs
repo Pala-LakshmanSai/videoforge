@@ -26,6 +26,21 @@ test("only canonical generated README time is excluded; payload remains stable",
     writeFileSync(join(dir, "index.js"), "export default {changed:true};");
     assert.notEqual(hash(dir), before);
   }));
+test("ignores only the Wrangler entrypoint path comment", () =>
+  fixture((dir) => {
+    const original =
+      'var __defProp = Object.defineProperty;\n\n// dist-cloudflare/videoforge_production_runtime/index.js\nimport "cloudflare:workers";\n';
+    const relocated = original.replace(
+      "dist-cloudflare/videoforge_production_runtime/index.js",
+      "../../private/upload/worker/index.js",
+    );
+    writeFileSync(join(dir, "index.js"), original);
+    const before = hash(dir);
+    writeFileSync(join(dir, "index.js"), relocated);
+    assert.equal(hash(dir), before);
+    writeFileSync(join(dir, "index.js"), `${relocated}runtime change`);
+    assert.notEqual(hash(dir), before);
+  }));
 test("all other files and their exact paths participate including nested README", () =>
   fixture((dir) => {
     const before = hash(dir);
