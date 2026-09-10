@@ -25,10 +25,26 @@ current_goal_boundary:
   credential_value_access: "Existing private mode0600 Runware file; never log or persist value elsewhere"
   paid_requests_or_spend: "USD2 incremental cap; USD17.50 total ceiling; context10000 and prompts40000 microUSD"
   runpod_mutation_or_gpu: "At most one generation on exact two retained qualified lanes; workersMin0/workersMax1; no fallback"
-  v2_07_action: "Stage6/7 frozen QUALIFIED_PASS_CLEAN; no modification or rerun"
+  v2_07_action: "Consumed live Stage6/7 pair remains frozen and non-retryable; source-only successor repair is recorded below"
   current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 repair-release checkpoint complete; fresh qualification required before any retry;9.9 pending"
   approval_evidence: "Current explicit user continuation on2026-09-08; existing bounded authority preserved"
   note: "Fresh project951c2305-75fd-405a-b152-74f64b2b2f73 completed ASR/context/prompts and dispatched the exact pair once; consumed pair is terminal and must not be retried. Three provider reads show zero running/in-progress/queued compute. Queue admission, worker-contract, and terminal-failure mapping repairs are released; endpoint/template activation still needs fresh qualification authority"
+
+v2_09_stage6_7_terminal_contract_repair_2026_09_10:
+  status: "SOURCE_ONLY_FOCUSED_PASS_PENDING_FRESH_QUALIFICATION"
+  source_commit: "658abd02"
+  exact_causes:
+    mage: "The durable production authority is exactly one hour (issued_at plus 3600 seconds), while the active Mage image still required a 7200-second signed-authority interval and failed with MAGE_SERVERLESS_TIMING_ISSUED_AT_INVALID before inference."
+    terminal_ingestor: "The reconciler rejected valid PostgreSQL account/workspace UUIDs whose version nibbles are not RFC 4122 values before calling store.load. SQL lineage projection, canonical request hash, provider receipt, and all ten R2 objects independently matched."
+  repair:
+    mage: "Align _SIGNED_AUTHORITY_TTL_SECONDS and its boundary fixtures to 3600 seconds; keep timestamp ordering and bounded timing guards unchanged."
+    terminal_ingestor: "Use a broad database UUID grammar only for account/workspace request IDs; retain strict RFC UUID validation for attempts and artifact/reservation IDs."
+  focused_validation:
+    terminal_ingestor: "Vitest 7/7; changed-file ESLint PASS"
+    mage: "Python unittest 48/48; compileall PASS"
+    diff: "git diff --check PASS"
+  live_state: "The consumed Chrome project remains ACTIVE/WAITING_FOR_WORKER/BOTH_ASSIGNED in durable state because the old workflow errored before reconciliation; RunPod reports zero running and zero queued jobs. No retry, cancel, delete, endpoint mutation, image publication, or paid work was performed for this source-only repair."
+  next: "Fresh exact authority is required before publishing/activating the repaired Mage image, deploying the terminal-ingestor successor if needed, or starting a new paid Stage6/7 project. Do not infer live readiness from focused tests."
 
 v2_09_stage6_7_worker_contract_repair_2026_09_10:
   status: "DEPLOYED_REPAIR_CHECKPOINT_AWAITING_FRESH_QUALIFICATION"
