@@ -25,9 +25,9 @@ const COMMIT = /^[0-9a-f]{40}$/u;
 const AUTHORITY = /^v2-09-[a-z0-9][a-z0-9._-]{7,95}$/u;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/u;
 const PUBLIC_IMAGES = Object.freeze({
-  mage: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0",
+  mage: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
   soulx:
-    "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:047881a3e85fcb98683c2851989ec064628fa803123588ac25929bd6ca6b243a",
+    "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
 });
 
 type Lane = "mage" | "soulx";

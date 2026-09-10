@@ -70,40 +70,57 @@ export const V209_FROZEN_IMAGES = Object.freeze([
   Object.freeze({
     lane: "mage_image",
     repository: "pala-lakshmansai/videoforge-mage-v2-07",
-    manifestDigest: "sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0",
-    configDigest: "sha256:9758825b923a26832570ff68fb841a95f24d9b0f5c684f67443039e6ebf36e34",
-    sourceCommit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+    manifestDigest: "sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
+    configDigest: "sha256:0cf8478722ba1769b154ee47f257bbe599fb83a7fef22336dfc31d8de2a5e13d",
+    sourceCommit: "619393e74e2ea42ed6082e78d1efeafa9366b238",
     frozenAnonymousProofSha256:
-      "sha256:92a8ca6f5736d3d5210c174cd49b1e9fd33a363a4de8b3fb6804747d76be3b61",
+      "sha256:62b6f5a590aa85a31108a27ada9ceafcfd6f14cafd9408ac69aec7e25a311a7",
     labels: Object.freeze({
-      "ai.videoforge.source-commit": "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+      "ai.videoforge.base-image":
+        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+      "ai.videoforge.comfyui-revision": "26d7f8556822d9d08c2d3e1878636ac3b4969af9",
+      "ai.videoforge.lane": "mage_image",
+      "ai.videoforge.model": "Comfy-Org/Mage-Flow",
+      "ai.videoforge.model-revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+      "ai.videoforge.output": "1280x720-steps4-guidance1",
+      "ai.videoforge.overlay-parent":
+        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+      "ai.videoforge.precision": "int8-convrot",
+      "ai.videoforge.repair.kind": "source-only-overlay-v2",
+      "ai.videoforge.source-commit": "619393e74e2ea42ed6082e78d1efeafa9366b238",
       "org.opencontainers.image.base.digest":
         "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
       "org.opencontainers.image.base.name": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07",
-      "org.opencontainers.image.revision": "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+      "org.opencontainers.image.revision": "619393e74e2ea42ed6082e78d1efeafa9366b238",
+      "org.opencontainers.image.title": "VideoForge Mage Serverless Worker (repaired)",
+      "org.opencontainers.image.version": "v2-07-serverless-repair-v2",
     }),
   }),
   Object.freeze({
     lane: "soulx_avatar",
     repository: "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
-    manifestDigest: "sha256:047881a3e85fcb98683c2851989ec064628fa803123588ac25929bd6ca6b243a",
-    configDigest: "sha256:d08c7eba4c923db9e524974ff0590fde0f713eae74bec85b5614afc956bfa5cd",
-    sourceCommit: "54c4b06bd524756ccf83e960ca4a18181de134ce",
+    manifestDigest: "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
+    configDigest: "sha256:d4133ee6b582d44032ba7886a5c19a844cbb75347527943f6a40d5327e793122",
+    sourceCommit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
     frozenAnonymousProofSha256:
-      "sha256:16329b6cc8516f28ff4e18136204b2a602debae9ba01c5a432b574a7e18449cc",
+      "sha256:5d842aa90bad61378087b790e44fc182e9d52acb27399e6ed9faacac73150f33",
     labels: Object.freeze({
       "ai.videoforge.lane": "soulx_avatar",
       "ai.videoforge.model-manifest":
         "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
       "ai.videoforge.model-revision": "59119b6c681230c3eeee157e224ae1941746711e",
       "ai.videoforge.runtime-profile": "videoforge_soulx_flashhead_pro_bf16_v1",
-      "ai.videoforge.source-commit": "54c4b06bd524756ccf83e960ca4a18181de134ce",
+      "ai.videoforge.source-commit": "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
       "ai.videoforge.source-revision": "9bc03de06bb0de82cd6bc477804512ae06144bf2",
+      "com.nvidia.volumes.needed": "nvidia_driver",
       "org.opencontainers.image.base.digest":
         "sha256:0538d16199f04cac0a68ad4570b3fc260470b079200da025fe8f36640fb69a9b",
       "org.opencontainers.image.base.name":
         "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s",
-      "org.opencontainers.image.revision": "54c4b06bd524756ccf83e960ca4a18181de134ce",
+      "org.opencontainers.image.ref.name": "ubuntu",
+      "org.opencontainers.image.revision": "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+      "org.opencontainers.image.title": "VideoForge SoulX FlashHead Pro Serverless Worker",
+      "org.opencontainers.image.version": "v2-08-serverless-candidate",
     }),
   }),
 ]);

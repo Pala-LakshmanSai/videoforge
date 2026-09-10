@@ -46,12 +46,12 @@ BEGIN
       RAISE EXCEPTION 'V209 production persistence lane invalid' USING ERRCODE='23514';
     END IF;
     IF item->>'lane'='mage_image' AND (
-      item->>'imageSha256'<>'sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0'
+      item->>'imageSha256'<>'sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161'
       OR item->>'volumeIdSha256'<>'sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619'
       OR item->>'volumeManifestSha256'<>'sha256:ffaf47d13c92407a51d2aa78337612daf2733f5a5bb93e27336822a5389ba1c9'
     ) THEN RAISE EXCEPTION 'V209 Mage persistence identity drift' USING ERRCODE='23514'; END IF;
     IF item->>'lane'='soulx_avatar' AND (
-      item->>'imageSha256'<>'sha256:047881a3e85fcb98683c2851989ec064628fa803123588ac25929bd6ca6b243a'
+      item->>'imageSha256'<>'sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff'
       OR item->>'volumeIdSha256'<>'sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be'
       OR item->>'volumeManifestSha256'<>'sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626'
     ) THEN RAISE EXCEPTION 'V209 SoulX persistence identity drift' USING ERRCODE='23514'; END IF;

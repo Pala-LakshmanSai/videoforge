@@ -696,6 +696,12 @@
       "name": "hosted_v209_parallel_pair_dispatch",
       "filename": "0117_hosted_v209_parallel_pair_dispatch.sql",
       "sha256": "sha256:8f03133bd0baa7ee0af292df237c2ab0e443844d4bd9938ada18b7bb9872feb6"
+    },
+    {
+      "version": 118,
+      "name": "hosted_v209_repaired_image_successor",
+      "filename": "0118_hosted_v209_repaired_image_successor.sql",
+      "sha256": "sha256:4d9d6cc294c00c381586c27cdfc82e52328efccb8fde10eb610ddd7b14d1dce3"
     }
   ]
 }

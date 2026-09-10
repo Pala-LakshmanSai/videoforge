@@ -25,12 +25,12 @@ export const COMPLETION_CAP_USD = 17.5;
 export const QUALIFIED_LANES = Object.freeze([
   Object.freeze({
     lane: "mage",
-    image_sha256: "sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0",
-    image_source_commit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
-    image_config_sha256: "sha256:9758825b923a26832570ff68fb841a95f24d9b0f5c684f67443039e6ebf36e34",
+    image_sha256: "sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
+    image_source_commit: "619393e74e2ea42ed6082e78d1efeafa9366b238",
+    image_config_sha256: "sha256:0cf8478722ba1769b154ee47f257bbe599fb83a7fef22336dfc31d8de2a5e13d",
     anonymous_proof_sha256:
-      "sha256:92a8ca6f5736d3d5210c174cd49b1e9fd33a363a4de8b3fb6804747d76be3b61",
-    acceptance_sha256: "sha256:12bc1b0fa85606ed1adad23b0b6df97d5c16e1e5d0f8e417fadad0403076be5f",
+      "sha256:62b6f5a5905aa85a31108a27ada9ceafcfd6f14cafd9408ac69aec7e25a311a7",
+    acceptance_sha256: "sha256:c28a0fc82b5b36f75952a4860214aff25364d37ed4c461ba1b90a0e7c6fa641e",
     volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
     volume_manifest_sha256:
       "sha256:ffaf47d13c92407a51d2aa78337612daf2733f5a5bb93e27336822a5389ba1c9",
@@ -43,12 +43,12 @@ export const QUALIFIED_LANES = Object.freeze([
   }),
   Object.freeze({
     lane: "soulx",
-    image_sha256: "sha256:047881a3e85fcb98683c2851989ec064628fa803123588ac25929bd6ca6b243a",
-    image_source_commit: "54c4b06bd524756ccf83e960ca4a18181de134ce",
-    image_config_sha256: "sha256:d08c7eba4c923db9e524974ff0590fde0f713eae74bec85b5614afc956bfa5cd",
+    image_sha256: "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
+    image_source_commit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+    image_config_sha256: "sha256:d4133ee6b582d44032ba7886a5c19a844cbb75347527943f6a40d5327e793122",
     anonymous_proof_sha256:
-      "sha256:16329b6cc8516f28ff4e18136204b2a602debae9ba01c5a432b574a7e18449cc",
-    acceptance_sha256: "sha256:d6fff986aa950becbd345c72090c0d2d8fdabb4bc0b920d194b57e6a596f72b8",
+      "sha256:5d842aa90bad61378087b790e44fc182e9d52acb27399e6ed9faacac73150f33",
+    acceptance_sha256: "sha256:586c235e3854ece80ca17b7728d3bdddea47e4e4f3b9fb445584bd7cd2fc17b5",
     volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
     volume_manifest_sha256:
       "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
@@ -440,14 +440,14 @@ function validateOperationResult(
         result.to_version === 86 &&
         Array.isArray(result.applied_versions) &&
         result.applied_versions.length === 0) ||
-      (result.mode === "APPLIED_CURRENT_0117" &&
+      (result.mode === "APPLIED_CURRENT_0118" &&
         result.from_version === 116 &&
-        result.to_version === 117 &&
+        result.to_version === 118 &&
         Array.isArray(result.applied_versions) &&
-        result.applied_versions.join(",") === "117") ||
+        result.applied_versions.join(",") === "117,118") ||
       (result.mode === "VERIFIED_EXISTING_CURRENT" &&
-        result.from_version === 116 &&
-        result.to_version === 117 &&
+        result.from_version === 118 &&
+        result.to_version === 118 &&
         Array.isArray(result.applied_versions) &&
         result.applied_versions.length === 0)
     )

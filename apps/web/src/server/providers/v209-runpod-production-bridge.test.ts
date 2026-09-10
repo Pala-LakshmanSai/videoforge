@@ -18,7 +18,7 @@ function input(lane: "mage" | "soulx" = "mage") {
     lanes: [
       {
         lane: "mage",
-        image_sha256: "sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+        image_sha256: "sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
         image_source_commit: "b".repeat(40),
         image_config_sha256: hash("mage-config"),
         anonymous_proof_sha256: hash("mage-anonymous"),
@@ -28,7 +28,7 @@ function input(lane: "mage" | "soulx" = "mage") {
       },
       {
         lane: "soulx",
-        image_sha256: "sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e",
+        image_sha256: "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
         image_source_commit: "c".repeat(40),
         image_config_sha256: hash("soulx-config"),
         anonymous_proof_sha256: hash("soulx-anonymous"),
@@ -229,7 +229,7 @@ test("failure cleanup recovers endpoint-only and template-only names and deletes
     name: resourceName("soulx", "template"),
     raw: {
       imageName:
-        "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:f3b1d1414308d0783fe006d33e6482c027e05b6029a07843af66e4a9e1c1380e",
+        "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
       isServerless: true,
       containerDiskInGb: 120,
       env: workerEnvironment("soulx"),
@@ -296,7 +296,7 @@ test("cleanup accepts an exact full pre-bind pair and deletes endpoint before ba
     name: resourceName("mage", "template"),
     raw: {
       imageName:
-        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
       isServerless: true,
       containerDiskInGb: 120,
       env: workerEnvironment("mage"),
@@ -363,7 +363,7 @@ test("cleanup rejects a pre-bind pair whose base template environment is not exa
                 name: resourceName("mage", "template"),
                 raw: {
                   imageName:
-                    "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+                    "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
                   isServerless: true,
                   containerDiskInGb: 120,
                   env: { ...workerEnvironment("mage"), FORBIDDEN_EXTRA: "1" },
