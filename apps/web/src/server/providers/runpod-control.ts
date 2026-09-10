@@ -1799,6 +1799,12 @@ export class RunPodServerlessJobClient {
       );
     }
     if (!response.ok) {
+      if (
+        response.status === 404 &&
+        (/^\/status\/[^/]+$/u.test(path) || /^\/cancel\/[^/]+$/u.test(path))
+      ) {
+        throw new RunPodControlError("RUNPOD_JOB_ABSENT");
+      }
       throw new RunPodControlError(
         response.status === 401 || response.status === 403
           ? "RUNPOD_AUTH_REJECTED"

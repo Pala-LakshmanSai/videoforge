@@ -49,6 +49,7 @@ export type ServerlessTransportErrorCode =
   | "DISPATCH_ACK_UNKNOWN"
   | "REQUEST_REJECTED"
   | "PROVIDER_JOB_UNKNOWN"
+  | "PROVIDER_JOB_ABSENT"
   | "STATUS_UNKNOWN"
   | "CANCEL_UNKNOWN";
 

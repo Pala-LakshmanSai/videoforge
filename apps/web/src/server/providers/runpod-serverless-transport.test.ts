@@ -128,6 +128,12 @@ describe("provider-neutral RunPod Serverless transport", () => {
     await expect(
       new RunPodServerlessTransport(unknown, ENDPOINT_SHA256).status("job_01"),
     ).rejects.toMatchObject({ code: "STATUS_UNKNOWN" });
+
+    const absent = client();
+    absent.status.mockRejectedValueOnce(new RunPodControlError("RUNPOD_JOB_ABSENT"));
+    await expect(
+      new RunPodServerlessTransport(absent, ENDPOINT_SHA256).status("job_01"),
+    ).rejects.toMatchObject({ code: "PROVIDER_JOB_ABSENT" });
   });
 
   it("retains terminal provider output for server-side receipt ingestion", async () => {

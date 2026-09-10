@@ -854,6 +854,23 @@ describe("RunPod scale-zero control", () => {
     }
   });
 
+  it("classifies a missing exact serverless job as terminally absent", async () => {
+    const guard = new RunPodDrainGuard();
+    guard.confirmZero(0, 0);
+    const fetch = vi.fn(async () => response({ detail: "Not Found" }, 404));
+    const client = new RunPodServerlessJobClient({
+      apiKey: key,
+      endpointId: "endpoint_01",
+      guard,
+      fetch,
+      baseUrl: "http://127.0.0.1:43123",
+      readRetryDelaysMs: [],
+    });
+
+    await expect(client.status("job_01")).rejects.toMatchObject({ code: "RUNPOD_JOB_ABSENT" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("replays exact dispatch once, confirms cancellation, and requires health-proven drain", async () => {
     const guard = new RunPodDrainGuard();
     guard.confirmZero(0, 0);

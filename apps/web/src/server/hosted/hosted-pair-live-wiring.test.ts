@@ -347,6 +347,28 @@ describe("hosted pair live provider wiring", () => {
     expect(status).toHaveBeenCalledWith("job");
   });
 
+  it("maps a definitive provider 404 for an assigned job to failed reconciliation", async () => {
+    const status = vi.fn(async () => {
+      throw new ServerlessTransportError("PROVIDER_JOB_ABSENT");
+    });
+    const source = createHostedRunPodObservationSource({
+      mage_image: { status },
+      soulx_avatar: { status },
+    });
+    await expect(
+      source.observe({
+        account_id: ids.accountId,
+        workspace_id: ids.workspaceId,
+        generation_request_id: ids.generationRequestId,
+        lane: "mage_image",
+        attempt_id: "attempt",
+        deployment_id: "deployment",
+        dispatch_token_sha256: digest("a"),
+        provider_job_id: "job",
+      }),
+    ).resolves.toMatchObject({ providerState: "FAILED" });
+  });
+
   it("polls both lanes, then cancels only exact known jobs after the bound", async () => {
     const status = vi.fn(async (id: string) => ({ id, status: "IN_PROGRESS" as const }));
     const cancel = vi.fn(async (id: string) => ({ id, status: "CANCELLED" as const }));
@@ -397,6 +419,36 @@ describe("hosted pair live provider wiring", () => {
     });
     expect(cancel).not.toHaveBeenCalled();
     expect(settle.reconcile).not.toHaveBeenCalled();
+  });
+
+  it("settles both assigned lanes when the provider definitively no longer has either job", async () => {
+    const status = vi.fn(async () => {
+      throw new ServerlessTransportError("PROVIDER_JOB_ABSENT");
+    });
+    const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
+    const drained = vi.fn(async () => ({
+      workersTotal: 0 as const,
+      billableWorkers: 0 as const,
+      queuedJobs: 0 as const,
+      observedAt: "2026-09-06T01:00:00.000Z",
+    }));
+    const settlementGuard = vi.fn(async () => ({ guard: "cost-bounded" }));
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rows()) } as never,
+      {
+        mage_image: { status, cancel: vi.fn() },
+        soulx_avatar: { status, cancel: vi.fn() },
+      },
+      settle as never,
+      { mage_image: drained, soulx_avatar: drained },
+      settlementGuard,
+    );
+
+    await expect(reconciler.observe(ids, true)).resolves.toEqual({ state: "SETTLED" });
+    expect(status).toHaveBeenCalledTimes(2);
+    expect(settlementGuard).toHaveBeenCalledOnce();
+    expect(drained).toHaveBeenCalledTimes(2);
+    expect(settle.reconcile).toHaveBeenCalledOnce();
   });
 
   it("requires both exact endpoint drains before callback-barrier settlement", async () => {

@@ -783,7 +783,20 @@ export function createHostedRunPodObservationSource(
           observedAt: now(),
           nonce: crypto.randomUUID().replaceAll("-", ""),
         });
-      const observed = await transports[input.lane].status(input.provider_job_id);
+      let observed: Awaited<ReturnType<ServerlessTransportPort["status"]>>;
+      try {
+        observed = await transports[input.lane].status(input.provider_job_id);
+      } catch (error) {
+        // The assignment was durably recorded, so a definitive provider 404 is a terminal
+        // failed reconciliation. ABSENT remains reserved for a job that was never assigned.
+        if (error instanceof ServerlessTransportError && error.code === "PROVIDER_JOB_ABSENT")
+          return Object.freeze({
+            providerState: "FAILED" as const,
+            observedAt: now(),
+            nonce: crypto.randomUUID().replaceAll("-", ""),
+          });
+        throw error;
+      }
       if (!TERMINAL.has(observed.status))
         throw new HostedDispatchCoordinationError("HOSTED_PAIR_PROVIDER_NOT_TERMINAL");
       return Object.freeze({
@@ -802,7 +815,8 @@ export type HostedPairWorkflowObservation =
 
 /** One durable Workflow observation. It never sends. Unknown assignment identity is held for
  * operator reconciliation; known active jobs are polled and, only after the bounded deadline,
- * cancelled by exact provider job ID. Settlement performs the callback/output-barrier check. */
+ * cancelled by exact provider job ID. A definitive provider 404 for an already-assigned job is
+ * terminal failed reconciliation. Settlement performs the callback/output-barrier check. */
 export class HostedPairWorkflowReconciler {
   constructor(
     private readonly inspection: Pick<HostedSqlPairRuntimeStore, "inspect">,
@@ -894,6 +908,14 @@ export class HostedPairWorkflowReconciler {
           allCompleted = false;
         }
       } catch (error) {
+        if (error instanceof ServerlessTransportError && error.code === "PROVIDER_JOB_ABSENT") {
+          console.warn("hosted_pair_provider_job_absent", {
+            lane: row.lane,
+            attemptId: row.attemptId,
+          });
+          allCompleted = false;
+          continue;
+        }
         allTerminal = false;
         allCompleted = false;
         unknown += 1;

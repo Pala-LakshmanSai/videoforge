@@ -65,6 +65,12 @@ function mapRunPodError(
     );
   }
   if (
+    (operation === "status" || operation === "cancel") &&
+    error.code === "RUNPOD_JOB_ABSENT"
+  ) {
+    return new ServerlessTransportError("PROVIDER_JOB_ABSENT");
+  }
+  if (
     operation === "run" &&
     ["RUNPOD_MUTATION_AMBIGUOUS", "RUNPOD_MUTATION_FAILED", "RUNPOD_RESPONSE_INVALID"].includes(
       error.code,
