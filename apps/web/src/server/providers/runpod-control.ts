@@ -1837,8 +1837,17 @@ export class RunPodServerlessJobClient {
     throw new RunPodControlError("RUNPOD_CANCEL_UNCONFIRMED");
   }
 
-  async confirmDrained(maxAttempts = 30): Promise<{
-    readonly workersTotal: 0;
+  /** A retained scale-to-zero endpoint keeps reporting `idle`/`ready` standby workers long after
+   * its last job settles, so a retained lane can never reach a zero worker *record* count. Those
+   * standby slots hold no job and bill nothing; `allowStandbyWorkers` therefore proves zero
+   * billable compute instead, which is the property settlement actually needs. Disposable
+   * endpoints keep the strict record-count proof, because deletion makes it reachable. */
+  async confirmDrained(
+    maxAttempts = 30,
+    options: { readonly allowStandbyWorkers?: boolean } = {},
+  ): Promise<{
+    readonly workersTotal: number;
+    readonly billableWorkers: 0;
     readonly queuedJobs: 0;
     readonly observedAt: string;
   }> {
@@ -1850,10 +1859,18 @@ export class RunPodServerlessJobClient {
       const workers = healthWorkerCounts(record(value.workers));
       const jobs = record(value.jobs);
       const queuedJobs = strictCounter(jobs, "inQueue") + strictCounter(jobs, "inProgress");
-      if (workers.total === 0 && queuedJobs === 0) {
+      const billableWorkers =
+        workers.running + workers.initializing + workers.throttled + workers.unhealthy;
+      const drained =
+        queuedJobs === 0 &&
+        (options.allowStandbyWorkers === true ? billableWorkers === 0 : workers.total === 0);
+      if (drained) {
+        // The guard tracks active compute, and both branches above have already proven zero
+        // billable workers and zero queued or in-progress jobs.
         this.options.guard.confirmZero(0, 0);
         return Object.freeze({
-          workersTotal: 0,
+          workersTotal: workers.total,
+          billableWorkers: 0,
           queuedJobs: 0,
           observedAt: new Date().toISOString(),
         });

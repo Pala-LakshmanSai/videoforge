@@ -814,7 +814,8 @@ export class HostedPairWorkflowReconciler {
       Record<
         HostedPairLane,
         () => Promise<{
-          readonly workersTotal: 0;
+          readonly workersTotal: number;
+          readonly billableWorkers: 0;
           readonly queuedJobs: 0;
           readonly observedAt: string;
         }>
@@ -829,7 +830,8 @@ export class HostedPairWorkflowReconciler {
       lane: HostedPairLane,
       scope: HostedPairWorkflowScope,
       observation: {
-        readonly workersTotal: 0;
+        readonly workersTotal: number;
+        readonly billableWorkers: 0;
         readonly queuedJobs: 0;
         readonly observedAt: string;
       },
@@ -1063,7 +1065,12 @@ export async function createHostedPairLiveComposition(
   const signZeroProof = async (
     lane: HostedPairLane,
     scope: HostedPairWorkflowScope,
-    observation: { readonly workersTotal: 0; readonly queuedJobs: 0; readonly observedAt: string },
+    observation: {
+      readonly workersTotal: number;
+      readonly billableWorkers: 0;
+      readonly queuedJobs: 0;
+      readonly observedAt: string;
+    },
   ) => {
     const unsigned = {
       schema_version: "videoforge-hosted-zero-worker-proof/v1" as const,
@@ -1131,13 +1138,15 @@ export async function createHostedPairLiveComposition(
       provider.transports,
       settlement,
       Object.freeze({
+        // Retained lanes keep idle/ready standby slots after every settlement, so the drain proof
+        // is zero billable compute rather than zero worker records. Both reads must still agree.
         mage_image: async () => {
-          await provider.clients.mage_image.confirmDrained(30);
-          return provider.clients.mage_image.confirmDrained(30);
+          await provider.clients.mage_image.confirmDrained(30, { allowStandbyWorkers: true });
+          return provider.clients.mage_image.confirmDrained(30, { allowStandbyWorkers: true });
         },
         soulx_avatar: async () => {
-          await provider.clients.soulx_avatar.confirmDrained(30);
-          return provider.clients.soulx_avatar.confirmDrained(30);
+          await provider.clients.soulx_avatar.confirmDrained(30, { allowStandbyWorkers: true });
+          return provider.clients.soulx_avatar.confirmDrained(30, { allowStandbyWorkers: true });
         },
       }),
       settlementGuard,

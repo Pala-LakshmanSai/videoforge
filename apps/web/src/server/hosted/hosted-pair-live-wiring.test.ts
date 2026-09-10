@@ -450,6 +450,7 @@ describe("hosted pair live provider wiring", () => {
     const beforeSettlement = vi.fn(async () => ({ state: "RENDER_SCHEDULED" }));
     const drained = vi.fn(async () => ({
       workersTotal: 0 as const,
+      billableWorkers: 0 as const,
       queuedJobs: 0 as const,
       observedAt: "2026-09-06T01:00:00.000Z",
     }));
@@ -511,6 +512,7 @@ describe("hosted pair live provider wiring", () => {
     const signZeroProof = vi.fn(async (lane: HostedPairLane) => ({ lane, proof: "zero" }));
     const drained = vi.fn(async () => ({
       workersTotal: 0 as const,
+      billableWorkers: 0 as const,
       queuedJobs: 0 as const,
       observedAt: "2026-09-06T01:00:00.000Z",
     }));
@@ -557,6 +559,7 @@ describe("hosted pair live provider wiring", () => {
       const settlementGuard = vi.fn(async () => ({ guard: "cost-bounded" }));
       const drained = vi.fn(async () => ({
         workersTotal: 0 as const,
+        billableWorkers: 0 as const,
         queuedJobs: 0 as const,
         observedAt: "2026-09-06T01:00:00.000Z",
       }));
@@ -602,6 +605,7 @@ describe("hosted pair live provider wiring", () => {
     const signZeroProof = vi.fn(async (lane: HostedPairLane) => ({ lane, proof: "zero" }));
     const drained = vi.fn(async () => ({
       workersTotal: 0 as const,
+      billableWorkers: 0 as const,
       queuedJobs: 0 as const,
       observedAt: "2026-09-06T01:00:00.000Z",
     }));
@@ -696,11 +700,13 @@ describe("hosted pair live provider wiring", () => {
       {
         mage_image: vi.fn(async () => ({
           workersTotal: 0 as const,
+          billableWorkers: 0 as const,
           queuedJobs: 0 as const,
           observedAt: "2026-08-26T06:00:00.000Z",
         })),
         soulx_avatar: vi.fn(async () => ({
           workersTotal: 0 as const,
+          billableWorkers: 0 as const,
           queuedJobs: 0 as const,
           observedAt: "2026-08-26T06:00:00.000Z",
         })),

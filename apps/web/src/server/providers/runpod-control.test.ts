@@ -223,6 +223,58 @@ describe("RunPod scale-zero control", () => {
     await expect(client.confirmWarmIdle(1, 100)).rejects.toThrow("RUNPOD_WARM_IDLE_NOT_CONFIRMED");
   });
 
+  it("drains a retained lane holding standby workers only when nothing billable remains", async () => {
+    // A retained scale-to-zero endpoint reports idle/ready standby slots indefinitely, so the
+    // strict record-count proof can never be satisfied and settlement used to strand the pair.
+    const standby = {
+      workers: { idle: 1, running: 0, initializing: 0, ready: 1, throttled: 0, unhealthy: 0 },
+      jobs: { inQueue: 0, inProgress: 0 },
+    };
+    const build = (body: unknown) => {
+      const guard = new RunPodDrainGuard();
+      guard.markActive();
+      return new RunPodServerlessJobClient({
+        apiKey: key,
+        endpointId: "endpoint_01",
+        guard,
+        fetch: async () => response(body),
+        baseUrl: "http://127.0.0.1:43123",
+        sleep: async () => undefined,
+      });
+    };
+
+    await expect(build(standby).confirmDrained(1)).rejects.toThrow("RUNPOD_ZERO_NOT_CONFIRMED");
+    expect(await build(standby).confirmDrained(1, { allowStandbyWorkers: true })).toMatchObject({
+      workersTotal: 2,
+      billableWorkers: 0,
+      queuedJobs: 0,
+    });
+
+    const throttled = {
+      workers: { idle: 0, running: 0, initializing: 0, ready: 0, throttled: 1, unhealthy: 0 },
+      jobs: { inQueue: 1, inProgress: 0 },
+    };
+    await expect(
+      build(throttled).confirmDrained(1, { allowStandbyWorkers: true }),
+    ).rejects.toThrow("RUNPOD_ZERO_NOT_CONFIRMED");
+
+    const running = {
+      workers: { idle: 1, running: 1, initializing: 0, ready: 0, throttled: 0, unhealthy: 0 },
+      jobs: { inQueue: 0, inProgress: 0 },
+    };
+    await expect(build(running).confirmDrained(1, { allowStandbyWorkers: true })).rejects.toThrow(
+      "RUNPOD_ZERO_NOT_CONFIRMED",
+    );
+
+    const queued = {
+      workers: { idle: 1, running: 0, initializing: 0, ready: 1, throttled: 0, unhealthy: 0 },
+      jobs: { inQueue: 0, inProgress: 1 },
+    };
+    await expect(build(queued).confirmDrained(1, { allowStandbyWorkers: true })).rejects.toThrow(
+      "RUNPOD_ZERO_NOT_CONFIRMED",
+    );
+  });
+
   it("rejects incomplete drain and queue-empty health", async () => {
     const incomplete = {
       workers: { idle: 0, running: 0, initializing: 0, throttled: 0, unhealthy: 0 },
