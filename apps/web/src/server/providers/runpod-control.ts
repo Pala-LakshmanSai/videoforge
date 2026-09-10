@@ -1844,7 +1844,7 @@ export class RunPodServerlessJobClient {
    * endpoints keep the strict record-count proof, because deletion makes it reachable. */
   async confirmDrained(
     maxAttempts = 30,
-    options: { readonly allowStandbyWorkers?: boolean } = {},
+    options: { readonly allowStandbyWorkers?: boolean; readonly deadlineMs?: number } = {},
   ): Promise<{
     readonly workersTotal: number;
     readonly billableWorkers: 0;
@@ -1854,7 +1854,13 @@ export class RunPodServerlessJobClient {
     if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 180) {
       throw new RunPodControlError("RUNPOD_DRAIN_POLICY_INVALID");
     }
+    // Each health read can spend the client's own retry budget, so bound the proof by wall clock
+    // as well as by attempt count. Without this the loop can outlive the caller's Workflow step,
+    // which strands the pair instead of failing closed.
+    const deadlineMs = options.deadlineMs ?? 60_000;
+    const startedAt = Date.now();
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      if (attempt > 0 && Date.now() - startedAt >= deadlineMs) break;
       const value = await this.request("GET", "/health");
       const workers = healthWorkerCounts(record(value.workers));
       const jobs = record(value.jobs);
@@ -1875,7 +1881,7 @@ export class RunPodServerlessJobClient {
           observedAt: new Date().toISOString(),
         });
       }
-      if (attempt + 1 < maxAttempts) await this.sleep(2_000);
+      if (attempt + 1 < maxAttempts && Date.now() - startedAt < deadlineMs) await this.sleep(2_000);
     }
     this.options.guard.confirmZero(Number.NaN, Number.NaN);
     throw new RunPodControlError("RUNPOD_ZERO_NOT_CONFIRMED");

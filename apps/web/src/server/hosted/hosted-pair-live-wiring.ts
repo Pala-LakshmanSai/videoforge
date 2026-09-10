@@ -1141,12 +1141,24 @@ export async function createHostedPairLiveComposition(
         // Retained lanes keep idle/ready standby slots after every settlement, so the drain proof
         // is zero billable compute rather than zero worker records. Both reads must still agree.
         mage_image: async () => {
-          await provider.clients.mage_image.confirmDrained(30, { allowStandbyWorkers: true });
-          return provider.clients.mage_image.confirmDrained(30, { allowStandbyWorkers: true });
+          await provider.clients.mage_image.confirmDrained(15, {
+            allowStandbyWorkers: true,
+            deadlineMs: 45_000,
+          });
+          return provider.clients.mage_image.confirmDrained(15, {
+            allowStandbyWorkers: true,
+            deadlineMs: 45_000,
+          });
         },
         soulx_avatar: async () => {
-          await provider.clients.soulx_avatar.confirmDrained(30, { allowStandbyWorkers: true });
-          return provider.clients.soulx_avatar.confirmDrained(30, { allowStandbyWorkers: true });
+          await provider.clients.soulx_avatar.confirmDrained(15, {
+            allowStandbyWorkers: true,
+            deadlineMs: 45_000,
+          });
+          return provider.clients.soulx_avatar.confirmDrained(15, {
+            allowStandbyWorkers: true,
+            deadlineMs: 45_000,
+          });
         },
       }),
       settlementGuard,
