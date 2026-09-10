@@ -19,16 +19,52 @@ maximum_external_spend_usd: 2
 
 current_goal_boundary:
   mode: "v2_09_same_project_gpu_handoff_repair"
-  live_provider_calls: "ASR, context, and prompts succeeded once; no GPU provider request yet"
+  live_provider_calls: "ASR, context, prompts, and one two-lane GPU dispatch completed; both worker applications returned terminal failures"
   remote_mutation: true
-  deployment_or_publication: "One secret PUT and migration89 rebind verified; migration90 plus Worker handoff source repair locally verified pending independent audit and fresh bounded activation"
+  deployment_or_publication: "Control-plane repair deployed at Worker version cd4500e0-cf2e-4d9d-bf25-34082f1822a0; repaired Mage/SoulX immutable images published; endpoint/template promotion intentionally stopped pending fresh qualification"
   credential_value_access: "Existing private mode0600 Runware file; never log or persist value elsewhere"
   paid_requests_or_spend: "USD2 incremental cap; USD17.50 total ceiling; context10000 and prompts40000 microUSD"
   runpod_mutation_or_gpu: "At most one generation on exact two retained qualified lanes; workersMin0/workersMax1; no fallback"
   v2_07_action: "Stage6/7 frozen QUALIFIED_PASS_CLEAN; no modification or rerun"
-  current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 ACTIVE;9.9 pending"
+  current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 repair-release checkpoint complete; fresh qualification required before any retry;9.9 pending"
   approval_evidence: "Current explicit user continuation on2026-09-08; existing bounded authority preserved"
-  note: "Same project204814e4-3b86-4ae8-9680-d0bb09689ab1; consumed v4/secret/rebind never replayed. Context and prompts completed once. Queue admission plus ordinary full-payload Worker routing are the active repair; no live GPU request exists yet"
+  note: "Fresh project951c2305-75fd-405a-b152-74f64b2b2f73 completed ASR/context/prompts and dispatched the exact pair once; consumed pair is terminal and must not be retried. Three provider reads show zero running/in-progress/queued compute. Queue admission, worker-contract, and terminal-failure mapping repairs are released; endpoint/template activation still needs fresh qualification authority"
+
+v2_09_stage6_7_worker_contract_repair_2026_09_10:
+  status: "DEPLOYED_REPAIR_CHECKPOINT_AWAITING_FRESH_QUALIFICATION"
+  project_id: "951c2305-75fd-405a-b152-74f64b2b2f73"
+  generation_id: "1003797e-8c7c-45c2-b3b3-83876907f446"
+  source_commit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6"
+  cloudflare_worker_version: "cd4500e0-cf2e-4d9d-bf25-34082f1822a0"
+  exact_causes:
+    mage: "The live Mage overlay received the product's exact 30-scene batch, while the qualified MageJob parser enforced a remote batch floor of 32; the worker failed before inference with MAGE_BATCH_SIZE_INVALID. The repair keeps strict shape/identity/seed checks and accepts the ordinary 1-64 range without padding or duplicates."
+    soulx: "The first SoulX input is an immutable verified system-avatar canonical path outside the current attempt's /job prefix; the ordinary scoped-port validator rejected it as WORKER_ARTIFACT_PATH_MISMATCH. The repair allows only the exact system tenant/workspace, UUID profile/version, canonical avatar.png/jpg, GET, image/png, max_uses=1 path for the first input; audio remains job-scoped."
+    settlement: "RunPod returned top-level COMPLETED with worker output {status:FAILED,failure_code:...}; the transport treated that as success and the output ingestor raised WorkflowInternalError. The repair maps only the bounded worker FAILED declaration to transport FAILED so reconciliation settles terminally."
+  production_source_and_release:
+    control_plane_commit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6"
+    mage_workflow_run: "34423578532"
+    mage_image: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0"
+    soulx_workflow_run: "34423578633"
+    soulx_image: "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff"
+    release_claim: "Both workflows passed exact source-hash, build, publication, anonymous-pull, and evidence-upload gates."
+  consumed_pair:
+    mage_attempt_id: "93ba1326-b750-512f-835d-9790b0cf4ddc"
+    mage_provider_job_id: "9fe504b8-0386-476f-8754-d84eac2e0a52-e2"
+    soulx_attempt_id: "d96fc176-eabe-5c97-8ff2-13d53d0d594f"
+    soulx_provider_job_id: "e5388b7c-60a4-487b-a4ac-57bb2d629a3e-e2"
+    dispatch_count: 1
+    assignments: 2
+    generation_state: "FAILED"
+    attempts: "both PERMANENT_FAILED"
+    outbox: "both TERMINAL"
+    lease: "RELEASED"
+    retry_policy: "Never retry or redispatch this consumed pair"
+  zero_compute_proof:
+    reads: 3
+    mage: "HTTP 200 each read; running=0, inProgress=0, inQueue=0, retried=0, idle=1, ready=1, throttled=0, unhealthy=0"
+    soulx: "HTTP 200 each read; running=0, inProgress=0, inQueue=0, retried=0, idle=1, ready=1, throttled=0, unhealthy=0"
+    paid_compute: "zero active provider work after settlement"
+  next: "Fresh exact qualification authority is required before updating retained endpoint/template image bindings or starting another paid Stage 6/7 generation. Do not infer Stage 6/7 success, final render, or Chrome MP4 acceptance from this repair checkpoint."
 
 v2_09_live_presend_recovery_2026_09_10:
   status: "DEPLOYED_AWAITING_FRESH_PROJECT_STAGE6_PROOF"
