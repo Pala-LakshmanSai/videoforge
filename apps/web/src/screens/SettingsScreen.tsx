@@ -29,10 +29,7 @@ function HostedSettingsScreen() {
 
   return (
     <>
-      <PageHeader
-        title="Settings"
-        description="Manage access, connections, and defaults for this workspace."
-      />
+      <PageHeader title="Settings" />
       <div className="grid grid-2 settings-grid">
         <Panel eyebrow="Account" heading={tenant.data?.workspace_name ?? "Your workspace"}>
           <div className="settings-summary">
@@ -89,10 +86,7 @@ export function SettingsScreen() {
 
   return (
     <>
-      <PageHeader
-        title="Settings"
-        description="Manage access, connections, and defaults for this workspace."
-      />
+      <PageHeader title="Settings" />
       <div className="grid grid-2 settings-grid">
         <Panel eyebrow="Team" heading="Access">
           <div className="settings-summary">

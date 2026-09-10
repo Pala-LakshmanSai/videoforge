@@ -2,7 +2,7 @@
 
 .library-grid {
   display: grid;
-  grid-template-columns: minmax(0, 880px);
+  grid-template-columns: minmax(0, 736px);
   gap: 16px;
 }
 
@@ -29,11 +29,6 @@
 
 .settings-grid {
   align-items: start;
-}
-
-.settings-grid .panel,
-.library-output {
-  min-width: 0;
 }
 
 .settings-grid .panel-header {

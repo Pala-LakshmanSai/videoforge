@@ -551,10 +551,7 @@ function FixtureQueueScreen() {
   if (bootstrap.isPending || queue.isPending) {
     return (
       <>
-        <PageHeader
-          title="Queue"
-          description="Keep your private production queue moving and see what needs your attention."
-        />
+        <PageHeader title="Queue" />
         <Panel heading="Loading your private queue">
           <div className="empty-state" aria-busy="true">
             <span className="spinner" aria-hidden="true" />
@@ -567,10 +564,7 @@ function FixtureQueueScreen() {
   if (bootstrap.isError || queue.isError || !queue.data) {
     return (
       <>
-        <PageHeader
-          title="Queue"
-          description="Keep your private production queue moving and see what needs your attention."
-        />
+        <PageHeader title="Queue" />
         <EmptyState
           icon={<AlertTriangle />}
           title="Queue unavailable"
@@ -596,7 +590,6 @@ function FixtureQueueScreen() {
     <>
       <PageHeader
         title="Queue"
-        description="Keep your private production queue moving and see what needs your attention."
         actions={
           <Link
             to="/projects/new"
