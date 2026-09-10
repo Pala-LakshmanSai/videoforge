@@ -1024,6 +1024,7 @@ export class RunPodControlClient {
     }
     const request = {
       ...policy,
+      templateId,
       dataCenterIds: placement.dataCenterIds,
       gpuCount: 1,
       gpuTypeIds: [V207_RUNPOD_GPU],

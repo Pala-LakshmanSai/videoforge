@@ -1600,6 +1600,7 @@ describe("RunPod scale-zero control", () => {
       expect(new URL(String(input)).pathname).toBe("/endpoints/endpoint_01/update");
       const body = JSON.parse(String(init?.body));
       expect(body).toMatchObject({
+        templateId: "template_01",
         workersMin: 0,
         workersMax: 2,
         gpuCount: 1,
