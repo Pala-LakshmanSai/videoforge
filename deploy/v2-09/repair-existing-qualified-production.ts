@@ -376,12 +376,16 @@ function cloudflareConfiguration(args: {
   privateRoot: string;
   sourceCommit: string;
   secretRoot: string;
+  runwareKeyPath: string;
   oauthConfigPath: string;
   secretNames: readonly string[];
   oauthScopes: readonly string[];
 }) {
   const secretFiles = Object.fromEntries(
-    args.secretNames.map((name) => [name, join(args.secretRoot, name)]),
+    args.secretNames.map((name) => [
+      name,
+      name === "RUNWARE_API_KEY" ? args.runwareKeyPath : join(args.secretRoot, name),
+    ]),
   );
   return {
     bootstrapConfigPath: join(args.privateRoot, "wrangler.production.bootstrap.json"),
@@ -468,10 +472,12 @@ async function execute(args: Readonly<Record<string, string | boolean>>) {
   const runpodKeyPath = requiredPath(args, "runpod-key");
   const releaseConfigPath = requiredPath(args, "release-config");
   const secretRoot = requiredPath(args, "secret-root");
+  const runwareKeyPath = requiredPath(args, "runware-key");
   const oauthConfigPath = requiredPath(args, "oauth-config");
   if (existsSync(privateRoot)) fail("PRIVATE_ROOT_ALREADY_EXISTS");
   createPrivateRoot(privateRoot);
   privateDirectory(secretRoot);
+  privateFile(runwareKeyPath);
   privateFile(oauthConfigPath);
   requiredRuntimeRunPodKey = readPrivateText(runpodKeyPath).trim();
   if (requiredRuntimeRunPodKey.length < 20) fail("RUNPOD_KEY_INVALID");
@@ -511,6 +517,7 @@ async function execute(args: Readonly<Record<string, string | boolean>>) {
     privateRoot,
     sourceCommit,
     secretRoot,
+    runwareKeyPath,
     oauthConfigPath,
     secretNames: SECRET_NAMES,
     oauthScopes: APPROVED_WRANGLER_OAUTH_SCOPES,
