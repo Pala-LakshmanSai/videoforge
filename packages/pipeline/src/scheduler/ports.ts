@@ -26,3 +26,8 @@ export {
 
 export { deterministicTimelineScheduler, scheduleTimeline } from "./scheduler.js";
 export { SUPPORTED_SCHEDULER_CONFIG, SUPPORTED_SCHEDULER_VERSION } from "./config.js";
+export {
+  spanPaddedWindowMs,
+  SPAN_PADDED_MAX_MS,
+  SPAN_PADDED_MIN_MS,
+} from "./span-padding.js";

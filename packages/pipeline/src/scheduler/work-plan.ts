@@ -9,6 +9,7 @@ import {
 import type { ProjectRevisionDocumentRef, TimelinePlanDocumentRef } from "../documents.js";
 import type { TranscriptDocumentRef } from "../transcript/types.js";
 import { pipelineFailure, pipelineSuccess, type PipelineResult } from "../errors.js";
+import { spanPaddedWindowMs } from "./span-padding.js";
 import { SUPPORTED_SCHEDULER_CONFIG } from "./config.js";
 import { validateTimelineSemantics } from "./scheduler.js";
 
@@ -169,14 +170,11 @@ export async function compileCompleteWorkPlan(
   let selectedSpanAudioMs = 0;
   for (const [index, segment] of avatarSegments.entries()) {
     const span = spanBySegment.get(segment.segment_id);
-    const paddedStart = Math.max(
-      0,
-      segment.source_audio_start_ms - SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms,
-    );
-    const paddedEnd = Math.min(
-      request.transcript.value.source.duration_ms,
-      segment.source_audio_end_ms + SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms,
-    );
+    const { paddedStartMs: paddedStart, paddedEndMsExclusive: paddedEnd } = spanPaddedWindowMs({
+      selectedStartMs: segment.source_audio_start_ms,
+      selectedEndMsExclusive: segment.source_audio_end_ms,
+      sourceDurationMs: request.transcript.value.source.duration_ms,
+    });
     if (
       !span ||
       span.taskKey !== segment.required_slots.avatar.span_audio_task_key ||

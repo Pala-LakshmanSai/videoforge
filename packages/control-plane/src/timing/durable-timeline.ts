@@ -9,6 +9,7 @@ import type { JsonValue, Sha256Digest } from "@videoforge/contracts";
 import type { ContractDocumentValidationAuthority } from "@videoforge/contracts";
 import {
   scheduleTimeline,
+  spanPaddedWindowMs,
   SUPPORTED_SCHEDULER_CONFIG,
   SUPPORTED_SCHEDULER_VERSION,
 } from "@videoforge/pipeline";
@@ -228,7 +229,6 @@ export async function prepareDurableDeterministicTimeline(
   const digest = timelineDocumentHash.slice("sha256:".length);
   const objectKey = `workspace/${scope.workspaceId}/project/${command.projectId}/revision/${command.projectRevisionId}/timeline/${digest}.json`;
   const sourceDurationMs = transcript.value.source.duration_ms;
-  const paddingMs = SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms;
 
   const segments = scheduled.value.value.segments.map((segment, index) =>
     Object.freeze({
@@ -252,8 +252,11 @@ export async function prepareDurableDeterministicTimeline(
     if (taskKey === null) return [];
     const selectedStartMs = segment.source_audio_start_ms;
     const selectedEndMsExclusive = segment.source_audio_end_ms;
-    const paddedStartMs = Math.max(0, selectedStartMs - paddingMs);
-    const paddedEndMsExclusive = Math.min(sourceDurationMs, selectedEndMsExclusive + paddingMs);
+    const { paddedStartMs, paddedEndMsExclusive } = spanPaddedWindowMs({
+      selectedStartMs,
+      selectedEndMsExclusive,
+      sourceDurationMs,
+    });
     return [
       Object.freeze({
         spanId: stableUuid("videoforge:selected-span-audio:v1", timelinePlanId, segment.segment_id),
