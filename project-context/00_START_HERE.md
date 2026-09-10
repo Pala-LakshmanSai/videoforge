@@ -2,12 +2,28 @@
 
 ## Active handoff — read this section first
 
+### Superseding approval — 2026-09-10
+
+The current user explicitly approved a bounded successor deployment and one fresh Stage 6/7
+qualification after the source-only repair at `a1a324b3cfaa19124e9ed8214d7b5b379caef6ab`:
+deploy the terminal-ingestor fix, publish/activate the repaired Mage image, verify the existing
+SoulX binding, and run one new project. The cap is USD 2, the offering is RTX 4090 in EU-RO-1,
+`workersMin=0`, at most one worker per lane, the existing retained 50 GB volumes, no fallback,
+no redispatch, and mandatory zero-work readback/cleanup afterward. The consumed `helen1` pair
+remains frozen and must not be retried, cancelled, or deleted from the old control. The
+no-rerun language in the historical handoff below applies to that consumed pair only; it does
+not prohibit this explicitly approved fresh successor qualification. `CURRENT_STATE.yaml` is
+the source of the exact approval and live deployment evidence.
+
 ### Current new-chat launch point — 2026-09-08
 
 The user explicitly authorized continuing this V2-09 scope without further approval prompts:
 bounded repairs, reseals, fresh source-bound authorities and deployment through9.7, the single9.8
 Chrome E2E, and9.9 cleanup/readiness. Existing numeric caps, frozen Stage6/7 and no consumed-authority
 replay remain mandatory. This instruction overrides older repeated-approval requirements below.
+
+This paragraph is historical for the consumed pair. The superseding 2026-09-10 approval above
+authorizes one fresh successor qualification under the stated cap and lane constraints.
 
 **Current 9.8 continuation — 2026-09-08:** Main checkpoints1–8 finished;
 9.7 VERIFIED and frozen;9.8 remains active on the existing project after successful

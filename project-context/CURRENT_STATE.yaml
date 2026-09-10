@@ -27,11 +27,33 @@ current_goal_boundary:
   runpod_mutation_or_gpu: "At most one generation on exact two retained qualified lanes; workersMin0/workersMax1; no fallback"
   v2_07_action: "Consumed live Stage6/7 pair remains frozen and non-retryable; source-only successor repair is recorded below"
   current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 repair-release checkpoint complete; fresh qualification required before any retry;9.9 pending"
-  approval_evidence: "Current explicit user continuation on2026-09-08; existing bounded authority preserved"
+  approval_evidence: "Current explicit user approval on2026-09-10 for one bounded successor deployment and qualification; consumed pair remains frozen"
   note: "Fresh project951c2305-75fd-405a-b152-74f64b2b2f73 completed ASR/context/prompts and dispatched the exact pair once; consumed pair is terminal and must not be retried. Three provider reads show zero running/in-progress/queued compute. Queue admission, worker-contract, and terminal-failure mapping repairs are released; endpoint/template activation still needs fresh qualification authority"
 
+v2_09_stage6_7_fresh_successor_approval_2026_09_10:
+  status: "APPROVED_BOUNDED_DEPLOYMENT_AND_ONE_QUALIFICATION_PENDING_EXECUTION"
+  approved_at: "2026-09-10T16:59:10Z"
+  approval_source: "Explicit current user approval after the combined bounded production proposal"
+  source_commit: "a1a324b3cfaa19124e9ed8214d7b5b379caef6ab"
+  scope: "Deploy terminal UUID-ingestor fix; publish and activate corrected Mage image; verify exact existing SoulX binding; run one fresh Stage6/7 project; reconcile and drain provider work"
+  cap_usd: 2
+  offering:
+    gpu: "NVIDIA GeForce RTX 4090"
+    region: "EU-RO-1"
+    workers_min: 0
+    workers_max: 1
+    concurrency_per_lane: 1
+    retained_volume_gb_per_lane: 50
+  constraints:
+    no_fallback: true
+    no_redispatch: true
+    no_consumed_pair_replay: true
+    zero_provider_work_after_run: true
+  stop_conditions: "Stop before the next mutation on any source/config/lineage/provider mismatch, cap risk, ambiguous provider state, or failed drain; never retry an ambiguous provider mutation"
+  next: "Create fresh exact authority/configuration, deploy/read back production, publish/read back repaired Mage, verify both lane bindings, then start one new project and monitor Stage6/7"
+
 v2_09_stage6_7_terminal_contract_repair_2026_09_10:
-  status: "SOURCE_ONLY_FOCUSED_PASS_PENDING_FRESH_QUALIFICATION"
+  status: "APPROVED_FRESH_QUALIFICATION_PENDING_EXECUTION"
   source_commit: "658abd02"
   exact_causes:
     mage: "The durable production authority is exactly one hour (issued_at plus 3600 seconds), while the active Mage image still required a 7200-second signed-authority interval and failed with MAGE_SERVERLESS_TIMING_ISSUED_AT_INVALID before inference."
@@ -43,8 +65,8 @@ v2_09_stage6_7_terminal_contract_repair_2026_09_10:
     terminal_ingestor: "Vitest 7/7; changed-file ESLint PASS"
     mage: "Python unittest 48/48; compileall PASS"
     diff: "git diff --check PASS"
-  live_state: "The consumed Chrome project remains ACTIVE/WAITING_FOR_WORKER/BOTH_ASSIGNED in durable state because the old workflow errored before reconciliation; RunPod reports zero running and zero queued jobs. No retry, cancel, delete, endpoint mutation, image publication, or paid work was performed for this source-only repair."
-  next: "Fresh exact authority is required before publishing/activating the repaired Mage image, deploying the terminal-ingestor successor if needed, or starting a new paid Stage6/7 project. Do not infer live readiness from focused tests."
+  live_state: "The consumed Chrome project remains ACTIVE/WAITING_FOR_WORKER/BOTH_ASSIGNED in durable state because the old workflow errored before reconciliation; RunPod reports zero running and zero queued jobs. The consumed pair is frozen. The current user has separately approved one fresh successor deployment/qualification under the bounded approval above."
+  next: "Create fresh exact authority, deploy/read back the terminal successor, publish/read back the corrected Mage image, verify bindings, then run one new paid Stage6/7 project. Do not infer live readiness from focused tests."
 
 v2_09_stage6_7_worker_contract_repair_2026_09_10:
   status: "DEPLOYED_REPAIR_CHECKPOINT_AWAITING_FRESH_QUALIFICATION"

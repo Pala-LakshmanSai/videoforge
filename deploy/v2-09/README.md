@@ -59,7 +59,10 @@ node deploy/v2-09/execute-qualified-production.mjs \
   --configuration /absolute/private/v2-09-configuration.json
 ```
 
-Current authority is **read-only preflight only**. Do not run `--execute` or `--cleanup-only`, push
-source, apply migrations or grants, publish/install media-worker 0.1.17, mutate RunPod/Cloudflare/R2,
-open a paid Chrome journey, or spend until the exact live proposal is separately approved. V2-07
-Stage 6 and V2-08 Stage 7 are frozen qualified predecessors and must not be modified or rerun.
+The historical read-only-only boundary above is superseded for the current task by the user's
+explicit 2026-09-10 approval recorded in `project-context/CURRENT_STATE.yaml`. That approval is
+bounded to the terminal-ingestor deployment, corrected Mage publication/activation, exact existing
+SoulX verification, and one fresh successor Stage 6/7 qualification under the USD 2 cap on RTX 4090
+EU-RO-1 with `workersMin=0`, one worker per lane, no fallback/redispatch, and zero-work cleanup.
+Use only a fresh exact authority/configuration pair derived from the clean source; never replay the
+consumed pair. The V2-07/V2-08 predecessor records remain immutable historical evidence.
