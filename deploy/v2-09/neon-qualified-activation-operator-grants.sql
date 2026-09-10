@@ -192,3 +192,6 @@ COMMIT;
 ROLLBACK;
 SELECT 1/0;
 \endif
+
+-- The hosted project detail projects span-audio preparation, so the runtime roles read it.
+GRANT SELECT ON public.selected_span_audio TO videoforge_v209_runtime_dc9612d6;
