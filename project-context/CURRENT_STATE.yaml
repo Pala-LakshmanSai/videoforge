@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-09-11T02:21:10Z"
+updated_at: "2026-09-11T03:14:34Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -26,9 +26,9 @@ current_goal_boundary:
   paid_requests_or_spend: "USD2 incremental cap; USD17.50 total ceiling; context10000 and prompts40000 microUSD"
   runpod_mutation_or_gpu: "At most one generation on exact two retained qualified lanes; workersMin0/workersMax1; no fallback"
   v2_07_action: "Consumed live Stage6/7 pair remains frozen and non-retryable; source-only successor repair is recorded below"
-  current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 owner-reconciliation repair deployed and Chrome-verified; stale project is terminal and deletion is ready"
+  current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 owner-reconciliation repair deployed and Chrome-verified; stale project deleted and next project is ready"
   approval_evidence: "Current explicit user approval on2026-09-10 for one bounded successor deployment and qualification; consumed pair remains frozen"
-  note: "The owner-cancellation runtime-role repair is deployed and public status is QUALIFIED_EXACT at Worker 3f7bec79-53bb-4a90-a62c-61fe9e462e88. Chrome project72343e5f-86b6-4838-a50b-da17bca89f41 accepted reconciliation and is now terminal: pair runtime SETTLED, generation request FAILED, both lanes PERMANENT_FAILED, both outboxes TERMINAL, and exact provider assignments cleaned without redispatch. RunPod read-only inventory shows both endpoint workers desiredStatus=EXITED with workersMin=0/workersMax=1; no active compute remains. Delete is ready but requires a fresh user confirmation immediately before the UI action."
+  note: "The owner-cancellation runtime-role repair is deployed and public status is QUALIFIED_EXACT at Worker 3f7bec79-53bb-4a90-a62c-61fe9e462e88. Chrome project72343e5f-86b6-4838-a50b-da17bca89f41 accepted reconciliation, was deleted after fresh user confirmation, and is absent from the authenticated Queue; the Queue reports IN PROGRESS 0. Before deletion the pair was SETTLED, generation request FAILED, both lanes PERMANENT_FAILED, both outboxes TERMINAL, and exact provider assignments cleaned without redispatch. RunPod read-only inventory showed both endpoint workers desiredStatus=EXITED with workersMin=0/workersMax=1; no active compute remains. Create the next project only after the user starts it."
 
 v2_09_global_owner_cancellation_reconciliation_repair_2026_09_11:
   status: "SUPERSEDED_BY_RUNTIME_ROLE_REPAIR"
@@ -53,7 +53,7 @@ v2_09_global_owner_cancellation_reconciliation_repair_2026_09_11:
   next: "Superseded by the runtime-role repair block below; do not use the c220/ff29 readback as current production state."
 
 v2_09_global_owner_cancellation_runtime_role_repair_2026_09_11:
-  status: "DEPLOYED_AND_CHROME_VERIFIED_TERMINAL"
+  status: "DEPLOYED_CHROME_VERIFIED_AND_DELETED"
   implementation_commit: "e9415c5182169184d997971a9b9186d0bad2d9ea"
   exact_cause: "The first global cancellation repair still queried serverless_dispatch_outbox and serverless_provider_assignments directly from the production runtime role. That role intentionally has no SELECT permission on those restricted tables, so the live Worker returned SQLSTATE 42501. The UI masked it as PROJECT_WORK_RECONCILIATION_UNAVAILABLE, making the failure look like a project-specific Workflow outage."
   repair: "Keep the runtime role narrow: select only allowed generation/project/attempt rows, then call the existing SECURITY DEFINER videoforge_inspect_hosted_pair_runtime projection and require two RECONCILE_ASSIGNED rows before scheduling the deterministic pair Workflow. No table grants were widened and no provider request is created."
@@ -69,13 +69,16 @@ v2_09_global_owner_cancellation_runtime_role_repair_2026_09_11:
     project_id: "72343e5f-86b6-4838-a50b-da17bca89f41"
     generation_request_id: "1e01794b-989f-4d06-9beb-82ccd00180c9"
     terminal_readback: "pair runtime SETTLED at 2026-09-11T02:18:25Z; generation request FAILED; Mage and SoulX attempts PERMANENT_FAILED; both outboxes TERMINAL; exact current provider assignments were observed and settled cleanup-only"
-    policy: "Do not retry or redispatch. Delete only after fresh user confirmation immediately before the Computer Use click."
+    policy: "Do not retry or redispatch. Deleted after fresh user confirmation; do not recreate or retry this consumed run."
   runpod_readback:
     pods: "2 records, both desiredStatus=EXITED"
     endpoints: "2 records, both workersMin=0/workersMax=1 and worker desiredStatus=EXITED"
     retained_volumes: "2 x 50 GB EU-RO-1 volumes preserved"
     active_compute: 0
-  next: "Ask for immediate confirmation, click Delete project once, verify deletion in Chrome and the authenticated API, then begin the next project."
+  deletion_readback:
+    chrome: "Delete confirmation accepted; redirected to Queue; target project absent from the authenticated project list; Queue IN PROGRESS=0"
+    provider_state: "No provider work was started by deletion; prior RunPod readback remained two exited workers and active compute 0"
+  next: "Create a fresh project only when the user starts it, then monitor the new Stage 6/7 flow from dispatch through final acceptance."
 
 v2_09_stage6_7_fresh_successor_approval_2026_09_10:
   status: "EXECUTED_EXACT_SUCCESSOR_ACTIVATION_CHROME_E2E_PENDING"
