@@ -127,6 +127,7 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
       "assets",
       "compatibility_date",
       "compatibility_flags",
+      "find_additional_modules",
       "limits",
       "main",
       "name",
@@ -134,6 +135,7 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
       "observability",
       "placement",
       "r2_buckets",
+      "rules",
       "triggers",
       "vars",
       "version_metadata",
@@ -145,6 +147,7 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     config.$schema !== "./node_modules/wrangler/config-schema.json" ||
     config.compatibility_date !== "2026-08-08" ||
     JSON.stringify(config.compatibility_flags) !== JSON.stringify(["nodejs_compat"]) ||
+    config.find_additional_modules !== true ||
     config.no_bundle !== true ||
     config.main !== expectedMain
   )
@@ -177,6 +180,14 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     config.observability.logs.invocation_logs !== true
   )
     fail("observability must remain fully enabled");
+  if (
+    !Array.isArray(config.rules) ||
+    config.rules.length !== 1 ||
+    !exactKeys(config.rules[0], ["globs", "type"]) ||
+    config.rules[0].type !== "ESModule" ||
+    JSON.stringify(config.rules[0].globs) !== JSON.stringify(["**/*.js", "**/*.mjs"])
+  )
+    fail("Worker module discovery rules must remain exact");
   if (
     !Array.isArray(config.r2_buckets) ||
     config.r2_buckets.length !== 1 ||
