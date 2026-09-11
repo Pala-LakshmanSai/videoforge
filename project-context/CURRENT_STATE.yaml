@@ -1,10 +1,10 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-09-11T03:43:23Z"
+updated_at: "2026-09-11T06:19:50Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_same_project_gpu_handoff_repair
+current_milestone: v2_09_stage6_7_receipt_verifier_production_repair
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -18,17 +18,45 @@ gpu_use_authorized: true
 maximum_external_spend_usd: 2
 
 current_goal_boundary:
-  mode: "v2_09_same_project_gpu_handoff_repair"
-  live_provider_calls: "Owner-reconciliation repair deployed and verified; local media worker reconnected; no new generation was started"
+  mode: "v2_09_stage6_7_receipt_verifier_production_repair"
+  live_provider_calls: "Receipt-verifier repair deployed and activated; no new generation was started after activation"
   remote_mutation: true
-  deployment_or_publication: "Owner-reconciliation runtime-role repair source e9415c5182169184d997971a9b9186d0bad2d9ea is live at Worker version 3f7bec79-53bb-4a90-a62c-61fe9e462e88 with config sha256:8d19295a04d915576b3a7bd43a077e5a6445e26706bf7e6b163c481566be746f; append-only qualified activation a19af83f-8910-447f-933c-6752fce61859 is committed"
+  deployment_or_publication: "Receipt-verifier repair source 0a5ea36e7de2e53f9a7dbcc9791fb298ec230c54 is live at Worker version 6f7f96ae-567f-48c3-8afa-1c88cd677e49 with config sha256:dcbe4947d23238c67b4c3e9a8ef2a51b9896daea5ea4b9fa6dede863d9bca3fd; append-only qualified activation 4488f923-ca3d-563f-bf80-4e1384a6fdb1 is committed"
   credential_value_access: "Existing private mode0600 Runware file; never log or persist value elsewhere"
   paid_requests_or_spend: "USD2 incremental cap; USD17.50 total ceiling; context10000 and prompts40000 microUSD"
   runpod_mutation_or_gpu: "At most one generation on exact two retained qualified lanes; workersMin0/workersMax1; no fallback"
   v2_07_action: "Consumed live Stage6/7 pair remains frozen and non-retryable; source-only successor repair is recorded below"
-  current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 owner-reconciliation repair deployed and Chrome-verified; stale project deleted; local worker online and next project ready"
+  current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen; receipt-verifier repair deployed and QUALIFIED_EXACT activated; fresh Stage6/7 Chrome acceptance remains pending"
   approval_evidence: "Current explicit user approval on2026-09-10 for one bounded successor deployment and qualification; consumed pair remains frozen"
-  note: "The owner-cancellation runtime-role repair is deployed and public status is QUALIFIED_EXACT at Worker 3f7bec79-53bb-4a90-a62c-61fe9e462e88. Chrome project72343e5f-86b6-4838-a50b-da17bca89f41 accepted reconciliation, was deleted after fresh user confirmation, and is absent from the authenticated Queue; the Queue reports IN PROGRESS 0. Before deletion the pair was SETTLED, generation request FAILED, both lanes PERMANENT_FAILED, both outboxes TERMINAL, and exact provider assignments cleaned without redispatch. RunPod read-only inventory showed both endpoint workers desiredStatus=EXITED with workersMin=0/workersMax=1; no active compute remains. The installed local VideoForge Worker v0.1.17 was offline because its process was not running; it was started, Settings now reports lakshmans-Mac-mini.local ONLINE, and New Project reports the computer connected. Create the next project only after the user starts it."
+  note: "The signed-receipt verifier now uses the exact signed body bytes and safely distinguishes contract/hash failures. Production Worker 6f7f96ae-567f-48c3-8afa-1c88cd677e49 reports source 0a5ea36e and QUALIFIED_EXACT; activation readback matched the live version and config. CI publication now uses the scoped GHCR_TOKEN and the immutable SoulX image publication passed. Chrome currently shows API healthy and the existing demo1 run remains a stale waiting/consumed project; do not retry or delete it automatically. RunPod read-only inventory shows two retained 50 GB lanes, workersMin=0/workersMax=1, both worker records desiredStatus=EXITED, and zero active compute. Start one fresh project for the authorized Stage6/7 Chrome acceptance; monitor both lanes and drain to zero afterward."
+
+v2_09_stage6_7_receipt_verifier_production_repair_2026_09_11:
+  status: "DEPLOYED_AND_ACTIVATED_FRESH_CHROME_ACCEPTANCE_PENDING"
+  implementation_commits:
+    verifier: "5a719f90"
+    ci_publication: "0a5ea36e"
+  exact_cause: "The hosted receipt verifier reconstructed a receipt from the duplicate response object before validating the signed body, collapsing provider receipt-body/contract drift to V213_RECEIPT_SCHEMA_INVALID and preventing terminal output ingestion. The original raw provider payload was no longer retained, so the exact bad field cannot be recovered."
+  repair: "Treat the decoded signed receipt body as authoritative, take only receipt_sha256 and signature from the duplicate envelope, validate the reconstructed contract, and verify the raw body hash/signature/bindings. Safe redacted contract paths are now retained in the error code."
+  ci_repair: "The first image publication failed because the workflow's GITHUB_TOKEN could not publish the existing GHCR package. The workflow now uses the scoped GHCR_TOKEN repository secret; workflow 34567307532 passed build, publication, anonymous pull, and deployability evidence."
+  production_readback:
+    worker_version: "6f7f96ae-567f-48c3-8afa-1c88cd677e49"
+    source_commit: "0a5ea36e7de2e53f9a7dbcc9791fb298ec230c54"
+    config_sha256: "sha256:dcbe4947d23238c67b4c3e9a8ef2a51b9896daea5ea4b9fa6dede863d9bca3fd"
+    activation_row: "4488f923-ca3d-563f-bf80-4e1384a6fdb1"
+    activation_id_sha256: "sha256:619ae7d921ffd2e2ae937a6b0f2a8cac836af431d63a9e8a676996c148212df4"
+    public_transport: "QUALIFIED_EXACT"
+    health_route: "503 HOSTED_ROUTE_NOT_COMPOSED is the existing V2-06 adapter-surface response; /api/v2/hosted/status is the qualified transport gate"
+  provider_readback:
+    pods: "2 records, both desiredStatus=EXITED"
+    endpoints: "2 records, both workersMin=0/workersMax=1"
+    worker_statuses: "both desiredStatus=EXITED"
+    active_compute: 0
+    retained_volumes: "2 x 50 GB EU-RO-1 volumes preserved"
+  chrome_readback:
+    surface: "Production Queue opened in Chrome after deployment"
+    api_status: "API healthy; Your computer Connected"
+    existing_consumed_project: "demo1 remains waiting/stale and must not be retried or auto-deleted"
+  next: "Start one fresh project and monitor Stage6 and Stage7 together from dispatch through output/provenance, then prove terminal cleanup and zero compute."
 
 v2_09_global_owner_cancellation_reconciliation_repair_2026_09_11:
   status: "SUPERSEDED_BY_RUNTIME_ROLE_REPAIR"
@@ -6774,7 +6802,7 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_same_project_gpu_handoff_repair
+  milestone: v2_09_stage6_7_receipt_verifier_production_repair
   status: EXECUTION_ACTIVE
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: explicit_same_project_continuation_no_replay
