@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-09-11T01:02:33Z"
+updated_at: "2026-09-11T01:21:34Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -21,27 +21,36 @@ current_goal_boundary:
   mode: "v2_09_same_project_gpu_handoff_repair"
   live_provider_calls: "Successor deployment and exact two-lane activation completed; no fresh post-activation Chrome Stage 6/7 generation has been started yet"
   remote_mutation: true
-  deployment_or_publication: "Exact successor source 45b189bba7ee039a7ff61d57886d589d29eed661 is live at Worker version c6bc506b-6d2f-4866-bcfe-c086da952208 with config sha256:925f3b01b4a526728072e7e17321be2f6a40eaf7eb85c4c31853b14ac67f7213; exact Mage/SoulX successor images and endpoint/template bindings are activated"
+  deployment_or_publication: "Owner-cancellation repair source c22045eae2d597c203506760ff6f92960b9d1b5e is live at Worker version ff29f7a9-cd4d-44d1-876f-35d4d250ec84 with config sha256:2c61b6cc20902fd35f40643ceb9bc1286bf89e4f36618c733edc314784586a2d; append-only qualified activation 3bac9fa1-79a4-51d4-8f87-33f962f4c97b is committed"
   credential_value_access: "Existing private mode0600 Runware file; never log or persist value elsewhere"
   paid_requests_or_spend: "USD2 incremental cap; USD17.50 total ceiling; context10000 and prompts40000 microUSD"
   runpod_mutation_or_gpu: "At most one generation on exact two retained qualified lanes; workersMin0/workersMax1; no fallback"
   v2_07_action: "Consumed live Stage6/7 pair remains frozen and non-retryable; source-only successor repair is recorded below"
   current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 repair-release and exact successor activation complete;9.9 fresh Chrome Stage 6/7 E2E pending"
   approval_evidence: "Current explicit user approval on2026-09-10 for one bounded successor deployment and qualification; consumed pair remains frozen"
-  note: "Production activation completed atomically with DB deployment version 16 for both lanes, replayed=false, dbLoaded=true, and providerZero=true. Public status is QUALIFIED_EXACT at Worker c6bc506b-6d2f-4866-bcfe-c086da952208. Chrome project72343e5f-86b6-4838-a50b-da17bca89f41 started before this activation and remains frozen at ASSIGNED with absent provider jobs; do not retry it. Start one fresh project for the post-activation Stage 6/7 E2E and drain immediately afterward."
+  note: "The owner-cancellation repair is deployed and public status is QUALIFIED_EXACT at Worker ff29f7a9-cd4d-44d1-876f-35d4d250ec84. RunPod read-only safe-state proof remains runningPodCount=0, activeServerlessWorkerCount=0, workersMin=0, and both endpoint workers EXITED. Chrome project72343e5f-86b6-4838-a50b-da17bca89f41 remains frozen at ASSIGNED with absent provider jobs; use Stop and reconcile provider work, wait for terminal settlement, then delete it before creating any new project."
 
 v2_09_global_owner_cancellation_reconciliation_repair_2026_09_11:
-  status: "IMPLEMENTED_SOURCE_ONLY_AWAITING_CODE_ONLY_PRODUCTION_ROLLOUT"
+  status: "DEPLOYED_AND_SOURCE_BOUND_QUALIFIED"
   implementation_commit: "d5d31948"
+  deployment_commit: "c22045eae2d597c203506760ff6f92960b9d1b5e"
   exact_cause: "The owner pre-dispatch SQL function correctly rejects an already provider-bound Mage/SoulX pair with SQLSTATE 55000, but the cancellation route did not restart or schedule the existing deterministic pair Workflow after that rejection. The UI also classified ASSIGNED attempts as pre-dispatch, so it offered a control that was guaranteed to receive the same rejection."
   repair: "On the scoped 55000 path, select only the exact active two-lane provider-bound pair and call the existing deterministic Workflow wiring. The Workflow observes and reconciles those exact attempts without redispatch. The UI now offers Stop and reconcile provider work for assigned/provider-bound attempts while preserving the strict pre-dispatch cancel path."
   safety: "No migration, provider dispatch, RunPod mutation, retry, or new generation request is introduced. Untouched PLANNED/OUTBOXED pairs remain on the existing pre-dispatch cancellation path."
   validation: "Focused hosted route/UI tests 131/131; changed-file ESLint PASS; Cloudflare production bundle and superseded-routing firewall PASS; live read-only query matched the stuck project's provider-bound pair. Repository-wide web typecheck still has five unrelated pre-existing errors."
+  production_readback:
+    worker_version: "ff29f7a9-cd4d-44d1-876f-35d4d250ec84"
+    config_sha256: "sha256:2c61b6cc20902fd35f40643ceb9bc1286bf89e4f36618c733edc314784586a2d"
+    activation_id: "3bac9fa1-79a4-51d4-8f87-33f962f4c97b"
+    public_transport: "QUALIFIED_EXACT"
+    provider_actions_created: 0
+    runpod_running_pods: 0
+    runpod_active_serverless_workers: 0
   live_stale_project:
     project_id: "72343e5f-86b6-4838-a50b-da17bca89f41"
     state: "ACTIVE with Mage/SoulX ASSIGNED attempts, absent provider jobs, and no progress/output/provenance rows"
     policy: "Do not retry or mutate automatically; after rollout use Stop and reconcile provider work, wait for terminal reconciliation, then delete"
-  next: "Roll out the code-only Worker and verify public status plus zero active provider work. Tell the user to reconcile/delete this project before creating a new one."
+  next: "User refreshes the existing project, clicks Stop and reconcile provider work, waits for terminal settlement, then deletes it. Only after that cleanup is confirmed should a new project be created."
 
 v2_09_stage6_7_fresh_successor_approval_2026_09_10:
   status: "EXECUTED_EXACT_SUCCESSOR_ACTIVATION_CHROME_E2E_PENDING"
