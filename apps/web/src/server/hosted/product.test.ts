@@ -58,10 +58,21 @@ const testState = vi.hoisted(() => {
       };
     }
     if (
-      sql.includes("SELECT request.id::text AS generation_request_id") &&
-      sql.includes("serverless_provider_assignments")
+      sql.includes("SELECT request.id::text AS generation_request_id")
     ) {
       return { rows: providerBoundPairRows, affectedRows: providerBoundPairRows.length };
+    }
+    if (sql.includes("videoforge_inspect_hosted_pair_runtime")) {
+      return {
+        rows:
+          providerBoundPairRows.length === 1
+            ? [
+                { recovery_action: "RECONCILE_ASSIGNED" },
+                { recovery_action: "RECONCILE_ASSIGNED" },
+              ]
+            : [],
+        affectedRows: providerBoundPairRows.length === 1 ? 2 : 0,
+      };
     }
     if (
       sql.includes("version.state NOT IN ('READY','ABANDONED')") ||
@@ -842,6 +853,11 @@ describe("hosted product route contract", () => {
           generationRequestId,
         },
       );
+      expect(
+        testState.query.mock.calls.some(([sql]) =>
+          /serverless_(?:dispatch_outbox|provider_assignments)/u.test(String(sql)),
+        ),
+      ).toBe(false);
     } finally {
       hostedPairWorkflowState.ensureHostedPairWorkflow.mockReset();
       testState.projectCancellationState.error = null;

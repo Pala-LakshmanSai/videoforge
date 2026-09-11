@@ -4144,32 +4144,29 @@ async function loadProviderBoundHostedPair(
                AND cpu.project_id = request.project_id
                AND cpu.state IN ('PLANNED','OUTBOXED','SUBMITTED','RUNNING','RECONCILING','CANCEL_REQUESTED')
           )
-          AND EXISTS (
-            SELECT 1
-              FROM public.serverless_attempts AS attempt
-              LEFT JOIN public.serverless_dispatch_outbox AS outbox
-                ON outbox.attempt_id = attempt.id
-             WHERE attempt.account_id = request.account_id
-               AND attempt.workspace_id = request.workspace_id
-               AND attempt.generation_request_id = request.id
-               AND (
-                 attempt.state NOT IN ('PLANNED','OUTBOXED')
-                 OR COALESCE(outbox.send_attempt_count, 0) <> 0
-                 OR outbox.state IN ('SENT','DISPATCH_ACK_UNKNOWN','ASSIGNED','TERMINAL')
-                 OR EXISTS (
-                   SELECT 1
-                     FROM public.serverless_provider_assignments AS assignment
-                    WHERE assignment.account_id = attempt.account_id
-                      AND assignment.workspace_id = attempt.workspace_id
-                      AND assignment.attempt_id = attempt.id
-                 )
-               )
-          )
         ORDER BY request.created_at DESC, request.id DESC
         LIMIT 1`,
       [scope.account_id, scope.workspace_id, projectId],
     );
-    return result.rows[0]?.generation_request_id ?? null;
+    const generationRequestId = result.rows[0]?.generation_request_id;
+    if (!generationRequestId) return null;
+
+    // The runtime role intentionally cannot SELECT the dispatch outbox or provider-assignment
+    // tables. Use the existing SECURITY DEFINER inspection projection for the provider-bound
+    // decision instead of widening that role's table grants from an owner-cancel route.
+    const inspection = await transaction.query<{
+      readonly recovery_action?: unknown;
+    }>(
+      `SELECT recovery_action
+         FROM public.videoforge_inspect_hosted_pair_runtime($1, $2, $3)`,
+      [scope.account_id, scope.workspace_id, generationRequestId],
+    );
+    if (
+      inspection.rows.length !== 2 ||
+      !inspection.rows.every((row) => row.recovery_action === "RECONCILE_ASSIGNED")
+    )
+      return null;
+    return generationRequestId;
   });
 }
 
