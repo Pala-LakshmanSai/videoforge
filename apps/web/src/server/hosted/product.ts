@@ -1,5 +1,5 @@
 import type { HostedExecutionContext } from "./auth";
-import type { SqlExecutor } from "@videoforge/control-plane";
+import type { SqlExecutor, TransactionalSqlExecutor } from "@videoforge/control-plane";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import {
   HostedCanonicalTimingPersistence,
@@ -38,6 +38,10 @@ import {
   prepareHostedVoiceoverContextRequest,
   reconcileHostedVoiceoverContext,
 } from "./voiceover-context";
+import {
+  ensureHostedPairWorkflow,
+  type HostedPairLiveEnvironment,
+} from "./hosted-pair-live-wiring";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -4083,9 +4087,142 @@ async function archiveHostedProject(
   }
 }
 
+type HostedPairOwnerReconciliation = {
+  readonly generationRequestId: string;
+  readonly workflowId: string;
+  readonly recovered: boolean;
+};
+
+async function loadProviderBoundHostedPair(
+  database: TransactionalSqlExecutor,
+  scope: HostedScope,
+  projectId: string,
+): Promise<string | null> {
+  return database.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1, $2, true)", [
+      "videoforge.account_id",
+      scope.account_id,
+    ]);
+    const result = await transaction.query<{ generation_request_id: string }>(
+      `SELECT request.id::text AS generation_request_id
+         FROM public.generation_requests AS request
+         JOIN public.projects AS project
+           ON project.account_id = request.account_id
+          AND project.workspace_id = request.workspace_id
+          AND project.id = request.project_id
+        WHERE request.account_id = $1
+          AND request.workspace_id = $2
+          AND request.project_id = $3
+          AND project.status = 'ACTIVE'
+          AND request.state IN ('WAITING','RETRY_WAIT','ADMITTED','ACTIVE','CANCELLING')
+          AND (
+            SELECT count(*)
+              FROM public.serverless_attempts AS attempt
+             WHERE attempt.account_id = request.account_id
+               AND attempt.workspace_id = request.workspace_id
+               AND attempt.generation_request_id = request.id
+          ) = 2
+          AND (
+            SELECT count(*) FILTER (WHERE attempt.lane = 'mage_image')
+              FROM public.serverless_attempts AS attempt
+             WHERE attempt.account_id = request.account_id
+               AND attempt.workspace_id = request.workspace_id
+               AND attempt.generation_request_id = request.id
+          ) = 1
+          AND (
+            SELECT count(*) FILTER (WHERE attempt.lane = 'soulx_avatar')
+              FROM public.serverless_attempts AS attempt
+             WHERE attempt.account_id = request.account_id
+               AND attempt.workspace_id = request.workspace_id
+               AND attempt.generation_request_id = request.id
+          ) = 1
+          AND NOT EXISTS (
+            SELECT 1
+              FROM public.hosted_cpu_job_attempts AS cpu
+             WHERE cpu.account_id = request.account_id
+               AND cpu.workspace_id = request.workspace_id
+               AND cpu.project_id = request.project_id
+               AND cpu.state IN ('PLANNED','OUTBOXED','SUBMITTED','RUNNING','RECONCILING','CANCEL_REQUESTED')
+          )
+          AND EXISTS (
+            SELECT 1
+              FROM public.serverless_attempts AS attempt
+              LEFT JOIN public.serverless_dispatch_outbox AS outbox
+                ON outbox.attempt_id = attempt.id
+             WHERE attempt.account_id = request.account_id
+               AND attempt.workspace_id = request.workspace_id
+               AND attempt.generation_request_id = request.id
+               AND (
+                 attempt.state NOT IN ('PLANNED','OUTBOXED')
+                 OR COALESCE(outbox.send_attempt_count, 0) <> 0
+                 OR outbox.state IN ('SENT','DISPATCH_ACK_UNKNOWN','ASSIGNED','TERMINAL')
+                 OR EXISTS (
+                   SELECT 1
+                     FROM public.serverless_provider_assignments AS assignment
+                    WHERE assignment.account_id = attempt.account_id
+                      AND assignment.workspace_id = attempt.workspace_id
+                      AND assignment.attempt_id = attempt.id
+                 )
+               )
+          )
+        ORDER BY request.created_at DESC, request.id DESC
+        LIMIT 1`,
+      [scope.account_id, scope.workspace_id, projectId],
+    );
+    return result.rows[0]?.generation_request_id ?? null;
+  });
+}
+
+/**
+ * Owner cancellation first attempts the strict pre-dispatch SQL transition. If that transition
+ * refuses an already provider-bound pair, this schedules the same deterministic Workflow used by
+ * normal execution. The Workflow only observes/cancels the exact existing jobs and settles them;
+ * it never creates a replacement dispatch. The query deliberately excludes untouched pairs so a
+ * cancellation click can never turn a pre-dispatch failure into new provider work.
+ */
+async function scheduleHostedPairOwnerReconciliation(
+  environment: HostedRuntimeEnvironment,
+  runtimeDatabase: TransactionalSqlExecutor,
+  scope: HostedScope,
+  projectId: string,
+): Promise<HostedPairOwnerReconciliation | null> {
+  const reconcilerDatabaseUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
+  if (typeof reconcilerDatabaseUrl !== "string" || !environment.HOSTED_PAIR_WORKFLOW) return null;
+  const generationRequestId = await loadProviderBoundHostedPair(runtimeDatabase, scope, projectId);
+  if (!generationRequestId) return null;
+
+  const reconcilerPool = createNeonPool(reconcilerDatabaseUrl);
+  try {
+    const workflow = await ensureHostedPairWorkflow(
+      environment as HostedPairLiveEnvironment,
+      runtimeDatabase,
+      createNeonExecutor(reconcilerPool),
+      {
+        accountId: scope.account_id,
+        workspaceId: scope.workspace_id,
+        generationRequestId,
+      },
+    );
+    console.warn("hosted_owner_pair_reconciliation_scheduled", {
+      projectId,
+      generationRequestId,
+      workflowId: workflow.id,
+      recovered: workflow.recovered,
+    });
+    return Object.freeze({
+      generationRequestId,
+      workflowId: workflow.id,
+      recovered: workflow.recovered,
+    });
+  } finally {
+    await reconcilerPool.end();
+  }
+}
+
 async function cancelHostedProjectWork(
   request: Request,
   projectId: string,
+  environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
 ): Promise<Response> {
@@ -4107,18 +4244,21 @@ async function cancelHostedProjectWork(
   }
 
   const pool = createNeonPool(config.neon.databaseUrl);
+  let scope: HostedScope | null = null;
   try {
-    const scope = await sessionScope(request, config, pool, executionContext);
-    if (scope instanceof Response) return scope;
+    const session = await sessionScope(request, config, pool, executionContext);
+    if (session instanceof Response) return session;
+    const ownerScope = session;
+    scope = ownerScope;
     const cancelled = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
-        scope.account_id,
+        ownerScope.account_id,
       ]);
       const result = await transaction.query<Record<string, unknown>>(
         `SELECT project_id, generation_request_id, state, replayed
            FROM public.videoforge_cancel_hosted_project_predispatch($1, $2, $3)`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [ownerScope.account_id, ownerScope.workspace_id, projectId],
       );
       return result.rows[0] ?? null;
     });
@@ -4134,6 +4274,54 @@ async function cancelHostedProjectWork(
       redispatch: false,
     });
   } catch (error) {
+    if (postgresCode(error) === "55000" && scope) {
+      try {
+        const reconciliation = await scheduleHostedPairOwnerReconciliation(
+          environment,
+          createNeonExecutor(pool),
+          scope,
+          projectId,
+        );
+        if (reconciliation) {
+          return response(
+            {
+              schema_version: "videoforge-hosted-project-cancellation-response/v1",
+              project_id: projectId,
+              generation_request_id: reconciliation.generationRequestId,
+              state: "RECONCILING",
+              replayed: false,
+              provider_actions_created: false,
+              redispatch: false,
+              reconciliation_scheduled: true,
+              workflow_id: reconciliation.workflowId,
+              recovered_workflow: reconciliation.recovered,
+            },
+            202,
+          );
+        }
+      } catch (reconciliationError) {
+        const code =
+          reconciliationError &&
+          typeof reconciliationError === "object" &&
+          "code" in reconciliationError
+            ? String((reconciliationError as { readonly code?: unknown }).code)
+            : "UNKNOWN";
+        console.error("hosted_owner_pair_reconciliation_failed", {
+          projectId,
+          code,
+        });
+        return response(
+          {
+            error: {
+              code: "PROJECT_WORK_RECONCILIATION_UNAVAILABLE",
+              message:
+                "This run needs provider reconciliation, but the reconciliation worker is temporarily unavailable. Refresh and try again.",
+            },
+          },
+          409,
+        );
+      }
+    }
     if (postgresCode(error) === "55000")
       return response(
         {
@@ -7001,7 +7189,13 @@ export async function handleHostedProductRequest(
     url.pathname,
   );
   if (request.method === "POST" && cancelProjectWork)
-    return cancelHostedProjectWork(request, cancelProjectWork[1]!, config, executionContext);
+    return cancelHostedProjectWork(
+      request,
+      cancelProjectWork[1]!,
+      environment,
+      config,
+      executionContext,
+    );
   const detail = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)$/u.exec(url.pathname);
   if (request.method === "DELETE" && detail)
     return archiveHostedProject(request, detail[1]!, config, executionContext);

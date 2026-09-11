@@ -32,6 +32,7 @@ const testState = vi.hoisted(() => {
     rows: Record<string, unknown>[];
     error: unknown;
   } = { rows: [], error: null };
+  const providerBoundPairRows: Record<string, unknown>[] = [];
   const avatarDraftRows: Record<string, unknown>[] = [];
   const styleDraftRows: Record<string, unknown>[] = [];
   const publishedStyleRows: Record<string, unknown>[] = [];
@@ -55,6 +56,12 @@ const testState = vi.hoisted(() => {
         rows: projectCancellationState.rows,
         affectedRows: projectCancellationState.rows.length,
       };
+    }
+    if (
+      sql.includes("SELECT request.id::text AS generation_request_id") &&
+      sql.includes("serverless_provider_assignments")
+    ) {
+      return { rows: providerBoundPairRows, affectedRows: providerBoundPairRows.length };
     }
     if (
       sql.includes("version.state NOT IN ('READY','ABANDONED')") ||
@@ -94,6 +101,7 @@ const testState = vi.hoisted(() => {
     archiveState,
     projectArchiveState,
     projectCancellationState,
+    providerBoundPairRows,
     avatarDraftRows,
     styleDraftRows,
     publishedStyleRows,
@@ -118,6 +126,12 @@ vi.mock("./neon", () => ({
   createNeonPool: vi.fn(() => testState.pool),
   createNeonExecutor: vi.fn(() => testState.executor),
 }));
+
+const hostedPairWorkflowState = vi.hoisted(() => ({
+  ensureHostedPairWorkflow: vi.fn(),
+}));
+
+vi.mock("./hosted-pair-live-wiring", () => hostedPairWorkflowState);
 
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import {
@@ -777,6 +791,62 @@ describe("hosted product route contract", () => {
       ),
     ).toBe(false);
     testState.projectCancellationState.rows.length = 0;
+  });
+
+  it("restarts global pair reconciliation when owner cancellation finds assigned provider work", async () => {
+    const generationRequestId = "55555555-5555-4555-8555-555555555555";
+    const reconciliationEnvironment = {
+      ...environment,
+      VIDEOFORGE_RECONCILER_DATABASE_URL: "postgresql://reconciler-fixture",
+      HOSTED_PAIR_WORKFLOW: { create: vi.fn(), get: vi.fn() },
+    };
+    testState.projectCancellationState.rows.length = 0;
+    testState.projectCancellationState.error = { code: "55000" };
+    testState.providerBoundPairRows.splice(0, testState.providerBoundPairRows.length, {
+      generation_request_id: generationRequestId,
+    });
+    hostedPairWorkflowState.ensureHostedPairWorkflow.mockResolvedValue({
+      id: `hosted-pair-${generationRequestId}`,
+      recovered: true,
+    });
+
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}/cancel`, "POST", {
+          schema_version: "videoforge-hosted-project-cancellation/v1",
+          project_id: PROJECT_ID,
+          confirmation: "STOP",
+        }),
+        reconciliationEnvironment,
+        config,
+        executionContext,
+      );
+
+      expect(result?.status).toBe(202);
+      await expect(result?.json()).resolves.toMatchObject({
+        state: "RECONCILING",
+        generation_request_id: generationRequestId,
+        reconciliation_scheduled: true,
+        workflow_id: `hosted-pair-${generationRequestId}`,
+        recovered_workflow: true,
+        provider_actions_created: false,
+        redispatch: false,
+      });
+      expect(hostedPairWorkflowState.ensureHostedPairWorkflow).toHaveBeenCalledWith(
+        reconciliationEnvironment,
+        testState.executor,
+        testState.executor,
+        {
+          accountId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          workspaceId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          generationRequestId,
+        },
+      );
+    } finally {
+      hostedPairWorkflowState.ensureHostedPairWorkflow.mockReset();
+      testState.projectCancellationState.error = null;
+      testState.providerBoundPairRows.length = 0;
+    }
   });
 
   it("rejects stale or unbound project cancellation confirmation", async () => {

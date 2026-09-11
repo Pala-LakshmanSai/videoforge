@@ -3782,9 +3782,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const cancelProjectWork = useMutation({
     mutationFn: () =>
       readJson<{
-        state: "CANCELLED";
+        state: "CANCELLED" | "RECONCILING";
         provider_actions_created: false;
         redispatch: false;
+        reconciliation_scheduled?: boolean;
       }>(`/api/v2/hosted/projects/${projectId}/cancel`, {
         method: "POST",
         body: JSON.stringify({
@@ -3974,6 +3975,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
   );
   const queueState = String(query.data.queue?.status ?? "").toUpperCase();
+  const generationProviderAttempts = query.data.attempts.filter(
+    (attempt) => attempt.kind === "MAGE_IMAGE" || attempt.kind === "SOULX_AVATAR",
+  );
   const predispatchGenerationAttempts = query.data.attempts.filter(
     (attempt) =>
       (attempt.kind === "MAGE_IMAGE" || attempt.kind === "SOULX_AVATAR") &&
@@ -3982,8 +3986,26 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const canCancelPredispatchGeneration = Boolean(
     query.data.generation &&
       HOSTED_PREDISPATCH_CANCELLABLE_QUEUE_STATES.has(queueState) &&
-      (predispatchGenerationAttempts.length === 0 || predispatchGenerationAttempts.length === 2),
+      (generationProviderAttempts.length === 0 ||
+        (generationProviderAttempts.length === 2 &&
+          predispatchGenerationAttempts.length === 2 &&
+          generationProviderAttempts.every((attempt) => attempt.state === "PLANNED"))),
   );
+  const providerBoundGenerationAttempts = generationProviderAttempts.filter(
+    (attempt) =>
+      !["PLANNED", "OUTBOXED", "COMPLETED", "SUCCEEDED", "CANCELLED"].includes(
+        attempt.state.toUpperCase(),
+      ),
+  );
+  const canRequestProjectReconciliation = Boolean(
+    query.data.generation &&
+      HOSTED_PREDISPATCH_CANCELLABLE_QUEUE_STATES.has(queueState) &&
+      (canCancelPredispatchGeneration || providerBoundGenerationAttempts.length > 0),
+  );
+  const projectWorkActionLabel =
+    providerBoundGenerationAttempts.length > 0
+      ? "Stop and reconcile provider work"
+      : "Cancel project work";
   const prompts = query.data.prompts ?? [];
   // The API exposes no raw/in-flight model output. Both final rows and
   // `durable: false` progress rows have already passed local validation and an
@@ -4498,7 +4520,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           Removes this project from Queue and Progress and prevents any new work. Billing and
           security history stays preserved.
         </p>
-        {canCancelPredispatchGeneration ? (
+        {canRequestProjectReconciliation ? (
           <Button
             variant="danger"
             busy={cancelProjectWork.isPending}
@@ -4506,13 +4528,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             onClick={() => {
               if (
                 window.confirm(
-                  `Cancel active work for “${query.data.project.title}”? No provider request will be retried. You can delete the project after cancellation finishes.`,
+                  `${
+                    providerBoundGenerationAttempts.length > 0
+                      ? "Stop and reconcile provider work"
+                      : "Cancel active work"
+                  } for “${query.data.project.title}”? No provider request will be retried, and no new provider request will be created. You can delete the project after reconciliation finishes.`,
                 )
               )
                 cancelProjectWork.mutate();
             }}
           >
-            <X size={16} aria-hidden="true" /> Cancel project work
+            <X size={16} aria-hidden="true" /> {projectWorkActionLabel}
           </Button>
         ) : null}
         <Button
