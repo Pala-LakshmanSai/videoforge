@@ -145,7 +145,7 @@ jobs:
         if: ${{ inputs.publish }}
         shell: bash
         env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           EXPECTED_EXISTING_DIGEST: ${{ inputs.expected_existing_digest }}
         run: |
           set -euo pipefail
@@ -257,7 +257,7 @@ jobs:
         if: ${{ inputs.publish && env.SOULX_EXISTING_EXACT != 'true' }}
         shell: bash
         env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
           set -euo pipefail
           repository="${{ inputs.registry_repository }}"
