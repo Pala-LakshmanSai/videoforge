@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-09-10T18:17:30Z"
+updated_at: "2026-09-11T01:02:33Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -29,6 +29,19 @@ current_goal_boundary:
   current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen;9.8 repair-release and exact successor activation complete;9.9 fresh Chrome Stage 6/7 E2E pending"
   approval_evidence: "Current explicit user approval on2026-09-10 for one bounded successor deployment and qualification; consumed pair remains frozen"
   note: "Production activation completed atomically with DB deployment version 16 for both lanes, replayed=false, dbLoaded=true, and providerZero=true. Public status is QUALIFIED_EXACT at Worker c6bc506b-6d2f-4866-bcfe-c086da952208. Chrome project72343e5f-86b6-4838-a50b-da17bca89f41 started before this activation and remains frozen at ASSIGNED with absent provider jobs; do not retry it. Start one fresh project for the post-activation Stage 6/7 E2E and drain immediately afterward."
+
+v2_09_global_owner_cancellation_reconciliation_repair_2026_09_11:
+  status: "IMPLEMENTED_SOURCE_ONLY_AWAITING_CODE_ONLY_PRODUCTION_ROLLOUT"
+  implementation_commit: "d5d31948"
+  exact_cause: "The owner pre-dispatch SQL function correctly rejects an already provider-bound Mage/SoulX pair with SQLSTATE 55000, but the cancellation route did not restart or schedule the existing deterministic pair Workflow after that rejection. The UI also classified ASSIGNED attempts as pre-dispatch, so it offered a control that was guaranteed to receive the same rejection."
+  repair: "On the scoped 55000 path, select only the exact active two-lane provider-bound pair and call the existing deterministic Workflow wiring. The Workflow observes and reconciles those exact attempts without redispatch. The UI now offers Stop and reconcile provider work for assigned/provider-bound attempts while preserving the strict pre-dispatch cancel path."
+  safety: "No migration, provider dispatch, RunPod mutation, retry, or new generation request is introduced. Untouched PLANNED/OUTBOXED pairs remain on the existing pre-dispatch cancellation path."
+  validation: "Focused hosted route/UI tests 131/131; changed-file ESLint PASS; Cloudflare production bundle and superseded-routing firewall PASS; live read-only query matched the stuck project's provider-bound pair. Repository-wide web typecheck still has five unrelated pre-existing errors."
+  live_stale_project:
+    project_id: "72343e5f-86b6-4838-a50b-da17bca89f41"
+    state: "ACTIVE with Mage/SoulX ASSIGNED attempts, absent provider jobs, and no progress/output/provenance rows"
+    policy: "Do not retry or mutate automatically; after rollout use Stop and reconcile provider work, wait for terminal reconciliation, then delete"
+  next: "Roll out the code-only Worker and verify public status plus zero active provider work. Tell the user to reconcile/delete this project before creating a new one."
 
 v2_09_stage6_7_fresh_successor_approval_2026_09_10:
   status: "EXECUTED_EXACT_SUCCESSOR_ACTIVATION_CHROME_E2E_PENDING"
