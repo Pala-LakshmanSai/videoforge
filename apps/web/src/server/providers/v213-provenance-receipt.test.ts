@@ -14,7 +14,6 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
-  V213ProvenanceReceiptError,
   v213SoulxWarmupAttestationSha256,
   verifyV213WorkerReceipt,
 } from "./v213-provenance-receipt";
@@ -123,7 +122,7 @@ describe("V2-13 HMAC provenance receipt verifier", () => {
         { receipt: value.receipt, receiptBodyBase64: value.bytes.toString("base64") },
         value.expectation,
       ).receipt,
-    ).toBe(value.receipt);
+    ).toEqual(value.receipt);
   });
 
   it.each([
@@ -172,7 +171,18 @@ describe("V2-13 HMAC provenance receipt verifier", () => {
         { receipt: value.receipt, receiptBodyBase64: substituted.toString("base64") },
         value.expectation,
       ),
-    ).toThrowError(V213ProvenanceReceiptError);
+    ).toThrowError(expect.objectContaining({ code: "RECEIPT_HASH_MISMATCH" }));
+  });
+
+  it("uses the exact signed body when the provider's duplicate receipt is normalized", () => {
+    const value = fixture();
+    const normalized = { ...value.receipt, worker_id: "provider-normalized-worker" };
+    const verified = verifyV213WorkerReceipt(
+      signer,
+      { receipt: normalized, receiptBodyBase64: value.bytes.toString("base64") },
+      value.expectation,
+    );
+    expect(verified.receipt.worker_id).toBe(value.body.worker_id);
   });
 
   it("rejects a receipt signed by a different protected HMAC key", () => {

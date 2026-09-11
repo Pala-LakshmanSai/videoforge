@@ -1,4 +1,4 @@
-import { canonicalizeJson, validateContract, type JsonValue } from "@videoforge/contracts";
+import { validateContract } from "@videoforge/contracts";
 import {
   canonicalSha256,
   ReceiptVerificationError,
@@ -39,8 +39,11 @@ export function v213SoulxWarmupAttestationSha256(containerDigest: `sha256:${stri
 }
 
 export class V213ProvenanceReceiptError extends Error {
-  constructor(readonly code: "V213_RECEIPT_BODY_INVALID" | "V213_RECEIPT_SCHEMA_INVALID") {
-    super(code);
+  constructor(
+    readonly code: "V213_RECEIPT_BODY_INVALID" | "V213_RECEIPT_SCHEMA_INVALID",
+    readonly reason?: string,
+  ) {
+    super(reason === undefined ? code : `${code}:${reason}`);
     this.name = "V213ProvenanceReceiptError";
   }
 }
@@ -82,25 +85,35 @@ export function verifyV213WorkerReceipt(
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new V213ProvenanceReceiptError("V213_RECEIPT_BODY_INVALID");
   }
-  const receiptBody: Record<string, unknown> = { ...delivery.receipt };
-  delete receiptBody.receipt_sha256;
-  delete receiptBody.signature;
+  // The worker emits the unsigned receipt body as the signed byte string and the provider
+  // response repeats that body as `provenance_receipt`. The byte string is authoritative: a
+  // provider-side JSON round trip may normalize an otherwise equivalent value (or omit an
+  // optional field), and comparing the two copies made valid completed jobs fail closed before
+  // the actual signature/binding checks ran. Rebuild the receipt from the exact signed body and
+  // carry over only the signature envelope from the response.
+  const receipt = {
+    ...(parsed as Record<string, unknown>),
+    receipt_sha256: delivery.receipt.receipt_sha256,
+    signature: delivery.receipt.signature,
+  } as unknown as ProvenanceReceipt;
   try {
-    if (
-      canonicalizeJson(parsed as JsonValue) !== canonicalizeJson(receiptBody as JsonValue) ||
-      !validateContract("serverlessProvenanceReceiptV1", delivery.receipt).success
-    ) {
-      throw new V213ProvenanceReceiptError("V213_RECEIPT_SCHEMA_INVALID");
+    const validation = validateContract("serverlessProvenanceReceiptV1", receipt);
+    if (!validation.success) {
+      const issue = validation.issues[0];
+      throw new V213ProvenanceReceiptError(
+        "V213_RECEIPT_SCHEMA_INVALID",
+        `contract:${issue?.instancePath || "$"}:${issue?.keyword || "invalid"}`,
+      );
     }
   } catch (error) {
     if (error instanceof V213ProvenanceReceiptError) throw error;
-    throw new V213ProvenanceReceiptError("V213_RECEIPT_SCHEMA_INVALID");
+    throw new V213ProvenanceReceiptError("V213_RECEIPT_SCHEMA_INVALID", "contract:exception");
   }
   try {
-    verifyProvenanceReceipt(signer, delivery.receipt, expectation, bodyBytes);
+    verifyProvenanceReceipt(signer, receipt, expectation, bodyBytes);
   } catch (error) {
     if (error instanceof ReceiptVerificationError) throw error;
-    throw new V213ProvenanceReceiptError("V213_RECEIPT_SCHEMA_INVALID");
+    throw new V213ProvenanceReceiptError("V213_RECEIPT_SCHEMA_INVALID", "verification:exception");
   }
-  return Object.freeze({ receipt: delivery.receipt, receiptBodyBytes: new Uint8Array(bodyBytes) });
+  return Object.freeze({ receipt, receiptBodyBytes: new Uint8Array(bodyBytes) });
 }
