@@ -132,9 +132,11 @@ const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
   findExistingGeneration: (database, identity) => database.transaction(async (transaction) => {
     await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
     const result = await transaction.query<{ generation_request_id: string }>(
-      `SELECT p.generation_request_id FROM hosted_pair_runtime_states p
-        JOIN generation_requests g ON g.id=p.generation_request_id
-        WHERE p.account_id=$1 AND p.workspace_id=$2 AND g.project_id=$3 AND g.state='ACTIVE'
+      `SELECT g.id AS generation_request_id FROM generation_requests g
+        CROSS JOIN LATERAL public.videoforge_load_hosted_pair_workflow_schedule(
+          g.account_id,g.workspace_id,g.id) p
+        WHERE g.account_id=$1 AND g.workspace_id=$2 AND g.project_id=$3
+          AND g.state='ACTIVE' AND p.existing_pair
         ORDER BY g.created_at DESC LIMIT 1`,
       [identity.accountId, identity.workspaceId, identity.projectId],
     );
