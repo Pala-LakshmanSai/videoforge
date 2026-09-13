@@ -18,6 +18,8 @@ gpu_use_authorized: true
 maximum_external_spend_usd: 2
 
 v2_09_stage6_7_autonomous_mvp_repair_2026_09_13:
+  latest_verified_stage6_7: "Seven images and two avatar clips accepted; Chrome galleries and both avatar clip playbacks verified on ac647918. Provider compute is zero. Final assembly awaits worker 0.1.18 activation/install."
+  worker_0_1_18_release: "Published by successful workflow 34783756939 at source ac647918459588f78d226c639f8c59ff55c6581b; immutable manifest evidence/acceptance/VF-10-09/2026-09-14-mvp-worker-release/media-worker-release.json. Allows avatar audio streams while mapping narration only."
   status: "IN_PROGRESS"
   user_authority: "Autonomous Stage6/7 repair, required deployment/publication, browser acceptance, focused subagents; no repeated approvals"
   runpod_credit_floor_usd: 3

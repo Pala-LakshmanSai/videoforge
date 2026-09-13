@@ -1,0 +1,19 @@
+{
+  "execution_bundle_sha256": "sha256:7a508878b41ad97c1adfc523b772d5332aecfeb43a91f9d3fa8d09f0332bc951",
+  "macos": {
+    "sha256": "sha256:43a9d17138e3aebc1106bce54661e0418e73f63f365799d84ef216149a4089e9",
+    "size_bytes": 285654344,
+    "trust": "AD_HOC_BETA",
+    "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.18/VideoForge-Worker-0.1.18.dmg"
+  },
+  "minimum_protocol_version": 1,
+  "schema_version": "videoforge-media-worker-release/v1",
+  "version": "0.1.18",
+  "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+  "windows": {
+    "sha256": "sha256:8693760f8cca3b3a93c7366fc13a52ffe5bb1e0607589832e9d7b4fec538ad53",
+    "size_bytes": 225871939,
+    "trust": "UNSIGNED_BETA",
+    "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.18/VideoForge-Worker-0.1.18-Setup.exe"
+  }
+}
