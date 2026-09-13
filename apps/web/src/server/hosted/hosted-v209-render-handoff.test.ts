@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { HostedR2BucketBinding } from "./configuration";
 import { ensureHostedV209ExactManifestObject } from "./hosted-v209-render-handoff";
+import { readHostedV209TimingDocument } from "./hosted-v209-render-handoff";
+import { canonicalizeJson } from "@videoforge/contracts";
+import transcriptFixture from "../../../../../packages/contracts/generated/fixtures/transcript_timing.valid.json";
 
 const encoder = new TextEncoder();
 
@@ -50,6 +53,42 @@ function bucket(initial?: ArrayBuffer): HostedR2BucketBinding & { put: ReturnTyp
 }
 
 describe("hosted V2-09 render manifest R2 handoff", () => {
+  it("loads the canonical transcript instead of validating its relational projection", async () => {
+    const bytes = buffer(canonicalizeJson(transcriptFixture));
+    const hash = await digest(bytes);
+    const projection = {
+      row: {},
+      words: "relational rows",
+      asset: { object_key: "tenant/revision/transcript.json", hash, byte_size: bytes.byteLength },
+    };
+    const document = await readHostedV209TimingDocument(
+      bucket(bytes),
+      "transcriptTiming",
+      projection,
+      hash,
+      "tenant/revision/",
+    );
+    expect(document.value).toEqual(transcriptFixture);
+    expect(document.sha256).toBe(hash);
+    await expect(
+      readHostedV209TimingDocument(
+        bucket(buffer("drift")),
+        "transcriptTiming",
+        projection,
+        hash,
+        "tenant/revision/",
+      ),
+    ).rejects.toThrow("TIMING_OBJECT_INVALID");
+    await expect(
+      readHostedV209TimingDocument(
+        bucket(bytes),
+        "transcriptTiming",
+        projection,
+        hash,
+        "another/revision/",
+      ),
+    ).rejects.toThrow("TIMING_BINDING_INVALID");
+  });
   it("writes once, reads bytes back, and replays without overwriting", async () => {
     const bytes = buffer('{"schema_version":"resolved-render-manifest/v3"}');
     const sha256 = await digest(bytes);

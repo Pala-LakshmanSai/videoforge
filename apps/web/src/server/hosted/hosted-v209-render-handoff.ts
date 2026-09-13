@@ -41,6 +41,40 @@ function headSha256(value: ArrayBuffer | undefined): `sha256:${string}` | null {
     .join("")}`;
 }
 
+export async function readHostedV209TimingDocument<
+  Name extends "transcriptTiming" | "timelinePlan",
+>(
+  bucket: HostedR2BucketBinding,
+  contractName: Name,
+  projection: unknown,
+  expectedSha256: unknown,
+  revisionPrefix: string,
+) {
+  const asset = record(record(projection).asset);
+  const objectKey = text(asset.object_key);
+  const expectedHash = text(expectedSha256, SHA256);
+  const expectedSize = Number(asset.byte_size);
+  if (
+    !objectKey.startsWith(revisionPrefix) ||
+    asset.hash !== expectedHash ||
+    !Number.isSafeInteger(expectedSize) ||
+    expectedSize < 1
+  )
+    throw new Error("HOSTED_V209_RENDER_TIMING_BINDING_INVALID");
+  const object = await bucket.get(objectKey);
+  if (!object || object.size !== expectedSize)
+    throw new Error("HOSTED_V209_RENDER_TIMING_OBJECT_INVALID");
+  const bytes = await object.arrayBuffer();
+  if (bytes.byteLength !== expectedSize || (await sha256(bytes)) !== expectedHash)
+    throw new Error("HOSTED_V209_RENDER_TIMING_OBJECT_INVALID");
+  const document = await validateAndHashContractDocument(
+    contractName,
+    JSON.parse(new TextDecoder().decode(bytes)),
+  );
+  if (document.sha256 !== expectedHash) throw new Error("HOSTED_V209_RENDER_TIMING_OBJECT_INVALID");
+  return document;
+}
+
 export async function ensureHostedV209ExactManifestObject(
   bucket: HostedR2BucketBinding,
   objectKey: string,
@@ -170,14 +204,23 @@ export function createHostedV209RenderHandoff(input: {
         revision.document as never,
       );
       const timing = record(ready.timing);
-      const transcript = await validateAndHashContractDocument(
-        "transcriptTiming",
-        timing.transcript as never,
-      );
-      const timeline = await validateAndHashContractDocument(
-        "timelinePlan",
-        timing.timeline as never,
-      );
+      const revisionPrefix = `tenant/${scope.accountId}/workspace/${scope.workspaceId}/project/${revisionDocument.value.project_id}/revision/${revisionDocument.value.project_revision_id}/`;
+      const [transcript, timeline] = await Promise.all([
+        readHostedV209TimingDocument(
+          input.bucket,
+          "transcriptTiming",
+          timing.transcript,
+          timing.transcriptSha256,
+          revisionPrefix,
+        ),
+        readHostedV209TimingDocument(
+          input.bucket,
+          "timelinePlan",
+          timing.timeline,
+          timing.timelineSha256,
+          revisionPrefix,
+        ),
+      ]);
       if (
         revisionSnapshot.status !== "LOCKED" ||
         revisionSnapshot.id !== revisionDocument.value.project_revision_id ||
