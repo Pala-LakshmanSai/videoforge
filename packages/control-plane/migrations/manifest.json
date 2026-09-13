@@ -715,12 +715,17 @@
       "filename": "0120_hosted_v209_soulx_avatar_path_successor.sql",
       "sha256": "sha256:ed7c39bf78955209d4c573a89532fcca8c19cbcc9eac4ca0e080ad5257b242c5"
     },
-
     {
       "version": 121,
       "name": "hosted_v209_renewed_qualification_import",
       "filename": "0121_hosted_v209_renewed_qualification_import.sql",
       "sha256": "sha256:cd11f90acfa6ebcc345c22c1c8b5da8c8eb045feeb35c5158fc8412cfb7a02d4"
+    },
+    {
+      "version": 122,
+      "name": "hosted_v209_terminal_json_precedence",
+      "filename": "0122_hosted_v209_terminal_json_precedence.sql",
+      "sha256": "sha256:94a9b12518a5aad422135bfd1017d4d2ecf5842cba50522848845aa2f2d07be8"
     }
   ]
 }
