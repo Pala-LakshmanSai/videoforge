@@ -56,6 +56,8 @@ const DIRECT_DEPENDENCY_PATHS = Object.freeze([
   "packages/control-plane/migrations/manifest.json",
   "packages/control-plane/migrations/0117_hosted_v209_parallel_pair_dispatch.sql",
   "packages/control-plane/migrations/0118_hosted_v209_repaired_image_successor.sql",
+  "packages/control-plane/migrations/0119_hosted_v209_qualification_pair_uniqueness.sql",
+  "packages/control-plane/migrations/0120_hosted_v209_soulx_avatar_path_successor.sql",
   ...Array.from({ length: 12 }, (_, index) => {
     const version = 74 + index;
     const entry = JSON.parse(
@@ -236,7 +238,7 @@ function loadV209MigrationBundle() {
     manifest?.schema_version !== "videoforge-migration-manifest/v1" ||
     !Array.isArray(manifest.migrations) ||
     manifest.migrations.length < 86 ||
-    manifest.migrations.at(-1)?.version !== 118 ||
+    manifest.migrations.at(-1)?.version !== 120 ||
     manifest.migrations.some(
       (entry, index) =>
         entry?.version <= 0 ||
@@ -254,7 +256,7 @@ function loadV209MigrationBundle() {
   const currentBytes = readFileSync(
     resolve(ROOT, "packages/control-plane/migrations", currentEntry.filename),
   );
-  const previousCurrentEntry = entries.find((entry) => entry.version === 117);
+  const previousCurrentEntry = entries.find((entry) => entry.version === 119);
   const previousCurrentBytes = readFileSync(
     resolve(ROOT, "packages/control-plane/migrations", previousCurrentEntry.filename),
   );
@@ -264,7 +266,7 @@ function loadV209MigrationBundle() {
     selected.length !== 13 ||
     selected[0].version !== 74 ||
     selected.at(-1).version !== 86 ||
-    currentEntry.version !== 118
+    currentEntry.version !== 120
   )
     fail("V2_09_CONCRETE_MIGRATION_MANIFEST_INVALID");
   const ledger = (length) =>
@@ -279,7 +281,7 @@ function loadV209MigrationBundle() {
     finalLedger: ledger(86),
     currentEntry: Object.freeze({ ...currentEntry, sql: currentBytes.toString("utf8") }),
     currentPrefixLedger: ledger(entries.length - 1),
-    currentApplyPrefixLedger: ledger(entries.findIndex((entry) => entry.version === 117)),
+    currentApplyPrefixLedger: ledger(entries.length - 1),
     previousCurrentEntry: Object.freeze({
       ...previousCurrentEntry,
       sql: previousCurrentBytes.toString("utf8"),
@@ -291,7 +293,7 @@ function loadV209MigrationBundle() {
 
 function renderV209MigrationSql(bundle, mode) {
   const legacyVerify = mode === "VERIFY_EXISTING_0086";
-  const currentApply = mode === "APPLY_CURRENT_0118";
+  const currentApply = mode === "APPLY_CURRENT_0120";
   const currentVerify = mode === "VERIFY_EXISTING_CURRENT";
   if (!legacyVerify && !currentApply && !currentVerify && mode !== "APPLY_0074_0086")
     fail("V2_09_CONCRETE_MIGRATION_MODE_INVALID");
@@ -307,7 +309,7 @@ function renderV209MigrationSql(bundle, mode) {
   const body =
     legacyVerify || currentVerify
       ? ""
-      : (currentApply ? [bundle.previousCurrentEntry, bundle.currentEntry] : bundle.selected)
+      : (currentApply ? [bundle.currentEntry] : bundle.selected)
           .map(
             (entry) =>
               `${entry.sql}\nINSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256) VALUES (${entry.version},${sqlLiteral(entry.name)},${sqlLiteral(entry.filename)},${sqlLiteral(entry.sha256)});`,
@@ -320,16 +322,16 @@ function renderV209MigrationSql(bundle, mode) {
     : mode === "APPLY_0074_0086"
       ? "APPLIED_0074_0086"
       : currentApply
-        ? "APPLIED_CURRENT_0118"
+        ? "APPLIED_CURRENT_0120"
         : "VERIFIED_EXISTING_CURRENT";
   const fromVersion = legacyVerify
     ? 86
     : mode === "APPLY_0074_0086"
       ? 73
       : currentVerify
-        ? 118
-        : 116;
-  const toVersion = legacyVerify || mode === "APPLY_0074_0086" ? 86 : 118;
+        ? 120
+        : 119;
+  const toVersion = legacyVerify || mode === "APPLY_0074_0086" ? 86 : 120;
   return [
     "\\set ON_ERROR_STOP on",
     "BEGIN;",
@@ -1589,7 +1591,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     ![
       "APPLY_0074_0086",
       "VERIFY_EXISTING_0086",
-      "APPLY_CURRENT_0118",
+      "APPLY_CURRENT_0120",
       "VERIFY_EXISTING_CURRENT",
     ].includes(configuration.migrationMode) ||
     !ROLE.test(configuration.runtimeRole ?? "") ||
@@ -2017,19 +2019,19 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
           ? "VERIFIED_EXISTING_0086"
           : mode === "APPLY_0074_0086"
             ? "APPLIED_0074_0086"
-            : mode === "APPLY_CURRENT_0118"
-              ? "APPLIED_CURRENT_0118"
+            : mode === "APPLY_CURRENT_0120"
+              ? "APPLIED_CURRENT_0120"
               : "VERIFIED_EXISTING_CURRENT") ||
       receipt.fromVersion !==
-        (mode === "APPLY_CURRENT_0118"
-          ? 116
+        (mode === "APPLY_CURRENT_0120"
+          ? 119
           : mode === "VERIFY_EXISTING_CURRENT"
-            ? 118
+            ? 120
             : mode === "VERIFY_EXISTING_0086"
               ? 86
               : 73) ||
       receipt.toVersion !==
-        (mode === "APPLY_CURRENT_0118" || mode === "VERIFY_EXISTING_CURRENT" ? 118 : 86)
+        (mode === "APPLY_CURRENT_0120" || mode === "VERIFY_EXISTING_CURRENT" ? 120 : 86)
     )
       fail("V2_09_CONCRETE_MIGRATION_RECEIPT_INVALID");
     if (mode === "VERIFY_EXISTING_0086")
@@ -2050,10 +2052,10 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
       };
     return {
       operation_id: "apply-migrations-0074-0086",
-      mode: mode === "APPLY_CURRENT_0118" ? "APPLIED_CURRENT_0118" : "VERIFIED_EXISTING_CURRENT",
-      from_version: mode === "VERIFY_EXISTING_CURRENT" ? 118 : 116,
-      to_version: 118,
-      applied_versions: mode === "APPLY_CURRENT_0118" ? [117, 118] : [],
+      mode: mode === "APPLY_CURRENT_0120" ? "APPLIED_CURRENT_0120" : "VERIFIED_EXISTING_CURRENT",
+      from_version: mode === "VERIFY_EXISTING_CURRENT" ? 120 : 119,
+      to_version: 120,
+      applied_versions: mode === "APPLY_CURRENT_0120" ? [120] : [],
     };
   };
   operations["apply-v209-grants"] = async () => {
@@ -2081,7 +2083,7 @@ function createConcreteQualifiedProductionAdaptersWithPorts(
     return {
       schema_version: "videoforge.v2-09-grants-result/v1",
       operation_id: "apply-v209-grants",
-      migration_head: ["APPLY_CURRENT_0118", "VERIFY_EXISTING_CURRENT"].includes(
+      migration_head: ["APPLY_CURRENT_0120", "VERIFY_EXISTING_CURRENT"].includes(
         configuration.migrationMode,
       )
         ? migrationBundle.currentVersion

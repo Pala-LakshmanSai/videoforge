@@ -99,18 +99,18 @@ export const V209_FROZEN_IMAGES = Object.freeze([
   Object.freeze({
     lane: "soulx_avatar",
     repository: "pala-lakshmansai/videoforge-soulx-serverless-v2-08",
-    manifestDigest: "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
-    configDigest: "sha256:d4133ee6b582d44032ba7886a5c19a844cbb75347527943f6a40d5327e793122",
-    sourceCommit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+    manifestDigest: "sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35",
+    configDigest: "sha256:316957f7c8e03a2be121fc90aeb0ec4b1cf441e59ffc3582bf0da4052be1627d",
+    sourceCommit: "6b80ce1d51e5b6c4f3bd20b7a013e6083577b7a6",
     frozenAnonymousProofSha256:
-      "sha256:5d842aa90bad61378087b790e44fc182e9d52acb27399e6ed9faacac73150f33",
+      "sha256:39bbecdc664d697270985df89822e98868cfefcb729b9c35e0155233ee54df7a",
     labels: Object.freeze({
       "ai.videoforge.lane": "soulx_avatar",
       "ai.videoforge.model-manifest":
         "sha256:995a8e478b6a3265d5a116ca283229ad0d358a5348f16f851dc0fed564bf5626",
       "ai.videoforge.model-revision": "59119b6c681230c3eeee157e224ae1941746711e",
       "ai.videoforge.runtime-profile": "videoforge_soulx_flashhead_pro_bf16_v1",
-      "ai.videoforge.source-commit": "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+      "ai.videoforge.source-commit": "6b80ce1d51e5b6c4f3bd20b7a013e6083577b7a6",
       "ai.videoforge.source-revision": "9bc03de06bb0de82cd6bc477804512ae06144bf2",
       "com.nvidia.volumes.needed": "nvidia_driver",
       "org.opencontainers.image.base.digest":
@@ -118,7 +118,7 @@ export const V209_FROZEN_IMAGES = Object.freeze([
       "org.opencontainers.image.base.name":
         "ghcr.io/pala-lakshmansai/videoforge-soulx-flashhead-pro-vf924s",
       "org.opencontainers.image.ref.name": "ubuntu",
-      "org.opencontainers.image.revision": "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
+      "org.opencontainers.image.revision": "6b80ce1d51e5b6c4f3bd20b7a013e6083577b7a6",
       "org.opencontainers.image.title": "VideoForge SoulX FlashHead Pro Serverless Worker",
       "org.opencontainers.image.version": "v2-08-serverless-candidate",
     }),

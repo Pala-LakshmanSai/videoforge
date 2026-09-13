@@ -43,11 +43,12 @@ export const QUALIFIED_LANES = Object.freeze([
   }),
   Object.freeze({
     lane: "soulx",
-    image_sha256: "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
-    image_source_commit: "737b59cf783ce4de24ac5beb1db760fb0b97b0a6",
-    image_config_sha256: "sha256:d4133ee6b582d44032ba7886a5c19a844cbb75347527943f6a40d5327e793122",
+    image_sha256: "sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35",
+    image_source_commit: "6b80ce1d51e5b6c4f3bd20b7a013e6083577b7a6",
+    image_config_sha256: "sha256:316957f7c8e03a2be121fc90aeb0ec4b1cf441e59ffc3582bf0da4052be1627d",
     anonymous_proof_sha256:
-      "sha256:5d842aa90bad61378087b790e44fc182e9d52acb27399e6ed9faacac73150f33",
+      "sha256:39bbecdc664d697270985df89822e98868cfefcb729b9c35e0155233ee54df7a",
+    // Keep prior live acceptance lineage until this new image completes fresh GPU qualification.
     acceptance_sha256: "sha256:586c235e3854ece80ca17b7728d3bdddea47e4e4f3b9fb445584bd7cd2fc17b5",
     volume_id_sha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
     volume_manifest_sha256:
@@ -440,14 +441,14 @@ function validateOperationResult(
         result.to_version === 86 &&
         Array.isArray(result.applied_versions) &&
         result.applied_versions.length === 0) ||
-      (result.mode === "APPLIED_CURRENT_0118" &&
-        result.from_version === 116 &&
-        result.to_version === 118 &&
+      (result.mode === "APPLIED_CURRENT_0120" &&
+        result.from_version === 119 &&
+        result.to_version === 120 &&
         Array.isArray(result.applied_versions) &&
-        result.applied_versions.join(",") === "117,118") ||
+        result.applied_versions.join(",") === "120") ||
       (result.mode === "VERIFIED_EXISTING_CURRENT" &&
-        result.from_version === 118 &&
-        result.to_version === 118 &&
+        result.from_version === 120 &&
+        result.to_version === 120 &&
         Array.isArray(result.applied_versions) &&
         result.applied_versions.length === 0)
     )
@@ -465,7 +466,7 @@ function validateOperationResult(
       "schema_version",
     ]) ||
       result.schema_version !== "videoforge.v2-09-grants-result/v1" ||
-      ![86, 117].includes(result.migration_head) ||
+      ![86, 120].includes(result.migration_head) ||
       result.public_execute_count !== 0 ||
       result.runtime_grants_verified !== true ||
       result.operator_grants_verified !== true ||

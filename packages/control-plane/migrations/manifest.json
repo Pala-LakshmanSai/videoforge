@@ -708,6 +708,12 @@
       "name": "hosted_v209_qualification_pair_uniqueness",
       "filename": "0119_hosted_v209_qualification_pair_uniqueness.sql",
       "sha256": "sha256:0402848b95cb22cdb29d5dfa82e4f0cfaf9328e45e3e77bfc64b29d78486b423"
+    },
+    {
+      "version": 120,
+      "name": "hosted_v209_soulx_avatar_path_successor",
+      "filename": "0120_hosted_v209_soulx_avatar_path_successor.sql",
+      "sha256": "sha256:ed7c39bf78955209d4c573a89532fcca8c19cbcc9eac4ca0e080ad5257b242c5"
     }
   ]
 }

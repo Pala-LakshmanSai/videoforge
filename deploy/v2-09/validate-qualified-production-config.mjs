@@ -18,7 +18,7 @@ export const SOULX_QUALIFICATION_SHA256 =
 export const MAGE_IMAGE_DIGEST =
   "sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161";
 export const SOULX_IMAGE_DIGEST =
-  "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff";
+  "sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35";
 
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const GIT_SHA = /^[0-9a-f]{40}$/u;

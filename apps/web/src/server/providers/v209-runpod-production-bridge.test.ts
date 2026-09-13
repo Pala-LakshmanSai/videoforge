@@ -28,7 +28,7 @@ function input(lane: "mage" | "soulx" = "mage") {
       },
       {
         lane: "soulx",
-        image_sha256: "sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
+        image_sha256: "sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35",
         image_source_commit: "c".repeat(40),
         image_config_sha256: hash("soulx-config"),
         anonymous_proof_sha256: hash("soulx-anonymous"),
@@ -229,7 +229,7 @@ test("failure cleanup recovers endpoint-only and template-only names and deletes
     name: resourceName("soulx", "template"),
     raw: {
       imageName:
-        "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
+        "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35",
       isServerless: true,
       containerDiskInGb: 120,
       env: workerEnvironment("soulx"),

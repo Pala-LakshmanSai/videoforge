@@ -27,7 +27,7 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/u;
 const PUBLIC_IMAGES = Object.freeze({
   mage: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
   soulx:
-    "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:7bf51f87035928a4ec1f2826021fa688ef526973887ee9f80117ae4619315bff",
+    "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35",
 });
 
 type Lane = "mage" | "soulx";
