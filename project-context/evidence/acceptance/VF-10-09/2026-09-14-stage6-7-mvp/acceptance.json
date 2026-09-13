@@ -18,15 +18,70 @@
     "final_playback_reached_end_seconds": 37,
     "audio_playing_observed": true,
     "approval_confirmed": true,
-    "native_download_sha256_matches": true
+    "native_download_sha256_matches": true,
+    "all_ten_stages_complete": true,
+    "overall_progress_percent": 100,
+    "post_deployment_review_flags": 0
   },
   "terminal_finalization": "SUCCEEDED",
-  "final_deployment": "PENDING",
-  "remaining_gate": "Deploy final fixes and read back production UI and zero provider compute.",
+  "final_deployment": {
+    "source_commit": "d27b055d2478e3d2e2d2e216b607732aae2af1c7",
+    "cloudflare_version": "fa610568-2258-4a2d-9214-219c4a7e8e25",
+    "activation_id": "9d51f6dd-1962-4270-acce-989ffee22511",
+    "mode": "QUALIFIED_EXACT"
+  },
+  "remaining_gate": null,
   "runtime_state": "COMPLETE",
   "generation_state": "SUCCEEDED",
   "final_event_count": 1,
   "paid_lease_state": "RELEASED",
   "final_receipt_sha256": "sha256:a78f371627c37fdf6e547774036307a3b1a1933460c4de1810c86af0dca70919",
-  "migration_version": 128
+  "migration_version": 128,
+  "provider_shutdown": {
+    "checkedAt": "2026-09-13T22:04:51.359Z",
+    "balanceUsd": 16.9136226955,
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0,
+    "endpointHealth": [
+      {
+        "idHash": "sha256:e07fe49b7152c1c51a5979d6c701c237a18fe3d4c74e6f42ac6fe4da65431e4b",
+        "status": 200,
+        "workers": {
+          "idle": 0,
+          "ready": 0,
+          "running": 0,
+          "initializing": 0,
+          "throttled": 1,
+          "unhealthy": 0
+        },
+        "jobs": {
+          "inQueue": 0,
+          "inProgress": 0
+        }
+      },
+      {
+        "idHash": "sha256:7fcba58322146f2fe368ad2e60f47450e89dfde1cf6adb9a17ea854e5bd6f89a",
+        "status": 200,
+        "workers": {
+          "idle": 0,
+          "ready": 0,
+          "running": 0,
+          "initializing": 0,
+          "throttled": 1,
+          "unhealthy": 0
+        },
+        "jobs": {
+          "inQueue": 0,
+          "inProgress": 0
+        }
+      }
+    ]
+  },
+  "validation": {
+    "terminal_tests": 3,
+    "focused_review_test": 1,
+    "web_production_build": "PASS",
+    "migration128_rollback_apply": "PASS",
+    "context_validation": "PASS"
+  }
 }

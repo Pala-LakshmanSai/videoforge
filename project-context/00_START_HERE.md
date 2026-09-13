@@ -4,7 +4,7 @@
 
 The 37-second project `b79fef93-11e0-4333-9af0-8cd4fddcbd01` completed seven images and two avatar clips. Mage and SoulX submitted 1.136 seconds apart. Chrome verified both galleries, both avatar clips, full final MP4 playback, approval, and native download; downloaded SHA-256 matches the successful render.
 
-Worker `0.1.18` is published and installed. Migrations119–128 are applied. Runtime is COMPLETE, generation SUCCEEDED, exactly one final-output event exists, and the paid lease is RELEASED. Final terminal/review source deployment and zero-compute readback remain pending; see `CURRENT_STATE.yaml` for exact live source.
+Worker `0.1.18` is published and installed. Migrations119–128 are applied. Runtime is COMPLETE, generation SUCCEEDED, exactly one final-output event exists, and the paid lease is RELEASED. Final fixes are deployed from `d27b055d2478e3d2e2d2e216b607732aae2af1c7` with `QUALIFIED_EXACT`. Chrome shows all ten stages complete and no stale review flags. At22:04Z RunPod balance was USD16.9136 with zero active Pods/workers and zero queued/running jobs. No remaining gates for this Stage6/7 MVP repair.
 
 Preserve USD2/run, USD3 RunPod floor, exact RTX4090 EU-RO-1 lanes at min0/max1, and sealed50GB volumes. Stop the entire flow below the floor. Never redispatch accepted media or terminal/uncertain paid attempts. Evidence: `evidence/acceptance/VF-10-09/2026-09-14-stage6-7-mvp/acceptance.json`.
 

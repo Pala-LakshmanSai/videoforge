@@ -18,7 +18,7 @@ gpu_use_authorized: true
 maximum_external_spend_usd: 2
 
 v2_09_stage6_7_autonomous_mvp_repair_2026_09_13:
-  status: "ACCEPTED_FINAL_DEPLOYMENT_PENDING"
+  status: "ACCEPTED_DEPLOYED_ZERO_COMPUTE"
   user_authority: "Autonomous Stage6/7 repair, required deployment/publication, browser acceptance, focused subagents; no repeated approvals"
   runpod_credit_floor_usd: 3
   below_floor_action: "Stop paid compute and entire flow; never restart before user top-up continuation"
@@ -29,13 +29,13 @@ v2_09_stage6_7_autonomous_mvp_repair_2026_09_13:
   finalization: "Runtime COMPLETE, generation SUCCEEDED, exactly one FINAL_OUTPUT_DURABLE event, paid lease RELEASED."
   worker_0_1_18_release: "Published by workflow 34783756939 from ac647918459588f78d226c639f8c59ff55c6581b; installed and ONLINE. Allows avatar audio streams while mapping narration only."
   database: "Migrations119-128 applied; exact terminal handoff verified R2 result bytes and MP4 checksum before finalization."
-  current_live_source: "d388b4a72ca602d7bfe566499a0e13733a617c12"
-  current_live_worker_version: "efdbdf86-b95f-46ef-8566-5e36c9c3ab09"
+  current_live_source: "d27b055d2478e3d2e2d2e216b607732aae2af1c7"
+  current_live_worker_version: "fa610568-2258-4a2d-9214-219c4a7e8e25"
   current_live_mode: "QUALIFIED_EXACT"
-  latest_runpod_readback: "USD16.9233449177 at 2026-09-13T21:49:20Z; final zero-compute readback pending. No further GPU work needed."
+  latest_runpod_readback: "USD16.9136226955 at 2026-09-13T22:04:51Z; zero active Pods/workers, zero queued/running jobs on both lanes. Throttled counters retain one stale record per lane; no active compute."
   retained_guards: "USD2 per-run cap; USD3 floor; RTX4090 EU-RO-1; workersMin0/workersMax1; existing sealed50GB volumes; terminal/uncertain paid attempts never redispatched."
   evidence: "evidence/acceptance/VF-10-09/2026-09-14-stage6-7-mvp/acceptance.json"
-  handoff: "Deploy final terminal/review fixes, read back completion and zero compute. Targeted checks and web production build passed."
+  handoff: "V2-09 Stage6/7 MVP accepted. Source d27b055d2478e3d2e2d2e216b607732aae2af1c7 deployed QUALIFIED_EXACT. Chrome100% all ten stages, approved/downloaded output, no stale review flags. Targeted tests, web build, migration rollback/apply and context validation passed. No remaining task gates."
 
 v2_09_stage6_7_receipt_verifier_production_repair_2026_09_11:
   status: "DEPLOYED_AND_ACTIVATED_FRESH_CHROME_ACCEPTANCE_PENDING"
