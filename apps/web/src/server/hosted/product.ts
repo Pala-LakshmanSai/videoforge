@@ -6519,8 +6519,47 @@ async function projectDetail(
           WHERE task.account_id = $1 AND task.workspace_id = $2
             AND task.project_revision_id = $3
             AND task.state IN ('FAILED','BLOCKED','RETRY_WAIT')
+            AND NOT EXISTS (
+              SELECT 1
+                FROM video_runtime_accepted_units AS unit
+                JOIN serverless_attempts AS accepted_attempt
+                  ON accepted_attempt.account_id = unit.account_id
+                 AND accepted_attempt.workspace_id = unit.workspace_id
+                 AND accepted_attempt.id = unit.accepted_attempt_id
+                 AND accepted_attempt.project_id = $4
+                 AND accepted_attempt.project_revision_id = $3
+                JOIN artifact_reservations AS reservation
+                  ON reservation.account_id = unit.account_id
+                 AND reservation.workspace_id = unit.workspace_id
+                 AND reservation.project_id = accepted_attempt.project_id
+                 AND reservation.project_revision_id = accepted_attempt.project_revision_id
+                 AND reservation.job_id = accepted_attempt.id::text
+                 AND reservation.artifact_id = unit.item_id
+                 AND reservation.lane = CASE unit.lane
+                   WHEN 'mage_image' THEN 'MAGE_IMAGE'
+                   WHEN 'soulx_avatar' THEN 'SOULX_AVATAR'
+                 END
+                 AND reservation.object_key = unit.object_key
+                 AND reservation.state = 'COMMITTED'
+                JOIN artifact_receipts AS receipt
+                  ON receipt.account_id = reservation.account_id
+                 AND receipt.workspace_id = reservation.workspace_id
+                 AND receipt.reservation_id = reservation.id
+                 AND receipt.deleted_at IS NULL
+                 AND receipt.object_key = unit.object_key
+                 AND receipt.content_length = unit.content_length
+                 AND receipt.checksum_sha256 = unit.checksum_sha256
+               WHERE unit.account_id = task.account_id
+                 AND unit.workspace_id = task.workspace_id
+                 AND unit.project_revision_id = $3
+                 AND unit.item_id = task.id::text
+                 AND task.lane = CASE unit.lane
+                   WHEN 'mage_image' THEN 'IMAGE'
+                   WHEN 'soulx_avatar' THEN 'AVATAR'
+                 END
+            )
           ORDER BY task.updated_at DESC`,
-        [scope.account_id, scope.workspace_id, String(project.rows[0]?.revision_id ?? "")],
+        [scope.account_id, scope.workspace_id, String(project.rows[0]?.revision_id ?? ""), projectId],
       );
       const review = await transaction.query(
         `SELECT review.render_attempt_id, review.output_checksum_sha256,

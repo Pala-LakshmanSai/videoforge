@@ -756,6 +756,12 @@
       "name": "hosted_render_terminal_retry_lineage",
       "filename": "0127_hosted_render_terminal_retry_lineage.sql",
       "sha256": "sha256:b487bef12e4b6f33e0a9f05dcf6f4d099056dd13962818eb3f3c87006fae9992"
+    },
+    {
+      "version": 128,
+      "name": "hosted_v209_render_manifest_runtime_pin",
+      "filename": "0128_hosted_v209_render_manifest_runtime_pin.sql",
+      "sha256": "sha256:347be8b137cca9783b04d203e6fc79a747930e14fe83df96548ede9f15d72f2f"
     }
   ]
 }

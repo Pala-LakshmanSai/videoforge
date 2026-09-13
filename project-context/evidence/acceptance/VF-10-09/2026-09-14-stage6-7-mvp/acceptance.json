@@ -1,0 +1,32 @@
+{
+  "checkpoint": "V2-09",
+  "observed_at": "2026-09-13T21:52:00Z",
+  "project_id": "b79fef93-11e0-4333-9af0-8cd4fddcbd01",
+  "generation_request_id": "adf58e22-50c1-4a8c-996a-1d92c6099464",
+  "accepted_images": 7,
+  "accepted_avatar_clips": 2,
+  "mage_submitted_at": "2026-09-13T19:39:34.480384Z",
+  "soulx_submitted_at": "2026-09-13T19:39:35.616399Z",
+  "render_attempt_id": "18d8430e-e8b7-41ab-9133-7bc0b8cb2bd4",
+  "render_state": "SUCCEEDED",
+  "worker_version": "0.1.18",
+  "output_bytes": 5655939,
+  "output_sha256": "sha256:05e9d5f7c96dd06eb890c7e0b99b9c6b4d9ac4f97a63272193efbd85bc0aa06e",
+  "browser_evidence": {
+    "image_gallery_opened": true,
+    "both_avatar_clips_played": true,
+    "final_playback_reached_end_seconds": 37,
+    "audio_playing_observed": true,
+    "approval_confirmed": true,
+    "native_download_sha256_matches": true
+  },
+  "terminal_finalization": "SUCCEEDED",
+  "final_deployment": "PENDING",
+  "remaining_gate": "Deploy final fixes and read back production UI and zero provider compute.",
+  "runtime_state": "COMPLETE",
+  "generation_state": "SUCCEEDED",
+  "final_event_count": 1,
+  "paid_lease_state": "RELEASED",
+  "final_receipt_sha256": "sha256:a78f371627c37fdf6e547774036307a3b1a1933460c4de1810c86af0dca70919",
+  "migration_version": 128
+}

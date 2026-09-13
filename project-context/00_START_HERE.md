@@ -1,26 +1,13 @@
 # VideoForge: start here
 
-## Current Stage 6/7 MVP repair — 2026-09-13
+## Current Stage 6/7 MVP repair — 2026-09-14
 
-The user authorized autonomous Stage 6/7 repair and fresh browser acceptance, with parallel
-subagents and a hard RunPod balance floor of USD 3. Stop the flow and paid compute below that
-floor. Keep the existing USD 2 per-run guard and the qualified RTX 4090 lanes and sealed volumes.
-Current browser project: `b79fef93-11e0-4333-9af0-8cd4fddcbd01` (37-second narration).
-ASR succeeded after clearing regenerable npm cache restored the worker's 2 GiB headroom;
-stages 3–5 completed with seven prompts. Stage 6 is waiting; fresh GPU acceptance remains pending.
+The 37-second project `b79fef93-11e0-4333-9af0-8cd4fddcbd01` completed seven images and two avatar clips. Mage and SoulX submitted 1.136 seconds apart. Chrome verified both galleries, both avatar clips, full final MP4 playback, approval, and native download; downloaded SHA-256 matches the successful render.
 
-Source `b8b317df409188a1c2f3ceeae9719229c7c5f0fb` is pushed and deployed as Worker
-`43495330-d7ec-48b1-8384-944e01b4a8f3`; activation `62581a88-f36a-4191-9184-dba14b95f3b2`
-read back `QUALIFIED_EXACT`. Migrations 119–121 applied after rollback proofs. Repairs cover
-precompiled Cloudflare receipt validation, authoritative DB-time settlement evidence,
-canonical Avatar Hub source allowlisting, immutable renewal ancestry, and latest ASR retry display.
-The new SoulX image `sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35`
-is published and bound to the existing lane; fresh GPU qualification is still pending.
+Worker `0.1.18` is published and installed. Migrations119–128 are applied. Runtime is COMPLETE, generation SUCCEEDED, exactly one final-output event exists, and the paid lease is RELEASED. Final terminal/review source deployment and zero-compute readback remain pending; see `CURRENT_STATE.yaml` for exact live source.
 
-Old generation `54169c5f-13ca-48e8-ac8b-4fc73c676a88` is terminal: Mage seven images succeeded,
-SoulX artifact-path failed. Never redispatch it; settlement reconciliation remains under investigation.
-Last provider read at 19:33Z: balance $17.104, zero running Pods/workers, min0/max1 lanes and
-existing sealed volumes preserved. Full Stage 6/7 acceptance remains in progress.
+Preserve USD2/run, USD3 RunPod floor, exact RTX4090 EU-RO-1 lanes at min0/max1, and sealed50GB volumes. Stop the entire flow below the floor. Never redispatch accepted media or terminal/uncertain paid attempts. Evidence: `evidence/acceptance/VF-10-09/2026-09-14-stage6-7-mvp/acceptance.json`.
+
 
 ## Active handoff — read this section first
 

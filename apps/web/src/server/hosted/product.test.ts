@@ -1446,4 +1446,26 @@ describe("hosted product route contract", () => {
     expect(block).toContain("lifetimeSeconds: 300");
     expect(block).not.toContain("account_id");
   });
+
+  it("suppresses failed tasks with an exact committed accepted runtime unit", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("const failedTasks = await transaction.query(");
+    const end = source.indexOf("const review = await transaction.query(", start);
+    const query = source.slice(start, end);
+
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+  expect(query).toContain("AND NOT EXISTS (");
+  expect(query).toContain("FROM video_runtime_accepted_units AS unit");
+  expect(query).toContain("JOIN serverless_attempts AS accepted_attempt");
+  expect(query).toContain("unit.item_id = task.id::text");
+  expect(query).toContain("WHEN 'mage_image' THEN 'IMAGE'");
+  expect(query).toContain("WHEN 'soulx_avatar' THEN 'AVATAR'");
+  expect(query).not.toContain("accepted_attempt.task_id = task.id");
+    expect(query).toContain("JOIN artifact_reservations AS reservation");
+    expect(query).toContain("reservation.state = 'COMMITTED'");
+    expect(query).toContain("JOIN artifact_receipts AS receipt");
+    expect(query).toContain("receipt.deleted_at IS NULL");
+    expect(query).toContain("receipt.checksum_sha256 = unit.checksum_sha256");
+  });
 });
