@@ -707,10 +707,14 @@ export function createHostedV209TerminalOutputIngestor(
         !Number.isFinite(Date.parse(request.observedAt))
       )
         fail();
+      const trace = (phase: string) => console.info("hosted_terminal_ingestion", { lane: request.lane, phase });
+      trace("LINEAGE_LOADING");
       const lineage = await store.load(request);
       if (!lineage) fail();
+      trace("RECEIPT_LOADING");
       const parsed = parseOutput(request.lane, request.output);
       const { verifyV213WorkerReceipt } = await import("../providers/v213-provenance-receipt");
+      trace("RECEIPT_VERIFYING");
       verifyV213WorkerReceipt(
         signer,
         { receipt: parsed.receipt, receiptBodyBase64: parsed.receiptBodyBase64 },
@@ -733,6 +737,7 @@ export function createHostedV209TerminalOutputIngestor(
         },
       );
       const declared = outputFacts(request.lane, parsed, lineage);
+      trace("ARTIFACTS_VERIFYING");
       const verified: VerifiedArtifact[] = [];
       for (const artifact of declared) {
         const head = await input.bucket.head(artifact.objectKey);
@@ -759,6 +764,7 @@ export function createHostedV209TerminalOutputIngestor(
           fail();
         verified.push(artifact);
       }
+      trace("ARTIFACTS_COMMITTING");
       const committed = await store.commitArtifacts({
         lineage,
         artifacts: verified,
