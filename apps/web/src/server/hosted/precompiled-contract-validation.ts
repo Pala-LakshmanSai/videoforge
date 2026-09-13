@@ -39,7 +39,9 @@ export async function validateAndHashHostedContractDocument<Name extends Contrac
   validatorsPromise ??= import(
     "@videoforge/contracts/hosted-generation-contract-validators"
   ).then((module) => module as unknown as Record<string, PrecompiledValidator>);
-  const validator = (await validatorsPromise)[contractName];
+  const validator = (await validatorsPromise)[contractName] ??
+    ((await import("@videoforge/contracts/precompiled-contract-validators")) as unknown as
+      Record<string, PrecompiledValidator>)[contractName];
   if (!validator) throw new Error(`Missing precompiled hosted validator: ${contractName}`);
   if (!validator(value)) throw new ContractValidationError(contractName, issues(validator));
   const document = value as ContractDocument<Name>;

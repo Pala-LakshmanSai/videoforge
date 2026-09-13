@@ -1,11 +1,11 @@
 import {
-  validateAndHashContractDocument,
   type ProjectRevisionConfigDocument,
   type ResolvedRenderManifestDocument,
   type TimelinePlanDocument,
   type TranscriptTimingDocument,
   type ValidatedContractDocument,
 } from "@videoforge/contracts";
+import { validateAndHashHostedContractDocument as validateAndHashContractDocument } from "./precompiled-contract-validation";
 
 import { sha256 } from "./crypto";
 import { canonicalJson, exactHostedRenderSubmission } from "./submission";

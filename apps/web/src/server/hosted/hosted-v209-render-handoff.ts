@@ -1,4 +1,4 @@
-import { validateAndHashContractDocument } from "@videoforge/contracts";
+import { validateAndHashHostedContractDocument as validateAndHashContractDocument } from "./precompiled-contract-validation";
 import { planVNextResolvedRenderManifest, type AcceptedAssetBinding } from "@videoforge/pipeline";
 import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
 
@@ -239,6 +239,7 @@ export function createHostedV209RenderHandoff(input: {
         ]),
       );
       const planned = await planVNextResolvedRenderManifest({
+        contractDocumentAuthority: { validateAndHash: validateAndHashContractDocument },
         revision: revisionDocument,
         timeline,
         voiceover: {

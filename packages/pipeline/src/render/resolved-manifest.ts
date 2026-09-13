@@ -676,7 +676,8 @@ export async function planResolvedRenderManifest(
 
   try {
     return pipelineSuccess(
-      await validateAndHashContractDocument("resolvedRenderManifest", manifest),
+      await (request.contractDocumentAuthority?.validateAndHash("resolvedRenderManifest", manifest) ??
+        validateAndHashContractDocument("resolvedRenderManifest", manifest)),
     );
   } catch {
     return pipelineFailure(

@@ -5,8 +5,10 @@ import type {
   TimelinePlanDocumentRef,
 } from "../documents.js";
 import type { PipelineResult } from "../errors.js";
+import type { ContractDocumentValidationAuthority } from "@videoforge/contracts";
 
 export interface RenderPlanRequest {
+  readonly contractDocumentAuthority?: ContractDocumentValidationAuthority;
   readonly revision: ProjectRevisionDocumentRef;
   readonly timeline: TimelinePlanDocumentRef;
   readonly voiceover: AcceptedAssetBinding;
