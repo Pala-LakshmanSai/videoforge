@@ -738,6 +738,12 @@
       "name": "hosted_v209_terminal_aggregate_alias",
       "filename": "0124_hosted_v209_terminal_aggregate_alias.sql",
       "sha256": "sha256:8ea229ff4dbdb37b103adab003baefce3523543e8d533cc3f7e0a13d17ce4c64"
+    },
+    {
+      "version": 125,
+      "name": "hosted_v209_render_manifest_artifact_identity",
+      "filename": "0125_hosted_v209_render_manifest_artifact_identity.sql",
+      "sha256": "sha256:5a3c77de73d6c01a63b2ee64f6b0963c664eb78b02605f6361fcc731777a9828"
     }
   ]
 }
