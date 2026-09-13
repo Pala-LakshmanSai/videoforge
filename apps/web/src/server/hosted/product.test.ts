@@ -19,6 +19,7 @@ const testState = vi.hoisted(() => {
     },
   ];
   const projectDetailAttemptRows: Record<string, unknown>[] = [];
+  const projectDetailMediaRows: Record<string, unknown>[] = [];
   const rateLimitRows = [{ allowed: true }];
   const archiveState: {
     rows: Record<string, unknown>[];
@@ -57,19 +58,14 @@ const testState = vi.hoisted(() => {
         affectedRows: projectCancellationState.rows.length,
       };
     }
-    if (
-      sql.includes("SELECT request.id::text AS generation_request_id")
-    ) {
+    if (sql.includes("SELECT request.id::text AS generation_request_id")) {
       return { rows: providerBoundPairRows, affectedRows: providerBoundPairRows.length };
     }
     if (sql.includes("videoforge_inspect_hosted_pair_runtime")) {
       return {
         rows:
           providerBoundPairRows.length === 1
-            ? [
-                { recovery_action: "RECONCILE_ASSIGNED" },
-                { recovery_action: "RECONCILE_ASSIGNED" },
-              ]
+            ? [{ recovery_action: "RECONCILE_ASSIGNED" }, { recovery_action: "RECONCILE_ASSIGNED" }]
             : [],
         affectedRows: providerBoundPairRows.length === 1 ? 2 : 0,
       };
@@ -85,6 +81,12 @@ const testState = vi.hoisted(() => {
     }
     if (sql.includes("version.state = 'PUBLISHED'") && sql.includes("FROM image_styles AS style"))
       return { rows: publishedStyleRows, affectedRows: publishedStyleRows.length };
+    if (
+      sql.includes("FROM video_runtime_accepted_units AS unit") &&
+      sql.includes("FROM serverless_output_receipts AS output")
+    ) {
+      return { rows: projectDetailMediaRows, affectedRows: projectDetailMediaRows.length };
+    }
     if (
       sql.includes("FROM hosted_cpu_job_attempts AS attempt") &&
       sql.includes("SELECT attempt.id, attempt.kind, attempt.state, attempt.version") &&
@@ -108,6 +110,7 @@ const testState = vi.hoisted(() => {
     scopeRows,
     projectRows,
     projectDetailAttemptRows,
+    projectDetailMediaRows,
     rateLimitRows,
     archiveState,
     projectArchiveState,
@@ -1303,6 +1306,104 @@ describe("hosted product route contract", () => {
     expect(block).toContain("VALUES ($1,$2,$3,$4,$5,'DRAFT','WORKSPACE',$6)");
     expect(block).not.toContain("FROM hosted_style_analysis_runs");
     expect(block).not.toContain("state = 'UNKNOWN' AND");
+  });
+
+  it("lists accepted runtime units when canonical output receipts are absent", async () => {
+    testState.query.mockClear();
+    const revisionId = "22222222-2222-4222-8222-222222222222";
+    const accountId = testState.scopeRows[0]!.account_id as string;
+    const workspaceId = testState.scopeRows[0]!.workspace_id as string;
+    const mage = {
+      item_id: "mage-scene-1",
+      object_key:
+        `tenant/${accountId}/workspace/${workspaceId}` +
+        `/project/${PROJECT_ID}/revision/${revisionId}/lane/mage-image/job/mage-attempt/artifact/mage-scene-1`,
+      content_type: "image/png",
+      content_length: 101,
+      checksum_sha256: `sha256:${"01".repeat(32)}`,
+    };
+    const soulx = {
+      item_id: "soulx-scene-1",
+      object_key:
+        `tenant/${accountId}/workspace/${workspaceId}` +
+        `/project/${PROJECT_ID}/revision/${revisionId}/lane/soulx-avatar/job/soulx-attempt/artifact/soulx-scene-1`,
+      content_type: "video/mp4",
+      content_length: 202,
+      checksum_sha256: `sha256:${"02".repeat(32)}`,
+    };
+    testState.projectDetailMediaRows.splice(
+      0,
+      testState.projectDetailMediaRows.length,
+      {
+        attempt_id: "33333333-3333-4333-8333-333333333333",
+        lane: "mage_image",
+        artifacts: [mage],
+        accepted_at: "2026-09-14T00:00:00.000Z",
+      },
+      {
+        attempt_id: "44444444-4444-4444-8444-444444444444",
+        lane: "soulx_avatar",
+        artifacts: [soulx],
+        accepted_at: "2026-09-14T00:00:01.000Z",
+      },
+    );
+    const objects = new Map([
+      [mage.object_key, { ...mage, checksumBytes: new Uint8Array(32).fill(1).buffer }],
+      [soulx.object_key, { ...soulx, checksumBytes: new Uint8Array(32).fill(2).buffer }],
+    ]);
+    const head = vi.fn(async (objectKey: string) => {
+      const object = objects.get(objectKey);
+      return object
+        ? {
+            size: object.content_length,
+            httpMetadata: { contentType: object.content_type },
+            checksums: { sha256: object.checksumBytes },
+          }
+        : null;
+    });
+    const mediaEnvironment = {
+      PRIVATE_ARTIFACTS: { head },
+    } as unknown as HostedRuntimeEnvironment;
+
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        mediaEnvironment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result?.json()) as {
+        review: {
+          contact_sheet: Array<{ id: string; image_url: string }>;
+          avatar_footage: Array<{ id: string; video_url: string }>;
+        };
+      };
+      expect(body.review.contact_sheet).toHaveLength(1);
+      expect(body.review.contact_sheet[0]).toMatchObject({
+        id: mage.item_id,
+        shot_role: "mage_image",
+      });
+      expect(body.review.avatar_footage).toHaveLength(1);
+      expect(body.review.avatar_footage[0]).toMatchObject({ id: soulx.item_id });
+      expect(head).toHaveBeenCalledTimes(3);
+      expect(head).toHaveBeenNthCalledWith(1, mage.object_key);
+      expect(head).toHaveBeenNthCalledWith(2, soulx.object_key);
+      expect(head).toHaveBeenNthCalledWith(3, soulx.object_key);
+
+      const mediaCall = testState.query.mock.calls.find(([sql]) =>
+        String(sql).includes("FROM video_runtime_accepted_units AS unit"),
+      );
+      expect(mediaCall).toBeDefined();
+      expect(mediaCall?.[0]).toContain("JOIN serverless_attempts AS attempt");
+      expect(mediaCall?.[0]).toContain("JOIN artifact_reservations AS reservation");
+      expect(mediaCall?.[0]).toContain("JOIN artifact_receipts AS receipt");
+      expect(mediaCall?.[0]).toContain("reservation.state = 'COMMITTED'");
+      expect(mediaCall?.[0]).toContain("receipt.deleted_at IS NULL");
+      expect(mediaCall?.[1]).toEqual([accountId, workspaceId, PROJECT_ID, revisionId]);
+    } finally {
+      testState.projectDetailMediaRows.splice(0, testState.projectDetailMediaRows.length);
+    }
   });
 
   it("signs only verified tenant-scoped SoulX MP4 outputs for project media review", () => {

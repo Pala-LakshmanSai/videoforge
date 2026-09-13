@@ -123,7 +123,8 @@ INSERT INTO v209_runtime_table_allowlist(table_name,privilege) VALUES
   ('serverless_progress_events','SELECT'),
   ('timeline_plans','SELECT'),
   ('timeline_segments','SELECT'),
-  ('video_runtime_lane_states','SELECT'),
+('video_runtime_lane_states','SELECT'),
+('video_runtime_accepted_units','SELECT'),
   ('video_runtime_states','SELECT'),
   ('workspaces','SELECT');
 SELECT format('GRANT %s ON TABLE public.%I TO %I;',privilege,table_name,:'runtime_role')

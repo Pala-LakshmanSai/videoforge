@@ -6352,13 +6352,84 @@ async function projectDetail(
         [scope.account_id, scope.workspace_id, projectId],
       );
       const serverlessOutputs = await transaction.query(
-        `SELECT output.attempt_id, output.lane, output.artifacts, output.accepted_at
-           FROM serverless_output_receipts AS output
-          WHERE output.account_id = $1 AND output.workspace_id = $2
-            AND output.project_revision_id = $3
-            AND output.acceptance = 'ACCEPTED_CANONICAL'
-          ORDER BY output.accepted_at, output.attempt_id`,
-        [scope.account_id, scope.workspace_id, String(project.rows[0]?.revision_id ?? "")],
+        `WITH canonical_outputs AS (
+               SELECT output.attempt_id, output.lane, output.artifacts, output.accepted_at,
+                      0 AS source_priority
+                 FROM serverless_output_receipts AS output
+                 JOIN serverless_attempts AS attempt
+                   ON attempt.account_id = output.account_id
+                  AND attempt.workspace_id = output.workspace_id
+                  AND attempt.id = output.attempt_id
+                  AND attempt.project_id = $3
+                  AND attempt.project_revision_id = $4
+                WHERE output.account_id = $1 AND output.workspace_id = $2
+                  AND output.project_revision_id = $4
+                  AND output.acceptance = 'ACCEPTED_CANONICAL'
+             ), accepted_output_items AS (
+               SELECT unit.accepted_attempt_id AS attempt_id,
+                      unit.lane,
+                      jsonb_build_object(
+                        'item_id', unit.item_id,
+                        'object_key', unit.object_key,
+                        'content_type', receipt.content_type,
+                        'content_length', unit.content_length,
+                        'checksum_sha256', unit.checksum_sha256
+                      ) AS artifact,
+                      unit.accepted_at,
+                      1 AS source_priority,
+                      unit.item_id
+                 FROM video_runtime_accepted_units AS unit
+                 JOIN serverless_attempts AS attempt
+                   ON attempt.account_id = unit.account_id
+                  AND attempt.workspace_id = unit.workspace_id
+                  AND attempt.id = unit.accepted_attempt_id
+                  AND attempt.project_id = $3
+                  AND attempt.project_revision_id = $4
+                 JOIN artifact_reservations AS reservation
+                   ON reservation.account_id = unit.account_id
+                  AND reservation.workspace_id = unit.workspace_id
+                  AND reservation.project_id = attempt.project_id
+                  AND reservation.project_revision_id = attempt.project_revision_id
+                  AND reservation.job_id = attempt.id::text
+                  AND reservation.artifact_id = unit.item_id
+                  AND reservation.lane = CASE unit.lane
+                    WHEN 'mage_image' THEN 'MAGE_IMAGE'
+                    WHEN 'soulx_avatar' THEN 'SOULX_AVATAR'
+                  END
+                  AND reservation.object_key = unit.object_key
+                  AND reservation.state = 'COMMITTED'
+                 JOIN artifact_receipts AS receipt
+                   ON receipt.account_id = reservation.account_id
+                  AND receipt.workspace_id = reservation.workspace_id
+                  AND receipt.reservation_id = reservation.id
+                  AND receipt.deleted_at IS NULL
+                  AND receipt.object_key = unit.object_key
+                  AND receipt.content_length = unit.content_length
+                  AND receipt.checksum_sha256 = unit.checksum_sha256
+                WHERE unit.account_id = $1 AND unit.workspace_id = $2
+                  AND unit.project_revision_id = $4
+             ), expanded_output_items AS (
+               SELECT output.attempt_id, output.lane, item.value AS artifact,
+                      output.accepted_at, output.source_priority,
+                      item.value->>'item_id' AS item_id
+                 FROM canonical_outputs AS output
+                 CROSS JOIN LATERAL jsonb_array_elements(output.artifacts) AS item(value)
+                UNION ALL
+               SELECT attempt_id, lane, artifact, accepted_at, source_priority, item_id
+                 FROM accepted_output_items
+             ), deduplicated_output_items AS (
+               SELECT DISTINCT ON (attempt_id, lane, item_id)
+                      attempt_id, lane, item_id, artifact, accepted_at
+                 FROM expanded_output_items
+                ORDER BY attempt_id, lane, item_id, source_priority, accepted_at DESC
+             )
+        SELECT attempt_id, lane,
+               jsonb_agg(artifact ORDER BY item_id) AS artifacts,
+               max(accepted_at) AS accepted_at
+          FROM deduplicated_output_items
+         GROUP BY attempt_id, lane
+         ORDER BY max(accepted_at), attempt_id`,
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const cost = await transaction.query(
         `SELECT revision.maximum_cost_micro_usd,
