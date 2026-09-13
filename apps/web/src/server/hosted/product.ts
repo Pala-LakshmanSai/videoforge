@@ -6614,12 +6614,12 @@ async function projectDetail(
         return hostedProgressPercent(value.accepted_item_count, value.planned_item_count);
       return hostedProgressPercent(value.items_completed, value.items_total ?? value.item_count);
     };
-    const asr = (detail.attempts as Record<string, unknown>[]).find(
-      (value) => value.kind === "ASR",
-    );
-    const render = (detail.attempts as Record<string, unknown>[]).find(
-      (value) => value.kind === "RENDER",
-    );
+    const latestAttempt = (kind: string) =>
+      [...(detail.attempts as Record<string, unknown>[])]
+        .reverse()
+        .find((value) => value.kind === kind);
+    const asr = latestAttempt("ASR");
+    const render = latestAttempt("RENDER");
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
     const gpuPendingState = hostedGpuProductState(gpuReadiness).pendingState;
     const promptProgress = detail.promptProgress as Record<string, unknown> | null;
