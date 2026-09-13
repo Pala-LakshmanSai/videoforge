@@ -9,9 +9,7 @@ import {
 
 export interface HostedWorkflowBinding {
   create(options?: { id?: string; params?: unknown }): Promise<{ id: string }>;
-  get(
-    id: string,
-  ): Promise<{
+  get(id: string): Promise<{
     status(): Promise<unknown>;
     restart?(): Promise<void>;
     sendEvent(event: unknown): Promise<void>;
@@ -21,6 +19,7 @@ export interface HostedWorkflowBinding {
 export interface HostedR2BucketBinding {
   head(key: string): Promise<{
     readonly size: number;
+    readonly etag?: string;
     readonly httpMetadata?: { readonly contentType?: string };
     readonly checksums?: { readonly sha256?: ArrayBuffer };
   } | null>;
@@ -29,6 +28,7 @@ export interface HostedR2BucketBinding {
     options?: { readonly range?: { readonly offset: number; readonly length: number } },
   ): Promise<{
     readonly size: number;
+    readonly etag?: string;
     readonly httpMetadata?: { readonly contentType?: string };
     arrayBuffer(): Promise<ArrayBuffer>;
   } | null>;
@@ -548,8 +548,7 @@ export async function qualifiedHostedRuntimeConfiguration(input: {
     console.info("hosted_qualified_runtime_configuration", {
       event: "REJECTED",
       sourceCommitMatches: verified.sourceCommit === disabled.commit,
-      evidenceHashMatches:
-        verified.canonicalEvidenceSha256 === canonicalSha256(input.evidence),
+      evidenceHashMatches: verified.canonicalEvidenceSha256 === canonicalSha256(input.evidence),
       activationHashMatches: verified.activationSnapshotSha256 === activationSnapshotSha256,
       deployedVersionIdSha256,
       expectedVersionIdSha256: verified.gate.cloudflare.versionIdSha256,

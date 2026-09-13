@@ -612,10 +612,14 @@ class RenderJob:
                     for stream in streams
                     if isinstance(stream, dict) and stream.get("codec_type") == "video"
                 ]
+                allowed_stream_types = {"video"}
+                if binding.kind == "AVATAR_CLIP":
+                    allowed_stream_types.add("audio")
                 other_streams = [
                     stream
                     for stream in streams
-                    if not isinstance(stream, dict) or stream.get("codec_type") != "video"
+                    if not isinstance(stream, dict)
+                    or stream.get("codec_type") not in allowed_stream_types
                 ]
                 if len(video_streams) != 1 or other_streams:
                     raise ValueError("Visual inputs require exactly one video stream")

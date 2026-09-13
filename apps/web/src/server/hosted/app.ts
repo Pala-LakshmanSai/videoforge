@@ -491,6 +491,10 @@ async function handleCpuSubmission(
     }
 
     const imageDigest = config.mediaWorkerRelease.executionBundleSha256;
+    const submissionKey =
+      submission.kind === "RENDER"
+        ? `${submission.idempotencyKey}:${imageDigest.slice(7, 23)}`
+        : submission.idempotencyKey;
     const requestSha256 = await sha256(canonicalJson(submission));
     const executor = createNeonExecutor(pool);
     const prepared = await executor.transaction(async (transaction) => {
@@ -574,7 +578,7 @@ async function handleCpuSubmission(
       }>(
         `SELECT id, request_sha256, image_digest, state FROM hosted_cpu_job_attempts
           WHERE account_id = $1 AND workspace_id = $2 AND submission_idempotency_key = $3`,
-        [scope.account_id, scope.workspace_id, submission.idempotencyKey],
+        [scope.account_id, scope.workspace_id, submissionKey],
       );
       let attemptId = existing.rows[0]?.id;
       if (
@@ -584,7 +588,11 @@ async function handleCpuSubmission(
       ) {
         throw new Error("CPU_SUBMISSION_IDEMPOTENCY_CONFLICT");
       }
-      if (trusted && attemptId !== undefined && attemptId !== trusted.expectedAttemptId) {
+      if (
+        trusted?.expectedAttemptId !== undefined &&
+        attemptId !== undefined &&
+        attemptId !== trusted.expectedAttemptId
+      ) {
         throw new Error("CPU_SUBMISSION_IDEMPOTENCY_CONFLICT");
       }
       attemptId ??= trusted?.expectedAttemptId ?? crypto.randomUUID();
@@ -669,7 +677,7 @@ async function handleCpuSubmission(
             submission.projectId,
             submission.projectRevisionId,
             submission.kind,
-            submission.idempotencyKey,
+            submissionKey,
             requestSha256,
             jobSpecKey,
             jobSpecBytes.byteLength,

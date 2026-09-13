@@ -155,6 +155,7 @@ import {
   hostedProjectConflictProblem,
   hostedPromptWritingState,
   hostedStyleConflictProblem,
+  verifyHostedPreviewChecksum,
 } from "./product";
 import { handleHostedPromptRequest } from "./hosted-prompt-route";
 
@@ -222,6 +223,32 @@ async function errorCode(result: Response | null): Promise<string | null> {
 }
 
 describe("hosted product route contract", () => {
+  it("verifies preview bytes when R2 omits SHA metadata and caches only the exact ETag", async () => {
+    const bytes = new TextEncoder().encode("verified preview").buffer;
+    const hash = `sha256:${[...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+    const get = vi.fn(async () => ({
+      size: bytes.byteLength,
+      etag: "v1",
+      arrayBuffer: async () => bytes,
+    }));
+    const bucket = { get } as unknown as NonNullable<HostedRuntimeEnvironment["PRIVATE_ARTIFACTS"]>;
+    const head = { size: bytes.byteLength, etag: "v1" };
+    expect(await verifyHostedPreviewChecksum(bucket, "tenant/preview-check", head, hash)).toBe(
+      true,
+    );
+    expect(await verifyHostedPreviewChecksum(bucket, "tenant/preview-check", head, hash)).toBe(
+      true,
+    );
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(
+      await verifyHostedPreviewChecksum(
+        bucket,
+        "tenant/preview-check",
+        { ...head, etag: "v2" },
+        hash,
+      ),
+    ).toBe(false);
+  });
   it("keeps the prompt endpoint out of the broad product route", async () => {
     const promptRequest = request(`/api/v2/hosted/projects/${PROJECT_ID}/prompts`);
     expect(

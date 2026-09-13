@@ -95,6 +95,7 @@ class FakeProcess:
         self.input_loudness = (-21.4, -4.7)
         self.output_loudness = (-16.0, -2.1)
         self.visual_probes: dict[Path, tuple[str, int, int, str]] = {}
+        self.avatar_audio_paths: set[Path] = set()
 
     @staticmethod
     def _loudness_payload(values: tuple[float, float]) -> str:
@@ -113,18 +114,21 @@ class FakeProcess:
         visual = self.visual_probes.get(path)
         if visual is not None:
             codec, width, height, frame_rate = visual
+            streams: list[dict[str, Any]] = [
+                {
+                    "codec_type": "video",
+                    "codec_name": codec,
+                    "width": width,
+                    "height": height,
+                    "avg_frame_rate": frame_rate,
+                    "r_frame_rate": frame_rate,
+                }
+            ]
+            if path in self.avatar_audio_paths:
+                streams.append({"codec_type": "audio", "codec_name": "aac"})
             return json.dumps(
                 {
-                    "streams": [
-                        {
-                            "codec_type": "video",
-                            "codec_name": codec,
-                            "width": width,
-                            "height": height,
-                            "avg_frame_rate": frame_rate,
-                            "r_frame_rate": frame_rate,
-                        }
-                    ]
+                    "streams": streams
                 }
             )
         streams: list[dict[str, Any]] = [
@@ -429,6 +433,30 @@ class RenderJobTests(unittest.TestCase):
         self.assertIn("-map_metadata", render_call)
         self.assertIn("-sn", render_call)
         self.assertIn("-dn", render_call)
+
+    def test_accepts_avatar_audio_but_maps_narration_only(self) -> None:
+        fixture = RenderFixture()
+        avatar = next(
+            asset
+            for asset in fixture.document["assets"]
+            if asset["asset_id"] == "asset_avatar_full_001"
+        )
+        avatar_path = fixture.resolver.objects[avatar["artifact_uri"]]
+        fixture.process.avatar_audio_paths.add(avatar_path)
+
+        result = fixture.job().run(
+            fixture.document,
+            claimed_attempt_id="attempt_render_local_001",
+        )
+
+        self.assertEqual(result["status"], "SUCCEEDED")
+        render_call = next(call for call in fixture.process.calls if "-filter_complex" in call)
+        map_values = [
+            render_call[index + 1]
+            for index, value in enumerate(render_call)
+            if value == "-map"
+        ]
+        self.assertEqual(map_values, ["[vout]", "[aout]"])
 
     def test_preserves_the_legacy_zoom_profile_without_mixing_versions(self) -> None:
         fixture = RenderFixture()

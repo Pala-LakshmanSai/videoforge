@@ -3515,6 +3515,30 @@ function checksumFromR2(value?: ArrayBuffer): string | null {
   return `sha256:${[...new Uint8Array(value)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
+const verifiedPreviewObjects = new Map<string, string>();
+export async function verifyHostedPreviewChecksum(
+  bucket: NonNullable<HostedRuntimeEnvironment["PRIVATE_ARTIFACTS"]>,
+  objectKey: string,
+  head: NonNullable<Awaited<ReturnType<typeof bucket.head>>>,
+  checksum: string,
+): Promise<boolean> {
+  const stored = checksumFromR2(head.checksums?.sha256);
+  if (stored !== null) return stored === checksum;
+  const identity = head.etag ? `${head.etag}:${head.size}:${checksum}` : null;
+  if (identity && verifiedPreviewObjects.get(objectKey) === identity) return true;
+  const object = await bucket.get(objectKey);
+  if (!object || object.size !== head.size || (head.etag && object.etag !== head.etag))
+    return false;
+  const bytes = await object.arrayBuffer();
+  if (bytes.byteLength !== head.size || (await sha256Bytes(bytes)) !== checksum) return false;
+  if (identity) {
+    if (verifiedPreviewObjects.size >= 256)
+      verifiedPreviewObjects.delete(verifiedPreviewObjects.keys().next().value!);
+    verifiedPreviewObjects.set(objectKey, identity);
+  }
+  return true;
+}
+
 function voiceoverExtension(contentType: string): string {
   return contentType === "audio/wav"
     ? "wav"
@@ -5926,7 +5950,7 @@ async function contactSheet(
         object.size !== contentLength ||
         typeof contentType !== "string" ||
         !contentType.startsWith("image/") ||
-        checksumFromR2(object.checksums?.sha256) !== checksum
+        !(await verifyHostedPreviewChecksum(bucket, objectKey, object, checksum))
       ) {
         continue;
       }
@@ -5986,7 +6010,7 @@ async function avatarFootage(
         !object ||
         object.size !== contentLength ||
         contentType !== "video/mp4" ||
-        checksumFromR2(object.checksums?.sha256) !== checksum
+        !(await verifyHostedPreviewChecksum(bucket, objectKey, object, checksum))
       ) {
         continue;
       }
