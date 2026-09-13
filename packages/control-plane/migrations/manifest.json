@@ -726,6 +726,12 @@
       "name": "hosted_v209_terminal_json_precedence",
       "filename": "0122_hosted_v209_terminal_json_precedence.sql",
       "sha256": "sha256:94a9b12518a5aad422135bfd1017d4d2ecf5842cba50522848845aa2f2d07be8"
+    },
+    {
+      "version": 123,
+      "name": "hosted_v209_terminal_deadline_precision",
+      "filename": "0123_hosted_v209_terminal_deadline_precision.sql",
+      "sha256": "sha256:92b04b1d9c871fd4b1cf37809262bfd0f6d49952a75976a52e36be51ad218204"
     }
   ]
 }
