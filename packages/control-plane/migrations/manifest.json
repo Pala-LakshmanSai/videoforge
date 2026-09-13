@@ -744,6 +744,12 @@
       "name": "hosted_v209_render_manifest_artifact_identity",
       "filename": "0125_hosted_v209_render_manifest_artifact_identity.sql",
       "sha256": "sha256:5a3c77de73d6c01a63b2ee64f6b0963c664eb78b02605f6361fcc731777a9828"
+    },
+    {
+      "version": 126,
+      "name": "hosted_render_media_input_keys",
+      "filename": "0126_hosted_render_media_input_keys.sql",
+      "sha256": "sha256:248cdfe3b0b24770b8d3eb08f62b73dd4665411b00679b9410c8ae6c0ad6c69f"
     }
   ]
 }
