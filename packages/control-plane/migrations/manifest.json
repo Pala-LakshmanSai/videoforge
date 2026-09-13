@@ -732,6 +732,12 @@
       "name": "hosted_v209_terminal_deadline_precision",
       "filename": "0123_hosted_v209_terminal_deadline_precision.sql",
       "sha256": "sha256:92b04b1d9c871fd4b1cf37809262bfd0f6d49952a75976a52e36be51ad218204"
+    },
+    {
+      "version": 124,
+      "name": "hosted_v209_terminal_aggregate_alias",
+      "filename": "0124_hosted_v209_terminal_aggregate_alias.sql",
+      "sha256": "sha256:8ea229ff4dbdb37b103adab003baefce3523543e8d533cc3f7e0a13d17ce4c64"
     }
   ]
 }
