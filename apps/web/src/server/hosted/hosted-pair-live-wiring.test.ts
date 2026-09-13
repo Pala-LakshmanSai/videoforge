@@ -12,6 +12,7 @@ import {
   createHostedRunPodObservationSource,
   createHostedRunPodPair,
   ensureHostedPairWorkflow,
+  type HostedPairWorkflowScope,
 } from "./hosted-pair-live-wiring";
 import type { HostedPairLane } from "./hosted-pair-runtime-executor";
 
@@ -449,6 +450,56 @@ describe("hosted pair live provider wiring", () => {
     expect(settlementGuard).toHaveBeenCalledOnce();
     expect(drained).toHaveBeenCalledTimes(2);
     expect(settle.reconcile).toHaveBeenCalledOnce();
+  });
+
+  it("normalizes future provider drain observations to one fresh database timestamp", async () => {
+    const status = vi.fn(async () => {
+      throw new ServerlessTransportError("PROVIDER_JOB_ABSENT");
+    });
+    const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
+    const futureObservedAt = "2999-09-06T01:00:00.000Z";
+    const databaseNow = "2026-09-06T01:00:00.000Z";
+    const drained = vi.fn(async () => ({
+      workersTotal: 0 as const,
+      billableWorkers: 0 as const,
+      queuedJobs: 0 as const,
+      observedAt: futureObservedAt,
+    }));
+    const signZeroProof = vi.fn(
+      async (
+        lane: HostedPairLane,
+        _scope: HostedPairWorkflowScope,
+        observation: { readonly observedAt: string },
+      ) => ({
+        lane,
+        observedAt: observation.observedAt,
+      }),
+    );
+    const readDatabaseNow = vi.fn(async () => databaseNow);
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rows()) } as never,
+      {
+        mage_image: { status, cancel: vi.fn() },
+        soulx_avatar: { status, cancel: vi.fn() },
+      },
+      settle as never,
+      { mage_image: drained, soulx_avatar: drained },
+      vi.fn(async () => ({ guard: "cost-bounded" })),
+      signZeroProof,
+      undefined,
+      undefined,
+      readDatabaseNow,
+    );
+
+    await expect(reconciler.observe(ids, true)).resolves.toEqual({ state: "SETTLED" });
+    expect(readDatabaseNow).toHaveBeenCalledOnce();
+    expect(signZeroProof.mock.calls.map(([, , observation]) => observation.observedAt)).toEqual([
+      databaseNow,
+      databaseNow,
+    ]);
+    expect(
+      signZeroProof.mock.calls.map(([, , observation]) => observation.observedAt),
+    ).not.toContain(futureObservedAt);
   });
 
   it("requires both exact endpoint drains before callback-barrier settlement", async () => {

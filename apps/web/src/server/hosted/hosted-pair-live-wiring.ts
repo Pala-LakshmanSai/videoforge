@@ -863,6 +863,7 @@ export class HostedPairWorkflowReconciler {
       }) => Promise<unknown>;
     },
     private readonly beforeSettlement?: (scope: HostedPairWorkflowScope) => Promise<unknown>,
+    private readonly readDatabaseNow?: () => Promise<string>,
   ) {}
 
   async observe(scope: HostedPairWorkflowScope, cancelKnownActive: boolean) {
@@ -940,9 +941,16 @@ export class HostedPairWorkflowReconciler {
       this.confirmDrained.soulx_avatar(),
     ]);
     const settlementCostGuard = await this.settlementGuard(scope);
+    const observedAt = this.readDatabaseNow ? await this.readDatabaseNow() : undefined;
     const zeroWorkerProofs = await Promise.all([
-      this.signZeroProof("mage_image", scope, drained[0]),
-      this.signZeroProof("soulx_avatar", scope, drained[1]),
+      this.signZeroProof("mage_image", scope, {
+        ...drained[0],
+        ...(observedAt === undefined ? {} : { observedAt }),
+      }),
+      this.signZeroProof("soulx_avatar", scope, {
+        ...drained[1],
+        ...(observedAt === undefined ? {} : { observedAt }),
+      }),
     ]);
     await this.settle.reconcile({ ...scope, zeroWorkerProofs, settlementCostGuard });
     return Object.freeze({ state: "SETTLED" as const });
@@ -1035,6 +1043,16 @@ export async function createHostedPairLiveComposition(
     proofAuthority,
     new HostedSqlPairSettlementStore(reconcilerDatabase),
   );
+  const readDatabaseNow = async () =>
+    reconcilerDatabase.transaction(async (transaction) => {
+      const result = await transaction.query<{ database_now: string | Date }>(
+        "SELECT transaction_timestamp() AS database_now",
+      );
+      const value = result.rows[0]?.database_now;
+      if (result.rows.length !== 1 || value === undefined)
+        throw new HostedDispatchCoordinationError("HOSTED_V209_DATABASE_TIME_INVALID");
+      return new Date(value).toISOString();
+    });
   const settlementGuard = async (scope: HostedPairWorkflowScope) => {
     const snapshot = await reconcilerDatabase.transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1,$2,true)", [
@@ -1057,16 +1075,7 @@ export async function createHostedPairLiveComposition(
     });
     const provider = await readV209ShortProviderObservation(
       exact(environment.RUNPOD_API_KEY, "HOSTED_PAIR_RUNPOD_BINDINGS_INVALID"),
-      () =>
-        reconcilerDatabase.transaction(async (transaction) => {
-          const result = await transaction.query<{ database_now: string | Date }>(
-            "SELECT transaction_timestamp() AS database_now",
-          );
-          const value = result.rows[0]?.database_now;
-          if (result.rows.length !== 1 || value === undefined)
-            throw new HostedDispatchCoordinationError("HOSTED_V209_DATABASE_TIME_INVALID");
-          return new Date(value).toISOString();
-        }),
+      readDatabaseNow,
     );
     assertV209ShortSettlement({
       admission: snapshot.admission,
@@ -1188,6 +1197,7 @@ export async function createHostedPairLiveComposition(
       signZeroProof,
       terminalOutput,
       beforeSettlement,
+      readDatabaseNow,
     ),
   });
 }
