@@ -194,7 +194,15 @@ function outputFacts(
     const checksumSha256 = string(result.output_sha256) as Sha256;
     const contentLength = positiveInteger(result.output_bytes);
     const contentType = lane === "mage_image" ? "image/png" : "video/mp4";
-    const probe = record(result.probe) as VerifiedArtifact["probe"];
+    // Mage reports dimensions on its result and the probe in the signed receipt.
+    const probe = record(
+      result.probe ?? (lane === "mage_image" ? receipt.probe : undefined),
+    ) as VerifiedArtifact["probe"];
+    if (
+      lane === "mage_image" && result.probe === undefined &&
+      (result.width !== probe.width || result.height !== probe.height ||
+        probe.format !== "png")
+    ) fail();
     if (
       !UUID.test(itemId) ||
       !UUID.test(reservationId) ||

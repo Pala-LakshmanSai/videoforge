@@ -256,6 +256,19 @@ function ingestor(value: ReturnType<typeof fixture>) {
 }
 
 describe("hosted V2-09 terminal output ingestor", () => {
+  it("accepts Mage dimensions backed by the signed receipt probe", async () => {
+    const value = fixture();
+    const { probe, ...item } = value.output.items[0]!;
+    const output = { ...value.output, items: [{ ...item, width: probe.width, height: probe.height }] };
+    await expect(ingestor(value).service.acceptCompleted(request(output))).resolves.toMatchObject({
+      state: "LANE_COMPLETED", acceptedItemCount: 1,
+    });
+    output.items[0]!.width = 640;
+    await expect(ingestor(value).service.acceptCompleted(request(output))).rejects.toThrow(
+      "HOSTED_V209_TERMINAL_OUTPUT_INVALID",
+    );
+  });
+
   it("accepts a checksum-header-free bounded GET and exposes idempotent replay", async () => {
     const value = fixture();
     const { service, acceptBarrier } = ingestor(value);
