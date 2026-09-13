@@ -750,6 +750,12 @@
       "name": "hosted_render_media_input_keys",
       "filename": "0126_hosted_render_media_input_keys.sql",
       "sha256": "sha256:248cdfe3b0b24770b8d3eb08f62b73dd4665411b00679b9410c8ae6c0ad6c69f"
+    },
+    {
+      "version": 127,
+      "name": "hosted_render_terminal_retry_lineage",
+      "filename": "0127_hosted_render_terminal_retry_lineage.sql",
+      "sha256": "sha256:b487bef12e4b6f33e0a9f05dcf6f4d099056dd13962818eb3f3c87006fae9992"
     }
   ]
 }

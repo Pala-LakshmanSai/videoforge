@@ -1,10 +1,10 @@
-import { validateAndHashContractDocument } from "@videoforge/contracts";
+import { validateAndHashHostedContractDocument as validateAndHashContractDocument } from "./precompiled-contract-validation";
 import type { Sha256, TransactionalSqlExecutor } from "@videoforge/control-plane";
 
 import type { HostedR2BucketBinding } from "./configuration";
-import { canonicalJson } from "./submission";
+import { canonicalJson, exactHostedRenderSubmission } from "./submission";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 type Row = Record<string, unknown>;
 
@@ -67,7 +67,11 @@ function validateCandidate(
     candidate.attemptId !== scope.attemptId ||
     candidate.attemptState !== "SUCCEEDED" ||
     candidate.leaseState !== "RELEASED" ||
-    candidate.leaseReleaseReason !== "HOSTED_PAIR_OUTPUTS_ACCEPTED" ||
+    !(
+      candidate.leaseReleaseReason === "HOSTED_PAIR_OUTPUTS_ACCEPTED" ||
+      (candidate.leaseReleaseReason === "HOSTED_PAIR_PROVIDER_TERMINAL" &&
+        Number(candidate.acceptedLaneCount) === 2)
+    ) ||
     !UUID.test(text(candidate.runtimeId)) ||
     !UUID.test(text(candidate.generationRequestId)) ||
     !UUID.test(text(candidate.leaseId)) ||
@@ -75,8 +79,7 @@ function validateCandidate(
     Number(candidate.runtimeCount) !== 1 ||
     Number(candidate.leaseCount) !== 1 ||
     !SHA256.test(text(candidate.renderManifestSha256)) ||
-    !SHA256.test(text(candidate.planPayloadSha256)) ||
-    candidate.attemptRequestSha256 !== candidate.planPayloadSha256
+    !SHA256.test(text(candidate.planPayloadSha256))
   )
     throw new Error("HOSTED_V209_RENDER_TERMINAL_INVALID");
   const plan = record(candidate.planPayload);
@@ -204,6 +207,18 @@ export function createHostedV209RenderTerminalHandoff(input: {
       )
         throw new Error("HOSTED_V209_RENDER_TERMINAL_INVALID");
       const candidate = await readCandidate(input.database, scope);
+      const submission = exactHostedRenderSubmission(
+        candidate.planPayload,
+        text(candidate.projectId),
+        text(candidate.projectRevisionId),
+      );
+      if (
+        !submission ||
+        (await sha256(
+          new TextEncoder().encode(canonicalJson(submission)).buffer as ArrayBuffer,
+        )) !== candidate.attemptRequestSha256
+      )
+        throw new Error("HOSTED_V209_RENDER_TERMINAL_INVALID");
       validateCandidate(candidate, scope);
       if (
         (await sha256(

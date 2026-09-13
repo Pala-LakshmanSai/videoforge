@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { canonicalJson } from "./submission";
+import { canonicalJson, exactHostedRenderSubmission } from "./submission";
+import renderInputFixture from "../../../../../packages/contracts/generated/fixtures/render_job_input.valid.json";
 import { createHostedV209RenderTerminalHandoff } from "./hosted-v209-render-terminal";
 
 const IDS = Object.freeze({
@@ -27,16 +28,23 @@ async function harness(requestState: "ACTIVE" | "SUCCEEDED") {
   const outputSha256 = await hash("output");
   const receiptSha256 = await hash("receipt");
   const resultSha256 = await hash("result");
+  const inputDocument = structuredClone(renderInputFixture);
+  inputDocument.project_revision_id = IDS.revision;
+  inputDocument.resolved_render_manifest.sha256 = manifestSha256;
+  inputDocument.resolved_render_manifest.artifact_uri = `vf-local://objects/sha256/${manifestSha256.slice(7, 9)}/${manifestSha256.slice(7)}.json`;
   const plan = {
     schema_version: "videoforge-hosted-cpu-submission/v1",
+    idempotency_key: "render-plan-test-idempotency",
     kind: "RENDER",
     project_id: IDS.project,
     project_revision_id: IDS.revision,
-    input_document: {
-      schema_version: "render-job-input/v1",
-      project_revision_id: IDS.revision,
-      resolved_render_manifest: { sha256: manifestSha256 },
-    },
+    input_document: inputDocument,
+    objects: [inputDocument.resolved_render_manifest, ...inputDocument.assets].map(
+      (object, index) => ({
+        artifact_receipt_id: `00000000-0000-4000-8000-${String(100 + index).padStart(12, "0")}`,
+        uri: object.artifact_uri,
+      }),
+    ),
   };
   const planSha256 = await hash(canonicalJson(plan));
   const candidate = {
@@ -45,7 +53,9 @@ async function harness(requestState: "ACTIVE" | "SUCCEEDED") {
     workspaceId: IDS.workspace,
     attemptId: IDS.attempt,
     attemptState: "SUCCEEDED",
-    attemptRequestSha256: planSha256,
+    attemptRequestSha256: await hash(
+      canonicalJson(exactHostedRenderSubmission(plan, IDS.project, IDS.revision)),
+    ),
     projectId: IDS.project,
     projectRevisionId: IDS.revision,
     planPayload: plan,
