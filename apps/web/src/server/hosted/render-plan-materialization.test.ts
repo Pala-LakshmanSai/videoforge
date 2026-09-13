@@ -437,6 +437,34 @@ async function expectCode(promise: Promise<unknown>, code: string) {
 }
 
 describe("hosted render-plan materialization", () => {
+  it("accepts deterministic Postgres receipt UUIDs without RFC version bits", async () => {
+    const input = await validInput();
+    const result = await materializeHostedRenderPlan(new MemoryDatabase(), {
+      ...input,
+      voiceover: { ...input.voiceover, receiptId: "7b103a6b-0b52-dc69-7069-3bd6f9ffb449" },
+    });
+    expect(result.replayed).toBe(false);
+  });
+  it("accepts the committed browser voiceover key while preserving its revision binding", async () => {
+    const input = await validInput();
+    const voiceover = {
+      ...input.voiceover,
+      objectKey: `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}/lane/input/job/browser-upload/artifact/voiceover`,
+    };
+    expect(
+      (await materializeHostedRenderPlan(new MemoryDatabase(), { ...input, voiceover })).replayed,
+    ).toBe(false);
+    await expectCode(
+      materializeHostedRenderPlan(new MemoryDatabase(), {
+        ...input,
+        voiceover: {
+          ...voiceover,
+          objectKey: voiceover.objectKey.replace("/artifact/voiceover", "/artifact/other"),
+        },
+      }),
+      "HOSTED_RENDER_ARTIFACT_DRIFTED",
+    );
+  });
   it("writes and replays one exact hard-cut Mage-only groundwork plan", async () => {
     const database = new MemoryDatabase();
     const input = await validInput();
@@ -515,25 +543,31 @@ describe("hosted render-plan materialization", () => {
     );
   });
 
-  it("accepts a preserved SYSTEM runtime key only with exact DB-verified source lineage", async () => {
-    const input = await validInput(true);
-    await expect(
-      materializeHostedRenderPlan(new MemoryDatabase(), {
-        ...input,
-        avatarSource: {
-          ...input.avatarSource!,
-          objectKey: "system/avatar/runtime/source-object",
-          systemSourceReference: {
-            verified: true,
-            avatarProfileId: "10101010-1010-4010-8010-101010101010",
-            avatarProfileVersionId: "20202020-2020-4020-8020-202020202020",
-            runtimeSourceAssetId: "30303030-3030-4030-8030-303030303030",
-            runtimeProfileAssetLinkId: "40404040-4040-4040-8040-404040404040",
+  it.each([
+    "system/avatar/runtime/source-object",
+    "tenant/ffffffff-ffff-4fff-8fff-000000000001/workspace/ffffffff-ffff-4fff-8fff-000000000011/avatar-profile/10101010-1010-4010-8010-101010101010/version/20202020-2020-4020-8020-202020202020/canonical/avatar.png",
+  ])(
+    "accepts a preserved SYSTEM runtime key %s only with exact DB-verified source lineage",
+    async (objectKey) => {
+      const input = await validInput(true);
+      await expect(
+        materializeHostedRenderPlan(new MemoryDatabase(), {
+          ...input,
+          avatarSource: {
+            ...input.avatarSource!,
+            objectKey,
+            systemSourceReference: {
+              verified: true,
+              avatarProfileId: "10101010-1010-4010-8010-101010101010",
+              avatarProfileVersionId: "20202020-2020-4020-8020-202020202020",
+              runtimeSourceAssetId: "30303030-3030-4030-8030-303030303030",
+              runtimeProfileAssetLinkId: "40404040-4040-4040-8040-404040404040",
+            },
           },
-        },
-      }),
-    ).resolves.toMatchObject({ replayed: false });
-  });
+        }),
+      ).resolves.toMatchObject({ replayed: false });
+    },
+  );
 
   it("rejects a preserved SYSTEM runtime key without the DB-verified source marker", async () => {
     const input = await validInput(true);

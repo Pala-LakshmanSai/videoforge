@@ -11,7 +11,8 @@ import {
   type HostedRenderPlanMaterializationInput,
 } from "./render-plan-materialization";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+// Postgres also stores deterministic md5-derived UUIDs without RFC version bits.
+const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 
 type RecordValue = Record<string, unknown>;

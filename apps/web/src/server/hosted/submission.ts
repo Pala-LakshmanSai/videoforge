@@ -1,6 +1,7 @@
 import type { RenderJobInputDocument } from "@videoforge/contracts/generated/contract-types.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const DATABASE_UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 const LOCAL_OBJECT = /^vf-local:\/\/objects\/sha256\/[0-9a-f]{2}\/([0-9a-f]{64})\.[a-z0-9]{1,10}$/u;
 const JOB_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -217,7 +218,7 @@ export function exactHostedSpanAudioSubmission(
     !isRecord(object) ||
     !hasExactKeys(object, ["artifact_receipt_id", "uri"]) ||
     typeof object.artifact_receipt_id !== "string" ||
-    !UUID.test(object.artifact_receipt_id) ||
+    !DATABASE_UUID.test(object.artifact_receipt_id) ||
     object.uri !== (inputDocument.source_voiceover as Record<string, unknown>).artifact_uri
   )
     return null;
@@ -303,7 +304,7 @@ export function exactHostedCpuSubmission(value: unknown): HostedCpuSubmission | 
     if (
       Object.keys(object).sort().join(",") !== "artifact_receipt_id,uri" ||
       typeof object.artifact_receipt_id !== "string" ||
-      !UUID.test(object.artifact_receipt_id) ||
+      !DATABASE_UUID.test(object.artifact_receipt_id) ||
       typeof object.uri !== "string" ||
       !LOCAL_OBJECT.test(object.uri) ||
       receipts.has(object.artifact_receipt_id) ||

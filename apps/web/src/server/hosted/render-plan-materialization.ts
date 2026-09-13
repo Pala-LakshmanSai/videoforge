@@ -10,7 +10,8 @@ import { validateAndHashHostedContractDocument as validateAndHashContractDocumen
 import { sha256 } from "./crypto";
 import { canonicalJson, exactHostedRenderSubmission } from "./submission";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+// Match Postgres UUID syntax, including its deterministic md5-derived identities.
+const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const OBJECT_KEY =
   /^tenant\/([^/]+)\/workspace\/([^/]+)\/project\/([^/]+)\/revision\/([^/]+)\/lane\/(input|mage-image|soulx-avatar|render)\/job\/([^/]+)\/artifact\/([^/]+)$/u;
@@ -159,6 +160,11 @@ function exactScope(
   }
   const match = OBJECT_KEY.exec(artifact.objectKey);
   const expectedLane = artifact.lane.toLowerCase().replace("_", "-");
+  const browserVoiceover =
+    artifact.kind === "VOICEOVER" &&
+    artifact.lane === "INPUT" &&
+    match?.[6] === "browser-upload" &&
+    match[7] === "voiceover";
   if (
     !match ||
     match[1] !== input.accountId ||
@@ -166,7 +172,7 @@ function exactScope(
     match[3] !== input.revision.projectId ||
     match[4] !== input.revision.projectRevisionId ||
     match[5] !== expectedLane ||
-    match[7] !== artifact.assetId ||
+    (match[7] !== artifact.assetId && !browserVoiceover) ||
     (artifact.acceptedAttemptId !== null && match[6] !== artifact.acceptedAttemptId) ||
     artifact.reservationState !== "COMMITTED" ||
     artifact.receiptDeletedAt !== null ||
@@ -200,8 +206,13 @@ function exactAvatarSourceScope(
     ].every((value) => UUID.test(value));
   if (
     (!match && !systemReferenceValid) ||
-    (match !== null && system !== undefined) ||
     (match !== null &&
+      system !== undefined &&
+      (!systemReferenceValid ||
+        match[3] !== system.avatarProfileId ||
+        match[4] !== system.avatarProfileVersionId)) ||
+    (match !== null &&
+      !systemReferenceValid &&
       (match[1] !== input.accountId ||
         match[2] !== input.workspaceId ||
         match[3] !== input.revisionDocument.avatar_binding.avatar_profile_id ||
