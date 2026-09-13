@@ -541,10 +541,11 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
     expect(deps.commitAndSchedule).not.toHaveBeenCalled();
   });
 
-  it("reuses an assigned pair before preparing span audio", async () => {
+  it("rejoins an existing pair without reacquiring its released paid lease", async () => {
     const prepared = await candidate(true);
     const deps = dependencies(prepared);
-    const hasExistingPair = vi.fn(async () => true);
+    const findExistingGeneration = vi.fn(async () => prepared.generationRequestId);
+    const ensureAdmission = vi.fn(async () => { throw new Error("released paid lease"); });
     const prepare = vi.fn(async () => ({ state: "PREPARING_INPUTS" as const }));
     const response = await handleHostedV209ProjectDispatch(
       request(),
@@ -553,7 +554,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       {} as never,
       {
         ...deps.value,
-        hasExistingPair,
+        findExistingGeneration, ensureAdmission,
       } as never,
       { prepare },
     );
@@ -565,7 +566,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       generation_request_id: prepared.generationRequestId,
       workflow_id: `hosted-pair-${prepared.generationRequestId}`,
     });
-    expect(hasExistingPair).toHaveBeenCalledWith(
+    expect(findExistingGeneration).toHaveBeenCalledWith(
       expect.anything(),
       {
         accountId: scope.account_id,
@@ -573,8 +574,8 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
         userId: scope.user_id,
         projectId,
       },
-      prepared.generationRequestId,
     );
+    expect(ensureAdmission).not.toHaveBeenCalled();
     expect(prepare).not.toHaveBeenCalled();
     expect(deps.ensureWorkflow).toHaveBeenCalledOnce();
     expect(deps.observe).not.toHaveBeenCalled();

@@ -9,6 +9,7 @@ import type {
 } from "./configuration";
 import {
   commitAndScheduleV209OrdinaryPair,
+  ensureHostedPairWorkflow,
   materializeAndEnsureV209OrdinaryPair,
   observeV209ShortAdmission,
 } from "./hosted-pair-live-wiring";
@@ -89,6 +90,8 @@ export interface HostedV209ProjectDispatchDependencies {
     identity: DispatchIdentity,
   ) => Promise<HostedV209AdmissionResult>;
   readonly hasExistingPair?: ExistingPairProbe;
+  readonly findExistingGeneration?: (database: TransactionalSqlExecutor, identity: DispatchIdentity) => Promise<string | null>;
+  readonly ensureExistingWorkflow?: HostedV209ProjectDispatchDependencies["ensureWorkflow"];
   readonly correlationId: () => string;
 }
 
@@ -125,6 +128,18 @@ const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
   ensureWorkflow: materializeAndEnsureV209OrdinaryPair,
   ensureAdmission: ensureHostedV209GenerationAdmission,
   hasExistingPair: hasExistingHostedV209Pair,
+  ensureExistingWorkflow: ensureHostedPairWorkflow,
+  findExistingGeneration: (database, identity) => database.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
+    const result = await transaction.query<{ generation_request_id: string }>(
+      `SELECT p.generation_request_id FROM hosted_pair_runtime_states p
+        JOIN generation_requests g ON g.id=p.generation_request_id
+        WHERE p.account_id=$1 AND p.workspace_id=$2 AND g.project_id=$3 AND g.state='ACTIVE'
+        ORDER BY g.created_at DESC LIMIT 1`,
+      [identity.accountId, identity.workspaceId, identity.projectId],
+    );
+    return result.rows[0]?.generation_request_id ?? null;
+  }),
   correlationId: () => `v209-${crypto.randomUUID()}`,
 });
 
@@ -493,19 +508,22 @@ export async function handleHostedV209ProjectDispatch(
       projectId: match[1]!,
     };
     const runtimeDatabase = injected.createExecutor(runtimePool);
-    const admission = await injected.ensureAdmission(runtimeDatabase, identity);
+    const existingGeneration = await injected.findExistingGeneration?.(runtimeDatabase, identity);
+    const admission: HostedV209AdmissionResult = existingGeneration
+      ? { state: "ACTIVE", generationRequestId: existingGeneration }
+      : await injected.ensureAdmission(runtimeDatabase, identity);
     if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
     if (spanAudio) {
       if (
-        injected.hasExistingPair &&
-        (await injected.hasExistingPair(runtimeDatabase, identity, admission.generationRequestId))
+        existingGeneration || (injected.hasExistingPair &&
+        (await injected.hasExistingPair(runtimeDatabase, identity, admission.generationRequestId)))
       ) {
         const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
         if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)
           return response({ error: { code: "HOSTED_PAIR_RECONCILER_BINDING_MISSING" } }, 503);
         const reconcilerPool = injected.createPool(reconcilerUrl);
         try {
-          await injected.ensureWorkflow(
+          await (injected.ensureExistingWorkflow ?? injected.ensureWorkflow)(
             environment,
             runtimeDatabase,
             injected.createExecutor(reconcilerPool),
