@@ -177,7 +177,28 @@ function readPriorEvidence(databaseUrl: string): JsonRecord {
     "--tuples-only",
     "--no-align",
     "--command",
-    "SELECT evidence_document::text FROM public.hosted_v209_qualified_activations ORDER BY imported_at DESC,id DESC LIMIT 1",
+    `WITH RECURSIVE latest AS (
+       SELECT * FROM public.hosted_v209_qualified_activations
+       ORDER BY imported_at DESC,id DESC LIMIT 1
+     ), lineage AS (
+       SELECT evidence_document, 0 AS depth FROM latest
+       UNION ALL
+       SELECT prior.evidence_document, lineage.depth + 1
+       FROM lineage JOIN public.hosted_v209_qualified_activations prior
+         ON prior.id = (lineage.evidence_document->>'previousActivationId')::uuid
+       WHERE lineage.depth < 20
+         AND lineage.evidence_document->>'schemaVersion' =
+           'videoforge.hosted-v209-expired-qualification-refresh/v1'
+     )
+     SELECT jsonb_set(jsonb_set(lineage.evidence_document,
+       '{lanes,mage_image,qualificationId}', to_jsonb(latest.mage_qualification_id::text)),
+       '{lanes,soulx_avatar,qualificationId}', to_jsonb(latest.soulx_qualification_id::text))::text
+     FROM lineage CROSS JOIN latest
+     WHERE lineage.evidence_document->>'schemaVersion' =
+       'videoforge.hosted-v209-qualified-activation-import/v1'
+       AND lineage.evidence_document->'lanes'->'mage_image'->>'deploymentId' = latest.mage_deployment_id::text
+       AND lineage.evidence_document->'lanes'->'soulx_avatar'->>'deploymentId' = latest.soulx_deployment_id::text
+     ORDER BY lineage.depth LIMIT 1`,
   ]).trim();
   let parsed: unknown;
   try {
