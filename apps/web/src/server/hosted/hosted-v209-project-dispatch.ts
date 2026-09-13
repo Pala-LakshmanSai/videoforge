@@ -43,6 +43,12 @@ interface MaterializedDispatchCandidate {
   readonly systemAvatarReference: V209OrdinaryVerifiedSystemAvatarReference | null;
 }
 
+type ExistingPairProbe = (
+  database: TransactionalSqlExecutor,
+  identity: Pick<DispatchIdentity, "accountId" | "workspaceId">,
+  generationRequestId: string,
+) => Promise<boolean>;
+
 type Candidate = Record<string, unknown> & {
   readonly schemaVersion: "videoforge.hosted-v209-ordinary-dispatch/v1";
   readonly candidateSha256: string;
@@ -82,8 +88,32 @@ export interface HostedV209ProjectDispatchDependencies {
     database: TransactionalSqlExecutor,
     identity: DispatchIdentity,
   ) => Promise<HostedV209AdmissionResult>;
+  readonly hasExistingPair?: ExistingPairProbe;
   readonly correlationId: () => string;
 }
+
+const hasExistingHostedV209Pair: ExistingPairProbe = async (
+  database,
+  identity,
+  generationRequestId,
+) =>
+  database.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1,$2,true)", [
+      "videoforge.account_id",
+      identity.accountId,
+    ]);
+    const result = await transaction.query<{ existing_pair: unknown }>(
+      `SELECT existing_pair
+         FROM public.videoforge_load_hosted_pair_workflow_schedule(
+           $1::uuid,$2::uuid,$3::uuid)`,
+      [identity.accountId, identity.workspaceId, generationRequestId],
+    );
+    const row = result.rows[0];
+    if (result.rows.length !== 1 || !row || typeof row.existing_pair !== "boolean") {
+      throw new Error("HOSTED_PAIR_WORKFLOW_STATE_INVALID");
+    }
+    return row.existing_pair;
+  });
 
 const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
   createPool: createNeonPool,
@@ -94,6 +124,7 @@ const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
   commitAndSchedule: commitAndScheduleV209OrdinaryPair,
   ensureWorkflow: materializeAndEnsureV209OrdinaryPair,
   ensureAdmission: ensureHostedV209GenerationAdmission,
+  hasExistingPair: hasExistingHostedV209Pair,
   correlationId: () => `v209-${crypto.randomUUID()}`,
 });
 
@@ -461,12 +492,44 @@ export async function handleHostedV209ProjectDispatch(
       userId: scope.user_id,
       projectId: match[1]!,
     };
-    const admission = await injected.ensureAdmission(
-      injected.createExecutor(runtimePool),
-      identity,
-    );
+    const runtimeDatabase = injected.createExecutor(runtimePool);
+    const admission = await injected.ensureAdmission(runtimeDatabase, identity);
     if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
     if (spanAudio) {
+      if (
+        injected.hasExistingPair &&
+        (await injected.hasExistingPair(runtimeDatabase, identity, admission.generationRequestId))
+      ) {
+        const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
+        if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)
+          return response({ error: { code: "HOSTED_PAIR_RECONCILER_BINDING_MISSING" } }, 503);
+        const reconcilerPool = injected.createPool(reconcilerUrl);
+        try {
+          await injected.ensureWorkflow(
+            environment,
+            runtimeDatabase,
+            injected.createExecutor(reconcilerPool),
+            {
+              accountId: identity.accountId,
+              workspaceId: identity.workspaceId,
+              generationRequestId: admission.generationRequestId,
+            },
+            config,
+          );
+          return response(
+            {
+              schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+              state: "SCHEDULED",
+              generation_request_id: admission.generationRequestId,
+              workflow_id: `hosted-pair-${admission.generationRequestId}`,
+              correlation_id: correlationId,
+            },
+            200,
+          );
+        } finally {
+          await reconcilerPool.end();
+        }
+      }
       const preparation = await spanAudio.prepare(identity);
       if (preparation.state === "PREPARING_INPUTS") {
         return preparationResponse("PREPARING_INPUTS", correlationId);

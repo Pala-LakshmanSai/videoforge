@@ -541,6 +541,46 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
     expect(deps.commitAndSchedule).not.toHaveBeenCalled();
   });
 
+  it("reuses an assigned pair before preparing span audio", async () => {
+    const prepared = await candidate(true);
+    const deps = dependencies(prepared);
+    const hasExistingPair = vi.fn(async () => true);
+    const prepare = vi.fn(async () => ({ state: "PREPARING_INPUTS" as const }));
+    const response = await handleHostedV209ProjectDispatch(
+      request(),
+      { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
+      config,
+      {} as never,
+      {
+        ...deps.value,
+        hasExistingPair,
+      } as never,
+      { prepare },
+    );
+
+    if (!response) throw new Error("route not matched");
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      state: "SCHEDULED",
+      generation_request_id: prepared.generationRequestId,
+      workflow_id: `hosted-pair-${prepared.generationRequestId}`,
+    });
+    expect(hasExistingPair).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        accountId: scope.account_id,
+        workspaceId: scope.workspace_id,
+        userId: scope.user_id,
+        projectId,
+      },
+      prepared.generationRequestId,
+    );
+    expect(prepare).not.toHaveBeenCalled();
+    expect(deps.ensureWorkflow).toHaveBeenCalledOnce();
+    expect(deps.observe).not.toHaveBeenCalled();
+    expect(deps.commitAndSchedule).not.toHaveBeenCalled();
+  });
+
   it("rejects cross-origin or non-empty browser authority before database materialization", async () => {
     const prepared = await candidate();
     const crossOrigin = dependencies(prepared);
