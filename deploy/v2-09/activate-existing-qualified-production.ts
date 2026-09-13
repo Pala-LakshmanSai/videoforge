@@ -303,6 +303,15 @@ async function execute(args: Readonly<Record<string, string>>): Promise<JsonReco
     readbackSha256: version.versionReadbackSha256,
     sourceCommit,
   };
+  // Renewal records bind refresh evidence, while this importer binds the frozen
+  // qualification document. Keep both immutable and create source-bound successors.
+  const lanes = payload.lanes as Record<string, JsonRecord>;
+  for (const lane of ["mage_image", "soulx_avatar"]) {
+    lanes[lane] = {
+      ...lanes[lane],
+      qualificationId: deterministicUuid(`${String(authority.authority_id)}:${lane}:qualification`),
+    };
+  }
   if (
     !UUID.test(String(payload.activationId)) ||
     !HASH.test(String(payload.cloudflareVersionIdSha256)) ||
