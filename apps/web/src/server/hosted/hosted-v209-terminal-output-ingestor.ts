@@ -6,7 +6,6 @@ import {
   type TransactionalSqlExecutor,
 } from "@videoforge/control-plane";
 
-import { verifyV213WorkerReceipt } from "../providers/v213-provenance-receipt";
 import {
   createHostedServerlessOutputBarrier,
   hostedOutputBindingSha256,
@@ -703,6 +702,7 @@ export function createHostedV209TerminalOutputIngestor(
       const lineage = await store.load(request);
       if (!lineage) fail();
       const parsed = parseOutput(request.lane, request.output);
+      const { verifyV213WorkerReceipt } = await import("../providers/v213-provenance-receipt");
       verifyV213WorkerReceipt(
         signer,
         { receipt: parsed.receipt, receiptBodyBase64: parsed.receiptBodyBase64 },

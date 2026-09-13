@@ -11,7 +11,7 @@ import {
   type ReceiptExpectation,
   type Sha256,
 } from "@videoforge/control-plane";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   v213SoulxWarmupAttestationSha256,
@@ -114,15 +114,24 @@ function fixture() {
 }
 
 describe("V2-13 HMAC provenance receipt verifier", () => {
-  it("accepts the exact worker body bytes and all durable request bindings", () => {
+  it("accepts exact worker body bytes without runtime code generation", () => {
     const value = fixture();
-    expect(
-      verifyV213WorkerReceipt(
-        signer,
-        { receipt: value.receipt, receiptBodyBase64: value.bytes.toString("base64") },
-        value.expectation,
-      ).receipt,
-    ).toEqual(value.receipt);
+    const compile = vi.fn(() => {
+      throw new EvalError("Code generation from strings disallowed for this context");
+    });
+    vi.stubGlobal("Function", compile);
+    try {
+      expect(
+        verifyV213WorkerReceipt(
+          signer,
+          { receipt: value.receipt, receiptBodyBase64: value.bytes.toString("base64") },
+          value.expectation,
+        ).receipt,
+      ).toEqual(value.receipt);
+      expect(compile).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it.each([

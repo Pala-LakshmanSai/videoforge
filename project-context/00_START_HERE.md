@@ -1,5 +1,23 @@
 # VideoForge: start here
 
+## Current Stage 6/7 MVP repair — 2026-09-13
+
+The user authorized autonomous Stage 6/7 repair and fresh browser acceptance, with parallel
+subagents and a hard RunPod balance floor of USD 3. Stop the flow and paid compute below that
+floor. Keep the existing USD 2 per-run guard and the qualified RTX 4090 lanes and sealed volumes.
+Current browser project: `110ffb7d-c582-4bac-aaab-f97ed03af687` (37-second narration).
+Stages 1–5 and both avatar audio clips completed. Mage produced seven images; SoulX returned
+`WORKER_ARTIFACT_PATH_MISMATCH`. Both provider jobs are terminal and compute drained to zero.
+Do not redispatch this pair. Hosted receipt ingestion still needs the current source repair deployed.
+
+Confirmed repairs: expired qualification renewal required the current Mage manifest and migration
+0119 to allow fresh immutable qualification pairs on an unchanged Worker version. Migration 0119
+is applied; activation `9f255f3f-9470-443a-8966-9b3c87b7a799` restored `QUALIFIED_EXACT` through
+2026-09-14T18:11:31Z. The first renewal rolled back; the second committed despite an executor
+clock-latency false alarm. Source also fixes that false alarm, concurrent resume schedule comparison,
+and Cloudflare-forbidden runtime AJV compilation in provenance receipt validation. Full Stage 6/7
+acceptance remains in progress; this section supersedes older pending-run summaries below.
+
 ## Active handoff — read this section first
 
 ### Superseding approval — 2026-09-10

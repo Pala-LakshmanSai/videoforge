@@ -357,12 +357,6 @@ export async function commitAndScheduleHostedPair(
     loadHostedPairWorkflowSchedule(runtimeDatabase, input),
   );
   if (
-    preflightSchedule.existingPair &&
-    (preflightSchedule.cancelAt !== v209Admission.cancelAt ||
-      preflightSchedule.stopAt !== v209Admission.stopAt)
-  )
-    throw new HostedDispatchCoordinationError("HOSTED_V209_SCHEDULE_DRIFT");
-  if (
     Date.parse(preflightSchedule.stopAt) - Date.parse(preflightSchedule.cancelAt) !==
     10 * 60 * 1_000
   )
@@ -387,8 +381,6 @@ export async function commitAndScheduleHostedPair(
   const schedule = await coordinationPhase("HOSTED_PAIR_SCHEDULE_READBACK_FAILED", () =>
     loadHostedPairWorkflowSchedule(runtimeDatabase, input),
   );
-  if (schedule.cancelAt !== v209Admission.cancelAt || schedule.stopAt !== v209Admission.stopAt)
-    throw new HostedDispatchCoordinationError("HOSTED_V209_SCHEDULE_DRIFT");
   if (
     !schedule.existingPair ||
     Date.parse(schedule.stopAt) - Date.parse(schedule.cancelAt) !== 10 * 60 * 1_000

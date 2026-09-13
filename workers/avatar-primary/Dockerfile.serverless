@@ -70,7 +70,7 @@ RUN printf '%s  %s\n' \
       b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080 /opt/videoforge/soulx_runtime.py \
       1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32 /opt/videoforge/soulx_volume.py \
       3c4d11116333af5e83b74831a3c0cf529a0ef5ae780f1eba9547ec26b40faa65 /opt/videoforge/soulx-serverless-entrypoint.py \
-      a4f366386b877518c8ed3b5fe9481d09b307f88715d558dc079ee3546afd9e59 /opt/videoforge/common/secure_scratch.py \
+      fe03c84485c46a88f2cccebec4d0a553afda67a1487554c96bf10b2a88a7d43f /opt/videoforge/common/secure_scratch.py \
       34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0 /opt/videoforge/common/serverless_envelope.py \
       fd279c27020d70e6d2d32e2cb98407ba6f2f93872dd7df928ac9d53d70bd29e7 /opt/videoforge/src/videoforge_contracts/_schema_documents.py \
     | sha256sum --check --strict \

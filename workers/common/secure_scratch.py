@@ -85,6 +85,11 @@ SYSTEM_AVATAR_PATH: Final = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/version/"
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/canonical/avatar\.(?:png|jpg)$"
 )
+TENANT_AVATAR_PATH: Final = re.compile(
+    r"^/tenant/[0-9a-f-]{36}/workspace/[0-9a-f-]{36}/avatar-profile/"
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/version/"
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/canonical/avatar\.(?:png|jpg)$"
+)
 
 
 def validate_scoped_port(
@@ -143,7 +148,13 @@ def validate_scoped_port(
         and port.get("content_type") == "image/png"
         and port.get("max_uses") == 1
         and isinstance(path, str)
-        and SYSTEM_AVATAR_PATH.fullmatch(path) is not None
+        and (
+            SYSTEM_AVATAR_PATH.fullmatch(path) is not None
+            or (
+                path.startswith(expected_prefix)
+                and TENANT_AVATAR_PATH.fullmatch(path) is not None
+            )
+        )
     )
     prepared_input = (
         allow_prepared_input_path

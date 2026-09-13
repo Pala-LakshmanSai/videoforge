@@ -16,7 +16,7 @@ const NOW = new Date("2026-09-09T12:00:00.000Z");
 const volume = {
   mage_image: {
     volumeIdSha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
-    volumeManifestSha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    volumeManifestSha256: "sha256:ffaf47d13c92407a51d2aa78337612daf2733f5a5bb93e27336822a5389ba1c9",
   },
   soulx_avatar: {
     volumeIdSha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
@@ -155,6 +155,22 @@ test("commits exactly one guarded database call after an exclusive durable inten
     journal.map(({ status }) => status),
     ["INTENT", "COMMITTED"],
   );
+});
+
+test("allows transaction-start expiry through one second database latency", () => {
+  const f = fixture();
+  f.result.qualificationExpiresAt = "2026-09-10T12:00:01.000Z";
+  const waitBuffer = new Int32Array(new SharedArrayBuffer(4));
+  const actual = executeRenewExpiredQualifiedActivation({
+    inputPath: f.inputPath,
+    expectedInputSha256: f.save(),
+    now: NOW,
+    runDatabase() {
+      Atomics.wait(waitBuffer, 0, 0, 1_000);
+      return { status: 0, stdout: JSON.stringify(f.result), stderr: "" };
+    },
+  });
+  assert.deepEqual(actual, f.result);
 });
 
 test("stale provider inventory fails before journal or database", () => {

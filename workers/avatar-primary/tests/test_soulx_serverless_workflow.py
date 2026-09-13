@@ -223,7 +223,7 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
             "b965dab305609df1721a582e8b7d41f9dea195df4ebd8a52a254a405697b3080",
             "1d3ca3573ce6657f763870578d890bc101b05ec19b40441abcc31aa7b501ef32",
             "3c4d11116333af5e83b74831a3c0cf529a0ef5ae780f1eba9547ec26b40faa65",
-            "a4f366386b877518c8ed3b5fe9481d09b307f88715d558dc079ee3546afd9e59",
+            "fe03c84485c46a88f2cccebec4d0a553afda67a1487554c96bf10b2a88a7d43f",
             "34949be02521ec896c27794ad382cfa4d2bd6f1b799615716a5dc2b9ce2e41d0",
             "fd279c27020d70e6d2d32e2cb98407ba6f2f93872dd7df928ac9d53d70bd29e7",
             "83650cf6430fd82e26c855df5f91b34cf5a4eda2beebf7650d8cf86e27f88443",
@@ -277,7 +277,7 @@ class SoulXServerlessPublicationWorkflowTests(unittest.TestCase):
         self.assertIn('"all_blobs_verified": True', self.source)
 
     def test_credentials_are_not_printed_or_retained(self) -> None:
-        self.assertIn("GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}", self.source)
+        self.assertIn("GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}", self.source)
         self.assertIn("docker login ghcr.io", self.source)
         self.assertIn("docker logout ghcr.io", self.source)
         self.assertNotIn('echo "$GHCR_TOKEN"', self.source)

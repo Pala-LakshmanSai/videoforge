@@ -123,6 +123,46 @@ class SecureScratchTest(unittest.TestCase):
             ):
                 pass
 
+        tenant_account = "12345678-1234-4234-8234-123456789012"
+        tenant_workspace = "22345678-1234-4234-8234-123456789012"
+        tenant_avatar = self.scoped_port("GET")
+        tenant_avatar.update(
+            {
+                "account_id": tenant_account,
+                "workspace_id": tenant_workspace,
+                "content_type": "image/png",
+                "path": (
+                    f"/tenant/{tenant_account}/workspace/{tenant_workspace}/avatar-profile/"
+                    "32345678-1234-4234-8234-123456789012/version/"
+                    "42345678-1234-4234-8234-123456789012/canonical/avatar.png"
+                ),
+            }
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            with soulx_worker_io(
+                root=Path(temporary).resolve(),
+                account_id=tenant_account,
+                workspace_id=tenant_workspace,
+                job_id="job-scoped",
+                input_ports=(tenant_avatar,),
+                output_ports=(),
+                now=now,
+                allow_system_avatar_path=True,
+            ):
+                pass
+
+        tenant_avatar["path"] = tenant_avatar["path"].replace(tenant_account, "52345678-1234-4234-8234-123456789012", 1)
+        with self.assertRaisesRegex(ScratchIsolationError, "WORKER_ARTIFACT_PATH_MISMATCH"):
+            validate_scoped_port(
+                tenant_avatar,
+                account_id=tenant_account,
+                workspace_id=tenant_workspace,
+                job_id="job-scoped",
+                method="GET",
+                now=now,
+                allow_system_avatar_path=True,
+            )
+
         system_avatar["path"] = system_avatar["path"].replace("avatar.png", "avatar.gif")
         with self.assertRaisesRegex(ScratchIsolationError, "WORKER_ARTIFACT_PATH_MISMATCH"):
             validate_scoped_port(

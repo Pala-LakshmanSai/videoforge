@@ -702,6 +702,12 @@
       "name": "hosted_v209_repaired_image_successor",
       "filename": "0118_hosted_v209_repaired_image_successor.sql",
       "sha256": "sha256:4d9d6cc294c00c381586c27cdfc82e52328efccb8fde10eb610ddd7b14d1dce3"
+    },
+    {
+      "version": 119,
+      "name": "hosted_v209_qualification_pair_uniqueness",
+      "filename": "0119_hosted_v209_qualification_pair_uniqueness.sql",
+      "sha256": "sha256:0402848b95cb22cdb29d5dfa82e4f0cfaf9328e45e3e77bfc64b29d78486b423"
     }
   ]
 }

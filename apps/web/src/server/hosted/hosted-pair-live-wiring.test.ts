@@ -52,9 +52,9 @@ async function enabledEnvironment() {
   } as const;
 }
 
-async function admission() {
+async function admission(databaseNow = "2026-08-26T01:00:00.000Z") {
   return freezeV209ShortLiveAdmission(structuredClone(canonicalPlan), {
-    databaseNow: "2026-08-26T01:00:00.000Z",
+    databaseNow,
     providerObservedAt: "2026-08-26T00:59:30.000Z",
     rate: {
       gpu: "NVIDIA GeForce RTX 4090",
@@ -167,7 +167,7 @@ describe("hosted pair live provider wiring", () => {
     ).rejects.toMatchObject({ code: "HOSTED_PAIR_DATABASE_ROLES_NOT_SEPARATE" });
   });
 
-  it("commits 0042 then schedules one deterministic Workflow without provider calls", async () => {
+  it("handles concurrent 0042 commit replay with distinct transient freezes", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     let scheduleReads = 0;
     const query = vi.fn(async (sql: string) => ({
@@ -176,7 +176,7 @@ describe("hosted pair live provider wiring", () => {
         : sql.includes("videoforge_load_hosted_pair_workflow_schedule")
           ? [
               {
-                existing_pair: ++scheduleReads > 1,
+                existing_pair: ![1, 4].includes(++scheduleReads),
                 cancel_at: "2026-08-26T01:20:00.000Z",
                 stop_at: "2026-08-26T01:30:00.000Z",
               },
@@ -266,7 +266,7 @@ describe("hosted pair live provider wiring", () => {
         runtimeDatabase as never,
         reconcilerDatabase,
         input,
-        await admission(),
+        await admission("2026-08-26T01:00:01.000Z"),
       ),
     ).resolves.toEqual({ id: `hosted-pair-${ids.generationRequestId}`, recovered: true });
     expect(workflow.create).toHaveBeenCalledTimes(2);
@@ -275,7 +275,7 @@ describe("hosted pair live provider wiring", () => {
       query.mock.calls.filter(([sql]) =>
         sql.includes("videoforge_commit_hosted_atomic_pair_predispatch"),
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });

@@ -1,10 +1,10 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-09-11T06:19:50Z"
+updated_at: "2026-09-13T18:30:00Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: v2_09_stage6_7_receipt_verifier_production_repair
+current_milestone: v2_09_stage6_7_autonomous_mvp_repair
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -17,18 +17,33 @@ credential_access_authorized: true
 gpu_use_authorized: true
 maximum_external_spend_usd: 2
 
+v2_09_stage6_7_autonomous_mvp_repair_2026_09_13:
+  status: "IN_PROGRESS"
+  user_authority: "Autonomous Stage6/7 repair, required deployment/publication, fresh browser acceptance, focused subagents; no repeated approvals"
+  runpod_credit_floor_usd: 3
+  below_floor_action: "Stop paid compute and the entire flow; never restart before user top-up and continuation"
+  current_project_id: "110ffb7d-c582-4bac-aaab-f97ed03af687"
+  narration_seconds: 37
+  migration_119: "Applied after successful production rollback proof; immutable qualification pair uniqueness permits unchanged-deployment renewal"
+  activation_id: "9f255f3f-9470-443a-8966-9b3c87b7a799"
+  qualification_expires_at: "2026-09-14T18:11:31Z"
+  mage_result: "Provider SUCCEEDED with seven images; hosted receipt ingestion awaits precompiled-validator deployment"
+  soulx_result: "Provider FAILED with WORKER_ARTIFACT_PATH_MISMATCH; terminal pair must not be redispatched"
+  paid_compute: "Zero active Pods/workers after terminal results; retained volumes unchanged"
+  source_repairs_pending_deploy: "Cloudflare-safe receipt validation, concurrent resume schedule authority, renewal manifest and elapsed-time validation"
+
 current_goal_boundary:
-  mode: "v2_09_stage6_7_receipt_verifier_production_repair"
-  live_provider_calls: "Receipt-verifier repair deployed and activated; no new generation was started after activation"
+  mode: "v2_09_stage6_7_autonomous_mvp_repair"
+  live_provider_calls: "Fresh browser pair terminal: Mage seven images succeeded, SoulX failed path validation; no redispatch"
   remote_mutation: true
-  deployment_or_publication: "Receipt-verifier repair source 0a5ea36e7de2e53f9a7dbcc9791fb298ec230c54 is live at Worker version 6f7f96ae-567f-48c3-8afa-1c88cd677e49 with config sha256:dcbe4947d23238c67b4c3e9a8ef2a51b9896daea5ea4b9fa6dede863d9bca3fd; append-only qualified activation 4488f923-ca3d-563f-bf80-4e1384a6fdb1 is committed"
-  credential_value_access: "Existing private mode0600 Runware file; never log or persist value elsewhere"
-  paid_requests_or_spend: "USD2 incremental cap; USD17.50 total ceiling; context10000 and prompts40000 microUSD"
-  runpod_mutation_or_gpu: "At most one generation on exact two retained qualified lanes; workersMin0/workersMax1; no fallback"
-  v2_07_action: "Consumed live Stage6/7 pair remains frozen and non-retryable; source-only successor repair is recorded below"
-  current_checkpoint: "Main1-8 complete;9.7 VERIFIED frozen; receipt-verifier repair deployed and QUALIFIED_EXACT activated; fresh Stage6/7 Chrome acceptance remains pending"
-  approval_evidence: "Current explicit user approval on2026-09-10 for one bounded successor deployment and qualification; consumed pair remains frozen"
-  note: "The signed-receipt verifier now uses the exact signed body bytes and safely distinguishes contract/hash failures. Production Worker 6f7f96ae-567f-48c3-8afa-1c88cd677e49 reports source 0a5ea36e and QUALIFIED_EXACT; activation readback matched the live version and config. CI publication now uses the scoped GHCR_TOKEN and the immutable SoulX image publication passed. Chrome currently shows API healthy and the existing demo1 run remains a stale waiting/consumed project; do not retry or delete it automatically. RunPod read-only inventory shows two retained 50 GB lanes, workersMin=0/workersMax=1, both worker records desiredStatus=EXITED, and zero active compute. Start one fresh project for the authorized Stage6/7 Chrome acceptance; monitor both lanes and drain to zero afterward."
+  deployment_or_publication: "Current user authorizes repaired immutable SoulX image and Cloudflare deployment; source fixes being verified"
+  credential_value_access: "Existing configured credentials only; never log or copy secret values into evidence"
+  paid_requests_or_spend: "USD2 per-run cap; stop compute and entire flow below USD3 RunPod balance"
+  runpod_mutation_or_gpu: "Exact qualified RTX4090 EU-RO-1 lanes; workersMin0/workersMax1; sealed50GB volumes; no fallback"
+  v2_07_action: "All consumed terminal pairs remain frozen; fresh run only after repair and current balance check"
+  current_checkpoint: "V2-09 Stage6/7 live MVP repair; receipt ingestion and SoulX path validation blockers confirmed"
+  approval_evidence: "Explicit current user authorization for autonomous repair, publication, deployment, paid verification and parallel subagents"
+  note: "Parallel provider dispatch already observed. Receipt verifier uses generated validator loaded outside static entry; production build and14 receipt/ingestion tests pass. No current compute."
 
 v2_09_stage6_7_receipt_verifier_production_repair_2026_09_11:
   status: "DEPLOYED_AND_ACTIVATED_FRESH_CHROME_ACCEPTANCE_PENDING"
@@ -6802,7 +6817,7 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: v2_09_stage6_7_receipt_verifier_production_repair
+  milestone: v2_09_stage6_7_autonomous_mvp_repair
   status: EXECUTION_ACTIVE
   dependency_status: v2_07_and_v2_08_live_qualified_pass_clean
   authorization_status: explicit_same_project_continuation_no_replay

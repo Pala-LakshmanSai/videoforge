@@ -1,4 +1,4 @@
-import { validateContract } from "@videoforge/contracts";
+import { serverlessProvenanceReceiptV1 } from "@videoforge/contracts/precompiled-contract-validators";
 import {
   canonicalSha256,
   ReceiptVerificationError,
@@ -9,6 +9,9 @@ import {
 } from "@videoforge/control-plane";
 
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
+const validateReceipt = serverlessProvenanceReceiptV1 as ((value: unknown) => boolean) & {
+  readonly errors?: readonly { readonly instancePath?: string; readonly keyword?: string }[] | null;
+};
 
 export function v213SoulxWarmupAttestationSha256(containerDigest: `sha256:${string}`) {
   return canonicalSha256({
@@ -97,9 +100,8 @@ export function verifyV213WorkerReceipt(
     signature: delivery.receipt.signature,
   } as unknown as ProvenanceReceipt;
   try {
-    const validation = validateContract("serverlessProvenanceReceiptV1", receipt);
-    if (!validation.success) {
-      const issue = validation.issues[0];
+    if (!validateReceipt(receipt)) {
+      const issue = validateReceipt.errors?.[0];
       throw new V213ProvenanceReceiptError(
         "V213_RECEIPT_SCHEMA_INVALID",
         `contract:${issue?.instancePath || "$"}:${issue?.keyword || "invalid"}`,

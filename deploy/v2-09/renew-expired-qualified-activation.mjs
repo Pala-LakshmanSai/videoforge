@@ -21,7 +21,7 @@ const MAX_RENEWAL_MS = 24 * 60 * 60 * 1000;
 const EXACT_LANES = Object.freeze({
   mage_image: Object.freeze({
     volumeIdSha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
-    volumeManifestSha256: "sha256:cebcd5c6233c2eae32f26ced7510acef8192f0d92d7ec3e9dd3ee881d66d205b",
+    volumeManifestSha256: "sha256:ffaf47d13c92407a51d2aa78337612daf2733f5a5bb93e27336822a5389ba1c9",
   }),
   soulx_avatar: Object.freeze({
     volumeIdSha256: "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
@@ -347,11 +347,13 @@ export function executeRenewExpiredQualifiedActivation({
       closeSync(directory);
     }
     let result;
+    const databaseStartedAtMs = Date.now();
     try {
       result = runDatabase({ sql, env });
     } catch (error) {
       result = { error, status: null, stderr: "" };
     }
+    const databaseElapsedMs = Math.max(0, Date.now() - databaseStartedAtMs);
     if (result?.error || result?.status !== 0) {
       record({
         operation: "RENEW_EXPIRED_QUALIFIED_ACTIVATION",
@@ -379,7 +381,7 @@ export function executeRenewExpiredQualifiedActivation({
       parsed.inventoryEvidenceSha256 !== renewal.inventoryEvidenceSha256 ||
       !Number.isFinite(Date.parse(parsed.qualificationExpiresAt)) ||
       Date.parse(parsed.qualificationExpiresAt) <= now.getTime() ||
-      Date.parse(parsed.qualificationExpiresAt) - now.getTime() > MAX_RENEWAL_MS
+      Date.parse(parsed.qualificationExpiresAt) - now.getTime() > MAX_RENEWAL_MS + databaseElapsedMs
     ) {
       record({
         operation: "RENEW_EXPIRED_QUALIFIED_ACTIVATION",
