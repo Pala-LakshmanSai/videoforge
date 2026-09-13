@@ -202,6 +202,12 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
             if (ordinary) {
               const runtimeStore = new HostedSqlPairRuntimeStore(runtimeDatabase);
               const inspection = await inspectInitializedHostedPair(runtimeStore, params);
+              if (inspection && exactPairInspection(inspection) && inspection.every(
+                (row) => row.pairPhase === "SETTLED" && row.attemptState === "SUCCEEDED",
+              )) {
+                await renderHandoff.ensure(params);
+                return Object.freeze({ state: "SETTLED" as const });
+              }
               if (inspection && isHostedV209CleanupOnlyRecovery(inspection)) {
                 // A definite provider rejection is already terminal. The paired unsent lane is
                 // intentionally not eligible for ordinary resume; let the reconciler prove

@@ -693,6 +693,29 @@ describe("hosted pair live provider wiring", () => {
     },
   );
 
+  it("retains accepted output after the provider result expires", async () => {
+    const status = vi.fn(async () => { throw new Error("expired provider result"); });
+    const beforeSettlement = vi.fn();
+    const drained = async () => ({ workersTotal: 0, billableWorkers: 0 as const,
+      queuedJobs: 0 as const, observedAt: "2026-09-06T01:00:00.000Z" });
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rows()) } as never,
+      { mage_image: { status, cancel: vi.fn() }, soulx_avatar: { status, cancel: vi.fn() } },
+      { reconcile: vi.fn() } as never,
+      { mage_image: drained, soulx_avatar: drained }, async () => ({}), async () => ({}),
+      { isAccepted: async () => true, acceptCompleted: vi.fn() }, beforeSettlement,
+    );
+    await expect(reconciler.observe(ids, false)).resolves.toEqual({ state: "SETTLED" });
+    expect(status).not.toHaveBeenCalled();
+    expect(beforeSettlement).toHaveBeenCalledOnce();
+    const source = createHostedRunPodObservationSource(
+      { mage_image: { status }, soulx_avatar: { status } }, undefined, async () => true,
+    );
+    await expect(source.observe({ lane: "mage_image", provider_job_id: "expired" } as never))
+      .resolves.toMatchObject({ providerState: "COMPLETED" });
+    expect(status).not.toHaveBeenCalled();
+  });
+
   it("settles mixed COMPLETED and FAILED lanes without scheduling a render", async () => {
     const run = vi.fn();
     const status = vi.fn(async (id: string) =>

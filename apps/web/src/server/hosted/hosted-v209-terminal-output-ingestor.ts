@@ -688,6 +688,9 @@ export function createHostedV209TerminalOutputIngestor(
   const signer = new ProvenanceReceiptSigner(input.receiptKeyId, input.receiptKey);
   const store = input.store ?? new HostedSqlV209TerminalOutputStore(input.database);
   return Object.freeze({
+    async isAccepted(request: Parameters<HostedV209TerminalOutputStore["load"]>[0]) {
+      return Boolean((await store.load(request))?.accepted);
+    },
     async acceptCompleted(request: {
       readonly accountId: string;
       readonly workspaceId: string;

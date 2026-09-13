@@ -169,7 +169,19 @@ export async function ensureHostedPairWorkflow(
       status && typeof status === "object" && !Array.isArray(status)
         ? (status as Record<string, unknown>).status
         : null;
-    if (["errored", "terminated"].includes(typeof state === "string" ? state : "")) {
+    const renderPending = state === "complete" && await runtimeDatabase.transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", input.accountId]);
+      const result = await transaction.query<{ pending: boolean }>(
+        `SELECT EXISTS(SELECT 1 FROM video_runtime_states r
+          WHERE r.account_id=$1 AND r.workspace_id=$2 AND r.generation_request_id=$3
+            AND r.stage='RENDERING' AND NOT EXISTS(
+              SELECT 1 FROM hosted_cpu_job_attempts a WHERE a.project_revision_id=r.project_revision_id
+                AND a.kind='RENDER')) AS pending`,
+        [input.accountId, input.workspaceId, input.generationRequestId],
+      );
+      return result.rows[0]?.pending === true;
+    });
+    if (renderPending || ["errored", "terminated"].includes(typeof state === "string" ? state : "")) {
       if (!existing.restart)
         throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_RESTART_UNAVAILABLE");
       await existing.restart();
@@ -775,9 +787,13 @@ export async function observeV209ShortAdmission(
 export function createHostedRunPodObservationSource(
   transports: Readonly<Record<HostedPairLane, Pick<ServerlessTransportPort, "status">>>,
   now: () => string = () => new Date().toISOString(),
+  isAccepted?: (input: Parameters<HostedProviderObservationSource["observe"]>[0]) => Promise<boolean>,
 ): HostedProviderObservationSource {
   return Object.freeze({
     async observe(input: Parameters<HostedProviderObservationSource["observe"]>[0]) {
+      if (input.provider_job_id !== null && await isAccepted?.(input))
+        return Object.freeze({ providerState: "COMPLETED" as const, observedAt: now(),
+          nonce: crypto.randomUUID().replaceAll("-", "") });
       if (input.provider_job_id === null)
         return Object.freeze({
           providerState: "ABSENT" as const,
@@ -852,6 +868,10 @@ export class HostedPairWorkflowReconciler {
       },
     ) => Promise<JsonValue> = async () => ({}),
     private readonly terminalOutput?: {
+      readonly isAccepted?: (input: {
+        readonly accountId: string; readonly workspaceId: string; readonly attemptId: string;
+        readonly lane: HostedPairLane; readonly providerJobId: string;
+      }) => Promise<boolean>;
       readonly acceptCompleted: (input: {
         readonly accountId: string;
         readonly workspaceId: string;
@@ -881,6 +901,10 @@ export class HostedPairWorkflowReconciler {
         continue;
       }
       try {
+        if (await this.terminalOutput?.isAccepted?.({
+          accountId: scope.accountId, workspaceId: scope.workspaceId,
+          attemptId: row.attemptId, lane: row.lane, providerJobId: row.providerJobId,
+        })) continue;
         const status = await this.transports[row.lane].status(row.providerJobId);
         if (!TERMINAL.has(status.status)) {
           allTerminal = false;
@@ -1023,8 +1047,13 @@ export async function createHostedPairLiveComposition(
     signer,
     runtimeStore,
   );
+  const acceptedOutputStore = new HostedSqlFunctionV209TerminalOutputStore(reconcilerDatabase);
   const proofAuthority = createHostedHmacProviderProofAuthority(
-    createHostedRunPodObservationSource(provider.transports),
+    createHostedRunPodObservationSource(provider.transports, undefined, async (input) =>
+      Boolean((await acceptedOutputStore.load({
+        accountId: input.account_id, workspaceId: input.workspace_id,
+        attemptId: input.attempt_id, lane: input.lane, providerJobId: input.provider_job_id!,
+      }))?.accepted)),
     {
       secretHex: exact(
         environment.VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY,
@@ -1161,7 +1190,7 @@ export async function createHostedPairLiveComposition(
     receiptKey: Uint8Array.from({ length: 32 }, (_, index) =>
       Number.parseInt(receiptSecretHex.slice(index * 2, index * 2 + 2), 16),
     ),
-    store: new HostedSqlFunctionV209TerminalOutputStore(reconcilerDatabase),
+    store: acceptedOutputStore,
   });
   return Object.freeze({
     composition,
