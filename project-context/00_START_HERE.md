@@ -5,18 +5,22 @@
 The user authorized autonomous Stage 6/7 repair and fresh browser acceptance, with parallel
 subagents and a hard RunPod balance floor of USD 3. Stop the flow and paid compute below that
 floor. Keep the existing USD 2 per-run guard and the qualified RTX 4090 lanes and sealed volumes.
-Current browser project: `110ffb7d-c582-4bac-aaab-f97ed03af687` (37-second narration).
-Stages 1–5 and both avatar audio clips completed. Mage produced seven images; SoulX returned
-`WORKER_ARTIFACT_PATH_MISMATCH`. Both provider jobs are terminal and compute drained to zero.
-Do not redispatch this pair. Hosted receipt ingestion still needs the current source repair deployed.
+Current browser project: `b79fef93-11e0-4333-9af0-8cd4fddcbd01` (37-second narration).
+ASR succeeded after clearing regenerable npm cache restored the worker's 2 GiB headroom;
+stages 3–5 completed with seven prompts. Stage 6 is waiting; fresh GPU acceptance remains pending.
 
-Confirmed repairs: expired qualification renewal required the current Mage manifest and migration
-0119 to allow fresh immutable qualification pairs on an unchanged Worker version. Migration 0119
-is applied; activation `9f255f3f-9470-443a-8966-9b3c87b7a799` restored `QUALIFIED_EXACT` through
-2026-09-14T18:11:31Z. The first renewal rolled back; the second committed despite an executor
-clock-latency false alarm. Source also fixes that false alarm, concurrent resume schedule comparison,
-and Cloudflare-forbidden runtime AJV compilation in provenance receipt validation. Full Stage 6/7
-acceptance remains in progress; this section supersedes older pending-run summaries below.
+Source `b8b317df409188a1c2f3ceeae9719229c7c5f0fb` is pushed and deployed as Worker
+`43495330-d7ec-48b1-8384-944e01b4a8f3`; activation `62581a88-f36a-4191-9184-dba14b95f3b2`
+read back `QUALIFIED_EXACT`. Migrations 119–121 applied after rollback proofs. Repairs cover
+precompiled Cloudflare receipt validation, authoritative DB-time settlement evidence,
+canonical Avatar Hub source allowlisting, immutable renewal ancestry, and latest ASR retry display.
+The new SoulX image `sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35`
+is published and bound to the existing lane; fresh GPU qualification is still pending.
+
+Old generation `54169c5f-13ca-48e8-ac8b-4fc73c676a88` is terminal: Mage seven images succeeded,
+SoulX artifact-path failed. Never redispatch it; settlement reconciliation remains under investigation.
+Last provider read at 19:33Z: balance $17.104, zero running Pods/workers, min0/max1 lanes and
+existing sealed volumes preserved. Full Stage 6/7 acceptance remains in progress.
 
 ## Active handoff — read this section first
 

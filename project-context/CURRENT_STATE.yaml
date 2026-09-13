@@ -1,6 +1,6 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
-updated_at: "2026-09-13T18:30:00Z"
+updated_at: "2026-09-13T19:42:00Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -19,17 +19,22 @@ maximum_external_spend_usd: 2
 
 v2_09_stage6_7_autonomous_mvp_repair_2026_09_13:
   status: "IN_PROGRESS"
-  user_authority: "Autonomous Stage6/7 repair, required deployment/publication, fresh browser acceptance, focused subagents; no repeated approvals"
+  user_authority: "Autonomous Stage6/7 repair, required deployment/publication, browser acceptance, focused subagents; no repeated approvals"
   runpod_credit_floor_usd: 3
-  below_floor_action: "Stop paid compute and the entire flow; never restart before user top-up and continuation"
-  current_project_id: "110ffb7d-c582-4bac-aaab-f97ed03af687"
+  below_floor_action: "Stop paid compute and entire flow; never restart before user top-up continuation"
+  current_project_id: "b79fef93-11e0-4333-9af0-8cd4fddcbd01"
   narration_seconds: 37
-  migration_119: "Applied after successful production rollback proof; immutable qualification pair uniqueness permits unchanged-deployment renewal"
-  activation_id: "9f255f3f-9470-443a-8966-9b3c87b7a799"
-  qualification_expires_at: "2026-09-14T18:11:31Z"
-  mage_result: "Provider SUCCEEDED with seven images; hosted receipt ingestion awaits precompiled-validator deployment"
-  soulx_result: "Provider FAILED with WORKER_ARTIFACT_PATH_MISMATCH; terminal pair must not be redispatched"
-  paid_compute: "Zero active Pods/workers after terminal results; retained volumes unchanged"
+  source_commit: "b8b317df409188a1c2f3ceeae9719229c7c5f0fb"
+  worker_version: "43495330-d7ec-48b1-8384-944e01b4a8f3"
+  activation_id: "62581a88-f36a-4191-9184-dba14b95f3b2"
+  public_transport: "QUALIFIED_EXACT"
+  database: "Migrations119-121 applied after rollback proofs; renewed Mage qualification ancestry preserved"
+  soulx_image: "sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35"
+  fresh_project: "ASR retry SUCCEEDED after npm cache cleanup; stages3-5 complete, seven prompts; stage6 waiting, fresh GPU qualification pending"
+  old_terminal_pair: "54169c5f-13ca-48e8-ac8b-4fc73c676a88: Mage seven images SUCCEEDED, SoulX artifact-path FAILED; never redispatch; settlement reconciliation pending"
+  fixes: "Cloudflare precompiled receipt validator; DB-time zero evidence; canonical Avatar Hub source path; latest local media retry status"
+  balance_last_read_usd: 17.1039983065
+  paid_compute: "Last read19:33Z: zero running Pods and workers; both lanes min0/max1; retained sealed50GB volumes preserved"
   source_repairs_pending_deploy: "Cloudflare-safe receipt validation, concurrent resume schedule authority, renewal manifest and elapsed-time validation"
 
 current_goal_boundary:
