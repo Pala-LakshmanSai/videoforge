@@ -8,8 +8,10 @@ import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
   FIXED_TIME,
   expectDatabaseError,
+  loadMigrationSources,
   sha256,
   uuid,
+  withPgcryptoMigrationsThrough,
   withPgcryptoMigratedDatabase,
 } from "./support/pglite.mjs";
 
@@ -266,7 +268,9 @@ async function createRequest(executor) {
 }
 
 function prepareDocuments(request, fixture) {
-  const expiresAt = new Date(Date.now() + 30 * 60_000).toISOString();
+  const issuedAt = new Date(Date.now() - 1_000).toISOString();
+  const deadlineAt = new Date(Date.parse(issuedAt) + 600_000).toISOString();
+  const expiresAt = new Date(Date.parse(issuedAt) + 3_600_000).toISOString();
   const envelope = {
     schema: "hosted-image-regeneration-envelope/v1",
     tenant: { account_id: IDS.accountA, workspace_id: IDS.workspaceA },
@@ -276,7 +280,7 @@ function prepareDocuments(request, fixture) {
       lane: "mage_image",
       item_count: 1,
     },
-    limits: { expires_at: expiresAt },
+    limits: { issued_at: issuedAt, expires_at: expiresAt },
     dispatch_token: "regen-dispatch-token",
   };
   const body = {
@@ -286,6 +290,7 @@ function prepareDocuments(request, fixture) {
   };
   const lineage = {
     schema: "hosted-image-regeneration-lineage/v1",
+    deadlineAt,
     binding: {
       accountId: IDS.accountA,
       workspaceId: IDS.workspaceA,
@@ -387,8 +392,66 @@ test(
         has_commit: true,
         has_load: true,
       });
-      assert.equal(sources.at(-1)?.version, 130);
-      assert.equal(sources.at(-1)?.filename, "0130_hosted_image_regeneration_cost.sql");
+      assert.equal(sources.at(-1)?.version, 131);
+      assert.equal(
+        sources.at(-1)?.filename,
+        "0131_hosted_image_regeneration_deadline_alignment.sql",
+      );
+    });
+  },
+);
+
+test(
+  "0131 aligns regeneration request and lease deadlines to ten minutes while preserving one-hour signed expiry",
+  { skip: !enabled },
+  async () => {
+    await withPgcryptoMigrationsThrough(130, async ({ executor }) => {
+      const fixture = await seedAcceptedScene(executor);
+      await setAccount(executor, IDS.accountA);
+      await executor.execute("CREATE ROLE vf_regeneration_runtime NOINHERIT");
+      await executor.execute(
+        "GRANT EXECUTE ON FUNCTION public.videoforge_prepare_hosted_image_regeneration(uuid,jsonb,jsonb,text,text,jsonb) TO vf_regeneration_runtime",
+      );
+      const migration = (await loadMigrationSources()).find((source) => source.version === 131);
+      assert.ok(migration);
+      await executor.execute(migration.sql);
+      const grant = await executor.query(
+        "SELECT has_function_privilege('vf_regeneration_runtime', 'public.videoforge_prepare_hosted_image_regeneration(uuid,jsonb,jsonb,text,text,jsonb)', 'EXECUTE') AS execute_privilege",
+      );
+      assert.equal(grant.rows[0].execute_privilege, true);
+      const request = await createRequest(executor);
+      const documents = prepareDocuments(request, fixture);
+      const prepared = await executor.query(
+        `SELECT public.videoforge_prepare_hosted_image_regeneration($1,$2::jsonb,$3::jsonb,$4,$5,$6::jsonb) AS value`,
+        [
+          request.id,
+          JSON.stringify(documents.body),
+          JSON.stringify(documents.envelope),
+          documents.bodyHash,
+          documents.envelopeHash,
+          JSON.stringify(documents.lineage),
+        ],
+      );
+      assert.equal(prepared.rows[0].value.state, "PREPARED");
+      const deadlines = await executor.query(
+        `SELECT
+           extract(epoch FROM (request.deadline_at - (request.envelope->'limits'->>'issued_at')::timestamptz))::int AS operational_seconds,
+           extract(epoch FROM (lease.expires_at - request.deadline_at))::int AS lease_alignment_seconds,
+           extract(epoch FROM ((request.envelope->'limits'->>'expires_at')::timestamptz - (request.envelope->'limits'->>'issued_at')::timestamptz))::int AS signed_seconds,
+           extract(epoch FROM (request.deadline_at - (request.lineage->>'deadlineAt')::timestamptz))::int AS lineage_alignment_seconds
+         FROM hosted_image_regeneration_requests request
+         JOIN provider_workload_leases lease ON lease.id = request.lease_id
+         WHERE request.id = $1`,
+        [request.id],
+      );
+      assert.deepEqual(deadlines.rows, [
+        {
+          operational_seconds: 600,
+          lease_alignment_seconds: 0,
+          signed_seconds: 3_600,
+          lineage_alignment_seconds: 0,
+        },
+      ]);
     });
   },
 );
