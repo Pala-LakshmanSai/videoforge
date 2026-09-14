@@ -131,7 +131,10 @@ export async function observeHostedImageRegeneration(
   if (["COMPLETED", "FAILED", "CANCELLED", "REQUEST_REJECTED"].includes(result.state)) {
     let proof: Awaited<ReturnType<typeof provider.clients.mage_image.confirmDrained>>;
     try {
-      proof = await provider.clients.mage_image.confirmDrained(6, { deadlineMs: 30_000 });
+      proof = await provider.clients.mage_image.confirmDrained(6, {
+        allowStandbyWorkers: true,
+        deadlineMs: 30_000,
+      });
     } catch {
       return { ...result, leaseReleased: false };
     }

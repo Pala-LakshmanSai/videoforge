@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
     terminalStore: Record<string, unknown> | null;
     replacements: unknown[];
     releases: unknown[];
+    releaseResult: boolean;
     failedQueued: string[];
   } = {
     row: null,
@@ -33,6 +34,7 @@ const mocks = vi.hoisted(() => {
     terminalStore: null,
     replacements: [],
     releases: [],
+    releaseResult: true,
     failedQueued: [],
   };
 
@@ -89,7 +91,7 @@ const mocks = vi.hoisted(() => {
 
     async release(_requestId: string, proof: unknown) {
       state.releases.push(proof);
-      return true;
+      return state.releaseResult;
     }
 
     terminalStore() {
@@ -403,6 +405,7 @@ describe("hosted image regeneration execution", () => {
     mocks.state.terminalStore = null;
     mocks.state.replacements = [];
     mocks.state.releases = [];
+    mocks.state.releaseResult = true;
     mocks.state.failedQueued = [];
   });
 
@@ -484,7 +487,28 @@ describe("hosted image regeneration execution", () => {
       acceptedItemCount: 1,
       lane: "mage_image",
     });
-    expect(value.confirmDrained).toHaveBeenCalledWith(6, { deadlineMs: 30_000 });
+    expect(value.confirmDrained).toHaveBeenCalledWith(6, {
+      allowStandbyWorkers: true,
+      deadlineMs: 30_000,
+    });
     expect(mocks.state.releases).toEqual([{ billableWorkers: "0", queuedJobs: "0", observedAt }]);
+  });
+
+  it("finishes terminal observation when lease was already released", async () => {
+    const value = await prepareHarness("ASSIGNED");
+    mocks.state.releaseResult = false;
+
+    await expect(
+      observeHostedImageRegeneration(value.environment, {} as TransactionalSqlExecutor, params),
+    ).resolves.toMatchObject({
+      state: "COMPLETED",
+      leaseReleased: true,
+    });
+
+    expect(value.confirmDrained).toHaveBeenCalledWith(6, {
+      allowStandbyWorkers: true,
+      deadlineMs: 30_000,
+    });
+    expect(mocks.state.releases).toHaveLength(1);
   });
 });
