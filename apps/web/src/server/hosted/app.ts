@@ -947,7 +947,7 @@ function createHostedV209RenderTerminalLiveCoordinator(environment: HostedRuntim
         );
         if (!environment.PRIVATE_ARTIFACTS)
           throw new Error("Hosted render terminal artifact binding is unavailable.");
-        return createHostedV209RenderTerminalHandoff({
+        return await createHostedV209RenderTerminalHandoff({
           database: createNeonExecutor(pool),
           bucket: environment.PRIVATE_ARTIFACTS,
         }).acceptCompleted(input);
