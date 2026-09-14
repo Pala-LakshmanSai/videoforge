@@ -156,9 +156,9 @@ test(
             END IF;
             definition := overlay(definition placing
               'BEGIN
-                IF public.videoforge_current_account_id() IS DISTINCT FROM NEW.account_id THEN
-                  RAISE EXCEPTION ''hosted artifact trigger tenant scope denied'' USING ERRCODE=''42501'';
-                END IF;'
+  IF public.videoforge_current_account_id() IS DISTINCT FROM NEW.account_id THEN
+    RAISE EXCEPTION ''hosted artifact trigger tenant scope denied'' USING ERRCODE=''42501'';
+  END IF;'
               from position('BEGIN' IN definition) for length('BEGIN'));
             EXECUTE definition;
             EXECUTE 'ALTER FUNCTION public.videoforge_artifact_reservation_guard() SECURITY DEFINER';
