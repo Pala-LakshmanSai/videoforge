@@ -39,14 +39,17 @@ class ServerlessMageError(RuntimeError):
     pass
 
 
-def _parse_ordinary_mage_job(value: object) -> MageJob:
-    """Parse the production batch while preserving the product's 30-scene contract.
+# The signed v3 envelope bounds both plan item_count and max_items to 4096. This is
+# a sequential work list, not the number of images held on the GPU at once.
+_ORDINARY_MAX_ITEMS = 4096
 
-    The qualified base package historically accepted only 32--64 remote items, while the
-    application durably plans exactly 30 scenes.  Keep the package parser as the first boundary
-    (so its strict shape and identity checks remain authoritative), then use the same item and
-    sequence validation with the bounded ordinary range 1--64 when it rejects only that stale
-    batch-size floor.  No padding or duplicate scene is introduced.
+
+def _parse_ordinary_mage_job(value: object) -> MageJob:
+    """Accept an envelope-bounded whole-video plan using the qualified item checks.
+
+    The base parser retains its 32--64 qualification range. Ordinary plans can contain
+    more scenes; the handler validates signed execution bounds and renders one image at
+    a time. Keep its shape, prompt hashes, scene uniqueness and seed sequence unchanged.
     """
     try:
         return MageJob.from_value(value)
@@ -56,7 +59,7 @@ def _parse_ordinary_mage_job(value: object) -> MageJob:
     if not isinstance(value, dict) or set(value) != {"attempt_id", "model_revision", "items"}:
         raise MageContractError("MAGE_JOB_SHAPE_INVALID")
     raw_items = value["items"]
-    if not isinstance(raw_items, list) or not 1 <= len(raw_items) <= 64:
+    if not isinstance(raw_items, list) or not 1 <= len(raw_items) <= _ORDINARY_MAX_ITEMS:
         raise MageContractError("MAGE_BATCH_SIZE_INVALID")
     job = MageJob(
         attempt_id=value["attempt_id"],

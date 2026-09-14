@@ -1,0 +1,91 @@
+{
+  "checkpoint": "V2-09",
+  "status": "AUDIO_ACCEPTED_LONG_VIDEO_IMAGE_CAP_GATE",
+  "source_commit": "ec4a629cf5c4878fa633341bc581b1d21302f202",
+  "deployed_worker_version": "c5539182-ade1-4f04-837d-ce4d74b2dee9",
+  "transport": "QUALIFIED_EXACT",
+  "project_id": "fc4ada08-9e54-43e8-a548-30ccf51622d4",
+  "tests": {
+    "python": 40,
+    "hosted": 13,
+    "typecheck": "PASS",
+    "production_build_firewall": "PASS",
+    "focused_lint": "PASS",
+    "ui": 4
+  },
+  "recovery": {
+    "pending_templates_checked": 54,
+    "missing_templates_restored": 3,
+    "exact_stored_hashes_verified": true,
+    "jobs_created": 0,
+    "workflow_replays": 0,
+    "database_writes": 0
+  },
+  "benchmark": {
+    "source_bytes": 26197263,
+    "source_get_seconds": 3.229,
+    "verified_cached_copy_seconds": 0.0973,
+    "actual_ffmpeg_span_seconds": 0.449
+  },
+  "worker_release": {
+    "version": "0.1.20",
+    "run_id": 34873853359,
+    "state": "PUBLISHED_INSTALLED_ONLINE"
+  },
+  "provider_observation": {
+    "checked_at": "2026-09-14T17:12:17Z",
+    "balance_usd": 16.470644946,
+    "active_inventory_workers": 0,
+    "running_pods": 0,
+    "queued_jobs": 0,
+    "running_jobs": 0,
+    "idle_health_entries_are_not_active_compute_evidence": true
+  },
+  "remaining": [
+    "New immutable Mage image qualification requires finite authority",
+    "Existing SoulX settlement and zero-compute audit",
+    "Long-video final output acceptance"
+  ],
+  "production_bundle_repair_verified": true,
+  "audio_cadence": {
+    "before_sample_count": 8,
+    "before_median_seconds": 43.24,
+    "after_sample_count": 17,
+    "after_median_seconds": 10.09,
+    "median_speedup": 4.29,
+    "source": "production submitted_at intervals for successful spans; startup/recovery intervals excluded"
+  },
+  "delivery_corrections": [
+    "First deployment helper reused stale dist-cloudflare despite fresh dist-staging build; rebuilt actual production output and verified loadScheduledAttemptIds in dry bundle.",
+    "Second activation required unique authority ID for changed release config at same source commit.",
+    "Fast HTTP500 completion retries were explicitly rejected as performance evidence."
+  ],
+  "audio_completed": 65,
+  "audio_total": 65,
+  "qualification_renewal": {
+    "provider_actions_created": 0,
+    "expires_at": "2026-09-15T17:43:33.686Z",
+    "unchanged_live_inventory_verified": true
+  },
+  "chrome_gpu_dispatch": {
+    "http_status": 202,
+    "state": "SCHEDULED",
+    "correlation_id": "v209-4c6773d6-dfd0-4b1f-a33c-a900d2960842",
+    "planned_images": 211,
+    "planned_avatar_clips": 65
+  },
+  "subsequent_blocker": {
+    "lane": "mage_image",
+    "provider_transport": "COMPLETED",
+    "worker_status": "FAILED",
+    "failure_code": "MAGE_BATCH_SIZE_INVALID",
+    "planned_images": 211,
+    "qualified_ordinary_max_items": 64,
+    "candidate_max_items": 4096,
+    "candidate_bound_source": "existing signed v3 envelope work.item_count and limits.max_items",
+    "candidate_tests_passed": 57,
+    "candidate_gpu_concurrency": 1,
+    "published": false,
+    "paid_attempt_replayed": false
+  }
+}

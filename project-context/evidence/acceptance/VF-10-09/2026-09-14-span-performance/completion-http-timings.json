@@ -1,0 +1,111 @@
+{
+  "schema_version": "videoforge.span-completion-timings/v1",
+  "source": "sanitized Cloudflare tail, actual existing project completions",
+  "samples": [
+    {
+      "wall_ms": 21543,
+      "cpu_ms": 297,
+      "http_status": 200,
+      "worker_version_id": "d021887d-8375-4e2e-8114-8078d8801746",
+      "event_timestamp_ms": 1789406526499
+    },
+    {
+      "wall_ms": 20718,
+      "cpu_ms": 308,
+      "http_status": 200,
+      "worker_version_id": "d021887d-8375-4e2e-8114-8078d8801746",
+      "event_timestamp_ms": 1789406565042
+    },
+    {
+      "wall_ms": 20018,
+      "cpu_ms": 201,
+      "http_status": 200,
+      "worker_version_id": "d021887d-8375-4e2e-8114-8078d8801746",
+      "event_timestamp_ms": 1789406607737
+    },
+    {
+      "wall_ms": 19937,
+      "cpu_ms": 292,
+      "http_status": 200,
+      "worker_version_id": "d021887d-8375-4e2e-8114-8078d8801746",
+      "event_timestamp_ms": 1789406644010
+    },
+    {
+      "wall_ms": 2721,
+      "cpu_ms": 37,
+      "http_status": 500,
+      "worker_version_id": "56646c19-af3b-49a1-9d06-1dadb35b0fe4",
+      "event_timestamp_ms": 1789406748885
+    },
+    {
+      "wall_ms": 1952,
+      "cpu_ms": 30,
+      "http_status": 500,
+      "worker_version_id": "56646c19-af3b-49a1-9d06-1dadb35b0fe4",
+      "event_timestamp_ms": 1789406752765
+    },
+    {
+      "wall_ms": 2221,
+      "cpu_ms": 29,
+      "http_status": 500,
+      "worker_version_id": "56646c19-af3b-49a1-9d06-1dadb35b0fe4",
+      "event_timestamp_ms": 1789406756847
+    },
+    {
+      "wall_ms": 2206,
+      "cpu_ms": 47,
+      "http_status": 500,
+      "worker_version_id": "56646c19-af3b-49a1-9d06-1dadb35b0fe4",
+      "event_timestamp_ms": 1789406763226
+    },
+    {
+      "wall_ms": 2069,
+      "cpu_ms": 24,
+      "http_status": 500,
+      "worker_version_id": "56646c19-af3b-49a1-9d06-1dadb35b0fe4",
+      "event_timestamp_ms": 1789406773555
+    },
+    {
+      "wall_ms": 1973,
+      "cpu_ms": 28,
+      "http_status": 500,
+      "worker_version_id": "56646c19-af3b-49a1-9d06-1dadb35b0fe4",
+      "event_timestamp_ms": 1789406791796
+    },
+    {
+      "wall_ms": 1996,
+      "cpu_ms": 25,
+      "http_status": 500,
+      "worker_version_id": "56646c19-af3b-49a1-9d06-1dadb35b0fe4",
+      "event_timestamp_ms": 1789406824045
+    },
+    {
+      "wall_ms": 1921,
+      "cpu_ms": 29,
+      "http_status": 500,
+      "worker_version_id": "56646c19-af3b-49a1-9d06-1dadb35b0fe4",
+      "event_timestamp_ms": 1789406856276
+    },
+    {
+      "wall_ms": 1930,
+      "cpu_ms": 27,
+      "http_status": 500,
+      "worker_version_id": "56646c19-af3b-49a1-9d06-1dadb35b0fe4",
+      "event_timestamp_ms": 1789406888348
+    },
+    {
+      "wall_ms": 2317,
+      "cpu_ms": 27,
+      "http_status": 500,
+      "worker_version_id": "56646c19-af3b-49a1-9d06-1dadb35b0fe4",
+      "event_timestamp_ms": 1789406920479
+    }
+  ],
+  "correction": "Previous speedup claim retracted: approximately two-second completions were HTTP500 and did not advance the worker. No successful speedup is established by those responses.",
+  "source_delivery_finding": "Both prior dry-output bundles and apps/web/dist-cloudflare had stale hosted-v209-span-live-CCHXqySV.js lacking loadScheduledAttemptIds and aggregate SQL. Staging build did not update production artifact input. Root is rebuilding actual production output.",
+  "local_readonly_neon_close_check": {
+    "transaction_ms": 481,
+    "pool_end_ms": 0
+  },
+  "acceptance": "Require HTTP200 plus durable span advancement before reporting improved completion time."
+}

@@ -2,7 +2,9 @@
 
 ## Current span performance repair — 2026-09-14
 
-The user's existing castle2 run stalls at 11/65 spans because concurrent scheduling can delete an already committed R2 job template. Real Chrome, production lease history, process inspection, and exact R2 404/control-200 establish the first failure. Focused repair preserves committed templates and restores missing ones; worker changes remove successful-job sleeps and reuse one verified source voiceover. Release and existing-run acceptance remain pending. See `evidence/acceptance/VF-10-09/2026-09-14-span-performance/investigation.md` and `CURRENT_STATE.yaml`.
+Audio repair is deployed (`ec4a629c`, Worker `c5539182`, desktop0.1.20). Real Chrome and DB verify65/65 completed spans. Median cadence improved43.24s to10.09s. Three deleted templates were restored with exact stored SHA256; concurrent cleanup, repeated scheduling, downloads and sleeps are fixed. Always build actual `dist-cloudflare` production output and inspect its contents before deployment; a fresh staging build does not update it.
+
+Current long-video gate: the existing211-image Mage attempt returned `FAILED/MAGE_BATCH_SIZE_INVALID` (transport COMPLETED). Its qualified parser allows only64 ordinary items. Provider-free candidate uses existing signed4096-item bound while preserving sequential one-image execution;57 tests pass. New immutable image publication and qualification remain pending. Do not replay the consumed attempt or call the18-minute pipeline accepted. See `CURRENT_STATE.yaml` and `evidence/acceptance/VF-10-09/2026-09-14-span-performance/acceptance.json`.
 
 ## Short comparison: production render repaired — 2026-09-14
 

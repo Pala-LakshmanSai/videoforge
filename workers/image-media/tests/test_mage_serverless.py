@@ -362,34 +362,158 @@ class MageServerlessBoundaryTest(unittest.TestCase):
         self.assertEqual(result["failure_code"], "MAGE_SERVERLESS_JOB_SHAPE_INVALID")
         self.assertEqual(result["error"]["code"], "MAGE_SERVERLESS_JOB_SHAPE_INVALID")
 
-    def test_ordinary_parser_accepts_the_product_thirty_scene_batch_without_padding(self) -> None:
+    @staticmethod
+    def _ordinary_batch(count: int) -> dict:
         items = []
-        for index in range(30):
+        for index in range(count):
             positive = f"positive-scene-{index}"
             negative = "negative-scene"
             items.append(
                 {
                     "scene_id": f"scene-{index}",
                     "positive_prompt": positive,
-                    "positive_prompt_sha256": "sha256:" + hashlib.sha256(positive.encode()).hexdigest(),
+                    "positive_prompt_sha256": "sha256:"
+                    + hashlib.sha256(positive.encode()).hexdigest(),
                     "negative_prompt": negative,
-                    "negative_prompt_sha256": "sha256:" + hashlib.sha256(negative.encode()).hexdigest(),
+                    "negative_prompt_sha256": "sha256:"
+                    + hashlib.sha256(negative.encode()).hexdigest(),
                     "seed": 2_000_000 + index,
                     "width": 1280,
                     "height": 720,
                     "output_put_url": f"https://objects.example/{index}.png",
                 }
             )
-        parsed = mage_serverless._parse_ordinary_mage_job(
-            {
-                "attempt_id": "attempt-thirty",
-                "model_revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
-                "items": items,
-            }
+        return {
+            "attempt_id": "attempt-thirty",
+            "model_revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
+            "items": items,
+        }
+
+    def test_ordinary_parser_accepts_whole_video_without_padding(self) -> None:
+        for count in (30, 211, 4096):
+            with self.subTest(count=count):
+                parsed = mage_serverless._parse_ordinary_mage_job(self._ordinary_batch(count))
+                self.assertEqual(len(parsed.items), count)
+                self.assertEqual(parsed.items[-1].scene_id, f"scene-{count - 1}")
+
+    def test_ordinary_parser_preserves_finite_envelope_and_item_guards(self) -> None:
+        schema = json.loads(
+            (
+                ROOT.parents[1]
+                / "project-context/evidence/serverless_worker_job_envelope_v3.schema.json"
+            ).read_text()
         )
-        self.assertEqual(len(parsed.items), 30)
-        self.assertEqual(parsed.items[0].scene_id, "scene-0")
-        self.assertEqual(parsed.items[-1].scene_id, "scene-29")
+        self.assertEqual(
+            mage_serverless._ORDINARY_MAX_ITEMS,
+            schema["properties"]["limits"]["properties"]["max_items"]["maximum"],
+        )
+        for count in (0, 4097):
+            with self.assertRaisesRegex(ValueError, "MAGE_BATCH_SIZE_INVALID"):
+                mage_serverless._parse_ordinary_mage_job(self._ordinary_batch(count))
+        for mutation, code in (
+            ("duplicate", "MAGE_SCENE_ID_DUPLICATE"),
+            ("seed", "MAGE_SEED_SEQUENCE_INVALID"),
+            ("hash", "MAGE_PROMPT_HASH_MISMATCH"),
+        ):
+            batch = self._ordinary_batch(211)
+            if mutation == "duplicate":
+                batch["items"][-1]["scene_id"] = "scene-0"
+            elif mutation == "seed":
+                batch["items"][-1]["seed"] = 1
+            else:
+                batch["items"][-1]["positive_prompt_sha256"] = "sha256:" + "0" * 64
+            with self.assertRaisesRegex(ValueError, code):
+                mage_serverless._parse_ordinary_mage_job(batch)
+
+    def test_whole_video_211_images_execute_sequentially_with_fake_runtime(self) -> None:
+        batch = self._ordinary_batch(211)
+        batch["attempt_id"] = "attempt-a"
+        accepted = self._accepted()
+        accepted["work"]["item_count"] = 211
+        body = b"png"
+        checksum = "sha256:" + hashlib.sha256(body).hexdigest()
+        authorities = [
+            dict(
+                self._generated_authority(),
+                reservation_id=f"reservation-{i}",
+                path=f"/{accepted['artifacts']['output_prefix']}/artifact/scene-{i}",
+            )
+            for i in range(211)
+        ]
+        job = self._job(
+            ports={"inputs": [], "outputs": []}, generated_output_authorities=authorities
+        )
+        job["input"]["batch"] = batch
+        job["input"]["output_put_urls"] = [f"https://objects.example/{i}.png" for i in range(211)]
+        active = 0
+        peak = 0
+        calls = []
+
+        async def generate(value):
+            nonlocal active, peak
+            active += 1
+            peak = max(peak, active)
+            calls.append(value)
+            await asyncio.sleep(0)
+            active -= 1
+            return {
+                "output_base64": base64.b64encode(body).decode(),
+                "output_sha256": checksum,
+                "width": 1280,
+                "height": 720,
+                "generation_duration_ms": 1,
+                "runtime_evidence": {"gpu": {"peak_vram_used_bytes": 12 * 1024**3}},
+            }
+
+        runtime = SimpleNamespace(
+            started=time.monotonic() - 0.001,
+            ready=True,
+            gpu={
+                "name": "NVIDIA GeForce RTX 4090",
+                "cuda_version": "12",
+                "total_memory_bytes": 24 * 1024**3,
+            },
+            warmup_output_sha256="sha256:" + "3" * 64,
+            bootstrap_evidence={"duration_ms": 1},
+            phase_timings_ms={"gpu_load": 2, "warmup": 3},
+            generate=generate,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            with (
+                patch.object(mage_serverless, "validate_envelope", return_value=accepted),
+                patch.object(
+                    mage_serverless,
+                    "_validate_scoped_ports",
+                    return_value=((), (), tuple(authorities)),
+                ),
+                patch.object(
+                    mage_serverless, "_ready_runtime", new=AsyncMock(return_value=runtime)
+                ),
+                patch.object(
+                    mage_serverless, "_put_generated_output", return_value=(len(body), checksum)
+                ),
+                patch.object(
+                    mage_serverless,
+                    "verify_model_root",
+                    return_value={"manifest_sha256": accepted["runtime"]["model_manifest_sha256"]},
+                ),
+                patch.object(
+                    mage_serverless, "sign_receipt", side_effect=lambda body, **_: (body, b"")
+                ),
+                patch.dict(
+                    mage_serverless.os.environ,
+                    {
+                        "RUNPOD_ENDPOINT_ID": "endpoint-a",
+                        "VIDEOFORGE_JOB_SCRATCH_ROOT": str(Path(temporary).resolve()),
+                    },
+                ),
+            ):
+                result = asyncio.run(mage_serverless.handler(job))
+        self.assertEqual(result["status"], "SUCCEEDED", result)
+        self.assertEqual(len(calls), 211)
+        self.assertEqual(peak, 1)
+        self.assertEqual(len(result["items"]), 211)
+        self.assertEqual(result["items"][-1]["item_id"], "scene-210")
 
     def test_failure_code_survives_runpod_reserved_error_stripping(self) -> None:
         """SLS-Core keeps output fields but moves/removes the reserved `error` field."""

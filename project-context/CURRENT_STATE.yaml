@@ -1,12 +1,17 @@
 schema_version: "2.0"
 span_performance_repair_2026_09_14:
   checkpoint: V2-09
-  status: SOURCE_REPAIR_IN_PROGRESS
+  status: AUDIO_COMPLETE_LONG_VIDEO_IMAGE_CAP_GATE
   project_id: fc4ada08-9e54-43e8-a548-30ccf51622d4
-  proven_blocker: "Concurrent span schedulers can delete a committed job template; claim then loops on missing R2 object without executing audio."
-  scope: "Preserve immutable jobs; repair missing templates; remove redundant scheduling, worker sleeps and repeated source downloads. Continue existing user run only."
-  evidence: evidence/acceptance/VF-10-09/2026-09-14-span-performance/investigation.md
-  remaining: "Focused regressions, worker release, production deployment, exact Chrome continuation and compute audit."
+  deployed_source: ec4a629cf5c4878fa633341bc581b1d21302f202
+  deployed_worker_version: c5539182-ade1-4f04-837d-ce4d74b2dee9
+  personal_worker: "0.1.20 ONLINE; immutable release run 34873853359"
+  audio: "65/65 succeeded; median claim cadence 43.24s before and 10.09s after (4.29x)."
+  proven_blocker: "Concurrent span schedulers deleted committed templates. Three exact missing templates restored; race, redundant scheduling, repeated downloads and successful-job sleeps repaired."
+  subsequent_gate: "211-image request exceeds qualified Mage ordinary parser cap64; provider returned COMPLETED with FAILED/MAGE_BATCH_SIZE_INVALID. Attempt consumed, not replayed."
+  candidate: "Ordinary plan cap4096 matches signed envelope; generation remains sequential. 211-item fixture plus malformed/oversize regressions: 57 tests pass. New image publication/qualification pending."
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-span-performance/acceptance.json
+  remaining: "Qualify candidate under fresh finite spend authority; reconcile current SoulX attempt and provider cleanup; long-video final acceptance remains open."
 short_comparison_repair_2026_09_14:
   status: ACCEPTED_LIVE_SHORT_PIPELINE
   checkpoint: V2-09
