@@ -1,5 +1,10 @@
 # VideoForge: start here
 
+## Confirmed provider failure repair — 2026-09-14
+
+The separate `castle1` attempt failed at the upstream provider: exact archive records `providerUnavailable`, HTTP502, and no accepted result. Strict task-identity checks now classify that nested archive explicitly; the API reports a confirmed failure and the UI removes the misleading repeated recovery control. Source `518cd88c` is deployed as Worker `799e8d79-5a97-49c2-af1c-7be080ab35a8`, `QUALIFIED_EXACT`. Actual Chrome verifies the stopped state and corrected recovery message. 145 API/UI tests, 11 transport tests, both TypeScript targets, production build/firewall and focused lint/format pass. No inference replay or GPU job was started. Latest saved preflight at14:56:34Z shows zero active compute and empty queues. Full18-minute acceptance still needs a fresh bounded attempt; prior one-attempt authority is consumed. Evidence: `evidence/acceptance/VF-10-09/2026-09-14-pipeline-audit/castle1-repair.json`.
+
+
 ## Latest pipeline follow-through — 2026-09-14
 
 Approved deployment and one fresh 18-minute run reproduced Stage 3 failure: `aggregate_budget`, not a transport failure. The validator now retains whole normalized facts within the existing 360-character limit. Source `853851c8` is deployed and activated as Worker `cb062d87-e67f-4088-9e21-ac5f79a244e8`, `QUALIFIED_EXACT`. An additional 31 focused tests, both TypeScript targets, production build/firewall, context validation, and focused lint/format pass.

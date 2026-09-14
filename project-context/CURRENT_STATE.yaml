@@ -1,4 +1,16 @@
 schema_version: "2.0"
+
+castle1_provider_failure_2026_09_14:
+  status: DEPLOYED_BROWSER_VERIFIED
+  checkpoint: V2-09
+  source_commit: 518cd88cfe802ed3fb32eb6689b53bcc18fcbbd2
+  deployed_worker_version: 799e8d79-5a97-49c2-af1c-7be080ab35a8
+  transport: QUALIFIED_EXACT
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-pipeline-audit/castle1-repair.json
+  provider_actions_created: 0
+  paid_compute_started: false
+  remaining_gates: Fresh bounded inference authority and full18-minute pipeline acceptance; previous one-attempt authority consumed.
+
 pipeline_audit_2026_09_14:
   status: COMPACTION_FIX_DEPLOYED_ATTEMPT_CONSUMED
   checkpoint: V2-09

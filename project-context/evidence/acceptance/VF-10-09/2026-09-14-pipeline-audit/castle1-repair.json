@@ -1,0 +1,15 @@
+{
+  "status": "DEPLOYED_BROWSER_VERIFIED",
+  "checkpoint": "V2-09",
+  "source_commit": "518cd88cfe802ed3fb32eb6689b53bcc18fcbbd2",
+  "worker_version": "799e8d79-5a97-49c2-af1c-7be080ab35a8",
+  "transport": "QUALIFIED_EXACT",
+  "cause": "Exact castle1 archive records nested providerUnavailable with upstream HTTP502 and no accepted text result. Earlier aggregate_budget failure belongs to a different attempt.",
+  "repair": "Strict identity-bound archive classification; safe route error; confirmed terminal failure hides repeated recovery control. No redispatch.",
+  "validation": "145 API/UI tests and 11 transport tests pass; both TypeScript targets, Cloudflare build/firewall, focused lint/format pass.",
+  "browser": "Actual Chrome reload shows Provider task failed and no Check provider result control. Refresh preserves stopped Stage3.",
+  "provider_preflight": "2026-09-14T14:56:34.263Z: balance USD16.6550892793; RTX4090 EU-RO-1 USD1.1/GPU-hour LOW; zero active inventory workers, empty queues. Health reports throttled records, no running or initializing workers.",
+  "new_inference_requests": 0,
+  "compute_started": false,
+  "remaining": "Fresh bounded inference authority and full18-minute pipeline playback/download acceptance. Full MVP not claimed."
+}
