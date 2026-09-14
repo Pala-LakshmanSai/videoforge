@@ -2055,28 +2055,7 @@ export function HostedCreateProjectScreen() {
         }),
         "Hosted project creation timed out. Retry from Create Project.",
       );
-      if (created.upload) {
-        const headers = Object.fromEntries(
-          Object.entries(created.upload.requiredHeaders).filter(
-            ([key]) => key !== "content-length",
-          ),
-        );
-        const uploadController = new AbortController();
-        const uploaded = await bounded(
-          fetch(created.upload.url, {
-            signal: uploadController.signal,
-            method: "PUT",
-            headers,
-            body: voiceover,
-          }),
-          "Private voiceover upload timed out. Retry from Create Project.",
-        ).catch((error) => {
-          uploadController.abort();
-          throw error;
-        });
-        if (!uploaded.ok)
-          throw new Error(`Private voiceover upload failed (HTTP ${uploaded.status}).`);
-      }
+      if (created.upload) await putHostedUpload(created.upload, voiceover);
       const ready = await bounded(
         readJson<{ project_id: string; cpu_submission: unknown }>(
           `/api/v2/hosted/projects/${created.project_id}/commit`,
