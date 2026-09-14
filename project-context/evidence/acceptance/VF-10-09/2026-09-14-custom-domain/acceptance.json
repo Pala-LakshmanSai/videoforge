@@ -1,0 +1,57 @@
+{
+  "status": "ACCEPTED_LIVE",
+  "verified_at": "2026-09-14T07:30:39.167992+00:00",
+  "checkpoint": "V2-09",
+  "origin": "https://videoforge.buzz",
+  "source_commit": "d185b032016306877076be39e924a65ffd52c303",
+  "worker_version": "12be28ff-c0a1-4ad7-83aa-d86d6b14be56",
+  "activation_id_sha256": "sha256:697e3ffacd3037d43c9303d9cc5f8a109d4bc2cc748717e8dcd995072d1d632c",
+  "gpu_transport": "QUALIFIED_EXACT",
+  "dns": {
+    "zone_status": "active",
+    "nameservers": [
+      "holly.ns.cloudflare.com",
+      "johnny.ns.cloudflare.com"
+    ],
+    "public_resolver_and_authoritative_answers_verified": true
+  },
+  "https": {
+    "certificate_verified": true,
+    "http_redirect_status": 301
+  },
+  "google_signin": {
+    "new_callback_saved": true,
+    "previous_callback_preserved": true,
+    "chrome_authenticated_on_new_origin": true
+  },
+  "browser": {
+    "api_healthy": true,
+    "private_queue_loaded": true,
+    "paired_computer": "Connected",
+    "completed_project_access": true,
+    "gallery_images": 7,
+    "saved_prompt_and_regenerate_control_present": true,
+    "final_video_playback_elapsed_seconds": 37.166,
+    "review_status": "APPROVED",
+    "console_errors_observed": 0,
+    "screenshot_limitation": "Computer-use captures returned white frames; acceptance uses live accessibility state and video timeline progression, not screenshots."
+  },
+  "r2": {
+    "old_origins_preserved": true,
+    "new_origin_allowed": true,
+    "signed_put_preflight_status": 204,
+    "uploaded_test_object": false
+  },
+  "validation": {
+    "operator_tests_passed": 33,
+    "build_cloudflare": "PASS",
+    "changed_file_eslint": "PASS",
+    "prettier": "PASS",
+    "context_validate": "PASS",
+    "secret_scan": "PASS"
+  },
+  "runpod_mutation": false,
+  "gpu_compute_started": false,
+  "additional_paid_plan": false,
+  "remaining_domain_gates": []
+}

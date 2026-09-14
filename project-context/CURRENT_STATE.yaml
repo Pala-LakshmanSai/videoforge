@@ -2,9 +2,14 @@ schema_version: "2.0"
 context_schema_version: "2.0"
 custom_domain_request_2026_09_14:
   domain: videoforge.buzz
-  status: CUSTOM_DOMAIN_HTTPS_READY_CANONICAL_DEPLOYMENT_PENDING
-  evidence: evidence/acceptance/VF-10-09/2026-09-14-custom-domain/setup.json
-  production_origin_changed: false
+  status: ACCEPTED_LIVE
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-custom-domain/acceptance.json
+  production_origin_changed: true
+  public_origin: https://videoforge.buzz
+  deployed_source: d185b032016306877076be39e924a65ffd52c303
+  deployed_worker_version: 12be28ff-c0a1-4ad7-83aa-d86d6b14be56
+  transport: QUALIFIED_EXACT
+  remaining_domain_gates: none
   paid_compute_started: false
 image_review_regeneration_request_2026_09_14:
   status: ACCEPTED_LIVE_ZERO_COMPUTE

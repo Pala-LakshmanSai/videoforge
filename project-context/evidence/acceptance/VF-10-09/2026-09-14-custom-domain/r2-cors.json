@@ -1,0 +1,29 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "https://videoforge-v2-06-staging.lakshmansai121.workers.dev",
+          "https://videoforge-production-runtime.lakshmansai121.workers.dev",
+          "https://videoforge.buzz"
+        ],
+        "methods": [
+          "GET",
+          "PUT",
+          "HEAD"
+        ],
+        "headers": [
+          "Content-Type",
+          "x-amz-checksum-sha256"
+        ]
+      },
+      "exposeHeaders": [
+        "Content-Length",
+        "Content-Type",
+        "ETag",
+        "x-amz-checksum-sha256"
+      ],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}

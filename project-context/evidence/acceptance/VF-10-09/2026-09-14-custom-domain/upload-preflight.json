@@ -1,0 +1,7 @@
+{
+  "status": 204,
+  "origin": "https://videoforge.buzz",
+  "methods": "GET, PUT, HEAD",
+  "headers": "content-type, x-amz-checksum-sha256",
+  "object_uploaded": false
+}
