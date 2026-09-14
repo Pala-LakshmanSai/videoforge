@@ -145,6 +145,7 @@ async function rehashCandidateWork(
     existingWorkflowId,
     ...candidateBase
   } = prepared;
+  void _candidateSha256;
   const base = { ...candidateBase, work, workManifestSha256: await sha256CanonicalJson(work) };
   return {
     ...base,
@@ -227,7 +228,7 @@ function dependencies(
       ensureWorkflow,
       ensureAdmission,
       correlationId: () => "v209-safe-correlation",
-    } as never,
+    },
   };
 }
 
@@ -407,7 +408,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
       config,
       {} as never,
-      deps.value,
+      deps.value as never,
       { prepare },
     );
     expect(response?.status).toBe(202);
@@ -463,7 +464,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
       config,
       {} as never,
-      deps.value,
+      deps.value as never,
     );
     if (!response) throw new Error("route not matched");
     expect(response.status).toBe(202);
@@ -500,7 +501,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
         userId: scope.user_id,
         projectId,
       },
-      accepted.value,
+      accepted.value as never,
     );
     expect(acceptedResponse.status).toBe(202);
     expect(accepted.observe).toHaveBeenCalledOnce();
@@ -517,7 +518,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
           userId: scope.user_id,
           projectId,
         },
-        mismatched.value,
+        mismatched.value as never,
       ),
     ).rejects.toThrow("V209_ORDINARY_WORK_INVALID");
     expect(mismatched.observe).not.toHaveBeenCalled();
@@ -532,7 +533,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
       config,
       {} as never,
-      deps.value,
+      deps.value as never,
     );
     if (!response) throw new Error("route not matched");
     expect(response.status).toBe(200);
@@ -545,7 +546,9 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
     const prepared = await candidate(true);
     const deps = dependencies(prepared);
     const findExistingGeneration = vi.fn(async () => prepared.generationRequestId);
-    const ensureAdmission = vi.fn(async () => { throw new Error("released paid lease"); });
+    const ensureAdmission = vi.fn(async () => {
+      throw new Error("released paid lease");
+    });
     const prepare = vi.fn(async () => ({ state: "PREPARING_INPUTS" as const }));
     const response = await handleHostedV209ProjectDispatch(
       request(),
@@ -554,7 +557,8 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       {} as never,
       {
         ...deps.value,
-        findExistingGeneration, ensureAdmission,
+        findExistingGeneration,
+        ensureAdmission,
       } as never,
       { prepare },
     );
@@ -566,15 +570,12 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       generation_request_id: prepared.generationRequestId,
       workflow_id: `hosted-pair-${prepared.generationRequestId}`,
     });
-    expect(findExistingGeneration).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        accountId: scope.account_id,
-        workspaceId: scope.workspace_id,
-        userId: scope.user_id,
-        projectId,
-      },
-    );
+    expect(findExistingGeneration).toHaveBeenCalledWith(expect.anything(), {
+      accountId: scope.account_id,
+      workspaceId: scope.workspace_id,
+      userId: scope.user_id,
+      projectId,
+    });
     expect(ensureAdmission).not.toHaveBeenCalled();
     expect(prepare).not.toHaveBeenCalled();
     expect(deps.ensureWorkflow).toHaveBeenCalledOnce();
@@ -590,7 +591,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       {} as never,
       config,
       {} as never,
-      crossOrigin.value,
+      crossOrigin.value as never,
     );
     expect(crossOriginResponse?.status).toBe(403);
     expect(crossOrigin.materialize).not.toHaveBeenCalled();
@@ -601,7 +602,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       {} as never,
       config,
       {} as never,
-      forged.value,
+      forged.value as never,
     );
     expect(forgedResponse?.status).toBe(400);
     expect(forged.materialize).not.toHaveBeenCalled();
@@ -615,7 +616,7 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
       config,
       {} as never,
-      deps.value,
+      deps.value as never,
     );
     if (!response) throw new Error("route not matched");
     expect(response.status).toBe(409);
@@ -632,7 +633,10 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
       config,
       {} as never,
-      { ...deps.value, observe: vi.fn(async () => Promise.reject(new TypeError("fetch failed"))) },
+      {
+        ...deps.value,
+        observe: vi.fn(async () => Promise.reject(new TypeError("fetch failed"))),
+      } as never,
     );
     expect(response?.status).toBe(409);
     await expect(response?.json()).resolves.toEqual({

@@ -137,6 +137,24 @@ describe("hosted V2-09 span audio coordinator", () => {
     expect(schedule.mock.calls[0]![2]).toBe(ids.attemptId);
   });
 
+  it("accepts an in-flight replay when the worker claims the attempt between retries", async () => {
+    const value = await projection();
+    const schedule = vi.fn(async () => ({ state: "IN_PROGRESS" }));
+    const coordinator = createHostedV209SpanAudioCoordinator({
+      loadJobs: vi.fn(async () => value),
+      schedule,
+      finalize: vi.fn(),
+      resumePair: vi.fn(),
+    });
+
+    await expect(coordinator.prepare(ids)).resolves.toMatchObject({
+      state: "PREPARING_INPUTS",
+      projectRevisionId: ids.revisionId,
+      attemptIds: [ids.attemptId],
+    });
+    expect(schedule).toHaveBeenCalledOnce();
+  });
+
   it("rejects DB projection hash drift before scheduling", async () => {
     const value = await projection();
     value.jobs[0]!.submissionSha256 = `sha256:${"f".repeat(64)}`;

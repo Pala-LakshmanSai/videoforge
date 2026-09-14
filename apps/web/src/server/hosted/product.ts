@@ -21,6 +21,8 @@ import {
 import { hostedGpuReadinessForConfiguration, type HostedGpuReadiness } from "./gpu-readiness";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { HostedR2Signer } from "./r2";
+import { verifyHostedObjectChecksum as verifyHostedPreviewChecksum } from "./r2-checksum";
+export { verifyHostedPreviewChecksum };
 import { canonicalJson } from "./submission";
 import {
   parseHostedJson,
@@ -3519,30 +3521,6 @@ function checksumFromR2(value?: ArrayBuffer): string | null {
   return `sha256:${[...new Uint8Array(value)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
-const verifiedPreviewObjects = new Map<string, string>();
-export async function verifyHostedPreviewChecksum(
-  bucket: NonNullable<HostedRuntimeEnvironment["PRIVATE_ARTIFACTS"]>,
-  objectKey: string,
-  head: NonNullable<Awaited<ReturnType<typeof bucket.head>>>,
-  checksum: string,
-): Promise<boolean> {
-  const stored = checksumFromR2(head.checksums?.sha256);
-  if (stored !== null) return stored === checksum;
-  const identity = head.etag ? `${head.etag}:${head.size}:${checksum}` : null;
-  if (identity && verifiedPreviewObjects.get(objectKey) === identity) return true;
-  const object = await bucket.get(objectKey);
-  if (!object || object.size !== head.size || (head.etag && object.etag !== head.etag))
-    return false;
-  const bytes = await object.arrayBuffer();
-  if (bytes.byteLength !== head.size || (await sha256Bytes(bytes)) !== checksum) return false;
-  if (identity) {
-    if (verifiedPreviewObjects.size >= 256)
-      verifiedPreviewObjects.delete(verifiedPreviewObjects.keys().next().value!);
-    verifiedPreviewObjects.set(objectKey, identity);
-  }
-  return true;
-}
-
 function voiceoverExtension(contentType: string): string {
   return contentType === "audio/wav"
     ? "wav"
@@ -5359,11 +5337,6 @@ async function createVoiceoverContext(
     const transcript = hostedTranscriptText(document, asrAttemptId);
     if (!transcript) return response({ error: { code: "HOSTED_CONTEXT_TRANSCRIPT_INVALID" } }, 409);
     const transcriptHash = await sha256(transcript);
-    const preparedRequest = await prepareHostedVoiceoverContextRequest({
-      transcript,
-      transcriptHash,
-    });
-    providerTaskUuid = preparedRequest.request.taskUUID;
     const identity = {
       contextId: crypto.randomUUID(),
       taskId: crypto.randomUUID(),
@@ -5373,6 +5346,12 @@ async function createVoiceoverContext(
       reservationCostEventId: crypto.randomUUID(),
       claimTokenHash: await sha256(`hosted-context-claim:${crypto.randomUUID()}:${projectId}`),
     };
+    const preparedRequest = await prepareHostedVoiceoverContextRequest({
+      transcript,
+      transcriptHash,
+      contextId: identity.contextId,
+    });
+    providerTaskUuid = preparedRequest.request.taskUUID;
     const claimed = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
@@ -5595,10 +5574,19 @@ async function reconcileVoiceoverContext(
     const transcript = hostedTranscriptText(document, state.asr_attempt_id);
     if (!transcript || (await sha256(transcript)) !== state.transcript_hash)
       return response({ error: { code: "HOSTED_CONTEXT_TRANSCRIPT_INVALID" } }, 409);
-    const preparedRequest = await prepareHostedVoiceoverContextRequest({
+    let preparedRequest = await prepareHostedVoiceoverContextRequest({
       transcript,
       transcriptHash: state.transcript_hash as `sha256:${string}`,
+      contextId: state.context_id,
     });
+    // Existing runs used a transcript-only task identity. Reconstruct that exact request for
+    // retrieval, without changing its immutable hash or submitting another inference.
+    if (preparedRequest.requestHash !== state.request_hash) {
+      preparedRequest = await prepareHostedVoiceoverContextRequest({
+        transcript,
+        transcriptHash: state.transcript_hash as `sha256:${string}`,
+      });
+    }
     if (preparedRequest.requestHash !== state.request_hash)
       return response({ error: { code: "HOSTED_CONTEXT_REQUEST_IDENTITY_INVALID" } }, 409);
 
@@ -6662,7 +6650,13 @@ async function projectDetail(
           object &&
           object.size === Number(value.content_length) &&
           object.httpMetadata?.contentType === "video/mp4" &&
-          checksumFromR2(object.checksums?.sha256) === value.output_checksum_sha256
+          environment.PRIVATE_ARTIFACTS &&
+          (await verifyHostedPreviewChecksum(
+            environment.PRIVATE_ARTIFACTS,
+            value.object_key,
+            object,
+            value.output_checksum_sha256,
+          ))
         ) {
           previewUrl = (
             await signer.sign({
@@ -6859,15 +6853,22 @@ async function projectDetail(
           contextState === "SUCCEEDED"
             ? "Compact whole-script facts are saved for scene planning and prompt relevance."
             : contextState === "UNKNOWN"
-              ? contextProblemCode === "HOSTED_CONTEXT_DISPATCH_TIMEOUT"
-                ? "The request exceeded its safe deadline. Its result is uncertain and will not be dispatched again automatically."
-                : contextProblemCode === "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN"
-                  ? "Runware could not be reached before an accepted task was confirmed. No automatic redispatch occurred."
-                  : contextProblemCode === "VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE"
-                    ? "Runware returned a temporary server failure before an accepted result was confirmed. No automatic redispatch occurred."
-                    : contextProblemCode === "VOICEOVER_CONTEXT_RESPONSE_UNCERTAIN"
-                      ? "Runware responded, but no durable accepted result could be verified. No automatic redispatch occurred."
-                      : "The provider result is uncertain and will not be dispatched again automatically."
+              ? [
+                  "VOICEOVER_CONTEXT_INVALID",
+                  "VOICEOVER_CONTEXT_JSON_INVALID",
+                  "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY",
+                  "VOICEOVER_CONTEXT_TOO_LARGE",
+                ].includes(contextProblemCode)
+                ? "The provider returned context that failed validation. This run is stopped; no automatic redispatch occurred."
+                : contextProblemCode === "HOSTED_CONTEXT_DISPATCH_TIMEOUT"
+                  ? "The request exceeded its safe deadline. Its result is uncertain and will not be dispatched again automatically."
+                  : contextProblemCode === "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN"
+                    ? "Runware could not be reached before an accepted task was confirmed. No automatic redispatch occurred."
+                    : contextProblemCode === "VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE"
+                      ? "Runware returned a temporary server failure before an accepted result was confirmed. No automatic redispatch occurred."
+                      : contextProblemCode === "VOICEOVER_CONTEXT_RESPONSE_UNCERTAIN"
+                        ? "Runware responded, but no durable accepted result could be verified. No automatic redispatch occurred."
+                        : "The provider result is uncertain and will not be dispatched again automatically."
               : contextState === "FAILED" &&
                   contextProblemCode === "VOICEOVER_CONTEXT_PROVIDER_REJECTED"
                 ? "Runware rejected the request before VideoForge accepted a result."

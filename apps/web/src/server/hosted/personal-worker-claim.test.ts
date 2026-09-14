@@ -147,16 +147,18 @@ beforeEach(async () => {
   state.fresh = true;
   state.active = true;
   state.failInputs = false;
-  state.bytes = new TextEncoder().encode(
-    JSON.stringify({
-      schema_version: "videoforge-personal-worker-job-template/v1",
-      attempt_id: "attempt",
-      kind: "ASR",
-      input_document: {},
-      outputs: [{}],
-      result: {},
-      tooling: {},
-    }),
+  state.bytes = new Uint8Array(
+    new TextEncoder().encode(
+      JSON.stringify({
+        schema_version: "videoforge-personal-worker-job-template/v1",
+        attempt_id: "attempt",
+        kind: "ASR",
+        input_document: {},
+        outputs: [{}],
+        result: {},
+        tooling: {},
+      }),
+    ),
   );
   state.checksum = `sha256:${Array.from(
     new Uint8Array(await crypto.subtle.digest("SHA-256", state.bytes)),

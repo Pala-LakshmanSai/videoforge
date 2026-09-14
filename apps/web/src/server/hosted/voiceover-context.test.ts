@@ -55,6 +55,37 @@ describe("hosted voiceover context extraction", () => {
     expect(JSON.stringify(request.jsonSchema)).toContain('"maxItems"');
   });
 
+  it("scopes task identity by context while preserving the legacy omitted seed", async () => {
+    const input = {
+      transcript: "Inspect fruit. Then tap it and listen for hollow sound.",
+      transcriptHash: HASH,
+    };
+    const legacy = await prepareHostedVoiceoverContextRequest(input);
+    const explicitlyLegacy = await prepareHostedVoiceoverContextRequest({
+      ...input,
+      contextId: undefined,
+    });
+    const first = await prepareHostedVoiceoverContextRequest({
+      ...input,
+      contextId: "project-a",
+    });
+    const same = await prepareHostedVoiceoverContextRequest({
+      ...input,
+      contextId: "project-a",
+    });
+    const other = await prepareHostedVoiceoverContextRequest({
+      ...input,
+      contextId: "project-b",
+    });
+
+    expect(explicitlyLegacy.requestBytes).toBe(legacy.requestBytes);
+    expect(explicitlyLegacy.requestHash).toBe(legacy.requestHash);
+    expect(same.request.taskUUID).toBe(first.request.taskUUID);
+    expect(same.requestHash).toBe(first.requestHash);
+    expect(other.request.taskUUID).not.toBe(first.request.taskUUID);
+    expect(other.requestHash).not.toBe(first.requestHash);
+  });
+
   it("binds the compact global-context boundary into the immutable provider prompt", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "Inspect the fruit. Then tap it.",
@@ -257,6 +288,53 @@ describe("hosted voiceover context extraction", () => {
     ).rejects.toThrow("VOICEOVER_CONTEXT_INVALID");
   });
 
+  it("logs only bounded aggregate validation diagnostics", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "A complete transcript with many recurring details.",
+      transcriptHash: HASH,
+    });
+    const providerText = JSON.stringify({
+      subject: `provider-secret-marker-${"s".repeat(80)}`,
+      visual_facts: ["a".repeat(70), "b".repeat(70), "c".repeat(70)],
+      continuity: ["d".repeat(70), "e".repeat(70)],
+      resolved_references: ["f".repeat(70), "g".repeat(70)],
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      await expect(
+        extractHostedVoiceoverContext({
+          prepared,
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          fetcher: async () =>
+            Response.json({
+              data: [
+                {
+                  taskUUID: prepared.request.taskUUID,
+                  taskType: "textInference",
+                  text: providerText,
+                  cost: 0.001,
+                  finishReason: "stop",
+                  usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+                },
+              ],
+            }),
+        }),
+      ).rejects.toThrow("VOICEOVER_CONTEXT_INVALID");
+      expect(warn).toHaveBeenCalledWith(
+        "hosted_voiceover_context_validation",
+        expect.objectContaining({
+          reason: "aggregate_budget",
+          response_length: providerText.length,
+          response_hash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u),
+        }),
+      );
+      expect(JSON.stringify(warn.mock.calls)).not.toContain(providerText);
+      expect(JSON.stringify(warn.mock.calls)).not.toContain("provider-secret-marker");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("accepts only bounded whole-response structured wrappers", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "Inspect the fruit. Then tap it.",
@@ -264,6 +342,7 @@ describe("hosted voiceover context extraction", () => {
     });
     for (const text of [
       `\`\`\`json\n${JSON.stringify(contextDocument())}\n\`\`\``,
+      `\`\`\`json\n\n  ${JSON.stringify(contextDocument())}\n\n\`\`\``,
       JSON.stringify(JSON.stringify(contextDocument())),
     ]) {
       await expect(
@@ -401,20 +480,38 @@ describe("hosted voiceover context extraction", () => {
     ).rejects.toThrow("VOICEOVER_CONTEXT_JSON_INVALID");
   });
 
-  it("fails closed when the provider response is ambiguous", async () => {
+  it("fails closed when the provider response is ambiguous without redispatching", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "A complete transcript.",
       transcriptHash: HASH,
+    });
+    const fetcher = vi.fn(async () => {
+      throw new DOMException("timed out", "TimeoutError");
     });
     await expect(
       extractHostedVoiceoverContext({
         prepared,
         apiKey: "runware-test-key-at-least-twenty-characters",
-        fetcher: async () => {
-          throw new DOMException("timed out", "TimeoutError");
-        },
+        fetcher,
       }),
     ).rejects.toThrow("VOICEOVER_CONTEXT_NETWORK_UNCERTAIN");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed on an ambiguous 5xx response without redispatching", async () => {
+    const prepared = await prepareHostedVoiceoverContextRequest({
+      transcript: "A complete transcript.",
+      transcriptHash: HASH,
+    });
+    const fetcher = vi.fn(async () => new Response("temporarily unavailable", { status: 503 }));
+    await expect(
+      extractHostedVoiceoverContext({
+        prepared,
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        fetcher,
+      }),
+    ).rejects.toThrow("VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE");
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
   it("accepts a successful envelope that includes an empty errors array", async () => {

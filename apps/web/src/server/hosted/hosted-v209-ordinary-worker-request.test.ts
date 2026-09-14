@@ -224,7 +224,6 @@ describe("ordinary V2-09 immutable worker request", () => {
               avatarSourceAssetId: "avatar-asset-a",
               avatarSourceObjectKey:
                 "tenant/account-a/workspace/workspace-a/avatar-profile/profile-a/version/version-a/canonical/avatar.png",
-              avatarSourceContentType: "image/png",
               avatarSourceContentLength: 1_912_005,
               avatarSourceSha256: HOSTED_V209_SOULX_AVATAR_SOURCE_SHA256,
               ...avatarOverride,

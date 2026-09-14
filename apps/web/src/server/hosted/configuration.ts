@@ -30,6 +30,7 @@ export interface HostedR2BucketBinding {
     readonly size: number;
     readonly etag?: string;
     readonly httpMetadata?: { readonly contentType?: string };
+    readonly body?: ReadableStream<Uint8Array> | null;
     arrayBuffer(): Promise<ArrayBuffer>;
   } | null>;
   put(

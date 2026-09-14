@@ -105,18 +105,36 @@ function uuidFromHash(hash: string): string {
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20, 32)}`;
 }
 
+type HostedVoiceoverContextValidationReason =
+  | "object"
+  | "keys"
+  | "subject"
+  | "list_count"
+  | "type"
+  | "empty"
+  | "duplicate"
+  | "aggregate_budget";
+
+class HostedVoiceoverContextValidationError extends Error {
+  constructor(readonly reason: HostedVoiceoverContextValidationReason) {
+    super("VOICEOVER_CONTEXT_INVALID");
+    this.name = "HostedVoiceoverContextValidationError";
+  }
+}
+
 function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> {
   if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error("VOICEOVER_CONTEXT_INVALID");
+    throw new HostedVoiceoverContextValidationError("object");
   const record = value as Record<string, JsonValue>;
   const required = Object.keys(schema.properties).sort();
   const actual = Object.keys(record).sort();
   if (actual.length !== required.length || actual.some((key, index) => key !== required[index]))
-    throw new Error("VOICEOVER_CONTEXT_INVALID");
+    throw new HostedVoiceoverContextValidationError("keys");
   const boundedText = (text: string, maximum: number) =>
     Array.from(text.normalize("NFKC").replace(/\s+/gu, " ").trim()).slice(0, maximum).join("");
   const subject =
     typeof record.subject === "string" ? boundedText(record.subject, MAX_SUBJECT_CHARS) : "";
+  if (subject.length === 0) throw new HostedVoiceoverContextValidationError("subject");
   const boundedList = (
     candidate: JsonValue | undefined,
     maximumItems: number,
@@ -126,17 +144,19 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
       !Array.isArray(candidate) ||
       candidate.length > maximumItems ||
       candidate.some((item) => typeof item !== "string")
-    )
-      throw new Error("VOICEOVER_CONTEXT_INVALID");
+    ) {
+      if (!Array.isArray(candidate)) throw new HostedVoiceoverContextValidationError("type");
+      if (candidate.length > maximumItems)
+        throw new HostedVoiceoverContextValidationError("list_count");
+      throw new HostedVoiceoverContextValidationError("type");
+    }
     const normalized = candidate.map((item) => boundedText(item as string, maximumChars));
-    if (
-      normalized.some((item) => item.length === 0) ||
-      new Set(normalized).size !== normalized.length
-    )
-      throw new Error("VOICEOVER_CONTEXT_INVALID");
+    if (normalized.some((item) => item.length === 0))
+      throw new HostedVoiceoverContextValidationError("empty");
+    if (new Set(normalized).size !== normalized.length)
+      throw new HostedVoiceoverContextValidationError("duplicate");
     return Object.freeze(normalized);
   };
-  if (subject.length === 0) throw new Error("VOICEOVER_CONTEXT_INVALID");
   const visualFacts = boundedList(record.visual_facts, MAX_VISUAL_FACTS, MAX_VISUAL_FACT_CHARS);
   const continuity = boundedList(
     record.continuity,
@@ -150,7 +170,7 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
   );
   const reusableFacts = [...visualFacts, ...continuity, ...resolvedReferences];
   if (new Set(reusableFacts).size !== reusableFacts.length)
-    throw new Error("VOICEOVER_CONTEXT_INVALID");
+    throw new HostedVoiceoverContextValidationError("duplicate");
   const flattened = [
     `Subject: ${subject}`,
     visualFacts.length > 0 ? `Visual facts: ${visualFacts.join("; ")}` : null,
@@ -159,7 +179,8 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
   ]
     .filter((part): part is string => part !== null)
     .join(" | ");
-  if (flattened.length > MAX_HOSTED_CONTEXT_CHARS) throw new Error("VOICEOVER_CONTEXT_INVALID");
+  if (flattened.length > MAX_HOSTED_CONTEXT_CHARS)
+    throw new HostedVoiceoverContextValidationError("aggregate_budget");
   return Object.freeze({
     subject,
     visual_facts: visualFacts,
@@ -211,12 +232,13 @@ function parseContextOutput(outputText: string): Readonly<Record<string, JsonVal
   }
 
   const candidates = [...objectCandidates];
-  for (const wrapper of [fenced?.[1], trimmed]) {
+  for (const wrapper of [fenced?.[1]?.trim(), trimmed]) {
     if (wrapper && !objectCandidates.includes(wrapper)) candidates.push(wrapper);
   }
   const valid: Readonly<Record<string, JsonValue>>[] = [];
   let parsedCandidate = false;
   let duplicateProperty = false;
+  let validationReason: HostedVoiceoverContextValidationReason | null = null;
   for (const candidate of candidates) {
     try {
       const parsed = parseJsonStrict(candidate);
@@ -226,7 +248,10 @@ function parseContextOutput(outputText: string): Readonly<Record<string, JsonVal
       parsedCandidate = true;
       try {
         valid.push(validateContext(value));
-      } catch {
+      } catch (error) {
+        if (error instanceof HostedVoiceoverContextValidationError && validationReason === null) {
+          validationReason = error.reason;
+        }
         // A provider may emit a malformed draft followed by one final object.
         // Only the unique schema-valid object is eligible for acceptance.
       }
@@ -241,6 +266,7 @@ function parseContextOutput(outputText: string): Readonly<Record<string, JsonVal
     throw new Error("VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY");
   if (objectCandidates.length > 1 || valid.length > 1)
     throw new Error("VOICEOVER_CONTEXT_JSON_INVALID");
+  if (validationReason !== null) throw new HostedVoiceoverContextValidationError(validationReason);
   if (parsedCandidate) throw new Error("VOICEOVER_CONTEXT_INVALID");
   throw new Error("VOICEOVER_CONTEXT_JSON_INVALID");
 }
@@ -248,6 +274,7 @@ function parseContextOutput(outputText: string): Readonly<Record<string, JsonVal
 export async function prepareHostedVoiceoverContextRequest(input: {
   readonly transcript: string;
   readonly transcriptHash: `sha256:${string}`;
+  readonly contextId?: string;
 }): Promise<HostedVoiceoverContextRequest> {
   if (input.transcript.trim().length === 0 || input.transcript.length > 100_000)
     throw new Error("VOICEOVER_TRANSCRIPT_INVALID");
@@ -276,11 +303,20 @@ export async function prepareHostedVoiceoverContextRequest(input: {
   // entire immutable request contract, not only the transcript hash, so a prompt,
   // schema, model, or settings change can never resolve to an older archived task.
   const taskSeed = await sha256(
-    canonicalizeJson({
-      requestVersion: REQUEST_CONTRACT_VERSION,
-      transcriptHash: input.transcriptHash,
-      request: requestWithoutTaskUUID,
-    }),
+    canonicalizeJson(
+      input.contextId === undefined
+        ? {
+            requestVersion: REQUEST_CONTRACT_VERSION,
+            transcriptHash: input.transcriptHash,
+            request: requestWithoutTaskUUID,
+          }
+        : {
+            requestVersion: REQUEST_CONTRACT_VERSION,
+            contextId: input.contextId,
+            transcriptHash: input.transcriptHash,
+            request: requestWithoutTaskUUID,
+          },
+    ),
   );
   const taskUUID = uuidFromHash(taskSeed);
   const request = Object.freeze({
@@ -312,10 +348,8 @@ export async function extractHostedVoiceoverContext(input: {
   readonly reportedCostMicroUsd: number;
 }> {
   const diagnosticState: { current: RunwareSafeDiagnostic | null } = { current: null };
-  // Runware occasionally answers a well-formed request with a transient 5xx or a dropped
-  // connection. That is not a rejected request, and the claim cannot be redispatched afterwards,
-  // so retry the transient shapes here instead of burning the whole context claim on one blip.
-  const transientAttempts = 3;
+  // A network or 5xx result is ambiguous: Runware may have accepted the claim, so this request
+  // must not be redispatched. Reconcile the original task through getTaskDetails instead.
   const transport = new RunwarePromptHttpTransport({
     apiKey: input.apiKey,
     ledger: new RunwareSpendLedger(HOSTED_CONTEXT_RESERVATION_USD),
@@ -325,31 +359,16 @@ export async function extractHostedVoiceoverContext(input: {
       diagnosticState.current = value;
     },
   });
-  let result: Awaited<ReturnType<RunwarePromptHttpTransport["dispatch"]>> | null = null;
-  for (let attempt = 1; attempt <= transientAttempts; attempt += 1) {
-    result = await transport.dispatch({
-      requestVersion:
-        REQUEST_CONTRACT_VERSION as unknown as RunwarePromptTransportRequest["requestVersion"],
-      attemptIndex: (attempt === 1 ? 1 : 2) as 1 | 2,
-      requestedSceneIds: ["voiceover_context"],
-      request: input.prepared.request,
-      requestBytes: input.prepared.requestBytes,
-      requestSha256: input.prepared.requestHash,
-      retryOfRequestSha256: null,
-    });
-    if (result.status === "succeeded" && result.finishReason === "stop") break;
-    if (result.status === "failed") break;
-    const diagnostic = diagnosticState["current"] as RunwareSafeDiagnostic | null;
-    const stage = diagnostic?.stage;
-    const httpStatus =
-      diagnostic !== null && "httpStatus" in diagnostic ? (diagnostic.httpStatus ?? 0) : 0;
-    // Only a transport-level blip is safe to repeat: an authorization or request-shape problem
-    // would fail the same way every time, and a provider rejection is already terminal.
-    const transient =
-      stage === "network" || (stage === "http" && (httpStatus === 429 || httpStatus >= 500));
-    if (!transient || attempt === transientAttempts) break;
-    await new Promise((resolve) => setTimeout(resolve, 1_000 * attempt));
-  }
+  const result = await transport.dispatch({
+    requestVersion:
+      REQUEST_CONTRACT_VERSION as unknown as RunwarePromptTransportRequest["requestVersion"],
+    attemptIndex: 1,
+    requestedSceneIds: ["voiceover_context"],
+    request: input.prepared.request,
+    requestBytes: input.prepared.requestBytes,
+    requestSha256: input.prepared.requestHash,
+    retryOfRequestSha256: null,
+  });
   const finalDiagnostic = diagnosticState["current"] as RunwareSafeDiagnostic | null;
   if (finalDiagnostic !== null) {
     // The stored problem code collapses every transport failure into one bucket, so record the
@@ -400,7 +419,19 @@ async function finalizeHostedVoiceoverContext(
   readonly reportedCostMicroUsd: number;
 }> {
   if (costUsd > HOSTED_CONTEXT_RESERVATION_USD) throw new Error("VOICEOVER_CONTEXT_COST_EXCEEDED");
-  const context = parseContextOutput(outputText);
+  let context: Readonly<Record<string, JsonValue>>;
+  try {
+    context = parseContextOutput(outputText);
+  } catch (error) {
+    if (error instanceof HostedVoiceoverContextValidationError) {
+      console.warn("hosted_voiceover_context_validation", {
+        response_length: outputText.length,
+        response_hash: await sha256(outputText),
+        reason: error.reason,
+      });
+    }
+    throw error;
+  }
   const contextBytes = canonicalizeJson(context);
   if (contextBytes.length > MAX_HOSTED_CONTEXT_CHARS + 220)
     throw new Error("VOICEOVER_CONTEXT_TOO_LARGE");

@@ -2,6 +2,7 @@ import { validateAndHashHostedContractDocument as validateAndHashContractDocumen
 import type { Sha256, TransactionalSqlExecutor } from "@videoforge/control-plane";
 
 import type { HostedR2BucketBinding } from "./configuration";
+import { verifyHostedObjectChecksum } from "./r2-checksum";
 import { canonicalJson, exactHostedRenderSubmission } from "./submission";
 
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
@@ -30,13 +31,6 @@ function positiveInteger(value: unknown): number {
 async function sha256(bytes: ArrayBuffer): Promise<`sha256:${string}`> {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return `sha256:${[...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("")}`;
-}
-
-function headSha256(value: ArrayBuffer | undefined): `sha256:${string}` | null {
-  if (!value || value.byteLength !== 32) return null;
-  return `sha256:${[...new Uint8Array(value)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("")}`;
 }
@@ -118,7 +112,8 @@ async function loadFreshFinalOutput(
   if (
     !resultObject ||
     resultObject.size !== resultLength ||
-    resultObject.httpMetadata?.contentType !== "application/json"
+    resultObject.httpMetadata?.contentType !== "application/json" ||
+    !resultObject.arrayBuffer
   )
     throw new Error("HOSTED_V209_RENDER_RESULT_DRIFT");
   const bytes = await resultObject.arrayBuffer();
@@ -148,7 +143,12 @@ async function loadFreshFinalOutput(
     !primary ||
     primary.size !== primaryLength ||
     primary.httpMetadata?.contentType !== "video/mp4" ||
-    headSha256(primary.checksums?.sha256) !== candidate.primaryChecksumSha256
+    !(await verifyHostedObjectChecksum(
+      bucket,
+      text(candidate.primaryObjectKey),
+      primary,
+      text(candidate.primaryChecksumSha256, SHA256),
+    ))
   )
     throw new Error("HOSTED_V209_RENDER_OUTPUT_DRIFT");
   return Object.freeze({

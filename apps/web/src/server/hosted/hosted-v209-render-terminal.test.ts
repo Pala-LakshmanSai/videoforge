@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { canonicalJson, exactHostedRenderSubmission } from "./submission";
 import renderInputFixture from "../../../../../packages/contracts/generated/fixtures/render_job_input.valid.json";
 import { createHostedV209RenderTerminalHandoff } from "./hosted-v209-render-terminal";
+import { verifyHostedObjectChecksum } from "./r2-checksum";
 
 const IDS = Object.freeze({
   account: "00000000-0000-4000-8000-000000000001",
@@ -132,6 +133,69 @@ async function harness(requestState: "ACTIVE" | "SUCCEEDED") {
 }
 
 describe("hosted V2-09 reconciler terminal handoff", () => {
+  it("verifies a headerless R2 body stream without buffering it", async () => {
+    const bytes = new TextEncoder().encode("streamed output bytes");
+    const checksum = await hash("streamed output bytes");
+    const arrayBuffer = vi.fn(async () => {
+      throw new Error("stream path must not buffer");
+    });
+    const bucket = {
+      get: vi.fn(async () => ({
+        size: bytes.byteLength,
+        etag: "stream-v1",
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(bytes);
+            controller.close();
+          },
+        }),
+        arrayBuffer,
+      })),
+    } as never;
+
+    await expect(
+      verifyHostedObjectChecksum(
+        bucket,
+        "tenant/streamed-output",
+        { size: bytes.byteLength, etag: "stream-v1" },
+        checksum,
+      ),
+    ).resolves.toBe(true);
+    expect(arrayBuffer).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["bad-bytes", "stream-v1", true],
+    ["bad-etag", "stream-v2", false],
+  ] as const)("rejects R2 checksum drift for %s", async (caseName, objectEtag, badBytes) => {
+    const expected = new TextEncoder().encode("streamed output bytes");
+    const bytes = expected.slice();
+    if (badBytes) bytes[bytes.length - 1] = bytes[bytes.length - 1]! ^ 1;
+    const checksum = await hash("streamed output bytes");
+    const bucket = {
+      get: vi.fn(async () => ({
+        size: bytes.byteLength,
+        etag: objectEtag,
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(bytes);
+            controller.close();
+          },
+        }),
+        arrayBuffer: vi.fn(async () => expected.buffer),
+      })),
+    } as never;
+
+    await expect(
+      verifyHostedObjectChecksum(
+        bucket,
+        `tenant/streamed-output/${caseName}`,
+        { size: expected.byteLength, etag: "stream-v1" },
+        checksum,
+      ),
+    ).resolves.toBe(false);
+  });
+
   it.each(["ACTIVE", "SUCCEEDED"] as const)(
     "replays exact COMPLETE/%s state through only the two narrow database functions",
     async (state) => {

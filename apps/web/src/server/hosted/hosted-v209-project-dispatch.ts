@@ -1,4 +1,4 @@
-import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
+import type { SqlExecutor, TransactionalSqlExecutor } from "@videoforge/control-plane";
 import type { JsonValue } from "@videoforge/contracts";
 
 import type { HostedExecutionContext } from "./auth";
@@ -90,7 +90,10 @@ export interface HostedV209ProjectDispatchDependencies {
     identity: DispatchIdentity,
   ) => Promise<HostedV209AdmissionResult>;
   readonly hasExistingPair?: ExistingPairProbe;
-  readonly findExistingGeneration?: (database: TransactionalSqlExecutor, identity: DispatchIdentity) => Promise<string | null>;
+  readonly findExistingGeneration?: (
+    database: TransactionalSqlExecutor,
+    identity: DispatchIdentity,
+  ) => Promise<string | null>;
   readonly ensureExistingWorkflow?: HostedV209ProjectDispatchDependencies["ensureWorkflow"];
   readonly correlationId: () => string;
 }
@@ -129,19 +132,23 @@ const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
   ensureAdmission: ensureHostedV209GenerationAdmission,
   hasExistingPair: hasExistingHostedV209Pair,
   ensureExistingWorkflow: ensureHostedPairWorkflow,
-  findExistingGeneration: (database, identity) => database.transaction(async (transaction) => {
-    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
-    const result = await transaction.query<{ generation_request_id: string }>(
-      `SELECT g.id AS generation_request_id FROM generation_requests g
+  findExistingGeneration: (database: TransactionalSqlExecutor, identity: DispatchIdentity) =>
+    database.transaction(async (transaction: SqlExecutor) => {
+      await transaction.query("SELECT set_config($1,$2,true)", [
+        "videoforge.account_id",
+        identity.accountId,
+      ]);
+      const result = await transaction.query<{ generation_request_id: string }>(
+        `SELECT g.id AS generation_request_id FROM generation_requests g
         CROSS JOIN LATERAL public.videoforge_load_hosted_pair_workflow_schedule(
           g.account_id,g.workspace_id,g.id) p
         WHERE g.account_id=$1 AND g.workspace_id=$2 AND g.project_id=$3
           AND g.state='ACTIVE' AND p.existing_pair
         ORDER BY g.created_at DESC LIMIT 1`,
-      [identity.accountId, identity.workspaceId, identity.projectId],
-    );
-    return result.rows[0]?.generation_request_id ?? null;
-  }),
+        [identity.accountId, identity.workspaceId, identity.projectId],
+      );
+      return result.rows[0]?.generation_request_id ?? null;
+    }),
   correlationId: () => `v209-${crypto.randomUUID()}`,
 });
 
@@ -426,11 +433,7 @@ export async function resumeHostedV209ProjectDispatch(
         injected.observe(environment, runtimeDatabase),
       );
       const admission = await dispatchPhase("HOSTED_V209_ADMISSION_FREEZE_FAILED", () =>
-        freezeV209OrdinaryLiveAdmission(
-          candidate,
-          observation,
-          materialized.systemAvatarReference,
-        ),
+        freezeV209OrdinaryLiveAdmission(candidate, observation, materialized.systemAvatarReference),
       );
       const scheduled = await dispatchPhase("HOSTED_V209_COMMIT_SCHEDULE_FAILED", () =>
         injected.commitAndSchedule(
@@ -517,8 +520,13 @@ export async function handleHostedV209ProjectDispatch(
     if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
     if (spanAudio) {
       if (
-        existingGeneration || (injected.hasExistingPair &&
-        (await injected.hasExistingPair(runtimeDatabase, identity, admission.generationRequestId)))
+        existingGeneration ||
+        (injected.hasExistingPair &&
+          (await injected.hasExistingPair(
+            runtimeDatabase,
+            identity,
+            admission.generationRequestId,
+          )))
       ) {
         const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
         if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)

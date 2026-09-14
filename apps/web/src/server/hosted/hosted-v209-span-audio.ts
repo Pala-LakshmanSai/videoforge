@@ -259,7 +259,18 @@ export function createHostedV209SpanAudioCoordinator(
       }
       const submission = exactHostedSpanAudioSubmission(job.submissionDocument, job.attemptId)!;
       const scheduled = await dependencies.schedule(identity, submission, job.attemptId);
-      if (!["OUTBOXED", "RUNNING", "SUCCEEDED"].includes(scheduled.state)) {
+      if (
+        ![
+          "OUTBOXED",
+          "RUNNING",
+          "SUCCEEDED",
+          "ASSIGNED",
+          "IN_QUEUE",
+          "IN_PROGRESS",
+          "UPLOADING",
+          "RECONCILING",
+        ].includes(scheduled.state)
+      ) {
         throw new HostedV209SpanAudioError("HOSTED_V209_SPAN_SCHEDULE_REJECTED");
       }
     }

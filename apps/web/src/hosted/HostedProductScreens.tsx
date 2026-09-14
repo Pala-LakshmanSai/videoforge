@@ -4014,7 +4014,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       query.data.gpu_transport === "QUALIFIED_EXACT" &&
       query.data.gpu_readiness.dispatch_available === true &&
       !query.data.attempts.some((attempt) =>
-        ["IMAGE", "AVATAR"].includes(String(attempt.kind).toUpperCase()),
+        ["IMAGE", "AVATAR", "MAGE_IMAGE", "SOULX_AVATAR"].includes(
+          String(attempt.kind).toUpperCase(),
+        ),
       ) &&
       (query.data.queue === null ||
         String(query.data.queue?.status ?? "").toUpperCase() === "WAITING" ||
@@ -4151,6 +4153,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     return compactParts.join(" | ");
   })();
   const contextUnknown = query.data.voiceover_context?.state === "UNKNOWN";
+  const contextValidationFailed = [
+    "VOICEOVER_CONTEXT_INVALID",
+    "VOICEOVER_CONTEXT_JSON_INVALID",
+    "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY",
+    "VOICEOVER_CONTEXT_TOO_LARGE",
+  ].includes(query.data.voiceover_context?.problem_code ?? "");
   const contextNeedsReview =
     contextStage?.status === "FAILED" ||
     query.data.voiceover_context?.state === "UNKNOWN" ||
@@ -4165,10 +4173,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const timing = query.data.timing;
   const cost = query.data.cost;
   const queue = query.data.queue;
-  const activeStageIndex = Math.max(
-    0,
-    uiStages.findIndex((stage) => stage.status !== "COMPLETE"),
-  );
+  const firstIncompleteStageIndex = uiStages.findIndex((stage) => stage.status !== "COMPLETE");
+  const activeStageIndex =
+    firstIncompleteStageIndex < 0 ? Math.max(0, uiStages.length - 1) : firstIncompleteStageIndex;
   const activeStage = uiStages[activeStageIndex];
   const overallProgress = Math.round(
     stages.reduce((total, stage) => total + hostedProgressValue(stage), 0) /
@@ -4196,7 +4203,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         : terminalCancelled
           ? "Cancelled"
           : allComplete
-            ? "Ready for review"
+            ? render?.approved_at
+              ? "Approved"
+              : "Ready for review"
             : hasRunning
               ? "Running"
               : "Waiting";
@@ -4699,22 +4708,26 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       {asr?.state === "SUCCEEDED" && !contextComplete ? (
         <div className={`notice${contextNeedsReview ? " notice-danger" : ""}`} role="status">
           <strong>
-            {contextUnknown
-              ? contextReconciliation.isPending
-                ? "Checking provider result…"
-                : "Provider result needs confirmation."
-              : contextNeedsReview
-                ? "Context extraction needs review."
-                : contextAutoStartError
-                  ? "Automatic context extraction could not start."
-                  : "Continuing after transcription."}
+            {contextValidationFailed
+              ? "Context result failed validation."
+              : contextUnknown
+                ? contextReconciliation.isPending
+                  ? "Checking provider result…"
+                  : "Provider result needs confirmation."
+                : contextNeedsReview
+                  ? "Context extraction needs review."
+                  : contextAutoStartError
+                    ? "Automatic context extraction could not start."
+                    : "Continuing after transcription."}
           </strong>
           <span>
-            {contextUnknown
-              ? "No new request sent."
-              : contextNeedsReview
-                ? "Stopped safely; no automatic retry."
-                : "Story facts are saved before scene planning continues."}
+            {contextValidationFailed
+              ? "The provider returned a result, but it could not be accepted. This run is stopped; no new inference request was sent."
+              : contextUnknown
+                ? "No new request sent."
+                : contextNeedsReview
+                  ? "Stopped safely; no automatic retry."
+                  : "Story facts are saved before scene planning continues."}
           </span>
           {contextAutoStartError ? <span>{contextExtraction.error.message}</span> : null}
           {contextReconciliation.isError && contextUnknown ? (

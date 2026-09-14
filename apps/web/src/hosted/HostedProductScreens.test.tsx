@@ -2183,78 +2183,131 @@ describe("hosted product journey", () => {
     expect(screen.queryByText("Live progress is temporarily unavailable")).not.toBeInTheDocument();
   });
 
-  it("checks an UNKNOWN context once and offers provider-result reconciliation without retrying inference", async () => {
+  it("keeps an approved completed video on the final stage", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
-    const contextId = "44444444-4444-4444-8444-444444444444";
-    let reconciliationCalls = 0;
-    let projectReads = 0;
-    const detail = {
-      project: {
-        id: projectId,
-        title: "Private project",
-        created_at: "2026-08-17T10:00:00.000Z",
-        revision_id: "22222222-2222-4222-8222-222222222222",
-        revision_state: "LOCKED",
-      },
-      attempts: [
-        {
-          id: "33333333-3333-4333-8333-333333333333",
-          kind: "ASR" as const,
-          state: "SUCCEEDED",
-          version: 3,
-          created_at: "2026-08-17T10:00:00.000Z",
-          updated_at: "2026-08-17T10:01:00.000Z",
-          terminal_at: "2026-08-17T10:01:00.000Z",
-          output_checksum_sha256: `sha256:${"a".repeat(64)}`,
-          approved_at: null,
-          preview_url: null,
-        },
-      ],
-      gpu_transport: "DISABLED_UNQUALIFIED" as const,
-      gpu_readiness: gpuReadiness,
-      voiceover_context: {
-        id: contextId,
-        state: "UNKNOWN" as const,
-        transcript_hash: `sha256:${"b".repeat(64)}`,
-        reserved_cost_micro_usd: 10_000,
-        problem_code: "VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN",
-      },
-      generation: null,
-    };
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const path = String(input);
-      if (path.endsWith(`/projects/${projectId}/reconcile-context`)) {
-        reconciliationCalls += 1;
-        expect(init).toMatchObject({ method: "POST", body: "{}" });
-        return Response.json(
-          { error: { message: "The original provider result is not available yet." } },
-          { status: 409 },
-        );
-      }
-      projectReads += 1;
-      return projectReads === 1
-        ? Response.json(detail)
-        : Response.json(
-            { error: { message: "Latest progress read is temporarily unavailable." } },
-            { status: 500 },
-          );
-    });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: projectId,
+            title: "Finished video",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
+          },
+          attempts: [
+            {
+              id: "33333333-3333-4333-8333-333333333333",
+              kind: "RENDER",
+              state: "SUCCEEDED",
+              approved_at: "2026-09-14T10:00:00Z",
+              preview_url: null,
+            },
+          ],
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+          generation: null,
+          stages: Array.from({ length: 10 }, (_, index) => ({
+            id: `stage-${index + 1}`,
+            name: index === 9 ? "Review and approve" : `Stage ${index + 1}`,
+            status: "COMPLETE",
+            progress_percent: 100,
+          })),
+        }),
+      ),
+    );
     renderHosted(<HostedProjectScreen projectId={projectId} />);
-
-    expect(await screen.findByText("Provider result needs confirmation.")).toBeInTheDocument();
-    expect(reconciliationCalls).toBe(1);
-    await waitFor(() => expect(projectReads).toBeGreaterThanOrEqual(2));
-    expect(screen.getByRole("heading", { name: "Private project" })).toBeInTheDocument();
-    expect(screen.queryByText("Live progress is temporarily unavailable")).not.toBeInTheDocument();
+    const progress = await screen.findByRole("region", { name: "Live video progress" });
+    expect(within(progress).getByText("10/10")).toBeInTheDocument();
     expect(
-      screen.getByText("The original provider result is not available yet."),
+      within(progress).getByRole("heading", { name: "Review and approve" }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/retry.*provider|retry.*context/iu)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Check provider result" }));
-    await waitFor(() => expect(reconciliationCalls).toBe(2));
+    expect(within(progress).getByText("Approved")).toBeInTheDocument();
   });
+
+  it.each(["VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN", "VOICEOVER_CONTEXT_INVALID"])(
+    "checks an UNKNOWN context once without retrying inference (%s)",
+    async (problemCode) => {
+      const projectId = "11111111-1111-4111-8111-111111111111";
+      const contextId = "44444444-4444-4444-8444-444444444444";
+      let reconciliationCalls = 0;
+      let projectReads = 0;
+      const detail = {
+        project: {
+          id: projectId,
+          title: "Private project",
+          created_at: "2026-08-17T10:00:00.000Z",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
+        },
+        attempts: [
+          {
+            id: "33333333-3333-4333-8333-333333333333",
+            kind: "ASR" as const,
+            state: "SUCCEEDED",
+            version: 3,
+            created_at: "2026-08-17T10:00:00.000Z",
+            updated_at: "2026-08-17T10:01:00.000Z",
+            terminal_at: "2026-08-17T10:01:00.000Z",
+            output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+            approved_at: null,
+            preview_url: null,
+          },
+        ],
+        gpu_transport: "DISABLED_UNQUALIFIED" as const,
+        gpu_readiness: gpuReadiness,
+        voiceover_context: {
+          id: contextId,
+          state: "UNKNOWN" as const,
+          transcript_hash: `sha256:${"b".repeat(64)}`,
+          reserved_cost_micro_usd: 10_000,
+          problem_code: problemCode,
+        },
+        generation: null,
+      };
+      const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = String(input);
+        if (path.endsWith(`/projects/${projectId}/reconcile-context`)) {
+          reconciliationCalls += 1;
+          expect(init).toMatchObject({ method: "POST", body: "{}" });
+          return Response.json(
+            { error: { message: "The original provider result is not available yet." } },
+            { status: 409 },
+          );
+        }
+        projectReads += 1;
+        return projectReads === 1
+          ? Response.json(detail)
+          : Response.json(
+              { error: { message: "Latest progress read is temporarily unavailable." } },
+              { status: 500 },
+            );
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+      expect(
+        await screen.findByText(
+          problemCode === "VOICEOVER_CONTEXT_INVALID"
+            ? "Context result failed validation."
+            : "Provider result needs confirmation.",
+        ),
+      ).toBeInTheDocument();
+      expect(reconciliationCalls).toBe(1);
+      await waitFor(() => expect(projectReads).toBeGreaterThanOrEqual(2));
+      expect(screen.getByRole("heading", { name: "Private project" })).toBeInTheDocument();
+      expect(
+        screen.queryByText("Live progress is temporarily unavailable"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText("The original provider result is not available yet."),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/retry.*provider|retry.*context/iu)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Check provider result" }));
+      await waitFor(() => expect(reconciliationCalls).toBe(2));
+    },
+  );
 
   it("continues from an UNKNOWN context after automatic provider-result reconciliation succeeds", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
@@ -3063,6 +3116,48 @@ describe("hosted product journey", () => {
         .every(([input]) => String(input) === `/api/v2/hosted/projects/${projectId}/gpu-dispatch`),
     ).toBe(true);
   });
+
+  it.each(["MAGE_IMAGE", "SOULX_AVATAR"])(
+    "does not offer generation resume after a %s attempt exists",
+    async (kind) => {
+      const projectId = "11111111-1111-4111-8111-111111111111";
+      const fetchMock = vi.fn(async () =>
+        Response.json({
+          project: {
+            id: projectId,
+            title: "Stopped generation",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
+          },
+          attempts: [
+            {
+              id: "33333333-3333-4333-8333-333333333333",
+              kind,
+              state: "FAILED",
+              approved_at: null,
+            },
+          ],
+          gpu_transport: "QUALIFIED_EXACT",
+          gpu_readiness: qualifiedGpuReadiness,
+          generation: { id: "44444444-4444-4444-8444-444444444444", stage: "FAILED" },
+          queue: { status: "ACTIVE" },
+          stages: [
+            {
+              id: "prompt-writing",
+              name: "Write image prompts",
+              status: "COMPLETE",
+              progress_percent: 100,
+            },
+          ],
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      renderHosted(<HostedProjectScreen projectId={projectId} />);
+      await screen.findByRole("heading", { name: "Stopped generation" });
+      expect(screen.queryByRole("button", { name: "Resume generation" })).not.toBeInTheDocument();
+      expect(fetchMock.mock.calls).toHaveLength(1);
+    },
+  );
 
   it("resumes one same-generation dispatch after server-owned span audio preparation", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";

@@ -353,8 +353,10 @@ describe("qualified hosted GPU transport configuration", () => {
   it("accepts bounded database clock lead but rejects larger forward skew", async () => {
     const base = verified();
     const withObservedAt = (observedAt: string) => {
-      const snapshot = structuredClone(base.gate) as HostedPairProductionGateInput;
-      snapshot.now = observedAt;
+      const snapshot: HostedPairProductionGateInput = {
+        ...base.gate,
+        now: observedAt,
+      };
       return {
         ...base,
         databaseObservedAt: observedAt,

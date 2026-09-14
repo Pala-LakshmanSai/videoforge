@@ -228,7 +228,7 @@ async function errorCode(result: Response | null): Promise<string | null> {
 
 describe("hosted product route contract", () => {
   it("verifies preview bytes when R2 omits SHA metadata and caches only the exact ETag", async () => {
-    const bytes = new TextEncoder().encode("verified preview").buffer;
+    const bytes = new Uint8Array(new TextEncoder().encode("verified preview"));
     const hash = `sha256:${[...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
     const get = vi.fn(async () => ({
       size: bytes.byteLength,
@@ -1217,6 +1217,7 @@ describe("hosted product route contract", () => {
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
     expect(block).toContain("maximum_context_spend_micro_usd");
+    expect(block).toContain("contextId: identity.contextId");
     expect(block).toContain("HOSTED_CONTEXT_RESERVATION_MICRO_USD");
     expect(block.indexOf("videoforge_prepare_hosted_voiceover_context")).toBeLessThan(
       block.indexOf("extractHostedVoiceoverContext"),
@@ -1267,6 +1268,7 @@ describe("hosted product route contract", () => {
     expect(end).toBeGreaterThan(start);
     expect(block).toContain('state.context_state !== "UNKNOWN"');
     expect(block).toContain("prepareHostedVoiceoverContextRequest");
+    expect(block).toContain("contextId: state.context_id");
     expect(block).toContain("preparedRequest.requestHash !== state.request_hash");
     expect(block).toContain("reconcileHostedVoiceoverContext");
     expect(block).not.toContain("extractHostedVoiceoverContext");

@@ -199,10 +199,11 @@ function outputFacts(
       result.probe ?? (lane === "mage_image" ? receipt.probe : undefined),
     ) as VerifiedArtifact["probe"];
     if (
-      lane === "mage_image" && result.probe === undefined &&
-      (result.width !== probe.width || result.height !== probe.height ||
-        probe.format !== "png")
-    ) fail();
+      lane === "mage_image" &&
+      result.probe === undefined &&
+      (result.width !== probe.width || result.height !== probe.height || probe.format !== "png")
+    )
+      fail();
     if (
       !UUID.test(itemId) ||
       !UUID.test(reservationId) ||
@@ -241,7 +242,9 @@ function outputFacts(
 export class HostedSqlV209TerminalOutputStore implements HostedV209TerminalOutputStore {
   constructor(private readonly database: TransactionalSqlExecutor) {}
 
-  async load(input: Parameters<HostedV209TerminalOutputStore["load"]>[0]) {
+  async load(
+    input: Parameters<HostedV209TerminalOutputStore["load"]>[0],
+  ): Promise<HostedV209TerminalLineage | null> {
     return this.database.transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1,$2,true)", [
         "videoforge.account_id",
@@ -297,7 +300,7 @@ export class HostedSqlV209TerminalOutputStore implements HostedV209TerminalOutpu
         canonicalSha256(requestBody) !== row.full_request_sha256
       )
         fail();
-      return Object.freeze({
+      const lineage: HostedV209TerminalLineage = Object.freeze({
         binding: Object.freeze({
           accountId: string(row.account_id),
           workspaceId: string(row.workspace_id),
@@ -321,6 +324,7 @@ export class HostedSqlV209TerminalOutputStore implements HostedV209TerminalOutpu
         requestBody,
         candidateWork: row.candidate_work.map(record),
       });
+      return lineage;
     });
   }
 
@@ -710,7 +714,8 @@ export function createHostedV209TerminalOutputIngestor(
         !Number.isFinite(Date.parse(request.observedAt))
       )
         fail();
-      const trace = (phase: string) => console.info("hosted_terminal_ingestion", { lane: request.lane, phase });
+      const trace = (phase: string) =>
+        console.info("hosted_terminal_ingestion", { lane: request.lane, phase });
       trace("LINEAGE_LOADING");
       const lineage = await store.load(request);
       if (!lineage) fail();

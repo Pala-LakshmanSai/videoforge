@@ -965,7 +965,10 @@ export class RunPodControlClient {
       const matchingVolumes = volumeInventory
         .map(record)
         .filter(
-          (volume) => volume?.id === resolvedVolumeId && volume.dataCenterId === V207_RUNPOD_REGION,
+          (volume): volume is JsonRecord =>
+            volume !== null &&
+            volume.id === resolvedVolumeId &&
+            volume.dataCenterId === V207_RUNPOD_REGION,
         );
       regionVerified = matchingVolumes.length === 1;
     }
