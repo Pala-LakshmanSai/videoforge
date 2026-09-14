@@ -18,6 +18,8 @@ image_review_regeneration_request_2026_09_14:
   latest_compute_state: zero_active_pods_workers_and_empty_queues
   live_attempt_evidence: evidence/acceptance/VF-10-09/2026-09-14-image-regeneration-source/live-attempt-2.json
   successful_regeneration_ms: 157222
+  latest_demo_ui_to_accepted_ms: 34940
+  latest_demo_evidence: evidence/acceptance/VF-10-09/2026-09-14-image-regeneration-source/live-demo.json
   final_runpod_balance_usd: 16.7686399735
 updated_at: "2026-09-13T22:00:00Z"
 
