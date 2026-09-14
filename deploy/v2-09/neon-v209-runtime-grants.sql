@@ -138,7 +138,8 @@ INSERT INTO v209_runtime_function_allowlist(signature) VALUES
  ('videoforge_get_hosted_image_regeneration(uuid,uuid,uuid,uuid,uuid)'),
  ('videoforge_load_hosted_image_regeneration(uuid,uuid)'),
  ('videoforge_prepare_hosted_image_regeneration(uuid,jsonb,jsonb,text,text,jsonb)'),
- ('videoforge_image_regeneration_transition(uuid,text,text,text,text)'),
+  ('videoforge_image_regeneration_transition(uuid,text,text,text,text)'),
+  ('videoforge_admit_hosted_image_regeneration_cost(uuid,jsonb)'),
  ('videoforge_commit_hosted_image_regeneration(uuid,jsonb,text,jsonb)'),
  ('videoforge_release_hosted_image_regeneration(uuid,jsonb)'),
 

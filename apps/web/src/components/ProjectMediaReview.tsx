@@ -417,6 +417,9 @@ export function ProjectMediaReview({
                                 ? "Enter a prompt to regenerate this image."
                                 : "Press Enter to regenerate. Use Shift+Enter for a new line. This updates the image; an existing video stays unchanged."}
                         </p>
+                        <p className="media-review-regeneration-cost">
+                          Regeneration costs up to $2.
+                        </p>
                         {regeneratingId === selectedItem.id ? (
                           <p role="status" aria-live="polite">
                             Creating a replacement. Your current image stays available.

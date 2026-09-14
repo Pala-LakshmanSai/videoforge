@@ -55,6 +55,7 @@ it("shows the saved prompt and explains unavailable regeneration without exposin
   expect(
     screen.getByText("Single-image regeneration is not available in this release."),
   ).toBeVisible();
+  expect(screen.getByText("Regeneration costs up to $2.")).toBeVisible();
 });
 
 it("locks duplicate requests and keeps the image when regeneration fails", async () => {

@@ -6487,6 +6487,13 @@ async function projectDetail(
       );
       const cost = await transaction.query(
         `SELECT revision.maximum_cost_micro_usd,
+                COALESCE((SELECT sum((regeneration.cost_admission->>'estimated_cost_micro_usd')::numeric) / 1000000
+                  FROM hosted_image_regeneration_requests regeneration
+                 WHERE regeneration.account_id=revision.account_id
+                   AND regeneration.workspace_id=revision.workspace_id
+                   AND regeneration.project_revision_id=revision.id
+                   AND regeneration.state IN ('SENT','ASSIGNED','DISPATCH_ACK_UNKNOWN','COMPLETED','FAILED')),
+                  0) AS regeneration_estimated_usd,
                 COALESCE(sum(ledger.estimated_usd), 0) AS estimated_usd,
                 COALESCE(sum(ledger.reserved_usd), 0) AS reserved_usd,
                 COALESCE(sum(ledger.reported_usd), 0) AS reported_usd,
@@ -6957,7 +6964,8 @@ async function projectDetail(
         ) +
         (numberOrNull(costRow.possible_duplicate_usd) ?? 0) +
         (numberOrNull(costRow.prompt_reserved_usd) ?? 0) +
-        (numberOrNull(costRow.prompt_settled_usd) ?? 0)
+        (numberOrNull(costRow.prompt_settled_usd) ?? 0) +
+        (numberOrNull(costRow.regeneration_estimated_usd) ?? 0)
       : 0;
     const settledCost = costRow
       ? (numberOrNull(costRow.settled_usd) ?? 0) + (numberOrNull(costRow.prompt_settled_usd) ?? 0)

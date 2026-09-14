@@ -7,15 +7,16 @@
   "migration_sha256": "sha256:cfd1d259fbc63e12b16bbe402adf6e547174c428b31363fc5a4fcfb6480f1b4c",
   "verification": {
     "focused_ui_product_runtime_tests": 166,
-    "subsequent_new_guard_tests": 5,
-    "regeneration_postgres_tests": 8,
+    "subsequent_new_guard_tests": 12,
+    "regeneration_postgres_tests": 10,
     "fair_admission_tests": 13,
     "grant_tests": 5,
     "chrome_http_fixture_tests": 3,
     "cloudflare_build": "PASS",
     "changed_file_lint": "PASS",
     "context_validation": "PASS",
-    "whole_project_typecheck": "FAIL_EXISTING_UNRELATED_ERRORS_NO_CHANGED_FEATURE_ERRORS"
+    "whole_project_typecheck": "FAIL_EXISTING_UNRELATED_ERRORS_NO_CHANGED_FEATURE_ERRORS",
+    "cost_and_product_final_tests": 83
   },
   "provider_calls": 0,
   "paid_compute_started": false,
@@ -28,7 +29,7 @@
   ],
   "proposed_live_boundary": {
     "operations": [
-      "Apply migration0129 and scoped runtime grants",
+      "Apply migrations0129-0130 and scoped runtime grants",
       "Deploy source and reconcile exact qualified activation",
       "One scene regeneration using existing qualified Mage image only",
       "Read provider/job/output receipts and verify selected image in Chrome",
@@ -52,5 +53,16 @@
       "Unknown dispatch acknowledgement: no replay",
       "No provider fallback"
     ]
-  }
+  },
+  "migrations": [
+    {
+      "filename": "0129_hosted_image_regeneration.sql",
+      "sha256": "sha256:cfd1d259fbc63e12b16bbe402adf6e547174c428b31363fc5a4fcfb6480f1b4c"
+    },
+    {
+      "filename": "0130_hosted_image_regeneration_cost.sql",
+      "sha256": "sha256:8f39ed14cfbe13ed9a29232746b7a46c29db4e1efab9532e13d237c594d2b5e2"
+    }
+  ],
+  "cost_admission": "Immutable per-request rate/balance/billing baseline; USD2 maximum; USD3 floor after conservative active-lease reserves; separate projected estimate, no fabricated settled per-scene invoice"
 }

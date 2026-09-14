@@ -8,6 +8,7 @@ import {
   type HostedImageRegenerationRequest,
 } from "./hosted-image-regeneration-runtime";
 import { createHostedV209TerminalOutputIngestor } from "./hosted-v209-terminal-output-ingestor";
+import { readImageRegenerationCost } from "./hosted-image-regeneration-cost";
 export interface ImageRegenerationParameters {
   schema_version: "videoforge-image-regeneration-workflow/v1";
   accountId: string;
@@ -88,10 +89,22 @@ export async function observeHostedImageRegeneration(
     dispatchToken: String(row.dispatch_token),
   };
   const expired = Date.now() >= Date.parse(String(row.deadline_at));
-  if (expired && row.state === "PREPARED")
-    await store.finishTerminal({ requestId: params.requestId, state: "CANCELLED" });
+  if (expired && row.state === "PREPARED") await store.cancelUnsent(params.requestId);
   if (!expired && row.state === "PREPARED") {
-    await provider.clients.mage_image.confirmOrdinaryStartupQueueEmpty();
+    try {
+      await provider.clients.mage_image.confirmOrdinaryStartupQueueEmpty();
+      const cost = await readImageRegenerationCost(environment.RUNPOD_API_KEY!, () =>
+        store.databaseNow(),
+      );
+      await store.admitCost(params.requestId, cost);
+    } catch {
+      // No /run has occurred. Fail closed and continue through the normal drain/release path.
+      await store.cancelUnsent(params.requestId);
+      console.info("hosted_image_regeneration", {
+        requestId: params.requestId,
+        phase: "PREDISPATCH_CHECK_FAILED",
+      });
+    }
   }
   const runtime = new HostedImageRegenerationRuntime(store, provider.transports.mage_image, {
     accept: (args) =>

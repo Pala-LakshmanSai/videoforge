@@ -304,7 +304,7 @@ function prepareDocuments(request, fixture) {
   };
 }
 
-async function prepareAssigned(executor, fixture) {
+async function prepareUnsent(executor, fixture) {
   const request = await createRequest(executor);
   const documents = prepareDocuments(request, fixture);
   const prepared = await executor.query(
@@ -319,6 +319,30 @@ async function prepareAssigned(executor, fixture) {
     ],
   );
   assert.equal(prepared.rows[0].value.state, "PREPARED");
+  return { request: prepared.rows[0].value, documents };
+}
+
+async function costSnapshot(executor, overrides = {}) {
+  const time = await executor.query("SELECT clock_timestamp() AS now");
+  return {
+    schema_version: "videoforge-image-regeneration-cost/v1",
+    observed_at: new Date(time.rows[0].now).toISOString(),
+    flex_rate_micro_usd_per_gpu_hour: 1116000,
+    balance_micro_usd: 10000000,
+    maximum_cost_micro_usd: 2000000,
+    balance_floor_micro_usd: 3000000,
+    estimated_cost_micro_usd: 316200,
+    cumulative_endpoint_billing_micro_usd: 10000,
+    ...overrides,
+  };
+}
+
+async function prepareAssigned(executor, fixture) {
+  const { request, documents } = await prepareUnsent(executor, fixture);
+  await executor.query(
+    "SELECT public.videoforge_admit_hosted_image_regeneration_cost($1,$2::jsonb)",
+    [request.id, JSON.stringify(await costSnapshot(executor))],
+  );
   const sent = await executor.query(
     `SELECT public.videoforge_image_regeneration_transition($1,'SENT',NULL,$2,$3) AS value`,
     [request.id, documents.bodyHash, documents.envelopeHash],
@@ -345,102 +369,122 @@ function replacementArtifact(request, overrides = {}) {
   };
 }
 
-test("0129 exposes tenant scoped image regeneration persistence functions", { skip: !enabled }, async () => {
-  await withPgcryptoMigratedDatabase(async ({ executor, sources }) => {
-    const surface = await executor.query(`
+test(
+  "0129 exposes tenant scoped image regeneration persistence functions",
+  { skip: !enabled },
+  async () => {
+    await withPgcryptoMigratedDatabase(async ({ executor, sources }) => {
+      const surface = await executor.query(`
       SELECT to_regclass('public.hosted_image_regeneration_requests') IS NOT NULL AS has_table,
              to_regprocedure('public.videoforge_prepare_hosted_image_regeneration(uuid,jsonb,jsonb,text,text,jsonb)') IS NOT NULL AS has_prepare,
              to_regprocedure('public.videoforge_image_regeneration_transition(uuid,text,text,text,text)') IS NOT NULL AS has_transition,
              to_regprocedure('public.videoforge_commit_hosted_image_regeneration(uuid,jsonb,text,jsonb)') IS NOT NULL AS has_commit,
              to_regprocedure('public.videoforge_load_hosted_image_regeneration(uuid,uuid)') IS NOT NULL AS has_load`);
-    assert.deepEqual(surface.rows[0], {
-      has_table: true,
-      has_prepare: true,
-      has_transition: true,
-      has_commit: true,
-      has_load: true,
+      assert.deepEqual(surface.rows[0], {
+        has_table: true,
+        has_prepare: true,
+        has_transition: true,
+        has_commit: true,
+        has_load: true,
+      });
+      assert.equal(sources.at(-1)?.version, 130);
+      assert.equal(sources.at(-1)?.filename, "0130_hosted_image_regeneration_cost.sql");
     });
-    assert.equal(sources.at(-1)?.version, 129);
-    assert.equal(sources.at(-1)?.filename, "0129_hosted_image_regeneration.sql");
-  });
-});
+  },
+);
 
-test("0129 rejects create when GUC tenant differs from requested account", { skip: !enabled }, async () => {
-  await withPgcryptoMigratedDatabase(async ({ executor }) => {
-    const fixture = await seedAcceptedScene(executor);
-    await setAccount(executor, IDS.accountB);
-    await expectDatabaseError(() => createRequest(executor), "23514");
-    const rows = await executor.query("SELECT count(*)::int AS count FROM hosted_image_regeneration_requests");
-    assert.equal(rows.rows[0].count, 0);
-  });
-});
+test(
+  "0129 rejects create when GUC tenant differs from requested account",
+  { skip: !enabled },
+  async () => {
+    await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      await seedAcceptedScene(executor);
+      await setAccount(executor, IDS.accountB);
+      await expectDatabaseError(() => createRequest(executor), "23514");
+      const rows = await executor.query(
+        "SELECT count(*)::int AS count FROM hosted_image_regeneration_requests",
+      );
+      assert.equal(rows.rows[0].count, 0);
+    });
+  },
+);
 
-test("0129 creates one request for a valid accepted scene and replays idempotently", { skip: !enabled }, async () => {
-  await withPgcryptoMigratedDatabase(async ({ executor }) => {
-    const fixture = await seedAcceptedScene(executor);
-    await setAccount(executor, IDS.accountA);
-    const first = await createRequest(executor, fixture);
-    const second = await createRequest(executor, fixture);
-    assert.deepEqual(second, first);
-    assert.equal(first.state, "QUEUED");
-    assert.equal(first.source_attempt_id, fixture.sourceAttempt);
-    assert.equal(first.generation_request_id, fixture.request);
-    const count = await executor.query(
-      "SELECT count(*)::int AS count FROM hosted_image_regeneration_requests WHERE account_id=$1",
-      [IDS.accountA],
-    );
-    assert.equal(count.rows[0].count, 1);
-  });
-});
+test(
+  "0129 creates one request for a valid accepted scene and replays idempotently",
+  { skip: !enabled },
+  async () => {
+    await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      const fixture = await seedAcceptedScene(executor);
+      await setAccount(executor, IDS.accountA);
+      const first = await createRequest(executor, fixture);
+      const second = await createRequest(executor, fixture);
+      assert.deepEqual(second, first);
+      assert.equal(first.state, "QUEUED");
+      assert.equal(first.source_attempt_id, fixture.sourceAttempt);
+      assert.equal(first.generation_request_id, fixture.request);
+      const count = await executor.query(
+        "SELECT count(*)::int AS count FROM hosted_image_regeneration_requests WHERE account_id=$1",
+        [IDS.accountA],
+      );
+      assert.equal(count.rows[0].count, 1);
+    });
+  },
+);
 
-test("regeneration lease keeps its own identity during capacity reconstruction", { skip: !enabled }, async () => {
-  await withPgcryptoMigratedDatabase(async ({ executor }) => {
-    const fixture = await seedAcceptedScene(executor);
-    await setAccount(executor, IDS.accountA);
-    const { request } = await prepareAssigned(executor, fixture);
-    const sourceBefore = await executor.query(
-      `SELECT state,version,admitted_at,terminal_at,attempt_ordinal
+test(
+  "regeneration lease keeps its own identity during capacity reconstruction",
+  { skip: !enabled },
+  async () => {
+    await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      const fixture = await seedAcceptedScene(executor);
+      await setAccount(executor, IDS.accountA);
+      const { request } = await prepareAssigned(executor, fixture);
+      const sourceBefore = await executor.query(
+        `SELECT state,version,admitted_at,terminal_at,attempt_ordinal
          FROM generation_requests
         WHERE id=$1`,
-      [fixture.request],
-    );
-    const leaseBefore = await executor.query(
-      `SELECT request_kind,generation_request_id,preset_preview_request_id,
+        [fixture.request],
+      );
+      const leaseBefore = await executor.query(
+        `SELECT request_kind,generation_request_id,preset_preview_request_id,
               image_regeneration_request_id,state
          FROM provider_workload_leases
         WHERE id=$1`,
-      [request.lease_id],
-    );
-    assert.deepEqual(leaseBefore.rows, [{
-      request_kind: "IMAGE_REGENERATION",
-      generation_request_id: null,
-      preset_preview_request_id: null,
-      image_regeneration_request_id: request.id,
-      state: "ACTIVE",
-    }]);
+        [request.lease_id],
+      );
+      assert.deepEqual(leaseBefore.rows, [
+        {
+          request_kind: "IMAGE_REGENERATION",
+          generation_request_id: null,
+          preset_preview_request_id: null,
+          image_regeneration_request_id: request.id,
+          state: "ACTIVE",
+        },
+      ]);
 
-    const rebuilt = await new FairAdmissionRepository(executor).reconstruct({
-      now: new Date().toISOString(),
-      auditId: uuid(1_290_009),
-    });
-    assert.deepEqual(rebuilt, {
-      activeLeaseCount: 1,
-      accountIds: [IDS.accountA],
-    });
+      const rebuilt = await new FairAdmissionRepository(executor).reconstruct({
+        now: new Date().toISOString(),
+        auditId: uuid(1_290_009),
+      });
+      assert.deepEqual(rebuilt, {
+        activeLeaseCount: 1,
+        accountIds: [IDS.accountA],
+      });
 
-    const sourceAfter = await executor.query(
-      `SELECT state,version,admitted_at,terminal_at,attempt_ordinal
+      const sourceAfter = await executor.query(
+        `SELECT state,version,admitted_at,terminal_at,attempt_ordinal
          FROM generation_requests
         WHERE id=$1`,
-      [fixture.request],
-    );
-    assert.deepEqual(sourceAfter.rows, sourceBefore.rows);
-    const capacity = await executor.query(
-      `SELECT active_lease_count FROM global_generation_capacity WHERE singleton`,
-    );
-    assert.equal(capacity.rows[0].active_lease_count, 1);
-  });
-});
+        [fixture.request],
+      );
+      assert.deepEqual(sourceAfter.rows, sourceBefore.rows);
+      const capacity = await executor.query(
+        `SELECT active_lease_count FROM global_generation_capacity WHERE singleton`,
+      );
+      assert.equal(capacity.rows[0].active_lease_count, 1);
+    });
+  },
+);
 
 test("0129 returns acquired false for transition CAS loser", { skip: !enabled }, async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
@@ -456,103 +500,212 @@ test("0129 returns acquired false for transition CAS loser", { skip: !enabled },
   });
 });
 
-test("regeneration lease expiry does not reopen its original generation request", { skip: !enabled }, async () => {
-  await withPgcryptoMigratedDatabase(async ({ executor }) => {
-    const fixture = await seedAcceptedScene(executor);
-    await setAccount(executor, IDS.accountA);
-    const request = await createRequest(executor);
-    const documents = prepareDocuments(request, fixture);
-    const prepared = await executor.query(
-      `SELECT public.videoforge_prepare_hosted_image_regeneration($1,$2::jsonb,$3::jsonb,$4,$5,$6::jsonb) AS value`,
-      [
-        request.id,
-        JSON.stringify(documents.body),
-        JSON.stringify(documents.envelope),
-        documents.bodyHash,
-        documents.envelopeHash,
-        JSON.stringify(documents.lineage),
-      ],
-    );
-    const leaseId = prepared.rows[0].value.lease_id;
-    assert.ok(leaseId);
-    const repository = new FairAdmissionRepository(executor);
-    const recovered = await repository.reclaimExpired({
-      now: new Date(Date.now() + 31 * 60_000).toISOString(),
-      expirations: [{ leaseId, auditId: uuid(1_290_008) }],
-    });
-    assert.deepEqual(recovered, []);
-    const durable = await executor.query(
-      `SELECT request.state AS request_state,request.version AS request_version,
+test(
+  "regeneration lease expiry does not reopen its original generation request",
+  { skip: !enabled },
+  async () => {
+    await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      const fixture = await seedAcceptedScene(executor);
+      await setAccount(executor, IDS.accountA);
+      const request = await createRequest(executor);
+      const documents = prepareDocuments(request, fixture);
+      const prepared = await executor.query(
+        `SELECT public.videoforge_prepare_hosted_image_regeneration($1,$2::jsonb,$3::jsonb,$4,$5,$6::jsonb) AS value`,
+        [
+          request.id,
+          JSON.stringify(documents.body),
+          JSON.stringify(documents.envelope),
+          documents.bodyHash,
+          documents.envelopeHash,
+          JSON.stringify(documents.lineage),
+        ],
+      );
+      const leaseId = prepared.rows[0].value.lease_id;
+      assert.ok(leaseId);
+      const repository = new FairAdmissionRepository(executor);
+      const recovered = await repository.reclaimExpired({
+        now: new Date(Date.now() + 31 * 60_000).toISOString(),
+        expirations: [{ leaseId, auditId: uuid(1_290_008) }],
+      });
+      assert.deepEqual(recovered, []);
+      const durable = await executor.query(
+        `SELECT request.state AS request_state,request.version AS request_version,
               lease.state AS lease_state,lease.version AS lease_version
          FROM generation_requests request
          CROSS JOIN provider_workload_leases lease
         WHERE request.id=$1 AND lease.id=$2`,
-      [fixture.request, leaseId],
-    );
-    assert.deepEqual(durable.rows, [{
-      request_state: "ACTIVE",
-      request_version: 1,
-      lease_state: "ACTIVE",
-      lease_version: 1,
-    }]);
-  });
-});
+        [fixture.request, leaseId],
+      );
+      assert.deepEqual(durable.rows, [
+        {
+          request_state: "ACTIVE",
+          request_version: 1,
+          lease_state: "ACTIVE",
+          lease_version: 1,
+        },
+      ]);
+    });
+  },
+);
 
-test("0129 rejects forged commit before writing replacement receipt", { skip: !enabled }, async () => {
-  await withPgcryptoMigratedDatabase(async ({ executor }) => {
-    const fixture = await seedAcceptedScene(executor);
-    await setAccount(executor, IDS.accountA);
-    const { request } = await prepareAssigned(executor, fixture);
-    const forged = replacementArtifact(request, { objectKey: "tenant/forged/object.png" });
-    await expectDatabaseError(
-      () => executor.query(
-        `SELECT public.videoforge_commit_hosted_image_regeneration($1,$2::jsonb,$3,$4::jsonb) AS value`,
-        [request.id, JSON.stringify(forged), sha256("forged-receipt"), JSON.stringify({ forged: true })],
-      ),
-      "23514",
-    );
-    const counts = await executor.query(
-      `SELECT
+test(
+  "0129 rejects forged commit before writing replacement receipt",
+  { skip: !enabled },
+  async () => {
+    await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      const fixture = await seedAcceptedScene(executor);
+      await setAccount(executor, IDS.accountA);
+      const { request } = await prepareAssigned(executor, fixture);
+      const forged = replacementArtifact(request, { objectKey: "tenant/forged/object.png" });
+      await expectDatabaseError(
+        () =>
+          executor.query(
+            `SELECT public.videoforge_commit_hosted_image_regeneration($1,$2::jsonb,$3,$4::jsonb) AS value`,
+            [
+              request.id,
+              JSON.stringify(forged),
+              sha256("forged-receipt"),
+              JSON.stringify({ forged: true }),
+            ],
+          ),
+        "23514",
+      );
+      const counts = await executor.query(
+        `SELECT
          (SELECT count(*)::int FROM artifact_reservations WHERE job_id=$1) AS reservations,
          (SELECT count(*)::int FROM artifact_receipts WHERE callback_id='regen:'||$2) AS receipts`,
-      [request.attempt_id, request.id],
-    );
-    assert.deepEqual(counts.rows[0], { reservations: 0, receipts: 0 });
-  });
-});
+        [request.attempt_id, request.id],
+      );
+      assert.deepEqual(counts.rows[0], { reservations: 0, receipts: 0 });
+    });
+  },
+);
 
-test("0129 replacement commit leaves accepted source image provenance unchanged", { skip: !enabled }, async () => {
-  await withPgcryptoMigratedDatabase(async ({ executor }) => {
-    const fixture = await seedAcceptedScene(executor);
-    await setAccount(executor, IDS.accountA);
-    const sourceBefore = await executor.query(
-      `SELECT object_key,checksum_sha256,content_length,accepted_attempt_id
+test(
+  "0129 replacement commit leaves accepted source image provenance unchanged",
+  { skip: !enabled },
+  async () => {
+    await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      const fixture = await seedAcceptedScene(executor);
+      await setAccount(executor, IDS.accountA);
+      const sourceBefore = await executor.query(
+        `SELECT object_key,checksum_sha256,content_length,accepted_attempt_id
          FROM video_runtime_accepted_units
         WHERE runtime_id=$1 AND lane='mage_image' AND item_id=$2`,
-      [fixture.runtime, IDS.taskA],
-    );
-    const { request } = await prepareAssigned(executor, fixture);
-    const committed = await executor.query(
-      `SELECT public.videoforge_commit_hosted_image_regeneration($1,$2::jsonb,$3,$4::jsonb) AS value`,
-      [
-        request.id,
-        JSON.stringify(replacementArtifact(request)),
-        sha256("replacement-receipt"),
-        JSON.stringify({ sourceAttemptId: request.source_attempt_id, sourceImageSha256: SOURCE_IMAGE_HASH }),
-      ],
-    );
-    assert.equal(committed.rows[0].value.state, "COMPLETED");
-    const sourceAfter = await executor.query(
-      `SELECT object_key,checksum_sha256,content_length,accepted_attempt_id
+        [fixture.runtime, IDS.taskA],
+      );
+      const { request } = await prepareAssigned(executor, fixture);
+      const committed = await executor.query(
+        `SELECT public.videoforge_commit_hosted_image_regeneration($1,$2::jsonb,$3,$4::jsonb) AS value`,
+        [
+          request.id,
+          JSON.stringify(replacementArtifact(request)),
+          sha256("replacement-receipt"),
+          JSON.stringify({
+            sourceAttemptId: request.source_attempt_id,
+            sourceImageSha256: SOURCE_IMAGE_HASH,
+          }),
+        ],
+      );
+      assert.equal(committed.rows[0].value.state, "COMPLETED");
+      const sourceAfter = await executor.query(
+        `SELECT object_key,checksum_sha256,content_length,accepted_attempt_id
          FROM video_runtime_accepted_units
         WHERE runtime_id=$1 AND lane='mage_image' AND item_id=$2`,
-      [fixture.runtime, IDS.taskA],
-    );
-    assert.deepEqual(sourceAfter.rows, sourceBefore.rows);
-    const sourceReceipt = await executor.query(
-      `SELECT object_key,checksum_sha256,content_length FROM artifact_receipts WHERE id=$1`,
-      [fixture.sourceReceipt],
-    );
-    assert.deepEqual(sourceReceipt.rows, [{ object_key: SOURCE_IMAGE_KEY(), checksum_sha256: SOURCE_IMAGE_HASH, content_length: SOURCE_IMAGE_LENGTH }]);
-  });
-});
+        [fixture.runtime, IDS.taskA],
+      );
+      assert.deepEqual(sourceAfter.rows, sourceBefore.rows);
+      const sourceReceipt = await executor.query(
+        `SELECT object_key,checksum_sha256,content_length FROM artifact_receipts WHERE id=$1`,
+        [fixture.sourceReceipt],
+      );
+      assert.deepEqual(sourceReceipt.rows, [
+        {
+          object_key: SOURCE_IMAGE_KEY(),
+          checksum_sha256: SOURCE_IMAGE_HASH,
+          content_length: SOURCE_IMAGE_LENGTH,
+        },
+      ]);
+    });
+  },
+);
+
+test(
+  "0130 prevents sending without fresh cost admission and preserves assigned jobs during unsent cancellation",
+  { skip: !enabled },
+  async () => {
+    await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      const fixture = await seedAcceptedScene(executor);
+      await setAccount(executor, IDS.accountA);
+      const { request, documents } = await prepareUnsent(executor, fixture);
+      await expectDatabaseError(
+        () =>
+          executor.query(
+            "SELECT public.videoforge_image_regeneration_transition($1,'SENT',NULL,$2,$3)",
+            [request.id, documents.bodyHash, documents.envelopeHash],
+          ),
+        "23514",
+      );
+      for (const overrides of [
+        { balance_micro_usd: 4999999 },
+        { flex_rate_micro_usd_per_gpu_hour: 1116001 },
+        { observed_at: "2000-01-01T00:00:00Z" },
+        { maximum_cost_micro_usd: 2000001 },
+      ]) {
+        const snapshot = await costSnapshot(executor, overrides);
+        await expectDatabaseError(
+          () =>
+            executor.query(
+              "SELECT public.videoforge_admit_hosted_image_regeneration_cost($1,$2::jsonb)",
+              [request.id, JSON.stringify(snapshot)],
+            ),
+          "23514",
+        );
+      }
+      const snapshot = await costSnapshot(executor);
+      await executor.query(
+        "SELECT public.videoforge_admit_hosted_image_regeneration_cost($1,$2::jsonb)",
+        [request.id, JSON.stringify(snapshot)],
+      );
+      await expectDatabaseError(
+        () =>
+          executor.query(
+            "UPDATE hosted_image_regeneration_requests SET cost_admission='{}'::jsonb WHERE id=$1",
+            [request.id],
+          ),
+        "23514",
+      );
+      await executor.query(
+        "SELECT public.videoforge_image_regeneration_transition($1,'SENT',NULL,$2,$3)",
+        [request.id, documents.bodyHash, documents.envelopeHash],
+      );
+      await executor.query(
+        "SELECT public.videoforge_image_regeneration_transition($1,'ASSIGNED','cost-test-job')",
+        [request.id],
+      );
+      const result = await executor.query(
+        "SELECT public.videoforge_image_regeneration_transition($1,'CANCEL_UNSENT',NULL) AS value",
+        [request.id],
+      );
+      assert.equal(result.rows[0].value.state, "ASSIGNED");
+    });
+  },
+);
+
+test(
+  "0130 cancels a rejected predispatch request without authorizing provider work",
+  { skip: !enabled },
+  async () => {
+    await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      const fixture = await seedAcceptedScene(executor);
+      await setAccount(executor, IDS.accountA);
+      const { request } = await prepareUnsent(executor, fixture);
+      const result = await executor.query(
+        "SELECT public.videoforge_image_regeneration_transition($1,'CANCEL_UNSENT',NULL) AS value",
+        [request.id],
+      );
+      assert.equal(result.rows[0].value.state, "CANCELLED");
+      assert.equal(result.rows[0].value.provider_job_id, null);
+    });
+  },
+);

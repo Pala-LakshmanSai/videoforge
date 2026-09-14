@@ -65,6 +65,18 @@ export class HostedSqlImageRegenerationStore implements HostedImageRegenerationS
       return result.rows[0]?.value ?? null;
     });
   }
+  async databaseNow(): Promise<string> {
+    const value = await this.query("SELECT clock_timestamp()::text AS value", []);
+    if (typeof value !== "string")
+      throw new Error("HOSTED_IMAGE_REGENERATION_DATABASE_TIME_INVALID");
+    return new Date(value).toISOString();
+  }
+  async admitCost(requestId: string, snapshot: Record<string, unknown>): Promise<void> {
+    await this.query(
+      "SELECT public.videoforge_admit_hosted_image_regeneration_cost($1,$2::jsonb) AS value",
+      [requestId, JSON.stringify(snapshot)],
+    );
+  }
   async create(input: HostedImageRegenerationCreateInput): Promise<Row> {
     if (input.accountId !== this.accountId || input.workspaceId !== this.workspaceId)
       throw new Error("HOSTED_IMAGE_REGENERATION_SCOPE_INVALID");
@@ -160,6 +172,12 @@ export class HostedSqlImageRegenerationStore implements HostedImageRegenerationS
         "SELECT public.videoforge_image_regeneration_transition($1,$2,NULL) AS value",
         [input.requestId, input.state],
       ),
+    );
+  }
+  async cancelUnsent(requestId: string): Promise<void> {
+    await this.query(
+      "SELECT public.videoforge_image_regeneration_transition($1,'CANCEL_UNSENT',NULL) AS value",
+      [requestId],
     );
   }
   async replaceAcceptedScene(input: { requestId: string; sceneId: string; accepted: unknown }) {

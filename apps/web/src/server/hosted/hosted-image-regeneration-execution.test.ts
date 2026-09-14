@@ -37,6 +37,16 @@ const mocks = vi.hoisted(() => {
   };
 
   class FakeImageRegenerationStore {
+    async databaseNow() {
+      return new Date().toISOString();
+    }
+    async admitCost() {}
+    async cancelUnsent() {
+      if (state.claim?.state === "PREPARED") {
+        state.claim = { ...state.claim, state: "CANCELLED" };
+        if (state.row) state.row = { ...state.row, state: "CANCELLED" };
+      }
+    }
     async load(input: string | Record<string, unknown>) {
       return typeof input === "string" ? state.row : state.lineage;
     }
@@ -99,6 +109,9 @@ vi.mock("./hosted-image-regeneration-store", () => ({
 }));
 vi.mock("./hosted-pair-live-wiring", () => ({
   createHostedRunPodPair: mocks.createHostedRunPodPair,
+}));
+vi.mock("./hosted-image-regeneration-cost", () => ({
+  readImageRegenerationCost: vi.fn(async () => ({ maximum_cost_micro_usd: 2_000_000 })),
 }));
 
 const ids = Object.freeze({
@@ -379,7 +392,7 @@ describe("hosted image regeneration execution", () => {
     value.confirmOrdinaryStartupQueueEmpty.mockRejectedValueOnce(new Error("queue occupied"));
     await expect(
       observeHostedImageRegeneration(value.environment, {} as TransactionalSqlExecutor, params),
-    ).rejects.toThrow("queue occupied");
+    ).resolves.toMatchObject({ state: "CANCELLED", leaseReleased: true });
     expect(value.transport.run).not.toHaveBeenCalled();
     expect(value.transport.status).not.toHaveBeenCalled();
   });
