@@ -40,7 +40,7 @@ import {
   normalizeImageStyleReference,
   type NormalizedStyleReference,
 } from "../lib/media-validation";
-import { isHostedBetaMode } from "./provider-mode";
+import { isHostedProviderMode } from "./provider-mode";
 import type { ProjectStage } from "../lib/types";
 
 const MAX_VOICEOVER_BYTES = 1_073_741_824;
@@ -2440,7 +2440,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const title = isAvatar ? "Avatar Hub" : "Image Styles";
   const itemLabel = isAvatar ? "avatar" : "style";
   const Icon = isAvatar ? UsersRound : Images;
-  const betaCreation = isHostedBetaMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE);
+  const creationAvailable = isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE);
   const deletePreset = useMutation({
     mutationFn: async ({ kind: deleteKind, id }: HostedPresetDeleteInput) => {
       const resource = deleteKind === "avatars" ? "avatars" : "styles";
@@ -2694,7 +2694,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
       <PageHeader
         title={title}
         actions={
-          betaCreation ? (
+          creationAvailable ? (
             <Link className="button button-primary" to={isAvatar ? "/avatars/new" : "/styles/new"}>
               {isAvatar ? <UsersRound size={16} /> : <Images size={16} />}
               New {itemLabel}
@@ -2720,7 +2720,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
             title={`No ready ${itemLabel}s yet`}
             body={`Create your first ${itemLabel} before starting a project.`}
             action={
-              betaCreation ? (
+              creationAvailable ? (
                 <Link
                   className="button button-primary"
                   to={isAvatar ? "/avatars/new" : "/styles/new"}

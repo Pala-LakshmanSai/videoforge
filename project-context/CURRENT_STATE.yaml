@@ -1,4 +1,15 @@
 schema_version: "2.0"
+preset_creation_repair_2026_09_14:
+  status: VERIFIED_SOURCE_PENDING_DEPLOYMENT
+  checkpoint: V2-09
+  scope: production_avatar_and_image_style_creation
+  cause: staging_only_hub_route_and_backend_gates
+  repair: production_uses_existing_private_upload_review_approve_and_style_analysis_publish_flows
+  validation: focused_backend_and_production_ui_tests_plus_cloudflare_build_pass
+  browser: local_fixture_avatar_and_style_roundtrips_pass_production_signin_pending
+  provider_actions: 0
+  paid_compute_started: false
+  remaining: qualified_source_deployment_and_authenticated_live_browser_verification
 context_schema_version: "2.0"
 custom_domain_request_2026_09_14:
   domain: videoforge.buzz

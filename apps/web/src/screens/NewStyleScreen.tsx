@@ -2,9 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
   type FixtureStyleCreationAdapter,
   HostedPresetCreationScreen,
-  HostedPresetCreationUnavailableScreen,
 } from "../hosted/HostedProductScreens";
-import { isHostedBetaMode, isHostedProviderMode } from "../hosted/provider-mode";
+import { isHostedProviderMode } from "../hosted/provider-mode";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/ui";
 import { api } from "../lib/api";
@@ -13,11 +12,8 @@ import { normalizeImageStyleReference } from "../lib/media-validation";
 import { currentScenario, withScenario } from "../lib/scenario";
 
 export function NewStyleScreen() {
-  if (isHostedBetaMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE)) {
-    return <HostedPresetCreationScreen kind="styles" />;
-  }
   if (isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE)) {
-    return <HostedPresetCreationUnavailableScreen kind="styles" />;
+    return <HostedPresetCreationScreen kind="styles" />;
   }
   return <FixtureStyleCreationRoute />;
 }

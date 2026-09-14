@@ -54,7 +54,10 @@ const MAX_OPTIONAL_SCRIPT = 100_000;
 const HOSTED_TARGETED_RETRY_QUALIFIED = false;
 
 function hostedProviderFreePresetCreationEnabled(config: HostedRuntimeConfiguration): boolean {
-  return config.environment === "staging" && config.gpuTransport === "DISABLED_UNQUALIFIED";
+  return (
+    config.environment === "production" ||
+    (config.environment === "staging" && config.gpuTransport === "DISABLED_UNQUALIFIED")
+  );
 }
 
 function validFilename(value: string): boolean {

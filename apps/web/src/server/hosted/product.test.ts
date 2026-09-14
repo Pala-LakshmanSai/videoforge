@@ -683,6 +683,52 @@ describe("hosted product route contract", () => {
     },
   );
 
+  it.each(["DISABLED_UNQUALIFIED", "QUALIFIED_EXACT"] as const)(
+    "allows production preset writes through validation independently of GPU transport: %s",
+    async (gpuTransport) => {
+      const productionConfig = {
+        ...config,
+        environment: "production",
+        gpuTransport,
+      } as HostedRuntimeConfiguration;
+      for (const path of [
+        "/api/v2/hosted/avatars",
+        `/api/v2/hosted/avatars/${PRESET_ID}/commit`,
+        `/api/v2/hosted/avatars/${PRESET_ID}/approve`,
+        "/api/v2/hosted/styles",
+        `/api/v2/hosted/styles/${PRESET_ID}/references/retry`,
+        `/api/v2/hosted/styles/${PRESET_ID}/commit`,
+        `/api/v2/hosted/styles/${PRESET_ID}/analyze`,
+        `/api/v2/hosted/styles/${PRESET_ID}/publish`,
+      ]) {
+        testState.query.mockClear();
+        const rejectedOrigin = await handleHostedProductRequest(
+          request(path, "POST", {}, false),
+          environment,
+          productionConfig,
+          executionContext,
+        );
+        expect(rejectedOrigin?.status).toBe(403);
+        const invalidInput = await handleHostedProductRequest(
+          request(path, "POST", { unexpected: true }),
+          environment,
+          productionConfig,
+          executionContext,
+        );
+        expect(invalidInput?.status).toBe(400);
+        expect(testState.query).not.toHaveBeenCalled();
+      }
+      const retry = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}/retry`, "POST", {}),
+        environment,
+        productionConfig,
+        executionContext,
+      );
+      expect(retry?.status).toBe(409);
+      await expect(errorCode(retry)).resolves.toBe("TARGETED_RETRY_NOT_QUALIFIED");
+    },
+  );
+
   it("recognizes hosted avatar and style archive routes before database access", async () => {
     for (const path of [
       `/api/v2/hosted/avatars/${PRESET_ID}`,
