@@ -404,6 +404,10 @@ class RenderJobTests(unittest.TestCase):
 
         render_call = next(call for call in fixture.process.calls if "-filter_complex" in call)
         graph = render_call[render_call.index("-filter_complex") + 1]
+        loudness_call = next(
+            call for call in fixture.process.calls if "-af" in call and "-filter_complex" not in call
+        )
+        self.assertIn("loudnorm=I=-16:TP=-2.5", loudness_call[loudness_call.index("-af") + 1])
         self.assertIn("crop=832:468:0:6", graph)
         self.assertIn("crop=480:540:240:210", graph)
         self.assertEqual(graph.count("perspective="), 2)

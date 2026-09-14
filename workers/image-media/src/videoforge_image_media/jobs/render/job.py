@@ -11,6 +11,7 @@ from typing import Any, cast
 from videoforge_contracts import ContractValidationError, validate_contract
 
 from .filtergraph import (
+    AUDIO_NORMALIZATION_TRUE_PEAK_TARGET_DBTP,
     LEGACY_RENDER_PROFILE_VERSION,
     SMOOTH_RENDER_PROFILE_VERSION,
     SUBTLE_RENDER_PROFILE_VERSION,
@@ -392,7 +393,7 @@ class RenderJob:
                 "-map",
                 "0:a:0",
                 "-af",
-                "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json",
+            f"loudnorm=I=-16:TP={AUDIO_NORMALIZATION_TRUE_PEAK_TARGET_DBTP:g}:LRA=11:print_format=json",
                 "-f",
                 "null",
                 "-",
