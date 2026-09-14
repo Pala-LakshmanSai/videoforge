@@ -1,0 +1,24 @@
+{
+  "checkpoint": "V2-09",
+  "sourceCommit": "aab538e5b99d50dda0775c85da26f44e94e98c99",
+  "status": "SOURCE_REPAIRS_VALIDATED_PENDING_LIVE_APPROVAL",
+  "testsPassed": 209,
+  "typecheck": "PASS both targets",
+  "productionBuildFirewall": "PASS",
+  "changedFileLintFormat": "PASS",
+  "liveProof": "Original failure reproduced; existing accepted 37.166016-second MP4 completed playback without error",
+  "providerActionsCreated": 0,
+  "newPaidCompute": false,
+  "remaining": [
+    "deployment approval",
+    "fresh bounded end-to-end run",
+    "final media acceptance and zero-compute readback"
+  ],
+  "evidence": [
+    "audit.md",
+    "provider-result.json",
+    "provider-inventory.json",
+    "browser-observations.json",
+    "approved-video.png"
+  ]
+}

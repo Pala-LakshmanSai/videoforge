@@ -1,0 +1,23 @@
+{
+  "request_hash": "sha256:0c05111cb6ef11224e7d64d89539cc99251824144ed62222936f47eebc9fad31",
+  "task_uuid": "1e4f2e63-a960-4a47-ad21-6a6b8b1d7975",
+  "http_status": 200,
+  "outcome": "VOICEOVER_CONTEXT_JSON_INVALID",
+  "finish_reason": "stop",
+  "text_type": "string",
+  "response_chars": 46,
+  "response_sha256": "sha256:4e0d3a3cd25aa9d0a20630356b60c306f19abba0055dcc0d398ca5cbae200b71",
+  "fenced": false,
+  "open_braces": 1,
+  "close_braces": 1,
+  "parsed_keys": null,
+  "subject_chars": null,
+  "array_lengths": null,
+  "archive_redacted": true,
+  "redaction_marker": "REDACTED 518 bytes",
+  "original_problem_code": "VOICEOVER_CONTEXT_INVALID",
+  "diagnosis": "Original context validation failed. Archived response is redacted, so the specific failed field/bound cannot be proven. Archive JSON_INVALID is a downstream symptom.",
+  "provider_reported_cost_usd": 0.00033947,
+  "completion_tokens": 131,
+  "provider_actions_created": 0
+}

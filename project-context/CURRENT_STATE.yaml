@@ -1,4 +1,22 @@
 schema_version: "2.0"
+pipeline_audit_2026_09_14:
+  status: SOURCE_REPAIRS_VALIDATED_PENDING_LIVE_APPROVAL
+  checkpoint: V2-09
+  source_commit: aab538e5b99d50dda0775c85da26f44e94e98c99
+  failed_project_id: bd11943b-b63d-4eb6-9768-bbc2ab01989d
+  first_failure: VOICEOVER_CONTEXT_INVALID
+  diagnosis: "Stage 3 local validation failed after preparation and ASR. Exact original invalid field is unproven; original-task archive is redacted. Preserve UNKNOWN without replay."
+  repairs: "Context parser and task identity, no ineffective redispatch loop, sanitized validation diagnostics, span replay race, streamed R2 final-video checksum, truthful completed/failed/resume UI, existing server type errors."
+  validation: "209 focused tests; application and Worker TypeScript checks; Cloudflare build/firewall; changed-file lint and formatting pass."
+  browser: "Actual Chrome original failure reproduced; existing approved MP4 played through 37.166016 seconds, ended=true, error=null. Long-video live acceptance pending."
+  provider_actions_created: 0
+  paid_compute_started: false
+  inventory_checked_at: "2026-09-14T13:17:33Z"
+  paid_compute_shutdown: "Zero active Pods/workers and zero queued/running jobs. EXITED records and stale throttled counters are not active compute. Existing two sealed 50 GB volumes unchanged."
+  runpod_balance_usd: 16.6648115015
+  current_rtx4090_rate_usd_per_hour: 1.10
+  remaining_gates: "Approve and deploy exact repaired source; one fresh capped live pipeline run with new identity; final media acceptance and zero-compute readback. Previous paid attempt authority is consumed."
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-pipeline-audit/acceptance.json
 ui_ux_polish_2026_09_14:
   status: DEPLOYED_LIVE_UI_VERIFIED
   checkpoint: V2-09

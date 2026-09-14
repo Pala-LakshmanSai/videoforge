@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "videoforge.provider-inventory-rate-evidence/v1",
+  "checkedAt": "2026-09-14T13:17:33.971Z",
+  "source": {
+    "balanceHttpStatus": 200,
+    "catalogHttpStatus": 200,
+    "inventoryHttpStatuses": {
+      "pods": 200,
+      "endpoints": 200,
+      "networkVolumes": 200
+    },
+    "healthHttpStatuses": [
+      200,
+      200
+    ]
+  },
+  "balanceUsd": 16.6648115015,
+  "selectedCatalog": [
+    {
+      "sku": "NVIDIA GeForce RTX 4090",
+      "serverlessFlexRateUsdPerGpuHour": 1.1,
+      "availability": [
+        {
+          "region": "EU-RO-1",
+          "availability": "LOW"
+        }
+      ]
+    }
+  ],
+  "inventory": {
+    "runningPodCount": 0,
+    "endpointInventory": [
+      {
+        "idHash": "sha256:e07fe49b7152c1c51a5979d6c701c237a18fe3d4c74e6f42ac6fe4da65431e4b",
+        "workersMin": 0,
+        "workersMax": 1,
+        "workerStatuses": [
+          "EXITED"
+        ]
+      },
+      {
+        "idHash": "sha256:7fcba58322146f2fe368ad2e60f47450e89dfde1cf6adb9a17ea854e5bd6f89a",
+        "workersMin": 0,
+        "workersMax": 1,
+        "workerStatuses": [
+          "EXITED"
+        ]
+      }
+    ],
+    "health": [
+      {
+        "lane": "mage",
+        "idHash": "sha256:7fcba58322146f2fe368ad2e60f47450e89dfde1cf6adb9a17ea854e5bd6f89a",
+        "httpStatus": 200,
+        "workers": {
+          "idle": 0,
+          "ready": 0,
+          "running": 0,
+          "initializing": 0,
+          "throttled": 1,
+          "unhealthy": 0
+        },
+        "jobs": {
+          "inQueue": 0,
+          "inProgress": 0
+        }
+      },
+      {
+        "lane": "soulx",
+        "idHash": "sha256:e07fe49b7152c1c51a5979d6c701c237a18fe3d4c74e6f42ac6fe4da65431e4b",
+        "httpStatus": 200,
+        "workers": {
+          "idle": 0,
+          "ready": 0,
+          "running": 0,
+          "initializing": 0,
+          "throttled": 1,
+          "unhealthy": 0
+        },
+        "jobs": {
+          "inQueue": 0,
+          "inProgress": 0
+        }
+      }
+    ],
+    "retainedVolumes": [
+      {
+        "sizeGb": 50,
+        "region": "EU-RO-1"
+      },
+      {
+        "sizeGb": 50,
+        "region": "EU-RO-1"
+      }
+    ]
+  },
+  "proposalConstraint": {
+    "maxServerlessFlexRateUsdPerGpuHour": 1.116,
+    "selectedCatalogRateUsdPerGpuHour": 1.1,
+    "region": "EU-RO-1",
+    "requiresZeroComputeRecheckBeforePaidAction": true,
+    "proposedSpendCapUsd": 2,
+    "authorized": false
+  }
+}

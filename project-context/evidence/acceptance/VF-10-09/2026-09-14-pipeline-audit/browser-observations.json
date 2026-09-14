@@ -1,0 +1,31 @@
+{
+  "checkpoint": "V2-09",
+  "source_base_commit": "0e289de7",
+  "failed_project": "bd11943b-b63d-4eb6-9768-bbc2ab01989d",
+  "computer_use": "@oai/sky via node_repl; actual user Chrome",
+  "observations": [
+    {
+      "route": "/projects/bd11943b-b63d-4eb6-9768-bbc2ab01989d",
+      "stages_1_2": "COMPLETE",
+      "stage_3": "FAILED; provider result uncertain; retrieval returns no unique valid context JSON",
+      "stages_4_10": "PENDING",
+      "provider_retry_clicked": false
+    },
+    {
+      "route": "/",
+      "active_projects": 0,
+      "action_needed": 6,
+      "waiting": 8
+    },
+    {
+      "route": "/projects/b79fef93-11e0-4333-9af0-8cd4fddcbd01/review",
+      "approval": "APPROVED; approval action disabled",
+      "playback": "Played through end: duration=currentTime=37.166016 seconds; ended=true; readyState=4; media error=null",
+      "full_playback_or_seek_reverified": "Full playback to end verified; seek not repeated"
+    }
+  ],
+  "screenshots": "Chrome extension screenshot inspected; approved-video.png",
+  "provider_actions_created": 0,
+  "paid_compute_started": false,
+  "browser_console_errors": []
+}
