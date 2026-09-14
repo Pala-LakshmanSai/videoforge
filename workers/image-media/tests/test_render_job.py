@@ -422,7 +422,7 @@ class RenderJobTests(unittest.TestCase):
         self.assertIn("interpolation=cubic:sense=source:eval=frame", graph)
         self.assertIn("hstack=inputs=2", graph)
         self.assertIn("concat=n=3:v=1:a=0", graph)
-        self.assertIn("loudnorm=I=-16:TP=-1.5", graph)
+        self.assertIn("loudnorm=I=-16:TP=-2.5", graph)
         self.assertNotRegex(graph, r"xfade|fade=|drawtext|subtitles|overlay")
         self.assertIn("-n", render_call)
         self.assertNotIn("-y", render_call)

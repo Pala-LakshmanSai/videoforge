@@ -30,6 +30,8 @@ LEGACY_RENDER_PROFILE_VERSION = "ffmpeg-render-v1"
 SUBTLE_RENDER_PROFILE_VERSION = "ffmpeg-render-v2"
 SMOOTH_RENDER_PROFILE_VERSION = "ffmpeg-render-v3"
 
+AUDIO_NORMALIZATION_TRUE_PEAK_TARGET_DBTP = -2.5
+
 SOULX_SOURCE_PROFILE = "soulx-pro-vf924u-approved-v1"
 SOULX_PROFILE_GROUP = "soulx-pro-vf924u-full-split-v1"
 SOULX_CANDIDATE_SHA256 = "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"
@@ -151,7 +153,9 @@ def _audio_filter(measurement: LoudnessMeasurement) -> str:
     if not measurement.requires_normalization:
         return "aresample=48000"
     return (
-        "loudnorm=I=-16:TP=-1.5:LRA=11:"
+        # Leave headroom for AAC encoder true-peak overshoot; final policy is
+        # still enforced against the encoded output in RenderJob.
+        f"loudnorm=I=-16:TP={AUDIO_NORMALIZATION_TRUE_PEAK_TARGET_DBTP:g}:LRA=11:"
         f"measured_I={measurement.integrated_lufs:.3f}:"
         f"measured_TP={measurement.true_peak_dbtp:.3f}:"
         f"measured_LRA={measurement.loudness_range_lu:.3f}:"
