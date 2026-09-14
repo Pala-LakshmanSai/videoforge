@@ -1,0 +1,36 @@
+{
+  "request_hash": "sha256:07cf832a7271964a2c5ce054b9825d2f5d1960b91e0168ad90ca2b69747e188d",
+  "task_uuid": "e7b38f46-181c-47fa-a231-fc86d18d584c",
+  "http_status": 200,
+  "outcome": "RUNWARE_RESPONSE_INVALID",
+  "context_id": "d61ae71f-e33a-4d83-bca1-00403a171f27",
+  "output_redacted": false,
+  "original_error_codes": [],
+  "detail_keys": [
+    "taskType",
+    "taskUUID",
+    "request",
+    "response"
+  ],
+  "original_response_keys": [
+    "response",
+    "connectionSessionUUID"
+  ],
+  "text_type": "undefined",
+  "response_chars": 4,
+  "response_sha256": "sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+  "fenced": false,
+  "open_braces": 0,
+  "close_braces": 0,
+  "parsed_keys": null,
+  "subject_chars": null,
+  "array_lengths": null,
+  "actualProviderFailure": {
+    "nesting": "details.response.response.errors",
+    "errorCode": "providerUnavailable",
+    "upstreamHttpStatus": 502,
+    "upstream": "runware-deepseek-v4-flash",
+    "acceptedResultPresent": false
+  },
+  "diagnosis": "Upstream provider502 followed by unsupported nested archive error shape; no evidence of another aggregate limit rejection"
+}

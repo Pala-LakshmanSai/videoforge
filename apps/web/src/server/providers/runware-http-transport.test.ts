@@ -243,6 +243,98 @@ describe("Runware server HTTP transport", () => {
     ).resolves.toMatchObject({ outputText: result.text, costUsd: result.cost });
   });
 
+  it("classifies exact archived provider failure and rejects identity/mixed-response drift", async () => {
+    const taskUUID = "11111111-1111-4111-8111-111111111111";
+    const originalRequest = [{ taskType: "textInference", taskUUID }];
+    const originalRequestBytes = canonicalizeJson(originalRequest);
+    const originalRequestSha256 = `sha256:${await crypto.subtle
+      .digest("SHA-256", new TextEncoder().encode(originalRequestBytes))
+      .then((digest) =>
+        [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""),
+      )}` as `sha256:${string}`;
+    const archivedProviderFailure = {
+      taskType: "textInference",
+      taskUUID,
+      errors: {
+        errorCode: "providerUnavailable",
+        additionalDetails: {
+          responseStatusCode: 502,
+          responseContent: "<html>nginx 502</html>",
+          _provider: "runware-deepseek-v4-flash",
+        },
+      },
+    };
+    const diagnostic = vi.fn();
+    const recover = (
+      response: Record<string, unknown>,
+      onDiagnostic?: typeof diagnostic,
+      outerResponseFields: Record<string, unknown> = {},
+    ) =>
+      retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: taskUUID,
+        originalRequestBytes,
+        originalRequestSha256,
+        fetch: async () =>
+          jsonResponse({
+            taskType: "getTaskDetails",
+            taskUUID,
+            request: originalRequest,
+            response: {
+              response,
+              connectionSessionUUID: "session-uuid",
+              ...outerResponseFields,
+            },
+          }),
+        onDiagnostic,
+      });
+
+    await expect(recover(archivedProviderFailure, diagnostic)).rejects.toMatchObject({
+      code: "RUNWARE_TASK_PROVIDER_FAILED",
+    });
+    expect(diagnostic).toHaveBeenCalledWith({
+      stage: "response",
+      httpStatus: 502,
+      providerCode: "providerUnavailable",
+      providerParameter: null,
+    });
+
+    await expect(
+      recover({ ...archivedProviderFailure, taskUUID: "22222222-2222-4222-8222-222222222222" }),
+    ).rejects.toMatchObject({ code: "RUNWARE_RESPONSE_INVALID" });
+
+    await expect(
+      recover(archivedProviderFailure, undefined, {
+        data: [
+          {
+            taskType: "textInference",
+            taskUUID,
+            text: "{}",
+            cost: 0,
+            finishReason: "stop",
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "RUNWARE_RESPONSE_INVALID" });
+
+    await expect(
+      recover({
+        ...archivedProviderFailure,
+        data: [
+          {
+            taskType: "textInference",
+            taskUUID,
+            text: "{}",
+            cost: 0,
+            finishReason: "stop",
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "RUNWARE_RESPONSE_INVALID" });
+  });
+
   it("reports archived task-not-found without attempting inference", async () => {
     const taskUUID = "11111111-1111-4111-8111-111111111111";
     const originalRequestBytes = canonicalizeJson([{ taskType: "textInference", taskUUID }]);

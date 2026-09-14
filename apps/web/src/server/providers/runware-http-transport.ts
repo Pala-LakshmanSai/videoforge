@@ -16,6 +16,7 @@ export type RunwareTransportFailureCode =
   | "RUNWARE_IDEMPOTENCY_CONFLICT"
   | "RUNWARE_TASK_DETAILS_UNAVAILABLE"
   | "RUNWARE_TASK_NOT_FOUND"
+  | "RUNWARE_TASK_PROVIDER_FAILED"
   | "RUNWARE_RESPONSE_INVALID";
 
 export class RunwareTransportError extends Error {
@@ -300,10 +301,35 @@ export async function retrieveRunwareTextTaskDetails(
     throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
 
   const originalResponse = record(details.response);
-  const originalErrors = Array.isArray(originalResponse?.errors)
-    ? originalResponse.errors.map(record).filter(Boolean)
-    : [];
-  if (!originalResponse || originalErrors.length > 0 || !Array.isArray(originalResponse.data))
+  const archivedProviderResponse = record(originalResponse?.response);
+  const archivedProviderError = record(archivedProviderResponse?.errors);
+  const archivedProviderErrorDetails = record(archivedProviderError?.additionalDetails);
+  const archivedProviderStatus = archivedProviderErrorDetails?.responseStatusCode;
+  if (
+    originalResponse &&
+    archivedProviderResponse?.taskType === "textInference" &&
+    archivedProviderResponse.taskUUID === options.originalTaskUUID &&
+    archivedProviderError?.errorCode === "providerUnavailable" &&
+    archivedProviderStatus === 502 &&
+    !("data" in archivedProviderResponse) &&
+    !("data" in originalResponse) &&
+    !("errors" in originalResponse)
+  ) {
+    options.onDiagnostic?.({
+      stage: "response",
+      httpStatus: 502,
+      providerCode: "providerUnavailable",
+      providerParameter: null,
+    });
+    throw new RunwareTransportError("RUNWARE_TASK_PROVIDER_FAILED");
+  }
+  if (
+    !originalResponse ||
+    ("errors" in originalResponse &&
+      (!Array.isArray(originalResponse.errors) || originalResponse.errors.length > 0)) ||
+    "response" in originalResponse ||
+    !Array.isArray(originalResponse.data)
+  )
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
   const originalRows = originalResponse.data.map(record).filter(Boolean);
   const result = originalRows.find((candidate) => candidate?.taskUUID === options.originalTaskUUID);

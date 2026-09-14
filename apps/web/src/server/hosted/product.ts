@@ -5613,21 +5613,23 @@ async function reconcileVoiceoverContext(
           ? error.code
           : (contextCode ?? "RUNWARE_RESPONSE_INVALID");
       const message =
-        providerCode === "RUNWARE_TASK_NOT_FOUND"
-          ? "Runware could not find the original task in this workspace. No new inference request was submitted."
-          : providerCode === "RUNWARE_TASK_DETAILS_UNAVAILABLE"
-            ? "Runware task details are temporarily unavailable. No new inference request was submitted."
-            : providerCode === "RUNWARE_IDEMPOTENCY_CONFLICT"
-              ? "Runware returned an original request that did not match the saved task identity. No new inference request was submitted."
-              : providerCode === "RUNWARE_AUTH_INVALID"
-                ? "Runware rejected the configured recovery credential. No new inference request was submitted."
-                : providerCode === "VOICEOVER_CONTEXT_JSON_INVALID"
-                  ? "The original provider result did not contain exactly one valid context JSON object. No new inference request was submitted."
-                  : providerCode === "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY"
-                    ? "The original provider result repeated a context property and was rejected safely. No new inference request was submitted."
-                    : providerCode === "VOICEOVER_CONTEXT_INVALID"
-                      ? "The original provider result did not match the required context fields. No new inference request was submitted."
-                      : "Runware returned original task details that could not be accepted safely. No new inference request was submitted.";
+        providerCode === "RUNWARE_TASK_PROVIDER_FAILED"
+          ? "Runware confirmed that the original task failed at its upstream provider without a usable result. Checking again cannot resume this task. No new inference request was submitted."
+          : providerCode === "RUNWARE_TASK_NOT_FOUND"
+            ? "Runware could not find the original task in this workspace. No new inference request was submitted."
+            : providerCode === "RUNWARE_TASK_DETAILS_UNAVAILABLE"
+              ? "Runware task details are temporarily unavailable. No new inference request was submitted."
+              : providerCode === "RUNWARE_IDEMPOTENCY_CONFLICT"
+                ? "Runware returned an original request that did not match the saved task identity. No new inference request was submitted."
+                : providerCode === "RUNWARE_AUTH_INVALID"
+                  ? "Runware rejected the configured recovery credential. No new inference request was submitted."
+                  : providerCode === "VOICEOVER_CONTEXT_JSON_INVALID"
+                    ? "The original provider result did not contain exactly one valid context JSON object. No new inference request was submitted."
+                    : providerCode === "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY"
+                      ? "The original provider result repeated a context property and was rejected safely. No new inference request was submitted."
+                      : providerCode === "VOICEOVER_CONTEXT_INVALID"
+                        ? "The original provider result did not match the required context fields. No new inference request was submitted."
+                        : "Runware returned original task details that could not be accepted safely. No new inference request was submitted.";
       return response(
         {
           error: {

@@ -4153,6 +4153,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     return compactParts.join(" | ");
   })();
   const contextUnknown = query.data.voiceover_context?.state === "UNKNOWN";
+  const contextProviderFailed =
+    (contextReconciliation.error as (Error & { readonly code?: string }) | null)?.code ===
+    "HOSTED_CONTEXT_RECONCILIATION_RUNWARE_TASK_PROVIDER_FAILED";
   const contextValidationFailed = [
     "VOICEOVER_CONTEXT_INVALID",
     "VOICEOVER_CONTEXT_JSON_INVALID",
@@ -4166,6 +4169,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const contextAutoStartError = contextExtraction.isError && query.data.voiceover_context == null;
   const contextReconciliationCouldNotFinish =
     contextUnknown &&
+    !contextProviderFailed &&
     automaticContextReconciliationAttempt.current === query.data.voiceover_context?.id &&
     !contextReconciliation.isPending &&
     (contextReconciliation.isError || contextReconciliation.data?.state === "UNKNOWN");
@@ -4708,17 +4712,19 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       {asr?.state === "SUCCEEDED" && !contextComplete ? (
         <div className={`notice${contextNeedsReview ? " notice-danger" : ""}`} role="status">
           <strong>
-            {contextValidationFailed
-              ? "Context result failed validation."
-              : contextUnknown
-                ? contextReconciliation.isPending
-                  ? "Checking provider result…"
-                  : "Provider result needs confirmation."
-                : contextNeedsReview
-                  ? "Context extraction needs review."
-                  : contextAutoStartError
-                    ? "Automatic context extraction could not start."
-                    : "Continuing after transcription."}
+            {contextProviderFailed
+              ? "Provider task failed."
+              : contextValidationFailed
+                ? "Context result failed validation."
+                : contextUnknown
+                  ? contextReconciliation.isPending
+                    ? "Checking provider result…"
+                    : "Provider result needs confirmation."
+                  : contextNeedsReview
+                    ? "Context extraction needs review."
+                    : contextAutoStartError
+                      ? "Automatic context extraction could not start."
+                      : "Continuing after transcription."}
           </strong>
           <span>
             {contextValidationFailed
