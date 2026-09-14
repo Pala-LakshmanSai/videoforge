@@ -1,0 +1,64 @@
+{
+  "checkpoint": "V2-09",
+  "status": "ACCEPTED_LIVE",
+  "deployed_source": "2671d95725df524f9921d518d40fb997474ef323",
+  "deployed_worker_version": "fea826c1-a7a7-4ec3-9fae-fa989d66f8d7",
+  "transport": "QUALIFIED_EXACT",
+  "personal_worker_version": "0.1.19",
+  "release_run": 34864998498,
+  "project_id": "0498d6b9-7d72-4ca7-bdc9-03dffc8b3779",
+  "successful_render_attempt": "6ae0d037-970e-423c-8c5e-5cd6d42f9a39",
+  "runtime_state": "COMPLETE",
+  "generation_state": "SUCCEEDED",
+  "gpu_jobs": 2,
+  "accepted_images": 7,
+  "accepted_avatar_clips": 2,
+  "active_cpu_attempts": 0,
+  "output": {
+    "artifact_uri": "vf-local://objects/sha256/c3/c390c9e3d422b24a7dcb86df7471b759d17cb7c5c37e2a7600395f5b2088b81a.mp4",
+    "asset_id": "asset_render_c390c9e3d422b24a7dcb86df",
+    "bytes": 7916962,
+    "filename": "videoforge-output.mp4",
+    "sha256": "sha256:c390c9e3d422b24a7dcb86df7471b759d17cb7c5c37e2a7600395f5b2088b81a"
+  },
+  "loudness": {
+    "input_integrated_lufs": -22.09,
+    "input_true_peak_dbtp": -0.3,
+    "normalized": true,
+    "output_integrated_lufs": -16.93,
+    "output_true_peak_dbtp": -1.97,
+    "profile": "voiceover-minus16lufs-v1"
+  },
+  "duration_ms": 37000,
+  "finalization_repair": "Await terminal handoff before pool.end; existing completion retry finalized saved output without rendering again.",
+  "migration_133": "APPLIED_VERIFIED",
+  "validation": "13 focused render tests;79 hosted screen tests;8 media viewer tests;focused upload route and real PostgreSQL guard checks;TypeScript and production build passed. Exact full CPU reproduction then production rerender passed.",
+  "provider_closure": {
+    "at": "2026-09-14T16:18:39.013Z",
+    "zero_active": true,
+    "queues_empty": true,
+    "balance_usd": 16.4803671682
+  },
+  "remaining_gates": [
+    "18-minute full generation not rerun; original stopped attempts preserved"
+  ],
+  "subsequent_separate_activity": {
+    "image_regeneration_id": "1fe6e546-f8ce-4858-9c78-5a88e34b8652",
+    "created_at": "2026-09-14T16:08:06.929239Z",
+    "initiator": "UNCONFIRMED_NOT_STARTED_BY_THIS_AGENT",
+    "state": "COMPLETED",
+    "updated_at": "2026-09-14T16:12:50.183733Z",
+    "original_final_mp4_preserved": true
+  },
+  "browser": {
+    "method": "Real Chrome via Computer Use",
+    "all_ten_stages_complete": true,
+    "progress_percent": 100,
+    "played_to_end": true,
+    "seek_36_seconds": true,
+    "approved": true,
+    "download_path": "/Users/lakshmansai/Downloads/videoforge-output (1).mp4",
+    "download_bytes": 7916962,
+    "download_sha256": "sha256:c390c9e3d422b24a7dcb86df7471b759d17cb7c5c37e2a7600395f5b2088b81a"
+  }
+}

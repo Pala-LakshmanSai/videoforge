@@ -1,4 +1,26 @@
 schema_version: "2.0"
+short_comparison_repair_2026_09_14:
+  status: ACCEPTED_LIVE_SHORT_PIPELINE
+  checkpoint: V2-09
+  source_commit: 2671d95725df524f9921d518d40fb997474ef323
+  deployed_worker_version: fea826c1-a7a7-4ec3-9fae-fa989d66f8d7
+  transport: QUALIFIED_EXACT
+  personal_worker: "0.1.19 ONLINE; immutable release run34864998498"
+  project_id: 0498d6b9-7d72-4ca7-bdc9-03dffc8b3779
+  render_attempt: 6ae0d037-970e-423c-8c5e-5cd6d42f9a39
+  runtime: COMPLETE
+  generation: SUCCEEDED
+  output_sha256: "sha256:c390c9e3d422b24a7dcb86df7471b759d17cb7c5c37e2a7600395f5b2088b81a"
+  output_bytes: 7916962
+  output_duration_ms: 37000
+  accepted_media: "7 images;2 avatar clips;exactly2 original GPU jobs;no GPU rerun for render recovery"
+  repair: "Matching -2.5dBTP normalization targets reserve AAC headroom; output -16.93LUFS/-1.97dBTP passes unchanged policy. Await finalization before pool.end. Same completion retry finalized existing saved MP4."
+  other_repairs: "Upload timeout and idempotent renewal migration133;terminal progress labels/timers;failed signed-media-link refresh."
+  validation: "Focused render13, hosted screens79, media viewer8;upload route and actual PostgreSQL guard proof;TypeScript and production build pass;exact CPU then hosted render success;Chrome end playback, seeking, approval, exact-checksum download and all ten stages COMPLETE pass."
+  paid_compute_shutdown: "16:18:39Z zero active compute and empty queues;balance16.4803671682. Subsequent independently initiated image regeneration completed and preserved the final MP4."
+  retained_resources: "Existing sealed volumes/endpoints unchanged."
+  remaining_gates: "No remaining short-comparison gates;18-minute full generation not rerun. Original stopped attempts remain unreplayed."
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-pipeline-audit/short-comparison-acceptance.json
 
 castle1_provider_failure_2026_09_14:
   status: DEPLOYED_BROWSER_VERIFIED
