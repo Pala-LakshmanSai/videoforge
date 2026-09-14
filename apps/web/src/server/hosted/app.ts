@@ -596,7 +596,15 @@ async function handleCpuSubmission(
         throw new Error("CPU_SUBMISSION_IDEMPOTENCY_CONFLICT");
       }
       attemptId ??= trusted?.expectedAttemptId ?? crypto.randomUUID();
-      if (existing.rows[0] && existing.rows[0].state !== "PLANNED") {
+      if (
+        existing.rows[0] &&
+        existing.rows[0].state !== "PLANNED" &&
+        (submission.kind !== "SPAN_AUDIO" ||
+          !["OUTBOXED", "RUNNING", "SUCCEEDED"].includes(existing.rows[0].state) ||
+          (await environment.PRIVATE_ARTIFACTS!.head(
+            `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${submission.projectId}/revision/${submission.projectRevisionId}/lane/input/job/${attemptId}/artifact/job-spec`,
+          )))
+      ) {
         return {
           attemptId,
           replay: true as const,
@@ -728,7 +736,7 @@ async function handleCpuSubmission(
       return {
         attemptId,
         replay: false as const,
-        state: "PLANNED",
+        state: existing.rows[0]?.state ?? "PLANNED",
         jobSpecKey,
         jobSpecBytes,
         jobSpecChecksum,
@@ -751,13 +759,13 @@ async function handleCpuSubmission(
         httpMetadata: { contentType: "application/json" },
         customMetadata: { sha256: prepared.jobSpecChecksum },
       });
-      await executor.transaction(async (transaction) => {
+      prepared.state = await executor.transaction(async (transaction) => {
         await transaction.query("SELECT set_config($1, $2, true)", [
           "videoforge.account_id",
           scope.account_id,
         ]);
-        const launchable = await transaction.query<{ id: string }>(
-          `SELECT attempt.id
+        const launchable = await transaction.query<{ id: string; state: string }>(
+          `SELECT attempt.id, attempt.state
              FROM hosted_cpu_job_attempts AS attempt
              JOIN projects AS project
                ON project.account_id=attempt.account_id
@@ -765,7 +773,7 @@ async function handleCpuSubmission(
               AND project.id=attempt.project_id
             WHERE attempt.account_id=$1 AND attempt.workspace_id=$2 AND attempt.id=$3
               AND attempt.project_id=$4 AND attempt.project_revision_id=$5
-              AND attempt.state='PLANNED' AND project.status='ACTIVE'
+              AND project.status='ACTIVE'
             FOR UPDATE OF project,attempt`,
           [
             scope.account_id,
@@ -777,6 +785,7 @@ async function handleCpuSubmission(
         );
         if (launchable.rows[0]?.id !== prepared.attemptId)
           throw new Error("PROJECT_LIFECYCLE_CLOSED");
+        if (launchable.rows[0].state !== "PLANNED") return launchable.rows[0].state;
         await startHostedCpuWorkflow(environment, {
           attemptId: prepared.attemptId,
           accountId: scope.account_id,
@@ -800,11 +809,11 @@ async function handleCpuSubmission(
            )`,
           [prepared.attemptId, scope.account_id, scope.workspace_id, prepared.jobSpecChecksum],
         );
+        return "OUTBOXED";
       });
     } catch (error) {
-      await bucket.delete(prepared.jobSpecKey).catch(() => undefined);
       const failureFacts = await sha256(`PREPARATION_FAILED:${prepared.jobSpecChecksum}`);
-      await executor.transaction(async (transaction) => {
+      const failedPreparation = await executor.transaction(async (transaction) => {
         await transaction.query("SELECT set_config($1, $2, true)", [
           "videoforge.account_id",
           scope.account_id,
@@ -822,7 +831,7 @@ async function handleCpuSubmission(
           [prepared.attemptId],
         );
         const row = failed.rows[0];
-        if (!row) return;
+        if (!row) return false;
         await transaction.query(
           `INSERT INTO hosted_cpu_job_events (
              id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
@@ -832,14 +841,18 @@ async function handleCpuSubmission(
              )`,
           [prepared.attemptId, row.account_id, row.workspace_id, failureFacts],
         );
+        return true;
       });
+      // Only the transaction that terminally failed preparation owns cleanup. A concurrent
+      // scheduler may already have committed this exact immutable key for a running attempt.
+      if (failedPreparation) await bucket.delete(prepared.jobSpecKey).catch(() => undefined);
       throw error;
     }
     return json(
       {
         schema_version: "videoforge-hosted-cpu-attempt/v1",
         id: prepared.attemptId,
-        state: "OUTBOXED",
+        state: prepared.state,
       },
       202,
     );

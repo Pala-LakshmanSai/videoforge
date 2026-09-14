@@ -1,5 +1,9 @@
 # VideoForge: start here
 
+## Current span performance repair — 2026-09-14
+
+The user's existing castle2 run stalls at 11/65 spans because concurrent scheduling can delete an already committed R2 job template. Real Chrome, production lease history, process inspection, and exact R2 404/control-200 establish the first failure. Focused repair preserves committed templates and restores missing ones; worker changes remove successful-job sleeps and reuse one verified source voiceover. Release and existing-run acceptance remain pending. See `evidence/acceptance/VF-10-09/2026-09-14-span-performance/investigation.md` and `CURRENT_STATE.yaml`.
+
 ## Short comparison: production render repaired — 2026-09-14
 
 The 37-second castle comparison completed transcription, context, planning, seven images and two avatar clips. Exact saved-input reproduction proved assembly failed its true-peak check: AAC output was −16.46 LUFS/−0.99 dBTP. Worker 0.1.19 uses matching −2.5 dBTP targets in both normalization passes, preserving the output limit of −1.5. The production MP4 now passes at −16.93 LUFS/−1.97 dBTP, 37,000 ms, 7,916,962 bytes. Source `2671d957` also awaits finalization before closing its database pool; the existing completion retry finalized the saved MP4 without another render. Runtime is COMPLETE, generation SUCCEEDED, and actual Chrome playback to the end and seeking passed.

@@ -72,6 +72,9 @@ export interface HostedV209SpanAudioCoordinatorDependencies {
     readonly resultDocument: JsonValue;
   }) => Promise<unknown>;
   readonly resumePair: (identity: HostedV209SpanIdentity) => Promise<void>;
+  readonly loadScheduledAttemptIds?: (
+    identity: HostedV209SpanIdentity,
+  ) => Promise<readonly string[]>;
 }
 
 export class HostedV209SpanAudioError extends Error {
@@ -235,7 +238,7 @@ function exactFinalization(
 export function createHostedV209SpanAudioCoordinator(
   dependencies: HostedV209SpanAudioCoordinatorDependencies,
 ) {
-  const prepare = async (identity: HostedV209SpanIdentity) => {
+  const prepare = async (identity: HostedV209SpanIdentity, reuseScheduled = false) => {
     if (
       ![identity.accountId, identity.workspaceId, identity.userId].every((id) =>
         DATABASE_UUID.test(id),
@@ -253,11 +256,15 @@ export function createHostedV209SpanAudioCoordinator(
         attemptIds: Object.freeze([] as string[]),
       });
     }
+    const scheduledIds = new Set(
+      reuseScheduled ? await dependencies.loadScheduledAttemptIds?.(identity) : [],
+    );
     for (const job of projection.jobs) {
       if ((await sha256(canonicalJson(job.submissionDocument))) !== job.submissionSha256) {
         throw new HostedV209SpanAudioError("HOSTED_V209_SPAN_SUBMISSION_HASH_MISMATCH");
       }
       const submission = exactHostedSpanAudioSubmission(job.submissionDocument, job.attemptId)!;
+      if (scheduledIds.has(job.attemptId)) continue;
       const scheduled = await dependencies.schedule(identity, submission, job.attemptId);
       if (
         ![
@@ -297,12 +304,15 @@ export function createHostedV209SpanAudioCoordinator(
           projectId: finalized.projectId,
         });
       } else
-        await prepare({
-          accountId: finalized.accountId,
-          workspaceId: finalized.workspaceId,
-          userId: finalized.userId,
-          projectId: finalized.projectId,
-        });
+        await prepare(
+          {
+            accountId: finalized.accountId,
+            workspaceId: finalized.workspaceId,
+            userId: finalized.userId,
+            projectId: finalized.projectId,
+          },
+          true,
+        );
       return finalized;
     },
   });

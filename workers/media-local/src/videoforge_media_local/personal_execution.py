@@ -84,6 +84,9 @@ _LEASE_STALE_FENCE = "LEASE_STALE_FENCE"
 # completions or diagnostics.
 _MEDIA_INPUT_WORKING_SET_MULTIPLIER = 2
 _MEDIA_RUNTIME_HEADROOM_BYTES = 2 * 1024**3
+_SPAN_SOURCE_CACHE_MAX_BYTES = 256 * 1024**2
+_span_source_cache: tempfile.TemporaryDirectory[str] | None = None
+_span_source_cache_key: tuple[str, str, int] | None = None
 
 
 class _PersonalJobCancelled(Exception):
@@ -305,6 +308,32 @@ def _download(
             out.write(chunk)
     if size != item["bytes"] or f"sha256:{digest.hexdigest()}" != item["sha256"]:
         raise ValueError("Personal worker download did not match durable facts")
+
+
+def _download_span_source(
+    item: dict[str, Any], destination: Path, should_cancel: Callable[[], bool]
+) -> None:
+    """Reuse one verified voiceover between serial spans; discard it at process exit."""
+    global _span_source_cache, _span_source_cache_key
+    if item["bytes"] > _SPAN_SOURCE_CACHE_MAX_BYTES:
+        _download(item, destination, should_cancel)
+        return
+    key = (item["uri"], item["sha256"], item["bytes"])
+    if _span_source_cache is None:
+        _span_source_cache = tempfile.TemporaryDirectory(prefix="videoforge-span-source-")
+    cached = Path(_span_source_cache.name) / "source"
+    if should_cancel():
+        raise _PersonalJobCancelled
+    if _span_source_cache_key == key and cached.is_file():
+        if _sha256_file(cached) == (item["sha256"], item["bytes"]):
+            destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            shutil.copyfile(cached, destination)
+            return
+    _span_source_cache_key = None
+    cached.unlink(missing_ok=True)
+    _download(item, destination, should_cancel)
+    shutil.copyfile(destination, cached)
+    _span_source_cache_key = key
 
 
 def _required_free_bytes(objects: tuple[dict[str, Any], ...]) -> int:
@@ -744,7 +773,13 @@ def execute_personal_job(
     try:
         _preflight_disk_space(job.objects, scratch)
         for item in job.objects:
-            _download(item, _local_path(scratch, item["uri"]), monitor.is_cancelled)
+            download = (
+                _download_span_source
+                if job.kind == "SPAN_AUDIO"
+                and item["uri"] == job.input_document["source_voiceover"]["artifact_uri"]
+                else _download
+            )
+            download(item, _local_path(scratch, item["uri"]), monitor.is_cancelled)
         input_path = scratch / "job-input.json"
         input_path.write_bytes(_canonical(job.input_document))
         if monitor.is_cancelled():

@@ -40,6 +40,18 @@ export function createHostedV209SpanAudioLiveCoordinator(
            $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS value`,
         [identity.accountId, identity.workspaceId, identity.userId, identity.projectId],
       ),
+    loadScheduledAttemptIds: async (identity) => {
+      const value = await databaseCall(
+        `SELECT COALESCE(jsonb_agg(id::text), '[]'::jsonb) AS value
+           FROM hosted_cpu_job_attempts
+          WHERE account_id=$1::uuid AND workspace_id=$2::uuid AND project_id=$3::uuid
+            AND kind='SPAN_AUDIO' AND state IN ('OUTBOXED','RUNNING','SUCCEEDED')`,
+        [identity.accountId, identity.workspaceId, identity.projectId],
+      );
+      if (!Array.isArray(value) || !value.every((id) => typeof id === "string"))
+        throw new Error("HOSTED_V209_SPAN_DATABASE_RESULT_INVALID");
+      return value as string[];
+    },
     schedule: async (identity, submission, expectedAttemptId) =>
       scheduleSubmission(environment, config, {
         accountId: identity.accountId,

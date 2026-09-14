@@ -31,7 +31,7 @@ from videoforge_media_local.personal_execution import (
 from videoforge_media_local.personal_tls import https_context
 
 _SERVICE = "com.videoforge.personal-media-worker"
-_WORKER_VERSION = "0.1.19"
+_WORKER_VERSION = "0.1.20"
 _PROTOCOL_VERSION = 1
 _USER_AGENT = f"VideoForge-Worker/{_WORKER_VERSION}"
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
@@ -657,6 +657,9 @@ def run_forever() -> int:
             if status == 200 and isinstance(claim, dict):
                 job = parse_personal_job(claim["job"])
                 execute_personal_job(job, token, str(claim["lease_token"]), tools)
+                # Drain ready work immediately; only idle/error polling needs a delay.
+                backoff = 5
+                continue
             elif status not in {204, 409}:
                 raise OSError("claim unavailable")
             backoff = 5

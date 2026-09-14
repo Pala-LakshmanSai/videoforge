@@ -1,4 +1,12 @@
 schema_version: "2.0"
+span_performance_repair_2026_09_14:
+  checkpoint: V2-09
+  status: SOURCE_REPAIR_IN_PROGRESS
+  project_id: fc4ada08-9e54-43e8-a548-30ccf51622d4
+  proven_blocker: "Concurrent span schedulers can delete a committed job template; claim then loops on missing R2 object without executing audio."
+  scope: "Preserve immutable jobs; repair missing templates; remove redundant scheduling, worker sleeps and repeated source downloads. Continue existing user run only."
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-span-performance/investigation.md
+  remaining: "Focused regressions, worker release, production deployment, exact Chrome continuation and compute audit."
 short_comparison_repair_2026_09_14:
   status: ACCEPTED_LIVE_SHORT_PIPELINE
   checkpoint: V2-09

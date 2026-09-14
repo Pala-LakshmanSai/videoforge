@@ -97,6 +97,33 @@ def job() -> dict[str, object]:
 
 
 class PersonalWorkerContractTests(unittest.TestCase):
+    def test_span_source_cache_reuses_verified_bytes_and_rejects_corruption(self) -> None:
+        import hashlib
+
+        content = b"voiceover source"
+        item = {"uri": "vf-local://source", "sha256": "sha256:" + hashlib.sha256(content).hexdigest(), "bytes": len(content)}
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as cache:
+            def download(_item, destination, _cancel):
+                destination.write_bytes(content)
+
+            with (
+                patch.object(personal_execution, "_span_source_cache", SimpleNamespace(name=cache)),
+                patch.object(personal_execution, "_span_source_cache_key", None),
+                patch.object(personal_execution, "_download", side_effect=download) as fetch,
+            ):
+                for ordinal in range(2):
+                    destination = Path(root) / str(ordinal)
+                    personal_execution._download_span_source(item, destination, lambda: False)
+                    self.assertEqual(destination.read_bytes(), content)
+                fetch.assert_called_once()
+                (Path(cache) / "source").write_bytes(b"corrupted")
+                personal_execution._download_span_source(item, Path(root) / "repaired", lambda: False)
+                self.assertEqual(fetch.call_count, 2)
+                self.assertEqual((Path(root) / "repaired").read_bytes(), content)
+                different_source = {**item, "uri": "vf-local://another-source"}
+                personal_execution._download_span_source(different_source, Path(root) / "other", lambda: False)
+                self.assertEqual(fetch.call_count, 3)
+
     def test_accepts_only_explicit_soulx_48k_span_audio_jobs(self) -> None:
         span = job()
         span["kind"] = "SPAN_AUDIO"
@@ -655,6 +682,34 @@ class PersonalWorkerContractTests(unittest.TestCase):
             credential_store.return_value.get.return_value = "b" * 64
             self.assertEqual(run_forever(), 0)
         self.assertEqual(order[:3], ["configuration", "tools", "install"])
+
+    def test_completed_claim_polls_again_without_idle_delay(self) -> None:
+        state = {"installation_id": "11111111-1111-4111-8111-111111111111"}
+        with (
+            patch("videoforge_media_local.personal_worker.sys.argv", ["worker", "--background"]),
+            patch("videoforge_media_local.personal_worker._install_macos_if_needed", return_value=False),
+            patch("videoforge_media_local.personal_worker._build_configuration", return_value={
+                "control_plane_origin": "https://app.example.test",
+                "execution_bundle_sha256": "sha256:" + "c" * 64,
+            }),
+            patch("videoforge_media_local.personal_worker._tool_paths", return_value=Mock()),
+            patch("videoforge_media_local.personal_worker._state", return_value=(Path("state"), state)),
+            patch("videoforge_media_local.personal_worker._credential_store") as credentials,
+            patch("videoforge_media_local.personal_worker._ensure_autostart"),
+            patch("videoforge_media_local.personal_worker._platform_facts", return_value=("MACOS", "AARCH64")),
+            patch("videoforge_media_local.personal_worker._json_request", side_effect=[
+                (200, {"status": "ONLINE"}),
+                (200, {"job": {}, "lease_token": "lease"}),
+                (200, {"status": "UPDATE_REQUIRED"}),
+            ]),
+            patch("videoforge_media_local.personal_worker.parse_personal_job", return_value=Mock()),
+            patch("videoforge_media_local.personal_worker.execute_personal_job", return_value="SUCCEEDED") as execute,
+            patch("videoforge_media_local.personal_worker.time.sleep") as sleep,
+        ):
+            credentials.return_value.get.return_value = "a" * 64
+            self.assertEqual(run_forever(), 0)
+            execute.assert_called_once()
+            sleep.assert_not_called()
 
     def test_mac_autostart_repairs_a_missing_loaded_launchagent(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
