@@ -969,16 +969,26 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
   return { label: "Waiting", detail: "This lane has not been dispatched yet.", active: false };
 }
 
-function HostedElapsed({ since }: { readonly since: string | null }) {
+function HostedElapsed({
+  since,
+  until,
+}: {
+  readonly since: string | null;
+  readonly until: string | null;
+}) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!since) return;
+    if (!since || until) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
-  }, [since]);
+  }, [since, until]);
   const started = since ? Date.parse(since) : Number.NaN;
   if (!Number.isFinite(started)) return null;
-  const seconds = Math.max(0, Math.floor((now - started) / 1_000));
+  const ended = until ? Date.parse(until) : now;
+  const seconds = Math.max(
+    0,
+    Math.floor(((Number.isFinite(ended) ? ended : now) - started) / 1_000),
+  );
   const minutes = Math.floor(seconds / 60);
   return (
     <span className="gpu-lane-elapsed" aria-label="Elapsed time">
@@ -1016,7 +1026,10 @@ function HostedGpuLaneActivityPanel({
                   ) : null}
                   {phase.label}
                 </span>
-                <HostedElapsed since={lane.submitted_at ?? lane.created_at} />
+                <HostedElapsed
+                  since={lane.submitted_at ?? lane.created_at}
+                  until={lane.terminal_at}
+                />
               </div>
               <div
                 className={`gpu-lane-track${phase.active && accepted === 0 ? " gpu-lane-track-indeterminate" : ""}`}
@@ -1052,7 +1065,11 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
   const active = progress.running > 0 || progress.queued > 0;
   const complete = done === progress.total;
   return (
-    <Panel className="gpu-lane-panel" eyebrow="Your computer" heading="Preparing avatar audio">
+    <Panel
+      className="gpu-lane-panel"
+      eyebrow="Your computer"
+      heading={complete ? "Avatar audio ready" : "Preparing avatar audio"}
+    >
       <ul className="gpu-lane-list">
         <li className="gpu-lane-item">
           <div className="gpu-lane-head">
@@ -4434,7 +4451,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         <div className="validation validation-info" role="status" aria-live="polite">
           Preparing exact avatar audio. Generation continues when ready.
         </div>
-      ) : gpuDispatch.data ? (
+      ) : gpuDispatch.data && !hasFailed && !terminalBlocked && !terminalCancelled ? (
         <div className="validation validation-success" role="status" aria-live="polite">
           Generation is running. Correlation ID: <code>{gpuDispatch.data.correlation_id}</code>
         </div>
