@@ -49,6 +49,7 @@ const MAX_STYLE_REFERENCE_BYTES = 20 * 1024 * 1024;
 const MAX_STYLE_ANALYSIS_BYTES = 30 * 1024 * 1024;
 const MAX_STYLE_REFERENCES = 8;
 const MIN_STYLE_REFERENCES = 3;
+export const HOSTED_UPLOAD_TIMEOUT_MS = 300_000;
 const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v2";
 const VOICEOVER_TYPES = new Set(["audio/mpeg", "audio/wav"]);
 const MAX_HOSTED_VOICEOVER_FILENAME = 160;
@@ -1177,7 +1178,7 @@ interface HostedPreflightResponse {
   readonly revision_id?: string | null;
 }
 
-interface HostedUploadDescriptor {
+export interface HostedUploadDescriptor {
   readonly url: string;
   readonly requiredHeaders?: Readonly<Record<string, string>>;
   readonly asset_id?: string;
@@ -1708,17 +1709,23 @@ async function imageDimensions(file: File): Promise<{ width: number; height: num
   }
 }
 
-async function putHostedUpload(upload: HostedUploadDescriptor, file: File): Promise<void> {
+export async function putHostedUpload(upload: HostedUploadDescriptor, file: File): Promise<void> {
   const headers = Object.fromEntries(
     Object.entries(upload.requiredHeaders ?? {}).filter(
       ([key]) => key.toLowerCase() !== "content-length",
     ),
   );
-  const result = await bounded(
-    fetch(upload.url, { method: "PUT", headers, body: file }),
-    "Private upload timed out. Retry this step.",
-  );
-  if (!result.ok) throw new Error(`Private upload failed (HTTP ${result.status}).`);
+  const controller = new AbortController();
+  try {
+    const result = await bounded(
+      fetch(upload.url, { method: "PUT", headers, body: file, signal: controller.signal }),
+      "Private upload timed out. Retry this step.",
+      HOSTED_UPLOAD_TIMEOUT_MS,
+    );
+    if (!result.ok) throw new Error(`Private upload failed (HTTP ${result.status}).`);
+  } finally {
+    controller.abort();
+  }
 }
 
 const ENCODED_UNSAFE_RETURN_TO_CHARACTERS = /%(?:0[0-9a-f]|1[0-9a-f]|5c|7f)/iu;
