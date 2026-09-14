@@ -1,22 +1,28 @@
 schema_version: "2.0"
 pipeline_audit_2026_09_14:
-  status: SOURCE_REPAIRS_VALIDATED_PENDING_LIVE_APPROVAL
+  status: COMPACTION_FIX_DEPLOYED_ATTEMPT_CONSUMED
   checkpoint: V2-09
-  source_commit: aab538e5b99d50dda0775c85da26f44e94e98c99
-  failed_project_id: bd11943b-b63d-4eb6-9768-bbc2ab01989d
-  first_failure: VOICEOVER_CONTEXT_INVALID
-  diagnosis: "Stage 3 local validation failed after preparation and ASR. Exact original invalid field is unproven; original-task archive is redacted. Preserve UNKNOWN without replay."
-  repairs: "Context parser and task identity, no ineffective redispatch loop, sanitized validation diagnostics, span replay race, streamed R2 final-video checksum, truthful completed/failed/resume UI, existing server type errors."
-  validation: "209 focused tests; application and Worker TypeScript checks; Cloudflare build/firewall; changed-file lint and formatting pass."
-  browser: "Actual Chrome original failure reproduced; existing approved MP4 played through 37.166016 seconds, ended=true, error=null. Long-video live acceptance pending."
-  provider_actions_created: 0
+  source_commit: 853851c8af53eb43ed03ef46518eca93ef43cd80
+  deployed_worker_version: cb062d87-e67f-4088-9e21-ac5f79a244e8
+  transport: QUALIFIED_EXACT
+  prior_audit_source_commit: aab538e5b99d50dda0775c85da26f44e94e98c99
+  fresh_project_id: d7bffbed-7188-4eac-98c0-ce42085a417e
+  fresh_context_id: d4da1ae6-b7f5-46f0-8249-e3f55a6da1d4
+  authority: "User approved deployment plus one fresh attempt within USD2 total, exact RTX4090 EU-RO-1, rate ceiling1.116/hour, USD3 balance floor. That fresh inference attempt is consumed; no replay."
+  proven_fresh_failure: "Preparation and ASR completed. Stage3 rejected schema-valid context for aggregate_budget; live response567 characters."
+  repair: "Preserve subject and whole normalized facts within existing360-character flattened budget; references then continuity then visual facts. Provider request/model/task identity unchanged."
+  recovery: "After repaired deployment, read-only original-task reconciliation remains409 JSON_INVALID. Exact original provider task returns a46-character redacted placeholder, not original567-character context."
+  validation: "Prior209 focused tests reused; additional31 context/transport tests, bothTypeScript targets, Cloudflare build/firewall, context validator, focusedlint/format pass."
+  browser: "Actual Chrome exact input/preset creation, upload, transcription, failure and repaired read-only reconciliation verified. Existing accepted37-second MP4 previously played to end. Long-videoMVP remains unaccepted."
+  inference_requests_created: 1
+  provider_reported_context_cost_usd: 0.00034207
+  gpu_jobs_created: 0
   paid_compute_started: false
-  inventory_checked_at: "2026-09-14T13:17:33Z"
-  paid_compute_shutdown: "Zero active Pods/workers and zero queued/running jobs. EXITED records and stale throttled counters are not active compute. Existing two sealed 50 GB volumes unchanged."
-  runpod_balance_usd: 16.6648115015
-  current_rtx4090_rate_usd_per_hour: 1.10
-  remaining_gates: "Approve and deploy exact repaired source; one fresh capped live pipeline run with new identity; final media acceptance and zero-compute readback. Previous paid attempt authority is consumed."
-  evidence: evidence/acceptance/VF-10-09/2026-09-14-pipeline-audit/acceptance.json
+  runpod_balance_usd: 16.6550892793
+  paid_compute_shutdown: "No GPU request from this run; zero running or initializing workers and empty queues. Provider inventory reports EXITED, health can report idle/ready; final evidence records this discrepancy without claiming idle means billed compute."
+  retained_resources: "Existing two sealed50GB EU-RO-1 volumes unchanged; no endpoint mutation, model download or new resource."
+  remaining_gates: "Fresh bounded inference authority, complete18-minute pipeline, final media acceptance. Do not claim fullMVP from source tests or historical short-video acceptance."
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-pipeline-audit/fresh-run.json
 ui_ux_polish_2026_09_14:
   status: DEPLOYED_LIVE_UI_VERIFIED
   checkpoint: V2-09

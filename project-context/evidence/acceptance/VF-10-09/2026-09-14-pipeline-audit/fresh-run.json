@@ -15,6 +15,13 @@
     }
   ],
   "gpuStarted": false,
-  "status": "STOPPED_CONTEXT_AGGREGATE_BUDGET",
-  "originalFailedProjectReplayed": false
+  "status": "COMPACTION_FIX_DEPLOYED_ATTEMPT_CONSUMED",
+  "originalFailedProjectReplayed": false,
+  "fixSourceCommit": "853851c8af53eb43ed03ef46518eca93ef43cd80",
+  "fixWorkerVersion": "cb062d87-e67f-4088-9e21-ac5f79a244e8",
+  "fixTransport": "QUALIFIED_EXACT",
+  "fixValidation": "31 focused tests, both TypeScript targets, production build/firewall, context validator, focused lint/format pass",
+  "providerReportedContextCostUsd": 0.00034207,
+  "recovery": "Exact completed provider task returns redacted46-character placeholder; cannot resume from original567-character result",
+  "remaining": "Fresh inference/run authority required; full18-minuteMVP not yet accepted"
 }

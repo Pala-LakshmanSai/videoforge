@@ -1,0 +1,18 @@
+{
+  "request_hash": "sha256:0415132fad63ef3b8a09f6a45ec164c66cab7ca879827f5d7cc68b25cba7eecf",
+  "task_uuid": "dc22b970-7492-474b-89c4-c2e6cbe4dd30",
+  "http_status": 200,
+  "outcome": "VOICEOVER_CONTEXT_JSON_INVALID",
+  "output_redacted": true,
+  "finish_reason": "stop",
+  "text_type": "string",
+  "response_chars": 46,
+  "response_sha256": "sha256:cf4a15503da50c682ffac241061c98e32c75d9ff26680813b7b3c9db9d4479aa",
+  "fenced": false,
+  "open_braces": 1,
+  "close_braces": 1,
+  "parsed_keys": null,
+  "subject_chars": null,
+  "array_lengths": null,
+  "scope": "Read-only exact original task lookup; no new inference"
+}
