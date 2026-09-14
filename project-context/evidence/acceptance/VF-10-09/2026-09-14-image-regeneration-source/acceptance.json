@@ -1,7 +1,7 @@
 {
   "schema_version": "videoforge-local-feature-evidence/v1",
   "checkpoint": "V2-09",
-  "status": "SOURCE_VALIDATED_LIVE_BLOCKED_DATABASE_TRANSFER_QUOTA",
+  "status": "DEPLOYED_FIRST_LIVE_ATTEMPT_FAILED_CLEAN_TIMING_REPAIR_PENDING",
   "base_commit": "6be8853b3238daa9d8515ff841623604dfe4f0bc",
   "migration": "0129_hosted_image_regeneration.sql",
   "migration_sha256": "sha256:cfd1d259fbc63e12b16bbe402adf6e547174c428b31363fc5a4fcfb6480f1b4c",
@@ -19,9 +19,9 @@
     "cost_and_product_final_tests": 83,
     "authentication_unavailability_tests": 14
   },
-  "provider_calls": 0,
-  "paid_compute_started": false,
-  "live_acceptance": "BLOCKED_BEFORE_DEPLOYMENT",
+  "provider_calls": 1,
+  "paid_compute_started": true,
+  "live_acceptance": "FIRST_ATTEMPT_FAILED_CLEAN_ORIGINAL_MEDIA_PRESERVED",
   "existing_final_video": "UNCHANGED; stated explicitly in editor",
   "remaining": [
     "Restore Neon database access",
@@ -69,5 +69,6 @@
   "latency_changes": [
     "Parallel queue and cost readiness checks",
     "Compact status projection excludes signed payloads and lineage"
-  ]
+  ],
+  "live_attempt_evidence": "live-attempt-1.json"
 }
