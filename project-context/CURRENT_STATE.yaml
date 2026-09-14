@@ -1,4 +1,17 @@
 schema_version: "2.0"
+private_upload_timeout_repair_2026_09_14:
+  status: DEPLOYED_LIVE_UPLOAD_RECOVERY_VERIFIED
+  checkpoint: V2-09
+  deployed_source: 56994706a91c363d7a16d63f2e53e25f604ea3f5
+  deployed_worker_version: c4a9bb0c-598a-46e3-ae6c-3272153d2ad7
+  transport: QUALIFIED_EXACT
+  repair: five_minute_private_file_transfer_deadline_with_abort
+  live_evidence: six_originals_and_six_normalized_assets_verified_durable_analysis_step
+  transient_r2_failure: reconciled_before_same_key_retry_reused_recovery_version
+  provider_analysis_calls: 0
+  paid_compute_started: false
+  remaining_scope_gates: []
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-style-upload-timeout/acceptance.json
 preset_creation_repair_2026_09_14:
   status: DEPLOYED_LIVE_CREATION_VERIFIED
   checkpoint: V2-09

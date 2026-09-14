@@ -1,0 +1,48 @@
+{
+  "schema_version": "videoforge-private-upload-timeout-repair/v1",
+  "checkpoint": "V2-09",
+  "source_commit": "56994706a91c363d7a16d63f2e53e25f604ea3f5",
+  "worker_version": "c4a9bb0c-598a-46e3-ae6c-3272153d2ad7",
+  "public_origin": "https://videoforge.buzz",
+  "effective_gpu_transport": "QUALIFIED_EXACT",
+  "cause": {
+    "client_deadline_ms": 30000,
+    "request_aborted_on_timeout": false,
+    "draft_created_at": "2026-09-14T09:08:46.899691Z",
+    "first_original_stored_at": "2026-09-14T09:09:19Z",
+    "first_original_bytes": 4822562,
+    "other_objects_absent": 11
+  },
+  "fix": {
+    "file_transfer_deadline_ms": 300000,
+    "abort_on_completion_or_timeout": true,
+    "api_deadlines_changed": false,
+    "private_checksum_headers_preserved": true
+  },
+  "validation": {
+    "focused_upload_regressions": "3/3 PASS",
+    "hosted_product_screens": "PASS",
+    "changed_file_eslint": "PASS",
+    "changed_file_prettier": "PASS",
+    "production_cloudflare_build_and_firewall": "PASS",
+    "context_validation": "PASS"
+  },
+  "live_recovery": {
+    "six_original_files_exact_checksum_match": true,
+    "original_version_id": "aca32cd6-f861-4209-8c5f-720350219f7c",
+    "recovered_version_id": "d69c3fda-ed0d-4b9c-a807-49738a8c4df8",
+    "reference_count": 6,
+    "verified_assets": 12,
+    "pending_assets": 0,
+    "state": "DRAFT",
+    "chrome_analysis_step": "PASS",
+    "durable_hub_resume": "PASS",
+    "transient_failure": "One normalized R2 PUT returned HTTP500; read-only object HEADs reconciled eight saved and four absent objects before one same-key retry. Retry reused recovery version2 and committed all12assets.",
+    "new_version_on_replay": false
+  },
+  "provider_analysis_calls": 0,
+  "gpu_jobs_started": 0,
+  "compute_started": false,
+  "remaining_scope_gates": [],
+  "not_run": "Paid style analysis and publication; complete repository test suite."
+}
