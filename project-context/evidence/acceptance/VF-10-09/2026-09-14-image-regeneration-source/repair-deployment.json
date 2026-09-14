@@ -1,7 +1,7 @@
 {
   "schema_version": "videoforge-regeneration-repair-deployment/v1",
   "checkpoint": "V2-09",
-  "status": "DEPLOYED_QUALIFIED_EXACT_FRESH_LIVE_ACCEPTANCE_PENDING",
+  "status": "ACCEPTED_LIVE_ZERO_COMPUTE",
   "source_commit": "43ad91438e22a757fab252806e28fe3d7011e332",
   "worker_version": "c5bf759f-0940-43d4-ae37-b5b69ea20b1c",
   "gpu_transport": "QUALIFIED_EXACT",
@@ -21,16 +21,20 @@
     "changed_file_lint_and_format": "PASS",
     "context_validation": "PASS",
     "chrome_project_after_reload": "API healthy; seven images and two avatar clips; all10 stages complete",
-    "successful_replacement": "PENDING_FRESH_APPROVAL"
+    "successful_replacement": "PASS_REAL_CHROME_AND_SIGNED_ARTIFACT_RECEIPT",
+    "deadline_database_tests": 11
   },
   "prior_live_attempt": "live-attempt-1.json",
   "paid_job_posts_since_prior_attempt": 0,
   "provider_compute_started_by_deployment": false,
-  "remaining": "One fresh bounded scene regeneration to prove receipt acceptance and measure successful latency",
+  "remaining": "NONE_FOR_REQUESTED_IMAGE_REGENERATION_AND_SIGNIN_FIX",
   "final_provider_readback": {
-    "checked_at": "2026-09-14T04:23:56.448Z",
-    "balance_usd": 16.8346732234,
+    "checked_at": "2026-09-14T06:05:45.010Z",
+    "balance_usd": 16.7686399735,
     "running_pods": 0,
     "active_serverless_workers": 0
-  }
+  },
+  "successful_live_evidence": "live-attempt-2.json",
+  "deadline_migration": 131,
+  "deadline_migration_commit": "2b2e09af2c5e3ef1929d31a7f7d24200cf4e7ba7"
 }

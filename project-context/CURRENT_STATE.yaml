@@ -1,20 +1,24 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
 image_review_regeneration_request_2026_09_14:
-  status: DEPLOYED_QUALIFIED_EXACT_FRESH_LIVE_ACCEPTANCE_PENDING
+  status: ACCEPTED_LIVE_ZERO_COMPUTE
   base_commit: 6be8853b
   detail: tasks/VF-10-09.md
   implemented: editable_saved_prompt_enter_submit_durable_single_scene_replacement_and_provider_receipt_acceptance
-  migrations: [0129_hosted_image_regeneration.sql, 0130_hosted_image_regeneration_cost.sql]
+  migrations: [0129_hosted_image_regeneration.sql, 0130_hosted_image_regeneration_cost.sql, 0131_hosted_image_regeneration_deadline_alignment.sql]
   cost_admission: bounded_2usd_with_3usd_floor_and_durable_predispatch_guard
-  remaining: fresh_bounded_live_acceptance_after_consumed_first_attempt
+  remaining: none_for_requested_image_regeneration_and_signin_fix
+  deadline_migration: 131
+  deadline_migration_commit: 2b2e09af2c5e3ef1929d31a7f7d24200cf4e7ba7
   deployed_source: 43ad91438e22a757fab252806e28fe3d7011e332
   deployed_worker_version: c5bf759f-0940-43d4-ae37-b5b69ea20b1c
   final_video_behavior: existing_video_unchanged_explicit_in_image_editor
-  provider_actions_this_task: 1
+  provider_actions_this_task: 2
   paid_compute_started_this_task: true
   latest_compute_state: zero_active_pods_workers_and_empty_queues
-  live_attempt_evidence: evidence/acceptance/VF-10-09/2026-09-14-image-regeneration-source/live-attempt-1.json
+  live_attempt_evidence: evidence/acceptance/VF-10-09/2026-09-14-image-regeneration-source/live-attempt-2.json
+  successful_regeneration_ms: 157222
+  final_runpod_balance_usd: 16.7686399735
 updated_at: "2026-09-13T22:00:00Z"
 
 phase: serverless_v2_two_track_execution_active

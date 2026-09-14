@@ -1,7 +1,7 @@
 {
   "schema_version": "videoforge-local-feature-evidence/v1",
   "checkpoint": "V2-09",
-  "status": "DEPLOYED_QUALIFIED_EXACT_FRESH_LIVE_ACCEPTANCE_PENDING",
+  "status": "ACCEPTED_LIVE_ZERO_COMPUTE",
   "base_commit": "6be8853b3238daa9d8515ff841623604dfe4f0bc",
   "migration": "0129_hosted_image_regeneration.sql",
   "migration_sha256": "sha256:cfd1d259fbc63e12b16bbe402adf6e547174c428b31363fc5a4fcfb6480f1b4c",
@@ -19,9 +19,9 @@
     "cost_and_product_final_tests": 83,
     "authentication_unavailability_tests": 14
   },
-  "provider_calls": 1,
+  "provider_calls": 2,
   "paid_compute_started": true,
-  "live_acceptance": "FIRST_ATTEMPT_FAILED_CLEAN_ORIGINAL_MEDIA_PRESERVED",
+  "live_acceptance": "PASS_SINGLE_SCENE_REPLACEMENT_AND_RELOAD",
   "existing_final_video": "UNCHANGED; stated explicitly in editor",
   "remaining": [
     "Restore Neon database access",
@@ -72,5 +72,8 @@
   ],
   "live_attempt_evidence": "live-attempt-1.json",
   "repair_deployment": "repair-deployment.json",
-  "remaining_live_gate": "One fresh bounded scene regeneration to prove receipt acceptance and measure successful latency"
+  "remaining_live_gate": "NONE_FOR_REQUESTED_IMAGE_REGENERATION_AND_SIGNIN_FIX",
+  "successful_live_evidence": "live-attempt-2.json",
+  "deadline_migration": 131,
+  "deadline_migration_commit": "2b2e09af2c5e3ef1929d31a7f7d24200cf4e7ba7"
 }
