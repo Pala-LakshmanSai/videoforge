@@ -308,6 +308,11 @@ describe("hosted product route contract", () => {
         String(sql).includes("hosted_style_analysis_runs"),
       ),
     ).toBe(false);
+    expect(
+      testState.query.mock.calls.some(([sql]) =>
+        String(sql).includes("videoforge_read_hosted_style_analysis_state"),
+      ),
+    ).toBe(true);
   });
 
   it("creates a fresh bounded ASR submission after an explicit failed attempt", async () => {

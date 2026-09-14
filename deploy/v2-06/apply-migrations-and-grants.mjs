@@ -68,6 +68,7 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_archive_hosted_project(uuid,uuid,uuid)",
   "videoforge_archive_hosted_preset(uuid,uuid,text,uuid)",
   "videoforge_finish_hosted_style_analysis(uuid,text,text,text,bigint,bigint,bigint)",
+  "videoforge_read_hosted_style_analysis_state(uuid,uuid,uuid)",
   "videoforge_reserve_hosted_style_analysis(uuid,text,uuid)",
   "videoforge_current_account_id()",
   "videoforge_due_hosted_cpu_retention(integer)",

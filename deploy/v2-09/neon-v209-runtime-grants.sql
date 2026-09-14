@@ -169,6 +169,7 @@ INSERT INTO v209_runtime_function_allowlist(signature) VALUES
   ('videoforge_finish_hosted_pair_send(uuid,uuid,uuid,text,text,text,uuid,text)'),
   ('videoforge_finish_hosted_pair_parallel_send(uuid,uuid,uuid,text,text,text,uuid,text)'),
   ('videoforge_finish_hosted_style_analysis(uuid,text,text,text,bigint,bigint,bigint)'),
+  ('videoforge_read_hosted_style_analysis_state(uuid,uuid,uuid)'),
   ('videoforge_hosted_cpu_expected_primary_output(uuid,text)'),
   ('videoforge_hosted_session_scope(text)'),
   ('videoforge_has_hosted_v209_ordinary_candidate(uuid,uuid,uuid)'),

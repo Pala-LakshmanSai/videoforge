@@ -781,6 +781,13 @@
       "name": "hosted_image_regeneration_deadline_alignment",
       "filename": "0131_hosted_image_regeneration_deadline_alignment.sql",
       "sha256": "sha256:f197204688df4d30c11c0115a4f55f21ae5e955430698169b2485016255ff2be"
+    },
+
+    {
+      "version": 132,
+      "name": "hosted_style_analysis_status_projection",
+      "filename": "0132_hosted_style_analysis_status_projection.sql",
+      "sha256": "sha256:c2f454ea3fa36006c9a0b46f86f43412920f5b50da13cdf29709f400a67ef30c"
     }
   ]
 }

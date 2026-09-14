@@ -168,6 +168,8 @@ interface HostedStyleDraft {
   readonly version_number: number;
   readonly state?: string;
   readonly status?: string;
+  /** Terminal provider outcome is separate from immutable version lifecycle state. */
+  readonly analysis_state?: "RESERVED" | "SUCCEEDED" | "FAILED" | "UNKNOWN" | null;
   readonly cover_url?: string | null;
   readonly profile_hash?: string | null;
   readonly reference_count?: number;
@@ -1767,7 +1769,12 @@ export function normalizeHostedReturnTo(
   );
 }
 
-function presetState(item: { readonly state?: string; readonly status?: string }) {
+function presetState(item: {
+  readonly state?: string;
+  readonly status?: string;
+  readonly analysis_state?: string | null;
+}) {
+  if (item.analysis_state === "UNKNOWN") return "UNKNOWN";
   return item.state ?? item.status ?? "READY";
 }
 
@@ -1777,6 +1784,8 @@ function unfinishedPresetLabel(value: string): string {
       return "Ready to review";
     case "ANALYZING":
       return "Analysis in progress";
+    case "UNKNOWN":
+      return "Analysis result unconfirmed";
     case "FAILED":
       return "Needs attention";
     case "DRAFT":
@@ -1808,6 +1817,9 @@ function unfinishedPresetDescription(
   }
   if (state === "ANALYZING") {
     return "Analysis is in progress. We will update this style when it finishes.";
+  }
+  if (state === "UNKNOWN") {
+    return "The analysis result could not be confirmed. Your references are saved. This request has stopped and will not retry automatically.";
   }
   if (state === "FAILED") {
     return "The analysis request failed, but your verified references are saved. Continue setup to retry safely.";

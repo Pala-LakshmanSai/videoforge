@@ -2953,6 +2953,7 @@ async function styleAnalyze(
       apiKey: config.styleAnalysis.apiKey,
       baseUrl: config.styleAnalysis.baseUrl,
       images,
+      taskUUID: preparedRunId,
     });
     const reportedCostMicroUsd = runwareGeminiStyleActualCostMicroUsd(providerResult.costUsd);
     const analyzed = await createNeonExecutor(pool).transaction(async (transaction) => {
@@ -3758,6 +3759,9 @@ async function catalog(
       const styleDrafts = await transaction.query(
         `SELECT style.id AS style_id, version.id AS version_id, style.name,
                 version.version_number, version.state, version.created_at, version.updated_at,
+                public.videoforge_read_hosted_style_analysis_state(
+                  $1, $2, version.id
+                ) AS analysis_state,
                 count(reference.id)::int AS reference_count,
                 (version.disclosure_attested_by_user_id IS NOT NULL) AS processing_disclosure_acknowledged,
                 COALESCE(bool_and(reference.rights_attested_by_user_id IS NOT NULL), false) AS rights_attested,
@@ -3878,6 +3882,7 @@ async function catalog(
         name: rowString(row, "name"),
         version_number: Number(row.version_number),
         state: rowString(row, "state"),
+        analysis_state: typeof row.analysis_state === "string" ? row.analysis_state : null,
         reference_count: Number(row.reference_count ?? 0),
         created_at: timestampOrNull(row.created_at),
         updated_at: timestampOrNull(row.updated_at),

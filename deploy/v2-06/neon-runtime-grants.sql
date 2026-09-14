@@ -95,6 +95,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_reserve_hosted_style_analysis(uuid, 
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_finish_hosted_style_analysis(uuid, text, text, text, bigint, bigint, bigint)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_style_analysis_state(uuid, uuid, uuid)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_authorize_hosted_cpu_upload(
   uuid, text, text, text, text, bigint, text, timestamptz
 )

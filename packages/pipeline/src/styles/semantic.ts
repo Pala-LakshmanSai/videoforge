@@ -1,16 +1,59 @@
 import {
   canonicalizeJson,
+  ContractValidationError,
+  hashPrevalidatedContractDocument,
+  semanticContractIssues,
   type ImageStyleAnalyzerOutputDocument,
   type ImageStyleProfileDocument,
-  validateAndHashContractDocument,
-  validateContract,
+  type ContractDocument,
+  type ContractName,
+  type ContractValidationIssue,
 } from "@videoforge/contracts";
+import {
+  imageStyleAnalyzerOutput,
+  imageStyleProfile,
+} from "@videoforge/contracts/precompiled-contract-validators";
 
 import { PipelineDomainError } from "../errors.js";
 import { assertNoHardPromptConflict, validatePromptStyleComponents } from "../prompts/compiler.js";
 import { containsReferenceSpecificStyleContent } from "../prompts/types.js";
 import { buildStyleAnalyzerRequest } from "./request.js";
 import { STYLE_TRAITS, type StyleAnalyzerRequest, type TrustedStyleProfile } from "./types.js";
+
+type PrecompiledValidator = ((value: unknown) => boolean) & {
+  readonly errors?:
+    | readonly {
+        readonly instancePath?: string;
+        readonly schemaPath?: string;
+        readonly keyword?: string;
+        readonly message?: string;
+        readonly params?: Readonly<Record<string, unknown>>;
+      }[]
+    | null;
+};
+
+function precompiledIssues(validator: PrecompiledValidator): readonly ContractValidationIssue[] {
+  return (validator.errors ?? []).map((error) => ({
+    instancePath: error.instancePath ?? "",
+    schemaPath: error.schemaPath ?? "#",
+    keyword: error.keyword ?? "schema",
+    message: error.message ?? "Schema validation failed.",
+    params: error.params ?? {},
+  }));
+}
+
+function assertPrecompiledContract<Name extends ContractName>(
+  contractName: Name,
+  validator: PrecompiledValidator,
+  value: unknown,
+): ContractDocument<Name> {
+  if (!validator(value))
+    throw new ContractValidationError(contractName, precompiledIssues(validator));
+  const document = value as ContractDocument<Name>;
+  const semanticIssues = semanticContractIssues(contractName, document);
+  if (semanticIssues.length > 0) throw new ContractValidationError(contractName, semanticIssues);
+  return document;
+}
 
 const containsControl = (value: string): boolean =>
   Array.from(value).some((character) => {
@@ -320,14 +363,24 @@ export async function validateAndAssembleStyleProfile(
     fail("STYLE_SEMANTIC_INVALID", "Analyzer version is invalid.", ["analyzerVersion"]);
   const normalizedRequest = buildStyleAnalyzerRequest(request.references);
   const candidateSnapshot = snapshot(candidate);
-  const schemaResult = validateContract("imageStyleAnalyzerOutput", candidateSnapshot);
+  const analyzerValidator = imageStyleAnalyzerOutput as unknown as PrecompiledValidator;
+  const schemaResult = analyzerValidator(candidateSnapshot)
+    ? { success: true as const, data: candidateSnapshot as ImageStyleAnalyzerOutputDocument }
+    : { success: false as const };
   if (!schemaResult.success)
     return fail("STYLE_OUTPUT_INVALID", "Analyzer output does not match the canonical schema.", []);
   const profileCandidate = validateAnalyzerSemantics(
     schemaResult.data,
     new Set(normalizedRequest.references.map((reference) => reference.alias)),
   );
-  const validated = await validateAndHashContractDocument("imageStyleProfile", profileCandidate);
+  const validated = await hashPrevalidatedContractDocument(
+    "imageStyleProfile",
+    assertPrecompiledContract(
+      "imageStyleProfile",
+      imageStyleProfile as unknown as PrecompiledValidator,
+      profileCandidate,
+    ),
+  );
   return Object.freeze({
     profile: validated.value,
     styleProfileHash: validated.sha256,
@@ -342,7 +395,10 @@ export async function validateStoredStyleProfile(
   referenceAliases: readonly string[],
 ): Promise<Readonly<{ profile: ImageStyleProfileDocument; styleProfileHash: string }>> {
   const candidateSnapshot = snapshot(candidate);
-  const schemaResult = validateContract("imageStyleProfile", candidateSnapshot);
+  const profileValidator = imageStyleProfile as unknown as PrecompiledValidator;
+  const schemaResult = profileValidator(candidateSnapshot)
+    ? { success: true as const, data: candidateSnapshot as ImageStyleProfileDocument }
+    : { success: false as const };
   if (!schemaResult.success)
     return fail(
       "STYLE_OUTPUT_INVALID",
@@ -394,7 +450,14 @@ export async function validateStoredStyleProfile(
       [],
     );
   }
-  const validated = await validateAndHashContractDocument("imageStyleProfile", normalized);
+  const validated = await hashPrevalidatedContractDocument(
+    "imageStyleProfile",
+    assertPrecompiledContract(
+      "imageStyleProfile",
+      imageStyleProfile as unknown as PrecompiledValidator,
+      normalized,
+    ),
+  );
   return deepFreeze({
     profile: validated.value,
     styleProfileHash: validated.sha256,

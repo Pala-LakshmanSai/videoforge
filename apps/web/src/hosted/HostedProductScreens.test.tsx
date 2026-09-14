@@ -1014,6 +1014,7 @@ describe("hosted product journey", () => {
                   name: "Analysis running",
                   version_number: 1,
                   state: "ANALYZING",
+                  analysis_state: "UNKNOWN",
                   scope_kind: "WORKSPACE",
                 },
                 {
@@ -1061,8 +1062,11 @@ describe("hosted product journey", () => {
         "7 references are saved. Continue to verify the uploads, then analyze and publish this style.",
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText("Analysis result unconfirmed")).toBeInTheDocument();
     expect(
-      screen.getByText("Analysis is in progress. We will update this style when it finishes."),
+      screen.getByText(
+        "The analysis result could not be confirmed. Your references are saved. This request has stopped and will not retry automatically.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
