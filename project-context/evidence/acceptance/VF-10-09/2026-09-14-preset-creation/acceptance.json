@@ -1,0 +1,67 @@
+{
+  "schema_version": "videoforge-preset-creation-repair/v1",
+  "checkpoint": "V2-09",
+  "source_commit": "10f415c173363a179535a4bcac1d6119d75ba8fd",
+  "worker_version": "2089443a-3ee2-446b-822d-358fedc594b3",
+  "public_origin": "https://videoforge.buzz",
+  "gpu_transport": "QUALIFIED_EXACT",
+  "cause": "Staging-only conditions hid production creation links, blocked creation routes, and rejected all preset mutations.",
+  "validation": {
+    "focused_tests_passed": 142,
+    "cloudflare_production_build": "PASS",
+    "production_bundle_firewall": "PASS",
+    "changed_file_lint_format": "PASS",
+    "context_validation": "PASS"
+  },
+  "live_api_probes": {
+    "requests": "POST /api/v2/hosted/avatars and /api/v2/hosted/styles; same-origin; empty JSON; no session or idempotency header",
+    "before": {
+      "status": 409,
+      "code": "PRESET_CREATION_NOT_QUALIFIED"
+    },
+    "after": {
+      "status": 400,
+      "codes": [
+        "AVATAR_IDEMPOTENCY_REQUIRED",
+        "STYLE_IDEMPOTENCY_REQUIRED"
+      ]
+    }
+  },
+  "live_chrome": {
+    "both_creation_links_and_forms": "PASS",
+    "avatar_upload_commit_approval": "READY",
+    "avatar_private_preview": "visually_loaded",
+    "avatar_new_project_picker": "present_version_1",
+    "style_reference_upload_commit": "three_references_saved_in_durable_draft",
+    "style_draft_survives_navigation": "PASS",
+    "live_style_ai_analysis": "NOT_RUN",
+    "live_style_publication": "NOT_RUN"
+  },
+  "local_fixture_browser": {
+    "avatar_full_roundtrip": "PASS",
+    "style_upload_analyze_publish_roundtrip": "PASS",
+    "saved_presets_available_in_new_project": "PASS",
+    "console_error_count": 0
+  },
+  "deployment": {
+    "fresh_source_bound_authority": true,
+    "committed_once": true,
+    "initial_readback_error": "V2_09_CLOUDFLARE_PRODUCTION_ROUTE_VERSION_HEADER_DRIFT",
+    "recovery": "read_only_readback_then_exact_existing_qualified_activation",
+    "redeployment_after_error": false
+  },
+  "provider": {
+    "paid_provider_actions": 0,
+    "gpu_jobs_started": 0,
+    "new_retained_resources": 0,
+    "incremental_compute_spend_usd": 0,
+    "global_compute_inventory": "not_refreshed_this_task"
+  },
+  "test_cleanup": {
+    "status": "ARCHIVED_VERIFIED",
+    "avatar_version": "0d006aac-7432-4183-91bb-736c2c84b458",
+    "style_version": "6c4dee1c-7e50-4baa-9ff4-3827428c556c",
+    "referenced_project_revisions": 0,
+    "method": "Existing tenant-scoped archive function; exact version/name/scope/creation-date checks; immutable versions and media retained"
+  }
+}

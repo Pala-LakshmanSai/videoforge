@@ -1,15 +1,22 @@
 schema_version: "2.0"
 preset_creation_repair_2026_09_14:
-  status: VERIFIED_SOURCE_PENDING_DEPLOYMENT
+  status: DEPLOYED_LIVE_CREATION_VERIFIED
   checkpoint: V2-09
   scope: production_avatar_and_image_style_creation
   cause: staging_only_hub_route_and_backend_gates
   repair: production_uses_existing_private_upload_review_approve_and_style_analysis_publish_flows
   validation: focused_backend_and_production_ui_tests_plus_cloudflare_build_pass
-  browser: local_fixture_avatar_and_style_roundtrips_pass_production_signin_pending
+  deployed_source: 10f415c173363a179535a4bcac1d6119d75ba8fd
+  deployed_worker_version: 2089443a-3ee2-446b-822d-358fedc594b3
+  transport: QUALIFIED_EXACT
+  browser: live_chrome_avatar_upload_ready_preview_picker_and_three_reference_style_draft_pass
+  local_browser: complete_avatar_and_style_analysis_publish_roundtrips_pass
+  live_style_analysis: not_rerun_no_provider_charge
   provider_actions: 0
   paid_compute_started: false
-  remaining: qualified_source_deployment_and_authenticated_live_browser_verification
+  remaining: none_within_provider_free_repair_scope
+  test_preset_cleanup: ARCHIVED_VERIFIED_ZERO_PROJECT_REFERENCES
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-preset-creation/acceptance.json
 context_schema_version: "2.0"
 custom_domain_request_2026_09_14:
   domain: videoforge.buzz
