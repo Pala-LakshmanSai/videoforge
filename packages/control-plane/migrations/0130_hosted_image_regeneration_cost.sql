@@ -82,3 +82,12 @@ BEGIN
  OR (OLD.provider_job_id IS NOT NULL AND NEW.provider_job_id IS DISTINCT FROM OLD.provider_job_id) THEN RAISE EXCEPTION 'regeneration identity is immutable' USING ERRCODE='55000'; END IF;
  RETURN NEW;
 END $$;
+
+-- Polling returns only status fields; signed payloads and lineage never leave Postgres here.
+CREATE OR REPLACE FUNCTION public.videoforge_get_hosted_image_regeneration(a uuid,w uuid,p uuid,t uuid,req uuid)
+RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+ SELECT jsonb_build_object('id',r.id,'attempt_id',r.attempt_id,'state',r.state)
+ FROM hosted_image_regeneration_requests r
+ WHERE r.id=req AND r.account_id=a AND r.workspace_id=w AND r.project_id=p
+ AND r.image_task_id=t AND a=public.videoforge_current_account_id()
+$$;

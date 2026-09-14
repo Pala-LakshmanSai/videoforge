@@ -15,6 +15,12 @@ import {
 } from "./hosted-pair-production-composition";
 
 const sha = (label: string): Sha256 => canonicalSha256({ label });
+const authHandler = vi.hoisted(() => vi.fn());
+vi.mock("./auth", () => ({ createHostedAuth: () => ({ handler: authHandler }) }));
+vi.mock("./neon", async (original) => ({
+  ...(await original<typeof import("./neon")>()),
+  createNeonPool: () => ({ end: async () => {} }),
+}));
 const SOURCE_COMMIT = "a".repeat(40);
 const NOW = "2026-08-26T00:02:00.000Z";
 const DATABASE_NOW = "2026-08-26T00:01:00.000Z";
@@ -206,6 +212,41 @@ function resolve(value = verified(), source = environment()) {
 }
 
 describe("qualified hosted GPU transport configuration", () => {
+  it.each(["throw", "response"])(
+    "returns a safe sign-in message when authentication fails via %s",
+    async (failure) => {
+      if (failure === "throw")
+        authHandler.mockRejectedValueOnce(new Error("private database error"));
+      else authHandler.mockResolvedValueOnce(new Response(null, { status: 500 }));
+      const result = await handleHostedRequest(
+        new Request("https://videoforge.example.test/api/auth/sign-in/social", { method: "POST" }),
+        environment(),
+        { waitUntil: vi.fn() },
+        undefined,
+        { now: () => new Date(NOW) },
+      );
+      expect(result.status).toBe(503);
+      await expect(result.json()).resolves.toEqual({
+        code: "AUTH_SERVICE_UNAVAILABLE",
+        message: "Sign-in is temporarily unavailable. Please try again shortly.",
+      });
+    },
+  );
+  it("preserves a successful authentication redirect", async () => {
+    const success = new Response(null, {
+      status: 302,
+      headers: { location: "https://accounts.google.com/" },
+    });
+    authHandler.mockResolvedValueOnce(success);
+    const result = await handleHostedRequest(
+      new Request("https://videoforge.example.test/api/auth/sign-in/social", { method: "POST" }),
+      environment(),
+      { waitUntil: vi.fn() },
+      undefined,
+      { now: () => new Date(NOW) },
+    );
+    expect(result).toBe(success);
+  });
   it("loads the narrow v2 activation snapshot and enables the exact production transport", async () => {
     const verification = verified();
     const source = environment();

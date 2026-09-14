@@ -1653,7 +1653,23 @@ export async function handleHostedRequest(
   if (url.pathname.startsWith("/api/auth/")) {
     const pool = createNeonPool(config.neon.databaseUrl);
     try {
-      return await createHostedAuth({ config, pool, executionContext }).handler(request);
+      const result = await createHostedAuth({ config, pool, executionContext }).handler(request);
+      if (result.status < 500) return result;
+      return json(
+        {
+          code: "AUTH_SERVICE_UNAVAILABLE",
+          message: "Sign-in is temporarily unavailable. Please try again shortly.",
+        },
+        503,
+      );
+    } catch {
+      return json(
+        {
+          code: "AUTH_SERVICE_UNAVAILABLE",
+          message: "Sign-in is temporarily unavailable. Please try again shortly.",
+        },
+        503,
+      );
     } finally {
       await pool.end();
     }

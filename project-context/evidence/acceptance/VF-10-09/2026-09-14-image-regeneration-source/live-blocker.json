@@ -1,0 +1,21 @@
+{
+  "checked_at": "2026-09-14T03:31:00.661353+00:00",
+  "status": "BLOCKED_DATABASE_TRANSFER_QUOTA",
+  "database_error": "Your project has exceeded the data transfer quota. Upgrade your plan to increase limits.",
+  "sign_in_http_status": 500,
+  "database_migrations_applied": [],
+  "worker_deployments": 0,
+  "provider_jobs_started": 0,
+  "runpod_balance_usd": 16.8650115845,
+  "running_pods": 0,
+  "active_serverless_workers": 0,
+  "published_neon_plan_reference": "https://neon.com/docs/introduction/plans",
+  "published_neon_launch": {
+    "minimum_monthly_fee_usd": 0,
+    "compute_usd_per_cu_hour": 0.106,
+    "storage_usd_per_gb_month": 0.35,
+    "included_public_transfer_gb": 500,
+    "additional_transfer_usd_per_gb": 0.1
+  },
+  "recovery": "Restore Neon access by quota reset or account-authorized plan upgrade; recheck database and source-bound preflight before deployment. No billing-plan change authorized under RunPod-only USD2 test cap."
+}

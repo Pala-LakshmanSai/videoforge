@@ -688,6 +688,11 @@ test(
         [request.id],
       );
       assert.equal(result.rows[0].value.state, "ASSIGNED");
+      const status = await executor.query(
+        "SELECT public.videoforge_get_hosted_image_regeneration($1,$2,$3,$4,$5) AS value",
+        [IDS.accountA, IDS.workspaceA, IDS.projectA, IDS.taskA, request.id],
+      );
+      assert.deepEqual(Object.keys(status.rows[0].value).sort(), ["attempt_id", "id", "state"]);
     });
   },
 );

@@ -1,0 +1,89 @@
+{
+  "checkedAt": "2026-09-14T03:24:27.086Z",
+  "balanceUsd": 16.8650115845,
+  "inventory": {
+    "checkedAt": "2026-09-14T03:24:24.742Z",
+    "pods": [
+      {
+        "idHash": "sha256:1f1d5659e422cc80d1467938596e8b06e3c430fe9fa121108005b21475a3eb86",
+        "desiredStatus": "EXITED",
+        "observedStatuses": [
+          "EXITED"
+        ],
+        "endpointWorker": true,
+        "endpointIdHash": "sha256:e07fe49b7152c1c51a5979d6c701c237a18fe3d4c74e6f42ac6fe4da65431e4b",
+        "costPerHourUsd": 0.74
+      },
+      {
+        "idHash": "sha256:b823d5d4dbb8fc2f369dc784ad3116c8faa2f9e9052f2d9907d45efafdd420c0",
+        "desiredStatus": "EXITED",
+        "observedStatuses": [
+          "EXITED"
+        ],
+        "endpointWorker": true,
+        "endpointIdHash": "sha256:7fcba58322146f2fe368ad2e60f47450e89dfde1cf6adb9a17ea854e5bd6f89a",
+        "costPerHourUsd": 0.74
+      }
+    ],
+    "endpoints": [
+      {
+        "idHash": "sha256:e07fe49b7152c1c51a5979d6c701c237a18fe3d4c74e6f42ac6fe4da65431e4b",
+        "workersMin": 0,
+        "workersMax": 1,
+        "workerRecordsReported": true,
+        "workerRecordCount": 1,
+        "activeWorkerCount": 0,
+        "exitedWorkerCount": 1,
+        "workerStatuses": [
+          "EXITED"
+        ],
+        "scaleZeroCompliant": true
+      },
+      {
+        "idHash": "sha256:7fcba58322146f2fe368ad2e60f47450e89dfde1cf6adb9a17ea854e5bd6f89a",
+        "workersMin": 0,
+        "workersMax": 1,
+        "workerRecordsReported": true,
+        "workerRecordCount": 1,
+        "activeWorkerCount": 0,
+        "exitedWorkerCount": 1,
+        "workerStatuses": [
+          "EXITED"
+        ],
+        "scaleZeroCompliant": true
+      }
+    ],
+    "privateTemplateCount": 4,
+    "networkVolumes": [
+      {
+        "idHash": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "sizeGb": 50,
+        "dataCenterId": "EU-RO-1"
+      },
+      {
+        "idHash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "sizeGb": 50,
+        "dataCenterId": "EU-RO-1"
+      }
+    ],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  },
+  "gpuOfferings": [
+    {
+      "id": "NVIDIA GeForce RTX 4090",
+      "price": {
+        "community": 0.34,
+        "secure": 0.74,
+        "serverless": 1.1
+      },
+      "dataCenters": [
+        {
+          "availability": "MEDIUM",
+          "id": "EU-RO-1",
+          "name": "EU-RO-1"
+        }
+      ]
+    }
+  ]
+}
