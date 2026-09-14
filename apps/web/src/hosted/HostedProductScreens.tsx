@@ -4000,8 +4000,23 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const promptStageState = query.data?.stages?.find(
     (stage) => stage.id === "prompt-writing",
   )?.status;
+  const spanAudio = query.data?.span_audio;
+  const spanPreparationActive = Boolean(
+    query.data?.generation?.id &&
+      query.data.generation.stage !== "FAILED" &&
+      Number(query.data.generation.failed_tasks) === 0 &&
+      hostedTerminalStageStatus(query.data.stages, query.data.attempts) === null &&
+      !query.data.stages?.some((stage) =>
+        HOSTED_TERMINAL_STAGE_STATUSES.has(stage.status.toUpperCase()),
+      ) &&
+      spanAudio &&
+      spanAudio.failed === 0 &&
+      spanAudio.materialized < spanAudio.total &&
+      (spanAudio.running > 0 || spanAudio.materialized > 0),
+  );
   const gpuDispatchReady = Boolean(
     query.data?.generation?.id &&
+      !spanPreparationActive &&
       query.data.generation.stage === "READY_FOR_GPU_DISPATCH" &&
       promptStageState === "COMPLETE" &&
       query.data.gpu_transport === "QUALIFIED_EXACT" &&
@@ -4014,6 +4029,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   );
   const gpuDispatchResumeReady = Boolean(
     query.data?.generation?.id &&
+      !spanPreparationActive &&
       promptStageState === "COMPLETE" &&
       query.data.gpu_transport === "QUALIFIED_EXACT" &&
       query.data.gpu_readiness.dispatch_available === true &&
@@ -4436,7 +4452,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       </section>
 
-      {gpuDispatch.isPending ? (
+      {spanPreparationActive ? (
+        <div className="validation validation-info" role="status" aria-live="polite">
+          Preparing exact avatar audio. Generation continues when ready.
+        </div>
+      ) : gpuDispatch.isPending ? (
         <div className="validation validation-info" role="status" aria-live="polite">
           Generation is starting…
         </div>
