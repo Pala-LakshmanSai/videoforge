@@ -12,7 +12,6 @@ const COMMIT = /^[0-9a-f]{40}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const WORKER_NAME = "videoforge-production-runtime";
-const PUBLIC_ORIGIN = "https://videoforge-production-runtime.lakshmansai121.workers.dev";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -69,6 +68,47 @@ function privateFile(path: string): void {
 function readPrivateText(path: string): string {
   privateFile(path);
   return readFileSync(path, "utf8");
+}
+
+function readQualifiedPublicOrigin(path: string, expectedConfigHash: unknown): string {
+  privateFile(path);
+  const bytes = readFileSync(path);
+  if (typeof expectedConfigHash !== "string" || !HASH.test(expectedConfigHash))
+    fail("QUALIFIED_CONFIG_HASH_INVALID");
+  if (sha256(bytes) !== expectedConfigHash) fail("QUALIFIED_CONFIG_HASH_DRIFT");
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    fail("QUALIFIED_CONFIG_JSON_INVALID");
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+    fail("QUALIFIED_CONFIG_JSON_INVALID");
+  const vars = (parsed as JsonRecord).vars;
+  if (vars === null || typeof vars !== "object" || Array.isArray(vars))
+    fail("QUALIFIED_CONFIG_ORIGIN_INVALID");
+  const origin = (vars as JsonRecord).VIDEOFORGE_PUBLIC_ORIGIN;
+  if (typeof origin !== "string") fail("QUALIFIED_CONFIG_ORIGIN_INVALID");
+
+  let parsedOrigin: URL;
+  try {
+    parsedOrigin = new URL(origin);
+  } catch {
+    fail("QUALIFIED_CONFIG_ORIGIN_INVALID");
+  }
+  if (
+    parsedOrigin.protocol !== "https:" ||
+    parsedOrigin.username !== "" ||
+    parsedOrigin.password !== "" ||
+    parsedOrigin.pathname !== "/" ||
+    parsedOrigin.search !== "" ||
+    parsedOrigin.hash !== "" ||
+    parsedOrigin.origin !== origin ||
+    parsedOrigin.hostname.includes("*")
+  )
+    fail("QUALIFIED_CONFIG_ORIGIN_INVALID");
+  return origin;
 }
 
 function writePrivateFile(path: string, value: string): void {
@@ -272,6 +312,10 @@ async function execute(args: Readonly<Record<string, string>>): Promise<JsonReco
     !HASH.test(String(version.versionIdSha256 ?? ""))
   )
     fail("LIVE_VERSION_INVALID");
+  const publicOrigin = readQualifiedPublicOrigin(
+    configuration.qualifiedConfigPath,
+    (authority.production as JsonRecord).config_sha256,
+  );
   const prior = readPriorEvidence(databaseUrl);
   const payload: JsonRecord = {
     ...prior,
@@ -308,7 +352,7 @@ async function execute(args: Readonly<Record<string, string>>): Promise<JsonReco
   }
   const importResult = validateImportReadback(importValue, payload, version);
   writePrivateFile(join(privateRoot, "activation-result.json"), `${canonical(importResult)}\n`);
-  const response = await fetch(`${PUBLIC_ORIGIN}/api/v2/hosted/status`, {
+  const response = await fetch(`${publicOrigin}/api/v2/hosted/status`, {
     redirect: "error",
     headers: { accept: "application/json" },
   });

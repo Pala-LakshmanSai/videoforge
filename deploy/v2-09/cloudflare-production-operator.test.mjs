@@ -151,6 +151,36 @@ function authority(value) {
   };
 }
 
+function customOrigin(value, origin = "https://videoforge.buzz") {
+  const qualified = JSON.parse(readFileSync(value.configuration.qualifiedConfigPath, "utf8"));
+  qualified.vars.VIDEOFORGE_PUBLIC_ORIGIN = origin;
+  writeFileSync(
+    value.configuration.qualifiedConfigPath,
+    `${JSON.stringify(qualified, null, 2)}\n`,
+    {
+      mode: 0o600,
+    },
+  );
+  value.qualified = qualified;
+  value.configSha256 = hash(readFileSync(value.configuration.qualifiedConfigPath));
+  return value;
+}
+
+function customDomainRecord(overrides = {}) {
+  return {
+    id: "domain-record-1",
+    zone_id: "b".repeat(32),
+    zone_name: "videoforge.buzz",
+    hostname: "videoforge.buzz",
+    service: "videoforge-production-runtime",
+    environment: "production",
+    cert_id: "certificate-1",
+    previews_enabled: false,
+    enabled: true,
+    ...overrides,
+  };
+}
+
 function harness(
   value,
   {
@@ -158,6 +188,9 @@ function harness(
     mutateVersionOnce,
     wrongRouteVersion = false,
     predecessor = null,
+    customDomainRecords = [],
+    customDomainErrors = [],
+    customDomainMessages = [],
   } = {},
 ) {
   const calls = [];
@@ -282,6 +315,10 @@ function harness(
     let result;
     if (path === "/") result = { id: value.qualified.account_id };
     else if (path === "/workers/subdomain") result = { subdomain: "account-subdomain" };
+    else if (
+      path === `/workers/domains/records?service=${value.configuration.workerName}&environment=`
+    )
+      result = customDomainRecords;
     else if (path.endsWith("/settings")) {
       status = 404;
       result = null;
@@ -294,16 +331,23 @@ function harness(
         status,
         body: {
           success: status === 200,
-          errors: [],
-          messages: [],
+          errors: path.startsWith("/workers/domains/records?") ? customDomainErrors : [],
+          messages: path.startsWith("/workers/domains/records?") ? customDomainMessages : [],
           result,
           ...(Array.isArray(result)
             ? {
-                result_info: {
-                  page: 1,
-                  total_pages: 1,
-                  total_count: result.length,
-                },
+                result_info: path.startsWith("/workers/domains/records?")
+                  ? {
+                      page: 1,
+                      per_page: Math.max(1, result.length),
+                      count: result.length,
+                      total_count: result.length,
+                    }
+                  : {
+                      page: 1,
+                      total_pages: 1,
+                      total_count: result.length,
+                    },
               }
             : {}),
         },
@@ -359,6 +403,67 @@ async function executeThroughQualified(operator, approved) {
   });
   return { deployed, disabled, readback, secrets };
 }
+
+test("custom origin accepts only one enabled production domain bound to this Worker", async () => {
+  const value = customOrigin(fixture());
+  const mock = harness(value, {
+    customDomainRecords: [customDomainRecord()],
+    customDomainErrors: null,
+    customDomainMessages: null,
+  });
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+
+  const result = await executeThroughQualified(operator, authority(value));
+
+  assert.equal(result.readback.gpu_transport, "QUALIFIED_EXACT");
+  assert.deepEqual(mock.apiCalls.slice(0, 3), [
+    "/",
+    "/workers/subdomain",
+    "/workers/domains/records?service=videoforge-production-runtime&environment=",
+  ]);
+});
+
+test("custom origin fails closed before deployment when binding is absent, wrong, or disabled", async () => {
+  for (const records of [
+    [],
+    [customDomainRecord({ service: "other-worker" })],
+    [customDomainRecord({ enabled: false })],
+  ]) {
+    const value = customOrigin(fixture());
+    const mock = harness(value, { customDomainRecords: records });
+    const operator = createV209CloudflareProductionOperator(value.configuration, {
+      testOnly: true,
+      runChild: mock.runChild,
+      fetchImpl: mock.fetchImpl,
+      oauthApiResponse: mock.oauthApiResponse,
+      snapshotUploadArtifact: mock.snapshotUploadArtifact,
+      secretBulk: mock.secretBulk,
+      now: () => new Date("2026-09-06T22:00:00Z"),
+    });
+
+    await assert.rejects(
+      operator.deployCloudflareDisabled.run({
+        authority: authority(value),
+        operationId: "deploy-cloudflare-disabled-bootstrap",
+      }),
+      /CUSTOM_DOMAIN_INVENTORY_DRIFT/u,
+    );
+    assert.deepEqual(mock.calls, []);
+    assert.deepEqual(mock.apiCalls, [
+      "/",
+      "/workers/subdomain",
+      "/workers/domains/records?service=videoforge-production-runtime&environment=",
+    ]);
+  }
+});
 
 test("deployment factory binds before render and requires exact private config before provider access", async () => {
   const value = fixture();

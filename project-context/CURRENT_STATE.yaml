@@ -1,5 +1,11 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
+custom_domain_request_2026_09_14:
+  domain: videoforge.buzz
+  status: CUSTOM_DOMAIN_HTTPS_READY_CANONICAL_DEPLOYMENT_PENDING
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-custom-domain/setup.json
+  production_origin_changed: false
+  paid_compute_started: false
 image_review_regeneration_request_2026_09_14:
   status: ACCEPTED_LIVE_ZERO_COMPUTE
   base_commit: 6be8853b

@@ -49,6 +49,7 @@ const JOURNAL_SCHEMA = "videoforge.v2-09-cloudflare-production-journal/v1";
 const PORT_SCHEMA = "videoforge.v2-09-cloudflare-production-port/v1";
 const STATUS_PATH = "/api/v2/hosted/status";
 const VERSION_HEADER = "x-videoforge-worker-version";
+const WORKERS_DOMAIN_RECORDS_PATH = "/workers/domains/records";
 const IMPORTED_DEPENDENCY_PATHS = Object.freeze([
   "deploy/v2-09/cloudflare-secret-bulk.mjs",
   "deploy/v2-09/dry-output-bundle.mjs",
@@ -600,6 +601,7 @@ const FAILURE_CODES = new Set([
     "ROUTE_SOURCE_DRIFT",
     "ROUTE_ENVIRONMENT_DRIFT",
     "ROUTE_TRANSPORT_DRIFT",
+    "CUSTOM_DOMAIN_INVENTORY_DRIFT",
 
     "SECRET_LIST_FAILED",
     "SECRET_DELETE_FAILED",
@@ -854,6 +856,88 @@ async function oauthRead(runtime, qualified, path, code) {
   return apiEnvelope(response, code);
 }
 
+function workersDomainRecordsPath(workerName) {
+  return `${WORKERS_DOMAIN_RECORDS_PATH}?service=${encodeURIComponent(workerName)}&environment=`;
+}
+
+async function verifyCustomDomainOrigin(runtime, qualified) {
+  const origin = new URL(qualified.vars.VIDEOFORGE_PUBLIC_ORIGIN);
+  if (origin.port !== "") fail("CUSTOM_DOMAIN_INVENTORY_DRIFT");
+  const hostname = origin.hostname;
+  const envelope = await oauthRead(
+    runtime,
+    qualified,
+    workersDomainRecordsPath(qualified.name),
+    "CUSTOM_DOMAIN_INVENTORY",
+  );
+  const body = envelope.body;
+  const records = body?.result;
+  const info = body?.result_info;
+  if (
+    envelope.status !== 200 ||
+    body?.success !== true ||
+    !(body?.errors === null || (Array.isArray(body?.errors) && body.errors.length === 0)) ||
+    !(body?.messages === null || (Array.isArray(body?.messages) && body.messages.length === 0)) ||
+    !Array.isArray(records) ||
+    !info ||
+    typeof info !== "object" ||
+    info.page !== 1 ||
+    !Number.isSafeInteger(info.per_page) ||
+    info.per_page < records.length ||
+    !Number.isSafeInteger(info.count) ||
+    info.count !== records.length ||
+    !Number.isSafeInteger(info.total_count) ||
+    info.total_count !== records.length
+  )
+    fail("CUSTOM_DOMAIN_INVENTORY_DRIFT");
+
+  const hostnames = new Set();
+  const ids = new Set();
+  for (const record of records) {
+    if (
+      !exactKeys(record, [
+        "cert_id",
+        "enabled",
+        "environment",
+        "hostname",
+        "id",
+        "previews_enabled",
+        "service",
+        "zone_id",
+        "zone_name",
+      ]) ||
+      typeof record.id !== "string" ||
+      record.id.length === 0 ||
+      typeof record.zone_id !== "string" ||
+      record.zone_id.length === 0 ||
+      typeof record.zone_name !== "string" ||
+      record.zone_name.length === 0 ||
+      typeof record.hostname !== "string" ||
+      record.hostname.length === 0 ||
+      typeof record.service !== "string" ||
+      typeof record.environment !== "string" ||
+      typeof record.cert_id !== "string" ||
+      record.cert_id.length === 0 ||
+      typeof record.enabled !== "boolean" ||
+      typeof record.previews_enabled !== "boolean" ||
+      hostnames.has(record.hostname) ||
+      ids.has(record.id)
+    )
+      fail("CUSTOM_DOMAIN_INVENTORY_DRIFT");
+    hostnames.add(record.hostname);
+    ids.add(record.id);
+  }
+
+  const matches = records.filter(
+    (record) =>
+      record.hostname === hostname &&
+      record.service === qualified.name &&
+      record.environment === "production" &&
+      record.enabled === true,
+  );
+  if (matches.length !== 1) fail("CUSTOM_DOMAIN_INVENTORY_DRIFT");
+}
+
 async function verifyPredecessorBaseline(runtime, authority, context, qualified) {
   const baseline = runtime.configuration.predecessorBaseline;
   privateFile(baseline.qualifiedConfigPath);
@@ -940,10 +1024,11 @@ async function exactPreMutationInventory(runtime, authority, context, journal) {
   if (
     subdomain.status !== 200 ||
     subdomain.body?.success !== true ||
-    !/^[a-z0-9][a-z0-9-]{0,62}$/u.test(subdomain.body?.result?.subdomain ?? "") ||
-    exactPublicOrigin !== qualified.vars.VIDEOFORGE_PUBLIC_ORIGIN
+    !/^[a-z0-9][a-z0-9-]{0,62}$/u.test(subdomain.body?.result?.subdomain ?? "")
   )
     fail("ORIGIN_INVENTORY_DRIFT");
+  if (exactPublicOrigin !== qualified.vars.VIDEOFORGE_PUBLIC_ORIGIN)
+    await verifyCustomDomainOrigin(runtime, qualified);
   const worker = await oauthRead(
     runtime,
     qualified,

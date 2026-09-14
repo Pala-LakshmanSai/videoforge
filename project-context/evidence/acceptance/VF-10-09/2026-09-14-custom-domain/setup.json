@@ -1,0 +1,39 @@
+{
+  "status": "CUSTOM_DOMAIN_HTTPS_READY_CANONICAL_DEPLOYMENT_PENDING",
+  "checked_at": "2026-09-14T07:15:13.832997+00:00",
+  "domain": "videoforge.buzz",
+  "zone_id": "66e47fc273f5fd0e7be7bedd81b510a9",
+  "nameservers": [
+    "holly.ns.cloudflare.com",
+    "johnny.ns.cloudflare.com"
+  ],
+  "registrar_save_verified": true,
+  "public_dns_propagation_verified": true,
+  "cloudflare_plan": "Free",
+  "worker": "videoforge-production-runtime",
+  "worker_version_unchanged": "c5bf759f-0940-43d4-ae37-b5b69ea20b1c",
+  "custom_domain_put": "409 / 100117: imported parking A records must be deleted first",
+  "parking_A_records": [
+    "54.149.79.189",
+    "34.216.117.25"
+  ],
+  "old_callback_preserved": true,
+  "remaining": [
+    "Update canonical public origin through qualified deployment and activation",
+    "Verify Google sign-in, project access, media and paired computer on new domain"
+  ],
+  "gpu_actions": 0,
+  "cloudflare_zone_status": "active",
+  "parking_A_records_deleted": true,
+  "custom_domain_binding": {
+    "hostname": "videoforge.buzz",
+    "service": "videoforge-production-runtime",
+    "environment": "production",
+    "enabled": true
+  },
+  "https_verified": true,
+  "chrome_signin_page_verified": true,
+  "oauth_callback_saved": "https://videoforge.buzz/api/auth/callback/google",
+  "http_redirect_to_https_verified": true,
+  "local_dns_note": "Chrome and public resolvers resolve correctly; macOS system lookup temporarily retains ENOTFOUND. Deployment-process-only public DNS lookup uses 1.1.1.1; HTTPS validation remains enabled."
+}
