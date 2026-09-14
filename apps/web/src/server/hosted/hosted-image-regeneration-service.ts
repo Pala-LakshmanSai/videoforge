@@ -81,6 +81,7 @@ export function createHostedImageRegenerationService(input: {
           compiledPrompt: { ...compiled, positivePrompt: args.prompt, positivePromptSha256 },
         };
         const issuedAt = new Date().toISOString(),
+          deadlineAt = new Date(Date.parse(issuedAt) + 600_000).toISOString(),
           expiresAt = new Date(Date.parse(issuedAt) + 3_600_000).toISOString();
         const sourceEnvelope = record(record(source.requestBody).envelope);
         const unsigned: Row = {
@@ -154,7 +155,7 @@ export function createHostedImageRegenerationService(input: {
             envelopeSha256: await sha256CanonicalJson(envelope),
             requestSha256: await sha256CanonicalJson(withoutEnvelope),
           },
-          deadlineAt: expiresAt,
+          deadlineAt,
           requestBody: materialized.body,
           candidateWork: [work],
         } as unknown as PreparedImageRegenerationLineage;
