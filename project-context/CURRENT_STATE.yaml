@@ -10,8 +10,9 @@ span_performance_repair_2026_09_14:
   proven_blocker: "Concurrent span schedulers deleted committed templates. Three exact missing templates restored; race, redundant scheduling, repeated downloads and successful-job sleeps repaired."
   subsequent_gate: "211-image request exceeds qualified Mage ordinary parser cap64; provider returned COMPLETED with FAILED/MAGE_BATCH_SIZE_INVALID. Attempt consumed, not replayed."
   candidate: "Ordinary plan cap4096 matches signed envelope; generation remains sequential. 211-item fixture plus malformed/oversize regressions: 57 tests pass. New image publication/qualification pending."
+  provider_observation: "18:06:34Z: both provider jobs terminal, SoulX SUCCEEDED65items. Zero active inventory workers/Pods and empty queues. Balance16.1266211683; decrease0.3440237777 since predispatch. DB settled18:07:38Z: SoulX SUCCEEDED, Mage PERMANENT_FAILED, runtimeFAILED. Transient zero-evidence rejection recovered; original predicate unproven."
   evidence: evidence/acceptance/VF-10-09/2026-09-14-span-performance/acceptance.json
-  remaining: "Qualify candidate under fresh finite spend authority; reconcile current SoulX attempt and provider cleanup; long-video final acceptance remains open."
+  remaining: "Qualify candidate under fresh finite spend authority; fresh long-video final acceptance remains open. Existing failed runtime is immutable; partial recovery unsupported."
 short_comparison_repair_2026_09_14:
   status: ACCEPTED_LIVE_SHORT_PIPELINE
   checkpoint: V2-09

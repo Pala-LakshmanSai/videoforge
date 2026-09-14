@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "videoforge.local-mage-overlay-review/v1",
+  "sourceCommit": "ad6258ae079762c05434048c76072dd656e378cd",
+  "candidateImage": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:a74a622400ab21a51f270176ce0df1e7ea292f1ded999abe6193b4c40bb1fde3",
+  "verified": true,
+  "exactHandlerReadback": true,
+  "preservedBaseLayerCount": 23,
+  "addedCompressedLayerBytes": 15266,
+  "publicationPerformed": false,
+  "providerMutations": 0,
+  "gpuJobs": 0,
+  "identity": {
+    "architecture": "amd64",
+    "config_digest": "sha256:2e2f7cf2fab2d4f36241d0c44955182dddb19e5ebc825524027ef11a872bef97",
+    "config_size_bytes": 16670,
+    "created": "2026-09-14T17:59:00Z",
+    "created_by": "COPY workers/image-media/mage_serverless.py /opt/videoforge/mage_serverless.py",
+    "destination": "/opt/videoforge/mage_serverless.py",
+    "layer_diff_id": "sha256:130ed092934b7414145144093dd7d41bc35a4925c458ff54932e3d172852d718",
+    "layer_digest": "sha256:55640594c0a4f8c67c514450fdc5640a1b50b3e4d21676fe6ab20c9bfc1813bc",
+    "layer_size_bytes": 15266,
+    "layer_tar_size_bytes": 71680,
+    "manifest_digest": "sha256:a74a622400ab21a51f270176ce0df1e7ea292f1ded999abe6193b4c40bb1fde3",
+    "media_type": "application/vnd.docker.distribution.manifest.v2+json",
+    "os": "linux",
+    "overlay_kind": "source-only-overlay-v2",
+    "parent_image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
+    "schema_version": "videoforge.v2-07-deterministic-oci-overlay/v1",
+    "source_commit": "ad6258ae079762c05434048c76072dd656e378cd",
+    "source_files": [
+      {
+        "destination": "/opt/videoforge/mage_serverless.py",
+        "source_sha256": "sha256:c0c90363aad00963ce558b22f9a202b66e7b77b73fe757abb53013764d83f3d1",
+        "source_size_bytes": 66888
+      }
+    ],
+    "source_sha256": "sha256:c0c90363aad00963ce558b22f9a202b66e7b77b73fe757abb53013764d83f3d1"
+  }
+}

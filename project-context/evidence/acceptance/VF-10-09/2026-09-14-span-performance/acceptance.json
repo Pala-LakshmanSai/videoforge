@@ -42,9 +42,8 @@
     "idle_health_entries_are_not_active_compute_evidence": true
   },
   "remaining": [
-    "New immutable Mage image qualification requires finite authority",
-    "Existing SoulX settlement and zero-compute audit",
-    "Long-video final output acceptance"
+    "Publish and qualify candidate under fresh finite spend authority",
+    "Fresh long-video final output acceptance; partial recovery is unsupported"
   ],
   "production_bundle_repair_verified": true,
   "audio_cadence": {
@@ -87,5 +86,7 @@
     "candidate_gpu_concurrency": 1,
     "published": false,
     "paid_attempt_replayed": false
-  }
+  },
+  "provider_terminal_evidence": "provider-terminal-zero-compute.json",
+  "candidate_local_evidence": "mage-candidate-local-verification.json"
 }

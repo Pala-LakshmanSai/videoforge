@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "videoforge.runpod-provider-monitor/v1",
+  "checkedAt": "2026-09-14T18:06:34.053Z",
+  "balanceUsd": 16.1266211683,
+  "balanceDeltaFromBaselineUsd": -0.3440237777,
+  "baselineBalanceUsd": 16.470644946,
+  "exactSku": {
+    "sku": "NVIDIA GeForce RTX 4090",
+    "serverlessFlexRateUsdPerGpuHour": 1.1,
+    "region": "EU-RO-1",
+    "availability": "LOW"
+  },
+  "status": {
+    "runningPodCount": 0,
+    "activeInventoryWorkerCount": 0,
+    "inventoryZeroActive": true,
+    "healthWorkerCount": 0,
+    "healthThrottledWorkerCount": 2,
+    "healthUnhealthyWorkerCount": 0,
+    "zeroActive": true,
+    "queueEmpty": true,
+    "endpointConfigBound": true,
+    "balanceFloorOk": true,
+    "rateCeilingOk": true
+  },
+  "lanes": [
+    {
+      "lane": "mage",
+      "endpointIdHash": "sha256:7fcba58322146f2fe368ad2e60f47450e89dfde1cf6adb9a17ea854e5bd6f89a",
+      "httpStatus": 200,
+      "workers": {
+        "idle": 0,
+        "ready": 0,
+        "running": 0,
+        "initializing": 0,
+        "throttled": 1,
+        "unhealthy": 0
+      },
+      "jobs": {
+        "inQueue": 0,
+        "inProgress": 0
+      }
+    },
+    {
+      "lane": "soulx",
+      "endpointIdHash": "sha256:e07fe49b7152c1c51a5979d6c701c237a18fe3d4c74e6f42ac6fe4da65431e4b",
+      "httpStatus": 200,
+      "workers": {
+        "idle": 0,
+        "ready": 0,
+        "running": 0,
+        "initializing": 0,
+        "throttled": 1,
+        "unhealthy": 0
+      },
+      "jobs": {
+        "inQueue": 0,
+        "inProgress": 0
+      }
+    }
+  ],
+  "soulx": {
+    "transport": "COMPLETED",
+    "workerStatus": "SUCCEEDED",
+    "items": 65,
+    "executionTimeMs": 1109369
+  },
+  "databaseSettlement": {
+    "observedTerminalAt": "2026-09-14T18:07:38.439055Z",
+    "soulxAttempt": "SUCCEEDED",
+    "mageAttempt": "PERMANENT_FAILED",
+    "runtime": "FAILED",
+    "reason": "LANE_PERMANENT_FAILURE",
+    "zeroEvidenceTransientRecovered": true,
+    "initialRejectedPredicate": "UNPROVEN"
+  }
+}
