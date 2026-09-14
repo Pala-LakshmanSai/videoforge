@@ -230,6 +230,7 @@ describe("hosted image regeneration service", () => {
     const batch = record(body.batch);
     const item = record((batch.items as unknown[])[0]);
     const authority = record((body.generated_output_authorities as unknown[])[0]);
+    const limits = record(record(body.envelope).limits);
     const lineage = prepared.lineage;
     const candidate = record((lineage.candidateWork as unknown[])[0]);
 
@@ -244,6 +245,10 @@ describe("hosted image regeneration service", () => {
     });
     expect(item.seed).not.toBe(41);
     expect(item.positive_prompt_sha256).toBe(digestUtf8(editedPrompt));
+    expect(typeof limits.issued_at).toBe("string");
+    expect(Date.parse(String(limits.expires_at)) - Date.parse(String(limits.issued_at))).toBe(
+      3_600_000,
+    );
     expect(authority).toMatchObject({
       reservation_id: outputReservationId,
       account_id: accountId,

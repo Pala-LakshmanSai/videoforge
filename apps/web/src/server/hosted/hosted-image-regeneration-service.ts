@@ -81,7 +81,7 @@ export function createHostedImageRegenerationService(input: {
           compiledPrompt: { ...compiled, positivePrompt: args.prompt, positivePromptSha256 },
         };
         const issuedAt = new Date().toISOString(),
-          expiresAt = new Date(Date.parse(issuedAt) + 600_000).toISOString();
+          expiresAt = new Date(Date.parse(issuedAt) + 3_600_000).toISOString();
         const sourceEnvelope = record(record(source.requestBody).envelope);
         const unsigned: Row = {
           ...sourceEnvelope,
@@ -99,7 +99,12 @@ export function createHostedImageRegenerationService(input: {
             transfer_port_reservation_ids: [reservationId],
             input_manifest_sha256: await sha256CanonicalJson([work]),
           },
-          limits: { ...record(sourceEnvelope.limits), expires_at: expiresAt, max_items: 1 },
+          limits: {
+            ...record(sourceEnvelope.limits),
+            issued_at: issuedAt,
+            expires_at: expiresAt,
+            max_items: 1,
+          },
         };
         delete unsigned.authority_sha256;
         delete unsigned.signature;
@@ -123,7 +128,7 @@ export function createHostedImageRegenerationService(input: {
             envelope,
             work: [work],
             imageSeed: crypto.getRandomValues(new Uint32Array(1))[0]! & 0x7fffffff,
-            requestTtlSeconds: 600,
+            requestTtlSeconds: 3_600,
           },
           new HostedR2Signer(input.config.r2),
         );
