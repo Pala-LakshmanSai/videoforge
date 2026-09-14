@@ -21,6 +21,8 @@ const testState = vi.hoisted(() => {
   const projectDetailAttemptRows: Record<string, unknown>[] = [];
   const projectDetailMediaRows: Record<string, unknown>[] = [];
   const projectDetailPromptRows: Record<string, unknown>[] = [];
+  const createReplayRows: Record<string, unknown>[] = [];
+  const renewedReservationRows: Record<string, unknown>[] = [];
   const rateLimitRows = [{ allowed: true }];
   const archiveState: {
     rows: Record<string, unknown>[];
@@ -58,6 +60,21 @@ const testState = vi.hoisted(() => {
         rows: projectCancellationState.rows,
         affectedRows: projectCancellationState.rows.length,
       };
+    }
+    if (sql.includes("FROM hosted_project_create_requests AS request")) {
+      return {
+        rows: createReplayRows.map((row) => ({
+          ...row,
+          request_sha256: row.request_sha256 ?? params?.[3],
+        })),
+        affectedRows: createReplayRows.length,
+      };
+    }
+    if (
+      sql.includes("UPDATE artifact_reservations SET expires_at") &&
+      sql.includes("RETURNING expires_at")
+    ) {
+      return { rows: renewedReservationRows, affectedRows: renewedReservationRows.length };
     }
     if (sql.includes("SELECT request.id::text AS generation_request_id")) {
       return { rows: providerBoundPairRows, affectedRows: providerBoundPairRows.length };
@@ -115,6 +132,8 @@ const testState = vi.hoisted(() => {
     projectDetailAttemptRows,
     projectDetailMediaRows,
     projectDetailPromptRows,
+    createReplayRows,
+    renewedReservationRows,
     rateLimitRows,
     archiveState,
     projectArchiveState,
@@ -198,6 +217,138 @@ describe("hosted project title conflicts", () => {
       hostedProjectConflictProblem("hosted_project_create_requests_idempotency_key_key", "helen"),
     ).toBeNull();
     expect(hostedProjectConflictProblem(null, "helen")).toBeNull();
+  });
+});
+
+describe("hosted project upload renewal", () => {
+  const createEnvironment = {
+    PRIVATE_ARTIFACTS: {},
+  } as unknown as HostedRuntimeEnvironment;
+  const revisionId = "22222222-2222-4222-8222-222222222222";
+  const oldReservationId = "55555555-5555-4555-8555-555555555555";
+  const objectKey =
+    `tenant/${testState.scopeRows[0]?.account_id}/workspace/${testState.scopeRows[0]?.workspace_id}` +
+    `/project/${PROJECT_ID}/revision/${revisionId}/lane/input/job/browser-upload/artifact/voiceover`;
+  const checksum = `sha256:${"a".repeat(64)}`;
+  const createBody = {
+    schema_version: "videoforge-hosted-project-create/v1",
+    title: "Retryable upload project",
+    avatar_profile_version_id: PRESET_ID,
+    image_style_version_id: "66666666-6666-4666-8666-666666666666",
+    voiceover: {
+      filename: "voiceover.mp3",
+      content_type: "audio/mpeg",
+      content_length: 320_000,
+      checksum_sha256: checksum,
+      duration_ms: 159_216,
+    },
+  };
+
+  const replayRow = (state: "UPLOAD_PENDING" | "READY", expiresAt: string) => ({
+    request_sha256: null,
+    state,
+    project_id: PROJECT_ID,
+    project_revision_id: revisionId,
+    upload_reservation_id: oldReservationId,
+    object_key: objectKey,
+    content_type: "audio/mpeg",
+    content_length: 320_000,
+    checksum_sha256: checksum,
+    expires_at: expiresAt,
+  });
+
+  it("renews an expiring pending reservation without changing project lineage", async () => {
+    testState.query.mockClear();
+    testState.createReplayRows.splice(
+      0,
+      testState.createReplayRows.length,
+      replayRow("UPLOAD_PENDING", new Date(Date.now() + 60_000).toISOString()),
+    );
+    const renewedExpiry = new Date(Date.now() + 15 * 60_000).toISOString();
+    testState.renewedReservationRows.splice(0, testState.renewedReservationRows.length, {
+      expires_at: renewedExpiry,
+    });
+
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects", "POST", createBody, true, {
+          "idempotency-key": "hosted-project-retry-0000001",
+        }),
+        createEnvironment,
+        config,
+        executionContext,
+      );
+      expect(result?.status).toBe(201);
+      const body = (await result?.json()) as {
+        project_id: string;
+        project_revision_id: string;
+        state: string;
+      };
+      expect(body).toMatchObject({
+        project_id: PROJECT_ID,
+        project_revision_id: revisionId,
+        state: "UPLOAD_PENDING",
+      });
+
+      const renewalCall = testState.query.mock.calls.find(
+        ([sql]) =>
+          String(sql).includes("UPDATE artifact_reservations SET expires_at") &&
+          String(sql).includes("RETURNING expires_at"),
+      );
+      expect(renewalCall).toBeDefined();
+      const renewalParameters = renewalCall?.[1] as readonly unknown[] | undefined;
+      expect(renewalParameters?.[0]).toBe(oldReservationId);
+      expect(renewalParameters?.[1]).toBe(testState.scopeRows[0]?.account_id);
+      expect(renewalParameters?.[2]).toBe(testState.scopeRows[0]?.workspace_id);
+      expect(
+        testState.query.mock.calls.some(([sql]) =>
+          String(sql).includes("INSERT INTO artifact_reservations"),
+        ),
+      ).toBe(false);
+      expect(
+        testState.query.mock.calls.some(([sql]) => String(sql).includes("INSERT INTO projects")),
+      ).toBe(false);
+    } finally {
+      testState.createReplayRows.length = 0;
+      testState.renewedReservationRows.length = 0;
+      testState.query.mockClear();
+    }
+  });
+
+  it("does not renew a READY replay even when its old expiry is past", async () => {
+    testState.query.mockClear();
+    testState.createReplayRows.splice(
+      0,
+      testState.createReplayRows.length,
+      replayRow("READY", new Date(Date.now() - 60_000).toISOString()),
+    );
+
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects", "POST", createBody, true, {
+          "idempotency-key": "hosted-project-ready-0000001",
+        }),
+        createEnvironment,
+        config,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      await expect(result?.json()).resolves.toMatchObject({
+        project_id: PROJECT_ID,
+        project_revision_id: revisionId,
+        state: "READY",
+        upload: null,
+      });
+      expect(
+        testState.query.mock.calls.some(([sql]) =>
+          String(sql).includes("UPDATE artifact_reservations SET expires_at"),
+        ),
+      ).toBe(false);
+    } finally {
+      testState.createReplayRows.length = 0;
+      testState.renewedReservationRows.length = 0;
+      testState.query.mockClear();
+    }
   });
 });
 

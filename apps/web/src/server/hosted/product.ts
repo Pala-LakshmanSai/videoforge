@@ -4575,13 +4575,30 @@ async function createProject(
            AND (request.idempotency_key = $3
              OR (request.state = 'UPLOAD_PENDING' AND request.request_sha256 = $4))
          ORDER BY CASE WHEN request.idempotency_key = $3 THEN 0 ELSE 1 END
-         LIMIT 1`,
+         LIMIT 1
+         FOR UPDATE OF request, reservation`,
         [scope.account_id, scope.workspace_id, idempotencyKey, requestSha256],
       );
       const replay = existing.rows[0];
       if (replay) {
         if (replay.request_sha256 !== requestSha256)
           throw new Error("PROJECT_IDEMPOTENCY_CONFLICT");
+        if (
+          replay.state === "UPLOAD_PENDING" &&
+          new Date(String(replay.expires_at)).getTime() <= Date.now() + 6 * 60_000
+        ) {
+          // The guarded renewal only extends an unused pending browser upload.
+          const renewed = await transaction.query<Record<string, unknown>>(
+            `UPDATE artifact_reservations SET expires_at = now() + interval '15 minutes',
+                    updated_at = now()
+              WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+                AND state = 'ISSUED' AND used_count = 0
+              RETURNING expires_at`,
+            [String(replay.upload_reservation_id), scope.account_id, scope.workspace_id],
+          );
+          if (!renewed.rows[0]) throw new Error("VOICEOVER_UPLOAD_NOT_RENEWABLE");
+          return { ...replay, expires_at: renewed.rows[0].expires_at };
+        }
         return replay;
       }
       const resolved = await resolveProjectPresets(
@@ -4795,6 +4812,8 @@ async function createProject(
     );
   } catch (error) {
     if (error instanceof Error && error.message === "PROJECT_IDEMPOTENCY_CONFLICT")
+      return response({ error: { code: error.message } }, 409);
+    if (error instanceof Error && error.message === "VOICEOVER_UPLOAD_NOT_RENEWABLE")
       return response({ error: { code: error.message } }, 409);
     if (error instanceof Error && error.message === "PROJECT_PRESET_NOT_READY")
       return response({ error: { code: error.message } }, 409);

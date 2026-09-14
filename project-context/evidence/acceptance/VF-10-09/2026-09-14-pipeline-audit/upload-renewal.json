@@ -1,0 +1,47 @@
+{
+  "checkpoint": "V2-09",
+  "status": "VERIFIED_LOCAL_REPAIR_AWAITING_BATCH_DEPLOY",
+  "deployedBaseCommit": "66af85d608a6d4e3345ee2d714bc292672e6a8c6",
+  "projectId": "fdc6ea0b-2572-4378-a4a4-6c7c5fb34dd3",
+  "observedFailure": {
+    "browser": "VOICEOVER_UPLOAD_EXPIRED after exact pending project resume",
+    "reservationIssuedAt": "2026-09-14T14:59:09.989892Z",
+    "reservationExpiredAt": "2026-09-14T15:14:09.989892Z",
+    "state": "UPLOAD_PENDING",
+    "reservationState": "ISSUED",
+    "usedCount": 0,
+    "receiptCount": 0
+  },
+  "cause": "createProject refreshed the signed PUT URL but reused the expired immutable database reservation; commitProject rejected that expired reservation.",
+  "repair": "Lock exact request and reservation. Migration133 preserves existing tenant/content identity checks and permits bounded expiry extension only for an unused ISSUED browser voiceover reservation linked to the same active UPLOAD_PENDING project and without a receipt. The application renews the same reservation to15minutes when less than6minutes remain; READY requests and conflicting bodies do not renew.",
+  "verification": {
+    "typecheck": "PASS",
+    "changedFileLint": "PASS",
+    "build": "PASS",
+    "focusedRegression": "PASS:2 mocked route tests",
+    "realPostgres": "PASS: transaction applied133, rejected16minute expiry/contentchange/usedcountchange, extended exactpendingreservation15minutes while preservingallotheridentity, then ROLLBACK",
+    "dockerRegression": "Fixture available; execution skipped because localDocker stopped to preserve resources for live CPUrender reproduction.",
+    "productionUploadOnly": "ExistingR2objectverified exactbytes/checksum; renewal deployment andcommit-only acceptance pending"
+  },
+  "paidActionsFromResume": 0,
+  "coordination": "Short comparison project0498d6b9-7d72-4ca7-bdc9-03dffc8b3779 owned by concurrent audit task; no deployment during its GPU run, no new inference authorized beyond consumed two-project cap.",
+  "observedUpload": {
+    "headStatus": 200,
+    "contentLength": 26197263,
+    "contentType": "audio/mpeg",
+    "checksumSha256": "sha256:550d102d383956fcef2c2a55c5f92e77b0b57af7ee33c207938642989a3d6468",
+    "matchesExpected": true,
+    "bodyRead": false,
+    "reuploadNeeded": false
+  },
+  "migration": 133,
+  "discardedApproach": "Creating another reservation at the same object key violates the existing tenant/object/method UNIQUE constraint; caught in source review before deployment or DB mutation.",
+  "rollbackReadback": {
+    "guardHash": "d89ce5d3ae59708d8eabfb0c4299077de58b0c117bd01fe78c222e6475f77465",
+    "projectState": "UPLOAD_PENDING",
+    "expiresAt": "2026-09-14T15:14:09.989892+00:00",
+    "reservationState": "ISSUED",
+    "usedCount": 0,
+    "receiptCount": 0
+  }
+}
