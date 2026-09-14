@@ -1,0 +1,36 @@
+{
+  "schema_version": "videoforge-regeneration-repair-deployment/v1",
+  "checkpoint": "V2-09",
+  "status": "DEPLOYED_QUALIFIED_EXACT_FRESH_LIVE_ACCEPTANCE_PENDING",
+  "source_commit": "43ad91438e22a757fab252806e28fe3d7011e332",
+  "worker_version": "c5bf759f-0940-43d4-ae37-b5b69ea20b1c",
+  "gpu_transport": "QUALIFIED_EXACT",
+  "fixes": [
+    "Runtime SELECT on selected_span_audio survives grant rebuild",
+    "Fresh signed issued_at with exact3600s Mage validity and matching media ports",
+    "Separate600s operational regeneration deadline retained",
+    "Retained endpoint drain allows verified standby/exited records without allowing billable compute",
+    "Already-released terminal lease exits cleanly"
+  ],
+  "validation": {
+    "service_tests": 11,
+    "execution_tests": 5,
+    "grant_static_tests": 2,
+    "earlier_combined_regeneration_suite": 40,
+    "production_build": "PASS",
+    "changed_file_lint_and_format": "PASS",
+    "context_validation": "PASS",
+    "chrome_project_after_reload": "API healthy; seven images and two avatar clips; all10 stages complete",
+    "successful_replacement": "PENDING_FRESH_APPROVAL"
+  },
+  "prior_live_attempt": "live-attempt-1.json",
+  "paid_job_posts_since_prior_attempt": 0,
+  "provider_compute_started_by_deployment": false,
+  "remaining": "One fresh bounded scene regeneration to prove receipt acceptance and measure successful latency",
+  "final_provider_readback": {
+    "checked_at": "2026-09-14T04:23:56.448Z",
+    "balance_usd": 16.8346732234,
+    "running_pods": 0,
+    "active_serverless_workers": 0
+  }
+}

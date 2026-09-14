@@ -14,5 +14,7 @@
   "workers_min": 0,
   "workers_max": 1,
   "new_retained_resources": 0,
-  "status": "APPROVED_NOT_YET_EXECUTED"
+  "status": "CONSUMED_FAILED_CLEAN_NON_REUSABLE",
+  "consumed_request_id": "78c415db-7673-416b-a7f4-a29cebe5e918",
+  "consumed_at": "2026-09-14T04:05:44.370441Z"
 }
