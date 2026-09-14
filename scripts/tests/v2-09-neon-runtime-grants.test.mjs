@@ -44,6 +44,8 @@ test("V2-09 runtime grants rebuild a closed pre-V2-10 function allowlist", () =>
     ["hosted_auth_sessions", "INSERT"],
     ["projects", "INSERT"],
     ["hosted_render_plans", "SELECT"],
+    // Project detail reports account-owned SPAN_AUDIO preparation progress directly.
+    ["selected_span_audio", "SELECT"],
   ])
     assert.ok(source.includes(`('${table}','${privilege}')`));
   assert.ok(!source.includes("('hosted_render_plans','UPDATE')"));

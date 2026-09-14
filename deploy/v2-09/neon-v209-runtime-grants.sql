@@ -122,6 +122,7 @@ INSERT INTO v209_runtime_table_allowlist(table_name,privilege) VALUES
   ('serverless_cost_ledgers','SELECT'),
   ('serverless_output_receipts','SELECT'),
   ('serverless_progress_events','SELECT'),
+  ('selected_span_audio','SELECT'),
   ('timeline_plans','SELECT'),
   ('timeline_segments','SELECT'),
 ('video_runtime_lane_states','SELECT'),
