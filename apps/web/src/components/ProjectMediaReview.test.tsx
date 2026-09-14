@@ -215,3 +215,26 @@ it("keeps an independent draft for each image", () => {
   fireEvent.click(screen.getByRole("button", { name: "Previous image" }));
   expect(screen.getByRole("textbox", { name: "Image prompt" })).toHaveValue("Edited first");
 });
+
+it("reloads the same accepted asset when its failed signed URL is refreshed", () => {
+  const onRetry = vi.fn();
+  const item = { id: "avatar-1", url: "/expired.mp4", label: "Avatar clip 1" };
+  const { rerender } = render(
+    <ProjectMediaReview launcher="avatar" images={[]} avatarVideos={[item]} onRetry={onRetry} />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "View avatar videos/footage" }));
+  fireEvent.error(screen.getByLabelText("Avatar clip 1"));
+  expect(screen.getByRole("alert")).toHaveTextContent("This media could not be loaded.");
+  fireEvent.click(screen.getByRole("button", { name: "Refresh media" }));
+  expect(onRetry).toHaveBeenCalledTimes(1);
+  rerender(
+    <ProjectMediaReview
+      launcher="avatar"
+      images={[]}
+      avatarVideos={[{ ...item, url: "/renewed.mp4" }]}
+      onRetry={onRetry}
+    />,
+  );
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Avatar clip 1")).toHaveAttribute("src", "/renewed.mp4");
+});

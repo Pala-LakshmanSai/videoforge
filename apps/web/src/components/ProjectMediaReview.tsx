@@ -101,7 +101,7 @@ export function ProjectMediaReview({
   const [regenerationErrors, setRegenerationErrors] = useState<Record<string, RegenerationFailure>>(
     {},
   );
-  const [failedAssetId, setFailedAssetId] = useState<string | null>(null);
+  const [failedAssetUrl, setFailedAssetUrl] = useState<string | null>(null);
   const imageTriggerRef = useRef<HTMLButtonElement | null>(null);
   const avatarTriggerRef = useRef<HTMLButtonElement | null>(null);
   const activeItems =
@@ -161,7 +161,7 @@ export function ProjectMediaReview({
     });
     try {
       await onRegenerate(item, prompt);
-      setFailedAssetId(null);
+      setFailedAssetUrl(null);
       setRegenerationSuccessId(item.id);
     } catch (error) {
       const reason = error instanceof Error && error.message.trim() ? ` ${error.message}` : "";
@@ -195,13 +195,13 @@ export function ProjectMediaReview({
   function openViewer(section: MediaSection) {
     setActiveSection(section);
     setSelectedIndex(0);
-    setFailedAssetId(null);
+    setFailedAssetUrl(null);
   }
 
   function closeViewer() {
     const previousSection = activeSection;
     setActiveSection(null);
-    setFailedAssetId(null);
+    setFailedAssetUrl(null);
     window.requestAnimationFrame(() => {
       if (previousSection === "images") imageTriggerRef.current?.focus();
       if (previousSection === "avatar") avatarTriggerRef.current?.focus();
@@ -210,7 +210,7 @@ export function ProjectMediaReview({
 
   function move(direction: -1 | 1) {
     if (activeItems.length < 2) return;
-    setFailedAssetId(null);
+    setFailedAssetUrl(null);
     setSelectedIndex((index) => (index + direction + activeItems.length) % activeItems.length);
   }
 
@@ -341,16 +341,25 @@ export function ProjectMediaReview({
                 >
                   <div className="media-review-primary">
                     <div className="media-review-main-frame">
-                      {failedAssetId === selectedItem.id ? (
+                      {failedAssetUrl === selectedItem.url ? (
                         <div className="media-review-asset-error" role="alert">
                           <strong>This media could not be loaded.</strong>
                           <span>Try another item or refresh.</span>
+                          {onRetry ? (
+                            <button
+                              className="button button-secondary"
+                              type="button"
+                              onClick={onRetry}
+                            >
+                              Refresh media
+                            </button>
+                          ) : null}
                         </div>
                       ) : activeSection === "images" ? (
                         <img
                           src={selectedItem.url}
                           alt={selectedItem.label}
-                          onError={() => setFailedAssetId(selectedItem.id)}
+                          onError={() => setFailedAssetUrl(selectedItem.url)}
                         />
                       ) : (
                         <video
@@ -359,7 +368,7 @@ export function ProjectMediaReview({
                           preload="metadata"
                           src={selectedItem.url}
                           aria-label={selectedItem.label}
-                          onError={() => setFailedAssetId(selectedItem.id)}
+                          onError={() => setFailedAssetUrl(selectedItem.url)}
                         />
                       )}
                     </div>
@@ -479,7 +488,7 @@ export function ProjectMediaReview({
                           aria-current={index === selectedIndex ? "true" : undefined}
                           key={item.id}
                           onClick={() => {
-                            setFailedAssetId(null);
+                            setFailedAssetUrl(null);
                             setSelectedIndex(index);
                           }}
                         >
