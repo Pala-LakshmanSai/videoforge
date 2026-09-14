@@ -1,6 +1,6 @@
 {
   "schemaVersion": "videoforge.provider-inventory-rate-evidence/v1",
-  "checkedAt": "2026-09-14T13:17:33.971Z",
+  "checkedAt": "2026-09-14T14:17:01.659Z",
   "source": {
     "balanceHttpStatus": 200,
     "catalogHttpStatus": 200,
@@ -14,7 +14,7 @@
       200
     ]
   },
-  "balanceUsd": 16.6648115015,
+  "balanceUsd": 16.6550892793,
   "selectedCatalog": [
     {
       "sku": "NVIDIA GeForce RTX 4090",
@@ -95,11 +95,11 @@
     ]
   },
   "proposalConstraint": {
+    "finiteActionCap": 2,
     "maxServerlessFlexRateUsdPerGpuHour": 1.116,
     "selectedCatalogRateUsdPerGpuHour": 1.1,
     "region": "EU-RO-1",
-    "requiresZeroComputeRecheckBeforePaidAction": true,
-    "proposedSpendCapUsd": 2,
-    "authorized": false
+    "balanceFloorUsd": 3,
+    "requiresZeroComputeRecheckBeforePaidAction": true
   }
 }
