@@ -359,55 +359,51 @@ function StyleProfileDetails({
         <>
           {profile.summary ? (
             <section className="detail-section style-profile-summary">
-              <p className="eyebrow">Gemini analysis</p>
+              <p className="eyebrow">Analysis</p>
               <h3>Style summary</h3>
               <p>{profile.summary}</p>
             </section>
           ) : null}
-          <section className="detail-section">
-            <div className="detail-section-heading">
-              <h3>Visual character</h3>
-              <span>Reusable traits extracted from your references</span>
-            </div>
-            <div className="style-profile-facts">
-              <StyleProfileFact label="Medium" value={profile.medium} />
-              <StyleProfileFact label="Realism" value={profile.realism} />
-              <StyleProfileFact label="Subject treatment" value={profile.subjectTreatment} />
-              <StyleProfileFact label="Camera" value={profile.camera} />
-              <StyleProfileFact label="Framing" value={profile.framing} />
-              <StyleProfileFact label="Lighting" value={profile.lighting} />
-              <StyleProfileFact label="Contrast & exposure" value={profile.contrast} />
-              <StyleProfileFact label="Depth of field" value={profile.depthOfField} />
-              <StyleProfileFact label="Texture & grain" value={profile.texture} />
-              <StyleProfileFact label="Materials & environment" value={profile.materials} />
-            </div>
-            {profile.colorDescriptors.length > 0 || profile.colorHex.length > 0 ? (
-              <div className="style-color-profile">
-                <small>Color palette</small>
-                <div className="style-color-swatches" aria-label="Extracted color palette">
-                  {profile.colorHex.map((color) => (
-                    <span key={color} title={color} style={{ backgroundColor: color }} />
-                  ))}
-                </div>
-                {profile.colorDescriptors.length > 0 ? (
-                  <p>{profile.colorDescriptors.join(" · ")}</p>
-                ) : null}
+          <Disclosure summary="Visual character">
+            <section className="detail-section">
+              <div className="style-profile-facts">
+                <StyleProfileFact label="Medium" value={profile.medium} />
+                <StyleProfileFact label="Realism" value={profile.realism} />
+                <StyleProfileFact label="Subject treatment" value={profile.subjectTreatment} />
+                <StyleProfileFact label="Camera" value={profile.camera} />
+                <StyleProfileFact label="Framing" value={profile.framing} />
+                <StyleProfileFact label="Lighting" value={profile.lighting} />
+                <StyleProfileFact label="Contrast & exposure" value={profile.contrast} />
+                <StyleProfileFact label="Depth of field" value={profile.depthOfField} />
+                <StyleProfileFact label="Texture & grain" value={profile.texture} />
+                <StyleProfileFact label="Materials & environment" value={profile.materials} />
               </div>
-            ) : null}
-            <StyleTraitList label="Mood" values={profile.mood} />
-          </section>
-          <section className="detail-section">
-            <div className="detail-section-heading">
-              <h3>Generation rules</h3>
-              <span>How VideoForge will preserve this look</span>
-            </div>
-            <StyleTraitList label="Keep" values={profile.mustInclude} tone="positive" />
-            <StyleTraitList label="Avoid" values={profile.mustAvoid} tone="negative" />
-            <StyleTraitList label="Can vary" values={profile.flexible} />
-          </section>
+              {profile.colorDescriptors.length > 0 || profile.colorHex.length > 0 ? (
+                <div className="style-color-profile">
+                  <small>Color palette</small>
+                  <div className="style-color-swatches" aria-label="Extracted color palette">
+                    {profile.colorHex.map((color) => (
+                      <span key={color} title={color} style={{ backgroundColor: color }} />
+                    ))}
+                  </div>
+                  {profile.colorDescriptors.length > 0 ? (
+                    <p>{profile.colorDescriptors.join(" · ")}</p>
+                  ) : null}
+                </div>
+              ) : null}
+              <StyleTraitList label="Mood" values={profile.mood} />
+            </section>
+          </Disclosure>
+          <Disclosure summary="Generation rules">
+            <section className="detail-section">
+              <StyleTraitList label="Keep" values={profile.mustInclude} tone="positive" />
+              <StyleTraitList label="Avoid" values={profile.mustAvoid} tone="negative" />
+              <StyleTraitList label="Can vary" values={profile.flexible} />
+            </section>
+          </Disclosure>
           {profile.positivePrompt || profile.negativePrompt ? (
             <details className="detail-section style-prompt-details">
-              <summary>Prompt instructions used during generation</summary>
+              <summary>Generation prompt</summary>
               {profile.positivePrompt ? (
                 <StyleProfileFact label="Add to image prompts" value={profile.positivePrompt} />
               ) : null}
@@ -419,7 +415,7 @@ function StyleProfileDetails({
         </>
       ) : (
         <div className="validation validation-warning">
-          The published style is ready to use, but its analysis summary is unavailable.
+          Style is ready; analysis summary unavailable.
         </div>
       )}
     </div>
@@ -1802,37 +1798,31 @@ function unfinishedPresetDescription(
   referencesVerified = true,
 ): string {
   if (kind === "avatars") {
-    if (state === "ANALYZING")
-      return "Approval is being reconciled. We will update this avatar when it finishes.";
-    if (state === "FAILED")
-      return "This avatar could not be completed. Remove it and start again with a new photo.";
-    if (state === "DRAFT")
-      return "Your avatar draft is saved. Continue to verify the photo upload, then approve it.";
-    return state === "NEEDS_REVIEW"
-      ? "Your photo is saved. Continue to review and approve this avatar."
-      : "Your photo is saved. Continue setup to review and approve this avatar.";
+    if (state === "ANALYZING") return "Approval in progress.";
+    if (state === "FAILED") return "Could not finish. Remove and try again.";
+    if (state === "DRAFT") return "Photo saved. Continue setup.";
+    return state === "NEEDS_REVIEW" ? "Ready to review." : "Continue setup.";
   }
   if (state === "NEEDS_REVIEW") {
-    return "Your style profile is ready. Continue to review and publish it.";
+    return "Ready to review.";
   }
   if (state === "ANALYZING") {
-    return "Analysis is in progress. We will update this style when it finishes.";
+    return "Analysis in progress.";
   }
   if (state === "UNKNOWN") {
-    return "The analysis result could not be confirmed. Your references are saved. This request has stopped and will not retry automatically.";
+    return "Analysis stopped. No automatic retry.";
   }
   if (state === "FAILED") {
-    return "The analysis request failed, but your verified references are saved. Continue setup to retry safely.";
+    return "Analysis failed. References saved; retry from this draft.";
   }
-  if (state === "DRAFT" && !referencesVerified)
-    return "Some saved references could not be verified. Reselect 3–8 images to repair this saved draft.";
+  if (state === "DRAFT" && !referencesVerified) return "Select 3–8 replacement images.";
   if (state === "DRAFT")
     return referenceCount > 0
-      ? `${referenceCount} references are saved. Continue to verify the uploads, then analyze and publish this style.`
-      : "Your style draft is saved. Continue to verify the uploads, then analyze and publish it.";
+      ? `${referenceCount} references saved.`
+      : "Draft saved. Continue setup.";
   return referenceCount > 0
-    ? `${referenceCount} references saved. Continue setup to analyze and publish this style.`
-    : "Your style is saved. Continue setup to add references and publish it.";
+    ? `${referenceCount} references saved.`
+    : "Continue setup to add references.";
 }
 
 const HUMAN_PIPELINE_STAGES = [
@@ -2130,10 +2120,7 @@ export function HostedCreateProjectScreen() {
 
   return (
     <>
-      <PageHeader
-        title="New project"
-        description="Add your finished voiceover, choose the look, and review the cost before starting."
-      />
+      <PageHeader title="New project" />
       <div className="layout-main hosted-project-layout">
         <Panel className="create-config-panel hosted-project-form">
           <section className="create-section" aria-labelledby="hosted-project-video">
@@ -2141,7 +2128,6 @@ export function HostedCreateProjectScreen() {
               <span className="create-section-index">01</span>
               <div>
                 <h3 id="hosted-project-video">Video</h3>
-                <p>Name the project and add the finished narration.</p>
               </div>
             </header>
             <div className="create-section-grid">
@@ -2152,7 +2138,7 @@ export function HostedCreateProjectScreen() {
                   className="input"
                   value={title}
                   maxLength={240}
-                  placeholder="Give your video a clear title"
+                  placeholder="Clear project title"
                   onChange={(event) => {
                     setTitle(event.target.value);
                     setPreflightResult(null);
@@ -2202,7 +2188,6 @@ export function HostedCreateProjectScreen() {
               <span className="create-section-index">02</span>
               <div>
                 <h3 id="hosted-project-look">Look</h3>
-                <p>Choose the presenter and visual style for this video.</p>
               </div>
             </header>
             <div className="create-section-grid">
@@ -2263,7 +2248,7 @@ export function HostedCreateProjectScreen() {
                   <label className="toggle-row">
                     <span>
                       <strong>Add image keywords</strong>
-                      <small>Use a few extra words to guide generated scene images.</small>
+                      <small>Guide scene images with extra words.</small>
                     </span>
                     <input
                       type="checkbox"
@@ -2293,7 +2278,7 @@ export function HostedCreateProjectScreen() {
                     </div>
                   ) : null}
                   <div className="field">
-                    <label htmlFor="hosted-user-seed">Variation number (optional)</label>
+                    <label htmlFor="hosted-user-seed">Variation (optional)</label>
                     <input
                       id="hosted-user-seed"
                       className="input"
@@ -2304,7 +2289,7 @@ export function HostedCreateProjectScreen() {
                         setUserSeed(event.target.value);
                         setPreflightResult(null);
                       }}
-                      placeholder="Leave blank for automatic"
+                      placeholder="Automatic"
                     />
                   </div>
                 </div>
@@ -2322,8 +2307,8 @@ export function HostedCreateProjectScreen() {
               </strong>
               <small>
                 {workerOnline
-                  ? "Connected; ready when the project inputs are complete."
-                  : "Open Settings and connect the personal media worker before starting."}
+                  ? "Ready when inputs are complete."
+                  : "Connect your media worker in Settings."}
               </small>
             </span>
           </div>
@@ -2364,7 +2349,7 @@ export function HostedCreateProjectScreen() {
           ) : null}
           {preflightBlockers(preflightResult).length > 0 ? (
             <div className="validation validation-danger">
-              <strong>Resolve these blockers:</strong>
+              <strong>Fix these blockers:</strong>
               <ul>
                 {preflightBlockers(preflightResult).map((blocker) => (
                   <li key={blocker}>{blocker}</li>
@@ -2378,15 +2363,12 @@ export function HostedCreateProjectScreen() {
             </p>
           ) : null}
           {voiceoverMeta ? (
-            <p className="helper">
-              Voiceover checked: {formatMilliseconds(voiceoverMeta.durationMs)}
-            </p>
+            <p className="helper">Voiceover · {formatMilliseconds(voiceoverMeta.durationMs)}</p>
           ) : null}
           {!catalog.data.gpu_readiness.dispatch_available ? (
             <p className="helper hosted-beta-note" role="note">
-              After creation, VideoForge automatically transcribes, understands the voiceover, plans
-              scenes, and writes image prompts for your project. Final video generation is not yet
-              available, and no paid GPU work will start.
+              Creation runs through prompt writing. Final video generation is unavailable; no paid
+              GPU work will start.
             </p>
           ) : null}
           <Button
@@ -2533,7 +2515,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
           </span>
         )}
         {!healthy ? (
-          <Badge tone={draft ? statusTone(state) : statusTone(state)}>
+          <Badge tone={statusTone(state)}>
             {draft ? unfinishedPresetLabel(state) : normalizedStatus(state)}
           </Badge>
         ) : null}
@@ -2604,13 +2586,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
         <div className="preset-card-actions">
           <DetailsSheet
             title={item.name}
-            description={
-              isAvatar
-                ? "Ready to use"
-                : referenceCount > 0
-                  ? `Published · ${referenceCount} references`
-                  : "Published"
-            }
+            description={`Version ${item.version_number}`}
             trigger={
               <button className="entity-details-trigger" type="button">
                 <strong>Details</strong>
@@ -2688,7 +2664,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
       <Panel heading={`Loading ${title}`}>
         <div className="empty-state" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
-          <p>Loading your {itemLabel}s…</p>
+          <p>Loading…</p>
         </div>
       </Panel>
     );
@@ -2737,7 +2713,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
           <EmptyState
             icon={<Icon />}
             title={`No ready ${itemLabel}s yet`}
-            body={`Create your first ${itemLabel} before starting a project.`}
+            body={`Add a reusable ${itemLabel} to use in a project.`}
             action={
               creationAvailable ? (
                 <Link
@@ -2761,8 +2737,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
               <section className="hub-drafts-section" aria-labelledby={`${kind}-drafts-heading`}>
                 <header className="hub-section-heading">
                   <div>
-                    <p className="eyebrow">Finish setup</p>
-                    <h2 id={`${kind}-drafts-heading`}>Unfinished {itemLabel}s</h2>
+                    <h2 id={`${kind}-drafts-heading`}>Continue setup</h2>
                   </div>
                   <Badge tone="warning">{visibleDraftItems.length}</Badge>
                 </header>
@@ -2798,18 +2773,17 @@ export function HostedPresetCreationUnavailableScreen({ kind }: { kind: HostedPr
   return (
     <>
       <PageHeader
-        eyebrow="Private hosted staging"
         title={`${title} creation unavailable`}
-        description="Hosted V2-06 accepts only exact activation-owned presets."
+        description="Preset creation is unavailable in this mode."
       />
       <EmptyState
         icon={isAvatar ? <UsersRound /> : <Images />}
-        title="Read-only hosted catalog"
-        body={`The ${itemLabel} creation workflow is intentionally disabled in staging. Open the hub to inspect tenant-owned versions, or return to Settings for worker status.`}
+        title="Read-only catalog"
+        body={`Use an existing ${itemLabel}, or open Settings to check workspace status.`}
         action={
           <div className="cluster">
             <Link className="button button-secondary" to={isAvatar ? "/avatars" : "/styles"}>
-              Open {title}
+              View {title}
             </Link>
             <Link className="button button-secondary" to="/settings">
               Settings
@@ -2911,23 +2885,23 @@ export function HostedPresetCreationScreen({
   const stepOneReady = Boolean(name.trim()) && !duplicateName && hasRequiredSource && !busy;
   const stepOneHint = repairingReferences
     ? hasRequiredSource
-      ? "Replacement references are ready to verify."
-      : `Reselect ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} images to repair this saved draft.`
+      ? "Replacement references ready."
+      : `Select ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} images.`
     : matchingDraftName
       ? matchingDraftResumable
-        ? `This unfinished ${itemLabel} is already in the Hub. Continue setup from there.`
-        : `This unfinished ${itemLabel} is already in the Hub. View it there or remove it before starting another.`
+        ? `Draft already exists. Continue from the Hub.`
+        : `Draft already exists. Open the Hub to remove it.`
       : duplicateReadyName
-        ? `Choose a different ${itemLabel} name.`
+        ? "Name already in use."
         : !name.trim() && !hasRequiredSource
-          ? `Add a name and ${isAvatar ? "photo" : "reference images"} to continue.`
+          ? `Add a name and ${isAvatar ? "photo" : "images"}.`
           : !name.trim()
-            ? `Add a ${itemLabel} name to continue.`
+            ? "Add a name."
             : !hasRequiredSource
               ? isAvatar
-                ? "Choose a photo to continue."
-                : `Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} reference images to continue.`
-              : "Ready to review.";
+                ? "Choose a photo."
+                : `Choose ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} images.`
+              : "Ready.";
 
   useEffect(
     () => () => {
@@ -3046,8 +3020,6 @@ export function HostedPresetCreationScreen({
 
   async function chooseStyleSources(selected: FileList | null) {
     setError(null);
-    for (const source of styleSources) URL.revokeObjectURL(source.objectUrl);
-    setStyleSources([]);
     const files = Array.from(selected ?? []);
     if (files.length < MIN_STYLE_REFERENCES || files.length > MAX_STYLE_REFERENCES) {
       if (files.length > 0)
@@ -3079,14 +3051,14 @@ export function HostedPresetCreationScreen({
         ) > MAX_STYLE_ANALYSIS_BYTES
       )
         throw new Error("Use a smaller reference set (30 MB total after normalization).");
-      setStyleSources(
-        files.map((file, index) => ({
-          file,
-          checksum: normalized[index]!.original.checksum,
-          objectUrl: normalized[index]!.objectUrl,
-          normalized: normalized[index]!,
-        })),
-      );
+      const nextSources = files.map((file, index) => ({
+        file,
+        checksum: normalized[index]!.original.checksum,
+        objectUrl: normalized[index]!.objectUrl,
+        normalized: normalized[index]!,
+      }));
+      for (const source of styleSources) URL.revokeObjectURL(source.objectUrl);
+      setStyleSources(nextSources);
     } catch (value) {
       setError(value instanceof Error ? value.message : "Style reference validation failed.");
     } finally {
@@ -3448,7 +3420,9 @@ export function HostedPresetCreationScreen({
   const profileSummary =
     (typeof created?.summary === "string" && created.summary) ||
     (typeof created?.profile?.summary === "string" && created.profile.summary) ||
-    "No analysis summary was returned; publication remains blocked until review data is available.";
+    "No analysis summary returned; review required before publishing.";
+  const analysisState = created ? presetState(created) : null;
+  const analysisUnavailable = analysisState === "UNKNOWN" || analysisState === "ANALYZING";
 
   return (
     <>
@@ -3457,8 +3431,8 @@ export function HostedPresetCreationScreen({
         title={title}
         description={
           parentId
-            ? `Create an immutable new version from ${parentId}. Existing project pins remain unchanged.`
-            : `Upload, review, and approve a private reusable ${itemLabel}.`
+            ? "New version · existing project pins stay unchanged."
+            : `Create a reusable ${itemLabel}.`
         }
         actions={
           <Button variant="ghost" disabled={busy} onClick={cancel}>
@@ -3471,15 +3445,15 @@ export function HostedPresetCreationScreen({
         heading={
           step === 1
             ? isAvatar
-              ? "Add your avatar"
-              : "Build your image style"
+              ? "Upload photo"
+              : "Upload references"
             : step === 2
-              ? "Technical review"
+              ? "Review"
               : isAvatar
-                ? "Review and add"
+                ? "Add avatar"
                 : step === 3
-                  ? "Analyze references"
-                  : "Review and publish"
+                  ? "Analyze"
+                  : "Publish"
         }
       >
         {resumeVersionId && created ? (
@@ -3487,8 +3461,8 @@ export function HostedPresetCreationScreen({
             <strong>Continuing “{name}”</strong>
             <span>
               {repairingReferences
-                ? "Some saved references could not be verified. Reselect 3–8 images to repair this saved draft."
-                : "Your saved work is loaded. Continue from the last completed step."}
+                ? `Select ${MIN_STYLE_REFERENCES}–${MAX_STYLE_REFERENCES} replacement images.`
+                : "Draft restored."}
             </span>
           </div>
         ) : null}
@@ -3508,11 +3482,6 @@ export function HostedPresetCreationScreen({
                 onChange={(event) => setName(event.target.value)}
                 placeholder={isAvatar ? "Maya — studio presenter" : "Grounded documentary"}
               />
-              <small>
-                {isAvatar
-                  ? "This is how it will appear in your Avatar Hub."
-                  : "This is how it will appear in Image Styles."}
-              </small>
             </div>
             {isAvatar ? (
               <label className="dropzone preset-source-dropzone">
@@ -3529,10 +3498,10 @@ export function HostedPresetCreationScreen({
                   <Upload size={27} />
                 )}
                 <span>
-                  <strong>{avatarSource?.file.name ?? "Choose a clear front-facing photo"}</strong>
+                  <strong>{avatarSource?.file.name ?? "Choose a front-facing photo"}</strong>
                   {avatarSource
-                    ? `${avatarSource.width}×${avatarSource.height} · ready to review`
-                    : "JPG, PNG or WebP · at least 512×512 · max 20 MB"}
+                    ? `${avatarSource.width}×${avatarSource.height} · ready`
+                    : "JPG, PNG or WebP · 512×512 min · 20 MB max"}
                 </span>
               </label>
             ) : (
@@ -3553,8 +3522,8 @@ export function HostedPresetCreationScreen({
                       : "Choose 3–8 reference images"}
                   </strong>
                   {styleSources.length > 0
-                    ? "Ready to review — choose again to replace them"
-                    : "Use images with a consistent look · max 20 MB each"}
+                    ? "Ready · select again to replace"
+                    : "Consistent look · 20 MB max each"}
                 </span>
               </label>
             )}
@@ -3616,23 +3585,20 @@ export function HostedPresetCreationScreen({
             ) : null}
             <div className="validation validation-success">
               <Check size={16} />
-              {isAvatar
-                ? "Photo decoded successfully and passed the size check."
-                : "Reference files selected and checksums verified."}
+              {isAvatar ? "Photo ready." : "References ready."}
             </div>
             <div className="notice notice-warning">
-              <strong>Check before continuing.</strong>{" "}
               {isAvatar
-                ? "Make sure the presenter is clear, front-facing, and free of text, logos, or watermarks."
-                : "Make sure the references share a consistent visual look and contain no text, logos, or watermarks."}
+                ? "Use a clear, front-facing photo without text, logos, or watermarks."
+                : "Use references with a consistent look and no text, logos, or watermarks."}
             </div>
             <Button variant="ghost" disabled={busy} onClick={() => setStep(1)}>
               Back
             </Button>
             <div className="preset-action-disclosure">
               {isAvatar
-                ? "By adding this avatar, you confirm you have the right to use and animate this likeness."
-                : "By preparing this style, you confirm you can use these images. Private originals are kept until you remove the style and are never sent to Runware or Gemini. Normalized copies are sent only when you explicitly analyze."}
+                ? "I have the right to use and animate this likeness."
+                : "I have the right to use these images. References stay private until analysis."}
             </div>
             <Button
               busy={busy}
@@ -3648,10 +3614,10 @@ export function HostedPresetCreationScreen({
               }
             >
               {repairingReferences
-                ? "Verify replacement references"
+                ? "Save replacement references"
                 : isAvatar
-                  ? "Add to Avatar Hub"
-                  : "Prepare analysis"}{" "}
+                  ? "Add avatar"
+                  : "Continue to analysis"}{" "}
               <ArrowRight size={16} />
             </Button>
           </div>
@@ -3659,17 +3625,15 @@ export function HostedPresetCreationScreen({
         {step === 3 && !isAvatar ? (
           <div className="stack">
             <div className={!fixtureBackend ? "notice notice-warning" : "notice"}>
-              <strong>
-                {!fixtureBackend ? "Gemini image analysis" : "Local fixture analysis"}
-              </strong>{" "}
+              <strong>{!fixtureBackend ? "One-time analysis" : "Local analysis"}</strong>{" "}
               {!fixtureBackend
-                ? "Your normalized references will be sent through Runware to Gemini 3.1 Flash Lite once to extract reusable visual traits. They are not sent again during video generation. This bounded analysis may incur a small provider charge within the private beta’s $3 total ceiling."
-                : "This walkthrough uses a simulated profile and makes no external AI request."}
+                ? "Normalized references go through Runware to Gemini once. Provider retention follows their terms; a small charge may apply."
+                : "Uses sample data; no external AI request."}
             </div>
             <div className="preset-action-disclosure">
               {fixtureBackend
-                ? "By analyzing, you confirm you can use these images. Normalized copies are processed locally for this walkthrough."
-                : "By analyzing, you confirm you can use these images. Normalized copies are sent once through Runware to Gemini; provider retention follows their terms. Private originals stay in your workspace until you remove the style."}
+                ? "I have the right to use these images."
+                : "I have the right to use these images."}
             </div>
             <Button
               variant="ghost"
@@ -3680,13 +3644,17 @@ export function HostedPresetCreationScreen({
             </Button>
             {!created ? (
               <Button busy={busy} onClick={() => void createDraft()}>
-                Upload and prepare analysis <ArrowRight size={16} />
+                Save and continue <ArrowRight size={16} />
               </Button>
+            ) : analysisUnavailable ? (
+              <div className="validation validation-warning" role="status">
+                {analysisState === "UNKNOWN"
+                  ? "Analysis stopped; it will not retry automatically."
+                  : "Analysis is in progress."}
+              </div>
             ) : (
               <Button busy={busy} onClick={() => void analyzeStyle()}>
-                {presetState(created) === "FAILED"
-                  ? "Retry saved analysis"
-                  : "Analyze this draft once"}{" "}
+                {analysisState === "FAILED" ? "Retry analysis" : "Analyze once"}{" "}
                 <ArrowRight size={16} />
               </Button>
             )}
@@ -3697,15 +3665,12 @@ export function HostedPresetCreationScreen({
             <div className="validation validation-success">
               <Check size={16} />
               {fixtureBackend
-                ? "Local fixture profile returned for workflow review."
-                : "Gemini analyzed this exact reference set. Review the extracted style before publishing."}
+                ? "Profile ready for review."
+                : "Analysis ready. Review before publishing."}
             </div>
             <p>{profileSummary}</p>
             {!fixtureBackend && typeof created?.analysis_cost_usd === "number" ? (
-              <p className="helper">
-                Gemini analysis charge: ${created.analysis_cost_usd.toFixed(6)} · protected by the
-                private beta spend ceiling.
-              </p>
+              <p className="helper">Analysis cost: ${created.analysis_cost_usd.toFixed(6)}</p>
             ) : null}
             {!fixtureBackend ? (
               <div className="field">
@@ -3723,14 +3688,13 @@ export function HostedPresetCreationScreen({
               </div>
             ) : null}
             <div className="preset-action-disclosure">
-              Publishing confirms that this profile matches the look you want. Published versions
-              remain unchanged so existing projects stay reproducible.
+              Publishing locks this version; existing projects keep their current style.
             </div>
             <Button variant="ghost" disabled={busy} onClick={() => setStep(3)}>
               Back
             </Button>
             <Button busy={busy} disabled={!created?.profile} onClick={() => void publishStyle()}>
-              <ShieldCheck size={16} /> Publish immutable style version
+              <ShieldCheck size={16} /> Publish style
             </Button>
           </div>
         ) : null}
@@ -4153,7 +4117,15 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const stages = query.data.stages?.length
     ? query.data.stages
     : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context);
-  const uiStages = hostedProjectStages(stages);
+  const uiStages = hostedProjectStages(stages).map((stage) => ({
+    ...stage,
+    detail:
+      stage.status === "COMPLETE"
+        ? "Complete"
+        : stage.status === "PENDING"
+          ? "Waiting"
+          : stage.detail,
+  }));
   const promptStage = uiStages.find((stage) => stage.id === "prompt-writing");
   const contextStage = uiStages.find(
     (stage) =>
@@ -4397,7 +4369,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       <PageHeader
         eyebrow="Live project"
         title={query.data.project.title}
-        description="Updates automatically from your personal media worker."
         actions={
           render?.state === "SUCCEEDED" ? (
             <Link
@@ -4411,11 +4382,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }
       />
       <section className="progress-hero" aria-label="Live video progress">
-        <ProgressRing
-          value={overallProgress}
-          label="Overall video progress"
-          detail={overallStatus}
-        />
+        <ProgressRing value={overallProgress} label="Overall video progress" detail="complete" />
         <div className="progress-hero-body">
           <div className="progress-hero-heading">
             <div>
@@ -4428,21 +4395,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             <Metric
               label="Stage"
               value={`${String(activeStageIndex + 1).padStart(2, "0")}/${String(uiStages.length).padStart(2, "0")}`}
-              detail={activeStage?.label ?? "Preparing"}
               tone="info"
-            />
-            <Metric
-              label="Status"
-              value={overallStatus}
-              detail={activeStage?.detail ?? "Waiting for the next worker update"}
-              tone={statusToneValue}
             />
             <Metric
               label="Estimated"
               value={formatMilliseconds(
                 stages[activeStageIndex]?.eta_ms ?? queue?.estimated_wait_ms,
               )}
-              detail="remaining when measurable"
+              detail="remaining"
             />
             <Metric
               label="Cost"
@@ -4451,25 +4411,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   ? formatUsd(cost?.projected_usd)
                   : "No provider charge"
               }
-              detail={
-                cost?.cap_usd == null
-                  ? "No project spending limit"
-                  : `${formatUsd(cost.cap_usd)} maximum`
-              }
+              detail={cost?.cap_usd == null ? undefined : `${formatUsd(cost.cap_usd)} maximum`}
               tone="success"
             />
           </div>
           <ProgressBar value={overallProgress} label="Overall video progress" />
-          <p className="helper live-progress-update" aria-live="polite">
-            <span className="live-progress-pulse" aria-hidden="true" />
-            Live updates every 2 seconds
-          </p>
         </div>
       </section>
 
       {gpuDispatch.isPending ? (
         <div className="validation validation-info" role="status" aria-live="polite">
-          Generation is starting. VideoForge is scheduling the verified image and avatar work.
+          Generation is starting…
         </div>
       ) : gpuDispatch.isError ? (
         <div className="validation validation-danger" role="alert">
@@ -4480,8 +4432,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       ) : gpuDispatch.data?.state === "PREPARING_INPUTS" ? (
         <div className="validation validation-info" role="status" aria-live="polite">
-          Preparing exact avatar audio on your personal media worker. Generation will continue
-          automatically when those inputs are verified.
+          Preparing exact avatar audio. Generation continues when ready.
         </div>
       ) : gpuDispatch.data ? (
         <div className="validation validation-success" role="status" aria-live="polite">
@@ -4489,7 +4440,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       ) : gpuDispatchResumeReady ? (
         <div className="validation validation-info" role="status" aria-live="polite">
-          <p>The verified generation request is ready to continue.</p>
+          <p>Generation is ready to resume.</p>
           <Button variant="secondary" onClick={() => gpuDispatch.mutate()}>
             <RefreshCw size={15} /> Resume generation
           </Button>
@@ -4525,10 +4476,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   <strong>{hostedCountLabel(query.data.generation.avatar_segment_count)}</strong>
                 </span>
               </div>
-              <p className="helper generation-plan-summary-helper">
-                These counts come from the saved deterministic timeline. Stage 5 writes prompts only
-                for its image scenes and keeps the original scene boundaries for assembly.
-              </p>
             </section>
           ) : null}
         </Panel>
@@ -4585,13 +4532,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 ) : null}
                 {promptWritingActive
                   ? hasBatchProgress
-                    ? `Writing ${promptBatchStatus.toLowerCase()}. Accepted rows appear after the batch is validated and saved.`
-                    : "DeepSeek V4 Flash is writing prompt batches. Accepted rows appear after each batch is validated and saved."
+                    ? `Writing ${promptBatchStatus.toLowerCase()}.`
+                    : "Writing prompt batches."
                   : promptWritingStopped
                     ? "No new prompt batch will be sent automatically."
                     : acceptedPrompts.length > 0
-                      ? "All visible rows were validated and saved."
-                      : "Prompt writing starts automatically after the scene plan is ready."}
+                      ? "Accepted prompts saved."
+                      : "Waiting for prompt writing."}
               </p>
               {acceptedPrompts.length > 0 ? (
                 <div
@@ -4623,17 +4570,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   {promptWritingActive ? <span className="spinner" aria-hidden="true" /> : null}
                   <p>
                     {promptWritingActive
-                      ? "DeepSeek V4 Flash is writing prompt batches. Accepted rows will appear here after the current batch is validated and saved."
+                      ? "Writing prompts…"
                       : promptWritingStopped
                         ? "No accepted prompts were saved. VideoForge stopped without redispatching the request."
-                        : "Prompt writing starts automatically after the scene plan is ready."}
+                        : "Waiting for prompt writing."}
                   </p>
                 </div>
               )}
-              <p className="helper live-prompt-helper">
-                DeepSeek V4 Flash receives the image-scene plan in context-sized batches. Only
-                locally validated, durably saved prompts appear here.
-              </p>
             </Panel>
           ) : null}
           <HostedSpanAudioPanel progress={query.data.span_audio ?? null} />
@@ -4652,15 +4595,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               ) : (
                 <div className="live-preview-waiting">
                   <Images size={30} aria-hidden="true" />
-                  <strong>Waiting for the first accepted visual</strong>
-                  <span>It will appear here automatically.</span>
+                  <strong>Waiting for first visual</strong>
                 </div>
               )}
             </div>
             <div className="artifact-caption">
-              <span>
-                {latestArtifact ? "Latest accepted artifact" : "Worker is preparing assets"}
-              </span>
+              <span>{latestArtifact ? "Latest accepted" : "Preparing assets"}</span>
               <Badge tone={latestArtifact ? "success" : "neutral"}>
                 {latestArtifact ? "Ready" : "Waiting"}
               </Badge>
@@ -4739,7 +4679,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       </div>
       {!asr ? (
         <div className="notice" role="status">
-          <strong>Your project is ready to start transcription.</strong>
+          <strong>Ready to transcribe.</strong>
           {asrHandoff.isError ? <span> {asrHandoff.error.message}</span> : null}
           <Button variant="primary" busy={asrHandoff.isPending} onClick={() => asrHandoff.mutate()}>
             Start transcription
@@ -4761,22 +4701,20 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           <strong>
             {contextUnknown
               ? contextReconciliation.isPending
-                ? "Checking the original provider result."
+                ? "Checking provider result…"
                 : "Provider result needs confirmation."
               : contextNeedsReview
                 ? "Context extraction needs review."
                 : contextAutoStartError
                   ? "Automatic context extraction could not start."
-                  : "Continuing automatically after transcription."}
+                  : "Continuing after transcription."}
           </strong>
           <span>
             {contextUnknown
-              ? contextReconciliation.isPending
-                ? "VideoForge is checking the original provider task without submitting another inference request."
-                : "The original provider result could not be confirmed yet. No new inference request was submitted."
+              ? "No new request sent."
               : contextNeedsReview
-                ? "The first request ended without a durable accepted result. VideoForge has stopped it safely and will not send another provider request automatically."
-                : "VideoForge reads the complete transcript once, saves compact story facts, and continues to scene planning within your project limit."}
+                ? "Stopped safely; no automatic retry."
+                : "Story facts are saved before scene planning continues."}
           </span>
           {contextAutoStartError ? <span>{contextExtraction.error.message}</span> : null}
           {contextReconciliation.isError && contextUnknown ? (
@@ -4809,16 +4747,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             {renderHandoff.isError
               ? "Transcription complete; generation planning could not be verified."
               : renderHandoff.isPending
-                ? "Transcription complete; persisting the deterministic generation plan."
+                ? "Saving scene plan…"
                 : query.data.generation
                   ? promptStage?.status === "COMPLETE"
                     ? query.data.gpu_transport === "QUALIFIED_EXACT" &&
                       query.data.gpu_readiness.dispatch_available === true
-                      ? "Prompts complete; generation is ready to start."
-                      : "Prompts complete; generation is waiting for GPU qualification."
+                      ? "Ready to generate."
+                      : "Waiting for GPU qualification."
                     : promptAutoStartError
                       ? "Automatic image prompt writing could not start."
-                      : "Scene planning is complete; image prompts are starting automatically."
+                      : "Writing image prompts…"
                   : "Transcription complete; generation planning is starting."}
           </strong>
           {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
@@ -4836,10 +4774,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ) : null}
           {!renderHandoff.isError && query.data.generation && promptStage?.status !== "COMPLETE" ? (
             <>
-              <span>
-                VideoForge writes and validates the scene prompts automatically within your project
-                limit. An uncertain provider result still stops safely without redispatch.
-              </span>
+              <span>Scene prompts are generated automatically.</span>
               {promptAutoStartError ? <span>{promptWriting.error.message}</span> : null}
               {promptAutoStartError ? (
                 <Button
@@ -4858,10 +4793,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         <RefreshCw size={15} /> Refresh now
       </Button>
       <Panel eyebrow="Project" heading="Delete project">
-        <p className="helper">
-          Removes this project from Queue and Progress and prevents any new work. Billing and
-          security history stays preserved.
-        </p>
+        <p className="helper">Stops new work and removes this project. Billing history stays.</p>
         {canRequestProjectReconciliation ? (
           <Button
             variant="danger"
@@ -4942,7 +4874,7 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
   if (query.isPending)
     return (
       <Panel eyebrow="Review" heading="Loading candidate">
-        <p>Checking exact output receipt…</p>
+        <p>Checking output…</p>
       </Panel>
     );
   if (query.isError || !candidate?.preview_url)
@@ -4950,7 +4882,7 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
       <EmptyState
         icon={<AlertTriangle />}
         title="Output is not ready for review"
-        body="A successful checksum-bound render is required. No synthetic preview is shown."
+        body="A verified render is required before review."
         action={
           <Link
             className="button button-secondary"
@@ -4978,7 +4910,7 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
           </Button>
         }
       />
-      <Panel className="review-player" eyebrow="Private R2 candidate" heading="Final output">
+      <Panel className="review-player" eyebrow="Private candidate" heading="Final output">
         <div className="review-player-frame">
           <video controls preload="metadata" src={candidate.preview_url} />
         </div>
@@ -5001,7 +4933,7 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
           )}
         </div>
       </Panel>
-      <Panel eyebrow="Chronological review" heading="Contact sheet">
+      <Panel eyebrow="Scenes" heading="Contact sheet">
         {contactSheet.length > 0 ? (
           <div className="card-grid style-card-grid">
             {contactSheet.map((item, index) => (
@@ -5017,9 +4949,7 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
             ))}
           </div>
         ) : (
-          <p className="helper">
-            No chronological contact-sheet evidence was returned for this candidate.
-          </p>
+          <p className="helper">No scene images available.</p>
         )}
       </Panel>
       <Panel eyebrow="Quality gate" heading="Review flags">
@@ -5034,15 +4964,13 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
                 </div>
                 <Badge tone={statusTone(flag.status)}>{normalizedStatus(flag.status)}</Badge>
                 {flag.replacement_allowed ? (
-                  <small>Replacement requires an authorized source upload.</small>
+                  <small>Replacement needs a source upload.</small>
                 ) : null}
               </article>
             ))}
           </div>
         ) : (
-          <p className="helper">
-            No quality flags were returned. This does not substitute for subjective human review.
-          </p>
+          <p className="helper">No flags returned. Review the video before approving.</p>
         )}
       </Panel>
       <Panel eyebrow="Provenance" heading="Download evidence">
@@ -5055,9 +4983,7 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
             <Download size={16} /> Download provenance manifest
           </a>
         ) : (
-          <p className="helper">
-            The manifest becomes available as a private download after explicit approval.
-          </p>
+          <p className="helper">Available after approval.</p>
         )}
       </Panel>
       {approve.isError ? (
@@ -5074,8 +5000,8 @@ export function HostedUsageScreen() {
   });
   if (query.isPending)
     return (
-      <Panel eyebrow="Workspace" heading="Loading Usage">
-        <p>Reading exact tenant totals…</p>
+      <Panel eyebrow="Workspace" heading="Loading usage">
+        <p>Reading workspace totals…</p>
       </Panel>
     );
   if (query.isError || !query.data)
@@ -5094,9 +5020,8 @@ export function HostedUsageScreen() {
   return (
     <>
       <PageHeader title="Usage" />
-      <div className="grid grid-4 usage-grid">
-        <Metric label="Provider charges" value="$0.00" detail="this month" tone="success" />
-        <Metric label="Video generation" value="Not enabled" detail="private beta" />
+      <div className="grid grid-3 usage-grid">
+        <Metric label="Provider charges" value="Not tracked" detail="not reported" />
         <Metric
           label="Computer work"
           value={formatMilliseconds(query.data.personal_worker_seconds * 1_000)}
@@ -5105,7 +5030,7 @@ export function HostedUsageScreen() {
         <Metric
           label="Stored media"
           value={`${(query.data.retained_bytes / 1024 / 1024 / 1024).toFixed(3)} GB`}
-          detail="until Delete"
+          detail="until deleted"
         />
       </div>
       <div className="grid grid-3 usage-grid">
@@ -5119,8 +5044,7 @@ export function HostedUsageScreen() {
         ) : null}
         {query.data.fixed_recurring_usd !== undefined && query.data.fixed_recurring_usd !== null ? (
           <div className="notice">
-            Fixed retained-volume cost: {formatUsd(query.data.fixed_recurring_usd)} separately from
-            per-video spend.
+            Retained volume: {formatUsd(query.data.fixed_recurring_usd)}.
           </div>
         ) : null}
         {query.data.projects?.length ? (
@@ -5145,7 +5069,7 @@ export function HostedUsageScreen() {
             ))}
           </div>
         ) : (
-          <p className="helper">Detailed timing will appear after a completed run.</p>
+          <p className="helper">No detailed timing reported.</p>
         )}
         {query.data.lanes?.length ? (
           <Disclosure summary="Lane breakdown">

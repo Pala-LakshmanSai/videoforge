@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AppSelect, Button, DetailsSheet, Disclosure } from "./ui";
+
+afterEach(cleanup);
 
 describe("Button", () => {
   it("locks duplicate clicks whenever an action is busy", () => {
@@ -37,6 +39,34 @@ describe("Disclosure", () => {
 });
 
 describe("AppSelect", () => {
+  it("dismisses on outside click and keyboard focus without selecting an option", async () => {
+    const onValueChange = vi.fn();
+    render(
+      <>
+        <AppSelect
+          label="Sort"
+          value="new"
+          onValueChange={onValueChange}
+          options={[
+            { value: "new", label: "Newest" },
+            { value: "old", label: "Oldest" },
+          ]}
+        />
+        <button>Outside</button>
+      </>,
+    );
+    const trigger = screen.getByLabelText("Sort");
+    fireEvent.click(trigger);
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "true"));
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
+    expect(trigger.closest("details")).not.toHaveAttribute("open");
+    fireEvent.click(trigger);
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "true"));
+    fireEvent.focusIn(screen.getByRole("button", { name: "Outside" }));
+    expect(trigger.closest("details")).not.toHaveAttribute("open");
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
   it("uses an integrated application menu instead of a native browser select", () => {
     const onValueChange = vi.fn();
     const { container } = render(

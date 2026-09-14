@@ -36,21 +36,21 @@ function HostedSettingsScreen() {
             <Badge tone={tenant.isError ? "danger" : "success"}>
               {tenant.isError ? "Unavailable" : "Private workspace"}
             </Badge>
-            <strong>{tenant.data?.user.email ?? "Checking signed-in account…"}</strong>
+            <strong>{tenant.data?.user.email ?? "Loading account…"}</strong>
           </div>
           <Disclosure summary="Privacy & security">
             <div className="detail-facts">
               <span>
                 <small>Workspace</small>
-                <strong>Only you can see your projects and media</strong>
+                <strong>Projects and media are private</strong>
               </span>
               <span>
                 <small>Files</small>
-                <strong>Private with short-lived download access</strong>
+                <strong>Private links expire</strong>
               </span>
               <span>
                 <small>Video generation</small>
-                <strong>Not enabled in this beta</strong>
+                <strong>Available when setup is complete</strong>
               </span>
               <span>
                 <small>Computer work</small>
@@ -88,20 +88,20 @@ export function SettingsScreen() {
     <>
       <PageHeader title="Settings" />
       <div className="grid grid-2 settings-grid">
-        <Panel eyebrow="Team" heading="Access">
+        <Panel eyebrow="Team" heading="Team access">
           <div className="settings-summary">
             <Badge tone="success">ACTIVE</Badge>
             <strong>Lakshman · Admin</strong>
           </div>
-          <Disclosure summary="Team details">
+          <Disclosure summary="Details">
             <div className="detail-facts">
               <span>
                 <small>Sign-in</small>
-                <strong>Invite-only Google accounts</strong>
+                <strong>Invite-only Google sign-in</strong>
               </span>
               <span>
                 <small>Workspace</small>
-                <strong>5–10 invited teammates</strong>
+                <strong>5–10 teammates</strong>
               </span>
             </div>
           </Disclosure>
@@ -119,21 +119,21 @@ export function SettingsScreen() {
             )}
             <strong>
               {mode === "local"
-                ? "External providers disabled"
+                ? "Providers disabled"
                 : mode === "fixture"
-                  ? "External calls off"
-                  : "Waiting for authoritative health"}
+                  ? "No external calls"
+                  : "Mode unavailable"}
             </strong>
           </div>
-          <Disclosure summary="Connection status">
+          <Disclosure summary="Details">
             <div className="detail-facts">
               <span>
                 <small>RunPod</small>
                 <strong>
                   {mode === "local"
-                    ? "Disabled in bounded local mode"
+                    ? "Disabled locally"
                     : mode === "fixture"
-                      ? "Not configured in fixture mode"
+                      ? "Not configured"
                       : "Status unavailable"}
                 </strong>
               </span>
@@ -141,9 +141,9 @@ export function SettingsScreen() {
                 <small>Runware</small>
                 <strong>
                   {mode === "local"
-                    ? "Disabled in bounded local mode"
+                    ? "Disabled locally"
                     : mode === "fixture"
-                      ? "Not configured in fixture mode"
+                      ? "Not configured"
                       : "Status unavailable"}
                 </strong>
               </span>
@@ -156,7 +156,7 @@ export function SettingsScreen() {
             mode === "local"
               ? "Local media slice"
               : mode === "fixture"
-                ? "Fixture profile v1"
+                ? "Fixture profile"
                 : "Execution mode unavailable"
           }
         >
@@ -170,25 +170,17 @@ export function SettingsScreen() {
                   : "Execution unconfirmed"}
             </strong>
           </div>
-          <Disclosure summary="Execution details">
+          <Disclosure summary="Details">
             <div className="detail-facts">
               <span>
                 <small>Endpoint</small>
                 <strong>
-                  {mode === "local"
-                    ? "This development machine"
-                    : mode === "fixture"
-                      ? "None"
-                      : "Unavailable"}
+                  {mode === "local" ? "This machine" : mode === "fixture" ? "None" : "Unavailable"}
                 </strong>
               </span>
               <span>
                 <small>
-                  {mode === "local"
-                    ? "External spend"
-                    : mode === "fixture"
-                      ? "Rate limit"
-                      : "Status"}
+                  {mode === "local" ? "Spend" : mode === "fixture" ? "Limit" : "Status"}
                 </small>
                 <strong>
                   {mode === "local" ? "$0 authorized" : mode === "fixture" ? "$0" : "Unavailable"}
@@ -208,15 +200,11 @@ export function SettingsScreen() {
                   : "Defaults unavailable"}
             </strong>
           </div>
-          <Disclosure summary="Default details">
+          <Disclosure summary="Details">
             <div className="detail-facts">
               <span>
                 <small>
-                  {mode === "local"
-                    ? "External spend"
-                    : mode === "fixture"
-                      ? "Contract ceiling"
-                      : "Status"}
+                  {mode === "local" ? "Spend" : mode === "fixture" ? "Limit" : "Status"}
                 </small>
                 <strong>
                   {mode === "local" ? "$0" : mode === "fixture" ? "$2.00" : "Unavailable"}

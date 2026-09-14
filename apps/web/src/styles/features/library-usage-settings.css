@@ -31,12 +31,17 @@
   align-items: start;
 }
 
+.settings-grid > * {
+  min-width: 0;
+}
+
 .settings-grid .panel-header {
   margin-bottom: 0;
 }
 
 .settings-summary {
   display: flex;
+  flex-wrap: wrap;
   min-height: 48px;
   align-items: center;
   gap: 10px;
@@ -45,6 +50,11 @@
   border-radius: 13px;
   background: var(--surface-fill-soft);
   box-shadow: var(--surface-tile-shadow);
+}
+
+.settings-summary > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .settings-grid .disclosure {

@@ -176,8 +176,27 @@ test("hosted auth mounts the product router and account-owned worker surfaces", 
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(page.getByText("Chrome test computer")).toBeVisible();
+  await page.getByText("Add or update a computer", { exact: true }).click();
   await expect(page.getByRole("link", { name: /Download for Windows/u })).toBeVisible();
   await expect(page.getByRole("link", { name: /Download for Mac/u })).toBeVisible();
+  await page.screenshot({ path: "/tmp/videoforge-ui-settings-desktop.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("link", { name: /Download for Mac/u })).toBeVisible();
+  await page.screenshot({ path: "/tmp/videoforge-ui-settings-mobile.png" });
+  const overflow = await page.evaluate(() =>
+    [...document.querySelectorAll("main *")]
+      .filter((element) => element.getBoundingClientRect().right > innerWidth)
+      .map((element) => ({
+        tag: element.tagName,
+        className: element.className,
+        right: element.getBoundingClientRect().right,
+        text: element.textContent?.slice(0, 60),
+      })),
+  );
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+    JSON.stringify(overflow),
+  ).toBeLessThanOrEqual(390);
 
   await page.getByRole("link", { name: "Queue", exact: true }).click();
   await page.getByRole("button", { name: "Cancel job", exact: true }).click();

@@ -1067,6 +1067,7 @@ h4 {
 }
 
 .app-select[open] {
+  z-index: 40;
   border-color: rgba(255, 102, 125, 0.48);
   background: rgba(12, 15, 34, 0.98);
   box-shadow:
@@ -1196,6 +1197,12 @@ h4 {
   color: #777b8d;
   cursor: not-allowed;
   opacity: 0.72;
+}
+
+.app-select-option strong,
+.app-select-option small {
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .app-select-option:disabled strong,

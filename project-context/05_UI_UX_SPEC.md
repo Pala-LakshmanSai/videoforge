@@ -6,6 +6,19 @@ Read when: changing product surfaces, queue/progress behavior, or Chrome accepta
 
 ## Design objective
 
+### Compact interaction pass — 2026-09-14
+
+Keep the existing layout, routes, colors, and media-first structure. Field labels replace repeated
+section instructions. Stage rows show descriptions for current/problem stages, not completed or
+pending stages. Preset traits and generation rules remain available in disclosures. Connected
+computers show setup/installers under an add/update disclosure; first setup and required updates
+remain expanded. Dropdowns dismiss on outside interaction or focus departure, retain keyboard
+navigation, and wrap full option names. Unknown provider results retain explicit no-automatic-retry
+copy. Never present missing cost data as zero or hardcode enabled generation as unavailable.
+
+Provider-free acceptance and release status: `CURRENT_STATE.yaml`,
+`evidence/acceptance/VF-10-09/2026-09-14-ui-ux-polish/acceptance.json`.
+
 Preserve the current visual system, information architecture, routes, hubs, project flow, and
 responsive behavior. The architecture transition is primarily backend/state-language work, not a UI
 redesign. VideoForge should look like a calm top-tier production product for a non-technical user:

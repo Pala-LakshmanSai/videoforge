@@ -51,8 +51,8 @@ function MediaReviewEmpty({ section }: { readonly section: MediaSection }) {
       <h3>No {section === "images" ? "generated images" : "avatar footage"} yet</h3>
       <p>
         {section === "images"
-          ? "Accepted Stage 6 image outputs will appear here when the image lane has finished."
-          : "Accepted Stage 7 avatar clips will appear here when the avatar lane has finished."}
+          ? "Accepted images appear here when ready."
+          : "Accepted avatar clips appear here when ready."}
       </p>
     </div>
   );
@@ -292,10 +292,7 @@ export function ProjectMediaReview({
                 <Dialog.Title>
                   {activeSection ? sectionTitle(activeSection) : "Media review"}
                 </Dialog.Title>
-                <Dialog.Description>
-                  Browse signed project media. Use the arrow keys or the thumbnail rail to move
-                  through the set.
-                </Dialog.Description>
+                <Dialog.Description>Use arrow keys or thumbnails to browse.</Dialog.Description>
               </div>
               <Dialog.Close asChild>
                 <button
@@ -332,7 +329,7 @@ export function ProjectMediaReview({
                 <div className="media-review-state" aria-busy="true">
                   <span className="spinner" aria-hidden="true" />
                   <h3>Loading project media</h3>
-                  <p>Checking the accepted outputs for this project…</p>
+                  <p>Checking accepted outputs…</p>
                 </div>
               ) : error ? (
                 <MediaReviewError message={error} onRetry={onRetry} />
@@ -347,7 +344,7 @@ export function ProjectMediaReview({
                       {failedAssetId === selectedItem.id ? (
                         <div className="media-review-asset-error" role="alert">
                           <strong>This media could not be loaded.</strong>
-                          <span>Try another item or refresh the project.</span>
+                          <span>Try another item or refresh.</span>
                         </div>
                       ) : activeSection === "images" ? (
                         <img
@@ -378,7 +375,7 @@ export function ProjectMediaReview({
                     {activeSection === "images" ? (
                       <div className="media-review-regeneration">
                         <label htmlFor={`media-review-prompt-${selectedItem.id}`}>
-                          Prompt for this image
+                          Image prompt
                         </label>
                         <textarea
                           id={`media-review-prompt-${selectedItem.id}`}
@@ -387,7 +384,7 @@ export function ProjectMediaReview({
                           value={promptFor(selectedItem)}
                           aria-label="Image prompt"
                           disabled={regeneratingId !== null}
-                          placeholder="Describe the image you want to create."
+                          placeholder="Describe a replacement image."
                           onChange={(event) => updatePrompt(selectedItem, event.target.value)}
                           onKeyDown={(event) => handlePromptKeyDown(event, selectedItem)}
                           aria-describedby={`media-review-prompt-help-${selectedItem.id}`}
@@ -414,15 +411,15 @@ export function ProjectMediaReview({
                             : regenerationErrors[selectedItem.id]?.retryable === false
                               ? "Refresh the project to reconcile this request before trying again."
                               : !promptFor(selectedItem).trim()
-                                ? "Enter a prompt to regenerate this image."
-                                : "Press Enter to regenerate. Use Shift+Enter for a new line. This updates the image; an existing video stays unchanged."}
+                                ? "Enter a prompt."
+                                : "Press Enter to regenerate. Shift+Enter adds a line. Existing video stays unchanged."}
                         </p>
                         <p className="media-review-regeneration-cost">
                           Regeneration costs up to $2.
                         </p>
                         {regeneratingId === selectedItem.id ? (
                           <p role="status" aria-live="polite">
-                            Creating a replacement. Your current image stays available.
+                            Creating replacement. Current image stays available.
                           </p>
                         ) : null}
                         {regenerationErrors[selectedItem.id] ? (

@@ -193,6 +193,23 @@ export function AppSelect({
   const selected = options.find((option) => option.value === value) ?? options[0];
   let previousGroup: string | undefined;
 
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent | FocusEvent) => {
+      const details = detailsRef.current;
+      if (details && event.target instanceof Node && !details.contains(event.target)) {
+        details.open = false;
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("focusin", dismiss);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("focusin", dismiss);
+    };
+  }, [open]);
+
   useEffect(
     () => () => {
       if (typeaheadTimerRef.current !== null) window.clearTimeout(typeaheadTimerRef.current);
@@ -448,14 +465,18 @@ export function StageTimeline({
                 <strong>{stage.label}</strong>
                 <Badge tone={tone}>{stage.status.replaceAll("_", " ")}</Badge>
               </div>
-              <p>{stage.detail}</p>
+              {stage.detail && (active || !["COMPLETE", "PENDING"].includes(stage.status)) ? (
+                <p>{stage.detail}</p>
+              ) : null}
               {actions?.[stage.id] ? (
                 <div className="stage-row-action">{actions[stage.id]}</div>
               ) : null}
             </div>
-            <span className="stage-count">
-              {stage.completed}/{stage.total}
-            </span>
+            {active && stage.status !== "COMPLETE" && stage.total > 0 ? (
+              <span className="stage-count">
+                {stage.completed}/{stage.total}
+              </span>
+            ) : null}
           </li>
         );
       })}

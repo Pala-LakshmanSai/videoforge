@@ -205,6 +205,7 @@
 }
 
 .visual-preset-details[open] {
+  z-index: 40;
   border-color: rgba(255, 94, 116, 0.5);
   background: rgba(12, 15, 34, 0.97);
   box-shadow:
@@ -380,6 +381,12 @@
 .visual-preset-option:hover {
   border-color: rgba(205, 199, 249, 0.18);
   background: rgba(255, 255, 255, 0.045);
+}
+
+.visual-preset-option .visual-preset-copy strong {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .visual-preset-option.selected,

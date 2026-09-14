@@ -885,7 +885,7 @@ describe("hosted product journey", () => {
     expect(screen.getByAltText("Documentary reference 1 of 3")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Previous reference image" }));
     expect(screen.getByAltText("Documentary reference 3 of 3")).toBeInTheDocument();
-    expect(screen.getByText("Gemini analysis")).toBeInTheDocument();
+    expect(screen.getByText("Analysis")).toBeInTheDocument();
     expect(
       screen.getByText("Clean commercial photography with tactile retail detail."),
     ).toBeInTheDocument();
@@ -926,9 +926,7 @@ describe("hosted product journey", () => {
     renderHosted(<HostedAvatarHubScreen />);
 
     expect(await screen.findByText("No ready avatars yet")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Create your first avatar before starting a project/u),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Add a reusable avatar to use in a project/u)).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Create your first avatar" }),
     ).not.toBeInTheDocument();
@@ -1049,29 +1047,14 @@ describe("hosted product journey", () => {
 
     expect(await screen.findByText("Saved presenter")).toBeInTheDocument();
     expect(await screen.findByText("Will Carter")).toBeInTheDocument();
-    expect(screen.getByText("Unfinished avatars")).toBeInTheDocument();
-    expect(screen.getByText("Unfinished styles")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: "Continue setup" })).toHaveLength(2);
     expect(screen.getAllByRole("link", { name: "Continue setup" })).toHaveLength(4);
-    expect(
-      screen.getByText(
-        "Your avatar draft is saved. Continue to verify the photo upload, then approve it.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "7 references are saved. Continue to verify the uploads, then analyze and publish this style.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Photo saved. Continue setup.")).toBeInTheDocument();
+    expect(screen.getByText("7 references saved.")).toBeInTheDocument();
     expect(screen.getByText("Analysis result unconfirmed")).toBeInTheDocument();
+    expect(screen.getByText("Analysis stopped. No automatic retry.")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "The analysis result could not be confirmed. Your references are saved. This request has stopped and will not retry automatically.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "The analysis request failed, but your verified references are saved. Continue setup to retry safely.",
-      ),
+      screen.getByText("Analysis failed. References saved; retry from this draft."),
     ).toBeInTheDocument();
     const styleResumeLink = screen
       .getAllByRole("link", { name: "Continue setup" })
@@ -1089,9 +1072,9 @@ describe("hosted product journey", () => {
   });
 
   it.each([
-    ["DRAFT", "Analyze references"],
-    ["FAILED", "Analyze references"],
-    ["NEEDS_REVIEW", "Review and publish"],
+    ["DRAFT", "Analyze"],
+    ["FAILED", "Analyze"],
+    ["NEEDS_REVIEW", "Publish"],
   ] as const)("resumes a saved style in the correct wizard step (%s)", async (state, heading) => {
     window.history.replaceState({}, "", `/styles/new?resumeVersionId=resume-style-version`);
     vi.stubGlobal(
@@ -1131,11 +1114,11 @@ describe("hosted product journey", () => {
     expect(screen.getByText("Continuing “Saved documentary”")).toBeInTheDocument();
     expect(screen.queryByLabelText("Upload style references")).not.toBeInTheDocument();
     if (state === "DRAFT") {
-      expect(screen.getByRole("button", { name: "Analyze this draft once" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Analyze once" })).toBeEnabled();
     } else if (state === "FAILED") {
-      expect(screen.getByRole("button", { name: "Retry saved analysis" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Retry analysis" })).toBeEnabled();
     } else {
-      expect(screen.getByRole("button", { name: "Publish immutable style version" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Publish style" })).toBeEnabled();
       expect(screen.queryByLabelText("Profile reviewed")).not.toBeInTheDocument();
     }
     window.history.replaceState({}, "", "/");
@@ -1212,11 +1195,7 @@ describe("hosted product journey", () => {
     renderHosted(<HostedPresetCreationScreen kind="styles" />);
 
     expect(await screen.findByText("Continuing “Will Carter”")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Some saved references could not be verified. Reselect 3–8 images to repair this saved draft.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Select 3–8 replacement images.")).toBeInTheDocument();
     const references = [
       new File(["reference one"], "reference-one.png", { type: "image/png" }),
       new File(["reference two"], "reference-two.png", { type: "image/png" }),
@@ -1227,10 +1206,10 @@ describe("hosted product journey", () => {
     });
     expect(await screen.findByText("3 references selected")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Review replacement references" }));
-    expect(await screen.findByRole("heading", { name: "Technical review" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Verify replacement references" }));
+    expect(await screen.findByRole("heading", { name: "Review" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save replacement references" }));
 
-    expect(await screen.findByRole("heading", { name: "Analyze references" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Analyze" })).toBeInTheDocument();
     const writePaths = fetchMock.mock.calls
       .filter(([, init]) => init?.method === "POST")
       .map(([input]) => String(input));
@@ -1273,9 +1252,7 @@ describe("hosted product journey", () => {
     fireEvent.change(await screen.findByLabelText("Style name"), {
       target: { value: "Will Carter" },
     });
-    expect(
-      screen.getByText("This unfinished style is already in the Hub. Continue setup from there."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Draft already exists. Continue from the Hub.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Continue setup" })).toHaveAttribute(
       "href",
       "/styles/new?resumeVersionId=unfinished-style-version&returnTo=%2Fstyles",
@@ -1450,8 +1427,8 @@ describe("hosted product journey", () => {
     renderHosted(<HostedPresetCreationUnavailableScreen kind="styles" />);
 
     expect(screen.getByText("Image Styles creation unavailable")).toBeInTheDocument();
-    expect(screen.getByText("Read-only hosted catalog")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open Image Styles" })).toBeInTheDocument();
+    expect(screen.getByText("Read-only catalog")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View Image Styles" })).toBeInTheDocument();
   });
 
   it("exposes the provider-free hosted style workflow only in private beta staging", () => {
@@ -1466,7 +1443,7 @@ describe("hosted product journey", () => {
     expect(screen.getByRole("heading", { name: "New image style" })).toBeInTheDocument();
     expect(screen.getByLabelText("Style name")).toHaveClass("input", "preset-name-input");
     expect(screen.getByLabelText("Upload style references")).toBeInTheDocument();
-    expect(screen.getByText("Add a name and reference images to continue.")).toBeInTheDocument();
+    expect(screen.getByText("Add a name and images.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
     expect(document.querySelector(".preset-create-panel")).toBeInTheDocument();
   });
@@ -1484,7 +1461,7 @@ describe("hosted product journey", () => {
     expect(nameInput).toHaveClass("input", "preset-name-input");
     fireEvent.change(nameInput, { target: { value: "Studio presenter" } });
     expect(nameInput).toHaveValue("Studio presenter");
-    expect(screen.getByText("Choose a photo to continue.")).toBeInTheDocument();
+    expect(screen.getByText("Choose a photo.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   });
 
@@ -1591,7 +1568,6 @@ describe("hosted product journey", () => {
     const progressHero = await screen.findByRole("region", { name: "Live video progress" });
     expect(within(progressHero).getAllByText("Running").length).toBeGreaterThan(0);
     expect(within(progressHero).queryByText("Blocked")).not.toBeInTheDocument();
-    expect(within(progressHero).getByText("No project spending limit")).toBeInTheDocument();
   });
 
   it("requires a second deliberate click before stopping active transcription", async () => {
@@ -2619,9 +2595,7 @@ describe("hosted product journey", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
-    expect(
-      await screen.findByText(/image prompts are starting automatically/u),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Writing image prompts…")).toBeInTheDocument();
     expect(screen.getAllByRole("progressbar", { name: "Overall video progress" })).toHaveLength(2);
     expect(screen.getByRole("heading", { name: "Video production stages" })).toBeInTheDocument();
     expect(
@@ -3220,7 +3194,7 @@ describe("hosted product journey", () => {
 
     expect(await screen.findByText("2m 05s")).toBeInTheDocument();
     expect(screen.getByText("1.000 GB")).toBeInTheDocument();
-    expect(screen.getAllByText("$0.00")).toHaveLength(1);
+    expect(screen.getByText("Not tracked")).toBeInTheDocument();
     expect(screen.queryByText(/estimated/u)).not.toBeInTheDocument();
   });
 });

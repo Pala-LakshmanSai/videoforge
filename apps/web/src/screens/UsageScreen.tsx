@@ -20,10 +20,10 @@ function FixtureUsageScreen() {
   const query = useQuery({ queryKey: ["usage", scenario], queryFn: () => api.usage(scenario) });
   if (query.isPending) {
     return (
-      <Panel eyebrow="Workspace" heading="Loading Usage">
+      <Panel eyebrow="Workspace" heading="Loading usage">
         <div className="empty-state" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
-          <p>Loading cost and resource totals…</p>
+          <p>Loading usage…</p>
         </div>
       </Panel>
     );
@@ -33,7 +33,7 @@ function FixtureUsageScreen() {
       <EmptyState
         icon={<AlertTriangle />}
         title="Usage unavailable"
-        body="No estimated spend is substituted when usage data cannot be loaded."
+        body="Usage data could not be loaded. Try again."
         action={
           <Button variant="secondary" onClick={() => void query.refetch()}>
             Retry load
@@ -61,7 +61,7 @@ function FixtureUsageScreen() {
         <Metric
           label="Style analysis"
           value={`$${usage.styleSpend.toFixed(2)}`}
-          detail="one time"
+          detail="one-time"
         />
         <Metric
           label="Avatar tests"
@@ -70,9 +70,9 @@ function FixtureUsageScreen() {
         />
       </div>
       <div className="grid grid-3 usage-grid">
-        <Metric label="GPU" value={`${usage.gpuSeconds}s`} detail="billed time" />
+        <Metric label="GPU" value={`${usage.gpuSeconds}s`} detail="billed" />
         <Metric label="Storage" value={`${usage.storageGb.toFixed(2)} GB`} detail="retained" />
-        <Metric label="Retries" value={String(usage.retries)} detail="item-level" />
+        <Metric label="Retries" value={String(usage.retries)} detail="items" />
       </div>
     </>
   );

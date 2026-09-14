@@ -94,17 +94,14 @@ function hostedProjectLabel(state: HostedQueueProject["state"]): string {
 function hostedProjectExplanation(project: HostedQueueProject): string {
   if (project.state === "IN_PROGRESS")
     return project.active_job_kind === "ASR"
-      ? "Your computer is transcribing the voiceover."
+      ? "Transcribing voiceover."
       : project.active_job_kind === "RENDER"
-        ? "Your computer is assembling the final video."
-        : `Working on ${project.stage.toLowerCase()}.`;
-  if (project.state === "NEEDS_ATTENTION")
-    return `${project.stage} stopped safely. Open the project to review and retry.`;
-  if (project.state === "ACTION_REQUIRED")
-    return "Transcription finished. Open the project to continue voiceover context.";
-  if (project.state === "CANCELLED")
-    return "Work was cancelled. Nothing is running for this video.";
-  return `Waiting at ${project.stage.toLowerCase()}. Nothing is running yet.`;
+        ? "Assembling the final video."
+        : "Working now.";
+  if (project.state === "NEEDS_ATTENTION") return "Stopped safely. Open to review.";
+  if (project.state === "ACTION_REQUIRED") return "Ready for your input. Open to continue.";
+  if (project.state === "CANCELLED") return "Stopped. Nothing is running.";
+  return "Queued. Nothing is running yet.";
 }
 
 function hostedRelativeTime(iso: string, now: number): string {
@@ -229,7 +226,7 @@ function HostedQueueScreen() {
       <Panel heading="Loading projects">
         <div className="empty-state" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
-          <p>Checking your projects and connected computer…</p>
+          <p>Loading your projects…</p>
         </div>
       </Panel>
     );
@@ -292,16 +289,16 @@ function HostedQueueScreen() {
         <Metric
           label="In progress"
           value={String(active)}
-          detail="1 video at a time"
+          detail="one at a time"
           tone={active ? "info" : "neutral"}
         />
         <Metric
           label="Action needed"
           value={String(attention)}
-          detail={attention ? "open these first" : "nothing waiting on you"}
+          detail={attention ? "open first" : "nothing to review"}
           tone={attention ? "warning" : "neutral"}
         />
-        <Metric label="Waiting" value={String(waiting)} detail="not started yet" />
+        <Metric label="Waiting" value={String(waiting)} detail="not started" />
         <Metric
           label="Your computer"
           value={
@@ -314,15 +311,14 @@ function HostedQueueScreen() {
           detail={
             queue.data.worker_state === "WAITING_FOR_YOUR_COMPUTER"
               ? "work waits safely"
-              : "transcription and assembly"
+              : "transcription and render"
           }
           tone={queue.data.worker_state === "WAITING_FOR_YOUR_COMPUTER" ? "warning" : "success"}
         />
       </div>
       <Panel heading="Your projects">
         <div className="notice" role="status">
-          Your computer handles transcription and final assembly. If it disconnects, work waits
-          safely until it reconnects.
+          Work pauses safely if your computer disconnects.
         </div>
         {projects.length === 0 ? (
           <EmptyState
@@ -400,9 +396,6 @@ function HostedQueueScreen() {
                         </Badge>
                         <span title={hostedAbsoluteTime(project.updated_at)}>
                           Updated {hostedRelativeTime(project.updated_at, now)}
-                        </span>
-                        <span title={hostedAbsoluteTime(project.created_at)}>
-                          Created {hostedRelativeTime(project.created_at, now)}
                         </span>
                       </div>
                       <div className="queue-card__facts queue-card__actions">
@@ -555,7 +548,7 @@ function FixtureQueueScreen() {
         <Panel heading="Loading your private queue">
           <div className="empty-state" aria-busy="true">
             <span className="spinner" aria-hidden="true" />
-            <p>Reading durable admission state…</p>
+            <p>Loading your queue…</p>
           </div>
         </Panel>
       </>
@@ -568,7 +561,7 @@ function FixtureQueueScreen() {
         <EmptyState
           icon={<AlertTriangle />}
           title="Queue unavailable"
-          body="No fallback position or cross-account state is being inferred."
+          body="Queue data could not be loaded. Try again."
           action={
             <Button variant="secondary" onClick={() => void queue.refetch()}>
               Retry load
@@ -614,13 +607,10 @@ function FixtureQueueScreen() {
         heading="Your generation queue"
       >
         <div className="notice" role="status">
-          Two global slots rotate deterministically across eligible accounts. This view exposes only
-          your projects; your reorder never changes another account&apos;s turn.
+          Two shared slots. Reordering affects only your projects.
         </div>
         {queue.data.requests.length === 0 ? (
-          <p>
-            Idle. Generate adds a private waiting request; preparation begins only after admission.
-          </p>
+          <p>Queue is empty. Start a project to add it.</p>
         ) : (
           <div className="queue-list" aria-label="Your private generation queue">
             {queue.data.requests.map((request) => (
@@ -693,7 +683,7 @@ function FixtureQueueScreen() {
                       </Button>
                     </>
                   ) : (
-                    <small>Active work cannot be moved.</small>
+                    <small>Active work can&apos;t be moved.</small>
                   )}
                 </div>
               </article>

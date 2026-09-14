@@ -27,6 +27,16 @@ import { scenarioIds, type ProjectSummary, type Tone } from "../lib/types";
 import { AccessGate, AccessGatePending, AccessGateUnavailable } from "./AccessGate";
 import { AppSelect, Badge, Disclosure, ProgressBar } from "./ui";
 
+function scenarioLabel(id: string): string {
+  return id
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+    .replace(/\bV(\d+)\b/g, "v$1")
+    .replace(/\bGpu\b/g, "GPU")
+    .replace(/\bAsr\b/g, "ASR")
+    .replace(/\bMp4\b/g, "MP4");
+}
+
 const nav = [
   { to: "/", label: "Queue", mobileLabel: "Queue", icon: CircleGauge },
   { to: "/projects/new", label: "New Project", mobileLabel: "New", icon: Sparkles },
@@ -500,7 +510,7 @@ export function AppShell({ children }: PropsWithChildren) {
                       label="Scenario"
                       value={scenario}
                       onValueChange={(value) => setScenario(value as typeof scenario)}
-                      options={scenarioIds.map((id) => ({ value: id, label: id }))}
+                      options={scenarioIds.map((id) => ({ value: id, label: scenarioLabel(id) }))}
                     />
                   </div>
                 )}

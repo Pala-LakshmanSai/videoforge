@@ -28,6 +28,23 @@ export function VisualPresetSelect({
   const typeaheadTimerRef = useRef<number | null>(null);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent | FocusEvent) => {
+      const details = detailsRef.current;
+      if (details && event.target instanceof Node && !details.contains(event.target)) {
+        details.open = false;
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("focusin", dismiss);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("focusin", dismiss);
+    };
+  }, [open]);
   const selected = options.find((option) => option.id === selectedId);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleOptions = normalizedQuery
@@ -43,7 +60,7 @@ export function VisualPresetSelect({
     [],
   );
 
-  if (options.length <= 1) {
+  if (options.length === 0 || (options.length === 1 && selected)) {
     return (
       <div className="visual-preset-select" id={id}>
         <span className="field-label">{label}</span>
@@ -72,6 +89,8 @@ export function VisualPresetSelect({
     const details = detailsRef.current;
     if (!details) return;
     details.open = false;
+    setOpen(false);
+    setQuery("");
     window.requestAnimationFrame(() => details.querySelector("summary")?.focus());
   }
 
@@ -135,6 +154,7 @@ export function VisualPresetSelect({
             }
             if (event.key === "Home") focusOption(0);
             else if (event.key === "End") focusOption(Math.max(0, visibleOptions.length - 1));
+            else if (fromSearch) focusOption(0);
             else focusRelative(event.key === "ArrowDown" ? 1 : -1);
             return;
           }
@@ -162,7 +182,6 @@ export function VisualPresetSelect({
           ) : (
             <span className="visual-preset-copy">
               <strong>Select {label.toLowerCase()}</strong>
-              <small>No ready preset selected</small>
             </span>
           )}
           <span className="visual-preset-chevron" aria-hidden="true" />
@@ -191,7 +210,7 @@ export function VisualPresetSelect({
                 ref={(element) => {
                   optionRefs.current[optionIndex] = element;
                 }}
-                tabIndex={checked ? 0 : -1}
+                tabIndex={checked || (!selected && optionIndex === 0) ? 0 : -1}
                 onClick={() => {
                   onChange(option.id);
                   closeAndFocus();

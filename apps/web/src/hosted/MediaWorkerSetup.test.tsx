@@ -66,9 +66,7 @@ describe("personal worker onboarding", () => {
     expect(mac).toHaveTextContent("ImageForge-style beta");
     expect(screen.getByText("Editing PC")).toBeInTheDocument();
     expect(screen.queryByText("11111111-1111-4111-8111-111111111111")).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/needs no keys, folders, URLs, or technical setup/u),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Ready for transcription and final rendering/u)).toBeInTheDocument();
   });
 
   it("requires one explicit browser confirmation for an installer enrollment", async () => {

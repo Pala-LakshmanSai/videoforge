@@ -1,4 +1,17 @@
 schema_version: "2.0"
+ui_ux_polish_2026_09_14:
+  status: LOCAL_VERIFIED_DEPLOYMENT_PENDING
+  checkpoint: V2-09
+  scope: presentation_interaction_only_existing_structure_preserved
+  source_base_commit: b350aee2
+  changes: "Compact copy across hosted creation, preset hubs, progress/review, queue, library, usage and settings; on-demand style/setup details; truthful missing usage data; dropdown dismissal, keyboard/single-option repairs, wrapped choices; mobile settings overflow fixed."
+  validation: "104 focused tests pass across combined final checks; 3 unique hosted Chrome journeys pass; desktop/mobile screenshots inspected; 390px settings overflow regression passes; Cloudflare production build/firewall and changed-file lint/format pass."
+  typecheck: "BLOCKED by 12 errors in untouched server/provider files; no touched UI file errors. Full repository suite not run."
+  production: "Not deployed by this task. Existing user project and provider attempts not retried, cancelled, or otherwise mutated."
+  provider_actions_created: 0
+  paid_compute_started: false
+  current_compute_inventory: NOT_RECHECKED
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-ui-ux-polish/acceptance.json
 style_analysis_status_repair_2026_09_14:
   status: DEPLOYED_LIVE_STATUS_VERIFIED
   checkpoint: V2-09

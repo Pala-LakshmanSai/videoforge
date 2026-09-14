@@ -4,7 +4,7 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-09-06"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_short_live_e2e
+current_selected_profile: ui_shell
 current_selected_brief: tasks/VF-10-09.md
 
 mandatory_read:

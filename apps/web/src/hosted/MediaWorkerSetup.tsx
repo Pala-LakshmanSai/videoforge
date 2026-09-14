@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Disclosure } from "../components/ui";
 
 type WorkerStatus = "ONLINE" | "BUSY" | "OFFLINE" | "REVOKED" | "UPDATE_REQUIRED";
 
@@ -64,6 +65,14 @@ function lastSeen(value: string | null): string {
   return Number.isNaN(date.getTime()) ? "Unavailable" : date.toLocaleString();
 }
 
+function workerStatusLabel(status: WorkerStatus): string {
+  if (status === "ONLINE") return "Online";
+  if (status === "BUSY") return "Working";
+  if (status === "UPDATE_REQUIRED") return "Update required";
+  if (status === "REVOKED") return "Revoked";
+  return "Offline";
+}
+
 async function responseJson<ResponseValue>(response: Response): Promise<ResponseValue> {
   if (!response.ok) throw new Error(`Worker request returned HTTP ${response.status}.`);
   return response.json() as Promise<ResponseValue>;
@@ -79,6 +88,11 @@ export function MediaWorkerSetup() {
     () => new URLSearchParams(window.location.search).get("enrollment"),
     [],
   );
+  const hasReadyWorker = workers?.devices.some(
+    (device) => device.status === "ONLINE" || device.status === "BUSY",
+  );
+  const needsWorkerUpdate = workers?.devices.some((device) => device.status === "UPDATE_REQUIRED");
+  const showOnboarding = !hasReadyWorker || needsWorkerUpdate;
 
   const refresh = useCallback(async () => {
     const value = await responseJson<WorkerList>(
@@ -129,8 +143,8 @@ export function MediaWorkerSetup() {
   async function remove(device: WorkerDevice) {
     const warning =
       device.status === "REVOKED"
-        ? "Remove this old computer entry from the list? Its security history will be retained."
-        : "Remove this computer from VideoForge? Any active local job will stop.";
+        ? "Remove this old entry? Security history stays."
+        : "Remove this computer? Active local work will stop.";
     if (!window.confirm(warning)) return;
     setBusy(true);
     try {
@@ -149,7 +163,7 @@ export function MediaWorkerSetup() {
       setMessage(
         device.status === "REVOKED"
           ? "Old computer entry removed."
-          : "Computer removed. Open its worker again to reconnect it.",
+          : "Computer removed. Reopen the worker to reconnect.",
       );
       await refresh();
     } catch {
@@ -181,10 +195,13 @@ export function MediaWorkerSetup() {
   return (
     <section className="worker-setup" aria-labelledby="worker-setup-title">
       <p>Your computer · no processing charge</p>
-      <h2 id="worker-setup-title">Connect your computer once</h2>
+      <h2 id="worker-setup-title">
+        {hasReadyWorker ? "Computer connected" : "Connect your computer once"}
+      </h2>
       <p>
-        VideoForge uses your own Windows or Mac computer for transcription and final rendering. The
-        worker starts with your computer and needs no keys, folders, URLs, or technical setup.
+        {hasReadyWorker
+          ? "Ready for transcription and final rendering."
+          : "Connect a Windows or Mac for transcription and final rendering."}
       </p>
 
       {enrollment ? (
@@ -193,10 +210,7 @@ export function MediaWorkerSetup() {
           <span>
             {enrollment.platform === "WINDOWS" ? "Windows" : "Mac"} · {enrollment.architecture}
           </span>
-          <p>
-            This gives only your account permission to send transcription and rendering work to this
-            computer. It does not expose your files to other VideoForge users.
-          </p>
+          <p>Only your account can send work to this computer. Your files stay private.</p>
           <button
             type="button"
             disabled={busy || enrollment.state !== "PENDING"}
@@ -207,35 +221,42 @@ export function MediaWorkerSetup() {
         </div>
       ) : null}
 
-      <ol className="worker-steps">
-        <li>Download the worker for this computer.</li>
-        <li>Install and open it. Your browser returns here once.</li>
-        <li>Select “Connect this computer.” Everything after that is automatic.</li>
-      </ol>
+      <Disclosure
+        summary={hasReadyWorker ? "Add or update a computer" : "Connect a computer"}
+        open={showOnboarding}
+      >
+        <ol className="worker-steps">
+          <li>Download the worker.</li>
+          <li>Install and open it. Your browser returns here once.</li>
+          <li>Approve the connection here.</li>
+        </ol>
 
-      <div className="worker-downloads">
-        {releases.map((release, index) => (
-          <a
-            className={index === 0 && suggested ? "worker-download recommended" : "worker-download"}
-            href={release.url}
-            key={release.platform}
-            download
-          >
-            <strong>{release.label}</strong>
-            <span>
-              {release.extension} · v{workers?.release.version} · {fileSize(release.size_bytes)}
-              {release.trust === "AD_HOC_BETA" ? " · ImageForge-style beta" : ""}
-              {release.trust === "UNSIGNED_BETA" ? " · Beta" : ""}
-              {index === 0 && suggested ? " · Recommended" : ""}
-            </span>
-          </a>
-        ))}
-      </div>
+        <div className="worker-downloads">
+          {releases.map((release, index) => (
+            <a
+              className={
+                index === 0 && suggested ? "worker-download recommended" : "worker-download"
+              }
+              href={release.url}
+              key={release.platform}
+              download
+            >
+              <strong>{release.label}</strong>
+              <span>
+                {release.extension} · v{workers?.release.version} · {fileSize(release.size_bytes)}
+                {release.trust === "AD_HOC_BETA" ? " · ImageForge-style beta" : ""}
+                {release.trust === "UNSIGNED_BETA" ? " · Beta" : ""}
+                {index === 0 && suggested ? " · Recommended" : ""}
+              </span>
+            </a>
+          ))}
+        </div>
+      </Disclosure>
 
       <div className="worker-devices" aria-live="polite">
         <h3>Your computers</h3>
         {!workers ? <p>Checking worker status…</p> : null}
-        {workers?.devices.length === 0 ? <p>No computer is connected yet.</p> : null}
+        {workers?.devices.length === 0 ? <p>No computers connected yet.</p> : null}
         {workers?.devices.map((device) => (
           <article className="worker-device" key={device.id}>
             <div>
@@ -246,11 +267,11 @@ export function MediaWorkerSetup() {
             </div>
             <div>
               <span className={`worker-status ${device.status.toLowerCase()}`}>
-                {device.status.replaceAll("_", " ")}
+                {workerStatusLabel(device.status)}
               </span>
               <small>
                 {device.status === "BUSY"
-                  ? "Rendering or transcribing now"
+                  ? "Working now"
                   : device.status === "UPDATE_REQUIRED"
                     ? `Update the ${device.platform === "WINDOWS" ? "Windows" : "Mac"} beta above, then open it again.`
                     : lastSeen(device.last_seen_at)}
@@ -264,8 +285,8 @@ export function MediaWorkerSetup() {
       </div>
       {message ? <p role="status">{message}</p> : null}
       <p className="worker-privacy">
-        This helper can only process your projects. It receives temporary file access and never
-        receives your account or service credentials.
+        It handles only your projects with temporary file access; it never receives account or
+        service credentials.
       </p>
     </section>
   );

@@ -51,7 +51,7 @@ function HostedLibraryScreen() {
 
   if (query.isPending) {
     return (
-      <Panel heading="Loading Library">
+      <Panel heading="Loading library">
         <div className="empty-state" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
           <p>Loading your finished videos…</p>
@@ -81,7 +81,7 @@ function HostedLibraryScreen() {
         <EmptyState
           icon={<Library />}
           title="No finished videos"
-          body="A successful personal-worker render appears here and stays until you explicitly delete it."
+          body="Finished videos stay here until you delete them."
         />
       ) : (
         <div className="library-grid">
@@ -89,7 +89,7 @@ function HostedLibraryScreen() {
             <Panel
               key={output.attempt_id}
               className="library-output"
-              eyebrow="Finished video"
+              eyebrow="Video"
               heading={output.title}
             >
               <video controls preload="metadata" src={output.download_url}>
@@ -98,6 +98,13 @@ function HostedLibraryScreen() {
               <div className="entity-card-footer">
                 <Badge tone="success">Ready</Badge>
                 <div className="cluster">
+                  <a
+                    className="button button-secondary"
+                    href={`/projects/${output.project_id}/review`}
+                  >
+                    <Play size={15} />
+                    Review
+                  </a>
                   <a
                     className="button button-secondary"
                     href={output.download_url}
@@ -124,11 +131,11 @@ function HostedLibraryScreen() {
                   </Button>
                 </div>
               </div>
-              <Disclosure summary="Storage details">
+              <Disclosure summary="Details">
                 <div className="detail-facts">
                   <span>
                     <small>Retention</small>
-                    <strong>Until you click Delete</strong>
+                    <strong>Until deleted</strong>
                   </span>
                   <span>
                     <small>Size</small>
@@ -166,7 +173,7 @@ function FixtureLibraryScreen() {
   const approvedProjects = (query.data ?? []).filter((project) => project.status === "APPROVED");
   if (query.isPending) {
     return (
-      <Panel eyebrow="Approved outputs" heading="Loading Library">
+      <Panel eyebrow="Approved outputs" heading="Loading library">
         <div className="empty-state" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
           <p>Loading approved revisions…</p>
@@ -195,7 +202,7 @@ function FixtureLibraryScreen() {
         <EmptyState
           icon={<Library />}
           title="No approved outputs"
-          body="Projects appear here only after an explicit final approval."
+          body="Approved projects appear here."
         />
       ) : (
         <div className="library-grid">
@@ -206,7 +213,7 @@ function FixtureLibraryScreen() {
               <Panel
                 key={project.id}
                 className="library-output"
-                eyebrow="Approved today"
+                eyebrow="Approved"
                 heading={project.title}
               >
                 <MediaArtifactPreview
@@ -240,26 +247,16 @@ function FixtureLibraryScreen() {
                     </a>
                   </div>
                 </div>
-                <Disclosure
-                  className="library-details"
-                  summary={
-                    <>
-                      <span>Details</span>
-                      <small>Retention and provenance</small>
-                    </>
-                  }
-                >
+                <Disclosure className="library-details" summary="Details">
                   <div className="detail-facts">
                     <span>
                       <small>Retention</small>
-                      <strong>
-                        {localVideo ? "Bounded local artifact store" : "30 days remaining"}
-                      </strong>
+                      <strong>{localVideo ? "Local storage" : "30 days remaining"}</strong>
                     </span>
                     <span>
                       <small>Manifest</small>
                       <strong>
-                        {localVideo ? "Validated local render" : "Deferred to local render"}
+                        {localVideo ? "Validated local render" : "Local render pending"}
                       </strong>
                     </span>
                     <span>
