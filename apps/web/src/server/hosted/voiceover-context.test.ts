@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   extractHostedVoiceoverContext,
+  MAX_HOSTED_CONTEXT_CHARS,
   prepareHostedVoiceoverContextRequest,
   reconcileHostedVoiceoverContext,
 } from "./voiceover-context";
@@ -257,47 +258,78 @@ describe("hosted voiceover context extraction", () => {
     });
   });
 
-  it("rejects a populated document whose flattened context exceeds the aggregate cap", async () => {
+  it("compacts complete facts by priority and stays within the flattened context cap", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "A complete transcript with many recurring details.",
       transcriptHash: HASH,
     });
-    await expect(
-      extractHostedVoiceoverContext({
-        prepared,
-        apiKey: "runware-test-key-at-least-twenty-characters",
-        fetcher: async () =>
-          Response.json({
-            data: [
-              {
-                taskUUID: prepared.request.taskUUID,
-                taskType: "textInference",
-                text: JSON.stringify({
-                  subject: "s".repeat(90),
-                  visual_facts: ["a".repeat(70), "b".repeat(70), "c".repeat(70)],
-                  continuity: ["d".repeat(70), "e".repeat(70)],
-                  resolved_references: ["f".repeat(70), "g".repeat(70)],
-                }),
-                cost: 0.001,
-                finishReason: "stop",
-                usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
-              },
-            ],
-          }),
-      }),
-    ).rejects.toThrow("VOICEOVER_CONTEXT_INVALID");
+    const result = await extractHostedVoiceoverContext({
+      prepared,
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      fetcher: async () =>
+        Response.json({
+          data: [
+            {
+              taskUUID: prepared.request.taskUUID,
+              taskType: "textInference",
+              text: JSON.stringify({
+                subject: "s".repeat(90),
+                visual_facts: ["a".repeat(70), "b".repeat(70), "c".repeat(70)],
+                continuity: ["d".repeat(40), "e".repeat(70)],
+                resolved_references: ["f".repeat(70), "g".repeat(70)],
+              }),
+              cost: 0.001,
+              finishReason: "stop",
+              usage: { promptTokens: 80, completionTokens: 120, totalTokens: 200 },
+            },
+          ],
+        }),
+    });
+    expect(result.context).toEqual({
+      subject: "s".repeat(90),
+      visual_facts: [],
+      continuity: ["d".repeat(40)],
+      resolved_references: ["f".repeat(70), "g".repeat(70)],
+    });
+    expect(Object.keys(result.context)).toEqual([
+      "subject",
+      "visual_facts",
+      "continuity",
+      "resolved_references",
+    ]);
+    if (
+      !Array.isArray(result.context.visual_facts) ||
+      !Array.isArray(result.context.continuity) ||
+      !Array.isArray(result.context.resolved_references)
+    )
+      throw new Error("Expected normalized context arrays");
+    const flattened = [
+      `Subject: ${result.context.subject}`,
+      result.context.visual_facts.length > 0
+        ? `Visual facts: ${result.context.visual_facts.join("; ")}`
+        : null,
+      result.context.continuity.length > 0
+        ? `Continuity: ${result.context.continuity.join("; ")}`
+        : null,
+      result.context.resolved_references.length > 0
+        ? `Resolve: ${result.context.resolved_references.join("; ")}`
+        : null,
+    ]
+      .filter((part): part is string => part !== null)
+      .join(" | ");
+    expect(flattened.length).toBeLessThanOrEqual(MAX_HOSTED_CONTEXT_CHARS);
   });
 
-  it("logs only bounded aggregate validation diagnostics", async () => {
+  it("logs only bounded diagnostics for a genuine duplicate fact", async () => {
     const prepared = await prepareHostedVoiceoverContextRequest({
       transcript: "A complete transcript with many recurring details.",
       transcriptHash: HASH,
     });
     const providerText = JSON.stringify({
       subject: `provider-secret-marker-${"s".repeat(80)}`,
-      visual_facts: ["a".repeat(70), "b".repeat(70), "c".repeat(70)],
-      continuity: ["d".repeat(70), "e".repeat(70)],
-      resolved_references: ["f".repeat(70), "g".repeat(70)],
+      visual_facts: ["a".repeat(70), "a".repeat(70)],
+      continuity: [],
+      resolved_references: [],
     });
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     try {
@@ -323,7 +355,7 @@ describe("hosted voiceover context extraction", () => {
       expect(warn).toHaveBeenCalledWith(
         "hosted_voiceover_context_validation",
         expect.objectContaining({
-          reason: "aggregate_budget",
+          reason: "duplicate",
           response_length: providerText.length,
           response_hash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u),
         }),

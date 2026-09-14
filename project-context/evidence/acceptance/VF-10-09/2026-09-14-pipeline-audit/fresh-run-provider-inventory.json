@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "videoforge.fresh-run-provider-inventory/v1",
+  "checkedAt": "2026-09-14T14:31:26.882Z",
+  "freshRun": {
+    "projectIdSha256": "sha256:361c8e5840728dcf4ece9063a35e782fe96984ccf026c09cdd9109d5e9c4b00d",
+    "stage": "STAGE3",
+    "outcome": "AGGREGATE_BUDGET_STOPPED_BEFORE_GPU",
+    "paidComputeStarted": false,
+    "providerMutationObserved": false,
+    "finiteSpendCapUsd": 2,
+    "balanceBeforeUsd": 16.6550892793,
+    "balanceAfterUsd": 16.6550892793,
+    "balanceDeltaUsd": 0
+  },
+  "provider": {
+    "schemaVersion": "videoforge.runpod-provider-monitor/v1",
+    "checkedAt": "2026-09-14T14:31:26.882Z",
+    "balanceUsd": 16.6550892793,
+    "balanceDeltaFromBaselineUsd": 0,
+    "baselineBalanceUsd": 16.6550892793,
+    "exactSku": {
+      "sku": "NVIDIA GeForce RTX 4090",
+      "serverlessFlexRateUsdPerGpuHour": 1.1,
+      "region": "EU-RO-1",
+      "availability": "LOW"
+    },
+    "status": {
+      "runningPodCount": 0,
+      "activeInventoryWorkerCount": 0,
+      "inventoryZeroActive": true,
+      "healthWorkerCount": 1,
+      "healthThrottledWorkerCount": 1,
+      "healthUnhealthyWorkerCount": 0,
+      "zeroActive": false,
+      "queueEmpty": true,
+      "endpointConfigBound": true,
+      "balanceFloorOk": true,
+      "rateCeilingOk": true
+    },
+    "lanes": [
+      {
+        "lane": "mage",
+        "endpointIdHash": "sha256:7fcba58322146f2fe368ad2e60f47450e89dfde1cf6adb9a17ea854e5bd6f89a",
+        "httpStatus": 200,
+        "workers": {
+          "idle": 0,
+          "ready": 0,
+          "running": 0,
+          "initializing": 0,
+          "throttled": 1,
+          "unhealthy": 0
+        },
+        "jobs": {
+          "inQueue": 0,
+          "inProgress": 0
+        }
+      },
+      {
+        "lane": "soulx",
+        "endpointIdHash": "sha256:e07fe49b7152c1c51a5979d6c701c237a18fe3d4c74e6f42ac6fe4da65431e4b",
+        "httpStatus": 200,
+        "workers": {
+          "idle": 1,
+          "ready": 1,
+          "running": 0,
+          "initializing": 0,
+          "throttled": 0,
+          "unhealthy": 0
+        },
+        "jobs": {
+          "inQueue": 0,
+          "inProgress": 0
+        }
+      }
+    ]
+  }
+}

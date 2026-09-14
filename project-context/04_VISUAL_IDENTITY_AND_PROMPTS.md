@@ -39,7 +39,9 @@ adjacent phrase context, global story context, then soft style treatment. There 
 scenes-per-batch rule and no project scene cap.
 
 Token and cost bounds are part of acceptance. The live hosted profile uses one bounded context
-extraction with a 350-token output ceiling and a 10,000 micro-USD reservation. Stage 5 plans against
+extraction with a 350-token output ceiling and a 10,000 micro-USD reservation. Schema-valid global context is normalized to the existing 360-character flattened budget: retain the subject, then whole remote-reference facts, continuity facts, and visual facts in that priority order while they fit. Preserve category order in the final context; reject malformed keys, types, duplicate facts, and excessive list counts. Aggregate verbosity alone must not trigger another inference or stop the pipeline.
+
+Stage 5 plans against
 a 48,000-token input ceiling and a 16,384-token application output-quality budget per request under
 the 64,000-token technical output ceiling, with one 40,000 micro-USD project reservation. One
 provider request is allowed per persisted planned batch. The hosted path performs no prompt-provider

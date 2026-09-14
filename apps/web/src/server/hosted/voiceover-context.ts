@@ -112,8 +112,7 @@ type HostedVoiceoverContextValidationReason =
   | "list_count"
   | "type"
   | "empty"
-  | "duplicate"
-  | "aggregate_budget";
+  | "duplicate";
 
 class HostedVoiceoverContextValidationError extends Error {
   constructor(readonly reason: HostedVoiceoverContextValidationReason) {
@@ -171,21 +170,48 @@ function validateContext(value: JsonValue): Readonly<Record<string, JsonValue>> 
   const reusableFacts = [...visualFacts, ...continuity, ...resolvedReferences];
   if (new Set(reusableFacts).size !== reusableFacts.length)
     throw new HostedVoiceoverContextValidationError("duplicate");
-  const flattened = [
-    `Subject: ${subject}`,
-    visualFacts.length > 0 ? `Visual facts: ${visualFacts.join("; ")}` : null,
-    continuity.length > 0 ? `Continuity: ${continuity.join("; ")}` : null,
-    resolvedReferences.length > 0 ? `Resolve: ${resolvedReferences.join("; ")}` : null,
-  ]
-    .filter((part): part is string => part !== null)
-    .join(" | ");
-  if (flattened.length > MAX_HOSTED_CONTEXT_CHARS)
-    throw new HostedVoiceoverContextValidationError("aggregate_budget");
+
+  // The provider's per-field bounds do not guarantee that the combined context fits the
+  // downstream prompt budget. Keep complete normalized facts in deterministic priority order,
+  // while retaining the wire/output category order below.
+  const retained = {
+    visual_facts: [] as string[],
+    continuity: [] as string[],
+    resolved_references: [] as string[],
+  };
+  const priority = ["resolved_references", "continuity", "visual_facts"] as const;
+  for (const category of priority) {
+    for (const fact of {
+      visual_facts: visualFacts,
+      continuity,
+      resolved_references: resolvedReferences,
+    }[category]) {
+      const candidate = {
+        visual_facts: [...retained.visual_facts],
+        continuity: [...retained.continuity],
+        resolved_references: [...retained.resolved_references],
+      };
+      candidate[category].push(fact);
+      const flattened = [
+        `Subject: ${subject}`,
+        candidate.visual_facts.length > 0
+          ? `Visual facts: ${candidate.visual_facts.join("; ")}`
+          : null,
+        candidate.continuity.length > 0 ? `Continuity: ${candidate.continuity.join("; ")}` : null,
+        candidate.resolved_references.length > 0
+          ? `Resolve: ${candidate.resolved_references.join("; ")}`
+          : null,
+      ]
+        .filter((part): part is string => part !== null)
+        .join(" | ");
+      if (flattened.length <= MAX_HOSTED_CONTEXT_CHARS) retained[category].push(fact);
+    }
+  }
   return Object.freeze({
     subject,
-    visual_facts: visualFacts,
-    continuity,
-    resolved_references: resolvedReferences,
+    visual_facts: Object.freeze(retained.visual_facts),
+    continuity: Object.freeze(retained.continuity),
+    resolved_references: Object.freeze(retained.resolved_references),
   });
 }
 

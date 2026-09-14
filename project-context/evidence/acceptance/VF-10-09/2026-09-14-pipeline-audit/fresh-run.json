@@ -1,0 +1,20 @@
+{
+  "projectId": "d7bffbed-7188-4eac-98c0-ce42085a417e",
+  "deployedSourceCommit": "7a112ab079e12fe4f1b500a1151e3e2409807c55",
+  "workerVersion": "3b32fdad-047e-4fcb-8194-18ff97c01d1d",
+  "transport": "QUALIFIED_EXACT",
+  "createHttpStatus": 201,
+  "commitHttpStatus": 200,
+  "asr": "SUCCEEDED",
+  "contextHttpStatus": 502,
+  "contextDiagnostics": [
+    {
+      "reason": "aggregate_budget",
+      "response_length": 567,
+      "response_hash": "sha256:ba7c30dbde59981c14d3630a80f85d55fc21d260297e74d2a4c42fb6db5a1a42"
+    }
+  ],
+  "gpuStarted": false,
+  "status": "STOPPED_CONTEXT_AGGREGATE_BUDGET",
+  "originalFailedProjectReplayed": false
+}
