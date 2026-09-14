@@ -1,0 +1,60 @@
+{
+  "schema_version": "videoforge-style-analysis-status-repair/v1",
+  "checkpoint": "V2-09",
+  "status": "DEPLOYED_LIVE_STATUS_VERIFIED",
+  "public_origin": "https://videoforge.buzz",
+  "source_commit": "e224a05e4d8fd513e385f506f5c36203fcb64bae",
+  "worker_version": "361f5e78-3866-444c-8d6f-cb8baa265c50",
+  "effective_gpu_transport": "QUALIFIED_EXACT",
+  "cause": {
+    "provider_dispatch": "The original style-analysis request reached the provider.",
+    "first_failure": "Cloudflare Worker runtime Ajv code generation failed during local profile validation after the provider response.",
+    "observed_failure_duration_ms": 20081,
+    "immutable_version_state": "ANALYZING",
+    "durable_analysis_run_state": "UNKNOWN",
+    "provider_task_uuid_persisted": false,
+    "replay_policy": "The original UNKNOWN attempt remains non-retriable and was not replayed."
+  },
+  "fix": {
+    "validator_execution": "Reuse precompiled style validators; disable runtime code generation.",
+    "provider_task_identity": "Pass the persisted deterministic analysis reservation UUID as provider taskUUID.",
+    "catalog_status_projection": "Expose the tenant-scoped analysis-run state through a SECURITY DEFINER read-only projection.",
+    "ui_behavior": "Render UNKNOWN as Analysis result unconfirmed and remove automatic retry/Continue setup action.",
+    "paid_no_replay_guard": "Preserved."
+  },
+  "database": {
+    "migration": 132,
+    "migration_status": "APPLIED_VERIFIED",
+    "previous_manifest_prefix_verified": true,
+    "runtime_execute_grant": true,
+    "direct_analysis_run_table_grant": false
+  },
+  "validation": {
+    "focused_web_ui_and_api_tests": "140/140 PASS",
+    "pipeline_checks": "182/182 PASS",
+    "fresh_subprocess_runtime_code_generation_regression": "PASS",
+    "cloudflare_production_build_and_bundle_firewall": "PASS",
+    "changed_file_lint_and_format": "PASS",
+    "diff_check": "PASS"
+  },
+  "live_chrome": {
+    "style_name": "dams",
+    "style_version_id": "d69c3fda-ed0d-4b9c-a807-49738a8c4df8",
+    "saved_reference_set": "All six originals and six normalized references remain visible and saved.",
+    "status_copy": "Analysis result unconfirmed",
+    "no_automatic_retry_copy": "PASS",
+    "continue_setup_link_visible": false,
+    "filtered_hub_snapshot": "PASS"
+  },
+  "deployment": {
+    "provider_actions_created": 0,
+    "runpod_mutation": false,
+    "compute_started": false,
+    "new_retained_resources": 0
+  },
+  "remaining_scope": {
+    "original_unknown_attempt_recovery": "PENDING retrieval-only provider-result recovery or explicit user removal; no replay authorized.",
+    "paid_style_analysis_retry": "NOT_RUN",
+    "full_repository_test_suite": "NOT_RUN"
+  }
+}

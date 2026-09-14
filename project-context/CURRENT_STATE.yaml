@@ -1,4 +1,21 @@
 schema_version: "2.0"
+style_analysis_status_repair_2026_09_14:
+  status: DEPLOYED_LIVE_STATUS_VERIFIED
+  checkpoint: V2-09
+  scope: hosted_image_style_analysis_unknown_status_and_no_replay_ui
+  source_commit: e224a05e4d8fd513e385f506f5c36203fcb64bae
+  deployed_worker_version: 361f5e78-3866-444c-8d6f-cb8baa265c50
+  transport: QUALIFIED_EXACT
+  exact_cause: "Provider request reached Runware; local Cloudflare Worker Ajv runtime code generation failed during post-provider profile validation after 20,081ms. Durable analysis run became UNKNOWN while immutable style version remained ANALYZING, and catalog read only version state."
+  repair: "Reuse precompiled style validators, pass persisted reservation UUID as provider taskUUID, expose tenant-scoped analysis-run state through migration132 SECURITY DEFINER read-only projection, and show UNKNOWN as unconfirmed with no automatic retry action."
+  database: "Migration132 APPLIED_VERIFIED; previous live manifest prefix verified; narrow runtime EXECUTE grant verified; direct hosted_style_analysis_runs table grant remains absent."
+  validation: "Focused hosted UI/API 140/140, pipeline 182/182, fresh subprocess runtime-code-generation regression PASS, Cloudflare build/firewall PASS, changed-file lint/format PASS, diff check PASS."
+  live_chrome: "dams style version d69c3fda-ed0d-4b9c-a807-49738a8c4df8 shows Analysis result unconfirmed, saved six-original/six-normalized references, stopped/no-automatic-retry copy, and no Continue setup link. New style and New avatar open complete creation forms."
+  original_unknown_attempt: "Not replayed. Retrieval-only provider-result recovery or explicit user removal remains pending."
+  provider_actions_created: 0
+  runpod_mutation: false
+  paid_compute_started: false
+  evidence: evidence/acceptance/VF-10-09/2026-09-14-style-analysis-validator/acceptance.json
 private_upload_timeout_repair_2026_09_14:
   status: DEPLOYED_LIVE_UPLOAD_RECOVERY_VERIFIED
   checkpoint: V2-09
