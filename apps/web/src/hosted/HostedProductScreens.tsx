@@ -1940,6 +1940,7 @@ export function HostedCreateProjectScreen() {
   } | null>(null);
   const [preflightResult, setPreflightResult] = useState<HostedPreflightResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const createRequest = useRef<{ readonly body: string; readonly key: string } | null>(null);
   const contentTypeForVoiceover = (file: File): string => {
     if (/\.wav$/iu.test(file.name)) return "audio/wav";
     if (/\.mp3$/iu.test(file.name)) return "audio/mpeg";
@@ -2024,7 +2025,29 @@ export function HostedCreateProjectScreen() {
         (() => {
           throw new Error("Run the readiness check again before generating.");
         })();
-      const idempotencyKey = `browser-project-${crypto.randomUUID()}`;
+      const body = {
+        schema_version: HOSTED_CREATE_SCHEMA,
+        title: title.trim(),
+        avatar_profile_version_id: avatarVersionId,
+        image_style_version_id: styleVersionId,
+        extra_prompt_keywords: applyExtraPromptKeywords ? extraPromptKeywords.trim() : "",
+        apply_extra_prompt_keywords: applyExtraPromptKeywords,
+        user_seed: userSeed.trim() ? Number(userSeed) : null,
+        voiceover: {
+          filename: metadata.filename,
+          content_type: metadata.contentType,
+          content_length: voiceover.size,
+          checksum_sha256: metadata.checksumSha256,
+          duration_ms: metadata.durationMs,
+        },
+      };
+      const serializedBody = JSON.stringify(body);
+      if (createRequest.current?.body !== serializedBody) {
+        createRequest.current = {
+          body: serializedBody,
+          key: `browser-project-${crypto.randomUUID()}`,
+        };
+      }
       const created = await bounded(
         readJson<{
           project_id: string;
@@ -2035,23 +2058,8 @@ export function HostedCreateProjectScreen() {
           };
         }>("/api/v2/hosted/projects", {
           method: "POST",
-          headers: { "idempotency-key": idempotencyKey },
-          body: JSON.stringify({
-            schema_version: HOSTED_CREATE_SCHEMA,
-            title: title.trim(),
-            avatar_profile_version_id: avatarVersionId,
-            image_style_version_id: styleVersionId,
-            extra_prompt_keywords: applyExtraPromptKeywords ? extraPromptKeywords.trim() : "",
-            apply_extra_prompt_keywords: applyExtraPromptKeywords,
-            user_seed: userSeed.trim() ? Number(userSeed) : null,
-            voiceover: {
-              filename: metadata.filename,
-              content_type: metadata.contentType,
-              content_length: voiceover.size,
-              checksum_sha256: metadata.checksumSha256,
-              duration_ms: metadata.durationMs,
-            },
-          }),
+          headers: { "idempotency-key": createRequest.current.key },
+          body: serializedBody,
         }),
         "Hosted project creation timed out. Retry from Create Project.",
       );

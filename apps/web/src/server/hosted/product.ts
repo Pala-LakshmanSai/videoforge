@@ -4571,9 +4571,12 @@ async function createProject(
              ON reservation.account_id = request.account_id
             AND reservation.workspace_id = request.workspace_id
             AND reservation.id = request.upload_reservation_id
-          WHERE request.account_id = $1 AND request.workspace_id = $2
-            AND request.idempotency_key = $3`,
-        [scope.account_id, scope.workspace_id, idempotencyKey],
+         WHERE request.account_id = $1 AND request.workspace_id = $2
+           AND (request.idempotency_key = $3
+             OR (request.state = 'UPLOAD_PENDING' AND request.request_sha256 = $4))
+         ORDER BY CASE WHEN request.idempotency_key = $3 THEN 0 ELSE 1 END
+         LIMIT 1`,
+        [scope.account_id, scope.workspace_id, idempotencyKey, requestSha256],
       );
       const replay = existing.rows[0];
       if (replay) {

@@ -1506,6 +1506,82 @@ describe("hosted product journey", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("reuses project creation identity after a failure and rotates it when inputs change", async () => {
+    const projectRequests: { readonly body: string; readonly key: string }[] = [];
+    const bytes = new ArrayBuffer(44 + 640_000);
+    const view = new DataView(bytes);
+    const write = (offset: number, value: string) =>
+      [...value].forEach((character, index) =>
+        view.setUint8(offset + index, character.charCodeAt(0)),
+      );
+    write(0, "RIFF");
+    view.setUint32(4, bytes.byteLength - 8, true);
+    write(8, "WAVE");
+    write(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, 16_000, true);
+    view.setUint32(28, 32_000, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    write(36, "data");
+    view.setUint32(40, 640_000, true);
+    const voiceover = new File([bytes], "voiceover.wav", { type: "audio/wav" });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/api/v2/hosted/project-catalog"))
+        return Response.json({
+          avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+          styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        });
+      if (path.endsWith("/api/v2/hosted/projects/preflight"))
+        return Response.json({ ok: true, ready: true, estimate: { projected_usd: 0 } });
+      if (path.endsWith("/api/v2/hosted/projects")) {
+        const headers = new Headers(init?.headers);
+        projectRequests.push({
+          body: String(init?.body),
+          key: headers.get("idempotency-key") ?? "",
+        });
+        throw new TypeError("network connection lost");
+      }
+      throw new Error(`Unexpected hosted request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedCreateProjectScreen />);
+
+    const title = await screen.findByLabelText("Video title");
+    fireEvent.change(title, { target: { value: "First title" } });
+    fireEvent.change(await screen.findByLabelText("Final voiceover"), {
+      target: { files: [voiceover] },
+    });
+    const action = screen.getByRole("button", { name: "Check cost & readiness" });
+    fireEvent.click(action);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    await waitFor(() => expect(projectRequests).toHaveLength(1));
+    expect(screen.getByRole("alert")).toHaveTextContent("network connection lost");
+
+    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    await waitFor(() => expect(projectRequests).toHaveLength(2));
+    expect(projectRequests[1]).toEqual(projectRequests[0]);
+
+    fireEvent.change(title, { target: { value: "Second title" } });
+    fireEvent.click(screen.getByRole("button", { name: "Check cost & readiness" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    await waitFor(() => expect(projectRequests).toHaveLength(3));
+    expect(projectRequests[2]!.key).not.toBe(projectRequests[0]!.key);
+    expect(projectRequests[2]!.body).not.toBe(projectRequests[0]!.body);
+  });
+
   it("fails closed when authenticated catalog readiness is absent", async () => {
     vi.stubGlobal(
       "fetch",
