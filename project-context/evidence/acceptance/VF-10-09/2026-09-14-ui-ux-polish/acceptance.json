@@ -1,14 +1,45 @@
 {
   "schema_version": "videoforge-ui-ux-polish/v1",
   "checkpoint": "V2-09",
-  "status": "LOCAL_VERIFIED_DEPLOYMENT_PENDING",
+  "status": "DEPLOYED_LIVE_UI_VERIFIED",
   "source_base_commit": "b350aee2",
   "audit": {
-    "live_chrome": ["Queue and project filters", "New project, avatar and image-style dropdowns, optional settings", "Avatar Hub and details", "New avatar form", "Image Styles, reference carousel and nested style instructions", "New style form", "Project progress", "Library", "Usage", "Settings, privacy disclosure and computer setup"],
+    "live_chrome": [
+      "Queue and project filters",
+      "New project, avatar and image-style dropdowns, optional settings",
+      "Avatar Hub and details",
+      "New avatar form",
+      "Image Styles, reference carousel and nested style instructions",
+      "New style form",
+      "Project progress",
+      "Library",
+      "Usage",
+      "Settings, privacy disclosure and computer setup"
+    ],
     "computer_use": "Chrome accessibility state inspected with computer-use skill; dedicated Chrome controls used for web interactions.",
-    "local_visual": ["390px preset dropdown and gallery sheet", "Hosted settings at desktop and 390px", "Hosted generated-image review"],
+    "local_visual": [
+      "390px preset dropdown and gallery sheet",
+      "Hosted settings at desktop and 390px",
+      "Hosted generated-image review"
+    ],
     "source_review": "Three Luna workers covered hosted presets, project/review, and shell/settings/library surfaces. Authentication and remaining controls reviewed in source and focused tests.",
-    "bounds": "No production submission, deletion, paid regeneration, provider retry, account change, or fresh upload. Preset save/analysis flows covered by focused mocks rather than new live paid actions."
+    "bounds": "No production submission, deletion, paid regeneration, provider retry, account change, or fresh upload. Preset save/analysis flows covered by focused mocks rather than new live paid actions.",
+    "live_deployed_ui": {
+      "new_project_compact_copy": true,
+      "preset_dropdown_dismissal": true,
+      "style_disclosures": true,
+      "preset_creation_forms": true,
+      "library_review_link": true,
+      "queue_filter": true,
+      "usage_truthful_missing_data": true,
+      "settings_connected_device": true,
+      "mobile_settings": {
+        "width": 390,
+        "scroll_width": 375,
+        "download_links_visible": true
+      },
+      "console_errors": 0
+    }
   },
   "verified_fixes": [
     "Live preset menu stayed open after clicking the title field; local shared-control fix dismisses without selection.",
@@ -28,11 +59,15 @@
     "full_repository_suite": "NOT_RUN"
   },
   "deployment": {
-    "performed": false,
+    "performed": true,
     "new_provider_actions": 0,
     "paid_compute_started": false,
     "provider_spend_from_this_task_usd": 0,
     "new_retained_resources": 0,
-    "current_compute_inventory": "NOT_RECHECKED; do not infer zero active compute from this provider-free task."
-  }
+    "current_compute_inventory": "NOT_RECHECKED; do not infer zero active compute from this provider-free task.",
+    "effective_gpu_transport": "QUALIFIED_EXACT",
+    "result": "deployment-result.json"
+  },
+  "source_commit": "120066c7d457940cdbb9a0d83ddd48b0d449c4ac",
+  "worker_version": "af9d4164-8e0c-49eb-b1af-9c799ab376de"
 }

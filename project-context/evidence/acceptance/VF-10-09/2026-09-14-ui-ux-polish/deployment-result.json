@@ -1,0 +1,37 @@
+{
+  "schema_version": "videoforge-v2-09-existing-qualified-activation-report/v1",
+  "state": "COMPLETED",
+  "source_commit": "120066c7d457940cdbb9a0d83ddd48b0d449c4ac",
+  "worker_version": "af9d4164-8e0c-49eb-b1af-9c799ab376de",
+  "worker_version_id_sha256": "sha256:684d527489962866704388e4a88cbc292c70718de053a8ffd251d4cd789b8975",
+  "activation_id_sha256": "sha256:6767b064bb5a30a1fba24429004a7953a6ed7a9d061c21197c4810d4c50ee92c",
+  "effective_gpu_transport": "QUALIFIED_EXACT",
+  "runpod_mutation": false,
+  "compute_started": false,
+  "public_origin": "https://videoforge.buzz",
+  "verified_at": "2026-09-14T12:30:43.173Z",
+  "configuration_changed_fields": [
+    "vars.VIDEOFORGE_COMMIT"
+  ],
+  "cloudflare_deploy_count": 1,
+  "provider_spend_usd": 0,
+  "database_schema_migrations": 0,
+  "new_retained_resources": 0,
+  "live_chrome": {
+    "new_project_compact_copy": true,
+    "preset_dropdown_dismissal": true,
+    "style_disclosures": true,
+    "preset_creation_forms": true,
+    "library_review_link": true,
+    "queue_filter": true,
+    "usage_truthful_missing_data": true,
+    "settings_connected_device": true,
+    "mobile_settings": {
+      "width": 390,
+      "scroll_width": 375,
+      "download_links_visible": true
+    },
+    "console_errors": 0
+  },
+  "remaining_gates": []
+}

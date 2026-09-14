@@ -1,0 +1,21 @@
+{
+  "schema_version": "videoforge-ui-release-authority/v1",
+  "source_commit": "120066c7d457940cdbb9a0d83ddd48b0d449c4ac",
+  "user_approval": "Yeah go ahead",
+  "approved_proposal": "Deploy this verified UI commit to production with no new provider spend.",
+  "operations": [
+    "Build and deploy the existing Cloudflare production Worker and UI assets from the approved commit.",
+    "Rebind the existing qualified production activation to the exact deployed Worker version using the established activation procedure.",
+    "Verify live source/version, preserved QUALIFIED_EXACT transport, and existing UI screens through read-only Chrome interactions."
+  ],
+  "provider_spend_cap_usd": 0,
+  "new_generation_or_retry": false,
+  "gpu_mutation": false,
+  "retained_resource_mutation": false,
+  "database_schema_migration": false,
+  "stop_conditions": [
+    "Source, existing provider binding, or configuration differs from the approved UI-only release.",
+    "Provider/GPU work or new retained-resource billing would be required.",
+    "Deployment result is uncertain: reconcile committed version before any retry."
+  ]
+}
