@@ -92,10 +92,10 @@ export async function observeHostedImageRegeneration(
   if (expired && row.state === "PREPARED") await store.cancelUnsent(params.requestId);
   if (!expired && row.state === "PREPARED") {
     try {
-      await provider.clients.mage_image.confirmOrdinaryStartupQueueEmpty();
-      const cost = await readImageRegenerationCost(environment.RUNPOD_API_KEY!, () =>
-        store.databaseNow(),
-      );
+      const [, cost] = await Promise.all([
+        provider.clients.mage_image.confirmOrdinaryStartupQueueEmpty(),
+        readImageRegenerationCost(environment.RUNPOD_API_KEY!, () => store.databaseNow()),
+      ]);
       await store.admitCost(params.requestId, cost);
     } catch {
       // No /run has occurred. Fail closed and continue through the normal drain/release path.

@@ -1,0 +1,18 @@
+{
+  "schema_version": "videoforge-bounded-feature-authority/v1",
+  "approved_at": "2026-09-14T03:16:44.165533+00:00",
+  "source_commit": "9df542a51885b0639f86a8788374315867a4c0c5",
+  "user_approval": "yeah go ahead, you do not have to ask me anything",
+  "proposal": "acceptance.json#proposed_live_boundary",
+  "maximum_incremental_spend_usd": 2,
+  "runpod_balance_floor_usd": 3,
+  "rate_ceiling_usd_per_second": 0.00031,
+  "gpu": "RTX 4090",
+  "region": "EU-RO-1",
+  "live_scene_generations": 1,
+  "no_redispatch": true,
+  "workers_min": 0,
+  "workers_max": 1,
+  "new_retained_resources": 0,
+  "status": "APPROVED_NOT_YET_EXECUTED"
+}
