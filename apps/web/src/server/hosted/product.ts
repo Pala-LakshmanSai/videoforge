@@ -5900,6 +5900,7 @@ type HostedContactSheetItem = {
   readonly id: string;
   readonly asset_id: null;
   readonly image_url: string;
+  readonly prompt: string | null;
   readonly label: string;
   readonly start_ms: null;
   readonly end_ms: null;
@@ -5920,9 +5921,11 @@ async function contactSheet(
   outputs: readonly Record<string, unknown>[],
   bucket: HostedRuntimeEnvironment["PRIVATE_ARTIFACTS"],
   signer: HostedR2Signer,
+  prompts: readonly Record<string, unknown>[],
 ): Promise<readonly HostedContactSheetItem[]> {
   if (!bucket) return [];
   const items: HostedContactSheetItem[] = [];
+  const promptById = new Map(prompts.map((prompt) => [prompt.image_task_id, prompt]));
   for (const output of outputs) {
     if (!Array.isArray(output.artifacts)) continue;
     for (const rawArtifact of output.artifacts) {
@@ -5962,11 +5965,19 @@ async function contactSheet(
         checksumSha256: checksum,
         lifetimeSeconds: 300,
       });
+      const savedPrompt = promptById.get(itemId);
+      const prompt =
+        typeof artifact.prompt === "string"
+          ? artifact.prompt
+          : typeof savedPrompt?.positive_prompt === "string"
+            ? savedPrompt.positive_prompt
+            : null;
       items.push({
         id: itemId,
         asset_id: null,
         image_url: port.url,
-        label: itemId,
+        prompt,
+        label: prompt ?? `Generated image ${items.length + 1}`,
         start_ms: null,
         end_ms: null,
         shot_role: String(output.lane ?? "IMAGE"),
@@ -6223,7 +6234,7 @@ async function projectDetail(
                WHERE execution.account_id=run.account_id AND execution.workspace_id=run.workspace_id
                  AND execution.task_id=run.task_id)
         )
-        SELECT result.scene_ordinal, result.scene_id, segment.narration,
+        SELECT image_task.id AS image_task_id, result.scene_ordinal, result.scene_id, segment.narration,
                 segment.in_image_shot_role, segment.timeline_composition,
                 result.positive_prompt,result.negative_prompt,
                 result.image_style_version_id,result.style_profile_hash,
@@ -6235,6 +6246,15 @@ async function projectDetail(
             AND segment.project_revision_id = result.project_revision_id
             AND segment.timeline_plan_id = result.timeline_plan_id
             AND segment.segment_key = result.scene_id
+           LEFT JOIN generation_tasks AS image_task
+             ON image_task.account_id = result.account_id
+            AND image_task.workspace_id = result.workspace_id
+            AND image_task.project_revision_id = result.project_revision_id
+            AND image_task.lane = 'IMAGE'
+            AND image_task.task_key = CASE segment.timeline_composition
+              WHEN 'IMAGE_FULL' THEN segment.required_slots->'image'->>'task_key'
+              WHEN 'AVATAR_SPLIT_IMAGE' THEN segment.required_slots->'right_image'->>'task_key'
+            END
            JOIN image_style_versions AS style_version
              ON style_version.account_id=result.account_id
             AND style_version.workspace_id=result.workspace_id
@@ -6432,7 +6452,17 @@ async function projectDetail(
                   AND receipt.checksum_sha256 = unit.checksum_sha256
                 WHERE unit.account_id = $1 AND unit.workspace_id = $2
                   AND unit.project_revision_id = $4
-             ), expanded_output_items AS (
+             ), regenerated_output_items AS (
+ SELECT regeneration.source_attempt_id AS attempt_id, 'mage_image'::text AS lane,
+ jsonb_build_object('item_id',regeneration.image_task_id::text,'object_key',receipt.object_key,
+ 'content_type',receipt.content_type,'content_length',receipt.content_length,
+ 'checksum_sha256',receipt.checksum_sha256,'prompt',regeneration.edited_prompt) AS artifact,
+ receipt.committed_at AS accepted_at,-1 AS source_priority,regeneration.image_task_id::text AS item_id
+ FROM hosted_image_regeneration_requests regeneration
+ JOIN artifact_reservations reservation ON reservation.account_id=regeneration.account_id AND reservation.workspace_id=regeneration.workspace_id AND reservation.id=regeneration.output_reservation_id AND reservation.state='COMMITTED'
+ JOIN artifact_receipts receipt ON receipt.account_id=reservation.account_id AND receipt.workspace_id=reservation.workspace_id AND receipt.reservation_id=reservation.id AND receipt.deleted_at IS NULL AND receipt.object_key=reservation.object_key AND receipt.checksum_sha256=reservation.checksum_sha256
+ WHERE regeneration.account_id=$1 AND regeneration.workspace_id=$2 AND regeneration.project_id=$3 AND regeneration.project_revision_id=$4 AND regeneration.state='COMPLETED'
+ ), expanded_output_items AS (
                SELECT output.attempt_id, output.lane, item.value AS artifact,
                       output.accepted_at, output.source_priority,
                       item.value->>'item_id' AS item_id
@@ -6440,7 +6470,7 @@ async function projectDetail(
                  CROSS JOIN LATERAL jsonb_array_elements(output.artifacts) AS item(value)
                 UNION ALL
                SELECT attempt_id, lane, artifact, accepted_at, source_priority, item_id
-                 FROM accepted_output_items
+                 FROM accepted_output_items UNION ALL SELECT attempt_id,lane,artifact,accepted_at,source_priority,item_id FROM regenerated_output_items
              ), deduplicated_output_items AS (
                SELECT DISTINCT ON (attempt_id, lane, item_id)
                       attempt_id, lane, item_id, artifact, accepted_at
@@ -6559,7 +6589,12 @@ async function projectDetail(
                  END
             )
           ORDER BY task.updated_at DESC`,
-        [scope.account_id, scope.workspace_id, String(project.rows[0]?.revision_id ?? ""), projectId],
+        [
+          scope.account_id,
+          scope.workspace_id,
+          String(project.rows[0]?.revision_id ?? ""),
+          projectId,
+        ],
       );
       const review = await transaction.query(
         `SELECT review.render_attempt_id, review.output_checksum_sha256,
@@ -6988,6 +7023,7 @@ async function projectDetail(
         detail.serverlessOutputs as Record<string, unknown>[],
         environment.PRIVATE_ARTIFACTS,
         signer,
+        detail.prompts as Record<string, unknown>[],
       ),
       avatarFootage(
         detail.serverlessOutputs as Record<string, unknown>[],

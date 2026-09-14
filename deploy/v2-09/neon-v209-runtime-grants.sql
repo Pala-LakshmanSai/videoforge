@@ -33,6 +33,7 @@ REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"runtime_role";
 CREATE TEMP TABLE v209_runtime_table_allowlist(table_name text, privilege text,
   PRIMARY KEY(table_name,privilege)) ON COMMIT DROP;
 INSERT INTO v209_runtime_table_allowlist(table_name,privilege) VALUES
+ ('hosted_image_regeneration_requests','SELECT'),
   ('artifact_receipts','INSERT'),
   ('artifact_receipts','SELECT'),
   ('artifact_reservations','INSERT'),
@@ -133,6 +134,14 @@ FROM v209_runtime_table_allowlist ORDER BY table_name,privilege
 
 CREATE TEMP TABLE v209_runtime_function_allowlist(signature text PRIMARY KEY) ON COMMIT DROP;
 INSERT INTO v209_runtime_function_allowlist(signature) VALUES
+ ('videoforge_create_hosted_image_regeneration(uuid,uuid,uuid,uuid,uuid,text,text)'),
+ ('videoforge_get_hosted_image_regeneration(uuid,uuid,uuid,uuid,uuid)'),
+ ('videoforge_load_hosted_image_regeneration(uuid,uuid)'),
+ ('videoforge_prepare_hosted_image_regeneration(uuid,jsonb,jsonb,text,text,jsonb)'),
+ ('videoforge_image_regeneration_transition(uuid,text,text,text,text)'),
+ ('videoforge_commit_hosted_image_regeneration(uuid,jsonb,text,jsonb)'),
+ ('videoforge_release_hosted_image_regeneration(uuid,jsonb)'),
+
   ('videoforge_admit_hosted_v209_generation(uuid,uuid,uuid,uuid)'),
   ('videoforge_append_hosted_canonical_timing(uuid,uuid,uuid,uuid,uuid,uuid,jsonb)'),
   ('videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)'),

@@ -1612,6 +1612,36 @@ export async function handleHostedRequest(
     );
     if (v209DispatchResponse) return v209DispatchResponse;
   }
+  if (
+    /^\/api\/v2\/hosted\/projects\/[^/]+\/images\/[^/]+\/regenerate(?:\/[^/]+)?$/u.test(
+      url.pathname,
+    )
+  ) {
+    const [
+      { handleHostedImageRegenerationRoute },
+      { createHostedImageRegenerationService },
+      { sessionScope },
+    ] = await Promise.all([
+      import("./hosted-image-regeneration-route"),
+      import("./hosted-image-regeneration-service"),
+      import("./hosted-product-route-common"),
+    ]);
+    const pool = createNeonPool(config.neon.databaseUrl);
+    try {
+      const result = await handleHostedImageRegenerationRoute(request, {
+        config,
+        authenticate: (incoming) => sessionScope(incoming, config, pool, executionContext),
+        service: createHostedImageRegenerationService({
+          database: createNeonExecutor(pool),
+          config,
+          environment,
+        }),
+      });
+      if (result) return result;
+    } finally {
+      await pool.end();
+    }
+  }
   const { handleHostedProductRequest } = await import("./product");
   const productResponse = await handleHostedProductRequest(
     request,

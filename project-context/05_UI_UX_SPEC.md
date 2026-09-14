@@ -130,6 +130,17 @@ the only persistent applied-state indicator.
   `Identity/motion/background/detail`, `Narration relevance`, `Anatomy/pseudo-text`, or `Style`.
 - Any regeneration displays incremental estimated/capped cost and creates a new attempt. No hidden
   repair, enhancement, fallback, or model substitution.
+- Generated-image review shows the exact saved positive prompt instead of internal IDs. Every scene
+  provides an editable prompt and **Regenerate image** action. Enter submits; Shift+Enter adds a
+  newline. Editing the prompt alone performs no work, and each scene retains its own draft.
+- Regeneration creates only that scene's replacement using its pinned style and existing negative
+  prompt. The old image remains selected until the replacement passes artifact validation. Pending
+  and failed replacements do not discard accepted media or rerun the ordinary image/avatar pair.
+- Existing final videos currently remain unchanged after image regeneration; the editor states
+  this explicitly. Automatic rebuilding, fresh render identity, and stale approval handling remain
+  pending scope confirmation and implementation. Other scenes and avatar footage remain unchanged.
+  Repeated clicks and lost-response recovery must not create duplicate paid attempts.
+
 - Final render is `Ready for review`. Explicit **Approve final** records reviewer/revision. Approved
   **Download MP4** and **Manifest** are direct private actions.
 

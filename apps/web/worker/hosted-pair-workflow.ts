@@ -22,7 +22,10 @@ import {
 import type { V213AcceptanceWorkflowParameters } from "../src/server/hosted/v213-acceptance-workflow-runner";
 
 type Environment = HostedRuntimeEnvironment & HostedPairLiveEnvironment;
-type WorkflowParameters = HostedPairWorkflowParameters | V213AcceptanceWorkflowParameters;
+type WorkflowParameters =
+  | HostedPairWorkflowParameters
+  | V213AcceptanceWorkflowParameters
+  | import("../src/server/hosted/hosted-image-regeneration-execution").ImageRegenerationParameters;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const MAX_OBSERVATIONS = 120;
@@ -30,14 +33,8 @@ const POOL_CLOSE_GRACE_MS = 1_000;
 
 type ExactPairInspection = readonly [HostedPairInspection, HostedPairInspection];
 
-function exactPairInspection(
-  rows: readonly HostedPairInspection[],
-): rows is ExactPairInspection {
-  return (
-    rows.length === 2 &&
-    rows[0]?.lane === "mage_image" &&
-    rows[1]?.lane === "soulx_avatar"
-  );
+function exactPairInspection(rows: readonly HostedPairInspection[]): rows is ExactPairInspection {
+  return rows.length === 2 && rows[0]?.lane === "mage_image" && rows[1]?.lane === "soulx_avatar";
 }
 
 /** A freshly committed ordinary pair has both attempt/outbox rows, but the runtime-state row is
@@ -53,9 +50,7 @@ async function inspectInitializedHostedPair(
 }
 
 /** A definite REQUEST_REJECTED is cleanup-only, even while the paired lane remains unsent. */
-export function isHostedV209CleanupOnlyRecovery(
-  rows: readonly HostedPairInspection[],
-): boolean {
+export function isHostedV209CleanupOnlyRecovery(rows: readonly HostedPairInspection[]): boolean {
   if (!exactPairInspection(rows) || !rows.every((row) => row.pairPhase === "CLEANUP_ONLY"))
     return false;
   const [mage, soulx] = rows;
@@ -67,16 +62,11 @@ export function isHostedV209CleanupOnlyRecovery(
     row.providerJobId === null &&
     row.attemptState === "OUTBOXED" &&
     row.outboxState === "READY_TO_DISPATCH";
-  return (
-    (terminalFailed(mage) && unsent(soulx)) ||
-    (terminalFailed(soulx) && unsent(mage))
-  );
+  return (terminalFailed(mage) && unsent(soulx)) || (terminalFailed(soulx) && unsent(mage));
 }
 
 /** A failed preflight before beginSend leaves both exact lanes safely unsent and retryable. */
-export function isHostedV209SafelyUnsent(
-  rows: readonly HostedPairInspection[],
-): boolean {
+export function isHostedV209SafelyUnsent(rows: readonly HostedPairInspection[]): boolean {
   return (
     exactPairInspection(rows) &&
     rows.every(
@@ -122,6 +112,48 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
   async run(event: Readonly<WorkflowEvent<WorkflowParameters>>, step: WorkflowStep) {
     if (hostedPairProductionBindingState(this.env).state === "DISABLED_UNQUALIFIED")
       return Object.freeze({ state: "DISABLED_UNQUALIFIED" as const });
+    if (
+      "schema_version" in event.payload &&
+      event.payload.schema_version === "videoforge-image-regeneration-workflow/v1"
+    ) {
+      const params =
+        event.payload as import("../src/server/hosted/hosted-image-regeneration-execution").ImageRegenerationParameters;
+      if (
+        ![params.accountId, params.workspaceId, params.requestId].every(
+          (id) => typeof id === "string" && DATABASE_UUID.test(id),
+        )
+      )
+        throw new Error("HOSTED_IMAGE_REGENERATION_PARAMETERS_INVALID");
+      const { observeHostedImageRegeneration } = await import(
+        "../src/server/hosted/hosted-image-regeneration-execution"
+      );
+      for (let observation = 0; observation < 660; observation += 1) {
+        const result = await step.do(
+          `image-regeneration-${observation}`,
+          { retries: { limit: 2, delay: "2 seconds", backoff: "constant" }, timeout: "2 minutes" },
+          async () => {
+            const pool = createNeonPool(this.env.DATABASE_URL!);
+            try {
+              return await observeHostedImageRegeneration(
+                this.env,
+                createNeonExecutor(pool),
+                params,
+              );
+            } finally {
+              await pool.end();
+            }
+          },
+        );
+        if (
+          result.leaseReleased ||
+          result.state === "SENT" ||
+          result.state === "DISPATCH_ACK_UNKNOWN"
+        )
+          return result;
+        await step.sleep(`image-regeneration-wait-${observation}`, "2 seconds");
+      }
+      return { state: "RECONCILIATION_REQUIRED" };
+    }
     const acceptanceCandidate =
       event.payload &&
       typeof event.payload === "object" &&
@@ -202,9 +234,13 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
             if (ordinary) {
               const runtimeStore = new HostedSqlPairRuntimeStore(runtimeDatabase);
               const inspection = await inspectInitializedHostedPair(runtimeStore, params);
-              if (inspection && exactPairInspection(inspection) && inspection.every(
-                (row) => row.pairPhase === "SETTLED" && row.attemptState === "SUCCEEDED",
-              )) {
+              if (
+                inspection &&
+                exactPairInspection(inspection) &&
+                inspection.every(
+                  (row) => row.pairPhase === "SETTLED" && row.attemptState === "SUCCEEDED",
+                )
+              ) {
                 await renderHandoff.ensure(params);
                 return Object.freeze({ state: "SETTLED" as const });
               }

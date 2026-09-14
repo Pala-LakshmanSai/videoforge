@@ -1,0 +1,56 @@
+{
+  "schema_version": "videoforge-local-feature-evidence/v1",
+  "checkpoint": "V2-09",
+  "status": "SOURCE_VALIDATED_NOT_DEPLOYED",
+  "base_commit": "6be8853b3238daa9d8515ff841623604dfe4f0bc",
+  "migration": "0129_hosted_image_regeneration.sql",
+  "migration_sha256": "sha256:cfd1d259fbc63e12b16bbe402adf6e547174c428b31363fc5a4fcfb6480f1b4c",
+  "verification": {
+    "focused_ui_product_runtime_tests": 166,
+    "subsequent_new_guard_tests": 5,
+    "regeneration_postgres_tests": 8,
+    "fair_admission_tests": 13,
+    "grant_tests": 5,
+    "chrome_http_fixture_tests": 3,
+    "cloudflare_build": "PASS",
+    "changed_file_lint": "PASS",
+    "context_validation": "PASS",
+    "whole_project_typecheck": "FAIL_EXISTING_UNRELATED_ERRORS_NO_CHANGED_FEATURE_ERRORS"
+  },
+  "provider_calls": 0,
+  "paid_compute_started": false,
+  "live_acceptance": "NOT_RUN",
+  "existing_final_video": "UNCHANGED; stated explicitly in editor",
+  "remaining": [
+    "Deployment and activation",
+    "One bounded live image regeneration with provider, receipt and UI proof",
+    "Optional finished-video rebuild scope unanswered; rebuild not implemented"
+  ],
+  "proposed_live_boundary": {
+    "operations": [
+      "Apply migration0129 and scoped runtime grants",
+      "Deploy source and reconcile exact qualified activation",
+      "One scene regeneration using existing qualified Mage image only",
+      "Read provider/job/output receipts and verify selected image in Chrome",
+      "Cancel known job on deadline/failure; verify drained queue and zero active compute"
+    ],
+    "maximum_incremental_spend_usd": 2,
+    "runpod_balance_floor_usd": 3,
+    "gpu": "RTX 4090",
+    "region": "EU-RO-1",
+    "rate_ceiling_usd_per_second": 0.00031,
+    "current_rate": "MUST_VERIFY_READ_ONLY_BEFORE_PAID_ACTION",
+    "maximum_scene_job_seconds": 600,
+    "workers_min": 0,
+    "workers_max": 1,
+    "retained_volumes": "Reuse existing sealed50GB volumes only; no new retained resources or retention change",
+    "stop_conditions": [
+      "Rate above ceiling or unavailable",
+      "Balance below USD3",
+      "Spend-cap risk",
+      "Binding/capacity mismatch",
+      "Unknown dispatch acknowledgement: no replay",
+      "No provider fallback"
+    ]
+  }
+}

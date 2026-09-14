@@ -1423,3 +1423,58 @@
 .gpu-lane-detail {
   margin: 0;
 }
+
+.media-review-regeneration {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  justify-items: stretch;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.media-review-regeneration label {
+  grid-column: 1 / -1;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.media-review-prompt-editor {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.media-review-regeneration .button {
+  align-self: center;
+  justify-self: start;
+}
+
+.media-review-stage-images .media-review-main-frame {
+  height: clamp(150px, 25vh, 320px);
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.media-review-stage-images .media-review-main-frame img {
+  min-height: 0;
+}
+
+.media-review-regeneration p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 600px) {
+  .media-review-regeneration {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

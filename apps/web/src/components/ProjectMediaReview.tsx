@@ -1,12 +1,13 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowLeft, ArrowRight, Images, Play, Video, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Images, RefreshCw, Play, Video, X } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 export interface ProjectMediaReviewItem {
   readonly id: string;
   readonly url: string;
   readonly label: string;
   readonly detail?: string | null;
+  readonly prompt?: string | null;
 }
 
 type MediaSection = "images" | "avatar";
@@ -18,6 +19,13 @@ export interface ProjectMediaReviewProps {
   readonly error?: string | null;
   readonly onRetry?: () => void;
   readonly launcher: MediaSection;
+  readonly onRegenerate?: (item: ProjectMediaReviewItem, prompt: string) => Promise<void>;
+  readonly regenerationUnavailableReason?: string;
+}
+
+interface RegenerationFailure {
+  readonly message: string;
+  readonly retryable: boolean;
 }
 
 function countLabel(count: number, singular: string, plural: string): string {
@@ -80,9 +88,19 @@ export function ProjectMediaReview({
   error = null,
   onRetry,
   launcher,
+  onRegenerate,
+  regenerationUnavailableReason = "Single-image regeneration is not available in this release.",
 }: ProjectMediaReviewProps) {
   const [activeSection, setActiveSection] = useState<MediaSection | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [promptDrafts, setPromptDrafts] = useState<Record<string, string>>({});
+  const dirtyPromptIds = useRef(new Set<string>());
+  const regenerationLock = useRef(false);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [regenerationSuccessId, setRegenerationSuccessId] = useState<string | null>(null);
+  const [regenerationErrors, setRegenerationErrors] = useState<Record<string, RegenerationFailure>>(
+    {},
+  );
   const [failedAssetId, setFailedAssetId] = useState<string | null>(null);
   const imageTriggerRef = useRef<HTMLButtonElement | null>(null);
   const avatarTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -95,6 +113,84 @@ export function ProjectMediaReview({
       setSelectedIndex(Math.max(0, activeItems.length - 1));
     }
   }, [activeItems.length, selectedIndex]);
+
+  useEffect(() => {
+    const items = [...images, ...avatarVideos];
+    setPromptDrafts((current) => {
+      let next = current;
+      for (const item of items) {
+        if (dirtyPromptIds.current.has(item.id)) continue;
+        const prompt = item.prompt ?? "";
+        if (current[item.id] === prompt) continue;
+        if (next === current) next = { ...current };
+        next[item.id] = prompt;
+      }
+      return next;
+    });
+  }, [avatarVideos, images]);
+
+  function promptFor(item: ProjectMediaReviewItem): string {
+    return Object.prototype.hasOwnProperty.call(promptDrafts, item.id)
+      ? (promptDrafts[item.id] ?? "")
+      : (item.prompt ?? "");
+  }
+
+  function updatePrompt(item: ProjectMediaReviewItem, value: string): void {
+    dirtyPromptIds.current.add(item.id);
+    setPromptDrafts((current) => ({ ...current, [item.id]: value }));
+    setRegenerationSuccessId(null);
+    setRegenerationErrors((current) => {
+      if (!current[item.id]) return current;
+      const next = { ...current };
+      delete next[item.id];
+      return next;
+    });
+  }
+
+  async function regenerate(item: ProjectMediaReviewItem, draft = promptFor(item)) {
+    const prompt = draft.trim();
+    if (!onRegenerate || !prompt || regenerationLock.current) return;
+    regenerationLock.current = true;
+    setRegeneratingId(item.id);
+    setRegenerationSuccessId(null);
+    setRegenerationErrors((current) => {
+      if (!current[item.id]) return current;
+      const next = { ...current };
+      delete next[item.id];
+      return next;
+    });
+    try {
+      await onRegenerate(item, prompt);
+      setFailedAssetId(null);
+      setRegenerationSuccessId(item.id);
+    } catch (error) {
+      const reason = error instanceof Error && error.message.trim() ? ` ${error.message}` : "";
+      const retryable =
+        !(error && typeof error === "object" && "retryable" in error) ||
+        (error as { retryable?: unknown }).retryable !== false;
+      setRegenerationErrors((current) => ({
+        ...current,
+        [item.id]: {
+          message: `The image could not be regenerated.${reason} Your current image has been kept.`,
+          retryable,
+        },
+      }));
+    } finally {
+      regenerationLock.current = false;
+      setRegeneratingId(null);
+    }
+  }
+
+  function handlePromptKeyDown(
+    event: KeyboardEvent<HTMLTextAreaElement>,
+    item: ProjectMediaReviewItem,
+  ): void {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+    event.preventDefault();
+    void regenerate(item, event.currentTarget.value);
+  }
 
   function openViewer(section: MediaSection) {
     setActiveSection(section);
@@ -243,7 +339,9 @@ export function ProjectMediaReview({
               ) : !activeSection ? null : activeItems.length === 0 ? (
                 <MediaReviewEmpty section={activeSection} />
               ) : selectedItem ? (
-                <div className="media-review-stage">
+                <div
+                  className={`media-review-stage${activeSection === "images" ? " media-review-stage-images" : ""}`}
+                >
                   <div className="media-review-primary">
                     <div className="media-review-main-frame">
                       {failedAssetId === selectedItem.id ? (
@@ -277,6 +375,68 @@ export function ProjectMediaReview({
                         {selectedIndex + 1} / {activeItems.length} {sectionNoun(activeSection)}
                       </span>
                     </div>
+                    {activeSection === "images" ? (
+                      <div className="media-review-regeneration">
+                        <label htmlFor={`media-review-prompt-${selectedItem.id}`}>
+                          Prompt for this image
+                        </label>
+                        <textarea
+                          id={`media-review-prompt-${selectedItem.id}`}
+                          className="textarea media-review-prompt-editor"
+                          rows={2}
+                          value={promptFor(selectedItem)}
+                          aria-label="Image prompt"
+                          disabled={regeneratingId !== null}
+                          placeholder="Describe the image you want to create."
+                          onChange={(event) => updatePrompt(selectedItem, event.target.value)}
+                          onKeyDown={(event) => handlePromptKeyDown(event, selectedItem)}
+                          aria-describedby={`media-review-prompt-help-${selectedItem.id}`}
+                        />
+                        <button
+                          className="button button-secondary"
+                          type="button"
+                          disabled={
+                            !onRegenerate ||
+                            regeneratingId !== null ||
+                            !promptFor(selectedItem).trim() ||
+                            regenerationErrors[selectedItem.id]?.retryable === false
+                          }
+                          onClick={() => void regenerate(selectedItem)}
+                        >
+                          <RefreshCw size={16} aria-hidden="true" />
+                          {regeneratingId === selectedItem.id
+                            ? "Regenerating…"
+                            : "Regenerate image"}
+                        </button>
+                        <p id={`media-review-prompt-help-${selectedItem.id}`}>
+                          {!onRegenerate
+                            ? regenerationUnavailableReason
+                            : regenerationErrors[selectedItem.id]?.retryable === false
+                              ? "Refresh the project to reconcile this request before trying again."
+                              : !promptFor(selectedItem).trim()
+                                ? "Enter a prompt to regenerate this image."
+                                : "Press Enter to regenerate. Use Shift+Enter for a new line. This updates the image; an existing video stays unchanged."}
+                        </p>
+                        {regeneratingId === selectedItem.id ? (
+                          <p role="status" aria-live="polite">
+                            Creating a replacement. Your current image stays available.
+                          </p>
+                        ) : null}
+                        {regenerationErrors[selectedItem.id] ? (
+                          <p role="alert">{regenerationErrors[selectedItem.id]?.message}</p>
+                        ) : null}
+                        {regenerationSuccessId === selectedItem.id ? (
+                          <p role="status" aria-live="polite">
+                            Image regenerated.
+                          </p>
+                        ) : null}
+                        {regeneratingId !== null && regeneratingId !== selectedItem.id ? (
+                          <p role="status" aria-live="polite">
+                            Another image is being regenerated. Wait for it to finish.
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {activeItems.length > 1 ? (
                       <div
                         className="media-review-navigation"

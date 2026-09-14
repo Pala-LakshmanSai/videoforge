@@ -24,6 +24,10 @@ export interface V209OrdinaryWorkerRequestInput {
   readonly envelope: Readonly<Record<string, unknown>>;
   readonly work: readonly RecordValue[];
   readonly avatarSourceInputReservationId?: string;
+  /** Optional fresh seed for one-scene Mage regeneration. */
+  readonly imageSeed?: number;
+  /** Bounded authority lifetime. Defaults to the qualified one-hour lifetime. */
+  readonly requestTtlSeconds?: number;
 }
 
 export interface V209OrdinaryWorkerRequest {
@@ -74,9 +78,13 @@ function lifetime(input: V209OrdinaryWorkerRequestInput): number {
   const issuedAt = Date.parse(input.issuedAt);
   const expiresAt = Date.parse(input.expiresAt);
   const seconds = (expiresAt - issuedAt) / 1000;
+  const ttl = input.requestTtlSeconds ?? HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS;
   if (
+    !Number.isSafeInteger(ttl) ||
+    ttl < 60 ||
+    ttl > HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS ||
     !Number.isSafeInteger(seconds) ||
-    seconds !== HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS ||
+    seconds !== ttl ||
     new Date(issuedAt).toISOString() !== input.issuedAt ||
     new Date(expiresAt).toISOString() !== input.expiresAt
   )
@@ -244,6 +252,15 @@ export async function materializeV209OrdinaryWorkerRequest(
     input.work.length < 1
   )
     fail();
+  if (
+    input.imageSeed !== undefined &&
+    (input.lane !== "mage_image" ||
+      input.work.length !== 1 ||
+      !Number.isSafeInteger(input.imageSeed) ||
+      input.imageSeed < 0 ||
+      input.imageSeed > 2_147_483_647)
+  )
+    fail();
   await validateAndHashHostedContractDocument("serverlessWorkerJobEnvelopeV3", input.envelope);
 
   const expectedTransferIds =
@@ -310,7 +327,15 @@ export async function materializeV209OrdinaryWorkerRequest(
           positive_prompt_sha256: sha(item.positivePromptSha256),
           negative_prompt: prompt.negative,
           negative_prompt_sha256: sha(item.negativePromptSha256),
-          seed: 2_130_000 + index,
+          seed:
+            input.imageSeed === undefined
+              ? 2_130_000 + index
+              : input.work.length !== 1 ||
+                  input.imageSeed < 0 ||
+                  input.imageSeed > 2_147_483_647 ||
+                  !Number.isSafeInteger(input.imageSeed)
+                ? fail()
+                : input.imageSeed,
           width: 1280,
           height: 720,
           output_put_url: outputs[index]!.url,

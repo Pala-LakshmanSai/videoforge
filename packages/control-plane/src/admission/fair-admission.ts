@@ -1059,6 +1059,12 @@ export class FairAdmissionRepository {
       if (lease === undefined || lease.state !== "ACTIVE") {
         throw new FairAdmissionError("LEASE_NOT_ACTIVE", "Capacity lease is not active.");
       }
+      if (typeof lease.image_regeneration_request_id === "string") {
+        throw new FairAdmissionError(
+          "LEASE_OWNER_MISMATCH",
+          "Regeneration leases use their own lifecycle.",
+        );
+      }
       if (lease.owner_token_sha256 !== input.ownerTokenSha256) {
         throw new FairAdmissionError(
           "LEASE_OWNER_MISMATCH",
@@ -1125,6 +1131,12 @@ export class FairAdmissionRepository {
       const lease = result.rows[0];
       if (lease === undefined || lease.state !== "ACTIVE") {
         throw new FairAdmissionError("LEASE_NOT_ACTIVE", "Capacity lease is not active.");
+      }
+      if (typeof lease.image_regeneration_request_id === "string") {
+        throw new FairAdmissionError(
+          "LEASE_OWNER_MISMATCH",
+          "Regeneration leases use their own lifecycle.",
+        );
       }
       if (lease.owner_token_sha256 !== input.ownerTokenSha256) {
         throw new FairAdmissionError(
@@ -1206,7 +1218,12 @@ export class FairAdmissionRepository {
              FROM provider_workload_leases lease
              LEFT JOIN generation_requests video ON video.id = lease.generation_request_id
              LEFT JOIN preset_preview_requests preview ON preview.id = lease.preset_preview_request_id
-            WHERE lease.id = $1 FOR UPDATE OF lease`,
+            WHERE lease.id = $1
+              AND NOT EXISTS (
+                SELECT 1 FROM hosted_image_regeneration_requests regeneration
+                 WHERE regeneration.lease_id = lease.id
+              )
+            FOR UPDATE OF lease`,
           [expiration.leaseId],
         );
         const lease = result.rows[0];
@@ -1271,10 +1288,12 @@ export class FairAdmissionRepository {
     return this.database.transaction(async (transaction) => {
       const before = await capacityForUpdate(transaction);
       const active = await transaction.query<LeaseRow & { created_by_user_id: string }>(
-        `SELECT lease.*, COALESCE(video.created_by_user_id, preview.created_by_user_id) AS created_by_user_id
+        `SELECT lease.*, COALESCE(video.created_by_user_id, preview.created_by_user_id, regeneration_project.owner_user_id) AS created_by_user_id
            FROM provider_workload_leases lease
            LEFT JOIN generation_requests video ON video.id = lease.generation_request_id
            LEFT JOIN preset_preview_requests preview ON preview.id = lease.preset_preview_request_id
+          LEFT JOIN hosted_image_regeneration_requests regeneration ON regeneration.id=lease.image_regeneration_request_id
+           LEFT JOIN projects regeneration_project ON regeneration_project.id=regeneration.project_id
           WHERE lease.state = 'ACTIVE'
           ORDER BY lease.slot FOR UPDATE OF lease`,
       );
@@ -1283,6 +1302,16 @@ export class FairAdmissionRepository {
         throw new Error("durable capacity leases violate the one-account/two-global invariant");
       }
       for (const lease of active.rows) {
+        if (typeof lease.image_regeneration_request_id === "string") {
+          const match = await transaction.query<{ present: boolean } & Record<string, unknown>>(
+            `SELECT EXISTS (SELECT 1 FROM hosted_image_regeneration_requests
+              WHERE id=$1 AND account_id=$2 AND workspace_id=$3 AND lease_id=$4) AS present`,
+            [lease.image_regeneration_request_id, lease.account_id, lease.workspace_id, lease.id],
+          );
+          if (match.rows[0]?.present !== true)
+            throw new Error("active regeneration lease has no owner");
+          continue;
+        }
         const table = requestTable(lease.request_kind);
         const requestId = lease[requestIdColumn(lease.request_kind)];
         const match = await transaction.query<{ present: boolean } & Record<string, unknown>>(

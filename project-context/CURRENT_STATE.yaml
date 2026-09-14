@@ -1,5 +1,15 @@
 schema_version: "2.0"
 context_schema_version: "2.0"
+image_review_regeneration_request_2026_09_14:
+  status: SOURCE_VALIDATED_NOT_DEPLOYED
+  base_commit: 6be8853b
+  detail: tasks/VF-10-09.md
+  implemented: editable_saved_prompt_enter_submit_durable_single_scene_replacement_and_provider_receipt_acceptance
+  migration: 0129_hosted_image_regeneration.sql
+  remaining: deployment_activation_bounded_live_e2e_and_finished_video_rebuild_scope
+  final_video_behavior: existing_video_unchanged_explicit_in_image_editor
+  provider_actions_this_task: 0
+  paid_compute_started_this_task: false
 updated_at: "2026-09-13T22:00:00Z"
 
 phase: serverless_v2_two_track_execution_active

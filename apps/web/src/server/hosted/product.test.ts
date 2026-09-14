@@ -20,6 +20,7 @@ const testState = vi.hoisted(() => {
   ];
   const projectDetailAttemptRows: Record<string, unknown>[] = [];
   const projectDetailMediaRows: Record<string, unknown>[] = [];
+  const projectDetailPromptRows: Record<string, unknown>[] = [];
   const rateLimitRows = [{ allowed: true }];
   const archiveState: {
     rows: Record<string, unknown>[];
@@ -98,6 +99,8 @@ const testState = vi.hoisted(() => {
         : projectDetailAttemptRows;
       return { rows, affectedRows: rows.length };
     }
+    if (sql.includes("WITH prompt_rows AS"))
+      return { rows: projectDetailPromptRows, affectedRows: projectDetailPromptRows.length };
     if (sql.includes("FROM projects AS project")) return { rows: projectRows, affectedRows: 1 };
     return { rows: [], affectedRows: 0 };
   });
@@ -111,6 +114,7 @@ const testState = vi.hoisted(() => {
     projectRows,
     projectDetailAttemptRows,
     projectDetailMediaRows,
+    projectDetailPromptRows,
     rateLimitRows,
     archiveState,
     projectArchiveState,
@@ -1335,103 +1339,128 @@ describe("hosted product route contract", () => {
     expect(block).not.toContain("state = 'UNKNOWN' AND");
   });
 
-  it("lists accepted runtime units when canonical output receipts are absent", async () => {
-    testState.query.mockClear();
-    const revisionId = "22222222-2222-4222-8222-222222222222";
-    const accountId = testState.scopeRows[0]!.account_id as string;
-    const workspaceId = testState.scopeRows[0]!.workspace_id as string;
-    const mage = {
-      item_id: "mage-scene-1",
-      object_key:
-        `tenant/${accountId}/workspace/${workspaceId}` +
-        `/project/${PROJECT_ID}/revision/${revisionId}/lane/mage-image/job/mage-attempt/artifact/mage-scene-1`,
-      content_type: "image/png",
-      content_length: 101,
-      checksum_sha256: `sha256:${"01".repeat(32)}`,
-    };
-    const soulx = {
-      item_id: "soulx-scene-1",
-      object_key:
-        `tenant/${accountId}/workspace/${workspaceId}` +
-        `/project/${PROJECT_ID}/revision/${revisionId}/lane/soulx-avatar/job/soulx-attempt/artifact/soulx-scene-1`,
-      content_type: "video/mp4",
-      content_length: 202,
-      checksum_sha256: `sha256:${"02".repeat(32)}`,
-    };
-    testState.projectDetailMediaRows.splice(
-      0,
-      testState.projectDetailMediaRows.length,
-      {
-        attempt_id: "33333333-3333-4333-8333-333333333333",
-        lane: "mage_image",
-        artifacts: [mage],
-        accepted_at: "2026-09-14T00:00:00.000Z",
-      },
-      {
-        attempt_id: "44444444-4444-4444-8444-444444444444",
-        lane: "soulx_avatar",
-        artifacts: [soulx],
-        accepted_at: "2026-09-14T00:00:01.000Z",
-      },
-    );
-    const objects = new Map([
-      [mage.object_key, { ...mage, checksumBytes: new Uint8Array(32).fill(1).buffer }],
-      [soulx.object_key, { ...soulx, checksumBytes: new Uint8Array(32).fill(2).buffer }],
-    ]);
-    const head = vi.fn(async (objectKey: string) => {
-      const object = objects.get(objectKey);
-      return object
-        ? {
-            size: object.content_length,
-            httpMetadata: { contentType: object.content_type },
-            checksums: { sha256: object.checksumBytes },
-          }
-        : null;
-    });
-    const mediaEnvironment = {
-      PRIVATE_ARTIFACTS: { head },
-    } as unknown as HostedRuntimeEnvironment;
-
-    try {
-      const result = await handleHostedProductRequest(
-        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
-        mediaEnvironment,
-        stagingConfig,
-        executionContext,
-      );
-      expect(result?.status).toBe(200);
-      const body = (await result?.json()) as {
-        review: {
-          contact_sheet: Array<{ id: string; image_url: string }>;
-          avatar_footage: Array<{ id: string; video_url: string }>;
-        };
+  it.each([undefined, "A freshly edited scene prompt."])(
+    "lists accepted runtime units and selected prompt %s",
+    async (editedPrompt) => {
+      testState.query.mockClear();
+      const revisionId = "22222222-2222-4222-8222-222222222222";
+      const accountId = testState.scopeRows[0]!.account_id as string;
+      const workspaceId = testState.scopeRows[0]!.workspace_id as string;
+      const mage = {
+        item_id: "mage-scene-1",
+        ...(editedPrompt ? { prompt: editedPrompt } : {}),
+        object_key:
+          `tenant/${accountId}/workspace/${workspaceId}` +
+          `/project/${PROJECT_ID}/revision/${revisionId}/lane/mage-image/job/mage-attempt/artifact/mage-scene-1`,
+        content_type: "image/png",
+        content_length: 101,
+        checksum_sha256: `sha256:${"01".repeat(32)}`,
       };
-      expect(body.review.contact_sheet).toHaveLength(1);
-      expect(body.review.contact_sheet[0]).toMatchObject({
-        id: mage.item_id,
-        shot_role: "mage_image",
-      });
-      expect(body.review.avatar_footage).toHaveLength(1);
-      expect(body.review.avatar_footage[0]).toMatchObject({ id: soulx.item_id });
-      expect(head).toHaveBeenCalledTimes(3);
-      expect(head).toHaveBeenNthCalledWith(1, mage.object_key);
-      expect(head).toHaveBeenNthCalledWith(2, soulx.object_key);
-      expect(head).toHaveBeenNthCalledWith(3, soulx.object_key);
-
-      const mediaCall = testState.query.mock.calls.find(([sql]) =>
-        String(sql).includes("FROM video_runtime_accepted_units AS unit"),
+      const soulx = {
+        item_id: "soulx-scene-1",
+        object_key:
+          `tenant/${accountId}/workspace/${workspaceId}` +
+          `/project/${PROJECT_ID}/revision/${revisionId}/lane/soulx-avatar/job/soulx-attempt/artifact/soulx-scene-1`,
+        content_type: "video/mp4",
+        content_length: 202,
+        checksum_sha256: `sha256:${"02".repeat(32)}`,
+      };
+      testState.projectDetailMediaRows.splice(
+        0,
+        testState.projectDetailMediaRows.length,
+        {
+          attempt_id: "33333333-3333-4333-8333-333333333333",
+          lane: "mage_image",
+          artifacts: [mage],
+          accepted_at: "2026-09-14T00:00:00.000Z",
+        },
+        {
+          attempt_id: "44444444-4444-4444-8444-444444444444",
+          lane: "soulx_avatar",
+          artifacts: [soulx],
+          accepted_at: "2026-09-14T00:00:01.000Z",
+        },
       );
-      expect(mediaCall).toBeDefined();
-      expect(mediaCall?.[0]).toContain("JOIN serverless_attempts AS attempt");
-      expect(mediaCall?.[0]).toContain("JOIN artifact_reservations AS reservation");
-      expect(mediaCall?.[0]).toContain("JOIN artifact_receipts AS receipt");
-      expect(mediaCall?.[0]).toContain("reservation.state = 'COMMITTED'");
-      expect(mediaCall?.[0]).toContain("receipt.deleted_at IS NULL");
-      expect(mediaCall?.[1]).toEqual([accountId, workspaceId, PROJECT_ID, revisionId]);
-    } finally {
-      testState.projectDetailMediaRows.splice(0, testState.projectDetailMediaRows.length);
-    }
-  });
+      testState.projectDetailPromptRows.push({
+        image_task_id: "different-image",
+        positive_prompt: "This prompt belongs to another image.",
+      });
+      testState.projectDetailPromptRows.push({
+        image_task_id: mage.item_id,
+        positive_prompt: "A person holding a watermelon in a produce market.",
+      });
+      const objects = new Map([
+        [mage.object_key, { ...mage, checksumBytes: new Uint8Array(32).fill(1).buffer }],
+        [soulx.object_key, { ...soulx, checksumBytes: new Uint8Array(32).fill(2).buffer }],
+      ]);
+      const head = vi.fn(async (objectKey: string) => {
+        const object = objects.get(objectKey);
+        return object
+          ? {
+              size: object.content_length,
+              httpMetadata: { contentType: object.content_type },
+              checksums: { sha256: object.checksumBytes },
+            }
+          : null;
+      });
+      const mediaEnvironment = {
+        PRIVATE_ARTIFACTS: { head },
+      } as unknown as HostedRuntimeEnvironment;
+
+      try {
+        const result = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+          mediaEnvironment,
+          stagingConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(200);
+        const body = (await result?.json()) as {
+          review: {
+            contact_sheet: Array<{ id: string; image_url: string }>;
+            avatar_footage: Array<{ id: string; video_url: string }>;
+          };
+        };
+        const promptCall = testState.query.mock.calls.find(([sql]) =>
+          String(sql).includes("WITH prompt_rows AS"),
+        );
+        expect(promptCall?.[0]).toContain("image_task.account_id = result.account_id");
+        expect(promptCall?.[0]).toContain("image_task.workspace_id = result.workspace_id");
+        expect(promptCall?.[0]).toContain(
+          "image_task.project_revision_id = result.project_revision_id",
+        );
+        expect(promptCall?.[0]).toContain("segment.required_slots->'image'->>'task_key'");
+        expect(promptCall?.[0]).toContain("segment.required_slots->'right_image'->>'task_key'");
+        expect(body.review.contact_sheet).toHaveLength(1);
+        expect(body.review.contact_sheet[0]).toMatchObject({
+          id: mage.item_id,
+          shot_role: "mage_image",
+          prompt: editedPrompt ?? "A person holding a watermelon in a produce market.",
+          label: editedPrompt ?? "A person holding a watermelon in a produce market.",
+        });
+        expect(body.review.avatar_footage).toHaveLength(1);
+        expect(body.review.avatar_footage[0]).toMatchObject({ id: soulx.item_id });
+        expect(head).toHaveBeenCalledTimes(3);
+        expect(head).toHaveBeenNthCalledWith(1, mage.object_key);
+        expect(head).toHaveBeenNthCalledWith(2, soulx.object_key);
+        expect(head).toHaveBeenNthCalledWith(3, soulx.object_key);
+
+        const mediaCall = testState.query.mock.calls.find(([sql]) =>
+          String(sql).includes("FROM video_runtime_accepted_units AS unit"),
+        );
+        expect(mediaCall).toBeDefined();
+        expect(mediaCall?.[0]).toContain("JOIN serverless_attempts AS attempt");
+        expect(mediaCall?.[0]).toContain("JOIN artifact_reservations AS reservation");
+        expect(mediaCall?.[0]).toContain("JOIN artifact_receipts AS receipt");
+        expect(mediaCall?.[0]).toContain("reservation.state = 'COMMITTED'");
+        expect(mediaCall?.[0]).toContain("receipt.deleted_at IS NULL");
+        expect(mediaCall?.[1]).toEqual([accountId, workspaceId, PROJECT_ID, revisionId]);
+      } finally {
+        testState.projectDetailPromptRows.splice(0);
+        testState.projectDetailMediaRows.splice(0, testState.projectDetailMediaRows.length);
+      }
+    },
+  );
 
   it("signs only verified tenant-scoped SoulX MP4 outputs for project media review", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
@@ -1442,7 +1471,9 @@ describe("hosted product route contract", () => {
     expect(block).toContain('output.lane !== "soulx_avatar"');
     expect(block).toContain('contentType !== "video/mp4"');
     expect(block).toContain("object.size !== contentLength");
-    expect(block).toContain("checksumFromR2(object.checksums?.sha256) !== checksum");
+    expect(block).toContain(
+      "await verifyHostedPreviewChecksum(bucket, objectKey, object, checksum)",
+    );
     expect(block).toContain("lifetimeSeconds: 300");
     expect(block).not.toContain("account_id");
   });
@@ -1455,13 +1486,13 @@ describe("hosted product route contract", () => {
 
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
-  expect(query).toContain("AND NOT EXISTS (");
-  expect(query).toContain("FROM video_runtime_accepted_units AS unit");
-  expect(query).toContain("JOIN serverless_attempts AS accepted_attempt");
-  expect(query).toContain("unit.item_id = task.id::text");
-  expect(query).toContain("WHEN 'mage_image' THEN 'IMAGE'");
-  expect(query).toContain("WHEN 'soulx_avatar' THEN 'AVATAR'");
-  expect(query).not.toContain("accepted_attempt.task_id = task.id");
+    expect(query).toContain("AND NOT EXISTS (");
+    expect(query).toContain("FROM video_runtime_accepted_units AS unit");
+    expect(query).toContain("JOIN serverless_attempts AS accepted_attempt");
+    expect(query).toContain("unit.item_id = task.id::text");
+    expect(query).toContain("WHEN 'mage_image' THEN 'IMAGE'");
+    expect(query).toContain("WHEN 'soulx_avatar' THEN 'AVATAR'");
+    expect(query).not.toContain("accepted_attempt.task_id = task.id");
     expect(query).toContain("JOIN artifact_reservations AS reservation");
     expect(query).toContain("reservation.state = 'COMMITTED'");
     expect(query).toContain("JOIN artifact_receipts AS receipt");

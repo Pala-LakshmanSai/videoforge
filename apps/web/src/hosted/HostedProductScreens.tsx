@@ -640,6 +640,9 @@ const HOSTED_TERMINAL_STAGE_STATUSES = new Set([
   "CANCELLED",
 ]);
 
+const HOSTED_IMAGE_REGENERATION_POLL_MS = 500;
+const HOSTED_IMAGE_REGENERATION_TIMEOUT_MS = 10 * 60_000;
+
 type HostedTerminalStageStatus = "FAILED" | "ACTION_REQUIRED" | "BLOCKED" | "CANCELLED" | null;
 
 function hostedHasActiveWork(
@@ -693,6 +696,7 @@ interface HostedQualityFlag {
 }
 
 interface HostedContactSheetItem {
+  readonly prompt?: string | null;
   readonly id?: string;
   readonly asset_id?: string | null;
   readonly image_url: string;
@@ -700,6 +704,121 @@ interface HostedContactSheetItem {
   readonly start_ms?: number | null;
   readonly end_ms?: number | null;
   readonly shot_role?: string | null;
+}
+
+interface HostedImageRegenerationAccepted {
+  readonly request_id: string;
+  readonly attempt_id: string;
+  readonly state: "QUEUED" | "DISPATCHING";
+}
+
+interface HostedImageRegenerationStatus {
+  readonly state: "PENDING" | "SUCCEEDED" | "FAILED";
+  readonly replacement_url?: string | null;
+  readonly image_url?: string | null;
+  readonly error?: { readonly code?: string; readonly message?: string } | null;
+  readonly error_code?: string | null;
+  readonly error_message?: string | null;
+}
+
+class HostedImageRegenerationError extends Error {
+  readonly retryable: boolean;
+
+  constructor(message: string, retryable: boolean) {
+    super(message);
+    this.name = "HostedImageRegenerationError";
+    this.retryable = retryable;
+  }
+}
+
+interface HostedImageRegenerationRequest {
+  readonly prompt: string;
+  readonly revisionId: string;
+  readonly idempotencyKey: string;
+  requestId: string | null;
+}
+
+const HOSTED_IMAGE_REGENERATION_STORAGE_PREFIX = "videoforge.hosted-image-regeneration.v1";
+
+function hostedImageRegenerationStorageKey(
+  projectId: string,
+  revisionId: string,
+  imageTaskId: string,
+): string {
+  return `${HOSTED_IMAGE_REGENERATION_STORAGE_PREFIX}:${projectId}:${revisionId}:${imageTaskId}`;
+}
+
+function readHostedImageRegenerationRequest(
+  projectId: string,
+  revisionId: string,
+  imageTaskId: string,
+): HostedImageRegenerationRequest | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(
+      hostedImageRegenerationStorageKey(projectId, revisionId, imageTaskId),
+    );
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    if (
+      !value ||
+      typeof value.prompt !== "string" ||
+      !value.prompt.trim() ||
+      typeof value.revisionId !== "string" ||
+      value.revisionId !== revisionId ||
+      typeof value.idempotencyKey !== "string" ||
+      !value.idempotencyKey.trim() ||
+      (value.requestId !== null &&
+        value.requestId !== undefined &&
+        (typeof value.requestId !== "string" || !value.requestId.trim()))
+    ) {
+      return null;
+    }
+    return {
+      prompt: value.prompt,
+      revisionId: value.revisionId,
+      idempotencyKey: value.idempotencyKey,
+      requestId: typeof value.requestId === "string" ? value.requestId : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeHostedImageRegenerationRequest(
+  projectId: string,
+  imageTaskId: string,
+  request: HostedImageRegenerationRequest,
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(
+      hostedImageRegenerationStorageKey(projectId, request.revisionId, imageTaskId),
+      JSON.stringify({
+        idempotencyKey: request.idempotencyKey,
+        prompt: request.prompt,
+        requestId: request.requestId,
+        revisionId: request.revisionId,
+      }),
+    );
+  } catch {
+    // Private browsing or a full storage quota must not break regeneration.
+  }
+}
+
+function clearHostedImageRegenerationRequest(
+  projectId: string,
+  revisionId: string,
+  imageTaskId: string,
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(
+      hostedImageRegenerationStorageKey(projectId, revisionId, imageTaskId),
+    );
+  } catch {
+    // Storage cleanup is best effort after the server has reached a terminal state.
+  }
 }
 
 interface HostedAvatarFootageItem {
@@ -823,9 +942,14 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
 } {
   const state = String(lane.attempt_state ?? "").toUpperCase();
   const accepted = lane.accepted_item_count;
-  if (state === "SUCCEEDED") return { label: "Complete", detail: "All items accepted.", active: false };
+  if (state === "SUCCEEDED")
+    return { label: "Complete", detail: "All items accepted.", active: false };
   if (["FAILED", "PERMANENT_FAILED", "DEAD_LETTER", "RETRYABLE_FAILED"].includes(state))
-    return { label: "Failed", detail: "The provider run ended without an accepted result.", active: false };
+    return {
+      label: "Failed",
+      detail: "The provider run ended without an accepted result.",
+      active: false,
+    };
   if (["CANCELLED", "CANCEL_REQUESTED"].includes(state))
     return { label: "Cancelled", detail: "This lane was stopped.", active: false };
   if (state === "OUTBOXED")
@@ -833,11 +957,16 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
   if (state === "ASSIGNED" && accepted === 0)
     return {
       label: "Starting GPU worker",
-      detail: "Waiting for an RTX 4090 and loading the model image. A cold start usually takes a few minutes.",
+      detail:
+        "Waiting for an RTX 4090 and loading the model image. A cold start usually takes a few minutes.",
       active: true,
     };
   if (["ASSIGNED", "SUBMITTED", "RUNNING", "RECONCILING"].includes(state))
-    return { label: "Generating", detail: "The GPU worker is producing and verifying items.", active: true };
+    return {
+      label: "Generating",
+      detail: "The GPU worker is producing and verifying items.",
+      active: true,
+    };
   return { label: "Waiting", detail: "This lane has not been dispatched yet.", active: false };
 }
 
@@ -859,7 +988,11 @@ function HostedElapsed({ since }: { readonly since: string | null }) {
   );
 }
 
-function HostedGpuLaneActivityPanel({ lanes }: { readonly lanes: readonly HostedGpuLaneActivity[] }) {
+function HostedGpuLaneActivityPanel({
+  lanes,
+}: {
+  readonly lanes: readonly HostedGpuLaneActivity[];
+}) {
   const visible = lanes.filter((lane) => lane.attempt_state !== null);
   if (visible.length === 0) return null;
   return (
@@ -873,9 +1006,15 @@ function HostedGpuLaneActivityPanel({ lanes }: { readonly lanes: readonly Hosted
           return (
             <li key={lane.lane} className="gpu-lane-item">
               <div className="gpu-lane-head">
-                <span className="gpu-lane-name">{HOSTED_GPU_LANE_LABELS[lane.lane] ?? lane.lane}</span>
-                <span className={`gpu-lane-phase gpu-lane-phase-${phase.active ? "active" : "idle"}`}>
-                  {phase.active ? <span className="live-progress-pulse" aria-hidden="true" /> : null}
+                <span className="gpu-lane-name">
+                  {HOSTED_GPU_LANE_LABELS[lane.lane] ?? lane.lane}
+                </span>
+                <span
+                  className={`gpu-lane-phase gpu-lane-phase-${phase.active ? "active" : "idle"}`}
+                >
+                  {phase.active ? (
+                    <span className="live-progress-pulse" aria-hidden="true" />
+                  ) : null}
                   {phase.label}
                 </span>
                 <HostedElapsed since={lane.submitted_at ?? lane.created_at} />
@@ -884,9 +1023,14 @@ function HostedGpuLaneActivityPanel({ lanes }: { readonly lanes: readonly Hosted
                 className={`gpu-lane-track${phase.active && accepted === 0 ? " gpu-lane-track-indeterminate" : ""}`}
                 role="progressbar"
                 aria-label={`${HOSTED_GPU_LANE_LABELS[lane.lane] ?? lane.lane} progress`}
-                {...(accepted > 0 ? { "aria-valuenow": percent, "aria-valuemin": 0, "aria-valuemax": 100 } : {})}
+                {...(accepted > 0
+                  ? { "aria-valuenow": percent, "aria-valuemin": 0, "aria-valuemax": 100 }
+                  : {})}
               >
-                <span className="gpu-lane-fill" style={accepted > 0 ? { width: `${percent}%` } : undefined} />
+                <span
+                  className="gpu-lane-fill"
+                  style={accepted > 0 ? { width: `${percent}%` } : undefined}
+                />
               </div>
               <p className="helper gpu-lane-detail">
                 {planned > 0 ? `${accepted} of ${planned} accepted · ` : ""}
@@ -914,7 +1058,9 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
         <li className="gpu-lane-item">
           <div className="gpu-lane-head">
             <span className="gpu-lane-name">Span audio</span>
-            <span className={`gpu-lane-phase gpu-lane-phase-${active || complete ? "active" : "idle"}`}>
+            <span
+              className={`gpu-lane-phase gpu-lane-phase-${active || complete ? "active" : "idle"}`}
+            >
               {active ? <span className="live-progress-pulse" aria-hidden="true" /> : null}
               {complete ? "Ready" : active ? "Cutting" : "Waiting"}
             </span>
@@ -1155,9 +1301,53 @@ export async function readJson<T>(path: string, init?: RequestInit): Promise<T> 
       error?.code === "PROJECT_TITLE_CONFLICT"
         ? "Another active project already uses this title. Open Progress to continue that project or delete it, or choose a different title."
         : error?.code;
-    throw new Error(error?.message ?? fallback ?? "VideoForge hosted request failed.");
+    const requestError = new Error(
+      error?.message ?? fallback ?? "VideoForge hosted request failed.",
+    ) as Error & { readonly status?: number; readonly code?: string };
+    Object.defineProperties(requestError, {
+      status: { configurable: true, value: result.status },
+      code: { configurable: true, value: error?.code },
+    });
+    throw requestError;
   }
   return payload as T;
+}
+
+function hostedImageRegenerationPath(
+  projectId: string,
+  imageTaskId: string,
+  requestId?: string,
+): string {
+  const base = `/api/v2/hosted/projects/${encodeURIComponent(projectId)}/images/${encodeURIComponent(imageTaskId)}/regenerate`;
+  return requestId ? `${base}/${encodeURIComponent(requestId)}` : base;
+}
+
+function hostedImageRegenerationFailure(status: HostedImageRegenerationStatus): string {
+  const message = status.error?.message?.trim();
+  if (message) return message;
+  if (status.error_message?.trim()) return status.error_message.trim();
+  if (status.error_code?.trim()) return status.error_code.trim();
+  return "The replacement did not complete.";
+}
+
+function waitForHostedImageRegenerationPoll(): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, HOSTED_IMAGE_REGENERATION_POLL_MS);
+  });
+}
+
+function hostedImageRegenerationHttpStatus(error: unknown): number | null {
+  if (!error || typeof error !== "object" || !("status" in error)) return null;
+  const status = (error as { readonly status?: unknown }).status;
+  return typeof status === "number" && Number.isInteger(status) ? status : null;
+}
+
+function hostedImageRegenerationRequestWasRejected(error: unknown): boolean {
+  const status = hostedImageRegenerationHttpStatus(error);
+  if (status === null) return false;
+  // These responses can race request creation or represent a temporary limit;
+  // preserve the same idempotency key so retrying can resume the request.
+  return status >= 400 && status < 500 && ![408, 409, 425, 429].includes(status);
 }
 
 async function bounded<T>(promise: Promise<T>, message: string, timeoutMs = 30_000): Promise<T> {
@@ -1682,7 +1872,11 @@ function hostedStageStatus(status: string): ProjectStage["status"] {
   const normalized = status.toUpperCase();
   if (["COMPLETE", "SUCCEEDED", "APPROVED", "READY_FOR_REVIEW"].includes(normalized))
     return "COMPLETE";
-  if (["RUNNING", "ACTIVE", "ADMITTED", "SUBMITTED", "OUTBOXED", "ASSIGNED", "RECONCILING"].includes(normalized))
+  if (
+    ["RUNNING", "ACTIVE", "ADMITTED", "SUBMITTED", "OUTBOXED", "ASSIGNED", "RECONCILING"].includes(
+      normalized,
+    )
+  )
     return "RUNNING";
   if (["STARTING", "PREPARING", "RECONCILING"].includes(normalized)) return "STARTING";
   if (["RETRYING", "RETRY_WAIT"].includes(normalized)) return "RETRYING";
@@ -3542,6 +3736,125 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     placeholderData: (previousData) => previousData,
     retry: false,
   });
+  const imageRegenerationRequests = useRef(new Map<string, HostedImageRegenerationRequest>());
+  async function regenerateImage(item: ProjectMediaReviewItem, prompt: string): Promise<void> {
+    const revisionId = query.data?.project.revision_id;
+    if (!revisionId)
+      throw new HostedImageRegenerationError(
+        "The project revision is unavailable. Refresh and try again.",
+        false,
+      );
+    const path = hostedImageRegenerationPath(projectId, item.id);
+    const requests = imageRegenerationRequests.current;
+    const current =
+      requests.get(item.id) ?? readHostedImageRegenerationRequest(projectId, revisionId, item.id);
+    if (current) requests.set(item.id, current);
+    if (current && (current.prompt !== prompt || current.revisionId !== revisionId)) {
+      throw new HostedImageRegenerationError(
+        "This image regeneration is still processing. Wait for it to finish before changing the prompt.",
+        false,
+      );
+    }
+    const request =
+      current ??
+      (() => {
+        const created: HostedImageRegenerationRequest = {
+          prompt,
+          revisionId,
+          idempotencyKey: `browser-image-regeneration-${crypto.randomUUID()}`,
+          requestId: null,
+        };
+        requests.set(item.id, created);
+        writeHostedImageRegenerationRequest(projectId, item.id, created);
+        return created;
+      })();
+    if (!request.requestId) {
+      const body = JSON.stringify({
+        schema_version: "videoforge-hosted-image-regeneration/v1",
+        prompt: request.prompt,
+        idempotency_key: request.idempotencyKey,
+        revision_id: request.revisionId,
+      });
+      let accepted: HostedImageRegenerationAccepted;
+      try {
+        accepted = await readJson<HostedImageRegenerationAccepted>(path, {
+          method: "POST",
+          body,
+        });
+      } catch (firstError) {
+        if (hostedImageRegenerationRequestWasRejected(firstError)) {
+          requests.delete(item.id);
+          clearHostedImageRegenerationRequest(projectId, request.revisionId, item.id);
+          throw new HostedImageRegenerationError(
+            "The regeneration request was rejected. Update the prompt and try again.",
+            true,
+          );
+        }
+        try {
+          accepted = await readJson<HostedImageRegenerationAccepted>(path, {
+            method: "POST",
+            body,
+          });
+        } catch (secondError) {
+          if (hostedImageRegenerationRequestWasRejected(secondError)) {
+            requests.delete(item.id);
+            clearHostedImageRegenerationRequest(projectId, request.revisionId, item.id);
+            throw new HostedImageRegenerationError(
+              "The regeneration request was rejected. Update the prompt and try again.",
+              true,
+            );
+          }
+          throw new HostedImageRegenerationError(
+            "The regeneration request could not be confirmed. Try again to resume it; the same request key will be reused.",
+            true,
+          );
+        }
+      }
+      if (!accepted.request_id) {
+        throw new HostedImageRegenerationError(
+          "The regeneration response was incomplete. Try again to resume it; the same request key will be reused.",
+          true,
+        );
+      }
+      request.requestId = accepted.request_id;
+      writeHostedImageRegenerationRequest(projectId, item.id, request);
+    }
+    const deadline = Date.now() + HOSTED_IMAGE_REGENERATION_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      let status: HostedImageRegenerationStatus;
+      try {
+        status = await readJson<HostedImageRegenerationStatus>(
+          hostedImageRegenerationPath(projectId, item.id, request.requestId!),
+        );
+      } catch {
+        await waitForHostedImageRegenerationPoll();
+        continue;
+      }
+      if (status.state === "FAILED") {
+        requests.delete(item.id);
+        clearHostedImageRegenerationRequest(projectId, request.revisionId, item.id);
+        throw new HostedImageRegenerationError(hostedImageRegenerationFailure(status), true);
+      }
+      if (status.state === "SUCCEEDED") {
+        try {
+          await queryClient.refetchQueries({ queryKey: ["hosted-project", projectId] });
+        } catch {
+          throw new HostedImageRegenerationError(
+            "The replacement was accepted, but the project could not be refreshed. Try again to resume this request; no new image will be submitted.",
+            true,
+          );
+        }
+        requests.delete(item.id);
+        clearHostedImageRegenerationRequest(projectId, request.revisionId, item.id);
+        return;
+      }
+      await waitForHostedImageRegenerationPoll();
+    }
+    throw new HostedImageRegenerationError(
+      "The replacement is still processing. Try again to resume it; the same request key will be reused.",
+      true,
+    );
+  }
   const asr = [...(query.data?.attempts ?? [])].reverse().find((attempt) => attempt.kind === "ASR");
   const render = [...(query.data?.attempts ?? [])]
     .reverse()
@@ -3913,17 +4226,25 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     query.data.contact_sheet?.at(-1)?.image_url ??
     null;
   const contactSheet = query.data.review?.contact_sheet ?? query.data.contact_sheet ?? [];
-  const generatedImages: ProjectMediaReviewItem[] = contactSheet.map((item, index) => ({
-    id: item.id ?? item.asset_id ?? `generated-image-${index + 1}`,
-    url: item.image_url,
-    label: item.label ?? `Generated image ${index + 1}`,
-    detail:
-      item.start_ms !== null && item.start_ms !== undefined
-        ? `${formatMilliseconds(item.start_ms)}–${formatMilliseconds(item.end_ms)}`
-        : item.shot_role
-          ? item.shot_role.replaceAll("_", " ")
-          : "Accepted Stage 6 image",
-  }));
+  const projectRevisionId = query.data?.project.revision_id ?? null;
+  const generatedImages: ProjectMediaReviewItem[] = contactSheet.map((item, index) => {
+    const id = item.id ?? item.asset_id ?? `generated-image-${index + 1}`;
+    const pending = projectRevisionId
+      ? readHostedImageRegenerationRequest(projectId, projectRevisionId, id)
+      : null;
+    return {
+      id,
+      url: item.image_url,
+      label: `Generated image ${index + 1}`,
+      prompt: pending?.prompt ?? item.prompt ?? null,
+      detail:
+        item.start_ms !== null && item.start_ms !== undefined
+          ? `${formatMilliseconds(item.start_ms)}–${formatMilliseconds(item.end_ms)}`
+          : item.shot_role
+            ? item.shot_role.replaceAll("_", " ")
+            : "Accepted Stage 6 image",
+    };
+  });
   const avatarVideos: ProjectMediaReviewItem[] = (query.data.avatar_footage ?? []).map(
     (item, index) => ({
       id: item.id,
@@ -3952,6 +4273,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               loading={query.isFetching && !query.data}
               error={query.isError ? query.error.message : null}
               onRetry={() => void query.refetch()}
+              onRegenerate={regenerateImage}
             />
           ),
         }
@@ -3966,6 +4288,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               loading={query.isFetching && !query.data}
               error={query.isError ? query.error.message : null}
               onRetry={() => void query.refetch()}
+              onRegenerate={regenerateImage}
             />
           ),
         }

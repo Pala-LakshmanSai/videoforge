@@ -226,3 +226,121 @@ test("Stage 5 feels live and keeps every accepted prompt in a bounded scrollable
   await expect.poll(() => viewer.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   expect(projectReads).toBe(3);
 });
+
+const regenerationSceneId = "12121212-1212-4212-8212-121212121212";
+const otherSceneId = "13131313-1313-4313-8313-131313131313";
+const regenerationRequestId = "14141414-1414-4414-8414-141414141414";
+const sceneImage = (color: string) =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="${color}"/></svg>`)}`;
+
+function imageReviewDetail(replaced: boolean, prompt: string) {
+  const base = promptProjectDetail(3);
+  const contactSheet = [
+    {
+      id: regenerationSceneId,
+      image_url: sceneImage(replaced ? "green" : "gold"),
+      prompt,
+      label: "Generated image 1",
+    },
+    {
+      id: otherSceneId,
+      image_url: sceneImage("blue"),
+      prompt: "An untouched second scene.",
+      label: "Generated image 2",
+    },
+  ];
+  return {
+    ...base,
+    project: { ...base.project, title: "Per-scene regeneration proof" },
+    voiceover_context: null,
+    generation: { ...base.generation, stage: "COMPLETE" },
+    stages: [
+      {
+        id: "image-generation",
+        name: "Generate images",
+        status: "COMPLETE",
+        progress_percent: 100,
+      },
+    ],
+    prompts: [],
+    contact_sheet: contactSheet,
+    review: { contact_sheet: contactSheet },
+    avatar_footage: [],
+  };
+}
+
+test("Stage 6 edits and regenerates exactly one scene while retaining accepted media", async ({
+  page,
+}) => {
+  const originalPrompt = "A person holding a watermelon.";
+  const editedPrompt = "A farmer holding a ripe watermelon beside a market stall.";
+  let completed = false;
+  let submitted = false;
+  const posts: Record<string, unknown>[] = [];
+  const unexpectedWrites: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && !request.url().endsWith("/regenerate"))
+      unexpectedWrites.push(request.url());
+  });
+  await page.route(`**/api/v2/hosted/projects/${promptProjectId}`, (route) =>
+    route.fulfill({
+      json: imageReviewDetail(completed, completed ? editedPrompt : originalPrompt),
+    }),
+  );
+  const regenerationPath = `/api/v2/hosted/projects/${promptProjectId}/images/${regenerationSceneId}/regenerate`;
+  await page.route(`**${regenerationPath}`, async (route) => {
+    expect(route.request().method()).toBe("POST");
+    posts.push(route.request().postDataJSON() as Record<string, unknown>);
+    submitted = true;
+    await route.fulfill({
+      status: 202,
+      json: {
+        request_id: regenerationRequestId,
+        attempt_id: regenerationRequestId,
+        state: "QUEUED",
+      },
+    });
+  });
+  await page.route(`**${regenerationPath}/${regenerationRequestId}`, (route) =>
+    route.fulfill({
+      json: {
+        request_id: regenerationRequestId,
+        attempt_id: regenerationRequestId,
+        state: completed ? "SUCCEEDED" : "PENDING",
+        image_url: completed ? sceneImage("green") : null,
+        prompt: completed ? editedPrompt : originalPrompt,
+      },
+    }),
+  );
+
+  await page.goto(`/projects/${promptProjectId}`);
+  await page.getByRole("button", { name: "View generated images" }).click();
+  const prompt = page.getByRole("textbox", { name: "Image prompt", exact: true });
+  await expect(prompt).toHaveValue(originalPrompt);
+  const image = page.getByRole("img", { name: "Generated image 1", exact: true });
+  await expect(image).toHaveAttribute("src", sceneImage("gold"));
+  await prompt.fill(editedPrompt);
+  await prompt.press("Enter");
+  await expect.poll(() => submitted).toBe(true);
+  expect(posts).toHaveLength(1);
+  expect(posts[0]).toMatchObject({
+    schema_version: "videoforge-hosted-image-regeneration/v1",
+    prompt: editedPrompt,
+    revision_id: "77777777-7777-4777-8777-777777777777",
+  });
+  expect(posts[0]?.idempotency_key).toEqual(expect.any(String));
+  await expect(image).toHaveAttribute("src", sceneImage("gold"));
+  await expect(page.getByRole("button", { name: "Regenerating…", exact: true })).toBeDisabled();
+  completed = true;
+  await expect(image).toHaveAttribute("src", sceneImage("green"), { timeout: 15_000 });
+  await expect(prompt).toHaveValue(editedPrompt);
+  await page.getByRole("button", { name: "Next image", exact: true }).click();
+  await expect(prompt).toHaveValue("An untouched second scene.");
+  await expect(page.getByRole("img", { name: "Generated image 2", exact: true })).toHaveAttribute(
+    "src",
+    sceneImage("blue"),
+  );
+  expect(posts).toHaveLength(1);
+  expect(unexpectedWrites).toEqual([]);
+  await page.screenshot({ path: "/tmp/videoforge-scene-regeneration-review.png", fullPage: true });
+});
