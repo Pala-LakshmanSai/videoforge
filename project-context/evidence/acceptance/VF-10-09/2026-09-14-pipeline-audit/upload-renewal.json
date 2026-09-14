@@ -1,6 +1,6 @@
 {
   "checkpoint": "V2-09",
-  "status": "VERIFIED_LOCAL_REPAIR_AWAITING_BATCH_DEPLOY",
+  "status": "DATABASE_APPLIED_AWAITING_WORKER_DEPLOY",
   "deployedBaseCommit": "66af85d608a6d4e3345ee2d714bc292672e6a8c6",
   "projectId": "fdc6ea0b-2572-4378-a4a4-6c7c5fb34dd3",
   "observedFailure": {
@@ -21,7 +21,7 @@
     "focusedRegression": "PASS:2 mocked route tests",
     "realPostgres": "PASS: transaction applied133, rejected16minute expiry/contentchange/usedcountchange, extended exactpendingreservation15minutes while preservingallotheridentity, then ROLLBACK",
     "dockerRegression": "Fixture available; execution skipped because localDocker stopped to preserve resources for live CPUrender reproduction.",
-    "productionUploadOnly": "ExistingR2objectverified exactbytes/checksum; renewal deployment andcommit-only acceptance pending"
+    "productionUploadOnly": "ExactstoredR2bytesverified; runtimeguardmigration133durablyapplied. Browserrenewal/commitremainunverified: existingCreate&startflowwouldsubmitASR; noauthorizedcommit-onlyclient available."
   },
   "paidActionsFromResume": 0,
   "coordination": "Short comparison project0498d6b9-7d72-4ca7-bdc9-03dffc8b3779 owned by concurrent audit task; no deployment during its GPU run, no new inference authorized beyond consumed two-project cap.",
@@ -43,5 +43,22 @@
     "reservationState": "ISSUED",
     "usedCount": 0,
     "receiptCount": 0
+  },
+  "migrationReadback": {
+    "head": 133,
+    "migration": {
+      "version": 133,
+      "name": "hosted_pending_upload_renewal",
+      "filename": "0133_hosted_pending_upload_renewal.sql",
+      "sha256": "sha256:a2e26b9273b2a2903f382bd663fe2c9a77d3b001a73de9dd6bb2f5f24a05b0aa"
+    },
+    "guardHash": "0f4191613aede89017d7bfbc2f91139429389f6abccf395c7d036610c78d3a5e",
+    "renewalGuardPresent": true,
+    "securityDefiner": true,
+    "projectState": "UPLOAD_PENDING",
+    "exactLedgerMatch": true,
+    "checkedAt": "2026-09-14T15:53:24.865Z",
+    "mediaMutation": false,
+    "providerMutation": false
   }
 }
