@@ -1,0 +1,41 @@
+{
+  "checkpoint": "V2-09",
+  "project_id": "0498d6b9-7d72-4ca7-bdc9-03dffc8b3779",
+  "voiceover_seconds": 37,
+  "accepted_images": 7,
+  "accepted_avatar_clips": 2,
+  "render_attempt_id": "96b3a87f-550b-4244-aad7-97b74b939f8f",
+  "failure_code": "RENDER_OUTPUT_INVALID",
+  "reproduction": "Exact stored job specification and checksum-verified input objects with installed worker and bundled FFmpeg/FFprobe 8.1.2",
+  "failure_message": "Rendered output failed the fixed loudness policy.",
+  "encoded_audio": {
+    "integrated_lufs": -16.46,
+    "true_peak_dbtp": -0.99
+  },
+  "output_policy": {
+    "integrated_lufs_min": -17,
+    "integrated_lufs_max": -15,
+    "true_peak_dbtp_max": -1.5
+  },
+  "scope": "CPU-only reproduction, no provider regeneration",
+  "status": "CPU_REPRODUCTION_FIXED_HOSTED_RECOVERY_PENDING",
+  "fix_commits": [
+    "f75a07fe",
+    "2166e7ae"
+  ],
+  "fixed_output": {
+    "artifact_uri": "vf-local://objects/sha256/c3/c390c9e3d422b24a7dcb86df7471b759d17cb7c5c37e2a7600395f5b2088b81a.mp4",
+    "asset_id": "asset_render_c390c9e3d422b24a7dcb86df",
+    "bytes": 7916962,
+    "filename": "videoforge-output.mp4",
+    "sha256": "sha256:c390c9e3d422b24a7dcb86df7471b759d17cb7c5c37e2a7600395f5b2088b81a"
+  },
+  "fixed_loudness": {
+    "input_integrated_lufs": -22.09,
+    "input_true_peak_dbtp": -0.3,
+    "normalized": true,
+    "output_integrated_lufs": -16.93,
+    "output_true_peak_dbtp": -1.97,
+    "profile": "voiceover-minus16lufs-v1"
+  }
+}
