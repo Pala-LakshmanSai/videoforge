@@ -26,6 +26,7 @@ import { continuationRequest } from "./stage-continuation";
 const DUE_QUERY = `
 WITH revision AS (
   SELECT project.id AS project_id, project.account_id, project.workspace_id, locked.id AS revision_id,
+         project.created_at AS project_created_at,
          (SELECT member.user_id FROM public.memberships member
            WHERE member.workspace_id = project.workspace_id
            ORDER BY member.created_at LIMIT 1) AS user_id
@@ -63,7 +64,7 @@ WITH revision AS (
 )
 SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_id, next_step
   FROM (
-    SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_id,
+    SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_id, project_created_at,
            CASE
              WHEN asr_state = 'SUCCEEDED' AND context_state IS NULL THEN 'context'
              WHEN asr_state = 'SUCCEEDED' AND context_state = 'SUCCEEDED' AND plan_count = 0 THEN 'plan'
@@ -75,7 +76,11 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
       FROM state
   ) due
  WHERE next_step IS NOT NULL
- LIMIT 3`;
+   AND asr_attempt_id IS NOT NULL
+ -- Newest first: an unordered LIMIT let a few stale active projects occupy every slot of the sweep and
+ -- starve the run the operator was actually watching.
+ ORDER BY project_created_at DESC
+ LIMIT 5`;
 
 interface DueRow {
   readonly project_id: string;
