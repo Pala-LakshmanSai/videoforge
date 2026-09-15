@@ -947,7 +947,7 @@ export async function scheduleHostedRenderSubmission(
   return Object.freeze({ state: payload.state });
 }
 
-async function createHostedV209SpanAudioLiveCoordinator(
+export async function createHostedV209SpanAudioLiveCoordinator(
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
 ) {

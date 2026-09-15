@@ -5,6 +5,8 @@ import {
   type HostedRuntimeEnvironment,
 } from "./configuration";
 import { createNeonPool } from "./neon";
+import { createHostedV209SpanAudioLiveCoordinator } from "./app";
+import { defaults as dispatchDefaults, handleHostedV209ProjectDispatch } from "./hosted-v209-project-dispatch";
 import { writeProjectPrompts } from "./hosted-prompt-route";
 import { createVoiceoverContext, renderHandoff } from "./product";
 import { continuationRequest } from "./stage-continuation";
@@ -49,7 +51,14 @@ WITH revision AS (
       WHERE plan.project_revision_id = revision.revision_id) AS plan_count,
     (SELECT run.state FROM public.hosted_prompt_runs run
       WHERE run.project_revision_id = revision.revision_id
-      ORDER BY run.created_at DESC LIMIT 1) AS prompt_state
+      ORDER BY run.created_at DESC LIMIT 1) AS prompt_state,
+    (SELECT run.acceptance_fingerprint_hash FROM public.hosted_prompt_runs run
+      WHERE run.project_revision_id = revision.revision_id
+      ORDER BY run.created_at DESC LIMIT 1) AS prompt_accepted_set,
+    (SELECT count(*) FROM public.hosted_cpu_job_attempts attempt
+      WHERE attempt.project_revision_id = revision.revision_id AND attempt.kind = 'SPAN_AUDIO') AS span_jobs,
+    (SELECT count(*) FROM public.generation_requests request
+      WHERE request.project_revision_id = revision.revision_id) AS generation_requests
   FROM revision
 )
 SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_id, next_step
@@ -59,6 +68,8 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
              WHEN asr_state = 'SUCCEEDED' AND context_state IS NULL THEN 'context'
              WHEN asr_state = 'SUCCEEDED' AND context_state = 'SUCCEEDED' AND plan_count = 0 THEN 'plan'
              WHEN plan_count > 0 AND prompt_state IS NULL THEN 'prompts'
+             WHEN prompt_accepted_set IS NOT NULL AND generation_requests = 0 AND span_jobs = 0
+               THEN 'dispatch'
              ELSE NULL
            END AS next_step
       FROM state
@@ -72,7 +83,7 @@ interface DueRow {
   readonly account_id: string;
   readonly workspace_id: string;
   readonly user_id: string;
-  readonly next_step: "context" | "plan" | "prompts";
+  readonly next_step: "context" | "plan" | "prompts" | "dispatch";
 }
 
 export async function runHostedContinuation(
@@ -113,6 +124,18 @@ export async function runHostedContinuation(
             config,
             executionContext,
             scope,
+          );
+        } else if (row.next_step === "dispatch") {
+          // Stages 6-8 hang off GPU dispatch, which was the fourth and last browser-only handoff:
+          // without it a finished prompt set sat with stages 6-8 pending forever.
+          const spanAudio = await createHostedV209SpanAudioLiveCoordinator(environment, config);
+          await handleHostedV209ProjectDispatch(
+            continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/gpu-dispatch`, {}),
+            environment,
+            config,
+            executionContext,
+            { ...dispatchDefaults, scope: async () => scope },
+            spanAudio,
           );
         } else {
           await writeProjectPrompts(

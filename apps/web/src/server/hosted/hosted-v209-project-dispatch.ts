@@ -125,7 +125,7 @@ const hasExistingHostedV209Pair: ExistingPairProbe = async (
     return row.existing_pair;
   });
 
-const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
+export const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
   createPool: createNeonPool,
   createExecutor: createNeonExecutor,
   scope: sessionScope,
