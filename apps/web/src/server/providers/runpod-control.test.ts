@@ -238,13 +238,14 @@ describe("RunPod scale-zero control", () => {
       workers: { idle: 1, running: 0, initializing: 0, ready: 1, throttled: 0, unhealthy: 0 },
       jobs: { inQueue: 0, inProgress: 0 },
     };
-    const build = (body: unknown) => {
+    const build = (body: unknown, confirmTerminalScaleZero?: () => Promise<void>) => {
       const guard = new RunPodDrainGuard();
       guard.markActive();
       return new RunPodServerlessJobClient({
         apiKey: key,
         endpointId: "endpoint_01",
         guard,
+        confirmTerminalScaleZero,
         fetch: async () => response(body),
         baseUrl: "http://127.0.0.1:43123",
         sleep: async () => undefined,
@@ -257,6 +258,42 @@ describe("RunPod scale-zero control", () => {
       billableWorkers: 0,
       queuedJobs: 0,
     });
+
+    await expect(
+      build(standby).confirmDrained(1, {
+        allowStandbyWorkers: true,
+        requireInventoryZero: true,
+      }),
+    ).rejects.toThrow("RUNPOD_ZERO_NOT_CONFIRMED");
+    let inventoryReads = 0;
+    expect(
+      await build(standby, async () => {
+        inventoryReads += 1;
+      }).confirmDrained(1, {
+        allowStandbyWorkers: true,
+        requireInventoryZero: true,
+      }),
+    ).toMatchObject({
+      workersTotal: 2,
+      billableWorkers: 0,
+      standbyEvidence: {
+        inventoryZeroConfirmed: true,
+        running: 0,
+        initializing: 0,
+        throttled: 0,
+        unhealthy: 0,
+        pendingJobs: 0,
+      },
+    });
+    expect(inventoryReads).toBe(1);
+    await expect(
+      build(standby, async () => {
+        throw new Error("inventory still active");
+      }).confirmDrained(1, {
+        allowStandbyWorkers: true,
+        requireInventoryZero: true,
+      }),
+    ).rejects.toThrow("inventory still active");
 
     const throttled = {
       workers: { idle: 0, running: 0, initializing: 0, ready: 0, throttled: 1, unhealthy: 0 },

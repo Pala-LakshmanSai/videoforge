@@ -828,6 +828,12 @@
       "name": "hosted_funded_candidate_horizon",
       "filename": "0139_hosted_funded_candidate_horizon.sql",
       "sha256": "sha256:d5389be42353485b4382c166ce8465d060182675b00bad5f96ea9c39a53bc361"
+    },
+    {
+      "version": 140,
+      "name": "hosted_standby_zero_evidence",
+      "filename": "0140_hosted_standby_zero_evidence.sql",
+      "sha256": "sha256:b289a6a9b8f883df8b0ff27d5a0005808deeff45db4621593400b72b5eca158f"
     }
   ]
 }

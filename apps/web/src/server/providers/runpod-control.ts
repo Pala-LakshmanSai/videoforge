@@ -2053,9 +2053,21 @@ export class RunPodServerlessJobClient {
    * endpoints keep the strict record-count proof, because deletion makes it reachable. */
   async confirmDrained(
     maxAttempts = 30,
-    options: { readonly allowStandbyWorkers?: boolean; readonly deadlineMs?: number } = {},
+    options: {
+      readonly allowStandbyWorkers?: boolean;
+      readonly deadlineMs?: number;
+      readonly requireInventoryZero?: boolean;
+    } = {},
   ): Promise<{
     readonly workersTotal: number;
+    readonly standbyEvidence?: {
+      readonly inventoryZeroConfirmed: true;
+      readonly running: number;
+      readonly initializing: number;
+      readonly throttled: number;
+      readonly unhealthy: number;
+      readonly pendingJobs: number;
+    };
     readonly billableWorkers: 0;
     readonly queuedJobs: 0;
     readonly observedAt: string;
@@ -2080,11 +2092,27 @@ export class RunPodServerlessJobClient {
         queuedJobs === 0 &&
         (options.allowStandbyWorkers === true ? billableWorkers === 0 : workers.total === 0);
       if (drained) {
+        let standbyEvidence;
+        if (workers.total > 0 && options.requireInventoryZero === true) {
+          if (!this.confirmTerminalScaleZero)
+            throw new RunPodControlError("RUNPOD_ZERO_NOT_CONFIRMED");
+          await this.confirmTerminalScaleZero();
+          await this.confirmQueueEmptyReadOnly(1, 100);
+          standbyEvidence = {
+            inventoryZeroConfirmed: true as const,
+            running: workers.running,
+            initializing: workers.initializing,
+            throttled: workers.throttled,
+            unhealthy: workers.unhealthy,
+            pendingJobs: queuedJobs,
+          };
+        }
         // The guard tracks active compute, and both branches above have already proven zero
         // billable workers and zero queued or in-progress jobs.
         this.options.guard.confirmZero(0, 0);
         return Object.freeze({
           workersTotal: workers.total,
+          ...(standbyEvidence ? { standbyEvidence } : {}),
           billableWorkers: 0,
           queuedJobs: 0,
           observedAt: new Date().toISOString(),

@@ -862,6 +862,14 @@ export class HostedPairWorkflowReconciler {
         HostedPairLane,
         () => Promise<{
           readonly workersTotal: number;
+          readonly standbyEvidence?: {
+            readonly inventoryZeroConfirmed: true;
+            readonly running: number;
+            readonly initializing: number;
+            readonly throttled: number;
+            readonly unhealthy: number;
+            readonly pendingJobs: number;
+          };
           readonly billableWorkers: 0;
           readonly queuedJobs: 0;
           readonly observedAt: string;
@@ -878,6 +886,14 @@ export class HostedPairWorkflowReconciler {
       scope: HostedPairWorkflowScope,
       observation: {
         readonly workersTotal: number;
+        readonly standbyEvidence?: {
+          readonly inventoryZeroConfirmed: true;
+          readonly running: number;
+          readonly initializing: number;
+          readonly throttled: number;
+          readonly unhealthy: number;
+          readonly pendingJobs: number;
+        };
         readonly billableWorkers: 0;
         readonly queuedJobs: 0;
         readonly observedAt: string;
@@ -1180,13 +1196,34 @@ export async function createHostedPairLiveComposition(
     scope: HostedPairWorkflowScope,
     observation: {
       readonly workersTotal: number;
+      readonly standbyEvidence?: {
+        readonly inventoryZeroConfirmed: true;
+        readonly running: number;
+        readonly initializing: number;
+        readonly throttled: number;
+        readonly unhealthy: number;
+        readonly pendingJobs: number;
+      };
       readonly billableWorkers: 0;
       readonly queuedJobs: 0;
       readonly observedAt: string;
     },
   ) => {
     const unsigned = {
-      schema_version: "videoforge-hosted-zero-worker-proof/v1" as const,
+      schema_version: observation.standbyEvidence
+        ? ("videoforge-hosted-zero-worker-proof/v2" as const)
+        : ("videoforge-hosted-zero-worker-proof/v1" as const),
+      ...(observation.standbyEvidence
+        ? {
+            billable_workers: observation.billableWorkers,
+            inventory_zero_confirmed: observation.standbyEvidence.inventoryZeroConfirmed,
+            running_workers: observation.standbyEvidence.running,
+            initializing_workers: observation.standbyEvidence.initializing,
+            throttled_workers: observation.standbyEvidence.throttled,
+            unhealthy_workers: observation.standbyEvidence.unhealthy,
+            pending_jobs: observation.standbyEvidence.pendingJobs,
+          }
+        : {}),
       account_id: scope.accountId,
       workspace_id: scope.workspaceId,
       generation_request_id: scope.generationRequestId,
@@ -1256,20 +1293,24 @@ export async function createHostedPairLiveComposition(
         mage_image: async () => {
           await provider.clients.mage_image.confirmDrained(15, {
             allowStandbyWorkers: true,
+            requireInventoryZero: true,
             deadlineMs: 45_000,
           });
           return provider.clients.mage_image.confirmDrained(15, {
             allowStandbyWorkers: true,
+            requireInventoryZero: true,
             deadlineMs: 45_000,
           });
         },
         soulx_avatar: async () => {
           await provider.clients.soulx_avatar.confirmDrained(15, {
             allowStandbyWorkers: true,
+            requireInventoryZero: true,
             deadlineMs: 45_000,
           });
           return provider.clients.soulx_avatar.confirmDrained(15, {
             allowStandbyWorkers: true,
+            requireInventoryZero: true,
             deadlineMs: 45_000,
           });
         },
