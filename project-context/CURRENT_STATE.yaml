@@ -1,4 +1,14 @@
 schema_version: "2.0"
+china_fresh_stage2_repair_2026_09_15:
+  checkpoint: V2-09
+  status: STAGE2_RECOVERED_STAGE5_BLOCKED_RELEASE_PENDING
+  project_id: 87312a55-3224-4b73-bd53-9bde7f92778e
+  failed_deleted_project_id: cb25cd21-f547-4491-b194-26a56b7c34f1
+  authority: "User approved USD5 total fresh-run verification, cache cleanup, failed-project deletion/new-run iteration and focused production repairs. Preserve USD3 RunPod floor; no uncertain paid replay."
+  repair: "Exact disk preflight reproduced insufficient capacity; disposable cache cleanup restores it. Replacement ASR and context succeed. Worker0.1.23 candidate distinguishes confirmed disk shortage from generic I/O; capacity safety unchanged; UI gives storage-specific guidance."
+  validation: "Worker8, UI4, release8 focused tests pass with red-green proof. Production release/install pending."
+  remaining: "Replacement Stage5 HTTP409 PromptExecutionError mapped UNKNOWN; investigate without replay. No GPU jobs; known contextUSD0.000508. Final video and zero-work closure pending."
+  evidence: evidence/acceptance/VF-10-09/2026-09-15-china-fresh/stage2-repair.json
 single_create_action_2026_09_15:
   checkpoint: V2-09
   status: DEPLOYED_QUALIFIED_EXACT

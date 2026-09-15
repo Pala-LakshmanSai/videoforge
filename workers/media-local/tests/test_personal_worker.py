@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import errno
 import io
 import threading
 import json
@@ -334,6 +335,17 @@ class PersonalWorkerContractTests(unittest.TestCase):
             model_path.unlink(missing_ok=True)
 
     def test_outer_io_failure_is_bounded_and_completion_is_still_once(self) -> None:
+        self._assert_outer_io_failure(
+            OSError("/private/path/token=secret disk full"), "MEDIA_EXECUTION_IO_FAILED"
+        )
+
+    def test_outer_enospc_is_bounded_and_completion_is_still_once(self) -> None:
+        self._assert_outer_io_failure(
+            OSError(errno.ENOSPC, "/private/path/token=secret"),
+            "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
+        )
+
+    def _assert_outer_io_failure(self, error: OSError, expected_code: str) -> None:
         asr = job()
         asr["kind"] = "ASR"
         asr["expires_at"] = "2099-01-01T00:00:00.000Z"
@@ -364,8 +376,9 @@ class PersonalWorkerContractTests(unittest.TestCase):
                 ),
                 patch(
                     "videoforge_media_local.personal_execution._run_media_subprocess",
-                    side_effect=OSError("/private/path/token=secret disk full"),
+                    side_effect=error,
                 ),
+                patch("videoforge_media_local.personal_execution._preflight_disk_space"),
                 patch(
                     "videoforge_media_local.personal_execution._request_json",
                     return_value=(
@@ -380,7 +393,7 @@ class PersonalWorkerContractTests(unittest.TestCase):
                 self.assertEqual(execute_personal_job(parsed, "device", "lease", tools), "FAILED")
             request_json.assert_called_once()
             completion = request_json.call_args.args[3]
-            self.assertEqual(completion["failure_code"], "MEDIA_EXECUTION_IO_FAILED")
+            self.assertEqual(completion["failure_code"], expected_code)
             self.assertNotIn(b"secret", json.dumps(completion).encode("utf-8"))
         finally:
             model_path.unlink(missing_ok=True)
@@ -448,6 +461,8 @@ class PersonalWorkerContractTests(unittest.TestCase):
 
     def test_insufficient_disk_fails_before_download_or_subprocess(self) -> None:
         asr = job()
+        assert isinstance(asr["objects"], list)
+        asr["objects"][0]["bytes"] = 43366609
         asr["kind"] = "ASR"
         asr["expires_at"] = "2099-01-01T00:00:00.000Z"
         asr["input_document"] = {
@@ -459,6 +474,7 @@ class PersonalWorkerContractTests(unittest.TestCase):
         monitor = MagicMock()
         monitor.is_cancelled.return_value = False
         required = personal_execution._required_free_bytes(parsed.objects)
+        self.assertEqual(required, 2234216866)
         completion_response = {
             "schema_version": "videoforge-personal-worker-completion-accepted/v1",
             "state": "FAILED",
@@ -473,7 +489,7 @@ class PersonalWorkerContractTests(unittest.TestCase):
             patch.object(
                 personal_execution.shutil,
                 "disk_usage",
-                return_value=SimpleNamespace(free=required - 1),
+                return_value=SimpleNamespace(free=2003607552),
             ) as disk_usage,
             patch(
                 "videoforge_media_local.personal_execution._request_json",
@@ -494,8 +510,46 @@ class PersonalWorkerContractTests(unittest.TestCase):
         run_media.assert_not_called()
         request_json.assert_called_once()
         self.assertEqual(
-            request_json.call_args.args[3]["failure_code"], "MEDIA_EXECUTION_IO_FAILED"
+            request_json.call_args.args[3]["failure_code"],
+            "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
         )
+        self.assertIsNone(request_json.call_args.args[3]["result_object_key"])
+        monitor.close.assert_called_once()
+
+    def test_disk_preflight_preserves_exact_safety_boundary(self) -> None:
+        objects = parse_personal_job(job()).objects
+        required = personal_execution._required_free_bytes(objects)
+        for available in (required - 1, required, required + 1):
+            with (
+                self.subTest(available=available),
+                patch.object(
+                    personal_execution.shutil,
+                    "disk_usage",
+                    return_value=SimpleNamespace(free=available),
+                ),
+            ):
+                if available < required:
+                    with self.assertRaises(OSError) as raised:
+                        personal_execution._preflight_disk_space(objects, Path("/tmp"))
+                    self.assertEqual(raised.exception.errno, errno.ENOSPC)
+                    self.assertIn("Free up disk space", str(raised.exception))
+                else:
+                    personal_execution._preflight_disk_space(objects, Path("/tmp"))
+
+    def test_disk_preflight_invalid_capacity_stays_unknown(self) -> None:
+        objects = parse_personal_job(job()).objects
+        for available in (None, True, "0", -1):
+            with (
+                self.subTest(available=available),
+                patch.object(
+                    personal_execution.shutil,
+                    "disk_usage",
+                    return_value=SimpleNamespace(free=available),
+                ),
+            ):
+                with self.assertRaisesRegex(OSError, "capacity is unknown") as raised:
+                    personal_execution._preflight_disk_space(objects, Path("/tmp"))
+                self.assertNotEqual(raised.exception.errno, errno.ENOSPC)
 
     def test_disk_preflight_maps_capacity_syscall_failure_to_io_error(self) -> None:
         parsed = parse_personal_job(job())

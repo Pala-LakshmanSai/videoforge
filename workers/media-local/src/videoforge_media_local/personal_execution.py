@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import hashlib
 import http.client
 import json
@@ -72,6 +73,7 @@ _SPAN_AUDIO_FAILURE_CODES = frozenset(
     }
 )
 _MEDIA_EXECUTION_IO_FAILED = "MEDIA_EXECUTION_IO_FAILED"
+_MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT = "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"
 _MEDIA_EXECUTION_CONTRACT_INVALID = "MEDIA_EXECUTION_CONTRACT_INVALID"
 _MEDIA_EXECUTION_LEASE_STALE = "MEDIA_EXECUTION_LEASE_STALE"
 _OWNER_CANCEL_REQUESTED = "OWNER_CANCEL_REQUESTED"
@@ -364,8 +366,14 @@ def _preflight_disk_space(objects: tuple[dict[str, Any], ...], directory: Path) 
         available = shutil.disk_usage(directory).free
     except (OSError, TypeError, ValueError) as error:
         raise OSError("Personal worker local storage capacity is unknown") from error
-    if type(available) is not int or available < required:
-        raise OSError("Personal worker local storage capacity is insufficient")
+    if type(available) is not int or available < 0:
+        raise OSError("Personal worker local storage capacity is unknown")
+    if available < required:
+        raise OSError(
+            errno.ENOSPC,
+            "Personal worker local storage capacity is insufficient. "
+            "Free up disk space on the connected computer before starting another attempt.",
+        )
 
 
 def _upload_port(
@@ -968,9 +976,13 @@ def execute_personal_job(
     except subprocess.TimeoutExpired:
         status = "FAILED"
         failure_code = "MEDIA_EXECUTION_TIMEOUT"
-    except OSError:
+    except OSError as error:
         status = "FAILED"
-        failure_code = _MEDIA_EXECUTION_IO_FAILED
+        failure_code = (
+            _MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT
+            if error.errno == errno.ENOSPC
+            else _MEDIA_EXECUTION_IO_FAILED
+        )
     except (KeyError, TypeError, ValueError, RecursionError):
         status = "FAILED"
         failure_code = _MEDIA_EXECUTION_CONTRACT_INVALID

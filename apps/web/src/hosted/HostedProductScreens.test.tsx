@@ -586,6 +586,18 @@ const qualifiedGpuReadiness = {
 };
 
 describe("hosted product errors", () => {
+  it("maps insufficient disk space to safe local cleanup guidance without a worker update", () => {
+    const code = "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT";
+    const message = transcriptionFailureMessage(code);
+
+    expect(message).toBe(
+      "Your project and voiceover are safe. Free disk space on your connected computer before retrying transcription.",
+    );
+    expect(message).not.toContain(code);
+    expect(message).not.toMatch(/update/i);
+    expect(message.length).toBeLessThan(240);
+  });
+
   it.each([
     [
       "MEDIA_EXECUTION_IO_FAILED",

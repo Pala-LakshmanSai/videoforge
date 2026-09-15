@@ -571,6 +571,9 @@ export function transcriptionFailureMessage(code: string | null | undefined): st
   if (code === "MEDIA_EXECUTION_FAILED") {
     return "Your computer's local transcription process stopped unexpectedly. Update the personal media worker before retrying.";
   }
+  if (code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") {
+    return "Your project and voiceover are safe. Free disk space on your connected computer before retrying transcription.";
+  }
   if (code === "MEDIA_EXECUTION_IO_FAILED") {
     return "The local media worker could not read or save the transcription data. Free disk space and update the personal media worker before retrying.";
   }
