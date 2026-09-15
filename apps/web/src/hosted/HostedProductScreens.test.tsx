@@ -3674,11 +3674,11 @@ describe("hosted product journey", () => {
         },
         {
           lane: "soulx_avatar" as const,
-          attempt_state: "SUCCEEDED",
-          provider_status: "IN_PROGRESS",
+          attempt_state: "ASSIGNED",
+          provider_status: "COMPLETED",
           runtime_state: "FAILED",
           planned_item_count: 65,
-          accepted_item_count: 0,
+          accepted_item_count: 65,
           attempt_ordinal: 1,
           submitted_at: "2026-09-06T10:00:00.000Z",
           created_at: "2026-09-06T10:00:00.000Z",
@@ -3706,8 +3706,8 @@ describe("hosted product journey", () => {
     expect(within(imageStage!).getByText("0/211")).toBeInTheDocument();
     expect(within(avatarStage!).getByText("COMPLETE")).toBeInTheDocument();
     expect(
-      screen.getByText("0 of 211 accepted · The provider run ended without an accepted result."),
-    ).toBeInTheDocument();
+      screen.getAllByText("0 of 211 accepted · The provider run ended without an accepted result."),
+    ).toHaveLength(2);
     expect(screen.getByText("65 of 65 accepted · All items accepted.")).toBeInTheDocument();
     expect(await screen.findByText("Generation stopped.")).toBeInTheDocument();
     expect(screen.queryByText("Ready to generate.")).not.toBeInTheDocument();
@@ -3809,16 +3809,16 @@ describe("hosted product journey", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText("Waiting for GPUs").length).toBeGreaterThanOrEqual(2);
     expect(
-      screen.getByText(
+      screen.getAllByText(
         "0 of 211 accepted · No GPU worker is available yet. Your generation will start automatically when capacity opens.",
       ),
-    ).toBeInTheDocument();
+    ).toHaveLength(2);
     await waitFor(() => expect(dispatches).toBe(1));
     expect(screen.queryByText(/Generation start could not be confirmed/u)).not.toBeInTheDocument();
     expect(screen.getByText("Projected cost")).toBeInTheDocument();
   });
 
-  it("uses live provider progress while preserving terminal database state", async () => {
+  it("shows independent progress when images run while avatar waits for GPU", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const detail = {
       project: {
@@ -3859,9 +3859,9 @@ describe("hosted product journey", () => {
         {
           lane: "mage_image" as const,
           attempt_state: "ASSIGNED",
-          provider_status: "IN_QUEUE",
+          provider_status: "IN_PROGRESS",
           runtime_state: "WAITING_FOR_WORKER",
-          planned_item_count: 211,
+          planned_item_count: 206,
           accepted_item_count: 0,
           attempt_ordinal: 1,
           submitted_at: null,
@@ -3871,9 +3871,9 @@ describe("hosted product journey", () => {
         {
           lane: "soulx_avatar" as const,
           attempt_state: "ASSIGNED",
-          provider_status: "IN_PROGRESS",
+          provider_status: "IN_QUEUE",
           runtime_state: "WAITING_FOR_WORKER",
-          planned_item_count: 65,
+          planned_item_count: 64,
           accepted_item_count: 0,
           attempt_ordinal: 1,
           submitted_at: null,
@@ -3898,14 +3898,24 @@ describe("hosted product journey", () => {
     renderHosted(<HostedProjectScreen projectId={projectId} />);
 
     expect((await screen.findAllByText("Waiting for GPUs")).length).toBeGreaterThanOrEqual(2);
+    const stageList = await screen.findByRole("list", { name: "Project stages" });
+    const imageStage = within(stageList).getByText("Generate images").closest("li");
+    const avatarStage = within(stageList).getByText("Generate avatar video").closest("li");
+    expect(imageStage).not.toBeNull();
+    expect(avatarStage).not.toBeNull();
+    expect(within(imageStage!).getByText("RUNNING")).toBeInTheDocument();
+    expect(within(avatarStage!).getByText("QUEUED")).toBeInTheDocument();
+    expect(within(imageStage!).getByText("0/206")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "0 of 211 accepted · No GPU worker is available yet. Your generation will start automatically when capacity opens.",
+      within(avatarStage!).getByText(
+        "0 of 64 accepted · No GPU worker is available yet. Your generation will start automatically when capacity opens.",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("0 of 65 accepted · The GPU worker is producing and verifying items."),
-    ).toBeInTheDocument();
+      screen.getAllByText(
+        "0 of 206 accepted · The provider has not reported any completed items yet.",
+      ),
+    ).toHaveLength(2);
   });
 
   it("reports only measured personal-worker and retained-object facts", async () => {

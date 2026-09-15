@@ -1025,6 +1025,11 @@ function hostedGpuLaneDisplayState(lane: HostedGpuLaneActivity): string {
   const databaseState = String(lane.attempt_state ?? lane.runtime_state ?? "").toUpperCase();
   if (HOSTED_GPU_TERMINAL_DATABASE_STATES.has(databaseState)) return databaseState;
   const providerState = String(lane.provider_status ?? "").toUpperCase();
+  if (providerState === "COMPLETED") {
+    const accepted = hostedGpuLaneAcceptedCount(lane);
+    const planned = lane.planned_item_count;
+    return planned !== null && planned > 0 && accepted >= planned ? "SUCCEEDED" : databaseState;
+  }
   return HOSTED_GPU_LIVE_PROVIDER_STATES.has(providerState) ? providerState : databaseState;
 }
 
@@ -1070,7 +1075,10 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
   )
     return {
       label: "Generating",
-      detail: "The GPU worker is producing and verifying items.",
+      detail:
+        state === "IN_PROGRESS" && accepted === 0
+          ? "The provider has not reported any completed items yet."
+          : "The GPU worker is producing and verifying items.",
       active: true,
     };
   return { label: "Waiting", detail: "This lane has not been dispatched yet.", active: false };
@@ -2081,7 +2089,8 @@ function hostedGpuLaneStageStatus(lane: HostedGpuLaneActivity): ProjectStage["st
   if (state === "RETRYABLE_FAILED") return "FAILED";
   if (["CANCELLED", "CANCELLING"].includes(state)) return "CANCELLED";
   if (state === "CANCEL_REQUESTED") return "CANCEL_REQUESTED";
-  if (["IN_QUEUE", "WAITING_FOR_GPU", "WAITING_FOR_GPUS"].includes(state)) return "QUEUED";
+  if (["IN_QUEUE", "WAITING_FOR_GPU", "WAITING_FOR_GPUS", "WAITING_FOR_WORKER"].includes(state))
+    return "QUEUED";
   if (
     [
       "OUTBOXED",
@@ -2121,7 +2130,12 @@ function hostedProjectStages(
       status: laneStatus ?? hostedStageStatus(stage.status),
       completed: hasItemCounts ? Math.min(completed, planned!) : completed,
       total: hasItemCounts ? planned! : 100,
-      detail: lanePhase?.detail ?? stage.detail ?? "Waiting for an authoritative update.",
+      detail:
+        lane && hasItemCounts
+          ? `${completed} of ${planned} accepted · ${
+              lanePhase?.detail ?? stage.detail ?? "Waiting for an authoritative update."
+            }`
+          : (lanePhase?.detail ?? stage.detail ?? "Waiting for an authoritative update."),
     };
   });
 }
