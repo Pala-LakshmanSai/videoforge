@@ -822,6 +822,12 @@
       "name": "hosted_ordinary_budget_json_precedence",
       "filename": "0138_hosted_ordinary_budget_json_precedence.sql",
       "sha256": "sha256:d4a372727479946512b503ef80293a7490aa9d5111eb9a75485a442450586de0"
+    },
+    {
+      "version": 139,
+      "name": "hosted_funded_candidate_horizon",
+      "filename": "0139_hosted_funded_candidate_horizon.sql",
+      "sha256": "sha256:d5389be42353485b4382c166ce8465d060182675b00bad5f96ea9c39a53bc361"
     }
   ]
 }
