@@ -5298,6 +5298,9 @@ async function createVoiceoverContext(
   executionContext: HostedExecutionContext,
 ): Promise<Response> {
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  // Declared outside the try so the failure path can also report whether this request was a
+  // redispatch of an earlier no-result attempt.
+  let redispatchable = false;
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
   if (!config.styleAnalysis)
@@ -5365,7 +5368,6 @@ async function createVoiceoverContext(
       return result.rows[0] ?? null;
     });
     if (!state) return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_READY" } }, 409);
-    let redispatchable = false;
     if (state.existing_state === "SUCCEEDED")
       return response({
         schema_version: "videoforge-hosted-context-response/v1",
@@ -5518,6 +5520,23 @@ async function createVoiceoverContext(
         error instanceof Error && /^[A-Z0-9_]{3,80}$/u.test(error.message)
           ? error.message
           : "HOSTED_CONTEXT_EXECUTION_UNKNOWN";
+      // Record the real failure identity: the stored problem code collapses every non-coded throw
+      // into HOSTED_CONTEXT_EXECUTION_UNKNOWN, which hides fetch-level and shape-level causes.
+      console.error("HOSTED_CONTEXT_EXECUTION_FAILURE", {
+        error_name: error instanceof Error ? error.name : typeof error,
+        error_message:
+          error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300),
+        problem_code: problemCode,
+        stage:
+          error instanceof HostedVoiceoverContextProviderError
+            ? (error.diagnostic?.stage ?? null)
+            : null,
+        provider_code:
+          error instanceof HostedVoiceoverContextProviderError
+            ? (error.diagnostic?.providerCode ?? null)
+            : null,
+        redispatch: redispatchable,
+      });
       const definiteProviderRejection = problemCode === "VOICEOVER_CONTEXT_PROVIDER_REJECTED";
       if (error instanceof HostedVoiceoverContextProviderError) {
         console.error("HOSTED_CONTEXT_PROVIDER_FAILURE", {
