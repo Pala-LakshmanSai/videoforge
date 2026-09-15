@@ -4597,7 +4597,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       stage.label === "Generate avatar",
   );
   const stageMediaActions = {
-    ...(imageStage?.status === "COMPLETE"
+    ...(imageStage?.status === "COMPLETE" && generatedImages.length > 0
       ? {
           [imageStage.id]: (
             <ProjectMediaReview
@@ -4617,7 +4617,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ),
         }
       : {}),
-    ...(avatarStage?.status === "COMPLETE"
+    ...(avatarStage?.status === "COMPLETE" && avatarVideos.length > 0
       ? {
           [avatarStage.id]: (
             <ProjectMediaReview
