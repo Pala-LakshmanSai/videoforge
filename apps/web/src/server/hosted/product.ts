@@ -3649,6 +3649,26 @@ function hostedSpanFailureMessage(
   return `${state} Your computer could not cut the remaining clips.`;
 }
 
+/** Every stage that runs on the owner's own computer reports the same bounded local causes. */
+function hostedLocalFailureMessage(failureCode: string | null, fallback: string): string {
+  if (failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") {
+    return "Your computer ran out of free disk space. Free space there and run this project again.";
+  }
+  if (failureCode === "MEDIA_EXECUTION_TIMEOUT") {
+    return "Your computer stopped work that took too long. Run this project again to retry it.";
+  }
+  if (failureCode === "MEDIA_EXECUTION_IO_FAILED") {
+    return "Your computer could not read or save the media. Free disk space there and run this project again.";
+  }
+  if (failureCode === "MEDIA_EXECUTION_SUBPROCESS_FAILED") {
+    return "Your computer's local media process stopped unexpectedly. Update the personal media worker before retrying.";
+  }
+  if (failureCode === "MEDIA_EXECUTION_CONTRACT_INVALID") {
+    return "Your computer returned an invalid media result. Update the personal media worker before retrying.";
+  }
+  return fallback;
+}
+
 function hostedTiming(input: {
   readonly createdAt?: unknown;
   readonly submittedAt?: unknown;
@@ -7226,7 +7246,15 @@ async function projectDetail(
         progress_percent: render ? (render.state === "SUCCEEDED" ? 100 : 50) : 0,
         started_at: timestampOrNull(render?.submitted_at),
         completed_at: timestampOrNull(render?.terminal_at),
-        detail: "Your computer assembles the accepted media and voiceover into the final video.",
+        detail:
+          render?.state === "FAILED"
+            ? hostedLocalFailureMessage(
+                typeof render.error_code === "string" ? render.error_code : null,
+                "Your computer could not assemble the final video. Open this project again to retry it there.",
+              )
+            : render?.state === "SUCCEEDED"
+              ? "Your computer assembled the final video from the accepted media and voiceover."
+              : "Your computer assembles the accepted media and voiceover into the final video.",
         eta_ms: null,
       },
       {
@@ -7242,7 +7270,14 @@ async function projectDetail(
       {
         id: "review",
         name: "Review and approve",
-        status: detail.review ? "COMPLETE" : render?.state === "SUCCEEDED" ? "BLOCKED" : "WAITING",
+        // Awaiting the owner's approval is a normal, non-terminal state: this stage can never read
+        // COMPLETE before that approval exists. Reporting it as BLOCKED made the client treat a
+        // finished render as a terminal block, which stopped live polling and hid "Ready for review".
+        status: detail.review
+          ? "COMPLETE"
+          : render?.state === "SUCCEEDED"
+            ? "READY_FOR_REVIEW"
+            : "WAITING",
         progress_percent: detail.review ? 100 : 0,
         started_at: render?.state === "SUCCEEDED" ? timestampOrNull(render?.terminal_at) : null,
         completed_at: timestampOrNull(
