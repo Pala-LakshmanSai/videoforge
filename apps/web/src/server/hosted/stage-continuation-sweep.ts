@@ -190,3 +190,5 @@ export async function runHostedContinuation(
   }
   return dispatched;
 }
+
+export { ensureHostedPairObservers } from "./pair-observer-guard";

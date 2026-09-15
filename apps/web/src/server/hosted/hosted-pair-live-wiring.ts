@@ -410,9 +410,35 @@ export async function commitAndScheduleHostedPair(
     await coordinationPhase("HOSTED_PAIR_MATERIALIZATION_FAILED", () =>
       beforeWorkflow(dispatchTokenKey),
     );
-  return coordinationPhase("HOSTED_PAIR_WORKFLOW_HANDOFF_FAILED", () =>
-    ensureHostedPairWorkflow(environment, runtimeDatabase, reconcilerDatabase, input),
-  );
+  // The pair jobs are already live by this point, so a failure here leaves paid jobs running with
+  // nobody observing them: on 2026-09-15 the lanes were submitted at 16:20:44 and the observer only
+  // started at 17:44, by which time the provider had purged both job records, so the single
+  // observation could only settle PERMANENT_FAILED with zero accepted items. Retry the handoff so a
+  // transient Workflows API failure cannot orphan a running pair. `ensureHostedPairWorkflow` is
+  // idempotent: attempt 0 creates the canonical instance, later attempts recover it.
+  return coordinationPhase("HOSTED_PAIR_WORKFLOW_HANDOFF_FAILED", async () => {
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        return await ensureHostedPairWorkflow(
+          environment,
+          runtimeDatabase,
+          reconcilerDatabase,
+          input,
+        );
+      } catch (error) {
+        lastError = error;
+        // A terminal instance that cannot be restarted will not become restartable by waiting.
+        if (
+          error instanceof HostedDispatchCoordinationError &&
+          error.code === "HOSTED_PAIR_WORKFLOW_RESTART_UNAVAILABLE"
+        )
+          break;
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+    }
+    throw lastError;
+  });
 }
 
 /** Ordinary authenticated-project variant. It retains the same exact V2-09 admission and Workflow

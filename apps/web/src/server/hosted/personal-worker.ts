@@ -1998,6 +1998,8 @@ async function completeLease(
   }
 }
 
+import { ensureHostedPairObservers } from "./pair-observer-guard";
+
 export async function handlePersonalWorkerRequest(
   request: Request,
   environment: HostedRuntimeEnvironment,
@@ -2036,6 +2038,11 @@ export async function handlePersonalWorkerRequest(
     return heartbeat(request, config);
   }
   if (request.method === "POST" && url.pathname === "/api/v2/media-worker/claim") {
+    // The desktop worker polls this every few seconds, and it is the one trigger in this product that
+    // is known to be delivered (the per-minute cron never reached the handler). Ride the pair-observer
+    // guard along with it: cheap, idempotent, and it closes the window in which a running pair has no
+    // observer -- the failure mode that settled both lanes PERMANENT_FAILED with nothing accepted.
+    executionContext.waitUntil(ensureHostedPairObservers(environment, executionContext));
     return claim(request, environment, config);
   }
   const lease =
