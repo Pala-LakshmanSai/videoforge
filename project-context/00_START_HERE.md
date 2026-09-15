@@ -1,5 +1,14 @@
 # VideoForge: start here
 
+## Deployed render, prompt and claim repairs — 2026-09-15
+
+Source `e68013c1` is live on Cloudflare `054e4e1e-9c12-4a16-b1f8-e29d26d21674`, QUALIFIED_EXACT. Worker0.1.21 is published, installed and ONLINE with exact bundle. The 18m11s local final MP4 is delivered. Render thread bounds and one audio-only loudness correction are verified on retained media; unchanged output gates pass. Prompt-only camera/equipment suppression and no readable/invented text apply to initial and regenerated images. Existing accepted images remain unchanged.
+
+Shared job claiming now uses two transactions instead of four, retaining tenant/freshness/lease checks. Focused claim6, render16, prompt25, regeneration5 and release8 tests, TypeScript and production build/firewall passed. Extra ASR threads changed words; two-chunk parallelism gave only25.45s to24.80s, so neither speculative change shipped. Exact full local transcription32.65s matched production words/times; this is not a newly measured hosted speedup. Prior hosted18-minute totals remain2m12s transcription and13m34s spanning.
+
+No GPU generation or visual rerender was used for this deployment. At05:06Z balanceUSD14.4230990852, zero active compute. Retained sealed volumes remain. The existing long project's hosted failed render record is preserved; its final video is available locally, and hosted finalization remains a separate gate. Evidence: `evidence/acceptance/VF-10-09/2026-09-15-render-prompts/acceptance.json`.
+
+
 ## Current long-video render and prompt repair — 2026-09-15
 
 Stages 6/7 accepted 212 images and 63 avatar clips for project `7d101190-87f6-4b51-a870-757e858e2abd`. Bounded FFmpeg threads resolve the measured long-render resource failure. The local final MP4 was delivered: 18m11.567s, 1080p30, 233491300 bytes, SHA256 `e22c16de224aca87349ade3984bdffea6e75f22f2df51d7f1c8b7c8705c9d101`. One audio-only correction preserved every video frame and passed unchanged gates at -16.44 LUFS, -5.25 dBTP and 1ms AV drift. Worker0.1.21 automates this fallback. Hosted release/finalization remain pending.

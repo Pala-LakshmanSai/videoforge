@@ -1,22 +1,23 @@
 schema_version: "2.0"
 long_video_gpu_recovery_2026_09_15:
-  status: GPU_COMPLETE_LOCAL_FINAL_DELIVERED_PRODUCTION_RENDER_REPAIR_PENDING
+  status: REPAIRS_DEPLOYED_LOCAL_FINAL_DELIVERED
   project_id: 7d101190-87f6-4b51-a870-757e858e2abd
   generation_id: bd7e1a80-5115-4450-b34e-9c11006b9a10
-  deployed_source: d6e8dba24b6ba4275ba769ea85a5e61c13ca9a0d
-  deployed_worker_version: 728619b0-3a12-49b6-a55d-a3708e98fa38
+  deployed_source: e68013c1fb0ecb9ec938d27335a2a01447f4d90f
+  deployed_worker_version: 054e4e1e-9c12-4a16-b1f8-e29d26d21674
   transport: QUALIFIED_EXACT
   migrations_through: 144
   preparation: "212 images and63 avatar clips accepted;244 segments;18m11.553s source."
   repaired_budget_failure: "Accepted Mage barrier must stop lane billing clock while attempts remainASSIGNED untilpairsettlement;143 preserves sharedpool andhardcaps."
   progress: "Stages6/7 complete. Bounded FFmpeg threads render all32747frames. Local final delivered:233491300bytes,1080p30,1091.567s,-16.44LUFS,-5.25dBTP,1msAVdrift. Hosted finalization remains pending. Worker0.1.21 source adds one audio-only correction with unchanged acceptance gates."
-  worker_release: "0.1.21 published and installed; run34930285784; exact bundle7ad39112b95f5fbe2846aebab48e29a147c2216e94cf1394f3da2eb990872e41; activation pending."
+  worker_release: "0.1.21 published and installed; run34930285784; exact bundle7ad39112b95f5fbe2846aebab48e29a147c2216e94cf1394f3da2eb990872e41; ONLINE and exact production activation verified at05:06Z."
   claim_speed_repair: "Shared ASR/SPAN/RENDER successful claim uses2 transactions instead of4; tenant freshness checked before mutations; inputs and lease share transaction;6 focusedtests andtypecheck pass. ASR thread increases changed words; chunkparallelism only25.452s to24.803s, so both rejected. No new inference speed claim."
   speed_followup: "User requests further ASR and spanning gains. Recorded18-minute ASR2m12s and63spans13m34s; prior2m31s and65spans52m59s includes repair interruption. Local exact ASR32.647s matches production words/times/confidence; do not attribute environment difference to new code."
   prompting: "Prompt-only camera equipment suppression and blank unmarked surfaces apply to ordinary and regenerated images; immutable styles and existing media preserved."
-  paid_compute: "2026-09-15T04:46:49Z balanceUSD14.4328213074;zero activePods/workers;no new GPU actions."
+  paid_compute: "2026-09-15T05:06:10Z balanceUSD14.4230990852;zero activePods/workers;no new GPU actions."
   budget: "UserUSD5/hour-video cap; auditUSD2total GPU verification cap;USD3balancefloor;no uncertain replay."
   prior_runs: "First207images accepted, SoulXupload failed25clips; second206images accepted, avatarcancelled byold20min accounting. Bothsettled;zeroactive/queues verified."
+  delivery_evidence: evidence/acceptance/VF-10-09/2026-09-15-render-prompts/acceptance.json
   evidence: evidence/acceptance/VF-10-09/2026-09-15-long-video-audit/
 span_performance_repair_2026_09_14:
   checkpoint: V2-09

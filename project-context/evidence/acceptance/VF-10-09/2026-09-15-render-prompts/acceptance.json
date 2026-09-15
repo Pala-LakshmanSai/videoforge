@@ -1,0 +1,168 @@
+{
+  "checkpoint": "V2-09",
+  "source": "e68013c1fb0ecb9ec938d27335a2a01447f4d90f",
+  "workerVersion": "0.1.21",
+  "bundle": "sha256:7ad39112b95f5fbe2846aebab48e29a147c2216e94cf1394f3da2eb990872e41",
+  "project": "7d101190-87f6-4b51-a870-757e858e2abd",
+  "acceptedImages": 212,
+  "acceptedAvatarClips": 63,
+  "localOutput": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "30/1",
+        "start_time": "0.000000",
+        "duration": "1091.566667",
+        "nb_frames": "32747"
+      },
+      {
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "sample_rate": "48000",
+        "channels": 2,
+        "r_frame_rate": "0/0",
+        "start_time": "0.000000",
+        "duration": "1091.566000",
+        "nb_frames": "51169"
+      }
+    ],
+    "format": {
+      "duration": "1091.566667",
+      "size": "233491300"
+    },
+    "sha256": "e22c16de224aca87349ade3984bdffea6e75f22f2df51d7f1c8b7c8705c9d101"
+  },
+  "checks": {
+    "promptTests": 25,
+    "regenerationTests": 5,
+    "renderTests": 16,
+    "releaseCompatibilityTests": 8,
+    "webBuild": "PASS",
+    "productionBundleFirewall": "PASS",
+    "webAndWorkerTypecheck": "PASS",
+    "contextValidation": "PASS",
+    "claimTests": 6
+  },
+  "visualFix": "Prompting only: viewpoint wording, no extraneous equipment, all surfaces plain and unmarked, no readable or invented text. Existing images not regenerated.",
+  "compute": {
+    "checkedAt": "2026-09-15T05:06:10.725Z",
+    "balanceUsd": 14.4230990852,
+    "pods": [
+      {
+        "idHash": "sha256:c37697cf912449285d2c881bab272c7a905b3b60bead2609df8590318e204847",
+        "desiredStatus": "EXITED",
+        "observedStatuses": [
+          "EXITED"
+        ],
+        "endpointWorker": true,
+        "endpointIdHash": "sha256:7fcba58322146f2fe368ad2e60f47450e89dfde1cf6adb9a17ea854e5bd6f89a",
+        "costPerHourUsd": 0.74
+      },
+      {
+        "idHash": "sha256:5ac026e381012e8196e574273d9fc90a924c9825baa35adc978e96fd46cd7e2c",
+        "desiredStatus": "EXITED",
+        "observedStatuses": [
+          "EXITED"
+        ],
+        "endpointWorker": true,
+        "endpointIdHash": "sha256:e07fe49b7152c1c51a5979d6c701c237a18fe3d4c74e6f42ac6fe4da65431e4b",
+        "costPerHourUsd": 0.74
+      }
+    ],
+    "endpoints": [
+      {
+        "idHash": "sha256:e07fe49b7152c1c51a5979d6c701c237a18fe3d4c74e6f42ac6fe4da65431e4b",
+        "workersMin": 0,
+        "workersMax": 1,
+        "workerRecordsReported": true,
+        "workerRecordCount": 1,
+        "activeWorkerCount": 0,
+        "exitedWorkerCount": 1,
+        "workerStatuses": [
+          "EXITED"
+        ],
+        "scaleZeroCompliant": true
+      },
+      {
+        "idHash": "sha256:7fcba58322146f2fe368ad2e60f47450e89dfde1cf6adb9a17ea854e5bd6f89a",
+        "workersMin": 0,
+        "workersMax": 1,
+        "workerRecordsReported": true,
+        "workerRecordCount": 1,
+        "activeWorkerCount": 0,
+        "exitedWorkerCount": 1,
+        "workerStatuses": [
+          "EXITED"
+        ],
+        "scaleZeroCompliant": true
+      }
+    ],
+    "privateTemplateCount": 4,
+    "networkVolumes": [
+      {
+        "idHash": "sha256:2a8633e14bbecab54f52e2ae7b5b06bfa562b09a6ac781fe0985eb28e70587be",
+        "sizeGb": 50,
+        "dataCenterId": "EU-RO-1"
+      },
+      {
+        "idHash": "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
+        "sizeGb": 50,
+        "dataCenterId": "EU-RO-1"
+      }
+    ],
+    "runningPodCount": 0,
+    "activeServerlessWorkerCount": 0
+  },
+  "hostedCompletion": "Existing longproject hostedfailedattempt preserved; localfinaldelivered. No expensive visualrerender for deployment verification.",
+  "timings": {
+    "sourceDurationSeconds": 1091.553,
+    "before": {
+      "transcriptionSeconds": 151.388,
+      "spanningSeconds": 3179.471,
+      "spanCount": 65,
+      "caveat": "Includes repair interruption and worker upgrade:17 old-bundle spans,48 new-bundle spans"
+    },
+    "current": {
+      "transcriptionSeconds": 132.237,
+      "spanningSeconds": 814.155,
+      "spanCount": 63
+    },
+    "steadySpanCadenceSeconds": {
+      "before": 43.24,
+      "after": 10.09
+    },
+    "basis": "actual database created to terminal times including queue; combined time excludes gap between stages"
+  },
+  "claimTransactions": {
+    "before": 4,
+    "after": 2
+  },
+  "asrBenchmark": {
+    "fullLocalSeconds": 32.647,
+    "productionDecodeSeconds": 94.365,
+    "serialChunkSeconds": 25.452,
+    "parallelChunkSeconds": 24.803,
+    "parallelShipped": false,
+    "threadTuningShipped": false,
+    "fullTranscriptMatchesProduction": true
+  },
+  "deployment": {
+    "source_commit": "e68013c1fb0ecb9ec938d27335a2a01447f4d90f",
+    "worker_version": "054e4e1e-9c12-4a16-b1f8-e29d26d21674",
+    "effective_gpu_transport": "QUALIFIED_EXACT",
+    "state": "COMPLETED",
+    "retained_qualification_reused": true,
+    "runpod_mutation": false,
+    "compute_started": false
+  },
+  "workerState": {
+    "version": "0.1.21",
+    "state": "ONLINE",
+    "lastSeen": "2026-09-15T05:06:29.502684Z"
+  }
+}
