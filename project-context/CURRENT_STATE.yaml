@@ -1,7 +1,11 @@
 schema_version: "2.0"
 span_batch_repair_2026_09_15:
   checkpoint: V2-09
-  status: RELEASE_PUBLISHED_MIGRATIONS_APPLIED_ACTIVATION_PENDING
+  status: DEPLOYED_QUALIFIED_EXACT_WORKER_ONLINE
+  deployed_source: ebb476c825f0236e2004ea4d97e8f443e3ccd999
+  cloudflare_version: f8e19716-6e10-462f-b08d-4e64469c23b1
+  transport: QUALIFIED_EXACT
+  worker_online_verified_at: "2026-09-15T05:41:29.467618Z"
   worker_version: 0.1.22
   release_run: 34933050036
   execution_bundle: sha256:6953b97bd8589f5fc2c733d1d5220269418f9c45d1ca8b3f9430a108d7b99336

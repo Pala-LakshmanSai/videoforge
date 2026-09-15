@@ -11,7 +11,7 @@
   "network": "fixture",
   "media": "actual retained voiceover and pinned FFmpeg",
   "checkpoint": "V2-09",
-  "status": "LOCAL_BATCH_ACCEPTED_RELEASE_PENDING",
+  "status": "DEPLOYED_QUALIFIED_EXACT_WORKER_ONLINE",
   "batch_limit": 4,
   "independent_attempts_and_receipts": true,
   "migration": 145,
@@ -28,5 +28,11 @@
     146
   ],
   "release_run": 34933050036,
-  "execution_bundle": "sha256:6953b97bd8589f5fc2c733d1d5220269418f9c45d1ca8b3f9430a108d7b99336"
+  "execution_bundle": "sha256:6953b97bd8589f5fc2c733d1d5220269418f9c45d1ca8b3f9430a108d7b99336",
+  "source_commit": "ebb476c825f0236e2004ea4d97e8f443e3ccd999",
+  "cloudflare_version": "f8e19716-6e10-462f-b08d-4e64469c23b1",
+  "effective_gpu_transport": "QUALIFIED_EXACT",
+  "worker_version": "0.1.22",
+  "worker_online_verified_at": "2026-09-15T05:41:29.467618Z",
+  "new_gpu_actions": 0
 }

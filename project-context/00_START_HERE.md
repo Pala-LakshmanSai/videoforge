@@ -4,7 +4,7 @@
 
 User authorized batching and production delivery. Worker0.1.22 claims and executes up to four existing same-project/revision span jobs together. Each keeps its exact attempt, lease, cancellation, upload checksum and completion receipt; successful siblings survive an individual failure. Migration145 allows one bounded work group per device, preserving singleton transcription/render and unique active attempts. No aggregate result bypass is introduced.
 
-Focused claim7, worker/cache and database admission checks pass. Four real FFmpeg spans completed in0.776s locally with one source download and eight verified artifact transfers; network was fixture-backed, so this is not an end-to-end hosted speed claim. Production release/activation is pending. See `evidence/acceptance/VF-10-09/2026-09-15-span-batch/acceptance.json`.
+Focused claim7, worker/cache and database admission checks pass. Four real FFmpeg spans completed in0.776s locally with one source download and eight verified artifact transfers; network was fixture-backed, so this is not an end-to-end hosted speed claim. Production source `ebb476c8`, Cloudflare `f8e19716`, QUALIFIED_EXACT and installed worker0.1.22 ONLINE are verified. Migrations145/146 are applied;146 preserves lock order for non-admitting updates. No new GPU actions. Full hosted batch timing remains unmeasured; the existing long-video render failure remains separate from the delivered local MP4. See `evidence/acceptance/VF-10-09/2026-09-15-span-batch/acceptance.json`.
 
 
 ## Deployed render, prompt and claim repairs — 2026-09-15
