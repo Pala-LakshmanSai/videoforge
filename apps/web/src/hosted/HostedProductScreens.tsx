@@ -3922,25 +3922,31 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   });
   const [mediaLoadingSection, setMediaLoadingSection] = useState<HostedMediaSection | null>(null);
   const [mediaLoadError, setMediaLoadError] = useState<string | null>(null);
-  const mediaRevision = useRef<string | null>(null);
+  const mediaContext = `${projectId}:${query.data?.project.revision_id ?? ""}`;
+  const mediaContextRef = useRef(mediaContext);
+  const resetMediaContext = useRef<string | null>(null);
+  if (mediaContextRef.current !== mediaContext) mediaContextRef.current = mediaContext;
   useEffect(() => {
-    const revisionId = query.data?.project.revision_id ?? null;
-    if (revisionId === mediaRevision.current) return;
-    mediaRevision.current = revisionId;
+    if (mediaContext === resetMediaContext.current) return;
+    resetMediaContext.current = mediaContext;
     setAdditionalMedia({ images: [], avatar: [] });
     setMediaPage({ images: 1, avatar: 1 });
+    setMediaLoadingSection(null);
     setMediaLoadError(null);
-  }, [query.data?.project.revision_id]);
+  }, [mediaContext]);
 
   async function loadMoreMedia(section: HostedMediaSection): Promise<void> {
     if (mediaLoadingSection !== null) return;
     const nextPage = mediaPage[section] + 1;
+    const requestContext = mediaContext;
+    const isCurrentRequest = () => mediaContextRef.current === requestContext;
     setMediaLoadingSection(section);
     setMediaLoadError(null);
     try {
       const page = await readJson<ProjectDetailResponse>(
         `/api/v2/hosted/projects/${projectId}?media_kind=${section}&media_page=${nextPage}`,
       );
+      if (!isCurrentRequest()) return;
       const nextImages = page.review?.contact_sheet ?? page.contact_sheet ?? [];
       const nextAvatar = page.review?.avatar_footage ?? page.avatar_footage ?? [];
       setAdditionalMedia((current) => ({
@@ -3949,9 +3955,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       }));
       setMediaPage((current) => ({ ...current, [section]: nextPage }));
     } catch (error) {
-      setMediaLoadError(error instanceof Error ? error.message : "Try again.");
+      if (isCurrentRequest()) {
+        setMediaLoadError(error instanceof Error ? error.message : "Try again.");
+      }
     } finally {
-      setMediaLoadingSection(null);
+      if (isCurrentRequest()) setMediaLoadingSection(null);
     }
   }
   const imageRegenerationRequests = useRef(new Map<string, HostedImageRegenerationRequest>());
