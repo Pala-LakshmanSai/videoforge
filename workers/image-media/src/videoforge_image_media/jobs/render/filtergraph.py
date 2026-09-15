@@ -165,6 +165,54 @@ def _audio_filter(measurement: LoudnessMeasurement) -> str:
     )
 
 
+def compile_audio_correction_command(
+    *,
+    ffmpeg: Path,
+    source: Path,
+    destination: Path,
+    measurement: LoudnessMeasurement,
+    total_frames: int,
+) -> tuple[str, ...]:
+    audio_filter = (
+        f"{_audio_filter(measurement)},apad,atrim=end={total_frames / 30:.6f},asetpts=PTS-STARTPTS"
+    )
+    return (
+        str(ffmpeg),
+        "-hide_banner",
+        "-nostdin",
+        "-n",
+        "-i",
+        str(source),
+        "-map",
+        "0:v:0",
+        "-map",
+        "0:a:0",
+        "-c:v",
+        "copy",
+        "-af",
+        audio_filter,
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-ar",
+        "48000",
+        "-ac",
+        "2",
+        "-map_metadata",
+        "-1",
+        "-map_chapters",
+        "-1",
+        "-sn",
+        "-dn",
+        "-movflags",
+        "+faststart",
+        "-threads",
+        "2",
+        str(destination),
+    )
+
+
 def _validate_soulx_approval(manifest: Mapping[str, Any]) -> None:
     segments = cast(list[dict[str, Any]], manifest["segments"])
     soulx = [

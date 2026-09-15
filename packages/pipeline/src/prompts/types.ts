@@ -196,6 +196,15 @@ export function derivePromptStyleTreatment(
  * hash-bound treatment, while the image-model prompt emits only the four
  * highest-value dynamic cues to avoid repeating low-value style metadata.
  */
+export function promptOpticalViewpoint(value: string): string {
+  return value
+    .replace(/\b(?:stable\s+)?tripod[- ]mounted(?:\s+camera)?\b/giu, "steady unobstructed")
+    .replace(/\b(?:camera\s+)?mounted on (?:a\s+)?tripod\b/giu, "steady unobstructed viewpoint")
+    .replace(/\bwide[- ]angle lens\b/giu, "wide field of view")
+    .replace(/\blens(?:es)?\b/giu, "perspective")
+    .replace(/\bcamera\b/giu, "viewpoint");
+}
+
 export function promptStyleTreatmentPositiveSuffix(treatment: PromptStyleTreatment): string {
   const compact = (value: string, maximum = 112): string => {
     const normalized = value.normalize("NFKC").replace(/\s+/gu, " ").trim();
@@ -206,12 +215,15 @@ export function promptStyleTreatmentPositiveSuffix(treatment: PromptStyleTreatme
   };
   const segment = (label: string, values: readonly string[]): string | null =>
     values.length === 0 ? null : `${label}: ${compact(values.join(", "))}`;
+  // Optical treatment describes the resulting view, never physical recording
+  // equipment. Leave the immutable profile and narrated scene facts intact.
+  const viewpoint = promptOpticalViewpoint(treatment.camera_language);
   // Per-field compaction prevents a long early trait from deleting a later
   // high-value cue while preserving runtime derivation from the pinned style.
   return [
     segment("medium", [treatment.medium_family]),
     segment("realism", [treatment.realism]),
-    segment("camera", [treatment.camera_language]),
+    segment("viewpoint", [viewpoint]),
     segment("lighting", [treatment.lighting]),
   ]
     .filter((value): value is string => value !== null)

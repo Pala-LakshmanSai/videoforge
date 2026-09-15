@@ -4,7 +4,7 @@ import hashlib
 import json
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -17,6 +17,7 @@ from .filtergraph import (
     SUBTLE_RENDER_PROFILE_VERSION,
     LoudnessMeasurement,
     RenderCommandPlan,
+    compile_audio_correction_command,
     compile_render_command,
 )
 from .ports import (
@@ -393,7 +394,7 @@ class RenderJob:
                 "-map",
                 "0:a:0",
                 "-af",
-            f"loudnorm=I=-16:TP={AUDIO_NORMALIZATION_TRUE_PEAK_TARGET_DBTP:g}:LRA=11:print_format=json",
+                f"loudnorm=I=-16:TP={AUDIO_NORMALIZATION_TRUE_PEAK_TARGET_DBTP:g}:LRA=11:print_format=json",
                 "-f",
                 "null",
                 "-",
@@ -808,6 +809,45 @@ class RenderJob:
             token=token,
         )
         output_loudness = self._measure_loudness(tools, output_path, token)
+        if output_loudness.requires_normalization:
+            # Dynamic loudnorm can miss its target on high-crest narration.
+            # Correct encoded audio once, retaining the expensive rendered video.
+            corrected_path = output_path.with_name(f"{output_path.stem}-audio-corrected.mp4")
+            correction = compile_audio_correction_command(
+                ffmpeg=tools.ffmpeg,
+                source=output_path,
+                destination=corrected_path,
+                measurement=output_loudness,
+                total_frames=total_frames,
+            )
+            self._run_process(correction, token=token, failure_code="RENDER_PROCESS_FAILED")
+            self._require_file(
+                corrected_path,
+                missing_code="RENDER_OUTPUT_INVALID",
+                missing_message="Audio correction returned without an output file.",
+            )
+            output_loudness = self._measure_loudness(tools, corrected_path, token)
+            facts = self._probe_output(
+                tools=tools,
+                output_path=corrected_path,
+                expected_total_frames=total_frames,
+                token=token,
+            )
+            output_path = corrected_path
+            try:
+                output_sha256 = self._dependencies.artifacts.sha256(output_path)
+                output_bytes = self._dependencies.artifacts.size(output_path)
+            except OSError as error:
+                raise _RenderFailure(
+                    "RENDER_OUTPUT_INVALID",
+                    "Corrected audio output could not be verified.",
+                    retryable=False,
+                ) from error
+            plan = replace(
+                plan,
+                normalized=True,
+                filtergraph=plan.filtergraph + ";" + correction[correction.index("-af") + 1],
+            )
         if not (
             -17.0 <= output_loudness.integrated_lufs <= -15.0
             and output_loudness.true_peak_dbtp <= -1.5

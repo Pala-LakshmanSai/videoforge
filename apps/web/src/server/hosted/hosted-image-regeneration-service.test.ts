@@ -8,6 +8,12 @@ import {
   type TransactionalSqlExecutor,
 } from "@videoforge/control-plane";
 import { describe, expect, it, vi } from "vitest";
+import {
+  PERMANENT_POSITIVE_GUARDRAIL,
+  PERMANENT_NEGATIVE_GUARDRAIL,
+  verifyCompiledImagePrompt,
+  type CompiledImagePrompt,
+} from "@videoforge/pipeline/prompts";
 
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import {
@@ -27,6 +33,8 @@ const sourceReservationId = "output-original";
 const originalPrompt = "a village at dawn";
 const originalNegativePrompt = "text, logo, watermark";
 const editedPrompt = "a mountain village at dawn with warm window light";
+const guardedPositive = `${editedPrompt}, ${PERMANENT_POSITIVE_GUARDRAIL}`;
+const guardedNegative = `${originalNegativePrompt}, ${PERMANENT_NEGATIVE_GUARDRAIL}`;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -237,14 +245,15 @@ describe("hosted image regeneration service", () => {
     expect(batch.items).toHaveLength(1);
     expect(item).toMatchObject({
       scene_id: imageTaskId,
-      positive_prompt: editedPrompt,
-      negative_prompt: originalNegativePrompt,
+      positive_prompt: guardedPositive,
+      negative_prompt: guardedNegative,
       seed: 987654321,
       width: 1280,
       height: 720,
     });
     expect(item.seed).not.toBe(41);
-    expect(item.positive_prompt_sha256).toBe(digestUtf8(editedPrompt));
+    expect(item.positive_prompt_sha256).toBe(digestUtf8(guardedPositive));
+    expect(item.negative_prompt_sha256).toBe(digestUtf8(guardedNegative));
     expect(typeof limits.issued_at).toBe("string");
     expect(limits.issued_at).toBe(new Date(String(limits.issued_at)).toISOString());
     expect(Date.parse(String(limits.expires_at)) - Date.parse(String(limits.issued_at))).toBe(
@@ -270,13 +279,16 @@ describe("hosted image regeneration service", () => {
       taskId: imageTaskId,
       phrase: "a village at dawn",
       shotRole: "wide_setting",
-      positivePromptSha256: digestUtf8(editedPrompt),
+      positivePromptSha256: digestUtf8(guardedPositive),
       outputReservationId: outputReservationId,
       compiledPrompt: {
-        positivePrompt: editedPrompt,
-        negativePrompt: originalNegativePrompt,
+        positivePrompt: guardedPositive,
+        negativePrompt: guardedNegative,
+        positivePromptUtf8Bytes: Buffer.byteLength(guardedPositive, "utf8"),
+        negativePromptUtf8Bytes: Buffer.byteLength(guardedNegative, "utf8"),
       },
     });
+    verifyCompiledImagePrompt(candidate.compiledPrompt as CompiledImagePrompt);
     expect(candidate).not.toMatchObject({ outputReservationId: sourceReservationId });
     expect(value.workflow.create).toHaveBeenCalledWith({
       id: imageRegenerationWorkflowId(requestId),
@@ -291,6 +303,28 @@ describe("hosted image regeneration service", () => {
     expect(randomUuid).toHaveBeenCalledOnce();
     randomValues.mockRestore();
     randomUuid.mockRestore();
+  });
+
+  it("guards an existing image edit while retaining the raw prompt identity and intended camera subject", async () => {
+    const value = harness();
+    const prompt = `subject: a photographer holding a camera; camera: Wide-angle lens, deep focus, stable tripod-mounted or aerial perspective; lighting: daylight, ${PERMANENT_POSITIVE_GUARDRAIL}`;
+    await value.service.create({ ...args, prompt });
+    const candidate = record((value.prepared!.lineage.candidateWork as unknown[])[0]);
+    const compiled = record(candidate.compiledPrompt);
+    expect(compiled.positivePrompt).toContain("subject: a photographer holding a camera");
+    expect(compiled.positivePrompt).toContain(
+      "viewpoint: wide field of view, deep focus, steady unobstructed or aerial perspective",
+    );
+    expect(compiled.positivePrompt).not.toMatch(/camera:|tripod-mounted/u);
+    expect(String(compiled.positivePrompt).split(PERMANENT_POSITIVE_GUARDRAIL)).toHaveLength(2);
+    expect(compiled.negativePrompt).toContain("unreadable text");
+    expect(compiled.negativePrompt).toContain("extraneous cameras");
+    expect(
+      value.query.mock.calls.find(([sql]) =>
+        sql.includes("videoforge_create_hosted_image_regeneration"),
+      )?.[1],
+    ).toContain(prompt);
+    verifyCompiledImagePrompt(candidate.compiledPrompt as CompiledImagePrompt);
   });
 
   it("keeps a busy request queued while still scheduling its workflow", async () => {

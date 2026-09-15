@@ -94,6 +94,7 @@ class FakeProcess:
         self.invalid_sample_rate = False
         self.input_loudness = (-21.4, -4.7)
         self.output_loudness = (-16.0, -2.1)
+        self.corrected_loudness = (-16.43, -5.27)
         self.visual_probes: dict[Path, tuple[str, int, int, str]] = {}
         self.avatar_audio_paths: set[Path] = set()
 
@@ -126,11 +127,7 @@ class FakeProcess:
             ]
             if path in self.avatar_audio_paths:
                 streams.append({"codec_type": "audio", "codec_name": "aac"})
-            return json.dumps(
-                {
-                    "streams": streams
-                }
-            )
+            return json.dumps({"streams": streams})
         streams: list[dict[str, Any]] = [
             {
                 "codec_type": "video",
@@ -177,10 +174,15 @@ class FakeProcess:
         executable = Path(call[0]).name
         if executable == "ffprobe":
             return ProcessResult(return_code=0, stdout=self._probe_payload(Path(call[-1])))
+        if "-c:v" in call and call[call.index("-c:v") + 1] == "copy":
+            self.artifacts.files[Path(call[-1])] = b"audio corrected mp4 bytes"
+            return ProcessResult(return_code=0)
         if "-af" in call:
             source = Path(call[call.index("-i") + 1])
             values = (
-                self.output_loudness
+                self.corrected_loudness
+                if source.name.endswith("-audio-corrected.mp4")
+                else self.output_loudness
                 if source.name == "videoforge-local-short-slice.mp4"
                 else self.input_loudness
             )
@@ -405,7 +407,9 @@ class RenderJobTests(unittest.TestCase):
         render_call = next(call for call in fixture.process.calls if "-filter_complex" in call)
         graph = render_call[render_call.index("-filter_complex") + 1]
         loudness_call = next(
-            call for call in fixture.process.calls if "-af" in call and "-filter_complex" not in call
+            call
+            for call in fixture.process.calls
+            if "-af" in call and "-filter_complex" not in call
         )
         self.assertIn("loudnorm=I=-16:TP=-2.5", loudness_call[loudness_call.index("-af") + 1])
         self.assertIn("crop=832:468:0:6", graph)
@@ -445,16 +449,12 @@ class RenderJobTests(unittest.TestCase):
             claimed_attempt_id="attempt_render_local_001",
         )
 
-        render_call = next(
-            call for call in fixture.process.calls if "-filter_complex" in call
-        )
+        render_call = next(call for call in fixture.process.calls if "-filter_complex" in call)
         self.assertEqual(
             render_call[1:5],
             ("-filter_complex_threads", "1", "-filter_threads", "1"),
         )
-        input_positions = [
-            index for index, argument in enumerate(render_call) if argument == "-i"
-        ]
+        input_positions = [index for index, argument in enumerate(render_call) if argument == "-i"]
         self.assertEqual(render_call.count("-threads"), len(input_positions) + 1)
         for index in input_positions:
             self.assertEqual(render_call[index - 2 : index], ("-threads", "1"))
@@ -478,9 +478,7 @@ class RenderJobTests(unittest.TestCase):
         self.assertEqual(result["status"], "SUCCEEDED")
         render_call = next(call for call in fixture.process.calls if "-filter_complex" in call)
         map_values = [
-            render_call[index + 1]
-            for index, value in enumerate(render_call)
-            if value == "-map"
+            render_call[index + 1] for index, value in enumerate(render_call) if value == "-map"
         ]
         self.assertEqual(map_values, ["[vout]", "[aout]"])
 
@@ -639,6 +637,30 @@ class RenderJobTests(unittest.TestCase):
         self.assertEqual(result["status"], "SUCCEEDED")
         self.assertEqual(result["probe"]["loudness"]["input_true_peak_dbtp"], 0.8)
         self.assertTrue(result["probe"]["loudness"]["normalized"])
+
+    def test_corrects_failed_encoded_loudness_once_without_rerendering_video(self) -> None:
+        fixture = RenderFixture()
+        fixture.process.output_loudness = (-17.14, -1.55)
+        result = fixture.job().run(fixture.document, claimed_attempt_id="attempt_render_local_001")
+        self.assertEqual(result["status"], "SUCCEEDED")
+        self.assertEqual(sum("-filter_complex" in call for call in fixture.process.calls), 1)
+        correction = next(call for call in fixture.process.calls if "copy" in call)
+        audio_filter = correction[correction.index("-af") + 1]
+        self.assertIn("measured_I=-17.140", audio_filter)
+        self.assertIn("apad,atrim=end=12.000000", audio_filter)
+        self.assertNotEqual(correction[correction.index("-i") + 1], correction[-1])
+        self.assertEqual(result["output"]["sha256"], digest(b"audio corrected mp4 bytes"))
+        self.assertEqual(result["probe"]["loudness"]["output_integrated_lufs"], -16.43)
+
+    def test_audio_correction_still_fails_closed_after_one_pass(self) -> None:
+        fixture = RenderFixture()
+        fixture.process.output_loudness = (-17.14, -1.55)
+        fixture.process.corrected_loudness = (-18.0, -2.0)
+        result = fixture.job().run(fixture.document, claimed_attempt_id="attempt_render_local_001")
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"]["code"], "RENDER_OUTPUT_INVALID")
+        self.assertEqual(sum("copy" in call for call in fixture.process.calls), 1)
+        self.assertFalse(fixture.resolver.published)
 
     def test_rejects_exact_byte_hash_drift_before_invoking_render(self) -> None:
         fixture = RenderFixture()

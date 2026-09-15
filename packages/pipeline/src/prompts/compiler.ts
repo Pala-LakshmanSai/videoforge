@@ -7,9 +7,9 @@ import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type { CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents } from "./types.js";
 
 export const PERMANENT_POSITIVE_GUARDRAIL =
-  "clean original still image only; no visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, or decorative transition";
+  "clean original still image only; depict only the described scene; photographic style and viewpoint describe the resulting image, not equipment within it; all surfaces plain, blank and unmarked; convey names, dates and quantities through physical subjects only, never typography; no readable or unreadable text, words, letters, numbers, labels, signs, plaques, inscriptions, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, or decorative transition";
 export const PERMANENT_NEGATIVE_GUARDRAIL =
-  "visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, decorative transition, malformed anatomy, duplicate limbs, nonsensical objects, accidental mixed media, unrelated subject";
+  "readable text, unreadable text, pseudo-text, gibberish lettering, words, letters, numbers, typography, labels, signs, plaques, inscriptions, engravings, handwriting, printed markings, visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, decorative transition, malformed anatomy, duplicate limbs, nonsensical objects, accidental mixed media, unrelated subject, extraneous cameras, photographic equipment unrelated to the scene, unrelated filming rigs, extraneous tripods, extraneous foreground camera lenses, unrelated film crew";
 
 const stripControls = (value: string): string =>
   Array.from(value, (character) => {

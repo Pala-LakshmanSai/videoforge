@@ -9,6 +9,8 @@ import {
   PipelineDomainError,
   buildPromptBatch,
   compileImagePrompt,
+  promptStyleTreatmentPositiveSuffix,
+  SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
   validatePromptWriterOutput,
   verifyCompiledImagePrompt,
 } from "../dist/src/index.js";
@@ -316,6 +318,90 @@ test("compiler derives literal content from structured fields and ignores raw pr
   assert.deepEqual(sameFieldsDifferentCore, compiled);
   assert.ok(compiled.positivePrompt.length <= 6_500);
   assert.ok(compiled.negativePrompt.length <= 3_000);
+});
+
+test("optical treatment does not request camera apparatus or erase a narrated camera subject", async () => {
+  const input = batch(1);
+  const output = validatePromptWriterOutput(
+    input,
+    await new DeterministicFixturePromptWriter().write(input),
+  );
+  const positiveSuffix = promptStyleTreatmentPositiveSuffix({
+    medium_family: "photography",
+    realism: "natural",
+    camera_language: "Wide-angle lens, deep focus, stable tripod-mounted or aerial perspective",
+    lighting: "soft daylight",
+  });
+  assert.match(
+    positiveSuffix,
+    /viewpoint: wide field of view, deep focus, steady unobstructed or aerial perspective/u,
+  );
+  assert.doesNotMatch(positiveSuffix, /camera|tripod|lens/iu);
+  for (const literal_subject of ["a medieval stone castle", "a photographer holding a camera"]) {
+    const compiled = compileImagePrompt({
+      writerOutput: { ...output.scenes[0], literal_subject },
+      expectedScene: input.scenes[0],
+      style: style(positiveSuffix),
+      extraPromptKeywords: null,
+      applyExtraPromptKeywords: false,
+    });
+    assert.ok(compiled.positivePrompt.includes(`subject: ${literal_subject}`));
+    assert.match(
+      compiled.positivePrompt,
+      /viewpoint describe the resulting image, not equipment within it/u,
+    );
+    assert.match(
+      compiled.negativePrompt,
+      /extraneous cameras, photographic equipment unrelated to the scene/u,
+    );
+    verifyCompiledImagePrompt(compiled);
+  }
+});
+
+test("castle dates and room counts remain narration facts rather than requested typography", () => {
+  const scene = {
+    ...scenes(1)[0],
+    phrase: "The castle was built in 1869 and contains 200 rooms.",
+    sentenceContext: "The castle was built in 1869 and contains 200 rooms.",
+  };
+  const compiled = compileImagePrompt({
+    expectedScene: scene,
+    writerOutput: {
+      scene_id: scene.sceneId,
+      literal_subject: "a sprawling nineteenth-century stone castle",
+      action: "rises above the surrounding forest",
+      environment: "wooded hills beneath distant mountains",
+      in_image_shot_role: scene.inImageShotRole,
+      lighting_context: "soft daylight",
+      continuity_tags: [],
+      prompt_core: "The castle was built in 1869 and contains 200 rooms.",
+    },
+    style: style(),
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  assert.doesNotMatch(compiled.positivePrompt, /1869|200 rooms/u);
+  assert.match(compiled.positivePrompt, /plain, blank and unmarked/u);
+  for (const term of [
+    "readable text",
+    "unreadable text",
+    "words",
+    "letters",
+    "numbers",
+    "labels",
+    "signs",
+    "plaques",
+    "inscriptions",
+    "logo",
+    "watermark",
+  ])
+    assert.ok(compiled.negativePrompt.includes(term), `missing typography exclusion: ${term}`);
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /never quote a label or render the fact as writing/u,
+  );
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /plain blank unmarked physical surface/u);
+  verifyCompiledImagePrompt(compiled);
 });
 
 test("compiler rejects forbidden content in structured scene facts", () => {

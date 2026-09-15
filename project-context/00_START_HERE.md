@@ -1,5 +1,12 @@
 # VideoForge: start here
 
+## Current long-video render and prompt repair — 2026-09-15
+
+Stages 6/7 accepted 212 images and 63 avatar clips for project `7d101190-87f6-4b51-a870-757e858e2abd`. Bounded FFmpeg threads resolve the measured long-render resource failure. The local final MP4 was delivered: 18m11.567s, 1080p30, 233491300 bytes, SHA256 `e22c16de224aca87349ade3984bdffea6e75f22f2df51d7f1c8b7c8705c9d101`. One audio-only correction preserved every video frame and passed unchanged gates at -16.44 LUFS, -5.25 dBTP and 1ms AV drift. Worker0.1.21 automates this fallback. Hosted release/finalization remain pending.
+
+Prompt-only fixes describe optical treatment as viewpoint rather than physical camera equipment and require plain unmarked surfaces without readable or invented lettering. Ordinary generation and per-image regeneration share these guards; immutable styles and existing media stay intact. Focused checks: 25 prompt, 5 regeneration, 16 render, 8 release compatibility tests pass. No new GPU dispatch; balanceUSD14.4328213074 and zero active compute verified at04:46:49Z. User authorized release/deployment after receiving the local file.
+
+
 ## Long-video GPU recovery — 2026-09-15
 
 Production `da9989a7` / Cloudflare `b4d1e4c3-78c0-498d-915b-0cc89d95131c`, QUALIFIED_EXACT; migrations134–144 applied; desktop0.1.20 unchanged. Current18-minute verification project `7d101190-87f6-4b51-a870-757e858e2abd` has212prompts and63audio spans complete; GPU generation is active. Long-video final MP4 acceptance remains pending.

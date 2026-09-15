@@ -17,6 +17,8 @@ The built-in default style is photorealistic documentary stock footage. Custom s
 
 The Image Styles Hub lifecycle, schema, UI, privacy, and versioning are owned by `18_IMAGE_STYLES_HUB.md`.
 
+Image prompts must keep all surfaces plain, blank and unmarked, excluding readable and invented text, letters, numbers, signs, labels and inscriptions. Names and dates are expressed through physical scene content. Optical style describes the resulting viewpoint, never extraneous cameras, tripods or filming equipment. Apply these prompt-only rules to initial generation and regeneration without changing immutable published style records. An explicitly narrated photographic subject remains valid.
+
 ## Prompt-planning boundary
 
 ### Post-transcription story context

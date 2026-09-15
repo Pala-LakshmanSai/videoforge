@@ -169,7 +169,7 @@ export function validateReleaseManifest(bytes, expectedSha256) {
     fail("media worker release manifest is malformed");
   }
   if (
-    !["0.1.17", "0.1.18", "0.1.19"].includes(manifest.version) ||
+    !["0.1.17", "0.1.18", "0.1.19", "0.1.20", "0.1.21"].includes(manifest.version) ||
     !manifest.windows.url.includes(`/media-worker-v${manifest.version}/`) ||
     !manifest.macos.url.includes(`/media-worker-v${manifest.version}/`)
   )
@@ -185,7 +185,7 @@ export function validateQualifiedRenderedConfig(config, binding, releaseManifest
   validateProductionConfig(sharedValidationConfig, { mode: "qualified" });
   const production = binding.production;
   if (
-    !["0.1.17", "0.1.18", "0.1.19"].includes(releaseManifest.version) ||
+    !["0.1.17", "0.1.18", "0.1.19", "0.1.20", "0.1.21"].includes(releaseManifest.version) ||
     config.name !== production.worker_name ||
     config.account_id !== production.account_id ||
     config.assets.binding !== production.assets_binding ||

@@ -166,7 +166,7 @@ test("binding validator rejects extras, placeholders, raw endpoint ids, secret v
   }
 });
 
-test("release validator binds exact bytes and immutable media worker 0.1.17", () => {
+test("release validator binds exact bytes and admitted immutable media worker versions", () => {
   const releaseBytes = bytesForRelease();
   assert.equal(validateReleaseManifest(releaseBytes, sha256(releaseBytes)).version, "0.1.17");
   assert.throws(
@@ -178,8 +178,11 @@ test("release validator binds exact bytes and immutable media worker 0.1.17", ()
   const wrongBytes = Buffer.from(JSON.stringify(wrongVersion));
   assert.throws(
     () => validateReleaseManifest(wrongBytes, sha256(wrongBytes)),
-    /not exact immutable 0.1.17/u,
+    /not an admitted immutable version/u,
   );
+  const successor = JSON.parse(JSON.stringify(releaseManifest()).replaceAll("0.1.17", "0.1.21"));
+  const successorBytes = Buffer.from(JSON.stringify(successor));
+  assert.equal(validateReleaseManifest(successorBytes, sha256(successorBytes)).version, "0.1.21");
   const placeholder = releaseManifest();
   placeholder.windows.url =
     "https://downloads.videoforge.example/media-worker-v0.1.17/placeholder.exe";

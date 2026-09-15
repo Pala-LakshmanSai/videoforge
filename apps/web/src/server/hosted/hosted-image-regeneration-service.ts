@@ -2,6 +2,11 @@ import { createHash } from "node:crypto";
 import { sha256CanonicalJson, type JsonValue } from "@videoforge/contracts";
 import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
 import {
+  PERMANENT_POSITIVE_GUARDRAIL,
+  PERMANENT_NEGATIVE_GUARDRAIL,
+  promptOpticalViewpoint,
+} from "@videoforge/pipeline/prompts";
+import {
   HostedSqlImageRegenerationStore,
   type PreparedImageRegenerationLineage,
 } from "./hosted-image-regeneration-store";
@@ -29,6 +34,8 @@ function text(value: unknown): string {
 }
 const digest = (value: string): `sha256:${string}` =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
+const withoutTrailingGuard = (value: string, guard: string): string =>
+  value === guard ? "" : value.endsWith(`, ${guard}`) ? value.slice(0, -guard.length - 2) : value;
 export const imageRegenerationWorkflowId = (id: string) => `image-regen-${id}`;
 export function regenerationStatus(row: Row): Row {
   return {
@@ -71,14 +78,54 @@ export function createHostedImageRegenerationService(input: {
         const attemptId = text(row.attempt_id),
           reservationId = text(row.output_reservation_id);
         const outputPrefix = `tenant/${args.accountId}/workspace/${args.workspaceId}/project/${args.projectId}/revision/${args.revisionId}/lane/mage-image/job/${attemptId}`;
-        const compiled = record(original.compiledPrompt),
-          positivePromptSha256 = digest(args.prompt);
+        const compiled = record(original.compiledPrompt);
+        // Keep the raw edit as the idempotency/audit identity. Only model-facing
+        // text receives optical treatment and the current output guardrails.
+        const literalContent = withoutTrailingGuard(
+          args.prompt,
+          PERMANENT_POSITIVE_GUARDRAIL,
+        ).replace(
+          /(^|[;,]\s*)camera:\s*([^;]*)/giu,
+          (_match, separator: string, treatment: string) =>
+            `${separator}viewpoint: ${promptOpticalViewpoint(treatment)}`,
+        );
+        const styleNegativeSuffix = withoutTrailingGuard(
+          text(compiled.negativePrompt),
+          PERMANENT_NEGATIVE_GUARDRAIL,
+        );
+        const positivePrompt = [literalContent, PERMANENT_POSITIVE_GUARDRAIL]
+          .filter(Boolean)
+          .join(", ");
+        const negativePrompt = [styleNegativeSuffix, PERMANENT_NEGATIVE_GUARDRAIL]
+          .filter(Boolean)
+          .join(", ");
+        const positivePromptSha256 = digest(positivePrompt);
+        const negativePromptSha256 = digest(negativePrompt);
         const work = {
           ...original,
           outputPrefix,
           outputReservationId: reservationId,
           positivePromptSha256,
-          compiledPrompt: { ...compiled, positivePrompt: args.prompt, positivePromptSha256 },
+          negativePromptSha256,
+          compiledPrompt: {
+            ...compiled,
+            components: {
+              literalContent,
+              continuityAndShotRole: "",
+              cropGuidance: "",
+              stylePositiveSuffix: "",
+              extraPromptKeywords: null,
+              permanentPositiveGuardrail: PERMANENT_POSITIVE_GUARDRAIL,
+              styleNegativeSuffix,
+              permanentNegativeGuardrail: PERMANENT_NEGATIVE_GUARDRAIL,
+            },
+            positivePrompt,
+            negativePrompt,
+            positivePromptUtf8Bytes: Buffer.byteLength(positivePrompt, "utf8"),
+            negativePromptUtf8Bytes: Buffer.byteLength(negativePrompt, "utf8"),
+            positivePromptSha256,
+            negativePromptSha256,
+          },
         };
         const issuedAt = new Date().toISOString(),
           deadlineAt = new Date(Date.parse(issuedAt) + 600_000).toISOString(),
