@@ -419,11 +419,35 @@ export async function coordinateHostedGeneration(input: {
       createdAt: snapshot.asrFinishedAt,
     },
     precompiledContractDocumentAuthority,
-  ).catch(() => reject("HOSTED_GENERATION_SCHEDULING_FAILED"));
+  ).catch((error: unknown) => {
+    // This catch collapses every durable-timeline failure into one code, which hid the real cause of
+    // HOSTED_PROJECT_PLANNING_FAILED (stage 4 never starts) in production. Record the typed reason.
+    const detail = error as { code?: unknown; message?: unknown };
+    console.error(
+      "hosted_generation_planning_detail",
+      JSON.stringify({
+        step: "prepare_deterministic_timeline",
+        code: typeof detail?.code === "string" ? detail.code : null,
+        message: String(detail?.message ?? error).slice(0, 300),
+      }),
+    );
+    return reject("HOSTED_GENERATION_SCHEDULING_FAILED");
+  });
   const timeline = await validateAndHashPrecompiledContractDocument(
     "timelinePlan",
     preparedTimeline.timelinePersistence.canonicalDocument.payload,
-  ).catch(() => reject("HOSTED_GENERATION_SCHEDULING_FAILED"));
+  ).catch((error: unknown) => {
+    const detail = error as { code?: unknown; message?: unknown };
+    console.error(
+      "hosted_generation_planning_detail",
+      JSON.stringify({
+        step: "validate_timeline_plan",
+        code: typeof detail?.code === "string" ? detail.code : null,
+        message: String(detail?.message ?? error).slice(0, 300),
+      }),
+    );
+    return reject("HOSTED_GENERATION_SCHEDULING_FAILED");
+  });
   if (preparedTimeline.timelineDocumentHash !== timeline.sha256)
     reject("HOSTED_GENERATION_TIMELINE_DERIVATION_MISMATCH");
   const tasks = await plannedTasks(snapshot.projectRevisionId, timeline.value);
