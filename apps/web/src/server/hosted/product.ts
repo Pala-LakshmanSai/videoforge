@@ -6484,7 +6484,7 @@ async function projectDetail(
       const serverlessAttempts = await transaction.query(
         `SELECT attempt.id, attempt.lane, attempt.state, attempt.attempt_ordinal,
                 attempt.item_count, attempt.created_at, attempt.submitted_at,
-                attempt.terminal_at, attempt.updated_at,
+                COALESCE(attempt.terminal_at, barrier.completed_at) AS terminal_at, attempt.updated_at,
                 CASE
           WHEN barrier.attempt_id IS NOT NULL THEN 'COMPLETED'
           ELSE progress.provider_status
