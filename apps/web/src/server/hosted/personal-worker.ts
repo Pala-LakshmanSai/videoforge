@@ -736,6 +736,22 @@ interface ClaimedAttempt extends Record<string, unknown> {
   readonly deadline_at: Date | string;
 }
 
+interface ClaimedInput extends Record<string, unknown> {
+  readonly uri: string;
+  readonly object_key: string;
+  readonly content_type: string;
+  readonly content_length: string | number;
+  readonly checksum_sha256: string;
+}
+
+type ClaimResult =
+  | { readonly status: "EMPTY" }
+  | {
+      readonly status: "CLAIMED";
+      readonly attempt: ClaimedAttempt;
+      readonly inputs: readonly ClaimedInput[];
+    };
+
 interface PlannedAttempt extends Record<string, unknown> {
   readonly id: string;
   readonly project_id: string;
@@ -755,12 +771,23 @@ async function reconcilePlannedAttempt(
   environment: HostedRuntimeEnvironment,
   pool: HostedNeonPool,
   scope: DeviceScope,
-): Promise<void> {
-  const candidate = await createNeonExecutor(pool).transaction(async (transaction) => {
+): Promise<"STALE" | "FRESH"> {
+  const reconciliation = await createNeonExecutor(pool).transaction<{
+    readonly status: "STALE" | "FRESH";
+    readonly candidate: PlannedAttempt | null;
+  }>(async (transaction) => {
     await transaction.query("SELECT set_config($1, $2, true)", [
       "videoforge.account_id",
       scope.accountId,
     ]);
+    const heartbeat = await transaction.query(
+      `SELECT 1 FROM media_worker_devices
+        WHERE id = $1 AND account_id = $2 AND workspace_id = $3
+          AND status = 'ONLINE'
+          AND last_seen_at >= now() - interval '90 seconds'`,
+      [scope.deviceId, scope.accountId, scope.workspaceId],
+    );
+    if (!heartbeat.rows[0]) return { status: "STALE", candidate: null };
     const result = await transaction.query<PlannedAttempt>(
       `SELECT attempt.id,attempt.project_id,attempt.job_spec_object_key,
               attempt.job_spec_content_length,attempt.job_spec_checksum_sha256,attempt.created_at
@@ -776,9 +803,11 @@ async function reconcilePlannedAttempt(
         LIMIT 1 FOR UPDATE OF project,attempt SKIP LOCKED`,
       [scope.accountId, scope.workspaceId],
     );
-    return result.rows[0] ?? null;
+    return { status: "FRESH", candidate: result.rows[0] ?? null };
   });
-  if (!candidate) return;
+  if (reconciliation.status === "STALE") return reconciliation.status;
+  const candidate = reconciliation.candidate;
+  if (!candidate) return reconciliation.status;
 
   const object = await environment.PRIVATE_ARTIFACTS?.head(candidate.job_spec_object_key);
   const objectChecksum = object ? checksumFromR2(object.checksums?.sha256) : null;
@@ -847,6 +876,7 @@ async function reconcilePlannedAttempt(
       );
     }
   });
+  return reconciliation.status;
 }
 
 function exactStoredTemplate(value: unknown): {
@@ -903,32 +933,19 @@ async function claim(
     if (scope.status !== "ONLINE") {
       return json({ error: { code: "MEDIA_WORKER_HEARTBEAT_REQUIRED" } }, 409);
     }
-    const heartbeat = await createNeonExecutor(pool).transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1, $2, true)", [
-        "videoforge.account_id",
-        scope.accountId,
-      ]);
-      return transaction.query(
-        `SELECT 1 FROM media_worker_devices
-          WHERE id = $1 AND account_id = $2 AND workspace_id = $3
-            AND status = 'ONLINE'
-            AND last_seen_at >= now() - interval '90 seconds'`,
-        [scope.deviceId, scope.accountId, scope.workspaceId],
-      );
-    });
-    if (!heartbeat.rows[0]) {
-      return json({ error: { code: "MEDIA_WORKER_HEARTBEAT_REQUIRED" } }, 409);
-    }
     if (scope.protocolVersion < config.mediaWorkerRelease.minimumProtocolVersion) {
       return json({ error: { code: "MEDIA_WORKER_UPDATE_REQUIRED" } }, 409);
     }
     if (scope.executionBundleSha256 !== config.mediaWorkerRelease.executionBundleSha256) {
       return json({ error: { code: "MEDIA_WORKER_UPDATE_REQUIRED" } }, 409);
     }
-    await reconcilePlannedAttempt(environment, pool, scope);
+    const reconciliationStatus = await reconcilePlannedAttempt(environment, pool, scope);
+    if (reconciliationStatus === "STALE") {
+      return json({ error: { code: "MEDIA_WORKER_HEARTBEAT_REQUIRED" } }, 409);
+    }
     const leaseId = crypto.randomUUID();
     const leaseToken = await deriveScopedToken(config.mediaWorkerTokenSecret, "lease", leaseId);
-    const claimed = await createNeonExecutor(pool).transaction(async (transaction) => {
+    const claimed = await createNeonExecutor(pool).transaction<ClaimResult>(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
         scope.accountId,
@@ -1047,7 +1064,7 @@ async function claim(
             AND lease_expires_at > now()`,
         [scope.deviceId],
       );
-      if (existing.rows[0]) return null;
+      if (existing.rows[0]) return { status: "EMPTY" };
       const attempt = await transaction.query<ClaimedAttempt>(
         `SELECT attempt.id,attempt.kind,attempt.job_spec_object_key,
                 attempt.job_spec_content_length,attempt.job_spec_checksum_sha256,
@@ -1066,7 +1083,7 @@ async function claim(
         [scope.accountId, scope.workspaceId],
       );
       const row = attempt.rows[0];
-      if (!row) return null;
+      if (!row) return { status: "EMPTY" };
       await transaction.query(
         `INSERT INTO media_worker_leases (
            id, account_id, workspace_id, attempt_id, device_id, lease_token_sha256,
@@ -1088,34 +1105,28 @@ async function claim(
           WHERE id = $1 AND state = 'OUTBOXED'`,
         [row.id, config.mediaWorkerRelease.executionBundleSha256],
       );
-      return row;
+      const inputs = await transaction.query<ClaimedInput>(
+        `SELECT uri, object_key, content_type, content_length, checksum_sha256
+           FROM media_worker_input_objects WHERE attempt_id = $1 ORDER BY uri`,
+        [row.id],
+      );
+      return { status: "CLAIMED", attempt: row, inputs: inputs.rows };
     });
-    if (!claimed) return new Response(null, { status: 204 });
-    const object = await environment.PRIVATE_ARTIFACTS?.get(claimed.job_spec_object_key);
-    if (!object || object.size !== Number(claimed.job_spec_content_length)) {
+    if (claimed.status === "EMPTY") return new Response(null, { status: 204 });
+    const object = await environment.PRIVATE_ARTIFACTS?.get(claimed.attempt.job_spec_object_key);
+    if (!object || object.size !== Number(claimed.attempt.job_spec_content_length)) {
       throw new Error("Personal worker job template is missing or has wrong size.");
     }
     const bytes = await object.arrayBuffer();
-    if ((await sha256Bytes(bytes)) !== claimed.job_spec_checksum_sha256) {
+    if ((await sha256Bytes(bytes)) !== claimed.attempt.job_spec_checksum_sha256) {
       throw new Error("Personal worker job template checksum does not match durable truth.");
     }
     const template = exactStoredTemplate(JSON.parse(new TextDecoder().decode(bytes)));
-    if (!template || template.kind !== claimed.kind)
+    if (!template || template.kind !== claimed.attempt.kind)
       throw new Error("Personal worker job template is malformed.");
-    const inputs = await createNeonExecutor(pool).transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1, $2, true)", [
-        "videoforge.account_id",
-        scope.accountId,
-      ]);
-      return transaction.query(
-        `SELECT uri, object_key, content_type, content_length, checksum_sha256
-           FROM media_worker_input_objects WHERE attempt_id = $1 ORDER BY uri`,
-        [claimed.id],
-      );
-    });
     const signer = new HostedR2Signer(config.r2);
     const objects = await Promise.all(
-      inputs.rows.map(async (input) => {
+      claimed.inputs.map(async (input) => {
         const port = await signer.sign({
           method: "GET",
           objectKey: String(input.object_key),
@@ -1140,9 +1151,9 @@ async function claim(
       lease_expires_in_seconds: 300,
       job: {
         schema_version: "videoforge-personal-worker-job-spec/v1",
-        attempt_id: claimed.id,
-        kind: claimed.kind,
-        expires_at: new Date(claimed.deadline_at).toISOString(),
+        attempt_id: claimed.attempt.id,
+        kind: claimed.attempt.kind,
+        expires_at: new Date(claimed.attempt.deadline_at).toISOString(),
         input_document: template.inputDocument,
         objects,
         outputs: template.outputs.map((output) => ({

@@ -9,7 +9,7 @@ Prompt-only fixes describe optical treatment as viewpoint rather than physical c
 
 ## Long-video GPU recovery — 2026-09-15
 
-Production `da9989a7` / Cloudflare `b4d1e4c3-78c0-498d-915b-0cc89d95131c`, QUALIFIED_EXACT; migrations134–144 applied; desktop0.1.20 unchanged. Current18-minute verification project `7d101190-87f6-4b51-a870-757e858e2abd` has212prompts and63audio spans complete; GPU generation is active. Long-video final MP4 acceptance remains pending.
+GPU recovery completed: project `7d101190-87f6-4b51-a870-757e858e2abd` has212 accepted images and63 accepted avatar clips. Migrations134–144 applied. Local final MP4 delivery and the remaining hosted completion gate are recorded above.
 
 Fixed measured blockers: ordinary candidate SQL alias/numeric canonicalization/JSON precedence/horizon; long-batch Mage cap; SoulX same-object transient upload retry; signed standby-zero proof; independently persisted GPU phases; paginated parallel media verification; accepted-output progress and tenant-scoped reader. Budget accounting must use accepted output barriers before pair settlement: attempts can remainASSIGNED after all lane assets are verified. Ignoring that barrier incorrectly cancelled avatar after20minutes.143 now releases unused lane time; focused regression and production reader proof pass.
 

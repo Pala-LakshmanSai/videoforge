@@ -166,7 +166,7 @@ beforeEach(async () => {
     .map((x) => x.toString(16).padStart(2, "0"))
     .join("")}`;
 });
-it("leases separate tenant transactions for freshness and post-claim inputs", async () => {
+it("folds freshness and inputs into the claim transaction", async () => {
   const result = await handlePersonalWorkerRequest(
     request(),
     environment(),
@@ -174,8 +174,10 @@ it("leases separate tenant transactions for freshness and post-claim inputs", as
     config,
   );
   expect(result?.status).toBe(200);
-  expect(state.calls.slice(0, 5)).toEqual(["BEGIN", "TENANT", "FRESHNESS", "COMMIT", "RELEASE"]);
-  expect(state.calls.slice(-6)).toEqual(["BEGIN", "TENANT", "INPUTS", "COMMIT", "RELEASE", "END"]);
+  expect(state.calls.filter((call) => call === "BEGIN")).toHaveLength(2);
+  expect(state.calls).toContain("FRESHNESS");
+  expect(state.calls.indexOf("FRESHNESS")).toBeLessThan(state.calls.indexOf("LEASE"));
+  expect(state.calls.indexOf("LEASE")).toBeLessThan(state.calls.indexOf("INPUTS"));
   expect(state.calls.filter((x) => x === "LEASE")).toHaveLength(1);
 });
 it("rejects stale heartbeat before creating a lease", async () => {
@@ -190,19 +192,21 @@ it("rejects stale heartbeat before creating a lease", async () => {
   expect(await result?.json()).toEqual({ error: { code: "MEDIA_WORKER_HEARTBEAT_REQUIRED" } });
   expect(state.calls).toEqual(["BEGIN", "TENANT", "FRESHNESS", "COMMIT", "RELEASE", "END"]);
 });
-it("rolls back and releases the input transaction without replaying the claim", async () => {
+it("rolls back the claim when input rows fail to load", async () => {
   state.failInputs = true;
   await expect(
     handlePersonalWorkerRequest(request(), environment(), { waitUntil() {} }, config),
   ).rejects.toThrow("input read failure");
   expect(state.calls.slice(-6)).toEqual([
-    "BEGIN",
-    "TENANT",
+    "ATTEMPT",
+    "LEASE",
     "INPUTS",
     "ROLLBACK",
     "RELEASE",
     "END",
   ]);
+  expect(state.calls.filter((x) => x === "BEGIN")).toHaveLength(2);
+  expect(state.calls.filter((x) => x === "COMMIT")).toHaveLength(1);
   expect(state.calls.filter((x) => x === "LEASE")).toHaveLength(1);
 });
 
