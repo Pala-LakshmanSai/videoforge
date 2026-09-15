@@ -1,7 +1,10 @@
 schema_version: "2.0"
 stage_timer_repair_2026_09_15:
   checkpoint: V2-09
-  status: TOTAL_TIMER_ADDED_DEPLOYING
+  deployed_source: cf1dfecd5ba1b1540190e6b8d3b3baba60446b18
+  cloudflare_version: 32d4e9b9-a1cc-4993-b714-1c0523397b8a
+  live_verification: "Status HTTP200 exact source and QUALIFIED_EXACT; Chrome ordinary-project stage timers verified. Total card wiring and terminal duration verified by focused UI test; browser user interaction interrupted final card inspection."
+  status: DEPLOYED_QUALIFIED_EXACT
   behavior: "Persisted stage timestamps drive one-second elapsed timers; terminal timestamps freeze after reload; unavailable historical timings show an em dash. Span audio has its own timer; total elapsed occupies fourth hero metric from Stage1 start to approval or terminal stop. Technical checks are included in assembly time."
   validation: "Two focused UI timer tests,72 product checks and live read-only SQL timestamp/asset-join proof pass."
   timing_limits: "Historical missing timestamps remain unavailable; new planning duration is retained on success, but planning in-flight/failure is not persisted. Technical check duration is included in assembly, not independently measured."

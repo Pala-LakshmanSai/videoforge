@@ -1,0 +1,15 @@
+{
+  "checkpoint": "V2-09",
+  "source_commit": "cf1dfecd5ba1b1540190e6b8d3b3baba60446b18",
+  "cloudflare_version": "32d4e9b9-a1cc-4993-b714-1c0523397b8a",
+  "transport": "QUALIFIED_EXACT",
+  "status": "DEPLOYED",
+  "ui_timer_tests": 2,
+  "product_tests": 73,
+  "typescript": "PASS",
+  "production_build_and_firewall": "PASS",
+  "chrome_stage_timers": "PASS on43c35909",
+  "total_card": "Focused UI wiring test PASS; final Chrome inspection interrupted by user app interaction",
+  "timing_limits": "Historical gaps unavailable; planning measured for successful new computations only; technical checks included in assembly.",
+  "paid_compute_started": false
+}
