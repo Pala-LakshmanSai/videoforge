@@ -5491,6 +5491,23 @@ async function createVoiceoverContext(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      // The acceptance function raises one generic error for several very different conditions
+      // (wrong state, reported cost above the reservation, hash mismatch). Record the inputs so a
+      // rejection names itself instead of collapsing into HOSTED_CONTEXT_EXECUTION_UNKNOWN.
+      const observed = await transaction.query<{
+        state: string | null;
+        reserved_cost_micro_usd: number | string | null;
+      }>(
+        "SELECT state, reserved_cost_micro_usd FROM public.hosted_voiceover_contexts WHERE id=$1::uuid",
+        [contextId],
+      );
+      console.warn("HOSTED_CONTEXT_ACCEPTANCE_INPUT", {
+        context_id: contextId,
+        row_state: observed.rows[0]?.state ?? null,
+        reserved_cost_micro_usd: observed.rows[0]?.reserved_cost_micro_usd ?? null,
+        reported_cost_micro_usd: result.reportedCostMicroUsd,
+        context_bytes_length: result.contextBytes.length,
+      });
       const accepted = await transaction.query<{ completed: boolean }>(
         "SELECT public.videoforge_complete_hosted_voiceover_context($1::jsonb) AS completed",
         [
