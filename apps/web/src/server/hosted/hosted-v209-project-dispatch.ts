@@ -607,11 +607,24 @@ export async function handleHostedV209ProjectDispatch(
       error instanceof Error && /^[A-Z0-9_]+$/u.test(error.message)
         ? error.message
         : "HOSTED_V209_DISPATCH_REJECTED";
+    // A rejected dispatch must stay diagnosable: log a bounded, URL-redacted reason plus the
+    // SQLSTATE when the database refused the transaction. No payload, token, or connection
+    // detail is included.
+    const reason =
+      error instanceof Error
+        ? error.message.replace(/[a-z]+:\/\/\S+/giu, "[redacted-url]").slice(0, 200)
+        : null;
+    const sqlstate =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { readonly code?: unknown }).code ?? "").slice(0, 24)
+        : "";
     console.warn("hosted_v209_project_dispatch", {
       correlation_id: correlationId,
       event: "REJECTED",
       code,
       cause,
+      reason,
+      sqlstate,
     });
     if (code === HOSTED_V209_PRE_SEND_INTEGRITY_CODE) {
       return response(
