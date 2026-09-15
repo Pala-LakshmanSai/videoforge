@@ -168,7 +168,11 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     !exactKeys(config.version_metadata, ["binding"]) ||
     config.version_metadata.binding !== "CF_VERSION_METADATA" ||
     !exactKeys(config.triggers, ["crons"]) ||
-    JSON.stringify(config.triggers.crons) !== JSON.stringify(["17 2 * * *"])
+    // The daily entry is the retention pass. The per-minute entry drives hosted stage continuation,
+    // which dispatches the next pipeline stage for projects the browser is no longer driving; long
+    // stages cannot run inside `waitUntil` after a response, so they need their own invocation.
+    // Both are pinned so neither the retention schedule nor the continuation cadence can drift.
+    JSON.stringify(config.triggers.crons) !== JSON.stringify(["17 2 * * *", "* * * * *"])
   )
     fail("placement, metadata, or retention trigger drifted");
   if (
