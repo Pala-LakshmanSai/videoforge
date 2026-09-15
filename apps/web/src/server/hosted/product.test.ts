@@ -580,6 +580,15 @@ describe("hosted product route contract", () => {
       expect(stage("review")).toMatchObject({ started_at: rendered, completed_at: null });
       expect(stage("technical-check")).toMatchObject({ started_at: null, completed_at: null });
       expect(stage("planning")).toMatchObject({ started_at: null, completed_at: null });
+      const stageIds = body.stages.map((value) => String(value.id));
+      expect(stageIds.indexOf("audio-spanning")).toBe(stageIds.indexOf("prompt-writing") + 1);
+      expect(stageIds.indexOf("image-generation")).toBe(stageIds.indexOf("audio-spanning") + 1);
+      expect(stage("audio-spanning")).toMatchObject({
+        name: "Audio spanning",
+        status: "WAITING",
+        started_at: null,
+        completed_at: null,
+      });
       expect(body.span_audio).toMatchObject({ started_at: null, completed_at: null });
     } finally {
       testState.projectRows[0] = previousProject;

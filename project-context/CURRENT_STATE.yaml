@@ -1,4 +1,11 @@
 schema_version: "2.0"
+stage_model_audio_spanning_split_2026_09_15:
+  checkpoint: V2-09
+  status: IMPLEMENTED_DEPLOY_PENDING
+  decision: "User: audio spanning becomes its own numbered stage 6; image generation is stage 7 and avatar generation is stage 8. Stages 7 and 8 still dispatch together as one concurrent pair. Audio spanning must never share a numbered stage with image generation."
+  behavior: "Numbered pipeline is 01 Prepare, 02 Transcribe, 03 Understand context, 04 Plan scenes, 05 Write prompts, 06 Audio spanning, 07 Generate images, 08 Generate avatar video, 09 Assemble, 10 Technical check, 11 Review. Stage 6 duration is now included once in the numbered-stage total."
+  validation: "Focused product stage-boundary test asserts audio-spanning sits immediately after prompt-writing and immediately before image-generation; web typecheck passes."
+  provider: "No provider action required for the stage projection change."
 china_fresh_stage2_repair_2026_09_15:
   checkpoint: V2-09
   status: STAGE2_RECOVERED_STAGE5_FIX_VERIFIED_DEPLOY_PENDING

@@ -7113,6 +7113,31 @@ async function projectDetail(
         eta_ms: null,
       },
       {
+        id: "audio-spanning",
+        name: "Audio spanning",
+        status:
+          spanAudioProgress.failed > 0
+            ? "FAILED"
+            : spanTotal > 0 && spanAudioProgress.materialized === spanTotal
+              ? "COMPLETE"
+              : spanAudioProgress.running > 0 ||
+                  spanAudioProgress.queued > 0 ||
+                  spanAudioProgress.started_at !== null
+                ? "RUNNING"
+                : "WAITING",
+        progress_percent: hostedProgressPercent(
+          spanAudioProgress.materialized,
+          spanTotal > 0 ? spanTotal : null,
+        ),
+        started_at: spanAudioProgress.started_at,
+        completed_at: spanAudioProgress.completed_at,
+        detail:
+          spanTotal > 0
+            ? `Your computer extracts the exact voiceover span for each avatar segment. ${spanAudioProgress.materialized} of ${spanTotal} spans are ready.`
+            : "Your computer extracts the exact voiceover span for each avatar segment before any GPU work starts.",
+        eta_ms: null,
+      },
+      {
         id: "image-generation",
         name: "Generate images",
         status: String(laneState("mage_image")?.state ?? gpuPendingState),
