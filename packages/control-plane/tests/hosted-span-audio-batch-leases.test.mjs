@@ -67,6 +67,15 @@ test("span batches preserve singleton exclusion, four-member scope, and individu
         .name,
     );
     await db.exec(migration);
+    await db.exec(
+      await readFile(
+        new URL(
+          "../migrations/0146_hosted_span_audio_lease_update_lock_order.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
     const insert = (lease, attempt, batch, device = 3, account = 1) =>
       db.query("INSERT INTO media_worker_leases VALUES($1,$2,$3,$4,$5,'CLAIMED',$6)", [
         id(lease),
@@ -103,6 +112,12 @@ test("span batches preserve singleton exclusion, four-member scope, and individu
     ]);
     await assert.rejects(insert(35, 14, 50), /scope or size/);
     await insert(35, 14, 51);
+    await assert.rejects(
+      db.query("UPDATE media_worker_leases SET state='CLAIMED' WHERE id=$1", [id(31)]),
+      /active work group/,
+    );
+    await db.query("UPDATE media_worker_leases SET state='CANCELLED' WHERE id=$1", [id(31)]);
+    await db.query("UPDATE media_worker_leases SET state='RUNNING' WHERE id=$1", [id(35)]);
     await assert.rejects(insert(36, 14, 51), /media_worker_leases_active_attempt_uq/);
     assert.equal(
       (

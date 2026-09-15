@@ -1,0 +1,19 @@
+{
+  "execution_bundle_sha256": "sha256:6953b97bd8589f5fc2c733d1d5220269418f9c45d1ca8b3f9430a108d7b99336",
+  "macos": {
+    "sha256": "sha256:a2b180bfa2b7d6c9b9985a89c14ac255d56cb55061138c4784fd7d846639b6ef",
+    "size_bytes": 285654114,
+    "trust": "AD_HOC_BETA",
+    "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.22/VideoForge-Worker-0.1.22.dmg"
+  },
+  "minimum_protocol_version": 1,
+  "schema_version": "videoforge-media-worker-release/v1",
+  "version": "0.1.22",
+  "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+  "windows": {
+    "sha256": "sha256:7c988df10f74cc6a92e2e6f7f9e9e3c79c5ec2366ffa4c727e44aefac7940e1d",
+    "size_bytes": 225882275,
+    "trust": "UNSIGNED_BETA",
+    "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.22/VideoForge-Worker-0.1.22-Setup.exe"
+  }
+}

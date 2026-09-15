@@ -22,5 +22,11 @@
     "render_diagnostics": 17
   },
   "hosted_benchmark": "NOT_RUN",
-  "existing_render": "c54c777a failed RENDER_PROCESS_FAILED; diagnostic reproduction stopped for memory/disk pressure; cause unproven; delivered MP4 remains in Downloads"
+  "existing_render": "c54c777a failed RENDER_PROCESS_FAILED; diagnostic reproduction stopped for memory/disk pressure; cause unproven; delivered MP4 remains in Downloads",
+  "migrations": [
+    145,
+    146
+  ],
+  "release_run": 34933050036,
+  "execution_bundle": "sha256:6953b97bd8589f5fc2c733d1d5220269418f9c45d1ca8b3f9430a108d7b99336"
 }
