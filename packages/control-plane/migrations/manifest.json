@@ -870,6 +870,12 @@
       "name": "hosted_span_audio_lease_update_lock_order",
       "filename": "0146_hosted_span_audio_lease_update_lock_order.sql",
       "sha256": "sha256:c2db8abc382fe93f948e168d82428e7867b05c76b3d124bc921423dfefa77c3d"
+    },
+    {
+      "version": 147,
+      "name": "hosted_v209_stranded_request_reclaim",
+      "filename": "0147_hosted_v209_stranded_request_reclaim.sql",
+      "sha256": "sha256:8a408560881f05b109e1c66f6ed2d54d7e21cb7184b5c883c1324633f806f28b"
     }
   ]
 }
