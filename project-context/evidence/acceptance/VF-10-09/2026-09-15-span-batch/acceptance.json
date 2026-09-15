@@ -34,5 +34,13 @@
   "effective_gpu_transport": "QUALIFIED_EXACT",
   "worker_version": "0.1.22",
   "worker_online_verified_at": "2026-09-15T05:41:29.467618Z",
-  "new_gpu_actions": 0
+  "new_gpu_actions": 0,
+  "final_provider": {
+    "checked_at": "2026-09-15T05:44:32.373Z",
+    "balance_usd": 14.4230990852,
+    "running_pods": 0,
+    "active_workers": 0,
+    "in_queue": 0,
+    "in_progress": 0
+  }
 }
