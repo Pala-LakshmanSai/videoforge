@@ -67,9 +67,11 @@ export function hostedPromptRedispatchable(planRecord: Record<string, unknown>):
   const problemCode =
     typeof planRecord.existing_run_problem_code === "string" ? planRecord.existing_run_problem_code : "";
   if (!HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES.has(problemCode)) return false;
-  const attemptsSoFar = Number(planRecord.existing_run_count ?? 0);
+  const redispatchesSoFar = Number(planRecord.existing_run_redispatch_count ?? 0);
   return (
-    Number.isInteger(attemptsSoFar) && attemptsSoFar > 0 && attemptsSoFar < HOSTED_PROMPT_ATTEMPT_BUDGET
+    Number.isInteger(redispatchesSoFar) &&
+    redispatchesSoFar >= 0 &&
+    redispatchesSoFar < HOSTED_PROMPT_ATTEMPT_BUDGET - 1
   );
 }
 

@@ -12,7 +12,7 @@ describe("hostedPromptRedispatchable", () => {
     existing_run_state: "UNKNOWN",
     existing_run_problem_code: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
     existing_run_has_accepted_set: false,
-    existing_run_count: 1,
+    existing_run_redispatch_count: 0,
   } as Record<string, unknown>;
 
   it("grants a redispatch when the provider failed and nothing was accepted", () => {
@@ -53,15 +53,15 @@ describe("hostedPromptRedispatchable", () => {
   });
 
   it("refuses once the revision has spent its attempt budget", () => {
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_count: 6 })).toBe(false);
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_count: 7 })).toBe(false);
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_count: 5 })).toBe(true);
+    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 5 })).toBe(false);
+    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 6 })).toBe(false);
+    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 4 })).toBe(true);
   });
 
   it("refuses when the plan payload carries no usable attempt evidence", () => {
     expect(hostedPromptRedispatchable({})).toBe(false);
     expect(hostedPromptRedispatchable({ existing_run_state: "UNKNOWN" })).toBe(false);
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_count: 0 })).toBe(false);
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_count: "x" })).toBe(false);
+    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: -1 })).toBe(false);
+    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: "x" })).toBe(false);
   });
 });
