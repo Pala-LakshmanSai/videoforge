@@ -115,23 +115,23 @@ async function writeProjectPrompts(
         state: "COMPLETE",
         replayed: true,
       });
-    if (existingState !== null) {
-      // A provider failure that left no accepted prompt set used to strand the revision here
-      // forever: every later POST /prompts answered 409, so the pipeline could never leave stage 5.
-      // The gate below grants one bounded redispatch for exactly that case and refuses everything
-      // else, so the spend guard and the acceptance rules are unchanged.
-      if (!hostedPromptRedispatchable(planRecord))
-        return response(
-          {
-            error: {
-              code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED",
-              message:
-                "The prompt request already has a durable terminal or in-flight claim and cannot be redispatched.",
-            },
+    // A provider failure that left no accepted prompt set used to strand the revision here
+    // forever: every later POST /prompts answered 409, so the pipeline could never leave stage 5.
+    // The gate grants a bounded redispatch for exactly that case and refuses everything else, so the
+    // spend guard and the acceptance rules are unchanged. The approval also has to reach the
+    // authority, which otherwise refuses any plan that already owns a run.
+    const redispatchApproved = existingState !== null && hostedPromptRedispatchable(planRecord);
+    if (existingState !== null && !redispatchApproved)
+      return response(
+        {
+          error: {
+            code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED",
+            message:
+              "The prompt request already has a durable terminal or in-flight claim and cannot be redispatched.",
           },
-          409,
-        );
-    }
+        },
+        409,
+      );
     const identity: HostedPromptIdentity = {
       runId: crypto.randomUUID(),
       taskId: crypto.randomUUID(),
@@ -145,6 +145,7 @@ async function writeProjectPrompts(
       plan,
       identity,
       reservedCostMicroUsd: HOSTED_PROMPT_RESERVATION_MICRO_USD,
+      redispatchApproved,
     });
     const batchPlan = hostedPromptBatchPlan(authority);
     const batchPlanHash = await sha256(canonicalJson(hostedPromptBatchPlanDocument(batchPlan)));
@@ -176,6 +177,9 @@ async function writeProjectPrompts(
             planned_batch_count: batchPlan.batchCount,
             planned_scene_count: batchPlan.totalScenes,
             batch_plan_hash: batchPlanHash,
+            // Only ever true when the provider-failure gate above approved replacing an attempt that
+            // produced no accepted prompt set; the claim function refuses otherwise.
+            redispatch: redispatchApproved,
           }),
         ],
       );

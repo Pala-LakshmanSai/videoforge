@@ -224,6 +224,12 @@ export function hostedPromptAuthority(input: {
   readonly plan: unknown;
   readonly identity: HostedPromptIdentity;
   readonly reservedCostMicroUsd: number;
+  /**
+   * Set by the route only after `hostedPromptRedispatchable` approved replacing a provider-failed
+   * attempt with no accepted prompt set. Without it a plan that already owns a run is refused, so a
+   * caller cannot bypass the gate by asking for an already-claimed revision.
+   */
+  readonly redispatchApproved?: boolean;
 }): PromptExecutionAuthority {
   const plan = record(input.plan, "hosted prompt plan");
   const profile = record(plan.profile_payload, "hosted style profile");
@@ -255,7 +261,7 @@ export function hostedPromptAuthority(input: {
     plan.revision_style_hash !== styleHash ||
     plan.revision_state !== "LOCKED" ||
     plan.style_state !== "PUBLISHED" ||
-    plan.existing_run_state !== null
+    (plan.existing_run_state !== null && input.redispatchApproved !== true)
   )
     throw new TypeError("Hosted prompt plan is not executable.");
   const visualProfile = record(
