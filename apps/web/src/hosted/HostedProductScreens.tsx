@@ -546,6 +546,12 @@ interface HostedAttempt {
   readonly cost?: HostedCost | null;
 }
 
+function cancellableAttemptLabel(kind: HostedAttempt["kind"]): string {
+  if (kind === "ASR") return "transcription";
+  if (kind === "SPAN_AUDIO") return "audio preparation";
+  return "assembly";
+}
+
 function hostedContinuationKey(
   revisionId: string | undefined,
   entityId: string | null | undefined,
@@ -4842,11 +4848,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   >
                     <X size={15} />
                     {attempt.state === "CANCEL_REQUESTED"
-                      ? `Finish stopping ${attempt.kind === "ASR" ? "transcription" : "assembly"}`
+                      ? `Finish stopping ${cancellableAttemptLabel(attempt.kind)}`
                       : armedCancellation?.attemptId === attempt.id &&
                           armedCancellation.attemptState === attempt.state
-                        ? `Confirm stop ${attempt.kind === "ASR" ? "transcription" : "assembly"}`
-                        : `Stop ${attempt.kind === "ASR" ? "transcription" : "assembly"}`}
+                        ? `Confirm stop ${cancellableAttemptLabel(attempt.kind)}`
+                        : `Stop ${cancellableAttemptLabel(attempt.kind)}`}
                   </Button>
                 ))}
               </div>

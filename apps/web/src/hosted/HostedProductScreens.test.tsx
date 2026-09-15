@@ -1701,6 +1701,49 @@ describe("hosted product journey", () => {
     await waitFor(() => expect(cancellationRequests).toBe(1));
   });
 
+  it("labels active span audio as audio preparation", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const attemptId = "33333333-3333-4333-8333-333333333333";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: projectId,
+            title: "Private project",
+            created_at: "2026-08-17T10:00:00.000Z",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
+          },
+          attempts: [
+            {
+              id: attemptId,
+              kind: "SPAN_AUDIO" as const,
+              state: "RUNNING",
+              version: 1,
+              created_at: "2026-08-17T10:00:00.000Z",
+              updated_at: "2026-08-17T10:01:00.000Z",
+              terminal_at: null,
+              output_checksum_sha256: null,
+              approved_at: null,
+              preview_url: null,
+            },
+          ],
+          gpu_transport: "DISABLED_UNQUALIFIED" as const,
+          gpu_readiness: gpuReadiness,
+          generation: null,
+        }),
+      ),
+    );
+
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(
+      await screen.findByRole("button", { name: "Stop audio preparation" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Stop assembly" })).not.toBeInTheDocument();
+  });
+
   it("disarms stop confirmation after its bounded timeout", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const attemptId = "33333333-3333-4333-8333-333333333333";

@@ -217,7 +217,7 @@ function readPriorEvidence(databaseUrl: string): JsonRecord {
     "--tuples-only",
     "--no-align",
     "--command",
-    "SELECT evidence_document::text FROM public.hosted_v209_qualified_activations ORDER BY imported_at DESC,id DESC LIMIT 1",
+    "SELECT evidence_document::text FROM public.hosted_v209_qualified_activations WHERE evidence_document->>'schemaVersion'='videoforge.hosted-v209-qualified-activation-import/v1' ORDER BY imported_at DESC,id DESC LIMIT 1",
   ]).trim();
   let parsed: unknown;
   try {
