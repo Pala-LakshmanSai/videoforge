@@ -98,8 +98,11 @@ export async function runHostedContinuation(
   const config: HostedRuntimeConfiguration = hostedRuntimeConfiguration(environment);
   const pool = createNeonPool(config.neon.databaseUrl);
   const dispatched: string[] = [];
+  const failures: string[] = [];
+  let dueCount = 0;
   try {
     const due = await pool.query<DueRow>(DUE_QUERY);
+    dueCount = due.rows.length;
     for (const row of due.rows) {
       const scope = {
         account_id: row.account_id,
@@ -156,14 +159,33 @@ export async function runHostedContinuation(
         dispatched.push(`${row.project_id}:${row.next_step}`);
       } catch (error) {
         // One stalled project must not stop the sweep for the others.
+        const message = String((error as { message?: unknown })?.message ?? error).slice(0, 180);
+        failures.push(`${row.project_id}:${row.next_step}:${message}`);
         console.warn(
-          `hosted_continuation_step_failed project=${row.project_id} step=${row.next_step} message=${String(
-            (error as { message?: unknown })?.message ?? error,
-          ).slice(0, 180)}`,
+          `hosted_continuation_step_failed project=${row.project_id} step=${row.next_step} message=${message}`,
         );
       }
     }
+  } catch (error) {
+    failures.push(`sweep:${String((error as { message?: unknown })?.message ?? error).slice(0, 180)}`);
   } finally {
+    // `wrangler tail` does not show scheduled invocations, so without this row a sweep that never
+    // runs and one that finds nothing due are indistinguishable in production.
+    try {
+      await pool.query(
+        `INSERT INTO public.hosted_continuation_heartbeats (cron, due_count, dispatched, failure)
+         VALUES ($1, $2, $3, $4)`,
+        [
+          "continuation",
+          dueCount,
+          dispatched,
+          failures.length === 0 ? null : failures.join(" | ").slice(0, 400),
+        ],
+      );
+      await pool.query("SELECT public.videoforge_trim_hosted_continuation_heartbeats()");
+    } catch {
+      // Observability must never break the sweep.
+    }
     await pool.end();
   }
   return dispatched;
