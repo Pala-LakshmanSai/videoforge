@@ -6754,26 +6754,10 @@ async function projectDetail(
     const runtimeLanes = Array.isArray(runtime?.lanes)
       ? (runtime?.lanes as Record<string, unknown>[])
       : [];
-    // A lane's durable runtime row still reads WAITING_FOR_WORKER while its dispatched provider
-    // attempt is already live, so prefer the attempt whenever it is in a non-terminal provider
-    // state. Otherwise Stage 6 and Stage 7 render as idle for the whole GPU cold start.
-    const LIVE_SERVERLESS_STATES = new Set([
-      "OUTBOXED",
-      "ASSIGNED",
-      "SUBMITTED",
-      "RUNNING",
-      "RECONCILING",
-    ]);
-    const liveServerlessLane = (lane: string): Record<string, unknown> | null => {
-      const attempt = serverlessByLane.get(lane) ?? null;
-      if (!attempt) return null;
-      return LIVE_SERVERLESS_STATES.has(String(attempt.state).toUpperCase()) ? attempt : null;
-    };
+    // The provider attempt is authoritative for a lane's outcome. The paired runtime row can be
+    // stale after one lane fails and the other lane has already accepted its output.
     const laneState = (lane: string): Record<string, unknown> | null =>
-      liveServerlessLane(lane) ??
-      runtimeLanes.find((value) => value.lane === lane) ??
-      serverlessByLane.get(lane) ??
-      null;
+      serverlessByLane.get(lane) ?? runtimeLanes.find((value) => value.lane === lane) ?? null;
     const spanRows = (detail.spanAudio ?? []) as Record<string, unknown>[];
     const spanJobRows = (detail.spanAudioJobs ?? []) as Record<string, unknown>[];
     const spanCount = (rows: Record<string, unknown>[], state: string) =>
@@ -6791,12 +6775,21 @@ async function projectDetail(
         spanCount(spanJobRows, "PERMANENT_FAILED") +
         spanCount(spanJobRows, "DEAD_LETTER"),
     });
+    const acceptedOutputCounts = new Map<string, number>();
+    for (const output of detail.serverlessOutputs as Record<string, unknown>[]) {
+      const lane = String(output.lane ?? "").toLowerCase();
+      if (lane !== "mage_image" && lane !== "soulx_avatar") continue;
+      const count = Array.isArray(output.artifacts) ? output.artifacts.length : 0;
+      acceptedOutputCounts.set(lane, (acceptedOutputCounts.get(lane) ?? 0) + count);
+    }
     const gpuLaneActivity = (["mage_image", "soulx_avatar"] as const).map((lane) => {
       const attempt = serverlessByLane.get(lane) ?? null;
       const runtimeLane = runtimeLanes.find((value) => value.lane === lane) ?? null;
       const plannedItems =
         numberOrNull(runtimeLane?.planned_item_count) ?? numberOrNull(attempt?.item_count) ?? null;
-      const acceptedItems = numberOrNull(runtimeLane?.accepted_item_count) ?? 0;
+      const acceptedItems = acceptedOutputCounts.has(lane)
+        ? acceptedOutputCounts.get(lane)!
+        : (numberOrNull(runtimeLane?.accepted_item_count) ?? 0);
       return {
         lane,
         attempt_state: attempt ? String(attempt.state) : null,
@@ -6810,6 +6803,9 @@ async function projectDetail(
       };
     });
     const laneProgress = (lane: string): number | null => {
+      const activity = gpuLaneActivity.find((value) => value.lane === lane);
+      if (activity && activity.planned_item_count !== null)
+        return hostedProgressPercent(activity.accepted_item_count, activity.planned_item_count);
       const value = laneState(lane);
       if (!value) return null;
       if (value.accepted_item_count !== undefined)

@@ -611,6 +611,8 @@ type HostedCount = number | string | null | undefined;
 
 const HOSTED_ACTIVE_STAGE_STATUSES = new Set([
   "QUEUED",
+  "IN_QUEUE",
+  "WAITING_FOR_GPUS",
   "STARTING",
   "RUNNING",
   "RETRYING",
@@ -625,6 +627,10 @@ const HOSTED_ACTIVE_STAGE_STATUSES = new Set([
 ]);
 const HOSTED_ACTIVE_ATTEMPT_STATES = new Set([
   "OUTBOXED",
+  "IN_QUEUE",
+  "WAITING_FOR_GPU",
+  "WAITING_FOR_GPUS",
+  "WAITING_FOR_WORKER",
   "ASSIGNED",
   "SUBMITTED",
   "RUNNING",
@@ -647,18 +653,31 @@ type HostedTerminalStageStatus = "FAILED" | "ACTION_REQUIRED" | "BLOCKED" | "CAN
 function hostedHasActiveWork(
   stages: readonly { readonly status: string }[] | undefined,
   attempts: readonly { readonly state: string }[],
+  lanes: readonly {
+    readonly attempt_state?: string | null;
+    readonly runtime_state?: string | null;
+  }[] = [],
 ): boolean {
   return Boolean(
     stages?.some((stage) => HOSTED_ACTIVE_STAGE_STATUSES.has(stage.status.toUpperCase())) ||
-      attempts.some((attempt) => HOSTED_ACTIVE_ATTEMPT_STATES.has(attempt.state.toUpperCase())),
+      attempts.some((attempt) => HOSTED_ACTIVE_ATTEMPT_STATES.has(attempt.state.toUpperCase())) ||
+      lanes.some((lane) =>
+        HOSTED_ACTIVE_ATTEMPT_STATES.has(
+          String(lane.attempt_state ?? lane.runtime_state ?? "").toUpperCase(),
+        ),
+      ),
   );
 }
 
 function hostedTerminalStageStatus(
   stages: readonly { readonly status: string }[] | undefined,
   attempts: readonly { readonly state: string }[],
+  lanes: readonly {
+    readonly attempt_state?: string | null;
+    readonly runtime_state?: string | null;
+  }[] = [],
 ): HostedTerminalStageStatus {
-  if (hostedHasActiveWork(stages, attempts)) return null;
+  if (hostedHasActiveWork(stages, attempts, lanes)) return null;
   for (const stage of stages ?? []) {
     const status = stage.status.toUpperCase();
     if (HOSTED_TERMINAL_STAGE_STATUSES.has(status))
@@ -939,20 +958,30 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
   readonly detail: string;
   readonly active: boolean;
 } {
-  const state = String(lane.attempt_state ?? "").toUpperCase();
-  const accepted = lane.accepted_item_count;
+  const state = String(lane.attempt_state ?? lane.runtime_state ?? "").toUpperCase();
+  const accepted = hostedGpuLaneAcceptedCount(lane);
   if (state === "SUCCEEDED")
     return { label: "Complete", detail: "All items accepted.", active: false };
   if (["FAILED", "PERMANENT_FAILED", "DEAD_LETTER", "RETRYABLE_FAILED"].includes(state))
     return {
       label: "Failed",
-      detail: "The provider run ended without an accepted result.",
+      detail:
+        accepted > 0
+          ? `${accepted} item${accepted === 1 ? "" : "s"} accepted before the provider run stopped.`
+          : "The provider run ended without an accepted result.",
       active: false,
     };
   if (["CANCELLED", "CANCEL_REQUESTED"].includes(state))
     return { label: "Cancelled", detail: "This lane was stopped.", active: false };
   if (state === "OUTBOXED")
     return { label: "Queuing", detail: "Handing the batch to the GPU provider.", active: true };
+  if (["IN_QUEUE", "WAITING_FOR_GPU", "WAITING_FOR_GPUS", "WAITING_FOR_WORKER"].includes(state))
+    return {
+      label: "Waiting for GPUs",
+      detail:
+        "No GPU worker is available yet. Your generation will start automatically when capacity opens.",
+      active: true,
+    };
   if (state === "ASSIGNED" && accepted === 0)
     return {
       label: "Starting GPU worker",
@@ -960,13 +989,28 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
         "Waiting for an RTX 4090 and loading the model image. A cold start usually takes a few minutes.",
       active: true,
     };
-  if (["ASSIGNED", "SUBMITTED", "RUNNING", "RECONCILING"].includes(state))
+  if (
+    ["ASSIGNED", "SUBMITTED", "IN_PROGRESS", "UPLOADING", "RUNNING", "RECONCILING"].includes(state)
+  )
     return {
       label: "Generating",
       detail: "The GPU worker is producing and verifying items.",
       active: true,
     };
   return { label: "Waiting", detail: "This lane has not been dispatched yet.", active: false };
+}
+
+function hostedGpuLaneAcceptedCount(lane: HostedGpuLaneActivity): number {
+  const accepted = Math.max(0, lane.accepted_item_count);
+  const planned = lane.planned_item_count;
+  // A successful provider attempt means its canonical output was accepted. Older runtime rows
+  // can still report zero after a paired lane failure, so use the durable plan as the display
+  // count in that case.
+  return String(lane.attempt_state ?? lane.runtime_state ?? "").toUpperCase() === "SUCCEEDED" &&
+    planned !== null &&
+    accepted < planned
+    ? planned
+    : accepted;
 }
 
 function HostedElapsed({
@@ -1002,7 +1046,9 @@ function HostedGpuLaneActivityPanel({
 }: {
   readonly lanes: readonly HostedGpuLaneActivity[];
 }) {
-  const visible = lanes.filter((lane) => lane.attempt_state !== null);
+  const visible = lanes.filter(
+    (lane) => lane.attempt_state !== null || lane.runtime_state !== null,
+  );
   if (visible.length === 0) return null;
   return (
     <Panel className="gpu-lane-panel" eyebrow="On the GPU" heading="Image and avatar generation">
@@ -1010,7 +1056,7 @@ function HostedGpuLaneActivityPanel({
         {visible.map((lane) => {
           const phase = hostedGpuLanePhase(lane);
           const planned = lane.planned_item_count ?? 0;
-          const accepted = lane.accepted_item_count;
+          const accepted = hostedGpuLaneAcceptedCount(lane);
           const percent = planned > 0 ? Math.min(100, Math.round((accepted / planned) * 100)) : 0;
           return (
             <li key={lane.lane} className="gpu-lane-item">
@@ -1105,7 +1151,8 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
 
 interface HostedV209DispatchResponse {
   readonly schema_version: "videoforge-hosted-v209-project-dispatch/v1";
-  readonly state: "SCHEDULED" | "PREPARING_INPUTS" | "WAITING";
+  readonly state: "SCHEDULED" | "PREPARING_INPUTS" | "WAITING" | "WAITING_FOR_GPUS";
+  readonly retry_after_seconds?: number;
   readonly correlation_id: string;
 }
 
@@ -1122,7 +1169,7 @@ const HOSTED_V209_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
 function exactHostedV209DispatchResponse(value: HostedV209DispatchResponse) {
   if (
     value.schema_version !== "videoforge-hosted-v209-project-dispatch/v1" ||
-    !["SCHEDULED", "PREPARING_INPUTS", "WAITING"].includes(value.state) ||
+    !["SCHEDULED", "PREPARING_INPUTS", "WAITING", "WAITING_FOR_GPUS"].includes(value.state) ||
     !HOSTED_V209_CORRELATION_ID.test(value.correlation_id)
   ) {
     throw new Error("Generation start could not be verified.");
@@ -1132,8 +1179,9 @@ function exactHostedV209DispatchResponse(value: HostedV209DispatchResponse) {
 
 export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
   if (!data) return 2_000;
-  const activeWork = hostedHasActiveWork(data.stages, data.attempts);
-  const terminalStage = hostedTerminalStageStatus(data.stages, data.attempts) !== null;
+  const activeWork = hostedHasActiveWork(data.stages, data.attempts, data.gpu_lanes);
+  const terminalStage =
+    hostedTerminalStageStatus(data.stages, data.attempts, data.gpu_lanes) !== null;
   const terminalAttempt =
     !activeWork &&
     data.attempts.some((attempt) => ["FAILED", "CANCELLED"].includes(attempt.state.toUpperCase()));
@@ -1899,9 +1947,17 @@ function hostedStageStatus(status: string): ProjectStage["status"] {
   if (["COMPLETE", "SUCCEEDED", "APPROVED", "READY_FOR_REVIEW"].includes(normalized))
     return "COMPLETE";
   if (
-    ["RUNNING", "ACTIVE", "ADMITTED", "SUBMITTED", "OUTBOXED", "ASSIGNED", "RECONCILING"].includes(
-      normalized,
-    )
+    [
+      "RUNNING",
+      "ACTIVE",
+      "ADMITTED",
+      "SUBMITTED",
+      "OUTBOXED",
+      "ASSIGNED",
+      "IN_PROGRESS",
+      "UPLOADING",
+      "RECONCILING",
+    ].includes(normalized)
   )
     return "RUNNING";
   if (["STARTING", "PREPARING", "RECONCILING"].includes(normalized)) return "STARTING";
@@ -1916,7 +1972,12 @@ function hostedStageStatus(status: string): ProjectStage["status"] {
     normalized.includes("UNAVAILABLE")
   )
     return "BLOCKED";
-  if (["QUEUED", "WAITING", "NOT_STARTED", "NOT_REPORTED"].includes(normalized)) return "PENDING";
+  if (
+    ["QUEUED", "IN_QUEUE", "WAITING_FOR_GPUS", "WAITING", "NOT_STARTED", "NOT_REPORTED"].includes(
+      normalized,
+    )
+  )
+    return "PENDING";
   return "PENDING";
 }
 
@@ -1926,15 +1987,56 @@ function hostedProgressValue(stage: HostedStage): number {
   return hostedStageStatus(stage.status) === "COMPLETE" ? 100 : 0;
 }
 
-function hostedProjectStages(stages: readonly HostedStage[]): ProjectStage[] {
-  return stages.map((stage, index) => ({
-    id: stage.id ?? `stage-${index + 1}`,
-    label: stage.name,
-    status: hostedStageStatus(stage.status),
-    completed: Math.round(hostedProgressValue(stage)),
-    total: 100,
-    detail: stage.detail ?? "Waiting for an authoritative update.",
-  }));
+function hostedGpuLaneStageStatus(lane: HostedGpuLaneActivity): ProjectStage["status"] | null {
+  const state = String(lane.attempt_state ?? lane.runtime_state ?? "").toUpperCase();
+  if (state === "SUCCEEDED") return "COMPLETE";
+  if (["FAILED", "PERMANENT_FAILED", "DEAD_LETTER"].includes(state)) return "FAILED";
+  if (state === "RETRYABLE_FAILED") return "FAILED";
+  if (["CANCELLED", "CANCELLING"].includes(state)) return "CANCELLED";
+  if (state === "CANCEL_REQUESTED") return "CANCEL_REQUESTED";
+  if (["IN_QUEUE", "WAITING_FOR_GPU", "WAITING_FOR_GPUS"].includes(state)) return "QUEUED";
+  if (
+    [
+      "OUTBOXED",
+      "ASSIGNED",
+      "SUBMITTED",
+      "IN_PROGRESS",
+      "RUNNING",
+      "UPLOADING",
+      "RECONCILING",
+    ].includes(state)
+  )
+    return "RUNNING";
+  return null;
+}
+
+function hostedProjectStages(
+  stages: readonly HostedStage[],
+  gpuLanes: readonly HostedGpuLaneActivity[] = [],
+): ProjectStage[] {
+  const laneByStageId = new Map<string, HostedGpuLaneActivity>([
+    ["image-generation", gpuLanes.find((lane) => lane.lane === "mage_image")!],
+    ["avatar-generation", gpuLanes.find((lane) => lane.lane === "soulx_avatar")!],
+  ]);
+  return stages.map((stage, index) => {
+    const id = stage.id ?? `stage-${index + 1}`;
+    const lane = laneByStageId.get(id);
+    const laneStatus = lane ? hostedGpuLaneStageStatus(lane) : null;
+    const lanePhase = lane ? hostedGpuLanePhase(lane) : null;
+    const planned = lane?.planned_item_count ?? null;
+    const completed = lane
+      ? hostedGpuLaneAcceptedCount(lane)
+      : Math.round(hostedProgressValue(stage));
+    const hasItemCounts = lane !== undefined && planned !== null && planned > 0;
+    return {
+      id,
+      label: stage.name,
+      status: laneStatus ?? hostedStageStatus(stage.status),
+      completed: hasItemCounts ? Math.min(completed, planned!) : completed,
+      total: hasItemCounts ? planned! : 100,
+      detail: lanePhase?.detail ?? stage.detail ?? "Waiting for an authoritative update.",
+    };
+  });
 }
 
 export function HostedCreateProjectScreen() {
@@ -3922,11 +4024,19 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         ),
       ),
     onSuccess: (result) => {
-      if (result.state === "WAITING" || result.state === "PREPARING_INPUTS") {
+      if (
+        result.state === "WAITING" ||
+        result.state === "PREPARING_INPUTS" ||
+        result.state === "WAITING_FOR_GPUS"
+      ) {
+        const retryAfterMs =
+          result.state === "WAITING_FOR_GPUS"
+            ? Math.max(1_000, Math.min(60_000, (result.retry_after_seconds ?? 30) * 1_000))
+            : 2_000;
         window.setTimeout(() => {
           automaticGpuDispatchAttempt.current = null;
           void queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] });
-        }, 2_000);
+        }, retryAfterMs);
         return;
       }
       void queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] });
@@ -4005,7 +4115,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     query.data?.generation?.id &&
       query.data.generation.stage !== "FAILED" &&
       Number(query.data.generation.failed_tasks) === 0 &&
-      hostedTerminalStageStatus(query.data.stages, query.data.attempts) === null &&
+      hostedTerminalStageStatus(query.data.stages, query.data.attempts, query.data.gpu_lanes) ===
+        null &&
       !query.data.stages?.some((stage) =>
         HOSTED_TERMINAL_STAGE_STATUSES.has(stage.status.toUpperCase()),
       ) &&
@@ -4139,12 +4250,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const stages = query.data.stages?.length
     ? query.data.stages
     : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context);
-  const uiStages = hostedProjectStages(stages).map((stage) => ({
+  const uiStages = hostedProjectStages(stages, query.data.gpu_lanes ?? []).map((stage) => ({
     ...stage,
     detail:
       stage.status === "COMPLETE"
         ? "Complete"
-        : stage.status === "PENDING"
+        : stage.status === "PENDING" && stage.detail === "Waiting for an authoritative update."
           ? "Waiting"
           : stage.detail,
   }));
@@ -4202,10 +4313,27 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     firstIncompleteStageIndex < 0 ? Math.max(0, uiStages.length - 1) : firstIncompleteStageIndex;
   const activeStage = uiStages[activeStageIndex];
   const overallProgress = Math.round(
-    stages.reduce((total, stage) => total + hostedProgressValue(stage), 0) /
-      Math.max(1, stages.length),
+    uiStages.reduce(
+      (total, stage) =>
+        total + Math.min(100, Math.round((stage.completed / Math.max(1, stage.total)) * 100)),
+      0,
+    ) / Math.max(1, uiStages.length),
   );
-  const hasFailed = uiStages.some((stage) => stage.status === "FAILED");
+  const generationStages = uiStages.filter(
+    (stage) => stage.id === "image-generation" || stage.id === "avatar-generation",
+  );
+  const generationStopped =
+    query.data.generation?.stage === "FAILED" ||
+    generationStages.some((stage) => ["FAILED", "CANCELLED"].includes(stage.status));
+  const generationWaitingForGpu =
+    gpuDispatch.data?.state === "WAITING_FOR_GPUS" ||
+    generationStages.some((stage) => stage.status === "QUEUED") ||
+    query.data.attempts.some(
+      (attempt) =>
+        ["MAGE_IMAGE", "SOULX_AVATAR"].includes(attempt.kind) &&
+        ["IN_QUEUE", "WAITING_FOR_GPUS"].includes(attempt.state.toUpperCase()),
+    );
+  const hasFailed = generationStopped || uiStages.some((stage) => stage.status === "FAILED");
   const hasActionRequired = uiStages.some((stage) => stage.status === "ACTION_REQUIRED");
   const hasRunning =
     uiStages.some((stage) =>
@@ -4214,7 +4342,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     query.data.attempts.some((attempt) =>
       HOSTED_ACTIVE_ATTEMPT_STATES.has(attempt.state.toUpperCase()),
     );
-  const terminalStageStatus = hostedTerminalStageStatus(stages, query.data.attempts);
+  const terminalStageStatus = hostedTerminalStageStatus(
+    stages,
+    query.data.attempts,
+    query.data.gpu_lanes,
+  );
   const terminalBlocked = terminalStageStatus === "BLOCKED";
   const terminalCancelled = terminalStageStatus === "CANCELLED";
   const allComplete = uiStages.every((stage) => stage.status === "COMPLETE");
@@ -4226,24 +4358,28 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         ? "Blocked"
         : terminalCancelled
           ? "Cancelled"
-          : allComplete
-            ? render?.approved_at
-              ? "Approved"
-              : "Ready for review"
-            : hasRunning
-              ? "Running"
-              : "Waiting";
+          : generationWaitingForGpu
+            ? "Waiting for GPUs"
+            : allComplete
+              ? render?.approved_at
+                ? "Approved"
+                : "Ready for review"
+              : hasRunning
+                ? "Running"
+                : "Waiting";
   const statusToneValue = hasFailed
     ? "danger"
     : hasActionRequired
       ? "warning"
       : terminalBlocked || terminalCancelled
         ? "warning"
-        : allComplete
-          ? "success"
-          : hasRunning
-            ? "info"
-            : "warning";
+        : generationWaitingForGpu
+          ? "info"
+          : allComplete
+            ? "success"
+            : hasRunning
+              ? "info"
+              : "warning";
   const latestArtifact =
     render?.preview_url ??
     query.data.review?.contact_sheet?.at(-1)?.image_url ??
@@ -4466,6 +4602,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           <Button variant="secondary" onClick={() => gpuDispatch.mutate()}>
             <RefreshCw size={15} /> Retry generation
           </Button>
+        </div>
+      ) : gpuDispatch.data?.state === "WAITING_FOR_GPUS" || generationWaitingForGpu ? (
+        <div className="validation validation-info" role="status" aria-live="polite">
+          Waiting for GPUs. Generation will start automatically when capacity opens.
         </div>
       ) : gpuDispatch.data?.state === "PREPARING_INPUTS" ? (
         <div className="validation validation-info" role="status" aria-live="polite">
@@ -4792,17 +4932,24 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               : renderHandoff.isPending
                 ? "Saving scene plan…"
                 : query.data.generation
-                  ? promptStage?.status === "COMPLETE"
-                    ? query.data.gpu_transport === "QUALIFIED_EXACT" &&
-                      query.data.gpu_readiness.dispatch_available === true
-                      ? "Ready to generate."
-                      : "Waiting for GPU qualification."
-                    : promptAutoStartError
-                      ? "Automatic image prompt writing could not start."
-                      : "Writing image prompts…"
+                  ? generationStopped
+                    ? "Generation stopped."
+                    : generationWaitingForGpu
+                      ? "Waiting for GPUs."
+                      : promptStage?.status === "COMPLETE"
+                        ? query.data.gpu_transport === "QUALIFIED_EXACT" &&
+                          query.data.gpu_readiness.dispatch_available === true
+                          ? "Ready to generate."
+                          : "Waiting for GPU qualification."
+                        : promptAutoStartError
+                          ? "Automatic image prompt writing could not start."
+                          : "Writing image prompts…"
                   : "Transcription complete; generation planning is starting."}
           </strong>
           {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
+          {generationStopped ? (
+            <span>Generation ended in a terminal state. No automatic GPU retry was sent.</span>
+          ) : null}
           {renderHandoff.isError ? (
             <>
               <span>Your transcript is saved. This will retry planning only.</span>
@@ -4815,7 +4962,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               </Button>
             </>
           ) : null}
-          {!renderHandoff.isError && query.data.generation && promptStage?.status !== "COMPLETE" ? (
+          {!renderHandoff.isError &&
+          !generationStopped &&
+          query.data.generation &&
+          promptStage?.status !== "COMPLETE" ? (
             <>
               <span>Scene prompts are generated automatically.</span>
               {promptAutoStartError ? <span>{promptWriting.error.message}</span> : null}

@@ -3486,6 +3486,233 @@ describe("hosted product journey", () => {
     expect(await screen.findByText(/Generation is running/u)).toBeInTheDocument();
   });
 
+  it("uses provider lane truth for stage outcome and item counters", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Terminal pair",
+        created_at: "2026-09-06T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [
+        {
+          id: "33333333-3333-4333-8333-333333333333",
+          kind: "MAGE_IMAGE" as const,
+          state: "PERMANENT_FAILED",
+          version: 1,
+          created_at: "2026-09-06T10:00:00.000Z",
+          updated_at: "2026-09-06T10:01:00.000Z",
+          terminal_at: "2026-09-06T10:01:00.000Z",
+          output_checksum_sha256: null,
+          approved_at: null,
+          preview_url: null,
+        },
+        {
+          id: "44444444-4444-4444-8444-444444444444",
+          kind: "SOULX_AVATAR" as const,
+          state: "SUCCEEDED",
+          version: 1,
+          created_at: "2026-09-06T10:00:00.000Z",
+          updated_at: "2026-09-06T10:01:00.000Z",
+          terminal_at: "2026-09-06T10:01:00.000Z",
+          output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+          approved_at: null,
+          preview_url: null,
+        },
+        {
+          id: "66666666-6666-4666-8666-666666666666",
+          kind: "ASR" as const,
+          state: "SUCCEEDED",
+          version: 1,
+          created_at: "2026-09-06T10:00:00.000Z",
+          updated_at: "2026-09-06T10:01:00.000Z",
+          terminal_at: "2026-09-06T10:01:00.000Z",
+          output_checksum_sha256: `sha256:${"c".repeat(64)}`,
+          approved_at: null,
+          preview_url: null,
+        },
+      ],
+      gpu_transport: "QUALIFIED_EXACT" as const,
+      gpu_readiness: qualifiedGpuReadiness,
+      voiceover_context: {
+        id: "77777777-7777-4777-8777-777777777777",
+        state: "SUCCEEDED" as const,
+        transcript_hash: `sha256:${"c".repeat(64)}`,
+        reserved_cost_micro_usd: 0,
+      },
+      generation: {
+        id: "55555555-5555-4555-8555-555555555555",
+        timeline_plan_sha256: `sha256:${"b".repeat(64)}`,
+        planned_tasks: 276,
+        completed_tasks: 65,
+        failed_tasks: 1,
+        stage: "FAILED" as const,
+      },
+      stages: [
+        { id: "image-generation", name: "Generate images", status: "FAILED", progress_percent: 0 },
+        {
+          id: "avatar-generation",
+          name: "Generate avatar video",
+          status: "FAILED",
+          progress_percent: 0,
+        },
+      ],
+      gpu_lanes: [
+        {
+          lane: "mage_image" as const,
+          attempt_state: "PERMANENT_FAILED",
+          runtime_state: "FAILED",
+          planned_item_count: 211,
+          accepted_item_count: 0,
+          attempt_ordinal: 1,
+          submitted_at: "2026-09-06T10:00:00.000Z",
+          created_at: "2026-09-06T10:00:00.000Z",
+          terminal_at: "2026-09-06T10:01:00.000Z",
+        },
+        {
+          lane: "soulx_avatar" as const,
+          attempt_state: "SUCCEEDED",
+          runtime_state: "FAILED",
+          planned_item_count: 65,
+          accepted_item_count: 0,
+          attempt_ordinal: 1,
+          submitted_at: "2026-09-06T10:00:00.000Z",
+          created_at: "2026-09-06T10:00:00.000Z",
+          terminal_at: "2026-09-06T10:01:00.000Z",
+        },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).endsWith("/render")
+          ? Response.json({ state: "WAITING_FOR_GPU_QUALIFICATION", missing_lane_gates: [] })
+          : Response.json(detail),
+      ),
+    );
+
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    const stageList = await screen.findByRole("list", { name: "Project stages" });
+    const imageStage = within(stageList).getByText("Generate images").closest("li");
+    const avatarStage = within(stageList).getByText("Generate avatar video").closest("li");
+    expect(imageStage).not.toBeNull();
+    expect(avatarStage).not.toBeNull();
+    expect(within(imageStage!).getByText("FAILED")).toBeInTheDocument();
+    expect(within(imageStage!).getByText("0/211")).toBeInTheDocument();
+    expect(within(avatarStage!).getByText("COMPLETE")).toBeInTheDocument();
+    expect(
+      screen.getByText("0 of 211 accepted · The provider run ended without an accepted result."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("65 of 65 accepted · All items accepted.")).toBeInTheDocument();
+    expect(await screen.findByText("Generation stopped.")).toBeInTheDocument();
+    expect(screen.queryByText("Ready to generate.")).not.toBeInTheDocument();
+  });
+
+  it("shows waiting for GPU capacity and keeps queued lanes live", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    let dispatches = 0;
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Queued pair",
+        created_at: "2026-09-06T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [],
+      gpu_transport: "QUALIFIED_EXACT" as const,
+      gpu_readiness: qualifiedGpuReadiness,
+      generation: {
+        id: "55555555-5555-4555-8555-555555555555",
+        timeline_plan_sha256: `sha256:${"b".repeat(64)}`,
+        planned_tasks: 276,
+        completed_tasks: 0,
+        failed_tasks: 0,
+        stage: "READY_FOR_GPU_DISPATCH" as const,
+      },
+      queue: { status: "ACTIVE", position: 1, ahead: 0, total: 1 },
+      stages: [
+        {
+          id: "prompt-writing",
+          name: "Write image prompts",
+          status: "COMPLETE",
+          progress_percent: 100,
+        },
+        {
+          id: "image-generation",
+          name: "Generate images",
+          status: "WAITING_FOR_GPU_QUALIFICATION",
+          progress_percent: 0,
+        },
+        {
+          id: "avatar-generation",
+          name: "Generate avatar video",
+          status: "WAITING_FOR_GPU_QUALIFICATION",
+          progress_percent: 0,
+        },
+      ],
+      gpu_lanes: [
+        {
+          lane: "mage_image" as const,
+          attempt_state: "IN_QUEUE",
+          runtime_state: "WAITING_FOR_WORKER",
+          planned_item_count: 211,
+          accepted_item_count: 0,
+          attempt_ordinal: 1,
+          submitted_at: null,
+          created_at: "2026-09-06T10:00:00.000Z",
+          terminal_at: null,
+        },
+        {
+          lane: "soulx_avatar" as const,
+          attempt_state: "IN_QUEUE",
+          runtime_state: "WAITING_FOR_WORKER",
+          planned_item_count: 65,
+          accepted_item_count: 0,
+          attempt_ordinal: 1,
+          submitted_at: null,
+          created_at: "2026-09-06T10:00:00.000Z",
+          terminal_at: null,
+        },
+      ],
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/gpu-dispatch")) {
+        dispatches += 1;
+        return Response.json(
+          {
+            schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+            state: "WAITING_FOR_GPUS",
+            retry_after_seconds: 30,
+            correlation_id: "v209-gpu-wait",
+          },
+          { status: 202 },
+        );
+      }
+      return Response.json(detail);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(
+      await screen.findByText(
+        "Waiting for GPUs. Generation will start automatically when capacity opens.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Waiting for GPUs").length).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getByText(
+        "0 of 211 accepted · No GPU worker is available yet. Your generation will start automatically when capacity opens.",
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(dispatches).toBe(1));
+    expect(screen.queryByText(/Generation start could not be confirmed/u)).not.toBeInTheDocument();
+  });
+
   it("reports only measured personal-worker and retained-object facts", async () => {
     vi.stubGlobal(
       "fetch",
