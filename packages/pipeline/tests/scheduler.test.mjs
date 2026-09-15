@@ -158,13 +158,14 @@ function createPropertyTranscript({
   phraseStarts,
   silentTailMs = 0,
   punctuation = true,
+  wordQuantumMs: explicitWordQuantumMs,
 }) {
   const words = [];
   const phrases = phraseStarts.map((startMs, index) => {
     const nextBoundary = phraseStarts[index + 1] ?? durationMs;
     const endMs = Math.max(startMs + 1, nextBoundary - silentTailMs);
     const wordStart = words.length;
-    const wordQuantumMs = durationMs <= 20_000 ? 200 : 500;
+    const wordQuantumMs = explicitWordQuantumMs ?? (durationMs <= 20_000 ? 200 : 500);
     const wordCount = Math.max(1, Math.ceil((endMs - startMs) / wordQuantumMs));
     for (let wordIndex = 0; wordIndex < wordCount; wordIndex += 1) {
       const final = wordIndex === wordCount - 1;
@@ -472,6 +473,50 @@ test("short, silent, fast, slow, unpunctuated and 30-minute fixtures remain dete
       );
     }
   }
+});
+
+test("a dead-end seed is rescued by the bounded deterministic seed ladder", async () => {
+  // Seed 35 dead-ends the single-attempt search path on this 30-minute fixture: with only the
+  // revision seed honoured, scheduleTimeline returns TIMELINE_INVALID "Word boundaries cannot
+  // satisfy locked avatar coverage and complete image partitioning.".
+  const transcriptValue = createPropertyTranscript({
+    durationMs: 1_800_000,
+    phraseStarts: Array.from({ length: 360 }, (_, index) => index * 5_000),
+  });
+  const request = await propertyRequest(35, transcriptValue);
+  const first = requireSuccess(await scheduleTimeline(request));
+  const second = requireSuccess(await scheduleTimeline(request));
+
+  assert.equal(first.contractName, "timelinePlan");
+  assert.equal(first.sha256, second.sha256);
+  assert.equal(canonicalizeJson(first.value), canonicalizeJson(second.value));
+  assert.equal(first.value.seed, 35);
+  assert.equal(first.value.revision_config_hash, request.revision.sha256);
+  await validateAndHashContractDocument("timelinePlan", first.value);
+  const coverage = assertExactTimelineCoverage(first.value, transcriptValue);
+  assert.ok(coverage.avatarRatio >= 0.21 && coverage.avatarRatio <= 0.22);
+  assert.ok(coverage.fullSplitDifferenceFrames <= 210);
+});
+
+test("a structurally unplannable transcript still fails with the single-attempt failure", async () => {
+  // Nine-second silent holes between word clusters make image partitioning impossible for every
+  // derived seed, so the ladder must exhaust and keep the last failure instead of changing code,
+  // message, or path.
+  const transcriptValue = createPropertyTranscript({
+    durationMs: 1_800_000,
+    phraseStarts: Array.from({ length: 180 }, (_, index) => index * 10_000),
+    silentTailMs: 9_000,
+    wordQuantumMs: 100,
+  });
+  const result = await scheduleTimeline(await propertyRequest(0, transcriptValue));
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "TIMELINE_INVALID");
+  assert.equal(
+    result.error.message,
+    "Word boundaries cannot produce a bounded avatar opener inside the locked coverage range.",
+  );
+  assert.deepEqual(result.error.path, ["transcript", "words"]);
 });
 
 function materializedSpans(plan, sourceDurationMs) {

@@ -5314,12 +5314,14 @@ function hostedTranscriptText(document: unknown, expectedAttemptId: string): str
     : null;
 }
 
-async function createVoiceoverContext(
+export async function createVoiceoverContext(
   request: Request,
   projectId: string,
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
+  /** Set only by server-side stage continuation, which already holds a validated scope. */
+  internalScope?: ContinuationScope,
 ): Promise<Response> {
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
   // Declared outside the try so the failure path can also report whether this request was a
@@ -5334,7 +5336,7 @@ async function createVoiceoverContext(
   let accountId: string | null = null;
   let providerTaskUuid: string | null = null;
   try {
-    const scope = await sessionScope(request, config, pool, executionContext);
+    const scope = internalScope ?? (await sessionScope(request, config, pool, executionContext));
     if (scope instanceof Response) return scope;
     accountId = scope.account_id;
     const body = await parseHostedJson(request, "HOSTED_CONTEXT_REQUEST_REJECTED", 4_096);
@@ -5865,7 +5867,7 @@ async function reconcileVoiceoverContext(
   }
 }
 
-async function renderHandoff(
+export async function renderHandoff(
   request: Request,
   projectId: string,
   environment: HostedRuntimeEnvironment,
@@ -6034,18 +6036,10 @@ async function renderHandoff(
           }),
       },
     });
-    // Stage 4 is durable, so hand off to stage 5 here instead of waiting for a browser to notice.
-    executionContext.waitUntil(
-      writeProjectPrompts(
-        continuationRequest(config, `/api/v2/hosted/projects/${projectId}/prompts`, {
-          maximum_prompt_spend_micro_usd: 40_000,
-        }),
-        projectId,
-        config,
-        executionContext,
-        continuationScope(scope),
-      ).catch(() => undefined),
-    );
+    // Stage 5 is NOT chained from here. Prompt writing makes many provider calls and can run for
+    // minutes, and work placed in `waitUntil` after the response is sent gets cut before it can
+    // finish -- doing that here left a run claimed as DISPATCHING with zero batches recorded and no
+    // path back. The scheduled continuation sweep dispatches stage 5 as its own invocation instead.
     return response(result, 202);
   } catch (error) {
     if (
