@@ -6485,6 +6485,7 @@ async function projectDetail(
         `SELECT attempt.id, attempt.lane, attempt.state, attempt.attempt_ordinal,
                 attempt.item_count, attempt.created_at, attempt.submitted_at,
                 COALESCE(attempt.terminal_at, barrier.completed_at) AS terminal_at, attempt.updated_at,
+                barrier.accepted_count AS accepted_output_count,
                 CASE
           WHEN barrier.attempt_id IS NOT NULL THEN 'COMPLETED'
           ELSE progress.provider_status
@@ -6918,9 +6919,10 @@ async function projectDetail(
       const runtimeLane = runtimeLanes.find((value) => value.lane === lane) ?? null;
       const plannedItems =
         numberOrNull(runtimeLane?.planned_item_count) ?? numberOrNull(attempt?.item_count) ?? null;
-      const acceptedItems = acceptedOutputCounts.has(lane)
-        ? acceptedOutputCounts.get(lane)!
-        : (numberOrNull(runtimeLane?.accepted_item_count) ?? 0);
+      const acceptedItems = numberOrNull(attempt?.accepted_output_count) ??
+        (acceptedOutputCounts.has(lane)
+          ? acceptedOutputCounts.get(lane)!
+          : (numberOrNull(runtimeLane?.accepted_item_count) ?? 0));
       return {
         lane,
         attempt_state: attempt ? String(attempt.state) : null,
