@@ -87,6 +87,7 @@ _MEDIA_RUNTIME_HEADROOM_BYTES = 2 * 1024**3
 _SPAN_SOURCE_CACHE_MAX_BYTES = 256 * 1024**2
 _span_source_cache: tempfile.TemporaryDirectory[str] | None = None
 _span_source_cache_key: tuple[str, str, int] | None = None
+_span_source_cache_lock = threading.Lock()
 
 
 class _PersonalJobCancelled(Exception):
@@ -311,6 +312,13 @@ def _download(
 
 
 def _download_span_source(
+    item: dict[str, Any], destination: Path, should_cancel: Callable[[], bool]
+) -> None:
+    with _span_source_cache_lock:
+        _download_span_source_locked(item, destination, should_cancel)
+
+
+def _download_span_source_locked(
     item: dict[str, Any], destination: Path, should_cancel: Callable[[], bool]
 ) -> None:
     """Reuse one verified voiceover between serial spans; discard it at process exit."""
@@ -744,6 +752,28 @@ def _stopped_completion(monitor: _CancellationMonitor) -> tuple[str, str | None]
     return "CANCELLED", None
 
 
+def _record_failed_result(job: PersonalJob, result: dict[str, Any] | None) -> None:
+    # Keep only bounded error metadata locally; never retain tokens or signed URLs.
+    error = result.get("error") if isinstance(result, dict) else None
+    if not isinstance(error, dict):
+        return
+    detail = {
+        "attempt_id": job.attempt_id,
+        "kind": job.kind,
+        "code": str(error.get("code", ""))[:100],
+        "message": str(error.get("message", ""))[:512],
+    }
+    try:
+        root = Path.home() / ".videoforge" / "media-worker" / "failures"
+        root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        target = root / f"{job.attempt_id}.json"
+        descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(descriptor, "wb") as output:
+            output.write(_canonical(detail))
+    except OSError:
+        pass
+
+
 def execute_personal_job(
     job: PersonalJob,
     device_token: str,
@@ -865,6 +895,7 @@ def execute_personal_job(
             if result_status == "FAILED":
                 status = "FAILED"
                 failure_code = result_failure_code or _child_result_failure_code(job.kind)
+                _record_failed_result(job, result)
             elif result is None:
                 status = "FAILED"
                 failure_code = _child_result_failure_code(job.kind)

@@ -858,6 +858,12 @@
       "name": "hosted_accepted_progress_projection",
       "filename": "0144_hosted_accepted_progress_projection.sql",
       "sha256": "sha256:fb112913f95bf81953bcb9fc8b5f7c05d529845da2d629f8c26c88e77c0c09ab"
+    },
+    {
+      "version": 145,
+      "name": "hosted_span_audio_batch_leases",
+      "filename": "0145_hosted_span_audio_batch_leases.sql",
+      "sha256": "sha256:4c6ef1df9cc217ca99ae8cfd45ec689c006d8a9160af7493d75639e8d46e8cf3"
     }
   ]
 }

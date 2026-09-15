@@ -17,6 +17,7 @@ import urllib.parse
 import urllib.request
 import uuid
 import webbrowser
+from concurrent.futures import ThreadPoolExecutor
 from ctypes import wintypes
 from pathlib import Path
 from typing import Protocol
@@ -31,7 +32,7 @@ from videoforge_media_local.personal_execution import (
 from videoforge_media_local.personal_tls import https_context
 
 _SERVICE = "com.videoforge.personal-media-worker"
-_WORKER_VERSION = "0.1.21"
+_WORKER_VERSION = "0.1.22"
 _PROTOCOL_VERSION = 1
 _USER_AGENT = f"VideoForge-Worker/{_WORKER_VERSION}"
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
@@ -598,6 +599,62 @@ def _remove_local_installation() -> int:
     return 0
 
 
+def _execute_claim_response(claim: dict[str, object], token: str, tools: ToolPaths) -> None:
+    if claim.get("schema_version") != "videoforge-personal-worker-claim-batch/v1":
+        execute_personal_job(
+            parse_personal_job(claim["job"]), token, str(claim["lease_token"]), tools
+        )
+        return
+    if set(claim) != {"schema_version", "claims"}:
+        raise ValueError("Personal worker batch fields are invalid")
+    items = claim["claims"]
+    if not isinstance(items, list) or not 1 <= len(items) <= 4:
+        raise ValueError("Personal worker batch size is invalid")
+    jobs = []
+    attempts: set[str] = set()
+    leases: set[str] = set()
+    scope: tuple[object, ...] | None = None
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("Personal worker batch claim is invalid")
+        job = parse_personal_job(item.get("job"))
+        lease = item.get("lease_id")
+        lease_token = item.get("lease_token")
+        if (
+            not isinstance(lease, str)
+            or not _UUID.fullmatch(lease)
+            or not isinstance(lease_token, str)
+            or not _TOKEN.fullmatch(lease_token)
+            or lease in leases
+            or job.attempt_id in attempts
+        ):
+            raise ValueError("Personal worker batch lease identity is invalid")
+        if len(items) > 1:
+            if job.kind != "SPAN_AUDIO":
+                raise ValueError("Only audio spans may execute together")
+            document = job.input_document
+            identity = (
+                document.get("project_revision_id"),
+                document.get("timeline_plan_id"),
+                document.get("transcript_id"),
+                json.dumps(document.get("source_voiceover"), sort_keys=True),
+            )
+            if scope is not None and scope != identity:
+                raise ValueError("Personal worker batch source lineage differs")
+            scope = identity
+        attempts.add(job.attempt_id)
+        leases.add(lease)
+        jobs.append((job, lease_token))
+    # Each existing lease owns its cancellation, upload and durable completion.
+    # Drain every sibling even if one fails; successful spans remain accepted.
+    with ThreadPoolExecutor(max_workers=len(jobs)) as executor:
+        futures = [
+            executor.submit(execute_personal_job, job, token, lease, tools) for job, lease in jobs
+        ]
+        for future in futures:
+            future.result()
+
+
 def run_forever() -> int:
     configuration = _build_configuration()
     origin = str(configuration["control_plane_origin"]).rstrip("/")
@@ -652,11 +709,16 @@ def run_forever() -> int:
             if heartbeat_status != "ONLINE":
                 raise OSError("heartbeat returned an unknown status")
             status, claim = _json_request(
-                f"{origin}/api/v2/media-worker/claim", "POST", headers=headers
+                f"{origin}/api/v2/media-worker/claim",
+                "POST",
+                {
+                    "schema_version": "videoforge-personal-worker-claim-batch-request/v1",
+                    "max_span_jobs": 4,
+                },
+                headers=headers,
             )
             if status == 200 and isinstance(claim, dict):
-                job = parse_personal_job(claim["job"])
-                execute_personal_job(job, token, str(claim["lease_token"]), tools)
+                _execute_claim_response(claim, token, tools)
                 # Drain ready work immediately; only idle/error polling needs a delay.
                 backoff = 5
                 continue

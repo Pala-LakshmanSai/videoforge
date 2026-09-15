@@ -10,6 +10,7 @@ from typing import Any, cast
 
 from videoforge_contracts import ContractValidationError, validate_contract
 
+from ..transcribe.ports import DiagnosticSink
 from .filtergraph import (
     AUDIO_NORMALIZATION_TRUE_PEAK_TARGET_DBTP,
     LEGACY_RENDER_PROFILE_VERSION,
@@ -54,6 +55,7 @@ class RenderJobDependencies:
     tools: ToolResolver
     process: ProcessRunner
     cancellation: CancellationProbe
+    diagnostics: DiagnosticSink | None = None
 
 
 @dataclass(frozen=True)
@@ -354,6 +356,7 @@ class RenderJob:
         *,
         token: str,
         failure_code: str,
+        phase: str = "media_process",
     ) -> ProcessResult:
         result = self._dependencies.process.run(
             arguments,
@@ -368,9 +371,29 @@ class RenderJob:
                 retryable=True,
             )
         if result.launch_error is not None or result.return_code != 0:
+            reason = "PROCESS_EXIT"
+            stderr = result.stderr[-4096:].lower()
+            for marker, classified in (
+                ("no space left on device", "DISK_FULL"),
+                ("cannot allocate memory", "MEMORY_ALLOCATION_FAILED"),
+                ("resource temporarily unavailable", "RESOURCE_UNAVAILABLE"),
+                ("permission denied", "ACCESS_DENIED"),
+                ("invalid argument", "INVALID_ARGUMENT"),
+            ):
+                if marker in stderr:
+                    reason = classified
+                    break
+            if result.return_code < 0:
+                reason = "PROCESS_SIGNAL"
+            fields = {"phase": phase, "return_code": result.return_code, "reason": reason}
+            if self._dependencies.diagnostics is not None:
+                try:
+                    self._dependencies.diagnostics.record("render_process_failed", fields)
+                except Exception:  # diagnostic collection must not change job results
+                    pass
             raise _RenderFailure(
                 failure_code,
-                "A local media process failed without publishing output.",
+                f"Local {phase} failed: {reason} (exit {result.return_code}).",
                 retryable=True,
             )
         self._check_cancelled(token)
@@ -779,6 +802,7 @@ class RenderJob:
             plan.arguments,
             token=token,
             failure_code="RENDER_PROCESS_FAILED",
+            phase="visual_render",
         )
         self._require_file(
             output_path,
@@ -820,7 +844,12 @@ class RenderJob:
                 measurement=output_loudness,
                 total_frames=total_frames,
             )
-            self._run_process(correction, token=token, failure_code="RENDER_PROCESS_FAILED")
+            self._run_process(
+                correction,
+                token=token,
+                failure_code="RENDER_PROCESS_FAILED",
+                phase="audio_correction",
+            )
             self._require_file(
                 corrected_path,
                 missing_code="RENDER_OUTPUT_INVALID",

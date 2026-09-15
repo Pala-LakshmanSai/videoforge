@@ -1,4 +1,13 @@
 schema_version: "2.0"
+span_batch_repair_2026_09_15:
+  checkpoint: V2-09
+  status: LOCAL_ACCEPTED_PRODUCTION_RELEASE_PENDING
+  worker_version: 0.1.22
+  behavior: "Claim and execute at most4 sameproject/revision spans together; each keeps independent lease/cancellation/checksum/result/finalization. Source cache serialized once. ASR/render remain exclusive singletons."
+  database: "Migration145 preserves one active workgroup/device and activeattempt uniqueness; bounded sameproject SPAN groups only."
+  validation: "7 claim tests; focused worker/cache proof; PGlite admission/rollback; actual4span FFmpeg batch0.776s with fixture network,8 checksumverifieduploads,1 sourcedownload. Not hosted timing proof."
+  render: "c54c777a terminal RENDER_PROCESS_FAILED. One diagnostic reproduction stopped for memory/disk pressure; original cause unproven. New bounded phase diagnostics retained locally. Delivered MP4 preserved."
+  evidence: evidence/acceptance/VF-10-09/2026-09-15-span-batch/acceptance.json
 long_video_gpu_recovery_2026_09_15:
   status: REPAIRS_DEPLOYED_LOCAL_FINAL_DELIVERED
   project_id: 7d101190-87f6-4b51-a870-757e858e2abd

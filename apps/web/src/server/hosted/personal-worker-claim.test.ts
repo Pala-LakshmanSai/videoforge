@@ -8,6 +8,10 @@ const state = vi.hoisted(() => ({
   failInputs: false,
   bytes: new Uint8Array(),
   checksum: "",
+  attemptId: "attempt",
+  attemptKind: "ASR" as "ASR" | "SPAN_AUDIO",
+  batchRows: [] as Record<string, unknown>[],
+  leaseBatchIds: [] as unknown[],
 }));
 vi.mock("./neon", async (original) => ({
   ...(await original<typeof import("./neon")>()),
@@ -86,13 +90,19 @@ vi.mock("./neon", async (original) => ({
             if (state.failInputs) throw Error("input read failure");
             return { rows: [] };
           }
+          if (sql.includes("LIMIT $5")) {
+            state.calls.push("BATCH_ATTEMPT");
+            return { rows: state.batchRows };
+          }
           if (sql.includes("SELECT attempt.id,attempt.kind")) {
             state.calls.push("ATTEMPT");
             return {
               rows: [
                 {
-                  id: "attempt",
-                  kind: "ASR",
+                  id: state.attemptId,
+                  kind: state.attemptKind,
+                  project_id: "project",
+                  project_revision_id: "revision",
                   job_spec_object_key: "private-template",
                   job_spec_content_length: state.bytes.length,
                   job_spec_checksum_sha256: state.checksum,
@@ -101,7 +111,10 @@ vi.mock("./neon", async (original) => ({
               ],
             };
           }
-          if (sql.includes("INSERT INTO media_worker_leases")) state.calls.push("LEASE");
+          if (sql.includes("INSERT INTO media_worker_leases")) {
+            state.calls.push("LEASE");
+            state.leaseBatchIds.push(parameters?.[5]);
+          }
           return { rows: [], rowCount: 0 };
         },
         release() {
@@ -136,6 +149,12 @@ const request = () =>
     method: "POST",
     headers: { authorization: `Bearer ${"b".repeat(64)}` },
   });
+const batchRequest = (body: unknown) =>
+  new Request("https://example.test/api/v2/media-worker/claim", {
+    method: "POST",
+    headers: { authorization: `Bearer ${"b".repeat(64)}` },
+    body: JSON.stringify(body),
+  });
 const environment = () =>
   ({
     PRIVATE_ARTIFACTS: {
@@ -147,6 +166,10 @@ beforeEach(async () => {
   state.fresh = true;
   state.active = true;
   state.failInputs = false;
+  state.attemptId = "attempt";
+  state.attemptKind = "ASR";
+  state.batchRows = [];
+  state.leaseBatchIds = [];
   state.bytes = new Uint8Array(
     new TextEncoder().encode(
       JSON.stringify({
@@ -179,6 +202,63 @@ it("folds freshness and inputs into the claim transaction", async () => {
   expect(state.calls.indexOf("FRESHNESS")).toBeLessThan(state.calls.indexOf("LEASE"));
   expect(state.calls.indexOf("LEASE")).toBeLessThan(state.calls.indexOf("INPUTS"));
   expect(state.calls.filter((x) => x === "LEASE")).toHaveLength(1);
+});
+it("claims up to four spans in one scoped batch and keeps per-lease shapes", async () => {
+  state.attemptId = "span-1";
+  state.attemptKind = "SPAN_AUDIO";
+  state.bytes = new Uint8Array(
+    new TextEncoder().encode(
+      JSON.stringify({
+        schema_version: "videoforge-personal-worker-job-template/v1",
+        attempt_id: "span-1",
+        kind: "SPAN_AUDIO",
+        input_document: {},
+        outputs: [{}],
+        result: {},
+        tooling: {},
+      }),
+    ),
+  );
+  state.checksum = `sha256:${Array.from(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", state.bytes)),
+  )
+    .map((x) => x.toString(16).padStart(2, "0"))
+    .join("")}`;
+  state.batchRows = ["span-1", "span-2"].map((id) => ({
+    id,
+    kind: "SPAN_AUDIO",
+    project_id: "project",
+    project_revision_id: "revision",
+    job_spec_object_key: "private-template",
+    job_spec_content_length: state.bytes.length,
+    job_spec_checksum_sha256: state.checksum,
+    deadline_at: new Date(Date.now() + 60000),
+  }));
+  const result = await handlePersonalWorkerRequest(
+    batchRequest({
+      schema_version: "videoforge-personal-worker-claim-batch-request/v1",
+      max_span_jobs: 4,
+    }),
+    environment(),
+    { waitUntil() {} },
+    config,
+  );
+  expect(result?.status).toBe(200);
+  const body = (await result?.json()) as {
+    schema_version: string;
+    claims: { job: { attempt_id: string; completion_url: string } }[];
+  };
+  expect(body.schema_version).toBe("videoforge-personal-worker-claim-batch/v1");
+  expect(body.claims).toHaveLength(2);
+  expect(body.claims.map((claim) => claim.job.attempt_id)).toEqual(["span-1", "span-2"]);
+  expect(body.claims.every((claim) => claim.job.completion_url)).toBe(true);
+  expect(state.calls.filter((call) => call === "BEGIN")).toHaveLength(2);
+  expect(state.calls.filter((call) => call === "LEASE")).toHaveLength(2);
+  expect(state.calls).toContain("BATCH_ATTEMPT");
+  expect(new Set(state.leaseBatchIds)).toHaveProperty("size", 1);
+  expect(state.leaseBatchIds[0]).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+  );
 });
 it("rejects stale heartbeat before creating a lease", async () => {
   state.fresh = false;

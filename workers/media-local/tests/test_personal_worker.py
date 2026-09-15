@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import copy
 import io
+import threading
 import json
 import os
 import plistlib
@@ -33,6 +35,7 @@ from videoforge_media_local.personal_execution import (
     parse_personal_job,
 )
 from videoforge_media_local.personal_worker import (
+    _execute_claim_response,
     _build_configuration,
     _enroll,
     _ensure_autostart,
@@ -97,12 +100,65 @@ def job() -> dict[str, object]:
 
 
 class PersonalWorkerContractTests(unittest.TestCase):
+    def test_span_batch_runs_together_and_drains_successful_siblings(self) -> None:
+        claims = []
+        for index in range(4):
+            value = copy.deepcopy(job())
+            value["attempt_id"] = f"11111111-1111-4111-8111-{index:012d}"
+            value["kind"] = "SPAN_AUDIO"
+            value["input_document"] = {
+                "schema_version": "selected-span-audio-job/v1",
+                "output_profile": "SOULX_PCM16_48K_MONO",
+                "project_revision_id": "revision",
+                "timeline_plan_id": "timeline",
+                "transcript_id": "transcript",
+                "source_voiceover": {"sha256": "same"},
+            }
+            claims.append(
+                {
+                    "job": value,
+                    "lease_id": f"22222222-2222-4222-8222-{index:012d}",
+                    "lease_token": "a" * 64,
+                }
+            )
+        batch = {"schema_version": "videoforge-personal-worker-claim-batch/v1", "claims": claims}
+        barrier = threading.Barrier(4, timeout=5)
+        finished = []
+
+        def execute(value, *_args):
+            barrier.wait()
+            finished.append(value.attempt_id)
+            if value.attempt_id.endswith("000000000000"):
+                raise OSError("one span failed")
+            return "SUCCEEDED"
+
+        with patch(
+            "videoforge_media_local.personal_worker.execute_personal_job", side_effect=execute
+        ):
+            with self.assertRaises(OSError):
+                _execute_claim_response(batch, "token", Mock())
+        self.assertEqual(len(finished), 4)
+        with patch("videoforge_media_local.personal_worker.execute_personal_job") as run:
+            claims[3]["job"]["input_document"]["project_revision_id"] = "other"
+            with self.assertRaises(ValueError):
+                _execute_claim_response(batch, "token", Mock())
+            run.assert_not_called()
+            claims.append(claims[0])
+            with self.assertRaises(ValueError):
+                _execute_claim_response(batch, "token", Mock())
+            run.assert_not_called()
+
     def test_span_source_cache_reuses_verified_bytes_and_rejects_corruption(self) -> None:
         import hashlib
 
         content = b"voiceover source"
-        item = {"uri": "vf-local://source", "sha256": "sha256:" + hashlib.sha256(content).hexdigest(), "bytes": len(content)}
+        item = {
+            "uri": "vf-local://source",
+            "sha256": "sha256:" + hashlib.sha256(content).hexdigest(),
+            "bytes": len(content),
+        }
         with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as cache:
+
             def download(_item, destination, _cancel):
                 destination.write_bytes(content)
 
@@ -117,11 +173,15 @@ class PersonalWorkerContractTests(unittest.TestCase):
                     self.assertEqual(destination.read_bytes(), content)
                 fetch.assert_called_once()
                 (Path(cache) / "source").write_bytes(b"corrupted")
-                personal_execution._download_span_source(item, Path(root) / "repaired", lambda: False)
+                personal_execution._download_span_source(
+                    item, Path(root) / "repaired", lambda: False
+                )
                 self.assertEqual(fetch.call_count, 2)
                 self.assertEqual((Path(root) / "repaired").read_bytes(), content)
                 different_source = {**item, "uri": "vf-local://another-source"}
-                personal_execution._download_span_source(different_source, Path(root) / "other", lambda: False)
+                personal_execution._download_span_source(
+                    different_source, Path(root) / "other", lambda: False
+                )
                 self.assertEqual(fetch.call_count, 3)
 
     def test_accepts_only_explicit_soulx_48k_span_audio_jobs(self) -> None:
@@ -687,23 +747,40 @@ class PersonalWorkerContractTests(unittest.TestCase):
         state = {"installation_id": "11111111-1111-4111-8111-111111111111"}
         with (
             patch("videoforge_media_local.personal_worker.sys.argv", ["worker", "--background"]),
-            patch("videoforge_media_local.personal_worker._install_macos_if_needed", return_value=False),
-            patch("videoforge_media_local.personal_worker._build_configuration", return_value={
-                "control_plane_origin": "https://app.example.test",
-                "execution_bundle_sha256": "sha256:" + "c" * 64,
-            }),
+            patch(
+                "videoforge_media_local.personal_worker._install_macos_if_needed",
+                return_value=False,
+            ),
+            patch(
+                "videoforge_media_local.personal_worker._build_configuration",
+                return_value={
+                    "control_plane_origin": "https://app.example.test",
+                    "execution_bundle_sha256": "sha256:" + "c" * 64,
+                },
+            ),
             patch("videoforge_media_local.personal_worker._tool_paths", return_value=Mock()),
-            patch("videoforge_media_local.personal_worker._state", return_value=(Path("state"), state)),
+            patch(
+                "videoforge_media_local.personal_worker._state", return_value=(Path("state"), state)
+            ),
             patch("videoforge_media_local.personal_worker._credential_store") as credentials,
             patch("videoforge_media_local.personal_worker._ensure_autostart"),
-            patch("videoforge_media_local.personal_worker._platform_facts", return_value=("MACOS", "AARCH64")),
-            patch("videoforge_media_local.personal_worker._json_request", side_effect=[
-                (200, {"status": "ONLINE"}),
-                (200, {"job": {}, "lease_token": "lease"}),
-                (200, {"status": "UPDATE_REQUIRED"}),
-            ]),
+            patch(
+                "videoforge_media_local.personal_worker._platform_facts",
+                return_value=("MACOS", "AARCH64"),
+            ),
+            patch(
+                "videoforge_media_local.personal_worker._json_request",
+                side_effect=[
+                    (200, {"status": "ONLINE"}),
+                    (200, {"job": {}, "lease_token": "lease"}),
+                    (200, {"status": "UPDATE_REQUIRED"}),
+                ],
+            ),
             patch("videoforge_media_local.personal_worker.parse_personal_job", return_value=Mock()),
-            patch("videoforge_media_local.personal_worker.execute_personal_job", return_value="SUCCEEDED") as execute,
+            patch(
+                "videoforge_media_local.personal_worker.execute_personal_job",
+                return_value="SUCCEEDED",
+            ) as execute,
             patch("videoforge_media_local.personal_worker.time.sleep") as sleep,
         ):
             credentials.return_value.get.return_value = "a" * 64

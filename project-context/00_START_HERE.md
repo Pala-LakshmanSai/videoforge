@@ -1,5 +1,12 @@
 # VideoForge: start here
 
+## Bounded audio-span batching — 2026-09-15
+
+User authorized batching and production delivery. Worker0.1.22 claims and executes up to four existing same-project/revision span jobs together. Each keeps its exact attempt, lease, cancellation, upload checksum and completion receipt; successful siblings survive an individual failure. Migration145 allows one bounded work group per device, preserving singleton transcription/render and unique active attempts. No aggregate result bypass is introduced.
+
+Focused claim7, worker/cache and database admission checks pass. Four real FFmpeg spans completed in0.776s locally with one source download and eight verified artifact transfers; network was fixture-backed, so this is not an end-to-end hosted speed claim. Production release/activation is pending. See `evidence/acceptance/VF-10-09/2026-09-15-span-batch/acceptance.json`.
+
+
 ## Deployed render, prompt and claim repairs — 2026-09-15
 
 Source `e68013c1` is live on Cloudflare `054e4e1e-9c12-4a16-b1f8-e29d26d21674`, QUALIFIED_EXACT. Worker0.1.21 is published, installed and ONLINE with exact bundle. The 18m11s local final MP4 is delivered. Render thread bounds and one audio-only loudness correction are verified on retained media; unchanged output gates pass. Prompt-only camera/equipment suppression and no readable/invented text apply to initial and regenerated images. Existing accepted images remain unchanged.

@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 import unittest
+from unittest.mock import Mock
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
@@ -88,6 +89,8 @@ class FakeProcess:
         self.output_bytes = output_bytes
         self.calls: list[tuple[str, ...]] = []
         self.render_return_code = 0
+        self.render_stderr = "redacted failure"
+        self.correction_return_code = 0
         self.emit_render_output = True
         self.probe_frame_count = 360
         self.include_subtitle = False
@@ -175,6 +178,10 @@ class FakeProcess:
         if executable == "ffprobe":
             return ProcessResult(return_code=0, stdout=self._probe_payload(Path(call[-1])))
         if "-c:v" in call and call[call.index("-c:v") + 1] == "copy":
+            if self.correction_return_code:
+                return ProcessResult(
+                    return_code=self.correction_return_code, stderr=self.render_stderr
+                )
             self.artifacts.files[Path(call[-1])] = b"audio corrected mp4 bytes"
             return ProcessResult(return_code=0)
         if "-af" in call:
@@ -189,7 +196,7 @@ class FakeProcess:
             return ProcessResult(return_code=0, stderr=self._loudness_payload(values))
         if "-filter_complex" in call:
             if self.render_return_code != 0:
-                return ProcessResult(return_code=self.render_return_code, stderr="redacted failure")
+                return ProcessResult(return_code=self.render_return_code, stderr=self.render_stderr)
             if self.emit_render_output:
                 self.artifacts.files[Path(call[-1])] = self.output_bytes
             return ProcessResult(return_code=0)
@@ -355,7 +362,7 @@ class RenderFixture:
             "cancel_token": "local-render-cancel-token-0000000000001",
         }
 
-    def job(self) -> RenderJob:
+    def job(self, diagnostics: Any = None) -> RenderJob:
         return RenderJob(
             RenderJobDependencies(
                 resolver=self.resolver,
@@ -363,6 +370,7 @@ class RenderFixture:
                 tools=FakeTools(),
                 process=self.process,
                 cancellation=self.cancellation,
+                diagnostics=diagnostics,
             )
         )
 
@@ -662,6 +670,24 @@ class RenderJobTests(unittest.TestCase):
         self.assertEqual(sum("copy" in call for call in fixture.process.calls), 1)
         self.assertFalse(fixture.resolver.published)
 
+    def test_audio_failure_diagnostics_exclude_stderr_paths_and_tokens(self) -> None:
+        fixture = RenderFixture()
+        fixture.process.output_loudness = (-17.14, -1.55)
+        fixture.process.correction_return_code = 1
+        fixture.process.render_stderr = (
+            "No space left on device /private/secret token=private-token"
+        )
+        diagnostics = Mock()
+        result = fixture.job(diagnostics).run(
+            fixture.document, claimed_attempt_id="attempt_render_local_001"
+        )
+        self.assertIn("audio_correction failed: DISK_FULL (exit 1)", result["error"]["message"])
+        diagnostics.record.assert_called_once_with(
+            "render_process_failed",
+            {"phase": "audio_correction", "return_code": 1, "reason": "DISK_FULL"},
+        )
+        self.assertNotIn("private", str(diagnostics.record.call_args) + json.dumps(result))
+
     def test_rejects_exact_byte_hash_drift_before_invoking_render(self) -> None:
         fixture = RenderFixture()
         first_asset = fixture.document["assets"][0]
@@ -795,6 +821,7 @@ class RenderJobTests(unittest.TestCase):
             claimed_attempt_id="attempt_render_local_001",
         )
         self.assertEqual(process_result["error"]["code"], "RENDER_PROCESS_FAILED")
+        self.assertIn("visual_render", process_result["error"]["message"])
         self.assertFalse(process_fixture.resolver.published)
 
         missing_output_fixture = RenderFixture()

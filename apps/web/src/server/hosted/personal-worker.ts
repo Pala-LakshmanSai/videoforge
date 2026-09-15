@@ -730,6 +730,8 @@ async function heartbeat(request: Request, config: HostedRuntimeConfiguration) {
 interface ClaimedAttempt extends Record<string, unknown> {
   readonly id: string;
   readonly kind: "ASR" | "SPAN_AUDIO" | "RENDER";
+  readonly project_id: string;
+  readonly project_revision_id: string;
   readonly job_spec_object_key: string;
   readonly job_spec_content_length: string | number;
   readonly job_spec_checksum_sha256: string;
@@ -744,13 +746,16 @@ interface ClaimedInput extends Record<string, unknown> {
   readonly checksum_sha256: string;
 }
 
+interface ClaimedLease {
+  readonly leaseId: string;
+  readonly leaseToken: string;
+  readonly attempt: ClaimedAttempt;
+  readonly inputs: readonly ClaimedInput[];
+}
+
 type ClaimResult =
   | { readonly status: "EMPTY" }
-  | {
-      readonly status: "CLAIMED";
-      readonly attempt: ClaimedAttempt;
-      readonly inputs: readonly ClaimedInput[];
-    };
+  | { readonly status: "CLAIMED"; readonly claims: readonly ClaimedLease[] };
 
 interface PlannedAttempt extends Record<string, unknown> {
   readonly id: string;
@@ -921,6 +926,35 @@ function exactStoredTemplate(value: unknown): {
   };
 }
 
+async function claimBatchSize(request: Request): Promise<number | null | "INVALID"> {
+  let body: string;
+  try {
+    body = await request.text();
+  } catch {
+    return "INVALID";
+  }
+  if (body.trim() === "") return null;
+  if (body.length > 1_024) return "INVALID";
+  let value: unknown;
+  try {
+    value = JSON.parse(body);
+  } catch {
+    return "INVALID";
+  }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return "INVALID";
+  const row = value as Record<string, unknown>;
+  if (
+    Object.keys(row).sort().join(",") !== "max_span_jobs,schema_version" ||
+    row.schema_version !== "videoforge-personal-worker-claim-batch-request/v1" ||
+    !Number.isSafeInteger(row.max_span_jobs) ||
+    Number(row.max_span_jobs) < 1 ||
+    Number(row.max_span_jobs) > 4
+  ) {
+    return "INVALID";
+  }
+  return Number(row.max_span_jobs);
+}
+
 async function claim(
   request: Request,
   environment: HostedRuntimeEnvironment,
@@ -939,12 +973,14 @@ async function claim(
     if (scope.executionBundleSha256 !== config.mediaWorkerRelease.executionBundleSha256) {
       return json({ error: { code: "MEDIA_WORKER_UPDATE_REQUIRED" } }, 409);
     }
+    const batchSize = await claimBatchSize(request);
+    if (batchSize === "INVALID") {
+      return json({ error: { code: "MEDIA_WORKER_CLAIM_REJECTED" } }, 400);
+    }
     const reconciliationStatus = await reconcilePlannedAttempt(environment, pool, scope);
     if (reconciliationStatus === "STALE") {
       return json({ error: { code: "MEDIA_WORKER_HEARTBEAT_REQUIRED" } }, 409);
     }
-    const leaseId = crypto.randomUUID();
-    const leaseToken = await deriveScopedToken(config.mediaWorkerTokenSecret, "lease", leaseId);
     const claimed = await createNeonExecutor(pool).transaction<ClaimResult>(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
@@ -1067,6 +1103,7 @@ async function claim(
       if (existing.rows[0]) return { status: "EMPTY" };
       const attempt = await transaction.query<ClaimedAttempt>(
         `SELECT attempt.id,attempt.kind,attempt.job_spec_object_key,
+                attempt.project_id,attempt.project_revision_id,
                 attempt.job_spec_content_length,attempt.job_spec_checksum_sha256,
                 attempt.deadline_at
            FROM hosted_cpu_job_attempts AS attempt
@@ -1084,87 +1121,128 @@ async function claim(
       );
       const row = attempt.rows[0];
       if (!row) return { status: "EMPTY" };
-      await transaction.query(
-        `INSERT INTO media_worker_leases (
-           id, account_id, workspace_id, attempt_id, device_id, lease_token_sha256,
-           state, lease_expires_at, last_heartbeat_at, claimed_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,'RUNNING',now() + interval '5 minutes',now(),now())`,
-        [
-          leaseId,
-          scope.accountId,
-          scope.workspaceId,
-          row.id,
-          scope.deviceId,
-          await sha256(leaseToken),
-        ],
-      );
-      await transaction.query(
-        `UPDATE hosted_cpu_job_attempts
-            SET state = 'RUNNING', submitted_at = COALESCE(submitted_at, now()),
-                execution_bundle_sha256 = $2, version = version + 1, updated_at = now()
-          WHERE id = $1 AND state = 'OUTBOXED'`,
-        [row.id, config.mediaWorkerRelease.executionBundleSha256],
-      );
-      const inputs = await transaction.query<ClaimedInput>(
-        `SELECT uri, object_key, content_type, content_length, checksum_sha256
-           FROM media_worker_input_objects WHERE attempt_id = $1 ORDER BY uri`,
-        [row.id],
-      );
-      return { status: "CLAIMED", attempt: row, inputs: inputs.rows };
+      let rows: readonly ClaimedAttempt[] = [row];
+      if (batchSize !== null && row.kind === "SPAN_AUDIO") {
+        const batch = await transaction.query<ClaimedAttempt>(
+          `SELECT attempt.id,attempt.kind,attempt.job_spec_object_key,
+                  attempt.project_id,attempt.project_revision_id,
+                  attempt.job_spec_content_length,attempt.job_spec_checksum_sha256,
+                  attempt.deadline_at
+             FROM hosted_cpu_job_attempts AS attempt
+             JOIN projects AS project
+               ON project.account_id=attempt.account_id
+              AND project.workspace_id=attempt.workspace_id
+              AND project.id=attempt.project_id
+            WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
+              AND attempt.execution_backend = 'PERSONAL_WORKER'
+              AND attempt.state = 'OUTBOXED' AND attempt.deadline_at > now()
+              AND attempt.kind = 'SPAN_AUDIO'
+              AND attempt.project_id = $3 AND attempt.project_revision_id = $4
+              AND project.status='ACTIVE'
+            ORDER BY attempt.created_at, attempt.id
+            LIMIT $5 FOR UPDATE OF project,attempt SKIP LOCKED`,
+          [scope.accountId, scope.workspaceId, row.project_id, row.project_revision_id, batchSize],
+        );
+        rows = batch.rows.length > 0 ? batch.rows : [row];
+      }
+      const spanBatchId =
+        batchSize !== null && row.kind === "SPAN_AUDIO" ? crypto.randomUUID() : null;
+      const claims: ClaimedLease[] = [];
+      for (const selected of rows) {
+        const leaseId = crypto.randomUUID();
+        const leaseToken = await deriveScopedToken(config.mediaWorkerTokenSecret, "lease", leaseId);
+        await transaction.query(
+          `INSERT INTO media_worker_leases (
+             id, account_id, workspace_id, attempt_id, device_id, span_batch_id, lease_token_sha256,
+             state, lease_expires_at, last_heartbeat_at, claimed_at
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,'RUNNING',now() + interval '5 minutes',now(),now())`,
+          [
+            leaseId,
+            scope.accountId,
+            scope.workspaceId,
+            selected.id,
+            scope.deviceId,
+            spanBatchId,
+            await sha256(leaseToken),
+          ],
+        );
+        await transaction.query(
+          `UPDATE hosted_cpu_job_attempts
+              SET state = 'RUNNING', submitted_at = COALESCE(submitted_at, now()),
+                  execution_bundle_sha256 = $2, version = version + 1, updated_at = now()
+            WHERE id = $1 AND state = 'OUTBOXED'`,
+          [selected.id, config.mediaWorkerRelease.executionBundleSha256],
+        );
+        const inputs = await transaction.query<ClaimedInput>(
+          `SELECT uri, object_key, content_type, content_length, checksum_sha256
+             FROM media_worker_input_objects WHERE attempt_id = $1 ORDER BY uri`,
+          [selected.id],
+        );
+        claims.push({ leaseId, leaseToken, attempt: selected, inputs: inputs.rows });
+      }
+      return { status: "CLAIMED", claims };
     });
     if (claimed.status === "EMPTY") return new Response(null, { status: 204 });
-    const object = await environment.PRIVATE_ARTIFACTS?.get(claimed.attempt.job_spec_object_key);
-    if (!object || object.size !== Number(claimed.attempt.job_spec_content_length)) {
-      throw new Error("Personal worker job template is missing or has wrong size.");
-    }
-    const bytes = await object.arrayBuffer();
-    if ((await sha256Bytes(bytes)) !== claimed.attempt.job_spec_checksum_sha256) {
-      throw new Error("Personal worker job template checksum does not match durable truth.");
-    }
-    const template = exactStoredTemplate(JSON.parse(new TextDecoder().decode(bytes)));
-    if (!template || template.kind !== claimed.attempt.kind)
-      throw new Error("Personal worker job template is malformed.");
     const signer = new HostedR2Signer(config.r2);
-    const objects = await Promise.all(
-      claimed.inputs.map(async (input) => {
-        const port = await signer.sign({
-          method: "GET",
-          objectKey: String(input.object_key),
-          contentType: String(input.content_type),
-          contentLength: Number(input.content_length),
-          checksumSha256: String(input.checksum_sha256),
-          lifetimeSeconds: 3600,
-        });
-        return {
-          uri: input.uri,
-          url: port.url,
-          sha256: input.checksum_sha256,
-          bytes: Number(input.content_length),
-        };
-      }),
-    );
-    const leaseBase = `${config.publicOrigin}/api/v2/media-worker/leases/${leaseId}`;
+    const buildClaim = async (claim: ClaimedLease) => {
+      const object = await environment.PRIVATE_ARTIFACTS?.get(claim.attempt.job_spec_object_key);
+      if (!object || object.size !== Number(claim.attempt.job_spec_content_length)) {
+        throw new Error("Personal worker job template is missing or has wrong size.");
+      }
+      const bytes = await object.arrayBuffer();
+      if ((await sha256Bytes(bytes)) !== claim.attempt.job_spec_checksum_sha256) {
+        throw new Error("Personal worker job template checksum does not match durable truth.");
+      }
+      const template = exactStoredTemplate(JSON.parse(new TextDecoder().decode(bytes)));
+      if (!template || template.kind !== claim.attempt.kind)
+        throw new Error("Personal worker job template is malformed.");
+      const objects = await Promise.all(
+        claim.inputs.map(async (input) => {
+          const port = await signer.sign({
+            method: "GET",
+            objectKey: String(input.object_key),
+            contentType: String(input.content_type),
+            contentLength: Number(input.content_length),
+            checksumSha256: String(input.checksum_sha256),
+            lifetimeSeconds: 3600,
+          });
+          return {
+            uri: input.uri,
+            url: port.url,
+            sha256: input.checksum_sha256,
+            bytes: Number(input.content_length),
+          };
+        }),
+      );
+      const leaseBase = `${config.publicOrigin}/api/v2/media-worker/leases/${claim.leaseId}`;
+      return {
+        schema_version: "videoforge-personal-worker-claim/v1",
+        lease_id: claim.leaseId,
+        lease_token: claim.leaseToken,
+        lease_expires_in_seconds: 300,
+        job: {
+          schema_version: "videoforge-personal-worker-job-spec/v1",
+          attempt_id: claim.attempt.id,
+          kind: claim.attempt.kind,
+          expires_at: new Date(claim.attempt.deadline_at).toISOString(),
+          input_document: template.inputDocument,
+          objects,
+          outputs: template.outputs.map((output) => ({
+            ...output,
+            sign_url: `${leaseBase}/upload-port`,
+          })),
+          result: { ...template.result, sign_url: `${leaseBase}/upload-port` },
+          cancellation_url: `${leaseBase}/heartbeat`,
+          completion_url: `${leaseBase}/complete`,
+          tooling: template.tooling,
+        },
+      };
+    };
+    const responses = await Promise.all(claimed.claims.map((claim) => buildClaim(claim)));
+    if (batchSize === null) return json(responses[0]);
     return json({
-      schema_version: "videoforge-personal-worker-claim/v1",
-      lease_id: leaseId,
-      lease_token: leaseToken,
-      lease_expires_in_seconds: 300,
-      job: {
-        schema_version: "videoforge-personal-worker-job-spec/v1",
-        attempt_id: claimed.attempt.id,
-        kind: claimed.attempt.kind,
-        expires_at: new Date(claimed.attempt.deadline_at).toISOString(),
-        input_document: template.inputDocument,
-        objects,
-        outputs: template.outputs.map((output) => ({
-          ...output,
-          sign_url: `${leaseBase}/upload-port`,
-        })),
-        result: { ...template.result, sign_url: `${leaseBase}/upload-port` },
-        cancellation_url: `${leaseBase}/heartbeat`,
-        completion_url: `${leaseBase}/complete`,
-        tooling: template.tooling,
-      },
+      schema_version: "videoforge-personal-worker-claim-batch/v1",
+      claims: responses,
     });
   } finally {
     await pool.end();

@@ -1,0 +1,26 @@
+{
+  "seconds": 0.776,
+  "completed": [
+    "SUCCEEDED",
+    "SUCCEEDED",
+    "SUCCEEDED",
+    "SUCCEEDED"
+  ],
+  "verifiedUploads": 8,
+  "sourceDownloads": 1,
+  "network": "fixture",
+  "media": "actual retained voiceover and pinned FFmpeg",
+  "checkpoint": "V2-09",
+  "status": "LOCAL_BATCH_ACCEPTED_RELEASE_PENDING",
+  "batch_limit": 4,
+  "independent_attempts_and_receipts": true,
+  "migration": 145,
+  "tests": {
+    "claim": 7,
+    "batch_worker_and_cache": 2,
+    "batch_database": 1,
+    "render_diagnostics": 17
+  },
+  "hosted_benchmark": "NOT_RUN",
+  "existing_render": "c54c777a failed RENDER_PROCESS_FAILED; diagnostic reproduction stopped for memory/disk pressure; cause unproven; delivered MP4 remains in Downloads"
+}
