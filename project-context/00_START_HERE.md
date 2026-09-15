@@ -1,5 +1,34 @@
 # VideoForge: start here
 
+## Span retry and dispatch ceiling repair — 2026-09-15
+
+Project `026029a9` failed Stage 6 with 80 of 104 spans materialized and 24 Failed. All 24 carried
+`MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT`: the connected computer had 1.8 GB free against the
+worker's per-job requirement of `input_bytes*2 + 2 GiB`. A span attempt's id is derived from its
+span, so the materialization guard treated a FAILED attempt as a completed replay and the clips
+could never run again, while the stage showed FAILED with no reason and the computer panel showed
+"Waiting".
+
+Source `f8efa49d` now requeues a span attempt that failed for a bounded local reason (disk space,
+timeout, IO, subprocess, bounded generic) with a replay bound and delay, keeps dispatch preparing
+while that retry is due, names the local cause in the stage text, and shows Failed/Retrying on the
+computer panel instead of dead-ending. All 24 clips retried automatically and succeeded: 104 of 104
+spans materialized, `replay_count` 1 on exactly those 24 attempts, 24 REPLAYED events, Stage 6
+COMPLETE in the live payload. Focused tests 191 passing including a new regression test; typecheck
+12/12.
+
+Migrations `0148` and `0149` then removed the last dispatch blocker: the duration budget from `0135`
+quotes more than USD 2 per lane for videos longer than twenty minutes, while three pre-budget
+bounds (the lane batch validator, `serverless_cost_ledgers_ceiling_usd_check`,
+`serverless_predispatch_authorities_spend_ceiling_usd_check`, and the atomic pair predispatch
+commit) still enforced a flat USD 2, so such a video could never dispatch. Both bounds now derive
+from the budget's own maximum. Validated in rolled-back transactions first; with `0148` applied the
+real dispatch materialization returned its candidate. Live dispatch returns `202 SCHEDULED`.
+
+The re-bind restored `gpu_transport QUALIFIED_EXACT` for the new worker version with zero provider
+actions. Both lanes are `ASSIGNED` under the user-approved USD 3.00 run cap. Superseded detail is in
+`CURRENT_STATE.yaml`.
+
 ## Single project creation action — 2026-09-15
 
 Create project & start performs readiness checks automatically and proceeds without a separate Check cost & readiness click. Blockers and creation idempotency remain enforced. Focused verification and production build passed; source e5ab675c deployed on6b0d01ab with QUALIFIED_EXACT.
