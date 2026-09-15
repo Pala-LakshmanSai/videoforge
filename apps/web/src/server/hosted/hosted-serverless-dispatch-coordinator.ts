@@ -36,6 +36,13 @@ import type {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const LANES = Object.freeze(["mage_image", "soulx_avatar"] as const);
+/**
+ * Largest lane spend ceiling the database budget function can emit, i.e. the value of
+ * `videoforge_ordinary_video_budget(108000)->>'hardVariableCostCeilingMicroUsd'` in USD. A pair
+ * for a video longer than twenty minutes legitimately quotes more than the old flat USD 2, so this
+ * bound must stay aligned with the budget rather than with the pre-budget admission rules.
+ */
+const HOSTED_MAX_LANE_SPEND_CEILING_USD = 5;
 
 export interface HostedPersistedLaneDispatchTask {
   readonly taskId: string;
@@ -463,7 +470,7 @@ function validatePlan(
       task.maxOutputBytes < 1 ||
       !Number.isFinite(task.spendCeilingUsd) ||
       task.spendCeilingUsd <= 0 ||
-      task.spendCeilingUsd > 2 ||
+      task.spendCeilingUsd > HOSTED_MAX_LANE_SPEND_CEILING_USD ||
       !Number.isFinite(task.reservationUsd) ||
       task.reservationUsd < 0 ||
       task.reservationUsd > task.spendCeilingUsd ||
