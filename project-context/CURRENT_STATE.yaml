@@ -1,7 +1,17 @@
 schema_version: "2.0"
+stranded_request_reclaim_2026_09_15:
+  checkpoint: V2-09
+  status: DEPLOYED_AND_VERIFIED_LIVE
+  blocker: "Every GPU dispatch for the account returned 409 HOSTED_V209_DISPATCH_REJECTED. First failure was the admission INSERT/promotion colliding with generation_requests_one_active_video_per_account_uq because request bd7e1a80 stayed ACTIVE after its CPU render reached terminal failure; the whole admission transaction rolled back and no cause was logged."
+  why_unseen: "0043 deliberately leaves a request ACTIVE while CPU rendering owns RENDERING->COMPLETE, and no path settled a request whose render then failed terminally. The dispatch route logged only a generic code, so the SQLSTATE and message were invisible."
+  repair: "Migration 0147 adds videoforge_settle_stranded_hosted_v209_requests (evidence-bound: no unexpired active lease, runtime FAILED or RENDERING, at least one terminal RENDER job, no in-flight RENDER job) and wraps videoforge_admit_hosted_v209_generation to reclaim immediately before admission. Dispatch route now logs a bounded URL-redacted reason plus SQLSTATE."
+  validation: "Migration validated in a rolled-back transaction before apply. After apply the stranded request became FAILED/terminal, the new request c28903e1 was admitted ACTIVE on slot 1, and stage 6 audio spanning began executing (4 of 104 spans ready)."
+  provider: "No GPU provider action was created by the repair; the prior 409 attempts never reached RunPod."
 stage_model_audio_spanning_split_2026_09_15:
   checkpoint: V2-09
-  status: IMPLEMENTED_DEPLOY_PENDING
+  status: DEPLOYED_AND_VERIFIED_LIVE
+  deployed_source: b30a644cec6c2dc72d98ff8412db35b8fe0cb06d
+  deployed_worker_version: 7adeff90-913c-4e73-9a5f-a2ad1a3420bf
   decision: "User: audio spanning becomes its own numbered stage 6; image generation is stage 7 and avatar generation is stage 8. Stages 7 and 8 still dispatch together as one concurrent pair. Audio spanning must never share a numbered stage with image generation."
   behavior: "Numbered pipeline is 01 Prepare, 02 Transcribe, 03 Understand context, 04 Plan scenes, 05 Write prompts, 06 Audio spanning, 07 Generate images, 08 Generate avatar video, 09 Assemble, 10 Technical check, 11 Review. Stage 6 duration is now included once in the numbered-stage total."
   validation: "Focused product stage-boundary test asserts audio-spanning sits immediately after prompt-writing and immediately before image-generation; web typecheck passes."
