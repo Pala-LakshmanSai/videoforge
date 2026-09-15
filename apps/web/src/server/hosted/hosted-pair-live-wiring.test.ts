@@ -539,6 +539,49 @@ describe("hosted pair live provider wiring", () => {
     expect(drained).not.toHaveBeenCalled();
   });
 
+  // The 2026-09-15 incident: `cancelKnownActive` is the workflow schedule clock, not evidence of a
+  // cancellation, so an assigned lane whose provider record 404s while its funded window is still open
+  // was settleable as PERMANENT_FAILED with zero accepted items. Absence must now wait for the
+  // DB-anchored funded deadline even while the cancel clock is inside its window.
+  it("holds an absent lane whose cancel window is open but funded deadline has not expired", async () => {
+    const status = vi.fn(async () => {
+      throw new ServerlessTransportError("PROVIDER_JOB_ABSENT");
+    });
+    const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
+    const drained = vi.fn(async () => ({
+      workersTotal: 0 as const,
+      billableWorkers: 0 as const,
+      queuedJobs: 0 as const,
+      observedAt: "2026-09-06T01:00:00.000Z",
+    }));
+    const funded = rows().map((row) => ({ ...row, fundedDeadlineAt: "2026-08-26T01:30:00.000Z" }));
+    // Pin the database clock so "funded deadline not yet expired" is deterministic.
+    const readDatabaseNow = vi.fn(async () => "2026-08-26T01:00:00.000Z");
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => funded) } as never,
+      {
+        mage_image: { status, cancel: vi.fn() },
+        soulx_avatar: { status, cancel: vi.fn() },
+      },
+      settle as never,
+      { mage_image: drained, soulx_avatar: drained },
+      vi.fn(async () => ({ guard: "cost-bounded" })),
+      undefined,
+      undefined,
+      undefined,
+      readDatabaseNow,
+    );
+
+    // Held, not settled: an active cancel clock is a request, never evidence the provider stopped.
+    await expect(reconciler.observe(ids, true)).resolves.toEqual({
+      state: "CANCEL_REQUESTED",
+      active: 0,
+      unknown: 2,
+    });
+    expect(settle.reconcile).not.toHaveBeenCalled();
+    expect(drained).not.toHaveBeenCalled();
+  });
+
   it("settles an absent lane once its funded deadline has expired", async () => {
     const status = vi.fn(async () => {
       throw new ServerlessTransportError("PROVIDER_JOB_ABSENT");

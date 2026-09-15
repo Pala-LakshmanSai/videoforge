@@ -792,22 +792,58 @@ function buildTimelinePlan(
   };
 }
 
+/**
+ * Attempt 0 always uses the revision's own seed, so revisions whose seed already schedules
+ * keep byte-identical plans. Later attempts walk a fixed seed ladder: a seed whose search path
+ * dead-ends cannot stall planning, and the ladder depends only on the revision, so a replay
+ * reproduces the same attempt sequence and therefore the same plan.
+ */
+const MAXIMUM_SEED_ATTEMPTS = 8;
+
+function schedulerSeedForAttempt(seed: number, attempt: number): number {
+  return (seed + attempt) >>> 0;
+}
+
 export async function scheduleTimeline(
   request: SchedulerRequest,
 ): Promise<PipelineResult<TimelinePlanDocumentRef>> {
   const inputFailure = validateSchedulerInput(request.revision.value, request.transcript.value);
   if (inputFailure !== null) return pipelineFailure(inputFailure);
 
-  const variation = new SeededVariation(
-    request.revision.value.project_revision_id,
-    request.revision.value.scheduler_version,
-    request.revision.value.scheduler_seed,
-  );
-  const plan = buildTimelinePlan(request, variation);
-  if ("code" in plan) return pipelineFailure(plan);
+  const revision = request.revision.value;
+  let plan: TimelinePlanDocument | null = null;
+  let lastFailure: PipelineFailure | null = null;
 
-  const semanticFailure = validateTimelineSemantics(plan, request.transcript.value);
-  if (semanticFailure !== null) return pipelineFailure(semanticFailure);
+  for (let attempt = 0; attempt < MAXIMUM_SEED_ATTEMPTS && plan === null; attempt += 1) {
+    const variation = new SeededVariation(
+      revision.project_revision_id,
+      revision.scheduler_version,
+      schedulerSeedForAttempt(revision.scheduler_seed, attempt),
+    );
+    const candidate = buildTimelinePlan(request, variation);
+    if ("code" in candidate) {
+      lastFailure = candidate;
+      continue;
+    }
+
+    const semanticFailure = validateTimelineSemantics(candidate, request.transcript.value);
+    if (semanticFailure !== null) {
+      lastFailure = semanticFailure;
+      continue;
+    }
+
+    plan = candidate;
+  }
+
+  if (plan === null) {
+    return pipelineFailure(
+      lastFailure ??
+        fail("TIMELINE_INVALID", "No scheduler seed attempt produced a candidate timeline.", [
+          "revision",
+          "scheduler_seed",
+        ]),
+    );
+  }
 
   try {
     return pipelineSuccess(

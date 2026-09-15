@@ -1017,7 +1017,15 @@ export class HostedPairWorkflowReconciler {
               databaseNow !== null &&
               databaseNow >= Date.parse(row.fundedDeadlineAt),
           );
-          const absenceActionable = cancelKnownActive || fundedDeadlineExpired;
+          // `cancelKnownActive` is derived from the workflow schedule clock (clock >= cancelAt), not
+          // from evidence that anything was cancelled, so treating it as actionable let a lane whose
+          // provider record 404s while its funded window is still open settle as PERMANENT_FAILED with
+          // zero accepted items -- the 2026-09-15 incident class, narrowed but not closed by the
+          // original hold. Absence is now actionable only once the DB-anchored funded deadline has
+          // expired, or for a lane that has no funded deadline at all (legacy short-live tiers), where
+          // the cancel clock is the only anchor available.
+          const absenceActionable =
+            fundedDeadlineExpired || (cancelKnownActive && !row.fundedDeadlineAt);
           console.warn("hosted_pair_provider_job_absent", {
             lane: row.lane,
             attemptId: row.attemptId,
