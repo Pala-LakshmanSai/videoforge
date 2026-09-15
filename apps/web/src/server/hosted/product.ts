@@ -20,6 +20,7 @@ import {
 } from "./audio-validation";
 import { hostedGpuReadinessForConfiguration, type HostedGpuReadiness } from "./gpu-readiness";
 import { createNeonExecutor, createNeonPool } from "./neon";
+import { SPAN_AUDIO_RETRYABLE_LIMIT as SPAN_AUDIO_RETRY_LIMIT } from "./personal-worker";
 import { HostedR2Signer } from "./r2";
 import { verifyHostedObjectChecksum as verifyHostedPreviewChecksum } from "./r2-checksum";
 export { verifyHostedPreviewChecksum };
@@ -3626,6 +3627,28 @@ function hostedProgressPercent(completed: unknown, total: unknown): number | nul
   return Math.min(100, Math.max(0, Math.round((done / count) * 100)));
 }
 
+/** Stage 6 fails inside the owner's own computer, so name the local cause instead of a generic stop. */
+function hostedSpanFailureMessage(
+  failureCode: string | null,
+  total: number,
+  materialized: number,
+): string {
+  const state = `${materialized} of ${total} clips are ready.`;
+  if (failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") {
+    return `${state} Your computer ran out of free disk space; free space there to finish the remaining clips.`;
+  }
+  if (failureCode === "MEDIA_EXECUTION_TIMEOUT") {
+    return `${state} Your computer stopped a clip that took too long.`;
+  }
+  if (failureCode === "MEDIA_EXECUTION_IO_FAILED") {
+    return `${state} Your computer could not read or save the clip audio; free disk space there and keep the worker running.`;
+  }
+  if (failureCode === "MEDIA_EXECUTION_SUBPROCESS_FAILED") {
+    return `${state} Your computer's local audio process stopped unexpectedly; update the personal media worker before retrying.`;
+  }
+  return `${state} Your computer could not cut the remaining clips.`;
+}
+
 function hostedTiming(input: {
   readonly createdAt?: unknown;
   readonly submittedAt?: unknown;
@@ -6566,12 +6589,34 @@ async function projectDetail(
       );
       const spanAudioJobs = await transaction.query(
         `SELECT job.state, count(*)::int AS total,
-                min(job.submitted_at) AS started_at, max(job.terminal_at) AS completed_at
+                min(job.submitted_at) AS started_at, max(job.terminal_at) AS completed_at,
+                count(*) FILTER (
+                  WHERE job.state = 'FAILED' AND job.replay_count < ${SPAN_AUDIO_RETRY_LIMIT}
+                    AND job.deadline_at > now()
+                )::int AS retryable
            FROM hosted_cpu_job_attempts AS job
           WHERE job.account_id = $1 AND job.workspace_id = $2
             AND job.project_id = $3 AND job.kind = 'SPAN_AUDIO'
             AND job.project_revision_id = $4
           GROUP BY job.state`,
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
+      );
+      // Stage 6 runs on the owner's computer, so the reason a span could not be cut belongs in the
+      // payload: the owner has to free disk space locally, and the automatic retry then resumes.
+      const spanAudioFailure = await transaction.query(
+        `SELECT lease.failure_code
+           FROM media_worker_leases AS lease
+           JOIN hosted_cpu_job_attempts AS job
+             ON job.account_id = lease.account_id
+            AND job.workspace_id = lease.workspace_id
+            AND job.id = lease.attempt_id
+          WHERE job.account_id = $1 AND job.workspace_id = $2
+            AND job.project_id = $3 AND job.kind = 'SPAN_AUDIO'
+            AND job.project_revision_id = $4
+            AND lease.state = 'FAILED' AND lease.failure_code IS NOT NULL
+          GROUP BY lease.failure_code
+          ORDER BY count(*) DESC, lease.failure_code
+          LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const serverlessOutputs = await transaction.query(
@@ -6809,6 +6854,7 @@ async function projectDetail(
         serverlessOutputs: serverlessOutputs.rows,
         spanAudio: spanAudio.rows,
         spanAudioJobs: spanAudioJobs.rows,
+        spanAudioFailure: spanAudioFailure.rows,
         cost: cost.rows[0] ?? null,
         zeroWorkers: zeroWorkers.rows[0] ?? null,
         failedTasks: failedTasks.rows,
@@ -6919,6 +6965,11 @@ async function projectDetail(
       serverlessByLane.get(lane) ?? runtimeLanes.find((value) => value.lane === lane) ?? null;
     const spanRows = (detail.spanAudio ?? []) as Record<string, unknown>[];
     const spanJobRows = (detail.spanAudioJobs ?? []) as Record<string, unknown>[];
+    const spanFailureRows = (detail.spanAudioFailure ?? []) as Record<string, unknown>[];
+    const spanFailureCode =
+      typeof spanFailureRows[0]?.failure_code === "string"
+        ? String(spanFailureRows[0].failure_code)
+        : null;
     const spanCount = (rows: Record<string, unknown>[], state: string) =>
       numberOrNull(rows.find((row) => row.state === state)?.total) ?? 0;
     const spanTotal = spanRows.reduce((sum, row) => sum + (numberOrNull(row.total) ?? 0), 0);
@@ -6947,6 +6998,11 @@ async function projectDetail(
           : null,
       total: spanTotal,
       materialized: spanCount(spanRows, "MATERIALIZED"),
+      retrying:
+        numberOrNull(
+          spanJobRows.find((row) => row.state === "FAILED")?.retryable,
+        ) ?? 0,
+      failure_code: spanFailureCode,
       planned: spanCount(spanRows, "PLANNED"),
       running: spanCount(spanJobRows, "RUNNING"),
       queued: spanCount(spanJobRows, "OUTBOXED"),
@@ -7117,7 +7173,9 @@ async function projectDetail(
         name: "Audio spanning",
         status:
           spanAudioProgress.failed > 0
-            ? "FAILED"
+            ? spanAudioProgress.retrying > 0
+              ? "RUNNING"
+              : "FAILED"
             : spanTotal > 0 && spanAudioProgress.materialized === spanTotal
               ? "COMPLETE"
               : spanAudioProgress.running > 0 ||
@@ -7133,7 +7191,11 @@ async function projectDetail(
         completed_at: spanAudioProgress.completed_at,
         detail:
           spanTotal > 0
-            ? `Your computer extracts the exact voiceover span for each avatar segment. ${spanAudioProgress.materialized} of ${spanTotal} spans are ready.`
+            ? spanAudioProgress.failed > 0
+              ? spanAudioProgress.retrying > 0
+                ? `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} The same ${spanAudioProgress.retrying} clip${spanAudioProgress.retrying === 1 ? "" : "s"} retry automatically on your computer.`
+                : `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} Open this project again to retry on your computer.`
+              : `Your computer extracts the exact voiceover span for each avatar segment. ${spanAudioProgress.materialized} of ${spanTotal} spans are ready.`
             : "Your computer extracts the exact voiceover span for each avatar segment before any GPU work starts.",
         eta_ms: null,
       },

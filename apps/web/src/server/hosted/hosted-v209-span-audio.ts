@@ -266,6 +266,9 @@ export function createHostedV209SpanAudioCoordinator(
       const submission = exactHostedSpanAudioSubmission(job.submissionDocument, job.attemptId)!;
       if (scheduledIds.has(job.attemptId)) continue;
       const scheduled = await dependencies.schedule(identity, submission, job.attemptId);
+      // A span cut runs on the owner's own computer. A local failure is requeued automatically, so
+      // keep reporting preparation instead of failing the whole dispatch while that retry is due.
+      if (scheduled.state === "FAILED") continue;
       if (
         ![
           "OUTBOXED",

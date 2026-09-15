@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   attemptKind: "ASR" as "ASR" | "SPAN_AUDIO",
   batchRows: [] as Record<string, unknown>[],
   leaseBatchIds: [] as unknown[],
+  retryableRows: [] as Record<string, unknown>[],
 }));
 vi.mock("./neon", async (original) => ({
   ...(await original<typeof import("./neon")>()),
@@ -84,6 +85,10 @@ vi.mock("./neon", async (original) => ({
           if (sql.includes("SELECT 1 FROM media_worker_devices")) {
             state.calls.push("FRESHNESS");
             return { rows: state.fresh ? [{ ok: 1 }] : [] };
+          }
+          if (sql.includes("attempt.kind = 'SPAN_AUDIO' AND attempt.state = 'FAILED'")) {
+            state.calls.push("RETRYABLE_REQUEUE");
+            return { rows: state.retryableRows };
           }
           if (sql.includes("FROM media_worker_input_objects")) {
             state.calls.push("INPUTS");
@@ -170,6 +175,7 @@ beforeEach(async () => {
   state.attemptKind = "ASR";
   state.batchRows = [];
   state.leaseBatchIds = [];
+  state.retryableRows = [];
   state.bytes = new Uint8Array(
     new TextEncoder().encode(
       JSON.stringify({
@@ -378,4 +384,17 @@ it("pins expected result lookup and keeps missing-result rejection", async () =>
     "RELEASE",
     "END",
   ]);
+});
+it("requeues a span attempt that failed for a local reason so stage 6 recovers", async () => {
+  state.retryableRows = [{ id: "attempt", replay_count: 1 }];
+  const result = await handlePersonalWorkerRequest(
+    request(),
+    environment(),
+    { waitUntil() {} },
+    config,
+  );
+  expect(result?.status).toBe(200);
+  expect(state.calls).toContain("RETRYABLE_REQUEUE");
+  // The retry must be durable before any lease is issued for the same claim.
+  expect(state.calls.indexOf("RETRYABLE_REQUEUE")).toBeLessThan(state.calls.indexOf("LEASE"));
 });

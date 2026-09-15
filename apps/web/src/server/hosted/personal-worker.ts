@@ -16,6 +16,19 @@ const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const TOKEN = /^[0-9a-f]{64}$/u;
 const WORKER_VERSION = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/u;
 const PLANNED_RECONCILIATION_GRACE_MS = 2 * 60 * 1_000;
+// Stage 6 span cuts run on the owner's own computer, so a local resource problem is recoverable
+// rather than terminal. These bound the automatic retry of a span attempt that failed for a local
+// reason; the attempt keeps its exact identity and its content-addressed lineage.
+export const SPAN_AUDIO_RETRYABLE_LIMIT = 32;
+const SPAN_AUDIO_RETRY_DELAY_SECONDS = 45;
+const SPAN_AUDIO_RETRYABLE_FAILURE_CODES = [
+  "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
+  "MEDIA_EXECUTION_IO_FAILED",
+  "MEDIA_EXECUTION_TIMEOUT",
+  "MEDIA_EXECUTION_SUBPROCESS_FAILED",
+  // Bounded generic local failure reported by the installed worker.
+  "MEDIA_EXECUTION_FAILED",
+];
 
 export function supportedWorkerPlatform(platform: unknown, architecture: unknown): boolean {
   return (
@@ -1092,6 +1105,73 @@ async function claim(
                  AND attempt_id = $1::uuid AND kind = $5 AND facts_sha256 = $4
             )`,
           [recovered.id, scope.accountId, scope.workspaceId, replayFacts, eventKind],
+        );
+      }
+      // A local resource problem on the connected computer (full disk, transient IO, bounded
+      // timeout, child crash) is not a defect of the project. Requeue those span attempts so the
+      // owner can free space or reconnect and the same exact attempt runs again, instead of
+      // stranding the whole revision at Stage 6 forever. The bound, the retry delay and the
+      // fresh-lease requirement keep this fail-closed and idempotent.
+      const retryableAttempts = await transaction.query<{ id: string; replay_count: number }>(
+        `UPDATE hosted_cpu_job_attempts AS attempt
+            SET state = 'OUTBOXED',
+                submitted_at = NULL,
+                terminal_at = NULL,
+                replay_count = attempt.replay_count + 1,
+                version = attempt.version + 1, updated_at = now()
+          WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
+            AND attempt.execution_backend = 'PERSONAL_WORKER'
+            AND attempt.kind = 'SPAN_AUDIO' AND attempt.state = 'FAILED'
+            AND attempt.replay_count < $3
+            AND attempt.deadline_at > now()
+            AND attempt.terminal_at IS NOT NULL
+            AND attempt.terminal_at <= now() - make_interval(secs => $4)
+            AND EXISTS (
+              SELECT 1 FROM media_worker_leases AS lease
+               WHERE lease.attempt_id = attempt.id
+                 AND lease.failure_code IN (${SPAN_AUDIO_RETRYABLE_FAILURE_CODES.map(
+                   (code) => `'${code}'`,
+                 ).join(",")})
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM media_worker_leases AS lease
+               WHERE lease.attempt_id = attempt.id
+                 AND lease.state IN ('CLAIMED', 'RUNNING', 'COMPLETING')
+                 AND lease.lease_expires_at > now()
+            )
+          RETURNING attempt.id, attempt.replay_count`,
+        [
+          scope.accountId,
+          scope.workspaceId,
+          SPAN_AUDIO_RETRYABLE_LIMIT,
+          SPAN_AUDIO_RETRY_DELAY_SECONDS,
+        ],
+      );
+      for (const retried of retryableAttempts.rows) {
+        const retryFacts = await sha256(
+          JSON.stringify({
+            attempt_id: retried.id,
+            reason: "RETRYABLE_LOCAL_FAILURE",
+            replay_count: retried.replay_count,
+            schema_version: "videoforge-hosted-cpu-replayed/v1",
+          }),
+        );
+        await transaction.query(
+          `INSERT INTO hosted_cpu_job_events (
+             id, account_id, workspace_id, attempt_id, sequence, kind, facts_sha256, occurred_at
+           ) SELECT md5($1::text || ':claim:' || $5::text || ':' || next.sequence::text)::uuid,
+                    $2::uuid, $3::uuid, $1::uuid, next.sequence, $5, $4, now()
+                 FROM (
+                   SELECT COALESCE(max(sequence), 0) + 1 AS sequence
+                     FROM hosted_cpu_job_events
+                    WHERE account_id = $2::uuid AND workspace_id = $3::uuid AND attempt_id = $1::uuid
+                 ) AS next
+            WHERE NOT EXISTS (
+              SELECT 1 FROM hosted_cpu_job_events
+               WHERE account_id = $2::uuid AND workspace_id = $3::uuid
+                 AND attempt_id = $1::uuid AND kind = $5 AND facts_sha256 = $4
+            )`,
+          [retried.id, scope.accountId, scope.workspaceId, retryFacts, "REPLAYED"],
         );
       }
       const existing = await transaction.query(

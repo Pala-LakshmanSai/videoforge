@@ -995,6 +995,9 @@ interface HostedSpanAudioProgress {
   readonly queued: number;
   readonly succeeded: number;
   readonly failed: number;
+  /** Failed clips that still have automatic retries left on the owner's computer. */
+  readonly retrying?: number;
+  readonly failure_code?: string | null;
 }
 
 interface HostedGpuLaneActivity {
@@ -1232,28 +1235,38 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
   if (!progress || progress.total === 0) return null;
   const done = progress.materialized;
   const percent = Math.min(100, Math.round((done / progress.total) * 100));
-  const active = progress.running > 0 || progress.queued > 0;
+  const retrying = progress.retrying ?? 0;
+  const active = progress.running > 0 || progress.queued > 0 || retrying > 0;
   const complete = done === progress.total;
+  const stopped = progress.failed > 0 && retrying === 0;
   return (
     <Panel
       className="gpu-lane-panel"
       eyebrow="Your computer"
-      heading={complete ? "Avatar audio ready" : "Preparing avatar audio"}
+      heading={complete ? "Avatar audio ready" : stopped ? "Avatar audio stopped" : "Preparing avatar audio"}
     >
       <ul className="gpu-lane-list">
         <li className="gpu-lane-item">
           <div className="gpu-lane-head">
             <span className="gpu-lane-name">Span audio</span>
             <span
-              className={`gpu-lane-phase gpu-lane-phase-${active || complete ? "active" : "idle"}`}
+              className={`gpu-lane-phase gpu-lane-phase-${complete || active ? "active" : "idle"}`}
             >
               {active ? <span className="live-progress-pulse" aria-hidden="true" /> : null}
-              {complete ? "Ready" : active ? "Cutting" : "Waiting"}
+              {complete
+                ? "Ready"
+                : stopped
+                  ? "Failed"
+                  : progress.running > 0 || progress.queued > 0
+                    ? "Cutting"
+                    : retrying > 0
+                      ? "Retrying"
+                      : "Waiting"}
             </span>
             <HostedElapsed
               since={progress.started_at ?? null}
               until={progress.completed_at ?? null}
-              running={active && !complete && progress.failed === 0}
+              running={active && !complete && !stopped}
               label="Span audio elapsed time"
             />
           </div>
@@ -1271,12 +1284,49 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
             {done} of {progress.total} clips ready
             {progress.running > 0 ? " · 1 cutting now" : ""}
             {progress.queued > 0 ? ` · ${progress.queued} queued` : ""}
-            {progress.failed > 0 ? ` · ${progress.failed} failed` : ""}
+            {progress.failed > 0
+              ? ` · ${progress.failed} failed${retrying > 0 ? ` (${retrying} retrying automatically)` : ""}`
+              : ""}
           </p>
+          {progress.failed > 0 ? (
+            <p className="helper gpu-lane-detail">
+              {spanAudioFailureMessage(progress.failure_code ?? null, retrying > 0)}
+            </p>
+          ) : null}
         </li>
       </ul>
     </Panel>
   );
+}
+
+/** Stage 6 stops inside the owner's own computer, so name that local cause and the retry state. */
+export function spanAudioFailureMessage(
+  failureCode: string | null,
+  retrying: boolean,
+): string {
+  if (failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") {
+    return retrying
+      ? "Your computer ran out of free disk space. Free space there and the remaining clips finish automatically."
+      : "Your computer ran out of free disk space. Free space there, then open this project again to finish the remaining clips.";
+  }
+  if (failureCode === "MEDIA_EXECUTION_IO_FAILED") {
+    return retrying
+      ? "Your computer could not read or save the clip audio. Free disk space there and the remaining clips finish automatically."
+      : "Your computer could not read or save the clip audio. Free disk space there, then open this project again to finish the remaining clips.";
+  }
+  if (failureCode === "MEDIA_EXECUTION_TIMEOUT") {
+    return retrying
+      ? "A clip on your computer took too long and is being cut again."
+      : "A clip on your computer took too long. Open this project again to retry it.";
+  }
+  if (failureCode === "MEDIA_EXECUTION_SUBPROCESS_FAILED") {
+    return retrying
+      ? "Your computer's local audio process stopped unexpectedly and the clip is being cut again."
+      : "Your computer's local audio process stopped unexpectedly. Update the personal media worker, then open this project again.";
+  }
+  return retrying
+    ? "Your computer could not cut some clips and is retrying them."
+    : "Your computer could not cut some clips. Open this project again to retry them.";
 }
 
 interface HostedV209DispatchResponse {
@@ -4310,6 +4360,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     (stage) => stage.id === "prompt-writing",
   )?.status;
   const spanAudio = query.data?.span_audio;
+  // A clip that failed on the owner's own computer still has automatic retries, so keep the
+  // preparation phase open instead of dead-ending Stage 6 the moment one clip fails.
+  const spanFailuresAreRetryable = Boolean(
+    spanAudio && (spanAudio.failed === 0 || (spanAudio.retrying ?? 0) > 0),
+  );
   const spanPreparationActive = Boolean(
     query.data?.generation?.id &&
       query.data.generation.stage !== "FAILED" &&
@@ -4320,7 +4375,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         HOSTED_TERMINAL_STAGE_STATUSES.has(stage.status.toUpperCase()),
       ) &&
       spanAudio &&
-      spanAudio.failed === 0 &&
+      spanFailuresAreRetryable &&
       spanAudio.materialized < spanAudio.total &&
       (spanAudio.running > 0 || spanAudio.materialized > 0),
   );
