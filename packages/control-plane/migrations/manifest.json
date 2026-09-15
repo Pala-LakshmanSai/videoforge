@@ -846,6 +846,12 @@
       "name": "hosted_pair_polled_progress",
       "filename": "0142_hosted_pair_polled_progress.sql",
       "sha256": "sha256:7b67924cb8ad6d180185f45a692c2c475b0e3f0bf084620e0f1d652006a03f29"
+    },
+    {
+      "version": 143,
+      "name": "hosted_funded_accepted_lane_deadline",
+      "filename": "0143_hosted_funded_accepted_lane_deadline.sql",
+      "sha256": "sha256:e6f4e2bbe4c301bab91d47576b6b9fd161658d34e8d6da807883570711f3e67f"
     }
   ]
 }
