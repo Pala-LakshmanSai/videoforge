@@ -834,6 +834,12 @@
       "name": "hosted_standby_zero_evidence",
       "filename": "0140_hosted_standby_zero_evidence.sql",
       "sha256": "sha256:b289a6a9b8f883df8b0ff27d5a0005808deeff45db4621593400b72b5eca158f"
+    },
+    {
+      "version": 141,
+      "name": "hosted_soulx_upload_retry_successor",
+      "filename": "0141_hosted_soulx_upload_retry_successor.sql",
+      "sha256": "sha256:e7d8c504ccbb104d7aa92635fc3030a595440eab601076e5f2dc02fecace83df"
     }
   ]
 }
