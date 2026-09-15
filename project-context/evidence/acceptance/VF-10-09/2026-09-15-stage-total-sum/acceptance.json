@@ -1,0 +1,11 @@
+{
+  "checkpoint": "V2-09",
+  "source": "b8b38b6962e5fd107ad6b9a1b4fd8d0bcbe9e5f4",
+  "cloudflare_version": "87d2a4b7-93bc-4f88-82ab-559d668e8752",
+  "status": "DEPLOYED_QUALIFIED_EXACT",
+  "focused_timer_tests": 2,
+  "typescript": "PASS",
+  "production_build": "PASS",
+  "total_semantics": "Sum each displayed numbered stage duration rounded to seconds, including active and concurrent lanes; missing intervals contribute zero, nested technical checks not double-counted.",
+  "compute_started": false
+}
