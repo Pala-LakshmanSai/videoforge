@@ -16,6 +16,7 @@ import {
   sessionScope,
 } from "./hosted-product-route-common";
 import { createNeonExecutor, createNeonPool } from "./neon";
+import type { ContinuationScope } from "./stage-continuation";
 import {
   HOSTED_PROMPT_RESERVATION_MICRO_USD,
   HostedPromptExecutionError,
@@ -76,11 +77,13 @@ export function hostedPromptRedispatchable(planRecord: Record<string, unknown>):
 }
 
 
-async function writeProjectPrompts(
+export async function writeProjectPrompts(
   request: Request,
   projectId: string,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
+  /** Set only by server-side stage continuation, which already holds a validated scope. */
+  internalScope?: ContinuationScope,
 ): Promise<Response> {
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
@@ -91,7 +94,7 @@ async function writeProjectPrompts(
   const pool = createNeonPool(config.neon.databaseUrl);
   let runId: string | null = null;
   try {
-    const scope = await sessionScope(request, config, pool, executionContext);
+    const scope = internalScope ?? (await sessionScope(request, config, pool, executionContext));
     if (scope instanceof Response) return scope;
     const body = await parseHostedJson(request, "HOSTED_PROMPT_REQUEST_REJECTED", 4_096);
     if (body instanceof Response) return body;

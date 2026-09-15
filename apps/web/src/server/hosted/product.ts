@@ -33,6 +33,12 @@ import {
   sessionScope,
   type HostedScope,
 } from "./hosted-product-route-common";
+import {
+  continuationRequest,
+  continuationScope,
+  type ContinuationScope,
+} from "./stage-continuation";
+import { writeProjectPrompts } from "./hosted-prompt-route";
 import { RunwareTransportError } from "../providers/runware-http-transport";
 import {
   extractHostedVoiceoverContext,
@@ -5547,6 +5553,20 @@ async function createVoiceoverContext(
       return accepted.rows[0]?.completed === true;
     });
     if (!completed) throw new Error("HOSTED_CONTEXT_ACCEPTANCE_REJECTED");
+    // Stage 3 is durable, so hand off to stage 4 here instead of waiting for a browser to notice.
+    // The plan keeps its own durable claim, so a concurrent browser handoff is still refused.
+    executionContext.waitUntil(
+      renderHandoff(
+        continuationRequest(config, `/api/v2/hosted/projects/${projectId}/render`, {
+          asr_attempt_id: state.asr_attempt_id,
+        }),
+        projectId,
+        environment,
+        config,
+        executionContext,
+        continuationScope(scope),
+      ).catch(() => undefined),
+    );
     return response({
       schema_version: "videoforge-hosted-context-response/v1",
       state: "COMPLETE",
@@ -5851,6 +5871,8 @@ async function renderHandoff(
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
+  /** Set only by server-side stage continuation, which already holds a validated scope. */
+  internalScope?: ContinuationScope,
 ): Promise<Response> {
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
@@ -5858,7 +5880,7 @@ async function renderHandoff(
   const pool = createNeonPool(config.neon.databaseUrl);
   let generationCoordinator: typeof import("./generation-coordinator") | null = null;
   try {
-    const scope = await sessionScope(request, config, pool, executionContext);
+    const scope = internalScope ?? (await sessionScope(request, config, pool, executionContext));
     if (scope instanceof Response) return scope;
     const body = await parseHostedJson(request, "HOSTED_RENDER_HANDOFF_REJECTED", 4_096);
     if (body instanceof Response) return body;
@@ -6012,6 +6034,18 @@ async function renderHandoff(
           }),
       },
     });
+    // Stage 4 is durable, so hand off to stage 5 here instead of waiting for a browser to notice.
+    executionContext.waitUntil(
+      writeProjectPrompts(
+        continuationRequest(config, `/api/v2/hosted/projects/${projectId}/prompts`, {
+          maximum_prompt_spend_micro_usd: 40_000,
+        }),
+        projectId,
+        config,
+        executionContext,
+        continuationScope(scope),
+      ).catch(() => undefined),
+    );
     return response(result, 202);
   } catch (error) {
     if (
