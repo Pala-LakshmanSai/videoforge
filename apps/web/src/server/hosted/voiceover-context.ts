@@ -15,6 +15,16 @@ import {
 
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
 const HOSTED_CONTEXT_RESERVATION_USD = HOSTED_CONTEXT_RESERVATION_MICRO_USD / 1_000_000;
+// Problem codes that mean "the provider/transport failed before any result was accepted". Only
+// these may be redispatched once; a definite rejection or an accepted result never is.
+export const HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES: ReadonlySet<string> = new Set([
+  "VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE",
+  "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN",
+  "VOICEOVER_CONTEXT_RESPONSE_UNCERTAIN",
+  "VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN",
+  "HOSTED_CONTEXT_EXECUTION_UNKNOWN",
+  "HOSTED_CONTEXT_PROVIDER_FAILURE",
+]);
 const MODEL = "deepseek:v4@flash" as const;
 const REQUEST_CONTRACT_VERSION = "runware-deepseek-v4-flash-context-request-v9" as const;
 const MAX_SUBJECT_CHARS = 90 as const;

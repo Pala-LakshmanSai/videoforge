@@ -37,6 +37,7 @@ import { RunwareTransportError } from "../providers/runware-http-transport";
 import {
   extractHostedVoiceoverContext,
   HOSTED_CONTEXT_RESERVATION_MICRO_USD,
+  HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES,
   HostedVoiceoverContextProviderError,
   prepareHostedVoiceoverContextRequest,
   reconcileHostedVoiceoverContext,
@@ -5330,13 +5331,21 @@ async function createVoiceoverContext(
         output_content_length: number | string;
         output_sha256: string;
         existing_state: string | null;
+        existing_context_id: string | null;
+        existing_context_hash: string | null;
+        existing_problem_code: string | null;
+        existing_redispatch_count: number | string | null;
       }>(
         `SELECT revision.id::text AS revision_id, attempt.id::text AS asr_attempt_id,
                 attempt.result_object_key AS output_object_key,
                 attempt.result_content_type AS output_content_type,
                 attempt.result_content_length AS output_content_length,
                 attempt.result_checksum_sha256 AS output_sha256,
-                context.state AS existing_state
+                context.state AS existing_state,
+                context.id::text AS existing_context_id,
+                context.context_hash AS existing_context_hash,
+                context.problem_code AS existing_problem_code,
+                context.redispatch_count AS existing_redispatch_count
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id=project.account_id AND revision.workspace_id=project.workspace_id
@@ -5355,22 +5364,35 @@ async function createVoiceoverContext(
       return result.rows[0] ?? null;
     });
     if (!state) return response({ error: { code: "HOSTED_CONTEXT_ASR_NOT_READY" } }, 409);
+    let redispatchable = false;
     if (state.existing_state === "SUCCEEDED")
       return response({
         schema_version: "videoforge-hosted-context-response/v1",
         state: "COMPLETE",
         replayed: true,
       });
-    if (state.existing_state !== null)
-      return response(
-        {
-          error: {
-            code: "HOSTED_CONTEXT_ALREADY_CLAIMED",
-            message: "The context request has already been claimed and cannot be redispatched.",
+    if (state.existing_state !== null) {
+      // A provider failure that left no accepted result used to strand the revision here forever:
+      // every later POST /context answered 409 and reconciliation could not resume the task. One
+      // bounded redispatch is allowed when the stored failure is a provider/transport class and no
+      // result was ever accepted; everything else still refuses.
+      redispatchable =
+        state.existing_context_hash === null &&
+        (state.existing_state === "FAILED" || state.existing_state === "UNKNOWN") &&
+        typeof state.existing_problem_code === "string" &&
+        HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES.has(state.existing_problem_code) &&
+        Number(state.existing_redispatch_count ?? 0) < 1;
+      if (!redispatchable)
+        return response(
+          {
+            error: {
+              code: "HOSTED_CONTEXT_ALREADY_CLAIMED",
+              message: "The context request has already been claimed and cannot be redispatched.",
+            },
           },
-        },
-        409,
-      );
+          409,
+        );
+    }
     const bucket = environment.PRIVATE_ARTIFACTS;
     if (
       !bucket ||
@@ -5423,7 +5445,9 @@ async function createVoiceoverContext(
         scope.account_id,
       ]);
       const result = await transaction.query<{ prepared: unknown }>(
-        "SELECT public.videoforge_prepare_hosted_voiceover_context($1::jsonb) AS prepared",
+        `SELECT public.${redispatchable
+          ? "videoforge_redispatch_hosted_voiceover_context"
+          : "videoforge_prepare_hosted_voiceover_context"}($1::jsonb) AS prepared`,
         [
           JSON.stringify({
             account_id: scope.account_id,
@@ -5449,7 +5473,12 @@ async function createVoiceoverContext(
     });
     if (!claimed || claimed.created !== true)
       return response({ error: { code: "HOSTED_CONTEXT_ALREADY_CLAIMED" } }, 409);
-    contextId = identity.contextId;
+    // A redispatch reuses the existing revision context row, so the authoritative id is the one the
+    // database returned rather than the freshly generated claim identity.
+    contextId =
+      typeof claimed.context_id === "string" && claimed.context_id.length > 0
+        ? claimed.context_id
+        : identity.contextId;
     const result = await extractHostedVoiceoverContext({
       prepared: preparedRequest,
       apiKey: config.styleAnalysis.apiKey,
