@@ -4785,6 +4785,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const promptWritingStopped = ["FAILED", "ACTION_REQUIRED", "BLOCKED", "CANCELLED"].includes(
     promptStage?.status ?? "",
   );
+  // The numbered pipeline renders the polled stage status, which can lag the work it describes: a
+  // backgrounded tab throttles the poll, and a writer task switches states before the next response
+  // lands. The live panel beside it already knows prompt writing is running, so the numbered stage
+  // must agree instead of reporting the previous "not started" status.
+  const displayedStages = uiStages.map((stage) =>
+    stage.id === "prompt-writing" &&
+    promptWritingActive &&
+    !["COMPLETE", "FAILED", "CANCELLED"].includes(stage.status)
+      ? { ...stage, status: "RUNNING" as const }
+      : stage,
+  );
   const acceptedPromptCount =
     hostedCount(promptProgress?.accepted_scenes) ?? acceptedPrompts.length;
   const totalPromptCount = hostedCount(promptProgress?.total_scenes);
@@ -4939,7 +4950,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       <div className="progress-workspace">
         <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
           <StageTimeline
-            stages={uiStages}
+            stages={displayedStages}
             actions={stageMediaActions}
             timings={Object.fromEntries(
               stages.map((stage, index) => [
@@ -4955,7 +4966,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                     until={stage.completed_at ?? null}
                     running={
                       !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
-                        uiStages[index]?.status ?? "PENDING",
+                        displayedStages[index]?.status ?? "PENDING",
                       )
                     }
                     label={`${stage.name} elapsed time`}

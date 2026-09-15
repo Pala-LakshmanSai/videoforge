@@ -314,7 +314,14 @@ function parseContextOutput(outputText: string): Readonly<Record<string, JsonVal
 export async function prepareHostedVoiceoverContextRequest(input: {
   readonly transcript: string;
   readonly transcriptHash: `sha256:${string}`;
-  readonly contextId?: string;
+  /**
+   * Identity bound into the provider task UUID for this dispatch. It must be a value that the claim
+   * transaction persists on `hosted_voiceover_contexts`, because the stored `request_hash` can only
+   * be rebuilt later from the row: reconciliation retrieves the original task by re-deriving the
+   * exact request, so a dispatch seeded with a value the row never keeps strands its revision.
+   * The claim persists `attempt_id` on every path, including a redispatch.
+   */
+  readonly dispatchIdentity?: string;
 }): Promise<HostedVoiceoverContextRequest> {
   if (input.transcript.trim().length === 0 || input.transcript.length > 100_000)
     throw new Error("VOICEOVER_TRANSCRIPT_INVALID");
@@ -344,7 +351,7 @@ export async function prepareHostedVoiceoverContextRequest(input: {
   // schema, model, or settings change can never resolve to an older archived task.
   const taskSeed = await sha256(
     canonicalizeJson(
-      input.contextId === undefined
+      input.dispatchIdentity === undefined
         ? {
             requestVersion: REQUEST_CONTRACT_VERSION,
             transcriptHash: input.transcriptHash,
@@ -352,7 +359,7 @@ export async function prepareHostedVoiceoverContextRequest(input: {
           }
         : {
             requestVersion: REQUEST_CONTRACT_VERSION,
-            contextId: input.contextId,
+            dispatchIdentity: input.dispatchIdentity,
             transcriptHash: input.transcriptHash,
             request: requestWithoutTaskUUID,
           },

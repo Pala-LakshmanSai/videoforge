@@ -1421,6 +1421,15 @@ describe("hosted product route contract", () => {
       progressPercent: 100,
       detail: "Durable accepted scene prompts are ready for image generation.",
     });
+    // A writer task is created the moment prompt writing starts; every non-terminal durable state it
+    // passes through must read as running work, never as "not started".
+    for (const inFlight of ["PENDING", "READY", "DISPATCHING", "RUNNING"]) {
+      expect(hostedPromptWritingState(inFlight, true, { acceptedScenes: 25, totalScenes: 100 })).toEqual({
+        status: "RUNNING",
+        progressPercent: 25,
+        detail: "Image prompts are being written and verified against the approved style.",
+      });
+    }
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
     const start = source.indexOf('id: "prompt-writing"');
     const end = source.indexOf('id: "image-generation"', start);
@@ -1440,7 +1449,8 @@ describe("hosted product route contract", () => {
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
     expect(block).toContain("maximum_context_spend_micro_usd");
-    expect(block).toContain("contextId: identity.contextId");
+    expect(block).toContain("dispatchIdentity: identity.attemptId");
+    expect(block).toContain("context_id: contextId,");
     expect(block).toContain("HOSTED_CONTEXT_RESERVATION_MICRO_USD");
     expect(block.indexOf("videoforge_prepare_hosted_voiceover_context")).toBeLessThan(
       block.indexOf("extractHostedVoiceoverContext"),
@@ -1491,8 +1501,10 @@ describe("hosted product route contract", () => {
     expect(end).toBeGreaterThan(start);
     expect(block).toContain('state.context_state !== "UNKNOWN"');
     expect(block).toContain("prepareHostedVoiceoverContextRequest");
-    expect(block).toContain("contextId: state.context_id");
-    expect(block).toContain("preparedRequest.requestHash !== state.request_hash");
+    expect(block).toContain("const candidateIdentities");
+    expect(block).toContain("state.attempt_id,");
+    expect(block).toContain("state.context_id,");
+    expect(block).toContain("attempt.requestHash === state.request_hash");
     expect(block).toContain("reconcileHostedVoiceoverContext");
     expect(block).not.toContain("extractHostedVoiceoverContext");
     expect(block).toContain("videoforge_reconcile_unknown_hosted_voiceover_context");

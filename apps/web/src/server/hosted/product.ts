@@ -4419,6 +4419,24 @@ export function hostedGpuProductState(readiness: Pick<HostedGpuReadiness, "dispa
       };
 }
 
+/**
+ * Durable scene-batch writer states seen on a revision, mapped to the status the pipeline renders.
+ * A task row only exists once prompt writing has begun, so its non-terminal states are progress.
+ */
+const PROMPT_WRITER_STATES: ReadonlyMap<
+  string,
+  "COMPLETE" | "FAILED" | "BLOCKED" | "RETRY_WAIT" | "RUNNING"
+> = new Map([
+  ["COMPLETE", "COMPLETE"],
+  ["FAILED", "FAILED"],
+  ["BLOCKED", "BLOCKED"],
+  ["RETRY_WAIT", "RETRY_WAIT"],
+  ["RUNNING", "RUNNING"],
+  ["DISPATCHING", "RUNNING"],
+  ["READY", "RUNNING"],
+  ["PENDING", "RUNNING"],
+]);
+
 export function hostedPromptWritingState(
   promptTaskState: unknown,
   planExists: boolean,
@@ -4429,12 +4447,12 @@ export function hostedPromptWritingState(
   readonly detail: string;
 } {
   const taskState = typeof promptTaskState === "string" ? promptTaskState : "";
-  const status =
-    taskState === "COMPLETE"
-      ? "COMPLETE"
-      : ((["FAILED", "BLOCKED", "RETRY_WAIT", "RUNNING"] as const).find(
-          (candidate) => candidate === taskState,
-        ) ?? "WAITING");
+  // A scene-batch prompt task is created the moment prompt writing starts, and its durable state is
+  // READY -> DISPATCHING -> RUNNING before it settles. Reporting every state outside a short list as
+  // WAITING made the numbered stage read PENDING for the whole time prompts were actually being
+  // written, while the live panel beside it (driven by the prompt run) already said the stage was
+  // active. Every non-terminal writer state is progress, never a wait for work to begin.
+  const status = PROMPT_WRITER_STATES.get(taskState) ?? "WAITING";
   return {
     status,
     progressPercent:
@@ -5439,7 +5457,7 @@ async function createVoiceoverContext(
     const preparedRequest = await prepareHostedVoiceoverContextRequest({
       transcript,
       transcriptHash,
-      contextId: identity.contextId,
+      dispatchIdentity: identity.attemptId,
     });
     providerTaskUuid = preparedRequest.request.taskUUID;
     const claimed = await createNeonExecutor(pool).transaction(async (transaction) => {
@@ -5514,7 +5532,9 @@ async function createVoiceoverContext(
         "SELECT public.videoforge_complete_hosted_voiceover_context($1::jsonb) AS completed",
         [
           JSON.stringify({
-            context_id: identity.contextId,
+            // Acceptance must target the row the claim actually wrote. A redispatch reuses the
+            // existing revision row, so the freshly generated claim identity would address nothing.
+            context_id: contextId,
             output_asset_id: crypto.randomUUID(),
             context_bytes: result.contextBytes,
             context_hash: result.contextHash,
@@ -5626,6 +5646,7 @@ async function reconcileVoiceoverContext(
       const result = await transaction.query<{
         revision_id: string;
         context_id: string;
+        attempt_id: string | null;
         context_state: string;
         transcript_hash: string;
         request_hash: string;
@@ -5637,6 +5658,7 @@ async function reconcileVoiceoverContext(
         output_sha256: string;
       }>(
         `SELECT revision.id::text AS revision_id, context.id::text AS context_id,
+                context.attempt_id::text AS attempt_id,
                 context.state AS context_state, context.transcript_hash, context.request_hash,
                 context.provider_may_have_charged,
                 asr.id::text AS asr_attempt_id, asr.result_object_key AS output_object_key,
@@ -5707,20 +5729,29 @@ async function reconcileVoiceoverContext(
     const transcript = hostedTranscriptText(document, state.asr_attempt_id);
     if (!transcript || (await sha256(transcript)) !== state.transcript_hash)
       return response({ error: { code: "HOSTED_CONTEXT_TRANSCRIPT_INVALID" } }, 409);
-    let preparedRequest = await prepareHostedVoiceoverContextRequest({
-      transcript,
-      transcriptHash: state.transcript_hash as `sha256:${string}`,
-      contextId: state.context_id,
-    });
-    // Existing runs used a transcript-only task identity. Reconstruct that exact request for
-    // retrieval, without changing its immutable hash or submitting another inference.
-    if (preparedRequest.requestHash !== state.request_hash) {
-      preparedRequest = await prepareHostedVoiceoverContextRequest({
+    // The stored request hash can only be replayed from an identity the claim transaction persisted
+    // on this row. A redispatch keeps the original row id but overwrites attempt_id and request_hash
+    // together, so the persisted attempt identity is authoritative and the row id is a fallback for
+    // revisions claimed before the seed was aligned. Transcript-only remains for legacy rows.
+    const candidateIdentities: readonly (string | null)[] = [
+      state.attempt_id,
+      state.context_id,
+      null,
+    ].filter((value, index, all) => all.indexOf(value) === index);
+    let preparedRequest: Awaited<ReturnType<typeof prepareHostedVoiceoverContextRequest>> | null =
+      null;
+    for (const candidate of candidateIdentities) {
+      const attempt = await prepareHostedVoiceoverContextRequest({
         transcript,
         transcriptHash: state.transcript_hash as `sha256:${string}`,
+        ...(candidate === null ? {} : { dispatchIdentity: candidate }),
       });
+      if (attempt.requestHash === state.request_hash) {
+        preparedRequest = attempt;
+        break;
+      }
     }
-    if (preparedRequest.requestHash !== state.request_hash)
+    if (!preparedRequest)
       return response({ error: { code: "HOSTED_CONTEXT_REQUEST_IDENTITY_INVALID" } }, 409);
 
     let recovered: Awaited<ReturnType<typeof reconcileHostedVoiceoverContext>>;

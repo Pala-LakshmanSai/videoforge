@@ -64,19 +64,19 @@ describe("hosted voiceover context extraction", () => {
     const legacy = await prepareHostedVoiceoverContextRequest(input);
     const explicitlyLegacy = await prepareHostedVoiceoverContextRequest({
       ...input,
-      contextId: undefined,
+      dispatchIdentity: undefined,
     });
     const first = await prepareHostedVoiceoverContextRequest({
       ...input,
-      contextId: "project-a",
+      dispatchIdentity: "project-a",
     });
     const same = await prepareHostedVoiceoverContextRequest({
       ...input,
-      contextId: "project-a",
+      dispatchIdentity: "project-a",
     });
     const other = await prepareHostedVoiceoverContextRequest({
       ...input,
-      contextId: "project-b",
+      dispatchIdentity: "project-b",
     });
 
     expect(explicitlyLegacy.requestBytes).toBe(legacy.requestBytes);
