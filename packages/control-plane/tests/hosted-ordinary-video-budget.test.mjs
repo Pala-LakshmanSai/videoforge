@@ -93,6 +93,22 @@ test("ordinary budget migration applies after the current production schema", as
     assert.equal((await database.query(`SELECT public.videoforge_canonical_jsonb(
       '{"totalCapUsd":2.0000000000000000}'::jsonb) AS proof`)).rows[0].proof,
       '{"totalCapUsd":2.0000000000000000}');
+    const budgetPredicate = async () => {
+      const body = (await database.query(`SELECT pg_get_functiondef(
+        'public.videoforge_v209_ordinary_pair_legacy_0081(uuid,uuid,uuid,uuid,jsonb)'::regprocedure) AS body`)).rows[0].body;
+      const predicate = body.match(/IF budget IS NOT NULL AND ([^\n]+) THEN/)?.[1];
+      assert.ok(predicate, "actual admission budget predicate must be present");
+      return database.query(`SELECT ${predicate} AS drifted FROM (SELECT
+        jsonb_build_object('cost',public.videoforge_ordinary_video_budget(32747)||
+          '{"combinedCompletionCapMicroUsd":17500000}'::jsonb) AS supplied_admission,
+        public.videoforge_ordinary_video_budget(32747) AS budget) input`);
+    };
+    await database.exec("SAVEPOINT ambiguous_budget_operator");
+    await assert.rejects(budgetPredicate(), (error) => error.code === "42725");
+    await database.exec("ROLLBACK TO SAVEPOINT ambiguous_budget_operator");
+    await database.exec(await readFile(new URL(
+      "../migrations/0138_hosted_ordinary_budget_json_precedence.sql", import.meta.url), "utf8"));
+    assert.equal((await budgetPredicate()).rows[0].drifted, false);
     await assert.rejects(
       database.query("SELECT public.videoforge_ordinary_video_budget(108001)"),
       /ORDINARY_VIDEO_DURATION_OUT_OF_RANGE/,
