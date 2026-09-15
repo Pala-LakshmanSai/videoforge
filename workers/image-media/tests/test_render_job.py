@@ -438,6 +438,28 @@ class RenderJobTests(unittest.TestCase):
         self.assertIn("-sn", render_call)
         self.assertIn("-dn", render_call)
 
+    def test_render_argv_bounds_filter_and_codec_threads(self) -> None:
+        fixture = RenderFixture()
+        fixture.job().run(
+            fixture.document,
+            claimed_attempt_id="attempt_render_local_001",
+        )
+
+        render_call = next(
+            call for call in fixture.process.calls if "-filter_complex" in call
+        )
+        self.assertEqual(
+            render_call[1:5],
+            ("-filter_complex_threads", "1", "-filter_threads", "1"),
+        )
+        input_positions = [
+            index for index, argument in enumerate(render_call) if argument == "-i"
+        ]
+        self.assertEqual(render_call.count("-threads"), len(input_positions) + 1)
+        for index in input_positions:
+            self.assertEqual(render_call[index - 2 : index], ("-threads", "1"))
+        self.assertEqual(render_call[-3:-1], ("-threads", "2"))
+
     def test_accepts_avatar_audio_but_maps_narration_only(self) -> None:
         fixture = RenderFixture()
         avatar = next(

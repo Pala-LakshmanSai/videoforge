@@ -245,7 +245,16 @@ def compile_render_command(
     if not segments:
         raise ValueError("at least one render segment is required")
     profile_version = cast(str, manifest["render_profile_version"])
-    arguments: list[str] = [str(ffmpeg), "-hide_banner", "-nostdin", "-n"]
+    arguments: list[str] = [
+        str(ffmpeg),
+        "-filter_complex_threads",
+        "1",
+        "-filter_threads",
+        "1",
+        "-hide_banner",
+        "-nostdin",
+        "-n",
+    ]
     graph: list[str] = []
     input_index = 0
     video_labels: list[str] = []
@@ -257,7 +266,7 @@ def compile_render_command(
             raise ValueError(f"No safe path for accepted asset {asset_id}")
         if still:
             arguments.extend(["-loop", "1", "-framerate", "30"])
-        arguments.extend(["-i", str(path)])
+        arguments.extend(["-threads", "1", "-i", str(path)])
         assigned = input_index
         input_index += 1
         return assigned
@@ -356,7 +365,7 @@ def compile_render_command(
         else:
             raise ValueError(f"Unsupported timeline composition {composition}")
 
-    arguments.extend(["-i", str(voiceover_path)])
+    arguments.extend(["-threads", "1", "-i", str(voiceover_path)])
     audio_index = input_index
     graph.append(
         f"{''.join(video_labels)}concat=n={len(video_labels)}:v=1:a=0,format=yuv420p[vout]"
@@ -397,6 +406,8 @@ def compile_render_command(
             "-dn",
             "-movflags",
             "+faststart",
+            "-threads",
+            "2",
             str(output_path),
         ]
     )
