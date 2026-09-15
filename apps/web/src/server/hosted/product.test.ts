@@ -1821,8 +1821,8 @@ describe("hosted product route contract", () => {
     const query = source.slice(start, end);
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
-    expect(query).toContain("hosted_serverless_output_barrier_completions AS barrier");
-    expect(query).toContain("jsonb_array_length(barrier.expected_objects)");
+    expect(query).toContain("videoforge_hosted_accepted_lane_progress($1,$2,$3,$4) AS barrier");
+    expect(query).toContain("barrier.accepted_count");
     expect(query).toContain("barrier.completed_at");
     expect(query).toMatch(
       /CASE\s+WHEN barrier\.attempt_id IS NOT NULL THEN 'COMPLETED'\s+ELSE progress\.provider_status\s+END AS provider_status/u,

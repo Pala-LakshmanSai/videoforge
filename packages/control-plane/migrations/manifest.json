@@ -852,6 +852,12 @@
       "name": "hosted_funded_accepted_lane_deadline",
       "filename": "0143_hosted_funded_accepted_lane_deadline.sql",
       "sha256": "sha256:e6f4e2bbe4c301bab91d47576b6b9fd161658d34e8d6da807883570711f3e67f"
+    },
+    {
+      "version": 144,
+      "name": "hosted_accepted_progress_projection",
+      "filename": "0144_hosted_accepted_progress_projection.sql",
+      "sha256": "sha256:fb112913f95bf81953bcb9fc8b5f7c05d529845da2d629f8c26c88e77c0c09ab"
     }
   ]
 }

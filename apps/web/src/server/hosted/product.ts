@@ -6491,7 +6491,7 @@ async function projectDetail(
         END AS provider_status,
         progress.attempt_state,
         CASE
-          WHEN barrier.attempt_id IS NOT NULL THEN jsonb_array_length(barrier.expected_objects)
+          WHEN barrier.attempt_id IS NOT NULL THEN barrier.accepted_count
           ELSE progress.items_completed
         END AS items_completed,
         CASE
@@ -6505,12 +6505,8 @@ async function projectDetail(
         ledger.estimated_usd, ledger.reserved_usd, ledger.reported_usd,
                 ledger.settled_usd, ledger.possible_duplicate_usd
            FROM serverless_attempts AS attempt
-           LEFT JOIN hosted_serverless_output_barrier_completions AS barrier
-          ON barrier.account_id = attempt.account_id
-         AND barrier.workspace_id = attempt.workspace_id
-         AND barrier.attempt_id = attempt.id
-         AND barrier.project_id = attempt.project_id
-         AND barrier.project_revision_id = attempt.project_revision_id
+           LEFT JOIN public.videoforge_hosted_accepted_lane_progress($1,$2,$3,$4) AS barrier
+          ON barrier.attempt_id = attempt.id
         LEFT JOIN LATERAL (
              SELECT event.provider_status, event.attempt_state,
                     event.items_completed, event.items_total, event.observed_at
