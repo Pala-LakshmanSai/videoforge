@@ -1711,7 +1711,7 @@ describe("hosted product route contract", () => {
     const end = source.indexOf("async function projectDetail(", start);
     const block = source.slice(start, end);
     expect(start).toBeGreaterThanOrEqual(0);
-    expect(block).toContain('output.lane !== "soulx_avatar"');
+    expect(block).toContain('hostedMediaCandidates(outputs, "avatar", page)');
     expect(block).toContain('contentType !== "video/mp4"');
     expect(block).toContain("object.size !== contentLength");
     expect(block).toContain(
@@ -1742,5 +1742,72 @@ describe("hosted product route contract", () => {
     expect(query).toContain("receipt.deleted_at IS NULL");
     expect(query).toContain("receipt.checksum_sha256 = unit.checksum_sha256");
 
+  });
+
+  it("verifies media in bounded parallel batches while preserving order", async () => {
+    const revisionId = "22222222-2222-4222-8222-222222222222";
+    const accountId = testState.scopeRows[0]!.account_id as string;
+    const workspaceId = testState.scopeRows[0]!.workspace_id as string;
+    const outputs = Array.from({ length: 16 }, (_, index) => {
+      const itemId = `mage-scene-${index + 1}`;
+      return {
+        attempt_id: "33333333-3333-4333-8333-333333333333",
+        lane: "mage_image",
+        accepted_at: `2026-09-14T00:00:${String(index).padStart(2, "0")}.000Z`,
+        artifacts: [
+          {
+            item_id: itemId,
+            object_key:
+              `tenant/${accountId}/workspace/${workspaceId}` +
+              `/project/${PROJECT_ID}/revision/${revisionId}/lane/mage-image/job/mage-attempt/artifact/${itemId}`,
+            content_type: "image/png",
+            content_length: 101,
+            checksum_sha256: `sha256:${(index + 1).toString(16).padStart(2, "0").repeat(32)}`,
+          },
+        ],
+      };
+    });
+    testState.projectDetailMediaRows.splice(
+      0,
+      testState.projectDetailMediaRows.length,
+      ...outputs,
+    );
+    let active = 0;
+    let maxActive = 0;
+    const head = vi.fn(async (objectKey: string) => {
+      const index = outputs.findIndex((output) => output.artifacts[0]!.object_key === objectKey);
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      active -= 1;
+      return {
+        size: 101,
+        httpMetadata: { contentType: "image/png" },
+        checksums: { sha256: new Uint8Array(32).fill(index + 1).buffer },
+      };
+    });
+    const mediaEnvironment = {
+      PRIVATE_ARTIFACTS: { head },
+    } as unknown as HostedRuntimeEnvironment;
+
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}?media_kind=images`, "GET"),
+        mediaEnvironment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result?.json()) as {
+        readonly review: { readonly contact_sheet: readonly { id: string }[] };
+      };
+      expect(body.review.contact_sheet.map((item) => item.id)).toEqual(
+        outputs.map((output) => output.artifacts[0]!.item_id),
+      );
+      expect(maxActive).toBeGreaterThan(1);
+      expect(maxActive).toBeLessThanOrEqual(8);
+    } finally {
+      testState.projectDetailMediaRows.splice(0, testState.projectDetailMediaRows.length);
+    }
   });
 });

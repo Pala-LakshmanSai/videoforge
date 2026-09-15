@@ -6018,6 +6018,61 @@ function hostedMediaPagination(
   });
 }
 
+const HOSTED_MEDIA_VERIFY_CONCURRENCY = 8;
+
+type HostedMediaCandidate = {
+  readonly artifact: HostedMediaArtifact;
+  readonly output: Record<string, unknown>;
+};
+
+function hostedMediaCandidates(
+  outputs: readonly Record<string, unknown>[],
+  kind: HostedMediaKind,
+  page: number,
+): readonly HostedMediaCandidate[] {
+  const candidates: HostedMediaCandidate[] = [];
+  const start = (page - 1) * HOSTED_MEDIA_PAGE_SIZE;
+  let ordinal = 0;
+  for (const output of outputs) {
+    if (kind === "avatar" && output.lane !== "soulx_avatar") continue;
+    if (!Array.isArray(output.artifacts)) continue;
+    for (const rawArtifact of output.artifacts) {
+      const artifact = validHostedMediaArtifact(rawArtifact);
+      if (!artifact || (kind === "images" && !isHostedImageArtifact(artifact))) continue;
+      const itemOrdinal = ordinal;
+      ordinal += 1;
+      if (itemOrdinal < start) continue;
+      candidates.push({ artifact, output });
+    }
+  }
+  return candidates;
+}
+
+async function verifyHostedMediaCandidates<T>(
+  candidates: readonly HostedMediaCandidate[],
+  verify: (candidate: HostedMediaCandidate) => Promise<T | null>,
+): Promise<readonly T[]> {
+  const accepted: T[] = [];
+  for (
+    let offset = 0;
+    offset < candidates.length && accepted.length < HOSTED_MEDIA_PAGE_SIZE;
+    offset += HOSTED_MEDIA_VERIFY_CONCURRENCY
+  ) {
+    const batchSize = Math.min(
+      HOSTED_MEDIA_VERIFY_CONCURRENCY,
+      candidates.length - offset,
+      HOSTED_MEDIA_PAGE_SIZE - accepted.length,
+    );
+    const batch = await Promise.all(
+      candidates.slice(offset, offset + batchSize).map((candidate) => verify(candidate)),
+    );
+    for (const item of batch) {
+      if (item !== null) accepted.push(item);
+    }
+  }
+  return accepted;
+}
+
 async function contactSheet(
   outputs: readonly Record<string, unknown>[],
   bucket: HostedRuntimeEnvironment["PRIVATE_ARTIFACTS"],
@@ -6026,19 +6081,11 @@ async function contactSheet(
   page = 1,
 ): Promise<readonly HostedContactSheetItem[]> {
   if (!bucket) return [];
-  const items: HostedContactSheetItem[] = [];
   const start = (page - 1) * HOSTED_MEDIA_PAGE_SIZE;
-  let ordinal = 0;
   const promptById = new Map(prompts.map((prompt) => [prompt.image_task_id, prompt]));
-  for (const output of outputs) {
-    if (!Array.isArray(output.artifacts)) continue;
-    for (const rawArtifact of output.artifacts) {
-      const artifact = validHostedMediaArtifact(rawArtifact);
-      if (!artifact || !isHostedImageArtifact(artifact)) continue;
-      const itemOrdinal = ordinal;
-      ordinal += 1;
-      if (itemOrdinal < start) continue;
-      if (items.length >= HOSTED_MEDIA_PAGE_SIZE) return items;
+  const verified = await verifyHostedMediaCandidates(
+    hostedMediaCandidates(outputs, "images", page),
+    async ({ artifact, output }) => {
       const objectKey = artifact.object_key;
       const checksum = artifact.checksum_sha256;
       const contentLength = numberOrNull(artifact.content_length);
@@ -6052,7 +6099,7 @@ async function contactSheet(
         !contentType.startsWith("image/") ||
         !(await verifyHostedPreviewChecksum(bucket, objectKey, object, checksum))
       ) {
-        continue;
+        return null;
       }
       const port = await signer.sign({
         method: "GET",
@@ -6069,20 +6116,21 @@ async function contactSheet(
           : typeof savedPrompt?.positive_prompt === "string"
             ? savedPrompt.positive_prompt
             : null;
-      items.push({
+      return {
         id: itemId,
         asset_id: null,
         image_url: port.url,
         prompt,
-        label: prompt ?? `Generated image ${start + items.length + 1}`,
         start_ms: null,
         end_ms: null,
         shot_role: String(output.lane ?? "IMAGE"),
-      });
-    }
-    if (items.length >= HOSTED_MEDIA_PAGE_SIZE) break;
-  }
-  return items;
+      };
+    },
+  );
+  return verified.map((item, index) => ({
+    ...item,
+    label: item.prompt ?? `Generated image ${start + index + 1}`,
+  }));
 }
 
 async function avatarFootage(
@@ -6092,18 +6140,10 @@ async function avatarFootage(
   page = 1,
 ): Promise<readonly HostedAvatarFootageItem[]> {
   if (!bucket) return [];
-  const items: HostedAvatarFootageItem[] = [];
   const start = (page - 1) * HOSTED_MEDIA_PAGE_SIZE;
-  let ordinal = 0;
-  for (const output of outputs) {
-    if (output.lane !== "soulx_avatar" || !Array.isArray(output.artifacts)) continue;
-    for (const rawArtifact of output.artifacts) {
-      const artifact = validHostedMediaArtifact(rawArtifact);
-      if (!artifact) continue;
-      const itemOrdinal = ordinal;
-      ordinal += 1;
-      if (itemOrdinal < start) continue;
-      if (items.length >= HOSTED_MEDIA_PAGE_SIZE) return items;
+  const verified = await verifyHostedMediaCandidates(
+    hostedMediaCandidates(outputs, "avatar", page),
+    async ({ artifact }) => {
       const objectKey = artifact.object_key;
       const checksum = artifact.checksum_sha256;
       const contentLength = numberOrNull(artifact.content_length);
@@ -6116,7 +6156,7 @@ async function avatarFootage(
         contentType !== "video/mp4" ||
         !(await verifyHostedPreviewChecksum(bucket, objectKey, object, checksum))
       ) {
-        continue;
+        return null;
       }
       const port = await signer.sign({
         method: "GET",
@@ -6126,19 +6166,20 @@ async function avatarFootage(
         checksumSha256: checksum,
         lifetimeSeconds: 300,
       });
-      items.push({
+      return {
         id: itemId,
         asset_id: itemId,
         video_url: port.url,
-        label: `Avatar clip ${start + items.length + 1}`,
         content_type: contentType,
         content_length: contentLength,
         checksum_sha256: checksum,
-      });
-    }
-    if (items.length >= HOSTED_MEDIA_PAGE_SIZE) break;
-  }
-  return items;
+      };
+    },
+  );
+  return verified.map((item, index) => ({
+    ...item,
+    label: `Avatar clip ${start + index + 1}`,
+  }));
 }
 
 async function projectDetail(
