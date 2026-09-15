@@ -5507,6 +5507,8 @@ async function createVoiceoverContext(
         reserved_cost_micro_usd: observed.rows[0]?.reserved_cost_micro_usd ?? null,
         reported_cost_micro_usd: result.reportedCostMicroUsd,
         context_bytes_length: result.contextBytes.length,
+        context_bytes_prefix: result.contextBytes.slice(0, 80),
+        context_starts_object: result.contextBytes.startsWith("{"),
       });
       const accepted = await transaction.query<{ completed: boolean }>(
         "SELECT public.videoforge_complete_hosted_voiceover_context($1::jsonb) AS completed",
