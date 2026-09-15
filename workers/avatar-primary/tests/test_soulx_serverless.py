@@ -4,6 +4,7 @@ import asyncio
 import base64
 import copy
 import hashlib
+import io
 import hmac
 import json
 import os
@@ -19,6 +20,7 @@ from array import array
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
+from urllib.error import HTTPError, URLError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -301,6 +303,58 @@ class Fixture:
 
 
 class SoulXServerlessTest(unittest.TestCase):
+    def test_output_put_retries_same_bytes_after_transient_or_lost_response(self) -> None:
+        url = "https://private.example/output?signature=secret-value"
+        body = b"already-generated-native-clip"
+        for failure in (
+            HTTPError(url, 503, "secret-error", {}, io.BytesIO()),
+            HTTPError(url, 408, "secret-error", {}, io.BytesIO()),
+            HTTPError(url, 429, "secret-error", {}, io.BytesIO()),
+            TimeoutError("secret-url-after-object-written"),
+            URLError("secret-network-message"),
+        ):
+            with self.subTest(failure=type(failure).__name__):
+                with patch.object(soulx_serverless, "urlopen", side_effect=[
+                    failure, FakeHttpResponse(b"", 200),
+                ]) as put, patch.object(soulx_serverless.time, "sleep") as sleep, \
+                        patch("builtins.print") as diagnostic:
+                    result = soulx_serverless._put_generated({"max_content_length": 100}, url, body)
+                self.assertEqual(result, digest(body))
+                self.assertEqual(put.call_count, 2)
+                for call in put.call_args_list:
+                    self.assertEqual(call.args[0].full_url, url)
+                    self.assertIs(call.args[0].data, body)
+                    self.assertEqual(call.args[0].method, "PUT")
+                sleep.assert_called_once_with(1)
+                self.assertNotIn("secret", str(diagnostic.call_args_list))
+
+    def test_output_put_does_not_retry_authorization_failure(self) -> None:
+        error = HTTPError("https://private.example/?secret", 403, "secret", {}, io.BytesIO())
+        with patch.object(soulx_serverless, "urlopen", side_effect=error) as put, \
+                patch.object(soulx_serverless.time, "sleep") as sleep, \
+                patch("builtins.print") as diagnostic:
+            with self.assertRaisesRegex(soulx_serverless.ServerlessSoulXError,
+                                        "SOULX_SERVERLESS_OUTPUT_UPLOAD_FAILED"):
+                soulx_serverless._put_generated({"max_content_length": 100},
+                                               "https://private.example/output", b"native")
+        self.assertEqual(put.call_count, 1)
+        sleep.assert_not_called()
+        self.assertEqual(json.loads(diagnostic.call_args.args[0])["http_status"], 403)
+        self.assertNotIn("secret", str(diagnostic.call_args_list))
+
+    def test_output_put_network_retries_are_bounded(self) -> None:
+        with patch.object(soulx_serverless, "urlopen", side_effect=TimeoutError("secret")) as put, \
+                patch.object(soulx_serverless.time, "sleep") as sleep, \
+                patch("builtins.print") as diagnostic:
+            with self.assertRaisesRegex(soulx_serverless.ServerlessSoulXError,
+                                        "SOULX_SERVERLESS_OUTPUT_UPLOAD_FAILED"):
+                soulx_serverless._put_generated({"max_content_length": 100},
+                                               "https://private.example/output", b"native")
+        self.assertEqual(put.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
+        self.assertFalse(json.loads(diagnostic.call_args.args[0])["retrying"])
+        self.assertNotIn("secret", str(diagnostic.call_args_list))
+
     def test_exact_invalid_output_probe_rejects_after_signed_identity_match(self) -> None:
         accepted = {
             "work": {

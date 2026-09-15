@@ -15,6 +15,7 @@ import json
 import math
 import os
 import re
+import ssl
 import subprocess
 import time
 import wave
@@ -24,6 +25,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
@@ -374,21 +376,46 @@ def _fetch_exact(port: dict[str, Any], url: str, worker_io: Any) -> Path:
 def _put_generated(authority: dict[str, Any], url: str, body: bytes) -> str:
     if not 1 <= len(body) <= authority["max_content_length"]:
         raise ServerlessSoulXError("SOULX_SERVERLESS_OUTPUT_LENGTH_INVALID")
-    try:
-        request = Request(
-            _validate_url(url),
-            data=body,
-            method="PUT",
-            headers={"content-type": "video/mp4", "content-length": str(len(body))},
-        )
-        with urlopen(request, timeout=60) as response:
-            if response.status not in {200, 201, 204}:
-                raise ServerlessSoulXError("SOULX_SERVERLESS_OUTPUT_UPLOAD_FAILED")
-    except ServerlessSoulXError:
-        raise
-    except Exception as error:
-        raise ServerlessSoulXError("SOULX_SERVERLESS_OUTPUT_UPLOAD_FAILED") from error
-    return _digest(body)
+    target = _validate_url(url)
+    # Repeating the same authorized key and immutable bytes is idempotent even
+    # after a lost response. Keep the generated file; never rerun inference.
+    for attempt in range(1, 4):
+        status = None
+        category = "HTTP_ERROR"
+        retryable = False
+        try:
+            request = Request(
+                target, data=body, method="PUT",
+                headers={"content-type": "video/mp4", "content-length": str(len(body))},
+            )
+            with urlopen(request, timeout=60) as response:
+                status = response.status
+                if status in {200, 201, 204}:
+                    return _digest(body)
+                retryable = status in {408, 429} or 500 <= status <= 599
+        except HTTPError as error:
+            status = error.code
+            retryable = status in {408, 429} or 500 <= status <= 599
+            error.close()
+        except (TimeoutError, ConnectionError, URLError) as error:
+            reason = error.reason if isinstance(error, URLError) else error
+            if isinstance(reason, ssl.SSLCertVerificationError):
+                category = "TLS_CERTIFICATE_ERROR"
+            else:
+                category = "TIMEOUT" if isinstance(reason, TimeoutError) else "NETWORK_ERROR"
+                retryable = True
+        except Exception:
+            category = "UNEXPECTED_ERROR"
+        retrying = retryable and attempt < 3
+        # Never log exception strings, signed URLs, response bodies, or headers.
+        print(json.dumps({
+            "event": "soulx_output_upload_error", "attempt": attempt,
+            "http_status": status, "category": category, "retrying": retrying,
+        }), flush=True)
+        if not retrying:
+            raise ServerlessSoulXError("SOULX_SERVERLESS_OUTPUT_UPLOAD_FAILED") from None
+        time.sleep(attempt)
+    raise AssertionError("unreachable output upload attempt")
 
 
 def _prepare_audio_16k(source: Path, destination: Path, span: dict[str, Any]) -> dict[str, int]:
