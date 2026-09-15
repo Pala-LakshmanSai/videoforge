@@ -1,0 +1,76 @@
+{
+  "status": "THIRD_RUN_GPU_ACTIVE",
+  "project_id": "7d101190-87f6-4b51-a870-757e858e2abd",
+  "voiceover_duration_ms": 1091553,
+  "plan": {
+    "images": 212,
+    "avatar_clips": 63,
+    "segments": 244
+  },
+  "preparation": {
+    "asr": "SUCCEEDED",
+    "prompts_accepted": 212,
+    "span_audio_succeeded": 63
+  },
+  "gpu_budget_usd": 2,
+  "one_hour_budget_usd": 5,
+  "account_balance_floor_usd": 3,
+  "database_repairs": [
+    {
+      "migration": 136,
+      "cause": "42702 ambiguous expires_at lease column"
+    },
+    {
+      "migration": 137,
+      "cause": "SQL numeric scale differs from JavaScript JSON serialization",
+      "preserves_original_candidate_hash": true
+    },
+    {
+      "migration": 138,
+      "cause": "42725 unparenthesized JSON extraction before key subtraction"
+    }
+  ],
+  "live_acceptance_complete": false,
+  "one_hour_live_test_performed": false,
+  "generation_id": "bd7e1a80-5115-4450-b34e-9c11006b9a10",
+  "gpu": {
+    "mage": "IN_QUEUE",
+    "soulx": "IN_QUEUE",
+    "exact_attempt_count": 2,
+    "browser_waiting_state_verified": true
+  },
+  "prior_run": {
+    "project_id": "35cc5a0b-864e-4e14-943d-4f734bc665ec",
+    "generation_id": "78184254-4177-4290-b9c8-fd25f917197a",
+    "state": "FAILED_SETTLED",
+    "images_accepted": 207,
+    "avatar_objects_uploaded": 25,
+    "first_failure": "SOULX_SERVERLESS_OUTPUT_UPLOAD_FAILED",
+    "underlying_http_cause": "NOT_CAPTURED_BY_OLD_WORKER",
+    "signed_upload_expiry_excluded": true,
+    "replayed": false
+  },
+  "fixes": [
+    "candidate SQL alias, canonical proof, JSON precedence, funded horizon",
+    "long-video signed TTL and duration-scaled GPU funding",
+    "same-object bounded transient SoulX PUT retry",
+    "signed zero-compute standby proof",
+    "durable exact provider progress",
+    "queue terminal projection",
+    "96-item media pagination and stale-response guard"
+  ],
+  "second_run": {
+    "project_id": "43c35909-780f-4cbd-a934-b067608d36b3",
+    "generation_id": "5653e0ac-ccf0-43c1-8a96-a88ea8a9e3d9",
+    "state": "CANCELLED_SETTLED",
+    "images_accepted": 206,
+    "image_execution_ms": 487304,
+    "avatar_execution_ms": 1206261,
+    "first_failure": "FUNDED_DEADLINE_IGNORED_ACCEPTED_IMAGE_BARRIER",
+    "cause": "Both attempts remain ASSIGNED until pair settlement. Budget query ignored accepted barrier and kept splitting 2400 seconds equally, cancelling avatar around20minutes.",
+    "zero_active_inventory_workers": 0,
+    "queue_empty": true,
+    "balance_usd": 15.0703381963,
+    "observed_audit_balance_decrease_usd": 0.9675868333
+  }
+}

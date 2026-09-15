@@ -1,0 +1,25 @@
+{
+  "schema_version": "videoforge-v2-09-existing-qualified-activation-report/v1",
+  "state": "COMPLETED",
+  "source_commit": "da9989a7f888dda7a80b31fee8ab5ef4b517213f",
+  "worker_version": "b4d1e4c3-78c0-498d-915b-0cc89d95131c",
+  "worker_version_id_sha256": "sha256:2af20d0c23304a29b8e88fc9c060b4aeb87f7a7c34134dd58446749da2d12bfa",
+  "activation_id_sha256": "sha256:a0eed3cb3c1a225c2bb56fd9d0d27b0ed9547bd613d1338ed7468e96de36324e",
+  "effective_gpu_transport": "QUALIFIED_EXACT",
+  "runpod_mutation": false,
+  "compute_started": false,
+  "database_migrations_applied": [
+    134,
+    135,
+    136,
+    137,
+    138,
+    139,
+    140,
+    141,
+    142,
+    143,
+    144
+  ],
+  "acceptance": "IN_PROGRESS_NOT_YET_LONG_VIDEO_ACCEPTED"
+}

@@ -1,4 +1,18 @@
 schema_version: "2.0"
+long_video_gpu_recovery_2026_09_15:
+  status: THIRD_RUN_GPU_ACTIVE_FINAL_MP4_PENDING
+  project_id: 7d101190-87f6-4b51-a870-757e858e2abd
+  generation_id: bd7e1a80-5115-4450-b34e-9c11006b9a10
+  deployed_source: da9989a7f888dda7a80b31fee8ab5ef4b517213f
+  deployed_worker_version: b4d1e4c3-78c0-498d-915b-0cc89d95131c
+  transport: QUALIFIED_EXACT
+  migrations_through: 144
+  preparation: "212 prompts and63 audio spans accepted;18m11.553s source."
+  repaired_budget_failure: "Accepted Mage barrier must stop lane billing clock while attempts remainASSIGNED untilpairsettlement;143 preserves sharedpool andhardcaps."
+  progress: "RealChrome queued->processing verified perlane; acceptedbarrier controls completedcounts/timers;144 scopes privatebarrier projection totenant reader."
+  budget: "UserUSD5/hour-video cap; auditUSD2total GPU verification cap;USD3balancefloor;no uncertain replay."
+  prior_runs: "First207images accepted, SoulXupload failed25clips; second206images accepted, avatarcancelled byold20min accounting. Bothsettled;zeroactive/queues verified."
+  evidence: evidence/acceptance/VF-10-09/2026-09-15-long-video-audit/
 span_performance_repair_2026_09_14:
   checkpoint: V2-09
   status: AUDIO_COMPLETE_LONG_VIDEO_IMAGE_CAP_GATE

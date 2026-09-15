@@ -1,5 +1,13 @@
 # VideoForge: start here
 
+## Long-video GPU recovery — 2026-09-15
+
+Production `da9989a7` / Cloudflare `b4d1e4c3-78c0-498d-915b-0cc89d95131c`, QUALIFIED_EXACT; migrations134–144 applied; desktop0.1.20 unchanged. Current18-minute verification project `7d101190-87f6-4b51-a870-757e858e2abd` has212prompts and63audio spans complete; GPU generation is active. Long-video final MP4 acceptance remains pending.
+
+Fixed measured blockers: ordinary candidate SQL alias/numeric canonicalization/JSON precedence/horizon; long-batch Mage cap; SoulX same-object transient upload retry; signed standby-zero proof; independently persisted GPU phases; paginated parallel media verification; accepted-output progress and tenant-scoped reader. Budget accounting must use accepted output barriers before pair settlement: attempts can remainASSIGNED after all lane assets are verified. Ignoring that barrier incorrectly cancelled avatar after20minutes.143 now releases unused lane time; focused regression and production reader proof pass.
+
+User approved up toUSD5 for one-hour videos. This audit retainsUSD2 total GPU verification cap andUSD3 balance floor; no uncertain request replay. Two prior runs settled with images preserved; second failed at the now-repaired budget cutoff. Third run is the current end-to-end gate. Exact RTX4090 EU-RO-1 lanes, min0/max1, sealedvolumes and models preserved. One-hour configured limits are checked, not one-hour live acceptance. Evidence: `evidence/acceptance/VF-10-09/2026-09-15-long-video-audit/`.
+
 ## Current span performance repair — 2026-09-14
 
 Audio repair is deployed (`ec4a629c`, Worker `c5539182`, desktop0.1.20). Real Chrome and DB verify65/65 completed spans. Median cadence improved43.24s to10.09s. Three deleted templates were restored with exact stored SHA256; concurrent cleanup, repeated scheduling, downloads and sleeps are fixed. Always build actual `dist-cloudflare` production output and inspect its contents before deployment; a fresh staging build does not update it.
