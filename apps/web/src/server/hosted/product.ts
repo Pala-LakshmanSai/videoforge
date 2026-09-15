@@ -6056,7 +6056,6 @@ async function verifyHostedMediaCandidates<T>(
   for (
     let offset = 0;
     offset < candidates.length && accepted.length < HOSTED_MEDIA_PAGE_SIZE;
-    offset += HOSTED_MEDIA_VERIFY_CONCURRENCY
   ) {
     const batchSize = Math.min(
       HOSTED_MEDIA_VERIFY_CONCURRENCY,
@@ -6066,6 +6065,7 @@ async function verifyHostedMediaCandidates<T>(
     const batch = await Promise.all(
       candidates.slice(offset, offset + batchSize).map((candidate) => verify(candidate)),
     );
+    offset += batchSize;
     for (const item of batch) {
       if (item !== null) accepted.push(item);
     }
@@ -6485,13 +6485,33 @@ async function projectDetail(
         `SELECT attempt.id, attempt.lane, attempt.state, attempt.attempt_ordinal,
                 attempt.item_count, attempt.created_at, attempt.submitted_at,
                 attempt.terminal_at, attempt.updated_at,
-                progress.provider_status, progress.attempt_state,
-                progress.items_completed, progress.items_total,
-                progress.observed_at AS progress_observed_at,
-                ledger.estimated_usd, ledger.reserved_usd, ledger.reported_usd,
+                CASE
+          WHEN barrier.attempt_id IS NOT NULL THEN 'COMPLETED'
+          ELSE progress.provider_status
+        END AS provider_status,
+        progress.attempt_state,
+        CASE
+          WHEN barrier.attempt_id IS NOT NULL THEN jsonb_array_length(barrier.expected_objects)
+          ELSE progress.items_completed
+        END AS items_completed,
+        CASE
+          WHEN barrier.attempt_id IS NOT NULL THEN attempt.item_count
+          ELSE progress.items_total
+        END AS items_total,
+        CASE
+          WHEN barrier.attempt_id IS NOT NULL THEN barrier.completed_at
+          ELSE progress.observed_at
+        END AS progress_observed_at,
+        ledger.estimated_usd, ledger.reserved_usd, ledger.reported_usd,
                 ledger.settled_usd, ledger.possible_duplicate_usd
            FROM serverless_attempts AS attempt
-           LEFT JOIN LATERAL (
+           LEFT JOIN hosted_serverless_output_barrier_completions AS barrier
+          ON barrier.account_id = attempt.account_id
+         AND barrier.workspace_id = attempt.workspace_id
+         AND barrier.attempt_id = attempt.id
+         AND barrier.project_id = attempt.project_id
+         AND barrier.project_revision_id = attempt.project_revision_id
+        LEFT JOIN LATERAL (
              SELECT event.provider_status, event.attempt_state,
                     event.items_completed, event.items_total, event.observed_at
                FROM serverless_progress_events AS event

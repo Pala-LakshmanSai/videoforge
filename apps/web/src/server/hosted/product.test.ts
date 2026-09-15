@@ -1748,7 +1748,7 @@ describe("hosted product route contract", () => {
     const revisionId = "22222222-2222-4222-8222-222222222222";
     const accountId = testState.scopeRows[0]!.account_id as string;
     const workspaceId = testState.scopeRows[0]!.workspace_id as string;
-    const outputs = Array.from({ length: 16 }, (_, index) => {
+    const outputs = Array.from({ length: 97 }, (_, index) => {
       const itemId = `mage-scene-${index + 1}`;
       return {
         attempt_id: "33333333-3333-4333-8333-333333333333",
@@ -1762,7 +1762,7 @@ describe("hosted product route contract", () => {
               `/project/${PROJECT_ID}/revision/${revisionId}/lane/mage-image/job/mage-attempt/artifact/${itemId}`,
             content_type: "image/png",
             content_length: 101,
-            checksum_sha256: `sha256:${(index + 1).toString(16).padStart(2, "0").repeat(32)}`,
+            checksum_sha256: `sha256:${"01".repeat(32)}`,
           },
         ],
       };
@@ -1780,10 +1780,11 @@ describe("hosted product route contract", () => {
       maxActive = Math.max(maxActive, active);
       await new Promise((resolve) => setTimeout(resolve, 2));
       active -= 1;
+      if (index === 95) return null;
       return {
         size: 101,
         httpMetadata: { contentType: "image/png" },
-        checksums: { sha256: new Uint8Array(32).fill(index + 1).buffer },
+        checksums: { sha256: new Uint8Array(32).fill(1).buffer },
       };
     });
     const mediaEnvironment = {
@@ -1802,12 +1803,33 @@ describe("hosted product route contract", () => {
         readonly review: { readonly contact_sheet: readonly { id: string }[] };
       };
       expect(body.review.contact_sheet.map((item) => item.id)).toEqual(
-        outputs.map((output) => output.artifacts[0]!.item_id),
+        outputs
+          .filter((_, index) => index !== 95)
+          .map((output) => output.artifacts[0]!.item_id),
       );
       expect(maxActive).toBeGreaterThan(1);
       expect(maxActive).toBeLessThanOrEqual(8);
     } finally {
       testState.projectDetailMediaRows.splice(0, testState.projectDetailMediaRows.length);
     }
+  });
+
+  it("projects accepted barrier completion without changing attempt authority", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+    const start = source.indexOf("const serverlessAttempts = await transaction.query(");
+    const end = source.indexOf("// Span audio", start);
+    const query = source.slice(start, end);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    expect(query).toContain("hosted_serverless_output_barrier_completions AS barrier");
+    expect(query).toContain("jsonb_array_length(barrier.expected_objects)");
+    expect(query).toContain("barrier.completed_at");
+    expect(query).toMatch(
+      /CASE\s+WHEN barrier\.attempt_id IS NOT NULL THEN 'COMPLETED'\s+ELSE progress\.provider_status\s+END AS provider_status/u,
+    );
+    expect(query).toMatch(
+      /CASE\s+WHEN barrier\.attempt_id IS NOT NULL THEN attempt\.item_count\s+ELSE progress\.items_total\s+END AS items_total/u,
+    );
+    expect(query).toContain("attempt.state");
   });
 });
