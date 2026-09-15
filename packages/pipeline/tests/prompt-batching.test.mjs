@@ -389,3 +389,30 @@ test("request maxTokens includes fixed and per-scene headroom and allows short b
   assert.equal(request.requestVersion, "runware-deepseek-v4-flash-prompt-request-v18");
   assert.equal(request.request.model, "deepseek:v4@flash");
 });
+
+// Runware answered the 21-24 scene batches the 16384 default produced with
+// `502 providerUnavailable` while small requests to the same model kept succeeding, so the hosted
+// prompt planner now pins the per-request ceiling to 8192 (HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS in
+// apps/web/src/server/hosted/hosted-prompt-run.ts). Sizing arithmetic: output is estimated as
+// 1024 + 512 * scenes plus 2048 headroom, so 8192 admits 10 scenes per request.
+test("an 8192-token ceiling bounds prompt batches to ten scenes", () => {
+  const narrow = planPromptBatches({ ...planningInput(80), options: { maxOutputTokens: 8_192 } });
+  for (const entry of narrow.batches) {
+    assert.ok(
+      entry.sceneIds.length <= 10,
+      `batch ${entry.ordinal} asked for ${entry.sceneIds.length} scenes`,
+    );
+    assert.ok(entry.maxOutputTokens <= 8_192, `batch ${entry.ordinal} requested ${entry.maxOutputTokens} tokens`);
+  }
+  const wide = planPromptBatches(planningInput(80));
+  const widest = Math.max(...wide.batches.map((entry) => entry.sceneIds.length));
+  assert.ok(widest >= 20, `the default ceiling packed only ${widest} scenes`);
+  assert.ok(
+    narrow.batchCount > wide.batchCount,
+    `narrow=${narrow.batchCount} wide=${wide.batchCount}`,
+  );
+  assert.deepEqual(
+    narrow.batches.flatMap((entry) => [...entry.sceneIds]),
+    scenes(80).map((scene) => scene.sceneId),
+  );
+});

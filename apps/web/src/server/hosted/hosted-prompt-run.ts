@@ -328,6 +328,23 @@ export function hostedPromptAuthority(input: {
 }
 
 /**
+ * Per-request output-token ceiling for hosted prompt batches.
+ *
+ * The planner packs a batch as full as the ceilings allow: output is estimated as
+ * `1024 + 512 * scenes` plus 2048 headroom, so the 16_384 default admitted up to 26 scenes per
+ * request and shipped ~21-24-scene batches with `maxTokens` rising to ~15.9k.
+ *
+ * Runware's text backend began answering those larger requests with `502 providerUnavailable`
+ * (`runware-deepseek-v4-flash unavailable`, their own nginx error page) while small requests to the
+ * same model kept succeeding, and one batch that failed this way resumed at the same ordinal across
+ * every redispatch. Request shape was the only lever left on our side, so batches are now bounded to
+ * 10 scenes (`1024 + 10*512 + 2048 = 8192`), which more than halves each request's input and output
+ * while leaving the model well inside its working range. The plan stays deterministic, and scene
+ * boundaries, order, and content are untouched.
+ */
+export const HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 8_192 as const;
+
+/**
  * Derive transport batches from the complete immutable Stage 4 image-scene list.
  * The planner changes only request grouping; it never changes scene boundaries,
  * scene order, or the prompt-execution input hash.
@@ -343,6 +360,7 @@ export function hostedPromptBatchPlan(authority: PromptExecutionAuthority): Prom
     storyContext: authority.storyContext,
     continuityTags: authority.continuityTags,
     scenes: authority.scenes,
+    options: { maxOutputTokens: HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS },
   });
 }
 
