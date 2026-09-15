@@ -21,7 +21,12 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ImageStyleHubVersionResponse } from "@videoforge/contracts/image-style-hub";
 import { PageHeader } from "../components/PageHeader";
-import { ProjectMediaReview, type ProjectMediaReviewItem } from "../components/ProjectMediaReview";
+import {
+  ProjectMediaReview,
+  type ProjectMediaReviewHasMore,
+  type ProjectMediaReviewItem,
+  type ProjectMediaReviewTotals,
+} from "../components/ProjectMediaReview";
 import {
   Badge,
   Button,
@@ -851,9 +856,22 @@ interface HostedAvatarFootageItem {
   readonly label?: string | null;
 }
 
+interface HostedMediaPagination {
+  readonly page: number;
+  readonly page_size: number;
+  readonly total_accepted: number;
+  readonly has_more: boolean;
+}
+
+interface HostedMediaPaginationResponse {
+  readonly images: HostedMediaPagination;
+  readonly avatar: HostedMediaPagination;
+}
+
 interface HostedReviewSnapshot {
   readonly contact_sheet?: readonly HostedContactSheetItem[];
   readonly avatar_footage?: readonly HostedAvatarFootageItem[];
+  readonly media_pagination?: HostedMediaPaginationResponse;
   readonly quality_flags?: readonly HostedQualityFlag[];
   readonly manifest_url?: string | null;
   readonly download_url?: string | null;
@@ -926,8 +944,40 @@ interface ProjectDetailResponse {
   readonly review?: HostedReviewSnapshot | null;
   readonly contact_sheet?: readonly HostedContactSheetItem[];
   readonly avatar_footage?: readonly HostedAvatarFootageItem[];
+  readonly media_pagination?: HostedMediaPaginationResponse;
   readonly quality_flags?: readonly HostedQualityFlag[];
   readonly manifest_url?: string | null;
+}
+
+type HostedMediaSection = "images" | "avatar";
+const HOSTED_MEDIA_PAGE_SIZE = 96;
+
+function hostedMediaItemKey(item: {
+  readonly id?: string;
+  readonly image_url?: string;
+  readonly video_url?: string;
+}): string {
+  return item.id ?? item.image_url ?? item.video_url ?? "unknown-media-item";
+}
+
+function mergeHostedMedia<T extends {
+  readonly id?: string;
+  readonly image_url?: string;
+  readonly video_url?: string;
+}>(current: readonly T[], next: readonly T[]): readonly T[] {
+  const merged = [...current];
+  const indexes = new Map(merged.map((item, index) => [hostedMediaItemKey(item), index]));
+  for (const item of next) {
+    const key = hostedMediaItemKey(item);
+    const existing = indexes.get(key);
+    if (existing === undefined) {
+      indexes.set(key, merged.length);
+      merged.push(item);
+    } else {
+      merged[existing] = item;
+    }
+  }
+  return merged;
 }
 
 interface HostedSpanAudioProgress {
@@ -3862,6 +3912,48 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     placeholderData: (previousData) => previousData,
     retry: false,
   });
+  const [additionalMedia, setAdditionalMedia] = useState<{
+    readonly images: readonly HostedContactSheetItem[];
+    readonly avatar: readonly HostedAvatarFootageItem[];
+  }>({ images: [], avatar: [] });
+  const [mediaPage, setMediaPage] = useState<Record<HostedMediaSection, number>>({
+    images: 1,
+    avatar: 1,
+  });
+  const [mediaLoadingSection, setMediaLoadingSection] = useState<HostedMediaSection | null>(null);
+  const [mediaLoadError, setMediaLoadError] = useState<string | null>(null);
+  const mediaRevision = useRef<string | null>(null);
+  useEffect(() => {
+    const revisionId = query.data?.project.revision_id ?? null;
+    if (revisionId === mediaRevision.current) return;
+    mediaRevision.current = revisionId;
+    setAdditionalMedia({ images: [], avatar: [] });
+    setMediaPage({ images: 1, avatar: 1 });
+    setMediaLoadError(null);
+  }, [query.data?.project.revision_id]);
+
+  async function loadMoreMedia(section: HostedMediaSection): Promise<void> {
+    if (mediaLoadingSection !== null) return;
+    const nextPage = mediaPage[section] + 1;
+    setMediaLoadingSection(section);
+    setMediaLoadError(null);
+    try {
+      const page = await readJson<ProjectDetailResponse>(
+        `/api/v2/hosted/projects/${projectId}?media_kind=${section}&media_page=${nextPage}`,
+      );
+      const nextImages = page.review?.contact_sheet ?? page.contact_sheet ?? [];
+      const nextAvatar = page.review?.avatar_footage ?? page.avatar_footage ?? [];
+      setAdditionalMedia((current) => ({
+        images: section === "images" ? mergeHostedMedia(current.images, nextImages) : current.images,
+        avatar: section === "avatar" ? mergeHostedMedia(current.avatar, nextAvatar) : current.avatar,
+      }));
+      setMediaPage((current) => ({ ...current, [section]: nextPage }));
+    } catch (error) {
+      setMediaLoadError(error instanceof Error ? error.message : "Try again.");
+    } finally {
+      setMediaLoadingSection(null);
+    }
+  }
   const imageRegenerationRequests = useRef(new Map<string, HostedImageRegenerationRequest>());
   async function regenerateImage(item: ProjectMediaReviewItem, prompt: string): Promise<void> {
     const revisionId = query.data?.project.revision_id;
@@ -4423,7 +4515,29 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     query.data.review?.contact_sheet?.at(-1)?.image_url ??
     query.data.contact_sheet?.at(-1)?.image_url ??
     null;
-  const contactSheet = query.data.review?.contact_sheet ?? query.data.contact_sheet ?? [];
+  const firstContactSheet = query.data.review?.contact_sheet ?? query.data.contact_sheet ?? [];
+  const firstAvatarFootage = query.data.review?.avatar_footage ?? query.data.avatar_footage ?? [];
+  const contactSheet = mergeHostedMedia(firstContactSheet, additionalMedia.images);
+  const avatarFootage = mergeHostedMedia(firstAvatarFootage, additionalMedia.avatar);
+  const mediaPagination = query.data.media_pagination ?? query.data.review?.media_pagination;
+  const mediaTotals: ProjectMediaReviewTotals = {
+    images: Math.max(
+      contactSheet.length,
+      Number.isSafeInteger(Number(mediaPagination?.images.total_accepted))
+        ? Number(mediaPagination?.images.total_accepted)
+        : contactSheet.length,
+    ),
+    avatar: Math.max(
+      avatarFootage.length,
+      Number.isSafeInteger(Number(mediaPagination?.avatar.total_accepted))
+        ? Number(mediaPagination?.avatar.total_accepted)
+        : avatarFootage.length,
+    ),
+  };
+  const mediaHasMore: ProjectMediaReviewHasMore = {
+    images: mediaPage.images * HOSTED_MEDIA_PAGE_SIZE < mediaTotals.images,
+    avatar: mediaPage.avatar * HOSTED_MEDIA_PAGE_SIZE < mediaTotals.avatar,
+  };
   const projectRevisionId = query.data?.project.revision_id ?? null;
   const generatedImages: ProjectMediaReviewItem[] = contactSheet.map((item, index) => {
     const id = item.id ?? item.asset_id ?? `generated-image-${index + 1}`;
@@ -4443,7 +4557,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             : "Accepted Stage 6 image",
     };
   });
-  const avatarVideos: ProjectMediaReviewItem[] = (query.data.avatar_footage ?? []).map(
+  const avatarVideos: ProjectMediaReviewItem[] = avatarFootage.map(
     (item, index) => ({
       id: item.id,
       url: item.video_url,
@@ -4468,6 +4582,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               launcher="images"
               images={generatedImages}
               avatarVideos={avatarVideos}
+              mediaTotals={mediaTotals}
+              mediaHasMore={mediaHasMore}
+              onLoadMore={(section) => void loadMoreMedia(section)}
+              loadingMore={mediaLoadingSection}
+              loadMoreError={mediaLoadError}
               loading={query.isFetching && !query.data}
               error={query.isError ? query.error.message : null}
               onRetry={() => void query.refetch()}
@@ -4483,6 +4602,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               launcher="avatar"
               images={generatedImages}
               avatarVideos={avatarVideos}
+              mediaTotals={mediaTotals}
+              mediaHasMore={mediaHasMore}
+              onLoadMore={(section) => void loadMoreMedia(section)}
+              loadingMore={mediaLoadingSection}
+              loadMoreError={mediaLoadError}
               loading={query.isFetching && !query.data}
               error={query.isError ? query.error.message : null}
               onRetry={() => void query.refetch()}

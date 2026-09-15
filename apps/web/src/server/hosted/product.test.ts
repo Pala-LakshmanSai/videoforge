@@ -1623,6 +1623,14 @@ describe("hosted product route contract", () => {
           review: {
             contact_sheet: Array<{ id: string; image_url: string }>;
             avatar_footage: Array<{ id: string; video_url: string }>;
+            media_pagination: {
+              images: Record<string, unknown>;
+              avatar: Record<string, unknown>;
+            };
+          };
+          media_pagination: {
+            images: Record<string, unknown>;
+            avatar: Record<string, unknown>;
           };
         };
         const promptCall = testState.query.mock.calls.find(([sql]) =>
@@ -1642,12 +1650,16 @@ describe("hosted product route contract", () => {
           prompt: editedPrompt ?? "A person holding a watermelon in a produce market.",
           label: editedPrompt ?? "A person holding a watermelon in a produce market.",
         });
-        expect(body.review.avatar_footage).toHaveLength(1);
-        expect(body.review.avatar_footage[0]).toMatchObject({ id: soulx.item_id });
-        expect(head).toHaveBeenCalledTimes(3);
-        expect(head).toHaveBeenNthCalledWith(1, mage.object_key);
-        expect(head).toHaveBeenNthCalledWith(2, soulx.object_key);
-        expect(head).toHaveBeenNthCalledWith(3, soulx.object_key);
+    expect(body.review.avatar_footage).toHaveLength(1);
+    expect(body.review.avatar_footage[0]).toMatchObject({ id: soulx.item_id });
+    expect(body.review.media_pagination).toEqual({
+      images: { page: 1, page_size: 96, total_accepted: 1, has_more: false },
+      avatar: { page: 1, page_size: 96, total_accepted: 1, has_more: false },
+    });
+    expect(body.media_pagination).toEqual(body.review.media_pagination);
+    expect(head).toHaveBeenCalledTimes(2);
+    expect(head).toHaveBeenNthCalledWith(1, mage.object_key);
+    expect(head).toHaveBeenNthCalledWith(2, soulx.object_key);
 
         const mediaCall = testState.query.mock.calls.find(([sql]) =>
           String(sql).includes("FROM video_runtime_accepted_units AS unit"),
@@ -1659,6 +1671,33 @@ describe("hosted product route contract", () => {
         expect(mediaCall?.[0]).toContain("reservation.state = 'COMMITTED'");
         expect(mediaCall?.[0]).toContain("receipt.deleted_at IS NULL");
         expect(mediaCall?.[1]).toEqual([accountId, workspaceId, PROJECT_ID, revisionId]);
+
+        testState.query.mockClear();
+        head.mockClear();
+        const imagePageTwo = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}?media_kind=images&media_page=2`, "GET"),
+          mediaEnvironment,
+          stagingConfig,
+          executionContext,
+        );
+        expect(imagePageTwo?.status).toBe(200);
+        const imagePageTwoBody = (await imagePageTwo?.json()) as {
+          readonly review: {
+            readonly contact_sheet: readonly unknown[];
+            readonly avatar_footage: readonly unknown[];
+            readonly media_pagination: {
+              readonly images: Record<string, unknown>;
+              readonly avatar: Record<string, unknown>;
+            };
+          };
+        };
+        expect(imagePageTwoBody.review.contact_sheet).toHaveLength(0);
+        expect(imagePageTwoBody.review.avatar_footage).toHaveLength(0);
+        expect(imagePageTwoBody.review.media_pagination).toEqual({
+          images: { page: 2, page_size: 96, total_accepted: 1, has_more: false },
+          avatar: { page: 1, page_size: 96, total_accepted: 1, has_more: false },
+        });
+        expect(head).not.toHaveBeenCalled();
       } finally {
         testState.projectDetailPromptRows.splice(0);
         testState.projectDetailMediaRows.splice(0, testState.projectDetailMediaRows.length);
@@ -1702,5 +1741,6 @@ describe("hosted product route contract", () => {
     expect(query).toContain("JOIN artifact_receipts AS receipt");
     expect(query).toContain("receipt.deleted_at IS NULL");
     expect(query).toContain("receipt.checksum_sha256 = unit.checksum_sha256");
+
   });
 });

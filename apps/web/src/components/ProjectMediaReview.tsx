@@ -12,9 +12,24 @@ export interface ProjectMediaReviewItem {
 
 type MediaSection = "images" | "avatar";
 
+export interface ProjectMediaReviewTotals {
+  readonly images: number;
+  readonly avatar: number;
+}
+
+export interface ProjectMediaReviewHasMore {
+  readonly images: boolean;
+  readonly avatar: boolean;
+}
+
 export interface ProjectMediaReviewProps {
   readonly images: readonly ProjectMediaReviewItem[];
   readonly avatarVideos: readonly ProjectMediaReviewItem[];
+  readonly mediaTotals?: ProjectMediaReviewTotals;
+  readonly mediaHasMore?: ProjectMediaReviewHasMore;
+  readonly onLoadMore?: (section: MediaSection) => void;
+  readonly loadingMore?: MediaSection | null;
+  readonly loadMoreError?: string | null;
   readonly loading?: boolean;
   readonly error?: string | null;
   readonly onRetry?: () => void;
@@ -84,6 +99,11 @@ function MediaReviewError({
 export function ProjectMediaReview({
   images,
   avatarVideos,
+  mediaTotals,
+  mediaHasMore,
+  onLoadMore,
+  loadingMore = null,
+  loadMoreError = null,
   loading = false,
   error = null,
   onRetry,
@@ -106,6 +126,10 @@ export function ProjectMediaReview({
   const avatarTriggerRef = useRef<HTMLButtonElement | null>(null);
   const activeItems =
     activeSection === "images" ? images : activeSection === "avatar" ? avatarVideos : [];
+  const activeTotal = activeSection
+    ? (mediaTotals?.[activeSection] ?? activeItems.length)
+    : 0;
+  const activeHasMore = activeSection ? (mediaHasMore?.[activeSection] ?? false) : false;
   const selectedItem = activeItems[selectedIndex] ?? null;
 
   useEffect(() => {
@@ -235,7 +259,7 @@ export function ProjectMediaReview({
                 ? "Loading media…"
                 : error
                   ? "Unavailable"
-                  : countLabel(images.length, "image", "images")}
+                : countLabel(mediaTotals?.images ?? images.length, "image", "images")}
             </small>
           </span>
           <ArrowRight size={19} aria-hidden="true" />
@@ -263,7 +287,7 @@ export function ProjectMediaReview({
                 ? "Loading media…"
                 : error
                   ? "Unavailable"
-                  : countLabel(avatarVideos.length, "clip", "clips")}
+                  : countLabel(mediaTotals?.avatar ?? avatarVideos.length, "clip", "clips")}
             </small>
           </span>
           <ArrowRight size={19} aria-hidden="true" />
@@ -307,7 +331,10 @@ export function ProjectMediaReview({
 
             <div className="media-review-dialog-tabs" role="tablist" aria-label="Media type">
               {(["images", "avatar"] as const).map((section) => {
-                const count = section === "images" ? images.length : avatarVideos.length;
+                const count =
+                  section === "images"
+                    ? (mediaTotals?.images ?? images.length)
+                    : (mediaTotals?.avatar ?? avatarVideos.length);
                 const selected = activeSection === section;
                 return (
                   <button
@@ -378,7 +405,7 @@ export function ProjectMediaReview({
                         {selectedItem.detail ? <span>{selectedItem.detail}</span> : null}
                       </div>
                       <span>
-                        {selectedIndex + 1} / {activeItems.length} {sectionNoun(activeSection)}
+                        {selectedIndex + 1} / {activeTotal} {sectionNoun(activeSection)}
                       </span>
                     </div>
                     {activeSection === "images" ? (
@@ -459,7 +486,7 @@ export function ProjectMediaReview({
                           <ArrowLeft size={20} aria-hidden="true" />
                         </button>
                         <span>
-                          {selectedIndex + 1} / {activeItems.length}
+                          {selectedIndex + 1} / {activeTotal}
                         </span>
                         <button
                           type="button"
@@ -477,7 +504,11 @@ export function ProjectMediaReview({
                   >
                     <div className="media-review-thumbnails-heading">
                       <strong>All accepted</strong>
-                      <span>{countLabel(activeItems.length, "item", "items")}</span>
+                      <span>
+                        {activeItems.length === activeTotal
+                          ? countLabel(activeTotal, "item", "items")
+                          : `${activeItems.length.toLocaleString()} of ${activeTotal.toLocaleString()} accepted`}
+                      </span>
                     </div>
                     <div className="media-review-thumbnail-grid">
                       {activeItems.map((item, index) => (
@@ -503,6 +534,23 @@ export function ProjectMediaReview({
                         </button>
                       ))}
                     </div>
+                    {loadMoreError ? (
+                      <p className="media-review-load-more-error" role="alert">
+                        More media could not be loaded. {loadMoreError}
+                      </p>
+                    ) : null}
+                    {activeHasMore && onLoadMore ? (
+                      <button
+                        className="button button-secondary media-review-load-more"
+                        type="button"
+                        disabled={loadingMore !== null}
+                        onClick={() => onLoadMore(activeSection)}
+                      >
+                        {loadingMore === activeSection
+                          ? "Loading more…"
+                          : `Load more ${sectionNoun(activeSection)}`}
+                      </button>
+                    ) : null}
                   </aside>
                 </div>
               ) : null}

@@ -238,3 +238,32 @@ it("reloads the same accepted asset when its failed signed URL is refreshed", ()
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   expect(screen.getByLabelText("Avatar clip 1")).toHaveAttribute("src", "/renewed.mp4");
 });
+
+it("shows truthful accepted totals and loads another bounded media page", () => {
+  const onLoadMore = vi.fn();
+  const images = Array.from({ length: 96 }, (_, index) => ({
+    id: `scene-${index + 1}`,
+    url: `/scene-${index + 1}.png`,
+    label: `Generated image ${index + 1}`,
+  }));
+  render(
+    <ProjectMediaReview
+      launcher="images"
+      images={images}
+      avatarVideos={[]}
+      mediaTotals={{ images: 207, avatar: 0 }}
+      mediaHasMore={{ images: true, avatar: false }}
+      onLoadMore={onLoadMore}
+    />,
+  );
+
+  expect(screen.getByRole("button", { name: "View generated images" })).toHaveTextContent(
+    "207 images",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "View generated images" }));
+  expect(screen.getByRole("tab", { name: /Generated images 207/u })).toBeVisible();
+  expect(screen.getByText("1 / 207 image")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "Load more image" }));
+  expect(onLoadMore).toHaveBeenCalledWith("images");
+});

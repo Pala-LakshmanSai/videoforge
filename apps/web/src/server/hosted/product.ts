@@ -5937,35 +5937,112 @@ type HostedAvatarFootageItem = {
   readonly checksum_sha256: string;
 };
 
+const HOSTED_MEDIA_PAGE_SIZE = 96;
+type HostedMediaKind = "images" | "avatar";
+
+type HostedMediaPagination = {
+  readonly page: number;
+  readonly page_size: number;
+  readonly total_accepted: number;
+  readonly has_more: boolean;
+};
+
+type HostedMediaArtifact = Record<string, unknown> & {
+  readonly object_key: string;
+  readonly checksum_sha256: string;
+  readonly content_length: number;
+  readonly item_id: string;
+};
+
+function hostedMediaRequest(request: Request): {
+  readonly kind: HostedMediaKind | null;
+  readonly page: number;
+} {
+  const params = new URL(request.url).searchParams;
+  const rawPage = Number(params.get("media_page") ?? "1");
+  const page = Number.isSafeInteger(rawPage) && rawPage >= 1 && rawPage <= 1_000 ? rawPage : 1;
+  const rawKind = params.get("media_kind");
+  const kind = rawKind === "images" || rawKind === "avatar" ? rawKind : null;
+  return Object.freeze({ kind, page });
+}
+
+function validHostedMediaArtifact(raw: unknown): HostedMediaArtifact | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const artifact = raw as Record<string, unknown>;
+  const checksum = artifact.checksum_sha256;
+  const contentLength = numberOrNull(artifact.content_length);
+  if (
+    typeof artifact.object_key !== "string" ||
+    typeof checksum !== "string" ||
+    !SHA256.test(checksum) ||
+    contentLength === null ||
+    !Number.isSafeInteger(contentLength) ||
+    contentLength < 1 ||
+    typeof artifact.item_id !== "string"
+  )
+    return null;
+  return artifact as HostedMediaArtifact;
+}
+
+function isHostedImageArtifact(artifact: Record<string, unknown>): boolean {
+  const contentType = artifact.content_type;
+  return typeof contentType !== "string" || contentType.startsWith("image/");
+}
+
+function countHostedMediaArtifacts(
+  outputs: readonly Record<string, unknown>[],
+  kind: HostedMediaKind,
+): number {
+  let count = 0;
+  for (const output of outputs) {
+    if (kind === "avatar" && String(output.lane ?? "").toLowerCase() !== "soulx_avatar") continue;
+    if (!Array.isArray(output.artifacts)) continue;
+    for (const rawArtifact of output.artifacts) {
+      const artifact = validHostedMediaArtifact(rawArtifact);
+      if (!artifact || (kind === "images" ? !isHostedImageArtifact(artifact) : false)) continue;
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function hostedMediaPagination(
+  page: number,
+  totalAccepted: number,
+): HostedMediaPagination {
+  return Object.freeze({
+    page,
+    page_size: HOSTED_MEDIA_PAGE_SIZE,
+    total_accepted: totalAccepted,
+    has_more: page * HOSTED_MEDIA_PAGE_SIZE < totalAccepted,
+  });
+}
+
 async function contactSheet(
   outputs: readonly Record<string, unknown>[],
   bucket: HostedRuntimeEnvironment["PRIVATE_ARTIFACTS"],
   signer: HostedR2Signer,
   prompts: readonly Record<string, unknown>[],
+  page = 1,
 ): Promise<readonly HostedContactSheetItem[]> {
   if (!bucket) return [];
   const items: HostedContactSheetItem[] = [];
+  const start = (page - 1) * HOSTED_MEDIA_PAGE_SIZE;
+  let ordinal = 0;
   const promptById = new Map(prompts.map((prompt) => [prompt.image_task_id, prompt]));
   for (const output of outputs) {
     if (!Array.isArray(output.artifacts)) continue;
     for (const rawArtifact of output.artifacts) {
-      if (!rawArtifact || typeof rawArtifact !== "object" || items.length >= 96) continue;
-      const artifact = rawArtifact as Record<string, unknown>;
+      const artifact = validHostedMediaArtifact(rawArtifact);
+      if (!artifact || !isHostedImageArtifact(artifact)) continue;
+      const itemOrdinal = ordinal;
+      ordinal += 1;
+      if (itemOrdinal < start) continue;
+      if (items.length >= HOSTED_MEDIA_PAGE_SIZE) return items;
       const objectKey = artifact.object_key;
       const checksum = artifact.checksum_sha256;
       const contentLength = numberOrNull(artifact.content_length);
       const itemId = artifact.item_id;
-      if (
-        typeof objectKey !== "string" ||
-        typeof checksum !== "string" ||
-        !SHA256.test(checksum) ||
-        contentLength === null ||
-        !Number.isSafeInteger(contentLength) ||
-        contentLength < 1 ||
-        typeof itemId !== "string"
-      ) {
-        continue;
-      }
       const object = await bucket.head(objectKey);
       const contentType = object?.httpMetadata?.contentType;
       if (
@@ -5997,13 +6074,13 @@ async function contactSheet(
         asset_id: null,
         image_url: port.url,
         prompt,
-        label: prompt ?? `Generated image ${items.length + 1}`,
+        label: prompt ?? `Generated image ${start + items.length + 1}`,
         start_ms: null,
         end_ms: null,
         shot_role: String(output.lane ?? "IMAGE"),
       });
     }
-    if (items.length >= 96) break;
+    if (items.length >= HOSTED_MEDIA_PAGE_SIZE) break;
   }
   return items;
 }
@@ -6012,29 +6089,25 @@ async function avatarFootage(
   outputs: readonly Record<string, unknown>[],
   bucket: HostedRuntimeEnvironment["PRIVATE_ARTIFACTS"],
   signer: HostedR2Signer,
+  page = 1,
 ): Promise<readonly HostedAvatarFootageItem[]> {
   if (!bucket) return [];
   const items: HostedAvatarFootageItem[] = [];
+  const start = (page - 1) * HOSTED_MEDIA_PAGE_SIZE;
+  let ordinal = 0;
   for (const output of outputs) {
     if (output.lane !== "soulx_avatar" || !Array.isArray(output.artifacts)) continue;
     for (const rawArtifact of output.artifacts) {
-      if (!rawArtifact || typeof rawArtifact !== "object" || items.length >= 96) continue;
-      const artifact = rawArtifact as Record<string, unknown>;
+      const artifact = validHostedMediaArtifact(rawArtifact);
+      if (!artifact) continue;
+      const itemOrdinal = ordinal;
+      ordinal += 1;
+      if (itemOrdinal < start) continue;
+      if (items.length >= HOSTED_MEDIA_PAGE_SIZE) return items;
       const objectKey = artifact.object_key;
       const checksum = artifact.checksum_sha256;
       const contentLength = numberOrNull(artifact.content_length);
       const itemId = artifact.item_id;
-      if (
-        typeof objectKey !== "string" ||
-        typeof checksum !== "string" ||
-        !SHA256.test(checksum) ||
-        contentLength === null ||
-        !Number.isSafeInteger(contentLength) ||
-        contentLength < 1 ||
-        typeof itemId !== "string"
-      ) {
-        continue;
-      }
       const object = await bucket.head(objectKey);
       const contentType = object?.httpMetadata?.contentType;
       if (
@@ -6057,13 +6130,13 @@ async function avatarFootage(
         id: itemId,
         asset_id: itemId,
         video_url: port.url,
-        label: `Avatar clip ${items.length + 1}`,
+        label: `Avatar clip ${start + items.length + 1}`,
         content_type: contentType,
         content_length: contentLength,
         checksum_sha256: checksum,
       });
     }
-    if (items.length >= 96) break;
+    if (items.length >= HOSTED_MEDIA_PAGE_SIZE) break;
   }
   return items;
 }
@@ -6076,6 +6149,7 @@ async function projectDetail(
   executionContext: HostedExecutionContext,
 ): Promise<Response> {
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  const requestedMedia = hostedMediaRequest(request);
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
@@ -7059,19 +7133,29 @@ async function projectDetail(
           replacement_allowed: false,
         })),
     ];
+    const outputRows = detail.serverlessOutputs as Record<string, unknown>[];
+    const totalAcceptedImages = countHostedMediaArtifacts(outputRows, "images");
+    const totalAcceptedAvatar = countHostedMediaArtifacts(outputRows, "avatar");
+    const imagePage = requestedMedia.kind === "avatar" ? 1 : requestedMedia.page;
+    const avatarPage = requestedMedia.kind === "images" ? 1 : requestedMedia.page;
     const [sheet, footage] = await Promise.all([
-      contactSheet(
-        detail.serverlessOutputs as Record<string, unknown>[],
-        environment.PRIVATE_ARTIFACTS,
-        signer,
-        detail.prompts as Record<string, unknown>[],
-      ),
-      avatarFootage(
-        detail.serverlessOutputs as Record<string, unknown>[],
-        environment.PRIVATE_ARTIFACTS,
-        signer,
-      ),
+      requestedMedia.kind === "avatar"
+        ? Promise.resolve([] as readonly HostedContactSheetItem[])
+        : contactSheet(
+            outputRows,
+            environment.PRIVATE_ARTIFACTS,
+            signer,
+            detail.prompts as Record<string, unknown>[],
+            imagePage,
+          ),
+      requestedMedia.kind === "images"
+        ? Promise.resolve([] as readonly HostedAvatarFootageItem[])
+        : avatarFootage(outputRows, environment.PRIVATE_ARTIFACTS, signer, avatarPage),
     ]);
+    const mediaPagination = {
+      images: hostedMediaPagination(imagePage, totalAcceptedImages),
+      avatar: hostedMediaPagination(avatarPage, totalAcceptedAvatar),
+    } as const;
     let downloadUrl: string | null = null;
     const reviewRow = detail.review as Record<string, unknown> | null;
     const manifestUrl = reviewRow ? `/api/v2/hosted/projects/${projectId}/manifest` : null;
@@ -7145,12 +7229,14 @@ async function projectDetail(
       review: {
         contact_sheet: sheet,
         avatar_footage: footage,
+        media_pagination: mediaPagination,
         quality_flags: qualityFlags,
         manifest_url: manifestUrl,
         download_url: downloadUrl,
       },
       contact_sheet: sheet,
       avatar_footage: footage,
+      media_pagination: mediaPagination,
       quality_flags: qualityFlags,
       manifest_url: manifestUrl,
     });
