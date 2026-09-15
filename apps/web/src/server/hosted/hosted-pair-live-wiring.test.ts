@@ -508,6 +508,67 @@ describe("hosted pair live provider wiring", () => {
     expect(settle.reconcile).toHaveBeenCalledOnce();
   });
 
+  it("holds an assigned lane whose provider record 404s before the funded deadline", async () => {
+    const status = vi.fn(async () => {
+      throw new ServerlessTransportError("PROVIDER_JOB_ABSENT");
+    });
+    const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
+    const drained = vi.fn(async () => ({
+      workersTotal: 0 as const,
+      billableWorkers: 0 as const,
+      queuedJobs: 0 as const,
+      observedAt: "2026-09-06T01:00:00.000Z",
+    }));
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rows()) } as never,
+      {
+        mage_image: { status, cancel: vi.fn() },
+        soulx_avatar: { status, cancel: vi.fn() },
+      },
+      settle as never,
+      { mage_image: drained, soulx_avatar: drained },
+      vi.fn(async () => ({ guard: "cost-bounded" })),
+    );
+
+    await expect(reconciler.observe(ids, false)).resolves.toEqual({
+      state: "WAITING",
+      active: 0,
+      unknown: 2,
+    });
+    expect(settle.reconcile).not.toHaveBeenCalled();
+    expect(drained).not.toHaveBeenCalled();
+  });
+
+  it("settles an absent lane once its funded deadline has expired", async () => {
+    const status = vi.fn(async () => {
+      throw new ServerlessTransportError("PROVIDER_JOB_ABSENT");
+    });
+    const settle = { reconcile: vi.fn(async () => ({ state: "SETTLED" })) };
+    const drained = vi.fn(async () => ({
+      workersTotal: 0 as const,
+      billableWorkers: 0 as const,
+      queuedJobs: 0 as const,
+      observedAt: "2026-09-06T01:00:00.000Z",
+    }));
+    const funded = rows().map((row) => ({ ...row, fundedDeadlineAt: "2026-08-26T00:30:00.000Z" }));
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => funded) } as never,
+      {
+        mage_image: { status, cancel: vi.fn() },
+        soulx_avatar: { status, cancel: vi.fn() },
+      },
+      settle as never,
+      { mage_image: drained, soulx_avatar: drained },
+      vi.fn(async () => ({ guard: "cost-bounded" })),
+      undefined,
+      undefined,
+      vi.fn(async () => "2026-08-26T01:00:00.000Z"),
+    );
+
+    await expect(reconciler.observe(ids, false)).resolves.toEqual({ state: "SETTLED" });
+    expect(settle.reconcile).toHaveBeenCalledOnce();
+  });
+
   it("normalizes future provider drain observations to one fresh database timestamp", async () => {
     const status = vi.fn(async () => {
       throw new ServerlessTransportError("PROVIDER_JOB_ABSENT");

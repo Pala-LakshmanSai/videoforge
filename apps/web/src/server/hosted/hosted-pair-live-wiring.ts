@@ -1007,11 +1007,28 @@ export class HostedPairWorkflowReconciler {
         }
       } catch (error) {
         if (error instanceof ServerlessTransportError && error.code === "PROVIDER_JOB_ABSENT") {
+          // A 404 for an assignment this platform acknowledged is not proof the lane is idle.
+          // RunPod re-keys or retires a job record while the work is still executing, and settling
+          // on that single read marks a paid, in-flight lane PERMANENT_FAILED and discards its
+          // output. Absence only becomes actionable at the funded deadline or under an explicit
+          // cancellation; until then it is held exactly like an unknown assignment identity.
+          const fundedDeadlineExpired = Boolean(
+            row.fundedDeadlineAt &&
+              databaseNow !== null &&
+              databaseNow >= Date.parse(row.fundedDeadlineAt),
+          );
+          const absenceActionable = cancelKnownActive || fundedDeadlineExpired;
           console.warn("hosted_pair_provider_job_absent", {
             lane: row.lane,
             attemptId: row.attemptId,
+            absenceActionable,
           });
           allCompleted = false;
+          if (!absenceActionable) {
+            allTerminal = false;
+            unknown += 1;
+          }
+          if (fundedDeadlineExpired) fundedCancellation = true;
           continue;
         }
         allTerminal = false;
