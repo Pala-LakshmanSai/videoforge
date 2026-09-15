@@ -1,5 +1,9 @@
 # VideoForge: start here
 
+## Stage elapsed timers — 2026-09-15
+
+Stage rows show elapsed time from persisted start/end timestamps. Active timers tick each second; terminal durations survive reload. Span audio has its own timer. Missing historical timing is shown as an em dash; technical verification is explicitly included in assembly time. Production verification is pending.
+
 ## Bounded audio-span batching — 2026-09-15
 
 User authorized batching and production delivery. Worker0.1.22 claims and executes up to four existing same-project/revision span jobs together. Each keeps its exact attempt, lease, cancellation, upload checksum and completion receipt; successful siblings survive an individual failure. Migration145 allows one bounded work group per device, preserving singleton transcription/render and unique active attempts. No aggregate result bypass is introduced.

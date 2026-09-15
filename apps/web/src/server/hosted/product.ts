@@ -5827,6 +5827,8 @@ async function renderHandoff(
     // planning request so progress, queue, catalog, and worker-heartbeat reads stay below the
     // Cloudflare request CPU limit.
     generationCoordinator = await import("./generation-coordinator");
+    const planningStartedAt = new Date().toISOString();
+    const timingPersistence = new HostedCanonicalTimingPersistence(pool, bucket);
     const result = await generationCoordinator.coordinateHostedGeneration({
       snapshot: {
         accountId: scope.account_id,
@@ -5850,7 +5852,23 @@ async function renderHandoff(
       },
       asrInputBytes,
       asrOutputBytes,
-      persistence: new HostedCanonicalTimingPersistence(pool, bucket),
+      persistence: {
+        persistProviderInertPlan: (input) =>
+          timingPersistence.persistProviderInertPlan({
+            ...input,
+            preparedTimeline: {
+              ...input.preparedTimeline,
+              artifactRegistration: {
+                ...input.preparedTimeline.artifactRegistration,
+                metadata: {
+                  ...input.preparedTimeline.artifactRegistration.metadata,
+                  planning_started_at: planningStartedAt,
+                  planning_completed_at: new Date().toISOString(),
+                },
+              },
+            },
+          }),
+      },
     });
     return response(result, 202);
   } catch (error) {
@@ -6206,7 +6224,7 @@ async function projectDetail(
       );
       const project = await transaction.query(
         `SELECT project.id, project.name AS title, project.created_at, revision.id AS revision_id,
-                revision.status AS revision_state
+                revision.locked_at, revision.status AS revision_state
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
@@ -6273,6 +6291,8 @@ async function projectDetail(
       );
       const generation = await transaction.query(
         `SELECT plan.id, plan.canonical_document_hash AS timeline_plan_sha256,
+                timing_asset.metadata->>'planning_started_at' AS planning_started_at,
+                timing_asset.metadata->>'planning_completed_at' AS planning_completed_at,
                 (SELECT count(*)
                    FROM timeline_segments AS segment
                   WHERE segment.account_id = revision.account_id
@@ -6315,6 +6335,10 @@ async function projectDetail(
             AND plan.workspace_id = head.workspace_id
             AND plan.project_revision_id = head.project_revision_id
             AND plan.id = head.current_timeline_plan_id
+           LEFT JOIN assets AS timing_asset
+             ON timing_asset.account_id=plan.account_id
+            AND timing_asset.workspace_id=plan.workspace_id
+            AND timing_asset.id=plan.canonical_document_asset_id
            LEFT JOIN generation_tasks AS task
              ON task.workspace_id = revision.workspace_id
             AND task.project_revision_id = revision.id
@@ -6322,7 +6346,7 @@ async function projectDetail(
             AND revision.project_id = $3
             AND revision.id = $4
           GROUP BY revision.account_id, revision.workspace_id, revision.id,
-                   plan.id, plan.canonical_document_hash, plan.plan_sequence
+                   plan.id, plan.canonical_document_hash, plan.plan_sequence, timing_asset.metadata
           ORDER BY plan.plan_sequence DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
@@ -6402,7 +6426,7 @@ async function projectDetail(
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId, currentTimelineId],
       );
       const promptProgress = await transaction.query(
-        `SELECT run.state,
+        `SELECT run.state, run.started_at, run.finished_at,
                 COALESCE(run.planned_scene_count, expected.scene_count) AS total_scenes,
                 count(DISTINCT scene.id) AS accepted_scenes,
                 run.planned_batch_count AS total_batches,
@@ -6432,7 +6456,7 @@ async function projectDetail(
             AND run.project_revision_id=$4
             AND run.timeline_plan_id=$5
           GROUP BY run.id, run.state, run.planned_scene_count, run.planned_batch_count,
-                   expected.scene_count, run.created_at
+                   expected.scene_count, run.created_at, run.started_at, run.finished_at
           ORDER BY run.created_at DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId, currentTimelineId],
       );
@@ -6484,7 +6508,7 @@ async function projectDetail(
       const serverlessAttempts = await transaction.query(
         `SELECT attempt.id, attempt.lane, attempt.state, attempt.attempt_ordinal,
                 attempt.item_count, attempt.created_at, attempt.submitted_at,
-                COALESCE(attempt.terminal_at, barrier.completed_at) AS terminal_at, attempt.updated_at,
+                COALESCE(barrier.completed_at, attempt.terminal_at) AS terminal_at, attempt.updated_at,
                 barrier.accepted_count AS accepted_output_count,
                 CASE
           WHEN barrier.attempt_id IS NOT NULL THEN 'COMPLETED'
@@ -6540,12 +6564,14 @@ async function projectDetail(
         [scope.account_id, scope.workspace_id, currentRevisionId],
       );
       const spanAudioJobs = await transaction.query(
-        `SELECT job.state, count(*)::int AS total
+        `SELECT job.state, count(*)::int AS total,
+                min(job.submitted_at) AS started_at, max(job.terminal_at) AS completed_at
            FROM hosted_cpu_job_attempts AS job
           WHERE job.account_id = $1 AND job.workspace_id = $2
             AND job.project_id = $3 AND job.kind = 'SPAN_AUDIO'
+            AND job.project_revision_id = $4
           GROUP BY job.state`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const serverlessOutputs = await transaction.query(
         `WITH canonical_outputs AS (
@@ -6895,7 +6921,29 @@ async function projectDetail(
     const spanCount = (rows: Record<string, unknown>[], state: string) =>
       numberOrNull(rows.find((row) => row.state === state)?.total) ?? 0;
     const spanTotal = spanRows.reduce((sum, row) => sum + (numberOrNull(row.total) ?? 0), 0);
+    const spanStarts = spanJobRows
+      .map((row) => timestampOrNull(row.started_at))
+      .filter((value): value is string => value !== null)
+      .sort();
+    const spanEnds = spanJobRows
+      .map((row) => timestampOrNull(row.completed_at))
+      .filter((value): value is string => value !== null)
+      .sort();
+    const spanJobsTerminal =
+      spanJobRows.length > 0 &&
+      spanJobRows.every((row) =>
+        ["SUCCEEDED", "FAILED", "CANCELLED", "PERMANENT_FAILED", "DEAD_LETTER"].includes(
+          String(row.state),
+        ),
+      );
     const spanAudioProgress = Object.freeze({
+      started_at: spanStarts[0] ?? null,
+      completed_at:
+        spanJobsTerminal &&
+        (spanCount(spanRows, "MATERIALIZED") === spanTotal ||
+          spanJobRows.some((row) => row.state !== "SUCCEEDED"))
+          ? (spanEnds.at(-1) ?? null)
+          : null,
       total: spanTotal,
       materialized: spanCount(spanRows, "MATERIALIZED"),
       planned: spanCount(spanRows, "PLANNED"),
@@ -6919,7 +6967,8 @@ async function projectDetail(
       const runtimeLane = runtimeLanes.find((value) => value.lane === lane) ?? null;
       const plannedItems =
         numberOrNull(runtimeLane?.planned_item_count) ?? numberOrNull(attempt?.item_count) ?? null;
-      const acceptedItems = numberOrNull(attempt?.accepted_output_count) ??
+      const acceptedItems =
+        numberOrNull(attempt?.accepted_output_count) ??
         (acceptedOutputCounts.has(lane)
           ? acceptedOutputCounts.get(lane)!
           : (numberOrNull(runtimeLane?.accepted_item_count) ?? 0));
@@ -6985,7 +7034,7 @@ async function projectDetail(
         status: "COMPLETE",
         progress_percent: 100,
         started_at: timestampOrNull((detail.project as Record<string, unknown>)?.created_at),
-        completed_at: timestampOrNull((detail.project as Record<string, unknown>)?.created_at),
+        completed_at: timestampOrNull((detail.project as Record<string, unknown>)?.locked_at),
         detail: "Project inputs, voiceover, avatar, and image style are locked for this run.",
         eta_ms: null,
       },
@@ -7039,8 +7088,12 @@ async function projectDetail(
         name: "Plan scenes",
         status: detail.generation ? "COMPLETE" : "WAITING",
         progress_percent: detail.generation ? 100 : 0,
-        started_at: null,
-        completed_at: null,
+        started_at: timestampOrNull(
+          (detail.generation as Record<string, unknown> | null)?.planning_started_at,
+        ),
+        completed_at: timestampOrNull(
+          (detail.generation as Record<string, unknown> | null)?.planning_completed_at,
+        ),
         detail: "VideoForge maps the transcript into an exact scene and timing plan.",
         eta_ms: null,
       },
@@ -7049,8 +7102,12 @@ async function projectDetail(
         name: "Write image prompts",
         status: promptStage.status,
         progress_percent: promptStage.progressPercent,
-        started_at: null,
-        completed_at: null,
+        started_at: timestampOrNull(
+          (detail.promptProgress as Record<string, unknown> | null)?.started_at,
+        ),
+        completed_at: timestampOrNull(
+          (detail.promptProgress as Record<string, unknown> | null)?.finished_at,
+        ),
         detail: promptStage.detail,
         eta_ms: null,
       },
@@ -7059,7 +7116,7 @@ async function projectDetail(
         name: "Generate images",
         status: String(laneState("mage_image")?.state ?? gpuPendingState),
         progress_percent: laneProgress("mage_image"),
-        started_at: timestampOrNull(laneState("mage_image")?.created_at),
+        started_at: timestampOrNull(laneState("mage_image")?.submitted_at),
         completed_at: timestampOrNull(laneState("mage_image")?.terminal_at),
         detail: "Generate and verify the planned scene images.",
         eta_ms: null,
@@ -7069,7 +7126,7 @@ async function projectDetail(
         name: "Generate avatar video",
         status: String(laneState("soulx_avatar")?.state ?? gpuPendingState),
         progress_percent: laneProgress("soulx_avatar"),
-        started_at: timestampOrNull(laneState("soulx_avatar")?.created_at),
+        started_at: timestampOrNull(laneState("soulx_avatar")?.submitted_at),
         completed_at: timestampOrNull(laneState("soulx_avatar")?.terminal_at),
         detail: "Generate and verify the selected presenter performance.",
         eta_ms: null,
@@ -7089,8 +7146,8 @@ async function projectDetail(
         name: "Technical check",
         status: render?.state === "SUCCEEDED" ? "COMPLETE" : "WAITING",
         progress_percent: render?.state === "SUCCEEDED" ? 100 : 0,
-        started_at: timestampOrNull(render?.terminal_at),
-        completed_at: timestampOrNull(render?.terminal_at),
+        started_at: null,
+        completed_at: null,
         detail: "VideoForge verifies the final file, duration, audio, and checksum.",
         eta_ms: null,
       },
@@ -7099,7 +7156,7 @@ async function projectDetail(
         name: "Review and approve",
         status: detail.review ? "COMPLETE" : render?.state === "SUCCEEDED" ? "BLOCKED" : "WAITING",
         progress_percent: detail.review ? 100 : 0,
-        started_at: timestampOrNull((detail.review as Record<string, unknown> | null)?.approved_at),
+        started_at: render?.state === "SUCCEEDED" ? timestampOrNull(render?.terminal_at) : null,
         completed_at: timestampOrNull(
           (detail.review as Record<string, unknown> | null)?.approved_at,
         ),

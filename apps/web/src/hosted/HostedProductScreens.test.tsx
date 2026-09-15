@@ -57,6 +57,7 @@ import {
   HostedProjectScreen,
   HostedStylesHubScreen,
   HostedUsageScreen,
+  HostedElapsed,
   HOSTED_SHA256_CHUNK_BYTES,
   audioDurationMs,
   hostedFileSha256,
@@ -70,6 +71,30 @@ import {
   readJson,
   transcriptionFailureMessage,
 } from "./HostedProductScreens";
+
+it("ticks elapsed stage time and freezes on success, failure, cancellation and reload", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-15T10:00:05Z"));
+  const since = "2026-09-15T10:00:00Z";
+  const view = render(<HostedElapsed since={since} until={null} />);
+  expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("0m 05s");
+  act(() => vi.advanceTimersByTime(2_000));
+  expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("0m 07s");
+  view.rerender(<HostedElapsed since={since} until="2026-09-15T10:00:06Z" running={false} />);
+  act(() => vi.advanceTimersByTime(60_000));
+  expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("0m 06s");
+  view.unmount();
+  const restored = render(
+    <HostedElapsed since={since} until="2026-09-15T10:00:06Z" running={false} />,
+  );
+  expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("0m 06s");
+  restored.rerender(<HostedElapsed since={since} until={null} running={false} />);
+  expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("—");
+  restored.rerender(<HostedElapsed since={null} until={null} running={false} />);
+  expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("—");
+  restored.unmount();
+  vi.useRealTimers();
+});
 
 describe("hosted project polling", () => {
   const detail = (overrides: Partial<ProjectDetailResponseForPolling> = {}) => ({
@@ -202,6 +227,62 @@ function renderHosted(node: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
 }
+
+it("shows frozen elapsed times in stage rows and the audio spanning panel", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: {
+          id: "timers",
+          title: "Stage timers",
+          created_at: "2026-09-15T10:00:00Z",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+        },
+        attempts: [],
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        stages: [
+          {
+            id: "transcription",
+            name: "Transcribe voiceover",
+            status: "SUCCEEDED",
+            started_at: "2026-09-15T10:00:00Z",
+            completed_at: "2026-09-15T10:02:12Z",
+          },
+          {
+            id: "render",
+            name: "Assemble final video",
+            status: "FAILED",
+            started_at: "2026-09-15T10:10:00Z",
+            completed_at: "2026-09-15T10:12:30Z",
+          },
+          { id: "review", name: "Review and approve", status: "WAITING" },
+        ],
+        span_audio: {
+          total: 4,
+          materialized: 4,
+          planned: 0,
+          running: 0,
+          queued: 0,
+          succeeded: 4,
+          failed: 0,
+          started_at: "2026-09-15T10:03:00Z",
+          completed_at: "2026-09-15T10:04:01Z",
+        },
+      }),
+    ),
+  );
+  renderHosted(<HostedProjectScreen projectId="timers" />);
+  expect(await screen.findByLabelText("Transcribe voiceover elapsed time")).toHaveTextContent(
+    "2m 12s",
+  );
+  expect(screen.getByLabelText("Assemble final video elapsed time")).toHaveTextContent("2m 30s");
+  expect(screen.getByLabelText("Review and approve elapsed time")).toHaveTextContent("—");
+  expect(screen.getByLabelText("Span audio elapsed time")).toHaveTextContent("1m 01s");
+});
 
 it("regenerates one accepted image with its edited prompt and refreshes only after acceptance", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";

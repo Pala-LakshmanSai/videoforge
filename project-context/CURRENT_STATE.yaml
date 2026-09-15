@@ -1,4 +1,11 @@
 schema_version: "2.0"
+stage_timer_repair_2026_09_15:
+  checkpoint: V2-09
+  status: VALIDATED_BUILDING
+  behavior: "Persisted stage timestamps drive one-second elapsed timers; terminal timestamps freeze after reload; unavailable historical timings show an em dash. Span audio has its own timer. Technical checks are included in assembly time."
+  validation: "Two focused UI timer tests,72 product checks and live read-only SQL timestamp/asset-join proof pass."
+  timing_limits: "Historical missing timestamps remain unavailable; new planning duration is retained on success, but planning in-flight/failure is not persisted. Technical check duration is included in assembly, not independently measured."
+  provider: "No provider mutation or paid compute required."
 span_batch_repair_2026_09_15:
   checkpoint: V2-09
   final_provider: "2026-09-15T05:44:32Z balanceUSD14.4230990852; zero runningPods, activeworkers and queued/inprogress jobs; no new GPU actions."

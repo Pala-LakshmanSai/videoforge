@@ -960,11 +960,13 @@ function hostedMediaItemKey(item: {
   return item.id ?? item.image_url ?? item.video_url ?? "unknown-media-item";
 }
 
-function mergeHostedMedia<T extends {
-  readonly id?: string;
-  readonly image_url?: string;
-  readonly video_url?: string;
-}>(current: readonly T[], next: readonly T[]): readonly T[] {
+function mergeHostedMedia<
+  T extends {
+    readonly id?: string;
+    readonly image_url?: string;
+    readonly video_url?: string;
+  },
+>(current: readonly T[], next: readonly T[]): readonly T[] {
   const merged = [...current];
   const indexes = new Map(merged.map((item, index) => [hostedMediaItemKey(item), index]));
   for (const item of next) {
@@ -981,6 +983,8 @@ function mergeHostedMedia<T extends {
 }
 
 interface HostedSpanAudioProgress {
+  readonly started_at?: string | null;
+  readonly completed_at?: string | null;
   readonly total: number;
   readonly materialized: number;
   readonly planned: number;
@@ -1097,29 +1101,44 @@ function hostedGpuLaneAcceptedCount(lane: HostedGpuLaneActivity): number {
     : accepted;
 }
 
-function HostedElapsed({
+export function HostedElapsed({
   since,
   until,
+  running = true,
+  label = "Elapsed time",
 }: {
   readonly since: string | null;
   readonly until: string | null;
+  readonly running?: boolean;
+  readonly label?: string;
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!since || until) return;
+    if (!since || until || !running) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
-  }, [since, until]);
+  }, [since, until, running]);
   const started = since ? Date.parse(since) : Number.NaN;
-  if (!Number.isFinite(started)) return null;
+  if (!Number.isFinite(started) || (!until && !running))
+    return (
+      <span className="gpu-lane-elapsed" aria-label={label}>
+        —
+      </span>
+    );
   const ended = until ? Date.parse(until) : now;
+  if (!Number.isFinite(ended))
+    return (
+      <span className="gpu-lane-elapsed" aria-label={label}>
+        —
+      </span>
+    );
   const seconds = Math.max(
     0,
     Math.floor(((Number.isFinite(ended) ? ended : now) - started) / 1_000),
   );
   const minutes = Math.floor(seconds / 60);
   return (
-    <span className="gpu-lane-elapsed" aria-label="Elapsed time">
+    <span className="gpu-lane-elapsed" aria-label={label}>
       {minutes}m {String(seconds % 60).padStart(2, "0")}s
     </span>
   );
@@ -1160,6 +1179,7 @@ function HostedGpuLaneActivityPanel({
                 <HostedElapsed
                   since={lane.submitted_at ?? lane.created_at}
                   until={lane.terminal_at}
+                  running={phase.active}
                 />
               </div>
               <div
@@ -1187,7 +1207,7 @@ function HostedGpuLaneActivityPanel({
   );
 }
 
-/** Span audio is cut one job at a time on the account-owned worker, and Stage 6 and Stage 7 cannot
+/** Span audio is cut on the account-owned worker, and Stage 6 and Stage 7 cannot
  * dispatch until every span is materialized, so show that preparation rather than a silent wait. */
 function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudioProgress | null }) {
   if (!progress || progress.total === 0) return null;
@@ -1211,6 +1231,12 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
               {active ? <span className="live-progress-pulse" aria-hidden="true" /> : null}
               {complete ? "Ready" : active ? "Cutting" : "Waiting"}
             </span>
+            <HostedElapsed
+              since={progress.started_at ?? null}
+              until={progress.completed_at ?? null}
+              running={active && !complete && progress.failed === 0}
+              label="Span audio elapsed time"
+            />
           </div>
           <div
             className="gpu-lane-track"
@@ -3964,8 +3990,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       const nextImages = page.review?.contact_sheet ?? page.contact_sheet ?? [];
       const nextAvatar = page.review?.avatar_footage ?? page.avatar_footage ?? [];
       setAdditionalMedia((current) => ({
-        images: section === "images" ? mergeHostedMedia(current.images, nextImages) : current.images,
-        avatar: section === "avatar" ? mergeHostedMedia(current.avatar, nextAvatar) : current.avatar,
+        images:
+          section === "images" ? mergeHostedMedia(current.images, nextImages) : current.images,
+        avatar:
+          section === "avatar" ? mergeHostedMedia(current.avatar, nextAvatar) : current.avatar,
       }));
       setMediaPage((current) => ({ ...current, [section]: nextPage }));
     } catch (error) {
@@ -4579,14 +4607,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             : "Accepted Stage 6 image",
     };
   });
-  const avatarVideos: ProjectMediaReviewItem[] = avatarFootage.map(
-    (item, index) => ({
-      id: item.id,
-      url: item.video_url,
-      label: item.label ?? `Avatar clip ${index + 1}`,
-      detail: "Accepted Stage 7 avatar footage",
-    }),
-  );
+  const avatarVideos: ProjectMediaReviewItem[] = avatarFootage.map((item, index) => ({
+    id: item.id,
+    url: item.video_url,
+    label: item.label ?? `Avatar clip ${index + 1}`,
+    detail: "Accepted Stage 7 avatar footage",
+  }));
   const imageStage = uiStages.find(
     (stage) => stage.id === "image-generation" || stage.label === "Generate images",
   );
@@ -4818,7 +4844,32 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
 
       <div className="progress-workspace">
         <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
-          <StageTimeline stages={uiStages} actions={stageMediaActions} />
+          <StageTimeline
+            stages={uiStages}
+            actions={stageMediaActions}
+            timings={Object.fromEntries(
+              stages.map((stage, index) => [
+                stage.id ?? `stage-${index + 1}`,
+                stage.id === "technical-check" ? (
+                  <span key={stage.id} className="gpu-lane-elapsed">
+                    Included in assembly time
+                  </span>
+                ) : (
+                  <HostedElapsed
+                    key={stage.id ?? index}
+                    since={stage.started_at ?? null}
+                    until={stage.completed_at ?? null}
+                    running={
+                      !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
+                        uiStages[index]?.status ?? "PENDING",
+                      )
+                    }
+                    label={`${stage.name} elapsed time`}
+                  />
+                ),
+              ]),
+            )}
+          />
           {query.data.generation ? (
             <section
               className="generation-plan-summary"

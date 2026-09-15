@@ -528,6 +528,54 @@ describe("hosted product route contract", () => {
     }
   });
 
+  it("reports persisted stage boundaries without inventing technical or historical planning time", async () => {
+    const previousProject = testState.projectRows[0]!;
+    const previousAttempts = [...testState.projectDetailAttemptRows];
+    const started = "2026-09-15T01:00:00.000Z";
+    const locked = "2026-09-15T01:02:00.000Z";
+    const rendered = "2026-09-15T01:05:00.000Z";
+    testState.projectRows[0] = {
+      ...previousProject,
+      created_at: started,
+      locked_at: locked,
+      revision_state: "LOCKED",
+    };
+    testState.projectDetailAttemptRows.push({
+      id: "44444444-4444-4444-8444-444444444444",
+      project_revision_id: previousProject.revision_id,
+      kind: "RENDER",
+      state: "SUCCEEDED",
+      submitted_at: locked,
+      terminal_at: rendered,
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      const body = (await result!.json()) as {
+        stages: Record<string, unknown>[];
+        span_audio: Record<string, unknown>;
+      };
+      const stage = (id: string) => body.stages.find((value) => value.id === id);
+      expect(stage("prepare")).toMatchObject({ started_at: started, completed_at: locked });
+      expect(stage("render")).toMatchObject({ started_at: locked, completed_at: rendered });
+      expect(stage("review")).toMatchObject({ started_at: rendered, completed_at: null });
+      expect(stage("technical-check")).toMatchObject({ started_at: null, completed_at: null });
+      expect(stage("planning")).toMatchObject({ started_at: null, completed_at: null });
+      expect(body.span_audio).toMatchObject({ started_at: null, completed_at: null });
+    } finally {
+      testState.projectRows[0] = previousProject;
+      testState.projectDetailAttemptRows.splice(
+        0,
+        testState.projectDetailAttemptRows.length,
+        ...previousAttempts,
+      );
+    }
+  });
+
   it("does not inherit a predecessor ASR attempt when the latest locked revision is selected", async () => {
     const previousProject = testState.projectRows[0];
     const previousAttempts = [...testState.projectDetailAttemptRows];

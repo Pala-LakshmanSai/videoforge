@@ -438,9 +438,11 @@ function activeStageIndex(stages: ProjectStage[]): number {
 export function StageTimeline({
   stages,
   actions,
+  timings,
 }: {
   stages: ProjectStage[];
   actions?: Readonly<Partial<Record<string, ReactNode>>>;
+  timings?: Readonly<Partial<Record<string, ReactNode>>>;
 }) {
   const activeIndex = activeStageIndex(stages);
   return (
@@ -465,6 +467,7 @@ export function StageTimeline({
                 <strong>{stage.label}</strong>
                 <Badge tone={tone}>{stage.status.replaceAll("_", " ")}</Badge>
               </div>
+              {timings?.[stage.id]}
               {stage.detail && (active || !["COMPLETE", "PENDING"].includes(stage.status)) ? (
                 <p>{stage.detail}</p>
               ) : null}
