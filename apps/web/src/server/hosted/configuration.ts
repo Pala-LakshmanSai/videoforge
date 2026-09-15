@@ -57,6 +57,10 @@ export interface HostedRuntimeEnvironment {
   readonly PRIVATE_ARTIFACTS?: HostedR2BucketBinding;
   readonly VIDEO_WORKFLOW?: HostedWorkflowBinding;
   readonly HOSTED_PAIR_WORKFLOW?: HostedWorkflowBinding;
+  /** Durable stage-continuation driver (stages 3-8). Optional like the other Workflow bindings: the
+   * driver is started opportunistically from the personal-worker claim poll and an absent binding
+   * only means continuation falls back to the (unreliable) cron. */
+  readonly HOSTED_CONTINUATION_WORKFLOW?: HostedWorkflowBinding;
   readonly VIDEOFORGE_COMMIT?: string;
   readonly VIDEOFORGE_ENVIRONMENT?: string;
   readonly VIDEOFORGE_PROVIDER_MODE?: string;

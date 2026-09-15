@@ -79,3 +79,75 @@ export async function ensureHostedPairObservers(
   void executionContext;
   return ensured;
 }
+
+/** Exactly one driver per deployment, not one per poll: this is the Workflow instance id. */
+const HOSTED_CONTINUATION_DRIVER_ID = "hosted-continuation-driver";
+const HOSTED_CONTINUATION_DRIVER_REASON = "personal-worker-claim";
+/** Workflow instance states from which `restart()` starts a fresh run of the same instance. */
+const TERMINAL_WORKFLOW_STATES = ["complete", "errored", "terminated"] as const;
+/** A probe is three Workflow API round trips; keep it off the hot claim path without making the
+ * restart window long enough to stall the pipeline. */
+const DRIVER_ENSURE_INTERVAL_MS = 60_000;
+let lastContinuationDriverEnsureAt = 0;
+let lastContinuationDriverFailureLogAt = 0;
+
+function workflowStatusState(status: unknown): string | null {
+  if (typeof status !== "object" || status === null || Array.isArray(status)) return null;
+  const state = (status as { readonly status?: unknown }).status;
+  return typeof state === "string" ? state : null;
+}
+
+function described(error: unknown): string {
+  return String((error as { readonly message?: unknown })?.message ?? error).slice(0, 140);
+}
+
+/**
+ * Start the durable stage-continuation driver (stages 3-8) exactly once.
+ *
+ * The per-minute cron never reached its handler in this deployment, so the driver is started from
+ * the one trigger that is proven to be delivered: the desktop worker's `/claim` poll, alongside the
+ * pair-observer guard. `create` with a stable id is the idempotency key -- an already-running
+ * instance is left alone. The driver is bounded to ~24 hours, so a terminal instance is RESTARTED
+ * instead of being left dead; that restart is how the cadence survives past the bound with no
+ * operator and no reliable schedule.
+ *
+ * Returns true only when this call created or restarted the driver.
+ */
+export async function ensureHostedContinuationDriver(
+  environment: HostedRuntimeEnvironment,
+): Promise<boolean> {
+  const workflow = environment.HOSTED_CONTINUATION_WORKFLOW;
+  if (!workflow) return false;
+  const now = Date.now();
+  if (now - lastContinuationDriverEnsureAt < DRIVER_ENSURE_INTERVAL_MS) return false;
+  lastContinuationDriverEnsureAt = now;
+  try {
+    const created = await workflow.create({
+      id: HOSTED_CONTINUATION_DRIVER_ID,
+      params: { reason: HOSTED_CONTINUATION_DRIVER_REASON },
+    });
+    return created.id === HOSTED_CONTINUATION_DRIVER_ID;
+  } catch (error) {
+    try {
+      const existing = await workflow.get(HOSTED_CONTINUATION_DRIVER_ID);
+      const state = workflowStatusState(await existing.status());
+      // Running (or queued/paused/waiting) driver: nothing to do, and deliberately no log line --
+      // this path runs on every claim poll while a driver is alive.
+      if (state === null || !(TERMINAL_WORKFLOW_STATES as readonly string[]).includes(state))
+        return false;
+      if (!existing.restart) return false;
+      await existing.restart();
+      return true;
+    } catch (inspectionError) {
+      if (now - lastContinuationDriverFailureLogAt >= DRIVER_ENSURE_INTERVAL_MS) {
+        lastContinuationDriverFailureLogAt = now;
+        console.warn(
+          `hosted_continuation_driver_ensure_failed create=${described(error)} inspect=${described(
+            inspectionError,
+          )}`,
+        );
+      }
+      return false;
+    }
+  }
+}

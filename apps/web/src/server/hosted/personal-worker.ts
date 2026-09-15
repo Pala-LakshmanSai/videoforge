@@ -1998,7 +1998,7 @@ async function completeLease(
   }
 }
 
-import { ensureHostedPairObservers } from "./pair-observer-guard";
+import { ensureHostedContinuationDriver, ensureHostedPairObservers } from "./pair-observer-guard";
 
 export async function handlePersonalWorkerRequest(
   request: Request,
@@ -2043,6 +2043,11 @@ export async function handlePersonalWorkerRequest(
     // guard along with it: cheap, idempotent, and it closes the window in which a running pair has no
     // observer -- the failure mode that settled both lanes PERMANENT_FAILED with nothing accepted.
     executionContext.waitUntil(ensureHostedPairObservers(environment, executionContext));
+    // Same reasoning for stages 3-8: the per-minute cron never reached its handler, so the durable
+    // continuation driver is (re)started from this poll instead. Idempotent by instance id -- it
+    // creates once, leaves a running driver alone, and restarts it after its bounded ~24-hour
+    // window. Never throws: a claim must not depend on the driver starting.
+    executionContext.waitUntil(ensureHostedContinuationDriver(environment));
     return claim(request, environment, config);
   }
   const lease =
