@@ -2,7 +2,7 @@
 
 ## Stage elapsed timers — 2026-09-15
 
-Stage rows show elapsed time from persisted start/end timestamps. Active timers tick each second; terminal durations survive reload. Span audio has its own timer. Missing historical timing is shown as an em dash; technical verification is explicitly included in assembly time. Total elapsed fills the fourth progress metric and stops at approval, failure or cancellation. Source `cf1dfecd` is deployed on Cloudflare `32d4e9b9` with QUALIFIED_EXACT; focused timer tests, TypeScript, production build and live stage-row verification pass.
+Stage rows show elapsed time from persisted start/end timestamps. Active timers tick each second; terminal durations survive reload. Span audio has its own timer. Missing historical timing is shown as an em dash; technical verification is explicitly included in assembly time. Total elapsed fills the fourth progress metric and equals the sum of displayed numbered stage timers, including live stages; inter-stage gaps are excluded. Source `cf1dfecd` is deployed on Cloudflare `32d4e9b9` with QUALIFIED_EXACT; focused timer tests, TypeScript, production build and live stage-row verification pass.
 
 ## Bounded audio-span batching — 2026-09-15
 

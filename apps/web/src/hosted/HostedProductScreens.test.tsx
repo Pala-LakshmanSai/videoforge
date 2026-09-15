@@ -93,6 +93,17 @@ it("ticks elapsed stage time and freezes on success, failure, cancellation and r
   restored.rerender(<HostedElapsed since={null} until={null} running={false} />);
   expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("—");
   restored.unmount();
+  vi.setSystemTime(new Date("2026-09-15T10:00:10Z"));
+  const intervals = [
+    { since, until: "2026-09-15T10:00:06Z", running: false },
+    { since: "2026-09-15T10:00:08Z", until: null, running: true },
+    { since: null, until: null, running: false },
+  ];
+  const total = render(<HostedElapsed since={null} until={null} intervals={intervals} />);
+  expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("0m 08s");
+  act(() => vi.advanceTimersByTime(2_000));
+  expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("0m 10s");
+  total.unmount();
   vi.useRealTimers();
 });
 
@@ -282,7 +293,7 @@ it("shows frozen elapsed times in stage rows and the audio spanning panel", asyn
   expect(screen.getByLabelText("Assemble final video elapsed time")).toHaveTextContent("2m 30s");
   expect(screen.getByLabelText("Review and approve elapsed time")).toHaveTextContent("—");
   expect(screen.getByLabelText("Span audio elapsed time")).toHaveTextContent("1m 01s");
-  expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("12m 30s");
+  expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("4m 42s");
 });
 
 it("regenerates one accepted image with its edited prompt and refreshes only after acceptance", async () => {

@@ -1,4 +1,9 @@
 schema_version: "2.0"
+stage_total_sum_repair_2026_09_15:
+  checkpoint: V2-09
+  status: IMPLEMENTED_DEPLOYING
+  behavior: "Total elapsed is the arithmetic sum of displayed numbered stage durations, including active stages and parallel lanes. Excludes gaps between stages and unavailable timings. Technical checks are included once in assembly. Audio-spanning panel remains separate from the numbered-stage total."
+  validation: "Focused timer tests cover live sum, terminal stage sum and missing timings; no GPU work."
 stage_timer_repair_2026_09_15:
   checkpoint: V2-09
   deployed_source: cf1dfecd5ba1b1540190e6b8d3b3baba60446b18

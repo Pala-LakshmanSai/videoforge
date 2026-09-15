@@ -1106,36 +1106,52 @@ export function HostedElapsed({
   until,
   running = true,
   label = "Elapsed time",
+  intervals,
 }: {
   readonly since: string | null;
   readonly until: string | null;
   readonly running?: boolean;
   readonly label?: string;
+  readonly intervals?: readonly {
+    readonly since: string | null;
+    readonly until: string | null;
+    readonly running: boolean;
+  }[];
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!since || until || !running) return;
+    if (
+      intervals
+        ? !intervals.some((interval) => interval.since && !interval.until && interval.running)
+        : !since || until || !running
+    )
+      return;
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
-  }, [since, until, running]);
-  const started = since ? Date.parse(since) : Number.NaN;
-  if (!Number.isFinite(started) || (!until && !running))
+  }, [since, until, running, intervals]);
+  const elapsedSeconds = (
+    start: string | null,
+    end: string | null,
+    active: boolean,
+  ): number | null => {
+    const started = start ? Date.parse(start) : Number.NaN;
+    const ended = end ? Date.parse(end) : now;
+    if (!Number.isFinite(started) || !Number.isFinite(ended) || (!end && !active)) return null;
+    return Math.max(0, Math.floor((ended - started) / 1_000));
+  };
+  const seconds = intervals
+    ? intervals.reduce(
+        (sum, interval) =>
+          sum + (elapsedSeconds(interval.since, interval.until, interval.running) ?? 0),
+        0,
+      )
+    : elapsedSeconds(since, until, running);
+  if (seconds === null)
     return (
       <span className="gpu-lane-elapsed" aria-label={label}>
         —
       </span>
     );
-  const ended = until ? Date.parse(until) : now;
-  if (!Number.isFinite(ended))
-    return (
-      <span className="gpu-lane-elapsed" aria-label={label}>
-        —
-      </span>
-    );
-  const seconds = Math.max(
-    0,
-    Math.floor(((Number.isFinite(ended) ? ended : now) - started) / 1_000),
-  );
   const minutes = Math.floor(seconds / 60);
   return (
     <span className="gpu-lane-elapsed" aria-label={label}>
@@ -4530,16 +4546,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const terminalBlocked = terminalStageStatus === "BLOCKED";
   const terminalCancelled = terminalStageStatus === "CANCELLED";
   const allComplete = uiStages.every((stage) => stage.status === "COMPLETE");
-  const totalStopped = allComplete || hasFailed || terminalCancelled;
-  const totalEndedAt = totalStopped
-    ? (stages
-        .map((stage) => stage.completed_at)
-        .filter(
-          (value): value is string =>
-            typeof value === "string" && Number.isFinite(Date.parse(value)),
-        )
-        .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null)
-    : null;
   const overallStatus = hasFailed
     ? "Needs attention"
     : hasActionRequired
@@ -4807,13 +4813,21 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               label="Total elapsed"
               value={
                 <HostedElapsed
-                  since={stages[0]?.started_at ?? query.data.project.created_at}
-                  until={totalEndedAt}
-                  running={!totalStopped}
+                  since={null}
+                  until={null}
+                  intervals={stages
+                    .filter((stage) => stage.id !== "technical-check")
+                    .map((stage) => ({
+                      since: stage.started_at ?? null,
+                      until: stage.completed_at ?? null,
+                      running: !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
+                        uiStages[stages.indexOf(stage)]?.status ?? "PENDING",
+                      ),
+                    }))}
                   label="Total elapsed time"
                 />
               }
-              detail={totalStopped ? "finished" : "since Stage 1"}
+              detail="sum of stage times"
             />
           </div>
           <ProgressBar value={overallProgress} label="Overall video progress" />
