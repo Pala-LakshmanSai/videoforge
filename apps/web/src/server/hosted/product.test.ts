@@ -528,6 +528,21 @@ describe("hosted product route contract", () => {
     }
   });
 
+  it("returns not found before detail queries when no locked active project exists", async () => {
+    const previous = [...testState.projectRows];
+    testState.projectRows.splice(0);
+    testState.query.mockClear();
+    try {
+      const result = await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"), environment, stagingConfig, executionContext);
+      expect(result?.status).toBe(404);
+      const failedTasks = testState.query.mock.calls.find(([sql]) =>
+        String(sql).includes("SELECT task.id, task.task_key, task.lane, task.state, task.updated_at"));
+      expect(failedTasks).toBeUndefined();
+    } finally {
+      testState.projectRows.push(...previous);
+    }
+  });
+
   it("reports persisted stage boundaries without inventing technical or historical planning time", async () => {
     const previousProject = testState.projectRows[0]!;
     const previousAttempts = [...testState.projectDetailAttemptRows];

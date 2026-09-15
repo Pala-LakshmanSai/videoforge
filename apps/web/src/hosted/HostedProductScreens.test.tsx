@@ -282,6 +282,7 @@ it("shows frozen elapsed times in stage rows and the audio spanning panel", asyn
   expect(screen.getByLabelText("Assemble final video elapsed time")).toHaveTextContent("2m 30s");
   expect(screen.getByLabelText("Review and approve elapsed time")).toHaveTextContent("—");
   expect(screen.getByLabelText("Span audio elapsed time")).toHaveTextContent("1m 01s");
+  expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("12m 30s");
 });
 
 it("regenerates one accepted image with its edited prompt and refreshes only after acceptance", async () => {

@@ -6238,6 +6238,7 @@ async function projectDetail(
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId],
       );
+      if (!project.rows[0]) return null;
       const selectedRevisionId = (project.rows[0] as Record<string, unknown> | undefined)
         ?.revision_id;
       const currentRevisionId =
@@ -6777,7 +6778,7 @@ async function projectDetail(
         [
           scope.account_id,
           scope.workspace_id,
-          String(project.rows[0]?.revision_id ?? ""),
+          currentRevisionId,
           projectId,
         ],
       );
@@ -6814,7 +6815,7 @@ async function projectDetail(
         review: review.rows[0] ?? null,
       };
     });
-    if (!detail.project) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+    if (!detail?.project) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
     const signer = new HostedR2Signer(config.r2);
     const attempts = [] as Record<string, unknown>[];
     for (const value of detail.attempts as Record<string, unknown>[]) {

@@ -4530,6 +4530,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const terminalBlocked = terminalStageStatus === "BLOCKED";
   const terminalCancelled = terminalStageStatus === "CANCELLED";
   const allComplete = uiStages.every((stage) => stage.status === "COMPLETE");
+  const totalStopped = allComplete || hasFailed || terminalCancelled;
+  const totalEndedAt = totalStopped
+    ? (stages
+        .map((stage) => stage.completed_at)
+        .filter(
+          (value): value is string =>
+            typeof value === "string" && Number.isFinite(Date.parse(value)),
+        )
+        .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null)
+    : null;
   const overallStatus = hasFailed
     ? "Needs attention"
     : hasActionRequired
@@ -4792,6 +4802,18 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               }
               detail={cost?.cap_usd == null ? undefined : `${formatUsd(cost.cap_usd)} maximum`}
               tone="success"
+            />
+            <Metric
+              label="Total elapsed"
+              value={
+                <HostedElapsed
+                  since={stages[0]?.started_at ?? query.data.project.created_at}
+                  until={totalEndedAt}
+                  running={!totalStopped}
+                  label="Total elapsed time"
+                />
+              }
+              detail={totalStopped ? "finished" : "since Stage 1"}
             />
           </div>
           <ProgressBar value={overallProgress} label="Overall video progress" />
