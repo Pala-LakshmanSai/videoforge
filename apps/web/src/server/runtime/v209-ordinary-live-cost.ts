@@ -59,6 +59,7 @@ export interface V209OrdinaryLiveAdmission {
 export async function assertV209OrdinaryCandidate(
   rawCandidate: unknown,
   systemAvatarReference: V209OrdinaryVerifiedSystemAvatarReference | null = null,
+  databaseCanonicalJson?: string,
 ): Promise<{
   readonly candidate: JsonRecord;
   readonly work: V209OrdinaryWork;
@@ -80,8 +81,24 @@ export async function assertV209OrdinaryCandidate(
   delete candidateBase.replayed;
   delete candidateBase.pairExists;
   delete candidateBase.existingWorkflowId;
-  if ((await sha256CanonicalJson(candidateBase)) !== candidate.candidateSha256)
+  const runtimeHash = await sha256CanonicalJson(candidateBase);
+  if (databaseCanonicalJson !== undefined) {
+    let canonicalValue: unknown;
+    try {
+      canonicalValue = JSON.parse(databaseCanonicalJson);
+    } catch {
+      throw new RangeError("V209_ORDINARY_CANDIDATE_HASH_INVALID");
+    }
+    const digest = new Uint8Array(await crypto.subtle.digest(
+      "SHA-256", new TextEncoder().encode(databaseCanonicalJson),
+    ));
+    const databaseHash = `sha256:${Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+    if (databaseHash !== candidate.candidateSha256 ||
+      await sha256CanonicalJson(canonicalValue) !== runtimeHash)
+      throw new RangeError("V209_ORDINARY_CANDIDATE_HASH_INVALID");
+  } else if (runtimeHash !== candidate.candidateSha256) {
     throw new RangeError("V209_ORDINARY_CANDIDATE_HASH_INVALID");
+  }
   if (
     systemAvatarReference !== null &&
     (systemAvatarReference.sourceScopeKind !== "SYSTEM" ||
@@ -302,10 +319,12 @@ export async function freezeV209OrdinaryLiveAdmission(
   rawCandidate: unknown,
   observation: V209ShortAdmissionObservation,
   systemAvatarReference: V209OrdinaryVerifiedSystemAvatarReference | null = null,
+  databaseCanonicalJson?: string,
 ): Promise<V209OrdinaryLiveAdmission> {
   const { candidate, work } = await assertV209OrdinaryCandidate(
     rawCandidate,
     systemAvatarReference,
+    databaseCanonicalJson,
   );
 
   const renderPlan = record(candidate.renderPlan);

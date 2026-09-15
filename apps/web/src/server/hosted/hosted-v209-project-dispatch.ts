@@ -31,6 +31,9 @@ const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const SYSTEM_AVATAR_OBJECT_KEY =
   /^tenant\/ffffffff-ffff-4fff-8fff-000000000001\/workspace\/ffffffff-ffff-4fff-8fff-000000000011\/avatar-profile\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/version\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/canonical\/avatar\.(?:png|jpg)$/u;
 const PATH = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/gpu-dispatch$/u;
+const HOSTED_V209_PRE_SEND_INTEGRITY_CODE = "V209_ORDINARY_CANDIDATE_HASH_INVALID";
+const HOSTED_V209_PRE_SEND_INTEGRITY_MESSAGE =
+  "Generation has not started. Prepared generation data failed validation.";
 
 type DispatchIdentity = {
   readonly accountId: string;
@@ -41,6 +44,7 @@ type DispatchIdentity = {
 
 interface MaterializedDispatchCandidate {
   readonly candidate: unknown;
+  readonly databaseCanonicalJson?: string;
   readonly systemAvatarReference: V209OrdinaryVerifiedSystemAvatarReference | null;
 }
 
@@ -232,9 +236,9 @@ export async function materializeHostedV209OrdinaryDispatchCandidate(
     if (referenceResult.rows.length !== 1 || !reference) {
       throw new RangeError("HOSTED_V209_SYSTEM_AVATAR_REFERENCE_INVALID");
     }
-    const result = await transaction.query<{ candidate: unknown }>(
-      `SELECT public.videoforge_materialize_hosted_v209_ordinary_dispatch(
-         $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS candidate`,
+    const result = await transaction.query<{ candidate: unknown; candidate_canonical_json?: string }>(
+      `SELECT candidate,candidate_canonical_json FROM public.videoforge_materialize_hosted_v209_ordinary_dispatch_canonical(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid)`,
       parameters,
     );
     if (result.rows.length !== 1) throw new Error("HOSTED_V209_CANDIDATE_NOT_READY");
@@ -276,7 +280,12 @@ export async function materializeHostedV209OrdinaryDispatchCandidate(
         reservationId: reference.reservationId!,
       });
     }
-    return Object.freeze({ candidate, systemAvatarReference });
+    const databaseCanonicalJson = result.rows[0]?.candidate_canonical_json;
+    if (databaseCanonicalJson !== undefined && typeof databaseCanonicalJson !== "string")
+      throw new RangeError("V209_ORDINARY_CANDIDATE_HASH_INVALID");
+    return Object.freeze({ candidate, systemAvatarReference,
+      ...(databaseCanonicalJson === undefined ? {} : { databaseCanonicalJson }),
+    });
   });
 }
 
@@ -410,7 +419,7 @@ export async function resumeHostedV209ProjectDispatch(
     const materialized = await injected.materialize(runtimeDatabase, identity);
     const candidate = exactCandidate(materialized.candidate, identity);
     if (!candidate) return response({ error: { code: "HOSTED_V209_CANDIDATE_NOT_READY" } }, 409);
-    await assertV209OrdinaryCandidate(candidate, materialized.systemAvatarReference);
+    await assertV209OrdinaryCandidate(candidate, materialized.systemAvatarReference, materialized.databaseCanonicalJson);
     const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
     if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)
       return response({ error: { code: "HOSTED_PAIR_RECONCILER_BINDING_MISSING" } }, 503);
@@ -445,7 +454,7 @@ export async function resumeHostedV209ProjectDispatch(
         throw error;
       }
       const admission = await dispatchPhase("HOSTED_V209_ADMISSION_FREEZE_FAILED", () =>
-        freezeV209OrdinaryLiveAdmission(candidate, observation, materialized.systemAvatarReference),
+        freezeV209OrdinaryLiveAdmission(candidate, observation, materialized.systemAvatarReference, materialized.databaseCanonicalJson),
       );
       const scheduled = await dispatchPhase("HOSTED_V209_COMMIT_SCHEDULE_FAILED", () =>
         injected.commitAndSchedule(
@@ -604,6 +613,19 @@ export async function handleHostedV209ProjectDispatch(
       code,
       cause,
     });
+    if (code === HOSTED_V209_PRE_SEND_INTEGRITY_CODE) {
+      return response(
+        {
+          error: {
+            code,
+            message: HOSTED_V209_PRE_SEND_INTEGRITY_MESSAGE,
+            retryable: false,
+            phase: "PRE_SEND",
+          },
+        },
+        409,
+      );
+    }
     return response({ error: { code: "HOSTED_V209_DISPATCH_REJECTED" } }, 409);
   } finally {
     await runtimePool.end();

@@ -810,6 +810,12 @@
       "name": "hosted_ordinary_budget_lease_alias",
       "filename": "0136_hosted_ordinary_budget_lease_alias.sql",
       "sha256": "sha256:09c105b7d6a067f0dd30244bc686d9651c080b209be76cfb4f12bced2aec1c47"
+    },
+    {
+      "version": 137,
+      "name": "hosted_ordinary_candidate_canonical_proof",
+      "filename": "0137_hosted_ordinary_candidate_canonical_proof.sql",
+      "sha256": "sha256:da2c92975f200fa6193bfde59eb22a1493847003e97560da99b598d5e022f982"
     }
   ]
 }

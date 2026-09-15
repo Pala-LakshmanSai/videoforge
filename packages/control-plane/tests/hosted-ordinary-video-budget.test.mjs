@@ -88,6 +88,11 @@ test("ordinary budget migration applies after the current production schema", as
     assert.equal((await database.query("SELECT pg_temp.probe_budget_lease() AS version")).rows[0].version, 2);
     assert.equal((await database.query(`SELECT expires_at=now()+interval '2 hours' AS preserved
       FROM budget_lease_fixture WHERE id=1`)).rows[0].preserved, true);
+    await database.exec(await readFile(new URL(
+      "../migrations/0137_hosted_ordinary_candidate_canonical_proof.sql", import.meta.url), "utf8"));
+    assert.equal((await database.query(`SELECT public.videoforge_canonical_jsonb(
+      '{"totalCapUsd":2.0000000000000000}'::jsonb) AS proof`)).rows[0].proof,
+      '{"totalCapUsd":2.0000000000000000}');
     await assert.rejects(
       database.query("SELECT public.videoforge_ordinary_video_budget(108001)"),
       /ORDINARY_VIDEO_DURATION_OUT_OF_RANGE/,

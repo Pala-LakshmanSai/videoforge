@@ -1171,6 +1171,7 @@ const HOSTED_PREDISPATCH_CANCELLABLE_QUEUE_STATES = new Set([
   "CANCELLING",
 ]);
 const HOSTED_V209_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u;
+const HOSTED_V209_PRE_SEND_INTEGRITY_CODE = "V209_ORDINARY_CANDIDATE_HASH_INVALID";
 
 function exactHostedV209DispatchResponse(value: HostedV209DispatchResponse) {
   if (
@@ -1181,6 +1182,15 @@ function exactHostedV209DispatchResponse(value: HostedV209DispatchResponse) {
     throw new Error("Generation start could not be verified.");
   }
   return value;
+}
+
+function isHostedV209PreSendIntegrityError(error: unknown): boolean {
+  return (
+    error !== null &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { readonly code?: unknown }).code === HOSTED_V209_PRE_SEND_INTEGRITY_CODE
+  );
 }
 
 export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
@@ -4048,6 +4058,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       void queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] });
     },
   });
+  const gpuDispatchPreSendIntegrityError = isHostedV209PreSendIntegrityError(gpuDispatch.error);
   const revisionId = query.data?.project.revision_id;
   const renderHandoffKey = hostedContinuationKey(revisionId, asr?.id);
   useEffect(() => {
@@ -4604,10 +4615,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       ) : gpuDispatch.isError ? (
         <div className="validation validation-danger" role="alert">
-          <p>Generation start could not be confirmed. VideoForge will not retry automatically.</p>
-          <Button variant="secondary" onClick={() => gpuDispatch.mutate()}>
-            <RefreshCw size={15} /> Retry generation
-          </Button>
+          {gpuDispatchPreSendIntegrityError ? (
+            <p>Generation has not started. Prepared generation data failed validation.</p>
+          ) : (
+            <>
+              <p>Generation start could not be confirmed. VideoForge will not retry automatically.</p>
+              <Button variant="secondary" onClick={() => gpuDispatch.mutate()}>
+                <RefreshCw size={15} /> Retry generation
+              </Button>
+            </>
+          )}
         </div>
       ) : gpuDispatch.data?.state === "WAITING_FOR_GPUS" || generationWaitingForGpu ? (
         <div className="validation validation-info" role="status" aria-live="polite">

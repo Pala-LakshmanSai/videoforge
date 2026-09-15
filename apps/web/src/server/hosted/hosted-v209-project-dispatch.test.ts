@@ -1,4 +1,4 @@
-import { sha256CanonicalJson } from "@videoforge/contracts";
+import { canonicalizeJson, sha256CanonicalJson } from "@videoforge/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -233,6 +233,18 @@ function dependencies(
 }
 
 describe("ordinary authenticated V2-09 project dispatch", () => {
+  it("verifies immutable SQL numeric-scale hashes against the exact database proof", async () => {
+    const prepared = await candidate();
+    const base = { ...prepared } as Record<string, unknown>;
+    for (const key of ["candidateSha256", "replayed", "pairExists", "existingWorkflowId"]) delete base[key];
+    const proof = canonicalizeJson(base).replace('"totalCapUsd":2', '"totalCapUsd":2.0000000000000000');
+    const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(proof)));
+    const scaled = { ...prepared, candidateSha256: `sha256:${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}` };
+    await expect(assertV209OrdinaryCandidate(scaled)).rejects.toThrow("V209_ORDINARY_CANDIDATE_HASH_INVALID");
+    await expect(assertV209OrdinaryCandidate(scaled, null, proof)).resolves.toBeDefined();
+    await expect(assertV209OrdinaryCandidate({ ...scaled, totalCapUsd: 5 }, null, proof)).rejects.toThrow("V209_ORDINARY_CANDIDATE_HASH_INVALID");
+    await expect(assertV209OrdinaryCandidate(scaled, null, proof + " ")).rejects.toThrow("V209_ORDINARY_CANDIDATE_HASH_INVALID");
+  });
   it("accepts only canonical segment keys and exact SoulX input reservation aliases", async () => {
     const prepared = await candidate();
     await expect(assertV209OrdinaryCandidate(prepared)).resolves.toBeDefined();
@@ -684,6 +696,14 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
     );
     if (!response) throw new Error("route not matched");
     expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "V209_ORDINARY_CANDIDATE_HASH_INVALID",
+        message: "Generation has not started. Prepared generation data failed validation.",
+        retryable: false,
+        phase: "PRE_SEND",
+      },
+    });
     expect(deps.observe).not.toHaveBeenCalled();
     expect(deps.commitAndSchedule).not.toHaveBeenCalled();
   });

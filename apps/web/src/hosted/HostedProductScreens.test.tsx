@@ -3377,6 +3377,63 @@ describe("hosted product journey", () => {
     ).toBe(true);
   });
 
+  it("shows confirmed pre-send candidate validation failure without a retry action", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (!String(input).endsWith("/gpu-dispatch"))
+        return Response.json({
+          project: {
+            id: projectId,
+            title: "Private project",
+            created_at: "2026-09-06T10:00:00.000Z",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
+          },
+          attempts: [],
+          gpu_transport: "QUALIFIED_EXACT" as const,
+          gpu_readiness: qualifiedGpuReadiness,
+          generation: {
+            id: "44444444-4444-4444-8444-444444444444",
+            timeline_plan_sha256: `sha256:${"b".repeat(64)}`,
+            planned_tasks: 2,
+            completed_tasks: 0,
+            failed_tasks: 0,
+            stage: "READY_FOR_GPU_DISPATCH" as const,
+          },
+          queue: { status: "ACTIVE", position: 1, ahead: 0, total: 1 },
+          stages: [
+            {
+              id: "prompt-writing",
+              name: "Write image prompts",
+              status: "COMPLETE",
+              progress_percent: 100,
+            },
+          ],
+        });
+      return Response.json(
+        {
+          error: {
+            code: "V209_ORDINARY_CANDIDATE_HASH_INVALID",
+            message: "Generation has not started. Prepared generation data failed validation.",
+            retryable: false,
+            phase: "PRE_SEND",
+          },
+        },
+        { status: 409 },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(
+      await screen.findByText(
+        "Generation has not started. Prepared generation data failed validation.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry generation" })).not.toBeInTheDocument();
+  });
+
   it.each(["MAGE_IMAGE", "SOULX_AVATAR"])(
     "does not offer generation resume after a %s attempt exists",
     async (kind) => {
