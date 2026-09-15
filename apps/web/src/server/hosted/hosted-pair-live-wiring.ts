@@ -919,6 +919,12 @@ export class HostedPairWorkflowReconciler {
     },
     private readonly beforeSettlement?: (scope: HostedPairWorkflowScope) => Promise<unknown>,
     private readonly readDatabaseNow?: () => Promise<string>,
+    private readonly recordProgress?: (input: HostedPairWorkflowScope & {
+      readonly attemptId: string;
+      readonly lane: HostedPairLane;
+      readonly providerJobId: string;
+      readonly providerStatus: "IN_QUEUE" | "IN_PROGRESS";
+    }) => Promise<unknown>,
   ) {}
 
   async observe(scope: HostedPairWorkflowScope, cancelKnownActive: boolean) {
@@ -951,6 +957,15 @@ export class HostedPairWorkflowReconciler {
         )
           continue;
         const status = await this.transports[row.lane].status(row.providerJobId);
+        if (status.status === "IN_QUEUE" || status.status === "IN_PROGRESS") {
+          try {
+            await this.recordProgress?.({ ...scope, attemptId: row.attemptId,
+              lane: row.lane, providerJobId: row.providerJobId, providerStatus: status.status });
+          } catch {
+            // Visibility must not prevent funded cancellation or later reconciliation.
+            console.warn("hosted_pair_progress_record_failed", { lane: row.lane });
+          }
+        }
         if (!TERMINAL.has(status.status)) {
           allTerminal = false;
           allCompleted = false;
@@ -1320,6 +1335,14 @@ export async function createHostedPairLiveComposition(
       terminalOutput,
       beforeSettlement,
       readDatabaseNow,
+      async (input) => reconcilerDatabase.transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", input.accountId]);
+        await transaction.query(`SELECT public.videoforge_record_hosted_pair_progress(
+          $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text,$6::text,$7::text)`, [
+          input.accountId, input.workspaceId, input.generationRequestId, input.attemptId,
+          input.lane, input.providerJobId, input.providerStatus,
+        ]);
+      }),
     ),
   });
 }

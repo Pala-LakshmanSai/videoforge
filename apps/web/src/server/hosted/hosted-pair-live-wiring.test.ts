@@ -394,6 +394,38 @@ describe("hosted pair live provider wiring", () => {
     expect(cancel.mock.calls.map(([id]) => id)).toEqual(["mage_image-job-1"]);
   });
 
+  it("records exact queued/running observations without inventing completed item counts", async () => {
+    const status = vi.fn(async (id: string) => ({ id,
+      status: id.startsWith("mage") ? "IN_QUEUE" as const : "IN_PROGRESS" as const }));
+    const recordProgress = vi.fn(async (_input: unknown) => true);
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rows()) } as never,
+      { mage_image: { status, cancel: vi.fn() }, soulx_avatar: { status, cancel: vi.fn() } },
+      { reconcile: vi.fn() } as never,
+      { mage_image: vi.fn(), soulx_avatar: vi.fn() },
+      undefined, undefined, undefined, undefined, undefined, recordProgress,
+    );
+    await expect(reconciler.observe(ids, false)).resolves.toEqual({ state: "WAITING", active: 2, unknown: 0 });
+    expect(recordProgress.mock.calls.map(([input]) => input)).toEqual(rows().map((row) => ({
+      ...ids, attemptId: row.attemptId, lane: row.lane, providerJobId: row.providerJobId,
+      providerStatus: row.lane === "mage_image" ? "IN_QUEUE" : "IN_PROGRESS",
+    })));
+  });
+
+  it("keeps funded cancellation functional if optional progress persistence fails", async () => {
+    const status = vi.fn(async (id: string) => ({ id, status: "IN_QUEUE" as const }));
+    const cancel = vi.fn();
+    const reconciler = new HostedPairWorkflowReconciler(
+      { inspect: vi.fn(async () => rows()) } as never,
+      { mage_image: { status, cancel }, soulx_avatar: { status, cancel } },
+      { reconcile: vi.fn() } as never, { mage_image: vi.fn(), soulx_avatar: vi.fn() },
+      undefined, undefined, undefined, undefined, undefined,
+      vi.fn(async () => { throw new Error("private database detail"); }),
+    );
+    await expect(reconciler.observe(ids, true)).resolves.toEqual({ state: "CANCEL_REQUESTED", active: 2, unknown: 0 });
+    expect(cancel).toHaveBeenCalledTimes(2);
+  });
+
   it("polls both lanes, then cancels only exact known jobs after the bound", async () => {
     const status = vi.fn(async (id: string) => ({ id, status: "IN_PROGRESS" as const }));
     const cancel = vi.fn(async (id: string) => ({ id, status: "CANCELLED" as const }));
