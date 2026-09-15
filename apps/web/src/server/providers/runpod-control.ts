@@ -318,7 +318,7 @@ export function assertRunPodEndpointPolicy(value: RunPodEndpointPolicy): void {
     value.idleTimeout > 60 ||
     !Number.isSafeInteger(value.executionTimeoutMs) ||
     value.executionTimeoutMs < 1_000 ||
-    value.executionTimeoutMs > 3_600_000
+    value.executionTimeoutMs > 7_200_000
   ) {
     throw new RunPodControlError("RUNPOD_SCALE_ZERO_POLICY_INVALID");
   }
@@ -336,7 +336,7 @@ export function assertRunPodV207ConcurrentReaderPolicy(
     value.idleTimeout > 60 ||
     !Number.isSafeInteger(value.executionTimeoutMs) ||
     value.executionTimeoutMs < 1_000 ||
-    value.executionTimeoutMs > 3_600_000
+    value.executionTimeoutMs > 7_200_000
   ) {
     throw new RunPodControlError("RUNPOD_CONCURRENT_READER_POLICY_INVALID");
   }

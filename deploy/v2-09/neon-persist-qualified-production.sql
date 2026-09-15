@@ -46,7 +46,7 @@ BEGIN
       RAISE EXCEPTION 'V209 production persistence lane invalid' USING ERRCODE='23514';
     END IF;
     IF item->>'lane'='mage_image' AND (
-      item->>'imageSha256'<>'sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161'
+      item->>'imageSha256'<>'sha256:a74a622400ab21a51f270176ce0df1e7ea292f1ded999abe6193b4c40bb1fde3'
       OR item->>'volumeIdSha256'<>'sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619'
       OR item->>'volumeManifestSha256'<>'sha256:ffaf47d13c92407a51d2aa78337612daf2733f5a5bb93e27336822a5389ba1c9'
     ) THEN RAISE EXCEPTION 'V209 Mage persistence identity drift' USING ERRCODE='23514'; END IF;

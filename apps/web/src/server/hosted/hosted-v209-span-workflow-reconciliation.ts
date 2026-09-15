@@ -260,6 +260,11 @@ export async function reconcileHostedV209SpanWorkflowTerminal(
             pool,
           );
           if (!resumed.ok) throw new Error("Hosted SPAN pair resume was rejected.");
+          const resumeState = record(await resumed.json())?.state;
+          // Keep the existing bounded Workflow retry alive until capacity returns.
+          // No outbox or provider request exists yet; do not report a completed handoff.
+          if (resumeState === "WAITING_FOR_GPUS" || resumeState === "WAITING")
+            throw new Error("HOSTED_V209_PAIR_WAITING");
         },
       },
       terminal,

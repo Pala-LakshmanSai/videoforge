@@ -1,4 +1,5 @@
 import { canonicalSha256, digestUtf8, type Sha256 } from "@videoforge/control-plane";
+import { quoteOrdinaryVideoBudget } from "../runtime/ordinary-video-budget";
 import { MAGE_MODEL_REVISION } from "../providers/runpod-mage-result";
 import type { HostedPairLane } from "./hosted-pair-runtime-executor";
 import { validateAndHashHostedContractDocument } from "./precompiled-contract-validation";
@@ -28,6 +29,9 @@ export interface V209OrdinaryWorkerRequestInput {
   readonly imageSeed?: number;
   /** Bounded authority lifetime. Defaults to the qualified one-hour lifetime. */
   readonly requestTtlSeconds?: number;
+  /** Only fresh duration-budget candidates may extend the SoulX authority. */
+  readonly budgetVersion?: "ordinary-video-budget/v1";
+  readonly durationMs?: number;
 }
 
 export interface V209OrdinaryWorkerRequest {
@@ -79,10 +83,22 @@ function lifetime(input: V209OrdinaryWorkerRequestInput): number {
   const expiresAt = Date.parse(input.expiresAt);
   const seconds = (expiresAt - issuedAt) / 1000;
   const ttl = input.requestTtlSeconds ?? HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS;
+  const budget =
+    input.budgetVersion === "ordinary-video-budget/v1"
+      ? quoteOrdinaryVideoBudget(input.durationMs as number)
+      : null;
+  if (input.budgetVersion !== undefined && !budget) fail();
+  if (input.durationMs !== undefined && !budget) fail();
+  const maximumTtl =
+    budget && input.lane === "soulx_avatar"
+      ? Math.max(HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS, budget.soulxAvatarTimeoutSeconds + 600)
+      : HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS;
   if (
     !Number.isSafeInteger(ttl) ||
     ttl < 60 ||
-    ttl > HOSTED_V209_ORDINARY_REQUEST_TTL_SECONDS ||
+    ttl > maximumTtl ||
+    maximumTtl > 7200 ||
+    (budget !== null && ttl !== maximumTtl) ||
     !Number.isSafeInteger(seconds) ||
     seconds !== ttl ||
     new Date(issuedAt).toISOString() !== input.issuedAt ||
@@ -144,6 +160,14 @@ async function inputPort(
 ) {
   const signed = await signer.sign({
     method: "GET",
+    ...(input.budgetVersion
+      ? {
+          ordinaryVideoBudget: {
+            version: input.budgetVersion,
+            durationMs: input.durationMs as number,
+          },
+        }
+      : {}),
     objectKey: artifact.objectKey,
     contentType: artifact.contentType,
     contentLength: artifact.contentLength,

@@ -126,14 +126,12 @@ export async function readV209ShortProviderObservation(
   const matches = gpus.map(record).filter((gpu) => {
     const centers = Array.isArray(gpu?.dataCenters) ? gpu.dataCenters.map(record) : [];
     const regions = centers.filter((candidate) => candidate?.id === "EU-RO-1");
-    const availability = regions[0]?.availability;
     return (
       gpu?.id === "NVIDIA GeForce RTX 4090" &&
       gpu?.manufacturer === "NVIDIA" &&
       gpu?.secure === true &&
       Number(record(gpu?.price)?.secure) === 0.74 &&
-      regions.length === 1 &&
-      (availability === "LOW" || availability === "MEDIUM" || availability === "HIGH")
+      regions.length === 1
     );
   });
   if (matches.length !== 1) throw new RangeError("V209_SHORT_PROVIDER_OFFERING_UNAVAILABLE");
@@ -141,6 +139,12 @@ export async function readV209ShortProviderObservation(
   const center = (selected.dataCenters as unknown[])
     .map(record)
     .find((candidate) => candidate?.id === "EU-RO-1")!;
+  // Only an explicit stock response for the exact approved offering is retryable.
+  // Missing/changed identity, pricing or unknown catalog values remain configuration errors.
+  if (["NONE", "UNAVAILABLE", "OUT_OF_STOCK"].includes(String(center.availability)))
+    throw new RangeError("V209_GPU_CAPACITY_UNAVAILABLE");
+  if (!["LOW", "MEDIUM", "HIGH"].includes(String(center.availability)))
+    throw new RangeError("V209_SHORT_PROVIDER_OFFERING_UNAVAILABLE");
   const billing = await billingResponse.json();
   if (!Array.isArray(billing)) throw new RangeError("V209_SHORT_PROVIDER_BILLING_INVALID");
   let cumulativeUsd = 0;

@@ -119,77 +119,110 @@ describe("ordinary V2-09 immutable worker request", () => {
     expect(ports.signGenerated).toHaveBeenCalledOnce();
   });
 
-  it("builds SoulX for a verified custom PNG with exact 48k span GETs", async () => {
-    const prefix = outputPrefix.replace("mage-image", "soulx-avatar");
-    const avatarReservation = "avatar-input-a";
-    const spanReservation = "span-input-a";
-    const outputReservation = "soulx-output-a";
-    const work = [
-      {
-        taskId: "soulx-task-a",
-        outputPrefix: prefix,
-        outputReservationId: outputReservation,
-        avatarSourceAssetId: "avatar-asset-a",
-        avatarSourceObjectKey:
-          "tenant/account-a/workspace/workspace-a/avatar-profile/profile-a/version/version-a/canonical/avatar.png",
-        avatarSourceContentType: "image/png",
-        avatarSourceContentLength: 1_187_432,
-        avatarSourceSha256: `sha256:${"f".repeat(64)}`,
-        spanAudioAssetId: "span-asset-a",
-        spanAudioInputReservationId: spanReservation,
-        spanAudioObjectKey:
-          "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/input/job/span-a/artifact/audio",
-        spanAudioContentType: "audio/wav",
-        spanAudioContentLength: 288044,
-        spanAudioSha256: `sha256:${"2".repeat(64)}`,
-        spanAudioSampleRateHz: 48000,
-        spanAudioChannels: 1,
-        paddedSamples48k: 144000,
-        trimStartSample48k: 9600,
-        trimEndSampleExclusive48k: 105600,
-      },
-    ];
-    const ports = signer(soulxExpiresAt);
-    const result = await materializeV209OrdinaryWorkerRequest(
-      {
+  it.each([undefined, 1_080_000, 3_600_000])(
+    "builds SoulX with exact duration-budget ports (%s ms)",
+    async (durationMs) => {
+      const requestTtlSeconds = durationMs === 3_600_000 ? 7200 : 3600;
+      const requestExpiresAt = new Date(
+        Date.parse(issuedAt) + requestTtlSeconds * 1000,
+      ).toISOString();
+      const prefix = outputPrefix.replace("mage-image", "soulx-avatar");
+      const avatarReservation = "avatar-input-a";
+      const spanReservation = "span-input-a";
+      const outputReservation = "soulx-output-a";
+      const work = [
+        {
+          taskId: "soulx-task-a",
+          outputPrefix: prefix,
+          outputReservationId: outputReservation,
+          avatarSourceAssetId: "avatar-asset-a",
+          avatarSourceObjectKey:
+            "tenant/account-a/workspace/workspace-a/avatar-profile/profile-a/version/version-a/canonical/avatar.png",
+          avatarSourceContentType: "image/png",
+          avatarSourceContentLength: 1_187_432,
+          avatarSourceSha256: `sha256:${"f".repeat(64)}`,
+          spanAudioAssetId: "span-asset-a",
+          spanAudioInputReservationId: spanReservation,
+          spanAudioObjectKey:
+            "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/input/job/span-a/artifact/audio",
+          spanAudioContentType: "audio/wav",
+          spanAudioContentLength: 288044,
+          spanAudioSha256: `sha256:${"2".repeat(64)}`,
+          spanAudioSampleRateHz: 48000,
+          spanAudioChannels: 1,
+          paddedSamples48k: 144000,
+          trimStartSample48k: 9600,
+          trimEndSampleExclusive48k: 105600,
+        },
+      ];
+      const ports = signer(requestExpiresAt);
+      const requestInput = {
         lane: "soulx_avatar",
         accountId,
         workspaceId,
         attemptId,
         issuedAt,
-        expiresAt: soulxExpiresAt,
+        expiresAt: requestExpiresAt,
+        ...(durationMs
+          ? { budgetVersion: "ordinary-video-budget/v1" as const, durationMs, requestTtlSeconds }
+          : {}),
         envelope: envelope(
           "soulx_avatar",
           1,
           prefix,
           [avatarReservation, spanReservation, outputReservation],
-          soulxExpiresAt,
+          requestExpiresAt,
         ),
         work,
         avatarSourceInputReservationId: avatarReservation,
-      },
-      ports as never,
-    );
-    expect(result.body).toMatchObject({
-      batch: {
-        schema_version: "videoforge-soulx-span-batch/v1",
-        avatar_source: { port_reservation_id: avatarReservation },
-        spans: [
-          {
-            item_id: "soulx-task-a",
-            audio_port_reservation_id: spanReservation,
-            padded_samples_48k: 144000,
-            trim_start_sample_48k: 9600,
-            trim_end_sample_exclusive_48k: 105600,
-          },
-        ],
-      },
-    });
-    expect(ports.sign).toHaveBeenCalledTimes(2);
-    expect(ports.signGenerated).toHaveBeenCalledWith(
-      expect.objectContaining({ maxContentLength: 128 * 1024 * 1024 }),
-    );
-  });
+      } as const;
+      const result = await materializeV209OrdinaryWorkerRequest(requestInput, ports as never);
+      expect(result.body).toMatchObject({
+        batch: {
+          schema_version: "videoforge-soulx-span-batch/v1",
+          avatar_source: { port_reservation_id: avatarReservation },
+          spans: [
+            {
+              item_id: "soulx-task-a",
+              audio_port_reservation_id: spanReservation,
+              padded_samples_48k: 144000,
+              trim_start_sample_48k: 9600,
+              trim_end_sample_exclusive_48k: 105600,
+            },
+          ],
+        },
+      });
+      expect(ports.sign).toHaveBeenCalledTimes(2);
+      expect(ports.signGenerated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxContentLength: 128 * 1024 * 1024,
+          lifetimeSeconds: requestTtlSeconds,
+        }),
+      );
+      if (durationMs === 3_600_000) {
+        for (const invalidTtl of [7199, 7201, 7202]) {
+          const invalidExpiry = new Date(Date.parse(issuedAt) + invalidTtl * 1000).toISOString();
+          const invalidPorts = signer(invalidExpiry);
+          await expect(
+            materializeV209OrdinaryWorkerRequest(
+              {
+                ...requestInput,
+                requestTtlSeconds: invalidTtl,
+                expiresAt: invalidExpiry,
+                envelope: {
+                  ...requestInput.envelope,
+                  limits: { ...requestInput.envelope.limits, expires_at: invalidExpiry },
+                },
+              },
+              invalidPorts as never,
+            ),
+          ).rejects.toThrow("HOSTED_V209_ORDINARY_WORKER_REQUEST_INVALID");
+          expect(invalidPorts.sign).not.toHaveBeenCalled();
+          expect(invalidPorts.signGenerated).not.toHaveBeenCalled();
+        }
+      }
+    },
+  );
 
   it.each([
     ["JPEG source bytes", { avatarSourceContentType: "image/jpeg" }],
@@ -279,24 +312,34 @@ describe("ordinary V2-09 immutable worker request", () => {
     expect(ports.signGenerated).not.toHaveBeenCalled();
   });
 
-  it("rejects a two-hour Mage authority before signing", async () => {
-    const ports = signer(twoHourMageExpiresAt);
-    await expect(
-      materializeV209OrdinaryWorkerRequest(
-        {
-          lane: "mage_image",
-          accountId,
-          workspaceId,
-          attemptId,
-          issuedAt,
-          expiresAt: twoHourMageExpiresAt,
-          envelope: envelope("mage_image", 1, outputPrefix, ["output-a"], twoHourMageExpiresAt),
-          work: [{ taskId: "mage-task-a", outputPrefix, outputReservationId: "output-a" }],
-        },
-        ports as never,
-      ),
-    ).rejects.toThrow("HOSTED_V209_ORDINARY_WORKER_REQUEST_INVALID");
-    expect(ports.sign).not.toHaveBeenCalled();
-    expect(ports.signGenerated).not.toHaveBeenCalled();
-  });
+  it.each([false, true])(
+    "rejects two-hour Mage authority before signing (fresh=%s)",
+    async (freshBudget) => {
+      const ports = signer(twoHourMageExpiresAt);
+      await expect(
+        materializeV209OrdinaryWorkerRequest(
+          {
+            lane: "mage_image",
+            accountId,
+            workspaceId,
+            attemptId,
+            issuedAt,
+            expiresAt: twoHourMageExpiresAt,
+            ...(freshBudget
+              ? {
+                  budgetVersion: "ordinary-video-budget/v1" as const,
+                  durationMs: 3_600_000,
+                  requestTtlSeconds: 7200,
+                }
+              : {}),
+            envelope: envelope("mage_image", 1, outputPrefix, ["output-a"], twoHourMageExpiresAt),
+            work: [{ taskId: "mage-task-a", outputPrefix, outputReservationId: "output-a" }],
+          },
+          ports as never,
+        ),
+      ).rejects.toThrow("HOSTED_V209_ORDINARY_WORKER_REQUEST_INVALID");
+      expect(ports.sign).not.toHaveBeenCalled();
+      expect(ports.signGenerated).not.toHaveBeenCalled();
+    },
+  );
 });

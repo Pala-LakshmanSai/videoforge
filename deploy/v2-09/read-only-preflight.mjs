@@ -70,28 +70,28 @@ export const V209_FROZEN_IMAGES = Object.freeze([
   Object.freeze({
     lane: "mage_image",
     repository: "pala-lakshmansai/videoforge-mage-v2-07",
-    manifestDigest: "sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
-    configDigest: "sha256:0cf8478722ba1769b154ee47f257bbe599fb83a7fef22336dfc31d8de2a5e13d",
-    sourceCommit: "619393e74e2ea42ed6082e78d1efeafa9366b238",
+    manifestDigest: "sha256:a74a622400ab21a51f270176ce0df1e7ea292f1ded999abe6193b4c40bb1fde3",
+    configDigest: "sha256:2e2f7cf2fab2d4f36241d0c44955182dddb19e5ebc825524027ef11a872bef97",
+    sourceCommit: "ad6258ae079762c05434048c76072dd656e378cd",
     frozenAnonymousProofSha256:
-      "sha256:62b6f5a590aa85a31108a27ada9ceafcfd6f14cafd9408ac69aec7e25a311a7",
+      "sha256:baf62421dfc739fc0b381e8a9c6f7d8d0bbd598f985bf152aa7e5f7b2885d875",
     labels: Object.freeze({
       "ai.videoforge.base-image":
-        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
       "ai.videoforge.comfyui-revision": "26d7f8556822d9d08c2d3e1878636ac3b4969af9",
       "ai.videoforge.lane": "mage_image",
       "ai.videoforge.model": "Comfy-Org/Mage-Flow",
       "ai.videoforge.model-revision": "d8c99241f6fa80fbd453014234af2bf337ea21e6",
       "ai.videoforge.output": "1280x720-steps4-guidance1",
       "ai.videoforge.overlay-parent":
-        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
       "ai.videoforge.precision": "int8-convrot",
       "ai.videoforge.repair.kind": "source-only-overlay-v2",
-      "ai.videoforge.source-commit": "619393e74e2ea42ed6082e78d1efeafa9366b238",
+      "ai.videoforge.source-commit": "ad6258ae079762c05434048c76072dd656e378cd",
       "org.opencontainers.image.base.digest":
-        "sha256:91ef608fbb15bc69213c73a598a8915fa4dfa938d02c619454e42319a6475f62",
+        "sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
       "org.opencontainers.image.base.name": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07",
-      "org.opencontainers.image.revision": "619393e74e2ea42ed6082e78d1efeafa9366b238",
+      "org.opencontainers.image.revision": "ad6258ae079762c05434048c76072dd656e378cd",
       "org.opencontainers.image.title": "VideoForge Mage Serverless Worker (repaired)",
       "org.opencontainers.image.version": "v2-07-serverless-repair-v2",
     }),

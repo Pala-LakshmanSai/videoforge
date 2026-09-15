@@ -1,4 +1,5 @@
 import { AwsClient } from "aws4fetch";
+import { quoteOrdinaryVideoBudget } from "../runtime/ordinary-video-budget";
 
 import type { HostedR2BucketBinding, HostedRuntimeConfiguration } from "./configuration";
 
@@ -163,6 +164,7 @@ export class HostedR2Signer {
     checksumSha256: string;
     lifetimeSeconds: number;
     downloadFilename?: string;
+    ordinaryVideoBudget?: Readonly<{ version: "ordinary-video-budget/v1"; durationMs: number }>;
     now?: Date;
   }): Promise<HostedSignedArtifactPort> {
     if (!EXACT_KEY.test(input.objectKey))
@@ -185,11 +187,23 @@ export class HostedR2Signer {
     ) {
       throw new TypeError("R2 download filename is invalid.");
     }
-    const maximumLifetimeSeconds = input.method === "GET" ? 3_600 : 900;
+    if (
+      input.ordinaryVideoBudget &&
+      (input.method !== "GET" || input.ordinaryVideoBudget.version !== "ordinary-video-budget/v1")
+    )
+      throw new TypeError("Duration-budget authority applies only to ordinary video GET ports.");
+    const ordinaryBudget = input.ordinaryVideoBudget
+      ? quoteOrdinaryVideoBudget(input.ordinaryVideoBudget.durationMs)
+      : null;
+    const maximumLifetimeSeconds =
+      input.method === "GET"
+        ? Math.max(3_600, ordinaryBudget ? ordinaryBudget.soulxAvatarTimeoutSeconds + 600 : 3_600)
+        : 900;
     if (
       !Number.isSafeInteger(input.lifetimeSeconds) ||
       input.lifetimeSeconds < 1 ||
-      input.lifetimeSeconds > maximumLifetimeSeconds
+      input.lifetimeSeconds > maximumLifetimeSeconds ||
+      maximumLifetimeSeconds > 7_200
     ) {
       throw new RangeError(
         `R2 ${input.method} port lifetime must be between 1 and ${maximumLifetimeSeconds} seconds.`,

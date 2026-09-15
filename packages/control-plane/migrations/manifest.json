@@ -792,6 +792,18 @@
       "name": "hosted_pending_upload_renewal",
       "filename": "0133_hosted_pending_upload_renewal.sql",
       "sha256": "sha256:a2e26b9273b2a2903f382bd663fe2c9a77d3b001a73de9dd6bb2f5f24a05b0aa"
+    },
+    {
+      "version": 134,
+      "name": "hosted_v209_mage_long_plan_successor",
+      "filename": "0134_hosted_v209_mage_long_plan_successor.sql",
+      "sha256": "sha256:f395619c21950bea234bb9826a2df40a02a88ceca13a7e2466f5e148a46fe2bb"
+    },
+    {
+      "version": 135,
+      "name": "hosted_ordinary_video_budget",
+      "filename": "0135_hosted_ordinary_video_budget.sql",
+      "sha256": "sha256:ae2acda1198cc7b59b60b8fcb45c50f95a7d64edd9ebe1b09cca31e867b9dd35"
     }
   ]
 }

@@ -99,6 +99,7 @@ export type HostedPairRuntimeTransport = ServerlessTransportPort & {
 };
 
 export interface HostedPairInspection {
+  readonly fundedDeadlineAt?: string | null;
   readonly lane: HostedPairLane;
   readonly attemptId: string;
   readonly attemptState: string;
@@ -277,7 +278,9 @@ export class HostedSqlPairRuntimeStore implements HostedPairRuntimeStore {
     });
   }
 
-  async finishPairSend(input: Parameters<NonNullable<HostedPairRuntimeStore["finishPairSend"]>>[0]) {
+  async finishPairSend(
+    input: Parameters<NonNullable<HostedPairRuntimeStore["finishPairSend"]>>[0],
+  ) {
     await this.database.transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1,$2,true)", [
         "videoforge.account_id",
@@ -320,12 +323,15 @@ export class HostedSqlPairRuntimeStore implements HostedPairRuntimeStore {
           dispatch_token_sha256: Sha256;
           pair_phase: string;
           recovery_action: string;
+          funded_deadline_at?: string | Date | null;
         } & Record<string, unknown>
-      >("SELECT * FROM public.videoforge_inspect_hosted_pair_runtime($1,$2,$3)", [
-        input.accountId,
-        input.workspaceId,
-        input.generationRequestId,
-      ]);
+      >(
+        `SELECT inspection.*, deadlines.funded_deadline_at
+           FROM public.videoforge_inspect_hosted_pair_runtime($1,$2,$3) inspection
+           LEFT JOIN public.videoforge_hosted_pair_funded_deadlines($1,$2,$3) deadlines
+             ON deadlines.lane=inspection.lane`,
+        [input.accountId, input.workspaceId, input.generationRequestId],
+      );
       // Before the first beginSend, the committed attempts/outboxes exist but the runtime-state
       // row does not. Preserve only that empty projection; malformed non-empty projections fail.
       if (result.rows.length === 0) return Object.freeze([] as HostedPairInspection[]);
@@ -348,6 +354,9 @@ export class HostedSqlPairRuntimeStore implements HostedPairRuntimeStore {
             dispatchTokenSha256: row.dispatch_token_sha256,
             pairPhase: row.pair_phase,
             recoveryAction: row.recovery_action,
+            ...(row.funded_deadline_at
+              ? { fundedDeadlineAt: new Date(row.funded_deadline_at).toISOString() }
+              : {}),
           }),
         ),
       );
@@ -496,8 +505,7 @@ export class HostedPairRuntimeExecutor {
 
     // Crash recovery or an older materialization may have one lane assigned already. Preserve the
     // original one-shot single-lane path; it never resends a known or ambiguous lane.
-    if (soulx && !mage)
-      return this.#stop("mage_image", "DISPATCH_ACK_UNKNOWN").result;
+    if (soulx && !mage) return this.#stop("mage_image", "DISPATCH_ACK_UNKNOWN").result;
     const recoveredMage = mage ?? (await this.#send(input, input.envelopes[0], prepared[0]));
     if (recoveredMage.kind !== "ASSIGNED") return recoveredMage.result;
     const recoveredSoulx = await this.#send(input, input.envelopes[1], prepared[1]);
@@ -595,7 +603,10 @@ export class HostedPairRuntimeExecutor {
         envelope: document,
         ...(prepared.requestBody ? { body: prepared.requestBody } : {}),
       });
-      console.info("hosted_pair_runtime", { event: "PROVIDER_SEND_ACKNOWLEDGED", lane: envelope.lane });
+      console.info("hosted_pair_runtime", {
+        event: "PROVIDER_SEND_ACKNOWLEDGED",
+        lane: envelope.lane,
+      });
       if (!response || typeof response.id !== "string" || !PROVIDER_JOB_ID.test(response.id)) {
         await this.#finish(input, claim, "DISPATCH_ACK_UNKNOWN", null, parallel);
         return this.#stop(claim.lane, "DISPATCH_ACK_UNKNOWN");

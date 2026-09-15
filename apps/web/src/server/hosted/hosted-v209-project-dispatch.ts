@@ -311,7 +311,11 @@ function exactCandidate(
     typeof candidate.avatarSourceInputReservationId !== "string" ||
     !DATABASE_UUID.test(candidate.avatarSourceInputReservationId) ||
     !Number.isFinite(Date.parse(candidate.expiresAt)) ||
-    candidate.totalCapUsd !== 2 ||
+    (candidate.budgetVersion === "ordinary-video-budget/v1"
+      ? typeof candidate.totalCapUsd !== "number" ||
+        candidate.totalCapUsd < 2 ||
+        candidate.totalCapUsd > 5
+      : candidate.totalCapUsd !== 2) ||
     !candidate.laneBindings ||
     typeof candidate.laneBindings !== "object" ||
     !candidate.pair ||
@@ -343,13 +347,14 @@ function dispatchResponse(candidate: Candidate, correlationId: string, status: n
 }
 
 function preparationResponse(
-  state: "PREPARING_INPUTS" | "SCHEDULED" | "WAITING",
+  state: "PREPARING_INPUTS" | "SCHEDULED" | "WAITING" | "WAITING_FOR_GPUS",
   correlationId: string,
 ) {
   const base = response(
     {
       schema_version: "videoforge-hosted-v209-project-dispatch/v1",
       state,
+      ...(state === "WAITING_FOR_GPUS" ? { retry_after_seconds: 30 } : {}),
       correlation_id: correlationId,
     },
     202,
@@ -429,9 +434,16 @@ export async function resumeHostedV209ProjectDispatch(
         });
         return dispatchResponse(candidate, correlationId, 200);
       }
-      const observation = await dispatchPhase("HOSTED_V209_OBSERVATION_FAILED", () =>
-        injected.observe(environment, runtimeDatabase),
-      );
+      let observation: Awaited<ReturnType<typeof injected.observe>>;
+      try {
+        observation = await dispatchPhase("HOSTED_V209_OBSERVATION_FAILED", () =>
+          injected.observe(environment, runtimeDatabase),
+        );
+      } catch (error) {
+        if (error instanceof RangeError && error.message === "V209_GPU_CAPACITY_UNAVAILABLE")
+          return preparationResponse("WAITING_FOR_GPUS", correlationId);
+        throw error;
+      }
       const admission = await dispatchPhase("HOSTED_V209_ADMISSION_FREEZE_FAILED", () =>
         freezeV209OrdinaryLiveAdmission(candidate, observation, materialized.systemAvatarReference),
       );

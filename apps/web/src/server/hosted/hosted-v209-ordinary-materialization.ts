@@ -1,8 +1,5 @@
 import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
-import {
-  sha256CanonicalJson,
-  type JsonValue,
-} from "@videoforge/contracts";
+import { sha256CanonicalJson, type JsonValue } from "@videoforge/contracts";
 
 import type { HostedEnvelopePairSigner } from "./hosted-envelope-signer";
 import type { HostedPairLane, HostedSignedPairEnvelope } from "./hosted-pair-runtime-executor";
@@ -28,6 +25,8 @@ type Projection = {
   readonly baseEnvelopeTemplateSha256: string;
   readonly issuedAt: string;
   readonly expiresAt: string;
+  readonly budgetVersion?: "ordinary-video-budget/v1";
+  readonly durationMs?: number;
   readonly work: readonly Record<string, unknown>[];
   readonly avatarSourceInputReservationId?: string;
 };
@@ -61,7 +60,13 @@ function projection(value: unknown, lane: HostedPairLane): Projection {
     !Number.isFinite(Date.parse(row.issuedAt)) ||
     !Number.isFinite(Date.parse(row.expiresAt)) ||
     !Array.isArray(row.work) ||
-    row.work.length < 1
+    row.work.length < 1 ||
+    (row.budgetVersion !== undefined && row.budgetVersion !== "ordinary-video-budget/v1") ||
+    (row.budgetVersion === "ordinary-video-budget/v1" &&
+      (!Number.isSafeInteger(row.durationMs) ||
+        Number(row.durationMs) < 1 ||
+        Number(row.durationMs) > 3_600_000)) ||
+    (row.budgetVersion === undefined && row.durationMs !== undefined)
   )
     throw new HostedDispatchCoordinationError("HOSTED_V209_ORDINARY_MATERIALIZATION_INVALID");
   return row as unknown as Projection;
@@ -164,6 +169,14 @@ export class HostedSqlV209OrdinaryLaneMaterializer {
             attemptId: item.attemptId,
             issuedAt: item.issuedAt,
             expiresAt: item.expiresAt,
+            ...(item.budgetVersion
+              ? {
+                  budgetVersion: item.budgetVersion,
+                  durationMs: item.durationMs,
+                  requestTtlSeconds:
+                    (Date.parse(item.expiresAt) - Date.parse(item.issuedAt)) / 1000,
+                }
+              : {}),
             envelope: document as Readonly<Record<string, unknown>>,
             work: item.work,
             avatarSourceInputReservationId: item.avatarSourceInputReservationId,

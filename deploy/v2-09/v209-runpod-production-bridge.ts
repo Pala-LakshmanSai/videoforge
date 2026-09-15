@@ -25,7 +25,7 @@ const COMMIT = /^[0-9a-f]{40}$/u;
 const AUTHORITY = /^v2-09-[a-z0-9][a-z0-9._-]{7,95}$/u;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/u;
 const PUBLIC_IMAGES = Object.freeze({
-  mage: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
+  mage: "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:a74a622400ab21a51f270176ce0df1e7ea292f1ded999abe6193b4c40bb1fde3",
   soulx:
     "ghcr.io/pala-lakshmansai/videoforge-soulx-serverless-v2-08@sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35",
 });

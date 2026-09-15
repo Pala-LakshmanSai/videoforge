@@ -16,7 +16,7 @@ export const MAGE_QUALIFICATION_SHA256 =
 export const SOULX_QUALIFICATION_SHA256 =
   "sha256:586c235e3854ece80ca17b7728d3bdddea47e4e4f3b9fb445584bd7cd2fc17b5";
 export const MAGE_IMAGE_DIGEST =
-  "sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161";
+  "sha256:a74a622400ab21a51f270176ce0df1e7ea292f1ded999abe6193b4c40bb1fde3";
 export const SOULX_IMAGE_DIGEST =
   "sha256:f67287feeef2a8ff16efd48d142125f6c3ee1863bde5b92aa74f80b7e741cd35";
 

@@ -1,5 +1,7 @@
 import { sha256CanonicalJson } from "@videoforge/contracts";
 
+import { quoteOrdinaryVideoBudget } from "./ordinary-video-budget";
+
 import type { V209ShortAdmissionObservation } from "./v209-short-live-cost";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -33,12 +35,17 @@ export interface V209OrdinaryLiveAdmission {
   readonly work: V209OrdinaryWork;
   readonly cost: Readonly<{
     maximumFlexRateMicroUsdPerGpuHour: 1_116_000;
-    primaryExecutionForecastMicroUsd: 744_000;
-    possibleDuplicateLiabilityMicroUsd: 744_000;
+    primaryExecutionForecastMicroUsd: number;
+    possibleDuplicateLiabilityMicroUsd: number;
     settlementReserveMicroUsd: 512_000;
-    hardVariableCostCeilingMicroUsd: 2_000_000;
+    hardVariableCostCeilingMicroUsd: number;
     combinedCompletionCapMicroUsd: 17_500_000;
     noRedispatch: true;
+    budgetVersion?: "ordinary-video-budget/v1";
+    durationMs?: number;
+    totalGpuTimeoutSeconds?: number;
+    mageImageTimeoutSeconds?: number;
+    soulxAvatarTimeoutSeconds?: number;
   }>;
   readonly billingBaselineMicroUsd: number;
   readonly billingBaselineCheckedAt: string;
@@ -301,6 +308,14 @@ export async function freezeV209OrdinaryLiveAdmission(
     systemAvatarReference,
   );
 
+  const renderPlan = record(candidate.renderPlan);
+  const budget =
+    candidate.budgetVersion === "ordinary-video-budget/v1"
+      ? quoteOrdinaryVideoBudget(Math.ceil((Number(renderPlan?.totalFrames) * 1_000) / 30))
+      : null;
+  if (budget && candidate.totalCapUsd !== budget.hardVariableCostCeilingMicroUsd / 1_000_000)
+    throw new RangeError("V209_ORDINARY_COST_ADMISSION_INVALID");
+  const hardCap = budget?.hardVariableCostCeilingMicroUsd ?? 2_000_000;
   const databaseNow = epoch(observation.databaseNow, "V209_ORDINARY_DATABASE_TIME_INVALID");
   const providerAt = epoch(observation.providerObservedAt, "V209_ORDINARY_PROVIDER_TIME_INVALID");
   const rateAt = epoch(observation.rate.checkedAt, "V209_ORDINARY_RATE_TIME_INVALID");
@@ -321,7 +336,7 @@ export async function freezeV209OrdinaryLiveAdmission(
   if (
     !Number.isSafeInteger(observation.billing.cumulativeEndpointBillingMicroUsd) ||
     observation.billing.cumulativeEndpointBillingMicroUsd < 0 ||
-    observation.billing.cumulativeEndpointBillingMicroUsd + 2_000_000 > 17_500_000 ||
+    observation.billing.cumulativeEndpointBillingMicroUsd + hardCap > 17_500_000 ||
     billingAt > databaseNow ||
     databaseNow - billingAt > FRESH_MS ||
     observation.phaseCapMicroUsd !== 2_000_000 ||
@@ -337,19 +352,32 @@ export async function freezeV209OrdinaryLiveAdmission(
     work,
     cost: Object.freeze({
       maximumFlexRateMicroUsdPerGpuHour: 1_116_000 as const,
-      primaryExecutionForecastMicroUsd: 744_000 as const,
-      possibleDuplicateLiabilityMicroUsd: 744_000 as const,
+      primaryExecutionForecastMicroUsd: budget?.primaryExecutionForecastMicroUsd ?? 744_000,
+      possibleDuplicateLiabilityMicroUsd: budget?.possibleDuplicateLiabilityMicroUsd ?? 744_000,
       settlementReserveMicroUsd: 512_000 as const,
-      hardVariableCostCeilingMicroUsd: 2_000_000 as const,
+      hardVariableCostCeilingMicroUsd: hardCap,
       combinedCompletionCapMicroUsd: 17_500_000 as const,
       noRedispatch: true as const,
+      ...(budget
+        ? {
+            budgetVersion: "ordinary-video-budget/v1" as const,
+            durationMs: budget.durationMs,
+            totalGpuTimeoutSeconds: budget.totalGpuTimeoutSeconds,
+            mageImageTimeoutSeconds: budget.mageImageTimeoutSeconds,
+            soulxAvatarTimeoutSeconds: budget.soulxAvatarTimeoutSeconds,
+          }
+        : {}),
     }),
     billingBaselineMicroUsd: observation.billing.cumulativeEndpointBillingMicroUsd,
     billingBaselineCheckedAt: observation.billing.checkedAt,
     databaseNow: observation.databaseNow,
     providerObservedAt: observation.providerObservedAt,
-    cancelAt: new Date(databaseNow + 20 * 60_000).toISOString(),
-    stopAt: new Date(databaseNow + 30 * 60_000).toISOString(),
+    cancelAt: new Date(
+      databaseNow + (budget?.soulxAvatarTimeoutSeconds ?? 1_200) * 1_000,
+    ).toISOString(),
+    stopAt: new Date(
+      databaseNow + ((budget?.soulxAvatarTimeoutSeconds ?? 1_200) + 600) * 1_000,
+    ).toISOString(),
   });
   return Object.freeze({
     ...base,

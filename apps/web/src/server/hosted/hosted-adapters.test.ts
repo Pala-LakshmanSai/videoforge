@@ -241,6 +241,32 @@ describe("V2-06 hosted adapters", () => {
     ).toThrow(HostedConfigurationError);
   });
 
+  it("signs long SoulX GET ports only within the explicit duration budget", async () => {
+    const r2 = new HostedR2Signer(hostedRuntimeConfiguration(environment()).r2);
+    const request = {
+      method: "GET" as const,
+      objectKey:
+        "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/input/job/job-a/artifact/artifact-a",
+      contentType: "audio/wav",
+      contentLength: 1024,
+      checksumSha256: `sha256:${"b".repeat(64)}`,
+      lifetimeSeconds: 7200,
+      now: new Date("2026-08-16T00:00:00.000Z"),
+      ordinaryVideoBudget: { version: "ordinary-video-budget/v1" as const, durationMs: 3_600_000 },
+    };
+    const port = await r2.sign(request);
+    expect(new URL(port.url).searchParams.get("X-Amz-Expires")).toBe("7200");
+    expect(port.expiresAt).toBe("2026-08-16T02:00:00.000Z");
+    await expect(r2.sign({ ...request, ordinaryVideoBudget: undefined })).rejects.toThrow(
+      /GET port lifetime/u,
+    );
+    await expect(r2.sign({ ...request, lifetimeSeconds: 7201 })).rejects.toThrow(
+      /GET port lifetime/u,
+    );
+    await expect(r2.sign({ ...request, method: "PUT" })).rejects.toThrow(
+      /only to ordinary video GET/u,
+    );
+  });
   it("signs only exact tenant R2 paths with bounded methods and expiry", async () => {
     const config = hostedRuntimeConfiguration(environment());
     const port = await new HostedR2Signer(config.r2).sign({

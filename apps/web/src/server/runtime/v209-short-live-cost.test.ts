@@ -72,6 +72,39 @@ describe("V2-09 exact short live admission", () => {
     ).rejects.toThrow(code);
   });
 
+  it.each([
+    ["NONE", 0.74, "V209_GPU_CAPACITY_UNAVAILABLE"],
+    ["UNAVAILABLE", 0.74, "V209_GPU_CAPACITY_UNAVAILABLE"],
+    ["OUT_OF_STOCK", 0.74, "V209_GPU_CAPACITY_UNAVAILABLE"],
+    ["UNKNOWN", 0.74, "V209_SHORT_PROVIDER_OFFERING_UNAVAILABLE"],
+    ["NONE", 0.75, "V209_SHORT_PROVIDER_OFFERING_UNAVAILABLE"],
+  ])(
+    "distinguishes stock %s at rate %s from configuration drift",
+    async (availability, rate, code) => {
+      const fetchPort = async (input: string | URL | Request) =>
+        String(input).includes("catalog/gpus")
+          ? Response.json({
+              gpus: [
+                {
+                  id: "NVIDIA GeForce RTX 4090",
+                  manufacturer: "NVIDIA",
+                  secure: true,
+                  price: { secure: rate },
+                  dataCenters: [{ id: "EU-RO-1", availability }],
+                },
+              ],
+            })
+          : Response.json([]);
+      await expect(
+        readV209ShortProviderObservation(
+          "r".repeat(32),
+          async () => new Date(Date.now() + 1_000).toISOString(),
+          fetchPort,
+        ),
+      ).rejects.toThrow(code);
+    },
+  );
+
   it("rejects global Pod availability without an exact Serverless region", async () => {
     const fetchPort = async (input: string | URL | Request) =>
       String(input).includes("catalog/gpus")

@@ -1,0 +1,26 @@
+{
+  "status": "PROVIDER_BINDINGS_UPDATED_LIVE_TEST_PENDING",
+  "mage_template": {
+    "at": "2026-09-15T00:31:08.447Z",
+    "state": "EXACT_TEMPLATE_REPLACED",
+    "image": "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:a74a622400ab21a51f270176ce0df1e7ea292f1ded999abe6193b4c40bb1fde3",
+    "environmentPreserved": true,
+    "computeStarted": false
+  },
+  "endpoint_timeouts": [
+    {
+      "state": "EXACT_TIMEOUT_UPDATED",
+      "executionTimeoutMs": 3600000,
+      "unrelatedPolicyPreserved": true,
+      "zeroWork": true
+    },
+    {
+      "state": "EXACT_TIMEOUT_UPDATED",
+      "executionTimeoutMs": 7200000,
+      "unrelatedPolicyPreserved": true,
+      "zeroWork": true
+    }
+  ],
+  "paid_jobs_started": 0,
+  "verification_limits": "Source checks and provider configuration readback; fresh long-video acceptance pending."
+}

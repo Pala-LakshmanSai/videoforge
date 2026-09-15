@@ -456,6 +456,70 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
     expect(deps.observe).not.toHaveBeenCalled();
     expect(deps.commitAndSchedule).not.toHaveBeenCalled();
   });
+  it("freezes a fresh one-hour candidate at $5 with a shared funded pool", async () => {
+    const original = await candidate();
+    const {
+      candidateSha256: _hash,
+      replayed: _replayed,
+      pairExists: _pair,
+      existingWorkflowId: _workflow,
+      ...base
+    } = original;
+    const fresh = {
+      ...base,
+      budgetVersion: "ordinary-video-budget/v1",
+      totalCapUsd: 5,
+      renderPlan: { output: { fps: 30 }, totalFrames: 108_000 },
+    };
+    const prepared = {
+      ...fresh,
+      candidateSha256: await sha256CanonicalJson(fresh),
+      replayed: false,
+      pairExists: false,
+      existingWorkflowId: null,
+    };
+    const deps = dependencies(prepared as never);
+    const result = await handleHostedV209ProjectDispatch(
+      request(),
+      { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
+      config,
+      {} as never,
+      deps.value as never,
+    );
+    expect(result?.status).toBe(202);
+    expect(deps.commitAndSchedule).toHaveBeenCalledOnce();
+    expect((deps.commitAndSchedule.mock.calls as unknown as unknown[][])[0]?.[4]).toMatchObject({
+      cost: {
+        budgetVersion: "ordinary-video-budget/v1",
+        hardVariableCostCeilingMicroUsd: 5_000_000,
+        totalGpuTimeoutSeconds: 7_238,
+        mageImageTimeoutSeconds: 3_000,
+        soulxAvatarTimeoutSeconds: 6_600,
+      },
+    });
+  });
+
+  it("waits before creating provider authority when exact GPUs are out of stock", async () => {
+    const deps = dependencies(await candidate());
+    deps.observe.mockRejectedValueOnce(new RangeError("V209_GPU_CAPACITY_UNAVAILABLE"));
+    const result = await handleHostedV209ProjectDispatch(
+      request(),
+      { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
+      config,
+      {} as never,
+      deps.value as never,
+    );
+    expect(result?.status).toBe(202);
+    await expect(result!.json()).resolves.toMatchObject({
+      state: "WAITING_FOR_GPUS",
+      retry_after_seconds: 30,
+    });
+    expect(deps.commitAndSchedule).not.toHaveBeenCalled();
+    expect(deps.ensureWorkflow).not.toHaveBeenCalled();
+    expect(deps.runtime.end).toHaveBeenCalledOnce();
+    expect(deps.reconciler.end).toHaveBeenCalledOnce();
+  });
+
   it("loads only DB-owned identity, takes one observation, and schedules one workflow", async () => {
     const prepared = await candidate();
     const deps = dependencies(prepared);

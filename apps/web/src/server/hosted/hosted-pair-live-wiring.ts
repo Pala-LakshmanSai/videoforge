@@ -169,19 +169,27 @@ export async function ensureHostedPairWorkflow(
       status && typeof status === "object" && !Array.isArray(status)
         ? (status as Record<string, unknown>).status
         : null;
-    const renderPending = state === "complete" && await runtimeDatabase.transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", input.accountId]);
-      const result = await transaction.query<{ pending: boolean }>(
-        `SELECT EXISTS(SELECT 1 FROM video_runtime_states r
+    const renderPending =
+      state === "complete" &&
+      (await runtimeDatabase.transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1,$2,true)", [
+          "videoforge.account_id",
+          input.accountId,
+        ]);
+        const result = await transaction.query<{ pending: boolean }>(
+          `SELECT EXISTS(SELECT 1 FROM video_runtime_states r
           WHERE r.account_id=$1 AND r.workspace_id=$2 AND r.generation_request_id=$3
             AND r.stage='RENDERING' AND NOT EXISTS(
               SELECT 1 FROM hosted_cpu_job_attempts a WHERE a.project_revision_id=r.project_revision_id
                 AND a.kind='RENDER')) AS pending`,
-        [input.accountId, input.workspaceId, input.generationRequestId],
-      );
-      return result.rows[0]?.pending === true;
-    });
-    if (renderPending || ["errored", "terminated"].includes(typeof state === "string" ? state : "")) {
+          [input.accountId, input.workspaceId, input.generationRequestId],
+        );
+        return result.rows[0]?.pending === true;
+      }));
+    if (
+      renderPending ||
+      ["errored", "terminated"].includes(typeof state === "string" ? state : "")
+    ) {
       if (!existing.restart)
         throw new HostedDispatchCoordinationError("HOSTED_PAIR_WORKFLOW_RESTART_UNAVAILABLE");
       await existing.restart();
@@ -421,9 +429,12 @@ export async function commitAndScheduleV209OrdinaryPair(
 ): Promise<{ readonly id: string; readonly recovered: boolean }> {
   if (
     input.generationPlanSha256 !== admission.generationPlanSha256 ||
-    input.totalCapUsd !== 2 ||
+    input.totalCapUsd !== admission.cost.hardVariableCostCeilingMicroUsd / 1_000_000 ||
     Date.parse(input.expiresAt) < Date.parse(admission.stopAt) ||
-    admission.cost.hardVariableCostCeilingMicroUsd !== 2_000_000 ||
+    (admission.cost.budgetVersion === "ordinary-video-budget/v1"
+      ? admission.cost.hardVariableCostCeilingMicroUsd < 2_000_000 ||
+        admission.cost.hardVariableCostCeilingMicroUsd > 5_000_000
+      : admission.cost.hardVariableCostCeilingMicroUsd !== 2_000_000) ||
     admission.cost.combinedCompletionCapMicroUsd !== 17_500_000 ||
     admission.cost.noRedispatch !== true
   )
@@ -787,13 +798,18 @@ export async function observeV209ShortAdmission(
 export function createHostedRunPodObservationSource(
   transports: Readonly<Record<HostedPairLane, Pick<ServerlessTransportPort, "status">>>,
   now: () => string = () => new Date().toISOString(),
-  isAccepted?: (input: Parameters<HostedProviderObservationSource["observe"]>[0]) => Promise<boolean>,
+  isAccepted?: (
+    input: Parameters<HostedProviderObservationSource["observe"]>[0],
+  ) => Promise<boolean>,
 ): HostedProviderObservationSource {
   return Object.freeze({
     async observe(input: Parameters<HostedProviderObservationSource["observe"]>[0]) {
-      if (input.provider_job_id !== null && await isAccepted?.(input))
-        return Object.freeze({ providerState: "COMPLETED" as const, observedAt: now(),
-          nonce: crypto.randomUUID().replaceAll("-", "") });
+      if (input.provider_job_id !== null && (await isAccepted?.(input)))
+        return Object.freeze({
+          providerState: "COMPLETED" as const,
+          observedAt: now(),
+          nonce: crypto.randomUUID().replaceAll("-", ""),
+        });
       if (input.provider_job_id === null)
         return Object.freeze({
           providerState: "ABSENT" as const,
@@ -869,8 +885,11 @@ export class HostedPairWorkflowReconciler {
     ) => Promise<JsonValue> = async () => ({}),
     private readonly terminalOutput?: {
       readonly isAccepted?: (input: {
-        readonly accountId: string; readonly workspaceId: string; readonly attemptId: string;
-        readonly lane: HostedPairLane; readonly providerJobId: string;
+        readonly accountId: string;
+        readonly workspaceId: string;
+        readonly attemptId: string;
+        readonly lane: HostedPairLane;
+        readonly providerJobId: string;
       }) => Promise<boolean>;
       readonly acceptCompleted: (input: {
         readonly accountId: string;
@@ -890,7 +909,11 @@ export class HostedPairWorkflowReconciler {
     const rows = await this.inspection.inspect(scope);
     if (rows.length !== 2 || rows[0]?.lane !== "mage_image" || rows[1]?.lane !== "soulx_avatar")
       throw new HostedDispatchCoordinationError("HOSTED_PAIR_INSPECTION_INVALID");
+    const databaseNow = rows.some((row) => row.fundedDeadlineAt)
+      ? Date.parse(this.readDatabaseNow ? await this.readDatabaseNow() : new Date().toISOString())
+      : null;
     let active = 0;
+    let fundedCancellation = false;
     let unknown = 0;
     let allTerminal = true;
     let allCompleted = true;
@@ -901,16 +924,34 @@ export class HostedPairWorkflowReconciler {
         continue;
       }
       try {
-        if (await this.terminalOutput?.isAccepted?.({
-          accountId: scope.accountId, workspaceId: scope.workspaceId,
-          attemptId: row.attemptId, lane: row.lane, providerJobId: row.providerJobId,
-        })) continue;
+        if (
+          await this.terminalOutput?.isAccepted?.({
+            accountId: scope.accountId,
+            workspaceId: scope.workspaceId,
+            attemptId: row.attemptId,
+            lane: row.lane,
+            providerJobId: row.providerJobId,
+          })
+        )
+          continue;
         const status = await this.transports[row.lane].status(row.providerJobId);
         if (!TERMINAL.has(status.status)) {
           allTerminal = false;
           allCompleted = false;
           active += 1;
-          if (cancelKnownActive) await this.transports[row.lane].cancel(row.providerJobId);
+          const fundedDeadlineExpired =
+            row.fundedDeadlineAt &&
+            databaseNow !== null &&
+            databaseNow >= Date.parse(row.fundedDeadlineAt);
+          if (cancelKnownActive || fundedDeadlineExpired) {
+            fundedCancellation ||= Boolean(fundedDeadlineExpired);
+            if (fundedDeadlineExpired)
+              console.warn("hosted_pair_funded_deadline_reached", {
+                lane: row.lane,
+                attemptId: row.attemptId,
+              });
+            await this.transports[row.lane].cancel(row.providerJobId);
+          }
         } else if (status.status === "COMPLETED" && this.terminalOutput) {
           if (!Object.hasOwn(status, "output"))
             throw new HostedDispatchCoordinationError("HOSTED_V209_TERMINAL_OUTPUT_MISSING");
@@ -951,7 +992,10 @@ export class HostedPairWorkflowReconciler {
     }
     if (unknown > 0 || !allTerminal) {
       return Object.freeze({
-        state: cancelKnownActive ? ("CANCEL_REQUESTED" as const) : ("WAITING" as const),
+        state:
+          cancelKnownActive || fundedCancellation
+            ? ("CANCEL_REQUESTED" as const)
+            : ("WAITING" as const),
         active,
         unknown,
       });
@@ -1050,10 +1094,18 @@ export async function createHostedPairLiveComposition(
   const acceptedOutputStore = new HostedSqlFunctionV209TerminalOutputStore(reconcilerDatabase);
   const proofAuthority = createHostedHmacProviderProofAuthority(
     createHostedRunPodObservationSource(provider.transports, undefined, async (input) =>
-      Boolean((await acceptedOutputStore.load({
-        accountId: input.account_id, workspaceId: input.workspace_id,
-        attemptId: input.attempt_id, lane: input.lane, providerJobId: input.provider_job_id!,
-      }))?.accepted)),
+      Boolean(
+        (
+          await acceptedOutputStore.load({
+            accountId: input.account_id,
+            workspaceId: input.workspace_id,
+            attemptId: input.attempt_id,
+            lane: input.lane,
+            providerJobId: input.provider_job_id!,
+          })
+        )?.accepted,
+      ),
+    ),
     {
       secretHex: exact(
         environment.VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY,

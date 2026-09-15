@@ -25,11 +25,11 @@ export const COMPLETION_CAP_USD = 17.5;
 export const QUALIFIED_LANES = Object.freeze([
   Object.freeze({
     lane: "mage",
-    image_sha256: "sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
-    image_source_commit: "619393e74e2ea42ed6082e78d1efeafa9366b238",
-    image_config_sha256: "sha256:0cf8478722ba1769b154ee47f257bbe599fb83a7fef22336dfc31d8de2a5e13d",
+    image_sha256: "sha256:a74a622400ab21a51f270176ce0df1e7ea292f1ded999abe6193b4c40bb1fde3",
+    image_source_commit: "ad6258ae079762c05434048c76072dd656e378cd",
+    image_config_sha256: "sha256:2e2f7cf2fab2d4f36241d0c44955182dddb19e5ebc825524027ef11a872bef97",
     anonymous_proof_sha256:
-      "sha256:62b6f5a5905aa85a31108a27ada9ceafcfd6f14cafd9408ac69aec7e25a311a7",
+      "sha256:baf62421dfc739fc0b381e8a9c6f7d8d0bbd598f985bf152aa7e5f7b2885d875",
     acceptance_sha256: "sha256:c28a0fc82b5b36f75952a4860214aff25364d37ed4c461ba1b90a0e7c6fa641e",
     volume_id_sha256: "sha256:eae4e1ecee86be5d8bed2f6814e06332bc8a97e9f35767771d28c10cfdecd619",
     volume_manifest_sha256:
