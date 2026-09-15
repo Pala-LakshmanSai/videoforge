@@ -2279,11 +2279,14 @@ export function HostedCreateProjectScreen() {
   const submit = useMutation({
     mutationFn: async () => {
       if (!voiceover) throw new Error("Choose a voiceover first.");
-      if (!preflightReady(preflightResult))
-        throw new Error("Run a successful readiness check before generating.");
+      const checked = preflightReady(preflightResult)
+        ? null
+        : await preflightMutation.mutateAsync();
+      if (!preflightReady(checked?.result ?? preflightResult))
+        throw new Error("Project inputs are not ready. Fix the blockers below.");
       setError(null);
       const metadata =
-        voiceoverMeta ??
+        checked ?? voiceoverMeta ??
         (() => {
           throw new Error("Run the readiness check again before generating.");
         })();
@@ -2628,13 +2631,10 @@ export function HostedCreateProjectScreen() {
               submit.isPending ||
               (preflightReady(preflightResult) && catalog.data.media_worker_state !== "ONLINE")
             }
-            onClick={() => {
-              if (preflightReady(preflightResult)) submit.mutate();
-              else preflightMutation.mutate();
-            }}
+            onClick={() => submit.mutate()}
           >
-            {preflightReady(preflightResult) ? <FileAudio size={16} /> : <Check size={16} />}
-            {preflightReady(preflightResult) ? "Create project & start" : "Check cost & readiness"}
+            <FileAudio size={16} />
+            Create project & start
           </Button>
         </Panel>
       </div>

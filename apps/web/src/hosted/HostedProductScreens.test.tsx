@@ -1575,7 +1575,7 @@ describe("hosted product journey", () => {
 
     expect(await screen.findByText("Connect your computer")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Check cost & readiness" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
     expect(screen.getByLabelText("Video title")).toHaveClass("input");
     expect(screen.getByLabelText("Final voiceover")).toHaveAttribute(
       "accept",
@@ -1651,12 +1651,8 @@ describe("hosted product journey", () => {
     fireEvent.change(await screen.findByLabelText("Final voiceover"), {
       target: { files: [voiceover] },
     });
-    const action = screen.getByRole("button", { name: "Check cost & readiness" });
+    const action = screen.getByRole("button", { name: "Create project & start" });
     fireEvent.click(action);
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled(),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
     await waitFor(() => expect(projectRequests).toHaveLength(1));
     expect(screen.getByRole("alert")).toHaveTextContent("network connection lost");
 
@@ -1665,10 +1661,6 @@ describe("hosted product journey", () => {
     expect(projectRequests[1]).toEqual(projectRequests[0]);
 
     fireEvent.change(title, { target: { value: "Second title" } });
-    fireEvent.click(screen.getByRole("button", { name: "Check cost & readiness" }));
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled(),
-    );
     fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
     await waitFor(() => expect(projectRequests).toHaveLength(3));
     expect(projectRequests[2]!.key).not.toBe(projectRequests[0]!.key);

@@ -1,4 +1,10 @@
 schema_version: "2.0"
+single_create_action_2026_09_15:
+  checkpoint: V2-09
+  status: VALIDATED_DEPLOYING
+  behavior: "Create project & start performs required preflight automatically, then creates/uploads/commits without a second confirmation click. Blocked preflight cannot create; existing creation idempotency preserved."
+  validation: "Two focused creation/readiness tests and TypeScript pass."
+  provider: "No paid compute started for verification."
 stage_total_sum_repair_2026_09_15:
   checkpoint: V2-09
   status: DEPLOYED_QUALIFIED_EXACT
