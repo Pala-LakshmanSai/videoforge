@@ -156,6 +156,9 @@ async function handleHostedQueue(
         `SELECT project.id AS project_id, project.name AS title,
                 CASE
                   WHEN active_attempt.id IS NOT NULL THEN 'IN_PROGRESS'
+                  WHEN latest_generation.state='FAILED' THEN 'NEEDS_ATTENTION'
+                  WHEN latest_generation.state='CANCELLED' THEN 'CANCELLED'
+                  WHEN latest_generation.state='ACTIVE' THEN 'IN_PROGRESS'
                   WHEN context.state IN ('FAILED','UNKNOWN')
                     OR prompt_task.state IN ('FAILED','BLOCKED')
                     OR latest_attempt.state IN ('FAILED','EXPIRED') THEN 'NEEDS_ATTENTION'
@@ -169,6 +172,7 @@ async function handleHostedQueue(
                     AND latest_attempt.state IN ('FAILED','EXPIRED','CANCELLED')) THEN 'Transcription'
                   WHEN active_attempt.kind='RENDER' OR (latest_attempt.kind='RENDER'
                     AND latest_attempt.state IN ('FAILED','EXPIRED','CANCELLED')) THEN 'Final assembly'
+                  WHEN latest_generation.state IN ('ACTIVE','FAILED','CANCELLED') THEN 'Video generation'
                   WHEN context.state IN ('FAILED','UNKNOWN') OR (context.id IS NULL
                     AND latest_attempt.kind='ASR' AND latest_attempt.state='SUCCEEDED')
                     THEN 'Voiceover context'
@@ -187,9 +191,18 @@ async function handleHostedQueue(
                 capability.dispatching_side_effect_count,
                 project.created_at,
                 GREATEST(project.created_at, COALESCE(latest_attempt.updated_at,project.created_at),
-                  COALESCE(context.finished_at,context.started_at,project.created_at)) AS updated_at
+                  COALESCE(context.finished_at,context.started_at,project.created_at),
+                  COALESCE(latest_generation.updated_at,project.created_at)) AS updated_at
            FROM projects AS project
-           LEFT JOIN LATERAL (
+            LEFT JOIN LATERAL (
+              SELECT request.state,request.updated_at
+                FROM generation_requests AS request
+               WHERE request.account_id=project.account_id
+                 AND request.workspace_id=project.workspace_id
+                 AND request.project_id=project.id
+               ORDER BY request.created_at DESC,request.id DESC LIMIT 1
+            ) AS latest_generation ON true
+            LEFT JOIN LATERAL (
              SELECT attempt.id,attempt.kind,attempt.state,attempt.updated_at
                FROM hosted_cpu_job_attempts AS attempt
               WHERE attempt.account_id=project.account_id

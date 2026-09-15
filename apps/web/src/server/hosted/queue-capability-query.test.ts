@@ -81,7 +81,9 @@ describe("hosted queue capability query", () => {
           workspace_id uuid NOT NULL,
           id uuid PRIMARY KEY,
           project_id uuid NOT NULL,
-          state text NOT NULL
+          state text NOT NULL,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
         );
         CREATE TABLE serverless_attempts (
           account_id uuid NOT NULL,
@@ -97,7 +99,7 @@ describe("hosted queue capability query", () => {
             '2026-08-17T10:00:00Z'),
           ('${accountId}','${workspaceId}','${runningProjectId}','Running render','ACTIVE','USER',
             '2026-08-17T09:00:00Z');
-        INSERT INTO generation_requests VALUES
+        INSERT INTO generation_requests(account_id,workspace_id,id,project_id,state) VALUES
           ('${accountId}','${workspaceId}','33333333-3333-4333-8333-333333333333',
             '${idleProjectId}','WAITING'),
           ('${accountId}','${workspaceId}','44444444-4444-4444-8444-444444444444',
@@ -126,6 +128,43 @@ describe("hosted queue capability query", () => {
       expect(running?.active_kind).toBe("RENDER");
       expect(running?.cancellable_attempt_id).toBe("55555555-5555-4555-8555-555555555555");
       expect(Number(running?.active_cpu_count)).toBe(1);
+      await database.query("UPDATE generation_requests SET state='ACTIVE' WHERE project_id=$1", [
+        idleProjectId,
+      ]);
+      const gpuActive = (
+        await database.query<Record<string, unknown>>(await queueQuery(), [accountId, workspaceId])
+      ).rows.find((row) => row.project_id === idleProjectId);
+      expect(gpuActive?.state).toBe("IN_PROGRESS");
+      expect(gpuActive?.stage).toBe("Video generation");
+      expect(gpuActive?.active_kind).toBeNull();
+      // Settled GPU failure must not look like an idle setup project.
+      await database.query(
+        "UPDATE generation_requests SET state='FAILED', updated_at='2026-09-15T02:21:33Z' WHERE project_id=$1",
+        [idleProjectId],
+      );
+      let terminal = (
+        await database.query<Record<string, unknown>>(await queueQuery(), [accountId, workspaceId])
+      ).rows.find((row) => row.project_id === idleProjectId);
+      expect(terminal?.state).toBe("NEEDS_ATTENTION");
+      expect(terminal?.stage).toBe("Video generation");
+      expect(Number(terminal?.active_request_count)).toBe(0);
+      expect(new Date(String(terminal?.updated_at)).toISOString()).toBe("2026-09-15T02:21:33.000Z");
+      await database.query("UPDATE generation_requests SET state='CANCELLED' WHERE project_id=$1", [
+        idleProjectId,
+      ]);
+      terminal = (
+        await database.query<Record<string, unknown>>(await queueQuery(), [accountId, workspaceId])
+      ).rows.find((row) => row.project_id === idleProjectId);
+      expect(terminal?.state).toBe("CANCELLED");
+      // A newer request supersedes historical failure/cancellation.
+      await database.query(
+        "INSERT INTO generation_requests VALUES($1,$2,'99999999-9999-4999-8999-999999999999',$3,'WAITING',now()+interval '1 minute',now())",
+        [accountId, workspaceId, idleProjectId],
+      );
+      terminal = (
+        await database.query<Record<string, unknown>>(await queueQuery(), [accountId, workspaceId])
+      ).rows.find((row) => row.project_id === idleProjectId);
+      expect(terminal?.state).toBe("WAITING");
     } finally {
       await database.close();
     }
