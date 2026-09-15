@@ -27,6 +27,53 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const PROMPTS_PATH = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/prompts$/u;
 
+/**
+ * How many prompt-writing attempts one revision may spend in total (the first run plus bounded
+ * redispatches) before the product stops re-dispatching it.
+ *
+ * Runware's text backend is intermittently unavailable: the same request that returned a valid
+ * result can answer `502 Bad Gateway` from the provider's own proxy several times in a row, and a
+ * provider failure during prompt writing leaves no durable accepted prompt set. With a budget of
+ * one the revision stranded at stage 5 forever, so this mirrors the voiceover-context rule with
+ * enough headroom to ride out a bad provider window. Each attempt is separately reserved and the
+ * spend guard is unchanged.
+ */
+const HOSTED_PROMPT_ATTEMPT_BUDGET = 6;
+
+/**
+ * Problem codes that mean the provider never gave a usable prompt set, so the attempt carries no
+ * information about the plan or the style and a redispatch is the only path forward.
+ *
+ * Deliberately excluded: `HOSTED_PROMPT_OUTPUT_INVALID` / `HOSTED_PROMPT_*_REJECTED` (the provider
+ * answered, and the answer was wrong -- retrying the same request reproduces the same defect), and
+ * every acceptance-path code, because those already produced a durable result.
+ */
+const HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES = new Set([
+  "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+  "HOSTED_PROMPT_PROVIDER_UNAVAILABLE",
+]);
+
+/**
+ * Whether an existing prompt run may be replaced by one bounded redispatch.
+ *
+ * True only when the stored run failed in a provider/transport class, it never produced a durable
+ * accepted prompt set (so no accepted work can be lost or paid for twice), and the revision still
+ * has attempts left. An in-flight run, a rejected or invalid result, or a spent budget all refuse.
+ */
+export function hostedPromptRedispatchable(planRecord: Record<string, unknown>): boolean {
+  const state = planRecord.existing_run_state;
+  if (state !== "FAILED" && state !== "UNKNOWN") return false;
+  if (planRecord.existing_run_has_accepted_set === true) return false;
+  const problemCode =
+    typeof planRecord.existing_run_problem_code === "string" ? planRecord.existing_run_problem_code : "";
+  if (!HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES.has(problemCode)) return false;
+  const attemptsSoFar = Number(planRecord.existing_run_count ?? 0);
+  return (
+    Number.isInteger(attemptsSoFar) && attemptsSoFar > 0 && attemptsSoFar < HOSTED_PROMPT_ATTEMPT_BUDGET
+  );
+}
+
+
 async function writeProjectPrompts(
   request: Request,
   projectId: string,
@@ -68,17 +115,23 @@ async function writeProjectPrompts(
         state: "COMPLETE",
         replayed: true,
       });
-    if (existingState !== null)
-      return response(
-        {
-          error: {
-            code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED",
-            message:
-              "The prompt request already has a durable terminal or in-flight claim and cannot be redispatched.",
+    if (existingState !== null) {
+      // A provider failure that left no accepted prompt set used to strand the revision here
+      // forever: every later POST /prompts answered 409, so the pipeline could never leave stage 5.
+      // The gate below grants one bounded redispatch for exactly that case and refuses everything
+      // else, so the spend guard and the acceptance rules are unchanged.
+      if (!hostedPromptRedispatchable(planRecord))
+        return response(
+          {
+            error: {
+              code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED",
+              message:
+                "The prompt request already has a durable terminal or in-flight claim and cannot be redispatched.",
+            },
           },
-        },
-        409,
-      );
+          409,
+        );
+    }
     const identity: HostedPromptIdentity = {
       runId: crypto.randomUUID(),
       taskId: crypto.randomUUID(),
