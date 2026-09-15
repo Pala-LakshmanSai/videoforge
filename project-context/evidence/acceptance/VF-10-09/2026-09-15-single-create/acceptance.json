@@ -1,0 +1,11 @@
+{
+  "checkpoint": "V2-09",
+  "source_commit": "e5ab675cd98adade720c124b7142340f04ede76a",
+  "cloudflare_version": "6b0d01ab-a17d-43bd-8baa-c2860d4ed309",
+  "status": "DEPLOYED_QUALIFIED_EXACT",
+  "behavior": "Single Create project & start action automatically checks readiness before create/upload/commit; blockers cannot create and idempotency preserved.",
+  "focused_tests": 2,
+  "typescript": "PASS",
+  "production_build": "PASS",
+  "compute_started": false
+}

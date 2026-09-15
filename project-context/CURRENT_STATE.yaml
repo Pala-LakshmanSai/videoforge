@@ -1,7 +1,9 @@
 schema_version: "2.0"
 single_create_action_2026_09_15:
   checkpoint: V2-09
-  status: VALIDATED_DEPLOYING
+  status: DEPLOYED_QUALIFIED_EXACT
+  deployed_source: e5ab675cd98adade720c124b7142340f04ede76a
+  cloudflare_version: 6b0d01ab-a17d-43bd-8baa-c2860d4ed309
   behavior: "Create project & start performs required preflight automatically, then creates/uploads/commits without a second confirmation click. Blocked preflight cannot create; existing creation idempotency preserved."
   validation: "Two focused creation/readiness tests and TypeScript pass."
   provider: "No paid compute started for verification."

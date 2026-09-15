@@ -2,7 +2,7 @@
 
 ## Single project creation action — 2026-09-15
 
-Create project & start performs readiness checks automatically and proceeds without a separate Check cost & readiness click. Blockers and creation idempotency remain enforced. Focused verification passed; deployment pending.
+Create project & start performs readiness checks automatically and proceeds without a separate Check cost & readiness click. Blockers and creation idempotency remain enforced. Focused verification and production build passed; source e5ab675c deployed on6b0d01ab with QUALIFIED_EXACT.
 
 ## Stage elapsed timers — 2026-09-15
 
