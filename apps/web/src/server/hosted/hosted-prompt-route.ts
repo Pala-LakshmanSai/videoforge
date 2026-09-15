@@ -189,7 +189,13 @@ async function writeProjectPrompts(
     });
     if (!prepared || prepared.created !== true)
       return response({ error: { code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED" } }, 409);
-    runId = identity.runId;
+    // The claim tells us which run row it owns. A first dispatch creates it; an approved redispatch
+    // rebinds the row that already exists and keeps its id. Every later step -- batch progress and the
+    // failure settle -- must address the persisted run, not the freshly generated identity, or a
+    // redispatch would report progress and failures against a run id that does not exist.
+    const persistedRunId =
+      typeof prepared.run_id === "string" && prepared.run_id.length > 0 ? prepared.run_id : identity.runId;
+    runId = persistedRunId;
     const preparedBatchCount = prepared.planned_batch_count;
     const preparedSceneCount = prepared.planned_scene_count;
     const preparedBatchPlanHash = prepared.batch_plan_hash;
@@ -238,7 +244,7 @@ async function writeProjectPrompts(
           const result = await transaction.query<{ recorded: boolean }>(
             "SELECT public.videoforge_record_hosted_prompt_batch($1,$2::jsonb) AS recorded",
             [
-              identity.runId,
+              persistedRunId,
               JSON.stringify({
                 batch_ordinal: batch.batchOrdinal,
                 first_scene_ordinal: batch.firstSceneOrdinal,
@@ -272,7 +278,7 @@ async function writeProjectPrompts(
             "SELECT public.videoforge_complete_hosted_prompt_run($1::jsonb) AS completed",
             [
               JSON.stringify({
-                run_id: identity.runId,
+                run_id: persistedRunId,
                 output_asset_id: crypto.randomUUID(),
                 prompt_execution_id: crypto.randomUUID(),
                 acceptance,
@@ -331,8 +337,17 @@ async function writeProjectPrompts(
             );
           });
         }
-      } catch {
-        // The durable DISPATCHING claim still prevents a blind provider redispatch.
+      } catch (settleError) {
+        // The durable DISPATCHING claim still prevents a blind provider redispatch, but a settle that
+        // fails silently leaves the run stuck in DISPATCHING with no way to see why. One failed
+        // redispatch was invisible exactly this way (2026-09-15: settle addressed a run id the claim
+        // had not created), so record the cause.
+        const detail = settleError as { code?: unknown; message?: unknown };
+        console.warn(
+          `hosted_prompt_settle_failed project=${projectId} run=${runId} sqlstate=${
+            typeof detail?.code === "string" ? detail.code : "-"
+          } message=${String(detail?.message ?? settleError).slice(0, 200)}`,
+        );
       }
     }
     console.error("HOSTED_PROMPT_EXECUTION_FAILURE", {
