@@ -804,6 +804,12 @@
       "name": "hosted_ordinary_video_budget",
       "filename": "0135_hosted_ordinary_video_budget.sql",
       "sha256": "sha256:ae2acda1198cc7b59b60b8fcb45c50f95a7d64edd9ebe1b09cca31e867b9dd35"
+    },
+    {
+      "version": 136,
+      "name": "hosted_ordinary_budget_lease_alias",
+      "filename": "0136_hosted_ordinary_budget_lease_alias.sql",
+      "sha256": "sha256:09c105b7d6a067f0dd30244bc686d9651c080b209be76cfb4f12bced2aec1c47"
     }
   ]
 }
