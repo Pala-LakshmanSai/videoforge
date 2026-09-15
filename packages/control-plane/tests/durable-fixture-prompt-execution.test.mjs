@@ -217,6 +217,68 @@ async function rejectsCode(action, expected) {
   );
 }
 
+test("durable execution accepts and replays scene context larger than one transport request", async () => {
+  const longScenes = scenes(346).map((scene) => ({
+    ...scene,
+    sentenceContext: "Containing local narration context. ".repeat(10).trim(),
+  }));
+  assert.ok(longScenes.reduce((total, scene) => total + scene.sentenceContext.length, 0) > 80_000);
+  const store = new MemoryStore(authority({ scenes: longScenes }));
+  const writer = new DurableFixturePromptWriter();
+  let calls = 0;
+  const service = new DurablePromptExecutionService(
+    store,
+    {
+      operation: writer.operation,
+      async write(batch) {
+        calls += 1;
+        return writer.write(batch);
+      },
+    },
+    new RecordingTelemetry(),
+    new Clock(),
+  );
+  const result = await service.execute(scope, command());
+  assert.equal(result.accepted.compiledPrompts.length, longScenes.length);
+  assert.deepEqual(
+    result.accepted.writerAttempts[0].requestedSceneIds,
+    longScenes.map((scene) => scene.sceneId),
+  );
+  const replay = await service.execute(scope, command());
+  assert.equal(replay.replayed, true);
+  assert.equal(
+    replay.accepted.acceptanceFingerprintHash,
+    result.accepted.acceptanceFingerprintHash,
+  );
+  assert.equal(calls, 1);
+});
+
+test("aggregate scene validation still rejects empty, duplicate, and oversized scene input before dispatch", async () => {
+  for (const invalidScenes of [
+    [],
+    [...scenes(), scenes()[0]],
+    [...scenes(), { ...scenes()[0], sceneId: "last_scene", phrase: "x".repeat(1_001) }],
+  ]) {
+    const store = new MemoryStore(authority({ scenes: invalidScenes }));
+    let calls = 0;
+    const service = new DurablePromptExecutionService(
+      store,
+      {
+        operation: "fixture.write",
+        async write() {
+          calls += 1;
+          throw new Error("must not dispatch");
+        },
+      },
+      new RecordingTelemetry(),
+      new Clock(),
+    );
+    await rejectsCode(() => service.execute(scope, command()), "OUTPUT_INVALID");
+    assert.equal(calls, 0);
+    assert.equal(store.acceptCalls, 0);
+  }
+});
+
 test("fixture execution persists exact canonical hashes and correlated zero-cost telemetry", async () => {
   const store = new MemoryStore();
   const telemetry = new RecordingTelemetry();

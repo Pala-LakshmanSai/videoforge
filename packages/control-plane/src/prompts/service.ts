@@ -146,8 +146,8 @@ const assertAuthority = (
     return fail("HASH_MISMATCH", "Prompt execution durable input hash drifted.");
 };
 
-const buildBatch = (authority: PromptExecutionAuthority): PromptBatch =>
-  buildPromptBatch({
+const buildBatch = (authority: PromptExecutionAuthority): PromptBatch => {
+  const input = {
     batchId: `${authority.taskId}:batch:${authority.attemptOrdinal}`,
     projectTitle: authority.projectTitle,
     imageStyleVersionId: authority.imageStyleVersionId,
@@ -156,8 +156,23 @@ const buildBatch = (authority: PromptExecutionAuthority): PromptBatch =>
     plannerGuidance: authority.plannerGuidance,
     storyContext: authority.storyContext,
     continuityTags: authority.continuityTags,
-    scenes: authority.scenes,
+  };
+  // This is the complete durable execution, not a provider transport request.
+  // Validate every scene through the same contract without applying one request's
+  // combined-context cap to the entire project. The hosted writer independently
+  // validates its bounded transport plan before dispatch.
+  const first = buildPromptBatch({ ...input, scenes: authority.scenes.slice(0, 1) });
+  const ids = new Set<string>();
+  const scenes = authority.scenes.map((scene, index) => {
+    const normalized =
+      index === 0 ? first.scenes[0]! : buildPromptBatch({ ...input, scenes: [scene] }).scenes[0]!;
+    if (ids.has(normalized.sceneId))
+      return fail("OUTPUT_INVALID", "Prompt execution scene IDs must be unique.");
+    ids.add(normalized.sceneId);
+    return normalized;
   });
+  return Object.freeze({ ...first, scenes: Object.freeze(scenes) });
+};
 
 const safeInteger = (value: number): boolean => Number.isSafeInteger(value) && value >= 0;
 
