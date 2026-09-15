@@ -36,6 +36,7 @@ import {
 import { RunwareTransportError } from "../providers/runware-http-transport";
 import {
   extractHostedVoiceoverContext,
+  HOSTED_CONTEXT_REDISPATCH_BUDGET,
   HOSTED_CONTEXT_RESERVATION_MICRO_USD,
   HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES,
   HostedVoiceoverContextProviderError,
@@ -5381,7 +5382,7 @@ async function createVoiceoverContext(
         (state.existing_state === "FAILED" || state.existing_state === "UNKNOWN") &&
         typeof state.existing_problem_code === "string" &&
         HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES.has(state.existing_problem_code) &&
-        Number(state.existing_redispatch_count ?? 0) < 1;
+        Number(state.existing_redispatch_count ?? 0) < HOSTED_CONTEXT_REDISPATCH_BUDGET;
       if (!redispatchable)
         return response(
           {

@@ -8,7 +8,7 @@
 --
 -- The reservation semantics are preserved: the redispatch is a fresh, separately reserved attempt
 -- (its own task/attempt/outbox/cost-event trio), it is allowed only when the previous attempt
--- produced no accepted result, and it is budgeted to exactly one redispatch per revision.
+-- produced no accepted result, and it is budgeted to two redispatches per revision.
 
 ALTER TABLE public.hosted_voiceover_contexts
   ADD COLUMN IF NOT EXISTS redispatch_count integer NOT NULL DEFAULT 0;
@@ -91,7 +91,7 @@ BEGIN
        'HOSTED_CONTEXT_PROVIDER_FAILURE') THEN
     RAISE EXCEPTION 'hosted voiceover context failure is not retryable' USING ERRCODE='23514';
   END IF;
-  IF existing.redispatch_count >= 1 THEN
+  IF existing.redispatch_count >= 2 THEN
     RAISE EXCEPTION 'hosted voiceover context redispatch budget is spent' USING ERRCODE='23514';
   END IF;
   -- Derive the ordinal from the tasks that already exist rather than from the budget counter:

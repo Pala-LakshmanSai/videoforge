@@ -25,6 +25,10 @@ export const HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES: ReadonlySet<string> = new S
   "HOSTED_CONTEXT_EXECUTION_UNKNOWN",
   "HOSTED_CONTEXT_PROVIDER_FAILURE",
 ]);
+// Bounded so a run cannot resubmit forever, but wide enough that one rejection for infrastructure
+// reasons (for example a deployment that is still rebinding its qualification) does not consume the
+// whole budget and strand the revision again.
+export const HOSTED_CONTEXT_REDISPATCH_BUDGET = 2 as const;
 const MODEL = "deepseek:v4@flash" as const;
 const REQUEST_CONTRACT_VERSION = "runware-deepseek-v4-flash-context-request-v9" as const;
 const MAX_SUBJECT_CHARS = 90 as const;
