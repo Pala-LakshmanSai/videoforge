@@ -297,6 +297,17 @@ async function writeProjectPrompts(
       error instanceof HostedPromptExecutionError
         ? error
         : new HostedPromptExecutionError("HOSTED_PROMPT_EXECUTION_UNKNOWN", "UNKNOWN", true, null);
+    // A non-typed throw here (a TypeError from plan validation, a SQLSTATE from the claim function)
+    // is collapsed into HOSTED_PROMPT_EXECUTION_UNKNOWN for the caller, which hides the cause in
+    // production. Record it once so the blocker is identifiable without reproducing locally.
+    if (!(error instanceof HostedPromptExecutionError)) {
+      const detail = error as { code?: unknown; message?: unknown };
+      console.warn(
+        `hosted_prompt_unexpected_failure project=${projectId} sqlstate=${
+          typeof detail?.code === "string" ? detail.code : "-"
+        } message=${String(detail?.message ?? error).slice(0, 200)}`,
+      );
+    }
     if (runId) {
       try {
         const scope = await sessionScope(request, config, pool, executionContext);
