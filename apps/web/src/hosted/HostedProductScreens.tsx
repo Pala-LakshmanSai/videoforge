@@ -943,6 +943,8 @@ interface HostedSpanAudioProgress {
 interface HostedGpuLaneActivity {
   readonly lane: "mage_image" | "soulx_avatar";
   readonly attempt_state: string | null;
+  /** Latest persisted provider status. Database attempt state remains authoritative for terminal outcomes. */
+  readonly provider_status?: string | null;
   readonly runtime_state: string | null;
   readonly planned_item_count: number | null;
   readonly accepted_item_count: number;
@@ -957,6 +959,25 @@ const HOSTED_GPU_LANE_LABELS: Readonly<Record<string, string>> = {
   soulx_avatar: "Avatar performance",
 };
 
+const HOSTED_GPU_TERMINAL_DATABASE_STATES = new Set([
+  "SUCCEEDED",
+  "FAILED",
+  "RETRYABLE_FAILED",
+  "PERMANENT_FAILED",
+  "DEAD_LETTER",
+  "CANCEL_REQUESTED",
+  "CANCELLING",
+  "CANCELLED",
+]);
+const HOSTED_GPU_LIVE_PROVIDER_STATES = new Set(["IN_QUEUE", "IN_PROGRESS"]);
+
+function hostedGpuLaneDisplayState(lane: HostedGpuLaneActivity): string {
+  const databaseState = String(lane.attempt_state ?? lane.runtime_state ?? "").toUpperCase();
+  if (HOSTED_GPU_TERMINAL_DATABASE_STATES.has(databaseState)) return databaseState;
+  const providerState = String(lane.provider_status ?? "").toUpperCase();
+  return HOSTED_GPU_LIVE_PROVIDER_STATES.has(providerState) ? providerState : databaseState;
+}
+
 /** Provider phase text for a dispatched lane. The provider queue and the container cold start are
  * both normal multi-minute waits, so name them instead of leaving the stage looking idle. */
 function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
@@ -964,7 +985,7 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
   readonly detail: string;
   readonly active: boolean;
 } {
-  const state = String(lane.attempt_state ?? lane.runtime_state ?? "").toUpperCase();
+  const state = hostedGpuLaneDisplayState(lane);
   const accepted = hostedGpuLaneAcceptedCount(lane);
   if (state === "SUCCEEDED")
     return { label: "Complete", detail: "All items accepted.", active: false };
@@ -977,7 +998,7 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
           : "The provider run ended without an accepted result.",
       active: false,
     };
-  if (["CANCELLED", "CANCEL_REQUESTED"].includes(state))
+  if (["CANCELLED", "CANCEL_REQUESTED", "CANCELLING"].includes(state))
     return { label: "Cancelled", detail: "This lane was stopped.", active: false };
   if (state === "OUTBOXED")
     return { label: "Queuing", detail: "Handing the batch to the GPU provider.", active: true };
@@ -991,8 +1012,7 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
   if (state === "ASSIGNED" && accepted === 0)
     return {
       label: "Starting GPU worker",
-      detail:
-        "Waiting for an RTX 4090 and loading the model image. A cold start usually takes a few minutes.",
+      detail: "GPU worker assigned; waiting for the first provider progress update.",
       active: true,
     };
   if (
@@ -1053,7 +1073,8 @@ function HostedGpuLaneActivityPanel({
   readonly lanes: readonly HostedGpuLaneActivity[];
 }) {
   const visible = lanes.filter(
-    (lane) => lane.attempt_state !== null || lane.runtime_state !== null,
+    (lane) =>
+      lane.attempt_state !== null || lane.provider_status != null || lane.runtime_state !== null,
   );
   if (visible.length === 0) return null;
   return (
@@ -2004,7 +2025,7 @@ function hostedProgressValue(stage: HostedStage): number {
 }
 
 function hostedGpuLaneStageStatus(lane: HostedGpuLaneActivity): ProjectStage["status"] | null {
-  const state = String(lane.attempt_state ?? lane.runtime_state ?? "").toUpperCase();
+  const state = hostedGpuLaneDisplayState(lane);
   if (state === "SUCCEEDED") return "COMPLETE";
   if (["FAILED", "PERMANENT_FAILED", "DEAD_LETTER"].includes(state)) return "FAILED";
   if (state === "RETRYABLE_FAILED") return "FAILED";
@@ -4591,7 +4612,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               detail="remaining"
             />
             <Metric
-              label="Cost"
+              label="Projected cost"
               value={
                 (cost?.projected_usd ?? 0) > 0
                   ? formatUsd(cost?.projected_usd)
@@ -4619,7 +4640,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             <p>Generation has not started. Prepared generation data failed validation.</p>
           ) : (
             <>
-              <p>Generation start could not be confirmed. VideoForge will not retry automatically.</p>
+              <p>
+                Generation start could not be confirmed. VideoForge will not retry automatically.
+              </p>
               <Button variant="secondary" onClick={() => gpuDispatch.mutate()}>
                 <RefreshCw size={15} /> Retry generation
               </Button>

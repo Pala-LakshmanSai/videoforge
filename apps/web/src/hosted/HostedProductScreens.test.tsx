@@ -3663,6 +3663,7 @@ describe("hosted product journey", () => {
         {
           lane: "mage_image" as const,
           attempt_state: "PERMANENT_FAILED",
+          provider_status: "IN_PROGRESS",
           runtime_state: "FAILED",
           planned_item_count: 211,
           accepted_item_count: 0,
@@ -3674,6 +3675,7 @@ describe("hosted product journey", () => {
         {
           lane: "soulx_avatar" as const,
           attempt_state: "SUCCEEDED",
+          provider_status: "IN_PROGRESS",
           runtime_state: "FAILED",
           planned_item_count: 65,
           accepted_item_count: 0,
@@ -3757,7 +3759,8 @@ describe("hosted product journey", () => {
       gpu_lanes: [
         {
           lane: "mage_image" as const,
-          attempt_state: "IN_QUEUE",
+          attempt_state: "ASSIGNED",
+          provider_status: "IN_QUEUE",
           runtime_state: "WAITING_FOR_WORKER",
           planned_item_count: 211,
           accepted_item_count: 0,
@@ -3768,7 +3771,8 @@ describe("hosted product journey", () => {
         },
         {
           lane: "soulx_avatar" as const,
-          attempt_state: "IN_QUEUE",
+          attempt_state: "ASSIGNED",
+          provider_status: "IN_QUEUE",
           runtime_state: "WAITING_FOR_WORKER",
           planned_item_count: 65,
           accepted_item_count: 0,
@@ -3811,6 +3815,97 @@ describe("hosted product journey", () => {
     ).toBeInTheDocument();
     await waitFor(() => expect(dispatches).toBe(1));
     expect(screen.queryByText(/Generation start could not be confirmed/u)).not.toBeInTheDocument();
+    expect(screen.getByText("Projected cost")).toBeInTheDocument();
+  });
+
+  it("uses live provider progress while preserving terminal database state", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Provider progress pair",
+        created_at: "2026-09-06T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [],
+      gpu_transport: "QUALIFIED_EXACT" as const,
+      gpu_readiness: qualifiedGpuReadiness,
+      generation: {
+        id: "55555555-5555-4555-8555-555555555555",
+        timeline_plan_sha256: `sha256:${"b".repeat(64)}`,
+        planned_tasks: 276,
+        completed_tasks: 0,
+        failed_tasks: 0,
+        stage: "READY_FOR_GPU_DISPATCH" as const,
+      },
+      queue: { status: "ACTIVE", position: 1, ahead: 0, total: 1 },
+      stages: [
+        {
+          id: "prompt-writing",
+          name: "Write image prompts",
+          status: "COMPLETE",
+          progress_percent: 100,
+        },
+        { id: "image-generation", name: "Generate images", status: "RUNNING", progress_percent: 0 },
+        {
+          id: "avatar-generation",
+          name: "Generate avatar video",
+          status: "RUNNING",
+          progress_percent: 0,
+        },
+      ],
+      gpu_lanes: [
+        {
+          lane: "mage_image" as const,
+          attempt_state: "ASSIGNED",
+          provider_status: "IN_QUEUE",
+          runtime_state: "WAITING_FOR_WORKER",
+          planned_item_count: 211,
+          accepted_item_count: 0,
+          attempt_ordinal: 1,
+          submitted_at: null,
+          created_at: "2026-09-06T10:00:00.000Z",
+          terminal_at: null,
+        },
+        {
+          lane: "soulx_avatar" as const,
+          attempt_state: "ASSIGNED",
+          provider_status: "IN_PROGRESS",
+          runtime_state: "WAITING_FOR_WORKER",
+          planned_item_count: 65,
+          accepted_item_count: 0,
+          attempt_ordinal: 1,
+          submitted_at: null,
+          created_at: "2026-09-06T10:00:00.000Z",
+          terminal_at: null,
+        },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).endsWith("/gpu-dispatch")
+          ? Response.json({
+              schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+              state: "SCHEDULED",
+              correlation_id: "v209-provider-progress",
+            })
+          : Response.json(detail),
+      ),
+    );
+
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect((await screen.findAllByText("Waiting for GPUs")).length).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getByText(
+        "0 of 211 accepted · No GPU worker is available yet. Your generation will start automatically when capacity opens.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("0 of 65 accepted · The GPU worker is producing and verifying items."),
+    ).toBeInTheDocument();
   });
 
   it("reports only measured personal-worker and retained-object facts", async () => {

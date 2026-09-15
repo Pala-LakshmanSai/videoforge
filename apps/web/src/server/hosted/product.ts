@@ -6793,6 +6793,10 @@ async function projectDetail(
       return {
         lane,
         attempt_state: attempt ? String(attempt.state) : null,
+        provider_status:
+          attempt?.provider_status === null || attempt?.provider_status === undefined
+            ? null
+            : String(attempt.provider_status),
         runtime_state: runtimeLane ? String(runtimeLane.state) : null,
         planned_item_count: plannedItems,
         accepted_item_count: acceptedItems,
