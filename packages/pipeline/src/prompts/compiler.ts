@@ -9,7 +9,7 @@ import type { CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents }
 export const PERMANENT_POSITIVE_GUARDRAIL =
   "clean original still image only; depict only the described scene; photographic style and viewpoint describe the resulting image, not equipment within it; all surfaces plain, blank and unmarked; no manufactured product, packaging or container is present, only people, natural materials, plants, tools and environments; no printed, embossed or written marking is part of any surface; convey names, dates and quantities through physical subjects only, never typography; no readable or unreadable text, words, letters, numbers, labels, signs, plaques, inscriptions, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, or decorative transition";
 export const PERMANENT_NEGATIVE_GUARDRAIL =
-  "readable text, unreadable text, pseudo-text, gibberish lettering, words, letters, numbers, typography, labels, packaging, packaged goods, manufactured products, containers, bottles, jars, canisters, tins, tubes, cartons, wrappers, pouches, sachets, product packaging, brand names, product names, ingredient lists, dosage panels, nutrition facts, weight markings, shelf tags, price stickers, signs, plaques, inscriptions, engravings, handwriting, printed markings, visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, decorative transition, malformed anatomy, duplicate limbs, nonsensical objects, accidental mixed media, unrelated subject, extraneous cameras, photographic equipment unrelated to the scene, unrelated filming rigs, extraneous tripods, extraneous foreground camera lenses, unrelated film crew";
+  "readable text, unreadable text, pseudo-text, gibberish lettering, words, letters, numbers, typography, labels, packaging, packaged goods, manufactured products, containers, bottles, jars, canisters, tins, tubes, cartons, wrappers, pouches, sachets, product packaging, brand names, product names, ingredient lists, dosage panels, nutrition facts, weight markings, shelf tags, price stickers, caption text, subtitle text, text overlays, burned-in text, annotations, timestamps, slug lettering, signs, plaques, inscriptions, engravings, handwriting, printed markings, visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, decorative transition, malformed anatomy, duplicate limbs, nonsensical objects, accidental mixed media, unrelated subject, extraneous cameras, photographic equipment unrelated to the scene, unrelated filming rigs, extraneous tripods, extraneous foreground camera lenses, unrelated film crew";
 
 const stripControls = (value: string): string =>
   Array.from(value, (character) => {
@@ -169,6 +169,24 @@ const normalize = (
   if (!result || result.length > maximum)
     fail("PROMPT_INPUT_INVALID", `${label} must contain 1-${maximum} normalized characters.`, path);
   return result;
+};
+
+/**
+ * Slug-style tokens ("failed-regrowth", "lancaster-county-farmland") look like printed labels to the
+ * image model and came back rendered as caption text across the frame. Plain words say the same
+ * thing to the model without anything that reads as marking.
+ */
+const plainPhrase = (value: string): string => {
+  const characters: string[] = [];
+  for (const character of value) {
+    if (character === "-" || character === "_" || character === "/") {
+      if (characters.length > 0 && characters.at(-1) !== " ") characters.push(" ");
+      continue;
+    }
+    if (character === " " && characters.at(-1) === " ") continue;
+    characters.push(character);
+  }
+  return characters.join("").trim();
 };
 
 const normalizeOptional = (
@@ -390,7 +408,10 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
       String(index),
     ]);
     assertNoHardPromptConflict(normalizedTag, ["writerOutput", "continuity_tags", String(index)]);
-    return normalizedTag;
+    // Slug-style tags read as printed labels to the image model: scenes whose tags were written as
+    // "failed-regrowth" or "lancaster-county-farmland" came back with that text rendered across the
+    // frame. The hash keeps the tag as written; the compiled prompt gets plain words.
+    return plainPhrase(normalizedTag);
   });
   const continuityAndShotRole = join([
     continuityTags.length === 0 ? "continuity: none" : `continuity: ${continuityTags.join(" | ")}`,

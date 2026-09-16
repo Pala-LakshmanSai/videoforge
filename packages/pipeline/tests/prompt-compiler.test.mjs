@@ -496,6 +496,17 @@ test("every image prompt keeps manufactured products and packaging out of the sc
     });
     assert.match(compiled.positivePrompt, /no bottle/u);
   }
+  // Slug-style continuity tags are compiled into plain words: in production the kebab tokens came
+  // back rendered as caption text across the frame.
+  const slugged = compileImagePrompt({
+    writerOutput: { ...base, continuity_tags: ["failed-regrowth", "lancaster-county-farmland"] },
+    expectedScene: input.scenes[0],
+    style: style(),
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  assert.match(slugged.positivePrompt, /failed regrowth/u);
+  assert.doesNotMatch(slugged.positivePrompt, /failed-regrowth/u);
 });
 
 test("compiler no longer requires prompt_core to overlap structured scene facts", () => {
