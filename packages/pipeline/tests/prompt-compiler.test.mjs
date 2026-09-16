@@ -6,6 +6,8 @@ import {
   IN_IMAGE_SHOT_ROLES,
   MAX_PROMPT_LOCAL_CONTEXT_CHARS,
   MAX_PROMPT_STORY_CONTEXT_CHARS,
+  PERMANENT_NEGATIVE_GUARDRAIL,
+  PERMANENT_POSITIVE_GUARDRAIL,
   PipelineDomainError,
   buildPromptBatch,
   compileImagePrompt,
@@ -423,6 +425,47 @@ test("compiler rejects forbidden content in structured scene facts", () => {
     { lighting_context: "a screen glow" },
     { literal_subject: "two bottles beside a price tag" },
     { environment: "a table covered with receipts" },
+  ]) {
+    expectCode("PROMPT_CONFLICT", () =>
+      compileImagePrompt({
+        writerOutput: { ...base, ...field },
+        expectedScene: input.scenes[0],
+        style: style(),
+        extraPromptKeywords: null,
+        applyExtraPromptKeywords: false,
+      }),
+    );
+  }
+});
+
+test("every image prompt states that products and packaging carry no text, and text-bearing packaging is rejected", () => {
+  // A rendered medicine bottle's printed label reached production even though the guardrails banned
+  // typography in general: products and containers were never named, so the model decorated them.
+  for (const guardrail of [PERMANENT_POSITIVE_GUARDRAIL, PERMANENT_NEGATIVE_GUARDRAIL]) {
+    assert.match(guardrail, /bottle/u);
+    assert.match(guardrail, /product/u);
+    assert.match(guardrail, /label/u);
+  }
+  assert.match(PERMANENT_POSITIVE_GUARDRAIL, /plain, unbranded and unmarked/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Never describe a labelled, branded, printed/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /ingredient list/u);
+
+  const input = batch(25);
+  const base = {
+    scene_id: input.scenes[0].sceneId,
+    literal_subject: "a traveler",
+    action: "sets a bag down on a counter",
+    environment: "a modest kitchen",
+    in_image_shot_role: input.scenes[0].inImageShotRole,
+    lighting_context: "soft morning light",
+    continuity_tags: [],
+    prompt_core: "legacy provider prose is ignored by the compiler",
+  };
+  for (const field of [
+    { literal_subject: "a medicine bottle with a product name" },
+    { environment: "a shelf of boxes with an ingredient list" },
+    { literal_subject: "a can with a brand name" },
+    { action: "reads the dosage panel on a jar" },
   ]) {
     expectCode("PROMPT_CONFLICT", () =>
       compileImagePrompt({

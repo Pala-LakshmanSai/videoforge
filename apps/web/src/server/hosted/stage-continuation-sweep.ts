@@ -4,7 +4,8 @@ import {
   type HostedRuntimeConfiguration,
   type HostedRuntimeEnvironment,
 } from "./configuration";
-import { createNeonPool } from "./neon";
+import { createNeonExecutor, createNeonPool } from "./neon";
+import type { HostedNeonPool } from "./configuration";
 import { continuationRequest } from "./stage-continuation";
 
 /**
@@ -39,6 +40,7 @@ WITH revision AS (
        ORDER BY candidate.created_at DESC LIMIT 1
     ) locked ON true
    WHERE project.status = 'ACTIVE'
+     AND project.account_id = $1
 ), state AS (
   SELECT revision.*,
     (SELECT attempt.id FROM public.hosted_cpu_job_attempts attempt
@@ -103,9 +105,13 @@ export async function runHostedContinuation(
   const failures: string[] = [];
   let dueCount = 0;
   try {
-    const due = await pool.query<DueRow>(DUE_QUERY);
-    dueCount = due.rows.length;
-    for (const row of due.rows) {
+    // Every hosted table is RLS-forced on `videoforge_current_account_id()`, so one cross-tenant
+    // SELECT sees zero rows: the scheduled driver reported `dispatched: 0` every minute and never
+    // advanced a project until the sweep queried each admitted account inside its own tenant
+    // transaction, exactly like every request path does.
+    const due = await dueRowsAcrossAccounts(pool);
+    dueCount = due.length;
+    for (const row of due) {
       const scope = {
         account_id: row.account_id,
         workspace_id: row.workspace_id,
@@ -198,6 +204,31 @@ export async function runHostedContinuation(
     await pool.end();
   }
   return dispatched;
+}
+
+/**
+ * Read the due projects for every admitted account, each inside its own tenant transaction.
+ * `videoforge_admitted_hosted_account_ids()` is the service-owned accessor for the account list;
+ * the accounts table itself is never queried from here.
+ */
+export async function dueRowsAcrossAccounts(pool: HostedNeonPool): Promise<readonly DueRow[]> {
+  const executor = createNeonExecutor(pool);
+  const accounts = await pool.query<{ account_id: string }>(
+    "SELECT account_id FROM public.videoforge_admitted_hosted_account_ids()",
+  );
+  const rows: DueRow[] = [];
+  for (const account of accounts.rows) {
+    const tenantRows = await executor.transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", [
+        "videoforge.account_id",
+        account.account_id,
+      ]);
+      const result = await transaction.query(DUE_QUERY, [account.account_id]);
+      return result.rows as unknown as DueRow[];
+    });
+    rows.push(...tenantRows);
+  }
+  return Object.freeze(rows);
 }
 
 export { ensureHostedPairObservers } from "./pair-observer-guard";

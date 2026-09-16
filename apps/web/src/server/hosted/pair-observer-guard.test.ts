@@ -102,3 +102,84 @@ describe("ensureHostedContinuationDriver", () => {
     await expect(second.ensureHostedContinuationDriver(environment(broken))).resolves.toBe(false);
   });
 });
+
+/**
+ * The two scheduled sweeps (this guard and the stage-continuation sweep) read tables that are
+ * RLS-forced on `videoforge_current_account_id()`. A single cross-tenant read with no tenant context
+ * returns zero rows and looks exactly like "nothing to do": that is how the driver kept reporting
+ * `observers: 0` / `dispatched: 0` for twenty minutes on 2026-09-16 while a project sat mid-pipeline.
+ * These two tests pin the tenant-scoped read shape that replaced it.
+ */
+describe("tenant-scoped sweeps", () => {
+  function poolFixture(accounts: readonly string[]) {
+    const statements: string[] = [];
+    const pool = {
+      query: vi.fn(async (sql: string) => {
+        statements.push(sql.trim());
+        if (sql.includes("videoforge_admitted_hosted_account_ids"))
+          return { rows: accounts.map((account_id) => ({ account_id })) };
+        throw new Error(`unexpected pool query: ${sql.slice(0, 60)}`);
+      }),
+      end: vi.fn(async () => {}),
+    };
+    const sessions: string[] = [];
+    const transaction = async (
+      work: (transaction: {
+        query: (sql: string, params?: readonly unknown[]) => Promise<{ rows: unknown[] }>;
+      }) => Promise<unknown>,
+    ) => {
+      // The row set follows the tenant the transaction was opened with, exactly like RLS would.
+      let current = accounts[0] ?? "";
+      return work({
+        query: async (sql: string, params?: readonly unknown[]) => {
+          sessions.push(sql.trim());
+          if (sql.includes("set_config")) {
+            current = String(params?.[1] ?? current);
+            return { rows: [] };
+          }
+          return {
+            rows: [
+              {
+                generation_request_id: `request-${current}`,
+                account_id: current,
+                workspace_id: `workspace-${current}`,
+              },
+            ],
+          };
+        },
+      });
+    };
+    vi.doMock("./neon", () => ({
+      createNeonPool: () => pool,
+      createNeonExecutor: () => ({ transaction }),
+    }));
+    return { pool, statements, sessions };
+  }
+
+  it("reads unsettled pairs per admitted account inside a tenant transaction", async () => {
+    const { pool, statements, sessions } = poolFixture(["account-1", "account-2"]);
+    const { unsettledPairsAcrossAccounts } = await guard();
+
+    const rows = await unsettledPairsAcrossAccounts(pool as never);
+
+    expect(rows.map((row) => row.generation_request_id)).toEqual([
+      "request-account-1",
+      "request-account-2",
+    ]);
+    expect(statements.join(" ")).toContain("videoforge_admitted_hosted_account_ids");
+    // Every read happens with the tenant GUC set, and the query itself is account-parameterised.
+    expect(sessions.filter((sql) => sql.includes("set_config")).length).toBe(2);
+    expect(sessions.filter((sql) => sql.includes("account_id = $1")).length).toBe(2);
+  });
+
+  it("reads due projects per admitted account inside a tenant transaction", async () => {
+    const { pool, statements, sessions } = poolFixture(["account-1"]);
+    const { dueRowsAcrossAccounts } = await import("./stage-continuation-sweep");
+
+    await dueRowsAcrossAccounts(pool as never);
+
+    expect(statements.join(" ")).toContain("videoforge_admitted_hosted_account_ids");
+    expect(sessions.filter((sql) => sql.includes("set_config")).length).toBe(1);
+    expect(sessions.filter((sql) => sql.includes("WHERE project.status = 'ACTIVE'")).length).toBe(1);
+  });
+});

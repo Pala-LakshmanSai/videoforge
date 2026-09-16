@@ -7,9 +7,9 @@ import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type { CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents } from "./types.js";
 
 export const PERMANENT_POSITIVE_GUARDRAIL =
-  "clean original still image only; depict only the described scene; photographic style and viewpoint describe the resulting image, not equipment within it; all surfaces plain, blank and unmarked; convey names, dates and quantities through physical subjects only, never typography; no readable or unreadable text, words, letters, numbers, labels, signs, plaques, inscriptions, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, or decorative transition";
+  "clean original still image only; depict only the described scene; photographic style and viewpoint describe the resulting image, not equipment within it; all surfaces plain, blank and unmarked; every product, bottle, jar, can, tin, box, carton, wrapper, pouch, tube and container is plain, unbranded and unmarked with no printed or embossed label, brand name, product name, ingredient list, dosage, weight or instruction panel; convey names, dates and quantities through physical subjects only, never typography; no readable or unreadable text, words, letters, numbers, labels, signs, plaques, inscriptions, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, or decorative transition";
 export const PERMANENT_NEGATIVE_GUARDRAIL =
-  "readable text, unreadable text, pseudo-text, gibberish lettering, words, letters, numbers, typography, labels, signs, plaques, inscriptions, engravings, handwriting, printed markings, visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, decorative transition, malformed anatomy, duplicate limbs, nonsensical objects, accidental mixed media, unrelated subject, extraneous cameras, photographic equipment unrelated to the scene, unrelated filming rigs, extraneous tripods, extraneous foreground camera lenses, unrelated film crew";
+  "readable text, unreadable text, pseudo-text, gibberish lettering, words, letters, numbers, typography, labels, printed packaging, packaging text, product labels, bottle labels, jar labels, can labels, box lettering, package printing, brand names, product names, ingredient lists, dosage panels, nutrition facts, weight markings, shelf tags, price stickers, signs, plaques, inscriptions, engravings, handwriting, printed markings, visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, decorative transition, malformed anatomy, duplicate limbs, nonsensical objects, accidental mixed media, unrelated subject, extraneous cameras, photographic equipment unrelated to the scene, unrelated filming rigs, extraneous tripods, extraneous foreground camera lenses, unrelated film crew";
 
 const stripControls = (value: string): string =>
   Array.from(value, (character) => {
@@ -49,6 +49,14 @@ const FORBIDDEN_MENTIONS: readonly {
     kind: "label",
     pattern:
       /\b(?:label(?:s|ed|ing)?|labelled|labelling|signage|signboard(?:s)?|placard(?:s)?|name[- ]?plate(?:s)?)\b/giu,
+  },
+  {
+    // Printed or branded packaging always carries text: a described product name, ingredient list,
+    // dosage panel or shelf tag invites lettering onto a bottle, box or container even when the
+    // sentence never says "label" (the exact way a medicine bottle reached a prompt's subject).
+    kind: "label",
+    pattern:
+      /\b(?:product name(?:s)?|brand name(?:s)?|ingredient(?:s)? list(?:s)?|nutrition facts|dosage(?: panel| instructions?|s)?|packaging text|printed packaging|price stickers?|shelf tags?|branded)\b/giu,
   },
   {
     kind: "marking",

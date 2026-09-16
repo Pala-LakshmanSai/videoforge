@@ -1,6 +1,7 @@
 import type { HostedExecutionContext } from "./auth";
 import {
   hostedRuntimeConfiguration,
+  type HostedNeonPool,
   type HostedRuntimeConfiguration,
   type HostedRuntimeEnvironment,
 } from "./configuration";
@@ -28,6 +29,7 @@ SELECT DISTINCT candidate.id AS generation_request_id,
   JOIN public.video_runtime_lane_states lane
     ON lane.project_revision_id = candidate.project_revision_id
  WHERE candidate.state = 'ACTIVE'
+   AND candidate.account_id = $1
    AND lane.state IN ('ASSIGNED', 'RUNNING')
    AND NOT EXISTS (
      SELECT 1 FROM public.hosted_pair_runtime_states runtime
@@ -37,6 +39,42 @@ SELECT DISTINCT candidate.id AS generation_request_id,
  LIMIT 2
 `;
 
+interface UnsettledPairRow {
+  readonly generation_request_id: string;
+  readonly account_id: string;
+  readonly workspace_id: string;
+}
+
+/**
+ * Read the unsettled pairs for every admitted account, each inside its own tenant transaction.
+ *
+ * The hosted tables are RLS-forced on `videoforge_current_account_id()`, and before this the guard
+ * read them with no tenant context at all: the query returned zero rows on every poll, so a pair
+ * whose observing workflow never started stayed unwatched (the 2026-09-15 stall this guard exists
+ * for) while the guard reported `observers: 0` as if nothing were wrong.
+ */
+export async function unsettledPairsAcrossAccounts(
+  pool: HostedNeonPool,
+): Promise<readonly UnsettledPairRow[]> {
+  const executor = createNeonExecutor(pool);
+  const accounts = await pool.query<{ account_id: string }>(
+    "SELECT account_id FROM public.videoforge_admitted_hosted_account_ids()",
+  );
+  const rows: UnsettledPairRow[] = [];
+  for (const account of accounts.rows) {
+    const tenantRows = await executor.transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", [
+        "videoforge.account_id",
+        account.account_id,
+      ]);
+      const result = await transaction.query(UNSETTLED_PAIR_QUERY, [account.account_id]);
+      return result.rows as unknown as UnsettledPairRow[];
+    });
+    rows.push(...tenantRows);
+  }
+  return Object.freeze(rows);
+}
+
 export async function ensureHostedPairObservers(
   environment: HostedRuntimeEnvironment,
   executionContext: HostedExecutionContext,
@@ -45,12 +83,8 @@ export async function ensureHostedPairObservers(
   const pool = createNeonPool(config.neon.databaseUrl);
   let ensured = 0;
   try {
-    const pending = await pool.query<{
-      generation_request_id: string;
-      account_id: string;
-      workspace_id: string;
-    }>(UNSETTLED_PAIR_QUERY);
-    for (const row of pending.rows) {
+    const pending = await unsettledPairsAcrossAccounts(pool);
+    for (const row of pending) {
       try {
         await ensureHostedPairWorkflow(
           environment as Parameters<typeof ensureHostedPairWorkflow>[0],
