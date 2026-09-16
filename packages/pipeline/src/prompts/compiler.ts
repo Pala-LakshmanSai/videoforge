@@ -189,6 +189,21 @@ const plainPhrase = (value: string): string => {
   return characters.join("").trim();
 };
 
+/**
+ * Aspect-ratio and continuity tokens are instructions for the pipeline, but an image model treats
+ * them as something to print: accepted frames came back with "16:9" lettered across a book cover and
+ * continuity tags like "satisfied" or "failed-regrowth" painted over the scene. The compiled prompt
+ * keeps the meaning and drops every token that reads as marking.
+ */
+const plainGeometry = (value: string): string =>
+  value
+    .replaceAll("16:10", "wide horizontal")
+    .replaceAll("16:9", "wide horizontal")
+    .replaceAll("16 : 9", "wide horizontal")
+    .replaceAll("9:16", "tall vertical")
+    .replaceAll("8:9", "narrow vertical")
+    .replaceAll("8 : 9", "narrow vertical");
+
 const normalizeOptional = (
   value: string,
   maximum: number,
@@ -414,19 +429,19 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     return plainPhrase(normalizedTag);
   });
   const continuityAndShotRole = join([
-    continuityTags.length === 0 ? "continuity: none" : `continuity: ${continuityTags.join(" | ")}`,
+    "keep one consistent subject, setting and physical state across the video",
     `required viewpoint: ${expected.inImageShotRole.toLowerCase().replaceAll("_", " ")}`,
   ]);
   const cropGuidance =
     expected.layout === "IMAGE_FULL" ? style.fullImageGuidance : style.splitImageGuidance;
   const components = Object.freeze({
-    literalContent,
-    continuityAndShotRole,
-    cropGuidance,
-    stylePositiveSuffix: style.positiveSuffix,
-    extraPromptKeywords: extra,
+    literalContent: plainGeometry(literalContent),
+    continuityAndShotRole: plainGeometry(continuityAndShotRole),
+    cropGuidance: plainGeometry(cropGuidance),
+    stylePositiveSuffix: plainGeometry(style.positiveSuffix),
+    extraPromptKeywords: extra === null ? extra : plainGeometry(extra),
     permanentPositiveGuardrail: PERMANENT_POSITIVE_GUARDRAIL,
-    styleNegativeSuffix: style.negativeSuffix,
+    styleNegativeSuffix: plainGeometry(style.negativeSuffix),
     permanentNegativeGuardrail: PERMANENT_NEGATIVE_GUARDRAIL,
   });
   const positivePrompt = join([

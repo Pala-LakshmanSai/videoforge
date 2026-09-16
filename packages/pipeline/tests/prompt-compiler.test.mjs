@@ -190,7 +190,11 @@ test("compiler preserves normative order, layout crop rules, five styles, and de
     assert.equal(compiled.components.extraPromptKeywords, null);
     assert.equal(compiled.positivePrompt.includes("unused hidden logo request"), false);
     assert.equal(compiled.positivePrompt.includes(positiveSuffix), true);
-    assert.equal(compiled.positivePrompt.includes("8:9 right panel"), true);
+    // Ratio tokens are geometry for the provider, not text for the model: a finished frame arrived
+    // with "16:9" lettered across a book cover, so the compiled prompt masks every ratio.
+    assert.equal(compiled.positivePrompt.includes("narrow vertical right panel"), true);
+    assert.equal(compiled.positivePrompt.includes("8:9"), false);
+    assert.equal(compiled.positivePrompt.includes("16:9"), false);
     assert.ok(
       compiled.positivePrompt.indexOf(compiled.components.literalContent) <
         compiled.positivePrompt.indexOf(compiled.components.cropGuidance),
@@ -496,8 +500,8 @@ test("every image prompt keeps manufactured products and packaging out of the sc
     });
     assert.match(compiled.positivePrompt, /no bottle/u);
   }
-  // Slug-style continuity tags are compiled into plain words: in production the kebab tokens came
-  // back rendered as caption text across the frame.
+  // Continuity tags are audit metadata, never prompt text: in production the tags themselves were
+  // painted over the frame as caption words ("satisfied", "failed-regrowth").
   const slugged = compileImagePrompt({
     writerOutput: { ...base, continuity_tags: ["failed-regrowth", "lancaster-county-farmland"] },
     expectedScene: input.scenes[0],
@@ -505,8 +509,11 @@ test("every image prompt keeps manufactured products and packaging out of the sc
     extraPromptKeywords: null,
     applyExtraPromptKeywords: false,
   });
-  assert.match(slugged.positivePrompt, /failed regrowth/u);
-  assert.doesNotMatch(slugged.positivePrompt, /failed-regrowth/u);
+  assert.doesNotMatch(slugged.positivePrompt, /failed regrowth|failed-regrowth|lancaster/u);
+  assert.match(
+    slugged.positivePrompt,
+    /keep one consistent subject, setting and physical state across the video/u,
+  );
 });
 
 test("compiler no longer requires prompt_core to overlap structured scene facts", () => {
