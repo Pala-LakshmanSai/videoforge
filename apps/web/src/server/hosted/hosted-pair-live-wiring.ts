@@ -854,6 +854,13 @@ export function createHostedRunPodObservationSource(
             observedAt: now(),
             nonce: crypto.randomUUID().replaceAll("-", ""),
           });
+        // Any other transport failure says nothing about the job -- the read simply did not happen.
+        // Surface it as STATUS_UNKNOWN, the code the observation loop already holds on, instead of
+        // letting it escape: on 2026-09-15 a `REQUEST_REJECTED` propagated out of this catch, errored
+        // the observing workflow at 19:14:57, and left the pair unobserved until the provider had
+        // purged both job records hours later.
+        if (error instanceof ServerlessTransportError)
+          throw new ServerlessTransportError("STATUS_UNKNOWN");
         throw error;
       }
       if (!TERMINAL.has(observed.status))
