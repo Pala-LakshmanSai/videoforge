@@ -13,11 +13,12 @@ const productionConfigPath = path.join(repositoryRoot, "apps/web", wranglerConfi
 const productionEntryPath = path.join(repositoryRoot, "apps/web/worker/production-index.ts");
 const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.ts");
 // Accepted provider-free route-split builds after the exact attempt-bound cancellation contract.
-// Production is a 187-byte virtual entry plus its 2,718,086-byte shared chunk; staging is the same
+// Production is a 233-byte virtual entry plus its 2,729,666-byte shared chunk after the durable
+// continuation driver added its workflow class and sweep to the static graph; staging is the same
 // entry plus its 2,747,272-byte shared chunk.
 // These are deliberately exact per-target no-growth ceilings, not platform limits.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_718_273,
+  "wrangler.production.jsonc": 2_729_899,
   "wrangler.staging.jsonc": 2_747_459,
 })[wranglerConfig];
 const workerForbidden = [
@@ -105,9 +106,11 @@ const expectedProductionImports = [
   "../src/server/hosted/app",
   "../src/server/hosted/configuration",
   "../src/server/hosted/retention",
+  "../src/server/hosted/stage-continuation-sweep",
   "../src/server/hosted/worker-version",
-  "./hosted-workflow",
+  "./hosted-continuation-workflow",
   "./hosted-pair-workflow",
+  "./hosted-workflow",
 ];
 const hostedAppSource = await readFile(hostedAppPath, "utf8");
 const hostedPromptRouteImport = 'import("./hosted-prompt-route")';

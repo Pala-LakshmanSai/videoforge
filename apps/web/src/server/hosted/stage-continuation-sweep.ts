@@ -5,10 +5,6 @@ import {
   type HostedRuntimeEnvironment,
 } from "./configuration";
 import { createNeonPool } from "./neon";
-import { createHostedV209SpanAudioLiveCoordinator } from "./app";
-import { defaults as dispatchDefaults, handleHostedV209ProjectDispatch } from "./hosted-v209-project-dispatch";
-import { writeProjectPrompts } from "./hosted-prompt-route";
-import { createVoiceoverContext, renderHandoff } from "./product";
 import { continuationRequest } from "./stage-continuation";
 
 /**
@@ -21,6 +17,12 @@ import { continuationRequest } from "./stage-continuation";
  *
  * The sweep only STARTS a stage that has no durable row yet. It never retries a failed one, so the
  * bounded redispatch gates stay the only retry path and the sweep cannot loop on a provider outage.
+ *
+ * Every stage handler is imported dynamically at its call site. This module is statically reachable
+ * from the Worker entry (the durable `HostedContinuationWorkflow` re-exports the sweep), and the
+ * accepted production bundle keeps `hosted-prompt-route` and `hosted-v209-project-dispatch` as their
+ * own dynamic entries: a static import here inlined 3.4 MB of route code into the shared entry chunk
+ * and dropped both dedicated chunks.
  */
 
 const DUE_QUERY = `
@@ -111,6 +113,7 @@ export async function runHostedContinuation(
       };
       try {
         if (row.next_step === "context") {
+          const { createVoiceoverContext } = await import("./product");
           await createVoiceoverContext(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/context`, {
               asr_attempt_id: row.asr_attempt_id,
@@ -123,6 +126,7 @@ export async function runHostedContinuation(
             scope,
           );
         } else if (row.next_step === "plan") {
+          const { renderHandoff } = await import("./product");
           await renderHandoff(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/render`, {
               asr_attempt_id: row.asr_attempt_id,
@@ -136,16 +140,21 @@ export async function runHostedContinuation(
         } else if (row.next_step === "dispatch") {
           // Stages 6-8 hang off GPU dispatch, which was the fourth and last browser-only handoff:
           // without it a finished prompt set sat with stages 6-8 pending forever.
+          const [{ createHostedV209SpanAudioLiveCoordinator }, dispatchModule] = await Promise.all([
+            import("./app"),
+            import("./hosted-v209-project-dispatch"),
+          ]);
           const spanAudio = await createHostedV209SpanAudioLiveCoordinator(environment, config);
-          await handleHostedV209ProjectDispatch(
+          await dispatchModule.handleHostedV209ProjectDispatch(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/gpu-dispatch`, {}),
             environment,
             config,
             executionContext,
-            { ...dispatchDefaults, scope: async () => scope },
+            { ...dispatchModule.defaults, scope: async () => scope },
             spanAudio,
           );
         } else {
+          const { writeProjectPrompts } = await import("./hosted-prompt-route");
           await writeProjectPrompts(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/prompts`, {
               maximum_prompt_spend_micro_usd: 40_000,
