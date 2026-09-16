@@ -711,7 +711,7 @@ test("scene relevance accepts anchored ordinary physical detail that narration l
   const batch = {
     ...base,
     storyContext:
-      "A household explainer about a brown hydrogen peroxide bottle kept in a medicine cabinet.",
+      "A household explainer about treating a small fresh cut at home.",
     scenes: [
       {
         ...base.scenes[0],
@@ -725,12 +725,12 @@ test("scene relevance accepts anchored ordinary physical detail that narration l
       success(request, {
         change: (rows) => {
           rows[0].literal_subject =
-            "A hand with a small superficial cut beside a brown hydrogen peroxide bottle";
+            "A hand with a small superficial cut foaming with hydrogen peroxide";
           rows[0].action = "bubbling on contact with the fresh cut";
           rows[0].environment =
             "a lived-in home bathroom counter below an open medicine cabinet, with a cotton pad nearby";
           rows[0].prompt_core =
-            "Hydrogen peroxide bubbles on a small fresh cut beside its brown bottle on a lived-in bathroom counter below an open medicine cabinet.";
+            "Hydrogen peroxide foams on a small fresh cut on a lived-in bathroom counter below an open medicine cabinet, with a folded gauze pad nearby.";
           return rows;
         },
       }),
@@ -1245,12 +1245,12 @@ test("scene relevance treats a cleaning-product modifier as stative, not as a cl
   const batch = {
     ...base,
     storyContext:
-      "A household explainer about a brown hydrogen peroxide bottle stored in a medicine cabinet.",
+      "A household explainer about a stiff broom kept in a pantry.",
     scenes: [
       {
         ...base.scenes[0],
-        phrase: "Hydrogen peroxide is a common household cleaning product",
-        sentenceContext: "Hydrogen peroxide is a common household cleaning product.",
+        phrase: "A stiff broom is a common household cleaning tool",
+        sentenceContext: "A stiff broom is a common household cleaning tool.",
       },
     ],
   };
@@ -1258,11 +1258,11 @@ test("scene relevance treats a cleaning-product modifier as stative, not as a cl
     (request) =>
       success(request, {
         change: (rows) => {
-          rows[0].literal_subject = "A brown hydrogen peroxide bottle";
-          rows[0].action = "resting unopened on a medicine cabinet shelf";
-          rows[0].environment = "inside a lived-in home medicine cabinet";
+          rows[0].literal_subject = "A stiff straw broom";
+          rows[0].action = "resting against a pantry wall";
+          rows[0].environment = "inside a lived-in home pantry";
           rows[0].prompt_core =
-            "A brown hydrogen peroxide bottle rests unopened on a worn shelf inside a lived-in home medicine cabinet.";
+            "A stiff straw broom rests against a worn pantry wall inside a lived-in home pantry.";
           return rows;
         },
       }),
@@ -1273,25 +1273,25 @@ test("scene relevance treats a cleaning-product modifier as stative, not as a cl
 
 test("scene relevance keeps plural household uses and minor cuts out of action inference", async () => {
   for (const phrase of [
-    "Hydrogen peroxide has many household uses",
-    "Hydrogen peroxide is a cleaning product for minor cuts",
+    "A stiff broom has many household uses",
+    "A stiff broom is a cleaning tool for minor spills",
   ]) {
     const base = makeBatch(1);
     const batch = {
       ...base,
       storyContext:
-        "A household explainer about a brown hydrogen peroxide bottle stored in a medicine cabinet.",
+        "A household explainer about a stiff broom kept in a pantry.",
       scenes: [{ ...base.scenes[0], phrase, sentenceContext: `${phrase}.` }],
     };
     const setup = writer([
       (request) =>
         success(request, {
           change: (rows) => {
-            rows[0].literal_subject = "A brown hydrogen peroxide bottle";
-            rows[0].action = "resting unopened on a medicine cabinet shelf";
-            rows[0].environment = "inside a lived-in home medicine cabinet";
+            rows[0].literal_subject = "A stiff straw broom";
+            rows[0].action = "resting upright on a pantry floor";
+            rows[0].environment = "inside a lived-in home pantry";
             rows[0].prompt_core =
-              "A brown hydrogen peroxide bottle rests unopened on a worn shelf inside a lived-in home medicine cabinet.";
+              "A stiff straw broom rests upright on a worn pantry floor inside a lived-in home pantry.";
             return rows;
           },
         }),
@@ -1301,18 +1301,18 @@ test("scene relevance keeps plural household uses and minor cuts out of action i
   }
 });
 
-test("scene relevance accepts a stored bottle rendered as resting in place", async () => {
+test("scene relevance accepts a stored object rendered as resting in place", async () => {
   const base = makeBatch(1);
   const batch = {
     ...base,
     storyContext:
-      "A household explainer about a brown hydrogen peroxide bottle stored in a medicine cabinet.",
+      "A household explainer about a stiff broom kept in a pantry.",
     scenes: [
       {
         ...base.scenes[0],
-        phrase: "A bottle of hydrogen peroxide tucked into the back of the medicine cabinet",
+        phrase: "A stiff broom tucked into the back of the pantry",
         sentenceContext:
-          "A bottle of hydrogen peroxide tucked into the back of the medicine cabinet.",
+          "A stiff broom tucked into the back of the pantry.",
       },
     ],
   };
@@ -1320,11 +1320,11 @@ test("scene relevance accepts a stored bottle rendered as resting in place", asy
     (request) =>
       success(request, {
         change: (rows) => {
-          rows[0].literal_subject = "A brown hydrogen peroxide bottle";
-          rows[0].action = "resting unopened on a cabinet shelf";
-          rows[0].environment = "inside a lived-in home medicine cabinet";
+          rows[0].literal_subject = "A stiff straw broom";
+          rows[0].action = "resting against a pantry wall";
+          rows[0].environment = "inside a lived-in home pantry";
           rows[0].prompt_core =
-            "A brown hydrogen peroxide bottle rests unopened on a worn shelf inside a lived-in home medicine cabinet.";
+            "A stiff straw broom rests against a worn pantry wall inside a lived-in home pantry.";
           return rows;
         },
       }),
@@ -1524,9 +1524,9 @@ test("scene relevance lets a lowercase split fragment resolve its subject from t
     scenes: [
       {
         ...base.scenes[0],
-        phrase: "back of the medicine cabinet just waiting for a scrape",
+        phrase: "back of the pantry just waiting for a sweep",
         sentenceContext:
-          "Most of us have a bottle of hydrogen peroxide tucked into the back of the medicine cabinet just waiting for a scrape.",
+          "Most of us have a stiff broom tucked into the back of the pantry just waiting for a sweep.",
       },
     ],
   };
@@ -1534,11 +1534,11 @@ test("scene relevance lets a lowercase split fragment resolve its subject from t
     (request) =>
       success(request, {
         change: (rows) => {
-          rows[0].literal_subject = "A brown hydrogen peroxide bottle";
-          rows[0].action = "resting unopened at the back of the cabinet";
-          rows[0].environment = "inside a lived-in home medicine cabinet";
+          rows[0].literal_subject = "A stiff straw broom";
+          rows[0].action = "resting at the back of the pantry";
+          rows[0].environment = "inside a lived-in home pantry";
           rows[0].prompt_core =
-            "A brown hydrogen peroxide bottle rests unopened at the back of a lived-in home medicine cabinet shelf.";
+            "A stiff straw broom rests at the back of a lived-in home pantry floor.";
           return rows;
         },
       }),
@@ -1591,7 +1591,7 @@ test("scene relevance resolves a sentence-opening dependent fragment", async () 
         ...base.scenes[0],
         phrase: "After years of daily use",
         sentenceContext:
-          "After years of daily use, the brown hydrogen peroxide bottle is tucked into the medicine cabinet.",
+          "After years of daily use, the stiff broom is tucked into the pantry.",
       },
     ],
   };
@@ -1599,11 +1599,11 @@ test("scene relevance resolves a sentence-opening dependent fragment", async () 
     (request) =>
       success(request, {
         change: (rows) => {
-          rows[0].literal_subject = "A worn brown hydrogen peroxide bottle";
-          rows[0].action = "resting at the back of a medicine cabinet";
-          rows[0].environment = "inside a lived-in home medicine cabinet";
+          rows[0].literal_subject = "A worn stiff straw broom";
+          rows[0].action = "resting at the back of a pantry";
+          rows[0].environment = "inside a lived-in home pantry";
           rows[0].prompt_core =
-            "A worn brown hydrogen peroxide bottle rests at the back of a lived-in home medicine cabinet shelf.";
+            "A worn stiff straw broom rests at the back of a lived-in home pantry floor.";
           return rows;
         },
       }),

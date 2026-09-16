@@ -7,9 +7,9 @@ import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type { CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents } from "./types.js";
 
 export const PERMANENT_POSITIVE_GUARDRAIL =
-  "clean original still image only; depict only the described scene; photographic style and viewpoint describe the resulting image, not equipment within it; all surfaces plain, blank and unmarked; every product, bottle, jar, can, tin, box, carton, wrapper, pouch, tube and container is plain, unbranded and unmarked with no printed or embossed label, brand name, product name, ingredient list, dosage, weight or instruction panel; convey names, dates and quantities through physical subjects only, never typography; no readable or unreadable text, words, letters, numbers, labels, signs, plaques, inscriptions, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, or decorative transition";
+  "clean original still image only; depict only the described scene; photographic style and viewpoint describe the resulting image, not equipment within it; all surfaces plain, blank and unmarked; no manufactured product, packaging or container is present, only people, natural materials, plants, tools and environments; no printed, embossed or written marking is part of any surface; convey names, dates and quantities through physical subjects only, never typography; no readable or unreadable text, words, letters, numbers, labels, signs, plaques, inscriptions, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, or decorative transition";
 export const PERMANENT_NEGATIVE_GUARDRAIL =
-  "readable text, unreadable text, pseudo-text, gibberish lettering, words, letters, numbers, typography, labels, printed packaging, packaging text, product labels, bottle labels, jar labels, can labels, box lettering, package printing, brand names, product names, ingredient lists, dosage panels, nutrition facts, weight markings, shelf tags, price stickers, signs, plaques, inscriptions, engravings, handwriting, printed markings, visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, decorative transition, malformed anatomy, duplicate limbs, nonsensical objects, accidental mixed media, unrelated subject, extraneous cameras, photographic equipment unrelated to the scene, unrelated filming rigs, extraneous tripods, extraneous foreground camera lenses, unrelated film crew";
+  "readable text, unreadable text, pseudo-text, gibberish lettering, words, letters, numbers, typography, labels, packaging, packaged goods, manufactured products, containers, bottles, jars, canisters, tins, tubes, cartons, wrappers, pouches, sachets, product packaging, brand names, product names, ingredient lists, dosage panels, nutrition facts, weight markings, shelf tags, price stickers, signs, plaques, inscriptions, engravings, handwriting, printed markings, visible text, price tags, receipts, captions, title, logo, watermark, UI, webpage, chart, diagram, arrow, infographic, border, lower-third, graphic overlay, motion graphics, decorative transition, malformed anatomy, duplicate limbs, nonsensical objects, accidental mixed media, unrelated subject, extraneous cameras, photographic equipment unrelated to the scene, unrelated filming rigs, extraneous tripods, extraneous foreground camera lenses, unrelated film crew";
 
 const stripControls = (value: string): string =>
   Array.from(value, (character) => {
@@ -31,6 +31,53 @@ type ForbiddenMentionKind =
  * the permanent no-text guardrail, so a positive description cannot rely on a
  * later negative clause to cancel a text-bearing object.
  */
+/**
+ * Manufactured goods, packaging and containers are never part of a scene: a named bottle, jar or
+ * package becomes the frame's subject and arrives with printed packaging, so the writer must express
+ * a product, mixture or preparation through the physical evidence of its use instead.  Checked as
+ * whole words with the same negation awareness as the text patterns below.
+ */
+const MANUFACTURED_GOOD_TERMS = [
+  "bottle",
+  "bottles",
+  "jar",
+  "jars",
+  "canister",
+  "canisters",
+  "jug",
+  "jugs",
+  "carton",
+  "cartons",
+  "wrapper",
+  "wrappers",
+  "pouch",
+  "pouches",
+  "sachet",
+  "sachets",
+  "packet",
+  "packets",
+  "sprayer",
+  "sprayers",
+  "spray bottle",
+  "spray bottles",
+  "squeeze tube",
+  "squeeze tubes",
+  "tube of",
+  "tubes of",
+  "tin of",
+  "tin can",
+  "tin cans",
+  "vial",
+  "vials",
+  "phial",
+  "phials",
+  "ampoule",
+  "ampoules",
+  "packaged",
+  "packaging",
+] as const;
+const WORD_CHARACTER = /[a-z0-9]/u;
+
 const FORBIDDEN_MENTIONS: readonly {
   readonly kind: ForbiddenMentionKind;
   readonly pattern: RegExp;
@@ -88,7 +135,7 @@ const NEGATED_MODIFIER_OR_VERB =
 const NEGATION_REVERSAL =
   /\b(?:avoid(?:ing)?|exclude(?:d|s|ing)?|omit(?:ted|s|ting)?|remove(?:d|s|ing)?)\b/iu;
 const NEGATIVE_LIST_TERM =
-  "(?:caption(?:s)?|subtitle(?:s)?|title(?:s)?|text|price[- ]tags?|receipts?|logo(?:s)?|watermark(?:s)?|border(?:s)?|lower[- ]third(?:s)?|infographic(?:s)?|ui|web ?page|arrow(?:s)?|hand[- ]?written|writing|written|labels?|signage|markings?|branding|screens?|charts?|graphs?|diagrams?|schematics?|blueprints?)";
+  "(?:caption(?:s)?|subtitle(?:s)?|title(?:s)?|text|price[- ]tags?|receipts?|logo(?:s)?|watermark(?:s)?|border(?:s)?|lower[- ]third(?:s)?|infographic(?:s)?|ui|web ?page|arrow(?:s)?|hand[- ]?written|writing|written|labels?|signage|markings?|branding|screens?|charts?|graphs?|diagrams?|schematics?|blueprints?|bottles?|jars?|canisters?|jugs?|cartons?|wrappers?|pouches?|sachets?|packets?|sprayers?|spray bottles?|squeeze tubes?|vials?|phials?|ampoules?|packaged|packaging|tins? of|tin cans?|containers?)";
 const NEGATIVE_LIST_BRIDGE = new RegExp(
   `^(?:[\\s-]+(?:visible|readable|legible|any|the|a|an|all|added|extra|present|detectable|unwanted|decorative|printed))*[\\s-]*${NEGATIVE_LIST_TERM}[\\s]*(?:(?:,|and|or)[\\s]*${NEGATIVE_LIST_TERM}[\\s]*)*(?:,|and|or)?[\\s]*$`,
   "iu",
@@ -219,6 +266,16 @@ export function assertNoHardPromptConflict(value: string, path: readonly string[
         const end = start + term.length;
         if (isNonTextMention(kind, clause, start, end) || isNegatedMention(clause, start, end))
           continue;
+        fail("PROMPT_CONFLICT", "Prompt clause requests a forbidden output or layout.", path);
+      }
+    }
+    const lowered = clause.toLowerCase();
+    for (const term of MANUFACTURED_GOOD_TERMS) {
+      for (let index = lowered.indexOf(term); index >= 0; index = lowered.indexOf(term, index + 1)) {
+        const end = index + term.length;
+        if (WORD_CHARACTER.test(lowered[index - 1] ?? " ")) continue;
+        if (WORD_CHARACTER.test(lowered[end] ?? " ")) continue;
+        if (isNegatedMention(clause, index, end)) continue;
         fail("PROMPT_CONFLICT", "Prompt clause requests a forbidden output or layout.", path);
       }
     }

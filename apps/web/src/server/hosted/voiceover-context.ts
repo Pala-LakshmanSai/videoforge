@@ -54,12 +54,12 @@ const SYSTEM_PROMPT = [
   "The downstream writer already receives the exact phrase, containing sentence, previous sentence, next sentence, and transcript order for every scene.",
   "Do not repeat chronology, scene order, local actions, examples, processes, or facts recoverable from those scene inputs.",
   `subject: one precise noun phrase naming the central real-world subject, at most ${MAX_SUBJECT_CHARS} characters.`,
-  `visual_facts: zero to ${MAX_VISUAL_FACTS} short recurring people, settings, eras, objects, or physical relationships that materially improve footage choice across separated scenes; at most ${MAX_VISUAL_FACT_CHARS} characters each.`,
+  `visual_facts: zero to ${MAX_VISUAL_FACTS} short recurring people, settings, eras, unmade physical objects, natural materials, or physical relationships that materially improve footage choice across separated scenes; at most ${MAX_VISUAL_FACT_CHARS} characters each. Never make a manufactured product, package, container or branded good a visual fact: express a product, preparation or mixture through the physical action, the material or the affected surface (the sprayed leaves, the treated soil, the wilted weeds), never the bottle, jar, can, tube or package.`,
   `continuity: zero to ${MAX_CONTINUITY_FACTS} stable identity, appearance, or physical-state facts that must remain consistent across separated scenes; at most ${MAX_CONTINUITY_FACT_CHARS} characters each.`,
   `resolved_references: zero to ${MAX_RESOLVED_REFERENCES} remote alias, pronoun, or callback mappings that cannot be resolved from the local sentence window; at most ${MAX_RESOLVED_REFERENCE_CHARS} characters each.`,
   "Use empty arrays when a category adds no value. Never add filler, a thesis summary, generic advice, visual style, or a fact that would not change footage choice, image relevance, reference resolution, or visual consistency.",
   `Keep the final flattened context at or below ${MAX_HOSTED_CONTEXT_CHARS} characters.`,
-  "Do not invent facts, visual style, camera directions, captions, logos, graphics, or branded products.",
+  "Do not invent facts, visual style, camera directions, captions, logos, graphics, branded products, product packaging, or containers of any kind (bottles, jars, cans, tins, tubes, canisters, cartons, pouches, packets, sachets); describe the physical action, material, or affected surface instead.",
 ].join(" ");
 
 const schema = Object.freeze({
