@@ -1009,9 +1009,11 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
     launch(parseArgs(process.argv.slice(2)));
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
+    // Report the cause, exactly as the other activation tools now do: collapsing it to a bare code
+    // made five consecutive launch attempts undiagnosable.
     const code = /^V2_13_FULL_LIVE_LAUNCH_[A-Z0-9_]+$/u.test(message)
       ? message
-      : "V2_13_FULL_LIVE_LAUNCH_FAILED";
+      : `V2_13_FULL_LIVE_LAUNCH_FAILED: ${message.slice(0, 900)} :: STDERR ${String(error && error.stderr ? error.stderr : "").slice(0, 900)}`;
     process.stderr.write(`${code}\n`);
     process.exitCode = 1;
   }
