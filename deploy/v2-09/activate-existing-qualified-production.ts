@@ -112,7 +112,9 @@ function readQualifiedPublicOrigin(path: string, expectedConfigHash: unknown): s
 }
 
 function writePrivateFile(path: string, value: string): void {
-  if (existsSync(path)) fail("PRIVATE_OUTPUT_ALREADY_EXISTS");
+  // Name the conflicting path: without it the guard reports only that some private output exists,
+  // which is undiagnosable when the output is outside the root the caller passed in.
+  if (existsSync(path)) fail(`PRIVATE_OUTPUT_ALREADY_EXISTS: ${path}`);
   writeFileSync(path, value, { flag: "wx", mode: PRIVATE_MODE });
   chmodSync(path, PRIVATE_MODE);
   privateFile(path);
