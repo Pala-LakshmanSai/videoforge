@@ -198,13 +198,19 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     !exactKeys(config.r2_buckets[0], ["binding", "bucket_name"]) ||
     config.r2_buckets[0].binding !== "PRIVATE_ARTIFACTS" ||
     !Array.isArray(config.workflows) ||
-    config.workflows.length !== 2 ||
+    // Three workflows, in this exact order: the per-video workflow, the GPU pair observer, and the
+    // durable stage-continuation driver (the per-minute cron handler is never delivered in this
+    // deployment, so stages 3-8 advance only while that driver instance is alive).
+    config.workflows.length !== 3 ||
     !exactKeys(config.workflows[0], ["binding", "class_name", "name"]) ||
     config.workflows[0].binding !== "VIDEO_WORKFLOW" ||
     config.workflows[0].class_name !== "HostedVideoWorkflow" ||
     !exactKeys(config.workflows[1], ["binding", "class_name", "name"]) ||
     config.workflows[1].binding !== "HOSTED_PAIR_WORKFLOW" ||
-    config.workflows[1].class_name !== "HostedPairWorkflow"
+    config.workflows[1].class_name !== "HostedPairWorkflow" ||
+    !exactKeys(config.workflows[2], ["binding", "class_name", "name"]) ||
+    config.workflows[2].binding !== "HOSTED_CONTINUATION_WORKFLOW" ||
+    config.workflows[2].class_name !== "HostedContinuationWorkflow"
   )
     fail("R2 or Workflow binding drifted");
   const expectedVars = [
