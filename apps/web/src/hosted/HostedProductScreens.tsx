@@ -2186,18 +2186,29 @@ function hostedStageStatus(status: string): ProjectStage["status"] {
   if (["FAILED", "PERMANENT_FAILED", "RETRYABLE_FAILED"].includes(normalized)) return "FAILED";
   if (["CANCEL_REQUESTED"].includes(normalized)) return "CANCEL_REQUESTED";
   if (["CANCELLED"].includes(normalized)) return "CANCELLED";
+  // A GPU lane reads exactly like every other stage: PENDING until it is dispatched, RUNNING from the
+  // moment the pair is assigned. Waiting on GPU qualification is a pre-dispatch state, not a blockage,
+  // so it must not borrow the blocked badge -- the terminal banner still reports genuine
+  // UNQUALIFIED/UNAVAILABLE/BLOCKED conditions.
+  if (["ASSIGNED", "SUBMITTED", "DISPATCHED", "OUTBOXED", "GENERATING"].includes(normalized))
+    return "RUNNING";
   if (
-    normalized.includes("QUALIFICATION") ||
-    normalized.includes("BLOCKED") ||
-    normalized.includes("UNAVAILABLE")
-  )
-    return "BLOCKED";
-  if (
-    ["QUEUED", "IN_QUEUE", "WAITING_FOR_GPUS", "WAITING", "NOT_STARTED", "NOT_REPORTED"].includes(
-      normalized,
-    )
+    [
+      "QUEUED",
+      "IN_QUEUE",
+      "WAITING_FOR_GPU",
+      "WAITING_FOR_GPUS",
+      "WAITING_FOR_GPU_QUALIFICATION",
+      "WAITING_FOR_WORKER",
+      "READY_FOR_GPU_DISPATCH",
+      "MANIFEST_DURABLE",
+      "WAITING",
+      "NOT_STARTED",
+      "NOT_REPORTED",
+    ].includes(normalized)
   )
     return "PENDING";
+  if (normalized.includes("BLOCKED") || normalized.includes("UNAVAILABLE")) return "BLOCKED";
   return "PENDING";
 }
 
