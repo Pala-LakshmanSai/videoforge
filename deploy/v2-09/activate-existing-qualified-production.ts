@@ -389,8 +389,12 @@ async function main(): Promise<void> {
     process.stdout.write(`${JSON.stringify(await execute(parseArgs(process.argv.slice(2))))}\n`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN";
+    // Print the code when the message is a bare vocabulary token, and otherwise print the message
+    // itself: collapsing every other failure into V2_09_EXISTING_ACTIVATION_FAILED hid the cause of
+    // three consecutive activation failures (the GPU transport stays unqualified until this step
+    // succeeds, so a swallowed reason means the whole pair path is undiagnosable).
     process.stderr.write(
-      `${/^[A-Z0-9_.:-]+$/u.test(message) ? message : "V2_09_EXISTING_ACTIVATION_FAILED"}\n`,
+      `${/^[A-Z0-9_.:-]+$/u.test(message) ? message : `V2_09_EXISTING_ACTIVATION_FAILED: ${message.slice(0, 400)}`}\n`,
     );
     process.exitCode = 1;
   }
