@@ -500,16 +500,21 @@ function qualifiedConfiguration(configuration, authority) {
     parsedValue.vars?.VIDEOFORGE_PROVIDER_MODE !== "production" ||
     parsedValue.vars?.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT" ||
     !exactOrigin(parsedValue.vars?.VIDEOFORGE_PUBLIC_ORIGIN) ||
-    new Set(workflowNames).size !== 2
+    new Set(workflowNames).size !== 3
   )
     fail("QUALIFIED_CONFIG_DRIFT");
   const video = parsedValue.workflows.filter(({ binding }) => binding === "VIDEO_WORKFLOW");
   const pair = parsedValue.workflows.filter(({ binding }) => binding === "HOSTED_PAIR_WORKFLOW");
+  const continuation = parsedValue.workflows.filter(
+    ({ binding }) => binding === "HOSTED_CONTINUATION_WORKFLOW",
+  );
   if (
     video.length !== 1 ||
     pair.length !== 1 ||
+    continuation.length !== 1 ||
     video[0].class_name !== "HostedVideoWorkflow" ||
-    pair[0].class_name !== "HostedPairWorkflow"
+    pair[0].class_name !== "HostedPairWorkflow" ||
+    continuation[0].class_name !== "HostedContinuationWorkflow"
   )
     fail("QUALIFIED_WORKFLOW_DRIFT");
   return Object.freeze({ bytes, value: parsedValue });
@@ -1138,6 +1143,7 @@ function normalizedVersionProjection(
   const expectedBindingTypes = Object.freeze({
     ASSETS: "assets",
     CF_VERSION_METADATA: "version_metadata",
+    HOSTED_CONTINUATION_WORKFLOW: "workflow",
     HOSTED_PAIR_WORKFLOW: "workflow",
     PRIVATE_ARTIFACTS: "r2_bucket",
     VIDEO_WORKFLOW: "workflow",
@@ -1206,11 +1212,12 @@ function normalizedVersionProjection(
     variables.size !== Object.keys(expectedVars).length ||
     !exactOne(bindings, "VIDEO_WORKFLOW", qualified.workflows[0].name) ||
     !exactOne(bindings, "HOSTED_PAIR_WORKFLOW", qualified.workflows[1].name) ||
+    !exactOne(bindings, "HOSTED_CONTINUATION_WORKFLOW", qualified.workflows[2].name) ||
     !exactOne(bindings, "ASSETS", "ASSETS") ||
     !exactOne(bindings, "CF_VERSION_METADATA", "CF_VERSION_METADATA") ||
     (requireR2 && !exactOne(bindings, "PRIVATE_ARTIFACTS", qualified.r2_buckets[0].bucket_name)) ||
     (!requireR2 && bindings.has("PRIVATE_ARTIFACTS")) ||
-    bindings.size !== (requireR2 ? 5 : 4) ||
+    bindings.size !== (requireR2 ? 6 : 5) ||
     extras.length !== 0 ||
     new Set(observedSecrets).size !== observedSecrets.length ||
     JSON.stringify(observedSecrets) !== JSON.stringify([...expectedSecretNames].sort())
