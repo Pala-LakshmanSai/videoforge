@@ -696,6 +696,11 @@ function hostedTerminalStageStatus(
     const status = stage.status.toUpperCase();
     if (HOSTED_TERMINAL_STAGE_STATUSES.has(status))
       return status as Exclude<HostedTerminalStageStatus, null>;
+    // `WAITING_FOR_GPU_QUALIFICATION` is an ordinary pre-dispatch state: the pair simply has not been
+    // dispatched yet. Treating any status that merely mentions qualification as a blocked run painted
+    // stages 7/8 BLOCKED while nothing was wrong, so a WAITING_* stage is skipped here and the stages
+    // read like every other not-yet-reached stage.
+    if (status.startsWith("WAITING_")) continue;
     if (
       status.includes("QUALIFICATION") ||
       status.includes("BLOCKED") ||
@@ -1092,6 +1097,31 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
       active: true,
     };
   return { label: "Waiting", detail: "This lane has not been dispatched yet.", active: false };
+}
+
+/**
+ * Remembers when this browser first saw a stage running.
+ *
+ * The server only sends `started_at` once a stage owns a timed attempt row, so a stage running on
+ * derived state -- prompt writing before its run row exists, a dispatched but unassigned GPU lane --
+ * rendered a dash instead of a clock. Counting from the first observation makes the timer start the
+ * moment the previous stage completes and the next one begins, which is what the stage list promises.
+ */
+const observedStageStarts = new Map<string, number>();
+
+function hostedStageStart(
+  since: string | null | undefined,
+  running: boolean,
+  key: string,
+): string | null {
+  if (since) return since;
+  if (!running) {
+    observedStageStarts.delete(key);
+    return null;
+  }
+  const observed = observedStageStarts.get(key) ?? Date.now();
+  observedStageStarts.set(key, observed);
+  return new Date(observed).toISOString();
 }
 
 function hostedGpuLaneAcceptedCount(lane: HostedGpuLaneActivity): number {
@@ -4886,13 +4916,20 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   until={null}
                   intervals={stages
                     .filter((stage) => stage.id !== "technical-check")
-                    .map((stage) => ({
-                      since: stage.started_at ?? null,
-                      until: stage.completed_at ?? null,
-                      running: !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
-                        uiStages[stages.indexOf(stage)]?.status ?? "PENDING",
-                      ),
-                    }))}
+                    .map((stage) => {
+                      const running = !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
+                        displayedStages[stages.indexOf(stage)]?.status ?? "PENDING",
+                      );
+                      return {
+                        since: hostedStageStart(
+                          stage.started_at ?? null,
+                          running,
+                          stage.id ?? `stage-${stages.indexOf(stage) + 1}`,
+                        ),
+                        until: stage.completed_at ?? null,
+                        running,
+                      };
+                    })}
                   label="Total elapsed time"
                 />
               }
@@ -4962,7 +4999,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 ) : (
                   <HostedElapsed
                     key={stage.id ?? index}
-                    since={stage.started_at ?? null}
+                    since={hostedStageStart(
+                      stage.started_at ?? null,
+                      !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
+                        displayedStages[index]?.status ?? "PENDING",
+                      ),
+                      stage.id ?? `stage-${index + 1}`,
+                    )}
                     until={stage.completed_at ?? null}
                     running={
                       !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
