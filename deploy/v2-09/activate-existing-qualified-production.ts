@@ -401,5 +401,15 @@ async function main(): Promise<void> {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  void main();
+  // `void main()` swallowed non-Error rejections: the script exited with a bare `undefined` and no
+  // message, which is what left the last four activation failures undiagnosable. Report whatever was
+  // thrown, including the stack, so the guard that refused the activation is always named.
+  main().catch((error: unknown) => {
+    const detail =
+      error instanceof Error
+        ? `${error.message}\n${error.stack ?? ""}`
+        : `non-error rejection: ${JSON.stringify(error)}`;
+    process.stderr.write(`V2_09_EXISTING_ACTIVATION_THROWN: ${detail.slice(0, 800)}\n`);
+    process.exitCode = 1;
+  });
 }
