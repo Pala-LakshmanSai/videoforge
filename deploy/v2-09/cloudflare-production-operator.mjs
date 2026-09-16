@@ -1186,7 +1186,11 @@ function normalizedVersionProjection(
           (descriptorType !== null && descriptorType !== expectedBindingTypes[bindingName])
         ) {
           extras.push(`binding:${bindingName}`);
-        } else if (bindingName === "VIDEO_WORKFLOW" || bindingName === "HOSTED_PAIR_WORKFLOW") {
+        } else if (
+          bindingName === "VIDEO_WORKFLOW" ||
+          bindingName === "HOSTED_PAIR_WORKFLOW" ||
+          bindingName === "HOSTED_CONTINUATION_WORKFLOW"
+        ) {
           add(bindings, bindingName, item.namespace ?? item.workflow_name ?? item.name);
         } else if (bindingName === "PRIVATE_ARTIFACTS") {
           add(bindings, bindingName, item.bucket_name ?? item.bucketName);
