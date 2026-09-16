@@ -13,12 +13,13 @@ const productionConfigPath = path.join(repositoryRoot, "apps/web", wranglerConfi
 const productionEntryPath = path.join(repositoryRoot, "apps/web/worker/production-index.ts");
 const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.ts");
 // Accepted provider-free route-split builds after the exact attempt-bound cancellation contract.
-// Production is a 233-byte virtual entry plus its 2,729,666-byte shared chunk after the durable
-// continuation driver added its workflow class and sweep to the static graph; staging is the same
-// entry plus its 2,747,272-byte shared chunk.
+// Production is a 233-byte virtual entry plus its 2,731,063-byte shared chunk after the tenant-scoped
+// sweeps (the stage-continuation sweep and the pair-observer guard now open one tenant transaction
+// per admitted account instead of a single cross-tenant read that RLS reduced to zero rows); staging
+// is the same entry plus its 2,747,459-byte shared chunk.
 // These are deliberately exact per-target no-growth ceilings, not platform limits.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_729_899,
+  "wrangler.production.jsonc": 2_731_296,
   "wrangler.staging.jsonc": 2_747_459,
 })[wranglerConfig];
 const workerForbidden = [
