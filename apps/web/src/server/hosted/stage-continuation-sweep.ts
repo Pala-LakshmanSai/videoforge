@@ -16,8 +16,10 @@ import { continuationRequest } from "./stage-continuation";
  * workload finishes, which left a prompt run claimed as DISPATCHING with zero batches recorded and no
  * path back. Long stages therefore run as their own invocation, started here by a per-minute cron.
  *
- * The sweep only STARTS a stage that has no durable row yet. It never retries a failed one, so the
- * bounded redispatch gates stay the only retry path and the sweep cannot loop on a provider outage.
+ * The sweep only STARTS a stage that has no durable row yet, and re-runs the voiceover-context step
+ * when its attempt failed before any result was accepted for a provider/transport class. The bounded
+ * redispatch gates in POST /context remain the only retry path, so the budget bound is what keeps
+ * the sweep from looping on a provider outage.
  *
  * Every stage handler is imported dynamically at its call site. This module is statically reachable
  * from the Worker entry (the durable `HostedContinuationWorkflow` re-exports the sweep), and the
@@ -26,7 +28,30 @@ import { continuationRequest } from "./stage-continuation";
  * and dropped both dedicated chunks.
  */
 
-const DUE_QUERY = `
+/**
+ * The provider/transport classes whose voiceover-context attempt failed before any result was
+ * accepted, and which may therefore be redispatched. This mirrors
+ * HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES in voiceover-context.ts; it is inlined rather than imported
+ * because this module is statically reachable from the Worker entry and importing the provider module
+ * here grows the shared chunk. `stage-continuation-sweep.test.ts` asserts the two lists stay equal.
+ */
+export const CONTEXT_REDISPATCHABLE_PROBLEM_CODES = Object.freeze([
+  "VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE",
+  "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN",
+  "VOICEOVER_CONTEXT_RESPONSE_UNCERTAIN",
+  "VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN",
+  "HOSTED_CONTEXT_EXECUTION_UNKNOWN",
+  "HOSTED_CONTEXT_PROVIDER_FAILURE",
+] as const);
+
+/** Mirrors HOSTED_CONTEXT_REDISPATCH_BUDGET in voiceover-context.ts. */
+export const CONTEXT_REDISPATCH_BUDGET = 6 as const;
+
+const CONTEXT_REDISPATCHABLE_PROBLEM_CODES_SQL = `ARRAY[${CONTEXT_REDISPATCHABLE_PROBLEM_CODES.map(
+  (code) => `'${code.replaceAll("'", "''")}'`,
+).join(", ")}]::text[]`;
+
+export const DUE_QUERY = `
 WITH revision AS (
   SELECT project.id AS project_id, project.account_id, project.workspace_id, locked.id AS revision_id,
          project.created_at AS project_created_at,
@@ -52,6 +77,15 @@ WITH revision AS (
     (SELECT context.state FROM public.hosted_voiceover_contexts context
       WHERE context.project_revision_id = revision.revision_id
       ORDER BY context.created_at DESC LIMIT 1) AS context_state,
+    (SELECT context.context_hash FROM public.hosted_voiceover_contexts context
+      WHERE context.project_revision_id = revision.revision_id
+      ORDER BY context.created_at DESC LIMIT 1) AS context_hash,
+    (SELECT context.problem_code FROM public.hosted_voiceover_contexts context
+      WHERE context.project_revision_id = revision.revision_id
+      ORDER BY context.created_at DESC LIMIT 1) AS context_problem_code,
+    (SELECT context.redispatch_count FROM public.hosted_voiceover_contexts context
+      WHERE context.project_revision_id = revision.revision_id
+      ORDER BY context.created_at DESC LIMIT 1) AS context_redispatch_count,
     (SELECT count(*) FROM public.timeline_plans plan
       WHERE plan.project_revision_id = revision.revision_id) AS plan_count,
     (SELECT run.state FROM public.hosted_prompt_runs run
@@ -71,6 +105,17 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
     SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_id, project_created_at,
            CASE
              WHEN asr_state = 'SUCCEEDED' AND context_state IS NULL THEN 'context'
+             -- A context attempt whose provider/transport failed before any result was accepted left
+             -- the revision stuck at stage 3: POST /context implements a bounded redispatch for
+             -- exactly these classes, but only a manual press ever reached it, because this sweep
+             -- treated any context row as finished work. Re-running the step here calls that same
+             -- redispatch, so the run heals without a browser, and the budget bound plus the
+             -- no-accepted-result condition stop it from looping on a provider outage.
+             WHEN asr_state = 'SUCCEEDED' AND context_state IN ('FAILED', 'UNKNOWN')
+               AND context_hash IS NULL
+               AND context_problem_code = ANY(${CONTEXT_REDISPATCHABLE_PROBLEM_CODES_SQL})
+               AND COALESCE(context_redispatch_count, 0) < ${CONTEXT_REDISPATCH_BUDGET}
+               THEN 'context'
              WHEN asr_state = 'SUCCEEDED' AND context_state = 'SUCCEEDED' AND plan_count = 0 THEN 'plan'
              WHEN plan_count > 0 AND prompt_state IS NULL THEN 'prompts'
              WHEN prompt_accepted_set IS NOT NULL AND generation_requests = 0 AND span_jobs = 0
