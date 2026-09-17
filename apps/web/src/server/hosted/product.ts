@@ -4106,18 +4106,38 @@ async function archiveHostedProject(
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
-    const archived = await createNeonExecutor(pool).transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1, $2, true)", [
-        "videoforge.account_id",
-        scope.account_id,
-      ]);
-      const result = await transaction.query<HostedPresetRow>(
-        `SELECT project_id, state, retained_attempt_count
-           FROM public.videoforge_archive_hosted_project($1, $2, $3)`,
-        [scope.account_id, scope.workspace_id, projectId],
+    // The archive RPC refuses with a specific reason -- 55000 "hosted project has active work",
+    // 42501 tenant/workspace mismatch -- and letting that escape produced the page's generic
+    // "VideoForge hosted request failed." banner, which told the operator nothing about a delete
+    // they had just attempted. Surface the database's own code and message instead.
+    let archived: HostedPresetRow | null;
+    try {
+      archived = await createNeonExecutor(pool).transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1, $2, true)", [
+          "videoforge.account_id",
+          scope.account_id,
+        ]);
+        const result = await transaction.query<HostedPresetRow>(
+          `SELECT project_id, state, retained_attempt_count
+             FROM public.videoforge_archive_hosted_project($1, $2, $3)`,
+          [scope.account_id, scope.workspace_id, projectId],
+        );
+        return result.rows[0] ?? null;
+      });
+    } catch (error) {
+      const sqlstate =
+        typeof (error as { code?: unknown })?.code === "string"
+          ? String((error as { code?: unknown }).code)
+          : "UNKNOWN";
+      const detail = String((error as { message?: unknown })?.message ?? error).slice(0, 200);
+      console.warn(
+        `hosted_project_archive_failed project=${projectId} sqlstate=${sqlstate} message=${detail}`,
       );
-      return result.rows[0] ?? null;
-    });
+      return response(
+        { error: { code: "HOSTED_PROJECT_ARCHIVE_REJECTED", sqlstate, detail } },
+        409,
+      );
+    }
 
     if (!archived) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
     const retainedAttempts = Number(archived.retained_attempt_count ?? 0);
