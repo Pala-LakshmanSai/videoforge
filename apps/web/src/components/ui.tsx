@@ -438,10 +438,12 @@ function activeStageIndex(stages: ProjectStage[]): number {
 export function StageTimeline({
   stages,
   actions,
+  retries,
   timings,
 }: {
   stages: ProjectStage[];
   actions?: Readonly<Partial<Record<string, ReactNode>>>;
+  retries?: Readonly<Partial<Record<string, ReactNode>>>;
   timings?: Readonly<Partial<Record<string, ReactNode>>>;
 }) {
   const activeIndex = activeStageIndex(stages);
@@ -466,6 +468,9 @@ export function StageTimeline({
               <div>
                 <strong>{stage.label}</strong>
                 <Badge tone={tone}>{stage.status.replaceAll("_", " ")}</Badge>
+                {retries?.[stage.id] ? (
+                  <span className="stage-retry">{retries[stage.id]}</span>
+                ) : null}
               </div>
               {timings?.[stage.id]}
               {stage.detail && (active || !["COMPLETE", "PENDING"].includes(stage.status)) ? (

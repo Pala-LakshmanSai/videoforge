@@ -239,6 +239,44 @@ function renderHosted(node: ReactNode) {
   return render(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
 }
 
+/**
+ * A failed stage owns its retry control, so these assertions read the button out of the stage row
+ * that stopped rather than from a notice under the pipeline.
+ */
+function stageRow(label: string): HTMLElement {
+  // The progress hero repeats the active stage name in an h2, so read the row out of the stage list.
+  const list = screen.getByRole("list", { name: "Project stages" });
+  const row = within(list).getByText(label).closest("li");
+  if (!row) throw new Error(`stage row not found: ${label}`);
+  return row as HTMLElement;
+}
+
+/** The server's stage projection as the project payload carries it; only the asserted rows matter. */
+function stageList(overrides: Readonly<Record<string, string>> = {}) {
+  const rows: readonly (readonly [string, string])[] = [
+    ["prepare", "Prepare project"],
+    ["transcription", "Transcribe voiceover"],
+    ["voiceover-context", "Understand voiceover context"],
+    ["planning", "Plan scenes"],
+    ["prompt-writing", "Write image prompts"],
+    ["audio-spanning", "Audio spanning"],
+    ["image-generation", "Generate images"],
+    ["avatar-generation", "Generate avatar video"],
+    ["render", "Assemble final video"],
+    ["technical-check", "Technical check"],
+    ["review", "Review and approve"],
+  ];
+  return rows.map(([id, name]) => ({
+    id,
+    name,
+    status: overrides[id] ?? "PENDING",
+    progress_percent: null,
+    started_at: null,
+    completed_at: null,
+    detail: null,
+  }));
+}
+
 it("shows frozen elapsed times in stage rows and the audio spanning panel", async () => {
   vi.stubGlobal(
     "fetch",
@@ -2245,6 +2283,7 @@ describe("hosted product journey", () => {
       ],
       gpu_transport: "DISABLED_UNQUALIFIED" as const,
       gpu_readiness: gpuReadiness,
+      stages: stageList({ prepare: "COMPLETE", transcription: "FAILED" }),
       generation: null,
     };
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -2272,12 +2311,64 @@ describe("hosted product journey", () => {
       screen.getByText(/local transcription process stopped unexpectedly/u),
     ).toBeInTheDocument();
     expect(screen.queryByText(/ASR_OUTPUT_INVALID/u)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Retry transcription" }));
+    const transcription = stageRow("Transcribe voiceover");
+    expect(within(transcription).getByText("FAILED")).toBeInTheDocument();
+    fireEvent.click(within(transcription).getByRole("button", { name: "Retry" }));
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
       ).toBe(true),
     );
+  });
+
+  it("puts the retry inside only the failed stage, directly after its FAILED badge", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: projectId,
+            title: "Private project",
+            created_at: "2026-08-17T10:00:00.000Z",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
+          },
+          attempts: [
+            {
+              id: "33333333-3333-4333-8333-333333333333",
+              kind: "ASR" as const,
+              state: "FAILED",
+              version: 2,
+              created_at: "2026-08-17T10:00:00.000Z",
+              updated_at: "2026-08-17T10:01:00.000Z",
+              terminal_at: "2026-08-17T10:01:00.000Z",
+              output_checksum_sha256: null,
+              approved_at: null,
+              preview_url: null,
+              error_code: "MEDIA_EXECUTION_FAILED",
+            },
+          ],
+          gpu_transport: "DISABLED_UNQUALIFIED" as const,
+          gpu_readiness: gpuReadiness,
+          stages: stageList({ prepare: "COMPLETE", transcription: "FAILED" }),
+        }),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    await screen.findByText("Transcription stopped before the transcript could be saved.");
+    const transcription = stageRow("Transcribe voiceover");
+    const badge = within(transcription).getByText("FAILED");
+    const retry = within(transcription).getByRole("button", { name: "Retry" });
+    // The control sits immediately after the badge, inside the same stage header.
+    expect(badge.parentElement).toBe(retry.parentElement?.parentElement);
+    expect(within(badge.nextElementSibling as HTMLElement).getByRole("button")).toBe(retry);
+
+    // A complete stage and a stage that has not run yet carry no retry control.
+    expect(within(stageRow("Prepare project")).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(stageRow("Understand voiceover context")).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(stageRow("Plan scenes")).queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("continues automatically into bounded context extraction after transcription", async () => {
@@ -2475,6 +2566,7 @@ describe("hosted product journey", () => {
       ],
       gpu_transport: "DISABLED_UNQUALIFIED" as const,
       gpu_readiness: gpuReadiness,
+      stages: stageList({ prepare: "COMPLETE", transcription: "COMPLETE", "voiceover-context": "FAILED" }),
       voiceover_context: {
         id: contextId,
         state: "UNKNOWN" as const,
@@ -2532,13 +2624,15 @@ describe("hosted product journey", () => {
 
     if (providerFailed) {
       expect(
-        screen.queryByRole("button", { name: "Check provider result" }),
+        within(stageRow("Understand voiceover context")).queryByRole("button", { name: "Retry" }),
       ).not.toBeInTheDocument();
       expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/context"))).toBe(
         false,
       );
     } else {
-      fireEvent.click(screen.getByRole("button", { name: "Check provider result" }));
+      fireEvent.click(
+        within(stageRow("Understand voiceover context")).getByRole("button", { name: "Retry" }),
+      );
       await waitFor(() => expect(reconciliationCalls).toBe(2));
     }
   });
@@ -2570,6 +2664,11 @@ describe("hosted product journey", () => {
       ],
       gpu_transport: "DISABLED_UNQUALIFIED" as const,
       gpu_readiness: gpuReadiness,
+      stages: stageList({
+        prepare: "COMPLETE",
+        transcription: "COMPLETE",
+        "voiceover-context": reconciled ? "COMPLETE" : "FAILED",
+      }),
       generation: { id: "55555555-5555-4555-8555-555555555555" },
     };
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -2614,7 +2713,9 @@ describe("hosted product journey", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Inspect saved context")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Check provider result" })).not.toBeInTheDocument();
+    expect(
+      within(stageRow("Understand voiceover context")).queryByRole("button", { name: "Retry" }),
+    ).not.toBeInTheDocument();
     expect(
       fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/reconcile-context")),
     ).toHaveLength(1);

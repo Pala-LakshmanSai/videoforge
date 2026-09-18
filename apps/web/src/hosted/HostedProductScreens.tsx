@@ -4837,6 +4837,51 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       ? { ...stage, status: "RUNNING" as const }
       : stage,
   );
+  // A failed stage owns its retry control, rendered right after its FAILED badge, so the recovery for
+  // the stage that stopped is inside that stage instead of in a notice under the pipeline. Only stages
+  // with a real retry path get one: audio spanning and assembly recover on the connected computer (the
+  // media worker replays them), and stages 1, 4, 10 and 11 have nothing to retry.
+  const stageRetryButton = (busy: boolean, run: () => void) => (
+    <Button variant="secondary" className="stage-retry-button" busy={busy} onClick={run}>
+      <RefreshCw size={13} aria-hidden="true" /> Retry
+    </Button>
+  );
+  const failedStageIds = new Set(
+    displayedStages.filter((stage) => stage.status === "FAILED").map((stage) => stage.id),
+  );
+  const stageRetries = {
+    ...(failedStageIds.has("transcription")
+      ? {
+          transcription: stageRetryButton(asrHandoff.isPending, () => asrHandoff.mutate()),
+        }
+      : {}),
+    ...(failedStageIds.has("voiceover-context") && contextUnknown && !contextProviderFailed
+      ? {
+          // An UNKNOWN context is the one stage-3 state a press can still resolve: reconciliation
+          // asks the provider for the original task's outcome. A provider task that definitively
+          // failed, and every class the continuation sweep already redispatches, get no button: the
+          // server would refuse it.
+          "voiceover-context": stageRetryButton(contextReconciliation.isPending, () =>
+            contextReconciliation.mutate(),
+          ),
+        }
+      : {}),
+    ...(failedStageIds.has("prompt-writing")
+      ? {
+          "prompt-writing": stageRetryButton(promptWriting.isPending, () => promptWriting.mutate()),
+        }
+      : {}),
+    ...(failedStageIds.has("image-generation") || failedStageIds.has("avatar-generation")
+      ? {
+          ...(failedStageIds.has("image-generation")
+            ? { "image-generation": stageRetryButton(gpuDispatch.isPending, () => gpuDispatch.mutate()) }
+            : {}),
+          ...(failedStageIds.has("avatar-generation")
+            ? { "avatar-generation": stageRetryButton(gpuDispatch.isPending, () => gpuDispatch.mutate()) }
+            : {}),
+        }
+      : {}),
+  };
   const acceptedPromptCount =
     hostedCount(promptProgress?.accepted_scenes) ?? acceptedPrompts.length;
   const totalPromptCount = hostedCount(promptProgress?.total_scenes);
@@ -5000,6 +5045,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           <StageTimeline
             stages={displayedStages}
             actions={stageMediaActions}
+            retries={stageRetries}
             timings={Object.fromEntries(
               stages.map((stage, index) => [
                 stage.id ?? `stage-${index + 1}`,
@@ -5270,9 +5316,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           <strong>Transcription stopped before the transcript could be saved.</strong>
           <span>{transcriptionFailureMessage(asr.error_code)}</span>
           {asrHandoff.isError ? <span>{asrHandoff.error.message}</span> : null}
-          <Button variant="primary" busy={asrHandoff.isPending} onClick={() => asrHandoff.mutate()}>
-            <RefreshCw size={15} /> Retry transcription
-          </Button>
+          <span>Retry it from stage 02 above.</span>
         </div>
       ) : null}
       {asr?.state === "SUCCEEDED" && !contextComplete ? (
@@ -5306,16 +5350,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             <span>{contextReconciliation.error.message}</span>
           ) : null}
           {contextReconciliationCouldNotFinish ? (
-            <Button
-              variant="primary"
-              busy={contextReconciliation.isPending}
-              onClick={() => contextReconciliation.mutate()}
-            >
-              <RefreshCw size={15} /> Check provider result
-            </Button>
+            <span>Retry it from stage 03 above.</span>
           ) : contextNeedsReview && !contextUnknown ? (
             <span>The provider returned a definite failure. No context result was accepted.</span>
           ) : contextAutoStartError ? (
+            // Nothing started, so no stage owns this recovery yet: the automatic extraction never
+            // reached the provider and the stage is still RUNNING rather than FAILED.
             <Button
               variant="primary"
               busy={contextExtraction.isPending}
