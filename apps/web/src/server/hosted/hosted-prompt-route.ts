@@ -70,6 +70,10 @@ export const HOSTED_PROMPT_STALE_RUN_MS = 5 * 60 * 1000;
 const HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES = new Set([
   "HOSTED_PROMPT_EXECUTION_UNKNOWN",
   "HOSTED_PROMPT_PROVIDER_UNAVAILABLE",
+  // Set by the stale-dispatch reconciliation when a run's dispatch died in flight and was settled as
+  // UNKNOWN. Nothing was accepted, so it is the same provider/transport class as the codes above, and
+  // without it in this set the reconciliation's own verdict could never be redispatched.
+  "HOSTED_PROMPT_DISPATCH_TIMEOUT",
 ]);
 
 /**
