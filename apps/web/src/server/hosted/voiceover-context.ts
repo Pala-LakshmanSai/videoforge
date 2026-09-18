@@ -24,6 +24,11 @@ export const HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES: ReadonlySet<string> = new S
   "VOICEOVER_CONTEXT_PROVIDER_UNCERTAIN",
   "HOSTED_CONTEXT_EXECUTION_UNKNOWN",
   "HOSTED_CONTEXT_PROVIDER_FAILURE",
+  // A rejection is retryable under the same bound: today's rejection was the product's own request
+  // shape (a token ceiling too small for the pinned model's reasoning, so the answer was truncated
+  // and refused), which no amount of waiting would have fixed and which the retry now does. The
+  // budget, not the code list, is what keeps a genuinely unpalatable request from looping.
+  "VOICEOVER_CONTEXT_PROVIDER_REJECTED",
 ]);
 /**
  * How many redispatches a revision may spend when its voiceover-context attempt produced no

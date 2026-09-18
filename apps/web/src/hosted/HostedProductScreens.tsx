@@ -4582,6 +4582,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const contextProviderFailed =
     (contextReconciliation.error as (Error & { readonly code?: string }) | null)?.code ===
     "HOSTED_CONTEXT_RECONCILIATION_RUNWARE_TASK_PROVIDER_FAILED";
+  // A rejected attempt is retryable under the server's bound now that the rejection was traced to the
+  // product's own request shape: the row offers the same fresh-request Retry as a confirmed failure.
+  const contextRejected =
+    query.data.voiceover_context?.problem_code === "VOICEOVER_CONTEXT_PROVIDER_REJECTED";
   const contextValidationFailed = [
     "VOICEOVER_CONTEXT_INVALID",
     "VOICEOVER_CONTEXT_JSON_INVALID",
@@ -4856,7 +4860,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }
       : {}),
     ...(failedStageIds.has("voiceover-context") && asr
-      ? contextProviderFailed
+      ? contextProviderFailed || contextRejected
         ? {
             // The provider confirmed the original task produced nothing usable, so checking it again
             // can never resume it; the only recovery is a new request, and the server's bounded

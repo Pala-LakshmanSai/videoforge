@@ -164,14 +164,34 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     await expect(nextSteps(database)).resolves.toEqual([]);
   });
 
-  it("never redispatches a definite rejection or a validation failure", async () => {
-    const database = await seededDatabase({
+  it("retries a provider rejection inside the budget but still stops on a validation failure", async () => {
+    // A rejection is retryable now that the one that stranded a revision was traced to the product's
+    // own request shape (a token ceiling too small for the pinned model's reasoning truncated the
+    // answer); the budget is what bounds it. A result the product itself refused to accept is not a
+    // provider problem and must stay stopped.
+    const rejected = await seededDatabase({
       state: "FAILED",
       hash: null,
       problemCode: "VOICEOVER_CONTEXT_PROVIDER_REJECTED",
       redispatchCount: 0,
     });
-    await expect(nextSteps(database)).resolves.toEqual([]);
+    await expect(nextSteps(rejected)).resolves.toEqual(["context"]);
+
+    const outOfBudget = await seededDatabase({
+      state: "FAILED",
+      hash: null,
+      problemCode: "VOICEOVER_CONTEXT_PROVIDER_REJECTED",
+      redispatchCount: CONTEXT_REDISPATCH_BUDGET,
+    });
+    await expect(nextSteps(outOfBudget)).resolves.toEqual([]);
+
+    const validationFailure = await seededDatabase({
+      state: "FAILED",
+      hash: null,
+      problemCode: "VOICEOVER_CONTEXT_INVALID",
+      redispatchCount: 0,
+    });
+    await expect(nextSteps(validationFailure)).resolves.toEqual([]);
   });
 
   it("keeps starting stage 3 when no context row exists yet", async () => {

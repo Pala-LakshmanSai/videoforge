@@ -22,10 +22,11 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // staging is the same entry plus its 2,747,459-byte shared chunk.
 // The production ceiling moved by one byte (2,733,372 -> 2,733,373) with the stage-3 retry control
 // for a provider-confirmed failure and the in-row refusal notice: the measured closure is
-// 233-byte entry + 2,733,140-byte shared chunk. Both are deliberately exact per-target no-growth
-// ceilings, not platform limits.
+// 233-byte entry + 2,733,140-byte shared chunk. It moved again to 2,733,414 with the same stage being
+// able to retry a provider rejection inside its budget (233-byte entry + 2,733,181-byte chunk).
+// Both are deliberately exact per-target no-growth ceilings, not platform limits.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_733_373,
+  "wrangler.production.jsonc": 2_733_414,
   "wrangler.staging.jsonc": 2_747_459,
 })[wranglerConfig];
 const workerForbidden = [
