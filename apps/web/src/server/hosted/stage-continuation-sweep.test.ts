@@ -15,6 +15,7 @@ import {
   HOSTED_CONTEXT_REDISPATCH_BUDGET,
   HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES,
 } from "./voiceover-context";
+import { HOSTED_PROMPT_STALE_RUN_MS } from "./hosted-prompt-route";
 
 const accountId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const workspaceId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -202,6 +203,16 @@ describe("hosted continuation sweep stage-3 recovery", () => {
       redispatchCount: 0,
     });
     await expect(nextSteps(database)).resolves.toEqual(["context"]);
+  });
+
+  it("nudges a stale in-flight prompt run and mirrors the route's stale window", () => {
+    // Stage 5's batch request can die with its invocation, leaving the run DISPATCHING forever with
+    // no batch requeued; the sweep must keep offering the step past the stale window so the route's
+    // bounded redispatch can repair it, and the two windows must not drift apart.
+    expect(DUE_QUERY).toContain("prompt_state = 'DISPATCHING'");
+    expect(DUE_QUERY).toContain("prompt_accepted_set IS NULL");
+    expect(DUE_QUERY).toContain("make_interval(secs => 300)");
+    expect(HOSTED_PROMPT_STALE_RUN_MS).toBe(300 * 1000);
   });
 
   it("still advances to planning once a context result was accepted", async () => {

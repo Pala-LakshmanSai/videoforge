@@ -42,6 +42,18 @@ const PROMPTS_PATH = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/prompts$/u;
 const HOSTED_PROMPT_ATTEMPT_BUDGET = 6;
 
 /**
+ * How long a prompt run may read DISPATCHING with no accepted scene before the route treats it as
+ * stranded.
+ *
+ * A batch drives a provider call worth a minute or more from inside one request; if the runner ends
+ * before the provider answers, the batch is never requeued and the run stays in flight forever. Five
+ * minutes is far past a healthy batch - the same request class measures under a minute - so a live
+ * attempt is never replaced, while a stranded one is repaired by the next caller (the continuation
+ * sweep calls this route every tick).
+ */
+export const HOSTED_PROMPT_STALE_RUN_MS = 5 * 60 * 1000;
+
+/**
  * Problem codes that mean the provider never gave a usable prompt set, so the attempt carries no
  * information about the plan or the style and a redispatch is the only path forward.
  *
@@ -61,13 +73,20 @@ const HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES = new Set([
  * accepted prompt set (so no accepted work can be lost or paid for twice), and the revision still
  * has attempts left. An in-flight run, a rejected or invalid result, or a spent budget all refuse.
  */
-export function hostedPromptRedispatchable(planRecord: Record<string, unknown>): boolean {
+export function hostedPromptRedispatchable(
+  planRecord: Record<string, unknown>,
+  staleInFlight = false,
+): boolean {
   const state = planRecord.existing_run_state;
-  if (state !== "FAILED" && state !== "UNKNOWN") return false;
+  const retryable =
+    state === "FAILED" || state === "UNKNOWN" || (staleInFlight && state === "DISPATCHING");
+  if (!retryable) return false;
   if (planRecord.existing_run_has_accepted_set === true) return false;
   const problemCode =
     typeof planRecord.existing_run_problem_code === "string" ? planRecord.existing_run_problem_code : "";
-  if (!HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES.has(problemCode)) return false;
+  // A stale in-flight run records no problem code at all: its batch request died before the provider
+  // answered, which is the same provider-side class the retryable set exists for.
+  if (!staleInFlight && !HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES.has(problemCode)) return false;
   const redispatchesSoFar = Number(planRecord.existing_run_redispatch_count ?? 0);
   return (
     Number.isInteger(redispatchesSoFar) &&
@@ -105,13 +124,20 @@ export async function writeProjectPrompts(
         "videoforge.account_id",
         scope.account_id,
       ]);
-      const loaded = await transaction.query<{ plan: unknown }>(
-        "SELECT public.videoforge_load_hosted_prompt_plan($1,$2,$3,$4) AS plan",
+      const loaded = await transaction.query<{ plan: unknown; run_started_at: string | null }>(
+        `SELECT public.videoforge_load_hosted_prompt_plan($1,$2,$3,$4) AS plan,
+                (SELECT run.created_at::text FROM public.hosted_prompt_runs run
+                   JOIN public.project_revisions revision ON revision.id = run.project_revision_id
+                  WHERE run.account_id = $1 AND run.workspace_id = $2 AND revision.project_id = $4
+                  ORDER BY run.created_at DESC LIMIT 1) AS run_started_at`,
         [scope.account_id, scope.workspace_id, scope.user_id, projectId],
       );
-      return loaded.rows[0]?.plan ?? null;
+      return {
+        plan: loaded.rows[0]?.plan ?? null,
+        runStartedAt: loaded.rows[0]?.run_started_at ?? null,
+      };
     });
-    const planRecord = plainRecord(plan);
+    const planRecord = plainRecord(plan.plan);
     if (!planRecord) return response({ error: { code: "HOSTED_PROMPT_PLAN_NOT_READY" } }, 409);
     const existingState = planRecord.existing_run_state;
     if (existingState === "SUCCEEDED")
@@ -125,7 +151,18 @@ export async function writeProjectPrompts(
     // The gate grants a bounded redispatch for exactly that case and refuses everything else, so the
     // spend guard and the acceptance rules are unchanged. The approval also has to reach the
     // authority, which otherwise refuses any plan that already owns a run.
-    const redispatchApproved = existingState !== null && hostedPromptRedispatchable(planRecord);
+    //
+    // A run can also be stranded while still reading DISPATCHING: its batch request drove a
+    // multi-minute provider call inside one invocation, and when that invocation ended nothing
+    // requeued the batch, so the run sat in flight forever and no caller could advance or replace it.
+    // Past the stale window - with no accepted prompt set to lose - the same bounded redispatch
+    // applies, which is what lets the continuation sweep heal the stage without a browser.
+    const runStartedAtMs =
+      typeof plan.runStartedAt === "string" ? Date.parse(plan.runStartedAt) : Number.NaN;
+    const staleInFlight =
+      Number.isFinite(runStartedAtMs) && Date.now() - runStartedAtMs > HOSTED_PROMPT_STALE_RUN_MS;
+    const redispatchApproved =
+      existingState !== null && hostedPromptRedispatchable(planRecord, staleInFlight);
     if (existingState !== null && !redispatchApproved)
       return response(
         {

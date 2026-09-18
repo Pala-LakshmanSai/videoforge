@@ -29,6 +29,30 @@ describe("hostedPromptRedispatchable", () => {
     ).toBe(true);
   });
 
+  it("grants a redispatch for a stale in-flight run and refuses a live one", () => {
+    // The batch request that drove this run died before the provider answered: nothing requeued it,
+    // so the run would otherwise read DISPATCHING forever with no caller able to advance it.
+    const staleRun = {
+      existing_run_state: "DISPATCHING",
+      existing_run_problem_code: null,
+      existing_run_has_accepted_set: false,
+      existing_run_redispatch_count: 1,
+    } as Record<string, unknown>;
+    expect(hostedPromptRedispatchable(staleRun, true)).toBe(true);
+
+    // Same row while the caller has not established that the run is stale: still refused.
+    expect(hostedPromptRedispatchable(staleRun, false)).toBe(false);
+
+    // A stale run that already accepted a prompt set may never be replaced, and a spent budget still
+    // refuses even when stale.
+    expect(
+      hostedPromptRedispatchable({ ...staleRun, existing_run_has_accepted_set: true }, true),
+    ).toBe(false);
+    expect(hostedPromptRedispatchable({ ...staleRun, existing_run_redispatch_count: 5 }, true)).toBe(
+      false,
+    );
+  });
+
   it("refuses once a durable accepted prompt set exists", () => {
     expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_has_accepted_set: true })).toBe(
       false,
