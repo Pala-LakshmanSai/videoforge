@@ -1,4 +1,21 @@
 schema_version: "2.0"
+stage5_prompt_writing_repaired_2026_09_18:
+  checkpoint: V2-09
+  status: DEPLOYED_VERIFIED_STAGE5_SUCCEEDED
+  outcome_live: >-
+    Stage 5 completed in production at 2026-09-18T15:21Z: 3/3 batches, 30/30 scenes, run state
+    SUCCEEDED, 95 seconds after dispatch. The sweep has since advanced the revision to the GPU
+    dispatch step.
+  root_causes_fixed:
+    - "the request carried outputFormat:'JSON' + a strict jsonSchema, which Google Gemini rejects with providerBadRequest; the shape now lives in the system prompt and the strict parse keeps a code-fence strip"
+    - "the request version feeds the deterministic taskUUID, so it had to move to v20 or every revision replayed the archived failure"
+    - "the run reservation (40000), the per-request cap (0.02 USD), the hosted_prompt_runs CHECK, the batch/scene acceptance bounds and the acceptance capabilities' own cost caps were all sized below the real work (50088-59649 micro-USD per 10-scene batch)"
+    - "packages/pipeline/dist was stale (deepseek model + schema) and is what the app imported; earlier model migrations changed the profile record without changing the wire request"
+    - "the continuation sweep counted any handler response as dispatched, so a 409 was invisible; it now records the status and the route's error code"
+  remaining: >-
+    Stage 6 needs a valid qualified GPU activation bound to the deployed version: the rebind chain
+    refuses (hosted V2-09 renewed activation predecessor invalid), so a fresh root activation is the
+    next operational step. No code blocker remains in stages 5-9.
 hosted_text_model_dead_and_stage3_stranded_2026_09_18:
   checkpoint: V2-09
   status: DEPLOYED_VERIFIED_STAGE3_COMPLETED
