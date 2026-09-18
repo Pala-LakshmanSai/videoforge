@@ -64,6 +64,19 @@ export const PROMPT_REDISPATCHABLE_PROBLEM_CODES = [
   "HOSTED_PROMPT_DISPATCH_TIMEOUT",
 ] as const;
 
+/**
+ * The stored revision-config document the plan stage will accept.
+ *
+ * `renderHandoff` validates the locked revision's stored `revision_config_payload` against the
+ * precompiled hosted v2 `projectRevisionConfig` contract and refuses any other document as
+ * HOSTED_GENERATION_PROJECT_REVISION_SCHEMA_INVALID, which the route answers as 409
+ * HOSTED_PROJECT_PLANNING_FAILED. Offering the step for a revision pinned to another contract - the
+ * V2-06 owned-render acceptance fixtures store `videoforge-hosted-revision-config/v1` - re-ran that
+ * same 409 every tick and kept dead fixtures inside the sweep's five-row limit. Pinned to the
+ * generated schema's own const; a test asserts the two stay equal.
+ */
+export const PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION = "project-revision-config/v2" as const;
+
 const PROMPT_REDISPATCHABLE_PROBLEM_CODES_SQL = `ARRAY[${[...PROMPT_REDISPATCHABLE_PROBLEM_CODES]
   .map((code) => `'${code.replaceAll("'", "''")}'`)
   .join(",")}]::text[]`;
@@ -76,12 +89,14 @@ export const DUE_QUERY = `
 WITH revision AS (
   SELECT project.id AS project_id, project.account_id, project.workspace_id, locked.id AS revision_id,
          project.created_at AS project_created_at,
+         locked.revision_config_payload->>'schema_version' AS revision_config_schema,
          (SELECT member.user_id FROM public.memberships member
            WHERE member.workspace_id = project.workspace_id
            ORDER BY member.created_at LIMIT 1) AS user_id
     FROM public.projects project
     JOIN LATERAL (
-      SELECT candidate.id FROM public.project_revisions candidate
+      SELECT candidate.id, candidate.revision_config_payload
+        FROM public.project_revisions candidate
        WHERE candidate.project_id = project.id AND candidate.status = 'LOCKED'
        ORDER BY candidate.created_at DESC LIMIT 1
     ) locked ON true
@@ -146,7 +161,12 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                AND context_problem_code = ANY(${CONTEXT_REDISPATCHABLE_PROBLEM_CODES_SQL})
                AND COALESCE(context_redispatch_count, 0) < ${CONTEXT_REDISPATCH_BUDGET}
                THEN 'context'
-             WHEN asr_state = 'SUCCEEDED' AND context_state = 'SUCCEEDED' AND plan_count = 0 THEN 'plan'
+             -- Only a revision pinned to the hosted v2 revision-config contract can plan; see
+             -- PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION. A v2 revision that fails validation for any
+             -- other reason is still offered, so nothing is masked.
+             WHEN asr_state = 'SUCCEEDED' AND context_state = 'SUCCEEDED' AND plan_count = 0
+               AND revision_config_schema = '${PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION}'
+               THEN 'plan'
              WHEN plan_count > 0 AND prompt_state IS NULL THEN 'prompts'
              -- A run whose batch request died before the provider answered stays DISPATCHING forever:
              -- the route refuses an in-flight run and nothing requeues the batch, so the stage sat

@@ -10,6 +10,7 @@ import {
   CONTEXT_REDISPATCH_BUDGET,
   CONTEXT_REDISPATCHABLE_PROBLEM_CODES,
   DUE_QUERY,
+  PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION,
   PROMPT_REDISPATCHABLE_PROBLEM_CODES,
 } from "./stage-continuation-sweep";
 import {
@@ -35,6 +36,8 @@ async function seededDatabase(context: {
   readonly hash: string | null;
   readonly problemCode: string | null;
   readonly redispatchCount: number;
+  /** Defaults to the contract the plan stage accepts; an older contract must never be offered. */
+  readonly revisionConfigSchema?: string;
 }): Promise<PGlite> {
   const database = new PGlite();
   await database.exec(`
@@ -44,7 +47,9 @@ async function seededDatabase(context: {
     );
     CREATE TABLE public.project_revisions (
       id uuid PRIMARY KEY, account_id uuid NOT NULL, workspace_id uuid NOT NULL,
-      project_id uuid NOT NULL, status text NOT NULL, created_at timestamptz NOT NULL
+      project_id uuid NOT NULL, status text NOT NULL, created_at timestamptz NOT NULL,
+      -- The plan arm gates on the stored revision-config contract, so the sweep reads this column.
+      revision_config_payload jsonb NOT NULL
     );
     CREATE TABLE public.memberships (
       workspace_id uuid NOT NULL, user_id uuid NOT NULL, created_at timestamptz NOT NULL
@@ -76,7 +81,8 @@ async function seededDatabase(context: {
         '2026-09-16T12:20:00Z');
     INSERT INTO public.project_revisions VALUES
       ('${revisionId}','${accountId}','${workspaceId}',
-        '11111111-1111-4111-8111-111111111111','LOCKED','2026-09-16T12:20:10Z');
+        '11111111-1111-4111-8111-111111111111','LOCKED','2026-09-16T12:20:10Z',
+        ('{"schema_version":"${context.revisionConfigSchema ?? PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION}"}')::jsonb);
     INSERT INTO public.memberships VALUES ('${workspaceId}','${userId}','2026-09-16T12:00:00Z');
     INSERT INTO public.hosted_cpu_job_attempts VALUES
       ('22222222-2222-4222-8222-222222222222','${revisionId}','ASR','SUCCEEDED',
@@ -206,6 +212,32 @@ describe("hosted continuation sweep stage-3 recovery", () => {
       redispatchCount: 0,
     });
     await expect(nextSteps(database)).resolves.toEqual(["context"]);
+  });
+
+  it("never offers the plan step for a revision pinned to an older config contract", async () => {
+    // The three V2-06 owned-render acceptance fixtures store videoforge-hosted-revision-config/v1.
+    // renderHandoff refuses any contract but the hosted v2 one, so offering the step only re-ran the
+    // same 409 every tick - and kept dead fixtures inside the sweep's five-row limit.
+    const database = await seededDatabase({
+      state: "SUCCEEDED",
+      hash: "sha256:" + "a".repeat(64),
+      problemCode: null,
+      redispatchCount: 0,
+      revisionConfigSchema: "videoforge-hosted-revision-config/v1",
+    });
+    await expect(nextSteps(database)).resolves.toEqual([]);
+  });
+
+  it("keeps the plan gate equal to the generated contract's own schema_version", async () => {
+    const { readFileSync } = await import("node:fs");
+    const schema = JSON.parse(
+      readFileSync(
+        new URL("../../../../../packages/contracts/generated/schemas/project_revision_config.schema.json", import.meta.url),
+        "utf8",
+      ),
+    ) as { properties?: { schema_version?: { const?: string } } };
+    expect(schema.properties?.schema_version?.const).toBe(PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION);
+    expect(DUE_QUERY).toContain(`revision_config_schema = '${PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION}'`);
   });
 
   it("nudges a stale in-flight prompt run and mirrors the route's stale window", () => {

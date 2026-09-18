@@ -27,7 +27,7 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // then to 2,734,369 with the stage-5 stale-run recovery (233-byte entry + 2,734,136-byte chunk).
 // Both are deliberately exact per-target no-growth ceilings, not platform limits.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_736_797,
+  "wrangler.production.jsonc": 2_737_379,
   "wrangler.staging.jsonc": 2_747_459,
 })[wranglerConfig];
 const workerForbidden = [

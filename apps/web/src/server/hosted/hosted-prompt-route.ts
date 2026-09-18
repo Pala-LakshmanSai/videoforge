@@ -125,9 +125,14 @@ export async function writeProjectPrompts(
   const promptApiKey = config.styleAnalysis.apiKey;
   const pool = createNeonPool(config.neon.databaseUrl);
   let runId: string | null = null;
+  // The settle below needs the same tenant scope the handler derived. A continuation request (the
+  // sweep) carries no cookie, so re-deriving it there returns a 401 Response, the settle is skipped
+  // and a failed run stays DISPATCHING with nothing recording why. Keep the resolved scope instead.
+  let settleScope: { readonly account_id: string } | null = null;
   try {
     const scope = internalScope ?? (await sessionScope(request, config, pool, executionContext));
     if (scope instanceof Response) return scope;
+    settleScope = scope;
     const body = await parseHostedJson(request, "HOSTED_PROMPT_REQUEST_REJECTED", 4_096);
     if (body instanceof Response) return body;
     if (plainRecord(body)?.maximum_prompt_spend_micro_usd !== HOSTED_PROMPT_RESERVATION_MICRO_USD)
@@ -372,7 +377,7 @@ export async function writeProjectPrompts(
     }
     if (runId) {
       try {
-        const scope = await sessionScope(request, config, pool, executionContext);
+        const scope = settleScope ?? (await sessionScope(request, config, pool, executionContext));
         if (!(scope instanceof Response)) {
           await createNeonExecutor(pool).transaction(async (transaction) => {
             await transaction.query("SELECT set_config($1, $2, true)", [
