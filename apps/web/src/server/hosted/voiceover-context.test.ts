@@ -31,7 +31,7 @@ describe("hosted voiceover context extraction", () => {
     expect(prepared.requestBytes).toContain("Do not repeat chronology");
     expect(prepared.requestBytes).toContain("would not change footage choice");
     expect(request).toMatchObject({
-      model: "google:gemini@3.5-flash",
+      model: "google:gemma@4-31b",
       outputFormat: "JSON",
     });
     expect(request.settings).toMatchObject({

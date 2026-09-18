@@ -40,26 +40,28 @@ export const HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES: ReadonlySet<string> = new S
  * budget strands the revision at stage 3 whenever the provider has a bad window; each redispatch is
  * separately reserved and the spend guard is unchanged, so the bound is about wasted attempts
  * rather than money. The budget was raised from six to ten when the pinned DeepSeek text model was
- * replaced (see MODEL below), and again to fourteen once the replacement's token ceiling was found
- * to truncate its own answers: a revision that spent its whole budget on a provider-side cause the
- * product could not have fixed must still be able to continue once that cause is gone. Every
- * attempt is separately reserved and the spend guard is unchanged.
+ * replaced (see MODEL below), and again as each replacement's own defect surfaced (a token ceiling
+ * too small for its reasoning, then a cost above this stage's reservation): a revision that spent
+ * its whole budget on a provider-side cause the product could not have fixed must still be able to
+ * continue once that cause is gone. Every attempt is separately reserved and the spend guard is
+ * unchanged.
  */
-export const HOSTED_CONTEXT_REDISPATCH_BUDGET = 14 as const;
+export const HOSTED_CONTEXT_REDISPATCH_BUDGET = 18 as const;
 /**
  * The text model this product pins for stage 3.
  *
- * It was `deepseek:v4@flash` until the provider's own backend began failing every dispatch: the
- * account's Runware error ledger recorded two server errors on 2026-09-16 and seven more on
- * 2026-09-18 against that model with zero accepted results since 2026-09-16T12:41Z, an archived task
- * read answered `taskNotFound` for the failed dispatches, and the catalog's successor
- * (`deepseek:v4.1@flash`) is rejected by the text API as an `invalidModel`. The same request shape
- * measured against `google:gemini@3.5-flash` returns schema-valid JSON, so the lower-cost text model
- * is pinned to that instead. The contract version below moves with it: Runware task UUIDs are
- * account-global idempotency keys, so a model change must land under a new contract identity.
+ * It was `deepseek:v4@flash` until the provider's backend stopped serving it (the account's Runware
+ * ledger records server errors on 2026-09-16 and 2026-09-18 with no accepted result since
+ * 2026-09-16T12:41Z, task details answer taskNotFound, and the catalog's successor is rejected as
+ * `invalidModel`). The first replacement, `google:gemini@3.5-flash`, answered correctly but bills its
+ * own reasoning against the request: a realistic 33k-character transcript measured $0.0163, over the
+ * $0.01 this stage reserves, and with the old token ceiling it truncated its answer outright.
+ * `google:gemma@4-31b` measured the same request at $0.00007 in 1.4 s with `finishReason` 'stop' and
+ * the exact document shape, twice in a row, so the cheap reader is pinned for this stage while the
+ * prompt writer keeps the stronger model.
  */
-const MODEL = "google:gemini@3.5-flash" as const;
-const REQUEST_CONTRACT_VERSION = "runware-gemini-3.5-flash-context-request-v10" as const;
+const MODEL = "google:gemma@4-31b" as const;
+const REQUEST_CONTRACT_VERSION = "runware-gemma-4-31b-context-request-v11" as const;
 const MAX_SUBJECT_CHARS = 90 as const;
 const MAX_VISUAL_FACTS = 3 as const;
 const MAX_VISUAL_FACT_CHARS = 70 as const;
