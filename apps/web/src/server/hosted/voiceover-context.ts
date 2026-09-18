@@ -35,10 +35,12 @@ export const HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES: ReadonlySet<string> = new S
  * budget strands the revision at stage 3 whenever the provider has a bad window; each redispatch is
  * separately reserved and the spend guard is unchanged, so the bound is about wasted attempts
  * rather than money. The budget was raised from six to ten when the pinned DeepSeek text model was
- * replaced (see MODEL below): a revision that spent its whole budget on a provider outage the
- * product could not have fixed must still be able to continue once the cause is gone.
+ * replaced (see MODEL below), and again to fourteen once the replacement's token ceiling was found
+ * to truncate its own answers: a revision that spent its whole budget on a provider-side cause the
+ * product could not have fixed must still be able to continue once that cause is gone. Every
+ * attempt is separately reserved and the spend guard is unchanged.
  */
-export const HOSTED_CONTEXT_REDISPATCH_BUDGET = 10 as const;
+export const HOSTED_CONTEXT_REDISPATCH_BUDGET = 14 as const;
 /**
  * The text model this product pins for stage 3.
  *
