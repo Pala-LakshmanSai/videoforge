@@ -643,7 +643,7 @@ describe("hosted voiceover context extraction", () => {
                 {
                   taskType: "textInference",
                   taskUUID: prepared.request.taskUUID,
-                  model: "deepseek:v4@flash",
+                  model: "google:gemini@3.5-flash",
                   text: JSON.stringify(contextDocument()),
                   cost: 0.001,
                   finishReason: "stop",

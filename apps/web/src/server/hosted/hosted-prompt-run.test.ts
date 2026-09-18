@@ -213,7 +213,7 @@ function successfulPromptFetcher() {
           },
           cost: 0.00001,
           finishReason: "stop",
-          model: "deepseek:v4@flash",
+          model: "google:gemini@3.5-flash",
         },
       ],
     });
@@ -528,7 +528,7 @@ describe("hosted prompt authority", () => {
       const dispatchedPlan = JSON.parse(dispatched[0]!.messages[0]!.content) as {
         scenes: Array<{ scene_id: string }>;
       };
-      expect(dispatched[0]?.model).toBe("deepseek:v4@flash");
+      expect(dispatched[0]?.model).toBe("google:gemini@3.5-flash");
       expect(dispatched[0]?.settings.maxTokens).toBeGreaterThanOrEqual(2_048);
       expect(dispatched[0]?.settings.maxTokens).toBeLessThanOrEqual(64_000);
       expect(dispatchedPlan.scenes.length).toBeGreaterThan(0);
@@ -856,7 +856,7 @@ describe("hosted Runware prompt writer", () => {
             },
             cost: 0.00001,
             finishReason: "stop",
-            model: "deepseek:v4@flash",
+            model: "google:gemini@3.5-flash",
           },
         ],
       });
@@ -944,7 +944,7 @@ describe("hosted Runware prompt writer", () => {
             },
             cost: 0.00001,
             finishReason: "stop",
-            model: "deepseek:v4@flash",
+            model: "google:gemini@3.5-flash",
           },
         ],
       });
@@ -1058,7 +1058,7 @@ describe("hosted Runware prompt writer", () => {
             },
             cost: 0.00001,
             finishReason: "stop",
-            model: "deepseek:v4@flash",
+            model: "google:gemini@3.5-flash",
           },
         ],
       });

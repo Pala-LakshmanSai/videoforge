@@ -15,7 +15,8 @@ import {
 } from "./runware-http-transport";
 
 export const RUNWARE_RUNTIME_CAP_USD = 0.2 as const;
-export const RUNWARE_PROMPT_REQUEST_CAP_USD = 0.02 as const;
+// A 10-scene batch measured USD 0.12 at the pinned model; 0.02 refused every real batch.
+export const RUNWARE_PROMPT_REQUEST_CAP_USD = 0.25 as const;
 export const RUNWARE_STYLE_REQUEST_CAP_USD = 0.08 as const;
 
 export interface RunwareRuntimeEnvironment {

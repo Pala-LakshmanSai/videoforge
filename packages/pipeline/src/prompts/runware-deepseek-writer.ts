@@ -29,8 +29,12 @@ import type {
  * reason, and this writer follows it so both text stages run on one live model.
  */
 export const RUNWARE_PROMPT_MODEL = "google:gemini@3.5-flash" as const;
+// v20: the request no longer carries outputFormat/jsonSchema, because Google Gemini rejects
+// structured output with providerBadRequest (measured 2026-09-18 by replaying the exact request).
+// The version feeds the deterministic taskUUID, so it must move with the wire contract: under v19
+// every revision replayed the archived failure for the same task id.
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-gemini-3.5-flash-prompt-request-v19" as const;
+  "runware-gemini-3.5-flash-prompt-request-v20" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -45,6 +49,23 @@ export const RUNWARE_PROMPT_OUTPUT_FIXED_TOKENS = 1_024 as const;
 export const RUNWARE_PROMPT_MAX_INPUT_TOKENS = 48_000 as const;
 /** Two bytes per token errs toward a larger estimate for mixed-language text. */
 export const RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN = 2 as const;
+
+/**
+ * The output contract, stated in words.
+ *
+ * The provider no longer receives a `jsonSchema` (Google Gemini rejects structured output with
+ * `providerBadRequest`), so the exact document shape has to live in the prompt instead. The strict
+ * parse and schema validation in this module still refuse anything that does not match it.
+ */
+export const SCENE_PROMPT_WRITER_OUTPUT_CONTRACT = [
+  "Answer with one JSON object and nothing else - no commentary, no Markdown fence.",
+  "It must have exactly two keys: batch_id (the batch_id given to you) and scenes (an array).",
+  "Every scene object must have exactly these eight keys: scene_id, literal_subject, action, environment, in_image_shot_role, lighting_context, continuity_tags, prompt_core.",
+  "scene_id must repeat the scene_id you were given, in the order you were given it.",
+  "in_image_shot_role must be one of the roles supplied for that scene.",
+  "continuity_tags must be an array of at most 12 lowercase phrases.",
+  "Return one scene object per requested scene and no others.",
+].join("\n");
 
 export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Write concise literal still-image scene cores for VideoForge using the scene-content contract scene-prompt-writer-v2.",
@@ -89,17 +110,13 @@ export interface RunwarePromptApiRequest {
   readonly taskType: "textInference";
   readonly taskUUID: string;
   readonly model: typeof RUNWARE_PROMPT_MODEL;
-  readonly outputFormat: "JSON";
+  // No outputFormat/jsonSchema: Google Gemini rejects structured output with providerBadRequest, so
+  // the shape is stated in the system prompt instead and validated strictly after the answer arrives.
   readonly deliveryMethod: "sync";
   readonly includeCost: true;
   readonly includeUsage: true;
-  readonly jsonSchema: {
-    readonly name: "videoforge_scene_prompt_batch_v2";
-    readonly strict: true;
-    readonly schema: Readonly<Record<string, unknown>>;
-  };
   readonly settings: {
-    readonly systemPrompt: typeof SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
+    readonly systemPrompt: string;
     readonly thinkingLevel: "off";
     readonly temperature: 0.2;
     readonly topP: 0.9;
@@ -408,7 +425,7 @@ const deterministicUuid = (seed: unknown): string => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 
-const responseSchema = (
+export const responseSchema = (
   batchId: string,
   scenes: readonly PromptSceneInput[],
 ): Readonly<Record<string, unknown>> =>
@@ -607,21 +624,19 @@ export function buildRunwarePromptRequest(
     retryOfRequestSha256,
     sceneIds: requestedSceneIds,
   });
+  // No `outputFormat`/`jsonSchema`: Google Gemini (through Runware) rejects structured output with
+  // `providerBadRequest`, which failed every batch regardless of model. The system prompt still
+  // requires the exact JSON document and the strict parse plus schema validation below stay in
+  // force, so an answer that does not match the contract is still refused rather than accepted.
   const request: RunwarePromptApiRequest = Object.freeze({
     taskType: "textInference",
     taskUUID,
     model: RUNWARE_PROMPT_MODEL,
-    outputFormat: "JSON",
     deliveryMethod: "sync",
     includeCost: true,
     includeUsage: true,
-    jsonSchema: Object.freeze({
-      name: "videoforge_scene_prompt_batch_v2",
-      strict: true,
-      schema: responseSchema(batch.batchId, scenes),
-    }),
     settings: Object.freeze({
-      systemPrompt: SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+      systemPrompt: `${SCENE_PROMPT_WRITER_SYSTEM_PROMPT}\n${SCENE_PROMPT_WRITER_OUTPUT_CONTRACT}`,
       // Match the exact canonical AIR/settings contract already qualified live
       // and used by the successful Stage 3 DeepSeek transport.
       thinkingLevel: "off",
@@ -1591,7 +1606,7 @@ const evaluateOutput = (
     );
   let parsed: JsonValue;
   try {
-    parsed = parseJsonStrict(outputText);
+    parsed = parseJsonStrict(stripCodeFence(outputText));
   } catch {
     return validationFail(
       "malformed_json",
@@ -1814,6 +1829,23 @@ const evidence = (
     retryOfRequestSha256: request.retryOfRequestSha256,
     ...values,
   });
+
+/**
+ * Removes a Markdown code fence from a provider answer.
+ *
+ * The request used to carry `outputFormat: "JSON"` plus a strict `jsonSchema`, which is what made
+ * Google Gemini reject every prompt batch with `providerBadRequest` ("Request contains an invalid
+ * argument") — measured on 2026-09-18 by replaying the exact request bytes: removing those two fields
+ * let the same batch return valid, parseable JSON. Without the structured-output flags the model may
+ * wrap its answer in a ```json fence, so the fence is stripped before the strict parse.
+ */
+export function stripCodeFence(outputText: string): string {
+  const trimmed = outputText.trim();
+  if (!trimmed.startsWith("```")) return outputText;
+  const withoutOpening = trimmed.slice(3).replace(/^(json|JSON)\s*\n/, "");
+  const closing = withoutOpening.lastIndexOf("```");
+  return closing === -1 ? withoutOpening : withoutOpening.slice(0, closing).trim();
+}
 
 export class RunwarePromptWriter implements PromptWriterPort {
   readonly #transport: RunwarePromptTransport;

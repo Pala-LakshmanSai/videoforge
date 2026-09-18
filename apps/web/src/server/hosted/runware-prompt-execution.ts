@@ -27,7 +27,11 @@ import {
   type RunwareSafeDiagnostic,
 } from "../providers/runware-http-transport";
 
-export const HOSTED_PROMPT_RESERVATION_MICRO_USD = 40_000 as const;
+// 600_000 micro-USD (USD 0.60): one scene-prompt batch costs about USD 0.12 at the pinned text
+// model (measured 2026-09-18 on this project's own 10-scene batches), and a revision plans three
+// batches before accepting a prompt set, so the old USD 0.04 reservation could never cover a run -
+// every batch died on the cost guard after the provider had already answered.
+export const HOSTED_PROMPT_RESERVATION_MICRO_USD = 600_000 as const;
 export const HOSTED_PROMPT_RESERVATION_USD = HOSTED_PROMPT_RESERVATION_MICRO_USD / 1_000_000;
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -403,6 +407,13 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
         );
       }
       if (current?.result?.status === "succeeded") {
+        // The route logs the same fields, but a batch that failed local validation with no visible
+        // reason is exactly what kept stage 5 opaque, so the cause is recorded where it happens.
+        const invalidDiagnostic = runwarePromptValidationDiagnostic(error);
+        if (invalidDiagnostic)
+          console.warn(
+            `hosted_prompt_output_invalid project=${this.projectIdHint ?? "-"} category=${invalidDiagnostic.category} reason=${invalidDiagnostic.reason} requested=${invalidDiagnostic.requestedSceneCount} returned=${invalidDiagnostic.returnedSceneCount} valid=${invalidDiagnostic.locallyValidSceneCount}`,
+          );
         throw new HostedPromptExecutionError(
           "HOSTED_PROMPT_OUTPUT_INVALID",
           "FAILED",
