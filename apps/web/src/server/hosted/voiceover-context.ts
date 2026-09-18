@@ -364,7 +364,12 @@ export async function prepareHostedVoiceoverContextRequest(input: {
       thinkingLevel: "off",
       temperature: 0.1,
       topP: 0.9,
-      maxTokens: 350,
+      // The pinned model reasons before it answers and bills those tokens against this same ceiling:
+      // the first measured run with the old 350 spent 333 tokens on reasoning and returned
+      // finishReason 'length' with a truncated document, which the transport refuses to accept. 1200
+      // measured finishReason 'stop' with the whole document (~300 characters) and a cost of ~$0.006,
+      // inside the $0.01 reservation this stage holds.
+      maxTokens: 1_200,
     },
     messages: [{ role: "user", content: canonicalizeJson({ transcript: input.transcript }) }],
   });

@@ -38,7 +38,9 @@ describe("hosted voiceover context extraction", () => {
       thinkingLevel: "off",
       temperature: 0.1,
       topP: 0.9,
-      maxTokens: 350,
+      // The pinned model bills its own reasoning against this ceiling, so the bound covers the
+      // measured reasoning plus the whole document; see the model note in voiceover-context.ts.
+      maxTokens: 1_200,
     });
     expect(Object.keys(request.settings as Record<string, unknown>).sort()).toEqual([
       "maxTokens",
