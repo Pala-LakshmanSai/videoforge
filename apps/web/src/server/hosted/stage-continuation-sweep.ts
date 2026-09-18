@@ -188,6 +188,30 @@ interface DueRow {
   readonly next_step: "context" | "plan" | "prompts" | "dispatch";
 }
 
+/**
+ * Reads a continuation handler's response.
+ *
+ * Every stage handler returns its own Response instead of throwing, so a 409/500 used to be counted
+ * as `dispatched` in the heartbeat while the database showed no progress at all - which is exactly how
+ * a stage sat stranded with a green-looking sweep. The status and the route's own error code are the
+ * signal; the body is never trusted beyond that.
+ */
+async function continuationOutcome(
+  response: Response | null,
+): Promise<{ ok: boolean; detail: string }> {
+  // The GPU-dispatch coordinator may answer with nothing at all; that is not progress either.
+  if (response === null) return { ok: false, detail: "no-response" };
+  if (response.ok) return { ok: true, detail: `${response.status}` };
+  let code = "";
+  try {
+    const body = (await response.clone().json()) as { error?: { code?: unknown } };
+    code = typeof body?.error?.code === "string" ? body.error.code.slice(0, 60) : "";
+  } catch {
+    // The body shape is not guaranteed; the status alone is still worth recording.
+  }
+  return { ok: false, detail: code ? `${response.status}:${code}` : `${response.status}` };
+}
+
 export async function runHostedContinuation(
   environment: HostedRuntimeEnvironment,
   executionContext: HostedExecutionContext,
@@ -211,9 +235,10 @@ export async function runHostedContinuation(
         user_id: row.user_id,
       };
       try {
+        let response: Response | null;
         if (row.next_step === "context") {
           const { createVoiceoverContext } = await import("./product");
-          await createVoiceoverContext(
+          response = await createVoiceoverContext(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/context`, {
               asr_attempt_id: row.asr_attempt_id,
               maximum_context_spend_micro_usd: 10_000,
@@ -226,7 +251,7 @@ export async function runHostedContinuation(
           );
         } else if (row.next_step === "plan") {
           const { renderHandoff } = await import("./product");
-          await renderHandoff(
+          response = await renderHandoff(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/render`, {
               asr_attempt_id: row.asr_attempt_id,
             }),
@@ -244,7 +269,7 @@ export async function runHostedContinuation(
             import("./hosted-v209-project-dispatch"),
           ]);
           const spanAudio = await createHostedV209SpanAudioLiveCoordinator(environment, config);
-          await dispatchModule.handleHostedV209ProjectDispatch(
+          response = await dispatchModule.handleHostedV209ProjectDispatch(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/gpu-dispatch`, {}),
             environment,
             config,
@@ -254,7 +279,7 @@ export async function runHostedContinuation(
           );
         } else {
           const { writeProjectPrompts } = await import("./hosted-prompt-route");
-          await writeProjectPrompts(
+          response = await writeProjectPrompts(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/prompts`, {
               maximum_prompt_spend_micro_usd: 40_000,
             }),
@@ -263,6 +288,16 @@ export async function runHostedContinuation(
             executionContext,
             scope,
           );
+        }
+        const outcome = await continuationOutcome(response);
+        if (!outcome.ok) {
+          // A handler that answers with an error is not progress: record it, so the heartbeat and the
+          // log tell the truth about the stage instead of reporting a dispatch that never happened.
+          failures.push(`${row.project_id}:${row.next_step}:${outcome.detail}`);
+          console.warn(
+            `hosted_continuation_step_failed project=${row.project_id} step=${row.next_step} message=${outcome.detail}`,
+          );
+          continue;
         }
         dispatched.push(`${row.project_id}:${row.next_step}`);
       } catch (error) {
