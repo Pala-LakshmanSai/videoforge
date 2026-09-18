@@ -95,9 +95,9 @@ WITH revision AS (
     (SELECT run.state FROM public.hosted_prompt_runs run
       WHERE run.project_revision_id = revision.revision_id
       ORDER BY run.created_at DESC LIMIT 1) AS prompt_state,
-    (SELECT run.created_at FROM public.hosted_prompt_runs run
+    (SELECT coalesce(run.started_at, run.created_at) FROM public.hosted_prompt_runs run
       WHERE run.project_revision_id = revision.revision_id
-      ORDER BY run.created_at DESC LIMIT 1) AS prompt_run_created_at,
+      ORDER BY run.created_at DESC LIMIT 1) AS prompt_run_started_at,
     (SELECT run.acceptance_fingerprint_hash FROM public.hosted_prompt_runs run
       WHERE run.project_revision_id = revision.revision_id
       ORDER BY run.created_at DESC LIMIT 1) AS prompt_accepted_set,
@@ -131,8 +131,8 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
              -- window lets it apply its own bounded redispatch (no accepted scene exists to lose), so
              -- the stage heals the way stage 3 does.
              WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
-               AND prompt_run_created_at IS NOT NULL
-               AND prompt_run_created_at < now() - make_interval(secs => ${PROMPT_STALE_RUN_SECONDS})
+               AND prompt_run_started_at IS NOT NULL
+               AND prompt_run_started_at < now() - make_interval(secs => ${PROMPT_STALE_RUN_SECONDS})
                THEN 'prompts'
              WHEN prompt_accepted_set IS NOT NULL AND generation_requests = 0 AND span_jobs = 0
                THEN 'dispatch'

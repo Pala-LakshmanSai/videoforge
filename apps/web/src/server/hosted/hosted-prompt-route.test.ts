@@ -48,9 +48,9 @@ describe("hostedPromptRedispatchable", () => {
     expect(
       hostedPromptRedispatchable({ ...staleRun, existing_run_has_accepted_set: true }, true),
     ).toBe(false);
-    expect(hostedPromptRedispatchable({ ...staleRun, existing_run_redispatch_count: 5 }, true)).toBe(
-      false,
-    );
+    expect(
+      hostedPromptRedispatchable({ ...staleRun, existing_run_redispatch_count: 30 }, true),
+    ).toBe(false);
   });
 
   it("refuses once a durable accepted prompt set exists", () => {
@@ -77,9 +77,11 @@ describe("hostedPromptRedispatchable", () => {
   });
 
   it("refuses once the revision has spent its attempt budget", () => {
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 5 })).toBe(false);
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 6 })).toBe(false);
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 4 })).toBe(true);
+    // The budget mirrors the stage-3 context budget: a recovery path that gives up after a handful of
+    // attempts strands the run again, while each attempt is still a bounded and recorded provider call.
+    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 29 })).toBe(false);
+    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 31 })).toBe(false);
+    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 28 })).toBe(true);
   });
 
   it("refuses when the plan payload carries no usable attempt evidence", () => {

@@ -39,7 +39,11 @@ const PROMPTS_PATH = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/prompts$/u;
  * enough headroom to ride out a bad provider window. Each attempt is separately reserved and the
  * spend guard is unchanged.
  */
-const HOSTED_PROMPT_ATTEMPT_BUDGET = 6;
+// Bounded like the stage-3 context budget (30), and for the same reason: a recovery path that gives
+// up after a handful of attempts strands the run again, while every attempt is still a bounded,
+// recorded provider call. The window the sweep needs is measured from the attempt's own start, so a
+// live batch is never replaced.
+const HOSTED_PROMPT_ATTEMPT_BUDGET = 30;
 
 /**
  * How long a prompt run may read DISPATCHING with no accepted scene before the route treats it as
@@ -49,7 +53,9 @@ const HOSTED_PROMPT_ATTEMPT_BUDGET = 6;
  * before the provider answers, the batch is never requeued and the run stays in flight forever. Five
  * minutes is far past a healthy batch - the same request class measures under a minute - so a live
  * attempt is never replaced, while a stranded one is repaired by the next caller (the continuation
- * sweep calls this route every tick).
+ * sweep calls this route every tick). The window is measured from the attempt's start, which a
+ * redispatch refreshes: keying it on the row's creation time made every tick replace the attempt the
+ * previous tick had just started.
  */
 export const HOSTED_PROMPT_STALE_RUN_MS = 5 * 60 * 1000;
 
@@ -126,7 +132,8 @@ export async function writeProjectPrompts(
       ]);
       const loaded = await transaction.query<{ plan: unknown; run_started_at: string | null }>(
         `SELECT public.videoforge_load_hosted_prompt_plan($1,$2,$3,$4) AS plan,
-                (SELECT run.created_at::text FROM public.hosted_prompt_runs run
+                (SELECT coalesce(run.started_at, run.created_at)::text
+                   FROM public.hosted_prompt_runs run
                    JOIN public.project_revisions revision ON revision.id = run.project_revision_id
                   WHERE run.account_id = $1 AND run.workspace_id = $2 AND revision.project_id = $4
                   ORDER BY run.created_at DESC LIMIT 1) AS run_started_at`,

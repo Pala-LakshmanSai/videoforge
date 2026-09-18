@@ -62,7 +62,9 @@ async function seededDatabase(context: {
     );
     CREATE TABLE public.hosted_prompt_runs (
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL, state text NOT NULL,
-      acceptance_fingerprint_hash text, created_at timestamptz NOT NULL
+      acceptance_fingerprint_hash text, created_at timestamptz NOT NULL,
+      -- The stale window follows the attempt's own start, which a redispatch refreshes.
+      started_at timestamptz
     );
     CREATE TABLE public.generation_requests (
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL
