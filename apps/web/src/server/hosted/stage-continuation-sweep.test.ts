@@ -1,5 +1,8 @@
 // @vitest-environment node
 
+import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
 
@@ -98,6 +101,27 @@ describe("hosted continuation sweep stage-3 recovery", () => {
       [...HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES].sort(),
     );
     expect(CONTEXT_REDISPATCH_BUDGET).toBe(HOSTED_CONTEXT_REDISPATCH_BUDGET);
+  });
+
+  it("keeps the database's redispatch budget identical to the application constant", () => {
+    // The capability enforces the budget again on its own, so a smaller number there is invisible to
+    // this suite and strands the run: the sweep kept selecting the revision (its gate said six) while
+    // the function answered 'hosted voiceover context redispatch budget is spent' from the third
+    // failure on, and the run stopped at stage 3 with attempts the product believed it still had.
+    const migrations = new URL("../../../../../packages/control-plane/migrations/", import.meta.url);
+    const declaring = [...readdirSync(fileURLToPath(migrations))]
+      .filter((name) => /^01\d\d_.*\.sql$/u.test(name))
+      .sort()
+      .reverse()
+      .filter((name) => {
+        const source = readFileSync(fileURLToPath(new URL(name, migrations)), "utf8");
+        return source.includes("CREATE OR REPLACE FUNCTION public.videoforge_redispatch_hosted_voiceover_context")
+          && source.includes("redispatch budget is spent");
+      });
+    expect(declaring.length).toBeGreaterThan(0);
+    const source = readFileSync(fileURLToPath(new URL(declaring[0]!, migrations)), "utf8");
+    const declared = /existing\.redispatch_count\s*>=\s*(\d+)\s*THEN/u.exec(source);
+    expect(declared?.[1]).toBe(String(HOSTED_CONTEXT_REDISPATCH_BUDGET));
   });
 
   it("re-runs stage 3 when the provider failed before an accepted result", async () => {

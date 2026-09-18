@@ -4855,16 +4855,26 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           transcription: stageRetryButton(asrHandoff.isPending, () => asrHandoff.mutate()),
         }
       : {}),
-    ...(failedStageIds.has("voiceover-context") && contextUnknown && !contextProviderFailed
-      ? {
-          // An UNKNOWN context is the one stage-3 state a press can still resolve: reconciliation
-          // asks the provider for the original task's outcome. A provider task that definitively
-          // failed, and every class the continuation sweep already redispatches, get no button: the
-          // server would refuse it.
-          "voiceover-context": stageRetryButton(contextReconciliation.isPending, () =>
-            contextReconciliation.mutate(),
-          ),
-        }
+    ...(failedStageIds.has("voiceover-context") && asr
+      ? contextProviderFailed
+        ? {
+            // The provider confirmed the original task produced nothing usable, so checking it again
+            // can never resume it; the only recovery is a new request, and the server's bounded
+            // redispatch is what submits it. Until this control existed the row offered no action at
+            // all and the run simply sat at stage 3.
+            "voiceover-context": stageRetryButton(contextExtraction.isPending, () =>
+              contextExtraction.mutate(asr.id),
+            ),
+          }
+        : contextUnknown
+          ? {
+              // An UNKNOWN context is the one stage-3 state a press can still resolve by asking the
+              // provider for the original task's outcome.
+              "voiceover-context": stageRetryButton(contextReconciliation.isPending, () =>
+                contextReconciliation.mutate(),
+              ),
+            }
+          : {}
       : {}),
     ...(failedStageIds.has("prompt-writing")
       ? {

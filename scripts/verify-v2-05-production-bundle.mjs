@@ -20,9 +20,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // provider/transport failure instead of stranding the revision, which added the context_hash,
 // context_problem_code and context_redispatch_count projections plus the bounded retry condition);
 // staging is the same entry plus its 2,747,459-byte shared chunk.
-// These are deliberately exact per-target no-growth ceilings, not platform limits.
+// The production ceiling moved by one byte (2,733,372 -> 2,733,373) with the stage-3 retry control
+// for a provider-confirmed failure and the in-row refusal notice: the measured closure is
+// 233-byte entry + 2,733,140-byte shared chunk. Both are deliberately exact per-target no-growth
+// ceilings, not platform limits.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_733_372,
+  "wrangler.production.jsonc": 2_733_373,
   "wrangler.staging.jsonc": 2_747_459,
 })[wranglerConfig];
 const workerForbidden = [

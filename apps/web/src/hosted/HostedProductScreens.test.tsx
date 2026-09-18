@@ -2653,6 +2653,10 @@ describe("hosted product journey", () => {
           { status: 409 },
         );
       }
+      if (path.endsWith(`/projects/${projectId}/context`)) {
+        expect(init?.method).toBe("POST");
+        return Response.json({ state: "COMPLETE" }, { status: 200 });
+      }
       projectReads += 1;
       return projectReads === 1
         ? Response.json(detail)
@@ -2683,12 +2687,21 @@ describe("hosted product journey", () => {
     expect(screen.queryByText(/retry.*provider|retry.*context/iu)).not.toBeInTheDocument();
 
     if (providerFailed) {
-      expect(
-        within(stageRow("Understand voiceover context")).queryByRole("button", { name: "Retry" }),
-      ).not.toBeInTheDocument();
+      // The provider confirmed the original task produced nothing usable, so this row now offers the
+      // only recovery that can work: a brand-new request through the bounded redispatch.
+      const retry = within(stageRow("Understand voiceover context")).getByRole("button", {
+        name: "Retry",
+      });
       expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/context"))).toBe(
         false,
       );
+      fireEvent.click(retry);
+      await waitFor(() =>
+        expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/context"))).toBe(
+          true,
+        ),
+      );
+      expect(reconciliationCalls).toBe(1);
     } else {
       fireEvent.click(
         within(stageRow("Understand voiceover context")).getByRole("button", { name: "Retry" }),

@@ -34,11 +34,25 @@ export const HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES: ReadonlySet<string> = new S
  * succeeded twice. The run only reaches stages 4+ once a context result is accepted, so a small
  * budget strands the revision at stage 3 whenever the provider has a bad window; each redispatch is
  * separately reserved and the spend guard is unchanged, so the bound is about wasted attempts
- * rather than money.
+ * rather than money. The budget was raised from six to ten when the pinned DeepSeek text model was
+ * replaced (see MODEL below): a revision that spent its whole budget on a provider outage the
+ * product could not have fixed must still be able to continue once the cause is gone.
  */
-export const HOSTED_CONTEXT_REDISPATCH_BUDGET = 6 as const;
-const MODEL = "deepseek:v4@flash" as const;
-const REQUEST_CONTRACT_VERSION = "runware-deepseek-v4-flash-context-request-v9" as const;
+export const HOSTED_CONTEXT_REDISPATCH_BUDGET = 10 as const;
+/**
+ * The text model this product pins for stage 3.
+ *
+ * It was `deepseek:v4@flash` until the provider's own backend began failing every dispatch: the
+ * account's Runware error ledger recorded two server errors on 2026-09-16 and seven more on
+ * 2026-09-18 against that model with zero accepted results since 2026-09-16T12:41Z, an archived task
+ * read answered `taskNotFound` for the failed dispatches, and the catalog's successor
+ * (`deepseek:v4.1@flash`) is rejected by the text API as an `invalidModel`. The same request shape
+ * measured against `google:gemini@3.5-flash` returns schema-valid JSON, so the lower-cost text model
+ * is pinned to that instead. The contract version below moves with it: Runware task UUIDs are
+ * account-global idempotency keys, so a model change must land under a new contract identity.
+ */
+const MODEL = "google:gemini@3.5-flash" as const;
+const REQUEST_CONTRACT_VERSION = "runware-gemini-3.5-flash-context-request-v10" as const;
 const MAX_SUBJECT_CHARS = 90 as const;
 const MAX_VISUAL_FACTS = 3 as const;
 const MAX_VISUAL_FACT_CHARS = 70 as const;
@@ -343,10 +357,10 @@ export async function prepareHostedVoiceoverContextRequest(input: {
     jsonSchema: { name: "videoforge_voiceover_story_context", strict: true, schema },
     settings: {
       systemPrompt: SYSTEM_PROMPT,
-      // DeepSeek V4 Flash is the lower-cost text-only model already selected for
-      // VideoForge prompt work. Its Runware contract natively supports strict JSON
-      // Schema. GPT-5 Nano alternated between HTTP 400 and incomplete structured
-      // output across requests v3-v7.
+      // The pinned model's Runware contract accepts strict JSON Schema, and the settings below
+      // measured against it returned schema-valid JSON for this request. GPT-5 Nano alternated
+      // between HTTP 400 and incomplete structured output across requests v3-v7, and the DeepSeek
+      // text backend failed every dispatch outright (see MODEL above).
       thinkingLevel: "off",
       temperature: 0.1,
       topP: 0.9,

@@ -19,9 +19,18 @@ import type {
   PromptWriterSceneOutput,
 } from "./types.js";
 
-export const RUNWARE_PROMPT_MODEL = "deepseek:v4@flash" as const;
+/**
+ * The text model pinned for prompt writing (stage 5).
+ *
+ * It was `deepseek:v4@flash`, which the provider's backend stopped serving: the account's Runware
+ * error ledger recorded server errors against that model on 2026-09-16 and again on 2026-09-18 with
+ * no accepted result since 2026-09-16T12:41Z, and the catalog's successor is rejected by the text API
+ * as `invalidModel`. The stage-3 context reader was moved to `google:gemini@3.5-flash` for the same
+ * reason, and this writer follows it so both text stages run on one live model.
+ */
+export const RUNWARE_PROMPT_MODEL = "google:gemini@3.5-flash" as const;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-deepseek-v4-flash-prompt-request-v18" as const;
+  "runware-gemini-3.5-flash-prompt-request-v19" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed

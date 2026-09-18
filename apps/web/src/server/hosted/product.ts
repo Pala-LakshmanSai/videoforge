@@ -5869,9 +5869,9 @@ async function reconcileVoiceoverContext(
           : (contextCode ?? "RUNWARE_RESPONSE_INVALID");
       const message =
         providerCode === "RUNWARE_TASK_PROVIDER_FAILED"
-          ? "Runware confirmed that the original task failed at its upstream provider without a usable result. Checking again cannot resume this task. No new inference request was submitted."
+          ? "Runware confirmed that the original task failed at its upstream provider without a usable result. Checking it again cannot resume this task, and this check sent no new request. Retry in stage 03 to submit a new one."
           : providerCode === "RUNWARE_TASK_NOT_FOUND"
-            ? "Runware could not find the original task in this workspace. No new inference request was submitted."
+            ? "Runware could not find the original task in this workspace. This check sent no new request; Retry in stage 03 submits a new one."
             : providerCode === "RUNWARE_TASK_DETAILS_UNAVAILABLE"
               ? "Runware task details are temporarily unavailable. No new inference request was submitted."
               : providerCode === "RUNWARE_IDEMPOTENCY_CONFLICT"
