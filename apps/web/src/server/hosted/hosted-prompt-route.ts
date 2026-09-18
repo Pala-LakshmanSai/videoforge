@@ -67,7 +67,8 @@ export const HOSTED_PROMPT_STALE_RUN_MS = 5 * 60 * 1000;
  * answered, and the answer was wrong -- retrying the same request reproduces the same defect), and
  * every acceptance-path code, because those already produced a durable result.
  */
-const HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES = new Set([
+/** Exported so the continuation sweep offers exactly the classes this route will accept. */
+export const HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES = new Set([
   "HOSTED_PROMPT_EXECUTION_UNKNOWN",
   "HOSTED_PROMPT_PROVIDER_UNAVAILABLE",
   // Set by the stale-dispatch reconciliation when a run's dispatch died in flight and was settled as

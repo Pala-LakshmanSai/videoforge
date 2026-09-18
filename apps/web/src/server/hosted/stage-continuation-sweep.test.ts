@@ -10,12 +10,13 @@ import {
   CONTEXT_REDISPATCH_BUDGET,
   CONTEXT_REDISPATCHABLE_PROBLEM_CODES,
   DUE_QUERY,
+  PROMPT_REDISPATCHABLE_PROBLEM_CODES,
 } from "./stage-continuation-sweep";
 import {
   HOSTED_CONTEXT_REDISPATCH_BUDGET,
   HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES,
 } from "./voiceover-context";
-import { HOSTED_PROMPT_STALE_RUN_MS } from "./hosted-prompt-route";
+import { HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES, HOSTED_PROMPT_STALE_RUN_MS } from "./hosted-prompt-route";
 
 const accountId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const workspaceId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -64,7 +65,7 @@ async function seededDatabase(context: {
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL, state text NOT NULL,
       acceptance_fingerprint_hash text, created_at timestamptz NOT NULL,
       -- The stale window follows the attempt's own start, which a redispatch refreshes.
-      started_at timestamptz
+      started_at timestamptz, problem_code text, redispatch_count integer
     );
     CREATE TABLE public.generation_requests (
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL
@@ -215,6 +216,12 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     expect(DUE_QUERY).toContain("prompt_accepted_set IS NULL");
     expect(DUE_QUERY).toContain("make_interval(secs => 300)");
     expect(HOSTED_PROMPT_STALE_RUN_MS).toBe(300 * 1000);
+    expect(DUE_QUERY).toContain("prompt_state IN ('FAILED', 'UNKNOWN')");
+    // The sweep keeps its own copy (a static import would fold the prompt route's dynamic entry
+    // back into the main bundle), so the two lists have to be compared.
+    expect([...PROMPT_REDISPATCHABLE_PROBLEM_CODES]).toEqual([
+      ...HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES,
+    ]);
   });
 
   it("still advances to planning once a context result was accepted", async () => {

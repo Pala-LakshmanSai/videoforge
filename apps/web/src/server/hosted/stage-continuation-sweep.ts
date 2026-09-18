@@ -51,6 +51,23 @@ export const CONTEXT_REDISPATCH_BUDGET = 30 as const;
 /** Mirrors HOSTED_PROMPT_STALE_RUN_MS in hosted-prompt-route.ts, in seconds for the due query. */
 const PROMPT_STALE_RUN_SECONDS = 300 as const;
 
+/**
+ * The problem classes the prompt route will redispatch.
+ *
+ * Written out here instead of imported: POST /prompts is a dedicated dynamic entry, and a static
+ * import of that module folds it back into the main bundle (the bundle guard refuses exactly that).
+ * A test asserts this list still equals HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES in the route module.
+ */
+export const PROMPT_REDISPATCHABLE_PROBLEM_CODES = [
+  "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+  "HOSTED_PROMPT_PROVIDER_UNAVAILABLE",
+  "HOSTED_PROMPT_DISPATCH_TIMEOUT",
+] as const;
+
+const PROMPT_REDISPATCHABLE_PROBLEM_CODES_SQL = `ARRAY[${[...PROMPT_REDISPATCHABLE_PROBLEM_CODES]
+  .map((code) => `'${code.replaceAll("'", "''")}'`)
+  .join(",")}]::text[]`;
+
 const CONTEXT_REDISPATCHABLE_PROBLEM_CODES_SQL = `ARRAY[${CONTEXT_REDISPATCHABLE_PROBLEM_CODES.map(
   (code) => `'${code.replaceAll("'", "''")}'`,
 ).join(", ")}]::text[]`;
@@ -98,6 +115,12 @@ WITH revision AS (
     (SELECT coalesce(run.started_at, run.created_at) FROM public.hosted_prompt_runs run
       WHERE run.project_revision_id = revision.revision_id
       ORDER BY run.created_at DESC LIMIT 1) AS prompt_run_started_at,
+    (SELECT run.problem_code FROM public.hosted_prompt_runs run
+      WHERE run.project_revision_id = revision.revision_id
+      ORDER BY run.created_at DESC LIMIT 1) AS prompt_problem_code,
+    (SELECT run.redispatch_count FROM public.hosted_prompt_runs run
+      WHERE run.project_revision_id = revision.revision_id
+      ORDER BY run.created_at DESC LIMIT 1) AS prompt_redispatch_count,
     (SELECT run.acceptance_fingerprint_hash FROM public.hosted_prompt_runs run
       WHERE run.project_revision_id = revision.revision_id
       ORDER BY run.created_at DESC LIMIT 1) AS prompt_accepted_set,
@@ -133,6 +156,15 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
              WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
                AND prompt_run_started_at IS NOT NULL
                AND prompt_run_started_at < now() - make_interval(secs => ${PROMPT_STALE_RUN_SECONDS})
+               THEN 'prompts'
+             -- A settled dispatch failure reads FAILED or UNKNOWN: the route replaces it through the
+             -- same bounded redispatch it applies to stage 3, but only a caller reaching the route makes
+             -- that happen, and a browser was the only caller. Offering the step here is what keeps a
+             -- failed prompt run healing server-side. An accepted prompt set ends the offer, since the
+             -- route refuses to replace accepted work, and the budget stops it looping on an outage.
+             WHEN prompt_state IN ('FAILED', 'UNKNOWN') AND prompt_accepted_set IS NULL
+               AND prompt_problem_code = ANY(${PROMPT_REDISPATCHABLE_PROBLEM_CODES_SQL})
+               AND COALESCE(prompt_redispatch_count, 0) < 28
                THEN 'prompts'
              WHEN prompt_accepted_set IS NOT NULL AND generation_requests = 0 AND span_jobs = 0
                THEN 'dispatch'
