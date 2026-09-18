@@ -46,7 +46,7 @@ export const CONTEXT_REDISPATCHABLE_PROBLEM_CODES = Object.freeze([
 ] as const);
 
 /** Mirrors HOSTED_CONTEXT_REDISPATCH_BUDGET in voiceover-context.ts. */
-export const CONTEXT_REDISPATCH_BUDGET = 22 as const;
+export const CONTEXT_REDISPATCH_BUDGET = 30 as const;
 
 const CONTEXT_REDISPATCHABLE_PROBLEM_CODES_SQL = `ARRAY[${CONTEXT_REDISPATCHABLE_PROBLEM_CODES.map(
   (code) => `'${code.replaceAll("'", "''")}'`,
