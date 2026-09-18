@@ -4882,6 +4882,30 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }
       : {}),
   };
+  // A refused press has to say why inside the stage that was pressed. The server's sentence used to
+  // land only in the notice below the pipeline, so a spent retry budget read as "nothing happened".
+  const stageRetryNotices = {
+    ...(failedStageIds.has("transcription") && asrHandoff.isError
+      ? { transcription: asrHandoff.error.message }
+      : {}),
+    ...(failedStageIds.has("voiceover-context") && contextReconciliation.isError
+      ? { "voiceover-context": contextReconciliation.error.message }
+      : {}),
+    ...(failedStageIds.has("prompt-writing") && promptWriting.isError
+      ? { "prompt-writing": promptWriting.error.message }
+      : {}),
+    ...((failedStageIds.has("image-generation") || failedStageIds.has("avatar-generation")) &&
+    gpuDispatch.isError
+      ? {
+          ...(failedStageIds.has("image-generation")
+            ? { "image-generation": gpuDispatch.error.message }
+            : {}),
+          ...(failedStageIds.has("avatar-generation")
+            ? { "avatar-generation": gpuDispatch.error.message }
+            : {}),
+        }
+      : {}),
+  };
   const acceptedPromptCount =
     hostedCount(promptProgress?.accepted_scenes) ?? acceptedPrompts.length;
   const totalPromptCount = hostedCount(promptProgress?.total_scenes);
@@ -5046,6 +5070,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             stages={displayedStages}
             actions={stageMediaActions}
             retries={stageRetries}
+            retryNotices={stageRetryNotices}
             timings={Object.fromEntries(
               stages.map((stage, index) => [
                 stage.id ?? `stage-${index + 1}`,
@@ -5315,7 +5340,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         <div className="notice notice-danger" role="alert">
           <strong>Transcription stopped before the transcript could be saved.</strong>
           <span>{transcriptionFailureMessage(asr.error_code)}</span>
-          {asrHandoff.isError ? <span>{asrHandoff.error.message}</span> : null}
+          {/* A refused retry is shown inside the stage row next to the button that was pressed; this
+              notice only carries it when the stage row itself has nothing to show. */}
+          {asrHandoff.isError && !failedStageIds.has("transcription") ? (
+            <span>{asrHandoff.error.message}</span>
+          ) : null}
           <span>Retry it from stage 02 above.</span>
         </div>
       ) : null}
@@ -5346,7 +5375,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   : "Story facts are saved before scene planning continues."}
           </span>
           {contextAutoStartError ? <span>{contextExtraction.error.message}</span> : null}
-          {contextReconciliation.isError && contextUnknown ? (
+          {contextReconciliation.isError &&
+          contextUnknown &&
+          !failedStageIds.has("voiceover-context") ? (
             <span>{contextReconciliation.error.message}</span>
           ) : null}
           {contextReconciliationCouldNotFinish ? (

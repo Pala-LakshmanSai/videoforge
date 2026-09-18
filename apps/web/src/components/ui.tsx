@@ -439,11 +439,13 @@ export function StageTimeline({
   stages,
   actions,
   retries,
+  retryNotices,
   timings,
 }: {
   stages: ProjectStage[];
   actions?: Readonly<Partial<Record<string, ReactNode>>>;
   retries?: Readonly<Partial<Record<string, ReactNode>>>;
+  retryNotices?: Readonly<Partial<Record<string, ReactNode>>>;
   timings?: Readonly<Partial<Record<string, ReactNode>>>;
 }) {
   const activeIndex = activeStageIndex(stages);
@@ -475,6 +477,11 @@ export function StageTimeline({
               {timings?.[stage.id]}
               {stage.detail && (active || !["COMPLETE", "PENDING"].includes(stage.status)) ? (
                 <p>{stage.detail}</p>
+              ) : null}
+              {retryNotices?.[stage.id] ? (
+                <p className="stage-retry-notice" role="alert">
+                  {retryNotices[stage.id]}
+                </p>
               ) : null}
               {actions?.[stage.id] ? (
                 <div className="stage-row-action">{actions[stage.id]}</div>

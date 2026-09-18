@@ -20,7 +20,12 @@ import {
 } from "./audio-validation";
 import { hostedGpuReadinessForConfiguration, type HostedGpuReadiness } from "./gpu-readiness";
 import { createNeonExecutor, createNeonPool } from "./neon";
-import { SPAN_AUDIO_RETRYABLE_LIMIT as SPAN_AUDIO_RETRY_LIMIT } from "./personal-worker";
+import {
+  HOSTED_ASR_ATTEMPT_LIMIT,
+  HOSTED_ASR_TOTAL_ATTEMPT_CEILING,
+  SPAN_AUDIO_RETRYABLE_FAILURE_CODES,
+  SPAN_AUDIO_RETRYABLE_LIMIT as SPAN_AUDIO_RETRY_LIMIT,
+} from "./personal-worker";
 import { HostedR2Signer } from "./r2";
 import { verifyHostedObjectChecksum as verifyHostedPreviewChecksum } from "./r2-checksum";
 export { verifyHostedPreviewChecksum };
@@ -298,7 +303,7 @@ function parseRenderHandoff(value: unknown): string | null {
   return UUID.test(record.asr_attempt_id) ? record.asr_attempt_id : null;
 }
 
-function hostedAsrSubmissionIdentity(
+export function hostedAsrSubmissionIdentity(
   projectId: string,
   revisionId: string,
   attemptOrdinal: number,
@@ -4129,6 +4134,10 @@ async function archiveHostedProject(
         typeof (error as { code?: unknown })?.code === "string"
           ? String((error as { code?: unknown }).code)
           : "UNKNOWN";
+      // 55000 is the archive capability refusing because work is still active and 42501 is a
+      // permission-shaped miss. Both already have exact answers in the outer handler, and the
+      // generic rejection below would replace "cancel the active work first" with nothing useful.
+      if (sqlstate === "55000" || sqlstate === "42501") throw error;
       const detail = String((error as { message?: unknown })?.message ?? error).slice(0, 200);
       console.warn(
         `hosted_project_archive_failed project=${projectId} sqlstate=${sqlstate} message=${detail}`,
@@ -5185,6 +5194,7 @@ async function asrHandoff(
         duration_ms: number | string;
         receipt_id: string;
         asr_attempt_count: number | string;
+        asr_total_attempt_count: number | string;
         latest_asr_state: string | null;
       }>(
         `SELECT revision.id::text AS revision_id,
@@ -5192,12 +5202,30 @@ async function asrHandoff(
                 revision.voiceover_asset_id::text AS voiceover_asset_id,
                 receipt.checksum_sha256, receipt.content_type,
                 asset.duration_ms, receipt.id::text AS receipt_id,
+                -- Only a failure that is about the work itself may spend the bounded retry budget.
+                -- An attempt the owner's own computer refused for a local resource reason (no disk
+                -- space, an IO or subprocess fault, a timeout) is recoverable on that machine, so
+                -- counting it here stranded a project whose three attempts all failed while the disk
+                -- was full: every later hand-off answered HOSTED_ASR_RETRY_LIMIT_REACHED and the same
+                -- environment could never be retried. See SPAN_AUDIO_RETRYABLE_FAILURE_CODES.
                 (SELECT count(*) FROM hosted_cpu_job_attempts AS attempt
                   WHERE attempt.account_id = project.account_id
                     AND attempt.workspace_id = project.workspace_id
                     AND attempt.project_id = project.id
                     AND attempt.project_revision_id = revision.id
-                    AND attempt.kind = 'ASR') AS asr_attempt_count,
+                    AND attempt.kind = 'ASR'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM public.media_worker_leases AS lease
+                       WHERE lease.attempt_id = attempt.id
+                         AND lease.failure_code IN (${SPAN_AUDIO_RETRYABLE_FAILURE_CODES.map(
+                           (code) => `'${code}'`,
+                         ).join(",")}))) AS asr_attempt_count,
+                (SELECT count(*) FROM hosted_cpu_job_attempts AS attempt
+                  WHERE attempt.account_id = project.account_id
+                    AND attempt.workspace_id = project.workspace_id
+                    AND attempt.project_id = project.id
+                    AND attempt.project_revision_id = revision.id
+                    AND attempt.kind = 'ASR') AS asr_total_attempt_count,
                 (SELECT attempt.state FROM hosted_cpu_job_attempts AS attempt
                   WHERE attempt.account_id = project.account_id
                     AND attempt.workspace_id = project.workspace_id
@@ -5240,7 +5268,13 @@ async function asrHandoff(
     });
     if (!state) return response({ error: { code: "HOSTED_ASR_HANDOFF_NOT_READY" } }, 409);
     const asrAttemptCount = Number(state.asr_attempt_count);
-    if (!Number.isSafeInteger(asrAttemptCount) || asrAttemptCount < 0)
+    const asrTotalAttemptCount = Number(state.asr_total_attempt_count);
+    if (
+      !Number.isSafeInteger(asrAttemptCount) ||
+      asrAttemptCount < 0 ||
+      !Number.isSafeInteger(asrTotalAttemptCount) ||
+      asrTotalAttemptCount < 0
+    )
       return response({ error: { code: "HOSTED_ASR_HANDOFF_NOT_READY" } }, 409);
     if (asrAttemptCount > 0 && state.latest_asr_state !== "FAILED")
       return response(
@@ -5252,18 +5286,33 @@ async function asrHandoff(
         },
         409,
       );
-    if (asrAttemptCount >= 3)
+    if (asrAttemptCount >= HOSTED_ASR_ATTEMPT_LIMIT)
       return response(
         {
           error: {
             code: "HOSTED_ASR_RETRY_LIMIT_REACHED",
             message:
-              "Transcription still needs attention. Keep the project saved and contact support.",
+              "Transcription failed this many times on the voiceover itself. Keep the project saved and contact support.",
           },
         },
         409,
       );
-    const asrAttemptOrdinal = asrAttemptCount + 1;
+    // Local resource failures do not spend the limit above, so an unbounded loop is still held back by
+    // a total ceiling: an owner who keeps retrying a full disk cannot grow attempts forever.
+    if (asrTotalAttemptCount >= HOSTED_ASR_TOTAL_ATTEMPT_CEILING)
+      return response(
+        {
+          error: {
+            code: "HOSTED_ASR_RETRY_LIMIT_REACHED",
+            message:
+              "Transcription was attempted this many times. Free space on the connected computer, then contact support.",
+          },
+        },
+        409,
+      );
+    // The submission identity must stay unique across every attempt, including the ones a local
+    // resource failure did not charge to the limit, so the ordinal comes from the total.
+    const asrAttemptOrdinal = asrTotalAttemptCount + 1;
     const extension = voiceoverExtension(state.content_type);
     const asrIdentity = hostedAsrSubmissionIdentity(
       projectId,
@@ -7266,7 +7315,16 @@ async function projectDetail(
         id: "transcription",
         name: "Transcribe voiceover",
         status: String(asr?.state ?? "WAITING"),
-        progress_percent: asr?.state === "SUCCEEDED" ? 100 : asr ? 50 : 0,
+        // A transcript exists only once the attempt succeeded, so a stopped attempt reports no
+        // progress: the old constant 50 made a failed transcription read as half of the work done.
+        progress_percent:
+          asr?.state === "SUCCEEDED"
+            ? 100
+            : asr && ["FAILED", "CANCELLED", "EXPIRED", "DEAD_LETTER"].includes(String(asr.state))
+              ? 0
+              : asr
+                ? 50
+                : 0,
         started_at: timestampOrNull(asr?.submitted_at),
         completed_at: timestampOrNull(asr?.terminal_at),
         detail: "Your connected computer is converting the voiceover into timed speech.",

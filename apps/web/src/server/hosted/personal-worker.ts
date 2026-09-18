@@ -21,7 +21,12 @@ const PLANNED_RECONCILIATION_GRACE_MS = 2 * 60 * 1_000;
 // reason; the attempt keeps its exact identity and its content-addressed lineage.
 export const SPAN_AUDIO_RETRYABLE_LIMIT = 32;
 const SPAN_AUDIO_RETRY_DELAY_SECONDS = 45;
-const SPAN_AUDIO_RETRYABLE_FAILURE_CODES = [
+/**
+ * The canonical "the owner's own computer could not do the work for a local resource reason" set.
+ * The ASR hand-off limit reads the same list: an attempt that failed on one of these is recoverable
+ * on that machine, so it must not spend the project's bounded retry budget.
+ */
+export const SPAN_AUDIO_RETRYABLE_FAILURE_CODES = [
   "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
   "MEDIA_EXECUTION_IO_FAILED",
   "MEDIA_EXECUTION_TIMEOUT",
@@ -29,6 +34,13 @@ const SPAN_AUDIO_RETRYABLE_FAILURE_CODES = [
   // Bounded generic local failure reported by the installed worker.
   "MEDIA_EXECUTION_FAILED",
 ];
+/** How many transcriptions may fail on the voiceover itself before the owner is asked for help. */
+export const HOSTED_ASR_ATTEMPT_LIMIT = 3;
+/**
+ * The ceiling that still bounds a retry loop when every failure was local: an owner retrying a full
+ * disk keeps creating attempts, so the total is capped independently of the limit above.
+ */
+export const HOSTED_ASR_TOTAL_ATTEMPT_CEILING = 12;
 
 export function supportedWorkerPlatform(platform: unknown, architecture: unknown): boolean {
   return (

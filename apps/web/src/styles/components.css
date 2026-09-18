@@ -316,6 +316,14 @@
   letter-spacing: 0.02em;
 }
 
+.stage-copy .stage-retry-notice {
+  margin-top: 6px;
+  color: var(--danger);
+  font-size: 0.77rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .stage-copy p {
   margin-top: 6px;
   color: var(--muted);

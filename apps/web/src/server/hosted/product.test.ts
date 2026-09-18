@@ -173,6 +173,7 @@ vi.mock("./hosted-pair-live-wiring", () => hostedPairWorkflowState);
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import {
   handleHostedProductRequest,
+  hostedAsrSubmissionIdentity,
   hostedAvatarConflictProblem,
   hostedGpuProductState,
   hostedProjectConflictProblem,
@@ -478,6 +479,7 @@ describe("hosted product route contract", () => {
       duration_ms: 159_216,
       receipt_id: "44444444-4444-4444-8444-444444444444",
       asr_attempt_count: 1,
+      asr_total_attempt_count: 1,
       latest_asr_state: "FAILED",
     };
     try {
@@ -523,6 +525,101 @@ describe("hosted product route contract", () => {
       const commitEnd = source.indexOf("/**\n * Advance the ordinary product journey", commitStart);
       const commit = source.slice(commitStart, commitEnd);
       expect(commit).toContain("hostedAsrSubmissionIdentity(projectId, revisionId, 1)");
+    } finally {
+      testState.projectRows[0] = previousProject!;
+    }
+  });
+
+  it("keeps the hand-off open when every failed attempt was a local resource failure", async () => {
+    // A project whose transcriptions all failed because the owner's own computer ran out of disk is
+    // recoverable on that machine, so those attempts must not spend the bounded retry budget: the
+    // state row reports them in asr_total_attempt_count only.
+    const previousProject = testState.projectRows[0];
+    testState.projectRows[0] = {
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_number: 2,
+      voiceover_asset_id: "33333333-3333-4333-8333-333333333333",
+      checksum_sha256: `sha256:${"a".repeat(64)}`,
+      content_type: "audio/mpeg",
+      duration_ms: 159_216,
+      receipt_id: "44444444-4444-4444-8444-444444444444",
+      asr_attempt_count: 0,
+      asr_total_attempt_count: 3,
+      latest_asr_state: "FAILED",
+    };
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(202);
+      const body = (await result?.json()) as { cpu_submission: { input_document: { attempt_id: string } } };
+      // The identity still advances with the total, so the fourth attempt cannot collide with the third.
+      expect(body.cpu_submission.input_document.attempt_id).toBe(
+        hostedAsrSubmissionIdentity(PROJECT_ID, "22222222-2222-4222-8222-222222222222", 4).attemptId,
+      );
+    } finally {
+      testState.projectRows[0] = previousProject!;
+    }
+  });
+
+  it("refuses the hand-off once the total attempt ceiling is reached", async () => {
+    const previousProject = testState.projectRows[0];
+    testState.projectRows[0] = {
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_number: 2,
+      voiceover_asset_id: "33333333-3333-4333-8333-333333333333",
+      checksum_sha256: `sha256:${"a".repeat(64)}`,
+      content_type: "audio/mpeg",
+      duration_ms: 159_216,
+      receipt_id: "44444444-4444-4444-8444-444444444444",
+      asr_attempt_count: 0,
+      asr_total_attempt_count: 12,
+      latest_asr_state: "FAILED",
+    };
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(409);
+      expect(await result?.json()).toMatchObject({
+        error: { code: "HOSTED_ASR_RETRY_LIMIT_REACHED" },
+      });
+    } finally {
+      testState.projectRows[0] = previousProject!;
+    }
+  });
+
+  it("refuses the hand-off once the voiceover itself failed the bounded number of times", async () => {
+    const previousProject = testState.projectRows[0];
+    testState.projectRows[0] = {
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_number: 2,
+      voiceover_asset_id: "33333333-3333-4333-8333-333333333333",
+      checksum_sha256: `sha256:${"a".repeat(64)}`,
+      content_type: "audio/mpeg",
+      duration_ms: 159_216,
+      receipt_id: "44444444-4444-4444-8444-444444444444",
+      asr_attempt_count: 3,
+      asr_total_attempt_count: 3,
+      latest_asr_state: "FAILED",
+    };
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(409);
+      expect(await result?.json()).toMatchObject({
+        error: { code: "HOSTED_ASR_RETRY_LIMIT_REACHED" },
+      });
     } finally {
       testState.projectRows[0] = previousProject!;
     }

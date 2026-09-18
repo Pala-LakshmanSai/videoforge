@@ -2321,6 +2321,66 @@ describe("hosted product journey", () => {
     );
   });
 
+  it("shows the server's refusal inside the stage row when a retry is rejected", async () => {
+    // Pressing Retry when the server refuses used to change nothing on screen: the refused reason
+    // landed only in the notice below the pipeline. The row that was pressed must carry it.
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const refusal =
+      "Transcription failed this many times on the voiceover itself. Keep the project saved and contact support.";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-08-17T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [
+        {
+          id: "33333333-3333-4333-8333-333333333333",
+          kind: "ASR" as const,
+          state: "FAILED",
+          version: 2,
+          created_at: "2026-08-17T10:00:00.000Z",
+          updated_at: "2026-08-17T10:01:00.000Z",
+          terminal_at: "2026-08-17T10:01:00.000Z",
+          output_checksum_sha256: null,
+          approved_at: null,
+          preview_url: null,
+          error_code: "MEDIA_EXECUTION_FAILED",
+        },
+      ],
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
+      gpu_readiness: gpuReadiness,
+      stages: stageList({ prepare: "COMPLETE", transcription: "FAILED" }),
+      generation: null,
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith(`/projects/${projectId}/asr`))
+        return Response.json(
+          { error: { code: "HOSTED_ASR_RETRY_LIMIT_REACHED", message: refusal } },
+          { status: 409 },
+        );
+      return Response.json(detail);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(
+      await screen.findByText("Transcription stopped before the transcript could be saved."),
+    ).toBeInTheDocument();
+    const transcription = stageRow("Transcribe voiceover");
+    expect(within(transcription).queryByText(refusal)).not.toBeInTheDocument();
+    fireEvent.click(within(transcription).getByRole("button", { name: "Retry" }));
+    expect(await within(transcription).findByText(refusal)).toBeInTheDocument();
+    // Still the only stage with the control, and still no invented fraction on a stopped stage.
+    expect(within(transcription).queryByText("50/100")).not.toBeInTheDocument();
+    expect(
+      within(stageRow("Prepare project")).queryByRole("button", { name: "Retry" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("puts the retry inside only the failed stage, directly after its FAILED badge", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     vi.stubGlobal(
