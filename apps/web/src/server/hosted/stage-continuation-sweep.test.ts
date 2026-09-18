@@ -214,8 +214,8 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     // bounded redispatch can repair it, and the two windows must not drift apart.
     expect(DUE_QUERY).toContain("prompt_state = 'DISPATCHING'");
     expect(DUE_QUERY).toContain("prompt_accepted_set IS NULL");
-    expect(DUE_QUERY).toContain("make_interval(secs => 300)");
-    expect(HOSTED_PROMPT_STALE_RUN_MS).toBe(300 * 1000);
+    expect(DUE_QUERY).toContain("make_interval(secs => 900)");
+    expect(HOSTED_PROMPT_STALE_RUN_MS).toBe(900 * 1000);
     expect(DUE_QUERY).toContain("prompt_state IN ('FAILED', 'UNKNOWN')");
     // The sweep keeps its own copy (a static import would fold the prompt route's dynamic entry
     // back into the main bundle), so the two lists have to be compared.

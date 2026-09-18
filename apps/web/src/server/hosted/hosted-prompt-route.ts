@@ -51,13 +51,15 @@ const HOSTED_PROMPT_ATTEMPT_BUDGET = 30;
  *
  * A batch drives a provider call worth a minute or more from inside one request; if the runner ends
  * before the provider answers, the batch is never requeued and the run stays in flight forever. Five
- * minutes is far past a healthy batch - the same request class measures under a minute - so a live
- * attempt is never replaced, while a stranded one is repaired by the next caller (the continuation
- * sweep calls this route every tick). The window is measured from the attempt's start, which a
+ * minutes is far past a healthy batch - the same request class measures in single-digit minutes - so
+ * a live attempt is never replaced, while a stranded one is repaired by the next caller (the
+ * continuation sweep calls this route every tick). It matches the window the database's stale
+ * reconciliation uses; with a shorter window here, or a shorter one there, a live batch was replaced
+ * mid-call and nothing ever finished. The window is measured from the attempt's start, which a
  * redispatch refreshes: keying it on the row's creation time made every tick replace the attempt the
  * previous tick had just started.
  */
-export const HOSTED_PROMPT_STALE_RUN_MS = 5 * 60 * 1000;
+export const HOSTED_PROMPT_STALE_RUN_MS = 15 * 60 * 1000;
 
 /**
  * Problem codes that mean the provider never gave a usable prompt set, so the attempt carries no

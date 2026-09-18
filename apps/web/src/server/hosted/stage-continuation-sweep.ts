@@ -49,7 +49,7 @@ export const CONTEXT_REDISPATCHABLE_PROBLEM_CODES = Object.freeze([
 export const CONTEXT_REDISPATCH_BUDGET = 30 as const;
 
 /** Mirrors HOSTED_PROMPT_STALE_RUN_MS in hosted-prompt-route.ts, in seconds for the due query. */
-const PROMPT_STALE_RUN_SECONDS = 300 as const;
+const PROMPT_STALE_RUN_SECONDS = 900 as const;
 
 /**
  * The problem classes the prompt route will redispatch.
