@@ -184,7 +184,7 @@ export async function writeProjectPrompts(
       claimTokenHash: await sha256(`hosted-prompt-claim:${crypto.randomUUID()}:${projectId}`),
     };
     const authority = hostedPromptAuthority({
-      plan,
+      plan: planRecord,
       identity,
       reservedCostMicroUsd: HOSTED_PROMPT_RESERVATION_MICRO_USD,
       redispatchApproved,
