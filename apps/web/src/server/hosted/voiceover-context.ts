@@ -46,7 +46,7 @@ export const HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES: ReadonlySet<string> = new S
  * continue once that cause is gone. Every attempt is separately reserved and the spend guard is
  * unchanged.
  */
-export const HOSTED_CONTEXT_REDISPATCH_BUDGET = 18 as const;
+export const HOSTED_CONTEXT_REDISPATCH_BUDGET = 22 as const;
 /**
  * The text model this product pins for stage 3.
  *
