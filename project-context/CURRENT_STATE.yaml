@@ -1,4 +1,47 @@
 schema_version: "2.0"
+prompt_relevance_and_product_relatality_repair_2026_09_19:
+  checkpoint: V2-09
+  status: DEPLOYED_AND_VERIFIED_LIVE
+  scope: >-
+    Stage 5 image prompt writing now treats each scene's exact phrase, containing sentence, prior
+    script part, and next script part as the primary content source. Batch story context is an
+    explicit fallback only, and the request payload places scene-local evidence before it.
+  root_cause_proven: >-
+    The old writer contract allowed batch story context to supply people, places, era, and continuity
+    for every scene, while the acceptance gate merged global and local anchors. The compiler also
+    banned every manufactured product, package, and container, although the project contract only
+    requires removing text, logos, watermarks, and branded/marked packaging. Consumer scenes were
+    therefore pushed toward generic people, plants, tools, and empty environments.
+  fix: >-
+    Request v21 makes local context priority explicit and changes the semantic gate so global anchors
+    are accepted only when the local script window has no usable anchor. Plain products, packages, and
+    containers are now allowed when supported by the scene, while visible text, labels, logos, brands,
+    printed markings, and branded packaging remain hard failures. The old v20 task identity is not
+    reused.
+  verification: >-
+    Pipeline 190/190 tests green, including the new local-context precedence, pronoun-resolution, and
+    unbranded-product regressions; repo lint/typecheck/build green (12/12); web typecheck/lint green;
+    build:cloudflare green with the V2-05 bundle guard; both new policy markers confirmed in the
+    shipped bundle before deploy. Pre-existing drift, each reproduced byte-identical with this change
+    stashed: test:scripts' 28 failures (stale byte baselines, worker-graph expectations,
+    deploy-lineage guards), the web suite's 18 failures (PGlite runtime role, provider bridge,
+    provider-mode screens), control-plane's 9 known fixture failures, the workers repair-overlay hash
+    pin, and format:check's 41-file drift outside this change (this change's files were reformatted).
+  deploy: >-
+    Source commit b8671e08e275850c550091087630bca9db6922d4; worker version
+    31e730a6-6458-4ed5-a7b5-8d9d23852afa; the harness readback aborted on the known pnpm
+    engine-warning JSON defect (V2_09_CLOUDFLARE_PRODUCTION_SECRET_LIST_JSON_INVALID) after the
+    deploy had committed, recovered with the readback-only pass under pinned Node 22.23.2;
+    activation 93945381-03ec-4c10-8d51-1c72bdd7fe31 rebound over previous
+    7da60eb8-125b-4f5d-bcc8-1f3961729a20 with providerActionsCreated 0; /status commit=b8671e08,
+    gpu_transport QUALIFIED_EXACT; live version id sha256
+    ea100af9646d6144175d08dbf58c8cc741208d9e8e68bd5f185eb4121758139a.
+  provider_spend: NONE
+  paid_compute_shutdown: NO_PROVIDER_CALLS_OR_PAID_COMPUTE_STARTED
+  remaining_gates: >-
+    Generate a fresh project and visually review the Stage-5 frames for relatability; projects
+    created before this deploy keep their already-written prompts.
+
 avatar_video_source_truth_2026_09_19:
   checkpoint: V2-09
   status: DEPLOYED_AND_VERIFIED_LIVE
@@ -281,7 +324,7 @@ china_fresh_stage2_repair_2026_09_15:
   repair: "Exact disk preflight reproduced insufficient capacity; disposable cache cleanup restores it. Replacement ASR and context succeed. Worker0.1.23 candidate distinguishes confirmed disk shortage from generic I/O; capacity safety unchanged; UI gives storage-specific guidance."
   validation: "Worker8, UI4, release8 focused tests pass with red-green proof. Worker0.1.23 published and installed; SHA256, signature, version and LaunchAgent verified. Stage5 exact saved plan reproduces 110021-character aggregate against 80000 transport cap before dispatch; narrow aggregate validation repair passes2 new regressions and22 hosted tests."
   remaining: "Production deploy/activation and new-project end-to-end verification pending. Existing UNKNOWN run not replayed/reset. No GPU jobs at last provider read; known contextUSD0.000508. Final video and zero-work closure pending."
-  evidence: evidence/acceptance/VF-10-09/2026-09-15-china-fresh/stage2-repair.json
+  evidence_note: "Historical local stage2-repair artifact was not committed; no repository evidence path exists."
 single_create_action_2026_09_15:
   checkpoint: V2-09
   status: DEPLOYED_QUALIFIED_EXACT
