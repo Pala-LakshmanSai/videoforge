@@ -412,7 +412,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
         const invalidDiagnostic = runwarePromptValidationDiagnostic(error);
         if (invalidDiagnostic)
           console.warn(
-            `hosted_prompt_output_invalid project=${this.projectIdHint ?? "-"} category=${invalidDiagnostic.category} reason=${invalidDiagnostic.reason} requested=${invalidDiagnostic.requestedSceneCount} returned=${invalidDiagnostic.returnedSceneCount} valid=${invalidDiagnostic.locallyValidSceneCount}`,
+            `hosted_prompt_output_invalid batch=${captured.at(-1)?.request.request.taskUUID ?? "-"} category=${invalidDiagnostic.category} reason=${invalidDiagnostic.reason} requested=${invalidDiagnostic.requestedSceneCount} returned=${invalidDiagnostic.returnedSceneCount} valid=${invalidDiagnostic.locallyValidSceneCount}`,
           );
         throw new HostedPromptExecutionError(
           "HOSTED_PROMPT_OUTPUT_INVALID",
