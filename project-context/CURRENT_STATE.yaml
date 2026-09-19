@@ -1,4 +1,52 @@
 schema_version: "2.0"
+repo_hardening_and_live_repairs_2026_09_19:
+  checkpoint: V2-09
+  status: DEPLOYED_AND_VERIFIED_LIVE
+  scope: >-
+    Repo-wide green pass after the stage-03 repair: the two pre-existing web test
+    failures, the repo-wide lint failure, two live database defects the control-plane
+    fixtures exposed, and the control-plane fixture chain itself.
+  live_defects_repaired: >-
+    Migration 0185 (videoforge_assert_hosted_v209_ordinary_avatar_source read a candidate
+    record before checking SELECT INTO had assigned it, so every avatar source without a
+    candidate row raised 55000 'record "candidate" is not assigned yet' - live, marker at
+    position 9560 of the installed definition) and migration 0186 (three tenant tables -
+    hosted_image_regeneration_requests, hosted_v209_ordinary_dispatch_candidate_renewals,
+    hosted_v209_outboxed_horizon_recoveries - missed 0018's tenant write guard; each now
+    carries FORCE RLS, a _tenant_rls policy and a _tenant_write_guard trigger). Both
+    validated inside a rolled-back transaction, applied to production, ledgered as
+    versions 185 and 186, and probe-verified (the guard set now contains only the five
+    OPERATOR_ONLY_TABLES). Migration 0147 was also applied to production without a ledger
+    row; recorded now, with the committed file's hash.
+  repo_repairs: >-
+    The control-plane fixture chain could not apply at all: the manifest recorded a sha256
+    for 0147 that the committed file never had, and the chain GRANTs to a runtime role no
+    migration creates. Corrected the hash, taught PGliteExecutor to seed the deployment
+    role on top-level executors only, gave the historical slice tests an explicit
+    applyMigrationSliceThrough, refreshed the Vocabulary (two non-portable tables, one
+    internal view) and the stale chain-end, TTL-window, prompt-guard and cwd-relative
+    expectations. The web repairs: the detail-generation PGlite fixture now creates the
+    timing asset its query joins, the dispatch suite asserts the real URL-redacted warn
+    payload, the pair-observer guard can no longer reject the claim route, and the lint
+    config honours the repo's underscore placeholder convention (12 findings, plus two
+    genuinely unused imports). Pipeline suites pin the live Gemini request contract.
+  evidence: >-
+    Control-plane 448 passed / 9 failed (was 332 failed); web 75 files / 798 tests; pipeline
+    189; typecheck 12/12; lint 12/12 (was 3 packages red); build:cloudflare green with the
+    bundle guard. Production source commit 34b284e4dd90f73d58754ea8f1125d1091bb0d53,
+    worker version b7a0ca38-7248-4861-81bf-579ac543eda9, activation ff498798-3361-4097-b32b-
+    0d1d2a79b171 rebound with providerActionsCreated 0, /status gpu_transport
+    QUALIFIED_EXACT, both lane attestations accepted until 2026-09-19T08:18:25Z, live
+    version sha256 b7c89933cfefcb7e7052e739753fac7544993f498105cfa8b6649819cdc74c34 equals the
+    activation row's cloudflare_version_id_sha256.
+  known_remaining: >-
+    Nine control-plane fixture failures remain, all pre-existing and all in historical
+    feature suites: hosted_image_regeneration_requests still carries a raw
+    dispatch_token text column that 0042's 'no durable text column' invariant forbids
+    (the app reads it at hosted-image-regeneration-execution.ts:89, so the fix is a schema
+    plus app change); 0042/0043/0044 settlement fixtures cannot satisfy the recovery
+    guard's qualification-attestation joins; and four export/restore, cost-figure and
+    schema-text expectations still pin pre-migration behaviour.
 stage3_authority_and_gpu_dispatch_repaired_2026_09_19:
   checkpoint: V2-09
   status: DEPLOYED_AND_VERIFIED_LIVE
@@ -423,7 +471,7 @@ image_review_regeneration_request_2026_09_14:
   latest_demo_ui_to_accepted_ms: 34940
   latest_demo_evidence: evidence/acceptance/VF-10-09/2026-09-14-image-regeneration-source/live-demo.json
   final_runpod_balance_usd: 16.7686399735
-updated_at: "2026-09-13T22:00:00Z"
+updated_at: "2026-09-19T04:24:12Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
