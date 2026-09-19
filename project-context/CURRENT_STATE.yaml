@@ -1,4 +1,76 @@
 schema_version: "2.0"
+stage3_authority_and_gpu_dispatch_repaired_2026_09_19:
+  checkpoint: V2-09
+  status: DEPLOYED_AND_VERIFIED_LIVE
+  symptom: >-
+    Stage 03 "Understand voiceover context" read RUNNING with 0/100 for 5m27s on project e9f3d94c
+    (helen1) while the continuation sweep re-offered the step every ~20 s and every attempt failed
+    before any context row existed.
+  root_cause_proven: >-
+    Migration 0173 re-created videoforge_prepare_hosted_voiceover_context from a stale copy and
+    silently restored the `revision.maximum_cost_micro_usd>=10000` predicate that 0086 had replaced
+    with TRUE when it made the column nullable (NULL = unlimited). Every real revision carries NULL,
+    so each stage-3 start raised 42501 'hosted voiceover context authority is invalid'. Proof on the
+    live rows: the guard's account, membership and ASR-join clauses pass for helen1's revision and
+    attempt; only the cost clause fails. Heartbeats carried
+    "e9f3d94c-...:context:hosted voiceover context authority is invalid" every tick with
+    dispatched {}.
+  fix_db: >-
+    Migration 0184 repairs the live definition in place (0086's assert-and-replace pattern, idempotent)
+    and inspects the redispatch capability for the same clause; applied to production and recorded in
+    the ledger as version 184. The sweep suite gained a guard that reads the newest migration owning
+    the capability and refuses a re-created body carrying the stale predicate without an in-place
+    repair.
+  fix_sweep: >-
+    runHostedContinuation built its configuration from hostedRuntimeConfiguration(), whose
+    gpuTransport is always DISABLED_UNQUALIFIED - the environment flag is necessary and never
+    sufficient - so its GPU-dispatch step answered 503 GPU_TRANSPORT_DISABLED_UNQUALIFIED on every
+    tick (recorded verbatim in the heartbeats) and stages 6-8 stayed browser-only. The sweep now
+    resolves the verified activation through the same database seam every request path uses (./app is
+    imported dynamically to stay out of the static Worker-entry closure), and five new tests drive
+    the real verifier: accepted -> QUALIFIED_EXACT, drifted or absent -> disabled, flag alone never
+    enables. The accepted production bundle ceiling moved 2,737,379 -> 2,737,905.
+  fix_avatar: >-
+    The product let an ordinary project pin a workspace-uploaded (pass-through) avatar whose runtime
+    source sits at .../original/source. The SoulX lane accepts only an immutable canonical key ending
+    /canonical/avatar.png and fails WORKER_ARTIFACT_PATH_MISMATCH about a second in - after the image
+    lane has already burned paid GPU time (helen1: mage_image COMPLETED in 2.8 minutes, soulx_avatar
+    FAILED in 1.1 s, request FAILED / LANE_PERMANENT_FAILURE). Preflight now answers a BLOCKING
+    AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED for any pinned version that is not a canonical avatar.png, so
+    the pair is never dispatched for a lane that must reject it.
+  fix_truth: >-
+    A refused context start (no row, no attempt to settle) escaped createVoiceoverContext and reached
+    the browser as the Workers runtime's non-JSON 500, which readJson can only turn into its generic
+    "VideoForge hosted request failed." sentence; stage 03 kept reading RUNNING with the
+    automatic-start copy while nothing was running. The route now answers
+    {error:{code:'HOSTED_CONTEXT_START_REJECTED'}, 503} and logs the SQLSTATE, and the client coerces
+    that stage row to FAILED with the request's own reason plus an inline bounded retry, leaving the
+    pipeline notice in its auto-start branch instead of rewriting it to the needs-review copy.
+  verification: >-
+    Live commit 08b2d9ed (HEAD at the time) with x-videoforge-worker-version
+    2f181ff5-85e2-405b-abc9-a3ddb15f4616; activation 9f8ef59e bound to that exact version
+    (sha256:841993a0925c053e8a43c77bcc1f2e12b93855b045d773eecb2f2818b52cce47) and to source
+    08b2d9ed with providerActionsCreated 0; videoforge_load_hosted_gpu_activation_v2() reads
+    accepted=true, fresh, both lane attestations valid to 2026-09-19T08:18Z; the served client chunk
+    HostedProductScreens-Be3N_a20.js is byte-identical (sha256 51e2a7bd...) to the HEAD build, and the
+    deployed artifact was marker-checked for resolveContinuationConfiguration and
+    AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED before upload. The stage-3 repair itself is proven live:
+    context row 4b2cc611 was created and SUCCEEDED 1.6 s after migration 0184, stage 4 and stage 5
+    followed automatically (prompt run SUCCEEDED 02:48:19Z, 10 spans materialized).
+  tests: >-
+    stage-continuation-sweep.test.ts 13/13 (including the migration guard), the new
+    stage-continuation-sweep-configuration.test.ts 5/5, product.test.ts 79/79, HostedProductScreens
+    94/94 (the new stage-03 cases carry negative controls: they fail with the source fix stashed),
+    hosted-prompt-run.test.ts green; typecheck 12/12; build:cloudflare green after the ceiling move.
+  remaining: >-
+    The sweep's GPU-dispatch step is unit-verified and gate-verified, but its live end-to-end proof
+    arrives with the next due run (nothing is due now: helen1's revision already carries a generation
+    request, so the sweep will not re-offer it). helen1 itself cannot be re-run with another avatar -
+    there is no re-pin path and POST /retry replays the same locked revision - so it needs a new
+    project created with a system avatar ("V2-09 qualified SoulX avatar (system copy)"). Two
+    pre-existing repo failures remain (project-detail-generation-query.test.ts needs its env fixture,
+    hosted-v209-project-dispatch.test.ts carries an extra reason field) and product.ts:46 carries a
+    pre-existing unused-import lint error (writeProjectPrompts).
 stage5_prompt_writing_repaired_2026_09_18:
   checkpoint: V2-09
   status: DEPLOYED_VERIFIED_STAGE5_SUCCEEDED
