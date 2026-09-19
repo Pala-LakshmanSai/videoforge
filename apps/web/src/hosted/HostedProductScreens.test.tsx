@@ -898,6 +898,64 @@ describe("hosted product journey", () => {
     ).resolves.toBe(20_000);
   });
 
+  it("flags a custom avatar that cannot produce avatar video, and leaves a qualified one unmarked", async () => {
+    const catalogFor = (avatar: Record<string, unknown>) => ({
+      avatars: [avatar],
+      styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+      media_worker_state: "ONLINE",
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: gpuReadiness,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          catalogFor({
+            profile_id: "p-helen",
+            version_id: "a-helen",
+            name: "helen",
+            version_number: 1,
+            state: "READY",
+            status: "ACTIVE",
+            rights_status: "ATTESTED",
+            avatar_video_source_ready: false,
+          }),
+        ),
+      ),
+    );
+    const custom = renderHosted(<HostedCreateProjectScreen />);
+    // Assert on the rendered text rather than one node: the picker remounts when the catalog settles.
+    await waitFor(() =>
+      expect(document.body.textContent ?? "").toContain("Version 1 · no avatar video yet"),
+    );
+    custom.unmount();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          catalogFor({
+            profile_id: "p-system",
+            version_id: "a-system",
+            name: "V2-09 qualified SoulX avatar (system copy)",
+            version_number: 1,
+            state: "READY",
+            status: "ACTIVE",
+            rights_status: "ATTESTED",
+            avatar_video_source_ready: true,
+          }),
+        ),
+      ),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+    await waitFor(() =>
+      expect(document.body.textContent ?? "").toContain(
+        "V2-09 qualified SoulX avatar (system copy)",
+      ),
+    );
+    expect(document.body.textContent ?? "").not.toContain("no avatar video yet");
+  });
+
   it("explains the Chrome file-access prerequisite when the chooser yields no file", async () => {
     vi.stubGlobal(
       "fetch",

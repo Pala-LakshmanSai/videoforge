@@ -75,6 +75,87 @@ const HOSTED_TARGETED_RETRY_QUALIFIED = false;
 const AVATAR_PASS_THROUGH_PREPARATION_PROFILE = "hosted-avatar-source-pass-through-v1";
 const CANONICAL_AVATAR_RUNTIME_SOURCE_KEY = /^.*\/canonical\/avatar\.png$/u;
 
+/**
+ * A binding is dispatchable only when its runtime source is the canonical object that sealed worker
+ * can read and its preparation profile is not the pass-through upload profile.
+ *
+ * This does not mean "any canonical avatar renders": render-plan materialization additionally pins
+ * the revision's avatarRuntimeSourceSha256 to the approved SoulX source, so a custom photo needs its
+ * own lane qualification (a new approval plus qualification run) before it can produce avatar video.
+ * Preflight and project creation both refuse a binding that fails this check, because the pair
+ * dispatch is what spends money and the avatar lane cannot read the wrong source at all.
+ */
+function avatarRuntimeSourceQualified(row: AvatarRuntimeSourceRow | undefined): boolean {
+  return (
+    row !== undefined &&
+    row.source_preparation_profile !== AVATAR_PASS_THROUGH_PREPARATION_PROFILE &&
+    typeof row.object_key === "string" &&
+    CANONICAL_AVATAR_RUNTIME_SOURCE_KEY.test(row.object_key)
+  );
+}
+
+interface AvatarRuntimeSourceRow extends Record<string, unknown> {
+  readonly source_preparation_profile?: string | null;
+  readonly object_key?: string | null;
+}
+
+const QUALIFIED_AVATAR_UNAVAILABLE_MESSAGE =
+  "Avatar video can only be generated from the approved avatar source, and this workspace has no such avatar yet.";
+const qualifiedAvatarUnavailableMessage = (name: string | null): string =>
+  name === null
+    ? QUALIFIED_AVATAR_UNAVAILABLE_MESSAGE
+    : `Avatar video can only be generated from the approved avatar source. Choose "${name}" instead — a custom avatar image cannot be used for avatar video yet.`;
+
+/** The runtime source row a version actually dispatches with, if one is linked. */
+async function readAvatarRuntimeSource(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+  avatarVersionId: string,
+): Promise<AvatarRuntimeSourceRow | undefined> {
+  const result = await transaction.query<AvatarRuntimeSourceRow>(
+    `SELECT version.source_preparation_profile, runtime_source.object_key
+       FROM avatar_profile_versions AS version
+       LEFT JOIN assets AS runtime_source
+         ON runtime_source.account_id = version.account_id
+        AND runtime_source.workspace_id = version.workspace_id
+        AND runtime_source.id = version.runtime_source_asset_id
+      WHERE version.account_id = $1 AND version.workspace_id = $2 AND version.id = $3`,
+    [scope.account_id, scope.workspace_id, avatarVersionId],
+  );
+  return result.rows[0];
+}
+
+/** The name of the first avatar this workspace can actually dispatch, workspace copies first. */
+async function readQualifiedAvatarName(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+): Promise<string | null> {
+  const result = await transaction.query<{ readonly name: string }>(
+    `SELECT profile.name
+       FROM avatar_profiles AS profile
+       JOIN avatar_profile_versions AS version
+         ON version.account_id = profile.account_id
+        AND version.workspace_id = profile.workspace_id
+        AND version.profile_id = profile.id
+       JOIN assets AS runtime_source
+         ON runtime_source.account_id = version.account_id
+        AND runtime_source.workspace_id = version.workspace_id
+        AND runtime_source.id = version.runtime_source_asset_id
+      WHERE ((profile.account_id = $1 AND profile.workspace_id = $2)
+              OR profile.scope_kind = 'SYSTEM')
+        AND profile.status = 'ACTIVE' AND version.state = 'READY'
+        AND version.source_preparation_profile IS DISTINCT FROM $3
+        AND runtime_source.state = 'VERIFIED'
+        AND runtime_source.object_key ~ '^.*/canonical/avatar\\.png$'
+      ORDER BY CASE WHEN profile.account_id = $1 AND profile.workspace_id = $2 THEN 0 ELSE 1 END,
+               profile.name
+      LIMIT 1`,
+    [scope.account_id, scope.workspace_id, AVATAR_PASS_THROUGH_PREPARATION_PROFILE],
+  );
+  const name = result.rows[0]?.name;
+  return typeof name === "string" && name.trim() !== "" ? name : null;
+}
+
 function hostedProviderFreePresetCreationEnabled(config: HostedRuntimeConfiguration): boolean {
   return (
     config.environment === "production" ||
@@ -3723,12 +3804,18 @@ async function catalog(
       const avatars = await transaction.query(
         `SELECT profile.id AS profile_id, version.id AS version_id, profile.name,
                 version.version_number, version.state, profile.status,
-                version.profile_hash, profile.scope_kind
+                version.profile_hash, profile.scope_kind,
+                version.source_preparation_profile,
+                runtime_source.object_key AS runtime_source_object_key
            FROM avatar_profiles AS profile
            JOIN avatar_profile_versions AS version
              ON version.account_id = profile.account_id
             AND version.workspace_id = profile.workspace_id
             AND version.profile_id = profile.id
+           LEFT JOIN assets AS runtime_source
+             ON runtime_source.account_id = version.account_id
+            AND runtime_source.workspace_id = version.workspace_id
+            AND runtime_source.id = version.runtime_source_asset_id
           WHERE ((profile.account_id = $1 AND profile.workspace_id = $2)
                   OR profile.scope_kind = 'SYSTEM')
             AND profile.status = 'ACTIVE' AND version.state = 'READY'
@@ -3875,6 +3962,16 @@ async function catalog(
       thumbnail_url: `/api/v2/hosted/avatars/${rowString(row, "version_id")}/preview`,
       profile_hash: row.profile_hash ?? null,
       rights_status: row.scope_kind === "SYSTEM" ? "SYSTEM_OWNED" : "ATTESTED",
+      // The avatar-video lane can only read the approved canonical source. The picker states this up
+      // front instead of letting a custom avatar look selectable and fail at preflight.
+      avatar_video_source_ready: avatarRuntimeSourceQualified({
+        source_preparation_profile:
+          typeof row.source_preparation_profile === "string"
+            ? row.source_preparation_profile
+            : null,
+        object_key:
+          typeof row.runtime_source_object_key === "string" ? row.runtime_source_object_key : null,
+      }),
     }));
     const styleRows = (data.styles as Record<string, unknown>[]).map((row) => {
       const referenceCount = Number(row.reference_count ?? 0);
@@ -4535,11 +4632,8 @@ async function projectPreflight(
         "videoforge.account_id",
         scope.account_id,
       ]);
-      const [avatar, style, workers] = await Promise.all([
-        transaction.query<{
-          source_preparation_profile: string | null;
-          object_key: string | null;
-        }>(
+      const [avatar, qualifiedAvatarName, style, workers] = await Promise.all([
+        transaction.query<AvatarRuntimeSourceRow>(
           `SELECT version.source_preparation_profile, runtime_source.object_key
              FROM avatar_profiles AS profile
              JOIN avatar_profile_versions AS version
@@ -4555,6 +4649,7 @@ async function projectPreflight(
             LIMIT 1`,
           [scope.account_id, scope.workspace_id, input.avatarVersionId],
         ),
+        readQualifiedAvatarName(transaction, scope),
         transaction.query(
           `SELECT 1
              FROM image_styles AS style
@@ -4576,14 +4671,11 @@ async function projectPreflight(
         ),
       ]);
       const avatarRow = avatar.rows[0];
-      const avatarRuntimeSourceQualified =
-        avatarRow !== undefined &&
-        avatarRow.source_preparation_profile !== AVATAR_PASS_THROUGH_PREPARATION_PROFILE &&
-        typeof avatarRow.object_key === "string" &&
-        CANONICAL_AVATAR_RUNTIME_SOURCE_KEY.test(avatarRow.object_key);
+      const runtimeSourceQualified = avatarRuntimeSourceQualified(avatarRow);
       return {
         avatarReady: avatar.rows.length > 0,
-        avatarRuntimeSourceQualified,
+        avatarRuntimeSourceQualified: runtimeSourceQualified,
+        qualifiedAvatarName: qualifiedAvatarName === null ? null : String(qualifiedAvatarName),
         styleReady: style.rows.length > 0,
         workers: Number(workers.rows[0]?.count ?? 0),
       };
@@ -4599,8 +4691,7 @@ async function projectPreflight(
     if (facts.avatarReady && !facts.avatarRuntimeSourceQualified) {
       blockers.push({
         code: "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
-        message:
-          "This avatar cannot generate avatar video yet. Choose an avatar with a prepared source (the system avatar) or re-create this preset from the Avatar Hub.",
+        message: qualifiedAvatarUnavailableMessage(facts.qualifiedAvatarName),
         severity: "BLOCKING",
       });
     }
@@ -4733,6 +4824,16 @@ async function createProject(
         input.styleVersionId,
       );
       if (!resolved) throw new Error("PROJECT_PRESET_NOT_READY");
+      // Fail closed before the reservation and the paid pair dispatch: the avatar lane cannot read a
+      // pass-through source, so a project pinned to one burns the image lane and settles the pair
+      // FAILED. Preflight is a browser convenience; this is the API-level guard.
+      if (
+        !avatarRuntimeSourceQualified(
+          await readAvatarRuntimeSource(transaction, scope, rowString(resolved.avatar, "version_id")),
+        )
+      ) {
+        throw new Error("AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED");
+      }
       // Keep the existing revision writer shape while allowing SYSTEM catalog versions to be
       // materialized into tenant-owned snapshots by resolveProjectPresets.
       const avatar = resolved.avatar;
@@ -4942,6 +5043,16 @@ async function createProject(
       return response({ error: { code: error.message } }, 409);
     if (error instanceof Error && error.message === "PROJECT_PRESET_NOT_READY")
       return response({ error: { code: error.message } }, 409);
+    if (error instanceof Error && error.message === "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED")
+      return response(
+        {
+          error: {
+            code: error.message,
+            message: QUALIFIED_AVATAR_UNAVAILABLE_MESSAGE,
+          },
+        },
+        409,
+      );
     const conflict =
       postgresCode(error) === "23505"
         ? hostedProjectConflictProblem(postgresConstraint(error), requestedTitle)

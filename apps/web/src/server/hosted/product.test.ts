@@ -41,6 +41,9 @@ const testState = vi.hoisted(() => {
   const styleDraftRows: Record<string, unknown>[] = [];
   const publishedStyleRows: Record<string, unknown>[] = [];
   const preflightAvatarRows: Record<string, unknown>[] = [];
+  const qualifiedAvatarRows: Record<string, unknown>[] = [];
+  const presetAvatarRows: Record<string, unknown>[] = [];
+  const runtimeSourceRows: Record<string, unknown>[] = [];
   const workerDeviceRows: Record<string, unknown>[] = [];
   const query = vi.fn(async (sql: string, params?: readonly unknown[]) => {
     void params;
@@ -48,12 +51,21 @@ const testState = vi.hoisted(() => {
       return { rows: rateLimitRows, affectedRows: 1 };
     if (sql.includes("videoforge_hosted_session_scope"))
       return { rows: scopeRows, affectedRows: 1 };
+    // The picker's "which avatar can this workspace actually dispatch" lookup. It also selects the
+    // canonical key, so it has to be routed before the pinned-avatar branch below.
+    if (sql.includes("SELECT profile.name"))
+      return { rows: qualifiedAvatarRows, affectedRows: qualifiedAvatarRows.length };
     if (
       sql.includes("runtime_source.object_key") &&
       sql.includes("FROM avatar_profiles AS profile")
     ) {
       return { rows: preflightAvatarRows, affectedRows: preflightAvatarRows.length };
     }
+    // The create path's own runtime-source read (preflight is a browser convenience, not the guard).
+    if (sql.includes("FROM avatar_profile_versions AS version") && sql.includes("LEFT JOIN assets AS runtime_source"))
+      return { rows: runtimeSourceRows, affectedRows: runtimeSourceRows.length };
+    if (sql.includes("version.runtime_source_binary_sha256"))
+      return { rows: presetAvatarRows, affectedRows: presetAvatarRows.length };
     if (sql.includes("FROM media_worker_devices"))
       return { rows: workerDeviceRows, affectedRows: workerDeviceRows.length };
     if (sql.includes("videoforge_archive_hosted_preset")) {
@@ -153,6 +165,9 @@ const testState = vi.hoisted(() => {
     styleDraftRows,
     publishedStyleRows,
     preflightAvatarRows,
+    qualifiedAvatarRows,
+    presetAvatarRows,
+    runtimeSourceRows,
     workerDeviceRows,
     query,
     pool,
@@ -363,6 +378,57 @@ describe("hosted project upload renewal", () => {
       testState.query.mockClear();
     }
   });
+
+  it("refuses a project pinned to a pass-through avatar before any reservation", async () => {
+    const passThroughKey =
+      "tenant/38ae8aaf-09d8-bdab-7436-385eb2fcb7ac" +
+      "/workspace/78c40d01-f7af-bae1-1922-6b458da10625" +
+      `/avatar-profile/44444444-4444-4444-8444-444444444444/version/${PRESET_ID}/original/source`;
+    testState.publishedStyleRows.push({
+      style_id: "66666666-6666-4666-8666-666666666666",
+      version_id: createBody.image_style_version_id,
+      style_profile_hash: `sha256:${"c".repeat(64)}`,
+      scope_kind: "WORKSPACE",
+    });
+    testState.presetAvatarRows.push({
+      profile_id: "44444444-4444-4444-8444-444444444444",
+      profile_name: "helen",
+      version_id: PRESET_ID,
+      scope_kind: "WORKSPACE",
+      profile_hash: `sha256:${"d".repeat(64)}`,
+      runtime_source_asset_id: "55555555-5555-4555-8555-555555555555",
+      runtime_source_binary_sha256: `sha256:${"e".repeat(64)}`,
+      source_preparation_profile: "hosted-avatar-source-pass-through-v1",
+      source_validation_profile: "hosted-avatar-source-validation-v1",
+    });
+    testState.runtimeSourceRows.push({
+      source_preparation_profile: "hosted-avatar-source-pass-through-v1",
+      object_key: passThroughKey,
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects", "POST", createBody, true, {
+          "idempotency-key": "hosted-project-avatar-guard-0001",
+        }),
+        createEnvironment,
+        config,
+        executionContext,
+      );
+      expect(result?.status).toBe(409);
+      await expect(result?.json()).resolves.toMatchObject({
+        error: {
+          code: "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
+          message:
+            "Avatar video can only be generated from the approved avatar source, and this workspace has no such avatar yet.",
+        },
+      });
+    } finally {
+      testState.publishedStyleRows.length = 0;
+      testState.presetAvatarRows.length = 0;
+      testState.runtimeSourceRows.length = 0;
+    }
+  });
+
 });
 
 function request(
@@ -1501,7 +1567,7 @@ describe("hosted product route contract", () => {
         {
           code: "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
           message:
-            "This avatar cannot generate avatar video yet. Choose an avatar with a prepared source (the system avatar) or re-create this preset from the Avatar Hub.",
+            "Avatar video can only be generated from the approved avatar source, and this workspace has no such avatar yet.",
           severity: "BLOCKING",
         },
       ]);
@@ -1571,6 +1637,43 @@ describe("hosted product route contract", () => {
       testState.publishedStyleRows.length = 0;
       testState.workerDeviceRows.length = 0;
       testState.preflightAvatarRows.length = 0;
+    }
+  });
+
+  it("names the qualified avatar in the blocker when the workspace has one", async () => {
+    testState.publishedStyleRows.push({});
+    testState.workerDeviceRows.push({ count: "1" });
+    testState.preflightAvatarRows.push({
+      source_preparation_profile: "hosted-avatar-source-pass-through-v1",
+      object_key:
+        "tenant/38ae8aaf-09d8-bdab-7436-385eb2fcb7ac" +
+        "/workspace/78c40d01-f7af-bae1-1922-6b458da10625" +
+        "/avatar-profile/fd1d6623-c3e9-46d3-bddf-228e24314cbc" +
+        "/version/06fa24c0-8f00-4783-9790-58289ef80c3f/original/source",
+    });
+    testState.qualifiedAvatarRows.push({ name: "V2-09 qualified SoulX avatar (system copy)" });
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", preflightBody),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result?.json()) as PreflightBlockerBody;
+      expect(blockingAvatarBlocker(body)).toEqual([
+        {
+          code: "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
+          message:
+            'Avatar video can only be generated from the approved avatar source. Choose "V2-09 qualified SoulX avatar (system copy)" instead — a custom avatar image cannot be used for avatar video yet.',
+          severity: "BLOCKING",
+        },
+      ]);
+    } finally {
+      testState.publishedStyleRows.length = 0;
+      testState.workerDeviceRows.length = 0;
+      testState.preflightAvatarRows.length = 0;
+      testState.qualifiedAvatarRows.length = 0;
     }
   });
 

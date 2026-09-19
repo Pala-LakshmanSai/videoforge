@@ -108,6 +108,8 @@ export interface CatalogResponse {
     compatibility?: string | null;
     rights_status?: string | null;
     scope_kind?: "WORKSPACE" | "SYSTEM";
+    /** False when this version's runtime source cannot be read by the avatar-video lane. */
+    avatar_video_source_ready?: boolean;
   }[];
   /** Workspace-owned versions that still need source upload, review, or approval. */
   readonly avatar_drafts?: readonly HostedAvatarDraft[];
@@ -2544,7 +2546,9 @@ export function HostedCreateProjectScreen() {
                   options={catalog.data.avatars.map((avatar) => ({
                     id: avatar.version_id,
                     imageUrl: avatar.thumbnail_url ?? "",
-                    meta: `Version ${avatar.version_number}`,
+                    meta: `Version ${avatar.version_number}${
+                      avatar.avatar_video_source_ready === false ? " · no avatar video yet" : ""
+                    }`,
                     name: avatar.name,
                   }))}
                   selectedId={avatarVersionId}
