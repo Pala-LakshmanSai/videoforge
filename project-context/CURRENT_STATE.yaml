@@ -43,8 +43,10 @@ relatability_verification_and_pipeline_repairs_2026_09_19:
   paid_compute_shutdown: LANES_AT_WORKERS_MIN_0
   remaining_gates: >-
     Final video render completes on the desktop worker; review approval (human) releases the
-    download URL. Optional: regenerate the two pseudo-text frames. Owed: repo-side fix so a
-    superseded prompt scene-batch task is demoted by the redispatch path itself.
+    download URL. Optional: regenerate the two pseudo-text frames. Closed: the repo-side class fix
+    landed as migration 0187 (applied to production, ledger 187, live body verified) — the
+    redispatch path now demotes superseded required scene-batch tasks before inserting the
+    superseding task.
 
 prompt_relevance_and_product_relatality_repair_2026_09_19:
   checkpoint: V2-09

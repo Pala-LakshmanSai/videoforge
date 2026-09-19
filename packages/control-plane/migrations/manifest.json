@@ -898,5 +898,12 @@
       "filename": "0186_hosted_tenant_hardening_gap.sql",
       "sha256": "sha256:9805ca5eb569e029dae1312cd389fbe3acdd7b30bd63d5e54fe26829d6b4fa58"
     }
+  ,
+    {
+      "version": 187,
+      "name": "hosted_prompt_redispatch_supersedes_scene_batch_tasks",
+      "filename": "0187_hosted_prompt_redispatch_supersedes_scene_batch_tasks.sql",
+      "sha256": "sha256:f5d966c5feba73db725d7419ea4d22c530df927994a4284234ecffd46bc2bd9e"
+    }
   ]
 }
