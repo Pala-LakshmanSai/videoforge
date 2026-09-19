@@ -12,6 +12,11 @@ const oldRevisionId = "22222222-2222-4222-8222-222222222222";
 const latestRevisionId = "33333333-3333-4333-8333-333333333333";
 const oldTimelineId = "44444444-4444-4444-8444-444444444444";
 const latestTimelineId = "55555555-5555-4555-8555-555555555555";
+const oldTimelineAssetId = "77777777-7777-4777-8777-777777777771";
+const latestTimelineAssetId = "77777777-7777-4777-8777-777777777772";
+const oldPlanningStartedAt = "2026-08-17T09:00:00.000Z";
+const latestPlanningStartedAt = "2026-08-17T10:00:00.000Z";
+const latestPlanningCompletedAt = "2026-08-17T10:00:04.000Z";
 
 async function generationQuery(): Promise<string> {
   const source = await readFile(new URL("./product.ts", import.meta.url), "utf8");
@@ -46,7 +51,14 @@ describe("hosted project detail generation query", () => {
           project_revision_id uuid NOT NULL,
           id uuid PRIMARY KEY,
           canonical_document_hash text NOT NULL,
+          canonical_document_asset_id uuid,
           plan_sequence integer NOT NULL
+        );
+        CREATE TABLE assets (
+          account_id uuid NOT NULL,
+          workspace_id uuid NOT NULL,
+          id uuid PRIMARY KEY,
+          metadata jsonb
         );
         CREATE TABLE timeline_segments (
           account_id uuid NOT NULL,
@@ -75,10 +87,17 @@ describe("hosted project detail generation query", () => {
           ('${accountId}', '${workspaceId}', '${oldRevisionId}', '${oldTimelineId}'),
           ('${accountId}', '${workspaceId}', '${latestRevisionId}', '${latestTimelineId}');
         INSERT INTO timeline_plans
-          (account_id, workspace_id, project_revision_id, id, canonical_document_hash, plan_sequence)
+          (account_id, workspace_id, project_revision_id, id, canonical_document_hash,
+           canonical_document_asset_id, plan_sequence)
         VALUES
-          ('${accountId}', '${workspaceId}', '${oldRevisionId}', '${oldTimelineId}', 'sha256:${"a".repeat(64)}', 1),
-          ('${accountId}', '${workspaceId}', '${latestRevisionId}', '${latestTimelineId}', 'sha256:${"b".repeat(64)}', 1);
+          ('${accountId}', '${workspaceId}', '${oldRevisionId}', '${oldTimelineId}', 'sha256:${"a".repeat(64)}', '${oldTimelineAssetId}', 1),
+          ('${accountId}', '${workspaceId}', '${latestRevisionId}', '${latestTimelineId}', 'sha256:${"b".repeat(64)}', '${latestTimelineAssetId}', 1);
+        INSERT INTO assets (account_id, workspace_id, id, metadata)
+        VALUES
+          ('${accountId}', '${workspaceId}', '${oldTimelineAssetId}',
+           '{"planning_started_at":"${oldPlanningStartedAt}","planning_completed_at":"${oldPlanningStartedAt}"}'::jsonb),
+          ('${accountId}', '${workspaceId}', '${latestTimelineAssetId}',
+           '{"planning_started_at":"${latestPlanningStartedAt}","planning_completed_at":"${latestPlanningCompletedAt}"}'::jsonb);
         INSERT INTO timeline_segments
           (account_id, workspace_id, project_revision_id, timeline_plan_id, timeline_composition)
         VALUES
@@ -97,6 +116,8 @@ describe("hosted project detail generation query", () => {
       const result = await database.query<{
         id: string;
         timeline_plan_sha256: string;
+        planning_started_at: string | null;
+        planning_completed_at: string | null;
         total_segments: number | string;
         image_scene_count: number | string;
         avatar_segment_count: number | string;
@@ -110,6 +131,10 @@ describe("hosted project detail generation query", () => {
         id: latestTimelineId,
         timeline_plan_sha256: `sha256:${"b".repeat(64)}`,
       });
+      // The planning times come from the selected revision's own timing asset, so a join that
+      // picked another revision's asset would report the wrong window here.
+      expect(result.rows[0]?.planning_started_at).toBe(latestPlanningStartedAt);
+      expect(result.rows[0]?.planning_completed_at).toBe(latestPlanningCompletedAt);
       expect(Number(result.rows[0]?.total_segments)).toBe(3);
       expect(Number(result.rows[0]?.image_scene_count)).toBe(2);
       expect(Number(result.rows[0]?.avatar_segment_count)).toBe(2);

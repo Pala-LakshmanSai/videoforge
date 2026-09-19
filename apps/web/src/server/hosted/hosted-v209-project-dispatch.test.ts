@@ -731,7 +731,41 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
       event: "REJECTED",
       code: "HOSTED_V209_OBSERVATION_FAILED",
       cause: "RangeError",
+      // The rejection now also records the wrapped cause's own message and the SQLSTATE; both stay
+      // bounded and URL-redacted, and the public error below is unchanged.
+      reason: "HOSTED_V209_OBSERVATION_FAILED",
+      sqlstate: "",
     });
+    warn.mockRestore();
+  });
+
+  it("redacts a connection URL from the logged rejection reason and keeps the SQLSTATE", async () => {
+    const prepared = await candidate();
+    const deps = dependencies(prepared);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const failure = Object.assign(
+      new Error("connect ECONNREFUSED postgres://reconciler.invalid/db"),
+      { code: "57P03" },
+    );
+    const response = await handleHostedV209ProjectDispatch(
+      request(),
+      { VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db" } as never,
+      config,
+      {} as never,
+      { ...deps.value, scope: vi.fn(async () => Promise.reject(failure)) } as never,
+    );
+    expect(response?.status).toBe(409);
+    await expect(response?.json()).resolves.toEqual({
+      error: { code: "HOSTED_V209_DISPATCH_REJECTED" },
+    });
+    const payload = warn.mock.calls.find(
+      ([event, fields]) =>
+        event === "hosted_v209_project_dispatch" &&
+        (fields as { event?: unknown })?.event === "REJECTED",
+    )?.[1] as { reason?: unknown; sqlstate?: unknown } | undefined;
+    expect(payload?.reason).toContain("[redacted-url]");
+    expect(String(payload?.reason)).not.toContain("postgres://");
+    expect(payload?.sqlstate).toBe("57P03");
     warn.mockRestore();
   });
 });
