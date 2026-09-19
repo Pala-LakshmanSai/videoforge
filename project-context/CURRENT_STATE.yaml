@@ -1,4 +1,45 @@
 schema_version: "2.0"
+avatar_video_source_truth_2026_09_19:
+  checkpoint: V2-09
+  status: DEPLOYED_AND_VERIFIED_LIVE
+  symptom: >-
+    The New-project screen blocked a workspace avatar ("helen", and "elias yoder") with
+    "This avatar cannot generate avatar video yet ... or re-create this preset from the
+    Avatar Hub". The second half of that sentence is not achievable: re-creating a preset
+    from the same photo produces another pass-through version.
+  root_cause_proven: >-
+    The avatar-video lane is qualified for exactly one source. workers/common/secure_scratch.py
+    accepts a tenant avatar port only at .../avatar-profile/<p>/version/<v>/canonical/avatar.(png|jpg)
+    (TENANT_AVATAR_PATH), and render-plan-materialization.ts pins the revision's
+    avatarRuntimeSourceSha256 to the approved SoulX source (SOULX_SOURCE_SHA256 =
+    sha256:37f07580...). A workspace-created avatar commits with
+    source_preparation_profile='hosted-avatar-source-pass-through-v1' and
+    runtime_source_asset_id=original_asset_id, i.e. .../original/source, so it fails both
+    the worker's path check and the approved-source pin. The only renderable avatar today
+    is the approved system source and its workspace copy ("V2-09 qualified SoulX avatar
+    (system copy)", verified against production under RLS).
+  fix: >-
+    Preflight's AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED blocker now names the avatar the
+    workspace can actually dispatch (a dynamic lookup, no hard-coded name); project
+    creation refuses the same binding server-side with 409 AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED
+    so a direct POST cannot reserve an upload and dispatch the paid pair; and the catalog
+    carries avatar_video_source_ready per version, which the create screen renders as
+    "Version 1 · no avatar video yet" before selection.
+  evidence: >-
+    Web 74 files / 792 tests, typecheck 12/12, lint 12/12, build:cloudflare green with the
+    bundle guard. Production source commit c608b219341939025cae01537ffe0f55e424fa75, worker
+    version 22068d30-a535-4f59-b613-30e11ef33b54, activation 7da60eb8-125b-4f5d-bcc8-1f3961729a20
+    rebound with providerActionsCreated 0, /status gpu_transport QUALIFIED_EXACT, live
+    version sha256 5498b17e9ed4446ea4bbfd7d5745e55bd341abdf104d540d3780f41ca4e912ea equals the
+    activation row's cloudflare_version_id_sha256, and the deployed worker and client chunks
+    carry the new markers (product-CECu5j5B.js, HostedProductScreens-BKY84OZG.js, served
+    index-CkpHdngK.js).
+  known_remaining: >-
+    A custom avatar can only produce avatar video after its own lane qualification: a new
+    approval document for that source plus a qualification run through the v2-13 launcher
+    (deploy/v2-13/launch-full-live.mjs, which fails closed naming each missing argument).
+    Never widen an attestation to make a custom avatar pass. The two custom presets in the
+    tenant (helen f490fac7..., elias yoder 34ca7513...) stay unusable until then.
 repo_hardening_and_live_repairs_2026_09_19:
   checkpoint: V2-09
   status: DEPLOYED_AND_VERIFIED_LIVE
@@ -471,7 +512,7 @@ image_review_regeneration_request_2026_09_14:
   latest_demo_ui_to_accepted_ms: 34940
   latest_demo_evidence: evidence/acceptance/VF-10-09/2026-09-14-image-regeneration-source/live-demo.json
   final_runpod_balance_usd: 16.7686399735
-updated_at: "2026-09-19T04:24:12Z"
+updated_at: "2026-09-19T04:41:41Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
