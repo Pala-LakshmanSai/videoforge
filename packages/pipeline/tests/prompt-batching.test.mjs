@@ -9,6 +9,7 @@ import {
   RUNWARE_PROMPT_OUTPUT_FIXED_TOKENS,
   RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE,
+  RUNWARE_PROMPT_REQUEST_VERSION,
   buildPromptBatch,
   buildRunwarePromptRequest,
   derivePromptStyleTreatment,
@@ -386,7 +387,7 @@ test("request maxTokens includes fixed and per-scene headroom and allows short b
       2 * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE +
       RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   );
-  assert.equal(request.requestVersion, "runware-gemini-3.5-flash-prompt-request-v20");
+  assert.equal(request.requestVersion, RUNWARE_PROMPT_REQUEST_VERSION);
   assert.equal(request.request.model, "google:gemini@3.5-flash");
 });
 
@@ -402,7 +403,10 @@ test("an 8192-token ceiling bounds prompt batches to ten scenes", () => {
       entry.sceneIds.length <= 10,
       `batch ${entry.ordinal} asked for ${entry.sceneIds.length} scenes`,
     );
-    assert.ok(entry.maxOutputTokens <= 8_192, `batch ${entry.ordinal} requested ${entry.maxOutputTokens} tokens`);
+    assert.ok(
+      entry.maxOutputTokens <= 8_192,
+      `batch ${entry.ordinal} requested ${entry.maxOutputTokens} tokens`,
+    );
   }
   const wide = planPromptBatches(planningInput(80));
   const widest = Math.max(...wide.batches.map((entry) => entry.sceneIds.length));

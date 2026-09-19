@@ -226,6 +226,10 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
       )?.length,
       1,
     );
+    assert.ok(
+      request.request.messages[0].content.indexOf('"scenes"') <
+        request.request.messages[0].content.indexOf('"story_context"'),
+    );
     assert.equal(Object.hasOwn(payload(request).scenes[0], "story_context"), false);
     assert.deepEqual(
       Object.keys(payload(request).scenes[1]).sort(),
@@ -266,6 +270,14 @@ test("writer contract requires relatable physical evidence and applies style as 
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /physically plausible visible action/u);
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /familiar human behavior, ordinary locations/u);
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /never substitute symbolism or metaphor/u);
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /exact_phrase, scene_phrase_context, prior_scene_phrase, and next_scene_phrase as the primary content source/u,
+  );
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /story_context as a low-priority batch-level fallback only/u,
+  );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /style_treatment object as visual treatment/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
@@ -274,7 +286,7 @@ test("writer contract requires relatable physical evidence and applies style as 
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /believable anatomy, materials, scale/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /translate its meaning into .*concrete visual evidence/u,
+    /choose concrete visible evidence of the exact phrase/iu,
   );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /authoritative structured scene facts/u);
   assert.match(
@@ -500,6 +512,40 @@ test("scene relevance uses adjacent narration to ground a pronoun-only phrase", 
   assert.equal(result.scenes.length, 1);
 });
 
+test("scene relevance rejects a global subject when adjacent narration resolves the pronoun", async () => {
+  const base = makeBatch(1);
+  const batch = {
+    ...base,
+    storyContext: "A chef prepares soup in a restaurant kitchen.",
+    scenes: [
+      {
+        ...base.scenes[0],
+        phrase: "She does it there",
+        sentenceContext: "She does it there.",
+        priorContext:
+          "A cyclist adjusts a bicycle chain by hand beside a public park service stand.",
+        nextContext: "The repaired bicycle is ready for the rider.",
+      },
+    ],
+  };
+  const setup = writer([
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].literal_subject = "A chef";
+          rows[0].action = "adjusting a bicycle chain by hand";
+          rows[0].environment = "inside a restaurant kitchen";
+          rows[0].prompt_core =
+            "A chef adjusts a bicycle chain by hand inside a restaurant kitchen.";
+          return rows;
+        },
+      }),
+  ]);
+  await expectInvalid(() => setup.value.write(batch));
+  assert.equal(setup.transport.requests.length, 1);
+  assert.equal(setup.evidence[0].validationDiagnostic.reason, "scene_relevance_subject");
+});
+
 test("scene relevance rejects matching entities when the narrated action is wrong", async () => {
   const base = makeBatch(1);
   const batch = {
@@ -717,8 +763,7 @@ test("scene relevance accepts anchored ordinary physical detail that narration l
   const base = makeBatch(1);
   const batch = {
     ...base,
-    storyContext:
-      "A household explainer about treating a small fresh cut at home.",
+    storyContext: "A household explainer about treating a small fresh cut at home.",
     scenes: [
       {
         ...base.scenes[0],
@@ -1251,8 +1296,7 @@ test("scene relevance treats a cleaning-product modifier as stative, not as a cl
   const base = makeBatch(1);
   const batch = {
     ...base,
-    storyContext:
-      "A household explainer about a stiff broom kept in a pantry.",
+    storyContext: "A household explainer about a stiff broom kept in a pantry.",
     scenes: [
       {
         ...base.scenes[0],
@@ -1286,8 +1330,7 @@ test("scene relevance keeps plural household uses and minor cuts out of action i
     const base = makeBatch(1);
     const batch = {
       ...base,
-      storyContext:
-        "A household explainer about a stiff broom kept in a pantry.",
+      storyContext: "A household explainer about a stiff broom kept in a pantry.",
       scenes: [{ ...base.scenes[0], phrase, sentenceContext: `${phrase}.` }],
     };
     const setup = writer([
@@ -1312,14 +1355,12 @@ test("scene relevance accepts a stored object rendered as resting in place", asy
   const base = makeBatch(1);
   const batch = {
     ...base,
-    storyContext:
-      "A household explainer about a stiff broom kept in a pantry.",
+    storyContext: "A household explainer about a stiff broom kept in a pantry.",
     scenes: [
       {
         ...base.scenes[0],
         phrase: "A stiff broom tucked into the back of the pantry",
-        sentenceContext:
-          "A stiff broom tucked into the back of the pantry.",
+        sentenceContext: "A stiff broom tucked into the back of the pantry.",
       },
     ],
   };
@@ -1597,8 +1638,7 @@ test("scene relevance resolves a sentence-opening dependent fragment", async () 
       {
         ...base.scenes[0],
         phrase: "After years of daily use",
-        sentenceContext:
-          "After years of daily use, the stiff broom is tucked into the pantry.",
+        sentenceContext: "After years of daily use, the stiff broom is tucked into the pantry.",
       },
     ],
   };

@@ -387,7 +387,7 @@ test("castle dates and room counts remain narration facts rather than requested 
     applyExtraPromptKeywords: false,
   });
   assert.doesNotMatch(compiled.positivePrompt, /1869|200 rooms/u);
-  assert.match(compiled.positivePrompt, /plain, blank and unmarked/u);
+  assert.match(compiled.positivePrompt, /no visible text, lettering or branding/u);
   for (const term of [
     "readable text",
     "unreadable text",
@@ -442,20 +442,26 @@ test("compiler rejects forbidden content in structured scene facts", () => {
   }
 });
 
-test("every image prompt keeps manufactured products and packaging out of the scene", () => {
-  // Two production regressions drove this rule. First a rendered medicine bottle carried a printed
-  // label, so products were named as "plain and unmarked" — which told the model to draw them. Then
-  // nearly every scene arrived as a bottle, jar or row of containers. The rule is absence, not
-  // plainness, and the positive guardrail must not enumerate container types at all.
-  assert.match(PERMANENT_POSITIVE_GUARDRAIL, /no manufactured product, packaging or container/u);
-  assert.doesNotMatch(PERMANENT_POSITIVE_GUARDRAIL, /every product, bottle, jar/u);
-  assert.doesNotMatch(PERMANENT_POSITIVE_GUARDRAIL, /plain, unbranded and unmarked/u);
-  assert.match(PERMANENT_NEGATIVE_GUARDRAIL, /containers/u);
-  assert.match(PERMANENT_NEGATIVE_GUARDRAIL, /packaging/u);
-  assert.doesNotMatch(PERMANENT_NEGATIVE_GUARDRAIL, /bottle labels/u);
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Never place a manufactured product, package or container/u);
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /depict instead the physical evidence of its use/u);
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Never describe the packaging or the container that carried it/u);
+test("keeps described products relatable without allowing text or branding", () => {
+  assert.match(
+    PERMANENT_POSITIVE_GUARDRAIL,
+    /products, packaging and containers are allowed only when supported/u,
+  );
+  assert.doesNotMatch(
+    PERMANENT_POSITIVE_GUARDRAIL,
+    /no manufactured product, packaging or container/u,
+  );
+  assert.match(PERMANENT_NEGATIVE_GUARDRAIL, /branded packaging/u);
+  assert.match(PERMANENT_NEGATIVE_GUARDRAIL, /packaging text/u);
+  assert.doesNotMatch(PERMANENT_NEGATIVE_GUARDRAIL, /manufactured products, containers/u);
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /Products, packages, containers, tools, medicines, and purchased goods may appear/u,
+  );
+  assert.doesNotMatch(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /Never place a manufactured product, package or container/u,
+  );
 
   const input = batch(25);
   const base = {
@@ -469,12 +475,26 @@ test("every image prompt keeps manufactured products and packaging out of the sc
     prompt_core: "legacy provider prose is ignored by the compiler",
   };
   for (const field of [
-    { literal_subject: "a hand holding a spray bottle" },
+    { literal_subject: "a hand holding a plain spray bottle" },
     { literal_subject: "a mason jar on a fence post" },
+    { environment: "a shelf of plain boxes" },
+    { environment: "a row of unbranded packaged goods" },
+    { action: "pours the mixture into a canister" },
+  ]) {
+    const compiled = compileImagePrompt({
+      writerOutput: { ...base, ...field },
+      expectedScene: input.scenes[0],
+      style: style(),
+      extraPromptKeywords: null,
+      applyExtraPromptKeywords: false,
+    });
+    assert.ok(compiled.positivePrompt.length > 0);
+  }
+  for (const field of [
     { literal_subject: "a medicine bottle with a product name" },
     { environment: "a shelf of boxes with an ingredient list" },
-    { environment: "a row of packaged goods" },
-    { action: "pours the mixture into a canister" },
+    { environment: "a row of packaging text" },
+    { literal_subject: "a branded medicine bottle" },
   ]) {
     expectCode("PROMPT_CONFLICT", () =>
       compileImagePrompt({

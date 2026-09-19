@@ -29,12 +29,11 @@ import type {
  * reason, and this writer follows it so both text stages run on one live model.
  */
 export const RUNWARE_PROMPT_MODEL = "google:gemini@3.5-flash" as const;
-// v20: the request no longer carries outputFormat/jsonSchema, because Google Gemini rejects
-// structured output with providerBadRequest (measured 2026-09-18 by replaying the exact request).
-// The version feeds the deterministic taskUUID, so it must move with the wire contract: under v19
-// every revision replayed the archived failure for the same task id.
+// v21: local scene script context is now explicitly primary; batch story context is fallback-only.
+// The version feeds the deterministic taskUUID, so it must move with this wire/prompt contract and
+// keep a replay from reusing a task id built under the previous context-priority policy.
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-gemini-3.5-flash-prompt-request-v20" as const;
+  "runware-gemini-3.5-flash-prompt-request-v21" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -70,9 +69,9 @@ export const SCENE_PROMPT_WRITER_OUTPUT_CONTRACT = [
 export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Write concise literal still-image scene cores for VideoForge using the scene-content contract scene-prompt-writer-v2.",
   "Return every requested scene ID exactly once and echo its in-image shot role unchanged.",
-  "Treat each exact_phrase as semantic authority: translate its meaning into the structured scene facts and concrete visual evidence instead of copying narration prose into prompt_core.",
-  "Use adjacent context only to disambiguate; it may never override the exact phrase.",
-  "Use the compact story context to resolve people, places, pronouns, callbacks, era, and continuity; it may never override the exact phrase or scene_phrase_context.",
+  "Treat each scene's exact_phrase, scene_phrase_context, prior_scene_phrase, and next_scene_phrase as the primary content source, in that order. Those local script parts determine the scene subject, visible action, and physical environment.",
+  "Read exact_phrase first, then scene_phrase_context, then prior_scene_phrase and next_scene_phrase to resolve omitted details, references, and transitions. Adjacent script parts may add only compatible detail and may never override exact_phrase.",
+  "Treat story_context as a low-priority batch-level fallback only. Use it only when the four local fields cannot resolve a person, place, pronoun, callback, or era; never use it to replace a local subject, action, location, or object, and never let it drive a generic topic image.",
   "Choose concrete visible evidence of the exact phrase, never a generic mood image merely related to the overall topic.",
   "Design one camera-capturable moment per scene: a specific subject doing a physically plausible visible action in a specific real-world environment.",
   "Keep one visible action per scene. Do not chain actions with while, then, and, or but unless the same coordinated action is present in the supplied narration; an and-list of objects is allowed.",
@@ -87,14 +86,14 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer. Write them as plain lowercase phrases of ordinary words separated by single spaces; never write hyphenated, underscored or slash-separated slugs (write energy transfer, not energy-transfer), because token-shaped punctuation is reproduced as printed marking in the image.",
   "Write prompt_core as concise compatibility prose describing only the scene subject, visible action, and physical environment; do not echo palette descriptors, hex colors, lighting metadata, or any other style_treatment field in prompt_core or scene facts.",
   "Treat literal_subject, action, and environment as the authoritative structured scene facts. The downstream compiler derives the final literal image description from those fields. Keep lighting_context as concise audit metadata; pinned style lighting is the image-model authority. prompt_core is retained only for provider compatibility and bounded quality checks.",
-  "Ensure literal_subject preserves a meaningful source anchor from exact_phrase, scene_phrase_context, prior_scene_phrase, next_scene_phrase, or story_context.",
-  "Add only ordinary camera-capturable physical detail needed to make the anchored moment specific, believable, and relatable. Such detail may clarify a compatible real-world setting, object condition, or human interaction, but it must never change or contradict the source meaning, introduce a new story event, or act as a hardcoded visual style.",
-  "When the exact phrase contains a camera-capturable action, preserve that action semantically in action and prefer beginning the field with its verb after optional natural modifiers. When the phrase is static, stative, or abstract, describe the nearest visible state or interaction supported by the supplied context without inventing a new story event. Never substitute a contradictory action.",
-  "When narration names a location, preserve that location in environment. When it names none, infer one ordinary compatible physical environment from the supplied context instead of inventing a new story event.",
+  "Ensure literal_subject preserves a meaningful source anchor from exact_phrase, scene_phrase_context, prior_scene_phrase, or next_scene_phrase. Use story_context only as a fallback when those local fields cannot resolve the reference.",
+  "Add only ordinary camera-capturable physical detail needed to make the locally anchored moment specific, believable, and relatable. Such detail may clarify a compatible real-world setting, object condition, or human interaction, but it must never change or contradict the local script meaning, introduce a new story event, or act as a hardcoded visual style.",
+  "When the exact phrase contains a camera-capturable action, preserve that action semantically in action and prefer beginning the field with its verb after optional natural modifiers. When the phrase is static, stative, or abstract, describe the nearest visible state or interaction supported by the local script context without inventing a new story event. Never substitute a contradictory action.",
+  "When narration names a location, preserve that location in environment. When it names none, infer one ordinary compatible physical environment from the local scene context; use story_context only to resolve an otherwise unresolved reference.",
   "Do not repeat a full style suffix or invent continuity facts.",
   "Never request visible text, writing, handwritten or printed words, price tags, receipts, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
   "No typography may appear, including unreadable or invented lettering, individual letters, digits, dates, room numbers, inscriptions, plaques, signs, or watermarks. Convey named facts, historical dates, addresses and room counts through the relevant physical subject, architecture or activity; never quote a label or render the fact as writing. If context mentions an inscription, plaque or sign, describe its plain blank unmarked physical surface instead of its characters. Preserve the narrated meaning without adding writing.",
-  "Never place a manufactured product, package or container in the scene, not even a plain, unbranded, unmarked or period one: no bottle, jar, can, tin, tube, canister, jug, carton, pouch, sachet, packet, wrapper or store product is ever part of the subject, the action or the environment. When narration names a product, medicine, mixture, preparation, tool kit, brand or purchased good, depict instead the physical evidence of its use: the treated or affected plants, soil, surface or material, the person's hands and posture, the implement in use, or the surrounding environment. Never describe the packaging or the container that carried it.",
+  "Products, packages, containers, tools, medicines, and purchased goods may appear when the local script names or supports them; depict them as plain, unbranded, unmarked physical objects with no readable text or branding. Do not invent product details, packaging copy, or an advertising display that the local script does not support.",
   "Never choose duration, layout, shot role, avatar placement, model, GPU, retry, or fallback.",
   "Return only the strict requested JSON.",
 ].join(" ");
@@ -603,8 +602,8 @@ export function buildRunwarePromptRequest(
     image_style_version_id: batch.imageStyleVersionId,
     style_profile_hash: batch.styleProfileHash,
     style_treatment: styleTreatment,
-    story_context: batch.storyContext,
-    continuity_tags: batch.continuityTags,
+    // Keep the scene-local script evidence before the batch context in the wire payload so the
+    // provider reads each shot from its exact and adjacent script parts first.
     scenes: scenes.map((scene) => ({
       scene_id: scene.sceneId,
       exact_phrase: scene.phrase,
@@ -615,6 +614,9 @@ export function buildRunwarePromptRequest(
       in_image_shot_role: scene.inImageShotRole,
       fixed_layout: scene.layout,
     })),
+    // This is continuity fallback context, not the scene subject source.
+    story_context: batch.storyContext,
+    continuity_tags: batch.continuityTags,
   });
   const taskUUID = deterministicUuid({
     requestVersion: RUNWARE_PROMPT_REQUEST_VERSION,
@@ -1433,14 +1435,13 @@ const sceneOutputRelevanceFailure = (
     .filter((value): value is string => value !== null)
     .map((value) => value.slice(0, 800))
     .join(" ");
-  const sourceContext = [primaryContext, nearbyContext, boundedStoryContext.slice(0, 4_000)].join(
-    " ",
-  );
+  const boundedGlobalContext = boundedStoryContext.slice(0, 4_000);
   const structuredContent = structuredFields.join(" ");
 
+  const localExpected = distinctiveRelevanceWords([primaryContext, nearbyContext].join(" "));
+  const globalExpected = distinctiveRelevanceWords(boundedGlobalContext);
   const primaryExpected = distinctiveRelevanceWords(primaryContext);
   const nearbyExpected = distinctiveRelevanceWords(nearbyContext);
-  const sourceExpected = distinctiveRelevanceWords(sourceContext);
   const outputConcepts = distinctiveRelevanceWords(structuredContent);
   const phraseConcepts = distinctiveRelevanceWords(expectedScene.phrase);
   const phraseEntityConcepts = [...phraseConcepts].filter(
@@ -1504,10 +1505,16 @@ const sceneOutputRelevanceFailure = (
   const subjectHasPhraseAnchor = groundingSubjectConcepts.some((concept) =>
     phraseConcepts.has(concept),
   );
-  const subjectHasSourceAnchor =
+  const subjectHasLocalContextAnchor =
     subjectHasPhraseAnchor ||
     (phraseNeedsStoryResolution &&
-      groundingSubjectConcepts.some((concept) => sourceExpected.has(concept)));
+      groundingSubjectConcepts.some((concept) => localExpected.has(concept)));
+  // Global story context is a fallback only when the local script window contains no usable anchor.
+  const subjectHasGlobalFallbackAnchor =
+    phraseNeedsStoryResolution &&
+    localExpected.size === 0 &&
+    groundingSubjectConcepts.some((concept) => globalExpected.has(concept));
+  const subjectHasSourceAnchor = subjectHasLocalContextAnchor || subjectHasGlobalFallbackAnchor;
   if (!subjectHasSourceAnchor) return "scene_relevance_subject";
 
   // A coordinated literal subject may include an ordinary visible prop, but
@@ -1523,8 +1530,9 @@ const sceneOutputRelevanceFailure = (
     const corroboratingConcepts = distinctiveRelevanceWords(
       `${row.action as string} ${row.environment as string}`,
     );
+    const sourceAnchors = localExpected.size > 0 ? localExpected : globalExpected;
     return ![...tailConcepts].some(
-      (concept) => sourceExpected.has(concept) || corroboratingConcepts.has(concept),
+      (concept) => sourceAnchors.has(concept) || corroboratingConcepts.has(concept),
     );
   };
   if (hasUnsupportedCoordinatedSubjectTail(row.literal_subject as string))
