@@ -5,7 +5,7 @@
  * a plain Node process with a fake step recorder. Production never loads this file: workerd
  * provides the real module, and nothing in the deploy graph imports this path.
  */
-export class WorkflowEntrypoint<Environment = unknown, Parameters = unknown> {
+export class WorkflowEntrypoint<Environment = unknown, _Parameters = unknown> {
   protected readonly ctx: unknown;
   protected readonly env: Environment;
 

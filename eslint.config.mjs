@@ -28,6 +28,18 @@ export default tseslint.config(
     },
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
+      // The underscore is this repo's deliberate-placeholder convention: unused params in stubs that
+      // mirror an external signature, destructured keys dropped on purpose, and caught errors that are
+      // only classified. Without these patterns every such binding reddens `pnpm run lint`.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
     },
   },
 );

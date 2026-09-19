@@ -3,7 +3,6 @@ import {
   emptyDraft,
   hydrateDraftFromBootstrap,
   loadDraft,
-  projectDraftSchema,
   projectDraftStorageKey,
   projectDraftStorageKeyFor,
   saveDraft,
