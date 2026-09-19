@@ -2054,7 +2054,17 @@ export async function handlePersonalWorkerRequest(
     // is known to be delivered (the per-minute cron never reached the handler). Ride the pair-observer
     // guard along with it: cheap, idempotent, and it closes the window in which a running pair has no
     // observer -- the failure mode that settled both lanes PERMANENT_FAILED with nothing accepted.
-    executionContext.waitUntil(ensureHostedPairObservers(environment, executionContext));
+    // The guard is opportunistic, so a claim must not depend on it: it builds its own configuration
+    // and throws when the bindings are unavailable, and that rejection used to travel up waitUntil
+    // unhandled (a phantom failure in the caller, and in tests an error that reddens a green suite).
+    // Contain it here; the next poll retries, exactly like the continuation driver below.
+    executionContext.waitUntil(
+      ensureHostedPairObservers(environment, executionContext).catch((error: unknown) => {
+        console.warn("hosted_pair_observer_guard_failed", {
+          cause: error instanceof Error ? error.name : typeof error,
+        });
+      }),
+    );
     // Same reasoning for stages 3-8: the per-minute cron never reached its handler, so the durable
     // continuation driver is (re)started from this poll instead. Idempotent by instance id -- it
     // creates once, leaves a running driver alone, and restarts it after its bounded ~24-hour
