@@ -175,7 +175,13 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
     assert.equal(firstOutput.scenes.length, count);
     const request = first.transport.requests[0];
     assert.equal(request.request.model, RUNWARE_PROMPT_MODEL);
-    assert.equal(request.request.outputFormat, "JSON");
+    // Google Gemini rejects outputFormat/jsonSchema with providerBadRequest, so the request carries
+    // neither field and the exact document shape lives in the system prompt instead; the strict parse
+    // and schema validation still run over the answer.
+    assert.equal("outputFormat" in request.request, false);
+    assert.equal("jsonSchema" in request.request, false);
+    assert.match(request.request.settings.systemPrompt, /JSON/u);
+    assert.match(request.request.settings.systemPrompt, /scene_id/u);
     assert.deepEqual(Object.keys(request.request.settings).sort(), [
       "maxTokens",
       "systemPrompt",
@@ -187,7 +193,7 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
       request.request.taskUUID,
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
     );
-    assert.equal(request.request.model, "deepseek:v4@flash");
+    assert.equal(request.request.model, "google:gemini@3.5-flash");
     assert.equal(request.request.settings.thinkingLevel, "off");
     assert.equal(request.request.settings.temperature, 0.2);
     assert.equal(request.request.settings.topP, 0.9);
@@ -201,13 +207,14 @@ test("pins exact AIR/schema and deterministically handles 25/50 scenes across fi
           RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
       ),
     );
-    assert.equal(request.request.jsonSchema.strict, true);
-    assert.doesNotMatch(
-      JSON.stringify(request.request.jsonSchema),
-      /"(?:minLength|maxLength|uniqueItems)"/u,
-    );
-    assert.equal(request.request.jsonSchema.schema.properties.scenes.minItems, count);
-    assert.equal(request.request.jsonSchema.schema.properties.scenes.maxItems, count);
+    // The provider no longer receives a jsonSchema or outputFormat: Google Gemini rejects structured
+    // output with providerBadRequest, so the exact document contract lives in the system prompt and
+    // the strict parse plus schema validation in the writer still refuse anything that does not match.
+    assert.equal("jsonSchema" in request.request, false);
+    assert.equal("outputFormat" in request.request, false);
+    assert.match(request.request.settings.systemPrompt, /exactly these eight keys/u);
+    assert.match(request.request.settings.systemPrompt, /one scene object per requested scene/u);
+    assert.match(request.request.settings.systemPrompt, /one JSON object and nothing else/u);
     assert.equal(request.requestSha256, second.transport.requests[0].requestSha256);
     assert.equal(request.requestBytes, second.transport.requests[0].requestBytes);
     assert.equal(Object.hasOwn(payload(request), "planner_guidance"), false);

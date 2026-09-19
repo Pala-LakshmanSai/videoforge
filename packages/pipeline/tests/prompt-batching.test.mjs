@@ -386,8 +386,8 @@ test("request maxTokens includes fixed and per-scene headroom and allows short b
       2 * RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE +
       RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   );
-  assert.equal(request.requestVersion, "runware-deepseek-v4-flash-prompt-request-v18");
-  assert.equal(request.request.model, "deepseek:v4@flash");
+  assert.equal(request.requestVersion, "runware-gemini-3.5-flash-prompt-request-v20");
+  assert.equal(request.request.model, "google:gemini@3.5-flash");
 });
 
 // Runware answered the 21-24 scene batches the 16384 default produced with

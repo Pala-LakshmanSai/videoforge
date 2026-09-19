@@ -172,24 +172,6 @@ const normalize = (
 };
 
 /**
- * Slug-style tokens ("failed-regrowth", "lancaster-county-farmland") look like printed labels to the
- * image model and came back rendered as caption text across the frame. Plain words say the same
- * thing to the model without anything that reads as marking.
- */
-const plainPhrase = (value: string): string => {
-  const characters: string[] = [];
-  for (const character of value) {
-    if (character === "-" || character === "_" || character === "/") {
-      if (characters.length > 0 && characters.at(-1) !== " ") characters.push(" ");
-      continue;
-    }
-    if (character === " " && characters.at(-1) === " ") continue;
-    characters.push(character);
-  }
-  return characters.join("").trim();
-};
-
-/**
  * Aspect-ratio and continuity tokens are instructions for the pipeline, but an image model treats
  * them as something to print: accepted frames came back with "16:9" lettered across a book cover and
  * continuity tags like "satisfied" or "failed-regrowth" painted over the scene. The compiled prompt
@@ -416,17 +398,17 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     `action: ${sceneFields[1]}`,
     `environment: ${sceneFields[2]}`,
   ].join(", ");
-  const continuityTags = output.continuity_tags.map((tag, index) => {
+  // Continuity tags are validated but never compiled into the prompt text: an image model paints
+  // slug-style tags over the frame as caption words ("satisfied", "failed-regrowth"), so the prompt
+  // carries a neutral consistency clause instead. The write-side batch already normalizes and
+  // de-duplicates the tags, so this loop only keeps the hard-conflict guard.
+  output.continuity_tags.forEach((tag, index) => {
     const normalizedTag = normalize(tag, 80, "Continuity tag", [
       "writerOutput",
       "continuity_tags",
       String(index),
     ]);
     assertNoHardPromptConflict(normalizedTag, ["writerOutput", "continuity_tags", String(index)]);
-    // Slug-style tags read as printed labels to the image model: scenes whose tags were written as
-    // "failed-regrowth" or "lancaster-county-farmland" came back with that text rendered across the
-    // frame. The hash keeps the tag as written; the compiled prompt gets plain words.
-    return plainPhrase(normalizedTag);
   });
   const continuityAndShotRole = join([
     "keep one consistent subject, setting and physical state across the video",
