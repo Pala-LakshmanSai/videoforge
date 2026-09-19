@@ -7,16 +7,47 @@ import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 
 import { applyMigrations, MIGRATION_MANIFEST } from "../../dist/src/index.js";
 
+/**
+ * The deployment roles the migration chain grants to.
+ *
+ * Migrations 0147/0161/0162/0163 grant EXECUTE to the production runtime role by name
+ * (`videoforge_v209_runtime_dc9612d6`), and no migration creates it: the private activation tooling
+ * does that out of band against the real database. Every fixture database emulates that deployment,
+ * so each executor creates the role before its first statement, or each of those GRANTs raises 42704
+ * (`role ... does not exist`).
+ */
+const DEPLOYMENT_ROLES = Object.freeze(["videoforge_v209_runtime_dc9612d6"]);
+
 export class PGliteExecutor {
   constructor(database) {
     this.database = database;
+    // Seeded once per executor, before the first statement it runs, and only for a top-level
+    // executor: a transaction-scoped executor must leave the transaction's first statement to the
+    // caller (a fixture that opens with SET TRANSACTION ISOLATION LEVEL cannot have a role check run
+    // ahead of it). The DO-block is idempotent and never touches the public schema the inventory
+    // assertions inspect.
+    this.ready = typeof database.transaction === "function" ? this.#seedDeploymentRoles() : null;
+  }
+
+  async #seedDeploymentRoles() {
+    for (const role of DEPLOYMENT_ROLES) {
+      await this.database.exec(
+        `DO $$ BEGIN
+           IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${role}') THEN
+             EXECUTE 'CREATE ROLE ${role} NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS';
+           END IF;
+         END $$;`,
+      );
+    }
   }
 
   async execute(sql) {
+    if (this.ready) await this.ready;
     await this.database.exec(sql);
   }
 
   async query(sql, parameters = []) {
+    if (this.ready) await this.ready;
     const result = await this.database.query(sql, [...parameters]);
     return {
       rows: result.rows,
@@ -25,6 +56,7 @@ export class PGliteExecutor {
   }
 
   async transaction(work) {
+    if (this.ready) await this.ready;
     return this.database.transaction((transaction) => work(new PGliteExecutor(transaction)));
   }
 }
@@ -89,6 +121,38 @@ export async function withPgcryptoMigratedDatabase(work) {
   }
 }
 
+/**
+ * Applies a version-bounded slice of the committed manifest the way applyMigrations does.
+ *
+ * applyMigrations refuses a partial source list - the sources must match the committed manifest
+ * exactly - which is right for a deployment and useless for the historical-chain tests that stop
+ * mid-chain and hand-apply the migration under test afterwards.
+ */
+export async function applyMigrationSliceThrough(executor, version, allSources) {
+  assert.ok(Number.isSafeInteger(version) && version > 0);
+  const sources = (allSources ?? (await loadMigrationSources())).filter(
+    (entry) => entry.version <= version,
+  );
+  assert.equal(sources.at(-1)?.version, version, `migration ${version} is unavailable`);
+  await executor.execute(
+    `CREATE TABLE public.videoforge_schema_migrations(
+      version integer PRIMARY KEY CHECK(version>0),name text NOT NULL,
+      filename text NOT NULL UNIQUE,sha256 text NOT NULL,
+      applied_at timestamptz NOT NULL DEFAULT now())`,
+  );
+  await executor.transaction(async (transaction) => {
+    for (const migration of sources) {
+      await transaction.execute(migration.sql);
+      await transaction.query(
+        `INSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256)
+         VALUES($1,$2,$3,$4)`,
+        [migration.version, migration.name, migration.filename, migration.sha256],
+      );
+    }
+  });
+  return sources;
+}
+
 /** Run historical migration tests against their exact terminal ledger. */
 export async function withPgcryptoMigrationsThrough(version, work) {
   assert.ok(Number.isSafeInteger(version) && version > 0);
@@ -96,25 +160,7 @@ export async function withPgcryptoMigrationsThrough(version, work) {
   try {
     await database.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
     const executor = new PGliteExecutor(database);
-    const allSources = await loadMigrationSources();
-    const sources = allSources.filter((entry) => entry.version <= version);
-    assert.equal(sources.at(-1)?.version, version, `migration ${version} is unavailable`);
-    await executor.execute(
-      `CREATE TABLE public.videoforge_schema_migrations(
-        version integer PRIMARY KEY CHECK(version>0),name text NOT NULL,
-        filename text NOT NULL UNIQUE,sha256 text NOT NULL,
-        applied_at timestamptz NOT NULL DEFAULT now())`,
-    );
-    await executor.transaction(async (transaction) => {
-      for (const migration of sources) {
-        await transaction.execute(migration.sql);
-        await transaction.query(
-          `INSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256)
-           VALUES($1,$2,$3,$4)`,
-          [migration.version, migration.name, migration.filename, migration.sha256],
-        );
-      }
-    });
+    const sources = await applyMigrationSliceThrough(executor, version);
     return await work({ database, executor, sources });
   } finally {
     await database.close();

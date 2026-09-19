@@ -497,7 +497,18 @@ test("0074 installs the additive ordinary V2-09 DB boundaries without weakening 
         row.signature.startsWith("videoforge_load_hosted_pair_activation_v2("),
     );
     assert.equal(activationLoaders.length, 2);
-    assert.ok(activationLoaders.every((row) => /version BETWEEN 37 AND 84/u.test(row.definition)));
+    // One window, honoured in one place since 0087: the gpu loader reads the ledger range itself, and
+    // the pair loader composes its snapshot from that loader instead of repeating the range.
+    const gpuLoader = activationLoaders.find((row) =>
+      row.signature.startsWith("videoforge_load_hosted_gpu_activation_v2("),
+    );
+    const pairLoader = activationLoaders.find((row) =>
+      row.signature.startsWith("videoforge_load_hosted_pair_activation_v2("),
+    );
+    assert.ok(gpuLoader, "the gpu activation loader is missing");
+    assert.ok(pairLoader, "the pair activation loader is missing");
+    assert.match(gpuLoader.definition, /version BETWEEN 37 AND 87/u);
+    assert.match(pairLoader.definition, /videoforge_load_hosted_gpu_activation_v2\(\)/u);
 
     const policies = await executor.query(
       `SELECT c.relname,c.relrowsecurity,c.relforcerowsecurity,count(policy.polname)::integer AS policies

@@ -193,6 +193,8 @@ export const NON_PORTABLE_TABLE_NAMES = [
   "hosted_full_live_stage_handoff_escrow",
   "hosted_full_live_qualification_materializations",
   "hosted_full_live_manifest_read_claims",
+  // Carries a raw dispatch token column, so it must never enter portable snapshot bytes.
+  "hosted_image_regeneration_requests",
   "hosted_pair_runtime_states",
   "hosted_pair_cleanup_observations",
   "hosted_provider_proof_keys",
@@ -202,6 +204,7 @@ export const NON_PORTABLE_TABLE_NAMES = [
   "hosted_v209_same_attempt_deadline_recoveries",
   "hosted_v209_qualification_activation_refreshes",
   "hosted_v209_qualified_activations",
+  "hosted_v209_outboxed_horizon_recoveries",
 ] as const;
 
 /**
@@ -221,6 +224,15 @@ export const SUPERSEDED_RUNTIME_CONTRACT_TABLES = [
 
 /** Compatibility fixtures set this to replay superseded Pod-era evidence. Production never does. */
 export const LEGACY_COMPATIBILITY_SETTING = "videoforge.legacy_compatibility_fixture" as const;
+
+/**
+ * Internal read views over non-portable dispatch state. Unlike the tenant read views they carry no
+ * `videoforge_tenant_` prefix and are not principal-filtered: 0095 exposes the effective candidate
+ * (after same-generation renewals) here for the dispatch and claim functions.
+ */
+export const INTERNAL_VIEW_NAMES = [
+  "hosted_v209_ordinary_dispatch_candidates_effective",
+] as const;
 
 /**
  * Tenant read views filter on the trusted principal recorded in `videoforge.account_id`. Preset

@@ -5,6 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 
 import {
   applyMigrations,
+  INTERNAL_VIEW_NAMES,
   MIGRATION_TABLE_NAME,
   NON_PORTABLE_TABLE_NAMES,
   RELATIONAL_TABLE_NAMES,
@@ -213,6 +214,7 @@ test("a hostile search_path cannot relocate migration objects outside public", a
         ...SCHEMA_REGISTRY_TABLE_NAMES,
         ...NON_PORTABLE_TABLE_NAMES,
         ...TENANT_VIEW_NAMES,
+  ...INTERNAL_VIEW_NAMES,
         MIGRATION_TABLE_NAME,
       ].sort(),
     );

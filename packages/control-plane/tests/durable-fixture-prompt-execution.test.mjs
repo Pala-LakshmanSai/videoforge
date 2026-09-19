@@ -306,7 +306,13 @@ test("fixture execution persists exact canonical hashes and correlated zero-cost
       hashCanonical(result.accepted.compiledPrompts),
     );
     assert.match(result.accepted.compiledPrompts[0].positivePrompt, /natural imperfection/u);
-    assert.match(result.accepted.compiledPrompts[0].positivePrompt, /no visible text/u);
+    // 61d36493 split the guards: the positive prompt states the no-marking contract, and the negative
+    // prompt lists the literal tokens the model must avoid.
+    assert.match(
+      result.accepted.compiledPrompts[0].positivePrompt,
+      /no readable or unreadable text/u,
+    );
+    assert.match(result.accepted.compiledPrompts[0].negativePrompt, /visible text/u);
     assert.equal(outboundCalls, 0);
     assert.deepEqual(
       telemetry.events.map((event) => [event.sequence, event.outcome]),

@@ -4,8 +4,7 @@ import { readFile } from "node:fs/promises";
 import { createHash, createHmac } from "node:crypto";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { PGlite } from "@electric-sql/pglite";
-import { applyMigrations } from "../dist/src/index.js";
-import { loadMigrationSources, PGliteExecutor } from "./support/pglite.mjs";
+import { applyMigrationSliceThrough, loadMigrationSources, PGliteExecutor } from "./support/pglite.mjs";
 
 const canonical = (value) =>
   JSON.stringify(Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b))));
@@ -28,10 +27,7 @@ test("140 preserves legacy zero and verifies signed standby zero without accepti
   await db.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
   try {
     const sources = await loadMigrationSources();
-    await applyMigrations(
-      new PGliteExecutor(db),
-      sources.filter((s) => s.version < 140),
-    );
+    await applyMigrationSliceThrough(new PGliteExecutor(db), 139, sources);
     await db.exec("BEGIN");
     const original = (
       await db.query(

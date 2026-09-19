@@ -875,7 +875,7 @@
       "version": 147,
       "name": "hosted_v209_stranded_request_reclaim",
       "filename": "0147_hosted_v209_stranded_request_reclaim.sql",
-      "sha256": "sha256:8a408560881f05b109e1c66f6ed2d54d7e21cb7184b5c883c1324633f806f28b"
+      "sha256": "sha256:3f792e21c81db1b5044c330bf99cbb1c562ed177e2d73d97a45de4314bd0baa7"
     }
   ,
     {
@@ -883,6 +883,20 @@
       "name": "hosted_lane_batch_budget_ceiling_bound",
       "filename": "0148_hosted_lane_batch_budget_ceiling_bound.sql",
       "sha256": "sha256:4f1f631326456483b479137affb5991281697e20a6cd35718156022acfa28a38"
+    }
+  ,
+    {
+      "version": 185,
+      "name": "hosted_v209_predispatch_candidate_read_repair",
+      "filename": "0185_hosted_v209_predispatch_candidate_read_repair.sql",
+      "sha256": "sha256:41e3ce9729da53683ff34068d3b60f05a93f96feb8e8eb8c8f69cb0501ec64e4"
+    }
+  ,
+    {
+      "version": 186,
+      "name": "hosted_tenant_hardening_gap",
+      "filename": "0186_hosted_tenant_hardening_gap.sql",
+      "sha256": "sha256:9805ca5eb569e029dae1312cd389fbe3acdd7b30bd63d5e54fe26829d6b4fa58"
     }
   ]
 }

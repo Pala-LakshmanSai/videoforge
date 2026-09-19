@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
-import { applyMigrations } from "../dist/src/index.js";
-import { loadMigrationSources, PGliteExecutor } from "./support/pglite.mjs";
+import { applyMigrationSliceThrough, PGliteExecutor } from "./support/pglite.mjs";
 
 const ACCOUNT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const WORKSPACE_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -172,10 +171,7 @@ test("accepted Mage barrier releases remaining funded pair pool while still ASSI
   const database = new PGlite();
   try {
     const executor = new PGliteExecutor(database);
-    await applyMigrations(
-      executor,
-      (await loadMigrationSources()).filter((entry) => entry.version < 134),
-    );
+    await applyMigrationSliceThrough(executor, 133);
     await database.exec(await readMigration("0134_hosted_v209_mage_long_plan_successor.sql"));
     await database.exec(await readMigration("0135_hosted_ordinary_video_budget.sql"));
     await seedFundedPair(database);

@@ -3,8 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
-import { applyMigrations } from "../dist/src/index.js";
-import { loadMigrationSources, PGliteExecutor } from "./support/pglite.mjs";
+import { applyMigrationSliceThrough, PGliteExecutor } from "./support/pglite.mjs";
 
 const mageImage = "sha256:a74a622400ab21a51f270176ce0df1e7ea292f1ded999abe6193b4c40bb1fde3";
 const mageSource = "ad6258ae079762c05434048c76072dd656e378cd";
@@ -35,10 +34,7 @@ test("Mage long-plan successor pins published bytes and preserves the prior func
   assert.equal("sha256:" + createHash("sha256").update(proofBytes).digest("hex"), anonymousProof);
   const database = new PGlite();
   try {
-    await applyMigrations(
-      new PGliteExecutor(database),
-      (await loadMigrationSources()).filter((entry) => entry.version < 134),
-    );
+    await applyMigrationSliceThrough(new PGliteExecutor(database), 133);
     const definition = async () =>
       (
         await database.query(

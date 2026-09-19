@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  INTERNAL_VIEW_NAMES,
   MIGRATION_TABLE_NAME,
   NON_PORTABLE_TABLE_NAMES,
   RELATIONAL_TABLE_NAMES,
@@ -239,7 +240,7 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
     );
     assert.deepEqual(
       views.rows.map((row) => row.table_name),
-      [...TENANT_VIEW_NAMES].sort(),
+      [...TENANT_VIEW_NAMES, ...INTERNAL_VIEW_NAMES].sort(),
     );
 
     const indexes = await executor.query(

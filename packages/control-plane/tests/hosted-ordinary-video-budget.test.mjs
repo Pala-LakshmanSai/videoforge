@@ -2,16 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
-import { applyMigrations } from "../dist/src/index.js";
-import { loadMigrationSources, PGliteExecutor } from "./support/pglite.mjs";
+import { applyMigrationSliceThrough, PGliteExecutor } from "./support/pglite.mjs";
 
 test("ordinary budget migration applies after the current production schema", async () => {
   const database = new PGlite();
   try {
-    await applyMigrations(
-      new PGliteExecutor(database),
-      (await loadMigrationSources()).filter((e) => e.version < 134),
-    );
+    await applyMigrationSliceThrough(new PGliteExecutor(database), 133);
     await database.exec(
       await readFile(
         new URL("../migrations/0134_hosted_v209_mage_long_plan_successor.sql", import.meta.url),

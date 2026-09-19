@@ -114,11 +114,12 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
   try {
     const executor = new PGliteExecutor(database);
     const sources = await loadMigrationSources();
-    assert.equal(
-      sources.at(-1)?.filename,
-      "0109_hosted_v209_custom_avatar_source_kind.sql",
-    );
-    assert.equal(sources.at(-1)?.version, 109);
+    // The end of the chain moves with every migration: assert the upgrade semantics (resume exactly
+    // where the legacy 0059 chain stopped, run the whole remaining manifest once, in order) instead
+    // of pinning a version that a new migration has to keep bumping.
+    const tail = sources.at(-1);
+    assert.ok(tail);
+    assert.equal(tail.version, Math.max(...sources.map((source) => source.version)));
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -142,11 +143,7 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
     const upgraded = await applyMigrations(executor, sources);
     assert.deepEqual(
       upgraded.appliedVersions,
-      [
-        60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82,
-        83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102,
-        103, 104, 105, 106, 107, 108, 109,
-      ],
+      sources.filter((source) => source.version >= 60).map((source) => source.version),
     );
     const recoverySurface = await executor.query(
       `SELECT
@@ -177,7 +174,7 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
            IN pg_get_functiondef(
              'public.videoforge_v209_ordinary_load_lane_legacy_0081(uuid,uuid,uuid,text)'::regprocedure
            )) = 0 AS mage_loader_rejects_7200,
-         position('OR (supplied_lane=''soulx_avatar'' AND target.request_ttl_seconds<>3600)'
+         position('(supplied_lane=''soulx_avatar'' AND CASE WHEN candidate.candidate_document->>''budgetVersion''=''ordinary-video-budget/v1'' THEN target.request_ttl_seconds<extract(epoch FROM lane_expires_at-target.attempt_created_at) ELSE target.request_ttl_seconds<>3600 END)'
            IN pg_get_functiondef(
              'public.videoforge_v209_ordinary_load_lane_legacy_0081(uuid,uuid,uuid,text)'::regprocedure
            )) > 0 AS soulx_loader_uses_3600,
@@ -189,7 +186,7 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
            IN pg_get_functiondef(
              'public.videoforge_v209_ordinary_commit_lane_legacy_0081(uuid,uuid,uuid,text,uuid,text,jsonb,text)'::regprocedure
            )) = 0 AS mage_commit_rejects_7200,
-         position('OR (supplied_lane=''soulx_avatar'' AND deployment.request_ttl_seconds<>3600)'
+         position('(supplied_lane=''soulx_avatar'' AND CASE WHEN candidate.candidate_document->>''budgetVersion''=''ordinary-video-budget/v1'' THEN deployment.request_ttl_seconds<extract(epoch FROM lane_expires_at-target.attempt_created_at) ELSE deployment.request_ttl_seconds<>3600 END)'
            IN pg_get_functiondef(
              'public.videoforge_v209_ordinary_commit_lane_legacy_0081(uuid,uuid,uuid,text,uuid,text,jsonb,text)'::regprocedure
            )) > 0 AS soulx_commit_uses_3600`,

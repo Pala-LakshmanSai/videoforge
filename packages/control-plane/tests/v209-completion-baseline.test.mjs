@@ -64,8 +64,16 @@ test("0085 is tenant-bound and enforces the approved 15.50 USD maximum", async (
 
 test("0085 baseline capability is activation-operator and reconciler only", async () => {
   const [operator, reconciler] = await Promise.all([
-    readFile("deploy/v2-09/neon-qualified-activation-operator-grants.sql", "utf8"),
-    readFile("deploy/v2-09/neon-pair-reconciler-grants.sql", "utf8"),
+    // Resolved from the module, not the process cwd: the suite also runs from packages/control-plane,
+    // where a repo-root-relative path points at nothing.
+    readFile(
+      new URL("../../../deploy/v2-09/neon-qualified-activation-operator-grants.sql", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../../../deploy/v2-09/neon-pair-reconciler-grants.sql", import.meta.url),
+      "utf8",
+    ),
   ]);
   const signature = "public.videoforge_read_hosted_v209_completion_baseline(uuid,uuid,bigint)";
   assert.ok(operator.includes(`GRANT EXECUTE ON FUNCTION ${signature}\nTO :"operator_role";`));
