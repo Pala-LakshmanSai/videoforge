@@ -1,4 +1,51 @@
 schema_version: "2.0"
+relatability_verification_and_pipeline_repairs_2026_09_19:
+  checkpoint: V2-09
+  status: VERIFIED_ON_PRODUCTION_RUN
+  what_ran: >-
+    Fresh production project helen-relatability-v2 (ea85b47a-8c66-4b1f-aad9-f510d79cf18f, revision
+    80adeff3-2c53-4617-8039-0aad0746b67d) reusing the helen voiceover (159.216 s, sha256
+    f2ee953aa3f8e4acab643aa6e9c128f8a47c50be204ff31650c80f0b045aed5b) under the v21 policy and the
+    same qualified system avatar. Prompt run redispatch attempt ac4ea8f1 SUCCEEDED in 89 s; pair
+    dispatched 06:59:24Z; both lanes SUCCEEDED 07:09:07Z (31/31 images, 10/10 avatar spans);
+    stage RENDERING at 07:13Z.
+  result_frames: >-
+    Per-segment comparison against the helen revision shows the narrated objects now appear: the
+    medicine-cabinet line renders an amber bottle among toiletries in an open cabinet (old: a hand
+    dabbing a scrape on a forearm); the "what's inside / $1 bottle" lines render the bottle as the
+    hero subject (old: a bare counter wipe and folded towels); the "$8 miracle cleaner" line renders
+    spray and amber bottles on a shelf (old: a grout brush with no product); the "under my kitchen
+    sink" line renders seven spray bottles in the cabinet (old: no counterpart product frame).
+    Residual: two frames carry model-generated pseudo-text labels ("Hodggen") despite the
+    no-visible-text rule — a model-side miss, not a prompt-contract miss; regeneration can replace
+    them.
+  incident_and_repairs: >-
+    (1) The first stage-5 dispatch stranded in DISPATCHING with zero provider calls; the 15-minute
+    prompt-window reconciliation (triggered by loading the project detail; the sole trigger) settled
+    it UNKNOWN/HOSTED_PROMPT_DISPATCH_TIMEOUT with the reservation preserved, and the sweep rebound
+    the row and redispatched 20 s later. (2) The continuation driver instance was wedged mid-sleep
+    since 06:09:36Z while reporting Running; ensureHostedContinuationDriver only restarts terminal
+    instances; repaired with wrangler workflows instances restart videoforge-continuation-workflow
+    hosted-continuation-driver. (3) The superseded prompt:scene-batch:1 generation_task stayed
+    required=true/FAILED after the redispatch, so the admission raised "hosted V2-09 prompts are not
+    ready" (55000) on every dispatch; a scoped one-row repair set required=false after validating
+    the admission passes in a rolled-back transaction; the repo-side class fix in the redispatch
+    path is still owed. (4) The lane gate refused dispatches from 06:18:25Z because
+    qualification.expires_at no longer exceeded now()+request_ttl_seconds (soulx TTL 2 h); the
+    qualification pair was renewed through the canonical operator (read-only provider inventory,
+    providerActionsCreated 0): activation e0da1577-058b-4d5b-b37f-9b6f312ed468, qualifications
+    891f0b82/ + d2a42cfa valid to 2026-09-20 06:59:08Z.
+  provider_spend: >-
+    Prompt batches $0.19 (Runware gemini 9→13 requests). GPU lanes on the qualified 4090 pair:
+    mage execution 169.1 s + soulx execution 359.0 s ≈ $0.16 at the $1.116/hr qualified rate plus
+    cold-start/queue overhead; the project ledger settles the authoritative figure at run
+    completion. The four repairs above created zero provider actions.
+  paid_compute_shutdown: LANES_AT_WORKERS_MIN_0
+  remaining_gates: >-
+    Final video render completes on the desktop worker; review approval (human) releases the
+    download URL. Optional: regenerate the two pseudo-text frames. Owed: repo-side fix so a
+    superseded prompt scene-batch task is demoted by the redispatch path itself.
+
 prompt_relevance_and_product_relatality_repair_2026_09_19:
   checkpoint: V2-09
   status: DEPLOYED_AND_VERIFIED_LIVE
@@ -39,8 +86,8 @@ prompt_relevance_and_product_relatality_repair_2026_09_19:
   provider_spend: NONE
   paid_compute_shutdown: NO_PROVIDER_CALLS_OR_PAID_COMPUTE_STARTED
   remaining_gates: >-
-    Generate a fresh project and visually review the Stage-5 frames for relatability; projects
-    created before this deploy keep their already-written prompts.
+    Closed by relatability_verification_and_pipeline_repairs_2026_09_19 above; the fresh-project
+    frame review was performed on this entry's deploy.
 
 avatar_video_source_truth_2026_09_19:
   checkpoint: V2-09
