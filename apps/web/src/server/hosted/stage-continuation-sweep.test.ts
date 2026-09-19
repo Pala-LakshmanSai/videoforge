@@ -134,6 +134,38 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     expect(declared?.[1]).toBe(String(HOSTED_CONTEXT_REDISPATCH_BUDGET));
   });
 
+  it("keeps the newest stage-3 capability able to run with an unlimited revision budget", () => {
+    // 0086 made project_revisions.maximum_cost_micro_usd nullable (NULL = unlimited) and replaced
+    // `revision.maximum_cost_micro_usd>=10000` with TRUE inside the stage-3 capability. 0173 then
+    // re-created the function from a stale copy and silently put the predicate back, so every
+    // stage-3 start failed 42501 ('hosted voiceover context authority is invalid') for a NULL
+    // budget, the sweep re-offered the step on every tick, and the revision sat at stage 3 forever.
+    // The newest definition therefore has to either drop the predicate or carry it only to repair
+    // it in place the way 0184 does through pg_get_functiondef.
+    const migrations = new URL("../../../../../packages/control-plane/migrations/", import.meta.url);
+    const recreatesFunction =
+      /CREATE OR REPLACE FUNCTION\s+public\.videoforge_prepare_hosted_voiceover_context/u;
+    const declaring = [...readdirSync(fileURLToPath(migrations))]
+      .filter((name) => /^01\d\d_.*\.sql$/u.test(name))
+      .sort()
+      .reverse()
+      .filter((name) => {
+        const source = readFileSync(fileURLToPath(new URL(name, migrations)), "utf8");
+        // A migration owns the capability when it re-creates the function or repairs the live
+        // definition in place (0184's shape); the other mentions are call sites.
+        return source.includes("videoforge_prepare_hosted_voiceover_context")
+          && (recreatesFunction.test(source) || source.includes("pg_get_functiondef"));
+      });
+    expect(declaring.length).toBeGreaterThan(0);
+    const source = readFileSync(fileURLToPath(new URL(declaring[0]!, migrations)), "utf8");
+    const carriesStaleCostPredicate = recreatesFunction.test(source)
+      && /revision\.maximum_cost_micro_usd\s*>=\s*\d+/u.test(source);
+    const repairsStaleCostPredicate = source.includes("pg_get_functiondef")
+      && source.includes("revision.maximum_cost_micro_usd>=10000")
+      && source.includes("TRUE");
+    expect(!carriesStaleCostPredicate || repairsStaleCostPredicate).toBe(true);
+  });
+
   it("re-runs stage 3 when the provider failed before an accepted result", async () => {
     const database = await seededDatabase({
       state: "UNKNOWN",
