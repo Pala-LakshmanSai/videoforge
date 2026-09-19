@@ -40,12 +40,22 @@ const testState = vi.hoisted(() => {
   const avatarDraftRows: Record<string, unknown>[] = [];
   const styleDraftRows: Record<string, unknown>[] = [];
   const publishedStyleRows: Record<string, unknown>[] = [];
+  const preflightAvatarRows: Record<string, unknown>[] = [];
+  const workerDeviceRows: Record<string, unknown>[] = [];
   const query = vi.fn(async (sql: string, params?: readonly unknown[]) => {
     void params;
     if (sql.includes("videoforge_consume_hosted_rate_limit"))
       return { rows: rateLimitRows, affectedRows: 1 };
     if (sql.includes("videoforge_hosted_session_scope"))
       return { rows: scopeRows, affectedRows: 1 };
+    if (
+      sql.includes("runtime_source.object_key") &&
+      sql.includes("FROM avatar_profiles AS profile")
+    ) {
+      return { rows: preflightAvatarRows, affectedRows: preflightAvatarRows.length };
+    }
+    if (sql.includes("FROM media_worker_devices"))
+      return { rows: workerDeviceRows, affectedRows: workerDeviceRows.length };
     if (sql.includes("videoforge_archive_hosted_preset")) {
       if (archiveState.error) throw archiveState.error;
       return { rows: archiveState.rows, affectedRows: archiveState.rows.length };
@@ -142,6 +152,8 @@ const testState = vi.hoisted(() => {
     avatarDraftRows,
     styleDraftRows,
     publishedStyleRows,
+    preflightAvatarRows,
+    workerDeviceRows,
     query,
     pool,
     executor,
@@ -1438,6 +1450,128 @@ describe("hosted product route contract", () => {
     );
     expect(result?.status).toBe(400);
     await expect(errorCode(result)).resolves.toBe("PROJECT_PREFLIGHT_REJECTED");
+  });
+
+  const preflightBody = {
+    schema_version: "videoforge-hosted-project-preflight/v1",
+    title: "Avatar source project",
+    avatar_profile_version_id: "22222222-2222-4222-8222-222222222222",
+    image_style_version_id: "33333333-3333-4333-8333-333333333333",
+    voiceover: {
+      filename: "voiceover.mp3",
+      content_type: "audio/mpeg",
+      content_length: 320_000,
+      checksum_sha256: `sha256:${"a".repeat(64)}`,
+      duration_ms: 20_000,
+    },
+  };
+  type PreflightBlockerBody = {
+    ok?: boolean;
+    ready?: boolean;
+    blockers?: readonly { code?: string; message?: string; severity?: string }[];
+  };
+  const blockingAvatarBlocker = (body: PreflightBlockerBody) =>
+    (body.blockers ?? []).filter(
+      (blocker) =>
+        blocker.severity === "BLOCKING" && blocker.code === "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
+    );
+
+  it("blocks a pinned avatar version whose runtime source is a pass-through upload", async () => {
+    testState.publishedStyleRows.push({});
+    testState.workerDeviceRows.push({ count: "1" });
+    testState.preflightAvatarRows.push({
+      source_preparation_profile: "hosted-avatar-source-pass-through-v1",
+      object_key:
+        `tenant/${testState.scopeRows[0]?.account_id}/workspace/${testState.scopeRows[0]?.workspace_id}` +
+        "/avatar-profile/77777777-7777-4777-8777-777777777777" +
+        "/version/22222222-2222-4222-8222-222222222222/original/source",
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", preflightBody),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result?.json()) as PreflightBlockerBody;
+      expect(body.ok).toBe(false);
+      expect(body.ready).toBe(false);
+      expect(blockingAvatarBlocker(body)).toEqual([
+        {
+          code: "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
+          message:
+            "This avatar cannot generate avatar video yet. Choose an avatar with a prepared source (the system avatar) or re-create this preset from the Avatar Hub.",
+          severity: "BLOCKING",
+        },
+      ]);
+      expect(body.blockers?.some((blocker) => blocker.code === "AVATAR_PROFILE_NOT_READY")).toBe(
+        false,
+      );
+    } finally {
+      testState.publishedStyleRows.length = 0;
+      testState.workerDeviceRows.length = 0;
+      testState.preflightAvatarRows.length = 0;
+    }
+  });
+
+  it("blocks a pinned avatar runtime source whose key is not a canonical avatar.png", async () => {
+    testState.publishedStyleRows.push({});
+    testState.workerDeviceRows.push({ count: "1" });
+    testState.preflightAvatarRows.push({
+      source_preparation_profile: "soulx-pro-vf924u-approved-v1",
+      object_key:
+        "tenant/ffffffff-ffff-4fff-8fff-000000000001" +
+        "/workspace/ffffffff-ffff-4fff-8fff-000000000011" +
+        "/avatar-profile/f2136d6c-03e7-41c2-8d15-86fddfdf578f" +
+        "/version/8760a29e-280a-4c89-88d5-a04b1c229d85/canonical/avatar.jpg",
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", preflightBody),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result?.json()) as PreflightBlockerBody;
+      expect(body.ok).toBe(false);
+      expect(blockingAvatarBlocker(body)).toHaveLength(1);
+    } finally {
+      testState.publishedStyleRows.length = 0;
+      testState.workerDeviceRows.length = 0;
+      testState.preflightAvatarRows.length = 0;
+    }
+  });
+
+  it("accepts a pinned system avatar version whose runtime source is canonical", async () => {
+    testState.publishedStyleRows.push({});
+    testState.workerDeviceRows.push({ count: "1" });
+    testState.preflightAvatarRows.push({
+      source_preparation_profile: "soulx-pro-vf924u-approved-v1",
+      object_key:
+        "tenant/ffffffff-ffff-4fff-8fff-000000000001" +
+        "/workspace/ffffffff-ffff-4fff-8fff-000000000011" +
+        "/avatar-profile/f2136d6c-03e7-41c2-8d15-86fddfdf578f" +
+        "/version/8760a29e-280a-4c89-88d5-a04b1c229d85/canonical/avatar.png",
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", preflightBody),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result?.json()) as PreflightBlockerBody;
+      expect(blockingAvatarBlocker(body)).toEqual([]);
+      expect(body.ok).toBe(true);
+      expect(body.ready).toBe(true);
+    } finally {
+      testState.publishedStyleRows.length = 0;
+      testState.workerDeviceRows.length = 0;
+      testState.preflightAvatarRows.length = 0;
+    }
   });
 
   it("keeps provenance manifest unavailable until an approved render exists", async () => {

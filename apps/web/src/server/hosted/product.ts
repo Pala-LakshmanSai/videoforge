@@ -68,6 +68,13 @@ const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const MAX_EXTRA_PROMPT_KEYWORDS = 500;
 const MAX_OPTIONAL_SCRIPT = 100_000;
 const HOSTED_TARGETED_RETRY_QUALIFIED = false;
+// The SoulX avatar worker (workers/common/secure_scratch.py) only accepts an immutable avatar
+// runtime source at a canonical key that ends in /canonical/avatar.png with content-type
+// image/png. A pinned version prepared by the pass-through upload profile keeps its runtime
+// source at .../original/source, which the worker rejects in about a second, after the image
+// lane has already burned paid GPU time. Preflight must refuse that binding before dispatch.
+const AVATAR_PASS_THROUGH_PREPARATION_PROFILE = "hosted-avatar-source-pass-through-v1";
+const CANONICAL_AVATAR_RUNTIME_SOURCE_KEY = /^.*\/canonical\/avatar\.png$/u;
 
 function hostedProviderFreePresetCreationEnabled(config: HostedRuntimeConfiguration): boolean {
   return (
@@ -4530,13 +4537,19 @@ async function projectPreflight(
         scope.account_id,
       ]);
       const [avatar, style, workers] = await Promise.all([
-        transaction.query(
-          `SELECT 1
+        transaction.query<{
+          source_preparation_profile: string | null;
+          object_key: string | null;
+        }>(
+          `SELECT version.source_preparation_profile, runtime_source.object_key
              FROM avatar_profiles AS profile
              JOIN avatar_profile_versions AS version
                ON version.account_id = profile.account_id
               AND version.workspace_id = profile.workspace_id
               AND version.profile_id = profile.id
+             LEFT JOIN assets AS runtime_source
+               ON runtime_source.workspace_id = version.workspace_id
+              AND runtime_source.id = version.runtime_source_asset_id
             WHERE ((profile.account_id = $1 AND profile.workspace_id = $2)
                     OR profile.scope_kind = 'SYSTEM')
               AND profile.status = 'ACTIVE' AND version.id = $3 AND version.state = 'READY'
@@ -4563,8 +4576,15 @@ async function projectPreflight(
           [scope.account_id, scope.workspace_id],
         ),
       ]);
+      const avatarRow = avatar.rows[0];
+      const avatarRuntimeSourceQualified =
+        avatarRow !== undefined &&
+        avatarRow.source_preparation_profile !== AVATAR_PASS_THROUGH_PREPARATION_PROFILE &&
+        typeof avatarRow.object_key === "string" &&
+        CANONICAL_AVATAR_RUNTIME_SOURCE_KEY.test(avatarRow.object_key);
       return {
         avatarReady: avatar.rows.length > 0,
+        avatarRuntimeSourceQualified,
         styleReady: style.rows.length > 0,
         workers: Number(workers.rows[0]?.count ?? 0),
       };
@@ -4574,6 +4594,14 @@ async function projectPreflight(
       blockers.push({
         code: "AVATAR_PROFILE_NOT_READY",
         message: "Choose an active Avatar Profile version in READY state.",
+        severity: "BLOCKING",
+      });
+    }
+    if (facts.avatarReady && !facts.avatarRuntimeSourceQualified) {
+      blockers.push({
+        code: "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
+        message:
+          "This avatar cannot generate avatar video yet. Choose an avatar with a prepared source (the system avatar) or re-create this preset from the Avatar Hub.",
         severity: "BLOCKING",
       });
     }
