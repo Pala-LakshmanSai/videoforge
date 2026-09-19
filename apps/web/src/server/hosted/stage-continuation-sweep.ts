@@ -1,6 +1,8 @@
 import type { HostedExecutionContext } from "./auth";
 import {
+  configuredHostedRuntimeConfiguration,
   hostedRuntimeConfiguration,
+  type HostedQualifiedGpuActivationDatabaseSource,
   type HostedRuntimeConfiguration,
   type HostedRuntimeEnvironment,
 } from "./configuration";
@@ -232,11 +234,48 @@ async function continuationOutcome(
   return { ok: false, detail: code ? `${response.status}:${code}` : `${response.status}` };
 }
 
+/** Where the sweep's verified configuration comes from; the default is the app's own DB seam. */
+export interface HostedContinuationConfigurationDependencies {
+  readonly databaseSource?: (
+    environment: HostedRuntimeEnvironment,
+    disabled: HostedRuntimeConfiguration,
+  ) => HostedQualifiedGpuActivationDatabaseSource | undefined;
+}
+
+/**
+ * Resolves the configuration the continuation sweep dispatches with.
+ *
+ * The env-only configuration is always `DISABLED_UNQUALIFIED` (the flag is necessary, never
+ * sufficient), and the GPU-dispatch route refuses anything but the verified activation. Building the
+ * sweep's config from the flag alone therefore made its dispatch step answer
+ * `503 GPU_TRANSPORT_DISABLED_UNQUALIFIED` on every tick — stages 6-8 stayed browser-only while the
+ * sweep reported the failure — so resolve through the same trusted database seam every request path
+ * uses. `./app` is imported dynamically: this module is statically reachable from the Worker entry
+ * and the accepted production bundle keeps an exact no-growth ceiling.
+ */
+export async function resolveContinuationConfiguration(
+  environment: HostedRuntimeEnvironment,
+  dependencies: HostedContinuationConfigurationDependencies = {},
+): Promise<HostedRuntimeConfiguration> {
+  const disabled = hostedRuntimeConfiguration(environment);
+  try {
+    const databaseSource = dependencies.databaseSource
+      ? dependencies.databaseSource(environment, disabled)
+      : (await import("./app")).hostedGpuActivationDatabaseSource(environment, disabled);
+    return await configuredHostedRuntimeConfiguration({
+      source: environment,
+      databaseSource,
+    });
+  } catch {
+    return disabled;
+  }
+}
+
 export async function runHostedContinuation(
   environment: HostedRuntimeEnvironment,
   executionContext: HostedExecutionContext,
 ): Promise<string[]> {
-  const config: HostedRuntimeConfiguration = hostedRuntimeConfiguration(environment);
+  const config: HostedRuntimeConfiguration = await resolveContinuationConfiguration(environment);
   const pool = createNeonPool(config.neon.databaseUrl);
   const dispatched: string[] = [];
   const failures: string[] = [];

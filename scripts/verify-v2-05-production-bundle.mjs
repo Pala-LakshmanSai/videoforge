@@ -24,10 +24,14 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // for a provider-confirmed failure and the in-row refusal notice: the measured closure is
 // 233-byte entry + 2,733,140-byte shared chunk. It moved again to 2,733,414 with the same stage being
 // able to retry a provider rejection inside its budget (233-byte entry + 2,733,181-byte chunk);
-// then to 2,734,369 with the stage-5 stale-run recovery (233-byte entry + 2,734,136-byte chunk).
+// then to 2,734,369 with the stage-5 stale-run recovery (233-byte entry + 2,734,136-byte chunk),
+// and to 2,737,905 with the continuation sweep resolving its runtime configuration through the same
+// verified activation seam every request path uses (the env-only configuration it built before is
+// always DISABLED_UNQUALIFIED, so its GPU-dispatch step answered 503 on every tick and stages 6-8
+// stayed browser-only).
 // Both are deliberately exact per-target no-growth ceilings, not platform limits.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_737_379,
+  "wrangler.production.jsonc": 2_737_905,
   "wrangler.staging.jsonc": 2_747_459,
 })[wranglerConfig];
 const workerForbidden = [
@@ -243,7 +247,7 @@ try {
     staticWorkerBytes > staticWorkerEntryAcceptedBytes
   ) {
     failures.push(
-      `static Worker-entry closure exceeds the accepted no-growth baseline of ${staticWorkerEntryAcceptedBytes} bytes`,
+      `static Worker-entry closure exceeds the accepted no-growth baseline of ${staticWorkerEntryAcceptedBytes} bytes (measured ${staticWorkerBytes})`,
     );
   }
 
