@@ -4592,11 +4592,18 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY",
     "VOICEOVER_CONTEXT_TOO_LARGE",
   ].includes(query.data.voiceover_context?.problem_code ?? "");
-  const contextNeedsReview =
-    contextStage?.status === "FAILED" ||
-    query.data.voiceover_context?.state === "UNKNOWN" ||
-    query.data.voiceover_context?.state === "FAILED";
   const contextAutoStartError = contextExtraction.isError && query.data.voiceover_context == null;
+  // The auto-start failure is not a needs-review context: no context row exists yet, so stage 03 reads
+  // FAILED from the client-side projection that also shows the reason. Letting `contextStage` (the
+  // server projection, which still says RUNNING) or a FAILED row reach this branch would rewrite the
+  // notice into "Context extraction needs review." / "Stopped safely; no automatic retry." and drop the
+  // retry control -- a sentence that contradicts the row and a failure with no way forward. Needs
+  // review means a context row exists and needs a human.
+  const contextNeedsReview =
+    !contextAutoStartError &&
+    (contextStage?.status === "FAILED" ||
+      query.data.voiceover_context?.state === "UNKNOWN" ||
+      query.data.voiceover_context?.state === "FAILED");
   const contextReconciliationCouldNotFinish =
     contextUnknown &&
     !contextProviderFailed &&
@@ -4835,11 +4842,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // lands. The live panel beside it already knows prompt writing is running, so the numbered stage
   // must agree instead of reporting the previous "not started" status.
   const displayedStages = uiStages.map((stage) =>
-    stage.id === "prompt-writing" &&
-    promptWritingActive &&
-    !["COMPLETE", "FAILED", "CANCELLED"].includes(stage.status)
-      ? { ...stage, status: "RUNNING" as const }
-      : stage,
+    stage.id === "voiceover-context" && contextAutoStartError
+      ? // The automatic request never reached a provider task, so nothing about it is running: the
+        // server projection only knows that asr succeeded and no context row exists, which reads
+        // RUNNING forever. The row must carry the same truth as the notice below it -- the reason the
+        // request failed -- and the control that can send it again.
+        { ...stage, status: "FAILED" as const, detail: contextExtraction.error.message }
+      : stage.id === "prompt-writing" &&
+          promptWritingActive &&
+          !["COMPLETE", "FAILED", "CANCELLED"].includes(stage.status)
+        ? { ...stage, status: "RUNNING" as const }
+        : stage,
   );
   // A failed stage owns its retry control, rendered right after its FAILED badge, so the recovery for
   // the stage that stopped is inside that stage instead of in a notice under the pipeline. Only stages
@@ -4878,7 +4891,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 contextReconciliation.mutate(),
               ),
             }
-          : {}
+          : contextAutoStartError
+            ? {
+                // The automatic request failed before any provider task existed, so there is nothing
+                // to reconcile and no result to inspect: the same bounded request the notice below
+                // fires is the only recovery, and the FAILED row now carries it.
+                "voiceover-context": stageRetryButton(contextExtraction.isPending, () =>
+                  contextExtraction.mutate(asr.id),
+                ),
+              }
+            : {}
       : {}),
     ...(failedStageIds.has("prompt-writing")
       ? {
@@ -4904,6 +4926,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       : {}),
     ...(failedStageIds.has("voiceover-context") && contextReconciliation.isError
       ? { "voiceover-context": contextReconciliation.error.message }
+      : {}),
+    // The auto-start request itself failed, so there is no refused press to explain: the row's alert
+    // carries the same sentence the row's detail and the notice below show, naming why the control
+    // beside it has to send a new request.
+    ...(failedStageIds.has("voiceover-context") && contextExtraction.isError
+      ? { "voiceover-context": contextExtraction.error.message }
       : {}),
     ...(failedStageIds.has("prompt-writing") && promptWriting.isError
       ? { "prompt-writing": promptWriting.error.message }
@@ -5399,8 +5427,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ) : contextNeedsReview && !contextUnknown ? (
             <span>The provider returned a definite failure. No context result was accepted.</span>
           ) : contextAutoStartError ? (
-            // Nothing started, so no stage owns this recovery yet: the automatic extraction never
-            // reached the provider and the stage is still RUNNING rather than FAILED.
+            // Nothing started, so no provider work can be resumed; stage 03 above now reports the same
+            // FAILED reason inline, and the notice keeps this control as the pipeline-level recovery
+            // for the run it stopped.
             <Button
               variant="primary"
               busy={contextExtraction.isPending}

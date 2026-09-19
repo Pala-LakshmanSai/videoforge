@@ -2550,6 +2550,159 @@ describe("hosted product journey", () => {
     expect(screen.queryByText("Live progress is temporarily unavailable")).not.toBeInTheDocument();
   });
 
+  it("reports a failed automatic context start inside stage 03 instead of a running row", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const asrId = "33333333-3333-4333-8333-333333333333";
+    const automaticStartDetail =
+      "VideoForge is starting voiceover context automatically within the project limit.";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-08-17T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [
+        {
+          id: asrId,
+          kind: "ASR" as const,
+          state: "SUCCEEDED",
+          version: 3,
+          created_at: "2026-08-17T10:00:00.000Z",
+          updated_at: "2026-08-17T10:01:00.000Z",
+          terminal_at: "2026-08-17T10:01:00.000Z",
+          output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+          approved_at: null,
+          preview_url: null,
+        },
+      ],
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
+      gpu_readiness: gpuReadiness,
+      voiceover_context: null,
+      // The Worker's own stage projection while no context row exists: asr succeeded, so stage 03 is
+      // reported RUNNING with the automatic-start sentence no matter how the request actually ended.
+      stages: stageList({
+        prepare: "COMPLETE",
+        transcription: "COMPLETE",
+        "voiceover-context": "RUNNING",
+      }).map((stage) =>
+        stage.id === "voiceover-context" ? { ...stage, detail: automaticStartDetail } : stage,
+      ),
+      generation: null,
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith(`/projects/${projectId}/context`)) {
+        // The escaped production failure: the stage-3 capability refused the write, so the Worker
+        // answered 500 with an HTML error page whose body readJson cannot parse. The user-visible
+        // reason is therefore readJson's own fallback sentence.
+        return new Response("<!doctype html><html><body>500 Internal Server Error</body></html>", {
+          status: 500,
+          headers: { "content-type": "text/html" },
+        });
+      }
+      return Response.json(detail);
+    });
+    const contextPosts = () =>
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).endsWith(`/projects/${projectId}/context`),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    await waitFor(() => expect(contextPosts()).toHaveLength(1));
+    await waitFor(() =>
+      expect(
+        within(stageRow("Understand voiceover context")).getByText("FAILED"),
+      ).toBeInTheDocument(),
+    );
+    const contextRow = stageRow("Understand voiceover context");
+    // The row tells the truth about the failure: the reason the request threw, announced as an alert,
+    // instead of a stage that keeps reading RUNNING with the automatic-start sentence and 0/100.
+    expect(
+      within(contextRow).getAllByText("VideoForge hosted request failed.").length,
+    ).toBeGreaterThan(0);
+    expect(within(contextRow).getByRole("alert")).toHaveTextContent(
+      "VideoForge hosted request failed.",
+    );
+    expect(within(contextRow).queryByText("RUNNING")).not.toBeInTheDocument();
+    expect(
+      within(contextRow).queryByText(/starting voiceover context automatically/iu),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(automaticStartDetail)).not.toBeInTheDocument();
+    // The notice below the pipeline keeps its plain auto-start copy and its own control; a FAILED
+    // stage 03 must not push it into the needs-review branch, which belongs to a context row.
+    expect(screen.getByText("Automatic context extraction could not start.")).toBeInTheDocument();
+    expect(screen.queryByText("Context extraction needs review.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stopped safely; no automatic retry.")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Retry automatic continuation" }),
+    ).toBeInTheDocument();
+    // The FAILED row carries the same fresh bounded request, so a press sends it again.
+    fireEvent.click(within(contextRow).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(contextPosts()).toHaveLength(2));
+  });
+
+  it("keeps the auto-start notice copy when the stage projection already reads FAILED", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const asrId = "33333333-3333-4333-8333-333333333333";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-08-17T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [
+        {
+          id: asrId,
+          kind: "ASR" as const,
+          state: "SUCCEEDED",
+          version: 3,
+          created_at: "2026-08-17T10:00:00.000Z",
+          updated_at: "2026-08-17T10:01:00.000Z",
+          terminal_at: "2026-08-17T10:01:00.000Z",
+          output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+          approved_at: null,
+          preview_url: null,
+        },
+      ],
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
+      gpu_readiness: gpuReadiness,
+      voiceover_context: null,
+      stages: stageList({
+        prepare: "COMPLETE",
+        transcription: "COMPLETE",
+        "voiceover-context": "FAILED",
+      }),
+      generation: null,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).endsWith(`/projects/${projectId}/context`)
+          ? new Response("Internal Server Error", { status: 500 })
+          : Response.json(detail),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+    expect(
+      await screen.findByText("Automatic context extraction could not start."),
+    ).toBeInTheDocument();
+    // A failed stage 03 with no context row is not a needs-review context, so the notice must keep the
+    // reason and the retry control instead of the needs-review copy.
+    expect(screen.queryByText("Context extraction needs review.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stopped safely; no automatic retry.")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Retry automatic continuation" }),
+    ).toBeInTheDocument();
+    expect(
+      within(stageRow("Understand voiceover context")).getByRole("button", { name: "Retry" }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps an approved completed video on the final stage", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     vi.stubGlobal(
