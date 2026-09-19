@@ -1691,6 +1691,12 @@ describe("hosted product route contract", () => {
     expect(block).toContain("!definiteProviderRejection");
     expect(block).toContain("providerTaskUuid = preparedRequest.request.taskUUID");
     expect(block).toContain("provider_task_uuid: providerTaskUuid");
+    // A refusal before the claim produced a context row has no attempt to settle, and letting it
+    // escape answered the browser with the runtime's non-JSON 500: readJson then shows only its
+    // generic 'VideoForge hosted request failed.' sentence while stage 03 kept reading RUNNING.
+    expect(block).toContain('code: "HOSTED_CONTEXT_START_REJECTED"');
+    expect(block).toContain("if (accountId) {");
+    expect(block).toContain("Press Retry to start it again.");
     const planning = source.slice(
       source.indexOf("async function renderHandoff("),
       source.indexOf("async function projects("),

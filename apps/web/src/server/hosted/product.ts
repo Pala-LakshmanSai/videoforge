@@ -5735,6 +5735,28 @@ export async function createVoiceoverContext(
         definiteProviderRejection ? 422 : 502,
       );
     }
+    if (accountId) {
+      // The claim never produced a context row, so no attempt exists to settle. Letting this escape
+      // answered the browser with the Workers runtime's non-JSON 500, which readJson can only turn
+      // into its generic 'VideoForge hosted request failed.' sentence while stage 03 kept reading
+      // RUNNING - a refused start looked like idle work. Live: the stale cost guard answered 42501
+      // 'hosted voiceover context authority is invalid' on every sweep tick and every auto-start.
+      console.error("HOSTED_CONTEXT_START_REJECTED", {
+        sqlstate: postgresCode(error),
+        detail: error instanceof Error ? error.message.slice(0, 200) : String(error).slice(0, 200),
+        redispatch: redispatchable,
+      });
+      return response(
+        {
+          error: {
+            code: "HOSTED_CONTEXT_START_REJECTED",
+            message:
+              "VideoForge could not start the voiceover context step for this run. Press Retry to start it again.",
+          },
+        },
+        503,
+      );
+    }
     throw error;
   } finally {
     await pool.end();
