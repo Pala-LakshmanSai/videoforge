@@ -11,7 +11,6 @@ import {
   scheduleTimeline,
   spanPaddedWindowMs,
   schedulerConfigForVersion,
-  SUPPORTED_SCHEDULER_VERSION,
 } from "@videoforge/pipeline";
 
 import type { ArtifactMetadata } from "../repositories/artifacts.js";
@@ -168,7 +167,7 @@ export async function prepareDurableDeterministicTimeline(
     revision.value.project_id !== command.projectId ||
     revision.value.project_revision_id !== command.projectRevisionId ||
     transcript.value.project_revision_id !== command.projectRevisionId ||
-    revision.value.scheduler_version !== SUPPORTED_SCHEDULER_VERSION
+    schedulerConfigForVersion(revision.value.scheduler_version) === null
   ) {
     throw new DurableTimelineError(
       "TIMELINE_INPUT_MISMATCH",

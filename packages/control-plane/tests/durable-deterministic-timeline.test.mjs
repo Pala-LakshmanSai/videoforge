@@ -591,3 +591,19 @@ test("the committed timeline service remains provider-free and hashes exact byte
     /provider|credential|signed_url|https?:\/\//u,
   );
 });
+
+test("the durable timeline accepts a pinned scheduler-v3 revision", async () => {
+  const revision = await validateAndHashContractDocument("projectRevisionConfig", {
+    ...revisionValue(),
+    scheduler_version: "scheduler-v3",
+  });
+  const transcript = await validateAndHashContractDocument("transcriptTiming", transcriptValue());
+  const prepared = await prepareDurableDeterministicTimeline(
+    SCOPE,
+    persistCommand(revision, transcript),
+  );
+  assert.equal(
+    JSON.parse(new TextDecoder().decode(prepared.canonicalDocumentWrite.bytes)).scheduler_version,
+    "scheduler-v3",
+  );
+});
