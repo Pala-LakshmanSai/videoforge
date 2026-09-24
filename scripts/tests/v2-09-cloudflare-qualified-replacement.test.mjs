@@ -128,7 +128,13 @@ test("unbound predecessor and production injection rejected", (t) => {
 });
 
 test("production secret contract includes Runware and has no duplicate names", () => {
-  assert.equal(SECRET_NAMES.length, 23);
+  assert.equal(SECRET_NAMES.length, 25);
   assert.ok(SECRET_NAMES.includes("RUNWARE_API_KEY"));
+  assert.ok(SECRET_NAMES.includes("KIE_API_KEY"));
+  assert.ok(SECRET_NAMES.includes("FAL_API_KEY"));
+  assert.equal(
+    SECRET_NAMES.filter((name) => !["KIE_API_KEY", "FAL_API_KEY"].includes(name)).length,
+    23,
+  );
   assert.equal(new Set(SECRET_NAMES).size, SECRET_NAMES.length);
 });
