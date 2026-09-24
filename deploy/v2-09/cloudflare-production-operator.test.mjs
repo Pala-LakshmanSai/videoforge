@@ -276,7 +276,11 @@ function harness(
     throw new Error(`unexpected fixture command: ${args.join(" ")}`);
   };
   const fetchImpl = async () => {
-    if (secrets.size < SECRET_NAMES.length)
+    const requiredSecretCount =
+      activeConfig?.vars?.VIDEOFORGE_GENERATION_PROVIDER === "KIE_FAL"
+        ? SECRET_NAMES.length
+        : SECRET_NAMES.length - 2;
+    if (secrets.size < requiredSecretCount)
       return new Response(
         JSON.stringify({ error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } }),
         {
@@ -1713,6 +1717,41 @@ test("replacement built-in primitives verify inherited qualified secrets without
       ),
   );
   assert.equal(mock.secrets.size, SECRET_NAMES.length);
+});
+
+test("replacement accepts exact 23-secret predecessor while requiring full 25-secret successor", async () => {
+  const value = fixture();
+  const mock = harness(value);
+  const dependencies = { ...mock, testOnly: true, now: () => new Date("2026-09-06T22:00:00.000Z") };
+  const approved = authority(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, dependencies);
+  await executeThroughQualified(operator, approved);
+  const primitive = createV209CloudflareReplacementCapabilities(value.configuration, dependencies);
+  const predecessor = {
+    versionId: VERSION_IDS[3],
+    sourceCommit: SOURCE,
+    qualifiedConfigPath: value.configuration.qualifiedConfigPath,
+    qualifiedConfigSha256: approved.production.config_sha256,
+    workerBundleSha256: approved.production.worker_bundle_sha256,
+  };
+
+  mock.secrets.delete("KIE_API_KEY");
+  await assert.rejects(primitive.predecessor(approved, predecessor), /SECRET_LIST_DRIFT/u);
+  mock.secrets.delete("FAL_API_KEY");
+  assert.equal(mock.secrets.size, 23);
+  const before = mock.calls.length;
+  await primitive.predecessor(approved, predecessor);
+  assert.ok(
+    mock.calls
+      .slice(before)
+      .every(
+        (call) =>
+          !call.args.includes("deploy") &&
+          !call.args.includes("put") &&
+          !call.args.includes("delete"),
+      ),
+  );
+  await assert.rejects(primitive.readback(approved, "DISABLED_UNQUALIFIED"), /SECRET_LIST_DRIFT/u);
 });
 
 test("replacement failure containment verifies disabled transport and preserves all inherited secrets", async () => {

@@ -40,6 +40,10 @@ import {
 import { hashV209DryOutputBundle } from "./dry-output-bundle.mjs";
 import { executeV209SecretBulk } from "./cloudflare-secret-bulk.mjs";
 
+const LEGACY_PREDECESSOR_SECRET_NAMES = Object.freeze(
+  SECRET_NAMES.filter((name) => !["KIE_API_KEY", "FAL_API_KEY"].includes(name)),
+);
+
 const SOURCE_PATH = fileURLToPath(import.meta.url);
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const HASH = /^sha256:[0-9a-f]{64}$/u;
@@ -1978,10 +1982,8 @@ async function readbackQualified(runtime, context) {
     SECRET_NAMES,
   );
   if (version.versionId !== journal.active_version_id) fail("QUALIFIED_VERSION_CHANGED");
-  const configuredTransport = qualifiedConfiguration(
-    runtime.configuration,
-    context.authority,
-  ).value.vars.VIDEOFORGE_GPU_TRANSPORT;
+  const configuredTransport = qualifiedConfiguration(runtime.configuration, context.authority).value
+    .vars.VIDEOFORGE_GPU_TRANSPORT;
   const effectiveTransport =
     configuredTransport === "DISABLED_UNQUALIFIED" || context.activationImported !== true
       ? "DISABLED_UNQUALIFIED"
@@ -2183,7 +2185,13 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
     authority,
     operationId: "deploy-cloudflare-qualified-production",
   });
-  const read = async (authority, transport, sourceRuntime = runtime, cpuLimitMode = "required") => {
+  const read = async (
+    authority,
+    transport,
+    sourceRuntime = runtime,
+    cpuLimitMode = "required",
+    expectedSecretNames = SECRET_NAMES,
+  ) => {
     const ctx = context(authority);
     const names = await exactSecretNames(
       {
@@ -2196,7 +2204,7 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
       authority,
       ctx,
     );
-    if (canonical(names) !== canonical([...SECRET_NAMES].sort())) fail("SECRET_LIST_DRIFT");
+    if (canonical(names) !== canonical([...expectedSecretNames].sort())) fail("SECRET_LIST_DRIFT");
     return readActiveVersion(
       sourceRuntime,
       authority,
@@ -2204,7 +2212,7 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
       transport,
       true,
       ctx,
-      SECRET_NAMES,
+      expectedSecretNames,
       cpuLimitMode,
     );
   };
@@ -2245,6 +2253,21 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
       const oldQualified = qualifiedConfiguration(oldRuntime.configuration, oldAuthority);
       const predecessorCpuLimitMode =
         oldQualified.value.limits?.cpu_ms === 30_000 ? "required" : "historical-absent";
+      const predecessorSecretNames = await exactSecretNames(
+        {
+          ...oldRuntime,
+          configuration: {
+            ...oldRuntime.configuration,
+            disabledConfigPath: oldRuntime.configuration.qualifiedConfigPath,
+          },
+        },
+        oldAuthority,
+        context(oldAuthority),
+      );
+      const expectedPredecessorSecrets = [SECRET_NAMES, LEGACY_PREDECESSOR_SECRET_NAMES].find(
+        (expected) => canonical(predecessorSecretNames) === canonical([...expected].sort()),
+      );
+      if (expectedPredecessorSecrets === undefined) fail("SECRET_LIST_DRIFT");
       await verifyRelocatedPredecessorBundle(
         oldRuntime,
         oldAuthority,
@@ -2256,6 +2279,7 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
         "QUALIFIED_EXACT",
         oldRuntime,
         predecessorCpuLimitMode,
+        expectedPredecessorSecrets,
       );
       if (version.versionId !== predecessor.versionId) fail("PREDECESSOR_VERSION_DRIFT");
       // An aged activation is precisely why this replacement may be needed. Only these two
