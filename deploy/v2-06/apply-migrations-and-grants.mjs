@@ -229,6 +229,15 @@ const parseLedger = (text) =>
     });
 
 const migrationByVersion = new Map(migrations.map((migration) => [migration.version, migration]));
+// Read-only production inventory on 2026-09-24 found this exact historical ledger. Migration
+// 0148 is in the manifest but absent from that ledger, so it must never be backfilled after 0187.
+const liveHistoricalVersions = [
+  ...Array.from({ length: 114 }, (_, index) => index + 1),
+  ...Array.from({ length: 32 }, (_, index) => index + 116),
+  161,
+  ...Array.from({ length: 5 }, (_, index) => index + 164),
+  ...Array.from({ length: 18 }, (_, index) => index + 170),
+];
 
 const validateMigrationLedger = async (ledger, { complete = false } = {}) => {
   const appliedVersions = new Set();
@@ -253,10 +262,7 @@ const validateMigrationLedger = async (ledger, { complete = false } = {}) => {
       )
         fail(`migration ledger position ${index + 1} does not match the committed manifest`);
     } else {
-      // Omitted historical rows must form a consecutive prefix of a manifest gap. Verify their
-      // exact committed SQL bytes before treating them as already applied.
-      if (version !== previousVersion + 1)
-        fail(`migration ledger position ${index + 1} skips a historical migration`);
+      // Historical rows outside the retained manifest require committed SQL byte proof.
       let historicalSql;
       let committedSql;
       try {
@@ -277,11 +283,26 @@ const validateMigrationLedger = async (ledger, { complete = false } = {}) => {
     appliedVersions.add(version);
     previousVersion = version;
   }
-  for (const retained of migrations) {
-    if (retained.version <= previousVersion && !appliedVersions.has(retained.version))
-      fail(`migration ledger is missing retained version ${retained.version}`);
-  }
-  const pending = migrations.filter(({ version }) => !appliedVersions.has(version));
+  const versions = ledger.map(({ version }) => version);
+  const manifestPrefix = migrations.slice(0, versions.length).map(({ version }) => version);
+  const liveHistory =
+    versions.length === liveHistoricalVersions.length ||
+    (versions.length === liveHistoricalVersions.length + 1 && versions.at(-1) === 188)
+      ? [
+          ...liveHistoricalVersions,
+          ...(versions.length > liveHistoricalVersions.length ? [188] : []),
+        ]
+      : [];
+  if (
+    JSON.stringify(versions) !== JSON.stringify(manifestPrefix) &&
+    JSON.stringify(versions) !== JSON.stringify(liveHistory)
+  )
+    fail(
+      "migration ledger version sequence is neither a manifest prefix nor the verified live history",
+    );
+  const pending = migrations.filter(({ version }) =>
+    liveHistory.length > 0 ? version > previousVersion : !appliedVersions.has(version),
+  );
   if (complete && pending.length > 0)
     fail(`migration ledger is missing ${pending.length} committed manifest rows`);
   return pending;

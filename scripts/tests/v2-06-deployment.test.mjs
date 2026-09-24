@@ -58,9 +58,15 @@ const migrationManifest = JSON.parse(
   readFileSync("packages/control-plane/migrations/manifest.json", "utf8"),
 ).migrations;
 const ledgerRow = ({ version, name, filename, sha256 }) => ({ version, name, filename, sha256 });
-const retainedThrough187 = migrationManifest.filter(({ version }) => version <= 187).map(ledgerRow);
-const historical149Through168 = Array.from({ length: 20 }, (_, index) => {
-  const version = 149 + index;
+const retainedLive = migrationManifest
+  .filter(({ version }) => version <= 187 && version !== 148)
+  .map(ledgerRow);
+const historicalLiveVersions = [
+  161,
+  ...Array.from({ length: 5 }, (_, index) => index + 164),
+  ...Array.from({ length: 15 }, (_, index) => index + 170),
+];
+const historicalLive = historicalLiveVersions.map((version) => {
   const filename = readdirSync("packages/control-plane/migrations").find((candidate) =>
     candidate.startsWith(`${String(version).padStart(4, "0")}_`),
   );
@@ -74,7 +80,7 @@ const historical149Through168 = Array.from({ length: 20 }, (_, index) => {
       .digest("hex")}`,
   };
 });
-const liveShape = [...retainedThrough187, ...historical149Through168].sort(
+const liveShape = [...retainedLive, ...historicalLive].sort(
   (left, right) => left.version - right.version,
 );
 
@@ -99,19 +105,19 @@ test("migration runner preserves empty bootstrap and rejects incomplete verifica
 
 test("migration runner rejects historical hash drift and gaps before database mutation", async () => {
   const wrongHash = liveShape.map((row) =>
-    row.version === 150 ? { ...row, sha256: `sha256:${"0".repeat(64)}` } : row,
+    row.version === 161 ? { ...row, sha256: `sha256:${"0".repeat(64)}` } : row,
   );
   await assert.rejects(validateMigrationLedger(wrongHash), /does not match committed SQL/u);
   await assert.rejects(
-    validateMigrationLedger(liveShape.filter(({ version }) => version !== 150)),
-    /skips a historical migration/u,
+    validateMigrationLedger(liveShape.filter(({ version }) => version !== 161)),
+    /version sequence/u,
   );
 });
 
 test("migration runner rejects missing retained, reordered, and unknown future rows", async () => {
   await assert.rejects(
     validateMigrationLedger(liveShape.filter(({ version }) => version !== 185)),
-    /missing retained version 185/u,
+    /version sequence/u,
   );
   const reordered = [...liveShape];
   [reordered[0], reordered[1]] = [reordered[1], reordered[0]];
