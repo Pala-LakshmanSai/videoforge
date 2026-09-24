@@ -45,9 +45,12 @@ export function regenerationStatus(row: Row): Row {
     state:
       row.state === "COMPLETED" || row.state === "SUCCEEDED"
         ? "SUCCEEDED"
-        : ["FAILED", "CANCELLED", "REQUEST_REJECTED", "UNKNOWN_NO_RETRY"].includes(String(row.state))
+        : row.state === "UNKNOWN_NO_RETRY"
+          ? "ACTION_REQUIRED"
+          : ["FAILED", "CANCELLED", "REQUEST_REJECTED"].includes(String(row.state))
           ? "FAILED"
           : "PENDING",
+    ...(row.state === "UNKNOWN_NO_RETRY" ? { error_code: "UNKNOWN_NO_RETRY" } : {}),
   };
 }
 export function createHostedImageRegenerationService(input: {

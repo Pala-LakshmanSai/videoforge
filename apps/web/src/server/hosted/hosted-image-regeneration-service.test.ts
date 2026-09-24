@@ -19,6 +19,7 @@ import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./con
 import {
   createHostedImageRegenerationService,
   imageRegenerationWorkflowId,
+  regenerationStatus,
 } from "./hosted-image-regeneration-service";
 
 const accountId = "account-a";
@@ -220,6 +221,15 @@ const args = {
 };
 
 describe("hosted image regeneration service", () => {
+  it("keeps unknown paid submissions distinct from retryable failures", () => {
+    expect(regenerationStatus({ id: requestId, attempt_id: attemptId,
+      state: "UNKNOWN_NO_RETRY" })).toEqual({
+      request_id: requestId,
+      attempt_id: attemptId,
+      state: "ACTION_REQUIRED",
+      error_code: "UNKNOWN_NO_RETRY",
+    });
+  });
   it("creates an API regeneration from the pinned style without GPU bindings", async () => {
     const queries: Array<{ sql: string; values: readonly SqlPrimitive[] }> = [];
     const query = vi.fn(async (sql: string, values: readonly SqlPrimitive[] = []) => {
