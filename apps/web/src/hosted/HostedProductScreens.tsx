@@ -4810,12 +4810,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               loading={query.isFetching && !query.data}
               error={query.isError ? query.error.message : null}
               onRetry={() => void query.refetch()}
-              onRegenerate={
-                query.data.generation_provider === "KIE_FAL" ? undefined : regenerateImage
-              }
-              regenerationUnavailableReason={
+              onRegenerate={regenerateImage}
+              regenerationCostDescription={
                 query.data.generation_provider === "KIE_FAL"
-                  ? "Image regeneration is unavailable for API-generated scenes. Your accepted image and video remain available."
+                  ? "Regeneration may incur an API charge."
                   : undefined
               }
             />
@@ -4837,12 +4835,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               loading={query.isFetching && !query.data}
               error={query.isError ? query.error.message : null}
               onRetry={() => void query.refetch()}
-              onRegenerate={
-                query.data.generation_provider === "KIE_FAL" ? undefined : regenerateImage
-              }
-              regenerationUnavailableReason={
+              onRegenerate={regenerateImage}
+              regenerationCostDescription={
                 query.data.generation_provider === "KIE_FAL"
-                  ? "Image regeneration is unavailable for API-generated scenes. Your accepted image and video remain available."
+                  ? "Regeneration may incur an API charge."
                   : undefined
               }
             />

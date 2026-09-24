@@ -7102,7 +7102,53 @@ async function projectDetail(
  JOIN artifact_reservations reservation ON reservation.account_id=regeneration.account_id AND reservation.workspace_id=regeneration.workspace_id AND reservation.id=regeneration.output_reservation_id AND reservation.state='COMMITTED'
  JOIN artifact_receipts receipt ON receipt.account_id=reservation.account_id AND receipt.workspace_id=reservation.workspace_id AND receipt.reservation_id=reservation.id AND receipt.deleted_at IS NULL AND receipt.object_key=reservation.object_key AND receipt.checksum_sha256=reservation.checksum_sha256
  WHERE regeneration.account_id=$1 AND regeneration.workspace_id=$2 AND regeneration.project_id=$3 AND regeneration.project_revision_id=$4 AND regeneration.state='COMPLETED'
- ), expanded_output_items AS (
+             ), api_regenerated_output_items AS (
+               SELECT regeneration.source_api_job_id AS attempt_id,
+                      'mage_image'::text AS lane,
+                      jsonb_build_object(
+                        'item_id', regeneration.image_task_id::text,
+                        'object_key', receipt.object_key,
+                        'content_type', receipt.content_type,
+                        'content_length', receipt.content_length,
+                        'checksum_sha256', receipt.checksum_sha256,
+                        'prompt', regeneration.edited_prompt
+                      ) AS artifact,
+                      receipt.committed_at AS accepted_at,
+                      -1 AS source_priority,
+                      regeneration.image_task_id::text AS item_id
+                 FROM hosted_api_image_regeneration_jobs AS regeneration
+                 JOIN hosted_api_generation_jobs AS source
+                   ON source.account_id = regeneration.account_id
+                  AND source.workspace_id = regeneration.workspace_id
+                  AND source.id = regeneration.source_api_job_id
+                  AND source.project_id = regeneration.project_id
+                  AND source.project_revision_id = regeneration.project_revision_id
+                  AND source.generation_task_id = regeneration.image_task_id
+                  AND source.lane = 'IMAGE'
+                  AND source.state = 'SUCCEEDED'
+                 JOIN artifact_receipts AS receipt
+                   ON receipt.account_id = regeneration.account_id
+                  AND receipt.workspace_id = regeneration.workspace_id
+                  AND receipt.id = regeneration.output_receipt_id
+                  AND receipt.deleted_at IS NULL
+                  AND receipt.object_key = regeneration.output_object_key
+                  AND receipt.checksum_sha256 = regeneration.output_sha256
+                  AND receipt.content_length = regeneration.output_bytes
+                  AND receipt.content_type = regeneration.output_content_type
+                 JOIN artifact_reservations AS reservation
+                   ON reservation.account_id = receipt.account_id
+                  AND reservation.workspace_id = receipt.workspace_id
+                  AND reservation.id = receipt.reservation_id
+                  AND reservation.project_id = regeneration.project_id
+                  AND reservation.project_revision_id = regeneration.project_revision_id
+                  AND reservation.object_key = receipt.object_key
+                  AND reservation.state = 'COMMITTED'
+                WHERE regeneration.account_id = $1
+                  AND regeneration.workspace_id = $2
+                  AND regeneration.project_id = $3
+                  AND regeneration.project_revision_id = $4
+                  AND regeneration.state = 'SUCCEEDED'
+             ), expanded_output_items AS (
                SELECT output.attempt_id, output.lane, item.value AS artifact,
                       output.accepted_at, output.source_priority,
                       item.value->>'item_id' AS item_id
@@ -7111,6 +7157,9 @@ async function projectDetail(
                 UNION ALL
                SELECT attempt_id, lane, artifact, accepted_at, source_priority, item_id
                  FROM accepted_output_items UNION ALL SELECT attempt_id,lane,artifact,accepted_at,source_priority,item_id FROM regenerated_output_items
+                UNION ALL
+               SELECT attempt_id,lane,artifact,accepted_at,source_priority,item_id
+                 FROM api_regenerated_output_items
                 UNION ALL
                SELECT job.id, CASE job.lane WHEN 'IMAGE' THEN 'mage_image' ELSE 'soulx_avatar' END,
                       jsonb_build_object('item_id',job.generation_task_id::text,

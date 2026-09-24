@@ -334,94 +334,105 @@ it("shows frozen elapsed times in stage rows and the audio spanning panel", asyn
   expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("4m 42s");
 });
 
-it("regenerates one accepted image with its edited prompt and refreshes only after acceptance", async () => {
-  const projectId = "11111111-1111-4111-8111-111111111111";
-  const imageTaskId = "33333333-3333-4333-8333-333333333333";
-  const requestId = "44444444-4444-4444-8444-444444444444";
-  let replacementReady = false;
-  let statusReads = 0;
-  const detail = () => ({
-    project: {
-      id: projectId,
-      title: "Private project",
-      created_at: "2026-09-06T10:00:00.000Z",
-      revision_id: "22222222-2222-4222-8222-222222222222",
-      revision_state: "LOCKED",
-    },
-    attempts: [],
-    gpu_transport: "DISABLED_UNQUALIFIED" as const,
-    gpu_readiness: gpuReadiness,
-    generation: null,
-    stages: [
-      {
-        id: "image-generation",
-        name: "Generate images",
-        status: "COMPLETE",
-        progress_percent: 100,
-      },
-    ],
-    contact_sheet: [
-      {
-        id: imageTaskId,
-        image_url: replacementReady ? "/replacement.png" : "/original.png",
-        prompt: replacementReady ? "Edited image prompt" : "Original image prompt",
-        label: "Generated image 1",
-      },
-    ],
-  });
-  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const path = String(input);
-    if (path.endsWith(`/images/${imageTaskId}/regenerate`)) {
-      expect(init?.method).toBe("POST");
-      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-      expect(body).toMatchObject({
-        schema_version: "videoforge-hosted-image-regeneration/v1",
-        prompt: "Edited image prompt",
+it.each(["RUNPOD", "KIE_FAL"] as const)(
+  "%s regenerates one accepted image with its edited prompt and refreshes only after acceptance",
+  async (generationProvider) => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const imageTaskId = "33333333-3333-4333-8333-333333333333";
+    const requestId = "44444444-4444-4444-8444-444444444444";
+    let replacementReady = false;
+    let statusReads = 0;
+    const detail = () => ({
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-09-06T10:00:00.000Z",
         revision_id: "22222222-2222-4222-8222-222222222222",
-      });
-      expect(typeof body.idempotency_key).toBe("string");
-      return Response.json(
+        revision_state: "LOCKED",
+      },
+      attempts: [],
+      generation_provider: generationProvider,
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
+      gpu_readiness: gpuReadiness,
+      generation: null,
+      stages: [
         {
-          request_id: requestId,
-          attempt_id: "55555555-5555-4555-8555-555555555555",
-          state: "QUEUED",
+          id: "image-generation",
+          name: "Generate images",
+          status: "COMPLETE",
+          progress_percent: 100,
         },
-        { status: 202 },
-      );
-    }
-    if (path.endsWith(`/images/${imageTaskId}/regenerate/${requestId}`)) {
-      statusReads += 1;
-      if (statusReads === 1) return Response.json({ state: "PENDING" });
-      replacementReady = true;
-      return Response.json({ state: "SUCCEEDED", replacement_url: "/replacement.png" });
-    }
-    return Response.json(detail());
-  });
-  vi.stubGlobal("fetch", fetchMock);
-  renderHosted(<HostedProjectScreen projectId={projectId} />);
+      ],
+      contact_sheet: [
+        {
+          id: imageTaskId,
+          image_url: replacementReady ? "/replacement.png" : "/original.png",
+          prompt: replacementReady ? "Edited image prompt" : "Original image prompt",
+          label: "Generated image 1",
+        },
+      ],
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith(`/images/${imageTaskId}/regenerate`)) {
+        expect(init?.method).toBe("POST");
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        expect(body).toMatchObject({
+          schema_version: "videoforge-hosted-image-regeneration/v1",
+          prompt: "Edited image prompt",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+        });
+        expect(typeof body.idempotency_key).toBe("string");
+        return Response.json(
+          {
+            request_id: requestId,
+            attempt_id: "55555555-5555-4555-8555-555555555555",
+            state: "QUEUED",
+          },
+          { status: 202 },
+        );
+      }
+      if (path.endsWith(`/images/${imageTaskId}/regenerate/${requestId}`)) {
+        statusReads += 1;
+        if (statusReads === 1) return Response.json({ state: "PENDING" });
+        replacementReady = true;
+        return Response.json({ state: "SUCCEEDED", replacement_url: "/replacement.png" });
+      }
+      return Response.json(detail());
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
 
-  fireEvent.click(await screen.findByRole("button", { name: "View generated images" }));
-  const prompt = screen.getByRole("textbox", { name: "Image prompt" });
-  fireEvent.change(prompt, { target: { value: "Edited image prompt" } });
-  fireEvent.keyDown(prompt, { key: "Enter" });
-  expect(await screen.findByRole("button", { name: "Regenerating…" })).toBeDisabled();
-  expect(screen.getByRole("img", { name: "Generated image 1" })).toHaveAttribute(
-    "src",
-    "/original.png",
-  );
-  await waitFor(() =>
+    fireEvent.click(await screen.findByRole("button", { name: "View generated images" }));
+    expect(
+      screen.getByText(
+        generationProvider === "KIE_FAL"
+          ? "Regeneration may incur an API charge."
+          : "Regeneration costs up to $2.",
+      ),
+    ).toBeVisible();
+    const prompt = screen.getByRole("textbox", { name: "Image prompt" });
+    fireEvent.change(prompt, { target: { value: "Edited image prompt" } });
+    fireEvent.keyDown(prompt, { key: "Enter" });
+    expect(await screen.findByRole("button", { name: "Regenerating…" })).toBeDisabled();
     expect(screen.getByRole("img", { name: "Generated image 1" })).toHaveAttribute(
       "src",
-      "/replacement.png",
-    ),
-  );
-  expect(screen.getByRole("status", { name: "" })).toHaveTextContent("Image regenerated.");
-  expect(
-    fetchMock.mock.calls.some(([input]) =>
-      String(input).endsWith(`/images/${imageTaskId}/regenerate/${requestId}`),
-    ),
-  ).toBe(true);
-});
+      "/original.png",
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("img", { name: "Generated image 1" })).toHaveAttribute(
+        "src",
+        "/replacement.png",
+      ),
+    );
+    expect(screen.getByRole("status", { name: "" })).toHaveTextContent("Image regenerated.");
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).endsWith(`/images/${imageTaskId}/regenerate/${requestId}`),
+      ),
+    ).toBe(true);
+  },
+);
 
 it("reuses one idempotency key when the regeneration POST response is lost", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";

@@ -2094,6 +2094,11 @@ describe("hosted product route contract", () => {
         expect(mediaCall?.[0]).toContain("JOIN artifact_receipts AS receipt");
         expect(mediaCall?.[0]).toContain("reservation.state = 'COMMITTED'");
         expect(mediaCall?.[0]).toContain("receipt.deleted_at IS NULL");
+        expect(mediaCall?.[0]).toContain("FROM hosted_api_image_regeneration_jobs AS regeneration");
+        expect(mediaCall?.[0]).toContain("regeneration.source_api_job_id AS attempt_id");
+        expect(mediaCall?.[0]).toContain("regeneration.state = 'SUCCEEDED'");
+        expect(mediaCall?.[0]).toContain("'prompt', regeneration.edited_prompt");
+        expect(mediaCall?.[0]).toContain("FROM api_regenerated_output_items");
         expect(mediaCall?.[1]).toEqual([accountId, workspaceId, PROJECT_ID, revisionId]);
 
         testState.query.mockClear();

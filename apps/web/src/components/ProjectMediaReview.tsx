@@ -36,6 +36,7 @@ export interface ProjectMediaReviewProps {
   readonly launcher: MediaSection;
   readonly onRegenerate?: (item: ProjectMediaReviewItem, prompt: string) => Promise<void>;
   readonly regenerationUnavailableReason?: string;
+  readonly regenerationCostDescription?: string;
 }
 
 interface RegenerationFailure {
@@ -110,6 +111,7 @@ export function ProjectMediaReview({
   launcher,
   onRegenerate,
   regenerationUnavailableReason = "Single-image regeneration is not available in this release.",
+  regenerationCostDescription = "Regeneration costs up to $2.",
 }: ProjectMediaReviewProps) {
   const [activeSection, setActiveSection] = useState<MediaSection | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -449,7 +451,7 @@ export function ProjectMediaReview({
                                 : "Press Enter to regenerate. Shift+Enter adds a line. Existing video stays unchanged."}
                         </p>
                         <p className="media-review-regeneration-cost">
-                          Regeneration costs up to $2.
+                          {regenerationCostDescription}
                         </p>
                         {regeneratingId === selectedItem.id ? (
                           <p role="status" aria-live="polite">
