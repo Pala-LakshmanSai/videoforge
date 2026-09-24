@@ -180,9 +180,9 @@ test("release validator binds exact bytes and admitted immutable media worker ve
     () => validateReleaseManifest(wrongBytes, sha256(wrongBytes)),
     /not an admitted immutable version/u,
   );
-  const successor = JSON.parse(JSON.stringify(releaseManifest()).replaceAll("0.1.17", "0.1.23"));
+  const successor = JSON.parse(JSON.stringify(releaseManifest()).replaceAll("0.1.17", "0.1.24"));
   const successorBytes = Buffer.from(JSON.stringify(successor));
-  assert.equal(validateReleaseManifest(successorBytes, sha256(successorBytes)).version, "0.1.23");
+  assert.equal(validateReleaseManifest(successorBytes, sha256(successorBytes)).version, "0.1.24");
   const placeholder = releaseManifest();
   placeholder.windows.url =
     "https://downloads.videoforge.example/media-worker-v0.1.17/placeholder.exe";
