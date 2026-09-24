@@ -5,6 +5,11 @@ import type { CompiledImagePrompt } from "@videoforge/pipeline";
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+const PNG_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, index) => {
+  let crc = index;
+  for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  return crc >>> 0;
+});
 const KIE_PERMANENT_EXCLUSIONS =
   "No visible text, pseudo-text, letters, numbers, labels, signs, logos, branding, watermarks, captions, overlays, UI, charts, diagrams, borders, motion graphics or decorative transitions. Plain unmarked surfaces only.";
 const DEFAULT_STYLE_POSITIVE =
@@ -119,10 +124,31 @@ function pngDimensions(bytes: Uint8Array): { width: number; height: number } {
     height > 4096 ||
     bytes[24] !== 8 ||
     ![2, 6].includes(bytes[25]!) ||
-    String.fromCharCode(...bytes.subarray(bytes.byteLength - 8, bytes.byteLength - 4)) !== "IEND"
+    bytes[26] !== 0 ||
+    bytes[27] !== 0 ||
+    bytes[28] !== 0
   )
     throw new KieImageJobError("RESULT_PNG_INVALID");
-  return { width, height };
+  let offset = 8;
+  let imageDataSeen = false;
+  while (offset + 12 <= bytes.byteLength) {
+    const length = view.getUint32(offset);
+    const end = offset + 12 + length;
+    if (end > bytes.byteLength) break;
+    const type = String.fromCharCode(...bytes.subarray(offset + 4, offset + 8));
+    let crc = 0xffffffff;
+    for (const byte of bytes.subarray(offset + 4, offset + 8 + length))
+      crc = (crc >>> 8) ^ PNG_CRC_TABLE[(crc ^ byte) & 0xff]!;
+    if ((crc ^ 0xffffffff) >>> 0 !== view.getUint32(offset + 8 + length)) break;
+    if (offset === 8 && (type !== "IHDR" || length !== 13)) break;
+    if (type === "IDAT") imageDataSeen = true;
+    if (type === "IEND") {
+      if (length === 0 && imageDataSeen && end === bytes.byteLength) return { width, height };
+      break;
+    }
+    offset = end;
+  }
+  throw new KieImageJobError("RESULT_PNG_INVALID");
 }
 
 async function readStored(

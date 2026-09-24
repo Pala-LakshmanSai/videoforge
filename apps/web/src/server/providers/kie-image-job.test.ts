@@ -10,7 +10,7 @@ const OUTPUT_KEY =
   "tenant/11111111-1111-4111-8111-111111111111/project/p/artifact/22222222-2222-4222-8222-222222222222";
 const PNG = Uint8Array.from(
   Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
     "base64",
   ),
 );
@@ -201,6 +201,32 @@ describe("Kie image job", () => {
         client,
         bucket: storage,
         fetchPort: async () => new Response(new Uint8Array([0xff, 0xd8, 0xff]).buffer),
+      }),
+    ).rejects.toMatchObject({ code: "RESULT_PNG_INVALID" });
+    expect(storage.put).not.toHaveBeenCalled();
+  });
+
+  it("rejects a PNG with corrupted image data checksum", async () => {
+    const client = new KieZImageClient("secret", async () =>
+      response({
+        data: {
+          taskId: TASK_ID,
+          model: "z-image",
+          state: "success",
+          resultJson: JSON.stringify({ resultUrls: ["https://cdn.example.com/image.png"] }),
+        },
+      }),
+    );
+    const corrupt = PNG.slice();
+    corrupt[45] ^= 1;
+    const storage = bucket();
+    await expect(
+      observeKieImageJob({
+        taskId: TASK_ID,
+        objectKey: OUTPUT_KEY,
+        client,
+        bucket: storage,
+        fetchPort: async () => new Response(corrupt.buffer),
       }),
     ).rejects.toMatchObject({ code: "RESULT_PNG_INVALID" });
     expect(storage.put).not.toHaveBeenCalled();
