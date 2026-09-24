@@ -2,7 +2,7 @@ import type { HostedR2BucketBinding } from "../hosted/configuration";
 import { sha256Bytes } from "../hosted/crypto";
 import { FalFlashheadClient, FalFlashheadError } from "./fal-flashhead-client";
 
-const MAX_VIDEO_BYTES = 128 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 32 * 1024 * 1024;
 const OBJECT_KEY =
   /^tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/project\/[A-Za-z0-9._:-]+\/revision\/[A-Za-z0-9._:-]+\/lane\/soulx-avatar\/job\/[A-Za-z0-9._:-]+\/artifact\/[A-Za-z0-9._:-]+$/u;
 
