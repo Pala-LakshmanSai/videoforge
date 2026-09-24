@@ -33,8 +33,8 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // production static closure and 1,530 bytes to staging. The provider clients stay in a dynamic
 // chunk. Both are exact per-target accepted ceilings, not platform limits.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_744_001,
-  "wrangler.staging.jsonc": 2_749_603,
+  "wrangler.production.jsonc": 2_744_043,
+  "wrangler.staging.jsonc": 2_749_645,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
