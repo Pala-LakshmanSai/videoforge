@@ -924,6 +924,12 @@
       "name": "hosted_api_kie_prompt_limit",
       "filename": "0191_hosted_api_kie_prompt_limit.sql",
       "sha256": "sha256:dd300244573db1e1925925eea1d425e55547d5a1436e39124e5231fb9e333d2a"
+    },
+    {
+      "version": 192,
+      "name": "hosted_api_render_reconciler_grant",
+      "filename": "0192_hosted_api_render_reconciler_grant.sql",
+      "sha256": "sha256:33c7bcc1491ee1a7b7ed5349747d8da12aeea290539559f553264f0dcb54c37c"
     }
   ]
 }
