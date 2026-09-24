@@ -114,5 +114,8 @@ describe("Fal avatar job", () => {
     const second = await observeFalAvatarJob({ requestId, objectKey, client, bucket, fetchPort });
     expect(second).toEqual(first);
     expect(fetchPort).toHaveBeenCalledTimes(1);
+    expect(fetchPort).toHaveBeenCalledWith("https://v3b.fal.media/files/b/clip.mp4", {
+      redirect: "manual",
+    });
   });
 });
