@@ -234,8 +234,13 @@ export async function advanceHostedApiGeneration(
       (error instanceof FalFlashheadError &&
         ["STATUS_UNKNOWN", "RESULT_UNKNOWN"].includes(error.code)) ||
       (error instanceof FalAvatarJobError && error.code === "RESULT_DOWNLOAD_FAILED")
-    )
+    ) {
+      console.warn("hosted_api_observe_wait", {
+        lane: job.lane,
+        code: error.code,
+      });
       return { state: "WAITING" };
+    }
     if (
       (error instanceof KieZImageError && error.code === "RESPONSE_INVALID") ||
       (error instanceof KieImageJobError && error.code === "RESULT_MEDIA_INVALID") ||

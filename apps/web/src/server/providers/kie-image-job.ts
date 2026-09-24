@@ -12,7 +12,7 @@ const PNG_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, index) => {
   return crc >>> 0;
 });
 const KIE_PERMANENT_EXCLUSIONS =
-  "No visible text, pseudo-text, letters, numbers, labels, signs, logos, branding, watermarks, captions, overlays, UI, charts, diagrams, borders, motion graphics or decorative transitions. Plain unmarked surfaces only.";
+  "No text/pseudo-text, letters/numbers, labels/signs, logos/brands, watermarks, captions, overlays/UI, charts/diagrams/borders, motion graphics or decorative transitions; plain unmarked surfaces.";
 const DEFAULT_STYLE_POSITIVE =
   "authentic observational documentary photography, candid and unposed, filmed on location, available practical light, true-to-life colors, soft contrast, realistic skin and material textures, naturally imperfect clothing, tools and environment, ordinary consumer-camera framing, photojournalistic, genuine frame from real stock or documentary footage, believable everyday life, no glossy commercial polish, absolutely photorealistic, no AI look";
 const DEFAULT_STYLE_NEGATIVE =
@@ -24,7 +24,7 @@ const KIE_DEFAULT_STYLE_NEGATIVE =
 
 function compactContinuity(value: string): string {
   return value
-    .replace(/keep one consistent subject, setting and physical state across the video,?\s*/gi, "consistent subject, setting and physical state; ")
+    .replace(/keep one consistent subject, setting and physical state across the video,?\s*/gi, "Same subject, setting, state; ")
     .replace(/required viewpoint:/gi, "viewpoint:")
     .replace(/\s+/g, " ")
     .trim();

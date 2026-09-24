@@ -72,7 +72,7 @@ describe("Kie image job", () => {
     } as never);
     expect(prompt).toContain("A candid farmer");
     expect(prompt).toContain("Avoid: CGI, glossy commercial polish");
-    expect(prompt).toContain("No visible text");
+    expect(prompt).toContain("No text/pseudo-text");
     expect(() =>
       buildKieScenePrompt({
         components: {
@@ -132,8 +132,13 @@ describe("Kie image job", () => {
     expect(prompt).toContain("wide horizontal and center-safe");
     expect(prompt).toContain("Photorealistic high-fidelity");
     expect(prompt).toContain("natural light");
-    expect(prompt).toContain("No visible text");
+    expect(prompt).toContain("Same subject, setting, state; viewpoint: human medium");
+    expect(prompt).toContain("No text/pseudo-text");
     expect(prompt).toContain("motion graphics or decorative transitions");
+    expect(prompt).toContain("plain unmarked surfaces");
+    expect(prompt).toContain(
+      "Avoid: blurry, soft focus, low resolution, artificial, over-saturated, human-centric, portrait, watermark, text",
+    );
   });
 
   it("claims before submission and persists the provider task ID", async () => {
