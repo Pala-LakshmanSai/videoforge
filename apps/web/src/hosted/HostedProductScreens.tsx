@@ -932,6 +932,7 @@ interface ProjectDetailResponse {
     readonly durable?: boolean;
   }[];
   readonly prompt_progress?: null | {
+    readonly state?: "DISPATCHING" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
     readonly total_scenes?: HostedCount;
     readonly accepted_scenes?: HostedCount;
     readonly total_batches?: HostedCount;
@@ -4971,7 +4972,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               }
             : {}
       : {}),
-    ...(failedStageIds.has("prompt-writing")
+    ...(failedStageIds.has("prompt-writing") && promptProgress?.state !== "UNKNOWN"
       ? {
           "prompt-writing": stageRetryButton(promptWriting.isPending, () => promptWriting.mutate()),
         }

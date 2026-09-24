@@ -3447,7 +3447,10 @@ describe("hosted product journey", () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 
-  it("shows stopped batch progress when Stage 5 rejects the first batch", async () => {
+  it.each([
+    ["FAILED", true],
+    ["UNKNOWN", false],
+  ] as const)("shows Stage 5 %s progress with a safe retry only when definite", async (state, retryable) => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       void input;
@@ -3491,6 +3494,7 @@ describe("hosted product journey", () => {
         ],
         prompts: [],
         prompt_progress: {
+          state,
           total_scenes: 16,
           accepted_scenes: 0,
           total_batches: 1,
@@ -3511,6 +3515,7 @@ describe("hosted product journey", () => {
         "No accepted prompts were saved. VideoForge stopped without redispatching the request.",
       ),
     ).toBeInTheDocument();
+    expect(Boolean(within(stageRow("Write image prompts")).queryByRole("button", { name: "Retry" }))).toBe(retryable);
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 
