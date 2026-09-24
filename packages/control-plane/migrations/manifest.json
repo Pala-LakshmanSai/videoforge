@@ -912,6 +912,12 @@
       "name": "hosted_api_image_regeneration",
       "filename": "0189_hosted_api_image_regeneration.sql",
       "sha256": "sha256:09f5184bba44e5dba4d071fef83b3d36b5083ca2d0974b493d1f3c6385b63825"
+    },
+    {
+      "version": 190,
+      "name": "hosted_api_unknown_no_task_reconciliation",
+      "filename": "0190_hosted_api_unknown_no_task_reconciliation.sql",
+      "sha256": "sha256:bf87bfbc3a316fd5b1871449d147d163397c288ebde4f0b69f9c8c78b83861dc"
     }
   ]
 }

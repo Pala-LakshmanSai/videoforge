@@ -1101,27 +1101,48 @@ function hostedGpuLanePhase(
   if (["CANCELLED", "CANCEL_REQUESTED", "CANCELLING"].includes(state))
     return { label: "Cancelled", detail: "This lane was stopped.", active: false };
   if (state === "OUTBOXED")
-    return { label: "Queuing", detail: "Handing the batch to the GPU provider.", active: true };
-  if (["IN_QUEUE", "WAITING_FOR_GPU", "WAITING_FOR_GPUS", "WAITING_FOR_WORKER"].includes(state))
+    return {
+      label: "Queuing",
+      detail: apiGeneration
+        ? "Preparing the API request."
+        : "Handing the batch to the GPU provider.",
+      active: true,
+    };
+  if (["IN_QUEUE", "WAITING_FOR_GPU", "WAITING_FOR_GPUS", "WAITING_FOR_WORKER"].includes(state)) {
+    if (apiGeneration)
+      return {
+        label: "Waiting",
+        detail: "Waiting for API generation to start.",
+        active: true,
+      };
     return {
       label: "Waiting for GPUs",
       detail:
         "No GPU worker is available yet. Your generation will start automatically when capacity opens.",
       active: true,
     };
-  if (state === "ASSIGNED" && accepted === 0)
+  }
+  if (state === "ASSIGNED" && accepted === 0) {
+    if (apiGeneration)
+      return {
+        label: "Starting",
+        detail: "The API provider is starting generation.",
+        active: true,
+      };
     return {
       label: "Starting GPU worker",
       detail: "GPU worker assigned; waiting for the first provider progress update.",
       active: true,
     };
+  }
   if (
     ["ASSIGNED", "SUBMITTED", "IN_PROGRESS", "UPLOADING", "RUNNING", "RECONCILING"].includes(state)
   )
     return {
       label: "Generating",
-      detail:
-        state === "IN_PROGRESS" && accepted === 0
+      detail: apiGeneration
+        ? "The API provider is producing and verifying items."
+        : state === "IN_PROGRESS" && accepted === 0
           ? "The provider has not reported any completed items yet."
           : "The GPU worker is producing and verifying items.",
       active: true,
@@ -2259,6 +2280,7 @@ function hostedProgressValue(stage: HostedStage): number {
 
 function hostedGpuLaneStageStatus(lane: HostedGpuLaneActivity): ProjectStage["status"] | null {
   const state = hostedGpuLaneDisplayState(lane);
+  if (state === "UNKNOWN_NO_RETRY") return "ACTION_REQUIRED";
   if (state === "SUCCEEDED") return "COMPLETE";
   if (["FAILED", "PERMANENT_FAILED", "DEAD_LETTER"].includes(state)) return "FAILED";
   if (state === "RETRYABLE_FAILED") return "FAILED";
@@ -2284,6 +2306,7 @@ function hostedGpuLaneStageStatus(lane: HostedGpuLaneActivity): ProjectStage["st
 function hostedProjectStages(
   stages: readonly HostedStage[],
   gpuLanes: readonly HostedGpuLaneActivity[] = [],
+  apiGeneration = false,
 ): ProjectStage[] {
   const laneByStageId = new Map<string, HostedGpuLaneActivity>([
     ["image-generation", gpuLanes.find((lane) => lane.lane === "mage_image")!],
@@ -2293,7 +2316,7 @@ function hostedProjectStages(
     const id = stage.id ?? `stage-${index + 1}`;
     const lane = laneByStageId.get(id);
     const laneStatus = lane ? hostedGpuLaneStageStatus(lane) : null;
-    const lanePhase = lane ? hostedGpuLanePhase(lane) : null;
+    const lanePhase = lane ? hostedGpuLanePhase(lane, apiGeneration) : null;
     const planned = lane?.planned_item_count ?? null;
     const completed = lane
       ? hostedGpuLaneAcceptedCount(lane)
@@ -4603,7 +4626,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const stages = query.data.stages?.length
     ? query.data.stages
     : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context);
-  const uiStages = hostedProjectStages(stages, query.data.gpu_lanes ?? []).map((stage) => ({
+  const uiStages = hostedProjectStages(
+    stages,
+    query.data.gpu_lanes ?? [],
+    query.data.generation_provider === "KIE_FAL",
+  ).map((stage) => ({
     ...stage,
     detail:
       stage.status === "COMPLETE"
@@ -5552,7 +5579,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </strong>
           {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
           {generationStopped ? (
-            <span>Generation ended in a terminal state. No automatic GPU retry was sent.</span>
+            <span>
+              Generation ended in a terminal state. No automatic
+              {query.data.generation_provider === "KIE_FAL" ? " API" : " GPU"} retry was sent.
+            </span>
           ) : null}
           {renderHandoff.isError ? (
             <>

@@ -79,11 +79,15 @@ export class FalFlashheadClient {
         body: JSON.stringify({ image_url: imageUrl, audio_url: audioUrl }),
       });
     } catch {
+      console.warn("fal_flashhead_submit_unknown", { phase: "transport" });
       throw new FalFlashheadError("SUBMIT_UNKNOWN");
     }
     if ([400, 401, 402, 403, 422].includes(response.status))
       throw new FalFlashheadError("SUBMIT_REJECTED");
-    if (!response.ok) throw new FalFlashheadError("SUBMIT_UNKNOWN");
+    if (!response.ok) {
+      console.warn("fal_flashhead_submit_unknown", { phase: "http", status: response.status });
+      throw new FalFlashheadError("SUBMIT_UNKNOWN");
+    }
     try {
       const body = await json(response);
       if (typeof body.request_id !== "string" || !REQUEST_ID.test(body.request_id))
@@ -96,6 +100,7 @@ export class FalFlashheadClient {
         throw new Error("queue URL mismatch");
       return body.request_id;
     } catch {
+      console.warn("fal_flashhead_submit_unknown", { phase: "response", status: response.status });
       throw new FalFlashheadError("SUBMIT_UNKNOWN");
     }
   }
