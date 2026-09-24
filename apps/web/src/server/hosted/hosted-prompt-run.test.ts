@@ -867,12 +867,12 @@ describe("hosted Runware prompt writer", () => {
       adaptivePlan(batch),
       fetcher,
     ).write(batch);
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(adaptivePlan(batch).batchCount);
     expect(result.output.scenes).toHaveLength(25);
     expect(result.output.scenes[0]?.action).toBe(
       "depicting the narration-supported visible moment",
     );
-    expect(result.attempts[0]?.reportedCostMicroUsd).toBe(10);
+    expect(result.attempts[0]?.reportedCostMicroUsd).toBe(adaptivePlan(batch).batchCount * 10);
   });
 
   it("persists both adaptive batches when the second output needs local repair", async () => {
@@ -900,7 +900,7 @@ describe("hosted Runware prompt writer", () => {
       plannerGuidance: "Literal editorial collage treatment.",
       storyContext: "A continuous practical household demonstration.",
       continuityTags: [],
-      scenes: scenes(31).map((scene) => ({
+      scenes: scenes(20).map((scene) => ({
         sceneId: scene.scene_id,
         phrase: scene.phrase,
         sentenceContext: scene.sentence_context,
@@ -967,7 +967,7 @@ describe("hosted Runware prompt writer", () => {
     expect(onBatchAccepted.mock.calls[1]?.[0].scenes).toHaveLength(
       planned.batches[1]!.sceneIds.length,
     );
-    expect(result.output.scenes).toHaveLength(31);
+    expect(result.output.scenes).toHaveLength(20);
     expect(result.attempts[0]?.reportedCostMicroUsd).toBe(20);
   });
 
@@ -996,7 +996,7 @@ describe("hosted Runware prompt writer", () => {
       plannerGuidance: "Literal editorial collage treatment.",
       storyContext: "A continuous practical household demonstration.",
       continuityTags: [],
-      scenes: scenes(31).map((scene) => ({
+      scenes: scenes(20).map((scene) => ({
         sceneId: scene.scene_id,
         phrase: scene.phrase,
         sentenceContext: scene.sentence_context,
@@ -1072,7 +1072,7 @@ describe("hosted Runware prompt writer", () => {
       onBatchAccepted,
     ).write(batch);
 
-    expect(result.output.scenes).toHaveLength(31);
+    expect(result.output.scenes).toHaveLength(20);
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(onBatchAccepted).toHaveBeenCalledTimes(2);
     expect(onBatchAccepted.mock.calls[0]?.[0].scenes).toHaveLength(

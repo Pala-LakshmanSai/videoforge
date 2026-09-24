@@ -273,7 +273,7 @@ test("style positive suffix emits only bounded runtime-pinned high-value cues", 
 });
 
 test("planner is deterministic, contiguous, complete, and quality-bounds larger responses", () => {
-  const small = planPromptBatches(planningInput(24));
+  const small = planPromptBatches(planningInput(10));
   assert.equal(small.batchCount, 1);
   assert.equal(small.maxOutputTokens, DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS);
 
@@ -281,11 +281,8 @@ test("planner is deterministic, contiguous, complete, and quality-bounds larger 
   const second = planPromptBatches(planningInput(31));
   assert.deepEqual(first, second);
   assert.equal(first.totalScenes, 31);
-  assert.equal(first.batchCount, 2);
-  assert.deepEqual(
-    first.batches.map((entry) => entry.sceneIds.length).sort((left, right) => left - right),
-    [15, 16],
-  );
+  assert.equal(first.batchCount, 3);
+  assert.ok(first.batches.every((entry) => entry.sceneIds.length <= 14));
   assert.equal(first.maxOutputTokens, DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS);
   assert.deepEqual(
     first.batches.flatMap((entry) => entry.sceneIds),
@@ -330,7 +327,7 @@ test("planner splits long scripts by conservative input/output budgets without a
 test("planner retains balanced contiguous remainder when a boundary would leave one scene", () => {
   const result = planPromptBatches(
     planningInput(31, {
-      options: { maxInputTokens: 8_000, maxOutputTokens: 7_500 },
+      options: { maxInputTokens: 8_000, maxOutputTokens: 11_264 },
     }),
   );
   assert.ok(result.batches.every((entry) => entry.sceneIds.length > 1));
@@ -388,29 +385,34 @@ test("request maxTokens includes fixed and per-scene headroom and allows short b
       RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   );
   assert.equal(request.requestVersion, RUNWARE_PROMPT_REQUEST_VERSION);
+  assert.equal(request.requestVersion, "runware-gemini-3.5-flash-prompt-request-v22");
   assert.equal(request.request.model, "google:gemini@3.5-flash");
 });
 
-// Runware answered the 21-24 scene batches the 16384 default produced with
-// `502 providerUnavailable` while small requests to the same model kept succeeding, so the hosted
-// prompt planner now pins the per-request ceiling to 8192 (HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS in
-// apps/web/src/server/hosted/hosted-prompt-run.ts). Sizing arithmetic: output is estimated as
-// 1024 + 512 * scenes plus 2048 headroom, so 8192 admits 10 scenes per request.
-test("an 8192-token ceiling bounds prompt batches to ten scenes", () => {
-  const narrow = planPromptBatches({ ...planningInput(80), options: { maxOutputTokens: 8_192 } });
+// Live five-scene Gemini usage exhausted 5632 output tokens, including 5403 reasoning tokens.
+// Reserve 8192 above expected JSON; the hosted 14336 ceiling still admits ten scenes at most.
+test("hosted token ceiling leaves reasoning headroom for five and ten scenes", () => {
+  const five = planPromptBatches({ ...planningInput(5), options: { maxOutputTokens: 14_336 } });
+  const ten = planPromptBatches({ ...planningInput(10), options: { maxOutputTokens: 14_336 } });
+  assert.equal(five.batchCount, 1);
+  assert.equal(five.batches[0].maxOutputTokens, 11_776);
+  assert.equal(ten.batchCount, 1);
+  assert.equal(ten.batches[0].maxOutputTokens, 14_336);
+
+  const narrow = planPromptBatches({ ...planningInput(80), options: { maxOutputTokens: 14_336 } });
   for (const entry of narrow.batches) {
     assert.ok(
       entry.sceneIds.length <= 10,
       `batch ${entry.ordinal} asked for ${entry.sceneIds.length} scenes`,
     );
     assert.ok(
-      entry.maxOutputTokens <= 8_192,
+      entry.maxOutputTokens <= 14_336,
       `batch ${entry.ordinal} requested ${entry.maxOutputTokens} tokens`,
     );
   }
   const wide = planPromptBatches(planningInput(80));
   const widest = Math.max(...wide.batches.map((entry) => entry.sceneIds.length));
-  assert.ok(widest >= 20, `the default ceiling packed only ${widest} scenes`);
+  assert.ok(widest > 10, `the default ceiling packed only ${widest} scenes`);
   assert.ok(
     narrow.batchCount > wide.batchCount,
     `narrow=${narrow.batchCount} wide=${wide.batchCount}`,

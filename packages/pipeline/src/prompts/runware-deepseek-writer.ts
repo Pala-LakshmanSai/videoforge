@@ -29,11 +29,10 @@ import type {
  * reason, and this writer follows it so both text stages run on one live model.
  */
 export const RUNWARE_PROMPT_MODEL = "google:gemini@3.5-flash" as const;
-// v21: local scene script context is now explicitly primary; batch story context is fallback-only.
-// The version feeds the deterministic taskUUID, so it must move with this wire/prompt contract and
-// keep a replay from reusing a task id built under the previous context-priority policy.
+// v22: reserve output space for Gemini reasoning tokens observed in the provider usage receipt.
+// The version feeds the deterministic taskUUID, so changed maxTokens never reuses a paid v21 task.
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-gemini-3.5-flash-prompt-request-v21" as const;
+  "runware-gemini-3.5-flash-prompt-request-v22" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -42,7 +41,7 @@ export const RUNWARE_PROMPT_REQUEST_VERSION =
 export const RUNWARE_PROMPT_MAX_OUTPUT_TOKENS = 64_000 as const;
 /** Typical output sizing hint retained for callers that display estimates. */
 export const RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE = 512 as const;
-export const RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM = 2_048 as const;
+export const RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM = 8_192 as const;
 export const RUNWARE_PROMPT_OUTPUT_FIXED_TOKENS = 1_024 as const;
 /** Conservative UTF-8 token budget used by the adaptive planner. */
 export const RUNWARE_PROMPT_MAX_INPUT_TOKENS = 48_000 as const;
