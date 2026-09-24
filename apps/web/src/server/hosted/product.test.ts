@@ -2097,7 +2097,8 @@ describe("hosted product route contract", () => {
         expect(mediaCall?.[0]).toContain("FROM hosted_api_image_regeneration_jobs AS regeneration");
         expect(mediaCall?.[0]).toContain("regeneration.source_api_job_id AS attempt_id");
         expect(mediaCall?.[0]).toContain("regeneration.state = 'SUCCEEDED'");
-        expect(mediaCall?.[0]).toContain("'prompt', regeneration.edited_prompt");
+        expect(mediaCall?.[0]).toContain("asset.state = 'ACCEPTED'");
+        expect(mediaCall?.[0]).toContain("'prompt', regeneration.input_manifest->>'prompt'");
         expect(mediaCall?.[0]).toContain("FROM api_regenerated_output_items");
         expect(mediaCall?.[1]).toEqual([accountId, workspaceId, PROJECT_ID, revisionId]);
 

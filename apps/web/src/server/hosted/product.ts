@@ -7111,7 +7111,7 @@ async function projectDetail(
                         'content_type', receipt.content_type,
                         'content_length', receipt.content_length,
                         'checksum_sha256', receipt.checksum_sha256,
-                        'prompt', regeneration.edited_prompt
+                        'prompt', regeneration.input_manifest->>'prompt'
                       ) AS artifact,
                       receipt.committed_at AS accepted_at,
                       -1 AS source_priority,
@@ -7135,6 +7135,13 @@ async function projectDetail(
                   AND receipt.checksum_sha256 = regeneration.output_sha256
                   AND receipt.content_length = regeneration.output_bytes
                   AND receipt.content_type = regeneration.output_content_type
+                 JOIN assets AS asset
+                   ON asset.account_id = regeneration.account_id
+                  AND asset.workspace_id = regeneration.workspace_id
+                  AND asset.id = regeneration.output_asset_id
+                  AND asset.state = 'ACCEPTED'
+                  AND asset.object_key = receipt.object_key
+                  AND asset.binary_sha256 = receipt.checksum_sha256
                  JOIN artifact_reservations AS reservation
                    ON reservation.account_id = receipt.account_id
                   AND reservation.workspace_id = receipt.workspace_id
