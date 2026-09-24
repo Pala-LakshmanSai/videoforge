@@ -15,6 +15,8 @@ import {
 } from "./hosted-pair-live-wiring";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { response, sameOrigin, sessionScope } from "./hosted-product-route-common";
+import { ensureHostedApiGenerationWorkflow } from "./hosted-api-generation";
+import { buildKieScenePrompt } from "../providers/kie-image-job";
 import {
   ensureHostedV209GenerationAdmission,
   type HostedV209AdmissionResult,
@@ -77,6 +79,112 @@ type Candidate = Record<string, unknown> & {
   readonly work: JsonValue;
   readonly avatarSourceInputReservationId: string;
 };
+
+type ApiJob = {
+  readonly generationTaskId: string;
+  readonly lane: "IMAGE" | "AVATAR";
+  readonly state: string;
+  readonly inputManifest: Record<string, unknown>;
+};
+
+function apiJobs(value: unknown, generationRequestId: string): readonly ApiJob[] {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("HOSTED_API_JOBS_INVALID");
+  const result = value as Record<string, unknown>;
+  if (result.generationRequestId !== generationRequestId || !Array.isArray(result.jobs))
+    throw new Error("HOSTED_API_JOBS_INVALID");
+  return result.jobs.map((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+      throw new Error("HOSTED_API_JOBS_INVALID");
+    const job = raw as Record<string, unknown>;
+    if (
+      typeof job.generationTaskId !== "string" ||
+      !DATABASE_UUID.test(job.generationTaskId) ||
+      (job.lane !== "IMAGE" && job.lane !== "AVATAR") ||
+      typeof job.state !== "string" ||
+      !job.inputManifest ||
+      typeof job.inputManifest !== "object" ||
+      Array.isArray(job.inputManifest)
+    )
+      throw new Error("HOSTED_API_JOBS_INVALID");
+    return {
+      generationTaskId: job.generationTaskId,
+      lane: job.lane,
+      state: job.state,
+      inputManifest: job.inputManifest as Record<string, unknown>,
+    };
+  });
+}
+
+async function readApiJobs(
+  database: TransactionalSqlExecutor,
+  identity: DispatchIdentity,
+  generationRequestId: string,
+): Promise<readonly ApiJob[]> {
+  return database.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
+    const result = await transaction.query<{ jobs: unknown }>(
+      "SELECT public.videoforge_read_hosted_api_jobs($1::uuid,$2::uuid,$3::uuid) AS jobs",
+      [identity.accountId, identity.workspaceId, generationRequestId],
+    );
+    return apiJobs(result.rows[0]?.jobs, generationRequestId);
+  });
+}
+
+async function resumeHostedApiDispatch(
+  environment: HostedRuntimeEnvironment,
+  database: TransactionalSqlExecutor,
+  identity: DispatchIdentity,
+  correlationId: string,
+): Promise<Response> {
+  const admission = await ensureHostedV209GenerationAdmission(database, identity);
+  if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
+  let jobs = await readApiJobs(database, identity, admission.generationRequestId);
+  if (jobs.length === 0) {
+    const materialized = await database.transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
+      const result = await transaction.query<{ jobs: unknown }>(
+        "SELECT public.videoforge_materialize_hosted_api_jobs($1::uuid,$2::uuid,$3::uuid,$4::uuid) AS jobs",
+        [identity.accountId, identity.workspaceId, identity.userId, identity.projectId],
+      );
+      return result.rows[0]?.jobs;
+    });
+    jobs = apiJobs(materialized, admission.generationRequestId);
+  }
+  for (const job of jobs) {
+    if (job.lane !== "IMAGE" || job.state !== "PREPARED") continue;
+    const prompt = buildKieScenePrompt(
+      job.inputManifest.compiledPrompt as Parameters<typeof buildKieScenePrompt>[0],
+    );
+    await database.transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
+      await transaction.query(
+        "SELECT public.videoforge_bind_hosted_api_image_prompt($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text)",
+        [identity.accountId, identity.workspaceId, admission.generationRequestId,
+          job.generationTaskId, prompt],
+      );
+    });
+  }
+  const scheduled = await ensureHostedApiGenerationWorkflow(environment, database, {
+    accountId: identity.accountId,
+    workspaceId: identity.workspaceId,
+    generationRequestId: admission.generationRequestId,
+  });
+  console.info("hosted_v209_project_dispatch", {
+    correlation_id: correlationId,
+    event: scheduled.recovered ? "API_WORKFLOW_RECOVERED" : "API_WORKFLOW_SCHEDULED",
+  });
+  const result = response({
+    schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+    state: "SCHEDULED",
+    generation_request_id: admission.generationRequestId,
+    workflow_id: scheduled.id,
+    correlation_id: correlationId,
+  }, scheduled.recovered ? 200 : 202);
+  const headers = new Headers(result.headers);
+  headers.set("x-videoforge-correlation-id", correlationId);
+  return new Response(result.body, { status: result.status, headers });
+}
 
 export interface HostedV209ProjectDispatchDependencies {
   readonly createPool: (databaseUrl: string) => HostedNeonPool;
@@ -412,6 +520,11 @@ export async function resumeHostedV209ProjectDispatch(
   const runtimePool = suppliedRuntimePool ?? injected.createPool(config.neon.databaseUrl);
   try {
     const runtimeDatabase = injected.createExecutor(runtimePool);
+    if (config.apiGeneration) {
+      return await resumeHostedApiDispatch(
+        environment, runtimeDatabase, identity, correlationId,
+      );
+    }
     if (!admissionAlreadyEnsured) {
       const admission = await injected.ensureAdmission(runtimeDatabase, identity);
       if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
@@ -514,7 +627,8 @@ export async function handleHostedV209ProjectDispatch(
   if (!match) return null;
   if (request.method !== "POST" || !UUID.test(match[1]!))
     return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
-  if (config.environment !== "production" || config.gpuTransport !== "QUALIFIED_EXACT")
+  if (config.environment !== "production" ||
+      (!config.apiGeneration && config.gpuTransport !== "QUALIFIED_EXACT"))
     return response({ error: { code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED" } }, 503);
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
@@ -534,12 +648,25 @@ export async function handleHostedV209ProjectDispatch(
       projectId: match[1]!,
     };
     const runtimeDatabase = injected.createExecutor(runtimePool);
-    const existingGeneration = await injected.findExistingGeneration?.(runtimeDatabase, identity);
+    const existingGeneration = config.apiGeneration
+      ? null
+      : await injected.findExistingGeneration?.(runtimeDatabase, identity);
     const admission: HostedV209AdmissionResult = existingGeneration
       ? { state: "ACTIVE", generationRequestId: existingGeneration }
       : await injected.ensureAdmission(runtimeDatabase, identity);
     if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
     if (spanAudio) {
+      if (config.apiGeneration) {
+        const existingApiJobs = await readApiJobs(runtimeDatabase, identity, admission.generationRequestId);
+        if (existingApiJobs.length === 0) {
+          const preparation = await spanAudio.prepare(identity);
+          if (preparation.state === "PREPARING_INPUTS")
+            return preparationResponse("PREPARING_INPUTS", correlationId);
+        }
+        return await resumeHostedApiDispatch(
+          environment, runtimeDatabase, identity, correlationId,
+        );
+      }
       if (
         existingGeneration ||
         (injected.hasExistingPair &&
