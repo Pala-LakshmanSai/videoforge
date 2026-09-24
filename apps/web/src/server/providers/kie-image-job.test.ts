@@ -14,6 +14,12 @@ const PNG = Uint8Array.from(
     "base64",
   ),
 );
+const JPEG = Uint8Array.from(
+  Buffer.from(
+    "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAABgj/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCCACVbP//Z",
+    "base64",
+  ),
+);
 
 function response(value: unknown): Response {
   return new Response(JSON.stringify(value), {
@@ -23,8 +29,11 @@ function response(value: unknown): Response {
 
 function bucket(): HostedR2BucketBinding & { readonly put: ReturnType<typeof vi.fn> } {
   let stored: ArrayBuffer | null = null;
-  const put = vi.fn(async (_key: string, value: ArrayBuffer) => {
+  let contentType: string | undefined;
+  const put = vi.fn(async (_key: string, value: ArrayBuffer, options?: unknown) => {
     stored = value;
+    contentType = (options as { httpMetadata?: { contentType?: string } })?.httpMetadata
+      ?.contentType;
   });
   return {
     put,
@@ -33,7 +42,7 @@ function bucket(): HostedR2BucketBinding & { readonly put: ReturnType<typeof vi.
       const bytes = stored;
       return {
         size: bytes.byteLength,
-        httpMetadata: { contentType: "image/png" },
+        httpMetadata: { contentType },
         async arrayBuffer() {
           return bytes;
         },
@@ -182,7 +191,41 @@ describe("Kie image job", () => {
     expect(imageFetch).toHaveBeenCalledOnce();
   });
 
-  it("rejects a non-PNG result without writing private storage", async () => {
+  it("stores a validated JPEG with the observed MIME type and checksum", async () => {
+    const client = new KieZImageClient("secret", async () =>
+      response({
+        data: {
+          taskId: TASK_ID,
+          model: "z-image",
+          state: "success",
+          resultJson: JSON.stringify({ resultUrls: ["https://cdn.example.com/image.jpg"] }),
+        },
+      }),
+    );
+    const storage = bucket();
+    const input = {
+      taskId: TASK_ID,
+      objectKey: OUTPUT_KEY,
+      client,
+      bucket: storage,
+      fetchPort: async () => new Response(JPEG.slice().buffer),
+    };
+    const first = await observeKieImageJob(input);
+    expect(first).toMatchObject({
+      state: "SUCCEEDED",
+      artifact: {
+        objectKey: OUTPUT_KEY,
+        byteSize: JPEG.byteLength,
+        width: 1,
+        height: 1,
+        contentType: "image/jpeg",
+      },
+    });
+    expect(storage.put).toHaveBeenCalledOnce();
+    expect(await observeKieImageJob(input)).toEqual(first);
+  });
+
+  it("rejects a truncated JPEG without writing private storage", async () => {
     const client = new KieZImageClient("secret", async () =>
       response({
         data: {
@@ -202,7 +245,7 @@ describe("Kie image job", () => {
         bucket: storage,
         fetchPort: async () => new Response(new Uint8Array([0xff, 0xd8, 0xff]).buffer),
       }),
-    ).rejects.toMatchObject({ code: "RESULT_PNG_INVALID" });
+    ).rejects.toMatchObject({ code: "RESULT_MEDIA_INVALID" });
     expect(storage.put).not.toHaveBeenCalled();
   });
 
@@ -218,7 +261,7 @@ describe("Kie image job", () => {
       }),
     );
     const corrupt = PNG.slice();
-    corrupt[45] ^= 1;
+    corrupt[45] = (corrupt[45] ?? 0) ^ 1;
     const storage = bucket();
     await expect(
       observeKieImageJob({
@@ -228,7 +271,7 @@ describe("Kie image job", () => {
         bucket: storage,
         fetchPort: async () => new Response(corrupt.buffer),
       }),
-    ).rejects.toMatchObject({ code: "RESULT_PNG_INVALID" });
+    ).rejects.toMatchObject({ code: "RESULT_MEDIA_INVALID" });
     expect(storage.put).not.toHaveBeenCalled();
   });
 });

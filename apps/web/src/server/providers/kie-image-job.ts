@@ -58,7 +58,7 @@ export interface KieImageArtifact {
   readonly byteSize: number;
   readonly width: number;
   readonly height: number;
-  readonly contentType: "image/png";
+  readonly contentType: "image/png" | "image/jpeg";
 }
 
 export class KieImageJobError extends Error {
@@ -66,7 +66,7 @@ export class KieImageJobError extends Error {
     readonly code:
       | "OUTPUT_KEY_INVALID"
       | "RESULT_DOWNLOAD_FAILED"
-      | "RESULT_PNG_INVALID"
+      | "RESULT_MEDIA_INVALID"
       | "RESULT_STORAGE_UNKNOWN",
   ) {
     super(code);
@@ -111,7 +111,7 @@ function pngDimensions(bytes: Uint8Array): { width: number; height: number } {
     bytes.byteLength > MAX_IMAGE_BYTES ||
     PNG_SIGNATURE.some((byte, index) => bytes[index] !== byte)
   )
-    throw new KieImageJobError("RESULT_PNG_INVALID");
+    throw new KieImageJobError("RESULT_MEDIA_INVALID");
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const width = view.getUint32(16);
   const height = view.getUint32(20);
@@ -128,7 +128,7 @@ function pngDimensions(bytes: Uint8Array): { width: number; height: number } {
     bytes[27] !== 0 ||
     bytes[28] !== 0
   )
-    throw new KieImageJobError("RESULT_PNG_INVALID");
+    throw new KieImageJobError("RESULT_MEDIA_INVALID");
   let offset = 8;
   let imageDataSeen = false;
   while (offset + 12 <= bytes.byteLength) {
@@ -148,7 +148,60 @@ function pngDimensions(bytes: Uint8Array): { width: number; height: number } {
     }
     offset = end;
   }
-  throw new KieImageJobError("RESULT_PNG_INVALID");
+  throw new KieImageJobError("RESULT_MEDIA_INVALID");
+}
+
+function jpegDimensions(bytes: Uint8Array): { width: number; height: number } {
+  if (
+    bytes.byteLength < 32 ||
+    bytes.byteLength > MAX_IMAGE_BYTES ||
+    bytes[0] !== 0xff ||
+    bytes[1] !== 0xd8 ||
+    bytes[bytes.byteLength - 2] !== 0xff ||
+    bytes[bytes.byteLength - 1] !== 0xd9
+  )
+    throw new KieImageJobError("RESULT_MEDIA_INVALID");
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let offset = 2;
+  let dimensions: { width: number; height: number } | null = null;
+  while (offset + 4 <= bytes.byteLength - 2) {
+    if (bytes[offset] !== 0xff) break;
+    while (bytes[offset] === 0xff) offset += 1;
+    const marker = bytes[offset++];
+    if (marker === undefined || marker === 0x00 || marker === 0xd8 || marker === 0xd9) break;
+    if (marker >= 0xd0 && marker <= 0xd7) continue;
+    if (offset + 2 > bytes.byteLength - 2) break;
+    const length = view.getUint16(offset);
+    if (length < 2 || offset + length > bytes.byteLength - 2) break;
+    if (
+      (marker >= 0xc0 && marker <= 0xc3) ||
+      (marker >= 0xc5 && marker <= 0xc7) ||
+      (marker >= 0xc9 && marker <= 0xcb) ||
+      (marker >= 0xcd && marker <= 0xcf)
+    ) {
+      if (length < 8 || dimensions) break;
+      const height = view.getUint16(offset + 3);
+      const width = view.getUint16(offset + 5);
+      if (width < 1 || height < 1 || width > 4096 || height > 4096) break;
+      dimensions = { width, height };
+    }
+    if (marker === 0xda) {
+      if (dimensions) return dimensions;
+      break;
+    }
+    offset += length;
+  }
+  throw new KieImageJobError("RESULT_MEDIA_INVALID");
+}
+
+function imageDetails(bytes: Uint8Array): {
+  width: number;
+  height: number;
+  contentType: KieImageArtifact["contentType"];
+} {
+  if (PNG_SIGNATURE.every((byte, index) => bytes[index] === byte))
+    return { ...pngDimensions(bytes), contentType: "image/png" };
+  return { ...jpegDimensions(bytes), contentType: "image/jpeg" };
 }
 
 async function readStored(
@@ -160,22 +213,23 @@ async function readStored(
   if (
     stored.size < 57 ||
     stored.size > MAX_IMAGE_BYTES ||
-    stored.httpMetadata?.contentType !== "image/png"
+    !["image/png", "image/jpeg"].includes(stored.httpMetadata?.contentType ?? "")
   )
     throw new KieImageJobError("RESULT_STORAGE_UNKNOWN");
   const bytes = new Uint8Array(await stored.arrayBuffer());
   if (bytes.byteLength !== stored.size) throw new KieImageJobError("RESULT_STORAGE_UNKNOWN");
-  const dimensions = pngDimensions(bytes);
+  const details = imageDetails(bytes);
+  if (details.contentType !== stored.httpMetadata?.contentType)
+    throw new KieImageJobError("RESULT_STORAGE_UNKNOWN");
   return {
     objectKey,
     sha256: await sha256Bytes(bytes),
     byteSize: bytes.byteLength,
-    ...dimensions,
-    contentType: "image/png",
+    ...details,
   };
 }
 
-async function downloadPng(url: string, fetchPort: FetchPort): Promise<Uint8Array> {
+async function downloadImage(url: string, fetchPort: FetchPort): Promise<Uint8Array> {
   let response: Response;
   try {
     response = await fetchPort(url, { redirect: "error" });
@@ -184,7 +238,7 @@ async function downloadPng(url: string, fetchPort: FetchPort): Promise<Uint8Arra
   }
   if (!response.ok || !response.body) throw new KieImageJobError("RESULT_DOWNLOAD_FAILED");
   const declaredLength = Number(response.headers.get("content-length"));
-  if (declaredLength > MAX_IMAGE_BYTES) throw new KieImageJobError("RESULT_PNG_INVALID");
+  if (declaredLength > MAX_IMAGE_BYTES) throw new KieImageJobError("RESULT_MEDIA_INVALID");
   const chunks: Uint8Array[] = [];
   const reader = response.body.getReader();
   let total = 0;
@@ -195,7 +249,7 @@ async function downloadPng(url: string, fetchPort: FetchPort): Promise<Uint8Arra
       total += chunk.value.byteLength;
       if (total > MAX_IMAGE_BYTES) {
         await reader.cancel();
-        throw new KieImageJobError("RESULT_PNG_INVALID");
+        throw new KieImageJobError("RESULT_MEDIA_INVALID");
       }
       chunks.push(chunk.value);
     }
@@ -235,12 +289,12 @@ export async function observeKieImageJob(input: {
   if (task.state !== "success") return { state: "PENDING" };
   const previous = await readStored(input.bucket, input.objectKey);
   if (previous) return { state: "SUCCEEDED", artifact: previous };
-  const bytes = Uint8Array.from(await downloadPng(task.imageUrl, input.fetchPort ?? fetch));
-  const dimensions = pngDimensions(bytes);
+  const bytes = Uint8Array.from(await downloadImage(task.imageUrl, input.fetchPort ?? fetch));
+  const details = imageDetails(bytes);
   const sha256 = await sha256Bytes(bytes);
   try {
     await input.bucket.put(input.objectKey, bytes.buffer, {
-      httpMetadata: { contentType: "image/png" },
+      httpMetadata: { contentType: details.contentType },
     });
   } catch {
     // A completed concurrent write is accepted only after exact private readback below.
@@ -250,6 +304,6 @@ export async function observeKieImageJob(input: {
     throw new KieImageJobError("RESULT_STORAGE_UNKNOWN");
   return {
     state: "SUCCEEDED",
-    artifact: { ...stored, ...dimensions },
+    artifact: { ...stored, ...details },
   };
 }
