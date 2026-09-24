@@ -1,4 +1,5 @@
 import { parseHostedJson, plainRecord, response } from "./hosted-product-route-common";
+import { KieZImageError } from "../providers/kie-z-image";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const PATH = /^\/api\/v2\/hosted\/projects\/([^/]+)\/images\/([^/]+)\/regenerate(?:\/([^/]+))?$/u;
@@ -107,6 +108,8 @@ export async function handleHostedImageRegenerationRoute(
     });
     return response({ schema_version: SCHEMA, ...result }, 202);
   } catch (error) {
+    if (error instanceof KieZImageError && error.code === "INPUT_INVALID")
+      return bad("HOSTED_IMAGE_REGENERATION_PROMPT_TOO_LONG", 400);
     const databaseCode = error && typeof error === "object" && "code" in error ? error.code : null;
     if (databaseCode === "23505") return bad("HOSTED_IMAGE_REGENERATION_CONFLICT", 409);
     if (databaseCode === "02000") return bad("HOSTED_IMAGE_REGENERATION_NOT_FOUND", 404);

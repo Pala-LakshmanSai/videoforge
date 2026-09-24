@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { handleHostedImageRegenerationRoute } from "./hosted-image-regeneration-route";
+import { KieZImageError } from "../providers/kie-z-image";
 const project = "11111111-1111-4111-8111-111111111111";
 const task = "22222222-2222-4222-8222-222222222222";
 const revision = "33333333-3333-4333-8333-333333333333";
@@ -12,6 +13,20 @@ const deps = () => ({
   },
 });
 describe("hosted image regeneration route", () => {
+  it("returns a client error when the Kie prompt exceeds its limit", async () => {
+    const d = deps();
+    d.service.create.mockRejectedValueOnce(new KieZImageError("INPUT_INVALID"));
+    const result = await handleHostedImageRegenerationRoute(
+      new Request(`https://example.test/api/v2/hosted/projects/${project}/images/${task}/regenerate`, {
+        method: "POST",
+        headers: { origin: "https://example.test", "content-type": "application/json" },
+        body: JSON.stringify({ schema_version: "videoforge-hosted-image-regeneration/v1",
+          prompt: "long edit", idempotency_key: "k", revision_id: revision }),
+      }), d);
+    expect(result?.status).toBe(400);
+    expect(await result?.json()).toMatchObject({ error: {
+      code: "HOSTED_IMAGE_REGENERATION_PROMPT_TOO_LONG" } });
+  });
   it.each([
     ["23505", 409],
     ["02000", 404],
