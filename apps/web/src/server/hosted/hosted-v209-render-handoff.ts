@@ -121,7 +121,8 @@ function artifact(
   extra: Pick<
     HostedCommittedArtifact,
     "lane" | "kind" | "taskKey" | "acceptedAttemptId" | "barrierAcceptance"
-  >,
+  > &
+    Partial<Pick<HostedCommittedArtifact, "generationTaskId">>,
 ): HostedCommittedArtifact {
   const row = record(source);
   const contentLength = Number(row.contentLength);
@@ -150,6 +151,7 @@ function artifact(
     reservationState: "COMMITTED",
     receiptDeletedAt: null,
     acceptedAttemptId: extra.acceptedAttemptId,
+    ...(extra.generationTaskId ? { generationTaskId: extra.generationTaskId } : {}),
     barrierAcceptance: extra.barrierAcceptance,
     kind: extra.kind,
     ...(row.sourceScopeKind === "SYSTEM"
@@ -262,6 +264,7 @@ export function createHostedV209RenderHandoff(input: {
           kind: lane === "MAGE_IMAGE" ? "IMAGE" : "AVATAR_CLIP",
           taskKey: text(row.taskKey),
           acceptedAttemptId: text(row.acceptedAttemptId, UUID),
+          generationTaskId: row.taskId === undefined ? undefined : text(row.taskId, UUID),
           barrierAcceptance: "ACCEPTED_CANONICAL",
         });
       });
