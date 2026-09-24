@@ -34,7 +34,7 @@ an unsigned beta, and the immutable manifest discloses exact hashes and trust mo
 behavior can vary, so native clean-download/install evidence remains required. Protected signing and
 notarization secrets are needed only for the optional production-trust upgrade.
 
-`publish_release=true` requires the exact new `media-worker-v0.1.24` tag and the protected release
+`publish_release=true` requires the exact new `media-worker-v0.1.25` tag and the protected release
 environment. It publishes both binaries plus
 the checksum/size manifest to the public repository Release; the workflow refuses to replace an
 existing tag or asset. Activating that generated manifest in staging is a separate reviewed hosting
@@ -58,7 +58,7 @@ whisper.cpp commit and exact Intel and Apple Silicon FFmpeg inputs. The worker v
 model again at startup and against every ASR job contract. No first-run model download, runtime
 provider discovery, or user configuration occurs.
 
-This checkout prepares `media-worker-v0.1.24` to carry the Fal FlashHead render profile. It is not
+This checkout prepares `media-worker-v0.1.25` to carry the Fal FlashHead render profile. It is not
 an immutable publication yet. Compute its execution-bundle hash from the final clean source commit,
 then publish the new release before updating hosted release metadata.
 
@@ -76,7 +76,7 @@ Provider-free package/lifecycle check:
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 .\windows-native-acceptance.ps1 `
-  -InstallerPath .\VideoForge-Worker-0.1.24-Setup.exe `
+  -InstallerPath .\VideoForge-Worker-0.1.25-Setup.exe `
   -ReleaseManifestPath .\media-worker-release.json
 ```
 
@@ -86,7 +86,7 @@ for the paired Credential Manager entry by installation ID and never reads the c
 
 ```powershell
 .\windows-native-acceptance.ps1 `
-  -InstallerPath .\VideoForge-Worker-0.1.24-Setup.exe `
+  -InstallerPath .\VideoForge-Worker-0.1.25-Setup.exe `
   -ReleaseManifestPath .\media-worker-release.json `
   -RunHostedPairing
 ```

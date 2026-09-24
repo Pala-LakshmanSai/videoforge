@@ -238,8 +238,11 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
     return expected
 
 
-def _probe_frame_rate(stream: Mapping[str, Any]) -> tuple[int, int]:
-    for field in ("avg_frame_rate", "r_frame_rate"):
+def _probe_frame_rate(
+    stream: Mapping[str, Any], *, nominal: bool = False
+) -> tuple[int, int]:
+    fields = ("r_frame_rate",) if nominal else ("avg_frame_rate", "r_frame_rate")
+    for field in fields:
         value = stream.get(field)
         if not isinstance(value, str):
             continue
@@ -671,7 +674,10 @@ class RenderJob:
                     width, height, fps_num, fps_den = expected_profile
                     if video.get("width") != width or video.get("height") != height:
                         raise ValueError("Avatar input geometry does not match its source profile")
-                    if _probe_frame_rate(video) != (fps_num, fps_den):
+                    fal_flashhead = (
+                        binding.renderer_source_profile == "fal-flashhead-512x512p25-v1"
+                    )
+                    if _probe_frame_rate(video, nominal=fal_flashhead) != (fps_num, fps_den):
                         raise ValueError(
                             "Avatar input frame rate does not match its source profile"
                         )

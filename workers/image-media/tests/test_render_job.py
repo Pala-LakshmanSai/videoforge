@@ -99,6 +99,7 @@ class FakeProcess:
         self.output_loudness = (-16.0, -2.1)
         self.corrected_loudness = (-16.43, -5.27)
         self.visual_probes: dict[Path, tuple[str, int, int, str]] = {}
+        self.nominal_frame_rates: dict[Path, str] = {}
         self.avatar_audio_paths: set[Path] = set()
 
     @staticmethod
@@ -118,6 +119,7 @@ class FakeProcess:
         visual = self.visual_probes.get(path)
         if visual is not None:
             codec, width, height, frame_rate = visual
+            nominal_frame_rate = self.nominal_frame_rates.get(path, frame_rate)
             streams: list[dict[str, Any]] = [
                 {
                     "codec_type": "video",
@@ -125,7 +127,7 @@ class FakeProcess:
                     "width": width,
                     "height": height,
                     "avg_frame_rate": frame_rate,
-                    "r_frame_rate": frame_rate,
+                    "r_frame_rate": nominal_frame_rate,
                 }
             ]
             if path in self.avatar_audio_paths:
@@ -803,6 +805,61 @@ class RenderJobTests(unittest.TestCase):
         )
         avatar_path = fixture.resolver.objects[avatar["artifact_uri"]]
         fixture.process.visual_probes[avatar_path] = ("h264", 1280, 720, "24/1")
+
+        result = fixture.job().run(
+            fixture.document,
+            claimed_attempt_id="attempt_render_local_001",
+        )
+
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["error"]["code"], "RENDER_INPUT_INVALID")
+        self.assertFalse(any("-filter_complex" in call for call in fixture.process.calls))
+
+    def test_fal_flashhead_profile_uses_nominal_frame_rate(self) -> None:
+        fixture = RenderFixture()
+        avatar = next(
+            asset
+            for asset in fixture.document["assets"]
+            if asset["asset_id"] == "asset_avatar_full_001"
+        )
+        avatar_path = fixture.resolver.objects[avatar["artifact_uri"]]
+        fixture.process.visual_probes[avatar_path] = ("h264", 512, 512, "1975/78")
+        fixture.process.nominal_frame_rates[avatar_path] = "25/1"
+        fixture.replace_manifest(
+            lambda manifest: manifest["segments"][0]["render"].update(
+                {
+                    "avatar_source_profile": "fal-flashhead-512x512p25-v1",
+                    "avatar_crop": "512:288:0:112",
+                }
+            )
+        )
+
+        result = fixture.job().run(
+            fixture.document,
+            claimed_attempt_id="attempt_render_local_001",
+        )
+
+        self.assertEqual(result["status"], "SUCCEEDED", result)
+        self.assertTrue(any("-filter_complex" in call for call in fixture.process.calls))
+
+    def test_fal_flashhead_rejects_non_25_nominal_frame_rate(self) -> None:
+        fixture = RenderFixture()
+        avatar = next(
+            asset
+            for asset in fixture.document["assets"]
+            if asset["asset_id"] == "asset_avatar_full_001"
+        )
+        avatar_path = fixture.resolver.objects[avatar["artifact_uri"]]
+        fixture.process.visual_probes[avatar_path] = ("h264", 512, 512, "25/1")
+        fixture.process.nominal_frame_rates[avatar_path] = "24/1"
+        fixture.replace_manifest(
+            lambda manifest: manifest["segments"][0]["render"].update(
+                {
+                    "avatar_source_profile": "fal-flashhead-512x512p25-v1",
+                    "avatar_crop": "512:288:0:112",
+                }
+            )
+        )
 
         result = fixture.job().run(
             fixture.document,
