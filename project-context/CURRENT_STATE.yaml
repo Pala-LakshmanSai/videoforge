@@ -1,16 +1,17 @@
 schema_version: "2.0"
 api_generation_transition_2026_09_24:
   checkpoint: V2-09
-  status: PRODUCTION_API_SHORT_E2E_PASSED_FINALIZER_RELEASE_PENDING
+  status: PRODUCTION_API_SHORT_E2E_POSTDEPLOY_PASSED
   decision: >-
     Fresh ordinary image generation uses Kie z-image; avatar generation uses Fal FlashHead
     audio-to-video with the pinned Avatar Hub source and selected voiceover span. Historical
     projects pin RUNPOD, new API projects pin KIE_FAL, and consumed RunPod attempts retain
     their original provider identities and cleanup rules.
   live_evidence: >-
-    Production migration ledger is applied through 0193. Cloudflare source a4ea4897 remains live
-    as version deee51d9-8e4d-4a2e-8a5f-cfecad247187 with 25 secret names and GPU dispatch
-    DISABLED_UNQUALIFIED; the finalizer source repair is not deployed yet. Authenticated Chrome
+    Production migration ledger is applied through 0193. Finalizer source
+    2a85d77404883479c70326428258b769ba3d87df is deployed as Cloudflare version
+    a559872f-cca7-40dc-936f-5428c6bfa5e1 with exact production readback, 25 secret names,
+    and GPU dispatch DISABLED_UNQUALIFIED. Authenticated Chrome
     project e88f3208-3f32-4c94-a391-574485107adf accepted two Kie PNGs and one Fal avatar
     MP4 using the selected voiceover. Installed desktop worker v0.1.25 rendered the 12.400-second
     H.264/AAC 1080p30 final MP4 (1,872,898 bytes, sha256:b5b83e0b859c3bdc8100ba8f57c98aa42d14afc97662779f9dfe6010eba44dce).
@@ -24,14 +25,30 @@ api_generation_transition_2026_09_24:
     Chrome reloaded Progress at 100% and Review APPROVED with download. Review regeneration
     completed as a separate accepted Kie replacement job ba5c5909-d222-4698-aa3c-4172fd3504b6
     (image sha256:680aeb72edd97f7a24950cfcfa864907ca93e2a556bbe01c8b1e95db2ebd1ee6).
-    The earlier v0.1.24 failed render is terminal.
+    The earlier v0.1.24 failed render is terminal. Fresh post-deployment Chrome pilot6 project
+    d430cb31-833a-4248-8a0e-fc43824f35d9 accepted two Kie IMAGE jobs and one Fal AVATAR job.
+    Render attempt b4cb1898-8157-48c6-8990-76141b2815ab finalized automatically, without
+    manual database action: runtime COMPLETE, generation request SUCCEEDED, API proof true,
+    one FINAL_OUTPUT_DURABLE event, and final receipt
+    sha256:37eac8d1a3a3c5e1086339482b9538140f71ca56c13952c5b75554d0695d0275.
+    Chrome played the 12.400-second H.264/AAC 1080p30 MP4 to the end, approved it, and
+    downloaded 1,980,482 bytes matching
+    sha256:fca807e484b6e6c95a6a58985d584a15d2c049e708bb87a0d16e948ec8fd23f0.
+    The Kie image label was verified in the deployed browser.
   remaining_gates: >-
-    Commit, push, and deploy the finalizer source repair and context updates; verify the hosted
-    API completion path after deployment. Verify provider cost readback and zero active RunPod
-    workers. The 18-minute hosted final-video acceptance
-    remains separate. Do not resubmit consumed provider task IDs or render attempts.
-  provider_spend: BOUNDED_API_PILOTS_WITHIN_APPROVED_USD_5_CAP_EXACT_PROVIDER_CHARGES_PENDING
-  paid_compute_shutdown: GPU_DISPATCH_DISABLED_RUNPOD_LIVE_INVENTORY_PENDING
+    Short hosted API MVP acceptance is complete. The full 18-minute hosted final-video acceptance
+    remains a separate gate. Fal's exact billing debit remains unavailable from its billing endpoint.
+    Do not resubmit consumed provider task IDs or render attempts.
+  provider_spend: >-
+    API pilot actions used the approved USD 5 cap; exact aggregate debit is unavailable. Kie read-only billing shows pilot5's two
+    successful z-image tasks cost 0.8 credits each (1.6 credits total). Fal task completed, but
+    billing endpoint returned 403 for the configured key, so exact Fal debit remains unavailable.
+    Historical endpoint billing since August is not current pilot spend.
+  paid_compute_shutdown: >-
+    Independent RunPod read-only audit at 2026-09-24T21:44:30Z showed zero running Pods, zero
+    active serverless workers, and no queued/running jobs. Two retained EU-RO-1 50GB volumes and
+    two endpoints remain at workersMin=0/max=1, each with one EXITED worker; retained resources
+    may still incur storage cost. No RunPod compute was started for these API pilots.
 
 relatability_verification_and_pipeline_repairs_2026_09_19:
   checkpoint: V2-09
