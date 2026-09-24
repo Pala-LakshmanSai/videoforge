@@ -4,6 +4,7 @@ import { KieZImageClient, KieZImageError, type KieAspectRatio } from "./kie-z-im
 import type { CompiledImagePrompt } from "@videoforge/pipeline";
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_KIE_PROMPT_LENGTH = 800;
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 const PNG_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, index) => {
   let crc = index;
@@ -21,7 +22,15 @@ const KIE_DEFAULT_STYLE_POSITIVE =
 const KIE_DEFAULT_STYLE_NEGATIVE =
   "illustration, CGI, fantasy, waxy skin, HDR, glamour or studio lighting, staged poses, impossible anatomy, duplicate subjects or limbs";
 
-/** Map the compiled positive and style negatives into Kie's single bounded prompt field. */
+function compactContinuity(value: string): string {
+  return value
+    .replace(/keep one consistent subject, setting and physical state across the video,?\s*/gi, "consistent subject, setting and physical state; ")
+    .replace(/required viewpoint:/gi, "viewpoint:")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Map compiled prompt parts into Kie's single 800-character field without cutting scene text. */
 export function buildKieScenePrompt(compiled: CompiledImagePrompt): string {
   const c = compiled.components;
   const positiveStyle =
@@ -32,17 +41,38 @@ export function buildKieScenePrompt(compiled: CompiledImagePrompt): string {
     c.styleNegativeSuffix === DEFAULT_STYLE_NEGATIVE
       ? KIE_DEFAULT_STYLE_NEGATIVE
       : c.styleNegativeSuffix;
-  const prompt = [
-    c.literalContent,
-    c.continuityAndShotRole,
-    c.cropGuidance,
-    positiveStyle,
-    c.extraPromptKeywords,
-    `Avoid: ${negativeStyle}; ${KIE_PERMANENT_EXCLUSIONS}`,
-  ]
-    .filter(Boolean)
-    .join(". ");
-  if (!prompt || prompt.length > 1000) throw new KieZImageError("INPUT_INVALID");
+  const literal = c.literalContent.trim();
+  if (!literal) throw new KieZImageError("INPUT_INVALID");
+  let result = literal;
+  const add = (value: string): boolean => {
+    const part = value.trim();
+    if (!part) return true;
+    const next = `${result}. ${part}`;
+    if (next.length > MAX_KIE_PROMPT_LENGTH) return false;
+    result = next;
+    return true;
+  };
+
+  // Scene and framing/style positives are core: reject if they cannot fit intact.
+  if (!add(c.cropGuidance) || !add(positiveStyle) || !add(KIE_PERMANENT_EXCLUSIONS))
+    throw new KieZImageError("INPUT_INVALID");
+
+  // Continuity and optional detail can be compacted or omitted before any core text is cut.
+  add(compactContinuity(c.continuityAndShotRole));
+  add(c.extraPromptKeywords ?? "");
+  const exclusions = negativeStyle
+    .split(/[,;]+/)
+    .map((term) => term.trim())
+    .filter(Boolean);
+  let addedNegative = false;
+  for (const term of exclusions) {
+    const next = `${result}${addedNegative ? ", " : ". Avoid: "}${term}`;
+    if (next.length > MAX_KIE_PROMPT_LENGTH) break;
+    result = next;
+    addedNegative = true;
+  }
+  const prompt = result;
+  if (prompt.length > MAX_KIE_PROMPT_LENGTH) throw new KieZImageError("INPUT_INVALID");
   return prompt;
 }
 

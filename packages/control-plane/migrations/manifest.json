@@ -918,6 +918,12 @@
       "name": "hosted_api_unknown_no_task_reconciliation",
       "filename": "0190_hosted_api_unknown_no_task_reconciliation.sql",
       "sha256": "sha256:bf87bfbc3a316fd5b1871449d147d163397c288ebde4f0b69f9c8c78b83861dc"
+    },
+    {
+      "version": 191,
+      "name": "hosted_api_kie_prompt_limit",
+      "filename": "0191_hosted_api_kie_prompt_limit.sql",
+      "sha256": "sha256:dd300244573db1e1925925eea1d425e55547d5a1436e39124e5231fb9e333d2a"
     }
   ]
 }

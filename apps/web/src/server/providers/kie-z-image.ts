@@ -1,4 +1,5 @@
 const KIE_BASE_URL = "https://api.kie.ai";
+const MAX_PROMPT_LENGTH = 800;
 const ASPECT_RATIOS = ["1:1", "4:3", "3:4", "16:9", "9:16"] as const;
 
 export type KieAspectRatio = (typeof ASPECT_RATIOS)[number];
@@ -65,7 +66,7 @@ export class KieZImageClient {
   }): Promise<string> {
     if (
       !input.prompt.trim() ||
-      input.prompt.length > 1000 ||
+      input.prompt.length > MAX_PROMPT_LENGTH ||
       !ASPECT_RATIOS.includes(input.aspectRatio) ||
       (input.nsfwChecker !== undefined && typeof input.nsfwChecker !== "boolean")
     )

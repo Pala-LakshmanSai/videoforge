@@ -107,9 +107,33 @@ describe("Kie image job", () => {
         styleNegativeSuffix: profile.prompt_profile.negative_suffix,
       },
     } as never);
-    expect(prompt.length).toBeLessThanOrEqual(1000);
+    expect(prompt.length).toBeLessThanOrEqual(800);
     expect(prompt).toContain("A farmer walks through a field");
     expect(prompt).toContain("Avoid: illustration, CGI");
+  });
+
+  it("keeps production-length scene content intact within Kie's 800-character limit", () => {
+    const literal = "subject: A person, action: depicting the narration-supported visible moment, environment: a room with a wooden desk next to a large window.";
+    const prompt = buildKieScenePrompt({
+      components: {
+        literalContent: literal,
+        continuityAndShotRole:
+          "keep one consistent subject, setting and physical state across the video, required viewpoint: human medium. wide horizontal and center-safe.",
+        cropGuidance: "wide horizontal and center-safe",
+        stylePositiveSuffix:
+          "Photorealistic high-fidelity digital landscape photography, wide field of view, deep focus, steady unobstructed perspective, direct high-noon sunlight or golden hour, high-contrast shadows",
+        extraPromptKeywords: "natural light",
+        styleNegativeSuffix:
+          "blurry, soft focus, low resolution, artificial, over-saturated, human-centric, portrait, watermark, text",
+      },
+    } as never);
+    expect(prompt.length).toBeLessThanOrEqual(800);
+    expect(prompt).toContain(literal);
+    expect(prompt).toContain("wide horizontal and center-safe");
+    expect(prompt).toContain("Photorealistic high-fidelity");
+    expect(prompt).toContain("natural light");
+    expect(prompt).toContain("No visible text");
+    expect(prompt).toContain("motion graphics or decorative transitions");
   });
 
   it("claims before submission and persists the provider task ID", async () => {
