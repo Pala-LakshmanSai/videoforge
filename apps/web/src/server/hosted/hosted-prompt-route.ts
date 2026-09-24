@@ -49,15 +49,8 @@ const HOSTED_PROMPT_ATTEMPT_BUDGET = 30;
  * How long a prompt run may read DISPATCHING with no accepted scene before the route treats it as
  * stranded.
  *
- * A batch drives a provider call worth a minute or more from inside one request; if the runner ends
- * before the provider answers, the batch is never requeued and the run stays in flight forever. Five
- * minutes is far past a healthy batch - the same request class measures in single-digit minutes - so
- * a live attempt is never replaced, while a stranded one is repaired by the next caller (the
- * continuation sweep calls this route every tick). It matches the window the database's stale
- * reconciliation uses; with a shorter window here, or a shorter one there, a live batch was replaced
- * mid-call and nothing ever finished. The window is measured from the attempt's start, which a
- * redispatch refreshes: keying it on the row's creation time made every tick replace the attempt the
- * previous tick had just started.
+ * The continuation sweep uses this window to notice a stranded attempt. The route keeps that
+ * attempt on hold because the provider may have processed a request before the runner stopped.
  */
 export const HOSTED_PROMPT_STALE_RUN_MS = 15 * 60 * 1000;
 
@@ -82,21 +75,26 @@ export const HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES = new Set([
 /**
  * Whether an existing prompt run may be replaced by one bounded redispatch.
  *
- * True only when the stored run failed in a provider/transport class, it never produced a durable
- * accepted prompt set (so no accepted work can be lost or paid for twice), and the revision still
- * has attempts left. An in-flight run, a rejected or invalid result, or a spent budget all refuse.
+ * True only when the stored run has a definite provider-free failure, no accepted prompt set, and
+ * attempts left. An in-flight or potentially charged run remains on hold.
  */
 export function hostedPromptRedispatchable(
   planRecord: Record<string, unknown>,
   staleInFlight = false,
 ): boolean {
   const state = planRecord.existing_run_state;
+  // A stranded request may have reached Runware before its Worker invocation ended. A missing
+  // response is not proof that the provider did no work, so leave it for identity-based review.
+  if (state === "DISPATCHING" || planRecord.existing_run_provider_may_have_charged !== false)
+    return false;
   const retryable =
     state === "FAILED" || state === "UNKNOWN" || (staleInFlight && state === "DISPATCHING");
   if (!retryable) return false;
   if (planRecord.existing_run_has_accepted_set === true) return false;
   const problemCode =
-    typeof planRecord.existing_run_problem_code === "string" ? planRecord.existing_run_problem_code : "";
+    typeof planRecord.existing_run_problem_code === "string"
+      ? planRecord.existing_run_problem_code
+      : "";
   // A stale in-flight run records no problem code at all: its batch request died before the provider
   // answered, which is the same provider-side class the retryable set exists for.
   if (!staleInFlight && !HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES.has(problemCode)) return false;
@@ -107,7 +105,6 @@ export function hostedPromptRedispatchable(
     redispatchesSoFar < HOSTED_PROMPT_ATTEMPT_BUDGET - 1
   );
 }
-
 
 export async function writeProjectPrompts(
   request: Request,
@@ -171,11 +168,7 @@ export async function writeProjectPrompts(
     // spend guard and the acceptance rules are unchanged. The approval also has to reach the
     // authority, which otherwise refuses any plan that already owns a run.
     //
-    // A run can also be stranded while still reading DISPATCHING: its batch request drove a
-    // multi-minute provider call inside one invocation, and when that invocation ended nothing
-    // requeued the batch, so the run sat in flight forever and no caller could advance or replace it.
-    // Past the stale window - with no accepted prompt set to lose - the same bounded redispatch
-    // applies, which is what lets the continuation sweep heal the stage without a browser.
+    // A stale DISPATCHING run still has an uncertain provider outcome. The gate below refuses it.
     const runStartedAtMs =
       typeof plan.runStartedAt === "string" ? Date.parse(plan.runStartedAt) : Number.NaN;
     const staleInFlight =
@@ -253,7 +246,9 @@ export async function writeProjectPrompts(
     // failure settle -- must address the persisted run, not the freshly generated identity, or a
     // redispatch would report progress and failures against a run id that does not exist.
     const persistedRunId =
-      typeof prepared.run_id === "string" && prepared.run_id.length > 0 ? prepared.run_id : identity.runId;
+      typeof prepared.run_id === "string" && prepared.run_id.length > 0
+        ? prepared.run_id
+        : identity.runId;
     runId = persistedRunId;
     const preparedBatchCount = prepared.planned_batch_count;
     const preparedSceneCount = prepared.planned_scene_count;

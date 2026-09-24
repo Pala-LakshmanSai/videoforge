@@ -12,6 +12,7 @@ describe("hostedPromptRedispatchable", () => {
     existing_run_state: "UNKNOWN",
     existing_run_problem_code: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
     existing_run_has_accepted_set: false,
+    existing_run_provider_may_have_charged: false,
     existing_run_redispatch_count: 0,
   } as Record<string, unknown>;
 
@@ -29,16 +30,14 @@ describe("hostedPromptRedispatchable", () => {
     ).toBe(true);
   });
 
-  it("grants a redispatch for a stale in-flight run and refuses a live one", () => {
-    // The batch request that drove this run died before the provider answered: nothing requeued it,
-    // so the run would otherwise read DISPATCHING forever with no caller able to advance it.
+  it("holds a stale in-flight run because the provider outcome is unknown", () => {
     const staleRun = {
       existing_run_state: "DISPATCHING",
       existing_run_problem_code: null,
       existing_run_has_accepted_set: false,
       existing_run_redispatch_count: 1,
     } as Record<string, unknown>;
-    expect(hostedPromptRedispatchable(staleRun, true)).toBe(true);
+    expect(hostedPromptRedispatchable(staleRun, true)).toBe(false);
 
     // Same row while the caller has not established that the run is stale: still refused.
     expect(hostedPromptRedispatchable(staleRun, false)).toBe(false);
@@ -53,15 +52,26 @@ describe("hostedPromptRedispatchable", () => {
     ).toBe(false);
   });
 
+  it("refuses an unknown run when the provider may have charged", () => {
+    expect(
+      hostedPromptRedispatchable({
+        ...failedProviderRun,
+        existing_run_provider_may_have_charged: true,
+      }),
+    ).toBe(false);
+  });
+
   it("refuses once a durable accepted prompt set exists", () => {
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_has_accepted_set: true })).toBe(
-      false,
-    );
+    expect(
+      hostedPromptRedispatchable({ ...failedProviderRun, existing_run_has_accepted_set: true }),
+    ).toBe(false);
   });
 
   it("refuses a run that is still in flight", () => {
     for (const state of ["RUNNING", "DISPATCHING", "READY", "PENDING", "SUCCEEDED"])
-      expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_state: state })).toBe(false);
+      expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_state: state })).toBe(
+        false,
+      );
   });
 
   it("refuses a deterministic defect that retrying would reproduce", () => {
@@ -71,23 +81,36 @@ describe("hostedPromptRedispatchable", () => {
       "HOSTED_PROMPT_PLAN_NOT_READY",
       "",
     ])
-      expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_problem_code: problemCode })).toBe(
-        false,
-      );
+      expect(
+        hostedPromptRedispatchable({
+          ...failedProviderRun,
+          existing_run_problem_code: problemCode,
+        }),
+      ).toBe(false);
   });
 
   it("refuses once the revision has spent its attempt budget", () => {
     // The budget mirrors the stage-3 context budget: a recovery path that gives up after a handful of
     // attempts strands the run again, while each attempt is still a bounded and recorded provider call.
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 29 })).toBe(false);
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 31 })).toBe(false);
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 28 })).toBe(true);
+    expect(
+      hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 29 }),
+    ).toBe(false);
+    expect(
+      hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 31 }),
+    ).toBe(false);
+    expect(
+      hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: 28 }),
+    ).toBe(true);
   });
 
   it("refuses when the plan payload carries no usable attempt evidence", () => {
     expect(hostedPromptRedispatchable({})).toBe(false);
     expect(hostedPromptRedispatchable({ existing_run_state: "UNKNOWN" })).toBe(false);
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: -1 })).toBe(false);
-    expect(hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: "x" })).toBe(false);
+    expect(
+      hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: -1 }),
+    ).toBe(false);
+    expect(
+      hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: "x" }),
+    ).toBe(false);
   });
 });
