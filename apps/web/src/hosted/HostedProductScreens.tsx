@@ -1037,6 +1037,7 @@ const HOSTED_GPU_TERMINAL_DATABASE_STATES = new Set([
   "RETRYABLE_FAILED",
   "PERMANENT_FAILED",
   "DEAD_LETTER",
+  "BLOCKED",
   "CANCEL_REQUESTED",
   "CANCELLING",
   "CANCELLED",
@@ -1071,6 +1072,12 @@ function hostedGpuLanePhase(
     return {
       label: "Needs attention",
       detail: "The API response is uncertain; this request will not be sent again automatically.",
+      active: false,
+    };
+  if (apiGeneration && state === "BLOCKED")
+    return {
+      label: "Stopped",
+      detail: "This request stopped before these items were sent to the API provider.",
       active: false,
     };
   if (apiGeneration && state === "SUBMITTING")
@@ -2281,6 +2288,7 @@ function hostedProgressValue(stage: HostedStage): number {
 function hostedGpuLaneStageStatus(lane: HostedGpuLaneActivity): ProjectStage["status"] | null {
   const state = hostedGpuLaneDisplayState(lane);
   if (state === "UNKNOWN_NO_RETRY") return "ACTION_REQUIRED";
+  if (state === "BLOCKED") return "BLOCKED";
   if (state === "SUCCEEDED") return "COMPLETE";
   if (["FAILED", "PERMANENT_FAILED", "DEAD_LETTER"].includes(state)) return "FAILED";
   if (state === "RETRYABLE_FAILED") return "FAILED";

@@ -7456,8 +7456,10 @@ async function projectDetail(
     const runtimeLanes = Array.isArray(runtime?.lanes)
       ? (runtime?.lanes as Record<string, unknown>[])
       : [];
-    // The provider attempt is authoritative for a lane's outcome. The paired runtime row can be
-    // stale after one lane fails and the other lane has already accepted its output.
+    const projectApiGeneration =
+      (detail.project as Record<string, unknown>).generation_provider === "KIE_FAL";
+    // Historical GPU attempts are authoritative over runtime rows; API job states override both
+    // below because those legacy rows can outlive a settled API request.
     const laneState = (lane: string): Record<string, unknown> | null =>
       serverlessByLane.get(lane) ?? runtimeLanes.find((value) => value.lane === lane) ?? null;
     const spanRows = (detail.spanAudio ?? []) as Record<string, unknown>[];
@@ -7529,7 +7531,9 @@ async function projectDetail(
               : apiJobs.some((job) => job.state === "SUBMITTED")
                 ? "IN_PROGRESS"
                 : apiJobs.length > 0
-                  ? "OUTBOXED"
+                  ? projectApiGeneration && runtime?.stage === "FAILED"
+                    ? "BLOCKED"
+                    : "OUTBOXED"
                   : null;
       const runtimeLane = runtimeLanes.find((value) => value.lane === lane) ?? null;
       const plannedItems =
@@ -7541,7 +7545,8 @@ async function projectDetail(
           : (numberOrNull(runtimeLane?.accepted_item_count) ?? 0));
       return {
         lane,
-        attempt_state: attempt ? String(attempt.state) : apiState,
+        attempt_state:
+          projectApiGeneration && apiState ? apiState : attempt ? String(attempt.state) : apiState,
         provider_status:
           attempt?.provider_status === null || attempt?.provider_status === undefined
             ? null
@@ -7576,8 +7581,6 @@ async function projectDetail(
     const asr = latestAttempt("ASR");
     const render = latestAttempt("RENDER");
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
-    const projectApiGeneration =
-      (detail.project as Record<string, unknown>).generation_provider === "KIE_FAL";
     // The legacy route name still drives both providers; API admission has no GPU qualification.
     const gpuPendingState = projectApiGeneration
       ? "READY_FOR_GPU_DISPATCH"
