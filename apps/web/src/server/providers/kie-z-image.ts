@@ -24,6 +24,8 @@ export class KieZImageError extends Error {
 type FetchPort = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 type JsonRecord = Record<string, unknown>;
 
+const defaultFetch: FetchPort = (input, init) => fetch(input, init);
+
 function record(value: unknown): JsonRecord | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as JsonRecord)
@@ -50,7 +52,7 @@ export class KieZImageClient {
 
   constructor(
     private readonly apiKey: string,
-    fetchPort: FetchPort = fetch,
+    fetchPort: FetchPort = defaultFetch,
   ) {
     if (!apiKey || apiKey.trim() !== apiKey) throw new KieZImageError("INPUT_INVALID");
     this.fetchPort = fetchPort;

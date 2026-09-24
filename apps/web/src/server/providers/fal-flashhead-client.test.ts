@@ -9,6 +9,20 @@ const response = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
 
 describe("FalFlashheadClient", () => {
+  it("calls the platform fetch without a receiver when no fetcher is injected", async () => {
+    const fetcher = vi.fn(function (this: unknown) {
+      if (this !== undefined) throw new TypeError("Illegal invocation");
+      return Promise.resolve(response({ request_id: requestId, status: "IN_PROGRESS" }));
+    });
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      expect(await new FalFlashheadClient("key").status(requestId)).toBe("IN_PROGRESS");
+      expect(fetcher).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("submits the exact audio model input and retrieves the matching video", async () => {
     const fetcher = vi
       .fn<typeof fetch>()

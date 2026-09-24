@@ -62,6 +62,23 @@ describe("Kie z-image task client", () => {
     );
   });
 
+  it("keeps the default global fetch separate from the client receiver", async () => {
+    let fetchReceiver: unknown;
+    const nativeFetch = vi.spyOn(globalThis, "fetch").mockImplementation(function (this: unknown) {
+      fetchReceiver = this;
+      return Promise.resolve(json({ code: 200, data: { taskId: "task_1" } }));
+    });
+    try {
+      await expect(
+        new KieZImageClient("test-key").create({ prompt: "A mountain", aspectRatio: "1:1" }),
+      ).resolves.toBe("task_1");
+      expect(nativeFetch).toHaveBeenCalledOnce();
+      expect(fetchReceiver).not.toBeInstanceOf(KieZImageClient);
+    } finally {
+      nativeFetch.mockRestore();
+    }
+  });
+
   it("rejects foreign task identity and invalid result URLs", async () => {
     const mismatch = new KieZImageClient(
       "secret",

@@ -58,7 +58,7 @@ async function json(response: Response): Promise<Record<string, unknown>> {
 export class FalFlashheadClient {
   constructor(
     private readonly key: string,
-    private readonly fetcher: typeof fetch = fetch,
+    private readonly fetcher: typeof fetch = (...args) => fetch(...args),
   ) {
     if (!key || key.trim() !== key) throw new FalFlashheadError("INPUT_INVALID");
   }
