@@ -504,6 +504,24 @@ test("0188 API jobs materialize, claim once, accept outputs, and reach render", 
           sha256(`output-${providerId}`),2048,job.lane==='IMAGE'?'image/jpeg':'video/mp4',
           JSON.stringify(job.lane==='IMAGE'?{width:1280,height:720}:{width:512,height:512,durationMs:3000})]);
     }
+    const acceptedTasks = await executor.query(`SELECT count(*)::integer AS count
+      FROM generation_tasks WHERE id=ANY($1::uuid[]) AND state='COMPLETE'
+        AND accepted_attempt_id IS NULL AND accepted_api_job_id IS NOT NULL
+        AND finished_at IS NOT NULL`,[jobs.map(job=>job.generationTaskId)]);
+    assert.equal(acceptedTasks.rows[0].count,jobs.length);
+    const settled = await executor.query(`SELECT runtime.stage,
+      (SELECT count(*)::integer FROM provider_workload_leases lease
+        WHERE lease.generation_request_id=runtime.generation_request_id
+          AND lease.state='ACTIVE') AS active_leases,
+      (SELECT count(*)::integer FROM provider_workload_leases lease
+        WHERE lease.generation_request_id=runtime.generation_request_id
+          AND lease.state='RELEASED'
+          AND lease.release_reason='HOSTED_API_OUTPUTS_ACCEPTED') AS released_leases
+      FROM video_runtime_states runtime WHERE runtime.generation_request_id=$1`,
+      [seeded.generationRequestId]);
+    assert.equal(settled.rows[0].stage,'RENDERING');
+    assert.equal(settled.rows[0].active_leases,0);
+    assert.equal(settled.rows[0].released_leases,1);
     for (const [index, assetId, key, hash, contentType] of [
       [0,IDS.voiceoverA,voiceoverKey,HASHES.voiceoverA,'audio/wav'],
       [1,IDS.avatarRuntimeA,avatarKey,HASHES.avatarRuntimeA,'image/png'],

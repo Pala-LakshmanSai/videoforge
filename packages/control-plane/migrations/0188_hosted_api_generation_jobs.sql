@@ -62,6 +62,85 @@ CREATE TRIGGER hosted_api_generation_jobs_tenant_write
   FOR EACH ROW EXECUTE FUNCTION public.videoforge_assert_tenant_write();
 REVOKE ALL ON public.hosted_api_generation_jobs FROM PUBLIC;
 
+-- A completed task points to its accepted API result without creating a fake GPU attempt.
+ALTER TABLE public.generation_tasks
+  ADD COLUMN accepted_api_job_id uuid,
+  ADD CONSTRAINT generation_tasks_accepted_api_job_fk
+    FOREIGN KEY(account_id,workspace_id,accepted_api_job_id)
+    REFERENCES public.hosted_api_generation_jobs(account_id,workspace_id,id) ON DELETE RESTRICT,
+  ADD CONSTRAINT generation_tasks_one_accepted_result_ck
+    CHECK (accepted_attempt_id IS NULL OR accepted_api_job_id IS NULL);
+
+CREATE OR REPLACE FUNCTION public.videoforge_assert_task_accepted_result(
+  checked_workspace_id uuid, checked_task_id uuid)
+RETURNS void LANGUAGE plpgsql SET search_path=pg_catalog,public AS $function$
+DECLARE
+  task_pointer uuid;
+  api_pointer uuid;
+  task_state text;
+  task_finished_at timestamptz;
+  accepted_count integer;
+  accepted_id uuid;
+BEGIN
+  SELECT accepted_attempt_id,accepted_api_job_id,state,finished_at
+    INTO task_pointer,api_pointer,task_state,task_finished_at
+    FROM public.generation_tasks
+   WHERE workspace_id=checked_workspace_id AND id=checked_task_id;
+  IF NOT FOUND THEN RETURN; END IF;
+
+  SELECT count(*)::integer,min(id::text)::uuid INTO accepted_count,accepted_id
+    FROM public.attempts
+   WHERE workspace_id=checked_workspace_id AND task_id=checked_task_id
+     AND result_disposition='ACCEPTED';
+
+  IF api_pointer IS NOT NULL THEN
+    IF task_pointer IS NOT NULL OR accepted_count<>0 OR task_state<>'COMPLETE'
+       OR task_finished_at IS NULL OR NOT EXISTS (
+      SELECT 1 FROM public.hosted_api_generation_jobs job
+      JOIN public.assets output_asset
+        ON output_asset.account_id=job.account_id
+       AND output_asset.workspace_id=job.workspace_id
+       AND output_asset.id=job.output_asset_id
+      WHERE job.workspace_id=checked_workspace_id
+        AND job.generation_task_id=checked_task_id AND job.id=api_pointer
+        AND job.state='SUCCEEDED' AND job.completed_at IS NOT NULL
+        AND output_asset.state IN ('VERIFIED','ACCEPTED')
+        AND output_asset.object_key=job.output_object_key
+        AND output_asset.binary_sha256=job.output_sha256
+    ) THEN
+      RAISE EXCEPTION 'task accepted API pointer must reference its finished verified result'
+        USING ERRCODE='23514';
+    END IF;
+    RETURN;
+  END IF;
+
+  IF accepted_count=0 AND task_pointer IS NOT NULL THEN
+    RAISE EXCEPTION 'task accepted pointer must reference its ACCEPTED attempt' USING ERRCODE='23514';
+  END IF;
+  IF accepted_count=0 AND task_state='COMPLETE' THEN
+    RAISE EXCEPTION 'a COMPLETE task must point to its ACCEPTED attempt' USING ERRCODE='23514';
+  END IF;
+  IF accepted_count=1 AND task_pointer IS DISTINCT FROM accepted_id THEN
+    RAISE EXCEPTION 'accepted attempt and task pointer must identify the same result' USING ERRCODE='23514';
+  END IF;
+  IF accepted_count=1 AND (task_state<>'COMPLETE' OR task_finished_at IS NULL) THEN
+    RAISE EXCEPTION 'a task with an accepted result must be COMPLETE with a finish timestamp' USING ERRCODE='23514';
+  END IF;
+  IF accepted_count=1 AND NOT EXISTS (
+    SELECT 1 FROM public.attempts attempt
+    JOIN public.assets output_asset ON output_asset.workspace_id=attempt.workspace_id
+      AND output_asset.id=attempt.output_asset_id
+    WHERE attempt.workspace_id=checked_workspace_id AND attempt.task_id=checked_task_id
+      AND attempt.id=accepted_id AND attempt.state='SUCCEEDED'
+      AND attempt.result_disposition='ACCEPTED' AND attempt.finished_at IS NOT NULL
+      AND output_asset.state IN ('VERIFIED','ACCEPTED')
+  ) THEN
+    RAISE EXCEPTION 'an accepted attempt must be finished and reference a verified output asset'
+      USING ERRCODE='23514';
+  END IF;
+END;
+$function$;
+
 -- An accepted API unit carries its own immutable job identity. The old FK still
 -- protects every RunPod row, and exactly one provenance path is required.
 ALTER TABLE public.video_runtime_accepted_units
@@ -449,7 +528,7 @@ DECLARE
   lane public.video_runtime_lane_states%ROWTYPE;
   asset_id uuid; reservation_id uuid; receipt_id uuid; unit_id uuid;
   receipt_facts jsonb; receipt_hash text; now_at timestamptz:=transaction_timestamp();
-  lane_name text; accepted_count integer;
+  lane_name text; accepted_count integer; changed_count integer;
 BEGIN
   IF public.videoforge_current_account_id() IS DISTINCT FROM supplied_account_id
      OR supplied_sha256 !~ '^sha256:[0-9a-f]{64}$' OR supplied_bytes NOT BETWEEN 1 AND 10737418240
@@ -531,6 +610,15 @@ BEGIN
     output_bytes=supplied_bytes,output_content_type=supplied_content_type,
     output_asset_id=asset_id,output_receipt_id=receipt_id,completed_at=now_at,updated_at=now_at
     WHERE id=job.id RETURNING * INTO job;
+  UPDATE public.generation_tasks SET state='COMPLETE',accepted_api_job_id=job.id,
+    finished_at=now_at,version=version+1,updated_at=now_at
+    WHERE account_id=supplied_account_id AND workspace_id=supplied_workspace_id
+      AND id=job.generation_task_id AND state='BLOCKED'
+      AND accepted_attempt_id IS NULL AND accepted_api_job_id IS NULL;
+  GET DIAGNOSTICS changed_count=ROW_COUNT;
+  IF changed_count<>1 THEN
+    RAISE EXCEPTION 'API generation task acceptance failed' USING ERRCODE='55000';
+  END IF;
   INSERT INTO public.video_runtime_accepted_units(id,account_id,workspace_id,runtime_id,
     project_revision_id,lane,item_id,object_key,checksum_sha256,content_length,
     accepted_attempt_id,api_job_id,accepted_at)
@@ -545,6 +633,25 @@ BEGIN
   UPDATE public.video_runtime_lane_states SET accepted_item_count=accepted_count,
     state=CASE WHEN accepted_count=planned_item_count THEN 'SUCCEEDED' ELSE state END,
     version=version+1,updated_at=now_at WHERE id=lane.id;
+  IF (SELECT count(*) FROM public.video_runtime_lane_states completed_lane
+      WHERE completed_lane.runtime_id=runtime.id AND completed_lane.state='SUCCEEDED'
+        AND completed_lane.lane IN ('mage_image','soulx_avatar'))=2 THEN
+    UPDATE public.video_runtime_states SET stage='RENDERING',version=version+1,
+      updated_at=now_at WHERE id=runtime.id AND stage='WAITING_FOR_WORKER';
+    GET DIAGNOSTICS changed_count=ROW_COUNT;
+    IF changed_count<>1 THEN
+      RAISE EXCEPTION 'API generation render barrier transition failed' USING ERRCODE='55000';
+    END IF;
+    UPDATE public.provider_workload_leases SET state='RELEASED',released_at=now_at,
+      release_reason='HOSTED_API_OUTPUTS_ACCEPTED',version=version+1,
+      heartbeat_at=now_at,expires_at=greatest(expires_at,now_at+interval '1 second')
+      WHERE account_id=supplied_account_id AND workspace_id=supplied_workspace_id
+        AND generation_request_id=supplied_generation_request_id AND state='ACTIVE';
+    GET DIAGNOSTICS changed_count=ROW_COUNT;
+    IF changed_count<>1 THEN
+      RAISE EXCEPTION 'API generation exact active lease release failed' USING ERRCODE='55000';
+    END IF;
+  END IF;
   RETURN public.videoforge_hosted_api_job_json(job);
 END;
 $$;
