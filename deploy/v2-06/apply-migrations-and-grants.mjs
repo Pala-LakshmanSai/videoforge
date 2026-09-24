@@ -285,12 +285,15 @@ const validateMigrationLedger = async (ledger, { complete = false } = {}) => {
   }
   const versions = ledger.map(({ version }) => version);
   const manifestPrefix = migrations.slice(0, versions.length).map(({ version }) => version);
+  const liveSuccessors = migrations
+    .filter(({ version }) => version >= 188)
+    .map(({ version }) => version);
   const liveHistory =
-    versions.length === liveHistoricalVersions.length ||
-    (versions.length === liveHistoricalVersions.length + 1 && versions.at(-1) === 188)
+    versions.length >= liveHistoricalVersions.length &&
+    versions.length <= liveHistoricalVersions.length + liveSuccessors.length
       ? [
           ...liveHistoricalVersions,
-          ...(versions.length > liveHistoricalVersions.length ? [188] : []),
+          ...liveSuccessors.slice(0, versions.length - liveHistoricalVersions.length),
         ]
       : [];
   if (

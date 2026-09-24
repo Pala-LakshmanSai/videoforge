@@ -83,15 +83,16 @@ const historicalLive = historicalLiveVersions.map((version) => {
 const liveShape = [...retainedLive, ...historicalLive].sort(
   (left, right) => left.version - right.version,
 );
+const pendingApiMigrations = migrationManifest.filter(({ version }) => version > 187);
 
-test("migration runner accepts exact historical ledger superset and selects only 0188", async () => {
+test("migration runner accepts exact historical ledger and selects pending API migrations", async () => {
   assert.equal(liveShape.length, 170);
   assert.deepEqual(
     (await validateMigrationLedger(liveShape)).map(({ version }) => version),
-    [188],
+    pendingApiMigrations.map(({ version }) => version),
   );
   assert.deepEqual(
-    await validateMigrationLedger([...liveShape, ledgerRow(migrationManifest.at(-1))], {
+    await validateMigrationLedger([...liveShape, ...pendingApiMigrations.map(ledgerRow)], {
       complete: true,
     }),
     [],
@@ -100,7 +101,10 @@ test("migration runner accepts exact historical ledger superset and selects only
 
 test("migration runner preserves empty bootstrap and rejects incomplete verification", async () => {
   assert.equal((await validateMigrationLedger([])).length, migrationManifest.length);
-  await assert.rejects(validateMigrationLedger(liveShape, { complete: true }), /missing 1/u);
+  await assert.rejects(
+    validateMigrationLedger(liveShape, { complete: true }),
+    new RegExp(`missing ${pendingApiMigrations.length}`),
+  );
 });
 
 test("migration runner rejects historical hash drift and gaps before database mutation", async () => {
@@ -126,9 +130,9 @@ test("migration runner rejects missing retained, reordered, and unknown future r
     validateMigrationLedger([
       ...liveShape,
       {
-        version: 189,
+        version: migrationManifest.at(-1).version + 1,
         name: "unknown_future",
-        filename: "0189_unknown_future.sql",
+        filename: `${String(migrationManifest.at(-1).version + 1).padStart(4, "0")}_unknown_future.sql`,
         sha256: `sha256:${"0".repeat(64)}`,
       },
     ]),
