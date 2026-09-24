@@ -607,6 +607,75 @@ test("0188 API jobs materialize, claim once, accept outputs, and reach render", 
     assert.equal(Object.hasOwn(ready.rows[0].result, 'avatarSource'), false);
     assert.equal(ready.rows[0].result.acceptedVisuals.filter(v=>v.lane==='soulx_avatar')
       .every(v=>v.rendererSourceProfile==='fal-flashhead-512x512p25-v1'),true);
+    const originalImageJob = jobs.find(job=>job.lane==='IMAGE');
+    const source = await executor.query(`SELECT public.videoforge_read_hosted_api_image_regeneration_source(
+      $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid) AS result`,
+      [IDS.accountA,IDS.workspaceA,IDS.projectA,IDS.revisionA,originalImageJob.generationTaskId]);
+    assert.equal(source.rows[0].result.sourceApiJobId,originalImageJob.id);
+    assert.equal(source.rows[0].result.sourceInputManifest.compiledPrompt.components.literalContent,
+      'A candid documentary image');
+    const createArgs=[IDS.accountA,IDS.workspaceA,IDS.projectA,IDS.revisionA,
+      originalImageJob.generationTaskId,'Edited documentary scene. No visible text.','api-regen-smoke'];
+    const createSql=`SELECT public.videoforge_create_hosted_api_image_regeneration(
+      $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::text,$7::text) AS result`;
+    const created=(await executor.query(createSql,createArgs)).rows[0].result;
+    assert.equal(created.state,'PREPARED');
+    assert.equal(created.inputManifest.prompt,createArgs[5]);
+    assert.equal((await executor.query(createSql,createArgs)).rows[0].result.id,created.id);
+    await expectDatabaseError(() => executor.query(createSql,[...createArgs.slice(0,5),
+      'Different scene',createArgs[6]]),'23505');
+    const claim=uuid(1_410_201);
+    const claimed=(await executor.query(`SELECT public.videoforge_claim_hosted_api_image_regeneration(
+      $1::uuid,$2::uuid) AS result`,[created.id,claim])).rows[0].result;
+    assert.equal(claimed.state,'SUBMITTING');
+    assert.equal((await executor.query(`SELECT public.videoforge_claim_hosted_api_image_regeneration(
+      $1::uuid,$2::uuid) AS result`,[created.id,uuid(1_410_202)])).rows[0].result.claimId,claim);
+    assert.equal((await executor.query(`SELECT count(*)::integer AS count FROM provider_workload_leases
+      WHERE api_image_regeneration_job_id=$1 AND state='ACTIVE'`,[created.id])).rows[0].count,1);
+    const submitted=(await executor.query(`SELECT public.videoforge_record_hosted_api_image_regeneration_task(
+      $1::uuid,$2::uuid,$3::text) AS result`,[created.id,claim,'kie-regen-smoke'])).rows[0].result;
+    assert.equal(submitted.state,'SUBMITTED');
+    const replacementHash=sha256('regenerated-image');
+    const committed=(await executor.query(`SELECT public.videoforge_commit_hosted_api_image_regeneration(
+      $1::uuid,$2::text,$3::bigint,$4::text,$5::jsonb) AS result`,
+      [created.id,replacementHash,4096,'image/jpeg',JSON.stringify({width:1280,height:720})])).rows[0].result;
+    assert.equal(committed.state,'SUCCEEDED');
+    assert.equal((await executor.query(`SELECT count(*)::integer AS count FROM provider_workload_leases
+      WHERE api_image_regeneration_job_id=$1 AND state='ACTIVE'`,[created.id])).rows[0].count,0);
+    const replacements=(await executor.query(`SELECT public.videoforge_read_hosted_api_image_regenerations(
+      $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS result`,
+      [IDS.accountA,IDS.workspaceA,IDS.projectA,IDS.revisionA])).rows[0].result;
+    assert.equal(replacements.length,1);
+    assert.equal(replacements[0].sourceApiJobId,originalImageJob.id);
+    assert.equal(replacements[0].sha256,replacementHash);
+    assert.equal(replacements[0].objectKey,created.outputObjectKey);
+    assert.equal((await executor.query(`SELECT count(*)::integer AS count FROM generation_tasks
+      WHERE id=$1 AND accepted_api_job_id=$2 AND state='COMPLETE'`,
+      [originalImageJob.generationTaskId,originalImageJob.id])).rows[0].count,1);
+    const definite=(await executor.query(createSql,[...createArgs.slice(0,6),'api-regen-definite']))
+      .rows[0].result;
+    const definiteClaim=uuid(1_410_204);
+    await executor.query(`SELECT public.videoforge_claim_hosted_api_image_regeneration(
+      $1::uuid,$2::uuid)`,[definite.id,definiteClaim]);
+    assert.equal((await executor.query(`SELECT public.videoforge_fail_hosted_api_image_regeneration(
+      $1::uuid,$2::text) AS result`,[definite.id,'PROVIDER_REJECTED'])).rows[0].result.state,
+      'FAILED');
+    assert.equal((await executor.query(`SELECT count(*)::integer AS count FROM provider_workload_leases
+      WHERE api_image_regeneration_job_id=$1 AND state='ACTIVE'`,[definite.id])).rows[0].count,0);
+    const uncertain=(await executor.query(createSql,[...createArgs.slice(0,6),'api-regen-uncertain']))
+      .rows[0].result;
+    const uncertainClaim=uuid(1_410_203);
+    await executor.query(`SELECT public.videoforge_claim_hosted_api_image_regeneration(
+      $1::uuid,$2::uuid)`,[uncertain.id,uncertainClaim]);
+    const unknown=(await executor.query(`SELECT public.videoforge_mark_hosted_api_image_regeneration_unknown(
+      $1::uuid,$2::uuid) AS result`,[uncertain.id,uncertainClaim])).rows[0].result;
+    assert.equal(unknown.state,'UNKNOWN_NO_RETRY');
+    await expectDatabaseError(() => executor.query(createSql,
+      [...createArgs.slice(0,6),'api-regen-duplicate-after-unknown']),'23505');
+    await expectDatabaseError(() => executor.query(`SELECT public.videoforge_fail_hosted_api_image_regeneration(
+      $1::uuid,$2::text)`,[uncertain.id,'UNKNOWN']),'23514');
+    assert.equal((await executor.query(`SELECT count(*)::integer AS count FROM provider_workload_leases
+      WHERE api_image_regeneration_job_id=$1 AND state='ACTIVE'`,[uncertain.id])).rows[0].count,1);
   });
 });
 

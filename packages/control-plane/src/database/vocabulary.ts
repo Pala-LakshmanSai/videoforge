@@ -149,6 +149,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "serverless_cost_ledgers",
   "serverless_cost_events",
   "hosted_api_generation_jobs",
+  "hosted_api_image_regeneration_jobs",
   "video_runtime_states",
   "video_runtime_lane_states",
   "video_runtime_accepted_units",

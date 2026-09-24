@@ -911,5 +911,12 @@
       "filename": "0188_hosted_api_generation_jobs.sql",
       "sha256": "sha256:0d3c96a27c491330588299888d549832d1a0b41925303054807306db5f5b1253"
     }
+  ,
+    {
+      "version": 189,
+      "name": "hosted_api_image_regeneration",
+      "filename": "0189_hosted_api_image_regeneration.sql",
+      "sha256": "sha256:09f5184bba44e5dba4d071fef83b3d36b5083ca2d0974b493d1f3c6385b63825"
+    }
   ]
 }
