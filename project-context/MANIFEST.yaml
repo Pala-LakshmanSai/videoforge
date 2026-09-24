@@ -192,23 +192,18 @@ hard_rules:
   - preset_preview_uses_same_capacity_and_never_outranks_eligible_video
   - waiting_work_provider_inert_until_database_admission
   - fair_account_rotation_owned_waiter_reorder_cancel_only
-  - two_queue_serverless_endpoints_eu_ro_1
-  - workers_min_zero_max_two_one_gpu_handler_concurrency_one
-  - rtx4090_only_until_each_lane_independently_qualifies_5090
-  - existing_separate_sealed_50gb_model_volume_per_lane
-  - model_volumes_mount_only_at_runpod_volume_and_never_cross_mount
+  - fresh_image_and_avatar_generation_use_kie_and_fal_apis
+  - api_provider_task_identity_persisted_before_output_acceptance
+  - uncertain_paid_api_submissions_never_automatically_resubmitted
   - runtime_model_download_quantization_and_mutable_resolution_forbidden
   - tenant_private_r2_and_job_local_scratch_only
-  - outbox_before_run_status_reconciliation_and_signed_provenance_receipt
+  - provider_task_identity_and_verified_private_output_before_acceptance
   - at_most_one_accepted_output_duplicate_compute_cost_visible
   - no_exactly_once_provider_or_billing_claim
-  - no_routine_endpoint_queue_purge
+  - no_automatic_resubmission_of_uncertain_paid_provider_calls
   - ordinary_users_have_no_gpu_or_pod_lifecycle_controls
-  - production_is_autoscaling_only_and_browser_state_projects_durable_tenant_truth
-  - zero_workers_required_after_drain_fixed_volume_billing_reported_separately
-  - provider_free_v2_08_through_v2_13_may_advance_in_parallel_with_live_certification
-  - live_certification_serial_atomic_and_reusable_only_for_24h_identical_sealed_lineage
-  - final_two_lane_smoke_and_independent_zero_worker_drain_required_before_release
+  - fresh_generation_does_not_require_gpu_availability
+  - browser_state_projects_durable_tenant_truth
   - no_motion_graphics_text_overlays_captions_borders_or_watermarks
   - no_decorative_transitions_hard_cuts_only
   - slow_smooth_centered_image_zoom_required
@@ -221,6 +216,18 @@ hard_rules:
   - published_image_style_and_avatar_profile_versions_pinned_per_revision
   - private_inputs_outputs_credentials_and_model_bytes_never_enter_git
 
+historical_runpod_invariants:
+  - two_queue_serverless_endpoints_eu_ro_1
+  - workers_min_zero_max_two_one_gpu_handler_concurrency_one
+  - rtx4090_only_until_each_lane_independently_qualifies_5090
+  - existing_separate_sealed_50gb_model_volume_per_lane
+  - model_volumes_mount_only_at_runpod_volume_and_never_cross_mount
+  - zero_workers_required_after_drain_fixed_volume_billing_reported_separately
+  - historical_attempts_keep_original_provider_identity_and_cleanup
+  - provider_free_runpod_adapters_may_advance_in_parallel_with_serial_live_certification
+  - live_runpod_certification_reusable_only_for_24h_identical_sealed_lineage
+  - final_two_lane_smoke_and_independent_zero_worker_drain_required_for_runpod_release
+
 approved_decisions:
   DEC_AUTH_001: invite_only_google_verified_email_identity_no_email_provider
   DEC_AVATAR_004: one_native_clip_two_layouts
@@ -232,13 +239,13 @@ approved_decisions:
   DEC_CONTEXT_001: v2_only_working_context_git_history_archive
   DEC_COST_001: representative_30m_variable_target_1_usd_hard_ceiling_2_usd
   DEC_DB_001: additive_postgres_contracts_pglite_tests_neon_production
-  DEC_DISPATCH_001: two_phase_serverless_authority_at_most_one_accepted_output
+  DEC_DISPATCH_001: durable_api_task_identity_and_historical_serverless_authority
   DEC_DELIVERY_001: fast_bounded_checkpoints_focused_tests_sample_driven_hardening
-  DEC_DELIVERY_002: two_track_provider_free_product_and_serial_atomic_live_certification
+  DEC_DELIVERY_002: historical_runpod_certification_fresh_api_acceptance_current
   DEC_HOSTING_001: superseded_cloud_run_hosting_decision_history
   DEC_IMAGE_001: superseded_mage_historical_attempts_only
-  DEC_IMAGE_002: mage_terms_risk_accepted_no_clear_permission_claim
-  DEC_IMAGE_003: strict_mage_review_one_same_scene_retry
+  DEC_IMAGE_002: superseded_mage_terms_risk_historical_attempts_only
+  DEC_IMAGE_003: image_review_rule_retained_mage_retry_historical_only
   DEC_LLM_001: runware_deepseek_v4_flash_0731
   DEC_LLM_002: deepseek_image_prompts_only
   DEC_OUTPUT_001: full_avatar_full_image_split_only
@@ -250,7 +257,7 @@ approved_decisions:
   DEC_RENDER_002: no_remotion_or_hyperframes
   DEC_PERSONAL_WORKER_001: tenant_owned_windows_macos_asr_render_worker
   DEC_RUNPOD_003: superseded_two_serverless_lanes_historical_only
-  DEC_RUNTIME_001: autoscaling_only_durable_per_tenant_state_no_manual_pods
+  DEC_RUNTIME_001: kie_fal_api_generation_and_tenant_worker_render_no_manual_pods
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
   DEC_SCHEDULER_002: approximately_22_percent_avatar_even_full_split
   DEC_SCOPE_001: image_only_broll

@@ -1,31 +1,37 @@
 schema_version: "2.0"
 api_generation_transition_2026_09_24:
   checkpoint: V2-09
-  status: PRODUCTION_APIS_ACCEPTED_RENDER_WORKER_025_RELEASE_IN_PROGRESS
+  status: PRODUCTION_API_SHORT_E2E_PASSED_FINALIZER_RELEASE_PENDING
   decision: >-
     Fresh ordinary image generation uses Kie z-image; avatar generation uses Fal FlashHead
     audio-to-video with the pinned Avatar Hub source and selected voiceover span. Historical
     projects pin RUNPOD, new API projects pin KIE_FAL, and consumed RunPod attempts retain
     their original provider identities and cleanup rules.
   live_evidence: >-
-    Production migration ledger is applied through 0192. Cloudflare source bfa633b0 is live as
-    version 7ca54ba7 with 25 secret names and GPU dispatch DISABLED_UNQUALIFIED. Authenticated
-    Chrome project 9b8d4c21-f38f-405b-bdf8-7fcc843cfbdd reached two accepted Kie PNG receipts
-    and one accepted Fal MP4 receipt, all viewable in the app; image and avatar provider task IDs
-    are persisted. Production fixes were based on observed Cloudflare fetch receiver and redirect
-    failures, Kie's 800-character prompt limit, and the reconciler role's missing render-reader
-    grant. The first local render attempt was claimed by installed worker v0.1.24 and failed
-    RENDER_INPUT_INVALID: the accepted Fal clip declares nominal 25 fps but average 1975/78 fps.
-    Worker v0.1.25 source 6f0fe639 validates nominal rate for Fal only; release run 36057096197
-    is in progress. The failed render attempt is terminal and must not be replayed.
+    Production migration ledger is applied through 0193. Cloudflare source a4ea4897 remains live
+    as version deee51d9-8e4d-4a2e-8a5f-cfecad247187 with 25 secret names and GPU dispatch
+    DISABLED_UNQUALIFIED; the finalizer source repair is not deployed yet. Authenticated Chrome
+    project e88f3208-3f32-4c94-a391-574485107adf accepted two Kie PNGs and one Fal avatar
+    MP4 using the selected voiceover. Installed desktop worker v0.1.25 rendered the 12.400-second
+    H.264/AAC 1080p30 final MP4 (1,872,898 bytes, sha256:b5b83e0b859c3bdc8100ba8f57c98aa42d14afc97662779f9dfe6010eba44dce).
+    Real Chrome played it to the end, approved it, and downloaded a checksum-matching MP4.
+    Render attempt 111c4032-17a0-4024-b161-e5bebdf3598a succeeded but the runtime stayed
+    RENDERING: the old render terminal guard accepted only RunPod pair lease reasons. Migration
+    0193 adds a KIE_FAL acceptance proof for the API lease reason, and the same persisted attempt
+    finalized without provider or render replay: runtime COMPLETE, generation SUCCEEDED, one
+    FINAL_OUTPUT_DURABLE event, and final receipt
+    sha256:d59ab71787998fb02076c9722faa1c89ae52382430aea544d3594e5d76e89b8e.
+    Chrome reloaded Progress at 100% and Review APPROVED with download. Review regeneration
+    completed as a separate accepted Kie replacement job ba5c5909-d222-4698-aa3c-4172fd3504b6
+    (image sha256:680aeb72edd97f7a24950cfcfa864907ca93e2a556bbe01c8b1e95db2ebd1ee6).
+    The earlier v0.1.24 failed render is terminal.
   remaining_gates: >-
-    Publish immutable worker v0.1.25 for macOS and Windows, update the production release
-    manifest and install the local macOS worker, then schedule one new render attempt from the
-    already accepted pilot assets with the new execution-bundle identity. Verify terminal MP4
-    receipt, Chrome playback/download, one Kie image replacement from Review, provider cost
-    readback, and zero active RunPod workers. Do not resubmit the consumed provider task IDs.
+    Commit, push, and deploy the finalizer source repair and context updates; verify the hosted
+    API completion path after deployment. Verify provider cost readback and zero active RunPod
+    workers. The 18-minute hosted final-video acceptance
+    remains separate. Do not resubmit consumed provider task IDs or render attempts.
   provider_spend: BOUNDED_API_PILOTS_WITHIN_APPROVED_USD_5_CAP_EXACT_PROVIDER_CHARGES_PENDING
-  paid_compute_shutdown: GPU_DISPATCH_DISABLED_NO_RUNPOD_COMPUTE_STARTED_FOR_API_PILOTS
+  paid_compute_shutdown: GPU_DISPATCH_DISABLED_RUNPOD_LIVE_INVENTORY_PENDING
 
 relatability_verification_and_pipeline_repairs_2026_09_19:
   checkpoint: V2-09

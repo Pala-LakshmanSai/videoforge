@@ -21,14 +21,16 @@ The production target is:
 - Postgres fair admission: one active provider workload/account and two globally from different
   accounts; videos retain one/account and two/global caps, and explicit previews use the same slots
   below every eligible video;
-- one RunPod queue Serverless Mage endpoint and one separate SoulX endpoint;
-- `workersMin=0`, `workersMax=2`, one RTX 4090 per worker;
-- existing isolated 50 GB `EU-RO-1` Mage and SoulX volumes at `/runpod-volume`, treated read-only;
+- fresh image generation through Kie Market `z-image` and avatar spans through Fal
+  `fal-ai/flashhead/audio-to-video`, using the pinned Avatar Hub source and selected voiceover;
+- durable Postgres admission and provider task identity before output acceptance; uncertain paid
+  submissions are never automatically repeated;
+- existing RunPod jobs retain their pinned transport, receipts, cleanup, and retained-volume rules;
 - deterministic word-timed Ranga-style scheduler and direct FFmpeg output.
 
-RTX 5090 is not fallback until each lane qualifies it. No superseded manual-compute or alternate-
-runtime transport is active. The two prepared volumes are reused; V2 work does not recreate or
-redownload them.
+Fresh generation has no GPU availability dependency. Historical model volumes are not fresh-path
+inputs and remain subject to their original retention and cleanup rules. Final render and ASR use
+the paired tenant-owned personal worker.
 
 ## Start every task narrowly
 
@@ -56,18 +58,16 @@ The dependency order is binding even if exact checkpoint labels change:
 2. Add tenant-private account/default-workspace schema, repositories, authz, and fixture UI.
 3. Add private R2 object reservations, signed URLs, provenance receipts, and isolated scratch.
 4. Add fair durable queue/admission/recovery: one/account and two/global.
-5. Add v3 Serverless envelopes, outbox/assignment/reconciliation, fake transport, and old-Pod
-   firewall.
+5. Add durable Kie/Fal task submission, persisted provider identities, private output acceptance,
+   and no-replay recovery; preserve exact reconciliation for historical RunPod attempts.
 6. Cut application/runtime/UI provider-free paths fully to V2; remove manual GPU/Pod controls and
    prove failure/restart/cancellation states.
 7. Deploy/qualify isolated hosted auth/Neon/R2/Cloudflare staging plus signed personal workers.
-8. Publish/configure/qualify Mage Serverless against the existing Mage volume under exact authority.
-9. Publish/configure/qualify SoulX Serverless against the existing SoulX volume under exact authority.
-10. Run one owned short integrated Generate-to-MP4 project in installed Chrome.
-11. Run a real 3–5-minute Ranga-style pilot and close human quality/crop gates.
-12. Prove two-user concurrency, 5–10-user fairness, recovery, production-length speed/economics, and
-    only then consider separate RTX 5090 qualifications.
-13. Complete security/operations/release review and production cutover.
+8. Integrate Kie image and Fal audio-to-video generation with the existing tenant queue and receipts.
+9. Render accepted API media on the paired personal worker; complete Chrome playback/download and
+   Review regeneration acceptance.
+10. Measure API cost and verify provider-task settlement and GPU dispatch remains disabled.
+11. Complete security, operations, and invited-production release review.
 
 Do not jump from a Pod-era sample to endpoint publication, or from a short sample to full-length
 economics/security claims.
@@ -95,8 +95,8 @@ Canonical verify never contacts providers or proves hosted/live gates.
 
 ```text
 apps/web/                  React/Vite UI + same-origin Cloudflare API
-workers/image-media/       Mage runtime + RunPod Serverless handler + fixture adapter
-workers/avatar-primary/    SoulX runtime + RunPod Serverless handler + fixture adapter
+workers/image-media/       Historical Mage runtime + RunPod handler + fixture adapter
+workers/avatar-primary/    Historical SoulX runtime + RunPod handler + fixture adapter
 workers/media-local/       Provider-neutral Whisper/FFmpeg execution core + personal-worker adapter
 apps/media-worker-desktop/ Native Windows/macOS packaging, signing, release manifest, and autostart
 packages/contracts/        JSON Schema, TypeScript/Python parity, fixtures
@@ -105,9 +105,9 @@ packages/test-fixtures/    Owned/synthetic deterministic assets
 project-context/           Normative decisions, gates, checkpoint state, evidence
 ```
 
-Keep Mage and SoulX dependencies/images/endpoints separate. Both use tenant artifact contracts but
-never share model volume, cache, lock, scratch, or runtime. Ordinary boot loads exact sealed bytes
-offline; one-time preparation tools are outside the normal handler and not part of this V2 reset.
+Keep existing Mage and SoulX artifacts isolated for historical job reconciliation. Fresh API
+generation uses no model volume, GPU worker, or runtime download; private output and receipt
+contracts remain shared.
 
 ## Development and authority modes
 
@@ -128,10 +128,10 @@ Authority:
   non-transferable user approval.
 
 For an external checkpoint, complete local/provider-free work and authorized read-only preflight
-first. Then ask once with the exact publication/configuration/request/delete or retention operations,
-immutable artifacts, endpoint settings, existing volume identities/rates, selected RTX 4090 rate,
-finite spend estimate/cap, continuing fixed billing, stop conditions, and cleanup. Record approval and
-continue without another question unless scope/rate/cap/capacity changes or ambiguity appears.
+first. Then ask once with the exact API/deployment operations, immutable source/config identities,
+current provider rates, finite spend cap, stop conditions, and cleanup. Include GPU rates and retained
+volume charges only when the operation touches historical RunPod resources. Record approval and
+continue without another question unless scope, rate, cap, or capacity changes.
 
 No earlier CP/VF authority transfers. No provider mutation occurs because an architecture document
 was approved.
@@ -144,12 +144,11 @@ Keep deterministic two-account fixtures for:
 - private project/Avatar/Style lists and foreign-ID negatives;
 - tenant R2 upload/download expiry/hash/type/size/prefix failures;
 - one active/account, two active/global, fair waiting, own reorder/cancel, starvation/race recovery;
-- whole-video Mage/SoulX batches, lane-zero-work, cost/cap blocked;
-- outbox before dispatch, ack unknown, unique assignment, status polling, webhook missing/duplicate/
-  forged/out-of-order, provider-result expiry, duplicate output quarantine;
-- worker allocating/container/volume/model/warm/ready/generating/uploading states;
-- wrong tenant/endpoint/image/model/volume/manifest/GPU, model-volume write attempt, scratch leak;
-- timeout/cancel/retry/restart and zero-worker/fixed-volume truth;
+- Kie image and Fal audio-to-video task submission, provider status/result observation, timeout,
+  cancellation, uncertain-response no-replay, and duplicate-output quarantine;
+- worker claim/renew/cancel/result states for the paired personal media worker;
+- wrong tenant/provider task/media type/checksum, private object-port violations, and scratch leak;
+- historical RunPod reconciliation and zero-worker/retained-volume evidence as separate fixtures;
 - short integrated final MP4 and Ranga-style timeline.
 
 Fixtures use owned/synthetic media only, remain visibly marked in development, and are hard-disabled
@@ -171,22 +170,25 @@ For every user-visible checkpoint:
 Screenshots prove appearance only. Record interaction, state transition, console/network, and final
 artifact evidence. Preserve the accepted visual system; remove only obsolete manual compute controls.
 
-## Provider implementation rules
+## Kie/Fal provider implementation rules
 
-- Persist predispatch authority/outbox before `/run`; bind post-assignment before accepting status/
-  output.
+- Claim each API job in Postgres before submission and persist returned Kie/Fal task identity.
 - Promise at most one accepted output, never provider exactly-once execution/billing.
-- Poll status and persist facts; async provider results expire after 30 minutes and webhook is not
-  sole truth.
-- Measure/set TTL, execution timeout, idle policy, and `RUNPOD_INIT_TIMEOUT`. TTL includes queue/run.
-- Never call queue purge in ordinary code.
+- Poll and persist status; verify private media structure, bytes, and checksum before acceptance.
+- Treat uncertain paid submission as terminal unless the same provider task identity is recovered;
+  never create a replacement call automatically.
 - Use tenant signed R2 reservations, unique job scratch, application-signed receipts, exact checksum/
   media validation, and durable DB lineage.
-- `/runpod-volume` is application-read-only. Redirect cache/config/temp/locks; verify pre/post hashes.
-- Qualify two concurrent readers before live `workersMax=2`.
-- After paid tests, reconcile terminal jobs and prove zero endpoint jobs plus zero total workers
-  (`Active + Flex`). Report the two retained 50 GB
-  volumes and ongoing `$7/month` planning cost separately.
+
+## Historical RunPod reconciliation rules
+
+Apply these only to attempts already pinned to `RUNPOD`:
+
+- Persist the original predispatch authority/outbox, exact job binding, and signed receipt. Never
+  replay the identity through Kie/Fal.
+- `/runpod-volume` remains application-read-only; retain lane isolation and original cleanup rules.
+- Reconcile terminal jobs and prove zero endpoint jobs/workers before claiming compute shutdown.
+- Report retained-volume billing separately from compute and API costs.
 
 ## Task ownership and evidence
 
@@ -194,11 +196,11 @@ Each task brief records checkpoint, dependency/gates, base commit, owned files/m
 notes, exact commands, Chrome route/fixture, provider authority/cap, rollback, acceptance, and evidence
 path. Parallel agents own disjoint files; shared migrations/schemas/root shell serialize.
 
-Provider evidence records exact endpoint/template/container/model/volume manifest, request/assignment,
-selected/actual GPU/rate, tenant-safe input/output hashes, cold/warm readiness, inference/upload,
-artifact receipt, possible duplicate exposure, settled cost, zero-worker proof, and retained-volume
-state. Hosted CPU evidence similarly records deployment/job region/sizing, R2 manifests, timing, cost,
-and validation.
+Provider evidence records exact provider/model/task identity, tenant-safe input/output hashes, artifact
+receipt, possible duplicate exposure, settled cost, and validation. For historical RunPod attempts,
+also retain endpoint/template/container/volume manifest, selected/actual GPU and rate, worker shutdown,
+and retained-volume state. Hosted CPU evidence records deployment/job region/sizing, R2 manifests,
+timing, cost, and validation.
 
 ## Definition of done
 
@@ -209,8 +211,9 @@ and validation.
 - User-visible behavior passes the real-Chrome journey with no new unexplained console/network error.
 - Tenant isolation and required negative/fault cases pass.
 - No secret/private/reference asset/model weight/signed URL entered Git or browser bundles.
-- External work stayed within exact authority/cap; ambiguity/cost is truthful; paid workers/jobs are
-  reconciled to zero and retained-volume billing is explicit.
+- External work stayed within exact authority/cap; ambiguity/cost is truthful; API tasks are settled
+  and released. For historical RunPod work, reconcile workers to zero and report retained-volume
+  billing separately.
 - Context/schema validators pass after context/contracts change.
 - `CURRENT_STATE.yaml` records exact commit, commands/evidence, remaining gates, provider/spend state,
   compute shutdown state, and one next checkpoint/profile/brief.

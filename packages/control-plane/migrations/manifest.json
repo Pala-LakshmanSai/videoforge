@@ -930,6 +930,12 @@
       "name": "hosted_api_render_reconciler_grant",
       "filename": "0192_hosted_api_render_reconciler_grant.sql",
       "sha256": "sha256:33c7bcc1491ee1a7b7ed5349747d8da12aeea290539559f553264f0dcb54c37c"
+    },
+    {
+      "version": 193,
+      "name": "hosted_api_render_terminal",
+      "filename": "0193_hosted_api_render_terminal.sql",
+      "sha256": "sha256:321b851f7e0f27db27c8930543bd6402fa17db4f32a4d6fedff1f8c0dd172369"
     }
   ]
 }

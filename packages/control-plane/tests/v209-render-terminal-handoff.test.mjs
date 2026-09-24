@@ -6,7 +6,7 @@ import { IDS } from "./support/fixtures.mjs";
 import { expectDatabaseError, sha256, uuid, withMigratedDatabase } from "./support/pglite.mjs";
 import { seedMaterialization } from "./hosted-lane-batch-materialization.test.mjs";
 
-async function fixture(executor) {
+async function fixture(executor, releaseReason = "HOSTED_PAIR_OUTPUTS_ACCEPTED") {
   const seeded = await seedMaterialization(executor, { canonicalV209: true });
   const runtime = (
     await executor.query("SELECT id FROM video_runtime_states WHERE generation_request_id=$1", [
@@ -36,6 +36,10 @@ async function fixture(executor) {
     },
   };
   const payloadSha256 = canonicalSha256(payload);
+  const requestSha256 = (await executor.query(
+    "SELECT videoforge_hosted_cpu_submission_request_sha256($1::jsonb) AS value",
+    [JSON.stringify(payload)],
+  )).rows[0].value;
   await executor.execute("ALTER TABLE video_runtime_states DISABLE TRIGGER ALL");
   await executor.query(
     `UPDATE video_runtime_states SET stage='RENDERING',render_manifest_sha256=$2,
@@ -45,8 +49,8 @@ async function fixture(executor) {
   await executor.execute("ALTER TABLE video_runtime_states ENABLE TRIGGER ALL");
   await executor.query(
     `UPDATE provider_workload_leases SET state='RELEASED',released_at=transaction_timestamp(),
-      release_reason='HOSTED_PAIR_OUTPUTS_ACCEPTED',version=version+1 WHERE id=$1`,
-    [lease.id],
+      release_reason=$2,version=version+1 WHERE id=$1`,
+    [lease.id, releaseReason],
   );
   await executor.query(
     `INSERT INTO hosted_render_plans(account_id,workspace_id,project_id,project_revision_id,
@@ -76,7 +80,7 @@ async function fixture(executor) {
       IDS.workspaceA,
       IDS.projectA,
       IDS.revisionA,
-      payloadSha256,
+      requestSha256,
       `${primaryKey}-spec`,
       sha256("0083-spec"),
       resultKey,
@@ -166,6 +170,8 @@ test("0083 atomically finalizes and exactly replays the released V2-09 render", 
       [IDS.accountA, IDS.workspaceA, target.attemptId],
     );
     assert.equal(candidate.rows[0].value.runtimeStage, "RENDERING");
+    assert.equal(candidate.rows[0].value.generationProvider, "RUNPOD");
+    assert.equal(candidate.rows[0].value.apiOutputsAccepted, false);
     const first = (await finalize(executor, target)).rows[0].value;
     assert.equal(first.state, "SUCCEEDED");
     assert.equal(first.replayed, false);
@@ -247,6 +253,20 @@ test("0083 atomically finalizes and exactly replays the released V2-09 render", 
       lease_version: 2,
       audit_count: 1,
     });
+  });
+});
+
+test("0193 rejects an API lease reason for a historical RunPod project", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    const target = await fixture(executor, "HOSTED_API_OUTPUTS_ACCEPTED");
+    await expectDatabaseError(() => finalize(executor, target), "42501");
+    const state = await executor.query(
+      `SELECT runtime.stage,request.state request_state
+       FROM video_runtime_states runtime JOIN generation_requests request
+         ON request.id=runtime.generation_request_id WHERE runtime.id=$1`,
+      [target.runtimeId],
+    );
+    assert.deepEqual(state.rows[0], { stage: "RENDERING", request_state: "ACTIVE" });
   });
 });
 

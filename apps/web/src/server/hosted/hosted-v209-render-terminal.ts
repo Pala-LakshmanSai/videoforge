@@ -64,7 +64,10 @@ function validateCandidate(
     !(
       candidate.leaseReleaseReason === "HOSTED_PAIR_OUTPUTS_ACCEPTED" ||
       (candidate.leaseReleaseReason === "HOSTED_PAIR_PROVIDER_TERMINAL" &&
-        Number(candidate.acceptedLaneCount) === 2)
+        Number(candidate.acceptedLaneCount) === 2) ||
+      (candidate.leaseReleaseReason === "HOSTED_API_OUTPUTS_ACCEPTED" &&
+        candidate.generationProvider === "KIE_FAL" &&
+        candidate.apiOutputsAccepted === true)
     ) ||
     !UUID.test(text(candidate.runtimeId)) ||
     !UUID.test(text(candidate.generationRequestId)) ||

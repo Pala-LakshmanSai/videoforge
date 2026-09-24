@@ -4824,7 +4824,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         item.start_ms !== null && item.start_ms !== undefined
           ? `${formatMilliseconds(item.start_ms)}–${formatMilliseconds(item.end_ms)}`
           : item.shot_role
-            ? item.shot_role.replaceAll("_", " ")
+            ? query.data.generation_provider === "KIE_FAL" &&
+              item.shot_role.toUpperCase() === "MAGE_IMAGE"
+              ? "Kie image"
+              : item.shot_role.replaceAll("_", " ")
             : "Accepted Stage 6 image",
     };
   });

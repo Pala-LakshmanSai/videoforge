@@ -71,6 +71,8 @@ async function harness(requestState: "ACTIVE" | "SUCCEEDED") {
     leaseState: "RELEASED",
     leaseVersion: 2,
     leaseReleaseReason: "HOSTED_PAIR_OUTPUTS_ACCEPTED",
+    generationProvider: "RUNPOD",
+    apiOutputsAccepted: false,
     renderAttemptCount: 1,
     runtimeCount: 1,
     leaseCount: 1,
@@ -232,5 +234,27 @@ describe("hosted V2-09 reconciler terminal handoff", () => {
       }),
     ).rejects.toThrow("HOSTED_V209_RENDER_TERMINAL_INVALID");
     expect(target.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("accepts an API terminal candidate only with exact provider and accepted-output proof", async () => {
+    const target = await harness("ACTIVE");
+    target.candidate.leaseReleaseReason = "HOSTED_API_OUTPUTS_ACCEPTED";
+    target.candidate.generationProvider = "KIE_FAL";
+    target.candidate.apiOutputsAccepted = true;
+    await expect(
+      target.terminal.acceptCompleted({
+        accountId: IDS.account,
+        workspaceId: IDS.workspace,
+        attemptId: IDS.attempt,
+      }),
+    ).resolves.toMatchObject({ state: "SUCCEEDED", replayed: true });
+    target.candidate.apiOutputsAccepted = false;
+    await expect(
+      target.terminal.acceptCompleted({
+        accountId: IDS.account,
+        workspaceId: IDS.workspace,
+        attemptId: IDS.attempt,
+      }),
+    ).rejects.toThrow("HOSTED_V209_RENDER_TERMINAL_INVALID");
   });
 });

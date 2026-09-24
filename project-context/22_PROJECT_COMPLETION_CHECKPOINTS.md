@@ -1,14 +1,14 @@
 # VideoForge v2 fast completion checkpoints
 
-Status: authoritative completion roadmap reconciled to the exact 2026-09-03 repository state
+Status: historical V2-00–V2-13 checkpoint roadmap; superseded for fresh generation by
+`DEC_API_GENERATION_001` (2026-09-24). `CURRENT_STATE.yaml` is current release truth.
 
-This file is the handoff map for new chats. V2-00 through V2-06 are accepted foundations and must
-not be reimplemented. From V2-07 onward, use the product and certification tracks below: make small
-green provider-free integration commits while live qualifications proceed as separately sealed
-atomic gates. Use the paired read-only audit prompt at material integration and certification
-boundaries.
+This file preserves checkpoint history and prior RunPod qualification evidence. Do not treat the old
+RunPod lane table, live-certification gates, or completion dates as fresh-generation requirements.
+Use the startup files, `DEC_API_GENERATION_001`, and `CURRENT_STATE.yaml` for active work and release
+state. Historical attempts and GPU evidence remain immutable provenance.
 
-## Locked product destination
+## Current product destination
 
 VideoForge is a private hosted video-production app for 5–10 invited accounts. Every account owns
 one default workspace and its own durable projects, revisions, voiceovers, Avatar Profiles, Image
@@ -16,18 +16,18 @@ Styles, queue rows, generation state, retries, costs, outputs, downloads, and pa
 state. Browser state is a view of server truth, not the source of truth. Cross-account reads,
 writes, queue control, object discovery, callbacks, logs, or result access are forbidden.
 
-Production compute is autoscaling only:
+Fresh generation uses ready-made APIs; final rendering and ASR use the paired personal worker:
 
 | Lane | Exact runtime | Production shape |
 |---|---|---|
-| Images | Mage-Flow INT8 ConvRot | Queue-based RunPod Serverless, `EU-RO-1`, existing sealed Mage 50 GB volume at `/runpod-volume`, RTX 4090, `workersMin=0`, target `workersMax=2` |
-| Avatar | SoulX-FlashHead Pro BF16 | Separate queue-based RunPod Serverless endpoint, existing sealed SoulX 50 GB volume at `/runpod-volume`, RTX 4090, `workersMin=0`, target `workersMax=2` |
+| Images | Kie Market `z-image` | Kie API; durable task identity and verified private receipt |
+| Avatar | Fal `fal-ai/flashhead/audio-to-video` | Fal API with pinned Avatar Hub source and selected voiceover span |
+| ASR/render | Pinned whisper.cpp and FFmpeg | Paired tenant-owned Windows/macOS personal worker |
 
 Postgres owns admission and fairness: at most one active provider workload per account and two
-different accounts globally. Additional work waits durably and fairly. Users never select GPUs or
-start, stop, create, or delete Pods/workers. RunPod scales from zero on admitted demand and drains
-back to zero. Model volumes are application-read-only; tenant media uses private R2 and job-local
-scratch.
+different accounts globally. Additional work waits durably and fairly. Fresh generation has no GPU
+availability dependency. Existing RunPod attempts retain their original provider identity, cleanup,
+and retained-volume rules. Tenant media uses private R2 and job-local scratch.
 
 The output grammar remains full avatar, full image, or avatar-left/image-right split; hard cuts;
 subtle centered image zoom; no captions, text overlays, borders, title cards, motion graphics,
@@ -35,7 +35,7 @@ watermarks, or decorative transitions. The representative 30-minute variable-cos
 `<= $1.00`; the hard ceiling is `<= $2.00`. The two retained-volume charges are fixed infrastructure
 reported separately.
 
-## Exact current state
+## Historical V2-09 handoff snapshot — 2026-09-04
 
 Repository truth at the 2026-09-04 handoff:
 

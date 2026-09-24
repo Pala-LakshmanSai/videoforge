@@ -10,13 +10,16 @@ import { applyMigrations, MIGRATION_MANIFEST } from "../../dist/src/index.js";
 /**
  * The deployment roles the migration chain grants to.
  *
- * Migrations 0147/0161/0162/0163 grant EXECUTE to the production runtime role by name
- * (`videoforge_v209_runtime_dc9612d6`), and no migration creates it: the private activation tooling
- * does that out of band against the real database. Every fixture database emulates that deployment,
+ * Migrations 0147/0161/0162/0163 and 0192 grant EXECUTE to production roles by name,
+ * and no migration creates them: private activation tooling does that out of band.
+ * Every fixture database emulates that deployment,
  * so each executor creates the role before its first statement, or each of those GRANTs raises 42704
  * (`role ... does not exist`).
  */
-const DEPLOYMENT_ROLES = Object.freeze(["videoforge_v209_runtime_dc9612d6"]);
+const DEPLOYMENT_ROLES = Object.freeze([
+  "videoforge_v209_runtime_dc9612d6",
+  "videoforge_v209_reconciler_dc9612d6",
+]);
 
 export class PGliteExecutor {
   constructor(database) {

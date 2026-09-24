@@ -1,14 +1,15 @@
 # Development plan
 
-Status: compact index for the VideoForge v2 production roadmap
-Read when: selecting work, checking dependencies, or deciding what may be reused.
+Status: historical V2 roadmap; fresh generation decision superseded RunPod as the new-project provider
+Read when: recovering checkpoint history. Use `DEC_API_GENERATION_001` and `CURRENT_STATE.yaml` for
+current fresh-generation and release truth.
 
 ## Canonical sequence
 
-`22_PROJECT_COMPLETION_CHECKPOINTS.md` is the authoritative roadmap. Only V2 task briefs live in the
+`22_PROJECT_COMPLETION_CHECKPOINTS.md` preserves the superseded V2 checkpoint plan and historical
+RunPod qualifications. It is not the current provider destination. Only V2 task briefs live in the
 working tree; Git history records removed planning files. Committed migrations and evidence required
-by active foundations/gates remain immutable. `CURRENT_STATE.yaml` selects one exact V2 checkpoint,
-task brief, and read profile.
+by active foundations/gates remain immutable. `CURRENT_STATE.yaml` selects current work.
 
 ```text
 V2-00  architecture, reference, and roadmap reset
@@ -41,13 +42,15 @@ required visual acceptance.
   queue selects work. Explicit preset previews use the same slots and are eligible only after all
   video heads. Users may reorder/cancel only their own waiting entries without changing account
   rotation or another account's order. Waiting work causes no provider action.
-- Two independent RunPod queue Serverless endpoints in `EU-RO-1`: Mage-Flow INT8 ConvRot and
-  SoulX-FlashHead Pro BF16. Each endpoint uses its existing separate sealed 50 GB volume mounted at
-  `/runpod-volume`, one GPU per Flex worker, `workersMin=0`, and a qualified bounded maximum.
-- Ordinary users never select GPUs or start/stop Pods. The application admits jobs; RunPod creates
-  and removes Flex workers from demand. Endpoint deployment choices belong to operators.
-- Private R2 carries tenant-scoped inputs and outputs. Model volumes are application-read-only and
-  never contain user media. Every request uses job-keyed local scratch erased on all terminal paths.
+- Fresh scene images use Kie Market `z-image`; avatar spans use Fal FlashHead audio-to-video with the
+  revision-pinned Avatar Hub source and selected voiceover. API task identities and verified receipts
+  are durable; uncertain paid calls are never automatically repeated.
+- Fresh generation requires no GPU or retained model volume. Existing RunPod attempts preserve their
+  exact provider identity and historical reconciliation/cleanup; ASR and final render use the paired
+  tenant-owned personal worker.
+- Private R2 carries tenant-scoped inputs and outputs. Historical model volumes remain
+  application-read-only and never contain user media. Every request uses job-keyed local scratch
+  erased on all terminal paths.
 - Preserve the existing word transcript, deterministic three-composition scheduler, prompt/style
   system, renderer, UI design language, and qualified model bytes. Replace active ownership,
   queueing, dispatch, storage, and production hosting around them.
@@ -75,15 +78,15 @@ covering operations, resource identities/configuration, current rates, recurring
 stop conditions, and a numeric maximum cumulative finite spend supplied by the user. Authority is
 checkpoint-specific and never transfers. Stop on proposal drift or cap risk.
 
-RunPod delivery is not exactly once. Persist the outbox/dispatch token before `/run`, reconcile
-`/status` into a durable signed R2 receipt within the 30-minute async-result window, accept at most
-one canonical output, and expose bounded duplicate-compute/cost risk. Never use queue purge as
-ordinary recovery. TTL, execution timeout, initialization timeout, scaling, and idle policy must be
-derived from measurements rather than defaults.
+Kie/Fal providers do not guarantee exactly-once execution or billing. Persist provider task identity,
+reconcile status into a durable signed R2 receipt, accept at most one canonical output, and expose
+uncertain cost. Never automatically resubmit an uncertain paid call. For existing RunPod attempts,
+preserve the original outbox, status-reconciliation, queue-purge prohibition, and worker/volume
+cleanup rules.
 
 ## Safe parallelism
 
-After v3 contracts lock, disjoint Mage and SoulX worker modules may be developed in parallel.
+Historical V2-07/V2-08 Mage and SoulX worker modules remain separate; do not use them for fresh jobs.
 Serialize migrations, tenant/queue state, transport contracts, root UI, provider mutations,
 production configuration, integration commits, and checkpoint promotion through one owner. Runtime
 may execute two videos only when they belong to different accounts and both hold valid global slots.

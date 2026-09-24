@@ -604,6 +604,11 @@ test("0188 API jobs materialize, claim once, accept outputs, and reach render", 
       $1::uuid,$2::uuid,$3::uuid) AS result`,
       [IDS.accountA,IDS.workspaceA,seeded.generationRequestId]);
     assert.equal(ready.rows[0].result?.acceptedVisuals?.length,3);
+    const apiProof = await executor.query(`SELECT public.videoforge_v209_api_outputs_accepted(
+      $1::uuid,$2::uuid,$3::uuid,runtime.id) AS accepted
+      FROM video_runtime_states runtime WHERE runtime.generation_request_id=$3`,
+      [IDS.accountA,IDS.workspaceA,seeded.generationRequestId]);
+    assert.equal(apiProof.rows[0].accepted,true);
     assert.equal(Object.hasOwn(ready.rows[0].result, 'avatarSource'), false);
     assert.equal(ready.rows[0].result.acceptedVisuals.filter(v=>v.lane==='soulx_avatar')
       .every(v=>v.rendererSourceProfile==='fal-flashhead-512x512p25-v1'),true);

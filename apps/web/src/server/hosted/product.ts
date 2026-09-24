@@ -3768,7 +3768,7 @@ function hostedSpanFailureMessage(
 /** Every stage that runs on the owner's own computer reports the same bounded local causes. */
 function hostedLocalFailureMessage(failureCode: string | null, fallback: string): string {
   if (failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") {
-    return "Your computer ran out of free disk space. Free space there and run this project again.";
+    return "Your computer ran out of free disk space. Free space there, then create a new project.";
   }
   if (failureCode === "MEDIA_EXECUTION_TIMEOUT") {
     return "Your computer stopped work that took too long. Run this project again to retry it.";
