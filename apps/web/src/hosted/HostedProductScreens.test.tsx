@@ -578,6 +578,90 @@ it("restores an unresolved request after remount and reuses its idempotency key"
   expect(postKeys[2]).toBe(postKeys[0]);
 });
 
+it("keeps an uncertain Kie regeneration identity and blocks another submission", async () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  const revisionId = "22222222-2222-4222-8222-222222222222";
+  const imageTaskId = "33333333-3333-4333-8333-333333333333";
+  const requestId = "44444444-4444-4444-8444-444444444444";
+  let postCount = 0;
+  let statusCount = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith(`/images/${imageTaskId}/regenerate`)) {
+        postCount += 1;
+        return Response.json(
+          { request_id: requestId, attempt_id: requestId, state: "QUEUED" },
+          { status: 202 },
+        );
+      }
+      if (path.endsWith(`/images/${imageTaskId}/regenerate/${requestId}`)) {
+        statusCount += 1;
+        return Response.json({
+          request_id: requestId,
+          attempt_id: requestId,
+          state: "ACTION_REQUIRED",
+          error_code: "UNKNOWN_NO_RETRY",
+        });
+      }
+      return Response.json({
+        project: {
+          id: projectId,
+          title: "Private project",
+          created_at: "2026-09-06T10:00:00.000Z",
+          revision_id: revisionId,
+          revision_state: "LOCKED",
+        },
+        attempts: [],
+        generation_provider: "KIE_FAL",
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        generation: null,
+        stages: [
+          {
+            id: "image-generation",
+            name: "Generate images",
+            status: "COMPLETE",
+            progress_percent: 100,
+          },
+        ],
+        contact_sheet: [
+          { id: imageTaskId, image_url: "/original.png", prompt: "Original image prompt" },
+        ],
+      });
+    }),
+  );
+
+  const first = renderHosted(<HostedProjectScreen projectId={projectId} />);
+  fireEvent.click(await screen.findByRole("button", { name: "View generated images" }));
+  fireEvent.click(screen.getByRole("button", { name: "Regenerate image" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("provider result is unconfirmed");
+  expect(screen.getByRole("alert")).toHaveTextContent("will not be submitted again automatically");
+  expect(
+    screen.getByText(
+      "Refresh the project to check this request. Do not submit another image request.",
+    ),
+  ).toBeVisible();
+  expect(screen.getByRole("button", { name: "Regenerate image" })).toBeDisabled();
+  expect(postCount).toBe(1);
+  expect(statusCount).toBe(1);
+  expect(
+    JSON.parse(
+      window.sessionStorage.getItem(
+        `videoforge.hosted-image-regeneration.v1:${projectId}:${revisionId}:${imageTaskId}`,
+      ) ?? "null",
+    ),
+  ).toMatchObject({ requestId });
+
+  first.unmount();
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
+  fireEvent.click(await screen.findByRole("button", { name: "View generated images" }));
+  fireEvent.click(screen.getByRole("button", { name: "Regenerate image" }));
+  await waitFor(() => expect(statusCount).toBe(2));
+  expect(postCount).toBe(1);
+});
+
 afterEach(() => {
   cleanup();
   window.sessionStorage.clear();

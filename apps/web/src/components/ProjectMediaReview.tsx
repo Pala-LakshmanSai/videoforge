@@ -42,6 +42,7 @@ export interface ProjectMediaReviewProps {
 interface RegenerationFailure {
   readonly message: string;
   readonly retryable: boolean;
+  readonly actionRequired: boolean;
 }
 
 function countLabel(count: number, singular: string, plural: string): string {
@@ -192,11 +193,17 @@ export function ProjectMediaReview({
       const retryable =
         !(error && typeof error === "object" && "retryable" in error) ||
         (error as { retryable?: unknown }).retryable !== false;
+      const actionRequired =
+        !!error &&
+        typeof error === "object" &&
+        "actionRequired" in error &&
+        (error as { actionRequired?: unknown }).actionRequired === true;
       setRegenerationErrors((current) => ({
         ...current,
         [item.id]: {
-          message: `The image could not be regenerated.${reason} Your current image has been kept.`,
+          message: `${actionRequired ? "Image regeneration needs attention." : "The image could not be regenerated."}${reason} Your current image has been kept.`,
           retryable,
+          actionRequired,
         },
       }));
     } finally {
@@ -444,11 +451,13 @@ export function ProjectMediaReview({
                         <p id={`media-review-prompt-help-${selectedItem.id}`}>
                           {!onRegenerate
                             ? regenerationUnavailableReason
-                            : regenerationErrors[selectedItem.id]?.retryable === false
-                              ? "Refresh the project to reconcile this request before trying again."
-                              : !promptFor(selectedItem).trim()
-                                ? "Enter a prompt."
-                                : "Press Enter to regenerate. Shift+Enter adds a line. Existing video stays unchanged."}
+                            : regenerationErrors[selectedItem.id]?.actionRequired
+                              ? "Refresh the project to check this request. Do not submit another image request."
+                              : regenerationErrors[selectedItem.id]?.retryable === false
+                                ? "Refresh the project to reconcile this request before trying again."
+                                : !promptFor(selectedItem).trim()
+                                  ? "Enter a prompt."
+                                  : "Press Enter to regenerate. Shift+Enter adds a line. Existing video stays unchanged."}
                         </p>
                         <p className="media-review-regeneration-cost">
                           {regenerationCostDescription}

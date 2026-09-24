@@ -753,7 +753,7 @@ interface HostedImageRegenerationAccepted {
 }
 
 interface HostedImageRegenerationStatus {
-  readonly state: "PENDING" | "SUCCEEDED" | "FAILED";
+  readonly state: "PENDING" | "SUCCEEDED" | "FAILED" | "ACTION_REQUIRED";
   readonly replacement_url?: string | null;
   readonly image_url?: string | null;
   readonly error?: { readonly code?: string; readonly message?: string } | null;
@@ -763,11 +763,13 @@ interface HostedImageRegenerationStatus {
 
 class HostedImageRegenerationError extends Error {
   readonly retryable: boolean;
+  readonly actionRequired: boolean;
 
-  constructor(message: string, retryable: boolean) {
+  constructor(message: string, retryable: boolean, actionRequired = false) {
     super(message);
     this.name = "HostedImageRegenerationError";
     this.retryable = retryable;
+    this.actionRequired = actionRequired;
   }
 }
 
@@ -4249,6 +4251,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       } catch {
         await waitForHostedImageRegenerationPoll();
         continue;
+      }
+      if (
+        status.state === "ACTION_REQUIRED" ||
+        status.error_code === "UNKNOWN_NO_RETRY" ||
+        status.error?.code === "UNKNOWN_NO_RETRY"
+      ) {
+        throw new HostedImageRegenerationError(
+          "The provider result is unconfirmed. This request will not be submitted again automatically. Refresh the project to check its status.",
+          false,
+          true,
+        );
       }
       if (status.state === "FAILED") {
         requests.delete(item.id);
