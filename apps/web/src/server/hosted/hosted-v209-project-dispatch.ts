@@ -13,6 +13,7 @@ import {
   materializeAndEnsureV209OrdinaryPair,
   observeV209ShortAdmission,
 } from "./hosted-pair-live-wiring";
+import { hostedPairProductionBindingState } from "./hosted-pair-production-composition";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { response, sameOrigin, sessionScope } from "./hosted-product-route-common";
 import { ensureHostedApiGenerationWorkflow } from "./hosted-api-generation";
@@ -55,6 +56,19 @@ type ExistingPairProbe = (
   identity: Pick<DispatchIdentity, "accountId" | "workspaceId">,
   generationRequestId: string,
 ) => Promise<boolean>;
+
+type ExistingGenerationProvenance = Readonly<{
+  generationProvider: "RUNPOD" | "KIE_FAL";
+  candidateExists: boolean;
+  attemptExists: boolean;
+  pairExists: boolean;
+}>;
+
+type ExistingGenerationProbe = (
+  database: TransactionalSqlExecutor,
+  identity: Pick<DispatchIdentity, "accountId" | "workspaceId" | "projectId">,
+  generationRequestId: string,
+) => Promise<ExistingGenerationProvenance>;
 
 type Candidate = Record<string, unknown> & {
   readonly schemaVersion: "videoforge.hosted-v209-ordinary-dispatch/v1";
@@ -136,10 +150,9 @@ async function resumeHostedApiDispatch(
   database: TransactionalSqlExecutor,
   identity: DispatchIdentity,
   correlationId: string,
+  generationRequestId: string,
 ): Promise<Response> {
-  const admission = await ensureHostedV209GenerationAdmission(database, identity);
-  if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
-  let jobs = await readApiJobs(database, identity, admission.generationRequestId);
+  let jobs = await readApiJobs(database, identity, generationRequestId);
   if (jobs.length === 0) {
     const materialized = await database.transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
@@ -149,7 +162,7 @@ async function resumeHostedApiDispatch(
       );
       return result.rows[0]?.jobs;
     });
-    jobs = apiJobs(materialized, admission.generationRequestId);
+    jobs = apiJobs(materialized, generationRequestId);
   }
   for (const job of jobs) {
     if (job.lane !== "IMAGE" || job.state !== "PREPARED") continue;
@@ -160,7 +173,7 @@ async function resumeHostedApiDispatch(
       await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
       await transaction.query(
         "SELECT public.videoforge_bind_hosted_api_image_prompt($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text)",
-        [identity.accountId, identity.workspaceId, admission.generationRequestId,
+        [identity.accountId, identity.workspaceId, generationRequestId,
           job.generationTaskId, prompt],
       );
     });
@@ -168,7 +181,7 @@ async function resumeHostedApiDispatch(
   const scheduled = await ensureHostedApiGenerationWorkflow(environment, database, {
     accountId: identity.accountId,
     workspaceId: identity.workspaceId,
-    generationRequestId: admission.generationRequestId,
+    generationRequestId,
   });
   console.info("hosted_v209_project_dispatch", {
     correlation_id: correlationId,
@@ -177,7 +190,7 @@ async function resumeHostedApiDispatch(
   const result = response({
     schema_version: "videoforge-hosted-v209-project-dispatch/v1",
     state: "SCHEDULED",
-    generation_request_id: admission.generationRequestId,
+    generation_request_id: generationRequestId,
     workflow_id: scheduled.id,
     correlation_id: correlationId,
   }, scheduled.recovered ? 200 : 202);
@@ -202,6 +215,7 @@ export interface HostedV209ProjectDispatchDependencies {
     identity: DispatchIdentity,
   ) => Promise<HostedV209AdmissionResult>;
   readonly hasExistingPair?: ExistingPairProbe;
+  readonly inspectExistingGeneration?: ExistingGenerationProbe;
   readonly findExistingGeneration?: (
     database: TransactionalSqlExecutor,
     identity: DispatchIdentity,
@@ -233,6 +247,48 @@ const hasExistingHostedV209Pair: ExistingPairProbe = async (
     return row.existing_pair;
   });
 
+const inspectExistingGeneration: ExistingGenerationProbe = async (
+  database,
+  identity,
+  generationRequestId,
+) => database.transaction(async (transaction) => {
+  await transaction.query("SELECT set_config($1,$2,true)", [
+    "videoforge.account_id", identity.accountId,
+  ]);
+  const result = await transaction.query<{
+    generation_provider: unknown;
+    candidate_exists: unknown;
+    attempt_exists: unknown;
+    pair_exists: unknown;
+  }>(`SELECT project.generation_provider,
+        public.videoforge_has_hosted_v209_ordinary_candidate(
+          $1::uuid,$2::uuid,$3::uuid) AS candidate_exists,
+        EXISTS(SELECT 1 FROM public.serverless_attempts attempt
+          WHERE attempt.account_id=$1 AND attempt.workspace_id=$2
+            AND attempt.generation_request_id=$3) AS attempt_exists,
+        schedule.existing_pair AS pair_exists
+      FROM public.generation_requests request
+      JOIN public.projects project ON project.account_id=request.account_id
+        AND project.workspace_id=request.workspace_id AND project.id=request.project_id
+      CROSS JOIN LATERAL public.videoforge_load_hosted_pair_workflow_schedule(
+        $1::uuid,$2::uuid,$3::uuid) schedule
+      WHERE request.account_id=$1 AND request.workspace_id=$2 AND request.id=$3
+        AND request.project_id=$4 AND request.state='ACTIVE'`,
+    [identity.accountId,identity.workspaceId,generationRequestId,identity.projectId]);
+  const row=result.rows[0];
+  if (result.rows.length!==1 ||
+      (row?.generation_provider!=="RUNPOD" && row?.generation_provider!=="KIE_FAL") ||
+      typeof row.candidate_exists!=="boolean" ||
+      typeof row.attempt_exists!=="boolean" || typeof row.pair_exists!=="boolean")
+    throw new Error("HOSTED_GENERATION_PROVENANCE_INVALID");
+  return {
+    generationProvider: row.generation_provider,
+    candidateExists: row.candidate_exists,
+    attemptExists: row.attempt_exists,
+    pairExists: row.pair_exists,
+  };
+});
+
 export const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
   createPool: createNeonPool,
   createExecutor: createNeonExecutor,
@@ -243,6 +299,7 @@ export const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
   ensureWorkflow: materializeAndEnsureV209OrdinaryPair,
   ensureAdmission: ensureHostedV209GenerationAdmission,
   hasExistingPair: hasExistingHostedV209Pair,
+  inspectExistingGeneration,
   ensureExistingWorkflow: ensureHostedPairWorkflow,
   findExistingGeneration: (database: TransactionalSqlExecutor, identity: DispatchIdentity) =>
     database.transaction(async (transaction: SqlExecutor) => {
@@ -502,6 +559,53 @@ async function emptyBody(request: Request): Promise<boolean> {
   );
 }
 
+function historicalRunPodConflict(): Response {
+  return response({ error: { code: "HOSTED_RUNPOD_GENERATION_RECONCILIATION_REQUIRED" } }, 409);
+}
+
+async function resumeHistoricalRunPodPair(
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  database: TransactionalSqlExecutor,
+  identity: DispatchIdentity,
+  generationRequestId: string,
+  correlationId: string,
+  injected: HostedV209ProjectDispatchDependencies,
+): Promise<Response> {
+  try {
+    if (hostedPairProductionBindingState(environment).state === "DISABLED_UNQUALIFIED")
+      return historicalRunPodConflict();
+  } catch {
+    return historicalRunPodConflict();
+  }
+  const reconcilerUrl = environment.VIDEOFORGE_RECONCILER_DATABASE_URL;
+  if (typeof reconcilerUrl !== "string" || reconcilerUrl.length === 0)
+    return response({ error: { code: "HOSTED_PAIR_RECONCILER_BINDING_MISSING" } }, 503);
+  const reconcilerPool = injected.createPool(reconcilerUrl);
+  try {
+    await (injected.ensureExistingWorkflow ?? injected.ensureWorkflow)(
+      environment,
+      database,
+      injected.createExecutor(reconcilerPool),
+      {
+        accountId: identity.accountId,
+        workspaceId: identity.workspaceId,
+        generationRequestId,
+      },
+      config,
+    );
+    return response({
+      schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+      state: "SCHEDULED",
+      generation_request_id: generationRequestId,
+      workflow_id: `hosted-pair-${generationRequestId}`,
+      correlation_id: correlationId,
+    }, 200);
+  } finally {
+    await reconcilerPool.end();
+  }
+}
+
 export async function resumeHostedV209ProjectDispatch(
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
@@ -521,8 +625,25 @@ export async function resumeHostedV209ProjectDispatch(
   try {
     const runtimeDatabase = injected.createExecutor(runtimePool);
     if (config.apiGeneration) {
+      const existingGeneration = await injected.findExistingGeneration?.(runtimeDatabase, identity);
+      const admission = existingGeneration
+        ? { state: "ACTIVE" as const, generationRequestId: existingGeneration }
+        : await injected.ensureAdmission(runtimeDatabase, identity);
+      if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
+      const legacy = await (injected.inspectExistingGeneration ?? inspectExistingGeneration)(
+        runtimeDatabase, identity, admission.generationRequestId,
+      );
+      if (legacy.generationProvider==="RUNPOD") {
+        if (legacy.pairExists) return resumeHistoricalRunPodPair(
+          environment, config, runtimeDatabase, identity, admission.generationRequestId,
+          correlationId, injected,
+        );
+        return historicalRunPodConflict();
+      }
+      if (legacy.candidateExists || legacy.attemptExists || legacy.pairExists)
+        return historicalRunPodConflict();
       return await resumeHostedApiDispatch(
-        environment, runtimeDatabase, identity, correlationId,
+        environment, runtimeDatabase, identity, correlationId, admission.generationRequestId,
       );
     }
     if (!admissionAlreadyEnsured) {
@@ -648,13 +769,25 @@ export async function handleHostedV209ProjectDispatch(
       projectId: match[1]!,
     };
     const runtimeDatabase = injected.createExecutor(runtimePool);
-    const existingGeneration = config.apiGeneration
-      ? null
-      : await injected.findExistingGeneration?.(runtimeDatabase, identity);
+    const existingGeneration = await injected.findExistingGeneration?.(runtimeDatabase, identity);
     const admission: HostedV209AdmissionResult = existingGeneration
       ? { state: "ACTIVE", generationRequestId: existingGeneration }
       : await injected.ensureAdmission(runtimeDatabase, identity);
     if (admission.state === "WAITING") return preparationResponse("WAITING", correlationId);
+    if (config.apiGeneration) {
+      const legacy = await (injected.inspectExistingGeneration ?? inspectExistingGeneration)(
+        runtimeDatabase, identity, admission.generationRequestId,
+      );
+      if (legacy.generationProvider==="RUNPOD") {
+        if (legacy.pairExists) return await resumeHistoricalRunPodPair(
+          environment, config, runtimeDatabase, identity, admission.generationRequestId,
+          correlationId, injected,
+        );
+        return historicalRunPodConflict();
+      }
+      if (legacy.candidateExists || legacy.attemptExists || legacy.pairExists)
+        return historicalRunPodConflict();
+    }
     if (spanAudio) {
       if (config.apiGeneration) {
         const existingApiJobs = await readApiJobs(runtimeDatabase, identity, admission.generationRequestId);
@@ -664,7 +797,7 @@ export async function handleHostedV209ProjectDispatch(
             return preparationResponse("PREPARING_INPUTS", correlationId);
         }
         return await resumeHostedApiDispatch(
-          environment, runtimeDatabase, identity, correlationId,
+          environment, runtimeDatabase, identity, correlationId, admission.generationRequestId,
         );
       }
       if (
@@ -712,6 +845,9 @@ export async function handleHostedV209ProjectDispatch(
       }
       return preparationResponse("SCHEDULED", correlationId);
     }
+    if (config.apiGeneration) return await resumeHostedApiDispatch(
+      environment, runtimeDatabase, identity, correlationId, admission.generationRequestId,
+    );
     return await resumeHostedV209ProjectDispatch(
       environment,
       config,

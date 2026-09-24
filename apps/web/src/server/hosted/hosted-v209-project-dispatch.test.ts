@@ -23,6 +23,13 @@ const config = {
   publicOrigin: "https://videoforge.example",
   neon: { databaseUrl: "postgres://runtime.invalid/db" },
 } as never;
+const apiConfig = {
+  environment: "production",
+  gpuTransport: "QUALIFIED_EXACT",
+  publicOrigin: "https://videoforge.example",
+  neon: { databaseUrl: "postgres://runtime.invalid/db" },
+  apiGeneration: { kieApiKey: "fixture", falApiKey: "fixture" },
+} as never;
 
 async function candidate(pairExists = false, systemAvatar = false) {
   const revisionId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -657,6 +664,129 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
     expect(deps.ensureWorkflow).toHaveBeenCalledOnce();
     expect(deps.observe).not.toHaveBeenCalled();
     expect(deps.commitAndSchedule).not.toHaveBeenCalled();
+  });
+
+  it("resumes an exact historical pair under API mode only while its original bindings remain qualified", async () => {
+    const prepared = await candidate(true);
+    const deps = dependencies(prepared);
+    const findExistingGeneration = vi.fn(async () => prepared.generationRequestId);
+    const ensureAdmission = vi.fn(async () => { throw new Error("released paid lease"); });
+    const inspectExistingGeneration = vi.fn(async () => ({
+      generationProvider: "RUNPOD" as const,
+      candidateExists: true, attemptExists: true, pairExists: true,
+    }));
+    const ensureExistingWorkflow = vi.fn(async () => ({
+      id: `hosted-pair-${prepared.generationRequestId}`, recovered: true,
+    }));
+    const prepare = vi.fn(async () => ({ state: "PREPARING_INPUTS" as const }));
+    const qualifiedEnvironment = {
+      VIDEOFORGE_GPU_TRANSPORT: "QUALIFIED_EXACT",
+      DATABASE_URL: "postgres://runtime.invalid/db",
+      VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db",
+      VIDEOFORGE_DISPATCH_TOKEN_KEY: "fixture-dispatch-key",
+      VIDEOFORGE_ENVELOPE_SIGNING_KEY_HEX: "fixture-envelope-key",
+      VIDEOFORGE_ENVELOPE_SIGNING_KEY_ID: "fixture-envelope-id",
+      VIDEOFORGE_PROVIDER_PROOF_VERIFY_KEY: "fixture-proof-key",
+      VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN: "fixture-operator-token",
+    } as never;
+    const result = await handleHostedV209ProjectDispatch(request(), qualifiedEnvironment,
+      apiConfig, {} as never, { ...deps.value, findExistingGeneration, ensureAdmission,
+        inspectExistingGeneration, ensureExistingWorkflow } as never, { prepare });
+    expect(result?.status).toBe(200);
+    await expect(result?.json()).resolves.toMatchObject({
+      generation_request_id: prepared.generationRequestId,
+      workflow_id: `hosted-pair-${prepared.generationRequestId}`,
+    });
+    expect(inspectExistingGeneration).toHaveBeenCalledWith(expect.anything(),
+      { accountId: scope.account_id, workspaceId: scope.workspace_id,
+        userId: scope.user_id, projectId }, prepared.generationRequestId);
+    expect(ensureAdmission).not.toHaveBeenCalled();
+    expect(ensureExistingWorkflow).toHaveBeenCalledOnce();
+    expect(prepare).not.toHaveBeenCalled();
+    expect(deps.materialize).not.toHaveBeenCalled();
+  });
+
+  it("requires reconciliation for a historical pair when RunPod bindings are disabled", async () => {
+    const prepared = await candidate(true);
+    const deps = dependencies(prepared);
+    const ensureExistingWorkflow = vi.fn();
+    const result = await handleHostedV209ProjectDispatch(request(),
+      { VIDEOFORGE_GPU_TRANSPORT: "DISABLED_UNQUALIFIED" } as never,
+      apiConfig, {} as never,
+      { ...deps.value, inspectExistingGeneration: vi.fn(async () => ({
+        generationProvider: "RUNPOD" as const,
+        candidateExists: true, attemptExists: true, pairExists: true,
+      })), ensureExistingWorkflow } as never);
+    expect(result?.status).toBe(409);
+    await expect(result?.json()).resolves.toEqual({
+      error: { code: "HOSTED_RUNPOD_GENERATION_RECONCILIATION_REQUIRED" },
+    });
+    expect(ensureExistingWorkflow).not.toHaveBeenCalled();
+    expect(deps.materialize).not.toHaveBeenCalled();
+  });
+
+  it("does not prepare or submit API work for a historical RunPod project without a pair", async () => {
+    const prepared = await candidate();
+    const deps = dependencies(prepared);
+    const prepare = vi.fn(async () => ({ state: "PREPARING_INPUTS" as const }));
+    const inspectExistingGeneration = vi.fn(async () => ({
+      generationProvider: "RUNPOD" as const,
+      candidateExists: false, attemptExists: false, pairExists: false,
+    }));
+    const result = await handleHostedV209ProjectDispatch(request(), {} as never,
+      apiConfig, {} as never,
+      { ...deps.value, inspectExistingGeneration } as never, { prepare });
+    expect(result?.status).toBe(409);
+    await expect(result?.json()).resolves.toEqual({
+      error: { code: "HOSTED_RUNPOD_GENERATION_RECONCILIATION_REQUIRED" },
+    });
+    expect(inspectExistingGeneration).toHaveBeenCalledOnce();
+    expect(prepare).not.toHaveBeenCalled();
+    expect(deps.materialize).not.toHaveBeenCalled();
+    expect(deps.ensureWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("keeps the direct resume seam out of API generation for a pinned RunPod project", async () => {
+    const prepared = await candidate();
+    const deps = dependencies(prepared);
+    const result = await resumeHostedV209ProjectDispatch({} as never, apiConfig,
+      { accountId: scope.account_id, workspaceId: scope.workspace_id,
+        userId: scope.user_id, projectId },
+      { ...deps.value, inspectExistingGeneration: vi.fn(async () => ({
+        generationProvider: "RUNPOD" as const,
+        candidateExists: false, attemptExists: false, pairExists: false,
+      })) } as never);
+    expect(result.status).toBe(409);
+    await expect(result.json()).resolves.toEqual({
+      error: { code: "HOSTED_RUNPOD_GENERATION_RECONCILIATION_REQUIRED" },
+    });
+    expect(deps.materialize).not.toHaveBeenCalled();
+    expect(deps.ensureWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("keeps a pinned fresh API project on the API preparation path", async () => {
+    const prepared = await candidate();
+    const deps = dependencies(prepared);
+    const prepare = vi.fn(async () => ({ state: "PREPARING_INPUTS" as const }));
+    const query = vi.fn(async (sql: string) => sql.includes("videoforge_read_hosted_api_jobs")
+      ? { rows: [{ jobs: { generationRequestId: prepared.generationRequestId, jobs: [] } }] }
+      : sql.includes("videoforge_has_hosted_v209_ordinary_candidate")
+        ? { rows: [{ generation_provider: "KIE_FAL", candidate_exists: false,
+          attempt_exists: false, pair_exists: false }] }
+        : { rows: [] });
+    const result = await handleHostedV209ProjectDispatch(request(), {} as never,
+      apiConfig, {} as never,
+      { ...deps.value,
+        createExecutor: () => ({ transaction: async (work: (db: { query: typeof query }) => Promise<unknown>) =>
+          work({ query }) }),
+      } as never, { prepare });
+    expect(result?.status).toBe(202);
+    await expect(result?.json()).resolves.toMatchObject({ state: "PREPARING_INPUTS" });
+    expect(prepare).toHaveBeenCalledOnce();
+    expect(query.mock.calls.some(([sql]) => sql.includes("project.generation_provider") &&
+      sql.includes("request.project_id=$4") && sql.includes("request.state='ACTIVE'"))).toBe(true);
+    expect(deps.materialize).not.toHaveBeenCalled();
+    expect(deps.ensureWorkflow).not.toHaveBeenCalled();
   });
 
   it("rejects cross-origin or non-empty browser authority before database materialization", async () => {
