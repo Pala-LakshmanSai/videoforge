@@ -15,6 +15,11 @@ api_generation_transition_2026_09_24:
     has not been published or installed. Focused web/product/provider/render tests,
     typecheck, contract sync, context validation, secret scan, and both Cloudflare bundle
     quarantine checks pass. Hosted live output and browser playback remain unverified.
+  migration_preflight: >-
+    Read-only production Neon ledger has 170 rows through 0187 and matches its committed SQL
+    files and hashes. The guarded runner at b169393d validates that exact historical sequence
+    and selects only 0188. Earlier notes say 0148/0149 were applied, but neither ledger row
+    exists in current production; do not backfill those superseded SQL files during this release.
   remaining_gates: >-
     Publish and install the v0.1.24 worker, apply migration and provider secrets, deploy,
     run one bounded hosted project through both
