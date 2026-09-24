@@ -116,6 +116,23 @@ test("validated documents are schema-checked and hashed by the TypeScript JCS au
   );
 });
 
+test("revision and timeline contracts accept pinned scheduler-v2 and scheduler-v3 identities", async () => {
+  for (const [contractName, filename] of [
+    ["projectRevisionConfig", "project_revision_config.valid.json"],
+    ["timelinePlan", "timeline_plan.valid.json"],
+  ]) {
+    const fixture = await loadFixture(filename);
+    for (const schedulerVersion of ["scheduler-v2", "scheduler-v3"]) {
+      const document = { ...fixture, scheduler_version: schedulerVersion };
+      assert.equal(validateContract(contractName, document).success, true);
+      assert.equal(canonicalContractZodSchemas[contractName].safeParse(document).success, true);
+      const validated = await validateAndHashContractDocument(contractName, document);
+      assert.equal(validated.value.scheduler_version, schedulerVersion);
+      assert.equal(validated.sha256, await sha256CanonicalJson(document));
+    }
+  }
+});
+
 test("Ajv rejects non-finite values at canonical contract boundaries", async () => {
   const fixture = await loadFixture("technical_probe.valid.json");
   fixture.loudness.input_integrated_lufs = Number.NaN;
