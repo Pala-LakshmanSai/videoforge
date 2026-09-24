@@ -41,11 +41,13 @@ api_generation_transition_2026_09_24:
     Do not resubmit consumed provider task IDs or render attempts.
   provider_spend: >-
     API pilot actions used the approved USD 5 cap; exact aggregate debit is unavailable. Kie read-only billing shows pilot5's two
-    successful z-image tasks cost 0.8 credits each (1.6 credits total). Fal task completed, but
+    successful z-image tasks cost 0.8 credits each (1.6 credits total). After pilot6, the Kie
+    balance fell another 1.6 credits, consistent with its two images; this second amount is inferred
+    from the balance change. Fal task completed, but
     billing endpoint returned 403 for the configured key, so exact Fal debit remains unavailable.
     Historical endpoint billing since August is not current pilot spend.
   paid_compute_shutdown: >-
-    Independent RunPod read-only audit at 2026-09-24T21:44:30Z showed zero running Pods, zero
+    Independent post-pilot6 RunPod read-only audit at 2026-09-24T21:58:00Z showed zero running Pods, zero
     active serverless workers, and no queued/running jobs. Two retained EU-RO-1 50GB volumes and
     two endpoints remain at workersMin=0/max=1, each with one EXITED worker; retained resources
     may still incur storage cost. No RunPod compute was started for these API pilots.
