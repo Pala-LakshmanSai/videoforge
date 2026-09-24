@@ -97,6 +97,9 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)",
   "videoforge_reconcile_unknown_hosted_voiceover_context(jsonb)",
   "videoforge_begin_hosted_pair_send(uuid,uuid,uuid,text,uuid,text)",
+  "videoforge_begin_hosted_pair_parallel_send(uuid,uuid,uuid,uuid,text,uuid,text)",
+  "videoforge_finish_hosted_pair_parallel_send(uuid,uuid,uuid,text,text,text,uuid,text)",
+  "videoforge_cancel_hosted_project_predispatch(uuid,uuid,uuid)",
   "videoforge_commit_hosted_atomic_pair_predispatch(uuid,text,uuid,uuid,uuid,uuid,uuid,uuid,text,uuid,jsonb,numeric,timestamp with time zone,jsonb,jsonb)",
   "videoforge_finish_hosted_pair_send(uuid,uuid,uuid,text,text,text,uuid,text)",
   "videoforge_inspect_hosted_pair_runtime(uuid,uuid,uuid)",
@@ -568,7 +571,7 @@ const main = async () => {
   if (publicFunctions)
     fail(`PUBLIC retains EXECUTE on public-schema functions: ${publicFunctions}`);
   console.log(
-    `V2-06 Neon verified: migration ${finalLedger.length}/${migrations.length}, runtime role ${runtimeRole}, FORCE RLS complete, exact table grants and function grants, hosted_render_plans direct writes denied with exact append-function capability.`,
+    `V2-06 Neon verified: ${finalLedger.length} applied ledger rows, ${migrations.length} retained manifest entries, runtime role ${runtimeRole}, FORCE RLS complete, exact table grants and function grants, hosted_render_plans direct writes denied with exact append-function capability.`,
   );
 };
 
