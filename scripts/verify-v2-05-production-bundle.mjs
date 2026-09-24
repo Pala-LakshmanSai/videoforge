@@ -33,9 +33,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // production static closure and 1,530 bytes to staging. The provider clients stay in a dynamic
 // chunk. API image regeneration adds 65 bytes to each static closure. These are exact
 // per-target accepted ceilings, not platform limits.
+// The 2026-09-24 API patch adds 561 bytes to each static closure for the versioned prompt
+// policy, uncertain-attempt hold, and render identity handoff; the clean production and staging
+// builds measured these exact totals.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_744_108,
-  "wrangler.staging.jsonc": 2_749_710,
+  "wrangler.production.jsonc": 2_744_669,
+  "wrangler.staging.jsonc": 2_750_271,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
