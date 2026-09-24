@@ -9,11 +9,87 @@ import {
 } from "./hosted-image-regeneration-runtime";
 import { createHostedV209TerminalOutputIngestor } from "./hosted-v209-terminal-output-ingestor";
 import { readImageRegenerationCost } from "./hosted-image-regeneration-cost";
+import { hostedPairProductionBindingState } from "./hosted-pair-production-composition";
+import { KieZImageClient, KieZImageError } from "../providers/kie-z-image";
+import { KieImageJobError, observeKieImageJob, submitKieImageJob } from "../providers/kie-image-job";
 export interface ImageRegenerationParameters {
   schema_version: "videoforge-image-regeneration-workflow/v1";
   accountId: string;
   workspaceId: string;
   requestId: string;
+}
+async function observeApiImageRegeneration(
+  environment: HostedRuntimeEnvironment,
+  store: HostedSqlImageRegenerationStore,
+  row: Record<string, unknown>,
+) {
+  const config = hostedRuntimeConfiguration(environment);
+  if (!config.apiGeneration || !environment.PRIVATE_ARTIFACTS)
+    throw new Error("HOSTED_IMAGE_REGENERATION_API_BINDING_MISSING");
+  const requestId = String(row.id);
+  const client = new KieZImageClient(config.apiGeneration.kieApiKey);
+  if (row.state === "PREPARED") {
+    const claimId = crypto.randomUUID();
+    try {
+      await submitKieImageJob({
+        manifest: {
+          prompt: String((row.inputManifest as Record<string, unknown>).prompt),
+          aspectRatio: "16:9",
+        },
+        client,
+        claimSubmission: async () => {
+          const claimed = await store.claimApi(requestId, claimId);
+          return claimed.state === "SUBMITTING" && claimed.claimId === claimId;
+        },
+        persistTaskId: (taskId) => store.recordApiTask(requestId, claimId, taskId).then(() => {}),
+        markRequestRejected: () => store.failApi(requestId, "PROVIDER_REQUEST_REJECTED").then(() => {}),
+        markSubmissionUnknown: () => store.markApiUnknown(requestId, claimId).then(() => {}),
+      });
+    } catch {
+      // Database state retains the exact claim or definite failure. Never replay this POST.
+    }
+    row = (await store.loadApi(requestId)) ?? row;
+  }
+  if (row.state === "SUBMITTING") {
+    const updatedAt = Date.parse(String(row.updatedAt));
+    if (!Number.isFinite(updatedAt) || typeof row.claimId !== "string")
+      throw new Error("HOSTED_IMAGE_REGENERATION_API_CLAIM_INVALID");
+    if (Date.now() - updatedAt > 180_000)
+      row = await store.markApiUnknown(requestId, row.claimId);
+  }
+  if (row.state === "SUBMITTED") {
+    if (typeof row.providerTaskId !== "string")
+      throw new Error("HOSTED_IMAGE_REGENERATION_API_TASK_INVALID");
+    try {
+      const result = await observeKieImageJob({
+        taskId: row.providerTaskId,
+        objectKey: String(row.outputObjectKey),
+        client,
+        bucket: environment.PRIVATE_ARTIFACTS,
+      });
+      if (result.state === "FAILED")
+        row = await store.failApi(requestId, "PROVIDER_TASK_FAILED");
+      else if (result.state === "SUCCEEDED")
+        row = await store.commitApi(requestId, result.artifact);
+    } catch (error) {
+      if (
+        (error instanceof KieZImageError && error.code === "RESPONSE_INVALID") ||
+        (error instanceof KieImageJobError && error.code === "RESULT_MEDIA_INVALID")
+      ) row = await store.failApi(requestId, "PROVIDER_OUTPUT_INVALID");
+      else if (
+        !(error instanceof KieZImageError && error.code === "STATUS_UNKNOWN") &&
+        !(error instanceof KieImageJobError && error.code === "RESULT_DOWNLOAD_FAILED")
+      ) throw error;
+    }
+  }
+  const released = ["SUCCEEDED", "FAILED"].includes(String(row.state));
+  return {
+    requestId,
+    state: String(row.state),
+    providerJobId: typeof row.providerTaskId === "string" ? row.providerTaskId : null,
+    replaced: row.state === "SUCCEEDED",
+    leaseReleased: released,
+  };
 }
 export async function observeHostedImageRegeneration(
   environment: HostedRuntimeEnvironment & HostedPairLiveEnvironment,
@@ -21,6 +97,11 @@ export async function observeHostedImageRegeneration(
   params: ImageRegenerationParameters,
 ) {
   const store = new HostedSqlImageRegenerationStore(database, params.accountId, params.workspaceId);
+  const api = await store.loadApi(params.requestId);
+  if (api) return observeApiImageRegeneration(environment, store, api);
+  if (hostedPairProductionBindingState(environment).state === "DISABLED_UNQUALIFIED")
+    return { requestId: params.requestId, state: "DISABLED_UNQUALIFIED",
+      providerJobId: null, replaced: false, leaseReleased: false };
   let row = await store.load(params.requestId);
   if (row.account_id !== params.accountId || row.workspace_id !== params.workspaceId)
     throw new Error("HOSTED_IMAGE_REGENERATION_SCOPE_INVALID");

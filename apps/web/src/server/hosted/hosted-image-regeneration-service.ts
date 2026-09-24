@@ -20,6 +20,7 @@ import {
   type HostedPairLiveEnvironment,
 } from "./hosted-pair-live-wiring";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
+import { buildKieScenePrompt } from "../providers/kie-image-job";
 
 type Row = Record<string, unknown>;
 function record(value: unknown): Row {
@@ -42,9 +43,9 @@ export function regenerationStatus(row: Row): Row {
     request_id: row.id,
     attempt_id: row.attempt_id,
     state:
-      row.state === "COMPLETED"
+      row.state === "COMPLETED" || row.state === "SUCCEEDED"
         ? "SUCCEEDED"
-        : ["FAILED", "CANCELLED", "REQUEST_REJECTED"].includes(String(row.state))
+        : ["FAILED", "CANCELLED", "REQUEST_REJECTED", "UNKNOWN_NO_RETRY"].includes(String(row.state))
           ? "FAILED"
           : "PENDING",
   };
@@ -59,10 +60,53 @@ export function createHostedImageRegenerationService(input: {
     new HostedSqlImageRegenerationStore(input.database, a, w);
   return {
     async create(args) {
-      await assertHostedPairLiveBindings(input.environment);
       if (!input.environment.HOSTED_PAIR_WORKFLOW)
         throw new Error("HOSTED_IMAGE_REGENERATION_WORKFLOW_MISSING");
       const store = storeFor(args.accountId, args.workspaceId);
+      const provider = await store.generationProvider(args.projectId, args.revisionId);
+      if (provider === "KIE_FAL") {
+        if (!input.config.apiGeneration || !input.environment.PRIVATE_ARTIFACTS)
+          throw new Error("HOSTED_IMAGE_REGENERATION_API_BINDING_MISSING");
+        const source = record(await store.apiSource({ ...args, projectRevisionId: args.revisionId }));
+        const sourceManifest = record(source.sourceInputManifest);
+        const compiled = record(sourceManifest.compiledPrompt);
+        const components = record(compiled.components);
+        const stylePositive = typeof components.stylePositiveSuffix === "string"
+          ? components.stylePositiveSuffix : "";
+        const literalContent = withoutTrailingGuard(
+          withoutTrailingGuard(args.prompt, PERMANENT_POSITIVE_GUARDRAIL),
+          stylePositive,
+        );
+        const prompt = buildKieScenePrompt({
+          ...compiled,
+          components: {
+            ...components,
+            literalContent,
+            continuityAndShotRole: "",
+            cropGuidance: "",
+            stylePositiveSuffix: stylePositive,
+            extraPromptKeywords: null,
+          },
+        } as Parameters<typeof buildKieScenePrompt>[0]);
+        const row = await store.createApi({ ...args, projectRevisionId: args.revisionId }, prompt);
+        const requestId = text(row.id);
+        if (input.scheduleWorkflow !== false && ["PREPARED", "SUBMITTING", "SUBMITTED"].includes(String(row.state))) {
+          const id = imageRegenerationWorkflowId(requestId);
+          try {
+            await input.environment.HOSTED_PAIR_WORKFLOW.create({
+              id,
+              params: { schema_version: "videoforge-image-regeneration-workflow/v1",
+                accountId: args.accountId, workspaceId: args.workspaceId, requestId },
+            });
+          } catch (error) {
+            try { await input.environment.HOSTED_PAIR_WORKFLOW.get(id); }
+            catch { throw error; }
+          }
+        }
+        return { request_id: requestId, attempt_id: row.id,
+          state: row.state === "PREPARED" ? "QUEUED" : "DISPATCHING" };
+      }
+      await assertHostedPairLiveBindings(input.environment);
       const created = await store.create({ ...args, projectRevisionId: args.revisionId });
       const requestId = text(created.id);
       let row = await store.load(requestId);
@@ -247,7 +291,10 @@ export function createHostedImageRegenerationService(input: {
       };
     },
     async get(args) {
-      const row = await storeFor(args.accountId, args.workspaceId).get(args);
+      const store = storeFor(args.accountId, args.workspaceId);
+      const api = await store.getApi(args);
+      if (api) return regenerationStatus({ ...api, attempt_id: api.id });
+      const row = await store.get(args);
       return row ? regenerationStatus(row) : null;
     },
   };

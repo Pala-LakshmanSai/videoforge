@@ -71,6 +71,81 @@ export class HostedSqlImageRegenerationStore implements HostedImageRegenerationS
       throw new Error("HOSTED_IMAGE_REGENERATION_DATABASE_TIME_INVALID");
     return new Date(value).toISOString();
   }
+  async generationProvider(projectId: string, revisionId: string): Promise<"RUNPOD" | "KIE_FAL"> {
+    const value = await this.query(
+      `SELECT generation_provider AS value FROM public.projects
+       WHERE account_id=$1 AND workspace_id=$2 AND id=$3
+         AND EXISTS (SELECT 1 FROM public.project_revisions r
+           WHERE r.account_id=$1 AND r.workspace_id=$2 AND r.project_id=$3 AND r.id=$4)`,
+      [this.accountId, this.workspaceId, projectId, revisionId],
+    );
+    if (value !== "RUNPOD" && value !== "KIE_FAL")
+      throw new Error("HOSTED_IMAGE_REGENERATION_PROJECT_INVALID");
+    return value;
+  }
+  async apiSource(input: HostedImageRegenerationCreateInput): Promise<Row> {
+    return record(await this.query(
+      "SELECT public.videoforge_read_hosted_api_image_regeneration_source($1,$2,$3,$4,$5) AS value",
+      [this.accountId, this.workspaceId, input.projectId, input.projectRevisionId, input.imageTaskId],
+    ));
+  }
+  async createApi(input: HostedImageRegenerationCreateInput, prompt: string): Promise<Row> {
+    if (input.accountId !== this.accountId || input.workspaceId !== this.workspaceId)
+      throw new Error("HOSTED_IMAGE_REGENERATION_SCOPE_INVALID");
+    return record(await this.query(
+      "SELECT public.videoforge_create_hosted_api_image_regeneration($1,$2,$3,$4,$5,$6,$7) AS value",
+      [this.accountId, this.workspaceId, input.projectId, input.projectRevisionId,
+        input.imageTaskId, prompt, input.idempotencyKey],
+    ));
+  }
+  async getApi(input: { accountId: string; workspaceId: string; projectId: string;
+    imageTaskId: string; requestId: string }): Promise<Row | null> {
+    if (input.accountId !== this.accountId || input.workspaceId !== this.workspaceId) return null;
+    const value = await this.query(
+      "SELECT public.videoforge_get_hosted_api_image_regeneration($1,$2,$3,$4,$5) AS value",
+      [this.accountId, this.workspaceId, input.projectId, input.imageTaskId, input.requestId],
+    );
+    return value === null ? null : record(value);
+  }
+  async loadApi(requestId: string): Promise<Row | null> {
+    const value = await this.query(
+      "SELECT public.videoforge_load_hosted_api_image_regeneration($1,$2) AS value",
+      [requestId, this.workspaceId],
+    );
+    return value === null ? null : record(value);
+  }
+  async claimApi(requestId: string, claimId: string): Promise<Row> {
+    return record(await this.query(
+      "SELECT public.videoforge_claim_hosted_api_image_regeneration($1,$2) AS value",
+      [requestId, claimId],
+    ));
+  }
+  async recordApiTask(requestId: string, claimId: string, providerTaskId: string): Promise<Row> {
+    return record(await this.query(
+      "SELECT public.videoforge_record_hosted_api_image_regeneration_task($1,$2,$3) AS value",
+      [requestId, claimId, providerTaskId],
+    ));
+  }
+  async markApiUnknown(requestId: string, claimId: string): Promise<Row> {
+    return record(await this.query(
+      "SELECT public.videoforge_mark_hosted_api_image_regeneration_unknown($1,$2) AS value",
+      [requestId, claimId],
+    ));
+  }
+  async failApi(requestId: string, failureCode: string): Promise<Row> {
+    return record(await this.query(
+      "SELECT public.videoforge_fail_hosted_api_image_regeneration($1,$2) AS value",
+      [requestId, failureCode],
+    ));
+  }
+  async commitApi(requestId: string, artifact: { sha256: string; byteSize: number;
+    contentType: string; width: number; height: number }): Promise<Row> {
+    return record(await this.query(
+      "SELECT public.videoforge_commit_hosted_api_image_regeneration($1,$2,$3,$4,$5::jsonb) AS value",
+      [requestId, artifact.sha256, artifact.byteSize, artifact.contentType,
+        JSON.stringify({ width: artifact.width, height: artifact.height })],
+    ));
+  }
   async admitCost(requestId: string, snapshot: Record<string, unknown>): Promise<void> {
     await this.query(
       "SELECT public.videoforge_admit_hosted_image_regeneration_cost($1,$2::jsonb) AS value",

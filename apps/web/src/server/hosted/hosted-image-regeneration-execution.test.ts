@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => {
   };
 
   class FakeImageRegenerationStore {
+    async loadApi() { return null; }
     async databaseNow() {
       return new Date().toISOString();
     }
@@ -111,6 +112,9 @@ vi.mock("./hosted-image-regeneration-store", () => ({
 }));
 vi.mock("./hosted-pair-live-wiring", () => ({
   createHostedRunPodPair: mocks.createHostedRunPodPair,
+}));
+vi.mock("./hosted-pair-production-composition", () => ({
+  hostedPairProductionBindingState: () => ({ state: "QUALIFIED_EXACT" }),
 }));
 vi.mock("./hosted-image-regeneration-cost", () => ({
   readImageRegenerationCost: vi.fn(async () => ({ maximum_cost_micro_usd: 2_000_000 })),
