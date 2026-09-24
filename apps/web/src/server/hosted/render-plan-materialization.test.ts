@@ -30,6 +30,9 @@ const SOULX_CANDIDATE_SHA256 =
   "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442";
 const SOULX_APPROVAL_SHA256 =
   "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45";
+const API_JOB_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const API_TASK_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+const API_ASSET_ID = "4a361511-05ae-3d9b-28d3-2e69f59bd34a";
 
 class MemoryDatabase implements HostedRenderPlanDatabase, HostedRenderPlanSql {
   existing: { payload: unknown; payload_sha256: string } | null = null;
@@ -432,11 +435,79 @@ async function splitOnlySoulxInput(): Promise<HostedRenderPlanMaterializationInp
   };
 }
 
+async function apiImageInput(): Promise<HostedRenderPlanMaterializationInput> {
+  const input = await validInput();
+  const segment = input.resolvedManifest.document.segments[0];
+  if (segment?.timeline_composition !== "IMAGE_FULL") throw new Error("expected image segment");
+  const document = {
+    ...input.resolvedManifest.document,
+    segments: [
+      {
+        ...segment,
+        accepted_assets: {
+          ...segment.accepted_assets,
+          image: { ...segment.accepted_assets.image, asset_id: API_ASSET_ID },
+        },
+      },
+    ],
+  };
+  const manifest = await validateAndHashContractDocument("resolvedRenderManifest", document);
+  return {
+    ...input,
+    acceptedVisuals: [
+      {
+        ...input.acceptedVisuals[0]!,
+        assetId: API_ASSET_ID,
+        receiptId: "75790a48-0500-5698-b281-2db29d267e0e",
+        acceptedAttemptId: API_JOB_ID,
+        generationTaskId: API_TASK_ID,
+        objectKey: `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}/lane/mage-image/job/${API_JOB_ID}/artifact/${API_TASK_ID}`,
+      },
+    ],
+    resolvedManifest: {
+      document: manifest.value,
+      artifact: { ...input.resolvedManifest.artifact, checksumSha256: manifest.sha256 },
+    },
+  };
+}
+
 async function expectCode(promise: Promise<unknown>, code: string) {
   await expect(promise).rejects.toMatchObject({ code });
 }
 
 describe("hosted render-plan materialization", () => {
+  it("accepts the DB-bound API job/task key with its distinct derived asset ID", async () => {
+    const input = await apiImageInput();
+    expect((await materializeHostedRenderPlan(new MemoryDatabase(), input)).replayed).toBe(false);
+  });
+
+  it.each([
+    ["task", (key: string) => key.replace(API_TASK_ID, "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")],
+    ["job", (key: string) => key.replace(API_JOB_ID, "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")],
+  ])("rejects an API output key with an unrelated %s", async (_field, mutate) => {
+    const input = await apiImageInput();
+    await expectCode(
+      materializeHostedRenderPlan(new MemoryDatabase(), {
+        ...input,
+        acceptedVisuals: [
+          { ...input.acceptedVisuals[0]!, objectKey: mutate(input.acceptedVisuals[0]!.objectKey) },
+        ],
+      }),
+      "HOSTED_RENDER_ARTIFACT_DRIFTED",
+    );
+  });
+
+  it("rejects an API output key without its accepted generation task binding", async () => {
+    const input = await apiImageInput();
+    await expectCode(
+      materializeHostedRenderPlan(new MemoryDatabase(), {
+        ...input,
+        acceptedVisuals: [{ ...input.acceptedVisuals[0]!, generationTaskId: undefined }],
+      }),
+      "HOSTED_RENDER_ARTIFACT_DRIFTED",
+    );
+  });
+
   it("accepts deterministic Postgres receipt UUIDs without RFC version bits", async () => {
     const input = await validInput();
     const result = await materializeHostedRenderPlan(new MemoryDatabase(), {

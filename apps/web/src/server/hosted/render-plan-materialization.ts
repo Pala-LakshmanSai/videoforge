@@ -50,6 +50,8 @@ export interface HostedCommittedArtifact {
   readonly projectRevisionId: string;
   readonly lane: Lane;
   readonly taskKey: string | null;
+  /** Generation task UUID returned with the accepted visual by the render-ready database read. */
+  readonly generationTaskId?: string;
   readonly assetId: string;
   readonly receiptId: string;
   readonly objectKey: string;
@@ -166,6 +168,18 @@ function exactScope(
     artifact.lane === "INPUT" &&
     match?.[6] === "browser-upload" &&
     match[7] === "voiceover";
+  // API output keys retain the generation task UUID, while their accepted asset ID
+  // is derived from the API job UUID. The render-ready database read verifies that
+  // job, task, asset, receipt, and accepted unit belong to the same result.
+  const apiVisual =
+    (artifact.kind === "IMAGE" || artifact.kind === "AVATAR_CLIP") &&
+    artifact.generationTaskId !== undefined &&
+    UUID.test(artifact.generationTaskId) &&
+    UUID.test(artifact.assetId) &&
+    artifact.acceptedAttemptId !== null &&
+    UUID.test(artifact.acceptedAttemptId) &&
+    match?.[6] === artifact.acceptedAttemptId &&
+    match[7] === artifact.generationTaskId;
   if (
     !match ||
     match[1] !== input.accountId ||
@@ -173,7 +187,7 @@ function exactScope(
     match[3] !== input.revision.projectId ||
     match[4] !== input.revision.projectRevisionId ||
     match[5] !== expectedLane ||
-    (match[7] !== artifact.assetId && !browserVoiceover) ||
+    (match[7] !== artifact.assetId && !browserVoiceover && !apiVisual) ||
     (artifact.acceptedAttemptId !== null && match[6] !== artifact.acceptedAttemptId) ||
     artifact.reservationState !== "COMMITTED" ||
     artifact.receiptDeletedAt !== null ||
