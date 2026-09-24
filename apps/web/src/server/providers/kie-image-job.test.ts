@@ -218,6 +218,9 @@ describe("Kie image job", () => {
     expect(storage.put).toHaveBeenCalledOnce();
     expect(await observeKieImageJob(input)).toEqual(first);
     expect(imageFetch).toHaveBeenCalledOnce();
+    expect(imageFetch).toHaveBeenCalledWith("https://cdn.example.com/image.png", {
+      redirect: "manual",
+    });
   });
 
   it("stores a validated JPEG with the observed MIME type and checksum", async () => {

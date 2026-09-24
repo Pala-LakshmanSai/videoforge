@@ -262,7 +262,7 @@ async function readStored(
 async function downloadImage(url: string, fetchPort: FetchPort): Promise<Uint8Array> {
   let response: Response;
   try {
-    response = await fetchPort(url, { redirect: "error" });
+    response = await fetchPort(url, { redirect: "manual" });
   } catch {
     throw new KieImageJobError("RESULT_DOWNLOAD_FAILED");
   }
