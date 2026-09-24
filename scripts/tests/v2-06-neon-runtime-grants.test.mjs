@@ -238,6 +238,7 @@ test("migration 0188 API generation exposes only tenant-scoped RPCs", async () =
     "videoforge_fail_hosted_api_job(uuid,uuid,uuid,uuid,text)",
     "videoforge_commit_hosted_api_output(uuid,uuid,uuid,uuid,text,bigint,text,jsonb)",
     "videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)",
+    "videoforge_settle_hosted_api_failure(uuid,uuid,uuid)",
   ];
   for (const signature of apiFunctions) {
     assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature), `missing post-check: ${signature}`);

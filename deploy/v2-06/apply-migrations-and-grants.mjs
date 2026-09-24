@@ -119,6 +119,7 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_fail_hosted_api_job(uuid,uuid,uuid,uuid,text)",
   "videoforge_commit_hosted_api_output(uuid,uuid,uuid,uuid,text,bigint,text,jsonb)",
   "videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)",
+  "videoforge_settle_hosted_api_failure(uuid,uuid,uuid)",
   "videoforge_claim_v213_workflow_start(jsonb)",
   "videoforge_complete_v213_workflow_start(jsonb)",
   "videoforge_load_v213_workflow_start(jsonb)",

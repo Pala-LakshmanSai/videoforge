@@ -258,6 +258,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_commit_hosted_api_output(uuid, uuid,
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_ready_render_inputs(uuid, uuid, uuid)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_settle_hosted_api_failure(uuid, uuid, uuid)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_claim_v213_workflow_start(jsonb)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_complete_v213_workflow_start(jsonb)
