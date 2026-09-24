@@ -11,12 +11,13 @@ api_generation_transition_2026_09_24:
     Migration 0188 applies in PGlite, including success and definite-failure settlement;
     provider clients, tenant-scoped API jobs, dispatch, workflow, private output verification,
     and renderer profile are implemented locally. The desktop media worker v0.1.24 release
-    inputs are prepared, but the release has not been published or installed. Focused web/product/provider/render tests,
+    inputs are prepared and a clean execution-bundle identity is computable, but the release
+    has not been published or installed. Focused web/product/provider/render tests,
     typecheck, contract sync, context validation, secret scan, and both Cloudflare bundle
     quarantine checks pass. Hosted live output and browser playback remain unverified.
   remaining_gates: >-
-    Compute the clean v0.1.24 worker bundle identity, publish and install that worker, apply
-    migration and provider secrets, deploy, run one bounded hosted project through both
+    Publish and install the v0.1.24 worker, apply migration and provider secrets, deploy,
+    run one bounded hosted project through both
     APIs, verify R2 receipts/render/playback, attempt actual provider cost readback, and confirm
     no active RunPod workers. External mutation/paid authority must be resolved before those
     steps. API image regeneration remains unavailable in Review pending a separate durable path.
