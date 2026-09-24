@@ -194,6 +194,19 @@ test("activation renders exact bindings without secrets or deployment authority"
   });
   assert.equal(rendered.vars.VIDEOFORGE_PROVIDER_MODE, "production");
   assert.equal(rendered.vars.VIDEOFORGE_GPU_TRANSPORT, "DISABLED_UNQUALIFIED");
+  const apiGeneration = structuredClone(rendered);
+  apiGeneration.vars.VIDEOFORGE_GENERATION_PROVIDER = "KIE_FAL";
+  assert.deepEqual(validateProductionConfig(apiGeneration, { mode: "qualified" }), {
+    mode: "qualified",
+    gpu_transport: "DISABLED_UNQUALIFIED",
+    valid: true,
+  });
+  const invalidApiGeneration = structuredClone(apiGeneration);
+  invalidApiGeneration.vars.VIDEOFORGE_GENERATION_PROVIDER = "RUNPOD";
+  assert.throws(
+    () => validateProductionConfig(invalidApiGeneration, { mode: "qualified" }),
+    /production variables drifted/u,
+  );
   assert.equal(
     rendered.main,
     path.resolve(root, "apps/web/dist-cloudflare/videoforge_production_runtime/index.js"),

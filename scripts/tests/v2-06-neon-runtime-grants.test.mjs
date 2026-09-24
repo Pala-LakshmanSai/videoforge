@@ -226,6 +226,28 @@ test("the hosted runtime can append through the exact function but has no direct
   );
 });
 
+test("migration 0188 API generation exposes only tenant-scoped RPCs", async () => {
+  const source = await readFile(GRANTS, "utf8");
+  const apiFunctions = [
+    "videoforge_read_hosted_api_jobs(uuid,uuid,uuid)",
+    "videoforge_materialize_hosted_api_jobs(uuid,uuid,uuid,uuid)",
+    "videoforge_claim_hosted_api_job(uuid,uuid,uuid,uuid,uuid)",
+    "videoforge_bind_hosted_api_image_prompt(uuid,uuid,uuid,uuid,text)",
+    "videoforge_record_hosted_api_task(uuid,uuid,uuid,uuid,uuid,text)",
+    "videoforge_mark_hosted_api_unknown(uuid,uuid,uuid,uuid,uuid)",
+    "videoforge_fail_hosted_api_job(uuid,uuid,uuid,uuid,text)",
+    "videoforge_commit_hosted_api_output(uuid,uuid,uuid,uuid,text,bigint,text,jsonb)",
+    "videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)",
+  ];
+  for (const signature of apiFunctions) {
+    assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature), `missing post-check: ${signature}`);
+    const name = signature.slice(0, signature.indexOf("("));
+    assert.match(source, new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${name}\\(`, "u"));
+  }
+  assert.doesNotMatch(source, /GRANT[^;]*hosted_api_generation_jobs/iu);
+  assert.doesNotMatch(source, /videoforge_hosted_api_job_json\(/u);
+});
+
 test("every project-detail relation is covered by the runtime SELECT allowlist", async () => {
   const product = await readFile(
     new URL("../../apps/web/src/server/hosted/product.ts", import.meta.url),

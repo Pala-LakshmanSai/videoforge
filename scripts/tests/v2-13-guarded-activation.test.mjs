@@ -212,7 +212,9 @@ test("SoulX approval validator binds exact records, media bytes, statement, tran
 
 test("authority and plan are exact, zero-spend, and closed-world", () => {
   const value = validateAuthority(authority());
-  assert.equal(SECRET_NAMES.length, 22);
+  assert.equal(SECRET_NAMES.length, 25);
+  assert.ok(SECRET_NAMES.includes("KIE_API_KEY"));
+  assert.ok(SECRET_NAMES.includes("FAL_API_KEY"));
   assert.deepEqual(Object.keys(value.secret_sha256).sort(), [...SECRET_NAMES].sort());
   const result = plan(value);
   assert.equal(result.secret_values_in_plan, false);
@@ -476,7 +478,7 @@ test("protected secret seam checks exact names, mode, hashes, and separate datab
       value.secret_sha256[name] = hash(secret);
     }
     const secrets = protectedSecrets(directory, validateAuthority(value));
-    assert.equal(secrets.size, 22);
+    assert.equal(secrets.size, 25);
     assert.equal(JSON.stringify(secrets).includes("runtime-password"), false);
     const malformed = "postgresql://runtime:raw-password-that-must-not-leak@[";
     writeFileSync(join(directory, "DATABASE_URL"), malformed, { mode: 0o600 });

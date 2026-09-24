@@ -110,6 +110,15 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_materialize_hosted_v209_span_audio_jobs(uuid,uuid,uuid,uuid)",
   "videoforge_finalize_hosted_v209_span_audio(uuid,uuid,uuid,jsonb)",
   "videoforge_materialize_hosted_v209_system_avatar_reference(uuid,uuid,uuid,uuid)",
+  "videoforge_read_hosted_api_jobs(uuid,uuid,uuid)",
+  "videoforge_materialize_hosted_api_jobs(uuid,uuid,uuid,uuid)",
+  "videoforge_claim_hosted_api_job(uuid,uuid,uuid,uuid,uuid)",
+  "videoforge_bind_hosted_api_image_prompt(uuid,uuid,uuid,uuid,text)",
+  "videoforge_record_hosted_api_task(uuid,uuid,uuid,uuid,uuid,text)",
+  "videoforge_mark_hosted_api_unknown(uuid,uuid,uuid,uuid,uuid)",
+  "videoforge_fail_hosted_api_job(uuid,uuid,uuid,uuid,text)",
+  "videoforge_commit_hosted_api_output(uuid,uuid,uuid,uuid,text,bigint,text,jsonb)",
+  "videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)",
   "videoforge_claim_v213_workflow_start(jsonb)",
   "videoforge_complete_v213_workflow_start(jsonb)",
   "videoforge_load_v213_workflow_start(jsonb)",
@@ -189,8 +198,17 @@ if (
 )
   fail("migration manifest schema is not the committed V2 manifest");
 const migrations = [];
+let previousMigrationVersion = 0;
 for (const [index, entry] of migrationManifest.migrations.entries()) {
-  if (entry.version !== index + 1) fail("migration manifest must be one contiguous version chain");
+  // The committed manifest omits superseded historical migrations. Keep its retained entries
+  // strictly increasing and filename-bound; assertLedger still requires exact ordered equality.
+  if (
+    !Number.isSafeInteger(entry.version) ||
+    entry.version <= previousMigrationVersion ||
+    !entry.filename.startsWith(`${String(entry.version).padStart(4, "0")}_`)
+  )
+    fail(`migration manifest position ${index + 1} is not the expected ordered version`);
+  previousMigrationVersion = entry.version;
   const sql = await readFile(resolve(migrationsDirectory, entry.filename), "utf8");
   const actual = `sha256:${sha256(sql)}`;
   if (actual !== entry.sha256) fail(`migration ${entry.filename} does not match its manifest hash`);

@@ -431,6 +431,32 @@ test("custom origin accepts only one enabled production domain bound to this Wor
   ]);
 });
 
+test("API generation config validates as an exact release with GPU transport disabled", async () => {
+  const value = fixture();
+  value.qualified.vars.VIDEOFORGE_GENERATION_PROVIDER = "KIE_FAL";
+  value.qualified.vars.VIDEOFORGE_GPU_TRANSPORT = "DISABLED_UNQUALIFIED";
+  writeFileSync(
+    value.configuration.qualifiedConfigPath,
+    `${JSON.stringify(value.qualified, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+  value.configSha256 = hash(readFileSync(value.configuration.qualifiedConfigPath));
+  const mock = harness(value);
+  const operator = createV209CloudflareProductionOperator(value.configuration, {
+    testOnly: true,
+    runChild: mock.runChild,
+    fetchImpl: mock.fetchImpl,
+    oauthApiResponse: mock.oauthApiResponse,
+    snapshotUploadArtifact: mock.snapshotUploadArtifact,
+    secretBulk: mock.secretBulk,
+    now: () => new Date("2026-09-06T22:00:00Z"),
+  });
+  const result = await executeThroughQualified(operator, authority(value));
+  assert.equal(result.readback.gpu_transport, "DISABLED_UNQUALIFIED");
+  assert.equal(result.readback.effective_gpu_transport, "DISABLED_UNQUALIFIED");
+  assert.equal(result.deployed.deploy_count, 1);
+});
+
 test("custom origin fails closed before deployment when binding is absent, wrong, or disabled", async () => {
   for (const records of [
     [],

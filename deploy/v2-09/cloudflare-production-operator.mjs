@@ -492,13 +492,15 @@ function qualifiedConfiguration(configuration, authority) {
   if (historicalPredecessor && !Object.hasOwn(parsedValue, "limits"))
     validationValue.limits = { cpu_ms: 30_000 };
   validateProductionConfig(validationValue, { mode: "qualified" });
+  const apiGeneration = parsedValue.vars?.VIDEOFORGE_GENERATION_PROVIDER === "KIE_FAL";
   const workflowNames = parsedValue.workflows.map(({ name }) => name);
   if (
     parsedValue.name !== configuration.workerName ||
     parsedValue.vars?.VIDEOFORGE_COMMIT !== authority.source_commit ||
     parsedValue.vars?.VIDEOFORGE_ENVIRONMENT !== "production" ||
     parsedValue.vars?.VIDEOFORGE_PROVIDER_MODE !== "production" ||
-    parsedValue.vars?.VIDEOFORGE_GPU_TRANSPORT !== "QUALIFIED_EXACT" ||
+    parsedValue.vars?.VIDEOFORGE_GPU_TRANSPORT !==
+      (apiGeneration ? "DISABLED_UNQUALIFIED" : "QUALIFIED_EXACT") ||
     !exactOrigin(parsedValue.vars?.VIDEOFORGE_PUBLIC_ORIGIN) ||
     new Set(workflowNames).size !== 3
   )
@@ -1921,7 +1923,8 @@ async function deployQualified(runtime, context) {
         runtime,
         context.authority,
         runtime.configuration.qualifiedConfigPath,
-        "QUALIFIED_EXACT",
+        qualifiedConfiguration(runtime.configuration, context.authority).value.vars
+          .VIDEOFORGE_GPU_TRANSPORT,
         true,
         context,
         SECRET_NAMES,
@@ -1968,14 +1971,21 @@ async function readbackQualified(runtime, context) {
     runtime,
     context.authority,
     runtime.configuration.qualifiedConfigPath,
-    "QUALIFIED_EXACT",
+    qualifiedConfiguration(runtime.configuration, context.authority).value.vars
+      .VIDEOFORGE_GPU_TRANSPORT,
     true,
     context,
     SECRET_NAMES,
   );
   if (version.versionId !== journal.active_version_id) fail("QUALIFIED_VERSION_CHANGED");
+  const configuredTransport = qualifiedConfiguration(
+    runtime.configuration,
+    context.authority,
+  ).value.vars.VIDEOFORGE_GPU_TRANSPORT;
   const effectiveTransport =
-    context.activationImported === true ? "QUALIFIED_EXACT" : "DISABLED_UNQUALIFIED";
+    configuredTransport === "DISABLED_UNQUALIFIED" || context.activationImported !== true
+      ? "DISABLED_UNQUALIFIED"
+      : "QUALIFIED_EXACT";
   await readRoute(runtime, context.authority, version.versionId, effectiveTransport, context);
   return {
     schema_version: "videoforge.v2-09-qualified-readback-result/v1",
@@ -1983,7 +1993,7 @@ async function readbackQualified(runtime, context) {
     worker: runtime.configuration.workerName,
     config_sha256: context.authority.production.config_sha256,
     worker_bundle_sha256: context.authority.production.worker_bundle_sha256,
-    gpu_transport: "QUALIFIED_EXACT",
+    gpu_transport: configuredTransport,
     effective_gpu_transport: effectiveTransport,
     exact_pair_bound: true,
     deployment_id_sha256: version.versionIdSha256,

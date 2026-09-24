@@ -118,6 +118,7 @@ export function parseProductionConfig(bytes, label = "production config") {
 
 export function validateProductionConfig(config, { mode = "template" } = {}) {
   const activated = mode === "activated" || mode === "qualified";
+  const apiGeneration = config.vars?.VIDEOFORGE_GENERATION_PROVIDER === "KIE_FAL";
   const expectedMain = activated ? ACTIVATED_MAIN_PATH : "./worker/production-index.ts";
   const expectedAssets = activated ? ACTIVATED_ASSETS_PATH : "./dist-cloudflare/client";
   if (
@@ -218,6 +219,9 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     "R2_ACCOUNT_ID",
     "VIDEOFORGE_COMMIT",
     "VIDEOFORGE_ENVIRONMENT",
+    ...(Object.hasOwn(config.vars ?? {}, "VIDEOFORGE_GENERATION_PROVIDER")
+      ? ["VIDEOFORGE_GENERATION_PROVIDER"]
+      : []),
     "VIDEOFORGE_GPU_TRANSPORT",
     "VIDEOFORGE_PROVIDER_MODE",
     "VIDEOFORGE_PUBLIC_ORIGIN",
@@ -229,7 +233,8 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     config.vars.VIDEOFORGE_ENVIRONMENT !== "production" ||
     config.vars.VIDEOFORGE_PROVIDER_MODE !== "production" ||
     config.vars.VIDEOFORGE_GPU_TRANSPORT !==
-      (mode === "qualified" ? "QUALIFIED_EXACT" : "DISABLED_UNQUALIFIED") ||
+      (mode === "qualified" && !apiGeneration ? "QUALIFIED_EXACT" : "DISABLED_UNQUALIFIED") ||
+    (Object.hasOwn(config.vars, "VIDEOFORGE_GENERATION_PROVIDER") && !apiGeneration) ||
     config.vars.VIDEOFORGE_R2_REGION !== "auto"
   )
     fail("production variables drifted");
@@ -316,7 +321,8 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
   } else fail("validation mode must be template or activated");
   return Object.freeze({
     mode,
-    gpu_transport: mode === "qualified" ? "QUALIFIED_EXACT" : "DISABLED_UNQUALIFIED",
+    gpu_transport:
+      mode === "qualified" && !apiGeneration ? "QUALIFIED_EXACT" : "DISABLED_UNQUALIFIED",
     valid: true,
   });
 }

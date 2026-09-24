@@ -238,6 +238,26 @@ GRANT EXECUTE ON FUNCTION public.videoforge_materialize_hosted_v209_system_avata
   uuid, uuid, uuid, uuid
 )
 TO :"runtime_role";
+-- Migration 0188 adds the API-provider lane. Its tenant-scoped SECURITY DEFINER RPCs are
+-- the only runtime entrypoints; the job table and JSON projection helper remain private.
+GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_api_jobs(uuid, uuid, uuid)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_materialize_hosted_api_jobs(uuid, uuid, uuid, uuid)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_claim_hosted_api_job(uuid, uuid, uuid, uuid, uuid)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_bind_hosted_api_image_prompt(uuid, uuid, uuid, uuid, text)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_record_hosted_api_task(uuid, uuid, uuid, uuid, uuid, text)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_mark_hosted_api_unknown(uuid, uuid, uuid, uuid, uuid)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_fail_hosted_api_job(uuid, uuid, uuid, uuid, text)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_commit_hosted_api_output(uuid, uuid, uuid, uuid, text, bigint, text, jsonb)
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_ready_render_inputs(uuid, uuid, uuid)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_claim_v213_workflow_start(jsonb)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_complete_v213_workflow_start(jsonb)
