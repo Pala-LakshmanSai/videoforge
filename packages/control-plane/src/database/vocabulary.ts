@@ -232,9 +232,7 @@ export const LEGACY_COMPATIBILITY_SETTING = "videoforge.legacy_compatibility_fix
  * `videoforge_tenant_` prefix and are not principal-filtered: 0095 exposes the effective candidate
  * (after same-generation renewals) here for the dispatch and claim functions.
  */
-export const INTERNAL_VIEW_NAMES = [
-  "hosted_v209_ordinary_dispatch_candidates_effective",
-] as const;
+export const INTERNAL_VIEW_NAMES = ["hosted_v209_ordinary_dispatch_candidates_effective"] as const;
 
 /**
  * Tenant read views filter on the trusted principal recorded in `videoforge.account_id`. Preset
