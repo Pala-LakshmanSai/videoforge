@@ -384,6 +384,9 @@ test("scheduler-v2 publishes every behavior-bearing constant as one immutable co
   ]);
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum, 0.21);
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum, 0.22);
+  assert.equal(SUPPORTED_SCHEDULER_CONFIG.short_form_maximum_ms, 15_000);
+  assert.equal(SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum, 0.2);
+  assert.equal(SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_maximum, 0.24);
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.avatar_coverage_pace_score_weight, 5);
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms, 500);
   assert.equal(Object.isFrozen(SUPPORTED_SCHEDULER_CONFIG), true);
@@ -463,14 +466,62 @@ test("short, silent, fast, slow, unpunctuated and 30-minute fixtures remain dete
         `${fixture.name} seed ${String(seed)}`,
       );
       const coverage = assertExactTimelineCoverage(first.value, fixture.value);
+      const minimumAvatarRatio =
+        fixture.value.source.duration_ms <= SUPPORTED_SCHEDULER_CONFIG.short_form_maximum_ms
+          ? SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum
+          : SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum;
+      const maximumAvatarRatio =
+        fixture.value.source.duration_ms <= SUPPORTED_SCHEDULER_CONFIG.short_form_maximum_ms
+          ? SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_maximum
+          : SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum;
       assert.ok(
-        coverage.avatarRatio >= 0.21 && coverage.avatarRatio <= 0.22,
+        coverage.avatarRatio >= minimumAvatarRatio && coverage.avatarRatio <= maximumAvatarRatio,
         `${fixture.name}: ${String(coverage.avatarRatio)}`,
       );
       assert.ok(
         coverage.fullSplitDifferenceFrames <= 210,
         `${fixture.name} full/split difference: ${String(coverage.fullSplitDifferenceFrames)}`,
       );
+    }
+  }
+});
+
+test("natural 12.384-second word timing schedules a bounded short timeline", async () => {
+  const transcriptValue = createPropertyTranscript({
+    durationMs: 12_384,
+    phraseStarts: [0, 4_000, 8_000],
+    wordQuantumMs: 250,
+  });
+  const request = await propertyRequest(0, transcriptValue);
+  const first = requireSuccess(await scheduleTimeline(request));
+  const second = requireSuccess(await scheduleTimeline(request));
+  assert.equal(first.sha256, second.sha256);
+  const coverage = assertExactTimelineCoverage(first.value, transcriptValue);
+  assert.ok(coverage.avatarRatio >= 0.2 && coverage.avatarRatio <= 0.24);
+  assert.equal(first.value.segments[0].timeline_composition, "AVATAR_FULL");
+  for (const segment of first.value.segments.filter(
+    (value) => value.timeline_composition === "IMAGE_FULL",
+  )) {
+    const durationMs = segment.source_audio_end_ms - segment.source_audio_start_ms;
+    assert.ok(durationMs >= 3_000 && durationMs <= 7_000);
+  }
+});
+
+test("accepted 10–15-second speech with 500ms word boundaries remains schedulable", async () => {
+  for (const durationMs of [10_000, 10_500, 13_000, 15_000]) {
+    const transcriptValue = createPropertyTranscript({
+      durationMs,
+      phraseStarts: [0, 4_000, 8_000],
+      wordQuantumMs: 500,
+    });
+    const plan = requireSuccess(await scheduleTimeline(await propertyRequest(0, transcriptValue)));
+    const coverage = assertExactTimelineCoverage(plan.value, transcriptValue);
+    assert.ok(coverage.avatarRatio >= 0.2 && coverage.avatarRatio <= 0.24);
+    for (const segment of plan.value.segments.filter(
+      (value) => value.timeline_composition === "IMAGE_FULL",
+    )) {
+      const sceneMs = segment.source_audio_end_ms - segment.source_audio_start_ms;
+      assert.ok(sceneMs >= 3_000 && sceneMs <= 7_000);
     }
   }
 });

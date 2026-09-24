@@ -69,6 +69,18 @@ function frameForMilliseconds(milliseconds: number): number {
   return Math.round((milliseconds * OUTPUT_FPS) / 1_000);
 }
 
+function avatarCoverageRange(durationMs: number): { minimum: number; maximum: number } {
+  return durationMs <= SUPPORTED_SCHEDULER_CONFIG.short_form_maximum_ms
+    ? {
+        minimum: SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum,
+        maximum: SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_maximum,
+      }
+    : {
+        minimum: SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum,
+        maximum: SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum,
+      };
+}
+
 function boundaryMilliseconds(transcript: TranscriptTimingDocument, wordIndex: number): number {
   if (wordIndex === 0) return 0;
   if (wordIndex === transcript.words.length) return transcript.source.duration_ms;
@@ -621,13 +633,15 @@ export function validateTimelineSemantics(
     .reduce((sum, segment) => sum + segment.end_frame_exclusive - segment.start_frame, 0);
   const splitAvatarFrames = avatarFrames - fullAvatarFrames;
   const avatarRatio = avatarFrames / plan.total_frames;
-  if (
-    avatarRatio < SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum ||
-    avatarRatio > SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum
-  ) {
-    return fail("TIMELINE_INVALID", "Avatar coverage must remain inside the locked 21–22% range.", [
-      "segments",
-    ]);
+  const coverageRange = avatarCoverageRange(transcript.source.duration_ms);
+  if (avatarRatio < coverageRange.minimum || avatarRatio > coverageRange.maximum) {
+    return fail(
+      "TIMELINE_INVALID",
+      transcript.source.duration_ms <= SUPPORTED_SCHEDULER_CONFIG.short_form_maximum_ms
+        ? "Short-form avatar coverage must remain inside the 20–24% range."
+        : "Avatar coverage must remain inside the locked 21–22% range.",
+      ["segments"],
+    );
   }
   if (Math.abs(fullAvatarFrames - splitAvatarFrames) > frameForMilliseconds(OPENER_MAXIMUM_MS)) {
     return fail(
@@ -658,18 +672,15 @@ function buildTimelinePlan(
 ): TimelinePlanDocument | PipelineFailure {
   const revision = request.revision.value;
   const transcript = request.transcript.value;
+  const coverageRange = avatarCoverageRange(transcript.source.duration_ms);
   const targetAvatarRatio = variation.between(
     "target-avatar-ratio",
-    SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum,
-    SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum,
+    coverageRange.minimum,
+    coverageRange.maximum,
   );
   const totalFrames = frameForMilliseconds(transcript.source.duration_ms);
-  const minimumAvatarFrames = Math.ceil(
-    totalFrames * SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum,
-  );
-  const maximumAvatarFrames = Math.floor(
-    totalFrames * SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum,
-  );
+  const minimumAvatarFrames = Math.ceil(totalFrames * coverageRange.minimum);
+  const maximumAvatarFrames = Math.floor(totalFrames * coverageRange.maximum);
   const targetAvatarFrames = Math.round(totalFrames * targetAvatarRatio);
   const openers = selectOpeners(
     transcript,

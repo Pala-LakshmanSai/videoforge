@@ -35,6 +35,10 @@ export const SUPPORTED_SCHEDULER_CONFIG = Object.freeze({
   avatar_balance_score_weight: 0.35,
   target_avatar_ratio_minimum: 0.21,
   target_avatar_ratio_maximum: 0.22,
+  // Short speech has too few word boundaries to reliably hit a one-point coverage window.
+  short_form_maximum_ms: 15_000,
+  short_form_target_avatar_ratio_minimum: 0.2,
+  short_form_target_avatar_ratio_maximum: 0.24,
   selected_span_context_padding_ms: 500,
   shot_roles: SCHEDULER_SHOT_ROLES,
 });
