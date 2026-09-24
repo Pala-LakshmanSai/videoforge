@@ -16,7 +16,7 @@ import {
   type PreparedDeterministicTimeline,
   type PreparedLocalTranscription,
 } from "@videoforge/control-plane";
-import { SUPPORTED_SCHEDULER_CONFIG } from "@videoforge/pipeline/scheduler-config";
+import { schedulerConfigForVersion } from "@videoforge/pipeline/scheduler-config";
 
 import { sha256Bytes } from "./crypto";
 import { hostedGpuReadiness, type HostedGpuReadiness } from "./gpu-readiness";
@@ -451,7 +451,9 @@ export async function coordinateHostedGeneration(input: {
   if (preparedTimeline.timelineDocumentHash !== timeline.sha256)
     reject("HOSTED_GENERATION_TIMELINE_DERIVATION_MISMATCH");
   const tasks = await plannedTasks(snapshot.projectRevisionId, timeline.value);
-  const schedulerConfigSha256 = await sha256CanonicalJson(SUPPORTED_SCHEDULER_CONFIG);
+  const schedulerConfig = schedulerConfigForVersion(revision.value.scheduler_version);
+  if (!schedulerConfig) reject("HOSTED_GENERATION_SCHEDULER_VERSION_UNSUPPORTED");
+  const schedulerConfigSha256 = await sha256CanonicalJson(schedulerConfig);
   const generationPlan = {
     schema_version: "videoforge-hosted-generation-plan/v1",
     project_id: snapshot.projectId,

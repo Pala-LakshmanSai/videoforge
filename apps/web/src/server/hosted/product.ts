@@ -212,6 +212,7 @@ export function hostedRevisionConfigV2(input: {
   readonly title: string;
   readonly voiceoverAssetId: string;
   readonly voiceoverSha256: string;
+  readonly voiceoverDurationMs: number;
   readonly avatarProfileId: string;
   readonly avatarProfileVersionId: string;
   readonly avatarDisplayName: string;
@@ -263,7 +264,7 @@ export function hostedRevisionConfigV2(input: {
       avatar_quality_profile_id: null,
     },
     spend_cap_usd: null,
-    scheduler_version: "scheduler-v2",
+    scheduler_version: input.voiceoverDurationMs <= 15_000 ? "scheduler-v3" : "scheduler-v2",
     scheduler_seed: input.schedulerSeed,
     prompt_writer_version: "scene-prompt-writer-v1",
     prompt_compiler_version: "mage-prompt-compiler-v1",
@@ -4889,6 +4890,7 @@ async function createProject(
         title: input.title,
         voiceoverAssetId: assetId,
         voiceoverSha256: input.voiceover.checksumSha256,
+        voiceoverDurationMs: input.voiceover.durationMs,
         avatarProfileId: rowString(avatar, "profile_id"),
         avatarProfileVersionId: rowString(avatar, "version_id"),
         avatarDisplayName: rowString(avatar, "profile_name"),

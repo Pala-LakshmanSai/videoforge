@@ -110,12 +110,13 @@ describe("V2-06 hosted adapters", () => {
     });
   });
   it("persists the canonical v2 revision contract needed by hosted scheduling", async () => {
-    const revision = hostedRevisionConfigV2({
+    const input = {
       projectId: "11111111-1111-4111-8111-111111111111",
       projectRevisionId: "22222222-2222-4222-8222-222222222222",
       title: "Private hosted project",
       voiceoverAssetId: "33333333-3333-4333-8333-333333333333",
       voiceoverSha256: `sha256:${"a".repeat(64)}`,
+      voiceoverDurationMs: 26_000,
       avatarProfileId: "44444444-4444-4444-8444-444444444444",
       avatarProfileVersionId: "55555555-5555-4555-8555-555555555555",
       avatarDisplayName: "Owner avatar",
@@ -127,7 +128,11 @@ describe("V2-06 hosted adapters", () => {
       imageStyleVersionId: "77777777-7777-4777-8777-777777777777",
       styleProfileHash: `sha256:${"d".repeat(64)}`,
       schedulerSeed: 982_341,
-    });
+    };
+    const revision = hostedRevisionConfigV2(input);
+    expect(
+      hostedRevisionConfigV2({ ...input, voiceoverDurationMs: 12_384 }).scheduler_version,
+    ).toBe("scheduler-v3");
 
     await expect(
       validateAndHashContractDocument("projectRevisionConfig", revision),

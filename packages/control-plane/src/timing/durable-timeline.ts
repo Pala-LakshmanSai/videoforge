@@ -10,7 +10,7 @@ import type { ContractDocumentValidationAuthority } from "@videoforge/contracts"
 import {
   scheduleTimeline,
   spanPaddedWindowMs,
-  SUPPORTED_SCHEDULER_CONFIG,
+  schedulerConfigForVersion,
   SUPPORTED_SCHEDULER_VERSION,
 } from "@videoforge/pipeline";
 
@@ -200,8 +200,12 @@ export async function prepareDurableDeterministicTimeline(
     );
   }
 
+  const schedulerConfig = schedulerConfigForVersion(revision.value.scheduler_version);
+  if (!schedulerConfig) {
+    throw new DurableTimelineError("TIMELINE_INPUT_MISMATCH", "Unsupported scheduler version.");
+  }
   const schedulerConfigHash = asSha256(
-    await sha256CanonicalJson(SUPPORTED_SCHEDULER_CONFIG as unknown as JsonValue),
+    await sha256CanonicalJson(schedulerConfig as unknown as JsonValue),
   );
   const inputFingerprintHash = asSha256(
     await sha256CanonicalJson({
