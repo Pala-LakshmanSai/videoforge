@@ -35,10 +35,23 @@ export const SUPPORTED_SCHEDULER_CONFIG = Object.freeze({
   avatar_balance_score_weight: 0.35,
   target_avatar_ratio_minimum: 0.21,
   target_avatar_ratio_maximum: 0.22,
-  // Short speech has too few word boundaries to reliably hit a one-point coverage window.
-  short_form_maximum_ms: 15_000,
-  short_form_target_avatar_ratio_minimum: 0.2,
-  short_form_target_avatar_ratio_maximum: 0.24,
   selected_span_context_padding_ms: 500,
   shot_roles: SCHEDULER_SHOT_ROLES,
 });
+
+export const SHORT_FORM_SCHEDULER_VERSION = "scheduler-v3";
+
+/** V3 widens short-form coverage while preserving the exact immutable V2 config and hash. */
+export const SHORT_FORM_SCHEDULER_CONFIG = Object.freeze({
+  ...SUPPORTED_SCHEDULER_CONFIG,
+  schema_version: "deterministic-timeline-scheduler-config/v3",
+  short_form_maximum_ms: 15_000,
+  short_form_target_avatar_ratio_minimum: 0.2,
+  short_form_target_avatar_ratio_maximum: 0.24,
+});
+
+export function schedulerConfigForVersion(version: string) {
+  if (version === SUPPORTED_SCHEDULER_VERSION) return SUPPORTED_SCHEDULER_CONFIG;
+  if (version === SHORT_FORM_SCHEDULER_VERSION) return SHORT_FORM_SCHEDULER_CONFIG;
+  return null;
+}

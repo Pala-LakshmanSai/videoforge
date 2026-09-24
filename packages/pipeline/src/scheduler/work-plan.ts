@@ -10,7 +10,7 @@ import type { ProjectRevisionDocumentRef, TimelinePlanDocumentRef } from "../doc
 import type { TranscriptDocumentRef } from "../transcript/types.js";
 import { pipelineFailure, pipelineSuccess, type PipelineResult } from "../errors.js";
 import { spanPaddedWindowMs } from "./span-padding.js";
-import { SUPPORTED_SCHEDULER_CONFIG } from "./config.js";
+import { schedulerConfigForVersion, SUPPORTED_SCHEDULER_CONFIG } from "./config.js";
 import { validateTimelineSemantics } from "./scheduler.js";
 
 export interface MaterializedSelectedSpan {
@@ -141,7 +141,11 @@ function validateExactTimeline(request: CompleteWorkPlanRequest): string | null 
 export async function compileCompleteWorkPlan(
   request: CompleteWorkPlanRequest,
 ): Promise<PipelineResult<CompleteWorkPlan>> {
-  if (request.schedulerConfigHash !== (await sha256CanonicalJson(SUPPORTED_SCHEDULER_CONFIG))) {
+  const schedulerConfig = schedulerConfigForVersion(request.revision.value.scheduler_version);
+  if (
+    schedulerConfig === null ||
+    request.schedulerConfigHash !== (await sha256CanonicalJson(schedulerConfig))
+  ) {
     return fail("Scheduler config hash does not match the locked scheduler implementation.", [
       "schedulerConfigHash",
     ]);

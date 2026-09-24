@@ -10,6 +10,9 @@ import {
   compileCompleteWorkPlan,
   deterministicTimelineScheduler,
   scheduleTimeline,
+  schedulerConfigForVersion,
+  SHORT_FORM_SCHEDULER_CONFIG,
+  SHORT_FORM_SCHEDULER_VERSION,
   SUPPORTED_SCHEDULER_CONFIG,
   SUPPORTED_SCHEDULER_VERSION,
 } from "../dist/src/index.js";
@@ -87,7 +90,7 @@ function createTranscriptValue() {
   };
 }
 
-function createRevisionValue(seed) {
+function createRevisionValue(seed, schedulerVersion = SUPPORTED_SCHEDULER_VERSION) {
   return {
     schema_version: "project-revision-config/v2",
     project_id: "project_local_owned_001",
@@ -120,7 +123,7 @@ function createRevisionValue(seed) {
       avatar_quality_profile_id: null,
     },
     spend_cap_usd: 1.5,
-    scheduler_version: SUPPORTED_SCHEDULER_VERSION,
+    scheduler_version: schedulerVersion,
     scheduler_seed: seed,
     prompt_writer_version: "fixture-prompt-writer-v1",
     prompt_compiler_version: "fixture-prompt-compiler-v1",
@@ -213,9 +216,16 @@ function createPropertyTranscript({
   };
 }
 
-async function propertyRequest(seed, transcriptValue) {
+async function propertyRequest(
+  seed,
+  transcriptValue,
+  schedulerVersion = SUPPORTED_SCHEDULER_VERSION,
+) {
   const [revision, transcript] = await Promise.all([
-    validateAndHashContractDocument("projectRevisionConfig", createRevisionValue(seed)),
+    validateAndHashContractDocument(
+      "projectRevisionConfig",
+      createRevisionValue(seed, schedulerVersion),
+    ),
     validateAndHashContractDocument("transcriptTiming", transcriptValue),
   ]);
   return { revision, transcript, determinism };
@@ -384,9 +394,14 @@ test("scheduler-v2 publishes every behavior-bearing constant as one immutable co
   ]);
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum, 0.21);
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum, 0.22);
-  assert.equal(SUPPORTED_SCHEDULER_CONFIG.short_form_maximum_ms, 15_000);
-  assert.equal(SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum, 0.2);
-  assert.equal(SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_maximum, 0.24);
+  assert.equal(SHORT_FORM_SCHEDULER_CONFIG.short_form_maximum_ms, 15_000);
+  assert.equal(SHORT_FORM_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum, 0.2);
+  assert.equal(SHORT_FORM_SCHEDULER_CONFIG.short_form_target_avatar_ratio_maximum, 0.24);
+  assert.equal(schedulerConfigForVersion(SUPPORTED_SCHEDULER_VERSION), SUPPORTED_SCHEDULER_CONFIG);
+  assert.equal(
+    schedulerConfigForVersion(SHORT_FORM_SCHEDULER_VERSION),
+    SHORT_FORM_SCHEDULER_CONFIG,
+  );
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.avatar_coverage_pace_score_weight, 5);
   assert.equal(SUPPORTED_SCHEDULER_CONFIG.selected_span_context_padding_ms, 500);
   assert.equal(Object.isFrozen(SUPPORTED_SCHEDULER_CONFIG), true);
@@ -466,16 +481,8 @@ test("short, silent, fast, slow, unpunctuated and 30-minute fixtures remain dete
         `${fixture.name} seed ${String(seed)}`,
       );
       const coverage = assertExactTimelineCoverage(first.value, fixture.value);
-      const minimumAvatarRatio =
-        fixture.value.source.duration_ms <= SUPPORTED_SCHEDULER_CONFIG.short_form_maximum_ms
-          ? SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum
-          : SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum;
-      const maximumAvatarRatio =
-        fixture.value.source.duration_ms <= SUPPORTED_SCHEDULER_CONFIG.short_form_maximum_ms
-          ? SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_maximum
-          : SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_maximum;
       assert.ok(
-        coverage.avatarRatio >= minimumAvatarRatio && coverage.avatarRatio <= maximumAvatarRatio,
+        coverage.avatarRatio >= 0.21 && coverage.avatarRatio <= 0.22,
         `${fixture.name}: ${String(coverage.avatarRatio)}`,
       );
       assert.ok(
@@ -492,7 +499,13 @@ test("natural 12.384-second word timing schedules a bounded short timeline", asy
     phraseStarts: [0, 4_000, 8_000],
     wordQuantumMs: 250,
   });
-  const request = await propertyRequest(0, transcriptValue);
+  const v2 = await scheduleTimeline(await propertyRequest(0, transcriptValue));
+  assert.equal(v2.ok, false);
+  assert.equal(
+    v2.error.message,
+    "Word boundaries cannot satisfy locked avatar coverage and complete image partitioning.",
+  );
+  const request = await propertyRequest(0, transcriptValue, SHORT_FORM_SCHEDULER_VERSION);
   const first = requireSuccess(await scheduleTimeline(request));
   const second = requireSuccess(await scheduleTimeline(request));
   assert.equal(first.sha256, second.sha256);
@@ -514,7 +527,11 @@ test("accepted 10–15-second speech with 500ms word boundaries remains schedula
       phraseStarts: [0, 4_000, 8_000],
       wordQuantumMs: 500,
     });
-    const plan = requireSuccess(await scheduleTimeline(await propertyRequest(0, transcriptValue)));
+    const plan = requireSuccess(
+      await scheduleTimeline(
+        await propertyRequest(0, transcriptValue, SHORT_FORM_SCHEDULER_VERSION),
+      ),
+    );
     const coverage = assertExactTimelineCoverage(plan.value, transcriptValue);
     assert.ok(coverage.avatarRatio >= 0.2 && coverage.avatarRatio <= 0.24);
     for (const segment of plan.value.segments.filter(

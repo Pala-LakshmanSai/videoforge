@@ -15,6 +15,8 @@ import {
 import type { SchedulerPort, SchedulerRequest } from "./ports.js";
 import {
   SCHEDULER_SHOT_ROLES,
+  SHORT_FORM_SCHEDULER_CONFIG,
+  SHORT_FORM_SCHEDULER_VERSION,
   SUPPORTED_SCHEDULER_CONFIG,
   SUPPORTED_SCHEDULER_VERSION,
 } from "./config.js";
@@ -69,11 +71,15 @@ function frameForMilliseconds(milliseconds: number): number {
   return Math.round((milliseconds * OUTPUT_FPS) / 1_000);
 }
 
-function avatarCoverageRange(durationMs: number): { minimum: number; maximum: number } {
-  return durationMs <= SUPPORTED_SCHEDULER_CONFIG.short_form_maximum_ms
+function avatarCoverageRange(
+  durationMs: number,
+  version: string,
+): { minimum: number; maximum: number } {
+  return version === SHORT_FORM_SCHEDULER_VERSION &&
+    durationMs <= SHORT_FORM_SCHEDULER_CONFIG.short_form_maximum_ms
     ? {
-        minimum: SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum,
-        maximum: SUPPORTED_SCHEDULER_CONFIG.short_form_target_avatar_ratio_maximum,
+        minimum: SHORT_FORM_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum,
+        maximum: SHORT_FORM_SCHEDULER_CONFIG.short_form_target_avatar_ratio_maximum,
       }
     : {
         minimum: SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum,
@@ -98,12 +104,15 @@ function validateSchedulerInput(
   revision: ProjectRevisionConfigDocument,
   transcript: TranscriptTimingDocument,
 ): PipelineFailure | null {
-  if (revision.scheduler_version !== SUPPORTED_SCHEDULER_VERSION) {
+  if (
+    revision.scheduler_version !== SUPPORTED_SCHEDULER_VERSION &&
+    revision.scheduler_version !== SHORT_FORM_SCHEDULER_VERSION
+  ) {
     return fail(
       "TIMELINE_INVALID",
       `Unsupported scheduler version ${revision.scheduler_version}.`,
       ["revision", "scheduler_version"],
-      { supportedVersion: SUPPORTED_SCHEDULER_VERSION },
+      { supportedVersions: [SUPPORTED_SCHEDULER_VERSION, SHORT_FORM_SCHEDULER_VERSION] },
     );
   }
 
@@ -633,11 +642,12 @@ export function validateTimelineSemantics(
     .reduce((sum, segment) => sum + segment.end_frame_exclusive - segment.start_frame, 0);
   const splitAvatarFrames = avatarFrames - fullAvatarFrames;
   const avatarRatio = avatarFrames / plan.total_frames;
-  const coverageRange = avatarCoverageRange(transcript.source.duration_ms);
+  const coverageRange = avatarCoverageRange(transcript.source.duration_ms, plan.scheduler_version);
   if (avatarRatio < coverageRange.minimum || avatarRatio > coverageRange.maximum) {
     return fail(
       "TIMELINE_INVALID",
-      transcript.source.duration_ms <= SUPPORTED_SCHEDULER_CONFIG.short_form_maximum_ms
+      plan.scheduler_version === SHORT_FORM_SCHEDULER_VERSION &&
+        transcript.source.duration_ms <= SHORT_FORM_SCHEDULER_CONFIG.short_form_maximum_ms
         ? "Short-form avatar coverage must remain inside the 20–24% range."
         : "Avatar coverage must remain inside the locked 21–22% range.",
       ["segments"],
@@ -672,7 +682,10 @@ function buildTimelinePlan(
 ): TimelinePlanDocument | PipelineFailure {
   const revision = request.revision.value;
   const transcript = request.transcript.value;
-  const coverageRange = avatarCoverageRange(transcript.source.duration_ms);
+  const coverageRange = avatarCoverageRange(
+    transcript.source.duration_ms,
+    revision.scheduler_version,
+  );
   const targetAvatarRatio = variation.between(
     "target-avatar-ratio",
     coverageRange.minimum,
