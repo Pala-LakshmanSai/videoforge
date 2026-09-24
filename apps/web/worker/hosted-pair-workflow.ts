@@ -107,9 +107,8 @@ function scope(value: WorkflowParameters): HostedPairWorkflowParameters {
   return Object.freeze({ ...ordinary });
 }
 
-/** Durable paid-pair coordinator. The checked-in binding is disabled, so its first branch makes
- * no database or provider call. Once separately activated, the first idempotent step resumes the
- * 0043 Mage-then-SoulX boundary; later steps only observe, cancel exact known jobs, and settle. */
+/** Durable generation coordinator. API generation and regeneration use their project-pinned
+ * providers; the disabled GPU binding still stops historical RunPod pair work. */
 export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, WorkflowParameters> {
   async run(event: Readonly<WorkflowEvent<WorkflowParameters>>, step: WorkflowStep) {
     if (
@@ -171,8 +170,6 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
       }
       return { state: "RECONCILIATION_REQUIRED" as const };
     }
-    if (hostedPairProductionBindingState(this.env).state === "DISABLED_UNQUALIFIED")
-      return Object.freeze({ state: "DISABLED_UNQUALIFIED" as const });
     if (
       "schema_version" in event.payload &&
       event.payload.schema_version === "videoforge-image-regeneration-workflow/v1"
@@ -208,13 +205,17 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
         if (
           result.leaseReleased ||
           result.state === "SENT" ||
-          result.state === "DISPATCH_ACK_UNKNOWN"
+          result.state === "DISPATCH_ACK_UNKNOWN" ||
+          result.state === "UNKNOWN_NO_RETRY" ||
+          result.state === "DISABLED_UNQUALIFIED"
         )
           return result;
         await step.sleep(`image-regeneration-wait-${observation}`, "2 seconds");
       }
       return { state: "RECONCILIATION_REQUIRED" };
     }
+    if (hostedPairProductionBindingState(this.env).state === "DISABLED_UNQUALIFIED")
+      return Object.freeze({ state: "DISABLED_UNQUALIFIED" as const });
     const acceptanceCandidate =
       event.payload &&
       typeof event.payload === "object" &&

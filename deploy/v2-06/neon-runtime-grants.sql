@@ -260,6 +260,17 @@ GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_v209_ready_render_inputs
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_settle_hosted_api_failure(uuid, uuid, uuid)
 TO :"runtime_role";
+-- Migration 0189 adds tenant-scoped Kie image regeneration entrypoints.
+GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_api_image_regeneration_source(uuid, uuid, uuid, uuid, uuid) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_create_hosted_api_image_regeneration(uuid, uuid, uuid, uuid, uuid, text, text) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_get_hosted_api_image_regeneration(uuid, uuid, uuid, uuid, uuid) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_load_hosted_api_image_regeneration(uuid, uuid) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_claim_hosted_api_image_regeneration(uuid, uuid) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_record_hosted_api_image_regeneration_task(uuid, uuid, text) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_mark_hosted_api_image_regeneration_unknown(uuid, uuid) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_fail_hosted_api_image_regeneration(uuid, text) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_commit_hosted_api_image_regeneration(uuid, text, bigint, text, jsonb) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_api_image_regenerations(uuid, uuid, uuid, uuid) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_claim_v213_workflow_start(jsonb)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_complete_v213_workflow_start(jsonb)
@@ -326,6 +337,8 @@ GRANT SELECT ON
   timeline_plans,
   generation_tasks,
   generation_requests,
+  hosted_api_generation_jobs,
+  hosted_api_image_regeneration_jobs,
   video_runtime_states,
   video_runtime_lane_states,
   serverless_attempts,
