@@ -126,9 +126,7 @@ export function ProjectMediaReview({
   const avatarTriggerRef = useRef<HTMLButtonElement | null>(null);
   const activeItems =
     activeSection === "images" ? images : activeSection === "avatar" ? avatarVideos : [];
-  const activeTotal = activeSection
-    ? (mediaTotals?.[activeSection] ?? activeItems.length)
-    : 0;
+  const activeTotal = activeSection ? (mediaTotals?.[activeSection] ?? activeItems.length) : 0;
   const activeHasMore = activeSection ? (mediaHasMore?.[activeSection] ?? false) : false;
   const selectedItem = activeItems[selectedIndex] ?? null;
 
@@ -259,7 +257,7 @@ export function ProjectMediaReview({
                 ? "Loading media…"
                 : error
                   ? "Unavailable"
-                : countLabel(mediaTotals?.images ?? images.length, "image", "images")}
+                  : countLabel(mediaTotals?.images ?? images.length, "image", "images")}
             </small>
           </span>
           <ArrowRight size={19} aria-hidden="true" />
@@ -419,7 +417,7 @@ export function ProjectMediaReview({
                           rows={2}
                           value={promptFor(selectedItem)}
                           aria-label="Image prompt"
-                          disabled={regeneratingId !== null}
+                          disabled={!onRegenerate || regeneratingId !== null}
                           placeholder="Describe a replacement image."
                           onChange={(event) => updatePrompt(selectedItem, event.target.value)}
                           onKeyDown={(event) => handlePromptKeyDown(event, selectedItem)}

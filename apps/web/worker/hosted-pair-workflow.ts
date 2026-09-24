@@ -13,6 +13,7 @@ import {
 } from "../src/server/hosted/hosted-pair-live-wiring";
 import { hostedPairProductionBindingState } from "../src/server/hosted/hosted-pair-production-composition";
 import { createHostedV209RenderHandoff } from "../src/server/hosted/hosted-v209-render-handoff";
+import type { HostedApiGenerationParameters } from "../src/server/hosted/hosted-api-generation";
 import { hasHostedV209OrdinaryDispatchCandidate } from "../src/server/hosted/hosted-v209-queue-admission";
 import { createNeonExecutor, createNeonPool } from "../src/server/hosted/neon";
 import {
@@ -24,6 +25,7 @@ import type { V213AcceptanceWorkflowParameters } from "../src/server/hosted/v213
 type Environment = HostedRuntimeEnvironment & HostedPairLiveEnvironment;
 type WorkflowParameters =
   | HostedPairWorkflowParameters
+  | HostedApiGenerationParameters
   | V213AcceptanceWorkflowParameters
   | import("../src/server/hosted/hosted-image-regeneration-execution").ImageRegenerationParameters;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -110,6 +112,65 @@ function scope(value: WorkflowParameters): HostedPairWorkflowParameters {
  * 0043 Mage-then-SoulX boundary; later steps only observe, cancel exact known jobs, and settle. */
 export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, WorkflowParameters> {
   async run(event: Readonly<WorkflowEvent<WorkflowParameters>>, step: WorkflowStep) {
+    if (
+      "schema_version" in event.payload &&
+      event.payload.schema_version === "videoforge-api-generation-workflow/v1"
+    ) {
+      const params = event.payload as HostedApiGenerationParameters;
+      if (
+        ![params.accountId, params.workspaceId, params.generationRequestId].every(
+          (id) => typeof id === "string" && DATABASE_UUID.test(id),
+        )
+      )
+        throw new Error("HOSTED_API_GENERATION_PARAMETERS_INVALID");
+      const { advanceHostedApiGeneration } = await import(
+        "../src/server/hosted/hosted-api-generation"
+      );
+      for (let observation = 0; observation < 720; observation += 1) {
+        const result = await step.do(`api-generation-${observation}`, async () => {
+          const pool = createNeonPool(this.env.DATABASE_URL!);
+          try {
+            return await advanceHostedApiGeneration(
+              this.env,
+              createNeonExecutor(pool),
+              params,
+              observation,
+            );
+          } finally {
+            await closePoolsWithoutBlockingWorkflow(pool, pool);
+          }
+        });
+        if (result.state === "ACTION_REQUIRED") return result;
+        if (result.state === "READY_TO_RENDER") {
+          return step.do("api-generation-render-handoff", async () => {
+            const runtimePool = createNeonPool(this.env.DATABASE_URL!);
+            const reconcilerPool = createNeonPool(this.env.VIDEOFORGE_RECONCILER_DATABASE_URL!);
+            try {
+              const config = hostedRuntimeConfiguration(this.env);
+              if (!this.env.PRIVATE_ARTIFACTS)
+                throw new Error("HOSTED_API_ARTIFACT_BINDING_MISSING");
+              const handoff = createHostedV209RenderHandoff({
+                database: createNeonExecutor(reconcilerPool),
+                runtimeDatabase: createNeonExecutor(runtimePool),
+                bucket: this.env.PRIVATE_ARTIFACTS,
+                schedule: (submission) =>
+                  scheduleHostedRenderSubmission(this.env, config, {
+                    accountId: params.accountId,
+                    workspaceId: params.workspaceId,
+                    submission,
+                  }),
+              });
+              await handoff.ensure(params);
+              return { state: "RENDER_SCHEDULED" as const };
+            } finally {
+              await closePoolsWithoutBlockingWorkflow(runtimePool, reconcilerPool);
+            }
+          });
+        }
+        await step.sleep(`api-generation-wait-${observation}`, "10 seconds");
+      }
+      return { state: "RECONCILIATION_REQUIRED" as const };
+    }
     if (hostedPairProductionBindingState(this.env).state === "DISABLED_UNQUALIFIED")
       return Object.freeze({ state: "DISABLED_UNQUALIFIED" as const });
     if (

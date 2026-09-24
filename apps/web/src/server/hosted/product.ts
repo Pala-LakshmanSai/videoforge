@@ -94,9 +94,22 @@ function avatarRuntimeSourceQualified(row: AvatarRuntimeSourceRow | undefined): 
   );
 }
 
+function avatarRuntimeSourceReadyForApi(row: AvatarRuntimeSourceRow | undefined): boolean {
+  return (
+    (row?.source_state === "VERIFIED" || row?.source_state === "ACCEPTED") &&
+    (row.source_content_type === "image/png" || row.source_content_type === "image/jpeg") &&
+    typeof row.object_key === "string" &&
+    /^tenant\/[^/]+\/workspace\/[^/]+\/avatar-profile\/[^/]+\/version\/[^/]+\/(?:original|canonical)\/[^/]+$/u.test(
+      row.object_key,
+    )
+  );
+}
+
 interface AvatarRuntimeSourceRow extends Record<string, unknown> {
   readonly source_preparation_profile?: string | null;
   readonly object_key?: string | null;
+  readonly source_state?: string | null;
+  readonly source_content_type?: string | null;
 }
 
 const QUALIFIED_AVATAR_UNAVAILABLE_MESSAGE =
@@ -113,7 +126,9 @@ async function readAvatarRuntimeSource(
   avatarVersionId: string,
 ): Promise<AvatarRuntimeSourceRow | undefined> {
   const result = await transaction.query<AvatarRuntimeSourceRow>(
-    `SELECT version.source_preparation_profile, runtime_source.object_key
+    `SELECT version.source_preparation_profile, runtime_source.object_key,
+            runtime_source.state AS source_state,
+            runtime_source.content_type AS source_content_type
        FROM avatar_profile_versions AS version
        LEFT JOIN assets AS runtime_source
          ON runtime_source.account_id = version.account_id
@@ -3806,7 +3821,9 @@ async function catalog(
                 version.version_number, version.state, profile.status,
                 version.profile_hash, profile.scope_kind,
                 version.source_preparation_profile,
-                runtime_source.object_key AS runtime_source_object_key
+                runtime_source.object_key AS runtime_source_object_key,
+                runtime_source.state AS source_state,
+                runtime_source.content_type AS source_content_type
            FROM avatar_profiles AS profile
            JOIN avatar_profile_versions AS version
              ON version.account_id = profile.account_id
@@ -3964,13 +3981,18 @@ async function catalog(
       rights_status: row.scope_kind === "SYSTEM" ? "SYSTEM_OWNED" : "ATTESTED",
       // The avatar-video lane can only read the approved canonical source. The picker states this up
       // front instead of letting a custom avatar look selectable and fail at preflight.
-      avatar_video_source_ready: avatarRuntimeSourceQualified({
+      avatar_video_source_ready: (config.apiGeneration
+        ? avatarRuntimeSourceReadyForApi
+        : avatarRuntimeSourceQualified)({
         source_preparation_profile:
           typeof row.source_preparation_profile === "string"
             ? row.source_preparation_profile
             : null,
         object_key:
           typeof row.runtime_source_object_key === "string" ? row.runtime_source_object_key : null,
+        source_state: typeof row.source_state === "string" ? row.source_state : null,
+        source_content_type:
+          typeof row.source_content_type === "string" ? row.source_content_type : null,
       }),
     }));
     const styleRows = (data.styles as Record<string, unknown>[]).map((row) => {
@@ -4043,6 +4065,7 @@ async function catalog(
       avatar_drafts: avatarDraftRows,
       style_drafts: styleDraftRows,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
+      generation_provider: config.apiGeneration ? "KIE_FAL" : "RUNPOD",
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
     });
@@ -4634,7 +4657,9 @@ async function projectPreflight(
       ]);
       const [avatar, qualifiedAvatarName, style, workers] = await Promise.all([
         transaction.query<AvatarRuntimeSourceRow>(
-          `SELECT version.source_preparation_profile, runtime_source.object_key
+          `SELECT version.source_preparation_profile, runtime_source.object_key,
+                  runtime_source.state AS source_state,
+                  runtime_source.content_type AS source_content_type
              FROM avatar_profiles AS profile
              JOIN avatar_profile_versions AS version
                ON version.account_id = profile.account_id
@@ -4671,7 +4696,9 @@ async function projectPreflight(
         ),
       ]);
       const avatarRow = avatar.rows[0];
-      const runtimeSourceQualified = avatarRuntimeSourceQualified(avatarRow);
+      const runtimeSourceQualified = config.apiGeneration
+        ? avatarRuntimeSourceReadyForApi(avatarRow)
+        : avatarRuntimeSourceQualified(avatarRow);
       return {
         avatarReady: avatar.rows.length > 0,
         avatarRuntimeSourceQualified: runtimeSourceQualified,
@@ -4691,7 +4718,9 @@ async function projectPreflight(
     if (facts.avatarReady && !facts.avatarRuntimeSourceQualified) {
       blockers.push({
         code: "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
-        message: qualifiedAvatarUnavailableMessage(facts.qualifiedAvatarName),
+        message: config.apiGeneration
+          ? "Choose a ready Avatar Hub version with a verified image source."
+          : qualifiedAvatarUnavailableMessage(facts.qualifiedAvatarName),
         severity: "BLOCKING",
       });
     }
@@ -4710,7 +4739,7 @@ async function projectPreflight(
       });
     }
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
-    if (!gpuReadiness.dispatch_available) {
+    if (!config.apiGeneration && !gpuReadiness.dispatch_available) {
       blockers.push({
         code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED",
         message: "GPU lanes are not qualified; the estimate excludes provider GPU spend.",
@@ -4724,18 +4753,21 @@ async function projectPreflight(
       ok,
       ready: ok,
       estimate: {
-        projected_usd: gpuProductState.projectedUsd,
+        projected_usd: config.apiGeneration ? null : gpuProductState.projectedUsd,
         minimum_usd: 0,
         maximum_usd: null,
         cap_usd: null,
-        detail: gpuProductState.estimateDetail,
+        detail: config.apiGeneration
+          ? "Kie image and Fal compute usage is billed after generation."
+          : gpuProductState.estimateDetail,
         voiceover_bytes: input.voiceover.contentLength,
         duration_ms: input.voiceover.durationMs,
         generation_mode: input.generationMode,
       },
       blockers,
       gpu_transport: gpuReadiness.gpu_transport,
-      provider_calls_authorized: gpuReadiness.provider_calls_authorized,
+      provider_calls_authorized:
+        Boolean(config.apiGeneration) || gpuReadiness.provider_calls_authorized,
     });
   } finally {
     await pool.end();
@@ -4828,8 +4860,12 @@ async function createProject(
       // pass-through source, so a project pinned to one burns the image lane and settles the pair
       // FAILED. Preflight is a browser convenience; this is the API-level guard.
       if (
-        !avatarRuntimeSourceQualified(
-          await readAvatarRuntimeSource(transaction, scope, rowString(resolved.avatar, "version_id")),
+        !(config.apiGeneration ? avatarRuntimeSourceReadyForApi : avatarRuntimeSourceQualified)(
+          await readAvatarRuntimeSource(
+            transaction,
+            scope,
+            rowString(resolved.avatar, "version_id"),
+          ),
         )
       ) {
         throw new Error("AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED");
@@ -4872,9 +4908,16 @@ async function createProject(
       const revisionHash = await sha256(canonicalJson(revisionPayload));
       await transaction.query(
         `INSERT INTO projects (
-           id, workspace_id, owner_user_id, name, normalized_name, project_kind
-         ) VALUES ($1,$2,$3,$4,lower($4),'USER')`,
-        [projectId, scope.workspace_id, scope.user_id, input.title],
+           id, workspace_id, owner_user_id, name, normalized_name, project_kind,
+           generation_provider
+         ) VALUES ($1,$2,$3,$4,lower($4),'USER',$5)`,
+        [
+          projectId,
+          scope.workspace_id,
+          scope.user_id,
+          input.title,
+          config.apiGeneration ? "KIE_FAL" : "RUNPOD",
+        ],
       );
       await transaction.query(
         `INSERT INTO assets (
@@ -5681,9 +5724,11 @@ export async function createVoiceoverContext(
         scope.account_id,
       ]);
       const result = await transaction.query<{ prepared: unknown }>(
-        `SELECT public.${redispatchable
-          ? "videoforge_redispatch_hosted_voiceover_context"
-          : "videoforge_prepare_hosted_voiceover_context"}($1::jsonb) AS prepared`,
+        `SELECT public.${
+          redispatchable
+            ? "videoforge_redispatch_hosted_voiceover_context"
+            : "videoforge_prepare_hosted_voiceover_context"
+        }($1::jsonb) AS prepared`,
         [
           JSON.stringify({
             account_id: scope.account_id,
@@ -6423,10 +6468,7 @@ function countHostedMediaArtifacts(
   return count;
 }
 
-function hostedMediaPagination(
-  page: number,
-  totalAccepted: number,
-): HostedMediaPagination {
+function hostedMediaPagination(page: number, totalAccepted: number): HostedMediaPagination {
   return Object.freeze({
     page,
     page_size: HOSTED_MEDIA_PAGE_SIZE,
@@ -6470,10 +6512,7 @@ async function verifyHostedMediaCandidates<T>(
   verify: (candidate: HostedMediaCandidate) => Promise<T | null>,
 ): Promise<readonly T[]> {
   const accepted: T[] = [];
-  for (
-    let offset = 0;
-    offset < candidates.length && accepted.length < HOSTED_MEDIA_PAGE_SIZE;
-  ) {
+  for (let offset = 0; offset < candidates.length && accepted.length < HOSTED_MEDIA_PAGE_SIZE; ) {
     const batchSize = Math.min(
       HOSTED_MEDIA_VERIFY_CONCURRENCY,
       candidates.length - offset,
@@ -6622,7 +6661,8 @@ async function projectDetail(
         [projectId],
       );
       const project = await transaction.query(
-        `SELECT project.id, project.name AS title, project.created_at, revision.id AS revision_id,
+        `SELECT project.id, project.name AS title, project.created_at,
+                project.generation_provider, revision.id AS revision_id,
                 revision.locked_at, revision.status AS revision_state
            FROM projects AS project
            JOIN project_revisions AS revision
@@ -7071,6 +7111,21 @@ async function projectDetail(
                 UNION ALL
                SELECT attempt_id, lane, artifact, accepted_at, source_priority, item_id
                  FROM accepted_output_items UNION ALL SELECT attempt_id,lane,artifact,accepted_at,source_priority,item_id FROM regenerated_output_items
+                UNION ALL
+               SELECT job.id, CASE job.lane WHEN 'IMAGE' THEN 'mage_image' ELSE 'soulx_avatar' END,
+                      jsonb_build_object('item_id',job.generation_task_id::text,
+                        'object_key',receipt.object_key,'content_type',receipt.content_type,
+                        'content_length',receipt.content_length,
+                        'checksum_sha256',receipt.checksum_sha256),
+                      job.completed_at, 1, job.generation_task_id::text
+                 FROM hosted_api_generation_jobs AS job
+                 JOIN artifact_receipts AS receipt
+                   ON receipt.account_id=job.account_id AND receipt.workspace_id=job.workspace_id
+                  AND receipt.id=job.output_receipt_id AND receipt.deleted_at IS NULL
+                  AND receipt.object_key=job.output_object_key
+                  AND receipt.checksum_sha256=job.output_sha256
+                WHERE job.account_id=$1 AND job.workspace_id=$2 AND job.project_id=$3
+                  AND job.project_revision_id=$4 AND job.state='SUCCEEDED'
              ), deduplicated_output_items AS (
                SELECT DISTINCT ON (attempt_id, lane, item_id)
                       attempt_id, lane, item_id, artifact, accepted_at
@@ -7085,6 +7140,18 @@ async function projectDetail(
          ORDER BY max(accepted_at), attempt_id`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
+      const projectApiGeneration =
+        (project.rows[0] as Record<string, unknown>).generation_provider === "KIE_FAL";
+      const apiJobs = projectApiGeneration
+        ? await transaction.query(
+            `SELECT lane,state,created_at,submitted_at,completed_at
+               FROM hosted_api_generation_jobs
+              WHERE account_id=$1 AND workspace_id=$2 AND project_id=$3
+                AND project_revision_id=$4
+              ORDER BY lane,task_key`,
+            [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
+          )
+        : { rows: [] as Record<string, unknown>[] };
       const cost = await transaction.query(
         `SELECT revision.maximum_cost_micro_usd,
                 COALESCE((SELECT sum((regeneration.cost_admission->>'estimated_cost_micro_usd')::numeric) / 1000000
@@ -7196,12 +7263,7 @@ async function projectDetail(
                  END
             )
           ORDER BY task.updated_at DESC`,
-        [
-          scope.account_id,
-          scope.workspace_id,
-          currentRevisionId,
-          projectId,
-        ],
+        [scope.account_id, scope.workspace_id, currentRevisionId, projectId],
       );
       const review = await transaction.query(
         `SELECT review.render_attempt_id, review.output_checksum_sha256,
@@ -7228,6 +7290,7 @@ async function projectDetail(
         runtime: runtime.rows[0] ?? null,
         serverlessAttempts: serverlessAttempts.rows,
         serverlessOutputs: serverlessOutputs.rows,
+        apiJobs: apiJobs.rows,
         spanAudio: spanAudio.rows,
         spanAudioJobs: spanAudioJobs.rows,
         spanAudioFailure: spanAudioFailure.rows,
@@ -7374,10 +7437,7 @@ async function projectDetail(
           : null,
       total: spanTotal,
       materialized: spanCount(spanRows, "MATERIALIZED"),
-      retrying:
-        numberOrNull(
-          spanJobRows.find((row) => row.state === "FAILED")?.retryable,
-        ) ?? 0,
+      retrying: numberOrNull(spanJobRows.find((row) => row.state === "FAILED")?.retryable) ?? 0,
       failure_code: spanFailureCode,
       planned: spanCount(spanRows, "PLANNED"),
       running: spanCount(spanJobRows, "RUNNING"),
@@ -7397,6 +7457,22 @@ async function projectDetail(
     }
     const gpuLaneActivity = (["mage_image", "soulx_avatar"] as const).map((lane) => {
       const attempt = serverlessByLane.get(lane) ?? null;
+      const apiJobs = (detail.apiJobs as Record<string, unknown>[]).filter(
+        (job) => job.lane === (lane === "mage_image" ? "IMAGE" : "AVATAR"),
+      );
+      const apiState = apiJobs.some((job) => job.state === "FAILED")
+        ? "FAILED"
+        : apiJobs.some((job) => job.state === "UNKNOWN_NO_RETRY")
+          ? "UNKNOWN_NO_RETRY"
+          : apiJobs.some((job) => job.state === "SUBMITTING")
+            ? "SUBMITTING"
+            : apiJobs.length > 0 && apiJobs.every((job) => job.state === "SUCCEEDED")
+              ? "SUCCEEDED"
+              : apiJobs.some((job) => job.state === "SUBMITTED")
+                ? "IN_PROGRESS"
+                : apiJobs.length > 0
+                  ? "OUTBOXED"
+                  : null;
       const runtimeLane = runtimeLanes.find((value) => value.lane === lane) ?? null;
       const plannedItems =
         numberOrNull(runtimeLane?.planned_item_count) ?? numberOrNull(attempt?.item_count) ?? null;
@@ -7407,7 +7483,7 @@ async function projectDetail(
           : (numberOrNull(runtimeLane?.accepted_item_count) ?? 0));
       return {
         lane,
-        attempt_state: attempt ? String(attempt.state) : null,
+        attempt_state: attempt ? String(attempt.state) : apiState,
         provider_status:
           attempt?.provider_status === null || attempt?.provider_status === undefined
             ? null
@@ -7416,9 +7492,13 @@ async function projectDetail(
         planned_item_count: plannedItems,
         accepted_item_count: acceptedItems,
         attempt_ordinal: numberOrNull(attempt?.attempt_ordinal),
-        submitted_at: timestampOrNull(attempt?.submitted_at),
-        created_at: timestampOrNull(attempt?.created_at),
-        terminal_at: timestampOrNull(attempt?.terminal_at),
+        submitted_at: timestampOrNull(
+          attempt?.submitted_at ?? apiJobs.find((job) => job.submitted_at)?.submitted_at,
+        ),
+        created_at: timestampOrNull(attempt?.created_at ?? apiJobs[0]?.created_at),
+        terminal_at: timestampOrNull(
+          attempt?.terminal_at ?? (apiState === "SUCCEEDED" ? apiJobs.at(-1)?.completed_at : null),
+        ),
       };
     });
     const laneProgress = (lane: string): number | null => {
@@ -7438,7 +7518,12 @@ async function projectDetail(
     const asr = latestAttempt("ASR");
     const render = latestAttempt("RENDER");
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
-    const gpuPendingState = hostedGpuProductState(gpuReadiness).pendingState;
+    const projectApiGeneration =
+      (detail.project as Record<string, unknown>).generation_provider === "KIE_FAL";
+    // The legacy route name still drives both providers; API admission has no GPU qualification.
+    const gpuPendingState = projectApiGeneration
+      ? "READY_FOR_GPU_DISPATCH"
+      : hostedGpuProductState(gpuReadiness).pendingState;
     const promptProgress = detail.promptProgress as Record<string, unknown> | null;
     const acceptedPromptScenes = numberOrNull(promptProgress?.accepted_scenes) ?? 0;
     const totalPromptScenes = numberOrNull(promptProgress?.total_scenes) ?? 0;
@@ -7793,6 +7878,7 @@ async function projectDetail(
       schema_version: "videoforge-hosted-project-detail/v1",
       project: detail.project,
       attempts,
+      generation_provider: projectApiGeneration ? "KIE_FAL" : "RUNPOD",
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
       gpu_lanes: gpuLaneActivity,
@@ -7818,12 +7904,13 @@ async function projectDetail(
       stages,
       timing,
       cost: {
-        projected_usd: projectedCost,
-        settled_usd: settledCost,
+        projected_usd: projectApiGeneration ? null : projectedCost,
+        settled_usd: projectApiGeneration ? null : settledCost,
         cap_usd: null,
         billed_seconds: null,
-        provider:
-          serverlessAttempts.length > 0
+        provider: projectApiGeneration
+          ? "kie+fal"
+          : serverlessAttempts.length > 0
             ? "runpod"
             : voiceoverContext || detail.prompts.length > 0
               ? "runware"

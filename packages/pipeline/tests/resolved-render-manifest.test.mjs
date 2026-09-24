@@ -301,6 +301,40 @@ test("active vNext boundary rejects every non-fixture renderer identity before r
   assert.equal(manifest.ok, true);
 });
 
+test("Fal FlashHead accepted clips plan full and split crops without a SoulX background", async () => {
+  const { timeline } = await canonicalInputs();
+  const falCandidates = PROVIDER_CANDIDATES.map((candidate) =>
+    candidate.kind === "AVATAR_CLIP"
+      ? { ...candidate, rendererSourceProfile: "fal-flashhead-512x512p25-v1" }
+      : candidate,
+  );
+  const acceptedAssets = requireSuccess(
+    resolveVNextProviderAcceptedAssets({
+      timeline,
+      requiredTaskKeys: collectRequiredAssetTaskKeys(timeline.value),
+      candidates: falCandidates,
+    }),
+  );
+  const request = await requestWith(
+    CANDIDATES.map((candidate) =>
+      candidate.kind === "AVATAR_CLIP"
+        ? { ...candidate, rendererSourceProfile: "fal-flashhead-512x512p25-v1" }
+        : candidate,
+    ),
+  );
+  const manifest = requireSuccess(
+    await planVNextResolvedRenderManifest({ ...request, acceptedAssets }),
+  ).value;
+  assert.equal(manifest.soulx_crop_profile_approval, undefined);
+  const full = manifest.segments.find((segment) => segment.timeline_composition === "AVATAR_FULL");
+  const split = manifest.segments.find(
+    (segment) => segment.timeline_composition === "AVATAR_SPLIT_IMAGE",
+  );
+  assert.equal(full?.render.avatar_crop, "512:288:0:112");
+  assert.equal(split?.render.avatar_crop, "256:288:128:112");
+  assert.equal(full?.accepted_assets.source_background, undefined);
+});
+
 test("fails closed for missing, duplicate, kind-mismatched, and conflicting bindings", async () => {
   const { timeline } = await canonicalInputs();
   const requiredTaskKeys = collectRequiredAssetTaskKeys(timeline.value);

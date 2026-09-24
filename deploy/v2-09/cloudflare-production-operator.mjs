@@ -2329,7 +2329,9 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
       );
     },
     async readback(authority, effectiveTransport) {
-      const version = await read(authority, "QUALIFIED_EXACT");
+      const configuredTransport = qualifiedConfiguration(runtime.configuration, authority).value
+        .vars.VIDEOFORGE_GPU_TRANSPORT;
+      const version = await read(authority, configuredTransport);
       await readRoute(
         runtime,
         authority,

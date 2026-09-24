@@ -225,7 +225,8 @@ approved_decisions:
   DEC_AUTH_001: invite_only_google_verified_email_identity_no_email_provider
   DEC_AVATAR_004: one_native_clip_two_layouts
   DEC_AVATAR_005: tenant_private_reusable_avatar_hub
-  DEC_AVATAR_010: exact_soulx_flashhead_pro_only_avatar_runtime
+  DEC_AVATAR_010: superseded_soulx_pro_historical_attempts_only
+  DEC_API_GENERATION_001: fresh_kie_z_image_and_fal_flashhead_audio_to_video
   DEC_BUILD_001: hosted_linux_heavy_builds_no_mac_dependency
   DEC_CONTRACT_001: typescript_only_jcs_authority
   DEC_CONTEXT_001: v2_only_working_context_git_history_archive
@@ -235,7 +236,7 @@ approved_decisions:
   DEC_DELIVERY_001: fast_bounded_checkpoints_focused_tests_sample_driven_hardening
   DEC_DELIVERY_002: two_track_provider_free_product_and_serial_atomic_live_certification
   DEC_HOSTING_001: superseded_cloud_run_hosting_decision_history
-  DEC_IMAGE_001: exact_mage_flow_int8_convrot_profile
+  DEC_IMAGE_001: superseded_mage_historical_attempts_only
   DEC_IMAGE_002: mage_terms_risk_accepted_no_clear_permission_claim
   DEC_IMAGE_003: strict_mage_review_one_same_scene_retry
   DEC_LLM_001: runware_deepseek_v4_flash_0731
@@ -243,12 +244,12 @@ approved_decisions:
   DEC_OUTPUT_001: full_avatar_full_image_split_only
   DEC_OUTPUT_002: hard_cuts_no_graphics_text_or_transitions
   DEC_OUTPUT_003: subtle_centered_jitter_free_zoom
-  DEC_QUEUE_001: postgres_authoritative_runpod_transport
+  DEC_QUEUE_001: postgres_authoritative_api_generation_with_runpod_history
   DEC_QUEUE_003: fair_one_per_account_two_global_admission
   DEC_RENDER_001: superseded_cloud_run_render_decision_history
   DEC_RENDER_002: no_remotion_or_hyperframes
   DEC_PERSONAL_WORKER_001: tenant_owned_windows_macos_asr_render_worker
-  DEC_RUNPOD_003: two_scale_to_zero_serverless_lanes_existing_volumes
+  DEC_RUNPOD_003: superseded_two_serverless_lanes_historical_only
   DEC_RUNTIME_001: autoscaling_only_durable_per_tenant_state_no_manual_pods
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
   DEC_SCHEDULER_002: approximately_22_percent_avatar_even_full_split

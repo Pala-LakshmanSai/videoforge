@@ -1,5 +1,11 @@
 # Pipeline and deterministic scheduler
 
+Fresh ordinary generation uses the same fair DB admission, transcript, scheduler, prompt writer,
+selected-span audio, and personal-worker render. After those stages, migration 0188 materializes
+Kie image and Fal audio-to-video jobs; the API Workflow claims each before submission, verifies
+private outputs, and hands accepted media to the existing render path. The RunPod diagram and
+queue details below describe historical attempts only.
+
 Status: transcript and deterministic-scheduler foundations accepted; tenant-fair Serverless integration pending
 Read when: implementing transcript alignment, scheduling, generation, dispatch, or final assembly.
 

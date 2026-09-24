@@ -21,6 +21,7 @@ const AVATAR_ORIGINAL_SOURCE_OBJECT_KEY =
   /^tenant\/([^/]+)\/workspace\/([^/]+)\/avatar-profile\/([^/]+)\/version\/([^/]+)\/original\/source$/u;
 const AVATAR_PASSTHROUGH_PROFILE = "hosted-avatar-source-pass-through-v1";
 const SOULX_SOURCE_PROFILE = "soulx-pro-vf924u-approved-v1";
+const FAL_SOURCE_PROFILE = "fal-flashhead-512x512p25-v1";
 const SOULX_SOURCE_SHA256 =
   "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83";
 const SOULX_CANDIDATE_SHA256 =
@@ -357,6 +358,30 @@ function validateSoulxCropApproval(
   const soulxSegments = avatarSegments.filter(
     (segment) => segment.render.avatar_source_profile === SOULX_SOURCE_PROFILE,
   );
+  const falSegments = avatarSegments.filter(
+    (segment) => segment.render.avatar_source_profile === FAL_SOURCE_PROFILE,
+  );
+  if (falSegments.length > 0) {
+    if (
+      falSegments.length !== avatarSegments.length ||
+      manifest.soulx_crop_profile_approval !== undefined ||
+      input.avatarSource !== undefined ||
+      !input.acceptedVisuals.some((artifact) => artifact.kind === "AVATAR_CLIP")
+    )
+      reject("SOULX_CROP_PROFILE_UNQUALIFIED");
+    for (const segment of falSegments) {
+      const render = segment.render;
+      if (
+        render.avatar_crop !==
+          (segment.timeline_composition === "AVATAR_FULL" ? "512:288:0:112" : "256:288:128:112") ||
+        render.avatar_scale !==
+          (segment.timeline_composition === "AVATAR_FULL" ? "1920:1080" : "960:1080") ||
+        render.avatar_fps !== "30:round=near"
+      )
+        reject("SOULX_CROP_PROFILE_UNQUALIFIED");
+    }
+    return;
+  }
   const hasAvatarTimeline = avatarSegments.length > 0;
   const hasSoulxArtifact = input.acceptedVisuals.some(
     (artifact) => artifact.lane === "SOULX_AVATAR" || artifact.kind === "AVATAR_CLIP",

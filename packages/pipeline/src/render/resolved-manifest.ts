@@ -26,6 +26,7 @@ export const SUPPORTED_RENDER_PROFILE_VERSION = "ffmpeg-render-v3";
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 
 export const SOULX_APPROVED_AVATAR_SOURCE_PROFILE = "soulx-pro-vf924u-approved-v1";
+export const FAL_FLASHHEAD_AVATAR_SOURCE_PROFILE = "fal-flashhead-512x512p25-v1";
 export const SOULX_CROP_PROFILE_CANDIDATE_SHA256 =
   "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442";
 export const SOULX_CROP_PROFILE_APPROVAL_SHA256 =
@@ -94,6 +95,20 @@ const AVATAR_GEOMETRY = {
     AVATAR_SPLIT_IMAGE: {
       avatar_source_profile: "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
       avatar_crop: "496:558:280:0",
+      avatar_scale: "960:1080",
+      avatar_fps: "30:round=near",
+    },
+  },
+  [FAL_FLASHHEAD_AVATAR_SOURCE_PROFILE]: {
+    AVATAR_FULL: {
+      avatar_source_profile: FAL_FLASHHEAD_AVATAR_SOURCE_PROFILE,
+      avatar_crop: "512:288:0:112",
+      avatar_scale: "1920:1080",
+      avatar_fps: "30:round=near",
+    },
+    AVATAR_SPLIT_IMAGE: {
+      avatar_source_profile: FAL_FLASHHEAD_AVATAR_SOURCE_PROFILE,
+      avatar_crop: "256:288:128:112",
       avatar_scale: "960:1080",
       avatar_fps: "30:round=near",
     },
@@ -676,8 +691,10 @@ export async function planResolvedRenderManifest(
 
   try {
     return pipelineSuccess(
-      await (request.contractDocumentAuthority?.validateAndHash("resolvedRenderManifest", manifest) ??
-        validateAndHashContractDocument("resolvedRenderManifest", manifest)),
+      await (request.contractDocumentAuthority?.validateAndHash(
+        "resolvedRenderManifest",
+        manifest,
+      ) ?? validateAndHashContractDocument("resolvedRenderManifest", manifest)),
     );
   } catch {
     return pipelineFailure(

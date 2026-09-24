@@ -148,10 +148,11 @@
                 "avatarforcing-centered-832x480p25-v1",
                 "skyreels-centered-960x960p25-v2",
                 "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
-                "soulx-pro-vf924u-approved-v1"
+                "soulx-pro-vf924u-approved-v1",
+                "fal-flashhead-512x512p25-v1"
               ]
             },
-            "avatar_crop": {"enum": ["832:468:0:6", "960:540:0:210", "992:558:16:0"]},
+            "avatar_crop": {"enum": ["832:468:0:6", "960:540:0:210", "992:558:16:0", "512:288:0:112"]},
             "crop_profile_id": {"const": "soulx-pro-ranga-full-source-composite-v1"},
             "crop_profile_evidence_sha256": {"const": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"},
             "crop_profile_acceptance_sha256": {"const": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"},
@@ -181,6 +182,10 @@
             {
               "if": {"properties": {"avatar_source_profile": {"const": "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"}}},
               "then": {"required": ["avatar_crop"], "properties": {"avatar_crop": {"const": "992:558:16:0"}}}
+            },
+            {
+              "if": {"properties": {"avatar_source_profile": {"const": "fal-flashhead-512x512p25-v1"}}},
+              "then": {"required": ["avatar_crop"], "properties": {"avatar_crop": {"const": "512:288:0:112"}}}
             },
             {
               "if": {"properties": {"avatar_source_profile": {"const": "soulx-pro-vf924u-approved-v1"}}},
@@ -291,10 +296,11 @@
                 "avatarforcing-centered-832x480p25-v1",
                 "skyreels-centered-960x960p25-v2",
                 "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
-                "soulx-pro-vf924u-approved-v1"
+                "soulx-pro-vf924u-approved-v1",
+                "fal-flashhead-512x512p25-v1"
               ]
             },
-            "avatar_crop": {"enum": ["416:468:208:6", "480:540:240:210", "496:558:280:0", "448:504:32:4"]},
+            "avatar_crop": {"enum": ["416:468:208:6", "480:540:240:210", "496:558:280:0", "448:504:32:4", "256:288:128:112"]},
             "crop_profile_id": {"const": "soulx-pro-ranga-split-composite-v1"},
             "crop_profile_evidence_sha256": {"const": "sha256:f6c8dd219c07a26ab67fb13d8dbc103e110b4c045307f8c3e0c70aa3d805d442"},
             "crop_profile_acceptance_sha256": {"const": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"},
@@ -322,6 +328,10 @@
             {
               "if": {"properties": {"avatar_source_profile": {"const": "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"}}},
               "then": {"properties": {"avatar_crop": {"const": "496:558:280:0"}}}
+            },
+            {
+              "if": {"properties": {"avatar_source_profile": {"const": "fal-flashhead-512x512p25-v1"}}},
+              "then": {"properties": {"avatar_crop": {"const": "256:288:128:112"}}}
             },
             {
               "if": {"properties": {"avatar_source_profile": {"const": "soulx-pro-vf924u-approved-v1"}}},

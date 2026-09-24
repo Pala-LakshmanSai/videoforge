@@ -660,7 +660,7 @@ test("executes exact disabled, exact-secret, qualified, bundle, header, and rout
     JSON.parse(readFileSync(value.configuration.qualifiedConfigPath, "utf8")).workflows.map(
       ({ name }) => name,
     ),
-    ["videoforge-video-workflow", "videoforge-pair-workflow"],
+    ["videoforge-video-workflow", "videoforge-pair-workflow", "videoforge-continuation-workflow"],
   );
   const mock = harness(value);
   const operator = createV209CloudflareProductionOperator(value.configuration, {
@@ -1487,7 +1487,7 @@ test("only exact pinned disabled predecessor can be replaced; drift preserves it
         }
         if (input.path.startsWith("/workflows")) {
           envelope.body.result = value.qualified.workflows.map(({ name }) => ({ name }));
-          envelope.body.result_info.total_count = 2;
+          envelope.body.result_info.total_count = value.qualified.workflows.length;
         }
         return { bytes: JSON.stringify(envelope) };
       },

@@ -96,6 +96,10 @@ export interface HostedRuntimeEnvironment {
   readonly VIDEOFORGE_PROVENANCE_RECEIPT_KEY_ID?: string;
   readonly VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN?: string;
   readonly RUNPOD_API_KEY?: string;
+  /** Explicit API-generation switch. Both provider credentials are secret bindings. */
+  readonly VIDEOFORGE_GENERATION_PROVIDER?: string;
+  readonly KIE_API_KEY?: string;
+  readonly FAL_API_KEY?: string;
   readonly RUNPOD_API_BASE_URL?: string;
   readonly VIDEOFORGE_MAGE_ENDPOINT_ID?: string;
   readonly VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256?: string;
@@ -147,6 +151,10 @@ export interface HostedRuntimeConfiguration {
     readonly model: "google:gemini@3.1-flash-lite";
     readonly baseUrl: "https://api.runware.ai/v1";
   } | null;
+  readonly apiGeneration?: Readonly<{
+    readonly kieApiKey: string;
+    readonly falApiKey: string;
+  }>;
   toJSON(): {
     readonly schemaVersion: "videoforge-hosted-configuration/v1";
     readonly credentials: "REDACTED";
@@ -431,6 +439,27 @@ export function hostedRuntimeConfiguration(
       ["MEDIA_WORKER_TOKEN_SECRET"],
     );
   }
+  if (
+    source.VIDEOFORGE_GENERATION_PROVIDER !== undefined &&
+    source.VIDEOFORGE_GENERATION_PROVIDER !== "KIE_FAL"
+  ) {
+    throw new HostedConfigurationError("VIDEOFORGE_GENERATION_PROVIDER is invalid.", [
+      "VIDEOFORGE_GENERATION_PROVIDER",
+    ]);
+  }
+  const apiGeneration =
+    source.VIDEOFORGE_GENERATION_PROVIDER === "KIE_FAL"
+      ? Object.freeze({
+          kieApiKey: source.KIE_API_KEY?.trim() ?? "",
+          falApiKey: source.FAL_API_KEY?.trim() ?? "",
+        })
+      : undefined;
+  if (apiGeneration && (!apiGeneration.kieApiKey || !apiGeneration.falApiKey)) {
+    throw new HostedConfigurationError("API generation requires both provider keys.", [
+      ...(!apiGeneration.kieApiKey ? ["KIE_API_KEY"] : []),
+      ...(!apiGeneration.falApiKey ? ["FAL_API_KEY"] : []),
+    ]);
+  }
   const redacted = Object.freeze({
     schemaVersion: "videoforge-hosted-configuration/v1" as const,
     credentials: "REDACTED" as const,
@@ -471,6 +500,7 @@ export function hostedRuntimeConfiguration(
             baseUrl: "https://api.runware.ai/v1" as const,
           })
         : null,
+    ...(apiGeneration ? { apiGeneration } : {}),
     toJSON: () => redacted,
   });
 }

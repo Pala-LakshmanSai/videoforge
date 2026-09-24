@@ -29,10 +29,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // verified activation seam every request path uses (the env-only configuration it built before is
 // always DISABLED_UNQUALIFIED, so its GPU-dispatch step answered 503 on every tick and stages 6-8
 // stayed browser-only).
-// Both are deliberately exact per-target no-growth ceilings, not platform limits.
+// The 2026-09-24 API generation Workflow switch and configuration add 5,482 bytes to the
+// production static closure and 1,530 bytes to staging. The provider clients stay in a dynamic
+// chunk. Both are exact per-target accepted ceilings, not platform limits.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_737_905,
-  "wrangler.staging.jsonc": 2_747_459,
+  "wrangler.production.jsonc": 2_744_001,
+  "wrangler.staging.jsonc": 2_749_603,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

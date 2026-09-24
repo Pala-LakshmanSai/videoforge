@@ -59,10 +59,10 @@ presets, media, jobs, costs, and results are private, and only explicit immutabl
 globally readable. Postgres admits at most one active provider workload per account and two
 different accounts globally; ordinary videos retain one/account and two/global caps, while explicit
 preset previews use the same slots below every eligible video. Ordinary users never choose GPUs or
-start/stop Pods. Production targets two queue-based
-RunPod Serverless lanes at `workersMin=0`, each using only its existing sealed 50 GB EU-RO-1 volume
-at `/runpod-volume`; no runtime download, cross-mount, model-volume writes, or unqualified GPU
-fallback is allowed.
+start/stop Pods. Fresh ordinary generation targets Kie z-image and Fal FlashHead audio-to-video
+under `DEC_API_GENERATION_001`; GPU availability must not gate that path. Existing RunPod attempts
+retain their exact reconciliation and cleanup rules. Historical RunPod lanes keep `workersMin=0`
+and sealed-volume restrictions; no unqualified GPU fallback is allowed.
 
 When the user changes a decision, update the context pack in the same change. Follow `project-context/16_CONTEXT_MAINTENANCE.md`; do not leave contradictory copies. Do not silently convert an unresolved benchmark gate into a confirmed fact.
 

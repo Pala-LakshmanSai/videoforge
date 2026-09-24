@@ -1,5 +1,21 @@
 -- API generation is a new dispatch path for fresh ordinary requests. Existing RunPod
 -- attempts and their append-only receipts remain untouched.
+ALTER TABLE public.projects
+  ADD COLUMN generation_provider text NOT NULL DEFAULT 'RUNPOD'
+    CHECK (generation_provider IN ('RUNPOD','KIE_FAL'));
+CREATE FUNCTION public.videoforge_guard_project_generation_provider()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.generation_provider IS DISTINCT FROM OLD.generation_provider THEN
+    RAISE EXCEPTION 'project generation provider is immutable' USING ERRCODE='23505';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER projects_generation_provider_immutable
+  BEFORE UPDATE ON public.projects FOR EACH ROW
+  EXECUTE FUNCTION public.videoforge_guard_project_generation_provider();
+
 CREATE TABLE public.hosted_api_generation_jobs (
   id uuid PRIMARY KEY,
   account_id uuid NOT NULL,
@@ -201,7 +217,8 @@ BEGIN
      OR NOT EXISTS(SELECT 1 FROM public.memberships m WHERE m.account_id=supplied_account_id
        AND m.workspace_id=supplied_workspace_id AND m.user_id=supplied_user_id AND m.status='ACTIVE')
      OR NOT EXISTS(SELECT 1 FROM public.projects p WHERE p.account_id=supplied_account_id
-       AND p.workspace_id=supplied_workspace_id AND p.id=supplied_project_id AND p.status='ACTIVE') THEN
+       AND p.workspace_id=supplied_workspace_id AND p.id=supplied_project_id
+       AND p.status='ACTIVE' AND p.generation_provider='KIE_FAL') THEN
     RAISE EXCEPTION 'API generation scope invalid' USING ERRCODE='42501';
   END IF;
   SELECT * INTO request FROM public.generation_requests r WHERE r.account_id=supplied_account_id
@@ -515,6 +532,86 @@ BEGIN
 END;
 $$;
 
+-- A definite failure stops further submissions. Persisted paid identities must first reach
+-- SUCCEEDED or FAILED; ambiguous submissions require manual reconciliation and retain the lease.
+CREATE FUNCTION public.videoforge_settle_hosted_api_failure(
+  supplied_account_id uuid,supplied_workspace_id uuid,supplied_generation_request_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+DECLARE
+  request public.generation_requests%ROWTYPE;
+  runtime public.video_runtime_states%ROWTYPE;
+  now_at timestamptz:=transaction_timestamp();
+  changed_count integer;
+BEGIN
+  IF public.videoforge_current_account_id() IS DISTINCT FROM supplied_account_id THEN
+    RAISE EXCEPTION 'API generation scope invalid' USING ERRCODE='42501';
+  END IF;
+  SELECT * INTO request FROM public.generation_requests r
+    WHERE r.account_id=supplied_account_id AND r.workspace_id=supplied_workspace_id
+      AND r.id=supplied_generation_request_id FOR UPDATE;
+  IF request.id IS NULL THEN
+    RAISE EXCEPTION 'API generation request unavailable' USING ERRCODE='23514';
+  END IF;
+  PERFORM 1 FROM public.hosted_api_generation_jobs j
+    WHERE j.account_id=supplied_account_id AND j.workspace_id=supplied_workspace_id
+      AND j.generation_request_id=supplied_generation_request_id
+    ORDER BY j.id FOR UPDATE;
+  IF NOT EXISTS(SELECT 1 FROM public.hosted_api_generation_jobs j
+      WHERE j.generation_request_id=supplied_generation_request_id AND j.state='FAILED') THEN
+    RETURN jsonb_build_object('state','NO_FAILURE');
+  END IF;
+  IF request.state='FAILED' THEN
+    IF EXISTS(SELECT 1 FROM public.provider_workload_leases lease
+        WHERE lease.generation_request_id=supplied_generation_request_id
+          AND lease.state='ACTIVE') THEN
+      RAISE EXCEPTION 'API generation failed request retains an active lease' USING ERRCODE='55000';
+    END IF;
+    RETURN jsonb_build_object('state','SETTLED');
+  END IF;
+  IF request.state<>'ACTIVE' THEN
+    RAISE EXCEPTION 'API generation failure settlement state invalid' USING ERRCODE='23514';
+  END IF;
+  IF EXISTS(SELECT 1 FROM public.hosted_api_generation_jobs j
+      WHERE j.generation_request_id=supplied_generation_request_id
+        AND j.state IN ('SUBMITTING','UNKNOWN_NO_RETRY','SUBMITTED')) THEN
+    RETURN jsonb_build_object('state','WAITING');
+  END IF;
+  SELECT * INTO runtime FROM public.video_runtime_states v
+    WHERE v.account_id=supplied_account_id AND v.workspace_id=supplied_workspace_id
+      AND v.generation_request_id=supplied_generation_request_id FOR UPDATE;
+  IF runtime.id IS NULL OR runtime.stage<>'WAITING_FOR_WORKER'
+     OR runtime.terminal_at IS NOT NULL THEN
+    RAISE EXCEPTION 'API generation failure runtime invalid' USING ERRCODE='23514';
+  END IF;
+  UPDATE public.generation_tasks task SET state='FAILED',finished_at=now_at,
+    version=task.version+1,updated_at=now_at
+    FROM public.hosted_api_generation_jobs job
+    WHERE job.account_id=supplied_account_id AND job.workspace_id=supplied_workspace_id
+      AND job.generation_request_id=supplied_generation_request_id
+      AND job.generation_task_id=task.id AND task.account_id=supplied_account_id
+      AND task.workspace_id=supplied_workspace_id AND task.state='BLOCKED'
+      AND job.state IN ('PREPARED','FAILED');
+  UPDATE public.video_runtime_lane_states lane SET state='FAILED',version=lane.version+1,
+    updated_at=now_at WHERE lane.runtime_id=runtime.id
+      AND lane.state NOT IN ('SUCCEEDED','FAILED','CANCELED');
+  UPDATE public.video_runtime_states SET stage='FAILED',
+    terminal_reason='LANE_PERMANENT_FAILURE',terminal_at=now_at,
+    version=version+1,updated_at=now_at WHERE id=runtime.id;
+  UPDATE public.generation_requests SET state='FAILED',terminal_at=now_at,
+    version=version+1,updated_at=now_at WHERE id=request.id;
+  UPDATE public.provider_workload_leases SET state='RELEASED',released_at=now_at,
+    release_reason='HOSTED_API_PROVIDER_FAILED',version=version+1,
+    heartbeat_at=now_at,expires_at=greatest(expires_at,now_at+interval '1 second')
+    WHERE account_id=supplied_account_id AND workspace_id=supplied_workspace_id
+      AND generation_request_id=supplied_generation_request_id AND state='ACTIVE';
+  GET DIAGNOSTICS changed_count=ROW_COUNT;
+  IF changed_count<>1 THEN
+    RAISE EXCEPTION 'API generation exact active lease release failed' USING ERRCODE='55000';
+  END IF;
+  RETURN jsonb_build_object('state','SETTLED');
+END;
+$$;
+
 -- Caller must HEAD/GET the private object and verify bytes, SHA-256 and media probe
 -- before invoking this commit. The database pins the resulting asset and receipt.
 CREATE FUNCTION public.videoforge_commit_hosted_api_output(
@@ -721,8 +818,8 @@ DECLARE
   request public.generation_requests%ROWTYPE;
   revision public.project_revisions%ROWTYPE;
   bridge public.hosted_canonical_timing_bridges%ROWTYPE;
-  voiceover jsonb; avatar jsonb; visuals jsonb;
-  has_avatar_full boolean; expected_count integer; job_count integer;
+  voiceover jsonb; visuals jsonb;
+  expected_count integer; job_count integer;
   manifest_asset_id uuid; manifest_reservation_id uuid; object_key text;
 BEGIN
   IF public.videoforge_current_account_id() IS DISTINCT FROM supplied_account_id THEN
@@ -754,11 +851,6 @@ BEGIN
          AND lane.state='SUCCEEDED' AND lane.lane IN ('mage_image','soulx_avatar'))<>2 THEN
     RETURN NULL;
   END IF;
-  SELECT EXISTS(SELECT 1 FROM public.timeline_segments segment
-    WHERE segment.account_id=supplied_account_id AND segment.workspace_id=supplied_workspace_id
-      AND segment.project_revision_id=request.project_revision_id
-      AND segment.timeline_plan_id=bridge.timeline_plan_id
-      AND segment.timeline_composition='AVATAR_FULL') INTO has_avatar_full;
   SELECT jsonb_build_object('assetId',asset.id,'sha256',asset.binary_sha256,
       'objectKey',asset.object_key,'contentType',asset.content_type,
       'contentLength',asset.byte_size,'receiptId',receipt.id)
@@ -772,20 +864,6 @@ BEGIN
       AND asset.id=revision.voiceover_asset_id
       AND asset.binary_sha256=revision.voiceover_binary_sha256
       AND asset.state IN ('VERIFIED','ACCEPTED') ORDER BY receipt.committed_at DESC LIMIT 1;
-  SELECT jsonb_build_object('assetId',asset.id,'sha256',asset.binary_sha256,
-      'objectKey',asset.object_key,'contentType',asset.content_type,
-      'contentLength',asset.byte_size,'receiptId',receipt.id)
-    INTO avatar FROM public.assets asset JOIN public.artifact_reservations reservation
-      ON reservation.account_id=asset.account_id AND reservation.workspace_id=asset.workspace_id
-      AND reservation.asset_id=asset.id AND reservation.state='COMMITTED'
-    JOIN public.artifact_receipts receipt ON receipt.account_id=reservation.account_id
-      AND receipt.workspace_id=reservation.workspace_id AND receipt.reservation_id=reservation.id
-      AND receipt.deleted_at IS NULL
-    WHERE asset.account_id=supplied_account_id AND asset.workspace_id=supplied_workspace_id
-      AND asset.id=revision.avatar_runtime_source_asset_id
-      AND asset.binary_sha256=revision.avatar_runtime_source_binary_sha256
-      AND has_avatar_full AND asset.state IN ('VERIFIED','ACCEPTED')
-    ORDER BY receipt.committed_at DESC LIMIT 1;
   SELECT jsonb_agg(jsonb_build_object('taskId',job.generation_task_id,
       'taskKey',job.task_key,'acceptedAttemptId',job.id,'assetId',asset.id,
       'sha256',receipt.checksum_sha256,'objectKey',receipt.object_key,
@@ -806,8 +884,7 @@ BEGIN
       AND unit.object_key=receipt.object_key AND unit.checksum_sha256=receipt.checksum_sha256
     WHERE job.account_id=supplied_account_id AND job.workspace_id=supplied_workspace_id
       AND job.generation_request_id=supplied_generation_request_id AND job.state='SUCCEEDED';
-  IF voiceover IS NULL OR (has_avatar_full AND avatar IS NULL)
-     OR visuals IS NULL OR jsonb_array_length(visuals)<>expected_count THEN
+  IF voiceover IS NULL OR visuals IS NULL OR jsonb_array_length(visuals)<>expected_count THEN
     RETURN NULL;
   END IF;
   manifest_asset_id:=md5('hosted-v209-render-manifest-asset:'||supplied_generation_request_id::text)::uuid;
@@ -827,8 +904,7 @@ BEGIN
     'voiceover',voiceover,'acceptedVisuals',visuals,
     'tools',jsonb_build_object('ffmpegVersion','8.1.2','ffprobeVersion','8.1.2'),
     'manifestReservation',jsonb_build_object('assetId',manifest_asset_id,
-      'reservationId',manifest_reservation_id,'objectKey',object_key))||
-    CASE WHEN has_avatar_full THEN jsonb_build_object('avatarSource',avatar) ELSE '{}'::jsonb END;
+      'reservationId',manifest_reservation_id,'objectKey',object_key));
 END;
 $$;
 
@@ -840,6 +916,7 @@ REVOKE ALL ON FUNCTION public.videoforge_bind_hosted_api_image_prompt(uuid,uuid,
 REVOKE ALL ON FUNCTION public.videoforge_record_hosted_api_task(uuid,uuid,uuid,uuid,uuid,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.videoforge_mark_hosted_api_unknown(uuid,uuid,uuid,uuid,uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.videoforge_fail_hosted_api_job(uuid,uuid,uuid,uuid,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.videoforge_settle_hosted_api_failure(uuid,uuid,uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.videoforge_commit_hosted_api_output(uuid,uuid,uuid,uuid,text,bigint,text,jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.videoforge_read_hosted_v209_ready_render_inputs_gpu(uuid,uuid,uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid) FROM PUBLIC;
@@ -850,6 +927,7 @@ GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_api_jobs(uuid,uuid,uuid)
   public.videoforge_record_hosted_api_task(uuid,uuid,uuid,uuid,uuid,text),
   public.videoforge_mark_hosted_api_unknown(uuid,uuid,uuid,uuid,uuid),
   public.videoforge_fail_hosted_api_job(uuid,uuid,uuid,uuid,text),
+  public.videoforge_settle_hosted_api_failure(uuid,uuid,uuid),
   public.videoforge_commit_hosted_api_output(uuid,uuid,uuid,uuid,text,bigint,text,jsonb),
   public.videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)
   TO videoforge_v209_runtime_dc9612d6;

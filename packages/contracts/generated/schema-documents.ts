@@ -7774,14 +7774,16 @@ export const canonicalSchemaDocuments = {
                   "avatarforcing-centered-832x480p25-v1",
                   "skyreels-centered-960x960p25-v2",
                   "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
-                  "soulx-pro-vf924u-approved-v1"
+                  "soulx-pro-vf924u-approved-v1",
+                  "fal-flashhead-512x512p25-v1"
                 ]
               },
               "avatar_crop": {
                 "enum": [
                   "832:468:0:6",
                   "960:540:0:210",
-                  "992:558:16:0"
+                  "992:558:16:0",
+                  "512:288:0:112"
                 ]
               },
               "crop_profile_id": {
@@ -7898,6 +7900,25 @@ export const canonicalSchemaDocuments = {
                   "properties": {
                     "avatar_crop": {
                       "const": "992:558:16:0"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "fal-flashhead-512x512p25-v1"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "avatar_crop"
+                  ],
+                  "properties": {
+                    "avatar_crop": {
+                      "const": "512:288:0:112"
                     }
                   }
                 }
@@ -8135,7 +8156,8 @@ export const canonicalSchemaDocuments = {
                   "avatarforcing-centered-832x480p25-v1",
                   "skyreels-centered-960x960p25-v2",
                   "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
-                  "soulx-pro-vf924u-approved-v1"
+                  "soulx-pro-vf924u-approved-v1",
+                  "fal-flashhead-512x512p25-v1"
                 ]
               },
               "avatar_crop": {
@@ -8143,7 +8165,8 @@ export const canonicalSchemaDocuments = {
                   "416:468:208:6",
                   "480:540:240:210",
                   "496:558:280:0",
-                  "448:504:32:4"
+                  "448:504:32:4",
+                  "256:288:128:112"
                 ]
               },
               "crop_profile_id": {
@@ -8236,6 +8259,22 @@ export const canonicalSchemaDocuments = {
                   "properties": {
                     "avatar_crop": {
                       "const": "496:558:280:0"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "fal-flashhead-512x512p25-v1"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "avatar_crop": {
+                      "const": "256:288:128:112"
                     }
                   }
                 }

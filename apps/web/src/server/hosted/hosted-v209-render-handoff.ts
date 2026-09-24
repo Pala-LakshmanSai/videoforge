@@ -246,9 +246,9 @@ export function createHostedV209RenderHandoff(input: {
         acceptedAttemptId: null,
         barrierAcceptance: "COMMITTED_INPUT",
       });
-      if (!Array.isArray(ready.acceptedVisuals))
-        throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
-      const acceptedVisuals = ready.acceptedVisuals.map((value) => {
+      const rawAcceptedVisuals = ready.acceptedVisuals;
+      if (!Array.isArray(rawAcceptedVisuals)) throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+      const acceptedVisuals = rawAcceptedVisuals.map((value) => {
         const row = record(value);
         const lane =
           row.lane === "mage_image"
@@ -269,7 +269,7 @@ export function createHostedV209RenderHandoff(input: {
         throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
       }
       const acceptedBindings = Object.fromEntries(
-        acceptedVisuals.map((value) => [
+        acceptedVisuals.map((value, index) => [
           value.taskKey!,
           {
             taskKey: value.taskKey!,
@@ -277,7 +277,13 @@ export function createHostedV209RenderHandoff(input: {
             sha256: value.checksumSha256 as AcceptedAssetBinding["sha256"],
             kind: value.kind as "IMAGE" | "AVATAR_CLIP",
             ...(value.kind === "AVATAR_CLIP"
-              ? { rendererSourceProfile: "soulx-pro-vf924u-approved-v1" }
+              ? {
+                  rendererSourceProfile:
+                    record(rawAcceptedVisuals[index]).rendererSourceProfile ===
+                    "fal-flashhead-512x512p25-v1"
+                      ? "fal-flashhead-512x512p25-v1"
+                      : "soulx-pro-vf924u-approved-v1",
+                }
               : {}),
           } satisfies AcceptedAssetBinding,
         ]),

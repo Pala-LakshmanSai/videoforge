@@ -1,6 +1,6 @@
 # Models and providers
 
-Status: exact model choices locked; Serverless lane qualifications pending
+Status: fresh generation selected for Kie and Fal APIs; historical Serverless evidence retained
 Read when: building a worker, pinning dependencies, estimating cost, or proposing a model change.
 
 Rates and provider behavior are time-sensitive. Refresh official sources and live account
@@ -8,9 +8,23 @@ configuration before any mutation or paid proposal. Do not hard-code planning ra
 truth. Existing Pod evidence proves specific artifacts and samples; it does not prove queue-based
 Serverless startup, concurrency, timeout, scale-to-zero, or billing behavior.
 
-## Active compute boundary
+## Fresh ordinary generation (2026-09-24 decision)
 
-Production target:
+Kie Market `z-image` generates each scene image from the compiled, bounded prompt. Fal
+`fal-ai/flashhead/audio-to-video` generates each avatar span from its pinned Avatar Hub source
+image and selected voiceover WAV. Results are downloaded into tenant-private R2 and verified by
+media structure, bytes, and SHA-256 before accepted-unit and render handoff commits. Each paid
+submission is claimed in Postgres first; ambiguous responses are terminal `UNKNOWN_NO_RETRY`
+unless the same provider task identity is recovered. Provider secrets stay server-side.
+
+Official Kie pricing is 0.8 credits, approximately $0.004 per image. An authenticated Fal
+pricing lookup on 2026-09-24 returned $0.00125 per compute second for the audio endpoint;
+compute seconds must be measured from billing rather than inferred from output duration.
+Both rates require refresh before paid work. The API path is not yet a hosted acceptance result.
+
+## Historical RunPod compute boundary
+
+Prior production target for existing RunPod attempts:
 
 - one Mage queue-based RunPod Serverless endpoint in `EU-RO-1`;
 - one SoulX queue-based RunPod Serverless endpoint in `EU-RO-1`;

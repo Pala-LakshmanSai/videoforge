@@ -876,8 +876,7 @@
       "name": "hosted_v209_stranded_request_reclaim",
       "filename": "0147_hosted_v209_stranded_request_reclaim.sql",
       "sha256": "sha256:3f792e21c81db1b5044c330bf99cbb1c562ed177e2d73d97a45de4314bd0baa7"
-    }
-  ,
+    },
     {
       "version": 148,
       "name": "hosted_lane_batch_budget_ceiling_bound",
@@ -910,7 +909,7 @@
       "version": 188,
       "name": "hosted_api_generation_jobs",
       "filename": "0188_hosted_api_generation_jobs.sql",
-      "sha256": "sha256:1224a7b32e6e24831aa407cb9758545e5850345c6498ebaf41b3c19fd3bcd387"
+      "sha256": "sha256:0d3c96a27c491330588299888d549832d1a0b41925303054807306db5f5b1253"
     }
   ]
 }

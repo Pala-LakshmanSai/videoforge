@@ -6,6 +6,12 @@ attempt lineage, APIs, callbacks, or production manifests.
 
 ## Current machine-contract boundary
 
+For fresh API generation selected on 2026-09-24, migration 0188 adds tenant-scoped
+`hosted_api_generation_jobs` with immutable inputs, a claim-before-POST transition, persisted Kie
+task/Fal request IDs, `UNKNOWN_NO_RETRY` for ambiguous submission, verified private output
+asset/receipt/accepted-unit commits, and a ready-render projection. Existing RunPod attempts and
+their provenance remain on the original path. The hosted acceptance gate is still open.
+
 The repository's existing PostgreSQL/PGlite foundation, identity checks, immutable revisions,
 scheduler contracts, and media manifests are reusable. Existing migrations and versioned bytes are
 append-only history.

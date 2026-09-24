@@ -1,10 +1,15 @@
 # RunPod Serverless, queue, and lifecycle operations
 
-Status: approved VideoForge V2 target; provider-free implementation and live Serverless qualification remain open
+Status: historical RunPod attempt and cleanup contract; fresh generation uses the API path
 Read when: building admission, dispatch, Serverless handlers/endpoints, progress, cancellation,
 reconciliation, storage isolation, or cost controls.
 
 ## Boundary and preserved evidence
+
+`DEC_API_GENERATION_001` selects Kie z-image and Fal FlashHead audio-to-video for fresh ordinary
+generation. This file remains authoritative for already-consumed RunPod attempts, volumes,
+cleanup, and historical qualification. Their identities must never be replayed through the API
+path. Postgres admission remains shared; the API job ledger lives in migration 0188.
 
 Postgres is the authoritative admission, fairness, task, attempt, artifact, and cost ledger. RunPod's
 endpoint queue is execution backpressure only. It does not decide which account runs next, prove
@@ -19,7 +24,7 @@ endpoint, concurrent-read safety, autoscaling, or production dispatch.
 No planning or provider-free checkpoint may mutate RunPod. Endpoint/template publication, live
 requests, paid workers, or volume changes require the exact external-checkpoint authority.
 
-## Active production topology
+## Historical RunPod topology
 
 | Lane | RunPod transport | Persistent storage | Endpoint ceiling |
 |---|---|---|---:|

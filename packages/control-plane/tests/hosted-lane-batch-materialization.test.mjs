@@ -360,6 +360,17 @@ test("0041 installs immutable tenant batches, narrow capability, and attempt lin
 test("0188 API jobs materialize, claim once, accept outputs, and reach render", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     const seeded = await seedMaterialization(executor, { canonicalV209: true });
+    await executor.execute("ALTER TABLE projects DISABLE TRIGGER projects_generation_provider_immutable");
+    await executor.query(
+      `UPDATE projects SET generation_provider='KIE_FAL'
+        WHERE account_id=$1 AND workspace_id=$2 AND id=$3`,
+      [IDS.accountA, IDS.workspaceA, IDS.projectA],
+    );
+    await executor.execute("ALTER TABLE projects ENABLE TRIGGER projects_generation_provider_immutable");
+    await expectDatabaseError(
+      () => executor.query("UPDATE projects SET generation_provider='RUNPOD' WHERE id=$1", [IDS.projectA]),
+      "23505",
+    );
     const transcriptId = uuid(1_410_031);
     const timelineId = uuid(1_410_032);
     const timelineHash = sha256("timeline");
@@ -478,6 +489,52 @@ test("0188 API jobs materialize, claim once, accept outputs, and reach render", 
     const jobs = materialized.rows[0].result.jobs;
     assert.equal(jobs.length,3);
     assert.equal(jobs.filter(job=>job.lane==='IMAGE').length,1);
+    const rollbackProbe = new Error('rollback failure settlement probe');
+    await assert.rejects(executor.transaction(async (tx) => {
+      const [failedJob, pendingJob] = jobs;
+      const failedClaim = uuid(1_410_150);
+      const pendingClaim = uuid(1_410_151);
+      for (const [job, claim] of [[failedJob,failedClaim],[pendingJob,pendingClaim]]) {
+        if (job.lane==='IMAGE') await tx.query(`SELECT public.videoforge_bind_hosted_api_image_prompt(
+          $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text)`,
+          [IDS.accountA,IDS.workspaceA,seeded.generationRequestId,job.generationTaskId,
+            'A candid documentary image. No visible text.']);
+        await tx.query(`SELECT public.videoforge_claim_hosted_api_job(
+          $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid)`,
+          [IDS.accountA,IDS.workspaceA,seeded.generationRequestId,job.generationTaskId,claim]);
+      }
+      await tx.query(`SELECT public.videoforge_record_hosted_api_task(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::text)`,
+        [IDS.accountA,IDS.workspaceA,seeded.generationRequestId,pendingJob.generationTaskId,
+          pendingClaim,'api-smoke-pending']);
+      await tx.query(`SELECT public.videoforge_fail_hosted_api_job(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text)`,
+        [IDS.accountA,IDS.workspaceA,seeded.generationRequestId,failedJob.generationTaskId,
+          'PROVIDER_REQUEST_REJECTED']);
+      const waiting = await tx.query(`SELECT public.videoforge_settle_hosted_api_failure(
+        $1::uuid,$2::uuid,$3::uuid) AS result`,
+        [IDS.accountA,IDS.workspaceA,seeded.generationRequestId]);
+      assert.equal(waiting.rows[0].result.state,'WAITING');
+      assert.equal((await tx.query(`SELECT state FROM generation_requests WHERE id=$1`,
+        [seeded.generationRequestId])).rows[0].state,'ACTIVE');
+      await tx.query(`SELECT public.videoforge_fail_hosted_api_job(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text)`,
+        [IDS.accountA,IDS.workspaceA,seeded.generationRequestId,pendingJob.generationTaskId,
+          'PROVIDER_TASK_FAILED']);
+      const settledFailure = await tx.query(`SELECT public.videoforge_settle_hosted_api_failure(
+        $1::uuid,$2::uuid,$3::uuid) AS result`,
+        [IDS.accountA,IDS.workspaceA,seeded.generationRequestId]);
+      assert.equal(settledFailure.rows[0].result.state,'SETTLED');
+      assert.equal((await tx.query(`SELECT stage FROM video_runtime_states
+        WHERE generation_request_id=$1`,[seeded.generationRequestId])).rows[0].stage,'FAILED');
+      assert.equal((await tx.query(`SELECT count(*)::integer AS count FROM provider_workload_leases
+        WHERE generation_request_id=$1 AND state='ACTIVE'`,
+        [seeded.generationRequestId])).rows[0].count,0);
+      assert.equal((await tx.query(`SELECT count(*)::integer AS count FROM generation_tasks
+        WHERE id=ANY($1::uuid[]) AND state='FAILED'`,
+        [jobs.map(job=>job.generationTaskId)])).rows[0].count,jobs.length);
+      throw rollbackProbe;
+    }),error=>error===rollbackProbe);
     for (const job of jobs) {
       if (job.lane==='IMAGE') await executor.query(`SELECT public.videoforge_bind_hosted_api_image_prompt(
         $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text)`,
@@ -547,6 +604,7 @@ test("0188 API jobs materialize, claim once, accept outputs, and reach render", 
       $1::uuid,$2::uuid,$3::uuid) AS result`,
       [IDS.accountA,IDS.workspaceA,seeded.generationRequestId]);
     assert.equal(ready.rows[0].result?.acceptedVisuals?.length,3);
+    assert.equal(Object.hasOwn(ready.rows[0].result, 'avatarSource'), false);
     assert.equal(ready.rows[0].result.acceptedVisuals.filter(v=>v.lane==='soulx_avatar')
       .every(v=>v.rendererSourceProfile==='fal-flashhead-512x512p25-v1'),true);
   });

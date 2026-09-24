@@ -130,6 +130,7 @@ export interface CatalogResponse {
   /** Workspace-owned style versions that are not published yet. */
   readonly style_drafts?: readonly HostedStyleDraft[];
   readonly media_worker_state: "ONLINE" | "WAITING_FOR_YOUR_COMPUTER";
+  readonly generation_provider?: "KIE_FAL" | "RUNPOD";
   readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
   readonly gpu_readiness: {
     readonly schema_version: "videoforge-hosted-gpu-readiness/v1";
@@ -896,6 +897,7 @@ interface ProjectDetailResponse {
     revision_state: string;
   };
   readonly attempts: readonly HostedAttempt[];
+  readonly generation_provider?: "KIE_FAL" | "RUNPOD";
   readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
   readonly gpu_readiness: CatalogResponse["gpu_readiness"];
   readonly generation: null | {
@@ -1052,13 +1054,36 @@ function hostedGpuLaneDisplayState(lane: HostedGpuLaneActivity): string {
 
 /** Provider phase text for a dispatched lane. The provider queue and the container cold start are
  * both normal multi-minute waits, so name them instead of leaving the stage looking idle. */
-function hostedGpuLanePhase(lane: HostedGpuLaneActivity): {
+function hostedGpuLanePhase(
+  lane: HostedGpuLaneActivity,
+  apiGeneration = false,
+): {
   readonly label: string;
   readonly detail: string;
   readonly active: boolean;
 } {
   const state = hostedGpuLaneDisplayState(lane);
   const accepted = hostedGpuLaneAcceptedCount(lane);
+  if (apiGeneration && state === "UNKNOWN_NO_RETRY")
+    return {
+      label: "Needs attention",
+      detail: "The API response is uncertain; this request will not be sent again automatically.",
+      active: false,
+    };
+  if (apiGeneration && state === "SUBMITTING")
+    return {
+      label: "Submitting",
+      detail: "Sending a claimed request to the API provider.",
+      active: true,
+    };
+  if (apiGeneration && state === "OUTBOXED")
+    return { label: "Queuing", detail: "Preparing the API request.", active: true };
+  if (apiGeneration && state === "IN_PROGRESS")
+    return {
+      label: "Generating",
+      detail: "The API provider is producing and verifying items.",
+      active: true,
+    };
   if (state === "SUCCEEDED")
     return { label: "Complete", detail: "All items accepted.", active: false };
   if (["FAILED", "PERMANENT_FAILED", "DEAD_LETTER", "RETRYABLE_FAILED"].includes(state))
@@ -1200,8 +1225,10 @@ export function HostedElapsed({
 
 function HostedGpuLaneActivityPanel({
   lanes,
+  apiGeneration = false,
 }: {
   readonly lanes: readonly HostedGpuLaneActivity[];
+  readonly apiGeneration?: boolean;
 }) {
   const visible = lanes.filter(
     (lane) =>
@@ -1209,10 +1236,14 @@ function HostedGpuLaneActivityPanel({
   );
   if (visible.length === 0) return null;
   return (
-    <Panel className="gpu-lane-panel" eyebrow="On the GPU" heading="Image and avatar generation">
+    <Panel
+      className="gpu-lane-panel"
+      eyebrow={apiGeneration ? "Via APIs" : "On the GPU"}
+      heading="Image and avatar generation"
+    >
       <ul className="gpu-lane-list">
         {visible.map((lane) => {
-          const phase = hostedGpuLanePhase(lane);
+          const phase = hostedGpuLanePhase(lane, apiGeneration);
           const planned = lane.planned_item_count ?? 0;
           const accepted = hostedGpuLaneAcceptedCount(lane);
           const percent = planned > 0 ? Math.min(100, Math.round((accepted / planned) * 100)) : 0;
@@ -1275,7 +1306,13 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
     <Panel
       className="gpu-lane-panel"
       eyebrow="Your computer"
-      heading={complete ? "Avatar audio ready" : stopped ? "Avatar audio stopped" : "Preparing avatar audio"}
+      heading={
+        complete
+          ? "Avatar audio ready"
+          : stopped
+            ? "Avatar audio stopped"
+            : "Preparing avatar audio"
+      }
     >
       <ul className="gpu-lane-list">
         <li className="gpu-lane-item">
@@ -1332,10 +1369,7 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
 }
 
 /** Stage 6 stops inside the owner's own computer, so name that local cause and the retry state. */
-export function spanAudioFailureMessage(
-  failureCode: string | null,
-  retrying: boolean,
-): string {
+export function spanAudioFailureMessage(failureCode: string | null, retrying: boolean): string {
   if (failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") {
     return retrying
       ? "Your computer ran out of free disk space. Free space there and the remaining clips finish automatically."
@@ -2382,7 +2416,8 @@ export function HostedCreateProjectScreen() {
         throw new Error("Project inputs are not ready. Fix the blockers below.");
       setError(null);
       const metadata =
-        checked ?? voiceoverMeta ??
+        checked ??
+        voiceoverMeta ??
         (() => {
           throw new Error("Run the readiness check again before generating.");
         })();
@@ -2690,10 +2725,12 @@ export function HostedCreateProjectScreen() {
               </strong>
               <span>
                 {" "}
-                {hostedPreflightEstimateText(
-                  preflightResult.estimate,
-                  catalog.data.gpu_readiness.dispatch_available,
-                )}
+                {catalog.data.generation_provider === "KIE_FAL"
+                  ? "API usage is billed after generation."
+                  : hostedPreflightEstimateText(
+                      preflightResult.estimate,
+                      catalog.data.gpu_readiness.dispatch_available,
+                    )}
               </span>
             </div>
           ) : null}
@@ -2715,7 +2752,8 @@ export function HostedCreateProjectScreen() {
           {voiceoverMeta ? (
             <p className="helper">Voiceover · {formatMilliseconds(voiceoverMeta.durationMs)}</p>
           ) : null}
-          {!catalog.data.gpu_readiness.dispatch_available ? (
+          {catalog.data.generation_provider !== "KIE_FAL" &&
+          !catalog.data.gpu_readiness.dispatch_available ? (
             <p className="helper hosted-beta-note" role="note">
               Creation runs through prompt writing. Final video generation is unavailable; no paid
               GPU work will start.
@@ -4429,8 +4467,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       !spanPreparationActive &&
       query.data.generation.stage === "READY_FOR_GPU_DISPATCH" &&
       promptStageState === "COMPLETE" &&
-      query.data.gpu_transport === "QUALIFIED_EXACT" &&
-      query.data.gpu_readiness.dispatch_available === true &&
+      (query.data.generation_provider === "KIE_FAL" ||
+        (query.data.gpu_transport === "QUALIFIED_EXACT" &&
+          query.data.gpu_readiness.dispatch_available === true)) &&
       (query.data.queue === null ||
         String(query.data.queue?.status ?? "").toUpperCase() === "WAITING" ||
         HOSTED_V209_DISPATCH_READY_QUEUE_STATES.has(
@@ -4441,8 +4480,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     query.data?.generation?.id &&
       !spanPreparationActive &&
       promptStageState === "COMPLETE" &&
-      query.data.gpu_transport === "QUALIFIED_EXACT" &&
-      query.data.gpu_readiness.dispatch_available === true &&
+      (query.data.generation_provider === "KIE_FAL" ||
+        (query.data.gpu_transport === "QUALIFIED_EXACT" &&
+          query.data.gpu_readiness.dispatch_available === true)) &&
       !query.data.attempts.some((attempt) =>
         ["IMAGE", "AVATAR", "MAGE_IMAGE", "SOULX_AVATAR"].includes(
           String(attempt.kind).toUpperCase(),
@@ -4669,7 +4709,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         : terminalCancelled
           ? "Cancelled"
           : generationWaitingForGpu
-            ? "Waiting for GPUs"
+            ? query.data.generation_provider === "KIE_FAL"
+              ? "Waiting for generation"
+              : "Waiting for GPUs"
             : allComplete
               ? render?.approved_at
                 ? "Approved"
@@ -4768,7 +4810,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               loading={query.isFetching && !query.data}
               error={query.isError ? query.error.message : null}
               onRetry={() => void query.refetch()}
-              onRegenerate={regenerateImage}
+              onRegenerate={
+                query.data.generation_provider === "KIE_FAL" ? undefined : regenerateImage
+              }
+              regenerationUnavailableReason={
+                query.data.generation_provider === "KIE_FAL"
+                  ? "Image regeneration is unavailable for API-generated scenes. Your accepted image and video remain available."
+                  : undefined
+              }
             />
           ),
         }
@@ -4788,7 +4837,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               loading={query.isFetching && !query.data}
               error={query.isError ? query.error.message : null}
               onRetry={() => void query.refetch()}
-              onRegenerate={regenerateImage}
+              onRegenerate={
+                query.data.generation_provider === "KIE_FAL" ? undefined : regenerateImage
+              }
+              regenerationUnavailableReason={
+                query.data.generation_provider === "KIE_FAL"
+                  ? "Image regeneration is unavailable for API-generated scenes. Your accepted image and video remain available."
+                  : undefined
+              }
             />
           ),
         }
@@ -4914,10 +4970,18 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     ...(failedStageIds.has("image-generation") || failedStageIds.has("avatar-generation")
       ? {
           ...(failedStageIds.has("image-generation")
-            ? { "image-generation": stageRetryButton(gpuDispatch.isPending, () => gpuDispatch.mutate()) }
+            ? {
+                "image-generation": stageRetryButton(gpuDispatch.isPending, () =>
+                  gpuDispatch.mutate(),
+                ),
+              }
             : {}),
           ...(failedStageIds.has("avatar-generation")
-            ? { "avatar-generation": stageRetryButton(gpuDispatch.isPending, () => gpuDispatch.mutate()) }
+            ? {
+                "avatar-generation": stageRetryButton(gpuDispatch.isPending, () =>
+                  gpuDispatch.mutate(),
+                ),
+              }
             : {}),
         }
       : {}),
@@ -5027,9 +5091,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             <Metric
               label="Projected cost"
               value={
-                (cost?.projected_usd ?? 0) > 0
-                  ? formatUsd(cost?.projected_usd)
-                  : "No provider charge"
+                query.data.generation_provider === "KIE_FAL"
+                  ? "Billed by APIs"
+                  : (cost?.projected_usd ?? 0) > 0
+                    ? formatUsd(cost?.projected_usd)
+                    : "No provider charge"
               }
               detail={cost?.cap_usd == null ? undefined : `${formatUsd(cost.cap_usd)} maximum`}
               tone="success"
@@ -5091,7 +5157,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       ) : gpuDispatch.data?.state === "WAITING_FOR_GPUS" || generationWaitingForGpu ? (
         <div className="validation validation-info" role="status" aria-live="polite">
-          Waiting for GPUs. Generation will start automatically when capacity opens.
+          {query.data.generation_provider === "KIE_FAL"
+            ? "Waiting for API generation to start."
+            : "Waiting for GPUs. Generation will start automatically when capacity opens."}
         </div>
       ) : gpuDispatch.data?.state === "PREPARING_INPUTS" ? (
         <div className="validation validation-info" role="status" aria-live="polite">
@@ -5276,7 +5344,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             </Panel>
           ) : null}
           <HostedSpanAudioPanel progress={query.data.span_audio ?? null} />
-          <HostedGpuLaneActivityPanel lanes={query.data.gpu_lanes ?? []} />
+          <HostedGpuLaneActivityPanel
+            lanes={query.data.gpu_lanes ?? []}
+            apiGeneration={query.data.generation_provider === "KIE_FAL"}
+          />
           <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
             <div className="latest-artifact-frame">
               {render?.preview_url ? (
@@ -5455,10 +5526,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   ? generationStopped
                     ? "Generation stopped."
                     : generationWaitingForGpu
-                      ? "Waiting for GPUs."
+                      ? query.data.generation_provider === "KIE_FAL"
+                        ? "Waiting for API generation."
+                        : "Waiting for GPUs."
                       : promptStage?.status === "COMPLETE"
-                        ? query.data.gpu_transport === "QUALIFIED_EXACT" &&
-                          query.data.gpu_readiness.dispatch_available === true
+                        ? query.data.generation_provider === "KIE_FAL" ||
+                          (query.data.gpu_transport === "QUALIFIED_EXACT" &&
+                            query.data.gpu_readiness.dispatch_available === true)
                           ? "Ready to generate."
                           : "Waiting for GPU qualification."
                         : promptAutoStartError

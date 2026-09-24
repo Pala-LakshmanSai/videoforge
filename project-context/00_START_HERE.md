@@ -1,5 +1,13 @@
 # VideoForge: start here
 
+## Current generation transition — 2026-09-24
+
+The user selected Kie z-image for fresh scene images and Fal FlashHead audio-to-video for fresh
+avatar spans. This removes GPU inventory from new ordinary generation. The API path is being
+integrated locally at V2-09; migration/deployment, one bounded paid project, actual cost readback,
+and hosted Chrome playback remain open. Historical RunPod attempts are immutable and retain their
+original reconciliation and cleanup. See `CURRENT_STATE.yaml` and `DEC_API_GENERATION_001`.
+
 ## Span retry and dispatch ceiling repair — 2026-09-15
 
 Project `026029a9` failed Stage 6 with 80 of 104 spans materialized and 24 Failed. All 24 carried
