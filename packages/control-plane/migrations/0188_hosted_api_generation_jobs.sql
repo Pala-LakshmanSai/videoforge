@@ -201,7 +201,11 @@ BEGIN
     ELSE
       SELECT span.id,span.materialized_asset_id,span.materialized_binary_sha256,
         audio.object_key audio_object_key,audio.content_type audio_content_type,
-        audio.byte_size audio_byte_size,avatar.object_key avatar_object_key,
+        audio.byte_size audio_byte_size,audio.duration_ms audio_duration_ms,
+        (audio.metadata->>'sample_rate_hz')::integer audio_sample_rate_hz,
+        (audio.metadata->>'channels')::integer audio_channels,
+        (audio.metadata->>'padded_samples_48k')::bigint padded_samples_48k,
+        avatar.object_key avatar_object_key,
         avatar.content_type avatar_content_type,avatar.byte_size avatar_byte_size,
         span.selected_start_ms,span.selected_end_ms_exclusive,
         span.trim_start_ms,span.trim_end_ms_exclusive INTO span_row
@@ -220,7 +224,16 @@ BEGIN
         AND span.timeline_segment_id=task_row.segment_id
         AND span.task_key=task_row.required_slots#>>'{avatar,span_audio_task_key}'
         AND span.state='MATERIALIZED';
-      IF NOT FOUND OR span_row.audio_object_key IS NULL OR span_row.audio_byte_size<1
+      IF NOT FOUND OR span_row.audio_object_key IS NULL
+         OR span_row.audio_byte_size IS NULL
+         OR span_row.audio_byte_size NOT BETWEEN 44 AND 1048576
+         OR span_row.audio_duration_ms IS NULL
+         OR span_row.audio_duration_ms NOT BETWEEN 3000 AND 10120
+         OR span_row.audio_sample_rate_hz IS DISTINCT FROM 48000
+         OR span_row.audio_channels IS DISTINCT FROM 1
+         OR span_row.padded_samples_48k IS NULL
+         OR span_row.padded_samples_48k NOT BETWEEN 144000 AND 485760
+         OR span_row.padded_samples_48k%1920<>0
          OR span_row.audio_content_type<>'audio/wav' OR span_row.avatar_object_key IS NULL
          OR span_row.avatar_byte_size<1 OR span_row.avatar_content_type NOT IN ('image/png','image/jpeg') THEN
         RAISE EXCEPTION 'API avatar input coverage incomplete' USING ERRCODE='23514';
@@ -447,7 +460,7 @@ BEGIN
     WHERE j.account_id=supplied_account_id AND j.workspace_id=supplied_workspace_id
       AND j.generation_request_id=supplied_generation_request_id
       AND j.generation_task_id=supplied_generation_task_id FOR UPDATE;
-  IF job.id IS NULL OR (job.lane='IMAGE' AND supplied_content_type<>'image/png')
+  IF job.id IS NULL OR (job.lane='IMAGE' AND supplied_content_type NOT IN ('image/png','image/jpeg'))
      OR (job.lane='AVATAR' AND supplied_content_type<>'video/mp4') THEN
     RAISE EXCEPTION 'API generation output kind invalid' USING ERRCODE='23514';
   END IF;

@@ -7,7 +7,7 @@ import {
   restoreMetadataSnapshot,
   serializeMetadataSnapshot,
 } from "../dist/src/index.js";
-import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
+import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
   createMigratedDatabase,
   expectDatabaseError,
@@ -354,6 +354,183 @@ test("0041 installs immutable tenant batches, narrow capability, and attempt lin
         'EXECUTE') AS allowed`,
     );
     assert.equal(privilege.rows[0].allowed, false);
+  });
+});
+
+test("0188 API jobs materialize, claim once, accept outputs, and reach render", async () => {
+  await withMigratedDatabase(async ({ executor }) => {
+    const seeded = await seedMaterialization(executor, { canonicalV209: true });
+    const transcriptId = uuid(1_410_031);
+    const timelineId = uuid(1_410_032);
+    const timelineHash = sha256("timeline");
+    const voiceoverKey = `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/lane/input/job/${seeded.generationRequestId}/artifact/voiceover`;
+    const avatarKey = `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/lane/input/job/${seeded.generationRequestId}/artifact/avatar`;
+    await executor.execute("ALTER TABLE assets DISABLE TRIGGER USER");
+    await executor.query(`UPDATE assets SET object_key=CASE id WHEN $1 THEN $3 ELSE $4 END,
+      content_type=CASE id WHEN $1 THEN 'audio/wav' ELSE 'image/png' END,byte_size=2048
+      WHERE account_id=$5 AND workspace_id=$6 AND id IN ($1,$2)`,
+      [IDS.voiceoverA, IDS.avatarRuntimeA, voiceoverKey, avatarKey, IDS.accountA, IDS.workspaceA]);
+    await executor.execute("ALTER TABLE assets ENABLE TRIGGER USER");
+    await executor.query(`INSERT INTO transcripts(id,account_id,workspace_id,project_revision_id,
+      source_asset_id,state,model_name,model_hash,duration_ms,contract_name,contract_version,
+      canonical_document_asset_id,canonical_document_hash,ready_at)
+      VALUES($1,$2,$3,$4,$5,'READY','fixture', $6,9000,'transcript-timing','v1',$7,$8,
+        transaction_timestamp())`, [transcriptId,IDS.accountA,IDS.workspaceA,IDS.revisionA,
+        IDS.voiceoverA,sha256("model"),IDS.outputA1,sha256("transcript")]);
+    await executor.execute("ALTER TABLE timeline_plans DISABLE TRIGGER USER");
+    await executor.query(`INSERT INTO timeline_plans(id,account_id,workspace_id,project_revision_id,
+      transcript_id,plan_sequence,revision_config_hash,transcript_document_hash,scheduler_version,
+      scheduler_config_hash,seed,input_fingerprint_hash,contract_name,contract_version,
+      canonical_document_asset_id,canonical_document_hash,output_fps_num,output_fps_den,
+      total_frames,idempotency_key,created_by_user_id,created_at)
+      VALUES($1,$2,$3,$4,$5,1,$6,$7,'fixture',$8,42,$9,'timeline-plan','v1',$10,$11,
+        30,1,270,'api-smoke-plan',$12,transaction_timestamp())`,
+      [timelineId,IDS.accountA,IDS.workspaceA,IDS.revisionA,transcriptId,HASHES.revisionA,
+        sha256("transcript"),sha256("scheduler"),sha256("fingerprint"),IDS.outputA1,
+        timelineHash,IDS.userA]);
+    await executor.execute("ALTER TABLE timeline_plans ENABLE TRIGGER USER");
+    const segmentSpecs = [
+      { id: uuid(1_410_021), key: "seg-v209-split", composition: "AVATAR_SPLIT_IMAGE",
+        slot: { image: { task_key: "image:segment:001" }, avatar: { span_audio_task_key: "audio-span:001" } } },
+      { id: uuid(1_410_022), key: "seg-v209-full", composition: "AVATAR_FULL",
+        slot: { avatar: { span_audio_task_key: "audio-span:002" } } },
+      { id: uuid(1_410_023), key: "seg-v209-split-2", composition: "AVATAR_SPLIT_IMAGE",
+        slot: { avatar: { span_audio_task_key: "audio-span:003" } } },
+    ];
+    for (const [index, segment] of segmentSpecs.entries()) {
+      await executor.query(`INSERT INTO timeline_segments(id,account_id,workspace_id,
+        project_revision_id,segment_index,start_frame,end_frame_exclusive,timeline_composition,
+        in_image_shot_role,narration,required_slots,timeline_plan_hash,timeline_plan_id,
+        segment_key,source_audio_start_ms,source_audio_end_ms_exclusive,word_start,
+        word_end_exclusive) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'Fixture narration',$10::jsonb,
+        $11,$12,$13,$14,$15,$16,$17)`,
+      [segment.id,IDS.accountA,IDS.workspaceA,IDS.revisionA,index,index*90,(index+1)*90,
+        segment.composition,segment.composition==='AVATAR_FULL'?null:'ENVIRONMENTAL_WIDE',
+        JSON.stringify(segment.slot),timelineHash,timelineId,segment.key,index*3000,(index+1)*3000,
+        index,index+1]);
+    }
+    for (const [index, segment] of segmentSpecs.entries()) {
+      if (index===0) continue;
+      const audioId = uuid(1_410_110+index);
+      const audioHash = sha256(`span-${index}`);
+      const audioKey = `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/lane/input/job/${seeded.generationRequestId}/artifact/span-${index}`;
+      await executor.query(`INSERT INTO assets(id,account_id,workspace_id,project_id,
+        project_revision_id,kind,state,object_key,binary_sha256,content_type,byte_size,
+        duration_ms,metadata,verified_at)
+        VALUES($1,$2,$3,$4,$5,'AUDIO_SPAN','VERIFIED',$6,$7,'audio/wav',2048,
+        3000,'{"sample_rate_hz":48000,"channels":1,"padded_samples_48k":144000}'::jsonb,
+        transaction_timestamp())`, [audioId,IDS.accountA,IDS.workspaceA,IDS.projectA,
+        IDS.revisionA,audioKey,audioHash]);
+      await executor.query(`INSERT INTO selected_span_audio(id,account_id,workspace_id,
+        project_revision_id,timeline_plan_id,timeline_segment_id,transcript_id,span_key,task_key,
+        source_asset_id,source_binary_sha256,selected_start_ms,selected_end_ms_exclusive,
+        padded_start_ms,padded_end_ms_exclusive,trim_start_ms,trim_end_ms_exclusive,state,
+        materialized_asset_id,materialized_binary_sha256,created_at,materialized_at)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,3000,0,3000,0,3000,
+          'MATERIALIZED',$12,$13,transaction_timestamp(),transaction_timestamp())`,
+        [uuid(1_410_120+index),IDS.accountA,IDS.workspaceA,IDS.revisionA,timelineId,
+        segment.id,transcriptId,`span-${index}`,`audio-span:00${index+1}`,
+        IDS.voiceoverA,HASHES.voiceoverA,audioId,audioHash]);
+    }
+    const imageTask = seeded.batches[0].items[0].task_id;
+    const promptExecutionId = uuid(1_410_140);
+    await executor.execute("ALTER TABLE prompt_executions DISABLE TRIGGER ALL");
+    await executor.query(`INSERT INTO prompt_executions(id,account_id,workspace_id,project_id,
+      project_revision_id,timeline_plan_id,image_style_id,image_style_version_id,task_id,
+      attempt_id,outbox_id,reservation_cost_event_id,output_asset_id,schema_version,
+      input_hash,request_hash,response_hash,compiled_output_hash,acceptance_fingerprint_hash,
+      timeline_hash,style_profile_hash,reserved_cost_micro_usd,reported_cost_micro_usd,
+      acceptance_payload,accepted_at)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
+        'videoforge.durable-prompt-execution/v1',$14,$15,$16,$17,$18,$19,$20,0,0,
+        '{}'::jsonb,transaction_timestamp())`,
+      [promptExecutionId,IDS.accountA,IDS.workspaceA,IDS.projectA,IDS.revisionA,timelineId,
+        IDS.styleA,IDS.styleVersionA,imageTask,uuid(1_410_141),uuid(1_410_142),
+        uuid(1_410_143),IDS.outputA2,sha256("prompt-input"),sha256("prompt-request"),
+        sha256("prompt-response"),sha256("prompt-output"),sha256("prompt-acceptance"),
+        timelineHash,HASHES.styleA]);
+    await executor.execute("ALTER TABLE prompt_executions ENABLE TRIGGER ALL");
+    await executor.query(`INSERT INTO prompt_scene_results(id,account_id,workspace_id,
+      prompt_execution_id,execution_attempt_id,scene_ordinal,scene_id,writer_output,
+      compiled_prompt,positive_prompt_hash,negative_prompt_hash)
+      VALUES($1,$2,$3,$4,$5,0,$6,'{}'::jsonb,$7::jsonb,$8,$9)`,
+      [uuid(1_410_144),IDS.accountA,IDS.workspaceA,promptExecutionId,uuid(1_410_141),
+        segmentSpecs[0].key,JSON.stringify({positivePrompt:'A candid documentary image',
+          negativePrompt:'No text',components:{literalContent:'A candid documentary image'}}),
+        sha256('A candid documentary image'),sha256('No text')]);
+    const firstSpanAssetId = uuid(1_410_111);
+    await executor.execute("ALTER TABLE assets DISABLE TRIGGER USER");
+    await executor.query(`UPDATE assets SET metadata=jsonb_set(metadata,'{channels}','2'::jsonb)
+      WHERE id=$1`,[firstSpanAssetId]);
+    await executor.execute("ALTER TABLE assets ENABLE TRIGGER USER");
+    await expectDatabaseError(() => executor.query(`SELECT public.videoforge_materialize_hosted_api_jobs(
+      $1::uuid,$2::uuid,$3::uuid,$4::uuid)`,
+      [IDS.accountA,IDS.workspaceA,IDS.userA,IDS.projectA]),'23514');
+    assert.equal((await executor.query(`SELECT count(*)::integer AS count
+      FROM hosted_api_generation_jobs`)).rows[0].count,0);
+    await executor.execute("ALTER TABLE assets DISABLE TRIGGER USER");
+    await executor.query(`UPDATE assets SET metadata=jsonb_set(metadata,'{channels}','1'::jsonb)
+      WHERE id=$1`,[firstSpanAssetId]);
+    await executor.execute("ALTER TABLE assets ENABLE TRIGGER USER");
+    const materialized = await executor.query(`SELECT public.videoforge_materialize_hosted_api_jobs(
+      $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS result`,
+      [IDS.accountA,IDS.workspaceA,IDS.userA,IDS.projectA]);
+    const jobs = materialized.rows[0].result.jobs;
+    assert.equal(jobs.length,3);
+    assert.equal(jobs.filter(job=>job.lane==='IMAGE').length,1);
+    for (const job of jobs) {
+      if (job.lane==='IMAGE') await executor.query(`SELECT public.videoforge_bind_hosted_api_image_prompt(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text)`,
+        [IDS.accountA,IDS.workspaceA,seeded.generationRequestId,job.generationTaskId,
+          'A candid documentary image. No visible text.']);
+      const claim = uuid(1_410_160+jobs.indexOf(job));
+      const claimed = await executor.query(`SELECT public.videoforge_claim_hosted_api_job(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid) AS result`,
+        [IDS.accountA,IDS.workspaceA,seeded.generationRequestId,job.generationTaskId,claim]);
+      assert.equal(claimed.rows[0].result.state,'SUBMITTING');
+      const secondClaim = await executor.query(`SELECT public.videoforge_claim_hosted_api_job(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid) AS result`,
+        [IDS.accountA,IDS.workspaceA,seeded.generationRequestId,job.generationTaskId,
+          uuid(1_410_170+jobs.indexOf(job))]);
+      assert.equal(secondClaim.rows[0].result.claimId,claim);
+      const providerId = `api-smoke-${jobs.indexOf(job)}`;
+      await executor.query(`SELECT public.videoforge_record_hosted_api_task(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::text)`,
+        [IDS.accountA,IDS.workspaceA,seeded.generationRequestId,job.generationTaskId,
+          claim,providerId]);
+      await executor.query(`SELECT public.videoforge_commit_hosted_api_output(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text,$6::bigint,$7::text,$8::jsonb)`,
+        [IDS.accountA,IDS.workspaceA,seeded.generationRequestId,job.generationTaskId,
+          sha256(`output-${providerId}`),2048,job.lane==='IMAGE'?'image/jpeg':'video/mp4',
+          JSON.stringify(job.lane==='IMAGE'?{width:1280,height:720}:{width:512,height:512,durationMs:3000})]);
+    }
+    for (const [index, assetId, key, hash, contentType] of [
+      [0,IDS.voiceoverA,voiceoverKey,HASHES.voiceoverA,'audio/wav'],
+      [1,IDS.avatarRuntimeA,avatarKey,HASHES.avatarRuntimeA,'image/png'],
+    ]) {
+      const reservationId = uuid(1_410_180+index);
+      const receiptId = uuid(1_410_190+index);
+      await executor.query(`INSERT INTO artifact_reservations(id,account_id,workspace_id,
+        project_id,project_revision_id,asset_id,lane,job_id,artifact_id,object_key,method,
+        content_type,content_length,checksum_sha256,expires_at,max_uses,used_count,state,
+        retention_class,deletion_owner_account_id)
+        VALUES($1,$2,$3,$4,$5,$6,'INPUT',$7,$8,$9,'PUT',$10,2048,$11,
+          transaction_timestamp()+interval '1 hour',1,1,'COMMITTED','PROJECT',$2)`,
+        [reservationId,IDS.accountA,IDS.workspaceA,IDS.projectA,IDS.revisionA,assetId,
+          seeded.generationRequestId,index===0?'voiceover':'avatar',key,contentType,hash]);
+      await executor.query(`INSERT INTO artifact_receipts(id,account_id,workspace_id,
+        reservation_id,callback_id,object_key,content_type,content_length,checksum_sha256,
+        probe,receipt_sha256,committed_at) VALUES($1,$2,$3,$4,$5,$6,$7,2048,$8,
+          '{}'::jsonb,$9,transaction_timestamp())`,
+        [receiptId,IDS.accountA,IDS.workspaceA,reservationId,
+          `api-fixture-${receiptId}`,key,contentType,hash,sha256(`input-receipt-${index}`)]);
+    }
+    const ready = await executor.query(`SELECT public.videoforge_read_hosted_v209_ready_render_inputs(
+      $1::uuid,$2::uuid,$3::uuid) AS result`,
+      [IDS.accountA,IDS.workspaceA,seeded.generationRequestId]);
+    assert.equal(ready.rows[0].result?.acceptedVisuals?.length,3);
+    assert.equal(ready.rows[0].result.acceptedVisuals.filter(v=>v.lane==='soulx_avatar')
+      .every(v=>v.rendererSourceProfile==='fal-flashhead-512x512p25-v1'),true);
   });
 });
 
