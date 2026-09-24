@@ -4,6 +4,7 @@ import { FalFlashheadClient, FalFlashheadError } from "./fal-flashhead-client";
 
 const requestId = "764cabcf-b745-4b3e-ae38-1200304cf45b";
 const endpoint = "https://queue.fal.run/fal-ai/flashhead/audio-to-video";
+const job = `https://queue.fal.run/fal-ai/flashhead/requests/${requestId}`;
 const response = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
 
@@ -11,7 +12,15 @@ describe("FalFlashheadClient", () => {
   it("submits the exact audio model input and retrieves the matching video", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(response({ request_id: requestId, status: "IN_QUEUE" }))
+      .mockResolvedValueOnce(
+        response({
+          request_id: requestId,
+          status: "IN_QUEUE",
+          status_url: `${job}/status`,
+          response_url: job,
+          cancel_url: `${job}/cancel`,
+        }),
+      )
       .mockResolvedValueOnce(response({ request_id: requestId, status: "COMPLETED" }))
       .mockResolvedValueOnce(
         response({ video: { url: "https://v3b.fal.media/files/b/clip.mp4" }, duration: 5.4 }),
@@ -32,9 +41,15 @@ describe("FalFlashheadClient", () => {
       }),
     });
     expect(await client.status(requestId)).toBe("COMPLETED");
+    expect(fetcher).toHaveBeenCalledWith(`${job}/status`, {
+      headers: { Authorization: "Key private-test-key", "Content-Type": "application/json" },
+    });
     expect(await client.result(requestId)).toEqual({
       videoUrl: "https://v3b.fal.media/files/b/clip.mp4",
       durationSeconds: 5.4,
+    });
+    expect(fetcher).toHaveBeenCalledWith(job, {
+      headers: { Authorization: "Key private-test-key", "Content-Type": "application/json" },
     });
   });
 

@@ -1,5 +1,7 @@
 /** Server-only queue client for the audio-driven FlashHead endpoint. */
 const MODEL_URL = "https://queue.fal.run/fal-ai/flashhead/audio-to-video";
+// Fal submits to the audio endpoint but returns job URLs under the parent model path.
+const JOB_URL = "https://queue.fal.run/fal-ai/flashhead/requests";
 const REQUEST_ID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/u;
 
 export class FalFlashheadError extends Error {
@@ -86,6 +88,12 @@ export class FalFlashheadClient {
       const body = await json(response);
       if (typeof body.request_id !== "string" || !REQUEST_ID.test(body.request_id))
         throw new Error("request ID missing");
+      if (
+        body.status_url !== `${JOB_URL}/${body.request_id}/status` ||
+        body.response_url !== `${JOB_URL}/${body.request_id}` ||
+        body.cancel_url !== `${JOB_URL}/${body.request_id}/cancel`
+      )
+        throw new Error("queue URL mismatch");
       return body.request_id;
     } catch {
       throw new FalFlashheadError("SUBMIT_UNKNOWN");
@@ -98,7 +106,7 @@ export class FalFlashheadClient {
   ): Promise<"IN_QUEUE" | "IN_PROGRESS" | "COMPLETED" | "FAILED" | "CANCELLED"> {
     let response: Response;
     try {
-      response = await this.fetcher(`${MODEL_URL}/requests/${requestId(id)}/status`, {
+      response = await this.fetcher(`${JOB_URL}/${requestId(id)}/status`, {
         headers: this.headers(),
       });
       if (!response.ok) throw new Error("status read failed");
@@ -122,7 +130,7 @@ export class FalFlashheadClient {
   ): Promise<{ readonly videoUrl: string; readonly durationSeconds: number }> {
     let response: Response;
     try {
-      response = await this.fetcher(`${MODEL_URL}/requests/${requestId(id)}`, {
+      response = await this.fetcher(`${JOB_URL}/${requestId(id)}`, {
         headers: this.headers(),
       });
     } catch (error) {
@@ -155,7 +163,7 @@ export class FalFlashheadClient {
 
   async cancel(id: string): Promise<boolean> {
     try {
-      const response = await this.fetcher(`${MODEL_URL}/requests/${requestId(id)}/cancel`, {
+      const response = await this.fetcher(`${JOB_URL}/${requestId(id)}/cancel`, {
         method: "PUT",
         headers: this.headers(),
       });
