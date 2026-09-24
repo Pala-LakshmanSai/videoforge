@@ -20,6 +20,12 @@ api_generation_transition_2026_09_24:
     files and hashes. The guarded runner at b169393d validates that exact historical sequence
     and selects only 0188. Earlier notes say 0148/0149 were applied, but neither ledger row
     exists in current production; do not backfill those superseded SQL files during this release.
+  release_preflight: >-
+    A clean local rebuild of predecessor b8671e08 matches the recorded Cloudflare bundle
+    hash dd3849c7; live status confirms predecessor version 31e730a6, source b8671e08,
+    and DISABLED_UNQUALIFIED. Read-only Wrangler inventory shows the exact 23 historical
+    secret names; Kie and Fal secrets are absent. Private predecessor proof and rollout
+    recipe are under .videoforge/api-transition-pilot. No remote mutation occurred.
   remaining_gates: >-
     Publish and install the v0.1.24 worker, apply migration and provider secrets, deploy,
     run one bounded hosted project through both
