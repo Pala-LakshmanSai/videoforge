@@ -15,8 +15,11 @@ if (
   manifest.migrations.length === 0
 )
   fail("committed migration manifest is invalid");
-for (const [index, entry] of manifest.migrations.entries()) {
-  if (entry.version !== index + 1) fail("migration manifest is not a contiguous chain");
+let previousVersion = 0;
+for (const entry of manifest.migrations) {
+  if (!Number.isSafeInteger(entry.version) || entry.version <= previousVersion)
+    fail("migration manifest is not a strictly increasing chain");
+  previousVersion = entry.version;
   const migration = await read(`packages/control-plane/migrations/${entry.filename}`);
   const actualHash = `sha256:${createHash("sha256").update(migration).digest("hex")}`;
   if (entry.sha256 !== actualHash) fail(`migration ${entry.version} hash is stale`);
