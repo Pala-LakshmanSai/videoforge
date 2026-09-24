@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { HostedR2BucketBinding } from "../hosted/configuration";
 import { observeFalAvatarJob, submitFalAvatarJob } from "./fal-avatar-job";
-import type { FalFlashheadClient } from "./fal-flashhead-client";
+import { FalFlashheadError, type FalFlashheadClient } from "./fal-flashhead-client";
 
 const requestId = "764cabcf-b745-4b3e-ae38-1200304cf45b";
 const objectKey =
@@ -31,6 +31,9 @@ describe("Fal avatar job", () => {
         persistRequestId: async () => {
           order.push("persist");
         },
+        markSubmissionFailed: async () => {
+          order.push("failed");
+        },
         markSubmissionUnknown: async () => {
           order.push("unknown");
         },
@@ -38,6 +41,37 @@ describe("Fal avatar job", () => {
     ).rejects.toThrow("transport lost reply");
     expect(order).toEqual(["claim", "post", "unknown"]);
     expect(client.submit).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks a definite provider rejection FAILED without an unknown replay state", async () => {
+    const order: string[] = [];
+    const client = {
+      submit: vi.fn(async () => {
+        order.push("post");
+        throw new FalFlashheadError("SUBMIT_REJECTED");
+      }),
+    } as unknown as FalFlashheadClient;
+    await expect(
+      submitFalAvatarJob({
+        imageUrl: "https://private.example/portrait",
+        audioUrl: "https://private.example/audio",
+        client,
+        claimSubmission: async () => {
+          order.push("claim");
+          return true;
+        },
+        persistRequestId: async () => {
+          order.push("persist");
+        },
+        markSubmissionFailed: async () => {
+          order.push("failed");
+        },
+        markSubmissionUnknown: async () => {
+          order.push("unknown");
+        },
+      }),
+    ).rejects.toMatchObject({ code: "SUBMIT_REJECTED" });
+    expect(order).toEqual(["claim", "post", "failed"]);
   });
 
   it("downloads a real H.264 MP4 and verifies private storage readback", async () => {

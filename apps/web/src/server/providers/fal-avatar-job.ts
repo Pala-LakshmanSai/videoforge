@@ -39,6 +39,7 @@ export async function submitFalAvatarJob(input: {
   readonly client: FalFlashheadClient;
   readonly claimSubmission: () => Promise<boolean>;
   readonly persistRequestId: (requestId: string) => Promise<void>;
+  readonly markSubmissionFailed: () => Promise<void>;
   readonly markSubmissionUnknown: () => Promise<void>;
 }): Promise<{ readonly state: "NOT_CLAIMED" | "SUBMITTED"; readonly requestId?: string }> {
   if (!(await input.claimSubmission())) return { state: "NOT_CLAIMED" };
@@ -49,8 +50,10 @@ export async function submitFalAvatarJob(input: {
     if (
       error instanceof FalFlashheadError &&
       (error.code === "SUBMIT_REJECTED" || error.code === "INPUT_INVALID")
-    )
+    ) {
+      await input.markSubmissionFailed();
       throw error;
+    }
     await input.markSubmissionUnknown();
     throw error;
   }
