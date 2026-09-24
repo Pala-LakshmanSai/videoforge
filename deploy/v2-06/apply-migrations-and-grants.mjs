@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { validateServiceFile } from "./validate-pg-service.mjs";
 
@@ -201,8 +201,8 @@ if (
 const migrations = [];
 let previousMigrationVersion = 0;
 for (const [index, entry] of migrationManifest.migrations.entries()) {
-  // The committed manifest omits superseded historical migrations. Keep its retained entries
-  // strictly increasing and filename-bound; assertLedger still requires exact ordered equality.
+  // The committed manifest omits superseded historical migrations. Keep retained entries
+  // strictly increasing and filename-bound; ledger validation checks omitted rows separately.
   if (
     !Number.isSafeInteger(entry.version) ||
     entry.version <= previousMigrationVersion ||
@@ -221,24 +221,70 @@ const parseLedger = (text) =>
     .split(/\r?\n/u)
     .filter(Boolean)
     .map((line) => {
-      const [version, name, filename, sha256Value] = line.split("\t");
+      const fields = line.split("\t");
+      if (fields.length !== 4 || !/^(?:0|[1-9][0-9]*)$/u.test(fields[0]))
+        fail("migration ledger row is malformed");
+      const [version, name, filename, sha256Value] = fields;
       return { version: Number(version), name, filename, sha256: sha256Value };
     });
 
-const assertLedger = (ledger) => {
-  if (ledger.length !== migrations.length)
-    fail(`migration ledger contains ${ledger.length} rows; expected exactly ${migrations.length}`);
-  for (const [index, expected] of migrations.entries()) {
-    const actual = ledger[index];
+const migrationByVersion = new Map(migrations.map((migration) => [migration.version, migration]));
+
+const validateMigrationLedger = async (ledger, { complete = false } = {}) => {
+  const appliedVersions = new Set();
+  let previousVersion = 0;
+  for (const [index, actual] of ledger.entries()) {
+    const { version, name, filename, sha256: recordedHash } = actual;
     if (
-      !actual ||
-      actual.version !== expected.version ||
-      actual.name !== expected.name ||
-      actual.filename !== expected.filename ||
-      actual.sha256 !== expected.sha256
+      !Number.isSafeInteger(version) ||
+      version <= previousVersion ||
+      version > migrations.at(-1).version ||
+      !/^[a-z0-9_]+$/u.test(name ?? "") ||
+      filename !== `${String(version).padStart(4, "0")}_${name}.sql` ||
+      !/^sha256:[0-9a-f]{64}$/u.test(recordedHash ?? "")
     )
-      fail(`migration ledger position ${index + 1} does not match the committed manifest`);
+      fail(`migration ledger position ${index + 1} has an unknown or reordered version`);
+    const retained = migrationByVersion.get(version);
+    if (retained) {
+      if (
+        retained.name !== name ||
+        retained.filename !== filename ||
+        retained.sha256 !== recordedHash
+      )
+        fail(`migration ledger position ${index + 1} does not match the committed manifest`);
+    } else {
+      // Omitted historical rows must form a consecutive prefix of a manifest gap. Verify their
+      // exact committed SQL bytes before treating them as already applied.
+      if (version !== previousVersion + 1)
+        fail(`migration ledger position ${index + 1} skips a historical migration`);
+      let historicalSql;
+      let committedSql;
+      try {
+        historicalSql = await readFile(resolve(migrationsDirectory, filename), "utf8");
+        committedSql = execFileSync(
+          "git",
+          ["show", `HEAD:packages/control-plane/migrations/${filename}`],
+          { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+        );
+      } catch {
+        fail(`migration ledger position ${index + 1} has no committed SQL file`);
+      }
+      if (historicalSql !== committedSql)
+        fail(`migration ledger position ${index + 1} has uncommitted SQL drift`);
+      if (`sha256:${sha256(historicalSql)}` !== recordedHash)
+        fail(`migration ledger position ${index + 1} does not match committed SQL`);
+    }
+    appliedVersions.add(version);
+    previousVersion = version;
   }
+  for (const retained of migrations) {
+    if (retained.version <= previousVersion && !appliedVersions.has(retained.version))
+      fail(`migration ledger is missing retained version ${retained.version}`);
+  }
+  const pending = migrations.filter(({ version }) => !appliedVersions.has(version));
+  if (complete && pending.length > 0)
+    fail(`migration ledger is missing ${pending.length} committed manifest rows`);
+  return pending;
 };
 
 const safeIdentifier = (value, label) => {
@@ -292,16 +338,21 @@ const main = async () => {
       "pgcrypto extension is required before migration 0042 (gen_random_bytes and pgp_sym_encrypt/decrypt)",
     );
 
-  let ledgerText;
-  try {
-    ledgerText = await query(
-      "SELECT version::text, name, filename, sha256 FROM public.videoforge_schema_migrations ORDER BY public.videoforge_schema_migrations.version",
-      environment,
-    );
-  } catch {
-    ledgerText = "";
-  }
+  const ledgerExists = await query(
+    "SELECT (to_regclass('public.videoforge_schema_migrations') IS NOT NULL)::text",
+    environment,
+  );
+  if (ledgerExists !== "true" && ledgerExists !== "false")
+    fail("migration ledger existence read failed");
+  const ledgerText =
+    ledgerExists === "true"
+      ? await query(
+          "SELECT version::text, name, filename, sha256 FROM public.videoforge_schema_migrations ORDER BY public.videoforge_schema_migrations.version",
+          environment,
+        )
+      : "";
   const ledger = parseLedger(ledgerText);
+  const pendingMigrations = await validateMigrationLedger(ledger, { complete: verifyOnly });
   let applyRuntimeRole;
   let applyRuntimeRoleIdentifier;
   if (applyGrants && !verifyOnly) {
@@ -328,19 +379,6 @@ const main = async () => {
       (!/^\d+$/u.test(requiredPrefix) || ledger.length !== Number(requiredPrefix))
     )
       fail(`database must have exactly ${requiredPrefix} manifest rows before this activation`);
-    if (ledger.length > migrations.length)
-      fail("database migration ledger is longer than the committed manifest");
-    for (const [index, applied] of ledger.entries()) {
-      const expected = migrations[index];
-      if (
-        !expected ||
-        applied.version !== expected.version ||
-        applied.name !== expected.name ||
-        applied.filename !== expected.filename ||
-        applied.sha256 !== expected.sha256
-      )
-        fail(`existing migration ledger position ${index + 1} is not an exact manifest prefix`);
-    }
     if (applyGrants) {
       const preMigrationRuntimeDisableSql = [
         "BEGIN;",
@@ -353,7 +391,7 @@ const main = async () => {
         environment,
       );
     }
-    if (ledger.length === 0 && !ledgerText) {
+    if (ledgerExists === "false") {
       await runPsql(
         [
           "--no-psqlrc",
@@ -363,7 +401,7 @@ const main = async () => {
         environment,
       );
     }
-    for (const migration of migrations.slice(ledger.length)) {
+    for (const migration of pendingMigrations) {
       const temporaryDirectory = await mkdtemp(resolve(tmpdir(), "videoforge-v2-06-migration-"));
       const temporarySql = resolve(temporaryDirectory, migration.filename);
       const migrationSql = [
@@ -412,10 +450,10 @@ const main = async () => {
       environment,
     ),
   );
-  assertLedger(finalLedger);
+  await validateMigrationLedger(finalLedger, { complete: true });
   if (ownerOnly) {
     console.log(
-      `V2-06 migration ledger verified: ${finalLedger.length}/${migrations.length} exact manifest rows.`,
+      `V2-06 migration ledger verified: ${finalLedger.length} ledger rows covering ${migrations.length} manifest entries.`,
     );
     return;
   }
@@ -500,4 +538,9 @@ const main = async () => {
 
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) await main();
 
-export { EXPECTED_RUNTIME_FUNCTIONS, EXPECTED_TABLE_PRIVILEGES, parseLedger };
+export {
+  EXPECTED_RUNTIME_FUNCTIONS,
+  EXPECTED_TABLE_PRIVILEGES,
+  parseLedger,
+  validateMigrationLedger,
+};

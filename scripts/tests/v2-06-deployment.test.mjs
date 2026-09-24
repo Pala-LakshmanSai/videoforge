@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import { requireNonEmptyClientAsset } from "../../deploy/v2-06/render-staging-config.mjs";
 import { parseOrigin } from "../../deploy/v2-06/render-r2-cors.mjs";
+import { validateMigrationLedger } from "../../deploy/v2-06/apply-migrations-and-grants.mjs";
 
 const verifier = "deploy/v2-06/verify-r2-cors.mjs";
 const renderer = "deploy/v2-06/render-staging-config.mjs";
@@ -39,7 +40,7 @@ test("grant activation disables the validated runtime before applying any pendin
   const source = readFileSync("deploy/v2-06/apply-migrations-and-grants.mjs", "utf8");
   const roleValidation = source.indexOf("const roleRows = await query(");
   const runtimeDisable = source.indexOf("const preMigrationRuntimeDisableSql = [");
-  const migrationLoop = source.indexOf("for (const migration of migrations.slice(ledger.length))");
+  const migrationLoop = source.indexOf("for (const migration of pendingMigrations)");
   assert.ok(roleValidation >= 0);
   assert.ok(roleValidation < runtimeDisable);
   assert.ok(runtimeDisable < migrationLoop);
@@ -50,6 +51,82 @@ test("grant activation disables the validated runtime before applying any pendin
   assert.match(
     source,
     /SELECT pg_advisory_xact_lock\(1448494662, 1\);[\s\S]*REVOKE ALL ON ALL FUNCTIONS[\s\S]*COMMIT;/u,
+  );
+});
+
+const migrationManifest = JSON.parse(
+  readFileSync("packages/control-plane/migrations/manifest.json", "utf8"),
+).migrations;
+const ledgerRow = ({ version, name, filename, sha256 }) => ({ version, name, filename, sha256 });
+const retainedThrough187 = migrationManifest.filter(({ version }) => version <= 187).map(ledgerRow);
+const historical149Through168 = Array.from({ length: 20 }, (_, index) => {
+  const version = 149 + index;
+  const filename = readdirSync("packages/control-plane/migrations").find((candidate) =>
+    candidate.startsWith(`${String(version).padStart(4, "0")}_`),
+  );
+  assert.ok(filename);
+  return {
+    version,
+    name: filename.slice(5, -4),
+    filename,
+    sha256: `sha256:${createHash("sha256")
+      .update(readFileSync(`packages/control-plane/migrations/${filename}`))
+      .digest("hex")}`,
+  };
+});
+const liveShape = [...retainedThrough187, ...historical149Through168].sort(
+  (left, right) => left.version - right.version,
+);
+
+test("migration runner accepts exact historical ledger superset and selects only 0188", async () => {
+  assert.equal(liveShape.length, 170);
+  assert.deepEqual(
+    (await validateMigrationLedger(liveShape)).map(({ version }) => version),
+    [188],
+  );
+  assert.deepEqual(
+    await validateMigrationLedger([...liveShape, ledgerRow(migrationManifest.at(-1))], {
+      complete: true,
+    }),
+    [],
+  );
+});
+
+test("migration runner preserves empty bootstrap and rejects incomplete verification", async () => {
+  assert.equal((await validateMigrationLedger([])).length, migrationManifest.length);
+  await assert.rejects(validateMigrationLedger(liveShape, { complete: true }), /missing 1/u);
+});
+
+test("migration runner rejects historical hash drift and gaps before database mutation", async () => {
+  const wrongHash = liveShape.map((row) =>
+    row.version === 150 ? { ...row, sha256: `sha256:${"0".repeat(64)}` } : row,
+  );
+  await assert.rejects(validateMigrationLedger(wrongHash), /does not match committed SQL/u);
+  await assert.rejects(
+    validateMigrationLedger(liveShape.filter(({ version }) => version !== 150)),
+    /skips a historical migration/u,
+  );
+});
+
+test("migration runner rejects missing retained, reordered, and unknown future rows", async () => {
+  await assert.rejects(
+    validateMigrationLedger(liveShape.filter(({ version }) => version !== 185)),
+    /missing retained version 185/u,
+  );
+  const reordered = [...liveShape];
+  [reordered[0], reordered[1]] = [reordered[1], reordered[0]];
+  await assert.rejects(validateMigrationLedger(reordered), /reordered version/u);
+  await assert.rejects(
+    validateMigrationLedger([
+      ...liveShape,
+      {
+        version: 189,
+        name: "unknown_future",
+        filename: "0189_unknown_future.sql",
+        sha256: `sha256:${"0".repeat(64)}`,
+      },
+    ]),
+    /unknown or reordered version/u,
   );
 });
 
