@@ -1,41 +1,31 @@
 schema_version: "2.0"
 api_generation_transition_2026_09_24:
   checkpoint: V2-09
-  status: LOCAL_RELEASE_CHECKS_PASSED_NOT_DEPLOYED
+  status: PRODUCTION_APIS_ACCEPTED_RENDER_WORKER_025_RELEASE_IN_PROGRESS
   decision: >-
     Fresh ordinary image generation uses Kie z-image; avatar generation uses Fal FlashHead
     audio-to-video with the pinned Avatar Hub source and selected voiceover span. Historical
     projects pin RUNPOD, new API projects pin KIE_FAL, and consumed RunPod attempts retain
     their original provider identities and cleanup rules.
-  local_evidence: >-
-    Migration 0188 applies in PGlite, including success and definite-failure settlement;
-    migration 0189 adds a durable, tenant-scoped Kie image-regeneration path with its own paid
-    attempt identity, private replacement receipt, and Review action. Provider clients, API
-    generation jobs, dispatch, workflow, private output verification, and Fal render profile are
-    implemented locally. The desktop media worker v0.1.24 release inputs and exact execution
-    bundle are prepared, but the release has not been published or installed. Focused local
-    checks cover generation, regeneration, product reads, renderer, database grants, and
-    unknown-no-retry UI behavior. Hosted output, regeneration, and browser playback remain
-    unverified.
-  migration_preflight: >-
-    Read-only production Neon ledger has 170 rows through 0187 and matches its committed SQL
-    files and hashes. The guarded runner now validates that exact historical sequence and
-    selects only 0188 and 0189, with explicit runtime read and RPC grants. Earlier notes say
-    0148/0149 were applied, but neither ledger row
-    exists in current production; do not backfill those superseded SQL files during this release.
-  release_preflight: >-
-    A clean local rebuild of predecessor b8671e08 matches the recorded Cloudflare bundle
-    hash dd3849c7; live status confirms predecessor version 31e730a6, source b8671e08,
-    and DISABLED_UNQUALIFIED. Read-only Wrangler inventory shows the exact 23 historical
-    secret names; Kie and Fal secrets are absent. Private predecessor proof and rollout
-    recipe are under .videoforge/api-transition-pilot. No remote mutation occurred.
+  live_evidence: >-
+    Production migration ledger is applied through 0192. Cloudflare source bfa633b0 is live as
+    version 7ca54ba7 with 25 secret names and GPU dispatch DISABLED_UNQUALIFIED. Authenticated
+    Chrome project 9b8d4c21-f38f-405b-bdf8-7fcc843cfbdd reached two accepted Kie PNG receipts
+    and one accepted Fal MP4 receipt, all viewable in the app; image and avatar provider task IDs
+    are persisted. Production fixes were based on observed Cloudflare fetch receiver and redirect
+    failures, Kie's 800-character prompt limit, and the reconciler role's missing render-reader
+    grant. The first local render attempt was claimed by installed worker v0.1.24 and failed
+    RENDER_INPUT_INVALID: the accepted Fal clip declares nominal 25 fps but average 1975/78 fps.
+    Worker v0.1.25 source 6f0fe639 validates nominal rate for Fal only; release run 36057096197
+    is in progress. The failed render attempt is terminal and must not be replayed.
   remaining_gates: >-
-    Publish and install the v0.1.24 worker, apply migrations 0188/0189 and provider secrets,
-    deploy, run one bounded hosted project through both APIs, verify R2 receipts/render/playback,
-    exercise one Kie image replacement from Review, attempt actual provider cost readback, and
-    confirm no active RunPod workers. Keep uncertain paid attempts on their persisted identities.
-  provider_spend: NONE_IN_THIS_TRANSITION
-  paid_compute_shutdown: NO_PROVIDER_CALLS_OR_PAID_COMPUTE_STARTED
+    Publish immutable worker v0.1.25 for macOS and Windows, update the production release
+    manifest and install the local macOS worker, then schedule one new render attempt from the
+    already accepted pilot assets with the new execution-bundle identity. Verify terminal MP4
+    receipt, Chrome playback/download, one Kie image replacement from Review, provider cost
+    readback, and zero active RunPod workers. Do not resubmit the consumed provider task IDs.
+  provider_spend: BOUNDED_API_PILOTS_WITHIN_APPROVED_USD_5_CAP_EXACT_PROVIDER_CHARGES_PENDING
+  paid_compute_shutdown: GPU_DISPATCH_DISABLED_NO_RUNPOD_COMPUTE_STARTED_FOR_API_PILOTS
 
 relatability_verification_and_pipeline_repairs_2026_09_19:
   checkpoint: V2-09
