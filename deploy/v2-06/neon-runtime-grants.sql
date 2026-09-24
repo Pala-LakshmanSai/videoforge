@@ -239,7 +239,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_materialize_hosted_v209_system_avata
 )
 TO :"runtime_role";
 -- Migration 0188 adds the API-provider lane. Its tenant-scoped SECURITY DEFINER RPCs are
--- the only runtime entrypoints; the job table and JSON projection helper remain private.
+-- the runtime write entrypoints. Product reads use tenant-scoped SELECT on the job table;
+-- the JSON projection helper remains private.
 GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_api_jobs(uuid, uuid, uuid)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_materialize_hosted_api_jobs(uuid, uuid, uuid, uuid)
