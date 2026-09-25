@@ -990,6 +990,12 @@
       "name": "hosted_prompt_claimed_batch_recovery",
       "filename": "0202_hosted_prompt_claimed_batch_recovery.sql",
       "sha256": "sha256:87f4fc2aba0c86859847aedfdb311df97765c3a3393e1fdcbba24d222b609df7"
+    },
+    {
+      "version": 203,
+      "name": "hosted_prompt_invalid_archived_batch",
+      "filename": "0203_hosted_prompt_invalid_archived_batch.sql",
+      "sha256": "sha256:69c539c0ebce5485854e2db63adb0c3190e0106bb7f43b3fd7b6ac6878604eda"
     }
   ]
 }
