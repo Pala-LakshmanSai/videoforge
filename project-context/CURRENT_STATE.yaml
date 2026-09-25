@@ -1,10 +1,16 @@
 schema_version: "2.0"
 image_zoom_both_preview_2026_09_25:
   checkpoint: V2-09
-  status: USER_APPROVED_RELEASE_PENDING
+  status: PRODUCTION_DEPLOYED_WORKER_032_ONLINE
   worker_version: 0.1.32
+  source_commit: ecf5bce5426a662ed369c82cc7eda69e75520784
+  cloudflare_version: cfe25036-452f-4e39-b637-127d35538a8b
+  execution_bundle_sha256: sha256:591a0f972cdd00c5e2c0dcd1c93969727ef8de60481a165cda416c36a8342073
+  release_ci: 36121125071
+  evidence_path: evidence/acceptance/VF-10-09/2026-09-25-image-zoom-both-plus-ten.json
+  validation: 31 focused renderer tests and Ruff pass. Both packaged platform builds and render checks pass; downloaded installer checksum verified, single Mac worker installed and Online in Chrome with exact bundle.
   decision: Increase both v3 zoom deltas by 10 percent, then 20 percent, then another 10 percent after user previews over worker 0.1.31, preserving immediate linear motion and existing durations.
-  remaining_gates: Latest preview approved; immutable release and idle worker installation remain. Production remains 0.1.31.
+  remaining_gates: None for approved zoom delivery. Existing encoded videos remain unchanged; full-project timing unmeasured.
   provider_spend: Zero paid requests; retained media only.
   paid_compute_shutdown: No GPU activation.
 image_zoom_immediate_2026_09_25:

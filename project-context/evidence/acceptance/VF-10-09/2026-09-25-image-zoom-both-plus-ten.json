@@ -1,6 +1,6 @@
 {
   "checkpoint": "V2-09",
-  "status": "SUPERSEDED_BY_LOCAL_PLUS_TWENTY_PLUS_TEN_PREVIEW",
+  "status": "APPROVED_FINAL_PREVIEW_DEPLOYED_WORKER_032_ONLINE",
   "source_commit": "ecfd7c7a58829864f61a03c6aa006bcba5269410",
   "worker_version": "0.1.32",
   "change": {
@@ -44,7 +44,7 @@
     "production_worker": "0.1.31"
   },
   "latest_candidate": {
-    "status": "USER_APPROVED_RELEASE_PENDING",
+    "status": "PRODUCTION_VERIFIED",
     "fullscreen_delta": [
       0.051046875,
       0.06125625,
@@ -55,5 +55,116 @@
     "focused_tests_passed": 31,
     "ruff": "PASS",
     "sample_duration_seconds": 5
+  },
+  "final_release": {
+    "state": "VERIFIED",
+    "source_commit": "ecf5bce5426a662ed369c82cc7eda69e75520784",
+    "tag": "media-worker-v0.1.32",
+    "tag_source_verified": true,
+    "github_actions_run": 36121125071,
+    "github_actions_conclusion": "success",
+    "execution_bundle_sha256": "sha256:591a0f972cdd00c5e2c0dcd1c93969727ef8de60481a165cda416c36a8342073",
+    "manifest": {
+      "execution_bundle_sha256": "sha256:591a0f972cdd00c5e2c0dcd1c93969727ef8de60481a165cda416c36a8342073",
+      "macos": {
+        "sha256": "sha256:d0281dd0b20a44f59927edc1e77acd142b5aae7669bcff891b322e4e032e578f",
+        "size_bytes": 414195389,
+        "trust": "AD_HOC_BETA",
+        "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.32/VideoForge-Worker-0.1.32.dmg"
+      },
+      "minimum_protocol_version": 1,
+      "schema_version": "videoforge-media-worker-release/v1",
+      "version": "0.1.32",
+      "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+      "windows": {
+        "sha256": "sha256:4f32a404e9728381c020946f440358ce2dda8dfca76a5641c4fc8ce0edfc13fd",
+        "size_bytes": 279569680,
+        "trust": "UNSIGNED_BETA",
+        "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.32/VideoForge-Worker-0.1.32-Setup.exe"
+      }
+    },
+    "macos_download_verified": {
+      "path": "/Users/lakshmansai/.codex/worktrees/library-details-ui/videoforge/.videoforge/api-transition-pilot/worker032/VideoForge-Worker-0.1.32.dmg",
+      "sha256": "sha256:d0281dd0b20a44f59927edc1e77acd142b5aae7669bcff891b322e4e032e578f",
+      "size_bytes": 414195389
+    },
+    "hosted_build_gate": "PASS unchanged baseline",
+    "new_provider_calls": 0,
+    "pre_deploy_idle": {
+      "checked_at": "2026-09-25T10:04:19.234113+00:00",
+      "active_leases": 0,
+      "nonterminal_jobs": 0,
+      "devices": [
+        {
+          "id": "f2d24b4b-b681-499e-8a2e-7cb65b88f727",
+          "status": "ONLINE",
+          "worker_version": "0.1.31",
+          "execution_bundle_sha256": "sha256:e0737cd0937cd4b73c34f2bdbce061ea897593b2eb85a46fedef2756498c9183",
+          "last_seen_at": "2026-09-25T10:04:17.255665+00:00"
+        }
+      ]
+    },
+    "hosted_deployment": {
+      "state": "VERIFIED",
+      "source_commit": "ecf5bce5426a662ed369c82cc7eda69e75520784",
+      "predecessor_version_id": "674a4f43-85af-4430-97ee-ae71b20ad860",
+      "config_sha256": "sha256:4718839634c16a4d7c8e1b0b08c86a37fd19b4891dc779c5887805b2217cece5",
+      "worker_sha256": "sha256:5c8e7ab3eee2b8e59e6832c5a2d295bf298201c1a004ed49e09d929020fa6391",
+      "version_id": "cfe25036-452f-4e39-b637-127d35538a8b"
+    },
+    "secret_names_preserved": 25,
+    "generation_provider": "KIE_FAL",
+    "gpu_transport": "DISABLED_UNQUALIFIED",
+    "installation": {
+      "installed_version": "0.1.32",
+      "old_app_backup": "/Users/lakshmansai/Applications/.videoforge-worker031-backup.app",
+      "codesign_verified": true,
+      "universal2_verified": true,
+      "pre_install_idle": {
+        "checked_at": "2026-09-25T10:05:30.233947+00:00",
+        "active_leases": 0,
+        "nonterminal_jobs": 0,
+        "devices": [
+          {
+            "id": "f2d24b4b-b681-499e-8a2e-7cb65b88f727",
+            "status": "UPDATE_REQUIRED",
+            "worker_version": "0.1.31",
+            "execution_bundle_sha256": "sha256:e0737cd0937cd4b73c34f2bdbce061ea897593b2eb85a46fedef2756498c9183",
+            "last_seen_at": "2026-09-25T10:05:09.07547+00:00"
+          }
+        ]
+      },
+      "background_bootstrapped": true,
+      "installer_unmounted": true,
+      "device_online": {
+        "checked_at": "2026-09-25T10:06:16.701319+00:00",
+        "active_leases": 0,
+        "nonterminal_jobs": 0,
+        "devices": [
+          {
+            "id": "f2d24b4b-b681-499e-8a2e-7cb65b88f727",
+            "status": "ONLINE",
+            "worker_version": "0.1.32",
+            "execution_bundle_sha256": "sha256:591a0f972cdd00c5e2c0dcd1c93969727ef8de60481a165cda416c36a8342073",
+            "last_seen_at": "2026-09-25T10:06:10.401554+00:00"
+          }
+        ]
+      },
+      "process_type": "Standard",
+      "instance_count": 1,
+      "processes": [
+        {
+          "pid": 34565,
+          "parent_pid": 1,
+          "background": true
+        },
+        {
+          "pid": 34598,
+          "parent_pid": 34565,
+          "background": true
+        }
+      ],
+      "chrome_online_verified": true
+    }
   }
 }
