@@ -195,13 +195,21 @@ export async function writeProjectPrompts(
       reservationCostEventId: crypto.randomUUID(),
       claimTokenHash: await sha256(`hosted-prompt-claim:${crypto.randomUUID()}:${projectId}`),
     };
-    const authority = hostedPromptAuthority({
+    const ceilingAuthority = hostedPromptAuthority({
       plan: planRecord,
       identity,
       reservedCostMicroUsd: HOSTED_PROMPT_RESERVATION_MICRO_USD,
       redispatchApproved,
     });
-    const batchPlan = hostedPromptBatchPlan(authority);
+    const batchPlan = hostedPromptBatchPlan(ceilingAuthority);
+    const reservedCostMicroUsd = Math.min(
+      HOSTED_PROMPT_RESERVATION_MICRO_USD,
+      batchPlan.batchCount * 250_000,
+    );
+    const authority = Object.freeze({
+      ...ceilingAuthority,
+      reservedCostMicroUsd,
+    });
     const batchPlanHash = await sha256(canonicalJson(hostedPromptBatchPlanDocument(batchPlan)));
     const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
@@ -227,7 +235,7 @@ export async function writeProjectPrompts(
             reservation_cost_event_id: identity.reservationCostEventId,
             input_hash: authority.recordedInputHash,
             claim_token_hash: identity.claimTokenHash,
-            reserved_cost_micro_usd: HOSTED_PROMPT_RESERVATION_MICRO_USD,
+            reserved_cost_micro_usd: reservedCostMicroUsd,
             planned_batch_count: batchPlan.batchCount,
             planned_scene_count: batchPlan.totalScenes,
             batch_plan_hash: batchPlanHash,
@@ -279,6 +287,29 @@ export async function writeProjectPrompts(
       authority,
       batchPlan,
       persistedBatchPlanBinding,
+      continuation: {
+        reservationMicroUsd: reservedCostMicroUsd,
+        beforeBatchSubmit: async (request) => {
+          const claimed = await createNeonExecutor(pool).transaction(async (transaction) => {
+            await transaction.query("SELECT set_config($1, $2, true)", [
+              "videoforge.account_id",
+              scope.account_id,
+            ]);
+            const result = await transaction.query<{ claimed: boolean }>(
+              "SELECT public.videoforge_claim_hosted_prompt_batch($1,$2,$3,$4,$5) AS claimed",
+              [
+                persistedRunId,
+                request.batchOrdinal,
+                request.taskUUID,
+                request.requestBytes,
+                request.requestHash,
+              ],
+            );
+            return result.rows[0]?.claimed === true;
+          });
+          if (!claimed) throw new Error("HOSTED_PROMPT_BATCH_CLAIM_REJECTED");
+        },
+      },
       command: {
         projectId,
         revisionId: authority.revisionId,

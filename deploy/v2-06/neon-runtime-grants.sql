@@ -144,6 +144,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_record_hosted_prompt_scene(uuid,json
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_record_hosted_prompt_batch(uuid,jsonb)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_claim_hosted_prompt_batch(uuid,integer,text,text,text)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_fail_hosted_prompt_run(uuid,text,text,boolean,bigint)
 TO :"runtime_role";
 -- Migration 0058 gives progress reads one bounded recovery action: stale paid claims become

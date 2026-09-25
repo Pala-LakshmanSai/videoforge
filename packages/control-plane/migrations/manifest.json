@@ -936,6 +936,12 @@
       "name": "hosted_api_render_terminal",
       "filename": "0193_hosted_api_render_terminal.sql",
       "sha256": "sha256:321b851f7e0f27db27c8930543bd6402fa17db4f32a4d6fedff1f8c0dd172369"
+    },
+    {
+      "version": 194,
+      "name": "hosted_prompt_dynamic_reservation_and_batch_claims",
+      "filename": "0194_hosted_prompt_dynamic_reservation_and_batch_claims.sql",
+      "sha256": "sha256:7ff351c4786f5a6e78dc0fa445622bd263f3c3bdf02d17f6980086e5ced8b6f2"
     }
   ]
 }

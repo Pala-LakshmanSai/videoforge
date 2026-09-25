@@ -17,6 +17,7 @@ import {
   hostedPromptBatchPlanHash,
   HostedPromptExecutionError,
   HostedRunwarePromptWriter,
+  type HostedAcceptedPromptBatch,
 } from "./runware-prompt-execution";
 
 const ids = {
@@ -969,6 +970,80 @@ describe("hosted Runware prompt writer", () => {
     );
     expect(result.output.scenes).toHaveLength(20);
     expect(result.attempts[0]?.reportedCostMicroUsd).toBe(20);
+
+    const first = onBatchAccepted.mock.calls[0]![0] as HostedAcceptedPromptBatch;
+    const recovered = {
+      ...first,
+      scenes: first.scenes.map(({ sceneOrdinal, scene, writerOutput }) => ({
+        sceneOrdinal,
+        sceneId: scene.sceneId,
+        writerOutput,
+      })),
+    };
+    fetcher.mockClear();
+    const claim = vi.fn(async (_request: unknown) => {});
+    const continued = await new HostedRunwarePromptWriter(
+      "configured-test-key-value",
+      planned,
+      fetcher,
+      undefined,
+      undefined,
+      { reservationMicroUsd: 2_000_000, acceptedBatches: [recovered], beforeBatchSubmit: claim },
+    ).write(batch);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(claim).toHaveBeenCalledTimes(1);
+    expect(claim.mock.calls[0]![0]).toMatchObject({ batchOrdinal: 1 });
+    expect(continued.output.scenes).toHaveLength(20);
+    expect(continued.attempts[0]?.reportedCostMicroUsd).toBe(20);
+
+    fetcher.mockClear();
+    await expect(
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        planned,
+        fetcher,
+        undefined,
+        undefined,
+        {
+          acceptedBatches: [{ ...recovered, requestHash: digest }],
+          beforeBatchSubmit: claim,
+        },
+      ).write(batch),
+    ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+    expect(fetcher).not.toHaveBeenCalled();
+
+    await expect(
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        planned,
+        fetcher,
+        undefined,
+        undefined,
+        {
+          acceptedBatches: [recovered],
+          beforeBatchSubmit: async () => {
+            throw new Error("claim uncertain");
+          },
+        },
+      ).write(batch),
+    ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_EXECUTION_UNKNOWN" });
+    expect(fetcher).not.toHaveBeenCalled();
+
+    await expect(
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        planned,
+        fetcher,
+        undefined,
+        undefined,
+        {
+          reservationMicroUsd: 250_009,
+          acceptedBatches: [recovered],
+          beforeBatchSubmit: claim,
+        },
+      ).write(batch),
+    ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("accepts a normalized prompt core reused by a later adaptive batch", async () => {

@@ -4398,7 +4398,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         `/api/v2/hosted/projects/${projectId}/prompts`,
         {
           method: "POST",
-          body: JSON.stringify({ maximum_prompt_spend_micro_usd: 600_000 }),
+          body: JSON.stringify({ maximum_prompt_spend_micro_usd: 2_000_000 }),
         },
       ),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),

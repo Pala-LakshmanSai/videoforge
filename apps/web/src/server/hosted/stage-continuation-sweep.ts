@@ -340,7 +340,7 @@ export async function runHostedContinuation(
           const { writeProjectPrompts } = await import("./hosted-prompt-route");
           response = await writeProjectPrompts(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/prompts`, {
-              maximum_prompt_spend_micro_usd: 600_000,
+              maximum_prompt_spend_micro_usd: 2_000_000,
             }),
             row.project_id,
             config,

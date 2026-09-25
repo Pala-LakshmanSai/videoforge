@@ -473,7 +473,7 @@ async function recordBatch(executor, runId, batchOrdinal, firstSceneOrdinal, cou
   );
 }
 
-test("0073 binds fresh adaptive prompt runs to the v2 profile and operation", async () => {
+test("0194 binds fresh adaptive prompt runs to the v2 operation and scaled reservation", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     const authority = await seedAdaptivePromptRun(executor, {
       sceneCount: 2,
@@ -498,7 +498,7 @@ test("0073 binds fresh adaptive prompt runs to the v2 profile and operation", as
       claim_token_hash: authority.claimHash,
       timeline_hash: authority.timelineHash,
       batch_plan_hash: authority.batchPlanHash,
-      reserved_cost_micro_usd: 40_000,
+      reserved_cost_micro_usd: 250_000,
       planned_batch_count: 1,
       planned_scene_count: 2,
     };
@@ -527,8 +527,8 @@ test("0073 binds fresh adaptive prompt runs to the v2 profile and operation", as
     );
     assert.deepEqual(durable.rows, [
       {
-        revision: 2,
-        profile_model: "deepseek:v4@flash",
+        revision: 6,
+        profile_model: "google:gemini@3.5-flash",
         profile_operation: "scene-prompt-writer-v2",
         attempt_operation: "scene-prompt-writer-v2",
         reservation_operation: "scene-prompt-writer-v2",
@@ -557,7 +557,7 @@ test("0073 binds fresh adaptive prompt runs to the v2 profile and operation", as
   });
 });
 
-test("0073 fails closed before task or reservation when the v2 profile drifts", async () => {
+test("0194 fails closed before task or reservation when the v2 profile drifts", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     const authority = await seedAdaptivePromptRun(executor, {
       sceneCount: 2,
@@ -570,9 +570,9 @@ test("0073 fails closed before task or reservation when the v2 profile drifts", 
       `INSERT INTO execution_profiles (
          id, account_id, workspace_id, name, revision, lane, state, dispatch_target,
          configuration, configuration_hash, maximum_rate_micro_usd, checked_at, created_at
-       ) VALUES ($1,$2,$3,'Hosted Runware scene prompts',2,'PROMPT','TESTED','RUNWARE',
+       ) VALUES ($1,$2,$3,'Hosted Runware scene prompts',6,'PROMPT','TESTED','RUNWARE',
          $4::jsonb,'sha256:'||encode(digest(convert_to(($4::jsonb)::text,'UTF8'),'sha256'), 'hex'),
-         40000,$5,$5)`,
+         2000000,$5,$5)`,
       [
         driftedProfileId,
         IDS.accountA,
@@ -602,7 +602,7 @@ test("0073 fails closed before task or reservation when the v2 profile drifts", 
       claim_token_hash: authority.claimHash,
       timeline_hash: authority.timelineHash,
       batch_plan_hash: authority.batchPlanHash,
-      reserved_cost_micro_usd: 40_000,
+      reserved_cost_micro_usd: 250_000,
       planned_batch_count: 1,
       planned_scene_count: 2,
     };
@@ -624,6 +624,45 @@ test("0073 fails closed before task or reservation when the v2 profile drifts", 
       [authority.taskId, authority.attemptId, authority.outboxId, id(975_011), authority.runId],
     );
     assert.deepEqual(durable.rows, [{ tasks: 0, attempts: 0, outbox: 0, costs: 0, runs: 0 }]);
+  });
+});
+
+test("0194 records a batch only after one exact provider claim", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const authority = await seedAdaptivePromptRun(executor, {
+      sceneCount: 2,
+      plannedBatchCount: 1,
+    });
+    const requestBytes = "request-0-0";
+    const claimArgs = [authority.runId, 0, id(976_001), requestBytes, sha256(requestBytes)];
+    const claim = () =>
+      executor.query(
+        `SELECT public.videoforge_claim_hosted_prompt_batch($1,$2,$3,$4,$5) AS claimed`,
+        claimArgs,
+      );
+    assert.equal((await claim()).rows[0].claimed, true);
+    assert.equal((await claim()).rows[0].claimed, false);
+    await expectDatabaseError(
+      () =>
+        executor.query(`SELECT public.videoforge_claim_hosted_prompt_batch($1,$2,$3,$4,$5)`, [
+          authority.runId,
+          0,
+          id(976_002),
+          requestBytes,
+          sha256(requestBytes),
+        ]),
+      "23514",
+    );
+    assert.equal(
+      (await recordBatch(executor, authority.runId, 0, 0, 2, 100)).rows[0].recorded,
+      true,
+    );
+    const linkage = await executor.query(
+      `SELECT count(*)::integer AS linked FROM hosted_prompt_batch_progress
+        WHERE run_id=$1 AND claim_id IS NOT NULL`,
+      [authority.runId],
+    );
+    assert.equal(linkage.rows[0].linked, 1);
   });
 });
 

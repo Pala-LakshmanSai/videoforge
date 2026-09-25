@@ -7,6 +7,7 @@ import type {
 } from "@videoforge/control-plane/prompts";
 import {
   RunwarePromptWriter,
+  buildRunwarePromptRequest,
   planPromptBatches,
   runwarePromptValidationDiagnostic,
   validatePromptWriterOutput,
@@ -27,11 +28,10 @@ import {
   type RunwareSafeDiagnostic,
 } from "../providers/runware-http-transport";
 
-// 600_000 micro-USD (USD 0.60): one scene-prompt batch costs about USD 0.12 at the pinned text
-// model (measured 2026-09-18 on this project's own 10-scene batches), and a revision plans three
-// batches before accepting a prompt set, so the old USD 0.04 reservation could never cover a run -
-// every batch died on the cost guard after the provider had already answered.
-export const HOSTED_PROMPT_RESERVATION_MICRO_USD = 600_000 as const;
+// A long plan can contain 22 batches; the prior USD 0.60 cap stopped after eight accepted batches.
+// The route reserves the smaller of this ceiling and USD 0.25 per planned batch. Unused credit is
+// released on completion, and the writer stops before sending a batch with insufficient headroom.
+export const HOSTED_PROMPT_RESERVATION_MICRO_USD = 2_000_000 as const;
 export const HOSTED_PROMPT_RESERVATION_USD = HOSTED_PROMPT_RESERVATION_MICRO_USD / 1_000_000;
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -73,6 +73,38 @@ export interface HostedAcceptedPromptBatch {
   readonly reportedCostMicroUsd: number;
 }
 
+/** Immutable accepted prefix loaded from the original run before any continuation POST. */
+export interface HostedRecoveredPromptBatch {
+  readonly batchOrdinal: number;
+  readonly firstSceneOrdinal: number;
+  readonly scenes: readonly {
+    readonly sceneOrdinal: number;
+    readonly sceneId: string;
+    readonly writerOutput: PromptWriterSceneOutput;
+  }[];
+  readonly requestBytes: string;
+  readonly requestHash: Sha256Digest;
+  readonly responseBytes: string;
+  readonly responseHash: Sha256Digest;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly reportedCostMicroUsd: number;
+}
+
+export interface HostedPromptContinuationOptions {
+  readonly reservationMicroUsd?: number;
+  readonly acceptedBatches?: readonly HostedRecoveredPromptBatch[];
+  /** A durable unique claim for this exact task must resolve before the transport sends it. */
+  readonly beforeBatchSubmit?: (request: {
+    readonly batchOrdinal: number;
+    readonly taskUUID: string;
+    readonly requestBytes: string;
+    readonly requestHash: Sha256Digest;
+  }) => Promise<void>;
+  /** Leave headroom for a provider bill whose amount is known only after its response. */
+  readonly minimumNextBatchMicroUsd?: number;
+}
+
 export type HostedPromptFailureState = "FAILED" | "UNKNOWN";
 export type HostedPromptProblemCode =
   | "HOSTED_PROMPT_INPUT_INVALID"
@@ -107,8 +139,11 @@ async function sha256Utf8(value: string): Promise<Sha256Digest> {
     .join("")}`;
 }
 
-function actualCostMicroUsd(value: number): number {
-  if (!Number.isFinite(value) || value < 0 || value > HOSTED_PROMPT_RESERVATION_USD)
+function actualCostMicroUsd(
+  value: number,
+  reservationMicroUsd: number = HOSTED_PROMPT_RESERVATION_MICRO_USD,
+): number {
+  if (!Number.isFinite(value) || value < 0 || value > reservationMicroUsd / 1_000_000)
     throw new RangeError("Runware prompt cost exceeds the hosted prompt reservation.");
   return Math.ceil(value * 1_000_000);
 }
@@ -242,23 +277,85 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
     private readonly fetcher: typeof fetch = fetch,
     private readonly onBatchAccepted?: (batch: HostedAcceptedPromptBatch) => Promise<void> | void,
     private readonly persistedBinding?: HostedPromptBatchPlanBinding,
+    private readonly continuation: HostedPromptContinuationOptions = {},
   ) {
     if (apiKey.trim().length === 0) throw new TypeError("Runware API key is required.");
   }
 
   public async write(batch: PromptBatch): Promise<DurablePromptWriterResult> {
     await validatePlanBeforeDispatch(batch, this.plan, this.persistedBinding);
-    const ledger = new RunwareSpendLedger(HOSTED_PROMPT_RESERVATION_USD);
+    const reservationMicroUsd =
+      this.continuation.reservationMicroUsd ?? HOSTED_PROMPT_RESERVATION_MICRO_USD;
+    const minimumNextBatchMicroUsd = this.continuation.minimumNextBatchMicroUsd ?? 250_000;
+    if (
+      !Number.isSafeInteger(reservationMicroUsd) ||
+      reservationMicroUsd < 1 ||
+      reservationMicroUsd > 5_000_000 ||
+      !Number.isSafeInteger(minimumNextBatchMicroUsd) ||
+      minimumNextBatchMicroUsd < 0 ||
+      minimumNextBatchMicroUsd > reservationMicroUsd ||
+      (this.continuation.acceptedBatches && !this.continuation.beforeBatchSubmit)
+    )
+      throw invalidPlanBinding();
+    const ledger = new RunwareSpendLedger(reservationMicroUsd / 1_000_000);
     const diagnosticState: { current: RunwareSafeDiagnostic | null } = { current: null };
     const acceptedScenes: PromptWriterSceneOutput[] = [];
     const batchFacts: HostedAcceptedPromptBatch[] = [];
     const captured: CapturedAttempt[] = [];
     let currentDispatchStart = 0;
     let persistenceStarted = false;
+    let claimUncertain = false;
     try {
-      for (const entry of this.plan.batches) {
+      const recovered = this.continuation.acceptedBatches ?? [];
+      if (recovered.length > this.plan.batches.length) throw invalidPlanBinding();
+      for (const [index, saved] of recovered.entries()) {
+        const entry = this.plan.batches[index];
+        if (
+          !entry ||
+          saved.batchOrdinal !== index ||
+          saved.firstSceneOrdinal !== entry.sceneStartIndex ||
+          saved.scenes.length !== entry.sceneIds.length ||
+          saved.scenes.some(
+            (scene, sceneIndex) =>
+              scene.sceneOrdinal !== entry.sceneStartIndex + sceneIndex ||
+              scene.sceneId !== entry.sceneIds[sceneIndex],
+          ) ||
+          !Number.isSafeInteger(saved.reportedCostMicroUsd) ||
+          saved.reportedCostMicroUsd < 0 ||
+          !Number.isSafeInteger(saved.inputTokens) ||
+          saved.inputTokens < 0 ||
+          !Number.isSafeInteger(saved.outputTokens) ||
+          saved.outputTokens < 0 ||
+          saved.requestHash !== (await sha256Utf8(saved.requestBytes)) ||
+          saved.responseHash !== (await sha256Utf8(saved.responseBytes))
+        )
+          throw invalidPlanBinding();
+        const request = buildRunwarePromptRequest(entry.batch, entry.batch.scenes, 1, null);
+        if (
+          saved.requestHash !== request.requestSha256 ||
+          saved.requestBytes !== request.requestBytes
+        )
+          throw invalidPlanBinding();
+        const output = validatePromptWriterOutput(entry.batch, {
+          batch_id: entry.batch.batchId,
+          scenes: saved.scenes.map((scene) => scene.writerOutput),
+        });
+        const costUsd = saved.reportedCostMicroUsd / 1_000_000;
+        ledger.reserve(costUsd || Number.EPSILON);
+        ledger.settle(costUsd || Number.EPSILON, costUsd);
+        acceptedScenes.push(...output.scenes);
+        batchFacts.push({
+          ...saved,
+          scenes: saved.scenes.map((scene, sceneIndex) => ({
+            sceneOrdinal: scene.sceneOrdinal,
+            scene: entry.batch.scenes[sceneIndex]!,
+            writerOutput: scene.writerOutput,
+          })),
+        });
+      }
+      for (const entry of this.plan.batches.slice(recovered.length)) {
         const remainingReservationUsd = ledger.snapshot().remainingUsd;
-        if (remainingReservationUsd <= 0)
+        if (remainingReservationUsd * 1_000_000 < minimumNextBatchMicroUsd)
           throw new RangeError("Runware prompt reservation is exhausted.");
         const base = new RunwarePromptHttpTransport({
           apiKey: this.apiKey,
@@ -273,6 +370,17 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
         persistenceStarted = false;
         const transport: RunwarePromptTransport = {
           dispatch: async (request) => {
+            try {
+              await this.continuation.beforeBatchSubmit?.({
+                batchOrdinal: entry.ordinal - 1,
+                taskUUID: request.request.taskUUID,
+                requestBytes: request.requestBytes,
+                requestHash: request.requestSha256,
+              });
+            } catch {
+              claimUncertain = true;
+              throw new Error("HOSTED_PROMPT_BATCH_CLAIM_UNCONFIRMED");
+            }
             const row: CapturedAttempt = { request, result: null, evidence: null };
             captured.push(row);
             const result = await base.dispatch(request);
@@ -327,7 +435,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           responseHash,
           inputTokens: result.usage.inputTokens,
           outputTokens: result.usage.outputTokens,
-          reportedCostMicroUsd: actualCostMicroUsd(result.costUsd),
+          reportedCostMicroUsd: actualCostMicroUsd(result.costUsd, reservationMicroUsd),
         });
         persistenceStarted = true;
         await this.onBatchAccepted?.(fact);
@@ -379,6 +487,13 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
       return Object.freeze({ output, attempts });
     } catch (error) {
       if (error instanceof HostedPromptExecutionError) throw error;
+      if (claimUncertain)
+        throw new HostedPromptExecutionError(
+          "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+          "UNKNOWN",
+          true,
+          diagnosticState.current,
+        );
       if (persistenceStarted) {
         throw new HostedPromptExecutionError(
           "HOSTED_PROMPT_EXECUTION_UNKNOWN",
@@ -419,7 +534,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           "FAILED",
           false,
           diagnosticState.current,
-          actualCostMicroUsd(current.result.costUsd),
+          actualCostMicroUsd(current.result.costUsd, reservationMicroUsd),
           runwarePromptValidationDiagnostic(error),
         );
       }

@@ -25,6 +25,7 @@ import {
   HostedRunwarePromptWriter,
   type HostedAcceptedPromptBatch,
   type HostedPromptBatchPlanBinding,
+  type HostedPromptContinuationOptions,
 } from "./runware-prompt-execution";
 
 type RecordValue = Record<string, unknown>;
@@ -414,6 +415,7 @@ export async function runHostedPromptExecution(input: {
   readonly batchPlan: PromptBatchPlan;
   /** Exact adaptive-plan metadata returned by hosted preparation. */
   readonly persistedBatchPlanBinding?: HostedPromptBatchPlanBinding;
+  readonly continuation?: HostedPromptContinuationOptions;
   readonly command: PromptExecutionCommand;
   readonly apiKey: string;
   readonly persist: (accepted: AcceptedPromptExecution) => Promise<void>;
@@ -488,6 +490,7 @@ export async function runHostedPromptExecution(input: {
       input.fetcher,
       persistBatch,
       input.persistedBatchPlanBinding,
+      input.continuation,
     ),
     { record() {} },
     { now: () => new Date().toISOString() },
