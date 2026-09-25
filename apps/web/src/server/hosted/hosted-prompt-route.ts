@@ -22,6 +22,7 @@ import type { ContinuationScope } from "./stage-continuation";
 import {
   HOSTED_PROMPT_RESERVATION_MICRO_USD,
   HostedPromptExecutionError,
+  HostedPromptArchivedOutputInvalidError,
   hostedPromptReservationMicroUsd,
   hostedPromptBatchPlanHash,
   recoverClaimedHostedPromptBatch,
@@ -502,7 +503,9 @@ export async function writeProjectPrompts(
         }
         if (existingState === "UNKNOWN" && !original.claim)
           return response({ error: { code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED" } }, 409);
-        const acceptedBatch = original.claim
+        let acceptedBatch: Awaited<ReturnType<typeof recoverClaimedHostedPromptBatch>> | null;
+        try {
+          acceptedBatch = original.claim
           ? await recoverClaimedHostedPromptBatch({
               apiKey: promptApiKey,
               plan: batchPlan,
@@ -526,6 +529,22 @@ export async function writeProjectPrompts(
                 claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, saved.id, claim),
               })
             : null;
+        } catch (error) {
+          if (!original.claim || !(error instanceof HostedPromptArchivedOutputInvalidError))
+            throw error;
+          const invalidClaim = original.claim;
+          await createNeonExecutor(pool).transaction(async (transaction) => {
+            await transaction.query("SELECT set_config($1, $2, true)", [
+              "videoforge.account_id",
+              scope.account_id,
+            ]);
+            await transaction.query(
+              "SELECT public.videoforge_adjudicate_invalid_hosted_prompt_batch($1,$2,$3,$4)",
+              [saved.id, invalidClaim.provider_task_uuid, error.responseHash, error.knownCostMicroUsd],
+            );
+          });
+          return response({ error: { code: "HOSTED_PROMPT_OUTPUT_INVALID" } }, 409);
+        }
         if (acceptedBatch)
           await compileAndPersistHostedPromptBatch(authority, acceptedBatch, (batch) =>
             recordHostedPromptBatch(

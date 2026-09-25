@@ -67,6 +67,18 @@ export interface HostedPromptBatchPlanBinding {
   readonly batchPlanHash: Sha256Digest;
 }
 
+export class HostedPromptArchivedOutputInvalidError extends Error {
+  public override readonly name = "HostedPromptArchivedOutputInvalidError";
+
+  public constructor(
+    public readonly responseHash: Sha256Digest,
+    public readonly knownCostMicroUsd: number,
+    public readonly validationDiagnostic: RunwarePromptValidationDiagnostic,
+  ) {
+    super("Archived prompt output failed strict validation.");
+  }
+}
+
 /** Validate one original claim through getTaskDetails; this transport never submits inference. */
 export async function recoverClaimedHostedPromptBatch(input: {
   readonly apiKey: string;
@@ -149,7 +161,20 @@ export async function recoverClaimedHostedPromptBatch(input: {
     allowPartialRetry: false,
     minimumBatchScenes: 1,
   });
-  const output = validatePromptWriterOutput(entry.batch, await writer.write(entry.batch));
+  let output: ReturnType<typeof validatePromptWriterOutput>;
+  try {
+    output = validatePromptWriterOutput(entry.batch, await writer.write(entry.batch));
+  } catch (error) {
+    const diagnostic = runwarePromptValidationDiagnostic(error);
+    if (!diagnostic) throw error;
+    const knownCostMicroUsd = actualCostMicroUsd(recovered.costUsd, input.reservationMicroUsd);
+    if (knownCostMicroUsd > 250_000) throw error;
+    throw new HostedPromptArchivedOutputInvalidError(
+      await sha256Utf8(recovered.outputText),
+      knownCostMicroUsd,
+      diagnostic,
+    );
+  }
   const acceptedEvidence = evidence as RunwarePromptAttemptEvidence | null;
   const responseHash = await sha256Utf8(recovered.outputText);
   if (

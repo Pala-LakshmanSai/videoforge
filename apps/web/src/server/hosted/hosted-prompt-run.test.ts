@@ -1035,6 +1035,44 @@ describe("hosted Runware prompt writer", () => {
       fetcher: retrieval,
     });
     expect(retrieval).toHaveBeenCalledTimes(1);
+    const invalidRetrieval = vi.fn(async () =>
+      Response.json({
+        data: [{
+          taskType: "getTaskDetails",
+          taskUUID: originalTask.taskUUID,
+          request: JSON.parse(first.requestBytes),
+          response: { data: [{
+            taskType: "textInference",
+            taskUUID: originalTask.taskUUID,
+            text: '{"batch_id":"incomplete","scenes":[{"prompt":}',
+            cost: 0.073,
+            finishReason: "stop",
+            model: "google:gemini@3.5-flash",
+            usage: { promptTokens: 100, completionTokens: 8873, totalTokens: 8973, cachedInputTokens: 0 },
+          }] },
+        }],
+      }),
+    );
+    await expect(recoverClaimedHostedPromptBatch({
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      plan: planned,
+      persistedBinding: {
+        plannedBatchCount: planned.batchCount,
+        plannedSceneCount: planned.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(planned),
+      },
+      batchOrdinal: 0,
+      taskUUID: originalTask.taskUUID,
+      requestBytes: first.requestBytes,
+      requestHash: first.requestHash,
+      reservationMicroUsd: 2_000_000,
+      fetcher: invalidRetrieval,
+    })).rejects.toMatchObject({
+      name: "HostedPromptArchivedOutputInvalidError",
+      knownCostMicroUsd: 73_000,
+      validationDiagnostic: { category: "malformed_json", reason: "json_parse" },
+    });
+    expect(invalidRetrieval).toHaveBeenCalledTimes(1);
     const claimRejected = vi.fn(async () => false);
     fetcher.mockClear();
     await expect(
