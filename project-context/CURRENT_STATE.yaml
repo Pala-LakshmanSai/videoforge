@@ -1,4 +1,13 @@
 schema_version: "2.0"
+api_avatar_startup_2026_09_25:
+  checkpoint: V2-09
+  status: SETUP_OPTIMIZATION_VALIDATED_AWAITING_DEPLOYMENT
+  project_id: 2ae46c22-ab88-4880-a0f4-1e9b9df5c794
+  observation: First avatar submission occurred 8.120 seconds after job materialization; first acceptance occurred 95.461 seconds after submission. The first four requests submitted within 47ms; later requests completed in 11.583 and 14.964 seconds.
+  change: Compile all image prompts before binding them in one transaction; schedule the workflow only after commit. Seventeen image prompts require 20 SQL queries instead of 68, preserving exact inputs, rollback, paid claims and concurrency caps.
+  validation: All 25 dispatch tests, focused ESLint and web/worker typechecks passed. Production latency improvement is not yet measured.
+  provider_spend: Read-only retrieval of existing Fal requests; no generation, warm-up requests or database writes.
+  paid_compute_shutdown: No GPU activation; worker 0.1.30 unchanged.
 legacy_avatar_catalog_retirement_2026_09_25:
   checkpoint: V2-09
   status: HOSTED_CHROME_VERIFIED

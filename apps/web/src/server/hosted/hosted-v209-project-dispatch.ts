@@ -164,18 +164,25 @@ async function resumeHostedApiDispatch(
     });
     jobs = apiJobs(materialized, generationRequestId);
   }
-  for (const job of jobs) {
-    if (job.lane !== "IMAGE" || job.state !== "PREPARED") continue;
-    const prompt = buildKieScenePrompt(
-      job.inputManifest.compiledPrompt as Parameters<typeof buildKieScenePrompt>[0],
-    );
+  // Validate the whole prompt set before binding or scheduling paid work.
+  const prompts = jobs
+    .filter((job) => job.lane === "IMAGE" && job.state === "PREPARED")
+    .map((job) => ({
+      generationTaskId: job.generationTaskId,
+      prompt: buildKieScenePrompt(
+        job.inputManifest.compiledPrompt as Parameters<typeof buildKieScenePrompt>[0],
+      ),
+    }));
+  if (prompts.length > 0) {
     await database.transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
-      await transaction.query(
-        "SELECT public.videoforge_bind_hosted_api_image_prompt($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text)",
-        [identity.accountId, identity.workspaceId, generationRequestId,
-          job.generationTaskId, prompt],
-      );
+      for (const { generationTaskId, prompt } of prompts) {
+        await transaction.query(
+          "SELECT public.videoforge_bind_hosted_api_image_prompt($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text)",
+          [identity.accountId, identity.workspaceId, generationRequestId,
+            generationTaskId, prompt],
+        );
+      }
     });
   }
   const scheduled = await ensureHostedApiGenerationWorkflow(environment, database, {

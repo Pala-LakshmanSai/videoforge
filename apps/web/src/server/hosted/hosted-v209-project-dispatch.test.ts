@@ -7,6 +7,7 @@ import {
   resumeHostedV209ProjectDispatch,
 } from "./hosted-v209-project-dispatch";
 import { assertV209OrdinaryCandidate } from "../runtime/v209-ordinary-live-cost";
+import { buildKieScenePrompt } from "../providers/kie-image-job";
 
 const id = (digit: string) =>
   `${digit.repeat(8)}-${digit.repeat(4)}-4${digit.repeat(3)}-8${digit.repeat(3)}-${digit.repeat(12)}`;
@@ -238,6 +239,102 @@ function dependencies(
     },
   };
 }
+
+describe("API prompt binding before scheduling", () => {
+  async function fixture(failure?: "compile" | "bind") {
+    const prepared = await candidate();
+    const deps = dependencies(prepared);
+    const events: string[] = [];
+    const compiled = ["first scene", "second scene", "third scene"].map((literalContent) => ({
+      components: { literalContent, cropGuidance: "wide view", stylePositiveSuffix: "photo",
+        styleNegativeSuffix: "blur", continuityAndShotRole: "", extraPromptKeywords: "" },
+    }));
+    const expected = compiled.map((prompt) => buildKieScenePrompt(prompt as never));
+    const jobs = compiled.map((prompt, index) => ({
+      generationTaskId: id(String(index + 5)), lane: "IMAGE", state: "PREPARED",
+      inputManifest: { get compiledPrompt() {
+        events.push(`compile:${index}`);
+        return failure === "compile" && index === 2
+          ? { components: { ...prompt.components, literalContent: "" } } : prompt;
+      } },
+    }));
+    jobs.push({ generationTaskId: id("8"), lane: "AVATAR", state: "PREPARED",
+      inputManifest: {} } as never);
+    jobs.push({ generationTaskId: id("9"), lane: "IMAGE", state: "SUBMITTED",
+      inputManifest: {} } as never);
+    let transactionId = 0;
+    const bindings: { transactionId: number; args: unknown[] }[] = [];
+    const committed: unknown[][] = [];
+    const database = {
+      transaction: async (work: (tx: { query: (sql: string, args: unknown[]) => Promise<unknown> }) => Promise<unknown>) => {
+        const current = ++transactionId;
+        const staged: unknown[][] = [];
+        try {
+          const result = await work({ query: async (sql, args) => {
+            if (sql.includes("set_config")) return { rows: [] };
+            if (sql.includes("videoforge_read_hosted_api_jobs")) return {
+              rows: [{ jobs: { generationRequestId: prepared.generationRequestId, jobs } }],
+            };
+            if (!sql.includes("videoforge_bind_hosted_api_image_prompt")) throw new Error(sql);
+            events.push(`bind:${bindings.length}`);
+            bindings.push({ transactionId: current, args });
+            if (failure === "bind" && bindings.length === 2) throw new Error("bind failed");
+            staged.push(args);
+            return { rows: [] };
+          } });
+          committed.push(...staged);
+          events.push(`commit:${current}`);
+          return result;
+        } catch (error) {
+          events.push(`rollback:${current}`);
+          throw error;
+        }
+      },
+    };
+    const create = vi.fn(async ({ id: workflowId }: { id: string }) => {
+      events.push("schedule");
+      return { id: workflowId };
+    });
+    const run = () => resumeHostedV209ProjectDispatch(
+      { HOSTED_PAIR_WORKFLOW: { create } } as never, apiConfig,
+      { accountId: scope.account_id, workspaceId: scope.workspace_id,
+        userId: scope.user_id, projectId },
+      { ...deps.value, createExecutor: () => database,
+        findExistingGeneration: async () => prepared.generationRequestId,
+        inspectExistingGeneration: async () => ({ generationProvider: "KIE_FAL",
+          candidateExists: false, attemptExists: false, pairExists: false }) } as never,
+    );
+    return { run, events, bindings, committed, create, expected, prepared };
+  }
+
+  it("validates every prompt then binds exact identities in one committed transaction", async () => {
+    const f = await fixture();
+    expect((await f.run()).status).toBe(202);
+    expect(f.events).toEqual(["commit:1", "compile:0", "compile:1", "compile:2",
+      "bind:0", "bind:1", "bind:2", "commit:2", "schedule"]);
+    expect(f.bindings.map((binding) => binding.transactionId)).toEqual([2, 2, 2]);
+    expect(f.committed).toEqual(f.expected.map((prompt, index) => [scope.account_id,
+      scope.workspace_id, f.prepared.generationRequestId, id(String(index + 5)), prompt]));
+    expect(f.create).toHaveBeenCalledOnce();
+  });
+
+  it("does not bind or schedule when a later prompt is invalid", async () => {
+    const f = await fixture("compile");
+    await expect(f.run()).rejects.toThrow("INPUT_INVALID");
+    expect(f.bindings).toEqual([]);
+    expect(f.committed).toEqual([]);
+    expect(f.create).not.toHaveBeenCalled();
+  });
+
+  it("rolls back all bindings and does not schedule when a later binding fails", async () => {
+    const f = await fixture("bind");
+    await expect(f.run()).rejects.toThrow("bind failed");
+    expect(f.bindings).toHaveLength(2);
+    expect(f.events.at(-1)).toBe("rollback:2");
+    expect(f.committed).toEqual([]);
+    expect(f.create).not.toHaveBeenCalled();
+  });
+});
 
 describe("ordinary authenticated V2-09 project dispatch", () => {
   it("verifies immutable SQL numeric-scale hashes against the exact database proof", async () => {
