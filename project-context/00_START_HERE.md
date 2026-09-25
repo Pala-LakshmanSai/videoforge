@@ -1,16 +1,20 @@
 # VideoForge: start here
 
-## Current generation transition — 2026-09-25
+## Current generation transition — 2026-09-26
 
-The user-started replacement NAPAA project has stopped during final video assembly on the Mac.
-All 327 saved image prompts, 96 audio spans, 327 Kie images, and 96 Fal avatar clips were accepted.
-A guarded local-only Stage 9 retry passed all Fal crop compositions, then its final FFmpeg
-encode failed with exit 232; a provider-free reproduction confirmed the Mac worker's 256-file
-soft limit versus 424 render inputs caused FFmpeg's "Too many open files" error. Worker 0.1.35
-and one guarded saved-input process retry are being prepared; no new paid generation is authorized.
-The original Napa Video project below remains terminal and must not
-be replayed. Current NAPAA state, identities, spend, and remaining final-video gates are in
-`CURRENT_STATE.yaml` under `napaa_live_2026_09_25`.
+The replacement NAPAA project completed on its fifth local render with all 327 saved prompts,
+96 audio spans, 327 Kie images, and 96 Fal avatar clips. The 27:47 MP4 was played and approved in
+Chrome, copied with a matching checksum, shared through Drive, and sent to Sujal. Mac and Windows
+worker 0.1.37 carry the final audio-tail fix; installed Windows parity remains unverified because
+no Windows device is registered. The original Napa Video project below remains terminal and must
+not be replayed. Exact identities, spend, delivery, and remaining gates are in `CURRENT_STATE.yaml`
+under `napaa_live_2026_09_25`.
+
+Future image prompts use compiler v3: repeated landscape style and no-text exclusions are shorter,
+while scene facts, framing, lighting, and the permanent output rule remain. Kie receives a shorter
+single-field prompt with an 800-character hard limit; saved prompts remain immutable. Live Chrome
+shows concise voiceover previews with full saved details available on demand. See
+`CURRENT_STATE.yaml` under `image_prompt_compaction_2026_09_26`. No new paid generation was sent.
 
 Napa Video is blocked at Stage 5 with 50/320 prompts saved. Its original Batch 6 Runware task
 returned a known charged but invalid 47-character JSON result. Production migration 0203 settled

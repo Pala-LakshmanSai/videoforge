@@ -1,14 +1,40 @@
 schema_version: "2.0"
+image_prompt_compaction_2026_09_26:
+  checkpoint: V2-09
+  status: PRODUCTION_DEPLOYED_EXISTING_PROMPTS_IMMUTABLE
+  source_commit: 62bb288124c5e367b16542b32e08641ef7ddf629
+  cloudflare_version: 9ac97d35-5bf7-4434-ac73-aaa961ce8d2d
+  observed_at: "2026-09-25T19:00:32Z"
+  result: >-
+    Compiler v3 preserves scene subject, action, environment, framing, lighting, immutable style
+    treatment, and the permanent no-text/graphics rule while shortening repeated landscape style
+    metadata and redundant exclusions. A representative NAPAA-like compiled prompt is 661
+    positive and 195 negative characters. Kie's provider input for a representative NAPAA
+    sample dropped from 790 to 635 characters; its 640-character target applies only to optional
+    material and the 800-character hard bound still protects mandatory scene/style content.
+    Stage 5 cards show short voiceover previews; full saved prompt and Avoid text remain available
+    in each card's disclosure. Existing accepted prompt hashes and bytes were not changed.
+  validation: >-
+    Focused compiler, durable saved-prompt compatibility, Kie adapter, image regeneration,
+    and UI tests passed. Pipeline and web TypeScript, touched-file lint, production web/Cloudflare
+    builds, bundle firewall, Wrangler dry-run/deploy, and real Chrome display/disclosure passed.
+    New paid image output quality and production-time change were not measured.
+  remaining_gates: >-
+    Assess visual quality and actual latency on the next user-authorized production project;
+    no new paid request is needed for this release.
+  provider_spend: No new Kie, Fal, Runware, GPU, or other paid generation in this task.
+  paid_compute_shutdown: >-
+    GPU transport remains DISABLED_UNQUALIFIED. This prompt-only release started no paid compute.
 napaa_live_2026_09_25:
   checkpoint: V2-09
   status: SAME_PROJECT_APPROVED_DELIVERED_PUBLIC_DRIVE
   project_id: 6ec3ce8d-6558-494a-b8b3-a90a65c53bc8
   revision_id: ef4a4117-c86b-4721-821b-c6a835f0e022
   generation_request_id: 033b710c-7ebc-4ac8-9c05-89c16c5a3d1e
-  production_source_commit: 4559f90b51a3f2831ed01f926f79e97f03d78e6f
-  cloudflare_version: 159b7eba-1f4e-442d-ba73-353c7dc54f5d
+  production_source_commit: 62bb288124c5e367b16542b32e08641ef7ddf629
+  cloudflare_version: 9ac97d35-5bf7-4434-ac73-aaa961ce8d2d
   database_migration_head: 0210
-  observed_at: "2026-09-25T18:36:27Z"
+  observed_at: "2026-09-25T19:00:32Z"
   verified_progress: >-
     The replacement NAPAA run has 327 saved prompts, 96 audio spans, 327 Kie images,
     and 96 Fal avatar clips accepted. Stage 9 render attempts 1-4 failed on bounded Fal

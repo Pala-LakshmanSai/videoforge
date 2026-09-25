@@ -1,0 +1,47 @@
+{
+  "checkpoint": "V2-09",
+  "observed_at": "2026-09-25T19:00:32Z",
+  "source_commit": "62bb288124c5e367b16542b32e08641ef7ddf629",
+  "cloudflare_version": "9ac97d35-5bf7-4434-ac73-aaa961ce8d2d",
+  "compiler_version": "prompt-compiler-v3",
+  "representative_landscape_compiled_characters": {
+    "positive": 661,
+    "negative": 195,
+    "combined": 856
+  },
+  "representative_napaa_kie_characters": {
+    "before": 790,
+    "after": 635
+  },
+  "permanent_guardrail_characters": {
+    "positive_before": 356,
+    "positive_after": 275,
+    "negative_before": 129,
+    "negative_after": 90
+  },
+  "quality_preservation": [
+    "literal subject/action/environment preserved",
+    "framing and pinned style treatment preserved",
+    "landscape realism, wide deep focus and lighting retained",
+    "no text/branding/graphics/motion rule retained",
+    "custom style negative terms retained unless covered by permanent bans",
+    "saved prompt bytes and hashes unchanged"
+  ],
+  "verification": [
+    "pipeline compiler focused 19/19",
+    "durable prompt execution focused 15/15",
+    "Kie adapter focused 10/10",
+    "image regeneration focused 7/7",
+    "UI disclosure focused 1/1",
+    "pipeline and web TypeScript passed",
+    "touched-file ESLint passed",
+    "production web and Cloudflare builds and bundle firewall passed",
+    "Wrangler dry run and production deploy passed",
+    "real Chrome showed short voiceover previews and expandable unchanged saved prompt"
+  ],
+  "spend": "No new paid generation or GPU activation",
+  "remaining_gates": [
+    "Future user-authorized project visual quality and real production latency not measured",
+    "Previously accepted prompt text intentionally remains unchanged"
+  ]
+}
