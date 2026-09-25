@@ -1008,6 +1008,12 @@
       "name": "hosted_prompt_complete_recovery",
       "filename": "0205_hosted_prompt_complete_recovery.sql",
       "sha256": "sha256:0dcb8c37ad754c2d21ec333df6876642e09768ac5dfd64068b1e9741faef14c4"
+    },
+    {
+      "version": 206,
+      "name": "hosted_api_dispatch_grant_reconciliation",
+      "filename": "0206_hosted_api_dispatch_grant_reconciliation.sql",
+      "sha256": "sha256:78da08a5de2d33b1b1562081cfe8d1cd2ab158fa39cc4aee6add611765720c6a"
     }
   ]
 }
