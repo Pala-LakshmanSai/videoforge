@@ -357,7 +357,7 @@ describe("hosted continuation sweep stage-3 recovery", () => {
         INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
         INSERT INTO public.hosted_prompt_runs VALUES
           ('55555555-5555-4555-8555-555555555555','${revisionId}','UNKNOWN',NULL,
-           now(),now(),'HOSTED_PROMPT_EXECUTION_UNKNOWN',0,2);
+           now(),now(),'HOSTED_PROMPT_DISPATCH_TIMEOUT',0,2);
         INSERT INTO public.hosted_prompt_batch_claims VALUES
           ('66666666-6666-4666-8666-666666666666','55555555-5555-4555-8555-555555555555',0),
           ('88888888-8888-4888-8888-888888888888','55555555-5555-4555-8555-555555555555',1);
@@ -370,6 +370,9 @@ describe("hosted continuation sweep stage-3 recovery", () => {
       expect(await nextSteps(database)).toEqual([]);
       await database.exec(`UPDATE public.hosted_prompt_batch_progress SET batch_ordinal = 1
         WHERE id = '99999999-9999-4999-8999-999999999999'`);
+      expect(await nextSteps(database)).toEqual(["prompts"]);
+      await database.exec(`UPDATE public.hosted_prompt_runs
+        SET problem_code = 'HOSTED_PROMPT_EXECUTION_UNKNOWN'`);
       expect(await nextSteps(database)).toEqual(["prompts"]);
     } finally {
       await database.close();

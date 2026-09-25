@@ -159,31 +159,18 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
     SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_id, project_created_at,
            CASE
              WHEN asr_state = 'SUCCEEDED' AND context_state IS NULL THEN 'context'
-             -- A context attempt whose provider/transport failed before any result was accepted left
-             -- the revision stuck at stage 3: POST /context implements a bounded redispatch for
-             -- exactly these classes, but only a manual press ever reached it, because this sweep
-             -- treated any context row as finished work. Re-running the step here calls that same
-             -- redispatch, so the run heals without a browser, and the budget bound plus the
-             -- no-accepted-result condition stop it from looping on a provider outage.
              WHEN asr_state = 'SUCCEEDED' AND context_state IN ('FAILED', 'UNKNOWN')
                AND context_hash IS NULL
                AND context_problem_code = ANY(${CONTEXT_REDISPATCHABLE_PROBLEM_CODES_SQL})
                AND COALESCE(context_redispatch_count, 0) < ${CONTEXT_REDISPATCH_BUDGET}
                THEN 'context'
-             -- Only a revision pinned to the hosted v2 revision-config contract can plan; see
-             -- PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION. A v2 revision that fails validation for any
-             -- other reason is still offered, so nothing is masked.
              WHEN asr_state = 'SUCCEEDED' AND context_state = 'SUCCEEDED' AND plan_count = 0
                AND revision_config_schema = '${PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION}'
                THEN 'plan'
              WHEN plan_count > 0 AND prompt_state IS NULL THEN 'prompts'
-             -- The revision-scoped Workflow serializes its own calls. It may inspect a pending
-             -- claim; the route performs retrieval-only recovery and cannot submit it again.
              WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
                AND prompt_run_id IS NOT NULL AND $2::uuid IS NOT NULL
                THEN 'prompts'
-             -- A successful batch is durable. Offer the next batch immediately only when every
-             -- existing claim has progress; an outstanding claim may still be running at Runware.
              WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
                AND prompt_run_id IS NOT NULL
                AND (SELECT count(*) FROM public.hosted_prompt_batch_progress progress
@@ -195,19 +182,12 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                AND (SELECT count(*) FROM public.hosted_prompt_batch_progress progress
                     WHERE progress.run_id = prompt_run_id) <= prompt_planned_batches
                THEN 'prompts'
-             -- A run whose batch request died before the provider answered stays DISPATCHING forever:
-             -- the route refuses an in-flight run and nothing requeues the batch, so the stage sat
-             -- stranded with a browser as its only possible driver. Nudging the route past the stale
-             -- window lets it apply its own bounded redispatch (no accepted scene exists to lose), so
-             -- the stage heals the way stage 3 does.
              WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
                AND prompt_run_started_at IS NOT NULL
                AND prompt_run_started_at < now() - make_interval(secs => ${PROMPT_STALE_RUN_SECONDS})
                THEN 'prompts'
-             -- A completion error may settle the run UNKNOWN after every batch was saved.
-             -- Offer only the retrieval-only completion path; the route and DB gate refuse a new POST.
              WHEN prompt_state = 'UNKNOWN' AND prompt_accepted_set IS NULL
-               AND prompt_problem_code = 'HOSTED_PROMPT_EXECUTION_UNKNOWN'
+               AND prompt_problem_code IN ('HOSTED_PROMPT_EXECUTION_UNKNOWN','HOSTED_PROMPT_DISPATCH_TIMEOUT')
                AND prompt_run_id IS NOT NULL AND prompt_planned_batches > 0
                AND (SELECT count(*) FROM public.hosted_prompt_batch_progress progress
                     WHERE progress.run_id = prompt_run_id) = prompt_planned_batches
@@ -221,11 +201,6 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                        WHERE progress.run_id = prompt_run_id
                          AND progress.batch_ordinal = claim_row.batch_ordinal))
                THEN 'prompts'
-             -- A settled dispatch failure reads FAILED or UNKNOWN: the route replaces it through the
-             -- same bounded redispatch it applies to stage 3, but only a caller reaching the route makes
-             -- that happen, and a browser was the only caller. Offering the step here is what keeps a
-             -- failed prompt run healing server-side. Any saved batch ends the redispatch offer,
-             -- since the route refuses to replace accepted work; the budget bounds outage loops.
              WHEN prompt_state IN ('FAILED', 'UNKNOWN') AND prompt_accepted_set IS NULL
                AND prompt_problem_code = ANY(${PROMPT_REDISPATCHABLE_PROBLEM_CODES_SQL})
                AND COALESCE(prompt_redispatch_count, 0) < 28
@@ -243,8 +218,6 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
    AND ($3::text IS NULL OR next_step = $3::text)
    AND ($4::uuid IS NULL OR revision_id = $4::uuid)
    AND asr_attempt_id IS NOT NULL
- -- Newest first: an unordered LIMIT let a few stale active projects occupy every slot of the sweep and
- -- starve the run the operator was actually watching.
  ORDER BY project_created_at DESC
  LIMIT 5`;
 
