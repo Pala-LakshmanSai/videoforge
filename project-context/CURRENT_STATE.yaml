@@ -5,10 +5,10 @@ napaa_live_2026_09_25:
   project_id: 6ec3ce8d-6558-494a-b8b3-a90a65c53bc8
   revision_id: ef4a4117-c86b-4721-821b-c6a835f0e022
   generation_request_id: 033b710c-7ebc-4ac8-9c05-89c16c5a3d1e
-  production_source_commit: 95c11117
-  cloudflare_version: a1735dcf-9339-4825-964d-952b1b7d4b4a
+  production_source_commit: 9337926a
+  cloudflare_version: 48298ee5-f19e-4f9e-81f3-44bcf924d6e6
   database_migration_head: 0206
-  observed_at: "2026-09-25T13:56:00Z"
+  observed_at: "2026-09-25T14:27:12Z"
   verified_progress: >-
     The replacement NAPAA run saved all 327/327 prompts in 33 batches. Stage 5 completed
     from those exact saved batches without another prompt provider request after fixing a
@@ -17,11 +17,14 @@ napaa_live_2026_09_25:
     original USD 8 reservation. Stage 6 completed 96/96 exact audio spans in 7m23s; two
     initial local disk failures retried on their same attempt identities after safe cleanup.
     The same admitted generation request is now running Kie image and Fal avatar jobs.
+    Chrome showed 226/327 images and 63/96 avatar clips accepted at 14:27 UTC.
   fixes: >-
     Source 95c11117 awaits completion before closing the Neon pool; 42ae8f7a applies exact
     Stage 6 runtime grants as migration 0206; 8e745eea prevents the V2-06 grant script from
     revoking V2-09 runtime capabilities. Source 410e5ed2 adds a guarded continuation for an
-    already admitted KIE_FAL request with no started jobs; it is not yet in the live Worker.
+    already admitted KIE_FAL request with no started jobs. Source 9337926a is live at
+    Cloudflare version 48298ee5 with 41 expected bindings; it also compacts future
+    built-in image prompts while preserving custom styles and saved legacy prompt hashes.
   remaining_gates: >-
     Accept all 327 images and 96 avatar clips, assemble and technically validate the final
     MP4, verify real Chrome playback/seek, approve and download the exact artifact, and prove
