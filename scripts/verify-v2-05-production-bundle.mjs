@@ -38,10 +38,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // builds measured these exact totals.
 // The 2026-09-25 Fal wide-source render handoff, API stage timing/cost projection,
 // and progress-aware Workflow add 13,884 bytes to each measured static closure.
+// Direct hosted stage handoffs and the evidence-gated render-only disk recovery add
+// 2,690 bytes to production and 1,374 bytes to staging in the clean measured builds.
 // Provider and generated-contract validators remain in dynamic chunks.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_758_553,
-  "wrangler.staging.jsonc": 2_764_155,
+  "wrangler.production.jsonc": 2_761_243,
+  "wrangler.staging.jsonc": 2_765_529,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
