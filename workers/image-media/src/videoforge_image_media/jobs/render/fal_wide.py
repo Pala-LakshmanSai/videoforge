@@ -16,6 +16,23 @@ def _perspective_maps(transform, size):
     return cv2.convertMaps(coordinates, None, cv2.CV_16SC2)
 
 
+def _clipped_crop_bounds(x0: int, y0: int, x1: int, y1: int) -> tuple[int, int, int, int]:
+    width, height = x1 - x0, y1 - y0
+    clipped = max(0, x0), max(0, y0), min(1920, x1), min(1080, y1)
+    clipped_width = clipped[2] - clipped[0]
+    clipped_height = clipped[3] - clipped[1]
+    if (
+        max(-x0, x1 - 1920, y1 - 1080) > 32
+        or -y0 > 192
+        or not (300 < width < 1200 and 300 < height < 1200)
+        or clipped_width <= 0 or clipped_height <= 0
+        or 5 * clipped_width * clipped_height < 4 * width * height
+    ):
+        raise ValueError("Fal crop maps outside the pinned source")
+    # Keep the registered scale; clip only the small part outside the source canvas.
+    return clipped
+
+
 def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> None:
     """Register the native crop using source features; fail if geometry is uncertain."""
     import cv2
@@ -63,14 +80,7 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
         )[0]
         x0, y0 = np.floor(corners.min(axis=0)).astype(int)
         x1, y1 = np.ceil(corners.max(axis=0)).astype(int)
-        if (
-            max(-x0, -y0, x1 - 1920, y1 - 1080) > 32
-            or not (300 < x1 - x0 < 1200 and 300 < y1 - y0 < 1200)
-        ):
-            raise ValueError("Fal crop maps outside the pinned source")
-        # Fal can place a matched crop slightly past an edge; clip its canvas, not its scale.
-        x0, y0 = max(0, x0), max(0, y0)
-        x1, y1 = min(1920, x1), min(1080, y1)
+        x0, y0, x1, y1 = _clipped_crop_bounds(x0, y0, x1, y1)
         transform = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]]) @ homography
         region_width, region_height = x1 - x0, y1 - y0
         maps = _perspective_maps(transform, (region_width, region_height))
