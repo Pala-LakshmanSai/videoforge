@@ -51,6 +51,18 @@ AVATAR_SOURCE_PROFILES = {
     "fal-flashhead-512x512p25-wide-v2": (512, 512, 25, 1),
 }
 SOULX_SOURCE_SHA256 = "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
+FAL_WIDE_SAFE_REASONS = frozenset({
+    "One Fal clip has conflicting source images",
+    "Fal source image is unreadable",
+    "Fal square clip is unreadable",
+    "Fal square clip has no alignment frame or wrong frame rate",
+    "Fal square clip geometry drifted",
+    "Fal crop has no source features",
+    "Fal crop has too few source matches",
+    "Fal crop source geometry is uncertain",
+    "Fal crop maps outside the pinned source",
+    "Fal square clip decode lost too many frames",
+})
 
 
 @dataclass(frozen=True)
@@ -822,23 +834,35 @@ class RenderJob:
             render_paths = dict(asset_paths)
             wide_sources: dict[str, str] = {}
             try:
-                for segment in cast(list[dict[str, Any]], manifest["segments"]):
-                    if segment["timeline_composition"] == "IMAGE_FULL":
-                        continue
-                    if segment["render"]["avatar_source_profile"] != "fal-flashhead-512x512p25-wide-v2":
-                        continue
-                    accepted = cast(dict[str, dict[str, str]], segment["accepted_assets"])
-                    avatar_id = accepted["avatar"]["asset_id"]
-                    source_id = accepted["source_background"]["asset_id"]
-                    previous_source = wide_sources.get(avatar_id)
-                    if previous_source is not None and previous_source != source_id:
-                        raise ValueError("One Fal clip has conflicting source images")
-                    if previous_source is None:
-                        wide_path = Path(directory) / f"{len(wide_sources)}.mp4"
-                        compose_fal_wide(asset_paths[avatar_id], asset_paths[source_id],
-                                         wide_path, tools.ffmpeg)
-                        render_paths[avatar_id] = wide_path
-                        wide_sources[avatar_id] = source_id
+                for ordinal, segment in enumerate(cast(list[dict[str, Any]], manifest["segments"]), 1):
+                    try:
+                        if segment["timeline_composition"] == "IMAGE_FULL":
+                            continue
+                        if segment["render"]["avatar_source_profile"] != "fal-flashhead-512x512p25-wide-v2":
+                            continue
+                        accepted = cast(dict[str, dict[str, str]], segment["accepted_assets"])
+                        avatar_id = accepted["avatar"]["asset_id"]
+                        source_id = accepted["source_background"]["asset_id"]
+                        previous_source = wide_sources.get(avatar_id)
+                        if previous_source is not None and previous_source != source_id:
+                            raise ValueError("One Fal clip has conflicting source images")
+                        if previous_source is None:
+                            wide_path = Path(directory) / f"{len(wide_sources)}.mp4"
+                            compose_fal_wide(asset_paths[avatar_id], asset_paths[source_id],
+                                             wide_path, tools.ffmpeg)
+                            render_paths[avatar_id] = wide_path
+                            wide_sources[avatar_id] = source_id
+                    except (KeyError, TypeError, ValueError, OSError, BrokenPipeError) as error:
+                        reason = (
+                            str(error)
+                            if type(error) is ValueError and str(error) in FAL_WIDE_SAFE_REASONS
+                            else "Fal wide composition failed"
+                        )
+                        raise _RenderFailure(
+                            "RENDER_INPUT_INVALID",
+                            f"Fal wide segment {ordinal}: {type(error).__name__}: {reason}.",
+                            retryable=False,
+                        ) from error
                 plan = compile_render_command(
                     ffmpeg=tools.ffmpeg,
                     manifest=manifest,

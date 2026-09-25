@@ -4,7 +4,7 @@ import copy
 import hashlib
 import json
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
@@ -925,6 +925,46 @@ class RenderJobTests(unittest.TestCase):
         self.assertEqual(result["status"], "FAILED")
         self.assertEqual(result["error"]["code"], "RENDER_INPUT_INVALID")
         self.assertFalse(any("-filter_complex" in call for call in fixture.process.calls))
+
+    def test_fal_wide_failure_identifies_segment_without_exposing_exception_text(self) -> None:
+        for reason, expected in (
+            ("Fal crop has too few source matches", "Fal crop has too few source matches"),
+            ("Fal wide composition failed: /private/token=secret", "Fal wide composition failed"),
+        ):
+            with self.subTest(reason=reason):
+                fixture = RenderFixture()
+                avatar = next(
+                    asset for asset in fixture.document["assets"]
+                    if asset["asset_id"] == "asset_avatar_split_001"
+                )
+                avatar_path = fixture.resolver.objects[avatar["artifact_uri"]]
+                fixture.process.visual_probes[avatar_path] = ("h264", 512, 512, "25/1")
+
+                def use_fal_wide(manifest: dict[str, Any]) -> None:
+                    segment = manifest["segments"][2]
+                    segment["accepted_assets"]["source_background"] = copy.deepcopy(
+                        manifest["segments"][1]["accepted_assets"]["image"]
+                    )
+                    segment["render"].update({
+                        "avatar_source_profile": "fal-flashhead-512x512p25-wide-v2",
+                        "avatar_crop": "960:1080:480:0",
+                    })
+
+                fixture.replace_manifest(use_fal_wide)
+                with patch(
+                    "videoforge_image_media.jobs.render.job.compose_fal_wide",
+                    side_effect=ValueError(reason),
+                ):
+                    result = fixture.job().run(
+                        fixture.document, claimed_attempt_id="attempt_render_local_001"
+                    )
+                self.assertEqual(result["error"]["code"], "RENDER_INPUT_INVALID")
+                self.assertEqual(
+                    result["error"]["message"],
+                    f"Fal wide segment 3: ValueError: {expected}.",
+                )
+                self.assertNotIn("/private", json.dumps(result))
+                self.assertFalse(result["error"]["retryable"])
 
     def test_process_probe_and_cancellation_fail_without_publication(self) -> None:
         process_fixture = RenderFixture()
