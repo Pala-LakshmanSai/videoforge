@@ -4366,9 +4366,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     );
   }
   const asr = [...(query.data?.attempts ?? [])].reverse().find((attempt) => attempt.kind === "ASR");
-  const render = [...(query.data?.attempts ?? [])]
-    .reverse()
-    .find((attempt) => attempt.kind === "RENDER");
+  const renderAttempts = (query.data?.attempts ?? []).filter(
+    (attempt) => attempt.kind === "RENDER",
+  );
+  const render = renderAttempts.at(-1);
   const automaticContextAttempt = useRef<string | null>(null);
   const automaticContextReconciliationAttempt = useRef<string | null>(null);
   const automaticPromptAttempt = useRef<string | null>(null);
@@ -5119,7 +5120,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     ...(query.data.generation_provider === "KIE_FAL" &&
     failedStageIds.has("render") &&
     render?.state === "FAILED" &&
-    render.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"
+    (render.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" ||
+      (render.error_code === "MEDIA_EXECUTION_IO_FAILED" &&
+        renderAttempts.length === 2 &&
+        renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"))
       ? {
           render: stageRetryButton(renderDiskRetry.isPending, () =>
             renderDiskRetry.mutate(render.id),

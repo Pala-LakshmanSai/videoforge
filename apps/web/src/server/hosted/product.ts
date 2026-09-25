@@ -3775,7 +3775,7 @@ function hostedLocalFailureMessage(failureCode: string | null, fallback: string)
     return "Your computer stopped work that took too long. Run this project again to retry it.";
   }
   if (failureCode === "MEDIA_EXECUTION_IO_FAILED") {
-    return "Your computer could not read or save the media. Free disk space there and run this project again.";
+    return "Your computer could not read or save the media. Check its connection and free space, then use Retry in Assemble final video.";
   }
   if (failureCode === "MEDIA_EXECUTION_SUBPROCESS_FAILED") {
     return "Your computer's local media process stopped unexpectedly. Update the personal media worker before retrying.";
