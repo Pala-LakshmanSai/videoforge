@@ -54,13 +54,13 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
         x0, y0 = np.floor(corners.min(axis=0)).astype(int)
         x1, y1 = np.ceil(corners.max(axis=0)).astype(int)
         if (
-            x0 < 0
-            or y0 < 0
-            or x1 > 1920
-            or y1 > 1080
+            max(-x0, -y0, x1 - 1920, y1 - 1080) > 32
             or not (300 < x1 - x0 < 1200 and 300 < y1 - y0 < 1200)
         ):
             raise ValueError("Fal crop maps outside the pinned source")
+        # Fal can place a matched crop slightly past an edge; clip its canvas, not its scale.
+        x0, y0 = max(0, x0), max(0, y0)
+        x1, y1 = min(1920, x1), min(1080, y1)
         transform = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]]) @ homography
         region_width, region_height = x1 - x0, y1 - y0
         yy, xx = np.mgrid[0:512, 0:512]
