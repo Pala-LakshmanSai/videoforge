@@ -57,6 +57,7 @@ const EXPECTED_TABLE_PRIVILEGES = new Map([
   ["hosted_prompt_runs", ["SELECT"]],
   ["hosted_prompt_scene_progress", ["SELECT"]],
   ["hosted_prompt_batch_progress", ["SELECT"]],
+  ["hosted_prompt_batch_claims", ["SELECT"]],
   ["prompt_executions", ["SELECT"]],
   ["prompt_scene_results", ["SELECT"]],
   ["timeline_segments", ["SELECT"]],

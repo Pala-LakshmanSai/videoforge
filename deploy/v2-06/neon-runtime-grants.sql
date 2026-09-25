@@ -360,6 +360,7 @@ GRANT SELECT ON
   hosted_prompt_runs,
   hosted_prompt_scene_progress,
   hosted_prompt_batch_progress,
+  hosted_prompt_batch_claims,
   prompt_executions,
   prompt_scene_results,
   timeline_segments,
