@@ -16,6 +16,10 @@ import {
 } from "../providers/fal-avatar-job";
 
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const API_FAL_SUBMISSION_CONCURRENCY = 4;
+const API_KIE_SUBMISSION_START_INTERVAL_MS = 1_050;
+const API_OBSERVATION_CONCURRENCY = 1;
+const API_KIE_OBSERVATION_START_INTERVAL_MS = 250;
 
 export interface HostedApiGenerationScope {
   readonly accountId: string;
@@ -47,6 +51,49 @@ function object(value: unknown): Record<string, unknown> {
 function string(value: unknown): string {
   if (typeof value !== "string" || !value) throw new Error("HOSTED_API_GENERATION_INPUT_INVALID");
   return value;
+}
+
+/** Keep provider request and media-transfer concurrency bounded while preserving every result's
+ * position. Kie submissions use a one-second start interval; Fal submissions remain parallel.
+ * One observation keeps the provider result buffer and R2 readback below the worker memory
+ * ceiling while visiting every submitted job in one pass. The 250ms start interval keeps Kie
+ * status reads below eight per second across the two admitted accounts. */
+export async function settleHostedApiJobsBounded<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  operation: (item: T) => Promise<R>,
+  startIntervalMs = 0,
+): Promise<PromiseSettledResult<R>[]> {
+  if (!Number.isInteger(concurrency) || concurrency < 1)
+    throw new RangeError("HOSTED_API_GENERATION_CONCURRENCY_INVALID");
+  if (!Number.isInteger(startIntervalMs) || startIntervalMs < 0)
+    throw new RangeError("HOSTED_API_GENERATION_START_INTERVAL_INVALID");
+  const results = new Array<PromiseSettledResult<R> | undefined>(items.length);
+  let next = 0;
+  let nextStartAt = 0;
+  const waitForStartSlot = async () => {
+    if (startIntervalMs === 0) return;
+    const now = Date.now();
+    const startAt = Math.max(now, nextStartAt);
+    nextStartAt = startAt + startIntervalMs;
+    if (startAt > now) await new Promise<void>((resolve) => setTimeout(resolve, startAt - now));
+  };
+  const worker = async () => {
+    while (true) {
+      const index = next++;
+      if (index >= items.length) return;
+      try {
+        await waitForStartSlot();
+        results[index] = { status: "fulfilled", value: await operation(items[index]!) };
+      } catch (reason) {
+        results[index] = { status: "rejected", reason };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  if (nextStartAt > Date.now())
+    await new Promise<void>((resolve) => setTimeout(resolve, nextStartAt - Date.now()));
+  return results as PromiseSettledResult<R>[];
 }
 
 async function call(
@@ -131,8 +178,27 @@ export function selectHostedApiGenerationJobIndex(
   return submitted.length > 0 ? submitted[observation % submitted.length]! : null;
 }
 
-/** Advances one durable API job. The database claim precedes each paid POST, so a resumed
- * Workflow can observe a persisted provider ID but cannot resubmit an uncertain attempt. */
+/** Select every currently available paid slot in one dispatch pass. The virtual SUBMITTED
+ * states keep the existing 8 IMAGE / 4 AVATAR balance and never select past an uncertain or
+ * failed job. Claims still provide the per-job CAS immediately before each provider POST. */
+export function selectHostedApiGenerationJobIndices(
+  current: readonly Pick<Job, "lane" | "state">[],
+  observation: number,
+): number[] {
+  const virtual = current.map((job) => ({ ...job }));
+  const selected: number[] = [];
+  while (true) {
+    const index = selectHostedApiGenerationJobIndex(virtual, observation + selected.length);
+    if (index === null || virtual[index]?.state !== "PREPARED") return selected;
+    selected.push(index);
+    virtual[index] = { ...virtual[index]!, state: "SUBMITTED" };
+  }
+}
+
+/** Advances durable API jobs. The database claim precedes each paid POST, so a resumed Workflow
+ * can observe a persisted provider ID but cannot resubmit an uncertain attempt. Prepared Fal jobs
+ * in open slots submit concurrently; Kie starts are paced and stop queued work after any sibling
+ * submission error without increasing the existing 8 IMAGE / 4 AVATAR outstanding-job cap. */
 export async function advanceHostedApiGeneration(
   environment: HostedRuntimeEnvironment,
   database: TransactionalSqlExecutor,
@@ -160,28 +226,35 @@ export async function advanceHostedApiGeneration(
   const blocked = current.find((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY"].includes(job.state));
   if (blocked) return outcome("ACTION_REQUIRED", blocked.failureCode ?? blocked.state);
   const failed = current.find((job) => job.state === "FAILED");
-  const index = selectHostedApiGenerationJobIndex(current, observation);
-  const job = index === null ? undefined : current[index];
-  if (!job && failed) {
-    const settlement = object(
-      await call(database, scope.accountId, "videoforge_settle_hosted_api_failure", base),
-    );
-    if (settlement.state !== "SETTLED") throw new Error("HOSTED_API_FAILURE_SETTLEMENT_INVALID");
-    return outcome("ACTION_REQUIRED", failed.failureCode ?? "PROVIDER_TASK_FAILED");
-  }
-  if (!job) return outcome("ACTION_REQUIRED", "HOSTED_API_JOB_STATE_INVALID");
-  const jobArgs = [...base, job.generationTaskId] as const;
   const bucket = environment.PRIVATE_ARTIFACTS;
-  if (job.state === "PREPARED") {
+  const signer = new HostedR2Signer(config.r2);
+  const kieClient = new KieZImageClient(config.apiGeneration.kieApiKey);
+  const falClient = new FalFlashheadClient(config.apiGeneration.falApiKey);
+  const submissionStopped = { value: false };
+  const submitPreparedJob = async (job: Job): Promise<"PROGRESSED" | "WAITING"> => {
+    if (submissionStopped.value) return "WAITING";
+    const jobArgs = [...base, job.generationTaskId] as const;
     const claimId = crypto.randomUUID();
+    let claimWasNotSelected = false;
     const claimSubmission = async () => {
+      if (submissionStopped.value) {
+        claimWasNotSelected = true;
+        return false;
+      }
       const claimed = object(
         await call(database, scope.accountId, "videoforge_claim_hosted_api_job", [
           ...jobArgs,
           claimId,
         ]),
       );
-      return claimed.state === "SUBMITTING" && claimed.claimId === claimId;
+      const selected = claimed.state === "SUBMITTING" && claimed.claimId === claimId;
+      if (!selected) {
+        claimWasNotSelected = true;
+        // A claim miss is a durable state change or a concurrent workflow. Stop the local
+        // snapshot before another queued item can make a paid POST against stale state.
+        submissionStopped.value = true;
+      }
+      return selected;
     };
     const persistTaskId = async (taskId: string) => {
       await call(database, scope.accountId, "videoforge_record_hosted_api_task", [
@@ -191,33 +264,33 @@ export async function advanceHostedApiGeneration(
       ]);
     };
     const markSubmissionUnknown = async () => {
+      // Stop sibling dispatch before awaiting the durable terminal write. The write can be slow
+      // while the other lane is already between its claim and provider call.
+      submissionStopped.value = true;
       await call(database, scope.accountId, "videoforge_mark_hosted_api_unknown", [
         ...jobArgs,
         claimId,
       ]);
     };
     const markSubmissionFailed = async () => {
+      submissionStopped.value = true;
       await call(database, scope.accountId, "videoforge_fail_hosted_api_job", [
         ...jobArgs,
         "PROVIDER_REQUEST_REJECTED",
       ]);
     };
-    if (job.lane === "IMAGE") {
-      try {
+    try {
+      if (job.lane === "IMAGE") {
         const submission = await submitKieImageJob({
           manifest: { prompt: string(job.inputManifest.prompt), aspectRatio: "16:9" },
-          client: new KieZImageClient(config.apiGeneration.kieApiKey),
+          client: kieClient,
           claimSubmission,
           persistTaskId,
           markSubmissionUnknown,
           markRequestRejected: markSubmissionFailed,
         });
-        return outcome(submission.state === "SUBMITTED" ? "PROGRESSED" : "WAITING");
-      } catch {
-        return outcome("WAITING");
+        return submission.state === "SUBMITTED" ? "PROGRESSED" : "WAITING";
       }
-    } else {
-      const signer = new HostedR2Signer(config.r2);
       const source = async (prefix: "avatarSource" | "spanAudio") => {
         const m = job.inputManifest;
         const port = await signer.sign({
@@ -230,96 +303,146 @@ export async function advanceHostedApiGeneration(
         });
         return port.url;
       };
-      const imageUrl = await source("avatarSource");
-      const audioUrl = await source("spanAudio");
-      try {
-        const submission = await submitFalAvatarJob({
-          imageUrl,
-          audioUrl,
-          client: new FalFlashheadClient(config.apiGeneration.falApiKey),
-          claimSubmission,
-          persistRequestId: persistTaskId,
-          markSubmissionUnknown,
-          markSubmissionFailed,
-        });
-        return outcome(submission.state === "SUBMITTED" ? "PROGRESSED" : "WAITING");
-      } catch {
-        return outcome("WAITING");
-      }
-    }
-  }
-  if (!job.providerTaskId) return outcome("ACTION_REQUIRED", "PROVIDER_ID_MISSING");
-  let result:
-    | Awaited<ReturnType<typeof observeKieImageJob>>
-    | Awaited<ReturnType<typeof observeFalAvatarJob>>;
-  try {
-    result =
-      job.lane === "IMAGE"
-        ? await observeKieImageJob({
-            taskId: job.providerTaskId,
-            objectKey: job.outputObjectKey,
-            client: new KieZImageClient(config.apiGeneration.kieApiKey),
-            bucket,
-          })
-        : await observeFalAvatarJob({
-            requestId: job.providerTaskId,
-            objectKey: job.outputObjectKey,
-            client: new FalFlashheadClient(config.apiGeneration.falApiKey),
-            bucket,
-          });
-  } catch (error) {
-    if (
-      (error instanceof KieZImageError && error.code === "STATUS_UNKNOWN") ||
-      (error instanceof KieImageJobError && error.code === "RESULT_DOWNLOAD_FAILED") ||
-      (error instanceof FalFlashheadError &&
-        ["STATUS_UNKNOWN", "RESULT_UNKNOWN"].includes(error.code)) ||
-      (error instanceof FalAvatarJobError && error.code === "RESULT_DOWNLOAD_FAILED")
-    ) {
-      console.warn("hosted_api_observe_wait", {
-        lane: job.lane,
-        code: error.code,
+      const [imageUrl, audioUrl] = await Promise.all([source("avatarSource"), source("spanAudio")]);
+      const submission = await submitFalAvatarJob({
+        imageUrl,
+        audioUrl,
+        client: falClient,
+        claimSubmission,
+        persistRequestId: persistTaskId,
+        markSubmissionUnknown,
+        markSubmissionFailed,
       });
-      return outcome("WAITING");
+      return submission.state === "SUBMITTED" ? "PROGRESSED" : "WAITING";
+    } catch {
+      if (!claimWasNotSelected) submissionStopped.value = true;
+      return "WAITING";
     }
-    if (
-      (error instanceof KieZImageError && error.code === "RESPONSE_INVALID") ||
-      (error instanceof KieImageJobError && error.code === "RESULT_MEDIA_INVALID") ||
-      (error instanceof FalFlashheadError && error.code === "RESULT_INVALID") ||
-      (error instanceof FalAvatarJobError && error.code === "RESULT_MP4_INVALID")
-    ) {
+  };
+  const observeSubmittedJob = async (job: Job): Promise<"PROGRESSED" | "WAITING"> => {
+    if (!job.providerTaskId) throw new Error("HOSTED_API_PROVIDER_ID_MISSING");
+    const jobArgs = [...base, job.generationTaskId] as const;
+    let result:
+      | Awaited<ReturnType<typeof observeKieImageJob>>
+      | Awaited<ReturnType<typeof observeFalAvatarJob>>;
+    try {
+      result =
+        job.lane === "IMAGE"
+          ? await observeKieImageJob({
+              taskId: job.providerTaskId,
+              objectKey: job.outputObjectKey,
+              client: kieClient,
+              bucket,
+            })
+          : await observeFalAvatarJob({
+              requestId: job.providerTaskId,
+              objectKey: job.outputObjectKey,
+              client: falClient,
+              bucket,
+            });
+    } catch (error) {
+      if (
+        (error instanceof KieZImageError && error.code === "STATUS_UNKNOWN") ||
+        (error instanceof KieImageJobError && error.code === "RESULT_DOWNLOAD_FAILED") ||
+        (error instanceof FalFlashheadError &&
+          ["STATUS_UNKNOWN", "RESULT_UNKNOWN"].includes(error.code)) ||
+        (error instanceof FalAvatarJobError && error.code === "RESULT_DOWNLOAD_FAILED")
+      ) {
+        console.warn("hosted_api_observe_wait", {
+          lane: job.lane,
+          code: error.code,
+        });
+        return "WAITING";
+      }
+      if (
+        (error instanceof KieZImageError && error.code === "RESPONSE_INVALID") ||
+        (error instanceof KieImageJobError && error.code === "RESULT_MEDIA_INVALID") ||
+        (error instanceof FalFlashheadError && error.code === "RESULT_INVALID") ||
+        (error instanceof FalAvatarJobError && error.code === "RESULT_MP4_INVALID")
+      ) {
+        await call(database, scope.accountId, "videoforge_fail_hosted_api_job", [
+          ...jobArgs,
+          "PROVIDER_OUTPUT_INVALID",
+        ]);
+        return "PROGRESSED";
+      }
+      throw error;
+    }
+    if (result.state === "FAILED") {
       await call(database, scope.accountId, "videoforge_fail_hosted_api_job", [
         ...jobArgs,
-        "PROVIDER_OUTPUT_INVALID",
+        "PROVIDER_TASK_FAILED",
       ]);
-      return outcome("PROGRESSED");
+      return "PROGRESSED";
     }
-    throw error;
-  }
-  if (result.state === "FAILED") {
-    await call(database, scope.accountId, "videoforge_fail_hosted_api_job", [
+    if (result.state !== "SUCCEEDED") return "WAITING";
+    const artifact = result.artifact;
+    const probe =
+      job.lane === "IMAGE"
+        ? { width: artifact.width, height: artifact.height }
+        : {
+            width: artifact.width,
+            height: artifact.height,
+            durationMs: Math.round(
+              (artifact as { durationSeconds: number }).durationSeconds * 1000,
+            ),
+          };
+    await call(database, scope.accountId, "videoforge_commit_hosted_api_output", [
       ...jobArgs,
-      "PROVIDER_TASK_FAILED",
+      artifact.sha256,
+      artifact.byteSize,
+      artifact.contentType,
+      JSON.stringify(probe),
     ]);
-    return outcome("PROGRESSED");
+    return "PROGRESSED";
+  };
+  const indices = failed ? [] : selectHostedApiGenerationJobIndices(current, observation);
+  if (indices.length > 0) {
+    const imageIndices = indices.filter((index) => current[index]!.lane === "IMAGE");
+    const avatarIndices = indices.filter((index) => current[index]!.lane === "AVATAR");
+    const [imageSubmissions, avatarSubmissions] = await Promise.all([
+      settleHostedApiJobsBounded(
+        imageIndices,
+        1,
+        (index) => submitPreparedJob(current[index]!),
+        API_KIE_SUBMISSION_START_INTERVAL_MS,
+      ),
+      settleHostedApiJobsBounded(avatarIndices, API_FAL_SUBMISSION_CONCURRENCY, (index) =>
+        submitPreparedJob(current[index]!),
+      ),
+    ]);
+    const submissions = [...imageSubmissions, ...avatarSubmissions];
+    return outcome(
+      submissions.some((result) => result.status === "fulfilled" && result.value === "PROGRESSED")
+        ? "PROGRESSED"
+        : "WAITING",
+    );
   }
-  if (result.state !== "SUCCEEDED") return outcome("WAITING");
-  const artifact = result.artifact;
-  const probe =
-    job.lane === "IMAGE"
-      ? { width: artifact.width, height: artifact.height }
-      : {
-          width: artifact.width,
-          height: artifact.height,
-          durationMs: Math.round((artifact as { durationSeconds: number }).durationSeconds * 1000),
-        };
-  await call(database, scope.accountId, "videoforge_commit_hosted_api_output", [
-    ...jobArgs,
-    artifact.sha256,
-    artifact.byteSize,
-    artifact.contentType,
-    JSON.stringify(probe),
-  ]);
-  return outcome("PROGRESSED");
+  const submittedJobs = current.filter((job) => job.state === "SUBMITTED");
+  if (submittedJobs.length === 0 && failed) {
+    const settlement = object(
+      await call(database, scope.accountId, "videoforge_settle_hosted_api_failure", base),
+    );
+    if (settlement.state !== "SETTLED") throw new Error("HOSTED_API_FAILURE_SETTLEMENT_INVALID");
+    return outcome("ACTION_REQUIRED", failed.failureCode ?? "PROVIDER_TASK_FAILED");
+  }
+  if (submittedJobs.length === 0) return outcome("ACTION_REQUIRED", "HOSTED_API_JOB_STATE_INVALID");
+  const observations = await settleHostedApiJobsBounded(
+    submittedJobs,
+    API_OBSERVATION_CONCURRENCY,
+    observeSubmittedJob,
+    API_KIE_OBSERVATION_START_INTERVAL_MS,
+  );
+  const rejected = observations.find(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
+  );
+  if (rejected) throw rejected.reason;
+  // Rate slots include their tail interval, so completed work can advance immediately.
+  return outcome(
+    observations.some((result) => result.status === "fulfilled" && result.value === "PROGRESSED")
+      ? "PROGRESSED"
+      : "WAITING",
+  );
 }
 
 /** Scheduling is idempotent by the durable generation identity. The Workflow never resubmits a

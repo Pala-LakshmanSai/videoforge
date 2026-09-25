@@ -1,0 +1,228 @@
+{
+  "checkpoint": "V2-09",
+  "date": "2026-09-25",
+  "kind": "read-only reconciliation of retained provider identities",
+  "project_id": "f2b6ab1d-4690-47bf-a1eb-ed27f3141c28",
+  "kie": [
+    {
+      "index": 0,
+      "provider_seconds": 6.0,
+      "completed_to_accepted_seconds": 11.181
+    },
+    {
+      "index": 1,
+      "provider_seconds": 6.0,
+      "completed_to_accepted_seconds": 32.937
+    },
+    {
+      "index": 2,
+      "provider_seconds": 6.0,
+      "completed_to_accepted_seconds": 52.11
+    },
+    {
+      "index": 3,
+      "provider_seconds": 19.0,
+      "completed_to_accepted_seconds": 59.939
+    },
+    {
+      "index": 4,
+      "provider_seconds": 8.0,
+      "completed_to_accepted_seconds": 10.986
+    },
+    {
+      "index": 5,
+      "provider_seconds": 9.0,
+      "completed_to_accepted_seconds": 28.882
+    },
+    {
+      "index": 6,
+      "provider_seconds": 19.0,
+      "completed_to_accepted_seconds": 78.579
+    },
+    {
+      "index": 7,
+      "provider_seconds": 20.0,
+      "completed_to_accepted_seconds": 39.321
+    },
+    {
+      "index": 8,
+      "provider_seconds": 15.0,
+      "completed_to_accepted_seconds": 12.357
+    },
+    {
+      "index": 9,
+      "provider_seconds": 6.0,
+      "completed_to_accepted_seconds": 93.775
+    },
+    {
+      "index": 10,
+      "provider_seconds": 6.0,
+      "completed_to_accepted_seconds": 38.02
+    },
+    {
+      "index": 11,
+      "provider_seconds": 5.0,
+      "completed_to_accepted_seconds": 19.25
+    },
+    {
+      "index": 12,
+      "provider_seconds": 7.0,
+      "completed_to_accepted_seconds": 88.69
+    },
+    {
+      "index": 13,
+      "provider_seconds": 5.0,
+      "completed_to_accepted_seconds": 38.502
+    },
+    {
+      "index": 14,
+      "provider_seconds": 5.0,
+      "completed_to_accepted_seconds": 16.921
+    },
+    {
+      "index": 15,
+      "provider_seconds": 16.0,
+      "completed_to_accepted_seconds": 79.47
+    },
+    {
+      "index": 16,
+      "provider_seconds": 7.0,
+      "completed_to_accepted_seconds": 35.463
+    },
+    {
+      "index": 17,
+      "provider_seconds": 10.0,
+      "completed_to_accepted_seconds": 11.998
+    },
+    {
+      "index": 18,
+      "provider_seconds": 10.0,
+      "completed_to_accepted_seconds": 72.275
+    },
+    {
+      "index": 19,
+      "provider_seconds": 5.0,
+      "completed_to_accepted_seconds": 35.517
+    },
+    {
+      "index": 20,
+      "provider_seconds": 5.0,
+      "completed_to_accepted_seconds": 17.795
+    },
+    {
+      "index": 21,
+      "provider_seconds": 7.0,
+      "completed_to_accepted_seconds": 57.352
+    },
+    {
+      "index": 22,
+      "provider_seconds": 5.0,
+      "completed_to_accepted_seconds": 66.761
+    },
+    {
+      "index": 23,
+      "provider_seconds": 6.0,
+      "completed_to_accepted_seconds": 14.876
+    },
+    {
+      "index": 24,
+      "provider_seconds": 6.0,
+      "completed_to_accepted_seconds": 54.818
+    },
+    {
+      "index": 25,
+      "provider_seconds": 6.0,
+      "completed_to_accepted_seconds": 26.1
+    },
+    {
+      "index": 26,
+      "provider_seconds": 5.0,
+      "completed_to_accepted_seconds": 47.721
+    },
+    {
+      "index": 27,
+      "provider_seconds": 5.0,
+      "completed_to_accepted_seconds": 34.83
+    }
+  ],
+  "fal": [
+    {
+      "index": 0,
+      "submitted_to_accepted_seconds": 114.962,
+      "provider_inference_seconds": 10.871000051498413
+    },
+    {
+      "index": 1,
+      "submitted_to_accepted_seconds": 132.405,
+      "provider_inference_seconds": 9.17900013923645
+    },
+    {
+      "index": 2,
+      "submitted_to_accepted_seconds": 150.695,
+      "provider_inference_seconds": 8.763999938964844
+    },
+    {
+      "index": 3,
+      "submitted_to_accepted_seconds": 115.257,
+      "provider_inference_seconds": 7.450000047683716
+    },
+    {
+      "index": 4,
+      "submitted_to_accepted_seconds": 67.357,
+      "provider_inference_seconds": 7.831999778747559
+    },
+    {
+      "index": 5,
+      "submitted_to_accepted_seconds": 18.849,
+      "provider_inference_seconds": 9.361000061035156
+    },
+    {
+      "index": 6,
+      "submitted_to_accepted_seconds": 56.063,
+      "provider_inference_seconds": 8.528000116348267
+    },
+    {
+      "index": 7,
+      "submitted_to_accepted_seconds": 19.833,
+      "provider_inference_seconds": 8.364000082015991
+    },
+    {
+      "index": 8,
+      "submitted_to_accepted_seconds": 22.021,
+      "provider_inference_seconds": 8.098999977111816
+    },
+    {
+      "index": 9,
+      "submitted_to_accepted_seconds": 20.956,
+      "provider_inference_seconds": 10.378999948501587
+    }
+  ],
+  "findings": [
+    "Kie provider completion is followed by 11 to 94 seconds before application acceptance.",
+    "The old mutable-list modulo cursor polls one submitted job per observation and can repeatedly skip jobs as submissions/completions change the list.",
+    "Fal reported processing is 7 to 11 seconds; remaining submitted-to-accepted time combines provider queue, app observation and transfer. Cold start is not established."
+  ],
+  "new_generation_calls": 0,
+  "limits": [
+    "Historical provider data cannot establish future warm-start guarantees.",
+    "No post-release hosted paid production timing is claimed."
+  ],
+  "changes": [
+    "Visit every submitted result per pass without mutable-list modulo skipping.",
+    "Serial media verification/storage retains original per-item memory bounds.",
+    "Fal submissions start concurrently within existing four-avatar cap; Kie starts are paced within existing eight-image cap and published key rate limits.",
+    "A known submission failure stops queued paid submissions; exact IDs and unknown no-replay states remain authoritative."
+  ],
+  "avatar_quality": {
+    "raw_resolution": [
+      512,
+      512
+    ],
+    "raw_mouth_softness_present": true,
+    "mouth_inside_opaque_composite_region": true,
+    "change": "Bicubic spatial resampling with cached inverse geometry and reused buffers",
+    "full_clip_before_median_seconds": 0.864653,
+    "full_clip_after_median_seconds": 0.961158,
+    "limitation": "Modest preservation of existing spatial detail; no native 1080p facial detail or guaranteed elimination of model lip blur."
+  }
+}

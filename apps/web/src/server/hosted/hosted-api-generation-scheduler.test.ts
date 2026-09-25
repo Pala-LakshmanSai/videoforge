@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { selectHostedApiGenerationJobIndex } from "./hosted-api-generation";
+import {
+  settleHostedApiJobsBounded,
+  selectHostedApiGenerationJobIndex,
+  selectHostedApiGenerationJobIndices,
+} from "./hosted-api-generation";
 
 type SchedulingJob = {
   lane: "IMAGE" | "AVATAR";
@@ -23,6 +27,78 @@ function submittedCounts(jobs: readonly SchedulingJob[]) {
 }
 
 describe("hosted API generation scheduling", () => {
+  it("bounds concurrent provider operations and preserves per-job results", async () => {
+    let active = 0;
+    let maximum = 0;
+    const results = await settleHostedApiJobsBounded(
+      Array.from({ length: 8 }, (_, index) => index),
+      3,
+      async (index) => {
+        active += 1;
+        maximum = Math.max(maximum, active);
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        active -= 1;
+        if (index === 3) throw new Error("provider read failed");
+        return index * 2;
+      },
+    );
+    expect(maximum).toBeLessThanOrEqual(3);
+    expect(results.slice(0, 3).map((result) => result.status)).toEqual([
+      "fulfilled",
+      "fulfilled",
+      "fulfilled",
+    ]);
+    expect(results[3]).toMatchObject({ status: "rejected" });
+    expect(results[7]).toMatchObject({ status: "fulfilled", value: 14 });
+  });
+
+  it("paces serialized paid starts with a virtual clock", async () => {
+    vi.useFakeTimers();
+    try {
+      const starts: number[] = [];
+      const pending = settleHostedApiJobsBounded(
+        [0, 1, 2],
+        1,
+        async (index) => {
+          starts.push(Date.now());
+          return index;
+        },
+        1_050,
+      );
+      await vi.runAllTimersAsync();
+      const results = await pending;
+      expect(results.map((result) => result.status)).toEqual([
+        "fulfilled",
+        "fulfilled",
+        "fulfilled",
+      ]);
+      expect(starts[1]! - starts[0]!).toBe(1_050);
+      expect(starts[2]! - starts[1]!).toBe(1_050);
+      expect(Date.now() - starts[2]!).toBe(1_050);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("fills all currently open provider slots in one concurrent dispatch pass", () => {
+    const jobs = plan(64, 212);
+    const selected = selectHostedApiGenerationJobIndices(jobs, 0);
+    expect(selected).toHaveLength(12);
+    expect(selected.slice(0, 2).map((index) => jobs[index]!.lane)).toEqual(["IMAGE", "AVATAR"]);
+    expect(selected.filter((index) => jobs[index]!.lane === "IMAGE")).toHaveLength(8);
+    expect(selected.filter((index) => jobs[index]!.lane === "AVATAR")).toHaveLength(4);
+  });
+
+  it("does not dispatch a batch across an uncertain or failed job", () => {
+    const uncertain = plan(1, 2);
+    uncertain[0]!.state = "UNKNOWN_NO_RETRY";
+    expect(selectHostedApiGenerationJobIndices(uncertain, 0)).toEqual([]);
+
+    const failed = plan(1, 2);
+    failed[0]!.state = "FAILED";
+    expect(selectHostedApiGenerationJobIndices(failed, 0)).toEqual([]);
+  });
+
   it("submits both lanes promptly for one avatar and two images", () => {
     const jobs = plan(1, 2);
     const submitted: SchedulingJob["lane"][] = [];

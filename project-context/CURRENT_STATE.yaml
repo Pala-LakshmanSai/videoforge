@@ -1,4 +1,36 @@
 schema_version: "2.0"
+api_generation_performance_2026_09_25:
+  checkpoint: V2-09
+  status: ISOLATED_PROOFS_COMPLETE_RELEASE_IN_PROGRESS
+  decision: >-
+    Visit every outstanding provider result on each scheduler pass instead of selecting one
+    by a changing-list modulo cursor. Serial Kie POST starts use 1050ms slots and serial
+    observations use 250ms slots, including the last slot before a pass returns.
+    Completed observations advance immediately; pending-only passes retain a two-second sleep. Retain paid-job claims, no-replay identities, lane caps,
+    bounded memory and provider rate limits. User-requested Mac work uses launchd Standard
+    classification. Decode and resize each still once, then reuse that frame before the
+    unchanged per-frame perspective zoom. Bicubic portrait compositing preserves more existing
+    facial detail with cached geometry and reused buffers; alignment and blend gates remain.
+  evidence: >-
+    Exact retained Simon Kie records show 5-20 seconds of provider time and 11-94 seconds
+    from provider completion to application acceptance (median 36.769 seconds). Fal metrics
+    show 7-11 seconds of processing but cannot separate historical queue and observation time.
+    Same-input, same-bundled-FFmpeg still-frame reuse reduced final encode from 100.302 to
+    82.216 seconds, producing the byte-identical 20,578,843-byte MP4. Two isolated launchd
+    pairs averaged 11.966 seconds Background versus 3.498 Standard with identical output.
+    Combined full RenderJob passed in 109.242 seconds versus 123.434 seconds baseline,
+    with 4776 frames, zero AV drift, full decode and loudness acceptance.
+    Bicubic composition improved retained lip detail modestly, adding about 0.097 seconds
+    per 5.08-second clip; raw Fal remains 512x512, so this is not native 1080p facial detail.
+  evidence_paths:
+    - evidence/acceptance/VF-10-09/2026-09-25-api-latency.json
+    - evidence/acceptance/VF-10-09/2026-09-25-assembly-performance.json
+  remaining_gates: >-
+    Worker 0.1.29 published from a8a60888 through successful run 36107027477.
+    Installation, hosted scheduler release and live readback are pending. Post-release paid end-to-end timing is not established by isolated local tests.
+    Full 18-minute acceptance and human approval/download remain separate gates.
+  provider_spend: Zero new generation calls; retained artifacts and exact provider IDs only.
+  paid_compute_shutdown: No GPU activation. Local benchmark processes terminate after proof.
 api_generation_render_recovery_and_eta_2026_09_25:
   checkpoint: V2-09
   status: PRODUCTION_SHORT_RENDER_AND_PLAYBACK_VERIFIED
@@ -16,13 +48,14 @@ api_generation_render_recovery_and_eta_2026_09_25:
     Source 6f1c36b7 deployed as Cloudflare 0f16473c-928b-497d-8117-46a2b199a791 with
     installed worker 0.1.28 and migration ledger 0199. Helenn project
     cebd8f98-28af-4729-824b-62dbf1ef6e34 completed render-only recovery in 11m10s;
-    Chrome played its 159.2-second 1920x1080 output without error, final checksum
+    Chrome played its 159.2-second 1920x1080 output without error, render-result document checksum
     sha256:c0bbdac1f9cd69c9e4f74a8234dd20a4465677111791de83d452ae5072b121e3.
     User-started Simon project f2b6ab1d-4690-47bf-a1eb-ed27f3141c28 completed with 28 images
     and 10 avatars. First submissions were within one second; stage timers were 3m25s images
     and 3m21s avatars, with render handoff 1.95s after last image acceptance. Assembly took
     8m38s and total wall time was 15m51s. Runtime COMPLETE/SUCCEEDED at 06:52:53Z; render
-    checksum sha256:230f91d5af544f623b9da6126576777e816b5d50fe555aec65fb68ab34a83d0a.
+    result-document checksum sha256:230f91d5af544f623b9da6126576777e816b5d50fe555aec65fb68ab34a83d0a.
+    Its MP4 is 20,578,843 bytes, checksum sha256:cf04146a9ff82828a28c3eec58a98d10118e7d79c562e6ff19140cb53b969b94.
     Chrome loaded the 159.2-second 1920x1080 video and playback advanced without media errors.
     ETA source 6fd366f9 deployed as Cloudflare ecd68041-30e2-4271-a1bc-fedf116b41f9;
     focused product and UI tests, TypeScript, lint, production build, bundle guard and exact
