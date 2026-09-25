@@ -150,6 +150,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_record_hosted_prompt_batch(uuid,json
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_recover_hosted_prompt_batch(uuid,text,jsonb)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_adjudicate_invalid_hosted_prompt_batch(uuid,text,text,bigint)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_claim_hosted_prompt_batch(uuid,integer,text,text,text)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_fail_hosted_prompt_run(uuid,text,text,boolean,bigint)
