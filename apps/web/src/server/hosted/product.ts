@@ -6965,7 +6965,7 @@ async function projectDetail(
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId, currentTimelineId],
       );
       const promptProgress = await transaction.query(
-        `SELECT run.state, run.started_at, run.finished_at,
+        `SELECT run.state, run.problem_code, run.started_at, run.finished_at,
                 COALESCE(run.planned_scene_count, expected.scene_count) AS total_scenes,
                 count(DISTINCT scene.id) AS accepted_scenes,
                 run.planned_batch_count AS total_batches,
@@ -6994,7 +6994,7 @@ async function projectDetail(
           WHERE run.account_id=$1 AND run.workspace_id=$2 AND run.project_id=$3
             AND run.project_revision_id=$4
             AND run.timeline_plan_id=$5
-          GROUP BY run.id, run.state, run.planned_scene_count, run.planned_batch_count,
+          GROUP BY run.id, run.state, run.problem_code, run.planned_scene_count, run.planned_batch_count,
                    expected.scene_count, run.created_at, run.started_at, run.finished_at
           ORDER BY run.created_at DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId, currentTimelineId],

@@ -981,6 +981,7 @@ interface ProjectDetailResponse {
   }[];
   readonly prompt_progress?: null | {
     readonly state?: "DISPATCHING" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
+    readonly problem_code?: string | null;
     readonly total_scenes?: HostedCount;
     readonly accepted_scenes?: HostedCount;
     readonly total_batches?: HostedCount;
@@ -5237,6 +5238,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       return "The connected computer has exhausted this span's automatic retries. Check the local worker, then refresh progress; no manual replay is available.";
     if (stageId === "image-generation" || stageId === "avatar-generation")
       return "This provider attempt is terminal or its result is uncertain. Accepted media is saved, but another paid request cannot be sent from this project.";
+    if (stageId === "prompt-writing" && promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID")
+      return "The original provider result was invalid and its known cost is settled. Saved prompts remain available; this project cannot send another paid prompt request automatically.";
     if (stageId === "prompt-writing" && promptProgress?.state === "UNKNOWN")
       return "The prompt request's result is uncertain. A fresh paid request is blocked until the existing attempt is resolved.";
     if (stageId === "voiceover-context" && contextValidationFailed)
@@ -5294,7 +5297,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             : {}
       : {}),
     ...(failedStageIds.has("prompt-writing") && query.data.generation?.id &&
-    promptProgress?.state !== "UNKNOWN"
+    promptProgress?.state !== "UNKNOWN" &&
+    promptProgress?.problem_code !== "HOSTED_PROMPT_OUTPUT_INVALID"
       ? {
           "prompt-writing": stageRetryButton(promptWriting.isPending, () => promptWriting.mutate()),
         }
@@ -5626,7 +5630,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                     ? `Writing ${promptBatchStatus.toLowerCase()}.`
                     : "Writing prompt batches."
                   : promptWritingStopped
-                    ? "No new prompt batch will be sent automatically."
+                    ? promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID"
+                      ? "The original provider result was invalid. Saved prompts are intact; another paid batch will not be sent automatically."
+                      : "No new prompt batch will be sent automatically."
                     : acceptedPrompts.length > 0
                       ? "Accepted prompts saved."
                       : "Waiting for prompt writing."}
