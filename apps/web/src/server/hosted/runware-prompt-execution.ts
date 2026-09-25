@@ -84,6 +84,24 @@ export async function recoverClaimedHostedPromptBatch(input: {
     originalRequestSha256: input.requestHash,
     fetch: input.fetcher,
   });
+  const recoveredText = recovered.outputText.trim();
+  let nativeJsonValid = false;
+  try {
+    JSON.parse(recoveredText);
+    nativeJsonValid = true;
+  } catch {
+    // Report only the shape of the archived result; never log scene content.
+  }
+  console.info("hosted_prompt_claimed_result_shape", {
+    batch_ordinal: input.batchOrdinal,
+    chars: recovered.outputText.length,
+    output_tokens: recovered.usage.outputTokens,
+    native_json_valid: nativeJsonValid,
+    starts_object: recoveredText.startsWith("{"),
+    ends_object: recoveredText.endsWith("}"),
+    starts_fence: recoveredText.startsWith("```"),
+    ends_fence: recoveredText.endsWith("```"),
+  });
   let evidence: RunwarePromptAttemptEvidence | null = null;
   const writer = new RunwarePromptWriter({
     transport: {
