@@ -259,6 +259,32 @@ it("estimates remaining API work from live counts while image and avatar lanes r
     nowMs: Date.parse("2026-09-25T00:15:00.000Z"),
   })?.overrun).toBe(true);
 });
+it("uses observed prompt throughput early in a long run", () => {
+  const input = {
+    durationMs: 159_200,
+    promptTotal: 327,
+    promptAccepted: 37,
+    promptComplete: false,
+    promptStartedAt: "2026-09-25T00:00:00.000Z",
+    spanTotal: 0,
+    spanReady: 0,
+    spanStartedAt: null,
+    imageTotal: 0,
+    imageAccepted: 0,
+    imageSubmittedAt: null,
+    avatarTotal: 0,
+    avatarAccepted: 0,
+    avatarSubmittedAt: null,
+    renderSubmittedAt: null,
+    renderComplete: false,
+    failed: false,
+    nowMs: Date.parse("2026-09-25T00:06:00.000Z"),
+  };
+  const observed = hostedApiRemainingTimeEstimate(input);
+  const referenceOnly = hostedApiRemainingTimeEstimate({ ...input, promptStartedAt: null });
+  expect(observed!.remaining_min_ms).toBeGreaterThan(referenceOnly!.remaining_min_ms + 1_000_000);
+});
+
 const PRESET_ID = "44444444-4444-4444-8444-444444444444";
 
 const config = {

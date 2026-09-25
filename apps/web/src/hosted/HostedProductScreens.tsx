@@ -4993,7 +4993,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           : apiTimeEstimate?.overrun
         ? "than recent short runs; API and render times vary"
             : apiEstimateRange
-          ? "remaining · based on recent short runs; times vary"
+          ? "remaining · based on live progress and recent short runs; times vary"
               : query.data.generation
                 ? "provider timing varies"
                 : "timing available after planning";

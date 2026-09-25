@@ -443,7 +443,7 @@ it.each([
   {
     overrun: false,
     expectedValue: "~2–5 min",
-    expectedDetail: /based on recent short runs; times vary/i,
+    expectedDetail: /based on live progress and recent short runs; times vary/i,
   },
   {
     overrun: true,

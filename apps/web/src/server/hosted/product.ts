@@ -3788,18 +3788,18 @@ export function hostedApiRemainingTimeEstimate(input: {
     const startMs = start == null ? NaN : new Date(String(start)).getTime();
     return Number.isFinite(startMs) ? Math.max(0, now - startMs) : 0;
   };
-  const remainingMs = (total: number, accepted: number, referenceMs: number, referenceCount: number, startedAt: unknown) => {
+  const remainingMs = (total: number, accepted: number, referenceMs: number, referenceCount: number, startedAt: unknown, liveFrom = Math.ceil(total / 2)) => {
     const remaining = Math.max(0, total - accepted);
     if (remaining === 0) return 0;
     const referencePerItem = referenceMs / referenceCount;
-    // Parallel batches can spend most of their time with only a few completed items.
-    // Extrapolate live throughput only after at least half the lane is accepted.
-    const observedPerItem = accepted >= Math.ceil(total / 2) ? activeMs(startedAt) / accepted : 0;
+    // Parallel media lanes need half their items before throughput is representative.
+    const observedPerItem = accepted >= liveFrom ? activeMs(startedAt) / accepted : 0;
     return remaining * Math.max(referencePerItem, observedPerItem);
   };
   const promptMs = input.promptComplete
     ? 0
-    : remainingMs(input.promptTotal, input.promptAccepted, 94_000, 29, input.promptStartedAt);
+    : remainingMs(input.promptTotal, input.promptAccepted, 94_000, 29, input.promptStartedAt,
+        Math.min(20, Math.ceil(input.promptTotal / 2)));
   const spanMs = remainingMs(input.spanTotal, input.spanReady, 47_000, 9, input.spanStartedAt);
   const imageMs = remainingMs(input.imageTotal, input.imageAccepted, 183_000, 28.5, input.imageSubmittedAt);
   const avatarMs = remainingMs(input.avatarTotal, input.avatarAccepted, 180_000, 9.5, input.avatarSubmittedAt);
