@@ -131,7 +131,7 @@ function HostedLibraryScreen() {
                   </Button>
                 </div>
               </div>
-              <Disclosure summary="Details">
+              <Disclosure className="library-details" summary="Details">
                 <div className="detail-facts">
                   <span>
                     <small>Retention</small>
