@@ -255,6 +255,12 @@ TO :"runtime_role";
 -- the JSON projection helper remains private.
 GRANT EXECUTE ON FUNCTION public.videoforge_read_hosted_api_jobs(uuid, uuid, uuid)
 TO :"runtime_role";
+-- The seven-argument entry point performs evidence-gated, provider-free render recovery.
+-- Keep it on the explicit allowlist so a later grant replay cannot disable Retry.
+GRANT EXECUTE ON FUNCTION public.videoforge_prepare_hosted_api_render_recovery(
+  uuid, uuid, uuid, uuid, uuid, uuid, text
+)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_materialize_hosted_api_jobs(uuid, uuid, uuid, uuid)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_claim_hosted_api_job(uuid, uuid, uuid, uuid, uuid)

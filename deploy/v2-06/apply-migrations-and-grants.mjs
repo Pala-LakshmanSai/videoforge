@@ -129,6 +129,7 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_finalize_hosted_v209_span_audio(uuid,uuid,uuid,jsonb)",
   "videoforge_materialize_hosted_v209_system_avatar_reference(uuid,uuid,uuid,uuid)",
   "videoforge_read_hosted_api_jobs(uuid,uuid,uuid)",
+  "videoforge_prepare_hosted_api_render_recovery(uuid,uuid,uuid,uuid,uuid,uuid,text)",
   "videoforge_materialize_hosted_api_jobs(uuid,uuid,uuid,uuid)",
   "videoforge_claim_hosted_api_job(uuid,uuid,uuid,uuid,uuid)",
   "videoforge_bind_hosted_api_image_prompt(uuid,uuid,uuid,uuid,text)",
