@@ -1,0 +1,190 @@
+{
+  "checkpoint": "V2-09",
+  "status": "OFFLINE_CANDIDATES_REJECTED_PAID_TEST_AWAITING_APPROVAL",
+  "production_unchanged": {
+    "hosted_source": "bc9136dd",
+    "worker_version": "0.1.30"
+  },
+  "paid_calls": 0,
+  "gpu_activation": false,
+  "source_detail_limit": "Published Fal FlashHead audio-to-video schema exposes image_url/audio_url/seed, output512x512at25fps. No native quality or resolution control.",
+  "sources": [
+    "https://fal.ai/models/fal-ai/flashhead/audio-to-video/api",
+    "https://fal.ai/models/topaz/upscale/video/precision",
+    "https://fal.ai/models/topaz/upscale/video/precision/api"
+  ],
+  "offline_composition": {
+    "scope": "Offline exact saved first full avatar clip from Simon and Helenn; no generation; no tracked source edits.",
+    "method": "Paired composition runs with reverse order second run; same 1080p25 compositor, CRF18 intermediate except CRF0 candidate; all final encode CRF22 medium threads2. CRF22 is controlled test, production defaults23.",
+    "warmup": "Simon baseline first run4.015s is cold import/init; use warmed reverse pass for meaningful comparison.",
+    "sharpen": "Native512 YCrCb luminance sigma0.7 amount0.3 delta clipped \u00b14; no invented features.",
+    "visual": "Inspected six lip crops at1/2/3s over both faces (closed/open/smiling). Sharpen is subtly crisper but does not restore missing mouth/teeth detail; lossless has no material visible benefit. Motion comparison videos produced for parent visual review; no claim playback inspected.",
+    "recommendation": "Reject both candidates: unproven meaningful quality gain, slower composition; lossless expands intermediate disk19\u201321x, sharpen increases final bytes4\u20138%.",
+    "results": [
+      {
+        "person": "simon",
+        "variant": "baseline",
+        "run": 0,
+        "compositionSeconds": 4.015334333000283,
+        "finalEncodeSeconds": 1.6751236669997525,
+        "intermediateBytes": 1047409,
+        "finalBytes": 690049
+      },
+      {
+        "person": "simon",
+        "variant": "sharpen",
+        "run": 0,
+        "compositionSeconds": 1.1195634169998812,
+        "finalEncodeSeconds": 1.7005012089994125,
+        "intermediateBytes": 1228601,
+        "finalBytes": 741811
+      },
+      {
+        "person": "simon",
+        "variant": "lossless",
+        "run": 0,
+        "compositionSeconds": 1.2862459999996645,
+        "finalEncodeSeconds": 1.951623500000096,
+        "intermediateBytes": 19831098,
+        "finalBytes": 669376
+      },
+      {
+        "person": "simon",
+        "variant": "lossless",
+        "run": 1,
+        "compositionSeconds": 1.2779579159996501,
+        "finalEncodeSeconds": 1.9200191250001808,
+        "intermediateBytes": 19831098,
+        "finalBytes": 669376
+      },
+      {
+        "person": "simon",
+        "variant": "sharpen",
+        "run": 1,
+        "compositionSeconds": 1.3360682499996983,
+        "finalEncodeSeconds": 1.7040981660002217,
+        "intermediateBytes": 1228601,
+        "finalBytes": 741811
+      },
+      {
+        "person": "simon",
+        "variant": "baseline",
+        "run": 1,
+        "compositionSeconds": 1.0092183750002732,
+        "finalEncodeSeconds": 1.6462676669998473,
+        "intermediateBytes": 1047409,
+        "finalBytes": 690049
+      },
+      {
+        "person": "helenn",
+        "variant": "baseline",
+        "run": 0,
+        "compositionSeconds": 1.1948951670001406,
+        "finalEncodeSeconds": 1.8842134160004207,
+        "intermediateBytes": 1123573,
+        "finalBytes": 801734
+      },
+      {
+        "person": "helenn",
+        "variant": "sharpen",
+        "run": 0,
+        "compositionSeconds": 1.2892385000004651,
+        "finalEncodeSeconds": 1.9148516249997556,
+        "intermediateBytes": 1273129,
+        "finalBytes": 832386
+      },
+      {
+        "person": "helenn",
+        "variant": "lossless",
+        "run": 0,
+        "compositionSeconds": 1.5181225419992188,
+        "finalEncodeSeconds": 2.201206290999835,
+        "intermediateBytes": 23268783,
+        "finalBytes": 784953
+      },
+      {
+        "person": "helenn",
+        "variant": "lossless",
+        "run": 1,
+        "compositionSeconds": 1.5030750409996472,
+        "finalEncodeSeconds": 2.183256917000108,
+        "intermediateBytes": 23268783,
+        "finalBytes": 784953
+      },
+      {
+        "person": "helenn",
+        "variant": "sharpen",
+        "run": 1,
+        "compositionSeconds": 1.3152268330004517,
+        "finalEncodeSeconds": 1.9070927909997408,
+        "intermediateBytes": 1273129,
+        "finalBytes": 832386
+      },
+      {
+        "person": "helenn",
+        "variant": "baseline",
+        "run": 1,
+        "compositionSeconds": 1.1465374159997737,
+        "finalEncodeSeconds": 1.8990842089997386,
+        "intermediateBytes": 1123573,
+        "finalBytes": 801734
+      }
+    ]
+  },
+  "offline_encoder": {
+    "variants": [
+      {
+        "name": "simon",
+        "crf": 23,
+        "seconds": 1.6206092920001538,
+        "bytes": 508533
+      },
+      {
+        "name": "simon",
+        "crf": 20,
+        "seconds": 1.687432292000267,
+        "bytes": 744094
+      },
+      {
+        "name": "simon",
+        "crf": 18,
+        "seconds": 1.7925174170004539,
+        "bytes": 946644
+      },
+      {
+        "name": "helenn",
+        "crf": 23,
+        "seconds": 1.9218922919999386,
+        "bytes": 654928
+      },
+      {
+        "name": "helenn",
+        "crf": 20,
+        "seconds": 2.1174433340001997,
+        "bytes": 926282
+      },
+      {
+        "name": "helenn",
+        "crf": 18,
+        "seconds": 2.361793250000119,
+        "bytes": 1166470
+      }
+    ],
+    "visual_result": "CRF20/18 preserve slightly cleaner edges but no meaningful restoration of missing mouth/teeth detail; video-only samples are42-46%/78-86% larger thanCRF23. Do not promote this as a model-quality fix.",
+    "timing_limit": "Short local exploratory samples; not a full production latency benchmark."
+  },
+  "next_pilot": {
+    "prepared": true,
+    "submitted": false,
+    "approval": "pending; earlier no-extra-cost constraint retained",
+    "endpoint": "topaz/upscale/video/precision",
+    "model": "Iris",
+    "requests": 2,
+    "seconds_each": 5,
+    "upscale_factor": 2,
+    "fps": 25,
+    "cap_usd": 0.5,
+    "automatic_app_enablement": false,
+    "stop_on_unknown_without_replay": true
+  }
+}
