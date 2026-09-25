@@ -5,8 +5,9 @@
 The user-started replacement NAPAA project has stopped during final video assembly on the Mac.
 All 327 saved image prompts, 96 audio spans, 327 Kie images, and 96 Fal avatar clips were accepted.
 A guarded local-only Stage 9 retry passed all Fal crop compositions, then its final FFmpeg
-encode failed with exit 232; the Mac worker's 256-file soft limit versus 424 render inputs is
-the leading cause under provider-free confirmation. No new paid generation was authorized.
+encode failed with exit 232; a provider-free reproduction confirmed the Mac worker's 256-file
+soft limit versus 424 render inputs caused FFmpeg's "Too many open files" error. Worker 0.1.35
+and one guarded saved-input process retry are being prepared; no new paid generation is authorized.
 The original Napa Video project below remains terminal and must not
 be replayed. Current NAPAA state, identities, spend, and remaining final-video gates are in
 `CURRENT_STATE.yaml` under `napaa_live_2026_09_25`.

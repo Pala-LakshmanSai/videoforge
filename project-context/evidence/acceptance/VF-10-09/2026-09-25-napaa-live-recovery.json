@@ -1,13 +1,13 @@
 {
   "checkpoint": "V2-09",
-  "observed_at": "2026-09-25T15:44:25Z",
+  "observed_at": "2026-09-25T15:59:51Z",
   "project_id": "6ec3ce8d-6558-494a-b8b3-a90a65c53bc8",
   "revision_id": "ef4a4117-c86b-4721-821b-c6a835f0e022",
   "prompt_run_id": "1a0acdd9-465f-4335-a214-8b1d81d6eee1",
   "generation_request_id": "033b710c-7ebc-4ac8-9c05-89c16c5a3d1e",
   "production_source_commit": "2aef5cd8c3b80f9d412005876570b347bf2c5433",
   "cloudflare_version": "26529314-8471-49a3-a3a5-94aa1e0d49da",
-  "migration_head": 207,
+  "migration_head": 208,
   "verified": {
     "prompt_batches": 33,
     "prompt_scenes": 327,
@@ -35,7 +35,8 @@
     "The first render failed because Fal clip 40 projected 58 pixels past the top source edge, exceeding the old 32-pixel crop allowance despite verified feature matches. Source 329df0aa accepts only bounded, feature-verified top-edge crops; all seven live outliers were composed locally without paid calls.",
     "Migration 0207 and UI source 2aef5cd8 permit one exact first-input render recovery with no new paid provider dispatch. At 15:35:36 UTC the guard consumed the first retry; the same 423 accepted provider outputs and 426 render inputs were reused.",
     "The exact 375-segment render command is 253844 UTF-16 units, above Windows CreateProcess 32767 limit. Source e7d1f642 stages hash-verified hardlinks and an identical filtergraph script to reduce it to 17199 units. Both 0.1.34 packages passed CI and were published; production activation remains pending.",
-    "The first guarded retry passed all 96 Fal crop compositions but final FFmpeg exited 232 with no output. macOS launchctl soft maxfiles is 256 and the compiled final graph has 424 inputs; exit 232 matches negative errno 24 (EMFILE). This is a high-confidence cause pending provider-free reproduction or captured FFmpeg stderr. A bounded process-limit fix and one further exact local retry are in progress."
+    "The first guarded retry passed all 96 Fal crop compositions but final FFmpeg exited 232 with no output. macOS launchctl soft maxfiles is 256 and the compiled final graph has 424 inputs. Provider-free reproduction with 424 inputs at soft256 returned the same exit232 and Too many open files stderr; soft1024 succeeded. Source 07f184be raises only the final render child limit during spawn, restores the parent limit, and classifies FILE_DESCRIPTOR_LIMIT. A bounded process recovery is live in migration 0208 but has not been claimed; route/UI source f93a91a7 is not yet deployed.",
+    "Combined 0.1.35 worker long-command and file-limit path passed a provider-free local FFmpeg 8.1.1 check with 424 hardlinked inputs, explicit cwd, filtergraph script, and 1024 descriptor limit. Final output succeeded, parent limit restored; production video acceptance remains open."
   ],
   "assembly_recovery": {
     "failed_attempt_id": "ba8f2e88-c3de-4bf7-8c72-710bc124f01c",

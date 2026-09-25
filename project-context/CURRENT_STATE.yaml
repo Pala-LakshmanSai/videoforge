@@ -7,8 +7,8 @@ napaa_live_2026_09_25:
   generation_request_id: 033b710c-7ebc-4ac8-9c05-89c16c5a3d1e
   production_source_commit: 2aef5cd8
   cloudflare_version: 26529314-8471-49a3-a3a5-94aa1e0d49da
-  database_migration_head: 0207
-  observed_at: "2026-09-25T15:44:25Z"
+  database_migration_head: 0208
+  observed_at: "2026-09-25T15:59:51Z"
   verified_progress: >-
     The replacement NAPAA run saved all 327/327 prompts in 33 batches. Stage 5 completed
     from those exact saved batches without another prompt provider request after fixing a
@@ -24,8 +24,9 @@ napaa_live_2026_09_25:
     It reused all 423 accepted provider outputs and 426 render inputs. The retry
     composed all 96 Fal wides but failed during the final FFmpeg encode at 15:44:07 UTC
     with PROCESS_EXIT 232 and no output. The Mac GUI worker's soft open-file limit is
-    256, while the compiled render has 424 inputs; this is a high-confidence cause
-    pending a local stderr or file-limit reproduction. Chrome is again at Stage 9
+    256, while the compiled render has 424 inputs. A provider-free FFmpeg reproduction
+    at 424 inputs/limit 256 returned the same exit 232 and "Too many open files" stderr;
+    limit 1024 succeeded. Chrome is again at Stage 9
     FAILED; no final MP4 exists.
   fixes: >-
     Source 95c11117 awaits completion before closing the Neon pool; 42ae8f7a applies exact
@@ -40,8 +41,11 @@ napaa_live_2026_09_25:
     26529314 serves that UI and worker release 0.1.33; the Mac worker is ONLINE with
     matching execution bundle. Both platform 0.1.34 packages are published with a
     separate long-command fix for Windows. That version is not production-active.
-    A further Mac file-limit fix and one exact, provider-free render-process recovery
-    are being prepared before the next local attempt.
+    Source 07f184be raises the POSIX final-render child limit to 1024 only during
+    spawn; source f93a91a7 adds a distinct guarded process-retry route and UI.
+    Migration 0208 is live and permits exactly one matching local process retry,
+    with no claim consumed yet. Dual-platform 0.1.35 release CI is running; the
+    production Worker and Mac installation still use 0.1.33 until release verification.
   remaining_gates: >-
     Fix the final FFmpeg file-limit failure and perform one guarded saved-input retry,
     assemble and technically validate the final MP4, verify real Chrome playback/seek,
