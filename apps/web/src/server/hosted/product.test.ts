@@ -19,6 +19,7 @@ const testState = vi.hoisted(() => {
     },
   ];
   const projectDetailAttemptRows: Record<string, unknown>[] = [];
+  const approvedDownloadRows: Record<string, unknown>[] = [];
   const projectDetailMediaRows: Record<string, unknown>[] = [];
   const projectDetailPromptRows: Record<string, unknown>[] = [];
   const createReplayRows: Record<string, unknown>[] = [];
@@ -51,6 +52,9 @@ const testState = vi.hoisted(() => {
       return { rows: rateLimitRows, affectedRows: 1 };
     if (sql.includes("videoforge_hosted_session_scope"))
       return { rows: scopeRows, affectedRows: 1 };
+    if (sql.includes("SELECT authority.object_key, authority.issued_content_length AS content_length") &&
+        sql.includes("JOIN hosted_project_reviews AS review"))
+      return { rows: approvedDownloadRows, affectedRows: approvedDownloadRows.length };
     // The picker's "which avatar can this workspace actually dispatch" lookup. It also selects the
     // canonical key, so it has to be routed before the pinned-avatar branch below.
     if (sql.includes("SELECT profile.name"))
@@ -152,6 +156,7 @@ const testState = vi.hoisted(() => {
     scopeRows,
     projectRows,
     projectDetailAttemptRows,
+    approvedDownloadRows,
     projectDetailMediaRows,
     projectDetailPromptRows,
     createReplayRows,
@@ -173,6 +178,54 @@ const testState = vi.hoisted(() => {
     pool,
     executor,
   };
+});
+
+describe("approved final MP4 download", () => {
+  const path = `/api/v2/hosted/projects/${PROJECT_ID}/download`;
+  const bytes = new TextEncoder().encode("fixture-mp4-bytes");
+  const checksum = `sha256:${"a".repeat(64)}`;
+  const key = `tenant/owned/workspace/owned/project/${PROJECT_ID}/revision/owned/lane/render/job/owned/artifact/final-mp4`;
+
+  it("streams an approved, matched R2 output on the authenticated origin", async () => {
+    testState.approvedDownloadRows.push({ object_key: key, content_length: bytes.length, checksum_sha256: checksum });
+    const digest = Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer;
+    const head = vi.fn(async () => ({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, checksums: { sha256: digest } }));
+    const get = vi.fn(async () => ({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, body: new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }) }));
+    try {
+      const result = await handleHostedProductRequest(request(path, "GET"), { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment, config, executionContext);
+      expect(result?.status).toBe(200);
+      expect(result?.headers.get("content-disposition")).toBe('attachment; filename="videoforge-output.mp4"');
+      expect(result?.headers.get("content-length")).toBe(String(bytes.length));
+      expect(result?.headers.get("x-videoforge-artifact-sha256")).toBe(checksum);
+      expect(Array.from(new Uint8Array(await result!.arrayBuffer()))).toEqual(Array.from(bytes));
+      expect(head).toHaveBeenCalledWith(key);
+      expect(get).toHaveBeenCalledWith(key);
+      const query = testState.query.mock.calls.find(([sql]) => String(sql).includes("SELECT authority.object_key, authority.issued_content_length AS content_length"));
+      expect(String(query?.[0])).toContain("review.output_checksum_sha256 = authority.issued_checksum_sha256");
+      expect(String(query?.[0])).toContain("attempt.project_revision_id = revision.id");
+      expect(String(query?.[0])).toContain("attempt.state = 'SUCCEEDED'");
+    } finally {
+      testState.approvedDownloadRows.length = 0;
+    }
+  });
+
+  it("does not read R2 without an approved current revision, and rejects wrong checksum", async () => {
+    const head = vi.fn();
+    const get = vi.fn();
+    const bucket = { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment;
+    const absent = await handleHostedProductRequest(request(path, "GET"), bucket, config, executionContext);
+    expect(absent?.status).toBe(404);
+    expect(head).not.toHaveBeenCalled();
+    testState.approvedDownloadRows.push({ object_key: key, content_length: bytes.length, checksum_sha256: checksum });
+    head.mockResolvedValue({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, checksums: { sha256: new Uint8Array(32).buffer } });
+    try {
+      const mismatch = await handleHostedProductRequest(request(path, "GET"), bucket, config, executionContext);
+      expect(mismatch?.status).toBe(503);
+      expect(get).not.toHaveBeenCalled();
+    } finally {
+      testState.approvedDownloadRows.length = 0;
+    }
+  });
 });
 
 vi.mock("./auth", () => ({

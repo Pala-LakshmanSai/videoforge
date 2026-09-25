@@ -8136,17 +8136,7 @@ async function projectDetail(
         typeof outputChecksum === "string" &&
         SHA256.test(outputChecksum)
       ) {
-        downloadUrl = (
-          await signer.sign({
-            method: "GET",
-            objectKey: outputObjectKey,
-            contentType: "video/mp4",
-            contentLength: outputLength,
-            checksumSha256: outputChecksum,
-            lifetimeSeconds: 300,
-            downloadFilename: "videoforge-output.mp4",
-          })
-        ).url;
+        downloadUrl = `/api/v2/hosted/projects/${projectId}/download`;
       }
     }
     return response({
@@ -8211,6 +8201,106 @@ async function projectDetail(
       media_pagination: mediaPagination,
       quality_flags: qualityFlags,
       manifest_url: manifestUrl,
+    });
+  } finally {
+    await pool.end();
+  }
+}
+
+async function downloadApprovedRender(
+  request: Request,
+  projectId: string,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  const bucket = environment.PRIVATE_ARTIFACTS;
+  if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const result = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.account_id,
+      ]);
+      return transaction.query<{
+        object_key: string;
+        content_length: string | number;
+        checksum_sha256: string;
+      }>(
+        `SELECT authority.object_key, authority.issued_content_length AS content_length,
+                authority.issued_checksum_sha256 AS checksum_sha256
+           FROM projects AS project
+           JOIN project_revisions AS revision
+             ON revision.account_id = project.account_id
+            AND revision.workspace_id = project.workspace_id
+            AND revision.project_id = project.id
+           JOIN hosted_cpu_job_attempts AS attempt
+             ON attempt.account_id = project.account_id
+            AND attempt.workspace_id = project.workspace_id
+            AND attempt.project_id = project.id
+            AND attempt.project_revision_id = revision.id
+           JOIN hosted_project_reviews AS review
+             ON review.account_id = attempt.account_id
+            AND review.workspace_id = attempt.workspace_id
+            AND review.project_id = project.id
+            AND review.render_attempt_id = attempt.id
+           JOIN hosted_cpu_upload_authorities AS authority
+             ON authority.account_id = attempt.account_id
+            AND authority.workspace_id = attempt.workspace_id
+            AND authority.attempt_id = attempt.id
+            AND authority.source = 'PRIMARY_RESULT_OUTPUT'
+          WHERE project.account_id = $1 AND project.workspace_id = $2
+            AND project.id = $3 AND project.project_kind = 'USER'
+            AND project.status = 'ACTIVE' AND revision.status = 'LOCKED'
+            AND revision.revision_number = (
+              SELECT max(current_revision.revision_number)
+                FROM project_revisions AS current_revision
+               WHERE current_revision.account_id = project.account_id
+                 AND current_revision.workspace_id = project.workspace_id
+                 AND current_revision.project_id = project.id
+            )
+            AND attempt.kind = 'RENDER' AND attempt.state = 'SUCCEEDED'
+            AND attempt.retention_deleted_at IS NULL
+            AND authority.issued_at IS NOT NULL
+            AND authority.content_type = 'video/mp4'
+            AND review.output_checksum_sha256 = authority.issued_checksum_sha256
+            AND attempt.result_object_key = authority.object_key
+            AND attempt.result_content_length = authority.issued_content_length
+            AND attempt.result_checksum_sha256 = authority.issued_checksum_sha256
+          ORDER BY review.approved_at DESC LIMIT 1`,
+        [scope.account_id, scope.workspace_id, projectId],
+      );
+    });
+    const artifact = result.rows[0];
+    const size = Number(artifact?.content_length);
+    if (
+      !artifact || !Number.isSafeInteger(size) || size < 1 || size > 10 * 1024 ** 3 ||
+      !SHA256.test(artifact.checksum_sha256)
+    ) return response({ error: { code: "APPROVED_RENDER_NOT_FOUND" } }, 404);
+    const head = await bucket.head(artifact.object_key);
+    if (
+      !head || head.size !== size || head.httpMetadata?.contentType !== "video/mp4" ||
+      !(await verifyHostedPreviewChecksum(bucket, artifact.object_key, head, artifact.checksum_sha256))
+    ) return response({ error: { code: "APPROVED_RENDER_UNAVAILABLE" } }, 503);
+    const object = await bucket.get(artifact.object_key);
+    if (
+      !object?.body || object.size !== size || object.httpMetadata?.contentType !== "video/mp4" ||
+      (head.etag && object.etag !== head.etag)
+    )
+      return response({ error: { code: "APPROVED_RENDER_UNAVAILABLE" } }, 503);
+    return new Response(object.body, {
+      headers: {
+        "content-type": "video/mp4",
+        "content-length": String(size),
+        "content-disposition": 'attachment; filename="videoforge-output.mp4"',
+        "cache-control": "private, no-store",
+        "x-content-type-options": "nosniff",
+        "x-videoforge-artifact-sha256": artifact.checksum_sha256,
+      },
     });
   } finally {
     await pool.end();
@@ -8448,6 +8538,9 @@ export async function handleHostedProductRequest(
   const review = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/review$/u.exec(url.pathname);
   if (request.method === "POST" && review)
     return approveReview(request, review[1]!, config, executionContext);
+  const download = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/download$/u.exec(url.pathname);
+  if (request.method === "GET" && download)
+    return downloadApprovedRender(request, download[1]!, environment, config, executionContext);
   const manifest = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/manifest$/u.exec(url.pathname);
   if (request.method === "GET" && manifest)
     return projectManifest(request, manifest[1]!, config, executionContext);
