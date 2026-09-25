@@ -59,7 +59,7 @@ if sys.platform == "darwin":
         bundle_identifier="com.videoforge.personal-media-worker",
         info_plist={
             "CFBundleDisplayName": "VideoForge Worker",
-            "CFBundleShortVersionString": "0.1.33",
+            "CFBundleShortVersionString": "0.1.34",
             "LSBackgroundOnly": True,
             "LSMinimumSystemVersion": "12.0",
         },
