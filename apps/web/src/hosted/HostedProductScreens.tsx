@@ -4873,9 +4873,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         : render?.state === "SUCCEEDED"
           ? "ready for review"
           : apiTimeEstimate?.overrun
-            ? "than one recent short run; API and render times vary"
+        ? "than recent short runs; API and render times vary"
             : apiEstimateRange
-              ? "remaining · based on one short run; API and render times vary"
+          ? "remaining · based on recent short runs; times vary"
               : query.data.generation
                 ? "provider timing varies"
                 : "timing available after planning";

@@ -9,7 +9,9 @@ api_generation_render_recovery_and_eta_2026_09_25:
     failures; accepted Kie/Fal assets and uncertain provider identities are never replayed.
     Every failed stage has a Retry affordance; only safe existing recovery routes are enabled.
     API remaining time is a rough project-wide range after planning, using accepted work counts,
-    observed short-run timings, parallel image/avatar lanes and a broad local-render range.
+    observed short-run timings, parallel image/avatar lanes and a production render range.
+    The two comparable hosted renders took 518 and 670 seconds; allow 20 percent variation.
+    The 153-second local replay used a different FFmpeg build and is excluded from calibration.
   evidence: >-
     Source 6f1c36b7 deployed as Cloudflare 0f16473c-928b-497d-8117-46a2b199a791 with
     installed worker 0.1.28 and migration ledger 0199. Helenn project

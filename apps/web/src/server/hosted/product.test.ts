@@ -238,8 +238,8 @@ it("estimates remaining API work from live counts while image and avatar lanes r
   const estimate = hostedApiRemainingTimeEstimate(input);
   expect(estimate).toMatchObject({ basis: "RECENT_API_SHORT_RUN", overrun: false });
   // Live avatar rate leaves about 107s; serializing both lanes would add another 64s.
-  expect(estimate?.remaining_min_ms).toBe(233_000);
-  expect(estimate?.remaining_max_ms).toBe(830_000);
+  expect(estimate?.remaining_min_ms).toBe(494_000);
+  expect(estimate?.remaining_max_ms).toBe(964_000);
   const earlyBatch = hostedApiRemainingTimeEstimate({
     ...input,
     imageAccepted: 2,
@@ -255,7 +255,7 @@ it("estimates remaining API work from live counts while image and avatar lanes r
     imageAccepted: 28,
     avatarAccepted: 10,
     renderSubmittedAt: "2026-09-25T00:00:00.000Z",
-    nowMs: Date.parse("2026-09-25T00:12:00.000Z"),
+    nowMs: Date.parse("2026-09-25T00:15:00.000Z"),
   })?.overrun).toBe(true);
 });
 const PRESET_ID = "44444444-4444-4444-8444-444444444444";

@@ -297,12 +297,12 @@ it.each([
   {
     overrun: false,
     expectedValue: "~2–5 min",
-    expectedDetail: /based on one short run; API and render times vary/i,
+    expectedDetail: /based on recent short runs; times vary/i,
   },
   {
     overrun: true,
     expectedValue: "Taking longer",
-    expectedDetail: /than one recent short run; API and render times vary/i,
+    expectedDetail: /than recent short runs; API and render times vary/i,
   },
 ])("shows an honest API project time estimate when overrun=$overrun", async ({
   overrun,

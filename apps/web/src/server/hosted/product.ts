@@ -3746,7 +3746,8 @@ function hostedProgressPercent(completed: unknown, total: unknown): number | nul
 
 // Comparable 159.2-second API videos took 171s/29 and 195s/28 for images,
 // and 169s/9 and 190s/10 for avatars. The earlier run took 94s for prompts,
-// 47s for spans, and 153s locally versus 670s hosted to render.
+// 47s for spans; the two hosted renders took 518s and 670s. Render bounds allow
+// 20% variation around those observations. A faster local FFmpeg replay is excluded.
 // These are rough planning bounds, not a provider deadline or billing promise.
 export function hostedApiRemainingTimeEstimate(input: {
   readonly durationMs: number;
@@ -3798,8 +3799,8 @@ export function hostedApiRemainingTimeEstimate(input: {
   const avatarMs = remainingMs(input.avatarTotal, input.avatarAccepted, 180_000, 9.5, input.avatarSubmittedAt);
   const beforeRenderMs = promptMs + spanMs + Math.max(imageMs, avatarMs);
   const scale = input.durationMs / 159_200;
-  const renderMinMs = 60_000 + 93_000 * scale;
-  const renderMaxMs = 60_000 + 610_000 * scale;
+  const renderMinMs = 60_000 + 354_000 * scale;
+  const renderMaxMs = 60_000 + 744_000 * scale;
   const renderElapsedMs = activeMs(input.renderSubmittedAt);
   const overrun = input.renderSubmittedAt != null && renderElapsedMs > renderMaxMs;
   return {
