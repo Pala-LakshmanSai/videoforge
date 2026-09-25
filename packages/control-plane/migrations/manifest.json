@@ -1002,6 +1002,12 @@
       "name": "hosted_prompt_future_run_reservation_cap",
       "filename": "0204_hosted_prompt_future_run_reservation_cap.sql",
       "sha256": "sha256:66ca382459cf251b2b5b9fc96268b04234a74b71b9aec9f4c844471f49575e29"
+    },
+    {
+      "version": 205,
+      "name": "hosted_prompt_complete_recovery",
+      "filename": "0205_hosted_prompt_complete_recovery.sql",
+      "sha256": "sha256:0dcb8c37ad754c2d21ec333df6876642e09768ac5dfd64068b1e9741faef14c4"
     }
   ]
 }

@@ -100,6 +100,7 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_load_hosted_prompt_plan(uuid,uuid,uuid,uuid)",
   "videoforge_prepare_hosted_prompt_run(jsonb)",
   "videoforge_complete_hosted_prompt_run(jsonb)",
+  "videoforge_reopen_complete_hosted_prompt_run(uuid)",
   "videoforge_record_hosted_prompt_scene(uuid,jsonb)",
   "videoforge_record_hosted_prompt_batch(uuid,jsonb)",
   "videoforge_recover_hosted_prompt_batch(uuid,text,jsonb)",

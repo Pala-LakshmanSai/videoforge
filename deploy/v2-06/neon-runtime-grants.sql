@@ -144,6 +144,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_prepare_hosted_prompt_run(jsonb)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_complete_hosted_prompt_run(jsonb)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_reopen_complete_hosted_prompt_run(uuid)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_record_hosted_prompt_scene(uuid,jsonb)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_record_hosted_prompt_batch(uuid,jsonb)
