@@ -63,9 +63,11 @@ whisper.cpp commit and exact Intel and Apple Silicon FFmpeg inputs. The worker v
 model again at startup and against every ASR job contract. No first-run model download, runtime
 provider discovery, or user configuration occurs.
 
-This checkout prepares `media-worker-v0.1.32` to increase both fullscreen and split-screen image zoom by 10%, then 20%, then another 10% after previews. It is not
-an immutable publication yet. Compute its execution-bundle hash from the final clean source commit,
-then publish the new release before updating hosted release metadata.
+`media-worker-v0.1.32` was immutably published from source `ecf5bce5` after both Windows x64 and
+macOS universal2 builds and frozen render checks passed. Both installers share execution bundle
+`sha256:591a0f972cdd00c5e2c0dcd1c93969727ef8de60481a165cda416c36a8342073`.
+The Mac installation has been verified online; a native Windows installation/pairing check for
+0.1.32 remains separate from the published-package verification.
 
 ## Bounded Windows acceptance run
 
