@@ -16,6 +16,7 @@ import {
 } from "../providers/fal-avatar-job";
 
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const API_LANE_LIMIT = { IMAGE: 8, AVATAR: 4 } as const;
 
 export interface HostedApiGenerationScope {
   readonly accountId: string;
@@ -94,6 +95,40 @@ function jobs(value: unknown, scope: HostedApiGenerationScope): Job[] {
   });
 }
 
+/** Keep both provider lanes moving while limiting outstanding paid jobs. */
+export function selectHostedApiGenerationJobIndex(
+  current: readonly Pick<Job, "lane" | "state">[],
+  observation: number,
+): number | null {
+  if (current.some((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY"].includes(job.state)))
+    return null;
+  const submitted = current.flatMap((job, index) =>
+    job.state === "SUBMITTED" ? [index] : [],
+  );
+  const prepared = current.flatMap((job, index) =>
+    job.state === "PREPARED" ? [index] : [],
+  );
+  if (!current.some((job) => job.state === "FAILED")) {
+    const submittedByLane = {
+      IMAGE: submitted.filter((index) => current[index]?.lane === "IMAGE").length,
+      AVATAR: submitted.filter((index) => current[index]?.lane === "AVATAR").length,
+    };
+    const available = (["IMAGE", "AVATAR"] as const).filter(
+      (lane) =>
+        submittedByLane[lane] < API_LANE_LIMIT[lane] &&
+        prepared.some((index) => current[index]?.lane === lane),
+    );
+    if (available.length > 0) {
+      const lane = available.sort(
+        (a, b) =>
+          submittedByLane[a] / API_LANE_LIMIT[a] - submittedByLane[b] / API_LANE_LIMIT[b],
+      )[0]!;
+      return prepared.find((index) => current[index]?.lane === lane) ?? null;
+    }
+  }
+  return submitted.length > 0 ? submitted[observation % submitted.length]! : null;
+}
+
 /** Advances one durable API job. The database claim precedes each paid POST, so a resumed
  * Workflow can observe a persisted provider ID but cannot resubmit an uncertain attempt. */
 export async function advanceHostedApiGeneration(
@@ -123,14 +158,8 @@ export async function advanceHostedApiGeneration(
   const blocked = current.find((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY"].includes(job.state));
   if (blocked) return outcome("ACTION_REQUIRED", blocked.failureCode ?? blocked.state);
   const failed = current.find((job) => job.state === "FAILED");
-  const submitted = current.filter((item) => item.state === "SUBMITTED");
-  const prepared = failed ? undefined : current.find((item) => item.state === "PREPARED");
-  const job =
-    prepared && submitted.length < 2
-      ? prepared
-      : submitted.length > 0
-        ? submitted[observation % submitted.length]
-        : prepared;
+  const index = selectHostedApiGenerationJobIndex(current, observation);
+  const job = index === null ? undefined : current[index];
   if (!job && failed) {
     const settlement = object(
       await call(database, scope.accountId, "videoforge_settle_hosted_api_failure", base),
