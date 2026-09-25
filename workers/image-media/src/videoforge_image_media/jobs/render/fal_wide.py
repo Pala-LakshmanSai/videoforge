@@ -6,6 +6,16 @@ import subprocess
 from pathlib import Path
 
 
+def _perspective_maps(transform, size):
+    """Cache the unchanged inverse mapping for every frame in one clip."""
+    import cv2
+    import numpy as np
+
+    yy, xx = np.indices((size[1], size[0]), dtype=np.float32)
+    coordinates = cv2.perspectiveTransform(np.stack((xx, yy), axis=-1), np.linalg.inv(transform))
+    return cv2.convertMaps(coordinates, None, cv2.CV_16SC2)
+
+
 def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> None:
     """Register the native crop using source features; fail if geometry is uncertain."""
     import cv2
@@ -63,6 +73,7 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
         x1, y1 = min(1920, x1), min(1080, y1)
         transform = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]]) @ homography
         region_width, region_height = x1 - x0, y1 - y0
+        maps = _perspective_maps(transform, (region_width, region_height))
         yy, xx = np.mgrid[0:512, 0:512]
         mask = np.minimum.reduce([xx, yy, 511 - xx, 511 - yy]).astype(np.float32)
         alpha = cv2.warpPerspective(np.clip(mask / 60, 0, 1), transform,
@@ -77,23 +88,23 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
         capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
         frame_count = 0
         last_wide = None
+        wide = background.copy()
         try:
             assert process.stdin is not None and process.stderr is not None
             while True:
                 ok, frame = capture.read()
                 if not ok:
                     break
-                warped = cv2.warpPerspective(frame, transform, (region_width, region_height))
-                wide = background.copy()
+                warped = cv2.remap(frame, *maps, cv2.INTER_CUBIC)
                 wide[y0:y1, x0:x1] = (warped.astype(np.float32) * alpha + backdrop).astype(np.uint8)
-                process.stdin.write(wide.tobytes())
+                process.stdin.write(memoryview(wide))
                 last_wide = wide
                 frame_count += 1
             missing_frames = native_frame_count - frame_count
             if missing_frames < 0 or missing_frames > 3 or last_wide is None:
                 raise ValueError("Fal square clip decode lost too many frames")
             for _ in range(missing_frames):
-                process.stdin.write(last_wide.tobytes())
+                process.stdin.write(memoryview(last_wide))
                 frame_count += 1
             process.stdin.close()
             error = process.stderr.read().decode("utf-8", errors="replace")

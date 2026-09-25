@@ -97,10 +97,13 @@ def _continuous_image_filter(
     zoom = _zoom_expression(frame_count, delta, quintic=True)
     x_margin = f"(W-W/({zoom}))/2"
     y_margin = f"(H-H/({zoom}))/2"
+    # Cache the scaled still before the animated transform; repeating its decode
+    # and scale for every output frame adds work without changing any pixels.
     return (
         f"[{input_index}:v:0]"
         f"scale={width}:1080:force_original_aspect_ratio=increase:flags=lanczos,"
         f"crop={width}:1080,setsar=1,"
+        "loop=loop=-1:size=1:start=0,"
         f"perspective=x0='{x_margin}':y0='{y_margin}':"
         f"x1='W-({x_margin})':y1='{y_margin}':"
         f"x2='{x_margin}':y2='H-({y_margin})':"

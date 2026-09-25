@@ -1,0 +1,156 @@
+{
+  "checkpoint": "V2-09",
+  "date": "2026-09-25",
+  "kind": "provider-free matched local benchmark",
+  "source_base": "1eaa8c7e",
+  "project_id": "f2b6ab1d-4690-47bf-a1eb-ed27f3141c28",
+  "manifest_sha256": "sha256:765b570dba1454272e4a4ca765cb3738e6385633e8f23409817c483bbc2cd335",
+  "ffmpeg": {
+    "version": "8.1.2",
+    "sha256": "sha256:32a863b82bad587a8b54d8fba239d9e094b0a366ac870a68844c1104b92e70fa",
+    "platform": "macOS arm64"
+  },
+  "comparison": {
+    "same_inputs": true,
+    "same_binary": true,
+    "same_encoder_and_threads": true,
+    "same_wide_intermediates": true,
+    "local_inputs_warm_cache": true,
+    "network_excluded": true
+  },
+  "baseline": {
+    "full_render_job_seconds": 123.43388404100006,
+    "wide_composition_seconds": 7.9236292080004205,
+    "final_encode_seconds": 100.30221033399994,
+    "result": "SUCCEEDED"
+  },
+  "scaled_still_frame_reuse": {
+    "encode_seconds": 82.21582475000014,
+    "returncode": 0,
+    "max_rss_bytes": 1925562368,
+    "bytes": 20578843,
+    "sha256": "cf04146a9ff82828a28c3eec58a98d10118e7d79c562e6ff19140cb53b969b94",
+    "byte_identical": true
+  },
+  "launchd_classification": {
+    "runs": [
+      {
+        "seconds": 11.93098395900006,
+        "returncode": 0,
+        "kind": "Background",
+        "sha256": "4a20cc5745fccceb8c04f0abfb2d208e5d5f50773d447e1d9194cec598fde9a7"
+      },
+      {
+        "seconds": 3.5691367500003253,
+        "returncode": 0,
+        "kind": "Standard",
+        "sha256": "4a20cc5745fccceb8c04f0abfb2d208e5d5f50773d447e1d9194cec598fde9a7"
+      },
+      {
+        "seconds": 12.000437208000221,
+        "returncode": 0,
+        "kind": "Background",
+        "sha256": "4a20cc5745fccceb8c04f0abfb2d208e5d5f50773d447e1d9194cec598fde9a7"
+      },
+      {
+        "seconds": 3.4277312499998516,
+        "returncode": 0,
+        "kind": "Standard",
+        "sha256": "4a20cc5745fccceb8c04f0abfb2d208e5d5f50773d447e1d9194cec598fde9a7"
+      }
+    ],
+    "mean_background_seconds": 11.96571058350014,
+    "mean_standard_seconds": 3.4984340000000884,
+    "all_output_bytes_identical": true,
+    "temporary_jobs_unloaded": true
+  },
+  "output": {
+    "duration_ms": 159200,
+    "frames": 4776,
+    "bytes": 20578843,
+    "sha256": "sha256:cf04146a9ff82828a28c3eec58a98d10118e7d79c562e6ff19140cb53b969b94",
+    "width": 1920,
+    "height": 1080,
+    "full_decode": true,
+    "av_drift_ms": 0,
+    "loudness": {
+      "profile": "voiceover-minus16lufs-v1",
+      "normalized": true,
+      "input_integrated_lufs": -21.61,
+      "input_true_peak_dbtp": -4.71,
+      "output_integrated_lufs": -16.1,
+      "output_true_peak_dbtp": -2.25
+    }
+  },
+  "checks": {
+    "render_and_soulx_tests": 26,
+    "personal_worker_tests": 46
+  },
+  "limits": [
+    "Hosted post-release wall time is not measured by this isolated comparison.",
+    "The full local render reproduces production bytes; its wall time excludes production downloads, scheduling and upload.",
+    "Launchd classification timings isolate a five-second production image segment, not a complete hosted render.",
+    "No encoder preset, thread count, image motion, or output acceptance threshold changed."
+  ],
+  "provider_calls": 0,
+  "gpu_actions": 0,
+  "combined_after": {
+    "full_render_job_seconds": 109.24216466600001,
+    "wide_composition_seconds": 8.703257997999572,
+    "final_encode_seconds": 85.97819541600029,
+    "result": "SUCCEEDED",
+    "output": {
+      "asset_id": "asset_render_7c535ebaae4f9e8718d94c1e",
+      "sha256": "sha256:7c535ebaae4f9e8718d94c1ea569afc2438ea06c13da45f1921de03d15aa5f9a",
+      "bytes": 20764057,
+      "artifact_uri": "vf-local://objects/sha256/7c/7c535ebaae4f9e8718d94c1ea569afc2438ea06c13da45f1921de03d15aa5f9a.mp4",
+      "filename": "videoforge-output.mp4"
+    },
+    "probe": {
+      "schema_version": "technical-probe/v1",
+      "asset_id": "asset_render_7c535ebaae4f9e8718d94c1e",
+      "sha256": "sha256:7c535ebaae4f9e8718d94c1ea569afc2438ea06c13da45f1921de03d15aa5f9a",
+      "bytes": 20764057,
+      "container": "mp4",
+      "duration_ms": 159200,
+      "total_frames": 4776,
+      "video": {
+        "codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 1920,
+        "height": 1080,
+        "fps_num": 30,
+        "fps_den": 1,
+        "start_ms": 0
+      },
+      "audio": {
+        "codec": "aac",
+        "sample_rate_hz": 48000,
+        "channels": 2,
+        "start_ms": 0
+      },
+      "stream_counts": {
+        "video": 1,
+        "audio": 1,
+        "subtitle": 0,
+        "data": 0
+      },
+      "av_drift_ms": 0,
+      "decode_ok": true,
+      "loudness": {
+        "profile": "voiceover-minus16lufs-v1",
+        "normalized": true,
+        "input_integrated_lufs": -21.61,
+        "input_true_peak_dbtp": -4.71,
+        "output_integrated_lufs": -16.1,
+        "output_true_peak_dbtp": -2.25
+      },
+      "tools": {
+        "ffmpeg_version": "8.1.2",
+        "ffprobe_version": "8.1.2",
+        "filtergraph_sha256": "sha256:16e6414fa451e9f204139a3746671417954d1f5cac9e2592cefc79af1bdb2646"
+      }
+    },
+    "execution_context": "terminal; Standard launchd scheduling improvement measured separately, not included here"
+  }
+}

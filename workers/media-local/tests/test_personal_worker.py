@@ -955,6 +955,7 @@ class PersonalWorkerContractTests(unittest.TestCase):
                 ["/bin/launchctl", "bootstrap", "gui/501", str(target)],
             )
             self.assertEqual(plistlib.loads(target.read_bytes())["RunAtLoad"], True)
+            self.assertEqual(plistlib.loads(target.read_bytes())["ProcessType"], "Standard")
 
     def test_mac_uninstall_verifies_launchagent_is_unloaded_before_removing_plist(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

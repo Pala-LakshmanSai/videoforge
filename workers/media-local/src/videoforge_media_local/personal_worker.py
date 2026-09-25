@@ -32,7 +32,7 @@ from videoforge_media_local.personal_execution import (
 from videoforge_media_local.personal_tls import https_context
 
 _SERVICE = "com.videoforge.personal-media-worker"
-_WORKER_VERSION = "0.1.28"
+_WORKER_VERSION = "0.1.29"
 _PROTOCOL_VERSION = 1
 _USER_AGENT = f"VideoForge-Worker/{_WORKER_VERSION}"
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
@@ -75,7 +75,9 @@ def _launch_agent_document(executable: Path | None = None) -> bytes:
         "RunAtLoad": True,
         "KeepAlive": {"SuccessfulExit": False},
         "ThrottleInterval": 30,
-        "ProcessType": "Background",
+        # These are user-requested renders. Background throttles their child
+        # encoders and I/O even while the user waits for the result.
+        "ProcessType": "Standard",
     }
     return plistlib.dumps(document)
 
