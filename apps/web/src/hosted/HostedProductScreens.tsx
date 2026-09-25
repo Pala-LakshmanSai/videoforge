@@ -661,6 +661,11 @@ const HOSTED_ACTIVE_ATTEMPT_STATES = new Set([
   "RECONCILING",
   "CANCEL_REQUESTED",
 ]);
+const HOSTED_GENERATION_STAGE_IDS = new Set([
+  "image-generation",
+  "avatar-generation",
+  "render",
+]);
 const CPU_CANCEL_CONFIRMATION_MS = 5_000;
 const HOSTED_TERMINAL_STAGE_STATUSES = new Set([
   "FAILED",
@@ -690,6 +695,33 @@ function hostedHasActiveWork(
           String(lane.attempt_state ?? lane.runtime_state ?? "").toUpperCase(),
         ),
       ),
+  );
+}
+
+/** A failed dispatch response is stale once the server reports a generation-stage transition. */
+function hostedGenerationHasStarted(
+  stages: readonly { readonly id?: string; readonly status: string }[] | undefined,
+): boolean {
+  return Boolean(
+    stages?.some((stage) => {
+      if (!HOSTED_GENERATION_STAGE_IDS.has(String(stage.id ?? "").toLowerCase())) return false;
+      const status = stage.status.toUpperCase();
+      return (
+        HOSTED_ACTIVE_STAGE_STATUSES.has(status) ||
+        [
+          "WAITING_FOR_WORKER",
+          "RETRY_WAIT",
+          "DISPATCHED",
+          "IN_PROGRESS",
+          "GENERATING",
+          "UPLOADING",
+          "COMPLETE",
+          "SUCCEEDED",
+          "READY_FOR_REVIEW",
+          "APPROVED",
+        ].includes(status)
+      );
+    }),
   );
 }
 
@@ -4501,6 +4533,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     (stage) => stage.id === "prompt-writing",
   )?.status;
   const spanAudio = query.data?.span_audio;
+  const durableGenerationStarted = hostedGenerationHasStarted(query.data?.stages);
   // A clip that failed on the owner's own computer still has automatic retries, so keep the
   // preparation phase open instead of dead-ending Stage 6 the moment one clip fails.
   const spanFailuresAreRetryable = Boolean(
@@ -4523,6 +4556,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const gpuDispatchReady = Boolean(
     query.data?.generation?.id &&
       !spanPreparationActive &&
+      !durableGenerationStarted &&
       query.data.generation.stage === "READY_FOR_GPU_DISPATCH" &&
       promptStageState === "COMPLETE" &&
       (query.data.generation_provider === "KIE_FAL" ||
@@ -4541,6 +4575,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       (query.data.generation_provider === "KIE_FAL" ||
         (query.data.gpu_transport === "QUALIFIED_EXACT" &&
           query.data.gpu_readiness.dispatch_available === true)) &&
+      !durableGenerationStarted &&
       !query.data.attempts.some((attempt) =>
         ["IMAGE", "AVATAR", "MAGE_IMAGE", "SOULX_AVATAR"].includes(
           String(attempt.kind).toUpperCase(),
@@ -5221,7 +5256,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         <div className="validation validation-info" role="status" aria-live="polite">
           Generation is starting…
         </div>
-      ) : gpuDispatch.isError ? (
+      ) : gpuDispatch.isError && !durableGenerationStarted ? (
         <div className="validation validation-danger" role="alert">
           {gpuDispatchPreSendIntegrityError ? (
             <p>Generation has not started. Prepared generation data failed validation.</p>

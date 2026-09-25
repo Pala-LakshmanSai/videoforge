@@ -4079,6 +4079,112 @@ describe("hosted product journey", () => {
     ).toBe(true);
   });
 
+  it("clears a stale uncertain-start notice after durable generation begins", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const beforeStart = {
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-09-06T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [],
+      gpu_transport: "QUALIFIED_EXACT" as const,
+      gpu_readiness: qualifiedGpuReadiness,
+      generation: {
+        id: "44444444-4444-4444-8444-444444444444",
+        timeline_plan_sha256: `sha256:${"b".repeat(64)}`,
+        planned_tasks: 2,
+        completed_tasks: 0,
+        failed_tasks: 0,
+        stage: "READY_FOR_GPU_DISPATCH" as const,
+      },
+      queue: { status: "ACTIVE", position: 1, ahead: 0, total: 1 },
+      stages: [
+        {
+          id: "prompt-writing",
+          name: "Write image prompts",
+          status: "COMPLETE",
+          progress_percent: 100,
+        },
+      ],
+    };
+    const afterStart = {
+      ...beforeStart,
+      stages: [
+        ...beforeStart.stages,
+        {
+          id: "audio-spanning",
+          name: "Audio spanning",
+          status: "COMPLETE",
+          progress_percent: 100,
+        },
+        {
+          id: "image-generation",
+          name: "Generate images",
+          status: "COMPLETE",
+          progress_percent: 100,
+        },
+        {
+          id: "avatar-generation",
+          name: "Generate avatar video",
+          status: "RUNNING",
+          progress_percent: 4,
+        },
+        { id: "render", name: "Assemble final video", status: "RUNNING", progress_percent: 0 },
+      ],
+    };
+    let dispatches = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith("/gpu-dispatch")) {
+          dispatches += 1;
+          return Response.json({ error: { code: "HOSTED_PAIR_ACK_UNKNOWN" } }, { status: 504 });
+        }
+        return Response.json(beforeStart);
+      }),
+    );
+    render(
+      <QueryClientProvider client={client}>
+        <HostedProjectScreen projectId={projectId} />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByText(/Generation start could not be confirmed/u),
+    ).toBeInTheDocument();
+    expect(dispatches).toBe(1);
+    act(() => client.setQueryData(["hosted-project", projectId], afterStart));
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Generation start could not be confirmed/u),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Retry generation" })).not.toBeInTheDocument();
+    });
+    expect(dispatches).toBe(1);
+
+    act(() =>
+      client.setQueryData(["hosted-project", projectId], {
+        ...afterStart,
+        stages: afterStart.stages.map((stage) =>
+          stage.id === "avatar-generation"
+            ? { ...stage, status: "COMPLETE", progress_percent: 100 }
+            : stage.id === "render"
+              ? { ...stage, status: "FAILED" }
+              : stage,
+        ),
+      }),
+    );
+    expect(
+      screen.queryByText(/Generation start could not be confirmed/u),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry generation" })).not.toBeInTheDocument();
+    expect(dispatches).toBe(1);
+  });
+
   it("shows confirmed pre-send candidate validation failure without a retry action", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
