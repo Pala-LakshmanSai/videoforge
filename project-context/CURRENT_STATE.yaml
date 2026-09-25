@@ -1,7 +1,53 @@
 schema_version: "2.0"
+api_generation_prompt_budget_2026_09_25:
+  checkpoint: V2-09
+  status: PRODUCTION_FIX_DEPLOYED_LONG_RUN_BLOCKED_UNKNOWN
+  decision: >-
+    Fresh Kie/Fal production does not depend on RunPod inventory. Preserve the failed long
+    project's exact Runware prompt attempt and accepted prefix; do not replay its uncertain
+    ninth batch. For future prompt runs, reserve against the actual batch count up to USD 2,
+    check USD 0.25 headroom before each batch, and persist an immutable task identity and
+    request hash before the provider POST. Duplicate or uncertain claims stop before POST.
+  evidence: >-
+    Fresh hosted Chrome short project 84a31ffb-7923-4234-9623-3c065cc90224 accepted two Kie
+    images and one Fal audio-driven avatar. Measured Kie calls took 12.236 and 22.475 seconds;
+    Fal took 100.066 seconds. Installed worker 0.1.26 produced a 12.400-second, 1920x1080,
+    30fps H.264/AAC wide-composite MP4 with 372 frames and SHA-256
+    e97d4e0abeb9e25fd0e9d3cfba1b22dfc490f1b8ec8389ac2831ab1ab7a4da53. Full decode,
+    authenticated Chrome playback to end, approval and download passed; runtime preparation to
+    terminal was 3m48.347s. Background query polling and stale planning-banner repairs are
+    deployed in source 39c32e2d. The 18:11.553 project
+    a358da66-03f5-4f5c-aae8-34d14fa0250a saved a 212-image, 64-avatar, 231.2-second plan;
+    its published-rate Kie/Fal estimate was USD 2.00. Stage 5 ran 4m29.194s, accepted 76/212
+    prompts in eight batches, then stopped UNKNOWN before Kie/Fal dispatch. The prior USD 0.60
+    whole-run prompt reservation was smaller than the projected 22 batches. The ninth Runware
+    request/response and exact debit were not persisted, so its precise failure is unproven.
+    Two read-only exact task lookups returned taskNotFound; this does not establish no charge.
+    Future-only fix source 760fae76f235225f4415b2b32921092b93473dbe, migration 0194,
+    and Cloudflare version df42f575-d646-4e2d-b1ce-c17fe3eaea37 have production readback.
+    Migration ledger is 194, runtime claim grant is present, one app version is active, exact
+    25 secret names are retained, GPU transport is disabled, and installed worker 0.1.26 is
+    ONLINE. Read-only DB audit at 2026-09-25T03:12:35Z showed no long-project generation request,
+    runtime, Kie/Fal job, or serverless attempt; 212 IMAGE and 64 AVATAR tasks remain blocked.
+    Focused web, database, typecheck, build and bundle-gate checks passed.
+  remaining_gates: >-
+    The existing long project remains FAILED at Stage 5 with 76/212 prompts accepted and no
+    Kie/Fal jobs or final MP4. A separate fresh capped long production attempt is needed to
+    verify the prevention fix and finish full Chrome playback, approval and download. Preserve
+    the uncertain attempt; do not infer provider debit from taskNotFound.
+  provider_spend: >-
+    Fresh short Kie/Fal call-level debit was not independently available; its plan estimate was
+    USD 0.02. Long project's accepted prompt batches report known USD 0.531207 against its
+    USD 0.60 reservation; ninth-batch debit is unknown. The future-only prevention release made
+    no new paid provider calls.
+  paid_compute_shutdown: >-
+    No RunPod Pod or endpoint was started by the fresh API pilots or the prevention release.
+    Independent read-only inventory at 2026-09-25T03:12:18Z showed two EXITED Pods,
+    zero running workers, and zero queued/in-progress jobs across both min-0 endpoints.
+    Two retained 50GB EU-RO-1 volumes remain; no retained resource was mutated.
 api_generation_wide_crop_2026_09_25:
   checkpoint: V2-09
-  status: PRODUCTION_RELEASE_VERIFIED_FRESH_SHORT_PENDING
+  status: PRODUCTION_WIDE_SHORT_ACCEPTED
   decision: >-
     Fresh Fal FlashHead square clips use the versioned wide-v2 CPU source composite. The personal
     worker aligns each clip to the exact revision-pinned Avatar Hub image with feature matching
@@ -24,10 +70,9 @@ api_generation_wide_crop_2026_09_25:
     timings. A narrow worker-list transaction repair made the ONLINE device visible in Settings.
     The old approved pilot and paid task identities were not replayed.
   remaining_gates: >-
-    After a fresh finite paid approval, validate a new short production Chrome flow with live
-    source snapshot, timings, cost estimate, render and playback. Only after that short gate
-    passes, produce the full 18:11.553 voiceover video and report measured per-stage and wall
-    times. The earlier USD 5 pilot cap was used and exact Fal audio-route billing is unavailable.
+    Fresh short production wide-composite acceptance passed; the 18:11.553 long project is blocked
+    at Stage 5 as recorded in api_generation_prompt_budget_2026_09_25 above. Exact Fal debit is
+    unavailable.
   provider_spend: No new provider calls or charges during this local crop fix and rerender.
   paid_compute_shutdown: No RunPod/GPU activation was performed for this work.
 api_generation_transition_2026_09_24:

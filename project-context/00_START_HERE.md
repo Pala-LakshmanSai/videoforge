@@ -1,12 +1,15 @@
 # VideoForge: start here
 
-## Current generation transition — 2026-09-24
+## Current generation transition — 2026-09-25
 
 The user selected Kie z-image for fresh scene images and Fal FlashHead audio-to-video for fresh
-avatar spans. This removes GPU inventory from new ordinary generation. The API path is being
-integrated locally at V2-09; migration/deployment, one bounded paid project, actual cost readback,
-and hosted Chrome playback remain open. Historical RunPod attempts are immutable and retain their
-original reconciliation and cleanup. See `CURRENT_STATE.yaml` and `DEC_API_GENERATION_001`.
+avatar spans. This removes GPU inventory from new ordinary generation. A fresh short API project
+passed hosted Chrome playback, approval, download, and wide-avatar composition. The 18:11.553
+project stopped before Kie/Fal dispatch after 76/212 Stage 5 prompts; its uncertain ninth Runware
+task remains unreplayed. Future-only prompt reservation and pre-POST identity claims are deployed
+with migration 0194, but the full long-video outcome remains unverified. Historical RunPod attempts
+retain their original reconciliation and cleanup. See `CURRENT_STATE.yaml` and
+`DEC_API_GENERATION_001`.
 
 ## Span retry and dispatch ceiling repair — 2026-09-15
 
