@@ -948,6 +948,12 @@
       "name": "hosted_continuation_runtime_grants",
       "filename": "0195_hosted_continuation_runtime_grants.sql",
       "sha256": "sha256:400b27e3d5d3fd1a0d67989d8f2fbc94ce6e76d30727ab4d6b042ed7ef39e4cc"
+    },
+    {
+      "version": 196,
+      "name": "hosted_api_dispatch_runtime_grants",
+      "filename": "0196_hosted_api_dispatch_runtime_grants.sql",
+      "sha256": "sha256:45b1d38e94524788813dd93bbe7174cb355488146f6b7486742d333a40fc931d"
     }
   ]
 }
