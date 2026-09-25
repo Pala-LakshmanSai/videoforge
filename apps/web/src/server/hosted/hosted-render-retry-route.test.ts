@@ -1,0 +1,108 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const ids = {
+  account: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  workspace: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  user: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  project: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  revision: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+  failed: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  retry: "11111111-1111-4111-8111-111111111111",
+};
+
+const mocks = vi.hoisted(() => ({
+  query: vi.fn(),
+  end: vi.fn(),
+  sameOrigin: vi.fn(() => true),
+  scope: vi.fn(),
+  exactPlan: vi.fn(),
+}));
+
+vi.mock("./neon", () => ({
+  createNeonPool: () => ({ end: mocks.end }),
+  createNeonExecutor: () => ({ transaction: (work: (tx: { query: typeof mocks.query }) => unknown) =>
+    work({ query: mocks.query }) }),
+}));
+vi.mock("./hosted-product-route-common", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  sameOrigin: mocks.sameOrigin,
+  sessionScope: mocks.scope,
+}));
+vi.mock("./submission", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  exactHostedRenderSubmission: mocks.exactPlan,
+}));
+
+import { retryHostedApiRender } from "./hosted-render-retry-route";
+
+const request = (failedAttemptId = ids.failed) => new Request(
+  `https://example.test/api/v2/hosted/projects/${ids.project}/render-retry`,
+  {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      schema_version: "videoforge-hosted-render-disk-retry/v1",
+      failed_attempt_id: failedAttemptId,
+    }),
+  },
+);
+
+describe("render-only disk recovery route", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.sameOrigin.mockReturnValue(true);
+    mocks.scope.mockResolvedValue({ account_id: ids.account, workspace_id: ids.workspace, user_id: ids.user });
+    mocks.exactPlan.mockReturnValue({ kind: "RENDER", projectId: ids.project, projectRevisionId: ids.revision });
+    mocks.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("videoforge_prepare_hosted_api_render_disk_recovery")) return { rows: [{ recovery: {
+        schema_version: "videoforge-hosted-render-disk-recovery/v1",
+        revision_id: ids.revision,
+        retry_attempt_id: ids.retry,
+      } }] };
+      if (sql.includes("FROM public.hosted_render_plans")) return { rows: [{ payload: { kind: "RENDER" } }] };
+      return { rows: [] };
+    });
+  });
+
+  it("schedules one exact CPU identity without provider dispatch and reuses it on response replay", async () => {
+    const schedule = vi.fn().mockResolvedValue({ state: "OUTBOXED" });
+    const config = { neon: { databaseUrl: "postgres://unused" } } as never;
+    const context = { waitUntil() {} } as never;
+    for (let replay = 0; replay < 2; replay += 1) {
+      const result = await retryHostedApiRender(request(), ids.project, config, context, { schedule });
+      expect(result.status).toBe(202);
+      expect(await result.json()).toMatchObject({
+        attempt_id: ids.retry,
+        state: "OUTBOXED",
+        provider_calls_authorized: false,
+      });
+    }
+    expect(schedule).toHaveBeenCalledTimes(2);
+    expect(schedule).toHaveBeenCalledWith({
+      accountId: ids.account,
+      workspaceId: ids.workspace,
+      submission: { kind: "RENDER", projectId: ids.project, projectRevisionId: ids.revision },
+      expectedAttemptId: ids.retry,
+      renderRecoveryKey: `render-disk-recovery:${ids.revision}`,
+    });
+    expect(mocks.query.mock.calls.filter(([sql]) => String(sql).includes("videoforge_prepare_hosted_api_render_disk_recovery"))).toHaveLength(2);
+  });
+
+  it("rejects failed evidence before any CPU scheduling", async () => {
+    mocks.query.mockRejectedValueOnce(Object.assign(new Error("evidence rejected"), { code: "23514" }));
+    const schedule = vi.fn();
+    const result = await retryHostedApiRender(request(), ids.project,
+      { neon: { databaseUrl: "postgres://unused" } } as never, { waitUntil() {} } as never,
+      { schedule });
+    expect(result.status).toBe(409);
+    expect(schedule).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed attempt before opening a database connection", async () => {
+    const result = await retryHostedApiRender(request("bad"), ids.project,
+      { neon: { databaseUrl: "postgres://unused" } } as never, { waitUntil() {} } as never,
+      { schedule: vi.fn() });
+    expect(result.status).toBe(400);
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+});

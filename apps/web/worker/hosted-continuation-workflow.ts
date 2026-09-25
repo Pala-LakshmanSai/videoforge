@@ -5,6 +5,7 @@ import type { HostedRuntimeEnvironment } from "../src/server/hosted/configuratio
 import {
   ensureHostedPairObservers,
   runHostedContinuation,
+  type HostedContinuationTarget,
 } from "../src/server/hosted/stage-continuation-sweep";
 
 /**
@@ -25,6 +26,7 @@ import {
 export interface HostedContinuationWorkflowParameters {
   /** Diagnostic only, supplied by the starting caller; the driver never depends on it. */
   readonly reason?: string;
+  readonly target?: HostedContinuationTarget;
 }
 
 /** 1,440 one-minute iterations: one instance covers roughly 24 hours of cadence. */
@@ -32,6 +34,7 @@ export const HOSTED_CONTINUATION_ITERATIONS = 1_440;
 export const HOSTED_CONTINUATION_CADENCE = "60 seconds" as const;
 
 const MAXIMUM_REASON_LENGTH = 120;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
 /**
  * Defensive payload validation: any caller that can create an instance controls this value and a
@@ -41,6 +44,28 @@ const MAXIMUM_REASON_LENGTH = 120;
 function continuationParameters(value: unknown): HostedContinuationWorkflowParameters {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return Object.freeze({});
   const reason = (value as { readonly reason?: unknown }).reason;
+  const target = (value as { readonly target?: unknown }).target;
+  if (typeof target === "object" && target !== null && !Array.isArray(target)) {
+    const candidate = target as Record<string, unknown>;
+    if (
+      UUID.test(String(candidate.accountId)) &&
+      UUID.test(String(candidate.projectId)) &&
+      UUID.test(String(candidate.revisionId)) &&
+      (candidate.step === "context" || candidate.step === "prompts")
+    ) {
+      return Object.freeze({
+        reason: "stage-handoff",
+        target: {
+          accountId: candidate.accountId as string,
+          projectId: candidate.projectId as string,
+          revisionId: candidate.revisionId as string,
+          step: candidate.step as "context" | "prompts",
+        },
+      });
+    }
+  }
+  if (reason === "stage-handoff" || target !== undefined)
+    return Object.freeze({ reason: "invalid-stage-handoff" });
   if (
     typeof reason !== "string" ||
     reason.length < 1 ||
@@ -97,6 +122,20 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
     step: WorkflowStep,
   ): Promise<unknown> {
     const params = continuationParameters(event.payload);
+    if (params.reason === "invalid-stage-handoff") return { state: "INVALID_TARGET" };
+    if (params.target) {
+      return step.do(`handoff ${params.target.step}`, async () => {
+        const { context, drain } = drainingExecutionContext();
+        try {
+          return {
+            schema_version: "videoforge-hosted-continuation-handoff/v1",
+            dispatched: await runHostedContinuation(this.env, context, params.target),
+          };
+        } finally {
+          await drain();
+        }
+      });
+    }
     let iterations = 0;
     let dispatches = 0;
     let pairObservers = 0;

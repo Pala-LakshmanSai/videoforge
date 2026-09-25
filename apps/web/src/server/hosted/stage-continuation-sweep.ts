@@ -195,6 +195,9 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
       FROM state
   ) due
  WHERE next_step IS NOT NULL
+   AND ($2::uuid IS NULL OR project_id = $2::uuid)
+   AND ($3::text IS NULL OR next_step = $3::text)
+   AND ($4::uuid IS NULL OR revision_id = $4::uuid)
    AND asr_attempt_id IS NOT NULL
  -- Newest first: an unordered LIMIT let a few stale active projects occupy every slot of the sweep and
  -- starve the run the operator was actually watching.
@@ -208,6 +211,13 @@ interface DueRow {
   readonly workspace_id: string;
   readonly user_id: string;
   readonly next_step: "context" | "plan" | "prompts" | "dispatch";
+}
+
+export interface HostedContinuationTarget {
+  readonly accountId: string;
+  readonly projectId: string;
+  readonly revisionId: string;
+  readonly step: "context" | "prompts";
 }
 
 /**
@@ -274,6 +284,7 @@ export async function resolveContinuationConfiguration(
 export async function runHostedContinuation(
   environment: HostedRuntimeEnvironment,
   executionContext: HostedExecutionContext,
+  target?: HostedContinuationTarget,
 ): Promise<string[]> {
   const config: HostedRuntimeConfiguration = await resolveContinuationConfiguration(environment);
   const pool = createNeonPool(config.neon.databaseUrl);
@@ -285,7 +296,7 @@ export async function runHostedContinuation(
     // SELECT sees zero rows: the scheduled driver reported `dispatched: 0` every minute and never
     // advanced a project until the sweep queried each admitted account inside its own tenant
     // transaction, exactly like every request path does.
-    const due = await dueRowsAcrossAccounts(pool);
+    const due = await dueRowsAcrossAccounts(pool, target);
     dueCount = due.length;
     for (const row of due) {
       const scope = {
@@ -394,11 +405,16 @@ export async function runHostedContinuation(
  * `videoforge_admitted_hosted_account_ids()` is the service-owned accessor for the account list;
  * the accounts table itself is never queried from here.
  */
-export async function dueRowsAcrossAccounts(pool: HostedNeonPool): Promise<readonly DueRow[]> {
+export async function dueRowsAcrossAccounts(
+  pool: HostedNeonPool,
+  target?: HostedContinuationTarget,
+): Promise<readonly DueRow[]> {
   const executor = createNeonExecutor(pool);
-  const accounts = await pool.query<{ account_id: string }>(
-    "SELECT account_id FROM public.videoforge_admitted_hosted_account_ids()",
-  );
+  const accounts = target
+    ? { rows: [{ account_id: target.accountId }] }
+    : await pool.query<{ account_id: string }>(
+        "SELECT account_id FROM public.videoforge_admitted_hosted_account_ids()",
+      );
   const rows: DueRow[] = [];
   for (const account of accounts.rows) {
     const tenantRows = await executor.transaction(async (transaction) => {
@@ -406,7 +422,12 @@ export async function dueRowsAcrossAccounts(pool: HostedNeonPool): Promise<reado
         "videoforge.account_id",
         account.account_id,
       ]);
-      const result = await transaction.query(DUE_QUERY, [account.account_id]);
+      const result = await transaction.query(DUE_QUERY, [
+        account.account_id,
+        target?.projectId ?? null,
+        target?.step ?? null,
+        target?.revisionId ?? null,
+      ]);
       return result.rows as unknown as DueRow[];
     });
     rows.push(...tenantRows);

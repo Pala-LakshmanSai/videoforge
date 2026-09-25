@@ -4463,6 +4463,18 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       void queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] });
     },
   });
+  const renderDiskRetry = useMutation({
+    retry: false,
+    mutationFn: (failedAttemptId: string) =>
+      readJson(`/api/v2/hosted/projects/${projectId}/render-retry`, {
+        method: "POST",
+        body: JSON.stringify({
+          schema_version: "videoforge-hosted-render-disk-retry/v1",
+          failed_attempt_id: failedAttemptId,
+        }),
+      }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+  });
   const gpuDispatchPreSendIntegrityError = isHostedV209PreSendIntegrityError(gpuDispatch.error);
   const revisionId = query.data?.project.revision_id;
   const renderHandoffKey = hostedContinuationKey(revisionId, asr?.id);
@@ -5035,8 +5047,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   });
   // A failed stage owns its retry control, rendered right after its FAILED badge, so the recovery for
   // the stage that stopped is inside that stage instead of in a notice under the pipeline. Only stages
-  // with a real retry path get one: audio spanning and assembly recover on the connected computer (the
-  // media worker replays them), and stages 1, 4, 10 and 11 have nothing to retry.
+  // with a real retry path get one: audio spanning retries automatically on the connected computer;
+  // a failed local render can use the exact accepted API media without generating it again.
   const stageRetryButton = (busy: boolean, run: () => void) => (
     <Button variant="secondary" className="stage-retry-button" busy={busy} onClick={run}>
       <RefreshCw size={13} aria-hidden="true" /> Retry
@@ -5104,6 +5116,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             : {}),
         }
       : {}),
+    ...(query.data.generation_provider === "KIE_FAL" &&
+    failedStageIds.has("render") &&
+    render?.state === "FAILED" &&
+    render.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"
+      ? {
+          render: stageRetryButton(renderDiskRetry.isPending, () =>
+            renderDiskRetry.mutate(render.id),
+          ),
+        }
+      : {}),
   };
   // A refused press has to say why inside the stage that was pressed. The server's sentence used to
   // land only in the notice below the pipeline, so a spent retry budget read as "nothing happened".
@@ -5133,6 +5155,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             ? { "avatar-generation": gpuDispatch.error.message }
             : {}),
         }
+      : {}),
+    ...(failedStageIds.has("render") && renderDiskRetry.isError
+      ? { render: renderDiskRetry.error.message }
       : {}),
   };
   const acceptedPromptCount =
@@ -5230,18 +5255,15 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               tone="success"
             />
             <Metric
-              label="Total elapsed"
+              label="Wall elapsed"
               value={
                 <HostedElapsed
-                  since={null}
-                  until={null}
-                  intervals={stageTimings
-                    .filter((stage) => stage.id !== "technical-check")
-                    .map(({ since, until, running }) => ({ since, until, running }))}
-                  label="Total elapsed time"
+                  since={query.data.project.created_at}
+                  until={render?.state === "SUCCEEDED" ? render.terminal_at : null}
+                  label="Wall elapsed time"
                 />
               }
-              detail="sum of stage times"
+              detail="includes waits"
             />
           </div>
           <ProgressBar value={overallProgress} label="Overall video progress" />

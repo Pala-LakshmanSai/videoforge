@@ -954,6 +954,12 @@
       "name": "hosted_api_dispatch_runtime_grants",
       "filename": "0196_hosted_api_dispatch_runtime_grants.sql",
       "sha256": "sha256:45b1d38e94524788813dd93bbe7174cb355488146f6b7486742d333a40fc931d"
+    },
+    {
+      "version": 197,
+      "name": "hosted_api_render_disk_recovery",
+      "filename": "0197_hosted_api_render_disk_recovery.sql",
+      "sha256": "sha256:4d4e33fe1bb047ab3d9b467ad8a8645ae4da1942c399dd32b7db9fd8d6886f4e"
     }
   ]
 }

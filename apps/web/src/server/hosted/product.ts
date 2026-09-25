@@ -41,6 +41,7 @@ import {
 import {
   continuationRequest,
   continuationScope,
+  startHostedStageContinuation,
   type ContinuationScope,
 } from "./stage-continuation";
 import { RunwareTransportError } from "../providers/runware-http-transport";
@@ -3768,7 +3769,7 @@ function hostedSpanFailureMessage(
 /** Every stage that runs on the owner's own computer reports the same bounded local causes. */
 function hostedLocalFailureMessage(failureCode: string | null, fallback: string): string {
   if (failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") {
-    return "Your computer ran out of free disk space. Free space there, then create a new project.";
+    return "Your computer ran out of free disk space. Free space there, then use Retry in Assemble final video.";
   }
   if (failureCode === "MEDIA_EXECUTION_TIMEOUT") {
     return "Your computer stopped work that took too long. Run this project again to retry it.";
@@ -6312,10 +6313,15 @@ export async function renderHandoff(
           }),
       },
     });
-    // Stage 5 is NOT chained from here. Prompt writing makes many provider calls and can run for
-    // minutes, and work placed in `waitUntil` after the response is sent gets cut before it can
-    // finish -- doing that here left a run claimed as DISPATCHING with zero batches recorded and no
-    // path back. The scheduled continuation sweep dispatches stage 5 as its own invocation instead.
+    // Only Workflow creation runs after this response; the durable Workflow executes prompt batches.
+    executionContext.waitUntil(
+      startHostedStageContinuation(environment, {
+        accountId: scope.account_id,
+        projectId,
+        revisionId: state.revision_id,
+        step: "prompts",
+      }),
+    );
     return response(result, 202);
   } catch (error) {
     if (

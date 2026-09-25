@@ -101,9 +101,33 @@ async function seededDatabase(context: {
 }
 
 async function nextSteps(database: PGlite): Promise<readonly string[]> {
-  const result = await database.query<{ next_step: string }>(DUE_QUERY, [accountId]);
+  const result = await database.query<{ next_step: string }>(DUE_QUERY, [accountId, null, null, null]);
   return result.rows.map((row) => row.next_step);
 }
+
+it("selects only the requested project's due stage for an immediate handoff", async () => {
+  const database = await seededDatabase({ state: null, hash: null, problemCode: null, redispatchCount: 0 });
+  try {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    expect((await database.query(DUE_QUERY, [accountId, projectId, "context", revisionId])).rows).toHaveLength(1);
+    expect((await database.query(DUE_QUERY, [accountId, projectId, "prompts", revisionId])).rows).toHaveLength(0);
+    expect((await database.query(DUE_QUERY, [accountId, projectId, "context", "99999999-9999-4999-8999-999999999999"])).rows).toHaveLength(0);
+  } finally {
+    await database.close();
+  }
+});
+
+it("offers a saved plan only to the targeted prompt handoff", async () => {
+  const database = await seededDatabase({ state: "SUCCEEDED", hash: "accepted", problemCode: null, redispatchCount: 0 });
+  try {
+    await database.exec(`INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}')`);
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    expect((await database.query(DUE_QUERY, [accountId, projectId, "prompts", revisionId])).rows).toHaveLength(1);
+    expect((await database.query(DUE_QUERY, [accountId, projectId, "context", revisionId])).rows).toHaveLength(0);
+  } finally {
+    await database.close();
+  }
+});
 
 describe("hosted continuation sweep stage-3 recovery", () => {
   it("keeps the sweep's redispatch classes and budget identical to the route's", () => {

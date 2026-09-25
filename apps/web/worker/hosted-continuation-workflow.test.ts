@@ -87,6 +87,33 @@ beforeEach(() => {
 });
 
 describe("hosted continuation Workflow loop", () => {
+  it("runs a targeted handoff once in a durable step without a cadence loop", async () => {
+    const target = {
+      accountId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      projectId: "11111111-1111-4111-8111-111111111111",
+      revisionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      step: "prompts",
+    };
+    const { summary, calls } = await runWorkflow({ reason: "stage-handoff", target });
+
+    expect(calls).toEqual([{ kind: "do", name: "handoff prompts", duration: null }]);
+    expect(collaborators.runHostedContinuation).toHaveBeenCalledExactlyOnceWith(
+      environment, expect.any(Object), target,
+    );
+    expect(collaborators.ensureHostedPairObservers).not.toHaveBeenCalled();
+    expect(summary).toMatchObject({
+      schema_version: "videoforge-hosted-continuation-handoff/v1",
+      dispatched: ["project:context"],
+    });
+  });
+
+  it("refuses an invalid targeted handoff without running the broad sweep", async () => {
+    const { summary, calls } = await runWorkflow({ reason: "stage-handoff", target: { step: "prompts" } });
+    expect(summary).toEqual({ state: "INVALID_TARGET" });
+    expect(calls).toEqual([]);
+    expect(collaborators.runHostedContinuation).not.toHaveBeenCalled();
+  });
+
   it("runs a bounded number of iterations, each with a unique durable step name", async () => {
     const { summary, calls } = await runWorkflow({ reason: "personal-worker-claim" });
 

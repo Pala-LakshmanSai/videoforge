@@ -468,6 +468,7 @@ async function handleCpuSubmission(
     readonly scope: { readonly account_id: string; readonly workspace_id: string };
     readonly submission: HostedCpuSubmission | HostedSpanAudioSubmission;
     readonly expectedAttemptId?: string;
+    readonly renderRecoveryKey?: string;
   },
 ): Promise<Response> {
   if (!trusted && !sameOriginBrowserWrite(request, config)) {
@@ -504,10 +505,10 @@ async function handleCpuSubmission(
     }
 
     const imageDigest = config.mediaWorkerRelease.executionBundleSha256;
-    const submissionKey =
+    const submissionKey = trusted?.renderRecoveryKey ?? (
       submission.kind === "RENDER"
         ? `${submission.idempotencyKey}:${imageDigest.slice(7, 23)}`
-        : submission.idempotencyKey;
+        : submission.idempotencyKey);
     const requestSha256 = await sha256(canonicalJson(submission));
     const executor = createNeonExecutor(pool);
     const prepared = await executor.transaction(async (transaction) => {
@@ -597,7 +598,8 @@ async function handleCpuSubmission(
       if (
         existing.rows[0] &&
         (existing.rows[0].request_sha256 !== requestSha256 ||
-          existing.rows[0].image_digest !== imageDigest)
+          (existing.rows[0].image_digest !== imageDigest &&
+            (!trusted?.renderRecoveryKey || existing.rows[0].state === "PLANNED")))
       ) {
         throw new Error("CPU_SUBMISSION_IDEMPOTENCY_CONFLICT");
       }
@@ -924,6 +926,8 @@ export async function scheduleHostedRenderSubmission(
     readonly accountId: string;
     readonly workspaceId: string;
     readonly submission: HostedCpuSubmission;
+    readonly expectedAttemptId?: string;
+    readonly renderRecoveryKey?: string;
   },
 ): Promise<{ readonly state: string }> {
   if (input.submission.kind !== "RENDER") throw new Error("HOSTED_V209_RENDER_SCHEDULE_REJECTED");
@@ -935,6 +939,8 @@ export async function scheduleHostedRenderSubmission(
     {
       scope: { account_id: input.accountId, workspace_id: input.workspaceId },
       submission: input.submission,
+      expectedAttemptId: input.expectedAttemptId,
+      renderRecoveryKey: input.renderRecoveryKey,
     },
   );
   const payload = (await result.json()) as Record<string, unknown>;
@@ -1729,6 +1735,14 @@ export async function handleHostedRequest(
   }
   if (request.method === "GET" && url.pathname === "/api/v2/hosted/queue") {
     return handleHostedQueue(request, config, executionContext);
+  }
+  const renderRecovery =
+    /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/render-retry$/u.exec(url.pathname);
+  if (request.method === "POST" && renderRecovery && UUID.test(renderRecovery[1]!)) {
+    const { retryHostedApiRender } = await import("./hosted-render-retry-route");
+    return retryHostedApiRender(request, renderRecovery[1]!, config, executionContext, {
+      schedule: (input) => scheduleHostedRenderSubmission(environment, config, input),
+    });
   }
   const pairDispatch =
     /^\/api\/v2\/hosted\/generations\/([0-9a-f]{8}-[0-9a-f-]{27,})\/dispatch$/u.exec(url.pathname);

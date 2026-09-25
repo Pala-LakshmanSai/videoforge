@@ -10,6 +10,7 @@ import {
 import { deriveCallbackToken, deriveScopedToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { HostedR2Signer } from "./r2";
+import { startHostedStageContinuation } from "./stage-continuation";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -1353,6 +1354,8 @@ async function activeLease(
       attemptId: string;
       state: string;
       kind: "ASR" | "SPAN_AUDIO" | "RENDER";
+      projectId: string;
+      revisionId: string;
     })
   | null
 > {
@@ -1365,7 +1368,7 @@ async function activeLease(
       scope.accountId,
     ]);
     return transaction.query(
-      `SELECT lease.attempt_id, attempt.kind, lease.state
+      `SELECT lease.attempt_id, attempt.kind, attempt.project_id, attempt.project_revision_id, lease.state
        FROM media_worker_leases AS lease
        JOIN hosted_cpu_job_attempts AS attempt
          ON attempt.account_id = lease.account_id
@@ -1387,6 +1390,8 @@ async function activeLease(
         attemptId: String(row.attempt_id),
         state: String(row.state),
         kind: String(row.kind) as "ASR" | "SPAN_AUDIO" | "RENDER",
+        projectId: String(row.project_id),
+        revisionId: String(row.project_revision_id),
       }
     : null;
 }
@@ -1748,6 +1753,7 @@ async function completeLease(
       readonly attemptId: string;
     }) => Promise<unknown>;
   },
+  executionContext?: HostedExecutionContext,
 ) {
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
@@ -1974,6 +1980,15 @@ async function completeLease(
       return state;
     });
     if (settled) {
+      if (settled === "SUCCEEDED" && lease.kind === "ASR") {
+        const handoff = startHostedStageContinuation(environment, {
+          accountId: lease.accountId,
+          projectId: lease.projectId,
+          revisionId: lease.revisionId,
+          step: "context",
+        });
+        if (executionContext) executionContext.waitUntil(handoff);
+      }
       if (settled === "SUCCEEDED" && lease.kind === "SPAN_AUDIO" && spanAudio) {
         if (!verifiedResultDocument) throw new Error("MEDIA_WORKER_RESULT_MISMATCH");
         await spanAudio.acceptCompleted({
@@ -2081,7 +2096,15 @@ export async function handlePersonalWorkerRequest(
   if (request.method === "POST" && lease && UUID.test(lease[1]!)) {
     if (lease[2] === "heartbeat") return leaseHeartbeat(request, config, lease[1]!);
     if (lease[2] === "upload-port") return leaseUploadPort(request, config, lease[1]!);
-    return completeLease(request, environment, config, lease[1]!, spanAudio, renderTerminal);
+    return completeLease(
+      request,
+      environment,
+      config,
+      lease[1]!,
+      spanAudio,
+      renderTerminal,
+      executionContext,
+    );
   }
   return null;
 }
