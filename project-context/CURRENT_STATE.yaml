@@ -1,4 +1,30 @@
 schema_version: "2.0"
+napa_prompt_recovery_2026_09_25:
+  checkpoint: V2-09
+  status: PRODUCTION_FIX_DEPLOYED_CURRENT_VIDEO_BLOCKED_KNOWN_INVALID_OUTPUT
+  source_commit: a1c2bf6096e90dc2899215bd6e34d136daf7cf92
+  cloudflare_version: 7fad7b6c-133f-429b-a4b8-6fc397e590f2
+  evidence_path: evidence/acceptance/VF-10-09/2026-09-25-napa-prompt-recovery.json
+  result: >-
+    Napa Video has 50/320 durable accepted image prompts in 5/32 batches. Batch 6's exact
+    Runware task returned only 47 characters of malformed JSON, with 8,873 completion tokens
+    and a known USD 0.086456 charge. Exact-identity retrieval settled the original run as
+    FAILED/HOSTED_PROMPT_OUTPUT_INVALID with USD 0.451340 total known prompt cost; the original
+    claim and accepted prefix remain immutable. No new inference request was sent.
+  improvement: >-
+    New prompt batches use a shorter image-prompt compiler and Avoid list. New Stage 5 runs
+    reserve USD 0.25 per planned batch up to USD 8; this pinned run retains its original USD 2
+    reservation. One-batch Workflow handoffs and recent-activity staleness are deployed.
+  validation: >-
+    Focused tests, typechecks, production bundle/dry run, Neon ledger/grants, Cloudflare version
+    readback, and Chrome terminal-state UI verification passed. Live v2 prompt quality/latency
+    and final video are unverified.
+  remaining_gates: >-
+    Current project cannot send another paid prompt batch automatically. A bounded new paid
+    recovery path and spend authority are needed before Stage 5 can resume, then Kie/Fal,
+    assembly, technical check, Chrome playback, approval, and download remain.
+  provider_spend: No new paid calls in this repair; original known prompt charge USD 0.451340.
+  paid_compute_shutdown: GPU transport DISABLED_UNQUALIFIED; no GPU activation in this task.
 voiceover_drag_drop_2026_09_25:
   checkpoint: V2-09
   status: PRODUCTION_DEPLOYED_CHROME_UI_VERIFIED

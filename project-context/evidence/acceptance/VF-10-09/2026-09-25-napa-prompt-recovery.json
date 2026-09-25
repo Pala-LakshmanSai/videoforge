@@ -1,0 +1,68 @@
+{
+  "checkpoint": "V2-09",
+  "project": "Napa Video",
+  "project_id": "4a02d6ed-924d-4310-a14b-a763056d60dc",
+  "revision_id": "d5a2f4c5-6d7c-42fc-867d-bcf934460cca",
+  "prompt_run_id": "6dfd8298-11c7-4c03-950b-443d9796873d",
+  "observed_at_utc": "2026-09-25T11:44:28Z",
+  "status": "BLOCKED_KNOWN_INVALID_PROVIDER_OUTPUT",
+  "production_source_commit": "a1c2bf6096e90dc2899215bd6e34d136daf7cf92",
+  "cloudflare_version": "7fad7b6c-133f-429b-a4b8-6fc397e590f2",
+  "migration_ledger_rows": 187,
+  "applied_migrations": [201, 202, 203, 204],
+  "accepted_scenes": 50,
+  "planned_scenes": 320,
+  "accepted_batches": 5,
+  "planned_batches": 32,
+  "batch_six": {
+    "original_task_uuid": "eeda7d3c-f497-428e-8295-fd1d4418357e",
+    "retrieval_only": true,
+    "archived_output_characters": 47,
+    "provider_completion_tokens": 8873,
+    "provider_finish_reason": "stop",
+    "strict_json_valid": false,
+    "invalid_response_sha256": "sha256:87d78b9e4ec5e3e91a051161d911c263cd3dd3d009b1bd7da79b29d7713cecfd",
+    "known_cost_micro_usd": 86456,
+    "new_inference_requests": 0
+  },
+  "settled_run": {
+    "state": "FAILED",
+    "problem_code": "HOSTED_PROMPT_OUTPUT_INVALID",
+    "provider_may_have_charged": false,
+    "reported_cost_micro_usd": 451340,
+    "original_reservation_micro_usd": 2000000,
+    "retained_accepted_batches": 5,
+    "new_prompt_batch_automatic_dispatch": false
+  },
+  "production_changes": [
+    "one-batch durable Workflow continuation",
+    "stale timeout measured from latest batch activity",
+    "exact getTaskDetails recovery for claimed provider tasks",
+    "known-invalid output cost settlement without replay",
+    "shorter compiled prompt guardrails and avoid list for future batches",
+    "new-run Stage 5 reservation based on planned batch count, capped at USD 8",
+    "terminal invalid-output explanation and disabled Retry in Chrome"
+  ],
+  "prompt_length_evidence": {
+    "accepted_v1_positive_characters_median": 1306,
+    "accepted_v1_negative_characters": 1013,
+    "projected_v2_positive_characters_median": 1033,
+    "projected_v2_negative_characters": 332,
+    "status": "projection only; no live v2 batch accepted in this run"
+  },
+  "validation": [
+    "focused prompt writer, workflow, route, compiler, migration, and UI tests passed",
+    "web and Worker TypeScript checks passed",
+    "production Cloudflare bundle guard and dry run passed",
+    "Neon migration and exact runtime grants verified",
+    "Chrome showed 50/320 saved, disabled Retry, and the invalid-output explanation",
+    "production Worker version read back with KIE_FAL and DISABLED_UNQUALIFIED"
+  ],
+  "remaining_gates": [
+    "A new paid prompt attempt needs an explicit bounded recovery path and spend authority; the original 47-character invalid output cannot supply ten scene prompts.",
+    "Image generation, avatar generation, assembly, playback, approval, and download have not occurred for this project.",
+    "A matched live v1/v2 prompt latency and quality comparison is not available."
+  ],
+  "provider_spend_state": "No new paid provider requests were issued during this repair. The original five accepted batches plus invalid Batch 6 settled at USD 0.451340.",
+  "paid_compute_shutdown_state": "GPU transport remains DISABLED_UNQUALIFIED; no GPU activation was performed in this task. Independent provider inventory was not read."
+}

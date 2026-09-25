@@ -2,6 +2,13 @@
 
 ## Current generation transition — 2026-09-25
 
+Napa Video is blocked at Stage 5 with 50/320 prompts saved. Its original Batch 6 Runware task
+returned a known charged but invalid 47-character JSON result. Production migration 0203 settled
+the exact claim without replay; new prompt formatting, per-batch continuation, and future-run
+reservation sizing are deployed. The current project needs a bounded paid recovery path and spend
+authority before it can continue. See `CURRENT_STATE.yaml` entry
+`napa_prompt_recovery_2026_09_25` and its evidence JSON.
+
 The user selected Kie z-image for fresh scene images and Fal FlashHead audio-to-video for fresh
 avatar spans. This removes GPU inventory from new ordinary generation. A fresh short API project
 passed hosted Chrome playback, approval, download, and wide-avatar composition. The 18:11.553
