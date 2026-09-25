@@ -129,7 +129,8 @@ async function loadAcceptedPromptBatches(
       reported_cost_micro_usd: number;
     }>(
       `SELECT id,batch_ordinal,first_scene_ordinal,request_bytes,request_hash,response_bytes,
-              response_hash,input_tokens,output_tokens,reported_cost_micro_usd
+              response_hash,input_tokens,output_tokens,
+              reported_cost_micro_usd::integer AS reported_cost_micro_usd
          FROM public.hosted_prompt_batch_progress
         WHERE account_id=$1 AND workspace_id=$2 AND run_id=$3 ORDER BY batch_ordinal`,
       [accountId, workspaceId, runId],
@@ -464,6 +465,14 @@ export async function writeProjectPrompts(
                   "videoforge.account_id",
                   scope.account_id,
                 ]);
+                if (existingState === "UNKNOWN") {
+                  const reopened = await transaction.query<{ reopened: boolean }>(
+                    "SELECT public.videoforge_reopen_complete_hosted_prompt_run($1::uuid) AS reopened",
+                    [saved.id],
+                  );
+                  if (reopened.rows[0]?.reopened !== true)
+                    throw new Error("HOSTED_PROMPT_ACCEPTED_REOPEN_REJECTED");
+                }
                 const result = await transaction.query<{ completed: boolean }>(
                   "SELECT public.videoforge_complete_hosted_prompt_run($1::jsonb) AS completed",
                   [
@@ -499,8 +508,9 @@ export async function writeProjectPrompts(
         };
         if (
           !original.claim &&
-          existingState === "DISPATCHING" &&
-          saved.accepted_batch_count === saved.planned_batch_count
+          (existingState === "DISPATCHING" || existingState === "UNKNOWN") &&
+          saved.accepted_batch_count === saved.planned_batch_count &&
+          saved.accepted_scene_count === saved.planned_scene_count
         )
           return completeAcceptedRun();
         if (existingState === "UNKNOWN" && !original.claim)

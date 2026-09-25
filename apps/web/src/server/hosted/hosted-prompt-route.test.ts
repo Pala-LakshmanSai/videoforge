@@ -14,6 +14,15 @@ it("finalizes the last durable batch with a bounded numeric reservation", () => 
   expect(runningResponse).toBeGreaterThan(completion);
   expect(source).toContain("SELECT run.reserved_cost_micro_usd::integer");
   expect(source).toContain("run.reserved_cost_micro_usd::integer AS reserved_cost_micro_usd");
+  expect(source).toContain("reported_cost_micro_usd::integer AS reported_cost_micro_usd");
+  expect(source).toContain('(existingState === "DISPATCHING" || existingState === "UNKNOWN")');
+  expect(source).toContain("saved.accepted_scene_count === saved.planned_scene_count");
+  const noSubmit = source.indexOf("HOSTED_PROMPT_COMPLETION_MUST_NOT_SUBMIT");
+  const reopen = source.indexOf("videoforge_reopen_complete_hosted_prompt_run", noSubmit);
+  const complete = source.indexOf("videoforge_complete_hosted_prompt_run", reopen);
+  expect(noSubmit).toBeGreaterThan(-1);
+  expect(reopen).toBeGreaterThan(noSubmit);
+  expect(complete).toBeGreaterThan(reopen);
 });
 
 it("hands accepted API prompts to the next stage without changing acceptance on dispatch failure", async () => {
