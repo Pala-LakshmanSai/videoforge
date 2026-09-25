@@ -41,8 +41,10 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // Direct hosted stage handoffs and the evidence-gated render-only disk recovery add
 // 2,690 bytes to production and 1,374 bytes to staging in the clean measured builds.
 // Provider and generated-contract validators remain in dynamic chunks.
+// Persisted Fal timing metadata and frame-aligned trim validation add 1,588 bytes
+// to the clean production closure after rebuilding contracts and pipeline dependencies.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_761_243,
+  "wrangler.production.jsonc": 2_762_831,
   "wrangler.staging.jsonc": 2_765_529,
 })[wranglerConfig];
 const workerForbidden = [

@@ -149,5 +149,22 @@
       "media_error": null
     },
     "scope": "Corrected retained-media local copies. Technical timing proof does not assert perfect provider-generated mouth shapes."
+  },
+  "migration": {
+    "sourceCommit": "cdfab4a3b333c02e450c95aa35e2f302c4a6676e",
+    "migration": {
+      "version": 200,
+      "sha256": "sha256:8376cc7358e76256bc3d5de4bf75abb5c7d14435e55b86bf9dd1a3afd1eb556f"
+    },
+    "readerMatchesCommittedBody": true,
+    "avatarsVerified": 10,
+    "offsetsMatchPersistedInputs": true,
+    "paidCalls": 0,
+    "otherMigrationsReplayed": false
+  },
+  "preview_restart": {
+    "before_production": "In real Chrome on Simon progress, Refresh now changed the existing video src.",
+    "fix": "Reuse current signed URL within project/revision and immutable media identity until expiry refresh window; drop prior-project placeholder data.",
+    "focused_tests_passed": 3
   }
 }
