@@ -1,7 +1,7 @@
 schema_version: "2.0"
 api_generation_wide_crop_2026_09_25:
   checkpoint: V2-09
-  status: LOCAL_SHORT_RERENDER_PASSED_RELEASE_PENDING
+  status: PRODUCTION_RELEASE_VERIFIED_FRESH_SHORT_PENDING
   decision: >-
     Fresh Fal FlashHead square clips use the versioned wide-v2 CPU source composite. The personal
     worker aligns each clip to the exact revision-pinned Avatar Hub image with feature matching
@@ -17,13 +17,17 @@ api_generation_wide_crop_2026_09_25:
     committed receipt, then binds that exact snapshot. A rollback-only live DB transaction proved
     source selection and reservation/receipt inserts without persisting a production row. Focused
     render and UI tests, TypeScript checks, contract sync, and the measured Cloudflare bundle gate
-    passed. The old approved pilot and paid task identities were not replayed.
+    passed. Source 297d8bc937a9aa499db4f57265953ee6fa78bb62 is deployed as Cloudflare version
+    b7b6a9f7-9ea6-418f-b3d1-ffd320e5433c with one active version, exact 25 secret names,
+    KIE_FAL, GPU transport disabled, and desktop worker 0.1.26 published, installed and ONLINE.
+    Chrome shows the saved pilot plan's $0.02 API estimate and separate 0m58s image / 1m52s avatar
+    timings. A narrow worker-list transaction repair made the ONLINE device visible in Settings.
+    The old approved pilot and paid task identities were not replayed.
   remaining_gates: >-
-    Commit and release desktop worker 0.1.26 and Cloudflare code, then validate a fresh short
-    production Chrome flow with live source snapshot, timings, cost estimate, render and playback.
-    Only after that short gate passes, produce the full 18:11.553 voiceover video and report
-    measured per-stage and wall times. Fresh finite paid approval is required because the earlier
-    USD 5 pilot cap was used and exact Fal audio-route billing is unavailable.
+    After a fresh finite paid approval, validate a new short production Chrome flow with live
+    source snapshot, timings, cost estimate, render and playback. Only after that short gate
+    passes, produce the full 18:11.553 voiceover video and report measured per-stage and wall
+    times. The earlier USD 5 pilot cap was used and exact Fal audio-route billing is unavailable.
   provider_spend: No new provider calls or charges during this local crop fix and rerender.
   paid_compute_shutdown: No RunPod/GPU activation was performed for this work.
 api_generation_transition_2026_09_24:
