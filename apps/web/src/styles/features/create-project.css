@@ -666,6 +666,11 @@
   text-align: left;
 }
 
+.hosted-voiceover-dropzone.is-drag-over {
+  border-color: #a993ff;
+  background: rgba(141, 92, 255, 0.2);
+}
+
 .hosted-voiceover-dropzone > svg {
   flex: 0 0 auto;
   color: #c4b9ff;

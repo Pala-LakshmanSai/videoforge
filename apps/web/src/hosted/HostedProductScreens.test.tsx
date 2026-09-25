@@ -2226,6 +2226,38 @@ describe("hosted product journey", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("imports a dropped voiceover through the hosted picker", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+          styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        }),
+      ),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+    const dropzone = (await screen.findByText("Choose or drop your final voiceover")).closest(
+      "label",
+    );
+    expect(dropzone).not.toBeNull();
+    fireEvent.drop(dropzone!, {
+      dataTransfer: { files: [new File(["invalid"], "notes.txt", { type: "text/plain" })] },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Use a WAV or MP3 voiceover");
+    const file = new File(["audio"], "narration.wav", { type: "audio/wav" });
+    fireEvent.dragOver(dropzone!, { dataTransfer: { files: [file], dropEffect: "none" } });
+    expect(dropzone).toHaveClass("is-drag-over");
+    fireEvent.drop(dropzone!, { dataTransfer: { files: [file] } });
+    expect(dropzone).not.toHaveClass("is-drag-over");
+    expect(screen.getByText("narration.wav")).toBeInTheDocument();
+    expect(screen.getByText(/ready to check/u)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("reuses project creation identity after a failure and rotates it when inputs change", async () => {
     const projectRequests: { readonly body: string; readonly key: string }[] = [];
     const bytes = new ArrayBuffer(44 + 640_000);

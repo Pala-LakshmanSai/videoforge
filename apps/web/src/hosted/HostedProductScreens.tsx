@@ -2498,6 +2498,7 @@ export function HostedCreateProjectScreen() {
   const [avatarVersionId, setAvatarVersionId] = useState("");
   const [styleVersionId, setStyleVersionId] = useState("");
   const [voiceover, setVoiceover] = useState<File | null>(null);
+  const [voiceoverDragOver, setVoiceoverDragOver] = useState(false);
   const [extraPromptKeywords, setExtraPromptKeywords] = useState("");
   const [applyExtraPromptKeywords, setApplyExtraPromptKeywords] = useState(false);
   const [userSeed, setUserSeed] = useState("");
@@ -2514,6 +2515,23 @@ export function HostedCreateProjectScreen() {
     if (/\.wav$/iu.test(file.name)) return "audio/wav";
     if (/\.mp3$/iu.test(file.name)) return "audio/mpeg";
     return VOICEOVER_TYPES.has(file.type) ? file.type : "";
+  };
+  const selectVoiceover = (selected: File | null) => {
+    setPreflightResult(null);
+    setVoiceoverMeta(null);
+    if (!selected) {
+      setVoiceover(null);
+      setError(FILE_ACCESS_HINT);
+    } else if (!VOICEOVER_TYPES.has(contentTypeForVoiceover(selected))) {
+      setVoiceover(null);
+      setError("Use a WAV or MP3 voiceover for hosted generation.");
+    } else if (selected.size > MAX_VOICEOVER_BYTES) {
+      setVoiceover(null);
+      setError("Voiceover must be at most 1 GB.");
+    } else {
+      setVoiceover(selected);
+      setError(null);
+    }
   };
   const keywordsValid = extraPromptKeywords.length <= 500;
   const workerOnline = catalog.data?.media_worker_state === "ONLINE";
@@ -2707,33 +2725,46 @@ export function HostedCreateProjectScreen() {
               </div>
               <div className="field field-wide">
                 <span className="field-label">Final voiceover</span>
-                <label className="dropzone hosted-voiceover-dropzone">
+                <label
+                  className={`dropzone hosted-voiceover-dropzone${voiceoverDragOver ? " is-drag-over" : ""}`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    if (preflightMutation.isPending || submit.isPending) return;
+                    event.dataTransfer.dropEffect = "copy";
+                    setVoiceoverDragOver(true);
+                  }}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                      setVoiceoverDragOver(false);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setVoiceoverDragOver(false);
+                    if (preflightMutation.isPending || submit.isPending) return;
+                    if (event.dataTransfer.files.length > 1) {
+                      setVoiceover(null);
+                      setVoiceoverMeta(null);
+                      setPreflightResult(null);
+                      setError("Drop one WAV or MP3 voiceover.");
+                      return;
+                    }
+                    const selected = event.dataTransfer.files[0];
+                    if (selected) selectVoiceover(selected);
+                  }}
+                >
                   <input
                     aria-label="Final voiceover"
                     type="file"
                     accept="audio/wav,audio/mpeg,.wav,.mp3"
                     disabled={preflightMutation.isPending || submit.isPending}
-                    onChange={(event) => {
-                      const selected = event.target.files?.[0] ?? null;
-                      setPreflightResult(null);
-                      setVoiceoverMeta(null);
-                      if (!selected) {
-                        setVoiceover(null);
-                        setError(FILE_ACCESS_HINT);
-                        return;
-                      }
-                      if (selected.size > MAX_VOICEOVER_BYTES) {
-                        setVoiceover(null);
-                        setError("Voiceover must be at most 1 GB.");
-                        return;
-                      }
-                      setVoiceover(selected);
-                      setError(null);
+                    onClick={(event) => {
+                      event.currentTarget.value = "";
                     }}
+                    onChange={(event) => selectVoiceover(event.target.files?.[0] ?? null)}
                   />
                   <FileAudio size={28} />
                   <span>
-                    <strong>{voiceover?.name ?? "Choose your final voiceover"}</strong>
+                    <strong>{voiceover?.name ?? "Choose or drop your final voiceover"}</strong>
                     {voiceover
                       ? `${(voiceover.size / 1_000_000).toFixed(1)} MB · ready to check`
                       : "WAV or MP3 · 10 seconds to 60 minutes · max 1 GB"}

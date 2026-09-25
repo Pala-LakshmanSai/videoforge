@@ -91,7 +91,7 @@ unless backend/provider evidence supports it. Never imply technical QA judged cr
 
 ### 3. Create Project
 
-- Title, validated voiceover upload, visual Avatar Profile selector, visual Image Style selector,
+- Title, validated voiceover upload by file picker or drag and drop, visual Avatar Profile selector, visual Image Style selector,
   optional keyword toggle/text, optional seed, estimate, and one Generate button. Cost remains
   visible and exactly accounted, but there is no user-configured maximum-spend field.
 - No project-local avatar upload. `+ New avatar` autosaves the entire draft/upload handle, returns to
