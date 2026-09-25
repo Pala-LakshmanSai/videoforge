@@ -528,7 +528,7 @@ export async function writeProjectPrompts(
           saved.accepted_batch_count === saved.planned_batch_count &&
           saved.accepted_scene_count === saved.planned_scene_count
         )
-          return completeAcceptedRun();
+          return await completeAcceptedRun();
         if (existingState === "UNKNOWN" && !original.claim)
           return response({ error: { code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED" } }, 409);
         let acceptedBatch: Awaited<ReturnType<typeof recoverClaimedHostedPromptBatch>> | null;
@@ -584,7 +584,7 @@ export async function writeProjectPrompts(
             ),
           );
         if (acceptedBatch && saved.accepted_batch_count + 1 === saved.planned_batch_count)
-          return completeAcceptedRun();
+          return await completeAcceptedRun();
         return response(
           {
             schema_version: "videoforge-hosted-prompt-response/v1",

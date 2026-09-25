@@ -6,7 +6,7 @@ it("finalizes the last durable batch with a bounded numeric reservation", () => 
   const source = readFileSync("src/server/hosted/hosted-prompt-route.ts", "utf8");
   const recorded = source.indexOf("await compileAndPersistHostedPromptBatch(authority, acceptedBatch");
   const finalBatch = source.indexOf("saved.accepted_batch_count + 1 === saved.planned_batch_count", recorded);
-  const completion = source.indexOf("return completeAcceptedRun()", finalBatch);
+  const completion = source.indexOf("return await completeAcceptedRun()", finalBatch);
   const runningResponse = source.indexOf('state: "RUNNING"', completion);
   expect(recorded).toBeGreaterThan(-1);
   expect(finalBatch).toBeGreaterThan(recorded);
@@ -17,6 +17,7 @@ it("finalizes the last durable batch with a bounded numeric reservation", () => 
   expect(source).toContain("reported_cost_micro_usd::integer AS reported_cost_micro_usd");
   expect(source).toContain('(existingState === "DISPATCHING" || existingState === "UNKNOWN")');
   expect(source).toContain("saved.accepted_scene_count === saved.planned_scene_count");
+  expect(source.match(/return await completeAcceptedRun\(\)/gu)).toHaveLength(2);
   const noSubmit = source.indexOf("HOSTED_PROMPT_COMPLETION_MUST_NOT_SUBMIT");
   const reopen = source.indexOf("videoforge_reopen_complete_hosted_prompt_run", noSubmit);
   const complete = source.indexOf("videoforge_complete_hosted_prompt_run", reopen);
