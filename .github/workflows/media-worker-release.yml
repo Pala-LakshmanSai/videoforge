@@ -258,7 +258,15 @@ jobs:
           while IFS= read -r -d '' x86_binary; do
             relative="${x86_binary#${extracted}/}"
             arm_binary="${site_packages}/${relative}"
-            test -f "$arm_binary"
+            if [ ! -f "$arm_binary" ]; then
+              # OpenCV's Intel and Apple Silicon wheels carry different codec-library
+              # versions. Keep each architecture's uniquely named dylibs alongside
+              # the common universal2 modules so each slice resolves its own links.
+              mkdir -p "$(dirname "$arm_binary")"
+              cp "$x86_binary" "$arm_binary"
+              /usr/bin/lipo "$arm_binary" -verify_arch x86_64
+              continue
+            fi
             universal_binary="${arm_binary}.universal2"
             /usr/bin/lipo -create "$arm_binary" "$x86_binary" -output "$universal_binary"
             /bin/mv "$universal_binary" "$arm_binary"
