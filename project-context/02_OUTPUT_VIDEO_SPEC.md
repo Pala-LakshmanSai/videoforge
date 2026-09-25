@@ -54,13 +54,14 @@ Avatar source requirements are enforced when a reusable Avatar Profile version i
 
 A narration-relevant Mage image following the project's pinned Image Style fills 1920×1080. The active ImageForge-compatible generation contract is `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6` through pinned ComfyUI, using `int8-convrot`, four steps, guidance `1.0`, and exact 1280×720 output. The renderer scales that 16:9 source to the delivery frame and applies only a slow centered zoom-in.
 
-Recommended zoom envelope:
+Zoom envelope (user update, 2026-09-25; worker 0.1.31 onward):
 
-- Short image scene: 1.00 → 1.025.
-- Typical image scene: 1.00 → 1.03.
-- Long image scene: never exceed 1.035 without a separately approved render profile.
-- Use a quintic smootherstep progression at 30 fps so speed and acceleration both settle at the
-  first and last frame.
+- Short image scene: 1.00 → 1.03125.
+- Typical image scene: 1.00 → 1.0375.
+- Long image scene: 1.00 → 1.04375.
+- Use linear progress at 30 fps with nonzero motion from the first frame interval. Do not hold
+  the opening image or ease in from zero speed. Convert the looped still to 30 fps before applying
+  its per-frame transform, so frame-rate conversion does not repeat transformed frames.
 - `ffmpeg-render-v3` uses per-frame floating-point source-corner coordinates with cubic
   interpolation rather than integer crop stepping. This keeps the centered movement continuous at
   subpixel precision; an alternative implementation must prove equivalent monotonic, jitter-free
@@ -86,7 +87,8 @@ approves it, no active SoulX split composition exists.
 - No divider, border, label, shadow, rounded panel, or decoration.
 - Mage still returns the locked 1280×720 output. Split-scene prompt guidance keeps the evidence inside the pinned 8:9-safe crop, and the resolved render manifest records the deterministic crop/scale used for the right panel.
 - The right image uses the smaller 1.00 → 1.025 `split-right-zoom-v3` profile during the short split
-  interval. Every displayed AI image moves slowly, including split companions.
+  interval; its zoom amount is unchanged. Use the same immediate linear motion as fullscreen
+  images. Every displayed AI image moves slowly, including split companions.
 
 ### Avatar frame-rate conversion
 
@@ -152,7 +154,7 @@ Before delivery verify:
 - Audio/video starts at zero; no drift or missing tail.
 - Exactly one EDL segment covers every frame.
 - Full and split crop geometry matches the accepted model-specific source profile; active SoulX output is blocked until its measured profile is approved, and a model/profile/crop mismatch is rejected.
-- Both `IMAGE_FULL` and the right image in `AVATAR_SPLIT_IMAGE` have the required subtle eased zoom;
+- Both `IMAGE_FULL` and the right image in `AVATAR_SPLIT_IMAGE` have the required subtle continuous zoom from the first frame interval;
   neither is static, neither oscillates around its center, and neither exhibits integer-crop shake.
 - Every image attempt and content-addressed prompt manifest points to the revision's pinned Image
   Style version/effective prompt hash; active `production-manifest/v3` binds that prompt manifest,

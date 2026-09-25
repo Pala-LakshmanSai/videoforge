@@ -1,4 +1,15 @@
 schema_version: "2.0"
+image_zoom_immediate_2026_09_25:
+  checkpoint: V2-09
+  status: LOCAL_FRAME_PROOF_PASSED_AWAITING_WORKER_RELEASE
+  worker_version: 0.1.31
+  decision: Linear centered motion from the first frame interval in both image layouts; fullscreen zoom amount increases 25 percent and split zoom amount stays 2.5 percent. Set 30 fps before the animated transform to prevent repeated transformed frames.
+  cause: The v3 quintic curve starts with zero velocity; applying perspective before 30fps conversion also repeats transformed frames from the default 25fps still-image cadence.
+  validation: Retained five-second full and split clips first change at frame 1 after the fix versus frame 7 before. All 31 focused tests and Ruff pass; legacy v1/v2 remain unchanged.
+  evidence_path: evidence/acceptance/VF-10-09/2026-09-25-immediate-image-zoom.json
+  remaining_gates: Exact worker CI/release, hosted manifest deployment, installation and Chrome playback. Local lossless microbenchmarks are slower with 30 distinct transformed frames; production-speed improvement is not claimed.
+  provider_spend: Zero paid requests; retained media only.
+  paid_compute_shutdown: No GPU activation.
 api_avatar_startup_2026_09_25:
   checkpoint: V2-09
   status: APP_SETUP_OPTIMIZED_FAL_REQUEST_WAIT_NOT_ELIMINATED

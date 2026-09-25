@@ -96,22 +96,24 @@ def _continuous_image_filter(
     frame_count: int,
     delta: float,
 ) -> str:
-    zoom = _zoom_expression(frame_count, delta, quintic=True)
+    # Constant motion is visible from the first frame; eased starts looked stationary.
+    zoom = f"1+{delta:.6f}*(on/{max(frame_count - 1, 1)})"
     x_margin = f"(W-W/({zoom}))/2"
     y_margin = f"(H-H/({zoom}))/2"
     # Cache the scaled still before the animated transform; repeating its decode
     # and scale for every output frame adds work without changing any pixels.
+    # Set cadence before perspective so 25fps still inputs do not duplicate transformed frames.
     return (
         f"[{input_index}:v:0]"
         f"scale={width}:1080:force_original_aspect_ratio=increase:flags=lanczos,"
         f"crop={width}:1080,setsar=1,"
-        "loop=loop=-1:size=1:start=0,"
+        "loop=loop=-1:size=1:start=0,fps=30,"
         f"perspective=x0='{x_margin}':y0='{y_margin}':"
         f"x1='W-({x_margin})':y1='{y_margin}':"
         f"x2='{x_margin}':y2='H-({y_margin})':"
         f"x3='W-({x_margin})':y3='H-({y_margin})':"
         "interpolation=cubic:sense=source:eval=frame,"
-        f"fps=30,trim=end_frame={frame_count},setpts=PTS-STARTPTS"
+        f"trim=end_frame={frame_count},setpts=PTS-STARTPTS"
     )
 
 
@@ -136,11 +138,13 @@ def _image_filter(
 
 def _zoom_delta(*, frame_count: int, split: bool, profile_version: str) -> float:
     if profile_version == SMOOTH_RENDER_PROFILE_VERSION:
-        if split or frame_count <= 120:
+        if split:
             return 0.025
+        if frame_count <= 120:
+            return 0.03125
         if frame_count <= 210:
-            return 0.03
-        return 0.035
+            return 0.0375
+        return 0.04375
     if profile_version == SUBTLE_RENDER_PROFILE_VERSION:
         if split or frame_count <= 120:
             return 0.015

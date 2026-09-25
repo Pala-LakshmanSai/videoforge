@@ -1,0 +1,175 @@
+{
+  "checkpoint": "V2-09",
+  "worker_version": "0.1.31",
+  "status": "LOCAL_VERIFIED_RELEASE_PENDING",
+  "decision": "Immediate linear zoom for v3; fullscreen deltas +25%, split delta unchanged; fps30 before perspective",
+  "retained_media_frame_checks": [
+    {
+      "variant": "before",
+      "split": false,
+      "delta": 0.03,
+      "frames": 150,
+      "firstDifferentFrame": 7,
+      "identicalToFirstCount": 6,
+      "early": [
+        {
+          "frame": 1,
+          "meanAbsoluteDifferenceFrom0": 0.0
+        },
+        {
+          "frame": 2,
+          "meanAbsoluteDifferenceFrom0": 0.0
+        },
+        {
+          "frame": 5,
+          "meanAbsoluteDifferenceFrom0": 0.0
+        },
+        {
+          "frame": 10,
+          "meanAbsoluteDifferenceFrom0": 0.0016041345164609054
+        },
+        {
+          "frame": 15,
+          "meanAbsoluteDifferenceFrom0": 0.024932645318930042
+        },
+        {
+          "frame": 30,
+          "meanAbsoluteDifferenceFrom0": 0.7295521476337449
+        },
+        {
+          "frame": 149,
+          "meanAbsoluteDifferenceFrom0": 10.38086628729424
+        }
+      ],
+      "renderSeconds": 4.03195604100074
+    },
+    {
+      "variant": "before",
+      "split": true,
+      "delta": 0.025,
+      "frames": 150,
+      "firstDifferentFrame": 7,
+      "identicalToFirstCount": 6,
+      "early": [
+        {
+          "frame": 1,
+          "meanAbsoluteDifferenceFrom0": 0.0
+        },
+        {
+          "frame": 2,
+          "meanAbsoluteDifferenceFrom0": 0.0
+        },
+        {
+          "frame": 5,
+          "meanAbsoluteDifferenceFrom0": 0.0
+        },
+        {
+          "frame": 10,
+          "meanAbsoluteDifferenceFrom0": 0.001352880658436214
+        },
+        {
+          "frame": 15,
+          "meanAbsoluteDifferenceFrom0": 0.02166891718106996
+        },
+        {
+          "frame": 30,
+          "meanAbsoluteDifferenceFrom0": 0.4974437371399177
+        },
+        {
+          "frame": 149,
+          "meanAbsoluteDifferenceFrom0": 9.414009773662551
+        }
+      ],
+      "renderSeconds": 1.995029332998456
+    },
+    {
+      "variant": "after",
+      "split": false,
+      "delta": 0.0375,
+      "frames": 150,
+      "firstDifferentFrame": 1,
+      "identicalToFirstCount": 0,
+      "early": [
+        {
+          "frame": 1,
+          "meanAbsoluteDifferenceFrom0": 0.13630706661522635
+        },
+        {
+          "frame": 2,
+          "meanAbsoluteDifferenceFrom0": 0.3516353202160494
+        },
+        {
+          "frame": 5,
+          "meanAbsoluteDifferenceFrom0": 0.8563773148148148
+        },
+        {
+          "frame": 10,
+          "meanAbsoluteDifferenceFrom0": 1.4763220164609054
+        },
+        {
+          "frame": 15,
+          "meanAbsoluteDifferenceFrom0": 2.036186342592593
+        },
+        {
+          "frame": 30,
+          "meanAbsoluteDifferenceFrom0": 3.5170515046296296
+        },
+        {
+          "frame": 149,
+          "meanAbsoluteDifferenceFrom0": 12.70397360468107
+        }
+      ],
+      "renderSeconds": 4.661823000000368
+    },
+    {
+      "variant": "after",
+      "split": true,
+      "delta": 0.025,
+      "frames": 150,
+      "firstDifferentFrame": 1,
+      "identicalToFirstCount": 0,
+      "early": [
+        {
+          "frame": 1,
+          "meanAbsoluteDifferenceFrom0": 0.06511638374485597
+        },
+        {
+          "frame": 2,
+          "meanAbsoluteDifferenceFrom0": 0.14579025205761317
+        },
+        {
+          "frame": 5,
+          "meanAbsoluteDifferenceFrom0": 0.4685934284979424
+        },
+        {
+          "frame": 10,
+          "meanAbsoluteDifferenceFrom0": 1.0516637731481482
+        },
+        {
+          "frame": 15,
+          "meanAbsoluteDifferenceFrom0": 1.4796730324074074
+        },
+        {
+          "frame": 30,
+          "meanAbsoluteDifferenceFrom0": 2.6527282664609055
+        },
+        {
+          "frame": 149,
+          "meanAbsoluteDifferenceFrom0": 9.693477044753086
+        }
+      ],
+      "renderSeconds": 2.575397165999675
+    }
+  ],
+  "validation": {
+    "focused_tests": 31,
+    "ruff": "PASS",
+    "legacy_v1_v2": "unchanged"
+  },
+  "new_generation_requests": 0,
+  "gpu_activation": false,
+  "limits": [
+    "Existing final videos are unchanged.",
+    "Lossless isolated renders are slower; no production speedup claimed."
+  ]
+}

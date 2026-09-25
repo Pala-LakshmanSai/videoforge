@@ -250,7 +250,7 @@ approved_decisions:
   DEC_LLM_002: deepseek_image_prompts_only
   DEC_OUTPUT_001: full_avatar_full_image_split_only
   DEC_OUTPUT_002: hard_cuts_no_graphics_text_or_transitions
-  DEC_OUTPUT_003: subtle_centered_jitter_free_zoom
+  DEC_OUTPUT_003: immediate_centered_zoom_faster_fullscreen
   DEC_QUEUE_001: postgres_authoritative_api_generation_with_runpod_history
   DEC_QUEUE_003: fair_one_per_account_two_global_admission
   DEC_RENDER_001: superseded_cloud_run_render_decision_history
