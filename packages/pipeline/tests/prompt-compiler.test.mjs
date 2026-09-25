@@ -395,10 +395,10 @@ test("castle dates and room counts remain narration facts rather than requested 
   assert.doesNotMatch(compiled.positivePrompt, /1869|200 rooms/u);
   assert.match(
     compiled.positivePrompt,
-    /No text or pseudo-text, numbers, labels, signs, branding or markings/u,
+    /No text or pseudo-text, numbers, labels, signs, branding/u,
   );
-  for (const term of ["text", "pseudo-text", "logo", "watermark", "overlays"])
-    assert.ok(compiled.negativePrompt.includes(term), `missing typography exclusion: ${term}`);
+  for (const term of ["text", "pseudo-text", "branding", "watermarks", "overlays"])
+    assert.ok(compiled.positivePrompt.includes(term), `missing typography exclusion: ${term}`);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
     /never quote a label or render the fact as writing/u,
@@ -440,7 +440,7 @@ test("compiler rejects forbidden content in structured scene facts", () => {
 });
 
 test("keeps described products relatable without allowing text or branding", () => {
-  assert.match(PERMANENT_POSITIVE_GUARDRAIL, /products\/containers plain and unmarked/u);
+  assert.match(PERMANENT_POSITIVE_GUARDRAIL, /products unmarked/u);
   assert.doesNotMatch(
     PERMANENT_POSITIVE_GUARDRAIL,
     /no manufactured product, packaging or container/u,
@@ -543,7 +543,7 @@ test("compacts repeated negative terms without weakening permanent exclusions", 
     extraPromptKeywords: null,
     applyExtraPromptKeywords: false,
   });
-  for (const term of ["text", "watermark", "duplicate limbs", "logos", "overlays"]) {
+  for (const term of ["text", "watermark", "duplicate limbs", "logos"]) {
     assert.equal(
       compiled.negativePrompt
         .toLocaleLowerCase("en-US")
@@ -553,6 +553,7 @@ test("compacts repeated negative terms without weakening permanent exclusions", 
       `negative term should be emitted once: ${term}`,
     );
   }
+  assert.match(compiled.positivePrompt, /overlays/u);
   assert.ok(compiled.negativePrompt.length < 300);
   verifyCompiledImagePrompt(compiled);
 });
@@ -589,11 +590,49 @@ test("compacts built-in style while retaining scene, framing, style, and permane
     compiled.positivePrompt,
     /same subject\/setting\/state, viewpoint: environmental wide/u,
   );
-  assert.match(compiled.positivePrompt, /motion graphics\/decorative transitions/u);
+  assert.match(compiled.positivePrompt, /motion graphics or decorative transitions/u);
   assert.match(compiled.negativePrompt, /text, pseudo-text/u);
   assert.match(compiled.negativePrompt, /malformed anatomy/u);
   assert.ok(compiled.positivePrompt.length < 1_000);
   assert.ok(compiled.negativePrompt.length < 400);
+  verifyCompiledImagePrompt(compiled);
+});
+
+test("landscape prompts keep scene and photographic cues without repeated text bans", () => {
+  const input = batch(1);
+  const landscapeStyle = promptStyleTreatmentPositiveSuffix({
+    medium_family: "Digital landscape photography",
+    realism: "Photorealistic, high-fidelity",
+    camera_language: "Wide-angle lens, deep focus, stable tripod-mounted or aerial perspective",
+    lighting: "Direct, high-noon sunlight or golden hour, high-contrast shadows",
+  });
+  const compiled = compileImagePrompt({
+    writerOutput: {
+      scene_id: input.scenes[0].sceneId,
+      literal_subject: "a winemaker in a simple linen shirt",
+      action: "looks over straight rows of grapevines",
+      environment: "a vineyard entrance with a stone gate and distant mountains",
+      in_image_shot_role: input.scenes[0].inImageShotRole,
+      lighting_context: "direct sunlight",
+      continuity_tags: [],
+      prompt_core: "unused writer prose",
+    },
+    expectedScene: input.scenes[0],
+    style: {
+      ...style(landscapeStyle),
+      negativeSuffix: "blurry, soft focus, low resolution, artificial, over-saturated, human-centric, portrait, watermark, text, pseudo-text, gibberish lettering, words, letters, numbers, typography, labels, packaging text, printed markings, branded packaging, brand names, product names, ingredient lists, crushed blacks",
+    },
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  assert.match(compiled.positivePrompt, /subject: a winemaker in a simple linen shirt/u);
+  assert.match(compiled.positivePrompt, /wide deep-focus unobstructed or aerial view/u);
+  assert.match(compiled.positivePrompt, /high-noon or golden-hour sun, strong shadows/u);
+  assert.match(compiled.positivePrompt, /No text or pseudo-text/u);
+  assert.match(compiled.negativePrompt, /crushed blacks/u);
+  assert.doesNotMatch(compiled.components.styleNegativeSuffix, /gibberish lettering|packaging text/u);
+  assert.ok(compiled.positivePrompt.length < 700);
+  assert.ok(compiled.negativePrompt.length < 220);
   verifyCompiledImagePrompt(compiled);
 });
 

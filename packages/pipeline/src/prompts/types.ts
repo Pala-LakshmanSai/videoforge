@@ -218,6 +218,18 @@ export function promptStyleTreatmentPositiveSuffix(treatment: PromptStyleTreatme
   // Optical treatment describes the resulting view, never physical recording
   // equipment. Leave the immutable profile and narrated scene facts intact.
   const viewpoint = promptOpticalViewpoint(treatment.camera_language);
+  const key = (value: string): string => value.replace(/\s+/gu, " ").trim().toLowerCase();
+  // This common landscape treatment repeats the same photography cue in four
+  // verbose metadata fields. Keep every visual choice in one shorter sentence.
+  if (
+    key(treatment.medium_family) === "digital landscape photography" &&
+    key(treatment.realism) === "photorealistic, high-fidelity" &&
+    key(viewpoint) ===
+      "wide field of view, deep focus, steady unobstructed or aerial perspective" &&
+    key(treatment.lighting) ===
+      "direct, high-noon sunlight or golden hour, high-contrast shadows"
+  )
+    return "photorealistic digital landscape photo; wide deep-focus unobstructed or aerial view; high-noon or golden-hour sun, strong shadows";
   // Per-field compaction prevents a long early trait from deleting a later
   // high-value cue while preserving runtime derivation from the pinned style.
   return [
@@ -308,7 +320,7 @@ export interface CompilePromptRequest {
 }
 
 export interface CompiledImagePrompt {
-  readonly promptCompilerVersion: "prompt-compiler-v1" | "prompt-compiler-v2";
+  readonly promptCompilerVersion: "prompt-compiler-v1" | "prompt-compiler-v2" | "prompt-compiler-v3";
   readonly scenePromptWriterVersion: typeof SCENE_PROMPT_WRITER_VERSION;
   readonly sceneId: string;
   readonly components: {

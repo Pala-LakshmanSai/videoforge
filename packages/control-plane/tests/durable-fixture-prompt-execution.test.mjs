@@ -310,7 +310,7 @@ test("fixture execution persists exact canonical hashes and correlated zero-cost
     // prompt lists the literal tokens the model must avoid.
     assert.match(
       result.accepted.compiledPrompts[0].positivePrompt,
-      /No visible or pseudo-text/u,
+      /No text or pseudo-text/u,
     );
     assert.match(result.accepted.compiledPrompts[0].negativePrompt, /pseudo-text/u);
     assert.equal(outboundCalls, 0);
@@ -646,7 +646,7 @@ test("telemetry sink failure cannot change accepted durable bytes", async () => 
   assert.equal(store.acceptCalls, 1);
 });
 
-test("completion preserves accepted compiler-v1 bytes while compiling later scenes with v2", async () => {
+test("completion preserves accepted compiler-v1 bytes while compiling later scenes with v3", async () => {
   const first = await new DurablePromptExecutionService(
     new MemoryStore(),
     new DurableFixturePromptWriter(),
@@ -675,7 +675,7 @@ test("completion preserves accepted compiler-v1 bytes while compiling later scen
     new Map([[previous.sceneId, previous]]),
   ).execute(scope, command());
   assert.deepEqual(accepted.accepted.compiledPrompts[0], previous);
-  assert.equal(accepted.accepted.compiledPrompts[1].promptCompilerVersion, "prompt-compiler-v2");
+  assert.equal(accepted.accepted.compiledPrompts[1].promptCompilerVersion, "prompt-compiler-v3");
 
   await rejectsCode(
     () =>

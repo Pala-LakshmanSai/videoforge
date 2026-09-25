@@ -7,9 +7,9 @@ import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type { CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents } from "./types.js";
 
 export const PERMANENT_POSITIVE_GUARDRAIL =
-  "Original still photo of described scene; framing only, no camera gear. Show names, dates, quantities physically. No text or pseudo-text, numbers, labels, signs, branding or markings; products/containers plain and unmarked. No captions/titles, logos/watermarks, UI/charts, infographics/borders/lower-thirds, overlays, motion graphics/decorative transitions.";
+  "Original scene photo; framing only, no camera gear. Show names, dates, quantities physically. No text or pseudo-text, numbers, labels, signs, branding, logos, watermarks, captions, UI, graphics, borders, overlays, motion graphics or decorative transitions; products unmarked.";
 export const PERMANENT_NEGATIVE_GUARDRAIL =
-  "text, pseudo-text, captions, logos, watermarks, overlays, motion graphics, malformed anatomy, duplicate limbs, unrelated subjects";
+  "text, pseudo-text, motion graphics, malformed anatomy, duplicate limbs, unrelated subjects";
 
 const stripControls = (value: string): string =>
   Array.from(value, (character) => {
@@ -319,7 +319,18 @@ const compactBuiltInStylePositive = (value: string): string => {
 };
 
 const compactBuiltInStyleNegative = (value: string): string => {
-  return value === BUILT_IN_DOCUMENTARY_STYLE_NEGATIVE ? COMPACT_DOCUMENTARY_STYLE_NEGATIVE : value;
+  if (value === BUILT_IN_DOCUMENTARY_STYLE_NEGATIVE) return COMPACT_DOCUMENTARY_STYLE_NEGATIVE;
+  // Landscape profiles often repeat the permanent no-text rule in a long
+  // synonym list. Retain their photographic exclusions and any custom terms.
+  if (!/^(?:avoid:\s*)?blurry,\s*soft focus,\s*low resolution,/iu.test(value)) return value;
+  const covered = new Set([
+    "text", "pseudo-text", "gibberish lettering", "words", "letters", "numbers",
+    "typography", "labels", "signage", "packaging text", "printed markings",
+    "branded packaging", "brand names", "product names", "ingredient lists",
+    "watermark", "watermarks", "captions", "logos", "overlays", "motion graphics",
+  ]);
+  const terms = value.split(/[,;]/u).map((term) => term.trim()).filter(Boolean);
+  return terms.filter((term) => !covered.has(term.toLowerCase())).join(", ");
 };
 
 const compactCropGuidance = (value: string): string => {
@@ -462,7 +473,7 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
       "writerOutput",
     ]);
   return Object.freeze({
-    promptCompilerVersion: "prompt-compiler-v2",
+    promptCompilerVersion: "prompt-compiler-v3",
     scenePromptWriterVersion: SCENE_PROMPT_WRITER_VERSION,
     sceneId: expected.sceneId,
     components,
