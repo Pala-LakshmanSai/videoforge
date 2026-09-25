@@ -1,7 +1,7 @@
 schema_version: "2.0"
 api_avatar_sync_repair_2026_09_25:
   checkpoint: V2-09
-  status: MIGRATION_APPLIED_ISOLATED_RENDERS_VERIFIED_RELEASE_PENDING
+  status: PRODUCTION_DEPLOYED_WORKER_ONLINE_CORRECTED_RENDERS_VERIFIED
   decision: >-
     Carry persisted Fal selected-span padding through migration 0200 and the immutable render
     manifest. Trim native avatar video by trimStartMs plus the quantized timeline start minus
@@ -22,9 +22,19 @@ api_avatar_sync_repair_2026_09_25:
     read back with all ten persisted offsets. Three focused UI regressions and typecheck pass;
     production Chrome reproduced the old video source URL changing on Refresh now.
     UI retains signed URLs until their expiry window and excludes prior-project placeholders.
+    Worker 0.1.30 source cdfab4a3 passed both platform builds and packaged render smoke in
+    workflow 36110140841. Hosted source bc9136dd is deployed as Cloudflare
+    63faccee-619f-4f78-92d6-14b26584fc75 with 25 secret names and disabled GPU dispatch.
+    Real Chrome verifies Refresh now preserves the video source, the avatar viewer loads,
+    and Settings reports Mac v0.1.30 Online. Two older elapsed-label assertions also fail on
+    baseline 3c086906; the three new playback regressions pass.
   evidence_paths:
     - evidence/acceptance/VF-10-09/2026-09-25-avatar-sync.json
-  remaining_gates: Immutable worker publication, hosted release and production playback verification.
+  remaining_gates: >-
+    Provider-generated mouth-shape quality is not guaranteed by timeline alignment. Native
+    25fps quantizes source trimming within one 40ms frame. Historical hosted MP4s remain
+    unchanged; corrected local copies are delivered. Full 18-minute acceptance and human
+    approval/download remain separate existing gates.
   provider_spend: Zero new generation calls; retained media only.
   paid_compute_shutdown: No GPU activation; isolated render processes exited.
 api_generation_performance_2026_09_25:

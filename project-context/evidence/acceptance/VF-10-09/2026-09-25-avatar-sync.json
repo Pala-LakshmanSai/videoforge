@@ -165,6 +165,67 @@
   "preview_restart": {
     "before_production": "In real Chrome on Simon progress, Refresh now changed the existing video src.",
     "fix": "Reuse current signed URL within project/revision and immutable media identity until expiry refresh window; drop prior-project placeholder data.",
-    "focused_tests_passed": 3
+    "focused_tests_passed": 3,
+    "after_production": {
+      "source_stable_after_refresh": true,
+      "final_duration_seconds": 159.2,
+      "avatar_preview_duration_seconds": 5.6,
+      "avatar_ready_state": 4,
+      "media_error": null,
+      "cloudflare_version": "63faccee-619f-4f78-92d6-14b26584fc75"
+    }
+  },
+  "narration_source_check": {
+    "helenn_original_sha256": "f2ee953aa3f8e4acab643aa6e9c128f8a47c50be204ff31650c80f0b045aed5b",
+    "helenn_window_correlations": [
+      0.9974497363721849,
+      0.9981037409062898,
+      0.9973936803940258,
+      0.9992088702993345,
+      0.99765744729131,
+      0.9979889920064889,
+      0.9970910543715292,
+      0.9991181119106407,
+      0.9977710427038556,
+      0.9979192240927863,
+      0.9971898753574466,
+      0.999136937234071,
+      0.9977362206781639,
+      0.9979321950194101,
+      0.9971827664468538
+    ],
+    "within_output_repetition_not_reproduced": true
+  },
+  "validation": {
+    "pipeline_tests_passed": 12,
+    "handoff_materialization_tests_passed": 32,
+    "worker_tests_passed": 30,
+    "preview_tests_passed": 3,
+    "typecheck": "passed",
+    "changed_file_lint": "passed",
+    "contracts": "123 synchronized",
+    "broader_ui_suite": "109 passed; two elapsed label assertions also fail at baseline 3c086906. Baseline and current component use Wall elapsed time; tests expect Total elapsed time. Unrelated block unchanged."
+  },
+  "release": {
+    "worker_version": "0.1.30",
+    "worker_source_commit": "cdfab4a3b333c02e450c95aa35e2f302c4a6676e",
+    "execution_bundle_sha256": "sha256:b8dc7e13b7518375b81d644c5c111690c65e99991a2ba19f9d8d5fccac18b5c4",
+    "workflow_run": 36110140841,
+    "hosted_source_commit": "bc9136dda19c208da03c158267d42a76711969fb",
+    "cloudflare_version": "63faccee-619f-4f78-92d6-14b26584fc75",
+    "secret_names_preserved": 25,
+    "gpu_dispatch": "DISABLED_UNQUALIFIED",
+    "installed_worker": {
+      "version": "0.1.30",
+      "state": "ONLINE",
+      "bundle_matches_release": true,
+      "background_instances": 1,
+      "launchd_process_type": "Standard",
+      "active_leases": 0,
+      "nonterminal_jobs": 0,
+      "signature_and_universal2_verified": true,
+      "installer_unmounted": true,
+      "chrome_settings": "Mac v0.1.30 Online"
+    }
   }
 }
