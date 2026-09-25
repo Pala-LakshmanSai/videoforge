@@ -323,21 +323,16 @@ export async function runHostedContinuation(
         } else if (row.next_step === "dispatch") {
           // Stages 6-8 hang off GPU dispatch, which was the fourth and last browser-only handoff:
           // without it a finished prompt set sat with stages 6-8 pending forever.
-          const [{ createHostedV209SpanAudioLiveCoordinator }, dispatchModule] = await Promise.all([
-            import("./app"),
-            import("./hosted-v209-project-dispatch"),
-          ]);
-          const spanAudio = await createHostedV209SpanAudioLiveCoordinator(environment, config);
-          response = await dispatchModule.handleHostedV209ProjectDispatch(
-            continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/gpu-dispatch`, {}),
-            environment,
-            config,
-            executionContext,
-            { ...dispatchModule.defaults, scope: async () => scope },
-            spanAudio,
+          response = await (await import("./hosted-prompt-next-stage")).dispatchHostedProject(
+            row.project_id, scope, environment, config, executionContext,
           );
         } else {
           const { writeProjectPrompts } = await import("./hosted-prompt-route");
+          const acceptedHandoff = config.apiGeneration
+            ? (await import("./hosted-prompt-next-stage")).dispatchAcceptedHostedPrompts.bind(
+                null, environment, config, executionContext,
+              )
+            : undefined;
           response = await writeProjectPrompts(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/prompts`, {
               maximum_prompt_spend_micro_usd: 2_000_000,
@@ -346,6 +341,7 @@ export async function runHostedContinuation(
             config,
             executionContext,
             scope,
+            acceptedHandoff,
           );
         }
         const outcome = await continuationOutcome(response);

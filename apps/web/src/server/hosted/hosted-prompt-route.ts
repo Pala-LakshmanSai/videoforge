@@ -113,6 +113,7 @@ export async function writeProjectPrompts(
   executionContext: HostedExecutionContext,
   /** Set only by server-side stage continuation, which already holds a validated scope. */
   internalScope?: ContinuationScope,
+  acceptedHandoff?: (scope: ContinuationScope, projectId: string) => Promise<void>,
 ): Promise<Response> {
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
@@ -375,6 +376,12 @@ export async function writeProjectPrompts(
         if (!completed) throw new Error("HOSTED_PROMPT_ACCEPTANCE_REJECTED");
       },
     });
+    await handoffAcceptedHostedPrompts(
+      config.apiGeneration !== undefined,
+      acceptedHandoff,
+      scope,
+      projectId,
+    );
     return response(
       {
         schema_version: "videoforge-hosted-prompt-response/v1",
@@ -469,12 +476,30 @@ export async function writeProjectPrompts(
   }
 }
 
+/** A failed next-stage handoff cannot turn a durably accepted prompt set into an UNKNOWN run. */
+export async function handoffAcceptedHostedPrompts(
+  apiGeneration: boolean,
+  handoff: ((scope: ContinuationScope, projectId: string) => Promise<void>) | undefined,
+  scope: ContinuationScope,
+  projectId: string,
+): Promise<void> {
+  if (!apiGeneration || !handoff) return;
+  try {
+    await handoff(scope, projectId);
+  } catch (error) {
+    console.warn(
+      `hosted_prompt_next_stage_failed project=${projectId} message=${String((error as { message?: unknown })?.message ?? error).slice(0, 180)}`,
+    );
+  }
+}
+
 export async function handleHostedPromptRequest(
   request: Request,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
+  acceptedHandoff?: (scope: ContinuationScope, projectId: string) => Promise<void>,
 ): Promise<Response | null> {
   const match = PROMPTS_PATH.exec(new URL(request.url).pathname);
   if (request.method !== "POST" || !match) return null;
-  return writeProjectPrompts(request, match[1]!, config, executionContext);
+  return writeProjectPrompts(request, match[1]!, config, executionContext, undefined, acceptedHandoff);
 }

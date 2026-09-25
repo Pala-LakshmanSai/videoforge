@@ -1619,7 +1619,13 @@ export async function handleHostedRequest(
     /^\/api\/v2\/hosted\/projects\/[0-9a-f-]+\/prompts$/u.test(url.pathname)
   ) {
     const { handleHostedPromptRequest } = await import("./hosted-prompt-route");
-    const promptResponse = await handleHostedPromptRequest(request, config, executionContext);
+    const acceptedHandoff = (await import("./hosted-prompt-next-stage"))
+      .dispatchAcceptedHostedPrompts.bind(
+        null, environment, config, executionContext,
+      );
+    const promptResponse = await handleHostedPromptRequest(
+      request, config, executionContext, acceptedHandoff,
+    );
     if (promptResponse) return promptResponse;
   }
   if (

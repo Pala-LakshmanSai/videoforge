@@ -1,5 +1,24 @@
-import { describe, expect, it } from "vitest";
-import { hostedPromptRedispatchable } from "./hosted-prompt-route";
+import { describe, expect, it, vi } from "vitest";
+import { handoffAcceptedHostedPrompts, hostedPromptRedispatchable } from "./hosted-prompt-route";
+
+it("hands accepted API prompts to the next stage without changing acceptance on dispatch failure", async () => {
+  const scope = { account_id: "account", workspace_id: "workspace", user_id: "user" };
+  const handoff = vi.fn(async () => {
+    throw new Error("dispatch unavailable");
+  });
+  const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  try {
+    await expect(handoffAcceptedHostedPrompts(true, handoff, scope, "project")).resolves.toBeUndefined();
+    expect(handoff).toHaveBeenCalledExactlyOnceWith(scope, "project");
+    expect(warning).toHaveBeenCalledWith(
+      "hosted_prompt_next_stage_failed project=project message=dispatch unavailable",
+    );
+    await handoffAcceptedHostedPrompts(false, handoff, scope, "project");
+    expect(handoff).toHaveBeenCalledTimes(1);
+  } finally {
+    warning.mockRestore();
+  }
+});
 
 /**
  * The redispatch gate decides whether a revision that already owns a prompt run may spend another
