@@ -1,7 +1,7 @@
 {
   "checkpoint": "V2-09",
   "worker_version": "0.1.31",
-  "status": "LOCAL_VERIFIED_RELEASE_PENDING",
+  "status": "PRODUCTION_DEPLOYED_WORKER_INSTALLED_ONLINE",
   "decision": "Immediate linear zoom for v3; fullscreen deltas +25% then +12.5% after user preview, split delta unchanged; fps30 before perspective",
   "retained_media_frame_checks": [
     {
@@ -170,7 +170,7 @@
   "gpu_activation": false,
   "limits": [
     "Existing final videos are unchanged.",
-    "Two paired five-second shipping-encoder trials measured an additional0.31 seconds full and0.20 seconds split, excluding upload and whole-project work. Full-file bytes rose19 percent and split6 percent. No production speedup claimed."
+    "Paired shipping-encoder microbenchmarks measured the first +25 percent candidate, before the additional12.5 percent user adjustment. Their0.31s full/0.20s split overheads are not a final end-to-end production measurement."
   ],
   "shipping_encoder_microbenchmark": {
     "method": "Same saved image,150 outputframes/30fps; bundled FFmpeg8.1.2; shippinglibx264 mediumCRF23 yuv420p threads2; boundedfilterthreads1; two passes reverseorder; noaudio/IOupload included.",
@@ -269,11 +269,56 @@
     ],
     "split_delta": 0.025,
     "preview": "preview-full-faster.mp4",
-    "tests_passed": 31
+    "tests_passed": 31,
+    "chrome_playback": "Completed five seconds without media errors"
   },
   "superseded_ci": {
     "run_id": 36117333933,
     "status": "CANCELLED_BEFORE_PUBLICATION",
     "reason": "User requested a further12.5 percent fullscreen zoom increase after preview"
+  },
+  "source_commit": "b8823177f998b58280835a7053ddfb98b0970ed6",
+  "execution_bundle_sha256": "sha256:e0737cd0937cd4b73c34f2bdbce061ea897593b2eb85a46fedef2756498c9183",
+  "ci_run_id": 36117906159,
+  "release": {
+    "source_commit": "b8823177f998b58280835a7053ddfb98b0970ed6",
+    "tag": "media-worker-v0.1.31",
+    "ci_run": 36117906159,
+    "ci_conclusion": "success",
+    "execution_bundle_sha256": "sha256:e0737cd0937cd4b73c34f2bdbce061ea897593b2eb85a46fedef2756498c9183",
+    "cloudflare_version": "674a4f43-85af-4430-97ee-ae71b20ad860",
+    "manifest": {
+      "execution_bundle_sha256": "sha256:e0737cd0937cd4b73c34f2bdbce061ea897593b2eb85a46fedef2756498c9183",
+      "macos": {
+        "sha256": "sha256:7f1978fbf71eacd135106c6b1a83e2cecef7e8d125268e9d15918a35870aba2c",
+        "size_bytes": 414203578,
+        "trust": "AD_HOC_BETA",
+        "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.31/VideoForge-Worker-0.1.31.dmg"
+      },
+      "minimum_protocol_version": 1,
+      "schema_version": "videoforge-media-worker-release/v1",
+      "version": "0.1.31",
+      "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+      "windows": {
+        "sha256": "sha256:f5df8bbf6a9656952ac0b8878e16542f4235737e9ab69fb2092ddfa62696ded6",
+        "size_bytes": 279573569,
+        "trust": "UNSIGNED_BETA",
+        "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.31/VideoForge-Worker-0.1.31-Setup.exe"
+      }
+    },
+    "macos_download_verified": {
+      "sha256": "sha256:7f1978fbf71eacd135106c6b1a83e2cecef7e8d125268e9d15918a35870aba2c",
+      "size_bytes": 414203578
+    }
+  },
+  "installed_worker": {
+    "version": "0.1.31",
+    "online": true,
+    "exact_bundle_verified": true,
+    "chrome_online_verified": true,
+    "instance_count": 1,
+    "process_type": "Standard",
+    "active_leases": 0,
+    "nonterminal_jobs": 0
   }
 }

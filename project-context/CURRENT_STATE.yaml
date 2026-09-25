@@ -1,13 +1,18 @@
 schema_version: "2.0"
 image_zoom_immediate_2026_09_25:
   checkpoint: V2-09
-  status: LOCAL_FRAME_PROOF_PASSED_AWAITING_WORKER_RELEASE
+  status: PRODUCTION_DEPLOYED_WORKER_031_ONLINE
   worker_version: 0.1.31
+  source_commit: b8823177f998b58280835a7053ddfb98b0970ed6
+  cloudflare_version: 674a4f43-85af-4430-97ee-ae71b20ad860
+  execution_bundle_sha256: sha256:e0737cd0937cd4b73c34f2bdbce061ea897593b2eb85a46fedef2756498c9183
+  release_ci: 36117906159
   decision: Linear centered motion from the first frame interval in both image layouts; fullscreen zoom amount increases 25 percent and a further 12.5 percent after user preview, while split zoom amount stays 2.5 percent. Set 30 fps before the animated transform to prevent repeated transformed frames.
   cause: The v3 quintic curve starts with zero velocity; applying perspective before 30fps conversion also repeats transformed frames from the default 25fps still-image cadence.
   validation: Retained five-second full and split clips first change at frame 1 after the fix versus frame 7 before. All 31 focused tests and Ruff pass; legacy v1/v2 remain unchanged.
   evidence_path: evidence/acceptance/VF-10-09/2026-09-25-immediate-image-zoom.json
-  remaining_gates: Exact worker CI/release, hosted manifest deployment, installation and Chrome playback. Local lossless microbenchmarks are slower with 30 distinct transformed frames; production-speed improvement is not claimed.
+  remaining_gates: None for the requested zoom delivery. New full-project rendering time is unmeasured; generating 30 distinct transformed frames has a small isolated encoding cost. Existing final videos are unchanged.
+  release_validation: Both installer builds and frozen render smoke passed. Exact release/tag/installer hashes verified; Mac worker 0.1.31 is Online with one background instance and Standard process type. Chrome played both samples and verified the worker connection.
   provider_spend: Zero paid requests; retained media only.
   paid_compute_shutdown: No GPU activation.
 api_avatar_startup_2026_09_25:
