@@ -270,6 +270,11 @@ export async function writeProjectPrompts(
     return response({ error: { code: "HOSTED_PROMPT_PROVIDER_UNAVAILABLE" } }, 503);
   const promptApiKey = config.styleAnalysis.apiKey;
   const pool = createNeonPool(config.neon.databaseUrl);
+  const startedAt = Date.now();
+  const trace = (phase: string) =>
+    console.warn(
+      `hosted_prompt_phase project=${projectId} phase=${phase} elapsed_ms=${Date.now() - startedAt}`,
+    );
   let runId: string | null = null;
   // The settle below needs the same tenant scope the handler derived. A continuation request (the
   // sweep) carries no cookie, so re-deriving it there returns a 401 Response, the settle is skipped
@@ -278,6 +283,7 @@ export async function writeProjectPrompts(
   try {
     const scope = internalScope ?? (await sessionScope(request, config, pool, executionContext));
     if (scope instanceof Response) return scope;
+    trace("scope");
     settleScope = scope;
     const body = await parseHostedJson(request, "HOSTED_PROMPT_REQUEST_REJECTED", 4_096);
     if (body instanceof Response) return body;
@@ -312,6 +318,7 @@ export async function writeProjectPrompts(
         runReservedCostMicroUsd: loaded.rows[0]?.run_reserved_cost_micro_usd ?? null,
       };
     });
+    trace("plan");
     const planRecord = plainRecord(plan.plan);
     if (!planRecord) return response({ error: { code: "HOSTED_PROMPT_PLAN_NOT_READY" } }, 409);
     const existingState = planRecord.existing_run_state;
@@ -394,6 +401,7 @@ export async function writeProjectPrompts(
         );
         return { run: saved, claim: claim.rows[0] ?? null };
       });
+      trace("original");
       if (original) {
         const saved = original.run;
         const identity: HostedPromptIdentity = {
@@ -430,12 +438,15 @@ export async function writeProjectPrompts(
             null,
           );
         const completeAcceptedRun = async (): Promise<Response> => {
+          trace("accepted_load_start");
           const storedProgress = await loadAcceptedPromptBatches(
             pool,
             scope.account_id,
             scope.workspace_id,
             saved.id,
           );
+          trace("accepted_load_done");
+          trace("execution_start");
           const accepted = await runHostedPromptExecution({
             scope: { workspaceId: scope.workspace_id, actorUserId: scope.user_id },
             authority,
@@ -460,6 +471,7 @@ export async function writeProjectPrompts(
             },
             apiKey: promptApiKey,
             persist: async (acceptance) => {
+              trace("persist_start");
               const completed = await createNeonExecutor(pool).transaction(async (transaction) => {
                 await transaction.query("SELECT set_config($1, $2, true)", [
                   "videoforge.account_id",
@@ -487,14 +499,18 @@ export async function writeProjectPrompts(
                 return result.rows[0]?.completed === true;
               });
               if (!completed) throw new Error("HOSTED_PROMPT_ACCEPTANCE_REJECTED");
+              trace("persist_done");
             },
           });
+          trace("execution_done");
+          trace("handoff_start");
           await handoffAcceptedHostedPrompts(
             config.apiGeneration !== undefined,
             acceptedHandoff,
             scope,
             projectId,
           );
+          trace("handoff_done");
           return response(
             {
               schema_version: "videoforge-hosted-prompt-response/v1",
@@ -807,7 +823,9 @@ export async function writeProjectPrompts(
       409,
     );
   } finally {
+    trace("pool_end_start");
     await pool.end();
+    trace("pool_end_done");
   }
 }
 
