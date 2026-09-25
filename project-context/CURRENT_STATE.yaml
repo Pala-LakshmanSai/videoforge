@@ -1,10 +1,13 @@
 schema_version: "2.0"
 voiceover_drag_drop_2026_09_25:
   checkpoint: V2-09
-  status: SOURCE_VERIFIED_DEPLOY_PENDING
+  status: PRODUCTION_DEPLOYED_CHROME_UI_VERIFIED
+  source_commit: 224d49b17d20756e3694baf0bd910549f88f8fa1
+  cloudflare_version: 223a562d-4834-4b5f-86f8-4bb57d6dbd3b
+  evidence_path: evidence/acceptance/VF-10-09/2026-09-25-voiceover-drag-drop.json
   decision: The hosted New Project voiceover area accepts one dropped WAV or MP3 through the same validation and upload state as the file picker.
-  validation: Focused drag/drop test, web typecheck and ESLint pass. Full hosted screen suite has two failures in unchanged stage timing label assertions; their baseline status is unverified.
-  remaining_gates: Sealed guarded production deploy and live Chrome drop check.
+  validation: Focused drag/drop and existing project-creation tests, web typecheck, ESLint, context validation, production bundle and guarded route checks pass. Chrome shows updated form. Full hosted screen suite has two failures in unchanged stage timing label assertions; their baseline status is unverified. Finder-to-Chrome physical drop could not be replayed because Mac screen control failed.
+  remaining_gates: A physical Finder-to-Chrome drop has not been observed after deployment. The browser UI test covers the drop event and shared file state.
   provider_spend: Zero paid requests.
   paid_compute_shutdown: GPU remains disabled for ordinary generation.
 image_zoom_both_preview_2026_09_25:

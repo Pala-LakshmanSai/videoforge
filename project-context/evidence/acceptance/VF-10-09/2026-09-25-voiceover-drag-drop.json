@@ -1,0 +1,24 @@
+{
+  "checkpoint": "V2-09",
+  "status": "PRODUCTION_DEPLOYED_CHROME_UI_VERIFIED",
+  "cause": "The visible hosted label had a hidden file input change handler but no dragover or drop handler.",
+  "change": "Route one dropped WAV or MP3 through existing picker validation and downstream upload state; show drag feedback and reject unsupported or multiple files.",
+  "source_commit": "224d49b17d20756e3694baf0bd910549f88f8fa1",
+  "cloudflare_version": "223a562d-4834-4b5f-86f8-4bb57d6dbd3b",
+  "worker_manifest_version": "0.1.32",
+  "worker_execution_bundle_sha256": "sha256:591a0f972cdd00c5e2c0dcd1c93969727ef8de60481a165cda416c36a8342073",
+  "generation_provider": "KIE_FAL",
+  "gpu_transport": "DISABLED_UNQUALIFIED",
+  "preserved_secret_count": 25,
+  "production_bundle_verify": "PASS",
+  "validation": {
+    "focused_drop_and_creation_tests": "2 passed",
+    "web_typecheck": "PASS",
+    "eslint": "PASS",
+    "context": "PASS",
+    "chrome_new_project_form": "Updated Choose or drop copy visible",
+    "physical_os_drop": "NOT_OBSERVED_SCREEN_CONTROL_ERROR",
+    "full_hosted_suite": "110 passed, 2 unchanged stage timing assertions failed; baseline unverified"
+  },
+  "paid_provider_calls": 0
+}
