@@ -1,0 +1,29 @@
+{
+  "checkpoint": "V2-09",
+  "source_commit": "c3c8cfa31c14fa3a1c1334d1456fc96efd88ad08",
+  "cloudflare_version": "aa9aa635-6980-47bd-a5cf-b44a56f531e9",
+  "retired_system_profile_id": "f2136d6c-03e7-41c2-8d15-86fddfdf578f",
+  "scope": "Shared catalog visibility only; immutable records and historical resolution preserved",
+  "chrome": {
+    "before_cards": 4,
+    "after_cards": 3,
+    "remaining": [
+      "V2-09 qualified SoulX avatar (system copy)",
+      "elias yoder",
+      "helen"
+    ],
+    "all_remaining_have_image_and_remove_control": true,
+    "workspace_remove_confirmation_opened_and_dismissed": true
+  },
+  "validation": [
+    "focused catalog test",
+    "web typecheck",
+    "changed-file ESLint",
+    "production build and bundle gate",
+    "context validation"
+  ],
+  "worker": "0.1.30 unchanged",
+  "paid_calls": 0,
+  "database_mutations": 0,
+  "gpu_activation": false
+}
