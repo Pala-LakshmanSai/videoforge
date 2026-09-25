@@ -31,6 +31,9 @@ Avatar occupies the full 1920×1080 frame. Fresh API projects use Fal FlashHead'
 feathers its edges, and preserves the source's wide framing. It fails closed when feature
 alignment is uncertain. The same composed clip supplies full-frame and centered split-avatar
 views; no new provider call or change to the accepted square artifact is needed.
+Worker 0.1.29 uses cached bicubic spatial resampling to preserve more of the existing square's
+detail. This remains a 1080p composition of a native 512-pixel avatar; it cannot restore detail
+missing from the model output. Edge feathering does not blend interior mouth pixels.
 
 Historical SoulX-FlashHead Pro uses its own pinned render identity. Its review-only
 `soulx-pro-ranga-full-source-composite-v1` preview preserves the wide

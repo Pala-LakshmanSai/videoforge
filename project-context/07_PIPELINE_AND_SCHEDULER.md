@@ -6,6 +6,13 @@ Kie image and Fal audio-to-video jobs; the API Workflow claims each before submi
 private outputs, and hands accepted media to the existing render path. The RunPod diagram and
 queue details below describe historical attempts only.
 
+The API coordinator keeps at most eight image and four avatar tasks outstanding. Fal starts
+within those slots concurrently; Kie starts use 1050ms slots. Every submitted result is visited
+on each observation pass, with serial media acceptance and 250ms minimum observation slots.
+Slots include their final interval to preserve pacing across passes and the two admitted accounts.
+Accepted work advances immediately; a pending-only pass sleeps two seconds. A submission error
+stops queued paid calls while already claimed calls finish recording their exact identities.
+
 Status: transcript and deterministic-scheduler foundations accepted; tenant-fair Serverless integration pending
 Read when: implementing transcript alignment, scheduling, generation, dispatch, or final assembly.
 

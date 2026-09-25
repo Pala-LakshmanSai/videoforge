@@ -1,0 +1,59 @@
+{
+  "source_commit": "a8a60888aee8e306ad21f9ee6302b037ee470e2f",
+  "tag": "media-worker-v0.1.29",
+  "tag_source_verified": true,
+  "github_actions_run": 36107027477,
+  "github_actions_conclusion": "success",
+  "execution_bundle_sha256": "sha256:70f102d656f290f89592cadcea7fd9b71a0a21832c7c644102343d14cc10b937",
+  "manifest": {
+    "execution_bundle_sha256": "sha256:70f102d656f290f89592cadcea7fd9b71a0a21832c7c644102343d14cc10b937",
+    "macos": {
+      "sha256": "sha256:d6728ce54bac0032526bfc7ccbcbfd00afc744a915fe41963623d0f1e3d49c7a",
+      "size_bytes": 414196198,
+      "trust": "AD_HOC_BETA",
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.29/VideoForge-Worker-0.1.29.dmg"
+    },
+    "minimum_protocol_version": 1,
+    "schema_version": "videoforge-media-worker-release/v1",
+    "version": "0.1.29",
+    "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "windows": {
+      "sha256": "sha256:bc147d4832fe5d1a971e86ae9ea10eb9b73b9c55ed1db3a0ff762ac5c232e1c1",
+      "size_bytes": 279566823,
+      "trust": "UNSIGNED_BETA",
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.29/VideoForge-Worker-0.1.29-Setup.exe"
+    }
+  },
+  "hosted_deployment": {
+    "state": "VERIFIED",
+    "source_commit": "192c70ab95e7c53f86cd96e6dfbfd8e8bcafba6b",
+    "predecessor_version_id": "4ac7e118-2e7d-4abc-bd11-a2900eb6e28c",
+    "config_sha256": "sha256:1db79c77a9a1a0f807fbc51df035aaa6dab84debfa0b765986e1628a55a6fb83",
+    "worker_sha256": "sha256:17539645858508843469a55d515b7f9726cba623dd1e67d1873f5fab290677b1",
+    "version_id": "d3841c98-b088-402d-8aa9-1851a4e0bb6e"
+  },
+  "installation": {
+    "installed_version": "0.1.29",
+    "process_type": "Standard",
+    "codesign_verified": true,
+    "universal2_verified": true,
+    "instance_count": 1,
+    "installer_unmounted": true,
+    "device_online_verified_by_root": "2026-09-25T07:30:39Z",
+    "old_app_backup_retained": true
+  },
+  "checkpoint": "V2-09",
+  "chrome": {
+    "settings": "Computer connected; Mac v0.1.29 Online; API healthy",
+    "existing_review_video": {
+      "duration_seconds": 159.2,
+      "width": 1920,
+      "height": 1080,
+      "ready_state": 4,
+      "media_error": null
+    },
+    "new_paid_generation": false
+  },
+  "paid_generation_calls": 0,
+  "gpu_activation": false
+}

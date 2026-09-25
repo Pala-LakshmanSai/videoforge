@@ -1,12 +1,13 @@
 schema_version: "2.0"
 api_generation_performance_2026_09_25:
   checkpoint: V2-09
-  status: ISOLATED_PROOFS_COMPLETE_RELEASE_IN_PROGRESS
+  status: PRODUCTION_DEPLOYED_WORKER_ONLINE_ISOLATED_PERFORMANCE_VERIFIED
   decision: >-
     Visit every outstanding provider result on each scheduler pass instead of selecting one
     by a changing-list modulo cursor. Serial Kie POST starts use 1050ms slots and serial
     observations use 250ms slots, including the last slot before a pass returns.
-    Completed observations advance immediately; pending-only passes retain a two-second sleep. Retain paid-job claims, no-replay identities, lane caps,
+    Completed observations advance immediately; pending-only passes retain a two-second sleep.
+    Retain paid-job claims, no-replay identities, lane caps,
     bounded memory and provider rate limits. User-requested Mac work uses launchd Standard
     classification. Decode and resize each still once, then reuse that frame before the
     unchanged per-frame perspective zoom. Bicubic portrait compositing preserves more existing
@@ -22,12 +23,20 @@ api_generation_performance_2026_09_25:
     with 4776 frames, zero AV drift, full decode and loudness acceptance.
     Bicubic composition improved retained lip detail modestly, adding about 0.097 seconds
     per 5.08-second clip; raw Fal remains 512x512, so this is not native 1080p facial detail.
+    Worker 0.1.29 published from source a8a60888 through successful Windows/macOS workflow
+    36107027477, execution bundle sha256:70f102d656f290f89592cadcea7fd9b71a0a21832c7c644102343d14cc10b937.
+    Source 192c70ab is deployed as Cloudflare d3841c98-b088-402d-8aa9-1851a4e0bb6e;
+    exact release manifest, 25 secret names, KIE_FAL and disabled GPU dispatch passed readback.
+    Installed Mac worker 0.1.29 is ONLINE with that exact bundle and launchd Standard;
+    signed-in Chrome Settings confirms connected/Online. Ten scheduler/execution tests,
+    74 worker/render/mapping tests, both TypeScript checks, focused lint, context/schema gates,
+    secret scan, isolated production build and frozen installer render smoke passed.
   evidence_paths:
     - evidence/acceptance/VF-10-09/2026-09-25-api-latency.json
     - evidence/acceptance/VF-10-09/2026-09-25-assembly-performance.json
+    - evidence/acceptance/VF-10-09/2026-09-25-performance-release.json
   remaining_gates: >-
-    Worker 0.1.29 published from a8a60888 through successful run 36107027477.
-    Installation, hosted scheduler release and live readback are pending. Post-release paid end-to-end timing is not established by isolated local tests.
+    Post-release paid end-to-end timing is not established by isolated local tests.
     Full 18-minute acceptance and human approval/download remain separate gates.
   provider_spend: Zero new generation calls; retained artifacts and exact provider IDs only.
   paid_compute_shutdown: No GPU activation. Local benchmark processes terminate after proof.
