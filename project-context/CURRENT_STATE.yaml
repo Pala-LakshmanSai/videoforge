@@ -1,11 +1,15 @@
 schema_version: "2.0"
 api_avatar_startup_2026_09_25:
   checkpoint: V2-09
-  status: SETUP_OPTIMIZATION_VALIDATED_AWAITING_DEPLOYMENT
+  status: APP_SETUP_OPTIMIZED_FAL_REQUEST_WAIT_NOT_ELIMINATED
+  evidence_path: evidence/acceptance/VF-10-09/2026-09-25-avatar-startup.json
+  source_commit: dd2bfae70f4cb8508eb5da606e74efa78d3540e3
+  cloudflare_version: 5f543c2c-7822-4488-a1b9-77391e793a71
   project_id: 2ae46c22-ab88-4880-a0f4-1e9b9df5c794
   observation: First avatar submission occurred 8.120 seconds after job materialization; first acceptance occurred 95.461 seconds after submission. The first four requests submitted within 47ms; later requests completed in 11.583 and 14.964 seconds.
   change: Compile all image prompts before binding them in one transaction; schedule the workflow only after commit. Seventeen image prompts require 20 SQL queries instead of 68, preserving exact inputs, rollback, paid claims and concurrency caps.
   validation: All 25 dispatch tests, focused ESLint and web/worker typechecks passed. Production latency improvement is not yet measured.
+  remaining_gates: Production speedup not yet measured. Cloudflare proves regular three-second polling during the final 40 seconds before first acceptance; the dominant wait lies in the Fal request/result path, but queue, cold start and transient retrieval errors are not individually distinguishable from retained evidence.
   provider_spend: Read-only retrieval of existing Fal requests; no generation, warm-up requests or database writes.
   paid_compute_shutdown: No GPU activation; worker 0.1.30 unchanged.
 legacy_avatar_catalog_retirement_2026_09_25:

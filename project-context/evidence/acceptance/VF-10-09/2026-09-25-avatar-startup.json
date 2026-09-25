@@ -1,0 +1,591 @@
+{
+  "schema": "videoforge.avatar-startup-evidence/v1",
+  "captured_at_utc": "2026-09-25T09:04:09.153167+00:00",
+  "project_id": "2ae46c22-ab88-4880-a0f4-1e9b9df5c794",
+  "scope": "read-only database rows and Fal GET status/result responses; no POSTs or retries",
+  "database": {
+    "source": "public.hosted_api_generation_jobs",
+    "lane": "AVATAR",
+    "rows": [
+      {
+        "lane": "AVATAR",
+        "task_key": "avatar:37d5c159-0e2e-5d3f-9b84-7f7c8094959b",
+        "state": "SUCCEEDED",
+        "provider_task_id": "01a0d7ba-bd57-77b0-a6ff-742f2d1ef6f3",
+        "created_at": "2026-09-25 08:42:06.743782+00",
+        "submitted_at": "2026-09-25 08:42:14.86418+00",
+        "completed_at": "2026-09-25 08:43:50.32551+00",
+        "updated_at": "2026-09-25 08:43:50.32551+00",
+        "output_bytes": 399036,
+        "output_content_type": "video/mp4"
+      },
+      {
+        "lane": "AVATAR",
+        "task_key": "avatar:61dbc5bf-e428-504b-b976-96a014a04bf4",
+        "state": "SUCCEEDED",
+        "provider_task_id": "01a0d7ba-bd5d-7462-90e1-1cd3c471012d",
+        "created_at": "2026-09-25 08:42:06.743782+00",
+        "submitted_at": "2026-09-25 08:42:14.876212+00",
+        "completed_at": "2026-09-25 08:43:58.323701+00",
+        "updated_at": "2026-09-25 08:43:58.323701+00",
+        "output_bytes": 605293,
+        "output_content_type": "video/mp4"
+      },
+      {
+        "lane": "AVATAR",
+        "task_key": "avatar:75ba209b-75b9-5e81-b4e5-e1d03cdd42b2",
+        "state": "SUCCEEDED",
+        "provider_task_id": "01a0d7ba-bd7d-7ee2-9328-229f4b8c4dd4",
+        "created_at": "2026-09-25 08:42:06.743782+00",
+        "submitted_at": "2026-09-25 08:42:14.894637+00",
+        "completed_at": "2026-09-25 08:43:54.41281+00",
+        "updated_at": "2026-09-25 08:43:54.41281+00",
+        "output_bytes": 534953,
+        "output_content_type": "video/mp4"
+      },
+      {
+        "lane": "AVATAR",
+        "task_key": "avatar:8b966761-ec28-58e3-9400-f91597972fd0",
+        "state": "SUCCEEDED",
+        "provider_task_id": "01a0d7ba-bd90-72e1-bb57-c44dc265c85b",
+        "created_at": "2026-09-25 08:42:06.743782+00",
+        "submitted_at": "2026-09-25 08:42:14.911322+00",
+        "completed_at": "2026-09-25 08:44:06.594315+00",
+        "updated_at": "2026-09-25 08:44:06.594315+00",
+        "output_bytes": 727456,
+        "output_content_type": "video/mp4"
+      },
+      {
+        "lane": "AVATAR",
+        "task_key": "avatar:a8cc2c37-7696-5221-a1e2-93d33903e556",
+        "state": "SUCCEEDED",
+        "provider_task_id": "01a0d7bc-3674-7c10-bfd7-e57efb32a1bf",
+        "created_at": "2026-09-25 08:42:06.743782+00",
+        "submitted_at": "2026-09-25 08:43:51.393317+00",
+        "completed_at": "2026-09-25 08:44:02.976575+00",
+        "updated_at": "2026-09-25 08:44:02.976575+00",
+        "output_bytes": 398709,
+        "output_content_type": "video/mp4"
+      },
+      {
+        "lane": "AVATAR",
+        "task_key": "avatar:d3f7d712-4771-5eae-87d6-dc85ff646e63",
+        "state": "SUCCEEDED",
+        "provider_task_id": "01a0d7bc-4598-7a42-90b5-092fe26bb4ba",
+        "created_at": "2026-09-25 08:42:06.743782+00",
+        "submitted_at": "2026-09-25 08:43:55.270757+00",
+        "completed_at": "2026-09-25 08:44:10.234448+00",
+        "updated_at": "2026-09-25 08:44:10.234448+00",
+        "output_bytes": 412861,
+        "output_content_type": "video/mp4"
+      }
+    ]
+  },
+  "fal": {
+    "model": "fal-ai/flashhead/audio-to-video",
+    "request_count": 6,
+    "requests": [
+      {
+        "request_id": "01a0d7ba-bd57-77b0-a6ff-742f2d1ef6f3",
+        "status": "COMPLETED",
+        "logs_count": 0,
+        "metrics": {
+          "inference_time": 8.173999786376953
+        },
+        "status_fields": [
+          "cancel_url",
+          "logs",
+          "metrics",
+          "request_id",
+          "response_url",
+          "status",
+          "status_url"
+        ],
+        "result_timings": {
+          "download_seconds": 2.234,
+          "inference_seconds": 5.774,
+          "prepare_seconds": 0.111,
+          "generation_seconds": 1.472,
+          "encode_seconds": 0.725,
+          "num_chunks": 4.0,
+          "total_frames": 96.0,
+          "total_seconds": 4.552
+        },
+        "result_duration": 3.84,
+        "result_fields": [
+          "duration",
+          "seed",
+          "timings",
+          "video"
+        ]
+      },
+      {
+        "request_id": "01a0d7ba-bd5d-7462-90e1-1cd3c471012d",
+        "status": "COMPLETED",
+        "logs_count": 0,
+        "metrics": {
+          "inference_time": 9.685999870300293
+        },
+        "status_fields": [
+          "cancel_url",
+          "logs",
+          "metrics",
+          "request_id",
+          "response_url",
+          "status",
+          "status_url"
+        ],
+        "result_timings": {
+          "download_seconds": 2.462,
+          "inference_seconds": 7.058,
+          "prepare_seconds": 0.105,
+          "generation_seconds": 2.218,
+          "encode_seconds": 0.742,
+          "num_chunks": 6.0,
+          "total_frames": 144.0,
+          "total_seconds": 5.543
+        },
+        "result_duration": 5.76,
+        "result_fields": [
+          "duration",
+          "seed",
+          "timings",
+          "video"
+        ]
+      },
+      {
+        "request_id": "01a0d7ba-bd7d-7ee2-9328-229f4b8c4dd4",
+        "status": "COMPLETED",
+        "logs_count": 0,
+        "metrics": {
+          "inference_time": 9.282999992370605
+        },
+        "status_fields": [
+          "cancel_url",
+          "logs",
+          "metrics",
+          "request_id",
+          "response_url",
+          "status",
+          "status_url"
+        ],
+        "result_timings": {
+          "download_seconds": 2.568,
+          "inference_seconds": 6.549,
+          "prepare_seconds": 0.1,
+          "generation_seconds": 1.975,
+          "encode_seconds": 0.673,
+          "num_chunks": 5.0,
+          "total_frames": 120.0,
+          "total_seconds": 5.322
+        },
+        "result_duration": 4.8,
+        "result_fields": [
+          "duration",
+          "seed",
+          "timings",
+          "video"
+        ]
+      },
+      {
+        "request_id": "01a0d7ba-bd90-72e1-bb57-c44dc265c85b",
+        "status": "COMPLETED",
+        "logs_count": 0,
+        "metrics": {
+          "inference_time": 12.29800009727478
+        },
+        "status_fields": [
+          "cancel_url",
+          "logs",
+          "metrics",
+          "request_id",
+          "response_url",
+          "status",
+          "status_url"
+        ],
+        "result_timings": {
+          "download_seconds": 2.696,
+          "inference_seconds": 9.451,
+          "prepare_seconds": 0.122,
+          "generation_seconds": 2.509,
+          "encode_seconds": 0.94,
+          "num_chunks": 7.0,
+          "total_frames": 168.0,
+          "total_seconds": 6.273
+        },
+        "result_duration": 6.72,
+        "result_fields": [
+          "duration",
+          "seed",
+          "timings",
+          "video"
+        ]
+      },
+      {
+        "request_id": "01a0d7bc-3674-7c10-bfd7-e57efb32a1bf",
+        "status": "COMPLETED",
+        "logs_count": 0,
+        "metrics": {
+          "inference_time": 7.355000019073486
+        },
+        "status_fields": [
+          "cancel_url",
+          "logs",
+          "metrics",
+          "request_id",
+          "response_url",
+          "status",
+          "status_url"
+        ],
+        "result_timings": {
+          "download_seconds": 2.164,
+          "inference_seconds": 4.759,
+          "prepare_seconds": 0.096,
+          "generation_seconds": 1.433,
+          "encode_seconds": 0.58,
+          "num_chunks": 4.0,
+          "total_frames": 96.0,
+          "total_seconds": 4.282
+        },
+        "result_duration": 3.84,
+        "result_fields": [
+          "duration",
+          "seed",
+          "timings",
+          "video"
+        ]
+      },
+      {
+        "request_id": "01a0d7bc-4598-7a42-90b5-092fe26bb4ba",
+        "status": "COMPLETED",
+        "logs_count": 0,
+        "metrics": {
+          "inference_time": 7.819000005722046
+        },
+        "status_fields": [
+          "cancel_url",
+          "logs",
+          "metrics",
+          "request_id",
+          "response_url",
+          "status",
+          "status_url"
+        ],
+        "result_timings": {
+          "download_seconds": 2.399,
+          "inference_seconds": 5.272,
+          "prepare_seconds": 0.096,
+          "generation_seconds": 1.422,
+          "encode_seconds": 0.613,
+          "num_chunks": 4.0,
+          "total_frames": 96.0,
+          "total_seconds": 4.535
+        },
+        "result_duration": 3.84,
+        "result_fields": [
+          "duration",
+          "seed",
+          "timings",
+          "video"
+        ]
+      }
+    ]
+  },
+  "checkpoint": "V2-09",
+  "source_commit": "dd2bfae70f4cb8508eb5da606e74efa78d3540e3",
+  "cloudflare_version": "5f543c2c-7822-4488-a1b9-77391e793a71",
+  "change": "Compile prompts before binding; one atomic transaction replaces per-prompt transactions before API scheduling",
+  "prompt_binding_sql_queries": {
+    "before": 68,
+    "after": 20,
+    "image_prompt_count": 17
+  },
+  "validation": {
+    "dispatch_tests": 25,
+    "eslint": "PASS",
+    "web_and_worker_typechecks": "PASS",
+    "production_build_gate": "PASS",
+    "chrome_after_deploy": "API healthy; simon-2 complete with 17 images and 6 avatars; no replay"
+  },
+  "remaining_limits": [
+    "The dominant initial Fal request/result wait has not been eliminated.",
+    "Production time saved by the local prompt-binding optimization is not yet measured.",
+    "No new paid generation was performed.",
+    "WAITING includes pending provider work and retriable status/result/download errors; historical step results do not retain that distinction."
+  ],
+  "new_paid_requests": 0,
+  "worker": "0.1.30 unchanged",
+  "gpu_activation": false,
+  "workflow": {
+    "workflow_id": "hosted-api-5c53884b-782f-48fe-bf9d-49b51e0cd962",
+    "source": "Cloudflare read-only instance describe; displayed Asia/Kolkata converted to UTC; seconds precision",
+    "steps": [
+      {
+        "name": "api-generation-0-1",
+        "start_utc": "2026-09-25T08:42:13Z",
+        "end_utc": "2026-09-25T08:42:22Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-1-1",
+        "start_utc": "2026-09-25T08:42:22Z",
+        "end_utc": "2026-09-25T08:42:35Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-2-1",
+        "start_utc": "2026-09-25T08:42:35Z",
+        "end_utc": "2026-09-25T08:42:44Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-3-1",
+        "start_utc": "2026-09-25T08:42:44Z",
+        "end_utc": "2026-09-25T08:42:59Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-4-1",
+        "start_utc": "2026-09-25T08:42:59Z",
+        "end_utc": "2026-09-25T08:43:00Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-5-1",
+        "start_utc": "2026-09-25T08:43:00Z",
+        "end_utc": "2026-09-25T08:43:02Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-5-1",
+        "start_utc": "2026-09-25T08:43:02Z",
+        "end_utc": "2026-09-25T08:43:04Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-6-1",
+        "start_utc": "2026-09-25T08:43:04Z",
+        "end_utc": "2026-09-25T08:43:05Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-6-1",
+        "start_utc": "2026-09-25T08:43:05Z",
+        "end_utc": "2026-09-25T08:43:07Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-7-1",
+        "start_utc": "2026-09-25T08:43:07Z",
+        "end_utc": "2026-09-25T08:43:10Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-8-1",
+        "start_utc": "2026-09-25T08:43:10Z",
+        "end_utc": "2026-09-25T08:43:11Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-8-1",
+        "start_utc": "2026-09-25T08:43:11Z",
+        "end_utc": "2026-09-25T08:43:13Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-9-1",
+        "start_utc": "2026-09-25T08:43:13Z",
+        "end_utc": "2026-09-25T08:43:14Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-9-1",
+        "start_utc": "2026-09-25T08:43:14Z",
+        "end_utc": "2026-09-25T08:43:16Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-10-1",
+        "start_utc": "2026-09-25T08:43:16Z",
+        "end_utc": "2026-09-25T08:43:17Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-10-1",
+        "start_utc": "2026-09-25T08:43:17Z",
+        "end_utc": "2026-09-25T08:43:19Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-11-1",
+        "start_utc": "2026-09-25T08:43:19Z",
+        "end_utc": "2026-09-25T08:43:20Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-11-1",
+        "start_utc": "2026-09-25T08:43:20Z",
+        "end_utc": "2026-09-25T08:43:22Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-12-1",
+        "start_utc": "2026-09-25T08:43:22Z",
+        "end_utc": "2026-09-25T08:43:23Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-12-1",
+        "start_utc": "2026-09-25T08:43:23Z",
+        "end_utc": "2026-09-25T08:43:25Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-13-1",
+        "start_utc": "2026-09-25T08:43:25Z",
+        "end_utc": "2026-09-25T08:43:26Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-13-1",
+        "start_utc": "2026-09-25T08:43:26Z",
+        "end_utc": "2026-09-25T08:43:28Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-14-1",
+        "start_utc": "2026-09-25T08:43:28Z",
+        "end_utc": "2026-09-25T08:43:29Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-14-1",
+        "start_utc": "2026-09-25T08:43:29Z",
+        "end_utc": "2026-09-25T08:43:31Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-15-1",
+        "start_utc": "2026-09-25T08:43:31Z",
+        "end_utc": "2026-09-25T08:43:32Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-15-1",
+        "start_utc": "2026-09-25T08:43:32Z",
+        "end_utc": "2026-09-25T08:43:34Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-16-1",
+        "start_utc": "2026-09-25T08:43:34Z",
+        "end_utc": "2026-09-25T08:43:36Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-16-1",
+        "start_utc": "2026-09-25T08:43:36Z",
+        "end_utc": "2026-09-25T08:43:38Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-17-1",
+        "start_utc": "2026-09-25T08:43:38Z",
+        "end_utc": "2026-09-25T08:43:39Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-17-1",
+        "start_utc": "2026-09-25T08:43:39Z",
+        "end_utc": "2026-09-25T08:43:41Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-18-1",
+        "start_utc": "2026-09-25T08:43:41Z",
+        "end_utc": "2026-09-25T08:43:42Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-18-1",
+        "start_utc": "2026-09-25T08:43:42Z",
+        "end_utc": "2026-09-25T08:43:44Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-19-1",
+        "start_utc": "2026-09-25T08:43:44Z",
+        "end_utc": "2026-09-25T08:43:45Z",
+        "returned_state": "WAITING"
+      },
+      {
+        "name": "api-generation-wait-19-1",
+        "start_utc": "2026-09-25T08:43:45Z",
+        "end_utc": "2026-09-25T08:43:47Z",
+        "returned_state": null
+      },
+      {
+        "name": "api-generation-20-1",
+        "start_utc": "2026-09-25T08:43:47Z",
+        "end_utc": "2026-09-25T08:43:51Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-21-1",
+        "start_utc": "2026-09-25T08:43:51Z",
+        "end_utc": "2026-09-25T08:43:51Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-22-1",
+        "start_utc": "2026-09-25T08:43:51Z",
+        "end_utc": "2026-09-25T08:43:54Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-23-1",
+        "start_utc": "2026-09-25T08:43:54Z",
+        "end_utc": "2026-09-25T08:43:55Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-24-1",
+        "start_utc": "2026-09-25T08:43:55Z",
+        "end_utc": "2026-09-25T08:43:59Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-25-1",
+        "start_utc": "2026-09-25T08:43:59Z",
+        "end_utc": "2026-09-25T08:44:03Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-26-1",
+        "start_utc": "2026-09-25T08:44:03Z",
+        "end_utc": "2026-09-25T08:44:10Z",
+        "returned_state": "PROGRESSED"
+      },
+      {
+        "name": "api-generation-27-1",
+        "start_utc": "2026-09-25T08:44:10Z",
+        "end_utc": "2026-09-25T08:44:10Z",
+        "returned_state": "READY_TO_RENDER"
+      },
+      {
+        "name": "api-generation-render-handoff-1",
+        "start_utc": "2026-09-25T08:44:10Z",
+        "end_utc": "2026-09-25T08:44:15Z",
+        "returned_state": "RENDER_SCHEDULED"
+      }
+    ]
+  },
+  "findings": [
+    "The local setup performs repeated prompt-binding transactions before either API lane; the deployed change eliminates 48 SQL round trips for 17 prompts.",
+    "First four Fal submissions occur within 47ms. After images finish, 12 successive workflow polls return WAITING roughly every three seconds until the first avatar is accepted. No long application scheduler pause occurred.",
+    "Fal reports 7.36-12.30 seconds inference; its retained logs are empty. Long initial latency lies in the provider request/result path, but cold start, provider queue and transient retrieval errors cannot be individually identified from retained evidence."
+  ],
+  "artifact_head_checks": {
+    "result": "Both retained first/last outputs HTTP200; neither returned Last-Modified. Date is not artifact creation time."
+  }
+}
