@@ -68,6 +68,12 @@ const MAX_VOICEOVER_BYTES = 1_073_741_824;
 const MAX_EXTRA_PROMPT_KEYWORDS = 500;
 const MAX_OPTIONAL_SCRIPT = 100_000;
 const HOSTED_TARGETED_RETRY_QUALIFIED = false;
+/**
+ * This immutable SYSTEM profile was the legacy blank SoulX card. Retire it from the shared
+ * published catalog while retaining the row and its exact lineage for historical resolutions.
+ */
+export const HOSTED_LEGACY_QUALIFIED_SOULX_SYSTEM_PROFILE_ID =
+  "f2136d6c-03e7-41c2-8d15-86fddfdf578f";
 // The SoulX avatar worker (workers/common/secure_scratch.py) only accepts an immutable avatar
 // runtime source at a canonical key that ends in /canonical/avatar.png with content-type
 // image/png. A pinned version prepared by the pass-through upload profile keeps its runtime
@@ -3905,8 +3911,12 @@ async function catalog(
           WHERE ((profile.account_id = $1 AND profile.workspace_id = $2)
                   OR profile.scope_kind = 'SYSTEM')
             AND profile.status = 'ACTIVE' AND version.state = 'READY'
+            AND NOT (
+              profile.scope_kind = 'SYSTEM'
+              AND profile.id = $3
+            )
           ORDER BY profile.name, version.version_number DESC`,
-        [scope.account_id, scope.workspace_id],
+        [scope.account_id, scope.workspace_id, HOSTED_LEGACY_QUALIFIED_SOULX_SYSTEM_PROFILE_ID],
       );
       const styles = await transaction.query(
         `SELECT style.id AS style_id, version.id AS version_id, style.name,

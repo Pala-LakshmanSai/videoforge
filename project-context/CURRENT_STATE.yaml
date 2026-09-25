@@ -1,4 +1,12 @@
 schema_version: "2.0"
+legacy_avatar_catalog_retirement_2026_09_25:
+  checkpoint: V2-09
+  status: IMPLEMENTED_AWAITING_HOSTED_VERIFICATION
+  retired_system_profile_id: f2136d6c-03e7-41c2-8d15-86fddfdf578f
+  decision: Remove the obsolete blank SoulX built-in from the shared Avatar Hub and new-project catalog; preserve immutable records, historical resolution, and workspace copies.
+  validation: Focused catalog test, web typecheck, and changed-file ESLint passed.
+  provider_spend: No paid calls or database mutations; web-only release.
+  paid_compute_shutdown: No GPU activation or worker changes.
 api_avatar_detail_experiments_2026_09_25:
   checkpoint: V2-09
   status: NO_ADDITIONAL_ENHANCEMENT_MEETS_ZERO_COST_NO_SLOWDOWN_GATES

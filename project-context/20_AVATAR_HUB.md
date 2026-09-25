@@ -143,6 +143,11 @@ workspace sees only its private profiles plus explicit built-ins. Healthy glance
 name; actionable states/warnings appear when needed. Version, source geometry, rights, compatibility,
 test gallery, provenance, and archive/duplicate/new-version actions remain progressively disclosed.
 
+The obsolete blank SYSTEM SoulX profile `f2136d6c-03e7-41c2-8d15-86fddfdf578f` is retired
+from the shared published catalog (Avatar Hub and new-project picker). Its immutable records and
+historical resolution remain available. Workspace copies are unaffected; ordinary workspace
+profiles retain their existing Remove action. This does not grant deletion rights for built-ins.
+
 New Avatar wizard:
 
 ```text

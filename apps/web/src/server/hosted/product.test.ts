@@ -207,6 +207,7 @@ import {
   hostedProjectConflictProblem,
   hostedPromptWritingState,
   hostedStyleConflictProblem,
+  HOSTED_LEGACY_QUALIFIED_SOULX_SYSTEM_PROFILE_ID,
   verifyHostedPreviewChecksum,
 } from "./product";
 import { handleHostedPromptRequest } from "./hosted-prompt-route";
@@ -589,6 +590,39 @@ describe("hosted product route contract", () => {
         String(sql).includes("videoforge_read_hosted_style_analysis_state"),
       ),
     ).toBe(true);
+  });
+
+  it("retires the legacy blank SoulX profile from the shared catalog without deleting it", async () => {
+    testState.query.mockClear();
+
+    const result = await handleHostedProductRequest(
+      request("/api/v2/hosted/project-catalog", "GET"),
+      environment,
+      stagingConfig,
+      executionContext,
+    );
+
+    expect(result?.status).toBe(200);
+    const avatarCatalogCall = testState.query.mock.calls.find(
+      ([sql]) =>
+        String(sql).includes("FROM avatar_profiles AS profile") &&
+        String(sql).includes("version.state = 'READY'"),
+    );
+    expect(avatarCatalogCall).toBeDefined();
+    expect(String(avatarCatalogCall?.[0])).toContain(
+      "profile.scope_kind = 'SYSTEM'",
+    );
+    expect(String(avatarCatalogCall?.[0])).toContain("profile.id = $3");
+    expect(avatarCatalogCall?.[1]).toEqual([
+      testState.scopeRows[0]?.account_id,
+      testState.scopeRows[0]?.workspace_id,
+      HOSTED_LEGACY_QUALIFIED_SOULX_SYSTEM_PROFILE_ID,
+    ]);
+    expect(
+      testState.query.mock.calls.some(([sql]) =>
+        String(sql).includes("DELETE FROM avatar_profiles"),
+      ),
+    ).toBe(false);
   });
 
   it("creates a fresh bounded ASR submission after an explicit failed attempt", async () => {
