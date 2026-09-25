@@ -102,6 +102,7 @@ class FakeProcess:
         self.correction_return_code = 0
         self.emit_render_output = True
         self.probe_frame_count = 360
+        self.output_format_duration = "12.0"
         self.include_subtitle = False
         self.invalid_sample_rate = False
         self.input_loudness = (-21.4, -4.7)
@@ -175,7 +176,7 @@ class FakeProcess:
         return json.dumps(
             {
                 "streams": streams,
-                "format": {"format_name": "mov,mp4,m4a,3gp,3g2,mj2", "duration": "12.0"},
+                "format": {"format_name": "mov,mp4,m4a,3gp,3g2,mj2", "duration": self.output_format_duration},
             }
         )
 
@@ -1166,12 +1167,43 @@ class RenderJobTests(unittest.TestCase):
 
         probe_fixture = RenderFixture()
         probe_fixture.process.include_subtitle = True
-        probe_result = probe_fixture.job().run(
+        probe_diagnostics = Mock()
+        probe_result = probe_fixture.job(probe_diagnostics).run(
             probe_fixture.document,
             claimed_attempt_id="attempt_render_local_001",
         )
         self.assertEqual(probe_result["error"]["code"], "RENDER_OUTPUT_INVALID")
+        self.assertEqual(
+            probe_diagnostics.record.call_args.args[0], "render_output_probe_failed"
+        )
+        self.assertEqual(
+            probe_diagnostics.record.call_args.args[1]["reason"],
+            "Output must contain exactly one video and one audio stream",
+        )
         self.assertFalse(probe_fixture.resolver.published)
+
+        duration_fixture = RenderFixture()
+        duration_fixture.process.output_format_duration = "12.066667"
+        duration_diagnostics = Mock()
+        duration_result = duration_fixture.job(duration_diagnostics).run(
+            duration_fixture.document,
+            claimed_attempt_id="attempt_render_local_001",
+        )
+        self.assertEqual(duration_result["error"]["code"], "RENDER_OUTPUT_INVALID")
+        self.assertEqual(
+            duration_diagnostics.record.call_args.args[1],
+            {
+                "reason": "Muxed duration does not match the manifest frame duration",
+                "expected_total_frames": 360,
+                "format_duration": "12.066667",
+                "video_duration": "12.000000",
+                "video_start_time": "0.000000",
+                "video_nb_read_frames": "360",
+                "video_avg_frame_rate": "30/1",
+                "audio_duration": "12.000000",
+                "audio_start_time": "0.000000",
+            },
+        )
 
         malformed_probe_fixture = RenderFixture()
         malformed_probe_fixture.process.invalid_sample_rate = True

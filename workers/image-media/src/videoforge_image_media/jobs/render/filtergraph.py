@@ -498,7 +498,11 @@ def compile_chunk_mux_command(
         "-threads", "1", "-i", str(voiceover_path),
         "-map", "0:v:0", "-map", "1:a:0",
         "-c:v", "copy", "-af",
-        f"atrim=end={duration_seconds:.6f},asetpts=PTS-STARTPTS,{_audio_filter(input_loudness)}",
+        # loudnorm can emit padded tail samples after the first trim. Cap its
+        # output as well, or long AAC muxes can exceed the video by two frames.
+        f"atrim=end={duration_seconds:.6f},asetpts=PTS-STARTPTS,"
+        f"{_audio_filter(input_loudness)},apad,"
+        f"atrim=end={duration_seconds:.6f},asetpts=PTS-STARTPTS",
         "-c:a", "aac", "-ar", "48000",
         "-map_metadata", "-1", "-map_chapters", "-1", "-sn", "-dn",
         "-movflags", "+faststart", "-threads", "2", str(output_path),

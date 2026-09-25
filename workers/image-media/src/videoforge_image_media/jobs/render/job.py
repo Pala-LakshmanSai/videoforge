@@ -931,6 +931,36 @@ class RenderJob:
                 expected_total_frames=expected_total_frames,
             )
         except ProbeValidationError as error:
+            if self._dependencies.diagnostics is not None:
+                fields: dict[str, Any] = {
+                    "reason": str(error),
+                    "expected_total_frames": expected_total_frames,
+                }
+                try:
+                    payload = json.loads(probe_result.stdout)
+                    if isinstance(payload, dict):
+                        container = payload.get("format")
+                        if isinstance(container, dict):
+                            duration = container.get("duration")
+                            if isinstance(duration, str) and len(duration) <= 64:
+                                fields["format_duration"] = duration
+                        streams = payload.get("streams")
+                        if isinstance(streams, list):
+                            for stream in streams:
+                                if not isinstance(stream, dict):
+                                    continue
+                                kind = stream.get("codec_type")
+                                if kind in ("video", "audio"):
+                                    for key in ("duration", "start_time", "nb_read_frames", "avg_frame_rate"):
+                                        value = stream.get(key)
+                                        if isinstance(value, str) and len(value) <= 64:
+                                            fields[f"{kind}_{key}"] = value
+                except (TypeError, ValueError):
+                    pass
+                try:
+                    self._dependencies.diagnostics.record("render_output_probe_failed", fields)
+                except Exception:  # diagnostic collection must not change job results
+                    pass
             raise _RenderFailure(
                 "RENDER_OUTPUT_INVALID",
                 "Rendered output failed deterministic stream or timing checks.",
