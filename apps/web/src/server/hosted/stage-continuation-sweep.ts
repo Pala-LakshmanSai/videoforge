@@ -204,14 +204,33 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                AND prompt_run_started_at IS NOT NULL
                AND prompt_run_started_at < now() - make_interval(secs => ${PROMPT_STALE_RUN_SECONDS})
                THEN 'prompts'
+             -- A completion error may settle the run UNKNOWN after every batch was saved.
+             -- Offer only the retrieval-only completion path; the route and DB gate refuse a new POST.
+             WHEN prompt_state = 'UNKNOWN' AND prompt_accepted_set IS NULL
+               AND prompt_problem_code = 'HOSTED_PROMPT_EXECUTION_UNKNOWN'
+               AND prompt_run_id IS NOT NULL AND prompt_planned_batches > 0
+               AND (SELECT count(*) FROM public.hosted_prompt_batch_progress progress
+                    WHERE progress.run_id = prompt_run_id) = prompt_planned_batches
+               AND (SELECT count(*) FROM public.hosted_prompt_batch_claims claim_row
+                    WHERE claim_row.run_id = prompt_run_id) = prompt_planned_batches
+               AND NOT EXISTS (
+                 SELECT 1 FROM public.hosted_prompt_batch_claims claim_row
+                  WHERE claim_row.run_id = prompt_run_id
+                    AND NOT EXISTS (
+                      SELECT 1 FROM public.hosted_prompt_batch_progress progress
+                       WHERE progress.run_id = prompt_run_id
+                         AND progress.batch_ordinal = claim_row.batch_ordinal))
+               THEN 'prompts'
              -- A settled dispatch failure reads FAILED or UNKNOWN: the route replaces it through the
              -- same bounded redispatch it applies to stage 3, but only a caller reaching the route makes
              -- that happen, and a browser was the only caller. Offering the step here is what keeps a
-             -- failed prompt run healing server-side. An accepted prompt set ends the offer, since the
-             -- route refuses to replace accepted work, and the budget stops it looping on an outage.
+             -- failed prompt run healing server-side. Any saved batch ends the redispatch offer,
+             -- since the route refuses to replace accepted work; the budget bounds outage loops.
              WHEN prompt_state IN ('FAILED', 'UNKNOWN') AND prompt_accepted_set IS NULL
                AND prompt_problem_code = ANY(${PROMPT_REDISPATCHABLE_PROBLEM_CODES_SQL})
                AND COALESCE(prompt_redispatch_count, 0) < 28
+               AND NOT EXISTS (SELECT 1 FROM public.hosted_prompt_batch_progress progress
+                                WHERE progress.run_id = prompt_run_id)
                THEN 'prompts'
              WHEN prompt_accepted_set IS NOT NULL AND generation_requests = 0 AND span_jobs = 0
                THEN 'dispatch'

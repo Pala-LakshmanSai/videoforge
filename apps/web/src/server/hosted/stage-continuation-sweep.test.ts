@@ -74,10 +74,10 @@ async function seededDatabase(context: {
       planned_batch_count integer
     );
     CREATE TABLE public.hosted_prompt_batch_claims (
-      id uuid PRIMARY KEY, run_id uuid NOT NULL
+      id uuid PRIMARY KEY, run_id uuid NOT NULL, batch_ordinal integer NOT NULL DEFAULT 0
     );
     CREATE TABLE public.hosted_prompt_batch_progress (
-      id uuid PRIMARY KEY, run_id uuid NOT NULL
+      id uuid PRIMARY KEY, run_id uuid NOT NULL, batch_ordinal integer NOT NULL DEFAULT 0
     );
     CREATE TABLE public.generation_requests (
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL
@@ -343,6 +343,34 @@ describe("hosted continuation sweep stage-3 recovery", () => {
       expect((await database.query(DUE_QUERY, [
         accountId, "11111111-1111-4111-8111-111111111111", "prompts", revisionId,
       ])).rows).toHaveLength(1);
+    } finally {
+      await database.close();
+    }
+  });
+
+  it("offers a fully saved UNKNOWN prompt run only when every claim has matching progress", async () => {
+    const database = await seededDatabase({
+      state: "SUCCEEDED", hash: "accepted", problemCode: null, redispatchCount: 0,
+    });
+    try {
+      await database.exec(`
+        INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
+        INSERT INTO public.hosted_prompt_runs VALUES
+          ('55555555-5555-4555-8555-555555555555','${revisionId}','UNKNOWN',NULL,
+           now(),now(),'HOSTED_PROMPT_EXECUTION_UNKNOWN',0,2);
+        INSERT INTO public.hosted_prompt_batch_claims VALUES
+          ('66666666-6666-4666-8666-666666666666','55555555-5555-4555-8555-555555555555',0),
+          ('88888888-8888-4888-8888-888888888888','55555555-5555-4555-8555-555555555555',1);
+        INSERT INTO public.hosted_prompt_batch_progress VALUES
+          ('77777777-7777-4777-8777-777777777777','55555555-5555-4555-8555-555555555555',0);
+      `);
+      expect(await nextSteps(database)).toEqual([]);
+      await database.exec(`INSERT INTO public.hosted_prompt_batch_progress VALUES
+        ('99999999-9999-4999-8999-999999999999','55555555-5555-4555-8555-555555555555',2)`);
+      expect(await nextSteps(database)).toEqual([]);
+      await database.exec(`UPDATE public.hosted_prompt_batch_progress SET batch_ordinal = 1
+        WHERE id = '99999999-9999-4999-8999-999999999999'`);
+      expect(await nextSteps(database)).toEqual(["prompts"]);
     } finally {
       await database.close();
     }
