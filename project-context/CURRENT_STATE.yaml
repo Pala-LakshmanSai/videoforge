@@ -1,4 +1,36 @@
 schema_version: "2.0"
+api_generation_scheduler_2026_09_25:
+  checkpoint: V2-09
+  status: PRODUCTION_SCHEDULER_RELEASE_VERIFIED_LONG_RUN_PENDING_NEW_AUTHORITY
+  decision: >-
+    The hosted Kie/Fal coordinator now submits both lanes promptly with at most eight IMAGE
+    and four AVATAR jobs outstanding. Each paid POST still requires its durable claim and an
+    uncertain or submitting identity still stops the workflow. Pending observations sleep
+    two seconds; one workflow permits up to 5000 observations.
+  evidence: >-
+    In the accepted 12.4-second short run, Kie image 2 was submitted only after image 1
+    completed; their provider submit-to-accept times were 12.236 and 22.475 seconds.
+    Fal submit-to-accept was 100.066 seconds. For the 18-minute plan, the old API reader
+    sorted 64 AVATAR before 212 IMAGE jobs and admitted only two outstanding total, creating
+    avoidable image head-of-line blocking after Stage 5. Source commits 91817420 and
+    f3e8d5e242878625785c0040fc128913d7caa45c passed focused scheduler tests, web
+    typecheck, changed-file lint, and Cloudflare production build/bundle firewall. Exact
+    production deploy/readback verified Cloudflare version
+    ebd27884-cdd4-48f5-926e-abc8df864fa3, one active version, 25 secret names, KIE_FAL,
+    and GPU transport DISABLED_UNQUALIFIED. No new provider tasks were submitted.
+    A provider-free local wide-v2 fixture rerender took 10.661 seconds (8.060 final encode,
+    0.975 wide composite). The fresh short production Stage 9 render lease took 87.695
+    seconds from claim to completion, including 84.034 seconds until the first upload
+    authority. Its exact worker download/render split is not persisted, so no render-filter
+    speedup is claimed.
+  remaining_gates: >-
+    The 18:11.553 project remains Stage 5 FAILED with 76/212 accepted prompts and an
+    uncertain ninth Runware identity. Migration 0194 prevents this reservation class on
+    future runs but cannot safely resume this partial attempt under its pinned task ID.
+    A fresh paid project, finite new cap, Kie/Fal completion, full render, Chrome playback,
+    approval and download are required to validate total production speed.
+  provider_spend: No new provider calls or charges for the scheduler release or local rerender.
+  paid_compute_shutdown: No RunPod/GPU activation for this release; last independent read-only inventory below.
 api_generation_prompt_budget_2026_09_25:
   checkpoint: V2-09
   status: PRODUCTION_FIX_DEPLOYED_LONG_RUN_BLOCKED_UNKNOWN
