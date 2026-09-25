@@ -19,9 +19,12 @@ const AVATAR_SOURCE_OBJECT_KEY =
   /^tenant\/([^/]+)\/workspace\/([^/]+)\/avatar-profile\/([^/]+)\/version\/([^/]+)\/canonical\/avatar\.(png|jpg)$/u;
 const AVATAR_ORIGINAL_SOURCE_OBJECT_KEY =
   /^tenant\/([^/]+)\/workspace\/([^/]+)\/avatar-profile\/([^/]+)\/version\/([^/]+)\/original\/source$/u;
+const FAL_SOURCE_SNAPSHOT_OBJECT_KEY =
+  /^tenant\/([^/]+)\/workspace\/([^/]+)\/project\/([^/]+)\/revision\/([^/]+)\/lane\/input\/job\/avatar-source\/artifact\/([^/]+)$/u;
 const AVATAR_PASSTHROUGH_PROFILE = "hosted-avatar-source-pass-through-v1";
 const SOULX_SOURCE_PROFILE = "soulx-pro-vf924u-approved-v1";
 const FAL_SOURCE_PROFILE = "fal-flashhead-512x512p25-v1";
+const FAL_WIDE_SOURCE_PROFILE = "fal-flashhead-512x512p25-wide-v2";
 const SOULX_SOURCE_SHA256 =
   "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83";
 const SOULX_CANDIDATE_SHA256 =
@@ -206,6 +209,7 @@ function exactAvatarSourceScope(
 ): void {
   const canonicalMatch = AVATAR_SOURCE_OBJECT_KEY.exec(artifact.objectKey);
   const originalMatch = AVATAR_ORIGINAL_SOURCE_OBJECT_KEY.exec(artifact.objectKey);
+  const snapshotMatch = FAL_SOURCE_SNAPSHOT_OBJECT_KEY.exec(artifact.objectKey);
   const match = canonicalMatch ?? originalMatch;
   const passThrough =
     input.revisionDocument.avatar_binding.source_preparation_version === AVATAR_PASSTHROUGH_PROFILE;
@@ -220,7 +224,18 @@ function exactAvatarSourceScope(
       system.runtimeProfileAssetLinkId,
     ].every((value) => UUID.test(value));
   if (
-    (!match && !systemReferenceValid) ||
+    (!match && !snapshotMatch && !systemReferenceValid) ||
+    (snapshotMatch !== null &&
+      (snapshotMatch[1] !== input.accountId ||
+        snapshotMatch[2] !== input.workspaceId ||
+        snapshotMatch[3] !== input.revision.projectId ||
+        snapshotMatch[4] !== input.revision.projectRevisionId ||
+        snapshotMatch[5] !== artifact.assetId ||
+        system !== undefined ||
+        !input.resolvedManifest.document.segments.some(
+          (segment) => segment.timeline_composition !== "IMAGE_FULL" &&
+            segment.render.avatar_source_profile === FAL_WIDE_SOURCE_PROFILE,
+        ))) ||
     (match !== null &&
       system !== undefined &&
       (!systemReferenceValid ||
@@ -328,9 +343,9 @@ function validateManifestSegments(
         !artifact ||
         segment.accepted_assets.avatar.asset_id !== artifact.assetId ||
         segment.accepted_assets.avatar.sha256 !== artifact.checksumSha256 ||
-        (segment.render.avatar_source_profile === SOULX_SOURCE_PROFILE &&
+        ([SOULX_SOURCE_PROFILE, FAL_WIDE_SOURCE_PROFILE].includes(segment.render.avatar_source_profile) &&
           (segment.accepted_assets.source_background?.asset_id !== avatarSource?.assetId ||
-            segment.accepted_assets.source_background?.sha256 !== SOULX_SOURCE_SHA256))
+            segment.accepted_assets.source_background?.sha256 !== avatarSource?.checksumSha256))
       ) {
         reject("HOSTED_RENDER_MANIFEST_ARTIFACT_DRIFT");
       }
@@ -347,6 +362,9 @@ function validateManifestSegments(
         segment.accepted_assets.avatar.sha256 !== avatar.checksumSha256 ||
         segment.accepted_assets.right_image.asset_id !== image.assetId ||
         segment.accepted_assets.right_image.sha256 !== image.checksumSha256 ||
+        (segment.render.avatar_source_profile === FAL_WIDE_SOURCE_PROFILE &&
+          (segment.accepted_assets.source_background?.asset_id !== avatarSource?.assetId ||
+            segment.accepted_assets.source_background?.sha256 !== avatarSource?.checksumSha256)) ||
         segment.render.right_image_zoom_profile !== "split-right-zoom-v3"
       ) {
         reject("HOSTED_RENDER_MANIFEST_ARTIFACT_DRIFT");
@@ -373,24 +391,30 @@ function validateSoulxCropApproval(
     (segment) => segment.render.avatar_source_profile === SOULX_SOURCE_PROFILE,
   );
   const falSegments = avatarSegments.filter(
-    (segment) => segment.render.avatar_source_profile === FAL_SOURCE_PROFILE,
+    (segment) =>
+      segment.render.avatar_source_profile === FAL_SOURCE_PROFILE ||
+      segment.render.avatar_source_profile === FAL_WIDE_SOURCE_PROFILE,
   );
   if (falSegments.length > 0) {
     if (
       falSegments.length !== avatarSegments.length ||
       manifest.soulx_crop_profile_approval !== undefined ||
-      input.avatarSource !== undefined ||
       !input.acceptedVisuals.some((artifact) => artifact.kind === "AVATAR_CLIP")
     )
       reject("SOULX_CROP_PROFILE_UNQUALIFIED");
     for (const segment of falSegments) {
       const render = segment.render;
+      const wide = render.avatar_source_profile === FAL_WIDE_SOURCE_PROFILE;
       if (
-        render.avatar_crop !==
-          (segment.timeline_composition === "AVATAR_FULL" ? "512:288:0:112" : "256:288:128:112") ||
+        render.avatar_crop !== (wide
+          ? segment.timeline_composition === "AVATAR_FULL" ? "1920:1080:0:0" : "960:1080:480:0"
+          : segment.timeline_composition === "AVATAR_FULL" ? "512:288:0:112" : "256:288:128:112") ||
         render.avatar_scale !==
           (segment.timeline_composition === "AVATAR_FULL" ? "1920:1080" : "960:1080") ||
-        render.avatar_fps !== "30:round=near"
+        render.avatar_fps !== "30:round=near" ||
+        (wide && (input.avatarSource?.assetId !== input.revisionDocument.avatar_binding.runtime_source_asset_id ||
+          input.avatarSource?.checksumSha256 !== input.revision.avatarRuntimeSourceSha256)) ||
+        (!wide && input.avatarSource !== undefined)
       )
         reject("SOULX_CROP_PROFILE_UNQUALIFIED");
     }

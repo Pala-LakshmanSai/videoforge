@@ -602,6 +602,13 @@ interface HostedCost {
   readonly cap_usd?: number | null;
   readonly billed_seconds?: number | null;
   readonly provider?: string | null;
+  readonly api_estimate?: {
+    readonly kie_images: number;
+    readonly kie_usd: number;
+    readonly fal_avatar_seconds: number;
+    readonly fal_usd: number;
+    readonly pricing_checked_at: string;
+  } | null;
 }
 
 interface HostedQueueSnapshot {
@@ -1293,7 +1300,11 @@ function HostedGpuLaneActivityPanel({
                   {phase.label}
                 </span>
                 <HostedElapsed
-                  since={lane.submitted_at ?? lane.created_at}
+                  since={
+                    apiGeneration
+                      ? (lane.created_at ?? lane.submitted_at)
+                      : (lane.submitted_at ?? lane.created_at)
+                  }
                   until={lane.terminal_at}
                   running={phase.active}
                 />
@@ -2300,6 +2311,7 @@ function hostedGpuLaneStageStatus(lane: HostedGpuLaneActivity): ProjectStage["st
     [
       "OUTBOXED",
       "ASSIGNED",
+      "SUBMITTING",
       "SUBMITTED",
       "IN_PROGRESS",
       "RUNNING",
@@ -4962,6 +4974,29 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         ? { ...stage, status: "RUNNING" as const }
         : stage,
   );
+  const stageTimings = stages.map((stage, index) => {
+    const id = stage.id ?? `stage-${index + 1}`;
+    const running = !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
+      displayedStages[index]?.status ?? "PENDING",
+    );
+    const apiLane =
+      query.data.generation_provider === "KIE_FAL" &&
+      (id === "image-generation" || id === "avatar-generation");
+    const lane = apiLane
+      ? query.data.gpu_lanes?.find(
+          (item) => item.lane === (id === "image-generation" ? "mage_image" : "soulx_avatar"),
+        )
+      : undefined;
+    return {
+      id,
+      name: stage.name,
+      since: apiLane
+        ? (lane?.created_at ?? lane?.submitted_at ?? null)
+        : hostedStageStart(stage.started_at, running, `${projectId}:${id}`),
+      until: apiLane ? (lane?.terminal_at ?? null) : (stage.completed_at ?? null),
+      running,
+    };
+  });
   // A failed stage owns its retry control, rendered right after its FAILED badge, so the recovery for
   // the stage that stopped is inside that stage instead of in a notice under the pipeline. Only stages
   // with a real retry path get one: audio spanning and assembly recover on the connected computer (the
@@ -5140,12 +5175,22 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               label="Projected cost"
               value={
                 query.data.generation_provider === "KIE_FAL"
-                  ? "Billed by APIs"
+                  ? cost?.projected_usd == null
+                    ? "After scene plan"
+                    : formatUsd(cost.projected_usd)
                   : (cost?.projected_usd ?? 0) > 0
                     ? formatUsd(cost?.projected_usd)
                     : "No provider charge"
               }
-              detail={cost?.cap_usd == null ? undefined : `${formatUsd(cost.cap_usd)} maximum`}
+              detail={
+                query.data.generation_provider === "KIE_FAL"
+                  ? cost?.api_estimate
+                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar · published-rate estimate`
+                    : "Calculated when planning finishes"
+                  : cost?.cap_usd == null
+                    ? undefined
+                    : `${formatUsd(cost.cap_usd)} maximum`
+              }
               tone="success"
             />
             <Metric
@@ -5154,22 +5199,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 <HostedElapsed
                   since={null}
                   until={null}
-                  intervals={stages
+                  intervals={stageTimings
                     .filter((stage) => stage.id !== "technical-check")
-                    .map((stage) => {
-                      const running = !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
-                        displayedStages[stages.indexOf(stage)]?.status ?? "PENDING",
-                      );
-                      return {
-                        since: hostedStageStart(
-                          stage.started_at ?? null,
-                          running,
-                          stage.id ?? `stage-${stages.indexOf(stage) + 1}`,
-                        ),
-                        until: stage.completed_at ?? null,
-                        running,
-                      };
-                    })}
+                    .map(({ since, until, running }) => ({ since, until, running }))}
                   label="Total elapsed time"
                 />
               }
@@ -5234,8 +5266,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             retries={stageRetries}
             retryNotices={stageRetryNotices}
             timings={Object.fromEntries(
-              stages.map((stage, index) => [
-                stage.id ?? `stage-${index + 1}`,
+              stageTimings.map((stage, index) => [
+                stage.id,
                 stage.id === "technical-check" ? (
                   <span key={stage.id} className="gpu-lane-elapsed">
                     Included in assembly time
@@ -5243,19 +5275,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 ) : (
                   <HostedElapsed
                     key={stage.id ?? index}
-                    since={hostedStageStart(
-                      stage.started_at ?? null,
-                      !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
-                        displayedStages[index]?.status ?? "PENDING",
-                      ),
-                      stage.id ?? `stage-${index + 1}`,
-                    )}
-                    until={stage.completed_at ?? null}
-                    running={
-                      !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
-                        displayedStages[index]?.status ?? "PENDING",
-                      )
-                    }
+                    since={stage.since}
+                    until={stage.until}
+                    running={stage.running}
                     label={`${stage.name} elapsed time`}
                   />
                 ),

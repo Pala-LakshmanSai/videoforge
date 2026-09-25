@@ -17,10 +17,14 @@ media structure, bytes, and SHA-256 before accepted-unit and render handoff comm
 submission is claimed in Postgres first; ambiguous responses are terminal `UNKNOWN_NO_RETRY`
 unless the same provider task identity is recovered. Provider secrets stay server-side.
 
-Official Kie pricing is 0.8 credits, approximately $0.004 per image. An authenticated Fal
-pricing lookup on 2026-09-24 returned $0.00125 per compute second for the audio endpoint;
-compute seconds must be measured from billing rather than inferred from output duration.
-Both rates require refresh before paid work. The API path is not yet a hosted acceptance result.
+Official Kie pricing is 0.8 credits, approximately $0.004 per image. The public Fal FlashHead
+page listed $0.005 per output second on 2026-09-25; an earlier authenticated audio-route lookup
+returned $0.00125 per compute second, and exact audio-route billing is still unavailable (403).
+Use the higher published rate to bound a new paid run. The short hosted Kie/Fal generation,
+render, Chrome playback, approval, and download passed on pilot6; full-length acceptance remains open.
+For fresh Fal renders, `fal-flashhead-512x512p25-wide-v2` restores the pinned wide source framing
+around the accepted square talking clip with feature alignment and feathering on the personal CPU
+worker. Uncertain alignment fails closed; historical native crop profiles remain immutable.
 
 ## Historical RunPod compute boundary
 

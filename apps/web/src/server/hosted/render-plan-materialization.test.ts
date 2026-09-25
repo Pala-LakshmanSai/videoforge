@@ -562,6 +562,45 @@ describe("hosted render-plan materialization", () => {
     expect(JSON.stringify(result.payload)).toContain(SOULX_SOURCE_SHA256);
   });
 
+  it("binds the pinned source for Fal wide full and split render inputs", async () => {
+    const input = await validInput(true);
+    const document = structuredClone(input.resolvedManifest.document) as any;
+    delete document.soulx_crop_profile_approval;
+    for (const segment of document.segments) {
+      if (segment.timeline_composition === "IMAGE_FULL") continue;
+      segment.accepted_assets.source_background = {
+        asset_id: input.avatarSource!.assetId,
+        sha256: input.avatarSource!.checksumSha256,
+      };
+      segment.render = {
+        avatar_source_profile: "fal-flashhead-512x512p25-wide-v2",
+        avatar_crop: segment.timeline_composition === "AVATAR_FULL"
+          ? "1920:1080:0:0" : "960:1080:480:0",
+        avatar_scale: segment.timeline_composition === "AVATAR_FULL"
+          ? "1920:1080" : "960:1080",
+        avatar_fps: "30:round=near",
+        ...(segment.timeline_composition === "AVATAR_SPLIT_IMAGE"
+          ? { right_image_scale: "960:1080", right_image_zoom_profile: "split-right-zoom-v3" }
+          : {}),
+      };
+    }
+    const manifest = await validateAndHashContractDocument("resolvedRenderManifest", document);
+    const avatarSource = {
+      ...input.avatarSource!,
+      objectKey: `tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${REVISION}/lane/input/job/avatar-source/artifact/${input.avatarSource!.assetId}`,
+    };
+    const result = await materializeHostedRenderPlan(new MemoryDatabase(), {
+      ...input,
+      avatarSource,
+      resolvedManifest: {
+        document: manifest.value,
+        artifact: { ...input.resolvedManifest.artifact, checksumSha256: manifest.sha256 },
+      },
+    });
+    expect(result.replayed).toBe(false);
+    expect(JSON.stringify(result.payload)).toContain(input.avatarSource!.checksumSha256);
+  });
+
   it("accepts the exact locked workspace original source only for pass-through preparation", async () => {
     const base = await validInput(true);
     const revisionDocument = structuredClone(base.revisionDocument) as any;

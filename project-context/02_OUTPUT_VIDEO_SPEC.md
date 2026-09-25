@@ -25,8 +25,15 @@ Do not add music or sound effects in MVP unless the user later approves a separa
 
 ### `AVATAR_FULL`
 
-Avatar occupies the full 1920×1080 frame. SoulX-FlashHead Pro is the only proposed active avatar
-runtime. Its review-only `soulx-pro-ranga-full-source-composite-v1` preview preserves the wide
+Avatar occupies the full 1920×1080 frame. Fresh API projects use Fal FlashHead's accepted
+512×512 talking clip with the revision-pinned wide Avatar Hub source. The versioned
+`fal-flashhead-512x512p25-wide-v2` renderer aligns the square clip to that exact source,
+feathers its edges, and preserves the source's wide framing. It fails closed when feature
+alignment is uncertain. The same composed clip supplies full-frame and centered split-avatar
+views; no new provider call or change to the accepted square artifact is needed.
+
+Historical SoulX-FlashHead Pro uses its own pinned render identity. Its review-only
+`soulx-pro-ranga-full-source-composite-v1` preview preserves the wide
 owned source framing instead of enlarging an isolated face crop. For the pinned 2560x1406 Elias
 source, the renderer crops `2500x1406+30+0`, scales that background to 1920x1080, scales the exact
 512x512/25 fps SoulX result to 1080x1080, and overlays it at `x=420,y=0` with a 32-pixel horizontal
@@ -60,8 +67,10 @@ Recommended zoom envelope:
 
 ### `AVATAR_SPLIT_IMAGE`
 
-Use the same accepted centered SoulX clip that would serve full-screen; never generate a
-layout-specific second avatar clip. Its review-only `soulx-pro-ranga-split-composite-v1` avatar
+Use the same accepted avatar clip as the full-screen view; never generate a layout-specific
+second avatar clip. Fresh Fal projects center-crop the aligned 1920×1080 wide composite to
+`960:1080:480:0` for the left panel, with the narration-relevant image on the right.
+Historical SoulX's review-only `soulx-pro-ranga-split-composite-v1` avatar
 panel uses `crop=448:504:32:4,scale=960:1080,fps=30`; the actual preview is the completed 1920x1080
 layout with that panel on the left and a narration-relevant image with restrained centered zoom on
 the right. Never present the isolated 960x1080 panel as the finished split crop. The full/split pair

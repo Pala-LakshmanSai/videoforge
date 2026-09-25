@@ -125,7 +125,10 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
       const { advanceHostedApiGeneration } = await import(
         "../src/server/hosted/hosted-api-generation"
       );
-      for (let observation = 0; observation < 720; observation += 1) {
+      // Each job needs one durable submit and one durable output commit. Reserve the
+      // original 720 observations for provider-pending polls on top of those steps.
+      let maximumObservations = 720;
+      for (let observation = 0; observation < maximumObservations; observation += 1) {
         const result = await step.do(`api-generation-${observation}`, async () => {
           const pool = createNeonPool(this.env.DATABASE_URL!);
           try {
@@ -139,6 +142,7 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
             await closePoolsWithoutBlockingWorkflow(pool, pool);
           }
         });
+        maximumObservations = 720 + 2 * result.jobCount;
         if (result.state === "ACTION_REQUIRED") return result;
         if (result.state === "READY_TO_RENDER") {
           return step.do("api-generation-render-handoff", async () => {
@@ -166,7 +170,8 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
             }
           });
         }
-        await step.sleep(`api-generation-wait-${observation}`, "10 seconds");
+        if (result.state === "WAITING")
+          await step.sleep(`api-generation-wait-${observation}`, "10 seconds");
       }
       return { state: "RECONCILIATION_REQUIRED" as const };
     }

@@ -6757,6 +6757,14 @@ async function projectDetail(
                     AND segment.timeline_plan_id = plan.id
                     AND segment.timeline_composition IN ('AVATAR_FULL','AVATAR_SPLIT_IMAGE'))
                   AS avatar_segment_count,
+                (SELECT COALESCE(sum(segment.end_frame_exclusive-segment.start_frame),0)
+                   FROM timeline_segments AS segment
+                  WHERE segment.account_id = revision.account_id
+                    AND segment.workspace_id = revision.workspace_id
+                    AND segment.project_revision_id = revision.id
+                    AND segment.timeline_plan_id = plan.id
+                    AND segment.timeline_composition IN ('AVATAR_FULL','AVATAR_SPLIT_IMAGE'))
+                  AS avatar_frame_count,
                 count(task.id) FILTER (WHERE task.lane IN ('IMAGE', 'AVATAR')) AS planned_tasks,
                 count(task.id) FILTER (
                   WHERE task.lane IN ('IMAGE', 'AVATAR') AND task.state = 'COMPLETE'
@@ -7535,6 +7543,22 @@ async function projectDetail(
                     ? "BLOCKED"
                     : "OUTBOXED"
                   : null;
+      const apiStartedAt = apiJobs
+        .map((job) => timestampOrNull(job.created_at))
+        .filter((value): value is string => value !== null)
+        .sort()[0] ?? null;
+      const apiSubmittedAt = apiJobs
+        .map((job) => timestampOrNull(job.submitted_at))
+        .filter((value): value is string => value !== null)
+        .sort()[0] ?? null;
+      const apiCompletedAt =
+        apiState === "SUCCEEDED"
+          ? (apiJobs
+              .map((job) => timestampOrNull(job.completed_at))
+              .filter((value): value is string => value !== null)
+              .sort()
+              .at(-1) ?? null)
+          : null;
       const runtimeLane = runtimeLanes.find((value) => value.lane === lane) ?? null;
       const plannedItems =
         numberOrNull(runtimeLane?.planned_item_count) ?? numberOrNull(attempt?.item_count) ?? null;
@@ -7555,13 +7579,13 @@ async function projectDetail(
         planned_item_count: plannedItems,
         accepted_item_count: acceptedItems,
         attempt_ordinal: numberOrNull(attempt?.attempt_ordinal),
-        submitted_at: timestampOrNull(
-          attempt?.submitted_at ?? apiJobs.find((job) => job.submitted_at)?.submitted_at,
-        ),
-        created_at: timestampOrNull(attempt?.created_at ?? apiJobs[0]?.created_at),
-        terminal_at: timestampOrNull(
-          attempt?.terminal_at ?? (apiState === "SUCCEEDED" ? apiJobs.at(-1)?.completed_at : null),
-        ),
+        submitted_at: projectApiGeneration
+          ? apiSubmittedAt
+          : timestampOrNull(attempt?.submitted_at),
+        created_at: projectApiGeneration ? apiStartedAt : timestampOrNull(attempt?.created_at),
+        terminal_at: projectApiGeneration
+          ? apiCompletedAt
+          : timestampOrNull(attempt?.terminal_at),
       };
     });
     const laneProgress = (lane: string): number | null => {
@@ -7827,6 +7851,20 @@ async function projectDetail(
     const settledCost = costRow
       ? (numberOrNull(costRow.settled_usd) ?? 0) + (numberOrNull(costRow.prompt_settled_usd) ?? 0)
       : 0;
+    const apiPlan = detail.generation as Record<string, unknown> | null;
+    const apiImageCount = numberOrNull(apiPlan?.image_scene_count);
+    const apiAvatarFrames = numberOrNull(apiPlan?.avatar_frame_count);
+    // Published planning rates checked 2026-09-25; actual Fal audio-route billing is unavailable.
+    const apiEstimate =
+      projectApiGeneration && apiImageCount !== null && apiAvatarFrames !== null
+        ? {
+            kie_images: apiImageCount,
+            kie_usd: apiImageCount * 0.004,
+            fal_avatar_seconds: apiAvatarFrames / 30,
+            fal_usd: (apiAvatarFrames / 30) * 0.005,
+            pricing_checked_at: "2026-09-25",
+          }
+        : null;
     const timingRows = [...(detail.attempts as Record<string, unknown>[]), ...serverlessAttempts];
     const createdAt = timingRows
       .map((value) => new Date(String(value.created_at)).getTime())
@@ -7965,8 +8003,13 @@ async function projectDetail(
       stages,
       timing,
       cost: {
-        projected_usd: projectApiGeneration ? null : projectedCost,
+        projected_usd: projectApiGeneration
+          ? apiEstimate === null
+            ? null
+            : apiEstimate.kie_usd + apiEstimate.fal_usd
+          : projectedCost,
         settled_usd: projectApiGeneration ? null : settledCost,
+        api_estimate: apiEstimate,
         cap_usd: null,
         billed_seconds: null,
         provider: projectApiGeneration

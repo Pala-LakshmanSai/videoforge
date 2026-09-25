@@ -4,15 +4,20 @@ import os
 import sys
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_submodules
 
 repo = Path(SPECPATH).parents[1]
 resources = Path(os.environ["VIDEOFORGE_WORKER_RESOURCES"])
 configuration = Path(os.environ["VIDEOFORGE_WORKER_BUILD_CONFIG"])
 
+numpy_datas, numpy_binaries, numpy_hidden = collect_all("numpy")
+opencv_datas, opencv_binaries, opencv_hidden = collect_all("cv2")
+
 hidden = (
     collect_submodules("videoforge_media_local")
     + collect_submodules("videoforge_image_media")
+    + numpy_hidden
+    + opencv_hidden
     + ["certifi"]
 )
 
@@ -23,10 +28,12 @@ analysis = Analysis(
         str(repo / "workers/image-media/src"),
         str(repo / "packages/contracts/python"),
     ],
-    binaries=[],
+    binaries=[*numpy_binaries, *opencv_binaries],
     datas=[
         (str(resources), "resources/bin"),
         (str(configuration), "."),
+        *numpy_datas,
+        *opencv_datas,
         *collect_data_files("certifi"),
     ],
     hiddenimports=hidden,
@@ -52,7 +59,7 @@ if sys.platform == "darwin":
         bundle_identifier="com.videoforge.personal-media-worker",
         info_plist={
             "CFBundleDisplayName": "VideoForge Worker",
-            "CFBundleShortVersionString": "0.1.25",
+            "CFBundleShortVersionString": "0.1.26",
             "LSBackgroundOnly": True,
             "LSMinimumSystemVersion": "12.0",
         },

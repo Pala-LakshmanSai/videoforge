@@ -101,7 +101,11 @@ export async function advanceHostedApiGeneration(
   database: TransactionalSqlExecutor,
   scope: HostedApiGenerationScope,
   observation = 0,
-): Promise<{ state: "WAITING" | "READY_TO_RENDER" | "ACTION_REQUIRED"; code?: string }> {
+): Promise<{
+  state: "WAITING" | "PROGRESSED" | "READY_TO_RENDER" | "ACTION_REQUIRED";
+  jobCount: number;
+  code?: string;
+}> {
   const config = hostedRuntimeConfiguration(environment);
   if (!config.apiGeneration || !environment.PRIVATE_ARTIFACTS)
     throw new Error("HOSTED_API_GENERATION_BINDING_MISSING");
@@ -110,10 +114,14 @@ export async function advanceHostedApiGeneration(
     await call(database, scope.accountId, "videoforge_read_hosted_api_jobs", base),
     scope,
   );
-  if (current.length === 0) return { state: "ACTION_REQUIRED", code: "HOSTED_API_JOBS_MISSING" };
-  if (current.every((job) => job.state === "SUCCEEDED")) return { state: "READY_TO_RENDER" };
+  const outcome = (
+    state: "WAITING" | "PROGRESSED" | "READY_TO_RENDER" | "ACTION_REQUIRED",
+    code?: string,
+  ) => ({ state, jobCount: current.length, ...(code ? { code } : {}) });
+  if (current.length === 0) return outcome("ACTION_REQUIRED", "HOSTED_API_JOBS_MISSING");
+  if (current.every((job) => job.state === "SUCCEEDED")) return outcome("READY_TO_RENDER");
   const blocked = current.find((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY"].includes(job.state));
-  if (blocked) return { state: "ACTION_REQUIRED", code: blocked.failureCode ?? blocked.state };
+  if (blocked) return outcome("ACTION_REQUIRED", blocked.failureCode ?? blocked.state);
   const failed = current.find((job) => job.state === "FAILED");
   const submitted = current.filter((item) => item.state === "SUBMITTED");
   const prepared = failed ? undefined : current.find((item) => item.state === "PREPARED");
@@ -128,9 +136,9 @@ export async function advanceHostedApiGeneration(
       await call(database, scope.accountId, "videoforge_settle_hosted_api_failure", base),
     );
     if (settlement.state !== "SETTLED") throw new Error("HOSTED_API_FAILURE_SETTLEMENT_INVALID");
-    return { state: "ACTION_REQUIRED", code: failed.failureCode ?? "PROVIDER_TASK_FAILED" };
+    return outcome("ACTION_REQUIRED", failed.failureCode ?? "PROVIDER_TASK_FAILED");
   }
-  if (!job) return { state: "ACTION_REQUIRED", code: "HOSTED_API_JOB_STATE_INVALID" };
+  if (!job) return outcome("ACTION_REQUIRED", "HOSTED_API_JOB_STATE_INVALID");
   const jobArgs = [...base, job.generationTaskId] as const;
   const bucket = environment.PRIVATE_ARTIFACTS;
   if (job.state === "PREPARED") {
@@ -165,7 +173,7 @@ export async function advanceHostedApiGeneration(
     };
     if (job.lane === "IMAGE") {
       try {
-        await submitKieImageJob({
+        const submission = await submitKieImageJob({
           manifest: { prompt: string(job.inputManifest.prompt), aspectRatio: "16:9" },
           client: new KieZImageClient(config.apiGeneration.kieApiKey),
           claimSubmission,
@@ -173,8 +181,9 @@ export async function advanceHostedApiGeneration(
           markSubmissionUnknown,
           markRequestRejected: markSubmissionFailed,
         });
+        return outcome(submission.state === "SUBMITTED" ? "PROGRESSED" : "WAITING");
       } catch {
-        return { state: "WAITING" };
+        return outcome("WAITING");
       }
     } else {
       const signer = new HostedR2Signer(config.r2);
@@ -193,7 +202,7 @@ export async function advanceHostedApiGeneration(
       const imageUrl = await source("avatarSource");
       const audioUrl = await source("spanAudio");
       try {
-        await submitFalAvatarJob({
+        const submission = await submitFalAvatarJob({
           imageUrl,
           audioUrl,
           client: new FalFlashheadClient(config.apiGeneration.falApiKey),
@@ -202,13 +211,13 @@ export async function advanceHostedApiGeneration(
           markSubmissionUnknown,
           markSubmissionFailed,
         });
+        return outcome(submission.state === "SUBMITTED" ? "PROGRESSED" : "WAITING");
       } catch {
-        return { state: "WAITING" };
+        return outcome("WAITING");
       }
     }
-    return { state: "WAITING" };
   }
-  if (!job.providerTaskId) return { state: "ACTION_REQUIRED", code: "PROVIDER_ID_MISSING" };
+  if (!job.providerTaskId) return outcome("ACTION_REQUIRED", "PROVIDER_ID_MISSING");
   let result:
     | Awaited<ReturnType<typeof observeKieImageJob>>
     | Awaited<ReturnType<typeof observeFalAvatarJob>>;
@@ -239,7 +248,7 @@ export async function advanceHostedApiGeneration(
         lane: job.lane,
         code: error.code,
       });
-      return { state: "WAITING" };
+      return outcome("WAITING");
     }
     if (
       (error instanceof KieZImageError && error.code === "RESPONSE_INVALID") ||
@@ -251,7 +260,7 @@ export async function advanceHostedApiGeneration(
         ...jobArgs,
         "PROVIDER_OUTPUT_INVALID",
       ]);
-      return { state: "WAITING" };
+      return outcome("PROGRESSED");
     }
     throw error;
   }
@@ -260,9 +269,9 @@ export async function advanceHostedApiGeneration(
       ...jobArgs,
       "PROVIDER_TASK_FAILED",
     ]);
-    return { state: "WAITING" };
+    return outcome("PROGRESSED");
   }
-  if (result.state !== "SUCCEEDED") return { state: "WAITING" };
+  if (result.state !== "SUCCEEDED") return outcome("WAITING");
   const artifact = result.artifact;
   const probe =
     job.lane === "IMAGE"
@@ -279,7 +288,7 @@ export async function advanceHostedApiGeneration(
     artifact.contentType,
     JSON.stringify(probe),
   ]);
-  return { state: "WAITING" };
+  return outcome("PROGRESSED");
 }
 
 /** Scheduling is idempotent by the durable generation identity. The Workflow never resubmits a

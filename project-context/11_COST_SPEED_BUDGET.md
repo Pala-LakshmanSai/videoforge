@@ -1,10 +1,11 @@
 # Cost, speed, and capacity budget
 
 Fresh API generation decision (2026-09-24): Kie z-image lists 0.8 credits, approximately
-$0.004 per image. An authenticated Fal price lookup returned $0.00125 per billable compute
-second for `fal-ai/flashhead/audio-to-video`; output duration is not a billing proxy. Read
-provider usage and credit debits from a bounded live pilot before replacing historical GPU cost
-targets. The RunPod rates and formulas below apply to existing attempts and retained volumes.
+$0.004 per image. On 2026-09-25 the public Fal FlashHead model page listed $0.005 per output
+second. The earlier authenticated audio-route quote was $0.00125 per billable compute second;
+the audio route's actual debit remains unverified because its billing endpoint returned 403.
+Use the higher public rate for a conservative finite-action cap and check actual provider usage
+when accessible. The RunPod rates and formulas below apply to existing attempts and retained volumes.
 
 Status: V2 planning envelope; live Serverless unit economics remain an acceptance gate
 Read when: estimating a video, configuring endpoint capacity/timeouts, changing a model or stage,

@@ -8,6 +8,8 @@ version = "0.0.0"
 description = "VideoForge fixture skeleton for local ASR, image, render, and probe jobs"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "numpy>=2,<3",
+  "opencv-python-headless==4.10.0.84",
   "videoforge-contracts",
 ]
 

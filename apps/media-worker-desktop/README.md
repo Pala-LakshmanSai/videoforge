@@ -7,6 +7,10 @@ artifacts:
 - macOS: ImageForge-style ad-hoc sealed universal2 `.app` inside a verified `.dmg`, with optional
   Developer ID/notarization upgrade
 
+The universal2 macOS worker requires macOS 12 or later. The pinned Fal FlashHead wide compositor
+uses the OpenCV 4.10 wheels, whose Intel slice supports macOS 12 and Apple Silicon slice supports
+macOS 11; the bundle keeps its existing macOS 12 floor.
+
 The installed worker starts at login, opens the hosted VideoForge page for one explicit first-run
 confirmation, stores its account-scoped credential in Windows Credential Manager or macOS Keychain,
 and then uses outbound HTTPS only. Users enter no URLs, keys, paths, model settings, or provider
@@ -34,7 +38,7 @@ an unsigned beta, and the immutable manifest discloses exact hashes and trust mo
 behavior can vary, so native clean-download/install evidence remains required. Protected signing and
 notarization secrets are needed only for the optional production-trust upgrade.
 
-`publish_release=true` requires the exact new `media-worker-v0.1.25` tag and the protected release
+`publish_release=true` requires the exact new `media-worker-v0.1.26` tag and the protected release
 environment. It publishes both binaries plus
 the checksum/size manifest to the public repository Release; the workflow refuses to replace an
 existing tag or asset. Activating that generated manifest in staging is a separate reviewed hosting
@@ -49,7 +53,8 @@ python apps/media-worker-desktop/compute_execution_bundle_sha256.py
 Pass that `sha256:...` value as `execution_bundle_sha256`. Each build and the publish job recompute
 the clean-worktree source/tool manifest and fail if the supplied identity does not match.
 
-The workflow pins FFmpeg/FFprobe 8.1.2, whisper.cpp 1.8.4, and the exact `ggml-base.en` model. It
+The workflow pins FFmpeg/FFprobe 8.1.2, whisper.cpp 1.8.4, NumPy/OpenCV from `uv.lock`, and the
+exact `ggml-base.en` model. It
 verifies source/archive hashes, tool versions, required render filters, libx264, and the model hash
 before freezing either app. The macOS workflow also fails closed unless every Mach-O file inside
 the app verifies as both arm64 and x86_64. Windows x64 runtime DLLs are bundled beside
@@ -58,7 +63,7 @@ whisper.cpp commit and exact Intel and Apple Silicon FFmpeg inputs. The worker v
 model again at startup and against every ASR job contract. No first-run model download, runtime
 provider discovery, or user configuration occurs.
 
-This checkout prepares `media-worker-v0.1.25` to carry the Fal FlashHead render profile. It is not
+This checkout prepares `media-worker-v0.1.26` to carry the Fal FlashHead render profile. It is not
 an immutable publication yet. Compute its execution-bundle hash from the final clean source commit,
 then publish the new release before updating hosted release metadata.
 
@@ -76,7 +81,7 @@ Provider-free package/lifecycle check:
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 .\windows-native-acceptance.ps1 `
-  -InstallerPath .\VideoForge-Worker-0.1.25-Setup.exe `
+  -InstallerPath .\VideoForge-Worker-0.1.26-Setup.exe `
   -ReleaseManifestPath .\media-worker-release.json
 ```
 
@@ -86,7 +91,7 @@ for the paired Credential Manager entry by installation ID and never reads the c
 
 ```powershell
 .\windows-native-acceptance.ps1 `
-  -InstallerPath .\VideoForge-Worker-0.1.25-Setup.exe `
+  -InstallerPath .\VideoForge-Worker-0.1.26-Setup.exe `
   -ReleaseManifestPath .\media-worker-release.json `
   -RunHostedPairing
 ```

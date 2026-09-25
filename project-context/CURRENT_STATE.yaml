@@ -1,4 +1,31 @@
 schema_version: "2.0"
+api_generation_wide_crop_2026_09_25:
+  checkpoint: V2-09
+  status: LOCAL_SHORT_RERENDER_PASSED_RELEASE_PENDING
+  decision: >-
+    Fresh Fal FlashHead square clips use the versioned wide-v2 CPU source composite. The personal
+    worker aligns each clip to the exact revision-pinned Avatar Hub image with feature matching
+    and four-edge feathering; uncertain alignment fails closed. Full and split views use the same
+    accepted Fal clip and source. API lane durations come from persisted API job timestamps, and
+    a Kie plus Fal published-rate cost estimate appears when the scene plan is saved.
+  evidence: >-
+    Pilot6 accepted Helen source, Fal clip, two Kie images, and voiceover were recovered read-only.
+    Local wide-v2 rerender produced a 12.400-second 1920x1080/30fps H.264/AAC MP4 with 372 frames,
+    1,551,013 bytes and sha256:8b46af30cd551ed83eb17d2a76e590db702c646fb4ebc2c87cf96df647812fd9;
+    full FFmpeg decode and avatar-frame visual review passed. The original source had no artifact
+    receipt, so the new handoff verifies source bytes, creates a revision-scoped R2 copy and
+    committed receipt, then binds that exact snapshot. A rollback-only live DB transaction proved
+    source selection and reservation/receipt inserts without persisting a production row. Focused
+    render and UI tests, TypeScript checks, contract sync, and the measured Cloudflare bundle gate
+    passed. The old approved pilot and paid task identities were not replayed.
+  remaining_gates: >-
+    Commit and release desktop worker 0.1.26 and Cloudflare code, then validate a fresh short
+    production Chrome flow with live source snapshot, timings, cost estimate, render and playback.
+    Only after that short gate passes, produce the full 18:11.553 voiceover video and report
+    measured per-stage and wall times. Fresh finite paid approval is required because the earlier
+    USD 5 pilot cap was used and exact Fal audio-route billing is unavailable.
+  provider_spend: No new provider calls or charges during this local crop fix and rerender.
+  paid_compute_shutdown: No RunPod/GPU activation was performed for this work.
 api_generation_transition_2026_09_24:
   checkpoint: V2-09
   status: PRODUCTION_API_SHORT_E2E_POSTDEPLOY_PASSED

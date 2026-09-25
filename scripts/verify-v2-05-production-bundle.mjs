@@ -36,9 +36,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // The 2026-09-24 API patch adds 561 bytes to each static closure for the versioned prompt
 // policy, uncertain-attempt hold, and render identity handoff; the clean production and staging
 // builds measured these exact totals.
+// The 2026-09-25 Fal wide-source render handoff, API stage timing/cost projection,
+// and progress-aware Workflow add 13,884 bytes to each measured static closure.
+// Provider and generated-contract validators remain in dynamic chunks.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_744_669,
-  "wrangler.staging.jsonc": 2_750_271,
+  "wrangler.production.jsonc": 2_758_553,
+  "wrangler.staging.jsonc": 2_764_155,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

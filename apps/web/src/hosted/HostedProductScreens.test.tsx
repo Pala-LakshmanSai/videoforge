@@ -334,6 +334,84 @@ it("shows frozen elapsed times in stage rows and the audio spanning panel", asyn
   expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("4m 42s");
 });
 
+it.each(["KIE_FAL", "RUNPOD"] as const)(
+  "%s uses persisted API lane times only for API image and avatar stages",
+  async (generationProvider) => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-15T10:02:30Z"));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: "lane-timers",
+            title: "Lane timers",
+            created_at: "2026-09-15T10:00:00Z",
+            revision_id: "revision",
+            revision_state: "LOCKED",
+          },
+          attempts: [],
+          generation: null,
+          generation_provider: generationProvider,
+          cost: generationProvider === "KIE_FAL"
+            ? {
+                projected_usd: 0.023,
+                api_estimate: {
+                  kie_images: 2,
+                  kie_usd: 0.008,
+                  fal_avatar_seconds: 3,
+                  fal_usd: 0.015,
+                  pricing_checked_at: "2026-09-25",
+                },
+              }
+            : null,
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+          stages: [
+            { id: "image-generation", name: "Generate images", status: "SUCCEEDED" },
+            { id: "avatar-generation", name: "Generate avatar video", status: "WAITING" },
+          ],
+          gpu_lanes: [
+            {
+              lane: "mage_image",
+              attempt_state: "SUCCEEDED",
+              runtime_state: "SUCCEEDED",
+              planned_item_count: 2,
+              accepted_item_count: 2,
+              attempt_ordinal: null,
+              created_at: "2026-09-15T10:00:00Z",
+              submitted_at: "2026-09-15T10:00:30Z",
+              terminal_at: "2026-09-15T10:02:00Z",
+            },
+            {
+              lane: "soulx_avatar",
+              attempt_state: "SUBMITTING",
+              runtime_state: "WAITING",
+              planned_item_count: 1,
+              accepted_item_count: 0,
+              attempt_ordinal: null,
+              created_at: "2026-09-15T10:01:00Z",
+              submitted_at: null,
+              terminal_at: null,
+            },
+          ],
+        }),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId="lane-timers" />);
+    expect(await screen.findByLabelText("Generate images elapsed time")).toHaveTextContent(
+      generationProvider === "KIE_FAL" ? "2m 00s" : "—",
+    );
+    if (generationProvider === "KIE_FAL") {
+      expect(screen.getByText("$0.02")).toBeInTheDocument();
+      expect(screen.getByText("2 Kie images + 3.0s Fal avatar · published-rate estimate")).toBeInTheDocument();
+      expect(screen.getByLabelText("Generate avatar video elapsed time")).toHaveTextContent(
+        "1m 30s",
+      );
+      expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("3m 30s");
+    }
+  },
+);
+
 it.each(["RUNPOD", "KIE_FAL"] as const)(
   "%s regenerates one accepted image with its edited prompt and refreshes only after acceptance",
   async (generationProvider) => {

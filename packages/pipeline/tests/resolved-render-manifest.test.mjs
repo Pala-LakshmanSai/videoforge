@@ -335,6 +335,41 @@ test("Fal FlashHead accepted clips plan full and split crops without a SoulX bac
   assert.equal(full?.accepted_assets.source_background, undefined);
 });
 
+test("Fal wide profile pins the source image for full and split composition", async () => {
+  const { timeline } = await canonicalInputs();
+  const profile = "fal-flashhead-512x512p25-wide-v2";
+  const acceptedAssets = requireSuccess(
+    resolveVNextProviderAcceptedAssets({
+      timeline,
+      requiredTaskKeys: collectRequiredAssetTaskKeys(timeline.value),
+      candidates: PROVIDER_CANDIDATES.map((candidate) =>
+        candidate.kind === "AVATAR_CLIP" ? { ...candidate, rendererSourceProfile: profile } : candidate,
+      ),
+    }),
+  );
+  const request = await requestWith(
+    CANDIDATES.map((candidate) =>
+      candidate.kind === "AVATAR_CLIP" ? { ...candidate, rendererSourceProfile: profile } : candidate,
+    ),
+  );
+  const manifest = requireSuccess(
+    await planVNextResolvedRenderManifest({ ...request, acceptedAssets }),
+  ).value;
+  const avatars = manifest.segments.filter(
+    (segment) => segment.timeline_composition !== "IMAGE_FULL",
+  );
+  assert.deepEqual(avatars.map((segment) => segment.render.avatar_crop), [
+    "1920:1080:0:0",
+    "960:1080:480:0",
+  ]);
+  for (const segment of avatars) {
+    assert.deepEqual(segment.accepted_assets.source_background, {
+      asset_id: request.revision.value.avatar_binding.runtime_source_asset_id,
+      sha256: request.revision.value.avatar_binding.runtime_source_sha256,
+    });
+  }
+});
+
 test("fails closed for missing, duplicate, kind-mismatched, and conflicting bindings", async () => {
   const { timeline } = await canonicalInputs();
   const requiredTaskKeys = collectRequiredAssetTaskKeys(timeline.value);

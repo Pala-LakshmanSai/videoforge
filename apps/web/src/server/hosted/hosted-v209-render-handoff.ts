@@ -115,6 +115,129 @@ export async function ensureHostedV209ExactManifestObject(
   }
 }
 
+async function materializeFalWideSourceSnapshot(input: {
+  database: TransactionalSqlExecutor;
+  bucket: HostedR2BucketBinding;
+  accountId: string;
+  workspaceId: string;
+  projectId: string;
+  revisionId: string;
+  avatarProfileVersionId: string;
+  avatarProfileHash: string;
+  sourceAssetId: string;
+  sourceSha256: string;
+}): Promise<unknown> {
+  const sourceValue = await input.database.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", input.accountId]);
+    const result = await transaction.query<{ source: unknown }>(
+      `SELECT jsonb_build_object('assetId',asset.id,'sha256',asset.binary_sha256,
+          'objectKey',asset.object_key,'contentType',asset.content_type,
+          'contentLength',asset.byte_size) AS source
+         FROM public.avatar_profile_versions version
+         JOIN public.assets asset ON asset.account_id=version.account_id
+           AND asset.workspace_id=version.workspace_id AND asset.id=version.runtime_source_asset_id
+        WHERE version.account_id=$1::uuid AND version.workspace_id=$2::uuid
+          AND version.id=$3::uuid AND version.profile_hash=$4 AND version.state='READY'
+          AND asset.id=$5::uuid AND asset.binary_sha256=$6
+          AND asset.state IN ('VERIFIED','ACCEPTED')
+          AND asset.kind IN ('AVATAR_ORIGINAL','AVATAR_RUNTIME')
+          AND asset.content_type IN ('image/png','image/jpeg')`,
+      [input.accountId, input.workspaceId, input.avatarProfileVersionId,
+        input.avatarProfileHash, input.sourceAssetId, input.sourceSha256],
+    );
+    return result.rows[0]?.source;
+  });
+  if (sourceValue === undefined) throw new Error("HOSTED_V209_RENDER_SOURCE_MISSING");
+  const source = record(sourceValue);
+  const originalKey = text(source.objectKey);
+  const length = Number(source.contentLength);
+  const contentType = text(source.contentType);
+  if (source.assetId !== input.sourceAssetId || source.sha256 !== input.sourceSha256 ||
+      !Number.isSafeInteger(length) || length < 1 ||
+      !["image/png", "image/jpeg"].includes(contentType))
+    throw new Error("HOSTED_V209_RENDER_SOURCE_DRIFT");
+  const original = await input.bucket.get(originalKey);
+  if (!original || original.size !== length || original.httpMetadata?.contentType !== contentType)
+    throw new Error("HOSTED_V209_RENDER_SOURCE_DRIFT");
+  const bytes = await original.arrayBuffer();
+  if (bytes.byteLength !== length || (await sha256(bytes)) !== input.sourceSha256)
+    throw new Error("HOSTED_V209_RENDER_SOURCE_DRIFT");
+
+  const snapshotKey = `tenant/${input.accountId}/workspace/${input.workspaceId}` +
+    `/project/${input.projectId}/revision/${input.revisionId}` +
+    `/lane/input/job/avatar-source/artifact/${input.sourceAssetId}`;
+  const prior = await input.bucket.head(snapshotKey);
+  if (prior && (prior.size !== length || prior.httpMetadata?.contentType !== contentType))
+    throw new Error("HOSTED_V209_RENDER_SOURCE_SNAPSHOT_DRIFT");
+  if (!prior)
+    await input.bucket.put(snapshotKey, bytes, {
+      httpMetadata: { contentType }, customMetadata: { sha256: input.sourceSha256 },
+    });
+  const readback = await input.bucket.get(snapshotKey);
+  if (!readback || readback.size !== length ||
+      readback.httpMetadata?.contentType !== contentType ||
+      (await sha256(await readback.arrayBuffer())) !== input.sourceSha256)
+    throw new Error("HOSTED_V209_RENDER_SOURCE_SNAPSHOT_DRIFT");
+
+  const receiptSha = await sha256(new TextEncoder().encode(canonicalJson({
+    kind: "fal-wide-source-snapshot/v1", revisionId: input.revisionId,
+    assetId: input.sourceAssetId, objectKey: snapshotKey, checksum: input.sourceSha256,
+  })).buffer as ArrayBuffer);
+  return input.database.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", input.accountId]);
+    await transaction.query(
+      `INSERT INTO public.artifact_reservations
+         (id,account_id,workspace_id,project_id,project_revision_id,asset_id,lane,
+          job_id,artifact_id,object_key,method,content_type,content_length,checksum_sha256,
+          expires_at,max_uses,used_count,state,retention_class,deletion_owner_account_id)
+       VALUES (md5('fal-wide-source-reservation:'||$4::text)::uuid,$1::uuid,$2::uuid,$3::uuid,
+          $4::uuid,$5::uuid,'INPUT','avatar-source',$5::text,$6,'PUT',$7,$8,$9,
+          now()+interval '15 minutes',1,1,'COMMITTED','PROJECT',$1::uuid)
+       ON CONFLICT (id) DO NOTHING`,
+      [input.accountId,input.workspaceId,input.projectId,input.revisionId,input.sourceAssetId,
+        snapshotKey,contentType,length,input.sourceSha256],
+    );
+    await transaction.query(
+      `INSERT INTO public.artifact_receipts
+         (id,account_id,workspace_id,reservation_id,callback_id,object_key,
+          content_type,content_length,checksum_sha256,probe,receipt_sha256,committed_at)
+       SELECT md5('fal-wide-source-receipt:'||$3::text)::uuid,$1::uuid,$2::uuid,
+          md5('fal-wide-source-reservation:'||$3::text)::uuid,'fal-wide-source:'||$3::text,
+          $4,$5,$6,$7,'{}'::jsonb,$8,now()
+        WHERE NOT EXISTS (SELECT 1 FROM public.artifact_receipts
+          WHERE id=md5('fal-wide-source-receipt:'||$3::text)::uuid)
+       ON CONFLICT (id) DO NOTHING`,
+      [input.accountId,input.workspaceId,input.revisionId,snapshotKey,contentType,length,
+        input.sourceSha256,receiptSha],
+    );
+    const result = await transaction.query<{ source: unknown }>(
+      `SELECT jsonb_build_object('assetId',asset.id,'sha256',asset.binary_sha256,
+          'objectKey',receipt.object_key,'contentType',receipt.content_type,
+          'contentLength',receipt.content_length,'receiptId',receipt.id) AS source
+         FROM public.artifact_reservations reservation
+         JOIN public.artifact_receipts receipt ON receipt.account_id=reservation.account_id
+           AND receipt.workspace_id=reservation.workspace_id
+           AND receipt.reservation_id=reservation.id AND receipt.deleted_at IS NULL
+         JOIN public.assets asset ON asset.account_id=reservation.account_id
+           AND asset.workspace_id=reservation.workspace_id AND asset.id=reservation.asset_id
+        WHERE reservation.id=md5('fal-wide-source-reservation:'||$4::text)::uuid
+          AND receipt.id=md5('fal-wide-source-receipt:'||$4::text)::uuid
+          AND reservation.account_id=$1::uuid AND reservation.workspace_id=$2::uuid
+          AND reservation.project_id=$3::uuid AND reservation.project_revision_id=$4::uuid
+          AND reservation.asset_id=$5::uuid AND reservation.object_key=$6
+          AND reservation.method='PUT' AND reservation.state='COMMITTED'
+          AND receipt.object_key=$6 AND receipt.content_type=$7
+          AND receipt.content_length=$8 AND receipt.checksum_sha256=$9
+          AND receipt.receipt_sha256=$10 AND asset.binary_sha256=$9`,
+      [input.accountId,input.workspaceId,input.projectId,input.revisionId,input.sourceAssetId,
+        snapshotKey,contentType,length,input.sourceSha256,receiptSha],
+    );
+    if (result.rows[0]?.source === undefined)
+      throw new Error("HOSTED_V209_RENDER_SOURCE_SNAPSHOT_DRIFT");
+    return result.rows[0].source;
+  });
+}
+
 function artifact(
   source: unknown,
   scope: { accountId: string; workspaceId: string; projectId: string; revisionId: string },
@@ -284,7 +407,7 @@ export function createHostedV209RenderHandoff(input: {
                   rendererSourceProfile:
                     record(rawAcceptedVisuals[index]).rendererSourceProfile ===
                     "fal-flashhead-512x512p25-v1"
-                      ? "fal-flashhead-512x512p25-v1"
+                      ? "fal-flashhead-512x512p25-wide-v2"
                       : "soulx-pro-vf924u-approved-v1",
                 }
               : {}),
@@ -363,10 +486,29 @@ export function createHostedV209RenderHandoff(input: {
       ) {
         throw new Error("HOSTED_V209_RENDER_COMMIT_INVALID");
       }
+      const needsFalWideSource = Object.values(acceptedBindings).some(
+        (binding) => binding.rendererSourceProfile === "fal-flashhead-512x512p25-wide-v2",
+      );
+      const falWideSource = needsFalWideSource
+        ? await materializeFalWideSourceSnapshot({
+            database: input.runtimeDatabase,
+            bucket: input.bucket,
+            accountId: scope.accountId,
+            workspaceId: scope.workspaceId,
+            projectId,
+            revisionId,
+            avatarProfileVersionId: revisionDocument.value.avatar_binding.avatar_profile_version_id,
+            avatarProfileHash: revisionDocument.value.avatar_binding.avatar_profile_hash,
+            sourceAssetId: revisionDocument.value.avatar_binding.runtime_source_asset_id,
+            sourceSha256: revisionDocument.value.avatar_binding.runtime_source_sha256,
+          })
+        : undefined;
+      if (needsFalWideSource && falWideSource === undefined)
+        throw new Error("HOSTED_V209_RENDER_SOURCE_MISSING");
       const avatarSource =
-        ready.avatarSource === undefined
+        (falWideSource ?? ready.avatarSource) === undefined
           ? undefined
-          : artifact(ready.avatarSource, artifactScope, {
+          : artifact(falWideSource ?? ready.avatarSource, artifactScope, {
               lane: "INPUT",
               kind: "IMAGE",
               taskKey: null,

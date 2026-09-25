@@ -7775,7 +7775,8 @@ export const canonicalSchemaDocuments = {
                   "skyreels-centered-960x960p25-v2",
                   "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
                   "soulx-pro-vf924u-approved-v1",
-                  "fal-flashhead-512x512p25-v1"
+                  "fal-flashhead-512x512p25-v1",
+                  "fal-flashhead-512x512p25-wide-v2"
                 ]
               },
               "avatar_crop": {
@@ -7783,7 +7784,8 @@ export const canonicalSchemaDocuments = {
                   "832:468:0:6",
                   "960:540:0:210",
                   "992:558:16:0",
-                  "512:288:0:112"
+                  "512:288:0:112",
+                  "1920:1080:0:0"
                 ]
               },
               "crop_profile_id": {
@@ -7927,6 +7929,25 @@ export const canonicalSchemaDocuments = {
                 "if": {
                   "properties": {
                     "avatar_source_profile": {
+                      "const": "fal-flashhead-512x512p25-wide-v2"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "avatar_crop"
+                  ],
+                  "properties": {
+                    "avatar_crop": {
+                      "const": "1920:1080:0:0"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "avatar_source_profile": {
                       "const": "soulx-pro-vf924u-approved-v1"
                     }
                   }
@@ -8024,6 +8045,38 @@ export const canonicalSchemaDocuments = {
                           "const": "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
                         }
                       }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "render": {
+                  "type": "object",
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "fal-flashhead-512x512p25-wide-v2"
+                    }
+                  },
+                  "required": [
+                    "avatar_source_profile"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "accepted_assets": {
+                  "type": "object",
+                  "required": [
+                    "source_background"
+                  ],
+                  "properties": {
+                    "source_background": {
+                      "$ref": "#/$defs/asset"
                     }
                   }
                 }
@@ -8135,6 +8188,9 @@ export const canonicalSchemaDocuments = {
               },
               "right_image": {
                 "$ref": "#/$defs/asset"
+              },
+              "source_background": {
+                "$ref": "#/$defs/asset"
               }
             }
           },
@@ -8157,7 +8213,8 @@ export const canonicalSchemaDocuments = {
                   "skyreels-centered-960x960p25-v2",
                   "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1",
                   "soulx-pro-vf924u-approved-v1",
-                  "fal-flashhead-512x512p25-v1"
+                  "fal-flashhead-512x512p25-v1",
+                  "fal-flashhead-512x512p25-wide-v2"
                 ]
               },
               "avatar_crop": {
@@ -8166,7 +8223,8 @@ export const canonicalSchemaDocuments = {
                   "480:540:240:210",
                   "496:558:280:0",
                   "448:504:32:4",
-                  "256:288:128:112"
+                  "256:288:128:112",
+                  "960:1080:480:0"
                 ]
               },
               "crop_profile_id": {
@@ -8283,6 +8341,22 @@ export const canonicalSchemaDocuments = {
                 "if": {
                   "properties": {
                     "avatar_source_profile": {
+                      "const": "fal-flashhead-512x512p25-wide-v2"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "avatar_crop": {
+                      "const": "960:1080:480:0"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "avatar_source_profile": {
                       "const": "soulx-pro-vf924u-approved-v1"
                     }
                   }
@@ -8315,7 +8389,41 @@ export const canonicalSchemaDocuments = {
               }
             ]
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "render": {
+                  "type": "object",
+                  "properties": {
+                    "avatar_source_profile": {
+                      "const": "fal-flashhead-512x512p25-wide-v2"
+                    }
+                  },
+                  "required": [
+                    "avatar_source_profile"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "accepted_assets": {
+                  "type": "object",
+                  "required": [
+                    "source_background"
+                  ],
+                  "properties": {
+                    "source_background": {
+                      "$ref": "#/$defs/asset"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     }
   },

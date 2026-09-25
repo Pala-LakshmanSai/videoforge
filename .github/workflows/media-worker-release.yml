@@ -26,9 +26,9 @@ on:
         default: false
         type: boolean
       release_tag:
-        description: Exact new tag; this build requires media-worker-v0.1.25
+        description: Exact new tag; this build requires media-worker-v0.1.26
         required: true
-        default: media-worker-v0.1.25
+        default: media-worker-v0.1.26
         type: string
 
 permissions:
@@ -107,7 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           computed="$(python apps/media-worker-desktop/compute_execution_bundle_sha256.py \
-            --expected-version 0.1.25 \
+            --expected-version 0.1.26 \
             --output "$RUNNER_TEMP/execution-bundle.json")"
           computed="${computed//$'\r'/}"
           echo "computed execution bundle identity: $computed"
@@ -177,11 +177,57 @@ jobs:
       - name: Install bounded Python build dependencies
         shell: bash
         run: |
+          set -euo pipefail
           python -m pip install --disable-pip-version-check "pyinstaller==6.15.0"
           python -m pip install --disable-pip-version-check "certifi==2025.7.14"
           python -m pip install --disable-pip-version-check -e packages/contracts
+          python - <<'PY' > "$RUNNER_TEMP/videoforge-render-deps.env"
+          import re
+          from pathlib import Path
+
+          lock = Path("uv.lock").read_text(encoding="utf-8")
+
+          def locked_version(name: str) -> str:
+              match = re.search(
+                  rf'(?ms)^\[\[package\]\]\nname = "{re.escape(name)}"\n.*?^version = "([^"]+)"$',
+                  lock,
+              )
+              if match is None:
+                  raise SystemExit(f"{name} is missing from uv.lock")
+              version = match.group(1)
+              if re.fullmatch(r"[0-9A-Za-z.+!-]+", version) is None:
+                  raise SystemExit(f"{name} lock version is invalid")
+              return version
+
+          print(f"VIDEOFORGE_NUMPY_VERSION={locked_version('numpy')}")
+          print(
+              "VIDEOFORGE_OPENCV_VERSION="
+              f"{locked_version('opencv-python-headless')}"
+          )
+          PY
+          cat "$RUNNER_TEMP/videoforge-render-deps.env" >> "$GITHUB_ENV"
+          source "$RUNNER_TEMP/videoforge-render-deps.env"
+          python -m pip install --disable-pip-version-check \
+            "numpy==${VIDEOFORGE_NUMPY_VERSION}" \
+            "opencv-python-headless==${VIDEOFORGE_OPENCV_VERSION}"
           python -m pip install --disable-pip-version-check --no-deps -e workers/image-media
           python -m pip install --disable-pip-version-check --no-deps -e workers/media-local
+          python - <<'PY'
+          from importlib.metadata import version
+          import numpy
+          import cv2
+
+          expected = {
+              "numpy": __import__("os").environ["VIDEOFORGE_NUMPY_VERSION"],
+              "opencv-python-headless": __import__("os").environ["VIDEOFORGE_OPENCV_VERSION"],
+          }
+          actual = {name: version(name) for name in expected}
+          if actual != expected or numpy.__version__ != expected["numpy"]:
+              raise SystemExit(f"locked render dependencies drifted: {actual}")
+          if not cv2.__version__:
+              raise SystemExit("cv2 imported without a version")
+          print(f"locked render dependencies: {actual}; cv2={cv2.__version__}")
+          PY
 
       - name: Fuse pinned macOS native wheels into universal2 binaries
         if: runner.os == 'macOS'
@@ -193,11 +239,13 @@ jobs:
           mkdir -p "$wheels" "$extracted"
           python -m pip download --disable-pip-version-check \
             --only-binary=:all: \
-            --platform macosx_10_12_x86_64 \
+            --platform macosx_12_0_x86_64 \
             --python-version 3.12 \
             --implementation cp \
             --abi cp312 \
             --no-deps \
+            "numpy==${VIDEOFORGE_NUMPY_VERSION}" \
+            "opencv-python-headless==${VIDEOFORGE_OPENCV_VERSION}" \
             "pydantic-core==2.33.2" \
             "rpds-py==2026.6.3" \
             --dest "$wheels"
@@ -213,7 +261,7 @@ jobs:
             /usr/bin/lipo -create "$arm_binary" "$x86_binary" -output "$universal_binary"
             /bin/mv "$universal_binary" "$arm_binary"
             /usr/bin/lipo "$arm_binary" -verify_arch arm64 x86_64
-          done < <(/usr/bin/find "$extracted" -type f -name '*.so' -print0)
+          done < <(/usr/bin/find "$extracted" -type f \( -name '*.so' -o -name '*.dylib' \) -print0)
 
       - name: Run personal worker unit tests
         shell: bash
@@ -226,6 +274,31 @@ jobs:
           VIDEOFORGE_WORKER_BUILD_CONFIG: ${{ github.workspace }}/build/media-worker-release-config.json
           VIDEOFORGE_WORKER_TARGET_ARCH: ${{ runner.os == 'macOS' && 'universal2' || '' }}
         run: pyinstaller --noconfirm apps/media-worker-desktop/videoforge-worker.spec
+
+      - name: Run frozen import and Fal render smoke
+        shell: bash
+        env:
+          VIDEOFORGE_WORKER_FFMPEG: ${{ github.workspace }}/worker-resources/bin/ffmpeg${{ runner.os == 'Windows' && '.exe' || '' }}
+        run: |
+          set -euo pipefail
+          worker="dist/VideoForge Worker${{ runner.os == 'Windows' && '.exe' || '' }}"
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            worker="dist/VideoForge Worker.app/Contents/MacOS/VideoForge Worker"
+          fi
+          "$worker" --execute-media --help >/dev/null 2>&1
+          smoke_args=(
+            --noconfirm
+            --clean
+            --onefile
+            --name videoforge-frozen-render-smoke
+            --paths workers/image-media/src
+          )
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            smoke_args+=(--target-architecture universal2)
+          fi
+          pyinstaller "${smoke_args[@]}" apps/media-worker-desktop/frozen_render_smoke.py
+          smoke="dist/videoforge-frozen-render-smoke${{ runner.os == 'Windows' && '.exe' || '' }}"
+          "$smoke" --ffmpeg "$VIDEOFORGE_WORKER_FFMPEG"
 
       - name: Require universal2 for every macOS Mach-O in the app
         if: runner.os == 'macOS'
@@ -320,7 +393,7 @@ jobs:
         run: >-
           hdiutil create -fs HFS+ -volname "VideoForge Worker"
           -srcfolder "dist/VideoForge Worker.app"
-          "VideoForge-Worker-0.1.25.dmg"
+          "VideoForge-Worker-0.1.26.dmg"
 
       - name: Verify macOS disk image and installed app seal
         if: runner.os == 'macOS'
@@ -335,8 +408,8 @@ jobs:
             rmdir "$mount_dir" 2>/dev/null || true
           }
           trap cleanup EXIT
-          hdiutil verify "VideoForge-Worker-0.1.25.dmg"
-          hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "VideoForge-Worker-0.1.25.dmg" >/dev/null
+          hdiutil verify "VideoForge-Worker-0.1.26.dmg"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "VideoForge-Worker-0.1.26.dmg" >/dev/null
           codesign --verify --deep --strict --verbose=2 "$mount_dir/VideoForge Worker.app"
           if [ "$SIGNED_RELEASE" != "true" ]; then
             codesign -dv --verbose=4 "$mount_dir/VideoForge Worker.app" 2>&1 | grep -q 'Signature=adhoc'
@@ -350,16 +423,16 @@ jobs:
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
         run: |
-          codesign --force --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" "VideoForge-Worker-0.1.25.dmg"
-          codesign --verify --strict --verbose=2 "VideoForge-Worker-0.1.25.dmg"
-          xcrun notarytool submit "VideoForge-Worker-0.1.25.dmg" \
+          codesign --force --timestamp --sign "$APPLE_DEVELOPER_ID_APPLICATION" "VideoForge-Worker-0.1.26.dmg"
+          codesign --verify --strict --verbose=2 "VideoForge-Worker-0.1.26.dmg"
+          xcrun notarytool submit "VideoForge-Worker-0.1.26.dmg" \
             --key notary-key.p8 \
             --key-id "$APPLE_NOTARY_KEY_ID" \
             --issuer "$APPLE_NOTARY_ISSUER_ID" \
             --wait
-          xcrun stapler staple "VideoForge-Worker-0.1.25.dmg"
-          xcrun stapler validate "VideoForge-Worker-0.1.25.dmg"
-          spctl --assess --type open --context context:primary-signature --verbose=2 "VideoForge-Worker-0.1.25.dmg"
+          xcrun stapler staple "VideoForge-Worker-0.1.26.dmg"
+          xcrun stapler validate "VideoForge-Worker-0.1.26.dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=2 "VideoForge-Worker-0.1.26.dmg"
 
       - name: Remove transient macOS signing material
         if: runner.os == 'macOS' && always()
@@ -422,7 +495,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
-          test "$RELEASE_TAG" = "media-worker-v0.1.25"
+          test "$RELEASE_TAG" = "media-worker-v0.1.26"
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -433,7 +506,7 @@ jobs:
         run: |
           set -euo pipefail
           computed="$(python apps/media-worker-desktop/compute_execution_bundle_sha256.py \
-            --expected-version 0.1.25)"
+            --expected-version 0.1.26)"
           computed="${computed//$'\r'/}"
           echo "computed execution bundle identity: $computed"
           test "$computed" = "$EXECUTION_BUNDLE_SHA256"
@@ -471,7 +544,7 @@ jobs:
               }
           manifest = {
               "schema_version": "videoforge-media-worker-release/v1",
-              "version": "0.1.25",
+              "version": "0.1.26",
               "minimum_protocol_version": 1,
               "execution_bundle_sha256": os.environ["EXECUTION_BUNDLE_SHA256"],
               "whisper_model_sha256": os.environ["WHISPER_MODEL_SHA256"],
@@ -500,5 +573,5 @@ jobs:
           gh release create "$RELEASE_TAG" "${binaries[@]}" media-worker-release.json \
             --repo "$REPOSITORY" \
             --target "$RELEASE_SHA" \
-            --title "VideoForge Worker 0.1.25" \
+            --title "VideoForge Worker 0.1.26" \
             --notes "Immutable Windows x64 and macOS universal2 personal media workers with Fal FlashHead render support. Exact hashes and platform trust mode are recorded in media-worker-release.json."

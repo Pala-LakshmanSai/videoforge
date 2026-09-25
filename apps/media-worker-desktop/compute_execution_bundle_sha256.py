@@ -21,6 +21,7 @@ RELEASE_FILES = (
     "uv.lock",
     "apps/media-worker-desktop/build_release_config.py",
     "apps/media-worker-desktop/compute_execution_bundle_sha256.py",
+    "apps/media-worker-desktop/frozen_render_smoke.py",
     "apps/media-worker-desktop/prepare_release_tools.py",
     "apps/media-worker-desktop/videoforge-worker.spec",
     "apps/media-worker-desktop/windows-installer.iss",
@@ -158,7 +159,7 @@ def main() -> int:
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--format", choices=("sha256", "json"), default="sha256")
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--expected-version", default="0.1.25")
+    parser.add_argument("--expected-version", default="0.1.26")
     args = parser.parse_args()
 
     root = args.root.resolve()

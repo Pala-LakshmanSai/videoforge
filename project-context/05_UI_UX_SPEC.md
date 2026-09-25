@@ -104,6 +104,9 @@ unless backend/provider evidence supports it. Never imply technical QA judged cr
 - Preflight shows `Ready to generate` or concise blocker count, estimated variable range, cap, exact
   creative/model settings, and storage/consent facts. It does not expose GPU choices, Pod controls,
   endpoint configuration, or model-volume actions.
+- After the scene plan is saved, Progress shows a Kie plus Fal provider-cost estimate from the
+  planned image count and avatar frame duration. Show the quantities and label the amount as an
+  estimate until actual provider billing is available; before planning, say when it will appear.
 - Lowest cost/Balanced/Faster may remain as deterministic policy labels only after measured contracts
   exist; they cannot change a locked model/quality setting or silently add an unqualified GPU.
 

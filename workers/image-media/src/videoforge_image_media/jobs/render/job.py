@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import tempfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Any, cast
 from videoforge_contracts import ContractValidationError, validate_contract
 
 from ..transcribe.ports import DiagnosticSink
+from .fal_wide import compose_fal_wide
 from .filtergraph import (
     AUDIO_NORMALIZATION_TRUE_PEAK_TARGET_DBTP,
     LEGACY_RENDER_PROFILE_VERSION,
@@ -30,7 +32,7 @@ from .ports import (
     RenderTools,
     ToolResolver,
 )
-from .probe import ProbeValidationError, ProbeFacts, parse_ffprobe_facts, parse_loudness_measurement
+from .probe import ProbeFacts, ProbeValidationError, parse_ffprobe_facts, parse_loudness_measurement
 
 ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$")
 OBJECT_URI_PATTERN = re.compile(
@@ -45,6 +47,7 @@ AVATAR_SOURCE_PROFILES = {
     "skyreels-centered-960x960p25-v2": (960, 960, 25, 1),
     "soulx-pro-vf924u-approved-v1": (512, 512, 25, 1),
     "fal-flashhead-512x512p25-v1": (512, 512, 25, 1),
+    "fal-flashhead-512x512p25-wide-v2": (512, 512, 25, 1),
 }
 SOULX_SOURCE_SHA256 = "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
 
@@ -182,7 +185,9 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
         bindings: Sequence[tuple[dict[str, str], str]]
         if composition == "AVATAR_FULL":
             bindings = ((accepted["avatar"], "AVATAR_CLIP"),)
-            if render["avatar_source_profile"] == "soulx-pro-vf924u-approved-v1":
+            if render["avatar_source_profile"] in (
+                "soulx-pro-vf924u-approved-v1", "fal-flashhead-512x512p25-wide-v2"
+            ):
                 bindings = (*bindings, (accepted["source_background"], "IMAGE"))
         elif composition == "IMAGE_FULL":
             bindings = ((accepted["image"], "IMAGE"),)
@@ -191,6 +196,8 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
                 (accepted["avatar"], "AVATAR_CLIP"),
                 (accepted["right_image"], "IMAGE"),
             )
+            if render["avatar_source_profile"] == "fal-flashhead-512x512p25-wide-v2":
+                bindings = (*bindings, (accepted["source_background"], "IMAGE"))
         for binding, kind in bindings:
             candidate = ExpectedAsset(
                 asset_id=binding["asset_id"],
@@ -675,7 +682,10 @@ class RenderJob:
                     if video.get("width") != width or video.get("height") != height:
                         raise ValueError("Avatar input geometry does not match its source profile")
                     fal_flashhead = (
-                        binding.renderer_source_profile == "fal-flashhead-512x512p25-v1"
+                        binding.renderer_source_profile in (
+                            "fal-flashhead-512x512p25-v1",
+                            "fal-flashhead-512x512p25-wide-v2",
+                        )
                     )
                     if _probe_frame_rate(video, nominal=fal_flashhead) != (fps_num, fps_den):
                         raise ValueError(
@@ -789,28 +799,48 @@ class RenderJob:
                 retryable=False,
             )
 
-        try:
-            plan = compile_render_command(
-                ffmpeg=tools.ffmpeg,
-                manifest=manifest,
-                asset_paths=asset_paths,
-                voiceover_path=voiceover_path,
-                output_path=output_path,
-                input_loudness=input_loudness,
-            )
-        except (KeyError, TypeError, ValueError) as error:
-            raise _RenderFailure(
-                "RENDER_INPUT_INVALID",
-                "Resolved manifest could not be compiled into the fixed render profile.",
-                retryable=False,
-            ) from error
+        with tempfile.TemporaryDirectory(prefix="fal-wide-") as directory:
+            render_paths = dict(asset_paths)
+            wide_sources: dict[str, str] = {}
+            try:
+                for segment in cast(list[dict[str, Any]], manifest["segments"]):
+                    if segment["timeline_composition"] == "IMAGE_FULL":
+                        continue
+                    if segment["render"]["avatar_source_profile"] != "fal-flashhead-512x512p25-wide-v2":
+                        continue
+                    accepted = cast(dict[str, dict[str, str]], segment["accepted_assets"])
+                    avatar_id = accepted["avatar"]["asset_id"]
+                    source_id = accepted["source_background"]["asset_id"]
+                    previous_source = wide_sources.get(avatar_id)
+                    if previous_source is not None and previous_source != source_id:
+                        raise ValueError("One Fal clip has conflicting source images")
+                    if previous_source is None:
+                        wide_path = Path(directory) / f"{len(wide_sources)}.mp4"
+                        compose_fal_wide(asset_paths[avatar_id], asset_paths[source_id],
+                                         wide_path, tools.ffmpeg)
+                        render_paths[avatar_id] = wide_path
+                        wide_sources[avatar_id] = source_id
+                plan = compile_render_command(
+                    ffmpeg=tools.ffmpeg,
+                    manifest=manifest,
+                    asset_paths=render_paths,
+                    voiceover_path=voiceover_path,
+                    output_path=output_path,
+                    input_loudness=input_loudness,
+                )
+            except (KeyError, TypeError, ValueError, OSError, BrokenPipeError) as error:
+                raise _RenderFailure(
+                    "RENDER_INPUT_INVALID",
+                    "Fal source alignment or resolved render input is invalid.",
+                    retryable=False,
+                ) from error
 
-        self._run_process(
-            plan.arguments,
-            token=token,
-            failure_code="RENDER_PROCESS_FAILED",
-            phase="visual_render",
-        )
+            self._run_process(
+                plan.arguments,
+                token=token,
+                failure_code="RENDER_PROCESS_FAILED",
+                phase="visual_render",
+            )
         self._require_file(
             output_path,
             missing_code="RENDER_OUTPUT_INVALID",
