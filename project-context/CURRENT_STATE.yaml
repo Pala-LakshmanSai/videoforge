@@ -26,7 +26,10 @@ api_generation_render_recovery_and_eta_2026_09_25:
     Chrome loaded the 159.2-second 1920x1080 video and playback advanced without media errors.
     ETA source 6fd366f9 deployed as Cloudflare ecd68041-30e2-4271-a1bc-fedf116b41f9;
     focused product and UI tests, TypeScript, lint, production build, bundle guard and exact
-    deployed readback passed. The range is an estimate, not a measured accuracy guarantee.
+    deployed readback passed. Final calibration source 1eaa8c7e is deployed as Cloudflare
+    4ac7e118-2e7d-4abc-bd11-a2900eb6e28c, with one active version, 25 secret names, KIE_FAL,
+    GPU transport disabled and worker 0.1.28. Chrome verified Ready/ready for review and no
+    stale generation-running notice. The range is an estimate, not a measured accuracy guarantee.
   remaining_gates: >-
     Human approval and download of Helenn and Simon remain pending. Full 18-minute hosted
     acceptance remains blocked on the old uncertain prompt identity and a fresh bounded run.
