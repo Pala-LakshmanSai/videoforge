@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 from .ports import ProcessResult
 
@@ -19,6 +20,7 @@ class SubprocessRunner:
         arguments: Sequence[str],
         *,
         should_cancel: Callable[[], bool],
+        cwd: Path | None = None,
     ) -> ProcessResult:
         if not arguments:
             return ProcessResult(return_code=-1, launch_error="failed")
@@ -33,6 +35,7 @@ class SubprocessRunner:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
+                cwd=cwd,
             )
         except FileNotFoundError:
             return ProcessResult(return_code=-1, launch_error="missing")

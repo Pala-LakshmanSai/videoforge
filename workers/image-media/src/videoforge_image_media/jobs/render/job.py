@@ -3,7 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import re
+import subprocess
 import tempfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -63,6 +65,12 @@ FAL_WIDE_SAFE_REASONS = frozenset({
     "Fal crop maps outside the pinned source",
     "Fal square clip decode lost too many frames",
 })
+WINDOWS_COMMAND_LINE_LIMIT = 32_767
+
+
+def _windows_command_units(arguments: Sequence[str]) -> int:
+    # CreateProcessW counts UTF-16 code units, including the terminating NUL.
+    return len(subprocess.list2cmdline(list(arguments)).encode("utf-16-le")) // 2 + 1
 
 
 @dataclass(frozen=True)
@@ -381,10 +389,15 @@ class RenderJob:
         token: str,
         failure_code: str,
         phase: str = "media_process",
+        cwd: Path | None = None,
     ) -> ProcessResult:
+        run_options: dict[str, Any] = {}
+        if cwd is not None:
+            run_options["cwd"] = cwd
         result = self._dependencies.process.run(
             arguments,
             should_cancel=lambda: self._dependencies.cancellation.is_cancelled(token),
+            **run_options,
         )
         if result.cancelled:
             raise _RenderCancelled
@@ -422,6 +435,58 @@ class RenderJob:
             )
         self._check_cancelled(token)
         return result
+
+    @staticmethod
+    def _stage_long_command(
+        *,
+        stage: Path,
+        tools: RenderTools,
+        manifest: Mapping[str, Any],
+        asset_paths: Mapping[str, Path],
+        voiceover_path: Path,
+        output_path: Path,
+        input_loudness: LoudnessMeasurement,
+    ) -> RenderCommandPlan:
+        aliases: dict[Path, Path] = {}
+
+        def link(source: Path) -> Path:
+            prior = aliases.get(source)
+            if prior is not None:
+                return prior
+            alias = Path(f"i{len(aliases)}{source.suffix}")
+            try:
+                os.link(source, stage / alias)
+            except OSError as error:
+                raise _RenderFailure(
+                    "RENDER_PROCESS_FAILED",
+                    "Long render inputs could not be hardlinked on one volume.",
+                    retryable=False,
+                ) from error
+            aliases[source] = alias
+            return alias
+
+        short_paths = {asset_id: link(path) for asset_id, path in asset_paths.items()}
+        short_voiceover = link(voiceover_path)
+        plan = compile_render_command(
+            ffmpeg=tools.ffmpeg,
+            manifest=manifest,
+            asset_paths=short_paths,
+            voiceover_path=short_voiceover,
+            output_path=output_path,
+            input_loudness=input_loudness,
+        )
+        script = Path("filtergraph.txt")
+        (stage / script).write_bytes(plan.filtergraph.encode("utf-8"))
+        arguments = list(plan.arguments)
+        graph_index = arguments.index("-filter_complex")
+        arguments[graph_index : graph_index + 2] = ["-filter_complex_script", str(script)]
+        if _windows_command_units(arguments) >= WINDOWS_COMMAND_LINE_LIMIT:
+            raise _RenderFailure(
+                "RENDER_PROCESS_FAILED",
+                "Render command exceeds the Windows process limit after safe staging.",
+                retryable=False,
+            )
+        return replace(plan, arguments=tuple(arguments))
 
     def _measure_loudness(
         self,
@@ -830,7 +895,17 @@ class RenderJob:
                 retryable=False,
             )
 
-        with tempfile.TemporaryDirectory(prefix="fal-wide-") as directory:
+        # Keep composed clips on the input volume so large renders can hardlink them.
+        wide_parent = voiceover_path.parent if voiceover_path.parent.is_dir() else None
+        try:
+            wide_directory = tempfile.TemporaryDirectory(prefix="fal-wide-", dir=wide_parent)
+        except OSError as error:
+            raise _RenderFailure(
+                "RENDER_PROCESS_FAILED",
+                "Render scratch directory could not be created.",
+                retryable=False,
+            ) from error
+        with wide_directory as directory:
             render_paths = dict(asset_paths)
             wide_sources: dict[str, str] = {}
             try:
@@ -878,12 +953,42 @@ class RenderJob:
                     retryable=False,
                 ) from error
 
-            self._run_process(
-                plan.arguments,
-                token=token,
-                failure_code="RENDER_PROCESS_FAILED",
-                phase="visual_render",
-            )
+            if _windows_command_units(plan.arguments) >= WINDOWS_COMMAND_LINE_LIMIT:
+                self._check_cancelled(token)
+                try:
+                    with tempfile.TemporaryDirectory(
+                        prefix="vf-render-", dir=voiceover_path.parent
+                    ) as stage_directory:
+                        stage = Path(stage_directory)
+                        staged_plan = self._stage_long_command(
+                            stage=stage,
+                            tools=tools,
+                            manifest=manifest,
+                            asset_paths=render_paths,
+                            voiceover_path=voiceover_path,
+                            output_path=output_path,
+                            input_loudness=input_loudness,
+                        )
+                        self._run_process(
+                            staged_plan.arguments,
+                            token=token,
+                            failure_code="RENDER_PROCESS_FAILED",
+                            phase="visual_render",
+                            cwd=stage,
+                        )
+                except OSError as error:
+                    raise _RenderFailure(
+                        "RENDER_PROCESS_FAILED",
+                        "Long render inputs could not be staged on one volume.",
+                        retryable=False,
+                    ) from error
+            else:
+                self._run_process(
+                    plan.arguments,
+                    token=token,
+                    failure_code="RENDER_PROCESS_FAILED",
+                    phase="visual_render",
+                )
         self._require_file(
             output_path,
             missing_code="RENDER_OUTPUT_INVALID",

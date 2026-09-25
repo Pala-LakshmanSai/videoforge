@@ -56,6 +56,7 @@ class ProcessRunner(Protocol):
         arguments: Sequence[str],
         *,
         should_cancel: Callable[[], bool],
+        cwd: Path | None = None,
     ) -> ProcessResult: ...
 
 

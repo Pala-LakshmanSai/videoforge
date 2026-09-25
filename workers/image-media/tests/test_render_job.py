@@ -3,6 +3,8 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 from collections.abc import Callable, Sequence
@@ -16,6 +18,10 @@ from videoforge_image_media.jobs.render import (
     RenderJobDependencies,
     RenderTools,
 )
+from videoforge_image_media.jobs.render.job import _windows_command_units
+from videoforge_image_media.jobs.render.job import _RenderFailure
+from videoforge_image_media.jobs.render.filtergraph import LoudnessMeasurement
+from videoforge_image_media.jobs.render.process import SubprocessRunner
 
 
 def digest(data: bytes) -> str:
@@ -88,6 +94,8 @@ class FakeProcess:
         self.artifacts = artifacts
         self.output_bytes = output_bytes
         self.calls: list[tuple[str, ...]] = []
+        self.render_cwd: Path | None = None
+        self.render_script: str | None = None
         self.render_return_code = 0
         self.render_stderr = "redacted failure"
         self.correction_return_code = 0
@@ -175,6 +183,7 @@ class FakeProcess:
         arguments: Sequence[str],
         *,
         should_cancel: Callable[[], bool],
+        cwd: Path | None = None,
     ) -> ProcessResult:
         if isinstance(arguments, str):
             raise AssertionError("render tools must receive argument arrays")
@@ -202,7 +211,14 @@ class FakeProcess:
                 else self.input_loudness
             )
             return ProcessResult(return_code=0, stderr=self._loudness_payload(values))
-        if "-filter_complex" in call:
+        if "-filter_complex" in call or "-filter_complex_script" in call:
+            if "-filter_complex_script" in call:
+                self.render_cwd = cwd
+                if cwd is None:
+                    raise AssertionError("script render requires explicit cwd")
+                self.render_script = (
+                    cwd / call[call.index("-filter_complex_script") + 1]
+                ).read_text(encoding="utf-8")
             if self.render_return_code != 0:
                 return ProcessResult(return_code=self.render_return_code, stderr=self.render_stderr)
             if self.emit_render_output:
@@ -399,6 +415,98 @@ class RenderFixture:
 
 
 class RenderJobTests(unittest.TestCase):
+    def test_long_command_fails_closed_on_hardlink_or_remaining_limit(self) -> None:
+        fixture = RenderFixture()
+        pointer = fixture.document["resolved_render_manifest"]["artifact_uri"]
+        manifest = json.loads(fixture.artifacts.files[fixture.resolver.objects[pointer]])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sources = {}
+            for asset in fixture.document["assets"]:
+                original = fixture.resolver.objects[asset["artifact_uri"]]
+                source = root / f"{asset['asset_id']}{original.suffix}"
+                source.write_bytes(fixture.artifacts.files[original])
+                sources[asset["asset_id"]] = source
+            kwargs = {
+                "tools": FakeTools().resolve(),
+                "manifest": manifest,
+                "asset_paths": sources,
+                "voiceover_path": sources[manifest["voiceover"]["asset_id"]],
+                "output_path": root / "output.mp4",
+                "input_loudness": LoudnessMeasurement(-16, -2, 2, -31, 0),
+            }
+            hardlink_stage = root / "hardlink"
+            hardlink_stage.mkdir()
+            with patch("videoforge_image_media.jobs.render.job.os.link", side_effect=OSError):
+                with self.assertRaises(_RenderFailure) as hardlink_error:
+                    RenderJob._stage_long_command(stage=hardlink_stage, **kwargs)
+            self.assertEqual(hardlink_error.exception.code, "RENDER_PROCESS_FAILED")
+            self.assertFalse(hardlink_error.exception.retryable)
+            limit_stage = root / "limit"
+            limit_stage.mkdir()
+            with patch(
+                "videoforge_image_media.jobs.render.job._windows_command_units",
+                return_value=32_767,
+            ):
+                with self.assertRaises(_RenderFailure) as limit_error:
+                    RenderJob._stage_long_command(stage=limit_stage, **kwargs)
+            self.assertEqual(limit_error.exception.code, "RENDER_PROCESS_FAILED")
+            self.assertFalse(limit_error.exception.retryable)
+
+    def test_long_manifest_uses_short_hardlinks_and_script_without_chdir(self) -> None:
+        fixture = RenderFixture()
+        voiceover, _, image, *_ = fixture.document["assets"]
+        fixture.document["assets"] = [voiceover, image]
+
+        def expand(manifest: dict[str, Any]) -> None:
+            image_segment = manifest["segments"][1]
+            manifest["segments"] = []
+            for index in range(375):
+                segment = copy.deepcopy(image_segment)
+                segment["segment_id"] = f"segment_{index + 1:03d}"
+                segment["start_frame"] = index * 90
+                segment["end_frame_exclusive"] = (index + 1) * 90
+                manifest["segments"].append(segment)
+            manifest["total_frames"] = 375 * 90
+
+        fixture.replace_manifest(expand)
+        with tempfile.TemporaryDirectory() as directory:
+            for asset in (voiceover, image):
+                old = fixture.resolver.objects[asset["artifact_uri"]]
+                source = Path(directory) / f"{asset['asset_id']}{old.suffix}"
+                source.write_bytes(fixture.artifacts.files.pop(old))
+                fixture.artifacts.files[source] = source.read_bytes()
+                fixture.resolver.objects[asset["artifact_uri"]] = source
+                if old in fixture.process.visual_probes:
+                    fixture.process.visual_probes[source] = fixture.process.visual_probes.pop(old)
+            original_cwd = Path.cwd()
+            with patch("videoforge_image_media.jobs.render.job.os.link", wraps=os.link) as link:
+                result = fixture.job().run(
+                    fixture.document, claimed_attempt_id="attempt_render_local_001"
+                )
+            self.assertEqual(link.call_count, 2)
+            self.assertEqual(result["error"]["code"], "RENDER_OUTPUT_INVALID")
+            call = next(call for call in fixture.process.calls if "-filter_complex_script" in call)
+            self.assertLess(_windows_command_units(call), 32_767)
+            self.assertEqual(Path.cwd(), original_cwd)
+            self.assertIsNotNone(fixture.process.render_cwd)
+            self.assertFalse(fixture.process.render_cwd.exists())
+            self.assertIn("concat=n=375:v=1:a=0", fixture.process.render_script)
+            input_names = [call[index + 1] for index, value in enumerate(call) if value == "-i"]
+            self.assertEqual(set(input_names), {"i0.wav", "i1.png"})
+
+    def test_render_runner_passes_explicit_cwd_to_subprocess(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory)
+            with patch("videoforge_image_media.jobs.render.process.subprocess.Popen") as popen:
+                popen.return_value.communicate.return_value = ("", "")
+                popen.return_value.returncode = 0
+                result = SubprocessRunner().run(
+                    ("ffmpeg", "-version"), should_cancel=lambda: False, cwd=stage
+                )
+            self.assertEqual(result.return_code, 0)
+            self.assertEqual(popen.call_args.kwargs["cwd"], stage)
+
     def test_success_compiles_only_legal_direct_ffmpeg_output(self) -> None:
         fixture = RenderFixture()
         result = fixture.job().run(
@@ -873,8 +981,7 @@ class RenderJobTests(unittest.TestCase):
             with self.subTest(duration=duration):
                 fixture = RenderFixture()
                 avatar = next(
-                    asset
-                    for asset in fixture.document["assets"]
+                    asset for asset in fixture.document["assets"]
                     if asset["asset_id"] == "asset_avatar_full_001"
                 )
                 avatar_path = fixture.resolver.objects[avatar["artifact_uri"]]
@@ -934,7 +1041,8 @@ class RenderJobTests(unittest.TestCase):
             with self.subTest(reason=reason):
                 fixture = RenderFixture()
                 avatar = next(
-                    asset for asset in fixture.document["assets"]
+                    asset
+                    for asset in fixture.document["assets"]
                     if asset["asset_id"] == "asset_avatar_split_001"
                 )
                 avatar_path = fixture.resolver.objects[avatar["artifact_uri"]]
