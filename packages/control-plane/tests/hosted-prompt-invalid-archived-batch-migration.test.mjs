@@ -24,9 +24,9 @@ test("0203 adjudicates only the exact unresolved claimed batch and settles known
 
 test("0203 manifest digest matches the immutable migration", () => {
   const manifest = JSON.parse(readFileSync(new URL("../migrations/manifest.json", import.meta.url), "utf8"));
-  const tail = manifest.migrations.at(-1);
-  assert.deepEqual([tail.version, tail.name, tail.filename], [
+  const entry = manifest.migrations.find((item) => item.version === 203);
+  assert.deepEqual([entry?.version, entry?.name, entry?.filename], [
     203, "hosted_prompt_invalid_archived_batch", "0203_hosted_prompt_invalid_archived_batch.sql",
   ]);
-  assert.equal(tail.sha256, `sha256:${createHash("sha256").update(readFileSync(migration)).digest("hex")}`);
+  assert.equal(entry.sha256, `sha256:${createHash("sha256").update(readFileSync(migration)).digest("hex")}`);
 });
