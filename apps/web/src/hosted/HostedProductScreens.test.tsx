@@ -293,6 +293,37 @@ function stageList(overrides: Readonly<Record<string, string>> = {}) {
   }));
 }
 
+it("shows a reasoned disabled Retry for every failed stage without a safe recovery route", async () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  const stages = stageList(Object.fromEntries([
+    "prepare", "transcription", "voiceover-context", "planning", "prompt-writing",
+    "audio-spanning", "image-generation", "avatar-generation", "render",
+    "technical-check", "review",
+  ].map((id) => [id, "FAILED"])));
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => Response.json({
+    project: { id: projectId, title: "Stopped video", created_at: "2026-09-25T05:00:00Z",
+      revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
+    generation_provider: "KIE_FAL",
+    attempts: [],
+    generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED",
+    gpu_readiness: gpuReadiness,
+    stages,
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
+  const list = await screen.findByRole("list", { name: "Project stages" });
+  const rows = within(list).getAllByRole("listitem");
+  expect(rows).toHaveLength(11);
+  for (const row of rows) {
+    expect(within(row).getByRole("button", { name: "Retry" })).toBeDisabled();
+    expect(within(row).getByRole("alert")).toHaveTextContent(/no safe retry|cannot be sent|not authorized|exhausted|outside the verified|No safe retry/i);
+  }
+  expect(within(stageRow("Generate images")).getByRole("link", { name: "Create a new video" }))
+    .toBeVisible();
+  expect(fetchMock.mock.calls.every(([, init]) => init?.method !== "POST")).toBe(true);
+});
+
 it("offers local render retry for the exact three failed attempts", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
   const attempts = [
@@ -3141,6 +3172,11 @@ describe("hosted product journey", () => {
         ),
       );
       expect(reconciliationCalls).toBe(1);
+    } else if (problemCode === "VOICEOVER_CONTEXT_INVALID") {
+      expect(
+        within(stageRow("Understand voiceover context")).getByRole("button", { name: "Retry" }),
+      ).toBeDisabled();
+      expect(reconciliationCalls).toBe(1);
     } else {
       fireEvent.click(
         within(stageRow("Understand voiceover context")).getByRole("button", { name: "Retry" }),
@@ -3193,6 +3229,11 @@ describe("hosted product journey", () => {
         return Response.json({ state: "COMPLETE" });
       return Response.json({
         ...base,
+        stages: stageList({
+          prepare: "COMPLETE",
+          transcription: "COMPLETE",
+          "voiceover-context": reconciled ? "COMPLETE" : "FAILED",
+        }),
         voiceover_context: reconciled
           ? {
               id: "44444444-4444-4444-8444-444444444444",
@@ -3673,7 +3714,8 @@ describe("hosted product journey", () => {
         "No accepted prompts were saved. VideoForge stopped without redispatching the request.",
       ),
     ).toBeInTheDocument();
-    expect(Boolean(within(stageRow("Write image prompts")).queryByRole("button", { name: "Retry" }))).toBe(retryable);
+    expect(within(stageRow("Write image prompts")).getByRole("button", { name: "Retry" }))
+      .toHaveProperty("disabled", !retryable);
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 

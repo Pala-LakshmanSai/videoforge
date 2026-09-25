@@ -5046,20 +5046,45 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       running,
     };
   });
-  // A failed stage owns its retry control, rendered right after its FAILED badge, so the recovery for
-  // the stage that stopped is inside that stage instead of in a notice under the pipeline. Only stages
-  // with a real retry path get one: audio spanning retries automatically on the connected computer;
-  // a failed local render can use the exact accepted API media without generating it again.
+  // Every failed row owns a Retry control. Only a server-bounded recovery is enabled; a failed
+  // provider lane cannot be sent again from the browser because its charge may already exist.
   const stageRetryButton = (busy: boolean, run: () => void) => (
     <Button variant="secondary" className="stage-retry-button" busy={busy} onClick={run}>
       <RefreshCw size={13} aria-hidden="true" /> Retry
     </Button>
   );
+  const stageRetryDisabled = (reason: string) => (
+    <Button variant="secondary" className="stage-retry-button" disabled title={reason}>
+      <RefreshCw size={13} aria-hidden="true" /> Retry
+    </Button>
+  );
+  const unavailableRetryReason = (stageId: string): string => {
+    if (stageId === "audio-spanning")
+      return "The connected computer has exhausted this span's automatic retries. Check the local worker, then refresh progress; no manual replay is available.";
+    if (stageId === "image-generation" || stageId === "avatar-generation")
+      return "This provider attempt is terminal or its result is uncertain. Accepted media is saved, but another paid request cannot be sent from this project.";
+    if (stageId === "prompt-writing" && promptProgress?.state === "UNKNOWN")
+      return "The prompt request's result is uncertain. A fresh paid request is blocked until the existing attempt is resolved.";
+    if (stageId === "voiceover-context" && contextValidationFailed)
+      return "The context response failed validation. A fresh provider request is not authorized for this run.";
+    if (stageId === "render")
+      return "This render failure is outside the verified local retry paths. The accepted images and avatar clips remain saved.";
+    return "No safe retry is available for this failed stage. Check the failure details before starting another project.";
+  };
+  const unavailableRetryNotice = (stageId: string) =>
+    stageId === "image-generation" || stageId === "avatar-generation" ? (
+      <>
+        {unavailableRetryReason(stageId)} <Link to="/projects/new">Create a new video</Link> when
+        ready.
+      </>
+    ) : (
+      unavailableRetryReason(stageId)
+    );
   const failedStageIds = new Set(
     displayedStages.filter((stage) => stage.status === "FAILED").map((stage) => stage.id),
   );
-  const stageRetries = {
-    ...(failedStageIds.has("transcription")
+  const stageRetries: Record<string, ReturnType<typeof stageRetryButton>> = {
+    ...(failedStageIds.has("transcription") && asr?.state === "FAILED"
       ? {
           transcription: stageRetryButton(asrHandoff.isPending, () => asrHandoff.mutate()),
         }
@@ -5075,7 +5100,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               contextExtraction.mutate(asr.id),
             ),
           }
-        : contextUnknown
+        : contextUnknown && !contextValidationFailed
           ? {
               // An UNKNOWN context is the one stage-3 state a press can still resolve by asking the
               // provider for the original task's outcome.
@@ -5094,27 +5119,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               }
             : {}
       : {}),
-    ...(failedStageIds.has("prompt-writing") && promptProgress?.state !== "UNKNOWN"
+    ...(failedStageIds.has("prompt-writing") && query.data.generation?.id &&
+    promptProgress?.state !== "UNKNOWN"
       ? {
           "prompt-writing": stageRetryButton(promptWriting.isPending, () => promptWriting.mutate()),
-        }
-      : {}),
-    ...(failedStageIds.has("image-generation") || failedStageIds.has("avatar-generation")
-      ? {
-          ...(failedStageIds.has("image-generation")
-            ? {
-                "image-generation": stageRetryButton(gpuDispatch.isPending, () =>
-                  gpuDispatch.mutate(),
-                ),
-              }
-            : {}),
-          ...(failedStageIds.has("avatar-generation")
-            ? {
-                "avatar-generation": stageRetryButton(gpuDispatch.isPending, () =>
-                  gpuDispatch.mutate(),
-                ),
-              }
-            : {}),
         }
       : {}),
     ...(query.data.generation_provider === "KIE_FAL" &&
@@ -5135,9 +5143,20 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }
       : {}),
   };
+  const visibleStageRetries = Object.fromEntries(
+    [...failedStageIds].map((id) => [
+      id,
+      stageRetries[id] ?? stageRetryDisabled(unavailableRetryReason(id)),
+    ]),
+  );
   // A refused press has to say why inside the stage that was pressed. The server's sentence used to
   // land only in the notice below the pipeline, so a spent retry budget read as "nothing happened".
   const stageRetryNotices = {
+    ...Object.fromEntries(
+      [...failedStageIds]
+        .filter((id) => !stageRetries[id])
+        .map((id) => [id, unavailableRetryNotice(id)]),
+    ),
     ...(failedStageIds.has("transcription") && asrHandoff.isError
       ? { transcription: asrHandoff.error.message }
       : {}),
@@ -5329,7 +5348,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           <StageTimeline
             stages={displayedStages}
             actions={stageMediaActions}
-            retries={stageRetries}
+            retries={visibleStageRetries}
             retryNotices={stageRetryNotices}
             timings={Object.fromEntries(
               stageTimings.map((stage, index) => [
