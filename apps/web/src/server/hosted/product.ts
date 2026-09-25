@@ -3750,11 +3750,43 @@ function hostedProgressPercent(completed: unknown, total: unknown): number | nul
   return Math.min(100, Math.max(0, Math.round((done / count) * 100)));
 }
 
+const API_SHORT_RUN_MAX_DURATION_MS = 5 * 60_000;
+const FULL_RENDER_REFERENCE_MIN_MS = 5 * 60_000;
+const FULL_RENDER_REFERENCE_FAILURE_CODES = new Set([
+  "RENDER_OUTPUT_INVALID",
+  "RENDER_PROCESS_FAILED",
+  "PROCESS_SIGNAL",
+]);
+
 // Comparable 159.2-second API videos took 171s/29 and 195s/28 for images,
 // and 169s/9 and 190s/10 for avatars. The earlier run took 94s for prompts,
 // 47s for spans; the two hosted renders took 518s and 670s. Render bounds allow
 // 20% variation around those observations. A faster local FFmpeg replay is excluded.
-// These are rough planning bounds, not a provider deadline or billing promise.
+// Long videos use a measured terminal render from this project when available. Without one,
+// return no estimate instead of multiplying a short-run render by video duration.
+export function recentFullRenderDurationMs(
+  attempts: readonly {
+    readonly kind?: unknown;
+    readonly state?: unknown;
+    readonly error_code?: unknown;
+    readonly submitted_at?: unknown;
+    readonly terminal_at?: unknown;
+  }[],
+): number | null {
+  const durations = attempts
+    .filter((attempt) => {
+      if (attempt.kind !== "RENDER") return false;
+      const state = String(attempt.state ?? "").toUpperCase();
+      if (state === "SUCCEEDED") return true;
+      return FULL_RENDER_REFERENCE_FAILURE_CODES.has(String(attempt.error_code ?? ""));
+    })
+    .map((attempt) => elapsedMs(attempt.submitted_at, attempt.terminal_at))
+    .filter((duration): duration is number =>
+      duration !== null && duration >= FULL_RENDER_REFERENCE_MIN_MS,
+    );
+  return durations.at(-1) ?? null;
+}
+
 export function hostedApiRemainingTimeEstimate(input: {
   readonly durationMs: number;
   readonly promptTotal: number;
@@ -3771,18 +3803,32 @@ export function hostedApiRemainingTimeEstimate(input: {
   readonly avatarAccepted: number;
   readonly avatarSubmittedAt: unknown;
   readonly renderSubmittedAt: unknown;
+  readonly renderReferenceMs?: number | null;
   readonly renderComplete: boolean;
   readonly failed: boolean;
   readonly nowMs?: number;
 }): {
   readonly remaining_min_ms: number;
   readonly remaining_max_ms: number;
-  readonly basis: "RECENT_API_SHORT_RUN";
+  readonly basis: "RECENT_API_SHORT_RUN" | "RECENT_FULL_RENDER";
   readonly overrun: boolean;
 } | null {
   if (input.failed || !Number.isFinite(input.durationMs) || input.durationMs <= 0) return null;
+  const renderReferenceMs =
+    typeof input.renderReferenceMs === "number" &&
+    Number.isFinite(input.renderReferenceMs) &&
+    input.renderReferenceMs >= FULL_RENDER_REFERENCE_MIN_MS
+      ? input.renderReferenceMs
+      : null;
   if (input.renderComplete)
-    return { remaining_min_ms: 0, remaining_max_ms: 0, basis: "RECENT_API_SHORT_RUN", overrun: false };
+    return {
+      remaining_min_ms: 0,
+      remaining_max_ms: 0,
+      basis: renderReferenceMs === null ? "RECENT_API_SHORT_RUN" : "RECENT_FULL_RENDER",
+      overrun: false,
+    };
+  const longRun = input.durationMs > API_SHORT_RUN_MAX_DURATION_MS;
+  if (longRun && renderReferenceMs === null) return null;
   const now = input.nowMs ?? Date.now();
   const activeMs = (start: unknown) => {
     const startMs = start == null ? NaN : new Date(String(start)).getTime();
@@ -3805,14 +3851,18 @@ export function hostedApiRemainingTimeEstimate(input: {
   const avatarMs = remainingMs(input.avatarTotal, input.avatarAccepted, 180_000, 9.5, input.avatarSubmittedAt);
   const beforeRenderMs = promptMs + spanMs + Math.max(imageMs, avatarMs);
   const scale = input.durationMs / 159_200;
-  const renderMinMs = 60_000 + 354_000 * scale;
-  const renderMaxMs = 60_000 + 744_000 * scale;
+  const renderMinMs = renderReferenceMs === null
+    ? 60_000 + 354_000 * scale
+    : Math.round(renderReferenceMs * 0.8);
+  const renderMaxMs = renderReferenceMs === null
+    ? 60_000 + 744_000 * scale
+    : Math.round(renderReferenceMs * 1.2);
   const renderElapsedMs = activeMs(input.renderSubmittedAt);
   const overrun = input.renderSubmittedAt != null && renderElapsedMs > renderMaxMs;
   return {
     remaining_min_ms: Math.max(0, Math.round(beforeRenderMs * 0.75 + renderMinMs - renderElapsedMs)),
     remaining_max_ms: Math.max(overrun ? 60_000 : 0, Math.round(beforeRenderMs * 1.5 + renderMaxMs - renderElapsedMs)),
-    basis: "RECENT_API_SHORT_RUN",
+    basis: renderReferenceMs === null ? "RECENT_API_SHORT_RUN" : "RECENT_FULL_RENDER",
     overrun,
   };
 }
@@ -7695,6 +7745,9 @@ async function projectDetail(
         .find((value) => value.kind === kind);
     const asr = latestAttempt("ASR");
     const render = latestAttempt("RENDER");
+    const renderReferenceMs = recentFullRenderDurationMs(
+      detail.attempts as Record<string, unknown>[],
+    );
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
     // The legacy route name still drives both providers; API admission has no GPU qualification.
     const gpuPendingState = projectApiGeneration
@@ -7981,6 +8034,7 @@ async function projectDetail(
           avatarAccepted: gpuLaneActivity.find((lane) => lane.lane === "soulx_avatar")?.accepted_item_count ?? 0,
           avatarSubmittedAt: laneSubmittedAt("AVATAR"),
           renderSubmittedAt: render?.state === "RUNNING" ? render.submitted_at : null,
+          renderReferenceMs,
           renderComplete: render?.state === "SUCCEEDED",
           failed: stages.some((stage) => ["FAILED", "UNKNOWN", "UNKNOWN_NO_RETRY", "BLOCKED", "PERMANENT_FAILED", "DEAD_LETTER"].includes(stage.status)) ||
             apiJobs.some((job) => ["FAILED", "UNKNOWN_NO_RETRY"].includes(String(job.state))) ||

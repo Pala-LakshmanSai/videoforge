@@ -208,6 +208,7 @@ import {
   hostedPromptWritingState,
   hostedStyleConflictProblem,
   HOSTED_LEGACY_QUALIFIED_SOULX_SYSTEM_PROFILE_ID,
+  recentFullRenderDurationMs,
   verifyHostedPreviewChecksum,
 } from "./product";
 import { handleHostedPromptRequest } from "./hosted-prompt-route";
@@ -283,6 +284,74 @@ it("uses observed prompt throughput early in a long run", () => {
   const observed = hostedApiRemainingTimeEstimate(input);
   const referenceOnly = hostedApiRemainingTimeEstimate({ ...input, promptStartedAt: null });
   expect(observed!.remaining_min_ms).toBeGreaterThan(referenceOnly!.remaining_min_ms + 1_000_000);
+});
+
+it("does not extrapolate a short render for a long video without a measured full render", () => {
+  const estimate = hostedApiRemainingTimeEstimate({
+    durationMs: 1_667_333,
+    promptTotal: 327,
+    promptAccepted: 327,
+    promptComplete: true,
+    promptStartedAt: null,
+    spanTotal: 96,
+    spanReady: 96,
+    spanStartedAt: null,
+    imageTotal: 327,
+    imageAccepted: 327,
+    imageSubmittedAt: null,
+    avatarTotal: 96,
+    avatarAccepted: 96,
+    avatarSubmittedAt: null,
+    renderSubmittedAt: "2026-09-25T17:47:25.000Z",
+    renderComplete: false,
+    failed: false,
+    nowMs: Date.parse("2026-09-25T18:02:25.000Z"),
+  });
+  expect(estimate).toBeNull();
+});
+
+it("uses the recent full render as the long-video ETA reference", () => {
+  const referenceMs = recentFullRenderDurationMs([
+    {
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "RENDER_INPUT_INVALID",
+      submitted_at: "2026-09-25T15:28:00.000Z",
+      terminal_at: "2026-09-25T15:35:26.000Z",
+    },
+    {
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "RENDER_OUTPUT_INVALID",
+      submitted_at: "2026-09-25T16:58:00.000Z",
+      terminal_at: "2026-09-25T17:24:00.000Z",
+    },
+  ]);
+  expect(referenceMs).toBe(1_560_000);
+  const estimate = hostedApiRemainingTimeEstimate({
+    durationMs: 1_667_333,
+    promptTotal: 327,
+    promptAccepted: 327,
+    promptComplete: true,
+    promptStartedAt: null,
+    spanTotal: 96,
+    spanReady: 96,
+    spanStartedAt: null,
+    imageTotal: 327,
+    imageAccepted: 327,
+    imageSubmittedAt: null,
+    avatarTotal: 96,
+    avatarAccepted: 96,
+    avatarSubmittedAt: null,
+    renderSubmittedAt: "2026-09-25T17:47:25.000Z",
+    renderReferenceMs: referenceMs,
+    renderComplete: false,
+    failed: false,
+    nowMs: Date.parse("2026-09-25T18:02:25.000Z"),
+  });
+  expect(estimate).toMatchObject({ basis: "RECENT_FULL_RENDER", overrun: false });
+  expect(estimate?.remaining_min_ms).toBe(348_000);
+  expect(estimate?.remaining_max_ms).toBe(972_000);
 });
 
 const PRESET_ID = "44444444-4444-4444-8444-444444444444";

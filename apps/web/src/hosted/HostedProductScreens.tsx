@@ -599,7 +599,7 @@ interface HostedTiming {
 interface HostedTimeEstimate {
   readonly remaining_min_ms: number;
   readonly remaining_max_ms: number;
-  readonly basis: "RECENT_API_SHORT_RUN";
+  readonly basis: "RECENT_API_SHORT_RUN" | "RECENT_FULL_RENDER";
   readonly overrun: boolean;
 }
 
@@ -4991,9 +4991,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         : render?.state === "SUCCEEDED"
           ? "ready for review"
           : apiTimeEstimate?.overrun
-        ? "than recent short runs; API and render times vary"
+        ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
+          ? "than the recent full render; times vary"
+          : "than recent short runs; API and render times vary"
             : apiEstimateRange
-          ? "remaining · based on live progress and recent short runs; times vary"
+          ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
+            ? "remaining · based on the recent full render; times vary"
+            : "remaining · based on live progress and recent short runs; times vary"
               : query.data.generation
                 ? "provider timing varies"
                 : "timing available after planning";

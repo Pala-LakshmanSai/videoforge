@@ -478,6 +478,29 @@ it.each([
   expect(within(hero).queryByText("Not reported")).not.toBeInTheDocument();
 });
 
+it("labels a long-video estimate as measured from a recent full render", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+    project: { id: "estimate-full", title: "Measured video", created_at: "2026-09-25T05:00:00Z",
+      revision_id: "revision", revision_state: "LOCKED" },
+    generation_provider: "KIE_FAL",
+    attempts: [],
+    generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED",
+    gpu_readiness: gpuReadiness,
+    stages: stageList({ prepare: "COMPLETE", render: "RUNNING" }),
+    time_estimate: {
+      remaining_min_ms: 348_000,
+      remaining_max_ms: 972_000,
+      basis: "RECENT_FULL_RENDER",
+      overrun: false,
+    },
+  })));
+  renderHosted(<HostedProjectScreen projectId="estimate-full" />);
+  const hero = await screen.findByRole("region", { name: "Live video progress" });
+  expect(within(hero).getByText("~5–17 min")).toBeInTheDocument();
+  expect(within(hero).getByText("remaining · based on the recent full render; times vary")).toBeInTheDocument();
+});
+
 it("refreshes a running project's time estimate without reloading", async () => {
   let reads = 0;
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({
