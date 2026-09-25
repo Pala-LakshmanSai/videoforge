@@ -7,9 +7,9 @@ import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type { CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents } from "./types.js";
 
 export const PERMANENT_POSITIVE_GUARDRAIL =
-  "Original photographic still of the described scene; viewpoint is framing, not visible camera gear. Show names, dates and quantities through physical subjects. No visible or pseudo-text, numbers, labels, signs, branding or markings. Scene-relevant products and containers stay plain and unmarked. No captions, titles, logos, watermarks, UI, charts, infographics, borders, lower-thirds, overlays, motion graphics or decorative transitions.";
+  "Original still photo of described scene; framing only, no camera gear. Show names, dates, quantities physically. No visible or pseudo-text or markings; products/containers plain and unmarked. No captions/titles, logos/watermarks, UI/charts, infographics/borders/lower-thirds, overlays, motion graphics/decorative transitions.";
 export const PERMANENT_NEGATIVE_GUARDRAIL =
-  "text, pseudo-text, numbers, labels, signage, packaging text, branded packaging, logos, watermarks, captions, UI, graphics, borders, motion graphics, malformed anatomy, duplicate limbs, unrelated subjects, unrelated camera gear";
+  "text, pseudo-text, captions, logos, watermarks, overlays, motion graphics, malformed anatomy, duplicate limbs, unrelated subjects";
 
 const stripControls = (value: string): string =>
   Array.from(value, (character) => {
@@ -305,6 +305,89 @@ const join = (parts: readonly (string | null)[]): string => {
     .join(", ");
 };
 
+const COMPACT_DOCUMENTARY_STYLE_POSITIVE =
+  "authentic documentary photo, candid and unposed, on location, practical light, true-to-life color, soft contrast, realistic skin/material textures, natural imperfections, consumer framing, photojournalistic, everyday life, photorealistic, no glossy or AI look";
+const COMPACT_DOCUMENTARY_STYLE_NEGATIVE =
+  "illustration/CGI, fantasy/surrealism, plastic/waxy skin, HDR, glamour/studio lighting, staged pose, bad anatomy, duplicate subjects, unrealistic perfection";
+
+const compactBuiltInStylePositive = (value: string): string => {
+  const normalized = value.toLocaleLowerCase("en-US");
+  return normalized.includes("authentic observational documentary photography") &&
+    normalized.includes("genuine frame from real stock or documentary footage") &&
+    normalized.includes("absolutely photorealistic")
+    ? COMPACT_DOCUMENTARY_STYLE_POSITIVE
+    : value;
+};
+
+const compactBuiltInStyleNegative = (value: string): string => {
+  const normalized = value.toLocaleLowerCase("en-US");
+  return normalized.includes("cartoon") &&
+    normalized.includes("anime") &&
+    normalized.includes("3d render") &&
+    normalized.includes("digital painting") &&
+    normalized.includes("unrealistic perfection")
+    ? COMPACT_DOCUMENTARY_STYLE_NEGATIVE
+    : value;
+};
+
+const compactCropGuidance = (value: string): string => {
+  if (/^wide horizontal frame, key evidence inside center-safe 80%$/iu.test(value))
+    return "wide horizontal, center-safe 80%";
+  if (/^narrow vertical right panel, key subject centered away from edges$/iu.test(value))
+    return "narrow vertical right panel, centered subject, clear edges";
+  if (
+    /primary evidence inside the center-safe 80 percent/iu.test(value) &&
+    /slow zoom/iu.test(value)
+  )
+    return "wide horizontal, center-safe 80%; keep evidence clear during slow zoom; retain environmental context";
+  if (
+    /primary evidence centered/iu.test(value) &&
+    /half-frame size/iu.test(value) &&
+    /extreme edges/iu.test(value)
+  )
+    return "narrow vertical right panel, center-safe; keep evidence readable at half-frame size and clear of edges";
+  return value;
+};
+
+const NEGATIVE_TERM_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  border: "border",
+  borders: "border",
+  caption: "caption",
+  captions: "caption",
+  graphic: "graphic",
+  graphics: "graphic",
+  label: "label",
+  labels: "label",
+  logo: "logo",
+  logos: "logo",
+  number: "number",
+  numbers: "number",
+  watermark: "watermark",
+  watermarks: "watermark",
+});
+
+const compactNegativePrompt = (parts: readonly (string | null)[]): string => {
+  const seen = new Set<string>();
+  return parts
+    .filter((part): part is string => part !== null && part.length > 0)
+    .flatMap((part) => part.split(/[;,]/u))
+    .map((term) => term.replace(/^\s*(?:avoid|negative\s+prompt)\s*:\s*/iu, "").trim())
+    .filter(Boolean)
+    .filter((term) => {
+      const normalized = term.toLocaleLowerCase("en-US").replace(/\s+/gu, " ");
+      const key = normalized.replace(
+        /\b(border|borders|caption|captions|graphic|graphics|label|labels|logo|logos|number|numbers|watermark|watermarks)\b/gu,
+        (value) => NEGATIVE_TERM_ALIASES[value] ?? value,
+      )
+        .replace(/\b(?:impossible|malformed)\s+anatomy\b/gu, "anatomy")
+        .replace(/\bduplicate\s+(?:people|subjects|limbs)\b/gu, "duplicate");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .join(", ");
+};
+
 export function compileImagePrompt(request: CompilePromptRequest): CompiledImagePrompt {
   const output = request.writerOutput;
   const expected = request.expectedScene;
@@ -354,19 +437,19 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     assertNoHardPromptConflict(normalizedTag, ["writerOutput", "continuity_tags", String(index)]);
   });
   const continuityAndShotRole = join([
-    "keep one consistent subject, setting and physical state across the video",
-    `required viewpoint: ${expected.inImageShotRole.toLowerCase().replaceAll("_", " ")}`,
+    "same subject/setting/state",
+    `viewpoint: ${expected.inImageShotRole.toLowerCase().replaceAll("_", " ")}`,
   ]);
   const cropGuidance =
     expected.layout === "IMAGE_FULL" ? style.fullImageGuidance : style.splitImageGuidance;
   const components = Object.freeze({
     literalContent: plainGeometry(literalContent),
     continuityAndShotRole: plainGeometry(continuityAndShotRole),
-    cropGuidance: plainGeometry(cropGuidance),
-    stylePositiveSuffix: plainGeometry(style.positiveSuffix),
+    cropGuidance: compactCropGuidance(plainGeometry(cropGuidance)),
+    stylePositiveSuffix: compactBuiltInStylePositive(plainGeometry(style.positiveSuffix)),
     extraPromptKeywords: extra === null ? extra : plainGeometry(extra),
     permanentPositiveGuardrail: PERMANENT_POSITIVE_GUARDRAIL,
-    styleNegativeSuffix: plainGeometry(style.negativeSuffix),
+    styleNegativeSuffix: compactBuiltInStyleNegative(plainGeometry(style.negativeSuffix)),
     permanentNegativeGuardrail: PERMANENT_NEGATIVE_GUARDRAIL,
   });
   const positivePrompt = join([
@@ -377,7 +460,7 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     components.extraPromptKeywords,
     components.permanentPositiveGuardrail,
   ]);
-  const negativePrompt = join([
+  const negativePrompt = compactNegativePrompt([
     components.styleNegativeSuffix,
     components.permanentNegativeGuardrail,
   ]);
@@ -408,7 +491,7 @@ export function verifyCompiledImagePrompt(prompt: CompiledImagePrompt): void {
     prompt.components.extraPromptKeywords,
     prompt.components.permanentPositiveGuardrail,
   ]);
-  const negative = join([
+  const negative = compactNegativePrompt([
     prompt.components.styleNegativeSuffix,
     prompt.components.permanentNegativeGuardrail,
   ]);

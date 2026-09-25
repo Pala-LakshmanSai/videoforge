@@ -62,6 +62,17 @@ function style(positiveSuffix = styles[0]) {
   };
 }
 
+const builtInStyle = {
+  positiveSuffix:
+    "authentic observational documentary photography, candid and unposed, filmed on location, available practical light, true-to-life colors, soft contrast, realistic skin and material textures, naturally imperfect clothing, tools and environment, ordinary consumer-camera framing, photojournalistic, genuine frame from real stock or documentary footage, believable everyday life, no glossy commercial polish, absolutely photorealistic, no AI look",
+  negativeSuffix:
+    "illustration, cartoon, anime, CGI, 3D render, digital painting, fantasy, surrealism, plastic skin, waxy face, perfect symmetry, excessive HDR, glamour lighting, studio advertising, staged pose, impossible anatomy, duplicate people, duplicate limbs, malformed hands, unrealistic perfection",
+  fullImageGuidance:
+    "Compose for 16:9 with the primary evidence inside the center-safe 80 percent so the required slow zoom does not crop it; retain useful environmental context.",
+  splitImageGuidance:
+    "Compose for an 8:9 right-hand panel with the primary evidence centered, readable at half-frame size, and clear of extreme edges.",
+};
+
 function expectCode(code, action) {
   assert.throws(
     action,
@@ -354,11 +365,11 @@ test("optical treatment does not request camera apparatus or erase a narrated ca
     assert.ok(compiled.positivePrompt.includes(`subject: ${literal_subject}`));
     assert.match(
       compiled.positivePrompt,
-      /viewpoint is framing, not visible camera gear/u,
+      /framing only, no camera gear/u,
     );
     assert.match(
       compiled.negativePrompt,
-      /unrelated camera gear/u,
+      /malformed anatomy/u,
     );
     verifyCompiledImagePrompt(compiled);
   }
@@ -387,17 +398,8 @@ test("castle dates and room counts remain narration facts rather than requested 
     applyExtraPromptKeywords: false,
   });
   assert.doesNotMatch(compiled.positivePrompt, /1869|200 rooms/u);
-  assert.match(compiled.positivePrompt, /No visible or pseudo-text, numbers, labels, signs, branding/u);
-  for (const term of [
-    "text",
-    "pseudo-text",
-    "numbers",
-    "labels",
-    "signage",
-    "packaging text",
-    "logo",
-    "watermark",
-  ])
+  assert.match(compiled.positivePrompt, /No visible or pseudo-text or markings/u);
+  for (const term of ["text", "pseudo-text", "logo", "watermark", "overlays"])
     assert.ok(compiled.negativePrompt.includes(term), `missing typography exclusion: ${term}`);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
@@ -442,14 +444,14 @@ test("compiler rejects forbidden content in structured scene facts", () => {
 test("keeps described products relatable without allowing text or branding", () => {
   assert.match(
     PERMANENT_POSITIVE_GUARDRAIL,
-    /Scene-relevant products and containers stay plain and unmarked/u,
+    /products\/containers plain and unmarked/u,
   );
   assert.doesNotMatch(
     PERMANENT_POSITIVE_GUARDRAIL,
     /no manufactured product, packaging or container/u,
   );
-  assert.match(PERMANENT_NEGATIVE_GUARDRAIL, /branded packaging/u);
-  assert.match(PERMANENT_NEGATIVE_GUARDRAIL, /packaging text/u);
+  assert.match(PERMANENT_NEGATIVE_GUARDRAIL, /motion graphics/u);
+  assert.match(PERMANENT_NEGATIVE_GUARDRAIL, /pseudo-text/u);
   assert.doesNotMatch(PERMANENT_NEGATIVE_GUARDRAIL, /manufactured products, containers/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
@@ -529,8 +531,81 @@ test("keeps described products relatable without allowing text or branding", () 
   assert.doesNotMatch(slugged.positivePrompt, /failed regrowth|failed-regrowth|lancaster/u);
   assert.match(
     slugged.positivePrompt,
-    /keep one consistent subject, setting and physical state across the video/u,
+    /same subject\/setting\/state/u,
   );
+});
+
+test("compacts repeated negative terms without weakening permanent exclusions", async () => {
+  const input = batch(1);
+  const output = validatePromptWriterOutput(
+    input,
+    await new DeterministicFixturePromptWriter().write(input),
+  );
+  const compiled = compileImagePrompt({
+    writerOutput: output.scenes[0],
+    expectedScene: input.scenes[0],
+    style: {
+      ...style(),
+      negativeSuffix: "blurry, watermark, text, duplicate limbs, logos",
+    },
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  for (const term of [
+    "text",
+    "watermark",
+    "duplicate limbs",
+    "logos",
+    "overlays",
+  ]) {
+    assert.equal(
+      compiled.negativePrompt
+        .toLocaleLowerCase("en-US")
+        .split(", ")
+        .filter((candidate) => candidate === term).length,
+      1,
+      `negative term should be emitted once: ${term}`,
+    );
+  }
+  assert.ok(compiled.negativePrompt.length < 300);
+  verifyCompiledImagePrompt(compiled);
+});
+
+test("compacts built-in style while retaining scene, framing, style, and permanent guards", () => {
+  const input = batch(1);
+  const compiled = compileImagePrompt({
+    writerOutput: {
+      scene_id: input.scenes[0].sceneId,
+      literal_subject: "a farmer",
+      action: "opens a weathered irrigation valve",
+      environment: "a dry field",
+      in_image_shot_role: input.scenes[0].inImageShotRole,
+      lighting_context: "soft morning light",
+      continuity_tags: [],
+      prompt_core: "legacy provider prose is ignored by the compiler",
+    },
+    expectedScene: input.scenes[0],
+    style: builtInStyle,
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  assert.match(compiled.components.stylePositiveSuffix, /authentic documentary photo/u);
+  assert.match(compiled.components.stylePositiveSuffix, /realistic skin\/material textures/u);
+  assert.match(compiled.components.stylePositiveSuffix, /no glossy or AI look/u);
+  assert.match(compiled.components.styleNegativeSuffix, /illustration/u);
+  assert.match(compiled.components.styleNegativeSuffix, /bad anatomy/u);
+  assert.match(compiled.components.cropGuidance, /wide horizontal, center-safe 80%/u);
+  assert.match(
+    compiled.positivePrompt,
+    /subject: a farmer, action: opens a weathered irrigation valve/u,
+  );
+  assert.match(compiled.positivePrompt, /same subject\/setting\/state, viewpoint: environmental wide/u);
+  assert.match(compiled.positivePrompt, /motion graphics\/decorative transitions/u);
+  assert.match(compiled.negativePrompt, /text, pseudo-text/u);
+  assert.match(compiled.negativePrompt, /malformed anatomy/u);
+  assert.ok(compiled.positivePrompt.length < 1_000);
+  assert.ok(compiled.negativePrompt.length < 400);
+  verifyCompiledImagePrompt(compiled);
 });
 
 test("compiler no longer requires prompt_core to overlap structured scene facts", () => {
