@@ -1,14 +1,14 @@
 schema_version: "2.0"
 napaa_live_2026_09_25:
   checkpoint: V2-09
-  status: SAME_PROJECT_STAGE_9_LOCAL_RENDER_RETRY_RUNNING_FINAL_VIDEO_UNVERIFIED
+  status: SAME_PROJECT_STAGE_9_SECOND_LOCAL_RENDER_FAILED_RECOVERY_IN_PROGRESS
   project_id: 6ec3ce8d-6558-494a-b8b3-a90a65c53bc8
   revision_id: ef4a4117-c86b-4721-821b-c6a835f0e022
   generation_request_id: 033b710c-7ebc-4ac8-9c05-89c16c5a3d1e
   production_source_commit: 2aef5cd8
   cloudflare_version: 26529314-8471-49a3-a3a5-94aa1e0d49da
   database_migration_head: 0207
-  observed_at: "2026-09-25T15:39:04Z"
+  observed_at: "2026-09-25T15:44:25Z"
   verified_progress: >-
     The replacement NAPAA run saved all 327/327 prompts in 33 batches. Stage 5 completed
     from those exact saved batches without another prompt provider request after fixing a
@@ -21,8 +21,12 @@ napaa_live_2026_09_25:
     clip's projected crop exceeded the old 32-pixel top-edge allowance. The first
     guarded provider-free retry, attempt 0a799bac-e909-4ceb-b8d1-df70c1721cf7,
     was consumed at 15:35:36 UTC and running with a fresh worker lease by 15:36:20.
-    It reuses all 423 accepted provider outputs and 426 render inputs. Chrome shows
-    Stage 9 RUNNING; no final MP4 exists yet.
+    It reused all 423 accepted provider outputs and 426 render inputs. The retry
+    composed all 96 Fal wides but failed during the final FFmpeg encode at 15:44:07 UTC
+    with PROCESS_EXIT 232 and no output. The Mac GUI worker's soft open-file limit is
+    256, while the compiled render has 424 inputs; this is a high-confidence cause
+    pending a local stderr or file-limit reproduction. Chrome is again at Stage 9
+    FAILED; no final MP4 exists.
   fixes: >-
     Source 95c11117 awaits completion before closing the Neon pool; 42ae8f7a applies exact
     Stage 6 runtime grants as migration 0206; 8e745eea prevents the V2-06 grant script from
@@ -35,12 +39,14 @@ napaa_live_2026_09_25:
     and source 2aef5cd8 exposes that guarded retry in the UI. Cloudflare version
     26529314 serves that UI and worker release 0.1.33; the Mac worker is ONLINE with
     matching execution bundle. Both platform 0.1.34 packages are published with a
-    separate long-command fix for Windows, but production activation and Mac install
-    of 0.1.34 wait until this render is finished.
+    separate long-command fix for Windows. That version is not production-active.
+    A further Mac file-limit fix and one exact, provider-free render-process recovery
+    are being prepared before the next local attempt.
   remaining_gates: >-
-    Assemble and technically validate the final MP4, verify real Chrome playback/seek,
+    Fix the final FFmpeg file-limit failure and perform one guarded saved-input retry,
+    assemble and technically validate the final MP4, verify real Chrome playback/seek,
     approve and download the exact artifact, prove zero active paid compute, and activate
-    worker 0.1.34 for both platforms after the current render. Full remaining wall time
+    the corrected worker release for both platforms. Full remaining wall time
     is unverified.
   provider_spend: >-
     Prompt cost settled at USD 2.197885. All Kie/Fal outputs are accepted; the provider
@@ -49,7 +55,7 @@ napaa_live_2026_09_25:
   paid_compute_shutdown: >-
     Ordinary generation uses Kie/Fal APIs with GPU transport DISABLED_UNQUALIFIED. The
     paid Kie/Fal work has no active lease or serverless attempts. The current work is
-    local CPU rendering; independently recheck zero active paid compute at completion.
+    local CPU rendering only; independently recheck zero active paid compute at completion.
 napa_prompt_recovery_2026_09_25:
   checkpoint: V2-09
   status: PRODUCTION_FIX_DEPLOYED_CURRENT_VIDEO_BLOCKED_KNOWN_INVALID_OUTPUT
