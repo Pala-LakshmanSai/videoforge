@@ -5302,7 +5302,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               }
             : {}
       : {}),
-    ...(failedStageIds.has("prompt-writing") && query.data.generation?.id &&
+    ...(failedStageIds.has("prompt-writing") && (query.data.generation?.id || savedUnknownPromptsCanFinish) &&
     (promptProgress?.state !== "UNKNOWN" || savedUnknownPromptsCanFinish) &&
     promptProgress?.problem_code !== "HOSTED_PROMPT_OUTPUT_INVALID"
       ? {
