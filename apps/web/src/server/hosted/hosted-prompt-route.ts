@@ -22,6 +22,7 @@ import type { ContinuationScope } from "./stage-continuation";
 import {
   HOSTED_PROMPT_RESERVATION_MICRO_USD,
   HostedPromptExecutionError,
+  hostedPromptReservationMicroUsd,
   hostedPromptBatchPlanHash,
   recoverClaimedHostedPromptBatch,
   dispatchOneHostedPromptBatch,
@@ -285,18 +286,28 @@ export async function writeProjectPrompts(
         "videoforge.account_id",
         scope.account_id,
       ]);
-      const loaded = await transaction.query<{ plan: unknown; run_started_at: string | null }>(
+      const loaded = await transaction.query<{
+        plan: unknown;
+        run_started_at: string | null;
+        run_reserved_cost_micro_usd: number | null;
+      }>(
         `SELECT public.videoforge_load_hosted_prompt_plan($1,$2,$3,$4) AS plan,
                 (SELECT coalesce(run.started_at, run.created_at)::text
                    FROM public.hosted_prompt_runs run
                    JOIN public.project_revisions revision ON revision.id = run.project_revision_id
                   WHERE run.account_id = $1 AND run.workspace_id = $2 AND revision.project_id = $4
-                  ORDER BY run.created_at DESC LIMIT 1) AS run_started_at`,
+                  ORDER BY run.created_at DESC LIMIT 1) AS run_started_at,
+                (SELECT run.reserved_cost_micro_usd
+                   FROM public.hosted_prompt_runs run
+                   JOIN public.project_revisions revision ON revision.id = run.project_revision_id
+                  WHERE run.account_id = $1 AND run.workspace_id = $2 AND revision.project_id = $4
+                  ORDER BY run.created_at DESC LIMIT 1) AS run_reserved_cost_micro_usd`,
         [scope.account_id, scope.workspace_id, scope.user_id, projectId],
       );
       return {
         plan: loaded.rows[0]?.plan ?? null,
         runStartedAt: loaded.rows[0]?.run_started_at ?? null,
+        runReservedCostMicroUsd: loaded.rows[0]?.run_reserved_cost_micro_usd ?? null,
       };
     });
     const planRecord = plainRecord(plan.plan);
@@ -578,9 +589,11 @@ export async function writeProjectPrompts(
       redispatchApproved,
     });
     const batchPlan = hostedPromptBatchPlan(ceilingAuthority);
-    const reservedCostMicroUsd = Math.min(
-      HOSTED_PROMPT_RESERVATION_MICRO_USD,
-      batchPlan.batchCount * 250_000,
+    if (redispatchApproved && plan.runReservedCostMicroUsd === null)
+      throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
+    const reservedCostMicroUsd = hostedPromptReservationMicroUsd(
+      batchPlan.batchCount,
+      redispatchApproved ? plan.runReservedCostMicroUsd : null,
     );
     const authority = Object.freeze({
       ...ceilingAuthority,

@@ -372,7 +372,7 @@ export async function runHostedContinuation(
             : undefined;
           response = await writeProjectPrompts(
             continuationRequest(config, `/api/v2/hosted/projects/${row.project_id}/prompts`, {
-              maximum_prompt_spend_micro_usd: 2_000_000,
+              maximum_prompt_spend_micro_usd: 8_000_000,
             }),
             row.project_id,
             config,

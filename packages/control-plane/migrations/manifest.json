@@ -996,6 +996,12 @@
       "name": "hosted_prompt_invalid_archived_batch",
       "filename": "0203_hosted_prompt_invalid_archived_batch.sql",
       "sha256": "sha256:cdced4dd43ed333a52fee2280bcb6730ed63ce3f14f339f6d9fb9b4f64544d90"
+    },
+    {
+      "version": 204,
+      "name": "hosted_prompt_future_run_reservation_cap",
+      "filename": "0204_hosted_prompt_future_run_reservation_cap.sql",
+      "sha256": "sha256:66ca382459cf251b2b5b9fc96268b04234a74b71b9aec9f4c844471f49575e29"
     }
   ]
 }

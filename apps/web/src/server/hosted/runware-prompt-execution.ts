@@ -29,11 +29,28 @@ import {
   type RunwareSafeDiagnostic,
 } from "../providers/runware-http-transport";
 
-// A long plan can contain 22 batches; the prior USD 0.60 cap stopped after eight accepted batches.
-// The route reserves the smaller of this ceiling and USD 0.25 per planned batch. Unused credit is
+// A long plan can contain 32 batches. Reserve at most USD 0.25 per planned batch, with an USD 8
+// absolute ceiling. Unused credit is
 // released on completion, and the writer stops before sending a batch with insufficient headroom.
-export const HOSTED_PROMPT_RESERVATION_MICRO_USD = 2_000_000 as const;
+export const HOSTED_PROMPT_RESERVATION_MICRO_USD = 8_000_000 as const;
 export const HOSTED_PROMPT_RESERVATION_USD = HOSTED_PROMPT_RESERVATION_MICRO_USD / 1_000_000;
+
+export function hostedPromptReservationMicroUsd(
+  batchCount: number,
+  existingReservationMicroUsd: number | null,
+): number {
+  if (!Number.isSafeInteger(batchCount) || batchCount < 1) throw new RangeError("Invalid batch count.");
+  const reservation =
+    existingReservationMicroUsd ??
+    Math.min(HOSTED_PROMPT_RESERVATION_MICRO_USD, batchCount * 250_000);
+  if (
+    !Number.isSafeInteger(reservation) ||
+    reservation < 40_000 ||
+    reservation > HOSTED_PROMPT_RESERVATION_MICRO_USD
+  )
+    throw new RangeError("Invalid prompt reservation.");
+  return reservation;
+}
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 
@@ -511,7 +528,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
     if (
       !Number.isSafeInteger(reservationMicroUsd) ||
       reservationMicroUsd < 1 ||
-      reservationMicroUsd > 5_000_000 ||
+      reservationMicroUsd > HOSTED_PROMPT_RESERVATION_MICRO_USD ||
       !Number.isSafeInteger(minimumNextBatchMicroUsd) ||
       minimumNextBatchMicroUsd < 0 ||
       minimumNextBatchMicroUsd > reservationMicroUsd ||

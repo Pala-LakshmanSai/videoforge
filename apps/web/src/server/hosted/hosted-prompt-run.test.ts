@@ -15,6 +15,7 @@ import {
 } from "./hosted-prompt-run";
 import {
   hostedPromptBatchPlanHash,
+  hostedPromptReservationMicroUsd,
   HostedPromptExecutionError,
   HostedRunwarePromptWriter,
   recoverClaimedHostedPromptBatch,
@@ -36,6 +37,15 @@ const ids = {
   reservation: "10000000-0000-4000-8000-000000000011",
 } as const;
 const digest = `sha256:${"a".repeat(64)}` as const;
+
+it("sizes new prompt reservations and preserves an existing run's cap", () => {
+  expect(hostedPromptReservationMicroUsd(2, null)).toBe(500_000);
+  expect(hostedPromptReservationMicroUsd(32, null)).toBe(8_000_000);
+  expect(hostedPromptReservationMicroUsd(40, null)).toBe(8_000_000);
+  expect(hostedPromptReservationMicroUsd(32, 2_000_000)).toBe(2_000_000);
+  expect(() => hostedPromptReservationMicroUsd(0, null)).toThrow(RangeError);
+  expect(() => hostedPromptReservationMicroUsd(32, 8_000_001)).toThrow(RangeError);
+});
 
 const visualProfile = {
   medium_family: "documentary photography",
