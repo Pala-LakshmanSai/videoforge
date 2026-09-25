@@ -67,12 +67,13 @@ describe("Kie image job", () => {
         cropGuidance: "center-safe framing",
         stylePositiveSuffix: "documentary photo",
         extraPromptKeywords: "natural light",
-        styleNegativeSuffix: "CGI, glossy commercial polish",
+        styleNegativeSuffix: "CGI, watermark, text, glossy commercial polish",
       },
     } as never);
     expect(prompt).toContain("A candid farmer");
     expect(prompt).toContain("Avoid: CGI, glossy commercial polish");
-    expect(prompt).toContain("No text/pseudo-text");
+    expect(prompt).not.toContain("watermark, text");
+    expect(prompt).toContain("No visible text/pseudo-text");
     expect(() =>
       buildKieScenePrompt({
         components: {
@@ -107,12 +108,12 @@ describe("Kie image job", () => {
         styleNegativeSuffix: profile.prompt_profile.negative_suffix,
       },
     } as never);
-    expect(prompt.length).toBeLessThanOrEqual(800);
+    expect(prompt.length).toBeLessThanOrEqual(640);
     expect(prompt).toContain("A farmer walks through a field");
     expect(prompt).toContain("Avoid: illustration, CGI");
   });
 
-  it("keeps production-length scene content intact within Kie's 800-character limit", () => {
+  it("keeps production-length scene content intact within Kie's medium target", () => {
     const literal = "subject: A person, action: depicting the narration-supported visible moment, environment: a room with a wooden desk next to a large window.";
     const prompt = buildKieScenePrompt({
       components: {
@@ -127,18 +128,46 @@ describe("Kie image job", () => {
           "blurry, soft focus, low resolution, artificial, over-saturated, human-centric, portrait, watermark, text",
       },
     } as never);
-    expect(prompt.length).toBeLessThanOrEqual(800);
+    expect(prompt.length).toBeLessThanOrEqual(640);
     expect(prompt).toContain(literal);
     expect(prompt).toContain("wide horizontal and center-safe");
     expect(prompt).toContain("Photorealistic high-fidelity");
     expect(prompt).toContain("natural light");
     expect(prompt).toContain("Same subject, setting, state; viewpoint: human medium");
-    expect(prompt).toContain("No text/pseudo-text");
-    expect(prompt).toContain("motion graphics or decorative transitions");
-    expect(prompt).toContain("plain unmarked surfaces");
-    expect(prompt).toContain(
-      "Avoid: blurry, soft focus, low resolution, artificial, over-saturated, human-centric, portrait, watermark, text",
-    );
+    expect(prompt).toContain("No visible text/pseudo-text");
+    expect(prompt).toContain("motion graphics");
+    expect(prompt).toContain("unmarked surfaces");
+    expect(prompt).toContain("Avoid: blurry, soft focus, low resolution");
+    expect(prompt).not.toContain("watermark, text");
+  });
+
+  it("keeps a NAPAA landscape prompt medium while preserving scene, crop, and photographic cues", () => {
+    const literal =
+      "subject: A winemaker in a simple linen shirt, action: looking out over straight rows of grapevines, environment: A vineyard entrance with a rustic stone gate and distant mountains";
+    const crop =
+      "wide horizontal, center-safe 80%; keep evidence clear during slow zoom; retain environmental context";
+    const style =
+      "photorealistic digital landscape photo; wide deep-focus unobstructed or aerial view; high-noon or golden-hour sun, strong shadows";
+    const prompt = buildKieScenePrompt({
+      components: {
+        literalContent: literal,
+        continuityAndShotRole: "same subject/setting/state, viewpoint: environmental wide",
+        cropGuidance: crop,
+        stylePositiveSuffix: style,
+        extraPromptKeywords: "documentary stock photography",
+        styleNegativeSuffix:
+          "blurry, soft focus, low resolution, artificial, over-saturated, human-centric, portrait, watermark, text",
+      },
+    } as never);
+    expect(prompt.length).toBeLessThanOrEqual(640);
+    expect(prompt).toContain(literal);
+    expect(prompt).toContain(crop);
+    expect(prompt).toContain(style);
+    expect(prompt).toContain("documentary stock photography");
+    expect(prompt).toContain("photorealistic");
+    expect(prompt).toContain("No visible text/pseudo-text");
+    expect(prompt).toContain("overlays");
+    expect(prompt).toContain("motion graphics");
   });
 
   it("claims before submission and persists the provider task ID", async () => {
