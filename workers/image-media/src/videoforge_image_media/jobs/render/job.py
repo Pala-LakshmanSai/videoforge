@@ -394,6 +394,8 @@ class RenderJob:
         run_options: dict[str, Any] = {}
         if cwd is not None:
             run_options["cwd"] = cwd
+        if phase == "visual_render":
+            run_options["file_descriptor_limit"] = 1024
         result = self._dependencies.process.run(
             arguments,
             should_cancel=lambda: self._dependencies.cancellation.is_cancelled(token),
@@ -407,6 +409,12 @@ class RenderJob:
                 "A pinned local media tool is unavailable.",
                 retryable=True,
             )
+        if result.launch_error == "resource_limit":
+            raise _RenderFailure(
+                failure_code,
+                f"Local {phase} failed: FILE_DESCRIPTOR_LIMIT.",
+                retryable=True,
+            )
         if result.launch_error is not None or result.return_code != 0:
             reason = "PROCESS_EXIT"
             stderr = result.stderr[-4096:].lower()
@@ -414,6 +422,7 @@ class RenderJob:
                 ("no space left on device", "DISK_FULL"),
                 ("cannot allocate memory", "MEMORY_ALLOCATION_FAILED"),
                 ("resource temporarily unavailable", "RESOURCE_UNAVAILABLE"),
+                ("too many open files", "FILE_DESCRIPTOR_LIMIT"),
                 ("permission denied", "ACCESS_DENIED"),
                 ("invalid argument", "INVALID_ARGUMENT"),
             ):

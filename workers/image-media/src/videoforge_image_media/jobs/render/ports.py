@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol
 
-LaunchError = Literal["missing", "failed"]
+LaunchError = Literal["missing", "failed", "resource_limit"]
 
 
 @dataclass(frozen=True)
@@ -57,6 +57,7 @@ class ProcessRunner(Protocol):
         *,
         should_cancel: Callable[[], bool],
         cwd: Path | None = None,
+        file_descriptor_limit: int | None = None,
     ) -> ProcessResult: ...
 
 

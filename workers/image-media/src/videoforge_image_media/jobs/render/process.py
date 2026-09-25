@@ -1,10 +1,58 @@
 from __future__ import annotations
 
+import os
 import subprocess
+import threading
 from collections.abc import Callable, Sequence
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
+from typing import Iterator
+
+try:
+    import resource
+except ImportError:  # pragma: no cover - resource is unavailable on Windows
+    resource = None  # type: ignore[assignment]
 
 from .ports import ProcessResult
+
+_FILE_DESCRIPTOR_LIMIT_LOCK = threading.Lock()
+
+
+class _FileDescriptorLimitError(Exception):
+    pass
+
+
+@contextmanager
+def _temporary_file_descriptor_limit(limit: int) -> Iterator[None]:
+    """Raise the child limit during spawn without changing the worker permanently."""
+
+    if os.name != "posix" or resource is None:
+        if os.name != "posix":
+            yield
+            return
+        raise _FileDescriptorLimitError
+
+    with _FILE_DESCRIPTOR_LIMIT_LOCK:
+        try:
+            soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+            if hard < limit:
+                raise _FileDescriptorLimitError
+            if soft >= limit:
+                yield
+                return
+            resource.setrlimit(resource.RLIMIT_NOFILE, (limit, hard))
+        except (OSError, ValueError) as error:
+            raise _FileDescriptorLimitError from error
+        try:
+            yield
+        finally:
+            # A failed restore must not mask a successfully spawned child. The
+            # raised worker limit is safe and still prevents the original class
+            # of render failure.
+            try:
+                resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
+            except (OSError, ValueError):
+                pass
 
 
 class SubprocessRunner:
@@ -21,22 +69,31 @@ class SubprocessRunner:
         *,
         should_cancel: Callable[[], bool],
         cwd: Path | None = None,
+        file_descriptor_limit: int | None = None,
     ) -> ProcessResult:
         if not arguments:
             return ProcessResult(return_code=-1, launch_error="failed")
 
         try:
-            process = subprocess.Popen(  # noqa: S603 - executable comes from the trusted tool port
-                list(arguments),
-                shell=False,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                cwd=cwd,
+            spawn_context = (
+                _temporary_file_descriptor_limit(file_descriptor_limit)
+                if file_descriptor_limit
+                else nullcontext()
             )
+            with spawn_context:
+                process = subprocess.Popen(  # noqa: S603 - executable comes from the trusted tool port
+                    list(arguments),
+                    shell=False,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    cwd=cwd,
+                )
+        except _FileDescriptorLimitError:
+            return ProcessResult(return_code=-1, launch_error="resource_limit")
         except FileNotFoundError:
             return ProcessResult(return_code=-1, launch_error="missing")
         except OSError:

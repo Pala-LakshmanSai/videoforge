@@ -184,7 +184,9 @@ class FakeProcess:
         *,
         should_cancel: Callable[[], bool],
         cwd: Path | None = None,
+        file_descriptor_limit: int | None = None,
     ) -> ProcessResult:
+        del file_descriptor_limit
         if isinstance(arguments, str):
             raise AssertionError("render tools must receive argument arrays")
         call = tuple(arguments)
@@ -506,6 +508,46 @@ class RenderJobTests(unittest.TestCase):
                 )
             self.assertEqual(result.return_code, 0)
             self.assertEqual(popen.call_args.kwargs["cwd"], stage)
+
+    def test_render_runner_raises_file_descriptor_limit_only_during_spawn(self) -> None:
+        from videoforge_image_media.jobs.render import process as process_module
+
+        with patch.object(process_module, "resource") as resource_mock:
+            resource_mock.RLIMIT_NOFILE = 7
+            resource_mock.getrlimit.return_value = (256, 2048)
+            with patch.object(process_module.subprocess, "Popen") as popen:
+                popen.return_value.communicate.return_value = ("", "")
+                popen.return_value.returncode = 0
+                result = SubprocessRunner().run(
+                    ("ffmpeg", "-version"),
+                    should_cancel=lambda: False,
+                    file_descriptor_limit=1024,
+                )
+        self.assertEqual(result.return_code, 0)
+        self.assertEqual(
+            resource_mock.setrlimit.call_args_list,
+            [
+                ((7, (1024, 2048)),),
+                ((7, (256, 2048)),),
+            ],
+        )
+        self.assertEqual(popen.call_count, 1)
+
+    def test_render_runner_fails_closed_when_hard_file_limit_is_too_low(self) -> None:
+        from videoforge_image_media.jobs.render import process as process_module
+
+        with patch.object(process_module, "resource") as resource_mock:
+            resource_mock.RLIMIT_NOFILE = 7
+            resource_mock.getrlimit.return_value = (256, 512)
+            with patch.object(process_module.subprocess, "Popen") as popen:
+                result = SubprocessRunner().run(
+                    ("ffmpeg", "-version"),
+                    should_cancel=lambda: False,
+                    file_descriptor_limit=1024,
+                )
+        self.assertEqual(result.return_code, -1)
+        self.assertEqual(result.launch_error, "resource_limit")
+        popen.assert_not_called()
 
     def test_success_compiles_only_legal_direct_ffmpeg_output(self) -> None:
         fixture = RenderFixture()
@@ -1084,6 +1126,25 @@ class RenderJobTests(unittest.TestCase):
         self.assertEqual(process_result["error"]["code"], "RENDER_PROCESS_FAILED")
         self.assertIn("visual_render", process_result["error"]["message"])
         self.assertFalse(process_fixture.resolver.published)
+
+    def test_process_failure_classifies_file_descriptor_limit_without_stderr(self) -> None:
+        fixture = RenderFixture()
+        fixture.process.render_return_code = 232
+        fixture.process.render_stderr = "Error opening input: Too many open files"
+        diagnostics = Mock()
+        result = fixture.job(diagnostics).run(
+            fixture.document,
+            claimed_attempt_id="attempt_render_local_001",
+        )
+        self.assertEqual(
+            result["error"]["message"],
+            "Local visual_render failed: FILE_DESCRIPTOR_LIMIT (exit 232).",
+        )
+        diagnostics.record.assert_called_once_with(
+            "render_process_failed",
+            {"phase": "visual_render", "return_code": 232, "reason": "FILE_DESCRIPTOR_LIMIT"},
+        )
+        self.assertNotIn("Too many open files", json.dumps(result))
 
         missing_output_fixture = RenderFixture()
         missing_output_fixture.process.emit_render_output = False
