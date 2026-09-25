@@ -1,13 +1,13 @@
 {
   "checkpoint": "V2-09",
-  "observed_at": "2026-09-25T15:59:51Z",
+  "observed_at": "2026-09-25T18:36:27Z",
   "project_id": "6ec3ce8d-6558-494a-b8b3-a90a65c53bc8",
   "revision_id": "ef4a4117-c86b-4721-821b-c6a835f0e022",
   "prompt_run_id": "1a0acdd9-465f-4335-a214-8b1d81d6eee1",
   "generation_request_id": "033b710c-7ebc-4ac8-9c05-89c16c5a3d1e",
-  "production_source_commit": "2aef5cd8c3b80f9d412005876570b347bf2c5433",
-  "cloudflare_version": "26529314-8471-49a3-a3a5-94aa1e0d49da",
-  "migration_head": 208,
+  "production_source_commit": "4559f90b51a3f2831ed01f926f79e97f03d78e6f",
+  "cloudflare_version": "159b7eba-1f4e-442d-ba73-353c7dc54f5d",
+  "migration_head": 210,
   "verified": {
     "prompt_batches": 33,
     "prompt_scenes": 327,
@@ -17,13 +17,17 @@
     "audio_spans_completed": 96,
     "audio_spans_planned": 96,
     "audio_stage_elapsed_seconds": 443,
-    "same_generation_request_active": true,
+    "same_generation_request_active": false,
     "image_jobs_planned": 327,
     "avatar_jobs_planned": 96,
     "chrome_images_accepted_at_observed_at": 327,
     "chrome_avatars_accepted_at_observed_at": 96,
     "production_worker_bindings_readback": 41,
-    "final_video_verified": false
+    "final_video_verified": true,
+    "final_video_bytes": 419202381,
+    "final_video_sha256": "sha256:994ca985185b5a1629877bcc793578ee351e05f38f82fce46122a2b5609d48bb",
+    "final_video_duration_seconds": 1667.333333,
+    "final_video_frames": 50020
   },
   "causes_and_repairs": [
     "Neon bigint values were read as strings in the prompt completion cost checks; cast to integer at the query boundary.",
@@ -36,7 +40,10 @@
     "Migration 0207 and UI source 2aef5cd8 permit one exact first-input render recovery with no new paid provider dispatch. At 15:35:36 UTC the guard consumed the first retry; the same 423 accepted provider outputs and 426 render inputs were reused.",
     "The exact 375-segment render command is 253844 UTF-16 units, above Windows CreateProcess 32767 limit. Source e7d1f642 stages hash-verified hardlinks and an identical filtergraph script to reduce it to 17199 units. Both 0.1.34 packages passed CI and were published; production activation remains pending.",
     "The first guarded retry passed all 96 Fal crop compositions but final FFmpeg exited 232 with no output. macOS launchctl soft maxfiles is 256 and the compiled final graph has 424 inputs. Provider-free reproduction with 424 inputs at soft256 returned the same exit232 and Too many open files stderr; soft1024 succeeded. Source 07f184be raises only the final render child limit during spawn, restores the parent limit, and classifies FILE_DESCRIPTOR_LIMIT. A bounded process recovery is live in migration 0208 but has not been claimed; route/UI source f93a91a7 is not yet deployed.",
-    "Combined 0.1.35 worker long-command and file-limit path passed a provider-free local FFmpeg 8.1.1 check with 424 hardlinked inputs, explicit cwd, filtergraph script, and 1024 descriptor limit. Final output succeeded, parent limit restored; production video acceptance remains open."
+    "Combined 0.1.35 worker long-command and file-limit path passed a provider-free local FFmpeg 8.1.1 check with 424 hardlinked inputs, explicit cwd, filtergraph script, and 1024 descriptor limit. Final output succeeded, parent limit restored; production video acceptance remains open.",
+    "Later local render attempts encountered Mac memory pressure and a two-frame audio tail after loudnorm. Source 65545190 caps the final audio after loudnorm; a 47-chunk, 50020-frame reproduction passed before exact fifth local retry. Mac and Windows worker 0.1.37 passed CI, and the matching Mac package completed the fifth attempt.",
+    "The direct signed R2 Download MP4 was blocked in Chrome. Source 4559f90b serves the exact approved private artifact through an authenticated same-origin route; focused tests, typecheck, lint, production bundle and deploy passed. A fresh end-to-end browser transfer of that new route is not independently confirmed.",
+    "Source a9b3ab83 uses measured full render time for long-video ETA instead of the misleading short-run estimate; deployed with source 4559f90b."
   ],
   "assembly_recovery": {
     "failed_attempt_id": "ba8f2e88-c3de-4bf7-8c72-710bc124f01c",
@@ -59,10 +66,31 @@
     "next_release_ci_run": 36154234514
   },
   "remaining_gates": [
-    "final MP4 assembled and technical checks passed",
-    "Chrome playback and seek verified",
-    "human approval and exact download verified",
-    "provider cost settled and zero active paid work independently verified",
-    "corrected worker activated for both platforms after final file-limit fix"
-  ]
+    "No Windows device is registered, so installed Windows worker parity remains unverified.",
+    "The new same-origin app download route is deployed and focused-tested, but a fresh browser transfer was not independently confirmed; the exact final file was delivered from the matching local render backup."
+  ],
+  "final_delivery": {
+    "render_attempt_id": "74290e04-45fa-429f-a634-9ffbc2f08eb8",
+    "stage_9_elapsed_seconds": 1852,
+    "stage_9_and_10_complete": true,
+    "chrome_playback_advanced": true,
+    "chrome_midpoint_seek_seconds": 833.65,
+    "chrome_near_end_seek_seconds": 1650.66,
+    "approved_at": "2026-09-25T18:24:41.476799Z",
+    "downloaded_local_path": "/Users/lakshmansai/Downloads/NAPAA - Napa Water Rights - final.mp4",
+    "downloaded_local_sha256": "sha256:994ca985185b5a1629877bcc793578ee351e05f38f82fce46122a2b5609d48bb",
+    "drive_url": "https://drive.google.com/file/d/1aFIrHX8wCPL4J8mSXTrfbYljxGgeKh_l/view?usp=sharing",
+    "drive_general_access": "anyone_with_link_viewer",
+    "anonymous_drive_http_status": 200,
+    "discord_dm_recipient": "Sujal (sujal094895)",
+    "discord_dm_sent_at_local": "2026-09-26T00:03:00+05:30",
+    "production_download_source_commit": "4559f90b51a3f2831ed01f926f79e97f03d78e6f",
+    "production_download_worker_version": "159b7eba-1f4e-442d-ba73-353c7dc54f5d",
+    "macos_worker_version": "0.1.37",
+    "windows_worker_release": "0.1.37",
+    "windows_worker_installed_parity_verified": false,
+    "new_paid_provider_calls_during_local_recovery": 0,
+    "last_read_active_provider_leases": 0,
+    "last_read_active_serverless_attempts": 0
+  }
 }

@@ -1,14 +1,14 @@
 schema_version: "2.0"
 napaa_live_2026_09_25:
   checkpoint: V2-09
-  status: SAME_PROJECT_STAGE_9_FIFTH_LOCAL_RENDER_RUNNING
+  status: SAME_PROJECT_APPROVED_DELIVERED_PUBLIC_DRIVE
   project_id: 6ec3ce8d-6558-494a-b8b3-a90a65c53bc8
   revision_id: ef4a4117-c86b-4721-821b-c6a835f0e022
   generation_request_id: 033b710c-7ebc-4ac8-9c05-89c16c5a3d1e
-  production_source_commit: 65545190290e95de1ab10e77505c5e83169906f5
-  cloudflare_version: 7d84c28e-479e-487b-a1c4-aaafc5d5f88f
+  production_source_commit: 4559f90b51a3f2831ed01f926f79e97f03d78e6f
+  cloudflare_version: 159b7eba-1f4e-442d-ba73-353c7dc54f5d
   database_migration_head: 0210
-  observed_at: "2026-09-25T17:48:01Z"
+  observed_at: "2026-09-25T18:36:27Z"
   verified_progress: >-
     The replacement NAPAA run has 327 saved prompts, 96 audio spans, 327 Kie images,
     and 96 Fal avatar clips accepted. Stage 9 render attempts 1-4 failed on bounded Fal
@@ -17,9 +17,14 @@ napaa_live_2026_09_25:
     but loudnorm added 66.667 ms to the audio tail and deterministic output validation
     rejected it. A 47-chunk production-scale reproduction of source 65545190 verifies
     50020 decoded frames and 1667.333333-second video/container after the final trim.
-    The exact fifth provider-free recovery was consumed at 17:47:25 UTC; render attempt
-    74290e04-45fa-429f-a634-9ffbc2f08eb8 is RUNNING on Mac worker 0.1.37 with the
-    matching execution bundle. No final MP4 is durable yet.
+    The exact fifth provider-free recovery was consumed at 17:47:25 UTC. Render attempt
+    74290e04-45fa-429f-a634-9ffbc2f08eb8 SUCCEEDED on Mac worker 0.1.37; Stage 9/10
+    completed in 30m52s. The private MP4 is 419202381 bytes, SHA-256
+    994ca985185b5a1629877bcc793578ee351e05f38f82fce46122a2b5609d48bb,
+    1920x1080 H.264, 50020 frames/1667.333 seconds, with AAC audio. Chrome playback
+    advanced, and midpoint and near-end seeks loaded. The exact artifact was approved
+    at 18:24:41 UTC, copied to Downloads with a matching SHA, uploaded to Google Drive,
+    shared as anyone-with-link Viewer, and its link sent to Sujal in the existing Discord DM.
   fixes: >-
     Source 65545190 is deployed to Cloudflare and published as Mac and Windows worker
     0.1.37. It caps normalized audio after loudnorm, keeps bounded output-probe
@@ -27,20 +32,24 @@ napaa_live_2026_09_25:
     is applied and verified. The Mac worker is ONLINE with bundle
     sha256:810c37fafe5d06d5a5d08d2b492e63a41b6170a99941eeafc1f56aa5b62a79bf.
     Windows 0.1.37 passed packaged CI but no Windows device is registered, so installed
-    Windows parity remains unverified.
+    Windows parity remains unverified. Source a9b3ab83 corrects the long-video ETA to
+    use measured full renders. Source 4559f90b replaces the blocked direct R2 download
+    with an authenticated same-origin approved-artifact stream. Both are deployed in
+    Cloudflare version 159b7eba; the live Review page exposes the same-origin link.
   remaining_gates: >-
-    Complete the running Stage 9 render, verify the final MP4 and real Chrome playback/seek,
-    approve and download the exact artifact, upload to Google Drive, enable public link
-    access, send that link to Sujal in Discord, and prove zero active paid compute.
-    Full remaining wall time is unverified.
+    The user delivery is complete. Installed Windows parity and a fresh independent
+    browser transfer of the new same-origin Download MP4 route remain unverified; its
+    focused tests, typecheck, lint, production bundle verification, deploy, and live
+    Review link passed. No new paid provider request is authorized or needed.
   provider_spend: >-
     Prompt cost settled at USD 2.197885. All Kie/Fal outputs remain accepted; provider
-    workload lease is RELEASED, and local render retries made zero new paid calls. Final
-    generation cost ledger and end-to-end acceptance remain to be verified.
+    workload lease is RELEASED, and local render retries made zero new paid calls. The
+    completed file and public delivery were verified; no further generation was started.
   paid_compute_shutdown: >-
     Ordinary generation uses Kie/Fal APIs with GPU transport DISABLED_UNQUALIFIED. The
     paid Kie/Fal work has no active lease or serverless attempts. The current work is
-    local CPU rendering only; independently recheck zero active paid compute at completion.
+    local CPU rendering is complete. The last read found zero active provider leases and
+    zero serverless attempts; no GPU was activated.
 napa_prompt_recovery_2026_09_25:
   checkpoint: V2-09
   status: PRODUCTION_FIX_DEPLOYED_CURRENT_VIDEO_BLOCKED_KNOWN_INVALID_OUTPUT
