@@ -310,9 +310,9 @@ test("fixture execution persists exact canonical hashes and correlated zero-cost
     // prompt lists the literal tokens the model must avoid.
     assert.match(
       result.accepted.compiledPrompts[0].positivePrompt,
-      /no readable or unreadable text/u,
+      /No visible or pseudo-text/u,
     );
-    assert.match(result.accepted.compiledPrompts[0].negativePrompt, /visible text/u);
+    assert.match(result.accepted.compiledPrompts[0].negativePrompt, /pseudo-text/u);
     assert.equal(outboundCalls, 0);
     assert.deepEqual(
       telemetry.events.map((event) => [event.sequence, event.outcome]),
@@ -644,6 +644,50 @@ test("telemetry sink failure cannot change accepted durable bytes", async () => 
   assert.equal(result.replayed, false);
   assert.equal(result.accepted.compiledPrompts.length, 25);
   assert.equal(store.acceptCalls, 1);
+});
+
+test("completion preserves accepted compiler-v1 bytes while compiling later scenes with v2", async () => {
+  const first = await new DurablePromptExecutionService(
+    new MemoryStore(),
+    new DurableFixturePromptWriter(),
+    { record() {} },
+    new Clock(),
+  ).execute(scope, command());
+  const current = first.accepted.compiledPrompts[0];
+  const oldGuardrail = "legacy photographic still; no text or graphics";
+  const oldPositive = current.positivePrompt.replace(
+    current.components.permanentPositiveGuardrail,
+    oldGuardrail,
+  );
+  const previous = {
+    ...current,
+    promptCompilerVersion: "prompt-compiler-v1",
+    components: { ...current.components, permanentPositiveGuardrail: oldGuardrail },
+    positivePrompt: oldPositive,
+    positivePromptUtf8Bytes: Buffer.byteLength(oldPositive, "utf8"),
+    positivePromptSha256: hashUtf8(oldPositive),
+  };
+  const accepted = await new DurablePromptExecutionService(
+    new MemoryStore(),
+    new DurableFixturePromptWriter(),
+    { record() {} },
+    new Clock(),
+    new Map([[previous.sceneId, previous]]),
+  ).execute(scope, command());
+  assert.deepEqual(accepted.accepted.compiledPrompts[0], previous);
+  assert.equal(accepted.accepted.compiledPrompts[1].promptCompilerVersion, "prompt-compiler-v2");
+
+  await rejectsCode(
+    () =>
+      new DurablePromptExecutionService(
+        new MemoryStore(),
+        new DurableFixturePromptWriter(),
+        { record() {} },
+        new Clock(),
+        new Map([["scene_002", previous]]),
+      ).execute(scope, command()),
+    "HASH_MISMATCH",
+  );
 });
 
 test("conflicting replay bytes fail closed without invoking writer", async () => {

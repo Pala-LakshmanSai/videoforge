@@ -56,7 +56,9 @@ export async function startHostedStageContinuation(
   if (!workflow) return;
   try {
     await workflow.create({
-      id: `stage-${input.step}-${input.revisionId}`,
+      // The v1 prompt handoff completed after one route call. A new ID starts the durable
+      // per-batch handoff for revisions whose old one is already terminal.
+      id: `stage-${input.step}${input.step === "prompts" ? "-v2" : ""}-${input.revisionId}`,
       params: { reason: "stage-handoff", target: input },
     });
   } catch {

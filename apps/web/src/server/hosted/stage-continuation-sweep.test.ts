@@ -70,7 +70,14 @@ async function seededDatabase(context: {
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL, state text NOT NULL,
       acceptance_fingerprint_hash text, created_at timestamptz NOT NULL,
       -- The stale window follows the attempt's own start, which a redispatch refreshes.
-      started_at timestamptz, problem_code text, redispatch_count integer
+      started_at timestamptz, problem_code text, redispatch_count integer,
+      planned_batch_count integer
+    );
+    CREATE TABLE public.hosted_prompt_batch_claims (
+      id uuid PRIMARY KEY, run_id uuid NOT NULL
+    );
+    CREATE TABLE public.hosted_prompt_batch_progress (
+      id uuid PRIMARY KEY, run_id uuid NOT NULL
     );
     CREATE TABLE public.generation_requests (
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL
@@ -310,6 +317,35 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     expect([...PROMPT_REDISPATCHABLE_PROBLEM_CODES]).toEqual([
       ...HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES,
     ]);
+  });
+
+  it("offers only the next unclaimed prompt batch to the broad driver", async () => {
+    const database = await seededDatabase({
+      state: "SUCCEEDED", hash: "accepted", problemCode: null, redispatchCount: 0,
+    });
+    try {
+      await database.exec(`
+        INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
+        INSERT INTO public.hosted_prompt_runs VALUES
+          ('55555555-5555-4555-8555-555555555555','${revisionId}','DISPATCHING',NULL,
+           now(),now(),NULL,0,3);
+        INSERT INTO public.hosted_prompt_batch_claims VALUES
+          ('66666666-6666-4666-8666-666666666666','55555555-5555-4555-8555-555555555555');
+      `);
+      expect(await nextSteps(database)).toEqual([]);
+      await database.exec(`INSERT INTO public.hosted_prompt_batch_progress VALUES
+        ('77777777-7777-4777-8777-777777777777','55555555-5555-4555-8555-555555555555')`);
+      expect(await nextSteps(database)).toEqual(["prompts"]);
+      await database.exec(`INSERT INTO public.hosted_prompt_batch_claims VALUES
+        ('88888888-8888-4888-8888-888888888888','55555555-5555-4555-8555-555555555555')`);
+      expect(await nextSteps(database)).toEqual([]);
+      // The targeted Workflow may inspect this exact claim through retrieval-only recovery.
+      expect((await database.query(DUE_QUERY, [
+        accountId, "11111111-1111-4111-8111-111111111111", "prompts", revisionId,
+      ])).rows).toHaveLength(1);
+    } finally {
+      await database.close();
+    }
   });
 
   it("still advances to planning once a context result was accepted", async () => {

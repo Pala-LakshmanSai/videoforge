@@ -17,6 +17,8 @@ import {
   hostedPromptBatchPlanHash,
   HostedPromptExecutionError,
   HostedRunwarePromptWriter,
+  recoverClaimedHostedPromptBatch,
+  dispatchOneHostedPromptBatch,
   type HostedAcceptedPromptBatch,
 } from "./runware-prompt-execution";
 
@@ -972,6 +974,117 @@ describe("hosted Runware prompt writer", () => {
     expect(result.attempts[0]?.reportedCostMicroUsd).toBe(20);
 
     const first = onBatchAccepted.mock.calls[0]![0] as HostedAcceptedPromptBatch;
+    const originalTask = JSON.parse(first.requestBytes)[0] as { taskUUID: string };
+    const retrieval = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as Array<{
+        taskType: string;
+        taskUUID: string;
+      }>;
+      expect(request).toEqual([{ taskType: "getTaskDetails", taskUUID: originalTask.taskUUID }]);
+      return Response.json({
+        data: [
+          {
+            taskType: "getTaskDetails",
+            taskUUID: originalTask.taskUUID,
+            request: JSON.parse(first.requestBytes),
+            response: {
+              data: [
+                {
+                  taskType: "textInference",
+                  taskUUID: originalTask.taskUUID,
+                  text: first.responseBytes,
+                  cost: 0.00001,
+                  finishReason: "stop",
+                  model: "google:gemini@3.5-flash",
+                  usage: {
+                    promptTokens: 100,
+                    completionTokens: 200,
+                    totalTokens: 300,
+                    cachedInputTokens: 0,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      });
+    });
+    const restored = await recoverClaimedHostedPromptBatch({
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      plan: planned,
+      persistedBinding: {
+        plannedBatchCount: planned.batchCount,
+        plannedSceneCount: planned.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(planned),
+      },
+      batchOrdinal: 0,
+      taskUUID: originalTask.taskUUID,
+      requestBytes: first.requestBytes,
+      requestHash: first.requestHash,
+      reservationMicroUsd: 2_000_000,
+      fetcher: retrieval,
+    });
+    expect(retrieval).toHaveBeenCalledTimes(1);
+    const claimRejected = vi.fn(async () => false);
+    fetcher.mockClear();
+    await expect(
+      dispatchOneHostedPromptBatch({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        plan: planned,
+        persistedBinding: {
+          plannedBatchCount: planned.batchCount,
+          plannedSceneCount: planned.totalScenes,
+          batchPlanHash: await hostedPromptBatchPlanHash(planned),
+        },
+        batchOrdinal: 0,
+        remainingReservationMicroUsd: 2_000_000,
+        claim: claimRejected,
+        fetcher,
+      }),
+    ).resolves.toBeNull();
+    expect(claimRejected).toHaveBeenCalledTimes(1);
+    expect(fetcher).not.toHaveBeenCalled();
+    const claimAccepted = vi.fn(async () => true);
+    const submitted = await dispatchOneHostedPromptBatch({
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      plan: planned,
+      persistedBinding: {
+        plannedBatchCount: planned.batchCount,
+        plannedSceneCount: planned.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(planned),
+      },
+      batchOrdinal: 0,
+      remainingReservationMicroUsd: 2_000_000,
+      claim: claimAccepted,
+      fetcher,
+    });
+    expect(claimAccepted).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(submitted).toMatchObject({ batchOrdinal: 0, reportedCostMicroUsd: 10 });
+    fetcher.mockClear();
+    expect(restored).toMatchObject({
+      batchOrdinal: 0,
+      responseHash: first.responseHash,
+      reportedCostMicroUsd: 10,
+    });
+    await expect(
+      recoverClaimedHostedPromptBatch({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        plan: planned,
+        persistedBinding: {
+          plannedBatchCount: planned.batchCount,
+          plannedSceneCount: planned.totalScenes,
+          batchPlanHash: await hostedPromptBatchPlanHash(planned),
+        },
+        batchOrdinal: 0,
+        taskUUID: originalTask.taskUUID,
+        requestBytes: first.requestBytes,
+        requestHash: digest,
+        reservationMicroUsd: 2_000_000,
+        fetcher: retrieval,
+      }),
+    ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+    expect(retrieval).toHaveBeenCalledTimes(1);
     const recovered = {
       ...first,
       scenes: first.scenes.map(({ sceneOrdinal, scene, writerOutput }) => ({

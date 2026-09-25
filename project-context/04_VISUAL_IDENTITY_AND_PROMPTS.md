@@ -211,6 +211,11 @@ evidence around an unlabeled object or another literal physical action; if reada
 is the core meaning, exclude AI imagery for that scene and fail closed to the approved real-source
 media path.
 
+`prompt-compiler-v2` keeps the same scene/style construction and compactly states the permanent
+no-text/output rules once in the positive channel. Its negative channel is a short reinforcement,
+not an exhaustive synonym list. Already accepted `prompt-compiler-v1` prompts retain their exact
+stored bytes and hashes; mixed-version runs use those stored prompts at final acceptance.
+
 ## Built-in style: Authentic Documentary Stock
 
 Style key: `documentary_stock_v1`  

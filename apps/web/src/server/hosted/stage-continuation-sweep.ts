@@ -18,8 +18,9 @@ import { continuationRequest } from "./stage-continuation";
  * workload finishes, which left a prompt run claimed as DISPATCHING with zero batches recorded and no
  * path back. Long stages therefore run as their own invocation, started here by a per-minute cron.
  *
- * The sweep only STARTS a stage that has no durable row yet, and re-runs the voiceover-context step
- * when its attempt failed before any result was accepted for a provider/transport class. The bounded
+ * The sweep starts a stage with no durable row and advances a prompt run after each accepted batch.
+ * It re-runs the voiceover-context step when its attempt failed before any result was accepted.
+ * The bounded
  * redispatch gates in POST /context remain the only retry path, so the budget bound is what keeps
  * the sweep from looping on a provider outage.
  *
@@ -141,6 +142,12 @@ WITH revision AS (
     (SELECT run.acceptance_fingerprint_hash FROM public.hosted_prompt_runs run
       WHERE run.project_revision_id = revision.revision_id
       ORDER BY run.created_at DESC LIMIT 1) AS prompt_accepted_set,
+    (SELECT run.id FROM public.hosted_prompt_runs run
+      WHERE run.project_revision_id = revision.revision_id
+      ORDER BY run.created_at DESC LIMIT 1) AS prompt_run_id,
+    (SELECT run.planned_batch_count FROM public.hosted_prompt_runs run
+      WHERE run.project_revision_id = revision.revision_id
+      ORDER BY run.created_at DESC LIMIT 1) AS prompt_planned_batches,
     (SELECT count(*) FROM public.hosted_cpu_job_attempts attempt
       WHERE attempt.project_revision_id = revision.revision_id AND attempt.kind = 'SPAN_AUDIO') AS span_jobs,
     (SELECT count(*) FROM public.generation_requests request
@@ -170,6 +177,24 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                AND revision_config_schema = '${PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION}'
                THEN 'plan'
              WHEN plan_count > 0 AND prompt_state IS NULL THEN 'prompts'
+             -- The revision-scoped Workflow serializes its own calls. It may inspect a pending
+             -- claim; the route performs retrieval-only recovery and cannot submit it again.
+             WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
+               AND prompt_run_id IS NOT NULL AND $2::uuid IS NOT NULL
+               THEN 'prompts'
+             -- A successful batch is durable. Offer the next batch immediately only when every
+             -- existing claim has progress; an outstanding claim may still be running at Runware.
+             WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
+               AND prompt_run_id IS NOT NULL
+               AND (SELECT count(*) FROM public.hosted_prompt_batch_progress progress
+                    WHERE progress.run_id = prompt_run_id) > 0
+               AND (SELECT count(*) FROM public.hosted_prompt_batch_claims claim_row
+                    WHERE claim_row.run_id = prompt_run_id)
+                   = (SELECT count(*) FROM public.hosted_prompt_batch_progress progress
+                      WHERE progress.run_id = prompt_run_id)
+               AND (SELECT count(*) FROM public.hosted_prompt_batch_progress progress
+                    WHERE progress.run_id = prompt_run_id) <= prompt_planned_batches
+               THEN 'prompts'
              -- A run whose batch request died before the provider answered stays DISPATCHING forever:
              -- the route refuses an in-flight run and nothing requeues the batch, so the stage sat
              -- stranded with a browser as its only possible driver. Nudging the route past the stale
@@ -285,6 +310,7 @@ export async function runHostedContinuation(
   environment: HostedRuntimeEnvironment,
   executionContext: HostedExecutionContext,
   target?: HostedContinuationTarget,
+  onPromptResponse?: (response: Response) => Promise<void>,
 ): Promise<string[]> {
   const config: HostedRuntimeConfiguration = await resolveContinuationConfiguration(environment);
   const pool = createNeonPool(config.neon.databaseUrl);
@@ -354,6 +380,7 @@ export async function runHostedContinuation(
             scope,
             acceptedHandoff,
           );
+          if (onPromptResponse) await onPromptResponse(response);
         }
         const outcome = await continuationOutcome(response);
         if (!outcome.ok) {

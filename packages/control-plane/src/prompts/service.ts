@@ -4,6 +4,7 @@ import {
   compileImagePrompt,
   validatePromptWriterOutput,
   verifyCompiledImagePrompt,
+  type CompiledImagePrompt,
   type PromptBatch,
 } from "@videoforge/pipeline/prompts";
 
@@ -333,6 +334,7 @@ export class DurablePromptExecutionService {
     private readonly writer: DurablePromptWriterPort,
     private readonly telemetry: TelemetryPort,
     private readonly clock: PromptExecutionClock,
+    private readonly acceptedCompiledPrompts: ReadonlyMap<string, CompiledImagePrompt> = new Map(),
   ) {}
 
   private async record(event: TelemetryEvent): Promise<void> {
@@ -389,9 +391,30 @@ export class DurablePromptExecutionService {
             applyExtraPromptKeywords: authority.applyExtraPromptKeywords,
           });
           verifyCompiledImagePrompt(compiled);
-          return compiled;
+          const previous = this.acceptedCompiledPrompts.get(expectedScene.sceneId);
+          if (previous === undefined) return compiled;
+          verifyCompiledImagePrompt(previous);
+          if (
+            previous.sceneId !== expectedScene.sceneId ||
+            previous.scenePromptWriterVersion !== compiled.scenePromptWriterVersion ||
+            previous.components.literalContent !== compiled.components.literalContent ||
+            previous.components.continuityAndShotRole !== compiled.components.continuityAndShotRole ||
+            previous.components.cropGuidance !== compiled.components.cropGuidance ||
+            previous.components.stylePositiveSuffix !== compiled.components.stylePositiveSuffix ||
+            previous.components.extraPromptKeywords !== compiled.components.extraPromptKeywords ||
+            previous.components.styleNegativeSuffix !== compiled.components.styleNegativeSuffix
+          )
+            return fail("HASH_MISMATCH", "Stored compiled prompt drifted from its scene or style.");
+          return previous;
         }),
       );
+      if (
+        this.acceptedCompiledPrompts.size > compiledPrompts.length ||
+        [...this.acceptedCompiledPrompts.keys()].some(
+          (sceneId) => !batch.scenes.some((scene) => scene.sceneId === sceneId),
+        )
+      )
+        return fail("HASH_MISMATCH", "Stored compiled prompt has an unexpected scene.");
       const inputHash = promptExecutionInputHash(authority);
       const requestHash = result.attempts[0]!.requestHash;
       const responseHash = hashCanonical(writerOutput);

@@ -21,7 +21,7 @@ test("0201 keeps prompt runs with recent batch activity and fails them after 15 
   const manifest = JSON.parse(
     readFileSync(new URL("../migrations/manifest.json", import.meta.url), "utf8"),
   );
-  const entry = manifest.migrations.at(-1);
+  const entry = manifest.migrations.find((candidate) => candidate.version === 201);
   assert.equal(entry.version, 201);
   assert.equal(entry.filename, "0201_hosted_prompt_recent_activity_staleness.sql");
   assert.equal(

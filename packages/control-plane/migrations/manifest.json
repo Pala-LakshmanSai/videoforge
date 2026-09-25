@@ -984,6 +984,12 @@
       "name": "hosted_prompt_recent_activity_staleness",
       "filename": "0201_hosted_prompt_recent_activity_staleness.sql",
       "sha256": "sha256:393648bb75f232fbb1c69e2d0020005064da9b9f579cec733ee73b2d742ee8fb"
+    },
+    {
+      "version": 202,
+      "name": "hosted_prompt_claimed_batch_recovery",
+      "filename": "0202_hosted_prompt_claimed_batch_recovery.sql",
+      "sha256": "sha256:87f4fc2aba0c86859847aedfdb311df97765c3a3393e1fdcbba24d222b609df7"
     }
   ]
 }

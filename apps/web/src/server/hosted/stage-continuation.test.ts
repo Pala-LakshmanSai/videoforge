@@ -26,4 +26,20 @@ describe("immediate stage handoff", () => {
       params: { reason: "stage-handoff", target },
     });
   });
+
+  it("uses a fresh revision-scoped identity for multi-batch prompt handoffs", async () => {
+    const create = vi.fn(async () => ({ id: "created" }));
+    const environment = { HOSTED_CONTINUATION_WORKFLOW: { create } } as never;
+    const target = {
+      accountId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      projectId: "11111111-1111-4111-8111-111111111111",
+      revisionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      step: "prompts" as const,
+    };
+    await startHostedStageContinuation(environment, target);
+    expect(create).toHaveBeenCalledWith({
+      id: `stage-prompts-v2-${target.revisionId}`,
+      params: { reason: "stage-handoff", target },
+    });
+  });
 });

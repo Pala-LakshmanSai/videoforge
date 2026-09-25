@@ -32,6 +32,8 @@ export interface HostedContinuationWorkflowParameters {
 /** 1,440 one-minute iterations: one instance covers roughly 24 hours of cadence. */
 export const HOSTED_CONTINUATION_ITERATIONS = 1_440;
 export const HOSTED_CONTINUATION_CADENCE = "60 seconds" as const;
+/** Bounds one prompt handoff while the minute driver remains its fallback. */
+export const HOSTED_PROMPT_HANDOFF_STEPS = 512;
 
 const MAXIMUM_REASON_LENGTH = 120;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -124,17 +126,55 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
     const params = continuationParameters(event.payload);
     if (params.reason === "invalid-stage-handoff") return { state: "INVALID_TARGET" };
     if (params.target) {
-      return step.do(`handoff ${params.target.step}`, async () => {
-        const { context, drain } = drainingExecutionContext();
-        try {
-          return {
-            schema_version: "videoforge-hosted-continuation-handoff/v1",
-            dispatched: await runHostedContinuation(this.env, context, params.target),
-          };
-        } finally {
-          await drain();
-        }
-      });
+      if (params.target.step !== "prompts") {
+        return step.do(`handoff ${params.target.step}`, async () => {
+          const { context, drain } = drainingExecutionContext();
+          try {
+            return {
+              schema_version: "videoforge-hosted-continuation-handoff/v1",
+              dispatched: await runHostedContinuation(this.env, context, params.target),
+            };
+          } finally {
+            await drain();
+          }
+        });
+      }
+      let previousAccepted = -1;
+      let dispatched: string[] = [];
+      for (let batch = 0; batch < HOSTED_PROMPT_HANDOFF_STEPS; batch += 1) {
+        // A failed paid step must not be replayed by Workflow. The next iteration or minute driver
+        // can inspect the durable claim through the route's retrieval-only path.
+        const outcome = await step.do(
+          `handoff prompts ${batch}`,
+          { retries: { limit: 0, delay: "1 second", backoff: "constant" } },
+          async () => {
+            const { context, drain } = drainingExecutionContext();
+            let running = false;
+            let accepted = -1;
+            try {
+              const rows = await runHostedContinuation(this.env, context, params.target, async (response) => {
+                if (response.status !== 202) return;
+                const body = await response.clone().json() as {
+                  state?: unknown;
+                  accepted_batch_count?: unknown;
+                };
+                running = body.state === "RUNNING";
+                if (typeof body.accepted_batch_count === "number")
+                  accepted = body.accepted_batch_count;
+              });
+              return { rows, running, accepted };
+            } finally {
+              await drain();
+            }
+          },
+        );
+        dispatched = outcome.rows;
+        if (!outcome.running) break;
+        if (outcome.accepted <= previousAccepted)
+          await step.sleep(`prompt claim wait ${batch}`, "20 seconds");
+        previousAccepted = outcome.accepted;
+      }
+      return { schema_version: "videoforge-hosted-continuation-handoff/v1", dispatched };
     }
     let iterations = 0;
     let dispatches = 0;

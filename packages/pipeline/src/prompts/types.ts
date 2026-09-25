@@ -308,7 +308,7 @@ export interface CompilePromptRequest {
 }
 
 export interface CompiledImagePrompt {
-  readonly promptCompilerVersion: "prompt-compiler-v1";
+  readonly promptCompilerVersion: "prompt-compiler-v1" | "prompt-compiler-v2";
   readonly scenePromptWriterVersion: typeof SCENE_PROMPT_WRITER_VERSION;
   readonly sceneId: string;
   readonly components: {

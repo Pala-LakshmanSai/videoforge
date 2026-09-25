@@ -354,11 +354,11 @@ test("optical treatment does not request camera apparatus or erase a narrated ca
     assert.ok(compiled.positivePrompt.includes(`subject: ${literal_subject}`));
     assert.match(
       compiled.positivePrompt,
-      /viewpoint describe the resulting image, not equipment within it/u,
+      /viewpoint is framing, not visible camera gear/u,
     );
     assert.match(
       compiled.negativePrompt,
-      /extraneous cameras, photographic equipment unrelated to the scene/u,
+      /unrelated camera gear/u,
     );
     verifyCompiledImagePrompt(compiled);
   }
@@ -387,17 +387,14 @@ test("castle dates and room counts remain narration facts rather than requested 
     applyExtraPromptKeywords: false,
   });
   assert.doesNotMatch(compiled.positivePrompt, /1869|200 rooms/u);
-  assert.match(compiled.positivePrompt, /no visible text, lettering or branding/u);
+  assert.match(compiled.positivePrompt, /No visible or pseudo-text, numbers, labels, signs, branding/u);
   for (const term of [
-    "readable text",
-    "unreadable text",
-    "words",
-    "letters",
+    "text",
+    "pseudo-text",
     "numbers",
     "labels",
-    "signs",
-    "plaques",
-    "inscriptions",
+    "signage",
+    "packaging text",
     "logo",
     "watermark",
   ])
@@ -445,7 +442,7 @@ test("compiler rejects forbidden content in structured scene facts", () => {
 test("keeps described products relatable without allowing text or branding", () => {
   assert.match(
     PERMANENT_POSITIVE_GUARDRAIL,
-    /products, packaging and containers are allowed only when supported/u,
+    /Scene-relevant products and containers stay plain and unmarked/u,
   );
   assert.doesNotMatch(
     PERMANENT_POSITIVE_GUARDRAIL,

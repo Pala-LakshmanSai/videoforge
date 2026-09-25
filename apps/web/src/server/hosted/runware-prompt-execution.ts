@@ -25,6 +25,7 @@ import {
 import {
   RunwarePromptHttpTransport,
   RunwareSpendLedger,
+  retrieveRunwareTextTaskDetails,
   type RunwareSafeDiagnostic,
 } from "../providers/runware-http-transport";
 
@@ -47,6 +48,208 @@ export interface HostedPromptBatchPlanBinding {
   readonly plannedBatchCount: number;
   readonly plannedSceneCount: number;
   readonly batchPlanHash: Sha256Digest;
+}
+
+/** Validate one original claim through getTaskDetails; this transport never submits inference. */
+export async function recoverClaimedHostedPromptBatch(input: {
+  readonly apiKey: string;
+  readonly plan: PromptBatchPlan;
+  readonly persistedBinding: HostedPromptBatchPlanBinding;
+  readonly batchOrdinal: number;
+  readonly taskUUID: string;
+  readonly requestBytes: string;
+  readonly requestHash: Sha256Digest;
+  readonly reservationMicroUsd: number;
+  readonly fetcher?: typeof fetch;
+}): Promise<HostedAcceptedPromptBatch> {
+  const entry = input.plan.batches[input.batchOrdinal];
+  if (!entry || entry.ordinal - 1 !== input.batchOrdinal) throw invalidPlanBinding();
+  await validatePlanBeforeDispatch(
+    { ...entry.batch, scenes: input.plan.batches.flatMap((part) => part.batch.scenes) },
+    input.plan,
+    input.persistedBinding,
+  );
+  const expected = buildRunwarePromptRequest(entry.batch, entry.batch.scenes, 1, null);
+  if (
+    expected.request.taskUUID !== input.taskUUID ||
+    expected.requestBytes !== input.requestBytes ||
+    expected.requestSha256 !== input.requestHash ||
+    input.requestHash !== (await sha256Utf8(input.requestBytes))
+  )
+    throw invalidPlanBinding();
+  const recovered = await retrieveRunwareTextTaskDetails({
+    apiKey: input.apiKey,
+    originalTaskUUID: input.taskUUID,
+    originalRequestBytes: input.requestBytes,
+    originalRequestSha256: input.requestHash,
+    fetch: input.fetcher,
+  });
+  let evidence: RunwarePromptAttemptEvidence | null = null;
+  const writer = new RunwarePromptWriter({
+    transport: {
+      async dispatch(request) {
+        if (
+          request.requestBytes !== input.requestBytes ||
+          request.request.taskUUID !== input.taskUUID
+        )
+          throw invalidPlanBinding();
+        return {
+          status: "succeeded" as const,
+          outputText: recovered.outputText,
+          usage: recovered.usage,
+          costUsd: recovered.costUsd,
+          finishReason: recovered.finishReason,
+          providerModel: recovered.providerModel,
+          latencyMs: 0,
+        };
+      },
+    },
+    evidenceSink: {
+      record(value) {
+        evidence = value;
+      },
+    },
+    maximumBatchCostUsd: input.reservationMicroUsd / 1_000_000,
+    semanticQualityMode: "advisory",
+    allowPartialRetry: false,
+    minimumBatchScenes: 1,
+  });
+  const output = validatePromptWriterOutput(entry.batch, await writer.write(entry.batch));
+  const acceptedEvidence = evidence as RunwarePromptAttemptEvidence | null;
+  const responseHash = await sha256Utf8(recovered.outputText);
+  if (
+    acceptedEvidence?.responseSha256 !== responseHash ||
+    acceptedEvidence?.acceptedSceneIds.length !== entry.sceneIds.length ||
+    acceptedEvidence.acceptedSceneIds.some((sceneId, index) => sceneId !== entry.sceneIds[index]) ||
+    acceptedEvidence.unresolvedSceneIds.length !== 0
+  )
+    throw new Error("PROMPT_BATCH_EVIDENCE_MISMATCH");
+  return Object.freeze({
+    batchOrdinal: input.batchOrdinal,
+    firstSceneOrdinal: entry.sceneStartIndex,
+    scenes: Object.freeze(
+      entry.batch.scenes.map((scene, index) =>
+        Object.freeze({
+          sceneOrdinal: entry.sceneStartIndex + index,
+          scene,
+          writerOutput: output.scenes[index]!,
+        }),
+      ),
+    ),
+    requestBytes: input.requestBytes,
+    requestHash: input.requestHash,
+    responseBytes: recovered.outputText,
+    responseHash,
+    inputTokens: recovered.usage.inputTokens,
+    outputTokens: recovered.usage.outputTokens,
+    reportedCostMicroUsd: actualCostMicroUsd(recovered.costUsd, input.reservationMicroUsd),
+  });
+}
+
+/** Claim then submit exactly one new ordinal. A duplicate claim never reaches inference. */
+export async function dispatchOneHostedPromptBatch(input: {
+  readonly apiKey: string;
+  readonly plan: PromptBatchPlan;
+  readonly persistedBinding: HostedPromptBatchPlanBinding;
+  readonly batchOrdinal: number;
+  readonly remainingReservationMicroUsd: number;
+  readonly claim: (request: {
+    batchOrdinal: number;
+    taskUUID: string;
+    requestBytes: string;
+    requestHash: Sha256Digest;
+  }) => Promise<boolean>;
+  readonly fetcher?: typeof fetch;
+}): Promise<HostedAcceptedPromptBatch | null> {
+  const entry = input.plan.batches[input.batchOrdinal];
+  if (
+    !entry ||
+    entry.ordinal - 1 !== input.batchOrdinal ||
+    input.remainingReservationMicroUsd < 250_000
+  )
+    throw invalidPlanBinding();
+  await validatePlanBeforeDispatch(
+    { ...entry.batch, scenes: input.plan.batches.flatMap((part) => part.batch.scenes) },
+    input.plan,
+    input.persistedBinding,
+  );
+  const expected = buildRunwarePromptRequest(entry.batch, entry.batch.scenes, 1, null);
+  const claimed = await input.claim({
+    batchOrdinal: input.batchOrdinal,
+    taskUUID: expected.request.taskUUID,
+    requestBytes: expected.requestBytes,
+    requestHash: expected.requestSha256,
+  });
+  if (!claimed) return null;
+  const ledger = new RunwareSpendLedger(input.remainingReservationMicroUsd / 1_000_000);
+  const transport = new RunwarePromptHttpTransport({
+    apiKey: input.apiKey,
+    ledger,
+    maximumRequestCostUsd: input.remainingReservationMicroUsd / 1_000_000,
+    fetch: input.fetcher,
+  });
+  let result: RunwarePromptTransportResult | null = null;
+  let evidence: RunwarePromptAttemptEvidence | null = null;
+  const writer = new RunwarePromptWriter({
+    transport: {
+      async dispatch(request) {
+        if (
+          request.requestBytes !== expected.requestBytes ||
+          request.requestSha256 !== expected.requestSha256
+        )
+          throw invalidPlanBinding();
+        result = await transport.dispatch(request);
+        return result;
+      },
+    },
+    evidenceSink: {
+      record(value) {
+        evidence = value;
+      },
+    },
+    maximumBatchCostUsd: input.remainingReservationMicroUsd / 1_000_000,
+    semanticQualityMode: "advisory",
+    allowPartialRetry: false,
+    minimumBatchScenes: 1,
+  });
+  const output = validatePromptWriterOutput(entry.batch, await writer.write(entry.batch));
+  const acceptedResult = result as RunwarePromptTransportResult | null;
+  const acceptedEvidence = evidence as RunwarePromptAttemptEvidence | null;
+  if (
+    !acceptedResult ||
+    acceptedResult.status !== "succeeded" ||
+    !acceptedEvidence ||
+    acceptedEvidence.acceptedSceneIds.length !== entry.sceneIds.length ||
+    acceptedEvidence.acceptedSceneIds.some((sceneId, index) => sceneId !== entry.sceneIds[index]) ||
+    acceptedEvidence.unresolvedSceneIds.length !== 0
+  )
+    throw new Error("PROMPT_BATCH_EVIDENCE_MISMATCH");
+  const responseHash = await sha256Utf8(acceptedResult.outputText);
+  if (responseHash !== acceptedEvidence.responseSha256)
+    throw new Error("PROMPT_BATCH_EVIDENCE_MISMATCH");
+  return Object.freeze({
+    batchOrdinal: input.batchOrdinal,
+    firstSceneOrdinal: entry.sceneStartIndex,
+    scenes: Object.freeze(
+      entry.batch.scenes.map((scene, index) =>
+        Object.freeze({
+          sceneOrdinal: entry.sceneStartIndex + index,
+          scene,
+          writerOutput: output.scenes[index]!,
+        }),
+      ),
+    ),
+    requestBytes: expected.requestBytes,
+    requestHash: expected.requestSha256,
+    responseBytes: acceptedResult.outputText,
+    responseHash,
+    inputTokens: acceptedResult.usage.inputTokens,
+    outputTokens: acceptedResult.usage.outputTokens,
+    reportedCostMicroUsd: actualCostMicroUsd(
+      acceptedResult.costUsd,
+      input.remainingReservationMicroUsd,
+    ),
+  });
 }
 
 type CapturedAttempt = {

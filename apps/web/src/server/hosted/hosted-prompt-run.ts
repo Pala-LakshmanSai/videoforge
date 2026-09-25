@@ -416,6 +416,8 @@ export async function runHostedPromptExecution(input: {
   /** Exact adaptive-plan metadata returned by hosted preparation. */
   readonly persistedBatchPlanBinding?: HostedPromptBatchPlanBinding;
   readonly continuation?: HostedPromptContinuationOptions;
+  /** Previously accepted scenes retain their exact compiler-versioned database bytes. */
+  readonly acceptedCompiledPrompts?: ReadonlyMap<string, CompiledImagePrompt>;
   readonly command: PromptExecutionCommand;
   readonly apiKey: string;
   readonly persist: (accepted: AcceptedPromptExecution) => Promise<void>;
@@ -444,43 +446,7 @@ export async function runHostedPromptExecution(input: {
   if (input.persistedBatchPlanBinding === undefined)
     throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
   const persistBatch = async (accepted: HostedAcceptedPromptBatch) => {
-    if (accepted.firstSceneOrdinal !== accepted.scenes[0]?.sceneOrdinal)
-      throw new Error("HOSTED_PROMPT_BATCH_ORDER_INVALID");
-    const scenes = accepted.scenes.map((scene, index) => {
-      const expectedScene = input.authority.scenes[accepted.firstSceneOrdinal + index];
-      if (
-        !expectedScene ||
-        scene.sceneOrdinal !== accepted.firstSceneOrdinal + index ||
-        expectedScene.sceneId !== scene.scene.sceneId
-      )
-        throw new Error("HOSTED_PROMPT_SCENE_ORDER_INVALID");
-      const compiledPrompt = compileImagePrompt({
-        writerOutput: scene.writerOutput,
-        expectedScene,
-        style: input.authority.style,
-        extraPromptKeywords: input.authority.extraPromptKeywords,
-        applyExtraPromptKeywords: input.authority.applyExtraPromptKeywords,
-      });
-      verifyCompiledImagePrompt(compiledPrompt);
-      return Object.freeze({
-        sceneOrdinal: scene.sceneOrdinal,
-        sceneId: expectedScene.sceneId,
-        writerOutput: scene.writerOutput,
-        compiledPrompt,
-      });
-    });
-    await input.persistBatch?.({
-      batchOrdinal: accepted.batchOrdinal,
-      firstSceneOrdinal: accepted.firstSceneOrdinal,
-      scenes: Object.freeze(scenes),
-      requestBytes: accepted.requestBytes,
-      requestHash: accepted.requestHash,
-      responseBytes: accepted.responseBytes,
-      responseHash: accepted.responseHash,
-      inputTokens: accepted.inputTokens,
-      outputTokens: accepted.outputTokens,
-      reportedCostMicroUsd: accepted.reportedCostMicroUsd,
-    });
+    await compileAndPersistHostedPromptBatch(input.authority, accepted, input.persistBatch);
   };
   const result = await new DurablePromptExecutionService(
     new HostedPromptStore(input.authority, input.persist),
@@ -494,6 +460,54 @@ export async function runHostedPromptExecution(input: {
     ),
     { record() {} },
     { now: () => new Date().toISOString() },
+    input.acceptedCompiledPrompts,
   ).execute(input.scope, input.command);
   return result.accepted;
+}
+
+/** Compile recovered and live batches through the same pinned scene/style contract. */
+export async function compileAndPersistHostedPromptBatch(
+  authority: PromptExecutionAuthority,
+  accepted: HostedAcceptedPromptBatch,
+  persistBatch:
+    | NonNullable<Parameters<typeof runHostedPromptExecution>[0]["persistBatch"]>
+    | undefined,
+): Promise<void> {
+  if (accepted.firstSceneOrdinal !== accepted.scenes[0]?.sceneOrdinal)
+    throw new Error("HOSTED_PROMPT_BATCH_ORDER_INVALID");
+  const scenes = accepted.scenes.map((scene, index) => {
+    const expectedScene = authority.scenes[accepted.firstSceneOrdinal + index];
+    if (
+      !expectedScene ||
+      scene.sceneOrdinal !== accepted.firstSceneOrdinal + index ||
+      expectedScene.sceneId !== scene.scene.sceneId
+    )
+      throw new Error("HOSTED_PROMPT_SCENE_ORDER_INVALID");
+    const compiledPrompt = compileImagePrompt({
+      writerOutput: scene.writerOutput,
+      expectedScene,
+      style: authority.style,
+      extraPromptKeywords: authority.extraPromptKeywords,
+      applyExtraPromptKeywords: authority.applyExtraPromptKeywords,
+    });
+    verifyCompiledImagePrompt(compiledPrompt);
+    return Object.freeze({
+      sceneOrdinal: scene.sceneOrdinal,
+      sceneId: expectedScene.sceneId,
+      writerOutput: scene.writerOutput,
+      compiledPrompt,
+    });
+  });
+  await persistBatch?.({
+    batchOrdinal: accepted.batchOrdinal,
+    firstSceneOrdinal: accepted.firstSceneOrdinal,
+    scenes: Object.freeze(scenes),
+    requestBytes: accepted.requestBytes,
+    requestHash: accepted.requestHash,
+    responseBytes: accepted.responseBytes,
+    responseHash: accepted.responseHash,
+    inputTokens: accepted.inputTokens,
+    outputTokens: accepted.outputTokens,
+    reportedCostMicroUsd: accepted.reportedCostMicroUsd,
+  });
 }

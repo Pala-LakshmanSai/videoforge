@@ -10,7 +10,10 @@ import type { HostedContinuationWorkflowParameters } from "./hosted-continuation
  */
 const collaborators = vi.hoisted(() => ({
   runHostedContinuation: vi.fn(
-    async (_environment: unknown, _context: unknown): Promise<string[]> => ["project:context"],
+    async (
+      _environment: unknown, _context: unknown, _target?: unknown,
+      _onPromptResponse?: (response: Response) => Promise<void>,
+    ): Promise<string[]> => ["project:context"],
   ),
   ensureHostedPairObservers: vi.fn(async (_environment: unknown, _context: unknown): Promise<number> => 1),
 }));
@@ -24,6 +27,7 @@ vi.mock("../src/server/hosted/stage-continuation-sweep", () => ({
 import {
   HOSTED_CONTINUATION_CADENCE,
   HOSTED_CONTINUATION_ITERATIONS,
+  HOSTED_PROMPT_HANDOFF_STEPS,
   HostedContinuationWorkflow,
 } from "./hosted-continuation-workflow";
 
@@ -41,8 +45,11 @@ interface FakeExecutionContext {
 function recordingStep(sequence: string[]) {
   const calls: RecordedStepCall[] = [];
   const step = {
-    async do(name: string, callback: () => Promise<unknown>): Promise<unknown> {
+    async do(name: string, optionsOrCallback: unknown, maybeCallback?: () => Promise<unknown>): Promise<unknown> {
       calls.push({ kind: "do", name, duration: null });
+      const callback = typeof optionsOrCallback === "function"
+        ? optionsOrCallback as () => Promise<unknown>
+        : maybeCallback!;
       const result = await callback();
       sequence.push("step-done");
       return result;
@@ -87,24 +94,52 @@ beforeEach(() => {
 });
 
 describe("hosted continuation Workflow loop", () => {
-  it("runs a targeted handoff once in a durable step without a cadence loop", async () => {
+  it("runs a targeted prompt handoff one durable step per accepted batch", async () => {
     const target = {
       accountId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
       projectId: "11111111-1111-4111-8111-111111111111",
       revisionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
       step: "prompts",
     };
+    collaborators.runHostedContinuation
+      .mockImplementationOnce(async (_environment, _context, _target, onPromptResponse) => {
+        await onPromptResponse!(new Response(JSON.stringify({ state: "RUNNING", accepted_batch_count: 1 }), { status: 202 }));
+        return ["project:prompts"];
+      })
+      .mockImplementationOnce(async () => ["project:prompts"]);
     const { summary, calls } = await runWorkflow({ reason: "stage-handoff", target });
 
-    expect(calls).toEqual([{ kind: "do", name: "handoff prompts", duration: null }]);
-    expect(collaborators.runHostedContinuation).toHaveBeenCalledExactlyOnceWith(
-      environment, expect.any(Object), target,
-    );
+    expect(calls.map((call) => call.name)).toEqual(["handoff prompts 0", "handoff prompts 1"]);
+    expect(collaborators.runHostedContinuation).toHaveBeenCalledTimes(2);
     expect(collaborators.ensureHostedPairObservers).not.toHaveBeenCalled();
     expect(summary).toMatchObject({
       schema_version: "videoforge-hosted-continuation-handoff/v1",
-      dispatched: ["project:context"],
+      dispatched: ["project:prompts"],
     });
+  });
+
+  it("backs off while an existing prompt claim has no new accepted batch", async () => {
+    const target = {
+      accountId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      projectId: "11111111-1111-4111-8111-111111111111",
+      revisionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      step: "prompts",
+    };
+    collaborators.runHostedContinuation
+      .mockImplementationOnce(async (_environment, _context, _target, onPromptResponse) => {
+        await onPromptResponse!(new Response(JSON.stringify({ state: "RUNNING", accepted_batch_count: 1 }), { status: 202 }));
+        return ["project:prompts"];
+      })
+      .mockImplementationOnce(async (_environment, _context, _target, onPromptResponse) => {
+        await onPromptResponse!(new Response(JSON.stringify({ state: "RUNNING", accepted_batch_count: 1 }), { status: 202 }));
+        return ["project:prompts"];
+      })
+      .mockImplementationOnce(async () => ["project:prompts"]);
+    const { calls } = await runWorkflow({ reason: "stage-handoff", target });
+    expect(calls.map((call) => call.name)).toEqual([
+      "handoff prompts 0", "handoff prompts 1", "prompt claim wait 1", "handoff prompts 2",
+    ]);
+    expect(HOSTED_PROMPT_HANDOFF_STEPS).toBeGreaterThan(32);
   });
 
   it("refuses an invalid targeted handoff without running the broad sweep", async () => {

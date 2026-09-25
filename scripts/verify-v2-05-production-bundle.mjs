@@ -43,9 +43,11 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // Provider and generated-contract validators remain in dynamic chunks.
 // Persisted Fal timing metadata and frame-aligned trim validation add 1,588 bytes
 // to the clean production closure after rebuilding contracts and pipeline dependencies.
+// One-batch Stage 5 Workflow continuation adds 3,478 production and 1,588 staging bytes;
+// prompt/provider code remains in its dedicated dynamic route chunk.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_762_831,
-  "wrangler.staging.jsonc": 2_765_529,
+  "wrangler.production.jsonc": 2_766_309,
+  "wrangler.staging.jsonc": 2_767_117,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
