@@ -43,7 +43,8 @@ async function seededDatabase(context: {
   await database.exec(`
     CREATE TABLE public.projects (
       id uuid PRIMARY KEY, account_id uuid NOT NULL, workspace_id uuid NOT NULL,
-      status text NOT NULL, created_at timestamptz NOT NULL
+      status text NOT NULL, created_at timestamptz NOT NULL,
+      generation_provider text NOT NULL DEFAULT 'KIE_FAL'
     );
     CREATE TABLE public.project_revisions (
       id uuid PRIMARY KEY, account_id uuid NOT NULL, workspace_id uuid NOT NULL,
@@ -80,6 +81,9 @@ async function seededDatabase(context: {
       id uuid PRIMARY KEY, run_id uuid NOT NULL, batch_ordinal integer NOT NULL DEFAULT 0
     );
     CREATE TABLE public.generation_requests (
+      id uuid PRIMARY KEY, project_revision_id uuid NOT NULL, state text NOT NULL
+    );
+    CREATE TABLE public.hosted_api_generation_jobs (
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL
     );
 
@@ -131,6 +135,41 @@ it("offers a saved plan only to the targeted prompt handoff", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     expect((await database.query(DUE_QUERY, [accountId, projectId, "prompts", revisionId])).rows).toHaveLength(1);
     expect((await database.query(DUE_QUERY, [accountId, projectId, "context", revisionId])).rows).toHaveLength(0);
+  } finally {
+    await database.close();
+  }
+});
+
+it("resumes one admitted API generation only before any span or provider job exists", async () => {
+  const database = await seededDatabase({ state: "SUCCEEDED", hash: "accepted", problemCode: null, redispatchCount: 0 });
+  try {
+    await database.exec(`
+      INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
+      INSERT INTO public.hosted_prompt_runs VALUES
+        ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',
+         now(),now(),NULL,0,1);
+    `);
+    expect(await nextSteps(database)).toEqual(["dispatch"]);
+    await database.exec(`INSERT INTO public.generation_requests VALUES
+      ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE')`);
+    expect(await nextSteps(database)).toEqual(["dispatch"]);
+    await database.exec(`INSERT INTO public.hosted_api_generation_jobs VALUES
+      ('77777777-7777-4777-8777-777777777777','${revisionId}')`);
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec(`DELETE FROM public.hosted_api_generation_jobs;
+      INSERT INTO public.hosted_cpu_job_attempts VALUES
+      ('88888888-8888-4888-8888-888888888888','${revisionId}','SPAN_AUDIO','OUTBOXED',now())`);
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec(`DELETE FROM public.hosted_cpu_job_attempts WHERE kind='SPAN_AUDIO';
+      UPDATE public.projects SET generation_provider='RUNPOD'`);
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec(`UPDATE public.projects SET generation_provider='KIE_FAL';
+      UPDATE public.generation_requests SET state='FAILED'`);
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec(`UPDATE public.generation_requests SET state='ACTIVE';
+      INSERT INTO public.generation_requests VALUES
+      ('99999999-9999-4999-8999-999999999999','${revisionId}','FAILED')`);
+    expect(await nextSteps(database)).toEqual([]);
   } finally {
     await database.close();
   }

@@ -91,6 +91,7 @@ const CONTEXT_REDISPATCHABLE_PROBLEM_CODES_SQL = `ARRAY[${CONTEXT_REDISPATCHABLE
 export const DUE_QUERY = `
 WITH revision AS (
   SELECT project.id AS project_id, project.account_id, project.workspace_id, locked.id AS revision_id,
+         project.generation_provider,
          project.created_at AS project_created_at,
          locked.revision_config_payload->>'schema_version' AS revision_config_schema,
          (SELECT member.user_id FROM public.memberships member
@@ -151,7 +152,11 @@ WITH revision AS (
     (SELECT count(*) FROM public.hosted_cpu_job_attempts attempt
       WHERE attempt.project_revision_id = revision.revision_id AND attempt.kind = 'SPAN_AUDIO') AS span_jobs,
     (SELECT count(*) FROM public.generation_requests request
-      WHERE request.project_revision_id = revision.revision_id) AS generation_requests
+      WHERE request.project_revision_id = revision.revision_id) AS generation_requests,
+    (SELECT count(*) FROM public.generation_requests request
+      WHERE request.project_revision_id = revision.revision_id AND request.state = 'ACTIVE') AS active_generation_requests,
+    (SELECT count(*) FROM public.hosted_api_generation_jobs job
+      WHERE job.project_revision_id = revision.revision_id) AS api_jobs
   FROM revision
 )
 SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_id, next_step
@@ -209,6 +214,11 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                THEN 'prompts'
              WHEN prompt_accepted_set IS NOT NULL AND generation_requests = 0 AND span_jobs = 0
                THEN 'dispatch'
+             -- Admission can commit before span/API materialization. Re-enter only the existing
+             -- API generation while it has no jobs; the dispatch route reuses its exact ACTIVE id.
+             WHEN prompt_accepted_set IS NOT NULL AND generation_provider = 'KIE_FAL'
+               AND generation_requests = 1 AND active_generation_requests = 1
+               AND span_jobs = 0 AND api_jobs = 0 THEN 'dispatch'
              ELSE NULL
            END AS next_step
       FROM state
