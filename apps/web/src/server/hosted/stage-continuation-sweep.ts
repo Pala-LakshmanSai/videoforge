@@ -304,7 +304,9 @@ export async function runHostedContinuation(
   target?: HostedContinuationTarget,
   onPromptResponse?: (response: Response) => Promise<void>,
 ): Promise<string[]> {
+  console.info("hosted_continuation_phase", { phase: "configuration", target: target?.step ?? null });
   const config: HostedRuntimeConfiguration = await resolveContinuationConfiguration(environment);
+  console.info("hosted_continuation_phase", { phase: "configuration_ready" });
   const pool = createNeonPool(config.neon.databaseUrl);
   const dispatched: string[] = [];
   const failures: string[] = [];
@@ -314,9 +316,16 @@ export async function runHostedContinuation(
     // SELECT sees zero rows: the scheduled driver reported `dispatched: 0` every minute and never
     // advanced a project until the sweep queried each admitted account inside its own tenant
     // transaction, exactly like every request path does.
+    console.info("hosted_continuation_phase", { phase: "due_start" });
     const due = await dueRowsAcrossAccounts(pool, target);
     dueCount = due.length;
+    console.info("hosted_continuation_phase", { phase: "due", due_count: dueCount });
     for (const row of due) {
+      console.info("hosted_continuation_phase", {
+        phase: "handler_start",
+        project: row.project_id,
+        step: row.next_step,
+      });
       const scope = {
         account_id: row.account_id,
         workspace_id: row.workspace_id,
@@ -375,6 +384,12 @@ export async function runHostedContinuation(
           if (onPromptResponse) await onPromptResponse(response);
         }
         const outcome = await continuationOutcome(response);
+        console.info("hosted_continuation_phase", {
+          phase: "handler_end",
+          project: row.project_id,
+          step: row.next_step,
+          result: outcome.detail,
+        });
         if (!outcome.ok) {
           // A handler that answers with an error is not progress: record it, so the heartbeat and the
           // log tell the truth about the stage instead of reporting a dispatch that never happened.
@@ -397,6 +412,7 @@ export async function runHostedContinuation(
   } catch (error) {
     failures.push(`sweep:${String((error as { message?: unknown })?.message ?? error).slice(0, 180)}`);
   } finally {
+    console.info("hosted_continuation_phase", { phase: "heartbeat_start", due_count: dueCount });
     // `wrangler tail` does not show scheduled invocations, so without this row a sweep that never
     // runs and one that finds nothing due are indistinguishable in production.
     try {
@@ -414,7 +430,9 @@ export async function runHostedContinuation(
     } catch {
       // Observability must never break the sweep.
     }
+    console.info("hosted_continuation_phase", { phase: "pool_end_start" });
     await pool.end();
+    console.info("hosted_continuation_phase", { phase: "pool_end_complete" });
   }
   return dispatched;
 }
