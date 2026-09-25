@@ -1014,6 +1014,12 @@
       "name": "hosted_api_dispatch_grant_reconciliation",
       "filename": "0206_hosted_api_dispatch_grant_reconciliation.sql",
       "sha256": "sha256:78da08a5de2d33b1b1562081cfe8d1cd2ab158fa39cc4aee6add611765720c6a"
+    },
+    {
+      "version": 207,
+      "name": "hosted_api_first_render_input_recovery",
+      "filename": "0207_hosted_api_first_render_input_recovery.sql",
+      "sha256": "sha256:ee3ad19c633d79eb806a03a88d8ab603c5630a6ab21d55fb83faa6b2d9398f2a"
     }
   ]
 }
