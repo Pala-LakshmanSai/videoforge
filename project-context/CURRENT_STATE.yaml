@@ -1,21 +1,23 @@
 schema_version: "2.0"
 api_avatar_detail_experiments_2026_09_25:
   checkpoint: V2-09
-  status: OFFLINE_CANDIDATES_REJECTED_PAID_SAMPLE_AWAITING_APPROVAL
+  status: NO_ADDITIONAL_ENHANCEMENT_MEETS_ZERO_COST_NO_SLOWDOWN_GATES
   decision: >-
     Keep production worker 0.1.30 unchanged. Mild native luminance sharpening and lossless
     intermediates do not meaningfully restore missing lip/teeth detail in retained Simon/Helenn
     clips. Exploratory composition times increase, lossless intermediates use 19-21 times more
     disk, and CRF20/18 video-only samples grow 42-86 percent with little visible mouth benefit.
+    A final paired medium/fast/veryfast encoder comparison shows faster CRF20 settings
+    increase video-only sample bytes by 13-52 percent without meaningful lip-detail recovery.
+    No candidate proves improved quality without added transfer burden or production delay.
+    Keep the existing bicubic composition, timing correction and assembly optimizations.
     Do not promote sharpness metrics or additional pixels as restored facial detail.
   evidence_paths:
     - evidence/acceptance/VF-10-09/2026-09-25-avatar-detail-experiments.json
   remaining_gates: >-
-    Two exact five-second native clips are prepared for Topaz Iris through Fal, upscale 2x
-    and retain 25fps, with a proposed USD0.50 total cap and no automatic production enablement.
-    New paid approval is pending because the user's prior no-extra-cost constraint persists.
-    Any unknown submission is unreplayed; quality, identity, timing and added latency require
-    before/after validation. Tighter source crops offer only theoretical face-pixel gains and
+    The user declined the proposed USD0.50 Topaz Iris pilot. No enhancement requests were
+    submitted. Only zero-additional-cost changes with no production-time increase may be
+    promoted after a measured comparison; no enhancement API or paid trial is authorized. Tighter source crops offer only theoretical face-pixel gains and
     can weaken alignment; no preprocessing change is approved by these offline observations.
   provider_spend: Zero new paid calls; read-only public model documentation and retained media.
   paid_compute_shutdown: No GPU activation; local comparison processes exited.

@@ -1,6 +1,6 @@
 {
   "checkpoint": "V2-09",
-  "status": "OFFLINE_CANDIDATES_REJECTED_PAID_TEST_AWAITING_APPROVAL",
+  "status": "NO_ADDITIONAL_CANDIDATE_MEETS_COST_TIME_AND_QUALITY_GATES",
   "production_unchanged": {
     "hosted_source": "bc9136dd",
     "worker_version": "0.1.30"
@@ -176,7 +176,7 @@
   "next_pilot": {
     "prepared": true,
     "submitted": false,
-    "approval": "pending; earlier no-extra-cost constraint retained",
+    "approval": "Declined: zero additional enhancement cost; no production-time increase permitted.",
     "endpoint": "topaz/upscale/video/precision",
     "model": "Iris",
     "requests": 2,
@@ -185,6 +185,69 @@
     "fps": 25,
     "cap_usd": 0.5,
     "automatic_app_enablement": false,
-    "stop_on_unknown_without_replay": true
-  }
+    "stop_on_unknown_without_replay": true,
+    "approved_cap_usd": 0
+  },
+  "final_encoder_comparison": {
+    "method": "Two sequential reverse-order passes, exact same CRF18 wide source bytes as root; Simon4s120frames, Helenn6s180frames; fps30, threads2; baseline mediumCRF23 vsfastCRF20 vsveryfastCRF20. Offline no paid calls.",
+    "results": [
+      {
+        "person": "simon",
+        "preset": "medium",
+        "crf": 23,
+        "meanSeconds": 1.4751,
+        "timeChangePercent": 0.0,
+        "bytes": 508519,
+        "bytesChangePercent": 0.0
+      },
+      {
+        "person": "simon",
+        "preset": "fast",
+        "crf": 20,
+        "meanSeconds": 1.2725,
+        "timeChangePercent": -13.7,
+        "bytes": 770568,
+        "bytesChangePercent": 51.5
+      },
+      {
+        "person": "simon",
+        "preset": "veryfast",
+        "crf": 20,
+        "meanSeconds": 0.4688,
+        "timeChangePercent": -68.2,
+        "bytes": 630188,
+        "bytesChangePercent": 23.9
+      },
+      {
+        "person": "helenn",
+        "preset": "medium",
+        "crf": 23,
+        "meanSeconds": 1.8446,
+        "timeChangePercent": 0.0,
+        "bytes": 654914,
+        "bytesChangePercent": 0.0
+      },
+      {
+        "person": "helenn",
+        "preset": "fast",
+        "crf": 20,
+        "meanSeconds": 1.6359,
+        "timeChangePercent": -11.3,
+        "bytes": 937576,
+        "bytesChangePercent": 43.2
+      },
+      {
+        "person": "helenn",
+        "preset": "veryfast",
+        "crf": 20,
+        "meanSeconds": 0.5866,
+        "timeChangePercent": -68.2,
+        "bytes": 741759,
+        "bytesChangePercent": 13.3
+      }
+    ],
+    "visualAssessment": "Viewed all6 decoded lip samples at1/2/3s, covering closed/open/smile across both faces. No material facial detail recovery in either fasterCRF20 candidate; differences are minor encoding texture around already soft source.",
+    "recommendation": "Neither satisfies all constraints: veryfast cuts isolated encode about68% but files grow13\u201324%; fast cuts11\u201314% and files grow43\u201352%. NewAPIcharges zero, but increased bytes increase transfer/storage burden; no measured end-to-end guarantee. No tracked code changes."
+  },
+  "decision": "Retain production defaults. User declined paid enhancement; tested faster/high-quality encode alternatives show no material lip detail recovery and increase transferred/stored bytes. No new production code or paid action."
 }
