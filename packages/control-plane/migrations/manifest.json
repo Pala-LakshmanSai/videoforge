@@ -942,6 +942,12 @@
       "name": "hosted_prompt_dynamic_reservation_and_batch_claims",
       "filename": "0194_hosted_prompt_dynamic_reservation_and_batch_claims.sql",
       "sha256": "sha256:7ff351c4786f5a6e78dc0fa445622bd263f3c3bdf02d17f6980086e5ced8b6f2"
+    },
+    {
+      "version": 195,
+      "name": "hosted_continuation_runtime_grants",
+      "filename": "0195_hosted_continuation_runtime_grants.sql",
+      "sha256": "sha256:400b27e3d5d3fd1a0d67989d8f2fbc94ce6e76d30727ab4d6b042ed7ef39e4cc"
     }
   ]
 }
