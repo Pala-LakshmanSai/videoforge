@@ -440,14 +440,14 @@ class RenderJobTests(unittest.TestCase):
             "scale=960:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080",
             graph,
         )
-        self.assertIn("1+0.042188*", graph)
-        self.assertIn("1+0.025000*", graph)
+        self.assertIn("1+0.046406*", graph)
+        self.assertIn("1+0.027500*", graph)
         self.assertNotRegex(graph, r"1\+0\.(?:04|06|08)0000\*")
         self.assertIn("interpolation=cubic:sense=source:eval=frame", graph)
         self.assertEqual(graph.count("loop=loop=-1:size=1:start=0,fps=30,perspective="), 2)
         self.assertNotIn("*(6*", graph)
-        self.assertIn("1+0.042188*(on/149)", graph)
-        self.assertIn("1+0.025000*(on/119)", graph)
+        self.assertIn("1+0.046406*(on/149)", graph)
+        self.assertIn("1+0.027500*(on/119)", graph)
         self.assertIn("hstack=inputs=2", graph)
         self.assertIn("concat=n=3:v=1:a=0", graph)
         self.assertIn("loudnorm=I=-16:TP=-2.5", graph)
@@ -462,16 +462,16 @@ class RenderJobTests(unittest.TestCase):
         self.assertIn("-sn", render_call)
         self.assertIn("-dn", render_call)
 
-    def test_v3_zoom_moves_immediately_and_only_fullscreen_amplitude_increases(self) -> None:
+    def test_v3_zoom_moves_immediately_with_requested_full_and_split_amplitudes(self) -> None:
         from videoforge_image_media.jobs.render.filtergraph import (
             _continuous_image_filter,
             _zoom_delta,
         )
 
-        for frames, full_delta in [(120, 0.03515625), (150, 0.0421875), (240, 0.04921875)]:
+        for frames, full_delta in [(120, 0.038671875), (150, 0.04640625), (240, 0.054140625)]:
             self.assertEqual(_zoom_delta(frame_count=frames, split=False, profile_version="ffmpeg-render-v3"), full_delta)
-            self.assertEqual(_zoom_delta(frame_count=frames, split=True, profile_version="ffmpeg-render-v3"), 0.025)
-            for width, delta in [(1920, full_delta), (960, 0.025)]:
+            self.assertEqual(_zoom_delta(frame_count=frames, split=True, profile_version="ffmpeg-render-v3"), 0.0275)
+            for width, delta in [(1920, full_delta), (960, 0.0275)]:
                 graph = _continuous_image_filter(0, width, frames, delta)
                 self.assertIn(f"1+{delta:.6f}*(on/{frames - 1})", graph)
                 self.assertIn("fps=30,perspective=", graph)

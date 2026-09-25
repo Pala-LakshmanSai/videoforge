@@ -139,12 +139,12 @@ def _image_filter(
 def _zoom_delta(*, frame_count: int, split: bool, profile_version: str) -> float:
     if profile_version == SMOOTH_RENDER_PROFILE_VERSION:
         if split:
-            return 0.025
+            return 0.0275
         if frame_count <= 120:
-            return 0.03515625
+            return 0.038671875
         if frame_count <= 210:
-            return 0.0421875
-        return 0.04921875
+            return 0.04640625
+        return 0.054140625
     if profile_version == SUBTLE_RENDER_PROFILE_VERSION:
         if split or frame_count <= 120:
             return 0.015

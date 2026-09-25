@@ -1,4 +1,12 @@
 schema_version: "2.0"
+image_zoom_both_plus_ten_2026_09_25:
+  checkpoint: V2-09
+  status: IMPLEMENTING_WORKER_032
+  worker_version: 0.1.32
+  decision: Increase both v3 zoom deltas by another 10 percent over worker 0.1.31, preserving immediate linear motion and existing durations.
+  remaining_gates: Focused renderer checks, retained-media previews, immutable release, idle worker installation and Chrome verification.
+  provider_spend: Zero paid requests; retained media only.
+  paid_compute_shutdown: No GPU activation.
 image_zoom_immediate_2026_09_25:
   checkpoint: V2-09
   status: PRODUCTION_DEPLOYED_WORKER_031_ONLINE
