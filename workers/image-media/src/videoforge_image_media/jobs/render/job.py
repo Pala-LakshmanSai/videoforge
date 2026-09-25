@@ -515,6 +515,7 @@ class RenderJob:
     ) -> None:
         segments = cast(list[dict[str, Any]], manifest["segments"])
         chunk_names: list[str] = []
+        chunk_durations: list[float] = []
         for first in range(0, len(segments), MAX_SEGMENTS_PER_RENDER):
             self._check_cancelled(token)
             chunk = segments[first : first + MAX_SEGMENTS_PER_RENDER]
@@ -570,10 +571,15 @@ class RenderJob:
                 missing_message="A render chunk did not produce an output file.",
             )
             chunk_names.append(name)
+            chunk_durations.append(chunk_frames / 30)
 
         concat_path = stage / "chunks.txt"
         concat_path.write_text(
-            "".join(f"file {name}\n" for name in chunk_names), encoding="utf-8"
+            "".join(
+                f"file {name}\nduration {duration:.9f}\n"
+                for name, duration in zip(chunk_names, chunk_durations, strict=True)
+            ),
+            encoding="utf-8",
         )
         self._run_process(
             compile_chunk_mux_command(

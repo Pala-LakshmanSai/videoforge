@@ -96,6 +96,7 @@ class FakeProcess:
         self.calls: list[tuple[str, ...]] = []
         self.render_cwd: Path | None = None
         self.render_script: str | None = None
+        self.concat_script: str | None = None
         self.render_return_code = 0
         self.render_stderr = "redacted failure"
         self.correction_return_code = 0
@@ -197,6 +198,8 @@ class FakeProcess:
         if executable == "ffprobe":
             return ProcessResult(return_code=0, stdout=self._probe_payload(Path(call[-1])))
         if "-c:v" in call and call[call.index("-c:v") + 1] == "copy":
+            if "-f" in call and "concat" in call:
+                self.concat_script = Path(call[call.index("-i") + 1]).read_text(encoding="utf-8")
             if self.correction_return_code:
                 return ProcessResult(
                     return_code=self.correction_return_code, stderr=self.render_stderr
@@ -498,6 +501,8 @@ class RenderJobTests(unittest.TestCase):
             mux = next(call for call in fixture.process.calls if "-f" in call and "concat" in call)
             self.assertEqual(mux[mux.index("-c:v") + 1], "copy")
             self.assertIn("loudnorm=", mux[mux.index("-af") + 1])
+            self.assertEqual(fixture.process.concat_script.count("duration 24.000000000"), 46)
+            self.assertIn("duration 21.000000000", fixture.process.concat_script)
             self.assertEqual(Path.cwd(), original_cwd)
             self.assertFalse(Path(mux[mux.index("-i") + 1]).exists())
 
