@@ -5345,7 +5345,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       </section>
 
-      {spanPreparationActive ? (
+      {render?.state === "SUCCEEDED" ? null : spanPreparationActive ? (
         <div className="validation validation-info" role="status" aria-live="polite">
           Preparing exact avatar audio. Generation continues when ready.
         </div>

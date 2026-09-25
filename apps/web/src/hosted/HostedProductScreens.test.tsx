@@ -360,6 +360,53 @@ it("refreshes a running project's time estimate without reloading", async () => 
   });
 });
 
+it("shows ready without stale remaining time or generation notice after render succeeds", async () => {
+  let completed = false;
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+    if (String(input).endsWith("/gpu-dispatch")) {
+      completed = true;
+      return Response.json({
+        schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+        state: "SCHEDULED",
+        correlation_id: "completed-generation",
+      }, { status: 202 });
+    }
+    return Response.json({
+      project: { id: "estimate-ready", title: "Ready video", created_at: "2026-09-25T05:00:00Z",
+        revision_id: "revision", revision_state: "LOCKED" },
+      generation_provider: "KIE_FAL",
+      attempts: completed ? [{ id: "render", kind: "RENDER", state: "SUCCEEDED",
+        terminal_at: "2026-09-25T05:03:00Z" }] : [],
+      generation: { id: "generation", timeline_plan_sha256: `sha256:${"a".repeat(64)}`,
+        planned_tasks: 2, completed_tasks: completed ? 2 : 0, failed_tasks: 0,
+        stage: completed ? "READY_FOR_RENDER" : "READY_FOR_GPU_DISPATCH" },
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: gpuReadiness,
+      queue: null,
+      stages: stageList(completed
+        ? { prepare: "COMPLETE", transcription: "COMPLETE", "voiceover-context": "COMPLETE",
+          planning: "COMPLETE", "prompt-writing": "COMPLETE", "audio-spanning": "COMPLETE",
+          "image-generation": "COMPLETE", "avatar-generation": "COMPLETE", render: "COMPLETE",
+          "technical-check": "COMPLETE" }
+        : { prepare: "COMPLETE", transcription: "COMPLETE", "voiceover-context": "COMPLETE",
+          planning: "COMPLETE", "prompt-writing": "COMPLETE" }),
+      time_estimate: {
+        remaining_min_ms: completed ? 0 : 120_000,
+        remaining_max_ms: completed ? 0 : 300_000,
+        basis: "RECENT_API_SHORT_RUN",
+        overrun: false,
+      },
+    });
+  }));
+  renderHosted(<HostedProjectScreen projectId="estimate-ready" />);
+  const hero = await screen.findByRole("region", { name: "Live video progress" });
+  const metric = within(hero).getByText("Estimated").closest<HTMLElement>(".metric");
+  expect(metric).not.toBeNull();
+  await waitFor(() => expect(within(metric!).getByText("Ready")).toBeInTheDocument());
+  expect(within(metric!).getByText("ready for review")).toBeInTheDocument();
+  expect(screen.queryByText(/Generation is running/u)).not.toBeInTheDocument();
+});
+
 it("shows a reasoned disabled Retry for every failed stage without a safe recovery route", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
   const stages = stageList(Object.fromEntries([

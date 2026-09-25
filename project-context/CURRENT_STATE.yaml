@@ -1,4 +1,41 @@
 schema_version: "2.0"
+api_generation_render_recovery_and_eta_2026_09_25:
+  checkpoint: V2-09
+  status: PRODUCTION_SHORT_RENDER_AND_PLAYBACK_VERIFIED
+  decision: >-
+    Worker 0.1.28 permits a strongly matched Fal square to extend at most 32 pixels beyond the
+    portrait canvas, clipping at the canvas while preserving the homography and soft edge blend.
+    Migration 0199 permits the bounded third render-only recovery after disk, IO and input
+    failures; accepted Kie/Fal assets and uncertain provider identities are never replayed.
+    Every failed stage has a Retry affordance; only safe existing recovery routes are enabled.
+    API remaining time is a rough project-wide range after planning, using accepted work counts,
+    observed short-run timings, parallel image/avatar lanes and a broad local-render range.
+  evidence: >-
+    Source 6f1c36b7 deployed as Cloudflare 0f16473c-928b-497d-8117-46a2b199a791 with
+    installed worker 0.1.28 and migration ledger 0199. Helenn project
+    cebd8f98-28af-4729-824b-62dbf1ef6e34 completed render-only recovery in 11m10s;
+    Chrome played its 159.2-second 1920x1080 output without error, final checksum
+    sha256:c0bbdac1f9cd69c9e4f74a8234dd20a4465677111791de83d452ae5072b121e3.
+    User-started Simon project f2b6ab1d-4690-47bf-a1eb-ed27f3141c28 completed with 28 images
+    and 10 avatars. First submissions were within one second; stage timers were 3m25s images
+    and 3m21s avatars, with render handoff 1.95s after last image acceptance. Assembly took
+    8m38s and total wall time was 15m51s. Runtime COMPLETE/SUCCEEDED at 06:52:53Z; render
+    checksum sha256:230f91d5af544f623b9da6126576777e816b5d50fe555aec65fb68ab34a83d0a.
+    Chrome loaded the 159.2-second 1920x1080 video and playback advanced without media errors.
+    ETA source 6fd366f9 deployed as Cloudflare ecd68041-30e2-4271-a1bc-fedf116b41f9;
+    focused product and UI tests, TypeScript, lint, production build, bundle guard and exact
+    deployed readback passed. The range is an estimate, not a measured accuracy guarantee.
+  remaining_gates: >-
+    Human approval and download of Helenn and Simon remain pending. Full 18-minute hosted
+    acceptance remains blocked on the old uncertain prompt identity and a fresh bounded run.
+    Fal queue/compute versus transfer/verification time cannot be separated from persisted
+    submit-to-accept timestamps. No unmatched end-to-end speedup is claimed.
+  provider_spend: >-
+    No new paid provider calls were initiated for recovery or ETA development. Simon was started
+    by the user and displayed a USD 0.28 Kie/Fal published-rate estimate; exact debit is unavailable.
+  paid_compute_shutdown: >-
+    No RunPod/GPU activation for this work. Historical zero-compute inventory remains recorded
+    below; it is not a fresh provider audit. The successful local render reached terminal state.
 library_details_spacing_2026_09_25:
   checkpoint: V2-09
   status: PRODUCTION_UI_VERIFIED
