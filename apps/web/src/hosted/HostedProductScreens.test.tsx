@@ -4384,12 +4384,13 @@ describe("hosted product journey", () => {
     expect(screen.getByText("2 / 4 prompts accepted")).toBeInTheDocument();
     const promptRegion = screen.getByRole("region", { name: "Accepted image prompts" });
     expect(within(promptRegion).getAllByRole("listitem")).toHaveLength(2);
-    expect(within(promptRegion).getByText(/maker checking a worn prototype/u)).toBeInTheDocument();
-    expect(within(promptRegion).getByText("Batch-accepted practical prompt")).toBeInTheDocument();
+    expect(within(promptRegion).getByText(/A maker checks the first prototype/u)).toBeVisible();
+    expect(within(promptRegion).getByText(/This row was saved with the accepted first batch/u))
+      .toBeVisible();
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 
-  it("shows every accepted Stage 5 prompt in the compact prompt region", async () => {
+  it("shows concise scene previews and keeps full saved prompt text behind an audit disclosure", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     vi.stubGlobal(
       "fetch",
@@ -4462,11 +4463,26 @@ describe("hosted product journey", () => {
 
     expect(await screen.findByText("2 accepted prompts")).toBeInTheDocument();
     const promptRegion = screen.getByRole("region", { name: "Accepted image prompts" });
-    expect(within(promptRegion).getAllByRole("listitem")).toHaveLength(2);
+    const promptItems = within(promptRegion).getAllByRole("listitem");
+    expect(promptItems).toHaveLength(2);
+    const firstPrompt = promptItems[0]!;
+    const secondPrompt = promptItems[1]!;
+    expect(within(firstPrompt).getByText(/A maker checks the first prototype/u)).toBeVisible();
+    expect(within(secondPrompt).getByText(/Her hands adjust the worn metal mechanism/u)).toBeVisible();
     expect(
-      within(promptRegion).getByText(/maker inspecting a real prototype/u),
-    ).toBeInTheDocument();
-    expect(within(promptRegion).getByText(/implausible hands/u)).toBeInTheDocument();
+      within(firstPrompt).getByText(/Documentary footage of a maker inspecting a real prototype/u),
+    ).not.toBeVisible();
+    expect(within(firstPrompt).getByText(/text, captions, motion graphics/u)).not.toBeVisible();
+
+    fireEvent.click(within(firstPrompt).getByText("Show full saved prompt and Avoid text"));
+    expect(
+      within(firstPrompt).getByText(/Documentary footage of a maker inspecting a real prototype/u),
+    ).toBeVisible();
+    expect(within(firstPrompt).getByText(/text, captions, motion graphics/u)).toBeVisible();
+    expect(within(secondPrompt).getByText(/logos, watermarks, interface text/u)).not.toBeVisible();
+    expect(
+      screen.getByText(/Scene previews are for orientation, not the complete saved provider input/u),
+    ).toBeVisible();
     expect(
       screen.queryByRole("heading", { name: "Voiceover-to-image plan" }),
     ).not.toBeInTheDocument();

@@ -5687,30 +5687,41 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                       : "Waiting for prompt writing."}
               </p>
               {acceptedPrompts.length > 0 ? (
-                <div
-                  className="live-prompt-scroll"
-                  role="region"
-                  aria-label="Accepted image prompts"
-                  tabIndex={0}
-                >
-                  <ol className="live-prompt-list">
-                    {acceptedPrompts.map((prompt) => (
-                      <li className="live-prompt-item" key={prompt.scene_id}>
-                        <div className="live-prompt-item-heading">
-                          <strong>Scene {Number(prompt.scene_ordinal) + 1}</strong>
-                          <span>{prompt.in_image_shot_role.replaceAll("_", " ")}</span>
-                        </div>
-                        <p className="live-prompt-narration">“{prompt.narration}”</p>
-                        <p>
-                          <strong>Prompt:</strong> {prompt.positive_prompt}
-                        </p>
-                        <p className="live-prompt-negative">
-                          <strong>Avoid:</strong> {prompt.negative_prompt}
-                        </p>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
+                <>
+                  <p className="live-prompt-helper">
+                    Scene previews are for orientation, not the complete saved provider input. Open
+                    a scene to inspect its full saved prompt and Avoid text.
+                  </p>
+                  <div
+                    className="live-prompt-scroll"
+                    role="region"
+                    aria-label="Accepted image prompts"
+                    tabIndex={0}
+                  >
+                    <ol className="live-prompt-list">
+                      {acceptedPrompts.map((prompt) => (
+                        <li className="live-prompt-item" key={prompt.scene_id}>
+                          <div className="live-prompt-item-heading">
+                            <strong>Scene {Number(prompt.scene_ordinal) + 1}</strong>
+                            <span>{prompt.in_image_shot_role.replaceAll("_", " ")}</span>
+                          </div>
+                          <p className="live-prompt-narration">
+                            <strong>Scene preview:</strong> {prompt.narration}
+                          </p>
+                          <Disclosure summary="Show full saved prompt and Avoid text">
+                            <p>
+                              <strong>Saved prompt (full text):</strong> {prompt.positive_prompt}
+                            </p>
+                            <p className="live-prompt-negative">
+                              <strong>Avoid (full text):</strong>{" "}
+                              {prompt.negative_prompt || "No saved Avoid text."}
+                            </p>
+                          </Disclosure>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </>
               ) : (
                 <div className="live-prompt-empty" aria-busy={promptWritingActive}>
                   {promptWritingActive ? <span className="spinner" aria-hidden="true" /> : null}
