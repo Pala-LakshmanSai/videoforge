@@ -1,60 +1,41 @@
 schema_version: "2.0"
 napaa_live_2026_09_25:
   checkpoint: V2-09
-  status: SAME_PROJECT_STAGE_9_SECOND_LOCAL_RENDER_FAILED_RECOVERY_IN_PROGRESS
+  status: SAME_PROJECT_STAGE_9_FIFTH_LOCAL_RENDER_RUNNING
   project_id: 6ec3ce8d-6558-494a-b8b3-a90a65c53bc8
   revision_id: ef4a4117-c86b-4721-821b-c6a835f0e022
   generation_request_id: 033b710c-7ebc-4ac8-9c05-89c16c5a3d1e
-  production_source_commit: 2aef5cd8
-  cloudflare_version: 26529314-8471-49a3-a3a5-94aa1e0d49da
-  database_migration_head: 0208
-  observed_at: "2026-09-25T15:59:51Z"
+  production_source_commit: 65545190290e95de1ab10e77505c5e83169906f5
+  cloudflare_version: 7d84c28e-479e-487b-a1c4-aaafc5d5f88f
+  database_migration_head: 0210
+  observed_at: "2026-09-25T17:48:01Z"
   verified_progress: >-
-    The replacement NAPAA run saved all 327/327 prompts in 33 batches. Stage 5 completed
-    from those exact saved batches without another prompt provider request after fixing a
-    returned-promise/try-finally pool-close race. Its one prompt execution and all 327 scene
-    results are accepted; USD 2.197885 was settled once and USD 5.802115 released from the
-    original USD 8 reservation. Stage 6 completed 96/96 exact audio spans in 7m23s; two
-    initial local disk failures retried on their same attempt identities after safe cleanup.
-    The same admitted request accepted all 327 Kie images and 96 Fal avatar clips by
-    14:44:58 UTC. Its first local Stage 9 attempt failed after 7m26s when a valid Fal
-    clip's projected crop exceeded the old 32-pixel top-edge allowance. The first
-    guarded provider-free retry, attempt 0a799bac-e909-4ceb-b8d1-df70c1721cf7,
-    was consumed at 15:35:36 UTC and running with a fresh worker lease by 15:36:20.
-    It reused all 423 accepted provider outputs and 426 render inputs. The retry
-    composed all 96 Fal wides but failed during the final FFmpeg encode at 15:44:07 UTC
-    with PROCESS_EXIT 232 and no output. The Mac GUI worker's soft open-file limit is
-    256, while the compiled render has 424 inputs. A provider-free FFmpeg reproduction
-    at 424 inputs/limit 256 returned the same exit 232 and "Too many open files" stderr;
-    limit 1024 succeeded. Chrome is again at Stage 9
-    FAILED; no final MP4 exists.
+    The replacement NAPAA run has 327 saved prompts, 96 audio spans, 327 Kie images,
+    and 96 Fal avatar clips accepted. Stage 9 render attempts 1-4 failed on bounded Fal
+    crop, FFmpeg file descriptors, Mac memory pressure, and a two-frame audio overrun.
+    The fourth attempt assembled a 393884573-byte local MP4 with 50020 planned frames,
+    but loudnorm added 66.667 ms to the audio tail and deterministic output validation
+    rejected it. A 47-chunk production-scale reproduction of source 65545190 verifies
+    50020 decoded frames and 1667.333333-second video/container after the final trim.
+    The exact fifth provider-free recovery was consumed at 17:47:25 UTC; render attempt
+    74290e04-45fa-429f-a634-9ffbc2f08eb8 is RUNNING on Mac worker 0.1.37 with the
+    matching execution bundle. No final MP4 is durable yet.
   fixes: >-
-    Source 95c11117 awaits completion before closing the Neon pool; 42ae8f7a applies exact
-    Stage 6 runtime grants as migration 0206; 8e745eea prevents the V2-06 grant script from
-    revoking V2-09 runtime capabilities. Source 410e5ed2 adds a guarded continuation for an
-    already admitted KIE_FAL request with no started jobs. Source 9337926a is live at
-    Cloudflare version 48298ee5 with 41 expected bindings; it also compacts future
-    built-in image prompts while preserving custom styles and saved legacy prompt hashes.
-    Migration 0207 permits one exact first-input render recovery without new paid
-    generation; source 329df0aa accepts bounded, feature-verified Fal top-edge crops,
-    and source 2aef5cd8 exposes that guarded retry in the UI. Cloudflare version
-    26529314 serves that UI and worker release 0.1.33; the Mac worker is ONLINE with
-    matching execution bundle. Both platform 0.1.34 packages are published with a
-    separate long-command fix for Windows. That version is not production-active.
-    Source 07f184be raises the POSIX final-render child limit to 1024 only during
-    spawn; source f93a91a7 adds a distinct guarded process-retry route and UI.
-    Migration 0208 is live and permits exactly one matching local process retry,
-    with no claim consumed yet. Dual-platform 0.1.35 release CI is running; the
-    production Worker and Mac installation still use 0.1.33 until release verification.
+    Source 65545190 is deployed to Cloudflare and published as Mac and Windows worker
+    0.1.37. It caps normalized audio after loudnorm, keeps bounded output-probe
+    diagnostics, and permits only an exact fourth-failure local retry. Migration 0210
+    is applied and verified. The Mac worker is ONLINE with bundle
+    sha256:810c37fafe5d06d5a5d08d2b492e63a41b6170a99941eeafc1f56aa5b62a79bf.
+    Windows 0.1.37 passed packaged CI but no Windows device is registered, so installed
+    Windows parity remains unverified.
   remaining_gates: >-
-    Fix the final FFmpeg file-limit failure and perform one guarded saved-input retry,
-    assemble and technically validate the final MP4, verify real Chrome playback/seek,
-    approve and download the exact artifact, prove zero active paid compute, and activate
-    the corrected worker release for both platforms. Full remaining wall time
-    is unverified.
+    Complete the running Stage 9 render, verify the final MP4 and real Chrome playback/seek,
+    approve and download the exact artifact, upload to Google Drive, enable public link
+    access, send that link to Sujal in Discord, and prove zero active paid compute.
+    Full remaining wall time is unverified.
   provider_spend: >-
-    Prompt cost settled at USD 2.197885. All Kie/Fal outputs are accepted; the provider
-    workload lease is RELEASED, and the render recovery made zero new paid calls. Final
+    Prompt cost settled at USD 2.197885. All Kie/Fal outputs remain accepted; provider
+    workload lease is RELEASED, and local render retries made zero new paid calls. Final
     generation cost ledger and end-to-end acceptance remain to be verified.
   paid_compute_shutdown: >-
     Ordinary generation uses Kie/Fal APIs with GPU transport DISABLED_UNQUALIFIED. The
