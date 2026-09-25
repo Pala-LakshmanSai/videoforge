@@ -1039,17 +1039,13 @@ class RenderJob:
                             f"Fal wide segment {ordinal}: {type(error).__name__}: {reason}.",
                             retryable=False,
                         ) from error
-                plan = (
-                    compile_render_command(
-                        ffmpeg=tools.ffmpeg,
-                        manifest=manifest,
-                        asset_paths=render_paths,
-                        voiceover_path=voiceover_path,
-                        output_path=output_path,
-                        input_loudness=input_loudness,
-                    )
-                    if len(manifest["segments"]) <= MAX_SEGMENTS_PER_RENDER
-                    else None
+                plan = compile_render_command(
+                    ffmpeg=tools.ffmpeg,
+                    manifest=manifest,
+                    asset_paths=render_paths,
+                    voiceover_path=voiceover_path,
+                    output_path=output_path,
+                    input_loudness=input_loudness,
                 )
             except (KeyError, TypeError, ValueError, OSError, BrokenPipeError) as error:
                 raise _RenderFailure(
@@ -1058,7 +1054,7 @@ class RenderJob:
                     retryable=False,
                 ) from error
 
-            if plan is None:
+            if len(manifest["segments"]) > MAX_SEGMENTS_PER_RENDER:
                 try:
                     with tempfile.TemporaryDirectory(
                         prefix="vf-render-chunks-", dir=voiceover_path.parent
