@@ -1835,6 +1835,11 @@ describe("hosted product route contract", () => {
       progressPercent: 100,
       detail: "Durable accepted scene prompts are ready for image generation.",
     });
+    expect(hostedPromptWritingState("FAILED", true, { acceptedScenes: 50, totalScenes: 320 })).toEqual({
+      status: "FAILED",
+      progressPercent: 15,
+      detail: "50 image prompts were saved before writing stopped.",
+    });
     // A writer task is created the moment prompt writing starts; every non-terminal durable state it
     // passes through must read as running work, never as "not started".
     for (const inFlight of ["PENDING", "READY", "DISPATCHING", "RUNNING"]) {

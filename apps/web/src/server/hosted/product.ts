@@ -4705,7 +4705,9 @@ export function hostedPromptWritingState(
       status === "COMPLETE"
         ? "Durable accepted scene prompts are ready for image generation."
         : status === "FAILED"
-          ? "Image prompt writing failed before a durable accepted prompt set was saved."
+          ? progress && progress.acceptedScenes > 0
+            ? `${progress.acceptedScenes} image prompts were saved before writing stopped.`
+            : "Image prompt writing failed before a durable accepted prompt set was saved."
           : status === "RUNNING" || status === "RETRY_WAIT"
             ? "Image prompts are being written and verified against the approved style."
             : planExists
