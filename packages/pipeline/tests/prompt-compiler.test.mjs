@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -363,14 +364,8 @@ test("optical treatment does not request camera apparatus or erase a narrated ca
       applyExtraPromptKeywords: false,
     });
     assert.ok(compiled.positivePrompt.includes(`subject: ${literal_subject}`));
-    assert.match(
-      compiled.positivePrompt,
-      /framing only, no camera gear/u,
-    );
-    assert.match(
-      compiled.negativePrompt,
-      /malformed anatomy/u,
-    );
+    assert.match(compiled.positivePrompt, /framing only, no camera gear/u);
+    assert.match(compiled.negativePrompt, /malformed anatomy/u);
     verifyCompiledImagePrompt(compiled);
   }
 });
@@ -398,7 +393,10 @@ test("castle dates and room counts remain narration facts rather than requested 
     applyExtraPromptKeywords: false,
   });
   assert.doesNotMatch(compiled.positivePrompt, /1869|200 rooms/u);
-  assert.match(compiled.positivePrompt, /No visible or pseudo-text or markings/u);
+  assert.match(
+    compiled.positivePrompt,
+    /No text or pseudo-text, numbers, labels, signs, branding or markings/u,
+  );
   for (const term of ["text", "pseudo-text", "logo", "watermark", "overlays"])
     assert.ok(compiled.negativePrompt.includes(term), `missing typography exclusion: ${term}`);
   assert.match(
@@ -442,10 +440,7 @@ test("compiler rejects forbidden content in structured scene facts", () => {
 });
 
 test("keeps described products relatable without allowing text or branding", () => {
-  assert.match(
-    PERMANENT_POSITIVE_GUARDRAIL,
-    /products\/containers plain and unmarked/u,
-  );
+  assert.match(PERMANENT_POSITIVE_GUARDRAIL, /products\/containers plain and unmarked/u);
   assert.doesNotMatch(
     PERMANENT_POSITIVE_GUARDRAIL,
     /no manufactured product, packaging or container/u,
@@ -529,10 +524,7 @@ test("keeps described products relatable without allowing text or branding", () 
     applyExtraPromptKeywords: false,
   });
   assert.doesNotMatch(slugged.positivePrompt, /failed regrowth|failed-regrowth|lancaster/u);
-  assert.match(
-    slugged.positivePrompt,
-    /same subject\/setting\/state/u,
-  );
+  assert.match(slugged.positivePrompt, /same subject\/setting\/state/u);
 });
 
 test("compacts repeated negative terms without weakening permanent exclusions", async () => {
@@ -551,13 +543,7 @@ test("compacts repeated negative terms without weakening permanent exclusions", 
     extraPromptKeywords: null,
     applyExtraPromptKeywords: false,
   });
-  for (const term of [
-    "text",
-    "watermark",
-    "duplicate limbs",
-    "logos",
-    "overlays",
-  ]) {
+  for (const term of ["text", "watermark", "duplicate limbs", "logos", "overlays"]) {
     assert.equal(
       compiled.negativePrompt
         .toLocaleLowerCase("en-US")
@@ -599,13 +585,57 @@ test("compacts built-in style while retaining scene, framing, style, and permane
     compiled.positivePrompt,
     /subject: a farmer, action: opens a weathered irrigation valve/u,
   );
-  assert.match(compiled.positivePrompt, /same subject\/setting\/state, viewpoint: environmental wide/u);
+  assert.match(
+    compiled.positivePrompt,
+    /same subject\/setting\/state, viewpoint: environmental wide/u,
+  );
   assert.match(compiled.positivePrompt, /motion graphics\/decorative transitions/u);
   assert.match(compiled.negativePrompt, /text, pseudo-text/u);
   assert.match(compiled.negativePrompt, /malformed anatomy/u);
   assert.ok(compiled.positivePrompt.length < 1_000);
   assert.ok(compiled.negativePrompt.length < 400);
   verifyCompiledImagePrompt(compiled);
+});
+
+test("preserves custom additions to the built-in style and verifies saved legacy negative bytes", () => {
+  const input = batch(1);
+  const writerOutput = {
+    scene_id: input.scenes[0].sceneId,
+    literal_subject: "a farmer",
+    action: "opens a weathered irrigation valve",
+    environment: "a dry field",
+    in_image_shot_role: input.scenes[0].inImageShotRole,
+    lighting_context: "soft morning light",
+    continuity_tags: [],
+    prompt_core: "legacy provider prose is ignored by the compiler",
+  };
+  const custom = compileImagePrompt({
+    writerOutput,
+    expectedScene: input.scenes[0],
+    style: {
+      ...builtInStyle,
+      positiveSuffix: `${builtInStyle.positiveSuffix}, documentary grain`,
+      negativeSuffix: `${builtInStyle.negativeSuffix}, no neon colors`,
+    },
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  assert.match(custom.components.stylePositiveSuffix, /documentary grain/u);
+  assert.match(custom.components.styleNegativeSuffix, /no neon colors/u);
+  assert.match(custom.components.stylePositiveSuffix, /genuine frame from real stock/u);
+  verifyCompiledImagePrompt(custom);
+
+  const legacyNegative = [
+    custom.components.styleNegativeSuffix,
+    custom.components.permanentNegativeGuardrail,
+  ].join(", ");
+  const legacy = {
+    ...custom,
+    negativePrompt: legacyNegative,
+    negativePromptUtf8Bytes: Buffer.byteLength(legacyNegative, "utf8"),
+    negativePromptSha256: `sha256:${createHash("sha256").update(legacyNegative).digest("hex")}`,
+  };
+  verifyCompiledImagePrompt(legacy);
 });
 
 test("compiler no longer requires prompt_core to overlap structured scene facts", () => {

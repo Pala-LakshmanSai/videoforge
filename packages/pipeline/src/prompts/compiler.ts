@@ -7,7 +7,7 @@ import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type { CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents } from "./types.js";
 
 export const PERMANENT_POSITIVE_GUARDRAIL =
-  "Original still photo of described scene; framing only, no camera gear. Show names, dates, quantities physically. No visible or pseudo-text or markings; products/containers plain and unmarked. No captions/titles, logos/watermarks, UI/charts, infographics/borders/lower-thirds, overlays, motion graphics/decorative transitions.";
+  "Original still photo of described scene; framing only, no camera gear. Show names, dates, quantities physically. No text or pseudo-text, numbers, labels, signs, branding or markings; products/containers plain and unmarked. No captions/titles, logos/watermarks, UI/charts, infographics/borders/lower-thirds, overlays, motion graphics/decorative transitions.";
 export const PERMANENT_NEGATIVE_GUARDRAIL =
   "text, pseudo-text, captions, logos, watermarks, overlays, motion graphics, malformed anatomy, duplicate limbs, unrelated subjects";
 
@@ -309,25 +309,17 @@ const COMPACT_DOCUMENTARY_STYLE_POSITIVE =
   "authentic documentary photo, candid and unposed, on location, practical light, true-to-life color, soft contrast, realistic skin/material textures, natural imperfections, consumer framing, photojournalistic, everyday life, photorealistic, no glossy or AI look";
 const COMPACT_DOCUMENTARY_STYLE_NEGATIVE =
   "illustration/CGI, fantasy/surrealism, plastic/waxy skin, HDR, glamour/studio lighting, staged pose, bad anatomy, duplicate subjects, unrealistic perfection";
+const BUILT_IN_DOCUMENTARY_STYLE_POSITIVE =
+  "authentic observational documentary photography, candid and unposed, filmed on location, available practical light, true-to-life colors, soft contrast, realistic skin and material textures, naturally imperfect clothing, tools and environment, ordinary consumer-camera framing, photojournalistic, genuine frame from real stock or documentary footage, believable everyday life, no glossy commercial polish, absolutely photorealistic, no AI look";
+const BUILT_IN_DOCUMENTARY_STYLE_NEGATIVE =
+  "illustration, cartoon, anime, CGI, 3D render, digital painting, fantasy, surrealism, plastic skin, waxy face, perfect symmetry, excessive HDR, glamour lighting, studio advertising, staged pose, impossible anatomy, duplicate people, duplicate limbs, malformed hands, unrealistic perfection";
 
 const compactBuiltInStylePositive = (value: string): string => {
-  const normalized = value.toLocaleLowerCase("en-US");
-  return normalized.includes("authentic observational documentary photography") &&
-    normalized.includes("genuine frame from real stock or documentary footage") &&
-    normalized.includes("absolutely photorealistic")
-    ? COMPACT_DOCUMENTARY_STYLE_POSITIVE
-    : value;
+  return value === BUILT_IN_DOCUMENTARY_STYLE_POSITIVE ? COMPACT_DOCUMENTARY_STYLE_POSITIVE : value;
 };
 
 const compactBuiltInStyleNegative = (value: string): string => {
-  const normalized = value.toLocaleLowerCase("en-US");
-  return normalized.includes("cartoon") &&
-    normalized.includes("anime") &&
-    normalized.includes("3d render") &&
-    normalized.includes("digital painting") &&
-    normalized.includes("unrealistic perfection")
-    ? COMPACT_DOCUMENTARY_STYLE_NEGATIVE
-    : value;
+  return value === BUILT_IN_DOCUMENTARY_STYLE_NEGATIVE ? COMPACT_DOCUMENTARY_STYLE_NEGATIVE : value;
 };
 
 const compactCropGuidance = (value: string): string => {
@@ -375,10 +367,11 @@ const compactNegativePrompt = (parts: readonly (string | null)[]): string => {
     .filter(Boolean)
     .filter((term) => {
       const normalized = term.toLocaleLowerCase("en-US").replace(/\s+/gu, " ");
-      const key = normalized.replace(
-        /\b(border|borders|caption|captions|graphic|graphics|label|labels|logo|logos|number|numbers|watermark|watermarks)\b/gu,
-        (value) => NEGATIVE_TERM_ALIASES[value] ?? value,
-      )
+      const key = normalized
+        .replace(
+          /\b(border|borders|caption|captions|graphic|graphics|label|labels|logo|logos|number|numbers|watermark|watermarks)\b/gu,
+          (value) => NEGATIVE_TERM_ALIASES[value] ?? value,
+        )
         .replace(/\b(?:impossible|malformed)\s+anatomy\b/gu, "anatomy")
         .replace(/\bduplicate\s+(?:people|subjects|limbs)\b/gu, "duplicate");
       if (seen.has(key)) return false;
@@ -491,17 +484,23 @@ export function verifyCompiledImagePrompt(prompt: CompiledImagePrompt): void {
     prompt.components.extraPromptKeywords,
     prompt.components.permanentPositiveGuardrail,
   ]);
-  const negative = compactNegativePrompt([
+  const negativeParts = [
     prompt.components.styleNegativeSuffix,
     prompt.components.permanentNegativeGuardrail,
-  ]);
+  ];
+  const negative = compactNegativePrompt(negativeParts);
+  const legacyNegative = join(negativeParts);
+  const negativeMatches = [negative, legacyNegative].some(
+    (candidate) =>
+      candidate === prompt.negativePrompt &&
+      Buffer.byteLength(candidate, "utf8") === prompt.negativePromptUtf8Bytes &&
+      hash(candidate) === prompt.negativePromptSha256,
+  );
   if (
     positive !== prompt.positivePrompt ||
-    negative !== prompt.negativePrompt ||
+    !negativeMatches ||
     Buffer.byteLength(positive, "utf8") !== prompt.positivePromptUtf8Bytes ||
-    Buffer.byteLength(negative, "utf8") !== prompt.negativePromptUtf8Bytes ||
-    hash(positive) !== prompt.positivePromptSha256 ||
-    hash(negative) !== prompt.negativePromptSha256
+    hash(positive) !== prompt.positivePromptSha256
   )
     fail("PROMPT_HASH_MISMATCH", "Compiled prompt bytes, components, or hashes do not match.", []);
 }
