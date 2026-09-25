@@ -1,6 +1,21 @@
 -- An archived provider task answered, but its output failed strict prompt validation.
 -- Resolve only the exact claimed task; preserve accepted batches and the immutable claim.
 -- This is a terminal cost settlement, never authority for another provider POST.
+-- 0071's failure path still had the original 40,000 micro-USD single-batch ceiling,
+-- although 0182/0183 raised the real batch acceptance bound. Keep its settlement logic.
+DO $$
+DECLARE
+  definition text:=pg_get_functiondef('public.videoforge_fail_hosted_prompt_run(uuid,text,text,boolean,bigint)'::regprocedure);
+  old_guard text:='supplied_additional_known_cost_micro_usd NOT BETWEEN 0 AND 40000';
+BEGIN
+  IF position(old_guard IN definition)=0 THEN
+    RAISE EXCEPTION 'hosted prompt failure cost guard has drifted' USING ERRCODE='23514';
+  END IF;
+  EXECUTE replace(definition,old_guard,
+    'supplied_additional_known_cost_micro_usd NOT BETWEEN 0 AND 250000');
+END;
+$$;
+
 CREATE FUNCTION public.videoforge_adjudicate_invalid_hosted_prompt_batch(
   supplied_run_id uuid,
   supplied_provider_task_uuid text,
@@ -25,7 +40,7 @@ BEGIN
   IF run.id IS NULL OR public.videoforge_current_account_id() IS DISTINCT FROM run.account_id
      OR supplied_response_hash IS NULL OR supplied_response_hash !~ '^sha256:[0-9a-f]{64}$'
      OR supplied_known_cost_micro_usd IS NULL
-     OR supplied_known_cost_micro_usd NOT BETWEEN 0 AND 40000 THEN
+     OR supplied_known_cost_micro_usd NOT BETWEEN 0 AND 250000 THEN
     RAISE EXCEPTION 'hosted prompt invalid output identity is invalid' USING ERRCODE='23514';
   END IF;
   SELECT count(*)::integer,coalesce(sum(progress.reported_cost_micro_usd),0)::bigint
