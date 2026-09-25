@@ -165,6 +165,7 @@
             },
             "horizontal_alpha_feather_pixels_each_edge": {"const": 32},
             "avatar_scale": {"const": "1920:1080"},
+            "avatar_trim_start_ms": {"type": "number", "minimum": 0},
             "avatar_fps": {"const": "30:round=near"}
           },
           "allOf": [
@@ -325,6 +326,7 @@
             "crop_profile_acceptance_sha256": {"const": "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45"},
             "context_transform": {"const": "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30"},
             "avatar_scale": {"const": "960:1080"},
+            "avatar_trim_start_ms": {"type": "number", "minimum": 0},
             "avatar_fps": {"const": "30:round=near"},
             "right_image_scale": {"const": "960:1080"},
             "right_image_zoom_profile": {

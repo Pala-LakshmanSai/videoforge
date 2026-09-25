@@ -148,3 +148,23 @@ def test_rejects_soulx_approval_media_or_geometry_drift(
 
     with pytest.raises(ValueError, match="SoulX"):
         compile_graph(candidate)
+
+
+@pytest.mark.parametrize("trim_ms", [0, 500, 493.333333333])
+def test_fal_trim_precedes_fps_for_full_and_split(trim_ms: float) -> None:
+    value = manifest()
+    value.pop("soulx_crop_profile_approval")
+    for segment in value["segments"]:
+        render = segment["render"]
+        render["avatar_source_profile"] = "fal-flashhead-512x512p25-wide-v2"
+        render["avatar_crop"] = (
+            "1920:1080:0:0"
+            if segment["timeline_composition"] == "AVATAR_FULL"
+            else "960:1080:480:0"
+        )
+        render["avatar_trim_start_ms"] = trim_ms
+    graph = compile_graph(value)
+    prefix = f"trim=start={trim_ms / 1000:.9f},setpts=PTS-STARTPTS," if trim_ms else ""
+    assert f"{prefix}crop=1920:1080:0:0,scale=1920:1080,setsar=1,fps=30:round=near" in graph
+    assert f"{prefix}crop=960:1080:480:0,scale=960:1080,setsar=1,fps=30:round=near" in graph
+    assert "atrim=end=20.000000,asetpts=PTS-STARTPTS" in graph

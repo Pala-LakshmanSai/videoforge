@@ -64,11 +64,13 @@ import {
   hostedVoiceoverFilename,
   hostedProjectPollInterval,
   hostedPreflightEstimateText,
+  hostedSignedUrlExpiresAtMs,
   isFailClosedGpuReadiness,
   normalizeHostedReturnTo,
   parseWavDurationMs,
   preflightBlockers,
   readJson,
+  stableHostedMediaUrl,
   transcriptionFailureMessage,
 } from "./HostedProductScreens";
 
@@ -248,6 +250,150 @@ describe("hosted project polling", () => {
       ),
     ).toBe(2_000);
   });
+});
+
+it("reuses signed media URLs until their refresh window and refreshes expired URLs", () => {
+  const issuedAt = Date.parse("2026-09-25T10:00:00.000Z");
+  const firstUrl =
+    "https://artifacts.example/clip.mp4?X-Amz-Date=20260925T100000Z&X-Amz-Expires=300&X-Amz-Signature=first";
+  const refreshedUrl =
+    "https://artifacts.example/clip.mp4?X-Amz-Date=20260925T100004Z&X-Amz-Expires=300&X-Amz-Signature=second";
+  const replacementUrl =
+    "https://artifacts.example/replacement.mp4?X-Amz-Date=20260925T100004Z&X-Amz-Expires=300&X-Amz-Signature=replacement";
+  const cache = new Map();
+  const item = { id: "clip-1", video_url: firstUrl };
+
+  expect(hostedSignedUrlExpiresAtMs(firstUrl)).toBe(issuedAt + 300_000);
+  expect(stableHostedMediaUrl(cache, "project:revision", "avatar", item, issuedAt)).toBe(
+    firstUrl,
+  );
+  expect(
+    stableHostedMediaUrl(
+      cache,
+      "project:revision",
+      "avatar",
+      { ...item, video_url: refreshedUrl },
+      issuedAt + 60_000,
+    ),
+  ).toBe(firstUrl);
+  expect(
+    stableHostedMediaUrl(
+      cache,
+      "project:revision",
+      "avatar",
+      { ...item, video_url: refreshedUrl },
+      issuedAt + 271_000,
+    ),
+  ).toBe(refreshedUrl);
+  expect(
+    stableHostedMediaUrl(
+      cache,
+      "project:revision",
+      "avatar",
+      { ...item, video_url: replacementUrl },
+      issuedAt + 272_000,
+    ),
+  ).toBe(replacementUrl);
+});
+
+it("keeps an open avatar viewer URL stable across project polling", async () => {
+  vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-25T10:00:00.000Z"));
+  const projectId = "33333333-3333-4333-8333-333333333333";
+  const firstUrl =
+    "https://artifacts.example/avatar.mp4?X-Amz-Date=20260925T100000Z&X-Amz-Expires=300&X-Amz-Signature=first";
+  const refreshedUrl =
+    "https://artifacts.example/avatar.mp4?X-Amz-Date=20260925T100001Z&X-Amz-Expires=300&X-Amz-Signature=second";
+  let reads = 0;
+  const detail = () => ({
+    project: {
+      id: projectId,
+      title: "Avatar preview",
+      created_at: "2026-09-25T05:00:00.000Z",
+      revision_id: "44444444-4444-4444-8444-444444444444",
+      revision_state: "LOCKED",
+    },
+    attempts: [],
+    generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED" as const,
+    gpu_readiness: gpuReadiness,
+    stages: [
+      { id: "avatar-generation", name: "Generate avatar video", status: "COMPLETE" },
+      { id: "render", name: "Assemble final video", status: "RUNNING" },
+    ],
+    avatar_footage: [
+      { id: "avatar-1", video_url: reads === 1 ? firstUrl : refreshedUrl, label: "Avatar clip 1" },
+    ],
+  });
+  const fetchMock = vi.fn(async () => {
+    reads += 1;
+    return Response.json(detail());
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <HostedProjectScreen projectId={projectId} />
+    </QueryClientProvider>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "View avatar videos/footage" }));
+  const video = screen.getByLabelText("Avatar clip 1");
+  expect(video).toHaveAttribute("src", firstUrl);
+
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: ["hosted-project", projectId] });
+  });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(video).toHaveAttribute("src", firstUrl);
+});
+
+it("does not render the previous project while a new project detail is loading", async () => {
+  const firstProjectId = "11111111-1111-4111-8111-111111111111";
+  const secondProjectId = "22222222-2222-4222-8222-222222222222";
+  const makeDetail = (projectId: string, title: string) => ({
+    project: {
+      id: projectId,
+      title,
+      created_at: "2026-09-25T05:00:00.000Z",
+      revision_id: `${projectId.slice(0, 8)}-revision`,
+      revision_state: "LOCKED",
+    },
+    attempts: [],
+    generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED" as const,
+    gpu_readiness: gpuReadiness,
+    stages: stageList({ prepare: "COMPLETE" }),
+  });
+  let releaseSecondProject = () => {};
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith(`/projects/${firstProjectId}`)) {
+        return Promise.resolve(Response.json(makeDetail(firstProjectId, "First project")));
+      }
+      return new Promise<Response>((resolve) => {
+        releaseSecondProject = () =>
+          resolve(Response.json(makeDetail(secondProjectId, "Second project")));
+      });
+    }),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = render(
+    <QueryClientProvider client={client}>
+      <HostedProjectScreen projectId={firstProjectId} />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByText("First project")).toBeInTheDocument();
+
+  view.rerender(
+    <QueryClientProvider client={client}>
+      <HostedProjectScreen projectId={secondProjectId} />
+    </QueryClientProvider>,
+  );
+  expect(screen.queryByText("First project")).not.toBeInTheDocument();
+  expect(screen.getByText("Connecting to your project and personal media worker…")).toBeVisible();
+  releaseSecondProject();
+  expect(await screen.findByText("Second project")).toBeInTheDocument();
 });
 
 function renderHosted(node: ReactNode) {

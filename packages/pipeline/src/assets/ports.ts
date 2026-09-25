@@ -12,6 +12,8 @@ export interface AcceptedAssetBinding {
   readonly sha256: Sha256Digest;
   readonly kind: AcceptedAssetKind;
   readonly rendererSourceProfile?: string;
+  readonly avatarTrimStartMs?: number;
+  readonly avatarSelectedStartMs?: number;
 }
 
 export type ProviderAcceptanceSchema =

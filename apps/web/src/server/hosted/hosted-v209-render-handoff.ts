@@ -404,6 +404,15 @@ export function createHostedV209RenderHandoff(input: {
             kind: value.kind as "IMAGE" | "AVATAR_CLIP",
             ...(value.kind === "AVATAR_CLIP"
               ? {
+                  ...(record(rawAcceptedVisuals[index]).rendererSourceProfile ===
+                  "fal-flashhead-512x512p25-v1"
+                    ? {
+                        avatarTrimStartMs: record(rawAcceptedVisuals[index])
+                          .avatarTrimStartMs as number,
+                        avatarSelectedStartMs: record(rawAcceptedVisuals[index])
+                          .avatarSelectedStartMs as number,
+                      }
+                    : {}),
                   rendererSourceProfile:
                     record(rawAcceptedVisuals[index]).rendererSourceProfile ===
                     "fal-flashhead-512x512p25-v1"

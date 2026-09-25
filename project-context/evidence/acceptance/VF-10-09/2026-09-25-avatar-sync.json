@@ -1,0 +1,153 @@
+{
+  "checkpoint": "V2-09",
+  "cause": "Fal receives padded selected-span audio; render omitted persisted leading trim. Later clips retained roughly 500ms pre-roll.",
+  "fix": "Trim native video at persisted trimStartMs + timeline start_frame * 1000/30 - selectedStartMs, before PTS reset and FPS conversion. Require valid metadata and sufficient clip coverage.",
+  "repetition_findings": "Both recent projects pin identical uploaded MP3 bytes. Sampled output narration matches original; corrected decoded narration is byte-identical to preceding outputs. No repeated audio inserted by assembly was reproduced.",
+  "paid_generation_calls": 0,
+  "gpu_activation": false,
+  "renders": [
+    {
+      "project_name": "simon",
+      "status": "SUCCEEDED",
+      "wall_seconds": 115.01421212500009,
+      "output": {
+        "asset_id": "asset_render_e09bc3b801cee7687b18d4aa",
+        "sha256": "sha256:e09bc3b801cee7687b18d4aa9a8de598fcec1850fa3bab6a7ecdd5eb510a67d0",
+        "bytes": 20645523,
+        "artifact_uri": "vf-local://objects/sha256/e0/e09bc3b801cee7687b18d4aa9a8de598fcec1850fa3bab6a7ecdd5eb510a67d0.mp4",
+        "filename": "videoforge-output.mp4"
+      },
+      "probe": {
+        "schema_version": "technical-probe/v1",
+        "asset_id": "asset_render_e09bc3b801cee7687b18d4aa",
+        "sha256": "sha256:e09bc3b801cee7687b18d4aa9a8de598fcec1850fa3bab6a7ecdd5eb510a67d0",
+        "bytes": 20645523,
+        "container": "mp4",
+        "duration_ms": 159200,
+        "total_frames": 4776,
+        "video": {
+          "codec": "h264",
+          "pixel_format": "yuv420p",
+          "width": 1920,
+          "height": 1080,
+          "fps_num": 30,
+          "fps_den": 1,
+          "start_ms": 0
+        },
+        "audio": {
+          "codec": "aac",
+          "sample_rate_hz": 48000,
+          "channels": 2,
+          "start_ms": 0
+        },
+        "stream_counts": {
+          "video": 1,
+          "audio": 1,
+          "subtitle": 0,
+          "data": 0
+        },
+        "av_drift_ms": 0,
+        "decode_ok": true,
+        "loudness": {
+          "profile": "voiceover-minus16lufs-v1",
+          "normalized": true,
+          "input_integrated_lufs": -21.61,
+          "input_true_peak_dbtp": -4.71,
+          "output_integrated_lufs": -16.1,
+          "output_true_peak_dbtp": -2.25
+        },
+        "tools": {
+          "ffmpeg_version": "8.1.2",
+          "ffprobe_version": "8.1.2",
+          "filtergraph_sha256": "sha256:106a68e56976a3393038c9c8ddb86a098bd33f569066930cf768a5173f2b5aa4"
+        }
+      },
+      "narration": {
+        "corrected_pcm_sha256": "e3f71d25ea00f6ae3962e537d7c60f0826f56cb65a741efa8c24acb0fdf5a5fd",
+        "previous_pcm_sha256": "e3f71d25ea00f6ae3962e537d7c60f0826f56cb65a741efa8c24acb0fdf5a5fd",
+        "pcm_exact_equal": true,
+        "pcm_bytes": 2547372
+      }
+    },
+    {
+      "project_name": "helenn",
+      "status": "SUCCEEDED",
+      "wall_seconds": 110.36068016700028,
+      "output": {
+        "asset_id": "asset_render_df9d979c22ae11db53a6e28f",
+        "sha256": "sha256:df9d979c22ae11db53a6e28f70857d7fba8b6f40ee025ff77ff922c751d7eaf3",
+        "bytes": 21347280,
+        "artifact_uri": "vf-local://objects/sha256/df/df9d979c22ae11db53a6e28f70857d7fba8b6f40ee025ff77ff922c751d7eaf3.mp4",
+        "filename": "videoforge-output.mp4"
+      },
+      "probe": {
+        "schema_version": "technical-probe/v1",
+        "asset_id": "asset_render_df9d979c22ae11db53a6e28f",
+        "sha256": "sha256:df9d979c22ae11db53a6e28f70857d7fba8b6f40ee025ff77ff922c751d7eaf3",
+        "bytes": 21347280,
+        "container": "mp4",
+        "duration_ms": 159200,
+        "total_frames": 4776,
+        "video": {
+          "codec": "h264",
+          "pixel_format": "yuv420p",
+          "width": 1920,
+          "height": 1080,
+          "fps_num": 30,
+          "fps_den": 1,
+          "start_ms": 0
+        },
+        "audio": {
+          "codec": "aac",
+          "sample_rate_hz": 48000,
+          "channels": 2,
+          "start_ms": 0
+        },
+        "stream_counts": {
+          "video": 1,
+          "audio": 1,
+          "subtitle": 0,
+          "data": 0
+        },
+        "av_drift_ms": 0,
+        "decode_ok": true,
+        "loudness": {
+          "profile": "voiceover-minus16lufs-v1",
+          "normalized": true,
+          "input_integrated_lufs": -21.61,
+          "input_true_peak_dbtp": -4.71,
+          "output_integrated_lufs": -16.1,
+          "output_true_peak_dbtp": -2.25
+        },
+        "tools": {
+          "ffmpeg_version": "8.1.2",
+          "ffprobe_version": "8.1.2",
+          "filtergraph_sha256": "sha256:eff4e6041e45814bbc9777c4ddb4c2f168fcd9aba7c9051eb603d5dc6dd83696"
+        }
+      },
+      "narration": {
+        "corrected_pcm_sha256": "e3f71d25ea00f6ae3962e537d7c60f0826f56cb65a741efa8c24acb0fdf5a5fd",
+        "previous_pcm_sha256": "e3f71d25ea00f6ae3962e537d7c60f0826f56cb65a741efa8c24acb0fdf5a5fd",
+        "pcm_exact_equal": true,
+        "pcm_bytes": 2547372
+      }
+    }
+  ],
+  "historical_hosted_artifacts": "Unchanged immutable identities; corrected MP4 copies delivered locally.",
+  "browser_playback": {
+    "browser": "real Chrome",
+    "simon": {
+      "duration_seconds": 159.2,
+      "observed_advancing_time_seconds": 13.793262,
+      "ready_state": 4,
+      "media_error": null
+    },
+    "helenn": {
+      "duration_seconds": 159.2,
+      "observed_advancing_time_seconds": 25.767827,
+      "ready_state": 4,
+      "media_error": null
+    },
+    "scope": "Corrected retained-media local copies. Technical timing proof does not assert perfect provider-generated mouth shapes."
+  }
+}

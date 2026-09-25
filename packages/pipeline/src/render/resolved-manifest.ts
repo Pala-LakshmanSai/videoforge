@@ -252,6 +252,12 @@ function immutableBinding(binding: AcceptedAssetBinding): AcceptedAssetBinding {
     assetId: binding.assetId,
     sha256: binding.sha256,
     kind: binding.kind,
+    ...(binding.avatarTrimStartMs === undefined
+      ? {}
+      : { avatarTrimStartMs: binding.avatarTrimStartMs }),
+    ...(binding.avatarSelectedStartMs === undefined
+      ? {}
+      : { avatarSelectedStartMs: binding.avatarSelectedStartMs }),
     ...(binding.rendererSourceProfile === undefined
       ? {}
       : { rendererSourceProfile: binding.rendererSourceProfile }),
@@ -581,6 +587,29 @@ function resolvedSegment(
       ["acceptedAssets", "byTaskKey", avatarTaskKey, "rendererSourceProfile"],
     );
   }
+  const isFal =
+    avatar.rendererSourceProfile === FAL_FLASHHEAD_AVATAR_SOURCE_PROFILE ||
+    avatar.rendererSourceProfile === FAL_FLASHHEAD_WIDE_AVATAR_SOURCE_PROFILE;
+  const trimStartMs =
+    (avatar.avatarTrimStartMs ?? NaN) +
+    (segment.start_frame * 1000) / 30 -
+    (avatar.avatarSelectedStartMs ?? NaN);
+  if (
+    isFal &&
+    (!Number.isSafeInteger(avatar.avatarTrimStartMs) ||
+      !Number.isSafeInteger(avatar.avatarSelectedStartMs) ||
+      avatar.avatarTrimStartMs! < 0 ||
+      avatar.avatarSelectedStartMs! < 0 ||
+      !Number.isFinite(trimStartMs) ||
+      trimStartMs < 0)
+  ) {
+    return fail("RENDER_PROFILE_MISMATCH", "Fal avatar timing metadata is missing or invalid.", [
+      "acceptedAssets",
+      "byTaskKey",
+      avatarTaskKey,
+    ]);
+  }
+  const timing = isFal ? { avatar_trim_start_ms: trimStartMs } : {};
   if (segment.timeline_composition === "AVATAR_FULL") {
     const geometry = AVATAR_GEOMETRY[avatar.rendererSourceProfile].AVATAR_FULL;
     const isApprovedSoulx = avatar.rendererSourceProfile === SOULX_APPROVED_AVATAR_SOURCE_PROFILE;
@@ -610,7 +639,7 @@ function resolvedSegment(
             }
           : {}),
       },
-      render: geometry,
+      render: { ...geometry, ...timing },
     };
   }
 
@@ -646,6 +675,7 @@ function resolvedSegment(
     },
     render: {
       ...geometry,
+      ...timing,
       right_image_scale: "960:1080",
       right_image_zoom_profile: "split-right-zoom-v3",
     },

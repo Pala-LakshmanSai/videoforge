@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -332,6 +334,12 @@ def compile_render_command(
         accepted = cast(dict[str, dict[str, str]], segment["accepted_assets"])
         render = cast(dict[str, str], segment["render"])
 
+        # Remove provider audio pre-roll before resetting timestamps or converting FPS.
+        trim_ms = segment["render"].get("avatar_trim_start_ms", 0)
+        if not isinstance(trim_ms, (int, float)) or not math.isfinite(trim_ms) or trim_ms < 0:
+            raise ValueError("invalid avatar trim offset")
+        avatar_timing = f"trim=start={trim_ms / 1000:.9f},setpts=PTS-STARTPTS," if trim_ms else ""
+
         if composition == "AVATAR_FULL":
             if render["avatar_source_profile"] == SOULX_SOURCE_PROFILE:
                 background_index = add_input(accepted["source_background"]["asset_id"], still=True)
@@ -363,7 +371,7 @@ def compile_render_command(
             else:
                 avatar_index = add_input(accepted["avatar"]["asset_id"], still=False)
                 graph.append(
-                    f"[{avatar_index}:v:0]crop={render['avatar_crop']},"
+                    f"[{avatar_index}:v:0]{avatar_timing}crop={render['avatar_crop']},"
                     f"scale=1920:1080,setsar=1,fps=30:round=near,"
                     f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{label}]"
                 )
@@ -397,7 +405,7 @@ def compile_render_command(
                 )
             else:
                 graph.append(
-                    f"[{avatar_index}:v:0]crop={render['avatar_crop']},"
+                    f"[{avatar_index}:v:0]{avatar_timing}crop={render['avatar_crop']},"
                     "scale=960:1080,setsar=1,fps=30:round=near,"
                     f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{avatar_label}]"
                 )

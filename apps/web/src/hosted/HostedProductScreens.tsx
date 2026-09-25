@@ -785,6 +785,7 @@ interface HostedContactSheetItem {
   readonly prompt?: string | null;
   readonly id?: string;
   readonly asset_id?: string | null;
+  readonly checksum_sha256?: string | null;
   readonly image_url: string;
   readonly label?: string | null;
   readonly start_ms?: number | null;
@@ -911,6 +912,7 @@ function clearHostedImageRegenerationRequest(
 
 interface HostedAvatarFootageItem {
   readonly id: string;
+  readonly checksum_sha256?: string | null;
   readonly video_url: string;
   readonly label?: string | null;
 }
@@ -1013,6 +1015,87 @@ interface ProjectDetailResponse {
 
 type HostedMediaSection = "images" | "avatar";
 const HOSTED_MEDIA_PAGE_SIZE = 96;
+const HOSTED_MEDIA_URL_REFRESH_SKEW_MS = 30_000;
+
+export interface HostedMediaUrlCacheEntry {
+  readonly identity: string;
+  readonly url: string;
+  readonly expiresAtMs: number | null;
+}
+
+export type HostedMediaUrlCache = Map<string, HostedMediaUrlCacheEntry>;
+
+type HostedMediaUrlSource = {
+  readonly id?: string;
+  readonly asset_id?: string | null;
+  readonly checksum_sha256?: string | null;
+  readonly image_url?: string;
+  readonly video_url?: string;
+};
+
+function hostedMediaObjectPath(url: string): string {
+  try {
+    return new URL(url, "https://videoforge.invalid").pathname;
+  } catch {
+    return url.split("?", 1)[0] ?? url;
+  }
+}
+
+export function hostedSignedUrlExpiresAtMs(url: string): number | null {
+  try {
+    const parsed = new URL(url, "https://videoforge.invalid");
+    const rawDate = parsed.searchParams.get("X-Amz-Date");
+    const lifetimeSeconds = Number(parsed.searchParams.get("X-Amz-Expires"));
+    const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/u.exec(rawDate ?? "");
+    if (!match || !Number.isSafeInteger(lifetimeSeconds) || lifetimeSeconds <= 0) return null;
+    const startedAtMs = Date.UTC(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3]),
+      Number(match[4]),
+      Number(match[5]),
+      Number(match[6]),
+    );
+    return Number.isFinite(startedAtMs) ? startedAtMs + lifetimeSeconds * 1_000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function hostedMediaUrlIdentity(item: HostedMediaUrlSource, sourceUrl: string): string {
+  return [
+    item.id ?? item.asset_id ?? "unknown-media-item",
+    item.checksum_sha256 ?? "",
+    hostedMediaObjectPath(sourceUrl),
+  ].join(":");
+}
+
+export function stableHostedMediaUrl(
+  cache: HostedMediaUrlCache,
+  context: string,
+  section: string,
+  item: HostedMediaUrlSource,
+  nowMs = Date.now(),
+): string {
+  const sourceUrl = item.image_url ?? item.video_url ?? "";
+  if (!sourceUrl) return sourceUrl;
+  const identity = hostedMediaUrlIdentity(item, sourceUrl);
+  const key = `${context}:${section}:${identity}`;
+  const existing = cache.get(key);
+  if (
+    existing &&
+    (existing.expiresAtMs === null ||
+      existing.expiresAtMs - nowMs > HOSTED_MEDIA_URL_REFRESH_SKEW_MS)
+  ) {
+    return existing.url;
+  }
+  cache.set(key, {
+    identity,
+    url: sourceUrl,
+    expiresAtMs: hostedSignedUrlExpiresAtMs(sourceUrl),
+  });
+  return sourceUrl;
+}
 
 function hostedMediaItemKey(item: {
   readonly id?: string;
@@ -4196,7 +4279,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     refetchInterval: (currentQuery) =>
       hostedProjectPollInterval(currentQuery.state.data as ProjectDetailResponse | undefined),
     refetchIntervalInBackground: true,
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData) =>
+      previousData?.project.id === projectId ? previousData : undefined,
     retry: false,
   });
   const [additionalMedia, setAdditionalMedia] = useState<{
@@ -4211,11 +4295,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const [mediaLoadError, setMediaLoadError] = useState<string | null>(null);
   const mediaContext = `${projectId}:${query.data?.project.revision_id ?? ""}`;
   const mediaContextRef = useRef(mediaContext);
+  const mediaUrlCacheRef = useRef<HostedMediaUrlCache>(new Map());
   const resetMediaContext = useRef<string | null>(null);
   if (mediaContextRef.current !== mediaContext) mediaContextRef.current = mediaContext;
   useEffect(() => {
     if (mediaContext === resetMediaContext.current) return;
     resetMediaContext.current = mediaContext;
+    mediaUrlCacheRef.current.clear();
     setAdditionalMedia({ images: [], avatar: [] });
     setMediaPage({ images: 1, avatar: 1 });
     setMediaLoadingSection(null);
@@ -4892,13 +4978,20 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             : hasRunning
               ? "info"
               : "warning";
-  const latestArtifact =
-    render?.preview_url ??
-    query.data.review?.contact_sheet?.at(-1)?.image_url ??
-    query.data.contact_sheet?.at(-1)?.image_url ??
-    null;
+  const stableRenderPreviewUrl = render?.preview_url
+    ? stableHostedMediaUrl(mediaUrlCacheRef.current, mediaContext, "render", {
+        id: render.id,
+        video_url: render.preview_url,
+      })
+    : null;
   const firstContactSheet = query.data.review?.contact_sheet ?? query.data.contact_sheet ?? [];
   const firstAvatarFootage = query.data.review?.avatar_footage ?? query.data.avatar_footage ?? [];
+  const latestContactSheetItem = firstContactSheet.at(-1);
+  const latestArtifact =
+    stableRenderPreviewUrl ??
+    (latestContactSheetItem
+      ? stableHostedMediaUrl(mediaUrlCacheRef.current, mediaContext, "images", latestContactSheetItem)
+      : null);
   const contactSheet = mergeHostedMedia(firstContactSheet, additionalMedia.images);
   const avatarFootage = mergeHostedMedia(firstAvatarFootage, additionalMedia.avatar);
   const mediaPagination = query.data.media_pagination ?? query.data.review?.media_pagination;
@@ -4928,7 +5021,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       : null;
     return {
       id,
-      url: item.image_url,
+      url: stableHostedMediaUrl(mediaUrlCacheRef.current, mediaContext, "images", item),
       label: `Generated image ${index + 1}`,
       prompt: pending?.prompt ?? item.prompt ?? null,
       detail:
@@ -4944,7 +5037,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   });
   const avatarVideos: ProjectMediaReviewItem[] = avatarFootage.map((item, index) => ({
     id: item.id,
-    url: item.video_url,
+    url: stableHostedMediaUrl(mediaUrlCacheRef.current, mediaContext, "avatar", item),
     label: item.label ?? `Avatar clip ${index + 1}`,
     detail: "Accepted Stage 7 avatar footage",
   }));
@@ -5553,12 +5646,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           />
           <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
             <div className="latest-artifact-frame">
-              {render?.preview_url ? (
+              {stableRenderPreviewUrl ? (
                 <video
                   className="media-artifact-video"
                   controls
                   preload="metadata"
-                  src={render.preview_url}
+                  src={stableRenderPreviewUrl}
                 />
               ) : latestArtifact ? (
                 <img src={latestArtifact} alt="Latest accepted project artifact" />

@@ -972,6 +972,12 @@
       "name": "hosted_api_render_input_recovery",
       "filename": "0199_hosted_api_render_input_recovery.sql",
       "sha256": "sha256:56137391661aaaf12e471906b66e77ea3b3503c183c983ddb5a7a26173bf3e54"
+    },
+    {
+      "version": 200,
+      "name": "hosted_api_avatar_render_timing",
+      "filename": "0200_hosted_api_avatar_render_timing.sql",
+      "sha256": "sha256:8376cc7358e76256bc3d5de4bf75abb5c7d14435e55b86bf9dd1a3afd1eb556f"
     }
   ]
 }

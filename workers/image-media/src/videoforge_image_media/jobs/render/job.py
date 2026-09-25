@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -687,6 +688,24 @@ class RenderJob:
                             "fal-flashhead-512x512p25-wide-v2",
                         )
                     )
+                    if fal_flashhead:
+                        for segment in manifest["segments"]:
+                            if (
+                                segment.get("accepted_assets", {}).get("avatar", {}).get("sha256")
+                                != binding.sha256
+                            ):
+                                continue
+                            trim_ms = segment["render"].get("avatar_trim_start_ms")
+                            if trim_ms is not None:
+                                duration = float(video.get("duration", "nan"))
+                                required = (
+                                    trim_ms / 1000
+                                    + (segment["end_frame_exclusive"] - segment["start_frame"]) / 30
+                                )
+                                if not math.isfinite(duration) or duration + 1e-6 < required:
+                                    raise ValueError(
+                                        "Fal avatar does not cover the trimmed timeline segment"
+                                    )
                     if _probe_frame_rate(video, nominal=fal_flashhead) != (fps_num, fps_den):
                         raise ValueError(
                             "Avatar input frame rate does not match its source profile"

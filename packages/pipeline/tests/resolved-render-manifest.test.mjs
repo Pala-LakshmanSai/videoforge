@@ -305,7 +305,12 @@ test("Fal FlashHead accepted clips plan full and split crops without a SoulX bac
   const { timeline } = await canonicalInputs();
   const falCandidates = PROVIDER_CANDIDATES.map((candidate) =>
     candidate.kind === "AVATAR_CLIP"
-      ? { ...candidate, rendererSourceProfile: "fal-flashhead-512x512p25-v1" }
+      ? {
+          ...candidate,
+          rendererSourceProfile: "fal-flashhead-512x512p25-v1",
+          avatarTrimStartMs: 500,
+          avatarSelectedStartMs: 0,
+        }
       : candidate,
   );
   const acceptedAssets = requireSuccess(
@@ -318,7 +323,12 @@ test("Fal FlashHead accepted clips plan full and split crops without a SoulX bac
   const request = await requestWith(
     CANDIDATES.map((candidate) =>
       candidate.kind === "AVATAR_CLIP"
-        ? { ...candidate, rendererSourceProfile: "fal-flashhead-512x512p25-v1" }
+        ? {
+            ...candidate,
+            rendererSourceProfile: "fal-flashhead-512x512p25-v1",
+            avatarTrimStartMs: 500,
+            avatarSelectedStartMs: 0,
+          }
         : candidate,
     ),
   );
@@ -330,6 +340,8 @@ test("Fal FlashHead accepted clips plan full and split crops without a SoulX bac
   const split = manifest.segments.find(
     (segment) => segment.timeline_composition === "AVATAR_SPLIT_IMAGE",
   );
+  assert.equal(full?.render.avatar_trim_start_ms, 500 + (full.start_frame * 1000) / 30);
+  assert.equal(split?.render.avatar_trim_start_ms, 500 + (split.start_frame * 1000) / 30);
   assert.equal(full?.render.avatar_crop, "512:288:0:112");
   assert.equal(split?.render.avatar_crop, "256:288:128:112");
   assert.equal(full?.accepted_assets.source_background, undefined);
@@ -343,13 +355,27 @@ test("Fal wide profile pins the source image for full and split composition", as
       timeline,
       requiredTaskKeys: collectRequiredAssetTaskKeys(timeline.value),
       candidates: PROVIDER_CANDIDATES.map((candidate) =>
-        candidate.kind === "AVATAR_CLIP" ? { ...candidate, rendererSourceProfile: profile } : candidate,
+        candidate.kind === "AVATAR_CLIP"
+          ? {
+              ...candidate,
+              rendererSourceProfile: profile,
+              avatarTrimStartMs: 0,
+              avatarSelectedStartMs: 0,
+            }
+          : candidate,
       ),
     }),
   );
   const request = await requestWith(
     CANDIDATES.map((candidate) =>
-      candidate.kind === "AVATAR_CLIP" ? { ...candidate, rendererSourceProfile: profile } : candidate,
+      candidate.kind === "AVATAR_CLIP"
+        ? {
+            ...candidate,
+            rendererSourceProfile: profile,
+            avatarTrimStartMs: 0,
+            avatarSelectedStartMs: 0,
+          }
+        : candidate,
     ),
   );
   const manifest = requireSuccess(
@@ -358,15 +384,54 @@ test("Fal wide profile pins the source image for full and split composition", as
   const avatars = manifest.segments.filter(
     (segment) => segment.timeline_composition !== "IMAGE_FULL",
   );
-  assert.deepEqual(avatars.map((segment) => segment.render.avatar_crop), [
-    "1920:1080:0:0",
-    "960:1080:480:0",
-  ]);
+  assert.deepEqual(
+    avatars.map((segment) => segment.render.avatar_crop),
+    ["1920:1080:0:0", "960:1080:480:0"],
+  );
   for (const segment of avatars) {
+    assert.equal(segment.render.avatar_trim_start_ms, (segment.start_frame * 1000) / 30);
     assert.deepEqual(segment.accepted_assets.source_background, {
       asset_id: request.revision.value.avatar_binding.runtime_source_asset_id,
       sha256: request.revision.value.avatar_binding.runtime_source_sha256,
     });
+  }
+});
+
+test("Fal render rejects missing or negative timing and corrects timeline quantization", async () => {
+  const request = await requestWith();
+  for (const trim of [undefined, -1, 500]) {
+    const byTaskKey = Object.fromEntries(
+      Object.entries(request.acceptedAssets.byTaskKey).map(([key, binding]) => [
+        key,
+        binding.kind === "AVATAR_CLIP"
+          ? {
+              ...binding,
+              rendererSourceProfile: "fal-flashhead-512x512p25-wide-v2",
+              avatarTrimStartMs: trim,
+              avatarSelectedStartMs:
+                Math.round(
+                  (request.timeline.value.segments.find(
+                    (segment) => segment.required_slots.avatar?.task_key === key,
+                  ).start_frame *
+                    1000) /
+                    30,
+                ) + 7,
+            }
+          : binding,
+      ]),
+    );
+    const result = await planVNextResolvedRenderManifest({
+      ...request,
+      acceptedAssets: { byTaskKey },
+    });
+    assert.equal(result.ok, trim === 500);
+    if (result.ok) {
+      for (const segment of result.value.value.segments.filter(
+        (segment) => segment.timeline_composition !== "IMAGE_FULL",
+      )) {
+        assert.ok(Math.abs(segment.render.avatar_trim_start_ms - 493) < 0.334);
+      }
+    }
   }
 });
 

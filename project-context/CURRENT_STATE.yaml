@@ -1,4 +1,29 @@
 schema_version: "2.0"
+api_avatar_sync_repair_2026_09_25:
+  checkpoint: V2-09
+  status: IMPLEMENTED_ISOLATED_RENDERS_VERIFIED_RELEASE_PENDING
+  decision: >-
+    Carry persisted Fal selected-span padding through migration 0200 and the immutable render
+    manifest. Trim native avatar video by trimStartMs plus the quantized timeline start minus
+    selectedStartMs before resetting timestamps or converting frame rate. Require valid timing
+    and sufficient source coverage; preserve historical manifests without the optional field.
+  evidence: >-
+    The old renderer retained approximately 500ms of leading audio context on later avatars.
+    Corrected retained-media Simon and Helenn renders pass all technical gates in 115.014 and
+    110.361 seconds: 159.2 seconds, 4776 frames, 1920x1080, zero stream-start drift, full decode
+    and accepted loudness. Decoded narration is byte-identical to both preceding MP4s.
+    Both projects pin the same original uploaded MP3; no assembly-inserted repetition was
+    reproduced. Existing hosted artifacts remain immutable; corrected versions are local copies.
+    Focused checks pass: pipeline 12, hosted handoff/materialization 32, worker 30, contract
+    synchronization, web typecheck and changed-source lint. Rolled-back production migration
+    proof validates all 182 live ledger hashes, exact predecessor function and all 10 Simon
+    avatar padding values. Migration 0148 behavior already exists; historical migrations are
+    not replayed to normalize archived manifest differences.
+  evidence_paths:
+    - evidence/acceptance/VF-10-09/2026-09-25-avatar-sync.json
+  remaining_gates: Production migration/release and playback refresh regression verification.
+  provider_spend: Zero new generation calls; retained media only.
+  paid_compute_shutdown: No GPU activation; isolated render processes exited.
 api_generation_performance_2026_09_25:
   checkpoint: V2-09
   status: PRODUCTION_DEPLOYED_WORKER_ONLINE_ISOLATED_PERFORMANCE_VERIFIED
@@ -57,7 +82,7 @@ api_generation_render_recovery_and_eta_2026_09_25:
     Source 6f1c36b7 deployed as Cloudflare 0f16473c-928b-497d-8117-46a2b199a791 with
     installed worker 0.1.28 and migration ledger 0199. Helenn project
     cebd8f98-28af-4729-824b-62dbf1ef6e34 completed render-only recovery in 11m10s;
-    Chrome played its 159.2-second 1920x1080 output without error, render-result document checksum
+    Chrome played its 159.2-second 1920x1080 output without error, final MP4 checksum
     sha256:c0bbdac1f9cd69c9e4f74a8234dd20a4465677111791de83d452ae5072b121e3.
     User-started Simon project f2b6ab1d-4690-47bf-a1eb-ed27f3141c28 completed with 28 images
     and 10 avatars. First submissions were within one second; stage timers were 3m25s images

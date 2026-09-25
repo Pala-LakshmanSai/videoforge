@@ -100,6 +100,7 @@ class FakeProcess:
         self.corrected_loudness = (-16.43, -5.27)
         self.visual_probes: dict[Path, tuple[str, int, int, str]] = {}
         self.nominal_frame_rates: dict[Path, str] = {}
+        self.visual_durations: dict[Path, str] = {}
         self.avatar_audio_paths: set[Path] = set()
 
     @staticmethod
@@ -128,6 +129,11 @@ class FakeProcess:
                     "height": height,
                     "avg_frame_rate": frame_rate,
                     "r_frame_rate": nominal_frame_rate,
+                    **(
+                        {"duration": self.visual_durations[path]}
+                        if path in self.visual_durations
+                        else {}
+                    ),
                 }
             ]
             if path in self.avatar_audio_paths:
@@ -841,6 +847,36 @@ class RenderJobTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "SUCCEEDED", result)
         self.assertTrue(any("-filter_complex" in call for call in fixture.process.calls))
+
+    def test_fal_trim_requires_remaining_clip_coverage(self) -> None:
+        for duration, expected in [(None, "FAILED"), ("3", "FAILED"), ("30", "SUCCEEDED")]:
+            with self.subTest(duration=duration):
+                fixture = RenderFixture()
+                avatar = next(
+                    asset
+                    for asset in fixture.document["assets"]
+                    if asset["asset_id"] == "asset_avatar_full_001"
+                )
+                avatar_path = fixture.resolver.objects[avatar["artifact_uri"]]
+                fixture.process.visual_probes[avatar_path] = ("h264", 512, 512, "25/1")
+                if duration is not None:
+                    fixture.process.visual_durations[avatar_path] = duration
+                fixture.replace_manifest(
+                    lambda manifest: manifest["segments"][0]["render"].update(
+                        {
+                            "avatar_source_profile": "fal-flashhead-512x512p25-v1",
+                            "avatar_crop": "512:288:0:112",
+                            "avatar_trim_start_ms": 500,
+                        }
+                    )
+                )
+                result = fixture.job().run(
+                    fixture.document, claimed_attempt_id="attempt_render_local_001"
+                )
+                self.assertEqual(result["status"], expected, result)
+                if expected == "FAILED":
+                    self.assertEqual(result["error"]["code"], "RENDER_INPUT_INVALID")
+                    self.assertFalse(fixture.resolver.published)
 
     def test_fal_flashhead_rejects_non_25_nominal_frame_rate(self) -> None:
         fixture = RenderFixture()

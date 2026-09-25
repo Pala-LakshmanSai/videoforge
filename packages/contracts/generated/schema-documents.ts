@@ -7825,6 +7825,10 @@ export const canonicalSchemaDocuments = {
               "avatar_scale": {
                 "const": "1920:1080"
               },
+              "avatar_trim_start_ms": {
+                "type": "number",
+                "minimum": 0
+              },
               "avatar_fps": {
                 "const": "30:round=near"
               }
@@ -8241,6 +8245,10 @@ export const canonicalSchemaDocuments = {
               },
               "avatar_scale": {
                 "const": "960:1080"
+              },
+              "avatar_trim_start_ms": {
+                "type": "number",
+                "minimum": 0
               },
               "avatar_fps": {
                 "const": "30:round=near"
