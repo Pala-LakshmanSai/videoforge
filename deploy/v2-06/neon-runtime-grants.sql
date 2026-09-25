@@ -77,6 +77,10 @@ TO :"runtime_role";
 -- RLS policies call this stable tenant-principal helper while evaluating every tenant row.
 GRANT EXECUTE ON FUNCTION public.videoforge_current_account_id()
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_admitted_hosted_account_ids()
+TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_trim_hosted_continuation_heartbeats()
+TO :"runtime_role";
 -- Migration 0051 is the only hosted-runtime path for tenant-owned preset removal. It archives the
 -- parent row, keeps immutable versions/media for historical revisions, and refuses SYSTEM built-ins;
 -- the runtime receives no direct preset DELETE capability.
@@ -361,11 +365,16 @@ GRANT SELECT ON
   hosted_prompt_scene_progress,
   hosted_prompt_batch_progress,
   hosted_prompt_batch_claims,
+  memberships,
+  hosted_pair_runtime_states,
   prompt_executions,
   prompt_scene_results,
   timeline_segments,
   cost_events
 TO :"runtime_role";
+
+GRANT SELECT, INSERT ON hosted_continuation_heartbeats TO :"runtime_role";
+GRANT USAGE ON SEQUENCE public.hosted_continuation_heartbeats_id_seq TO :"runtime_role";
 
 GRANT SELECT, INSERT ON
   media_worker_input_objects,

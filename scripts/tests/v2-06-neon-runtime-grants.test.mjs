@@ -28,6 +28,8 @@ test("the hosted runtime can append through the exact function but has no direct
     "hosted_prompt_scene_progress",
     "hosted_prompt_batch_progress",
     "hosted_prompt_batch_claims",
+    "memberships",
+    "hosted_pair_runtime_states",
     "prompt_executions",
     "prompt_scene_results",
     "timeline_segments",
@@ -39,6 +41,16 @@ test("the hosted runtime can append through the exact function but has no direct
     );
   }
   assert.match(source, /GRANT EXECUTE ON FUNCTION public\.videoforge_current_account_id\(\)/u);
+  for (const signature of [
+    "videoforge_admitted_hosted_account_ids()",
+    "videoforge_trim_hosted_continuation_heartbeats()",
+  ]) {
+    assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature));
+    assert.ok(source.includes(`GRANT EXECUTE ON FUNCTION public.${signature}`));
+  }
+  assert.deepEqual(EXPECTED_TABLE_PRIVILEGES.get("hosted_continuation_heartbeats"), ["INSERT", "SELECT"]);
+  assert.match(source, /GRANT SELECT, INSERT ON hosted_continuation_heartbeats TO :"runtime_role";/u);
+  assert.match(source, /GRANT USAGE ON SEQUENCE public\.hosted_continuation_heartbeats_id_seq TO :"runtime_role";/u);
   assert.match(
     source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_archive_hosted_preset\(uuid, uuid, text, uuid\)\s+TO :"runtime_role";/u,
