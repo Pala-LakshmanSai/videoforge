@@ -596,6 +596,13 @@ interface HostedTiming {
   readonly end_to_end_ms?: number | null;
 }
 
+interface HostedTimeEstimate {
+  readonly remaining_min_ms: number;
+  readonly remaining_max_ms: number;
+  readonly basis: "RECENT_API_SHORT_RUN";
+  readonly overrun: boolean;
+}
+
 interface HostedCost {
   readonly projected_usd?: number | null;
   readonly settled_usd?: number | null;
@@ -993,6 +1000,7 @@ interface ProjectDetailResponse {
   readonly queue?: HostedQueueSnapshot | null;
   readonly stages?: readonly HostedStage[];
   readonly timing?: HostedTiming | null;
+  readonly time_estimate?: HostedTimeEstimate | null;
   readonly cost?: HostedCost | null;
   readonly scale_to_zero?: HostedScaleToZero | null;
   readonly review?: HostedReviewSnapshot | null;
@@ -2031,6 +2039,14 @@ function formatMilliseconds(value: number | null | undefined): string {
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
   return `${minutes}m ${String(remainder).padStart(2, "0")}s`;
+}
+
+function formatApproximateMinutes(minMs: number, maxMs: number): string | null {
+  if (!Number.isFinite(minMs) || !Number.isFinite(maxMs) || minMs < 0 || maxMs < minMs)
+    return null;
+  const low = Math.max(1, Math.floor(minMs / 60_000));
+  const high = Math.max(low, Math.ceil(maxMs / 60_000));
+  return low === high ? `~${high} min` : `~${low}–${high} min`;
 }
 
 function hostedCount(value: HostedCount): number | null {
@@ -4829,6 +4845,40 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               : hasRunning
                 ? "Running"
                 : "Waiting";
+  const apiTimeEstimate = query.data.generation_provider === "KIE_FAL"
+    ? query.data.time_estimate
+    : null;
+  const apiEstimateRange = apiTimeEstimate
+    ? formatApproximateMinutes(
+        apiTimeEstimate.remaining_min_ms,
+        apiTimeEstimate.remaining_max_ms,
+      )
+    : null;
+  const estimateStopped = hasFailed || hasActionRequired || terminalBlocked || terminalCancelled;
+  const estimatedTimeValue =
+    query.data.generation_provider !== "KIE_FAL"
+      ? formatMilliseconds(stages[activeStageIndex]?.eta_ms ?? queue?.estimated_wait_ms)
+      : estimateStopped
+        ? "Unavailable"
+        : render?.state === "SUCCEEDED"
+          ? "Ready"
+          : apiTimeEstimate?.overrun
+            ? "Taking longer"
+            : apiEstimateRange ?? (query.data.generation ? "No reliable estimate" : "After scene plan");
+  const estimatedTimeDetail =
+    query.data.generation_provider !== "KIE_FAL"
+      ? "remaining"
+      : estimateStopped
+        ? "project stopped"
+        : render?.state === "SUCCEEDED"
+          ? "ready for review"
+          : apiTimeEstimate?.overrun
+            ? "than one recent short run; API and render times vary"
+            : apiEstimateRange
+              ? "remaining · based on one short run; API and render times vary"
+              : query.data.generation
+                ? "provider timing varies"
+                : "timing available after planning";
   const statusToneValue = hasFailed
     ? "danger"
     : hasActionRequired
@@ -5254,10 +5304,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             />
             <Metric
               label="Estimated"
-              value={formatMilliseconds(
-                stages[activeStageIndex]?.eta_ms ?? queue?.estimated_wait_ms,
-              )}
-              detail="remaining"
+              value={estimatedTimeValue}
+              detail={estimatedTimeDetail}
             />
             <Metric
               label="Projected cost"

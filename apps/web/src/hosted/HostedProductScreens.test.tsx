@@ -293,6 +293,73 @@ function stageList(overrides: Readonly<Record<string, string>> = {}) {
   }));
 }
 
+it.each([
+  {
+    overrun: false,
+    expectedValue: "~2–5 min",
+    expectedDetail: /based on one short run; API and render times vary/i,
+  },
+  {
+    overrun: true,
+    expectedValue: "Taking longer",
+    expectedDetail: /than one recent short run; API and render times vary/i,
+  },
+])("shows an honest API project time estimate when overrun=$overrun", async ({
+  overrun,
+  expectedValue,
+  expectedDetail,
+}) => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+    project: { id: "estimate", title: "Estimated video", created_at: "2026-09-25T05:00:00Z",
+      revision_id: "revision", revision_state: "LOCKED" },
+    generation_provider: "KIE_FAL",
+    attempts: [],
+    generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED",
+    gpu_readiness: gpuReadiness,
+    stages: stageList({ prepare: "COMPLETE", transcription: "RUNNING" }),
+    time_estimate: {
+      remaining_min_ms: 120_000,
+      remaining_max_ms: 300_000,
+      basis: "RECENT_API_SHORT_RUN",
+      overrun,
+    },
+  })));
+  renderHosted(<HostedProjectScreen projectId="estimate" />);
+  const hero = await screen.findByRole("region", { name: "Live video progress" });
+  expect(within(hero).getByText(expectedValue)).toBeInTheDocument();
+  expect(within(hero).getByText(expectedDetail)).toBeInTheDocument();
+  expect(within(hero).queryByText("Not reported")).not.toBeInTheDocument();
+});
+
+it("refreshes a running project's time estimate without reloading", async () => {
+  let reads = 0;
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+    project: { id: "estimate-live", title: "Estimated video", created_at: "2026-09-25T05:00:00Z",
+      revision_id: "revision", revision_state: "LOCKED" },
+    generation_provider: "KIE_FAL",
+    attempts: [],
+    generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED",
+    gpu_readiness: gpuReadiness,
+    stages: stageList({ prepare: "COMPLETE", transcription: "RUNNING" }),
+    time_estimate: ++reads === 1 ? null : {
+      remaining_min_ms: 120_000,
+      remaining_max_ms: 300_000,
+      basis: "RECENT_API_SHORT_RUN",
+      overrun: false,
+    },
+  })));
+  renderHosted(<HostedProjectScreen projectId="estimate-live" />);
+  const hero = await screen.findByRole("region", { name: "Live video progress" });
+  const estimateMetric = within(hero).getByText("Estimated").closest<HTMLElement>(".metric");
+  expect(estimateMetric).not.toBeNull();
+  expect(within(estimateMetric!).getByText("After scene plan")).toBeInTheDocument();
+  await waitFor(() => expect(within(estimateMetric!).getByText("~2–5 min")).toBeInTheDocument(), {
+    timeout: 3_500,
+  });
+});
+
 it("shows a reasoned disabled Retry for every failed stage without a safe recovery route", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
   const stages = stageList(Object.fromEntries([

@@ -3744,6 +3744,72 @@ function hostedProgressPercent(completed: unknown, total: unknown): number | nul
   return Math.min(100, Math.max(0, Math.round((done / count) * 100)));
 }
 
+// Comparable 159.2-second API videos took 171s/29 and 195s/28 for images,
+// and 169s/9 and 190s/10 for avatars. The earlier run took 94s for prompts,
+// 47s for spans, and 153s locally versus 670s hosted to render.
+// These are rough planning bounds, not a provider deadline or billing promise.
+export function hostedApiRemainingTimeEstimate(input: {
+  readonly durationMs: number;
+  readonly promptTotal: number;
+  readonly promptAccepted: number;
+  readonly promptComplete: boolean;
+  readonly promptStartedAt: unknown;
+  readonly spanTotal: number;
+  readonly spanReady: number;
+  readonly spanStartedAt: unknown;
+  readonly imageTotal: number;
+  readonly imageAccepted: number;
+  readonly imageSubmittedAt: unknown;
+  readonly avatarTotal: number;
+  readonly avatarAccepted: number;
+  readonly avatarSubmittedAt: unknown;
+  readonly renderSubmittedAt: unknown;
+  readonly renderComplete: boolean;
+  readonly failed: boolean;
+  readonly nowMs?: number;
+}): {
+  readonly remaining_min_ms: number;
+  readonly remaining_max_ms: number;
+  readonly basis: "RECENT_API_SHORT_RUN";
+  readonly overrun: boolean;
+} | null {
+  if (input.failed || !Number.isFinite(input.durationMs) || input.durationMs <= 0) return null;
+  if (input.renderComplete)
+    return { remaining_min_ms: 0, remaining_max_ms: 0, basis: "RECENT_API_SHORT_RUN", overrun: false };
+  const now = input.nowMs ?? Date.now();
+  const activeMs = (start: unknown) => {
+    const startMs = start == null ? NaN : new Date(String(start)).getTime();
+    return Number.isFinite(startMs) ? Math.max(0, now - startMs) : 0;
+  };
+  const remainingMs = (total: number, accepted: number, referenceMs: number, referenceCount: number, startedAt: unknown) => {
+    const remaining = Math.max(0, total - accepted);
+    if (remaining === 0) return 0;
+    const referencePerItem = referenceMs / referenceCount;
+    // Parallel batches can spend most of their time with only a few completed items.
+    // Extrapolate live throughput only after at least half the lane is accepted.
+    const observedPerItem = accepted >= Math.ceil(total / 2) ? activeMs(startedAt) / accepted : 0;
+    return remaining * Math.max(referencePerItem, observedPerItem);
+  };
+  const promptMs = input.promptComplete
+    ? 0
+    : remainingMs(input.promptTotal, input.promptAccepted, 94_000, 29, input.promptStartedAt);
+  const spanMs = remainingMs(input.spanTotal, input.spanReady, 47_000, 9, input.spanStartedAt);
+  const imageMs = remainingMs(input.imageTotal, input.imageAccepted, 183_000, 28.5, input.imageSubmittedAt);
+  const avatarMs = remainingMs(input.avatarTotal, input.avatarAccepted, 180_000, 9.5, input.avatarSubmittedAt);
+  const beforeRenderMs = promptMs + spanMs + Math.max(imageMs, avatarMs);
+  const scale = input.durationMs / 159_200;
+  const renderMinMs = 60_000 + 93_000 * scale;
+  const renderMaxMs = 60_000 + 610_000 * scale;
+  const renderElapsedMs = activeMs(input.renderSubmittedAt);
+  const overrun = input.renderSubmittedAt != null && renderElapsedMs > renderMaxMs;
+  return {
+    remaining_min_ms: Math.max(0, Math.round(beforeRenderMs * 0.75 + renderMinMs - renderElapsedMs)),
+    remaining_max_ms: Math.max(overrun ? 60_000 : 0, Math.round(beforeRenderMs * 1.5 + renderMaxMs - renderElapsedMs)),
+    basis: "RECENT_API_SHORT_RUN",
+    overrun,
+  };
+}
+
 /** Stage 6 fails inside the owner's own computer, so name the local cause instead of a generic stop. */
 function hostedSpanFailureMessage(
   failureCode: string | null,
@@ -6747,6 +6813,12 @@ async function projectDetail(
                     AND segment.workspace_id = revision.workspace_id
                     AND segment.project_revision_id = revision.id
                     AND segment.timeline_plan_id = plan.id) AS total_segments,
+                (SELECT max(segment.end_frame_exclusive)
+                   FROM timeline_segments AS segment
+                  WHERE segment.account_id = revision.account_id
+                    AND segment.workspace_id = revision.workspace_id
+                    AND segment.project_revision_id = revision.id
+                    AND segment.timeline_plan_id = plan.id) AS final_frame_count,
                 (SELECT count(*)
                    FROM timeline_segments AS segment
                   WHERE segment.account_id = revision.account_id
@@ -7871,6 +7943,37 @@ async function projectDetail(
             pricing_checked_at: "2026-09-25",
           }
         : null;
+    const apiJobs = detail.apiJobs as Record<string, unknown>[];
+    const laneSubmittedAt = (lane: "IMAGE" | "AVATAR") =>
+      apiJobs
+        .filter((job) => job.lane === lane)
+        .map((job) => timestampOrNull(job.submitted_at))
+        .filter((value): value is string => value !== null)
+        .sort()[0] ?? null;
+    const finalFrameCount = numberOrNull(apiPlan?.final_frame_count);
+    const timeEstimate = projectApiGeneration && finalFrameCount !== null && finalFrameCount > 0
+      ? hostedApiRemainingTimeEstimate({
+          durationMs: (finalFrameCount / 30) * 1000,
+          promptTotal: totalPromptScenes || apiImageCount || 0,
+          promptAccepted: acceptedPromptScenes,
+          promptComplete: promptStage.status === "COMPLETE",
+          promptStartedAt: promptProgress?.started_at,
+          spanTotal: Math.max(spanTotal, numberOrNull(apiPlan?.avatar_segment_count) ?? 0),
+          spanReady: spanAudioProgress.materialized,
+          spanStartedAt: spanAudioProgress.started_at,
+          imageTotal: apiImageCount ?? 0,
+          imageAccepted: gpuLaneActivity.find((lane) => lane.lane === "mage_image")?.accepted_item_count ?? 0,
+          imageSubmittedAt: laneSubmittedAt("IMAGE"),
+          avatarTotal: numberOrNull(apiPlan?.avatar_segment_count) ?? 0,
+          avatarAccepted: gpuLaneActivity.find((lane) => lane.lane === "soulx_avatar")?.accepted_item_count ?? 0,
+          avatarSubmittedAt: laneSubmittedAt("AVATAR"),
+          renderSubmittedAt: render?.state === "RUNNING" ? render.submitted_at : null,
+          renderComplete: render?.state === "SUCCEEDED",
+          failed: stages.some((stage) => ["FAILED", "UNKNOWN", "UNKNOWN_NO_RETRY", "BLOCKED", "PERMANENT_FAILED", "DEAD_LETTER"].includes(stage.status)) ||
+            apiJobs.some((job) => ["FAILED", "UNKNOWN_NO_RETRY"].includes(String(job.state))) ||
+            runtime?.stage === "FAILED",
+        })
+      : null;
     const timingRows = [...(detail.attempts as Record<string, unknown>[]), ...serverlessAttempts];
     const createdAt = timingRows
       .map((value) => new Date(String(value.created_at)).getTime())
@@ -8007,6 +8110,7 @@ async function projectDetail(
       voiceover_context: voiceoverContext,
       queue,
       stages,
+      time_estimate: timeEstimate,
       timing,
       cost: {
         projected_usd: projectApiGeneration

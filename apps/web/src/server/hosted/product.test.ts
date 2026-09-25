@@ -201,6 +201,7 @@ import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./con
 import {
   handleHostedProductRequest,
   hostedAsrSubmissionIdentity,
+  hostedApiRemainingTimeEstimate,
   hostedAvatarConflictProblem,
   hostedGpuProductState,
   hostedProjectConflictProblem,
@@ -212,6 +213,51 @@ import { handleHostedPromptRequest } from "./hosted-prompt-route";
 
 const ORIGIN = "https://hosted.example.test";
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
+
+it("estimates remaining API work from live counts while image and avatar lanes run together", () => {
+  const input = {
+    durationMs: 159_200,
+    promptTotal: 28,
+    promptAccepted: 28,
+    promptComplete: true,
+    promptStartedAt: null,
+    spanTotal: 10,
+    spanReady: 10,
+    spanStartedAt: null,
+    imageTotal: 28,
+    imageAccepted: 20,
+    imageSubmittedAt: "2026-09-25T00:00:00.000Z",
+    avatarTotal: 10,
+    avatarAccepted: 6,
+    avatarSubmittedAt: "2026-09-25T00:00:00.000Z",
+    renderSubmittedAt: null,
+    renderComplete: false,
+    failed: false,
+    nowMs: Date.parse("2026-09-25T00:02:40.000Z"),
+  };
+  const estimate = hostedApiRemainingTimeEstimate(input);
+  expect(estimate).toMatchObject({ basis: "RECENT_API_SHORT_RUN", overrun: false });
+  // Live avatar rate leaves about 107s; serializing both lanes would add another 64s.
+  expect(estimate?.remaining_min_ms).toBe(233_000);
+  expect(estimate?.remaining_max_ms).toBe(830_000);
+  const earlyBatch = hostedApiRemainingTimeEstimate({
+    ...input,
+    imageAccepted: 2,
+    avatarAccepted: 0,
+    nowMs: Date.parse("2026-09-25T00:00:45.000Z"),
+  });
+  // Two early completions from a parallel batch must not imply 26 serial 22.5s calls.
+  expect(earlyBatch?.remaining_max_ms).toBeLessThan(1_100_000);
+  expect(hostedApiRemainingTimeEstimate({ ...input, failed: true })).toBeNull();
+  expect(hostedApiRemainingTimeEstimate({ ...input, durationMs: 0 })).toBeNull();
+  expect(hostedApiRemainingTimeEstimate({
+    ...input,
+    imageAccepted: 28,
+    avatarAccepted: 10,
+    renderSubmittedAt: "2026-09-25T00:00:00.000Z",
+    nowMs: Date.parse("2026-09-25T00:12:00.000Z"),
+  })?.overrun).toBe(true);
+});
 const PRESET_ID = "44444444-4444-4444-8444-444444444444";
 
 const config = {
