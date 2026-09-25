@@ -8,8 +8,12 @@ const ids = {
   revision: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   failed: "ffffffff-ffff-4fff-8fff-ffffffffffff",
   ioFailed: "22222222-2222-4222-8222-222222222222",
+  inputFailed: "33333333-3333-4333-8333-333333333333",
   retry: "11111111-1111-4111-8111-111111111111",
 };
+const bundleSha256 = `sha256:${"a".repeat(64)}`;
+const config = { neon: { databaseUrl: "postgres://unused" },
+  mediaWorkerRelease: { executionBundleSha256: bundleSha256 } } as never;
 
 const mocks = vi.hoisted(() => ({
   query: vi.fn(),
@@ -68,7 +72,6 @@ describe("render-only disk recovery route", () => {
 
   it("schedules one exact CPU identity without provider dispatch and reuses it on response replay", async () => {
     const schedule = vi.fn().mockResolvedValue({ state: "OUTBOXED" });
-    const config = { neon: { databaseUrl: "postgres://unused" } } as never;
     const context = { waitUntil() {} } as never;
     for (let replay = 0; replay < 2; replay += 1) {
       const result = await retryHostedApiRender(request(), ids.project, config, context, { schedule });
@@ -88,6 +91,7 @@ describe("render-only disk recovery route", () => {
       renderRecoveryKey: `render-disk-recovery:${ids.revision}`,
     });
     expect(mocks.query.mock.calls.filter(([sql]) => String(sql).includes("videoforge_prepare_hosted_api_render_recovery"))).toHaveLength(2);
+    expect(mocks.query.mock.calls.find(([sql]) => String(sql).includes("videoforge_prepare_hosted_api_render_recovery"))?.[1]).toContain(bundleSha256);
   });
 
   it("uses a distinct idempotency key for an evidence-approved second I/O recovery", async () => {
@@ -103,7 +107,7 @@ describe("render-only disk recovery route", () => {
     });
     const schedule = vi.fn().mockResolvedValue({ state: "OUTBOXED" });
     const result = await retryHostedApiRender(request(ids.ioFailed), ids.project,
-      { neon: { databaseUrl: "postgres://unused" } } as never, { waitUntil() {} } as never,
+      config, { waitUntil() {} } as never,
       { schedule });
     expect(result.status).toBe(202);
     expect(schedule).toHaveBeenCalledWith(expect.objectContaining({
@@ -112,11 +116,32 @@ describe("render-only disk recovery route", () => {
     }));
   });
 
+  it("uses a third key only for the database-approved input recovery", async () => {
+    mocks.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("videoforge_prepare_hosted_api_render_recovery")) return { rows: [{ recovery: {
+        schema_version: "videoforge-hosted-render-disk-recovery/v1",
+        revision_id: ids.revision,
+        retry_attempt_id: ids.retry,
+        recovery_kind: "INPUT",
+      } }] };
+      if (sql.includes("FROM public.hosted_render_plans")) return { rows: [{ payload: { kind: "RENDER" } }] };
+      return { rows: [] };
+    });
+    const schedule = vi.fn().mockResolvedValue({ state: "OUTBOXED" });
+    const result = await retryHostedApiRender(request(ids.inputFailed), ids.project,
+      config, { waitUntil() {} } as never, { schedule });
+    expect(result.status).toBe(202);
+    expect(schedule).toHaveBeenCalledWith(expect.objectContaining({
+      expectedAttemptId: ids.retry,
+      renderRecoveryKey: `render-input-recovery:${ids.revision}`,
+    }));
+  });
+
   it("rejects failed evidence before any CPU scheduling", async () => {
     mocks.query.mockRejectedValueOnce(Object.assign(new Error("evidence rejected"), { code: "23514" }));
     const schedule = vi.fn();
     const result = await retryHostedApiRender(request(), ids.project,
-      { neon: { databaseUrl: "postgres://unused" } } as never, { waitUntil() {} } as never,
+      config, { waitUntil() {} } as never,
       { schedule });
     expect(result.status).toBe(409);
     expect(schedule).not.toHaveBeenCalled();
@@ -124,7 +149,7 @@ describe("render-only disk recovery route", () => {
 
   it("rejects a malformed attempt before opening a database connection", async () => {
     const result = await retryHostedApiRender(request("bad"), ids.project,
-      { neon: { databaseUrl: "postgres://unused" } } as never, { waitUntil() {} } as never,
+      config, { waitUntil() {} } as never,
       { schedule: vi.fn() });
     expect(result.status).toBe(400);
     expect(mocks.query).not.toHaveBeenCalled();
