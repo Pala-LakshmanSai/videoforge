@@ -39,9 +39,14 @@ test("migration activation fails closed without the pgcrypto prerequisite for 00
 test("grant activation disables the validated runtime before applying any pending migration", () => {
   const source = readFileSync("deploy/v2-06/apply-migrations-and-grants.mjs", "utf8");
   const roleValidation = source.indexOf("const roleRows = await query(");
+  const v209RoleGuard = source.indexOf("/^videoforge_v209_/u.test(applyRuntimeRole)");
+  const v209GrantGuard = source.indexOf("const v209AdmissionGrant = await query(");
   const runtimeDisable = source.indexOf("const preMigrationRuntimeDisableSql = [");
   const migrationLoop = source.indexOf("for (const migration of pendingMigrations)");
   assert.ok(roleValidation >= 0);
+  assert.ok(v209RoleGuard >= 0 && v209RoleGuard < runtimeDisable);
+  assert.ok(v209GrantGuard > roleValidation && v209GrantGuard < runtimeDisable);
+  assert.match(source, /if \(v209AdmissionGrant !== "false"\)\s+fail\(/u);
   assert.ok(roleValidation < runtimeDisable);
   assert.ok(runtimeDisable < migrationLoop);
   assert.match(

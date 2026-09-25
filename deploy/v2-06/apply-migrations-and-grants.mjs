@@ -411,6 +411,10 @@ const main = async () => {
   if (applyGrants && !verifyOnly) {
     applyRuntimeRole = required("V2_06_RUNTIME_ROLE");
     applyRuntimeRoleIdentifier = safeIdentifier(applyRuntimeRole, "V2_06_RUNTIME_ROLE");
+    // This legacy allowlist does not include V2-09 generation admission. Reapplying it to the
+    // active V2-09 role revokes those capabilities before the migration phase can restore them.
+    if (/^videoforge_v209_/u.test(applyRuntimeRole))
+      fail("V2-06 grants cannot target a V2-09 runtime role; use --owner-only for migrations");
     const roleRows = await query(
       `SELECT rolname, rolsuper::text, rolcreaterole::text, rolcreatedb::text, rolinherit::text, rolreplication::text, rolbypassrls::text FROM pg_roles WHERE rolname = ${safeLiteral(applyRuntimeRole)}`,
       environment,
@@ -424,6 +428,16 @@ const main = async () => {
       fail(
         "runtime role must already be NOSUPERUSER/NOCREATEDB/NOCREATEROLE/NOINHERIT/NOREPLICATION/NOBYPASSRLS before grants",
       );
+    const v209AdmissionGrant = await query(
+      `SELECT (coalesce(has_function_privilege(${safeLiteral(applyRuntimeRole)},
+        to_regprocedure('public.videoforge_admit_hosted_v209_generation(uuid,uuid,uuid,uuid)'),
+        'EXECUTE'),false) OR coalesce(has_function_privilege(${safeLiteral(applyRuntimeRole)},
+        to_regprocedure('public.videoforge_has_hosted_v209_ordinary_candidate(uuid,uuid,uuid)'),
+        'EXECUTE'),false))::text`,
+      environment,
+    );
+    if (v209AdmissionGrant !== "false")
+      fail("V2-06 grants cannot revoke existing V2-09 runtime admission capabilities");
   }
   if (!verifyOnly) {
     const requiredPrefix = process.env.V2_06_REQUIRED_LEDGER_PREFIX_VERSION;
