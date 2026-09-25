@@ -2,9 +2,10 @@
 
 ## Current generation transition — 2026-09-25
 
-The user-started replacement NAPAA project is active under Kie/Fal generation. Its 327 saved
-image prompts were finalized without replay, and all 96 audio spans completed; image and avatar
-provider jobs are running. The original Napa Video project below remains terminal and must not
+The user-started replacement NAPAA project is assembling its final video on the connected Mac.
+All 327 saved image prompts, 96 audio spans, 327 Kie images, and 96 Fal avatar clips were accepted.
+A guarded local-only Stage 9 retry is running after a verified Fal crop-bound fix; no new paid
+generation was authorized. The original Napa Video project below remains terminal and must not
 be replayed. Current NAPAA state, identities, spend, and remaining final-video gates are in
 `CURRENT_STATE.yaml` under `napaa_live_2026_09_25`.
 

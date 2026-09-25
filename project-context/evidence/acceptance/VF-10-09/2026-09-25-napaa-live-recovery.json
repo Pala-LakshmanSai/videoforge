@@ -1,13 +1,13 @@
 {
   "checkpoint": "V2-09",
-  "observed_at": "2026-09-25T14:27:12Z",
+  "observed_at": "2026-09-25T15:39:04Z",
   "project_id": "6ec3ce8d-6558-494a-b8b3-a90a65c53bc8",
   "revision_id": "ef4a4117-c86b-4721-821b-c6a835f0e022",
   "prompt_run_id": "1a0acdd9-465f-4335-a214-8b1d81d6eee1",
   "generation_request_id": "033b710c-7ebc-4ac8-9c05-89c16c5a3d1e",
-  "production_source_commit": "9337926a922773a05ac352e3147915001dd2f45b",
-  "cloudflare_version": "48298ee5-f19e-4f9e-81f3-44bcf924d6e6",
-  "migration_head": 206,
+  "production_source_commit": "2aef5cd8c3b80f9d412005876570b347bf2c5433",
+  "cloudflare_version": "26529314-8471-49a3-a3a5-94aa1e0d49da",
+  "migration_head": 207,
   "verified": {
     "prompt_batches": 33,
     "prompt_scenes": 327,
@@ -20,8 +20,8 @@
     "same_generation_request_active": true,
     "image_jobs_planned": 327,
     "avatar_jobs_planned": 96,
-    "chrome_images_accepted_at_observed_at": 226,
-    "chrome_avatars_accepted_at_observed_at": 63,
+    "chrome_images_accepted_at_observed_at": 327,
+    "chrome_avatars_accepted_at_observed_at": 96,
     "production_worker_bindings_readback": 41,
     "final_video_verified": false
   },
@@ -31,13 +31,32 @@
     "Stage 6 admission and ordinary-candidate runtime EXECUTE grants had drifted. Migration 0206 restored the exact grants; source 8e745eea prevents the older grant script from revoking V2-09 runtime capabilities.",
     "An admitted generation request with no jobs was omitted from the continuation sweep. Source 410e5ed2 adds an exact guarded resume for future runs; deployed in version 48298ee5.",
     "Future built-in image prompts were shortened without changing custom style additions or saved legacy prompt verification; sources b19bb693 and 2ad46294, deployed in version 48298ee5.",
-    "Two audio-span attempts initially failed local disk preflight, then succeeded on the same attempt identities after disposable local temporary data was removed. No new generation request was created."
+    "Two audio-span attempts initially failed local disk preflight, then succeeded on the same attempt identities after disposable local temporary data was removed. No new generation request was created.",
+    "The first render failed because Fal clip 40 projected 58 pixels past the top source edge, exceeding the old 32-pixel crop allowance despite verified feature matches. Source 329df0aa accepts only bounded, feature-verified top-edge crops; all seven live outliers were composed locally without paid calls.",
+    "Migration 0207 and UI source 2aef5cd8 permit one exact first-input render recovery with no new paid provider dispatch. At 15:35:36 UTC the guard consumed the first retry; the same 423 accepted provider outputs and 426 render inputs were reused.",
+    "The exact 375-segment render command is 253844 UTF-16 units, above Windows CreateProcess 32767 limit. Source e7d1f642 stages hash-verified hardlinks and an identical filtergraph script to reduce it to 17199 units. Both 0.1.34 packages passed CI and were published; production activation waits for the current Mac render."
   ],
+  "assembly_recovery": {
+    "failed_attempt_id": "ba8f2e88-c3de-4bf7-8c72-710bc124f01c",
+    "failed_attempt_duration_seconds": 446,
+    "failed_attempt_code": "RENDER_INPUT_INVALID",
+    "retry_attempt_id": "0a799bac-e909-4ceb-b8d1-df70c1721cf7",
+    "retry_claimed_at": "2026-09-25T15:36:20Z",
+    "retry_status_at_observed_at": "RUNNING",
+    "saved_provider_outputs_reused": 423,
+    "render_inputs_reused": 426,
+    "provider_identity_fingerprint_md5": "44577e60d2860aea411b5f718c9402f6",
+    "new_paid_provider_calls": 0,
+    "macos_worker_version": "0.1.33",
+    "macos_worker_bundle_sha256": "sha256:6148be1869faf346243d863008961f04959f6d946f2cb093f11cf294976ab954",
+    "macos_and_windows_next_release": "0.1.34",
+    "next_release_ci_run": 36154234514
+  },
   "remaining_gates": [
-    "327 image and 96 avatar provider outputs accepted",
     "final MP4 assembled and technical checks passed",
     "Chrome playback and seek verified",
     "human approval and exact download verified",
-    "provider cost settled and zero active paid work independently verified"
+    "provider cost settled and zero active paid work independently verified",
+    "0.1.34 published worker activated for both platforms after current render"
   ]
 }
