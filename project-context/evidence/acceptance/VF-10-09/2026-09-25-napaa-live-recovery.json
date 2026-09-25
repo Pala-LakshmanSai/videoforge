@@ -1,0 +1,39 @@
+{
+  "checkpoint": "V2-09",
+  "observed_at": "2026-09-25T13:56:00Z",
+  "project_id": "6ec3ce8d-6558-494a-b8b3-a90a65c53bc8",
+  "revision_id": "ef4a4117-c86b-4721-821b-c6a835f0e022",
+  "prompt_run_id": "1a0acdd9-465f-4335-a214-8b1d81d6eee1",
+  "generation_request_id": "033b710c-7ebc-4ac8-9c05-89c16c5a3d1e",
+  "production_source_commit": "95c11117",
+  "cloudflare_version": "a1735dcf-9339-4825-964d-952b1b7d4b4a",
+  "migration_head": 206,
+  "verified": {
+    "prompt_batches": 33,
+    "prompt_scenes": 327,
+    "prompt_executions": 1,
+    "prompt_cost_micro_usd": 2197885,
+    "prompt_reservation_released_micro_usd": 5802115,
+    "audio_spans_completed": 96,
+    "audio_spans_planned": 96,
+    "audio_stage_elapsed_seconds": 443,
+    "same_generation_request_active": true,
+    "image_jobs_planned": 327,
+    "avatar_jobs_planned": 96,
+    "final_video_verified": false
+  },
+  "causes_and_repairs": [
+    "Neon bigint values were read as strings in the prompt completion cost checks; cast to integer at the query boundary.",
+    "Returning an unawaited completion promise inside try/finally closed the Neon pool before the saved-batch load. Await both completion returns before pool.end; source 95c11117.",
+    "Stage 6 admission and ordinary-candidate runtime EXECUTE grants had drifted. Migration 0206 restored the exact grants; source 8e745eea prevents the older grant script from revoking V2-09 runtime capabilities.",
+    "An admitted generation request with no jobs was omitted from the continuation sweep. Source 410e5ed2 adds an exact guarded resume for future runs; deployment remains pending.",
+    "Two audio-span attempts initially failed local disk preflight, then succeeded on the same attempt identities after disposable local temporary data was removed. No new generation request was created."
+  ],
+  "remaining_gates": [
+    "327 image and 96 avatar provider outputs accepted",
+    "final MP4 assembled and technical checks passed",
+    "Chrome playback and seek verified",
+    "human approval and exact download verified",
+    "provider cost settled and zero active paid work independently verified"
+  ]
+}

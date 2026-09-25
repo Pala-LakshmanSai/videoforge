@@ -1,4 +1,37 @@
 schema_version: "2.0"
+napaa_live_2026_09_25:
+  checkpoint: V2-09
+  status: SAME_PROJECT_STAGE_7_AND_8_RUNNING_FINAL_VIDEO_UNVERIFIED
+  project_id: 6ec3ce8d-6558-494a-b8b3-a90a65c53bc8
+  revision_id: ef4a4117-c86b-4721-821b-c6a835f0e022
+  generation_request_id: 033b710c-7ebc-4ac8-9c05-89c16c5a3d1e
+  production_source_commit: 95c11117
+  cloudflare_version: a1735dcf-9339-4825-964d-952b1b7d4b4a
+  database_migration_head: 0206
+  observed_at: "2026-09-25T13:56:00Z"
+  verified_progress: >-
+    The replacement NAPAA run saved all 327/327 prompts in 33 batches. Stage 5 completed
+    from those exact saved batches without another prompt provider request after fixing a
+    returned-promise/try-finally pool-close race. Its one prompt execution and all 327 scene
+    results are accepted; USD 2.197885 was settled once and USD 5.802115 released from the
+    original USD 8 reservation. Stage 6 completed 96/96 exact audio spans in 7m23s; two
+    initial local disk failures retried on their same attempt identities after safe cleanup.
+    The same admitted generation request is now running Kie image and Fal avatar jobs.
+  fixes: >-
+    Source 95c11117 awaits completion before closing the Neon pool; 42ae8f7a applies exact
+    Stage 6 runtime grants as migration 0206; 8e745eea prevents the V2-06 grant script from
+    revoking V2-09 runtime capabilities. Source 410e5ed2 adds a guarded continuation for an
+    already admitted KIE_FAL request with no started jobs; it is not yet in the live Worker.
+  remaining_gates: >-
+    Accept all 327 images and 96 avatar clips, assemble and technically validate the final
+    MP4, verify real Chrome playback/seek, approve and download the exact artifact, and prove
+    zero active paid compute. Provider throughput and full remaining wall time are unverified.
+  provider_spend: >-
+    Prompt cost settled at USD 2.197885. Kie/Fal generation is active within the existing
+    admitted project; final provider cost is not yet settled.
+  paid_compute_shutdown: >-
+    Ordinary generation uses Kie/Fal APIs with GPU transport DISABLED_UNQUALIFIED. The
+    admitted API generation remains active; zero active paid work is a final gate, not yet met.
 napa_prompt_recovery_2026_09_25:
   checkpoint: V2-09
   status: PRODUCTION_FIX_DEPLOYED_CURRENT_VIDEO_BLOCKED_KNOWN_INVALID_OUTPUT

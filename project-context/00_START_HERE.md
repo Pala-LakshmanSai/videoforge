@@ -2,6 +2,12 @@
 
 ## Current generation transition — 2026-09-25
 
+The user-started replacement NAPAA project is active under Kie/Fal generation. Its 327 saved
+image prompts were finalized without replay, and all 96 audio spans completed; image and avatar
+provider jobs are running. The original Napa Video project below remains terminal and must not
+be replayed. Current NAPAA state, identities, spend, and remaining final-video gates are in
+`CURRENT_STATE.yaml` under `napaa_live_2026_09_25`.
+
 Napa Video is blocked at Stage 5 with 50/320 prompts saved. Its original Batch 6 Runware task
 returned a known charged but invalid 47-character JSON result. Production migration 0203 settled
 the exact claim without replay; new prompt formatting, per-batch continuation, and future-run
