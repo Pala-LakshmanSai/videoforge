@@ -24,6 +24,7 @@ from videoforge_media_local.personal_execution import (
     _asr_primary_path,
     _child_result_failure_code,
     _completion_is_acknowledged,
+    _download,
     _heartbeat_stop_reason,
     _is_valid_https_url,
     _job_result_state,
@@ -184,6 +185,81 @@ class PersonalWorkerContractTests(unittest.TestCase):
                     different_source, Path(root) / "other", lambda: False
                 )
                 self.assertEqual(fetch.call_count, 3)
+
+    def test_download_retries_transient_response_read_and_revalidates_exact_bytes(self) -> None:
+        content = b"verified input bytes"
+        item = {
+            "url": "https://objects.example.test/input",
+            "bytes": len(content),
+            "sha256": "sha256:" + personal_execution.hashlib.sha256(content).hexdigest(),
+        }
+
+        class Response:
+            def __init__(self, *reads: object) -> None:
+                self._reads = list(reads)
+
+            def __enter__(self) -> "Response":
+                return self
+
+            def __exit__(self, *_: object) -> None:
+                return None
+
+            def read(self, _maximum: int) -> bytes:
+                value = self._reads.pop(0)
+                if isinstance(value, BaseException):
+                    raise value
+                assert isinstance(value, bytes)
+                return value
+
+        first = Response(b"partial", ConnectionResetError(errno.ECONNRESET, "reset"))
+        second = Response(content, b"")
+        with tempfile.TemporaryDirectory() as root, patch(
+            "videoforge_media_local.personal_execution.urllib.request.urlopen",
+            side_effect=[first, second],
+        ) as urlopen:
+            destination = Path(root) / "input"
+            _download(item, destination, lambda: False)
+            self.assertEqual(destination.read_bytes(), content)
+        self.assertEqual(urlopen.call_count, 2)
+
+    def test_download_does_not_retry_local_disk_write_failure(self) -> None:
+        content = b"input"
+        item = {
+            "url": "https://objects.example.test/input",
+            "bytes": len(content),
+            "sha256": "sha256:" + personal_execution.hashlib.sha256(content).hexdigest(),
+        }
+
+        class Response:
+            def __enter__(self) -> "Response":
+                return self
+
+            def __exit__(self, *_: object) -> None:
+                return None
+
+            def read(self, _maximum: int) -> bytes:
+                return content
+
+        class FailingOutput:
+            def __enter__(self) -> "FailingOutput":
+                return self
+
+            def __exit__(self, *_: object) -> None:
+                return None
+
+            def write(self, _chunk: bytes) -> None:
+                raise OSError(errno.ENOSPC, "disk full")
+
+        with tempfile.TemporaryDirectory() as root:
+            with patch(
+                "videoforge_media_local.personal_execution.urllib.request.urlopen",
+                return_value=Response(),
+            ) as urlopen:
+                with patch.object(Path, "open", return_value=FailingOutput()):
+                    with self.assertRaises(OSError) as raised:
+                        _download(item, Path(root) / "input", lambda: False)
+        self.assertEqual(raised.exception.errno, errno.ENOSPC)
+        urlopen.assert_called_once()
 
     def test_accepts_only_explicit_soulx_48k_span_audio_jobs(self) -> None:
         span = job()

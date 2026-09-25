@@ -78,6 +78,29 @@ _MEDIA_EXECUTION_CONTRACT_INVALID = "MEDIA_EXECUTION_CONTRACT_INVALID"
 _MEDIA_EXECUTION_LEASE_STALE = "MEDIA_EXECUTION_LEASE_STALE"
 _OWNER_CANCEL_REQUESTED = "OWNER_CANCEL_REQUESTED"
 _LEASE_STALE_FENCE = "LEASE_STALE_FENCE"
+_PERSONAL_DOWNLOAD_ATTEMPTS = 2
+_TRANSIENT_DOWNLOAD_HTTP_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
+_TRANSIENT_DOWNLOAD_ERRNOS = frozenset(
+    value
+    for name in (
+        "EAGAIN",
+        "EWOULDBLOCK",
+        "EINTR",
+        "ECONNABORTED",
+        "ECONNREFUSED",
+        "ECONNRESET",
+        "EHOSTDOWN",
+        "EHOSTUNREACH",
+        "ENETDOWN",
+        "ENETRESET",
+        "ENETUNREACH",
+        "ENONET",
+        "ENOTCONN",
+        "EPIPE",
+        "ETIMEDOUT",
+    )
+    if (value := getattr(errno, name, None)) is not None
+)
 
 # A media job needs its downloaded inputs and a second working copy while the
 # bundled tools run. Keep a fixed amount of free space for runtime extraction,
@@ -94,6 +117,10 @@ _span_source_cache_lock = threading.Lock()
 
 class _PersonalJobCancelled(Exception):
     """The control plane fenced this attempt while the local process was active."""
+
+
+class _PersonalDownloadTransportError(OSError):
+    """A bounded retryable failure while reading an HTTPS input response."""
 
 
 def _canonical(value: object) -> bytes:
@@ -287,21 +314,47 @@ def _request_json(
         return error.code, json.loads(data) if data else None
 
 
-def _download(
-    item: dict[str, Any], destination: Path, should_cancel: Callable[[], bool] | None = None
+def _is_transient_download_error(error: BaseException) -> bool:
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code in _TRANSIENT_DOWNLOAD_HTTP_STATUS_CODES
+    if isinstance(error, urllib.error.URLError):
+        # URL errors from HTTPS transport include DNS, connect, TLS, and read failures.
+        # HTTP status errors are handled above so permanent 4xx responses do not retry.
+        return True
+    if isinstance(error, (ConnectionError, TimeoutError)):
+        return True
+    return isinstance(error, OSError) and error.errno in _TRANSIENT_DOWNLOAD_ERRNOS
+
+
+def _raise_download_transport_error(error: urllib.error.URLError | OSError) -> None:
+    if _is_transient_download_error(error):
+        raise _PersonalDownloadTransportError(
+            "Personal worker HTTPS input download transport failed"
+        ) from error
+    raise error
+
+
+def _download_once(
+    item: dict[str, Any], destination: Path, should_cancel: Callable[[], bool] | None
 ) -> None:
-    if not _is_valid_https_url(item.get("url")):
-        raise ValueError("Personal worker download URL is not a valid HTTPS URL")
-    destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     digest = hashlib.sha256()
     size = 0
     if should_cancel is not None and should_cancel():
         raise _PersonalJobCancelled
-    with (
-        urllib.request.urlopen(item["url"], timeout=60, context=https_context()) as response,
-        destination.open("xb") as out,
-    ):
-        while chunk := response.read(1024 * 1024):
+    try:
+        response = urllib.request.urlopen(item["url"], timeout=60, context=https_context())
+    except (urllib.error.URLError, OSError) as error:
+        _raise_download_transport_error(error)
+    with response, destination.open("xb") as out:
+        while True:
+            try:
+                chunk = response.read(1024 * 1024)
+            except (urllib.error.URLError, OSError) as error:
+                # Only response reads are retryable. OSError from destination.open/write
+                # remains a local I/O failure so ENOSPC is never hidden by a retry.
+                _raise_download_transport_error(error)
+            if not chunk:
+                break
             if should_cancel is not None and should_cancel():
                 raise _PersonalJobCancelled
             size += len(chunk)
@@ -311,6 +364,26 @@ def _download(
             out.write(chunk)
     if size != item["bytes"] or f"sha256:{digest.hexdigest()}" != item["sha256"]:
         raise ValueError("Personal worker download did not match durable facts")
+
+
+def _download(
+    item: dict[str, Any], destination: Path, should_cancel: Callable[[], bool] | None = None
+) -> None:
+    if not _is_valid_https_url(item.get("url")):
+        raise ValueError("Personal worker download URL is not a valid HTTPS URL")
+    destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    for attempt in range(_PERSONAL_DOWNLOAD_ATTEMPTS):
+        try:
+            _download_once(item, destination, should_cancel)
+            return
+        except _PersonalDownloadTransportError:
+            # A failed response may have left a partial file. Remove only after a transport
+            # failure; a local write failure must retain its original error and never retry.
+            destination.unlink(missing_ok=True)
+            if attempt + 1 >= _PERSONAL_DOWNLOAD_ATTEMPTS:
+                raise
+            if should_cancel is not None and should_cancel():
+                raise _PersonalJobCancelled
 
 
 def _download_span_source(
