@@ -714,6 +714,42 @@ it("offers process recovery only for the exact second-attempt input-to-process l
   );
 });
 
+it("offers signal recovery only for the exact third failed render lineage", async () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  const attempts = [
+    { id: "11111111-1111-4111-8111-111111111112", kind: "RENDER", state: "FAILED",
+      error_code: "RENDER_INPUT_INVALID" },
+    { id: "11111111-1111-4111-8111-111111111113", kind: "RENDER", state: "FAILED",
+      error_code: "RENDER_PROCESS_FAILED" },
+    { id: "11111111-1111-4111-8111-111111111114", kind: "RENDER", state: "FAILED",
+      error_code: "RENDER_PROCESS_FAILED" },
+  ];
+  const detail = {
+    project: { id: projectId, title: "Signal recovery", created_at: "2026-09-25T05:00:00Z",
+      revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
+    generation_provider: "KIE_FAL", attempts, generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED" as const,
+    gpu_readiness: gpuReadiness, stages: stageList({ render: "FAILED" }),
+  };
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).endsWith(`/projects/${projectId}/render-retry`)) {
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body))).toMatchObject({ failed_attempt_id: attempts[2]?.id });
+      return Response.json({ state: "OUTBOXED" }, { status: 202 });
+    }
+    return Response.json(detail);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
+  await screen.findByRole("list", { name: "Project stages" });
+  const retry = within(stageRow("Assemble final video")).getByRole("button", { name: "Retry" });
+  expect(retry).toBeEnabled();
+  fireEvent.click(retry);
+  await waitFor(() => expect(fetchMock.mock.calls.some(([input]) =>
+    String(input).endsWith(`/projects/${projectId}/render-retry`))).toBe(true));
+  expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch"))).toHaveLength(0);
+});
+
 it("does not expose process recovery for a lone process failure", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
   const detail = {

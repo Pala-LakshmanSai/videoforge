@@ -45,16 +45,17 @@ export async function retryHostedApiRender(
     const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", scope.account_id]);
       const result = await transaction.query<{ recovery: unknown }>(
-        "SELECT public.videoforge_prepare_hosted_api_render_recovery($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::text) AS recovery",
+        "SELECT public.videoforge_prepare_hosted_api_render_recovery($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::text,$8::text) AS recovery",
         [scope.account_id, scope.workspace_id, scope.user_id, projectId, failedAttemptId,
-          crypto.randomUUID(), config.mediaWorkerRelease.executionBundleSha256],
+          crypto.randomUUID(), config.mediaWorkerRelease.executionBundleSha256,
+          config.mediaWorkerRelease.version],
       );
       const recovery = result.rows[0]?.recovery as Record<string, unknown> | undefined;
       if (
         recovery?.schema_version !== "videoforge-hosted-render-disk-recovery/v1" ||
         typeof recovery.revision_id !== "string" || !UUID.test(recovery.revision_id) ||
         typeof recovery.retry_attempt_id !== "string" || !UUID.test(recovery.retry_attempt_id) ||
-        !["DISK", "IO", "INPUT", "PROCESS"].includes(String(recovery.recovery_kind))
+        !["DISK", "IO", "INPUT", "PROCESS", "SIGNAL"].includes(String(recovery.recovery_kind))
       ) throw new Error("HOSTED_RENDER_DISK_RECOVERY_INVALID");
       const plan = await transaction.query<{ payload: unknown }>(
         `SELECT payload FROM public.hosted_render_plans

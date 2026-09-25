@@ -14,7 +14,7 @@ const ids = {
 };
 const bundleSha256 = `sha256:${"a".repeat(64)}`;
 const config = { neon: { databaseUrl: "postgres://unused" },
-  mediaWorkerRelease: { executionBundleSha256: bundleSha256 } } as never;
+  mediaWorkerRelease: { executionBundleSha256: bundleSha256, version: "0.1.36" } } as never;
 
 const mocks = vi.hoisted(() => ({
   query: vi.fn(),
@@ -157,6 +157,29 @@ describe("render-only disk recovery route", () => {
       expectedAttemptId: ids.retry,
       renderRecoveryKey: `render-process-recovery:${ids.revision}`,
     }));
+  });
+
+  it("uses a distinct key for the database-approved signal recovery", async () => {
+    mocks.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("videoforge_prepare_hosted_api_render_recovery")) return { rows: [{ recovery: {
+        schema_version: "videoforge-hosted-render-disk-recovery/v1",
+        revision_id: ids.revision,
+        retry_attempt_id: ids.retry,
+        recovery_kind: "SIGNAL",
+      } }] };
+      if (sql.includes("FROM public.hosted_render_plans")) return { rows: [{ payload: { kind: "RENDER" } }] };
+      return { rows: [] };
+    });
+    const schedule = vi.fn().mockResolvedValue({ state: "OUTBOXED" });
+    const result = await retryHostedApiRender(request(ids.processFailed), ids.project,
+      config, { waitUntil() {} } as never, { schedule });
+    expect(result.status).toBe(202);
+    expect(schedule).toHaveBeenCalledWith(expect.objectContaining({
+      expectedAttemptId: ids.retry,
+      renderRecoveryKey: `render-signal-recovery:${ids.revision}`,
+    }));
+    expect(mocks.query.mock.calls.find(([sql]) => String(sql).includes("videoforge_prepare_hosted_api_render_recovery"))?.[1])
+      .toContain("0.1.36");
   });
 
   it("rejects failed evidence before any CPU scheduling", async () => {
