@@ -45,8 +45,10 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // to the clean production closure after rebuilding contracts and pipeline dependencies.
 // One-batch Stage 5 Workflow continuation adds 3,478 production and 1,588 staging bytes;
 // prompt/provider code remains in its dedicated dynamic route chunk.
+// Resuming an admitted API generation with no materialized jobs adds 563 bytes to the
+// production static closure; the sweep reuses the exact active generation request.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_766_309,
+  "wrangler.production.jsonc": 2_766_872,
   "wrangler.staging.jsonc": 2_767_117,
 })[wranglerConfig];
 const workerForbidden = [
