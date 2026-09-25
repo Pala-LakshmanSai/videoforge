@@ -1,5 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { handoffAcceptedHostedPrompts, hostedPromptRedispatchable } from "./hosted-prompt-route";
+
+it("finalizes the last durable batch with a bounded numeric reservation", () => {
+  const source = readFileSync("src/server/hosted/hosted-prompt-route.ts", "utf8");
+  const recorded = source.indexOf("await compileAndPersistHostedPromptBatch(authority, acceptedBatch");
+  const finalBatch = source.indexOf("saved.accepted_batch_count + 1 === saved.planned_batch_count", recorded);
+  const completion = source.indexOf("return completeAcceptedRun()", finalBatch);
+  const runningResponse = source.indexOf('state: "RUNNING"', completion);
+  expect(recorded).toBeGreaterThan(-1);
+  expect(finalBatch).toBeGreaterThan(recorded);
+  expect(completion).toBeGreaterThan(finalBatch);
+  expect(runningResponse).toBeGreaterThan(completion);
+  expect(source).toContain("SELECT run.reserved_cost_micro_usd::integer");
+  expect(source).toContain("run.reserved_cost_micro_usd::integer AS reserved_cost_micro_usd");
+});
 
 it("hands accepted API prompts to the next stage without changing acceptance on dispatch failure", async () => {
   const scope = { account_id: "account", workspace_id: "workspace", user_id: "user" };

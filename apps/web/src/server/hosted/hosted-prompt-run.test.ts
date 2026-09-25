@@ -248,6 +248,81 @@ function adaptivePlan(batch: PromptBatch) {
 }
 
 describe("hosted prompt authority", () => {
+  it("finalizes a long accepted prefix without submitting another provider request", async () => {
+    const plannedScenes = scenes(327);
+    const authority = hostedPromptAuthority({
+      plan: plan({
+        scenes: plannedScenes,
+        all_segments: plannedScenes.map((scene, index) => ({
+          scene_id: scene.scene_id,
+          segment_index: index,
+          phrase: scene.phrase,
+        })),
+      }),
+      identity,
+      reservedCostMicroUsd: 8_000_000,
+    });
+    const batchPlan = hostedPromptBatchPlan(authority);
+    const persistedBatchPlanBinding = {
+      plannedBatchCount: batchPlan.batchCount,
+      plannedSceneCount: batchPlan.totalScenes,
+      batchPlanHash: await hostedPromptBatchPlanHash(batchPlan),
+    };
+    const command = {
+      projectId: authority.projectId,
+      revisionId: authority.revisionId,
+      timelineId: authority.timelineId,
+      taskId: authority.taskId,
+      attemptId: authority.attemptId,
+      outboxId: authority.outboxId,
+      presentedClaimTokenHash: authority.claimTokenHash,
+    };
+    const batches: Parameters<NonNullable<Parameters<typeof runHostedPromptExecution>[0]["persistBatch"]>>[0][] = [];
+    const fetcher = successfulPromptFetcher();
+    const first = await runHostedPromptExecution({
+      scope: { workspaceId: authority.workspaceId, actorUserId: ids.workspace },
+      authority,
+      batchPlan,
+      persistedBatchPlanBinding,
+      command,
+      apiKey: "configured-test-key-value",
+      persist: async () => undefined,
+      persistBatch: async (batch) => { batches.push(batch); },
+      fetcher,
+    });
+    expect(batchPlan.batchCount).toBeGreaterThan(30);
+    expect(first.compiledPrompts).toHaveLength(327);
+    expect(batches).toHaveLength(batchPlan.batchCount);
+    const noPost = vi.fn();
+    const persist = vi.fn(async () => undefined);
+    const resumed = await runHostedPromptExecution({
+      scope: { workspaceId: authority.workspaceId, actorUserId: ids.workspace },
+      authority,
+      batchPlan,
+      persistedBatchPlanBinding,
+      continuation: {
+        reservationMicroUsd: 8_000_000,
+        acceptedBatches: batches.map((batch) => ({
+          ...batch,
+          scenes: batch.scenes.map(({ sceneOrdinal, sceneId, writerOutput }) => ({
+            sceneOrdinal,
+            sceneId,
+            writerOutput,
+          })),
+        })),
+        beforeBatchSubmit: async () => { noPost(); throw new Error("unexpected submit"); },
+      },
+      acceptedCompiledPrompts: new Map(first.compiledPrompts.map((prompt) => [prompt.sceneId, prompt])),
+      command,
+      apiKey: "configured-test-key-value",
+      persist,
+      fetcher: noPost,
+    });
+    expect(resumed.compiledPrompts).toHaveLength(327);
+    expect(persist).toHaveBeenCalledOnce();
+    expect(noPost).not.toHaveBeenCalled();
+  });
+
   it("binds the exact current plan, published style, single claim, and 4-cent reservation", () => {
     const authority = hostedPromptAuthority({
       plan: plan(),

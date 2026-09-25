@@ -298,7 +298,7 @@ export async function writeProjectPrompts(
                    JOIN public.project_revisions revision ON revision.id = run.project_revision_id
                   WHERE run.account_id = $1 AND run.workspace_id = $2 AND revision.project_id = $4
                   ORDER BY run.created_at DESC LIMIT 1) AS run_started_at,
-                (SELECT run.reserved_cost_micro_usd
+                (SELECT run.reserved_cost_micro_usd::integer
                    FROM public.hosted_prompt_runs run
                    JOIN public.project_revisions revision ON revision.id = run.project_revision_id
                   WHERE run.account_id = $1 AND run.workspace_id = $2 AND revision.project_id = $4
@@ -343,7 +343,7 @@ export async function writeProjectPrompts(
           accepted_cost_micro_usd: number;
         }>(
           `SELECT run.id,run.task_id,run.attempt_id,run.outbox_id,run.execution_profile_id,
-                  run.claim_token_hash,run.input_hash,run.reserved_cost_micro_usd,
+                  run.claim_token_hash,run.input_hash,run.reserved_cost_micro_usd::integer AS reserved_cost_micro_usd,
                   run.planned_batch_count,run.planned_scene_count,run.batch_plan_hash,
                   (SELECT count(*)::integer FROM public.hosted_prompt_batch_progress progress
                     WHERE progress.account_id=run.account_id AND progress.workspace_id=run.workspace_id
@@ -428,11 +428,7 @@ export async function writeProjectPrompts(
             false,
             null,
           );
-        if (
-          !original.claim &&
-          existingState === "DISPATCHING" &&
-          saved.accepted_batch_count === saved.planned_batch_count
-        ) {
+        const completeAcceptedRun = async (): Promise<Response> => {
           const storedProgress = await loadAcceptedPromptBatches(
             pool,
             scope.account_id,
@@ -500,7 +496,13 @@ export async function writeProjectPrompts(
             },
             202,
           );
-        }
+        };
+        if (
+          !original.claim &&
+          existingState === "DISPATCHING" &&
+          saved.accepted_batch_count === saved.planned_batch_count
+        )
+          return completeAcceptedRun();
         if (existingState === "UNKNOWN" && !original.claim)
           return response({ error: { code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED" } }, 409);
         let acceptedBatch: Awaited<ReturnType<typeof recoverClaimedHostedPromptBatch>> | null;
@@ -555,6 +557,8 @@ export async function writeProjectPrompts(
               existingState === "UNKNOWN" ? original.claim?.provider_task_uuid : undefined,
             ),
           );
+        if (acceptedBatch && saved.accepted_batch_count + 1 === saved.planned_batch_count)
+          return completeAcceptedRun();
         return response(
           {
             schema_version: "videoforge-hosted-prompt-response/v1",
