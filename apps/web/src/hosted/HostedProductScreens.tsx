@@ -4147,6 +4147,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     queryFn: () => readJson<ProjectDetailResponse>(`/api/v2/hosted/projects/${projectId}`),
     refetchInterval: (currentQuery) =>
       hostedProjectPollInterval(currentQuery.state.data as ProjectDetailResponse | undefined),
+    refetchIntervalInBackground: true,
     placeholderData: (previousData) => previousData,
     retry: false,
   });
@@ -5588,7 +5589,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       {asr?.state === "SUCCEEDED" && contextComplete && !render ? (
         <div className="notice" role="status">
           <strong>
-            {renderHandoff.isError
+            {renderHandoff.isError && !query.data.generation
               ? "Transcription complete; generation planning could not be verified."
               : renderHandoff.isPending
                 ? "Saving scene plan…"
@@ -5610,14 +5611,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                           : "Writing image prompts…"
                   : "Transcription complete; generation planning is starting."}
           </strong>
-          {renderHandoff.isError ? <span> {renderHandoff.error.message}</span> : null}
+          {renderHandoff.isError && !query.data.generation ? (
+            <span> {renderHandoff.error.message}</span>
+          ) : null}
           {generationStopped ? (
             <span>
               Generation ended in a terminal state. No automatic
               {query.data.generation_provider === "KIE_FAL" ? " API" : " GPU"} retry was sent.
             </span>
           ) : null}
-          {renderHandoff.isError ? (
+          {renderHandoff.isError && !query.data.generation ? (
             <>
               <span>Your transcript is saved. This will retry planning only.</span>
               <Button
@@ -5629,7 +5632,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               </Button>
             </>
           ) : null}
-          {!renderHandoff.isError &&
+          {(!renderHandoff.isError || query.data.generation) &&
           !generationStopped &&
           query.data.generation &&
           promptStage?.status !== "COMPLETE" ? (

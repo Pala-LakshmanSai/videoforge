@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -128,6 +128,22 @@ describe("hosted project polling", () => {
     | undefined
     ? NonNullable<T>
     : never;
+
+  it("refreshes a running project while the browser tab is unfocused", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json(
+        detail({
+          stages: [{ id: "image-generation", name: "Generate images", status: "RUNNING" }],
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    focusManager.setFocused(false);
+    renderHosted(<HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(1), { timeout: 3_500 });
+  });
 
   it("stops background reads after a terminal Stage 3 provider failure", () => {
     expect(
@@ -742,6 +758,7 @@ it("keeps an uncertain Kie regeneration identity and blocks another submission",
 
 afterEach(() => {
   cleanup();
+  focusManager.setFocused(undefined);
   window.sessionStorage.clear();
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -3195,6 +3212,7 @@ describe("hosted product journey", () => {
   });
 
   it("fails closed when ASR succeeds without an exact render plan", async () => {
+    let planned = false;
     const detail = {
       project: {
         id: "11111111-1111-4111-8111-111111111111",
@@ -3241,7 +3259,25 @@ describe("hosted product journey", () => {
           },
           { status: 409 },
         );
-      return Response.json(detail);
+      return Response.json(
+        planned
+          ? {
+              ...detail,
+              generation: {
+                id: "55555555-5555-4555-8555-555555555555",
+                stage: "RUNNING",
+                planned_tasks: 2,
+                completed_tasks: 0,
+                failed_tasks: 0,
+              },
+              stages: [
+                { id: "planning", name: "Plan scenes", status: "COMPLETE" },
+                { id: "prompt-writing", name: "Write image prompts", status: "COMPLETE" },
+                { id: "image-generation", name: "Generate images", status: "RUNNING" },
+              ],
+            }
+          : detail,
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />);
@@ -3262,6 +3298,12 @@ describe("hosted product journey", () => {
       fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
     ).toBe(false);
     expect(screen.queryByRole("link", { name: "Review video" })).not.toBeInTheDocument();
+    planned = true;
+    fireEvent.click(screen.getByRole("button", { name: "Refresh now" }));
+    await waitFor(() =>
+      expect(screen.queryByText(/generation planning could not be verified/u)).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: "Retry planning" })).not.toBeInTheDocument();
   });
 
   it("re-arms one automatic render handoff for a successor revision reusing ASR evidence", async () => {
