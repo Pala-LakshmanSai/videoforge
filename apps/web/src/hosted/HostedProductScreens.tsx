@@ -5321,9 +5321,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         renderAttempts.length === 2 &&
         renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") ||
       (render.error_code === "RENDER_INPUT_INVALID" &&
-        renderAttempts.length === 3 &&
-        renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" &&
-        renderAttempts[1]?.error_code === "MEDIA_EXECUTION_IO_FAILED"))
+        ((renderAttempts.length === 1) ||
+          (renderAttempts.length === 3 &&
+            renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" &&
+            renderAttempts[1]?.error_code === "MEDIA_EXECUTION_IO_FAILED"))))
       ? {
           render: stageRetryButton(renderDiskRetry.isPending, () =>
             renderDiskRetry.mutate(render.id),

@@ -622,6 +622,45 @@ it("offers local render retry for the exact three failed attempts", async () => 
   expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch"))).toHaveLength(0);
 });
 
+it("offers the guarded local retry for a first-attempt input failure", async () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  const failedAttempt = {
+    id: "11111111-1111-4111-8111-111111111112",
+    kind: "RENDER",
+    state: "FAILED",
+    error_code: "RENDER_INPUT_INVALID",
+  };
+  const detail = {
+    project: { id: projectId, title: "First input recovery", created_at: "2026-09-25T05:00:00Z",
+      revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
+    generation_provider: "KIE_FAL",
+    attempts: [failedAttempt],
+    generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED" as const,
+    gpu_readiness: gpuReadiness,
+    stages: stageList({ render: "FAILED" }),
+  };
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).endsWith(`/projects/${projectId}/render-retry`)) {
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body))).toMatchObject({
+        failed_attempt_id: failedAttempt.id,
+      });
+      return Response.json({ state: "OUTBOXED" }, { status: 202 });
+    }
+    return Response.json(detail);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
+  await screen.findByRole("list", { name: "Project stages" });
+  const retry = within(stageRow("Assemble final video")).getByRole("button", { name: "Retry" });
+  expect(retry).toBeEnabled();
+  fireEvent.click(retry);
+  await waitFor(() => expect(fetchMock.mock.calls.some(([input]) =>
+    String(input).endsWith(`/projects/${projectId}/render-retry`))).toBe(true));
+  expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch"))).toHaveLength(0);
+});
+
 it("shows frozen elapsed times in stage rows and the audio spanning panel", async () => {
   vi.stubGlobal(
     "fetch",
