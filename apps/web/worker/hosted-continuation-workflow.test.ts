@@ -96,7 +96,7 @@ beforeEach(() => {
 describe("hosted continuation Workflow loop", () => {
   it("runs a targeted prompt handoff one durable step per accepted batch", async () => {
     const target = {
-      accountId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      accountId: "bbbbbbbb-bbbb-bbbb-7bbb-bbbbbbbbbbbb",
       projectId: "11111111-1111-4111-8111-111111111111",
       revisionId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
       step: "prompts",

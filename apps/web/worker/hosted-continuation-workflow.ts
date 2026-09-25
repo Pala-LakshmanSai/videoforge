@@ -36,7 +36,8 @@ export const HOSTED_CONTINUATION_CADENCE = "60 seconds" as const;
 export const HOSTED_PROMPT_HANDOFF_STEPS = 512;
 
 const MAXIMUM_REASON_LENGTH = 120;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+// Postgres accepts UUID values without RFC version/variant bits; admitted account IDs include them.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
 /**
  * Defensive payload validation: any caller that can create an instance controls this value and a
