@@ -1,4 +1,20 @@
 schema_version: "2.0"
+library_details_spacing_2026_09_25:
+  checkpoint: V2-09
+  status: PRODUCTION_UI_VERIFIED
+  decision: >-
+    Reuse the Library's existing 16px details spacing on hosted finished-video cards so the
+    Details disclosure no longer touches the Review, Download MP4, and Delete actions.
+  evidence: >-
+    Source facf6e95fcee518ea042465bf45e0de1efdce788 passed the two focused hosted
+    Library tests and the Cloudflare production build/bundle gate. Isolated exact-source
+    deployment verified Cloudflare version f184957e-84b8-4a81-86ec-2eca3f57c8c3,
+    25 secret names, KIE_FAL, and GPU transport disabled. Signed-in Chrome showed
+    visible spacing beneath the action row, and the Details disclosure opened.
+  remaining_gates: >-
+    The separate 18-minute Stage 5 failure and fresh paid-run authority remain as recorded below.
+  provider_spend: No provider tasks or generation spend for this UI release.
+  paid_compute_shutdown: No GPU or RunPod activation for this UI release.
 api_generation_scheduler_2026_09_25:
   checkpoint: V2-09
   status: PRODUCTION_SCHEDULER_RELEASE_VERIFIED_LONG_RUN_PENDING_NEW_AUTHORITY
