@@ -5285,6 +5285,18 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     renderAttempts[1]?.state === "FAILED" &&
     renderAttempts[1]?.error_code === "RENDER_PROCESS_FAILED" &&
     renderAttempts[2]?.id === render.id;
+  const outputRenderRecoveryEligible =
+    query.data.generation_provider === "KIE_FAL" &&
+    render?.state === "FAILED" &&
+    render?.error_code === "RENDER_OUTPUT_INVALID" &&
+    renderAttempts.length === 4 &&
+    renderAttempts[0]?.state === "FAILED" &&
+    renderAttempts[0]?.error_code === "RENDER_INPUT_INVALID" &&
+    renderAttempts[1]?.state === "FAILED" &&
+    renderAttempts[1]?.error_code === "RENDER_PROCESS_FAILED" &&
+    renderAttempts[2]?.state === "FAILED" &&
+    renderAttempts[2]?.error_code === "RENDER_PROCESS_FAILED" &&
+    renderAttempts[3]?.id === render.id;
   const renderRecoveryEligible =
     query.data.generation_provider === "KIE_FAL" &&
     failedStageIds.has("render") &&
@@ -5298,7 +5310,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           (renderAttempts.length === 3 &&
             renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" &&
             renderAttempts[1]?.error_code === "MEDIA_EXECUTION_IO_FAILED"))) ||
-      processRenderRecoveryEligible || signalRenderRecoveryEligible);
+      processRenderRecoveryEligible || signalRenderRecoveryEligible || outputRenderRecoveryEligible);
   const stageRetries: Record<string, ReturnType<typeof stageRetryButton>> = {
     ...(failedStageIds.has("transcription") && asr?.state === "FAILED"
       ? {

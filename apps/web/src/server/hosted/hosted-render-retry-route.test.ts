@@ -182,6 +182,27 @@ describe("render-only disk recovery route", () => {
       .toContain("0.1.36");
   });
 
+  it("uses a distinct key for the database-approved output recovery", async () => {
+    mocks.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("videoforge_prepare_hosted_api_render_recovery")) return { rows: [{ recovery: {
+        schema_version: "videoforge-hosted-render-disk-recovery/v1",
+        revision_id: ids.revision,
+        retry_attempt_id: ids.retry,
+        recovery_kind: "OUTPUT",
+      } }] };
+      if (sql.includes("FROM public.hosted_render_plans")) return { rows: [{ payload: { kind: "RENDER" } }] };
+      return { rows: [] };
+    });
+    const schedule = vi.fn().mockResolvedValue({ state: "OUTBOXED" });
+    const result = await retryHostedApiRender(request(ids.processFailed), ids.project,
+      config, { waitUntil() {} } as never, { schedule });
+    expect(result.status).toBe(202);
+    expect(schedule).toHaveBeenCalledWith(expect.objectContaining({
+      expectedAttemptId: ids.retry,
+      renderRecoveryKey: `render-output-recovery:${ids.revision}`,
+    }));
+  });
+
   it("rejects failed evidence before any CPU scheduling", async () => {
     mocks.query.mockRejectedValueOnce(Object.assign(new Error("evidence rejected"), { code: "23514" }));
     const schedule = vi.fn();

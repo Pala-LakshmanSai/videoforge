@@ -1032,6 +1032,12 @@
       "name": "hosted_api_third_render_signal_recovery",
       "filename": "0209_hosted_api_third_render_signal_recovery.sql",
       "sha256": "sha256:e04a8f030a86024955e7bb6ad518ceb6de2ddd6b3cc6a6bd3e81b8dd7bccc0a9"
+    },
+    {
+      "version": 210,
+      "name": "hosted_api_fourth_render_output_recovery",
+      "filename": "0210_hosted_api_fourth_render_output_recovery.sql",
+      "sha256": "sha256:d6de1af24d1dbc379189f56fafcd94c07fc59b9fe6713c1aeadc06f1f2e1c969"
     }
   ]
 }
