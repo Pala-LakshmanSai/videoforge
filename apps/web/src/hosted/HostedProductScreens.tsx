@@ -5223,9 +5223,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   });
   // Every failed row owns a Retry control. Only a server-bounded recovery is enabled; a failed
   // provider lane cannot be sent again from the browser because its charge may already exist.
-  const stageRetryButton = (busy: boolean, run: () => void) => (
+  const stageRetryButton = (busy: boolean, run: () => void, label = "Retry") => (
     <Button variant="secondary" className="stage-retry-button" busy={busy} onClick={run}>
-      <RefreshCw size={13} aria-hidden="true" /> Retry
+      <RefreshCw size={13} aria-hidden="true" /> {label}
     </Button>
   );
   const stageRetryDisabled = (reason: string) => (
@@ -5260,6 +5260,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const failedStageIds = new Set(
     displayedStages.filter((stage) => stage.status === "FAILED").map((stage) => stage.id),
   );
+  const savedUnknownPromptsCanFinish =
+    promptProgress?.state === "UNKNOWN" &&
+    (hostedCount(promptProgress.total_batches) ?? 0) > 0 &&
+    hostedCount(promptProgress.accepted_batches) === hostedCount(promptProgress.total_batches) &&
+    (hostedCount(promptProgress.total_scenes) ?? 0) > 0 &&
+    hostedCount(promptProgress.accepted_scenes) === hostedCount(promptProgress.total_scenes);
   const stageRetries: Record<string, ReturnType<typeof stageRetryButton>> = {
     ...(failedStageIds.has("transcription") && asr?.state === "FAILED"
       ? {
@@ -5297,10 +5303,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             : {}
       : {}),
     ...(failedStageIds.has("prompt-writing") && query.data.generation?.id &&
-    promptProgress?.state !== "UNKNOWN" &&
+    (promptProgress?.state !== "UNKNOWN" || savedUnknownPromptsCanFinish) &&
     promptProgress?.problem_code !== "HOSTED_PROMPT_OUTPUT_INVALID"
       ? {
-          "prompt-writing": stageRetryButton(promptWriting.isPending, () => promptWriting.mutate()),
+          "prompt-writing": stageRetryButton(
+            promptWriting.isPending,
+            () => promptWriting.mutate(),
+            savedUnknownPromptsCanFinish ? "Finish saved prompts" : "Retry",
+          ),
         }
       : {}),
     ...(query.data.generation_provider === "KIE_FAL" &&

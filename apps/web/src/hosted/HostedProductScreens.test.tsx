@@ -4015,6 +4015,71 @@ describe("hosted product journey", () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 
+  it.each([
+    ["all saved", 33, 327, true, true],
+    ["one scene missing", 33, 326, true, false],
+    ["one batch missing", 32, 327, true, false],
+    ["generation missing", 33, 327, false, false],
+  ] as const)(
+    "offers saved-prompt completion for an UNKNOWN run only when %s",
+    async (_case, acceptedBatches, acceptedScenes, hasGeneration, canFinish) => {
+      const projectId = "11111111-1111-4111-8111-111111111111";
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+        String(input).endsWith("/prompts")
+          ? Response.json({ state: "COMPLETE" })
+          : Response.json({
+              project: {
+                id: projectId,
+                title: "Private project",
+                created_at: "2026-08-17T10:00:00.000Z",
+                revision_id: "22222222-2222-4222-8222-222222222222",
+                revision_state: "LOCKED",
+              },
+              attempts: [],
+              gpu_transport: "DISABLED_UNQUALIFIED",
+              gpu_readiness: gpuReadiness,
+              voiceover_context: {
+                id: "44444444-4444-4444-8444-444444444444",
+                state: "SUCCEEDED",
+                transcript_hash: `sha256:${"b".repeat(64)}`,
+                reserved_cost_micro_usd: 10_000,
+              },
+              generation: hasGeneration ? { id: "55555555-5555-4555-8555-555555555555" } : null,
+              stages: [
+                { id: "prompt-writing", name: "Write image prompts", status: "FAILED" },
+              ],
+              prompts: [],
+              prompt_progress: {
+                state: "UNKNOWN",
+                total_batches: "33",
+                accepted_batches: String(acceptedBatches),
+                total_scenes: "327",
+                accepted_scenes: String(acceptedScenes),
+              },
+            }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      renderHosted(<HostedProjectScreen projectId={projectId} />);
+
+      expect(await screen.findByText("Private project")).toBeInTheDocument();
+      const retry = within(stageRow("Write image prompts")).getByRole("button", {
+        name: canFinish ? "Finish saved prompts" : "Retry",
+      });
+      expect(retry).toHaveProperty("disabled", !canFinish);
+      if (canFinish) {
+        fireEvent.click(retry);
+        await waitFor(() =>
+          expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/prompts")))
+            .toHaveLength(1),
+        );
+      } else {
+        expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(
+          false,
+        );
+      }
+    },
+  );
+
   it("shows final and batch-accepted prompts while Stage 5 writes the next batch", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
