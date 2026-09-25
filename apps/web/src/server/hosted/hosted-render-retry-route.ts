@@ -54,7 +54,7 @@ export async function retryHostedApiRender(
         recovery?.schema_version !== "videoforge-hosted-render-disk-recovery/v1" ||
         typeof recovery.revision_id !== "string" || !UUID.test(recovery.revision_id) ||
         typeof recovery.retry_attempt_id !== "string" || !UUID.test(recovery.retry_attempt_id) ||
-        !["DISK", "IO", "INPUT"].includes(String(recovery.recovery_kind))
+        !["DISK", "IO", "INPUT", "PROCESS"].includes(String(recovery.recovery_kind))
       ) throw new Error("HOSTED_RENDER_DISK_RECOVERY_INVALID");
       const plan = await transaction.query<{ payload: unknown }>(
         `SELECT payload FROM public.hosted_render_plans

@@ -5266,6 +5266,29 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     hostedCount(promptProgress.accepted_batches) === hostedCount(promptProgress.total_batches) &&
     (hostedCount(promptProgress.total_scenes) ?? 0) > 0 &&
     hostedCount(promptProgress.accepted_scenes) === hostedCount(promptProgress.total_scenes);
+  const processRenderRecoveryEligible =
+    query.data.generation_provider === "KIE_FAL" &&
+    render?.state === "FAILED" &&
+    render?.error_code === "RENDER_PROCESS_FAILED" &&
+    renderAttempts.length === 2 &&
+    renderAttempts[0]?.state === "FAILED" &&
+    renderAttempts[0]?.error_code === "RENDER_INPUT_INVALID" &&
+    renderAttempts[1]?.id === render.id &&
+    renderAttempts[1]?.state === "FAILED";
+  const renderRecoveryEligible =
+    query.data.generation_provider === "KIE_FAL" &&
+    failedStageIds.has("render") &&
+    render?.state === "FAILED" &&
+    (render.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" ||
+      (render.error_code === "MEDIA_EXECUTION_IO_FAILED" &&
+        renderAttempts.length === 2 &&
+        renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") ||
+      (render.error_code === "RENDER_INPUT_INVALID" &&
+        (renderAttempts.length === 1 ||
+          (renderAttempts.length === 3 &&
+            renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" &&
+            renderAttempts[1]?.error_code === "MEDIA_EXECUTION_IO_FAILED"))) ||
+      processRenderRecoveryEligible);
   const stageRetries: Record<string, ReturnType<typeof stageRetryButton>> = {
     ...(failedStageIds.has("transcription") && asr?.state === "FAILED"
       ? {
@@ -5313,18 +5336,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ),
         }
       : {}),
-    ...(query.data.generation_provider === "KIE_FAL" &&
-    failedStageIds.has("render") &&
-    render?.state === "FAILED" &&
-    (render.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" ||
-      (render.error_code === "MEDIA_EXECUTION_IO_FAILED" &&
-        renderAttempts.length === 2 &&
-        renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") ||
-      (render.error_code === "RENDER_INPUT_INVALID" &&
-        ((renderAttempts.length === 1) ||
-          (renderAttempts.length === 3 &&
-            renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" &&
-            renderAttempts[1]?.error_code === "MEDIA_EXECUTION_IO_FAILED"))))
+    ...(renderRecoveryEligible
       ? {
           render: stageRetryButton(renderDiskRetry.isPending, () =>
             renderDiskRetry.mutate(render.id),
