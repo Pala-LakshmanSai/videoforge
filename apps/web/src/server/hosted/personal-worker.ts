@@ -509,12 +509,13 @@ async function listDevices(
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (!scope) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
-    await pool.query("SELECT set_config($1, $2, false)", [
-      "videoforge.account_id",
-      scope.accountId,
-    ]);
-    const devices = await pool.query(
-      `SELECT device.id, device.display_name, device.platform, device.architecture,
+    const devices = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        scope.accountId,
+      ]);
+      return transaction.query(
+        `SELECT device.id, device.display_name, device.platform, device.architecture,
               device.worker_version, device.protocol_version,
               CASE
                 WHEN device.status = 'REVOKED' THEN 'REVOKED'
@@ -532,8 +533,9 @@ async function listDevices(
         WHERE device.account_id = $1 AND device.workspace_id = $2
           AND device.removed_at IS NULL
         ORDER BY device.created_at`,
-      [scope.accountId, scope.workspaceId, config.mediaWorkerRelease.minimumProtocolVersion],
-    );
+        [scope.accountId, scope.workspaceId, config.mediaWorkerRelease.minimumProtocolVersion],
+      );
+    });
     return json({
       schema_version: "videoforge-media-worker-list/v1",
       devices: devices.rows,
