@@ -206,7 +206,9 @@ jobs:
           )
           PY
           cat "$RUNNER_TEMP/videoforge-render-deps.env" >> "$GITHUB_ENV"
+          set -a
           source "$RUNNER_TEMP/videoforge-render-deps.env"
+          set +a
           python -m pip install --disable-pip-version-check \
             "numpy==${VIDEOFORGE_NUMPY_VERSION}" \
             "opencv-python-headless==${VIDEOFORGE_OPENCV_VERSION}"
