@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+import { PGlite } from "@electric-sql/pglite";
 
 import { TENANT_PRINCIPAL_SETTING } from "../dist/src/index.js";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
@@ -9,6 +12,117 @@ import {
   uuid,
   withPgcryptoMigratedDatabase,
 } from "./support/pglite.mjs";
+
+test("0201 keeps prompt runs with recent batch activity and fails them after 15 idle minutes", async () => {
+  const migration = readFileSync(
+    new URL("../migrations/0201_hosted_prompt_recent_activity_staleness.sql", import.meta.url),
+    "utf8",
+  );
+  const manifest = JSON.parse(
+    readFileSync(new URL("../migrations/manifest.json", import.meta.url), "utf8"),
+  );
+  const entry = manifest.migrations.at(-1);
+  assert.equal(entry.version, 201);
+  assert.equal(entry.filename, "0201_hosted_prompt_recent_activity_staleness.sql");
+  assert.equal(
+    entry.sha256,
+    `sha256:${createHash("sha256").update(migration).digest("hex")}`,
+  );
+
+  const database = new PGlite();
+  try {
+    await database.exec(`
+      CREATE TABLE hosted_voiceover_contexts (
+        id uuid, account_id uuid, project_id uuid, state text, started_at timestamptz
+      );
+      CREATE TABLE hosted_prompt_runs (
+        id uuid, account_id uuid, workspace_id uuid, project_id uuid, task_id uuid,
+        attempt_id uuid, outbox_id uuid, state text, problem_code text,
+        provider_may_have_charged boolean DEFAULT false, finished_at timestamptz,
+        started_at timestamptz
+      );
+      CREATE TABLE hosted_prompt_batch_claims (
+        id uuid, account_id uuid, workspace_id uuid, run_id uuid, task_id uuid,
+        attempt_id uuid, outbox_id uuid, created_at timestamptz
+      );
+      CREATE TABLE hosted_prompt_batch_progress (
+        account_id uuid, workspace_id uuid, run_id uuid, claim_id uuid, created_at timestamptz
+      );
+      CREATE FUNCTION videoforge_current_account_id() RETURNS uuid LANGUAGE sql STABLE AS
+        $$ SELECT '${IDS.accountA}'::uuid $$;
+      CREATE FUNCTION videoforge_fail_hosted_voiceover_context(uuid,text,text,boolean)
+        RETURNS boolean LANGUAGE sql AS $$ SELECT true $$;
+      CREATE FUNCTION videoforge_fail_hosted_prompt_run(uuid,text,text,boolean,integer)
+        RETURNS boolean LANGUAGE plpgsql AS $$
+        BEGIN
+          UPDATE hosted_prompt_runs SET state=$2,problem_code=$3,
+            provider_may_have_charged=$4,finished_at=clock_timestamp() WHERE id=$1;
+          RETURN FOUND;
+        END $$;
+    `);
+    await database.exec(migration);
+
+    const runId = uuid(958_101);
+    const claimId = uuid(958_102);
+    const taskId = uuid(958_103);
+    const attemptId = uuid(958_104);
+    const outboxId = uuid(958_105);
+    const projectId = IDS.projectA;
+    await database.query(
+      `INSERT INTO hosted_prompt_runs (
+         id,account_id,workspace_id,project_id,task_id,attempt_id,outbox_id,state,started_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,'DISPATCHING',clock_timestamp()-interval '30 minutes')`,
+      [runId, IDS.accountA, IDS.workspaceA, projectId, taskId, attemptId, outboxId],
+    );
+    await database.query(
+      `INSERT INTO hosted_prompt_batch_claims (
+         id,account_id,workspace_id,run_id,task_id,attempt_id,outbox_id,created_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,clock_timestamp()-interval '1 minute')`,
+      [claimId, IDS.accountA, IDS.workspaceA, runId, taskId, attemptId, outboxId],
+    );
+
+    const reconcile = async () =>
+      database.query(
+        `SELECT public.videoforge_reconcile_stale_hosted_prompt_dispatches($1) AS result`,
+        [projectId],
+      );
+    const claimActive = await reconcile();
+    assert.equal(claimActive.rows[0].result.prompt_reconciled, 0);
+
+    await database.query(
+      `UPDATE hosted_prompt_batch_claims SET created_at=clock_timestamp()-interval '20 minutes'
+        WHERE id=$1`,
+      [claimId],
+    );
+    await database.query(
+      `INSERT INTO hosted_prompt_batch_progress (
+         account_id,workspace_id,run_id,claim_id,created_at
+       ) VALUES ($1,$2,$3,$4,clock_timestamp()-interval '1 minute')`,
+      [IDS.accountA, IDS.workspaceA, runId, claimId],
+    );
+    const progressActive = await reconcile();
+    assert.equal(progressActive.rows[0].result.prompt_reconciled, 0);
+
+    await database.query(
+      `UPDATE hosted_prompt_batch_progress SET created_at=clock_timestamp()-interval '20 minutes'
+        WHERE run_id=$1`,
+      [runId],
+    );
+    const stale = await reconcile();
+    assert.deepEqual(stale.rows[0].result, {
+      context_reconciled: 0,
+      prompt_reconciled: 1,
+      redispatched: false,
+    });
+    assert.deepEqual(
+      (await database.query(`SELECT state,problem_code FROM hosted_prompt_runs WHERE id=$1`, [runId]))
+        .rows[0],
+      { state: "UNKNOWN", problem_code: "HOSTED_PROMPT_DISPATCH_TIMEOUT" },
+    );
+  } finally {
+    await database.close();
+  }
+});
 
 test("0058 preserves an UNKNOWN context claim and 0061 reconciles its original result exactly once", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {

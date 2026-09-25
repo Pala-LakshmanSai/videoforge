@@ -978,6 +978,12 @@
       "name": "hosted_api_avatar_render_timing",
       "filename": "0200_hosted_api_avatar_render_timing.sql",
       "sha256": "sha256:8376cc7358e76256bc3d5de4bf75abb5c7d14435e55b86bf9dd1a3afd1eb556f"
+    },
+    {
+      "version": 201,
+      "name": "hosted_prompt_recent_activity_staleness",
+      "filename": "0201_hosted_prompt_recent_activity_staleness.sql",
+      "sha256": "sha256:393648bb75f232fbb1c69e2d0020005064da9b9f579cec733ee73b2d742ee8fb"
     }
   ]
 }
