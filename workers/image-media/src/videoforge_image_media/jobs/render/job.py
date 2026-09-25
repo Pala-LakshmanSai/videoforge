@@ -24,6 +24,7 @@ from .filtergraph import (
     LoudnessMeasurement,
     RenderCommandPlan,
     compile_audio_correction_command,
+    compile_chunk_mux_command,
     compile_render_command,
 )
 from .ports import (
@@ -66,6 +67,7 @@ FAL_WIDE_SAFE_REASONS = frozenset({
     "Fal square clip decode lost too many frames",
 })
 WINDOWS_COMMAND_LINE_LIMIT = 32_767
+MAX_SEGMENTS_PER_RENDER = 8
 
 
 def _windows_command_units(arguments: Sequence[str]) -> int:
@@ -455,6 +457,7 @@ class RenderJob:
         voiceover_path: Path,
         output_path: Path,
         input_loudness: LoudnessMeasurement,
+        video_only: bool = False,
     ) -> RenderCommandPlan:
         aliases: dict[Path, Path] = {}
 
@@ -483,6 +486,7 @@ class RenderJob:
             voiceover_path=short_voiceover,
             output_path=output_path,
             input_loudness=input_loudness,
+            video_only=video_only,
         )
         script = Path("filtergraph.txt")
         (stage / script).write_bytes(plan.filtergraph.encode("utf-8"))
@@ -496,6 +500,94 @@ class RenderJob:
                 retryable=False,
             )
         return replace(plan, arguments=tuple(arguments))
+
+    def _render_chunks(
+        self,
+        *,
+        tools: RenderTools,
+        manifest: Mapping[str, Any],
+        asset_paths: Mapping[str, Path],
+        voiceover_path: Path,
+        output_path: Path,
+        input_loudness: LoudnessMeasurement,
+        token: str,
+        stage: Path,
+    ) -> None:
+        segments = cast(list[dict[str, Any]], manifest["segments"])
+        chunk_names: list[str] = []
+        for first in range(0, len(segments), MAX_SEGMENTS_PER_RENDER):
+            self._check_cancelled(token)
+            chunk = segments[first : first + MAX_SEGMENTS_PER_RENDER]
+            chunk_frames = sum(
+                cast(int, segment["end_frame_exclusive"])
+                - cast(int, segment["start_frame"])
+                for segment in chunk
+            )
+            chunk_manifest = dict(manifest, segments=chunk, total_frames=chunk_frames)
+            if "soulx_crop_profile_approval" in chunk_manifest and not any(
+                segment["timeline_composition"] != "IMAGE_FULL"
+                and segment["render"]["avatar_source_profile"] == "soulx-pro-vf924u-approved-v1"
+                for segment in chunk
+            ):
+                chunk_manifest.pop("soulx_crop_profile_approval")
+            name = f"chunk-{len(chunk_names):04d}.mp4"
+            chunk_path = stage / name
+            plan = compile_render_command(
+                ffmpeg=tools.ffmpeg,
+                manifest=chunk_manifest,
+                asset_paths=asset_paths,
+                voiceover_path=voiceover_path,
+                output_path=chunk_path,
+                input_loudness=input_loudness,
+                video_only=True,
+            )
+            if _windows_command_units(plan.arguments) >= WINDOWS_COMMAND_LINE_LIMIT:
+                short_stage = stage / f"inputs-{len(chunk_names):04d}"
+                short_stage.mkdir()
+                plan = self._stage_long_command(
+                    stage=short_stage,
+                    tools=tools,
+                    manifest=chunk_manifest,
+                    asset_paths=asset_paths,
+                    voiceover_path=voiceover_path,
+                    output_path=chunk_path,
+                    input_loudness=input_loudness,
+                    video_only=True,
+                )
+                cwd = short_stage
+            else:
+                cwd = None
+            self._run_process(
+                plan.arguments,
+                token=token,
+                failure_code="RENDER_PROCESS_FAILED",
+                phase="visual_render",
+                cwd=cwd,
+            )
+            self._require_file(
+                chunk_path,
+                missing_code="RENDER_OUTPUT_INVALID",
+                missing_message="A render chunk did not produce an output file.",
+            )
+            chunk_names.append(name)
+
+        concat_path = stage / "chunks.txt"
+        concat_path.write_text(
+            "".join(f"file {name}\n" for name in chunk_names), encoding="utf-8"
+        )
+        self._run_process(
+            compile_chunk_mux_command(
+                ffmpeg=tools.ffmpeg,
+                concat_path=concat_path,
+                voiceover_path=voiceover_path,
+                output_path=output_path,
+                total_frames=cast(int, manifest["total_frames"]),
+                input_loudness=input_loudness,
+            ),
+            token=token,
+            failure_code="RENDER_PROCESS_FAILED",
+            phase="visual_render",
+        )
 
     def _measure_loudness(
         self,
@@ -947,13 +1039,17 @@ class RenderJob:
                             f"Fal wide segment {ordinal}: {type(error).__name__}: {reason}.",
                             retryable=False,
                         ) from error
-                plan = compile_render_command(
-                    ffmpeg=tools.ffmpeg,
-                    manifest=manifest,
-                    asset_paths=render_paths,
-                    voiceover_path=voiceover_path,
-                    output_path=output_path,
-                    input_loudness=input_loudness,
+                plan = (
+                    compile_render_command(
+                        ffmpeg=tools.ffmpeg,
+                        manifest=manifest,
+                        asset_paths=render_paths,
+                        voiceover_path=voiceover_path,
+                        output_path=output_path,
+                        input_loudness=input_loudness,
+                    )
+                    if len(manifest["segments"]) <= MAX_SEGMENTS_PER_RENDER
+                    else None
                 )
             except (KeyError, TypeError, ValueError, OSError, BrokenPipeError) as error:
                 raise _RenderFailure(
@@ -962,7 +1058,28 @@ class RenderJob:
                     retryable=False,
                 ) from error
 
-            if _windows_command_units(plan.arguments) >= WINDOWS_COMMAND_LINE_LIMIT:
+            if plan is None:
+                try:
+                    with tempfile.TemporaryDirectory(
+                        prefix="vf-render-chunks-", dir=voiceover_path.parent
+                    ) as chunk_directory:
+                        self._render_chunks(
+                            tools=tools,
+                            manifest=manifest,
+                            asset_paths=render_paths,
+                            voiceover_path=voiceover_path,
+                            output_path=output_path,
+                            input_loudness=input_loudness,
+                            token=token,
+                            stage=Path(chunk_directory),
+                        )
+                except OSError as error:
+                    raise _RenderFailure(
+                        "RENDER_PROCESS_FAILED",
+                        "Render chunk scratch files could not be written.",
+                        retryable=False,
+                    ) from error
+            elif _windows_command_units(plan.arguments) >= WINDOWS_COMMAND_LINE_LIMIT:
                 self._check_cancelled(token)
                 try:
                     with tempfile.TemporaryDirectory(

@@ -290,6 +290,7 @@ def compile_render_command(
     voiceover_path: Path,
     output_path: Path,
     input_loudness: LoudnessMeasurement,
+    video_only: bool = False,
 ) -> RenderCommandPlan:
     """Compile one direct FFmpeg argument array; no command shell is involved."""
 
@@ -428,16 +429,18 @@ def compile_render_command(
         else:
             raise ValueError(f"Unsupported timeline composition {composition}")
 
-    arguments.extend(["-threads", "1", "-i", str(voiceover_path)])
+    if not video_only:
+        arguments.extend(["-threads", "1", "-i", str(voiceover_path)])
     audio_index = input_index
     graph.append(
         f"{''.join(video_labels)}concat=n={len(video_labels)}:v=1:a=0,format=yuv420p[vout]"
     )
-    duration_seconds = total_frames / 30
-    graph.append(
-        f"[{audio_index}:a:0]atrim=end={duration_seconds:.6f},asetpts=PTS-STARTPTS,"
-        f"{_audio_filter(input_loudness)}[aout]"
-    )
+    if not video_only:
+        duration_seconds = total_frames / 30
+        graph.append(
+            f"[{audio_index}:a:0]atrim=end={duration_seconds:.6f},asetpts=PTS-STARTPTS,"
+            f"{_audio_filter(input_loudness)}[aout]"
+        )
     filtergraph = ";".join(graph)
     arguments.extend(
         [
@@ -445,8 +448,7 @@ def compile_render_command(
             filtergraph,
             "-map",
             "[vout]",
-            "-map",
-            "[aout]",
+            *([] if video_only else ["-map", "[aout]"]),
             "-frames:v",
             str(total_frames),
             "-fps_mode",
@@ -457,10 +459,7 @@ def compile_render_command(
             "libx264",
             "-pix_fmt",
             "yuv420p",
-            "-c:a",
-            "aac",
-            "-ar",
-            "48000",
+            *([] if video_only else ["-c:a", "aac", "-ar", "48000"]),
             "-map_metadata",
             "-1",
             "-map_chapters",
@@ -478,4 +477,29 @@ def compile_render_command(
         arguments=tuple(arguments),
         filtergraph=filtergraph,
         normalized=input_loudness.requires_normalization,
+    )
+
+
+def compile_chunk_mux_command(
+    *,
+    ffmpeg: Path,
+    concat_path: Path,
+    voiceover_path: Path,
+    output_path: Path,
+    total_frames: int,
+    input_loudness: LoudnessMeasurement,
+) -> tuple[str, ...]:
+    """Copy bounded video chunks and apply the same voiceover filter once."""
+
+    duration_seconds = total_frames / 30
+    return (
+        str(ffmpeg), "-hide_banner", "-nostdin", "-n",
+        "-f", "concat", "-safe", "1", "-i", str(concat_path),
+        "-threads", "1", "-i", str(voiceover_path),
+        "-map", "0:v:0", "-map", "1:a:0",
+        "-c:v", "copy", "-af",
+        f"atrim=end={duration_seconds:.6f},asetpts=PTS-STARTPTS,{_audio_filter(input_loudness)}",
+        "-c:a", "aac", "-ar", "48000",
+        "-map_metadata", "-1", "-map_chapters", "-1", "-sn", "-dn",
+        "-movflags", "+faststart", "-threads", "2", str(output_path),
     )

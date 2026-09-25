@@ -455,7 +455,7 @@ class RenderJobTests(unittest.TestCase):
             self.assertEqual(limit_error.exception.code, "RENDER_PROCESS_FAILED")
             self.assertFalse(limit_error.exception.retryable)
 
-    def test_long_manifest_uses_short_hardlinks_and_script_without_chdir(self) -> None:
+    def test_long_manifest_renders_bounded_video_chunks_then_mixes_audio_once(self) -> None:
         fixture = RenderFixture()
         voiceover, _, image, *_ = fixture.document["assets"]
         fixture.document["assets"] = [voiceover, image]
@@ -486,16 +486,20 @@ class RenderJobTests(unittest.TestCase):
                 result = fixture.job().run(
                     fixture.document, claimed_attempt_id="attempt_render_local_001"
                 )
-            self.assertEqual(link.call_count, 2)
+            self.assertEqual(link.call_count, 0)
             self.assertEqual(result["error"]["code"], "RENDER_OUTPUT_INVALID")
-            call = next(call for call in fixture.process.calls if "-filter_complex_script" in call)
-            self.assertLess(_windows_command_units(call), 32_767)
+            chunks = [call for call in fixture.process.calls if "-filter_complex" in call]
+            self.assertEqual(len(chunks), 47)
+            self.assertTrue(all(_windows_command_units(call) < 32_767 for call in chunks))
+            self.assertTrue(all("-c:a" not in call for call in chunks))
+            self.assertTrue(all("concat=n=8:v=1:a=0" in call[call.index("-filter_complex") + 1]
+                                for call in chunks[:-1]))
+            self.assertIn("concat=n=7:v=1:a=0", chunks[-1][chunks[-1].index("-filter_complex") + 1])
+            mux = next(call for call in fixture.process.calls if "-f" in call and "concat" in call)
+            self.assertEqual(mux[mux.index("-c:v") + 1], "copy")
+            self.assertIn("loudnorm=", mux[mux.index("-af") + 1])
             self.assertEqual(Path.cwd(), original_cwd)
-            self.assertIsNotNone(fixture.process.render_cwd)
-            self.assertFalse(fixture.process.render_cwd.exists())
-            self.assertIn("concat=n=375:v=1:a=0", fixture.process.render_script)
-            input_names = [call[index + 1] for index, value in enumerate(call) if value == "-i"]
-            self.assertEqual(set(input_names), {"i0.wav", "i1.png"})
+            self.assertFalse(Path(mux[mux.index("-i") + 1]).exists())
 
     def test_render_runner_passes_explicit_cwd_to_subprocess(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
