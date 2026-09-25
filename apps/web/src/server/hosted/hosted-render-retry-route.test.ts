@@ -7,6 +7,7 @@ const ids = {
   project: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
   revision: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
   failed: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  ioFailed: "22222222-2222-4222-8222-222222222222",
   retry: "11111111-1111-4111-8111-111111111111",
 };
 
@@ -54,10 +55,11 @@ describe("render-only disk recovery route", () => {
     mocks.scope.mockResolvedValue({ account_id: ids.account, workspace_id: ids.workspace, user_id: ids.user });
     mocks.exactPlan.mockReturnValue({ kind: "RENDER", projectId: ids.project, projectRevisionId: ids.revision });
     mocks.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("videoforge_prepare_hosted_api_render_disk_recovery")) return { rows: [{ recovery: {
+      if (sql.includes("videoforge_prepare_hosted_api_render_recovery")) return { rows: [{ recovery: {
         schema_version: "videoforge-hosted-render-disk-recovery/v1",
         revision_id: ids.revision,
         retry_attempt_id: ids.retry,
+        recovery_kind: "DISK",
       } }] };
       if (sql.includes("FROM public.hosted_render_plans")) return { rows: [{ payload: { kind: "RENDER" } }] };
       return { rows: [] };
@@ -85,7 +87,29 @@ describe("render-only disk recovery route", () => {
       expectedAttemptId: ids.retry,
       renderRecoveryKey: `render-disk-recovery:${ids.revision}`,
     });
-    expect(mocks.query.mock.calls.filter(([sql]) => String(sql).includes("videoforge_prepare_hosted_api_render_disk_recovery"))).toHaveLength(2);
+    expect(mocks.query.mock.calls.filter(([sql]) => String(sql).includes("videoforge_prepare_hosted_api_render_recovery"))).toHaveLength(2);
+  });
+
+  it("uses a distinct idempotency key for an evidence-approved second I/O recovery", async () => {
+    mocks.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("videoforge_prepare_hosted_api_render_recovery")) return { rows: [{ recovery: {
+        schema_version: "videoforge-hosted-render-disk-recovery/v1",
+        revision_id: ids.revision,
+        retry_attempt_id: ids.retry,
+        recovery_kind: "IO",
+      } }] };
+      if (sql.includes("FROM public.hosted_render_plans")) return { rows: [{ payload: { kind: "RENDER" } }] };
+      return { rows: [] };
+    });
+    const schedule = vi.fn().mockResolvedValue({ state: "OUTBOXED" });
+    const result = await retryHostedApiRender(request(ids.ioFailed), ids.project,
+      { neon: { databaseUrl: "postgres://unused" } } as never, { waitUntil() {} } as never,
+      { schedule });
+    expect(result.status).toBe(202);
+    expect(schedule).toHaveBeenCalledWith(expect.objectContaining({
+      expectedAttemptId: ids.retry,
+      renderRecoveryKey: `render-io-recovery:${ids.revision}`,
+    }));
   });
 
   it("rejects failed evidence before any CPU scheduling", async () => {

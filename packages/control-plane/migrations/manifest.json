@@ -960,6 +960,12 @@
       "name": "hosted_api_render_disk_recovery",
       "filename": "0197_hosted_api_render_disk_recovery.sql",
       "sha256": "sha256:4d4e33fe1bb047ab3d9b467ad8a8645ae4da1942c399dd32b7db9fd8d6886f4e"
+    },
+    {
+      "version": 198,
+      "name": "hosted_api_render_io_recovery",
+      "filename": "0198_hosted_api_render_io_recovery.sql",
+      "sha256": "sha256:f570c092f8e93eaf760a4abe402dcc175fafd9556a7afef783bbd19d02282187"
     }
   ]
 }

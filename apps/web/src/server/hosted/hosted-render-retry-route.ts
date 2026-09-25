@@ -45,14 +45,15 @@ export async function retryHostedApiRender(
     const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", scope.account_id]);
       const result = await transaction.query<{ recovery: unknown }>(
-        "SELECT public.videoforge_prepare_hosted_api_render_disk_recovery($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid) AS recovery",
+        "SELECT public.videoforge_prepare_hosted_api_render_recovery($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid) AS recovery",
         [scope.account_id, scope.workspace_id, scope.user_id, projectId, failedAttemptId, crypto.randomUUID()],
       );
       const recovery = result.rows[0]?.recovery as Record<string, unknown> | undefined;
       if (
         recovery?.schema_version !== "videoforge-hosted-render-disk-recovery/v1" ||
         typeof recovery.revision_id !== "string" || !UUID.test(recovery.revision_id) ||
-        typeof recovery.retry_attempt_id !== "string" || !UUID.test(recovery.retry_attempt_id)
+        typeof recovery.retry_attempt_id !== "string" || !UUID.test(recovery.retry_attempt_id) ||
+        !["DISK", "IO"].includes(String(recovery.recovery_kind))
       ) throw new Error("HOSTED_RENDER_DISK_RECOVERY_INVALID");
       const plan = await transaction.query<{ payload: unknown }>(
         `SELECT payload FROM public.hosted_render_plans
@@ -61,14 +62,14 @@ export async function retryHostedApiRender(
       );
       const submission = exactHostedRenderSubmission(plan.rows[0]?.payload, projectId, recovery.revision_id);
       if (!submission) throw new Error("HOSTED_RENDER_DISK_RECOVERY_PLAN_INVALID");
-      return { retryAttemptId: recovery.retry_attempt_id, submission };
+      return { retryAttemptId: recovery.retry_attempt_id, recoveryKind: recovery.recovery_kind, submission };
     });
     const scheduled = await dependencies.schedule({
       accountId: scope.account_id,
       workspaceId: scope.workspace_id,
       submission: prepared.submission,
       expectedAttemptId: prepared.retryAttemptId,
-      renderRecoveryKey: `render-disk-recovery:${prepared.submission.projectRevisionId}`,
+      renderRecoveryKey: `render-${prepared.recoveryKind === "IO" ? "io" : "disk"}-recovery:${prepared.submission.projectRevisionId}`,
     });
     if (!["OUTBOXED", "RUNNING", "SUCCEEDED"].includes(scheduled.state))
       return response({ error: { code: "HOSTED_RENDER_DISK_RETRY_STOPPED" }, attempt_id: prepared.retryAttemptId, state: scheduled.state }, 409);
