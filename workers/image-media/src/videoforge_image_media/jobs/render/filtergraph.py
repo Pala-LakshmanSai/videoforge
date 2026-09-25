@@ -141,10 +141,10 @@ def _zoom_delta(*, frame_count: int, split: bool, profile_version: str) -> float
         if split:
             return 0.025
         if frame_count <= 120:
-            return 0.03125
+            return 0.03515625
         if frame_count <= 210:
-            return 0.0375
-        return 0.04375
+            return 0.0421875
+        return 0.04921875
     if profile_version == SUBTLE_RENDER_PROFILE_VERSION:
         if split or frame_count <= 120:
             return 0.015

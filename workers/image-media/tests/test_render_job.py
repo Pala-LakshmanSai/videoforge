@@ -440,13 +440,13 @@ class RenderJobTests(unittest.TestCase):
             "scale=960:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080",
             graph,
         )
-        self.assertIn("1+0.037500*", graph)
+        self.assertIn("1+0.042188*", graph)
         self.assertIn("1+0.025000*", graph)
         self.assertNotRegex(graph, r"1\+0\.(?:04|06|08)0000\*")
         self.assertIn("interpolation=cubic:sense=source:eval=frame", graph)
         self.assertEqual(graph.count("loop=loop=-1:size=1:start=0,fps=30,perspective="), 2)
         self.assertNotIn("*(6*", graph)
-        self.assertIn("1+0.037500*(on/149)", graph)
+        self.assertIn("1+0.042188*(on/149)", graph)
         self.assertIn("1+0.025000*(on/119)", graph)
         self.assertIn("hstack=inputs=2", graph)
         self.assertIn("concat=n=3:v=1:a=0", graph)
@@ -468,7 +468,7 @@ class RenderJobTests(unittest.TestCase):
             _zoom_delta,
         )
 
-        for frames, full_delta in [(120, 0.03125), (150, 0.0375), (240, 0.04375)]:
+        for frames, full_delta in [(120, 0.03515625), (150, 0.0421875), (240, 0.04921875)]:
             self.assertEqual(_zoom_delta(frame_count=frames, split=False, profile_version="ffmpeg-render-v3"), full_delta)
             self.assertEqual(_zoom_delta(frame_count=frames, split=True, profile_version="ffmpeg-render-v3"), 0.025)
             for width, delta in [(1920, full_delta), (960, 0.025)]:

@@ -56,9 +56,9 @@ A narration-relevant Mage image following the project's pinned Image Style fills
 
 Zoom envelope (user update, 2026-09-25; worker 0.1.31 onward):
 
-- Short image scene: 1.00 → 1.03125.
-- Typical image scene: 1.00 → 1.0375.
-- Long image scene: 1.00 → 1.04375.
+- Short image scene: 1.00 → 1.03515625.
+- Typical image scene: 1.00 → 1.0421875.
+- Long image scene: 1.00 → 1.04921875.
 - Use linear progress at 30 fps with nonzero motion from the first frame interval. Do not hold
   the opening image or ease in from zero speed. Convert the looped still to 30 fps before applying
   its per-frame transform, so frame-rate conversion does not repeat transformed frames.

@@ -2,7 +2,7 @@
   "checkpoint": "V2-09",
   "worker_version": "0.1.31",
   "status": "LOCAL_VERIFIED_RELEASE_PENDING",
-  "decision": "Immediate linear zoom for v3; fullscreen deltas +25%, split delta unchanged; fps30 before perspective",
+  "decision": "Immediate linear zoom for v3; fullscreen deltas +25% then +12.5% after user preview, split delta unchanged; fps30 before perspective",
   "retained_media_frame_checks": [
     {
       "variant": "before",
@@ -170,6 +170,110 @@
   "gpu_activation": false,
   "limits": [
     "Existing final videos are unchanged.",
-    "Lossless isolated renders are slower; no production speedup claimed."
-  ]
+    "Two paired five-second shipping-encoder trials measured an additional0.31 seconds full and0.20 seconds split, excluding upload and whole-project work. Full-file bytes rose19 percent and split6 percent. No production speedup claimed."
+  ],
+  "shipping_encoder_microbenchmark": {
+    "method": "Same saved image,150 outputframes/30fps; bundled FFmpeg8.1.2; shippinglibx264 mediumCRF23 yuv420p threads2; boundedfilterthreads1; two passes reverseorder; noaudio/IOupload included.",
+    "rows": [
+      {
+        "variant": "before",
+        "layout": "full",
+        "run": 0,
+        "seconds": 2.8035582920001616,
+        "bytes": 453743
+      },
+      {
+        "variant": "after",
+        "layout": "full",
+        "run": 0,
+        "seconds": 3.083747124999718,
+        "bytes": 539510
+      },
+      {
+        "variant": "after",
+        "layout": "full",
+        "run": 1,
+        "seconds": 3.0734176250007295,
+        "bytes": 539510
+      },
+      {
+        "variant": "before",
+        "layout": "full",
+        "run": 1,
+        "seconds": 2.7380555830004596,
+        "bytes": 453743
+      },
+      {
+        "variant": "before",
+        "layout": "split",
+        "run": 0,
+        "seconds": 1.3944948330008629,
+        "bytes": 247068
+      },
+      {
+        "variant": "after",
+        "layout": "split",
+        "run": 0,
+        "seconds": 1.637183582999569,
+        "bytes": 262275
+      },
+      {
+        "variant": "after",
+        "layout": "split",
+        "run": 1,
+        "seconds": 1.7573161669988622,
+        "bytes": 262275
+      },
+      {
+        "variant": "before",
+        "layout": "split",
+        "run": 1,
+        "seconds": 1.6019333330004883,
+        "bytes": 247068
+      }
+    ],
+    "summary": [
+      {
+        "layout": "full",
+        "beforeMeanSeconds": 2.7708069375003106,
+        "afterMeanSeconds": 3.0785823750002237,
+        "changePercent": 11.107790778724326
+      },
+      {
+        "layout": "split",
+        "beforeMeanSeconds": 1.4982140830006756,
+        "afterMeanSeconds": 1.6972498749992155,
+        "changePercent": 13.284869916581222
+      }
+    ]
+  },
+  "chrome_sample_playback": {
+    "full_dimensions": [
+      1920,
+      1080
+    ],
+    "split_image_panel_dimensions": [
+      960,
+      1080
+    ],
+    "duration_seconds": 5,
+    "both_played_from_start_to_end": true,
+    "media_errors": false
+  },
+  "user_preview_revision": {
+    "fullscreen_extra_multiplier": 1.125,
+    "fullscreen_deltas": [
+      0.03515625,
+      0.0421875,
+      0.04921875
+    ],
+    "split_delta": 0.025,
+    "preview": "preview-full-faster.mp4",
+    "tests_passed": 31
+  },
+  "superseded_ci": {
+    "run_id": 36117333933,
+    "status": "CANCELLED_BEFORE_PUBLICATION",
+    "reason": "User requested a further12.5 percent fullscreen zoom increase after preview"
+  }
 }
