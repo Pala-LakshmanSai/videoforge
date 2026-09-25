@@ -4390,7 +4390,7 @@ describe("hosted product journey", () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 
-  it("shows concise scene previews and keeps full saved prompt text behind an audit disclosure", async () => {
+  it("shows short voiceover previews and keeps full saved prompt text behind an audit disclosure", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     vi.stubGlobal(
       "fetch",
@@ -4481,7 +4481,7 @@ describe("hosted product journey", () => {
     expect(within(firstPrompt).getByText(/text, captions, motion graphics/u)).toBeVisible();
     expect(within(secondPrompt).getByText(/logos, watermarks, interface text/u)).not.toBeVisible();
     expect(
-      screen.getByText(/Scene previews are for orientation, not the complete saved provider input/u),
+      screen.getByText(/Voiceover previews are short/u),
     ).toBeVisible();
     expect(
       screen.queryByRole("heading", { name: "Voiceover-to-image plan" }),

@@ -231,6 +231,7 @@ describe("hosted image regeneration service", () => {
     });
   });
   it("creates an API regeneration from the pinned style without GPU bindings", async () => {
+    const previousGuard = "Legacy original still; no text or branding";
     const queries: Array<{ sql: string; values: readonly SqlPrimitive[] }> = [];
     const query = vi.fn(async (sql: string, values: readonly SqlPrimitive[] = []) => {
       queries.push({ sql, values });
@@ -240,7 +241,8 @@ describe("hosted image regeneration service", () => {
         return { rows: [{ value: { sourceInputManifest: { compiledPrompt: {
           components: { literalContent: originalPrompt, continuityAndShotRole: "original role",
             cropGuidance: "original crop", stylePositiveSuffix: "original style",
-            styleNegativeSuffix: "CGI, fake lettering", extraPromptKeywords: null },
+            styleNegativeSuffix: "CGI, fake lettering", extraPromptKeywords: null,
+            permanentPositiveGuardrail: previousGuard },
         } } } }] };
       if (sql.includes("videoforge_create_hosted_api_image_regeneration"))
         return { rows: [{ value: { id: requestId, state: "PREPARED" } }] };
@@ -253,10 +255,11 @@ describe("hosted image regeneration service", () => {
     const service = createHostedImageRegenerationService({ database,
       config: { ...configuration(), apiGeneration: { kieApiKey: "test-key", falApiKey: "test-key" } },
       environment: { HOSTED_PAIR_WORKFLOW: workflow, PRIVATE_ARTIFACTS: {} } as never });
-    await expect(service.create(args)).resolves.toMatchObject({ request_id: requestId,
+    await expect(service.create({ ...args, prompt: `${editedPrompt}, ${previousGuard}` })).resolves.toMatchObject({ request_id: requestId,
       state: "QUEUED" });
     const creation = queries.find(({ sql }) => sql.includes("videoforge_create_hosted_api_image_regeneration"));
     expect(creation?.values[5]).toContain(editedPrompt);
+    expect(creation?.values[5]).not.toContain(previousGuard);
     expect(creation?.values[5]).toContain("No visible text");
     expect(creation?.values[5]).toContain("CGI, fake lettering");
     expect(creation?.values[5]).not.toContain("original role");
@@ -361,8 +364,8 @@ describe("hosted image regeneration service", () => {
     );
     expect(compiled.positivePrompt).not.toMatch(/camera:|tripod-mounted/u);
     expect(String(compiled.positivePrompt).split(PERMANENT_POSITIVE_GUARDRAIL)).toHaveLength(2);
-    expect(compiled.negativePrompt).toContain("unreadable text");
-    expect(compiled.negativePrompt).toContain("extraneous cameras");
+    expect(compiled.negativePrompt).toContain("pseudo-text");
+    expect(compiled.positivePrompt).toContain("no camera gear");
     expect(
       value.query.mock.calls.find(([sql]) =>
         sql.includes("videoforge_create_hosted_image_regeneration"),

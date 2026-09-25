@@ -76,8 +76,13 @@ export function createHostedImageRegenerationService(input: {
         const components = record(compiled.components);
         const stylePositive = typeof components.stylePositiveSuffix === "string"
           ? components.stylePositiveSuffix : "";
+        const savedPositiveGuard = typeof components.permanentPositiveGuardrail === "string"
+          ? components.permanentPositiveGuardrail : PERMANENT_POSITIVE_GUARDRAIL;
         const literalContent = withoutTrailingGuard(
-          withoutTrailingGuard(args.prompt, PERMANENT_POSITIVE_GUARDRAIL),
+          withoutTrailingGuard(
+            withoutTrailingGuard(args.prompt, savedPositiveGuard),
+            PERMANENT_POSITIVE_GUARDRAIL,
+          ),
           stylePositive,
         );
         const prompt = buildKieScenePrompt({
@@ -126,10 +131,16 @@ export function createHostedImageRegenerationService(input: {
           reservationId = text(row.output_reservation_id);
         const outputPrefix = `tenant/${args.accountId}/workspace/${args.workspaceId}/project/${args.projectId}/revision/${args.revisionId}/lane/mage-image/job/${attemptId}`;
         const compiled = record(original.compiledPrompt);
+        const savedComponents = compiled.components && typeof compiled.components === "object" &&
+          !Array.isArray(compiled.components) ? record(compiled.components) : {};
+        const savedPositiveGuard = typeof savedComponents.permanentPositiveGuardrail === "string"
+          ? savedComponents.permanentPositiveGuardrail : PERMANENT_POSITIVE_GUARDRAIL;
+        const savedNegativeGuard = typeof savedComponents.permanentNegativeGuardrail === "string"
+          ? savedComponents.permanentNegativeGuardrail : PERMANENT_NEGATIVE_GUARDRAIL;
         // Keep the raw edit as the idempotency/audit identity. Only model-facing
         // text receives optical treatment and the current output guardrails.
         const literalContent = withoutTrailingGuard(
-          args.prompt,
+          withoutTrailingGuard(args.prompt, savedPositiveGuard),
           PERMANENT_POSITIVE_GUARDRAIL,
         ).replace(
           /(^|[;,]\s*)camera:\s*([^;]*)/giu,
@@ -137,7 +148,7 @@ export function createHostedImageRegenerationService(input: {
             `${separator}viewpoint: ${promptOpticalViewpoint(treatment)}`,
         );
         const styleNegativeSuffix = withoutTrailingGuard(
-          text(compiled.negativePrompt),
+          withoutTrailingGuard(text(compiled.negativePrompt), savedNegativeGuard),
           PERMANENT_NEGATIVE_GUARDRAIL,
         );
         const positivePrompt = [literalContent, PERMANENT_POSITIVE_GUARDRAIL]

@@ -5689,8 +5689,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               {acceptedPrompts.length > 0 ? (
                 <>
                   <p className="live-prompt-helper">
-                    Scene previews are for orientation, not the complete saved provider input. Open
-                    a scene to inspect its full saved prompt and Avoid text.
+                    Voiceover previews are short. Open a scene to inspect its full saved prompt and
+                    Avoid text.
                   </p>
                   <div
                     className="live-prompt-scroll"
@@ -5706,7 +5706,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                             <span>{prompt.in_image_shot_role.replaceAll("_", " ")}</span>
                           </div>
                           <p className="live-prompt-narration">
-                            <strong>Scene preview:</strong> {prompt.narration}
+                            <strong>Voiceover:</strong> {prompt.narration}
                           </p>
                           <Disclosure summary="Show full saved prompt and Avoid text">
                             <p>

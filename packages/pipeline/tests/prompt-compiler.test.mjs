@@ -668,8 +668,19 @@ test("preserves custom additions to the built-in style and verifies saved legacy
     custom.components.styleNegativeSuffix,
     custom.components.permanentNegativeGuardrail,
   ].join(", ");
+  const previousGuardrail =
+    "Original still photo of described scene; framing only, no camera gear. Show names, dates, quantities physically. No text or pseudo-text, numbers, labels, signs, branding or markings; products/containers plain and unmarked. No captions/titles, logos/watermarks, UI/charts, infographics/borders/lower-thirds, overlays, motion graphics/decorative transitions.";
+  const legacyPositive = custom.positivePrompt.replace(
+    custom.components.permanentPositiveGuardrail,
+    previousGuardrail,
+  );
   const legacy = {
     ...custom,
+    promptCompilerVersion: "prompt-compiler-v2",
+    components: { ...custom.components, permanentPositiveGuardrail: previousGuardrail },
+    positivePrompt: legacyPositive,
+    positivePromptUtf8Bytes: Buffer.byteLength(legacyPositive, "utf8"),
+    positivePromptSha256: `sha256:${createHash("sha256").update(legacyPositive).digest("hex")}`,
     negativePrompt: legacyNegative,
     negativePromptUtf8Bytes: Buffer.byteLength(legacyNegative, "utf8"),
     negativePromptSha256: `sha256:${createHash("sha256").update(legacyNegative).digest("hex")}`,
