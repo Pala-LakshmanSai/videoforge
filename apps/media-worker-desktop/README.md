@@ -63,7 +63,7 @@ whisper.cpp commit and exact Intel and Apple Silicon FFmpeg inputs. The worker v
 model again at startup and against every ASR job contract. No first-run model download, runtime
 provider discovery, or user configuration occurs.
 
-This checkout prepares `media-worker-v0.1.32` to increase both fullscreen and split-screen image zoom by 10%. It is not
+This checkout prepares `media-worker-v0.1.32` to increase both fullscreen and split-screen image zoom by 10%, then 20%, then another 10% after previews. It is not
 an immutable publication yet. Compute its execution-bundle hash from the final clean source commit,
 then publish the new release before updating hosted release metadata.
 

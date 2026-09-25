@@ -1,10 +1,10 @@
 schema_version: "2.0"
-image_zoom_both_plus_ten_2026_09_25:
+image_zoom_both_preview_2026_09_25:
   checkpoint: V2-09
-  status: IMPLEMENTING_WORKER_032
+  status: USER_APPROVED_RELEASE_PENDING
   worker_version: 0.1.32
-  decision: Increase both v3 zoom deltas by another 10 percent over worker 0.1.31, preserving immediate linear motion and existing durations.
-  remaining_gates: Focused renderer checks, retained-media previews, immutable release, idle worker installation and Chrome verification.
+  decision: Increase both v3 zoom deltas by 10 percent, then 20 percent, then another 10 percent after user previews over worker 0.1.31, preserving immediate linear motion and existing durations.
+  remaining_gates: Latest preview approved; immutable release and idle worker installation remain. Production remains 0.1.31.
   provider_spend: Zero paid requests; retained media only.
   paid_compute_shutdown: No GPU activation.
 image_zoom_immediate_2026_09_25:

@@ -54,11 +54,11 @@ Avatar source requirements are enforced when a reusable Avatar Profile version i
 
 A narration-relevant Mage image following the project's pinned Image Style fills 1920×1080. The active ImageForge-compatible generation contract is `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6` through pinned ComfyUI, using `int8-convrot`, four steps, guidance `1.0`, and exact 1280×720 output. The renderer scales that 16:9 source to the delivery frame and applies only a slow centered zoom-in.
 
-Zoom envelope (user update, 2026-09-25; worker 0.1.32 onward):
+Zoom envelope (user update, 2026-09-25; worker 0.1.32 onward, user approved):
 
-- Short image scene: 1.00 → 1.038671875.
-- Typical image scene: 1.00 → 1.04640625.
-- Long image scene: 1.00 → 1.054140625.
+- Short image scene: 1.00 → 1.051046875.
+- Typical image scene: 1.00 → 1.06125625.
+- Long image scene: 1.00 → 1.071465625.
 - Use linear progress at 30 fps with nonzero motion from the first frame interval. Do not hold
   the opening image or ease in from zero speed. Convert the looped still to 30 fps before applying
   its per-frame transform, so frame-rate conversion does not repeat transformed frames.
@@ -86,7 +86,7 @@ approves it, no active SoulX split composition exists.
 - Clean central seam.
 - No divider, border, label, shadow, rounded panel, or decoration.
 - Mage still returns the locked 1280×720 output. Split-scene prompt guidance keeps the evidence inside the pinned 8:9-safe crop, and the resolved render manifest records the deterministic crop/scale used for the right panel.
-- The right image uses the smaller 1.00 → 1.0275 `split-right-zoom-v3` profile during the short split
+- The right image uses the smaller 1.00 → 1.0363 `split-right-zoom-v3` profile during the short split
   interval; both layouts increase another 10 percent after the latest user preview. Use the same immediate linear motion as fullscreen
   images. Every displayed AI image moves slowly, including split companions.
 

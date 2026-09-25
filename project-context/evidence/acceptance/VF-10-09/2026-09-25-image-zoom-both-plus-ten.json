@@ -1,0 +1,59 @@
+{
+  "checkpoint": "V2-09",
+  "status": "SUPERSEDED_BY_LOCAL_PLUS_TWENTY_PLUS_TEN_PREVIEW",
+  "source_commit": "ecfd7c7a58829864f61a03c6aa006bcba5269410",
+  "worker_version": "0.1.32",
+  "change": {
+    "fullscreen_delta": [
+      0.038671875,
+      0.04640625,
+      0.054140625
+    ],
+    "split_delta": 0.0275,
+    "relative_increase_both": 0.1,
+    "timing": "Immediate linear motion preserved; same scene duration and 30 fps ordering."
+  },
+  "verification": {
+    "focused_renderer_tests": 31,
+    "ruff": "PASS",
+    "context": "PASS with existing profile budget warnings",
+    "chrome_previews": {
+      "fullscreen": {
+        "duration_seconds": 5,
+        "ended": true,
+        "media_error": null
+      },
+      "split": {
+        "duration_seconds": 5,
+        "ended": true,
+        "media_error": null
+      }
+    }
+  },
+  "limits": [
+    "Existing encoded videos unchanged.",
+    "No new full-project rendering-time benchmark; only zoom deltas changed."
+  ],
+  "provider_requests": 0,
+  "gpu_activations": 0,
+  "release": {
+    "ci": 36119850202,
+    "conclusion": "cancelled",
+    "tag_exists": false,
+    "release_exists": false,
+    "production_worker": "0.1.31"
+  },
+  "latest_candidate": {
+    "status": "USER_APPROVED_RELEASE_PENDING",
+    "fullscreen_delta": [
+      0.051046875,
+      0.06125625,
+      0.071465625
+    ],
+    "split_delta": 0.0363,
+    "relative_increase_over_previous_preview": 0.1,
+    "focused_tests_passed": 31,
+    "ruff": "PASS",
+    "sample_duration_seconds": 5
+  }
+}
