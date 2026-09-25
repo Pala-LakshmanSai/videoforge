@@ -31,7 +31,6 @@ type WorkflowParameters =
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const MAX_OBSERVATIONS = 120;
-const API_PROVIDER_POLL_OBSERVATIONS = 3_600;
 const POOL_CLOSE_GRACE_MS = 1_000;
 
 type ExactPairInspection = readonly [HostedPairInspection, HostedPairInspection];
@@ -126,10 +125,8 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
       const { advanceHostedApiGeneration } = await import(
         "../src/server/hosted/hosted-api-generation"
       );
-      // Each job needs one durable submit and one durable output commit. Reserve
-      // provider-pending polls for long plans that keep both API lanes occupied.
-      let maximumObservations = API_PROVIDER_POLL_OBSERVATIONS;
-      for (let observation = 0; observation < maximumObservations; observation += 1) {
+      // Includes durable submits, output commits, and long provider-pending polls.
+      for (let observation = 0; observation < 5_000; observation += 1) {
         const result = await step.do(`api-generation-${observation}`, async () => {
           const pool = createNeonPool(this.env.DATABASE_URL!);
           try {
@@ -143,7 +140,6 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
             await closePoolsWithoutBlockingWorkflow(pool, pool);
           }
         });
-        maximumObservations = API_PROVIDER_POLL_OBSERVATIONS + 2 * result.jobCount;
         if (result.state === "ACTION_REQUIRED") return result;
         if (result.state === "READY_TO_RENDER") {
           return step.do("api-generation-render-handoff", async () => {

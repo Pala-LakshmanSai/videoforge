@@ -16,7 +16,6 @@ import {
 } from "../providers/fal-avatar-job";
 
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
-const API_LANE_LIMIT = { IMAGE: 8, AVATAR: 4 } as const;
 
 export interface HostedApiGenerationScope {
   readonly accountId: string;
@@ -100,31 +99,34 @@ export function selectHostedApiGenerationJobIndex(
   current: readonly Pick<Job, "lane" | "state">[],
   observation: number,
 ): number | null {
-  if (current.some((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY"].includes(job.state)))
-    return null;
-  const submitted = current.flatMap((job, index) =>
-    job.state === "SUBMITTED" ? [index] : [],
-  );
-  const prepared = current.flatMap((job, index) =>
-    job.state === "PREPARED" ? [index] : [],
-  );
-  if (!current.some((job) => job.state === "FAILED")) {
-    const submittedByLane = {
-      IMAGE: submitted.filter((index) => current[index]?.lane === "IMAGE").length,
-      AVATAR: submitted.filter((index) => current[index]?.lane === "AVATAR").length,
-    };
-    const available = (["IMAGE", "AVATAR"] as const).filter(
-      (lane) =>
-        submittedByLane[lane] < API_LANE_LIMIT[lane] &&
-        prepared.some((index) => current[index]?.lane === lane),
-    );
-    if (available.length > 0) {
-      const lane = available.sort(
-        (a, b) =>
-          submittedByLane[a] / API_LANE_LIMIT[a] - submittedByLane[b] / API_LANE_LIMIT[b],
-      )[0]!;
-      return prepared.find((index) => current[index]?.lane === lane) ?? null;
+  const submitted: number[] = [];
+  let imageCount = 0;
+  let avatarCount = 0;
+  let imagePrepared = -1;
+  let avatarPrepared = -1;
+  let failed = false;
+  for (let index = 0; index < current.length; index += 1) {
+    const job = current[index]!;
+    if (job.state === "SUBMITTING" || job.state === "UNKNOWN_NO_RETRY") return null;
+    if (job.state === "FAILED") failed = true;
+    if (job.state === "SUBMITTED") {
+      submitted.push(index);
+      if (job.lane === "IMAGE") imageCount += 1;
+      else avatarCount += 1;
     }
+    if (job.state === "PREPARED") {
+      if (job.lane === "IMAGE" && imagePrepared < 0) imagePrepared = index;
+      if (job.lane === "AVATAR" && avatarPrepared < 0) avatarPrepared = index;
+    }
+  }
+  if (!failed) {
+    if (
+      imagePrepared >= 0 &&
+      imageCount < 8 &&
+      (avatarPrepared < 0 || avatarCount >= 4 || imageCount <= 2 * avatarCount)
+    )
+      return imagePrepared;
+    if (avatarPrepared >= 0 && avatarCount < 4) return avatarPrepared;
   }
   return submitted.length > 0 ? submitted[observation % submitted.length]! : null;
 }
