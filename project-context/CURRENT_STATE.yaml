@@ -1,7 +1,7 @@
 schema_version: "2.0"
 china_voiceover_asr_repair_2026_09_26:
   checkpoint: V2-09
-  status: LOCAL_RELEASE_CANDIDATE_NOT_PUBLISHED
+  status: PRODUCTION_RELEASE_IN_PROGRESS
   project_id: e9d1b862-59bd-4548-ad6d-7566d1905e0e
   revision_id: 078f690a-8703-4275-8e27-ee04abdbe884
   result: >-
@@ -16,6 +16,14 @@ china_voiceover_asr_repair_2026_09_26:
     Exact source audio and installed whisper tools produced three local chunk JSON outputs.
     All three parse; 5121 reconciled words and 784 phrases build into a transcript.
     Focused transcription/personal-worker suite passed 84/84; touched Python Ruff passes.
+  release_authority: User explicitly authorized production publication of both platforms and installation on this Mac; user will install Windows.
+  worker_source_commit: f430fae54c5ae1239bebbfc27f1799a6c5bb6c79
+  worker_execution_bundle_sha256: sha256:f374e4d414518f6557628dcd1b4f71b31fd998457548349018c7ebd8105625c2
+  worker_release_run_id: 36213316707
+  recovery_policy: >-
+    Invalid ASR output from an older pinned execution bundle no longer spends the current
+    bundle's three-attempt limit. All original terminal attempts remain; total ceiling stays twelve.
+    Exact production read-only state query returned current-budget count zero, total three, FAILED.
   remaining_gates: >-
     Publish and install the exact 0.1.38 bundle, confirm its online identity in Chrome,
     then retry this same safe local ASR stage once and observe durable transcript and

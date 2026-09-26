@@ -5521,6 +5521,8 @@ async function asrHandoff(
                 -- counting it here stranded a project whose three attempts all failed while the disk
                 -- was full: every later hand-off answered HOSTED_ASR_RETRY_LIMIT_REACHED and the same
                 -- environment could never be retried. See SPAN_AUDIO_RETRYABLE_FAILURE_CODES.
+                -- A new execution bundle may also repair an ASR parser bug. Invalid output from an
+                -- older bundle does not spend the new bundle's budget; the total ceiling still holds.
                 (SELECT count(*) FROM hosted_cpu_job_attempts AS attempt
                   WHERE attempt.account_id = project.account_id
                     AND attempt.workspace_id = project.workspace_id
@@ -5530,9 +5532,12 @@ async function asrHandoff(
                     AND NOT EXISTS (
                       SELECT 1 FROM public.media_worker_leases AS lease
                        WHERE lease.attempt_id = attempt.id
-                         AND lease.failure_code IN (${SPAN_AUDIO_RETRYABLE_FAILURE_CODES.map(
+                         AND (lease.failure_code IN (${SPAN_AUDIO_RETRYABLE_FAILURE_CODES.map(
                            (code) => `'${code}'`,
-                         ).join(",")}))) AS asr_attempt_count,
+                         ).join(",")})
+                         OR (lease.failure_code = 'ASR_OUTPUT_INVALID'
+                             AND attempt.execution_bundle_sha256 IS NOT NULL
+                             AND attempt.execution_bundle_sha256 <> $4)))) AS asr_attempt_count,
                 (SELECT count(*) FROM hosted_cpu_job_attempts AS attempt
                   WHERE attempt.account_id = project.account_id
                     AND attempt.workspace_id = project.workspace_id
@@ -5575,7 +5580,7 @@ async function asrHandoff(
             AND project.status = 'ACTIVE'
           ORDER BY revision.revision_number DESC, revision.id DESC
           LIMIT 1`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, config.mediaWorkerRelease.executionBundleSha256],
       );
       return result.rows[0] ?? null;
     });

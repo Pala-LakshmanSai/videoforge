@@ -901,6 +901,52 @@ describe("hosted product route contract", () => {
     }
   });
 
+  it("permits a fresh ASR identity after an older execution bundle's invalid output", async () => {
+    const previousProject = testState.projectRows[0];
+    testState.projectRows[0] = {
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_number: 2,
+      voiceover_asset_id: "33333333-3333-4333-8333-333333333333",
+      checksum_sha256: `sha256:${"a".repeat(64)}`,
+      content_type: "audio/mpeg",
+      duration_ms: 159_216,
+      receipt_id: "44444444-4444-4444-8444-444444444444",
+      asr_attempt_count: 0,
+      asr_total_attempt_count: 3,
+      latest_asr_state: "FAILED",
+    };
+    testState.query.mockClear();
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(202);
+      const body = (await result?.json()) as {
+        cpu_submission: { input_document: { attempt_id: string } };
+      };
+      expect(body.cpu_submission.input_document.attempt_id).toBe(
+        hostedAsrSubmissionIdentity(PROJECT_ID, "22222222-2222-4222-8222-222222222222", 4)
+          .attemptId,
+      );
+      const stateQuery = testState.query.mock.calls.find(([sql]) =>
+        String(sql).includes("AS asr_attempt_count"),
+      );
+      expect(stateQuery?.[1]).toEqual([
+        testState.scopeRows[0]?.account_id,
+        testState.scopeRows[0]?.workspace_id,
+        PROJECT_ID,
+        stagingConfig.mediaWorkerRelease.executionBundleSha256,
+      ]);
+      expect(String(stateQuery?.[0])).toContain("lease.failure_code = 'ASR_OUTPUT_INVALID'");
+      expect(String(stateQuery?.[0])).toContain("attempt.execution_bundle_sha256 <> $4");
+    } finally {
+      testState.projectRows[0] = previousProject!;
+    }
+  });
+
   it("refuses the hand-off once the voiceover itself failed the bounded number of times", async () => {
     const previousProject = testState.projectRows[0];
     testState.projectRows[0] = {
