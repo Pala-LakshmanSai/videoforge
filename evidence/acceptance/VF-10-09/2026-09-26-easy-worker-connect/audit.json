@@ -1,0 +1,57 @@
+{
+  "schema_version": "videoforge-easy-connect-audit/v1",
+  "checkpoint": "V2-09",
+  "verified_at": "2026-09-26T17:21:45.932170+00:00",
+  "production_source_commit": "f7843203e74c4ed2ba3f4d86a5e0f7282587bffe",
+  "cloudflare_version_id": "31a2dfbd-fdbd-4955-94bc-d78dd2c2ddd7",
+  "traffic_percent": 100,
+  "worker_release": "0.1.44",
+  "fixes": [
+    "Windows command uses UTF16LE EncodedCommand so CMD and PowerShell cannot expand child variables; TLS1.2 bootstrap preserved.",
+    "Successful projects remain excluded from unfinished Queue after explicit output retention deletion."
+  ],
+  "test_maintenance": "Two stale hosted timer expectations now match existing wall elapsed behavior; no product timer changes.",
+  "validation": {
+    "hosted_ui_tests_passed": 159,
+    "connection_readiness_checks_passed": 38,
+    "queue_recovery_authority_checks_passed": 32,
+    "final_backend_checks_passed": 32,
+    "note": "Web groups overlap; counts are not additive.",
+    "media_local_tests": {
+      "passed": 79,
+      "windows_only_skipped": 1
+    },
+    "render_fal_audio_tests_passed": 59,
+    "sql_connect_command_tests_passed": 1,
+    "typecheck": true,
+    "changed_file_lint": true,
+    "cloudflare_build_firewall": true
+  },
+  "live": {
+    "queue_finished_project_absent": true,
+    "library_video_ready_state": 4,
+    "library_video_duration_seconds": 159.2,
+    "library_video_error": null,
+    "windows_encoded_command_correct_bootstrap_tls12": true,
+    "running_mac_install_refused": true,
+    "cross_account_command_rejected": true,
+    "pairing_preserved": true,
+    "mac": {
+      "status": "ONLINE",
+      "version": "0.1.44",
+      "last_seen_seconds": 1,
+      "active_leases": 0,
+      "different_account": true
+    },
+    "secret_bindings": 25,
+    "query_redaction": true,
+    "exact_worker_manifest_preserved": true
+  },
+  "remaining_gates": [
+    "Native Windows 0.1.44 pasted install is not verified; existing Windows 0.1.43 is Offline and needs update.",
+    "No fresh paid end-to-end video generation; whole production savings unmeasured."
+  ],
+  "provider_spend_usd": 0,
+  "paid_compute": "No activation; global inventory not queried.",
+  "preserved_local_work": "Unpublished progress redesign and user node-fair-admission fixture seed preserved."
+}

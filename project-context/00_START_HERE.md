@@ -1,5 +1,7 @@
 # VideoForge: start here
 
+Latest connection audit: source `f7843203` / Cloudflare `31a2dfbd` fixes PowerShell paste expansion and finished-project Queue reappearance after output removal. Checks and live readback pass; native Windows update remains unverified. Read `easy_worker_connect_audit_2026_09_26` in CURRENT_STATE.yaml.
+
 ## Paste-to-connect worker option — 2026-09-26
 
 Published source `243b769f` / Cloudflare `e14f7839` offers macOS/Windows terminal

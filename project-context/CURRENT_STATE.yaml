@@ -1,4 +1,17 @@
 schema_version: "2.0"
+easy_worker_connect_audit_2026_09_26:
+  checkpoint: V2-09
+  status: COMPLETE_PUBLISHED_WITH_NATIVE_WINDOWS_GATE
+  production_source_commit: f7843203e74c4ed2ba3f4d86a5e0f7282587bffe
+  cloudflare_version_id: 31a2dfbd-fdbd-4955-94bc-d78dd2c2ddd7
+  worker_release: 0.1.44 unchanged exact manifest
+  fixes: Windows UTF16LE EncodedCommand prevents parent PowerShell expansion; successful projects stay out of unfinished Queue after output deletion.
+  validation: 159 hosted UI pass; connection/readiness 38 and queue/recovery/authority 32 pass (overlapping groups); final backend 32 pass; media-local 79 pass with one Windows skip; render/Fal/audio 59 pass; SQL tenant/single-use/rollback, typecheck, lint and production build/firewall pass. Two stale timer assertions corrected to existing wall elapsed behavior.
+  production_readback: 100 percent traffic; 25 secret bindings, query redaction, exact 0.1.44 manifest and KIE_FAL/GPU-disabled baseline preserved. Chrome Queue excludes finished project and Library video readyState4 without error. Original Mac ONLINE 0.1.44, zero leases; running-install and cross-account rejection verified.
+  remaining_gates: Native Windows 0.1.44 command install unverified; existing Windows 0.1.43 Offline needs update. No fresh paid video generation; overall production savings unmeasured.
+  provider_spend: USD0 new provider generation or compute.
+  paid_compute_shutdown: No compute activated; global inventory not queried.
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-easy-worker-connect/audit.json
 
 easy_worker_connect_2026_09_26:
   checkpoint: V2-09
@@ -6012,7 +6025,7 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/serverless-v2-roadmap-v4
+  branch: codex/easy-worker-connect
   branch_upstream: origin/codex/serverless-v2-roadmap-v4
   branch_published: false
   current_source_head: "956e3afb1e9d4aad16d35d13da636ebe5bdfe7ea"
