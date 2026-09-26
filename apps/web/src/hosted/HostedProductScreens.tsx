@@ -948,6 +948,9 @@ interface ProjectDetailResponse {
   };
   readonly attempts: readonly HostedAttempt[];
   readonly generation_provider?: "KIE_FAL" | "RUNPOD";
+  readonly api_recovery?: { readonly can_resume_saved_work: boolean; readonly provider_calls_authorized: false };
+  readonly render_retry?: { readonly eligible: boolean; readonly reason: string;
+    readonly failed_attempt_id?: string; readonly attempt_limit: number };
   readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
   readonly gpu_readiness: CatalogResponse["gpu_readiness"];
   readonly generation: null | {
@@ -5189,8 +5192,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // backgrounded tab throttles the poll, and a writer task switches states before the next response
   // lands. The live panel beside it already knows prompt writing is running, so the numbered stage
   // must agree instead of reporting the previous "not started" status.
+  const planningFailed = asr?.state === "SUCCEEDED" && contextComplete &&
+    !render && !query.data.generation && renderHandoff.isError;
   const displayedStages = uiStages.map((stage) =>
-    stage.id === "voiceover-context" && contextAutoStartError
+    stage.id === "planning" && planningFailed
+      ? { ...stage, status: "FAILED" as const, detail: renderHandoff.error.message }
+      : stage.id === "planning" && renderHandoff.isPending && !query.data.generation
+        ? { ...stage, status: "RUNNING" as const }
+      : stage.id === "voiceover-context" && contextAutoStartError
       ? // The automatic request never reached a provider task, so nothing about it is running: the
         // server projection only knows that asr succeeded and no context row exists, which reads
         // RUNNING forever. The row must carry the same truth as the notice below it -- the reason the
@@ -5248,6 +5257,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       return "The prompt request's result is uncertain. A fresh paid request is blocked until the existing attempt is resolved.";
     if (stageId === "voiceover-context" && contextValidationFailed)
       return "The context response failed validation. A fresh provider request is not authorized for this run.";
+    if (stageId === "render" && query.data.render_retry?.reason === "WORKER_UPDATE_REQUIRED")
+      return "Update the connected worker before retrying this validation failure. Your saved media stays available.";
+    if (stageId === "render" && query.data.render_retry?.reason === "RETRY_LIMIT_REACHED")
+      return "This project has reached its five local render attempts. Saved media stays available; contact support for the remaining blocker.";
     if (stageId === "render")
       return "This render failure is outside the verified local retry paths. The accepted images and avatar clips remain saved.";
     return "No safe retry is available for this failed stage. Check the failure details before starting another project.";
@@ -5301,7 +5314,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     renderAttempts[2]?.state === "FAILED" &&
     renderAttempts[2]?.error_code === "RENDER_PROCESS_FAILED" &&
     renderAttempts[3]?.id === render.id;
-  const renderRecoveryEligible =
+  const legacyRenderRecoveryEligible =
     query.data.generation_provider === "KIE_FAL" &&
     failedStageIds.has("render") &&
     render?.state === "FAILED" &&
@@ -5315,7 +5328,20 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" &&
             renderAttempts[1]?.error_code === "MEDIA_EXECUTION_IO_FAILED"))) ||
       processRenderRecoveryEligible || signalRenderRecoveryEligible || outputRenderRecoveryEligible);
+  const renderRecoveryEligible = query.data.render_retry
+    ? query.data.render_retry.eligible && render?.state === "FAILED" &&
+      query.data.render_retry.failed_attempt_id === render.id
+    : legacyRenderRecoveryEligible;
+  const apiRetrievalRetryEligible = query.data.generation_provider === "KIE_FAL" &&
+    query.data.api_recovery?.can_resume_saved_work === true;
   const stageRetries: Record<string, ReturnType<typeof stageRetryButton>> = {
+    ...(apiRetrievalRetryEligible
+      ? Object.fromEntries(["image-generation","avatar-generation"].filter(id=>failedStageIds.has(id))
+        .map(id=>[id,stageRetryButton(gpuDispatch.isPending,()=>gpuDispatch.mutate())]))
+      : {}),
+    ...(failedStageIds.has("planning") && planningFailed && asr
+      ? { planning: stageRetryButton(renderHandoff.isPending, () => renderHandoff.mutate(asr.id)) }
+      : {}),
     ...(failedStageIds.has("transcription") && asr?.state === "FAILED"
       ? {
           transcription: stageRetryButton(asrHandoff.isPending, () => asrHandoff.mutate()),
@@ -5351,7 +5377,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               }
             : {}
       : {}),
-    ...(failedStageIds.has("prompt-writing") && (query.data.generation?.id || savedUnknownPromptsCanFinish) &&
+    ...(failedStageIds.has("prompt-writing") && query.data.generation?.id &&
     (promptProgress?.state !== "UNKNOWN" || savedUnknownPromptsCanFinish) &&
     promptProgress?.problem_code !== "HOSTED_PROMPT_OUTPUT_INVALID"
       ? {
@@ -5362,7 +5388,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ),
         }
       : {}),
-    ...(renderRecoveryEligible
+    ...(renderRecoveryEligible && render
       ? {
           render: stageRetryButton(renderDiskRetry.isPending, () =>
             renderDiskRetry.mutate(render.id),
@@ -5379,6 +5405,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // A refused press has to say why inside the stage that was pressed. The server's sentence used to
   // land only in the notice below the pipeline, so a spent retry budget read as "nothing happened".
   const stageRetryNotices = {
+    ...(apiRetrievalRetryEligible ? Object.fromEntries(["image-generation","avatar-generation"]
+      .filter(id=>failedStageIds.has(id)).map(id=>[id,"Retry retrieves already-submitted results. Saved outputs are reused; no new paid request is sent."])) : {}),
+    ...(planningFailed ? { planning: renderHandoff.error.message } : {}),
     ...Object.fromEntries(
       [...failedStageIds]
         .filter((id) => !stageRetries[id])
@@ -6055,7 +6084,7 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
   const contactSheet = review?.contact_sheet ?? query.data?.contact_sheet ?? [];
   const qualityFlags = review?.quality_flags ?? query.data?.quality_flags ?? [];
   const manifestUrl = review?.manifest_url ?? query.data?.manifest_url ?? null;
-  const downloadUrl = review?.download_url ?? candidate?.preview_url ?? null;
+  const downloadUrl = review?.download_url ?? `/api/v2/hosted/projects/${projectId}/download`;
   if (query.isPending)
     return (
       <Panel eyebrow="Review" heading="Loading candidate">

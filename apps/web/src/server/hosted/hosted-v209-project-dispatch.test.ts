@@ -304,7 +304,7 @@ describe("API prompt binding before scheduling", () => {
         inspectExistingGeneration: async () => ({ generationProvider: "KIE_FAL",
           candidateExists: false, attemptExists: false, pairExists: false }) } as never,
     );
-    return { run, events, bindings, committed, create, expected, prepared };
+    return { run, events, bindings, committed, create, expected, prepared, jobs };
   }
 
   it("validates every prompt then binds exact identities in one committed transaction", async () => {
@@ -315,6 +315,15 @@ describe("API prompt binding before scheduling", () => {
     expect(f.bindings.map((binding) => binding.transactionId)).toEqual([2, 2, 2]);
     expect(f.committed).toEqual(f.expected.map((prompt, index) => [scope.account_id,
       scope.workspace_id, f.prepared.generationRequestId, id(String(index + 5)), prompt]));
+    expect(f.create).toHaveBeenCalledOnce();
+  });
+
+  it("resumes submitted results without compiling or rebinding blocked queued work", async () => {
+    const f = await fixture("compile");
+    f.jobs[0]!.state = "UNKNOWN_NO_RETRY";
+    expect((await f.run()).status).toBe(202);
+    expect(f.events).toEqual(["commit:1", "schedule"]);
+    expect(f.bindings).toEqual([]);
     expect(f.create).toHaveBeenCalledOnce();
   });
 

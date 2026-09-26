@@ -199,14 +199,47 @@ describe("approved final MP4 download", () => {
       expect(result?.headers.get("x-videoforge-artifact-sha256")).toBe(checksum);
       expect(Array.from(new Uint8Array(await result!.arrayBuffer()))).toEqual(Array.from(bytes));
       expect(head).toHaveBeenCalledWith(key);
-      expect(get).toHaveBeenCalledWith(key);
+      expect(get).toHaveBeenCalledWith(key, undefined);
       const query = testState.query.mock.calls.find(([sql]) => String(sql).includes("SELECT authority.object_key, authority.issued_content_length AS content_length"));
       expect(String(query?.[0])).toContain("review.output_checksum_sha256 = authority.issued_checksum_sha256");
       expect(String(query?.[0])).toContain("attempt.project_revision_id = revision.id");
       expect(String(query?.[0])).toContain("attempt.state = 'SUCCEEDED'");
+      expect(String(query?.[0])).toContain("attempt.result_object_key = result_document.object_key");
     } finally {
       testState.approvedDownloadRows.length = 0;
     }
+  });
+
+  it.each(["bytes=2-5", "bytes=-4"])("serves seekable candidate preview on a stable authenticated URL: %s", async (range) => {
+    const attemptId = "22222222-2222-4222-8222-222222222222";
+    testState.approvedDownloadRows.push({ object_key: key, content_length: bytes.length, checksum_sha256: checksum });
+    const digest = Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer;
+    const head = vi.fn(async () => ({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, checksums: { sha256: digest } }));
+    const offset = range === "bytes=2-5" ? 2 : bytes.length - 4;
+    const get = vi.fn(async () => ({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, body: new ReadableStream({ start(controller) { controller.enqueue(bytes.slice(offset, offset + 4)); controller.close(); } }) }));
+    try {
+      const req = request(`/api/v2/hosted/projects/${PROJECT_ID}/renders/${attemptId}/preview`, "GET");
+      req.headers.set("range", range);
+      const result = await handleHostedProductRequest(req, { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment, config, executionContext);
+      expect(result?.status).toBe(206);
+      expect(result?.headers.get("content-disposition")).toBe('inline; filename="videoforge-output.mp4"');
+      expect(result?.headers.get("content-range")).toBe(`bytes ${offset}-${offset + 3}/${bytes.length}`);
+      expect(result?.headers.get("content-length")).toBe("4");
+      expect(get).toHaveBeenCalledWith(key, { range: { offset, length: 4 } });
+      expect(Array.from(new Uint8Array(await result!.arrayBuffer()))).toEqual(Array.from(bytes.slice(offset, offset + 4)));
+    } finally { testState.approvedDownloadRows.length = 0; }
+  });
+
+  it("rejects an unsatisfiable range before reading media bytes", async () => {
+    testState.approvedDownloadRows.push({ object_key: key, content_length: bytes.length, checksum_sha256: checksum });
+    const digest = Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer;
+    const head = vi.fn(async () => ({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, checksums: { sha256: digest } }));
+    const get = vi.fn();
+    try {
+      const req = request(path, "GET"); req.headers.set("range", "bytes=999-1000");
+      const result = await handleHostedProductRequest(req, { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment, config, executionContext);
+      expect(result?.status).toBe(416); expect(get).not.toHaveBeenCalled();
+    } finally { testState.approvedDownloadRows.length = 0; }
   });
 
   it("does not read R2 without an approved current revision, and rejects wrong checksum", async () => {

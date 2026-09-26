@@ -224,7 +224,6 @@ export async function advanceHostedApiGeneration(
   if (current.length === 0) return outcome("ACTION_REQUIRED", "HOSTED_API_JOBS_MISSING");
   if (current.every((job) => job.state === "SUCCEEDED")) return outcome("READY_TO_RENDER");
   const blocked = current.find((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY"].includes(job.state));
-  if (blocked) return outcome("ACTION_REQUIRED", blocked.failureCode ?? blocked.state);
   const failed = current.find((job) => job.state === "FAILED");
   const bucket = environment.PRIVATE_ARTIFACTS;
   const signer = new HostedR2Signer(config.r2);
@@ -396,7 +395,8 @@ export async function advanceHostedApiGeneration(
     ]);
     return "PROGRESSED";
   };
-  const indices = failed ? [] : selectHostedApiGenerationJobIndices(current, observation);
+  // A blocked sibling stops new paid submissions, but cannot strand other paid results.
+  const indices = failed || blocked ? [] : selectHostedApiGenerationJobIndices(current, observation);
   if (indices.length > 0) {
     const imageIndices = indices.filter((index) => current[index]!.lane === "IMAGE");
     const avatarIndices = indices.filter((index) => current[index]!.lane === "AVATAR");
@@ -419,6 +419,8 @@ export async function advanceHostedApiGeneration(
     );
   }
   const submittedJobs = current.filter((job) => job.state === "SUBMITTED");
+  if (submittedJobs.length === 0 && blocked)
+    return outcome("ACTION_REQUIRED", blocked.failureCode ?? blocked.state);
   if (submittedJobs.length === 0 && failed) {
     const settlement = object(
       await call(database, scope.accountId, "videoforge_settle_hosted_api_failure", base),
@@ -510,10 +512,11 @@ export async function ensureHostedApiGenerationWorkflow(
               return result.rows[0]?.pending === true;
             })
           : false;
+      const retrievalPending = current.some((job) => job.state === "SUBMITTED");
       if (
-        current.length > 0 &&
+        retrievalPending || (current.length > 0 &&
         current.every((job) => ["PREPARED", "SUBMITTED", "SUCCEEDED"].includes(job.state)) &&
-        (pendingJobs || renderPending)
+        (pendingJobs || renderPending))
       ) {
         if (!existing.restart)
           throw new Error("HOSTED_API_GENERATION_WORKFLOW_RESTART_UNAVAILABLE");

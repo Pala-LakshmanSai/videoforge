@@ -2,11 +2,12 @@
 
 ## Current project monitoring — 2026-09-26
 
-`china found` recovered its scene-planning blocker on production source `16d66140`. Valid
-sub-frame ASR phrases no longer fail the scheduler; positive scene frames and exact word/audio
-coverage remain enforced. The same saved project advanced automatically to image prompts.
-Monitoring continues through final technical checks and Chrome playback; the final MP4 is not yet
-verified. See `china_found_planning_repair_2026_09_26` in `CURRENT_STATE.yaml`.
+`china found` has finished its same-project render on worker 0.1.39: final receipt,
+28:23.8 technical probe and advancing 1920×1080 Chrome playback pass. The single-frame Fal
+alignment failure is fixed in both published platform workers; this Mac is installed/Online.
+The bounded stage retry audit and stable authenticated download fixes are validated and awaiting
+production deployment. See `china_found_render_and_retry_repair_2026_09_26` in `CURRENT_STATE.yaml`
+and its narrow evidence/audit pointers. Human approval and Windows installation remain separate.
 
 ## ASR worker release — 2026-09-26
 

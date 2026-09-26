@@ -55,7 +55,7 @@ export async function retryHostedApiRender(
         recovery?.schema_version !== "videoforge-hosted-render-disk-recovery/v1" ||
         typeof recovery.revision_id !== "string" || !UUID.test(recovery.revision_id) ||
         typeof recovery.retry_attempt_id !== "string" || !UUID.test(recovery.retry_attempt_id) ||
-        !["DISK", "IO", "INPUT", "PROCESS", "SIGNAL", "OUTPUT"].includes(String(recovery.recovery_kind))
+        !["DISK", "IO", "INPUT", "PROCESS", "SIGNAL", "OUTPUT", "LOCAL"].includes(String(recovery.recovery_kind))
       ) throw new Error("HOSTED_RENDER_DISK_RECOVERY_INVALID");
       const plan = await transaction.query<{ payload: unknown }>(
         `SELECT payload FROM public.hosted_render_plans
@@ -64,14 +64,19 @@ export async function retryHostedApiRender(
       );
       const submission = exactHostedRenderSubmission(plan.rows[0]?.payload, projectId, recovery.revision_id);
       if (!submission) throw new Error("HOSTED_RENDER_DISK_RECOVERY_PLAN_INVALID");
-      return { retryAttemptId: recovery.retry_attempt_id, recoveryKind: recovery.recovery_kind, submission };
+      if (recovery.recovery_kind === "LOCAL" &&
+        recovery.recovery_key !== `render-local-recovery:${recovery.retry_attempt_id}`)
+        throw new Error("HOSTED_RENDER_DISK_RECOVERY_INVALID");
+      return { retryAttemptId: recovery.retry_attempt_id, recoveryKind: recovery.recovery_kind,
+        recoveryKey: recovery.recovery_key, submission };
     });
     const scheduled = await dependencies.schedule({
       accountId: scope.account_id,
       workspaceId: scope.workspace_id,
       submission: prepared.submission,
       expectedAttemptId: prepared.retryAttemptId,
-      renderRecoveryKey: `render-${String(prepared.recoveryKind).toLowerCase()}-recovery:${prepared.submission.projectRevisionId}`,
+      renderRecoveryKey: prepared.recoveryKind === "LOCAL" ? String(prepared.recoveryKey)
+        : `render-${String(prepared.recoveryKind).toLowerCase()}-recovery:${prepared.submission.projectRevisionId}`,
     });
     if (!["OUTBOXED", "RUNNING", "SUCCEEDED"].includes(scheduled.state))
       return response({ error: { code: "HOSTED_RENDER_DISK_RETRY_STOPPED" }, attempt_id: prepared.retryAttemptId, state: scheduled.state }, 409);

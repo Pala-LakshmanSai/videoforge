@@ -1,7 +1,37 @@
 schema_version: "2.0"
+china_found_render_and_retry_repair_2026_09_26:
+  checkpoint: V2-09
+  status: RENDER_COMPLETE_RETRY_DOWNLOAD_FIX_VALIDATED_DEPLOYMENT_PENDING
+  project_id: a8132134-d81b-414f-b838-850adacc85a6
+  revision_id: 0a89de42-064a-4175-a7a2-d528cfb5f767
+  worker_source_commit: af53d01e6b5c449499aea343156d19445e08df28
+  worker_release: 0.1.39
+  worker_execution_bundle_sha256: sha256:1df5d302b1b10d61c00206963366c5c9f5eca2d70a08ff0c554414b6ace4bcda
+  cloudflare_version: 6fcb6ad3-6194-4f8b-a892-42b52a4d0779
+  render_attempt_id: d00bab80-f2ee-440d-ae57-682196bbf6ca
+  final_output_sha256: sha256:a5230228ebbd801a798ea0c41bd23da402ce878a341e8fec16938e5dd65984fe
+  final_receipt_sha256: sha256:bb24969c77abc78f093c0d2805b0438c1899fc1ba22726feb43d498f278e442c
+  result: >-
+    First render failed because only the 500ms Fal frame was registered; its residual exceeded
+    the unchanged 3px guard. Bounded alternate frames pass all 99 saved clips. Both platform
+    worker releases passed CI; verified Mac 0.1.39 is installed/Online. One render-only Retry
+    reused 328 images and 99 avatar clips; 28:23.8 final MP4 passes full decode, loudness,
+    zero reported AV drift, final durable receipt and advancing 1920x1080 Chrome playback.
+  retry_download_audit: >-
+    Migration 0211 removes required local failure order while retaining five total attempts,
+    bundle correction for invalid media, accepted assets and legacy replay identities. API
+    retrieval continues for known submitted siblings while blocked paid jobs cannot resubmit.
+    Stable authenticated range media removes expiring preview downloads and compares the MP4
+    and JSON result-document authorities separately. Provider-free tests/preflight pass.
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-china-found-render.json
+  audit: evidence/acceptance/VF-10-09/2026-09-26-stage-retry-audit.md
+  remaining_gates: Retry/download production deployment, user approval/download, user-installed Windows parity.
+  provider_spend: Repairs made zero paid calls; prompts reported USD2.0596 under USD8; API USD3.11 is an estimate, settled debit unverified.
+  paid_compute_shutdown: No GPU activated, project has zero serverless attempts, provider lease RELEASED; live provider inventory not queried.
+  monitoring: Paused after final receipt, technical probe and Chrome playback passed.
 china_found_planning_repair_2026_09_26:
   checkpoint: V2-09
-  status: PRODUCTION_DEPLOYED_SAME_PROJECT_PROMPTS_RUNNING
+  status: FINAL_TECHNICAL_AND_CHROME_PLAYBACK_PASS
   project_id: a8132134-d81b-414f-b838-850adacc85a6
   revision_id: 0a89de42-064a-4175-a7a2-d528cfb5f767
   asr_attempt_id: 8f61ed46-41c4-4978-8a4d-2ba36386c367

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { advanceHostedApiGeneration } from "./hosted-api-generation";
+import { KieImageJobError } from "../providers/kie-image-job";
+import { advanceHostedApiGeneration, ensureHostedApiGenerationWorkflow } from "./hosted-api-generation";
 
 const fixture = vi.hoisted(() => ({
   jobs: [] as Record<string, unknown>[],
@@ -119,6 +120,62 @@ describe("hosted API batch execution", () => {
       expect(post).toHaveBeenCalledTimes(1);
     },
   );
+
+  it.each(["UNKNOWN_NO_RETRY","FAILED"])(
+    "saves submitted sibling outputs after %s without replaying accepted work", async(blockedState)=>{
+      fixture.jobs=jobs("SUBMITTED");
+      fixture.jobs[0]!.state=blockedState;
+      fixture.jobs[0]!.providerTaskId=null;
+      fixture.jobs[1]!.state="SUCCEEDED";
+      const accepted=structuredClone(fixture.jobs[1]);
+      fixture.jobs.push({...jobs("PREPARED")[0],id:"job-3",generationTaskId:"task-3"});
+      const post=vi.fn();vi.stubGlobal("fetch",post);
+      fixture.observeImage.mockResolvedValue({state:"SUCCEEDED",artifact:{sha256:"sha256:fixture",
+        byteSize:1024,contentType:"image/png",width:1920,height:1080}});
+      const pending=advanceHostedApiGeneration(environment,database,scope);
+      await vi.runAllTimersAsync();expect((await pending).state).toBe("PROGRESSED");
+      expect(fixture.observeImage).toHaveBeenCalledTimes(1);
+      expect(fixture.observeImage).toHaveBeenCalledWith(expect.objectContaining({taskId:"provider-2"}));
+      expect(fixture.jobs[1]).toEqual(accepted);
+      expect(fixture.jobs.map(row=>row.state)).toEqual([blockedState,"SUCCEEDED","SUCCEEDED","PREPARED"]);
+      expect((await advanceHostedApiGeneration(environment,database,scope)).state).toBe("ACTION_REQUIRED");
+      expect(post).not.toHaveBeenCalled();
+      expect(fixture.events).not.toContain("videoforge_claim_hosted_api_job");
+    },
+  );
+
+  it("retrieves a failed download using the same provider identity", async () => {
+    fixture.jobs = jobs("SUBMITTED");
+    fixture.jobs[1]!.state = "SUCCEEDED";
+    fixture.jobs[2]!.state = "SUCCEEDED";
+    const post = vi.fn();
+    vi.stubGlobal("fetch", post);
+    fixture.observeImage.mockRejectedValueOnce(new KieImageJobError("RESULT_DOWNLOAD_FAILED"))
+      .mockResolvedValueOnce({ state: "SUCCEEDED", artifact: { sha256: "sha256:fixture",
+        byteSize: 1024, contentType: "image/png", width: 1920, height: 1080 } });
+    const first = advanceHostedApiGeneration(environment, database, scope);
+    await vi.runAllTimersAsync();
+    expect((await first).state).toBe("WAITING");
+    expect(fixture.jobs[0]!.state).toBe("SUBMITTED");
+    const second = advanceHostedApiGeneration(environment, database, scope);
+    await vi.runAllTimersAsync();
+    expect((await second).state).toBe("PROGRESSED");
+    expect(fixture.observeImage.mock.calls.map(([input]) => input.taskId))
+      .toEqual(["provider-0", "provider-0"]);
+    expect(post).not.toHaveBeenCalled();
+    expect(fixture.events).not.toContain("videoforge_claim_hosted_api_job");
+  });
+
+  it.each([true,false])("restarts stopped workflows only when submitted results remain: %s",async(submitted)=>{
+    fixture.jobs=jobs("PREPARED");fixture.jobs[0]!.state="UNKNOWN_NO_RETRY";
+    if(submitted){fixture.jobs[1]!.state="SUBMITTED";fixture.jobs[1]!.providerTaskId="persisted-provider-id";}
+    const restart=vi.fn();
+    const workflow={create:vi.fn().mockRejectedValue(new Error("existing")),
+      get:vi.fn().mockResolvedValue({status:async()=>({status:"complete"}),restart})};
+    const result=await ensureHostedApiGenerationWorkflow({HOSTED_PAIR_WORKFLOW:workflow,PRIVATE_ARTIFACTS:{}} as never,database,scope);
+    expect(result.recovered).toBe(true);expect(restart).toHaveBeenCalledTimes(submitted?1:0);
+    expect(fixture.events).toEqual(["videoforge_read_hosted_api_jobs"]);
+  });
 
   it("visits every outstanding result once and advances immediately after acceptance", async () => {
     fixture.jobs = jobs("SUBMITTED");

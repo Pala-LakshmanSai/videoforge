@@ -187,9 +187,9 @@ END; $$;
   }
 });
 
-test("0210 is the exact manifest tail", () => {
+test("0210 retains its exact manifest entry", () => {
   const manifest = JSON.parse(readFileSync(new URL("../migrations/manifest.json", import.meta.url)));
-  const tail = manifest.migrations.at(-1);
+  const tail = manifest.migrations.find((row) => row.version === 210);
   assert.deepEqual([tail.version, tail.name, tail.filename],
     [210, "hosted_api_fourth_render_output_recovery", "0210_hosted_api_fourth_render_output_recovery.sql"]);
   assert.equal(tail.sha256, `sha256:${createHash("sha256").update(migration210).digest("hex")}`);

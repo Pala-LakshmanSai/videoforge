@@ -18,9 +18,9 @@ test("0198 allows only the prior disk retry's failed I/O attempt without another
   assert.doesNotMatch(sql, /(?:INSERT INTO|UPDATE) public\.(?:api_generation_jobs|provider_workload_leases)/u);
 });
 
-test("0198 is the manifest tail with its exact digest", () => {
+test("0198 retains its exact manifest entry and digest", () => {
   const manifest = JSON.parse(readFileSync(new URL("../migrations/manifest.json", import.meta.url), "utf8"));
-  const tail = manifest.migrations.at(-1);
+  const tail = manifest.migrations.find((row) => row.version === 198);
   assert.deepEqual([tail.version, tail.name, tail.filename],
     [198, "hosted_api_render_io_recovery", "0198_hosted_api_render_io_recovery.sql"]);
   assert.equal(tail.sha256,

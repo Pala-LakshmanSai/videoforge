@@ -1,0 +1,261 @@
+{
+  "checkpoint": "V2-09",
+  "status": "FINAL_TECHNICAL_AND_CHROME_PLAYBACK_PASS",
+  "project_id": "a8132134-d81b-414f-b838-850adacc85a6",
+  "project_revision_id": "0a89de42-064a-4175-a7a2-d528cfb5f767",
+  "failed_render_attempt_id": "e5d3172a-533a-4bab-9947-86b5033d63bb",
+  "failure_code": "RENDER_INPUT_INVALID",
+  "failure_message": "Fal wide segment 31: ValueError: Fal crop source geometry is uncertain.",
+  "source_commit": "af53d01e6b5c449499aea343156d19445e08df28",
+  "execution_bundle_sha256": "sha256:1df5d302b1b10d61c00206963366c5c9f5eca2d70a08ff0c554414b6ace4bcda",
+  "release_version": "0.1.39",
+  "release_run_id": 36218996444,
+  "cause": "Only one alignment frame at 500ms was attempted. Its post-fit inlier residual p95 is 3.1593987941741943 pixels, above unchanged 3px threshold. At 0ms, 80 inliers and p95 2.7102909088134766 pass.",
+  "fix": "Bounded alternate frames 500,0,200,1000ms; unchanged match count, inlier count, residual, similarity and clipped-crop safeguards.",
+  "inputs": {
+    "manifest_sha256": "sha256:a61391d0321e45d52f8ce6a53a7204ab00801361ac1edee3c891e2a166dad467",
+    "failed_clip_asset_id": "58b8f1bb-8b6b-bb15-5486-c90116f70225",
+    "failed_clip_sha256": "sha256:3fcfcd1c80695d90d645a9dc74b503798d0e5c1cbca82821dc707a59423de0ea",
+    "source_asset_id": "89b3196c-b965-42ea-8e3e-17f45ef245aa",
+    "source_sha256": "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
+  },
+  "local_validation": {
+    "all_accepted_clips": 99,
+    "registration_pass": 99,
+    "alternate_frames_required": 12,
+    "tests": {
+      "fal_wide": 7,
+      "render_job": 28,
+      "personal_worker": 46
+    },
+    "ruff": "PASS",
+    "git_diff_check": "PASS",
+    "production_build": "PASS",
+    "production_bundle_guard": "PASS",
+    "exact_failed_clip_output": {
+      "width": 1920,
+      "height": 1080,
+      "fps": "25/1",
+      "frames": 128,
+      "sha256": "sha256:3477adcd3fb80f946c0eab137003373c6364b439592cf9580164c654f31319e7"
+    },
+    "registration_proof_sha256": "sha256:de81a786af94d92ff874bfd9616ab7159a10e88d72fafc50431baabfe913219b",
+    "registration_diagnosis": [
+      {
+        "ms": 500,
+        "matches": 72,
+        "inliers": 22,
+        "p95": 3.1593987941741943,
+        "affine": [
+          [
+            1.6419887131608335,
+            0.009595651692458148,
+            544.7002326304549
+          ],
+          [
+            -0.009595651692458148,
+            1.6419887131608335,
+            3.2260752392645005
+          ]
+        ]
+      },
+      {
+        "ms": 0,
+        "matches": 219,
+        "inliers": 80,
+        "p95": 2.7102909088134766,
+        "affine": [
+          [
+            1.711122585148681,
+            0.00783034575886146,
+            513.8966568363669
+          ],
+          [
+            -0.00783034575886146,
+            1.711122585148681,
+            -10.772874234337971
+          ]
+        ]
+      },
+      {
+        "ms": 40,
+        "matches": 189,
+        "inliers": 59,
+        "p95": 2.696887731552124,
+        "affine": [
+          [
+            1.725861723845203,
+            0.025316290749518532,
+            504.5611830435706
+          ],
+          [
+            -0.025316290749518532,
+            1.725861723845203,
+            -7.223681702126443
+          ]
+        ]
+      },
+      {
+        "ms": 80,
+        "matches": 167,
+        "inliers": 45,
+        "p95": 2.816967248916626,
+        "affine": [
+          [
+            1.6951896495780312,
+            -0.012069948637262153,
+            519.4254610540502
+          ],
+          [
+            0.012069948637262153,
+            1.6951896495780312,
+            -8.39953419888306
+          ]
+        ]
+      },
+      {
+        "ms": 200,
+        "matches": 117,
+        "inliers": 32,
+        "p95": 2.998802423477173,
+        "affine": [
+          [
+            1.7059693727342997,
+            -0.01563296442857993,
+            510.37568753884653
+          ],
+          [
+            0.01563296442857993,
+            1.7059693727342997,
+            4.015146082669771
+          ]
+        ]
+      },
+      {
+        "ms": 1000,
+        "matches": 80,
+        "inliers": 28,
+        "p95": 2.681635856628418,
+        "affine": [
+          [
+            1.711548586826631,
+            0.013997987326926493,
+            512.453789281963
+          ],
+          [
+            -0.013997987326926493,
+            1.711548586826631,
+            -10.666326475022025
+          ]
+        ]
+      },
+      {
+        "ms": 1500,
+        "matches": 154,
+        "inliers": 49,
+        "p95": 2.8105967044830322,
+        "affine": [
+          [
+            1.663900363310168,
+            0.04097368746708967,
+            506.7390018060444
+          ],
+          [
+            -0.04097368746708967,
+            1.663900363310168,
+            10.254215117891842
+          ]
+        ]
+      }
+    ]
+  },
+  "accepted_assets_preserved": {
+    "images": 328,
+    "avatar_clips": 99,
+    "audio_spans": 99
+  },
+  "paid_provider_replays": 0,
+  "new_paid_provider_calls": 0,
+  "gpu_activated": false,
+  "provider_lease": {
+    "state": "RELEASED",
+    "released_at": "2026-09-26T04:33:26.28654Z",
+    "reason": "HOSTED_API_OUTPUTS_ACCEPTED"
+  },
+  "remaining_gates": [
+    "download fix production verification",
+    "human approval",
+    "user-controlled Windows installation"
+  ],
+  "updated_at": "2026-09-26T05:44:46.784109+00:00",
+  "production_cloudflare_version": "6fcb6ad3-6194-4f8b-a892-42b52a4d0779",
+  "retry_attempt_id": "d00bab80-f2ee-440d-ae57-682196bbf6ca",
+  "terminal_at": "2026-09-26T05:32:59.713403Z",
+  "release": {
+    "execution_bundle_sha256": "sha256:1df5d302b1b10d61c00206963366c5c9f5eca2d70a08ff0c554414b6ace4bcda",
+    "macos": {
+      "sha256": "sha256:2ca6021a837a5029bd0ad80176006afbdfae523ab33923e436dbcba5fb1b034b",
+      "size_bytes": 414223411,
+      "trust": "AD_HOC_BETA",
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.39/VideoForge-Worker-0.1.39.dmg"
+    },
+    "minimum_protocol_version": 1,
+    "schema_version": "videoforge-media-worker-release/v1",
+    "version": "0.1.39",
+    "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "windows": {
+      "sha256": "sha256:570640409da8b24efea4ee9259d41899e3d1bffbd88e331fc8f722d971bfa24b",
+      "size_bytes": 279582081,
+      "trust": "UNSIGNED_BETA",
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.39/VideoForge-Worker-0.1.39-Setup.exe"
+    }
+  },
+  "mac_install": {
+    "state": "ONLINE",
+    "version": "0.1.39",
+    "installer_sha_and_size": "PASS",
+    "app_signature": "PASS",
+    "standard_launch_agent": "RUNNING",
+    "execution_bundle_sha256": "sha256:1df5d302b1b10d61c00206963366c5c9f5eca2d70a08ff0c554414b6ace4bcda"
+  },
+  "final": {
+    "sha256": "sha256:a5230228ebbd801a798ea0c41bd23da402ce878a341e8fec16938e5dd65984fe",
+    "bytes": 344114328,
+    "receipt_sha256": "sha256:bb24969c77abc78f093c0d2805b0438c1899fc1ba22726feb43d498f278e442c",
+    "asset_id": "asset_render_a5230228ebbd801a798ea0c4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "30/1",
+    "duration_ms": 1703800,
+    "frames": 51114,
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "decode_ok": true,
+    "av_drift_ms": 0,
+    "integrated_lufs": -16.41,
+    "true_peak_dbtp": -5.01,
+    "generation_state": "SUCCEEDED",
+    "runtime_state": "COMPLETE",
+    "chrome_playback": {
+      "advanced_from_seconds": 0.179536,
+      "advanced_to_seconds": 15.053473,
+      "error": null,
+      "same_attempt_object_path": true
+    },
+    "human_approved": false
+  },
+  "monitoring_automation": "PAUSED_AFTER_VERIFIED_COMPLETION",
+  "spend": {
+    "new_paid_provider_calls_for_repairs": 0,
+    "prompt_reported_usd": 2.0596,
+    "prompt_reservation_usd": 8,
+    "api_published_rate_estimate_usd": 3.11,
+    "api_settled_debit": "NOT_VERIFIED"
+  },
+  "compute": {
+    "gpu_activated": false,
+    "project_serverless_attempts": 0,
+    "provider_lease": "RELEASED",
+    "live_provider_inventory": "NOT_QUERIED"
+  }
+}

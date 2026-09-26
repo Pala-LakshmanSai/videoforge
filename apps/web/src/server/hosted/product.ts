@@ -7364,6 +7364,10 @@ async function projectDetail(
             [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
           )
         : { rows: [] as Record<string, unknown>[] };
+      const renderRetryStatus = await transaction.query<{ value: unknown }>(
+        "SELECT public.videoforge_read_hosted_api_render_recovery_status($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text) AS value",
+        [scope.account_id,scope.workspace_id,scope.user_id,projectId,config.mediaWorkerRelease.executionBundleSha256],
+      );
       const cost = await transaction.query(
         `SELECT revision.maximum_cost_micro_usd,
                 COALESCE((SELECT sum((regeneration.cost_admission->>'estimated_cost_micro_usd')::numeric) / 1000000
@@ -7502,6 +7506,7 @@ async function projectDetail(
         runtime: runtime.rows[0] ?? null,
         serverlessAttempts: serverlessAttempts.rows,
         serverlessOutputs: serverlessOutputs.rows,
+        renderRetryStatus: renderRetryStatus.rows[0]?.value,
         apiJobs: apiJobs.rows,
         spanAudio: spanAudio.rows,
         spanAudioJobs: spanAudioJobs.rows,
@@ -7538,16 +7543,7 @@ async function projectDetail(
             value.output_checksum_sha256,
           ))
         ) {
-          previewUrl = (
-            await signer.sign({
-              method: "GET",
-              objectKey: value.object_key,
-              contentType: "video/mp4",
-              contentLength: Number(value.content_length),
-              checksumSha256: value.output_checksum_sha256,
-              lifetimeSeconds: 300,
-            })
-          ).url;
+          previewUrl = `/api/v2/hosted/projects/${projectId}/renders/${String(value.id)}/preview`;
         }
       }
       attempts.push({
@@ -8148,6 +8144,12 @@ async function projectDetail(
       schema_version: "videoforge-hosted-project-detail/v1",
       project: detail.project,
       attempts,
+      api_recovery: {
+        can_resume_saved_work: apiJobs.some((job) => job.state === "SUBMITTED") &&
+          apiJobs.some((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY", "FAILED"].includes(String(job.state))),
+        provider_calls_authorized: false,
+      },
+      render_retry: detail.renderRetryStatus,
       generation_provider: projectApiGeneration ? "KIE_FAL" : "RUNPOD",
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
@@ -8218,7 +8220,9 @@ async function downloadApprovedRender(
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
+  previewAttemptId: string | null = null,
 ): Promise<Response> {
+  if (previewAttemptId !== null && !UUID.test(previewAttemptId)) return response({ error: { code: "RENDER_NOT_FOUND" } }, 404);
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
   const bucket = environment.PRIVATE_ARTIFACTS;
   if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
@@ -8248,7 +8252,7 @@ async function downloadApprovedRender(
             AND attempt.workspace_id = project.workspace_id
             AND attempt.project_id = project.id
             AND attempt.project_revision_id = revision.id
-           JOIN hosted_project_reviews AS review
+           LEFT JOIN hosted_project_reviews AS review
              ON review.account_id = attempt.account_id
             AND review.workspace_id = attempt.workspace_id
             AND review.project_id = project.id
@@ -8258,6 +8262,12 @@ async function downloadApprovedRender(
             AND authority.workspace_id = attempt.workspace_id
             AND authority.attempt_id = attempt.id
             AND authority.source = 'PRIMARY_RESULT_OUTPUT'
+           LEFT JOIN hosted_cpu_upload_authorities AS result_document
+             ON result_document.account_id = attempt.account_id
+            AND result_document.workspace_id = attempt.workspace_id
+            AND result_document.attempt_id = attempt.id
+            AND result_document.source = 'RESULT_DOCUMENT'
+            AND result_document.issued_at IS NOT NULL
           WHERE project.account_id = $1 AND project.workspace_id = $2
             AND project.id = $3 AND project.project_kind = 'USER'
             AND project.status = 'ACTIVE' AND revision.status = 'LOCKED'
@@ -8272,12 +8282,16 @@ async function downloadApprovedRender(
             AND attempt.retention_deleted_at IS NULL
             AND authority.issued_at IS NOT NULL
             AND authority.content_type = 'video/mp4'
-            AND review.output_checksum_sha256 = authority.issued_checksum_sha256
-            AND attempt.result_object_key = authority.object_key
-            AND attempt.result_content_length = authority.issued_content_length
-            AND attempt.result_checksum_sha256 = authority.issued_checksum_sha256
+            AND (($4::uuid IS NOT NULL AND attempt.id = $4)
+              OR ($4::uuid IS NULL AND review.output_checksum_sha256 = authority.issued_checksum_sha256))
+            AND ((attempt.result_object_key = authority.object_key
+              AND attempt.result_content_length = authority.issued_content_length
+              AND attempt.result_checksum_sha256 = authority.issued_checksum_sha256)
+              OR (attempt.result_object_key = result_document.object_key
+              AND attempt.result_content_length = result_document.issued_content_length
+              AND attempt.result_checksum_sha256 = result_document.issued_checksum_sha256))
           ORDER BY review.approved_at DESC LIMIT 1`,
-        [scope.account_id, scope.workspace_id, projectId],
+        [scope.account_id, scope.workspace_id, projectId, previewAttemptId],
       );
     });
     const artifact = result.rows[0];
@@ -8291,17 +8305,34 @@ async function downloadApprovedRender(
       !head || head.size !== size || head.httpMetadata?.contentType !== "video/mp4" ||
       !(await verifyHostedPreviewChecksum(bucket, artifact.object_key, head, artifact.checksum_sha256))
     ) return response({ error: { code: "APPROVED_RENDER_UNAVAILABLE" } }, 503);
-    const object = await bucket.get(artifact.object_key);
+    const rangeHeader = request.headers.get("range");
+    let range: { offset: number; length: number } | undefined;
+    if (rangeHeader) {
+      const match = /^bytes=(\d*)-(\d*)$/u.exec(rangeHeader);
+      const start = match?.[1] ? Number(match[1]) : null;
+      const end = match?.[2] ? Number(match[2]) : null;
+      const offset = start ?? Math.max(0, size - (end ?? 0));
+      const last = start === null ? size - 1 : Math.min(end ?? size - 1, size - 1);
+      if (!match || (start === null && end === null) ||
+        !Number.isSafeInteger(offset) || !Number.isSafeInteger(last) || offset >= size ||
+        offset < 0 || last < offset || (start === null && end === 0))
+        return new Response(null, { status: 416, headers: { "content-range": `bytes */${size}` } });
+      range = { offset, length: last - offset + 1 };
+    }
+    const object = await bucket.get(artifact.object_key, range ? { range } : undefined);
     if (
       !object?.body || object.size !== size || object.httpMetadata?.contentType !== "video/mp4" ||
       (head.etag && object.etag !== head.etag)
     )
       return response({ error: { code: "APPROVED_RENDER_UNAVAILABLE" } }, 503);
     return new Response(object.body, {
+      status: range ? 206 : 200,
       headers: {
+        "accept-ranges": "bytes",
+        ...(range ? { "content-range": `bytes ${range.offset}-${range.offset + range.length - 1}/${size}` } : {}),
         "content-type": "video/mp4",
-        "content-length": String(size),
-        "content-disposition": 'attachment; filename="videoforge-output.mp4"',
+        "content-length": String(range?.length ?? size),
+        "content-disposition": `${previewAttemptId ? 'inline' : 'attachment'}; filename="videoforge-output.mp4"`,
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
         "x-videoforge-artifact-sha256": artifact.checksum_sha256,
@@ -8543,6 +8574,9 @@ export async function handleHostedProductRequest(
   const review = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/review$/u.exec(url.pathname);
   if (request.method === "POST" && review)
     return approveReview(request, review[1]!, config, executionContext);
+  const preview = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/renders\/([0-9a-f-]+)\/preview$/u.exec(url.pathname);
+  if (request.method === "GET" && preview)
+    return downloadApprovedRender(request, preview[1]!, environment, config, executionContext, preview[2]!);
   const download = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/download$/u.exec(url.pathname);
   if (request.method === "GET" && download)
     return downloadApprovedRender(request, download[1]!, environment, config, executionContext);

@@ -165,8 +165,10 @@ async function resumeHostedApiDispatch(
     jobs = apiJobs(materialized, generationRequestId);
   }
   // Validate the whole prompt set before binding or scheduling paid work.
+  const submissionsBlocked = jobs.some((job) =>
+    ["SUBMITTING", "UNKNOWN_NO_RETRY", "FAILED"].includes(job.state));
   const prompts = jobs
-    .filter((job) => job.lane === "IMAGE" && job.state === "PREPARED")
+    .filter((job) => !submissionsBlocked && job.lane === "IMAGE" && job.state === "PREPARED")
     .map((job) => ({
       generationTaskId: job.generationTaskId,
       prompt: buildKieScenePrompt(

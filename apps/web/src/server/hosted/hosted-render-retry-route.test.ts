@@ -203,6 +203,26 @@ describe("render-only disk recovery route", () => {
     }));
   });
 
+  it("uses the exact saved retry identity for repeated local recoveries", async () => {
+    mocks.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("videoforge_prepare_hosted_api_render_recovery")) return { rows: [{ recovery: {
+        schema_version: "videoforge-hosted-render-disk-recovery/v1",
+        revision_id: ids.revision, retry_attempt_id: ids.retry,
+        recovery_kind: "LOCAL", recovery_key: `render-local-recovery:${ids.retry}`,
+      } }] };
+      if (sql.includes("FROM public.hosted_render_plans")) return { rows: [{ payload: { kind: "RENDER" } }] };
+      return { rows: [] };
+    });
+    const schedule = vi.fn().mockResolvedValue({ state: "OUTBOXED" });
+    const result = await retryHostedApiRender(request(ids.processFailed),ids.project,config,
+      { waitUntil() {} } as never,{ schedule });
+    expect(result.status).toBe(202);
+    expect(schedule).toHaveBeenCalledWith(expect.objectContaining({
+      expectedAttemptId:ids.retry,renderRecoveryKey:`render-local-recovery:${ids.retry}`,
+    }));
+    expect(await result.json()).toMatchObject({provider_calls_authorized:false});
+  });
+
   it("rejects failed evidence before any CPU scheduling", async () => {
     mocks.query.mockRejectedValueOnce(Object.assign(new Error("evidence rejected"), { code: "23514" }));
     const schedule = vi.fn();

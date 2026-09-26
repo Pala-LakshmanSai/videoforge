@@ -1038,6 +1038,12 @@
       "name": "hosted_api_fourth_render_output_recovery",
       "filename": "0210_hosted_api_fourth_render_output_recovery.sql",
       "sha256": "sha256:d6de1af24d1dbc379189f56fafcd94c07fc59b9fe6713c1aeadc06f1f2e1c969"
+    },
+    {
+      "version": 211,
+      "name": "hosted_api_bounded_local_render_recovery",
+      "filename": "0211_hosted_api_bounded_local_render_recovery.sql",
+      "sha256": "sha256:2b539a7f5370f5f9455891652c2a2e05d961b27a0acf0744419c262623cf714a"
     }
   ]
 }

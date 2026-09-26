@@ -55,6 +55,7 @@ import {
   HostedPresetCreationScreen,
   HostedPresetCreationUnavailableScreen,
   HostedProjectScreen,
+  HostedReviewScreen,
   HostedStylesHubScreen,
   HostedUsageScreen,
   HostedElapsed,
@@ -439,6 +440,16 @@ function stageList(overrides: Readonly<Record<string, string>> = {}) {
   }));
 }
 
+it("keeps approved downloads on the authenticated route when no download URL is reported", async () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ project: { id: projectId, title: "Final" },
+    attempts: [{ id: "render", kind: "RENDER", state: "SUCCEEDED", approved_at: "2026-09-26T05:00:00Z",
+      preview_url: "https://expired-preview.invalid/final-mp4?expired=true" }], review: { download_url: null } })));
+  renderHosted(<HostedReviewScreen projectId={projectId} />);
+  expect(await screen.findByRole("link", { name: "Download MP4" }))
+    .toHaveAttribute("href", `/api/v2/hosted/projects/${projectId}/download`);
+});
+
 it.each([
   {
     overrun: false,
@@ -607,6 +618,53 @@ it("shows a reasoned disabled Retry for every failed stage without a safe recove
   expect(fetchMock.mock.calls.every(([, init]) => init?.method !== "POST")).toBe(true);
 });
 
+it.each(["image-generation", "avatar-generation"])(
+  "retrieves saved API results from the failed %s stage", async (stageId) => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).endsWith("/gpu-dispatch")
+      ? Response.json({ state: "SCHEDULED" })
+      : Response.json({ project: { id: projectId, title: "Saved API results", revision_id: "revision",
+          revision_state: "LOCKED", created_at: "2026-09-26T05:00:00Z" },
+        generation_provider: "KIE_FAL", attempts: [], generation: null,
+        api_recovery: { can_resume_saved_work: true, provider_calls_authorized: false },
+        gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+        stages: stageList({ [stageId]: "FAILED" }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+    await screen.findByRole("list", { name: "Project stages" });
+    const row = stageRow(stageId === "image-generation" ? "Generate images" : "Generate avatar video");
+    expect(within(row).getByText(/Saved outputs are reused; no new paid request/)).toBeInTheDocument();
+    fireEvent.click(within(row).getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/gpu-dispatch"))).toBe(true));
+    expect(fetchMock.mock.calls.some(([input]) => /\/(asr-handoff|context|prompts|render-retry)$/.test(String(input)))).toBe(false);
+  },
+);
+
+it("offers an inline planning retry after the automatic handoff fails", async()=>{
+  const projectId="11111111-1111-4111-8111-111111111111";
+  let planningCalls=0;
+  const asrId="33333333-3333-4333-8333-333333333333";
+  const fetchMock=vi.fn(async(input:RequestInfo|URL)=>{
+    if(String(input).endsWith(`/projects/${projectId}/render`)){
+      planningCalls++;return planningCalls===1
+        ?Response.json({error:{code:"TEMPORARY_PLANNING_FAILURE",message:"Scene planning temporarily failed."}},{status:409})
+        :Response.json({state:"WAITING_FOR_GPU_QUALIFICATION"});
+    }
+    return Response.json({project:{id:projectId,title:"Planning retry",created_at:"2026-09-26T05:00:00Z",
+      revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED"},
+      attempts:[{id:asrId,kind:"ASR",state:"SUCCEEDED"}],generation:null,
+      gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
+      voiceover_context:{id:"44444444-4444-4444-8444-444444444444",state:"SUCCEEDED"},
+      stages:stageList({transcription:"COMPLETE","voiceover-context":"COMPLETE",planning:"WAITING"})});
+  });
+  vi.stubGlobal("fetch",fetchMock);renderHosted(<HostedProjectScreen projectId={projectId}/>);
+  await waitFor(()=>expect(within(stageRow("Plan scenes")).getByRole("button",{name:"Retry"})).toBeEnabled());
+  expect(within(stageRow("Plan scenes")).getByText("FAILED")).toBeInTheDocument();
+  fireEvent.click(within(stageRow("Plan scenes")).getByRole("button",{name:"Retry"}));
+  await waitFor(()=>expect(planningCalls).toBe(2));
+  expect(fetchMock.mock.calls.some(([input])=>/\/(asr-handoff|context|prompts|gpu-dispatch)$/.test(String(input)))).toBe(false);
+});
+
 it("offers local render retry for the exact three failed attempts", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
   const attempts = [
@@ -643,6 +701,29 @@ it("offers local render retry for the exact three failed attempts", async () => 
   await waitFor(() => expect(fetchMock.mock.calls.some(([input]) =>
     String(input).endsWith(`/projects/${projectId}/render-retry`))).toBe(true));
   expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch"))).toHaveLength(0);
+});
+
+it.each([
+  [true,"ELIGIBLE","MEDIA_EXECUTION_TIMEOUT"],
+  [false,"WORKER_UPDATE_REQUIRED","RENDER_INPUT_INVALID"],
+  [false,"RETRY_LIMIT_REACHED","RENDER_PROCESS_FAILED"],
+] as const)("uses server retry eligibility %s (%s) without replaying API outputs", async (eligible,reason,errorCode) => {
+  const projectId="11111111-1111-4111-8111-111111111111";
+  const failedId="11111111-1111-4111-8111-111111111112";
+  const detail={project:{id:projectId,title:"Bounded retry",created_at:"2026-09-26T05:00:00Z",
+    revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED"},
+    generation_provider:"KIE_FAL",attempts:[{id:failedId,kind:"RENDER",state:"FAILED",error_code:errorCode}],
+    generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
+    render_retry:{eligible,reason,failed_attempt_id:failedId,attempt_limit:5},stages:stageList({render:"FAILED"})};
+  const fetchMock=vi.fn(async(input:RequestInfo|URL)=>String(input).endsWith("/render-retry")
+    ? Response.json({state:"OUTBOXED",provider_calls_authorized:false},{status:202}):Response.json(detail));
+  vi.stubGlobal("fetch",fetchMock);renderHosted(<HostedProjectScreen projectId={projectId}/>);
+  await screen.findByRole("list",{name:"Project stages"});
+  const row=stageRow("Assemble final video");const retry=within(row).getByRole("button",{name:"Retry"});
+  expect(retry).toHaveProperty("disabled",!eligible);
+  if(eligible){fireEvent.click(retry);await waitFor(()=>expect(fetchMock.mock.calls.some(([input])=>String(input).endsWith("/render-retry"))).toBe(true));}
+  else expect(within(row).getByRole("alert")).toHaveTextContent(reason==="WORKER_UPDATE_REQUIRED"?/Update the connected worker/:/five local render attempts/);
+  expect(fetchMock.mock.calls.some(([input])=>String(input).endsWith("/gpu-dispatch"))).toBe(false);
 });
 
 it("offers the guarded local retry for a first-attempt input failure", async () => {
