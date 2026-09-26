@@ -1,7 +1,8 @@
 schema_version: "2.0"
 fal_avatar_neck_seam_repair_2026_09_26:
   checkpoint: V2-09
-  status: LOCAL_REPAIR_VERIFIED_RELEASE_PENDING
+  status: RELEASE_AUTHORIZED_FUTURE_VIDEOS_ONLY
+  authority: User approved publication and installation for future videos only; no China found rerender, paid generation or GPU activation.
   source_commit: a85a5673
   result: >-
     Reproduced China found's moving collar joining a still torso. Shared Fal full/split
@@ -14,8 +15,8 @@ fal_avatar_neck_seam_repair_2026_09_26:
     identities tested; metric does not guarantee perfect perceptual quality or unseen avatars.
   evidence: evidence/acceptance/VF-10-09/2026-09-26-avatar-neck-seam.json
   remaining_gates: >-
-    Release approval, publication/Mac installation, corrected full China found copy,
-    installed-worker real-Chrome acceptance and user-controlled Windows installation.
+    Publication/Mac installation, installed-worker real-Chrome acceptance and
+    user-controlled Windows installation. China found rerender explicitly excluded.
     Browser execution tool is unavailable in this session; no Chrome proof claimed.
   provider_spend: Zero provider calls or spend; retained local media only.
   paid_compute_shutdown: No paid compute started; live global inventory not queried.
