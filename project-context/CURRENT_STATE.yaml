@@ -1,20 +1,42 @@
 schema_version: "2.0"
 worker_speed_2026_09_26:
   checkpoint: V2-09
-  status: CANDIDATE_TESTED_RELEASE_PENDING
+  status: COMPLETE_RELEASED_PRODUCTION_INSTALLED_ONLINE
   baseline_commit: f5e64f7c
   baseline_release: 0.1.42
   workspace_branch: codex/worker-production-speed
+  implementation_commit: 0cba5f731a2ae49059ad5a9a9ad488328083290f
+  release_source_commit: 74176bfb70e96db8242dd719abe12e9b9ee01a68
+  release: 0.1.43
+  execution_bundle_sha256: sha256:885f7f9af645084bcf786f1ad53cb49535599f354f065c8c737a989204a6b56c
+  release_run: https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36252247499
+  cloudflare_version_prefix: 7667b7d1
+  production_traffic_percent: 100
+  web_source_commit: 7c29e97d315160fb58de7dd028a1ad25dd59e7c4
+  worker: MI_Notebook Windows 0.1.43 Online; Chrome heartbeat 2026-09-26T15:50:17Z; pairing identity preserved.
   authority: User approved the staged improvement, testing, release and production update plan and parallel subagents on 2026-09-26; new paid generation/compute cap USD0.
-  scope: Current Kie/Fal flow; job-scoped Fal preparation reuse, bounded downloads, measured render improvements and focused recovery checks. Already released image caching, span batching and single final counted decode are baseline behavior.
-  candidate_release: 0.1.43
-  validation: Focused combined render/Fal/personal/background suite 104 passed with two POSIX-only Windows skips; touched Ruff and diff checks pass. Extended suite 119 passed, two skipped and one unchanged symlink-privilege fixture failed with Windows error 1314. Both installer jobs retain full media-local tests and now include Fal parity tests. Source identity guards include decoding exact hashed bytes and pre/post file metadata.
-  measurements: Synthetic Fal complete 75-frame clip 2.445s to 1.981s (18.96%); large-region raw frames 5.84% noisier; download fixture 1.463s to 0.749s (48.8%) with same bytes and GET count. All Fal/chunk comparison MP4 bytes match. Full production saving remains unmeasured.
-  rejected: Parallel chunks saved 28.9% wall time but increased CPU work 36.2% and doubled memory; two filter threads increased CPU work; prompt normal path already immediately advances accepted batches; no ASR settings changed.
-  evidence: evidence/acceptance/VF-10-09/2026-09-26-worker-speed/; evidence/acceptance/VF-10-09/2026-09-26-fal-speed/.
-  provider_spend: Zero new paid provider calls or generation retries.
+  scope: Current Kie/Fal flow; job-private Fal preparation/frame-buffer reuse, two bounded render-input download streams and one verified output descriptor/hash through upload. Already released image caching, span batching and single final counted decode are baseline behavior.
+  validation: >-
+    Focused local suite 104 passes with two POSIX-only Windows skips; Ruff and diff checks pass.
+    Both installer jobs pass all 77 media-local, 31 render-job and 14 Fal tests (Windows skips
+    two POSIX tests), pinned frozen smoke and platform package checks. First build caught a
+    timestamp-granularity-dependent test; its deterministic fix is the final source commit.
+    Downloaded Windows installer exact hash/size matches the immutable manifest; install exits
+    zero and preserves pairing. Actual installed worker renders the synthetic 10s shared-source
+    two-Fal-clip fixture successfully, with 300 counted/decode-checked 1080p30 frames, valid audio,
+    zero AV drift and MP4 bytes identical to the candidate. Exact manifest and both download links
+    read back in production; deployment history confirms 100% traffic. Local canonical context
+    validators remain unavailable due to existing Ruby/Ajv/runtime limitations.
+  measurements: >-
+    Short synthetic Fal complete 75-frame repeated median 2.445s to 1.981s (18.96%); large-region
+    raw frames 5.84% noisier. Final hardened source single pair 1.854s to 1.587s (14.43%) with byte
+    parity. Download fixture 1.463s to 0.749s (48.8%), identical bytes and GET count. These are
+    substage fixture results; whole-video production saving and electricity are unmeasured.
+  rejected: Parallel chunks increased CPU work 36.2% and doubled memory; two filter threads increased CPU work; lower OpenCV threads did not improve time; live prompt routing/counters have no proven fixed-delay bug; ASR settings unchanged.
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-worker-speed/release-handoff.json; adjacent transfer/render/OpenCV/prompt audits; evidence/acceptance/VF-10-09/2026-09-26-fal-speed/.
+  remaining_gates: No worker release, activation or installed Windows gates remain. Representative whole-video timing and native Mac installation remain unmeasured; no paid production replay performed.
+  provider_spend: Zero new paid provider calls or generation retries; provider models/settings and ordinary request counts unchanged.
   paid_compute_shutdown: No paid compute activated; global inventory not queried.
-  remaining_gates: Candidate benchmarks, relevant regression suites, Windows/macOS packaging, exact release activation, installed native smoke and production readback.
 windows_mexico_assembly_2026_09_26:
   checkpoint: V2-09
   status: COMPLETE_TECHNICAL_PLAYBACK_PASS_FIX_PRODUCTION_INSTALLED_ONLINE

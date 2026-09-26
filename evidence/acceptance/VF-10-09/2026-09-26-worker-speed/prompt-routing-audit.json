@@ -1,0 +1,16 @@
+{
+  "live_web_source": "7c29e97d315160fb58de7dd028a1ad25dd59e7c4",
+  "mexico_prompt_wall": "29m22s across30batches",
+  "proven_cadence_bug": false,
+  "binding": "HOSTED_CONTINUATION_WORKFLOW",
+  "dispatch_id": "stage-prompts-v2-<revision>",
+  "route_and_workflow_counter": "accepted_batch_count",
+  "advancing_batches": "Immediate",
+  "unchanged_count_wait_seconds": 20,
+  "fallback_driver_wait_seconds": 60,
+  "transport_timeout_seconds": 120,
+  "retrieval_timeout_seconds": 30,
+  "visibility_limit": "Creation failures are caught and route errors can end dedicated loop. Historical instance and receipt timestamps are required to distinguish fallback from provider latency; Mexico cause not proven.",
+  "mutations": false,
+  "provider_calls": 0
+}

@@ -2,13 +2,15 @@
 
 ## Personal worker speed release — 2026-09-26
 
-The approved speed work is based on current worker 0.1.42 and the current Kie/Fal flow.
-Candidate 0.1.43 reuses exact verified Fal source preparation and frame buffers, uses two
-bounded render-input download streams and hashes the final output once through its upload
-descriptor. Final decode, frame count, audio, checksums and cancellation gates remain.
-Synthetic Fal and download improvements are measured; overall production saving is unmeasured.
-Parallel chunk rendering and higher filter threads were rejected due to higher CPU work.
-See `worker_speed_2026_09_26` in `CURRENT_STATE.yaml` for implementation and release gates.
+Worker 0.1.43 is published from `74176bfb`, activated at production `7667b7d1` with
+100% traffic and installed/Online on MI_Notebook with pairing preserved. Both platform
+CI jobs and actual installed Windows render acceptance pass. This current release supersedes
+the dated release entries below; their earlier run timings remain historical evidence.
+It reuses exact verified Fal source preparation/frame buffers, uses two bounded input
+download streams and hashes the final output once through its upload descriptor. Final
+quality, checksum and cancellation gates remain. Measured gains are short synthetic substages;
+whole-video production saving remains unmeasured. Read `worker_speed_2026_09_26` in
+`CURRENT_STATE.yaml` and its exact acceptance evidence. New paid generation/compute is USD0.
 
 ## Current Mexico assembly investigation â€” 2026-09-26
 

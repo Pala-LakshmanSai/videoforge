@@ -1,0 +1,151 @@
+{
+  "checkpoint": "V2-09",
+  "status": "COMPLETE_RELEASED_PRODUCTION_INSTALLED_ONLINE",
+  "observed_at_utc": "2026-09-26T15:53:59.170178+00:00",
+  "baseline_commit": "f5e64f7c",
+  "baseline_release": "0.1.42",
+  "implementation_commit": "0cba5f731a2ae49059ad5a9a9ad488328083290f",
+  "release_source_commit": "74176bfb70e96db8242dd719abe12e9b9ee01a68",
+  "release_run": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36252247499",
+  "ci": {
+    "Windows": "PASS",
+    "macOS_universal2": "PASS",
+    "publication": "PASS",
+    "render_job_tests": 31,
+    "fal_tests": 14,
+    "media_local_tests": 77,
+    "windows_posix_skips": 2
+  },
+  "manifest": {
+    "execution_bundle_sha256": "sha256:885f7f9af645084bcf786f1ad53cb49535599f354f065c8c737a989204a6b56c",
+    "macos": {
+      "sha256": "sha256:56d798556051a1d81ae7fc81c446994c032c9c4bd84ed3ed9e659779db49a5a8",
+      "size_bytes": 414248490,
+      "trust": "AD_HOC_BETA",
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.43/VideoForge-Worker-0.1.43.dmg"
+    },
+    "minimum_protocol_version": 1,
+    "schema_version": "videoforge-media-worker-release/v1",
+    "version": "0.1.43",
+    "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "windows": {
+      "sha256": "sha256:208aa7901836b8646398886375cf3816304dc7167ba32e59a0aa7ddf5be3f1c7",
+      "size_bytes": 279591203,
+      "trust": "UNSIGNED_BETA",
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.43/VideoForge-Worker-0.1.43-Setup.exe"
+    }
+  },
+  "installer": {
+    "version": "0.1.43",
+    "installer_exit_code": 0,
+    "installer_sha256": "sha256:208aa7901836b8646398886375cf3816304dc7167ba32e59a0aa7ddf5be3f1c7",
+    "installer_size_bytes": 279591203,
+    "execution_bundle_sha256": "sha256:885f7f9af645084bcf786f1ad53cb49535599f354f065c8c737a989204a6b56c",
+    "installation_identity_preserved": true,
+    "installed_executable_sha256": "sha256:7c1e0bdbeee4c0c288302e8771e44cc0f8949fab689e58254a2044ebc59e56bb",
+    "installed_at_utc": "2026-09-26T15:46:34.2089176Z",
+    "background_started": false,
+    "background_started_after_production_activation": true
+  },
+  "native_render": {
+    "execution": "ACTUAL_INSTALLED_WORKER",
+    "seconds": 41.349154399940744,
+    "synthetic": true,
+    "network": false,
+    "distinct_avatar_assets": 2,
+    "same_source_image": true,
+    "status": "SUCCEEDED",
+    "probe": {
+      "asset_id": "asset_render_20412831e68be25806c6879f",
+      "audio": {
+        "channels": 1,
+        "codec": "aac",
+        "sample_rate_hz": 48000,
+        "start_ms": 0
+      },
+      "av_drift_ms": 0,
+      "bytes": 38423384,
+      "container": "mp4",
+      "decode_ok": true,
+      "duration_ms": 10000,
+      "loudness": {
+        "input_integrated_lufs": -33.85,
+        "input_true_peak_dbtp": -30.1,
+        "normalized": true,
+        "output_integrated_lufs": -16.05,
+        "output_true_peak_dbtp": -9.65,
+        "profile": "voiceover-minus16lufs-v1"
+      },
+      "schema_version": "technical-probe/v1",
+      "sha256": "sha256:20412831e68be25806c6879fc742d157b767ba9f6fee1378f79c1fbe43aa2e7f",
+      "stream_counts": {
+        "audio": 1,
+        "data": 0,
+        "subtitle": 0,
+        "video": 1
+      },
+      "tools": {
+        "ffmpeg_version": "8.1.2",
+        "ffprobe_version": "8.1.2",
+        "filtergraph_sha256": "sha256:e1504de77a9966c7f9eb48b02824bacd0e3a9f6715fc98514b0fa4756d38c089"
+      },
+      "total_frames": 300,
+      "video": {
+        "codec": "h264",
+        "fps_den": 1,
+        "fps_num": 30,
+        "height": 1080,
+        "pixel_format": "yuv420p",
+        "start_ms": 0,
+        "width": 1920
+      }
+    },
+    "mp4_byte_identical_to_candidate": true
+  },
+  "production": {
+    "origin": "https://videoforge.buzz",
+    "cloudflare_version_prefix": "7667b7d1",
+    "traffic_percent": 100,
+    "web_source_commit": "7c29e97d315160fb58de7dd028a1ad25dd59e7c4",
+    "generation_provider": "KIE_FAL",
+    "manifest_exact_readback": true,
+    "Windows_and_macOS_download_links_match": true,
+    "worker": "MI_Notebook Windows 0.1.43 Online",
+    "heartbeat_local": "2026-09-26 21:20:17 +05:30",
+    "queue_in_progress_before_install": 0,
+    "pairing_preserved": true
+  },
+  "safeguards_retained": [
+    "Final counted decode and corruption rejection",
+    "Frame count, dimensions, cadence, duration and AV drift",
+    "Audio loudness and stream validation",
+    "Input and output exact SHA-256 and sizes",
+    "Attempt-private cache/scratch, tenant boundaries",
+    "Cancellation and lease fences, drain before cleanup",
+    "Same encoding/quality/model/provider settings"
+  ],
+  "qualified_measurements": {
+    "scope": "Short synthetic fixtures, not complete production video",
+    "fal_75_frame_repeated_median_reduction_percent": 18.96,
+    "fal_large_region_raw_frame_reduction_percent": 5.84,
+    "final_fal_source_single_pair_reduction_percent": 14.43,
+    "download_fixture_reduction_percent": 48.8,
+    "production_time_saving_percent": null
+  },
+  "rejected": [
+    "Parallel chunks: higher CPU and double memory",
+    "Two filter threads: increased CPU work",
+    "Lower OpenCV thread counts: no reliable time saving",
+    "ASR changes: no qualified time/quality benefit",
+    "Fixed prompt-batch delay removal: normal workflow already advances immediately"
+  ],
+  "provider_paid_generation_compute_usd": 0,
+  "new_paid_compute_activated": false,
+  "global_paid_compute_inventory_queried": false,
+  "remaining_qualification": [
+    "Representative whole-video timing after 0.1.43; no paid production replay performed",
+    "Native Mac installation not performed from Windows host"
+  ],
+  "screenshots": "Local ignored proof files only; not published with account information",
+  "context_validation": "Canonical validators unavailable on local Windows environment due to existing Ruby/Ajv/runtime dependencies; release source CI gates pass."
+}

@@ -1,0 +1,108 @@
+{
+  "scope": "synthetic-complete-75-frame-clip-opencv-thread-comparison",
+  "candidate_source_sha256": "133e76ef36c3472f8cae7cb692a3069455c3c9858b29d586dd4e4bafcf0f4e51",
+  "runs": [
+    {
+      "threads": 8,
+      "elapsed_seconds": 1.5451311999931931,
+      "parent_cpu_seconds": 3.265625,
+      "child_cpu_seconds": 1.984375,
+      "total_cpu_seconds": 5.25,
+      "file_sha256": "92c03da89c8ebce4c9871ff2728eb4b03dd85c52f1a1b5b9c743189f479fab1d",
+      "decoded_sha256": "SHA256=9478aff9da06ededc40d736cf1fe4329a1abf70927bfe767568948cff1f3e13d",
+      "encoded_file_exact": true
+    },
+    {
+      "threads": 1,
+      "elapsed_seconds": 1.897763599990867,
+      "parent_cpu_seconds": 1.8125,
+      "child_cpu_seconds": 1.703125,
+      "total_cpu_seconds": 3.515625,
+      "file_sha256": "92c03da89c8ebce4c9871ff2728eb4b03dd85c52f1a1b5b9c743189f479fab1d",
+      "decoded_sha256": "SHA256=9478aff9da06ededc40d736cf1fe4329a1abf70927bfe767568948cff1f3e13d",
+      "encoded_file_exact": true
+    },
+    {
+      "threads": 2,
+      "elapsed_seconds": 2.8032378000207245,
+      "parent_cpu_seconds": 2.796875,
+      "child_cpu_seconds": 2.359375,
+      "total_cpu_seconds": 5.15625,
+      "file_sha256": "92c03da89c8ebce4c9871ff2728eb4b03dd85c52f1a1b5b9c743189f479fab1d",
+      "decoded_sha256": "SHA256=9478aff9da06ededc40d736cf1fe4329a1abf70927bfe767568948cff1f3e13d",
+      "encoded_file_exact": true
+    },
+    {
+      "threads": 4,
+      "elapsed_seconds": 1.6594161000102758,
+      "parent_cpu_seconds": 2.796875,
+      "child_cpu_seconds": 2.0,
+      "total_cpu_seconds": 4.796875,
+      "file_sha256": "92c03da89c8ebce4c9871ff2728eb4b03dd85c52f1a1b5b9c743189f479fab1d",
+      "decoded_sha256": "SHA256=9478aff9da06ededc40d736cf1fe4329a1abf70927bfe767568948cff1f3e13d",
+      "encoded_file_exact": true
+    },
+    {
+      "threads": 4,
+      "elapsed_seconds": 1.697775200009346,
+      "parent_cpu_seconds": 3.234375,
+      "child_cpu_seconds": 2.15625,
+      "total_cpu_seconds": 5.390625,
+      "file_sha256": "92c03da89c8ebce4c9871ff2728eb4b03dd85c52f1a1b5b9c743189f479fab1d",
+      "decoded_sha256": "SHA256=9478aff9da06ededc40d736cf1fe4329a1abf70927bfe767568948cff1f3e13d",
+      "encoded_file_exact": true
+    },
+    {
+      "threads": 2,
+      "elapsed_seconds": 1.6689202999696136,
+      "parent_cpu_seconds": 2.09375,
+      "child_cpu_seconds": 1.640625,
+      "total_cpu_seconds": 3.734375,
+      "file_sha256": "92c03da89c8ebce4c9871ff2728eb4b03dd85c52f1a1b5b9c743189f479fab1d",
+      "decoded_sha256": "SHA256=9478aff9da06ededc40d736cf1fe4329a1abf70927bfe767568948cff1f3e13d",
+      "encoded_file_exact": true
+    },
+    {
+      "threads": 1,
+      "elapsed_seconds": 1.9347263000672683,
+      "parent_cpu_seconds": 1.84375,
+      "child_cpu_seconds": 1.734375,
+      "total_cpu_seconds": 3.578125,
+      "file_sha256": "92c03da89c8ebce4c9871ff2728eb4b03dd85c52f1a1b5b9c743189f479fab1d",
+      "decoded_sha256": "SHA256=9478aff9da06ededc40d736cf1fe4329a1abf70927bfe767568948cff1f3e13d",
+      "encoded_file_exact": true
+    },
+    {
+      "threads": 8,
+      "elapsed_seconds": 1.7473308999324217,
+      "parent_cpu_seconds": 3.5625,
+      "child_cpu_seconds": 2.203125,
+      "total_cpu_seconds": 5.765625,
+      "file_sha256": "92c03da89c8ebce4c9871ff2728eb4b03dd85c52f1a1b5b9c743189f479fab1d",
+      "decoded_sha256": "SHA256=9478aff9da06ededc40d736cf1fe4329a1abf70927bfe767568948cff1f3e13d",
+      "encoded_file_exact": true
+    }
+  ],
+  "medians": {
+    "8": {
+      "elapsed_seconds": 1.6462310499628074,
+      "total_cpu_seconds": 5.5078125
+    },
+    "1": {
+      "elapsed_seconds": 1.9162449500290677,
+      "total_cpu_seconds": 3.546875
+    },
+    "2": {
+      "elapsed_seconds": 2.236079049995169,
+      "total_cpu_seconds": 4.4453125
+    },
+    "4": {
+      "elapsed_seconds": 1.678595650009811,
+      "total_cpu_seconds": 5.09375
+    }
+  },
+  "all_encoded_exact": true,
+  "all_decoded_exact": true,
+  "cpu_measurement": "Python time.process_time for own native/OpenCV threads plus Windows GetProcessTimes for completed FFmpeg child handles; excludes post-run hash verification",
+  "limits": "Two reversed repeats per variant; single short synthetic crop only; no production change."
+}
