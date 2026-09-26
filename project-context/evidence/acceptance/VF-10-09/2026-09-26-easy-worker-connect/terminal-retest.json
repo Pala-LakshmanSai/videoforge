@@ -1,0 +1,71 @@
+{
+  "schema_version": "videoforge-terminal-connection-retest/v1",
+  "checkpoint": "V2-09",
+  "verified_at": "2026-09-26T17:35:44.860288+00:00",
+  "production": {
+    "source": "10302d1a3afe9e48343bf02c39ddcc81cd90a7fc",
+    "cloudflare_version_id": "3a61b2c9-9a66-4b2b-a829-61f367358fe7",
+    "traffic_percent": 100,
+    "secret_bindings": 25,
+    "query_redaction": true,
+    "plain_vars_preserved": true,
+    "provider_gpu_baseline_preserved": true
+  },
+  "worker_release": "0.1.44 unchanged; no frozen worker rebuild required",
+  "reproduced_before": {
+    "fresh_command_with_running_worker_exit": 1,
+    "invalid_expired_mac_command_exit": 0
+  },
+  "fixes": [
+    "Reuse running worker through existing authenticated connect-file account verification; do not download, replace or restart it.",
+    "macOS command downloads the entire HTTPS bootstrap to a private temporary file, executes only on success, cleans up, and returns a clear nonzero error on failed/expired downloads."
+  ],
+  "native_mac": {
+    "live_production_wrapper_exit": 0,
+    "fresh_private_command_for_preserved_original_account": true,
+    "no_install_download_or_restart": true,
+    "status": "ONLINE",
+    "version": "0.1.44",
+    "credential_unchanged": true,
+    "heartbeat_age_seconds": 3,
+    "active_leases": 0,
+    "command_consumed": true,
+    "installation_state_unchanged": true,
+    "installation_id_unchanged": true
+  },
+  "negative_cases": {
+    "expired_live_command": {
+      "exit": 1,
+      "clear_fresh_command_error": true,
+      "did_not_report_connected": true
+    },
+    "partial_download_never_executed": "Native shell regression test writes executable bytes then simulates curl exit22; wrapper exits1 without executing them.",
+    "cross_account_live_command_exit": 1,
+    "cross_account_pairing_change": false
+  },
+  "windows": {
+    "published_script_has_running_worker_reuse": true,
+    "cmd_powershell_encoded_bootstrap_tls12_preserved": true,
+    "native_execution": "NOT_VERIFIED",
+    "existing_worker": "0.1.43 Offline; published update required"
+  },
+  "validation": {
+    "focused_vitest_passed": 10,
+    "web_worker_typecheck": true,
+    "changed_file_lint": true,
+    "bash_syntax": true,
+    "production_build_firewall": true,
+    "chrome_copy_platform_switch": true,
+    "settings_copy_enabled": true
+  },
+  "spend": {
+    "new_provider_calls": 0,
+    "new_paid_compute": 0,
+    "global_compute_inventory": "not queried"
+  },
+  "remaining_gates": [
+    "Native Windows pasted installation/reconnection.",
+    "No fresh paid generation or measured whole-video speed acceptance."
+  ],
+  "local_work_preserved": "User fixture seed and unpublished progress redesign preserved."
+}

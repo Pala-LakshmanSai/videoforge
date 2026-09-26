@@ -1,4 +1,18 @@
 schema_version: "2.0"
+terminal_connection_retest_2026_09_26:
+  checkpoint: V2-09
+  status: COMPLETE_PUBLISHED_MAC_RETEST_WITH_WINDOWS_GATE
+  production_source_commit: 10302d1a3afe9e48343bf02c39ddcc81cd90a7fc
+  cloudflare_version_id: 3a61b2c9-9a66-4b2b-a829-61f367358fe7
+  worker_release: 0.1.44 exact manifest unchanged
+  reproduced: Fresh paste refused an already-running worker; expired bootstrap pipeline misleadingly exited zero.
+  fixes: Both installer scripts reuse a running worker via authenticated account verification without download/replacement/restart. Mac bootstrap executes only a completely downloaded private script and fails clearly on expired or partial downloads.
+  validation: 10 focused tests, web and Worker typecheck, lint, bash syntax, production build/firewall pass. Actual production Mac wrapper succeeds with unchanged installation state and credential, Online and zero leases; expired live command exits1; cross-account command rejected without changes. Chrome Copy/platform switching and Settings remain healthy.
+  production_readback: 100 percent traffic; all plain vars, exact release, 25 secrets, query redaction and GPU-disabled provider baseline preserved.
+  remaining_gates: Native Windows pasted install/reconnection unverified; existing Windows 0.1.43 Offline needs update. No fresh paid generation or whole-video speed proof.
+  provider_spend: USD0 new provider calls or paid compute.
+  paid_compute_shutdown: No compute activated; global inventory not queried.
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-easy-worker-connect/terminal-retest.json
 easy_worker_connect_audit_2026_09_26:
   checkpoint: V2-09
   status: COMPLETE_PUBLISHED_WITH_NATIVE_WINDOWS_GATE

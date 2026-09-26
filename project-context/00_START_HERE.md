@@ -1,5 +1,7 @@
 # VideoForge: start here
 
+Latest terminal connection retest: source `10302d1a` / Cloudflare `3a61b2c9`. Running workers reconnect without download/restart; failed or expired Mac bootstrap downloads return a clear failure. Native production Mac reconnection and pairing preservation pass. Read `terminal_connection_retest_2026_09_26` in CURRENT_STATE.yaml; native Windows execution remains unverified.
+
 Latest connection audit: source `f7843203` / Cloudflare `31a2dfbd` fixes PowerShell paste expansion and finished-project Queue reappearance after output removal. Checks and live readback pass; native Windows update remains unverified. Read `easy_worker_connect_audit_2026_09_26` in CURRENT_STATE.yaml.
 
 ## Paste-to-connect worker option — 2026-09-26
