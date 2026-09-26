@@ -32,7 +32,7 @@ from videoforge_media_local.personal_execution import (
 from videoforge_media_local.personal_tls import https_context
 
 _SERVICE = "com.videoforge.personal-media-worker"
-_WORKER_VERSION = "0.1.43"
+_WORKER_VERSION = "0.1.44"
 _PROTOCOL_VERSION = 1
 _USER_AGENT = f"VideoForge-Worker/{_WORKER_VERSION}"
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
@@ -485,7 +485,8 @@ def _open_approval_url(approval_url: str) -> None:
 
 
 def _enroll(
-    origin: str, installation_id: str, execution_bundle_sha256: str, store: CredentialStore
+    origin: str, installation_id: str, execution_bundle_sha256: str, store: CredentialStore,
+    connect_token: str | None = None,
 ) -> str:
     origin = _validated_control_plane_origin(origin) or ""
     if not origin:
@@ -511,6 +512,7 @@ def _enroll(
             "execution_bundle_sha256": execution_bundle_sha256,
             "pkce_challenge": challenge,
         },
+        headers={"x-videoforge-connect-token": connect_token} if connect_token else None,
     )
     if status != 201 or not isinstance(value, dict):
         raise RuntimeError("VideoForge could not start secure computer connection")
@@ -531,7 +533,8 @@ def _enroll(
     approval_url = _require_https_url(value["approval_url"], "VideoForge pairing URL")
     if not _same_https_origin(origin, approval_url):
         raise RuntimeError("VideoForge pairing URL did not match the configured control plane")
-    _open_approval_url(approval_url)
+    if connect_token is None:
+        _open_approval_url(approval_url)
     deadline = time.monotonic() + 600
     while time.monotonic() < deadline:
         status, token = _json_request(
@@ -733,6 +736,50 @@ def run_forever() -> int:
             backoff = min(backoff * 2, 60)
 
 
+def connect_from_file(path: Path) -> int:
+    # No command token in process arguments or persistent state. The installer creates
+    # this private file; erase it immediately, even when validation fails.
+    try:
+        connect_token = path.read_text(encoding="utf-8").strip()
+    finally:
+        path.unlink(missing_ok=True)
+    if not _TOKEN.fullmatch(connect_token):
+        raise RuntimeError("VideoForge connect command is invalid; copy a fresh command")
+    configuration = _build_configuration()
+    origin = str(configuration["control_plane_origin"]).rstrip("/")
+    bundle = str(configuration["execution_bundle_sha256"])
+    _tool_paths(configuration)
+    state_path, state = _state()
+    installation_id = state["installation_id"]
+    store = _credential_store()
+    token = store.get(installation_id)
+    if token and state.get("revoked") != "true":
+        status, value = _json_request(
+            f"{origin}/api/v2/media-worker/connect-check", "POST", {"token": connect_token},
+            {"authorization": f"Bearer {token}"},
+        )
+        if status != 200 or not isinstance(value, dict) or value.get("connected") is not True:
+            raise RuntimeError("This computer belongs to another account or the command expired")
+    else:
+        token = _enroll(origin, installation_id, bundle, store, connect_token)
+    worker_platform, architecture = _platform_facts()
+    status, value = _json_request(
+        f"{origin}/api/v2/media-worker/heartbeat", "POST",
+        {"schema_version": "videoforge-media-worker-heartbeat/v1",
+         "platform": worker_platform, "architecture": architecture,
+         "worker_version": _WORKER_VERSION, "protocol_version": _PROTOCOL_VERSION,
+         "execution_bundle_sha256": bundle},
+        {"authorization": f"Bearer {token}"},
+    )
+    if status != 200 or not isinstance(value, dict) or value.get("status") != "ONLINE":
+        raise RuntimeError("Worker installed and paired; Online verification failed. Reopen the worker")
+    if state.pop("revoked", None) is not None:
+        _write_state(state_path, state)
+    _ensure_autostart()
+    print("VideoForge Worker is connected and Online")
+    return 0
+
+
 def main() -> int:
     if sys.argv[1:2] == ["--uninstall"]:
         return _remove_local_installation()
@@ -742,6 +789,10 @@ def main() -> int:
         sys.argv = [sys.argv[0], *sys.argv[2:]]
         return media_main()
     try:
+        if sys.argv[1:2] == ["--connect-file"]:
+            if len(sys.argv) != 3:
+                raise ValueError("A private connect file is required")
+            return connect_from_file(Path(sys.argv[2]))
         return run_forever()
     except KeyboardInterrupt:
         return 0

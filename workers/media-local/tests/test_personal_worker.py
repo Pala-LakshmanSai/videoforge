@@ -40,6 +40,7 @@ from videoforge_media_local.personal_worker import (
     _execute_claim_response,
     _build_configuration,
     _enroll,
+    connect_from_file,
     _ensure_autostart,
     _is_external_macos_bundle,
     _json_request,
@@ -1198,6 +1199,50 @@ class PersonalWorkerContractTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(RuntimeError, "did not match"):
                 _enroll("https://app.example.test", "installation", "sha256:" + "c" * 64, store)
+
+    def test_command_pairing_keeps_pkce_and_skips_browser(self) -> None:
+        created = {
+            "schema_version": "videoforge-media-worker-enrollment-created/v1",
+            "enrollment_id": "11111111-1111-4111-8111-111111111111",
+            "poll_token": "a" * 64,
+            "approval_url": "https://app.example.test/settings?enrollment=abc",
+            "expires_in_seconds": 600,
+        }
+        approved = {"schema_version": "videoforge-media-worker-token/v1", "state": "APPROVED", "device_token": "b" * 64}
+        store = Mock()
+        with (patch("videoforge_media_local.personal_worker._json_request", side_effect=[(201, created), (200, approved)]) as request,
+              patch("videoforge_media_local.personal_worker._open_approval_url") as browser):
+            self.assertEqual(_enroll("https://app.example.test", "installation", "sha256:" + "c" * 64, store, "d" * 64), "b" * 64)
+        browser.assert_not_called()
+        self.assertEqual(request.call_args_list[0].kwargs["headers"], {"x-videoforge-connect-token": "d" * 64})
+        self.assertIn("x-videoforge-pkce-verifier", request.call_args_list[1].kwargs["headers"])
+        store.set.assert_called_once_with("installation", "b" * 64)
+
+    def test_invalid_command_file_is_erased_before_connection(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            token_file = Path(directory) / "token"
+            token_file.write_text("invalid")
+            with self.assertRaisesRegex(RuntimeError, "invalid"):
+                connect_from_file(token_file)
+            self.assertFalse(token_file.exists())
+
+    def test_existing_pairing_is_not_replaced_by_a_different_account(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            token_file = Path(directory) / "token"
+            token_file.write_text("d" * 64)
+            store = Mock()
+            store.get.return_value = "b" * 64
+            with (patch("videoforge_media_local.personal_worker._build_configuration", return_value={"control_plane_origin": "https://app.example.test", "execution_bundle_sha256": "sha256:" + "c" * 64}),
+                  patch("videoforge_media_local.personal_worker._tool_paths"),
+                  patch("videoforge_media_local.personal_worker._state", return_value=(Path(directory) / "state", {"installation_id": "installation"})),
+                  patch("videoforge_media_local.personal_worker._credential_store", return_value=store),
+                  patch("videoforge_media_local.personal_worker._json_request", return_value=(409, {})),
+                  patch("videoforge_media_local.personal_worker._enroll") as enroll):
+                with self.assertRaisesRegex(RuntimeError, "another account"):
+                    connect_from_file(token_file)
+            self.assertFalse(token_file.exists())
+            enroll.assert_not_called()
+            store.set.assert_not_called()
 
     def test_update_required_exits_to_release_the_old_executable(self) -> None:
         state = {"installation_id": "11111111-1111-4111-8111-111111111111"}

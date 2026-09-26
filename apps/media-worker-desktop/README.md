@@ -11,8 +11,10 @@ The universal2 macOS worker requires macOS 12 or later. The pinned Fal FlashHead
 uses the OpenCV 4.10 wheels, whose Intel slice supports macOS 12 and Apple Silicon slice supports
 macOS 11; the bundle keeps its existing macOS 12 floor.
 
-The installed worker starts at login, opens the hosted VideoForge page for one explicit first-run
-confirmation, stores its account-scoped credential in Windows Credential Manager or macOS Keychain,
+Settings offers a 15-minute, single-use macOS or Windows terminal command. The command verifies
+and installs the exact published worker, pairs it through the existing PKCE flow, verifies Online,
+and enables login startup. Manual installation still opens the hosted page for first-run approval.
+The installed worker stores its account-scoped credential in Windows Credential Manager or macOS Keychain,
 and then uses outbound HTTPS only. Users enter no URLs, keys, paths, model settings, or provider
 configuration. On macOS the first launch copies the sealed app into the user's Applications
 folder and registers the background LaunchAgent; the DMG itself never performs a silent install.
@@ -38,7 +40,7 @@ an unsigned beta, and the immutable manifest discloses exact hashes and trust mo
 behavior can vary, so native clean-download/install evidence remains required. Protected signing and
 notarization secrets are needed only for the optional production-trust upgrade.
 
-`publish_release=true` requires the exact new `media-worker-v0.1.43` tag and the protected release
+`publish_release=true` requires the exact new `media-worker-v0.1.44` tag and the protected release
 environment. It publishes both binaries plus
 the checksum/size manifest to the public repository Release; the workflow refuses to replace an
 existing tag or asset. Activating that generated manifest in staging is a separate reviewed hosting
