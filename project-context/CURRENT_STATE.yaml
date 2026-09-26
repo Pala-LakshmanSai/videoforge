@@ -12,6 +12,16 @@ windows_mexico_assembly_2026_09_26:
   release_run: https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36246424314
   cloudflare_version_prefix: c046c15f
   evidence: evidence/acceptance/VF-10-09/2026-09-26-assembly-verification.json
+  verification_cost_audit: >-
+    Two approximately 60-second synthetic native runs measured final video decode
+    at 1.5612-2.1543s and each audio measurement at 2.0946-2.5343s. Linear projection
+    to this 25m37s timeline suggests 40-55s per remaining video scan, 54-65s per audio
+    measurement, and 269-409s saved by the already-removed duplicate video scans.
+    These are illustrative synthetic estimates, not measured production savings.
+    Metadata accepted a deliberately damaged bitstream; xerror decode rejected it.
+    Retain final quality gates. Removing checks cannot recover the 79-minute
+    preparation/composition/encoding interval. Exact production phase timings remain
+    unmeasured. Evidence: evidence/acceptance/VF-10-09/2026-09-26-verification-cost-audit.json.
   diagnosis: >-
     All 299 images and 90 avatar clips are accepted. The 1537.033333-second timeline
     has 344 scenes. Original MP4 is 298462570 bytes, written at 13:28:20 UTC;

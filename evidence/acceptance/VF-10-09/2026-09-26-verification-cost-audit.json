@@ -1,0 +1,130 @@
+{
+  "checkpoint": "V2-09",
+  "source_commit": "90cec76e03d186a12476efa1e3c33829e68d2002",
+  "production_worker": "0.1.42",
+  "result": "RETAIN_FINAL_GATES_SYNTHETIC_COST_MEASURED",
+  "runs": [
+    {
+      "checkpoint": "V2-09",
+      "release": "0.1.42",
+      "fixture": "60-second stream-copy repetition of synthetic 1080p30 H264/AAC testsrc2/sine, not production media",
+      "sample_bytes": 115708238,
+      "sample_sha256": "12f6196a1ca1541a16e051aad9c9be8c0c1b2d5413fb4b1f2bbc999cb50cb226",
+      "records": [
+        {
+          "name": "metadata_only",
+          "seconds": 0.994,
+          "exit_code": 0,
+          "duration_seconds": 60.019271,
+          "declared_video_frames": "1782"
+        },
+        {
+          "name": "old_separate_frame_scan",
+          "seconds": 6.9111,
+          "exit_code": 0
+        },
+        {
+          "name": "current_final_decode_and_frame_count",
+          "seconds": 2.1543,
+          "exit_code": 0,
+          "actual_decoded_frames": 1782,
+          "completed": true
+        },
+        {
+          "name": "audio_loudness_measurement",
+          "seconds": 2.5343,
+          "exit_code": 0
+        },
+        {
+          "name": "sha256",
+          "seconds": 0.1113
+        }
+      ],
+      "corruption_demonstration": [
+        {
+          "name": "corrupt_file_metadata",
+          "seconds": 0.0751,
+          "exit_code": 0
+        },
+        {
+          "name": "corrupt_file_decode",
+          "seconds": 0.0796,
+          "exit_code": 3199971767
+        }
+      ],
+      "limitations": "Warm local synthetic fixture; no measured exact production per-phase timing or full-length speedup. No application gates changed, paid generation or production rerender."
+    },
+    {
+      "checkpoint": "V2-09",
+      "release": "0.1.42",
+      "fixture": "60-second stream-copy repetition of synthetic 1080p30 H264/AAC testsrc2/sine, not production media",
+      "sample_bytes": 115708238,
+      "sample_sha256": "12f6196a1ca1541a16e051aad9c9be8c0c1b2d5413fb4b1f2bbc999cb50cb226",
+      "records": [
+        {
+          "name": "metadata_only",
+          "seconds": 0.0598,
+          "exit_code": 0,
+          "duration_seconds": 60.019271,
+          "declared_video_frames": "1782"
+        },
+        {
+          "name": "old_separate_frame_scan",
+          "seconds": 4.4749,
+          "exit_code": 0
+        },
+        {
+          "name": "current_final_decode_and_frame_count",
+          "seconds": 1.5612,
+          "exit_code": 0,
+          "actual_decoded_frames": 1782,
+          "completed": true
+        },
+        {
+          "name": "audio_loudness_measurement",
+          "seconds": 2.0946,
+          "exit_code": 0
+        },
+        {
+          "name": "sha256",
+          "seconds": 0.1127
+        }
+      ],
+      "corruption_demonstration": [
+        {
+          "name": "corrupt_file_metadata",
+          "seconds": 0.0641,
+          "exit_code": 0
+        },
+        {
+          "name": "corrupt_file_decode",
+          "seconds": 0.0738,
+          "exit_code": 3199971767
+        }
+      ],
+      "limitations": "Warm local synthetic fixture; no measured exact production per-phase timing or full-length speedup. No application gates changed, paid generation or production rerender."
+    }
+  ],
+  "extrapolation": {
+    "duration_seconds": 1537.033333,
+    "method": "Linear wall-time scaling from approximately 60-second synthetic fixture; not a production measurement",
+    "remaining_video_scan_seconds": [
+      40,
+      55
+    ],
+    "each_audio_measurement_seconds": [
+      54,
+      65
+    ],
+    "removed_duplicate_video_scans_seconds": [
+      269,
+      409
+    ],
+    "separate_frame_counter_cost": "No separate decode in 0.1.42; progress parsing negligible"
+  },
+  "decision": "Keep final decode, frame completeness, metadata, checksum and audio checks. No quality-policy change inferred from user questions. Damaged bitstream retains readable metadata but error-checking decode fails.",
+  "limitations": "Synthetic repeated clip has 1782 decoded frames over 60.019271 seconds and is not a canonical production acceptance fixture. Estimates vary by codec/content/load and are not guarantees. Prior 23-minute post-first-MP4 interval includes audio correction/upload/handoff and cannot all be attributed to verification.",
+  "provider_spend": "Zero paid calls, regeneration or production rerender",
+  "paid_compute_shutdown": "No paid compute started; global inventory not queried",
+  "remaining_gates": "Exact future production per-phase timings and render optimization remain unmeasured"
+}
