@@ -1,4 +1,37 @@
 schema_version: "2.0"
+windows_mexico_assembly_2026_09_26:
+  checkpoint: V2-09
+  status: RUNNING_FINAL_AUDIO_CORRECTION_VERIFICATION_RELEASE_PENDING
+  project_id: 90003b93-570b-40bd-b7b4-9f023021de30
+  render_attempt_id: 820250f2-2a14-44a1-ad2d-c9792e304372
+  worker: MI_Notebook Windows 0.1.41
+  source_base: b28386ed
+  candidate_release: 0.1.42
+  diagnosis: >-
+    All 299 images and 90 avatar clips are accepted. The 1537.033333-second timeline
+    has 344 scenes. Original MP4 is 298462570 bytes, written at 13:28:20 UTC;
+    audio correction produced a 321817898-byte MP4. Active subprocesses progressed
+    through full decode, loudness, audio-only correction, corrected loudness and
+    final frame-count scan. No deadlock or generation blocker was observed.
+    Existing output verification decodes via FFprobe count_frames and then FFmpeg
+    xerror, repeated after optional audio correction: four full scans on this run.
+  fix: >-
+    Count actual frames from completed FFmpeg progress with passthrough cadence,
+    retaining xerror and exact final metadata checks. Defer output verification
+    until after optional audio-only correction, validating the final bytes once.
+    Short/incomplete decode cannot be accepted based on container frame declarations.
+    Render fixtures now use native absolute paths and POSIX resource tests skip on
+    Windows, permitting both installer jobs to run the full render regression suite.
+  validation: >-
+    Render suite 30 tests passes with two POSIX-only Windows skips; personal-worker
+    suite 46/46; real pinned Windows FFmpeg/FFprobe 60-frame 1080p H264/AAC smoke
+    passes in 0.203 seconds; touched Ruff and diff checks pass. No production-length
+    speedup is measured yet. Installer CI, publication, activation and install pending.
+  monitoring: Active current-thread five-minute heartbeat monitor-current-videoforge-assembly.
+  authority: User authorized monitoring, blocker fixes and tested production deployment; finite new paid-generation/compute cap USD0.
+  provider_spend: Zero new paid provider calls or generation retries.
+  paid_compute_shutdown: No paid compute activated; existing generation remains Kie/Fal; global inventory not queried.
+  remaining_gates: Both installer CI/publication, exact production manifest activation, installed Windows identity, final durable receipt and Chrome playback.
 production_release_parity_2026_09_26:
   checkpoint: V2-09
   status: VERIFIED_CURRENT_WEB_WORKER_AND_BOTH_INSTALLERS

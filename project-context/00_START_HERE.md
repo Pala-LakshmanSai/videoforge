@@ -1,5 +1,12 @@
 # VideoForge: start here
 
+## Current Mexico assembly investigation — 2026-09-26
+
+The current MI_Notebook job is progressing through final audio correction and verification.
+Candidate worker 0.1.42 removes duplicate full-video decode passes while retaining final
+output gates. Local render/personal-worker tests and real FFmpeg smoke pass; publication
+and activation remain pending. See `windows_mexico_assembly_2026_09_26` in `CURRENT_STATE.yaml`.
+
 ## Production release parity — 2026-09-26
 
 Production web/shared-package code equals current source. The live exact worker manifest,

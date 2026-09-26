@@ -915,7 +915,6 @@ class RenderJob:
                 str(tools.ffprobe),
                 "-v",
                 "error",
-                "-count_frames",
                 "-show_streams",
                 "-show_format",
                 "-of",
@@ -967,7 +966,7 @@ class RenderJob:
                 retryable=False,
             ) from error
 
-        self._run_process(
+        decode_result = self._run_process(
             (
                 str(tools.ffmpeg),
                 "-hide_banner",
@@ -975,12 +974,17 @@ class RenderJob:
                 "-v",
                 "error",
                 "-xerror",
+                "-progress",
+                "pipe:1",
+                "-nostats",
                 "-i",
                 str(output_path),
                 "-map",
                 "0:v:0",
                 "-map",
                 "0:a:0",
+                "-fps_mode",
+                "passthrough",
                 "-f",
                 "null",
                 "-",
@@ -988,6 +992,23 @@ class RenderJob:
             token=token,
             failure_code="RENDER_PROBE_FAILED",
         )
+        # Count frames in the mandatory error-checking decode. FFprobe's
+        # -count_frames previously decoded the entire video a second time.
+        # Never trust only the container's declared frame count.
+        progress_fields: dict[str, str] = {}
+        for line in decode_result.stdout.splitlines():
+            key, separator, value = line.partition("=")
+            if separator:
+                progress_fields[key.strip()] = value.strip()
+        if (
+            progress_fields.get("progress") != "end"
+            or progress_fields.get("frame") != str(expected_total_frames)
+        ):
+            raise _RenderFailure(
+                "RENDER_OUTPUT_INVALID",
+                "Decoded video frame count does not match the manifest or decode is incomplete.",
+                retryable=False,
+            )
         return facts
 
     def _run_validated(self, document: dict[str, Any]) -> dict[str, Any]:
@@ -1169,12 +1190,6 @@ class RenderJob:
             )
 
         total_frames = cast(int, manifest["total_frames"])
-        facts = self._probe_output(
-            tools=tools,
-            output_path=output_path,
-            expected_total_frames=total_frames,
-            token=token,
-        )
         output_loudness = self._measure_loudness(tools, output_path, token)
         if output_loudness.requires_normalization:
             # Dynamic loudnorm can miss its target on high-crest narration.
@@ -1199,12 +1214,6 @@ class RenderJob:
                 missing_message="Audio correction returned without an output file.",
             )
             output_loudness = self._measure_loudness(tools, corrected_path, token)
-            facts = self._probe_output(
-                tools=tools,
-                output_path=corrected_path,
-                expected_total_frames=total_frames,
-                token=token,
-            )
             output_path = corrected_path
             try:
                 output_sha256 = self._dependencies.artifacts.sha256(output_path)
@@ -1220,6 +1229,14 @@ class RenderJob:
                 normalized=True,
                 filtergraph=plan.filtergraph + ";" + correction[correction.index("-af") + 1],
             )
+        # Validate the final bytes after the optional audio-only correction,
+        # rather than decoding both the intermediate and final MP4s.
+        facts = self._probe_output(
+            tools=tools,
+            output_path=output_path,
+            expected_total_frames=total_frames,
+            token=token,
+        )
         if not (
             -17.0 <= output_loudness.integrated_lufs <= -15.0
             and output_loudness.true_peak_dbtp <= -1.5

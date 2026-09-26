@@ -73,8 +73,8 @@ class FakeResolver:
 class FakeTools:
     def resolve(self) -> RenderTools:
         return RenderTools(
-            ffmpeg=Path("/trusted/bin/ffmpeg"),
-            ffprobe=Path("/trusted/bin/ffprobe"),
+            ffmpeg=Path("/trusted/bin/ffmpeg").absolute(),
+            ffprobe=Path("/trusted/bin/ffprobe").absolute(),
             ffmpeg_version="8.1.1",
             ffprobe_version="8.1.1",
         )
@@ -102,6 +102,7 @@ class FakeProcess:
         self.correction_return_code = 0
         self.emit_render_output = True
         self.probe_frame_count = 360
+        self.decode_progress = "frame=360\nprogress=end\n"
         self.output_format_duration = "12.0"
         self.include_subtitle = False
         self.invalid_sample_rate = False
@@ -231,7 +232,7 @@ class FakeProcess:
                 self.artifacts.files[Path(call[-1])] = self.output_bytes
             return ProcessResult(return_code=0)
         if "-xerror" in call:
-            return ProcessResult(return_code=0)
+            return ProcessResult(return_code=0, stdout=self.decode_progress)
         raise AssertionError(f"Unexpected process call: {call}")
 
 
@@ -249,7 +250,7 @@ class RenderFixture:
     ) -> dict[str, str]:
         sha256 = digest(data)
         uri = object_uri(sha256, extension)
-        path = Path(f"/safe/objects/{sha256.removeprefix('sha256:')}.{extension}")
+        path = Path(f"/safe/objects/{sha256.removeprefix('sha256:')}.{extension}").absolute()
         self.resolver.objects[uri] = path
         self.artifacts.files[path] = data
         if kind == "IMAGE":
@@ -375,7 +376,7 @@ class RenderFixture:
         self.resolver.runs[result_uri] = Path(
             "/safe/runs/revision_local_001/attempt_render_local_001/"
             "videoforge-local-short-slice.mp4"
-        )
+        ).absolute()
         return {
             "schema_version": "render-job-input/v1",
             "project_revision_id": "revision_local_001",
@@ -413,7 +414,7 @@ class RenderFixture:
         data = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
         sha256 = digest(data)
         uri = object_uri(sha256, "json")
-        path = Path(f"/safe/objects/{sha256.removeprefix('sha256:')}.json")
+        path = Path(f"/safe/objects/{sha256.removeprefix('sha256:')}.json").absolute()
         self.artifacts.files[path] = data
         self.resolver.objects[uri] = path
         pointer["sha256"] = sha256
@@ -519,6 +520,7 @@ class RenderJobTests(unittest.TestCase):
             self.assertEqual(result.return_code, 0)
             self.assertEqual(popen.call_args.kwargs["cwd"], stage)
 
+    @unittest.skipUnless(os.name == "posix", "POSIX file descriptor limits")
     def test_render_runner_raises_file_descriptor_limit_only_during_spawn(self) -> None:
         from videoforge_image_media.jobs.render import process as process_module
 
@@ -543,6 +545,7 @@ class RenderJobTests(unittest.TestCase):
         )
         self.assertEqual(popen.call_count, 1)
 
+    @unittest.skipUnless(os.name == "posix", "POSIX file descriptor limits")
     def test_render_runner_fails_closed_when_hard_file_limit_is_too_low(self) -> None:
         from videoforge_image_media.jobs.render import process as process_module
 
@@ -847,6 +850,11 @@ class RenderJobTests(unittest.TestCase):
         self.assertNotEqual(correction[correction.index("-i") + 1], correction[-1])
         self.assertEqual(result["output"]["sha256"], digest(b"audio corrected mp4 bytes"))
         self.assertEqual(result["probe"]["loudness"]["output_integrated_lufs"], -16.43)
+        decode_calls = [call for call in fixture.process.calls if "-xerror" in call]
+        self.assertEqual(len(decode_calls), 1)
+        self.assertEqual(
+            decode_calls[0][decode_calls[0].index("-i") + 1], correction[-1]
+        )
 
     def test_audio_correction_still_fails_closed_after_one_pass(self) -> None:
         fixture = RenderFixture()
@@ -1125,6 +1133,32 @@ class RenderJobTests(unittest.TestCase):
                 )
                 self.assertNotIn("/private", json.dumps(result))
                 self.assertFalse(result["error"]["retryable"])
+
+    def test_output_decode_counts_frames_without_a_second_counting_decode(self) -> None:
+        fixture = RenderFixture()
+        facts = fixture.job()._probe_output(
+            tools=FakeTools().resolve(), output_path=Path("output.mp4"),
+            expected_total_frames=360, token="cancel_test",
+        )
+        self.assertEqual(facts.total_frames, 360)
+        self.assertFalse(any("-count_frames" in call for call in fixture.process.calls))
+        decode_calls = [call for call in fixture.process.calls if "-xerror" in call]
+        self.assertEqual(len(decode_calls), 1)
+        self.assertIn("-progress", decode_calls[0])
+        self.assertIn("passthrough", decode_calls[0])
+
+    def test_declared_frame_count_cannot_mask_incomplete_or_short_decode(self) -> None:
+        for progress in ("", "frame=360\nprogress=continue\n", "frame=359\nprogress=end\n"):
+            with self.subTest(progress=progress):
+                fixture = RenderFixture()
+                fixture.process.decode_progress = progress
+                with self.assertRaises(_RenderFailure) as raised:
+                    fixture.job()._probe_output(
+                        tools=FakeTools().resolve(), output_path=Path("output.mp4"),
+                        expected_total_frames=360, token="cancel_test",
+                    )
+                self.assertEqual(raised.exception.code, "RENDER_OUTPUT_INVALID")
+                self.assertFalse(fixture.resolver.published)
 
     def test_process_probe_and_cancellation_fail_without_publication(self) -> None:
         process_fixture = RenderFixture()
