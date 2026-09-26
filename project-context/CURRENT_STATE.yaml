@@ -1,4 +1,29 @@
 schema_version: "2.0"
+fal_avatar_blend_repair_2026_09_26:
+  checkpoint: V2-09
+  status: LOCAL_SOURCE_VERIFIED_NOT_PUBLISHED
+  source_commit: 3d2cdf74
+  result: >-
+    The retained Helen kitchen Fal clip and pinned Avatar Hub source reproduce a visible
+    cap/shoulder join in the existing wide-v2 composite. The source, native square,
+    wide output, and final frame all keep the cap in view; the supplied 1748x442 screenshot
+    is a lower-frame crop and does not prove full-frame head cutoff. The compositor now
+    fits one uniform scale with RANSAC instead of a projective homography and moves the
+    lower side blend inside the shirt, while fading lower hair separately from the neck.
+    Existing limited out-of-canvas allowance and fail-closed crop bounds remain.
+  validation: >-
+    Same saved 168-frame Fal clip rendered provider-free into
+    .videoforge/avatar-framing-20260926/helenn-candidate.mp4; full decode, full/split
+    frame review, and ten retained Helen/Simon clip registration checks passed.
+    Focused Fal/render/filtergraph tests passed 33/33; Ruff check and git diff check pass.
+    The wider worker suite passed 160/161: one unrelated Mage overlay hash assertion
+    already fails against unchanged HEAD mage_serverless.py bytes.
+  remaining_gates: >-
+    Worker 0.1.37 remains installed and unchanged. Release packaging/publication,
+    installed Chrome playback, and visual acceptance on a fresh project are unverified.
+    No new provider clip was generated; native missing pixels and mouth detail cannot be recovered.
+  provider_spend: No provider requests or paid generation in this local repair.
+  paid_compute_shutdown: No paid compute was started by this local repair; live inventory was not queried.
 image_prompt_compaction_2026_09_26:
   checkpoint: V2-09
   status: PRODUCTION_DEPLOYED_EXISTING_PROMPTS_IMMUTABLE
