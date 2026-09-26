@@ -1,9 +1,13 @@
 schema_version: "2.0"
 windows_worker_console_repair_2026_09_26:
   checkpoint: V2-09
-  status: LOCAL_VERIFIED_PUBLICATION_PENDING
+  status: PUBLISHED_PRODUCTION_ACTIVATION_AUTH_BLOCKED
   base_source_commit: 7c29e97d315160fb58de7dd028a1ad25dd59e7c4
+  source_commit: 755553c9e33dadcc9861ef169b3f50eb77fa2e18
   worker_release: 0.1.41
+  worker_execution_bundle_sha256: sha256:5ca3ee04573656ff364b8169d1e01835d4362cdc3fb5c20c609838cfaac76974
+  release_run: https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36233272893
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-windows-console-repair.json
   cause: >-
     Windows runtime FFmpeg, FFprobe, Whisper and job subprocesses inherited console
     creation defaults despite the desktop executable itself being windowless.
@@ -17,8 +21,17 @@ windows_worker_console_repair_2026_09_26:
     suites: 113 passed, one existing symlink-privilege test deselected on this non-admin Windows
     account. Targeted Ruff and diff checks pass. Canonical pnpm verify stops at unsupported
     bundled Node/pnpm engine versions; full canonical verification is not claimed.
+    Windows and macOS release jobs, personal-worker tests and frozen Fal render smoke pass;
+    publication succeeds. Downloaded Windows installer matches the published SHA-256 and size.
+  deployment: >-
+    Immutable Windows/macOS artifacts are public. Cloudflare is signed out on this computer;
+    user sign-in was requested in the opened Chrome tab. Production still advertises 0.1.40.
+    Verified 0.1.41 installer and production manifest are staged in this user's Downloads.
+    MI_Notebook remains on 0.1.40/Online until production accepts the new exact bundle,
+    preventing an incompatible upgrade from disconnecting it. Pairing credentials were not read.
+    Six orphan console hosts attributable to known finished worker tools were closed.
   authority: User authorized tested production fixes, worker publication and installation for ongoing/future projects.
-  remaining_gates: Windows/macOS release CI, immutable publication, production manifest activation and installed Windows acceptance.
+  remaining_gates: Cloudflare sign-in, exact release manifest activation, preserving-pairing Windows update and installed acceptance.
   provider_spend: Zero provider calls, paid-generation retries or new spend.
   paid_compute_shutdown: No paid compute activated; live provider inventory not queried.
 windows_good_steward_monitoring_2026_09_26:

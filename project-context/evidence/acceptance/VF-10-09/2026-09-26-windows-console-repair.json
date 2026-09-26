@@ -1,0 +1,48 @@
+{
+  "schema_version": "videoforge-windows-console-repair/v1",
+  "checkpoint": "V2-09",
+  "status": "PUBLISHED_PRODUCTION_ACTIVATION_AUTH_BLOCKED",
+  "source_commit": "755553c9e33dadcc9861ef169b3f50eb77fa2e18",
+  "version": "0.1.41",
+  "execution_bundle_sha256": "sha256:5ca3ee04573656ff364b8169d1e01835d4362cdc3fb5c20c609838cfaac76974",
+  "fix": "CREATE_NO_WINDOW on Windows runtime media subprocesses, streaming encoding and taskkill cleanup; preserve captured output, cancellation and platform behavior.",
+  "validation": {
+    "native_regression_tests_passed": 5,
+    "personal_and_media_job_tests_passed": 113,
+    "existing_symlink_test_deselected": "Windows account lacks symlink privilege; WinError 1314",
+    "ruff_targeted": "PASS",
+    "diff_check": "PASS",
+    "canonical_verify": "NOT_RUN_ENGINE_MISMATCH",
+    "release_ci": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36233272893",
+    "windows_release": "PASS",
+    "macos_release": "PASS",
+    "frozen_fal_render_smoke_both_platforms": "PASS",
+    "immutable_publication": "PASS"
+  },
+  "windows_installer": {
+    "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.41/VideoForge-Worker-0.1.41-Setup.exe",
+    "sha256": "sha256:429b66b0aaf877b95cfe80411a7661a226ed96fdff5628a6c959c43efe9a7d49",
+    "size_bytes": 279579548,
+    "download_checksum_and_size_verified": true
+  },
+  "macos_installer": {
+    "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.41/VideoForge-Worker-0.1.41.dmg",
+    "sha256": "sha256:53920cb4ac56f01c1b132bf63a2f6ecc62685cfee01316c03f7356ca016a371b",
+    "size_bytes": 414226627
+  },
+  "production": {
+    "runtime_source_commit": "7c29e97d315160fb58de7dd028a1ad25dd59e7c4",
+    "advertised_worker_version": "0.1.40",
+    "manifest_activation": "PENDING_CLOUDFLARE_SIGN_IN",
+    "new_installer_applied": false,
+    "current_windows_worker": "MI_Notebook, 0.1.40, Online",
+    "credential_values_read": false
+  },
+  "closed_orphan_console_hosts": [26988, 9148, 10116, 19144, 12620, 27536],
+  "cleanup_scope": "Only console hosts whose parent PID was a previously observed finished VideoForge tool, created during this project's media stages, and whose parent was no longer running.",
+  "provider_calls": 0,
+  "paid_generation_retries": 0,
+  "new_paid_compute_activated": false,
+  "live_provider_inventory_queried": false,
+  "remaining_gates": ["Cloudflare sign-in", "Production manifest activation", "Windows update preserving pairing", "Installed Windows acceptance"]
+}

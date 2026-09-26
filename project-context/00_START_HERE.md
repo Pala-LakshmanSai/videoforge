@@ -2,10 +2,12 @@
 
 ## Windows console repair — 2026-09-26
 
-Worker 0.1.41 source suppresses Windows console creation for background media tools,
-streaming encoding and cancellation cleanup. Native Windows visibility, captured errors
-and cancellation checks pass; publication, production activation and installed acceptance
-remain pending. See `windows_worker_console_repair_2026_09_26` in `CURRENT_STATE.yaml`.
+Worker 0.1.41 is published from `755553c9` and suppresses Windows console creation for
+background media tools, streaming encoding and cancellation cleanup. Native visibility,
+captured errors, cancellation and both release jobs pass. Its Windows installer is checksum
+verified in Downloads. Cloudflare sign-in blocks production manifest activation and this PC's
+update; the paired 0.1.40 installation remains Online. See
+`windows_worker_console_repair_2026_09_26` in `CURRENT_STATE.yaml`.
 
 ## Windows worker monitoring — 2026-09-26
 
