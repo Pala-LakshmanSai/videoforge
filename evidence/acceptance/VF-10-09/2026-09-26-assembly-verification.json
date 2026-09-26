@@ -1,0 +1,44 @@
+{
+  "checkpoint": "V2-09",
+  "source_commit": "96457e43f81a0fa8290f71d4a76686d4b07f72e6",
+  "result": "TECHNICAL_PLAYBACK_PASS_FIX_PRODUCTION_INSTALLED_ONLINE",
+  "assembly_seconds": 6402,
+  "timeline_seconds": 1537.033333,
+  "scene_count": 344,
+  "diagnosis": "No deadlock. Original verification counted frames with FFprobe then decoded with FFmpeg, repeated after required audio correction: four full video scans. CPU preparation/composition/encoding remained the largest elapsed interval.",
+  "fix": "One completed FFmpeg xerror decode of final bytes with actual progress frame count, passthrough cadence and unchanged final metadata/loudness gates. Short or incomplete decode fails.",
+  "validation": {
+    "render_suite": "30 tests, two POSIX-only skips on local Windows; both release CI platforms passed",
+    "personal_worker_suite": "46/46 focused; release CI passed",
+    "native_probe": "Pinned Windows FFmpeg/FFprobe: 60 actual frames, 1080p H264/AAC, 2000ms, 0.203s",
+    "playback": "Chrome video 1920x1080, duration 1537.033008, readyState 4, no error; currentTime advanced to 25.710299",
+    "release_ci": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36246424314",
+    "full_length_speedup": "Unmeasured",
+    "canonical_verification": "Not claimed: recorded Ruby/Ajv/Node engine limitations"
+  },
+  "release": {
+    "version": "0.1.42",
+    "immutable": true,
+    "execution_bundle_sha256": "sha256:cc0086594e3921d3dcdbd6e3c11195f2f4a0fd2c6fb2384e4486a60e0f4d4385",
+    "manifest_sha256": "sha256:e110400baf98b2fce5139a1dad8520b7df8505354a43dc1bb5cf3ae30452d954",
+    "windows_sha256": "sha256:29cf253f310cb434cac15cf57b4f2bd21b0a83f06e7d699b4dfe67b18ca0ba76",
+    "windows_size_bytes": 279582181,
+    "macos_sha256": "sha256:3569fd700624a361ce70b93a3ad634cac47f1076ba5686e95e9e2ea18364c189",
+    "macos_size_bytes": 414223705,
+    "windows_download_hash_verified": true,
+    "macos_validation": "Public immutable asset metadata and CI disk verification; no local Mac installation claimed"
+  },
+  "deployment": {
+    "cloudflare_version_prefix": "c046c15f",
+    "traffic_percent": 100,
+    "web_source_commit": "7c29e97d315160fb58de7dd028a1ad25dd59e7c4",
+    "production_settings": "Both 0.1.42 installer links verified",
+    "installed_windows": "MI_Notebook 0.1.42 Online; heartbeat 2026-09-26T14:00:50Z",
+    "installer_exit_code": 0,
+    "pairing_identity_sha256_unchanged": "71101df9800a48b1271f576b689bfe2c57d4a379ccebe36d31ceb7a36f7188f4",
+    "running_frozen_configuration": "Production origin and exact execution bundle verified"
+  },
+  "remaining_gates": "User creative approval; future full-length performance measurement; other devices' installation unverified",
+  "provider_spend": "Zero new paid provider requests, regeneration, rerender or spend",
+  "paid_compute_shutdown": "No paid compute activated; global provider inventory not queried"
+}

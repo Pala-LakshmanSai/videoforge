@@ -1,12 +1,17 @@
 schema_version: "2.0"
 windows_mexico_assembly_2026_09_26:
   checkpoint: V2-09
-  status: RUNNING_FINAL_AUDIO_CORRECTION_VERIFICATION_RELEASE_PENDING
+  status: COMPLETE_TECHNICAL_PLAYBACK_PASS_FIX_PRODUCTION_INSTALLED_ONLINE
   project_id: 90003b93-570b-40bd-b7b4-9f023021de30
   render_attempt_id: 820250f2-2a14-44a1-ad2d-c9792e304372
-  worker: MI_Notebook Windows 0.1.41
+  worker: MI_Notebook Windows 0.1.42 Online (render completed on 0.1.41)
   source_base: b28386ed
   candidate_release: 0.1.42
+  source_commit: 96457e43f81a0fa8290f71d4a76686d4b07f72e6
+  execution_bundle_sha256: sha256:cc0086594e3921d3dcdbd6e3c11195f2f4a0fd2c6fb2384e4486a60e0f4d4385
+  release_run: https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36246424314
+  cloudflare_version_prefix: c046c15f
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-assembly-verification.json
   diagnosis: >-
     All 299 images and 90 avatar clips are accepted. The 1537.033333-second timeline
     has 344 scenes. Original MP4 is 298462570 bytes, written at 13:28:20 UTC;
@@ -25,13 +30,29 @@ windows_mexico_assembly_2026_09_26:
   validation: >-
     Render suite 30 tests passes with two POSIX-only Windows skips; personal-worker
     suite 46/46; real pinned Windows FFmpeg/FFprobe 60-frame 1080p H264/AAC smoke
-    passes in 0.203 seconds; touched Ruff and diff checks pass. No production-length
-    speedup is measured yet. Installer CI, publication, activation and install pending.
-  monitoring: Active current-thread five-minute heartbeat monitor-current-videoforge-assembly.
+    passes in 0.203 seconds; touched Ruff and diff checks pass. Both platform installer
+    jobs and immutable publication succeed, including render regressions and frozen
+    smoke. Windows downloaded installer SHA-256 and size match the public manifest.
+    No production-length speedup is measured yet. Canonical context validators remain
+    unavailable due to recorded Ruby/Ajv/engine limitations.
+  completion: >-
+    Assembly completed in 106m42s, followed by completed technical check and Ready for
+    review. Chrome playback advances at 1920x1080, duration 1537.033008 seconds, no
+    player error. About 79 minutes elapsed from worker start to first MP4, including
+    preparation/composition/encoding; later checks/audio correction/handoff took
+    about 23 minutes. Individual subprocess duration attribution is not available.
+  deployment: >-
+    Exact published 0.1.42 manifest activated on existing Cloudflare runtime c046c15f
+    with 100% traffic. Production Settings serves both 0.1.42 installers. Verified
+    Windows installer exited zero; installation identity checksum unchanged.
+    Running frozen build configuration matches the release execution bundle and
+    origin. MI_Notebook reports Windows 0.1.42 Online, heartbeat 2026-09-26T14:00:50Z.
+    Production web source remains 7c29e97d; no media regeneration or rerender occurred.
+  monitoring: Current-run heartbeat pauses after completed technical and repair handoff.
   authority: User authorized monitoring, blocker fixes and tested production deployment; finite new paid-generation/compute cap USD0.
   provider_spend: Zero new paid provider calls or generation retries.
   paid_compute_shutdown: No paid compute activated; existing generation remains Kie/Fal; global inventory not queried.
-  remaining_gates: Both installer CI/publication, exact production manifest activation, installed Windows identity, final durable receipt and Chrome playback.
+  remaining_gates: Human creative approval; future full-length speedup measurement and other devices' installation are unverified. No remaining gate for this deployment.
 production_release_parity_2026_09_26:
   checkpoint: V2-09
   status: VERIFIED_CURRENT_WEB_WORKER_AND_BOTH_INSTALLERS

@@ -2,10 +2,13 @@
 
 ## Current Mexico assembly investigation — 2026-09-26
 
-The current MI_Notebook job is progressing through final audio correction and verification.
-Candidate worker 0.1.42 removes duplicate full-video decode passes while retaining final
-output gates. Local render/personal-worker tests and real FFmpeg smoke pass; publication
-and activation remain pending. See `windows_mexico_assembly_2026_09_26` in `CURRENT_STATE.yaml`.
+The Mexico video completed assembly in 106m42s and passed technical checks and Chrome
+playback. Worker 0.1.42 removes duplicate full-video decode passes while retaining final
+output gates; both platform releases pass CI and are published. Its exact manifest is
+active on production `c046c15f`; MI_Notebook is installed on 0.1.42 and Online. Full-length
+savings remain unmeasured; human approval remains open. See
+`windows_mexico_assembly_2026_09_26` in `CURRENT_STATE.yaml`. Earlier release entries below
+are dated historical evidence and are superseded by this current release.
 
 ## Production release parity — 2026-09-26
 
