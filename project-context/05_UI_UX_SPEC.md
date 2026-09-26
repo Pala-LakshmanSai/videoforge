@@ -204,8 +204,12 @@ the only persistent applied-state indicator.
 - A `Local worker` card shows `Not installed`, `Connecting`, `Online`, `Busy`, `Offline`, or
   `Update required`, plus last seen/version and only `Reconnect`/`Remove` management. Offer the
   detected Windows or Mac installer first but keep both links visible because user-agent detection
-  is a convenience, not authority. Pairing is one `Connect this computer` confirmation in the
-  signed-in browser; never ask for a URL, code, key, model, port, or path.
+  is a convenience, not authority. Settings defaults to macOS/Windows paste-to-connect commands,
+  with Copy, a 15-minute expiry, fresh-command action, and automatic Online refresh. The command
+  grants one computer access to the signed-in account; keep it private. It installs the exact
+  checksum-verified worker and pairs through the existing PKCE and OS credential store.
+  Manual downloads and the existing `Connect this computer` approval remain under a disclosure.
+  Never ask users to supply a URL, key, model, port, or path.
 - Generate is blocked only when the account has no compatible online worker and links directly to
   this card. Offline stage truth is `Waiting for your computer`. Never display another tenant's
   device or borrow its capacity.

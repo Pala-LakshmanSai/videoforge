@@ -1,0 +1,39 @@
+{
+  "actual_installed_worker": true,
+  "network": false,
+  "worker_version": "0.1.43",
+  "result": {
+    "attempt_id": "attempt_span_local_001",
+    "audio": {
+      "artifact_uri": "vf-local://objects/sha256/27/27cb785df0cedf3e8136cf6893ae9a93a7220efc0420bd3e03dfc1c367f29638.wav",
+      "asset_id": "asset_span_local_001",
+      "byte_size": 480044,
+      "channels": 1,
+      "content_type": "audio/wav",
+      "duration_ms": 5000,
+      "sample_rate_hz": 48000,
+      "sha256": "sha256:27cb785df0cedf3e8136cf6893ae9a93a7220efc0420bd3e03dfc1c367f29638"
+    },
+    "error": null,
+    "schema_version": "selected-span-audio-result/v1",
+    "selection": {
+      "padded_end_ms_exclusive": 7500,
+      "padded_start_ms": 2500,
+      "selected_end_ms_exclusive": 7000,
+      "selected_start_ms": 3000,
+      "trim_end_ms_exclusive": 4500,
+      "trim_start_ms": 500
+    },
+    "source_voiceover": {
+      "asset_id": "asset_voiceover_local_001",
+      "duration_ms": 12000,
+      "sha256": "sha256:6e49db6ecc812f32cb043fb3c02e4aea55329fa8df27724c5b4e2a76ed57c360"
+    },
+    "span_id": "span_local_001",
+    "status": "SUCCEEDED",
+    "task_key": "audio-span:segment_local_001",
+    "timeline_plan_id": "timeline_local_001",
+    "timeline_segment_id": "segment_local_001",
+    "transcript_id": "transcript_local_001"
+  }
+}

@@ -1044,6 +1044,12 @@
       "name": "hosted_api_bounded_local_render_recovery",
       "filename": "0211_hosted_api_bounded_local_render_recovery.sql",
       "sha256": "sha256:2b539a7f5370f5f9455891652c2a2e05d961b27a0acf0744419c262623cf714a"
+    },
+    {
+      "version": 212,
+      "name": "media_worker_connect_commands",
+      "filename": "0212_media_worker_connect_commands.sql",
+      "sha256": "sha256:a682f7fcf1337e95ccee1944d6d78ce3c78f9884681d72f504a4fbd9e9ef152d"
     }
   ]
 }

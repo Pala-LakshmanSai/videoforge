@@ -37,6 +37,12 @@ interface WorkerList {
   };
 }
 
+interface ConnectCommand {
+  readonly expires_at: string;
+  readonly macos: string;
+  readonly windows: string;
+}
+
 interface Enrollment {
   readonly id: string;
   readonly display_name: string;
@@ -84,6 +90,41 @@ export function MediaWorkerSetup() {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const suggested = useMemo(recommendedPlatform, []);
+  const [command, setCommand] = useState<ConnectCommand | null>(null);
+  const [platform, setPlatform] = useState<"WINDOWS" | "MACOS">(suggested ?? "MACOS");
+  const [commandBusy, setCommandBusy] = useState(false);
+  const [commandError, setCommandError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const freshCommand = useCallback(async () => {
+    setCommandBusy(true);
+    setCommandError(null);
+    setCopied(false);
+    try {
+      const next = await responseJson<ConnectCommand>(
+        await fetch("/api/v2/media-worker/connect-command", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}",
+        }),
+      );
+      if (
+        !Number.isFinite(Date.parse(next.expires_at)) ||
+        typeof next.macos !== "string" ||
+        typeof next.windows !== "string"
+      )
+        throw new Error("Invalid connect command");
+      setCommand(next);
+    } catch {
+      setCommandError("Command unavailable. Try again or use the installer below.");
+    } finally {
+      setCommandBusy(false);
+    }
+  }, []);
+  const remaining = command
+    ? Math.max(0, Math.ceil((Date.parse(command.expires_at) - now) / 1000))
+    : 0;
+  const commandText = command ? (platform === "MACOS" ? command.macos : command.windows) : "";
   const enrollmentId = useMemo(
     () => new URLSearchParams(window.location.search).get("enrollment"),
     [],
@@ -91,8 +132,6 @@ export function MediaWorkerSetup() {
   const hasReadyWorker = workers?.devices.some(
     (device) => device.status === "ONLINE" || device.status === "BUSY",
   );
-  const needsWorkerUpdate = workers?.devices.some((device) => device.status === "UPDATE_REQUIRED");
-  const showOnboarding = !hasReadyWorker || needsWorkerUpdate;
 
   const refresh = useCallback(async () => {
     const value = await responseJson<WorkerList>(
@@ -103,7 +142,32 @@ export function MediaWorkerSetup() {
 
   useEffect(() => {
     void refresh().catch(() => setMessage("Worker status is temporarily unavailable."));
+    const timer = window.setInterval(() => {
+      void refresh().catch(() => {});
+    }, 5_000);
+    return () => window.clearInterval(timer);
   }, [refresh]);
+
+  useEffect(() => {
+    void freshCommand();
+  }, [freshCommand]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (command && remaining === 0 && !commandBusy && !commandError) void freshCommand();
+  }, [command, remaining, commandBusy, commandError, freshCommand]);
+
+  async function copyCommand() {
+    if (!commandText || remaining === 0) return;
+    try {
+      await navigator.clipboard.writeText(commandText);
+      setCopied(true);
+    } catch {
+      setCommandError("Select the command and copy it manually. Clipboard access is unavailable.");
+    }
+  }
 
   useEffect(() => {
     if (!enrollmentId) return;
@@ -221,9 +285,73 @@ export function MediaWorkerSetup() {
         </div>
       ) : null}
 
+      <div className="worker-command" role="region" aria-label="Connect with a terminal command">
+        <div className="worker-command-heading">
+          <h3>Connect a computer</h3>
+          <div className="worker-platforms" role="group" aria-label="Computer operating system">
+            <button
+              type="button"
+              aria-pressed={platform === "MACOS"}
+              onClick={() => {
+                setPlatform("MACOS");
+                setCopied(false);
+              }}
+            >
+              macOS
+            </button>
+            <button
+              type="button"
+              aria-pressed={platform === "WINDOWS"}
+              onClick={() => {
+                setPlatform("WINDOWS");
+                setCopied(false);
+              }}
+            >
+              Windows
+            </button>
+          </div>
+        </div>
+        <p>
+          Paste one command into{" "}
+          {platform === "MACOS"
+            ? "Terminal on your Mac"
+            : "Command Prompt or PowerShell on your Windows PC"}
+          . It installs the worker, connects to your account, and starts it in the background.
+        </p>
+        <div className="worker-command-copy">
+          <pre tabIndex={0} aria-label="Install and connect command">
+            <code>
+              {commandText ||
+                (commandBusy ? "Preparing your command…" : "Get a fresh command to connect.")}
+            </code>
+          </pre>
+          <button
+            type="button"
+            disabled={!commandText || remaining === 0 || commandBusy}
+            onClick={() => void copyCommand()}
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+        <div className="worker-command-footer">
+          <small>
+            {command && remaining > 0
+              ? `For one computer · expires in ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
+              : "Commands expire after 15 minutes."}
+          </small>
+          <button type="button" disabled={commandBusy} onClick={() => void freshCommand()}>
+            {commandBusy ? "Preparing…" : "Get a fresh command"}
+          </button>
+        </div>
+        {commandError ? <p role="alert">{commandError}</p> : null}
+        <small>
+          Keep this command private. It connects the computer to your signed-in account.
+        </small>
+      </div>
+
       <Disclosure
-        summary={hasReadyWorker ? "Add or update a computer" : "Connect a computer"}
-        open={showOnboarding}
+        summary="Other ways to install, or a computer waiting for approval"
+        open={Boolean(enrollment)}
       >
         <ol className="worker-steps">
           <li>Download the worker.</li>
@@ -273,7 +401,7 @@ export function MediaWorkerSetup() {
                 {device.status === "BUSY"
                   ? "Working now"
                   : device.status === "UPDATE_REQUIRED"
-                    ? `Update the ${device.platform === "WINDOWS" ? "Windows" : "Mac"} beta above, then open it again.`
+                    ? `Paste a fresh command, or install the current ${device.platform === "WINDOWS" ? "Windows" : "Mac"} worker below.`
                     : lastSeen(device.last_seen_at)}
               </small>
             </div>

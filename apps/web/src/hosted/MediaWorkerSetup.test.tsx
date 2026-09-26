@@ -57,6 +57,7 @@ describe("personal worker onboarding", () => {
     );
     render(<MediaWorkerSetup />);
 
+    fireEvent.click(screen.getByText("Other ways to install, or a computer waiting for approval"));
     const windows = await screen.findByRole("link", { name: /Download for Windows/u });
     const mac = screen.getByRole("link", { name: /Download for Mac/u });
     expect(windows).toHaveAttribute("href", "https://downloads.example.test/worker.exe");
@@ -118,7 +119,9 @@ describe("personal worker onboarding", () => {
     render(<MediaWorkerSetup />);
 
     expect(
-      await screen.findByText("Update the Windows beta above, then open it again."),
+      await screen.findByText(
+        "Paste a fresh command, or install the current Windows worker below.",
+      ),
     ).toBeInTheDocument();
   });
 

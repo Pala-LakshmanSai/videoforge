@@ -1,6 +1,15 @@
 # VideoForge: start here
 
-## Personal worker speed release � 2026-09-26
+## Paste-to-connect worker option — 2026-09-26
+
+The Windows speed handoff at `99030a39` is synchronized while preserving local work.
+Mac 0.1.43 is installed/Online on its exact bundle and passed an installed provider-free
+audio-span smoke. The single-command installer/pairing feature is under provider-free
+verification; read `easy_worker_connect_2026_09_26` in `CURRENT_STATE.yaml` for release gates.
+
+
+
+## Personal worker speed release — 2026-09-26
 
 Worker 0.1.43 is published from `74176bfb`, activated at production `7667b7d1` with
 100% traffic and installed/Online on MI_Notebook with pairing preserved. Both platform

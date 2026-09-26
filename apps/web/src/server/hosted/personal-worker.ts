@@ -1,3 +1,6 @@
+import type { SqlExecutor } from "@videoforge/control-plane";
+import { workerConnectScript } from "./worker-connect-scripts";
+
 import type { JsonValue } from "@videoforge/contracts";
 
 import { createHostedAuth, type HostedExecutionContext } from "./auth";
@@ -186,6 +189,16 @@ async function createEnrollment(request: Request, config: HostedRuntimeConfigura
   }
   const enrollment = exactEnrollment(value);
   if (!enrollment) return json({ error: { code: "MEDIA_WORKER_ENROLLMENT_REJECTED" } }, 400);
+  const connectToken = request.headers.get("x-videoforge-connect-token");
+  if (
+    connectToken !== null &&
+    (!TOKEN.test(connectToken) ||
+      enrollment.workerVersion !== config.mediaWorkerRelease.version ||
+      enrollment.executionBundleSha256 !== config.mediaWorkerRelease.executionBundleSha256 ||
+      enrollment.protocolVersion < config.mediaWorkerRelease.minimumProtocolVersion)
+  ) {
+    return json({ error: { code: "MEDIA_WORKER_CONNECT_REJECTED" } }, 400);
+  }
   const id = crypto.randomUUID();
   const pollToken = randomToken();
   const pool = createNeonPool(config.neon.databaseUrl);
@@ -213,6 +226,11 @@ async function createEnrollment(request: Request, config: HostedRuntimeConfigura
           await sha256(pollToken),
         ],
       );
+      if (connectToken) {
+        const scope = await consumeConnectCommand(transaction, connectToken);
+        const approved = await approveEnrollmentTransaction(transaction, scope, config, id);
+        if (approved.code !== "OK") throw new Error("MEDIA_WORKER_CONNECT_EXPIRED");
+      }
     });
     return json(
       {
@@ -225,10 +243,100 @@ async function createEnrollment(request: Request, config: HostedRuntimeConfigura
       201,
     );
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith("MEDIA_WORKER_")) {
+      return json({ error: { code: "MEDIA_WORKER_CONNECT_REJECTED" } }, 409);
+    }
     if (error instanceof Error && /unique|duplicate/iu.test(error.message)) {
       return json({ error: { code: "MEDIA_WORKER_ALREADY_ENROLLED" } }, 409);
     }
     throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
+async function consumeConnectCommand(transaction: SqlExecutor, token: string) {
+  const result = await transaction.query<{ account_id: string; workspace_id: string }>(
+    "SELECT * FROM public.videoforge_media_worker_connect_consume($1)",
+    [await sha256(token)],
+  );
+  const scope = result.rows[0];
+  if (!scope) throw new Error("MEDIA_WORKER_CONNECT_EXPIRED");
+  return { accountId: scope.account_id, workspaceId: scope.workspace_id };
+}
+
+async function createConnectCommand(
+  request: Request,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+) {
+  if (!sameOriginBrowserWrite(request, config))
+    return json({ error: { code: "MEDIA_WORKER_BROWSER_ORIGIN_REJECTED" } }, 403);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (!scope) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
+    const token = randomToken();
+    const expiresAt = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1,$2,true)", [
+        "videoforge.account_id",
+        scope.accountId,
+      ]);
+      await transaction.query("SELECT pg_advisory_xact_lock(hashtext($1))", [scope.accountId]);
+      // Bound unused commands per workspace without invalidating commands in another open tab.
+      await transaction.query(
+        "DELETE FROM media_worker_connect_commands WHERE account_id=$1 AND workspace_id=$2 AND (expires_at<=now() OR consumed_at IS NOT NULL)",
+        [scope.accountId, scope.workspaceId],
+      );
+      const pending = await transaction.query<{ count: number }>(
+        "SELECT count(*)::int AS count FROM media_worker_connect_commands WHERE account_id=$1 AND workspace_id=$2",
+        [scope.accountId, scope.workspaceId],
+      );
+      if ((pending.rows[0]?.count ?? 0) >= 10) throw new Error("MEDIA_WORKER_CONNECT_LIMIT");
+      const result = await transaction.query<{ expires_at: string }>(
+        `INSERT INTO media_worker_connect_commands(id,account_id,workspace_id,token_sha256,expires_at)
+         VALUES ($1,$2,$3,$4,now()+interval '15 minutes') RETURNING expires_at`,
+        [crypto.randomUUID(), scope.accountId, scope.workspaceId, await sha256(token)],
+      );
+      return result.rows[0]!.expires_at;
+    });
+    const base = new URL(config.publicOrigin).origin;
+    const mac = `${base}/api/v2/media-worker/connect.sh?token=${token}`;
+    const win = `${base}/api/v2/media-worker/connect.ps1?token=${token}`;
+    return json(
+      {
+        expires_at: expiresAt,
+        macos: `curl -fsSL '${mac}' | bash`,
+        windows: `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& { $ErrorActionPreference='Stop'; $s=(Invoke-WebRequest -UseBasicParsing '${win}').Content; Invoke-Expression $s }"`,
+      },
+      201,
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message === "MEDIA_WORKER_CONNECT_LIMIT")
+      return json({ error: { code: "MEDIA_WORKER_CONNECT_LIMIT" } }, 429);
+    throw error;
+  } finally {
+    await pool.end();
+  }
+}
+
+async function checkExistingConnection(request: Request, config: HostedRuntimeConfiguration) {
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const device = await deviceScope(request, pool);
+    if (!device || device.status === "REVOKED")
+      return json({ error: { code: "MEDIA_WORKER_UNAUTHORIZED" } }, 401);
+    const body = (await request.json()) as { token?: unknown };
+    if (typeof body.token !== "string" || !TOKEN.test(body.token))
+      return json({ error: { code: "MEDIA_WORKER_CONNECT_REJECTED" } }, 400);
+    await createNeonExecutor(pool).transaction(async (transaction) => {
+      const scope = await consumeConnectCommand(transaction, body.token as string);
+      if (scope.accountId !== device.accountId || scope.workspaceId !== device.workspaceId)
+        throw new Error("MEDIA_WORKER_CONNECT_ACCOUNT_MISMATCH");
+    });
+    return json({ connected: true });
+  } catch {
+    return json({ error: { code: "MEDIA_WORKER_CONNECT_REJECTED" } }, 409);
   } finally {
     await pool.end();
   }
@@ -264,6 +372,130 @@ async function enrollmentForBrowser(
   }
 }
 
+async function approveEnrollmentTransaction(
+  transaction: SqlExecutor,
+  scope: { accountId: string; workspaceId: string },
+  config: HostedRuntimeConfiguration,
+  enrollmentId: string,
+) {
+  const credential = await deriveScopedToken(config.mediaWorkerTokenSecret, "device", enrollmentId);
+  await transaction.query("SELECT set_config($1, $2, true)", [
+    "videoforge.account_id",
+    scope.accountId,
+  ]);
+  const found = await transaction.query<{
+    display_name: string;
+    platform: string;
+    architecture: string;
+    worker_version: string;
+    protocol_version: number;
+    execution_bundle_sha256: string;
+    installation_id: string;
+    state: string;
+    account_id: string | null;
+  }>(`SELECT * FROM media_worker_enrollments WHERE id = $1 FOR UPDATE`, [enrollmentId]);
+  const row = found.rows[0];
+  if (!row) return { code: "NOT_FOUND" as const };
+  if (row.account_id && row.account_id !== scope.accountId) return { code: "NOT_FOUND" as const };
+  if (row.state === "APPROVED" || row.state === "CONSUMED") {
+    const existing = await transaction.query<{ id: string }>(
+      `SELECT id FROM media_worker_devices WHERE enrollment_id = $1`,
+      [enrollmentId],
+    );
+    return { code: "OK" as const, deviceId: existing.rows[0]?.id };
+  }
+  const approved = await transaction.query(
+    `UPDATE media_worker_enrollments
+            SET state = 'APPROVED', account_id = $2, workspace_id = $3,
+                credential_token_sha256 = $4, approved_at = now()
+          WHERE id = $1 AND state = 'PENDING' AND expires_at > now()
+        RETURNING id`,
+    [enrollmentId, scope.accountId, scope.workspaceId, await sha256(credential)],
+  );
+  if (!approved.rows[0]) return { code: "EXPIRED" as const };
+  const priorDevice = await transaction.query<{
+    id: string;
+    status: string;
+    account_id: string;
+    workspace_id: string;
+  }>(
+    `SELECT id, status, account_id, workspace_id
+           FROM media_worker_devices WHERE installation_id = $1 FOR UPDATE`,
+    [row.installation_id],
+  );
+  const deviceId = priorDevice.rows[0]?.id ?? crypto.randomUUID();
+  if (
+    priorDevice.rows[0] &&
+    (priorDevice.rows[0].account_id !== scope.accountId ||
+      priorDevice.rows[0].workspace_id !== scope.workspaceId)
+  ) {
+    throw new Error("MEDIA_WORKER_INSTALLATION_OWNED_BY_ANOTHER_ACCOUNT");
+  }
+  if (priorDevice.rows[0] && priorDevice.rows[0].status !== "REVOKED") {
+    throw new Error("MEDIA_WORKER_INSTALLATION_ALREADY_ACTIVE");
+  }
+  if (priorDevice.rows[0]) {
+    await transaction.query(
+      `UPDATE media_worker_devices
+              SET enrollment_id = $2, display_name = $3, platform = $4, architecture = $5,
+                  worker_version = $6, protocol_version = $7, execution_bundle_sha256 = $8,
+                  credential_token_sha256 = $9,
+                  status = 'OFFLINE', revoked_at = NULL, removed_at = NULL,
+                  last_seen_at = NULL, updated_at = now()
+            WHERE id = $1`,
+      [
+        deviceId,
+        enrollmentId,
+        row.display_name,
+        row.platform,
+        row.architecture,
+        row.worker_version,
+        row.protocol_version,
+        row.execution_bundle_sha256,
+        await sha256(credential),
+      ],
+    );
+  } else {
+    await transaction.query(
+      `INSERT INTO media_worker_devices (
+             id, account_id, workspace_id, enrollment_id, display_name, platform, architecture,
+             worker_version, protocol_version, execution_bundle_sha256, installation_id,
+             credential_token_sha256, status
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'OFFLINE')`,
+      [
+        deviceId,
+        scope.accountId,
+        scope.workspaceId,
+        enrollmentId,
+        row.display_name,
+        row.platform,
+        row.architecture,
+        row.worker_version,
+        row.protocol_version,
+        row.execution_bundle_sha256,
+        row.installation_id,
+        await sha256(credential),
+      ],
+    );
+  }
+  await transaction.query(
+    `INSERT INTO media_worker_events (
+           id, account_id, workspace_id, device_id, lease_id, sequence, kind,
+           facts_sha256, occurred_at
+         ) SELECT $1,$2,$3,$4,NULL,COALESCE(max(sequence), 0) + 1,'ENROLLED',$5,now()
+             FROM media_worker_events
+            WHERE account_id = $2 AND workspace_id = $3 AND device_id = $4`,
+    [
+      crypto.randomUUID(),
+      scope.accountId,
+      scope.workspaceId,
+      deviceId,
+      await sha256(row.installation_id),
+    ],
+  );
+  return { code: "OK" as const, deviceId };
+}
+
 async function approveEnrollment(
   request: Request,
   config: HostedRuntimeConfiguration,
@@ -277,128 +509,8 @@ async function approveEnrollment(
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (!scope) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
-    const credential = await deriveScopedToken(
-      config.mediaWorkerTokenSecret,
-      "device",
-      enrollmentId,
-    );
     const result = await createNeonExecutor(pool).transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1, $2, true)", [
-        "videoforge.account_id",
-        scope.accountId,
-      ]);
-      const found = await transaction.query<{
-        display_name: string;
-        platform: string;
-        architecture: string;
-        worker_version: string;
-        protocol_version: number;
-        execution_bundle_sha256: string;
-        installation_id: string;
-        state: string;
-        account_id: string | null;
-      }>(`SELECT * FROM media_worker_enrollments WHERE id = $1 FOR UPDATE`, [enrollmentId]);
-      const row = found.rows[0];
-      if (!row) return { code: "NOT_FOUND" as const };
-      if (row.account_id && row.account_id !== scope.accountId)
-        return { code: "NOT_FOUND" as const };
-      if (row.state === "APPROVED" || row.state === "CONSUMED") {
-        const existing = await transaction.query<{ id: string }>(
-          `SELECT id FROM media_worker_devices WHERE enrollment_id = $1`,
-          [enrollmentId],
-        );
-        return { code: "OK" as const, deviceId: existing.rows[0]?.id };
-      }
-      const approved = await transaction.query(
-        `UPDATE media_worker_enrollments
-            SET state = 'APPROVED', account_id = $2, workspace_id = $3,
-                credential_token_sha256 = $4, approved_at = now()
-          WHERE id = $1 AND state = 'PENDING' AND expires_at > now()
-        RETURNING id`,
-        [enrollmentId, scope.accountId, scope.workspaceId, await sha256(credential)],
-      );
-      if (!approved.rows[0]) return { code: "EXPIRED" as const };
-      const priorDevice = await transaction.query<{
-        id: string;
-        status: string;
-        account_id: string;
-        workspace_id: string;
-      }>(
-        `SELECT id, status, account_id, workspace_id
-           FROM media_worker_devices WHERE installation_id = $1 FOR UPDATE`,
-        [row.installation_id],
-      );
-      const deviceId = priorDevice.rows[0]?.id ?? crypto.randomUUID();
-      if (
-        priorDevice.rows[0] &&
-        (priorDevice.rows[0].account_id !== scope.accountId ||
-          priorDevice.rows[0].workspace_id !== scope.workspaceId)
-      ) {
-        throw new Error("MEDIA_WORKER_INSTALLATION_OWNED_BY_ANOTHER_ACCOUNT");
-      }
-      if (priorDevice.rows[0] && priorDevice.rows[0].status !== "REVOKED") {
-        throw new Error("MEDIA_WORKER_INSTALLATION_ALREADY_ACTIVE");
-      }
-      if (priorDevice.rows[0]) {
-        await transaction.query(
-          `UPDATE media_worker_devices
-              SET enrollment_id = $2, display_name = $3, platform = $4, architecture = $5,
-                  worker_version = $6, protocol_version = $7, execution_bundle_sha256 = $8,
-                  credential_token_sha256 = $9,
-                  status = 'OFFLINE', revoked_at = NULL, removed_at = NULL,
-                  last_seen_at = NULL, updated_at = now()
-            WHERE id = $1`,
-          [
-            deviceId,
-            enrollmentId,
-            row.display_name,
-            row.platform,
-            row.architecture,
-            row.worker_version,
-            row.protocol_version,
-            row.execution_bundle_sha256,
-            await sha256(credential),
-          ],
-        );
-      } else {
-        await transaction.query(
-          `INSERT INTO media_worker_devices (
-             id, account_id, workspace_id, enrollment_id, display_name, platform, architecture,
-             worker_version, protocol_version, execution_bundle_sha256, installation_id,
-             credential_token_sha256, status
-           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'OFFLINE')`,
-          [
-            deviceId,
-            scope.accountId,
-            scope.workspaceId,
-            enrollmentId,
-            row.display_name,
-            row.platform,
-            row.architecture,
-            row.worker_version,
-            row.protocol_version,
-            row.execution_bundle_sha256,
-            row.installation_id,
-            await sha256(credential),
-          ],
-        );
-      }
-      await transaction.query(
-        `INSERT INTO media_worker_events (
-           id, account_id, workspace_id, device_id, lease_id, sequence, kind,
-           facts_sha256, occurred_at
-         ) SELECT $1,$2,$3,$4,NULL,COALESCE(max(sequence), 0) + 1,'ENROLLED',$5,now()
-             FROM media_worker_events
-            WHERE account_id = $2 AND workspace_id = $3 AND device_id = $4`,
-        [
-          crypto.randomUUID(),
-          scope.accountId,
-          scope.workspaceId,
-          deviceId,
-          await sha256(row.installation_id),
-        ],
-      );
-      return { code: "OK" as const, deviceId };
+      return approveEnrollmentTransaction(transaction, scope, config, enrollmentId);
     });
     if (result.code === "NOT_FOUND")
       return json({ error: { code: "MEDIA_WORKER_ENROLLMENT_NOT_FOUND" } }, 404);
@@ -2039,6 +2151,40 @@ export async function handlePersonalWorkerRequest(
 ): Promise<Response | null> {
   const config = resolvedConfiguration ?? hostedRuntimeConfiguration(environment);
   const url = new URL(request.url);
+  if (request.method === "POST" && url.pathname === "/api/v2/media-worker/connect-command")
+    return createConnectCommand(request, config, executionContext);
+  if (request.method === "POST" && url.pathname === "/api/v2/media-worker/connect-check")
+    return checkExistingConnection(request, config);
+  if (
+    request.method === "GET" &&
+    ["/api/v2/media-worker/connect.sh", "/api/v2/media-worker/connect.ps1"].includes(url.pathname)
+  ) {
+    const token = url.searchParams.get("token");
+    if (!token || !TOKEN.test(token))
+      return json({ error: { code: "MEDIA_WORKER_CONNECT_REJECTED" } }, 400);
+    const pool = createNeonPool(config.neon.databaseUrl);
+    try {
+      const result = await pool.query(
+        "SELECT public.videoforge_media_worker_connect_valid($1) AS valid",
+        [await sha256(token)],
+      );
+      if (result.rows[0]?.valid !== true)
+        return json({ error: { code: "MEDIA_WORKER_CONNECT_EXPIRED" } }, 410);
+    } finally {
+      await pool.end();
+    }
+    return new Response(
+      workerConnectScript(config, token, url.pathname.endsWith(".ps1") ? "WINDOWS" : "MACOS"),
+      {
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "no-referrer",
+        },
+      },
+    );
+  }
   if (request.method === "POST" && url.pathname === "/api/v2/media-worker-enrollments") {
     return createEnrollment(request, config);
   }

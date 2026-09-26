@@ -1,4 +1,21 @@
 schema_version: "2.0"
+
+easy_worker_connect_2026_09_26:
+  checkpoint: V2-09
+  status: PROVIDER_FREE_CANDIDATE_RELEASE_PENDING
+  authority: User explicitly approved sync, idle Mac installation, implementation and production publication; no new paid generation or compute.
+  synchronized_branch: origin/codex/worker-production-speed
+  synchronized_commit: 99030a391205e5f29c6e0af7db1f6bf988d7b4f3
+  preserved_work: Local progress redesign commits and uncommitted node-fair-admission fixture role seed remain in the Mac checkout; production release branches from the Windows handoff.
+  mac_0_1_43: Exact published DMG hash/size, codesign and installed Online/bundle verified with pairing preserved and zero active leases. Installed worker produced a verified provider-free 5-second 48kHz mono audio span.
+  scope: Account-issued 15-minute single-use terminal commands, exact checksum/size verified platform install, shared PKCE/device approval, OS credential store and login startup; manual approval/download/removal retained.
+  migration: 0212_media_worker_connect_commands.sql
+  candidate_worker_release: 0.1.44
+  validation: 124 focused worker/render/Fal tests pass, one native Windows skip; 11 connection/onboarding tests and 10 heartbeat/claim tests pass; focused SQL single-use/expiry/tenant/rollback check passes; TypeScript and Cloudflare build/firewall pass.
+  remaining_gates: Both platform release CI/publication, additive production migration, exact release deployment/activation and Chrome/native command acceptance.
+  provider_spend: Zero new provider generation, retries or compute; historical attempts untouched.
+  paid_compute_shutdown: No paid compute activated; global inventory not yet queried.
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-easy-worker-connect/
 worker_speed_2026_09_26:
   checkpoint: V2-09
   status: COMPLETE_RELEASED_PRODUCTION_INSTALLED_ONLINE

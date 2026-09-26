@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "status": "ONLINE",
+      "worker_version": "0.1.43",
+      "execution_bundle_sha256": "sha256:885f7f9af645084bcf786f1ad53cb49535599f354f065c8c737a989204a6b56c",
+      "last_seen_at": "2026-09-26T16:19:36.263Z",
+      "active_leases": 0
+    }
+  ],
+  "pairing_preserved": true,
+  "at": "2026-09-26T16:19:39.430Z"
+}

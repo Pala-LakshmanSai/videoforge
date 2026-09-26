@@ -463,3 +463,14 @@ project, and do not become zero when endpoint workers reach zero.
 - The Mage and SoulX model volumes are retained until a separately authorized exact destructive
   operation. Ordinary completion, cancellation, worker cleanup, account deletion, or project
   retention never deletes or mutates them.
+
+## Personal worker connect commands — 2026-09-26
+
+Settings issues same-origin, authenticated commands through `POST /api/v2/media-worker/connect-command`.
+Migration 0212 stores only a random 256-bit token hash and exact account/workspace, valid 15 minutes.
+The public `.sh`/`.ps1` routes emit installer scripts with no-store headers. Enrollment presents the
+one-time token in a header; command consumption and the existing device approval share one transaction.
+PKCE credential retrieval, account ownership, revoked-device recovery, lease checks and manual
+approval remain shared. Existing paired workers verify command ownership through `connect-check`
+without replacing their credential. Installer tokens are deleted from private temporary files.
+Scripts refuse to replace a running worker and never interrupt existing jobs.
