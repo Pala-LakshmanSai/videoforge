@@ -1,4 +1,28 @@
 schema_version: "2.0"
+china_found_planning_repair_2026_09_26:
+  checkpoint: V2-09
+  status: LOCAL_VERIFIED_PRODUCTION_DEPLOYMENT_IN_PROGRESS
+  project_id: a8132134-d81b-414f-b838-850adacc85a6
+  revision_id: 0a89de42-064a-4175-a7a2-d528cfb5f767
+  asr_attempt_id: 8f61ed46-41c4-4978-8a4d-2ba36386c367
+  cause: >-
+    Stage 3 succeeded, but every immediate/periodic stage 4 handoff failed with
+    TRANSCRIPT_INVALID: Adjacent phrase boundaries must occupy distinct output frames.
+    The accepted transcript has valid 10ms and 20ms phrases sharing a 30fps frame with
+    the following phrase. Phrases are metadata; scene selection uses bounded word ranges.
+  fix: >-
+    Remove the phrase-frame uniqueness check. Preserve ordered positive word/phrase timing,
+    complete word coverage, bounded scene durations, and positive contiguous output frames.
+    Existing immediate server handoffs and durable continuation remain unchanged.
+  validation: >-
+    Regression fails before the fix and passes after. Scheduler 13/13, hosted coordinator
+    and continuation 32/32, pipeline typecheck, touched ESLint and diff check pass.
+    Exact checksummed production ASR bytes plan locally in 499ms: 5121 words, 1703784ms,
+    51114 frames, 378 scenes, 328 image slots and 99 avatar spans, complete coverage.
+  authority: User authorized blocker fixes, production deployment and continuing this existing run.
+  remaining_gates: Production release, same-project continuation and final artifact/Chrome playback.
+  provider_spend: No new paid calls during diagnosis/local verification; existing project limits remain.
+  paid_compute_shutdown: No GPU activated; ordinary generation remains KIE_FAL.
 china_voiceover_asr_repair_2026_09_26:
   checkpoint: V2-09
   status: PRODUCTION_PUBLISHED_MAC_INSTALLED_VERIFIED

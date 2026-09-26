@@ -291,6 +291,21 @@ test("same revision and seed produce byte-equivalent validated plans", async () 
   assert.equal(first.value.revision_config_hash, request.revision.sha256);
 });
 
+test("sub-frame phrase starts preserve words and produce positive, contiguous scene frames", async () => {
+  const transcript = createPropertyTranscript({
+    durationMs: 40_000,
+    phraseStarts: [0, 4_000, 4_010, 8_000, 12_000, 16_000, 20_000, 24_000, 28_000, 32_000, 36_000],
+  });
+  assert.equal(Math.round(transcript.phrases[1].start_ms * 30 / 1_000),
+    Math.round(transcript.phrases[2].start_ms * 30 / 1_000));
+  const request = await propertyRequest(982_341, transcript);
+  const first = requireSuccess(await scheduleTimeline(request));
+  const second = requireSuccess(await scheduleTimeline(request));
+  assertExactTimelineCoverage(first.value, transcript);
+  assert.equal(first.sha256, second.sha256);
+  await validateAndHashContractDocument("timelinePlan", first.value);
+});
+
 test("a different explicit seed produces a different valid editorial plan", async () => {
   const first = requireSuccess(await scheduleTimeline(await requestFor(982_341)));
   const second = requireSuccess(await scheduleTimeline(await requestFor(123_456_789)));

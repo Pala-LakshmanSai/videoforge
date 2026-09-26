@@ -160,7 +160,6 @@ function validateSchedulerInput(
   const phraseIds = new Set<string>();
   let expectedWordStart = 0;
   let previousPhraseEnd = 0;
-  let previousBoundaryFrame = 0;
 
   for (const [index, phrase] of transcript.phrases.entries()) {
     if (phraseIds.has(phrase.phrase_id)) {
@@ -202,18 +201,8 @@ function validateSchedulerInput(
       );
     }
 
-    if (index > 0) {
-      const boundaryFrame = frameForMilliseconds(phrase.start_ms);
-      if (boundaryFrame <= previousBoundaryFrame) {
-        return fail(
-          "TRANSCRIPT_INVALID",
-          "Adjacent phrase boundaries must occupy distinct output frames.",
-          ["transcript", "phrases", index, "start_ms"],
-        );
-      }
-      previousBoundaryFrame = boundaryFrame;
-    }
-
+    // Valid ASR phrases can be shorter than one output frame. Scenes use bounded word ranges;
+    // validate their positive, contiguous frame coverage in validateTimelineSemantics instead.
     expectedWordStart = phrase.word_end_exclusive;
     previousPhraseEnd = phrase.end_ms;
   }
