@@ -15,7 +15,7 @@ from typing import Any, cast
 from videoforge_contracts import ContractValidationError, validate_contract
 
 from ..transcribe.ports import DiagnosticSink
-from .fal_wide import compose_fal_wide
+from .fal_wide import PreparedFalSource, compose_fal_wide, prepare_fal_source
 from .filtergraph import (
     AUDIO_NORMALIZATION_TRUE_PEAK_TARGET_DBTP,
     LEGACY_RENDER_PROFILE_VERSION,
@@ -65,6 +65,8 @@ FAL_WIDE_SAFE_REASONS = frozenset({
     "Fal crop source geometry is uncertain",
     "Fal crop maps outside the pinned source",
     "Fal square clip decode lost too many frames",
+    "Fal prepared source identity drifted",
+    "Fal prepared source checksum mismatched",
 })
 WINDOWS_COMMAND_LINE_LIMIT = 32_767
 MAX_SEGMENTS_PER_RENDER = 8
@@ -1066,8 +1068,12 @@ class RenderJob:
         with wide_directory as directory:
             render_paths = dict(asset_paths)
             wide_sources: dict[str, str] = {}
+            # One immutable source at a time bounds memory independently of the
+            # number of avatar clips; every clip retains its own mutable state.
+            prepared_source: PreparedFalSource | None = None
             try:
                 for ordinal, segment in enumerate(cast(list[dict[str, Any]], manifest["segments"]), 1):
+                    self._check_cancelled(token)
                     try:
                         if segment["timeline_composition"] == "IMAGE_FULL":
                             continue
@@ -1080,9 +1086,19 @@ class RenderJob:
                         if previous_source is not None and previous_source != source_id:
                             raise ValueError("One Fal clip has conflicting source images")
                         if previous_source is None:
+                            source_path = asset_paths[source_id]
+                            source_checksum = accepted["source_background"]["sha256"]
+                            if prepared_source is None or prepared_source.identity != (
+                                source_path.resolve(), source_checksum.removeprefix("sha256:")
+                            ):
+                                prepared_source = prepare_fal_source(
+                                    source_path, source_sha256=source_checksum
+                                )
                             wide_path = Path(directory) / f"{len(wide_sources)}.mp4"
-                            compose_fal_wide(asset_paths[avatar_id], asset_paths[source_id],
-                                             wide_path, tools.ffmpeg)
+                            compose_fal_wide(
+                                asset_paths[avatar_id], source_path, wide_path, tools.ffmpeg,
+                                prepared_source=prepared_source,
+                            )
                             render_paths[avatar_id] = wide_path
                             wide_sources[avatar_id] = source_id
                     except (KeyError, TypeError, ValueError, OSError, BrokenPipeError) as error:

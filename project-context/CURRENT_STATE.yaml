@@ -1,4 +1,20 @@
 schema_version: "2.0"
+worker_speed_2026_09_26:
+  checkpoint: V2-09
+  status: CANDIDATE_TESTED_RELEASE_PENDING
+  baseline_commit: f5e64f7c
+  baseline_release: 0.1.42
+  workspace_branch: codex/worker-production-speed
+  authority: User approved the staged improvement, testing, release and production update plan and parallel subagents on 2026-09-26; new paid generation/compute cap USD0.
+  scope: Current Kie/Fal flow; job-scoped Fal preparation reuse, bounded downloads, measured render improvements and focused recovery checks. Already released image caching, span batching and single final counted decode are baseline behavior.
+  candidate_release: 0.1.43
+  validation: Focused combined render/Fal/personal/background suite 104 passed with two POSIX-only Windows skips; touched Ruff and diff checks pass. Extended suite 119 passed, two skipped and one unchanged symlink-privilege fixture failed with Windows error 1314. Both installer jobs retain full media-local tests and now include Fal parity tests. Source identity guards include decoding exact hashed bytes and pre/post file metadata.
+  measurements: Synthetic Fal complete 75-frame clip 2.445s to 1.981s (18.96%); large-region raw frames 5.84% noisier; download fixture 1.463s to 0.749s (48.8%) with same bytes and GET count. All Fal/chunk comparison MP4 bytes match. Full production saving remains unmeasured.
+  rejected: Parallel chunks saved 28.9% wall time but increased CPU work 36.2% and doubled memory; two filter threads increased CPU work; prompt normal path already immediately advances accepted batches; no ASR settings changed.
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-worker-speed/; evidence/acceptance/VF-10-09/2026-09-26-fal-speed/.
+  provider_spend: Zero new paid provider calls or generation retries.
+  paid_compute_shutdown: No paid compute activated; global inventory not queried.
+  remaining_gates: Candidate benchmarks, relevant regression suites, Windows/macOS packaging, exact release activation, installed native smoke and production readback.
 windows_mexico_assembly_2026_09_26:
   checkpoint: V2-09
   status: COMPLETE_TECHNICAL_PLAYBACK_PASS_FIX_PRODUCTION_INSTALLED_ONLINE

@@ -2,10 +2,83 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 from videoforge_image_media.subprocess_options import background_creationflags
+
+
+@dataclass(frozen=True)
+class PreparedFalSource:
+    """Immutable pinned-image work reusable only within one render job.
+
+    Registration, optical-flow state and output buffers remain private to each clip.
+    """
+
+    source_path: Path
+    source_sha256: str
+    size_bytes: int
+    modified_ns: int
+    background: object
+    source_features: tuple
+    blend_mask: object
+
+    @property
+    def identity(self) -> tuple[Path, str]:
+        return self.source_path, self.source_sha256
+
+    def validate_source(self, source: Path) -> None:
+        stat = source.stat()
+        if (source.resolve() != self.source_path
+                or stat.st_size != self.size_bytes or stat.st_mtime_ns != self.modified_ns):
+            raise ValueError("Fal prepared source identity drifted")
+
+
+def prepare_fal_source(source: Path, *, source_sha256: str | None = None) -> PreparedFalSource:
+    """Prepare a verified source once; callers own and discard it with their job."""
+    import cv2
+    import numpy as np
+
+    source = source.resolve()
+    with source.open("rb") as stream:
+        before = os.fstat(stream.fileno())
+        encoded = stream.read()
+        read_stat = os.fstat(stream.fileno())
+    def source_facts(stat):
+        return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns
+
+    if source_facts(before) != source_facts(read_stat) or len(encoded) != before.st_size:
+        raise ValueError("Fal prepared source identity drifted")
+    if source_facts(before) != source_facts(source.stat()):
+        raise ValueError("Fal prepared source identity drifted")
+    digest = hashlib.sha256(encoded).hexdigest()
+    if source_sha256 is not None and digest != source_sha256.removeprefix("sha256:"):
+        raise ValueError("Fal prepared source checksum mismatched")
+    if not encoded:
+        raise ValueError("Fal source image is unreadable")
+    # Decode the exact checked bytes rather than reopening a path after hashing.
+    background = cv2.imdecode(np.frombuffer(encoded, dtype=np.uint8), cv2.IMREAD_COLOR)
+    del encoded
+    if background is None:
+        raise ValueError("Fal source image is unreadable")
+    background = cv2.resize(background, (1920, 1080), interpolation=cv2.INTER_AREA)
+    detector = cv2.ORB_create(nfeatures=5000)
+    points, descriptors = detector.detectAndCompute(
+        cv2.cvtColor(background, cv2.COLOR_BGR2GRAY), None
+    )
+    if descriptors is None:
+        raise ValueError("Fal crop has no source features")
+    after = source.stat()
+    if source_facts(before) != source_facts(after):
+        raise ValueError("Fal prepared source identity drifted")
+    mask = _blend_mask()
+    for array in (background, descriptors, mask):
+        array.setflags(write=False)
+    return PreparedFalSource(source, digest, after.st_size, after.st_mtime_ns,
+                             background, (tuple(points), descriptors), mask)
 
 
 def _perspective_maps(transform, size):
@@ -65,7 +138,7 @@ class _LowerCropAnchor:
         weight = np.clip((self.yy - 384) / 96, 0, 1)
         self.weight = weight * weight * (3 - 2 * weight)
 
-    def apply(self, frame):
+    def apply(self, frame, *, output=None):
         import cv2
         import numpy as np
 
@@ -82,7 +155,9 @@ class _LowerCropAnchor:
         flow = np.clip(np.nan_to_num(flow), -24, 24) * self.weight[:, :, None]
         lower = cv2.remap(frame, self.xx + flow[:, :, 0], self.yy + flow[:, :, 1],
                           cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-        result = frame.copy()
+        result = frame.copy() if output is None else output
+        if output is not None:
+            np.copyto(result, frame)
         result[384:] = lower
         return result
 
@@ -105,15 +180,17 @@ def _fit_similarity(src, dst):
     return transform
 
 
-def _register_crop(capture, background):
+def _register_crop(capture, background, *, source_features=None):
     """Try bounded alignment frames without weakening source or crop checks."""
     import cv2
     import numpy as np
 
     detector = cv2.ORB_create(nfeatures=5000)
-    background_points, background_descriptors = detector.detectAndCompute(
-        cv2.cvtColor(background, cv2.COLOR_BGR2GRAY), None
-    )
+    if source_features is None:
+        source_features = detector.detectAndCompute(
+            cv2.cvtColor(background, cv2.COLOR_BGR2GRAY), None
+        )
+    background_points, background_descriptors = source_features
     if background_descriptors is None:
         raise ValueError("Fal crop has no source features")
     first_failure = None
@@ -154,15 +231,47 @@ def _register_crop(capture, background):
     raise first_failure or ValueError("Fal square clip has no alignment frame or wrong frame rate")
 
 
-def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> None:
+class _WideFrameComposer:
+    """Own bounded scratch buffers and collar-flow state for exactly one clip."""
+
+    def __init__(self, background, registration, bounds, blend_mask):
+        import cv2
+        import numpy as np
+
+        self.x0, self.y0, self.x1, self.y1 = bounds
+        transform = np.array([[1, 0, -self.x0], [0, 1, -self.y0], [0, 0, 1]]) @ registration
+        region_width, region_height = self.x1 - self.x0, self.y1 - self.y0
+        self.maps = _perspective_maps(transform, (region_width, region_height))
+        reference = cv2.warpPerspective(background, np.linalg.inv(registration), (512, 512))
+        self.lower_anchor = _LowerCropAnchor(reference)
+        self.alpha = cv2.warpPerspective(blend_mask, transform,
+                                        (region_width, region_height))[:, :, None]
+        self.backdrop = background[self.y0:self.y1, self.x0:self.x1].astype(np.float32) * (1 - self.alpha)
+        self.wide = background.copy()
+        self.anchored = np.empty((512, 512, 3), dtype=np.uint8)
+        self.warped = np.empty((region_height, region_width, 3), dtype=np.uint8)
+        self.blended = np.empty((region_height, region_width, 3), dtype=np.float32)
+
+    def apply(self, frame):
+        import cv2
+        import numpy as np
+
+        frame = self.lower_anchor.apply(frame, output=self.anchored)
+        cv2.remap(frame, *self.maps, cv2.INTER_CUBIC, dst=self.warped)
+        np.multiply(self.warped, self.alpha, out=self.blended, dtype=np.float32)
+        np.add(self.blended, self.backdrop, out=self.blended)
+        np.copyto(self.wide[self.y0:self.y1, self.x0:self.x1], self.blended, casting="unsafe")
+        return self.wide
+
+
+def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path,
+                     *, prepared_source: PreparedFalSource | None = None) -> None:
     """Register the native crop using source features; fail if geometry is uncertain."""
     import cv2
-    import numpy as np
 
-    background = cv2.imread(str(source), cv2.IMREAD_COLOR)
-    if background is None:
-        raise ValueError("Fal source image is unreadable")
-    background = cv2.resize(background, (1920, 1080), interpolation=cv2.INTER_AREA)
+    prepared_source = prepared_source or prepare_fal_source(source)
+    prepared_source.validate_source(source)
+    background = prepared_source.background
     capture = cv2.VideoCapture(str(square))
     if not capture.isOpened():
         raise ValueError("Fal square clip is unreadable")
@@ -176,15 +285,10 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
         if (square_width, square_height) != (512, 512):
             raise ValueError("Fal square clip geometry drifted")
         native_frame_count = round(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-        registration, (x0, y0, x1, y1) = _register_crop(capture, background)
-        transform = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]]) @ registration
-        region_width, region_height = x1 - x0, y1 - y0
-        maps = _perspective_maps(transform, (region_width, region_height))
-        reference = cv2.warpPerspective(background, np.linalg.inv(registration), (512, 512))
-        lower_anchor = _LowerCropAnchor(reference)
-        alpha = cv2.warpPerspective(_blend_mask(), transform,
-                                    (region_width, region_height))[:, :, None]
-        backdrop = background[y0:y1, x0:x1].astype(np.float32) * (1 - alpha)
+        registration, bounds = _register_crop(
+            capture, background, source_features=prepared_source.source_features
+        )
+        composer = _WideFrameComposer(background, registration, bounds, prepared_source.blend_mask)
 
         command = [str(ffmpeg), "-v", "error", "-nostdin", "-n", "-f", "rawvideo",
                    "-pixel_format", "bgr24", "-video_size", "1920x1080", "-framerate", "25",
@@ -199,16 +303,13 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
         capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
         frame_count = 0
         last_wide = None
-        wide = background.copy()
         try:
             assert process.stdin is not None and process.stderr is not None
             while True:
                 ok, frame = capture.read()
                 if not ok:
                     break
-                frame = lower_anchor.apply(frame)
-                warped = cv2.remap(frame, *maps, cv2.INTER_CUBIC)
-                wide[y0:y1, x0:x1] = (warped.astype(np.float32) * alpha + backdrop).astype(np.uint8)
+                wide = composer.apply(frame)
                 process.stdin.write(memoryview(wide))
                 last_wide = wide
                 frame_count += 1

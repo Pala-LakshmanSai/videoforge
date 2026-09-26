@@ -1,18 +1,145 @@
 """The cached warp must preserve the accepted crop geometry and native detail."""
 
 import unittest
-from unittest.mock import Mock
+import hashlib
+import tempfile
+from pathlib import Path
+from unittest.mock import Mock, patch
 
 import cv2
 import numpy as np
 
 from videoforge_image_media.jobs.render.fal_wide import (
     _LowerCropAnchor, _blend_mask, _clipped_crop_bounds, _fit_similarity,
-    _perspective_maps, _register_crop,
+    _perspective_maps, _register_crop, _WideFrameComposer, prepare_fal_source,
 )
 
 
 class FalWideMappingTests(unittest.TestCase):
+    def test_prepared_source_decodes_the_exact_hashed_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source.png"
+            image = np.random.default_rng(7).integers(0, 256, (540, 960, 3), dtype=np.uint8)
+            cv2.imwrite(str(source), image)
+            encoded = source.read_bytes()
+            expected = cv2.resize(cv2.imread(str(source)), (1920, 1080),
+                                  interpolation=cv2.INTER_AREA)
+            original_decode = cv2.imdecode
+            original_hash = hashlib.sha256
+            hash_inputs = []
+            decode_inputs = []
+
+            def check_hash(value):
+                hash_inputs.append(value)
+                return original_hash(value)
+
+            def check_decode(value, flags):
+                decode_inputs.append(value.tobytes())
+                return original_decode(value, flags)
+
+            with patch("cv2.imread", side_effect=AssertionError("Source reopened")), \
+                    patch("hashlib.sha256", side_effect=check_hash), \
+                    patch("cv2.imdecode", side_effect=check_decode):
+                prepared = prepare_fal_source(source)
+            self.assertEqual(hash_inputs, [encoded])
+            self.assertEqual(decode_inputs, [encoded])
+            np.testing.assert_array_equal(prepared.background, expected)
+
+    def test_prepared_source_rejects_same_size_mutation_during_decode(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source.png"
+            image = np.random.default_rng(8).integers(0, 256, (540, 960, 3), dtype=np.uint8)
+            cv2.imwrite(str(source), image)
+            encoded = source.read_bytes()
+            original_decode = cv2.imdecode
+
+            def changed_source(value, flags):
+                source.write_bytes(b"x" * len(encoded))
+                return original_decode(value, flags)
+
+            with patch("cv2.imdecode", side_effect=changed_source), \
+                    self.assertRaisesRegex(ValueError, "identity drifted"):
+                prepare_fal_source(source)
+
+    def test_empty_source_retains_unreadable_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "empty.png"
+            source.write_bytes(b"")
+            with self.assertRaisesRegex(ValueError, "unreadable"):
+                prepare_fal_source(source)
+
+    def test_prepared_source_verifies_identity_and_rejects_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source.png"
+            other = Path(temporary) / "other.png"
+            image = np.random.default_rng(6).integers(0, 256, (540, 960, 3), dtype=np.uint8)
+            cv2.imwrite(str(source), image)
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            prepared = prepare_fal_source(source, source_sha256="sha256:" + digest)
+            self.assertEqual(prepared.identity, (source.resolve(), digest))
+            prepared.validate_source(source)
+            self.assertFalse(prepared.background.flags.writeable)
+            self.assertFalse(prepared.source_features[1].flags.writeable)
+            self.assertFalse(prepared.blend_mask.flags.writeable)
+            with self.assertRaisesRegex(ValueError, "checksum mismatched"):
+                prepare_fal_source(source, source_sha256="0" * 64)
+            other.write_bytes(source.read_bytes())
+            with self.assertRaisesRegex(ValueError, "identity drifted"):
+                prepared.validate_source(other)
+            source.write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "identity drifted"):
+                prepared.validate_source(source)
+
+    def test_source_feature_reuse_preserves_registration(self) -> None:
+        background = np.random.default_rng(19).integers(0, 256, (1080, 1920, 3), dtype=np.uint8)
+        detector = cv2.ORB_create(nfeatures=5000)
+        features = detector.detectAndCompute(cv2.cvtColor(background, cv2.COLOR_BGR2GRAY), None)
+        first = Mock()
+        second = Mock()
+        first.read.return_value = second.read.return_value = (True, background[200:712, 600:1112])
+        expected, expected_bounds = _register_crop(first, background)
+        actual, actual_bounds = _register_crop(second, background, source_features=features)
+        np.testing.assert_array_equal(actual, expected)
+        self.assertEqual(actual_bounds, expected_bounds)
+
+    def test_reused_buffers_match_original_pixels_and_reset_clip_state(self) -> None:
+        background = cv2.GaussianBlur(
+            np.random.default_rng(27).integers(0, 256, (1080, 1920, 3), dtype=np.uint8), (5, 5), 0
+        )
+        for registration in (np.array([[1, 0, 600], [0, 1, 200], [0, 0, 1]], dtype=float),
+                             np.array([[1.3, -.03, 450], [.03, 1.3, -30], [0, 0, 1]])):
+            corners = cv2.perspectiveTransform(
+                np.float32([[[0, 0], [512, 0], [512, 512], [0, 512]]]), registration.astype(float)
+            )[0]
+            x0, y0 = np.floor(corners.min(axis=0)).astype(int)
+            x1, y1 = np.ceil(corners.max(axis=0)).astype(int)
+            bounds = _clipped_crop_bounds(x0, y0, x1, y1)
+            x0, y0, x1, y1 = bounds
+            transform = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]]) @ registration
+            size = (x1 - x0, y1 - y0)
+            reference = cv2.warpPerspective(background, np.linalg.inv(registration), (512, 512))
+            anchor = _LowerCropAnchor(reference)
+            maps = _perspective_maps(transform, size)
+            alpha = cv2.warpPerspective(_blend_mask(), transform, size)[:, :, None]
+            backdrop = background[y0:y1, x0:x1].astype(np.float32) * (1 - alpha)
+            composer = _WideFrameComposer(background, registration, bounds, _blend_mask())
+            frames = [cv2.warpAffine(reference, np.float32([[1, 0, dx], [0, 1, dy]]),
+                                    (512, 512), borderMode=cv2.BORDER_REFLECT)
+                      for dx, dy in [(0, 0), (9, -4), (-7, 5)]]
+            expected_first = None
+            for frame in frames:
+                original = frame.copy()
+                warped = cv2.remap(anchor.apply(frame), *maps, cv2.INTER_CUBIC)
+                expected = background.copy()
+                expected[y0:y1, x0:x1] = (warped.astype(np.float32) * alpha + backdrop).astype(np.uint8)
+                actual = composer.apply(frame)
+                np.testing.assert_array_equal(actual, expected)
+                np.testing.assert_array_equal(frame, original)
+                if expected_first is None:
+                    expected_first = expected
+            fresh = _WideFrameComposer(background, registration, bounds, _blend_mask())
+            np.testing.assert_array_equal(fresh.apply(frames[0]), expected_first)
+
     def test_lower_join_tracks_collar_without_changing_face_or_input(self) -> None:
         reference = np.zeros((512, 512, 3), dtype=np.uint8)
         random = np.random.default_rng(42)

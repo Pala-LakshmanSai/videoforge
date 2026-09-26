@@ -1,0 +1,94 @@
+{
+  "baseline_source_sha256": "402ae65094c8acdfbe5db05f3aa930e0cd8d7854bd32d125fc5ce9884fe68aae",
+  "candidate_source_sha256": "84a0892fd6f6f9900ec3fe52bf2f171688dab5ae3d6406846860a21dc3bdaf2e",
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "opencv": "4.10.0",
+  "numpy": "2.5.3",
+  "opencv_threads": 8,
+  "ffmpeg_sha256": "1326dde4c84ff1f96fe6b8916c5bed29e163e9b5dccf995f6f3db069d143ec5e",
+  "source_preparation": {
+    "baseline_seconds": [
+      0.13325660000555217,
+      0.12602500000502914,
+      0.14976880000904202,
+      0.15586749999783933,
+      0.12955329997930676,
+      0.1212507999734953
+    ],
+    "candidate_seconds": [
+      0.12040899996645749,
+      0.13744079996831715,
+      0.1714729000814259,
+      0.13701389997731894,
+      0.13427350006531924,
+      0.13874900003429502
+    ],
+    "baseline_median_seconds": 0.13140494999242947,
+    "candidate_median_seconds": 0.13722734997281805,
+    "median_reduction_percent": -4.430883296804278
+  },
+  "frame_composition_100_frames": {
+    "baseline_seconds": [
+      2.5257169000105932,
+      2.4435327000683174,
+      2.1757172000361606,
+      2.3422343999845907
+    ],
+    "candidate_seconds": [
+      1.8777109000366181,
+      1.9632565000792965,
+      1.9635628999676555,
+      1.8882698999950662
+    ],
+    "baseline_median_seconds": 2.392883550026454,
+    "candidate_median_seconds": 1.9257632000371814,
+    "median_reduction_percent": 19.521232029202107
+  },
+  "frame_composition_100_frames_1024px_region": {
+    "baseline_seconds": [
+      4.723220699932426,
+      4.722236800007522,
+      4.924406199948862,
+      5.6787623999407515
+    ],
+    "candidate_seconds": [
+      4.9760917000239715,
+      4.640876000048593,
+      4.2507212000200525,
+      4.443642999976873
+    ],
+    "baseline_median_seconds": 4.823813449940644,
+    "candidate_median_seconds": 4.542259500012733,
+    "median_reduction_percent": 5.83675038120256
+  },
+  "complete_clip_75_frames_cached_source": {
+    "baseline_seconds": [
+      2.5566794999176636,
+      2.4450259000295773,
+      2.4072326000314206
+    ],
+    "candidate_seconds": [
+      2.068708699895069,
+      1.8956495000747964,
+      1.9813471999950707
+    ],
+    "baseline_median_seconds": 2.4450259000295773,
+    "candidate_median_seconds": 1.9813471999950707,
+    "median_reduction_percent": 18.96416312108995
+  },
+  "frame_pixels_exact": true,
+  "large_frame_pixels_exact": true,
+  "encoded_files_identical": true,
+  "decoded_videos_identical": true,
+  "all_outputs_video_sha256": "SHA256=9478aff9da06ededc40d736cf1fe4329a1abf70927bfe767568948cff1f3e13d",
+  "source_cache_expected_repeated_90_clips_prep_seconds": {
+    "baseline": 11.826445499318652,
+    "candidate": 0.13722734997281805
+  },
+  "limitations": [
+    "Synthetic source and 512px moving crop, not retained production avatars.",
+    "Frame-only and short complete-clip measurements are not full assembly timings.",
+    "No concurrent work, no altered OpenCV/FFmpeg thread or quality settings.",
+    "Electricity use is unmeasured; no additional generation or provider compute."
+  ]
+}

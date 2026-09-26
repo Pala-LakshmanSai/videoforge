@@ -1,0 +1,79 @@
+{
+  "schema_version": "videoforge-worker-transfer-speed-evidence/v1",
+  "baseline_source": "f5e64f7c (serial execution path)",
+  "worker_source": "C:\\Users\\palal\\.codex\\worktrees\\worker-speed\\videoforge\\workers\\media-local\\src\\videoforge_media_local\\personal_execution.py",
+  "scope": "synthetic input bodies; mocked HTTPS response opener; real file writes and SHA256",
+  "network_or_provider_calls": 0,
+  "fixture": {
+    "objects": 12,
+    "object_bytes": 262144,
+    "simulated_header_latency_seconds": 0.1,
+    "paired_repeats": 3
+  },
+  "samples": [
+    {
+      "mode": "serial",
+      "wall_seconds": 1.4775854999898002,
+      "process_cpu_seconds": 0.296875,
+      "requests": 12,
+      "received_bytes": 3145728,
+      "max_concurrent_streams": 1,
+      "all_bytes_verified": true
+    },
+    {
+      "mode": "bounded_parallel",
+      "wall_seconds": 0.7491513999411836,
+      "process_cpu_seconds": 0.296875,
+      "requests": 12,
+      "received_bytes": 3145728,
+      "max_concurrent_streams": 2,
+      "all_bytes_verified": true
+    },
+    {
+      "mode": "serial",
+      "wall_seconds": 1.4627527999691665,
+      "process_cpu_seconds": 0.265625,
+      "requests": 12,
+      "received_bytes": 3145728,
+      "max_concurrent_streams": 1,
+      "all_bytes_verified": true
+    },
+    {
+      "mode": "bounded_parallel",
+      "wall_seconds": 0.7342731000389904,
+      "process_cpu_seconds": 0.234375,
+      "requests": 12,
+      "received_bytes": 3145728,
+      "max_concurrent_streams": 2,
+      "all_bytes_verified": true
+    },
+    {
+      "mode": "serial",
+      "wall_seconds": 1.4433340000687167,
+      "process_cpu_seconds": 0.25,
+      "requests": 12,
+      "received_bytes": 3145728,
+      "max_concurrent_streams": 1,
+      "all_bytes_verified": true
+    },
+    {
+      "mode": "bounded_parallel",
+      "wall_seconds": 0.7564498001011088,
+      "process_cpu_seconds": 0.3125,
+      "requests": 12,
+      "received_bytes": 3145728,
+      "max_concurrent_streams": 2,
+      "all_bytes_verified": true
+    }
+  ],
+  "serial_median_seconds": 1.4627527999691665,
+  "parallel_median_seconds": 0.7491513999411836,
+  "fixture_download_time_reduction_percent": 48.78482543619298,
+  "limitations": [
+    "Not actual HTTPS, actual production assets, or an end-to-end production benchmark.",
+    "Does not measure energy, real bandwidth, server limits, or installed-platform parity.",
+    "Same successful GET count/bytes; existing two-attempt per-object retry bound retained.",
+    "Ambiguous PUT recovery omitted: this worker has no safe reconciliation read endpoint.",
+    "INFO phase timings need configured local logging to be retained."
+  ]
+}

@@ -1,12 +1,22 @@
 # VideoForge: start here
 
+## Personal worker speed release — 2026-09-26
+
+The approved speed work is based on current worker 0.1.42 and the current Kie/Fal flow.
+Candidate 0.1.43 reuses exact verified Fal source preparation and frame buffers, uses two
+bounded render-input download streams and hashes the final output once through its upload
+descriptor. Final decode, frame count, audio, checksums and cancellation gates remain.
+Synthetic Fal and download improvements are measured; overall production saving is unmeasured.
+Parallel chunk rendering and higher filter threads were rejected due to higher CPU work.
+See `worker_speed_2026_09_26` in `CURRENT_STATE.yaml` for implementation and release gates.
+
 ## Current Mexico assembly investigation â€” 2026-09-26
 
 The Mexico video completed assembly in 106m42s and passed technical checks and Chrome
 playback. Worker 0.1.42 removes duplicate full-video decode passes while retaining final
 output gates; both platform releases pass CI and are published. Its exact manifest is
 active on production `c046c15f`; MI_Notebook is installed on 0.1.42 and Online. Full-length
-savings remain unmeasured; human approval remains open. See
+savings remain unmeasured; fresh Chrome readback confirms human approval complete. See
 `windows_mexico_assembly_2026_09_26` in `CURRENT_STATE.yaml`. Earlier release entries below
 are dated historical evidence and are superseded by this current release.
 

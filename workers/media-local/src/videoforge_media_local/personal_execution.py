@@ -4,9 +4,11 @@ import errno
 import hashlib
 import http.client
 import json
+import logging
 import os
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -15,10 +17,12 @@ import time
 import urllib.parse
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, BinaryIO, Callable
+from typing import Any, BinaryIO, Callable, Iterator
 
 from videoforge_image_media.local_cli import cancellation_marker
 from videoforge_image_media.subprocess_options import background_creationflags
@@ -80,6 +84,8 @@ _MEDIA_EXECUTION_LEASE_STALE = "MEDIA_EXECUTION_LEASE_STALE"
 _OWNER_CANCEL_REQUESTED = "OWNER_CANCEL_REQUESTED"
 _LEASE_STALE_FENCE = "LEASE_STALE_FENCE"
 _PERSONAL_DOWNLOAD_ATTEMPTS = 2
+_PERSONAL_RENDER_DOWNLOAD_WORKERS = 2
+_LOGGER = logging.getLogger(__name__)
 _TRANSIENT_DOWNLOAD_HTTP_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
 _TRANSIENT_DOWNLOAD_ERRNOS = frozenset(
     value
@@ -131,12 +137,16 @@ def _canonical(value: object) -> bytes:
 
 
 def _sha256_file(path: Path) -> tuple[str, int]:
+    with path.open("rb") as source:
+        return _sha256_source(source)
+
+
+def _sha256_source(source: BinaryIO) -> tuple[str, int]:
     digest = hashlib.sha256()
     size = 0
-    with path.open("rb") as source:
-        while chunk := source.read(1024 * 1024):
-            size += len(chunk)
-            digest.update(chunk)
+    while chunk := source.read(1024 * 1024):
+        size += len(chunk)
+        digest.update(chunk)
     return f"sha256:{digest.hexdigest()}", size
 
 
@@ -392,6 +402,58 @@ def _download_span_source(
 ) -> None:
     with _span_source_cache_lock:
         _download_span_source_locked(item, destination, should_cancel)
+
+
+def _download_render_inputs(
+    objects: tuple[dict[str, Any], ...], scratch: Path, should_cancel: Callable[[], bool]
+) -> None:
+    """Download existing authorities with two bounded streams and no queued requests."""
+    destinations = [(item, _local_path(scratch, item["uri"])) for item in objects]
+    paths = [os.path.normcase(str(path)) for _, path in destinations]
+    if len(set(paths)) != len(paths):
+        raise ValueError("Personal worker input destinations are not unique")
+    if not destinations:
+        return
+    remaining = iter(destinations)
+    lock = threading.Lock()
+    stop = threading.Event()
+    failure: Exception | None = None
+
+    def cancelled() -> bool:
+        return stop.is_set() or should_cancel()
+
+    def run() -> None:
+        nonlocal failure
+        try:
+            while not cancelled():
+                with lock:
+                    if stop.is_set():
+                        return
+                    entry = next(remaining, None)
+                if entry is None:
+                    return
+                item, destination = entry
+                _download(item, destination, cancelled)
+        except Exception as error:
+            with lock:
+                # Keep the originating failure rather than a sibling's cooperative stop.
+                if failure is None or (
+                    isinstance(failure, _PersonalJobCancelled)
+                    and not isinstance(error, _PersonalJobCancelled)
+                ):
+                    failure = error
+                stop.set()
+
+    count = min(_PERSONAL_RENDER_DOWNLOAD_WORKERS, len(destinations))
+    # Join every stream before the caller can remove the attempt's private scratch tree.
+    with ThreadPoolExecutor(max_workers=count, thread_name_prefix="videoforge-input") as pool:
+        futures = [pool.submit(run) for _ in range(count)]
+        for future in futures:
+            future.result()
+    if failure is not None:
+        raise failure
+    if should_cancel():
+        raise _PersonalJobCancelled
 
 
 def _download_span_source_locked(
@@ -706,7 +768,7 @@ class _SleepAssertion:
                 raise OSError("Windows could not release its media execution sleep assertion")
 
 
-def _primary_path(scratch: Path, result: object) -> Path:
+def _render_primary_path(scratch: Path, result: object) -> Path:
     if not isinstance(result, dict) or not isinstance(result.get("output"), dict):
         raise ValueError("Personal worker result is malformed")
     output = result["output"]
@@ -715,13 +777,18 @@ def _primary_path(scratch: Path, result: object) -> Path:
     path = _local_path(scratch, output["artifact_uri"])
     if path.is_symlink() or not path.is_file():
         raise ValueError("Personal worker primary output is not a regular file")
+    return path
+
+
+def _primary_path(scratch: Path, result: object) -> Path:
+    path = _render_primary_path(scratch, result)
     checksum, size = _sha256_file(path)
-    if output.get("bytes") != size or output.get("sha256") != checksum:
+    if result["output"].get("bytes") != size or result["output"].get("sha256") != checksum:
         raise ValueError("Personal worker primary output facts do not match bytes")
     return path
 
 
-def _span_audio_primary_path(scratch: Path, result: object) -> Path:
+def _span_audio_output_path(scratch: Path, result: object) -> Path:
     if not isinstance(result, dict) or not isinstance(result.get("audio"), dict):
         raise ValueError("Personal worker span-audio result is malformed")
     audio = result["audio"]
@@ -735,8 +802,13 @@ def _span_audio_primary_path(scratch: Path, result: object) -> Path:
     path = _local_path(scratch, audio["artifact_uri"])
     if path.is_symlink() or not path.is_file():
         raise ValueError("Personal worker span-audio output is not a regular file")
+    return path
+
+
+def _span_audio_primary_path(scratch: Path, result: object) -> Path:
+    path = _span_audio_output_path(scratch, result)
     checksum, size = _sha256_file(path)
-    if audio.get("byte_size") != size or audio.get("sha256") != checksum:
+    if result["audio"].get("byte_size") != size or result["audio"].get("sha256") != checksum:
         raise ValueError("Personal worker span-audio output facts do not match bytes")
     return path
 
@@ -753,6 +825,43 @@ def _asr_primary_path(scratch: Path, input_document: dict[str, Any]) -> Path:
     if path.is_symlink() or not path.is_file():
         raise ValueError("Personal worker ASR result output is not a regular file")
     return path
+
+
+@contextmanager
+def _verified_primary_source(
+    job: PersonalJob, scratch: Path, result: dict[str, Any]
+) -> Iterator[tuple[BinaryIO, str, int]]:
+    """Validate once and upload through the same descriptor after the child has exited."""
+    if job.kind == "ASR":
+        path = _asr_primary_path(scratch, job.input_document)
+        declared = None
+    elif job.kind == "SPAN_AUDIO":
+        path = _span_audio_output_path(scratch, result)
+        declared = (result["audio"].get("sha256"), result["audio"].get("byte_size"))
+    else:
+        path = _render_primary_path(scratch, result)
+        declared = (result["output"].get("sha256"), result["output"].get("bytes"))
+    with path.open("rb") as source:
+        initial_stat = os.fstat(source.fileno())
+        if not stat.S_ISREG(initial_stat.st_mode):
+            raise ValueError("Personal worker primary output is not a regular file")
+        checksum, size = _sha256_source(source)
+        if declared is not None and declared != (checksum, size):
+            raise ValueError("Personal worker primary output facts do not match bytes")
+        validated_stat = os.fstat(source.fileno())
+        if validated_stat.st_size != size or (
+            validated_stat.st_size,
+            validated_stat.st_mtime_ns,
+        ) != (initial_stat.st_size, initial_stat.st_mtime_ns):
+            raise ValueError("Personal worker primary output changed during validation")
+        source.seek(0)
+        yield source, checksum, size
+        uploaded_stat = os.fstat(source.fileno())
+        if (uploaded_stat.st_size, uploaded_stat.st_mtime_ns) != (
+            validated_stat.st_size,
+            validated_stat.st_mtime_ns,
+        ):
+            raise ValueError("Personal worker primary output changed during upload")
 
 
 def _child_result_failure_code(kind: str) -> str:
@@ -886,14 +995,23 @@ def execute_personal_job(
     monitor.start()
     try:
         _preflight_disk_space(job.objects, scratch)
-        for item in job.objects:
-            download = (
-                _download_span_source
-                if job.kind == "SPAN_AUDIO"
-                and item["uri"] == job.input_document["source_voiceover"]["artifact_uri"]
-                else _download
-            )
-            download(item, _local_path(scratch, item["uri"]), monitor.is_cancelled)
+        download_started = time.monotonic()
+        if job.kind == "RENDER":
+            _download_render_inputs(job.objects, scratch, monitor.is_cancelled)
+        else:
+            for item in job.objects:
+                download = (
+                    _download_span_source
+                    if job.kind == "SPAN_AUDIO"
+                    and item["uri"] == job.input_document["source_voiceover"]["artifact_uri"]
+                    else _download
+                )
+                download(item, _local_path(scratch, item["uri"]), monitor.is_cancelled)
+        _LOGGER.info(
+            "personal_media_phase phase=download objects=%d elapsed_seconds=%.3f",
+            len(job.objects),
+            time.monotonic() - download_started,
+        )
         input_path = scratch / "job-input.json"
         input_path.write_bytes(_canonical(job.input_document))
         if monitor.is_cancelled():
@@ -984,35 +1102,29 @@ def execute_personal_job(
                 status = "FAILED"
                 failure_code = _child_result_failure_code(job.kind)
             else:
-                primary = (
-                    _asr_primary_path(scratch, job.input_document)
-                    if job.kind == "ASR"
-                    else (
-                        _span_audio_primary_path(scratch, result)
-                        if job.kind == "SPAN_AUDIO"
-                        else _primary_path(scratch, result)
-                    )
-                )
-                for output in job.outputs:
-                    if monitor.is_cancelled():
-                        raise _PersonalJobCancelled
-                    checksum, size = _sha256_file(primary)
-                    if size > output["max_bytes"]:
-                        raise ValueError("Personal worker primary output exceeded its bound")
-                    port = _upload_port(
-                        output["sign_url"],
-                        device_token,
-                        lease_token,
-                        output["source"],
-                        output["object_key"],
-                        output["content_type"],
-                        checksum,
-                        size,
-                    )
-                    with primary.open("rb") as source:
+                upload_started = time.monotonic()
+                with _verified_primary_source(job, scratch, result) as (source, checksum, size):
+                    for output in job.outputs:
+                        if monitor.is_cancelled():
+                            raise _PersonalJobCancelled
+                        if size > output["max_bytes"]:
+                            raise ValueError("Personal worker primary output exceeded its bound")
+                        port = _upload_port(
+                            output["sign_url"],
+                            device_token,
+                            lease_token,
+                            output["source"],
+                            output["object_key"],
+                            output["content_type"],
+                            checksum,
+                            size,
+                        )
+                        if monitor.is_cancelled():
+                            raise _PersonalJobCancelled
+                        source.seek(0)
                         _stream_put(port, source, size)
-                    if monitor.is_cancelled():
-                        raise _PersonalJobCancelled
+                        if monitor.is_cancelled():
+                            raise _PersonalJobCancelled
                 result_bytes = _canonical(result)
                 if len(result_bytes) > int(job.result["max_bytes"]):
                     raise ValueError("Personal worker result document exceeded its bound")
@@ -1029,12 +1141,19 @@ def execute_personal_job(
                     result_checksum,
                     len(result_bytes),
                 )
+                if monitor.is_cancelled():
+                    raise _PersonalJobCancelled
                 with tempfile.SpooledTemporaryFile(max_size=1024 * 1024) as source:
                     source.write(result_bytes)
                     source.seek(0)
                     _stream_put(port, source, len(result_bytes))
                 if monitor.is_cancelled():
                     raise _PersonalJobCancelled
+                _LOGGER.info(
+                    "personal_media_phase phase=upload objects=%d elapsed_seconds=%.3f",
+                    len(job.outputs) + 1,
+                    time.monotonic() - upload_started,
+                )
                 status = "SUCCEEDED"
                 failure_code = None
                 result_facts = {

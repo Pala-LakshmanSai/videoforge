@@ -102,6 +102,368 @@ def job() -> dict[str, object]:
 
 
 class PersonalWorkerContractTests(unittest.TestCase):
+    def test_render_download_pool_verifies_every_object_with_two_streams(self) -> None:
+        payloads = {
+            f"https://objects.example.test/{index}": f"input-{index}".encode() for index in range(6)
+        }
+        objects = []
+        for url, payload in payloads.items():
+            digest = personal_execution.hashlib.sha256(payload).hexdigest()
+            objects.append(
+                {
+                    "uri": f"vf-local://objects/sha256/{digest[:2]}/{digest}.png",
+                    "url": url,
+                    "bytes": len(payload),
+                    "sha256": f"sha256:{digest}",
+                }
+            )
+        barrier = threading.Barrier(2, timeout=5)
+        lock = threading.Lock()
+        active = peak = opened = 0
+
+        class Response(io.BytesIO):
+            def __exit__(self, *args):
+                nonlocal active
+                with lock:
+                    active -= 1
+                return super().__exit__(*args)
+
+        def urlopen(url, **_kwargs):
+            nonlocal active, peak, opened
+            with lock:
+                active += 1
+                peak = max(peak, active)
+                opened += 1
+                first_pair = opened <= 2
+            if first_pair:
+                barrier.wait()
+            return Response(payloads[url])
+
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(
+                personal_execution.urllib.request, "urlopen", side_effect=urlopen
+            ) as requests,
+        ):
+            scratch = Path(directory)
+            personal_execution._download_render_inputs(tuple(objects), scratch, lambda: False)
+            for item in objects:
+                self.assertEqual(
+                    _local_path(scratch, item["uri"]).read_bytes(), payloads[item["url"]]
+                )
+        self.assertEqual(peak, 2)
+        self.assertEqual(active, 0)
+        self.assertEqual(requests.call_count, len(objects))
+        self.assertCountEqual([call.args[0] for call in requests.call_args_list], list(payloads))
+
+    def test_render_download_failure_stops_queue_and_drains_sibling(self) -> None:
+        for original in (ValueError("checksum mismatch"), OSError(errno.ENOSPC, "disk full")):
+            with self.subTest(error=type(original).__name__), tempfile.TemporaryDirectory() as root:
+                objects = tuple(
+                    {
+                        **job()["objects"][0],
+                        "uri": f"vf-local-run://revision/attempt/input-{index}.png",
+                        "index": index,
+                    }
+                    for index in range(8)
+                )
+                sibling_started = threading.Event()
+                sibling_stopped = threading.Event()
+                started = []
+                lock = threading.Lock()
+
+                def download(item, _destination, cancelled):
+                    with lock:
+                        started.append(item["index"])
+                    if item["index"] == 0:
+                        self.assertTrue(sibling_started.wait(5))
+                        raise original
+                    sibling_started.set()
+                    for _ in range(1000):
+                        if cancelled():
+                            sibling_stopped.set()
+                            raise personal_execution._PersonalJobCancelled
+                        sibling_stopped.wait(0.005)
+                    raise AssertionError("sibling did not receive the failure fence")
+
+                with patch.object(personal_execution, "_download", side_effect=download):
+                    with self.assertRaises(type(original)) as raised:
+                        personal_execution._download_render_inputs(
+                            objects, Path(root), lambda: False
+                        )
+                self.assertIs(raised.exception, original)
+                self.assertTrue(sibling_stopped.is_set())
+                self.assertCountEqual(started, [0, 1])
+
+    def test_render_download_pool_owner_cancel_never_starts_queued_objects(self) -> None:
+        objects = tuple(
+            {**job()["objects"][0], "uri": f"vf-local-run://revision/attempt/input-{index}.png"}
+            for index in range(8)
+        )
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch.object(personal_execution, "_download") as run,
+        ):
+            with self.assertRaises(personal_execution._PersonalJobCancelled):
+                personal_execution._download_render_inputs(objects, Path(root), lambda: True)
+            run.assert_not_called()
+        cancelled = threading.Event()
+        barrier = threading.Barrier(2, timeout=5)
+
+        def download(_item, _path, should_cancel):
+            barrier.wait()
+            cancelled.set()
+            self.assertTrue(should_cancel())
+            raise personal_execution._PersonalJobCancelled
+
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch.object(personal_execution, "_download", side_effect=download) as run,
+        ):
+            with self.assertRaises(personal_execution._PersonalJobCancelled):
+                personal_execution._download_render_inputs(objects, Path(root), cancelled.is_set)
+            self.assertEqual(run.call_count, 2)
+
+    def test_render_download_pool_rejects_duplicate_destinations_before_request(self) -> None:
+        item = job()["objects"][0]
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch.object(personal_execution, "_download") as run,
+        ):
+            with self.assertRaisesRegex(ValueError, "not unique"):
+                personal_execution._download_render_inputs((item, item), Path(root), lambda: False)
+            run.assert_not_called()
+
+    def test_verified_primary_upload_hashes_once_and_keeps_the_verified_descriptor(self) -> None:
+        payload = b"verified primary"
+        checksum = "sha256:" + personal_execution.hashlib.sha256(payload).hexdigest()
+        parsed = parse_personal_job(job())
+        uri = "vf-local-run://revision/attempt/output.mp4"
+        result = {"output": {"artifact_uri": uri, "sha256": checksum, "bytes": len(payload)}}
+        with tempfile.TemporaryDirectory() as root:
+            scratch = Path(root)
+            path = _local_path(scratch, uri)
+            path.parent.mkdir(parents=True)
+            path.write_bytes(payload)
+            with patch.object(
+                personal_execution, "_sha256_source", wraps=personal_execution._sha256_source
+            ) as hash_source:
+                with personal_execution._verified_primary_source(parsed, scratch, result) as facts:
+                    source, digest, size = facts
+                    self.assertEqual((digest, size), (checksum, len(payload)))
+                    replacement = path.with_name("replacement.mp4")
+                    replacement.write_bytes(b"unverified replacement")
+                    try:
+                        replacement.replace(path)
+                    except PermissionError:
+                        # Windows may disallow replacing an open file. Both outcomes keep
+                        # this upload bound to the descriptor whose bytes were validated.
+                        pass
+                    self.assertEqual(source.read(), payload)
+                self.assertTrue(source.closed)
+                hash_source.assert_called_once()
+
+    def test_verified_primary_upload_rejects_mismatched_render_and_span_facts(self) -> None:
+        for kind in ("RENDER", "SPAN_AUDIO"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as root:
+                value = job()
+                value["kind"] = kind
+                if kind == "SPAN_AUDIO":
+                    value["input_document"] = {
+                        "schema_version": "selected-span-audio-job/v1",
+                        "output_profile": "SOULX_PCM16_48K_MONO",
+                    }
+                parsed = parse_personal_job(value)
+                scratch = Path(root)
+                uri = "vf-local-run://revision/attempt/output.wav"
+                path = _local_path(scratch, uri)
+                path.parent.mkdir(parents=True)
+                path.write_bytes(b"corrupted")
+                result = (
+                    {"output": {"artifact_uri": uri, "sha256": "sha256:" + "a" * 64, "bytes": 9}}
+                    if kind == "RENDER"
+                    else {
+                        "audio": {
+                            "artifact_uri": uri,
+                            "sha256": "sha256:" + "a" * 64,
+                            "byte_size": 9,
+                            "content_type": "audio/wav",
+                            "sample_rate_hz": 48000,
+                            "channels": 1,
+                        }
+                    }
+                )
+                with self.assertRaisesRegex(ValueError, "facts do not match bytes"):
+                    with personal_execution._verified_primary_source(parsed, scratch, result):
+                        self.fail("corrupted output must never reach upload")
+
+    def test_verified_primary_upload_rejects_in_place_changes(self) -> None:
+        payload = b"verified primary"
+        checksum = "sha256:" + personal_execution.hashlib.sha256(payload).hexdigest()
+        uri = "vf-local-run://revision/attempt/output.mp4"
+        result = {"output": {"artifact_uri": uri, "sha256": checksum, "bytes": len(payload)}}
+        with tempfile.TemporaryDirectory() as root:
+            scratch = Path(root)
+            path = _local_path(scratch, uri)
+            path.parent.mkdir(parents=True)
+            path.write_bytes(payload)
+            with self.assertRaisesRegex(ValueError, "changed during upload"):
+                with personal_execution._verified_primary_source(
+                    parse_personal_job(job()), scratch, result
+                ):
+                    path.write_bytes(b"different size and content")
+
+    def test_verified_primary_upload_rejects_same_size_change_during_hash(self) -> None:
+        payload = b"verified primary"
+        checksum = "sha256:" + personal_execution.hashlib.sha256(payload).hexdigest()
+        uri = "vf-local-run://revision/attempt/output.mp4"
+        result = {"output": {"artifact_uri": uri, "sha256": checksum, "bytes": len(payload)}}
+        with tempfile.TemporaryDirectory() as root:
+            scratch = Path(root)
+            path = _local_path(scratch, uri)
+            path.parent.mkdir(parents=True)
+            path.write_bytes(payload)
+            before = path.stat()
+            hash_source = personal_execution._sha256_source
+
+            def hash_then_change(source):
+                facts = hash_source(source)
+                path.write_bytes(b"unverified bytes")
+                os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000))
+                return facts
+
+            with patch.object(personal_execution, "_sha256_source", side_effect=hash_then_change):
+                with self.assertRaisesRegex(ValueError, "changed during validation"):
+                    with personal_execution._verified_primary_source(
+                        parse_personal_job(job()), scratch, result
+                    ):
+                        self.fail("changed output must never reach upload")
+
+    def test_successful_render_transfer_retries_lost_ack_without_reupload_or_render(self) -> None:
+        value = job()
+        value["objects"] = []
+        value["expires_at"] = "2099-01-01T00:00:00.000Z"
+        parsed = parse_personal_job(value)
+        payload = b"verified primary"
+        result = {
+            "schema_version": "render-job-result/v1",
+            "attempt_id": parsed.attempt_id,
+            "status": "SUCCEEDED",
+            "output": {
+                "artifact_uri": "vf-local-run://revision/attempt/output.mp4",
+                "sha256": "sha256:" + personal_execution.hashlib.sha256(payload).hexdigest(),
+                "bytes": len(payload),
+            },
+        }
+        monitor = MagicMock()
+        monitor.is_cancelled.return_value = False
+        uploaded = []
+
+        def run(command, *_args, **_kwargs):
+            scratch = Path(command[command.index("--artifact-root") + 1])
+            path = _local_path(scratch, result["output"]["artifact_uri"])
+            path.parent.mkdir(parents=True)
+            path.write_bytes(payload)
+            return 0, json.dumps(result).encode()
+
+        def put(_port, source, size):
+            body = source.read()
+            self.assertEqual(size, len(body))
+            uploaded.append(body)
+
+        with (
+            patch.object(personal_execution, "_CancellationMonitor", return_value=monitor),
+            patch.object(personal_execution, "_SleepAssertion"),
+            patch.object(personal_execution, "_preflight_disk_space"),
+            patch.object(personal_execution, "_run_media_subprocess", side_effect=run) as render,
+            patch.object(personal_execution, "_upload_port", return_value={}) as sign,
+            patch.object(personal_execution, "_stream_put", side_effect=put) as transfer,
+            patch.object(
+                personal_execution,
+                "_request_json",
+                side_effect=[
+                    TimeoutError("ack response lost"),
+                    (
+                        200,
+                        {
+                            "schema_version": "videoforge-personal-worker-completion-accepted/v1",
+                            "state": "SUCCEEDED",
+                        },
+                    ),
+                ],
+            ) as complete,
+            self.assertLogs(personal_execution._LOGGER, level="INFO") as diagnostics,
+        ):
+            self.assertEqual(
+                execute_personal_job(parsed, "device-secret", "lease-secret", Mock()), "SUCCEEDED"
+            )
+        render.assert_called_once()
+        self.assertEqual(sign.call_count, 2)
+        self.assertEqual(transfer.call_count, 2)
+        self.assertEqual(complete.call_count, 2)
+        self.assertEqual(uploaded, [payload, personal_execution._canonical(result)])
+        self.assertEqual(complete.call_args_list[0].args[3], complete.call_args_list[1].args[3])
+        for line in diagnostics.output:
+            self.assertNotIn("secret", line)
+            self.assertNotIn("https:", line)
+            self.assertNotIn(parsed.attempt_id, line)
+
+    def test_cancellation_while_signing_output_prevents_put_and_clears_result_facts(self) -> None:
+        value = job()
+        value["objects"] = []
+        value["expires_at"] = "2099-01-01T00:00:00.000Z"
+        parsed = parse_personal_job(value)
+        payload = b"verified primary"
+        result = {
+            "schema_version": "render-job-result/v1",
+            "attempt_id": parsed.attempt_id,
+            "status": "SUCCEEDED",
+            "output": {
+                "artifact_uri": "vf-local-run://revision/attempt/output.mp4",
+                "sha256": "sha256:" + personal_execution.hashlib.sha256(payload).hexdigest(),
+                "bytes": len(payload),
+            },
+        }
+        monitor = MagicMock()
+        monitor.is_cancelled.return_value = False
+
+        def run(command, *_args, **_kwargs):
+            scratch = Path(command[command.index("--artifact-root") + 1])
+            path = _local_path(scratch, result["output"]["artifact_uri"])
+            path.parent.mkdir(parents=True)
+            path.write_bytes(payload)
+            return 0, json.dumps(result).encode()
+
+        def sign(*_args):
+            monitor.is_cancelled.return_value = True
+            return {}
+
+        with (
+            patch.object(personal_execution, "_CancellationMonitor", return_value=monitor),
+            patch.object(personal_execution, "_SleepAssertion"),
+            patch.object(personal_execution, "_preflight_disk_space"),
+            patch.object(personal_execution, "_run_media_subprocess", side_effect=run),
+            patch.object(personal_execution, "_upload_port", side_effect=sign),
+            patch.object(personal_execution, "_stream_put") as put,
+            patch.object(
+                personal_execution,
+                "_request_json",
+                return_value=(
+                    200,
+                    {
+                        "schema_version": "videoforge-personal-worker-completion-accepted/v1",
+                        "state": "CANCELLED",
+                    },
+                ),
+            ) as complete,
+        ):
+            self.assertEqual(execute_personal_job(parsed, "device", "lease", Mock()), "CANCELLED")
+        put.assert_not_called()
+        completion = complete.call_args.args[3]
+        self.assertEqual(completion["status"], "CANCELLED")
+        self.assertIsNone(completion["result_object_key"])
+        self.assertIsNone(completion["result_checksum_sha256"])
+
     def test_span_batch_runs_together_and_drains_successful_siblings(self) -> None:
         claims = []
         for index in range(4):
@@ -213,10 +575,13 @@ class PersonalWorkerContractTests(unittest.TestCase):
 
         first = Response(b"partial", ConnectionResetError(errno.ECONNRESET, "reset"))
         second = Response(content, b"")
-        with tempfile.TemporaryDirectory() as root, patch(
-            "videoforge_media_local.personal_execution.urllib.request.urlopen",
-            side_effect=[first, second],
-        ) as urlopen:
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch(
+                "videoforge_media_local.personal_execution.urllib.request.urlopen",
+                side_effect=[first, second],
+            ) as urlopen,
+        ):
             destination = Path(root) / "input"
             _download(item, destination, lambda: False)
             self.assertEqual(destination.read_bytes(), content)

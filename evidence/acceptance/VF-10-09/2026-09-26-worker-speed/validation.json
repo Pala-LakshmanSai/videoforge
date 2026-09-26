@@ -1,0 +1,28 @@
+{
+  "checkpoint": "V2-09",
+  "baseline_commit": "f5e64f7c",
+  "candidate_release": "0.1.43",
+  "focused_tests": {
+    "passed": 104,
+    "skipped": 2,
+    "skip_reason": "POSIX file descriptor limits on Windows"
+  },
+  "extended_tests": {
+    "passed": 119,
+    "skipped": 2,
+    "failed": 1,
+    "failure": "Unchanged test_artifacts symlink fixture cannot create Windows symlink (error1314); CI full gate retained"
+  },
+  "ruff": "PASS",
+  "source_quality": "exact synthetic raw pixels and encoded MP4 bytes match",
+  "remaining_gates": [
+    "Exact source release CI both platforms",
+    "Published artifact identity",
+    "Production manifest activation",
+    "Installed Windows native smoke and Chrome Online readback"
+  ],
+  "provider_paid_generation_compute_usd": 0,
+  "paid_compute_started": false,
+  "global_paid_compute_inventory_queried": false,
+  "production_time_saving_percent": null
+}

@@ -1119,7 +1119,7 @@ class RenderJobTests(unittest.TestCase):
                     })
 
                 fixture.replace_manifest(use_fal_wide)
-                with patch(
+                with patch("videoforge_image_media.jobs.render.job.prepare_fal_source"), patch(
                     "videoforge_image_media.jobs.render.job.compose_fal_wide",
                     side_effect=ValueError(reason),
                 ):
@@ -1133,6 +1133,47 @@ class RenderJobTests(unittest.TestCase):
                 )
                 self.assertNotIn("/private", json.dumps(result))
                 self.assertFalse(result["error"]["retryable"])
+
+    def test_fal_source_preparation_reuses_one_exact_source_within_job(self) -> None:
+        fixture = RenderFixture()
+        for asset in fixture.document["assets"]:
+            if asset["kind"] == "AVATAR_CLIP":
+                fixture.process.visual_probes[fixture.resolver.objects[asset["artifact_uri"]]] = (
+                    "h264", 512, 512, "25/1"
+                )
+
+        def use_fal_wide(manifest: dict[str, Any]) -> None:
+            background = manifest["segments"][1]["accepted_assets"]["image"]
+            for segment in (manifest["segments"][0], manifest["segments"][2]):
+                segment["accepted_assets"]["source_background"] = copy.deepcopy(background)
+                segment["render"]["avatar_source_profile"] = "fal-flashhead-512x512p25-wide-v2"
+                segment["render"]["avatar_crop"] = (
+                    "1920:1080:0:0" if segment["timeline_composition"] == "AVATAR_FULL"
+                    else "960:1080:480:0"
+                )
+
+        fixture.replace_manifest(use_fal_wide)
+        manifest_path = fixture.resolver.objects[fixture.document["resolved_render_manifest"]["artifact_uri"]]
+        source = json.loads(fixture.artifacts.files[manifest_path])["segments"][1]["accepted_assets"]["image"]
+        prepared = Mock()
+        image_asset = next(a for a in fixture.document["assets"] if a["asset_id"] == source["asset_id"])
+        source_path = fixture.resolver.objects[image_asset["artifact_uri"]]
+        prepared.identity = (source_path.resolve(), source["sha256"].removeprefix("sha256:"))
+
+        def compose(square: Path, background: Path, output: Path, ffmpeg: Path, **kwargs: Any) -> None:
+            del square, ffmpeg
+            self.assertEqual(background, source_path)
+            self.assertIs(kwargs["prepared_source"], prepared)
+            fixture.artifacts.files[output] = b"composed"
+
+        with patch("videoforge_image_media.jobs.render.job.prepare_fal_source", return_value=prepared) as prepare, patch(
+            "videoforge_image_media.jobs.render.job.compose_fal_wide", side_effect=compose
+        ) as compose_mock:
+            result = fixture.job().run(fixture.document, claimed_attempt_id="attempt_render_local_001")
+            self.assertEqual(result["status"], "SUCCEEDED", result)
+            self.assertEqual(prepare.call_count, 1)
+            self.assertEqual(compose_mock.call_count, 2)
+            prepare.assert_called_once_with(source_path, source_sha256=source["sha256"])
 
     def test_output_decode_counts_frames_without_a_second_counting_decode(self) -> None:
         fixture = RenderFixture()

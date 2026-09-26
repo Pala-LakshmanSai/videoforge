@@ -1,0 +1,209 @@
+{
+  "checkpoint": "V2-09",
+  "base_source_commit": "f5e64f7c",
+  "tested_render_profile": "ffmpeg-render-v3",
+  "synthetic": true,
+  "device": {
+    "cpu": "Intel Core i5-11300H",
+    "physical_cores": 4,
+    "logical_processors": 8,
+    "ram_GiB": 16
+  },
+  "tools": {
+    "ffmpeg_version": "ffmpeg version 8.1.2-essentials_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+    "ffmpeg_sha256": "sha256:1326dde4c84ff1f96fe6b8916c5bed29e163e9b5dccf995f6f3db069d143ec5e"
+  },
+  "result": "REJECTED_FOR_RELEASE_EXTRA_CPU_AND_MEMORY",
+  "parallel_chunks": {
+    "fixture": {
+      "chunks": 2,
+      "scenes_per_chunk": 8,
+      "seconds_per_chunk": 20,
+      "video_only": true,
+      "filter_complex_threads": 1,
+      "filter_threads": 1,
+      "input_decoder_threads": 1,
+      "encoder_threads": 2,
+      "encoder": "libx264",
+      "preset_and_quality": "unchanged current defaults",
+      "order": "sequential, parallel2, parallel2, sequential"
+    },
+    "trials": [
+      {
+        "case": "sequential",
+        "repeat": 0,
+        "seconds": 58.39393079990987,
+        "cpu_seconds": 141.78125,
+        "peak_aggregate_working_set_MiB": 697.7890625,
+        "peak_aggregate_private_MiB": 802.83203125,
+        "chunk_hashes": [
+          "8561bf9e1fa99535c656b5d23866aa7f87484ba1d3f358585835a84016fedf40",
+          "8561bf9e1fa99535c656b5d23866aa7f87484ba1d3f358585835a84016fedf40"
+        ]
+      },
+      {
+        "case": "parallel2",
+        "repeat": 0,
+        "seconds": 44.20757500000764,
+        "cpu_seconds": 203.9375,
+        "peak_aggregate_working_set_MiB": 1389.88671875,
+        "peak_aggregate_private_MiB": 1600.546875,
+        "chunk_hashes": [
+          "8561bf9e1fa99535c656b5d23866aa7f87484ba1d3f358585835a84016fedf40",
+          "8561bf9e1fa99535c656b5d23866aa7f87484ba1d3f358585835a84016fedf40"
+        ]
+      },
+      {
+        "case": "parallel2",
+        "repeat": 1,
+        "seconds": 46.39803869999014,
+        "cpu_seconds": 206.921875,
+        "peak_aggregate_working_set_MiB": 1381.58984375,
+        "peak_aggregate_private_MiB": 1590.32421875,
+        "chunk_hashes": [
+          "8561bf9e1fa99535c656b5d23866aa7f87484ba1d3f358585835a84016fedf40",
+          "8561bf9e1fa99535c656b5d23866aa7f87484ba1d3f358585835a84016fedf40"
+        ]
+      },
+      {
+        "case": "sequential",
+        "repeat": 1,
+        "seconds": 69.0039219999453,
+        "cpu_seconds": 159.890625,
+        "peak_aggregate_working_set_MiB": 692.27734375,
+        "peak_aggregate_private_MiB": 797.109375,
+        "chunk_hashes": [
+          "8561bf9e1fa99535c656b5d23866aa7f87484ba1d3f358585835a84016fedf40",
+          "8561bf9e1fa99535c656b5d23866aa7f87484ba1d3f358585835a84016fedf40"
+        ]
+      }
+    ],
+    "summary": {
+      "sequential_seconds_mean": 63.698926399927586,
+      "parallel2_seconds_mean": 45.30280684999889,
+      "wall_reduction_percent": 28.879795295811473,
+      "sequential_cpu_seconds_mean": 150.8359375,
+      "parallel2_cpu_seconds_mean": 205.4296875,
+      "cpu_increase_percent": 36.19412648262288,
+      "sequential_peak_private_MiB_max": 802.83203125,
+      "parallel2_peak_private_MiB_max": 1600.546875,
+      "all_chunk_mp4_bytes_identical": true
+    },
+    "decoded_output": {
+      "frames": 600,
+      "expected_frames": 600,
+      "framemd5_sha256": "0b9406ccde4d45c3b715f564249ee879cb98879a79002b6648ea9f77a599b0d1"
+    }
+  },
+  "filter_threads_2": {
+    "fixture": "image-only 5s and mixed8scene30s; filter_complex_threads1 versus2 with encoder2 unchanged",
+    "trials": [
+      {
+        "case": "image",
+        "threads": 1,
+        "repeat": 0,
+        "seconds": 9.984914799919352,
+        "cpu_seconds": 23.171875,
+        "peak_working_set_MiB": 451.9375,
+        "peak_private_MiB": 518.34375,
+        "frames": 150,
+        "decoded_frame_sha256": "0c056483e86a4e82c2b7f1d75a3ca4dc95e51c43d69703bcd05bcd812f77ef67",
+        "mp4_sha256": "01a6f7aeb7b0b525ba2fa97653b3ac52f0ce71e6ef7e8c5bdadb16b4cfb1a411"
+      },
+      {
+        "case": "image",
+        "threads": 2,
+        "repeat": 0,
+        "seconds": 11.948018600000069,
+        "cpu_seconds": 29.125,
+        "peak_working_set_MiB": 450.63671875,
+        "peak_private_MiB": 516.921875,
+        "frames": 150,
+        "decoded_frame_sha256": "0c056483e86a4e82c2b7f1d75a3ca4dc95e51c43d69703bcd05bcd812f77ef67",
+        "mp4_sha256": "01a6f7aeb7b0b525ba2fa97653b3ac52f0ce71e6ef7e8c5bdadb16b4cfb1a411"
+      },
+      {
+        "case": "image",
+        "threads": 2,
+        "repeat": 1,
+        "seconds": 11.254059799946845,
+        "cpu_seconds": 27.859375,
+        "peak_working_set_MiB": 453.09375,
+        "peak_private_MiB": 519.453125,
+        "frames": 150,
+        "decoded_frame_sha256": "0c056483e86a4e82c2b7f1d75a3ca4dc95e51c43d69703bcd05bcd812f77ef67",
+        "mp4_sha256": "01a6f7aeb7b0b525ba2fa97653b3ac52f0ce71e6ef7e8c5bdadb16b4cfb1a411"
+      },
+      {
+        "case": "image",
+        "threads": 1,
+        "repeat": 1,
+        "seconds": 13.769191999919713,
+        "cpu_seconds": 30.515625,
+        "peak_working_set_MiB": 452.07421875,
+        "peak_private_MiB": 518.1796875,
+        "frames": 150,
+        "decoded_frame_sha256": "0c056483e86a4e82c2b7f1d75a3ca4dc95e51c43d69703bcd05bcd812f77ef67",
+        "mp4_sha256": "01a6f7aeb7b0b525ba2fa97653b3ac52f0ce71e6ef7e8c5bdadb16b4cfb1a411"
+      },
+      {
+        "case": "mixed8",
+        "threads": 1,
+        "repeat": 0,
+        "seconds": 48.80997760000173,
+        "cpu_seconds": 123.953125,
+        "peak_working_set_MiB": 691.63671875,
+        "peak_private_MiB": 796.62890625,
+        "frames": 900,
+        "decoded_frame_sha256": "4cf6e26543faeff87086498523b99267d7159ecc8523fac42200ed85a61a6322",
+        "mp4_sha256": "4299554973f81c1c87e3302beb20e76e65c8b8debfe5714e2a19a4fa40783d23"
+      },
+      {
+        "case": "mixed8",
+        "threads": 2,
+        "repeat": 0,
+        "seconds": 44.536976199946366,
+        "cpu_seconds": 127.140625,
+        "peak_working_set_MiB": 704.96875,
+        "peak_private_MiB": 810.6015625,
+        "frames": 900,
+        "decoded_frame_sha256": "4cf6e26543faeff87086498523b99267d7159ecc8523fac42200ed85a61a6322",
+        "mp4_sha256": "4299554973f81c1c87e3302beb20e76e65c8b8debfe5714e2a19a4fa40783d23"
+      },
+      {
+        "case": "mixed8",
+        "threads": 2,
+        "repeat": 1,
+        "seconds": 44.43523860001005,
+        "cpu_seconds": 128.234375,
+        "peak_working_set_MiB": 712.7421875,
+        "peak_private_MiB": 817.51953125,
+        "frames": 900,
+        "decoded_frame_sha256": "4cf6e26543faeff87086498523b99267d7159ecc8523fac42200ed85a61a6322",
+        "mp4_sha256": "4299554973f81c1c87e3302beb20e76e65c8b8debfe5714e2a19a4fa40783d23"
+      },
+      {
+        "case": "mixed8",
+        "threads": 1,
+        "repeat": 1,
+        "seconds": 46.177798999939114,
+        "cpu_seconds": 118.703125,
+        "peak_working_set_MiB": 697.921875,
+        "peak_private_MiB": 802.6171875,
+        "frames": 900,
+        "decoded_frame_sha256": "4cf6e26543faeff87086498523b99267d7159ecc8523fac42200ed85a61a6322",
+        "mp4_sha256": "4299554973f81c1c87e3302beb20e76e65c8b8debfe5714e2a19a4fa40783d23"
+      }
+    ],
+    "result": "REJECTED_FOR_RELEASE_EXTRA_CPU_NO_STABLE_IMAGE_GAIN",
+    "exact_output_parity": true
+  },
+  "limitations": [
+    "Short synthetic fixtures; no representative Mexico assets or full production manifest retained on this Windows checkout.",
+    "Wall time and CPU time vary with laptop thermal state; reversed order exposes that variability.",
+    "CPU seconds are a work proxy, not an electricity or operating-cost measurement.",
+    "No other device, macOS or full production speedup asserted."
+  ],
+  "provider_spend": "Zero provider calls, generation retries or spend.",
+  "paid_compute_shutdown": "No paid compute activated; no provider inventory queried."
+}
